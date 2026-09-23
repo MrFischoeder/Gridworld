@@ -15,8 +15,15 @@ export interface VoxelMesh {
 const DIRS = [[1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1]];
 export const edgeKey = (x: number, y: number, z: number, a: number): string => x + ',' + y + ',' + z + ',' + a;
 
+/**
+ * Line style. 'grid' (dungeons): a line on every 1 m face edge.
+ * Outline: lines only where the surface folds or ends, plus panel seams — floors every `floor` metres,
+ * vertical seams on walls every `wall` metres. Far fewer lines, and the shapes read more clearly.
+ */
+export interface OutlineStyle { floor: number; wall: number }
+
 /** Faces are emitted wherever an empty cell touches a non-empty one. Cells at y >= skyY get no faces (open sky). */
-export function meshVoxels(g: VoxelGrid, skyY = Infinity): VoxelMesh {
+export function meshVoxels(g: VoxelGrid, skyY = Infinity, outline?: OutlineStyle): VoxelMesh {
   const tri: number[] = [];
   const edgeSet = new Set<string>(), edgeArr: Edge[] = [];
   const addEdge = (p: number[], a: number) => {
@@ -38,7 +45,19 @@ export function meshVoxels(g: VoxelGrid, skyY = Infinity): VoxelMesh {
       const P = (u: number, v: number) => { const p = base.slice(); p[b] += u; p[e] += v; return p; };
       const p00 = P(0, 0), p10 = P(1, 0), p11 = P(1, 1), p01 = P(0, 1);
       tri.push(...p00, ...p10, ...p11, ...p00, ...p11, ...p01);
-      addEdge(p00, b); addEdge(p01, b); addEdge(p00, e); addEdge(p10, e);
+      if (!outline) { addEdge(p00, b); addEdge(p01, b); addEdge(p00, e); addEdge(p10, e); continue; }
+      // Does the same surface continue past this edge? (next empty cell along the plane, facing the same solid)
+      const cont = (ax: number, sgn: number) => {
+        const n = c.slice(); n[ax] += sgn;
+        return g.empty(n[0], n[1], n[2]) && !g.empty(n[0] + d[0], n[1] + d[1], n[2] + d[2]);
+      };
+      const floor = d[1] < 0, wall = a !== 1;
+      // an internal edge along axis `along`, lying at coordinate `at` of the other in-plane axis
+      const seam = (along: number, at: number) => floor ? at % outline.floor === 0 : wall && along === 1 && at % outline.wall === 0;
+      if (!cont(e, -1) || seam(b, p00[e])) addEdge(p00, b);
+      if (!cont(e, 1) || seam(b, p01[e])) addEdge(p01, b);
+      if (!cont(b, -1) || seam(e, p00[b])) addEdge(p00, e);
+      if (!cont(b, 1) || seam(e, p10[b])) addEdge(p10, e);
     }
   }
   const lines = new Float32Array(edgeArr.length * 6);

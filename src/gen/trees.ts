@@ -20,3 +20,19 @@ export function chunkTrees(t: Terrain, cx: number, cz: number): Tree[] {
   }
   return out;
 }
+
+export interface Rock { x: number; z: number; y: number; r: number; h: number; sides: number; rot: number }
+
+/** Scattered rocks: low faceted pyramids, a few per chunk, never on roads or places. */
+export function chunkRocks(t: Terrain, cx: number, cz: number): Rock[] {
+  const R = rng(hash(t.world, cx, cz, 0x50c4)), out: Rock[] = [], f = t.chunkFeatures(cx, cz);
+  const n = 3 + Math.floor(R() * 6);
+  for (let i = 0; i < n; i++) {
+    const x = cx * CHUNK + R() * CHUNK, z = cz * CHUNK + R() * CHUNK, big = R() < 0.25;
+    const r = big ? 1.4 + R() * 1.2 : 0.4 + R() * 0.7, h = r * (0.5 + R() * 0.6), sides = 3 + Math.floor(R() * 3), rot = R() * 6.283;
+    if (f.pads.some((p) => rectDist(p.poi.rect, x, z) < p.poi.flat + 2)) continue;
+    if (f.roads.some((rd) => nearestOnRoad(rd, x, z)[0] < rd.half + r + 0.5)) continue;
+    out.push({ x, z, y: t.heightAt(x, z) - 0.15, r, h, sides, rot });
+  }
+  return out;
+}

@@ -10,7 +10,9 @@ export interface Building {
   side: Dir; out: [number, number]; door: P3; home?: P3;
 }
 /** A gap in the village wall. (x, z) is the point just outside, where the road starts. */
-export interface Gate { dir: Dir; x: number; z: number; w: number }
+export interface Gate { dir: Dir; x: number; z: number; w: number; /** First cell of the opening along the wall, and the wall cell across it. */ a: number; m: number }
+/** Guard tower footprint (world), standing on the plaza floor. */
+export interface Tower { x: number; z: number; w: number; d: number; h: number }
 export interface VillageMap {
   seed: number; village: true; name: string;
   /** World offset of the local layout, and the plaza floor height. */
@@ -19,6 +21,7 @@ export interface VillageMap {
   spawn: [number, number, number];
   ops: Op[];
   gates: Gate[];
+  towers: Tower[];
   buildings: Building[];
   trees: { x: number; z: number; h: number }[];
   lamps: { x: number; z: number }[];
@@ -29,7 +32,7 @@ export interface VillageMap {
 
 /** The plaza is 72 x 72 m inside a 7 m wall; the footprint (with a 1 m apron) is VILLAGE_RECT around the origin. */
 export const VILLAGE_OFFSET = { x: -36, z: -36 };
-const WALL_H = 7, GATE_H = 4;
+const WALL_H = 7, GATE_H = 4, TOWER_H = 10;
 /** Gate openings in local plaza coordinates: [dir, first cell, width]. Each lines up with a gap between buildings. */
 const GATE_SLOTS: Record<Dir, number> = { N: 34, S: 39, E: 35, W: 37 };
 
@@ -49,11 +52,33 @@ export function generateVillage(seed: number, y = 0): VillageMap {
   const gateDirs = villageGates(seed), GW = 4, gates: Gate[] = [];
   for (const dir of gateDirs) {
     const s = GATE_SLOTS[dir];
-    if (dir === 'N') { ops.push({ op: 'room', x: s, y: 0, z: -1, w: GW, h: GATE_H, d: 1 }); gates.push({ dir, x: s + GW / 2, z: -2, w: GW }); }
-    if (dir === 'S') { ops.push({ op: 'room', x: s, y: 0, z: PD, w: GW, h: GATE_H, d: 1 }); gates.push({ dir, x: s + GW / 2, z: PD + 2, w: GW }); }
-    if (dir === 'W') { ops.push({ op: 'room', x: -1, y: 0, z: s, w: 1, h: GATE_H, d: GW }); gates.push({ dir, x: -2, z: s + GW / 2, w: GW }); }
-    if (dir === 'E') { ops.push({ op: 'room', x: PW, y: 0, z: s, w: 1, h: GATE_H, d: GW }); gates.push({ dir, x: PW + 2, z: s + GW / 2, w: GW }); }
+    if (dir === 'N') { ops.push({ op: 'room', x: s, y: 0, z: -1, w: GW, h: GATE_H, d: 1 }); gates.push({ dir, x: s + GW / 2, z: -2, w: GW, a: s, m: -1 }); }
+    if (dir === 'S') { ops.push({ op: 'room', x: s, y: 0, z: PD, w: GW, h: GATE_H, d: 1 }); gates.push({ dir, x: s + GW / 2, z: PD + 2, w: GW, a: s, m: PD }); }
+    if (dir === 'W') { ops.push({ op: 'room', x: -1, y: 0, z: s, w: 1, h: GATE_H, d: GW }); gates.push({ dir, x: -2, z: s + GW / 2, w: GW, a: s, m: -1 }); }
+    if (dir === 'E') { ops.push({ op: 'room', x: PW, y: 0, z: s, w: 1, h: GATE_H, d: GW }); gates.push({ dir, x: PW + 2, z: s + GW / 2, w: GW, a: s, m: PW }); }
   }
+  // Guard towers: one on every corner of the wall and a pair flanking each gate.
+  const towers: Tower[] = [
+    { x: -2, z: -2, w: 4, d: 4, h: TOWER_H }, { x: PW - 2, z: -2, w: 4, d: 4, h: TOWER_H },
+    { x: -2, z: PD - 2, w: 4, d: 4, h: TOWER_H }, { x: PW - 2, z: PD - 2, w: 4, d: 4, h: TOWER_H },
+  ];
+  for (const g of gates) {
+    const along = g.dir === 'N' || g.dir === 'S', m0 = g.m === -1 ? -2 : g.m - 1;
+    for (const a0 of [g.a - 3, g.a + GW]) towers.push(along ? { x: a0, z: m0, w: 3, d: 3, h: TOWER_H - 1 } : { x: m0, z: a0, w: 3, d: 3, h: TOWER_H - 1 });
+  }
+  // Battlements every 4 m along the top of the wall, and buttresses on its outer face every 12 m.
+  for (let a = 1; a < PW - 1; a += 4) {
+    ops.push({ op: 'solid', x: a, y: WALL_H, z: -1, w: 2, h: 1, d: 1 }, { op: 'solid', x: a, y: WALL_H, z: PD, w: 2, h: 1, d: 1 });
+    ops.push({ op: 'solid', x: -1, y: WALL_H, z: a, w: 1, h: 1, d: 2 }, { op: 'solid', x: PW, y: WALL_H, z: a, w: 1, h: 1, d: 2 });
+  }
+  const nearGate = (dir: Dir, a: number) => gates.some((g) => g.dir === dir && a > g.a - 5 && a < g.a + GW + 4);
+  for (let a = 6; a < PW - 4; a += 12) {
+    if (!nearGate('N', a)) ops.push({ op: 'solid', x: a, y: 0, z: -2, w: 1, h: WALL_H - 2, d: 1 });
+    if (!nearGate('S', a)) ops.push({ op: 'solid', x: a, y: 0, z: PD + 1, w: 1, h: WALL_H - 2, d: 1 });
+    if (!nearGate('W', a)) ops.push({ op: 'solid', x: -2, y: 0, z: a, w: 1, h: WALL_H - 2, d: 1 });
+    if (!nearGate('E', a)) ops.push({ op: 'solid', x: PW + 1, y: 0, z: a, w: 1, h: WALL_H - 2, d: 1 });
+  }
+  for (const t of towers) ops.push({ op: 'solid', x: t.x, y: 0, z: t.z, w: t.w, h: t.h, d: t.d });
   const buildings: Building[] = [], trees: { x: number; z: number; h: number }[] = [], lamps: { x: number; z: number }[] = [];
   const B = (name: string, role: Role, x: number, z: number, w: number, d: number, side: Dir, h = 6) => {
     const cxm = x + (w >> 1), czm = z + (d >> 1);
@@ -109,7 +134,9 @@ export function generateVillage(seed: number, y = 0): VillageMap {
   return {
     seed, village: true, name: 'Gridholm', ox, oz, y, rect: { ...VILLAGE_RECT },
     spawn: [36.5 + ox, y, 50.5 + oz], ops: translateOps(all, ox, y, oz),
-    gates: gates.map((g) => ({ ...g, x: g.x + ox, z: g.z + oz })),
+    gates: gates.map((g) => (g.dir === 'N' || g.dir === 'S'
+      ? { ...g, x: g.x + ox, z: g.z + oz, a: g.a + ox, m: g.m + oz } : { ...g, x: g.x + ox, z: g.z + oz, a: g.a + oz, m: g.m + ox })),
+    towers: towers.map((t) => ({ ...t, x: t.x + ox, z: t.z + oz })),
     buildings: buildings.map((b) => ({ ...b, x: b.x + ox, z: b.z + oz, door: P(b.door), home: b.home && P(b.home) })),
     trees: trees.map((t) => ({ ...t, x: t.x + ox, z: t.z + oz })), lamps: lamps.map((l) => ({ x: l.x + ox, z: l.z + oz })),
     well: { x: 36 + ox, z: 37 + oz }, walk: walk.map(([x, z]) => [x + ox, z + oz]),

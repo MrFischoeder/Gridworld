@@ -7,7 +7,7 @@ import { G, W } from '../game';
 import { VoxelGrid, type Space } from '../core/voxel';
 import { Terrain, inRect, rectDist, STEP, CELLS, VERTS } from '../gen/terrain';
 import { CHUNK, poisNear, VILLAGE_RECT, type Poi } from '../gen/regions';
-import { chunkTrees, type Tree } from '../gen/trees';
+import { chunkTrees, chunkRocks, type Tree, type Rock } from '../gen/trees';
 import { generateVillage, type VillageMap } from '../gen/village';
 import { generateRuin } from '../gen/ruins';
 import { tryPlaceDoor } from '../gen/doors';
@@ -21,9 +21,11 @@ import { NPC_INFO, VILLAGER_NAMES } from '../data/npcs';
 import { DIRV } from '../core/rng';
 
 export const LOAD_R = 4, UNLOAD_R = 6, STRUCT_LOAD = 170, STRUCT_UNLOAD = 240;
+/** Surface structures are drawn in outline style: folds and edges, floor tiles every 2 m, wall seams every 4 m. */
+const OUTLINE = { floor: 2, wall: 4 };
 const ROAD_COLOR = 0xc8ffd8, TILE_COLOR = 0x4dff7e;
 
-interface Chunk { cx: number; cz: number; group: THREE.Group; trees: Tree[] }
+interface Chunk { cx: number; cz: number; group: THREE.Group; trees: Tree[]; rocks: Rock[]; lod: number }
 interface Structure {
   poi: Poi; grid: VoxelGrid; group: THREE.Group; edges: EdgeSource;
   doors: Door[]; stairs: Stair[]; npcs: Npc[]; village?: VillageMap;
@@ -36,7 +38,7 @@ export const OW = {
   village: null as VillageMap | null,
 };
 const ckey = (cx: number, cz: number) => (cx + 32768) * 65536 + (cz + 32768);
-let queue: [number, number][] = [], lastChunk = '';
+let queue: [number, number, number][] = [], lastChunk = '';
 
 // ---------- collision ----------
 /** Voxel structures on top of open air. Each cell belongs to the structure whose footprint covers it. */
@@ -56,13 +58,17 @@ export function treeHit(x: number, y: number, z: number, r: number): boolean {
   for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) {
     const c = OW.chunks.get(ckey(cx + i, cz + j)); if (!c) continue;
     for (const t of c.trees) if (Math.hypot(t.x - x, t.z - z) < 0.35 + r && y < t.y + 2 + t.h * 0.3) return true;
+    for (const k of c.rocks) if (k.h > 0.7 && Math.hypot(k.x - x, k.z - z) < k.r * 0.55 + r && y < k.y + k.h * 0.8) return true;
   }
   return false;
 }
 export const inVillage = (x: number, z: number) => inRect(VILLAGE_RECT, x, z);
 
 // ---------- terrain chunks ----------
-function buildChunk(cx: number, cz: number): Chunk {
+/** Level of detail by distance (in chunks): near chunks get grid lines every 2 m, far ones every 4 m. */
+const lodFor = (cx: number, cz: number, pcx: number, pcz: number) => (Math.max(Math.abs(cx - pcx), Math.abs(cz - pcz)) > 2 ? 2 : 1);
+
+function buildChunk(cx: number, cz: number, lod = 1): Chunk {
   const T = OW.terrain!, lat = T.lattice(cx, cz), f = T.chunkFeatures(cx, cz), x0 = cx * CHUNK, z0 = cz * CHUNK;
   const holes = f.pads.map((p) => p.poi.rect);
   const hole = (ax: number, az: number, bx: number, bz: number) => holes.some((r) => Math.min(ax, bx) >= r.x0 && Math.max(ax, bx) <= r.x1 && Math.min(az, bz) >= r.z0 && Math.max(az, bz) <= r.z1);
@@ -75,11 +81,11 @@ function buildChunk(cx: number, cz: number): Chunk {
     tri.push(...a, ...b, ...c, ...a, ...c, ...d);
   }
   // grid lines every 2 m, aligned with the world grid (each chunk draws its own lower/left edges)
-  for (let j = 0; j <= CELLS; j++) for (let i = 0; i < CELLS; i++) {
+  for (let j = 0; j < CELLS; j += lod) for (let i = 0; i < CELLS; i++) {
     const ax = x0 + i * STEP, z = z0 + j * STEP;
-    if (j < CELLS && !hole(ax, z, ax + STEP, z)) lines.push(ax, H(i, j), z, ax + STEP, H(i + 1, j), z);
+    if (!hole(ax, z, ax + STEP, z)) lines.push(ax, H(i, j), z, ax + STEP, H(i + 1, j), z);
   }
-  for (let i = 0; i < CELLS; i++) for (let j = 0; j < CELLS; j++) {
+  for (let i = 0; i < CELLS; i += lod) for (let j = 0; j < CELLS; j++) {
     const x = x0 + i * STEP, az = z0 + j * STEP;
     if (!hole(x, az, x, az + STEP)) lines.push(x, H(i, j), az, x, H(i, j + 1), az + STEP);
   }
@@ -105,14 +111,15 @@ function buildChunk(cx: number, cz: number): Chunk {
   const lg = new THREE.BufferGeometry(); lg.setAttribute('position', new THREE.Float32BufferAttribute(lines, 3));
   group.add(new THREE.Mesh(fg, sharedFill()), new THREE.LineSegments(lg, sharedLine(GRID)));
   if (road.length) { const rg = new THREE.BufferGeometry(); rg.setAttribute('position', new THREE.Float32BufferAttribute(road, 3)); group.add(new THREE.LineSegments(rg, sharedLine(ROAD_COLOR))); }
-  const trees = chunkTrees(T, cx, cz);
-  if (trees.length) {
+  const trees = chunkTrees(T, cx, cz), rocks = chunkRocks(T, cx, cz);
+  if (trees.length || rocks.length) {
     const pb = new PropBatch();
-    for (const t of trees) { pb.box(t.x - 0.3, t.y - 0.5, t.z - 0.3, t.x + 0.3, t.y + 2, t.z + 0.3, GRID); pb.cone(t.x, t.y + 2, t.z, t.r, t.h, GRID); }
+    for (const t of trees) { pb.box(t.x - 0.3, t.y - 0.5, t.z - 0.3, t.x + 0.3, t.y + 2, t.z + 0.3, GRID); pb.cone(t.x, t.y + 2, t.z, t.r, t.h, GRID, lod > 1 ? 6 : 8); }
+    for (const k of rocks) pb.rock(k.x, k.y, k.z, k.r, k.h, k.sides, k.rot, GRID);
     group.add(pb.build());
   }
   scene.add(group);
-  return { cx, cz, group, trees };
+  return { cx, cz, group, trees, rocks, lod };
 }
 function dropChunk(c: Chunk) {
   scene.remove(c.group);
@@ -131,7 +138,7 @@ function gateSign(vm: VillageMap) {
 function loadVillageStruct(poi: Poi): Structure {
   const T = OW.terrain!, y = T.padY(poi), vm = generateVillage(T.world, y);
   const grid = VoxelGrid.surface(vm.ops, vm.rect, y);
-  const { group, mesh } = voxelObject(grid);
+  const { group, mesh } = voxelObject(grid, Infinity, OUTLINE);
   group.add(villageDeco(vm, y), gateSign(vm));
   scene.add(group);
   const npcs: Npc[] = [];
@@ -146,7 +153,7 @@ export function setEnterRuin(f: (id: number) => void) { enterRuin = f; }
 function loadRuinStruct(poi: Poi): Structure {
   const T = OW.terrain!, y = T.padY(poi), rm = generateRuin(T.world, poi, y);
   const grid = VoxelGrid.surface(rm.ops, rm.rect, y);
-  const { group, mesh } = voxelObject(grid);
+  const { group, mesh } = voxelObject(grid, Infinity, OUTLINE);
   // fragments of the old paving
   const tl: number[] = [];
   for (const t of rm.tiles) {
@@ -193,15 +200,20 @@ export function updateStreaming(budgetMs = 4) {
   if (k !== lastChunk) {
     lastChunk = k;
     queue = [];
-    for (let i = -LOAD_R; i <= LOAD_R; i++) for (let j = -LOAD_R; j <= LOAD_R; j++) if (!OW.chunks.has(ckey(pcx + i, pcz + j))) queue.push([pcx + i, pcz + j]);
+    for (let i = -LOAD_R; i <= LOAD_R; i++) for (let j = -LOAD_R; j <= LOAD_R; j++) {
+      const c = OW.chunks.get(ckey(pcx + i, pcz + j)), lod = lodFor(pcx + i, pcz + j, pcx, pcz);
+      if (!c || c.lod !== lod) queue.push([pcx + i, pcz + j, lod]);
+    }
     queue.sort((a, b) => Math.hypot(b[0] - pcx, b[1] - pcz) - Math.hypot(a[0] - pcx, a[1] - pcz)); // nearest last (popped first)
     for (const c of [...OW.chunks.values()]) if (Math.max(Math.abs(c.cx - pcx), Math.abs(c.cz - pcz)) > UNLOAD_R) { dropChunk(c); OW.chunks.delete(ckey(c.cx, c.cz)); }
     updateStructs(x, z);
   }
   const t0 = performance.now();
   while (queue.length && (performance.now() - t0 < budgetMs)) {
-    const [cx, cz] = queue.pop()!;
-    if (!OW.chunks.has(ckey(cx, cz))) OW.chunks.set(ckey(cx, cz), buildChunk(cx, cz));
+    const [cx, cz, lod] = queue.pop()!, old = OW.chunks.get(ckey(cx, cz));
+    if (old && old.lod === lod) continue;
+    OW.chunks.set(ckey(cx, cz), buildChunk(cx, cz, lod)); // swap in the new one first, then drop the old: no gap
+    if (old) dropChunk(old);
   }
 }
 

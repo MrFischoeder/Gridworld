@@ -16,7 +16,7 @@ import { updateStreaming, updateFieldEnemies, placeName, OW, groundAt, treeHit }
 import { collides } from './world/player';
 import { regionRoads } from './gen/roads';
 import { poisNear } from './gen/regions';
-import { sky } from './world/sky';
+import { sky, horizon } from './world/sky';
 import { el, updateHud } from './ui/hud';
 import { drawMini } from './ui/minimap';
 import { toggleMap } from './ui/worldmap';
@@ -67,7 +67,7 @@ function frame(now: number) {
   } else { el.prompt.style.display = 'none'; el.bUse.classList.remove('on'); el.bossbar.style.display = 'none'; }
   if (G.trans) updateTrans(dt, camera); else camera.position.set(G.pos.x, G.pos.y + EYE, G.pos.z);
   camera.rotation.set(G.pitch, G.yaw, 0);
-  if (sky.visible) sky.position.set(camera.position.x, camera.position.y - 20, camera.position.z);
+  if (sky.visible) { sky.position.set(camera.position.x, camera.position.y - 20, camera.position.z); horizon.position.set(camera.position.x, 0, camera.position.z); }
   animateVM(dt, moving);
   animateFoes(dt, time, camera.position);
   updateFx(dt);

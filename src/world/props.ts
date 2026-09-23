@@ -37,7 +37,7 @@ export class PropBatch {
       const p1 = [cx + Math.cos(a) * r, y, cz + Math.sin(a) * r], p2 = [cx + Math.cos(b) * r, y, cz + Math.sin(b) * r];
       this.seg(color, p1, top); this.seg(color, p1, p2);
       const m = (p: number[]) => [p[0] + (top[0] - p[0]) * 0.45, p[1] + (top[1] - p[1]) * 0.45, p[2] + (top[2] - p[2]) * 0.45];
-      this.seg(color, m(p1), m(p2));
+      if (sides > 6) this.seg(color, m(p1), m(p2));
       this.face(p1, p2, top); this.face(centre, p2, p1);
     }
   }
@@ -52,6 +52,45 @@ export class PropBatch {
       this.face(b[i], b[j], t[j], t[i]);
     }
     this.face(t[0], t[1], t[2], t[3]);
+  }
+
+  /** Four-sided pyramid (hipped roof, spire) over the rectangle [x0,x1] x [z0,z1] at height y. */
+  pyramid(x0: number, z0: number, x1: number, z1: number, y: number, h: number, color: number) {
+    const top = [(x0 + x1) / 2, y + h, (z0 + z1) / 2], c = [[x0, y, z0], [x1, y, z0], [x1, y, z1], [x0, y, z1]];
+    for (let i = 0; i < 4; i++) {
+      const j = (i + 1) % 4;
+      this.seg(color, c[i], c[j]); this.seg(color, c[i], top);
+      this.face(c[i], c[j], top);
+    }
+    this.face(c[0], c[1], c[2], c[3]);
+  }
+
+  /** Open lookout on top of a tower: corner posts, a parapet rail and a hipped roof with overhang. */
+  lookout(x0: number, z0: number, x1: number, z1: number, y: number, color: number) {
+    const post = 1.6, rail = 0.8, o = 0.5;
+    for (const [x, z] of [[x0, z0], [x1, z0], [x1, z1], [x0, z1]]) this.box(x - 0.15 + (x === x0 ? 0.15 : -0.15), y, z - 0.15 + (z === z0 ? 0.15 : -0.15), x + 0.15 + (x === x0 ? 0.15 : -0.15), y + post, z + 0.15 + (z === z0 ? 0.15 : -0.15), color);
+    const r = [[x0, y + rail, z0], [x1, y + rail, z0], [x1, y + rail, z1], [x0, y + rail, z1]];
+    for (let i = 0; i < 4; i++) this.seg(color, r[i], r[(i + 1) % 4]);
+    this.pyramid(x0 - o, z0 - o, x1 + o, z1 + o, y + post, Math.max(1.4, (x1 - x0) * 0.45), color);
+  }
+
+  /** Solid triangular prism: triangle `t` (points in a plane) swept by vector `v`. */
+  prism(t: number[][], v: number[], color: number) {
+    const u = t.map((p) => [p[0] + v[0], p[1] + v[1], p[2] + v[2]]);
+    for (let i = 0; i < 3; i++) {
+      const j = (i + 1) % 3;
+      this.seg(color, t[i], t[j]); this.seg(color, u[i], u[j]); this.seg(color, t[i], u[i]);
+      this.face(t[i], t[j], u[j], u[i]);
+    }
+    this.face(t[0], t[1], t[2]); this.face(u[0], u[1], u[2]);
+  }
+
+  /** Faceted rock: an irregular n-sided pyramid with an off-centre apex. */
+  rock(x: number, y: number, z: number, r: number, h: number, sides: number, rot: number, color: number) {
+    const base: number[][] = [];
+    for (let i = 0; i < sides; i++) { const a = rot + i / sides * 6.283, k = 0.75 + 0.25 * Math.sin(i * 2.7 + rot * 3); base.push([x + Math.cos(a) * r * k, y, z + Math.sin(a) * r * k]); }
+    const top = [x + Math.cos(rot) * r * 0.2, y + h, z + Math.sin(rot) * r * 0.2];
+    for (let i = 0; i < sides; i++) { const j = (i + 1) % sides; this.seg(color, base[i], base[j]); this.seg(color, base[i], top); this.face(base[i], base[j], top); }
   }
 
   build(): THREE.Group {

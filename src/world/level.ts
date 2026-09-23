@@ -4,7 +4,7 @@ import { scene, fog, lineMat, add, V, circlePts, fillMat, GRID } from './render'
 import { G, W } from '../game';
 import { hash, OPP, DIRV, type Dir } from '../core/rng';
 import { VoxelGrid } from '../core/voxel';
-import { meshVoxels } from '../core/meshing';
+import { meshVoxels, type OutlineStyle } from '../core/meshing';
 import { generateDungeon } from '../gen/dungeon';
 import { findPoi } from '../gen/regions';
 import type { VillageMap } from '../gen/village';
@@ -12,7 +12,7 @@ import { placeTunnelDoors, tryPlaceDoor, type PlacedDoor } from '../gen/doors';
 import { makeDoor, makeStair, arriveVia, signTexture } from './doors';
 import { makeChest, makeHatch, setCrystalXp } from './loot';
 import { makeDrone, placeDrone, makeBoss, setDroneRespawn } from './enemies';
-import { sky } from './sky';
+import { sky, horizon, buildHorizon } from './sky';
 import { setStreakSources } from './fx';
 import { setArmedRule, refreshWeaponVisibility } from './weapons';
 import { PropBatch } from './props';
@@ -24,8 +24,8 @@ import { buildMini, setMiniMode } from '../ui/minimap';
 let worldGroup: THREE.Group | null = null;
 
 /** Voxel mesh: dark fill with grid lines on top. */
-export function voxelObject(grid: VoxelGrid, skyY = Infinity) {
-  const m = meshVoxels(grid, skyY);
+export function voxelObject(grid: VoxelGrid, skyY = Infinity, outline?: OutlineStyle) {
+  const m = meshVoxels(grid, skyY, outline);
   const fg = new THREE.BufferGeometry(); fg.setAttribute('position', new THREE.BufferAttribute(m.tri, 3));
   const lg = new THREE.BufferGeometry(); lg.setAttribute('position', new THREE.BufferAttribute(m.lines, 3));
   const group = new THREE.Group(); group.add(new THREE.Mesh(fg, fillMat()), new THREE.LineSegments(lg, lineMat(GRID)));
@@ -44,7 +44,8 @@ function clearLevel() {
   G.map = null;
 }
 function setLocationLook(outdoors: boolean) {
-  fog.near = outdoors ? 20 : 3; fog.far = outdoors ? 140 : 46; sky.visible = outdoors;
+  fog.near = outdoors ? 20 : 3; fog.far = outdoors ? 140 : 46; sky.visible = outdoors; horizon.visible = outdoors;
+  if (outdoors) buildHorizon(G.char.world);
   el.route.style.display = outdoors ? 'none' : '';
   refreshWeaponVisibility();
 }
@@ -104,6 +105,22 @@ export function villageDeco(map: VillageMap, y0 = 0) {
     if (b.name) grp.add(wallSign(b.name, b.role === 'innkeeper' ? '#ffb347' : '#ffd060', { x: b.door.x, z: b.door.z }, b.out, y0 + 3.5));
   }
   for (const t of map.trees) props.cone(t.x + 0.5, y0 + 2, t.z + 0.5, 1.6, t.h, GRID);
+  // guard tower lookouts
+  for (const t of map.towers) props.lookout(t.x, t.z, t.x + t.w, t.z + t.d, y0 + t.h, GRID);
+  // gate arches: chamfer the top corners of each opening, through the whole wall
+  for (const g of map.gates) {
+    const along = g.dir === 'N' || g.dir === 'S', c = 1, top = y0 + 4, a0 = g.a, a1 = g.a + g.w;
+    const P = (a: number, y: number) => (along ? [a, y, g.m] : [g.m, y, a]), v = along ? [0, 0, 1] : [1, 0, 0];
+    props.prism([P(a0, top - c), P(a0, top), P(a0 + c, top)], v, GRID);
+    props.prism([P(a1, top - c), P(a1, top), P(a1 - c, top)], v, GRID);
+  }
+  // a spire on the Elder's Hall
+  const hall = map.buildings.find((b) => b.role === 'elder');
+  if (hall) {
+    const cx = hall.x + hall.w / 2, cz = hall.z + hall.d / 2, ry = y0 + hall.h + 2.2;
+    props.box(cx - 0.8, ry - 1.2, cz - 0.8, cx + 0.8, ry + 1.4, cz + 0.8, 0x4dff7e);
+    props.pyramid(cx - 0.9, cz - 0.9, cx + 0.9, cz + 0.9, ry + 1.4, 5.5, 0x4dff7e);
+  }
   grp.add(props.build());
   for (const l of map.lamps) {
     const pole = new THREE.Line(new THREE.BufferGeometry().setFromPoints([V(l.x, y0, l.z), V(l.x, y0 + 3.2, l.z)]), lineMat(GRID));

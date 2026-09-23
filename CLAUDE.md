@@ -29,6 +29,8 @@ Browser FPS in a green vector-grid style (wireframe on black, retro sci-fi / Tro
 
 ## Open world notes
 - Regions (rx, rz) span [rx*256-128, rx*256+128); region (0,0) holds Gridholm at the origin. New place types = new `PoiType` + a placement rule in `gen/regions.ts`.
+- Line styles: dungeons keep the original 1 m grid on every face; surface structures use the outline style (`meshVoxels(..., outline)`: folds and edges, 2 m floor tiles, 4 m wall seams). Decorative non-voxel shapes (roofs, lookouts, gate arches, rocks) go through `PropBatch` — collision stays on voxels.
+- Terrain LOD: chunks more than 2 chunks away draw grid lines every 4 m instead of 2 m. Distant mountains (`world/sky.ts`) are a fog-free ring that follows the camera.
 - Structures are `VoxelGrid.surface(...)` grids: their footprint replaces the terrain (terrain mesh has a hole there, collision uses voxels only).
 - Dungeon seeds: `hash(world, ruinId, depth, gx, gz)`; save keys `ruinId:depth:gx:gz`. Save format v3 (`gridWorld.character.v3`; older `gridArena.*` keys are still read), migrations in `save.ts`.
 - `data/` — items, NPC texts. `save.ts` — persistence and version migrations.
