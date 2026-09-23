@@ -6,7 +6,7 @@ import { floorNear, floorAt } from '../core/voxel';
 import { emptyAt, EYE } from './player';
 import { burst, addFx } from './fx';
 import { ITEMS, RELIC_KEYS, HEAL, item, type ItemKey } from '../data/items';
-import { addItem, gainXp, giveLoot, saveChar, takeOne, progress, progressHas } from '../character';
+import { addItem, gainXp, giveLoot, saveChar, takeOne, progress, progressHas, depth as depthNow } from '../character';
 import { logLine } from '../ui/hud';
 import { foes, damageFoe } from './enemies';
 import { closePack } from '../ui/backpack';
@@ -42,7 +42,7 @@ export function dropPickup(at: THREE.Vector3, kind: ItemKey | 'relic') {
   scene.add(g); W.pickups.push({ g, k, p: at.clone(), age: 0 });
 }
 /** XP per crystal; scales with danger (dungeon depth). */
-export let crystalXp = () => 5 * G.char.depth;
+export let crystalXp = () => 5 * depthNow();
 export function setCrystalXp(f: () => number) { crystalXp = f; }
 
 export function updateLoot(dt: number, time: number) {
@@ -85,7 +85,7 @@ export function makeChest(c: { x: number; z: number }, i: number): Chest | null 
   return { g, lidPivot, beam, beamMat, i, open: progressHas('opened', i), anim: 0 };
 }
 export function openChest(c: Chest) {
-  const depth = G.char.depth;
+  const depth = depthNow();
   c.open = true; c.anim = 0.001; progress('opened').push(c.i);
   const gold = (15 + Math.floor(Math.random() * 26)) * depth;
   G.char.gold += gold; logLine('+' + gold + ' gold');

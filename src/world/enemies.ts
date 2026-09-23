@@ -6,13 +6,15 @@ import { floorAt } from '../core/voxel';
 import { emptyAt, rayWorld } from './player';
 import { burst } from './fx';
 import { dropCrystal, dropPickup } from './loot';
-import { droneHp, droneDps, gainXp, saveChar, progress, progressHas } from '../character';
+import { droneHp, droneDps, gainXp, saveChar, progress, progressHas, depth as depthNow } from '../character';
 import { showToast, logLine, el } from '../ui/hud';
 import type { BossSpec } from '../gen/dungeon';
 
 export interface Drone {
   boss?: false; g: THREE.Group; inner: THREE.LineSegments; mat: THREE.LineBasicMaterial; p: THREE.Vector3;
   phase: number; hp: number; flash: number; chasing: boolean; r?: number;
+  /** Field scouts carry their own (weaker) stats; dungeon drones use the depth-based defaults. */
+  scout?: { speed: number; dps: number; detect: number; lose: number };
 }
 export interface Boss {
   boss: true; idx: number; g: THREE.Group; core: THREE.LineSegments; cage: THREE.LineSegments; eye: THREE.LineLoop; shards: THREE.LineSegments[];
@@ -39,22 +41,34 @@ export function placeDrone(t: Drone) {
     if (p.distanceTo(G.pos) > 12) { t.p.copy(p); t.hp = droneHp(); t.chasing = false; return; }
   }
 }
+/** Rules of the current place: where drones may not fly, and whether the player is out of reach (safe zone). */
+export const foeRules = {
+  blocked: (_p: THREE.Vector3) => false,
+  playerSafe: () => false,
+  /** Hover height above the ground for field drones. */
+  ground: null as ((x: number, z: number) => number) | null,
+};
 function droneMove(t: Drone, d: THREE.Vector3) {
   for (const ax of ['x', 'y', 'z'] as const) {
     if (!d[ax]) continue;
     const np = t.p.clone(); np[ax] += d[ax];
     const probe = np.clone(); probe[ax] += Math.sign(d[ax]) * 0.4;
-    if (emptyAt(probe)) t.p[ax] = np[ax];
+    if (emptyAt(probe) && !foeRules.blocked(probe)) t.p[ax] = np[ax];
   }
 }
 export function updateDrones(dt: number) {
-  const head = V(G.pos.x, G.pos.y + 1.2, G.pos.z);
+  const head = V(G.pos.x, G.pos.y + 1.2, G.pos.z), safe = foeRules.playerSafe();
   for (const t of W.drones) {
-    const to = head.clone().sub(t.p), dist = to.length();
-    if (dist < 16) { const dir = to.clone().normalize(); if (rayWorld(t.p, dir, dist) >= dist - 0.01) t.chasing = true; }
-    if (t.chasing && dist > 1.1) droneMove(t, to.normalize().multiplyScalar(Math.min(3.4 * dt, dist - 1.1)));
-    if (t.chasing && dist > 28) t.chasing = false;
-    if (dist < 1.5) { G.hp -= droneDps() * dt; G.dmgFlash = 0.25; }
+    const to = head.clone().sub(t.p), dist = to.length(), sc = t.scout;
+    if (safe) t.chasing = false; // the village: pursuers give up at the gate
+    else if (dist < (sc ? sc.detect : 16)) { const dir = to.clone().normalize(); if (rayWorld(t.p, dir, dist) >= dist - 0.01) t.chasing = true; }
+    if (t.chasing && dist > 1.1) droneMove(t, to.normalize().multiplyScalar(Math.min((sc ? sc.speed : 3.4) * dt, dist - 1.1)));
+    else if (sc && foeRules.ground) { // idle scouts drift back to hovering height
+      const want = foeRules.ground(t.p.x, t.p.z) + 1.8;
+      droneMove(t, V(0, Math.max(-dt, Math.min(dt, want - t.p.y)), 0));
+    }
+    if (t.chasing && dist > (sc ? sc.lose : 28)) t.chasing = false;
+    if (dist < 1.5 && !safe) { G.hp -= (sc ? sc.dps : droneDps()) * dt; G.dmgFlash = 0.25; }
   }
 }
 
@@ -71,7 +85,7 @@ export function makeBoss(b: BossSpec, i: number): Boss | null {
   g.add(core, cage, eye); scene.add(g);
   const shards: THREE.LineSegments[] = [];
   for (let k = 0; k < 5; k++) { const s = edgesOf(new THREE.TetrahedronGeometry(0.25), mat); g.add(s); shards.push(s); }
-  const hp0 = 40 + 15 * (G.char.depth - 1) * (b.guard ? 1 : 1.2);
+  const hp0 = 40 + 15 * (depthNow() - 1) * (b.guard ? 1 : 1.2);
   return {
     boss: true, idx: i, g, core, cage, eye, shards, mat, home: V(f[0] + 0.5, f[1] + 2.4, f[2] + 0.5), p: V(f[0] + 0.5, f[1] + 2.4, f[2] + 0.5),
     room: b.room, guard: b.guard, r: 1.3, hp: hp0, maxHp: hp0, flash: 0, engaged: false, fireT: 1.5,
@@ -85,7 +99,7 @@ function fireOrb(from: THREE.Vector3, dir: THREE.Vector3, dmg: number) {
 }
 export function updateBosses(dt: number, time: number): Boss | null {
   const head = V(G.pos.x, G.pos.y + 1.2, G.pos.z); let shown: Boss | null = null;
-  const depth = G.char.depth;
+  const depth = depthNow();
   for (const b of W.bosses) {
     const inside = inRoom(b, G.pos.x, G.pos.z, 1);
     if (inside) b.engaged = true; else if (!inRoom(b, G.pos.x, G.pos.z, 6)) b.engaged = false;
@@ -124,7 +138,7 @@ export function updateOrbs(dt: number) {
   }
 }
 function killBoss(b: Boss) {
-  const at = b.g.position.clone(), depth = G.char.depth;
+  const at = b.g.position.clone(), depth = depthNow();
   burst(at, 0xff6a4a, 60, 3); burst(at, 0xffd060, 30, 2);
   for (let i = 0; i < 10; i++) dropCrystal(at);
   dropPickup(at, 'key');

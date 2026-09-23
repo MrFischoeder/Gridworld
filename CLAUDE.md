@@ -23,7 +23,12 @@ Browser FPS in a green vector-grid style (wireframe on black, retro sci-fi / Tro
 
 ## Layout
 - `core/` — pure: RNG/hash, voxel grids, meshing, noise.
-- `gen/` — pure generators: dungeon, stairs, village, doors placement, reachability, (open world) terrain, regions, ruins, trees.
-- `world/` — runtime with three.js: player, doors/stairs, enemies, loot, NPCs, level loading.
-- `ui/` — DOM: HUD, minimap, backpack, dialogue, menu, input, touch.
+- `gen/` — pure generators: dungeon, stairs, village, doors placement, reachability; open world: `regions` (256 m regions, POIs), `terrain` (heightfield, flattening), `roads`, `ruins`, `trees`.
+- `world/` — runtime with three.js: player, doors/stairs, enemies, loot, NPCs, `level` (loading places, transitions), `overworld` (chunk streaming, structures, field enemies).
+- `ui/` — DOM: HUD, minimap, `worldmap` (surface minimap + M map), backpack, dialogue, menu, input, touch.
+
+## Open world notes
+- Regions (rx, rz) span [rx*256-128, rx*256+128); region (0,0) holds Gridholm at the origin. New place types = new `PoiType` + a placement rule in `gen/regions.ts`.
+- Structures are `VoxelGrid.surface(...)` grids: their footprint replaces the terrain (terrain mesh has a hole there, collision uses voxels only).
+- Dungeon seeds: `hash(world, ruinId, depth, gx, gz)`; save keys `ruinId:depth:gx:gz`. Save format v3 (`gridArena.character.v3`), migrations in `save.ts`.
 - `data/` — items, NPC texts. `save.ts` — persistence and version migrations.

@@ -58,12 +58,21 @@ export class PropBatch {
     const g = new THREE.Group();
     if (this.tri.length) {
       const fg = new THREE.BufferGeometry(); fg.setAttribute('position', new THREE.Float32BufferAttribute(this.tri, 3));
-      g.add(new THREE.Mesh(fg, fillMat()));
+      g.add(new THREE.Mesh(fg, sharedFill()));
     }
     for (const [color, pts] of this.lines) {
       const lg = new THREE.BufferGeometry(); lg.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3));
-      g.add(new THREE.LineSegments(lg, lineMat(color)));
+      g.add(new THREE.LineSegments(lg, sharedLine(color)));
     }
     return g;
   }
+}
+
+// Materials are shared between batches (many terrain chunks use the same few colours).
+let fillShared: THREE.MeshBasicMaterial | null = null;
+const lineShared = new Map<number, THREE.LineBasicMaterial>();
+export const sharedFill = () => (fillShared ??= fillMat());
+export function sharedLine(color: number) {
+  let m = lineShared.get(color); if (!m) lineShared.set(color, (m = lineMat(color)));
+  return m;
 }

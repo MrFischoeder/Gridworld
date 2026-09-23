@@ -15,18 +15,18 @@ export const NPC_INFO: Record<NpcRole, NpcInfo> = {
   villager: { title: 'Villager', color: 0x9dffb4, opts: ['chat', 'bye'] },
 };
 export const VILLAGER_NAMES = ['Ola', 'Piotr', 'Kasia', 'Tomek', 'Ania', 'Marek', 'Ewa', 'Staszek'];
-export const VILLAGER_LINES = ["Nice evening, isn't it? Well, every evening looks the same under the grid.", 'Mind the drones past the gate. They do not like visitors.',
+export const VILLAGER_LINES = ["Nice evening, isn't it? Well, every evening looks the same under the grid.", 'Mind the drones past the gate. They never come inside the walls, though.',
   'The Elder has been worried lately. Something big stirs in the deep sectors.', "Marta's stew is the best thing in this village. Maybe the only good thing.",
   'I heard the doors down there only open for those who carry a key.', 'Radek says his forge runs on pure static. I believe him.'];
 export const RUMOURS = ['They say the guardians below each carry an Access Key. Kill one and the gate is yours.',
   'A trader swore the stairs in the dungeon lead to whole other sectors. Some go up, some go down.',
-  'Old Bogdan claims there are open fields beyond the hills. Forests, caves, mines... one day we will see.',
+  'Old Bogdan claims there is more beyond the hills than ruins. Other villages, caves, mines... one day we will see.',
   "If things go wrong down there, a Recall Beacon from Zofia's store will bring you home."];
 export const OPT_TEXT: Record<OptId | 'back', string> = {
   rest: 'Rent a bed (10 gold)', rumour: 'Heard any rumours?', work: 'Do you have any work for me?', lore: 'Tell me about the dungeon.',
   shop: 'Show me your wares.', chat: 'How are things?', bye: 'Goodbye.', back: 'Back',
 };
-export const LORE = 'Beneath the north gate lies a maze of the old machine folk. Drones patrol it, and guardians seal the deeper passages. Stairs connect it to other sectors, and hatches lead ever deeper.';
+export const LORE = 'Old ruins stand in the hills around Gridholm. Beneath each one lies a maze of the old machine folk. Drones patrol it, and guardians seal the deeper passages. Stairs connect it to other sectors, and hatches lead ever deeper. Follow the roads from our gates and you will find them.';
 
 export function stockFor(role: NpcRole, world: number): [ItemKey, number][] {
   if (role === 'merchant') return [['medkit', 30], ['emp', 45], ['key', 90], ['recall', 60]];

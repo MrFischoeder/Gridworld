@@ -18,28 +18,46 @@ export class VoxelGrid implements Space {
   constructor(
     public ox: number, public oy: number, public oz: number,
     public nx: number, public ny: number, public nz: number,
-    /** Value reported for cells outside the grid: dungeons are solid rock, surface structures stand in open air. */
-    public outsideEmpty = false,
+    /**
+     * null: a dungeon, everything outside the grid is solid rock.
+     * A number: a surface structure standing on the ground at that height. Its footprint is the grid's x/z extent;
+     * inside it, cells below the grid are rock and cells above are air; outside the footprint is open air.
+     */
+    public groundY: number | null = null,
   ) { this.cells = new Uint8Array(nx * ny * nz); }
 
-  /**
-   * Build a grid from ops. Dungeon grids are bounded by their room ops (everything else is rock);
-   * surface structures pass outsideEmpty and are bounded by all ops.
-   */
-  static fromOps(ops: Op[], outsideEmpty = false): VoxelGrid {
+  /** Dungeon grid: bounded by its room ops (plus a 1-cell rim); everything else is rock. */
+  static fromOps(ops: Op[]): VoxelGrid {
     const mn = [1e9, 1e9, 1e9], mx = [-1e9, -1e9, -1e9];
     for (const o of ops) {
-      if (!outsideEmpty && o.op !== 'room') continue;
+      if (o.op !== 'room') continue;
       mn[0] = Math.min(mn[0], o.x); mn[1] = Math.min(mn[1], o.y); mn[2] = Math.min(mn[2], o.z);
       mx[0] = Math.max(mx[0], o.x + o.w); mx[1] = Math.max(mx[1], o.y + o.h); mx[2] = Math.max(mx[2], o.z + o.d);
     }
-    const g = new VoxelGrid(mn[0] - 1, mn[1] - 1, mn[2] - 1, mx[0] - mn[0] + 2, mx[1] - mn[1] + 2, mx[2] - mn[2] + 2, outsideEmpty);
-    if (outsideEmpty) g.cells.fill(1);
+    const g = new VoxelGrid(mn[0] - 1, mn[1] - 1, mn[2] - 1, mx[0] - mn[0] + 2, mx[1] - mn[1] + 2, mx[2] - mn[2] + 2);
+    g.apply(ops);
+    return g;
+  }
+
+  /**
+   * Surface structure on a footprint [x0, x1) x [z0, z1): the ground below groundY is solid (a floor with 1 m grid lines),
+   * the ops then add walls and carve shafts.
+   */
+  static surface(ops: Op[], fp: { x0: number; z0: number; x1: number; z1: number }, groundY: number): VoxelGrid {
+    let y0 = groundY - 1, y1 = groundY + 1;
+    for (const o of ops) { y0 = Math.min(y0, o.y - 1); y1 = Math.max(y1, o.y + o.h); }
+    const g = new VoxelGrid(fp.x0, y0, fp.z0, fp.x1 - fp.x0, y1 - y0, fp.z1 - fp.z0, groundY);
+    const nxz = g.nx;
+    for (let k = 0; k < g.nz; k++) for (let j = 0; j < g.ny; j++) g.cells.fill(j + y0 < groundY ? 0 : 1, nxz * (j + g.ny * k), nxz * (j + g.ny * k) + nxz);
+    g.apply(ops);
+    return g;
+  }
+
+  apply(ops: Op[]) {
     for (const o of ops) {
       const v = o.op === 'room' ? 1 : 0;
-      for (let x = o.x; x < o.x + o.w; x++) for (let y = o.y; y < o.y + o.h; y++) for (let z = o.z; z < o.z + o.d; z++) g.setCell(x, y, z, v);
+      for (let x = o.x; x < o.x + o.w; x++) for (let y = o.y; y < o.y + o.h; y++) for (let z = o.z; z < o.z + o.d; z++) this.setCell(x, y, z, v);
     }
-    return g;
   }
 
   inside(x: number, y: number, z: number): boolean {
@@ -58,7 +76,11 @@ export class VoxelGrid implements Space {
   }
   empty(x: number, y: number, z: number): boolean {
     const i = x - this.ox, j = y - this.oy, k = z - this.oz;
-    if (i < 0 || j < 0 || k < 0 || i >= this.nx || j >= this.ny || k >= this.nz) return this.outsideEmpty;
+    if (i < 0 || j < 0 || k < 0 || i >= this.nx || j >= this.ny || k >= this.nz) {
+      if (this.groundY === null) return false;
+      if (i < 0 || k < 0 || i >= this.nx || k >= this.nz) return true;
+      return j >= this.ny;
+    }
     return this.cells[i + this.nx * (j + this.ny * k)] === 1;
   }
 }

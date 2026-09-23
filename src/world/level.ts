@@ -1,4 +1,4 @@
-// Loading locations (dungeon sectors, the village) and moving between them.
+// Loading places (dungeon sectors, the open world) and moving between them.
 import * as THREE from 'three';
 import { scene, fog, lineMat, add, V, circlePts, fillMat, GRID } from './render';
 import { G, W } from '../game';
@@ -6,22 +6,22 @@ import { hash, OPP, DIRV, type Dir } from '../core/rng';
 import { VoxelGrid } from '../core/voxel';
 import { meshVoxels } from '../core/meshing';
 import { generateDungeon } from '../gen/dungeon';
-import { generateVillage, type VillageMap } from '../gen/village';
+import { findPoi } from '../gen/regions';
+import type { VillageMap } from '../gen/village';
 import { placeTunnelDoors, tryPlaceDoor, type PlacedDoor } from '../gen/doors';
-import { makeDoor, makeStair, arriveVia, signTexture, type Stair } from './doors';
-import { makeChest, makeHatch } from './loot';
-import { makeDrone, placeDrone, makeBoss } from './enemies';
-import { makeNpc } from './npc';
+import { makeDoor, makeStair, arriveVia, signTexture } from './doors';
+import { makeChest, makeHatch, setCrystalXp } from './loot';
+import { makeDrone, placeDrone, makeBoss, setDroneRespawn } from './enemies';
 import { sky } from './sky';
-import { PropBatch } from './props';
 import { setStreakSources } from './fx';
-import { gunVM, bladeVM } from './weapons';
-import { NPC_INFO, VILLAGER_NAMES } from '../data/npcs';
-import { saveChar } from '../character';
+import { setArmedRule, refreshWeaponVisibility } from './weapons';
+import { PropBatch } from './props';
+import { openWorld, closeWorld, structFor, setEnterRuin, removeDrone, danger, inVillage, OW } from './overworld';
+import { saveChar, depth } from '../character';
 import { showToast, logLine, el, renderSheet } from '../ui/hud';
-import { buildMini, revealAll } from '../ui/minimap';
+import { buildMini, setMiniMode } from '../ui/minimap';
 
-let worldGroup: THREE.Group | null = null, decoGroup: THREE.Group | null = null;
+let worldGroup: THREE.Group | null = null;
 
 /** Voxel mesh: dark fill with grid lines on top. */
 export function voxelObject(grid: VoxelGrid, skyY = Infinity) {
@@ -31,53 +31,49 @@ export function voxelObject(grid: VoxelGrid, skyY = Infinity) {
   const group = new THREE.Group(); group.add(new THREE.Mesh(fg, fillMat()), new THREE.LineSegments(lg, lineMat(GRID)));
   return { group, mesh: m };
 }
-function buildMesh(skyY = Infinity) {
-  if (worldGroup) { scene.remove(worldGroup); worldGroup.traverse((o) => (o as THREE.Mesh).geometry?.dispose()); }
-  const { group, mesh } = voxelObject(G.grid, skyY);
-  worldGroup = group; scene.add(group);
-  setStreakSources([mesh]);
-}
 
-function spawnPlayer() {
-  const s = G.map!.spawn; G.pos.set(s[0], s[1], s[2]); G.vel.set(0, 0, 0); G.hp = G.S.maxHp; G.yaw = Math.random() * 6.28; G.pitch = 0;
-}
+/** Removes every entity of the current place (the open world also unloads its chunks and structures). */
 function clearLevel() {
+  closeWorld();
+  if (worldGroup) { scene.remove(worldGroup); worldGroup.traverse((o) => (o as THREE.Mesh).geometry?.dispose()); worldGroup = null; }
   [...W.crystals.map((c) => c.m), ...W.pickups.map((p) => p.g), ...W.chests.map((c) => c.g), ...W.doors.map((d) => d.g), ...W.bosses.map((b) => b.g),
     ...W.orbs.map((o) => o.m), ...W.drones.map((t) => t.g), ...W.npcs.map((n) => n.g)].forEach((o) => scene.remove(o));
   if (W.hatch) scene.remove(W.hatch.g);
-  if (decoGroup) { scene.remove(decoGroup); decoGroup = null; }
   W.crystals = []; W.pickups = []; W.doors = []; W.orbs = []; W.chests = []; W.bosses = []; W.drones = []; W.npcs = []; W.portals = [];
-  W.hatch = null; W.spawnCells = []; W.arrivalStair = null;
+  W.hatch = null; W.spawnCells = []; W.arrivalStair = null; W.villageWalk = []; W.nearNpc = null; W.talkNpc = null;
+  G.map = null;
 }
-function setLocationLook(village: boolean) {
-  fog.near = village ? 10 : 3; fog.far = village ? 95 : 46; sky.visible = village;
-  gunVM.visible = !village && G.weapon === 0; bladeVM.visible = !village && G.weapon === 1;
-  el.route.style.display = village ? 'none' : '';
+function setLocationLook(outdoors: boolean) {
+  fog.near = outdoors ? 20 : 3; fog.far = outdoors ? 140 : 46; sky.visible = outdoors;
+  el.route.style.display = outdoors ? 'none' : '';
+  refreshWeaponVisibility();
 }
+/** Weapons are holstered inside the village walls and drawn everywhere else. */
+setArmedRule(() => G.char.loc === 'dungeon' || !inVillage(G.pos.x, G.pos.z));
 
 // ---------- dungeon ----------
-const sectorLabel = (p: { up: boolean; dir: Dir }) => {
-  const o = DIRV[p.dir]; return [G.char.gx + o[0], G.char.gz + o[1]];
-};
+const ruinName = (id: number) => findPoi(G.char.world, id)?.name ?? 'Ruins';
 export function loadDungeon(arriveDir: string | null) {
-  const c = G.char;
-  const seed = hash(c.world, c.depth, c.gx, c.gz);
-  const map = generateDungeon(seed, { surfaceExit: c.depth === 1 && c.gx === 0 && c.gz === 0 }); G.map = map;
-  const name = 'Depth ' + c.depth + ', sector ' + c.gx + ', ' + c.gz;
-  clearLevel(); setLocationLook(false);
+  const c = G.char, d = c.dungeon!;
+  const seed = hash(c.world, d.ruinId, d.depth, d.gx, d.gz);
+  const map = generateDungeon(seed, { surfaceExit: d.depth === 1 && d.gx === 0 && d.gz === 0 });
+  clearLevel(); G.map = map;
+  setLocationLook(false);
+  setDroneRespawn(placeDrone); setCrystalXp(() => 5 * depth());
   G.grid = VoxelGrid.fromOps(map.ops); G.space = G.grid;
-  buildMesh(); spawnPlayer();
+  const { group, mesh } = voxelObject(G.grid); worldGroup = group; scene.add(group); setStreakSources([mesh]);
+  G.pos.set(...map.spawn); G.vel.set(0, 0, 0); G.hp = G.S.maxHp; G.yaw = Math.random() * 6.28; G.pitch = 0;
   const placed: PlacedDoor[] = placeTunnelDoors(G.space, map.doorCands);
-  placed.forEach((d, i) => W.doors.push(makeDoor(d, i)));
+  placed.forEach((pd, i) => W.doors.push(makeDoor(pd, i)));
   W.chests = map.chests.map(makeChest).filter((x) => !!x);
   W.hatch = makeHatch(map.hatch);
   for (const p of map.portals) {
     const pd = tryPlaceDoor(G.space, { axis: p.axis, m: p.m, c: p.c, stair: true }, placed)!;
-    const [tx, tz] = sectorLabel(p);
-    const st = p.key === 'V'
-      ? makeStair(p, pd, placed.length - 1, '▲ VILLAGE', 'Stairs up to the village', () => toVillage('gate'))
-      : makeStair(p, pd, placed.length - 1, (p.up ? '▲ ' : '▼ ') + 'SECTOR ' + tx + ', ' + tz, 'Stairs ' + (p.up ? 'up' : 'down') + ' to sector ' + tx + ', ' + tz, () => travel(p.dir));
-    W.portals.push(st);
+    const o = DIRV[p.dir], tx = d.gx + o[0], tz = d.gz + o[1];
+    const name = ruinName(d.ruinId);
+    W.portals.push(p.key === 'V'
+      ? makeStair(p, pd, placed.length - 1, '▲ ' + name.toUpperCase(), 'Stairs up to the ' + name, exitToRuin)
+      : makeStair(p, pd, placed.length - 1, (p.up ? '▲ ' : '▼ ') + 'SECTOR ' + tx + ', ' + tz, 'Stairs ' + (p.up ? 'up' : 'down') + ' to sector ' + tx + ', ' + tz, () => travel(p.dir)));
   }
   W.bosses = map.bosses.map(makeBoss).filter((x) => !!x);
   if (arriveDir) {
@@ -85,22 +81,22 @@ export function loadDungeon(arriveDir: string | null) {
     if (p) { W.arrivalStair = p; G.pos.copy(p.spawn); G.yaw = p.yawIn; G.pitch = 0; }
   }
   const g = G.grid;
-  W.spawnCells = [];
   for (let k = 0; k < g.nz; k++) for (let j = 0; j < g.ny; j++) for (let i = 0; i < g.nx; i++) {
     const x = i + g.ox, y = j + g.oy, z = k + g.oz;
     if (y >= 0 && y <= 2 && g.empty(x, y, z) && g.empty(x, y + 1, z) && g.empty(x, y + 2, z) && !g.empty(x, y - 1, z)) W.spawnCells.push([x, y, z]);
   }
-  for (let i = 0; i < map.rooms + 1 + c.depth; i++) { const t = makeDrone(); placeDrone(t); W.drones.push(t); }
-  buildMini(); el.hudL.textContent = name; el.seed.value = String(c.world); renderSheet(); saveChar();
+  for (let i = 0; i < map.rooms + 1 + d.depth; i++) { const t = makeDrone(); placeDrone(t); W.drones.push(t); }
+  setMiniMode('voxel'); buildMini();
+  el.hudL.textContent = 'Depth ' + d.depth + ', sector ' + d.gx + ', ' + d.gz; el.seed.value = String(c.world); renderSheet(); saveChar();
 }
 
-// ---------- village ----------
-function wallSign(text: string, color: string, at: { x: number; z: number }, out: [number, number], y: number) {
+// ---------- village decoration ----------
+export function wallSign(text: string, color: string, at: { x: number; z: number }, out: [number, number], y: number) {
   const m = new THREE.Mesh(new THREE.PlaneGeometry(3.2, 0.6), new THREE.MeshBasicMaterial({ map: signTexture(text, color, 54) }));
   m.position.set(at.x + out[0] * 0.53, y, at.z + out[1] * 0.53); m.rotation.y = Math.atan2(out[0], out[1]); return m;
 }
-/** Roofs, tree crowns, lamps and the well of a village. */
-function villageDeco(map: VillageMap, y0 = 0) {
+/** Roofs, tree crowns, lamps and the well of a village standing at height y0. */
+export function villageDeco(map: VillageMap, y0 = 0) {
   const grp = new THREE.Group();
   const props = new PropBatch();
   for (const b of map.buildings) {
@@ -118,48 +114,65 @@ function villageDeco(map: VillageMap, y0 = 0) {
   grp.add(well);
   return grp;
 }
-export function loadVillage(how: 'new' | 'gate' | 'death' | 'recall') {
-  const map = generateVillage(G.char.world); G.map = map;
-  clearLevel(); setLocationLook(true); sky.position.set(36, 0, 36);
-  G.grid = VoxelGrid.fromOps(map.ops); G.space = G.grid;
-  buildMesh(7); spawnPlayer(); G.yaw = 0;
-  const placed: PlacedDoor[] = [];
-  for (const p of map.portals) {
-    const pd = tryPlaceDoor(G.space, { axis: p.axis, m: p.m, c: p.c, stair: true }, placed)!;
-    W.portals.push(makeStair(p, pd, placed.length - 1, '▼ DUNGEON', 'Stairs down to the dungeon', () => toDungeon()));
+
+// ---------- the open world ----------
+export type Arrival = { kind: 'saved' } | { kind: 'new' } | { kind: 'tavern' } | { kind: 'ruin'; id: number };
+export function loadOverworld(a: Arrival) {
+  const c = G.char;
+  clearLevel(); setLocationLook(true);
+  setDroneRespawn(removeDrone);
+  G.vel.set(0, 0, 0); G.hp = Math.max(G.hp, 1); G.pitch = 0;
+  // Where to stand. The village and ruins sit on fixed spots, so positions are known before loading.
+  let x = 0, z = 12, yaw = 0;
+  if (a.kind === 'saved' && c.ow) { x = c.ow.x; z = c.ow.z; yaw = c.ow.yaw; }
+  if (a.kind === 'ruin') { const p = findPoi(c.world, a.id); if (p) { x = p.x; z = p.z; } }
+  openWorld(x, z);
+  if (a.kind === 'ruin') {
+    const st = structFor(a.id)?.stairs[0];
+    if (st) { W.arrivalStair = st; G.pos.copy(st.spawn); G.yaw = st.yawIn; }
+  } else if (a.kind === 'saved' && c.ow) {
+    G.pos.set(c.ow.x, c.ow.y, c.ow.z); G.yaw = yaw;
+    if (G.ground) G.pos.y = Math.max(G.pos.y, G.ground(G.pos.x, G.pos.z));
+  } else {
+    const vm = OW.village!;
+    if (a.kind === 'tavern') {
+      const t = vm.buildings.find((b) => b.role === 'innkeeper')!;
+      G.pos.set(t.door.x + t.out[0] * 2, vm.y, t.door.z + t.out[1] * 2); G.yaw = Math.atan2(t.out[0], t.out[1]);
+    } else { G.pos.set(...vm.spawn); G.yaw = 0; }
   }
-  decoGroup = villageDeco(map); scene.add(decoGroup);
-  for (const b of map.buildings) if (b.role !== 'house') { const info = NPC_INFO[b.role]; W.npcs.push(makeNpc(b.role, info.name!, V(b.home!.x, b.home!.y, b.home!.z), b)); }
-  W.villageWalk = [];
-  for (let x = 2; x < 70; x++) for (let z = 2; z < 70; z++) {
-    if (map.buildings.some((b) => x >= b.x - 1 && x < b.x + b.w + 1 && z >= b.z - 1 && z < b.z + b.d + 1)) continue;
-    if (z < 4 || !G.space.empty(x, 0, z) || !G.space.empty(x, 1, z)) continue; W.villageWalk.push([x, z]);
-  }
-  VILLAGER_NAMES.slice(0, 6).forEach((nm) => { const c = W.villageWalk[(Math.random() * W.villageWalk.length) | 0]; W.npcs.push(makeNpc('villager', nm, V(c[0] + 0.5, 0, c[1] + 0.5), null)); });
-  if (how === 'gate') { const p = W.portals.find((q) => q.key === 'D'); if (p) { W.arrivalStair = p; G.pos.copy(p.spawn); G.yaw = p.yawIn; } }
-  else if (how === 'death' || how === 'recall') {
-    const t = map.buildings.find((b) => b.role === 'innkeeper')!;
-    G.pos.set(t.door.x + t.out[0] * 2, 0, t.door.z + t.out[1] * 2); G.yaw = Math.atan2(t.out[0], t.out[1]);
-  }
-  buildMini(); revealAll();
-  el.hudL.textContent = 'Gridholm (village)'; el.seed.value = String(G.char.world); renderSheet(); saveChar();
+  setCrystalXp(() => 3 + 2 * Math.floor(danger(G.pos.x, G.pos.z)));
+  setMiniMode('world');
+  el.seed.value = String(c.world); renderSheet(); saveOverworldPos();
+}
+export function saveOverworldPos() {
+  if (G.char.loc !== 'overworld') return;
+  G.char.ow = { x: +G.pos.x.toFixed(2), y: +G.pos.y.toFixed(2), z: +G.pos.z.toFixed(2), yaw: +G.yaw.toFixed(3) };
+  saveChar();
 }
 
 // ---------- moving between places ----------
-export function descend() { G.char.depth++; saveChar(); loadDungeon(null); showToast('Depth ' + G.char.depth); logLine('Drones are tougher down here'); }
+export function descend() { G.char.dungeon!.depth++; saveChar(); loadDungeon(null); showToast('Depth ' + depth()); logLine('Drones are tougher down here'); }
 export function travel(dir: Dir) {
-  G.char.gx += DIRV[dir][0]; G.char.gz += DIRV[dir][1]; saveChar();
-  loadDungeon(OPP[dir]); showToast('Sector ' + G.char.gx + ', ' + G.char.gz); arriveVia(W.arrivalStair);
+  const d = G.char.dungeon!;
+  d.gx += DIRV[dir][0]; d.gz += DIRV[dir][1]; saveChar();
+  loadDungeon(OPP[dir]); showToast('Sector ' + d.gx + ', ' + d.gz); arriveVia(W.arrivalStair);
 }
-export function toVillage(how: 'gate' | 'death' | 'recall') {
-  G.char.loc = 'village'; saveChar(); loadVillage(how);
+export function enterDungeon(ruinId: number) {
+  const c = G.char;
+  c.loc = 'dungeon'; c.dungeon = { ruinId, depth: 1, gx: 0, gz: 0 }; saveChar();
+  loadDungeon('V'); showToast(ruinName(ruinId)); logLine('Depth 1'); arriveVia(W.arrivalStair);
+}
+setEnterRuin(enterDungeon);
+export function exitToRuin() {
+  const c = G.char, id = c.dungeon!.ruinId;
+  c.loc = 'overworld'; c.dungeon = null; saveChar();
+  loadOverworld({ kind: 'ruin', id }); showToast(ruinName(id)); arriveVia(W.arrivalStair);
+}
+export function toVillage(how: 'death' | 'recall') {
+  const c = G.char;
+  c.loc = 'overworld'; c.dungeon = null; saveChar();
+  loadOverworld({ kind: 'tavern' }); G.hp = G.S.maxHp;
   showToast(how === 'death' ? 'You wake up in the tavern' : 'Gridholm');
-  arriveVia(how === 'gate' ? W.arrivalStair : null);
+  arriveVia(null);
 }
-export function toDungeon() {
-  const c = G.char; c.loc = 'dungeon'; c.depth = 1; c.gx = 0; c.gz = 0; saveChar();
-  loadDungeon('V'); showToast('Depth 1'); arriveVia(W.arrivalStair);
-}
-export const canRecall = () => G.char.loc !== 'village';
-/** Current stairwell objects (kept for the minimap). */
-export const stairs = (): Stair[] => W.portals;
+export const canRecall = () => G.char.loc === 'dungeon' || !inVillage(G.pos.x, G.pos.z);

@@ -1,6 +1,7 @@
 // Minimap of voxel locations: a window around the player, revealed while exploring.
 import { G, W } from '../game';
 import { el } from './hud';
+import { drawWorldMini } from './worldmap';
 
 const mini = document.getElementById('mini') as HTMLCanvasElement, mctx = mini.getContext('2d')!;
 const MS = 3, MV = 150; mini.width = mini.height = MV;
@@ -41,7 +42,10 @@ export function drawPlayerArrow(ctx: CanvasRenderingContext2D, px: number, py: n
   ctx.moveTo(px + fx * 6, py + fz * 6); ctx.lineTo(px - fz * 3 - fx * 3, py + fx * 3 - fz * 3); ctx.lineTo(px + fz * 3 - fx * 3, py - fx * 3 - fz * 3); ctx.fill();
 }
 
+let mode: 'voxel' | 'world' = 'voxel';
+export function setMiniMode(m: 'voxel' | 'world') { mode = m; }
 export function drawMini() {
+  if (mode === 'world') { drawWorldMini(mctx, MV); return; }
   reveal();
   const g = G.grid, pos = G.pos;
   const sx = (pos.x - g.ox) * MS - MV / 2, sy = (pos.z - g.oz) * MS - MV / 2;

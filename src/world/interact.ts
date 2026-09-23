@@ -11,7 +11,7 @@ import { unlockDoor } from './doors';
 import { openChest } from './loot';
 
 /** Hook for places with people (the village). */
-export let npcsActive = () => G.char.loc === 'village';
+export let npcsActive = () => G.char.loc === 'overworld' && W.npcs.length > 0;
 export function setNpcsActive(f: () => boolean) { npcsActive = f; }
 
 export function updateEntities(dt: number, time: number) {

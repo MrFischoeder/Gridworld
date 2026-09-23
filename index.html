@@ -22,6 +22,7 @@
 <div id="prompt"></div>
 <div id="log"></div>
 <div id="perf"></div>
+<canvas id="worldmap"></canvas>
 <div id="stick"><div id="knob"></div></div>
 <div class="btn" id="bJump">JUMP</div>
 <div class="btn" id="bSwap">SWAP</div>
@@ -45,13 +46,13 @@
 
 <div id="menu" class="overlay">
   <h1>GRID ARENA</h1>
-  <p id="intro">You start in the village of Gridholm: talk to the locals, trade in the shops, then take the stairs by the north gate down into the dungeon. The dungeon is a grid of labyrinths. Stairwells lead to neighbouring sectors and the hatch takes you deeper. Some passages are sealed by locked doors. Defeat the guardian before each gate to get an Access Key. Loot goes into your backpack, and relics only work once equipped in a module.</p>
+  <p id="intro">You start in the walled village of Gridholm: talk to the locals and trade in the shops. Roads lead from its gates out into the hills, to old ruins. Stairs beneath each ruin descend into its own dungeon, a grid of labyrinths: stairwells lead to neighbouring sectors and the hatch takes you deeper. Defeat the guardian before each gate to get an Access Key. Loot goes into your backpack, and relics only work once equipped in a module.</p>
   <div id="sheet"></div>
   <div class="row"><button id="start">Play</button><button id="reroll">Roll a new world</button></div>
   <div class="row" style="margin-top:10px"><button id="wipe">New character</button></div>
   <label>World seed<input id="seed" inputmode="numeric"></label>
   <div id="keys">WASD — move · mouse — look · LMB — attack · 1/2, Q or wheel — switch weapon<br>
-    E — talk / open · I or Tab — backpack · H — medkit · G — EMP charge · space — jump · shift — sprint · Esc — pause</div>
+    E — talk / open · I or Tab — backpack · M — map · H — medkit · G — EMP charge · space — jump · shift — sprint · Esc — pause</div>
 </div>
 <script type="module" src="/src/main.ts"></script>
 </body>

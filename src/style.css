@@ -114,3 +114,5 @@ body.is-touch #bUse{display:none}
 body.is-touch #bUse.on{display:flex}
 #perf{position:fixed;right:14px;bottom:calc(env(safe-area-inset-bottom,0px) + 8px);font-size:16px;color:var(--g);opacity:.8;
   pointer-events:none;display:none;text-align:right;white-space:pre}
+#worldmap{position:fixed;inset:0;display:none;background:#000;z-index:5;cursor:pointer}
+#mini{cursor:pointer;pointer-events:auto}

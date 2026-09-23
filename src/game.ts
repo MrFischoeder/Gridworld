@@ -7,7 +7,6 @@ import type { Drone, Boss, Orb } from './world/enemies';
 import type { Chest, Hatch, Crystal, Pickup } from './world/loot';
 import type { Npc } from './world/npc';
 import type { DungeonMap } from './gen/dungeon';
-import type { VillageMap } from './gen/village';
 
 export interface Stats { maxHp: number; bm: number; mm: number; range: number; rate: number; speed: number }
 
@@ -29,7 +28,12 @@ export const G = {
   space: null as unknown as Space,
   /** Voxel grid of the current location (bounds for minimap and floor searches). */
   grid: null as unknown as VoxelGrid,
-  map: null as DungeonMap | VillageMap | null,
+  map: null as DungeonMap | null,
+  /** Terrain height under a point (open world only); -Infinity where a structure's own floor takes over. */
+  ground: null as ((x: number, z: number) => number) | null,
+  /** Extra solid obstacles that are not voxels (tree trunks). */
+  obstacle: null as ((x: number, y: number, z: number, r: number) => boolean) | null,
+  mapOpen: false,
   playing: false, packOpen: false, dlgOpen: false, firing: false,
   keys: {} as Record<string, boolean>,
   trans: null as Trans | null,
@@ -51,4 +55,3 @@ export const W = {
   nearNpc: null as Npc | null, talkNpc: null as Npc | null,
 };
 
-export const inVillage = () => G.char.loc === 'village';

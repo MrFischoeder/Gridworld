@@ -9,7 +9,7 @@ import { el } from '../ui/hud';
 
 export const WEAPONS = [{ name: 'Blaster', dmg: 1, rate: 0 }, { name: 'Blade', rate: 0.42, dmg: 2 }];
 /** Weapons are holstered in safe places (the village). */
-export let armed = () => G.char.loc !== 'village';
+export let armed = () => true;
 export function setArmedRule(f: () => boolean) { armed = f; }
 
 const vmMat = lineMat(0x7dffa0, { fog: false, depthTest: false, transparent: true });

@@ -18,6 +18,8 @@ export interface Door {
 export interface Stair {
   door: Door; key: string; go: () => void; dir: Dir; up: boolean; o: [number, number]; cx: number; cz: number; y0: number;
   axis: 'x' | 'z'; label: string; spawn: THREE.Vector3; yawIn: number; yawOut: number;
+  /** Set on the stairwell of a ruin (its way down). */
+  ruinId?: number;
 }
 
 function panelGeo() {

@@ -23,10 +23,12 @@ export function meshVoxels(g: VoxelGrid, skyY = Infinity): VoxelMesh {
     const k = edgeKey(p[0], p[1], p[2], a);
     if (!edgeSet.has(k)) { edgeSet.add(k); edgeArr.push([p[0], p[1], p[2], a]); }
   };
-  // Grids standing in open air also need the faces between their border cells and the outside.
-  const m = g.outsideEmpty ? 1 : 0;
-  for (let k = -m; k < g.nz + m; k++) for (let j = -m; j < g.ny + m; j++) for (let i = -m; i < g.nx + m; i++) {
+  // Surface structures also need faces towards the open air around and above them
+  // (but not underground, where the terrain hides their sides).
+  const surf = g.groundY !== null, m = surf ? 1 : 0, gy = g.groundY ?? 0;
+  for (let k = -m; k < g.nz + m; k++) for (let j = 0; j < g.ny + m; j++) for (let i = -m; i < g.nx + m; i++) {
     const c = [i + g.ox, j + g.oy, k + g.oz];
+    if (surf && c[1] < gy && (i < 0 || k < 0 || i >= g.nx || k >= g.nz)) continue;
     if (!g.empty(c[0], c[1], c[2])) continue;
     if (c[1] >= skyY) continue;
     for (const d of DIRS) {

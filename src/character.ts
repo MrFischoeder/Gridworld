@@ -49,9 +49,12 @@ export function giveLoot(k: ItemKey, n = 1) {
   saveChar();
 }
 
-export const droneHp = () => 2 + Math.floor((G.char.depth - 1) / 2);
-export const droneDps = () => 16 + 3 * (G.char.depth - 1);
-export const dungeonKey = () => G.char.depth + ':' + G.char.gx + ':' + G.char.gz;
+/** Current dungeon depth (1 on the surface). */
+export const depth = () => G.char.dungeon?.depth ?? 1;
+export const droneHp = () => 2 + Math.floor((depth() - 1) / 2);
+export const droneDps = () => 16 + 3 * (depth() - 1);
+/** Save key of the current dungeon sector: every ruin has its own network of sectors. */
+export const dungeonKey = () => { const d = G.char.dungeon!; return d.ruinId + ':' + d.depth + ':' + d.gx + ':' + d.gz; };
 /** Per-dungeon progress list (opened chests, unlocked doors, killed bosses). */
 export function progress(which: 'opened' | 'unlocked' | 'killed'): number[] {
   const k = dungeonKey(), m = G.char[which];
