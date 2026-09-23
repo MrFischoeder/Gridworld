@@ -71,6 +71,7 @@ function drawArea(ctx: CanvasRenderingContext2D, w: number, h: number, ppm: numb
   for (const p of poisNear(OW.terrain!.world, px, pz, Math.max(hw, hh) + 60)) {
     if (!isDiscovered(d, Math.floor(p.x / CHUNK), Math.floor(p.z / CHUNK))) continue;
     const x = X(p.x), y = Z(p.z);
+    if (p.type === 'camp') { ctx.strokeStyle = ctx.fillStyle = '#ff6a4a'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(x - 5, y + 4); ctx.lineTo(x, y - 5); ctx.lineTo(x + 5, y + 4); ctx.closePath(); ctx.stroke(); if (labels) ctx.fillText(p.name, x, y - 12); continue; }
     if (p.type === 'village') { ctx.strokeStyle = ctx.fillStyle = '#ffd060'; ctx.lineWidth = 2; const s = Math.max(6, 76 * ppm / 2); ctx.strokeRect(x - s, y - s, s * 2, s * 2); }
     else { ctx.strokeStyle = ctx.fillStyle = '#5cc8ff'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(x - 5, y - 4); ctx.lineTo(x + 5, y - 4); ctx.lineTo(x, y + 5); ctx.closePath(); ctx.stroke(); }
     if (labels) ctx.fillText(p.name, x, y - 12);
@@ -87,6 +88,7 @@ function drawArea(ctx: CanvasRenderingContext2D, w: number, h: number, ppm: numb
     ctx.strokeStyle = ctx.fillStyle = '#ffd060'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(x, y, labels ? 12 : 6, 0, 6.283); ctx.stroke(); ctx.lineWidth = 1;
     ctx.fillText('!', x, y + 4); if (labels) ctx.fillText(m.label, x, y - 16);
   }
+  for (const b of W.bandits) { if (b.state === 'idle') continue; ctx.fillStyle = '#ff6a4a'; ctx.fillRect(X(b.p.x) - 2, Z(b.p.z) - 2, 4, 4); }
   for (const c of W.creatures) { if (c.state === 'roam') continue; ctx.fillStyle = '#ff9a3c'; ctx.fillRect(X(c.p.x) - 2, Z(c.p.z) - 2, 4, 4); }
   for (const t of W.drones) { if (!t.chasing) continue; ctx.fillStyle = '#ffb347'; ctx.fillRect(X(t.p.x) - 1.5, Z(t.p.z) - 1.5, 3, 3); }
   drawPlayerArrow(ctx, w / 2, h / 2);

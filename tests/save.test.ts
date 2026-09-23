@@ -6,7 +6,7 @@ const store = (m: Record<string, string>) => ({ getItem: (k: string) => m[k] ?? 
 describe('loadChar', () => {
   it('loads a v3 save as is', () => {
     const v3 = { v: 3, level: 4, xp: 12, gold: 99, world: 777, inv: [{ k: 'medkit', n: 2 }, ...Array(11).fill(null)], mods: ['lens', null, null],
-      opened: { '5:2:1:-1': [0] }, unlocked: {}, killed: {}, loc: 'dungeon', ow: null, dungeon: { ruinId: 5, depth: 2, gx: 1, gz: -1 }, discovered: { '0,0': '0000000000000001' }, containers: {}, vehicles: [], board: { seq: 0, offers: [] }, quests: [] };
+      opened: { '5:2:1:-1': [0] }, unlocked: {}, killed: {}, loc: 'dungeon', ow: null, dungeon: { ruinId: 5, depth: 2, gx: 1, gz: -1 }, discovered: { '0,0': '0000000000000001' }, containers: {}, vehicles: [], board: { seq: 0, offers: [] }, quests: [], camps: {} };
     expect(loadChar(store({ [SAVE_KEY]: JSON.stringify(v3) }))).toEqual(v3);
   });
   it('migrates v2: character, backpack and gold stay, the player starts in the village', () => {

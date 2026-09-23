@@ -189,3 +189,24 @@ describe('vehicles in the world', () => {
     }
   });
 });
+
+import { generateCamp } from '../src/gen/camps';
+describe('bandit camps', () => {
+  it('are deterministic, on flat ground, with bandits and stash on free cells', () => {
+    let camps = 0;
+    for (const w of WORLDS.slice(0, 30)) {
+      const t = new Terrain(w);
+      for (const p of poisNear(w, 0, 0, 900).filter((q) => q.type === 'camp')) {
+        camps++;
+        expect(Math.hypot(p.x, p.z)).toBeGreaterThan(200);
+        const y = t.padY(p), c = generateCamp(w, p, y);
+        expect(generateCamp(w, p, y)).toEqual(c);
+        const g = VoxelGrid.surface(c.ops, c.rect, y);
+        for (const s of c.spawns) { expect(g.empty(Math.floor(s.x), y, Math.floor(s.z))).toBe(true); expect(g.empty(Math.floor(s.x), y + 1, Math.floor(s.z))).toBe(true); }
+        expect(c.spawns.filter((s) => s.role === 'leader').length).toBe(1);
+        expect(g.empty(Math.floor(c.stash.x), y, Math.floor(c.stash.z))).toBe(true);
+      }
+    }
+    expect(camps).toBeGreaterThan(20);
+  });
+});

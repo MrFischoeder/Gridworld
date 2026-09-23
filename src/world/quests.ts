@@ -32,6 +32,7 @@ export function accept(id: string): string {
   if (G.char.quests.length >= MAX_ACTIVE) return `You already carry ${MAX_ACTIVE} tasks. Finish or drop one first.`;
   const q = b.offers.splice(i, 1)[0];
   q.state = q.kind === 'fetch' ? 'talk' : 'active';
+  if (q.kind === 'camp') delete G.char.camps[q.place!.campId!]; // word is, they are back
   G.char.quests.push(q); boardOffers(); saveChar();
   return q.kind === 'fetch' ? `Taken. Talk to ${NPC_INFO[q.giver!].name}.` : 'Taken: ' + q.title + '.';
 }
@@ -78,7 +79,7 @@ export function questTalk(id: string): string {
 }
 
 // ---------- progress ----------
-export function onKill(kind: CreatureKind | 'drone', questId?: string, alpha = false) {
+export function onKill(kind: CreatureKind | 'drone' | 'bandit', questId?: string, alpha = false) {
   let changed = false;
   for (const q of G.char.quests) {
     if (q.state !== 'active') continue;
@@ -94,6 +95,12 @@ export function onKill(kind: CreatureKind | 'drone', questId?: string, alpha = f
     }
   }
   if (changed) saveChar();
+}
+/** A bandit camp was wiped out. */
+export function onCampCleared(campId: number) {
+  for (const q of G.char.quests) if (q.kind === 'camp' && q.state === 'active' && q.place?.campId === campId) {
+    q.state = 'ready'; showToast('Camp cleared'); logLine('Report back at the notice board.'); saveChar();
+  }
 }
 /** A quest item was picked up. */
 export function onPickup(k: ItemKey) {
@@ -133,6 +140,7 @@ const trackEl = $('qtrack');
 export function questTarget(q: Quest): { x: number; z: number } | null {
   if (q.state === 'ready' || q.state === 'talk') return null;
   if (q.kind === 'hunt') return q.at!;
+  if (q.kind === 'camp') return q.place!;
   if (q.kind === 'fetch' && !hasItem(q.item!)) return q.place!;
   return null;
 }
@@ -146,6 +154,7 @@ export function updateTracker(dt: number) {
     else if (q.state === 'ready') s += q.kind === 'fetch' ? ` — bring it to ${NPC_INFO[q.giver!].name}` : ' — claim at the board';
     else if (q.kind === 'bounty') s += ` — ${q.progress ?? 0}/${q.count}`;
     else if (q.kind === 'hunt') s += ` — ${q.killed ?? 0}/${q.pack!.count}${q.alphaDead ? '' : ', ' + q.pack!.alpha + ' alive'}`;
+    else if (q.kind === 'camp') s += ' — clear it';
     const t = questTarget(q);
     if (t && G.char.loc === 'overworld') { const d = Math.hypot(t.x - G.pos.x, t.z - G.pos.z); s += d < 25 ? ' · right here' : ` · ${km(d)} ${compass(t.x - G.pos.x, t.z - G.pos.z)}`; }
     else if (t && q.place?.type === 'ruin') s += ' · in the dungeon below';
@@ -154,4 +163,4 @@ export function updateTracker(dt: number) {
   trackEl.innerHTML = lines.map((l) => `<div>${l}</div>`).join('');
 }
 export const questMarkers = (): { x: number; z: number; label: string }[] =>
-  G.char.quests.map((q) => ({ t: questTarget(q), q })).filter((m) => m.t).map(({ t, q }) => ({ x: t!.x, z: t!.z, label: q.kind === 'hunt' ? q.pack!.alpha : ITEMS[q.item!].name }));
+  G.char.quests.map((q) => ({ t: questTarget(q), q })).filter((m) => m.t).map(({ t, q }) => ({ x: t!.x, z: t!.z, label: q.kind === 'hunt' ? q.pack!.alpha : q.kind === 'camp' ? q.place!.name : ITEMS[q.item!].name }));

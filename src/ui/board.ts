@@ -13,7 +13,7 @@ function mine(q: Quest) {
   const status = q.state === 'talk' ? `Talk to ${NPC_INFO[q.giver!].name}.`
     : q.state === 'ready' ? (q.kind === 'fetch' ? `Bring the item to ${NPC_INFO[q.giver!].name}.` : 'Done! Claim your reward.')
     : q.kind === 'bounty' ? `Progress: ${q.progress ?? 0}/${q.count}`
-    : q.kind === 'hunt' ? `Killed ${q.killed ?? 0}/${q.pack!.count}${q.alphaDead ? ', ' + q.pack!.alpha + ' slain' : ''}` : 'Under way.';
+    : q.kind === 'hunt' ? `Killed ${q.killed ?? 0}/${q.pack!.count}${q.alphaDead ? ', ' + q.pack!.alpha + ' slain' : ''}` : q.kind === 'camp' ? 'Clear the camp.' : 'Under way.';
   const brief = q.kind === 'fetch' && q.state !== 'talk' ? q.briefing! : q.text;
   return `<div class="notice"><b>${q.title}</b><br>${brief}<br><span class="rw">${status} · reward ${q.reward.gold} gold, ${q.reward.xp} XP</span><br>` +
     (q.state === 'ready' && q.kind !== 'fetch' ? `<button class="go" data-claim="${q.id}">Claim reward</button>` : '') +

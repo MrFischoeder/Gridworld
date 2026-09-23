@@ -12,13 +12,14 @@ import { updateLoot } from './world/loot';
 import { updateEntities } from './world/interact';
 import { attack, animateVM, refreshWeaponVisibility, vmScene, syncViewmodel } from './world/weapons';
 import { updateFx, updateStreaks } from './world/fx';
-import { updateStreaming, updateFieldEnemies, placeName, OW, groundAt, treeHit } from './world/overworld';
+import { updateStreaming, updateFieldEnemies, placeName, OW, groundAt, treeHit, animateCamps } from './world/overworld';
 import { collides } from './world/player';
 import { regionRoads } from './gen/roads';
 import { generateQuest } from './gen/quests';
 import { poisNear } from './gen/regions';
 import { sky, horizon } from './world/sky';
 import { updateCreatures, spawnCreatureNear } from './world/creatures';
+import { updateBandits, spawnBanditsNear } from './world/bandits';
 import { updateTracker, boardOffers, accept, syncQuestWorld } from './world/quests';
 import { driving, updateDriving, vehicleCamera, vehicles, buyVehicle, fireCannon } from './world/vehicles';
 import { interact } from './world/interact';
@@ -59,7 +60,7 @@ function frame(now: number) {
     G.cooldown -= dt; if (G.firing && !driving.v) attack();
     if (driving.v) fireCannon(dt);
     updateDoors(dt);
-    if (outdoors) { updateFieldEnemies(dt); updateCreatures(dt, time); }
+    if (outdoors) { updateFieldEnemies(dt); updateCreatures(dt, time); updateBandits(dt, time); animateCamps(time); }
     updateDrones(dt);
     const boss = updateBosses(dt, time); updateOrbs(dt);
     updateBossBar(boss);
@@ -96,4 +97,4 @@ function frame(now: number) {
 requestAnimationFrame(frame);
 
 // Debug handle for automated checks in development builds.
-if (import.meta.env.DEV) Object.assign(window, { __game: { G, W, OW, camera, scene, renderer, regionRoads, poisNear, groundAt, treeHit, collides, vehicles, driving, interact, buy: buyVehicle, foeRules, makeDrone, spawnCreature: spawnCreatureNear, damageFoe, boardOffers, accept, syncQuestWorld, enterDungeon, generateQuest } });
+if (import.meta.env.DEV) Object.assign(window, { __game: { G, W, OW, camera, scene, renderer, regionRoads, poisNear, groundAt, treeHit, collides, vehicles, driving, interact, buy: buyVehicle, foeRules, makeDrone, spawnCreature: spawnCreatureNear, damageFoe, boardOffers, accept, syncQuestWorld, enterDungeon, generateQuest, spawnBandits: spawnBanditsNear } });

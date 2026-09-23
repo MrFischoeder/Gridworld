@@ -28,6 +28,12 @@ describe('notice board quests', () => {
           if (at!.where === 'on the hills') expect(t.heightAt(at!.x, at!.z)).toBeGreaterThan(17);
           if (at!.where === 'in the forest') expect(t.forest(at!.x, at!.z)).toBeGreaterThan(0.45);
         }
+        if (q.kind === 'camp') {
+          const p = findPoi(w, q.place!.campId!)!;
+          expect(p.type).toBe('camp');
+          expect(p.name).toBe(q.place!.name);
+          expect(q.text).toContain(compass(p.x, p.z));
+        }
         if (q.kind === 'fetch') {
           const p = q.place!;
           if (p.type === 'ruin') expect(findPoi(w, p.ruinId!)?.name).toBe(p.name);
@@ -40,6 +46,6 @@ describe('notice board quests', () => {
         }
       }
     }
-    expect([...kinds].sort()).toEqual(['bounty', 'fetch', 'hunt']);
+    expect([...kinds].sort()).toEqual(['bounty', 'camp', 'fetch', 'hunt']);
   });
 });

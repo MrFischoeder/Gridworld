@@ -68,7 +68,7 @@ el.close.onclick = () => closeTransfer();
 export function openTransfer(s: TransferSpec) {
   if (!G.playing || G.xferOpen || G.packOpen || G.dlgOpen) return;
   spec = s; G.xferOpen = true; G.firing = false; for (const k in G.keys) G.keys[k] = false;
-  render(s.canStore ? 'Click an item to move it between the trunk and your backpack.' : 'Click an item to take it. Whatever you leave stays in the chest.');
+  render(s.canStore ? 'Click an item to move it between the trunk and your backpack.' : 'Click an item to take it. Whatever you leave stays here.');
   el.root.style.display = 'flex';
   if (document.pointerLockElement) document.exitPointerLock();
 }

@@ -158,3 +158,20 @@ export function useItem(k: ItemKey): boolean {
   }
   return false;
 }
+
+/** A bandit stash: rolled once (saved as a container) and then keeps whatever you leave. */
+export function openStash(id: number, name: string) {
+  const key = 'camp:' + id, c = G.char;
+  if (!c.containers[key]) {
+    const items: (Slot | null)[] = Array(8).fill(null), add = (k: ItemKey, n = 1) => putItems(items, k, n);
+    add('medkit', 1 + Math.floor(Math.random() * 2));
+    if (Math.random() < 0.5) add('emp');
+    if (Math.random() < 0.3) add('key');
+    if (Math.random() < 0.25) add(RELIC_KEYS[(Math.random() * RELIC_KEYS.length) | 0]);
+    if (Math.random() < 0.25) add('wheelL');
+    if (Math.random() < 0.2) add('engine');
+    c.containers[key] = { items, gold: 40 + Math.floor(Math.random() * 90) };
+    saveChar();
+  }
+  openTransfer({ title: 'Bandit stash', subtitle: name, boxLabel: 'Inside', box: c.containers[key], canStore: false });
+}

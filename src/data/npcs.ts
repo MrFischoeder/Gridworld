@@ -23,6 +23,7 @@ export const RUMOURS = ['They say the guardians below each carry an Access Key. 
   'A trader swore the stairs in the dungeon lead to whole other sectors. Some go up, some go down.',
   'Old Bogdan claims there is more beyond the hills than ruins. Other villages, caves, mines... one day we will see.',
   "If things go wrong down there, a Recall Beacon from Zofia's store will bring you home.",
+  'Bandits have dug in out in the wilds. Tents, a fire, a stash of stolen goods. Clear a camp and the stash is yours.',
   'Folk who fled the drones left their vehicles out in the hills. Find one and it is yours, along with whatever is in the trunk.'];
 export const OPT_TEXT: Record<OptId | 'back', string> = {
   rest: 'Rent a bed (10 gold)', rumour: 'Heard any rumours?', work: 'Do you have any work for me?', lore: 'Tell me about the dungeon.',

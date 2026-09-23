@@ -3,6 +3,7 @@ import { G } from '../game';
 import { saveChar } from '../character';
 import { toVillage } from '../world/level';
 import { spawnCreatureNear } from '../world/creatures';
+import { spawnBanditsNear } from '../world/bandits';
 import { CREATURES, type CreatureKind } from '../data/creatures';
 import { $, logLine, showToast } from './hud';
 import { lockPointer } from './input';
@@ -32,10 +33,11 @@ const COMMANDS: Record<string, { help: string; run: (args: string[]) => string }
   },
   clear: { help: 'clear this log', run: () => { out.innerHTML = ''; return ''; } },
   spawn: {
-    help: 'spawn ravager | bramble | leechwing in front of you (open world)',
+    help: 'spawn ravager | bramble | leechwing | bandits in front of you (open world)',
     run: (a) => {
+      if (a[0] === 'bandits') return spawnBanditsNear() ? 'Bandits!' : 'Only in the open world.';
       const k = a[0] as CreatureKind;
-      if (!(k in CREATURES)) return 'Usage: spawn ravager | bramble | leechwing';
+      if (!(k in CREATURES)) return 'Usage: spawn ravager | bramble | leechwing | bandits';
       return spawnCreatureNear(k) ? `${CREATURES[k].name} spawned.` : 'Only in the open world.';
     },
   },

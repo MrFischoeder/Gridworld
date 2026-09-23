@@ -18,6 +18,9 @@ import { makeNpc, type Npc } from './npc';
 import { makeDrone, foeRules, type Drone } from './enemies';
 import { spawnVehicles, clearVehicles, vehicleHit, syncFound, shielded } from './vehicles';
 import { setCreatureEnv, clearCreatures } from './creatures';
+import { setBanditEnv, clearBandits, spawnCamp, despawnCamp } from './bandits';
+import { generateCamp, type CampMap } from '../gen/camps';
+import { add as addMat } from './render';
 import { YARD } from '../gen/vehicles';
 import { setStreakSources, type EdgeSource } from './fx';
 import { voxelObject, villageDeco, wallSign } from './level';
@@ -32,7 +35,7 @@ const ROAD_COLOR = 0xc8ffd8, TILE_COLOR = 0x4dff7e;
 interface Chunk { cx: number; cz: number; group: THREE.Group; trees: Tree[]; rocks: Rock[]; lod: number }
 interface Structure {
   poi: Poi; grid: VoxelGrid; group: THREE.Group; edges: EdgeSource;
-  doors: Door[]; stairs: Stair[]; npcs: Npc[]; village?: VillageMap;
+  doors: Door[]; stairs: Stair[]; npcs: Npc[]; village?: VillageMap; camp?: CampMap; flames?: THREE.LineSegments;
 }
 
 export const OW = {
@@ -209,9 +212,50 @@ function loadRuinStruct(poi: Poi): Structure {
   W.portals.push(st);
   return s;
 }
+/** Bandit camp: crates and barricades (voxels), A-frame tents, a campfire, the stash; its bandits. */
+function loadCampStruct(poi: Poi): Structure {
+  const T = OW.terrain!, y = T.padY(poi), cm = generateCamp(T.world, poi, y);
+  const grid = VoxelGrid.surface(cm.ops, cm.rect, y);
+  const { group, mesh } = voxelObject(grid, Infinity, OUTLINE);
+  const pb = new PropBatch();
+  for (const t of cm.tents) {
+    pb.gableRoof(t.x0, t.z0, t.x1, t.z1, y, 2.3, 0xb8b060);
+    const along = t.x1 - t.x0 >= t.z1 - t.z0;
+    if (along) pb.line(0xb8b060, [t.x0, y, (t.z0 + t.z1) / 2 - 0.6], [t.x0, y + 1.5, (t.z0 + t.z1) / 2], [t.x0, y, (t.z0 + t.z1) / 2 + 0.6]);
+    else pb.line(0xb8b060, [(t.x0 + t.x1) / 2 - 0.6, y, t.z0], [(t.x0 + t.x1) / 2, y + 1.5, t.z0], [(t.x0 + t.x1) / 2 + 0.6, y, t.z0]);
+  }
+  for (let i = 0; i < 7; i++) { const a = i / 7 * 6.283; pb.rock(cm.fire.x + Math.cos(a) * 0.9, y - 0.05, cm.fire.z + Math.sin(a) * 0.9, 0.28, 0.25, 4, a, GRID); }
+  // the stash: a heavy crate
+  const sx = cm.stash.x, sz = cm.stash.z;
+  pb.box(sx - 0.5, y, sz - 0.4, sx + 0.5, y + 0.7, sz + 0.4, 0xffd060);
+  group.add(pb.build());
+  const flames = new THREE.LineSegments(new THREE.BufferGeometry(), addMat(0xffb347));
+  flames.geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(10 * 6), 3));
+  flames.frustumCulled = false; flames.position.set(cm.fire.x, y, cm.fire.z); group.add(flames);
+  scene.add(group);
+  const s: Structure = { poi, grid, group, edges: mesh, doors: [], stairs: [], npcs: [], camp: cm, flames };
+  OW.structs.set(poi.id, s);
+  spawnCamp(cm);
+  return s;
+}
+/** Flickering campfires (called every frame). */
+export function animateCamps(time: number) {
+  for (const s of OW.structs.values()) {
+    if (!s.flames) continue;
+    const a = s.flames.geometry.attributes.position as THREE.BufferAttribute;
+    for (let i = 0; i < 10; i++) {
+      const ang = i / 10 * 6.283 + time * 0.7, r = 0.25 + 0.2 * Math.sin(time * 5 + i), h = 0.6 + 0.5 * Math.abs(Math.sin(time * 7 + i * 1.7));
+      a.setXYZ(i * 2, Math.cos(ang) * r, 0.05, Math.sin(ang) * r);
+      a.setXYZ(i * 2 + 1, Math.cos(ang + 0.6) * r * 0.2, h, Math.sin(ang + 0.6) * r * 0.2);
+    }
+    a.needsUpdate = true;
+  }
+}
+/** Loaded camp stashes, for the E interaction. */
+export const campStashes = () => [...OW.structs.values()].filter((s) => s.camp).map((s) => ({ id: s.poi.id, name: s.poi.name, y: s.camp!.y, ...s.camp!.stash }));
 function loadStruct(poi: Poi) {
   if (OW.structs.has(poi.id)) return;
-  const s = poi.type === 'village' ? loadVillageStruct(poi) : loadRuinStruct(poi);
+  const s = poi.type === 'village' ? loadVillageStruct(poi) : poi.type === 'camp' ? loadCampStruct(poi) : loadRuinStruct(poi);
   OW.structs.set(poi.id, s);
   setStreakSources([...OW.structs.values()].map((q) => q.edges));
 }
@@ -221,6 +265,7 @@ function dropStruct(s: Structure) {
   for (const st of s.stairs) W.portals.splice(W.portals.indexOf(st), 1);
   for (const n of s.npcs) { scene.remove(n.g); W.npcs.splice(W.npcs.indexOf(n), 1); }
   if (s.village) { OW.village = null; W.villageWalk = []; }
+  if (s.camp) despawnCamp(s.poi.id);
   OW.structs.delete(s.poi.id);
   setStreakSources([...OW.structs.values()].map((q) => q.edges));
 }
@@ -276,16 +321,21 @@ export function openWorld(x: number, z: number) {
     blocked: (px, pz, r) => poisNear(T.world, px, pz, 40).some((p) => rectDist(p.rect, px, pz) < r) || treeHit(px, T.heightAt(px, pz) + 0.5, pz, r),
   });
   syncFound(T, x, z);
-  setCreatureEnv({
-    ground: (px, pz) => T.heightAt(px, pz),
+  const envHooks = {
+    ground: (px: number, pz: number) => T.heightAt(px, pz),
     danger,
-    nearRuin: (px, pz) => poisNear(T.world, px, pz, 90).some((p) => p.type === 'ruin' && rectDist(p.rect, px, pz) < 60),
-    forbidden: (px, pz) => rectDist(VILLAGE_RECT, px, pz) < 35 || [...OW.structs.values()].some((s) => rectDist(s.poi.rect, px, pz) < 1),
-  });
+    nearRuin: (px: number, pz: number) => poisNear(T.world, px, pz, 90).some((p) => p.type === 'ruin' && rectDist(p.rect, px, pz) < 60),
+    forbidden: (px: number, pz: number) => rectDist(VILLAGE_RECT, px, pz) < 35 || [...OW.structs.values()].some((s) => rectDist(s.poi.rect, px, pz) < 1),
+  };
+  setCreatureEnv(envHooks);
+  setBanditEnv(envHooks);
+  // camps loaded before the bandit hooks existed get their bandits now
+  for (const s of OW.structs.values()) if (s.camp) spawnCamp(s.camp);
 }
 export function closeWorld() {
   clearVehicles();
   setCreatureEnv(null); clearCreatures();
+  setBanditEnv(null); clearBandits();
   for (const c of OW.chunks.values()) dropChunk(c);
   OW.chunks.clear();
   for (const s of [...OW.structs.values()]) dropStruct(s);
@@ -337,6 +387,6 @@ export function removeDrone(t: Drone) { scene.remove(t.g); const i = W.drones.in
 // ---------- where am I ----------
 export function placeName(x: number, z: number): string {
   if (inVillage(x, z)) return 'Gridholm (village)';
-  for (const s of OW.structs.values()) if (s.poi.type === 'ruin' && rectDist(s.poi.rect, x, z) < 10) return s.poi.name;
+  for (const s of OW.structs.values()) if ((s.poi.type === 'ruin' || s.poi.type === 'camp') && rectDist(s.poi.rect, x, z) < 10) return s.poi.name;
   return 'Wilds';
 }

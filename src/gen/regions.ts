@@ -5,7 +5,7 @@ import { hash, rng, rangeInt, DIRV, type Dir } from '../core/rng';
 
 export const REGION = 256, CHUNK = 32;
 
-export type PoiType = 'village' | 'ruin';
+export type PoiType = 'village' | 'ruin' | 'camp';
 export interface Rect { x0: number; z0: number; x1: number; z1: number }
 export interface Poi {
   type: PoiType;
@@ -45,12 +45,23 @@ function ruinAt(rx: number, rz: number, i: number, x: number, z: number, R: () =
   };
 }
 
-const cache = new Map<string, RegionInfo>();
-export function regionInfo(world: number, rx: number, rz: number): RegionInfo {
+export const CAMP_SIZE = 20;
+const CAMP_NAMES = ['Rustjaw', 'Ashpit', 'Blackfang', 'Coilbreak', 'Gallows', 'Scrapper', 'Redline', 'Hollow Tooth'];
+function campAt(rx: number, rz: number, x: number, z: number, R: () => number): Poi {
+  const x0 = even(x - CAMP_SIZE / 2), z0 = even(z - CAMP_SIZE / 2);
+  return {
+    type: 'camp', id: packId(rx, rz, 2), name: CAMP_NAMES[Math.floor(R() * CAMP_NAMES.length)] + ' Camp',
+    x: x0 + CAMP_SIZE / 2, z: z0 + CAMP_SIZE / 2, rect: { x0, z0, x1: x0 + CAMP_SIZE, z1: z0 + CAMP_SIZE }, flat: 4, blend: 18, // flat margin even: the terrain lattice is 2 m
+  };
+}
+
+const baseCache = new Map<string, RegionInfo>(), cache = new Map<string, RegionInfo>();
+/** Village and ruins of a region (camps are added on top, see regionInfo). */
+function baseInfo(world: number, rx: number, rz: number): RegionInfo {
   const key = world + ':' + rx + ':' + rz;
-  let r = cache.get(key);
+  let r = baseCache.get(key);
   if (r) return r;
-  if (cache.size > 4096) cache.clear();
+  if (baseCache.size > 4096) baseCache.clear();
   const R = rng(hash(world, rx, rz, 0x7e61)), ri = rangeInt(R);
   const forest = R(), rough = R();
   const pois: Poi[] = [];
@@ -70,6 +81,31 @@ export function regionInfo(world: number, rx: number, rz: number): RegionInfo {
     pois.push(ruinAt(rx, rz, 1, cx + ri(-80, 80), cz + ri(-80, 80), R));
   }
   r = { rx, rz, pois, forest, rough };
+  baseCache.set(key, r);
+  return r;
+}
+
+/** Everything in a region: its village and ruins, plus maybe a bandit camp. */
+export function regionInfo(world: number, rx: number, rz: number): RegionInfo {
+  const key = world + ':' + rx + ':' + rz;
+  let r = cache.get(key);
+  if (r) return r;
+  if (cache.size > 4096) cache.clear();
+  const base = baseInfo(world, rx, rz), pois = [...base.pois];
+  // Bandit camps: not in the start region nor right by the village, near the middle of their region (so camps
+  // never crowd each other), and clear of every ruin around so their flat ground does not overlap.
+  const Rc = rng(hash(world, rx, rz, 0xca4b)), cx = rx * REGION, cz = rz * REGION;
+  if (!(rx === 0 && rz === 0) && Rc() < (Math.abs(rx) + Math.abs(rz) <= 1 ? 0.25 : 0.4)) {
+    const around: Poi[] = [];
+    for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) around.push(...baseInfo(world, rx + i, rz + j).pois);
+    for (let t = 0; t < 6; t++) {
+      const x = cx + (Rc() - 0.5) * 140, z = cz + (Rc() - 0.5) * 140;
+      if (Math.hypot(x, z) < 230) continue;
+      if (around.some((p) => Math.hypot(p.x - x, p.z - z) < 130)) continue;
+      pois.push(campAt(rx, rz, x, z, Rc)); break;
+    }
+  }
+  r = { ...base, pois };
   cache.set(key, r);
   return r;
 }

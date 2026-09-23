@@ -9,7 +9,8 @@ import { el } from '../ui/hud';
 import { openDialog } from '../ui/dialog';
 import { unlockDoor } from './doors';
 import { openChest, chestHasLoot } from './loot';
-import { OW } from './overworld';
+import { OW, campStashes } from './overworld';
+import { openStash } from './loot';
 import { openBoard } from '../ui/board';
 import { driving, vehicleSpot, useVehicle, leave, type VehicleSpot } from './vehicles';
 
@@ -17,7 +18,7 @@ import { driving, vehicleSpot, useVehicle, leave, type VehicleSpot } from './veh
 export let npcsActive = () => G.char.loc === 'overworld' && W.npcs.length > 0;
 export function setNpcsActive(f: () => boolean) { npcsActive = f; }
 
-let nearVehicle: VehicleSpot | null = null, nearBoard = false;
+let nearVehicle: VehicleSpot | null = null, nearBoard = false, nearStash: ReturnType<typeof campStashes>[number] | null = null;
 export function updateEntities(dt: number, time: number) {
   const pos = G.pos;
   if (driving.v) {
@@ -32,6 +33,7 @@ export function updateEntities(dt: number, time: number) {
   nearVehicle = G.char.loc === 'overworld' ? vehicleSpot() : null;
   const bd = G.char.loc === 'overworld' ? OW.village?.board : null;
   nearBoard = !!bd && Math.hypot(bd.x - pos.x, bd.z + 0.8 - pos.z) < 2.6;
+  nearStash = G.char.loc === 'overworld' ? campStashes().find((s) => Math.hypot(s.x - pos.x, s.z - pos.z) < 1.8) ?? null : null;
   W.nearChest = null; W.nearPortal = null; W.nearLock = null;
   if (npcsActive()) updateNpcs(dt, time); else W.nearNpc = null;
   for (const d of W.doors) if (d.locked && Math.hypot(d.cx - pos.x, d.cz - pos.z) < 3) W.nearLock = d;
@@ -57,11 +59,12 @@ export function updateEntities(dt: number, time: number) {
   }
   else if (nearChest) { prompt.className = ''; prompt.textContent = G.isTouch ? 'Chest' : nearChest.open ? 'E — search the chest' : 'E — open chest'; }
   else if (nearBoard) { prompt.className = ''; prompt.textContent = G.isTouch ? '' : 'E — read the notice board'; }
+  else if (nearStash) { prompt.className = ''; prompt.textContent = G.isTouch ? '' : 'E — search the bandit stash'; }
   else if (nearVehicle) { prompt.className = ''; prompt.textContent = G.isTouch ? '' : 'E — ' + nearVehicle.label; }
   else if (nearPortal) { prompt.className = 'portal'; prompt.textContent = nearPortal.label; }
-  prompt.style.display = (nearNpc || nearLock || nearChest || nearBoard || nearVehicle || nearPortal) && G.playing && prompt.textContent ? 'block' : 'none';
-  const canUse = nearNpc || nearChest || nearBoard || nearVehicle || (nearLock && hasItem('key'));
-  el.bUse.textContent = nearNpc ? 'TALK' : nearLock ? 'UNLOCK' : nearChest ? 'OPEN' : nearBoard ? 'READ' : nearVehicle ? (nearVehicle.kind === 'drive' ? 'DRIVE' : 'TRUNK') : 'OPEN';
+  prompt.style.display = (nearNpc || nearLock || nearChest || nearBoard || nearStash || nearVehicle || nearPortal) && G.playing && prompt.textContent ? 'block' : 'none';
+  const canUse = nearNpc || nearChest || nearBoard || nearStash || nearVehicle || (nearLock && hasItem('key'));
+  el.bUse.textContent = nearNpc ? 'TALK' : nearLock ? 'UNLOCK' : nearChest ? 'OPEN' : nearBoard ? 'READ' : nearStash ? 'OPEN' : nearVehicle ? (nearVehicle.kind === 'drive' ? 'DRIVE' : 'TRUNK') : 'OPEN';
   el.bUse.classList.toggle('on', !!canUse && G.playing);
   const hatch = W.hatch;
   if (hatch) {
@@ -76,5 +79,6 @@ export function interact() {
   if (driving.v) { leave(); return; }
   if (W.nearNpc) openDialog(W.nearNpc); else if (W.nearLock) unlockDoor(W.nearLock); else if (W.nearChest) openChest(W.nearChest);
   else if (nearBoard) openBoard();
+  else if (nearStash) openStash(nearStash.id, nearStash.name);
   else if (nearVehicle) useVehicle(nearVehicle);
 }

@@ -7,6 +7,7 @@ import type { Drone, Boss, Orb } from './world/enemies';
 import type { Chest, Hatch, Crystal, Pickup } from './world/loot';
 import type { Npc } from './world/npc';
 import type { Creature } from './world/creatures';
+import type { Bandit } from './world/bandits';
 import type { DungeonMap } from './gen/dungeon';
 
 export interface Stats { maxHp: number; bm: number; mm: number; range: number; rate: number; speed: number }
@@ -52,7 +53,7 @@ export const G = {
 export const W = {
   doors: [] as Door[], portals: [] as Stair[], arrivalStair: null as Stair | null,
   chests: [] as Chest[], hatch: null as Hatch | null, crystals: [] as Crystal[], pickups: [] as Pickup[],
-  drones: [] as Drone[], bosses: [] as Boss[], orbs: [] as Orb[], creatures: [] as Creature[], spawnCells: [] as [number, number, number][],
+  drones: [] as Drone[], bosses: [] as Boss[], orbs: [] as Orb[], creatures: [] as Creature[], bandits: [] as Bandit[], spawnCells: [] as [number, number, number][],
   npcs: [] as Npc[], villageWalk: [] as [number, number][],
   nearChest: null as Chest | null, nearPortal: null as Stair | null, nearLock: null as Door | null,
   nearNpc: null as Npc | null, talkNpc: null as Npc | null,

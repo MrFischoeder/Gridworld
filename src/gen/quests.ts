@@ -9,15 +9,15 @@ import { NPC_INFO, type NpcRole } from '../data/npcs';
 import { ITEMS, type ItemKey } from '../data/items';
 import { VEHICLES } from '../data/vehicles';
 
-export type QuestKind = 'bounty' | 'hunt' | 'fetch';
+export type QuestKind = 'bounty' | 'hunt' | 'fetch' | 'camp';
 export type QuestState = 'offer' | 'talk' | 'active' | 'ready' | 'done';
-export interface QuestPlace { type: 'ruin' | 'wreck'; ruinId?: number; vehicleId?: string; x: number; z: number; name: string }
+export interface QuestPlace { type: 'ruin' | 'wreck' | 'camp'; ruinId?: number; campId?: number; vehicleId?: string; x: number; z: number; name: string }
 export interface Quest {
   id: string; kind: QuestKind; title: string; text: string;
   reward: { gold: number; xp: number };
   state: QuestState;
   /** bounty: kill `count` of `target` anywhere */
-  target?: CreatureKind | 'drone'; count?: number; progress?: number;
+  target?: CreatureKind | 'drone' | 'bandit'; count?: number; progress?: number;
   /** hunt: a group with a leader at a described spot */
   at?: { x: number; z: number; where: string };
   pack?: { kind: CreatureKind; count: number; alpha: string }; killed?: number; alphaDead?: boolean;
@@ -33,7 +33,7 @@ export function compass(dx: number, dz: number): string {
 }
 export const km = (d: number) => (d < 950 ? `${Math.round(d / 50) * 50} m` : `${(d / 1000).toFixed(1)} km`);
 const WORDS = ['', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight'];
-const plural = (kind: CreatureKind | 'drone', n: number) => (kind === 'drone' ? (n === 1 ? 'drone' : 'drones') : CREATURES[kind].name + (n === 1 ? '' : 's'));
+const plural = (kind: CreatureKind | 'drone' | 'bandit', n: number) => (kind === 'drone' || kind === 'bandit' ? kind + (n === 1 ? '' : 's') : CREATURES[kind].name + (n === 1 ? '' : 's'));
 
 /** Describes the land at a point, and which creatures live in that kind of place. */
 export function describeSpot(t: Terrain, x: number, z: number): { where: string; kind: CreatureKind } {
@@ -57,9 +57,9 @@ const ERRANDS: { giver: NpcRole; item: ItemKey; place: 'ruin' | 'wreck'; where: 
 ];
 
 function bounty(id: string, R: () => number): Quest {
-  const ri = rangeInt(R), target = (['ravager', 'bramble', 'leechwing', 'drone'] as const)[ri(0, 3)];
-  const count = target === 'bramble' ? ri(2, 4) : target === 'leechwing' ? ri(3, 5) : target === 'drone' ? ri(6, 12) : ri(6, 10);
-  const each = target === 'bramble' ? 45 : target === 'leechwing' ? 30 : target === 'drone' ? 12 : 18;
+  const ri = rangeInt(R), target = (['ravager', 'bramble', 'leechwing', 'drone', 'bandit'] as const)[ri(0, 4)];
+  const count = target === 'bramble' ? ri(2, 4) : target === 'leechwing' ? ri(3, 5) : target === 'drone' ? ri(6, 12) : target === 'bandit' ? ri(5, 8) : ri(6, 10);
+  const each = target === 'bramble' ? 45 : target === 'leechwing' ? 30 : target === 'drone' ? 12 : target === 'bandit' ? 28 : 18;
   return {
     id, kind: 'bounty', state: 'offer', target, count, progress: 0,
     title: `Bounty: ${count} ${plural(target, count)}`,
@@ -113,11 +113,25 @@ function fetch(t: Terrain, id: string, R: () => number): Quest | null {
   };
 }
 
+/** Clear a real bandit camp. */
+function camp(t: Terrain, id: string, R: () => number): Quest | null {
+  const camps = poisNear(t.world, 0, 0, 1200).filter((p) => p.type === 'camp');
+  if (!camps.length) return null;
+  const c = camps[Math.floor(R() * camps.length)], d = Math.hypot(c.x, c.z), dir = compass(c.x, c.z), { where } = describeSpot(t, c.x, c.z);
+  return {
+    id, kind: 'camp', state: 'offer', place: { type: 'camp', campId: c.id, x: c.x, z: c.z, name: c.name },
+    title: `Clear the ${c.name}`,
+    text: `Bandits have dug in at the ${c.name}, about ${km(d)} ${dir} of Gridholm, ${where}. They rob every cart on the road. Clear the camp, their boss included, then report back here.`,
+    reward: { gold: 220 + Math.round(d / 4), xp: 180 },
+  };
+}
+
 /** The n-th notice of this world. Fetch errands are not offered twice for the same item at once (see `taken`). */
 export function generateQuest(t: Terrain, n: number, taken: ItemKey[] = []): Quest {
   const R = rng(hash(t.world, n, 0x9e57)), id = `q${n}`, roll = R();
   let q: Quest | null = null;
-  if (roll < 0.35) q = hunt(t, id, R);
-  else if (roll < 0.7) { q = fetch(t, id, R); if (q && taken.includes(q.item!)) q = null; }
+  if (roll < 0.3) q = hunt(t, id, R);
+  else if (roll < 0.6) { q = fetch(t, id, R); if (q && taken.includes(q.item!)) q = null; }
+  else if (roll < 0.75) q = camp(t, id, R);
   return q ?? bounty(id, R);
 }
