@@ -3,7 +3,7 @@ import { RELIC_KEYS, type ItemKey } from './items';
 
 export type NpcRole = 'innkeeper' | 'elder' | 'blacksmith' | 'merchant' | 'grocer' | 'dealer' | 'villager';
 /** Dialogue options. New option ids (e.g. quests) are added here and handled in ui/dialog.ts. */
-export type OptId = 'rest' | 'rumour' | 'work' | 'lore' | 'shop' | 'chat' | 'bye';
+export type OptId = 'rest' | 'rumour' | 'work' | 'lore' | 'shop' | 'sell' | 'chat' | 'bye';
 export interface NpcInfo { name?: string; title: string; color: number; hello?: string; opts: OptId[] }
 
 export const NPC_INFO: Record<NpcRole, NpcInfo> = {
@@ -12,7 +12,7 @@ export const NPC_INFO: Record<NpcRole, NpcInfo> = {
   blacksmith: { name: 'Radek', title: 'Blacksmith', color: 0xff7a5c, hello: 'The forge is hot. Need something made, or just admiring the sparks?', opts: ['shop', 'work', 'bye'] },
   merchant: { name: 'Zofia', title: 'General Store', color: 0xffd060, hello: 'Supplies for the brave and the foolish alike. Have a look.', opts: ['shop', 'work', 'bye'] },
   grocer: { name: 'Jan', title: 'Food & Provisions', color: 0x9dffe0, hello: 'Fresh bread, hot stew! Nobody fights well on an empty stomach.', opts: ['shop', 'bye'] },
-  dealer: { name: 'Mirek', title: 'Vehicle Dealer', color: 0x5cc8ff, hello: 'Wheels! Nobody walks to the ruins twice. Everything I sell waits in the yard, keys in the ignition.', opts: ['shop', 'rumour', 'bye'] },
+  dealer: { name: 'Mirek', title: 'Vehicle Dealer', color: 0x5cc8ff, hello: 'Wheels! Nobody walks to the ruins twice. Everything I sell waits in the yard, keys in the ignition. Spares and guns too. I buy vehicles back, but do not expect me to pay much for used parts.', opts: ['shop', 'sell', 'rumour', 'bye'] },
   villager: { title: 'Villager', color: 0x9dffb4, opts: ['chat', 'bye'] },
 };
 export const VILLAGER_NAMES = ['Ola', 'Piotr', 'Kasia', 'Tomek', 'Ania', 'Marek', 'Ewa', 'Staszek'];
@@ -26,7 +26,7 @@ export const RUMOURS = ['They say the guardians below each carry an Access Key. 
   'Folk who fled the drones left their vehicles out in the hills. Find one and it is yours, along with whatever is in the trunk.'];
 export const OPT_TEXT: Record<OptId | 'back', string> = {
   rest: 'Rent a bed (10 gold)', rumour: 'Heard any rumours?', work: 'Do you have any work for me?', lore: 'Tell me about the dungeon.',
-  shop: 'Show me your wares.', chat: 'How are things?', bye: 'Goodbye.', back: 'Back',
+  shop: 'Show me your wares.', sell: 'I want to sell something.', chat: 'How are things?', bye: 'Goodbye.', back: 'Back',
 };
 export const LORE = 'Old ruins stand in the hills around Gridholm. Beneath each one lies a maze of the old machine folk. Drones patrol it, and guardians seal the deeper passages. Stairs connect it to other sectors, and hatches lead ever deeper. Follow the roads from our gates and you will find them.';
 

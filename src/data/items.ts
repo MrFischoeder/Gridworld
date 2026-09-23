@@ -1,4 +1,4 @@
-export type ItemType = 'relic' | 'cons' | 'key';
+export type ItemType = 'relic' | 'cons' | 'key' | 'part';
 export interface ItemDef { name: string; ab: string; type: ItemType; desc: string; stack?: number }
 
 export const ITEMS = {
@@ -13,10 +13,17 @@ export const ITEMS = {
   stew: { name: 'Hearty Stew', ab: 'STW', type: 'cons', desc: 'restores 45 HP', stack: 5 },
   recall: { name: 'Recall Beacon', ab: 'RCL', type: 'cons', desc: 'returns you to the village from anywhere', stack: 5 },
   emp: { name: 'EMP Charge', ab: 'EMP', type: 'cons', desc: 'damages every drone within 6 m (G key)', stack: 5 },
+  wheelL: { name: 'Light Wheel', ab: 'WHL', type: 'part', desc: 'spare wheel for the RTV-1 Scout (fit it at the front of the vehicle)', stack: 4 },
+  wheelH: { name: 'Heavy Wheel', ab: 'HWL', type: 'part', desc: 'spare wheel for the HTV-6 Mastodon (fit it at the front of the vehicle)', stack: 2 },
+  engine: { name: 'Engine Parts', ab: 'ENG', type: 'part', desc: 'repairs a vehicle engine by 50%', stack: 5 },
+  cannon: { name: 'Vehicle Cannon', ab: 'CAN', type: 'part', desc: 'roof-mounted gun for any vehicle; fire with the attack button while driving', stack: 1 },
 } satisfies Record<string, ItemDef>;
 
 export type ItemKey = keyof typeof ITEMS;
 export const item = (k: ItemKey): ItemDef => ITEMS[k];
 export const RELIC_KEYS = (Object.keys(ITEMS) as ItemKey[]).filter((k) => item(k).type === 'relic');
 export const INV_SIZE = 12, MOD_SIZE = 3;
+/** What Mirek charges for vehicle parts. He buys them back for only a fifth of that. */
+export const PART_PRICE: Partial<Record<ItemKey, number>> = { wheelL: 40, wheelH: 90, engine: 70, cannon: 400 };
+export const PART_BUYBACK = 0.2;
 export const HEAL: Partial<Record<ItemKey, number>> = { medkit: 50, bread: 20, stew: 45 };

@@ -1,6 +1,7 @@
 // Keyboard and mouse. Pointer lock drives mouse look; losing it pauses the game.
 import { G, uiOpen } from '../game';
 import { closeTransfer } from './transfer';
+import { closeService } from './service';
 import { driving, toggleCockpit } from '../world/vehicles';
 import { renderer } from '../world/render';
 import { el } from './hud';
@@ -24,7 +25,7 @@ export function initInput(onPause: () => void) {
     if (e.code === 'KeyI' || e.code === 'Tab') { e.preventDefault(); if (!G.dlgOpen && !G.xferOpen) togglePack(); return; }
     if (G.packOpen) { if (e.code === 'Escape') closePack(); return; }
     if (G.dlgOpen) { if (e.code === 'Escape') closeDialog(); return; }
-    if (G.xferOpen) { if (e.code === 'Escape' || e.code === 'KeyE') closeTransfer(); return; }
+    if (G.xferOpen) { if (e.code === 'Escape' || e.code === 'KeyE') { closeTransfer(); closeService(); } return; }
     if (e.code === 'KeyM' && G.playing) { toggleMap(); return; }
     if (G.mapOpen) { if (e.code === 'Escape') toggleMap(false); if (e.code === 'Equal' || e.code === 'NumpadAdd') zoomMap(1.25); if (e.code === 'Minus' || e.code === 'NumpadSubtract') zoomMap(0.8); }
     if (extraKeys.some((f) => f(e))) return;

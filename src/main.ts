@@ -17,7 +17,7 @@ import { collides } from './world/player';
 import { regionRoads } from './gen/roads';
 import { poisNear } from './gen/regions';
 import { sky, horizon } from './world/sky';
-import { driving, updateDriving, vehicleCamera, vehicles, buyVehicle } from './world/vehicles';
+import { driving, updateDriving, vehicleCamera, vehicles, buyVehicle, fireCannon } from './world/vehicles';
 import { interact } from './world/interact';
 import { el, updateHud } from './ui/hud';
 import { drawMini } from './ui/minimap';
@@ -53,6 +53,7 @@ function frame(now: number) {
   if (live) {
     if (driving.v) updateDriving(dt); else moving = updatePlayer(dt);
     G.cooldown -= dt; if (G.firing && !driving.v) attack();
+    if (driving.v) fireCannon(dt);
     updateDoors(dt);
     if (outdoors) updateFieldEnemies(dt);
     updateDrones(dt);
@@ -70,7 +71,7 @@ function frame(now: number) {
   if (G.trans) updateTrans(dt, camera); else if (driving.v) vehicleCamera(camera); else camera.position.set(G.pos.x, G.pos.y + EYE, G.pos.z);
   camera.rotation.set(G.pitch, G.yaw, 0);
   if (sky.visible) { sky.position.set(camera.position.x, camera.position.y - 20, camera.position.z); horizon.position.set(camera.position.x, 0, camera.position.z); }
-  el.cross.style.display = driving.v && !driving.cockpit ? 'none' : '';
+  el.cross.style.display = driving.v && !driving.cockpit && !driving.v.turret ? 'none' : '';
   animateVM(dt, moving);
   animateFoes(dt, time, camera.position);
   updateFx(dt);

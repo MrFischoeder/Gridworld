@@ -1,12 +1,11 @@
 // Where vehicles stand: the dealer's yard outside Gridholm, and abandoned vehicles out in the wilds.
 import { rng, hash } from '../core/rng';
-import type { VehicleModel } from '../data/vehicles';
-import { VEHICLES } from '../data/vehicles';
+import { VEHICLES, freshParts, wheelCount, type VehicleModel, type VehicleParts } from '../data/vehicles';
 import { REGION, CHUNK, poisNear } from './regions';
 import { rectDist, type Terrain } from './terrain';
 import { chunkTrees, chunkRocks } from './trees';
 
-export interface Parking { id: string; model: VehicleModel; x: number; z: number; heading: number }
+export interface Parking { id: string; model: VehicleModel; x: number; z: number; heading: number; parts: VehicleParts }
 
 /**
  * The vehicle yard just outside the north gate of the starting village (world coordinates; the village is centred
@@ -22,8 +21,8 @@ export const YARD = {
 /** Vehicles a character had before vehicles were sold (kept in old saves). */
 export function startingVehicles(): Parking[] {
   return [
-    { id: 'scout-1', model: 'scout', x: 7, z: -45, heading: Math.PI },
-    { id: 'mastodon-1', model: 'mastodon', x: -9, z: -46, heading: Math.PI },
+    { id: 'scout-1', model: 'scout', x: 7, z: -45, heading: Math.PI, parts: freshParts('scout') },
+    { id: 'mastodon-1', model: 'mastodon', x: -9, z: -46, heading: Math.PI, parts: freshParts('mastodon') },
   ];
 }
 
@@ -48,7 +47,11 @@ export function regionVehicle(t: Terrain, rx: number, rz: number): Parking | nul
   const model: VehicleModel = R() < 0.75 ? 'scout' : 'mastodon';
   for (let i = 0; i < 8; i++) {
     const x = rx * REGION + (R() - 0.5) * 180, z = rz * REGION + (R() - 0.5) * 180, heading = R() * 6.283;
-    if (clearSpot(t, model, x, z, heading)) return { id: `found:${rx}:${rz}`, model, x, z, heading };
+    if (!clearSpot(t, model, x, z, heading)) continue;
+    // abandoned for a reason: worn or missing wheels and a tired engine, sometimes beyond driving
+    const wheels = Array.from({ length: wheelCount(model) }, () => (R() < 0.22 ? -1 : 15 + Math.floor(R() * 70)));
+    const engine = R() < 0.2 ? 0 : 10 + Math.floor(R() * 60);
+    return { id: `found:${rx}:${rz}`, model, x, z, heading, parts: { wheels, engine, gun: false } };
   }
   return null;
 }

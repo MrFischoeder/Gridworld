@@ -1,9 +1,14 @@
 // Vehicles: wireframe bodies, arcade driving over the terrain, seats, and trunks for storing items.
 import * as THREE from 'three';
-import { scene, V, GRID } from './render';
+import { scene, camera, V, GRID } from './render';
 import { G } from '../game';
 import { PropBatch } from './props';
-import { VEHICLES, vehicleTitle, type VehicleSpec, type VehicleModel } from '../data/vehicles';
+import { VEHICLES, vehicleTitle, freshParts, immobile, partPerformance, resaleValue, type VehicleSpec, type VehicleModel } from '../data/vehicles';
+import { PART_PRICE, PART_BUYBACK } from '../data/items';
+import { rayWorld } from './player';
+import { foes, damageFoe } from './enemies';
+import { addFx, burst } from './fx';
+import { add as addMat, edgesOf, lineMat } from './render';
 import { regionVehicle, YARD, type Parking } from '../gen/vehicles';
 import type { Terrain } from '../gen/terrain';
 import { regionOf } from '../gen/regions';
@@ -15,7 +20,8 @@ import type { VehicleState } from '../save';
 import { saveChar } from '../character';
 import { collides } from './player';
 import { openTransfer } from '../ui/transfer';
-import { showToast, el } from '../ui/hud';
+import { openService } from '../ui/service';
+import { showToast, logLine, el } from '../ui/hud';
 
 const BODY = 0x5cff8a, DETAIL = GRID, GLASS = 0x2a9a50;
 
@@ -24,6 +30,10 @@ export interface Vehicle {
   /** Abandoned vehicles out in the wilds belong to nobody until someone gets in or opens the trunk. */
   claimed: boolean;
   wheels: { g: THREE.Group; front: boolean }[];
+  /** Roof cannon (present when one is fitted). */
+  turret: THREE.Group | null;
+  /** Metres driven since the last wear tick. */
+  odo: number;
   speed: number; spin: number; steer: number; y: number; pitch: number; roll: number;
 }
 export interface WorldHooks {
@@ -117,10 +127,72 @@ function makeVehicle(st: VehicleState, claimed = true): Vehicle {
       (w as THREE.Object3D).userData.pivot = g;
     }
   });
+  st.parts ??= freshParts(st.model); // saves from before vehicles had parts
   scene.add(group);
-  const v: Vehicle = { st, spec, group, claimed, wheels, speed: 0, spin: 0, steer: 0, y: 0, pitch: 0, roll: 0 };
+  const v: Vehicle = { st, spec, group, claimed, wheels, turret: null, odo: 0, speed: 0, spin: 0, steer: 0, y: 0, pitch: 0, roll: 0 };
+  refreshParts(v);
   pose(v);
   return v;
+}
+
+// ---------- parts ----------
+const turretMat = lineMat(0xffb347);
+function turretModel(): THREE.Group {
+  const g = new THREE.Group(), pb = new PropBatch();
+  pb.solid8([[-0.35, 0, -0.35], [0.35, 0, -0.35], [0.35, 0, 0.35], [-0.35, 0, 0.35]], [[-0.28, 0.32, -0.28], [0.28, 0.32, -0.28], [0.28, 0.32, 0.28], [-0.28, 0.32, 0.28]], 0xffb347);
+  pb.solid8([[-0.07, 0.12, 0.2], [0.07, 0.12, 0.2], [0.07, 0.12, 1.25], [-0.07, 0.12, 1.25]], [[-0.07, 0.24, 0.2], [0.07, 0.24, 0.2], [0.07, 0.24, 1.25], [-0.07, 0.24, 1.25]], 0xffb347);
+  g.add(pb.build());
+  g.add(edgesOf(new THREE.CylinderGeometry(0.42, 0.42, 0.06, 10), turretMat));
+  return g;
+}
+/** Show fitted parts: missing wheels are not drawn, a cannon sits on the roof. */
+export function refreshParts(v: Vehicle) {
+  v.wheels.forEach((w, i) => { ((w.g as THREE.Object3D).userData.pivot as THREE.Group).visible = v.st.parts.wheels[i] >= 0; });
+  if (v.st.parts.gun && !v.turret) {
+    v.turret = turretModel(); v.turret.position.set(...v.spec.mount); v.group.add(v.turret);
+  } else if (!v.st.parts.gun && v.turret) {
+    v.group.remove(v.turret); v.turret.traverse((o) => (o as THREE.Mesh).geometry?.dispose()); v.turret = null;
+  }
+}
+/** Wear from driving and knocks from crashes. */
+function wear(v: Vehicle, metres: number, crash: number) {
+  const p = v.st.parts;
+  v.odo += metres;
+  while (v.odo >= 100) { v.odo -= 100; p.wheels = p.wheels.map((w) => (w > 0 ? Math.max(1, w - 0.6) : w)); }
+  if (crash > 6) {
+    const i = (Math.random() * p.wheels.length) | 0, hit = Math.min(35, (crash - 6) * 3);
+    if (p.wheels[i] > 0) p.wheels[i] = Math.max(0, Math.round(p.wheels[i] - hit));
+    p.engine = Math.max(0, Math.round(p.engine - hit * 0.4));
+    const why = immobile(p);
+    if (why) { showToast('Breakdown! ' + why); v.speed = 0; }
+  }
+}
+
+// ---------- cannon ----------
+let gunCool = 0;
+/** Fire the roof cannon where the camera looks. */
+export function fireCannon(dt: number) {
+  const v = driving.v;
+  gunCool -= dt;
+  if (!v || !v.turret || !G.firing || gunCool > 0) return;
+  gunCool = 0.55;
+  const muzzle = V(0, 0.18, 1.3); v.turret.localToWorld(muzzle);
+  const d = new THREE.Vector3(); camera.getWorldDirection(d);
+  let tHit = rayWorld(muzzle, d, 90), hit = null;
+  for (const t of foes()) {
+    const rr = (t.r || 0.6) + 0.3, oc = muzzle.clone().sub(t.g.position), b = oc.dot(d), c = oc.lengthSq() - rr * rr, disc = b * b - c;
+    if (disc < 0) continue; const tt = -b - Math.sqrt(disc);
+    if (tt > 0 && tt < tHit) { tHit = tt; hit = t; }
+  }
+  const end = muzzle.clone().addScaledVector(d, tHit);
+  addFx(new THREE.Line(new THREE.BufferGeometry().setFromPoints([muzzle, end]), addMat(0xffb347)), 0.15);
+  burst(end, 0xffb347, hit ? 16 : 8, hit ? 1.1 : 0.5);
+  if (hit) damageFoe(hit, 3 * G.S.bm);
+}
+/** The turret follows the camera. */
+function aimTurret(v: Vehicle) {
+  if (!v.turret) return;
+  v.turret.rotation.y = v === driving.v ? G.yaw + Math.PI - v.st.heading : 0;
 }
 
 // ---------- geometry helpers ----------
@@ -158,7 +230,7 @@ export function spawnVehicles(h: WorldHooks) {
   for (const st of G.char.vehicles) vehicles.push(makeVehicle(st));
 }
 const emptyTrunk = (m: VehicleModel) => ({ items: Array(VEHICLES[m].trunk).fill(null), gold: 0 });
-const stateOf = (p: Parking): VehicleState => ({ ...p, trunk: emptyTrunk(p.model) });
+const stateOf = (p: Parking): VehicleState => ({ ...p, parts: structuredClone(p.parts), trunk: emptyTrunk(p.model) });
 
 // ---------- abandoned vehicles ----------
 const foundCache = new Map<string, Parking | null>();
@@ -198,7 +270,7 @@ export function buyVehicle(model: VehicleModel): string {
   const bay = YARD.bays.find((b) => !vehicles.some((v) => Math.hypot(v.st.x - b.x, v.st.z - b.z) < 7));
   if (!bay) return 'The yard is full. Drive one of your vehicles away first.';
   c.gold -= spec.price;
-  const st = stateOf({ id: model + '-' + Date.now().toString(36), model, x: bay.x, z: bay.z, heading: YARD.heading });
+  const st = stateOf({ id: model + '-' + Date.now().toString(36), model, x: bay.x, z: bay.z, heading: YARD.heading, parts: freshParts(model) });
   c.vehicles.push(st); vehicles.push(makeVehicle(st)); saveChar();
   return `Your ${vehicleTitle(model)} is waiting in the yard outside the north gate.`;
 }
@@ -213,7 +285,7 @@ export function clearVehicles() {
 function dropVehicle(v: Vehicle) { scene.remove(v.group); v.group.children[0].traverse((o) => (o as THREE.Mesh).geometry?.dispose()); }
 
 // ---------- interaction ----------
-export interface VehicleSpot { v: Vehicle; kind: 'drive' | 'trunk'; label: string }
+export interface VehicleSpot { v: Vehicle; kind: 'drive' | 'trunk' | 'service'; label: string }
 /** What the player on foot could do with a vehicle right here. */
 export function vehicleSpot(): VehicleSpot | null {
   let best: VehicleSpot | null = null, bd = 2.4;
@@ -225,16 +297,21 @@ export function vehicleSpot(): VehicleSpot | null {
     }
     const [x, z] = toWorld(v, v.spec.rear[0], v.spec.rear[1]), d = Math.hypot(x - G.pos.x, z - G.pos.z);
     if (d < bd) { bd = d; best = { v, kind: 'trunk', label: v.claimed ? 'open the trunk' : 'search the abandoned ' + vehicleTitle(v.st.model) }; }
+    const [fx2, fz2] = toWorld(v, v.spec.front[0], v.spec.front[1]), df = Math.hypot(fx2 - G.pos.x, fz2 - G.pos.z);
+    if (df < bd) { bd = df; best = { v, kind: 'service', label: 'service the ' + vehicleTitle(v.st.model) }; }
   }
   return best;
 }
 export function useVehicle(s: VehicleSpot) {
   claim(s.v);
+  if (s.kind === 'service') { openService(s.v); return; }
   if (s.kind === 'trunk') {
     const v = s.v;
     openTransfer({ title: vehicleTitle(v.st.model), subtitle: v.spec.role + ' · ' + v.spec.seats + ' seats', boxLabel: 'Trunk', box: v.st.trunk, canStore: true });
     return;
   }
+  const why = immobile(s.v.st.parts);
+  if (why) { showToast("It won't move"); logLine(why + ' Service it at the front of the vehicle.'); return; }
   driving.v = s.v; s.v.speed = 0; driving.since = performance.now();
   G.vel.set(0, 0, 0); G.firing = false;
   G.yaw = s.v.st.heading + Math.PI; G.pitch = -0.12;
@@ -244,7 +321,7 @@ export function useVehicle(s: VehicleSpot) {
 export function leave(save = true) {
   const v = driving.v;
   if (!v) return;
-  driving.v = null; v.speed = 0; v.steer = 0;
+  driving.v = null; v.speed = 0; v.steer = 0; aimTurret(v);
   const spots: [number, number][] = [[v.spec.door[0], v.spec.door[1]], [-v.spec.door[0], v.spec.door[1]], [v.spec.rear[0], v.spec.rear[1]], [v.spec.door[0] + 1, v.spec.door[1]]];
   for (const [lx, lz] of spots) {
     const [x, z] = toWorld(v, lx, lz), y = hooks ? hooks.height(x, z) : v.y;
@@ -281,16 +358,16 @@ function hullBlocked(v: Vehicle, x: number, z: number, h: number): boolean {
   return false;
 }
 export function updateDriving(dt: number) {
-  const v = driving.v!, s = v.spec, k = G.keys, stick = G.stick;
+  const v = driving.v!, s = v.spec, k = G.keys, stick = G.stick, perf = partPerformance(v.st.parts), maxSpeed = s.maxSpeed * perf;
   const thr = Math.max(-1, Math.min(1, (k.KeyW ? 1 : 0) - (k.KeyS ? 1 : 0) - stick.dy));
   const steer = Math.max(-1, Math.min(1, (k.KeyA ? 1 : 0) - (k.KeyD ? 1 : 0) - stick.dx));
   const brake = k.Space || G.touchJump;
   // throttle, rolling drag, brakes, and gravity along the slope
-  v.speed += thr * s.accel * dt * (thr * v.speed < 0 ? 2 : 1);
+  v.speed += thr * s.accel * perf * dt * (thr * v.speed < 0 ? 2 : 1);
   v.speed -= v.speed * (thr ? 0.15 : 0.9) * dt;
   if (brake) v.speed -= Math.sign(v.speed) * Math.min(Math.abs(v.speed), 18 * dt);
   v.speed -= 9.8 * Math.sin(v.pitch) * dt * 0.6;
-  v.speed = Math.max(-s.maxSpeed * 0.35, Math.min(s.maxSpeed, v.speed));
+  v.speed = Math.max(-maxSpeed * 0.35, Math.min(maxSpeed, v.speed));
   v.steer += (steer - v.steer) * Math.min(1, 6 * dt);
   const dh = v.steer * s.turn * dt * Math.max(-1, Math.min(1, v.speed / 6));
   const nh = v.st.heading + dh, [fx, fz] = fwd(nh), nx = v.st.x + fx * v.speed * dt, nz = v.st.z + fz * v.speed * dt;
@@ -298,18 +375,24 @@ export function updateDriving(dt: number) {
   const H = hooks!.height, ahead = H(nx + fx * s.length / 2, nz + fz * s.length / 2), behind = H(nx - fx * s.length / 2, nz - fz * s.length / 2);
   const climb = (ahead - behind) / s.length * Math.sign(v.speed || 1);
   if (hullBlocked(v, nx, nz, nh) || climb > 0.8) {
-    if (Math.abs(v.speed) > 6) showToast('Crash!');
+    const impact = Math.abs(v.speed);
+    if (impact > 6) showToast('Crash!');
     v.speed = -v.speed * 0.25;
+    wear(v, 0, impact);
   } else {
+    wear(v, Math.abs(v.speed) * dt, 0);
     v.st.x = nx; v.st.z = nz; v.st.heading = nh;
     if (!driving.cockpit) G.yaw += dh * 0.9; // the chase camera swings with the vehicle
     else G.yaw += dh;
   }
   v.spin += v.speed / s.wheelR * dt;
-  pose(v);
+  pose(v); aimTurret(v);
+  if (immobile(v.st.parts)) { leave(); return; }
   G.pos.set(v.st.x, v.y, v.st.z);
   G.vel.set(0, 0, 0);
-  el.veh.textContent = `${vehicleTitle(v.st.model)} · ${Math.round(Math.abs(v.speed) * 3.6)} km/h · seats 1/${s.seats}${s.enclosed ? ' · cab closed' : ''}`;
+  const p = v.st.parts, worst = Math.min(...p.wheels);
+  el.veh.textContent = `${vehicleTitle(v.st.model)} · ${Math.round(Math.abs(v.speed) * 3.6)} km/h · seats 1/${s.seats}${s.enclosed ? ' · cab closed' : ''}` +
+    ` · engine ${Math.round(p.engine)}% · wheels ${Math.round(worst)}%${v.turret ? ' · cannon' : ''}`;
 }
 /** Chase camera behind and above the vehicle (or the driver's eye in cockpit view, V). */
 export function vehicleCamera(camera: THREE.PerspectiveCamera) {
@@ -326,3 +409,23 @@ export function vehicleCamera(camera: THREE.PerspectiveCamera) {
   camera.position.copy(p);
 }
 export const toggleCockpit = () => { driving.cockpit = !driving.cockpit; };
+
+// ---------- selling back to the dealer ----------
+/** Own vehicles parked near the dealer's yard, with what Mirek would pay for each. */
+export function vehiclesForSale(): { v: Vehicle; price: number; why: string | null }[] {
+  return vehicles.filter((v) => v.claimed && Math.hypot(v.st.x - YARD.dealer.x, v.st.z - YARD.dealer.z) < 45).map((v) => ({
+    v, price: resaleValue(v.st.model, v.st.parts, PART_PRICE.cannon ?? 0, PART_BUYBACK),
+    why: v === driving.v ? 'You are sitting in it.' : v.st.trunk.items.some(Boolean) || v.st.trunk.gold > 0 ? 'Empty the trunk first.' : null,
+  }));
+}
+export function sellVehicle(id: string): string {
+  const offer = vehiclesForSale().find((o) => o.v.st.id === id);
+  if (!offer) return 'Bring it to the yard first.';
+  if (offer.why) return offer.why;
+  const c = G.char;
+  c.gold += offer.price;
+  c.vehicles = c.vehicles.filter((s) => s.id !== id);
+  dropVehicle(offer.v); vehicles.splice(vehicles.indexOf(offer.v), 1);
+  saveChar();
+  return `Sold the ${vehicleTitle(offer.v.st.model)} for ${offer.price} gold.`;
+}

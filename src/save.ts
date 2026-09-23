@@ -1,7 +1,7 @@
 // Character persistence. Only player-made changes are stored, never generated geometry.
 // Versions: v1 (relic counts) -> v2 (backpack, per-dungeon progress) -> v3 (open world).
 import { INV_SIZE, MOD_SIZE, ITEMS, type ItemKey } from './data/items';
-import type { VehicleModel } from './data/vehicles';
+import type { VehicleModel, VehicleParts } from './data/vehicles';
 
 export interface Slot { k: ItemKey; n: number }
 /** Per-dungeon progress, keyed by dungeonKey() = "ruinId:depth:gx:gz". */
@@ -9,7 +9,7 @@ export type Progress = Record<string, number[]>;
 export interface DungeonPos { ruinId: number; depth: number; gx: number; gz: number }
 /** Anything that holds items: a searched chest, a vehicle trunk. */
 export interface Container { items: (Slot | null)[]; gold: number }
-export interface VehicleState { id: string; model: VehicleModel; x: number; z: number; heading: number; trunk: Container }
+export interface VehicleState { id: string; model: VehicleModel; x: number; z: number; heading: number; trunk: Container; parts: VehicleParts }
 export interface Char {
   v: 3;
   level: number; xp: number; gold: number; world: number;
