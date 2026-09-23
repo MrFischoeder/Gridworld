@@ -9,6 +9,8 @@ export interface Figure { g: THREE.Group; legL: THREE.Line; legR: THREE.Line; ar
 export interface Npc extends Figure {
   role: NpcRole; name: string; title: string; p: THREE.Vector3; home: THREE.Vector3; building: Building | null;
   target: THREE.Vector3 | null; wait: number; phase: number; face: number; y0: number;
+  /** The village they live in. */
+  town?: string;
 }
 
 export function textSprite(text: string, color: string, w = 1.9) {
@@ -55,7 +57,7 @@ export function updateNpcs(dt: number, time: number) {
     let moving = false;
     const toP = V(pos.x - n.p.x, 0, pos.z - n.p.z), dP = toP.length();
     if (n === W.talkNpc || (n.role !== 'villager' && dP < 6)) { n.face = Math.atan2(toP.x, toP.z); }
-    else if (n.role === 'villager') {
+    else if (n.role === 'villager' && W.villageWalk.length) {
       if (n.wait > 0) n.wait -= dt;
       else {
         if (!n.target) { const c = W.villageWalk[(Math.random() * W.villageWalk.length) | 0]; n.target = V(c[0] + 0.5, n.y0, c[1] + 0.5); }

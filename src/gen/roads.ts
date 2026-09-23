@@ -1,6 +1,6 @@
 // Roads: from every village gate a road runs to a ruin (the nearest one roughly in that direction).
 import { rng, hash, DIRV } from '../core/rng';
-import { regionInfo, poisNear, type Poi, type Rect } from './regions';
+import { regionInfo, poisNear, villageSeed, type Poi, type Rect } from './regions';
 import { villageGates, VILLAGE_OFFSET } from './village';
 
 export interface Road { id: string; from: number; to: number; gate: string; pts: [number, number][]; half: number }
@@ -32,7 +32,7 @@ export function regionRoads(world: number, rx: number, rz: number): Road[] {
     if (v.type !== 'village') continue;
     const ruins = poisNear(world, v.x, v.z, 420).filter((p) => p.type === 'ruin');
     if (!ruins.length) continue;
-    for (const dir of villageGates(world)) {
+    for (const dir of villageGates(villageSeed(world, v))) {
       const [sx, sz] = gatePoint(v, dir), o = DIRV[dir];
       // prefer ruins in the gate's direction; distance is stretched for ruins off to the side
       const cost = (p: Poi) => { const dx = p.x - sx, dz = p.z - sz, d = Math.hypot(dx, dz); return d * (1 + (1 - (dx * o[0] + dz * o[1]) / d) * 1.5); };

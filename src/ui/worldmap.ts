@@ -2,7 +2,7 @@
 // explored chunks only (fog of war). Chunk tiles are rendered once from the deterministic terrain.
 import { nearX } from '../gen/regions';
 import { G, W } from '../game';
-import { OW, inVillage } from '../world/overworld';
+import { OW, villageHere } from '../world/overworld';
 import { CHUNK, poisNear } from '../gen/regions';
 import { STEP, VERTS, CELLS, inRect } from '../gen/terrain';
 import { discover, isDiscovered } from '../save';
@@ -112,7 +112,7 @@ function drawFullMap() {
   drawArea(bctx, w, h, zoom, true);
   bctx.fillStyle = '#3dff6e'; bctx.font = '22px VT323, monospace'; bctx.textAlign = 'left';
   bctx.fillText('WORLD MAP — M or Esc to close · wheel / + - to zoom', 16, h - 16);
-  bctx.textAlign = 'right'; bctx.fillText(inVillage(G.pos.x, G.pos.z) ? 'Gridholm' : $('hudL').textContent ?? '', w - 16, 30);
+  bctx.textAlign = 'right'; bctx.fillText(villageHere(G.pos.x, G.pos.z)?.name ?? $('hudL').textContent ?? '', w - 16, 30);
 }
 export function toggleMap(open = !G.mapOpen) {
   if (G.char.loc !== 'overworld') open = false;

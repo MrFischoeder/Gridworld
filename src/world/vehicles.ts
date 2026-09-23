@@ -14,8 +14,7 @@ import type { Terrain } from '../gen/terrain';
 import { regionOf, nearX } from '../gen/regions';
 import { RELIC_KEYS } from '../data/items';
 import { putItems } from '../inventory';
-import { VILLAGE_RECT } from '../gen/regions';
-import { rectDist } from '../gen/terrain';
+import { villageDist } from '../gen/regions';
 import type { VehicleState } from '../save';
 import { saveChar } from '../character';
 import { collides } from './player';
@@ -394,7 +393,7 @@ function hullBlocked(v: Vehicle, x: number, z: number, h: number): boolean {
   const probe = { st: { x, z, heading: h } }, s = v.spec, hl = s.length / 2, hw = s.width / 2;
   for (const [lx, lz] of [[-hw, hl], [hw, hl], [-hw, -hl], [hw, -hl], [0, hl], [0, -hl], [-hw, 0], [hw, 0]]) {
     const [px, pz] = toWorld(probe, lx, lz);
-    if (rectDist(VILLAGE_RECT, px, pz) < 1 || hooks.blocked(px, pz, 0.4)) return true;
+    if (villageDist(G.char.world, px, pz, 60) < 1 || hooks.blocked(px, pz, 0.4)) return true;
   }
   for (const o of vehicles) if (o !== v && Math.hypot(o.st.x - x, o.st.z - z) < (o.spec.length + s.length) / 2 * 0.8) {
     const [lx, lz] = toLocal(o, x, z);

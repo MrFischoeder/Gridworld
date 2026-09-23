@@ -24,15 +24,19 @@ export function openDialog(n: Npc) {
   if (!G.playing || G.dlgOpen || G.packOpen || G.xferOpen) return;
   G.dlgOpen = true; W.talkNpc = n; G.firing = false; for (const k in G.keys) G.keys[k] = false;
   const info = NPC_INFO[n.role];
-  renderTalk(n.role === 'villager' ? (n.name + ' nods. "' + VILLAGER_LINES[(Math.random() * VILLAGER_LINES.length) | 0] + '"') : info.hello!);
+  renderTalk(n.role === 'villager' ? (n.name + ' nods. "' + VILLAGER_LINES[(Math.random() * VILLAGER_LINES.length) | 0] + '"') : here(info.hello!));
   dlgEl.style.display = 'flex'; if (document.pointerLockElement) document.exitPointerLock();
 }
 export function closeDialog() { if (!G.dlgOpen) return; G.dlgOpen = false; W.talkNpc = null; dlgEl.style.display = 'none'; if (!G.isTouch) lockPointer(); }
+/** The talking resident's village (texts are written for Gridholm). */
+const town = () => W.talkNpc?.town ?? 'Gridholm';
+const inGridholm = () => town() === 'Gridholm';
+const here = (s: string) => s.replace(/Gridholm/g, town());
 const dlgHead = () => { const n = W.talkNpc!; return `<h2>${n.name}</h2><div class="role">${n.title}</div>`; };
 function renderTalk(text: string) {
   const info = NPC_INFO[W.talkNpc!.role];
   panel().innerHTML = dlgHead() + `<div class="say">${text}</div>` +
-    questOptions(W.talkNpc!.role).map((q) => `<button class="opt" data-q="${q.id}" style="color:var(--gold)">${q.label}</button>`).join('') +
+    (inGridholm() ? questOptions(W.talkNpc!.role) : []).map((q) => `<button class="opt" data-q="${q.id}" style="color:var(--gold)">${q.label}</button>`).join('') +
     info.opts.map((o) => `<button class="opt" data-o="${o}">${OPT_TEXT[o]}</button>`).join('');
 }
 const PARTS = Object.keys(PART_PRICE) as ItemKey[];
@@ -97,8 +101,9 @@ dlgEl.addEventListener('click', (e) => {
       break;
     case 'rumour': renderTalk(RUMOURS[(Math.random() * RUMOURS.length) | 0]); break;
     case 'chat': renderTalk(VILLAGER_LINES[(Math.random() * VILLAGER_LINES.length) | 0]); break;
-    case 'lore': renderTalk(loreText()); break;
+    case 'lore': renderTalk(here(loreText())); break;
     case 'work':
+      if (!inGridholm()) { renderTalk(`We are too small a place for a notice board. Gridholm posts work on its plaza; that is where the paying jobs are.`); break; }
       renderTalk(r === 'elder' ? 'Read the notice board on the plaza. Folk post their troubles there, and when my name is on a notice, come and see me.'
         : 'Have a look at the notice board on the plaza. If I need something, you will find it there.');
       break;

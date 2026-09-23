@@ -6,7 +6,7 @@ import { scene, V, GRID, localize } from './render';
 import { G, W } from '../game';
 import { VoxelGrid, type Space } from '../core/voxel';
 import { Terrain, inRect, rectDist, STEP, CELLS, VERTS } from '../gen/terrain';
-import { CHUNK, poisNear, VILLAGE_RECT, X_MIN, WORLD_W, POLE_Z, POLAR_Z, worldDist, type Poi } from '../gen/regions';
+import { CHUNK, poisNear, X_MIN, WORLD_W, POLE_Z, POLAR_Z, worldDist, villageContaining, villageDist, villageSeed, GRIDHOLM_ID, type Poi } from '../gen/regions';
 import { chunkTrees, chunkRocks, type Tree, type Rock } from '../gen/trees';
 import { drawTree } from './trees';
 import { generateVillage, type VillageMap } from '../gen/village';
@@ -27,7 +27,7 @@ import { add as addMat } from './render';
 import { YARD } from '../gen/vehicles';
 import { setStreakSources, type EdgeSource } from './fx';
 import { voxelObject, villageDeco, wallSign } from './level';
-import { NPC_INFO, VILLAGER_NAMES } from '../data/npcs';
+import { NPC_INFO, VILLAGER_NAMES, type NpcRole } from '../data/npcs';
 import { DIRV } from '../core/rng';
 
 export const LOAD_R = 4, UNLOAD_R = 6, STRUCT_LOAD = 170, STRUCT_UNLOAD = 240;
@@ -72,7 +72,11 @@ export function treeHit(x: number, y: number, z: number, r: number): boolean {
   }
   return false;
 }
-export const inVillage = (x: number, z: number) => inRect(VILLAGE_RECT, x, z);
+/** The village the point is in (inside its walls' footprint), if any. */
+export const villageHere = (x: number, z: number): Poi | undefined => (OW.terrain ? villageContaining(OW.terrain.world, x, z) : undefined);
+export const inVillage = (x: number, z: number) => !!villageHere(x, z);
+/** Distance to the nearest village footprint (Infinity when none is close). */
+const nearVillage = (x: number, z: number) => (OW.terrain ? villageDist(OW.terrain.world, x, z) : Infinity);
 
 // ---------- terrain chunks ----------
 /** Level of detail by distance (in chunks): near chunks get grid lines every 2 m, far ones every 4 m. */
@@ -176,18 +180,32 @@ function yardDeco(y: number) {
   g.add(wallSign('VEHICLES', '#ffd060', { x: YARD.sign.x, z: YARD.sign.z }, [0, -1], y + 3.5));
   return g;
 }
+/** Residents of the other villages: everyone has their own name (Gridholm keeps its familiar faces). */
+const FOLK = ['Aldo', 'Bera', 'Casimir', 'Dara', 'Emil', 'Frida', 'Goran', 'Hela', 'Ivo', 'Jana', 'Kasper', 'Lida', 'Marek', 'Nela', 'Oskar', 'Petra', 'Rolf', 'Sabina', 'Tomek', 'Una', 'Vojtek', 'Wanda', 'Zenon', 'Ilse'];
+function residentName(vm: VillageMap, role: NpcRole, i: number): string {
+  if (vm.home) return NPC_INFO[role].name!;
+  const n = FOLK[((vm.seed >>> 0) + i * 7) % FOLK.length];
+  return role === 'elder' ? 'Elder ' + n : n;
+}
 function loadVillageStruct(poi: Poi): Structure {
-  const T = OW.terrain!, y = T.padY(poi), vm = generateVillage(T.world, y);
+  const T = OW.terrain!, y = T.padY(poi), home = poi.id === GRIDHOLM_ID;
+  const vm = generateVillage(villageSeed(T.world, poi), y, poi.x, poi.z, poi.name, home);
   const grid = VoxelGrid.surface(vm.ops, vm.rect, y);
   const { group, mesh } = voxelObject(grid, Infinity, OUTLINE);
-  group.add(villageDeco(vm, y), gateSign(vm), boardDeco(vm, y));
+  group.add(villageDeco(vm, y), gateSign(vm));
+  if (vm.home) group.add(boardDeco(vm, y));
   scene.add(group);
   const npcs: Npc[] = [];
-  for (const b of vm.buildings) if (b.role !== 'house') npcs.push(makeNpc(b.role, NPC_INFO[b.role].name!, V(b.home!.x, b.home!.y, b.home!.z), b));
-  // the vehicle dealer and his yard just outside the north gate
-  npcs.push(makeNpc('dealer', NPC_INFO.dealer.name!, V(YARD.dealer.x, y, YARD.dealer.z), null));
-  group.add(yardDeco(y));
-  VILLAGER_NAMES.slice(0, 6).forEach((nm) => { const c = vm.walk[(Math.random() * vm.walk.length) | 0]; npcs.push(makeNpc('villager', nm, V(c[0] + 0.5, y, c[1] + 0.5), null)); });
+  vm.buildings.forEach((b, i) => { if (b.role !== 'house') npcs.push(makeNpc(b.role, residentName(vm, b.role, i), V(b.home!.x, b.home!.y, b.home!.z), b)); });
+  if (vm.home) {
+    // the vehicle dealer and his yard just outside the north gate
+    npcs.push(makeNpc('dealer', NPC_INFO.dealer.name!, V(YARD.dealer.x, y, YARD.dealer.z), null));
+    group.add(yardDeco(y));
+  }
+  const taken = new Set(npcs.map((n) => n.name.replace('Elder ', '')));
+  const folk = vm.home ? VILLAGER_NAMES : FOLK.slice(((vm.seed >>> 0) + 3) % 12).filter((n) => !taken.has(n));
+  folk.slice(0, 6).forEach((nm) => { const c = vm.walk[(Math.random() * vm.walk.length) | 0]; npcs.push(makeNpc('villager', nm, V(c[0] + 0.5, y, c[1] + 0.5), null)); });
+  for (const n of npcs) n.town = vm.name;
   W.npcs.push(...npcs); W.villageWalk = vm.walk;
   OW.village = vm;
   return { poi, grid, group, edges: mesh, doors: [], stairs: [], npcs, village: vm };
@@ -269,7 +287,7 @@ function dropStruct(s: Structure) {
   for (const d of s.doors) { scene.remove(d.g); W.doors.splice(W.doors.indexOf(d), 1); }
   for (const st of s.stairs) W.portals.splice(W.portals.indexOf(st), 1);
   for (const n of s.npcs) { scene.remove(n.g); W.npcs.splice(W.npcs.indexOf(n), 1); }
-  if (s.village) { OW.village = null; W.villageWalk = []; }
+  if (s.village && OW.village === s.village) { OW.village = null; W.villageWalk = []; } // another village may have loaded meanwhile
   if (s.camp) despawnCamp(s.poi.id);
   OW.structs.delete(s.poi.id);
   setStreakSources([...OW.structs.values()].map((q) => q.edges));
@@ -312,7 +330,7 @@ export function openWorld(x: number, z: number) {
   if (!OW.terrain || OW.terrain.world !== w) OW.terrain = new Terrain(w);
   closeWorld();
   G.space = space; G.ground = groundAt; G.obstacle = (px, py, pz, r) => treeHit(px, py, pz, r) || vehicleHit(px, py, pz, r) || ambushHit(px, py, pz, r);
-  foeRules.blocked = (p) => rectDist(VILLAGE_RECT, p.x, p.z) < 2;
+  foeRules.blocked = (p) => nearVillage(p.x, p.z) < 2;
   foeRules.playerSafe = () => inVillage(G.pos.x, G.pos.z);
   foeRules.ground = (px, pz) => OW.terrain!.heightAt(px, pz);
   foeRules.shielded = shielded;
@@ -331,7 +349,7 @@ export function openWorld(x: number, z: number) {
     ground: (px: number, pz: number) => T.heightAt(px, pz),
     danger,
     nearRuin: (px: number, pz: number) => poisNear(T.world, px, pz, 90).some((p) => p.type === 'ruin' && rectDist(p.rect, px, pz) < 60),
-    forbidden: (px: number, pz: number) => rectDist(VILLAGE_RECT, px, pz) < 35 || [...OW.structs.values()].some((s) => rectDist(s.poi.rect, px, pz) < 1),
+    forbidden: (px: number, pz: number) => nearVillage(px, pz) < 35 || [...OW.structs.values()].some((s) => rectDist(s.poi.rect, px, pz) < 1),
   };
   setCreatureEnv(envHooks);
   setBanditEnv(envHooks);
@@ -404,7 +422,7 @@ export function updateFieldEnemies(dt: number) {
   }
   if ((spawnT -= dt) > 0) return;
   spawnT = 2.5;
-  if (inVillage(pos.x, pos.z) || rectDist(VILLAGE_RECT, pos.x, pos.z) < 25) return;
+  if (nearVillage(pos.x, pos.z) < 25) return;
   const dg = danger(pos.x, pos.z), cap = Math.min(5, 1 + Math.floor(dg * 1.5));
   if (W.drones.length >= cap || Math.random() > 0.45) return;
   const fwx = -Math.sin(G.yaw), fwz = -Math.cos(G.yaw);
@@ -412,7 +430,7 @@ export function updateFieldEnemies(dt: number) {
     // behind the player, out of sight
     const a = Math.atan2(-fwx, -fwz) + (Math.random() - 0.5) * 2.4, d = 35 + Math.random() * 20;
     const x = pos.x + Math.sin(a) * d, z = pos.z + Math.cos(a) * d;
-    if (rectDist(VILLAGE_RECT, x, z) < 30) continue;
+    if (nearVillage(x, z) < 30) continue;
     if ([...OW.structs.values()].some((s) => rectDist(s.poi.rect, x, z) < 3)) continue;
     if ((x - pos.x) * fwx + (z - pos.z) * fwz > d * Math.cos(1.0)) continue;
     const t: Drone = makeDrone();
@@ -430,7 +448,8 @@ export function removeDrone(t: Drone) { scene.remove(t.g); const i = W.drones.in
 
 // ---------- where am I ----------
 export function placeName(x: number, z: number): string {
-  if (inVillage(x, z)) return 'Gridholm (village)';
+  const v = villageHere(x, z);
+  if (v) return v.name + ' (village)';
   if (Math.abs(z) > POLE_Z - 400) return z < 0 ? 'North Pole ice wall' : 'South Pole ice wall';
   if (Math.abs(z) > POLAR_Z) return z < 0 ? 'Northern ice cap' : 'Southern ice cap';
   for (const s of OW.structs.values()) if ((s.poi.type === 'ruin' || s.poi.type === 'camp') && rectDist(s.poi.rect, x, z) < 10) return s.poi.name;

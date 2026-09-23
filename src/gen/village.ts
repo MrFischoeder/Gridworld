@@ -1,4 +1,4 @@
-// Village generator (Gridholm). Pure and deterministic from the world seed.
+// Village generator (Gridholm and the other villages of the planet). Pure and deterministic from a seed.
 import { rng, rangeInt, DIRV, type Dir } from '../core/rng';
 import { translateOps, type Op } from '../core/voxel';
 import { VILLAGE_RECT, type Rect } from './regions';
@@ -15,6 +15,8 @@ export interface Gate { dir: Dir; x: number; z: number; w: number; /** First cel
 export interface Tower { x: number; z: number; w: number; d: number; h: number }
 export interface VillageMap {
   seed: number; village: true; name: string;
+  /** Gridholm, the starting village: the only one with the notice board and Mirek's vehicle yard (for now). */
+  home: boolean;
   /** World offset of the local layout, and the plaza floor height. */
   ox: number; oz: number; y: number;
   rect: Rect;
@@ -45,7 +47,8 @@ export function villageGates(seed: number): Dir[] {
   return ['N', ...rest.slice(0, n - 1)];
 }
 
-export function generateVillage(seed: number, y = 0): VillageMap {
+/** A village centred at (cx, cz) (even whole metres) on a plaza at height y. */
+export function generateVillage(seed: number, y = 0, cx = 0, cz = 0, name = 'Gridholm', home = true): VillageMap {
   const R = rng(seed ^ 0x51ab7), ri = rangeInt(R);
   const PW = 72, PD = 72, ops: Op[] = [], late: Op[] = [];
   // wall ring around the plaza, then the gate openings
@@ -133,9 +136,9 @@ export function generateVillage(seed: number, y = 0): VillageMap {
     if (!solidAt(x, z)) walk.push([x, z]);
   }
   // Everything above was laid out in plaza coordinates; move it into the world.
-  const ox = VILLAGE_OFFSET.x, oz = VILLAGE_OFFSET.z, P = (p: P3): P3 => ({ x: p.x + ox, y: p.y + y, z: p.z + oz });
+  const ox = VILLAGE_OFFSET.x + cx, oz = VILLAGE_OFFSET.z + cz, P = (p: P3): P3 => ({ x: p.x + ox, y: p.y + y, z: p.z + oz });
   return {
-    seed, village: true, name: 'Gridholm', ox, oz, y, rect: { ...VILLAGE_RECT },
+    seed, village: true, name, home, ox, oz, y, rect: { x0: VILLAGE_RECT.x0 + cx, z0: VILLAGE_RECT.z0 + cz, x1: VILLAGE_RECT.x1 + cx, z1: VILLAGE_RECT.z1 + cz },
     spawn: [36.5 + ox, y, 50.5 + oz], ops: translateOps(all, ox, y, oz),
     gates: gates.map((g) => (g.dir === 'N' || g.dir === 'S'
       ? { ...g, x: g.x + ox, z: g.z + oz, a: g.a + ox, m: g.m + oz } : { ...g, x: g.x + ox, z: g.z + oz, a: g.a + oz, m: g.m + ox })),

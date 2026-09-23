@@ -72,3 +72,34 @@ describe('the poles', () => {
     expect(daylight(0, sunTilt(latitude(0)))).toBe(0);
   });
 });
+
+import { allVillages, villageContaining, villageSeed, findPoi, GRIDHOLM_ID } from '../src/gen/regions';
+import { generateVillage } from '../src/gen/village';
+import { regionRoads } from '../src/gen/roads';
+import { regionOf } from '../src/gen/regions';
+describe('villages', () => {
+  it('are spread over the planet: named, apart, off the ice, with roads', () => {
+    for (const w of WORLDS) {
+      const vs = allVillages(w), t = new Terrain(w);
+      expect(vs[0].id).toBe(GRIDHOLM_ID); expect(vs[0].name).toBe('Gridholm');
+      expect(vs.length).toBeGreaterThan(200);
+      for (const v of vs) {
+        expect(Math.abs(v.z)).toBeLessThan(POLAR_Z);
+        expect(findPoi(w, v.id)?.name).toBe(v.name);
+        expect(villageContaining(w, v.x + 5, v.z - 5)?.id).toBe(v.id);
+      }
+      for (let i = 0; i < vs.length; i++) for (let j = i + 1; j < vs.length; j++) expect(worldDist(vs[i].x, vs[i].z, vs[j].x, vs[j].z)).toBeGreaterThan(1000);
+      let roads = 0;
+      for (const v of vs.slice(1, 40)) {
+        const [rx, rz] = regionOf(v.x, v.z);
+        roads += regionRoads(w, rx, rz).length;
+        // the plaza is flat and the layout sits on the village's own spot
+        expect(t.heightAt(v.x + 3, v.z + 3)).toBeCloseTo(t.padY(v), 5);
+        const vm = generateVillage(villageSeed(w, v), t.padY(v), v.x, v.z, v.name, false);
+        expect(vm.rect).toEqual(v.rect);
+        for (const b of vm.buildings) expect(b.x >= v.rect.x0 && b.x + b.w <= v.rect.x1 && b.z >= v.rect.z0 && b.z + b.d <= v.rect.z1).toBe(true);
+      }
+      expect(roads).toBeGreaterThan(20);
+    }
+  });
+});

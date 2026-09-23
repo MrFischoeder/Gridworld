@@ -6,7 +6,8 @@ import { hash, OPP, DIRV, type Dir } from '../core/rng';
 import { VoxelGrid } from '../core/voxel';
 import { meshVoxels, type OutlineStyle } from '../core/meshing';
 import { generateDungeon } from '../gen/dungeon';
-import { findPoi } from '../gen/regions';
+import { findPoi, allVillages, worldDist, GRIDHOLM_ID, CHUNK } from '../gen/regions';
+import { isDiscovered } from '../save';
 import type { VillageMap } from '../gen/village';
 import { placeTunnelDoors, tryPlaceDoor, type PlacedDoor } from '../gen/doors';
 import { makeDoor, makeStair, arriveVia, signTexture } from './doors';
@@ -137,7 +138,7 @@ export function villageDeco(map: VillageMap, y0 = 0) {
 }
 
 // ---------- the open world ----------
-export type Arrival = { kind: 'saved' } | { kind: 'new' } | { kind: 'tavern' } | { kind: 'ruin'; id: number };
+export type Arrival = { kind: 'saved' } | { kind: 'new' } | { kind: 'tavern'; id?: number } | { kind: 'ruin'; id: number };
 export function loadOverworld(a: Arrival) {
   const c = G.char;
   clearLevel(); setLocationLook(true);
@@ -147,6 +148,7 @@ export function loadOverworld(a: Arrival) {
   let x = 0, z = 12, yaw = 0;
   if (a.kind === 'saved' && c.ow) { x = c.ow.x; z = c.ow.z; yaw = c.ow.yaw; }
   if (a.kind === 'ruin') { const p = findPoi(c.world, a.id); if (p) { x = p.x; z = p.z; } }
+  if (a.kind === 'tavern' && a.id !== undefined) { const p = findPoi(c.world, a.id); if (p) { x = p.x; z = p.z + 12; } }
   G.pos.set(x, G.pos.y, z); // vehicles are placed on the copy of the world nearest to the player
   openWorld(x, z);
   if (a.kind === 'ruin') {
@@ -191,11 +193,18 @@ export function exitToRuin() {
   c.loc = 'overworld'; c.dungeon = null; saveChar();
   loadOverworld({ kind: 'ruin', id }); showToast(ruinName(id)); arriveVia(W.arrivalStair);
 }
-export function toVillage(how: 'death' | 'recall') {
+/**
+ * Where a beacon or a bad day takes you: the nearest village you have been to (its tavern), else Gridholm.
+ * `id` picks a village directly (the console's `home` goes to Gridholm).
+ */
+export function toVillage(how: 'death' | 'recall', id?: number) {
   const c = G.char;
+  const from = c.loc === 'dungeon' && c.dungeon ? findPoi(c.world, c.dungeon.ruinId) ?? { x: 0, z: 0 } : { x: G.pos.x, z: G.pos.z };
+  const known = allVillages(c.world).filter((v) => v.id === GRIDHOLM_ID || isDiscovered(c.discovered, Math.floor(v.x / CHUNK), Math.floor(v.z / CHUNK)));
+  const v = id !== undefined ? findPoi(c.world, id) ?? known[0] : known.reduce((a, b) => (worldDist(b.x, b.z, from.x, from.z) < worldDist(a.x, a.z, from.x, from.z) ? b : a));
   c.loc = 'overworld'; c.dungeon = null; saveChar();
-  loadOverworld({ kind: 'tavern' }); G.hp = G.S.maxHp;
-  showToast(how === 'death' ? 'You wake up in the tavern' : 'Gridholm');
+  loadOverworld({ kind: 'tavern', id: v.id }); G.hp = G.S.maxHp;
+  showToast(how === 'death' ? 'You wake up in the tavern of ' + v.name : v.name);
   arriveVia(null);
 }
 export const canRecall = () => G.char.loc === 'dungeon' || !inVillage(G.pos.x, G.pos.z);

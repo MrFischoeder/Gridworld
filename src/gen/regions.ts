@@ -63,6 +63,59 @@ export function ruinName(R: () => number): string {
 }
 
 const even = (v: number) => 2 * Math.round(v / 2);
+
+// ---------- villages ----------
+/** Gridholm, the starting village at the origin. */
+export const GRIDHOLM_ID = packId(0, 0, 0);
+/** The planet is cut into cells of VCELL x VCELL regions (~2.5 km); many cells hold one village somewhere inside. */
+const VCELL = 10, VILLAGE_CHANCE = 0.6;
+const V_A = ['Ost', 'Brenn', 'Kal', 'Hollow', 'Mirr', 'Stone', 'Ash', 'Wend', 'Rook', 'Tarn', 'Elm', 'Kest', 'Vard', 'Lorn', 'Dusk', 'Irons', 'Fell', 'Gale'];
+const V_B = ['wick', 'ford', 'mere', 'holm', 'stead', 'gate', 'moor', 'dale', 'haven', 'reach', 'watch', 'barrow', 'field', 'crest'];
+/** Where the village of cell (gx, gz) stands (region coordinates), or null. Gridholm's cell holds only Gridholm. */
+function villageOfCell(world: number, gx: number, gz: number): [number, number] | null {
+  const R = rng(hash(world, gx, gz, 0x7111)), ri = rangeInt(R);
+  if (R() > VILLAGE_CHANCE) return null;
+  const rx = R0 + gx * VCELL + ri(2, VCELL - 3), rz = gz * VCELL - (VCELL >> 1) + ri(2, VCELL - 3);
+  if (polarRegion(rz) || polarRegion(rz + Math.sign(rz))) return null;
+  if (Math.max(Math.abs(wrapR(rx)), Math.abs(rz)) < 6) return null; // keep the start region to Gridholm
+  return [rx, rz];
+}
+/** Is region (rx, rz) (canonical) the site of a village other than Gridholm? */
+function isVillageRegion(world: number, rx: number, rz: number): boolean {
+  const gx = Math.floor((rx - R0) / VCELL), gz = Math.floor((rz + (VCELL >> 1)) / VCELL), v = villageOfCell(world, gx, gz);
+  return !!v && v[0] === rx && v[1] === rz;
+}
+/** Village layouts and gates come from this seed (Gridholm keeps the world seed it always had). */
+export const villageSeed = (world: number, p: Poi) => (p.id === GRIDHOLM_ID ? world : hash(world, p.id, 0x71a9e));
+const villageAt = (rx: number, rz: number, name: string): Poi => {
+  const x = rx * REGION, z = rz * REGION;
+  return { type: 'village', id: packId(rx, rz, 0), name, x, z, rect: { x0: VILLAGE_RECT.x0 + x, z0: VILLAGE_RECT.z0 + z, x1: VILLAGE_RECT.x1 + x, z1: VILLAGE_RECT.z1 + z }, flat: 8, blend: 34 };
+};
+const villageCache = new Map<number, Poi[]>();
+/** Every village on the planet (canonical coordinates), Gridholm first. */
+export function allVillages(world: number): Poi[] {
+  let v = villageCache.get(world);
+  if (!v) {
+    v = [];
+    for (let gx = 0; gx < NR / VCELL; gx++) for (let gz = -12; gz <= 12; gz++) {
+      const c = villageOfCell(world, gx, gz);
+      if (c) v.push(...regionInfo(world, c[0], c[1]).pois.filter((p) => p.type === 'village'));
+    }
+    v.unshift(regionInfo(world, 0, 0).pois[0]);
+    villageCache.set(world, v);
+  }
+  return v;
+}
+const rectD = (r: Rect, x: number, z: number) => Math.hypot(Math.max(r.x0 - x, 0, x - r.x1), Math.max(r.z0 - z, 0, z - r.z1));
+/** The village whose walls (footprint) contain (x, z), if any. */
+export const villageContaining = (world: number, x: number, z: number): Poi | undefined =>
+  poisNear(world, x, z, 50).find((p) => p.type === 'village' && rectD(p.rect, x, z) === 0 && x < p.rect.x1 && z < p.rect.z1);
+/** Distance from (x, z) to the nearest village footprint (Infinity when none within r). */
+export function villageDist(world: number, x: number, z: number, r = 120): number {
+  let d = Infinity;
+  for (const p of poisNear(world, x, z, r)) if (p.type === 'village') d = Math.min(d, rectD(p.rect, x, z));
+  return d;
+}
 export const RUIN_SIZE = 24;
 export const VILLAGE_RECT: Rect = { x0: -38, z0: -38, x1: 38, z1: 38 };
 
@@ -104,6 +157,9 @@ function baseInfo(world: number, rx: number, rz: number): RegionInfo {
   if (polarRegion(rz)) { /* nothing lives on the ice */ }
   else if (rx === 0 && rz === 0) {
     pois.push({ type: 'village', id: packId(0, 0, 0), name: 'Gridholm', x: 0, z: 0, rect: { ...VILLAGE_RECT }, flat: 8, blend: 34 });
+  } else if (isVillageRegion(world, rx, rz)) {
+    const Rv = rng(hash(world, rx, rz, 0x7a3e));
+    pois.push(villageAt(rx, rz, V_A[Math.floor(Rv() * V_A.length)] + V_B[Math.floor(Rv() * V_B.length)]));
   } else if (Math.abs(rx) + Math.abs(rz) === 1) {
     // The four regions next to the start: three of them always hold ruins within ~300 m of the village.
     const dirs: Dir[] = ['N', 'E', 'S', 'W'];
@@ -139,7 +195,7 @@ export function regionInfo(world: number, rx: number, rz: number): RegionInfo {
     for (let t = 0; t < 6; t++) {
       const x = cx + (Rc() - 0.5) * 140, z = cz + (Rc() - 0.5) * 140;
       if (worldDist(x, z, 0, 0) < 230) continue;
-      if (around.some((p) => Math.hypot(p.x - x, p.z - z) < 130)) continue;
+      if (around.some((p) => Math.hypot(p.x - x, p.z - z) < (p.type === 'village' ? 260 : 130))) continue;
       pois.push(campAt(rx, rz, x, z, Rc)); break;
     }
   }

@@ -3,11 +3,12 @@ import { G } from '../game';
 import { fmtClock, DAY } from '../core/time';
 import { saveChar } from '../character';
 import { toVillage } from '../world/level';
+import { GRIDHOLM_ID } from '../gen/regions';
 import { spawnCreatureNear } from '../world/creatures';
 import { spawnBanditsNear } from '../world/bandits';
 import { spawnRaiderNear, forceAmbush } from '../world/raiders';
 import { CREATURES, type CreatureKind } from '../data/creatures';
-import { $, logLine, showToast } from './hud';
+import { $, logLine } from './hud';
 import { lockPointer } from './input';
 
 const root = $('console'), out = $('conLog'), input = $<HTMLInputElement>('conIn');
@@ -31,7 +32,7 @@ const COMMANDS: Record<string, { help: string; run: (args: string[]) => string }
   },
   home: {
     help: 'go back to Gridholm (outside the tavern)',
-    run: () => { if (G.trans) return 'Busy travelling, try again in a moment.'; close(); toVillage('recall'); showToast('Gridholm'); return 'Home.'; },
+    run: () => { if (G.trans) return 'Busy travelling, try again in a moment.'; close(); toVillage('recall', GRIDHOLM_ID); return 'Home.'; },
   },
   time: {
     help: 'time [hour] — show the clock, or skip ahead to that hour (0-23)',

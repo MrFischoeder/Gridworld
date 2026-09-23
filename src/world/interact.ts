@@ -31,7 +31,7 @@ export function updateEntities(dt: number, time: number) {
     return;
   }
   nearVehicle = G.char.loc === 'overworld' ? vehicleSpot() : null;
-  const bd = G.char.loc === 'overworld' ? OW.village?.board : null;
+  const bd = G.char.loc === 'overworld' && OW.village?.home ? OW.village.board : null;
   nearBoard = !!bd && Math.hypot(bd.x - pos.x, bd.z + 0.8 - pos.z) < 2.6;
   nearStash = G.char.loc === 'overworld' ? campStashes().find((s) => Math.hypot(s.x - pos.x, s.z - pos.z) < 1.8) ?? null : null;
   W.nearChest = null; W.nearPortal = null; W.nearLock = null;
