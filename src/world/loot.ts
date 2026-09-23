@@ -1,6 +1,6 @@
 // XP crystals, pickups, chests, the hatch, and item use.
 import * as THREE from 'three';
-import { scene, lineMat, add, V, circlePts, edgesOf } from './render';
+import { scene, lineMat, add, V, circlePts, edgesOf, fillMat } from './render';
 import { G, W } from '../game';
 import { floorNear, floorAt } from '../core/voxel';
 import { emptyAt, EYE } from './player';
@@ -69,13 +69,16 @@ export function updateLoot(dt: number, time: number) {
 }
 
 // ---------- chests and the hatch ----------
-const goldMat = lineMat(0xffd060);
+const goldMat = lineMat(0xffd060), chestFill = fillMat(0x0d0a02);
+const chestBase = new THREE.BoxGeometry(0.9, 0.5, 0.6), chestLid = new THREE.BoxGeometry(0.9, 0.18, 0.6);
+/** Chest part: a dark solid box with gold edges. */
+const chestPart = (g: THREE.BoxGeometry) => { const o = new THREE.Group(); o.add(new THREE.Mesh(g, chestFill), edgesOf(g, goldMat)); return o; };
 export function makeChest(c: { x: number; z: number }, i: number): Chest | null {
   const gr = G.grid, f = floorNear(G.space, c.x, c.z, 0, gr.oy + 1, gr.oy + gr.ny - 1); if (!f) return null;
   const g = new THREE.Group(); g.position.set(f[0] + 0.5, f[1], f[2] + 0.5);
-  const base = edgesOf(new THREE.BoxGeometry(0.9, 0.5, 0.6), goldMat); base.position.y = 0.25; g.add(base);
+  const base = chestPart(chestBase); base.position.y = 0.25; g.add(base);
   const lidPivot = new THREE.Group(); lidPivot.position.set(0, 0.5, -0.3); g.add(lidPivot);
-  const lid = edgesOf(new THREE.BoxGeometry(0.9, 0.18, 0.6), goldMat); lid.position.set(0, 0.09, 0.3); lidPivot.add(lid);
+  const lid = chestPart(chestLid); lid.position.set(0, 0.09, 0.3); lidPivot.add(lid);
   const beamMat = add(0xffd060);
   const beam = new THREE.Line(new THREE.BufferGeometry().setFromPoints([V(0, 0.6, 0), V(0, 5, 0)]), beamMat);
   g.add(beam); g.rotation.y = (i * 1.7) % 6.28; scene.add(g);

@@ -1,6 +1,6 @@
 // Village folk: wireframe figures with name labels, shopkeepers at their counters, villagers strolling.
 import * as THREE from 'three';
-import { scene, lineMat, V } from './render';
+import { scene, lineMat, V, fillMat } from './render';
 import { G, W } from '../game';
 import { NPC_INFO, type NpcRole } from '../data/npcs';
 import type { Building } from '../gen/village';
@@ -18,11 +18,14 @@ export function textSprite(text: string, color: string, w = 1.9) {
   sp.scale.set(w, w * 48 / 256, 1); return sp;
 }
 
+const headGeo = new THREE.IcosahedronGeometry(0.17, 0), bodyGeo = new THREE.BoxGeometry(0.42, 0.6, 0.24), figureFill = fillMat();
 export function makeFigure(color: number): Figure {
   const m = lineMat(color), g = new THREE.Group();
-  const head = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.IcosahedronGeometry(0.17, 0)), m); head.position.y = 1.62;
+  const head = new THREE.LineSegments(new THREE.EdgesGeometry(headGeo), m); head.position.y = 1.62;
+  head.add(new THREE.Mesh(headGeo, figureFill));
   const visor = new THREE.Line(new THREE.BufferGeometry().setFromPoints([V(-0.08, 1.64, 0.17), V(0.08, 1.64, 0.17)]), m);
-  const body = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(0.42, 0.6, 0.24)), m); body.position.y = 1.12;
+  const body = new THREE.LineSegments(new THREE.EdgesGeometry(bodyGeo), m); body.position.y = 1.12;
+  body.add(new THREE.Mesh(bodyGeo, figureFill));
   const limb = (len: number) => new THREE.Line(new THREE.BufferGeometry().setFromPoints([V(0, 0, 0), V(0, -len, 0)]), m);
   const legL = limb(0.8), legR = limb(0.8), armL = limb(0.55), armR = limb(0.55);
   legL.position.set(-0.12, 0.82, 0); legR.position.set(0.12, 0.82, 0); armL.position.set(-0.27, 1.4, 0); armR.position.set(0.27, 1.4, 0);

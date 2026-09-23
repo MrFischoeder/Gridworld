@@ -13,6 +13,7 @@ import { makeChest, makeHatch } from './loot';
 import { makeDrone, placeDrone, makeBoss } from './enemies';
 import { makeNpc } from './npc';
 import { sky } from './sky';
+import { PropBatch } from './props';
 import { setStreakSources } from './fx';
 import { gunVM, bladeVM } from './weapons';
 import { NPC_INFO, VILLAGER_NAMES } from '../data/npcs';
@@ -101,28 +102,13 @@ function wallSign(text: string, color: string, at: { x: number; z: number }, out
 /** Roofs, tree crowns, lamps and the well of a village. */
 function villageDeco(map: VillageMap, y0 = 0) {
   const grp = new THREE.Group();
+  const props = new PropBatch();
   for (const b of map.buildings) {
-    // gabled roof out of lines
-    const top = y0 + b.h, rh = top + 2.2, pts: THREE.Vector3[] = [], x0 = b.x, x1 = b.x + b.w, z0 = b.z, z1 = b.z + b.d, along = b.w >= b.d;
-    const r0 = along ? V(x0, rh, (z0 + z1) / 2) : V((x0 + x1) / 2, rh, z0), r1 = along ? V(x1, rh, (z0 + z1) / 2) : V((x0 + x1) / 2, rh, z1);
-    pts.push(r0, r1);
-    for (const [cx, cz] of [[x0, z0], [x1, z0], [x0, z1], [x1, z1]]) { const c = V(cx, top, cz), r = (along ? (cx === x0) : (cz === z0)) ? r0 : r1; pts.push(c, r); }
-    for (let t = 0.25; t < 1; t += 0.25) {
-      const a = r0.clone().lerp(r1, t);
-      if (along) pts.push(V(a.x, top, z0), a, V(a.x, top, z1), a); else pts.push(V(x0, top, a.z), a, V(x1, top, a.z), a);
-    }
-    grp.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(pts), lineMat(0x4dff7e)));
+    props.gableRoof(b.x, b.z, b.x + b.w, b.z + b.d, y0 + b.h, 2.2, 0x4dff7e);
     if (b.name) grp.add(wallSign(b.name, b.role === 'innkeeper' ? '#ffb347' : '#ffd060', { x: b.door.x, z: b.door.z }, b.out, y0 + 3.5));
   }
-  for (const t of map.trees) {
-    const pts: THREE.Vector3[] = [], c = V(t.x + 0.5, y0 + 2, t.z + 0.5), top = V(t.x + 0.5, y0 + 2 + t.h, t.z + 0.5);
-    for (let i = 0; i < 8; i++) {
-      const a = i / 8 * 6.283, b = (i + 1) / 8 * 6.283, r = 1.6;
-      const p1 = V(c.x + Math.cos(a) * r, c.y, c.z + Math.sin(a) * r), p2 = V(c.x + Math.cos(b) * r, c.y, c.z + Math.sin(b) * r);
-      pts.push(p1, top, p1, p2); const m1 = p1.clone().lerp(top, 0.45), m2 = p2.clone().lerp(top, 0.45); pts.push(m1, m2);
-    }
-    grp.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(pts), lineMat(GRID)));
-  }
+  for (const t of map.trees) props.cone(t.x + 0.5, y0 + 2, t.z + 0.5, 1.6, t.h, GRID);
+  grp.add(props.build());
   for (const l of map.lamps) {
     const pole = new THREE.Line(new THREE.BufferGeometry().setFromPoints([V(l.x, y0, l.z), V(l.x, y0 + 3.2, l.z)]), lineMat(GRID));
     const lamp = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.OctahedronGeometry(0.25)), add(0xffe8a0)); lamp.position.set(l.x, y0 + 3.45, l.z);
