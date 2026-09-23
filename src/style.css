@@ -218,3 +218,4 @@ body.is-touch #bUse.on{display:flex}
 #waterfill{background:#2ac8b0}
 #foodbar.low,#waterbar.low{border-color:var(--amber);box-shadow:0 0 6px var(--amber)}
 #stat .lbl{font-size:15px;opacity:.7}
+#version{font-size:18px;opacity:.6;margin-top:4px}

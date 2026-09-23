@@ -12,6 +12,7 @@ Browser FPS in a green vector-grid style (wireframe on black, retro sci-fi / Tro
 
 ## Rules
 - **After every finished task** (committed and pushed), end the reply with the download link of the current version: `https://github.com/MrFischoeder/Gridworld/archive/refs/heads/<branch>.zip` (the branch the work was pushed to). Unzip, `npm install`, then `start-gry.bat` or `npm run dev`.
+- **Version label:** bump `VERSION` in `src/version.ts` (shown in the pause menu) with every pushed feature, so the owner can tell which build is running.
 - **Stack:** Vite + TypeScript (strict), three.js from npm. No UI framework: HUD and windows are plain DOM + CSS.
 - **Game language: English.** Every player-visible text (HUD, menus, dialogue, items, hints) is English. Identifiers and comments in English.
 - **Deterministic generation:** the whole world (dungeons, villages, terrain, ruins, object placement) comes only from seeded RNG (`core/rng.ts`: `rng`, `hash`, noise). Generators **never** call `Math.random()`. `Math.random()` is allowed only for effects and unsaved things (sparks, drone loot, NPC wandering). Same seed + same coordinates = identical result. This is the basis of saves and future multiplayer.

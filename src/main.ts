@@ -1,5 +1,6 @@
 // Entry point: load the character, build the first place, run the frame loop.
 import './style.css';
+import { VERSION } from './version';
 import { renderer, scene, camera } from './world/render';
 import { G, W, uiOpen } from './game';
 import { loadChar } from './save';
@@ -36,6 +37,7 @@ import { initTouch } from './ui/touch';
 import { initMenu, showMenu } from './ui/menu';
 
 G.char = loadChar();
+document.getElementById('version')!.textContent = 'build ' + VERSION;
 setWaterNote(logLine);
 calcStats(); G.hp = G.S.maxHp; G.ammo = G.gun.mag;
 

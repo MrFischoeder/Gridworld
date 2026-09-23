@@ -30,5 +30,11 @@ echo.
 echo  Uruchamiam GridWorld. Gra otworzy sie w przegladarce.
 echo  Aby zakonczyc, zamknij to okno (albo Ctrl+C).
 echo.
-call npm run dev -- --open
+call npm run dev -- --open --strictPort --port 5173
+if errorlevel 1 (
+  echo.
+  echo  Port 5173 jest zajety: prawdopodobnie dziala jeszcze STARA wersja gry.
+  echo  Zamknij wszystkie stare okna GridWorld (czarne okna konsoli) i uruchom ten plik ponownie.
+  echo.
+)
 pause
