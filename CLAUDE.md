@@ -1,0 +1,29 @@
+# Grid Arena — project rules
+
+Browser FPS in a green vector-grid style (wireframe on black, retro sci-fi / Tron / CRT terminal).
+`legacy/grid-arena.html` is the original single-file version, kept as the reference for behaviour.
+
+## Commands
+- `npm run dev` — dev server (Vite)
+- `npm test` — Vitest (generators, terrain, saves)
+- `npm run typecheck` / `npm run build`
+- In a dev build, `window.__game` exposes `{ G, W, camera, scene, renderer }` for debugging; F3 toggles the perf overlay (fps, lines, triangles, draw calls).
+
+## Rules
+- **Stack:** Vite + TypeScript (strict), three.js from npm. No UI framework: HUD and windows are plain DOM + CSS.
+- **Game language: English.** Every player-visible text (HUD, menus, dialogue, items, hints) is English. Identifiers and comments in English.
+- **Deterministic generation:** the whole world (dungeons, villages, terrain, ruins, object placement) comes only from seeded RNG (`core/rng.ts`: `rng`, `hash`, noise). Generators **never** call `Math.random()`. `Math.random()` is allowed only for effects and unsaved things (sparks, drone loot, NPC wandering). Same seed + same coordinates = identical result. This is the basis of saves and future multiplayer.
+- **Save only player changes** (opened chests, killed bosses, unlocked doors, position, character) — never generated geometry.
+- **Visual style:** grid lines `#2fe060`, black background, fog to black. Every solid that should hide what is behind it needs a dark fill (e.g. `0x010d04`, see `fillMat()` in `world/render.ts`) with `polygonOffset`, lines on top. Lines without a fill are see-through — a bug, unless the object is meant to be openwork (drones, bosses, pickups).
+- **Functional colours:** drones `#ffb347`, bosses `#ff6a4a`, gold/chests `#ffd060`, stairwells `#5cc8ff`, XP `#9dffe0`, locked doors `#ff5a3c`.
+- **Controls:** desktop (pointer lock, WASD, mouse) and touch (joystick, buttons) must work at all times.
+- **Performance:** smooth on an average laptop and phone. Measure line/triangle counts (F3) on big changes.
+- **Map format:** voxel maps are ordered op lists `{op:'room'|'solid', x,y,z,w,h,d}` (later ops override earlier). The future map editor will save this format — keep it.
+- **Multiplayer later** (up to 8 players, Node + WebSocket, authoritative server): keep world logic (`core/`, `gen/`) free of three.js and DOM, generators deterministic, game state serialisable.
+
+## Layout
+- `core/` — pure: RNG/hash, voxel grids, meshing, noise.
+- `gen/` — pure generators: dungeon, stairs, village, doors placement, reachability, (open world) terrain, regions, ruins, trees.
+- `world/` — runtime with three.js: player, doors/stairs, enemies, loot, NPCs, level loading.
+- `ui/` — DOM: HUD, minimap, backpack, dialogue, menu, input, touch.
+- `data/` — items, NPC texts. `save.ts` — persistence and version migrations.
