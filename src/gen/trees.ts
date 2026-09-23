@@ -3,6 +3,7 @@ import { rng, hash } from '../core/rng';
 import { CHUNK, wrapC } from './regions';
 import { rectDist, type Terrain } from './terrain';
 import { nearestOnRoad } from './roads';
+import { lakeBed, shoreR } from './water';
 
 /** Open ground kept around places: villages keep a wide ring (the vehicle yard sits there). */
 const clearing = (p: { type: string }) => (p.type === 'village' ? 20 : 6);
@@ -88,8 +89,10 @@ export function chunkTrees(t: Terrain, cx: number, cz: number): Tree[] {
   const f = t.chunkFeatures(cx, cz), near: Tree[] = [];
   for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) near.push(...bigWanted(t, cx + i, cz + j));
   const out: Tree[] = [];
+  const wet = (x: number, z: number, m: number) => f.lakes.some((l) => lakeBed(l, x, z, Infinity) !== null && Math.hypot(l.x - x, l.z - z) < shoreR(l, Math.atan2(z - l.z, x - l.x)) * 1.08 + m);
   for (const s of treeSpots(t, cx, cz)) {
     const tr = classify(t, f, s), span = TREE_SPAN[tr.kind];
+    if (wet(s.x, s.z, span * 0.6 + 1) || t.water(s.x, s.z)) continue; // no trees in the water
     const blocked = near.some((b) => b.seed !== tr.seed && Math.hypot(b.x - tr.x, b.z - tr.z) < Math.max(TREE_SPAN[b.kind], span) && (span === 0 || beats(b, tr)));
     if (!blocked) out.push(tr);
   }
@@ -109,6 +112,7 @@ export function chunkRocks(t: Terrain, cx: number, cz: number): Rock[] {
     const r = big ? 1.4 + R() * 1.2 : 0.4 + R() * 0.7, h = r * (0.5 + R() * 0.6), sides = 3 + Math.floor(R() * 3), rot = R() * 6.283;
     if (f.pads.some((p) => rectDist(p.poi.rect, x, z) < p.poi.flat + clearing(p.poi))) continue;
     if (f.roads.some((rd) => nearestOnRoad(rd, x, z)[0] < rd.half + r + 0.5)) continue;
+    if (t.water(x, z)) continue;
     out.push({ x, z, y: t.heightAt(x, z) - 0.15, r, h, sides, rot });
   }
   return out;

@@ -137,8 +137,14 @@ export function useItem(k: ItemKey): boolean {
   if (heal) {
     if (G.hp >= G.S.maxHp) { logLine('HP already full'); return false; }
     if (!takeOne(k)) { logLine('None left: ' + ITEMS[k].name); return false; }
-    G.hp = Math.min(G.S.maxHp, G.hp + heal); logLine('+' + heal + ' HP'); return true;
+    G.hp = Math.min(G.S.maxHp, G.hp + heal); logLine('+' + heal + ' HP');
+    if (k === 'waterF' || k === 'waterM') {
+      addItem('flask'); // the flask is kept
+      if (k === 'waterM' && Math.random() < 0.35) { G.hp -= 8; G.dmgFlash = 0.4; logLine('The murky water turns your stomach. -8 HP'); }
+    }
+    return true;
   }
+  if (k === 'flask') { logLine('It is empty. Fill it at a well or a lake (E at the water).'); return false; }
   if (k === 'recall') {
     if (!canRecall()) { logLine('You are already in the village'); return false; }
     if (G.trans || !takeOne(k)) return false;

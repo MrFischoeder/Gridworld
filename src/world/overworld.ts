@@ -9,6 +9,8 @@ import { Terrain, inRect, rectDist, STEP, CELLS, VERTS } from '../gen/terrain';
 import { CHUNK, poisNear, X_MIN, WORLD_W, POLE_Z, POLAR_Z, worldDist, villageContaining, villageDist, villageSeed, GRIDHOLM_ID, type Poi } from '../gen/regions';
 import { chunkTrees, chunkRocks, type Tree, type Rock } from '../gen/trees';
 import { drawTree } from './trees';
+import { chunkWells, type Well } from '../gen/water';
+import { drawWell, syncLakes, clearLakes } from './water';
 import { generateVillage, type VillageMap } from '../gen/village';
 import { syncQuestWorld } from './quests';
 import { generateRuin } from '../gen/ruins';
@@ -35,7 +37,7 @@ export const LOAD_R = 4, UNLOAD_R = 6, STRUCT_LOAD = 170, STRUCT_UNLOAD = 240;
 const OUTLINE = { floor: 2, wall: 4 };
 const ROAD_COLOR = 0xc8ffd8, TILE_COLOR = 0x4dff7e, ICE_COLOR = 0xbfffe8;
 
-interface Chunk { cx: number; cz: number; group: THREE.Group; trees: Tree[]; rocks: Rock[]; lod: number }
+interface Chunk { cx: number; cz: number; group: THREE.Group; trees: Tree[]; rocks: Rock[]; wells: Well[]; lod: number }
 interface Structure {
   poi: Poi; grid: VoxelGrid; group: THREE.Group; edges: EdgeSource;
   doors: Door[]; stairs: Stair[]; npcs: Npc[]; village?: VillageMap; camp?: CampMap; flames?: THREE.LineSegments;
@@ -57,6 +59,7 @@ export const space: Space = {
   setCell(x, y, z, v) { for (const s of OW.structs.values()) if (s.grid.covers(x, z)) { s.grid.setCell(x, y, z, v); return; } },
 };
 /** Terrain height, except inside a loaded structure's footprint, where its voxel floor (and shafts) rule. */
+const inStructure = (x: number, z: number) => { const fx = Math.floor(x), fz = Math.floor(z); for (const s of OW.structs.values()) if (s.grid.covers(fx, fz)) return true; return false; };
 export function groundAt(x: number, z: number): number {
   const fx = Math.floor(x), fz = Math.floor(z);
   for (const s of OW.structs.values()) if (s.grid.covers(fx, fz)) return -Infinity;
@@ -69,6 +72,7 @@ export function treeHit(x: number, y: number, z: number, r: number): boolean {
     const c = OW.chunks.get(ckey(cx + i, cz + j)); if (!c) continue;
     for (const t of c.trees) if (y < t.y + 2 + t.h * 0.3) for (const [tx, tz, tr] of t.cols) if (Math.hypot(tx - x, tz - z) < tr + r) return true;
     for (const k of c.rocks) if (k.h > 0.7 && Math.hypot(k.x - x, k.z - z) < k.r * 0.55 + r && y < k.y + k.h * 0.8) return true;
+    for (const w of c.wells) if (Math.hypot(w.x - x, w.z - z) < 1.05 + r && y < OW.terrain!.heightAt(w.x, w.z) + 0.9) return true;
   }
   return false;
 }
@@ -125,16 +129,17 @@ function buildChunk(cx: number, cz: number, lod = 1): Chunk {
   const lg = new THREE.BufferGeometry(); lg.setAttribute('position', new THREE.Float32BufferAttribute(lines, 3));
   group.add(new THREE.Mesh(fg, sharedFill()), new THREE.LineSegments(lg, sharedLine(Math.abs(z0 + CHUNK / 2) > POLAR_Z + 800 ? ICE_COLOR : GRID)));
   if (road.length) { const rg = new THREE.BufferGeometry(); rg.setAttribute('position', new THREE.Float32BufferAttribute(road, 3)); group.add(new THREE.LineSegments(rg, sharedLine(ROAD_COLOR))); }
-  const trees = chunkTrees(T, cx, cz), rocks = chunkRocks(T, cx, cz);
-  if (trees.length || rocks.length) {
+  const trees = chunkTrees(T, cx, cz), rocks = chunkRocks(T, cx, cz), wells = chunkWells(T, cx, cz);
+  if (trees.length || rocks.length || wells.length) {
     const pb = new PropBatch();
+    for (const w of wells) drawWell(pb, w, T.heightAt(w.x, w.z));
     for (const t of trees) drawTree(pb, t, lod);
     for (const k of rocks) pb.rock(k.x, k.y, k.z, k.r, k.h, k.sides, k.rot, GRID);
     group.add(pb.build());
   }
   localize(group, x0, z0);
   scene.add(group);
-  return { cx, cz, group, trees, rocks, lod };
+  return { cx, cz, group, trees, rocks, wells, lod };
 }
 function dropChunk(c: Chunk) {
   scene.remove(c.group);
@@ -312,6 +317,7 @@ export function updateStreaming(budgetMs = 4) {
     queue.sort((a, b) => Math.hypot(b[0] - pcx, b[1] - pcz) - Math.hypot(a[0] - pcx, a[1] - pcz)); // nearest last (popped first)
     for (const c of [...OW.chunks.values()]) if (Math.max(Math.abs(c.cx - pcx), Math.abs(c.cz - pcz)) > UNLOAD_R) { dropChunk(c); OW.chunks.delete(ckey(c.cx, c.cz)); }
     updateStructs(x, z);
+    syncLakes(x, z);
     syncFound(OW.terrain!, x, z);
     syncQuestWorld();
   }
@@ -329,6 +335,7 @@ export function openWorld(x: number, z: number) {
   const w = G.char.world;
   if (!OW.terrain || OW.terrain.world !== w) OW.terrain = new Terrain(w);
   closeWorld();
+  G.water = (px, pz) => (inStructure(px, pz) ? null : OW.terrain!.water(px, pz));
   G.space = space; G.ground = groundAt; G.obstacle = (px, py, pz, r) => treeHit(px, py, pz, r) || vehicleHit(px, py, pz, r) || ambushHit(px, py, pz, r);
   foeRules.blocked = (p) => nearVillage(p.x, p.z) < 2;
   foeRules.playerSafe = () => inVillage(G.pos.x, G.pos.z);
@@ -342,6 +349,7 @@ export function openWorld(x: number, z: number) {
   const T = OW.terrain;
   spawnVehicles({
     height: (px, pz) => T.heightAt(px, pz),
+    water: (px, pz) => T.water(px, pz)?.depth ?? 0,
     blocked: (px, pz, r) => poisNear(T.world, px, pz, 40).some((p) => rectDist(p.rect, px, pz) < r) || treeHit(px, T.heightAt(px, pz) + 0.5, pz, r) || ambushHit(px, 0, pz, r),
   });
   syncFound(T, x, z);
@@ -349,7 +357,7 @@ export function openWorld(x: number, z: number) {
     ground: (px: number, pz: number) => T.heightAt(px, pz),
     danger,
     nearRuin: (px: number, pz: number) => poisNear(T.world, px, pz, 90).some((p) => p.type === 'ruin' && rectDist(p.rect, px, pz) < 60),
-    forbidden: (px: number, pz: number) => nearVillage(px, pz) < 35 || [...OW.structs.values()].some((s) => rectDist(s.poi.rect, px, pz) < 1),
+    forbidden: (px: number, pz: number) => nearVillage(px, pz) < 35 || (T.water(px, pz)?.depth ?? 0) > 0.5 || [...OW.structs.values()].some((s) => rectDist(s.poi.rect, px, pz) < 1),
   };
   setCreatureEnv(envHooks);
   setBanditEnv(envHooks);
@@ -365,7 +373,9 @@ export function closeWorld() {
   for (const c of OW.chunks.values()) dropChunk(c);
   OW.chunks.clear();
   for (const s of [...OW.structs.values()]) dropStruct(s);
+  clearLakes();
   queue = []; lastChunk = '';
+  G.water = null;
   foeRules.blocked = () => false; foeRules.playerSafe = () => false; foeRules.ground = null; foeRules.shielded = () => false; foeRules.shieldHit = () => {};
   G.ground = null; G.obstacle = null;
 }
@@ -400,6 +410,7 @@ export function keepOnPlanet(dt: number) {
   for (const c of OW.chunks.values()) dropChunk(c);
   OW.chunks.clear();
   for (const s of [...OW.structs.values()]) dropStruct(s);
+  clearLakes();
   queue = []; lastChunk = '';
   const pcx = Math.floor(G.pos.x / CHUNK), pcz = Math.floor(G.pos.z / CHUNK);
   for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) OW.chunks.set(ckey(pcx + i, pcz + j), buildChunk(pcx + i, pcz + j));
@@ -455,3 +466,6 @@ export function placeName(x: number, z: number): string {
   for (const s of OW.structs.values()) if ((s.poi.type === 'ruin' || s.poi.type === 'camp') && rectDist(s.poi.rect, x, z) < 10) return s.poi.name;
   return 'Wilds';
 }
+
+/** Wells in the loaded chunks (for the E interaction). */
+export const loadedWells = (): Well[] => [...OW.chunks.values()].flatMap((c) => c.wells);

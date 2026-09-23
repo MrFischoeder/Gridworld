@@ -32,8 +32,8 @@ export const OPT_TEXT: Record<OptId | 'back', string> = {
 export const LORE = 'Old ruins stand in the hills around Gridholm. Beneath each one lies a maze of the old machine folk. Drones patrol it, and guardians seal the deeper passages. Stairs connect it to other sectors, and hatches lead ever deeper. Follow the roads from our gates and you will find them.';
 
 export function stockFor(role: NpcRole, world: number): [ItemKey, number][] {
-  if (role === 'merchant') return [['medkit', 30], ['emp', 45], ['key', 90], ['recall', 60]];
-  if (role === 'grocer') return [['bread', 8], ['stew', 18]];
+  if (role === 'merchant') return [['medkit', 30], ['emp', 45], ['key', 90], ['recall', 60], ['flask', 15]];
+  if (role === 'grocer') return [['bread', 8], ['stew', 18], ['waterF', 25]];
   if (role === 'blacksmith') {
     const a = RELIC_KEYS[hash(world, 11) % RELIC_KEYS.length]; let b = RELIC_KEYS[hash(world, 12) % RELIC_KEYS.length];
     if (b === a) b = RELIC_KEYS[(RELIC_KEYS.indexOf(a) + 1) % RELIC_KEYS.length];

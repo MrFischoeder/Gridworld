@@ -13,7 +13,8 @@ import { updateEntities } from './world/interact';
 import { attack, animateVM, refreshWeaponVisibility, vmScene, syncViewmodel, updateGun, refreshGunLook } from './world/weapons';
 import { updateFx, updateStreaks } from './world/fx';
 import { updateStreaming, updateFieldEnemies, placeName, OW, groundAt, treeHit, animateCamps, keepOnPlanet } from './world/overworld';
-import { collides } from './world/player';
+import { collides, setWaterNote } from './world/player';
+import { animateWater } from './world/water';
 import { regionRoads } from './gen/roads';
 import { generateQuest } from './gen/quests';
 import { poisNear } from './gen/regions';
@@ -34,6 +35,7 @@ import { initTouch } from './ui/touch';
 import { initMenu, showMenu } from './ui/menu';
 
 G.char = loadChar();
+setWaterNote(logLine);
 calcStats(); G.hp = G.S.maxHp; G.ammo = G.gun.mag;
 
 initInput(() => { toggleMap(false); showMenu(); });
@@ -74,7 +76,7 @@ function frame(now: number) {
     updateGun(dt, !driving.v);
     if (driving.v) fireCannon(dt);
     updateDoors(dt);
-    if (outdoors) { updateFieldEnemies(dt); updateCreatures(dt, time); updateBandits(dt, time); updateRaiders(dt); animateCamps(time); smokeWrecks(dt); }
+    if (outdoors) { updateFieldEnemies(dt); updateCreatures(dt, time); updateBandits(dt, time); updateRaiders(dt); animateCamps(time); smokeWrecks(dt); animateWater(time); }
     updateDrones(dt);
     const boss = updateBosses(dt, time); updateOrbs(dt);
     updateBossBar(boss);

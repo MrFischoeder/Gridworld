@@ -3,6 +3,7 @@ import { fbm } from '../core/noise';
 import { hash } from '../core/rng';
 import { regionInfo, regionOf, poisNear, wrapR, CHUNK, REGION, WORLD_W, POLAR_Z, POLE_Z, type Poi, type Rect } from './regions';
 import { regionRoads, nearestOnRoad, roadBounds, type Road } from './roads';
+import { lakesIn, lakeBed, shoreR, type Lake, type WaterHere } from './water';
 
 export const STEP = 2, CELLS = CHUNK / STEP, VERTS = CELLS + 1;
 export const MAX_H = 25;
@@ -12,7 +13,7 @@ export const rectDist = (r: Rect, x: number, z: number) => Math.hypot(Math.max(r
 export const inRect = (r: Rect, x: number, z: number) => x >= r.x0 && x < r.x1 && z >= r.z0 && z < r.z1;
 
 export interface Pad { poi: Poi; y: number }
-export interface Features { pads: Pad[]; roads: Road[] }
+export interface Features { pads: Pad[]; roads: Road[]; lakes: Lake[] }
 
 const ROAD_BLEND = 5;
 /**
@@ -72,7 +73,7 @@ export class Terrain {
         if (b.x1 + m >= r.x0 && b.x0 - m <= r.x1 && b.z1 + m >= r.z0 && b.z0 - m <= r.z1) roads.push(road);
       }
     }
-    return { pads, roads };
+    return { pads, roads, lakes: lakesIn(this, r) };
   }
   chunkFeatures(cx: number, cz: number): Features {
     const k = key(cx, cz);
@@ -99,6 +100,7 @@ export class Terrain {
       if (d <= p.poi.flat) h = p.y;
       else if (d < p.poi.flat + p.poi.blend) h += (p.y - h) * (1 - smooth((d - p.poi.flat) / p.poi.blend));
     }
+    for (const l of f.lakes) { const b = lakeBed(l, x, z, h); if (b !== null) h = b; }
     return h;
   }
 
@@ -121,6 +123,16 @@ export class Terrain {
     const i = Math.min(CELLS - 1, Math.floor(lx)), j = Math.min(CELLS - 1, Math.floor(lz)), fx = lx - i, fz = lz - j;
     const h00 = a[i + VERTS * j], h10 = a[i + 1 + VERTS * j], h01 = a[i + VERTS * (j + 1)], h11 = a[i + 1 + VERTS * (j + 1)];
     return h00 + (h10 - h00) * fx + (h01 - h00) * fz + (h00 - h10 - h01 + h11) * fx * fz;
+  }
+  /** Standing water at a point: its surface level, how deep it is over the ground here, and its kind. */
+  water(x: number, z: number): WaterHere | null {
+    for (const l of this.chunkFeatures(Math.floor(x / CHUNK), Math.floor(z / CHUNK)).lakes) {
+      const dx = x - l.x, dz = z - l.z;
+      if (Math.hypot(dx, dz) > shoreR(l, Math.atan2(dz, dx)) * 1.3) continue;
+      const g = this.heightAt(x, z);
+      if (g < l.level) return { level: l.level, depth: l.level - g, kind: l.kind };
+    }
+    return null;
   }
   /** Forest density 0..1 at a point: regional amount modulated by large blotches of noise. */
   forest(x: number, z: number): number {

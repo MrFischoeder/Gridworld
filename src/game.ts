@@ -36,6 +36,10 @@ export const G = {
   ground: null as ((x: number, z: number) => number) | null,
   /** Extra solid obstacles that are not voxels (tree trunks). */
   obstacle: null as ((x: number, y: number, z: number, r: number) => boolean) | null,
+  /** Standing water at a point (open world only). */
+  water: null as ((x: number, z: number) => { level: number; depth: number; kind: 'fresh' | 'murky' | 'toxic' } | null) | null,
+  /** Swimming (deep water): weapons are away, movement is slow. */
+  swimming: false,
   mapOpen: false,
   playing: false, packOpen: false, dlgOpen: false, xferOpen: false, consoleOpen: false, firing: false,
   /** Console cheat: full health that never drops. */

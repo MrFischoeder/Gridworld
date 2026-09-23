@@ -39,6 +39,8 @@ export interface Vehicle {
 }
 export interface WorldHooks {
   height(x: number, z: number): number;
+  /** Depth of standing water at a point (0 on dry land). */
+  water(x: number, z: number): number;
   /** True where a vehicle may not go (places, trees, rocks...). r = clearance radius around the point. */
   blocked(x: number, z: number, r: number): boolean;
 }
@@ -388,11 +390,19 @@ export function vehicleHit(x: number, y: number, z: number, r: number): boolean 
 }
 
 // ---------- driving ----------
+let deepWarnAt = 0, blockedByWater = false;
+function deepWarn(v: Vehicle) {
+  if (performance.now() < deepWarnAt) return;
+  deepWarnAt = performance.now() + 4000;
+  showToast('Too deep'); logLine(`The water is too deep for the ${vehicleTitle(v.st.model)} (it can ford ${v.spec.wade} m).`);
+}
 function hullBlocked(v: Vehicle, x: number, z: number, h: number): boolean {
+  blockedByWater = false;
   if (!hooks) return false;
   const probe = { st: { x, z, heading: h } }, s = v.spec, hl = s.length / 2, hw = s.width / 2;
   for (const [lx, lz] of [[-hw, hl], [hw, hl], [-hw, -hl], [hw, -hl], [0, hl], [0, -hl], [-hw, 0], [hw, 0]]) {
     const [px, pz] = toWorld(probe, lx, lz);
+    if (hooks.water(px, pz) > s.wade) { blockedByWater = true; if (v === driving.v) deepWarn(v); return true; } // too deep to ford
     if (villageDist(G.char.world, px, pz, 60) < 1 || hooks.blocked(px, pz, 0.4)) return true;
   }
   for (const o of vehicles) if (o !== v && Math.hypot(o.st.x - x, o.st.z - z) < (o.spec.length + s.length) / 2 * 0.8) {
@@ -418,7 +428,8 @@ export function updateDriving(dt: number) {
   // too steep to climb?
   const H = hooks!.height, ahead = H(nx + fx * s.length / 2, nz + fz * s.length / 2), behind = H(nx - fx * s.length / 2, nz - fz * s.length / 2);
   const climb = (ahead - behind) / s.length * Math.sign(v.speed || 1);
-  if (hullBlocked(v, nx, nz, nh) || climb > 0.8) {
+  if (hullBlocked(v, nx, nz, nh) && blockedByWater) v.speed = 0; // the water is too deep: it just won't go on
+  else if (hullBlocked(v, nx, nz, nh) || climb > 0.8) {
     const impact = Math.abs(v.speed);
     if (impact > 6) showToast('Crash!');
     v.speed = -v.speed * 0.25;

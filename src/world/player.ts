@@ -5,6 +5,9 @@ import { rayVoxel, emptyAt as spaceEmptyAt, type Vec3Like } from '../core/voxel'
 import { V } from './render';
 
 export const R = 0.3, H = 1.7, EYE = 1.55, EPS = 1e-4, GRAV = 20, JUMP = 7.2;
+/** Log hook for water messages (set by the HUD owner; keeps this module free of UI imports). */
+export let onWaterNote: (s: string) => void = () => {};
+export const setWaterNote = (f: (s: string) => void) => { onWaterNote = f; };
 
 export const MAX_SLOPE = 0.85, STEP_UP = 0.6;
 
@@ -61,24 +64,40 @@ function settleOnGround(wasOnGround: boolean) {
   }
 }
 
+/** Water deeper than this over the feet lifts the player off the bottom: swimming. */
+export const SWIM_DEPTH = 1.2;
+let toxicWarn = 0;
 /** One physics step from input. Returns whether the player is walking (for view bob). */
 export function updatePlayer(dt: number): boolean {
   const { keys, stick, vel, pos } = G;
   let f = (keys.KeyW ? 1 : 0) - (keys.KeyS ? 1 : 0) - stick.dy, s = (keys.KeyD ? 1 : 0) - (keys.KeyA ? 1 : 0) + stick.dx;
   const m = Math.hypot(f, s); if (m > 1) { f /= m; s /= m; }
   const moving = m > 0.1 && G.onGround;
-  const speed = ((keys.ShiftLeft || keys.ShiftRight) ? 9 : 6) * G.S.speed;
+  // water: wading slows you down, deeper water makes you swim (at the surface; diving comes later)
+  const w = G.water ? G.water(pos.x, pos.z) : null, wet = w ? w.level - pos.y : 0;
+  G.swimming = !!w && wet > SWIM_DEPTH;
+  if (w && w.kind === 'toxic' && wet > 0.15 && !G.god) {
+    G.hp -= 6 * dt; G.dmgFlash = Math.max(G.dmgFlash, 0.2);
+    if ((toxicWarn -= dt) <= 0) { toxicWarn = 4; onWaterNote('The water burns your skin! Get out!'); }
+  }
+  const speed = ((keys.ShiftLeft || keys.ShiftRight) ? 9 : 6) * G.S.speed * (G.swimming ? 0.45 : wet > 0.45 ? 0.65 : 1);
   const fw = V(-Math.sin(G.yaw), 0, -Math.cos(G.yaw)), rt = V(Math.cos(G.yaw), 0, -Math.sin(G.yaw));
   const want = fw.multiplyScalar(f * speed).addScaledVector(rt, s * speed);
-  const k = G.onGround ? 14 : 3;
+  const k = G.swimming ? 5 : G.onGround ? 14 : 3;
   vel.x += (want.x - vel.x) * Math.min(1, k * dt); vel.z += (want.z - vel.z) * Math.min(1, k * dt);
-  if ((keys.Space || G.touchJump) && G.onGround) { vel.y = JUMP; G.onGround = false; }
-  vel.y -= GRAV * dt;
+  if (G.swimming && w) {
+    // float with the head above the surface
+    const target = w.level - SWIM_DEPTH - 0.05;
+    vel.y += ((target - pos.y) * 5 - vel.y) * Math.min(1, dt * 6);
+  } else {
+    if ((keys.Space || G.touchJump) && G.onGround) { vel.y = JUMP * (wet > 0.45 ? 0.6 : 1); G.onGround = false; }
+    vel.y -= GRAV * dt;
+  }
   const was = G.onGround;
   if (moveAxis('x', vel.x * dt)) vel.x = 0;
   if (moveAxis('z', vel.z * dt)) vel.z = 0;
   G.onGround = false;
   if (moveAxis('y', vel.y * dt)) { if (vel.y < 0) { G.onGround = true; pos.y = Math.floor(pos.y + 0.001); } vel.y = 0; }
-  settleOnGround(was && vel.y <= 0);
+  if (!G.swimming) settleOnGround(was && vel.y <= 0);
   return moving;
 }

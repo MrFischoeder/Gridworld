@@ -54,7 +54,7 @@ function setLocationLook(outdoors: boolean) {
   refreshWeaponVisibility();
 }
 /** Weapons are holstered inside the village walls and drawn everywhere else. */
-setArmedRule(() => !driving.v && (G.char.loc === 'dungeon' || !inVillage(G.pos.x, G.pos.z)));
+setArmedRule(() => !driving.v && !G.swimming && (G.char.loc === 'dungeon' || !inVillage(G.pos.x, G.pos.z)));
 
 // ---------- dungeon ----------
 const ruinName = (id: number) => findPoi(G.char.world, id)?.name ?? 'Ruins';

@@ -30,6 +30,8 @@ export interface VehicleSpec {
   hull: number;
   /** Fuel tank (litres) and consumption (litres per km at full throttle). */
   tank: number; fuelUse: number;
+  /** Deepest water it can drive through (m). */
+  wade: number;
 }
 
 export const VEHICLES: Record<VehicleModel, VehicleSpec> = {
@@ -38,14 +40,14 @@ export const VEHICLES: Record<VehicleModel, VehicleSpec> = {
     seats: 2, trunk: 8, length: 4.2, width: 2.1, height: 1.8, wheelR: 0.48, wheelW: 0.38,
     axles: [1.35, -1.3], track: 0.92, maxSpeed: 22, accel: 9, turn: 1.9, enclosed: false, price: 350,
     eye: [0.42, 1.55, -0.1], door: [1.6, 0], rear: [0, -2.9], front: [0, 2.9], mount: [0, 1.84, -0.3], wheelItem: 'wheelL',
-    hull: 120, tank: 60, fuelUse: 9,
+    hull: 120, tank: 60, fuelUse: 9, wade: 0.6,
   },
   mastodon: {
     designation: 'HTV-6', name: 'Mastodon', role: 'Heavy transport vehicle',
     seats: 2, trunk: 24, length: 9.8, width: 3.6, height: 3.4, wheelR: 0.82, wheelW: 0.6,
     axles: [3.3, -1.6, -3.4], track: 1.45, maxSpeed: 14, accel: 4.5, turn: 1.15, enclosed: true, price: 900,
     eye: [0.7, 2.75, 3.4], door: [2.4, 3.2], rear: [0, -5.6], front: [0, 5.8], mount: [0, 3.26, 3.0], wheelItem: 'wheelH',
-    hull: 320, tank: 220, fuelUse: 28,
+    hull: 320, tank: 220, fuelUse: 28, wade: 1.2,
   },
 };
 export const vehicleTitle = (m: VehicleModel) => VEHICLES[m].designation + ' ' + VEHICLES[m].name;

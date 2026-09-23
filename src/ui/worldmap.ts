@@ -31,6 +31,7 @@ function tile(cx: number, cz: number): HTMLCanvasElement {
     if (band) { g += 30; b += 12; }
     if (f.pads.some((p) => inRect(p.poi.rect, x, z))) { r = 10; g = 90; b = 40; }
     else if (f.roads.some((rd) => nearest(rd.pts, x, z) < rd.half + 0.5)) { r = 60; g = 170; b = 90; }
+    else if (f.lakes.length) { const w = T.water(x, z); if (w) [r, g, b] = w.kind === 'toxic' ? [110, 190, 20] : w.kind === 'murky' ? [70, 80, 30] : [15, 110, 100]; }
     const o = 4 * (i + CELLS * j); img.data[o] = r; img.data[o + 1] = g; img.data[o + 2] = b; img.data[o + 3] = 255;
   }
   ctx.putImageData(img, 0, 0);

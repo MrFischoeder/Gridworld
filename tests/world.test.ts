@@ -39,13 +39,14 @@ describe('regions and places', () => {
 });
 
 describe('terrain', () => {
-  it('is deterministic and stays within 0..25 m', () => {
+  it('is deterministic and stays within 0..25 m (lake beds may dip below)', () => {
     for (const w of WORLDS.slice(0, 10)) {
       const a = new Terrain(w), b = new Terrain(w);
       let lo = Infinity, hi = -Infinity;
       for (let x = -900; x <= 900; x += 97) for (let z = -900; z <= 900; z += 89) {
         const h = a.heightAt(x, z);
         expect(h).toBe(b.heightAt(x, z));
+        if (a.water(x, z)) { expect(h).toBeGreaterThan(-8); continue; }
         lo = Math.min(lo, h); hi = Math.max(hi, h);
       }
       expect(lo).toBeGreaterThanOrEqual(0); expect(hi).toBeLessThanOrEqual(MAX_H);

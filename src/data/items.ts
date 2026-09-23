@@ -11,6 +11,9 @@ export const ITEMS = {
   key: { name: 'Access Key', ab: 'KEY', type: 'key', desc: 'Opens one locked door. Stand at the door and press E.', stack: 9 },
   bread: { name: 'Bread', ab: 'BRD', type: 'cons', desc: 'restores 20 HP', stack: 9 },
   stew: { name: 'Hearty Stew', ab: 'STW', type: 'cons', desc: 'restores 45 HP', stack: 5 },
+  flask: { name: 'Empty Flask', ab: 'FLS', type: 'cons', desc: 'fill it at a well or a lake (E at the water)', stack: 3 },
+  waterF: { name: 'Flask of Clean Water', ab: 'H2O', type: 'cons', desc: 'clean water: restores 15 HP (the flask is kept)', stack: 3 },
+  waterM: { name: 'Flask of Murky Water', ab: 'MRK', type: 'cons', desc: 'swamp water: restores 5 HP, but it may turn your stomach', stack: 3 },
   recall: { name: 'Recall Beacon', ab: 'RCL', type: 'cons', desc: 'returns you to the village from anywhere', stack: 5 },
   emp: { name: 'EMP Charge', ab: 'EMP', type: 'cons', desc: 'damages every drone within 6 m (G key)', stack: 5 },
   book: { name: 'Ancient Book', ab: 'BOK', type: 'quest', desc: 'a crumbling book of the old machine folk; Elder Bogdan wants it', stack: 1 },
@@ -39,7 +42,7 @@ export const INV_SIZE = 12, MOD_SIZE = 3;
 /** What Mirek charges for vehicle parts. He buys them back for only a fifth of that. */
 export const PART_PRICE: Partial<Record<ItemKey, number>> = { wheelL: 40, wheelH: 90, engine: 70, plating: 60, turbo: 220, eguard: 150, cannon: 400 };
 export const PART_BUYBACK = 0.2;
-export const HEAL: Partial<Record<ItemKey, number>> = { medkit: 50, bread: 20, stew: 45 };
+export const HEAL: Partial<Record<ItemKey, number>> = { medkit: 50, bread: 20, stew: 45, waterF: 15, waterM: 5 };
 /** Weapon attachments and what Radek the blacksmith charges for them. */
 export const ATTACH_PRICE: Partial<Record<ItemKey, number>> = { reflex: 80, scope: 180, barL: 140, barR: 160, magX: 90, magD: 200 };
 export const ATTACH_KEYS = Object.keys(ATTACH_PRICE) as ItemKey[];

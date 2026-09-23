@@ -31,6 +31,7 @@ export function clearSpot(t: Terrain, model: VehicleModel, x: number, z: number,
   const s = VEHICLES[model], fx = Math.sin(heading), fz = Math.cos(heading), hl = s.length / 2 + 1, r = Math.max(s.length, s.width) / 2 + 1.5;
   if (poisNear(t.world, x, z, 80).some((p) => rectDist(p.rect, x, z) < r + 2)) return false;
   if (Math.abs(t.heightAt(x + fx * hl, z + fz * hl) - t.heightAt(x - fx * hl, z - fz * hl)) > s.length * 0.25) return false;
+  if (t.water(x, z) || t.water(x + fx * hl, z + fz * hl) || t.water(x - fx * hl, z - fz * hl)) return false; // not in a lake
   const cx0 = Math.floor((x - r) / CHUNK), cx1 = Math.floor((x + r) / CHUNK), cz0 = Math.floor((z - r) / CHUNK), cz1 = Math.floor((z + r) / CHUNK);
   for (let cx = cx0; cx <= cx1; cx++) for (let cz = cz0; cz <= cz1; cz++) {
     if (treeTrunks(t, cx, cz).some((tr) => Math.hypot(tr.x - x, tr.z - z) < r + 1)) return false;

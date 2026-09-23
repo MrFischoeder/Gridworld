@@ -9,7 +9,8 @@ import { el } from '../ui/hud';
 import { openDialog } from '../ui/dialog';
 import { unlockDoor } from './doors';
 import { openChest, chestHasLoot } from './loot';
-import { OW, campStashes } from './overworld';
+import { OW, campStashes, loadedWells } from './overworld';
+import { waterSource, sourcePrompt, useWater, type WaterSource } from './water';
 import { openStash } from './loot';
 import { openBoard } from '../ui/board';
 import { driving, vehicleSpot, useVehicle, leave, type VehicleSpot } from './vehicles';
@@ -18,6 +19,7 @@ import { driving, vehicleSpot, useVehicle, leave, type VehicleSpot } from './veh
 export let npcsActive = () => G.char.loc === 'overworld' && W.npcs.length > 0;
 export function setNpcsActive(f: () => boolean) { npcsActive = f; }
 
+let nearWater: WaterSource | null = null;
 let nearVehicle: VehicleSpot | null = null, nearBoard = false, nearStash: ReturnType<typeof campStashes>[number] | null = null;
 export function updateEntities(dt: number, time: number) {
   const pos = G.pos;
@@ -52,6 +54,7 @@ export function updateEntities(dt: number, time: number) {
     if (along > 0.9 && lat < 1.6 && Math.abs(pos.y - p.y0) < 1 && G.playing && !G.trans) enter = p;
   }
   const { nearNpc, nearLock, nearChest, nearPortal } = W, prompt = el.prompt;
+  nearWater = G.char.loc === 'overworld' && !nearNpc && !nearChest && !nearBoard && !nearStash && !nearVehicle ? waterSource(loadedWells()) : null;
   if (nearNpc) { prompt.className = ''; prompt.textContent = G.isTouch ? nearNpc.name : 'E — talk to ' + nearNpc.name; }
   else if (nearLock) {
     prompt.className = 'lock';
@@ -62,7 +65,8 @@ export function updateEntities(dt: number, time: number) {
   else if (nearStash) { prompt.className = ''; prompt.textContent = G.isTouch ? '' : 'E — search the bandit stash'; }
   else if (nearVehicle) { prompt.className = ''; prompt.textContent = G.isTouch ? '' : 'E — ' + nearVehicle.label; }
   else if (nearPortal) { prompt.className = 'portal'; prompt.textContent = nearPortal.label; }
-  prompt.style.display = (nearNpc || nearLock || nearChest || nearBoard || nearStash || nearVehicle || nearPortal) && G.playing && prompt.textContent ? 'block' : 'none';
+  else if (nearWater) { prompt.className = nearWater.kind === 'toxic' ? 'lock' : ''; prompt.textContent = sourcePrompt(nearWater); }
+  prompt.style.display = (nearNpc || nearLock || nearChest || nearBoard || nearStash || nearVehicle || nearPortal || nearWater) && G.playing && prompt.textContent ? 'block' : 'none';
   const canUse = nearNpc || nearChest || nearBoard || nearStash || nearVehicle || (nearLock && hasItem('key'));
   el.bUse.textContent = nearNpc ? 'TALK' : nearLock ? 'UNLOCK' : nearChest ? 'OPEN' : nearBoard ? 'READ' : nearStash ? 'OPEN' : nearVehicle ? (nearVehicle.kind === 'drive' ? 'DRIVE' : 'TRUNK') : 'OPEN';
   el.bUse.classList.toggle('on', !!canUse && G.playing);
@@ -81,4 +85,5 @@ export function interact() {
   else if (nearBoard) openBoard();
   else if (nearStash) openStash(nearStash.id, nearStash.name);
   else if (nearVehicle) useVehicle(nearVehicle);
+  else if (nearWater) useWater(nearWater);
 }
