@@ -4,6 +4,7 @@ import { saveChar } from '../character';
 import { toVillage } from '../world/level';
 import { spawnCreatureNear } from '../world/creatures';
 import { spawnBanditsNear } from '../world/bandits';
+import { spawnRaiderNear, forceAmbush } from '../world/raiders';
 import { CREATURES, type CreatureKind } from '../data/creatures';
 import { $, logLine, showToast } from './hud';
 import { lockPointer } from './input';
@@ -32,10 +33,12 @@ const COMMANDS: Record<string, { help: string; run: (args: string[]) => string }
     run: () => { if (G.trans) return 'Busy travelling, try again in a moment.'; close(); toVillage('recall'); showToast('Gridholm'); return 'Home.'; },
   },
   clear: { help: 'clear this log', run: () => { out.innerHTML = ''; return ''; } },
+  ambush: { help: 'set up a bandit ambush ahead (stand on a road)', run: () => (forceAmbush() ? 'Something moves by the road ahead...' : 'Stand on a road, away from places.') },
   spawn: {
-    help: 'spawn ravager | bramble | leechwing | bandits in front of you (open world)',
+    help: 'spawn ravager | bramble | leechwing | bandits | raider [mastodon] (open world)',
     run: (a) => {
       if (a[0] === 'bandits') return spawnBanditsNear() ? 'Bandits!' : 'Only in the open world.';
+      if (a[0] === 'raider') return spawnRaiderNear(a[1] === 'mastodon' ? 'mastodon' : 'scout') ? 'Raiders incoming.' : 'Only in the open world.';
       const k = a[0] as CreatureKind;
       if (!(k in CREATURES)) return 'Usage: spawn ravager | bramble | leechwing | bandits';
       return spawnCreatureNear(k) ? `${CREATURES[k].name} spawned.` : 'Only in the open world.';

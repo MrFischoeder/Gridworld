@@ -19,6 +19,7 @@ import { makeDrone, foeRules, type Drone } from './enemies';
 import { spawnVehicles, clearVehicles, vehicleHit, syncFound, shielded } from './vehicles';
 import { setCreatureEnv, clearCreatures } from './creatures';
 import { setBanditEnv, clearBandits, spawnCamp, despawnCamp } from './bandits';
+import { setRaiderEnv, clearRaiders, ambushHit } from './raiders';
 import { generateCamp, type CampMap } from '../gen/camps';
 import { add as addMat } from './render';
 import { YARD } from '../gen/vehicles';
@@ -306,7 +307,7 @@ export function openWorld(x: number, z: number) {
   const w = G.char.world;
   if (!OW.terrain || OW.terrain.world !== w) OW.terrain = new Terrain(w);
   closeWorld();
-  G.space = space; G.ground = groundAt; G.obstacle = (px, py, pz, r) => treeHit(px, py, pz, r) || vehicleHit(px, py, pz, r);
+  G.space = space; G.ground = groundAt; G.obstacle = (px, py, pz, r) => treeHit(px, py, pz, r) || vehicleHit(px, py, pz, r) || ambushHit(px, py, pz, r);
   foeRules.blocked = (p) => rectDist(VILLAGE_RECT, p.x, p.z) < 2;
   foeRules.playerSafe = () => inVillage(G.pos.x, G.pos.z);
   foeRules.ground = (px, pz) => OW.terrain!.heightAt(px, pz);
@@ -318,7 +319,7 @@ export function openWorld(x: number, z: number) {
   const T = OW.terrain;
   spawnVehicles({
     height: (px, pz) => T.heightAt(px, pz),
-    blocked: (px, pz, r) => poisNear(T.world, px, pz, 40).some((p) => rectDist(p.rect, px, pz) < r) || treeHit(px, T.heightAt(px, pz) + 0.5, pz, r),
+    blocked: (px, pz, r) => poisNear(T.world, px, pz, 40).some((p) => rectDist(p.rect, px, pz) < r) || treeHit(px, T.heightAt(px, pz) + 0.5, pz, r) || ambushHit(px, 0, pz, r),
   });
   syncFound(T, x, z);
   const envHooks = {
@@ -329,6 +330,7 @@ export function openWorld(x: number, z: number) {
   };
   setCreatureEnv(envHooks);
   setBanditEnv(envHooks);
+  setRaiderEnv({ terrain: T, danger, forbidden: envHooks.forbidden });
   // camps loaded before the bandit hooks existed get their bandits now
   for (const s of OW.structs.values()) if (s.camp) spawnCamp(s.camp);
 }
@@ -336,6 +338,7 @@ export function closeWorld() {
   clearVehicles();
   setCreatureEnv(null); clearCreatures();
   setBanditEnv(null); clearBandits();
+  setRaiderEnv(null); clearRaiders();
   for (const c of OW.chunks.values()) dropChunk(c);
   OW.chunks.clear();
   for (const s of [...OW.structs.values()]) dropStruct(s);

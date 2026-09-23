@@ -11,6 +11,7 @@ import { showToast, logLine, el } from '../ui/hud';
 import type { BossSpec } from '../gen/dungeon';
 import { hurtCreature, type Creature } from './creatures';
 import { hurtBandit, type Bandit } from './bandits';
+import { hurtRaider, raiders, type Raider } from './raiders';
 import { onKill } from './quests';
 
 export interface Drone {
@@ -25,7 +26,7 @@ export interface Boss {
   hp: number; maxHp: number; flash: number; engaged: boolean; fireT: number; name: string;
 }
 export interface Orb { m: THREE.LineSegments; p: THREE.Vector3; v: THREE.Vector3; dmg: number; life: number }
-export type Foe = Drone | Boss | Creature | Bandit;
+export type Foe = Drone | Boss | Creature | Bandit | Raider;
 
 // ---------- drones ----------
 export function makeDrone(): Drone {
@@ -155,10 +156,10 @@ function killBoss(b: Boss) {
   scene.remove(b.g); W.bosses.splice(W.bosses.indexOf(b), 1);
   showToast(b.name + ' destroyed');
 }
-export const foes = (): Foe[] => (W.drones as Foe[]).concat(W.bosses, W.creatures, W.bandits);
+export const foes = (): Foe[] => (W.drones as Foe[]).concat(W.bosses, W.creatures, W.bandits, raiders);
 
 export function damageFoe(t: Foe, dmg: number) {
-  if ('kind' in t) { if (t.kind === 'bandit') hurtBandit(t, dmg); else hurtCreature(t, dmg); return; }
+  if ('kind' in t) { if (t.kind === 'bandit') hurtBandit(t, dmg); else if (t.kind === 'raider') hurtRaider(t, dmg); else hurtCreature(t, dmg); return; }
   if (t.boss) { t.hp -= dmg; t.flash = 0.1; t.engaged = true; G.hitFlash = 0.15; if (t.hp <= 0) killBoss(t); return; }
   t.hp -= dmg; t.flash = 0.12; t.chasing = true; G.hitFlash = 0.15;
   if (t.hp <= 0) {

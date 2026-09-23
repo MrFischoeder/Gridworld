@@ -34,6 +34,8 @@ export interface Vehicle {
   turret: THREE.Group | null;
   /** Metres driven since the last wear tick. */
   odo: number;
+  /** Driven by bandits (world/raiders.ts): not claimable until they are beaten. */
+  ai?: boolean;
   speed: number; spin: number; steer: number; y: number; pitch: number; roll: number;
 }
 export interface WorldHooks {
@@ -290,7 +292,7 @@ export interface VehicleSpot { v: Vehicle; kind: 'drive' | 'trunk' | 'service'; 
 export function vehicleSpot(): VehicleSpot | null {
   let best: VehicleSpot | null = null, bd = 2.4;
   for (const v of vehicles) {
-    if (Math.abs(G.pos.y - v.y) > 2.5) continue;
+    if (v.ai || Math.abs(G.pos.y - v.y) > 2.5) continue;
     for (const side of [-1, 1]) {
       const [x, z] = toWorld(v, side * v.spec.door[0], v.spec.door[1]), d = Math.hypot(x - G.pos.x, z - G.pos.z);
       if (d < bd) { bd = d; best = { v, kind: 'drive', label: (v.claimed ? 'drive the ' : 'take the abandoned ') + vehicleTitle(v.st.model) }; }
@@ -436,3 +438,55 @@ export function sellVehicle(id: string): string {
   saveChar();
   return `Sold the ${vehicleTitle(offer.v.st.model)} for ${offer.price} gold.`;
 }
+
+// ---------- vehicles driven by bandits ----------
+/** A hostile vehicle: nobody's property until its crew is beaten (then it is an abandoned, claimable wreck). */
+export function spawnAIVehicle(st: VehicleState): Vehicle {
+  const v = makeVehicle(st, false); v.ai = true; tint(v, true); vehicles.push(v); return v;
+}
+/** Hostile vehicles are drawn amber while bandits hold them (materials swapped on the body batch only). */
+const hostileLine = lineMat(0xffb347), keptMats = new WeakMap<THREE.Object3D, THREE.Material>();
+function tint(v: Vehicle, hostile: boolean) {
+  v.group.children[0].traverse((o) => {
+    const l = o as THREE.LineSegments;
+    if (!l.isLineSegments) return;
+    if (hostile) { keptMats.set(l, l.material as THREE.Material); l.material = hostileLine; }
+    else { const m = keptMats.get(l); if (m) l.material = m; }
+  });
+}
+/** The raiders are beaten: the vehicle stays where it is, a claimable wreck. */
+export function releaseAI(v: Vehicle) { v.ai = false; v.speed = 0; v.steer = 0; tint(v, false); refreshParts(v); pose(v); }
+export function removeVehicle(v: Vehicle) { const i = vehicles.indexOf(v); if (i >= 0) { dropVehicle(v); vehicles.splice(i, 1); } }
+/**
+ * Drive an AI vehicle towards a point with the same physics limits as the player's: steering rate, acceleration,
+ * obstacles, steep slopes. Returns false when it bumped into something this frame.
+ */
+export function steerVehicle(v: Vehicle, tx: number, tz: number, want: number, dt: number): boolean {
+  const s = v.spec, dx = tx - v.st.x, dz = tz - v.st.z;
+  // feelers: if the way towards the target is blocked a few metres ahead, fan out left and right for a clear line
+  let aim = Math.atan2(dx, dz);
+  if (want > 0) {
+    const clear = (a: number) => [3, 7].every((d) => !hullBlocked(v, v.st.x + Math.sin(a) * d, v.st.z + Math.cos(a) * d, a));
+    if (!clear(aim)) for (const o of [0.3, -0.3, 0.6, -0.6, 0.9, -0.9, 1.3, -1.3, 1.8, -1.8]) if (clear(aim + o)) { aim += o; break; }
+  }
+  let dh = aim - v.st.heading; dh = Math.atan2(Math.sin(dh), Math.cos(dh));
+  const reverse = want < 0;
+  // reversing: the rear points at the target, and the wheel turns the other way
+  if (reverse) { dh = Math.atan2(Math.sin(dh - Math.PI), Math.cos(dh - Math.PI)); dh = -dh; }
+  v.steer += (Math.max(-1, Math.min(1, dh * 1.6)) - v.steer) * Math.min(1, 5 * dt);
+  const target = Math.abs(dh) > 1.4 && !reverse ? want * 0.5 : want;
+  v.speed += Math.sign(target - v.speed) * Math.min(Math.abs(target - v.speed), s.accel * dt);
+  v.speed -= 9.8 * Math.sin(v.pitch) * dt * 0.6;
+  const turn = v.steer * s.turn * dt * Math.max(-1, Math.min(1, v.speed / 6));
+  const nh = v.st.heading + turn, [fx, fz] = fwd(nh), nx = v.st.x + fx * v.speed * dt, nz = v.st.z + fz * v.speed * dt;
+  const H = hooks!.height, ahead = H(nx + fx * s.length / 2, nz + fz * s.length / 2), behind = H(nx - fx * s.length / 2, nz - fz * s.length / 2);
+  let ok = true;
+  if (hullBlocked(v, nx, nz, nh) || (ahead - behind) / s.length * Math.sign(v.speed || 1) > 0.8) { v.speed = -v.speed * 0.25; ok = false; }
+  else { v.st.x = nx; v.st.z = nz; v.st.heading = nh; }
+  v.spin += v.speed / s.wheelR * dt;
+  pose(v);
+  return ok;
+}
+/** Point in world x/z from vehicle body coordinates. */
+export const bodyToWorld = (v: Vehicle, lx: number, lz: number) => toWorld(v, lx, lz);
+

@@ -9,6 +9,7 @@ import { saveChar } from '../character';
 import { drawPlayerArrow } from './minimap';
 import { vehicles, driving } from '../world/vehicles';
 import { questMarkers } from '../world/quests';
+import { raiders } from '../world/raiders';
 import { $ } from './hud';
 
 const tiles = new Map<string, HTMLCanvasElement>();
@@ -88,6 +89,7 @@ function drawArea(ctx: CanvasRenderingContext2D, w: number, h: number, ppm: numb
     ctx.strokeStyle = ctx.fillStyle = '#ffd060'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(x, y, labels ? 12 : 6, 0, 6.283); ctx.stroke(); ctx.lineWidth = 1;
     ctx.fillText('!', x, y + 4); if (labels) ctx.fillText(m.label, x, y - 16);
   }
+  for (const r of raiders) { ctx.fillStyle = '#ff6a4a'; ctx.fillRect(X(r.p.x) - 3, Z(r.p.z) - 3, 6, 6); }
   for (const b of W.bandits) { if (b.state === 'idle') continue; ctx.fillStyle = '#ff6a4a'; ctx.fillRect(X(b.p.x) - 2, Z(b.p.z) - 2, 4, 4); }
   for (const c of W.creatures) { if (c.state === 'roam') continue; ctx.fillStyle = '#ff9a3c'; ctx.fillRect(X(c.p.x) - 2, Z(c.p.z) - 2, 4, 4); }
   for (const t of W.drones) { if (!t.chasing) continue; ctx.fillStyle = '#ffb347'; ctx.fillRect(X(t.p.x) - 1.5, Z(t.p.z) - 1.5, 3, 3); }

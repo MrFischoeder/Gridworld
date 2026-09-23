@@ -26,6 +26,10 @@ export interface Bandit {
   hp: number; maxHp: number; flash: number;
   state: 'idle' | 'fight' | 'flee' | 'return'; timer: number; fireT: number; burst: number; strafe: number; hitT: number;
   home: THREE.Vector3; campId?: number; group: Bandit[]; level: number; fled: boolean;
+  /** How far they notice the player while waiting (ambushers lie low and wait until you are close). */
+  sight: number;
+  /** Set for roadside ambushers. */
+  ambush?: number;
 }
 interface Bolt { m: THREE.Line; p: THREE.Vector3; v: THREE.Vector3; dmg: number; life: number }
 const bolts: Bolt[] = [];
@@ -42,7 +46,7 @@ function armed(fig: Figure, role: BanditRole, mat: THREE.LineBasicMaterial) {
   fig.armR.rotation.x = role === 'bruiser' ? -0.4 : -1.35;
   fig.armL.rotation.x = role === 'bruiser' ? 0 : -1.1;
 }
-function make(role: BanditRole, at: THREE.Vector3, level: number, group: Bandit[], campId?: number): Bandit {
+export function spawnBandit(role: BanditRole, at: THREE.Vector3, level: number, group: Bandit[], campId?: number): Bandit {
   const color = role === 'leader' ? BOSS_COLOR : BANDIT, fig = makeFigure(color), mat = (fig.legL as THREE.Line).material as THREE.LineBasicMaterial;
   const g = new THREE.Group();
   g.add(fig.g); fig.g.position.y = -0.9;
@@ -56,7 +60,7 @@ function make(role: BanditRole, at: THREE.Vector3, level: number, group: Bandit[
   const b: Bandit = {
     kind: 'bandit', role, g, fig, mat, p: at.clone(), heading: Math.random() * 6.28, speed: 0, r: 0.55,
     hp, maxHp: hp, flash: 0, state: 'idle', timer: Math.random() * 3, fireT: 1 + Math.random(), burst: 0, strafe: Math.random() < 0.5 ? 1 : -1, hitT: 0,
-    home: at.clone(), campId, group, level, fled: false,
+    home: at.clone(), campId, group, level, fled: false, sight: 34,
   };
   group.push(b); W.bandits.push(b);
   return b;
@@ -67,7 +71,7 @@ const campClearedRecently = (id: number) => { const t = G.char.camps[id]; return
 export function spawnCamp(c: CampMap) {
   if (!env || campClearedRecently(c.id) || W.bandits.some((b) => b.campId === c.id)) return;
   const lv = env.danger(c.fire.x, c.fire.z), group: Bandit[] = [];
-  for (const s of c.spawns) make(s.role, V(s.x, c.y + 0.9, s.z), lv, group, c.id);
+  for (const s of c.spawns) spawnBandit(s.role, V(s.x, c.y + 0.9, s.z), lv, group, c.id);
 }
 export function despawnCamp(id: number) { for (const b of [...W.bandits]) if (b.campId === id) removeBandit(b); }
 export const campAlive = (id: number) => W.bandits.some((b) => b.campId === id);
@@ -96,18 +100,22 @@ function walk(b: Bandit, dx: number, dz: number, speed: number, dt: number) {
 function face(b: Bandit, dx: number, dz: number, dt: number) {
   let dh = Math.atan2(dx, dz) - b.heading; dh = Math.atan2(Math.sin(dh), Math.cos(dh)); b.heading += dh * Math.min(1, dt * 8);
 }
-function alert(b: Bandit) {
+export function alert(b: Bandit) {
   for (const m of b.group) if (m.state === 'idle' || m.state === 'return') { m.state = 'fight'; m.timer = 0; }
 }
 function fire(b: Bandit) {
   const muzzle = V(b.p.x + Math.sin(b.heading) * 0.5, b.p.y + 0.45, b.p.z + Math.cos(b.heading) * 0.5);
+  fireBolt(muzzle, (b.role === 'leader' ? 9 : 5) * (1 + b.level * 0.2), b.role === 'leader' ? BOSS_COLOR : BANDIT);
+}
+/** A bolt from `muzzle` at the player (with spread for distance and the player's speed). */
+export function fireBolt(muzzle: THREE.Vector3, dmg: number, color = BANDIT) {
   const target = V(G.pos.x, G.pos.y + 1.1, G.pos.z), dist = target.distanceTo(muzzle);
   const spread = 0.035 * dist + Math.hypot(G.vel.x, G.vel.z) * 0.1;
   target.x += (Math.random() - 0.5) * spread; target.y += (Math.random() - 0.5) * spread * 0.5; target.z += (Math.random() - 0.5) * spread;
   const v = target.sub(muzzle).normalize().multiplyScalar(30);
-  const m = new THREE.Line(new THREE.BufferGeometry().setFromPoints([V(0, 0, 0), v.clone().normalize().multiplyScalar(-0.9)]), addMat(b.role === 'leader' ? BOSS_COLOR : BANDIT));
+  const m = new THREE.Line(new THREE.BufferGeometry().setFromPoints([V(0, 0, 0), v.clone().normalize().multiplyScalar(-0.9)]), addMat(color));
   m.position.copy(muzzle); scene.add(m);
-  bolts.push({ m, p: muzzle, v, dmg: (b.role === 'leader' ? 9 : 5) * (1 + b.level * 0.2), life: 3 });
+  bolts.push({ m, p: muzzle.clone(), v, dmg, life: 3 });
 }
 let vehicleWarnT = 0;
 function updateBolts(dt: number) {
@@ -142,7 +150,7 @@ function think(b: Bandit, dt: number, time: number) {
   switch (b.state) {
     case 'idle':
       b.speed = 0; b.heading += Math.sin(time * 0.4 + b.home.x) * dt * 0.4;
-      if (!safe && dist < 34 && sees()) alert(b);
+      if (!safe && dist < b.sight && sees()) alert(b);
       break;
     case 'return': {
       const h = b.home.clone().sub(b.p); h.y = 0;
@@ -193,14 +201,14 @@ function patrols(dt: number) {
   if (!env || (patrolT -= dt) > 0) return;
   patrolT = 18;
   const pos = G.pos, lv = env.danger(pos.x, pos.z);
-  if (lv < 0.8 || W.bandits.filter((b) => b.campId === undefined).length >= 3 || Math.random() > 0.35) return;
+  if (lv < 0.8 || W.bandits.filter((b) => b.campId === undefined && b.ambush === undefined).length >= 3 || Math.random() > 0.35) return;
   const a = G.yaw + (Math.random() - 0.5) * 1.6, d = 60 + Math.random() * 20;   // behind the player
   const x = pos.x + Math.sin(a) * d, z = pos.z + Math.cos(a) * d;
   if (env.forbidden(x, z)) return;
   const group: Bandit[] = [], n = 2 + (Math.random() < 0.4 ? 1 : 0);
   for (let i = 0; i < n; i++) {
     const px = x + i * 1.6, pz = z + (i % 2) * 1.4;
-    make(i === 0 && Math.random() < 0.3 ? 'bruiser' : 'gunner', V(px, env.ground(px, pz) + 0.9, pz), lv, group);
+    spawnBandit(i === 0 && Math.random() < 0.3 ? 'bruiser' : 'gunner', V(px, env.ground(px, pz) + 0.9, pz), lv, group);
   }
 }
 
@@ -208,7 +216,7 @@ export function updateBandits(dt: number, time: number) {
   if (env) patrols(dt);
   for (let i = W.bandits.length - 1; i >= 0; i--) {
     const b = W.bandits[i];
-    if (b.campId === undefined && Math.hypot(b.p.x - G.pos.x, b.p.z - G.pos.z) > 160) { removeBandit(b); continue; }
+    if (b.campId === undefined && Math.hypot(b.p.x - G.pos.x, b.p.z - G.pos.z) > (b.ambush !== undefined ? 240 : 160)) { removeBandit(b); continue; }
     think(b, dt, time); animate(b, dt);
   }
   updateBolts(dt);
@@ -254,6 +262,6 @@ export function clearBandits() {
 export function spawnBanditsNear(n = 3) {
   if (!env) return false;
   const x = G.pos.x - Math.sin(G.yaw) * 20, z = G.pos.z - Math.cos(G.yaw) * 20, group: Bandit[] = [];
-  for (let i = 0; i < n; i++) make(i === 0 ? 'leader' : i === 1 ? 'bruiser' : 'gunner', V(x + i * 2, env.ground(x + i * 2, z) + 0.9, z), env.danger(x, z), group);
+  for (let i = 0; i < n; i++) spawnBandit(i === 0 ? 'leader' : i === 1 ? 'bruiser' : 'gunner', V(x + i * 2, env.ground(x + i * 2, z) + 0.9, z), env.danger(x, z), group);
   return true;
 }
