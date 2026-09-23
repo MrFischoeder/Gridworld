@@ -2,6 +2,7 @@
 // Spawns and movement use Math.random (unsaved, like drones); models are built from PropBatch.
 import * as THREE from 'three';
 import { nearX } from '../gen/regions';
+import { onNoise } from './noise';
 import { scene, V, lineMat } from './render';
 import { G, W } from '../game';
 import { PropBatch, sharedFill } from './props';
@@ -15,7 +16,7 @@ import { onKill } from './quests';
 import { ALPHA, type Quest } from '../gen/quests';
 import { textSprite } from './npc';
 
-type State = 'roam' | 'hunt' | 'dash' | 'retreat' | 'threat' | 'charge' | 'recover' | 'stalk' | 'dive' | 'climb';
+type State = 'roam' | 'hunt' | 'dash' | 'retreat' | 'threat' | 'charge' | 'recover' | 'stalk' | 'dive' | 'climb' | 'investigate';
 
 export interface Creature {
   kind: CreatureKind; boss?: false;
@@ -28,6 +29,10 @@ export interface Creature {
   pack: Creature[] | null; flank: number; home: THREE.Vector3; dir: THREE.Vector3; level: number; hurt: boolean;
   /** Part of a notice-board hunt (kept around longer, reported on death); the leader is the `alpha`. */
   questId?: string; alpha?: boolean; dmgMul: number;
+  /** Where a noise came from (state 'investigate'). */
+  noiseAt: THREE.Vector3 | null;
+  /** Leechwing flight: orbit angle, banking into turns, the creature it is hunting (null = the player), spotted you yet. */
+  orbit: number; bank: number; prey: Creature | null; spotted: boolean;
 }
 
 // ---------- models (local +z forward, origin at the body centre) ----------
@@ -186,10 +191,11 @@ function make(kind: CreatureKind, p: THREE.Vector3, level: number): Creature {
   const c: Creature = {
     kind, g, mat, p: p.clone(), heading: Math.random() * 6.28, speed: 0, hp, maxHp: hp, r: s.r, flash: 0,
     state: kind === 'leechwing' ? 'roam' : 'roam', timer: 0, anim: Math.random() * 10, legs: [], wings: [], head: null, jaw: null, tail: null,
-    pack: null, flank: 0, home: p.clone(), dir: V(0, 0, 1), level, hurt: false, dmgMul: 1,
+    pack: null, flank: 0, home: p.clone(), dir: V(Math.random() - 0.5, 0, Math.random() - 0.5).normalize(), level, hurt: false, dmgMul: 1,
+    noiseAt: null, orbit: Math.random() * 6.283, bank: 0, prey: null, spotted: false,
   };
   if (kind === 'ravager') ravagerModel(c); else if (kind === 'bramble') brambleModel(c); else if (kind === 'gnawer') gnawerModel(c); else leechwingModel(c);
-  g.position.copy(p); scene.add(g);
+  g.position.copy(p); g.rotation.order = 'YXZ'; scene.add(g);
   W.creatures.push(c);
   return c;
 }
@@ -202,16 +208,33 @@ export interface SpawnEnv {
   forbidden(x: number, z: number): boolean;
 }
 let env: SpawnEnv | null = null, spawnT = 2;
+/**
+ * How much noise there has been lately (gunfire): it makes creatures turn up faster and in greater numbers,
+ * coming from all around the place the shooting was heard. It fades over half a minute or so.
+ */
+let heat = 0, heard = false;
+const lastNoise = new THREE.Vector3();
+onNoise((at, r) => {
+  heat = Math.min(4, heat + r / 55); lastNoise.copy(at); heard = true;
+  for (const c of W.creatures) {
+    if (c.kind === 'bramble') continue; // grazers do not care about a bang in the distance
+    const reach = c.kind === 'leechwing' ? r * 1.8 : r; // flyers hear it from further and see it from above
+    if (Math.hypot(c.p.x - at.x, c.p.z - at.z) > reach) continue;
+    if (c.state === 'roam' || c.state === 'investigate') { c.state = 'investigate'; c.noiseAt = at.clone(); c.timer = 14; }
+  }
+});
 export function setCreatureEnv(e: SpawnEnv | null) { env = e; }
 
 function trySpawn() {
   if (!env) return;
   const pos = G.pos, fwx = -Math.sin(G.yaw), fwz = -Math.cos(G.yaw);
-  const lvNow = env.danger(pos.x, pos.z), cap = Math.min(14, 5 + Math.floor(lvNow * 2));
-  if (W.creatures.length >= cap || Math.random() > 0.5) return;
+  const lvNow = env.danger(pos.x, pos.z), cap = Math.min(18, 5 + Math.floor(lvNow * 2) + Math.floor(heat * 2));
+  if (W.creatures.length >= cap || Math.random() > 0.5 + heat * 0.12) return;
+  const drawn = heard && heat > 0.4 && Math.random() < 0.75, before = W.creatures.length; // the shooting draws them in
   for (let tries = 0; tries < 10; tries++) {
-    const a = Math.atan2(-fwx, -fwz) + (Math.random() - 0.5) * 2.6, d = 45 + Math.random() * 25;
-    const x = pos.x + Math.sin(a) * d, z = pos.z + Math.cos(a) * d;
+    const a = drawn ? Math.random() * 6.283 : Math.atan2(-fwx, -fwz) + (Math.random() - 0.5) * 2.6, d = drawn ? 55 + Math.random() * 25 : 45 + Math.random() * 25;
+    const bx = drawn ? lastNoise.x : pos.x, bz = drawn ? lastNoise.z : pos.z, x = bx + Math.sin(a) * d, z = bz + Math.cos(a) * d;
+    if (Math.hypot(x - pos.x, z - pos.z) < 40) continue;
     if (env.forbidden(x, z)) continue;
     const h = env.ground(x, z), lv = env.danger(x, z), roll = Math.random();
     if (Math.random() < 0.3) { // gnawers turn up anywhere: fields, woods, ruins, hills, lakesides, even the ice
@@ -223,7 +246,7 @@ function trySpawn() {
         c.pack = nest; c.flank = Math.random() * 6.283; nest.push(c);
       }
     } else if ((env.nearRuin(x, z) || h > 17) && roll < 0.6) {
-      make('leechwing', V(x, h + 14, z), lv);
+      make('leechwing', V(x, h + 22, z), lv);
     } else if (h < 9 && roll < 0.6) {
       const n = Math.random() < 0.3 ? 2 : 1;
       for (let i = 0; i < n; i++) make('bramble', V(x + i * 5, env.ground(x + i * 5, z) + CREATURES.bramble.lift, z), lv);
@@ -235,6 +258,7 @@ function trySpawn() {
         c.flank = (i - (n - 1) / 2) * 1.1; c.pack = pack; pack.push(c);
       }
     } else continue;
+    if (drawn) for (const c of W.creatures.slice(before)) if (c.kind !== 'bramble') { c.state = 'investigate'; c.noiseAt = lastNoise.clone(); c.timer = 20; }
     return;
   }
 }
@@ -336,42 +360,98 @@ function bramble(c: Creature, dt: number, to: THREE.Vector3, dist: number, safe:
   }
   if (c.head) c.head.rotation.x += ((c.state === 'charge' || c.state === 'threat' ? 0.45 : 0) - c.head.rotation.x) * Math.min(1, dt * 6);
 }
+/**
+ * Leechwings fly by steering: they turn only so fast, so every move is an arc. They soar high in wide, lazy
+ * loops over their range, watching the ground (they spot prey up to ~90 m off), then circle their quarry in
+ * big sweeps that tighten and drop with every pass, dive, and pull out in a long climbing arc. When no person
+ * is about they hunt Gnawers.
+ */
+const SIGHT = 90;
 function leechwing(c: Creature, dt: number, to: THREE.Vector3, dist: number, safe: boolean) {
-  const s = CREATURES.leechwing, g = env!.ground(c.p.x, c.p.z);
+  const s = CREATURES.leechwing, g = env!.ground(c.p.x, c.p.z), hd = Math.hypot(to.x, to.z);
   c.timer -= dt;
-  const flyTo = (x: number, y: number, z: number, speed: number) => {
-    const d = V(x - c.p.x, y - c.p.y, z - c.p.z), L = d.length();
-    if (L > 0.01) c.p.addScaledVector(d, Math.min(1, speed * dt / L));
-    if (Math.hypot(d.x, d.z) > 0.2) { let dh = Math.atan2(d.x, d.z) - c.heading; dh = Math.atan2(Math.sin(dh), Math.cos(dh)); c.heading += dh * Math.min(1, dt * 4); }
-    c.p.y = Math.max(c.p.y, env!.ground(c.p.x, c.p.z) + 1);
+  const steer = (tx: number, ty: number, tz: number, speed: number, turn: number) => {
+    const want = V(tx - c.p.x, ty - c.p.y, tz - c.p.z), L = want.length();
+    if (L > 0.01) want.divideScalar(L);
+    const before = Math.atan2(c.dir.x, c.dir.z);
+    c.dir.lerp(want, Math.min(1, turn * dt)).normalize();
+    let dh = Math.atan2(c.dir.x, c.dir.z) - before; dh = Math.atan2(Math.sin(dh), Math.cos(dh));
+    c.bank += (Math.max(-0.9, Math.min(0.9, -dh / Math.max(dt, 1e-3) * 0.45)) - c.bank) * Math.min(1, dt * 3); // lean into the turn
+    c.p.addScaledVector(c.dir, speed * dt);
+    const floor = env!.ground(c.p.x, c.p.z) + 2;
+    if (c.p.y < floor) { c.p.y = floor; if (c.dir.y < 0.1) c.dir.y = 0.1; }
+    c.heading = Math.atan2(c.dir.x, c.dir.z); c.speed = speed;
   };
-  const hd = Math.hypot(to.x, to.z);
-  if (safe && c.state !== 'roam' && c.state !== 'climb') { c.state = 'climb'; c.timer = 2; }
+  const seesPlayer = () => !safe && hd < SIGHT && rayWorld(c.p, to.clone().normalize(), dist) >= dist - 1;
+  if (c.prey && !W.creatures.includes(c.prey)) c.prey = null; // someone else got it
+  const target = c.prey ? c.prey.p : V(G.pos.x, G.pos.y + 1.1, G.pos.z);
+  if (safe && !c.prey && (c.state === 'stalk' || c.state === 'dive')) { c.state = 'climb'; c.timer = 2; }
+  const lookAround = () => {
+    if (c.timer > 0) return;
+    c.timer = 0.6;
+    if (seesPlayer()) {
+      c.prey = null; c.state = 'stalk'; c.timer = 6 + Math.random() * 4; c.orbit = Math.atan2(c.p.x - G.pos.x, c.p.z - G.pos.z);
+      if (!c.spotted) { c.spotted = true; logLine('A Leechwing has spotted you from above.'); }
+      return;
+    }
+    const prey = W.creatures.find((o) => o.kind === 'gnawer' && o.p.distanceTo(c.p) < SIGHT * 0.8);
+    if (prey && Math.random() < 0.35) { c.prey = prey; c.state = 'stalk'; c.timer = 4 + Math.random() * 3; c.orbit = Math.atan2(c.p.x - prey.p.x, c.p.z - prey.p.z); }
+  };
   switch (c.state) {
-    case 'roam': { // circle the nest
-      c.anim += dt * 0.5;
-      flyTo(c.home.x + Math.cos(c.anim) * 10, g + 14, c.home.z + Math.sin(c.anim) * 10, 8);
-      if (!safe && hd < 38) { c.state = 'stalk'; c.timer = 1.5 + Math.random() * 1.5; }
+    case 'roam': { // soar in wide loops over its range, drifting up and down
+      c.orbit += dt * 0.1;
+      const R = 40 + 15 * Math.sin(c.orbit * 0.7 + c.flank);
+      steer(c.home.x + Math.cos(c.orbit) * R, g + 24 + 6 * Math.sin(c.orbit * 1.3), c.home.z + Math.sin(c.orbit * 1.4) * R * 0.8, 11, 0.6);
+      lookAround();
       break;
     }
-    case 'stalk': { // circle above the prey
-      c.anim += dt * 0.8;
-      flyTo(G.pos.x + Math.cos(c.anim) * 12, G.pos.y + 12, G.pos.z + Math.sin(c.anim) * 12, 10);
-      if (c.timer <= 0) { c.state = 'dive'; c.timer = 3; }
-      if (hd > 60 || safe) c.state = 'roam';
+    case 'investigate': { // something was heard: sweep over there high up and look
+      const n = c.noiseAt ?? c.home;
+      steer(n.x, env!.ground(n.x, n.z) + 26, n.z, 15, 0.8);
+      if (Math.hypot(n.x - c.p.x, n.z - c.p.z) < 25) { c.home.copy(n); c.state = 'roam'; c.timer = 0; }
+      if (c.timer < 10) lookAround();
       break;
     }
-    case 'dive':
-      flyTo(G.pos.x, G.pos.y + 1.2, G.pos.z, s.speed);
-      if (dist < 1.7) { bite((s.damage + 3 * c.level) * c.dmgMul); c.state = 'climb'; c.timer = 2; }
-      else if (c.timer <= 0 || c.p.y < env!.ground(c.p.x, c.p.z) + 1.2) { c.state = 'climb'; c.timer = 1.5; }
+    case 'stalk': { // circle the quarry: wide at first, tighter and lower with every pass
+      c.orbit += dt * 0.32;
+      const k = Math.max(0, c.timer), R = 14 + k * 2.6;
+      steer(target.x + Math.cos(c.orbit) * R, target.y + 10 + k * 1.3, target.z + Math.sin(c.orbit) * R, 13, 1.0);
+      if (c.timer <= 0) { c.state = 'dive'; c.timer = 3.5; }
+      if (!c.prey && (hd > SIGHT * 1.25 || safe)) { c.state = 'roam'; c.home.copy(c.p); c.timer = 2; }
       break;
-    case 'climb':
-      flyTo(c.p.x - to.x * 0.1, g + 16, c.p.z - to.z * 0.1, 9);
-      if (c.timer <= 0) { c.state = safe ? 'roam' : 'stalk'; c.timer = 2 + Math.random() * 2; }
+    }
+    case 'dive': {
+      steer(target.x, target.y, target.z, s.speed, 2.6);
+      const d = c.p.distanceTo(target);
+      if (c.prey && d < 1.6) { // caught one
+        const p = c.prey; c.prey = null; burst(p.p.clone(), HOSTILE, 12, 0.8); removeCreature(p);
+        c.state = 'climb'; c.timer = 3;
+      } else if (!c.prey && dist < 1.8) { bite((s.damage + 3 * c.level) * c.dmgMul); c.state = 'climb'; c.timer = 3; }
+      else if (c.timer <= 0) { c.state = 'climb'; c.timer = 2.5; }
       break;
+    }
+    case 'climb': // pull out in a long climbing arc, carrying on the way it was going
+      steer(c.p.x + c.dir.x * 30, g + 24, c.p.z + c.dir.z * 30, 14, 0.7);
+      if (c.timer <= 0) {
+        if (!safe && hd < SIGHT && !c.prey && c.spotted) { c.state = 'stalk'; c.timer = 5 + Math.random() * 3; }
+        else { c.state = 'roam'; c.home.copy(c.p); c.timer = 1; }
+      }
+      break;
+    default: c.state = 'roam';
   }
-  c.speed = c.state === 'dive' ? s.speed : 8;
+}
+
+/** Ground creatures that heard something walk over to have a look; seeing the player there sets them off. */
+function investigate(c: Creature, dt: number, to: THREE.Vector3, dist: number, safe: boolean) {
+  const n = c.noiseAt ?? c.home, s = CREATURES[c.kind];
+  c.timer -= dt;
+  walk(c, n.x - c.p.x, n.z - c.p.z, s.speed * 0.7, dt);
+  const sight = c.kind === 'gnawer' ? 18 : 24;
+  if (!safe && dist < sight && rayWorld(c.p, to.clone().normalize(), dist) >= dist - 0.3) {
+    for (const m of c.pack ?? [c]) { m.state = 'hunt'; m.timer = c.kind === 'ravager' ? 2 + Math.random() * 2 : Math.random() * 0.6; }
+    return;
+  }
+  if (Math.hypot(n.x - c.p.x, n.z - c.p.z) < 4 || c.timer <= 0) { c.home.set(n.x, c.home.y, n.z); c.state = 'roam'; c.timer = 0; }
 }
 
 /**
@@ -412,12 +492,14 @@ function gnawer(c: Creature, dt: number, to: THREE.Vector3, dist: number, safe: 
 /** Spawning, behaviour and animation of every creature (open world only). */
 export function updateCreatures(dt: number, time: number) {
   if (!env) return;
-  if ((spawnT -= dt) <= 0) { spawnT = 3; trySpawn(); }
+  heat *= Math.exp(-dt / 25);
+  if ((spawnT -= dt) <= 0) { spawnT = 3 / (1 + heat); trySpawn(); }
   const safe = foeRules.playerSafe(), head = V(G.pos.x, G.pos.y + 1.2, G.pos.z);
   for (let i = W.creatures.length - 1; i >= 0; i--) {
     const c = W.creatures[i], to = head.clone().sub(c.p), dist = to.length();
-    if (Math.hypot(to.x, to.z) > (c.questId ? 240 : 130)) { removeCreature(c); continue; }
-    if (c.kind === 'ravager') ravager(c, dt, to, dist, safe);
+    if (Math.hypot(to.x, to.z) > (c.questId ? 240 : c.kind === 'leechwing' ? 220 : 130)) { removeCreature(c); continue; }
+    if (c.state === 'investigate' && c.kind !== 'leechwing') investigate(c, dt, to, dist, safe);
+    else if (c.kind === 'ravager') ravager(c, dt, to, dist, safe);
     else if (c.kind === 'bramble') bramble(c, dt, to, dist, safe);
     else if (c.kind === 'gnawer') gnawer(c, dt, to, dist, safe);
     else leechwing(c, dt, to, dist, safe);
@@ -431,9 +513,11 @@ function animate(c: Creature, dt: number, time: number) {
   c.legs.forEach((l, i) => { l.rotation.x = (i === 0 || i === 3 ? 1 : -1) * sw; });
   if (c.tail) c.tail.rotation.y = Math.sin(time * (c.state === 'hunt' ? 12 : 4) + c.flank) * (c.state === 'hunt' ? 0.45 : 0.25);
   if (c.wings.length) {
-    const lift = c.state === 'dive' ? 0.95 : 0.5 + Math.sin(time * 9 + c.anim * 0.1) * 0.45;
+    // gliding on outstretched wings, beating hard when climbing, folded back in a dive; nose follows the flight path
+    const beat = c.state === 'climb' ? 0.5 + Math.sin(time * 11) * 0.45 : c.state === 'stalk' ? 0.25 + Math.sin(time * 5) * 0.2 : 0.12 + Math.sin(time * 2.2) * 0.1;
+    const lift = c.state === 'dive' ? 0.95 : beat;
     c.wings[0].rotation.z = -lift; c.wings[1].rotation.z = lift;
-    c.g.rotation.x = c.state === 'dive' ? 0.6 : 0;
+    c.g.rotation.x = -Math.asin(Math.max(-1, Math.min(1, c.dir.y))); c.g.rotation.z = c.bank;
   }
   c.flash -= dt;
   if (c.flash > 0) c.mat.color.setHex(0xffffff);
@@ -449,7 +533,7 @@ export function hurtCreature(c: Creature, dmg: number) {
   }
   c.hp -= dmg; c.flash = 0.12; c.hurt = true; G.hitFlash = 0.15;
   if (c.kind === 'ravager' && c.state === 'roam') for (const m of c.pack ?? [c]) { m.state = 'hunt'; m.timer = 2; }
-  if (c.kind === 'leechwing' && c.state === 'roam') { c.state = 'stalk'; c.timer = 1; }
+  if (c.kind === 'leechwing' && (c.state === 'roam' || c.state === 'investigate')) { c.prey = null; c.spotted = true; c.state = 'stalk'; c.timer = 2; }
   if (c.kind === 'gnawer') for (const m of c.pack ?? [c]) { m.hurt = true; if (m.state === 'roam') { m.state = 'hunt'; m.timer = 0; } }
   if (c.hp > 0) return;
   const at = c.p.clone(), s = CREATURES[c.kind];

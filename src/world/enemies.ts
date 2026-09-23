@@ -1,5 +1,6 @@
 // Drones, bosses (gate guardians and rare elites) and their projectiles.
 import * as THREE from 'three';
+import { onNoise } from './noise';
 import { scene, lineMat, add, V, circlePts, edgesOf } from './render';
 import { G, W } from '../game';
 import { floorAt } from '../core/voxel';
@@ -82,6 +83,9 @@ export function updateDrones(dt: number) {
     }
   }
 }
+
+// a shot close by sets field drones on the hunt
+onNoise((at, r) => { for (const t of W.drones) if (t.p.distanceTo(at) < (t.scout ? Math.min(r * 0.5, t.scout.lose) : r * 0.3)) t.chasing = true; });
 
 // ---------- bosses ----------
 const BOSS_NAMES = ['WARDEN', 'GATEKEEPER', 'OVERSEER', 'SENTINEL PRIME'];

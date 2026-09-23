@@ -1,6 +1,7 @@
 // Bandits: human enemies with guns and blades. They live in camps and patrol the wilds.
 // Unsaved (like drones and creatures) except that a cleared camp stays empty for a while (char.camps).
 import * as THREE from 'three';
+import { onNoise } from './noise';
 import { scene, V, add as addMat, fillMat } from './render';
 import { G, W } from '../game';
 import { makeFigure, textSprite, type Figure } from './npc';
@@ -104,6 +105,8 @@ function face(b: Bandit, dx: number, dz: number, dt: number) {
 export function alert(b: Bandit) {
   for (const m of b.group) if (m.state === 'idle' || m.state === 'return') { m.state = 'fight'; m.timer = 0; }
 }
+// gunfire nearby: bandits (who know what a shot sounds like) come for the shooter; ambushers keep lying low
+onNoise((at, r) => { for (const b of W.bandits) if (b.sight > 20 && b.p.distanceTo(at) < r * 0.8) alert(b); });
 function fire(b: Bandit) {
   const muzzle = V(b.p.x + Math.sin(b.heading) * 0.5, b.p.y + 0.45, b.p.z + Math.cos(b.heading) * 0.5);
   fireBolt(muzzle, (b.role === 'leader' ? 9 : 5) * (1 + b.level * 0.2), b.role === 'leader' ? BOSS_COLOR : BANDIT);

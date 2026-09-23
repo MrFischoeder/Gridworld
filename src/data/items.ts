@@ -31,6 +31,7 @@ export const ITEMS = {
   scope: { name: 'Long Scope', ab: 'SCP', type: 'attach', desc: 'optic: 3.5× zoom when aiming, +50 m range', stack: 1 },
   barL: { name: 'Long Barrel', ab: 'LBR', type: 'attach', desc: 'barrel: +25% damage, +20 m range, 10% slower fire', stack: 1 },
   barR: { name: 'Rapid Barrel', ab: 'RBR', type: 'attach', desc: 'barrel: fires 25% faster, -10% damage', stack: 1 },
+  barS: { name: 'Suppressor', ab: 'SUP', type: 'attach', desc: 'barrel: shots are heard 78% less far, -5% damage, -5 m range', stack: 1 },
   magX: { name: 'Extended Magazine', ab: 'EXM', type: 'attach', desc: 'magazine: +60% capacity', stack: 1 },
   magD: { name: 'Drum Magazine', ab: 'DRM', type: 'attach', desc: 'magazine: +150% capacity, reloads 40% slower', stack: 1 },
 } satisfies Record<string, ItemDef>;
@@ -44,5 +45,5 @@ export const PART_PRICE: Partial<Record<ItemKey, number>> = { wheelL: 40, wheelH
 export const PART_BUYBACK = 0.2;
 export const HEAL: Partial<Record<ItemKey, number>> = { medkit: 50, bread: 20, stew: 45, waterF: 15, waterM: 5 };
 /** Weapon attachments and what Radek the blacksmith charges for them. */
-export const ATTACH_PRICE: Partial<Record<ItemKey, number>> = { reflex: 80, scope: 180, barL: 140, barR: 160, magX: 90, magD: 200 };
+export const ATTACH_PRICE: Partial<Record<ItemKey, number>> = { reflex: 80, scope: 180, barL: 140, barR: 160, barS: 150, magX: 90, magD: 200 };
 export const ATTACH_KEYS = Object.keys(ATTACH_PRICE) as ItemKey[];

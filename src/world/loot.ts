@@ -15,6 +15,7 @@ import { foes, damageFoe } from './enemies';
 import { closePack } from '../ui/backpack';
 import { onPickup } from './quests';
 import { toVillage } from './level';
+import { makeNoise } from './noise';
 import { canRecall } from './level';
 
 export interface Crystal { m: THREE.LineSegments; p: THREE.Vector3; v: THREE.Vector3; age: number }
@@ -161,6 +162,7 @@ export function useItem(k: ItemKey): boolean {
       ring.rotation.x = Math.PI / 2; ring.position.copy(c); addFx(ring, 0.4 + i * 0.15);
     }
     let n = 0; for (const t of foes()) if (t.p.distanceTo(c) < 6 + (t.boss ? 1 : 0)) { damageFoe(t, (t.boss ? 6 : 3) * G.S.bm); n++; }
+    makeNoise(c, 35);
     logLine('EMP hit drones: ' + n); return true;
   }
   return false;

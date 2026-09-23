@@ -8,6 +8,7 @@ import { PART_PRICE, PART_BUYBACK } from '../data/items';
 import { rayWorld } from './player';
 import { foes, damageFoe } from './enemies';
 import { addFx, burst } from './fx';
+import { makeNoise } from './noise';
 import { add as addMat, edgesOf, lineMat } from './render';
 import { regionVehicle, YARD, type Parking } from '../gen/vehicles';
 import type { Terrain } from '../gen/terrain';
@@ -230,6 +231,7 @@ export function fireCannon(dt: number) {
   addFx(new THREE.Line(new THREE.BufferGeometry().setFromPoints([muzzle, end]), addMat(0xffb347)), 0.15);
   burst(end, 0xffb347, hit ? 16 : 8, hit ? 1.1 : 0.5);
   if (hit) damageFoe(hit, 3 * G.S.bm);
+  makeNoise(muzzle, 95); // the cannon is heard far and wide
 }
 /** The turret follows the camera. */
 function aimTurret(v: Vehicle) {

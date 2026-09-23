@@ -7,6 +7,7 @@ import { rayWorld } from './player';
 import { foes, damageFoe } from './enemies';
 import { el } from '../ui/hud';
 import { BLASTER } from '../data/weapons';
+import { makeNoise } from './noise';
 
 export const WEAPONS = [{ name: BLASTER.name, dmg: 1, rate: 0 }, { name: 'Blade', rate: 0.42, dmg: 2 }];
 /** Weapons are holstered in safe places (the village). */
@@ -42,6 +43,7 @@ const LOOK = {
   scope: attach(new THREE.Group().add(part(cyl(0.026, 0.24), vmMat), (() => { const r = part(cyl(0.034, 0.04), vmMat); r.position.z = -0.12; return r; })()), 0, 0.085, -0.04),
   barL: attach(part(cyl(0.02, 0.2), vmMat), 0, 0, -0.5),
   barR: attach(part(cyl(0.032, 0.18), vmMat), 0, 0, -0.3),
+  barS: attach(new THREE.Group().add(part(cyl(0.036, 0.26), vmMat), (() => { const r = part(cyl(0.04, 0.03), vmMat); r.position.z = -0.1; return r; })()), 0, 0, -0.52),
   magX: attach(part(new THREE.BoxGeometry(0.07, 0.13, 0.1), vmMat), 0, -0.1, -0.08),
   magD: attach(part((() => { const g = new THREE.CylinderGeometry(0.075, 0.075, 0.07, 12); g.rotateZ(Math.PI / 2); return g; })(), vmMat), 0, -0.12, -0.08),
 };
@@ -114,6 +116,7 @@ function shoot() {
   addFx(new THREE.Line(new THREE.BufferGeometry().setFromPoints([gun, end]), add(hitT ? 0xffd27a : 0x9dffb4)), 0.12);
   burst(end, hitT ? 0xffb347 : 0x3dff6e, hitT ? 10 : 6, hitT ? 0.7 : 0.35);
   if (hitT) damageFoe(hitT, G.gun.dmg * G.S.bm);
+  makeNoise(camera.position, G.gun.noise);
 }
 function slash() {
   G.swingT = 0.26;
