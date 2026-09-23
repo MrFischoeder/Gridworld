@@ -8,6 +8,7 @@ import { VoxelGrid, type Space } from '../core/voxel';
 import { Terrain, inRect, rectDist, STEP, CELLS, VERTS } from '../gen/terrain';
 import { CHUNK, poisNear, VILLAGE_RECT, type Poi } from '../gen/regions';
 import { chunkTrees, chunkRocks, type Tree, type Rock } from '../gen/trees';
+import { drawTree } from './trees';
 import { generateVillage, type VillageMap } from '../gen/village';
 import { syncQuestWorld } from './quests';
 import { generateRuin } from '../gen/ruins';
@@ -60,12 +61,12 @@ export function groundAt(x: number, z: number): number {
   for (const s of OW.structs.values()) if (s.grid.covers(fx, fz)) return -Infinity;
   return OW.terrain!.heightAt(x, z);
 }
-/** Tree trunks: vertical cylinders 0.35 m wide, 2 m tall above their base. */
+/** Tree trunks (an arch has one per leg): vertical cylinders, solid up to a bit above their base. */
 export function treeHit(x: number, y: number, z: number, r: number): boolean {
   const cx = Math.floor(x / CHUNK), cz = Math.floor(z / CHUNK);
   for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) {
     const c = OW.chunks.get(ckey(cx + i, cz + j)); if (!c) continue;
-    for (const t of c.trees) if (Math.hypot(t.x - x, t.z - z) < 0.35 + r && y < t.y + 2 + t.h * 0.3) return true;
+    for (const t of c.trees) if (y < t.y + 2 + t.h * 0.3) for (const [tx, tz, tr] of t.cols) if (Math.hypot(tx - x, tz - z) < tr + r) return true;
     for (const k of c.rocks) if (k.h > 0.7 && Math.hypot(k.x - x, k.z - z) < k.r * 0.55 + r && y < k.y + k.h * 0.8) return true;
   }
   return false;
@@ -122,7 +123,7 @@ function buildChunk(cx: number, cz: number, lod = 1): Chunk {
   const trees = chunkTrees(T, cx, cz), rocks = chunkRocks(T, cx, cz);
   if (trees.length || rocks.length) {
     const pb = new PropBatch();
-    for (const t of trees) { pb.box(t.x - 0.3, t.y - 0.5, t.z - 0.3, t.x + 0.3, t.y + 2, t.z + 0.3, GRID); pb.cone(t.x, t.y + 2, t.z, t.r, t.h, GRID, lod > 1 ? 6 : 8); }
+    for (const t of trees) drawTree(pb, t, lod);
     for (const k of rocks) pb.rock(k.x, k.y, k.z, k.r, k.h, k.sides, k.rot, GRID);
     group.add(pb.build());
   }

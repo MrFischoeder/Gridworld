@@ -4,7 +4,8 @@ import { regionInfo, poisNear, findPoi, CHUNK } from '../src/gen/regions';
 import { regionRoads, gatePoint } from '../src/gen/roads';
 import { generateVillage, villageGates } from '../src/gen/village';
 import { generateRuin } from '../src/gen/ruins';
-import { chunkTrees } from '../src/gen/trees';
+import { chunkTrees, treeTrunks, TREE_SPAN, type TreeKind } from '../src/gen/trees';
+import { nearestOnRoad } from '../src/gen/roads';
 import { VoxelGrid, type Space } from '../src/core/voxel';
 import { tryPlaceDoor, setDoorCells } from '../src/gen/doors';
 import { reachableCells } from '../src/gen/reach';
@@ -159,6 +160,27 @@ describe('forests', () => {
       }
       expect(total).toBeGreaterThan(20);
     }
+  });
+  it('mix all kinds; big trees keep clear of each other, roads and places; small trees never move', () => {
+    const kinds: Record<TreeKind, number> = { pine: 0, broad: 0, twisted: 0, umbrella: 0, arch: 0 };
+    for (const w of WORLDS.slice(0, 8)) {
+      const t = new Terrain(w);
+      for (let cx = -10; cx < 10; cx++) for (let cz = -10; cz < 10; cz++) {
+        const a = chunkTrees(t, cx, cz), spots = treeTrunks(t, cx, cz);
+        for (const tr of a) {
+          kinds[tr.kind]++;
+          if (tr.kind === 'pine' || tr.kind === 'broad') expect(spots.some((s) => s.x === tr.x && s.z === tr.z)).toBe(true);
+          const span = TREE_SPAN[tr.kind];
+          if (!span) continue;
+          const around = [-1, 0, 1].flatMap((i) => [-1, 0, 1].flatMap((j) => chunkTrees(t, cx + i, cz + j)));
+          for (const o of around) if (o.seed !== tr.seed) expect(Math.hypot(o.x - tr.x, o.z - tr.z)).toBeGreaterThanOrEqual(Math.max(span, TREE_SPAN[o.kind]));
+          for (const p of poisNear(w, tr.x, tr.z, 80)) expect(inRect(p.rect, tr.x, tr.z)).toBe(false);
+          for (const r of t.chunkFeatures(cx, cz).roads) for (const [x, z] of tr.cols) expect(nearestOnRoad(r, x, z)[0]).toBeGreaterThan(r.half);
+        }
+      }
+    }
+    expect(kinds.twisted).toBeGreaterThan(0); expect(kinds.umbrella).toBeGreaterThan(0); expect(kinds.arch).toBeGreaterThan(0);
+    expect(kinds.broad).toBeGreaterThan(kinds.twisted + kinds.umbrella + kinds.arch);
   });
 });
 

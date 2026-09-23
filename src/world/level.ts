@@ -12,6 +12,7 @@ import { placeTunnelDoors, tryPlaceDoor, type PlacedDoor } from '../gen/doors';
 import { makeDoor, makeStair, arriveVia, signTexture } from './doors';
 import { makeChest, makeHatch, setCrystalXp } from './loot';
 import { makeDrone, placeDrone, makeBoss, setDroneRespawn } from './enemies';
+import { drawCrown } from './trees';
 import { sky, horizon, buildHorizon, updateSky, darkSky } from './sky';
 import { setStreakSources } from './fx';
 import { setArmedRule, refreshWeaponVisibility } from './weapons';
@@ -107,7 +108,7 @@ export function villageDeco(map: VillageMap, y0 = 0) {
     props.gableRoof(b.x, b.z, b.x + b.w, b.z + b.d, y0 + b.h, 2.2, 0x4dff7e);
     if (b.name) grp.add(wallSign(b.name, b.role === 'innkeeper' ? '#ffb347' : '#ffd060', { x: b.door.x, z: b.door.z }, b.out, y0 + 3.5));
   }
-  for (const t of map.trees) props.cone(t.x + 0.5, y0 + 2, t.z + 0.5, 1.6, t.h, GRID);
+  for (const t of map.trees) drawCrown(props, t.x + 0.5, y0 + 2, t.z + 0.5, 1.8, t.h, hash(t.x, t.z, 0x7e3e));
   // guard tower lookouts
   for (const t of map.towers) props.lookout(t.x, t.z, t.x + t.w, t.z + t.d, y0 + t.h, GRID);
   // gate arches: chamfer the top corners of each opening, through the whole wall

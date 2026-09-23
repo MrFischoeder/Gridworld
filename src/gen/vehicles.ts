@@ -3,7 +3,7 @@ import { rng, hash } from '../core/rng';
 import { VEHICLES, freshParts, wheelCount, ENGINE_MODS, type VehicleModel, type VehicleParts } from '../data/vehicles';
 import { REGION, CHUNK, poisNear } from './regions';
 import { rectDist, type Terrain } from './terrain';
-import { chunkTrees, chunkRocks } from './trees';
+import { treeTrunks, chunkRocks } from './trees';
 
 export interface Parking { id: string; model: VehicleModel; x: number; z: number; heading: number; parts: VehicleParts }
 
@@ -33,7 +33,7 @@ export function clearSpot(t: Terrain, model: VehicleModel, x: number, z: number,
   if (Math.abs(t.heightAt(x + fx * hl, z + fz * hl) - t.heightAt(x - fx * hl, z - fz * hl)) > s.length * 0.25) return false;
   const cx0 = Math.floor((x - r) / CHUNK), cx1 = Math.floor((x + r) / CHUNK), cz0 = Math.floor((z - r) / CHUNK), cz1 = Math.floor((z + r) / CHUNK);
   for (let cx = cx0; cx <= cx1; cx++) for (let cz = cz0; cz <= cz1; cz++) {
-    if (chunkTrees(t, cx, cz).some((tr) => Math.hypot(tr.x - x, tr.z - z) < r + 1)) return false;
+    if (treeTrunks(t, cx, cz).some((tr) => Math.hypot(tr.x - x, tr.z - z) < r + 1)) return false;
     if (chunkRocks(t, cx, cz).some((k) => Math.hypot(k.x - x, k.z - z) < r + k.r)) return false;
   }
   return true;
