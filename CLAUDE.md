@@ -1,7 +1,7 @@
-# Grid Arena — project rules
+# GridWorld — project rules
 
 Browser FPS in a green vector-grid style (wireframe on black, retro sci-fi / Tron / CRT terminal).
-`legacy/grid-arena.html` is the original single-file version, kept as the reference for behaviour.
+`legacy/grid-arena.html` is the original single-file version (from when the game was called Grid Arena), kept as the reference for behaviour.
 
 ## Commands
 - `npm run dev` — dev server (Vite)
@@ -30,5 +30,5 @@ Browser FPS in a green vector-grid style (wireframe on black, retro sci-fi / Tro
 ## Open world notes
 - Regions (rx, rz) span [rx*256-128, rx*256+128); region (0,0) holds Gridholm at the origin. New place types = new `PoiType` + a placement rule in `gen/regions.ts`.
 - Structures are `VoxelGrid.surface(...)` grids: their footprint replaces the terrain (terrain mesh has a hole there, collision uses voxels only).
-- Dungeon seeds: `hash(world, ruinId, depth, gx, gz)`; save keys `ruinId:depth:gx:gz`. Save format v3 (`gridArena.character.v3`), migrations in `save.ts`.
+- Dungeon seeds: `hash(world, ruinId, depth, gx, gz)`; save keys `ruinId:depth:gx:gz`. Save format v3 (`gridWorld.character.v3`; older `gridArena.*` keys are still read), migrations in `save.ts`.
 - `data/` — items, NPC texts. `save.ts` — persistence and version migrations.

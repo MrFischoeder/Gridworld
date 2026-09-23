@@ -20,7 +20,9 @@ export interface Char {
   discovered: Record<string, string>;
 }
 
-export const SAVE_KEY = 'gridArena.character.v3', V2_KEY = 'gridArena.character.v2', OLD_KEY = 'gridArena.character.v1';
+export const SAVE_KEY = 'gridWorld.character.v3';
+/** Keys from before the project was renamed from Grid Arena to GridWorld. */
+export const ARENA_V3_KEY = 'gridArena.character.v3', V2_KEY = 'gridArena.character.v2', OLD_KEY = 'gridArena.character.v1';
 
 export const newChar = (): Char => ({
   v: 3, level: 1, xp: 0, gold: 0, world: (Math.random() * 1e6) | 0,
@@ -56,7 +58,7 @@ function migrateV2(o: V2): Char {
 
 export function loadChar(storage: Pick<Storage, 'getItem'> | null = safeStorage()): Char {
   try {
-    const raw = storage?.getItem(SAVE_KEY);
+    const raw = storage?.getItem(SAVE_KEY) ?? storage?.getItem(ARENA_V3_KEY);
     if (raw) {
       const c = Object.assign(newChar(), JSON.parse(raw)) as Char;
       if (c.loc === 'dungeon' && !c.dungeon) c.loc = 'overworld';

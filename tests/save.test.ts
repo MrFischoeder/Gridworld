@@ -36,3 +36,10 @@ describe('explored map bitmask', () => {
     expect(Object.values(d).every((h) => /^[0-9a-f]{16}$/.test(h))).toBe(true);
   });
 });
+
+describe('rename to GridWorld', () => {
+  it('still loads a v3 save stored under the old Grid Arena key', () => {
+    const c = loadChar(store({ 'gridArena.character.v3': JSON.stringify({ v: 3, level: 7, gold: 5, world: 1, loc: 'overworld' }) }));
+    expect(c).toMatchObject({ level: 7, gold: 5, world: 1 });
+  });
+});
