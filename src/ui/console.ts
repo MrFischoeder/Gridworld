@@ -2,6 +2,8 @@
 import { G } from '../game';
 import { saveChar } from '../character';
 import { toVillage } from '../world/level';
+import { spawnCreatureNear } from '../world/creatures';
+import { CREATURES, type CreatureKind } from '../data/creatures';
 import { $, logLine, showToast } from './hud';
 import { lockPointer } from './input';
 
@@ -14,7 +16,7 @@ function print(text: string, err = false) {
   out.appendChild(d); out.scrollTop = out.scrollHeight;
 }
 
-const COMMANDS: Record<string, { help: string; run: () => string }> = {
+const COMMANDS: Record<string, { help: string; run: (args: string[]) => string }> = {
   help: { help: 'list commands', run: () => Object.entries(COMMANDS).map(([k, c]) => `${k.padEnd(6)} ${c.help}`).join('\n') },
   cash: {
     help: '+10000 gold',
@@ -29,6 +31,14 @@ const COMMANDS: Record<string, { help: string; run: () => string }> = {
     run: () => { if (G.trans) return 'Busy travelling, try again in a moment.'; close(); toVillage('recall'); showToast('Gridholm'); return 'Home.'; },
   },
   clear: { help: 'clear this log', run: () => { out.innerHTML = ''; return ''; } },
+  spawn: {
+    help: 'spawn ravager | bramble | leechwing in front of you (open world)',
+    run: (a) => {
+      const k = a[0] as CreatureKind;
+      if (!(k in CREATURES)) return 'Usage: spawn ravager | bramble | leechwing';
+      return spawnCreatureNear(k) ? `${CREATURES[k].name} spawned.` : 'Only in the open world.';
+    },
+  },
 };
 
 function exec(line: string) {
@@ -38,7 +48,7 @@ function exec(line: string) {
   print('> ' + cmd);
   const c = COMMANDS[cmd.split(/\s+/)[0]];
   if (!c) { print(`Unknown command "${cmd}". Type help.`, true); return; }
-  const r = c.run();
+  const r = c.run(cmd.split(/\s+/).slice(1));
   if (r) print(r);
 }
 

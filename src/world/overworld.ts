@@ -16,6 +16,7 @@ import { makeStair, type Door, type Stair } from './doors';
 import { makeNpc, type Npc } from './npc';
 import { makeDrone, foeRules, type Drone } from './enemies';
 import { spawnVehicles, clearVehicles, vehicleHit, syncFound, shielded } from './vehicles';
+import { setCreatureEnv, clearCreatures } from './creatures';
 import { YARD } from '../gen/vehicles';
 import { setStreakSources, type EdgeSource } from './fx';
 import { voxelObject, villageDeco, wallSign } from './level';
@@ -256,9 +257,16 @@ export function openWorld(x: number, z: number) {
     blocked: (px, pz, r) => poisNear(T.world, px, pz, 40).some((p) => rectDist(p.rect, px, pz) < r) || treeHit(px, T.heightAt(px, pz) + 0.5, pz, r),
   });
   syncFound(T, x, z);
+  setCreatureEnv({
+    ground: (px, pz) => T.heightAt(px, pz),
+    danger,
+    nearRuin: (px, pz) => poisNear(T.world, px, pz, 90).some((p) => p.type === 'ruin' && rectDist(p.rect, px, pz) < 60),
+    forbidden: (px, pz) => rectDist(VILLAGE_RECT, px, pz) < 35 || [...OW.structs.values()].some((s) => rectDist(s.poi.rect, px, pz) < 1),
+  });
 }
 export function closeWorld() {
   clearVehicles();
+  setCreatureEnv(null); clearCreatures();
   for (const c of OW.chunks.values()) dropChunk(c);
   OW.chunks.clear();
   for (const s of [...OW.structs.values()]) dropStruct(s);

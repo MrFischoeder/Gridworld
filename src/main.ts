@@ -7,7 +7,7 @@ import { calcStats, saveChar } from './character';
 import { loadDungeon, loadOverworld, toVillage, saveOverworldPos } from './world/level';
 import { updatePlayer, EYE } from './world/player';
 import { updateDoors, updateTrans } from './world/doors';
-import { updateDrones, updateBosses, updateOrbs, animateFoes, updateBossBar, foeRules, makeDrone } from './world/enemies';
+import { updateDrones, updateBosses, updateOrbs, animateFoes, updateBossBar, foeRules, makeDrone, damageFoe } from './world/enemies';
 import { updateLoot } from './world/loot';
 import { updateEntities } from './world/interact';
 import { attack, animateVM, refreshWeaponVisibility } from './world/weapons';
@@ -17,6 +17,7 @@ import { collides } from './world/player';
 import { regionRoads } from './gen/roads';
 import { poisNear } from './gen/regions';
 import { sky, horizon } from './world/sky';
+import { updateCreatures, spawnCreatureNear } from './world/creatures';
 import { driving, updateDriving, vehicleCamera, vehicles, buyVehicle, fireCannon } from './world/vehicles';
 import { interact } from './world/interact';
 import { el, updateHud } from './ui/hud';
@@ -55,7 +56,7 @@ function frame(now: number) {
     G.cooldown -= dt; if (G.firing && !driving.v) attack();
     if (driving.v) fireCannon(dt);
     updateDoors(dt);
-    if (outdoors) updateFieldEnemies(dt);
+    if (outdoors) { updateFieldEnemies(dt); updateCreatures(dt, time); }
     updateDrones(dt);
     const boss = updateBosses(dt, time); updateOrbs(dt);
     updateBossBar(boss);
@@ -88,4 +89,4 @@ function frame(now: number) {
 requestAnimationFrame(frame);
 
 // Debug handle for automated checks in development builds.
-if (import.meta.env.DEV) Object.assign(window, { __game: { G, W, OW, camera, scene, renderer, regionRoads, poisNear, groundAt, treeHit, collides, vehicles, driving, interact, buy: buyVehicle, foeRules, makeDrone } });
+if (import.meta.env.DEV) Object.assign(window, { __game: { G, W, OW, camera, scene, renderer, regionRoads, poisNear, groundAt, treeHit, collides, vehicles, driving, interact, buy: buyVehicle, foeRules, makeDrone, spawnCreature: spawnCreatureNear, damageFoe } });
