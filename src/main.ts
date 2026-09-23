@@ -10,7 +10,7 @@ import { updateDoors, updateTrans } from './world/doors';
 import { updateDrones, updateBosses, updateOrbs, animateFoes, updateBossBar, foeRules, makeDrone, damageFoe } from './world/enemies';
 import { updateLoot } from './world/loot';
 import { updateEntities } from './world/interact';
-import { attack, animateVM, refreshWeaponVisibility, vmScene, syncViewmodel } from './world/weapons';
+import { attack, animateVM, refreshWeaponVisibility, vmScene, syncViewmodel, updateGun, refreshGunLook } from './world/weapons';
 import { updateFx, updateStreaks } from './world/fx';
 import { updateStreaming, updateFieldEnemies, placeName, OW, groundAt, treeHit, animateCamps } from './world/overworld';
 import { collides } from './world/player';
@@ -33,7 +33,7 @@ import { initTouch } from './ui/touch';
 import { initMenu, showMenu } from './ui/menu';
 
 G.char = loadChar();
-calcStats(); G.hp = G.S.maxHp;
+calcStats(); G.hp = G.S.maxHp; G.ammo = G.gun.mag;
 
 initInput(() => { toggleMap(false); showMenu(); });
 initTouch();
@@ -48,6 +48,7 @@ initMenu({
 
 if (G.char.loc === 'dungeon' && G.char.dungeon) loadDungeon(null); else { G.char.loc = 'overworld'; loadOverworld({ kind: 'saved' }); }
 
+refreshGunLook();
 renderer.info.autoReset = false;
 let last = performance.now(), perfT = 0, saveT = 0, clockT = 0;
 function frame(now: number) {
@@ -68,6 +69,7 @@ function frame(now: number) {
   if (live) {
     if (driving.v) updateDriving(dt); else moving = updatePlayer(dt);
     G.cooldown -= dt; if (G.firing && !driving.v) attack();
+    updateGun(dt, !driving.v);
     if (driving.v) fireCannon(dt);
     updateDoors(dt);
     if (outdoors) { updateFieldEnemies(dt); updateCreatures(dt, time); updateBandits(dt, time); updateRaiders(dt); animateCamps(time); smokeWrecks(dt); }

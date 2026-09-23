@@ -9,6 +9,7 @@ import type { Npc } from './world/npc';
 import type { Creature } from './world/creatures';
 import type { Bandit } from './world/bandits';
 import type { DungeonMap } from './gen/dungeon';
+import { BLASTER, type GunStats } from './data/weapons';
 
 export interface Stats { maxHp: number; bm: number; mm: number; range: number; rate: number; speed: number }
 
@@ -46,6 +47,8 @@ export const G = {
   stick: { id: null as number | null, x: 0, y: 0, dx: 0, dy: 0 },
   look: { id: null as number | null, x: 0, y: 0 },
   weapon: 0, cooldown: 0, swingT: 0,
+  /** The Blaster with its attachments (character.calcStats), rounds in the magazine, reload timer, aiming. */
+  gun: { ...BLASTER.base } as GunStats, ammo: BLASTER.base.mag, reloadT: 0, aiming: false, touchAim: false,
   hitFlash: 0, dmgFlash: 0,
 };
 

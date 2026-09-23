@@ -1,55 +1,94 @@
-// Backpack window: 12 slots plus 3 relic modules.
+// Backpack window: 3 relic modules, the Blaster's attachment slots, 12 backpack slots.
+// Items are dragged between slots (or selected and handled with the buttons under the grid).
 import { G } from '../game';
 import { item, type ItemKey } from '../data/items';
+import { BLASTER, SLOT_NAME, attachSlot } from '../data/weapons';
 import { calcStats, saveChar } from '../character';
+import { dropStack } from '../inventory';
 import { logLine, $ } from './hud';
 import { useItem } from '../world/loot';
+import { refreshGunLook } from '../world/weapons';
 import { lockPointer } from './input';
+import { slotHTML, bindSlots, itemInfo, parseId } from './slots';
 
-let sel: { w: 'mods' | 'inv'; i: number } | null = null;
-const packEl = $('pack'), invEl = $('inv'), modsEl = $('mods'), detailEl = $('detail');
+let sel: string | null = null;
+const packEl = $('pack'), invEl = $('inv'), modsEl = $('mods'), gunEl = $('gunSlots'), statsEl = $('gunStats'), detailEl = $('detail');
+let note = '';
 
-function slotHTML(k: ItemKey | null, n: number, where: 'mods' | 'inv', i: number) {
-  if (!k) return `<button class="slot" data-w="${where}" data-i="${i}" aria-label="Empty slot"></button>`;
-  const it = item(k), cnt = where === 'inv' && n > 1 ? `<span class="n">${n}</span>` : '';
-  const s = sel && sel.w === where && sel.i === i ? ' sel' : '';
-  return `<button class="slot ${it.type}${s}" data-w="${where}" data-i="${i}" aria-label="${it.name}">${it.ab}${cnt}</button>`;
+/** Item in a slot: m = modules, w = weapon attachments, p = backpack. */
+function at(id: string): { k: ItemKey; n: number; c?: number } | null {
+  const [w, i] = parseId(id), c = G.char;
+  if (w === 'm') return c.mods[i] ? { k: c.mods[i]!, n: 1 } : null;
+  if (w === 'w') return c.gunMods[i] ? { k: c.gunMods[i]!, n: 1 } : null;
+  return c.inv[i];
 }
 function renderPack() {
-  const c = G.char;
-  modsEl.innerHTML = c.mods.map((m, i) => slotHTML(m, 1, 'mods', i)).join('');
-  invEl.innerHTML = c.inv.map((m, i) => slotHTML(m ? m.k : null, m ? m.n : 0, 'inv', i)).join('');
-  let html = 'Select an item to see what it does.';
+  const c = G.char, g = G.gun;
+  modsEl.innerHTML = c.mods.map((k, i) => slotHTML('m:' + i, { k, hint: 'Relic' }, sel === 'm:' + i)).join('');
+  gunEl.innerHTML = BLASTER.slots.map((s, i) => slotHTML('w:' + i, { k: c.gunMods[i], hint: SLOT_NAME[s], cls: 'att' }, sel === 'w:' + i)).join('');
+  invEl.innerHTML = c.inv.map((s, i) => slotHTML('p:' + i, { k: s?.k ?? null, n: s?.n, c: s?.c }, sel === 'p:' + i)).join('');
+  statsEl.textContent = `damage ${(g.dmg * G.S.bm).toFixed(2)} · ${(1 / G.S.rate).toFixed(1)} shots/s · range ${g.range} m · magazine ${g.mag} · reload ${g.reload.toFixed(1)} s · zoom ${g.zoom}×`;
+  let html = note || 'Drag items between slots. Relics go in the modules, attachments in the Blaster slots.';
   const acts: [string, string][] = [];
-  if (sel) {
-    const k = sel.w === 'mods' ? c.mods[sel.i] : c.inv[sel.i]?.k;
-    if (k) {
-      const it = item(k);
-      html = `<b>${it.name}</b><br>${it.desc}${sel.w === 'mods' ? '<br>Equipped in a module' : ''}`;
-      if (sel.w === 'mods') acts.push(['off', 'Unequip']);
-      else if (it.type === 'relic') acts.push(['on', 'Equip']);
-      else if (it.type === 'cons') acts.push(['use', 'Use']);
-      if (sel.w === 'inv') acts.push(['drop', 'Drop']);
-    } else sel = null;
-  }
+  const s = sel ? at(sel) : null;
+  if (sel && s) {
+    const [w] = parseId(sel), it = item(s.k);
+    html = itemInfo(s.k, s.c) + (w === 'm' ? '<br>Equipped in a module' : w === 'w' ? '<br>Fitted to the Blaster' : '');
+    if (w === 'm') acts.push(['off', 'Unequip']);
+    else if (w === 'w') acts.push(['off', 'Take off']);
+    else if (it.type === 'relic') acts.push(['on', 'Equip']);
+    else if (it.type === 'attach') acts.push(['on', 'Fit to Blaster']);
+    else if (it.type === 'cons') acts.push(['use', 'Use']);
+    if (w === 'p') acts.push(['drop', 'Drop']);
+  } else sel = null;
+  note = '';
   detailEl.innerHTML = html + (acts.length ? '<div class="acts">' + acts.map(([a, t]) => `<button class="${a === 'drop' ? 'drop' : ''}" data-a="${a}">${t}</button>`).join('') + '</div>' : '');
 }
+function changed() { calcStats(); refreshGunLook(); saveChar(); renderPack(); }
+
+/** Moves an item between slots, following the rules of each kind of slot. Returns an error message or ''. */
+function move(from: string, to: string): string {
+  const c = G.char, [fw, i] = parseId(from), [tw, j] = parseId(to), a = at(from), b = at(to);
+  if (!a) return '';
+  const fits = (w: string, idx: number, k: ItemKey | undefined) => !k || (w === 'p') || (w === 'm' && item(k).type === 'relic') || (w === 'w' && attachSlot(k) === BLASTER.slots[idx]);
+  if (!fits(tw, j, a.k)) return tw === 'm' ? 'Only relics go in the modules.' : `That does not fit the ${SLOT_NAME[BLASTER.slots[j]].toLowerCase()} slot.`;
+  if (b && !fits(fw, i, b.k)) return 'Swap it with an empty slot or a matching item instead.';
+  if (fw === 'p' && tw === 'p') { dropStack(c.inv, i, c.inv, j); return ''; }
+  // one of the two is a single-item slot (module / attachment): move one item, swap back what was there
+  const put = (w: string, idx: number, k: ItemKey | null, n = 1, cond?: number) => {
+    if (w === 'm') c.mods[idx] = k; else if (w === 'w') c.gunMods[idx] = k;
+    else c.inv[idx] = k ? { k, n, ...(cond !== undefined ? { c: cond } : {}) } : null;
+  };
+  if (fw === 'p' && a.n > 1) { // taking one item off a stack: the target must be free
+    if (b) return 'Take a single item or use an empty slot.';
+    a.n--; put(tw, j, a.k); return '';
+  }
+  put(tw, j, a.k, a.n, a.c); put(fw, i, b ? b.k : null, b?.n, b?.c);
+  return '';
+}
+/** Sends the selected item to its natural place: relic → free module, attachment → its slot, fitted → backpack. */
+function quick(id: string): string {
+  const c = G.char, [w] = parseId(id), a = at(id);
+  if (!a) return '';
+  if (w !== 'p') { const f = c.inv.indexOf(null); if (f < 0) return 'Your backpack is full.'; return move(id, 'p:' + f); }
+  const it = item(a.k);
+  if (it.type === 'relic') { const f = c.mods.indexOf(null); return f < 0 ? 'All modules are full. Unequip one first.' : move(id, 'm:' + f); }
+  if (it.type === 'attach') return move(id, 'w:' + BLASTER.slots.indexOf(attachSlot(a.k)!));
+  return '';
+}
+
+bindSlots(packEl, {
+  drop(from, to) { note = move(from, to); sel = null; changed(); },
+  click(id) { sel = sel === id ? null : id; renderPack(); },
+});
 packEl.addEventListener('click', (e) => {
-  const t = e.target as HTMLElement, s = t.closest<HTMLElement>('.slot'), a = t.closest<HTMLElement>('[data-a]'), c = G.char;
-  if (s) { sel = { w: s.dataset.w as 'mods' | 'inv', i: +s.dataset.i! }; renderPack(); return; }
+  const a = (e.target as HTMLElement).closest<HTMLElement>('[data-a]');
   if (!a || !sel) return;
-  if (a.dataset.a === 'off') {
-    const f = c.inv.indexOf(null);
-    if (f < 0) logLine('Backpack full'); else { c.inv[f] = { k: c.mods[sel.i]!, n: 1 }; c.mods[sel.i] = null; sel = { w: 'inv', i: f }; }
-  }
-  if (a.dataset.a === 'on') {
-    const k = c.inv[sel.i]!.k, f = c.mods.indexOf(null);
-    if (f < 0) { detailEl.insertAdjacentHTML('beforeend', '<div style="color:var(--amber)">All modules are full. Unequip one first.</div>'); return; }
-    c.mods[f] = k; c.inv[sel.i] = null; sel = { w: 'mods', i: f };
-  }
-  if (a.dataset.a === 'use') useItem(c.inv[sel.i]!.k);
-  if (a.dataset.a === 'drop') { c.inv[sel.i] = null; sel = null; }
-  calcStats(); saveChar(); renderPack();
+  const [w, i] = parseId(sel), c = G.char;
+  if (a.dataset.a === 'off' || a.dataset.a === 'on') { const m = quick(sel); if (m) logLine(m); note = m; sel = null; }
+  if (a.dataset.a === 'use' && w === 'p') useItem(c.inv[i]!.k);
+  if (a.dataset.a === 'drop' && w === 'p') { c.inv[i] = null; sel = null; }
+  changed();
 });
 export function openPack() {
   if (!G.playing || G.packOpen || G.dlgOpen || G.xferOpen) return;

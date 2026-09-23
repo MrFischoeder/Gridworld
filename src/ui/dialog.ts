@@ -10,7 +10,9 @@ import { VEHICLES, vehicleTitle, health, type VehicleModel } from '../data/vehic
 import { buyVehicle, vehiclesForSale, sellVehicle } from '../world/vehicles';
 import { questOptions, questTalk } from '../world/quests';
 import { PART_PRICE, PART_BUYBACK, type ItemKey } from '../data/items';
-import { takeOne } from '../character';
+import type { Slot } from '../save';
+/** Mirek pays a fifth of the price for a part, less for a worn one. */
+const partBuyback = (s: Slot) => Math.floor(PART_PRICE[s.k]! * PART_BUYBACK * (s.c ?? 100) / 100);
 
 const dlgEl = $('dlg'), panel = () => dlgEl.querySelector('.panel') as HTMLElement;
 /** Elder's lore line; the open world replaces it. */
@@ -47,13 +49,13 @@ function renderVehicleShop(msg?: string) {
 }
 /** Mirek buys vehicles back at half price (less for wrecks) and parts for a fifth of what he charges. */
 function renderSell(msg?: string) {
-  const offers = vehiclesForSale(), parts = PARTS.filter((k) => G.char.inv.some((s) => s && s.k === k));
+  const offers = vehiclesForSale(), parts = G.char.inv.map((s, i) => ({ s, i })).filter(({ s }) => s && PART_PRICE[s.k]);
   panel().innerHTML = dlgHead() + `<div class="say">Your gold: <b>${G.char.gold}</b>${msg ? '<br>' + msg : ''}</div>` +
     (offers.length ? offers.map((o) => `<div class="shoprow"><div><b>${vehicleTitle(o.v.st.model)}</b><br><span>${o.why ?? 'parked in the yard · condition ' + Math.round(health(o.v.st.model, o.v.st.parts) * 100) + '%'}</span></div>
       <button class="buy" data-sellv="${o.v.st.id}" ${o.why ? 'disabled' : ''}>+${o.price} g</button></div>`).join('')
       : '<div class="say" style="opacity:.7">Park a vehicle in my yard and I will make you an offer.</div>') +
-    parts.map((k) => `<div class="shoprow"><div><b>${ITEMS[k].name}</b><br><span>used part</span></div>
-      <button class="buy" data-sellk="${k}">+${Math.floor(PART_PRICE[k]! * PART_BUYBACK)} g</button></div>`).join('') +
+    parts.map(({ s, i }) => `<div class="shoprow"><div><b>${ITEMS[s!.k].name}${s!.n > 1 ? ' ×' + s!.n : ''}</b><br><span>used part${s!.c !== undefined ? ', ' + Math.round(s!.c) + '% worn in' : ''}</span></div>
+      <button class="buy" data-sells="${i}">+${partBuyback(s!)} g</button></div>`).join('') +
     `<button class="opt" data-o="back">${OPT_TEXT.back}</button>`;
 }
 function renderShop(msg?: string) {
@@ -68,9 +70,9 @@ dlgEl.addEventListener('click', (e) => {
   const t = e.target as HTMLElement, o = t.closest<HTMLElement>('[data-o]'), b = t.closest<HTMLElement>('.buy'), c = G.char;
   if (b && b.dataset.v) { renderVehicleShop(buyVehicle(b.dataset.v as VehicleModel)); return; }
   if (b && b.dataset.sellv) { renderSell(sellVehicle(b.dataset.sellv)); return; }
-  if (b && b.dataset.sellk) {
-    const k = b.dataset.sellk as ItemKey;
-    if (takeOne(k)) { c.gold += Math.floor(PART_PRICE[k]! * PART_BUYBACK); saveChar(); renderSell('Sold: ' + ITEMS[k].name + '.'); }
+  if (b && b.dataset.sells) {
+    const i = +b.dataset.sells, s = c.inv[i];
+    if (s && PART_PRICE[s.k]) { c.gold += partBuyback(s); if (--s.n <= 0) c.inv[i] = null; saveChar(); renderSell('Sold: ' + ITEMS[s.k].name + '.'); }
     return;
   }
   if (b) {

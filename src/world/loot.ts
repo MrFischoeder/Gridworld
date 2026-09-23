@@ -5,7 +5,7 @@ import { G, W } from '../game';
 import { floorNear, floorAt } from '../core/voxel';
 import { emptyAt, EYE } from './player';
 import { burst, addFx } from './fx';
-import { ITEMS, RELIC_KEYS, HEAL, item, type ItemKey } from '../data/items';
+import { ITEMS, RELIC_KEYS, ATTACH_KEYS, HEAL, item, type ItemKey } from '../data/items';
 import { addItem, gainXp, saveChar, takeOne, progress, progressHas, dungeonKey, depth as depthNow } from '../character';
 import { putItems } from '../inventory';
 import { openTransfer } from '../ui/transfer';
@@ -105,6 +105,7 @@ function rollChest(): Container {
   if (Math.random() < 0.5) add('medkit');
   if (Math.random() < 0.25) add('emp');
   if (Math.random() < 0.2) add('key');
+  if (Math.random() < 0.15) add(ATTACH_KEYS[(Math.random() * ATTACH_KEYS.length) | 0]);
   return { items, gold: (15 + Math.floor(Math.random() * 26)) * depth };
 }
 export function openChest(c: Chest) {
@@ -116,7 +117,7 @@ export function openChest(c: Chest) {
   }
   const box = chestContents(c);
   if (!box) return; // opened before chests kept their contents: it is empty
-  openTransfer({ title: 'Chest', subtitle: 'Depth ' + depthNow(), boxLabel: 'Inside', box, canStore: false });
+  openTransfer({ title: 'Chest', subtitle: 'Depth ' + depthNow(), boxLabel: 'Inside', box });
 }
 export function makeHatch(h: { x: number; z: number }): Hatch | null {
   const gr = G.grid, f = floorAt(G.space, h.x, h.z, gr.oy + 1, gr.oy + gr.ny - 1); if (!f) return null;
@@ -170,8 +171,9 @@ export function openStash(id: number, name: string) {
     if (Math.random() < 0.25) add(RELIC_KEYS[(Math.random() * RELIC_KEYS.length) | 0]);
     if (Math.random() < 0.25) add('wheelL');
     if (Math.random() < 0.2) add('engine');
+    if (Math.random() < 0.2) add(ATTACH_KEYS[(Math.random() * ATTACH_KEYS.length) | 0]);
     c.containers[key] = { items, gold: 40 + Math.floor(Math.random() * 90) };
     saveChar();
   }
-  openTransfer({ title: 'Bandit stash', subtitle: name, boxLabel: 'Inside', box: c.containers[key], canStore: false });
+  openTransfer({ title: 'Bandit stash', subtitle: name, boxLabel: 'Inside', box: c.containers[key] });
 }

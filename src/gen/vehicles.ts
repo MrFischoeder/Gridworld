@@ -1,6 +1,6 @@
 // Where vehicles stand: the dealer's yard outside Gridholm, and abandoned vehicles out in the wilds.
 import { rng, hash } from '../core/rng';
-import { VEHICLES, freshParts, wheelCount, type VehicleModel, type VehicleParts } from '../data/vehicles';
+import { VEHICLES, freshParts, wheelCount, ENGINE_MODS, type VehicleModel, type VehicleParts } from '../data/vehicles';
 import { REGION, CHUNK, poisNear } from './regions';
 import { rectDist, type Terrain } from './terrain';
 import { chunkTrees, chunkRocks } from './trees';
@@ -53,7 +53,7 @@ export function regionVehicle(t: Terrain, rx: number, rz: number): Parking | nul
     const engine = R() < 0.2 ? 0 : 10 + Math.floor(R() * 60);
     // rolled after the older fields so the wheels and engine of existing worlds stay the same
     const hull = Math.round(VEHICLES[model].hull * (0.2 + R() * 0.6)), fuel = Math.round(VEHICLES[model].tank * (0.1 + R() * 0.5));
-    return { id: `found:${rx}:${rz}`, model, x, z, heading, parts: { wheels, engine, gun: false, hull, fuel } };
+    return { id: `found:${rx}:${rz}`, model, x, z, heading, parts: { wheels, engine, gun: false, hull, fuel, mods: Array(ENGINE_MODS).fill(null) } };
   }
   return null;
 }

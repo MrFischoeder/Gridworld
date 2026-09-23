@@ -10,7 +10,7 @@ import { burst } from './fx';
 import { dropCrystal } from './loot';
 import { spawnBandit, alert, fireBolt, BANDIT, type Bandit } from './bandits';
 import { spawnAIVehicle, releaseAI, removeVehicle, steerVehicle, bodyToWorld, driving, refreshParts, damageVehicle, type Vehicle } from './vehicles';
-import { VEHICLES, freshParts, wheelCount, type VehicleModel } from '../data/vehicles';
+import { VEHICLES, freshParts, wheelCount, hurtEngine, type VehicleModel } from '../data/vehicles';
 import { RELIC_KEYS } from '../data/items';
 import { putItems } from '../inventory';
 import { clearSpot } from '../gen/vehicles';
@@ -108,7 +108,7 @@ function driveRaider(r: Raider, dt: number) {
     r.ramT = 1.5;
     if (driving.v) {
       const p = driving.v.st.parts, k = (Math.random() * p.wheels.length) | 0;
-      if (p.wheels[k] > 0) p.wheels[k] = Math.max(0, p.wheels[k] - 12); p.engine = Math.max(0, p.engine - 6); refreshParts(driving.v);
+      if (p.wheels[k] > 0) p.wheels[k] = Math.max(0, p.wheels[k] - 12); hurtEngine(p, 6); refreshParts(driving.v);
       logLine('Rammed!');
       damageVehicle(driving.v, 20 * (1 + r.level * 0.2));
     } else {

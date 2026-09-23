@@ -9,7 +9,7 @@ const noFog = (m: THREE.Material) => { (m as THREE.MeshBasicMaterial).fog = fals
 const starMat = new THREE.PointsMaterial({ color: 0xbfffd0, size: 1.6, sizeAttenuation: false, fog: false, transparent: true });
 /** Sun and moon travel on this circle (inside the star sphere, behind both mountain rings). */
 const ORBIT = 166, TILT = 0.45;
-const moon = new THREE.Group(), sun = new THREE.Group(), Z = new THREE.Vector3(0, 0, 1);
+const moon = new THREE.Group(), sun = new THREE.Group(), Z = new THREE.Vector3(0, 0, 1), EYE = new THREE.Vector3(0, 20, 0);
 
 export const sky = (() => {
   const p: number[] = [];
@@ -58,7 +58,7 @@ const NIGHT = new THREE.Color(0x000000), DAY_SKY = new THREE.Color(0x061c0d), DU
 export function updateSky(t: number) {
   const a = sunAngle(t), day = daylight(t), glow = twilight(t);
   onOrbit(sun, a); onOrbit(moon, a + Math.PI);
-  sun.quaternion.setFromUnitVectors(Z, sun.position.clone().negate().normalize()); // face the viewer
+  sun.quaternion.setFromUnitVectors(Z, EYE.clone().sub(sun.position).normalize()); // face the viewer (the sky sits 20 m below the eye)
   starMat.opacity = Math.max(0, 1 - day * 1.4);
   sky.children[0].visible = starMat.opacity > 0.01;
   tmp.copy(NIGHT).lerp(DAY_SKY, day).lerp(DUSK, glow * 0.55);

@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { scene, camera, V, GRID } from './render';
 import { G } from '../game';
 import { PropBatch } from './props';
-import { VEHICLES, vehicleTitle, freshParts, upgradeParts, immobile, partPerformance, resaleValue, FUEL_BURN, type VehicleSpec, type VehicleModel } from '../data/vehicles';
+import { VEHICLES, vehicleTitle, freshParts, upgradeParts, immobile, partPerformance, resaleValue, FUEL_BURN, hurtEngine, engineBoost, type VehicleSpec, type VehicleModel } from '../data/vehicles';
 import { PART_PRICE, PART_BUYBACK } from '../data/items';
 import { rayWorld } from './player';
 import { foes, damageFoe } from './enemies';
@@ -166,7 +166,7 @@ function wear(v: Vehicle, metres: number, crash: number) {
   if (crash > 6) {
     const i = (Math.random() * p.wheels.length) | 0, hit = Math.min(35, (crash - 6) * 3);
     if (p.wheels[i] > 0) p.wheels[i] = Math.max(0, Math.round(p.wheels[i] - hit));
-    p.engine = Math.max(0, Math.round(p.engine - hit * 0.4));
+    hurtEngine(p, hit * 0.4);
     damageVehicle(v, (crash - 6) * 2.5 * v.spec.hull / 120);
     const why = immobile(p);
     if (why) { showToast('Breakdown! ' + why); v.speed = 0; }
@@ -348,7 +348,7 @@ export function useVehicle(s: VehicleSpot) {
   if (s.kind === 'service') { openService(s.v); return; }
   if (s.kind === 'trunk') {
     const v = s.v;
-    openTransfer({ title: vehicleTitle(v.st.model), subtitle: v.spec.role + ' · ' + v.spec.seats + ' seats', boxLabel: 'Trunk', box: v.st.trunk, canStore: true });
+    openTransfer({ title: vehicleTitle(v.st.model), subtitle: v.spec.role + ' · ' + v.spec.seats + ' seats', boxLabel: 'Trunk', box: v.st.trunk });
     return;
   }
   const why = immobile(s.v.st.parts);
@@ -399,12 +399,12 @@ function hullBlocked(v: Vehicle, x: number, z: number, h: number): boolean {
   return false;
 }
 export function updateDriving(dt: number) {
-  const v = driving.v!, s = v.spec, k = G.keys, stick = G.stick, perf = partPerformance(v.st.parts), maxSpeed = s.maxSpeed * perf;
+  const v = driving.v!, s = v.spec, k = G.keys, stick = G.stick, boost = engineBoost(v.st.parts), perf = partPerformance(v.st.parts), maxSpeed = s.maxSpeed * perf * boost.speed;
   const thr = Math.max(-1, Math.min(1, (k.KeyW ? 1 : 0) - (k.KeyS ? 1 : 0) - stick.dy));
   const steer = Math.max(-1, Math.min(1, (k.KeyA ? 1 : 0) - (k.KeyD ? 1 : 0) - stick.dx));
   const brake = k.Space || G.touchJump;
   // throttle, rolling drag, brakes, and gravity along the slope
-  v.speed += thr * s.accel * perf * dt * (thr * v.speed < 0 ? 2 : 1);
+  v.speed += thr * s.accel * perf * boost.accel * dt * (thr * v.speed < 0 ? 2 : 1);
   v.speed -= v.speed * (thr ? 0.15 : 0.9) * dt;
   if (brake) v.speed -= Math.sign(v.speed) * Math.min(Math.abs(v.speed), 18 * dt);
   v.speed -= 9.8 * Math.sin(v.pitch) * dt * 0.6;

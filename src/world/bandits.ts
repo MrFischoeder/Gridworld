@@ -12,6 +12,7 @@ import { saveChar, gainXp } from '../character';
 import { logLine, showToast } from '../ui/hud';
 import { onKill, onCampCleared } from './quests';
 import { driving, refreshParts as refreshPartsOf, damageVehicle } from './vehicles';
+import { hurtEngine } from '../data/vehicles';
 import type { SpawnEnv } from './creatures';
 import type { BanditRole, CampMap } from '../gen/camps';
 
@@ -133,7 +134,7 @@ function updateBolts(dt: number) {
       // a closed cab stops every bolt; in an open one about half of them hit the vehicle instead of the driver
       if (v && (v.spec.enclosed || Math.random() < 0.45)) {
         const p = v.st.parts, r = Math.random();
-        if (r < 0.15) p.engine = Math.max(0, p.engine - 3);
+        if (r < 0.15) hurtEngine(p, 3);
         else if (r < 0.3) { const k = (Math.random() * p.wheels.length) | 0; if (p.wheels[k] > 0) p.wheels[k] = Math.max(0, p.wheels[k] - 4); }
         refreshPartsOf(v);
         damageVehicle(v, o.dmg);

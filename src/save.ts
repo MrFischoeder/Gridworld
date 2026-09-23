@@ -5,7 +5,8 @@ import type { VehicleModel, VehicleParts } from './data/vehicles';
 import type { Quest } from './gen/quests';
 import { START_TIME, boardPeriod } from './core/time';
 
-export interface Slot { k: ItemKey; n: number }
+/** An item stack. `c` is the condition in percent of a used part (worn tires); such items do not stack. */
+export interface Slot { k: ItemKey; n: number; c?: number }
 /** Per-dungeon progress, keyed by dungeonKey() = "ruinId:depth:gx:gz". */
 export type Progress = Record<string, number[]>;
 export interface DungeonPos { ruinId: number; depth: number; gx: number; gz: number }
@@ -36,6 +37,8 @@ export interface Char {
   camps: Record<string, number>;
   /** Game clock in game minutes since the world began (core/time). */
   time: number;
+  /** Attachments fitted to the Blaster, one per slot of data/weapons BLASTER.slots (optic, barrel, magazine). */
+  gunMods: (ItemKey | null)[];
 }
 
 export const SAVE_KEY = 'gridWorld.character.v3';
@@ -45,7 +48,7 @@ export const ARENA_V3_KEY = 'gridArena.character.v3', V2_KEY = 'gridArena.charac
 export const newChar = (): Char => ({
   v: 3, level: 1, xp: 0, gold: 0, world: (Math.random() * 1e6) | 0,
   inv: Array(INV_SIZE).fill(null), mods: Array(MOD_SIZE).fill(null), opened: {}, unlocked: {}, killed: {},
-  loc: 'overworld', ow: null, dungeon: null, discovered: {}, containers: {}, vehicles: [], board: { seq: 0, offers: [], stamp: boardPeriod(START_TIME) }, quests: [], camps: {}, time: START_TIME,
+  loc: 'overworld', ow: null, dungeon: null, discovered: {}, containers: {}, vehicles: [], board: { seq: 0, offers: [], stamp: boardPeriod(START_TIME) }, quests: [], camps: {}, time: START_TIME, gunMods: [null, null, null],
 });
 
 interface V2 { level?: number; xp?: number; gold?: number; world?: number; inv?: (Slot | null)[]; mods?: (ItemKey | null)[] }

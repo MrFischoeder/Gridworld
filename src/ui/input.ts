@@ -5,13 +5,13 @@ import { closeService } from './service';
 import { closeBoard } from './board';
 import { toggleConsole } from './console';
 import { driving, toggleCockpit } from '../world/vehicles';
-import { renderer } from '../world/render';
+import { renderer, camera } from '../world/render';
 import { el } from './hud';
 import { togglePack, closePack } from './backpack';
 import { closeDialog } from './dialog';
 import { interact } from '../world/interact';
 import { useItem } from '../world/loot';
-import { setWeapon, armed } from '../world/weapons';
+import { setWeapon, armed, reload } from '../world/weapons';
 import { toggleMap, zoomMap } from './worldmap';
 
 export function lockPointer() {
@@ -43,6 +43,7 @@ export function initInput(onPause: () => void) {
     if (e.code === 'Digit1') setWeapon(0);
     if (e.code === 'Digit2') setWeapon(1);
     if (e.code === 'KeyQ') setWeapon(1 - G.weapon);
+    if (e.code === 'KeyR') reload();
     if (e.code === 'F3') { e.preventDefault(); el.perf.style.display = el.perf.style.display === 'block' ? 'none' : 'block'; }
   });
   addEventListener('keyup', (e) => { G.keys[e.code] = false; });
@@ -53,8 +54,14 @@ export function initInput(onPause: () => void) {
   });
   addEventListener('mousemove', (e) => {
     if (document.pointerLockElement !== renderer.domElement) return;
-    G.yaw -= e.movementX * 0.0022; G.pitch -= e.movementY * 0.0022; G.pitch = Math.max(-1.5, Math.min(1.5, G.pitch));
+    const s = 0.0022 * camera.fov / 75; // slower look while zoomed in
+    G.yaw -= e.movementX * s; G.pitch -= e.movementY * s; G.pitch = Math.max(-1.5, Math.min(1.5, G.pitch));
   });
-  addEventListener('mousedown', (e) => { if (e.button === 0 && document.pointerLockElement) G.firing = true; });
-  addEventListener('mouseup', (e) => { if (e.button === 0) G.firing = false; });
+  addEventListener('mousedown', (e) => {
+    if (!document.pointerLockElement) return;
+    if (e.button === 0) G.firing = true;
+    if (e.button === 2) G.aiming = true;
+  });
+  addEventListener('mouseup', (e) => { if (e.button === 0) G.firing = false; if (e.button === 2) G.aiming = false; });
+  addEventListener('contextmenu', (e) => { if (document.pointerLockElement) e.preventDefault(); });
 }

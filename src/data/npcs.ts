@@ -1,5 +1,5 @@
 import { hash } from '../core/rng';
-import { RELIC_KEYS, type ItemKey } from './items';
+import { RELIC_KEYS, ATTACH_KEYS, ATTACH_PRICE, type ItemKey } from './items';
 
 export type NpcRole = 'innkeeper' | 'elder' | 'blacksmith' | 'merchant' | 'grocer' | 'dealer' | 'villager';
 /** Dialogue options. New option ids (e.g. quests) are added here and handled in ui/dialog.ts. */
@@ -9,7 +9,7 @@ export interface NpcInfo { name?: string; title: string; color: number; hello?: 
 export const NPC_INFO: Record<NpcRole, NpcInfo> = {
   innkeeper: { name: 'Marta', title: 'Innkeeper', color: 0xffb347, hello: 'Welcome to the Glowing Grid! Warm stew, cold ale and a soft bed. What can I do for you?', opts: ['rest', 'rumour', 'work', 'bye'] },
   elder: { name: 'Elder Bogdan', title: 'Village Elder', color: 0xe8fff0, hello: 'Ah, a new face. Welcome to Gridholm. Few travellers come this way since the machines woke up below us.', opts: ['lore', 'work', 'bye'] },
-  blacksmith: { name: 'Radek', title: 'Blacksmith', color: 0xff7a5c, hello: 'The forge is hot. Need something made, or just admiring the sparks?', opts: ['shop', 'work', 'bye'] },
+  blacksmith: { name: 'Radek', title: 'Blacksmith', color: 0xff7a5c, hello: 'The forge is hot. Need something made? I also fit sights, barrels and magazines to blasters.', opts: ['shop', 'work', 'bye'] },
   merchant: { name: 'Zofia', title: 'General Store', color: 0xffd060, hello: 'Supplies for the brave and the foolish alike. Have a look.', opts: ['shop', 'work', 'bye'] },
   grocer: { name: 'Jan', title: 'Food & Provisions', color: 0x9dffe0, hello: 'Fresh bread, hot stew! Nobody fights well on an empty stomach.', opts: ['shop', 'bye'] },
   dealer: { name: 'Mirek', title: 'Vehicle Dealer', color: 0x5cc8ff, hello: 'Wheels! Nobody walks to the ruins twice. Everything I sell waits in the yard, keys in the ignition. Spares and guns too. I buy vehicles back, but do not expect me to pay much for used parts.', opts: ['shop', 'sell', 'rumour', 'bye'] },
@@ -37,7 +37,7 @@ export function stockFor(role: NpcRole, world: number): [ItemKey, number][] {
   if (role === 'blacksmith') {
     const a = RELIC_KEYS[hash(world, 11) % RELIC_KEYS.length]; let b = RELIC_KEYS[hash(world, 12) % RELIC_KEYS.length];
     if (b === a) b = RELIC_KEYS[(RELIC_KEYS.indexOf(a) + 1) % RELIC_KEYS.length];
-    return [[a, 160], [b, 160]];
+    return [[a, 160], [b, 160], ...ATTACH_KEYS.map((k): [ItemKey, number] => [k, ATTACH_PRICE[k]!])];
   }
   return [];
 }

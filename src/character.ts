@@ -3,14 +3,18 @@ import { G } from './game';
 import { ITEMS, item, type ItemKey } from './data/items';
 import { saveChar as persist } from './save';
 import { showToast, logLine } from './ui/hud';
+import { BLASTER, gunStats } from './data/weapons';
 
 export const saveChar = () => persist(G.char);
 
 export function calcStats() {
   const c = G.char, L = c.level - 1, r = (k: ItemKey) => c.mods.filter((m) => m === k).length;
+  c.gunMods ??= [null, null, null];
+  G.gun = gunStats(BLASTER, c.gunMods);
+  G.ammo = Math.min(G.ammo, G.gun.mag);
   G.S = {
     maxHp: 100 + L * 15 + r('shield') * 20, bm: (1 + L * 0.12) * (1 + r('lens') * 0.25), mm: (1 + L * 0.12) * (1 + r('edge') * 0.25),
-    range: 2.6 + r('edge') * 0.3, rate: 0.16 * Math.pow(0.9, r('cell')), speed: 1 + r('servo') * 0.08,
+    range: 2.6 + r('edge') * 0.3, rate: G.gun.interval * Math.pow(0.9, r('cell')), speed: 1 + r('servo') * 0.08,
   };
   G.hp = Math.min(G.hp, G.S.maxHp);
 }

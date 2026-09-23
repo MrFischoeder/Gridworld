@@ -173,3 +173,37 @@ body.is-touch #bUse.on{display:flex}
 #qtrack{margin-top:8px;font-size:18px;color:var(--gold);text-shadow:0 0 6px rgba(255,208,96,.5);max-width:46vw;line-height:1.2}
 #veh .warn{color:var(--amber)}
 #clock{font-size:20px;opacity:.85}
+/* shared item slots: drag and drop, conditions, hints */
+.slot{touch-action:none;user-select:none;-webkit-user-select:none;cursor:pointer}
+.slot.drag{cursor:grab}
+.slot.dragging{opacity:.35}
+.slot.over{outline:2px solid var(--g);outline-offset:1px}
+.slot.ghost{position:fixed;z-index:50;pointer-events:none;opacity:.9;box-shadow:0 0 12px rgba(61,255,110,.5)}
+.slot .hint{font-size:14px;opacity:.45;color:var(--txt);text-align:center;line-height:1}
+.slot .cond{position:absolute;left:3px;bottom:3px;height:3px;background:var(--g);max-width:calc(100% - 6px)}
+.slot .cond.low{background:var(--amber)}
+.slot.attach,.slot.att{color:#c8ffd6;border-color:#4a8a5a}
+.slot.fixedslot{border-style:double;border-width:3px}
+.detail{min-height:44px;margin-top:8px;font-size:19px;line-height:1.2}
+.detail b{font-weight:400;color:var(--gold);font-size:22px}
+.detail .bad,#detail .bad{color:#ff7a5c}
+.packtop{display:flex;gap:14px}
+.packtop > div{flex:1}
+.packtop .grid.mods{max-width:none}
+#pack h3 .sub{font-size:17px;opacity:.7}
+#gunStats{font-size:17px;opacity:.8;margin-top:6px}
+#scope{position:fixed;inset:0;pointer-events:none;opacity:0;
+  background:radial-gradient(circle at 50% 50%,transparent 0,transparent 32vmin,rgba(61,255,110,.7) 32.3vmin,#000 33vmin,#000 100%)}
+#scope::before,#scope::after{content:"";position:absolute;background:rgba(61,255,110,.55)}
+#scope::before{left:calc(50% - 32vmin);width:64vmin;top:50%;height:1px}
+#scope::after{top:calc(50% - 32vmin);height:64vmin;left:50%;width:1px}
+#bAim{right:150px;bottom:calc(env(safe-area-inset-bottom,0px) + 122px);width:56px;height:56px;font-size:16px}
+#bAim.on{background:rgba(61,255,110,.35)}
+#bReload{right:176px;bottom:calc(env(safe-area-inset-bottom,0px) + 36px);width:52px;height:52px;font-size:15px}
+.svcgrid{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;align-items:center}
+.svcgrid .lbl{font-size:18px;opacity:.75;grid-column:span 2}
+.svcbar{font-size:19px;margin-top:6px}
+.svcbar .bar{display:inline-block;width:110px;height:8px;border:1px solid var(--g2);vertical-align:middle;margin:0 6px}
+.svcbar .bar i{display:block;height:100%;background:var(--g)}
+.slot.wrecked{color:#ff7a5c;border-color:#8a3a2a}
+#svc h3,#xfer h3{margin:10px 0 6px;font-weight:400;font-size:21px;color:var(--txt);opacity:.8}
