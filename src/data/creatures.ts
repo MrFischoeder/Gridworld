@@ -1,5 +1,5 @@
 // Wild creatures of the open world (from the PF field guide sheets).
-export type CreatureKind = 'ravager' | 'bramble' | 'leechwing';
+export type CreatureKind = 'ravager' | 'bramble' | 'leechwing' | 'gnawer';
 
 export interface CreatureSpec {
   code: string; name: string; role: string;
@@ -14,6 +14,7 @@ export const CREATURES: Record<CreatureKind, CreatureSpec> = {
   ravager: { code: 'PF-01A', name: 'Ravager', role: 'Predatory quadruped, hunts in packs', r: 0.65, lift: 0.66, hp: 3, damage: 8, speed: 7.5, crystals: 3 },
   bramble: { code: 'PF-02', name: 'Bramble', role: 'Armoured herbivore, charges when threatened', r: 1.35, lift: 1.05, hp: 16, damage: 28, speed: 11, crystals: 6 },
   leechwing: { code: 'PF-04', name: 'Leechwing', role: 'Aerial hunter, diving attacks', r: 1.0, lift: 0, hp: 5, damage: 16, speed: 18, crystals: 4 },
+  gnawer: { code: 'PF-05', name: 'Gnawer', role: 'Rat-like scavenger with long incisors and a spined tail, swarms anywhere', r: 0.45, lift: 0.3, hp: 1, damage: 4, speed: 8.5, crystals: 1 },
 };
 
 /** Hostile creatures are drawn amber like drones; a calm Bramble is olive until provoked. */

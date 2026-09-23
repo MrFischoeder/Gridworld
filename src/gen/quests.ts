@@ -45,8 +45,8 @@ export function describeSpot(t: Terrain, x: number, z: number): { where: string;
   if (t.forest(x, z) > 0.45) return { where: 'in the forest', kind: 'ravager' };
   return { where: 'in the open fields', kind: 'ravager' };
 }
-export const ALPHA: Record<CreatureKind, string> = { ravager: 'Pack Alpha', bramble: 'Old Bull', leechwing: 'Matriarch' };
-const GROUP: Record<CreatureKind, string> = { ravager: 'a pack of', bramble: 'a herd of', leechwing: 'a swarm of' };
+export const ALPHA: Record<CreatureKind, string> = { ravager: 'Pack Alpha', bramble: 'Old Bull', leechwing: 'Matriarch', gnawer: 'Rat King' };
+const GROUP: Record<CreatureKind, string> = { ravager: 'a pack of', bramble: 'a herd of', leechwing: 'a swarm of', gnawer: 'a nest of' };
 
 /** Fetch errands: who wants what, and from which kind of place. */
 const ERRANDS: { giver: NpcRole; item: ItemKey; place: 'ruin' | 'wreck'; where: string }[] = [

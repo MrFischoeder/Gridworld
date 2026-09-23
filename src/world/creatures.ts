@@ -24,7 +24,7 @@ export interface Creature {
   p: THREE.Vector3; heading: number; speed: number;
   hp: number; maxHp: number; r: number; flash: number;
   state: State; timer: number; anim: number;
-  legs: THREE.Group[]; wings: THREE.Group[]; head: THREE.Group | null; jaw: THREE.Group | null;
+  legs: THREE.Group[]; wings: THREE.Group[]; head: THREE.Group | null; jaw: THREE.Group | null; tail: THREE.Group | null;
   pack: Creature[] | null; flank: number; home: THREE.Vector3; dir: THREE.Vector3; level: number; hurt: boolean;
   /** Part of a notice-board hunt (kept around longer, reported on death); the leader is the `alpha`. */
   questId?: string; alpha?: boolean; dmgMul: number;
@@ -143,16 +143,52 @@ function leechwingModel(c: Creature) {
   }
 }
 
+function gnawerModel(c: Creature) {
+  const pb = new PropBatch(), m = c.mat, K = 0;
+  // hunched body: low rump, high back, tapering to the neck
+  box8(pb, [[-0.2, -0.16, -0.42], [0.2, -0.16, -0.42], [0.16, -0.14, 0.2], [-0.16, -0.14, 0.2]], [[-0.16, 0.14, -0.42], [0.16, 0.14, -0.42], [0.12, 0.2, 0.2], [-0.12, 0.2, 0.2]], K);
+  box8(pb, [[-0.16, -0.14, 0.2], [0.16, -0.14, 0.2], [0.1, -0.08, 0.42], [-0.1, -0.08, 0.42]], [[-0.12, 0.2, 0.2], [0.12, 0.2, 0.2], [0.08, 0.12, 0.42], [-0.08, 0.12, 0.42]], K);
+  // pointed head with a blunt muzzle
+  box8(pb, [[-0.1, -0.08, 0.42], [0.1, -0.08, 0.42], [0.04, -0.06, 0.74], [-0.04, -0.06, 0.74]], [[-0.08, 0.12, 0.42], [0.08, 0.12, 0.42], [0.03, 0.02, 0.74], [-0.03, 0.02, 0.74]], K);
+  // the big incisors: two long curved teeth hanging from the muzzle
+  for (const s of [-1, 1]) pb.solid8([[s * 0.005, -0.06, 0.7], [s * 0.035, -0.06, 0.7], [s * 0.035, -0.06, 0.74], [s * 0.005, -0.06, 0.74]], [[s * 0.008, -0.22, 0.76], [s * 0.03, -0.22, 0.76], [s * 0.03, -0.22, 0.78], [s * 0.008, -0.22, 0.78]], K);
+  // ears, eyes, whiskers
+  for (const s of [-1, 1]) {
+    pb.line(K, [s * 0.07, 0.1, 0.46], [s * 0.15, 0.22, 0.44], [s * 0.13, 0.12, 0.52], [s * 0.07, 0.1, 0.46]);
+    pb.line(K, [s * 0.06, 0.06, 0.6], [s * 0.05, 0.07, 0.63]);
+    pb.line(K, [s * 0.03, -0.02, 0.72], [s * 0.2, 0.0, 0.8]); pb.line(K, [s * 0.03, -0.03, 0.72], [s * 0.19, -0.05, 0.77]);
+  }
+  // bristly ridge along the back
+  for (let i = 0; i < 6; i++) spike(pb, [0, 0.16 + (i < 3 ? i * 0.02 : 0.05 - (i - 3) * 0.02), -0.3 + i * 0.12], [0, 1, -0.6], 0.08, 0.025, K);
+  c.g.add(finish(pb, m));
+  // the tail: a long whip of segments studded with spikes, on a pivot at the rump so it can lash
+  const tb = new PropBatch(), segs: [number, number, number][] = [[0, 0, 0], [0, 0.02, -0.35], [0, 0.08, -0.7], [0, 0.18, -1.0], [0, 0.32, -1.25]];
+  for (let i = 0; i + 1 < segs.length; i++) {
+    const [, y0, z0] = segs[i], [, y1, z1] = segs[i + 1], w0 = 0.07 * (1 - i / 4) + 0.015, w1 = 0.07 * (1 - (i + 1) / 4) + 0.015;
+    box8(tb, [[-w0, y0 - w0, z0], [w0, y0 - w0, z0], [w1, y1 - w1, z1], [-w1, y1 - w1, z1]], [[-w0, y0 + w0, z0], [w0, y0 + w0, z0], [w1, y1 + w1, z1], [-w1, y1 + w1, z1]], K);
+    const mz = (z0 + z1) / 2, my = (y0 + y1) / 2 + w0;
+    spike(tb, [0, my, mz], [0, 1, -0.3], 0.12, 0.025, K);
+    for (const s of [-1, 1]) spike(tb, [s * w0, my - w0, mz], [s, 0.4, -0.2], 0.09, 0.02, K);
+  }
+  spike(tb, [0, 0.32, -1.25], [0, 0.6, -1], 0.16, 0.03, K); // barb at the tip
+  c.tail = new THREE.Group(); c.tail.add(finish(tb, m)); c.tail.position.set(0, 0, -0.42); c.g.add(c.tail);
+  // four short legs with long claws
+  for (const [x, z] of [[-0.14, 0.25], [0.14, 0.25], [-0.17, -0.3], [0.17, -0.3]]) {
+    const l = leg(m, [0, -0.08, z > 0 ? 0.04 : -0.06], [0, -0.16, z > 0 ? 0.08 : 0.02], 0.025, 3);
+    l.position.set(x, -0.14, z); c.g.add(l); c.legs.push(l);
+  }
+}
+
 // ---------- spawning ----------
 function make(kind: CreatureKind, p: THREE.Vector3, level: number): Creature {
   const s = CREATURES[kind], mat = lineMat(kind === 'bramble' ? CALM : HOSTILE), g = new THREE.Group();
   const hp = Math.round(s.hp * (1 + level * 0.35));
   const c: Creature = {
     kind, g, mat, p: p.clone(), heading: Math.random() * 6.28, speed: 0, hp, maxHp: hp, r: s.r, flash: 0,
-    state: kind === 'leechwing' ? 'roam' : 'roam', timer: 0, anim: Math.random() * 10, legs: [], wings: [], head: null, jaw: null,
+    state: kind === 'leechwing' ? 'roam' : 'roam', timer: 0, anim: Math.random() * 10, legs: [], wings: [], head: null, jaw: null, tail: null,
     pack: null, flank: 0, home: p.clone(), dir: V(0, 0, 1), level, hurt: false, dmgMul: 1,
   };
-  if (kind === 'ravager') ravagerModel(c); else if (kind === 'bramble') brambleModel(c); else leechwingModel(c);
+  if (kind === 'ravager') ravagerModel(c); else if (kind === 'bramble') brambleModel(c); else if (kind === 'gnawer') gnawerModel(c); else leechwingModel(c);
   g.position.copy(p); scene.add(g);
   W.creatures.push(c);
   return c;
@@ -171,14 +207,22 @@ export function setCreatureEnv(e: SpawnEnv | null) { env = e; }
 function trySpawn() {
   if (!env) return;
   const pos = G.pos, fwx = -Math.sin(G.yaw), fwz = -Math.cos(G.yaw);
-  const lvNow = env.danger(pos.x, pos.z), cap = Math.min(9, 3 + Math.floor(lvNow * 2));
+  const lvNow = env.danger(pos.x, pos.z), cap = Math.min(14, 5 + Math.floor(lvNow * 2));
   if (W.creatures.length >= cap || Math.random() > 0.5) return;
   for (let tries = 0; tries < 10; tries++) {
     const a = Math.atan2(-fwx, -fwz) + (Math.random() - 0.5) * 2.6, d = 45 + Math.random() * 25;
     const x = pos.x + Math.sin(a) * d, z = pos.z + Math.cos(a) * d;
     if (env.forbidden(x, z)) continue;
     const h = env.ground(x, z), lv = env.danger(x, z), roll = Math.random();
-    if ((env.nearRuin(x, z) || h > 17) && roll < 0.6) {
+    if (Math.random() < 0.3) { // gnawers turn up anywhere: fields, woods, ruins, hills, lakesides, even the ice
+      const n = 3 + Math.floor(Math.random() * (3 + Math.min(3, lv))), nest: Creature[] = [];
+      for (let i = 0; i < n; i++) {
+        const px = x + (Math.random() - 0.5) * 5, pz = z + (Math.random() - 0.5) * 5;
+        if (env.forbidden(px, pz)) continue;
+        const c = make('gnawer', V(px, env.ground(px, pz) + CREATURES.gnawer.lift, pz), lv);
+        c.pack = nest; c.flank = Math.random() * 6.283; nest.push(c);
+      }
+    } else if ((env.nearRuin(x, z) || h > 17) && roll < 0.6) {
       make('leechwing', V(x, h + 14, z), lv);
     } else if (h < 9 && roll < 0.6) {
       const n = Math.random() < 0.3 ? 2 : 1;
@@ -330,6 +374,41 @@ function leechwing(c: Creature, dt: number, to: THREE.Vector3, dist: number, saf
   c.speed = c.state === 'dive' ? s.speed : 8;
 }
 
+/**
+ * Gnawers: a nest scurries about in nervous bursts, sniffing. Once one spots you the whole nest swarms in,
+ * zig-zagging, bites and skitters off, then comes back. With only one or two left they lose their nerve and run.
+ */
+function gnawer(c: Creature, dt: number, to: THREE.Vector3, dist: number, safe: boolean) {
+  const s = CREATURES.gnawer, speed = s.speed + Math.min(2, c.level * 0.4);
+  c.timer -= dt;
+  const nest = c.pack ?? [c];
+  if (safe || dist > 45) { if (c.state !== 'roam') c.state = 'roam'; }
+  switch (c.state) {
+    case 'roam': {
+      if (c.timer <= 0) { c.dir.set(Math.random() - 0.5, 0, Math.random() - 0.5); c.timer = 0.4 + Math.random() * 1.6; }
+      const back = c.home.clone().sub(c.p); back.y = 0;
+      if (back.length() > 10) c.dir.copy(back);
+      if (c.timer > 0.5) walk(c, c.dir.x, c.dir.z, 3.5, dt); else c.speed = 0; // scurry, stop, sniff
+      if (!safe && dist < 18 && rayWorld(c.p, to.clone().normalize(), dist) >= dist - 0.3) {
+        for (const m of nest) { m.state = 'hunt'; m.timer = 0.2 + Math.random() * 0.8; }
+        if (c.pack && !alerted.has(c.pack)) { alerted.add(c.pack); logLine('Gnawers! A whole nest of them!'); }
+      }
+      break;
+    }
+    case 'hunt': { // zig-zag in
+      if (nest.length <= 2 && c.hurt) { c.state = 'retreat'; c.timer = 4; break; }
+      const side = Math.sin(c.anim * 0.35 + c.flank) * 0.9, sx = -to.z, sz = to.x, L = Math.hypot(sx, sz) || 1;
+      walk(c, to.x + sx / L * side * Math.min(4, dist), to.z + sz / L * side * Math.min(4, dist), speed, dt);
+      if (dist < 1.25) { bite((s.damage + c.level) * c.dmgMul); c.state = 'retreat'; c.timer = 0.5 + Math.random() * 0.6; }
+      break;
+    }
+    case 'retreat':
+      walk(c, -to.x + (Math.random() - 0.5) * 2, -to.z + (Math.random() - 0.5) * 2, speed, dt);
+      if (c.timer <= 0) { c.state = nest.length <= 2 && c.hurt ? 'retreat' : 'hunt'; c.timer = nest.length <= 2 && c.hurt ? 3 : 0; }
+      break;
+  }
+}
+
 /** Spawning, behaviour and animation of every creature (open world only). */
 export function updateCreatures(dt: number, time: number) {
   if (!env) return;
@@ -340,6 +419,7 @@ export function updateCreatures(dt: number, time: number) {
     if (Math.hypot(to.x, to.z) > (c.questId ? 240 : 130)) { removeCreature(c); continue; }
     if (c.kind === 'ravager') ravager(c, dt, to, dist, safe);
     else if (c.kind === 'bramble') bramble(c, dt, to, dist, safe);
+    else if (c.kind === 'gnawer') gnawer(c, dt, to, dist, safe);
     else leechwing(c, dt, to, dist, safe);
     animate(c, dt, time);
   }
@@ -349,6 +429,7 @@ function animate(c: Creature, dt: number, time: number) {
   c.anim += dt * (1 + c.speed * 1.4);
   const sw = c.speed > 0.1 ? Math.sin(c.anim * 1.6) * Math.min(0.7, 0.2 + c.speed * 0.06) : 0;
   c.legs.forEach((l, i) => { l.rotation.x = (i === 0 || i === 3 ? 1 : -1) * sw; });
+  if (c.tail) c.tail.rotation.y = Math.sin(time * (c.state === 'hunt' ? 12 : 4) + c.flank) * (c.state === 'hunt' ? 0.45 : 0.25);
   if (c.wings.length) {
     const lift = c.state === 'dive' ? 0.95 : 0.5 + Math.sin(time * 9 + c.anim * 0.1) * 0.45;
     c.wings[0].rotation.z = -lift; c.wings[1].rotation.z = lift;
@@ -369,6 +450,7 @@ export function hurtCreature(c: Creature, dmg: number) {
   c.hp -= dmg; c.flash = 0.12; c.hurt = true; G.hitFlash = 0.15;
   if (c.kind === 'ravager' && c.state === 'roam') for (const m of c.pack ?? [c]) { m.state = 'hunt'; m.timer = 2; }
   if (c.kind === 'leechwing' && c.state === 'roam') { c.state = 'stalk'; c.timer = 1; }
+  if (c.kind === 'gnawer') for (const m of c.pack ?? [c]) { m.hurt = true; if (m.state === 'roam') { m.state = 'hunt'; m.timer = 0; } }
   if (c.hp > 0) return;
   const at = c.p.clone(), s = CREATURES[c.kind];
   burst(at, HOSTILE, 30, 1.6);
@@ -392,6 +474,7 @@ export function spawnCreatureNear(kind: CreatureKind, d = 18) {
   if (!env) return false;
   const x = G.pos.x - Math.sin(G.yaw) * d, z = G.pos.z - Math.cos(G.yaw) * d;
   const lv = env.danger(x, z);
+  if (kind === 'gnawer') { const nest: Creature[] = []; for (let i = 0; i < 5; i++) { const px = x + (Math.random() - 0.5) * 4, pz = z + (Math.random() - 0.5) * 4, c = make(kind, V(px, env.ground(px, pz) + CREATURES.gnawer.lift, pz), lv); c.pack = nest; c.flank = Math.random() * 6.283; nest.push(c); } return true; }
   if (kind === 'ravager') { const pack: Creature[] = []; for (let i = 0; i < 3; i++) { const c = make(kind, V(x + i * 1.5, env.ground(x + i * 1.5, z) + CREATURES.ravager.lift, z), lv); c.flank = (i - 1) * 1.1; c.pack = pack; pack.push(c); } }
   else make(kind, V(x, env.ground(x, z) + (kind === 'leechwing' ? 12 : CREATURES[kind].lift), z), lv);
   return true;
