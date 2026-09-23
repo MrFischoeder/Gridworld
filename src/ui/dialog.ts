@@ -14,7 +14,7 @@ export let loreText = (): string => LORE;
 export function setLoreText(f: () => string) { loreText = f; }
 
 export function openDialog(n: Npc) {
-  if (!G.playing || G.dlgOpen || G.packOpen) return;
+  if (!G.playing || G.dlgOpen || G.packOpen || G.xferOpen) return;
   G.dlgOpen = true; W.talkNpc = n; G.firing = false; for (const k in G.keys) G.keys[k] = false;
   const info = NPC_INFO[n.role];
   renderTalk(n.role === 'villager' ? (n.name + ' nods. "' + VILLAGER_LINES[(Math.random() * VILLAGER_LINES.length) | 0] + '"') : info.hello!);

@@ -16,6 +16,7 @@ import { sky, horizon, buildHorizon } from './sky';
 import { setStreakSources } from './fx';
 import { setArmedRule, refreshWeaponVisibility } from './weapons';
 import { PropBatch } from './props';
+import { driving } from './vehicles';
 import { openWorld, closeWorld, structFor, setEnterRuin, removeDrone, danger, inVillage, OW } from './overworld';
 import { saveChar, depth } from '../character';
 import { showToast, logLine, el, renderSheet } from '../ui/hud';
@@ -50,7 +51,7 @@ function setLocationLook(outdoors: boolean) {
   refreshWeaponVisibility();
 }
 /** Weapons are holstered inside the village walls and drawn everywhere else. */
-setArmedRule(() => G.char.loc === 'dungeon' || !inVillage(G.pos.x, G.pos.z));
+setArmedRule(() => !driving.v && (G.char.loc === 'dungeon' || !inVillage(G.pos.x, G.pos.z)));
 
 // ---------- dungeon ----------
 const ruinName = (id: number) => findPoi(G.char.world, id)?.name ?? 'Ruins';

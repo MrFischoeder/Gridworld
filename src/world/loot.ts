@@ -6,7 +6,10 @@ import { floorNear, floorAt } from '../core/voxel';
 import { emptyAt, EYE } from './player';
 import { burst, addFx } from './fx';
 import { ITEMS, RELIC_KEYS, HEAL, item, type ItemKey } from '../data/items';
-import { addItem, gainXp, giveLoot, saveChar, takeOne, progress, progressHas, depth as depthNow } from '../character';
+import { addItem, gainXp, saveChar, takeOne, progress, progressHas, dungeonKey, depth as depthNow } from '../character';
+import { putItems } from '../inventory';
+import { openTransfer } from '../ui/transfer';
+import type { Container, Slot } from '../save';
 import { logLine } from '../ui/hud';
 import { foes, damageFoe } from './enemies';
 import { closePack } from '../ui/backpack';
@@ -84,17 +87,32 @@ export function makeChest(c: { x: number; z: number }, i: number): Chest | null 
   g.add(beam); g.rotation.y = (i * 1.7) % 6.28; scene.add(g);
   return { g, lidPivot, beam, beamMat, i, open: progressHas('opened', i), anim: 0 };
 }
+/** Save key of a chest's contents in the current dungeon sector. */
+export const chestKey = (c: Chest) => 'chest:' + dungeonKey() + ':' + c.i;
+export const chestContents = (c: Chest): Container | undefined => G.char.containers[chestKey(c)];
+/** Items still inside (a chest can be left half-emptied and searched again later). */
+export const chestHasLoot = (c: Chest) => { const b = chestContents(c); return !!b && (b.gold > 0 || b.items.some(Boolean)); };
+
+/** What a chest holds, rolled once when it is first opened and saved from then on. */
+function rollChest(): Container {
+  const depth = depthNow(), items: (Slot | null)[] = Array(8).fill(null);
+  const add = (k: ItemKey) => putItems(items, k, 1);
+  if (Math.random() < 0.65) add(RELIC_KEYS[(Math.random() * RELIC_KEYS.length) | 0]);
+  if (Math.random() < 0.5) add('medkit');
+  if (Math.random() < 0.25) add('emp');
+  if (Math.random() < 0.2) add('key');
+  return { items, gold: (15 + Math.floor(Math.random() * 26)) * depth };
+}
 export function openChest(c: Chest) {
-  const depth = depthNow();
-  c.open = true; c.anim = 0.001; progress('opened').push(c.i);
-  const gold = (15 + Math.floor(Math.random() * 26)) * depth;
-  G.char.gold += gold; logLine('+' + gold + ' gold');
-  if (Math.random() < 0.65) giveLoot(RELIC_KEYS[(Math.random() * RELIC_KEYS.length) | 0]);
-  if (Math.random() < 0.5) giveLoot('medkit');
-  if (Math.random() < 0.25) giveLoot('emp');
-  if (Math.random() < 0.2) giveLoot('key');
-  burst(c.g.position.clone().add(V(0, 0.7, 0)), 0xffd060, 30, 1.3);
-  gainXp(20 * depth); saveChar();
+  if (!c.open) {
+    c.open = true; c.anim = 0.001; progress('opened').push(c.i);
+    G.char.containers[chestKey(c)] = rollChest();
+    burst(c.g.position.clone().add(V(0, 0.7, 0)), 0xffd060, 30, 1.3);
+    gainXp(20 * depthNow()); saveChar();
+  }
+  const box = chestContents(c);
+  if (!box) return; // opened before chests kept their contents: it is empty
+  openTransfer({ title: 'Chest', subtitle: 'Depth ' + depthNow(), boxLabel: 'Inside', box, canStore: false });
 }
 export function makeHatch(h: { x: number; z: number }): Hatch | null {
   const gr = G.grid, f = floorAt(G.space, h.x, h.z, gr.oy + 1, gr.oy + gr.ny - 1); if (!f) return null;

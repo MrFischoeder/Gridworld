@@ -34,7 +34,7 @@ export const G = {
   /** Extra solid obstacles that are not voxels (tree trunks). */
   obstacle: null as ((x: number, y: number, z: number, r: number) => boolean) | null,
   mapOpen: false,
-  playing: false, packOpen: false, dlgOpen: false, firing: false,
+  playing: false, packOpen: false, dlgOpen: false, xferOpen: false, firing: false,
   keys: {} as Record<string, boolean>,
   trans: null as Trans | null,
   isTouch: ('ontouchstart' in window) || navigator.maxTouchPoints > 0,
@@ -55,3 +55,6 @@ export const W = {
   nearNpc: null as Npc | null, talkNpc: null as Npc | null,
 };
 
+
+/** Any window that pauses play (backpack, dialogue, container). */
+export const uiOpen = () => G.packOpen || G.dlgOpen || G.xferOpen;

@@ -52,7 +52,7 @@ packEl.addEventListener('click', (e) => {
   calcStats(); saveChar(); renderPack();
 });
 export function openPack() {
-  if (!G.playing || G.packOpen || G.dlgOpen) return;
+  if (!G.playing || G.packOpen || G.dlgOpen || G.xferOpen) return;
   G.packOpen = true; G.firing = false; for (const k in G.keys) G.keys[k] = false; sel = null; renderPack(); packEl.style.display = 'flex';
   if (document.pointerLockElement) document.exitPointerLock();
 }

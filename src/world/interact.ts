@@ -8,14 +8,26 @@ import { hasItem } from '../character';
 import { el } from '../ui/hud';
 import { openDialog } from '../ui/dialog';
 import { unlockDoor } from './doors';
-import { openChest } from './loot';
+import { openChest, chestHasLoot } from './loot';
+import { driving, vehicleSpot, useVehicle, leave, type VehicleSpot } from './vehicles';
 
 /** Hook for places with people (the village). */
 export let npcsActive = () => G.char.loc === 'overworld' && W.npcs.length > 0;
 export function setNpcsActive(f: () => boolean) { npcsActive = f; }
 
+let nearVehicle: VehicleSpot | null = null;
 export function updateEntities(dt: number, time: number) {
   const pos = G.pos;
+  if (driving.v) {
+    if (npcsActive()) updateNpcs(dt, time);
+    W.nearNpc = null; W.nearChest = null; W.nearPortal = null; W.nearLock = null; nearVehicle = null;
+    // controls hint for the first few seconds behind the wheel, then out of the way
+    el.prompt.className = ''; el.prompt.textContent = 'E — get out · V — view · space — brake';
+    el.prompt.style.display = G.playing && !G.isTouch && performance.now() - driving.since < 4000 ? 'block' : 'none';
+    el.bUse.textContent = 'EXIT'; el.bUse.classList.toggle('on', G.playing);
+    return;
+  }
+  nearVehicle = G.char.loc === 'overworld' ? vehicleSpot() : null;
   W.nearChest = null; W.nearPortal = null; W.nearLock = null;
   if (npcsActive()) updateNpcs(dt, time); else W.nearNpc = null;
   for (const d of W.doors) if (d.locked && Math.hypot(d.cx - pos.x, d.cz - pos.z) < 3) W.nearLock = d;
@@ -23,7 +35,7 @@ export function updateEntities(dt: number, time: number) {
     if (c.anim > 0 && c.anim < 1) c.anim = Math.min(1, c.anim + dt * 3);
     c.lidPivot.rotation.x = -(c.open ? (c.anim || 1) : 0) * 1.9;
     c.beam.visible = !c.open; c.beamMat.opacity = 0.35 + 0.3 * Math.sin(time * 3 + c.i);
-    if (!c.open && Math.hypot(c.g.position.x - pos.x, c.g.position.z - pos.z) < 1.8 && Math.abs(c.g.position.y - pos.y) < 1.2) W.nearChest = c;
+    if ((!c.open || chestHasLoot(c)) && Math.hypot(c.g.position.x - pos.x, c.g.position.z - pos.z) < 1.8 && Math.abs(c.g.position.y - pos.y) < 1.2) W.nearChest = c;
   }
   let enter = null;
   for (const p of W.portals) {
@@ -39,11 +51,12 @@ export function updateEntities(dt: number, time: number) {
     prompt.className = 'lock';
     prompt.textContent = hasItem('key') ? (G.isTouch ? 'Locked door' : 'E — unlock with an Access Key') : 'Locked. Requires an Access Key';
   }
-  else if (nearChest) { prompt.className = ''; prompt.textContent = G.isTouch ? 'Chest' : 'E — open chest'; }
+  else if (nearChest) { prompt.className = ''; prompt.textContent = G.isTouch ? 'Chest' : nearChest.open ? 'E — search the chest' : 'E — open chest'; }
+  else if (nearVehicle) { prompt.className = ''; prompt.textContent = G.isTouch ? '' : 'E — ' + nearVehicle.label; }
   else if (nearPortal) { prompt.className = 'portal'; prompt.textContent = nearPortal.label; }
-  prompt.style.display = (nearNpc || nearLock || nearChest || nearPortal) && G.playing ? 'block' : 'none';
-  const canUse = nearNpc || nearChest || (nearLock && hasItem('key'));
-  el.bUse.textContent = nearNpc ? 'TALK' : nearLock ? 'UNLOCK' : 'OPEN';
+  prompt.style.display = (nearNpc || nearLock || nearChest || nearVehicle || nearPortal) && G.playing && prompt.textContent ? 'block' : 'none';
+  const canUse = nearNpc || nearChest || nearVehicle || (nearLock && hasItem('key'));
+  el.bUse.textContent = nearNpc ? 'TALK' : nearLock ? 'UNLOCK' : nearChest ? 'OPEN' : nearVehicle ? (nearVehicle.kind === 'drive' ? 'DRIVE' : 'TRUNK') : 'OPEN';
   el.bUse.classList.toggle('on', !!canUse && G.playing);
   const hatch = W.hatch;
   if (hatch) {
@@ -55,5 +68,7 @@ export function updateEntities(dt: number, time: number) {
 
 /** E key / use button. */
 export function interact() {
+  if (driving.v) { leave(); return; }
   if (W.nearNpc) openDialog(W.nearNpc); else if (W.nearLock) unlockDoor(W.nearLock); else if (W.nearChest) openChest(W.nearChest);
+  else if (nearVehicle) useVehicle(nearVehicle);
 }

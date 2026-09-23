@@ -15,6 +15,7 @@ import { PropBatch, sharedFill, sharedLine } from './props';
 import { makeStair, type Door, type Stair } from './doors';
 import { makeNpc, type Npc } from './npc';
 import { makeDrone, foeRules, type Drone } from './enemies';
+import { spawnVehicles, clearVehicles, vehicleHit } from './vehicles';
 import { setStreakSources, type EdgeSource } from './fx';
 import { voxelObject, villageDeco, wallSign } from './level';
 import { NPC_INFO, VILLAGER_NAMES } from '../data/npcs';
@@ -222,7 +223,7 @@ export function openWorld(x: number, z: number) {
   const w = G.char.world;
   if (!OW.terrain || OW.terrain.world !== w) OW.terrain = new Terrain(w);
   closeWorld();
-  G.space = space; G.ground = groundAt; G.obstacle = treeHit;
+  G.space = space; G.ground = groundAt; G.obstacle = (px, py, pz, r) => treeHit(px, py, pz, r) || vehicleHit(px, py, pz, r);
   foeRules.blocked = (p) => rectDist(VILLAGE_RECT, p.x, p.z) < 2;
   foeRules.playerSafe = () => inVillage(G.pos.x, G.pos.z);
   foeRules.ground = (px, pz) => OW.terrain!.heightAt(px, pz);
@@ -230,8 +231,14 @@ export function openWorld(x: number, z: number) {
   const pcx = Math.floor(x / CHUNK), pcz = Math.floor(z / CHUNK);
   for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) OW.chunks.set(ckey(pcx + i, pcz + j), buildChunk(pcx + i, pcz + j));
   lastChunk = '';
+  const T = OW.terrain;
+  spawnVehicles({
+    height: (px, pz) => T.heightAt(px, pz),
+    blocked: (px, pz, r) => poisNear(T.world, px, pz, 40).some((p) => rectDist(p.rect, px, pz) < r) || treeHit(px, T.heightAt(px, pz) + 0.5, pz, r),
+  });
 }
 export function closeWorld() {
+  clearVehicles();
   for (const c of OW.chunks.values()) dropChunk(c);
   OW.chunks.clear();
   for (const s of [...OW.structs.values()]) dropStruct(s);

@@ -33,4 +33,6 @@ Browser FPS in a green vector-grid style (wireframe on black, retro sci-fi / Tro
 - Terrain LOD: chunks more than 2 chunks away draw grid lines every 4 m instead of 2 m. Distant mountains (`world/sky.ts`) are a fog-free ring that follows the camera.
 - Structures are `VoxelGrid.surface(...)` grids: their footprint replaces the terrain (terrain mesh has a hole there, collision uses voxels only).
 - Dungeon seeds: `hash(world, ruinId, depth, gx, gz)`; save keys `ruinId:depth:gx:gz`. Save format v3 (`gridWorld.character.v3`; older `gridArena.*` keys are still read), migrations in `save.ts`.
-- `data/` — items, NPC texts. `save.ts` — persistence and version migrations.
+- Vehicles (`data/vehicles.ts` specs, `world/vehicles.ts` models/driving): RTV-1 Scout and HTV-6 Mastodon, parked outside Gridholm's north gate in a new world (`gen/vehicles.ts`). Each has seats (driver = seat 1; the rest are for multiplayer) and a trunk. Vehicles stay out of the village and ruins. Saved in `char.vehicles` (position, heading, trunk).
+- Containers: chests roll their contents once on first open and keep what the player leaves (`char.containers`, key `chest:<dungeonKey>:<index>`). Chests and trunks use the transfer window (`ui/transfer.ts`); stack moves are pure functions in `inventory.ts`.
+- `data/` — items, NPC texts, vehicles. `save.ts` — persistence and version migrations.

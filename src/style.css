@@ -116,3 +116,18 @@ body.is-touch #bUse.on{display:flex}
   pointer-events:none;display:none;text-align:right;white-space:pre}
 #worldmap{position:fixed;inset:0;display:none;background:#000;z-index:5;cursor:pointer}
 #mini{cursor:pointer;pointer-events:auto}
+/* container transfer window (chests, vehicle trunks) */
+#xfer{display:none}
+#xfer .panel{border:1px solid var(--g2);background:#000;padding:16px 18px 18px;width:min(460px,100%);text-align:left;
+  box-shadow:0 0 30px rgba(61,255,110,.15);max-height:100%;overflow-y:auto;box-sizing:border-box}
+#xfer h2{margin:0;font-weight:400;font-size:40px;color:var(--gold);text-shadow:0 0 8px rgba(255,208,96,.6)}
+#xfer .role{font-size:20px;opacity:.7}
+#xfer h3{margin:12px 0 6px;font-weight:400;font-size:22px;color:var(--txt);opacity:.8}
+#xferGold{margin-top:8px;font-size:22px;color:var(--gold);min-height:4px}
+#xferGold button,#xfer .acts button{background:transparent;color:var(--g);border:1px solid var(--g);padding:3px 14px;font-size:22px;margin-left:8px}
+#xfer .acts{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+#xfer .acts button{margin-left:0}
+#xfer #xferClose{background:var(--g);color:#000}
+#xferMsg{min-height:24px;margin-top:10px;font-size:20px;opacity:.85}
+#xfer .slot.off{opacity:.45;cursor:default}
+#veh{font-size:20px}

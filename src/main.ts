@@ -1,7 +1,7 @@
 // Entry point: load the character, build the first place, run the frame loop.
 import './style.css';
 import { renderer, scene, camera } from './world/render';
-import { G, W } from './game';
+import { G, W, uiOpen } from './game';
 import { loadChar } from './save';
 import { calcStats, saveChar } from './character';
 import { loadDungeon, loadOverworld, toVillage, saveOverworldPos } from './world/level';
@@ -17,6 +17,8 @@ import { collides } from './world/player';
 import { regionRoads } from './gen/roads';
 import { poisNear } from './gen/regions';
 import { sky, horizon } from './world/sky';
+import { driving, updateDriving, vehicleCamera, vehicles } from './world/vehicles';
+import { interact } from './world/interact';
 import { el, updateHud } from './ui/hud';
 import { drawMini } from './ui/minimap';
 import { toggleMap } from './ui/worldmap';
@@ -46,11 +48,11 @@ function frame(now: number) {
   const time = now / 1000;
   const outdoors = G.char.loc === 'overworld';
   let moving = false;
-  const live = G.playing && !G.packOpen && !G.dlgOpen && !G.trans;
+  const live = G.playing && !uiOpen() && !G.trans;
   if (outdoors) updateStreaming(G.trans ? 8 : 4);
   if (live) {
-    moving = updatePlayer(dt);
-    G.cooldown -= dt; if (G.firing) attack();
+    if (driving.v) updateDriving(dt); else moving = updatePlayer(dt);
+    G.cooldown -= dt; if (G.firing && !driving.v) attack();
     updateDoors(dt);
     if (outdoors) updateFieldEnemies(dt);
     updateDrones(dt);
@@ -65,9 +67,10 @@ function frame(now: number) {
       if ((saveT -= dt) <= 0) { saveT = 3; saveOverworldPos(); }
     }
   } else { el.prompt.style.display = 'none'; el.bUse.classList.remove('on'); el.bossbar.style.display = 'none'; }
-  if (G.trans) updateTrans(dt, camera); else camera.position.set(G.pos.x, G.pos.y + EYE, G.pos.z);
+  if (G.trans) updateTrans(dt, camera); else if (driving.v) vehicleCamera(camera); else camera.position.set(G.pos.x, G.pos.y + EYE, G.pos.z);
   camera.rotation.set(G.pitch, G.yaw, 0);
   if (sky.visible) { sky.position.set(camera.position.x, camera.position.y - 20, camera.position.z); horizon.position.set(camera.position.x, 0, camera.position.z); }
+  el.cross.style.display = driving.v && !driving.cockpit ? 'none' : '';
   animateVM(dt, moving);
   animateFoes(dt, time, camera.position);
   updateFx(dt);
@@ -83,4 +86,4 @@ function frame(now: number) {
 requestAnimationFrame(frame);
 
 // Debug handle for automated checks in development builds.
-if (import.meta.env.DEV) Object.assign(window, { __game: { G, W, OW, camera, scene, renderer, regionRoads, poisNear, groundAt, treeHit, collides } });
+if (import.meta.env.DEV) Object.assign(window, { __game: { G, W, OW, camera, scene, renderer, regionRoads, poisNear, groundAt, treeHit, collides, vehicles, driving, interact } });

@@ -1,5 +1,5 @@
 // Touch controls: left-side joystick, drag to look, on-screen buttons.
-import { G } from '../game';
+import { G, uiOpen } from '../game';
 import { renderer } from '../world/render';
 import { $ } from './hud';
 import { togglePack } from './backpack';
@@ -26,7 +26,7 @@ export function initTouch() {
   };
   const cv = renderer.domElement;
   cv.addEventListener('touchstart', (e) => {
-    if (!G.playing || G.packOpen || G.dlgOpen) return; e.preventDefault();
+    if (!G.playing || uiOpen()) return; e.preventDefault();
     for (const t of e.changedTouches) {
       if (t.clientX < innerWidth * 0.45 && stick.id === null) {
         stick.id = t.identifier; const r = stickEl.getBoundingClientRect();

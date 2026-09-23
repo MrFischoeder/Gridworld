@@ -1,11 +1,15 @@
 // Character persistence. Only player-made changes are stored, never generated geometry.
 // Versions: v1 (relic counts) -> v2 (backpack, per-dungeon progress) -> v3 (open world).
 import { INV_SIZE, MOD_SIZE, ITEMS, type ItemKey } from './data/items';
+import type { VehicleModel } from './data/vehicles';
 
 export interface Slot { k: ItemKey; n: number }
 /** Per-dungeon progress, keyed by dungeonKey() = "ruinId:depth:gx:gz". */
 export type Progress = Record<string, number[]>;
 export interface DungeonPos { ruinId: number; depth: number; gx: number; gz: number }
+/** Anything that holds items: a searched chest, a vehicle trunk. */
+export interface Container { items: (Slot | null)[]; gold: number }
+export interface VehicleState { id: string; model: VehicleModel; x: number; z: number; heading: number; trunk: Container }
 export interface Char {
   v: 3;
   level: number; xp: number; gold: number; world: number;
@@ -18,6 +22,10 @@ export interface Char {
   dungeon: DungeonPos | null;
   /** Explored map: region "rx,rz" -> 64-bit mask (16 hex digits) of its 8x8 chunks. */
   discovered: Record<string, string>;
+  /** What is left in searched chests, keyed "chest:<dungeonKey>:<index>". */
+  containers: Record<string, Container>;
+  /** The player's vehicles on the surface (empty = not placed yet; the game parks the starting ones). */
+  vehicles: VehicleState[];
 }
 
 export const SAVE_KEY = 'gridWorld.character.v3';
@@ -27,7 +35,7 @@ export const ARENA_V3_KEY = 'gridArena.character.v3', V2_KEY = 'gridArena.charac
 export const newChar = (): Char => ({
   v: 3, level: 1, xp: 0, gold: 0, world: (Math.random() * 1e6) | 0,
   inv: Array(INV_SIZE).fill(null), mods: Array(MOD_SIZE).fill(null), opened: {}, unlocked: {}, killed: {},
-  loc: 'overworld', ow: null, dungeon: null, discovered: {},
+  loc: 'overworld', ow: null, dungeon: null, discovered: {}, containers: {}, vehicles: [],
 });
 
 interface V2 { level?: number; xp?: number; gold?: number; world?: number; inv?: (Slot | null)[]; mods?: (ItemKey | null)[] }

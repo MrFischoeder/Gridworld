@@ -7,6 +7,7 @@ import { STEP, VERTS, CELLS, inRect } from '../gen/terrain';
 import { discover, isDiscovered } from '../save';
 import { saveChar } from '../character';
 import { drawPlayerArrow } from './minimap';
+import { vehicles, driving } from '../world/vehicles';
 import { $ } from './hud';
 
 const tiles = new Map<string, HTMLCanvasElement>();
@@ -74,6 +75,12 @@ function drawArea(ctx: CanvasRenderingContext2D, w: number, h: number, ppm: numb
     if (labels) ctx.fillText(p.name, x, y - 12);
   }
   ctx.lineWidth = 1;
+  for (const v of vehicles) {
+    if (v === driving.v) continue;
+    const x = X(v.st.x), y = Z(v.st.z), l = Math.max(3, v.spec.length * ppm / 2), w = Math.max(2, v.spec.width * ppm / 2);
+    ctx.save(); ctx.translate(x, y); ctx.rotate(-v.st.heading); ctx.strokeStyle = '#e8fff0'; ctx.strokeRect(-w, -l, w * 2, l * 2); ctx.restore();
+    if (labels) { ctx.fillStyle = '#e8fff0'; ctx.fillText(v.spec.name, x, y - l - 6); }
+  }
   for (const t of W.drones) { if (!t.chasing) continue; ctx.fillStyle = '#ffb347'; ctx.fillRect(X(t.p.x) - 1.5, Z(t.p.z) - 1.5, 3, 3); }
   drawPlayerArrow(ctx, w / 2, h / 2);
 }

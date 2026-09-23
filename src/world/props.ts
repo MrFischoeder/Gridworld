@@ -93,6 +93,18 @@ export class PropBatch {
     for (let i = 0; i < sides; i++) { const j = (i + 1) % sides; this.seg(color, base[i], base[j]); this.seg(color, base[i], top); this.face(base[i], base[j], top); }
   }
 
+  /** Solid with 8 corners: bottom loop b0..b3 and top loop t0..t3 (same winding). Good for tapered hoods and cabs. */
+  solid8(b: number[][], t: number[][], color: number) {
+    for (let i = 0; i < 4; i++) {
+      const j = (i + 1) % 4;
+      this.seg(color, b[i], b[j]); this.seg(color, t[i], t[j]); this.seg(color, b[i], t[i]);
+      this.face(b[i], b[j], t[j], t[i]);
+    }
+    this.face(b[0], b[1], b[2], b[3]); this.face(t[0], t[1], t[2], t[3]);
+  }
+  /** Straight open line (tubes, frames, window outlines). */
+  line(color: number, ...pts: number[][]) { for (let i = 0; i + 1 < pts.length; i++) this.seg(color, pts[i], pts[i + 1]); }
+
   build(): THREE.Group {
     const g = new THREE.Group();
     if (this.tri.length) {
