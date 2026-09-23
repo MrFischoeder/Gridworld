@@ -10,7 +10,7 @@ import { updateDoors, updateTrans } from './world/doors';
 import { updateDrones, updateBosses, updateOrbs, animateFoes, updateBossBar, foeRules, makeDrone, damageFoe } from './world/enemies';
 import { updateLoot } from './world/loot';
 import { updateEntities } from './world/interact';
-import { attack, animateVM, refreshWeaponVisibility } from './world/weapons';
+import { attack, animateVM, refreshWeaponVisibility, vmScene, syncViewmodel } from './world/weapons';
 import { updateFx, updateStreaks } from './world/fx';
 import { updateStreaming, updateFieldEnemies, placeName, OW, groundAt, treeHit } from './world/overworld';
 import { collides } from './world/player';
@@ -43,6 +43,7 @@ initMenu({
 
 if (G.char.loc === 'dungeon' && G.char.dungeon) loadDungeon(null); else { G.char.loc = 'overworld'; loadOverworld({ kind: 'saved' }); }
 
+renderer.info.autoReset = false;
 let last = performance.now(), perfT = 0, saveT = 0;
 function frame(now: number) {
   const dt = Math.min((now - last) / 1000, 0.05); last = now;
@@ -79,7 +80,11 @@ function frame(now: number) {
   updateFx(dt);
   updateHud(dt);
   updateStreaks(dt); drawMini();
+  renderer.info.reset(); // two passes per frame: count both (F3 overlay)
   renderer.render(scene, camera);
+  // held weapon on top of the world
+  camera.updateMatrixWorld(); syncViewmodel();
+  renderer.autoClear = false; renderer.clearDepth(); renderer.render(vmScene, camera); renderer.autoClear = true;
   if ((perfT -= dt) <= 0 && el.perf.style.display === 'block') {
     perfT = 0.5; const r = renderer.info.render;
     el.perf.textContent = `${Math.round(1 / Math.max(dt, 1e-3))} fps\nlines ${r.lines}\ntriangles ${r.triangles}\ncalls ${r.calls}\nfoes ${W.drones.length}`;

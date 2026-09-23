@@ -12,19 +12,34 @@ export const WEAPONS = [{ name: 'Blaster', dmg: 1, rate: 0 }, { name: 'Blade', r
 export let armed = () => true;
 export function setArmedRule(f: () => boolean) { armed = f; }
 
-const vmMat = lineMat(0x7dffa0, { fog: false, depthTest: false, transparent: true });
-const bladeMat = lineMat(0xc8ffd6, { fog: false, depthTest: false, transparent: true, blending: THREE.AdditiveBlending });
-const edges = (g: THREE.BufferGeometry, m: THREE.Material) => { const l = new THREE.LineSegments(new THREE.EdgesGeometry(g), m); l.renderOrder = 10; return l; };
+// Held weapons live in their own little scene, drawn after the world with a cleared depth buffer:
+// they are solid (dark fill under the lines) yet never poke into walls.
+export const vmScene = new THREE.Scene();
+const vmRoot = new THREE.Group(); vmScene.add(vmRoot);
+const vmMat = lineMat(0x7dffa0, { fog: false });
+const bladeMat = lineMat(0xc8ffd6, { fog: false, transparent: true, blending: THREE.AdditiveBlending });
+const vmFill = new THREE.MeshBasicMaterial({ color: 0x021208, fog: false, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 });
+/** Solid part: dark body with its edges drawn on top. `glow` parts (the energy blade) stay translucent. */
+const part = (g: THREE.BufferGeometry, m: THREE.Material, glow = false) => {
+  const o = new THREE.Group();
+  if (!glow) o.add(new THREE.Mesh(g, vmFill));
+  o.add(new THREE.LineSegments(new THREE.EdgesGeometry(g), m));
+  return o;
+};
 export const gunVM = new THREE.Group();
-gunVM.add(edges(new THREE.BoxGeometry(0.07, 0.08, 0.42), vmMat));
-const barrel = edges(new THREE.CylinderGeometry(0.02, 0.02, 0.2, 6), vmMat); barrel.rotation.x = Math.PI / 2; barrel.position.z = -0.3; gunVM.add(barrel);
-const grip = edges(new THREE.BoxGeometry(0.05, 0.14, 0.06), vmMat); grip.position.set(0, -0.1, 0.1); grip.rotation.x = 0.3; gunVM.add(grip);
-gunVM.position.set(0.24, -0.22, -0.45); camera.add(gunVM);
+gunVM.add(part(new THREE.BoxGeometry(0.07, 0.08, 0.42), vmMat));
+const barrel = part(new THREE.CylinderGeometry(0.02, 0.02, 0.2, 6), vmMat); barrel.rotation.x = Math.PI / 2; barrel.position.z = -0.3; gunVM.add(barrel);
+const grip = part(new THREE.BoxGeometry(0.05, 0.14, 0.06), vmMat); grip.position.set(0, -0.1, 0.1); grip.rotation.x = 0.3; gunVM.add(grip);
+const sight = part(new THREE.BoxGeometry(0.03, 0.03, 0.1), vmMat); sight.position.set(0, 0.055, -0.05); gunVM.add(sight);
+const cell = part(new THREE.BoxGeometry(0.075, 0.05, 0.12), vmMat); cell.position.set(0, -0.06, -0.08); gunVM.add(cell);
+gunVM.position.set(0.24, -0.22, -0.45); vmRoot.add(gunVM);
 export const bladeVM = new THREE.Group();
-const hilt = edges(new THREE.BoxGeometry(0.05, 0.2, 0.05), vmMat); hilt.position.y = 0.1; bladeVM.add(hilt);
-const guard = edges(new THREE.BoxGeometry(0.18, 0.03, 0.06), vmMat); guard.position.y = 0.21; bladeVM.add(guard);
-const blade = edges(new THREE.BoxGeometry(0.03, 0.7, 0.08), bladeMat); blade.position.y = 0.58; bladeVM.add(blade);
-bladeVM.visible = false; camera.add(bladeVM);
+const hilt = part(new THREE.BoxGeometry(0.05, 0.2, 0.05), vmMat); hilt.position.y = 0.1; bladeVM.add(hilt);
+const guard = part(new THREE.BoxGeometry(0.18, 0.03, 0.06), vmMat); guard.position.y = 0.21; bladeVM.add(guard);
+const blade = part(new THREE.BoxGeometry(0.03, 0.7, 0.08), bladeMat, true); blade.position.y = 0.58; bladeVM.add(blade);
+bladeVM.visible = false; vmRoot.add(bladeVM);
+/** Keep the held weapon glued to the camera (call after the camera moved, before rendering vmScene). */
+export function syncViewmodel() { vmRoot.position.copy(camera.position); vmRoot.quaternion.copy(camera.quaternion); }
 
 export function setWeapon(w: number) {
   G.weapon = w; const v = armed(); gunVM.visible = v && w === 0; bladeVM.visible = v && w === 1;
