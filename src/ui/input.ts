@@ -2,6 +2,7 @@
 import { G, uiOpen } from '../game';
 import { closeTransfer } from './transfer';
 import { closeService } from './service';
+import { toggleConsole } from './console';
 import { driving, toggleCockpit } from '../world/vehicles';
 import { renderer } from '../world/render';
 import { el } from './hud';
@@ -22,6 +23,8 @@ export const onKey = (f: (e: KeyboardEvent) => boolean) => extraKeys.push(f);
 export function initInput(onPause: () => void) {
   addEventListener('keydown', (e) => {
     if (e.target === el.seed) return;
+    if (e.code === 'Backquote') { e.preventDefault(); toggleConsole(); return; }
+    if (G.consoleOpen) return;
     if (e.code === 'KeyI' || e.code === 'Tab') { e.preventDefault(); if (!G.dlgOpen && !G.xferOpen) togglePack(); return; }
     if (G.packOpen) { if (e.code === 'Escape') closePack(); return; }
     if (G.dlgOpen) { if (e.code === 'Escape') closeDialog(); return; }

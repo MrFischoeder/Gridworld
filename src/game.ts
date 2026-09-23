@@ -34,7 +34,9 @@ export const G = {
   /** Extra solid obstacles that are not voxels (tree trunks). */
   obstacle: null as ((x: number, y: number, z: number, r: number) => boolean) | null,
   mapOpen: false,
-  playing: false, packOpen: false, dlgOpen: false, xferOpen: false, firing: false,
+  playing: false, packOpen: false, dlgOpen: false, xferOpen: false, consoleOpen: false, firing: false,
+  /** Console cheat: full health that never drops. */
+  god: false,
   keys: {} as Record<string, boolean>,
   trans: null as Trans | null,
   isTouch: ('ontouchstart' in window) || navigator.maxTouchPoints > 0,
@@ -57,4 +59,4 @@ export const W = {
 
 
 /** Any window that pauses play (backpack, dialogue, container). */
-export const uiOpen = () => G.packOpen || G.dlgOpen || G.xferOpen;
+export const uiOpen = () => G.packOpen || G.dlgOpen || G.xferOpen || G.consoleOpen;

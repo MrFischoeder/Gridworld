@@ -1,0 +1,66 @@
+// Developer console, opened with ~ (the backquote key). Cheats for testing.
+import { G } from '../game';
+import { saveChar } from '../character';
+import { toVillage } from '../world/level';
+import { $, logLine, showToast } from './hud';
+import { lockPointer } from './input';
+
+const root = $('console'), out = $('conLog'), input = $<HTMLInputElement>('conIn');
+const history: string[] = [];
+let hIdx = 0;
+
+function print(text: string, err = false) {
+  const d = document.createElement('div'); d.textContent = text; if (err) d.className = 'err';
+  out.appendChild(d); out.scrollTop = out.scrollHeight;
+}
+
+const COMMANDS: Record<string, { help: string; run: () => string }> = {
+  help: { help: 'list commands', run: () => Object.entries(COMMANDS).map(([k, c]) => `${k.padEnd(6)} ${c.help}`).join('\n') },
+  cash: {
+    help: '+10000 gold',
+    run: () => { G.char.gold += 10000; saveChar(); logLine('+10000 gold'); return `Gold: ${G.char.gold}`; },
+  },
+  god: {
+    help: 'full health and immortality (type again to turn off)',
+    run: () => { G.god = !G.god; G.hp = G.S.maxHp; return G.god ? 'God mode ON: full health, no death.' : 'God mode OFF.'; },
+  },
+  home: {
+    help: 'go back to Gridholm (outside the tavern)',
+    run: () => { if (G.trans) return 'Busy travelling, try again in a moment.'; close(); toVillage('recall'); showToast('Gridholm'); return 'Home.'; },
+  },
+  clear: { help: 'clear this log', run: () => { out.innerHTML = ''; return ''; } },
+};
+
+function exec(line: string) {
+  const cmd = line.trim().toLowerCase();
+  if (!cmd) return;
+  history.push(cmd); hIdx = history.length;
+  print('> ' + cmd);
+  const c = COMMANDS[cmd.split(/\s+/)[0]];
+  if (!c) { print(`Unknown command "${cmd}". Type help.`, true); return; }
+  const r = c.run();
+  if (r) print(r);
+}
+
+export function open() {
+  if (G.consoleOpen) return;
+  G.consoleOpen = true; G.firing = false; for (const k in G.keys) G.keys[k] = false;
+  root.style.display = 'flex';
+  if (document.pointerLockElement) document.exitPointerLock();
+  if (!out.childElementCount) print('GridWorld console. Commands: cash, god, home, help. ~ or Esc to close.');
+  setTimeout(() => input.focus(), 0);
+}
+export function close() {
+  if (!G.consoleOpen) return;
+  G.consoleOpen = false; root.style.display = 'none'; input.blur();
+  if (G.playing && !G.isTouch) lockPointer();
+}
+export const toggleConsole = () => (G.consoleOpen ? close() : open());
+
+input.addEventListener('keydown', (e) => {
+  e.stopPropagation(); // typing here must not move the player
+  if (e.code === 'Backquote' || e.code === 'Escape') { e.preventDefault(); close(); return; }
+  if (e.code === 'Enter') { exec(input.value); input.value = ''; return; }
+  if (e.code === 'ArrowUp' && history.length) { hIdx = Math.max(0, hIdx - 1); input.value = history[hIdx]; e.preventDefault(); }
+  if (e.code === 'ArrowDown' && history.length) { hIdx = Math.min(history.length, hIdx + 1); input.value = history[hIdx] ?? ''; e.preventDefault(); }
+});

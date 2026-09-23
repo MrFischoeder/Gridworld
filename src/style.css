@@ -148,3 +148,10 @@ body.is-touch #bUse.on{display:flex}
 #svc #svcClose{background:var(--g);color:#000;border:0;padding:5px 18px;font-size:24px}
 .slot.part{color:var(--cyan);border-color:#2a6a8a}
 .svcrow > div:last-child{display:flex;gap:6px;flex-shrink:0}
+/* developer console (~) */
+#console{position:fixed;left:0;right:0;top:0;height:40%;display:none;flex-direction:column;justify-content:flex-end;z-index:20;
+  background:rgba(0,10,3,.92);border-bottom:1px solid var(--g2);font-size:20px;padding:8px 14px;box-sizing:border-box}
+#conLog{overflow-y:auto;white-space:pre-wrap;color:var(--txt);line-height:1.25}
+#conLog .err{color:var(--amber)}
+#conRow{display:flex;gap:8px;align-items:center;color:var(--g);margin-top:6px}
+#conIn{flex:1;font:inherit;font-size:20px;background:transparent;color:var(--g);border:0;border-bottom:1px solid var(--g2);outline:none}

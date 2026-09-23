@@ -59,6 +59,7 @@ function frame(now: number) {
     updateDrones(dt);
     const boss = updateBosses(dt, time); updateOrbs(dt);
     updateBossBar(boss);
+    if (G.god) G.hp = G.S.maxHp;
     if (G.hp <= 0) { el.warp.style.opacity = '1'; toVillage('death'); }
     updateLoot(dt, time); updateEntities(dt, time);
     if (outdoors) {
