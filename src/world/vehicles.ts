@@ -312,7 +312,7 @@ export function useVehicle(s: VehicleSpot) {
   }
   const why = immobile(s.v.st.parts);
   if (why) { showToast("It won't move"); logLine(why + ' Service it at the front of the vehicle.'); return; }
-  driving.v = s.v; s.v.speed = 0; driving.since = performance.now();
+  driving.v = s.v; s.v.speed = 0; driving.since = performance.now(); setSeeThrough(s.v, driving.cockpit);
   G.vel.set(0, 0, 0); G.firing = false;
   G.yaw = s.v.st.heading + Math.PI; G.pitch = -0.12;
   showToast(vehicleTitle(s.v.st.model));
@@ -321,7 +321,7 @@ export function useVehicle(s: VehicleSpot) {
 export function leave(save = true) {
   const v = driving.v;
   if (!v) return;
-  driving.v = null; v.speed = 0; v.steer = 0; aimTurret(v);
+  driving.v = null; v.speed = 0; v.steer = 0; aimTurret(v); setSeeThrough(v, false);
   const spots: [number, number][] = [[v.spec.door[0], v.spec.door[1]], [-v.spec.door[0], v.spec.door[1]], [v.spec.rear[0], v.spec.rear[1]], [v.spec.door[0] + 1, v.spec.door[1]]];
   for (const [lx, lz] of spots) {
     const [x, z] = toWorld(v, lx, lz), y = hooks ? hooks.height(x, z) : v.y;
@@ -408,7 +408,14 @@ export function vehicleCamera(camera: THREE.PerspectiveCamera) {
   if (hooks) p.y = Math.max(p.y, hooks.height(p.x, p.z) + 0.6);
   camera.position.copy(p);
 }
-export const toggleCockpit = () => { driving.cockpit = !driving.cockpit; };
+/**
+ * In the cockpit the camera sits inside the body, so the driven vehicle's dark fill would block the view:
+ * hide it and keep only its lines (you look out through the frame and windows).
+ */
+function setSeeThrough(v: Vehicle, on: boolean) {
+  v.group.traverse((o) => { if ((o as THREE.Mesh).isMesh) o.visible = !on; });
+}
+export const toggleCockpit = () => { driving.cockpit = !driving.cockpit; if (driving.v) setSeeThrough(driving.v, driving.cockpit); };
 
 // ---------- selling back to the dealer ----------
 /** Own vehicles parked near the dealer's yard, with what Mirek would pay for each. */

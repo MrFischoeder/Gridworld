@@ -55,6 +55,9 @@ export function updateLoot(dt: number, time: number) {
     const to = body.clone().sub(c.p), d = to.length();
     if (d < 4.5 && c.age > 0.4) c.v.lerp(to.normalize().multiplyScalar(11), Math.min(1, 8 * dt));
     else c.v.multiplyScalar(Math.max(0, 1 - 3 * dt));
+    // fall until hovering just above the floor (crystals from flyers would otherwise hang in the air)
+    if (!(d < 4.5 && c.age > 0.4) && emptyAt(V(c.p.x, c.p.y - 0.6, c.p.z))) c.v.y -= 14 * dt;
+    else if (c.v.y < 0 && !(d < 4.5 && c.age > 0.4)) c.v.y = 0;
     const np = c.p.clone().addScaledVector(c.v, dt); if (emptyAt(np)) c.p.copy(np); else c.v.set(0, 0, 0);
     c.m.position.copy(c.p); c.m.position.y += Math.sin(time * 4 + i) * 0.06; c.m.rotation.y = time * 3 + i;
     if (d < 0.9) { scene.remove(c.m); W.crystals.splice(i, 1); gainXp(crystalXp()); burst(c.p, 0x9dffe0, 5, 0.3); }
