@@ -11,18 +11,21 @@ export function hash2(seed: number, x: number, z: number): number {
 
 const smooth = (t: number) => t * t * (3 - 2 * t);
 
-/** Value noise in [0, 1) with a lattice spacing of 1. */
-export function valueNoise(seed: number, x: number, z: number): number {
-  const x0 = Math.floor(x), z0 = Math.floor(z), fx = smooth(x - x0), fz = smooth(z - z0);
-  const a = hash2(seed, x0, z0), b = hash2(seed, x0 + 1, z0), c = hash2(seed, x0, z0 + 1), d = hash2(seed, x0 + 1, z0 + 1);
+/** Lattice column i folded into [-p/2, p/2) when the noise repeats every p cells along x (p = 0: no repeat). */
+const fold = (i: number, p: number) => (p ? ((((i + (p >> 1)) % p) + p) % p) - (p >> 1) : i);
+
+/** Value noise in [0, 1) with a lattice spacing of 1; with px > 0 it repeats every px cells along x. */
+export function valueNoise(seed: number, x: number, z: number, px = 0): number {
+  const x0 = Math.floor(x), z0 = Math.floor(z), fx = smooth(x - x0), fz = smooth(z - z0), xa = fold(x0, px), xb = fold(x0 + 1, px);
+  const a = hash2(seed, xa, z0), b = hash2(seed, xb, z0), c = hash2(seed, xa, z0 + 1), d = hash2(seed, xb, z0 + 1);
   return a + (b - a) * fx + (c - a) * fz + (a - b - c + d) * fx * fz;
 }
 
-/** Fractal sum of octaves, normalised back to [0, 1). */
-export function fbm(seed: number, x: number, z: number, octaves: number): number {
+/** Fractal sum of octaves, normalised back to [0, 1). With px > 0 every octave repeats every px (base) cells along x. */
+export function fbm(seed: number, x: number, z: number, octaves: number, px = 0): number {
   let sum = 0, amp = 1, norm = 0, f = 1;
   for (let o = 0; o < octaves; o++) {
-    sum += valueNoise(seed + o * 1013, x * f, z * f) * amp;
+    sum += valueNoise(seed + o * 1013, x * f, z * f, px * f) * amp;
     norm += amp; amp *= 0.5; f *= 2;
   }
   return sum / norm;

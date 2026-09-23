@@ -147,6 +147,7 @@ export function loadOverworld(a: Arrival) {
   let x = 0, z = 12, yaw = 0;
   if (a.kind === 'saved' && c.ow) { x = c.ow.x; z = c.ow.z; yaw = c.ow.yaw; }
   if (a.kind === 'ruin') { const p = findPoi(c.world, a.id); if (p) { x = p.x; z = p.z; } }
+  G.pos.set(x, G.pos.y, z); // vehicles are placed on the copy of the world nearest to the player
   openWorld(x, z);
   if (a.kind === 'ruin') {
     const st = structFor(a.id)?.stairs[0];

@@ -45,3 +45,22 @@ export function disposeTree(o: THREE.Object3D) {
   o.removeFromParent();
   o.traverse((c) => { const g = (c as THREE.Mesh).geometry; if (g) g.dispose(); });
 }
+
+/**
+ * Moves a group built in world coordinates to a local origin (ox, oz). Tens of kilometres from Gridholm the
+ * camera transform loses precision against big vertex coordinates and lines would shimmer; with small local
+ * vertices and the offset in the object's position the GPU only ever sees small numbers.
+ * Children at the group origin get their geometry moved; children placed with a position are moved instead.
+ */
+export function localize(g: THREE.Object3D, ox: number, oz: number) {
+  const walk = (o: THREE.Object3D) => {
+    for (const c of o.children) {
+      if (c.position.lengthSq() === 0 && c.quaternion.w === 1) {
+        (c as THREE.Mesh).geometry?.translate(-ox, 0, -oz);
+        walk(c);
+      } else { c.position.x -= ox; c.position.z -= oz; }
+    }
+  };
+  walk(g);
+  g.position.set(ox, 0, oz);
+}

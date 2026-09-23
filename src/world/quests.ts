@@ -2,6 +2,7 @@
 import { G, W } from '../game';
 import { generateQuest, compass, km, type Quest } from '../gen/quests';
 import { boardPeriod } from '../core/time';
+import { worldDist, nearX, wrapDx } from '../gen/regions';
 import type { CreatureKind } from '../data/creatures';
 import { ITEMS, RELIC_KEYS, type ItemKey } from '../data/items';
 import { NPC_INFO, type NpcRole } from '../data/npcs';
@@ -129,10 +130,10 @@ export function syncQuestWorld() {
   if (G.char.loc !== 'overworld') return;
   for (const q of G.char.quests) {
     if (q.state !== 'active') continue;
-    if (q.kind === 'hunt' && q.at && Math.hypot(q.at.x - G.pos.x, q.at.z - G.pos.z) < 160 && !W.creatures.some((c) => c.questId === q.id))
+    if (q.kind === 'hunt' && q.at && worldDist(q.at.x, q.at.z, G.pos.x, G.pos.z) < 160 && !W.creatures.some((c) => c.questId === q.id))
       spawnQuestGroup(q);
-    if (q.kind === 'fetch' && q.place?.type === 'wreck' && !hasItem(q.item!) && !questPickupHere(q.item!) && Math.hypot(q.place.x - G.pos.x, q.place.z - G.pos.z) < 160 && OW.terrain) {
-      const x = q.place.x + 2.5, z = q.place.z + 2.5;
+    if (q.kind === 'fetch' && q.place?.type === 'wreck' && !hasItem(q.item!) && !questPickupHere(q.item!) && worldDist(q.place.x, q.place.z, G.pos.x, G.pos.z) < 160 && OW.terrain) {
+      const x = nearX(q.place.x + 2.5, G.pos.x), z = q.place.z + 2.5;
       dropPickup(V(x, OW.terrain.heightAt(x, z) + 1.5, z), q.item!);
     }
   }
@@ -170,11 +171,11 @@ export function updateTracker(dt: number) {
     else if (q.kind === 'hunt') s += ` — ${q.killed ?? 0}/${q.pack!.count}${q.alphaDead ? '' : ', ' + q.pack!.alpha + ' alive'}`;
     else if (q.kind === 'camp') s += ' — clear it';
     const t = questTarget(q);
-    if (t && G.char.loc === 'overworld') { const d = Math.hypot(t.x - G.pos.x, t.z - G.pos.z); s += d < 25 ? ' · right here' : ` · ${km(d)} ${compass(t.x - G.pos.x, t.z - G.pos.z)}`; }
+    if (t && G.char.loc === 'overworld') { const dx = wrapDx(t.x - G.pos.x), d = Math.hypot(dx, t.z - G.pos.z); s += d < 25 ? ' · right here' : ` · ${km(d)} ${compass(dx, t.z - G.pos.z)}`; }
     else if (t && q.place?.type === 'ruin') s += ' · in the dungeon below';
     return s;
   });
   trackEl.innerHTML = lines.map((l) => `<div>${l}</div>`).join('');
 }
 export const questMarkers = (): { x: number; z: number; label: string }[] =>
-  G.char.quests.map((q) => ({ t: questTarget(q), q })).filter((m) => m.t).map(({ t, q }) => ({ x: t!.x, z: t!.z, label: q.kind === 'hunt' ? q.pack!.alpha : q.kind === 'camp' ? q.place!.name : ITEMS[q.item!].name }));
+  G.char.quests.map((q) => ({ t: questTarget(q), q })).filter((m) => m.t).map(({ t, q }) => ({ x: nearX(t!.x, G.pos.x), z: t!.z, label: q.kind === 'hunt' ? q.pack!.alpha : q.kind === 'camp' ? q.place!.name : ITEMS[q.item!].name }));

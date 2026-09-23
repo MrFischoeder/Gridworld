@@ -1,7 +1,7 @@
 // Heightfield of the open world: seeded noise, shaped per region, flattened under places and along roads.
 import { fbm } from '../core/noise';
 import { hash } from '../core/rng';
-import { regionInfo, regionOf, poisNear, CHUNK, REGION, type Poi, type Rect } from './regions';
+import { regionInfo, regionOf, poisNear, wrapR, CHUNK, REGION, WORLD_W, POLAR_Z, POLE_Z, type Poi, type Rect } from './regions';
 import { regionRoads, nearestOnRoad, roadBounds, type Road } from './roads';
 
 export const STEP = 2, CELLS = CHUNK / STEP, VERTS = CELLS + 1;
@@ -15,6 +15,14 @@ export interface Pad { poi: Poi; y: number }
 export interface Features { pads: Pad[]; roads: Road[] }
 
 const ROAD_BLEND = 5;
+/**
+ * Noise scale s adjusted so a whole number of lattice cells fits round the planet: returns [scale, cells].
+ * The adjustment is tiny (e.g. 170 m -> 169.94 m), so the land near Gridholm is practically unchanged.
+ */
+const wrapScale = (s: number): [number, number] => { const n = Math.round(WORLD_W / s); return [WORLD_W / n, n]; };
+const [S170, P170] = wrapScale(170), [S48, P48] = wrapScale(48), [S90, P90] = wrapScale(90), [S60, P60] = wrapScale(60);
+/** Ice sheet height and the ice wall at the poles. */
+const ICE_Y = 16, WALL_H = 70;
 
 export class Terrain {
   private s1: number; private s2: number;
@@ -26,15 +34,22 @@ export class Terrain {
   /** Region roughness, blended smoothly between region centres so there are no seams. */
   private rough(x: number, z: number): number {
     const fx = x / REGION, fz = z / REGION, x0 = Math.floor(fx), z0 = Math.floor(fz), tx = smooth(fx - x0), tz = smooth(fz - z0);
-    const v = (rx: number, rz: number) => regionInfo(this.world, rx, rz).rough;
+    const v = (rx: number, rz: number) => regionInfo(this.world, wrapR(rx), rz).rough;
     const a = v(x0, z0), b = v(x0 + 1, z0), c = v(x0, z0 + 1), d = v(x0 + 1, z0 + 1);
     return a + (b - a) * tx + (c - a) * tz + (a - b - c + d) * tx * tz;
   }
-  /** Natural terrain before any flattening: gentle hills in 0..25 m. */
+  /** Natural terrain before any flattening: gentle hills in 0..25 m; towards the poles an ice sheet, then the ice wall. */
   base(x: number, z: number): number {
     const amp = 0.55 + 0.8 * this.rough(x, z);
-    const raw = 12.5 + amp * (46 * (fbm(this.s1, x / 170, z / 170, 4) - 0.5) + 8 * (fbm(this.s2, x / 48, z / 48, 3) - 0.5));
-    return 12.5 + 12.5 * Math.tanh((raw - 12.5) / 12.5);
+    const raw = 12.5 + amp * (46 * (fbm(this.s1, x / S170, z / 170, 4, P170) - 0.5) + 8 * (fbm(this.s2, x / S48, z / 48, 3, P48) - 0.5));
+    let h = 12.5 + 12.5 * Math.tanh((raw - 12.5) / 12.5);
+    const az = Math.abs(z);
+    if (az > POLAR_Z) {
+      const ice = ICE_Y + 3 * (fbm(this.s2 + 5, x / S60, z / 60, 2, P60) - 0.5);
+      h += (ice - h) * smooth(Math.min(1, (az - POLAR_Z) / 2500));
+      if (az > POLE_Z - 120) h += WALL_H * smooth(Math.min(1, (az - (POLE_Z - 120)) / 70)); // a sheer cliff of ice
+    }
+    return h;
   }
   /** Floor height of a place (whole metres, so voxel structures sit exactly on it). */
   padY(p: Poi): number {
@@ -110,8 +125,9 @@ export class Terrain {
   /** Forest density 0..1 at a point: regional amount modulated by large blotches of noise. */
   forest(x: number, z: number): number {
     const [rx, rz] = regionOf(x, z), reg = regionInfo(this.world, rx, rz).forest;
-    const n = fbm(this.s2 + 17, x / 90, z / 90, 3);
-    return Math.max(0, Math.min(1, (n - 0.62 + reg * 0.3) * 3.2));
+    const n = fbm(this.s2 + 17, x / S90, z / 90, 3, P90);
+    const cold = Math.abs(z) > POLAR_Z - 3000 ? Math.max(0, 1 - (Math.abs(z) - (POLAR_Z - 3000)) / 2500) : 1; // forests thin out towards the ice
+    return Math.max(0, Math.min(1, (n - 0.62 + reg * 0.3) * 3.2)) * cold;
   }
 }
 const key = (cx: number, cz: number) => (cx + 32768) * 65536 + (cz + 32768);

@@ -1,6 +1,6 @@
 // Forest placement per chunk: jittered candidates kept by forest density; never on roads or places.
 import { rng, hash } from '../core/rng';
-import { CHUNK } from './regions';
+import { CHUNK, wrapC } from './regions';
 import { rectDist, type Terrain } from './terrain';
 import { nearestOnRoad } from './roads';
 
@@ -34,7 +34,12 @@ function treeSpots(t: Terrain, cx: number, cz: number) {
   return out;
 }
 /** Trunk positions only (for placing vehicles and other things clear of trees). */
-export const treeTrunks = (t: Terrain, cx: number, cz: number) => treeSpots(t, cx, cz);
+export function treeTrunks(t: Terrain, cx: number, cz: number) {
+  const c = wrapC(cx), dx = (cx - c) * CHUNK;
+  return treeSpots(t, c, cz).map((s) => ({ ...s, x: s.x + dx }));
+}
+/** Moves a canonical tree east or west by dx (a copy across the planet's seam). */
+const shiftTree = (tr: Tree, dx: number): Tree => (dx ? { ...tr, x: tr.x + dx, cols: tr.cols.map(([x, z, r]): [number, number, number] => [x + dx, z, r]) } : tr);
 
 /** Kind, shape seed and size of the tree at a spot. Each spot draws from its own hash, so positions never shift. */
 function classify(t: Terrain, f: ReturnType<Terrain['chunkFeatures']>, s: { x: number; z: number; y: number; h: number; r: number }): Tree {
@@ -57,6 +62,8 @@ function classify(t: Terrain, f: ReturnType<Terrain['chunkFeatures']>, s: { x: n
 const bigCache = new Map<string, Tree[]>();
 /** The big trees a chunk would like to grow (before they are checked against each other). Cached. */
 function bigWanted(t: Terrain, cx: number, cz: number): Tree[] {
+  const c = wrapC(cx);
+  if (c !== cx) return bigWanted(t, c, cz).map((tr) => shiftTree(tr, (cx - c) * CHUNK));
   const key = t.world + ':' + cx + ':' + cz;
   let b = bigCache.get(key);
   if (!b) {
@@ -76,6 +83,8 @@ const beats = (a: Tree, b: Tree) => TREE_SPAN[a.kind] > TREE_SPAN[b.kind] || (TR
  * chunk borders), give way to a bigger neighbour, and keep away from roads and places.
  */
 export function chunkTrees(t: Terrain, cx: number, cz: number): Tree[] {
+  const c = wrapC(cx);
+  if (c !== cx) return chunkTrees(t, c, cz).map((tr) => shiftTree(tr, (cx - c) * CHUNK));
   const f = t.chunkFeatures(cx, cz), near: Tree[] = [];
   for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) near.push(...bigWanted(t, cx + i, cz + j));
   const out: Tree[] = [];
@@ -91,6 +100,8 @@ export interface Rock { x: number; z: number; y: number; r: number; h: number; s
 
 /** Scattered rocks: low faceted pyramids, a few per chunk, never on roads or places. */
 export function chunkRocks(t: Terrain, cx: number, cz: number): Rock[] {
+  const c = wrapC(cx);
+  if (c !== cx) return chunkRocks(t, c, cz).map((k) => ({ ...k, x: k.x + (cx - c) * CHUNK }));
   const R = rng(hash(t.world, cx, cz, 0x50c4)), out: Rock[] = [], f = t.chunkFeatures(cx, cz);
   const n = 3 + Math.floor(R() * 6);
   for (let i = 0; i < n; i++) {

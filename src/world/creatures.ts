@@ -1,6 +1,7 @@
 // Wild creatures of the open world: Ravager packs, territorial Brambles and diving Leechwings.
 // Spawns and movement use Math.random (unsaved, like drones); models are built from PropBatch.
 import * as THREE from 'three';
+import { nearX } from '../gen/regions';
 import { scene, V, lineMat } from './render';
 import { G, W } from '../game';
 import { PropBatch, sharedFill } from './props';
@@ -400,7 +401,8 @@ export function spawnCreatureNear(kind: CreatureKind, d = 18) {
 export function spawnQuestGroup(q: Quest) {
   if (!env || !q.at || !q.pack) return;
   const { kind, count, alpha } = q.pack, left = count - (q.killed ?? 0), lv = Math.max(0.5, env.danger(q.at.x, q.at.z)), pack: Creature[] = [];
-  const at = (i: number) => { const a = i * 2.1, r = i ? 3 + i * 1.5 : 0, x = q.at!.x + Math.cos(a) * r, z = q.at!.z + Math.sin(a) * r; return V(x, env!.ground(x, z) + (kind === 'leechwing' ? 14 : CREATURES[kind].lift), z); };
+  const ax = nearX(q.at.x, G.pos.x); // the copy of the spot on this side of the planet's seam
+  const at = (i: number) => { const a = i * 2.1, r = i ? 3 + i * 1.5 : 0, x = ax + Math.cos(a) * r, z = q.at!.z + Math.sin(a) * r; return V(x, env!.ground(x, z) + (kind === 'leechwing' ? 14 : CREATURES[kind].lift), z); };
   const members: Creature[] = [];
   if (!q.alphaDead) {
     const c = make(kind, at(0), lv);
@@ -409,5 +411,5 @@ export function spawnQuestGroup(q: Quest) {
     members.push(c);
   }
   for (let i = 0; i < left; i++) members.push(make(kind, at(i + 1), lv));
-  members.forEach((c, i) => { c.questId = q.id; c.home.set(q.at!.x, c.home.y, q.at!.z); if (kind === 'ravager') { c.pack = pack; c.flank = (i - (members.length - 1) / 2) * 1.1; pack.push(c); } });
+  members.forEach((c, i) => { c.questId = q.id; c.home.set(ax, c.home.y, q.at!.z); if (kind === 'ravager') { c.pack = pack; c.flank = (i - (members.length - 1) / 2) * 1.1; pack.push(c); } });
 }

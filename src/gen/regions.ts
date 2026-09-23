@@ -5,6 +5,35 @@ import { hash, rng, rangeInt, DIRV, type Dir } from '../core/rng';
 
 export const REGION = 256, CHUNK = 32;
 
+// ---------- the planet ----------
+// The world wraps round east-west: 470 regions (~120 km) and you are back where you started. North and south it
+// ends at the poles: ice caps, then an impassable ice wall. Generators work in canonical coordinates (regions
+// R0..R0+NR-1) and shift what they return to the copy of the world the caller asked about, so a place just across
+// the seam has the same id (and save keys) as its canonical self.
+export const NR = 470, WORLD_W = NR * REGION;
+const R0 = -(NR >> 1), C0 = R0 * (REGION / CHUNK) - (REGION / CHUNK) / 2;
+/** Western edge of the canonical strip of the world (x in [X_MIN, X_MIN + WORLD_W)). */
+export const X_MIN = R0 * REGION - REGION / 2;
+const mod = (a: number, n: number) => ((a % n) + n) % n;
+/** Canonical region column. */
+export const wrapR = (rx: number) => mod(rx - R0, NR) + R0;
+/** Canonical chunk column. */
+export const wrapC = (cx: number) => mod(cx - C0, NR * (REGION / CHUNK)) + C0;
+/** Canonical x. */
+export const wrapX = (x: number) => mod(x - X_MIN, WORLD_W) + X_MIN;
+/** Shortest east-west offset (the world is round). */
+export const wrapDx = (dx: number) => dx - Math.round(dx / WORLD_W) * WORLD_W;
+/** The copy of x nearest to `ref`. */
+export const nearX = (x: number, ref: number) => ref + wrapDx(x - ref);
+/** Distance on the planet's surface (east-west wraps). */
+export const worldDist = (ax: number, az: number, bx: number, bz: number) => Math.hypot(wrapDx(bx - ax), bz - az);
+
+/** Poles: ice from POLAR_Z (no places, no forests), the ice wall at POLE_Z. */
+export const POLE_Z = 117 * REGION + REGION / 2, POLAR_Z = 25000;
+/** Latitude in radians (0 at Gridholm's equator, ±PI/2 at the poles). */
+export const latitude = (z: number) => Math.max(-1, Math.min(1, -z / POLE_Z)) * Math.PI / 2;
+const polarRegion = (rz: number) => Math.abs(rz * REGION) + REGION / 2 > POLAR_Z;
+
 export type PoiType = 'village' | 'ruin' | 'camp';
 export interface Rect { x0: number; z0: number; x1: number; z1: number }
 export interface Poi {
@@ -55,9 +84,15 @@ function campAt(rx: number, rz: number, x: number, z: number, R: () => number): 
   };
 }
 
+/** A region's data moved east or west by dx metres (a copy of a canonical region across the seam). */
+function shifted(r: RegionInfo, rx: number, dx: number): RegionInfo {
+  return { ...r, rx, pois: r.pois.map((p) => ({ ...p, x: p.x + dx, rect: { x0: p.rect.x0 + dx, z0: p.rect.z0, x1: p.rect.x1 + dx, z1: p.rect.z1 } })) };
+}
 const baseCache = new Map<string, RegionInfo>(), cache = new Map<string, RegionInfo>();
 /** Village and ruins of a region (camps are added on top, see regionInfo). */
 function baseInfo(world: number, rx: number, rz: number): RegionInfo {
+  const c = wrapR(rx);
+  if (c !== rx) return shifted(baseInfo(world, c, rz), rx, (rx - c) * REGION);
   const key = world + ':' + rx + ':' + rz;
   let r = baseCache.get(key);
   if (r) return r;
@@ -66,7 +101,8 @@ function baseInfo(world: number, rx: number, rz: number): RegionInfo {
   const forest = R(), rough = R();
   const pois: Poi[] = [];
   const cx = rx * REGION, cz = rz * REGION;
-  if (rx === 0 && rz === 0) {
+  if (polarRegion(rz)) { /* nothing lives on the ice */ }
+  else if (rx === 0 && rz === 0) {
     pois.push({ type: 'village', id: packId(0, 0, 0), name: 'Gridholm', x: 0, z: 0, rect: { ...VILLAGE_RECT }, flat: 8, blend: 34 });
   } else if (Math.abs(rx) + Math.abs(rz) === 1) {
     // The four regions next to the start: three of them always hold ruins within ~300 m of the village.
@@ -87,6 +123,8 @@ function baseInfo(world: number, rx: number, rz: number): RegionInfo {
 
 /** Everything in a region: its village and ruins, plus maybe a bandit camp. */
 export function regionInfo(world: number, rx: number, rz: number): RegionInfo {
+  const c = wrapR(rx);
+  if (c !== rx) return shifted(regionInfo(world, c, rz), rx, (rx - c) * REGION);
   const key = world + ':' + rx + ':' + rz;
   let r = cache.get(key);
   if (r) return r;
@@ -95,12 +133,12 @@ export function regionInfo(world: number, rx: number, rz: number): RegionInfo {
   // Bandit camps: not in the start region nor right by the village, near the middle of their region (so camps
   // never crowd each other), and clear of every ruin around so their flat ground does not overlap.
   const Rc = rng(hash(world, rx, rz, 0xca4b)), cx = rx * REGION, cz = rz * REGION;
-  if (!(rx === 0 && rz === 0) && Rc() < (Math.abs(rx) + Math.abs(rz) <= 1 ? 0.25 : 0.4)) {
+  if (!(rx === 0 && rz === 0) && !polarRegion(rz) && Rc() < (Math.abs(rx) + Math.abs(rz) <= 1 ? 0.25 : 0.4)) {
     const around: Poi[] = [];
     for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) around.push(...baseInfo(world, rx + i, rz + j).pois);
     for (let t = 0; t < 6; t++) {
       const x = cx + (Rc() - 0.5) * 140, z = cz + (Rc() - 0.5) * 140;
-      if (Math.hypot(x, z) < 230) continue;
+      if (worldDist(x, z, 0, 0) < 230) continue;
       if (around.some((p) => Math.hypot(p.x - x, p.z - z) < 130)) continue;
       pois.push(campAt(rx, rz, x, z, Rc)); break;
     }

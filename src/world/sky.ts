@@ -1,14 +1,14 @@
 // Sky above open-air places: stars, a wireframe moon and sun moving with the game clock, and a ring of distant mountains.
 import * as THREE from 'three';
 import { scene, fog, lineMat, fillMat, V } from './render';
-import { sunAngle, daylight, twilight } from '../core/time';
+import { sunAngle, daylight, twilight, sunTilt } from '../core/time';
 import { rng, hash } from '../core/rng';
 
 const noFog = (m: THREE.Material) => { (m as THREE.MeshBasicMaterial).fog = false; return m; };
 
 const starMat = new THREE.PointsMaterial({ color: 0xbfffd0, size: 1.6, sizeAttenuation: false, fog: false, transparent: true });
 /** Sun and moon travel on this circle (inside the star sphere, behind both mountain rings). */
-const ORBIT = 166, TILT = 0.45;
+const ORBIT = 166;
 const moon = new THREE.Group(), sun = new THREE.Group(), Z = new THREE.Vector3(0, 0, 1), EYE = new THREE.Vector3(0, 20, 0);
 
 export const sky = (() => {
@@ -45,9 +45,9 @@ export const sky = (() => {
   grp.visible = false; scene.add(grp); return grp;
 })();
 
-/** Point on the sky circle: east (+x) at angle 0, overhead at PI/2, west at PI; the path leans south (+z). */
-function onOrbit(o: THREE.Object3D, a: number) {
-  o.position.set(Math.cos(a) * ORBIT, Math.sin(a) * Math.cos(TILT) * ORBIT, Math.sin(a) * Math.sin(TILT) * ORBIT);
+/** Point on the sky circle: east (+x) at angle 0, highest at PI/2, west at PI; the path leans towards the equator. */
+function onOrbit(o: THREE.Object3D, a: number, tilt: number) {
+  o.position.set(Math.cos(a) * ORBIT, Math.sin(a) * Math.cos(tilt) * ORBIT, Math.sin(a) * Math.sin(tilt) * ORBIT);
   o.visible = o.position.y > -12;
 }
 const NIGHT = new THREE.Color(0x000000), DAY_SKY = new THREE.Color(0x061c0d), DUSK = new THREE.Color(0x2a1406), tmp = new THREE.Color();
@@ -55,9 +55,9 @@ const NIGHT = new THREE.Color(0x000000), DAY_SKY = new THREE.Color(0x061c0d), DU
  * Move the sun and the moon for game time t (core/time), fade the stars, and colour the sky: black at night,
  * a dark green by day, an amber glow at dawn and dusk. The fog takes the sky colour so the land fades into it.
  */
-export function updateSky(t: number) {
-  const a = sunAngle(t), day = daylight(t), glow = twilight(t);
-  onOrbit(sun, a); onOrbit(moon, a + Math.PI);
+export function updateSky(t: number, lat = 0) {
+  const tilt = sunTilt(lat), a = sunAngle(t), day = daylight(t, tilt), glow = twilight(t, tilt);
+  onOrbit(sun, a, tilt); onOrbit(moon, a + Math.PI, tilt);
   sun.quaternion.setFromUnitVectors(Z, EYE.clone().sub(sun.position).normalize()); // face the viewer (the sky sits 20 m below the eye)
   starMat.opacity = Math.max(0, 1 - day * 1.4);
   sky.children[0].visible = starMat.opacity > 0.01;

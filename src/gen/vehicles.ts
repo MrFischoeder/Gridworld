@@ -1,7 +1,7 @@
 // Where vehicles stand: the dealer's yard outside Gridholm, and abandoned vehicles out in the wilds.
 import { rng, hash } from '../core/rng';
 import { VEHICLES, freshParts, wheelCount, ENGINE_MODS, type VehicleModel, type VehicleParts } from '../data/vehicles';
-import { REGION, CHUNK, poisNear } from './regions';
+import { REGION, CHUNK, POLAR_Z, poisNear, wrapR } from './regions';
 import { rectDist, type Terrain } from './terrain';
 import { treeTrunks, chunkRocks } from './trees';
 
@@ -41,7 +41,9 @@ export function clearSpot(t: Terrain, model: VehicleModel, x: number, z: number,
 
 /** An abandoned vehicle somewhere in region (rx, rz), or none. Deterministic from the world seed. */
 export function regionVehicle(t: Terrain, rx: number, rz: number): Parking | null {
-  if (rx === 0 && rz === 0) return null;
+  const c = wrapR(rx);
+  if (c !== rx) { const p = regionVehicle(t, c, rz); return p && { ...p, x: p.x + (rx - c) * REGION }; }
+  if ((rx === 0 && rz === 0) || Math.abs(rz * REGION) > POLAR_Z) return null;
   const R = rng(hash(t.world, rx, rz, 0x7e41)), near = Math.abs(rx) <= 1 && Math.abs(rz) <= 1;
   if (R() > (near ? 0.5 : 0.3)) return null;
   const model: VehicleModel = R() < 0.75 ? 'scout' : 'mastodon';

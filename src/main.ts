@@ -12,13 +12,14 @@ import { updateLoot } from './world/loot';
 import { updateEntities } from './world/interact';
 import { attack, animateVM, refreshWeaponVisibility, vmScene, syncViewmodel, updateGun, refreshGunLook } from './world/weapons';
 import { updateFx, updateStreaks } from './world/fx';
-import { updateStreaming, updateFieldEnemies, placeName, OW, groundAt, treeHit, animateCamps } from './world/overworld';
+import { updateStreaming, updateFieldEnemies, placeName, OW, groundAt, treeHit, animateCamps, keepOnPlanet } from './world/overworld';
 import { collides } from './world/player';
 import { regionRoads } from './gen/roads';
 import { generateQuest } from './gen/quests';
 import { poisNear } from './gen/regions';
 import { sky, horizon, updateSky } from './world/sky';
 import { MIN_PER_SEC, fmtClock } from './core/time';
+import { latitude } from './gen/regions';
 import { updateCreatures, spawnCreatureNear } from './world/creatures';
 import { updateBandits, spawnBanditsNear } from './world/bandits';
 import { updateRaiders, spawnRaiderNear, forceAmbush, raiders } from './world/raiders';
@@ -68,6 +69,7 @@ function frame(now: number) {
   }
   if (live) {
     if (driving.v) updateDriving(dt); else moving = updatePlayer(dt);
+    if (outdoors) keepOnPlanet(dt);
     G.cooldown -= dt; if (G.firing && !driving.v) attack();
     updateGun(dt, !driving.v);
     if (driving.v) fireCannon(dt);
@@ -88,7 +90,7 @@ function frame(now: number) {
   } else { el.prompt.style.display = 'none'; el.bUse.classList.remove('on'); el.bossbar.style.display = 'none'; }
   if (G.trans) updateTrans(dt, camera); else if (driving.v) vehicleCamera(camera); else camera.position.set(G.pos.x, G.pos.y + EYE, G.pos.z);
   camera.rotation.set(G.pitch, G.yaw, 0);
-  if (sky.visible) { sky.position.set(camera.position.x, camera.position.y - 20, camera.position.z); horizon.position.set(camera.position.x, 0, camera.position.z); updateSky(G.char.time); }
+  if (sky.visible) { sky.position.set(camera.position.x, camera.position.y - 20, camera.position.z); horizon.position.set(camera.position.x, 0, camera.position.z); updateSky(G.char.time, latitude(G.pos.z)); }
   el.cross.style.display = driving.v && !driving.cockpit && !driving.v.turret ? 'none' : '';
   animateVM(dt, moving);
   animateFoes(dt, time, camera.position);

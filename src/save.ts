@@ -4,6 +4,7 @@ import { INV_SIZE, MOD_SIZE, ITEMS, type ItemKey } from './data/items';
 import type { VehicleModel, VehicleParts } from './data/vehicles';
 import type { Quest } from './gen/quests';
 import { START_TIME, boardPeriod } from './core/time';
+import { wrapC } from './gen/regions';
 
 /** An item stack. `c` is the condition in percent of a used part (worn tires); such items do not stack. */
 export interface Slot { k: ItemKey; n: number; c?: number }
@@ -102,6 +103,7 @@ function safeStorage(): Storage | null { try { return localStorage; } catch { re
 // ---------- explored map bitmask ----------
 /** Chunk (cx, cz) -> its region key and bit index (regions are 8x8 chunks, centred like the regions of gen/regions). */
 export function chunkBit(cx: number, cz: number): [string, number] {
+  cx = wrapC(cx); // the planet is round: a chunk across the seam is the same chunk
   const rx = Math.floor((cx + 4) / 8), rz = Math.floor((cz + 4) / 8);
   return [rx + ',' + rz, (cx + 4 - rx * 8) + 8 * (cz + 4 - rz * 8)];
 }

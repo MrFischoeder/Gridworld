@@ -2,11 +2,11 @@
 // standing on it, forests, roads, and light field enemies. Generation is deterministic; this module only
 // decides what is loaded and turns generator output into meshes.
 import * as THREE from 'three';
-import { scene, V, GRID } from './render';
+import { scene, V, GRID, localize } from './render';
 import { G, W } from '../game';
 import { VoxelGrid, type Space } from '../core/voxel';
 import { Terrain, inRect, rectDist, STEP, CELLS, VERTS } from '../gen/terrain';
-import { CHUNK, poisNear, VILLAGE_RECT, type Poi } from '../gen/regions';
+import { CHUNK, poisNear, VILLAGE_RECT, X_MIN, WORLD_W, POLE_Z, POLAR_Z, worldDist, type Poi } from '../gen/regions';
 import { chunkTrees, chunkRocks, type Tree, type Rock } from '../gen/trees';
 import { drawTree } from './trees';
 import { generateVillage, type VillageMap } from '../gen/village';
@@ -17,7 +17,8 @@ import { PropBatch, sharedFill, sharedLine } from './props';
 import { makeStair, type Door, type Stair } from './doors';
 import { makeNpc, type Npc } from './npc';
 import { makeDrone, foeRules, type Drone } from './enemies';
-import { spawnVehicles, clearVehicles, vehicleHit, syncFound, shielded, driving, damageVehicle } from './vehicles';
+import { spawnVehicles, clearVehicles, vehicleHit, syncFound, shielded, driving, damageVehicle, vehiclesNear } from './vehicles';
+import { logLine, showToast } from '../ui/hud';
 import { setCreatureEnv, clearCreatures } from './creatures';
 import { setBanditEnv, clearBandits, spawnCamp, despawnCamp } from './bandits';
 import { setRaiderEnv, clearRaiders, ambushHit } from './raiders';
@@ -32,7 +33,7 @@ import { DIRV } from '../core/rng';
 export const LOAD_R = 4, UNLOAD_R = 6, STRUCT_LOAD = 170, STRUCT_UNLOAD = 240;
 /** Surface structures are drawn in outline style: folds and edges, floor tiles every 2 m, wall seams every 4 m. */
 const OUTLINE = { floor: 2, wall: 4 };
-const ROAD_COLOR = 0xc8ffd8, TILE_COLOR = 0x4dff7e;
+const ROAD_COLOR = 0xc8ffd8, TILE_COLOR = 0x4dff7e, ICE_COLOR = 0xbfffe8;
 
 interface Chunk { cx: number; cz: number; group: THREE.Group; trees: Tree[]; rocks: Rock[]; lod: number }
 interface Structure {
@@ -118,7 +119,7 @@ function buildChunk(cx: number, cz: number, lod = 1): Chunk {
   const group = new THREE.Group();
   const fg = new THREE.BufferGeometry(); fg.setAttribute('position', new THREE.Float32BufferAttribute(tri, 3));
   const lg = new THREE.BufferGeometry(); lg.setAttribute('position', new THREE.Float32BufferAttribute(lines, 3));
-  group.add(new THREE.Mesh(fg, sharedFill()), new THREE.LineSegments(lg, sharedLine(GRID)));
+  group.add(new THREE.Mesh(fg, sharedFill()), new THREE.LineSegments(lg, sharedLine(Math.abs(z0 + CHUNK / 2) > POLAR_Z + 800 ? ICE_COLOR : GRID)));
   if (road.length) { const rg = new THREE.BufferGeometry(); rg.setAttribute('position', new THREE.Float32BufferAttribute(road, 3)); group.add(new THREE.LineSegments(rg, sharedLine(ROAD_COLOR))); }
   const trees = chunkTrees(T, cx, cz), rocks = chunkRocks(T, cx, cz);
   if (trees.length || rocks.length) {
@@ -127,6 +128,7 @@ function buildChunk(cx: number, cz: number, lod = 1): Chunk {
     for (const k of rocks) pb.rock(k.x, k.y, k.z, k.r, k.h, k.sides, k.rot, GRID);
     group.add(pb.build());
   }
+  localize(group, x0, z0);
   scene.add(group);
   return { cx, cz, group, trees, rocks, lod };
 }
@@ -258,6 +260,7 @@ export const campStashes = () => [...OW.structs.values()].filter((s) => s.camp).
 function loadStruct(poi: Poi) {
   if (OW.structs.has(poi.id)) return;
   const s = poi.type === 'village' ? loadVillageStruct(poi) : poi.type === 'camp' ? loadCampStruct(poi) : loadRuinStruct(poi);
+  localize(s.group, poi.x, poi.z);
   OW.structs.set(poi.id, s);
   setStreakSources([...OW.structs.values()].map((q) => q.edges));
 }
@@ -350,12 +353,48 @@ export function closeWorld() {
 }
 export const structFor = (id: number) => OW.structs.get(id);
 
+// ---------- the round planet ----------
+let wallWarnT = 0;
+/**
+ * Keeps the player on the planet (called every frame outdoors). Walking past the east or west end of the canonical
+ * strip moves the player, the vehicles and whatever is near to the matching copy of the world on the other side,
+ * so coordinates stay within ±60 km; the land there is identical, so nothing visibly jumps. The poles stop you.
+ */
+export function keepOnPlanet(dt: number) {
+  const lim = POLE_Z - 40;
+  wallWarnT -= dt;
+  if (Math.abs(G.pos.z) > lim) {
+    G.pos.z = Math.sign(G.pos.z) * lim; G.vel.z = 0;
+    if (driving.v) { driving.v.st.z = G.pos.z; driving.v.speed = 0; }
+    if (wallWarnT <= 0) { wallWarnT = 5; logLine('The ice wall of the pole rises sheer before you. There is no way on.'); }
+  }
+  const x = G.pos.x;
+  if (x >= X_MIN && x < X_MIN + WORLD_W) return;
+  const d = x < X_MIN ? WORLD_W : -WORLD_W;
+  G.pos.x += d;
+  // unsaved foes are simply let go (new ones turn up); loot on the ground moves along
+  clearCreatures(); clearBandits(); clearRaiders();
+  for (const t of W.drones) scene.remove(t.g);
+  W.drones = [];
+  for (const c of W.crystals) { c.p.x += d; c.m.position.x += d; }
+  for (const p of W.pickups) { p.p.x += d; p.g.position.x += d; }
+  vehiclesNear(G.pos.x);
+  for (const c of OW.chunks.values()) dropChunk(c);
+  OW.chunks.clear();
+  for (const s of [...OW.structs.values()]) dropStruct(s);
+  queue = []; lastChunk = '';
+  const pcx = Math.floor(G.pos.x / CHUNK), pcz = Math.floor(G.pos.z / CHUNK);
+  for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) OW.chunks.set(ckey(pcx + i, pcz + j), buildChunk(pcx + i, pcz + j));
+  updateStructs(G.pos.x, G.pos.z);
+  showToast('You have gone round the world');
+}
+
 // ---------- field enemies ----------
 let spawnT = 1;
-/** How dangerous the fields are here: grows slowly with distance from the start, a little more near ruins. */
+/** How dangerous the fields are here: grows slowly with distance from the start (up to 8), a little more near ruins. */
 export function danger(x: number, z: number): number {
   const near = poisNear(OW.terrain!.world, x, z, 80).some((p) => p.type === 'ruin' && rectDist(p.rect, x, z) < 50);
-  return Math.hypot(x, z) / 250 + (near ? 0.6 : 0);
+  return Math.min(8, worldDist(x, z, 0, 0) / 250) + (near ? 0.6 : 0);
 }
 export function updateFieldEnemies(dt: number) {
   const pos = G.pos, T = OW.terrain!;
@@ -392,6 +431,8 @@ export function removeDrone(t: Drone) { scene.remove(t.g); const i = W.drones.in
 // ---------- where am I ----------
 export function placeName(x: number, z: number): string {
   if (inVillage(x, z)) return 'Gridholm (village)';
+  if (Math.abs(z) > POLE_Z - 400) return z < 0 ? 'North Pole ice wall' : 'South Pole ice wall';
+  if (Math.abs(z) > POLAR_Z) return z < 0 ? 'Northern ice cap' : 'Southern ice cap';
   for (const s of OW.structs.values()) if ((s.poi.type === 'ruin' || s.poi.type === 'camp') && rectDist(s.poi.rect, x, z) < 10) return s.poi.name;
   return 'Wilds';
 }

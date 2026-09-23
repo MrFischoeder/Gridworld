@@ -11,7 +11,7 @@ import { addFx, burst } from './fx';
 import { add as addMat, edgesOf, lineMat } from './render';
 import { regionVehicle, YARD, type Parking } from '../gen/vehicles';
 import type { Terrain } from '../gen/terrain';
-import { regionOf } from '../gen/regions';
+import { regionOf, nearX } from '../gen/regions';
 import { RELIC_KEYS } from '../data/items';
 import { putItems } from '../inventory';
 import { VILLAGE_RECT } from '../gen/regions';
@@ -268,7 +268,7 @@ function pose(v: Vehicle) {
 export function spawnVehicles(h: WorldHooks) {
   hooks = h;
   clearVehicles();
-  for (const st of G.char.vehicles) vehicles.push(makeVehicle(st));
+  for (const st of G.char.vehicles) { st.x = nearX(st.x, G.pos.x); vehicles.push(makeVehicle(st)); }
 }
 const emptyTrunk = (m: VehicleModel) => ({ items: Array(VEHICLES[m].trunk).fill(null), gold: 0 });
 const stateOf = (p: Parking): VehicleState => ({ ...p, parts: structuredClone(p.parts), trunk: emptyTrunk(p.model) });
@@ -374,6 +374,10 @@ export function leave(save = true) {
   if (save) saveChar();
 }
 
+/** Moves every vehicle to the copy of the world nearest to x (after going round the planet). */
+export function vehiclesNear(x: number) {
+  for (const v of vehicles) { const nx = nearX(v.st.x, x); if (nx !== v.st.x) { v.st.x = nx; pose(v); } }
+}
 /** Player collision with parked vehicles (their body box). */
 export function vehicleHit(x: number, y: number, z: number, r: number): boolean {
   for (const v of vehicles) {
