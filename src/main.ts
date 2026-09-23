@@ -4,7 +4,7 @@ import { renderer, scene, camera } from './world/render';
 import { G, W, uiOpen } from './game';
 import { loadChar } from './save';
 import { calcStats, saveChar } from './character';
-import { loadDungeon, loadOverworld, toVillage, saveOverworldPos } from './world/level';
+import { loadDungeon, loadOverworld, toVillage, saveOverworldPos, enterDungeon } from './world/level';
 import { updatePlayer, EYE } from './world/player';
 import { updateDoors, updateTrans } from './world/doors';
 import { updateDrones, updateBosses, updateOrbs, animateFoes, updateBossBar, foeRules, makeDrone, damageFoe } from './world/enemies';
@@ -15,9 +15,11 @@ import { updateFx, updateStreaks } from './world/fx';
 import { updateStreaming, updateFieldEnemies, placeName, OW, groundAt, treeHit } from './world/overworld';
 import { collides } from './world/player';
 import { regionRoads } from './gen/roads';
+import { generateQuest } from './gen/quests';
 import { poisNear } from './gen/regions';
 import { sky, horizon } from './world/sky';
 import { updateCreatures, spawnCreatureNear } from './world/creatures';
+import { updateTracker, boardOffers, accept, syncQuestWorld } from './world/quests';
 import { driving, updateDriving, vehicleCamera, vehicles, buyVehicle, fireCannon } from './world/vehicles';
 import { interact } from './world/interact';
 import { el, updateHud } from './ui/hud';
@@ -78,7 +80,7 @@ function frame(now: number) {
   animateVM(dt, moving);
   animateFoes(dt, time, camera.position);
   updateFx(dt);
-  updateHud(dt);
+  updateHud(dt); updateTracker(dt);
   updateStreaks(dt); drawMini();
   renderer.info.reset(); // two passes per frame: count both (F3 overlay)
   renderer.render(scene, camera);
@@ -94,4 +96,4 @@ function frame(now: number) {
 requestAnimationFrame(frame);
 
 // Debug handle for automated checks in development builds.
-if (import.meta.env.DEV) Object.assign(window, { __game: { G, W, OW, camera, scene, renderer, regionRoads, poisNear, groundAt, treeHit, collides, vehicles, driving, interact, buy: buyVehicle, foeRules, makeDrone, spawnCreature: spawnCreatureNear, damageFoe } });
+if (import.meta.env.DEV) Object.assign(window, { __game: { G, W, OW, camera, scene, renderer, regionRoads, poisNear, groundAt, treeHit, collides, vehicles, driving, interact, buy: buyVehicle, foeRules, makeDrone, spawnCreature: spawnCreatureNear, damageFoe, boardOffers, accept, syncQuestWorld, enterDungeon, generateQuest } });

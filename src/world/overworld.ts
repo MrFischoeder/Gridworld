@@ -9,6 +9,7 @@ import { Terrain, inRect, rectDist, STEP, CELLS, VERTS } from '../gen/terrain';
 import { CHUNK, poisNear, VILLAGE_RECT, type Poi } from '../gen/regions';
 import { chunkTrees, chunkRocks, type Tree, type Rock } from '../gen/trees';
 import { generateVillage, type VillageMap } from '../gen/village';
+import { syncQuestWorld } from './quests';
 import { generateRuin } from '../gen/ruins';
 import { tryPlaceDoor } from '../gen/doors';
 import { PropBatch, sharedFill, sharedLine } from './props';
@@ -138,6 +139,23 @@ function gateSign(vm: VillageMap) {
   }
   return g;
 }
+/** The notice board: two posts, a panel with pinned notes, a little roof and a sign. */
+function boardDeco(vm: VillageMap, y: number) {
+  const g = new THREE.Group(), pb = new PropBatch(), { x, z } = vm.board, zf = z + 0.12;
+  pb.box(x - 1.45, y, z - 0.08, x - 1.3, y + 2.7, z + 0.08, GRID); pb.box(x + 1.3, y, z - 0.08, x + 1.45, y + 2.7, z + 0.08, GRID);
+  pb.solid8([[x - 1.35, y + 0.9, z - 0.05], [x + 1.35, y + 0.9, z - 0.05], [x + 1.35, y + 0.9, z + 0.1], [x - 1.35, y + 0.9, z + 0.1]],
+    [[x - 1.35, y + 2.4, z - 0.05], [x + 1.35, y + 2.4, z - 0.05], [x + 1.35, y + 2.4, z + 0.1], [x - 1.35, y + 2.4, z + 0.1]], GRID);
+  pb.solid8([[x - 1.7, y + 2.7, z - 0.45], [x + 1.7, y + 2.7, z - 0.45], [x + 1.7, y + 2.7, z + 0.55], [x - 1.7, y + 2.7, z + 0.55]],
+    [[x - 1.7, y + 3.05, z], [x + 1.7, y + 3.05, z], [x + 1.7, y + 3.05, z + 0.02], [x - 1.7, y + 3.05, z + 0.02]], GRID);
+  for (const [nx, ny, w, h] of [[-1.1, 1.3, 0.55, 0.7], [-0.35, 1.55, 0.5, 0.6], [0.35, 1.2, 0.6, 0.75], [0.95, 1.6, 0.4, 0.55]]) {
+    const x0 = x + nx, y0 = y + ny;
+    pb.line(0xffd060, [x0, y0, zf], [x0 + w, y0, zf], [x0 + w, y0 + h, zf], [x0, y0 + h, zf], [x0, y0, zf]);
+    for (let r = 0.15; r < h - 0.1; r += 0.15) pb.line(0x9dffb4, [x0 + 0.06, y0 + h - r, zf], [x0 + w - 0.08, y0 + h - r, zf]);
+  }
+  g.add(pb.build());
+  g.add(wallSign('NOTICE BOARD', '#ffd060', { x, z: z + 0.1 }, [0, 1], y + 3.4));
+  return g;
+}
 /** Sign post and painted parking bays of the vehicle yard. */
 function yardDeco(y: number) {
   const g = new THREE.Group(), pb = new PropBatch();
@@ -155,7 +173,7 @@ function loadVillageStruct(poi: Poi): Structure {
   const T = OW.terrain!, y = T.padY(poi), vm = generateVillage(T.world, y);
   const grid = VoxelGrid.surface(vm.ops, vm.rect, y);
   const { group, mesh } = voxelObject(grid, Infinity, OUTLINE);
-  group.add(villageDeco(vm, y), gateSign(vm));
+  group.add(villageDeco(vm, y), gateSign(vm), boardDeco(vm, y));
   scene.add(group);
   const npcs: Npc[] = [];
   for (const b of vm.buildings) if (b.role !== 'house') npcs.push(makeNpc(b.role, NPC_INFO[b.role].name!, V(b.home!.x, b.home!.y, b.home!.z), b));
@@ -227,6 +245,7 @@ export function updateStreaming(budgetMs = 4) {
     for (const c of [...OW.chunks.values()]) if (Math.max(Math.abs(c.cx - pcx), Math.abs(c.cz - pcz)) > UNLOAD_R) { dropChunk(c); OW.chunks.delete(ckey(c.cx, c.cz)); }
     updateStructs(x, z);
     syncFound(OW.terrain!, x, z);
+    syncQuestWorld();
   }
   const t0 = performance.now();
   while (queue.length && (performance.now() - t0 < budgetMs)) {

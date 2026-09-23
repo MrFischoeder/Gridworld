@@ -13,7 +13,8 @@
 <div id="hud">
   <div class="glow"><div id="hudL">Dungeon</div>
     <div id="stat"><div><span id="hpbar"><div id="hpfill"></div></span><span id="wname">Blaster</span></div>
-      <div><span id="xpbar"><div id="xpfill"></div></span><span id="lvl">Level 1</span></div></div></div>
+      <div><span id="xpbar"><div id="xpfill"></div></span><span id="lvl">Level 1</span></div></div>
+    <div id="qtrack"></div></div>
   <div id="right"><span class="t" id="hudR">Gold: 0</span><span id="route" class="glow">Route 0%</span><span id="veh" class="glow"></span><canvas id="mini"></canvas></div>
 </div>
 <div id="bossbar"><span id="bossname">WARDEN</span><div class="bar"><div id="bossfill"></div></div></div>
@@ -44,6 +45,16 @@
 </div>
 
 <div id="dlg" class="overlay"><div class="panel"></div></div>
+
+<div id="board" class="overlay">
+  <div class="panel">
+    <h2>Notice Board</h2>
+    <div class="role">Gridholm · tasks and bounties</div>
+    <div id="boardBody"></div>
+    <div id="boardMsg"></div>
+    <div class="acts"><button id="boardClose">Close</button></div>
+  </div>
+</div>
 
 <div id="svc" class="overlay">
   <div class="panel">

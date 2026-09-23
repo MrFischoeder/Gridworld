@@ -10,6 +10,9 @@ import { rayWorld } from './player';
 import { burst } from './fx';
 import { dropCrystal, dropPickup } from './loot';
 import { logLine, showToast } from '../ui/hud';
+import { onKill } from './quests';
+import { ALPHA, type Quest } from '../gen/quests';
+import { textSprite } from './npc';
 
 type State = 'roam' | 'hunt' | 'dash' | 'retreat' | 'threat' | 'charge' | 'recover' | 'stalk' | 'dive' | 'climb';
 
@@ -22,6 +25,8 @@ export interface Creature {
   state: State; timer: number; anim: number;
   legs: THREE.Group[]; wings: THREE.Group[]; head: THREE.Group | null; jaw: THREE.Group | null;
   pack: Creature[] | null; flank: number; home: THREE.Vector3; dir: THREE.Vector3; level: number; hurt: boolean;
+  /** Part of a notice-board hunt (kept around longer, reported on death); the leader is the `alpha`. */
+  questId?: string; alpha?: boolean; dmgMul: number;
 }
 
 // ---------- models (local +z forward, origin at the body centre) ----------
@@ -144,7 +149,7 @@ function make(kind: CreatureKind, p: THREE.Vector3, level: number): Creature {
   const c: Creature = {
     kind, g, mat, p: p.clone(), heading: Math.random() * 6.28, speed: 0, hp, maxHp: hp, r: s.r, flash: 0,
     state: kind === 'leechwing' ? 'roam' : 'roam', timer: 0, anim: Math.random() * 10, legs: [], wings: [], head: null, jaw: null,
-    pack: null, flank: 0, home: p.clone(), dir: V(0, 0, 1), level, hurt: false,
+    pack: null, flank: 0, home: p.clone(), dir: V(0, 0, 1), level, hurt: false, dmgMul: 1,
   };
   if (kind === 'ravager') ravagerModel(c); else if (kind === 'bramble') brambleModel(c); else leechwingModel(c);
   g.position.copy(p); scene.add(g);
@@ -241,7 +246,7 @@ function ravager(c: Creature, dt: number, to: THREE.Vector3, dist: number, safe:
     }
     case 'dash':
       walk(c, to.x, to.z, speed * 1.25, dt);
-      if (dist < 1.5) { bite(s.damage + 2 * c.level); c.state = 'retreat'; c.timer = 0.8; }
+      if (dist < 1.5) { bite((s.damage + 2 * c.level) * c.dmgMul); c.state = 'retreat'; c.timer = 0.8; }
       else if (c.timer <= 0) { c.state = 'hunt'; c.timer = 2.5; }
       break;
     case 'retreat':
@@ -270,7 +275,7 @@ function bramble(c: Creature, dt: number, to: THREE.Vector3, dist: number, safe:
       const before = c.p.clone();
       walk(c, c.dir.x, c.dir.z, s.speed, dt);
       if (dist < 2.4 && c.speed > 0) {
-        bite(s.damage + 4 * c.level);
+        bite((s.damage + 4 * c.level) * c.dmgMul);
         if (!foeRules.shielded()) { G.vel.x += c.dir.x * 10; G.vel.z += c.dir.z * 10; G.vel.y = 5; G.onGround = false; }
         c.state = 'recover'; c.timer = 1.6;
       } else if (c.timer <= 0 || before.distanceTo(c.p) < 1e-3) { c.state = 'recover'; c.timer = 1.4; }
@@ -313,7 +318,7 @@ function leechwing(c: Creature, dt: number, to: THREE.Vector3, dist: number, saf
     }
     case 'dive':
       flyTo(G.pos.x, G.pos.y + 1.2, G.pos.z, s.speed);
-      if (dist < 1.7) { bite(s.damage + 3 * c.level); c.state = 'climb'; c.timer = 2; }
+      if (dist < 1.7) { bite((s.damage + 3 * c.level) * c.dmgMul); c.state = 'climb'; c.timer = 2; }
       else if (c.timer <= 0 || c.p.y < env!.ground(c.p.x, c.p.z) + 1.2) { c.state = 'climb'; c.timer = 1.5; }
       break;
     case 'climb':
@@ -331,7 +336,7 @@ export function updateCreatures(dt: number, time: number) {
   const safe = foeRules.playerSafe(), head = V(G.pos.x, G.pos.y + 1.2, G.pos.z);
   for (let i = W.creatures.length - 1; i >= 0; i--) {
     const c = W.creatures[i], to = head.clone().sub(c.p), dist = to.length();
-    if (Math.hypot(to.x, to.z) > 130) { removeCreature(c); continue; }
+    if (Math.hypot(to.x, to.z) > (c.questId ? 240 : 130)) { removeCreature(c); continue; }
     if (c.kind === 'ravager') ravager(c, dt, to, dist, safe);
     else if (c.kind === 'bramble') bramble(c, dt, to, dist, safe);
     else leechwing(c, dt, to, dist, safe);
@@ -368,8 +373,10 @@ export function hurtCreature(c: Creature, dmg: number) {
   burst(at, HOSTILE, 30, 1.6);
   for (let i = 0; i < s.crystals; i++) dropCrystal(at);
   if (Math.random() < 0.15) dropPickup(at, 'medkit');
-  logLine(s.name + ' killed');
+  logLine((c.alpha ? ALPHA[c.kind] : s.name) + ' killed');
+  const qid = c.questId, alpha = !!c.alpha;
   removeCreature(c);
+  onKill(c.kind, qid, alpha);
 }
 export function removeCreature(c: Creature) {
   scene.remove(c.g);
@@ -387,4 +394,20 @@ export function spawnCreatureNear(kind: CreatureKind, d = 18) {
   if (kind === 'ravager') { const pack: Creature[] = []; for (let i = 0; i < 3; i++) { const c = make(kind, V(x + i * 1.5, env.ground(x + i * 1.5, z) + CREATURES.ravager.lift, z), lv); c.flank = (i - 1) * 1.1; c.pack = pack; pack.push(c); } }
   else make(kind, V(x, env.ground(x, z) + (kind === 'leechwing' ? 12 : CREATURES[kind].lift), z), lv);
   return true;
+}
+
+/** Bring a notice-board hunt group into the world: the survivors so far, plus the leader if still alive. */
+export function spawnQuestGroup(q: Quest) {
+  if (!env || !q.at || !q.pack) return;
+  const { kind, count, alpha } = q.pack, left = count - (q.killed ?? 0), lv = Math.max(0.5, env.danger(q.at.x, q.at.z)), pack: Creature[] = [];
+  const at = (i: number) => { const a = i * 2.1, r = i ? 3 + i * 1.5 : 0, x = q.at!.x + Math.cos(a) * r, z = q.at!.z + Math.sin(a) * r; return V(x, env!.ground(x, z) + (kind === 'leechwing' ? 14 : CREATURES[kind].lift), z); };
+  const members: Creature[] = [];
+  if (!q.alphaDead) {
+    const c = make(kind, at(0), lv);
+    c.alpha = true; c.hp = c.maxHp = c.maxHp * 3; c.dmgMul = 1.5; c.r *= 1.35; c.g.scale.setScalar(1.35);
+    const tag = textSprite(alpha, '#ffb347', 2.4); tag.position.y = kind === 'bramble' ? 1.9 : 1.3; c.g.add(tag);
+    members.push(c);
+  }
+  for (let i = 0; i < left; i++) members.push(make(kind, at(i + 1), lv));
+  members.forEach((c, i) => { c.questId = q.id; c.home.set(q.at!.x, c.home.y, q.at!.z); if (kind === 'ravager') { c.pack = pack; c.flank = (i - (members.length - 1) / 2) * 1.1; pack.push(c); } });
 }

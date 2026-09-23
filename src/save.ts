@@ -2,6 +2,7 @@
 // Versions: v1 (relic counts) -> v2 (backpack, per-dungeon progress) -> v3 (open world).
 import { INV_SIZE, MOD_SIZE, ITEMS, type ItemKey } from './data/items';
 import type { VehicleModel, VehicleParts } from './data/vehicles';
+import type { Quest } from './gen/quests';
 
 export interface Slot { k: ItemKey; n: number }
 /** Per-dungeon progress, keyed by dungeonKey() = "ruinId:depth:gx:gz". */
@@ -24,8 +25,12 @@ export interface Char {
   discovered: Record<string, string>;
   /** What is left in searched chests, keyed "chest:<dungeonKey>:<index>". */
   containers: Record<string, Container>;
-  /** The player's vehicles on the surface (empty = not placed yet; the game parks the starting ones). */
+  /** The player's vehicles on the surface. */
   vehicles: VehicleState[];
+  /** Notice board: offers on display and the counter that numbers new notices. */
+  board: { seq: number; offers: Quest[] };
+  /** Accepted quests (talk / active / ready). */
+  quests: Quest[];
 }
 
 export const SAVE_KEY = 'gridWorld.character.v3';
@@ -35,7 +40,7 @@ export const ARENA_V3_KEY = 'gridArena.character.v3', V2_KEY = 'gridArena.charac
 export const newChar = (): Char => ({
   v: 3, level: 1, xp: 0, gold: 0, world: (Math.random() * 1e6) | 0,
   inv: Array(INV_SIZE).fill(null), mods: Array(MOD_SIZE).fill(null), opened: {}, unlocked: {}, killed: {},
-  loc: 'overworld', ow: null, dungeon: null, discovered: {}, containers: {}, vehicles: [],
+  loc: 'overworld', ow: null, dungeon: null, discovered: {}, containers: {}, vehicles: [], board: { seq: 0, offers: [] }, quests: [],
 });
 
 interface V2 { level?: number; xp?: number; gold?: number; world?: number; inv?: (Slot | null)[]; mods?: (ItemKey | null)[] }

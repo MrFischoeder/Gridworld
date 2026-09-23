@@ -13,6 +13,7 @@ import type { Container, Slot } from '../save';
 import { logLine } from '../ui/hud';
 import { foes, damageFoe } from './enemies';
 import { closePack } from '../ui/backpack';
+import { onPickup } from './quests';
 import { toVillage } from './level';
 import { canRecall } from './level';
 
@@ -32,7 +33,7 @@ export function dropCrystal(at: THREE.Vector3) {
 export function dropPickup(at: THREE.Vector3, kind: ItemKey | 'relic') {
   const k: ItemKey = kind === 'relic' ? RELIC_KEYS[(Math.random() * RELIC_KEYS.length) | 0] : kind;
   const g = new THREE.Group();
-  if (k === 'key' || item(k).type === 'relic') {
+  if (k === 'key' || item(k).type === 'relic' || item(k).type === 'quest') {
     const c = k === 'key' ? 0xff7a5c : 0xffd060;
     const ring = new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(circlePts(0.15, 10)), add(c));
     const bar = new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints([V(0.15, 0, 0), V(0.5, 0, 0), V(0.4, 0, 0), V(0.4, -0.1, 0), V(0.5, 0, 0), V(0.5, -0.12, 0)]), add(c));
@@ -68,7 +69,7 @@ export function updateLoot(dt: number, time: number) {
     p.g.position.copy(p.p); p.g.position.y += Math.sin(time * 3 + i) * 0.08; p.g.rotation.y = time * 1.5;
     if (Math.hypot(p.p.x - G.pos.x, p.p.z - G.pos.z) < 1.3 && Math.abs(p.p.y - body.y) < 2.5 && p.age > 0.4) {
       const where = addItem(p.k);
-      if (where) { scene.remove(p.g); W.pickups.splice(i, 1); logLine(ITEMS[p.k].name + ' → backpack'); saveChar(); }
+      if (where) { scene.remove(p.g); W.pickups.splice(i, 1); logLine(ITEMS[p.k].name + ' → backpack'); saveChar(); if (item(p.k).type === 'quest') onPickup(p.k); }
       else if (!p.warned) { p.warned = true; logLine('Backpack full'); }
     }
   }

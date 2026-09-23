@@ -10,6 +10,7 @@ import { droneHp, droneDps, gainXp, saveChar, progress, progressHas, depth as de
 import { showToast, logLine, el } from '../ui/hud';
 import type { BossSpec } from '../gen/dungeon';
 import { hurtCreature, type Creature } from './creatures';
+import { onKill } from './quests';
 
 export interface Drone {
   boss?: false; g: THREE.Group; inner: THREE.LineSegments; mat: THREE.LineBasicMaterial; p: THREE.Vector3;
@@ -164,6 +165,7 @@ export function damageFoe(t: Foe, dmg: number) {
     const n = 2 + (Math.random() < 0.5 ? 1 : 0); for (let i = 0; i < n; i++) dropCrystal(at);
     const r = Math.random(); if (r < 0.12) dropPickup(at, 'medkit'); else if (r < 0.17) dropPickup(at, 'emp');
     respawnDrone(t);
+    onKill('drone');
   }
 }
 /** What happens to a destroyed drone; dungeons recycle it elsewhere in the level. */

@@ -8,7 +8,7 @@ export const el = {
   cross: $('cross'), hudR: $('hudR'), hudL: $('hudL'), wname: $('wname'), hpfill: $('hpfill'), dmg: $('dmg'),
   toast: $('toast'), seed: $<HTMLInputElement>('seed'), xpfill: $('xpfill'), lvl: $('lvl'), prompt: $('prompt'), bUse: $('bUse'),
   warp: $('warp'), route: $('route'), bossbar: $('bossbar'), bossName: $('bossname'), bossFill: $('bossfill'), log: $('log'),
-  sheet: $('sheet'), perf: $('perf'), veh: $('veh'),
+  sheet: $('sheet'), perf: $('perf'), veh: $('veh'), qtrack: $('qtrack'),
 };
 
 let toastT = 0;

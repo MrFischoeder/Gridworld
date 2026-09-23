@@ -1,4 +1,4 @@
-export type ItemType = 'relic' | 'cons' | 'key' | 'part';
+export type ItemType = 'relic' | 'cons' | 'key' | 'part' | 'quest';
 export interface ItemDef { name: string; ab: string; type: ItemType; desc: string; stack?: number }
 
 export const ITEMS = {
@@ -13,6 +13,10 @@ export const ITEMS = {
   stew: { name: 'Hearty Stew', ab: 'STW', type: 'cons', desc: 'restores 45 HP', stack: 5 },
   recall: { name: 'Recall Beacon', ab: 'RCL', type: 'cons', desc: 'returns you to the village from anywhere', stack: 5 },
   emp: { name: 'EMP Charge', ab: 'EMP', type: 'cons', desc: 'damages every drone within 6 m (G key)', stack: 5 },
+  book: { name: 'Ancient Book', ab: 'BOK', type: 'quest', desc: 'a crumbling book of the old machine folk; Elder Bogdan wants it', stack: 1 },
+  gearbox: { name: 'Precision Gearbox', ab: 'GBX', type: 'quest', desc: 'a rare pre-war part; Radek the blacksmith wants it', stack: 1 },
+  datacore: { name: 'Data Core', ab: 'COR', type: 'quest', desc: 'a sealed memory core; Zofia at the store wants it', stack: 1 },
+  logbook: { name: "Driver's Logbook", ab: 'LOG', type: 'quest', desc: 'a battered logbook from a wreck; Mirek the dealer wants it', stack: 1 },
   wheelL: { name: 'Light Wheel', ab: 'WHL', type: 'part', desc: 'spare wheel for the RTV-1 Scout (fit it at the front of the vehicle)', stack: 4 },
   wheelH: { name: 'Heavy Wheel', ab: 'HWL', type: 'part', desc: 'spare wheel for the HTV-6 Mastodon (fit it at the front of the vehicle)', stack: 2 },
   engine: { name: 'Engine Parts', ab: 'ENG', type: 'part', desc: 'repairs a vehicle engine by 50%', stack: 5 },

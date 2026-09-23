@@ -16,6 +16,7 @@ import { sky, horizon, buildHorizon } from './sky';
 import { setStreakSources } from './fx';
 import { setArmedRule, refreshWeaponVisibility } from './weapons';
 import { PropBatch } from './props';
+import { onDungeonLoaded, syncQuestWorld } from './quests';
 import { driving } from './vehicles';
 import { openWorld, closeWorld, structFor, setEnterRuin, removeDrone, danger, inVillage, OW } from './overworld';
 import { saveChar, depth } from '../character';
@@ -88,6 +89,7 @@ export function loadDungeon(arriveDir: string | null) {
     if (y >= 0 && y <= 2 && g.empty(x, y, z) && g.empty(x, y + 1, z) && g.empty(x, y + 2, z) && !g.empty(x, y - 1, z)) W.spawnCells.push([x, y, z]);
   }
   for (let i = 0; i < map.rooms + 1 + d.depth; i++) { const t = makeDrone(); placeDrone(t); W.drones.push(t); }
+  onDungeonLoaded(map);
   setMiniMode('voxel'); buildMini();
   el.hudL.textContent = 'Depth ' + d.depth + ', sector ' + d.gx + ', ' + d.gz; el.seed.value = String(c.world); renderSheet(); saveChar();
 }
@@ -160,6 +162,7 @@ export function loadOverworld(a: Arrival) {
   }
   setCrystalXp(() => 3 + 2 * Math.floor(danger(G.pos.x, G.pos.z)));
   setMiniMode('world');
+  syncQuestWorld();
   el.seed.value = String(c.world); renderSheet(); saveOverworldPos();
 }
 export function saveOverworldPos() {

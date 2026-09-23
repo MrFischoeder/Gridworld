@@ -8,6 +8,7 @@ import { lockPointer } from './input';
 import type { Npc } from '../world/npc';
 import { VEHICLES, vehicleTitle, type VehicleModel } from '../data/vehicles';
 import { buyVehicle, vehiclesForSale, sellVehicle } from '../world/vehicles';
+import { questOptions, questTalk } from '../world/quests';
 import { PART_PRICE, PART_BUYBACK, type ItemKey } from '../data/items';
 import { takeOne } from '../character';
 
@@ -28,7 +29,9 @@ export function closeDialog() { if (!G.dlgOpen) return; G.dlgOpen = false; W.tal
 const dlgHead = () => { const n = W.talkNpc!; return `<h2>${n.name}</h2><div class="role">${n.title}</div>`; };
 function renderTalk(text: string) {
   const info = NPC_INFO[W.talkNpc!.role];
-  panel().innerHTML = dlgHead() + `<div class="say">${text}</div>` + info.opts.map((o) => `<button class="opt" data-o="${o}">${OPT_TEXT[o]}</button>`).join('');
+  panel().innerHTML = dlgHead() + `<div class="say">${text}</div>` +
+    questOptions(W.talkNpc!.role).map((q) => `<button class="opt" data-q="${q.id}" style="color:var(--gold)">${q.label}</button>`).join('') +
+    info.opts.map((o) => `<button class="opt" data-o="${o}">${OPT_TEXT[o]}</button>`).join('');
 }
 const PARTS = Object.keys(PART_PRICE) as ItemKey[];
 function renderVehicleShop(msg?: string) {
@@ -76,6 +79,8 @@ dlgEl.addEventListener('click', (e) => {
     if (!addItem(k)) return renderShop('Your backpack is full.');
     c.gold -= p; calcStats(); saveChar(); return renderShop('Bought: ' + ITEMS[k].name + '.');
   }
+  const qb = t.closest<HTMLElement>('[data-q]');
+  if (qb) { renderTalk(questTalk(qb.dataset.q!) || 'Hm?'); return; }
   if (!o) return;
   const r = W.talkNpc!.role;
   switch (o.dataset.o as OptId | 'back') {
@@ -92,8 +97,8 @@ dlgEl.addEventListener('click', (e) => {
     case 'chat': renderTalk(VILLAGER_LINES[(Math.random() * VILLAGER_LINES.length) | 0]); break;
     case 'lore': renderTalk(loreText()); break;
     case 'work':
-      renderTalk(r === 'elder' ? 'Not yet. Trouble is brewing below, and soon I will need someone brave. Come back later and I will have tasks for you.'
-        : 'Ask the Elder. He keeps track of what the village needs.');
+      renderTalk(r === 'elder' ? 'Read the notice board on the plaza. Folk post their troubles there, and when my name is on a notice, come and see me.'
+        : 'Have a look at the notice board on the plaza. If I need something, you will find it there.');
       break;
   }
 });

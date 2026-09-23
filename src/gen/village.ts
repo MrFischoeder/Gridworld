@@ -22,6 +22,8 @@ export interface VillageMap {
   ops: Op[];
   gates: Gate[];
   towers: Tower[];
+  /** The notice board on the plaza (world x/z; it faces south, towards the spawn). */
+  board: { x: number; z: number };
   buildings: Building[];
   trees: { x: number; z: number; h: number }[];
   lamps: { x: number; z: number }[];
@@ -114,6 +116,7 @@ export function generateVillage(seed: number, y = 0): VillageMap {
   // well, trees, lamps
   late.push({ op: 'solid', x: 35, y: 0, z: 36, w: 2, h: 1, d: 2 });
   const blocked = (x: number, z: number, m: number) => buildings.some((b) => x >= b.x - m && x < b.x + b.w + m && z >= b.z - m && z < b.z + b.d + m)
+    || (Math.abs(x - 41) < 4 && Math.abs(z - 45) < 3)
     || (Math.abs(x - 36) < 5 && z < 10) || (Math.abs(x - 36) < 4 && Math.abs(z - 37) < 4) || (Math.abs(x - 36) < 3 && Math.abs(z - 50) < 3)
     || gates.some((g) => Math.abs(x - Math.min(Math.max(g.x, 1), PW - 2)) < 5 && Math.abs(z - Math.min(Math.max(g.z, 1), PD - 2)) < 5);
   for (let n = 0; n < 200 && trees.length < 12; n++) {
@@ -137,6 +140,7 @@ export function generateVillage(seed: number, y = 0): VillageMap {
     gates: gates.map((g) => (g.dir === 'N' || g.dir === 'S'
       ? { ...g, x: g.x + ox, z: g.z + oz, a: g.a + ox, m: g.m + oz } : { ...g, x: g.x + ox, z: g.z + oz, a: g.a + oz, m: g.m + ox })),
     towers: towers.map((t) => ({ ...t, x: t.x + ox, z: t.z + oz })),
+    board: { x: 41 + ox, z: 45 + oz },
     buildings: buildings.map((b) => ({ ...b, x: b.x + ox, z: b.z + oz, door: P(b.door), home: b.home && P(b.home) })),
     trees: trees.map((t) => ({ ...t, x: t.x + ox, z: t.z + oz })), lamps: lamps.map((l) => ({ x: l.x + ox, z: l.z + oz })),
     well: { x: 36 + ox, z: 37 + oz }, walk: walk.map(([x, z]) => [x + ox, z + oz]),

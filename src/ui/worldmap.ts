@@ -8,6 +8,7 @@ import { discover, isDiscovered } from '../save';
 import { saveChar } from '../character';
 import { drawPlayerArrow } from './minimap';
 import { vehicles, driving } from '../world/vehicles';
+import { questMarkers } from '../world/quests';
 import { $ } from './hud';
 
 const tiles = new Map<string, HTMLCanvasElement>();
@@ -80,6 +81,11 @@ function drawArea(ctx: CanvasRenderingContext2D, w: number, h: number, ppm: numb
     const x = X(v.st.x), y = Z(v.st.z), l = Math.max(3, v.spec.length * ppm / 2), w = Math.max(2, v.spec.width * ppm / 2);
     ctx.save(); ctx.translate(x, y); ctx.rotate(-v.st.heading); ctx.strokeStyle = '#e8fff0'; ctx.strokeRect(-w, -l, w * 2, l * 2); ctx.restore();
     if (labels) { ctx.fillStyle = '#e8fff0'; ctx.fillText(v.spec.name, x, y - l - 6); }
+  }
+  for (const m of questMarkers()) {
+    const x = X(m.x), y = Z(m.z);
+    ctx.strokeStyle = ctx.fillStyle = '#ffd060'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(x, y, labels ? 12 : 6, 0, 6.283); ctx.stroke(); ctx.lineWidth = 1;
+    ctx.fillText('!', x, y + 4); if (labels) ctx.fillText(m.label, x, y - 16);
   }
   for (const c of W.creatures) { if (c.state === 'roam') continue; ctx.fillStyle = '#ff9a3c'; ctx.fillRect(X(c.p.x) - 2, Z(c.p.z) - 2, 4, 4); }
   for (const t of W.drones) { if (!t.chasing) continue; ctx.fillStyle = '#ffb347'; ctx.fillRect(X(t.p.x) - 1.5, Z(t.p.z) - 1.5, 3, 3); }
