@@ -95,9 +95,9 @@ dlgEl.addEventListener('click', (e) => {
     case 'shop': renderShop(); break;
     case 'sell': renderSell(); break;
     case 'rest':
-      if (G.hp >= G.S.maxHp) renderTalk('You look well rested already. Save your coin.');
+      if (G.hp >= G.S.maxHp && c.food >= 70 && c.water >= 70) renderTalk('You look well rested already. Save your coin.');
       else if (c.gold < 10) renderTalk('Ten gold for a bed, love. Come back when you have it.');
-      else { c.gold -= 10; G.hp = G.S.maxHp; saveChar(); renderTalk('You sleep like a stone. (HP fully restored)'); }
+      else { c.gold -= 10; G.hp = G.S.maxHp; c.food = Math.max(c.food, 70); c.water = Math.max(c.water, 70); saveChar(); renderTalk('A bowl of soup, a jug of water, and you sleep like a stone. (HP restored, fed and watered)'); }
       break;
     case 'rumour': renderTalk(RUMOURS[(Math.random() * RUMOURS.length) | 0]); break;
     case 'chat': renderTalk(VILLAGER_LINES[(Math.random() * VILLAGER_LINES.length) | 0]); break;

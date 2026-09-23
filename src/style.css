@@ -207,3 +207,14 @@ body.is-touch #bUse.on{display:flex}
 .svcbar .bar i{display:block;height:100%;background:var(--g)}
 .slot.wrecked{color:#ff7a5c;border-color:#8a3a2a}
 #svc h3,#xfer h3{margin:10px 0 6px;font-weight:400;font-size:21px;color:var(--txt);opacity:.8}
+/* survival bars */
+#stbar,#foodbar,#waterbar{display:inline-block;height:6px;border:1px solid #9acb4a;vertical-align:middle;margin-right:8px}
+#stbar{width:120px}
+#foodbar,#waterbar{width:55px;margin-right:6px}
+#waterbar{border-color:#2ac8b0;margin-right:8px}
+#stfill,#foodfill,#waterfill{height:100%;width:100%}
+#stfill{background:#d8ff7a}
+#foodfill{background:#c8b060}
+#waterfill{background:#2ac8b0}
+#foodbar.low,#waterbar.low{border-color:var(--amber);box-shadow:0 0 6px var(--amber)}
+#stat .lbl{font-size:15px;opacity:.7}

@@ -52,6 +52,8 @@ export const G = {
   look: { id: null as number | null, x: 0, y: 0 },
   weapon: 0, cooldown: 0, swingT: 0,
   /** The Blaster with its attachments (character.calcStats), rounds in the magazine, reload timer, aiming. */
+  /** Stamina (not saved: you wake rested) and whether you ran it dry (exhausted until it recovers). */
+  stamina: 100, exhausted: false, effortT: 0,
   gun: { ...BLASTER.base } as GunStats, ammo: BLASTER.base.mag, reloadT: 0, aiming: false, touchAim: false,
   hitFlash: 0, dmgFlash: 0,
 };

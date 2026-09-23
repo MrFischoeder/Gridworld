@@ -15,6 +15,8 @@ import { foes, damageFoe } from './enemies';
 import { closePack } from '../ui/backpack';
 import { onPickup } from './quests';
 import { toVillage } from './level';
+import { NOURISH } from '../data/survival';
+import { nourish } from './survival';
 import { makeNoise } from './noise';
 import { canRecall } from './level';
 
@@ -139,6 +141,15 @@ export function useItem(k: ItemKey): boolean {
     if (G.hp >= G.S.maxHp) { logLine('HP already full'); return false; }
     if (!takeOne(k)) { logLine('None left: ' + ITEMS[k].name); return false; }
     G.hp = Math.min(G.S.maxHp, G.hp + heal); logLine('+' + heal + ' HP');
+    return true;
+  }
+  const food = NOURISH[k];
+  if (food) {
+    const c = G.char;
+    if ((food.food ?? 0) > 0 && !(food.water ?? 0) && c.food >= 99) { logLine('You are not hungry.'); return false; }
+    if ((food.water ?? 0) > 0 && !(food.food ?? 0) && c.water >= 99) { logLine('You are not thirsty.'); return false; }
+    if (!takeOne(k)) { logLine('None left: ' + ITEMS[k].name); return false; }
+    nourish(food.food ?? 0, food.water ?? 0, food.hp ?? 0);
     if (k === 'waterF' || k === 'waterM') {
       addItem('flask'); // the flask is kept
       if (k === 'waterM' && Math.random() < 0.35) { G.hp -= 8; G.dmgFlash = 0.4; logLine('The murky water turns your stomach. -8 HP'); }

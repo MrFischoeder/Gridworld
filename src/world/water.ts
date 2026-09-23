@@ -7,6 +7,8 @@ import { OW } from './overworld';
 import { lakesIn, shoreR, type Lake, type WaterKind, type Well } from '../gen/water';
 import { addItem, takeOne, hasItem, saveChar } from '../character';
 import { PropBatch } from './props';
+import { SIP } from '../data/survival';
+import { nourish } from './survival';
 import { logLine, showToast } from '../ui/hud';
 
 /** Line colours of the three kinds of water (toxic glows). */
@@ -111,7 +113,7 @@ export const sourcePrompt = (s: WaterSource) =>
 let lastSip = 0;
 /**
  * Use a water source: with an Empty Flask it fills one; otherwise you drink on the spot.
- * (Thirst is not in the game yet; for now clean water refreshes a little HP.)
+ * Drinking quenches thirst (data/survival.ts SIP).
  */
 export function useWater(s: WaterSource) {
   if (s.kind === 'toxic') { showToast('Toxic'); logLine('The water glows faintly. Drinking it would kill you.'); return; }
@@ -120,9 +122,10 @@ export function useWater(s: WaterSource) {
     else { addItem('flask'); logLine('No room in your backpack.'); }
     saveChar(); return;
   }
-  if (performance.now() - lastSip < 1500) return;
+  if (performance.now() - lastSip < 1200) return;
   lastSip = performance.now();
-  if (s.kind === 'fresh') { G.hp = Math.min(G.S.maxHp, G.hp + 8); logLine('You drink the cool water. +8 HP'); }
-  else if (Math.random() < 0.35) { G.hp -= 6; G.dmgFlash = 0.35; logLine('The swamp water turns your stomach. -6 HP'); }
-  else { G.hp = Math.min(G.S.maxHp, G.hp + 3); logLine('It tastes of mud, but it is water. +3 HP'); }
+  if (G.char.water >= 99) { logLine('You are not thirsty.'); return; }
+  if (s.kind === 'fresh') { logLine('You drink the cool water.'); nourish(0, SIP.fresh); }
+  else if (Math.random() < 0.35) { G.hp -= 6; G.dmgFlash = 0.35; nourish(0, SIP.murky); logLine('The swamp water turns your stomach. -6 HP'); }
+  else { logLine('It tastes of mud, but it is water.'); nourish(0, SIP.murky); }
 }

@@ -7,9 +7,11 @@ import { rayWorld } from './player';
 import { foes, damageFoe } from './enemies';
 import { el } from '../ui/hud';
 import { BLASTER } from '../data/weapons';
+import { BLADE, STAMINA } from '../data/survival';
+import { spendStamina } from './survival';
 import { makeNoise } from './noise';
 
-export const WEAPONS = [{ name: BLASTER.name, dmg: 1, rate: 0 }, { name: 'Blade', rate: 0.42, dmg: 2 }];
+export const WEAPONS = [{ name: BLASTER.name, dmg: 1, rate: 0 }, { name: 'Blade', rate: BLADE.rate, dmg: BLADE.dmg }];
 /** Weapons are holstered in safe places (the village). */
 export let armed = () => true;
 export function setArmedRule(f: () => boolean) { armed = f; }
@@ -118,8 +120,9 @@ function shoot() {
   if (hitT) damageFoe(hitT, G.gun.dmg * G.S.bm);
   makeNoise(camera.position, G.gun.noise);
 }
-function slash() {
-  G.swingT = 0.26;
+/** A blade swing: hits hard while you have the stamina for it; exhausted it is weak (and slow, see attack()). */
+function slash(tired: boolean) {
+  G.swingT = tired ? 0.45 : 0.26;
   const o = camera.position.clone(), f = new THREE.Vector3(); camera.getWorldDirection(f);
   const right = new THREE.Vector3().crossVectors(f, camera.up).normalize(), up = new THREE.Vector3().crossVectors(right, f);
   const pts: THREE.Vector3[] = [];
@@ -132,7 +135,7 @@ function slash() {
     const v = t.g.position.clone().sub(o), dist = v.length();
     if (dist > G.S.range + (t.r || 0.5)) continue;
     if (v.normalize().dot(f) < Math.cos(0.7)) continue;
-    burst(t.g.position.clone(), 0xc8ffd6, 14, 0.9); damageFoe(t, WEAPONS[1].dmg * G.S.mm);
+    burst(t.g.position.clone(), 0xc8ffd6, tired ? 6 : 14, tired ? 0.5 : 0.9); damageFoe(t, WEAPONS[1].dmg * G.S.mm * (tired ? BLADE.tiredDmg : 1));
   }
 }
 export function attack() {
@@ -142,6 +145,11 @@ export function attack() {
     if (G.ammo <= 0) { reload(); return; }
     shoot(); G.ammo--;
     if (G.ammo <= 0) reload();
-  } else slash();
-  G.cooldown = G.weapon === 0 ? G.S.rate : WEAPONS[1].rate;
+    G.cooldown = G.S.rate;
+  } else {
+    // every swing costs stamina; exhausted, swings are slow and weak, whatever speeds them up otherwise
+    const tired = !spendStamina(STAMINA.swing);
+    slash(tired);
+    G.cooldown = tired ? BLADE.tiredRate : WEAPONS[1].rate;
+  }
 }

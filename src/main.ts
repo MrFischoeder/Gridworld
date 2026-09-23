@@ -15,6 +15,7 @@ import { updateFx, updateStreaks } from './world/fx';
 import { updateStreaming, updateFieldEnemies, placeName, OW, groundAt, treeHit, animateCamps, keepOnPlanet } from './world/overworld';
 import { collides, setWaterNote } from './world/player';
 import { animateWater } from './world/water';
+import { updateSurvival } from './world/survival';
 import { regionRoads } from './gen/roads';
 import { generateQuest } from './gen/quests';
 import { poisNear } from './gen/regions';
@@ -62,7 +63,7 @@ function frame(now: number) {
   const live = G.playing && !uiOpen() && !G.trans;
   if (outdoors) updateStreaming(G.trans ? 8 : 4);
   // the clock runs whenever the game is not paused in the menu
-  if (G.playing) G.char.time += dt * MIN_PER_SEC;
+  if (G.playing) { G.char.time += dt * MIN_PER_SEC; updateSurvival(dt); }
   const clock = fmtClock(G.char.time);
   if (el.clock.textContent !== clock) el.clock.textContent = clock;
   if ((clockT -= dt) <= 0) {

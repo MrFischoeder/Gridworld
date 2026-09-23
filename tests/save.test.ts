@@ -8,8 +8,8 @@ describe('loadChar', () => {
     const v3 = { v: 3, level: 4, xp: 12, gold: 99, world: 777, inv: [{ k: 'medkit', n: 2 }, ...Array(11).fill(null)], mods: ['lens', null, null],
       opened: { '5:2:1:-1': [0] }, unlocked: {}, killed: {}, loc: 'dungeon', ow: null, dungeon: { ruinId: 5, depth: 2, gx: 1, gz: -1 }, discovered: { '0,0': '0000000000000001' }, containers: {}, vehicles: [], board: { seq: 0, offers: [] }, quests: [], camps: {} };
     // saves from before the game clock start at 08:00 of day 1
-    expect(loadChar(store({ [SAVE_KEY]: JSON.stringify(v3) }))).toEqual({ ...v3, time: 480, gunMods: [null, null, null] });
-    const timed = { ...v3, time: 5000, gunMods: ['scope', null, 'magX'] };
+    expect(loadChar(store({ [SAVE_KEY]: JSON.stringify(v3) }))).toEqual({ ...v3, time: 480, gunMods: [null, null, null], food: 100, water: 100 });
+    const timed = { ...v3, time: 5000, gunMods: ['scope', null, 'magX'], food: 40, water: 12 };
     expect(loadChar(store({ [SAVE_KEY]: JSON.stringify(timed) }))).toEqual(timed);
   });
   it('migrates v2: character, backpack and gold stay, the player starts in the village', () => {
