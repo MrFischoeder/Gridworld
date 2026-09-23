@@ -11,7 +11,7 @@ import { dropCrystal, dropPickup } from './loot';
 import { saveChar, gainXp } from '../character';
 import { logLine, showToast } from '../ui/hud';
 import { onKill, onCampCleared } from './quests';
-import { driving, refreshParts as refreshPartsOf } from './vehicles';
+import { driving, refreshParts as refreshPartsOf, damageVehicle } from './vehicles';
 import type { SpawnEnv } from './creatures';
 import type { BanditRole, CampMap } from '../gen/camps';
 
@@ -130,12 +130,14 @@ function updateBolts(dt: number) {
     const v = driving.v, hitR = v ? Math.max(v.spec.width, v.spec.height) * 0.6 : 0.45;
     if (!dead && hitD < hitR && !foeRules.playerSafe()) {
       dead = true;
-      if (v && v.spec.enclosed) { // the cab stops the bolt; the truck takes the damage
-        const p = v.st.parts;
-        if (Math.random() < 0.5) p.engine = Math.max(0, p.engine - 3);
-        else { const k = (Math.random() * p.wheels.length) | 0; if (p.wheels[k] > 0) p.wheels[k] = Math.max(0, p.wheels[k] - 4); }
+      // a closed cab stops every bolt; in an open one about half of them hit the vehicle instead of the driver
+      if (v && (v.spec.enclosed || Math.random() < 0.45)) {
+        const p = v.st.parts, r = Math.random();
+        if (r < 0.15) p.engine = Math.max(0, p.engine - 3);
+        else if (r < 0.3) { const k = (Math.random() * p.wheels.length) | 0; if (p.wheels[k] > 0) p.wheels[k] = Math.max(0, p.wheels[k] - 4); }
         refreshPartsOf(v);
-        if (vehicleWarnT <= 0) { logLine('Your vehicle is taking fire!'); vehicleWarnT = 4; }
+        damageVehicle(v, o.dmg);
+        if (vehicleWarnT <= 0 && driving.v) { logLine('Your vehicle is taking fire!'); vehicleWarnT = 4; }
       } else { G.hp -= o.dmg; G.dmgFlash = 0.35; }
     }
     if (dead) { burst(o.p, BANDIT, 6, 0.35); scene.remove(o.m); o.m.geometry.dispose(); bolts.splice(i, 1); }
@@ -168,7 +170,8 @@ function think(b: Bandit, dt: number, time: number) {
         if (dist > 1.5) walk(b, to.x, to.z, 6.2, dt);
         if (dist < 1.8 && b.hitT <= 0) {
           b.hitT = 0.9;
-          if (!(driving.v && driving.v.spec.enclosed)) { G.hp -= 10 * (1 + b.level * 0.2); G.dmgFlash = 0.35; }
+          const dmg = 10 * (1 + b.level * 0.2);
+          if (driving.v && driving.v.spec.enclosed) damageVehicle(driving.v, dmg * 0.5); else { G.hp -= dmg; G.dmgFlash = 0.35; }
         }
         break;
       }

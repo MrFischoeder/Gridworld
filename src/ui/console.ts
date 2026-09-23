@@ -1,5 +1,6 @@
 // Developer console, opened with ~ (the backquote key). Cheats for testing.
 import { G } from '../game';
+import { fmtClock, DAY } from '../core/time';
 import { saveChar } from '../character';
 import { toVillage } from '../world/level';
 import { spawnCreatureNear } from '../world/creatures';
@@ -31,6 +32,17 @@ const COMMANDS: Record<string, { help: string; run: (args: string[]) => string }
   home: {
     help: 'go back to Gridholm (outside the tavern)',
     run: () => { if (G.trans) return 'Busy travelling, try again in a moment.'; close(); toVillage('recall'); showToast('Gridholm'); return 'Home.'; },
+  },
+  time: {
+    help: 'time [hour] — show the clock, or skip ahead to that hour (0-23)',
+    run: ([h]) => {
+      if (h === undefined) return fmtClock(G.char.time);
+      const want = Number(h);
+      if (!Number.isFinite(want) || want < 0 || want >= 24) return 'Usage: time <hour 0-23>';
+      const now = G.char.time, today = Math.floor(now / DAY) * DAY;
+      G.char.time = today + want * 60 + (today + want * 60 <= now ? DAY : 0);
+      return 'It is now ' + fmtClock(G.char.time) + '.';
+    },
   },
   clear: { help: 'clear this log', run: () => { out.innerHTML = ''; return ''; } },
   ambush: { help: 'set up a bandit ambush ahead (stand on a road)', run: () => (forceAmbush() ? 'Something moves by the road ahead...' : 'Stand on a road, away from places.') },

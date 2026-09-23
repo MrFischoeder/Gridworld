@@ -51,7 +51,9 @@ export function regionVehicle(t: Terrain, rx: number, rz: number): Parking | nul
     // abandoned for a reason: worn or missing wheels and a tired engine, sometimes beyond driving
     const wheels = Array.from({ length: wheelCount(model) }, () => (R() < 0.22 ? -1 : 15 + Math.floor(R() * 70)));
     const engine = R() < 0.2 ? 0 : 10 + Math.floor(R() * 60);
-    return { id: `found:${rx}:${rz}`, model, x, z, heading, parts: { wheels, engine, gun: false } };
+    // rolled after the older fields so the wheels and engine of existing worlds stay the same
+    const hull = Math.round(VEHICLES[model].hull * (0.2 + R() * 0.6)), fuel = Math.round(VEHICLES[model].tank * (0.1 + R() * 0.5));
+    return { id: `found:${rx}:${rz}`, model, x, z, heading, parts: { wheels, engine, gun: false, hull, fuel } };
   }
   return null;
 }

@@ -171,3 +171,5 @@ body.is-touch #bUse.on{display:flex}
 #boardMsg{min-height:24px;margin-top:10px;font-size:20px;color:var(--gold)}
 #board #boardClose{background:var(--g);color:#000;border:0;padding:5px 18px;font-size:24px;margin-top:8px}
 #qtrack{margin-top:8px;font-size:18px;color:var(--gold);text-shadow:0 0 6px rgba(255,208,96,.5);max-width:46vw;line-height:1.2}
+#veh .warn{color:var(--amber)}
+#clock{font-size:20px;opacity:.85}

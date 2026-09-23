@@ -1,6 +1,7 @@
 // Quest progress: kills, quest groups in the open world, quest items in ruins and at wrecks, rewards.
 import { G, W } from '../game';
 import { generateQuest, compass, km, type Quest } from '../gen/quests';
+import { boardPeriod } from '../core/time';
 import type { CreatureKind } from '../data/creatures';
 import { ITEMS, RELIC_KEYS, type ItemKey } from '../data/items';
 import { NPC_INFO, type NpcRole } from '../data/npcs';
@@ -25,6 +26,19 @@ export function boardOffers(): Quest[] {
     b.offers.push(generateQuest(T, b.seq++, taken));
   }
   return b.offers;
+}
+/**
+ * Every BOARD_HOURS game hours new notices go up: the two oldest offers of each posting come down and fresh
+ * ones (numbered on from board.seq) take their place. Accepted quests are not touched. Returns true when
+ * something changed.
+ */
+export function refreshBoard(): boolean {
+  const b = G.char.board, now = boardPeriod(G.char.time);
+  if (b.stamp === undefined || b.stamp > now) { b.stamp = now; return false; } // saves from before the clock
+  if (now === b.stamp) return false;
+  const n = Math.min(b.offers.length, 2 * (now - b.stamp));
+  b.stamp = now; b.offers.splice(0, n); boardOffers();
+  return true;
 }
 export function accept(id: string): string {
   const b = G.char.board, i = b.offers.findIndex((q) => q.id === id);

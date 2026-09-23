@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { scene, camera, V, GRID } from './render';
 import { G } from '../game';
 import { PropBatch } from './props';
-import { VEHICLES, vehicleTitle, freshParts, immobile, partPerformance, resaleValue, type VehicleSpec, type VehicleModel } from '../data/vehicles';
+import { VEHICLES, vehicleTitle, freshParts, upgradeParts, immobile, partPerformance, resaleValue, FUEL_BURN, type VehicleSpec, type VehicleModel } from '../data/vehicles';
 import { PART_PRICE, PART_BUYBACK } from '../data/items';
 import { rayWorld } from './player';
 import { foes, damageFoe } from './enemies';
@@ -130,6 +130,7 @@ function makeVehicle(st: VehicleState, claimed = true): Vehicle {
     }
   });
   st.parts ??= freshParts(st.model); // saves from before vehicles had parts
+  upgradeParts(st.model, st.parts);
   scene.add(group);
   const v: Vehicle = { st, spec, group, claimed, wheels, turret: null, odo: 0, speed: 0, spin: 0, steer: 0, y: 0, pitch: 0, roll: 0 };
   refreshParts(v);
@@ -160,14 +161,52 @@ export function refreshParts(v: Vehicle) {
 function wear(v: Vehicle, metres: number, crash: number) {
   const p = v.st.parts;
   v.odo += metres;
+  if (FUEL_BURN) p.fuel = Math.max(0, p.fuel - metres / 1000 * v.spec.fuelUse * FUEL_BURN);
   while (v.odo >= 100) { v.odo -= 100; p.wheels = p.wheels.map((w) => (w > 0 ? Math.max(1, w - 0.6) : w)); }
   if (crash > 6) {
     const i = (Math.random() * p.wheels.length) | 0, hit = Math.min(35, (crash - 6) * 3);
     if (p.wheels[i] > 0) p.wheels[i] = Math.max(0, Math.round(p.wheels[i] - hit));
     p.engine = Math.max(0, Math.round(p.engine - hit * 0.4));
+    damageVehicle(v, (crash - 6) * 2.5 * v.spec.hull / 120);
     const why = immobile(p);
     if (why) { showToast('Breakdown! ' + why); v.speed = 0; }
   }
+}
+
+// ---------- hull ----------
+let hullWarnAt = 0;
+/**
+ * Hull damage from gunfire, rams and crashes. At 0 the vehicle is wrecked: it stops, smokes, and the driver
+ * is thrown out (hurt if the cab is open). Hull Plating fitted at the front brings it back.
+ * Returns true when this hit wrecked it.
+ */
+export function damageVehicle(v: Vehicle, dmg: number): boolean {
+  const p = v.st.parts;
+  if (p.hull <= 0 || dmg <= 0) return false;
+  p.hull = Math.max(0, p.hull - dmg);
+  if (v === driving.v) {
+    G.dmgFlash = Math.max(G.dmgFlash, 0.12);
+    if (p.hull < v.spec.hull * 0.25 && performance.now() > hullWarnAt) { hullWarnAt = performance.now() + 6000; logLine('Hull critical!'); }
+  }
+  if (p.hull > 0) return false;
+  burst(V(v.st.x, v.y + v.spec.height * 0.6, v.st.z), 0xffb347, 60, v.spec.length * 0.5);
+  if (v === driving.v) {
+    showToast(vehicleTitle(v.st.model) + ' wrecked!');
+    logLine('The hull gave out. Patch it with Hull Plating at the front of the vehicle.');
+    leave();
+    if (!v.spec.enclosed) G.hp -= 15;
+    G.dmgFlash = 0.6;
+  }
+  if (v.claimed) saveChar();
+  return true;
+}
+/** Wrecked vehicles smoulder: a few sparks rise from them now and then. */
+let smokeT = 0;
+export function smokeWrecks(dt: number) {
+  if ((smokeT -= dt) > 0) return;
+  smokeT = 0.35;
+  for (const v of vehicles) if (v.st.parts.hull <= 0 && v.claimed && Math.hypot(v.st.x - G.pos.x, v.st.z - G.pos.z) < 90)
+    burst(V(v.st.x + (Math.random() - 0.5) * v.spec.width, v.y + v.spec.height, v.st.z + (Math.random() - 0.5) * v.spec.length * 0.5), 0x3a8a50, 3, 0.4);
 }
 
 // ---------- cannon ----------
@@ -295,7 +334,7 @@ export function vehicleSpot(): VehicleSpot | null {
     if (v.ai || Math.abs(G.pos.y - v.y) > 2.5) continue;
     for (const side of [-1, 1]) {
       const [x, z] = toWorld(v, side * v.spec.door[0], v.spec.door[1]), d = Math.hypot(x - G.pos.x, z - G.pos.z);
-      if (d < bd) { bd = d; best = { v, kind: 'drive', label: (v.claimed ? 'drive the ' : 'take the abandoned ') + vehicleTitle(v.st.model) }; }
+      if (d < bd) { bd = d; best = { v, kind: 'drive', label: (v.claimed ? 'drive the ' : 'take the abandoned ') + vehicleTitle(v.st.model) + (v.st.parts.hull <= 0 ? ' (wrecked)' : '') }; }
     }
     const [x, z] = toWorld(v, v.spec.rear[0], v.spec.rear[1]), d = Math.hypot(x - G.pos.x, z - G.pos.z);
     if (d < bd) { bd = d; best = { v, kind: 'trunk', label: v.claimed ? 'open the trunk' : 'search the abandoned ' + vehicleTitle(v.st.model) }; }
@@ -331,7 +370,7 @@ export function leave(save = true) {
     if (!collides(G.pos) && !(hooks && hooks.blocked(x, z, 0.3))) break;
   }
   G.vel.set(0, 0, 0); G.yaw = v.st.heading + Math.PI; G.pitch = 0;
-  el.veh.textContent = '';
+  el.veh.innerHTML = '';
   if (save) saveChar();
 }
 
@@ -381,6 +420,7 @@ export function updateDriving(dt: number) {
     if (impact > 6) showToast('Crash!');
     v.speed = -v.speed * 0.25;
     wear(v, 0, impact);
+    if (driving.v !== v) return; // the crash wrecked it
   } else {
     wear(v, Math.abs(v.speed) * dt, 0);
     v.st.x = nx; v.st.z = nz; v.st.heading = nh;
@@ -393,8 +433,9 @@ export function updateDriving(dt: number) {
   G.pos.set(v.st.x, v.y, v.st.z);
   G.vel.set(0, 0, 0);
   const p = v.st.parts, worst = Math.min(...p.wheels);
-  el.veh.textContent = `${vehicleTitle(v.st.model)} · ${Math.round(Math.abs(v.speed) * 3.6)} km/h · seats 1/${s.seats}${s.enclosed ? ' · cab closed' : ''}` +
-    ` · engine ${Math.round(p.engine)}% · wheels ${Math.round(worst)}%${v.turret ? ' · cannon' : ''}`;
+  el.veh.innerHTML = `${vehicleTitle(v.st.model)} · ${Math.round(Math.abs(v.speed) * 3.6)} km/h · seats 1/${s.seats}${s.enclosed ? ' · cab closed' : ''}` +
+    `<br><span${p.hull < s.hull * 0.25 ? ' class="warn"' : ''}>hull ${Math.ceil(p.hull)}/${s.hull}</span> · engine ${Math.round(p.engine)}% · wheels ${Math.round(worst)}%` +
+    ` · fuel ${Math.round(p.fuel / s.tank * 100)}%${v.turret ? ' · cannon' : ''}`;
 }
 /** Chase camera behind and above the vehicle (or the driver's eye in cockpit view, V). */
 export function vehicleCamera(camera: THREE.PerspectiveCamera) {

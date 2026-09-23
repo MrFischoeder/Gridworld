@@ -17,14 +17,15 @@ import { collides } from './world/player';
 import { regionRoads } from './gen/roads';
 import { generateQuest } from './gen/quests';
 import { poisNear } from './gen/regions';
-import { sky, horizon } from './world/sky';
+import { sky, horizon, updateSky } from './world/sky';
+import { MIN_PER_SEC, fmtClock } from './core/time';
 import { updateCreatures, spawnCreatureNear } from './world/creatures';
 import { updateBandits, spawnBanditsNear } from './world/bandits';
 import { updateRaiders, spawnRaiderNear, forceAmbush, raiders } from './world/raiders';
-import { updateTracker, boardOffers, accept, syncQuestWorld } from './world/quests';
-import { driving, updateDriving, vehicleCamera, vehicles, buyVehicle, fireCannon } from './world/vehicles';
+import { updateTracker, boardOffers, accept, syncQuestWorld, refreshBoard } from './world/quests';
+import { driving, updateDriving, vehicleCamera, vehicles, buyVehicle, fireCannon, smokeWrecks, damageVehicle } from './world/vehicles';
 import { interact } from './world/interact';
-import { el, updateHud } from './ui/hud';
+import { el, updateHud, logLine } from './ui/hud';
 import { drawMini } from './ui/minimap';
 import { toggleMap } from './ui/worldmap';
 import { initInput } from './ui/input';
@@ -48,7 +49,7 @@ initMenu({
 if (G.char.loc === 'dungeon' && G.char.dungeon) loadDungeon(null); else { G.char.loc = 'overworld'; loadOverworld({ kind: 'saved' }); }
 
 renderer.info.autoReset = false;
-let last = performance.now(), perfT = 0, saveT = 0;
+let last = performance.now(), perfT = 0, saveT = 0, clockT = 0;
 function frame(now: number) {
   const dt = Math.min((now - last) / 1000, 0.05); last = now;
   const time = now / 1000;
@@ -56,12 +57,20 @@ function frame(now: number) {
   let moving = false;
   const live = G.playing && !uiOpen() && !G.trans;
   if (outdoors) updateStreaming(G.trans ? 8 : 4);
+  // the clock runs whenever the game is not paused in the menu
+  if (G.playing) G.char.time += dt * MIN_PER_SEC;
+  const clock = fmtClock(G.char.time);
+  if (el.clock.textContent !== clock) el.clock.textContent = clock;
+  if ((clockT -= dt) <= 0) {
+    clockT = 1;
+    if (refreshBoard()) { saveChar(); if (outdoors && Math.hypot(G.pos.x, G.pos.z) < 120) logLine('New notices are up on the board.'); }
+  }
   if (live) {
     if (driving.v) updateDriving(dt); else moving = updatePlayer(dt);
     G.cooldown -= dt; if (G.firing && !driving.v) attack();
     if (driving.v) fireCannon(dt);
     updateDoors(dt);
-    if (outdoors) { updateFieldEnemies(dt); updateCreatures(dt, time); updateBandits(dt, time); updateRaiders(dt); animateCamps(time); }
+    if (outdoors) { updateFieldEnemies(dt); updateCreatures(dt, time); updateBandits(dt, time); updateRaiders(dt); animateCamps(time); smokeWrecks(dt); }
     updateDrones(dt);
     const boss = updateBosses(dt, time); updateOrbs(dt);
     updateBossBar(boss);
@@ -77,7 +86,7 @@ function frame(now: number) {
   } else { el.prompt.style.display = 'none'; el.bUse.classList.remove('on'); el.bossbar.style.display = 'none'; }
   if (G.trans) updateTrans(dt, camera); else if (driving.v) vehicleCamera(camera); else camera.position.set(G.pos.x, G.pos.y + EYE, G.pos.z);
   camera.rotation.set(G.pitch, G.yaw, 0);
-  if (sky.visible) { sky.position.set(camera.position.x, camera.position.y - 20, camera.position.z); horizon.position.set(camera.position.x, 0, camera.position.z); }
+  if (sky.visible) { sky.position.set(camera.position.x, camera.position.y - 20, camera.position.z); horizon.position.set(camera.position.x, 0, camera.position.z); updateSky(G.char.time); }
   el.cross.style.display = driving.v && !driving.cockpit && !driving.v.turret ? 'none' : '';
   animateVM(dt, moving);
   animateFoes(dt, time, camera.position);
@@ -98,4 +107,4 @@ function frame(now: number) {
 requestAnimationFrame(frame);
 
 // Debug handle for automated checks in development builds.
-if (import.meta.env.DEV) Object.assign(window, { __game: { G, W, OW, camera, scene, renderer, regionRoads, poisNear, groundAt, treeHit, collides, vehicles, driving, interact, buy: buyVehicle, foeRules, makeDrone, spawnCreature: spawnCreatureNear, damageFoe, boardOffers, accept, syncQuestWorld, enterDungeon, generateQuest, spawnBandits: spawnBanditsNear, spawnRaider: spawnRaiderNear, forceAmbush, raiders } });
+if (import.meta.env.DEV) Object.assign(window, { __game: { G, W, OW, camera, scene, renderer, regionRoads, poisNear, groundAt, treeHit, collides, vehicles, driving, interact, buy: buyVehicle, foeRules, makeDrone, spawnCreature: spawnCreatureNear, damageFoe, boardOffers, accept, syncQuestWorld, enterDungeon, generateQuest, spawnBandits: spawnBanditsNear, spawnRaider: spawnRaiderNear, forceAmbush, raiders, damageVehicle } });

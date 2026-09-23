@@ -216,7 +216,7 @@ function walk(c: Creature, dx: number, dz: number, speed: number, dt: number) {
   c.p.y = env.ground(c.p.x, c.p.z) + CREATURES[c.kind].lift;
 }
 function bite(dmg: number) {
-  if (foeRules.shielded()) return;
+  if (foeRules.shielded()) { foeRules.shieldHit(dmg * 0.5); return; }
   G.hp -= dmg; G.dmgFlash = 0.4;
 }
 const alerted = new WeakSet<Creature[]>();

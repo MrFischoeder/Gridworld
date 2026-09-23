@@ -1,7 +1,7 @@
 // Vehicle service window: wheels, engine and the roof cannon. Parts come from (and go back to) the backpack.
 import { G } from '../game';
 import { item, ITEMS, type ItemKey } from '../data/items';
-import { vehicleTitle, immobile } from '../data/vehicles';
+import { vehicleTitle, immobile, VEHICLES } from '../data/vehicles';
 import { hasItem, takeOne, saveChar } from '../character';
 import { putItems } from '../inventory';
 import { refreshParts, type Vehicle } from '../world/vehicles';
@@ -30,9 +30,12 @@ function render(msg?: string) {
     h += `<div class="svcrow"><div>${wheelName(v, i)} ${cond(c)}</div><div>` +
       (c < 0 ? btn('fitW', i, 'Fit ' + ITEMS[wk].name, hasItem(wk)) : btn('fitW', i, 'Replace', hasItem(wk) && c < 100) + ' ' + btn('offW', i, 'Take off', true)) + '</div></div>';
   });
+  const maxHull = VEHICLES[v.st.model].hull, tank = VEHICLES[v.st.model].tank;
+  h += `<div class="svcrow"><div>Hull ${Math.max(0, Math.round(p.hull))}/${maxHull} ${cond(Math.max(0, p.hull) / maxHull * 100)}</div><div>${btn('hull', 0, 'Patch (+40%)', hasItem('plating') && p.hull < maxHull)}</div></div>`;
   h += `<div class="svcrow"><div>Engine ${cond(p.engine)}</div><div>${btn('eng', 0, 'Repair (+50%)', hasItem('engine') && p.engine < 100)}</div></div>`;
   h += `<div class="svcrow"><div>Roof cannon ${p.gun ? 'fitted' : '<span style="opacity:.6">none</span>'}</div><div>` +
     (p.gun ? btn('offGun', 0, 'Take off', true) : btn('gun', 0, 'Fit ' + ITEMS.cannon.name, hasItem('cannon'))) + '</div></div>';
+  h += `<div class="svcrow"><div>Fuel ${Math.round(p.fuel)}/${tank} L ${cond(p.fuel / tank * 100)}</div><div><span style="opacity:.6">no need to refuel yet</span></div></div>`;
   el.rows.innerHTML = h;
   if (msg !== undefined) el.msg.textContent = msg;
 }
@@ -55,6 +58,12 @@ el.root.addEventListener('click', (e) => {
       break;
     }
     case 'offW': msg = salvage(wk, p.wheels[i]); p.wheels[i] = -1; break;
+    case 'hull': {
+      if (!takeOne('plating')) return;
+      const max = VEHICLES[cur.st.model].hull;
+      p.hull = Math.min(max, Math.max(0, p.hull) + Math.round(max * 0.4)); msg = p.hull >= max ? 'The hull is as good as new.' : 'Plates bolted on.';
+      break;
+    }
     case 'eng': if (!takeOne('engine')) return; p.engine = Math.min(100, p.engine + 50); msg = 'Engine repaired.'; break;
     case 'gun': if (!takeOne('cannon')) return; p.gun = true; msg = 'Cannon fitted on the roof. Fire it with the attack button while driving.'; break;
     case 'offGun':
@@ -68,7 +77,7 @@ el.close.onclick = () => closeService();
 export function openService(v: Vehicle) {
   if (!G.playing || G.xferOpen || G.packOpen || G.dlgOpen) return;
   cur = v; G.xferOpen = true; G.firing = false; for (const k in G.keys) G.keys[k] = false;
-  render(`Spare parts come from Mirek's yard: ${ITEMS[v.spec.wheelItem].name}, ${ITEMS.engine.name}, ${ITEMS.cannon.name}.`);
+  render(`Spare parts come from Mirek's yard: ${ITEMS[v.spec.wheelItem].name}, ${ITEMS.engine.name}, ${ITEMS.plating.name}, ${ITEMS.cannon.name}.`);
   el.root.style.display = 'flex';
   if (document.pointerLockElement) document.exitPointerLock();
 }

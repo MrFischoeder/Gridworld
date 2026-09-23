@@ -5,6 +5,7 @@ import { NPC_INFO } from '../data/npcs';
 import { $ } from './hud';
 import { lockPointer } from './input';
 import type { Quest } from '../gen/quests';
+import { fmtClock, fmtTime, nextPosting } from '../core/time';
 
 const el = { root: $('board'), body: $('boardBody'), msg: $('boardMsg'), close: $('boardClose') };
 let open = false;
@@ -25,7 +26,8 @@ function offer(q: Quest, full: boolean) {
 }
 function render(msg?: string) {
   const qs = G.char.quests, full = qs.length >= MAX_ACTIVE;
-  el.body.innerHTML = (qs.length ? `<h3>Your tasks (${qs.length}/${MAX_ACTIVE})</h3>` + qs.map(mine).join('') : '') +
+  const t = G.char.time;
+  el.body.innerHTML = `<div class="rw" style="margin-bottom:6px">${fmtClock(t)} · new notices go up at ${fmtTime(nextPosting(t))}</div>` + (qs.length ? `<h3>Your tasks (${qs.length}/${MAX_ACTIVE})</h3>` + qs.map(mine).join('') : '') +
     '<h3>Notices</h3>' + boardOffers().map((q) => offer(q, full)).join('');
   if (msg !== undefined) el.msg.textContent = msg;
 }

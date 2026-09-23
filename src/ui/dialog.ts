@@ -6,7 +6,7 @@ import { addItem, calcStats, saveChar } from '../character';
 import { $ } from './hud';
 import { lockPointer } from './input';
 import type { Npc } from '../world/npc';
-import { VEHICLES, vehicleTitle, type VehicleModel } from '../data/vehicles';
+import { VEHICLES, vehicleTitle, health, type VehicleModel } from '../data/vehicles';
 import { buyVehicle, vehiclesForSale, sellVehicle } from '../world/vehicles';
 import { questOptions, questTalk } from '../world/quests';
 import { PART_PRICE, PART_BUYBACK, type ItemKey } from '../data/items';
@@ -49,7 +49,7 @@ function renderVehicleShop(msg?: string) {
 function renderSell(msg?: string) {
   const offers = vehiclesForSale(), parts = PARTS.filter((k) => G.char.inv.some((s) => s && s.k === k));
   panel().innerHTML = dlgHead() + `<div class="say">Your gold: <b>${G.char.gold}</b>${msg ? '<br>' + msg : ''}</div>` +
-    (offers.length ? offers.map((o) => `<div class="shoprow"><div><b>${vehicleTitle(o.v.st.model)}</b><br><span>${o.why ?? 'parked in the yard · condition ' + Math.round((o.v.st.parts.engine + o.v.st.parts.wheels.reduce((a, w) => a + Math.max(0, w), 0) / o.v.st.parts.wheels.length) / 2) + '%'}</span></div>
+    (offers.length ? offers.map((o) => `<div class="shoprow"><div><b>${vehicleTitle(o.v.st.model)}</b><br><span>${o.why ?? 'parked in the yard · condition ' + Math.round(health(o.v.st.model, o.v.st.parts) * 100) + '%'}</span></div>
       <button class="buy" data-sellv="${o.v.st.id}" ${o.why ? 'disabled' : ''}>+${o.price} g</button></div>`).join('')
       : '<div class="say" style="opacity:.7">Park a vehicle in my yard and I will make you an offer.</div>') +
     parts.map((k) => `<div class="shoprow"><div><b>${ITEMS[k].name}</b><br><span>used part</span></div>

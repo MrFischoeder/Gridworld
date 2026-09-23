@@ -16,7 +16,7 @@ import { PropBatch, sharedFill, sharedLine } from './props';
 import { makeStair, type Door, type Stair } from './doors';
 import { makeNpc, type Npc } from './npc';
 import { makeDrone, foeRules, type Drone } from './enemies';
-import { spawnVehicles, clearVehicles, vehicleHit, syncFound, shielded } from './vehicles';
+import { spawnVehicles, clearVehicles, vehicleHit, syncFound, shielded, driving, damageVehicle } from './vehicles';
 import { setCreatureEnv, clearCreatures } from './creatures';
 import { setBanditEnv, clearBandits, spawnCamp, despawnCamp } from './bandits';
 import { setRaiderEnv, clearRaiders, ambushHit } from './raiders';
@@ -312,6 +312,7 @@ export function openWorld(x: number, z: number) {
   foeRules.playerSafe = () => inVillage(G.pos.x, G.pos.z);
   foeRules.ground = (px, pz) => OW.terrain!.heightAt(px, pz);
   foeRules.shielded = shielded;
+  foeRules.shieldHit = (dmg) => { if (driving.v) damageVehicle(driving.v, dmg); };
   updateStructs(x, z);
   const pcx = Math.floor(x / CHUNK), pcz = Math.floor(z / CHUNK);
   for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) OW.chunks.set(ckey(pcx + i, pcz + j), buildChunk(pcx + i, pcz + j));
@@ -343,7 +344,7 @@ export function closeWorld() {
   OW.chunks.clear();
   for (const s of [...OW.structs.values()]) dropStruct(s);
   queue = []; lastChunk = '';
-  foeRules.blocked = () => false; foeRules.playerSafe = () => false; foeRules.ground = null; foeRules.shielded = () => false;
+  foeRules.blocked = () => false; foeRules.playerSafe = () => false; foeRules.ground = null; foeRules.shielded = () => false; foeRules.shieldHit = () => {};
   G.ground = null; G.obstacle = null;
 }
 export const structFor = (id: number) => OW.structs.get(id);

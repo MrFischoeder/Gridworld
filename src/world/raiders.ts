@@ -9,7 +9,7 @@ import { rayWorld } from './player';
 import { burst } from './fx';
 import { dropCrystal } from './loot';
 import { spawnBandit, alert, fireBolt, BANDIT, type Bandit } from './bandits';
-import { spawnAIVehicle, releaseAI, removeVehicle, steerVehicle, bodyToWorld, driving, refreshParts, type Vehicle } from './vehicles';
+import { spawnAIVehicle, releaseAI, removeVehicle, steerVehicle, bodyToWorld, driving, refreshParts, damageVehicle, type Vehicle } from './vehicles';
 import { VEHICLES, freshParts, wheelCount, type VehicleModel } from '../data/vehicles';
 import { RELIC_KEYS } from '../data/items';
 import { putItems } from '../inventory';
@@ -110,6 +110,7 @@ function driveRaider(r: Raider, dt: number) {
       const p = driving.v.st.parts, k = (Math.random() * p.wheels.length) | 0;
       if (p.wheels[k] > 0) p.wheels[k] = Math.max(0, p.wheels[k] - 12); p.engine = Math.max(0, p.engine - 6); refreshParts(driving.v);
       logLine('Rammed!');
+      damageVehicle(driving.v, 20 * (1 + r.level * 0.2));
     } else {
       G.hp -= 16 * (1 + r.level * 0.2); G.dmgFlash = 0.5;
       const [fx, fz] = [Math.sin(v.st.heading), Math.cos(v.st.heading)];
@@ -134,6 +135,7 @@ function wreckRaider(r: Raider) {
   p.engine = 5 + Math.floor(Math.random() * 25);
   for (let i = 0; i < wheelCount(v.st.model); i++) if (Math.random() < 0.3) p.wheels[i] = 0; else p.wheels[i] = 30 + Math.floor(Math.random() * 50);
   p.gun = Math.random() < 0.5;
+  p.hull = Math.round(v.spec.hull * (0.15 + Math.random() * 0.3)); p.fuel = Math.round(v.spec.tank * (0.2 + Math.random() * 0.5));
   const t = v.st.trunk; t.gold = 20 + Math.floor(Math.random() * 60);
   if (Math.random() < 0.5) putItems(t.items, 'medkit', 1);
   if (Math.random() < 0.3) putItems(t.items, 'wheelL', 1);

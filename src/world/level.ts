@@ -12,7 +12,7 @@ import { placeTunnelDoors, tryPlaceDoor, type PlacedDoor } from '../gen/doors';
 import { makeDoor, makeStair, arriveVia, signTexture } from './doors';
 import { makeChest, makeHatch, setCrystalXp } from './loot';
 import { makeDrone, placeDrone, makeBoss, setDroneRespawn } from './enemies';
-import { sky, horizon, buildHorizon } from './sky';
+import { sky, horizon, buildHorizon, updateSky, darkSky } from './sky';
 import { setStreakSources } from './fx';
 import { setArmedRule, refreshWeaponVisibility } from './weapons';
 import { PropBatch } from './props';
@@ -47,7 +47,7 @@ function clearLevel() {
 }
 function setLocationLook(outdoors: boolean) {
   fog.near = outdoors ? 20 : 3; fog.far = outdoors ? 140 : 46; sky.visible = outdoors; horizon.visible = outdoors;
-  if (outdoors) buildHorizon(G.char.world);
+  if (outdoors) { buildHorizon(G.char.world); updateSky(G.char.time); } else darkSky();
   el.route.style.display = outdoors ? 'none' : '';
   refreshWeaponVisibility();
 }
