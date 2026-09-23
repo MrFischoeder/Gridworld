@@ -161,3 +161,31 @@ describe('forests', () => {
     }
   });
 });
+
+import { regionVehicle, clearSpot, YARD } from '../src/gen/vehicles';
+describe('vehicles in the world', () => {
+  it('abandoned vehicles are deterministic and parked on clear, fairly flat ground', () => {
+    let found = 0;
+    for (const w of WORLDS.slice(0, 15)) {
+      const t = new Terrain(w), t2 = new Terrain(w);
+      for (let rx = -2; rx <= 2; rx++) for (let rz = -2; rz <= 2; rz++) {
+        const v = regionVehicle(t, rx, rz);
+        expect(regionVehicle(t2, rx, rz)).toEqual(v);
+        if (!v) continue;
+        found++;
+        expect(clearSpot(t, v.model, v.x, v.z, v.heading)).toBe(true);
+      }
+    }
+    expect(found).toBeGreaterThan(20);
+  });
+  it('the yard bays by the north gate are clear in every world', () => {
+    for (const w of WORLDS) {
+      const t = new Terrain(w);
+      for (const b of YARD.bays.slice(0, 3)) for (const m of ['scout', 'mastodon'] as const) {
+        // the village itself is next door, so only trees, rocks and slope matter here
+        expect(chunkTrees(t, Math.floor(b.x / 32), Math.floor(b.z / 32)).some((tr) => Math.hypot(tr.x - b.x, tr.z - b.z) < 7), `trees at bay, world ${w}`).toBe(false);
+        expect(Math.abs(t.heightAt(b.x, b.z - 5) - t.heightAt(b.x, b.z + 5)), `slope ${m} world ${w}`).toBeLessThan(2.5);
+      }
+    }
+  });
+});

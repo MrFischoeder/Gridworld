@@ -4,7 +4,11 @@ import { scene, V, GRID } from './render';
 import { G } from '../game';
 import { PropBatch } from './props';
 import { VEHICLES, vehicleTitle, type VehicleSpec, type VehicleModel } from '../data/vehicles';
-import { startingVehicles } from '../gen/vehicles';
+import { regionVehicle, YARD, type Parking } from '../gen/vehicles';
+import type { Terrain } from '../gen/terrain';
+import { regionOf } from '../gen/regions';
+import { RELIC_KEYS } from '../data/items';
+import { putItems } from '../inventory';
 import { VILLAGE_RECT } from '../gen/regions';
 import { rectDist } from '../gen/terrain';
 import type { VehicleState } from '../save';
@@ -17,6 +21,8 @@ const BODY = 0x5cff8a, DETAIL = GRID, GLASS = 0x2a9a50;
 
 export interface Vehicle {
   st: VehicleState; spec: VehicleSpec; group: THREE.Group;
+  /** Abandoned vehicles out in the wilds belong to nobody until someone gets in or opens the trunk. */
+  claimed: boolean;
   wheels: { g: THREE.Group; front: boolean }[];
   speed: number; spin: number; steer: number; y: number; pitch: number; roll: number;
 }
@@ -98,7 +104,7 @@ function mastodonBody(pb: PropBatch) {
   for (const z of VEHICLES.mastodon.axles) for (const sx of [-1, 1]) box(pb, sx * 1.15, 1.6, z - 0.95, sx * 1.8, 1.72, z + 0.95, DETAIL);
 }
 
-function makeVehicle(st: VehicleState): Vehicle {
+function makeVehicle(st: VehicleState, claimed = true): Vehicle {
   const spec = VEHICLES[st.model], group = new THREE.Group(), pb = new PropBatch();
   if (st.model === 'scout') scoutBody(pb); else mastodonBody(pb);
   group.add(pb.build());
@@ -112,7 +118,7 @@ function makeVehicle(st: VehicleState): Vehicle {
     }
   });
   scene.add(group);
-  const v: Vehicle = { st, spec, group, wheels, speed: 0, spin: 0, steer: 0, y: 0, pitch: 0, roll: 0 };
+  const v: Vehicle = { st, spec, group, claimed, wheels, speed: 0, spin: 0, steer: 0, y: 0, pitch: 0, roll: 0 };
   pose(v);
   return v;
 }
@@ -149,19 +155,62 @@ function pose(v: Vehicle) {
 export function spawnVehicles(h: WorldHooks) {
   hooks = h;
   clearVehicles();
-  const c = G.char;
-  if (!c.vehicles.length) {
-    c.vehicles = startingVehicles().map((p) => ({ ...p, trunk: { items: Array(VEHICLES[p.model].trunk).fill(null), gold: 0 } }));
-    saveChar();
-  }
-  for (const st of c.vehicles) vehicles.push(makeVehicle(st));
+  for (const st of G.char.vehicles) vehicles.push(makeVehicle(st));
 }
+const emptyTrunk = (m: VehicleModel) => ({ items: Array(VEHICLES[m].trunk).fill(null), gold: 0 });
+const stateOf = (p: Parking): VehicleState => ({ ...p, trunk: emptyTrunk(p.model) });
+
+// ---------- abandoned vehicles ----------
+const foundCache = new Map<string, Parking | null>();
+/** Show the abandoned vehicles of the regions around (x, z) that nobody has claimed yet; drop far ones. */
+export function syncFound(t: Terrain, x: number, z: number) {
+  const [rx, rz] = regionOf(x, z), owned = new Set(G.char.vehicles.map((s) => s.id));
+  for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) {
+    const key = t.world + ':' + (rx + i) + ':' + (rz + j);
+    if (!foundCache.has(key)) foundCache.set(key, regionVehicle(t, rx + i, rz + j));
+    const p = foundCache.get(key);
+    if (!p || owned.has(p.id) || vehicles.some((v) => v.st.id === p.id)) continue;
+    vehicles.push(makeVehicle(stateOf(p), false));
+  }
+  for (let i = vehicles.length - 1; i >= 0; i--) {
+    const v = vehicles[i];
+    if (!v.claimed && Math.hypot(v.st.x - x, v.st.z - z) > 420) { dropVehicle(v); vehicles.splice(i, 1); }
+  }
+}
+/** Taking an abandoned vehicle: it becomes yours, with whatever its last owner left in the trunk. */
+function claim(v: Vehicle) {
+  if (v.claimed) return;
+  v.claimed = true;
+  const t = v.st.trunk;
+  t.gold = 10 + Math.floor(Math.random() * 60);
+  if (Math.random() < 0.6) putItems(t.items, 'medkit', 1 + Math.floor(Math.random() * 2));
+  if (Math.random() < 0.3) putItems(t.items, 'emp', 1);
+  if (Math.random() < 0.2) putItems(t.items, RELIC_KEYS[(Math.random() * RELIC_KEYS.length) | 0], 1);
+  G.char.vehicles.push(v.st); saveChar();
+  showToast('Found: ' + vehicleTitle(v.st.model));
+}
+
+// ---------- the dealer ----------
+/** Buys a vehicle and parks it in the first free bay of the yard. Returns a message for the shop window. */
+export function buyVehicle(model: VehicleModel): string {
+  const spec = VEHICLES[model], c = G.char;
+  if (c.gold < spec.price) return 'Not enough gold.';
+  const bay = YARD.bays.find((b) => !vehicles.some((v) => Math.hypot(v.st.x - b.x, v.st.z - b.z) < 7));
+  if (!bay) return 'The yard is full. Drive one of your vehicles away first.';
+  c.gold -= spec.price;
+  const st = stateOf({ id: model + '-' + Date.now().toString(36), model, x: bay.x, z: bay.z, heading: YARD.heading });
+  c.vehicles.push(st); vehicles.push(makeVehicle(st)); saveChar();
+  return `Your ${vehicleTitle(model)} is waiting in the yard outside the north gate.`;
+}
+/** Drones cannot reach the driver of a vehicle with a closed cab. */
+export const shielded = () => !!driving.v && driving.v.spec.enclosed;
 export function clearVehicles() {
   if (driving.v) leave(false);
-  // the body batch is per vehicle; wheel geometry is shared between clones and stays cached
-  for (const v of vehicles) { scene.remove(v.group); v.group.children[0].traverse((o) => (o as THREE.Mesh).geometry?.dispose()); }
+  for (const v of vehicles) dropVehicle(v);
   vehicles.length = 0;
 }
+/** The body batch is per vehicle; wheel geometry is shared between clones and stays cached. */
+function dropVehicle(v: Vehicle) { scene.remove(v.group); v.group.children[0].traverse((o) => (o as THREE.Mesh).geometry?.dispose()); }
 
 // ---------- interaction ----------
 export interface VehicleSpot { v: Vehicle; kind: 'drive' | 'trunk'; label: string }
@@ -172,14 +221,15 @@ export function vehicleSpot(): VehicleSpot | null {
     if (Math.abs(G.pos.y - v.y) > 2.5) continue;
     for (const side of [-1, 1]) {
       const [x, z] = toWorld(v, side * v.spec.door[0], v.spec.door[1]), d = Math.hypot(x - G.pos.x, z - G.pos.z);
-      if (d < bd) { bd = d; best = { v, kind: 'drive', label: 'drive the ' + vehicleTitle(v.st.model) }; }
+      if (d < bd) { bd = d; best = { v, kind: 'drive', label: (v.claimed ? 'drive the ' : 'take the abandoned ') + vehicleTitle(v.st.model) }; }
     }
     const [x, z] = toWorld(v, v.spec.rear[0], v.spec.rear[1]), d = Math.hypot(x - G.pos.x, z - G.pos.z);
-    if (d < bd) { bd = d; best = { v, kind: 'trunk', label: 'open the trunk' }; }
+    if (d < bd) { bd = d; best = { v, kind: 'trunk', label: v.claimed ? 'open the trunk' : 'search the abandoned ' + vehicleTitle(v.st.model) }; }
   }
   return best;
 }
 export function useVehicle(s: VehicleSpot) {
+  claim(s.v);
   if (s.kind === 'trunk') {
     const v = s.v;
     openTransfer({ title: vehicleTitle(v.st.model), subtitle: v.spec.role + ' · ' + v.spec.seats + ' seats', boxLabel: 'Trunk', box: v.st.trunk, canStore: true });
@@ -259,7 +309,7 @@ export function updateDriving(dt: number) {
   pose(v);
   G.pos.set(v.st.x, v.y, v.st.z);
   G.vel.set(0, 0, 0);
-  el.veh.textContent = `${vehicleTitle(v.st.model)} · ${Math.round(Math.abs(v.speed) * 3.6)} km/h · seats 1/${s.seats}`;
+  el.veh.textContent = `${vehicleTitle(v.st.model)} · ${Math.round(Math.abs(v.speed) * 3.6)} km/h · seats 1/${s.seats}${s.enclosed ? ' · cab closed' : ''}`;
 }
 /** Chase camera behind and above the vehicle (or the driver's eye in cockpit view, V). */
 export function vehicleCamera(camera: THREE.PerspectiveCamera) {

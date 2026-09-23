@@ -6,6 +6,8 @@ import { addItem, calcStats, saveChar } from '../character';
 import { $ } from './hud';
 import { lockPointer } from './input';
 import type { Npc } from '../world/npc';
+import { VEHICLES, vehicleTitle, type VehicleModel } from '../data/vehicles';
+import { buyVehicle } from '../world/vehicles';
 
 const dlgEl = $('dlg'), panel = () => dlgEl.querySelector('.panel') as HTMLElement;
 /** Elder's lore line; the open world replaces it. */
@@ -26,7 +28,16 @@ function renderTalk(text: string) {
   const info = NPC_INFO[W.talkNpc!.role];
   panel().innerHTML = dlgHead() + `<div class="say">${text}</div>` + info.opts.map((o) => `<button class="opt" data-o="${o}">${OPT_TEXT[o]}</button>`).join('');
 }
+function renderVehicleShop(msg?: string) {
+  panel().innerHTML = dlgHead() + `<div class="say">Your gold: <b>${G.char.gold}</b>${msg ? '<br>' + msg : ''}</div>` +
+    (Object.keys(VEHICLES) as VehicleModel[]).map((m) => {
+      const s = VEHICLES[m];
+      return `<div class="shoprow"><div><b>${vehicleTitle(m)}</b><br><span>${s.role} · ${s.seats} seats · trunk ${s.trunk} · ${Math.round(s.maxSpeed * 3.6)} km/h${s.enclosed ? ' · closed cab' : ' · open top'}</span></div>
+      <button class="buy" data-v="${m}" ${G.char.gold < s.price ? 'disabled' : ''}>${s.price} g</button></div>`;
+    }).join('') + `<button class="opt" data-o="back">${OPT_TEXT.back}</button>`;
+}
 function renderShop(msg?: string) {
+  if (W.talkNpc!.role === 'dealer') { renderVehicleShop(msg); return; }
   const stock = stockFor(W.talkNpc!.role, G.char.world);
   panel().innerHTML = dlgHead() + `<div class="say">Your gold: <b>${G.char.gold}</b>${msg ? '<br>' + msg : ''}</div>` +
     stock.map(([k, p]) => `<div class="shoprow"><div><b>${ITEMS[k].name}</b><br><span>${ITEMS[k].desc}</span></div>
@@ -35,6 +46,7 @@ function renderShop(msg?: string) {
 }
 dlgEl.addEventListener('click', (e) => {
   const t = e.target as HTMLElement, o = t.closest<HTMLElement>('[data-o]'), b = t.closest<HTMLElement>('.buy'), c = G.char;
+  if (b && b.dataset.v) { renderVehicleShop(buyVehicle(b.dataset.v as VehicleModel)); return; }
   if (b) {
     const k = b.dataset.k as keyof typeof ITEMS, p = +b.dataset.p!;
     if (c.gold < p) return renderShop('Not enough gold.');

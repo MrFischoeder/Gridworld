@@ -15,7 +15,8 @@ import { PropBatch, sharedFill, sharedLine } from './props';
 import { makeStair, type Door, type Stair } from './doors';
 import { makeNpc, type Npc } from './npc';
 import { makeDrone, foeRules, type Drone } from './enemies';
-import { spawnVehicles, clearVehicles, vehicleHit } from './vehicles';
+import { spawnVehicles, clearVehicles, vehicleHit, syncFound, shielded } from './vehicles';
+import { YARD } from '../gen/vehicles';
 import { setStreakSources, type EdgeSource } from './fx';
 import { voxelObject, villageDeco, wallSign } from './level';
 import { NPC_INFO, VILLAGER_NAMES } from '../data/npcs';
@@ -136,6 +137,19 @@ function gateSign(vm: VillageMap) {
   }
   return g;
 }
+/** Sign post and painted parking bays of the vehicle yard. */
+function yardDeco(y: number) {
+  const g = new THREE.Group(), pb = new PropBatch();
+  pb.box(YARD.sign.x - 0.08, y, YARD.sign.z - 0.08, YARD.sign.x + 0.08, y + 3.2, YARD.sign.z + 0.08, GRID);
+  for (const b of YARD.bays) {
+    const hw = 2.5, hl = 5.5, yy = y + 0.04;
+    pb.line(0x9dffb4, [b.x - hw, yy, b.z + hl], [b.x - hw, yy, b.z - hl]); pb.line(0x9dffb4, [b.x + hw, yy, b.z + hl], [b.x + hw, yy, b.z - hl]);
+    pb.line(0x9dffb4, [b.x - hw, yy, b.z + hl], [b.x + hw, yy, b.z + hl]);
+  }
+  g.add(pb.build());
+  g.add(wallSign('VEHICLES', '#ffd060', { x: YARD.sign.x, z: YARD.sign.z }, [0, -1], y + 3.5));
+  return g;
+}
 function loadVillageStruct(poi: Poi): Structure {
   const T = OW.terrain!, y = T.padY(poi), vm = generateVillage(T.world, y);
   const grid = VoxelGrid.surface(vm.ops, vm.rect, y);
@@ -144,6 +158,9 @@ function loadVillageStruct(poi: Poi): Structure {
   scene.add(group);
   const npcs: Npc[] = [];
   for (const b of vm.buildings) if (b.role !== 'house') npcs.push(makeNpc(b.role, NPC_INFO[b.role].name!, V(b.home!.x, b.home!.y, b.home!.z), b));
+  // the vehicle dealer and his yard just outside the north gate
+  npcs.push(makeNpc('dealer', NPC_INFO.dealer.name!, V(YARD.dealer.x, y, YARD.dealer.z), null));
+  group.add(yardDeco(y));
   VILLAGER_NAMES.slice(0, 6).forEach((nm) => { const c = vm.walk[(Math.random() * vm.walk.length) | 0]; npcs.push(makeNpc('villager', nm, V(c[0] + 0.5, y, c[1] + 0.5), null)); });
   W.npcs.push(...npcs); W.villageWalk = vm.walk;
   OW.village = vm;
@@ -208,6 +225,7 @@ export function updateStreaming(budgetMs = 4) {
     queue.sort((a, b) => Math.hypot(b[0] - pcx, b[1] - pcz) - Math.hypot(a[0] - pcx, a[1] - pcz)); // nearest last (popped first)
     for (const c of [...OW.chunks.values()]) if (Math.max(Math.abs(c.cx - pcx), Math.abs(c.cz - pcz)) > UNLOAD_R) { dropChunk(c); OW.chunks.delete(ckey(c.cx, c.cz)); }
     updateStructs(x, z);
+    syncFound(OW.terrain!, x, z);
   }
   const t0 = performance.now();
   while (queue.length && (performance.now() - t0 < budgetMs)) {
@@ -227,6 +245,7 @@ export function openWorld(x: number, z: number) {
   foeRules.blocked = (p) => rectDist(VILLAGE_RECT, p.x, p.z) < 2;
   foeRules.playerSafe = () => inVillage(G.pos.x, G.pos.z);
   foeRules.ground = (px, pz) => OW.terrain!.heightAt(px, pz);
+  foeRules.shielded = shielded;
   updateStructs(x, z);
   const pcx = Math.floor(x / CHUNK), pcz = Math.floor(z / CHUNK);
   for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) OW.chunks.set(ckey(pcx + i, pcz + j), buildChunk(pcx + i, pcz + j));
@@ -236,6 +255,7 @@ export function openWorld(x: number, z: number) {
     height: (px, pz) => T.heightAt(px, pz),
     blocked: (px, pz, r) => poisNear(T.world, px, pz, 40).some((p) => rectDist(p.rect, px, pz) < r) || treeHit(px, T.heightAt(px, pz) + 0.5, pz, r),
   });
+  syncFound(T, x, z);
 }
 export function closeWorld() {
   clearVehicles();
@@ -243,7 +263,7 @@ export function closeWorld() {
   OW.chunks.clear();
   for (const s of [...OW.structs.values()]) dropStruct(s);
   queue = []; lastChunk = '';
-  foeRules.blocked = () => false; foeRules.playerSafe = () => false; foeRules.ground = null;
+  foeRules.blocked = () => false; foeRules.playerSafe = () => false; foeRules.ground = null; foeRules.shielded = () => false;
   G.ground = null; G.obstacle = null;
 }
 export const structFor = (id: number) => OW.structs.get(id);

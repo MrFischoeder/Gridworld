@@ -45,6 +45,8 @@ export function placeDrone(t: Drone) {
 export const foeRules = {
   blocked: (_p: THREE.Vector3) => false,
   playerSafe: () => false,
+  /** The player is out of reach of contact damage (inside a closed vehicle cab). */
+  shielded: () => false,
   /** Hover height above the ground for field drones. */
   ground: null as ((x: number, z: number) => number) | null,
 };
@@ -68,7 +70,7 @@ export function updateDrones(dt: number) {
       droneMove(t, V(0, Math.max(-dt, Math.min(dt, want - t.p.y)), 0));
     }
     if (t.chasing && dist > (sc ? sc.lose : 28)) t.chasing = false;
-    if (dist < 1.5 && !safe) { G.hp -= (sc ? sc.dps : droneDps()) * dt; G.dmgFlash = 0.25; }
+    if (dist < 1.5 && !safe && !foeRules.shielded()) { G.hp -= (sc ? sc.dps : droneDps()) * dt; G.dmgFlash = 0.25; }
   }
 }
 

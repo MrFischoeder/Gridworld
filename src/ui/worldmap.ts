@@ -76,7 +76,7 @@ function drawArea(ctx: CanvasRenderingContext2D, w: number, h: number, ppm: numb
   }
   ctx.lineWidth = 1;
   for (const v of vehicles) {
-    if (v === driving.v) continue;
+    if (v === driving.v || (!v.claimed && !isDiscovered(d, Math.floor(v.st.x / CHUNK), Math.floor(v.st.z / CHUNK)))) continue;
     const x = X(v.st.x), y = Z(v.st.z), l = Math.max(3, v.spec.length * ppm / 2), w = Math.max(2, v.spec.width * ppm / 2);
     ctx.save(); ctx.translate(x, y); ctx.rotate(-v.st.heading); ctx.strokeStyle = '#e8fff0'; ctx.strokeRect(-w, -l, w * 2, l * 2); ctx.restore();
     if (labels) { ctx.fillStyle = '#e8fff0'; ctx.fillText(v.spec.name, x, y - l - 6); }
