@@ -9,6 +9,7 @@ import { Terrain, inRect, rectDist, STEP, CELLS, VERTS } from '../gen/terrain';
 import { CHUNK, poisNear, X_MIN, WORLD_W, POLE_Z, POLAR_Z, worldDist, villageContaining, villageDist, villageSeed, GRIDHOLM_ID, type Poi } from '../gen/regions';
 import { chunkTrees, chunkRocks, type Tree, type Rock } from '../gen/trees';
 import { drawTree } from './trees';
+import { drawTemple } from './temple';
 import { chunkWells, type Well } from '../gen/water';
 import { drawWell, syncLakes, clearLakes } from './water';
 import { generateVillage, type VillageMap } from '../gen/village';
@@ -229,6 +230,7 @@ function loadRuinStruct(poi: Poi): Structure {
   }
   const tg = new THREE.BufferGeometry(); tg.setAttribute('position', new THREE.Float32BufferAttribute(tl, 3));
   group.add(new THREE.LineSegments(tg, sharedLine(TILE_COLOR)));
+  group.add(drawTemple(rm.temple, poi.id));
   scene.add(group);
   const s: Structure = { poi, grid, group, edges: mesh, doors: [], stairs: [], npcs: [] };
   OW.structs.set(poi.id, s); // the door below is placed through the shared space

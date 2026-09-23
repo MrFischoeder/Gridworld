@@ -116,7 +116,8 @@ export function villageDist(world: number, x: number, z: number, r = 120): numbe
   for (const p of poisNear(world, x, z, r)) if (p.type === 'village') d = Math.min(d, rectD(p.rect, x, z));
   return d;
 }
-export const RUIN_SIZE = 24;
+/** Ruins are alien temples on a 40 m square (see gen/ruins.ts). */
+export const RUIN_SIZE = 40;
 export const VILLAGE_RECT: Rect = { x0: -38, z0: -38, x1: 38, z1: 38 };
 
 function ruinAt(rx: number, rz: number, i: number, x: number, z: number, R: () => number): Poi {
