@@ -18,8 +18,8 @@ Browser FPS in a green vector-grid style (wireframe on black, retro sci-fi / Tro
 - **Save only player changes** (opened chests, killed bosses, unlocked doors, position, character) — never generated geometry.
 - **Visual style:** grid lines `#2fe060`, black background, fog to black (on the surface by day the sky and fog turn a dark green, see the game clock note). Every solid that should hide what is behind it needs a dark fill (e.g. `0x010d04`, see `fillMat()` in `world/render.ts`) with `polygonOffset`, lines on top. Lines without a fill are see-through — a bug, unless the object is meant to be openwork (drones, bosses, pickups).
 - **Functional colours:** drones and hostile creatures `#ffb347` (a calm Bramble is olive `#b8b060`), bosses `#ff6a4a`, gold/chests `#ffd060`, stairwells `#5cc8ff`, XP `#9dffe0`, locked doors `#ff5a3c`.
-- **Controls:** desktop (pointer lock, WASD, mouse) and touch (joystick, buttons) must work at all times.
-- **Performance:** smooth on an average laptop and phone. Measure line/triangle counts (F3) on big changes.
+- **Controls: desktop only for now** (pointer lock, WASD, mouse). Mobile/touch development is paused: keep the existing touch code (joystick, buttons in `ui/touch.ts`) in place, but new features do not need touch controls, touch layouts or phone testing, and mobile is not considered in design decisions until the owner says otherwise.
+- **Performance:** smooth on an average laptop (phones are out of scope while mobile is paused). Measure line/triangle counts (F3) on big changes.
 - **Map format:** voxel maps are ordered op lists `{op:'room'|'solid', x,y,z,w,h,d}` (later ops override earlier). The future map editor will save this format — keep it.
 - **Multiplayer later** (up to 8 players, Node + WebSocket, authoritative server): keep world logic (`core/`, `gen/`) free of three.js and DOM, generators deterministic, game state serialisable.
 
