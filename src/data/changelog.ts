@@ -4,6 +4,12 @@ export interface Change { v: string; date: string; title: string; notes: string[
 
 export const CHANGELOG: Change[] = [
   {
+    v: '0.23.0', date: '2026-09-24', title: 'Fortify the villages, keep the power on',
+    notes: ['Every village elder now has work for you: "How can I help the village?" Help raise the wall from the Stake Fence to a Timber Palisade (planks, logs, nails, rope) and later a Stone Wall (stone, scrap, planks, nails). Bring the materials a load at a time: the elder keeps count, and when all is in, the new wall stands and the village pays you.',
+      'Each village draws its power from its own plant outside the fence: a diesel generator, a solar array or a pair of wind turbines, cabled in on wooden poles. Villages differ in the details now.',
+      'The plants wear down over the days. A status light shows how they run (pale green, gold when failing, blinking red when down); when the power is down the turbines stop and the village lamps go dark. E at the plant mends it with the right parts (generator: Engine Parts and scrap; solar: electronics and wire; turbines: scrap, wire and rope), and the village pays you for it. The elder tells you how the power is doing.'],
+  },
+  {
     v: '0.22.0', date: '2026-09-24', title: 'A house of your own',
     notes: ['You have your own house in Gridholm: the little house by the west fence, south of the Elder\'s Hall, with YOUR HOUSE over the door.',
       'Inside stands a chest with 24 slots: whatever you put in it stays there, safe, for as long as you like.',

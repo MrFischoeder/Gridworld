@@ -7,6 +7,7 @@ import { START_TIME, boardPeriod } from './core/time';
 import { wrapC } from './gen/regions';
 import { KCAL } from './data/survival';
 import type { Part } from './gen/base';
+import type { TownState } from './gen/town';
 
 /** An item stack. `c` is the condition in percent of a used part (worn tires); such items do not stack. */
 export interface Slot { k: ItemKey; n: number; c?: number }
@@ -57,6 +58,8 @@ export interface Char {
   wear: Partial<Record<WearSlot, ItemKey | null>>;
   /** This character's id (code locks remember who has entered their code; multiplayer later). */
   pid: string;
+  /** What you changed about the villages (gen/town.ts), keyed by village id: the wall's tier, materials handed over, the power plant. */
+  towns: Record<string, TownState>;
 }
 
 export const SAVE_KEY = 'gridWorld.character.v3';
@@ -67,7 +70,7 @@ export const newChar = (): Char => ({
   v: 3, level: 1, xp: 0, gold: 0, world: (Math.random() * 1e6) | 0,
   inv: Array(INV_SIZE).fill(null), mods: Array(MOD_SIZE).fill(null), opened: {}, unlocked: {}, killed: {},
   loc: 'overworld', ow: null, dungeon: null, discovered: {}, containers: {}, vehicles: [], board: { seq: 0, offers: [], stamp: boardPeriod(START_TIME) }, quests: [], camps: {}, time: START_TIME, gunMods: [null, null, null], kcal: KCAL.start, stomach: 0, water: 100, harvest: {}, benches: [], claims: [],
-  hands: [{ k: 'blaster', n: 1 }], back: [{ k: 'blade', n: 1 }, null], wear: {}, pid: Math.random().toString(36).slice(2, 10),
+  hands: [{ k: 'blaster', n: 1 }], back: [{ k: 'blade', n: 1 }, null], wear: {}, pid: Math.random().toString(36).slice(2, 10), towns: {},
 });
 
 interface V2 { level?: number; xp?: number; gold?: number; world?: number; inv?: (Slot | null)[]; mods?: (ItemKey | null)[] }

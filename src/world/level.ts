@@ -250,7 +250,7 @@ function fenceDeco(pb: PropBatch, map: VillageMap, y0: number) {
 function lampsAndWell(grp: THREE.Group, map: VillageMap, y0: number) {
   for (const l of map.lamps) {
     const pole = new THREE.Line(new THREE.BufferGeometry().setFromPoints([V(l.x, y0, l.z), V(l.x, y0 + 3.2, l.z)]), lineMat(GRID));
-    const lamp = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.OctahedronGeometry(0.25)), add(0xffe8a0)); lamp.position.set(l.x, y0 + 3.45, l.z);
+    const lamp = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.OctahedronGeometry(0.25)), add(0xffe8a0)); lamp.position.set(l.x, y0 + 3.45, l.z); lamp.name = 'lamp';
     grp.add(pole, lamp);
   }
   const well = new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(circlePts(1.4, 16)), lineMat(0x5cc8ff)); well.rotation.x = Math.PI / 2; well.position.set(map.well.x, y0 + 1.02, map.well.z);

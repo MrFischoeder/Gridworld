@@ -14,6 +14,12 @@ import { buyVehicle, vehiclesForSale, sellVehicle } from '../world/vehicles';
 import { questOptions, questTalk } from '../world/quests';
 import { PART_PRICE, PART_BUYBACK, type ItemKey } from '../data/items';
 import type { Slot } from '../save';
+import { fortifyPlan, handOver, powerKind, powerCondition, powerSite, POWER, POWER_DOWN, POWER_LOW } from '../gen/town';
+import { WALL_TIERS } from '../gen/village';
+import { count } from '../data/crafting';
+import { loadedVillage, reloadStruct } from '../world/overworld';
+import { gainXp } from '../character';
+import { showToast, logLine } from './hud';
 /** Mirek pays a fifth of the price for a part, less for a worn one. */
 const partBuyback = (s: Slot) => Math.floor(PART_PRICE[s.k]! * PART_BUYBACK * (s.c ?? 100) / 100);
 
@@ -83,6 +89,39 @@ function renderShop(msg?: string) {
       <button class="buy" data-k="${k}" data-p="${p}" ${G.char.gold < p ? 'disabled' : ''}>${p} g</button></div>`).join('') +
     `<button class="opt" data-o="back">${OPT_TEXT.back}</button>`;
 }
+const SIDE_NAME = { W: 'west', E: 'east', S: 'south', N: 'north' } as const;
+/** The elder's commissions: raise the fence to the next tier (materials handed over bit by bit), and the power plant. */
+function renderFortify(msg?: string) {
+  const v = loadedVillage(town()), c = G.char;
+  if (!v) { renderTalk('Hm?'); return; }
+  const st = c.towns[v.id], plan = fortifyPlan(st), wall = WALL_TIERS[plan ? plan.from : WALL_TIERS.length - 1];
+  const k = powerKind(v.vm.seed), pc = Math.round(powerCondition(v.vm.seed, st, c.time)), side = SIDE_NAME[powerSite(v.vm.seed).side];
+  const power = `Our power comes from the <b>${POWER[k].name}</b> outside the ${side} fence: ${pc < POWER_DOWN ? '<span style="color:var(--red,#ff5a3c)">it is down</span>' : pc < POWER_LOW ? 'it is failing' : 'it runs'} (${pc}%). ` +
+    (pc < 90 ? `Mend it with ${POWER[k].fix.map(([i, n]) => `${n} ${ITEMS[i].name}`).join(', ')} and we will pay you.` : 'Keep an eye on it for us.');
+  const rows = plan ? plan.rows.map((r) => {
+    const have = count(c.inv, r.k), left = r.n - r.given;
+    return `<div class="shoprow"><div><b>${ITEMS[r.k].name}</b><br><span>${r.given} / ${r.n} handed over${left > 0 ? ` · you carry ${have}` : ' · done'}</span></div></div>`;
+  }).join('') : '';
+  const canGive = !!plan && plan.rows.some((r) => r.given < r.n && count(c.inv, r.k) > 0);
+  panel().innerHTML = dlgHead() + `<div class="say">${msg ? msg + '<br><br>' : ''}` +
+    (plan ? `Our wall is a <b>${wall.name}</b>. Help us raise a <b>${WALL_TIERS[plan.to].name}</b> (${WALL_TIERS[plan.to].h} m) and the village will pay you <b>${plan.gold} gold</b>. Bring the materials a load at a time: we keep count.`
+      : `Our wall is a <b>${wall.name}</b>, as strong as we can make it. Thank you.`) + `<br><br>${power}</div>` + rows +
+    (plan ? `<button class="opt" data-fort="give" ${canGive ? '' : 'disabled'}>Hand over what I carry</button>` : '') +
+    `<button class="opt" data-o="back">${OPT_TEXT.back}</button>`;
+}
+function giveFortify() {
+  const v = loadedVillage(town()), c = G.char;
+  if (!v) return;
+  const st = (c.towns[v.id] ??= {}), plan = fortifyPlan(st)!;
+  const { taken, raised } = handOver(st, (k) => count(c.inv, k));
+  for (const [k, n] of taken) { let left = n; for (let i = 0; i < c.inv.length && left; i++) { const s = c.inv[i]; if (s?.k === k) { const m = Math.min(left, s.n); s.n -= m; left -= m; if (s.n <= 0) c.inv[i] = null; } } }
+  if (!raised) { saveChar(); renderFortify(taken.length ? 'Handed over: ' + taken.map(([k, n]) => `${ITEMS[k].name} ×${n}`).join(', ') + '.' : 'You carry nothing we still need.'); return; }
+  c.gold += plan.gold; gainXp(plan.xp); calcStats(); saveChar();
+  closeDialog();
+  reloadStruct(v.id);
+  showToast(`${v.vm.name} raises a ${WALL_TIERS[plan.to].name}`);
+  logLine(`The villagers work through the night and the new wall stands. They pay you ${plan.gold} gold.`);
+}
 dlgEl.addEventListener('click', (e) => {
   if (craftClick(e.target as HTMLElement) || buildClick(e.target as HTMLElement)) return;
   const t = e.target as HTMLElement, o = t.closest<HTMLElement>('[data-o]'), b = t.closest<HTMLElement>('.buy'), c = G.char;
@@ -108,6 +147,7 @@ dlgEl.addEventListener('click', (e) => {
     if (!addItem(k)) return renderShop(HANDS_ONLY.has(k) ? 'You carry that in your hands, and they are full: put what you hold away first.' : 'No room in your backpack (slots or bulk).');
     c.gold -= p; calcStats(); saveChar(); return renderShop('Bought: ' + ITEMS[k].name + '.');
   }
+  if (t.closest('[data-fort]')) { giveFortify(); return; }
   const qb = t.closest<HTMLElement>('[data-q]');
   if (qb) { renderTalk(questTalk(qb.dataset.q!) || 'Hm?'); return; }
   if (!o) return;
@@ -138,6 +178,7 @@ dlgEl.addEventListener('click', (e) => {
     case 'rumour': renderTalk(RUMOURS[(Math.random() * RUMOURS.length) | 0]); break;
     case 'chat': renderTalk(VILLAGER_LINES[(Math.random() * VILLAGER_LINES.length) | 0]); break;
     case 'lore': renderTalk(here(loreText())); break;
+    case 'fortify': renderFortify(); break;
     case 'work':
       if (!inGridholm()) { renderTalk(`We are too small a place for a notice board. Gridholm posts work on its plaza; that is where the paying jobs are.`); break; }
       renderTalk(r === 'elder' ? 'Read the notice board on the plaza. Folk post their troubles there, and when my name is on a notice, come and see me.'

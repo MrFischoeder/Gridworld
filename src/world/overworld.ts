@@ -16,6 +16,8 @@ import { dangerAt } from '../gen/danger';
 import { drawPlants, dropPlants, ripe, type PlantNode } from './flora';
 import { drawWell, syncLakes, clearLakes } from './water';
 import { generateVillage, WALL_TIERS, STONE_TIER, type VillageMap } from '../gen/village';
+import { wallOf } from '../gen/town';
+import { drawPower, setPlantLamps, forgetPower } from './power';
 import { syncQuestWorld } from './quests';
 import { generateRuin } from '../gen/ruins';
 import { generateWreck } from '../gen/wreck';
@@ -273,13 +275,15 @@ function residentName(vm: VillageMap, role: NpcRole, i: number): string {
 }
 function loadVillageStruct(poi: Poi): Structure {
   const T = OW.terrain!, y = T.padY(poi), home = poi.id === GRIDHOLM_ID;
-  const vm = generateVillage(villageSeed(T.world, poi), y, poi.x, poi.z, poi.name, home);
+  const vm = generateVillage(villageSeed(T.world, poi), y, poi.x, poi.z, poi.name, home, wallOf(G.char.towns[poi.id]));
   // the fence of a village that is not walled in stone yet only collides: it is drawn as stakes by villageDeco
   const grid = VoxelGrid.surface(vm.ops, vm.rect, y), shown = vm.tier >= STONE_TIER ? grid : VoxelGrid.surface(vm.shown, vm.rect, y);
   const { group, mesh } = voxelObject(shown, Infinity, OUTLINE);
   group.add(villageDeco(vm, y), gateSign(vm));
   if (vm.home) group.add(boardDeco(vm, y));
   group.add(mapBoardDeco(vm, y));
+  group.add(drawPower(vm, T, poi.id));
+  const lamps: THREE.Object3D[] = []; group.traverse((o) => { if (o.name === 'lamp') lamps.push(o); }); setPlantLamps(poi.id, lamps);
   scene.add(group);
   const npcs: Npc[] = [];
   vm.buildings.forEach((b, i) => { if (b.role !== 'house') npcs.push(makeNpc(b.role, residentName(vm, b.role, i), V(b.home!.x, b.home!.y, b.home!.z), b)); });
@@ -387,6 +391,17 @@ function loadStruct(poi: Poi) {
   OW.structs.set(poi.id, s);
   setStreakSources([...OW.structs.values()].map((q) => q.edges));
 }
+/** The loaded village of that name (its POI id and map), for the residents who talk about it. */
+export function loadedVillage(name: string): { id: number; vm: VillageMap } | null {
+  for (const s of OW.structs.values()) if (s.village && s.village.name === name) return { id: s.poi.id, vm: s.village };
+  return null;
+}
+/** Build a structure again (a village's wall was raised). */
+export function reloadStruct(id: number) {
+  const s = OW.structs.get(id);
+  if (!s) return;
+  dropStruct(s); loadStruct(s.poi);
+}
 function dropStruct(s: Structure) {
   scene.remove(s.group); s.group.traverse((o) => (o as THREE.Mesh).geometry?.dispose());
   for (const d of s.doors) { scene.remove(d.g); W.doors.splice(W.doors.indexOf(d), 1); }
@@ -394,6 +409,7 @@ function dropStruct(s: Structure) {
   for (const n of s.npcs) { scene.remove(n.g); W.npcs.splice(W.npcs.indexOf(n), 1); }
   if (s.village && OW.village === s.village) { OW.village = null; W.villageWalk = []; } // another village may have loaded meanwhile
   if (s.camp) despawnCamp(s.poi.id);
+  if (s.village) forgetPower(s.poi.id);
   OW.structs.delete(s.poi.id);
   setStreakSources([...OW.structs.values()].map((q) => q.edges));
 }
