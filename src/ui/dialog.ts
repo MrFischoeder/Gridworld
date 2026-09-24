@@ -20,6 +20,7 @@ import { profileOf } from '../gen/market';
 import { nextRaid, lastRaid, raidSource, raidOutcome } from '../gen/raids';
 import { storePlan, handOverStore, STORE } from '../gen/store';
 import { storeOf } from '../world/industry';
+import { shipmentOffer } from '../gen/contracts';
 import { pendingTribute, payTribute } from '../world/villageraid';
 import { findPoi } from '../gen/regions';
 import { fmtTime } from '../core/time';
@@ -45,14 +46,14 @@ export function openDialog(n: Npc) {
   if (!G.playing || G.dlgOpen || G.packOpen || G.xferOpen) return;
   G.dlgOpen = true; W.talkNpc = n; G.firing = false; for (const k in G.keys) G.keys[k] = false;
   const info = NPC_INFO[n.role];
-  renderTalk(n.role === 'villager' ? (n.name + ' nods. "' + VILLAGER_LINES[(Math.random() * VILLAGER_LINES.length) | 0] + '"') : here(info.hello!));
+  renderTalk(n.role === 'villager' ? (n.name + ' nods. "' + here(VILLAGER_LINES[(Math.random() * VILLAGER_LINES.length) | 0]) + '"') : here(info.hello!));
   dlgEl.style.display = 'flex'; if (document.pointerLockElement) document.exitPointerLock();
 }
 export function closeDialog() { if (!G.dlgOpen) return; G.dlgOpen = false; W.talkNpc = null; dlgEl.style.display = 'none'; if (!G.isTouch) lockPointer(); }
 /** The talking resident's village (texts are written for Gridholm). */
 const town = () => W.talkNpc?.town ?? 'Gridholm';
 const townId = () => loadedVillage(town())?.id ?? null;
-const here = (s: string) => s.replace(/Gridholm/g, town());
+const here = (s: string) => s.replace(/Gridholm/g, town()).replace(/\{name\}/g, G.char.name || 'traveller');
 const dlgHead = () => { const n = W.talkNpc!; return `<h2>${n.name}</h2><div class="role">${n.title}</div>`; };
 function renderTalk(text: string) {
   const info = NPC_INFO[W.talkNpc!.role];
@@ -128,9 +129,9 @@ function renderFortify(msg?: string) {
     (pc < 90 ? `Mend it with ${POWER[k].fix.map(([i, n]) => `${n} ${ITEMS[i].name}`).join(', ')} and we will pay you.` : 'Keep an eye on it for us.');
   const poi = findPoi(c.world, v.id), raids = raidNews(v.id) + tributeNote(v.id);
   // the storehouse: how full, and the commission for a bigger one
-  const so = storeOf(v.id, v.vm.seed), sp = storePlan(st);
+  const so = storeOf(v.id, v.vm.seed), sp = storePlan(st), ship = poi && so.full ? shipmentOffer(c.world, poi, v.vm.seed, st, c.time) : null;
   const store = `Our ${so.name.toLowerCase()} by the ${poi ? INDUSTRY[industryOf(c.world, poi, v.vm.seed)].site.toLowerCase() : 'works'} holds <b>${Math.floor(so.n)} of ${so.cap}</b> crates` +
-    (so.full ? '. <span style="color:var(--red,#ff5a3c)">It is full, so the work has stopped</span> until the caravans take enough away.' : '.') +
+    (so.full ? '. <span style="color:var(--red,#ff5a3c)">It is full, so the work has stopped.</span>' + (ship ? ` The load waits for a carrier: take the <b>shipment</b> to ${ship.toName} (the notice board or the store's contracts), or buy our goods cheap at the market and sell them where you like. Otherwise our own convoy takes it away at ${fmtTime(ship.convoyAt)}.` : ' Our own convoy will take it away soon.') : '.') +
     (sp ? ` Build us a <b>${STORE.tiers[sp.to].name.toLowerCase()}</b> (${STORE.tiers[sp.to].cap} crates) and we can gather more to trade: the village will pay you <b>${sp.gold} gold</b>.` : '');
   const srows = sp ? sp.rows.map((r) => `<div class="shoprow"><div><b>${ITEMS[r.k].name}</b><br><span>${r.given} / ${r.n} for the ${STORE.tiers[sp.to].name.toLowerCase()}${r.given < r.n ? ` · you carry ${count(c.inv, r.k)}` : ' · done'}</span></div></div>`).join('') : '';
   const canStore = !!sp && sp.rows.some((r) => r.given < r.n && count(c.inv, r.k) > 0), pt = pendingTribute(v.id);
@@ -261,7 +262,7 @@ dlgEl.addEventListener('click', (e) => {
       break;
     case 'watch': renderWatch(); break;
     case 'rumour': renderTalk(RUMOURS[(Math.random() * RUMOURS.length) | 0]); break;
-    case 'chat': renderTalk(VILLAGER_LINES[(Math.random() * VILLAGER_LINES.length) | 0]); break;
+    case 'chat': renderTalk(here(VILLAGER_LINES[(Math.random() * VILLAGER_LINES.length) | 0])); break;
     case 'lore': renderTalk(here(loreText())); break;
     case 'fortify': renderFortify(); break;
     case 'contracts': openContracts(town()); renderContracts(panel(), dlgHead()); break;

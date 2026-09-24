@@ -20,7 +20,7 @@ export function logLine(t: string) { logLines.push({ t, life: 4 }); }
 export function renderSheet() {
   const c = G.char, names = c.mods.filter((k): k is ItemKey => !!k).map((k) => ITEMS[k].name);
   const d = c.dungeon, where = d ? 'Depth ' + d.depth + ', sector ' + d.gx + ', ' + d.gz + '. ' : el.hudL.textContent + '. ';
-  el.sheet.innerHTML = where + 'Level ' + c.level + ', XP ' + c.xp + '/' + xpNeed(c.level) + ', gold ' + c.gold +
+  el.sheet.innerHTML = (c.name ? '<b>' + c.name.replace(/[<>&]/g, '') + '</b> · ' : '') + where + 'Level ' + c.level + ', XP ' + c.xp + '/' + xpNeed(c.level) + ', gold ' + c.gold +
     '<div style="color:var(--gold);font-size:20px;margin-top:4px">' + (names.length ? 'Modules: ' + names.join(', ') : 'No relics equipped') + '</div>';
 }
 

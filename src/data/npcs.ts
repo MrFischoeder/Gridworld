@@ -8,19 +8,20 @@ export type OptId = 'rest' | 'rumour' | 'work' | 'lore' | 'shop' | 'sell' | 'coo
 export interface NpcInfo { name?: string; title: string; color: number; hello?: string; opts: OptId[] }
 
 export const NPC_INFO: Record<NpcRole, NpcInfo> = {
-  innkeeper: { name: 'Marta', title: 'Innkeeper', color: 0xffb347, hello: 'Welcome to the Glowing Grid! Warm stew, cold ale and a soft bed. What can I do for you?', opts: ['rest', 'rumour', 'work', 'bye'] },
-  elder: { name: 'Elder Maciej', title: 'Village Elder', color: 0xe8fff0, hello: 'Ah, a new face. Welcome to Gridholm. Few travellers come this way since the machines woke up below us.', opts: ['lore', 'fortify', 'work', 'bye'] },
-  blacksmith: { name: 'Oskar', title: 'Blacksmith', color: 0xff7a5c, hello: 'The forge is hot. Need something made? I also fit sights, barrels and magazines to blasters. Bring me hides, fangs, plates, wood, stone and scrap and I will pay for them, or use my workbench and the forge yourself.', opts: ['shop', 'craft', 'sell', 'work', 'bye'] },
-  merchant: { name: 'Zofia', title: 'General Store', color: 0xffd060, hello: 'Supplies for the brave and the foolish alike. Have a look. And if you deal in bulk, I buy and sell trade goods by the crate.', opts: ['shop', 'trade', 'contracts', 'work', 'bye'] },
-  grocer: { name: 'Jan', title: 'Food & Provisions', color: 0x9dffe0, hello: 'Fresh bread, hot stew! Nobody fights well on an empty stomach. I buy meat and anything edible you pick out there, and I will roast your raw meat for a coin.', opts: ['shop', 'sell', 'cook', 'bye'] },
-  dealer: { name: 'Kuba', title: 'Vehicle Dealer', color: 0x5cc8ff, hello: 'Wheels! Nobody walks to the ruins twice. Everything I sell waits in the yard, keys in the ignition. Spares and guns too. I buy vehicles back, but do not expect me to pay much for used parts.', opts: ['shop', 'sell', 'rumour', 'bye'] },
-  guard: { name: 'Jakub', title: 'Captain of the Guard', color: 0x7de8ff, hello: 'Weapons stay holstered inside the walls, friend. I keep the gates and the towers; when the bandits come, you will hear me first.', opts: ['watch', 'rumour', 'bye'] },
+  innkeeper: { name: 'Marta', title: 'Innkeeper', color: 0xffb347, hello: 'Welcome to the Glowing Grid, {name}! Warm stew, cold ale and a soft bed. What can I do for you?', opts: ['rest', 'rumour', 'work', 'bye'] },
+  elder: { name: 'Elder Maciej', title: 'Village Elder', color: 0xe8fff0, hello: 'Ah, {name}. Welcome to Gridholm. Few travellers come this way since the machines woke up below us.', opts: ['lore', 'fortify', 'work', 'bye'] },
+  blacksmith: { name: 'Oskar', title: 'Blacksmith', color: 0xff7a5c, hello: '{name}! The forge is hot. Need something made? I also fit sights, barrels and magazines to blasters. Bring me hides, fangs, plates, wood, stone and scrap and I will pay for them, or use my workbench and the forge yourself.', opts: ['shop', 'craft', 'sell', 'work', 'bye'] },
+  merchant: { name: 'Zofia', title: 'General Store', color: 0xffd060, hello: 'Good to see you, {name}. Supplies for the brave and the foolish alike. Have a look. And if you deal in bulk, I buy and sell trade goods by the crate.', opts: ['shop', 'trade', 'contracts', 'work', 'bye'] },
+  grocer: { name: 'Jan', title: 'Food & Provisions', color: 0x9dffe0, hello: 'Fresh bread, hot stew! {name}, nobody fights well on an empty stomach. I buy meat and anything edible you pick out there, and I will roast your raw meat for a coin.', opts: ['shop', 'sell', 'cook', 'bye'] },
+  dealer: { name: 'Kuba', title: 'Vehicle Dealer', color: 0x5cc8ff, hello: 'Wheels, {name}! Nobody walks to the ruins twice. Everything I sell waits in the yard, keys in the ignition. Spares and guns too. I buy vehicles back, but do not expect me to pay much for used parts.', opts: ['shop', 'sell', 'rumour', 'bye'] },
+  guard: { name: 'Jakub', title: 'Captain of the Guard', color: 0x7de8ff, hello: 'Weapons stay holstered inside the walls, {name}. I keep the gates and the towers; when the bandits come, you will hear me first.', opts: ['watch', 'rumour', 'bye'] },
   villager: { title: 'Villager', color: 0x9dffb4, opts: ['chat', 'bye'] },
 };
 export const VILLAGER_NAMES = ['Kasia', 'Ola', 'Piotr', 'Tomek', 'Ania', 'Marek', 'Ewa', 'Staszek', 'Zosia', 'Bartek', 'Hanna', 'Wojtek'];
 export const VILLAGER_LINES = ["Nice evening, isn't it? Well, every evening looks the same under the grid.", 'Mind the drones past the gate. They never come inside the walls, though.',
   'The Elder has been worried lately. Something big stirs in the deep sectors.', "Marta's stew is the best thing in this village. Maybe the only good thing.",
-  'I heard the doors down there only open for those who carry a key.', 'Oskar says his forge runs on pure static. I believe him.'];
+  'I heard the doors down there only open for those who carry a key.', 'Oskar says his forge runs on pure static. I believe him.',
+  'Oh, {name}! Everyone talks about you. Mostly good things.', 'Back from the wilds, {name}? You look like you need a drink.', 'Stay safe out there, {name}. We need people like you.'];
 export const RUMOURS = ['They say the guardians below each carry an Access Key. Kill one and the gate is yours.',
   'A trader swore the stairs in the dungeon lead to whole other sectors. Some go up, some go down.',
   'Old Maciej claims there is more beyond the hills than ruins. Other villages, caves, mines... one day we will see.',

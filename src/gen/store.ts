@@ -1,6 +1,9 @@
 // A village's storehouse by its industry site: what the site makes piles up in it, crate by crate, and goes out
 // from it (caravans, local use, the goods you buy at the market). While it is full the site stands still: nothing
-// more fits. The elder commissions a bigger one (a warehouse, then a depot) from the materials you bring.
+// more fits. Then the village first offers the load to you (a shipment contract, gen/contracts.ts `shipmentOffer`,
+// and the merchant sells cheap to clear it); if nobody takes it within `wait`, the village sends it off with its own
+// convoy, which leaves the storehouse at `after` of its capacity, and the filling starts over. The elder commissions
+// a bigger one (a warehouse, then a depot) from the materials you bring.
 //
 // State: only an anchor per village (`TownState.store`: n crates at time t) and the tier; the fill at any other
 // time follows from the site's output and the steady shipments, so an unvisited village needs no state at all
@@ -19,14 +22,27 @@ export const STORE = {
   ] as StoreTier[],
   /** Crates a game hour the site adds at full work, and how many go out every hour whatever happens. */
   rate: 1.2, ship: 0.7,
+  /** How long a full storehouse waits for you (game minutes) before the village's own convoy takes the load, and what it leaves. */
+  wait: 12 * 60, after: 0.3,
 };
 export const storeTier = (s: TownState | undefined) => Math.min(STORE.tiers.length - 1, s?.storeTier ?? 0);
 export const storeCap = (s: TownState | undefined) => STORE.tiers[storeTier(s)].cap;
-/** Crates in the storehouse at `now`, the site working at `prod` (0..1; gen/industry.ts production). */
-export function storeAt(seed: number, s: TownState | undefined, now: number, prod: number): number {
-  const cap = storeCap(s), a = s?.store ?? { n: cap * (0.3 + (hash(seed, 0x5707) % 600) / 1000), t: 0 };
-  return Math.max(0, Math.min(cap, a.n + (STORE.rate * prod - STORE.ship) * (now - a.t) / 60));
+/**
+ * The storehouse at `now`, the site working at `prod` (0..1; gen/industry.ts production): crates in it, since when it
+ * has been full (null: it is not), and when the village's own convoy takes the load if you do not.
+ */
+export function storeInfo(seed: number, s: TownState | undefined, now: number, prod: number): { n: number; fullSince: number | null; convoyAt: number | null } {
+  const cap = storeCap(s), a = s?.store ?? { n: cap * (0.3 + (hash(seed, 0x5707) % 600) / 1000), t: 0 }, net = (STORE.rate * prod - STORE.ship) / 60;
+  if (net <= 0) return { n: Math.max(0, Math.min(cap, a.n + net * (now - a.t))), fullSince: null, convoyAt: null };
+  // fills to the top, waits for you, the convoy takes most of it, fills again ... (a cycle once it has been full)
+  const tf = a.t + Math.max(0, cap - a.n) / net, low = cap * STORE.after, cycle = STORE.wait + (cap - low) / net;
+  if (now < tf) return { n: Math.min(cap, a.n + net * (now - a.t)), fullSince: null, convoyAt: null };
+  let t0 = tf; // the start of the current full spell
+  if (now >= tf + STORE.wait) t0 = tf + STORE.wait + Math.floor((now - tf - STORE.wait) / cycle) * cycle + (cap - low) / net;
+  if (now < t0) { const since = t0 - (cap - low) / net; return { n: Math.min(cap, low + net * (now - since)), fullSince: null, convoyAt: null }; }
+  return { n: cap, fullSince: t0, convoyAt: t0 + STORE.wait };
 }
+export const storeAt = (seed: number, s: TownState | undefined, now: number, prod: number) => storeInfo(seed, s, now, prod).n;
 /** Full: the site stands still until there is room again. */
 export const storeFull = (seed: number, s: TownState | undefined, now: number, prod: number) => storeAt(seed, s, now, prod) >= storeCap(s) - 0.5;
 /** Take n crates out (you bought them); returns how many there were. Re-anchors the state. */

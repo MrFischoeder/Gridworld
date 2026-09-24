@@ -5,7 +5,7 @@
 import { G } from '../game';
 import { ITEMS } from '../data/items';
 import { calcStats, saveChar, gainXp } from '../character';
-import { offersAt, payFor, CONTRACT, type Contract } from '../gen/contracts';
+import { offersAt, shipmentOffer, payFor, CONTRACT, type Contract } from '../gen/contracts';
 import { trade } from '../gen/market';
 import { findPoi, worldDist, nearX, allVillages, villageSeed, GRIDHOLM_ID, type Poi } from '../gen/regions';
 import { fmtTime } from '../core/time';
@@ -22,10 +22,19 @@ let town = '';
 const left = (c: Contract) => c.n - c.done;
 export const dueText = (t: number) => { const h = Math.floor((t - G.char.time) / 60); return h < 0 ? 'overdue' : h < 24 ? `${h} h left (by ${fmtTime(t)})` : `${Math.floor(h / 24)} d ${h % 24} h left`; };
 const where = (x: number, z: number) => `${fmtDist(worldDist(G.pos.x, G.pos.z, x, z))} ${point8(bearingTo(x, z))}`;
+const isShipment = (c: Contract) => c.id.startsWith('ship:');
+/** The offers at village v: its full storehouse's shipment first (while it waits for the convoy), then the posted ones. */
+export function localOffers(v: Poi, seed: number): Contract[] {
+  const c = G.char, sh = shipmentOffer(c.world, v, seed, c.towns[v.id], c.time);
+  return [...(sh ? [sh] : []), ...offersAt(c.world, v, seed, c.time)];
+}
 export function describe(c: Contract): string {
-  const g = ITEMS[c.good].name;
+  const g = ITEMS[c.good].name, convoy = (c as Contract & { convoyAt?: number }).convoyAt;
   return c.kind === 'supply'
     ? `<b>Order:</b> ${c.n} × ${g} for ${c.toName} · ${c.pay} g a crate`
+    : isShipment(c)
+    ? `<b>Shipment:</b> ${c.n} × ${g} from ${c.fromName}'s full storehouse to ${c.toName} (${where(c.tx, c.tz)}) · ${c.pay} g a crate · deposit ${c.deposit} g, returned on delivery` +
+      (convoy !== undefined && convoy > G.char.time ? ` · <i>the village convoy takes it at ${fmtTime(convoy)} otherwise</i>` : '')
     : `<b>Haul:</b> ${c.n} × ${g} from ${c.fromName} to ${c.toName} (${where(c.tx, c.tz)}) · ${c.pay} g a crate · deposit ${c.deposit} g, returned on delivery`;
 }
 export function renderContracts(panel: HTMLElement, head: string, msg = '') {
@@ -36,7 +45,7 @@ export function renderContracts(panel: HTMLElement, head: string, msg = '') {
     return `<div class="shoprow"><div>${describe(k)}<br><span>${k.done}/${k.n} delivered · ${dueText(k.due)}${here ? ` · you have ${have} here` : ` · take them to ${k.toName}, ${where(k.tx, k.tz)}`}</span></div>
       ${here ? `<button class="opt" style="width:auto" data-ctd="${k.id}" ${can ? '' : 'disabled'}>Hand over ${can || ''}</button>` : ''}</div>`;
   }).join('');
-  const offers = offersAt(c.world, poi, v.vm.seed, c.time).filter((o) => !c.taken.includes(o.id) && !c.contracts.some((k) => k.id === o.id));
+  const offers = localOffers(poi, v.vm.seed).filter((o) => !c.taken.includes(o.id) && !c.contracts.some((k) => k.id === o.id));
   const full = c.contracts.length >= CONTRACT.maxActive;
   const rows = offers.map((o) => `<div class="shoprow"><div>${describe(o)}<br><span>deliver ${dueText(o.due)}</span></div>
     <button class="opt" style="width:auto;color:var(--gold)" data-cta="${o.id}" ${full || (o.kind === 'haul' && c.gold < o.deposit) ? 'disabled' : ''}>Take it</button></div>`).join('');
@@ -54,7 +63,7 @@ export function contractsClick(t: HTMLElement): string | null {
   const v = loadedVillage(town), c = G.char, poi = v && findPoi(c.world, v.id);
   if (!v || !poi) return '';
   if (a) {
-    const o = offersAt(c.world, poi, v.vm.seed, c.time).find((x) => x.id === a.dataset.cta);
+    const o = localOffers(poi, v.vm.seed).find((x) => x.id === a.dataset.cta);
     return o ? acceptOffer(o) : 'That notice is gone.';
   }
   const k = c.contracts.find((x) => x.id === d!.dataset.ctd);
@@ -107,9 +116,10 @@ export function acceptOffer(o: Contract): string {
     putAway(o.good, o.n, home, true); c.gold -= o.deposit; trade(c.market, home.id, o.good, -o.n, c.time); // into the trunks first: crates are heavy
     const hs = villageSeed(c.world, home); takeStore((c.towns[home.id] ??= {}), hs, o.n, c.time, production(c.world, home, hs, c.towns[home.id], c.time)); // out of its storehouse
   }
-  c.contracts.push({ ...o }); c.taken.push(o.id); if (c.taken.length > 60) c.taken.splice(0, c.taken.length - 60);
+  const { convoyAt: _, ...k } = o as Contract & { convoyAt?: number };
+  c.contracts.push(k); c.taken.push(o.id); if (c.taken.length > 60) c.taken.splice(0, c.taken.length - 60);
   calcStats(); saveChar();
-  return o.kind === 'haul' ? `The crates are loaded. Take them to ${o.toName}, ${where(o.tx, o.tz)}.` : `Bring ${o.n} × ${ITEMS[o.good].name} to ${o.toName}: ${dueText(o.due)}.`;
+  return o.kind === 'haul' ? `The crates are loaded${isShipment(o) ? `: ${o.fromName} keeps its convoy at home` : ''}. Take them to ${o.toName}, ${where(o.tx, o.tz)}.` : `Bring ${o.n} × ${ITEMS[o.good].name} to ${o.toName}: ${dueText(o.due)}.`;
 }
 /** Drop a contract (a haul's deposit is lost; the crates stay yours). */
 export function dropContract(id: string): string {
@@ -123,7 +133,7 @@ export function boardContracts(at?: Poi): Contract[] {
   const c = G.char, home = at ?? findPoi(c.world, GRIDHOLM_ID);
   if (!home) return [];
   const fresh = (o: Contract) => !c.taken.includes(o.id) && !c.contracts.some((k) => k.id === o.id);
-  const own = offersAt(c.world, home, villageSeed(c.world, home), c.time).filter(fresh);
+  const own = localOffers(home, villageSeed(c.world, home)).filter(fresh);
   const round = allVillages(c.world).filter((v) => v.id !== home.id && worldDist(v.x, v.z, home.x, home.z) < CONTRACT.far)
     .flatMap((v) => offersAt(c.world, v, villageSeed(c.world, v), c.time).filter((o) => o.kind === 'supply' && fresh(o)))
     .sort((p, q) => worldDist(p.tx, p.tz, home.x, home.z) - worldDist(q.tx, q.tz, home.x, home.z)).slice(0, 4);

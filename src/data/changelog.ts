@@ -4,6 +4,13 @@ export interface Change { v: string; date: string; title: string; notes: string[
 
 export const CHANGELOG: Change[] = [
   {
+    v: '0.41.0', date: '2026-09-24', title: 'Shipments, and a name of your own',
+    notes: ['A full storehouse no longer stands still for good. The village offers its load to you first: a Shipment, a big haul to another village that pays better than the usual ones, posted at the store and on the notice board.',
+      'If nobody takes the shipment within 12 hours, the village sends its own convoy, which empties most of the storehouse, and the works start up again. The elder tells you when the convoy leaves.',
+      'Or run your own caravan: while a storehouse is nearly full, the market sells the goods the village makes wholesale, 20% off, and has more of them. Buy them up and sell them wherever they pay best.',
+      'Name your hero in the main menu before you play. Innkeepers, smiths, guards, merchants and villagers now greet you by name.'],
+  },
+  {
     v: '0.40.0', date: '2026-09-24', title: 'Villages of many shapes',
     notes: ['Villages are no longer all square. Each has a wall of its own shape: square, hexagonal, octagonal or twelve-sided, with watch towers (and ladders) at its corners. Gridholm stays square.',
       'In villages that are not square, the houses and shops arrange themselves in a ring round the plaza, each facing the middle, pushed out towards the wall and clear of the lanes from the gates. Hexagonal villages have gates to the north and south only.',

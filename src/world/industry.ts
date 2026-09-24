@@ -266,7 +266,7 @@ export function sitePrompt(s: Site): string {
   if (!siteBuilt(s.kind, G.char.towns[s.id])) return `${s.town}'s ${spec.site} is still to be built: ask the elder about it`;
   const poi = findPoi(G.char.world, s.id), c = poi ? Math.round(siteCondition(G.char.world, poi, G.char.towns[s.id], G.char.time)) : 100;
   const st = storeOf(s.id, s.seed), store = `${st.name} ${Math.floor(st.n)}/${st.cap}`;
-  if (c >= 90 && st.full) return `${s.town}'s ${spec.site}: stopped, the ${st.name.toLowerCase()} is full (${store}) · the elder wants a bigger one`;
+  if (c >= 90 && st.full) return `${s.town}'s ${spec.site}: stopped, the ${st.name.toLowerCase()} is full (${store}) · its load waits for a carrier (see the elder)`;
   if (c >= 90) return `${s.town}'s ${spec.site}: working (${c}%) · ${store}`;
   return hasAll(s.kind) ? `E — mend the ${spec.site} (${c}%): uses ${need(s.kind)}` : `The ${spec.site} is damaged (${c}%): bring ${need(s.kind)} to mend it`;
 }

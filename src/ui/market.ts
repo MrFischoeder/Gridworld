@@ -15,7 +15,7 @@ import { bearingTo, point8, fmtDist } from './compass';
 import type { Slot } from '../save';
 import { lastArrival } from '../gen/caravans';
 import { industryOf, production, INDUSTRY } from '../gen/industry';
-import { storeAt, takeStore } from '../gen/store';
+import { storeAt, storeCap, takeStore } from '../gen/store';
 /** How much the village's industry puts out now (its site's condition; 0 for a refinery not yet built). */
 const prodHere = () => (here ? production(G.char.world, here.poi, here.seed, G.char.towns[here.poi.id], G.char.time) : 1);
 function prodNote(): string {
@@ -31,7 +31,14 @@ function quoteHere(g: Good) {
   const c = G.char, q = quote(here!.poi, here!.seed, c.world, g, c.market, c.time, true, prodHere());
   if (q.role !== 'make') return q;
   const makes = profileOf(c.world, here!.poi, here!.seed).makes.length, n = storeAt(here!.seed, c.towns[here!.poi.id], c.time, prodHere());
-  return { ...q, stock: Math.min(q.stock, Math.floor(n / makes)) };
+  const cheap = glutted();
+  return { ...q, stock: Math.min(q.stock + (cheap ? 20 : 0), Math.floor(n / makes)), buy: cheap ? Math.max(1, Math.round(q.buy * WHOLESALE)) : q.buy };
+}
+/** A storehouse this full sells its own goods by the wagonload, cheap: carry them off yourself (a caravan of your own). */
+const WHOLESALE = 0.8, GLUT = 0.75;
+function glutted(): boolean {
+  const c = G.char;
+  return !!here && storeAt(here.seed, c.towns[here.poi.id], c.time, prodHere()) >= storeCap(c.towns[here.poi.id]) * GLUT;
 }
 const TRUNK_REACH = 90; // metres from the village middle: vehicles parked by the gates count
 let here: { poi: Poi; seed: number } | null = null;
@@ -95,7 +102,7 @@ export function renderMarket(panel: HTMLElement, head: string, msg = '') {
       <button class="buy" data-ms="${g}" data-n="${have}" ${have < 2 ? 'disabled' : ''}>all</button>${else_ ? `<div class="best">${else_}</div>` : ''}</div>`;
   }).join('');
   panel.classList.add('wide');
-  panel.innerHTML = head + `<div class="say">${msg ? msg + '<br>' : ''}Gold: <b>${c.gold}</b> · ${here.poi.name} is a ${INDUSTRY[industryOf(c.world, here.poi, here.seed)].name.toLowerCase()}${prodNote()}: it makes ${p.makes.map((g) => ITEMS[g].name).join(' and ')}, and wants ${p.wants.map((g) => ITEMS[g].name).join(' and ')}.<br>
+  panel.innerHTML = head + `<div class="say">${msg ? msg + '<br>' : ''}Gold: <b>${c.gold}</b> · ${here.poi.name} is a ${INDUSTRY[industryOf(c.world, here.poi, here.seed)].name.toLowerCase()}${prodNote()}: it makes ${p.makes.map((g) => ITEMS[g].name).join(' and ')}, and wants ${p.wants.map((g) => ITEMS[g].name).join(' and ')}.${glutted() ? `<br><b style="color:var(--gold)">The storehouse is nearly full: its own goods go wholesale, ${Math.round((1 - WHOLESALE) * 100)}% off, to anyone who carries them away.</b>` : ''}<br>
     <span style="opacity:.8">Crates go into your backpack${trunks ? ` and ${trunks > 1 ? 'the trunks of your vehicles' : 'the trunk of your vehicle'} parked by the village` : ' (park a vehicle by the gates to trade by the trunkload)'}. Buy where a good is made, sell where it is wanted; prices move as you trade and settle back over a day or two.</span></div>` +
     `<div class="mkt"><div class="mrow head"><div>good</div><div class="num">stock</div><div class="num">yours</div><div>you pay</div><div></div><div>you get</div><div></div></div>${rows}</div>` + (hearsay() ? `<div class="say" style="opacity:.85">${hearsay()}</div>` : '') + `<button class="opt" data-o="back">Back</button>`;
 }
