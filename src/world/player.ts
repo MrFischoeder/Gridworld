@@ -74,8 +74,23 @@ function settleOnGround(wasOnGround: boolean, yPrev: number) {
 /** Water deeper than this over the feet lifts the player off the bottom: swimming. */
 export const SWIM_DEPTH = 1.2;
 let toxicWarn = 0;
+/**
+ * Developer flight (console `fly`): W/S along the view, A/D sideways, Space up, C or Ctrl down, Shift 3x faster.
+ * No gravity and no collisions, only never below the ground.
+ */
+function flyStep(dt: number) {
+  const { keys, pos, vel } = G, cp = Math.cos(G.pitch);
+  const f = (keys.KeyW ? 1 : 0) - (keys.KeyS ? 1 : 0), s = (keys.KeyD ? 1 : 0) - (keys.KeyA ? 1 : 0), u = (keys.Space ? 1 : 0) - (keys.KeyC || keys.ControlLeft ? 1 : 0);
+  const v = G.flySpeed * (keys.ShiftLeft || keys.ShiftRight ? 3 : 1) * dt;
+  pos.x += (-Math.sin(G.yaw) * cp * f + Math.cos(G.yaw) * s) * v;
+  pos.z += (-Math.cos(G.yaw) * cp * f - Math.sin(G.yaw) * s) * v;
+  pos.y += (Math.sin(G.pitch) * f + u) * v;
+  if (G.ground) pos.y = Math.max(pos.y, G.ground(pos.x, pos.z) + 0.3);
+  vel.set(0, 0, 0); G.onGround = false; G.swimming = false; G.activity = 1;
+}
 /** One physics step from input. Returns whether the player is walking (for view bob). */
 export function updatePlayer(dt: number): boolean {
+  if (G.fly) { flyStep(dt); return false; }
   const { keys, stick, vel, pos } = G;
   let f = (keys.KeyW ? 1 : 0) - (keys.KeyS ? 1 : 0) - stick.dy, s = (keys.KeyD ? 1 : 0) - (keys.KeyA ? 1 : 0) + stick.dx;
   const m = Math.hypot(f, s); if (m > 1) { f /= m; s /= m; }

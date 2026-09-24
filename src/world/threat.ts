@@ -27,4 +27,4 @@ export function threat(): number {
   return t;
 }
 /** Whether something costing `cost` may turn up where the danger is `lv` (noise lets a little more in). */
-export const mayspawn = (cost: number, lv: number, heat = 0) => outside > GRACE && threat() + cost <= budget(lv) + heat * 1.2;
+export const mayspawn = (cost: number, lv: number, heat = 0) => !G.fly && outside > GRACE && threat() + cost <= budget(lv) + heat * 1.2;

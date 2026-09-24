@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { scene, fog, lineMat, fillMat, V } from './render';
 import { sunAngle, daylight, twilight, sunTilt } from '../core/time';
 import { rng, hash } from '../core/rng';
+import { G } from '../game';
 
 const noFog = (m: THREE.Material) => { (m as THREE.MeshBasicMaterial).fog = false; return m; };
 
@@ -64,6 +65,7 @@ export function updateSky(t: number, lat = 0) {
   tmp.copy(NIGHT).lerp(DAY_SKY, day).lerp(DUSK, glow * 0.55);
   (scene.background as THREE.Color).copy(tmp); fog.color.copy(tmp);
   fog.near = 14 + 6 * day; fog.far = 112 + 28 * day;
+  if (G.fly) { fog.near *= 2.5; fog.far *= 2.6; } // flying (dev): see the land further out
 }
 /** Underground: always black. */
 export function darkSky() { (scene.background as THREE.Color).set(0x000000); fog.color.set(0x000000); }

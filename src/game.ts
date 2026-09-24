@@ -52,6 +52,8 @@ export const G = {
   playing: false, packOpen: false, dlgOpen: false, xferOpen: false, consoleOpen: false, firing: false,
   /** Console cheat: full health that never drops. */
   god: false,
+  /** Developer flight (console `fly`): no gravity, no collisions, fast; `flySpeed` in m/s. */
+  fly: false, flySpeed: 40,
   keys: {} as Record<string, boolean>,
   trans: null as Trans | null,
   isTouch: ('ontouchstart' in window) || navigator.maxTouchPoints > 0,

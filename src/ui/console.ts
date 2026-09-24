@@ -14,6 +14,7 @@ import { $, logLine } from './hud';
 import { openDevMap, planetSize } from './devmap';
 import { teleportTo } from '../world/level';
 import { lockPointer } from './input';
+import { refreshWeaponVisibility } from '../world/weapons';
 
 const root = $('console'), out = $('conLog'), input = $<HTMLInputElement>('conIn');
 const history: string[] = [];
@@ -33,6 +34,15 @@ const COMMANDS: Record<string, { help: string; run: (args: string[]) => string }
   god: {
     help: 'full health and immortality (type again to turn off)',
     run: () => { G.god = !G.god; G.hp = G.S.maxHp; return G.god ? 'God mode ON: full health, no death.' : 'God mode OFF.'; },
+  },
+  fly: {
+    help: 'fly [speed m/s]: fly over the land (W/S along your view, Space up, C down, Shift 3x); type again to land',
+    run: ([sp]) => {
+      const v = Number(sp);
+      if (sp !== undefined && Number.isFinite(v) && v > 0) { G.flySpeed = Math.min(1000, v); if (G.fly) return `Flying at ${G.flySpeed} m/s.`; }
+      G.fly = !G.fly; refreshWeaponVisibility();
+      return G.fly ? `Flying at ${G.flySpeed} m/s (Shift ${G.flySpeed * 3}): W/S along your view, A/D sideways, Space up, C down. Nothing spawns while you fly. Type fly again to land.` : 'Landed: gravity is back.';
+    },
   },
   home: {
     help: 'go back to Gridholm (outside the tavern)',
@@ -93,7 +103,7 @@ export function open() {
   G.consoleOpen = true; G.firing = false; for (const k in G.keys) G.keys[k] = false;
   root.style.display = 'flex';
   if (document.pointerLockElement) document.exitPointerLock();
-  if (!out.childElementCount) print('GridWorld console. Commands: cash, god, home, help. ~ or Esc to close.');
+  if (!out.childElementCount) print('GridWorld console. Commands: cash, god, fly, home, worldmap, tp, time, help. ~ or Esc to close.');
   setTimeout(() => input.focus(), 0);
 }
 export function close() {

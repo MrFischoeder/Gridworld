@@ -420,12 +420,13 @@ export function updateStreaming(budgetMs = 4) {
   if (k !== lastChunk) {
     lastChunk = k;
     queue = [];
-    for (let i = -LOAD_R; i <= LOAD_R; i++) for (let j = -LOAD_R; j <= LOAD_R; j++) {
+    const LR = G.fly ? LOAD_R * 2 : LOAD_R; // flying (dev) sees further
+    for (let i = -LR; i <= LR; i++) for (let j = -LR; j <= LR; j++) {
       const c = OW.chunks.get(ckey(pcx + i, pcz + j)), lod = lodFor(pcx + i, pcz + j, pcx, pcz);
       if (!c || c.lod !== lod) queue.push([pcx + i, pcz + j, lod]);
     }
     queue.sort((a, b) => Math.hypot(b[0] - pcx, b[1] - pcz) - Math.hypot(a[0] - pcx, a[1] - pcz)); // nearest last (popped first)
-    for (const c of [...OW.chunks.values()]) if (Math.max(Math.abs(c.cx - pcx), Math.abs(c.cz - pcz)) > UNLOAD_R) { dropChunk(c); OW.chunks.delete(ckey(c.cx, c.cz)); }
+    for (const c of [...OW.chunks.values()]) if (Math.max(Math.abs(c.cx - pcx), Math.abs(c.cz - pcz)) > (G.fly ? LOAD_R * 2 + 2 : UNLOAD_R)) { dropChunk(c); OW.chunks.delete(ckey(c.cx, c.cz)); }
     updateStructs(x, z);
     syncLakes(x, z);
     syncFound(OW.terrain!, x, z);

@@ -4,6 +4,11 @@ export interface Change { v: string; date: string; title: string; notes: string[
 
 export const CHANGELOG: Change[] = [
   {
+    v: '0.17.0', date: '2026-09-24', title: 'Developer flight',
+    notes: ['For testing: the console (~) has a "fly" command. You fly over the land without gravity or collisions at 40 m/s (Shift: three times as fast): W/S along your view, A/D sideways, Space up, C down. "fly <speed>" sets the speed; "fly" again lands you.',
+      'While flying you see much further (twice the land streamed in, the fog pushed back), nothing new spawns, and your weapon is put away.'],
+  },
+  {
     v: '0.16.0', date: '2026-09-24', title: 'Cave systems',
     notes: ['The cave mouths in the mountains are open. Inside is an organic labyrinth: winding tunnels with rounded walls, chambers of every size and shape, loops that bring you back round, and dead-end pockets that sometimes hide a chest. Stalagmites and stalactites, nutrient crystals, and a few stray drones in the dark.',
       'Some mountains have two mouths that belong to the same cave system and carry the same name: the cave runs right through the mountain, and going in on one side you can come out on the other, a shortcut under the peaks. The prompt at the mouth tells you when a cave runs through.',
