@@ -15,7 +15,7 @@ import { chunkPlants, type Plant } from '../gen/flora';
 import { dangerAt } from '../gen/danger';
 import { drawPlants, dropPlants, ripe, type PlantNode } from './flora';
 import { drawWell, syncLakes, clearLakes } from './water';
-import { generateVillage, type VillageMap } from '../gen/village';
+import { generateVillage, WALL_TIERS, STONE_TIER, type VillageMap } from '../gen/village';
 import { syncQuestWorld } from './quests';
 import { generateRuin } from '../gen/ruins';
 import { generateWreck } from '../gen/wreck';
@@ -209,7 +209,9 @@ function gateSign(vm: VillageMap) {
   const g = new THREE.Group();
   for (const gate of vm.gates) {
     const o = DIRV[gate.dir];
-    g.add(wallSign(vm.name.toUpperCase(), '#ffd060', { x: gate.x - o[0] * 1.5, z: gate.z - o[1] * 1.5 }, o, vm.y + 5.3));
+    // on a stone wall the sign hangs above the arch; on a fence it hangs on the gate frame's crossbeam
+    const stone = vm.tier >= STONE_TIER, back = stone ? 1.5 : 1.3;
+    g.add(wallSign(vm.name.toUpperCase(), '#ffd060', { x: gate.x - o[0] * back, z: gate.z - o[1] * back }, o, vm.y + (stone ? 5.3 : WALL_TIERS[vm.tier].gate + 0.55)));
   }
   return g;
 }
@@ -272,8 +274,9 @@ function residentName(vm: VillageMap, role: NpcRole, i: number): string {
 function loadVillageStruct(poi: Poi): Structure {
   const T = OW.terrain!, y = T.padY(poi), home = poi.id === GRIDHOLM_ID;
   const vm = generateVillage(villageSeed(T.world, poi), y, poi.x, poi.z, poi.name, home);
-  const grid = VoxelGrid.surface(vm.ops, vm.rect, y);
-  const { group, mesh } = voxelObject(grid, Infinity, OUTLINE);
+  // the fence of a village that is not walled in stone yet only collides: it is drawn as stakes by villageDeco
+  const grid = VoxelGrid.surface(vm.ops, vm.rect, y), shown = vm.tier >= STONE_TIER ? grid : VoxelGrid.surface(vm.shown, vm.rect, y);
+  const { group, mesh } = voxelObject(shown, Infinity, OUTLINE);
   group.add(villageDeco(vm, y), gateSign(vm));
   if (vm.home) group.add(boardDeco(vm, y));
   group.add(mapBoardDeco(vm, y));

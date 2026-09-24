@@ -4,6 +4,12 @@ export interface Change { v: string; date: string; title: string; notes: string[
 
 export const CHANGELOG: Change[] = [
   {
+    v: '0.21.0', date: '2026-09-24', title: 'Makeshift village fences',
+    notes: ['The villages lost their tall stone walls: they now hide behind low, flimsy fences of sharpened stakes, uneven and leaning, with rails nailed along them and patches of scrap sheet over the holes.',
+      'Watch platforms on stilts stand in the corners instead of stone towers, and every gate is a frame of two posts and a crossbeam with the village name.',
+      'This is the first step towards fortifying the villages: later you will help raise their defences, from the stake fence to a timber palisade and a stone wall with towers.'],
+  },
+  {
     v: '0.20.1', date: '2026-09-24', title: 'Player bases closed for now',
     notes: ['Building your own base in the wilds is closed for now: a Flagpole can no longer be raised, B no longer opens the build list, and the shops stop selling the Flagpole, the Auto Turret and the Code Lock. The game is turning towards helping the villages instead: fortifying their walls and a house of your own in town (coming later).',
       'A claim you already have stays as it is: its walls, doors, locks and turrets still work, and E at the flag still takes it down.'],

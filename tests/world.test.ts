@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { Terrain, inRect, rectDist, MAX_H } from '../src/gen/terrain';
 import { regionInfo, poisNear, findPoi, CHUNK, WORLD_W } from '../src/gen/regions';
 import { regionRoads, gatePoint } from '../src/gen/roads';
-import { generateVillage, villageGates } from '../src/gen/village';
+import { generateVillage, villageGates, WALL_TIERS, STONE_TIER } from '../src/gen/village';
 import { generateRuin } from '../src/gen/ruins';
 import { chunkTrees, treeTrunks, TREE_SPAN, type TreeKind } from '../src/gen/trees';
 import { nearestOnRoad } from '../src/gen/roads';
@@ -117,6 +117,18 @@ describe('village and roads', () => {
   });
   it('is deterministic', () => {
     for (const w of WORLDS.slice(0, 10)) expect(generateVillage(w, 3)).toEqual(generateVillage(w, 3));
+  });
+  it('starts behind a low stake fence that only collides; the stone wall is a later tier', () => {
+    for (const w of WORLDS.slice(0, 10)) {
+      const vm = generateVillage(w, 5), g = VoxelGrid.surface(vm.ops, vm.rect, 5), shown = VoxelGrid.surface(vm.shown, vm.rect, 5);
+      expect(vm.tier).toBe(0); expect(vm.wallH).toBe(WALL_TIERS[0].h);
+      const [x, z] = [vm.ox + 10, vm.oz - 1]; // on the north wall line, away from the gate
+      expect(g.empty(x, 5, z)).toBe(false); expect(g.empty(x, 5 + WALL_TIERS[0].h - 1, z)).toBe(false); expect(g.empty(x, 5 + WALL_TIERS[0].h, z)).toBe(true);
+      expect(shown.empty(x, 5, z)).toBe(true); // drawn as stakes, not voxels
+      expect(vm.fence.length).toBeGreaterThanOrEqual(4 + vm.gates.length);
+      const stone = generateVillage(w, 5, 0, 0, 'Gridholm', true, STONE_TIER), sg = VoxelGrid.surface(stone.ops, stone.rect, 5);
+      expect(sg.empty(x, 5 + WALL_TIERS[STONE_TIER].h - 1, z)).toBe(false); expect(stone.fence).toEqual([]); expect(stone.shown).toEqual(stone.ops);
+    }
   });
 });
 

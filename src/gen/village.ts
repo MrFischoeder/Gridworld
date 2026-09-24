@@ -11,8 +11,22 @@ export interface Building {
 }
 /** A gap in the village wall. (x, z) is the point just outside, where the road starts. */
 export interface Gate { dir: Dir; x: number; z: number; w: number; /** First cell of the opening along the wall, and the wall cell across it. */ a: number; m: number }
-/** Guard tower footprint (world), standing on the plaza floor. */
+/** Guard tower footprint (world), standing on the plaza floor (a stone tower, or a watch platform on stilts). */
 export interface Tower { x: number; z: number; w: number; d: number; h: number }
+/** A straight run of fence along the wall line (world, the line's middle), between corners and gates. */
+export interface FenceRun { x0: number; z0: number; x1: number; z1: number }
+/**
+ * How well a village is walled. Every village starts at tier 0: a makeshift stake fence, low and flimsy, with watch
+ * platforms on stilts at the corners. Fortifying the villages will raise it (a timber palisade, then a stone wall
+ * with towers and battlements). `h` is the height of the wall (m), `gate` the top of the gate frame.
+ */
+export const WALL_TIERS = [
+  { name: 'Stake Fence', h: 2, gate: 3.6, tower: 4.5 },
+  { name: 'Timber Palisade', h: 4, gate: 5, tower: 6.5 },
+  { name: 'Stone Wall', h: 7, gate: 4, tower: 10 },
+] as const;
+/** The first tier built of stone (voxel walls drawn as they are); below it the wall is a fence drawn by world/level.ts. */
+export const STONE_TIER = 2;
 export interface VillageMap {
   seed: number; village: true; name: string;
   /** Gridholm, the starting village: the only one with the notice board and Mirek's vehicle yard (for now). */
@@ -24,6 +38,11 @@ export interface VillageMap {
   ops: Op[];
   gates: Gate[];
   towers: Tower[];
+  /** The wall's tier (WALL_TIERS) and height; below STONE_TIER its voxels only collide (`shown` leaves them out)
+   *  and the fence is drawn along `fence`. */
+  tier: number; wallH: number; fence: FenceRun[];
+  /** The ops to draw as voxels (all of `ops` but the fence). */
+  shown: Op[];
   /** The map board on the plaza (every village): a map of the surroundings (world x/z; faces south). */
   mapBoard: { x: number; z: number };
   /** The notice board on the plaza (world x/z; it faces south, towards the spawn). */
@@ -38,7 +57,7 @@ export interface VillageMap {
 
 /** The plaza is 72 x 72 m inside a 7 m wall; the footprint (with a 1 m apron) is VILLAGE_RECT around the origin. */
 export const VILLAGE_OFFSET = { x: -36, z: -36 };
-const WALL_H = 7, GATE_H = 4, TOWER_H = 10;
+const GATE_H = 4;
 /** Gate openings in local plaza coordinates: [dir, first cell, width]. Each lines up with a gap between buildings. */
 const GATE_SLOTS: Record<Dir, number> = { N: 34, S: 39, E: 35, W: 37 };
 
@@ -50,9 +69,10 @@ export function villageGates(seed: number): Dir[] {
 }
 
 /** A village centred at (cx, cz) (even whole metres) on a plaza at height y. */
-export function generateVillage(seed: number, y = 0, cx = 0, cz = 0, name = 'Gridholm', home = true): VillageMap {
+export function generateVillage(seed: number, y = 0, cx = 0, cz = 0, name = 'Gridholm', home = true, tier = 0): VillageMap {
   const R = rng(seed ^ 0x51ab7), ri = rangeInt(R);
   const PW = 72, PD = 72, ops: Op[] = [], late: Op[] = [];
+  const T = WALL_TIERS[Math.max(0, Math.min(WALL_TIERS.length - 1, tier))], stone = tier >= STONE_TIER, WALL_H = T.h, TOWER_H = T.tower;
   // wall ring around the plaza, then the gate openings
   ops.push({ op: 'solid', x: -1, y: 0, z: -1, w: PW + 2, h: WALL_H, d: 1 }, { op: 'solid', x: -1, y: 0, z: PD, w: PW + 2, h: WALL_H, d: 1 },
     { op: 'solid', x: -1, y: 0, z: 0, w: 1, h: WALL_H, d: PD }, { op: 'solid', x: PW, y: 0, z: 0, w: 1, h: WALL_H, d: PD });
@@ -64,7 +84,13 @@ export function generateVillage(seed: number, y = 0, cx = 0, cz = 0, name = 'Gri
     if (dir === 'W') { ops.push({ op: 'room', x: -1, y: 0, z: s, w: 1, h: GATE_H, d: GW }); gates.push({ dir, x: -2, z: s + GW / 2, w: GW, a: s, m: -1 }); }
     if (dir === 'E') { ops.push({ op: 'room', x: PW, y: 0, z: s, w: 1, h: GATE_H, d: GW }); gates.push({ dir, x: PW + 2, z: s + GW / 2, w: GW, a: s, m: PW }); }
   }
-  // Guard towers: one on every corner of the wall and a pair flanking each gate.
+  const fenceOps = new Set(ops);
+  // Guard towers: one on every corner of the wall and a pair flanking each gate (a fence has watch platforms on the
+  // corners only, standing on stilts inside the corner: drawn, not solid)
+  if (!stone) {
+    const towers: Tower[] = [{ x: 0, z: 0, w: 3, d: 3, h: TOWER_H }, { x: PW - 3, z: 0, w: 3, d: 3, h: TOWER_H }, { x: 0, z: PD - 3, w: 3, d: 3, h: TOWER_H }, { x: PW - 3, z: PD - 3, w: 3, d: 3, h: TOWER_H }];
+    return finish(towers);
+  }
   const towers: Tower[] = [
     { x: -2, z: -2, w: 4, d: 4, h: TOWER_H }, { x: PW - 2, z: -2, w: 4, d: 4, h: TOWER_H },
     { x: -2, z: PD - 2, w: 4, d: 4, h: TOWER_H }, { x: PW - 2, z: PD - 2, w: 4, d: 4, h: TOWER_H },
@@ -86,6 +112,9 @@ export function generateVillage(seed: number, y = 0, cx = 0, cz = 0, name = 'Gri
     if (!nearGate('E', a)) ops.push({ op: 'solid', x: PW + 1, y: 0, z: a, w: 1, h: WALL_H - 2, d: 1 });
   }
   for (const t of towers) ops.push({ op: 'solid', x: t.x, y: 0, z: t.z, w: t.w, h: t.h, d: t.d });
+  return finish(towers);
+
+  function finish(towers: Tower[]): VillageMap {
   const buildings: Building[] = [], trees: { x: number; z: number; h: number }[] = [], lamps: { x: number; z: number }[] = [];
   const B = (name: string, role: Role, x: number, z: number, w: number, d: number, side: Dir, h = 6) => {
     const cxm = x + (w >> 1), czm = z + (d >> 1);
@@ -149,5 +178,23 @@ export function generateVillage(seed: number, y = 0, cx = 0, cz = 0, name = 'Gri
     buildings: buildings.map((b) => ({ ...b, x: b.x + ox, z: b.z + oz, door: P(b.door), home: b.home && P(b.home) })),
     trees: trees.map((t) => ({ ...t, x: t.x + ox, z: t.z + oz })), lamps: lamps.map((l) => ({ x: l.x + ox, z: l.z + oz })),
     well: { x: 36 + ox, z: 37 + oz }, walk: walk.map(([x, z]) => [x + ox, z + oz]),
+    tier, wallH: WALL_H, fence: stone ? [] : fenceRuns().map((r) => ({ x0: r.x0 + ox, z0: r.z0 + oz, x1: r.x1 + ox, z1: r.z1 + oz })),
+    shown: translateOps(stone ? all : all.filter((o) => !fenceOps.has(o)), ox, y, oz),
   };
+  }
+  /** The fence along the wall's middle line, broken at the gates (plaza coordinates). */
+  function fenceRuns(): FenceRun[] {
+    const out: FenceRun[] = [], lo = -1, hi = PW + 1, sides: [Dir, (a: number) => [number, number]][] = [
+      ['N', (a) => [a, -0.5]], ['S', (a) => [a, PD + 0.5]], ['W', (a) => [-0.5, a]], ['E', (a) => [PW + 0.5, a]]];
+    for (const [dir, P] of sides) {
+      const cuts = gates.filter((g) => g.dir === dir).map((g) => [g.a, g.a + GW]).sort((p, q) => p[0] - q[0]);
+      let a = dir === 'N' || dir === 'S' ? lo : 0;
+      const end = dir === 'N' || dir === 'S' ? hi : PD;
+      for (const [c0, c1] of [...cuts, [end, end]]) {
+        if (c0 > a) { const [x0, z0] = P(a), [x1, z1] = P(c0); out.push({ x0, z0, x1, z1 }); }
+        a = c1;
+      }
+    }
+    return out;
+  }
 }

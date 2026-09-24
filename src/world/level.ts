@@ -8,7 +8,7 @@ import { meshVoxels, type OutlineStyle } from '../core/meshing';
 import { generateDungeon } from '../gen/dungeon';
 import { findPoi, allVillages, worldDist, poisNear, GRIDHOLM_ID, CHUNK, type Poi } from '../gen/regions';
 import { isDiscovered } from '../save';
-import type { VillageMap } from '../gen/village';
+import { WALL_TIERS, STONE_TIER, type VillageMap } from '../gen/village';
 import { placeTunnelDoors, tryPlaceDoor, type PlacedDoor } from '../gen/doors';
 import { makeDoor, makeStair, arriveVia, signTexture } from './doors';
 import { makeChest, makeHatch, setCrystalXp } from './loot';
@@ -136,6 +136,8 @@ export function villageDeco(map: VillageMap, y0 = 0) {
     if (b.name) grp.add(wallSign(b.name, b.role === 'innkeeper' ? '#ffb347' : '#ffd060', { x: b.door.x, z: b.door.z }, b.out, y0 + 3.5));
   }
   for (const t of map.trees) drawCrown(props, t.x + 0.5, y0 + 2, t.z + 0.5, 1.8, t.h, hash(t.x, t.z, 0x7e3e));
+  if (map.tier < STONE_TIER) fenceDeco(props, map, y0);
+  else {
   // guard tower lookouts
   for (const t of map.towers) props.lookout(t.x, t.z, t.x + t.w, t.z + t.d, y0 + t.h, GRID);
   // gate arches: chamfer the top corners of each opening, through the whole wall
@@ -145,6 +147,7 @@ export function villageDeco(map: VillageMap, y0 = 0) {
     props.prism([P(a0, top - c), P(a0, top), P(a0 + c, top)], v, GRID);
     props.prism([P(a1, top - c), P(a1, top), P(a1 - c, top)], v, GRID);
   }
+  }
   // a spire on the Elder's Hall
   const hall = map.buildings.find((b) => b.role === 'elder');
   if (hall) {
@@ -153,6 +156,77 @@ export function villageDeco(map: VillageMap, y0 = 0) {
     props.pyramid(cx - 0.9, cz - 0.9, cx + 0.9, cz + 0.9, ry + 1.4, 5.5, 0x4dff7e);
   }
   grp.add(props.build());
+  return lampsAndWell(grp, map, y0);
+}
+const STAKE = 0xb8b060, SCRAP = 0x8fb89a;
+/** A repeatable pseudo-random number for drawing a village's fence (0..1). */
+const rnd = (seed: number, i: number) => (hash(seed, i, 0xfe9c) % 10000) / 10000;
+/**
+ * The wall of a village not yet walled in stone: sharpened stakes of uneven height, some leaning, two rails nailed
+ * along the inside, patches of scrap sheet here and there, a gate frame of two posts and a crossbeam at every gate,
+ * and watch platforms on stilts in the corners. The collision is the voxel band under it (gen/village.ts).
+ */
+function fenceDeco(pb: PropBatch, map: VillageMap, y0: number) {
+  const H = map.wallH, tall = map.tier > 0;
+  let n = 0;
+  for (const r of map.fence) {
+    const L = Math.hypot(r.x1 - r.x0, r.z1 - r.z0), ux = (r.x1 - r.x0) / L, uz = (r.z1 - r.z0) / L, nx = -uz, nz = ux;
+    const P = (a: number, y: number, o = 0) => [r.x0 + ux * a + nx * o, y, r.z0 + uz * a + nz * o];
+    // stakes
+    const gap = tall ? 0.42 : 0.62, w = tall ? 0.2 : 0.14;
+    for (let a = gap / 2; a < L; a += gap) {
+      const k = n++, h = H * (0.82 + rnd(map.seed, k) * 0.3), lean = (rnd(map.seed, k + 7e5) - 0.5) * (tall ? 0.15 : 0.4), yb = y0 - 0.1;
+      const b = [P(a - w, yb, -w), P(a + w, yb, -w), P(a + w, yb, w), P(a - w, yb, w)];
+      const t = b.map(([x, , z]) => [x + nx * lean, y0 + h, z + nz * lean]);
+      pb.solid8(b, t, STAKE);
+      const tip = [r.x0 + ux * a + nx * lean, y0 + h + (tall ? 0.45 : 0.35), r.z0 + uz * a + nz * lean];
+      for (const c of t) pb.seg(STAKE, c, tip);
+      pb.face(t[0], t[1], tip); pb.face(t[1], t[2], tip); pb.face(t[2], t[3], tip); pb.face(t[3], t[0], tip);
+    }
+    // rails on both faces (the inside one a little higher), in lengths of about 6 m that do not quite meet
+    for (let a = 0; a < L; a += 6) {
+      const e = Math.min(L, a + 6);
+      for (const [o, y] of [[0.24, H * 0.72], [0.24, 0.45], [-0.24, H * 0.62]]) {
+        const d = 0.07, sag = (rnd(map.seed, n++) - 0.5) * 0.12;
+        pb.solid8([P(a + 0.1, y0 + y - d, o - d), P(e - 0.1, y0 + y - d + sag, o - d), P(e - 0.1, y0 + y - d + sag, o + d), P(a + 0.1, y0 + y - d, o + d)],
+          [P(a + 0.1, y0 + y + d, o - d), P(e - 0.1, y0 + y + d + sag, o - d), P(e - 0.1, y0 + y + d + sag, o + d), P(a + 0.1, y0 + y + d, o + d)], STAKE);
+      }
+    }
+    // patches of scrap sheet nailed over the outside, a little askew
+    for (let a = 2 + rnd(map.seed, n++) * 5; a < L - 2; a += 5 + rnd(map.seed, n++) * 8) {
+      const pw = 0.8 + rnd(map.seed, n++) * 1.3, ph = 0.6 + rnd(map.seed, n++) * H * 0.35, py = 0.3 + rnd(map.seed, n++) * (H - ph - 0.5), tilt = (rnd(map.seed, n++) - 0.5) * 0.35, o = 0.3;
+      const c = [[-pw / 2, -ph / 2], [pw / 2, -ph / 2], [pw / 2, ph / 2], [-pw / 2, ph / 2]].map(([u, v]) => P(a + u * Math.cos(tilt) - v * Math.sin(tilt), y0 + py + ph / 2 + u * Math.sin(tilt) + v * Math.cos(tilt), o));
+      const c2 = c.map(([x, y, z]) => [x + nx * 0.04, y, z + nz * 0.04]);
+      pb.solid8(c, c2, SCRAP);
+      pb.seg(SCRAP, c[0], c[2]); // a dent across it
+    }
+  }
+  // gate frames: two posts and a crossbeam
+  const top = y0 + WALL_TIERS[map.tier].gate;
+  for (const g of map.gates) {
+    const along = g.dir === 'N' || g.dir === 'S', m = g.m + 0.5;
+    const Q = (a: number, y: number, o: number) => (along ? [a, y, m + o] : [m + o, y, a]);
+    for (const a of [g.a - 0.2, g.a + g.w + 0.2]) pb.solid8([Q(a - 0.22, y0, -0.22), Q(a + 0.22, y0, -0.22), Q(a + 0.22, y0, 0.22), Q(a - 0.22, y0, 0.22)],
+      [Q(a - 0.2, top + 0.4, -0.2), Q(a + 0.2, top + 0.4, -0.2), Q(a + 0.2, top + 0.4, 0.2), Q(a - 0.2, top + 0.4, 0.2)], STAKE);
+    const a0 = g.a - 0.9, a1 = g.a + g.w + 0.9;
+    pb.solid8([Q(a0, top - 0.25, -0.18), Q(a1, top - 0.2, -0.18), Q(a1, top - 0.2, 0.18), Q(a0, top - 0.25, 0.18)],
+      [Q(a0, top + 0.05, -0.18), Q(a1, top + 0.1, -0.18), Q(a1, top + 0.1, 0.18), Q(a0, top + 0.05, 0.18)], STAKE);
+  }
+  // watch platforms on stilts: four legs, cross braces, a plank floor with a rail, a little roof
+  for (const t of map.towers) {
+    const x0 = t.x, z0 = t.z, x1 = t.x + t.w, z1 = t.z + t.d, fy = y0 + t.h;
+    const legs = [[x0 + 0.2, z0 + 0.2], [x1 - 0.2, z0 + 0.2], [x1 - 0.2, z1 - 0.2], [x0 + 0.2, z1 - 0.2]];
+    for (const [x, z] of legs) pb.box(x - 0.13, y0, z - 0.13, x + 0.13, fy, z + 0.13, STAKE);
+    for (let i = 0; i < 4; i++) {
+      const [ax, az] = legs[i], [bx, bz] = legs[(i + 1) % 4];
+      pb.seg(STAKE, [ax, y0 + 0.3, az], [bx, fy - 0.3, bz]); pb.seg(STAKE, [bx, y0 + 0.3, bz], [ax, fy - 0.3, az]);
+    }
+    pb.box(x0 - 0.3, fy, z0 - 0.3, x1 + 0.3, fy + 0.2, z1 + 0.3, STAKE);
+    for (let a = x0; a <= x1 + 0.01; a += 0.6) pb.seg(STAKE, [a, fy + 0.21, z0 - 0.3], [a, fy + 0.21, z1 + 0.3]);
+    pb.lookout(x0 - 0.3, z0 - 0.3, x1 + 0.3, z1 + 0.3, fy + 0.2, STAKE);
+  }
+}
+function lampsAndWell(grp: THREE.Group, map: VillageMap, y0: number) {
   for (const l of map.lamps) {
     const pole = new THREE.Line(new THREE.BufferGeometry().setFromPoints([V(l.x, y0, l.z), V(l.x, y0 + 3.2, l.z)]), lineMat(GRID));
     const lamp = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.OctahedronGeometry(0.25)), add(0xffe8a0)); lamp.position.set(l.x, y0 + 3.45, l.z);
