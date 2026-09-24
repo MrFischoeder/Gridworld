@@ -10,7 +10,7 @@ import { WORLD_W, wrapDx } from './regions';
 const wrap = (s: number): [number, number] => { const n = Math.round(WORLD_W / s); return [WORLD_W / n, n]; };
 let scales: { mask: [number, number]; ridge: [number, number]; peak: [number, number] } | null = null;
 /** Computed on first use: gen/regions.ts (WORLD_W) and this module import each other. */
-const S = () => (scales ??= { mask: wrap(1300), ridge: wrap(260), peak: wrap(90) });
+const S = () => (scales ??= { mask: wrap(1000), ridge: wrap(260), peak: wrap(90) });
 
 /** No mountains within this distance of Gridholm (m); they fade in over the next FADE. */
 export const MOUNTAIN_CLEAR = 1400, FADE = 700;
@@ -18,12 +18,12 @@ export const MOUNTAIN_CLEAR = 1400, FADE = 700;
 export const MOUNTAIN_LIFT = 135;
 const smooth = (t: number) => (t <= 0 ? 0 : t >= 1 ? 1 : t * t * (3 - 2 * t));
 
-/** Where the massifs are: 0 (none) .. 1 (the heart of one). About one tenth of the land is mountain. */
+/** Where the massifs are: 0 (none) .. 1 (the heart of one). About a fifth of the land is mountain. */
 export function mountainMask(world: number, x: number, z: number): number {
   const [s, p] = S().mask, d = Math.hypot(wrapDx(x), z);
   if (d < MOUNTAIN_CLEAR) return 0;
   const n = fbm(hash(world, 0x3e11), x / s, z / s, 3, p);
-  return smooth((n - 0.67) / 0.1) * smooth((d - MOUNTAIN_CLEAR) / FADE);
+  return smooth((n - 0.6) / 0.11) * smooth((d - MOUNTAIN_CLEAR) / FADE);
 }
 /** How much the mountains raise the land at (x, z), given the mask there: ridges, and peaks on the ridges. */
 export function mountainLift(world: number, x: number, z: number, m: number): number {

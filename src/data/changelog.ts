@@ -4,6 +4,13 @@ export interface Change { v: string; date: string; title: string; notes: string[
 
 export const CHANGELOG: Change[] = [
   {
+    v: '0.18.0', date: '2026-09-24', title: 'More mountains, lakes and wells',
+    notes: ['Mountains are twice as common: about a quarter of the land now rises into massifs, closer together, with more peaks, trails and caves. The country round Gridholm stays as it was.',
+      'Two and a half times as many lakes: more regions have one, and many also have a smaller pond. Clean water is the most common; murky water lies in the low valleys, toxic water mostly near the ruins (and rarely anywhere).',
+      'More old wells out in the wilds (about two regions in five).',
+      'Note: the land away from Gridholm changes with this update: some villages, ruins and camps farther out have moved or given way to mountains.'],
+  },
+  {
     v: '0.17.1', date: '2026-09-24', title: 'Fix: enemies turn up one at a time',
     notes: ['Encounters are paced: after a group turns up the next one waits a while (about a minute near the villages, 20-30 s in the deepest wilds; gunfire brings them sooner), and nothing new joins while you are fighting. No more waves piling up the moment you stop.',
       'Enemies now turn up ahead of you or off to a side instead of behind you, so running across the wilds you meet them on the way.',

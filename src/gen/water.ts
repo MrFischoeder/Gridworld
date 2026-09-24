@@ -57,7 +57,7 @@ const nearRoad = (world: number, x: number, z: number, m: number) => {
 
 const lakeCache = new Map<string, Lake[]>();
 /**
- * Lakes of a region: about a third of the regions have one, more often in low ground. They keep clear of places,
+ * Lakes of a region: about half the regions have one (more in low ground), and many also a smaller pond. They keep clear of places,
  * roads and the ice (frozen lakes can come later). Their level sits just below the lowest point of the rim, so
  * the water never spills over the land around it.
  */
@@ -72,17 +72,26 @@ export function regionLakes(t: Terrain, rx: number, rz: number): Lake[] {
   const R = rng(hash(t.world, rx, rz, 0x1a4e)), roll = R();
   const x = rx * REGION + (R() - 0.5) * 150, z = rz * REGION + (R() - 0.5) * 150, r = 12 + R() * 26, p1 = R() * 6.283, p2 = R() * 6.283, kr = R();
   const low = t.base(x, z) < 9;
-  if (roll < (low ? 0.55 : 0.28) && Math.abs(z) + r * 2 < POLAR_Z) {
+  const tryLake = (id: number, x: number, z: number, r: number, p1: number, p2: number, kr: number, low: boolean) => {
+    if (Math.abs(z) + r * 2 >= POLAR_Z) return;
+    if (out!.some((l) => Math.hypot(l.x - x, l.z - z) < (l.r + r) * LAKE_REACH * 1.3 + 12)) return;
     const pois = poisNear(t.world, x, z, r * 2 + 120);
     const clear = pois.every((p) => rectD(p.rect, x, z) > r * LAKE_REACH * 1.3 + p.flat + p.blend + 6) && !nearRoad(t.world, x, z, r * LAKE_REACH * 1.3 + 8) && !onMountain(t.world, x, z, r * 2 + 20);
-    if (clear) {
-      // the level: just under the lowest natural ground around the rim
-      let rim = Infinity;
-      for (let i = 0; i < 48; i++) { const a = i / 48 * 6.283, rr = r * 1.3 * (1 + 0.22 * Math.sin(3 * a + p1) + 0.1 * Math.sin(5 * a + p2)); rim = Math.min(rim, t.base(x + Math.cos(a) * rr, z + Math.sin(a) * rr)); }
-      const ruin = pois.some((p) => p.type === 'ruin' && Math.hypot(p.x - x, p.z - z) < 260);
-      const kind: 'fresh' | 'murky' | 'toxic' = ruin && kr < 0.7 ? 'toxic' : low || kr > 0.8 ? 'murky' : 'fresh';
-      out.push({ id: hash(t.world, rx, rz, 0x1a4f), x, z, r, level: rim - 0.35, depth: 1.5 + r * 0.09, kind, p1, p2 });
-    }
+    if (!clear) return;
+    // the level: just under the lowest natural ground around the rim
+    let rim = Infinity;
+    for (let i = 0; i < 48; i++) { const a = i / 48 * 6.283, rr = r * 1.3 * (1 + 0.22 * Math.sin(3 * a + p1) + 0.1 * Math.sin(5 * a + p2)); rim = Math.min(rim, t.base(x + Math.cos(a) * rr, z + Math.sin(a) * rr)); }
+    const ruin = pois.some((p) => p.type === 'ruin' && Math.hypot(p.x - x, p.z - z) < 180);
+    // toxic often by the ruins (and rarely anywhere), murky in many low valleys, mostly clean
+    const kind: 'fresh' | 'murky' | 'toxic' = (ruin && kr < 0.45) || kr < 0.05 ? 'toxic' : (low && kr < 0.6) || kr > 0.88 ? 'murky' : 'fresh';
+    out!.push({ id, x, z, r, level: rim - 0.35, depth: 1.5 + r * 0.09, kind, p1, p2 });
+  };
+  if (roll < (low ? 0.7 : 0.42)) tryLake(hash(t.world, rx, rz, 0x1a4f), x, z, r, p1, p2, kr, low);
+  // a smaller pond elsewhere in the region
+  const Q = rng(hash(t.world, rx, rz, 0x1a50));
+  if (Q() < 0.4) {
+    const qx = rx * REGION + (Q() - 0.5) * 170, qz = rz * REGION + (Q() - 0.5) * 170;
+    tryLake(hash(t.world, rx, rz, 0x1a51), qx, qz, 6 + Q() * 9, Q() * 6.283, Q() * 6.283, Q(), t.base(qx, qz) < 9);
   }
   lakeCache.set(key, out);
   return out;
@@ -100,7 +109,7 @@ export function lakesIn(t: Terrain, r: Rect): Lake[] {
 }
 
 const wellCache = new Map<string, Well[]>();
-/** Old wells out in the wilds: about one region in four has one, on dry ground away from places, roads and lakes. */
+/** Old wells out in the wilds: about two regions in five have one, on dry ground away from places, roads and lakes. */
 export function regionWells(t: Terrain, rx: number, rz: number): Well[] {
   const c = wrapR(rx);
   if (c !== rx) return regionWells(t, c, rz).map((w) => ({ ...w, x: w.x + (rx - c) * REGION }));
@@ -110,7 +119,7 @@ export function regionWells(t: Terrain, rx: number, rz: number): Well[] {
   if (wellCache.size > 4096) wellCache.clear();
   out = [];
   const R = rng(hash(t.world, rx, rz, 0x3e11));
-  if (R() < 0.25 && Math.abs(rz * REGION) + REGION < POLAR_Z) {
+  if (R() < 0.4 && Math.abs(rz * REGION) + REGION < POLAR_Z) {
     for (let i = 0; i < 4 && !out.length; i++) {
       const x = rx * REGION + (R() - 0.5) * 200, z = rz * REGION + (R() - 0.5) * 200;
       if (poisNear(t.world, x, z, 80).some((p) => rectD(p.rect, x, z) < p.flat + p.blend + 4)) continue;
