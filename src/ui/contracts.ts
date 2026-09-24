@@ -7,7 +7,7 @@ import { ITEMS } from '../data/items';
 import { calcStats, saveChar, gainXp } from '../character';
 import { offersAt, payFor, CONTRACT, type Contract } from '../gen/contracts';
 import { trade } from '../gen/market';
-import { findPoi, worldDist, nearX } from '../gen/regions';
+import { findPoi, worldDist, nearX, allVillages, villageSeed, GRIDHOLM_ID } from '../gen/regions';
 import { fmtTime } from '../core/time';
 import { loadedVillage } from '../world/overworld';
 import { carried, takeFrom, putAway, stores } from './market';
@@ -18,9 +18,9 @@ import { putItems } from '../inventory';
 
 let town = '';
 const left = (c: Contract) => c.n - c.done;
-const dueText = (t: number) => { const h = Math.floor((t - G.char.time) / 60); return h < 0 ? 'overdue' : h < 24 ? `${h} h left (by ${fmtTime(t)})` : `${Math.floor(h / 24)} d ${h % 24} h left`; };
+export const dueText = (t: number) => { const h = Math.floor((t - G.char.time) / 60); return h < 0 ? 'overdue' : h < 24 ? `${h} h left (by ${fmtTime(t)})` : `${Math.floor(h / 24)} d ${h % 24} h left`; };
 const where = (x: number, z: number) => `${fmtDist(worldDist(G.pos.x, G.pos.z, x, z))} ${point8(bearingTo(x, z))}`;
-function describe(c: Contract): string {
+export function describe(c: Contract): string {
   const g = ITEMS[c.good].name;
   return c.kind === 'supply'
     ? `<b>Order:</b> ${c.n} × ${g} for ${c.toName} · ${c.pay} g a crate`
@@ -53,16 +53,7 @@ export function contractsClick(t: HTMLElement): string | null {
   if (!v || !poi) return '';
   if (a) {
     const o = offersAt(c.world, poi, v.vm.seed, c.time).find((x) => x.id === a.dataset.cta);
-    if (!o || c.contracts.length >= CONTRACT.maxActive) return 'That notice is gone.';
-    if (o.kind === 'haul') {
-      if (c.gold < o.deposit) return 'You cannot pay the deposit.';
-      const room = stores(poi).reduce((s, st) => s + Math.max(0, roomOf(st.slots, o.good, st.cap)), 0);
-      if (room < o.n) return `No room for ${o.n} crates: you can take ${room}. Park a vehicle by the gates and come back.`;
-      putAway(o.good, o.n, poi, true); c.gold -= o.deposit; // into the trunks first: crates are heavy trade(c.market, poi.id, o.good, -o.n, c.time);
-    }
-    c.contracts.push({ ...o }); c.taken.push(o.id); if (c.taken.length > 60) c.taken.splice(0, c.taken.length - 60);
-    calcStats(); saveChar();
-    return o.kind === 'haul' ? `The crates are loaded. Take them to ${o.toName}, ${where(o.tx, o.tz)}.` : `Bring ${o.n} × ${ITEMS[o.good].name} here: ${dueText(o.due)}.`;
+    return o ? acceptOffer(o) : 'That notice is gone.';
   }
   const k = c.contracts.find((x) => x.id === d!.dataset.ctd);
   if (!k || k.to !== v.id) return '';
@@ -99,3 +90,39 @@ export function updateContracts(dt: number) {
 export const contractLines = () => G.char.contracts.map((k) => `▸ ${k.kind === 'supply' ? 'Supply' : 'Haul'} ${left(k)} × ${ITEMS[k.good].name} to ${k.toName} · ${dueText(k.due)}` + (G.char.loc === 'overworld' ? ` · ${where(k.tx, k.tz)}` : ''));
 /** Map and compass markers. */
 export const contractMarkers = () => G.char.contracts.map((k) => ({ x: nearX(k.tx, G.pos.x), z: k.tz, label: `${ITEMS[k.good].name} → ${k.toName}` }));
+
+/** Take offer o (at its village's store, or on Gridholm's notice board). A haul loads its crates where it starts. */
+export function acceptOffer(o: Contract): string {
+  const c = G.char, home = findPoi(c.world, o.from);
+  if (!home) return 'That notice is gone.';
+  if (c.contracts.length >= CONTRACT.maxActive) return `You already hold ${CONTRACT.maxActive} contracts.`;
+  if (c.contracts.some((k) => k.id === o.id) || c.taken.includes(o.id)) return 'You have taken that one.';
+  if (o.kind === 'haul') {
+    if (worldDist(G.pos.x, G.pos.z, home.x, home.z) > 400) return `The crates wait at ${o.fromName}: take this one there.`;
+    if (c.gold < o.deposit) return 'You cannot pay the deposit.';
+    const room = stores(home).reduce((s, st) => s + Math.max(0, roomOf(st.slots, o.good, st.cap)), 0);
+    if (room < o.n) return `No room for ${o.n} crates: you can take ${room}. Park a vehicle by the gates and come back.`;
+    putAway(o.good, o.n, home, true); c.gold -= o.deposit; trade(c.market, home.id, o.good, -o.n, c.time); // into the trunks first: crates are heavy
+  }
+  c.contracts.push({ ...o }); c.taken.push(o.id); if (c.taken.length > 60) c.taken.splice(0, c.taken.length - 60);
+  calcStats(); saveChar();
+  return o.kind === 'haul' ? `The crates are loaded. Take them to ${o.toName}, ${where(o.tx, o.tz)}.` : `Bring ${o.n} × ${ITEMS[o.good].name} to ${o.toName}: ${dueText(o.due)}.`;
+}
+/** Drop a contract (a haul's deposit is lost; the crates stay yours). */
+export function dropContract(id: string): string {
+  const c = G.char, k = c.contracts.find((x) => x.id === id);
+  if (!k) return '';
+  c.contracts.splice(c.contracts.indexOf(k), 1); saveChar();
+  return k.kind === 'haul' ? `Contract dropped. ${k.fromName} keeps your deposit.` : 'Contract dropped.';
+}
+/** Gridholm's notice board: its own delivery work, and orders from the villages round about (within 9 km). */
+export function boardContracts(): Contract[] {
+  const c = G.char, home = findPoi(c.world, GRIDHOLM_ID);
+  if (!home) return [];
+  const fresh = (o: Contract) => !c.taken.includes(o.id) && !c.contracts.some((k) => k.id === o.id);
+  const own = offersAt(c.world, home, villageSeed(c.world, home), c.time).filter(fresh);
+  const round = allVillages(c.world).filter((v) => v.id !== home.id && worldDist(v.x, v.z, home.x, home.z) < CONTRACT.far)
+    .flatMap((v) => offersAt(c.world, v, villageSeed(c.world, v), c.time).filter((o) => o.kind === 'supply' && fresh(o)))
+    .sort((p, q) => worldDist(p.tx, p.tz, home.x, home.z) - worldDist(q.tx, q.tz, home.x, home.z)).slice(0, 4);
+  return [...own, ...round];
+}

@@ -4,6 +4,11 @@ export interface Change { v: string; date: string; title: string; notes: string[
 
 export const CHANGELOG: Change[] = [
   {
+    v: '0.31.0', date: '2026-09-24', title: 'Deliveries on the notice board',
+    notes: ['The notice board on Gridholm\'s plaza now has a Deliveries section: Gridholm\'s own delivery contracts plus supply orders from villages within nine kilometres, the four nearest of each posting.',
+      'Take a contract right at the board, or drop one you no longer want (a haul\'s deposit is lost). The board shows when the next notices go up.'],
+  },
+  {
     v: '0.30.0', date: '2026-09-24', title: 'Delivery contracts',
     notes: ['Every general store now posts delivery work: ask "Any deliveries to be done?". New notices go up every 12 hours, two per village, and you can hold three contracts at once.',
       'Orders: the village wants crates of something it needs, brought by a deadline, and pays about a third more than its market would. Get them wherever you like: another village\'s market, a passing caravan.',
