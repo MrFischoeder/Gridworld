@@ -103,8 +103,6 @@ export function makeChest(c: { x: number; z: number }, i: number): Chest | null 
 /** Save key of a chest's contents in the current dungeon sector. */
 export const chestKey = (c: Chest) => 'chest:' + dungeonKey() + ':' + c.i;
 export const chestContents = (c: Chest): Container | undefined => G.char.containers[chestKey(c)];
-/** Items still inside (a chest can be left half-emptied and searched again later). */
-export const chestHasLoot = (c: Chest) => { const b = chestContents(c); return !!b && (b.gold > 0 || b.items.some(Boolean)); };
 
 /** What a chest holds, rolled once when it is first opened and saved from then on. */
 function rollChest(): Container {
@@ -131,8 +129,8 @@ export function openChest(c: Chest) {
     burst(c.g.position.clone().add(V(0, 0.7, 0)), 0xffd060, 30, 1.3);
     gainXp(20 * depthNow()); saveChar();
   }
-  const box = chestContents(c);
-  if (!box) return; // opened before chests kept their contents: it is empty
+  // a chest opened before chests kept their contents is empty, but it still holds whatever you put in
+  const box = chestContents(c) ?? (G.char.containers[chestKey(c)] = { items: Array(8).fill(null), gold: 0 });
   openTransfer({ title: 'Chest', subtitle: 'Depth ' + depthNow(), boxLabel: 'Inside', box });
 }
 export function makeHatch(h: { x: number; z: number }): Hatch | null {

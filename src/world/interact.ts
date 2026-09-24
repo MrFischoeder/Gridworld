@@ -8,7 +8,7 @@ import { hasItem } from '../character';
 import { el } from '../ui/hud';
 import { openDialog } from '../ui/dialog';
 import { unlockDoor } from './doors';
-import { openChest, chestHasLoot } from './loot';
+import { openChest } from './loot';
 import { OW, campStashes, loadedWells } from './overworld';
 import { waterSource, sourcePrompt, useWater, type WaterSource } from './water';
 import { nearPlant, plantPrompt, harvest, type PlantNode } from './flora';
@@ -52,7 +52,7 @@ export function updateEntities(dt: number, time: number) {
     if (c.anim > 0 && c.anim < 1) c.anim = Math.min(1, c.anim + dt * 3);
     c.lidPivot.rotation.x = -(c.open ? (c.anim || 1) : 0) * 1.9;
     c.beam.visible = !c.open; c.beamMat.opacity = 0.35 + 0.3 * Math.sin(time * 3 + c.i);
-    if ((!c.open || chestHasLoot(c)) && Math.hypot(c.g.position.x - pos.x, c.g.position.z - pos.z) < 1.8 && Math.abs(c.g.position.y - pos.y) < 1.2) W.nearChest = c;
+    if (Math.hypot(c.g.position.x - pos.x, c.g.position.z - pos.z) < 1.8 && Math.abs(c.g.position.y - pos.y) < 1.2) W.nearChest = c;
   }
   let enter = null;
   for (const p of W.portals) {

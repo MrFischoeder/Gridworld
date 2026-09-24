@@ -4,6 +4,11 @@ export interface Change { v: string; date: string; title: string; notes: string[
 
 export const CHANGELOG: Change[] = [
   {
+    v: '0.8.1', date: '2026-09-24', title: 'Fix: chests can be searched again',
+    notes: ['An opened chest no longer stops working once it is empty: walk up to it and press E to look inside, take things out or leave things in it for later.',
+      'Chests opened in older versions (before they kept their contents) open as empty chests you can use for storage.'],
+  },
+  {
     v: '0.8.0', date: '2026-09-24', title: 'Compass and village map boards',
     notes: ['A Compass: buy it from Zofia at the General Store for 40 gold or craft it at a workbench or forge (1 scrap metal, 1 electronic components). Carry it and a compass strip at the top of the screen shows your heading, the way to the nearest village and your quest targets.',
       'Every village has a map board by its plaza. Press E there to see the land about 900 m around: ruins, bandit camps, crash sites, roads and lakes, arrows to the nearest other villages, and a list with the distance and direction to each place. The places you read about go on your own map (M).'],
