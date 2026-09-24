@@ -7,7 +7,7 @@ Browser FPS in a green vector-grid style (wireframe on black, retro sci-fi / Tro
 - `npm run dev` — dev server (Vite)
 - `npm test` — Vitest (generators, terrain, saves)
 - `npm run typecheck` / `npm run build`
-- Dev console: ~ (Backquote) opens it in every build (`ui/console.ts`): `cash` (+10000 gold), `god` (full health + immortality, toggle), `home` (back to Gridholm), `time [hour]` (show the clock / skip ahead), `help`, `clear`. Add commands to `COMMANDS` there.
+- Dev console: ~ (Backquote) opens it in every build (`ui/console.ts`): `cash` (+10000 gold), `god` (full health + immortality, toggle), `home` (back to Gridholm), `time [hour]` (show the clock / skip ahead), `worldmap` (whole-planet dev map, `ui/devmap.ts`: pan, zoom, click a place or spot to teleport via `teleportTo` in `world/level.ts`), `tp <x> <z>`, `help`, `clear`. Add commands to `COMMANDS` there.
 - In a dev build, `window.__game` exposes `{ G, W, camera, scene, renderer }` for debugging; F3 toggles the perf overlay (fps, lines, triangles, draw calls).
 
 ## Rules

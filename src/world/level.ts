@@ -6,7 +6,7 @@ import { hash, OPP, DIRV, type Dir } from '../core/rng';
 import { VoxelGrid } from '../core/voxel';
 import { meshVoxels, type OutlineStyle } from '../core/meshing';
 import { generateDungeon } from '../gen/dungeon';
-import { findPoi, allVillages, worldDist, GRIDHOLM_ID, CHUNK } from '../gen/regions';
+import { findPoi, allVillages, worldDist, poisNear, GRIDHOLM_ID, CHUNK, type Poi } from '../gen/regions';
 import { isDiscovered } from '../save';
 import type { VillageMap } from '../gen/village';
 import { placeTunnelDoors, tryPlaceDoor, type PlacedDoor } from '../gen/doors';
@@ -26,7 +26,7 @@ import { setStreakSources } from './fx';
 import { setArmedRule, refreshWeaponVisibility } from './weapons';
 import { PropBatch } from './props';
 import { onDungeonLoaded, syncQuestWorld } from './quests';
-import { driving } from './vehicles';
+import { driving, leave } from './vehicles';
 import { openWorld, closeWorld, structFor, setEnterRuin, removeDrone, danger, inVillage, OW } from './overworld';
 import { saveChar, depth } from '../character';
 import { showToast, logLine, el, renderSheet } from '../ui/hud';
@@ -185,6 +185,26 @@ export function loadOverworld(a: Arrival) {
   setMiniMode('world');
   syncQuestWorld();
   el.seed.value = String(c.world); renderSheet(); saveOverworldPos();
+}
+/**
+ * Developer teleport (the console's world map, ui/devmap.ts): anywhere on the surface. A village puts you outside
+ * its tavern, a ruin or a wreck at its entrance; any other point on the ground there (never inside a structure).
+ */
+export function teleportTo(x: number, z: number, poi?: Poi): string {
+  const c = G.char;
+  if (G.trans) return 'Busy travelling, try again in a moment.';
+  if (driving.v) leave();
+  c.loc = 'overworld'; c.dungeon = null;
+  if (poi?.type === 'village') loadOverworld({ kind: 'tavern', id: poi.id });
+  else if (poi && (poi.type === 'ruin' || poi.type === 'wreck')) loadOverworld({ kind: 'ruin', id: poi.id });
+  else {
+    // step out of any place's footprint (a camp, or a click on a building)
+    for (const p of poisNear(c.world, x, z, 80)) if (x >= p.rect.x0 - 2 && x <= p.rect.x1 + 2 && z >= p.rect.z0 - 2 && z <= p.rect.z1 + 2) z = p.rect.z1 + 5;
+    c.ow = { x, y: -1e4, z, yaw: G.yaw };
+    loadOverworld({ kind: 'saved' });
+  }
+  saveChar();
+  return 'Teleported to ' + (poi ? poi.name : `${Math.round(x)}, ${Math.round(z)}`) + '.';
 }
 export function saveOverworldPos() {
   if (G.char.loc !== 'overworld') return;

@@ -4,6 +4,11 @@ export interface Change { v: string; date: string; title: string; notes: string[
 
 export const CHANGELOG: Change[] = [
   {
+    v: '0.7.0', date: '2026-09-24', title: 'Developer world map',
+    notes: ['For testing: the console (~) has a new "worldmap" command that shows the whole planet with every village; zoom in to see the ruins, bandit camps and crash sites. Click a place or any spot to teleport there.',
+      'The console also has "tp <x> <z>" to jump to exact coordinates (Gridholm is at 0 0).'],
+  },
+  {
     v: '0.6.0', date: '2026-09-24', title: 'Changelog',
     notes: ['A Changelog button in the main menu opens this log: every change to the game is written up here, newest first.'],
   },

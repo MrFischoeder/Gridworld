@@ -11,6 +11,8 @@ import { spawnBanditsNear } from '../world/bandits';
 import { spawnRaiderNear, forceAmbush } from '../world/raiders';
 import { CREATURES, type CreatureKind } from '../data/creatures';
 import { $, logLine } from './hud';
+import { openDevMap, planetSize } from './devmap';
+import { teleportTo } from '../world/level';
 import { lockPointer } from './input';
 
 const root = $('console'), out = $('conLog'), input = $<HTMLInputElement>('conIn');
@@ -50,6 +52,18 @@ const COMMANDS: Record<string, { help: string; run: (args: string[]) => string }
   eat: { help: 'fill food, water and stamina', run: () => { G.char.kcal = 3000; G.char.stomach = 0; G.char.water = 100; G.stamina = 100; G.exhausted = false; return 'Fed and watered.'; } },
   clear: { help: 'clear this log', run: () => { out.innerHTML = ''; return ''; } },
   ambush: { help: 'set up a bandit ambush ahead (stand on a road)', run: () => (forceAmbush() ? 'Something moves by the road ahead...' : 'Stand on a road, away from places.') },
+  worldmap: {
+    help: 'map of the whole planet: click a village, ruin, camp, wreck or any spot to teleport there',
+    run: () => { openDevMap(); close(); return 'The planet: ' + planetSize() + '.'; },
+  },
+  tp: {
+    help: 'tp <x> <z>: teleport to a point on the surface',
+    run: (a) => {
+      const x = parseFloat(a[0]), z = parseFloat(a[1]);
+      if (!Number.isFinite(x) || !Number.isFinite(z)) return 'Usage: tp <x> <z>   (Gridholm is at 0 0)';
+      close(); return teleportTo(x, z);
+    },
+  },
   spawn: {
     help: 'spawn ravager | bramble | leechwing | gnawer | bandits | raider [mastodon] | scout | guardian | repair | sentinel | artillery | assault (open world)',
     run: (a) => {
