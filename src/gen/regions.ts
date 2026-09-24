@@ -34,7 +34,7 @@ export const POLE_Z = 117 * REGION + REGION / 2, POLAR_Z = 25000;
 export const latitude = (z: number) => Math.max(-1, Math.min(1, -z / POLE_Z)) * Math.PI / 2;
 const polarRegion = (rz: number) => Math.abs(rz * REGION) + REGION / 2 > POLAR_Z;
 
-export type PoiType = 'village' | 'ruin' | 'camp';
+export type PoiType = 'village' | 'ruin' | 'camp' | 'wreck';
 export interface Rect { x0: number; z0: number; x1: number; z1: number }
 export interface Poi {
   type: PoiType;
@@ -138,6 +138,18 @@ function campAt(rx: number, rz: number, x: number, z: number, R: () => number): 
   };
 }
 
+/** Crash sites: a wrecked freighter half buried in the ground, lying along x or z (see gen/wreck.ts). */
+export const WRECK_LEN = 52, WRECK_WID = 24;
+const SHIP_NAMES = ['Kestrel', 'Halcyon', 'Meridian', 'Vagrant Star', 'Iron Tern', 'Covenant', 'Longreach', 'Pale Heron', 'Ardent', 'Sable Wake', 'Tessaract', 'Orison'];
+function wreckAt(rx: number, rz: number, x: number, z: number, R: () => number): Poi {
+  const alongX = R() < 0.5, w = alongX ? WRECK_LEN : WRECK_WID, d = alongX ? WRECK_WID : WRECK_LEN;
+  const x0 = even(x - w / 2), z0 = even(z - d / 2);
+  return {
+    type: 'wreck', id: packId(rx, rz, 3), name: 'Wreck of the ' + SHIP_NAMES[Math.floor(R() * SHIP_NAMES.length)],
+    x: x0 + w / 2, z: z0 + d / 2, rect: { x0, z0, x1: x0 + w, z1: z0 + d }, flat: 4, blend: 24,
+  };
+}
+
 /** A region's data moved east or west by dx metres (a copy of a canonical region across the seam). */
 function shifted(r: RegionInfo, rx: number, dx: number): RegionInfo {
   return { ...r, rx, pois: r.pois.map((p) => ({ ...p, x: p.x + dx, rect: { x0: p.rect.x0 + dx, z0: p.rect.z0, x1: p.rect.x1 + dx, z1: p.rect.z1 } })) };
@@ -199,6 +211,18 @@ export function regionInfo(world: number, rx: number, rz: number): RegionInfo {
       if (worldDist(x, z, 0, 0) < 480) continue;
       if (around.some((p) => worldDist(p.x, p.z, x, z) < (p.type === 'village' ? 480 : 130))) continue;
       pois.push(campAt(rx, rz, x, z, Rc)); break;
+    }
+  }
+  // Crash sites: a wrecked freighter in some regions, out in the wilds (away from villages, ruins and camps).
+  const Rw = rng(hash(world, rx, rz, 0x3ec7));
+  if (!(rx === 0 && rz === 0) && !polarRegion(rz) && Rw() < 0.14) {
+    const around: Poi[] = [];
+    for (let i = -2; i <= 2; i++) for (let j = -2; j <= 2; j++) around.push(...baseInfo(world, rx + i, rz + j).pois);
+    for (let t = 0; t < 5; t++) {
+      const x = cx + (Rw() - 0.5) * 150, z = cz + (Rw() - 0.5) * 150;
+      if (worldDist(x, z, 0, 0) < 400) continue;
+      if (around.some((p) => worldDist(p.x, p.z, x, z) < (p.type === 'village' ? 400 : 110)) || pois.some((p) => worldDist(p.x, p.z, x, z) < 110)) continue;
+      pois.push(wreckAt(rx, rz, x, z, Rw)); break;
     }
   }
   r = { ...base, pois };

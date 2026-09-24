@@ -144,7 +144,7 @@ export function onDungeonLoaded(map: DungeonMap) {
   if (!d || d.depth !== 1 || d.gx !== 0 || d.gz !== 0) return;
   for (const q of G.char.quests) {
     if (q.kind !== 'fetch' || q.state !== 'active' || q.place?.ruinId !== d.ruinId || hasItem(q.item!)) continue;
-    const guard = map.bosses.find((b) => b.guard) ?? map.bosses[0], spot = guard ? { x: guard.x + 2, z: guard.z } : map.hatch;
+    const guard = map.bosses.find((b) => b.guard) ?? map.bosses[0], spot = guard ? { x: guard.x + 2, z: guard.z } : map.hatch ?? { x: map.spawn[0], z: map.spawn[2] };
     const f = floorAt(G.space, spot.x, spot.z, G.grid.oy + 1, G.grid.oy + G.grid.ny - 1);
     if (f) dropPickup(V(f[0] + 0.5, f[1] + 1, f[2] + 0.5), q.item!);
   }

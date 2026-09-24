@@ -50,7 +50,7 @@ describe('generateDungeon', () => {
       // objects stand where the game puts them: on the nearest floor cell around their nominal spot
       const floor = (x: number, z: number) => floorAt(grid, x, z, grid.oy + 1, grid.oy + grid.ny - 1)!;
       const chestFloor = (x: number, z: number) => floorNear(grid, x, z, 0, grid.oy + 1, grid.oy + grid.ny - 1)!;
-      expect(seen.has(floor(map.hatch.x, map.hatch.z).join(',')), 'hatch, seed ' + s).toBe(true);
+      expect(seen.has(floor(map.hatch!.x, map.hatch!.z).join(',')), 'hatch, seed ' + s).toBe(true);
       map.chests.forEach((c, i) => expect(seen.has(chestFloor(c.x, c.z).join(',')), `chest ${i}, seed ${s}`).toBe(true));
       map.portals.forEach((p, i) => { expect(stairDoors[i]).toBeTruthy(); expect(at(...stairFront(p)), `stair ${p.key}, seed ${s}`).toBe(true); });
     }
@@ -66,7 +66,7 @@ describe('generateDungeon', () => {
       for (const d of doors) if (!d.stair && !d.locked) setDoorCells(grid, d.cells, false);
       expect(doors.some((d) => d.locked), 'locked door placed, seed ' + s).toBe(true);
       const seen = reachableCells(grid, spawnCell(map));
-      expect(columnReached(seen, map.hatch.x, map.hatch.z, -1, 12), 'hatch sealed, seed ' + s).toBe(false);
+      expect(columnReached(seen, map.hatch!.x, map.hatch!.z, -1, 12), 'hatch sealed, seed ' + s).toBe(false);
       const guard = map.bosses.filter((b) => b.guard).sort((a, b) => a.gate! - b.gate!)[0];
       const r = guard.room;
       let reached = false;

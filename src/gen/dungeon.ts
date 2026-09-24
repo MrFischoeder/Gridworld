@@ -5,6 +5,8 @@ import { sbox, stairOpsFor, SL, type PortalSpec } from './stairs';
 
 export interface DoorCand { axis: 'x' | 'z'; m: number; c: number; locked?: boolean }
 export interface BossSpec { x: number; z: number; room: { x: number; z: number; w: number; d: number; h: number }; guard: boolean; gate?: number }
+/** A room or corridor box, for the angled decoration (world/dungeondeco.ts): cells [x, x+w) x [z, z+d), floor 0, ceiling h. */
+export interface DecoBox { x: number; z: number; w: number; d: number; h: number; tunnel: boolean }
 export interface DungeonMap {
   seed: number;
   spawn: [number, number, number];
@@ -13,11 +15,16 @@ export interface DungeonMap {
   chests: { x: number; z: number }[];
   /** Nutrient Crystal clusters (edible, grow back) in some rooms. */
   crystals: { x: number; z: number }[];
-  hatch: { x: number; z: number };
+  /** The way down to the next depth (a crashed ship has none). */
+  hatch: { x: number; z: number } | null;
   portals: PortalSpec[];
   doorCands: DoorCand[];
   bosses: BossSpec[];
   gates: number[];
+  /** Rooms and corridors, for the angled ceilings and struts drawn over the voxels. */
+  boxes: DecoBox[];
+  /** Temple maze or ship corridors (different decoration and loot). */
+  style: 'temple' | 'ship';
 }
 export interface DungeonOpts { surfaceExit?: boolean }
 
@@ -172,6 +179,6 @@ export function generateDungeon(seed: number, opts: DungeonOpts = {}): DungeonMa
   }
   return {
     seed, spawn: [rooms[0].cx + 0.5, 0, rooms[0].cz + 0.5], ops: [...ops, ...solids, ...corridors, ...stairOps], rooms: rooms.length,
-    chests, crystals, hatch, portals, doorCands: [...lockedCands, ...doorCands], bosses, gates,
+    chests, crystals, hatch, portals, boxes: rooms.map((r) => ({ x: r.x, z: r.z, w: r.w, d: r.d, h: r.h, tunnel: false })), style: 'temple', doorCands: [...lockedCands, ...doorCands], bosses, gates,
   };
 }

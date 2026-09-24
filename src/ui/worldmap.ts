@@ -75,6 +75,7 @@ function drawArea(ctx: CanvasRenderingContext2D, w: number, h: number, ppm: numb
     if (!isDiscovered(d, Math.floor(p.x / CHUNK), Math.floor(p.z / CHUNK))) continue;
     const x = X(p.x), y = Z(p.z);
     if (p.type === 'camp') { ctx.strokeStyle = ctx.fillStyle = '#ff6a4a'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(x - 5, y + 4); ctx.lineTo(x, y - 5); ctx.lineTo(x + 5, y + 4); ctx.closePath(); ctx.stroke(); if (labels) ctx.fillText(p.name, x, y - 12); continue; }
+    if (p.type === 'wreck') { ctx.strokeStyle = ctx.fillStyle = '#5cc8ff'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(x - 7, y); ctx.lineTo(x - 3, y - 3); ctx.lineTo(x + 7, y - 1); ctx.lineTo(x + 7, y + 1); ctx.lineTo(x - 3, y + 3); ctx.closePath(); ctx.stroke(); ctx.beginPath(); ctx.moveTo(x - 5, y - 2); ctx.lineTo(x - 6, y - 6); ctx.stroke(); if (labels) ctx.fillText(p.name, x, y - 12); continue; }
     if (p.type === 'village') { ctx.strokeStyle = ctx.fillStyle = '#ffd060'; ctx.lineWidth = 2; const s = Math.max(6, 76 * ppm / 2); ctx.strokeRect(x - s, y - s, s * 2, s * 2); }
     else { ctx.strokeStyle = ctx.fillStyle = '#5cc8ff'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(x - 5, y - 4); ctx.lineTo(x + 5, y - 4); ctx.lineTo(x, y + 5); ctx.closePath(); ctx.stroke(); }
     if (labels) ctx.fillText(p.name, x, y - 12);

@@ -115,6 +115,13 @@ function rollChest(): Container {
   if (Math.random() < 0.25) add('emp');
   if (Math.random() < 0.2) add('key');
   if (Math.random() < 0.15) add(ATTACH_KEYS[(Math.random() * ATTACH_KEYS.length) | 0]);
+  if (G.map?.style === 'ship') { // a freighter's lockers: salvage and ship's stores
+    putItems(items, 'scrap', 1 + Math.floor(Math.random() * 3));
+    if (Math.random() < 0.6) putItems(items, 'circuit', 1 + Math.floor(Math.random() * 2));
+    if (Math.random() < 0.12) putItems(items, 'pcore', 1);
+    if (Math.random() < 0.4) putItems(items, 'bread', 1 + Math.floor(Math.random() * 2));
+    if (Math.random() < 0.25) putItems(items, Math.random() < 0.5 ? 'engine' : 'plating', 1);
+  }
   return { items, gold: (15 + Math.floor(Math.random() * 26)) * depth };
 }
 export function openChest(c: Chest) {

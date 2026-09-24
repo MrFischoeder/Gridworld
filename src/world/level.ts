@@ -13,6 +13,8 @@ import { placeTunnelDoors, tryPlaceDoor, type PlacedDoor } from '../gen/doors';
 import { makeDoor, makeStair, arriveVia, signTexture } from './doors';
 import { makeChest, makeHatch, setCrystalXp } from './loot';
 import { placeCrystals, clearCrystals } from './flora';
+import { decorateDungeon } from './dungeondeco';
+import { generateShip } from '../gen/ship';
 import { clearFires } from './cooking';
 import { clearBenches } from './benches';
 import { makeDrone, placeDrone, makeBoss, setDroneRespawn } from './enemies';
@@ -64,7 +66,8 @@ const ruinName = (id: number) => findPoi(G.char.world, id)?.name ?? 'Ruins';
 export function loadDungeon(arriveDir: string | null) {
   const c = G.char, d = c.dungeon!;
   const seed = hash(c.world, d.ruinId, d.depth, d.gx, d.gz);
-  const map = generateDungeon(seed, { surfaceExit: d.depth === 1 && d.gx === 0 && d.gz === 0 });
+  const wreck = findPoi(c.world, d.ruinId)?.type === 'wreck';
+  const map = wreck ? generateShip(seed) : generateDungeon(seed, { surfaceExit: d.depth === 1 && d.gx === 0 && d.gz === 0 });
   clearLevel(); G.map = map;
   setLocationLook(false);
   setDroneRespawn(placeDrone); setCrystalXp(() => 5 * depth());
@@ -75,7 +78,8 @@ export function loadDungeon(arriveDir: string | null) {
   placed.forEach((pd, i) => W.doors.push(makeDoor(pd, i)));
   W.chests = map.chests.map(makeChest).filter((x) => !!x);
   placeCrystals(map.crystals);
-  W.hatch = makeHatch(map.hatch);
+  W.hatch = map.hatch ? makeHatch(map.hatch) : null;
+  group.add(decorateDungeon(map));
   for (const p of map.portals) {
     const pd = tryPlaceDoor(G.space, { axis: p.axis, m: p.m, c: p.c, stair: true }, placed)!;
     const o = DIRV[p.dir], tx = d.gx + o[0], tz = d.gz + o[1];
@@ -97,7 +101,8 @@ export function loadDungeon(arriveDir: string | null) {
   for (let i = 0; i < map.rooms + 1 + d.depth; i++) { const t = makeDrone(); placeDrone(t); W.drones.push(t); }
   onDungeonLoaded(map);
   setMiniMode('voxel'); buildMini();
-  el.hudL.textContent = 'Depth ' + d.depth + ', sector ' + d.gx + ', ' + d.gz; el.seed.value = String(c.world); renderSheet(); saveChar();
+  el.hudL.textContent = wreck ? ruinName(d.ruinId) : 'Depth ' + d.depth + ', sector ' + d.gx + ', ' + d.gz;
+  if (wreck) el.route.style.display = 'none'; // no way further down from a wreck el.seed.value = String(c.world); renderSheet(); saveChar();
 }
 
 // ---------- village decoration ----------

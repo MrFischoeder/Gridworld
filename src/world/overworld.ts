@@ -18,6 +18,8 @@ import { drawWell, syncLakes, clearLakes } from './water';
 import { generateVillage, type VillageMap } from '../gen/village';
 import { syncQuestWorld } from './quests';
 import { generateRuin } from '../gen/ruins';
+import { generateWreck } from '../gen/wreck';
+import { drawWreck } from './wreck';
 import { tryPlaceDoor } from '../gen/doors';
 import { PropBatch, sharedFill, sharedLine } from './props';
 import { makeStair, type Door, type Stair } from './doors';
@@ -270,6 +272,22 @@ function loadRuinStruct(poi: Poi): Structure {
   W.portals.push(st);
   return s;
 }
+/** Crash site: the wrecked freighter (voxel slices inside a drawn hull) with its hatch and the stairs down. */
+function loadWreckStruct(poi: Poi): Structure {
+  const T = OW.terrain!, y = T.padY(poi), wm = generateWreck(T.world, poi, y);
+  const grid = VoxelGrid.surface(wm.ops, wm.rect, y);
+  const { group, mesh } = voxelObject(grid, Infinity, OUTLINE);
+  group.add(drawWreck(wm.deco, poi.id));
+  scene.add(group);
+  const s: Structure = { poi, grid, group, edges: mesh, doors: [], stairs: [], npcs: [] };
+  OW.structs.set(poi.id, s);
+  const p = wm.portal, placed = tryPlaceDoor(space, { axis: p.axis, m: p.m, c: p.c, stair: true, y0: y }, [])!;
+  const st = makeStair(p, placed, 0, '▼ ' + poi.name.toUpperCase(), 'Hatch into the ' + poi.name, () => enterRuin(poi.id));
+  st.ruinId = poi.id;
+  s.doors.push(st.door); s.stairs.push(st);
+  W.portals.push(st);
+  return s;
+}
 /** Bandit camp: crates and barricades (voxels), A-frame tents, a campfire, the stash; its bandits. */
 function loadCampStruct(poi: Poi): Structure {
   const T = OW.terrain!, y = T.padY(poi), cm = generateCamp(T.world, poi, y);
@@ -315,7 +333,7 @@ export const campFires = () => [...OW.structs.values()].filter((s) => s.camp).ma
 export const campStashes = () => [...OW.structs.values()].filter((s) => s.camp).map((s) => ({ id: s.poi.id, name: s.poi.name, y: s.camp!.y, ...s.camp!.stash }));
 function loadStruct(poi: Poi) {
   if (OW.structs.has(poi.id)) return;
-  const s = poi.type === 'village' ? loadVillageStruct(poi) : poi.type === 'camp' ? loadCampStruct(poi) : loadRuinStruct(poi);
+  const s = poi.type === 'village' ? loadVillageStruct(poi) : poi.type === 'camp' ? loadCampStruct(poi) : poi.type === 'wreck' ? loadWreckStruct(poi) : loadRuinStruct(poi);
   localize(s.group, poi.x, poi.z);
   OW.structs.set(poi.id, s);
   setStreakSources([...OW.structs.values()].map((q) => q.edges));
@@ -389,7 +407,7 @@ export function openWorld(x: number, z: number) {
   const envHooks = {
     ground: (px: number, pz: number) => T.heightAt(px, pz),
     danger,
-    nearRuin: (px: number, pz: number) => poisNear(T.world, px, pz, 90).some((p) => p.type === 'ruin' && rectDist(p.rect, px, pz) < 60),
+    nearRuin: (px: number, pz: number) => poisNear(T.world, px, pz, 90).some((p) => (p.type === 'ruin' || p.type === 'wreck') && rectDist(p.rect, px, pz) < 60),
     forbidden: (px: number, pz: number) => nearVillage(px, pz) < 35 || (T.water(px, pz)?.depth ?? 0) > 0.5 || [...OW.structs.values()].some((s) => rectDist(s.poi.rect, px, pz) < 1),
   };
   setCreatureEnv(envHooks);
@@ -477,7 +495,7 @@ export function placeName(x: number, z: number): string {
   if (Math.abs(z) > POLE_Z - 400) return z < 0 ? 'North Pole ice wall' : 'South Pole ice wall';
   if (Math.abs(z) > POLAR_Z) return z < 0 ? 'Northern ice cap' : 'Southern ice cap';
   const lv = Math.round(danger(x, z)), tag = lv ? ` · danger ${lv}` : ' · calm';
-  for (const s of OW.structs.values()) if ((s.poi.type === 'ruin' || s.poi.type === 'camp') && rectDist(s.poi.rect, x, z) < 10) return s.poi.name + tag;
+  for (const s of OW.structs.values()) if (s.poi.type !== 'village' && rectDist(s.poi.rect, x, z) < 10) return s.poi.name + tag;
   return 'Wilds' + tag;
 }
 
