@@ -13,6 +13,7 @@ import { loadedVillage } from '../world/overworld';
 import { vehicles } from '../world/vehicles';
 import { bearingTo, point8, fmtDist } from './compass';
 import type { Slot } from '../save';
+import { lastArrival } from '../gen/caravans';
 
 const TRUNK_REACH = 90; // metres from the village middle: vehicles parked by the gates count
 let here: { poi: Poi; seed: number } | null = null;
@@ -45,6 +46,12 @@ function bestElsewhere(g: Good) {
 }
 /** Word from the road: what the nearest markets you have not seen yet are said to want. */
 function hearsay(): string {
+  if (!here) return '';
+  const car = lastArrival(G.char.world, here.poi.id, G.char.time);
+  const news = car ? `A caravan from <b>${car.fromName}</b> came in ${ago(car.t0 + car.T)} with ${car.n} crates of ${ITEMS[car.good].name}.<br>` : '';
+  return news + rumours();
+}
+function rumours(): string {
   if (!here) return '';
   const c = G.char, vs = allVillages(c.world).filter((v) => v.id !== here!.poi.id && !c.ledger[v.id]).map((v) => ({ v, d: worldDist(v.x, v.z, here!.poi.x, here!.poi.z) })).filter((o) => o.d < 9000).sort((a, b) => a.d - b.d).slice(0, 2);
   return vs.map(({ v, d }) => { const p = profileOf(c.world, v, villageSeed(c.world, v)); return `Traders say <b>${v.name}</b> (${fmtDist(d)} ${point8(bearingTo(v.x, v.z))}) pays well for ${p.wants.map((g) => ITEMS[g].name).join(' and ')}.`; }).join('<br>');

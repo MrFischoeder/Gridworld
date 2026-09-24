@@ -13,6 +13,7 @@ import { worldDist, type Poi } from './regions';
 import { mountainMask } from './mountains';
 import { powerKind } from './town';
 import type { ItemKey } from '../data/items';
+import { caravanShift } from './caravans';
 
 export type Good = 'grain' | 'timber' | 'ore' | 'salt' | 'fish' | 'cloth' | 'tools' | 'meds' | 'fuel' | 'tech';
 export const GOODS: Good[] = ['grain', 'timber', 'ore', 'salt', 'fish', 'cloth', 'tools', 'meds', 'fuel', 'tech'];
@@ -75,12 +76,20 @@ export function shiftNow(state: MarketState, vid: number, g: Good, now: number):
 }
 export interface Quote { good: Good; role: 'make' | 'want' | 'none'; stock: number; buy: number; sell: number }
 /** What a village's merchant asks (`buy`: you pay) and pays (`sell`: you get) for a good now, and how much is in stock. */
-export function quote(v: Poi, seed: number, world: number, g: Good, state: MarketState, now: number): Quote {
+const carCache = new Map<string, Partial<Record<Good, number>>>();
+/** The stock shift caravans (gen/caravans.ts) leave at village v, cached per game minute. */
+function caravanShiftAt(world: number, vid: number, now: number) {
+  const k = world + ':' + vid + ':' + Math.floor(now);
+  let s = carCache.get(k);
+  if (!s) { if (carCache.size > 500) carCache.clear(); s = caravanShift(world, vid, now, MARKET.half); carCache.set(k, s); }
+  return s;
+}
+export function quote(v: Poi, seed: number, world: number, g: Good, state: MarketState, now: number, caravans = true): Quote {
   const p = profileOf(world, v, seed), r = role(p, g), info = GOOD_INFO[g];
   const factor = r === 'make' ? MARKET.make : r === 'want' ? MARKET.want : 1;
   const ph = (hash(seed, g.length * 131 + g.charCodeAt(0), 0xd71f) % 6283) / 1000, period = 3 + (hash(seed, g.charCodeAt(1), 0xd720) % 5);
   const drift = 1 + MARKET.drift * Math.sin(now / (period * 1440) * Math.PI * 2 + ph);
-  const normal = MARKET.stock[r], shift = shiftNow(state, v.id, g, now), stock = Math.max(0, Math.round(normal + shift));
+  const normal = MARKET.stock[r], shift = shiftNow(state, v.id, g, now) + (caravans ? caravanShiftAt(world, v.id, now)[g] ?? 0 : 0), stock = Math.max(0, Math.round(normal + shift));
   // a flooded stock cheapens, an emptied one dearens, gently (the shift measured against the normal stock)
   const glut = Math.min(2.5, Math.max(0.4, Math.exp(-MARKET.give * shift / (normal + 10))));
   const mid = info.base * factor * drift * glut;

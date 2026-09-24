@@ -4,6 +4,13 @@ export interface Change { v: string; date: string; title: string; notes: string[
 
 export const CHANGELOG: Change[] = [
   {
+    v: '0.25.0', date: '2026-09-24', title: 'Caravans on the roads',
+    notes: ['Trade caravans now roll along the roads between the villages: one to three covered wagons one behind the other, crates showing at the tail. Every road has its own timetable, with caravans setting out from each end in turn every six to sixteen hours.',
+      'A caravan carries what its home village makes, preferably something the village it is heading for wants. Its setting out thins the stock at home, its arrival fills the market at the other end, so prices move with the traffic: a good is cheap for a while where a caravan has just come in. The general store tells you which caravan came in last.',
+      'Walk up to a wagon and press E to talk to the drover: where they come from, where they are going, when they expect to arrive, and they will sell you crates of their cargo on the spot, at a price between the two markets.',
+      'The wagons are solid and shove you aside if you stand in their way. Where each caravan is follows from the time of day alone, so later on every player in a world will see the same caravans.'],
+  },
+  {
     v: '0.24.0', date: '2026-09-24', title: 'Trade between the villages',
     notes: ['Ten trade goods travel the roads by the crate: grain, timber, ore, salt, dried fish, cloth, tools, medical supplies, fuel and salvaged tech.',
       'Every village makes two goods (cheap there, plenty in stock) and wants two others (dear there, little in stock). What a village trades follows its land: villages in the hills mine ore and salt, a village on a diesel generator always wants fuel, the far villages sell raw goods and hunger for made ones.',

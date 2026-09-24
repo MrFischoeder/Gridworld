@@ -21,6 +21,7 @@ import { loadedVillage, reloadStruct } from '../world/overworld';
 import { gainXp } from '../character';
 import { showToast, logLine } from './hud';
 import { openMarket, renderMarket, marketClick } from './market';
+import { caravanClick } from './caravan';
 /** Mirek pays a fifth of the price for a part, less for a worn one. */
 const partBuyback = (s: Slot) => Math.floor(PART_PRICE[s.k]! * PART_BUYBACK * (s.c ?? 100) / 100);
 
@@ -126,6 +127,7 @@ function giveFortify() {
 }
 dlgEl.addEventListener('click', (e) => {
   if (craftClick(e.target as HTMLElement) || buildClick(e.target as HTMLElement)) return;
+  if (caravanClick(e.target as HTMLElement)) return;
   const mm = marketClick(e.target as HTMLElement);
   if (mm !== null) { renderMarket(panel(), dlgHead(), mm); return; }
   const t = e.target as HTMLElement, o = t.closest<HTMLElement>('[data-o]'), b = t.closest<HTMLElement>('.buy'), c = G.char;

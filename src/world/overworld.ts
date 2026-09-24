@@ -18,6 +18,7 @@ import { drawWell, syncLakes, clearLakes } from './water';
 import { generateVillage, WALL_TIERS, STONE_TIER, type VillageMap } from '../gen/village';
 import { wallOf } from '../gen/town';
 import { drawPower, setPlantLamps, forgetPower } from './power';
+import { caravanHit, clearCaravans } from './caravans';
 import { syncQuestWorld } from './quests';
 import { generateRuin } from '../gen/ruins';
 import { generateWreck } from '../gen/wreck';
@@ -454,7 +455,7 @@ export function openWorld(x: number, z: number) {
   OW.terrain.setClaims(G.char.claims);
   closeWorld();
   G.water = (px, pz) => (inStructure(px, pz) ? null : OW.terrain!.water(px, pz));
-  G.space = space; G.ground = groundAt; G.obstacle = (px, py, pz, r) => treeHit(px, py, pz, r) || vehicleHit(px, py, pz, r) || ambushHit(px, py, pz, r) || baseHit(px, py, pz, r);
+  G.space = space; G.ground = groundAt; G.obstacle = (px, py, pz, r) => treeHit(px, py, pz, r) || vehicleHit(px, py, pz, r) || caravanHit(px, py, pz, r) || ambushHit(px, py, pz, r) || baseHit(px, py, pz, r);
   G.floor = baseFloor; G.rayBlock = baseRay; G.solid = baseSolid;
   foeRules.blocked = (p) => nearVillage(p.x, p.z) < 2;
   foeRules.playerSafe = () => inVillage(G.pos.x, G.pos.z);
@@ -498,6 +499,7 @@ export function closeWorld() {
   queue = []; lastChunk = '';
   G.water = null;
   foeRules.blocked = () => false; foeRules.playerSafe = () => false; foeRules.ground = null; foeRules.shielded = () => false; foeRules.shieldHit = () => {};
+  clearCaravans();
   G.ground = null; G.obstacle = null; G.floor = null; G.rayBlock = null; G.solid = null;
 }
 export const structFor = (id: number) => OW.structs.get(id);

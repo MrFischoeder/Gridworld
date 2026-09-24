@@ -22,7 +22,7 @@ export const ROAD = { link: 7000, half: 2.3, cell: 32, margin: 1000 };
 
 /** Longest road from village v: out where the villages stand further apart (gen/regions.ts), the roads run longer. */
 const linkAt = (v: Poi) => ROAD.link + (villageGap(Math.hypot(wrapDx(v.x), v.z)) - SETTLED.gap[0]) * 2.4;
-interface Edge { a: Poi; b: Poi; key: string }
+export interface Edge { a: Poi; b: Poi; key: string }
 const edgeCache = new Map<number, Edge[]>();
 /** The village network: each village joined to its 1-3 nearest neighbours (union, so a road is never doubled). */
 export function network(world: number): Edge[] {

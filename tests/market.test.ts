@@ -25,7 +25,7 @@ describe('village markets', () => {
       const pa = profileOf(w, a, villageSeed(w, a)), pb = profileOf(w, b, villageSeed(w, b));
       const g = pa.makes.find((x) => pb.wants.includes(x));
       if (!g || a === b) continue;
-      const buy = quote(a, villageSeed(w, a), w, g, {}, 5000).buy, sell = quote(b, villageSeed(w, b), w, g, {}, 5000).sell;
+      const buy = quote(a, villageSeed(w, a), w, g, {}, 5000, false).buy, sell = quote(b, villageSeed(w, b), w, g, {}, 5000, false).sell;
       expect(sell).toBeGreaterThan(buy * 1.6);
       pairs++;
     }
