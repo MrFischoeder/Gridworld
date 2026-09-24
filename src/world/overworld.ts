@@ -41,13 +41,17 @@ import { NPC_INFO, VILLAGER_NAMES, type NpcRole } from '../data/npcs';
 import { DIRV } from '../core/rng';
 import { claimDist, CLAIM } from '../gen/claims';
 import { baseHit, baseFloor, baseRay, baseSolid } from './building';
+import { chunkCaves, type Cave } from '../gen/caves';
+import { drawCave, caveHit } from './caves';
 
 export const LOAD_R = 4, UNLOAD_R = 6, STRUCT_LOAD = 170, STRUCT_UNLOAD = 240;
 /** Surface structures are drawn in outline style: folds and edges, floor tiles every 2 m, wall seams every 4 m. */
 const OUTLINE = { floor: 2, wall: 4 };
 const ROAD_COLOR = 0xc8ffd8, TILE_COLOR = 0x4dff7e, ICE_COLOR = 0xbfffe8;
+/** Chunks reaching above this height (m) are snowy: pale lines. */
+const SNOW_LINE = 115;
 
-interface Chunk { cx: number; cz: number; group: THREE.Group; trees: Tree[]; rocks: Rock[]; wells: Well[]; plants: Plant[]; nodes: PlantNode[]; lod: number }
+interface Chunk { cx: number; cz: number; group: THREE.Group; trees: Tree[]; rocks: Rock[]; wells: Well[]; plants: Plant[]; nodes: PlantNode[]; caves: Cave[]; lod: number }
 interface Structure {
   poi: Poi; grid: VoxelGrid; group: THREE.Group; edges: EdgeSource;
   doors: Door[]; stairs: Stair[]; npcs: Npc[]; village?: VillageMap; camp?: CampMap; flames?: THREE.LineSegments;
@@ -84,6 +88,7 @@ export function treeHit(x: number, y: number, z: number, r: number): boolean {
     for (const k of c.rocks) if (k.h > 0.7 && Math.hypot(k.x - x, k.z - z) < k.r * 0.55 + r && y < k.y + k.h * 0.8) return true;
     for (const p of c.plants) if (y < p.y + 2) for (const [px, pz, pr] of p.cols) if (Math.hypot(px - x, pz - z) < pr + r) return true;
     for (const w of c.wells) if (Math.hypot(w.x - x, w.z - z) < 1.05 + r && y < OW.terrain!.heightAt(w.x, w.z) + 0.9) return true;
+    for (const cv of c.caves) if (caveHit(cv, x, y, z, r, cv.y)) return true;
   }
   return false;
 }
@@ -138,9 +143,11 @@ function buildChunk(cx: number, cz: number, lod = 1): Chunk {
   const group = new THREE.Group();
   const fg = new THREE.BufferGeometry(); fg.setAttribute('position', new THREE.Float32BufferAttribute(tri, 3));
   const lg = new THREE.BufferGeometry(); lg.setAttribute('position', new THREE.Float32BufferAttribute(lines, 3));
-  group.add(new THREE.Mesh(fg, sharedFill()), new THREE.LineSegments(lg, sharedLine(Math.abs(z0 + CHUNK / 2) > POLAR_Z + 800 ? ICE_COLOR : GRID)));
+  // pale lines on the ice caps and high up the mountains (snow)
+  let top = 0; for (let k = 0; k < lat.length; k++) top = Math.max(top, lat[k]);
+  group.add(new THREE.Mesh(fg, sharedFill()), new THREE.LineSegments(lg, sharedLine(Math.abs(z0 + CHUNK / 2) > POLAR_Z + 800 || top > SNOW_LINE ? ICE_COLOR : GRID)));
   if (road.length) { const rg = new THREE.BufferGeometry(); rg.setAttribute('position', new THREE.Float32BufferAttribute(road, 3)); group.add(new THREE.LineSegments(rg, sharedLine(ROAD_COLOR))); }
-  const wells = chunkWells(T, cx, cz), plants = chunkPlants(T, cx, cz).filter((p) => !T.claimAt(p.x, p.z, 2));
+  const caves = chunkCaves(T, cx, cz), wells = chunkWells(T, cx, cz), plants = chunkPlants(T, cx, cz).filter((p) => !T.claimAt(p.x, p.z, 2));
   // felled trees and broken rocks (player changes, keyed by their index in the generated list) are left out
   const trees: Tree[] = [], stumps: Tree[] = [], rocks: Rock[] = [];
   // a claimed site is cleared: nothing grows on the levelled ground (the generated lists keep their indices)
@@ -148,18 +155,19 @@ function buildChunk(cx: number, cz: number, lod = 1): Chunk {
   chunkTrees(T, cx, cz).forEach((t, i) => { if (t.cols.some(([x, z]) => cleared(x, z))) return; const k = `tree:${wrapC(cx)}:${cz}:${i}`; gatherKey.set(t, k); (ripe(k) ? trees : stumps).push(t); });
   chunkRocks(T, cx, cz).forEach((r, i) => { if (cleared(r.x, r.z)) return; const k = `rock:${wrapC(cx)}:${cz}:${i}`; gatherKey.set(r, k); if (ripe(k)) rocks.push(r); });
   let nodes: PlantNode[] = [];
-  if (trees.length || stumps.length || rocks.length || wells.length || plants.length) {
+  if (trees.length || stumps.length || rocks.length || wells.length || plants.length || caves.length) {
     const pb = new PropBatch();
     for (const t of stumps) for (const [sx, sz, sr] of t.cols) { const r = Math.max(0.25, sr * 0.8); pb.box(sx - r, t.y - 0.1, sz - r, sx + r, t.y + 0.5, sz + r, GRID); }
     nodes = drawPlants(pb, plants, lod, group);
     for (const w of wells) drawWell(pb, w, T.heightAt(w.x, w.z));
+    for (const cv of caves) drawCave(pb, cv, T);
     for (const t of trees) drawTree(pb, t, lod);
     for (const k of rocks) pb.rock(k.x, k.y, k.z, k.r, k.h, k.sides, k.rot, GRID);
     group.add(pb.build());
   }
   localize(group, x0, z0);
   scene.add(group);
-  return { cx, cz, group, trees, rocks, wells, plants, nodes, lod };
+  return { cx, cz, group, trees, rocks, wells, plants, nodes, caves, lod };
 }
 /** Save keys of the trees and rocks in loaded chunks ("tree:<cx>:<cz>:<i>", canonical chunk x). */
 export const gatherKey = new WeakMap<object, string>();
@@ -529,9 +537,12 @@ export function placeName(x: number, z: number): string {
   if (Math.abs(z) > POLAR_Z) return z < 0 ? 'Northern ice cap' : 'Southern ice cap';
   const lv = Math.round(danger(x, z)), tag = lv ? ` · danger ${lv}` : ' · calm';
   if (G.char.claims.some((c) => claimDist(c, x, z) < CLAIM.r)) return 'Your claim' + tag;
+  for (const cv of loadedCaves()) if (Math.hypot(cv.x - x, cv.z - z) < 30) return cv.name + tag;
   for (const s of OW.structs.values()) if (s.poi.type !== 'village' && rectDist(s.poi.rect, x, z) < 10) return s.poi.name + tag;
   return 'Wilds' + tag;
 }
 
+/** Cave mouths in the loaded chunks. */
+export const loadedCaves = (): Cave[] => [...OW.chunks.values()].flatMap((c) => c.caves);
 /** Wells in the loaded chunks (for the E interaction). */
 export const loadedWells = (): Well[] => [...OW.chunks.values()].flatMap((c) => c.wells);

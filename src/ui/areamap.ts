@@ -43,7 +43,10 @@ export function openAreaMap(centre: { x: number; z: number; name: string }) {
     const x = centre.x - RANGE + (i + 0.5) * cell, z = centre.z - RANGE + (j + 0.5) * cell, w = T.water(x, z);
     if (w) ctx.fillStyle = w.kind === 'fresh' ? '#0b4a42' : w.kind === 'murky' ? '#2a3216' : '#34501a';
     else if (Math.abs(z) > POLAR_Z) ctx.fillStyle = '#26403a';
-    else { const h = T.heightAt(x, z), g = Math.max(0, Math.min(1, (h + 4) / 36)); ctx.fillStyle = `rgb(${Math.round(4 + g * 10)},${Math.round(22 + g * 60)},${Math.round(8 + g * 20)})`; }
+    else {
+      const h = T.heightAt(x, z), g = Math.max(0, Math.min(1, (h + 4) / 36)), m = Math.max(0, Math.min(1, (h - 26) / 110)); // mountains pale towards the peaks
+      ctx.fillStyle = `rgb(${Math.round(4 + g * 10 + m * 110)},${Math.round(22 + g * 60 + m * 90)},${Math.round(8 + g * 20 + m * 110)})`;
+    }
     ctx.fillRect(Math.floor(i * cell * k), Math.floor(j * cell * k), Math.ceil(cell * k) + 1, Math.ceil(cell * k) + 1);
   }
   // a faint 500 m grid

@@ -2,6 +2,7 @@
 // features from hash(world, rx, rz): points of interest (villages, ruins), forest density, terrain roughness.
 // New kinds of places are added as new PoiType values plus a placement rule here.
 import { hash, rng, rangeInt, DIRV, type Dir } from '../core/rng';
+import { onMountain } from './mountains';
 
 export const REGION = 256, CHUNK = 32;
 
@@ -78,6 +79,7 @@ function villageOfCell(world: number, gx: number, gz: number): [number, number] 
   const rx = R0 + gx * VCELL + ri(2, VCELL - 3), rz = gz * VCELL - (VCELL >> 1) + ri(2, VCELL - 3);
   if (polarRegion(rz) || polarRegion(rz + Math.sign(rz))) return null;
   if (Math.max(Math.abs(wrapR(rx)), Math.abs(rz)) < 6) return null; // keep the start region to Gridholm
+  if (onMountain(world, wrapR(rx) * REGION, rz * REGION, 90)) return null; // no village in the mountains
   return [rx, rz];
 }
 /** Is region (rx, rz) (canonical) the site of a village other than Gridholm? */
@@ -183,7 +185,8 @@ function baseInfo(world: number, rx: number, rz: number): RegionInfo {
       pois.push(ruinAt(rx, rz, 1, o[0] * dist + (o[0] ? 0 : lat), o[1] * dist + (o[1] ? 0 : lat), R));
     }
   } else if (R() < (Math.abs(rx) <= 1 && Math.abs(rz) <= 1 ? 0.4 : 0.5)) {
-    pois.push(ruinAt(rx, rz, 1, cx + ri(-80, 80), cz + ri(-80, 80), R));
+    const x = cx + ri(-80, 80), z = cz + ri(-80, 80);
+    if (!onMountain(world, x, z, 60)) pois.push(ruinAt(rx, rz, 1, x, z, R));
   }
   r = { rx, rz, pois, forest, rough };
   baseCache.set(key, r);
@@ -210,6 +213,7 @@ export function regionInfo(world: number, rx: number, rz: number): RegionInfo {
       // camps keep well out of every village's calm surroundings (see gen/danger.ts)
       if (worldDist(x, z, 0, 0) < 480) continue;
       if (around.some((p) => worldDist(p.x, p.z, x, z) < (p.type === 'village' ? 480 : 130))) continue;
+      if (onMountain(world, x, z, 45)) continue;
       pois.push(campAt(rx, rz, x, z, Rc)); break;
     }
   }
@@ -222,6 +226,7 @@ export function regionInfo(world: number, rx: number, rz: number): RegionInfo {
       const x = cx + (Rw() - 0.5) * 150, z = cz + (Rw() - 0.5) * 150;
       if (worldDist(x, z, 0, 0) < 400) continue;
       if (around.some((p) => worldDist(p.x, p.z, x, z) < (p.type === 'village' ? 400 : 110)) || pois.some((p) => worldDist(p.x, p.z, x, z) < 110)) continue;
+      if (onMountain(world, x, z, 60)) continue;
       pois.push(wreckAt(rx, rz, x, z, Rw)); break;
     }
   }

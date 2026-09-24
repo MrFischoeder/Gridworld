@@ -2,6 +2,7 @@
 import { rng, hash, DIRV } from '../core/rng';
 import { regionInfo, poisNear, villageSeed, type Poi, type Rect } from './regions';
 import { villageGates, VILLAGE_OFFSET } from './village';
+import { onMountain } from './mountains';
 
 export interface Road { id: string; from: number; to: number; gate: string; pts: [number, number][]; half: number }
 
@@ -30,7 +31,9 @@ export function regionRoads(world: number, rx: number, rz: number): Road[] {
   out = [];
   for (const v of regionInfo(world, rx, rz).pois) {
     if (v.type !== 'village') continue;
-    const ruins = poisNear(world, v.x, v.z, 420).filter((p) => p.type === 'ruin');
+    // ruins across a mountain get no road (the way would climb over it)
+    const blocked = (p: Poi) => { for (let t = 0.05; t < 1; t += 0.05) if (onMountain(world, v.x + (p.x - v.x) * t, v.z + (p.z - v.z) * t)) return true; return false; };
+    const ruins = poisNear(world, v.x, v.z, 420).filter((p) => p.type === 'ruin' && !blocked(p));
     if (!ruins.length) continue;
     for (const dir of villageGates(villageSeed(world, v))) {
       const [sx, sz] = gatePoint(v, dir), o = DIRV[dir];

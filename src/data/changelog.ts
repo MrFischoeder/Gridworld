@@ -4,6 +4,12 @@ export interface Change { v: string; date: string; title: string; notes: string[
 
 export const CHANGELOG: Change[] = [
   {
+    v: '0.14.0', date: '2026-09-24', title: 'Mountains and cave mouths',
+    notes: ['Now and then the land rises into mountains: ranges of sharp ridges and peaks up to about 170 m, with snow lines near the tops. Some slopes are too steep to climb. The country round Gridholm stays as it was; villages, ruins, camps, crash sites, roads and lakes keep off the mountains.',
+      'Real mountains show on the horizon from a few kilometres away, and the maps shade them paler towards the peaks. The forest thins out up the slopes.',
+      'Cave mouths open in the mountain flanks, reached over a gentle slope. For now every cave has fallen in: E at the mouth tells you the way is blocked. Cave systems will come later.'],
+  },
+  {
     v: '0.13.0', date: '2026-09-24', title: 'Auto turrets',
     notes: ['Radek sells the Auto Turret (350 gold). Build it on your claim like any other part (B, Auto Turret, with 2 wire, a Screwdriver and Pliers): on the ground, on a floor or up on a roof.',
       'A turret shoots anything hostile within about 30 m that it can see: creatures, robots, drones, bandits and raiders, but not a calm Bramble. It turns its head towards the nearest target and fires; walls, floors and the land block its view, so give it a clear field of fire (a roof is a good spot). Its shots make noise.',

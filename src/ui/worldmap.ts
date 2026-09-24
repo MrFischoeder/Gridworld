@@ -25,9 +25,11 @@ function tile(cx: number, cz: number): HTMLCanvasElement {
   cv = document.createElement('canvas'); cv.width = cv.height = CELLS;
   const ctx = cv.getContext('2d')!, img = ctx.createImageData(CELLS, CELLS), lat = T.lattice(cx, cz), f = T.chunkFeatures(cx, cz);
   for (let j = 0; j < CELLS; j++) for (let i = 0; i < CELLS; i++) {
-    const h = lat[i + VERTS * j], band = Math.floor(h / 4) !== Math.floor(lat[i + 1 + VERTS * j] / 4) || Math.floor(h / 4) !== Math.floor(lat[i + VERTS * (j + 1)] / 4);
+    // contour lines every 4 m in the lowlands, every 12 m up the mountains
+    const h = lat[i + VERTS * j], cs = h > 26 ? 12 : 4, band = Math.floor(h / cs) !== Math.floor(lat[i + 1 + VERTS * j] / cs) || Math.floor(h / cs) !== Math.floor(lat[i + VERTS * (j + 1)] / cs);
     const x = cx * CHUNK + i * STEP + 1, z = cz * CHUNK + j * STEP + 1;
-    let r = 0, g = 28 + h * 3.2, b = 10 + h * 1.2;
+    let r = 0, g = 28 + Math.min(h, 25) * 3.2, b = 10 + Math.min(h, 25) * 1.2;
+    if (h > 25) { const m = Math.min(1, (h - 25) / 120); r = 30 + m * 150; g = 108 + m * 120; b = 40 + m * 150; } // rock, pale towards the peaks
     if (band) { g += 30; b += 12; }
     if (f.pads.some((p) => inRect(p.poi.rect, x, z))) { r = 10; g = 90; b = 40; }
     else if (f.roads.some((rd) => nearest(rd.pts, x, z) < rd.half + 0.5)) { r = 60; g = 170; b = 90; }

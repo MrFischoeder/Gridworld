@@ -5,6 +5,7 @@ import { regionInfo, regionOf, poisNear, wrapR, CHUNK, REGION, WORLD_W, POLAR_Z,
 import { regionRoads, nearestOnRoad, roadBounds, type Road } from './roads';
 import { lakesIn, lakeBed, shoreR, type Lake, type WaterHere } from './water';
 import { claimFlatten, claimDist, CLEAR_R, type Claim } from './claims';
+import { mountainMask, mountainLift } from './mountains';
 
 export const STEP = 2, CELLS = CHUNK / STEP, VERTS = CELLS + 1;
 export const MAX_H = 25;
@@ -42,11 +43,12 @@ export class Terrain {
     const a = v(x0, z0), b = v(x0 + 1, z0), c = v(x0, z0 + 1), d = v(x0 + 1, z0 + 1);
     return a + (b - a) * tx + (c - a) * tz + (a - b - c + d) * tx * tz;
   }
-  /** Natural terrain before any flattening: gentle hills in 0..25 m; towards the poles an ice sheet, then the ice wall. */
+  /** Natural terrain before any flattening: gentle hills in 0..25 m, mountains here and there (gen/mountains.ts); towards the poles an ice sheet, then the ice wall. */
   base(x: number, z: number): number {
     const amp = 0.55 + 0.8 * this.rough(x, z);
     const raw = 12.5 + amp * (46 * (fbm(this.s1, x / S170, z / 170, 4, P170) - 0.5) + 8 * (fbm(this.s2, x / S48, z / 48, 3, P48) - 0.5));
     let h = 12.5 + 12.5 * Math.tanh((raw - 12.5) / 12.5);
+    h += mountainLift(this.world, x, z, mountainMask(this.world, x, z));
     const az = Math.abs(z);
     if (az > POLAR_Z) {
       const ice = ICE_Y + 3 * (fbm(this.s2 + 5, x / S60, z / 60, 2, P60) - 0.5);
@@ -149,7 +151,8 @@ export class Terrain {
     const [rx, rz] = regionOf(x, z), reg = regionInfo(this.world, rx, rz).forest;
     const n = fbm(this.s2 + 17, x / S90, z / 90, 3, P90);
     const cold = Math.abs(z) > POLAR_Z - 3000 ? Math.max(0, 1 - (Math.abs(z) - (POLAR_Z - 3000)) / 2500) : 1; // forests thin out towards the ice
-    return Math.max(0, Math.min(1, (n - 0.62 + reg * 0.3) * 3.2)) * cold;
+    const high = Math.max(0, Math.min(1, (80 - this.base(x, z)) / 30)); // the forest thins out up the mountains
+    return Math.max(0, Math.min(1, (n - 0.62 + reg * 0.3) * 3.2)) * cold * high;
   }
 }
 const key = (cx: number, cz: number) => (cx + 32768) * 65536 + (cz + 32768);

@@ -8,6 +8,7 @@ import { rng, hash } from '../core/rng';
 import { REGION, CHUNK, POLAR_Z, wrapR, poisNear, type Rect } from './regions';
 import { regionRoads, nearestOnRoad } from './roads';
 import type { Terrain } from './terrain';
+import { onMountain } from './mountains';
 
 export type WaterKind = 'fresh' | 'murky' | 'toxic';
 export interface Lake {
@@ -73,7 +74,7 @@ export function regionLakes(t: Terrain, rx: number, rz: number): Lake[] {
   const low = t.base(x, z) < 9;
   if (roll < (low ? 0.55 : 0.28) && Math.abs(z) + r * 2 < POLAR_Z) {
     const pois = poisNear(t.world, x, z, r * 2 + 120);
-    const clear = pois.every((p) => rectD(p.rect, x, z) > r * LAKE_REACH * 1.3 + p.flat + p.blend + 6) && !nearRoad(t.world, x, z, r * LAKE_REACH * 1.3 + 8);
+    const clear = pois.every((p) => rectD(p.rect, x, z) > r * LAKE_REACH * 1.3 + p.flat + p.blend + 6) && !nearRoad(t.world, x, z, r * LAKE_REACH * 1.3 + 8) && !onMountain(t.world, x, z, r * 2 + 20);
     if (clear) {
       // the level: just under the lowest natural ground around the rim
       let rim = Infinity;
@@ -113,7 +114,7 @@ export function regionWells(t: Terrain, rx: number, rz: number): Well[] {
     for (let i = 0; i < 4 && !out.length; i++) {
       const x = rx * REGION + (R() - 0.5) * 200, z = rz * REGION + (R() - 0.5) * 200;
       if (poisNear(t.world, x, z, 80).some((p) => rectD(p.rect, x, z) < p.flat + p.blend + 4)) continue;
-      if (nearRoad(t.world, x, z, 6)) continue;
+      if (nearRoad(t.world, x, z, 6) || onMountain(t.world, x, z, 10)) continue;
       if (lakesIn(t, { x0: x - 4, z0: z - 4, x1: x + 4, z1: z + 4 }).some((l) => Math.hypot(l.x - x, l.z - z) < l.r * LAKE_REACH * 1.3 + 6)) continue;
       out.push({ x: Math.round(x) + 0.5, z: Math.round(z) + 0.5 });
     }
