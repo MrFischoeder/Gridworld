@@ -23,9 +23,11 @@ import { lightFire } from './cooking';
 import { placeBench } from './benches';
 import { startPlacing } from './claims';
 import { BASES_OPEN, BASES_CLOSED_MSG } from '../data/building';
+import { lyingModel } from './pickmodels';
 
 export interface Crystal { m: THREE.LineSegments; p: THREE.Vector3; v: THREE.Vector3; age: number }
-export interface Pickup { g: THREE.Group; k: ItemKey; p: THREE.Vector3; age: number; warned?: boolean }
+/** `rest`: it lies on the ground as what it is (world/pickmodels.ts) instead of floating and spinning as a token. */
+export interface Pickup { g: THREE.Group; k: ItemKey; p: THREE.Vector3; age: number; warned?: boolean; rest?: boolean }
 export interface Chest { g: THREE.Group; lidPivot: THREE.Group; beam: THREE.Line; beamMat: THREE.LineBasicMaterial; i: number; open: boolean; anim: number }
 export interface Hatch { g: THREE.Group; rings: THREE.LineLoop[] }
 
@@ -48,6 +50,11 @@ export function dropPickup(at: THREE.Vector3, kind: ItemKey | 'relic') {
     const beam = new THREE.Line(new THREE.BufferGeometry().setFromPoints([V(0, 0.3, 0), V(0, 3, 0)]), add(c)); g.add(beam);
     scene.add(g); W.pickups.push({ g, k, p: at.clone(), age: 0 }); return;
   }
+  const lying = lyingModel(k, item(k).type);
+  if (lying) { // logs, teeth, hides, scrap...: lying on the ground, turned any which way
+    g.add(lying); g.rotation.y = Math.random() * 6.283;
+    scene.add(g); W.pickups.push({ g, k, p: at.clone(), age: 0, rest: true }); return;
+  }
   if (NOURISH[k] || item(k).type === 'mat') { // food (lime) and materials (bone): a small faceted lump
     g.add(edgesOf(new THREE.DodecahedronGeometry(0.18), add(NOURISH[k] ? FOOD_COLOR : 0xe8e0c0)));
     scene.add(g); W.pickups.push({ g, k, p: at.clone(), age: 0 }); return;
@@ -55,6 +62,11 @@ export function dropPickup(at: THREE.Vector3, kind: ItemKey | 'relic') {
   g.add(edgesOf(new THREE.BoxGeometry(0.3, 0.3, 0.3), add(k === 'medkit' ? 0x9dffe0 : 0x5cc8ff)));
   if (k === 'medkit') { const c = new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints([V(-0.1, 0, 0.16), V(0.1, 0, 0.16), V(0, -0.1, 0.16), V(0, 0.1, 0.16)]), add(0x9dffe0)); g.add(c); }
   scene.add(g); W.pickups.push({ g, k, p: at.clone(), age: 0 });
+}
+/** Where a lying pickup meets the ground: the terrain under it, or the voxel floor it settled over (tokens hover ~0.47 m up). */
+function restY(p: THREE.Vector3): number {
+  const g = G.ground ? G.ground(p.x, p.z) : -Infinity;
+  return Number.isFinite(g) && g <= p.y + 0.1 && g > p.y - 1.5 ? g : p.y - 0.47;
 }
 /** XP per crystal; scales with danger (dungeon depth). */
 export let crystalXp = () => 5 * depthNow();
@@ -77,7 +89,8 @@ export function updateLoot(dt: number, time: number) {
   for (let i = W.pickups.length - 1; i >= 0; i--) {
     const p = W.pickups[i]; p.age += dt;
     { const np = p.p.clone(); np.y -= dt * 4; if (emptyAt(V(np.x, np.y - 0.45, np.z))) p.p.copy(np); } // settles onto the floor
-    p.g.position.copy(p.p); p.g.position.y += Math.sin(time * 3 + i) * 0.08; p.g.rotation.y = time * 1.5;
+    if (p.rest) p.g.position.set(p.p.x, restY(p.p), p.p.z);
+    else { p.g.position.copy(p.p); p.g.position.y += Math.sin(time * 3 + i) * 0.08; p.g.rotation.y = time * 1.5; }
     if (Math.hypot(p.p.x - G.pos.x, p.p.z - G.pos.z) < 1.3 && Math.abs(p.p.y - body.y) < 2.5 && p.age > 0.4) {
       const where = addItem(p.k);
       if (where) { scene.remove(p.g); W.pickups.splice(i, 1); logLine(ITEMS[p.k].name + (where === 'hands' ? ' (in your hands)' : where === 'back' ? ' (on your back)' : ' → backpack')); saveChar(); if (item(p.k).type === 'quest') onPickup(p.k); }

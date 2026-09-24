@@ -4,6 +4,12 @@ export interface Change { v: string; date: string; title: string; notes: string[
 
 export const CHANGELOG: Change[] = [
   {
+    v: '0.43.0', date: '2026-09-24', title: 'Loot that looks like what it is',
+    notes: ['Things you drop or knock loose no longer float about as spinning dice. They lie on the ground as what they are: logs with cut ends and growth rings, stacked planks, stones, ore lumps streaked with iron or copper.',
+      'Kills leave recognisable remains too: hides spread flat with their legs, curved fangs, long gnawer incisors, armour plates, wing membranes and meat on the bone.',
+      'Robot scrap is a bent plate with a cog and a pipe end, electronic components are circuit boards, and a power core is a ringed cell. Mushrooms, fruit pods, crystals, bread, flasks, tools, coils of wire and rope, nails and trade crates each have their own shape.'],
+  },
+  {
     v: '0.42.0', date: '2026-09-24', title: 'Hard work: chopping, mining and ore',
     notes: ['Chopping a tree and breaking a rock is now real work. Hold E and your hero swings the hatchet or pickaxe (you see it in your hands), about one blow a second. A small tree takes around 6 seconds and a big one 15. Let go and your progress is kept while you stay.',
       'Some rocks carry veins of iron (rust streaks) or copper (green-blue streaks). They are rare near Gridholm and common in the mountains. Mining a vein takes longer and gives ore lumps besides the stones, and a mined-out vein takes 4 days to come back.',
