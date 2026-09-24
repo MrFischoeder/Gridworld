@@ -2,6 +2,7 @@
 import { G, W } from '../game';
 import { escortLine } from './caravans';
 import { raidLine } from './villageraid';
+import { contractLines, contractMarkers } from '../ui/contracts';
 import { generateQuest, compass, km, type Quest } from '../gen/quests';
 import { boardPeriod } from '../core/time';
 import { worldDist, nearX, wrapDx } from '../gen/regions';
@@ -178,8 +179,9 @@ export function updateTracker(dt: number) {
     return s;
   });
   const esc = escortLine(); if (esc) lines.push(esc);
+  lines.push(...contractLines());
   const raid = raidLine(); if (raid) lines.unshift(raid);
   trackEl.innerHTML = lines.map((l) => `<div>${l}</div>`).join('');
 }
-export const questMarkers = (): { x: number; z: number; label: string }[] =>
-  G.char.quests.map((q) => ({ t: questTarget(q), q })).filter((m) => m.t).map(({ t, q }) => ({ x: nearX(t!.x, G.pos.x), z: t!.z, label: q.kind === 'hunt' ? q.pack!.alpha : q.kind === 'camp' ? q.place!.name : ITEMS[q.item!].name }));
+export const questMarkers = (): { x: number; z: number; label: string }[] => [...contractMarkers(), ...(
+  G.char.quests.map((q) => ({ t: questTarget(q), q })).filter((m) => m.t).map(({ t, q }) => ({ x: nearX(t!.x, G.pos.x), z: t!.z, label: q.kind === 'hunt' ? q.pack!.alpha : q.kind === 'camp' ? q.place!.name : ITEMS[q.item!].name })))];

@@ -9,6 +9,7 @@ import { KCAL } from './data/survival';
 import type { Part } from './gen/base';
 import type { TownState } from './gen/town';
 import type { MarketState } from './gen/market';
+import type { Contract } from './gen/contracts';
 
 /** An item stack. `c` is the condition in percent of a used part (worn tires); such items do not stack. */
 export interface Slot { k: ItemKey; n: number; c?: number }
@@ -69,6 +70,8 @@ export interface Char {
   caravans: Record<string, number>;
   /** The caravan you are guarding (world/caravans.ts): its road and departure, where it goes, the pay, how long you have been away from it, raids so far. */
   escort: { id: string; road: string; k: number; to: number; toName: string; pay: number; away: number; raids: number; second: boolean } | null;
+  /** Delivery contracts you took (gen/contracts.ts), and the ids of offers taken (so they are not posted again). */
+  contracts: Contract[]; taken: string[];
 }
 
 export const SAVE_KEY = 'gridWorld.character.v3';
@@ -79,7 +82,7 @@ export const newChar = (): Char => ({
   v: 3, level: 1, xp: 0, gold: 0, world: (Math.random() * 1e6) | 0,
   inv: Array(INV_SIZE).fill(null), mods: Array(MOD_SIZE).fill(null), opened: {}, unlocked: {}, killed: {},
   loc: 'overworld', ow: null, dungeon: null, discovered: {}, containers: {}, vehicles: [], board: { seq: 0, offers: [], stamp: boardPeriod(START_TIME) }, quests: [], camps: {}, time: START_TIME, gunMods: [null, null, null], kcal: KCAL.start, stomach: 0, water: 100, harvest: {}, benches: [], claims: [],
-  hands: [{ k: 'blaster', n: 1 }], back: [{ k: 'blade', n: 1 }, null], wear: {}, pid: Math.random().toString(36).slice(2, 10), towns: {}, market: {}, ledger: {}, caravans: {}, escort: null,
+  hands: [{ k: 'blaster', n: 1 }], back: [{ k: 'blade', n: 1 }, null], wear: {}, pid: Math.random().toString(36).slice(2, 10), towns: {}, market: {}, ledger: {}, caravans: {}, escort: null, contracts: [], taken: [],
 });
 
 interface V2 { level?: number; xp?: number; gold?: number; world?: number; inv?: (Slot | null)[]; mods?: (ItemKey | null)[] }

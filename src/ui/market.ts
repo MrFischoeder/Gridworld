@@ -26,18 +26,23 @@ const TRUNK_REACH = 90; // metres from the village middle: vehicles parked by th
 let here: { poi: Poi; seed: number } | null = null;
 
 const ago = (t: number) => { const h = (G.char.time - t) / 60; return h < 1 ? 'just now' : h < 24 ? Math.round(h) + ' h ago' : Math.round(h / 24) + ' d ago'; };
-/** Your backpack, then the trunks of your vehicles parked by the village. */
-function stores(): { name: string; slots: (Slot | null)[]; cap?: number }[] {
+/** Your backpack, then the trunks of your vehicles parked by village `at` (the market's village by default). */
+export function stores(at: { x: number; z: number } | null = here?.poi ?? null): { name: string; slots: (Slot | null)[]; cap?: number }[] {
   const out: { name: string; slots: (Slot | null)[]; cap?: number }[] = [{ name: 'backpack', slots: G.char.inv, cap: PACK.vol }];
-  if (here) for (const v of vehicles) if (v.claimed && !v.ai && worldDist(v.st.x, v.st.z, here.poi.x, here.poi.z) < TRUNK_REACH) out.push({ name: 'trunk', slots: v.st.trunk.items });
+  if (at) for (const v of vehicles) if (v.claimed && !v.ai && worldDist(v.st.x, v.st.z, at.x, at.z) < TRUNK_REACH) out.push({ name: 'trunk', slots: v.st.trunk.items });
   return out;
 }
-const carried = (g: Good) => stores().reduce((a, s) => a + count(s.slots, g), 0);
-function takeFrom(g: Good, n: number) {
-  for (const s of stores()) for (let i = 0; i < s.slots.length && n > 0; i++) { const x = s.slots[i]; if (x?.k === g) { const m = Math.min(n, x.n); x.n -= m; n -= m; if (x.n <= 0) s.slots[i] = null; } }
+/** Crates of g you have with you at `at` (backpack and trunks parked there). */
+export const carried = (g: Good, at = here?.poi ?? null) => stores(at).reduce((a, s) => a + count(s.slots, g), 0);
+export function takeFrom(g: Good, n: number, at = here?.poi ?? null) {
+  for (const s of stores(at)) for (let i = 0; i < s.slots.length && n > 0; i++) { const x = s.slots[i]; if (x?.k === g) { const m = Math.min(n, x.n); x.n -= m; n -= m; if (x.n <= 0) s.slots[i] = null; } }
 }
 /** Put n crates away; returns how many found no room. */
-function putAway(g: Good, n: number): number { for (const s of stores()) if (n > 0) n = putItems(s.slots, g as ItemKey, n, s.cap); return n; }
+export function putAway(g: Good, n: number, at = here?.poi ?? null, trunksFirst = false): number {
+  const list = stores(at);
+  for (const s of trunksFirst ? [...list.slice(1), list[0]] : list) if (n > 0) n = putItems(s.slots, g as ItemKey, n, s.cap);
+  return n;
+}
 
 function record() {
   if (!here) return;

@@ -4,6 +4,13 @@ export interface Change { v: string; date: string; title: string; notes: string[
 
 export const CHANGELOG: Change[] = [
   {
+    v: '0.30.0', date: '2026-09-24', title: 'Delivery contracts',
+    notes: ['Every general store now posts delivery work: ask "Any deliveries to be done?". New notices go up every 12 hours, two per village, and you can hold three contracts at once.',
+      'Orders: the village wants crates of something it needs, brought by a deadline, and pays about a third more than its market would. Get them wherever you like: another village\'s market, a passing caravan.',
+      'Hauls: the village sends its own goods to another village two to nine kilometres off. The crates are loaded into the trunk of your vehicle parked by the gates (and your backpack) against a deposit; hand them over at the other end and you get the deposit back with your pay, more for longer roads and wilder country.',
+      'Hand the crates over at the destination\'s general store, all at once or a load at a time. Miss the deadline and the contract fails (a haul\'s deposit is lost). Your contracts show in the quest tracker, and their destinations on the compass and the maps.'],
+  },
+  {
     v: '0.29.0', date: '2026-09-24', title: 'Village industries',
     notes: ['Every village now lives on its own industry, worked at a site outside its fence: farming villages till fields (grain, carrots, potatoes), mining villages dig a mine with a headframe and an adit into a spoil mound (coal, iron ore, copper; mostly near the hills), oil villages pump crude from nodding pumpjacks, and there are sawmills, fish racks and salt pans, workshops (tools, cloth) and salvage yards (tech, medicine).',
       'Five new trade goods: Sack of Carrots, Sack of Potatoes, Crate of Coal, Crate of Copper Ore and Barrel of Crude Oil (the old Crate of Ore is now Crate of Iron Ore). What a village sells is what its industry makes.',
