@@ -518,6 +518,7 @@ export function updateCreatures(dt: number, time: number) {
     else leechwing(c, dt, to, dist, safe);
     animate(c, dt, time);
   }
+  updateDead(dt);
 }
 function animate(c: Creature, dt: number, time: number) {
   c.g.position.copy(c.p); c.g.rotation.y = c.heading;
@@ -550,7 +551,7 @@ export function hurtCreature(c: Creature, dmg: number) {
   if (c.kind === 'gnawer') for (const m of c.pack ?? [c]) { m.hurt = true; if (m.state === 'roam') { m.state = 'hunt'; m.timer = 0; } }
   if (c.hp > 0) return;
   const at = c.p.clone(), s = CREATURES[c.kind];
-  burst(at, HOSTILE, 30, 1.6);
+  burst(at, HOSTILE, 12, 1.1);
   for (let i = 0; i < s.crystals; i++) dropCrystal(at);
   if (Math.random() < 0.15) dropPickup(at, 'medkit');
   for (const [k, chance, lo, hi] of DROPS[c.kind]) if (Math.random() < chance) {
@@ -559,8 +560,69 @@ export function hurtCreature(c: Creature, dmg: number) {
   }
   logLine((c.alpha ? ALPHA[c.kind] : s.name) + ' killed');
   const qid = c.questId, alpha = !!c.alpha;
-  removeCreature(c);
+  fallCreature(c);
   onKill(c.kind, qid, alpha);
+}
+
+// ---------- dying ----------
+// The dead are out of W.creatures at once but lie a while: runners stumble, slide on and roll onto their side with
+// their legs kicking, a Bramble's legs fold under its weight, a Gnawer flips onto its back, a Leechwing drops out of
+// the sky tumbling and lands with its wings spread. The colour drains, and after a few seconds they sink away.
+interface Dead { c: Creature; t: number; side: 1 | -1; land: number; vy: number; spin: THREE.Vector3; slide: THREE.Vector3; y0: number }
+const dead: Dead[] = [];
+const LIE_C = 5, SINK_C = 1.5, DRAINED = 0x8a6a3a;
+function fallCreature(c: Creature) {
+  const i = W.creatures.indexOf(c); if (i >= 0) W.creatures.splice(i, 1);
+  if (c.pack) { const j = c.pack.indexOf(c); if (j >= 0) c.pack.splice(j, 1); }
+  const away = V(c.p.x - G.pos.x, 0, c.p.z - G.pos.z).normalize();
+  const slide = away.multiplyScalar(c.kind === 'bramble' ? 0.8 : 1.6 + c.speed * 0.25);
+  c.mat.color.setHex(0xffffff);
+  dead.push({ c, t: 0, side: Math.random() < 0.5 ? 1 : -1, land: -1, vy: c.kind === 'leechwing' ? c.dir.y * CREATURES.leechwing.speed * 0.3 : 0,
+    spin: V((Math.random() - 0.5) * 7, 0, (Math.random() - 0.5) * 9), slide, y0: c.p.y });
+}
+const ease = (t: number) => t * t * (3 - 2 * t);
+function updateDead(dt: number) {
+  for (let i = dead.length - 1; i >= 0; i--) {
+    const d = dead[i], c = d.c;
+    d.t += dt;
+    const t = d.t, gy = env ? env.ground(c.p.x, c.p.z) : d.y0 - CREATURES[c.kind].lift;
+    if (c.kind === 'leechwing') {
+      if (d.land < 0) { // falling, tumbling, the wings flapping weakly
+        d.vy -= 20 * dt; c.p.y += d.vy * dt; c.p.addScaledVector(d.slide, dt * 3);
+        c.g.rotation.x += d.spin.x * dt; c.g.rotation.z += d.spin.z * dt;
+        const fl = Math.sin(t * 16) * 0.6 * Math.exp(-t);
+        if (c.wings.length) { c.wings[0].rotation.z = -fl; c.wings[1].rotation.z = fl; }
+        if (c.p.y <= gy + 0.25) { c.p.y = gy + 0.25; d.land = t; burst(c.p.clone(), DRAINED, 10, 0.9); }
+      } else { // crumpled on the ground, wings spread flat
+        const k = Math.min(1, (t - d.land) / 0.3);
+        c.g.rotation.x *= 1 - k; c.g.rotation.z = c.g.rotation.z * (1 - k) + d.side * 0.25 * k;
+        if (c.wings.length) { c.wings[0].rotation.z = 0.1 * k; c.wings[1].rotation.z = -0.1 * k; }
+      }
+    } else {
+      // stumble on (sliding to a stop), drop and roll: onto the side, or a Gnawer onto its back
+      const fall = ease(Math.min(1, t / (c.kind === 'bramble' ? 0.9 : 0.55))), roll = c.kind === 'gnawer' ? Math.PI * 0.95 : c.kind === 'bramble' ? 0.25 : 1.45;
+      const slow = Math.max(0, 1 - t / 0.5);
+      c.p.addScaledVector(d.slide, dt * slow * 2);
+      const rest = c.kind === 'bramble' ? CREATURES.bramble.lift * 0.45 : c.kind === 'gnawer' ? 0.14 : c.r * 0.45;
+      c.p.y = d.y0 + (gy + rest - d.y0) * fall;
+      c.g.rotation.z = d.side * roll * fall;
+      if (c.kind === 'bramble') c.g.rotation.x = 0.12 * fall; // down on its knees, nose first
+      // legs: a Bramble's fold under it, the others kick (fast at first, then a twitch now and then)
+      c.legs.forEach((l, k) => {
+        if (c.kind === 'bramble') l.rotation.x = (k < 2 ? -1 : 1) * 1.1 * fall;
+        else l.rotation.x = Math.sin(t * (c.kind === 'gnawer' ? 38 : 24) + k * 1.7) * 0.7 * Math.exp(-t * 1.6) + (t > 1.5 && Math.sin(t * 3 + k) > 0.97 ? 0.3 : 0);
+      });
+      if (c.head) c.head.rotation.x = 0.45 * fall;
+      if (c.jaw) c.jaw.rotation.x = 0.35 * fall;
+      if (c.tail) c.tail.rotation.y = Math.sin(t * 9) * 0.3 * Math.exp(-t * 2);
+      if (d.land < 0 && fall >= 1) d.land = t;
+    }
+    c.mat.color.setHex(t < 0.2 ? 0xffffff : DRAINED);
+    const lie = d.land < 0 ? 0 : t - d.land;
+    if (lie > LIE_C) c.p.y -= dt * 0.8; // sinking
+    c.g.position.copy(c.p);
+    if (lie > LIE_C + SINK_C || t > 20) { removeCreature(c); dead.splice(i, 1); }
+  }
 }
 export function removeCreature(c: Creature) {
   scene.remove(c.g);
@@ -569,7 +631,7 @@ export function removeCreature(c: Creature) {
   const i = W.creatures.indexOf(c); if (i >= 0) W.creatures.splice(i, 1);
   if (c.pack) { const j = c.pack.indexOf(c); if (j >= 0) c.pack.splice(j, 1); }
 }
-export function clearCreatures() { for (const c of [...W.creatures]) removeCreature(c); }
+export function clearCreatures() { for (const c of [...W.creatures]) removeCreature(c); for (const d of dead) removeCreature(d.c); dead.length = 0; }
 /** Debug / console: put a creature near the player. */
 export function spawnCreatureNear(kind: CreatureKind, d = 18) {
   if (!env) return false;

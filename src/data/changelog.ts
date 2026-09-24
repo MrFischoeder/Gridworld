@@ -4,6 +4,12 @@ export interface Change { v: string; date: string; title: string; notes: string[
 
 export const CHANGELOG: Change[] = [
   {
+    v: '0.38.0', date: '2026-09-24', title: 'Creatures and machines go down',
+    notes: ['Killed creatures fall instead of vanishing. Ravagers stumble on, slide to a stop and roll onto their side with their legs kicking. A Bramble\'s legs fold under its weight and it sinks down nose first. Gnawers flip onto their backs. A Leechwing drops out of the sky tumbling and lands with its wings spread.',
+      'Destroyed robots break down. They shudder and throw sparks while their lights flicker. Bipeds topple over, walkers\' legs splay and the body drops, and the Repair Drone falls out of the air. They hit the ground with a blast that can tear an arm off a heavy machine, then lie there smoking and dark.',
+      'The dead stay on the ground for a few seconds, drained of colour, then sink away. They no longer count as foes the moment they die.'],
+  },
+  {
     v: '0.37.0', date: '2026-09-24', title: 'Bandits fall',
     notes: ['Killed bandits no longer vanish in a puff. The body flashes white, the weapon flies from the hand (a shield too) and clatters to the ground, the knees give, and the bandit topples away from the blow: backwards when hit from the front, forwards from behind, with a small bounce as he lands.',
       'Bodies lie along the ground, even on a slope. Their colour drains away, and after a few seconds they sink into the ground with their weapons. The Bandit Boss falls a little slower, and his name tag goes when he does.',

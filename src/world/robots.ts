@@ -411,6 +411,7 @@ export function updateRobots(dt: number, time: number) {
     animate(r, dt, time);
   }
   updateShells(dt, time);
+  updateScraps(dt);
   if (indoor) updateBolts(dt); // outdoors the bandits' update moves them
 }
 
@@ -421,15 +422,84 @@ export function hurtRobot(r: Robot, dmg: number) {
   if (r.state !== 'hunt') alert(r);
   if (r.hp > 0) return;
   const at = r.p.clone();
-  burst(at, ROBOT_COLOR, 40, 1.8); burst(at, BEAM_COLOR, 16, 1);
+  burst(at, BEAM_COLOR, 14, 0.9);
   for (let i = 0; i < s.crystals; i++) dropCrystal(at);
   for (const [k, chance, lo, hi] of s.loot) if (Math.random() < chance) {
     const n = lo + Math.floor(Math.random() * (hi - lo + 1));
     for (let i = 0; i < n; i++) dropPickup(V(at.x + (Math.random() - 0.5) * 1.6, at.y, at.z + (Math.random() - 0.5) * 1.6), k);
   }
   logLine(s.name + ' destroyed');
-  removeRobot(r);
+  wreckRobot(r);
   onKill('drone');
+}
+
+// ---------- breaking down ----------
+// A destroyed machine is out of W.robots at once, then: it shudders, throwing sparks, the lights flickering; it gives
+// way (bipeds topple over, walkers' legs splay and the body drops, the repair drone falls out of the air); it hits the
+// ground with a blast that may tear an arm off; it smokes, goes dark, and after a while sinks away.
+interface Scrap { r: Robot; t: number; dir: 1 | -1; land: number; vy: number; y0: number; parts: { o: THREE.Object3D; v: THREE.Vector3; spin: THREE.Vector3; rest: boolean }[]; smokeT: number }
+const scraps: Scrap[] = [];
+const SHUDDER = 0.7, COLLAPSE = 0.7, LIE_R = 6, SINK_R = 1.8, DARK = 0x6a4a2a;
+function wreckRobot(r: Robot) {
+  const i = W.robots.indexOf(r); if (i >= 0) W.robots.splice(i, 1);
+  const j = r.group.indexOf(r); if (j >= 0) r.group.splice(j, 1);
+  const front = Math.cos(Math.atan2(G.pos.x - r.p.x, G.pos.z - r.p.z) - r.heading) > 0;
+  scraps.push({ r, t: 0, dir: front ? -1 : 1, land: -1, vy: 0, y0: r.p.y, parts: [], smokeT: 0 });
+}
+const easeR = (t: number) => t * t * (3 - 2 * t);
+function updateScraps(dt: number) {
+  for (let i = scraps.length - 1; i >= 0; i--) {
+    const w = scraps[i], r = w.r, s = ROBOTS[r.model];
+    w.t += dt;
+    const t = w.t, gy = env ? env.ground(r.p.x, r.p.z) : w.y0 - s.lift;
+    let jx = 0, jz = 0;
+    if (t < SHUDDER) { // shudder and spark
+      jx = (Math.random() - 0.5) * 0.08; jz = (Math.random() - 0.5) * 0.08;
+      r.g.rotation.z = (Math.random() - 0.5) * 0.08;
+      if (Math.random() < dt * 9) burst(r.p.clone().add(V((Math.random() - 0.5) * s.r, (Math.random() - 0.3) * s.h * 0.4, (Math.random() - 0.5) * s.r)), Math.random() < 0.5 ? 0xffffff : BEAM_COLOR, 6, 0.5);
+      r.mat.color.setHex(Math.random() < 0.5 ? 0xffffff : ROBOT_COLOR);
+      r.arms.forEach((a) => { a.rotation.x += (0.6 - a.rotation.x) * dt * 3; });
+    } else if (w.land < 0) { // giving way
+      const k = easeR(Math.min(1, (t - SHUDDER) / COLLAPSE)), low = gy + Math.min(s.lift, 0.2 + s.h * 0.12);
+      r.mat.color.setHex(DARK);
+      if (r.model === 'repair') { // falls out of the air, tilting
+        w.vy -= 20 * dt; r.p.y = Math.max(low, r.p.y + w.vy * dt); r.g.rotation.x += w.dir * dt * 1.6; r.g.rotation.z += dt * 1.1;
+        if (r.p.y <= low) w.land = t;
+      } else if (r.biped) { // topples over about its feet
+        r.g.rotation.x = w.dir * k * (Math.PI / 2 - 0.12); r.p.y = w.y0 + (low - w.y0) * k;
+        r.legs.forEach((l, n) => { l.rotation.x = (n ? -0.5 : 0.3) * k; });
+        if (k >= 1) w.land = t;
+      } else { // walkers: legs splay, the body drops
+        r.legs.forEach((l, n) => { l.rotation.z = (n % 2 ? -1 : 1) * 0.9 * k; l.rotation.x = (n < 2 ? 0.3 : -0.3) * k; });
+        r.p.y = w.y0 + (low - w.y0) * k; r.g.rotation.z = w.dir * 0.12 * k;
+        if (k >= 1) w.land = t;
+      }
+      if (w.land >= 0) { // the crash: a blast, and the heavy ones lose an arm
+        burst(r.p.clone(), ROBOT_COLOR, 26, 1.6); burst(r.p.clone(), 0xffffff, 10, 1);
+        if (s.armour < 1 && r.arms.length) {
+          const a = r.arms[Math.floor(Math.random() * r.arms.length)];
+          r.g.updateMatrixWorld(true); scene.attach(a);
+          w.parts.push({ o: a, v: V((Math.random() - 0.5) * 4, 4 + Math.random() * 2, (Math.random() - 0.5) * 4), spin: V((Math.random() - 0.5) * 8, (Math.random() - 0.5) * 5, (Math.random() - 0.5) * 8), rest: false });
+        }
+      }
+    } else { // lying there smoking
+      const lie = t - w.land;
+      if ((w.smokeT -= dt) <= 0 && lie < 3.5) { w.smokeT = 0.35; burst(r.p.clone().add(V(0, 0.4, 0)), 0x557755, 5, 0.7); }
+      if (lie > LIE_R) r.p.y -= dt * 0.9;
+    }
+    for (const p of w.parts) {
+      if (p.rest) { if (w.land >= 0 && t - w.land > LIE_R) p.o.position.y -= dt * 0.9; continue; }
+      p.v.y -= 20 * dt; p.o.position.addScaledVector(p.v, dt);
+      p.o.rotation.x += p.spin.x * dt; p.o.rotation.y += p.spin.y * dt; p.o.rotation.z += p.spin.z * dt;
+      const g = env ? env.ground(p.o.position.x, p.o.position.z) : gy;
+      if (p.o.position.y <= g + 0.15) { p.o.position.y = g + 0.15; if (p.v.y < -4) { p.v.multiplyScalar(0.35); p.v.y = -p.v.y; } else p.rest = true; }
+    }
+    r.g.position.set(r.p.x + jx, r.p.y, r.p.z + jz);
+    if ((w.land >= 0 && t - w.land > LIE_R + SINK_R) || t > 25) {
+      for (const p of w.parts) { scene.remove(p.o); p.o.traverse((o) => (o as THREE.Mesh).geometry?.dispose()); }
+      removeRobot(r); scraps.splice(i, 1);
+    }
+  }
 }
 export function removeRobot(r: Robot) {
   scene.remove(r.g);
@@ -440,6 +510,8 @@ export function removeRobot(r: Robot) {
 }
 export function clearRobots() {
   for (const r of [...W.robots]) removeRobot(r);
+  for (const w of scraps) { for (const p of w.parts) scene.remove(p.o); removeRobot(w.r); }
+  scraps.length = 0;
   for (const s of shells) scene.remove(s.ring);
   shells.length = 0;
 }
