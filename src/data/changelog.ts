@@ -4,6 +4,14 @@ export interface Change { v: string; date: string; title: string; notes: string[
 
 export const CHANGELOG: Change[] = [
   {
+    v: '0.20.0', date: '2026-09-24', title: 'Rings of danger',
+    notes: ['Danger now grows in rings round Gridholm: the country round the start is a calm patch (danger about 1), and the further out you travel the harsher it gets, up to 8 some 45 km away. The ring edges wander, so they are no perfect circles.',
+      'Further out there is more about: encounters come more often, groups are bigger, and the heavy machines (Sentinels, Artillery Walkers, Assault Constructs, Repair Drones) make up a growing share of what you meet.',
+      'Every village is still a refuge: calm right outside its walls, the danger of its ring returning over the next few hundred metres.',
+      'Villages thin out with the distance from Gridholm: close to home they stand about 2 km apart, in the far wilds 5-7 km. Roads there run longer, so every town is still linked.',
+      'Note: the world changes with this update: many villages far from Gridholm are gone, and so are the roads that led to them.'],
+  },
+  {
     v: '0.19.0', date: '2026-09-24', title: 'Roads between towns',
     notes: ['Roads now join the villages to each other: some towns sit at a crossroads with three or more roads, others at the end of a single one. Follow any road and it takes you to a town.',
       'Roads no longer lead to ruins, bandit camps or crash sites: they give them a wide berth, so those have to be found by exploring. Roads also go round the mountains.',

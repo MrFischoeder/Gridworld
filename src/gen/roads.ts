@@ -4,7 +4,7 @@
 // the ruins, camps and crash sites a wide berth, so those are found by exploring, not by following a road.
 // Pure and deterministic; each road is worked out once when first needed and cached.
 import { hash, DIRV, type Dir } from '../core/rng';
-import { allVillages, regionInfo, GRIDHOLM_ID, villageSeed, wrapDx, REGION, POLAR_Z, wrapR, type Poi, type Rect } from './regions';
+import { allVillages, villageGap, SETTLED, regionInfo, GRIDHOLM_ID, villageSeed, wrapDx, REGION, POLAR_Z, wrapR, type Poi, type Rect } from './regions';
 import { villageGates, VILLAGE_OFFSET } from './village';
 import { mountainMask } from './mountains';
 
@@ -17,9 +17,11 @@ export function gatePoint(v: Poi, dir: keyof typeof GATE_POINT): [number, number
   const p = GATE_POINT[dir];
   return [p[0] + VILLAGE_OFFSET.x + v.x, p[1] + VILLAGE_OFFSET.z + v.z];
 }
-/** Longest road between two neighbouring villages (m), and the road's half width. */
+/** Longest road between two neighbouring villages near Gridholm (m, longer further out: `linkAt`), and the road's half width. */
 export const ROAD = { link: 7000, half: 2.3, cell: 32, margin: 1000 };
 
+/** Longest road from village v: out where the villages stand further apart (gen/regions.ts), the roads run longer. */
+const linkAt = (v: Poi) => ROAD.link + (villageGap(Math.hypot(wrapDx(v.x), v.z)) - SETTLED.gap[0]) * 2.4;
 interface Edge { a: Poi; b: Poi; key: string }
 const edgeCache = new Map<number, Edge[]>();
 /** The village network: each village joined to its 1-3 nearest neighbours (union, so a road is never doubled). */
@@ -30,7 +32,7 @@ export function network(world: number): Edge[] {
   const vs = allVillages(world), seen = new Set<string>();
   for (const v of vs) {
     const k = v.id === GRIDHOLM_ID ? 3 : 1 + (hash(world, v.id, 0x40ad) % 3); // the start village is a crossroads
-    const near = vs.filter((w) => w !== v).map((w) => ({ w, d: Math.hypot(wrapDx(w.x - v.x), w.z - v.z) })).filter((o) => o.d < ROAD.link).sort((p, q) => p.d - q.d).slice(0, k);
+    const near = vs.filter((w) => w !== v).map((w) => ({ w, d: Math.hypot(wrapDx(w.x - v.x), w.z - v.z) })).filter((o) => o.d < linkAt(v)).sort((p, q) => p.d - q.d).slice(0, k);
     for (const { w } of near) {
       const [a, b] = v.id < w.id ? [v, w] : [w, v], key = a.id + ':' + b.id;
       if (!seen.has(key)) { seen.add(key); out.push({ a, b, key }); }

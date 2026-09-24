@@ -68,19 +68,55 @@ const even = (v: number) => 2 * Math.round(v / 2);
 // ---------- villages ----------
 /** Gridholm, the starting village at the origin. */
 export const GRIDHOLM_ID = packId(0, 0, 0);
-/** The planet is cut into cells of VCELL x VCELL regions (~2.5 km); many cells hold one village somewhere inside. */
-const VCELL = 10, VILLAGE_CHANCE = 0.6;
+/**
+ * The planet is cut into cells of VCELL x VCELL regions (~2.5 km); many cells hold one village somewhere inside.
+ * Round Gridholm the land is well settled; the further out, the fewer villages there are and the further apart:
+ * fewer cells hold one (`villageChance`), and a village gives way to a stronger neighbour closer than `villageGap`.
+ */
+const VCELL = 10, NCELL = NR / VCELL;
 const V_A = ['Ost', 'Brenn', 'Kal', 'Hollow', 'Mirr', 'Stone', 'Ash', 'Wend', 'Rook', 'Tarn', 'Elm', 'Kest', 'Vard', 'Lorn', 'Dusk', 'Irons', 'Fell', 'Gale'];
 const V_B = ['wick', 'ford', 'mere', 'holm', 'stead', 'gate', 'moor', 'dale', 'haven', 'reach', 'watch', 'barrow', 'field', 'crest'];
+/** How settled the land is at `d` metres from Gridholm: 0 at home .. 1 at SETTLED.far and beyond. */
+export const SETTLED = { near: 6000, far: 40000, chance: [0.8, 0.22], gap: [1400, 5200] };
+const outShare = (d: number) => Math.max(0, Math.min(1, (d - SETTLED.near) / (SETTLED.far - SETTLED.near)));
+/** The share of village cells that hold a village, and the least distance between two villages, `d` m from Gridholm. */
+export const villageChance = (d: number) => SETTLED.chance[0] + (SETTLED.chance[1] - SETTLED.chance[0]) * outShare(d);
+export const villageGap = (d: number) => SETTLED.gap[0] + (SETTLED.gap[1] - SETTLED.gap[0]) * outShare(d);
+const candCache = new Map<string, [number, number] | null>(), cellCache = new Map<string, [number, number] | null>();
+/** The spot a cell would put its village on (region coordinates), before neighbours are weighed, or null. */
+function candidate(world: number, gx: number, gz: number): [number, number] | null {
+  const k = world + ':' + gx + ':' + gz;
+  if (candCache.has(k)) return candCache.get(k)!;
+  if (candCache.size > 20000) candCache.clear();
+  const R = rng(hash(world, gx, gz, 0x7111)), ri = rangeInt(R);
+  const roll = R(), rx = R0 + gx * VCELL + ri(2, VCELL - 3), rz = gz * VCELL - (VCELL >> 1) + ri(2, VCELL - 3);
+  let out: [number, number] | null = [rx, rz];
+  if (roll > villageChance(Math.hypot(wrapR(rx), rz) * REGION)) out = null;
+  else if (polarRegion(rz) || polarRegion(rz + Math.sign(rz))) out = null;
+  else if (Math.max(Math.abs(wrapR(rx)), Math.abs(rz)) < 6) out = null; // keep the start region to Gridholm
+  else if (onMountain(world, wrapR(rx) * REGION, rz * REGION, 90)) out = null; // no village in the mountains
+  candCache.set(k, out);
+  return out;
+}
 /** Where the village of cell (gx, gz) stands (region coordinates), or null. Gridholm's cell holds only Gridholm. */
 function villageOfCell(world: number, gx: number, gz: number): [number, number] | null {
-  const R = rng(hash(world, gx, gz, 0x7111)), ri = rangeInt(R);
-  if (R() > VILLAGE_CHANCE) return null;
-  const rx = R0 + gx * VCELL + ri(2, VCELL - 3), rz = gz * VCELL - (VCELL >> 1) + ri(2, VCELL - 3);
-  if (polarRegion(rz) || polarRegion(rz + Math.sign(rz))) return null;
-  if (Math.max(Math.abs(wrapR(rx)), Math.abs(rz)) < 6) return null; // keep the start region to Gridholm
-  if (onMountain(world, wrapR(rx) * REGION, rz * REGION, 90)) return null; // no village in the mountains
-  return [rx, rz];
+  const k = world + ':' + gx + ':' + gz;
+  if (cellCache.has(k)) return cellCache.get(k)!;
+  if (cellCache.size > 20000) cellCache.clear();
+  let out = candidate(world, gx, gz);
+  if (out) {
+    // out in the wilds the villages stand further apart: the weaker of two too close together gives way
+    const [rx, rz] = out, gap = villageGap(Math.hypot(wrapR(rx), rz) * REGION) / REGION, mine = hash(world, gx, gz, 0x7112);
+    for (let i = -2; i <= 2 && out; i++) for (let j = -2; j <= 2; j++) {
+      if (!i && !j) continue;
+      const cx = (((gx + i) % NCELL) + NCELL) % NCELL, o = candidate(world, cx, gz + j);
+      if (!o || Math.hypot(wrapR(o[0] - rx), o[1] - rz) >= gap) continue;
+      const theirs = hash(world, cx, gz + j, 0x7112);
+      if (theirs > mine || (theirs === mine && cx * 1000 + gz + j > gx * 1000 + gz)) { out = null; break; }
+    }
+  }
+  cellCache.set(k, out);
+  return out;
 }
 /** Is region (rx, rz) (canonical) the site of a village other than Gridholm? */
 function isVillageRegion(world: number, rx: number, rz: number): boolean {
@@ -99,7 +135,7 @@ export function allVillages(world: number): Poi[] {
   let v = villageCache.get(world);
   if (!v) {
     v = [];
-    for (let gx = 0; gx < NR / VCELL; gx++) for (let gz = -12; gz <= 12; gz++) {
+    for (let gx = 0; gx < NCELL; gx++) for (let gz = -12; gz <= 12; gz++) {
       const c = villageOfCell(world, gx, gz);
       if (c) v.push(...regionInfo(world, c[0], c[1]).pois.filter((p) => p.type === 'village'));
     }

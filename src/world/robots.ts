@@ -216,10 +216,12 @@ function pickGroup(lv: number, ruin: boolean): RobotKind[] {
   const opts: [number, RobotKind[]][] = [];
   if (lv >= ROBOTS.scout.min) opts.push([3, lv < 3 ? ['scout', 'scout'] : ['scout', 'scout', 'scout', ...(lv > 5 ? ['scout'] as RobotKind[] : [])]]);
   if (lv >= ROBOTS.guardian.min) opts.push([ruin ? 6 : 3, lv < 3 ? ['guardian'] : lv < 4.5 ? ['guardian', 'guardian'] : ['guardian', 'guardian', 'guardian']]);
-  if (lv >= ROBOTS.repair.min) opts.push([2, ['repair', 'guardian', 'guardian']]);
-  if (lv >= ROBOTS.sentinel.min) opts.push([2, lv < 6 ? ['sentinel'] : ['sentinel', 'repair']]);
-  if (lv >= ROBOTS.artillery.min) opts.push([1.5, lv < 6.5 ? ['artillery'] : ['artillery', 'guardian', 'guardian']]);
-  if (lv >= ROBOTS.assault.min) opts.push([1.5, ['assault', 'scout', 'scout']]);
+  // the heavy machines grow commoner the deeper into the wilds you are (the rings of gen/danger.ts)
+  const more = (k: RobotKind) => 1 + (lv - ROBOTS[k].min) * 0.6;
+  if (lv >= ROBOTS.repair.min) opts.push([2 * more('repair'), ['repair', 'guardian', 'guardian']]);
+  if (lv >= ROBOTS.sentinel.min) opts.push([2 * more('sentinel'), lv < 6 ? ['sentinel'] : ['sentinel', 'repair']]);
+  if (lv >= ROBOTS.artillery.min) opts.push([1.5 * more('artillery'), lv < 6.5 ? ['artillery'] : ['artillery', 'guardian', 'guardian']]);
+  if (lv >= ROBOTS.assault.min) opts.push([1.5 * more('assault'), ['assault', 'scout', 'scout']]);
   if (!opts.length) return [];
   let roll = Math.random() * opts.reduce((a, o) => a + o[0], 0);
   for (const [w, g] of opts) { if ((roll -= w) <= 0) return g; }

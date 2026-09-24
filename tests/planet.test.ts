@@ -78,11 +78,17 @@ import { generateVillage } from '../src/gen/village';
 import { regionRoads } from '../src/gen/roads';
 import { regionOf } from '../src/gen/regions';
 describe('villages', () => {
-  it('are spread over the planet: named, apart, off the ice, with roads', () => {
+  it('are spread over the planet: named, apart, off the ice, with roads; sparser the further from Gridholm', () => {
     for (const w of WORLDS) {
       const vs = allVillages(w), t = new Terrain(w);
       expect(vs[0].id).toBe(GRIDHOLM_ID); expect(vs[0].name).toBe('Gridholm');
-      expect(vs.length).toBeGreaterThan(200);
+      expect(vs.length).toBeGreaterThan(100);
+      // mean distance to the nearest other village: well settled near home, far apart out in the wilds
+      const spacing = (lo: number, hi: number) => {
+        const inb = vs.filter((v) => { const d = worldDist(v.x, v.z, 0, 0); return d >= lo && d < hi; });
+        return inb.reduce((a, v) => a + Math.min(...vs.filter((o) => o !== v).map((o) => worldDist(v.x, v.z, o.x, o.z))), 0) / inb.length;
+      };
+      expect(spacing(30000, 1e6)).toBeGreaterThan(spacing(0, 10000) * 1.8);
       for (const v of vs) {
         expect(Math.abs(v.z)).toBeLessThan(POLAR_Z);
         expect(findPoi(w, v.id)?.name).toBe(v.name);
