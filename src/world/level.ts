@@ -32,7 +32,7 @@ import { setArmedRule, refreshWeaponVisibility } from './weapons';
 import { raidHere } from './villageraid';
 import { PropBatch } from './props';
 import { drawLadder, climbing, onClimbChange } from './ladders';
-import { drawHouse } from './houses';
+import { drawHouse, drawFurniture } from './houses';
 import { onDungeonLoaded, syncQuestWorld } from './quests';
 import { driving, leave } from './vehicles';
 import { openWorld, closeWorld, structFor, setEnterRuin, removeDrone, danger, inVillage, OW } from './overworld';
@@ -136,7 +136,7 @@ export function villageDeco(map: VillageMap, y0 = 0) {
   const grp = new THREE.Group();
   const props = new PropBatch();
   for (const b of map.buildings) {
-    drawHouse(props, b, y0);
+    drawHouse(props, b, y0); drawFurniture(props, b, y0);
     if (b.name) grp.add(wallSign(b.name, b.role === 'innkeeper' ? '#ffb347' : '#ffd060', { x: b.door.x + b.out[0] * 0.15, z: b.door.z + b.out[1] * 0.15 }, b.out, y0 + (b.role === 'house' ? HOUSE.doorH + 0.45 : b.h + 0.35)));
   }
   for (const t of map.trees) drawCrown(props, t.x + 0.5, y0 + 2, t.z + 0.5, 1.8, t.h, hash(t.x, t.z, 0x7e3e));

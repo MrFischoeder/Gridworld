@@ -4,6 +4,13 @@ export interface Change { v: string; date: string; title: string; notes: string[
 
 export const CHANGELOG: Change[] = [
   {
+    v: '0.35.0', date: '2026-09-24', title: 'Furnished houses',
+    notes: ['The metre-sized blocks inside the village houses are gone. Every shop now has a panelled counter with an overhanging top and shelves of jars, boxes and bottles behind it, and the wares of the house on the counter: mugs and a keg in the tavern, tongs and a hammer at the smithy, a balance in the general store, baskets of produce and a loaf at the grocer\'s.',
+      'The tavern has tables with benches on both sides and barrels behind the bar. The smithy has a stone forge with a glowing mouth and a hood up through the roof, an anvil and a quenching barrel. The store and the grocer\'s have crates, sacks and barrels.',
+      'The Elder\'s Hall has a desk with a book and a candle, two chairs for visitors, benches along the walls and bookshelves. The houses have a bed, a table with stools and a shelf, and your own house in Gridholm now has a table and a shelf besides your bed and chest.',
+      'You walk round the furniture, and the way from each door to the counter stays clear.'],
+  },
+  {
     v: '0.34.0', date: '2026-09-24', title: 'Timber houses and new faces',
     notes: ['Village houses are rebuilt as timber-framed houses, like the bases: thin plank walls on a sill with corner posts, windows with open shutters, a doorway with the door standing open, gabled roofs with shingles and an overhang, boarded gables and chimneys. Shops have an awning over the door and the Elder\'s Hall a bell turret. The houses are smaller and lower than the old blocks, so the villages feel less cramped.',
       'Gridholm\'s residents have new names: Elder Maciej, Oskar the blacksmith and Kuba the vehicle dealer. Marta still runs the tavern, and Kasia still strolls round the plaza.',

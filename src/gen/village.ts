@@ -11,6 +11,8 @@ export interface Building {
   /** Timber walls (world boxes [x0, y0, z0, x1, y1, z1]): thin walls on the footprint's edge, a doorway in the door
    *  side. They collide through world/houses.ts, not as voxels (voxels are 1 m thick). */
   walls: number[][];
+  /** Furniture inside (world x/z, standing on the floor; drawn and collided by world/houses.ts). */
+  furniture: Furn[];
   /** The hero's own house (Gridholm only). */
   mine?: boolean;
 }
@@ -76,6 +78,11 @@ export interface VillageMap {
  * gabled roof `rise` m high over the longer side with an `eave` overhang (drawn by world/houses.ts).
  */
 export const HOUSE = { thick: 0.25, doorW: 1.4, doorH: 2.3, eave: 0.55, rise: 0.42 };
+/** Furniture of the village houses: `n` is the way into the room from the back wall (the side the piece faces). */
+export type FurnKind = 'counter' | 'table' | 'bench' | 'stool' | 'shelf' | 'barrel' | 'crate' | 'sack' | 'anvil' | 'hearth' | 'bed' | 'desk';
+export interface Furn { k: FurnKind; x0: number; z0: number; x1: number; z1: number; h: number; n: [number, number] }
+/** Pieces you walk round (stools you walk past; they are small). */
+export const furnSolid = (k: FurnKind) => k !== 'stool';
 /** The plaza is 72 x 72 m inside a 7 m wall; the footprint (with a 1 m apron) is VILLAGE_RECT around the origin. */
 export const VILLAGE_OFFSET = { x: -36, z: -36 };
 const GATE_H = 4;
@@ -149,20 +156,39 @@ export function generateVillage(seed: number, y = 0, cx = 0, cz = 0, name = 'Gri
     wall(x, z, x + w, z + t, side === 'N'); wall(x, z + d - t, x + w, z + d, side === 'S');
     wall(x, z + t, x + t, z + d - t, side === 'W'); wall(x + w - t, z + t, x + w, z + d - t, side === 'E');
     const door = side === 'E' ? { x: x + w - t / 2, y: 0, z: dc } : side === 'W' ? { x: x + t / 2, y: 0, z: dc } : side === 'N' ? { x: dc, y: 0, z: z + t / 2 } : { x: dc, y: 0, z: z + d - t / 2 };
-    const b: Building = { name, role, x, z, w, d, h, side, out: DIRV[side], door, walls };
-    // counter and the keeper's spot by the back wall
-    const ix0 = x + 1, ix1 = x + w - 2, iz0 = z + 1, iz1 = z + d - 2;
+    // furniture, laid out in the building's own frame: u from the back wall towards the door, v across it
+    const D = side === 'E' || side === 'W' ? w : d, V = side === 'E' || side === 'W' ? d : w, vd = side === 'E' || side === 'W' ? dc - z : dc - x;
+    const n: [number, number] = side === 'E' ? [1, 0] : side === 'W' ? [-1, 0] : side === 'N' ? [0, -1] : [0, 1];
+    const at = (u: number, v: number): [number, number] => (side === 'E' ? [x + u, z + v] : side === 'W' ? [x + w - u, z + v] : side === 'N' ? [x + v, z + d - u] : [x + v, z + u]);
+    const F = (k: FurnKind, u0: number, v0: number, u1: number, v1: number, h: number) => {
+      const [ax, az] = at(u0, v0), [bx, bz] = at(u1, v1);
+      b.furniture.push({ k, x0: Math.min(ax, bx), z0: Math.min(az, bz), x1: Math.max(ax, bx), z1: Math.max(az, bz), h, n });
+    };
+    const b: Building = { name, role, x, z, w, d, h, side, out: DIRV[side], door, walls, furniture: [] };
     if (role !== 'house') {
-      if (side === 'E') { b.home = { x: ix0 + 1.5, y: 0, z: czm + 0.5 }; if (role !== 'elder') late.push({ op: 'solid', x: ix0 + 2, y: 0, z: iz0 + 1, w: 1, h: 1, d: iz1 - iz0 - 1 }); }
-      if (side === 'W') { b.home = { x: ix1 - 0.5, y: 0, z: czm + 0.5 }; if (role !== 'elder') late.push({ op: 'solid', x: ix1 - 2, y: 0, z: iz0 + 1, w: 1, h: 1, d: iz1 - iz0 - 1 }); }
-      if (side === 'N') { b.home = { x: cxm + 0.5, y: 0, z: iz1 - 0.5 }; if (role !== 'elder') late.push({ op: 'solid', x: ix0 + 1, y: 0, z: iz1 - 2, w: ix1 - ix0 - 1, h: 1, d: 1 }); }
-      if (side === 'S') { b.home = { x: cxm + 0.5, y: 0, z: iz0 + 1.5 }; if (role !== 'elder') late.push({ op: 'solid', x: ix0 + 1, y: 0, z: iz0 + 2, w: ix1 - ix0 - 1, h: 1, d: 1 }); }
+      const [hx, hz] = at(2.5, vd); b.home = { x: hx, y: 0, z: hz }; // the keeper, behind the counter (or the Elder's desk)
+      if (role !== 'elder') { F('counter', 3.1, 1.6, 3.75, V - 1.6, 1.05); F('shelf', 0.25, 1.2, 0.6, V - 1.2, 2.1); }
     }
-    if (role === 'innkeeper') { // tables in the tavern, away from the counter and the entrance
-      for (let i = 0; i < 5; i++) {
-        const tz = ri(iz0 + 1, iz1 - 1); if (Math.abs(tz - czm) <= 1) continue;
-        late.push({ op: 'solid', x: ri(ix0 + 4, ix1 - 2), y: 0, z: tz, w: 1, h: 1, d: 1 });
-      }
+    if (role === 'innkeeper') { // tables with a bench either side, away from the counter and the way in; barrels behind the bar
+      const skip = ri(0, 4);
+      [[6, 2.3], [9.5, 2.3], [6, V - 2.3], [9.5, V - 2.3]].forEach(([u, v], i) => {
+        if (i === skip || u + 0.9 > D - 0.5) return;
+        F('table', u - 0.7, v - 0.45, u + 0.7, v + 0.45, 0.78); F('bench', u - 0.7, v - 1.2, u + 0.7, v - 0.85, 0.45); F('bench', u - 0.7, v + 0.85, u + 0.7, v + 1.2, 0.45);
+      });
+      F('barrel', 0.8, 0.35, 1.45, 1.0, 1.0); F('barrel', 0.8, V - 1.0, 1.45, V - 0.35, 1.0);
+    }
+    if (role === 'blacksmith') { // the hearth in the back corner, an anvil and a quenching barrel on the customers' side
+      F('hearth', 0.25, 0.25, 1.6, 1.5, 1.0); F('anvil', 5.4, 1.1, 6.2, 1.5, 0.8); F('barrel', 5.2, V - 1.3, 5.9, V - 0.6, 0.8); F('crate', 7.2, 0.35, 8.1, 1.2, 0.8);
+    }
+    if (role === 'merchant') { F('crate', 5, 0.35, 5.9, 1.25, 0.9); F('crate', 6.1, 0.35, 6.9, 1.15, 0.7); F('barrel', 5.2, V - 1.1, 5.9, V - 0.4, 0.95); }
+    if (role === 'grocer') { F('sack', 4.6, 0.35, 5.3, 0.95, 0.7); F('sack', 5.5, 0.35, 6.2, 0.95, 0.6); F('barrel', 4.8, V - 1.1, 5.5, V - 0.4, 0.9); }
+    if (role === 'elder') { // a desk before him, two chairs for visitors, benches along the walls, books behind
+      F('desk', 3.2, vd - 1, 4.1, vd + 1, 0.8); F('stool', 4.5, vd - 0.75, 4.95, vd - 0.3, 0.46); F('stool', 4.5, vd + 0.3, 4.95, vd + 0.75, 0.46);
+      F('bench', 5.2, 0.3, D - 1.8, 0.65, 0.45); F('bench', 5.2, V - 0.65, D - 1.8, V - 0.3, 0.45); F('shelf', 0.25, 0.9, 0.6, vd - 1, 2.2); F('shelf', 0.25, vd + 1, 0.6, V - 0.9, 2.2);
+    }
+    if (role === 'house') { // a bed by the back wall, a table with two stools, a shelf
+      F('bed', 0.3, 0.4, 1.3, 2.4, 0.5); F('shelf', 0.25, 3.2, 0.55, 4.8, 1.8);
+      F('table', 2.5, V - 2.6, 3.4, V - 1.6, 0.76); F('stool', 1.9, V - 2.35, 2.3, V - 1.95, 0.45); F('stool', 3.6, V - 2.35, 4.0, V - 1.95, 0.45);
     }
     buildings.push(b); return b;
   };
@@ -175,12 +201,18 @@ export function generateVillage(seed: number, y = 0, cx = 0, cz = 0, name = 'Gri
   if (home) {
     mine.mine = true;
     const x0 = 4 + HOUSE.thick, z0 = hz + HOUSE.thick, z1 = hz + 7 - HOUSE.thick; // the inside
+    // the hero's house: your own bed and chest, a table by the window instead of the usual furniture
+    mine.furniture = [
+      { k: 'table', x0: x0 + 4.4, z0: z0 + 0.25, x1: x0 + 5.3, z1: z0 + 1.1, h: 0.76, n: [0, 1] },
+      { k: 'stool', x0: x0 + 4.65, z0: z0 + 1.4, x1: x0 + 5.05, z1: z0 + 1.8, h: 0.45, n: [0, 1] },
+      { k: 'shelf', x0: x0 + 2.3, z0, x1: x0 + 3.8, z1: z0 + 0.3, h: 1.8, n: [0, 1] },
+    ];
     house = { bed: { x0: x0 + 0.25, z0: z0 + 0.1, x1: x0 + 1.45, z1: z0 + 2.3, side: { x: x0 + 2.4, z: z0 + 1.2 } }, chest: { x: x0 + 0.85, z: z1 - 0.5 } };
   }
   B('BLACKSMITH', 'blacksmith', 58, 6 + j(), 11, 9, 'W', 3.4);
   B('GENERAL STORE', 'merchant', 58, 23 + j(), 11, 9, 'W', 3.4);
   B('FOOD & PROVISIONS', 'grocer', 60, 40 + j(), 9, 8, 'W');
-  for (const hx of [5, 17, 27, 47, 58]) B('', 'house', hx + j(), 61 + j(), 8, 6, 'N', 3);
+  for (const hx of [4, 15, 26, 47, 58]) B('', 'house', hx + j(), 61 + j(), 8, 6, 'N', 3);
   // well, trees, lamps
   late.push({ op: 'solid', x: 35, y: 0, z: 36, w: 2, h: 1, d: 2 });
   const blocked = (x: number, z: number, m: number) => buildings.some((b) => x >= b.x - m && x < b.x + b.w + m && z >= b.z - m && z < b.z + b.d + m)
@@ -213,7 +245,8 @@ export function generateVillage(seed: number, y = 0, cx = 0, cz = 0, name = 'Gri
     }),
     board: { x: 41 + ox, z: 45 + oz }, mapBoard: { x: 31 + ox, z: 45 + oz },
     buildings: buildings.map((b) => ({ ...b, x: b.x + ox, z: b.z + oz, door: P(b.door), home: b.home && P(b.home),
-      walls: b.walls.map(([x0, y0, z0, x1, y1, z1]) => [x0 + ox, y0 + y, z0 + oz, x1 + ox, y1 + y, z1 + oz]) })),
+      walls: b.walls.map(([x0, y0, z0, x1, y1, z1]) => [x0 + ox, y0 + y, z0 + oz, x1 + ox, y1 + y, z1 + oz]),
+      furniture: b.furniture.map((f) => ({ ...f, x0: f.x0 + ox, z0: f.z0 + oz, x1: f.x1 + ox, z1: f.z1 + oz })) })),
     house: house && { bed: { x0: house.bed.x0 + ox, z0: house.bed.z0 + oz, x1: house.bed.x1 + ox, z1: house.bed.z1 + oz, side: { x: house.bed.side.x + ox, z: house.bed.side.z + oz } },
       chest: { x: house.chest.x + ox, z: house.chest.z + oz } },
     trees: trees.map((t) => ({ ...t, x: t.x + ox, z: t.z + oz })), lamps: lamps.map((l) => ({ x: l.x + ox, z: l.z + oz })),
