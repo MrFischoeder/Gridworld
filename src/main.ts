@@ -28,7 +28,7 @@ import { syncTurrets, updateTurrets } from './world/turrets';
 import { updateFires } from './world/cooking';
 import { updatePower } from './world/power';
 import { updateCaravans } from './world/caravans';
-import { updateVillageRaids } from './world/villageraid';
+import { updateVillageRaids, updateFallen } from './world/villageraid';
 import { updateIndustry } from './world/industry';
 import { updateContracts } from './ui/contracts';
 import { regionRoads } from './gen/roads';
@@ -83,7 +83,7 @@ function frame(now: number) {
   const live = G.playing && !uiOpen() && !G.trans;
   if (outdoors) updateStreaming(G.trans ? 8 : G.fly ? 14 : 4); // flying fast needs the land streamed in quicker
   // the clock runs whenever the game is not paused in the menu
-  if (G.playing) { G.char.time += dt * MIN_PER_SEC; updateSurvival(dt); updateFlora(dt); updateFires(dt, time); updatePower(dt); updateCaravans(dt); updateVillageRaids(dt); updateIndustry(dt); updateContracts(dt); if ((benchT -= dt) <= 0) { benchT = 1; syncBenches(); syncFlags(); syncBases(); syncTurrets(); } }
+  if (G.playing) { G.char.time += dt * MIN_PER_SEC; updateSurvival(dt); updateFlora(dt); updateFires(dt, time); updatePower(dt); updateCaravans(dt); updateVillageRaids(dt); updateFallen(dt); updateIndustry(dt); updateContracts(dt); if ((benchT -= dt) <= 0) { benchT = 1; syncBenches(); syncFlags(); syncBases(); syncTurrets(); } }
   updateCompass(dt); // hides itself while paused
   const clock = fmtClock(G.char.time);
   if (el.clock.textContent !== clock) el.clock.textContent = clock;

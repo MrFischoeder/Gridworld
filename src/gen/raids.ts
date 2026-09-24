@@ -3,7 +3,9 @@
 // state to keep, and on the future server it costs nothing where nobody is. Only where a player is at the village
 // does a raid really happen (world/villageraid.ts: waves of bandits march on the gates and the power plant); anywhere
 // else its outcome is rolled from the seed and the village's wall (a better wall holds more often), and a lost raid
-// wrecks part of the power plant (`raidHurt`, until it is mended). Pure.
+// wrecks part of the power plant (`raidHurt`, until it is mended). Before a raid the bandits send a rider with their
+// terms: pay a tribute (`tribute`: more from a rich village with a full storehouse, less behind a strong wall) and
+// they leave you be. Villages without you pay now and then (`raidOutcome` 'paid'). Pure.
 import { hash } from '../core/rng';
 import { poisNear, worldDist, type Poi } from './regions';
 import { dangerAt } from './danger';
@@ -47,11 +49,22 @@ export function raidsBetween(world: number, v: Poi, t1: number, t2: number): Rai
   return out;
 }
 /** How raid r ended: as fought with you there (saved), or else as rolled from the seed and the wall. */
-export function raidOutcome(world: number, r: Raid, s: TownState | undefined): 'won' | 'lost' {
+export function raidOutcome(world: number, r: Raid, s: TownState | undefined): 'won' | 'lost' | 'paid' {
   const seen = s?.raids?.[r.k];
   if (seen) return seen;
   const wall = Math.min(RAID.hold.length - 1, s?.wall ?? 0), hold = RAID.hold[wall] - (r.strength - 2) * 0.04;
+  // a weak village facing a strong band often pays rather than fight
+  const pay = Math.max(0.05, 0.35 + (r.strength - 2) * 0.05 - wall * 0.12);
+  if ((hash(world, r.village, r.k, 0x4a20) % 1000) / 1000 < pay) return 'paid';
   return (hash(world, r.village, r.k, 0x4a1f) % 1000) / 1000 < hold ? 'won' : 'lost';
+}
+/**
+ * What the bandits demand to leave the village alone: a base by the band's strength, a share of what is in the
+ * storehouse (`wealth`, gold), less behind a better wall. Rounded to 10 gold.
+ */
+export function tribute(r: Raid, wealth: number, wall: number): number {
+  const g = (60 + r.strength * 45 + wealth * 0.3) * (1 - Math.min(2, wall) * 0.18);
+  return Math.max(50, Math.round(g / 10) * 10);
 }
 /** Damage lost raids have done to the village's power plant since `since` (its last mending), up to `now`. */
 export function raidHurt(world: number, v: Poi, s: TownState | undefined, since: number, now: number): number {

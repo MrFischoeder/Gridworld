@@ -4,6 +4,14 @@ export interface Change { v: string; date: string; title: string; notes: string[
 
 export const CHANGELOG: Change[] = [
   {
+    v: '0.39.0', date: '2026-09-24', title: 'Workers, storehouses and tribute',
+    notes: ['Villagers now work every industry site: they hoe the fields, swing picks at the mine, hammer at the pumps, benches and racks, and one carries the crates, one at a time, to the storehouse at the corner of the site.',
+      'Every village keeps what it makes in a storehouse. The crates stack up in front of its door as it fills, the caravans take some away, and the goods you buy at the market come out of it. When it is full, the work stops: the workers stand about and the site stands still.',
+      'The elder commissions a bigger storehouse: a Storage Shed holds 40 crates, a Warehouse 100, a Depot 220. Bring the materials a load at a time and the village pays you when it is built. A bigger storehouse means more goods to buy and trade. E at a site shows how full its storehouse is.',
+      'Bandits now send a rider before they raid, demanding a tribute: more from a village with a full storehouse and a strong band, less behind a better wall. Pay it at the elder or the captain of the guard and they leave you be. The quest tracker shows the demand and the deadline. Villages you are not at sometimes pay too.',
+      'Refuse, and they come. Their gunners shoot at the wall, wearing down the defences, and at any villager caught in the open; the dead are missed for a couple of days. Lose the fight and they tear down part of the wall on their way out: it drops a tier and has to be raised again.'],
+  },
+  {
     v: '0.38.0', date: '2026-09-24', title: 'Creatures and machines go down',
     notes: ['Killed creatures fall instead of vanishing. Ravagers stumble on, slide to a stop and roll onto their side with their legs kicking. A Bramble\'s legs fold under its weight and it sinks down nose first. Gnawers flip onto their backs. A Leechwing drops out of the sky tumbling and lands with its wings spread.',
       'Destroyed robots break down. They shudder and throw sparks while their lights flicker. Bipeds topple over, walkers\' legs splay and the body drops, and the Repair Drone falls out of the air. They hit the ground with a blast that can tear an arm off a heavy machine, then lie there smoking and dark.',

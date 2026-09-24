@@ -15,6 +15,8 @@ import { bearingTo, point8, fmtDist } from './compass';
 import { showToast, logLine } from './hud';
 import { count } from '../data/crafting';
 import { putItems } from '../inventory';
+import { takeStore } from '../gen/store';
+import { production } from '../gen/industry';
 
 let town = '';
 const left = (c: Contract) => c.n - c.done;
@@ -103,6 +105,7 @@ export function acceptOffer(o: Contract): string {
     const room = stores(home).reduce((s, st) => s + Math.max(0, roomOf(st.slots, o.good, st.cap)), 0);
     if (room < o.n) return `No room for ${o.n} crates: you can take ${room}. Park a vehicle by the gates and come back.`;
     putAway(o.good, o.n, home, true); c.gold -= o.deposit; trade(c.market, home.id, o.good, -o.n, c.time); // into the trunks first: crates are heavy
+    const hs = villageSeed(c.world, home); takeStore((c.towns[home.id] ??= {}), hs, o.n, c.time, production(c.world, home, hs, c.towns[home.id], c.time)); // out of its storehouse
   }
   c.contracts.push({ ...o }); c.taken.push(o.id); if (c.taken.length > 60) c.taken.splice(0, c.taken.length - 60);
   calcStats(); saveChar();

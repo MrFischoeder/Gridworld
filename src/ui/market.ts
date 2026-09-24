@@ -15,6 +15,7 @@ import { bearingTo, point8, fmtDist } from './compass';
 import type { Slot } from '../save';
 import { lastArrival } from '../gen/caravans';
 import { industryOf, production, INDUSTRY } from '../gen/industry';
+import { storeAt, takeStore } from '../gen/store';
 /** How much the village's industry puts out now (its site's condition; 0 for a refinery not yet built). */
 const prodHere = () => (here ? production(G.char.world, here.poi, here.seed, G.char.towns[here.poi.id], G.char.time) : 1);
 function prodNote(): string {
@@ -22,6 +23,16 @@ function prodNote(): string {
   return p <= 0 ? ' (its works are not built yet: nothing to sell)' : p < 0.9 ? ` (its ${INDUSTRY[industryOf(G.char.world, here!.poi, here!.seed)].site.toLowerCase()} works at ${Math.round(p * 100)}% after the raids: less to sell, and dearer)` : '';
 }
 
+/**
+ * A quote whose stock of the village's own goods is what its storehouse holds (split between the goods it makes),
+ * never more than the market's usual stock.
+ */
+function quoteHere(g: Good) {
+  const c = G.char, q = quote(here!.poi, here!.seed, c.world, g, c.market, c.time, true, prodHere());
+  if (q.role !== 'make') return q;
+  const makes = profileOf(c.world, here!.poi, here!.seed).makes.length, n = storeAt(here!.seed, c.towns[here!.poi.id], c.time, prodHere());
+  return { ...q, stock: Math.min(q.stock, Math.floor(n / makes)) };
+}
 const TRUNK_REACH = 90; // metres from the village middle: vehicles parked by the gates count
 let here: { poi: Poi; seed: number } | null = null;
 
@@ -74,7 +85,7 @@ export function renderMarket(panel: HTMLElement, head: string, msg = '') {
   const c = G.char, p = profileOf(c.world, here.poi, here.seed), trunks = stores().length - 1;
   tidyMarket(c.market, c.time); record();
   const rows = GOODS.map((g) => {
-    const q = quote(here!.poi, here!.seed, c.world, g, c.market, c.time, true, prodHere()), have = carried(g), b = bestElsewhere(g);
+    const q = quoteHere(g), have = carried(g), b = bestElsewhere(g);
     const tag = q.role === 'make' ? '<span class="tag" style="color:var(--gold)">made here</span>' : q.role === 'want' ? '<span class="tag" style="color:#9dffe0">wanted here</span>' : '';
     const else_ = b ? `best price seen elsewhere: ${b.p} g at ${b.name} (${fmtDist(worldDist(b.x, b.z, here!.poi.x, here!.poi.z))} ${point8(bearingTo(b.x, b.z))}, ${ago(b.t)})` : '';
     return `<div class="mrow"><div><b>${ITEMS[g].name}</b>${tag}</div><div class="num">${q.stock}</div><div class="num">${have}</div>
@@ -105,10 +116,11 @@ export function marketClick(t: HTMLElement): string | null {
   if (buying) {
     let paid = 0, got = 0;
     for (let i = 0; i < n; i++) { // one at a time: every crate moves the price
-      const q = quote(here.poi, here.seed, c.world, g, c.market, c.time, true, prodHere());
+      const q = quoteHere(g);
       if (q.stock < 1 || c.gold < q.buy) break;
       if (putAway(g, 1) > 0) { if (!got) return 'No room for a crate in your backpack or a trunk nearby.'; break; }
       c.gold -= q.buy; paid += q.buy; got++; trade(c.market, here.poi.id, g, -1, c.time);
+      if (q.role === 'make') takeStore((c.towns[here.poi.id] ??= {}), here.seed, 1, c.time, prodHere()); // out of the storehouse
     }
     calcStats(); saveChar();
     return got ? `Bought ${name} ×${got} for ${paid} gold.` : 'You cannot buy that now.';

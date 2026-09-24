@@ -3,6 +3,7 @@
 // decides what is loaded and turns generator output into meshes.
 import { setLadders, dropLadders, ladderHit, ladderFloor } from './ladders';
 import { setHouses, dropHouses, houseHit, houseRay, houseSolid } from './houses';
+import { recentDead } from './villageraid';
 import * as THREE from 'three';
 import { scene, V, GRID, localize } from './render';
 import { G, W } from '../game';
@@ -304,7 +305,7 @@ function loadVillageStruct(poi: Poi): Structure {
   const gname = vm.home ? NPC_INFO.guard.name! : folk.pop()!, edge = vm.walk.filter(([x, z]) => Math.min(x - vm.ox, z - vm.oz, vm.ox + 72 - x, vm.oz + 72 - z) < 6);
   const start = edge.length ? edge[0] : vm.walk[0], guard = makeNpc('guard', gname, V(start[0] + 0.5, y, start[1] + 0.5), null);
   guard.route = edge; npcs.push(guard);
-  folk.slice(0, vm.home ? 12 : 8).forEach((nm) => { const c = vm.walk[(Math.random() * vm.walk.length) | 0]; npcs.push(makeNpc('villager', nm, V(c[0] + 0.5, y, c[1] + 0.5), null)); });
+  folk.slice(0, Math.max(2, (vm.home ? 12 : 8) - recentDead(poi.id))).forEach((nm) => { const c = vm.walk[(Math.random() * vm.walk.length) | 0]; npcs.push(makeNpc('villager', nm, V(c[0] + 0.5, y, c[1] + 0.5), null)); });
   for (const n of npcs) n.town = vm.name;
   W.npcs.push(...npcs); W.villageWalk = vm.walk;
   OW.village = vm; setLadders(poi.id, vm.towers.flatMap((t) => (t.ladder ? [t.ladder] : [])), y); setHouses(poi.id, vm);

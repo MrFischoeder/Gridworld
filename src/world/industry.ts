@@ -1,6 +1,9 @@
 // Every village's industry site outside the fence (gen/industry.ts): tilled fields, a mine, oil wells, a refinery
 // (or its building site), a sawmill, fish racks, workshops or a salvage yard, with a sign. Pumpjacks nod and the
 // refinery's flare burns while it produces; E at the site shows how it works and mends it when it is damaged.
+// Villagers work the site (hoeing the rows, swinging picks at the rock face, hammering at the pumps and the
+// workbenches) and one carries the crates to the storehouse at its corner (gen/store.ts), where they stack up in
+// front of the door; when the storehouse is full, or the site wrecked, the work stops and they stand about.
 import * as THREE from 'three';
 import { G } from '../game';
 import { PropBatch } from './props';
@@ -11,13 +14,20 @@ import { count } from '../data/crafting';
 import { saveChar, gainXp, calcStats } from '../character';
 import { showToast, logLine } from '../ui/hud';
 import { industryOf, industrySite, production, siteBuilt, siteCondition, INDUSTRY, type Industry } from '../gen/industry';
-import { profileOf } from '../gen/market';
+import { profileOf, GOOD_INFO } from '../gen/market';
+import { storeAt, storeCap, storeFull, storeTier, STORE } from '../gen/store';
+import { makeFigure, type Figure } from './npc';
+import { poseRig, type Kit } from './rig';
 import { findPoi } from '../gen/regions';
 import type { VillageMap } from '../gen/village';
 import type { Terrain } from '../gen/terrain';
 
-const WOOD = 0xb8b060, METAL = 0xa8c8b8, SOIL = 0x6f8f76, CROP = 0xd8ff7a, GRAIN = 0xe8d880, ROCK = 0x8fb89a, FLAME = 0xffb347, PIPE = 0xc8e0ff;
-interface Site { id: number; seed: number; kind: Industry; town: string; x0: number; z0: number; x1: number; z1: number; beams: THREE.Object3D[]; flame: THREE.Object3D | null }
+const WORKER = 0xdce8ff, WOOD = 0xb8b060, METAL = 0xa8c8b8, SOIL = 0x6f8f76, CROP = 0xd8ff7a, GRAIN = 0xe8d880, ROCK = 0x8fb89a, FLAME = 0xffb347, PIPE = 0xc8e0ff;
+interface Worker { f: Figure; x: number; z: number; to: [number, number] | null; spot: [number, number]; wait: number; phase: number; face: number; carry: boolean; load: boolean }
+interface Site {
+  id: number; seed: number; kind: Industry; town: string; x0: number; z0: number; x1: number; z1: number; beams: THREE.Object3D[]; flame: THREE.Object3D | null;
+  T: Terrain; spots: [number, number][]; door: [number, number]; workers: Worker[]; crates: THREE.Object3D[]; grp: THREE.Group;
+}
 const sites = new Map<number, Site>();
 
 /** A faceted cylinder standing on (x, y, z). */
@@ -46,6 +56,29 @@ export function drawIndustry(vm: VillageMap, T: Terrain, id: number): THREE.Grou
   };
   const beams: THREE.Object3D[] = [];
   let flame: THREE.Object3D | null = null;
+  // where the villagers work (site-frame u, v), per kind
+  const W: [number, number][] = kind === 'farm' ? [[-9, -4], [-4, 3], [1, -2], [5, 4], [-7, 5], [3, -6]]
+    : kind === 'mine' ? [[-1.8, out / 2 - 7.5], [1.8, out / 2 - 7.2], [along / 2 - 4.5, -2.5], [-along / 2 + 6.2, 0.5]]
+    : kind === 'oil' ? [[-along / 2 + 4.8, -3.5], [1, 0.5], [along / 2 - 4.8, -2.5]]
+    : kind === 'refinery' ? (built ? [[-1.5, -0.8], [2.4, 1.2], [along / 2 - 5.2, 0.8]] : [[-3, -1.2], [0.5, 0.6], [along / 2 - 4, -1.6]])
+    : kind === 'lumber' ? [[1.5, -0.6], [4.5, 1.3], [-1.2, 1.2]]
+    : kind === 'fishery' ? [[-3, -1.4], [0, 1.6], [2, -1.4]]
+    : kind === 'workshop' ? [[-3, -3.6], [4, -2.3], [0.6, -4]]
+    : [[-4, -1.8], [1, 0.6], [5, -3.6]];
+  // the storehouse at a free corner of the site, bigger with each tier
+  const [su, sv] = kind === 'farm' ? [along / 2 - 2.8, out / 2 - 3] : kind === 'mine' ? [along / 2 - 2.4, out / 2 - 2.2] : kind === 'oil' ? [0, -out / 2 + 2.4] : kind === 'refinery' ? [5, -out / 2 + 2.6] : [along / 2 - 2.6, -out / 2 + 2.6];
+  const tier = storeTier(c.towns[id]), hu = [1.5, 2, 2.4][tier], hv = [1.1, 1.5, 1.8][tier];
+  shed(su, sv, hu, hv, [2.4, 3, 3.6][tier]);
+  const toVillage = sv > 0 ? -1 : 1; // the door on the side towards the middle of the site
+  const [dx, dz] = P(su, sv + toVillage * (hv + 0.1));
+  { const g = H(su, sv + toVillage * (hv + 0.05)), [a, , b] = at(su - 0.5, sv + toVillage * (hv + 0.06)), [cc, , d] = at(su + 0.5, sv + toVillage * (hv + 0.06)); pb.face([a, g, b], [cc, g, d], [cc, g + 2, d], [a, g + 2, b]); }
+  // crates in front of it, as many shown as the fill says (updateIndustry)
+  const crates: THREE.Object3D[] = [], rows = [4, 6, 8][tier];
+  for (let i = 0; i < rows * 3; i++) {
+    const col = i % rows, lay = Math.floor(i / rows), u = su - hu + 0.35 + col * ((hu * 2 - 0.7) / Math.max(1, rows - 1)), v = sv + toVillage * (hv + 0.75 + (lay === 2 ? 0.7 : 0)), [x, y, z] = at(u, v);
+    const cb = new PropBatch(), yy = y + (lay === 1 ? 0.52 : 0); cb.box(x - 0.26, yy, z - 0.26, x + 0.26, yy + 0.5, z + 0.26, WOOD); cb.seg(WOOD, [x - 0.26, yy + 0.25, z - 0.27], [x + 0.26, yy + 0.25, z - 0.27]);
+    const o = cb.build(); o.visible = false; grp.add(o); crates.push(o);
+  }
   const makes = profileOf(c.world, poi, vm.seed).makes;
   if (kind === 'farm') {
     // rows of crops across the field, a furrow under each; a barn and a scarecrow
@@ -150,20 +183,72 @@ export function drawIndustry(vm: VillageMap, T: Terrain, id: number): THREE.Grou
   grp.add(pb.build());
   const label = INDUSTRY[kind].site.toUpperCase() + (kind === 'refinery' && !built ? ' (PLANNED)' : ''), sign = textSprite(label, '#ffd060', 3.2);
   sign.position.set(sgx, sgy + 3, sgz); grp.add(sign);
-  sites.set(id, { id, seed: vm.seed, kind, town: vm.name, x0, z0, x1, z1, beams, flame });
+  const spots = W.map(([u, v]) => P(u, v));
+  const tools: Kit = kind === 'farm' ? 'hoe' : kind === 'mine' || kind === 'salvage' ? 'pick' : 'hammer';
+  const workers: Worker[] = spots.slice(0, kind === 'farm' ? 4 : 3).map((sp, i) => ({ f: makeFigure(WORKER, tools), x: sp[0], z: sp[1], to: null, spot: sp, wait: i * 1.3, phase: i * 0.37, face: Math.atan2(fx, fz) * (i % 2 ? 1 : -1), carry: false, load: false }));
+  { const sp = P(0, 0); workers.push({ f: makeFigure(WORKER, 'carry'), x: sp[0], z: sp[1], to: null, spot: sp, wait: 2, phase: 0, face: 0, carry: true, load: true }); }
+  for (const w of workers) { grp.add(w.f.g); w.f.g.position.set(w.x, T.heightAt(w.x, w.z), w.z); }
+  sites.set(id, { id, seed: vm.seed, kind, town: vm.name, x0, z0, x1, z1, beams, flame, T, spots, door: [dx, dz], workers, crates, grp });
   return grp;
 }
 export function forgetIndustry(id: number) { sites.delete(id); }
+const tmpV = new THREE.Vector3();
+/** A worker: walk to a spot and work there a while (or carry a crate to the storehouse and go back for the next). */
+function work(s: Site, w: Worker, busy: boolean, dt: number) {
+  const f = w.f;
+  let moving = false;
+  if (w.to) {
+    const dx = w.to[0] - w.x, dz = w.to[1] - w.z, d = Math.hypot(dx, dz);
+    if (d < 0.25) { w.to = null; w.wait = w.carry ? 1.2 : 6 + Math.random() * 8; if (w.carry) w.load = !w.load; }
+    else { const v = Math.min(d, (w.carry && w.load ? 1.1 : 1.4) * dt); w.x += dx / d * v; w.z += dz / d * v; w.face = Math.atan2(dx, dz); moving = true; }
+  } else if ((w.wait -= dt) <= 0 && (busy || Math.random() < dt * 0.1)) {
+    if (w.carry) w.to = w.load ? s.door : s.spots[Math.floor(Math.random() * s.spots.length)];
+    else { w.spot = s.spots[Math.floor(Math.random() * s.spots.length)]; w.to = [w.spot[0] + (Math.random() - 0.5) * 1.2, w.spot[1] + (Math.random() - 0.5) * 1.2]; }
+  }
+  if (w.carry) { f.rig.kit = busy && w.load ? 'carry' : 'none'; const cr = f.g.getObjectByName('crate'); if (cr) cr.visible = f.rig.kit === 'carry'; }
+  w.phase += dt * (moving ? 7 : 1);
+  const sw = moving ? Math.sin(w.phase) * 0.5 : 0;
+  f.legL.rotation.x = sw; f.legR.rotation.x = -sw;
+  // at work: a stroke every ~1.2 s, facing the job; idle: tools down
+  const working = busy && !moving && !w.carry;
+  poseRig(f.rig, { swing: sw, strike: working ? (w.phase * 0.85) % 1 : -1 });
+  // the village's group is localised (world/render.ts localize): place the figure relative to its parent
+  const o = f.g.parent ? f.g.parent.getWorldPosition(tmpV) : tmpV.set(0, 0, 0);
+  f.g.position.set(w.x - o.x, s.T.heightAt(w.x, w.z) - o.y, w.z - o.z);
+  let dr = w.face - f.g.rotation.y; dr = Math.atan2(Math.sin(dr), Math.cos(dr)); f.g.rotation.y += dr * Math.min(1, dt * 5);
+}
 
 const prodOf = (s: Site) => { const poi = findPoi(G.char.world, s.id); return poi ? production(G.char.world, poi, s.seed, G.char.towns[s.id], G.char.time) : 1; };
+/** The storehouse of village `id` now: crates, capacity, full (the site stands still), its tier's name. */
+export function storeOf(id: number, seed: number) {
+  const poi = findPoi(G.char.world, id), st = G.char.towns[id], p = poi ? production(G.char.world, poi, seed, st, G.char.time) : 1;
+  const n = storeAt(seed, st, G.char.time, p), cap = storeCap(st);
+  return { n, cap, full: storeFull(seed, st, G.char.time, p), prod: p, name: STORE.tiers[storeTier(st)].name };
+}
+/** What the storehouse's contents are worth (for the bandits' demands): crates at the price of what the village makes. */
+export function storeWealth(id: number, seed: number): number {
+  const poi = findPoi(G.char.world, id);
+  if (!poi) return 0;
+  const makes = profileOf(G.char.world, poi, seed).makes, avg = makes.reduce((a, g) => a + GOOD_INFO[g].base, 0) / Math.max(1, makes.length);
+  return storeOf(id, seed).n * avg * 0.6;
+}
 let prodT = 0;
 const prodNow = new Map<number, number>();
-/** Once a frame: pumpjacks nod and the flare burns, as fast as the site works. */
+/** Once a frame: pumpjacks nod and the flare burns, as fast as the site works; the workers work (or stand about). */
 export function updateIndustry(dt: number) {
-  if ((prodT -= dt) <= 0) { prodT = 2; for (const s of sites.values()) prodNow.set(s.id, prodOf(s)); }
+  if ((prodT -= dt) <= 0) {
+    prodT = 2;
+    for (const s of sites.values()) {
+      const st = storeOf(s.id, s.seed);
+      prodNow.set(s.id, st.full ? 0 : prodOf(s));
+      const shown = Math.round(st.n / st.cap * s.crates.length);
+      s.crates.forEach((o, i) => { o.visible = i < shown; });
+    }
+  }
   const t = performance.now() / 1000;
   for (const s of sites.values()) {
     const p = prodNow.get(s.id) ?? 1;
+    if (Math.abs(s.x0 - G.pos.x) < 160 && Math.abs(s.z0 - G.pos.z) < 160) for (const w of s.workers) work(s, w, p > 0.2, dt);
     s.beams.forEach((b, i) => { b.rotation.x = p > 0.2 ? Math.sin(t * 1.4 * p + i * 1.7) * 0.32 : 0; });
     if (s.flame) { s.flame.visible = p > 0.2; s.flame.scale.set(1, 0.8 + Math.sin(t * 9) * 0.2 + Math.sin(t * 13.7) * 0.1, 1); }
   }
@@ -180,7 +265,9 @@ export function sitePrompt(s: Site): string {
   const spec = INDUSTRY[s.kind];
   if (!siteBuilt(s.kind, G.char.towns[s.id])) return `${s.town}'s ${spec.site} is still to be built: ask the elder about it`;
   const poi = findPoi(G.char.world, s.id), c = poi ? Math.round(siteCondition(G.char.world, poi, G.char.towns[s.id], G.char.time)) : 100;
-  if (c >= 90) return `${s.town}'s ${spec.site}: working (${c}%)`;
+  const st = storeOf(s.id, s.seed), store = `${st.name} ${Math.floor(st.n)}/${st.cap}`;
+  if (c >= 90 && st.full) return `${s.town}'s ${spec.site}: stopped, the ${st.name.toLowerCase()} is full (${store}) · the elder wants a bigger one`;
+  if (c >= 90) return `${s.town}'s ${spec.site}: working (${c}%) · ${store}`;
   return hasAll(s.kind) ? `E — mend the ${spec.site} (${c}%): uses ${need(s.kind)}` : `The ${spec.site} is damaged (${c}%): bring ${need(s.kind)} to mend it`;
 }
 /** Mend the site with the parts from your backpack; the village pays you. */

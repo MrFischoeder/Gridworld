@@ -18,6 +18,9 @@ import { plantCondition } from '../world/power';
 import { industryOf, INDUSTRY, buildPlan, handOverBuild, siteCondition } from '../gen/industry';
 import { profileOf } from '../gen/market';
 import { nextRaid, lastRaid, raidSource, raidOutcome } from '../gen/raids';
+import { storePlan, handOverStore, STORE } from '../gen/store';
+import { storeOf } from '../world/industry';
+import { pendingTribute, payTribute } from '../world/villageraid';
 import { findPoi } from '../gen/regions';
 import { fmtTime } from '../core/time';
 import { fortifyPlan, handOver, powerKind, powerSite, POWER, POWER_DOWN, POWER_LOW } from '../gen/town';
@@ -104,15 +107,16 @@ const SIDE_NAME = { W: 'west', E: 'east', S: 'south', N: 'north' } as const;
 function raidNews(id: number): string {
   const c = G.char, poi = findPoi(c.world, id), st = c.towns[id], nr = poi && nextRaid(c.world, poi, c.time), lr = poi && lastRaid(c.world, poi, c.time);
   return !poi || !raidSource(c.world, poi) ? 'No bandit camp is near enough to trouble us, thank the stars.'
-    : `Bandits from ${raidSource(c.world, poi)!.name} raid us every few days.` + (lr ? ` The last raid ${raidOutcome(c.world, lr, st) === 'won' ? 'was beaten off' : 'broke through'}.` : '') + (nr && nr.t0 - c.time < 1440 ? ` Our scouts expect them again about ${fmtTime(nr.t0)}.` : '') + ' A stronger wall holds them better.';
+    : `Bandits from ${raidSource(c.world, poi)!.name} raid us every few days.` + (lr ? ` The last time ${({ won: 'we beat them off', lost: 'they broke through', paid: 'we paid them off' } as const)[raidOutcome(c.world, lr, st)]}.` : '') + (nr && !st?.raids?.[nr.k] && nr.t0 - c.time < 1440 ? ` Our scouts expect them again about ${fmtTime(nr.t0)}.` : '') + ' A stronger wall holds them better.';
 }
 /** The captain of the guard's report: the wall, the raiders, the towers. */
-function renderWatch() {
+function renderWatch(msg = '') {
   const v = loadedVillage(town());
   if (!v) { renderTalk('Hm?'); return; }
-  const plan = fortifyPlan(G.char.towns[v.id]), wall = WALL_TIERS[plan ? plan.from : WALL_TIERS.length - 1];
-  renderTalk(`We sit behind a <b>${wall.name}</b>. ${raidNews(v.id)} When they come, meet them at the gates, or climb a tower: from up there you see them long before they see you.` +
-    (plan ? ` The Elder is raising money and materials for a ${WALL_TIERS[plan.to].name.toLowerCase()}; help him and my job gets easier.` : ''));
+  const plan = fortifyPlan(G.char.towns[v.id]), wall = WALL_TIERS[plan ? plan.from : WALL_TIERS.length - 1], pt = pendingTribute(v.id);
+  renderTalk((msg ? msg + '<br><br>' : '') + `We sit behind a <b>${wall.name}</b>. ${raidNews(v.id)}${tributeNote(v.id)} When they come, meet them at the gates, or climb a tower: from up there you see them long before they see you.` +
+    (plan ? ` The Elder is raising money and materials for a ${WALL_TIERS[plan.to].name.toLowerCase()}; help him and my job gets easier.` : '') +
+    (pt ? `<br><br><button class="opt" data-tribute="pay" ${G.char.gold < pt.amount ? 'disabled' : ''} style="color:var(--gold)">Pay the bandits their ${pt.amount} gold</button>` : ''));
 }
 /** The elder's commissions: raise the fence to the next tier (materials handed over bit by bit), the power plant, the raids, the village's industry (and building its refinery). */
 function renderFortify(msg?: string) {
@@ -122,7 +126,14 @@ function renderFortify(msg?: string) {
   const k = powerKind(v.vm.seed), pc = Math.round(plantCondition(v.id, v.vm.seed)), side = SIDE_NAME[powerSite(v.vm.seed).side];
   const power = `Our power comes from the <b>${POWER[k].name}</b> outside the ${side} fence: ${pc < POWER_DOWN ? '<span style="color:var(--red,#ff5a3c)">it is down</span>' : pc < POWER_LOW ? 'it is failing' : 'it runs'} (${pc}%). ` +
     (pc < 90 ? `Mend it with ${POWER[k].fix.map(([i, n]) => `${n} ${ITEMS[i].name}`).join(', ')} and we will pay you.` : 'Keep an eye on it for us.');
-  const poi = findPoi(c.world, v.id), raids = raidNews(v.id);
+  const poi = findPoi(c.world, v.id), raids = raidNews(v.id) + tributeNote(v.id);
+  // the storehouse: how full, and the commission for a bigger one
+  const so = storeOf(v.id, v.vm.seed), sp = storePlan(st);
+  const store = `Our ${so.name.toLowerCase()} by the ${poi ? INDUSTRY[industryOf(c.world, poi, v.vm.seed)].site.toLowerCase() : 'works'} holds <b>${Math.floor(so.n)} of ${so.cap}</b> crates` +
+    (so.full ? '. <span style="color:var(--red,#ff5a3c)">It is full, so the work has stopped</span> until the caravans take enough away.' : '.') +
+    (sp ? ` Build us a <b>${STORE.tiers[sp.to].name.toLowerCase()}</b> (${STORE.tiers[sp.to].cap} crates) and we can gather more to trade: the village will pay you <b>${sp.gold} gold</b>.` : '');
+  const srows = sp ? sp.rows.map((r) => `<div class="shoprow"><div><b>${ITEMS[r.k].name}</b><br><span>${r.given} / ${r.n} for the ${STORE.tiers[sp.to].name.toLowerCase()}${r.given < r.n ? ` · you carry ${count(c.inv, r.k)}` : ' · done'}</span></div></div>`).join('') : '';
+  const canStore = !!sp && sp.rows.some((r) => r.given < r.n && count(c.inv, r.k) > 0), pt = pendingTribute(v.id);
   // the village's industry, and (refinery towns) the commission to build the refinery
   const ind = poi ? industryOf(c.world, poi, v.vm.seed) : 'farm', spec = INDUSTRY[ind], bp = buildPlan(ind, st), sc = poi ? Math.round(siteCondition(c.world, poi, st, c.time)) : 100;
   const trade = poi ? profileOf(c.world, poi, v.vm.seed).makes.map((g) => ITEMS[g].name).join(' and ') : '';
@@ -137,12 +148,31 @@ function renderFortify(msg?: string) {
   const canGive = !!plan && plan.rows.some((r) => r.given < r.n && count(c.inv, r.k) > 0);
   panel().innerHTML = dlgHead() + `<div class="say">${msg ? msg + '<br><br>' : ''}` +
     (plan ? `Our wall is a <b>${wall.name}</b>. Help us raise a <b>${WALL_TIERS[plan.to].name}</b> (${WALL_TIERS[plan.to].h} m) and the village will pay you <b>${plan.gold} gold</b>. Bring the materials a load at a time: we keep count.`
-      : `Our wall is a <b>${wall.name}</b>, as strong as we can make it. Thank you.`) + `<br><br>${power}<br><br>${raids}<br><br>${work}</div>` + rows +
+      : `Our wall is a <b>${wall.name}</b>, as strong as we can make it. Thank you.`) + `<br><br>${power}<br><br>${raids}<br><br>${work}<br><br>${store}</div>` +
+    (pt ? `<button class="opt" data-tribute="pay" ${c.gold < pt.amount ? 'disabled' : ''} style="color:var(--gold)">Pay the bandits their ${pt.amount} gold</button>` : '') + rows +
     (plan ? `<button class="opt" data-fort="give" ${canGive ? '' : 'disabled'}>Hand over what I carry (for the wall)</button>` : '') + brows +
-    (bp ? `<button class="opt" data-rbuild="give" ${canBuild ? '' : 'disabled'}>Hand over what I carry (for the refinery)</button>` : '') +
+    (bp ? `<button class="opt" data-rbuild="give" ${canBuild ? '' : 'disabled'}>Hand over what I carry (for the refinery)</button>` : '') + srows +
+    (sp ? `<button class="opt" data-sbuild="give" ${canStore ? '' : 'disabled'}>Hand over what I carry (for the ${STORE.tiers[sp.to].name.toLowerCase()})</button>` : '') +
     `<button class="opt" data-o="back">${OPT_TEXT.back}</button>`;
 }
 const REFINERY_PAY = 1200;
+/** The bandits' current demand, as the elder or the guard tells it. */
+function tributeNote(vid: number): string {
+  const p = pendingTribute(vid);
+  return p ? ` <b>Their rider is here: ${p.camp} wants ${p.amount} gold by ${fmtTime(p.r.t0)}, or they attack.</b> Pay them, or help us fight.` : '';
+}
+function giveStore() {
+  const v = loadedVillage(town()), c = G.char;
+  if (!v) return;
+  const st = (c.towns[v.id] ??= {}), so = storeOf(v.id, v.vm.seed), plan = storePlan(st)!;
+  const { taken, built } = handOverStore(st, v.vm.seed, c.time, so.prod, (i) => count(c.inv, i));
+  for (const [i, n] of taken) { let left = n; for (let j = 0; j < c.inv.length && left; j++) { const s = c.inv[j]; if (s?.k === i) { const m = Math.min(left, s.n); s.n -= m; left -= m; if (s.n <= 0) c.inv[j] = null; } } }
+  if (!built) { saveChar(); renderFortify(taken.length ? 'Handed over: ' + taken.map(([i, n]) => `${ITEMS[i].name} ×${n}`).join(', ') + '.' : 'You carry nothing the storehouse still needs.'); return; }
+  c.gold += plan.gold; gainXp(plan.xp); calcStats(); saveChar();
+  closeDialog(); reloadStruct(v.id);
+  showToast(`${v.vm.name}: a new ${STORE.tiers[plan.to].name.toLowerCase()}`);
+  logLine(`${v.vm.name}'s new ${STORE.tiers[plan.to].name.toLowerCase()} holds ${STORE.tiers[plan.to].cap} crates. The village pays you ${plan.gold} gold.`);
+}
 function giveRefinery() {
   const v = loadedVillage(town()), c = G.char, poi = v && findPoi(c.world, v.id);
   if (!v || !poi) return;
@@ -200,6 +230,8 @@ dlgEl.addEventListener('click', (e) => {
   }
   if (t.closest('[data-fort]')) { giveFortify(); return; }
   if (t.closest('[data-rbuild]')) { giveRefinery(); return; }
+  if (t.closest('[data-sbuild]')) { giveStore(); return; }
+  if (t.closest('[data-tribute]')) { const v = loadedVillage(town()); const m = v ? payTribute(v.id) : ''; if (W.talkNpc?.role === 'guard') renderWatch(m); else renderFortify(m); return; }
   const qb = t.closest<HTMLElement>('[data-q]');
   if (qb) { const id = townId(); renderTalk((id !== null && questTalk(qb.dataset.q!, id)) || 'Hm?'); return; }
   if (!o) return;

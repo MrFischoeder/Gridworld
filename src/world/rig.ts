@@ -6,7 +6,7 @@
 import * as THREE from 'three';
 import { fillMat, V } from './render';
 
-export type Kit = 'none' | 'rifle' | 'pistol' | 'sword' | 'spear' | 'drive';
+export type Kit = 'none' | 'rifle' | 'pistol' | 'sword' | 'spear' | 'drive' | 'hoe' | 'pick' | 'hammer' | 'carry';
 export interface Arm { line: THREE.Line; pos: THREE.BufferAttribute; s: THREE.Vector3; side: 1 | -1; hand: THREE.Group }
 export interface Rig { armL: Arm; armR: Arm; kit: Kit; shield: boolean; aim: number }
 /** What the figure is doing this frame. */
@@ -63,6 +63,17 @@ function sword(mat: THREE.LineBasicMaterial) {
   g.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([V(-0.033, 0, 0.8), V(0, 0, 0.92), V(0.033, 0, 0.8)]), mat)); // point
   return g;
 }
+/** Work tools, grip at the origin and the handle along +z: a hoe, a pick, a hammer. */
+function tool(mat: THREE.LineBasicMaterial, k: 'hoe' | 'pick' | 'hammer') {
+  const g = new THREE.Group(), L = k === 'hammer' ? 0.42 : 1.15;
+  part(g, mat, 0.035, 0.035, L, 0, 0, L / 2 - 0.1); // the handle
+  if (k === 'hoe') part(g, mat, 0.22, 0.2, 0.02, 0, -0.09, L - 0.1);             // blade, square to the handle
+  if (k === 'pick') part(g, mat, 0.04, 0.62, 0.05, 0, 0, L - 0.1);               // two points across the handle's end
+  if (k === 'hammer') part(g, mat, 0.07, 0.16, 0.08, 0, 0, L - 0.12);
+  return g;
+}
+/** A crate carried in both arms. */
+function crate(mat: THREE.LineBasicMaterial) { const g = new THREE.Group(); part(g, mat, 0.5, 0.36, 0.4, 0, 0, 0); return g; }
 function spear(mat: THREE.LineBasicMaterial) {
   const g = new THREE.Group();
   g.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([V(0, 0, -1.0), V(0, 0, 1.25)]), mat));
@@ -84,6 +95,8 @@ export function makeRig(g: THREE.Group, mat: THREE.LineBasicMaterial, kit: Kit, 
   if (kit === 'pistol') armR.hand.add(pistol(mat));
   if (kit === 'sword') armR.hand.add(sword(mat));
   if (kit === 'spear') armR.hand.add(spear(mat));
+  if (kit === 'hoe' || kit === 'pick' || kit === 'hammer') armR.hand.add(tool(mat, kit));
+  if (kit === 'carry') { const c = crate(mat); c.position.set(0, 1.0, 0.4); c.name = 'crate'; g.add(c); }
   if (withShield) armL.hand.add(shield(mat));
   const r: Rig = { armL, armR, kit, shield: withShield, aim: 0 };
   poseRig(r, {});
@@ -153,6 +166,37 @@ export function poseRig(r: Rig, ps: Pose) {
       else { const k = ease((t - 0.6) / 0.4); hand = L3(down.h, guard.h, k); dir = L3(down.d, guard.d, k); }
       reach(armR, hand, outR); aimHand(armR, dir.normalize());
       if (r.shield) { reach(armL, V(-0.22, 1.14, 0.3), outL); aimHand(armL, V(0.15, 0, 1)); } else hang(armL, -sw * 0.7);
+      break;
+    }
+    case 'hoe': case 'pick': {
+      // both hands on the handle; a working stroke (strike 0..1) lifts it over the head and brings it down in front;
+      // at rest (no stroke) it leans against the shoulder
+      const t = ps.strike ?? -1, rest = { h: [0.2, 1.05 + sw * 0.02, 0.18], d: [0.05, 1, -0.35] };
+      const low = { h: [0.08, 0.95, 0.38], d: [0, -0.35, 1] }, high = { h: [0.06, 1.72, 0.08], d: [0, 0.85, -0.5] }, hit = { h: [0.05, 0.85, 0.5], d: [0, -0.75, 0.65] };
+      let h: THREE.Vector3, d: THREE.Vector3;
+      if (t < 0) { h = V(...rest.h as [number, number, number]); d = V(...rest.d as [number, number, number]); }
+      else if (t < 0.55) { const k = ease(t / 0.55); h = L3(low.h, high.h, k); d = L3(low.d, high.d, k); }
+      else if (t < 0.72) { const k = ease((t - 0.55) / 0.17); h = L3(high.h, hit.h, k); d = L3(high.d, hit.d, k); }
+      else { const k = ease((t - 0.72) / 0.28); h = L3(hit.h, low.h, k); d = L3(hit.d, low.d, k); }
+      d.normalize();
+      reach(armR, h, outR); aimHand(armR, d);
+      const lh = h.clone().addScaledVector(d, t < 0 ? -0.3 : 0.32); // lower on the handle (at rest: under the right hand)
+      reach(armL, lh, outL); aimHand(armL, d);
+      break;
+    }
+    case 'hammer': {
+      // one-handed blows on the work in front; the other hand holds it steady
+      const t = ps.strike ?? -1;
+      if (t < 0) { hang(armR, sw * 0.7); armR.hand.quaternion.setFromUnitVectors(Z, tmp.d.set(0, -1, 0.2).normalize()); hang(armL, -sw * 0.7); break; }
+      const up = t < 0.6 ? ease(t / 0.6) : 1 - ease((t - 0.6) / 0.4);
+      const h = L3([0.2, 0.95, 0.45], [0.26, 1.45, 0.22], up), d = L3([0, -0.6, 0.8], [0, 0.7, -0.3], up).normalize();
+      reach(armR, h, outR); aimHand(armR, d);
+      reach(armL, V(-0.12, 0.92, 0.45), outL); aimHand(armL, V(0.3, -0.3, 1));
+      break;
+    }
+    case 'carry': { // the crate in both arms in front
+      reach(armL, V(-0.2, 1.02 + sw * 0.01, 0.38), outL); reach(armR, V(0.2, 1.02 + sw * 0.01, 0.38), outR);
+      aimHand(armL, V(0.6, 0, 1)); aimHand(armR, V(-0.6, 0, 1));
       break;
     }
     case 'spear': {

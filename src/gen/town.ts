@@ -18,7 +18,11 @@ export interface TownState {
   /** Extra damage to the plant (raids fought while you were there), in percent. */
   hurt?: number;
   /** How the bandit raids you were there for ended (gen/raids.ts), by raid number. */
-  raids?: Record<number, 'won' | 'lost'>;
+  raids?: Record<number, 'won' | 'lost' | 'paid'>;
+  /** The storehouse (gen/store.ts): crates at a time, its tier, materials handed over towards the next one. */
+  store?: { n: number; t: number }; storeTier?: number; sgiven?: Partial<Record<ItemKey, number>>;
+  /** When villagers were killed in raids you were there for (they are missed for a couple of days). */
+  dead?: number[];
   /** The industry site (gen/industry.ts): when you last mended it, damage bandits did at it and when, the refinery built and its materials so far. */
   siteFixed?: number; siteHurt?: number; siteHurtT?: number; built?: boolean; bgiven?: Partial<Record<ItemKey, number>>;
 }
