@@ -1,2 +1,5 @@
-// Shown in the pause menu so a player can tell which build they are running. Bump it with every pushed feature.
-export const VERSION = '2026-09-24 · robots guard the crashed ships';
+// The game's version, shown next to the title in the main menu so a player can tell which build they are running.
+// Bump it with every pushed change (and keep package.json's "version" the same): the middle number for a new
+// feature (0.4.0 -> 0.5.0), the last one for a fix (0.5.0 -> 0.5.1). BUILD says what the latest change was.
+export const VERSION = '0.5.0';
+export const BUILD = '2026-09-24 · version number next to the title';

@@ -223,6 +223,7 @@ body.is-touch #bUse.on{display:flex}
 #foodbar.low,#waterbar.low{border-color:var(--amber);box-shadow:0 0 6px var(--amber)}
 #stat .lbl{font-size:15px;opacity:.7}
 #version{font-size:18px;opacity:.6;margin-top:4px}
+#vnum{font-size:.28em;opacity:.75;vertical-align:top;letter-spacing:.05em}
 #packLoad,#xferInvInfo{font-size:17px;opacity:.85}
 #packLoad .warn,#xferInvInfo .warn{color:var(--amber)}
 #packLoad .bad,#xferInvInfo .bad{color:#ff7a5c}
