@@ -8,7 +8,11 @@ const MS = 3, MV = 150; mini.width = mini.height = MV;
 let miniBase: HTMLCanvasElement, mbctx: CanvasRenderingContext2D, explored: Uint8Array, lastReveal = '';
 export const miniCtx = () => ({ canvas: mini, ctx: mctx, size: MV });
 
+/** A place with its own idea of what is open ground (a cave) sets this; null = the voxel columns decide. */
+let openHook: ((x: number, z: number) => boolean) | null = null;
+export const setMiniOpen = (f: ((x: number, z: number) => boolean) | null) => { openHook = f; };
 function colOpen(x: number, z: number) {
+  if (openHook) return openHook(x, z);
   const s = G.space;
   return s.empty(x, 0, z) || s.empty(x, 1, z) || s.empty(x, 2, z) || W.doors.some((d) => d.cells.some((q) => q[0] === x && q[2] === z));
 }

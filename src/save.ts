@@ -12,7 +12,8 @@ import type { Part } from './gen/base';
 export interface Slot { k: ItemKey; n: number; c?: number }
 /** Per-dungeon progress, keyed by dungeonKey() = "ruinId:depth:gx:gz". */
 export type Progress = Record<string, number[]>;
-export interface DungeonPos { ruinId: number; depth: number; gx: number; gz: number }
+/** Where in which dungeon the player is. In a cave system (`cave`), ruinId is the system's id; its mouths are kept so the way out is known. */
+export interface DungeonPos { ruinId: number; depth: number; gx: number; gz: number; cave?: { name: string; mouths: { x: number; z: number; face: number }[]; from: number } }
 /** Anything that holds items: a searched chest, a vehicle trunk. */
 export interface Container { items: (Slot | null)[]; gold: number }
 export interface VehicleState { id: string; model: VehicleModel; x: number; z: number; heading: number; trunk: Container; parts: VehicleParts }

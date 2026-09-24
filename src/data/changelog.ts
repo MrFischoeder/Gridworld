@@ -4,6 +4,12 @@ export interface Change { v: string; date: string; title: string; notes: string[
 
 export const CHANGELOG: Change[] = [
   {
+    v: '0.16.0', date: '2026-09-24', title: 'Cave systems',
+    notes: ['The cave mouths in the mountains are open. Inside is an organic labyrinth: winding tunnels with rounded walls, chambers of every size and shape, loops that bring you back round, and dead-end pockets that sometimes hide a chest. Stalagmites and stalactites, nutrient crystals, and a few stray drones in the dark.',
+      'Some mountains have two mouths that belong to the same cave system and carry the same name: the cave runs right through the mountain, and going in on one side you can come out on the other, a shortcut under the peaks. The prompt at the mouth tells you when a cave runs through.',
+      'Daylight marks the way out (E). Every cave is the same each time you come back; what you take from its chests stays taken.'],
+  },
+  {
     v: '0.15.0', date: '2026-09-24', title: 'Trails to the summits',
     notes: ['The true peaks of the mountains have names (Mount ...) and a trail up to them from the foot of the mountain. The trails climb at an easy grade, turn across the slope in switchbacks where it gets steep, and run on a level bench cut into the mountainside, so you can walk all the way up.',
       'A signpost marks the trailhead, stone cairns stand beside the way, and a big cairn with a pennant crowns the summit. The HUD names the trail at its start and the summit (with its height) at the top.',

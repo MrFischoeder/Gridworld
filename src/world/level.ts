@@ -22,6 +22,8 @@ import { clearBenches } from './benches';
 import { clearFlags, cancelPlacing } from './claims';
 import { clearBases } from './building';
 import { clearTurrets } from './turrets';
+import { buildCave, leaveCave } from './cavelevel';
+import type { Cave } from '../gen/caves';
 import { makeDrone, placeDrone, makeBoss, setDroneRespawn } from './enemies';
 import { drawCrown } from './trees';
 import { sky, horizon, buildHorizon, updateSky, darkSky } from './sky';
@@ -48,7 +50,7 @@ export function voxelObject(grid: VoxelGrid, skyY = Infinity, outline?: OutlineS
 
 /** Removes every entity of the current place (the open world also unloads its chunks and structures). */
 function clearLevel() {
-  closeWorld(); clearCrystals(); clearFires(); clearBenches(); clearFlags(); cancelPlacing(true); clearBases(); clearTurrets();
+  closeWorld(); leaveCave(); clearCrystals(); clearFires(); clearBenches(); clearFlags(); cancelPlacing(true); clearBases(); clearTurrets();
   if (worldGroup) { scene.remove(worldGroup); worldGroup.traverse((o) => (o as THREE.Mesh).geometry?.dispose()); worldGroup = null; }
   [...W.crystals.map((c) => c.m), ...W.pickups.map((p) => p.g), ...W.chests.map((c) => c.g), ...W.doors.map((d) => d.g), ...W.bosses.map((b) => b.g),
     ...W.orbs.map((o) => o.m), ...W.drones.map((t) => t.g), ...W.npcs.map((n) => n.g)].forEach((o) => scene.remove(o));
@@ -70,6 +72,10 @@ setArmedRule(() => !driving.v && !G.swimming && (G.char.loc === 'dungeon' || !in
 const ruinName = (id: number) => findPoi(G.char.world, id)?.name ?? 'Ruins';
 export function loadDungeon(arriveDir: string | null) {
   const c = G.char, d = c.dungeon!;
+  if (d.cave) { // a cave system: its own kind of place
+    buildCave(d, () => { clearLevel(); setLocationLook(false); }, (g) => { worldGroup = g; });
+    saveChar(); return;
+  }
   const seed = hash(c.world, d.ruinId, d.depth, d.gx, d.gz);
   const wreck = findPoi(c.world, d.ruinId)?.type === 'wreck';
   const map = wreck ? generateShip(seed) : generateDungeon(seed, { surfaceExit: d.depth === 1 && d.gx === 0 && d.gz === 0 });
@@ -222,6 +228,22 @@ export function travel(dir: Dir) {
   d.gx += DIRV[dir][0]; d.gz += DIRV[dir][1]; saveChar();
   loadDungeon(OPP[dir]); showToast('Sector ' + d.gx + ', ' + d.gz); arriveVia(W.arrivalStair);
 }
+/** Into a cave system by one of its mouths (world/caves.ts): the mouths are remembered, so either can be the way out. */
+export function enterCave(cv: Cave) {
+  const c = G.char, self = { x: cv.x, z: cv.z, face: cv.face };
+  const mouths = cv.other ? (cv.mouth === 0 ? [self, cv.other] : [cv.other, self]) : [self];
+  c.loc = 'dungeon'; c.dungeon = { ruinId: cv.sys, depth: 1, gx: 0, gz: 0, cave: { name: cv.name, mouths, from: cv.other ? cv.mouth : 0 } }; saveChar();
+  loadDungeon(null); showToast(cv.name); logLine(cv.other ? 'The cave runs deep into the mountain. They say it comes out on the far side.' : 'Your steps echo in the dark.');
+}
+/** Out of a cave system by way out i: in front of that mouth, facing out. */
+export function exitCave(i: number) {
+  const c = G.char, info = c.dungeon!.cave!, m = info.mouths[Math.min(i, info.mouths.length - 1)];
+  c.loc = 'overworld'; c.dungeon = null;
+  const fx = Math.cos(m.face), fz = Math.sin(m.face);
+  c.ow = { x: m.x + fx * 3.5, y: -1e4, z: m.z + fz * 3.5, yaw: Math.atan2(-fx, -fz) }; saveChar();
+  loadOverworld({ kind: 'saved' }); showToast(info.name);
+  if (info.mouths.length > 1 && i !== info.from) logLine('You come out on the far side of the mountain.');
+}
 export function enterDungeon(ruinId: number) {
   const c = G.char;
   c.loc = 'dungeon'; c.dungeon = { ruinId, depth: 1, gx: 0, gz: 0 }; saveChar();
@@ -239,7 +261,7 @@ export function exitToRuin() {
  */
 export function toVillage(how: 'death' | 'recall', id?: number) {
   const c = G.char;
-  const from = c.loc === 'dungeon' && c.dungeon ? findPoi(c.world, c.dungeon.ruinId) ?? { x: 0, z: 0 } : { x: G.pos.x, z: G.pos.z };
+  const from = c.loc === 'dungeon' && c.dungeon ? c.dungeon.cave?.mouths[0] ?? findPoi(c.world, c.dungeon.ruinId) ?? { x: 0, z: 0 } : { x: G.pos.x, z: G.pos.z };
   const known = allVillages(c.world).filter((v) => v.id === GRIDHOLM_ID || isDiscovered(c.discovered, Math.floor(v.x / CHUNK), Math.floor(v.z / CHUNK)));
   const v = id !== undefined ? findPoi(c.world, id) ?? known[0] : known.reduce((a, b) => (worldDist(b.x, b.z, from.x, from.z) < worldDist(a.x, a.z, from.x, from.z) ? b : a));
   c.loc = 'overworld'; c.dungeon = null; saveChar();

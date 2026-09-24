@@ -129,11 +129,11 @@ export function dropPlants(list: PlantNode[]) { for (const n of list) nodes.dele
 // ---------- F-03 Nutrient Crystals (dungeons) ----------
 let crystalGroup: THREE.Group | null = null, crystalNodes: PlantNode[] = [];
 /** A cluster of long, pointed six-sided crystals on a rocky base (in a room corner). */
-export function placeCrystals(spots: { x: number; z: number }[]) {
+export function placeCrystals(spots: { x: number; z: number; y?: number }[]) {
   clearCrystals();
   const gr = G.grid, pb = new PropBatch(), g = new THREE.Group();
   spots.forEach((c, i) => {
-    const f = floorNear(G.space, c.x, c.z, 0, gr.oy + 1, gr.oy + gr.ny - 1); if (!f) return;
+    const f = c.y !== undefined ? [Math.floor(c.x), c.y, Math.floor(c.z)] : floorNear(G.space, c.x, c.z, 0, gr.oy + 1, gr.oy + gr.ny - 1); if (!f) return;
     const x = f[0] + 0.5, y = f[1], z = f[2] + 0.5, R = rng((x * 73856093) ^ (z * 19349663) ^ i), fb = new PropBatch();
     for (let k = 0; k < 4; k++) { const a = R() * 6.283; pb.rock(x + Math.cos(a) * 0.35, y - 0.05, z + Math.sin(a) * 0.35, 0.3, 0.25, 5, a, GRID); }
     const n = 4 + ((R() * 4) | 0);
