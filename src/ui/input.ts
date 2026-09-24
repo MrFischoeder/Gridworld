@@ -1,5 +1,7 @@
 // Keyboard and mouse. Pointer lock drives mouse look; losing it pauses the game.
 import { isPlacing, cancelPlacing } from '../world/claims';
+import { isBuilding, stopBuilding, dismantle } from '../world/building';
+import { toggleBuildMenu } from './build';
 import { G, uiOpen } from '../game';
 import { closeTransfer } from './transfer';
 import { closeService } from './service';
@@ -35,6 +37,8 @@ export function initInput(onPause: () => void) {
     if (G.mapOpen) { if (e.code === 'Escape') toggleMap(false); if (e.code === 'Equal' || e.code === 'NumpadAdd') zoomMap(1.25); if (e.code === 'Minus' || e.code === 'NumpadSubtract') zoomMap(0.8); }
     if (extraKeys.some((f) => f(e))) return;
     if (e.code === 'Escape' && isPlacing()) cancelPlacing();
+    if (e.code === 'Escape' && isBuilding()) stopBuilding();
+    if (e.code === 'KeyB' && G.playing) { toggleBuildMenu(); return; }
     G.keys[e.code] = true;
     if (e.code === 'Space') e.preventDefault();
     if (!G.playing) return;
@@ -46,6 +50,7 @@ export function initInput(onPause: () => void) {
     if (e.code === 'Digit2') drawBack(1);
     if (e.code === 'KeyQ') swapWeapon();
     if (e.code === 'KeyX') holster();
+    if (e.code === 'KeyF' && isBuilding()) dismantle();
     if (e.code === 'KeyR') reload();
     if (e.code === 'F3') { e.preventDefault(); el.perf.style.display = el.perf.style.display === 'block' ? 'none' : 'block'; }
   });

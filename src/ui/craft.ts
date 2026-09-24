@@ -18,7 +18,8 @@ function render(msg = '') {
   const inv = G.char.inv;
   const rows = RECIPES.map((r, i) => {
     const ok = canUseAt(r, station), all = ok && hasAll(inv, r), it = ITEMS[r.out];
-    const needs = r.needs.map(([k, n]) => { const have = count(inv, k); return `<span class="${have >= n ? '' : 'bad'}">${ITEMS[k].name} ${have}/${n}</span>`; }).join(' · ');
+    const needs = r.needs.map(([k, n]) => { const have = count(inv, k); return `<span class="${have >= n ? '' : 'bad'}">${ITEMS[k].name} ${have}/${n}</span>`; }).join(' · ') +
+      (r.tools ?? []).map((k) => ` · <span class="${count(inv, k) ? '' : 'bad'}">tool: ${ITEMS[k].name}</span>`).join('');
     return `<div class="shoprow${ok ? '' : ' off'}"><div><b>${it.name}${r.n > 1 ? ' ×' + r.n : ''}</b><br><span>${ok ? needs : 'needs a forge: craft it at a village blacksmith'}</span></div>
       <button class="buy" data-craft="${i}" ${all ? '' : 'disabled'}>Craft</button></div>`;
   }).join('');

@@ -4,6 +4,7 @@ import { ITEMS, HANDS_ONLY } from '../data/items';
 import { NPC_INFO, VILLAGER_LINES, RUMOURS, OPT_TEXT, LORE, BUYS, COOK_PRICE, stockFor, type OptId } from '../data/npcs';
 import { putItems } from '../inventory';
 import { craftClick, showForge } from './craft';
+import { buildClick } from './build';
 import { addItem, calcStats, saveChar, listOf, handsChanged } from '../character';
 import { $ } from './hud';
 import { lockPointer } from './input';
@@ -83,7 +84,7 @@ function renderShop(msg?: string) {
     `<button class="opt" data-o="back">${OPT_TEXT.back}</button>`;
 }
 dlgEl.addEventListener('click', (e) => {
-  if (craftClick(e.target as HTMLElement)) return;
+  if (craftClick(e.target as HTMLElement) || buildClick(e.target as HTMLElement)) return;
   const t = e.target as HTMLElement, o = t.closest<HTMLElement>('[data-o]'), b = t.closest<HTMLElement>('.buy'), c = G.char;
   if (b && b.dataset.v) { renderVehicleShop(buyVehicle(b.dataset.v as VehicleModel)); return; }
   if (b && b.dataset.sellv) { renderSell(sellVehicle(b.dataset.sellv)); return; }

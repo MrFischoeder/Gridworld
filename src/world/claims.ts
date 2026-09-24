@@ -59,6 +59,7 @@ export function nearFlag(): SavedClaim | null {
 }
 /** Take the flag down: the land goes back to how it was. Returns an error message or ''. */
 export function takeDownFlag(c: SavedClaim): string {
+  if (c.parts?.length) return 'Take your building down first (B, pick any part, then F at each part).';
   if (!addItem('flagpole')) return 'No room in your backpack for the Flagpole (14 L).';
   G.char.claims.splice(G.char.claims.indexOf(c), 1); saveChar();
   applyClaims(c);

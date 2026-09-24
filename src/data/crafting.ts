@@ -9,9 +9,11 @@ import type { Slot } from '../save';
  * blacksmith's); 'forge' = only at a village blacksmith's (metalwork needs the forge).
  */
 export type Station = 'bench' | 'forge';
-export interface Recipe { out: ItemKey; n: number; needs: [ItemKey, number][]; at: Station }
+/** `tools` must be in the backpack and are not used up. */
+export interface Recipe { out: ItemKey; n: number; needs: [ItemKey, number][]; at: Station; tools?: ItemKey[] }
 
 export const RECIPES: Recipe[] = [
+  { out: 'planks', n: 4, needs: [['log', 1]], at: 'bench', tools: ['saw'] },
   { out: 'firekit', n: 1, needs: [['log', 2]], at: 'bench' },
   { out: 'hatchet', n: 1, needs: [['log', 1], ['stone', 2]], at: 'bench' },
   { out: 'pickaxe', n: 1, needs: [['log', 1], ['stone', 3]], at: 'bench' },
@@ -35,7 +37,9 @@ export const canUseAt = (r: Recipe, st: Station) => r.at === 'bench' || st === '
 
 export const count = (inv: (Slot | null)[], k: ItemKey) => inv.reduce((a, s) => a + (s && s.k === k ? s.n : 0), 0);
 /** Everything the recipe needs is in the backpack. */
-export const hasAll = (inv: (Slot | null)[], r: Recipe) => r.needs.every(([k, n]) => count(inv, k) >= n);
+export const hasAll = (inv: (Slot | null)[], r: Recipe) => r.needs.every(([k, n]) => count(inv, k) >= n) && (r.tools ?? []).every((k) => count(inv, k) > 0);
+/** Uses up the materials (the backpack must hold them all: check with count first). */
+export const takeAll = (inv: (Slot | null)[], needs: [ItemKey, number][]) => { for (const [k, n] of needs) take(inv, k, n); };
 
 /** Takes n of k out of the slots (smallest stacks first, so partial stacks get used up). */
 function take(inv: (Slot | null)[], k: ItemKey, n: number) {

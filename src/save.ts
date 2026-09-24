@@ -6,6 +6,7 @@ import type { Quest } from './gen/quests';
 import { START_TIME, boardPeriod } from './core/time';
 import { wrapC } from './gen/regions';
 import { KCAL } from './data/survival';
+import type { Part } from './gen/base';
 
 /** An item stack. `c` is the condition in percent of a used part (worn tires); such items do not stack. */
 export interface Slot { k: ItemKey; n: number; c?: number }
@@ -47,8 +48,8 @@ export interface Char {
   harvest: Record<string, number>;
   /** Workbenches the player has set up in the wilds (world position, facing). */
   benches: { x: number; y: number; z: number; yaw: number }[];
-  /** Land claimed with a Flagpole (gen/claims.ts): the flag's spot, the height its ground is levelled to, when. */
-  claims: { x: number; z: number; y: number; t: number }[];
+  /** Land claimed with a Flagpole (gen/claims.ts): the flag's spot, the height its ground is levelled to, when, and what is built there (gen/base.ts). */
+  claims: { x: number; z: number; y: number; t: number; parts?: Part[] }[];
   /** What you hold in your hands (a weapon, or something too big for the backpack), and the two slots on your back (weapons). */
   hands: (Slot | null)[]; back: (Slot | null)[];
   /** What you wear, per data/items WearSlot. */

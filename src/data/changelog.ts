@@ -4,6 +4,14 @@ export interface Change { v: string; date: string; title: string; notes: string[
 
 export const CHANGELOG: Change[] = [
   {
+    v: '0.11.0', date: '2026-09-24', title: 'Building: walls, doors and roofs',
+    notes: ['On your claim press B to open the build list: wooden and metal walls, doors and roofs. Pick one, look where it should stand (a hologram snaps to a 2 m grid round your flag: white when it fits, red with the reason) and click. Right mouse or Esc stops building.',
+      'Each part is made from what you carry: planks, nails, rope and wire for wood; scrap metal and wire for metal. The tools stay in your backpack: Hammer and Saw for wood, Welder and Pliers for metal, a Screwdriver for doors.',
+      'F takes down the part you look at (a Hammer for wood, an Acetylene Torch for metal) and gives half the materials back. E opens and shuts doors. Walls and shut doors stop you and the creatures of the wilds.',
+      'New tools at Radek\'s: Hammer, Saw, Screwdriver, Pliers, Welder, Acetylene Torch and Shovel. Zofia sells nails, rope and wire. Cut logs into planks with a Saw at any workbench (one log makes four).',
+      'A flag with a building on its claim cannot be taken down until the building is gone.'],
+  },
+  {
     v: '0.10.0', date: '2026-09-24', title: 'Hands, back and body armour',
     notes: ['The Blaster and the Energy Blade are now real items. You fight with what is in your hands; two more weapons can be slung on your back (any mix: two rifles, two blades...), and more go in the backpack.',
       'Keys: 1 and 2 take the weapon on that side of your back into your hands, Q or the mouse wheel swaps, X slings the one in your hands onto your back. The HUD shows what you hold.',
