@@ -1,5 +1,5 @@
 // Village houses (gen/village.ts `Building`): timber-framed like a player's base. Thin plank walls on a sill with
-// corner and middle posts, windows with shutters, a doorway with its door standing open, a gabled roof with an
+// corner and middle posts, windows with shutters, a doorway (its door is world/housedoors.ts), a gabled roof with an
 // overhang, shingle rows and a ridge beam, gable boards; shops get an awning on posts over the door, some houses a
 // chimney, the Elder's Hall a little bell turret. The walls collide here (houseHit / houseRay / houseSolid), not as
 // voxels: voxels are a metre thick, these walls a quarter of one.
@@ -95,9 +95,7 @@ export function drawHouse(pb: PropBatch, b: Building, y0: number) {
     for (const o of [t / 2 + 0.03, -t / 2 - 0.03]) pb.line(TRIM, P(-w, y0, o), P(-w, dy, o), P(w, dy, o), P(w, y0, o));
     const s = [P(-w - 0.2, y0, t / 2), P(w + 0.2, y0, t / 2), P(w + 0.2, y0, t / 2 + 0.55), P(-w - 0.2, y0, t / 2 + 0.55)];
     pb.solid8(s, s.map((p) => [p[0], y0 + 0.12, p[2]]), POST);
-    // the leaf, hinged at one jamb and swung into the room
-    const W = HOUSE.doorW - 0.05, leaf = [P(w, y0 + 0.02, -t / 2), P(w, y0 + 0.02, -t / 2 - W), P(w - 0.06, y0 + 0.02, -t / 2 - W), P(w - 0.06, y0 + 0.02, -t / 2)];
-    pb.solid8(leaf, leaf.map((p) => [p[0], dy - 0.04, p[2]]), BOARD);
+    // the leaf itself swings on its hinge: world/housedoors.ts
   }
   // the roof: two slopes over the longer side with an overhang, shingle rows, a ridge beam, boarded gables
   const alongX = b.w >= b.d, span = (alongX ? b.d : b.w) / 2, e = HOUSE.eave, rise = HOUSE.rise * span, slope = rise / span;

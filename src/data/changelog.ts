@@ -4,6 +4,13 @@ export interface Change { v: string; date: string; title: string; notes: string[
 
 export const CHANGELOG: Change[] = [
   {
+    v: '0.44.0', date: '2026-09-24', title: 'Doors that open, and a house to buy',
+    notes: ['Village doors are real now: they swing open and shut (E), a shut door blocks your way and your shots, and it hides the room behind it.',
+      'Shops, the Elder\'s Hall and the tavern stand open by day, from 06:00 to 21:00. At night the shops and the hall are locked, while the tavern is only shut. Folk\'s houses are shut: you may open them by day, but at night they are locked. A door you open or close stays that way until the next dawn or dusk.',
+      'The house in Gridholm is no longer yours for free: it is for sale. Buy it from Elder Maciej for 750 gold to unlock its door, use its bed and chest, and wake in your own bed after a bad day. If you already kept things in its chest, it stays yours.',
+      'Building outside the villages is closed for now, including setting up a workbench in the wilds (existing ones still work). Use a village blacksmith\'s forge instead.'],
+  },
+  {
     v: '0.43.0', date: '2026-09-24', title: 'Loot that looks like what it is',
     notes: ['Things you drop or knock loose no longer float about as spinning dice. They lie on the ground as what they are: logs with cut ends and growth rings, stacked planks, stones, ore lumps streaked with iron or copper.',
       'Kills leave recognisable remains too: hides spread flat with their legs, curved fangs, long gnawer incisors, armour plates, wing membranes and meat on the bone.',

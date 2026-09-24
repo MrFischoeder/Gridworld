@@ -4,6 +4,7 @@
 import { G, W } from '../game';
 import { ITEMS, PACK, HANDS_ONLY, WEAPON_KIND } from '../data/items';
 import { RECIPES, canUseAt, count, craft, craftTime, hasAll, type Station, type Recipe } from '../data/crafting';
+import { BASES_OPEN } from '../data/building';
 import { saveChar, calcStats, stowHeld, handsChanged } from '../character';
 import { packBench, type Bench } from '../world/benches';
 import { loadText } from './slots';
@@ -19,6 +20,7 @@ let job: { i: number; t0: number; ms: number; left: number } | null = null, raf 
 function render(msg = '') {
   const inv = G.char.inv;
   const rows = RECIPES.map((r, i) => {
+    if (r.out === 'benchkit' && !BASES_OPEN) return ''; // no workbenches in the wilds for now
     const ok = canUseAt(r, station), all = ok && hasAll(inv, r), it = ITEMS[r.out];
     const needs = r.needs.map(([k, n]) => { const have = count(inv, k); return `<span class="${have >= n ? '' : 'bad'}">${ITEMS[k].name} ${have}/${n}</span>`; }).join(' · ') +
       (r.tools ?? []).map((k) => ` · <span class="${count(inv, k) ? '' : 'bad'}">tool: ${ITEMS[k].name}</span>`).join('');

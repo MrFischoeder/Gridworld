@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { GRIDHOLM_ID } from '../src/gen/regions';
 import { loadChar, SAVE_KEY, V2_KEY, OLD_KEY, discover, isDiscovered } from '../src/save';
 
 const store = (m: Record<string, string>) => ({ getItem: (k: string) => m[k] ?? null });
@@ -8,12 +9,17 @@ describe('loadChar', () => {
     const v3 = { v: 3, level: 4, xp: 12, gold: 99, world: 777, inv: [{ k: 'medkit', n: 2 }, ...Array(11).fill(null)], mods: ['lens', null, null],
       opened: { '5:2:1:-1': [0] }, unlocked: {}, killed: {}, loc: 'dungeon', ow: null, dungeon: { ruinId: 5, depth: 2, gx: 1, gz: -1 }, discovered: { '0,0': '0000000000000001' }, containers: {}, vehicles: [], board: { seq: 0, offers: [] }, quests: [], camps: {} };
     // saves from before the game clock start at 08:00 of day 1
-    expect(loadChar(store({ [SAVE_KEY]: JSON.stringify(v3) }))).toEqual({ ...v3, time: 480, gunMods: [null, null, null], kcal: 2400, stomach: 0, water: 100, harvest: {}, benches: [], claims: [], hands: [{ k: 'blaster', n: 1 }], back: [{ k: 'blade', n: 1 }, null], wear: {}, pid: expect.any(String), towns: {}, market: {}, ledger: {}, caravans: {}, escort: null, contracts: [], taken: [], boards: {}, name: '' });
-    const timed = { ...v3, time: 5000, gunMods: ['scope', null, 'magX'], kcal: 1234, stomach: 0.6, water: 12, harvest: { 'pod:3:-2': 4000 }, benches: [], claims: [], hands: [null], back: [{ k: 'blaster', n: 1 }, { k: 'blade', n: 1 }], wear: { head: 'helmet' }, pid: 'abc123', towns: { '5': { wall: 1, fixed: 3000 } }, market: { '5:ore': { d: -3, t: 4000 } }, ledger: {}, caravans: { 'x:1': 2 }, escort: null, contracts: [], taken: [], boards: {}, name: 'Ada' };
+    expect(loadChar(store({ [SAVE_KEY]: JSON.stringify(v3) }))).toEqual({ ...v3, time: 480, gunMods: [null, null, null], kcal: 2400, stomach: 0, water: 100, harvest: {}, benches: [], claims: [], hands: [{ k: 'blaster', n: 1 }], back: [{ k: 'blade', n: 1 }, null], wear: {}, pid: expect.any(String), towns: {}, market: {}, ledger: {}, caravans: {}, escort: null, contracts: [], taken: [], boards: {}, name: '', houses: [] });
+    const timed = { ...v3, time: 5000, gunMods: ['scope', null, 'magX'], kcal: 1234, stomach: 0.6, water: 12, harvest: { 'pod:3:-2': 4000 }, benches: [], claims: [], hands: [null], back: [{ k: 'blaster', n: 1 }, { k: 'blade', n: 1 }], wear: { head: 'helmet' }, pid: 'abc123', towns: { '5': { wall: 1, fixed: 3000 } }, market: { '5:ore': { d: -3, t: 4000 } }, ledger: {}, caravans: { 'x:1': 2 }, escort: null, contracts: [], taken: [], boards: {}, name: 'Ada', houses: [] };
     expect(loadChar(store({ [SAVE_KEY]: JSON.stringify(timed) }))).toEqual(timed);
     // the old 0..100 food bar becomes the same share of the calorie store
     const { kcal: _k, stomach: _s, ...old } = { ...timed, food: 40 };
     expect(loadChar(store({ [SAVE_KEY]: JSON.stringify(old) }))).toEqual({ ...timed, kcal: 1200, stomach: 0 });
+  });
+  it('gives the Gridholm house to players who already used its chest', () => {
+    const base = { v: 3, level: 1, xp: 0, gold: 0, world: 5, inv: [], mods: [], opened: {}, unlocked: {}, killed: {}, loc: 'overworld', ow: null, dungeon: null };
+    expect(loadChar(store({ [SAVE_KEY]: JSON.stringify({ ...base, containers: { 'home:chest': { items: [], gold: 0 } } }) })).houses).toEqual([GRIDHOLM_ID]);
+    expect(loadChar(store({ [SAVE_KEY]: JSON.stringify({ ...base, containers: {} }) })).houses).toEqual([]);
   });
   it('migrates v2: character, backpack and gold stay, the player starts in the village', () => {
     const v2 = { level: 4, xp: 12, gold: 99, depth: 2, gx: 1, gz: -1, world: 777, inv: [{ k: 'medkit', n: 2 }, ...Array(11).fill(null)],

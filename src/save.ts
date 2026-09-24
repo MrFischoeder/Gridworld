@@ -4,7 +4,7 @@ import { INV_SIZE, MOD_SIZE, ITEMS, type ItemKey, type WearSlot } from './data/i
 import type { VehicleModel, VehicleParts } from './data/vehicles';
 import type { Quest } from './gen/quests';
 import { START_TIME, boardPeriod } from './core/time';
-import { wrapC } from './gen/regions';
+import { wrapC, GRIDHOLM_ID } from './gen/regions';
 import { KCAL } from './data/survival';
 import type { Part } from './gen/base';
 import type { TownState } from './gen/town';
@@ -24,6 +24,8 @@ export interface Char {
   v: 3;
   /** The hero's name, entered in the menu before the first game (everyone calls you by it). */
   name: string;
+  /** Villages where you own a house (bought from the elder; Gridholm's for now). */
+  houses: number[];
   level: number; xp: number; gold: number; world: number;
   inv: (Slot | null)[]; mods: (ItemKey | null)[];
   opened: Progress; unlocked: Progress; killed: Progress;
@@ -83,7 +85,7 @@ export const SAVE_KEY = 'gridWorld.character.v3';
 export const ARENA_V3_KEY = 'gridArena.character.v3', V2_KEY = 'gridArena.character.v2', OLD_KEY = 'gridArena.character.v1';
 
 export const newChar = (): Char => ({
-  v: 3, name: '', level: 1, xp: 0, gold: 0, world: (Math.random() * 1e6) | 0,
+  v: 3, name: '', houses: [], level: 1, xp: 0, gold: 0, world: (Math.random() * 1e6) | 0,
   inv: Array(INV_SIZE).fill(null), mods: Array(MOD_SIZE).fill(null), opened: {}, unlocked: {}, killed: {},
   loc: 'overworld', ow: null, dungeon: null, discovered: {}, containers: {}, vehicles: [], board: { seq: 0, offers: [], stamp: boardPeriod(START_TIME) }, boards: {}, quests: [], camps: {}, time: START_TIME, gunMods: [null, null, null], kcal: KCAL.start, stomach: 0, water: 100, harvest: {}, benches: [], claims: [],
   hands: [{ k: 'blaster', n: 1 }], back: [{ k: 'blade', n: 1 }, null], wear: {}, pid: Math.random().toString(36).slice(2, 10), towns: {}, market: {}, ledger: {}, caravans: {}, escort: null, contracts: [], taken: [],
@@ -123,6 +125,8 @@ export function loadChar(storage: Pick<Storage, 'getItem'> | null = safeStorage(
       // food used to be a 0..100 bar: it becomes the same share of the calorie store
       if (typeof c.food === 'number') { if (!('kcal' in JSON.parse(raw))) c.kcal = Math.round(c.food / 100 * KCAL.max); delete c.food; }
       if (c.loc === 'dungeon' && !c.dungeon) c.loc = 'overworld';
+      // the house in Gridholm used to be yours from the start: whoever already kept things in its chest owns it
+      if (!c.houses.length && c.containers['home:chest']) c.houses = [GRIDHOLM_ID];
       return c;
     }
     const v2 = storage?.getItem(V2_KEY);

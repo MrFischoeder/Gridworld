@@ -1,7 +1,7 @@
 // Conversations and shops. New options (quests) plug in through OPT_TEXT and the switch below.
 import { G, W } from '../game';
 import { ITEMS, HANDS_ONLY } from '../data/items';
-import { NPC_INFO, VILLAGER_LINES, RUMOURS, OPT_TEXT, LORE, BUYS, COOK_PRICE, stockFor, type OptId } from '../data/npcs';
+import { NPC_INFO, VILLAGER_LINES, RUMOURS, OPT_TEXT, LORE, BUYS, COOK_PRICE, HOUSE_PRICE, stockFor, type OptId } from '../data/npcs';
 import { putItems } from '../inventory';
 import { craftClick, showForge } from './craft';
 import { buildClick } from './build';
@@ -20,6 +20,7 @@ import { profileOf } from '../gen/market';
 import { nextRaid, lastRaid, raidSource, raidOutcome } from '../gen/raids';
 import { storePlan, handOverStore, STORE } from '../gen/store';
 import { storeOf } from '../world/industry';
+import { unlockMine } from '../world/housedoors';
 import { shipmentOffer } from '../gen/contracts';
 import { pendingTribute, payTribute } from '../world/villageraid';
 import { findPoi } from '../gen/regions';
@@ -60,7 +61,18 @@ function renderTalk(text: string) {
   panel().classList.remove('wide');
   panel().innerHTML = dlgHead() + `<div class="say">${text}</div>` +
     (townId() !== null ? questOptions(W.talkNpc!.role, townId()!) : []).map((q) => `<button class="opt" data-q="${q.id}" style="color:var(--gold)">${q.label}</button>`).join('') +
-    info.opts.map((o) => `<button class="opt" data-o="${o}">${OPT_TEXT[o]}</button>`).join('');
+    info.opts.filter((o) => o !== 'house' || houseForSale()).map((o) => `<button class="opt" data-o="${o}">${OPT_TEXT[o]}</button>`).join('');
+}
+/** The elder sells the empty house (Gridholm's, for now) until it is yours. */
+const houseForSale = () => { const v = loadedVillage(town()); return !!v?.vm.home && !G.char.houses.includes(v.id); };
+function renderHouse(msg = '') {
+  const v = loadedVillage(town()), c = G.char;
+  if (!v) { renderTalk('Hm?'); return; }
+  const owned = c.houses.includes(v.id);
+  panel().innerHTML = dlgHead() + `<div class="say">${msg || (owned ? 'The house is yours. Mind the roof in the rains.'
+    : `The empty house on our plaza has stood shut since its family went north. A bed, a good chest, a table, a roof that holds. Take it for <b>${HOUSE_PRICE} gold</b> and it is yours, ${here('{name}')}: a place to sleep safe and to keep what you gather. When you fall out there, you will wake in your own bed.`)}<br><br>Your gold: <b>${c.gold}</b></div>` +
+    (owned ? '' : `<button class="opt" data-buyhouse="1" style="color:var(--gold)" ${c.gold < HOUSE_PRICE ? 'disabled' : ''}>Buy the house (${HOUSE_PRICE} gold)</button>`) +
+    `<button class="opt" data-o="back">${OPT_TEXT.back}</button>`;
 }
 const PARTS = Object.keys(PART_PRICE) as ItemKey[];
 function renderVehicleShop(msg?: string) {
@@ -233,6 +245,15 @@ dlgEl.addEventListener('click', (e) => {
   if (t.closest('[data-rbuild]')) { giveRefinery(); return; }
   if (t.closest('[data-sbuild]')) { giveStore(); return; }
   if (t.closest('[data-tribute]')) { const v = loadedVillage(town()); const m = v ? payTribute(v.id) : ''; if (W.talkNpc?.role === 'guard') renderWatch(m); else renderFortify(m); return; }
+  if (t.closest('[data-buyhouse]')) {
+    const v = loadedVillage(town());
+    if (!v || c.houses.includes(v.id)) { renderHouse(); return; }
+    if (c.gold < HOUSE_PRICE) { renderHouse('That is not enough gold, I am afraid.'); return; }
+    c.gold -= HOUSE_PRICE; c.houses.push(v.id); saveChar(); unlockMine(v.id); reloadStruct(v.id);
+    showToast('The house is yours'); logLine(`You bought the house in ${town()} for ${HOUSE_PRICE} gold.`);
+    renderHouse(`Maciej presses an iron key into your hand. "It is yours now, ${here('{name}')}. Sleep well under your own roof."`);
+    return;
+  }
   const qb = t.closest<HTMLElement>('[data-q]');
   if (qb) { const id = townId(); renderTalk((id !== null && questTalk(qb.dataset.q!, id)) || 'Hm?'); return; }
   if (!o) return;
@@ -265,6 +286,7 @@ dlgEl.addEventListener('click', (e) => {
     case 'chat': renderTalk(here(VILLAGER_LINES[(Math.random() * VILLAGER_LINES.length) | 0])); break;
     case 'lore': renderTalk(here(loreText())); break;
     case 'fortify': renderFortify(); break;
+    case 'house': renderHouse(); break;
     case 'contracts': openContracts(town()); renderContracts(panel(), dlgHead()); break;
     case 'trade': if (openMarket(town())) renderMarket(panel(), dlgHead()); else renderTalk('Hm?'); break;
     case 'work':

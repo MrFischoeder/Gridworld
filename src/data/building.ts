@@ -10,7 +10,7 @@ import type { ItemKey } from './items';
 export const BASES_OPEN = false;
 /** Items that only serve player bases: kept out of the shops while BASES_OPEN is false. */
 export const BASE_ITEMS: ItemKey[] = ['flagpole', 'turretkit', 'codelock'];
-export const BASES_CLOSED_MSG = 'Building your own base is closed for now.';
+export const BASES_CLOSED_MSG = 'Building outside the villages is closed for now.';
 
 export type PieceKind = 'wallW' | 'doorW' | 'roofW' | 'stairsW' | 'wallM' | 'doorM' | 'roofM' | 'stairsM' | 'turret';
 /** 'roof' is a floor slab: the roof of the storey below and the floor of the one above. */

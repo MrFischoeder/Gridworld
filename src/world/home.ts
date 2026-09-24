@@ -1,7 +1,8 @@
-// The hero's house in Gridholm (gen/village.ts `VillageMap.house`): a chest that keeps whatever you store in it
+// The hero's house in Gridholm (gen/village.ts `VillageMap.house`; yours once bought from the elder, `char.houses`): a chest that keeps whatever you store in it
 // (saved as the container 'home:chest') and a bed. Lying down at night you sleep until morning and wake fully
 // healed; by day you nap for a couple of hours. The body goes on burning calories and drying out while you sleep.
 import { G } from '../game';
+import { GRIDHOLM_ID } from '../gen/regions';
 import { OW } from './overworld';
 import { saveChar } from '../character';
 import { openTransfer } from '../ui/transfer';
@@ -12,7 +13,8 @@ import type { Container } from '../save';
 
 /** Slots in the home chest (a good deal more than a chest in the wilds). */
 export const HOME_CHEST_SLOTS = 24;
-const house = () => (G.char.loc === 'overworld' && OW.village?.home ? OW.village.house : null);
+/** Your house's furniture, while you are in its village and own it (the elder sells it: ui/dialog.ts). */
+const house = () => (G.char.loc === 'overworld' && OW.village?.home && G.char.houses.includes(GRIDHOLM_ID) ? OW.village.house : null);
 
 /** What of your house you stand at: the chest, the bed, or nothing. */
 export function nearHome(): 'chest' | 'bed' | null {

@@ -139,7 +139,8 @@ export function villageDeco(map: VillageMap, y0 = 0) {
   const props = new PropBatch();
   for (const b of map.buildings) {
     drawHouse(props, b, y0); drawFurniture(props, b, y0);
-    if (b.name) grp.add(wallSign(b.name, b.role === 'innkeeper' ? '#ffb347' : '#ffd060', { x: b.door.x + b.out[0] * 0.15, z: b.door.z + b.out[1] * 0.15 }, b.out, y0 + (b.role === 'house' ? HOUSE.doorH + 0.45 : b.h + 0.35)));
+    const name = b.mine && !G.char.houses.includes(GRIDHOLM_ID) ? 'FOR SALE' : b.name;
+    if (name) grp.add(wallSign(name, b.role === 'innkeeper' ? '#ffb347' : '#ffd060', { x: b.door.x + b.out[0] * 0.15, z: b.door.z + b.out[1] * 0.15 }, b.out, y0 + (b.role === 'house' ? HOUSE.doorH + 0.45 : b.h + 0.35)));
   }
   for (const t of map.trees) drawCrown(props, t.x + 0.5, y0 + 2, t.z + 0.5, 1.8, t.h, hash(t.x, t.z, 0x7e3e));
   if (map.house) homeDeco(props, map.house, y0);
@@ -362,8 +363,8 @@ export function toVillage(how: 'death' | 'recall', id?: number) {
   const known = allVillages(c.world).filter((v) => v.id === GRIDHOLM_ID || isDiscovered(c.discovered, Math.floor(v.x / CHUNK), Math.floor(v.z / CHUNK)));
   const v = id !== undefined ? findPoi(c.world, id) ?? known[0] : known.reduce((a, b) => (worldDist(b.x, b.z, from.x, from.z) < worldDist(a.x, a.z, from.x, from.z) ? b : a));
   c.loc = 'overworld'; c.dungeon = null; saveChar();
-  // Gridholm is home: you wake up in your own bed there, anywhere else in the tavern
-  const bed = v.id === GRIDHOLM_ID;
+  // Gridholm is home once you own the house there: you wake up in your own bed, anywhere else in the tavern
+  const bed = v.id === GRIDHOLM_ID && c.houses.includes(GRIDHOLM_ID);
   loadOverworld({ kind: 'tavern', id: v.id, bed }); G.hp = G.S.maxHp;
   if (how === 'death') { c.kcal = Math.max(c.kcal, 1500); c.water = Math.max(c.water, 50); } // the innkeeper (or a neighbour) fed you
   showToast(how === 'death' ? (bed ? 'You wake up in your own bed' : 'You wake up in the tavern of ' + v.name) : bed ? 'Home' : v.name);

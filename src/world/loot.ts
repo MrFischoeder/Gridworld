@@ -191,6 +191,7 @@ export function useItem(k: ItemKey): boolean {
   if (k === 'firekit') return lightFire();
   if (k === 'flagpole' && !BASES_OPEN) { logLine(BASES_CLOSED_MSG); return false; }
   if (k === 'flagpole') { if (startPlacing()) { closePack(); } return false; } // the flag is used up once raised
+  if (k === 'benchkit' && !BASES_OPEN) { logLine('Setting up a workbench in the wilds is closed for now: use a village blacksmith\'s forge.'); return false; }
   if (k === 'benchkit') { if (placeBench()) { closePack(); return true; } return false; }
   if (k === 'flask') { logLine('It is empty. Fill it at a well or a lake (E at the water).'); return false; }
   if (k === 'recall') {
