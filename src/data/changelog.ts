@@ -4,6 +4,12 @@ export interface Change { v: string; date: string; title: string; notes: string[
 
 export const CHANGELOG: Change[] = [
   {
+    v: '0.27.0', date: '2026-09-24', title: 'Motor convoys and roadblocks',
+    notes: ['Caravans are motor convoys now: a heavy HTV-6 Mastodon truck carrying the cargo between two RTV-1 Scout jeeps with roof cannons. When bandits attack, the jeeps turn their guns on them and fire, so a convoy can hold out for a while, but it still needs your help.',
+      'Bandits block the road: every roadblock is a row of barricades (crates and spiked frames) across the road, and each barricade can be shot apart with your Blaster or a vehicle cannon (a cannon shell does three times the damage). Roadblocks stay up after their bandits are dead: shoot them down or drive round.',
+      'A raid on a convoy now comes with a roadblock ahead of it: the convoy stops until the road is clear, and its gunners shoot at the barricades once the bandits are down.'],
+  },
+  {
     v: '0.26.0', date: '2026-09-24', title: 'Raids and escorts on the caravan roads',
     notes: ['Bandits now fall on caravans out on the roads, more often in dangerous land. The wagons stop while the bandits are on them and lose their load bit by bit: drive the bandits off before they strip the wagons. Save a caravan and the drovers pay you and sell you their goods at a friend\'s price; lose it and it is gone for good, its goods never reach the market.',
       'Escort jobs: talk to the drover of a caravan that has only just set out and they may ask you to ride along to the next village, for pay that grows with the length of the road and the danger. Bandits will try for the wagons on the way, once and maybe twice. Stay with the wagons: wander more than a few hundred metres off for a minute and the drovers will not pay you. Be there when they roll in and you get your money. The quest tracker shows the job.',

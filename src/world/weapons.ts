@@ -5,6 +5,7 @@ import { G } from '../game';
 import { addFx, burst } from './fx';
 import { rayWorld } from './player';
 import { foes, damageFoe } from './enemies';
+import { rayBarrier, hurtBarrier } from './raiders';
 import { el } from '../ui/hud';
 import { BLASTER } from '../data/weapons';
 import { BLADE, STAMINA, BURN } from '../data/survival';
@@ -147,6 +148,8 @@ function shoot() {
     if (disc < 0) continue; const tt = -b - Math.sqrt(disc);
     if (tt > 0 && tt < tHit) { tHit = tt; hitT = t; }
   }
+  const bar = rayBarrier(o, d, tHit); // a roadblock in the way takes the shot
+  if (bar) { tHit = bar.t; hitT = null; hurtBarrier(bar.p, G.gun.dmg * G.S.bm); }
   const end = o.clone().addScaledVector(d, tHit);
   const gun = V(0.24 * (1 - aimK), -0.2 + aimK * 0.1, -0.75); camera.localToWorld(gun);
   addFx(new THREE.Line(new THREE.BufferGeometry().setFromPoints([gun, end]), add(hitT ? 0xffd27a : 0x9dffb4)), 0.12);

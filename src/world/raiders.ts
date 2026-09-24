@@ -160,12 +160,66 @@ function dropRaider(r: Raider) {
 }
 
 // ---------- roadside ambushes ----------
-interface Ambush { id: number; block: THREE.Group; obstacles: { x: number; z: number; r: number }[]; x: number; z: number; sprung: boolean }
+/**
+ * A roadblock is a few barricades across the road (crates, a spiked frame, a tyre), each solid and each with
+ * hit points: shots from your Blaster or a vehicle cannon wear it down (`rayBarrier`, `hurtBarrier`), and once it
+ * is shot to pieces the way is open. It stays when its bandits are dead; it goes when you are far away.
+ */
+export interface Barricade { x: number; y: number; z: number; r: number; hp: number; max: number; g: THREE.Group }
+interface Ambush { id: number; pieces: Barricade[]; x: number; z: number; sprung: boolean; done?: boolean }
 const ambushes: Ambush[] = [];
+/** Hit points of one barricade (a Blaster shot does about 1, a vehicle cannon shell 3). */
+export const BARRICADE_HP = 14;
+const WOOD = 0xb8b060, SPIKE = 0xffb347;
+function barricadeModel(x: number, y: number, z: number, dir: THREE.Vector3, side: THREE.Vector3, big: boolean): THREE.Group {
+  const pb = new PropBatch(), P = (u: number, v: number, h: number) => [x + side.x * u + dir.x * v, y + h, z + side.z * u + dir.z * v];
+  const crate = (u: number, v: number, h: number, s: number) => pb.solid8([P(u - s, v - s, h), P(u + s, v - s, h), P(u + s, v + s, h), P(u - s, v + s, h)], [P(u - s, v - s, h + s * 1.7), P(u + s, v - s, h + s * 1.7), P(u + s, v + s, h + s * 1.7), P(u - s, v + s, h + s * 1.7)], WOOD);
+  crate(-0.3, 0, -0.1, 0.55); crate(0.35, 0.1, -0.1, 0.45);
+  if (big) crate(0, 0.05, 0.85, 0.42);
+  // a spiked frame leaning against the crates, points towards the road
+  for (const [a, b] of [[[-0.9, -0.9, 0], [0.9, -0.6, 1.3]], [[0.9, -0.9, 0], [-0.9, -0.6, 1.3]], [[0, -1.2, 0.1], [0, -0.4, 1.6]]] as number[][][])
+    pb.solid8([P(a[0] - 0.06, a[1], a[2]), P(a[0] + 0.06, a[1], a[2]), P(a[0] + 0.06, a[1] + 0.1, a[2]), P(a[0] - 0.06, a[1] + 0.1, a[2])],
+      [P(b[0] - 0.06, b[1], b[2]), P(b[0] + 0.06, b[1], b[2]), P(b[0] + 0.06, b[1] + 0.1, b[2]), P(b[0] - 0.06, b[1] + 0.1, b[2])], SPIKE);
+  return pb.build();
+}
+/** Put a roadblock across the road at (bx, bz), `dir` along the road; returns its id. */
+export function placeRoadblock(T: Terrain, bx: number, bz: number, dir: THREE.Vector3): number {
+  const side = V(-dir.z, 0, dir.x), pieces: Barricade[] = [], id = ++ambushId;
+  for (const k of [-2.3, 0, 2.3]) {
+    const ox = bx + side.x * k, oz = bz + side.z * k, oy = T.heightAt(ox, oz), g = barricadeModel(ox, oy, oz, dir, side, k === 0);
+    scene.add(g);
+    pieces.push({ x: ox, y: oy, z: oz, r: 1.0, hp: BARRICADE_HP, max: BARRICADE_HP, g });
+  }
+  ambushes.push({ id, pieces, x: bx, z: bz, sprung: false });
+  return id;
+}
+/** The nearest barricade a shot from o along d meets within `max`, and how far. */
+export function rayBarrier(o: THREE.Vector3, d: THREE.Vector3, max: number): { t: number; p: Barricade } | null {
+  let best: { t: number; p: Barricade } | null = null;
+  for (const a of ambushes) for (const p of a.pieces) {
+    const cx = p.x, cy = p.y + 0.7, cz = p.z, ox = o.x - cx, oy = o.y - cy, oz = o.z - cz;
+    const b = ox * d.x + oy * d.y + oz * d.z, c = ox * ox + oy * oy + oz * oz - p.r * p.r, disc = b * b - c;
+    if (disc < 0) continue;
+    const t = -b - Math.sqrt(disc);
+    if (t > 0 && t < max && (!best || t < best.t)) best = { t, p };
+  }
+  return best;
+}
+/** Damage a barricade; shot to pieces it falls apart and the road opens there. */
+export function hurtBarrier(p: Barricade, dmg: number) {
+  p.hp -= dmg;
+  burst(V(p.x, p.y + 0.8, p.z), 0xb8b060, 6, 0.6);
+  if (p.hp > 0) return;
+  burst(V(p.x, p.y + 0.8, p.z), 0xffb347, 26, 1.6);
+  scene.remove(p.g); p.g.traverse((o) => (o as THREE.Mesh).geometry?.dispose());
+  for (const a of ambushes) { const i = a.pieces.indexOf(p); if (i >= 0) { a.pieces.splice(i, 1); if (!a.pieces.length) logLine('The roadblock is down.'); } }
+}
+/** Barricades still standing within r of (x, z) (a caravan waits for the road to be clear). */
+export const barriersNear = (x: number, z: number, r: number) => ambushes.flatMap((a) => a.pieces).filter((p) => Math.hypot(p.x - x, p.z - z) < r);
 let ambushT = 30, ambushId = 0, lastAmbushAt = -1e9;
 /** Roadblocks stop the player and vehicles like trees do. */
 export function ambushHit(x: number, _y: number, z: number, r: number): boolean {
-  for (const a of ambushes) for (const o of a.obstacles) if (Math.hypot(o.x - x, o.z - z) < o.r + r) return true;
+  for (const a of ambushes) for (const o of a.pieces) if (Math.hypot(o.x - x, o.z - z) < o.r + r) return true;
   return false;
 }
 /** On (or right by) a road here? (Checked before the pacing, so an ambush does not use up an encounter off-road.) */
@@ -194,23 +248,14 @@ function tryAmbush(dt: number, force = false) {
   if (Math.hypot(bx - px, bz - pz) < 25 || env.forbidden(bx, bz)) return false;
   // the road's direction at the block, and across it
   const [, ax, az] = nearestOnRoad(road, bx + mv.x * 3, bz + mv.z * 3), dir = V(ax - bx, 0, az - bz).normalize(), side = V(-dir.z, 0, dir.x);
-  const y = T.heightAt(bx, bz), pb = new PropBatch(), obstacles: Ambush['obstacles'] = [];
-  for (const k of [-2.2, 0, 2.2]) {
-    const ox = bx + side.x * k, oz = bz + side.z * k, oy = T.heightAt(ox, oz);
-    pb.box(ox - 0.6, oy - 0.1, oz - 0.6, ox + 0.6, oy + (k === 0 ? 1.4 : 1.0), oz + 0.6, 0xb8b060);
-    obstacles.push({ x: ox, z: oz, r: 0.9 });
-  }
-  // a spiked log across the whole road
-  pb.line(0xb8b060, [bx - side.x * 3.4, y + 0.5, bz - side.z * 3.4], [bx + side.x * 3.4, y + 0.5, bz + side.z * 3.4]);
-  const block = pb.build(); scene.add(block);
-  const lv = env.danger(bx, bz), group: Bandit[] = [], id = ++ambushId, n = 3 + (Math.random() < 0.5 ? 1 : 0) + (lv > 2 ? 1 : 0);
+  const id = placeRoadblock(T, bx, bz, dir);
+  const lv = env.danger(bx, bz), group: Bandit[] = [], n = 3 + (Math.random() < 0.5 ? 1 : 0) + (lv > 2 ? 1 : 0);
   for (let i = 0; i < n; i++) {
     const s = (i % 2 ? 1 : -1) * (9 + Math.random() * 5), back = -4 + Math.random() * 12;
     const x = bx + side.x * s + dir.x * back, z = bz + side.z * s + dir.z * back;
     const b = spawnBandit(i === 0 && Math.random() < 0.5 ? 'bruiser' : 'gunner', V(x, T.heightAt(x, z) + 0.9, z), lv, group);
     b.sight = 18; b.ambush = id; b.heading = Math.atan2(bx - x, bz - z);
   }
-  ambushes.push({ id, block, obstacles, x: bx, z: bz, sprung: false });
   lastAmbushAt = performance.now();
   return true;
 }
@@ -218,9 +263,10 @@ function updateAmbushes() {
   for (let i = ambushes.length - 1; i >= 0; i--) {
     const a = ambushes[i], left = W.bandits.filter((b) => b.ambush === a.id);
     if (!a.sprung && left.some((b) => b.state === 'fight')) { a.sprung = true; showToast('Ambush!'); }
-    if (!left.length || Math.hypot(a.x - G.pos.x, a.z - G.pos.z) > 230) {
-      if (!left.length && a.sprung) logLine('The ambush is broken.');
-      scene.remove(a.block); a.block.traverse((o) => (o as THREE.Mesh).geometry?.dispose());
+    if (a.sprung && !left.length && !a.done) { a.done = true; logLine(a.pieces.length ? 'The ambush is broken. The roadblock still stands: shoot it apart or go round.' : 'The ambush is broken.'); }
+    // the barricades stay until they are shot apart, or until you are far away
+    if (!a.pieces.length || Math.hypot(a.x - G.pos.x, a.z - G.pos.z) > 230) {
+      for (const p of a.pieces) { scene.remove(p.g); p.g.traverse((o) => (o as THREE.Mesh).geometry?.dispose()); }
       ambushes.splice(i, 1);
     }
   }
@@ -237,7 +283,7 @@ export function updateRaiders(dt: number) {
 }
 export function clearRaiders() {
   for (const r of [...raiders]) dropRaider(r);
-  for (const a of ambushes) scene.remove(a.block);
+  for (const a of ambushes) for (const p of a.pieces) scene.remove(p.g);
   ambushes.length = 0;
 }
 /** Console / testing. */

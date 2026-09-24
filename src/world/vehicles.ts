@@ -7,6 +7,7 @@ import { VEHICLES, vehicleTitle, freshParts, upgradeParts, immobile, partPerform
 import { PART_PRICE, PART_BUYBACK } from '../data/items';
 import { rayWorld } from './player';
 import { foes, damageFoe } from './enemies';
+import { rayBarrier, hurtBarrier } from './raiders';
 import { addFx, burst } from './fx';
 import { makeNoise } from './noise';
 import { add as addMat, edgesOf, lineMat } from './render';
@@ -118,6 +119,19 @@ function mastodonBody(pb: PropBatch) {
   for (const z of VEHICLES.mastodon.axles) for (const sx of [-1, 1]) box(pb, sx * 1.15, 1.6, z - 0.95, sx * 1.8, 1.72, z + 0.95, DETAIL);
 }
 
+/**
+ * A vehicle model with nothing to drive (the trucks and jeeps of the caravans, world/caravans.ts): body, wheels and,
+ * if asked, the roof cannon (returned as `turret` so it can turn). Origin on the ground, facing +z.
+ */
+export function convoyModel(model: VehicleModel, cannon: boolean): { g: THREE.Group; turret: THREE.Group | null } {
+  const spec = VEHICLES[model], g = new THREE.Group(), pb = new PropBatch();
+  if (model === 'scout') scoutBody(pb); else mastodonBody(pb);
+  g.add(pb.build());
+  for (const z of spec.axles) for (const sx of [-1, 1]) { const w = wheelModel(model).clone(); w.position.set(sx * spec.track, spec.wheelR, z); g.add(w); }
+  let turret: THREE.Group | null = null;
+  if (cannon) { turret = turretModel(); turret.position.set(...spec.mount); g.add(turret); }
+  return { g, turret };
+}
 function makeVehicle(st: VehicleState, claimed = true): Vehicle {
   const spec = VEHICLES[st.model], group = new THREE.Group(), pb = new PropBatch();
   if (st.model === 'scout') scoutBody(pb); else mastodonBody(pb);
@@ -227,6 +241,8 @@ export function fireCannon(dt: number) {
     if (disc < 0) continue; const tt = -b - Math.sqrt(disc);
     if (tt > 0 && tt < tHit) { tHit = tt; hit = t; }
   }
+  const bar = rayBarrier(muzzle, d, tHit);
+  if (bar) { tHit = bar.t; hit = null; hurtBarrier(bar.p, 3 * G.S.bm); }
   const end = muzzle.clone().addScaledVector(d, tHit);
   addFx(new THREE.Line(new THREE.BufferGeometry().setFromPoints([muzzle, end]), addMat(0xffb347)), 0.15);
   burst(end, 0xffb347, hit ? 16 : 8, hit ? 1.1 : 0.5);

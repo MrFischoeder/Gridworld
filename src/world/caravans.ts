@@ -5,11 +5,17 @@
 import * as THREE from 'three';
 import { G } from '../game';
 import { scene } from './render';
-import { PropBatch } from './props';
 import { OW } from './overworld';
 import { network, regionRoads, type Road, type Edge } from '../gen/roads';
 import { regionOf } from '../gen/regions';
-import { onRoad, caravanS, caravanOf, escortPay, type Caravan } from '../gen/caravans';
+import { onRoad, caravanS, caravanOf, escortPay, CONVOY, type Caravan } from '../gen/caravans';
+import { convoyModel } from './vehicles';
+import { VEHICLES } from '../data/vehicles';
+import { placeRoadblock, barriersNear, hurtBarrier, type Barricade } from './raiders';
+import { removeBandit } from './bandits';
+import { burst, addFx } from './fx';
+import { add } from './render';
+import { makeNoise } from './noise';
 import { spawnBandit, alert, type Bandit } from './bandits';
 import { danger } from './overworld';
 import { mayspawn, BANDIT_COST } from './threat';
@@ -17,28 +23,11 @@ import { gainXp, saveChar, calcStats } from '../character';
 import { showToast, logLine } from '../ui/hud';
 import { findPoi, worldDist } from '../gen/regions';
 
-const BODY = 0xc8e0ff, CANVAS = 0x9dffb4, CRATE = 0xe8e0c0, DRAW_R = 420;
-/** Half length and half width of a wagon (for bumping into it). */
-const HL = 3.1, HW = 1.25;
-let model: THREE.Group | null = null;
-function wagonModel(): THREE.Group {
-  if (model) return model;
-  const pb = new PropBatch(), b = (x0: number, y0: number, z0: number, x1: number, y1: number, z1: number, c = BODY) => pb.box(x0, y0, z0, x1, y1, z1, c);
-  b(-1.1, 0.55, -3, 1.1, 0.85, 3);                       // chassis
-  b(-1.05, 0.85, 1.6, 1.05, 2.4, 3.05);                  // cab
-  pb.line(CANVAS, [-0.9, 1.6, 3.06], [0.9, 1.6, 3.06], [0.9, 2.2, 3.06], [-0.9, 2.2, 3.06], [-0.9, 1.6, 3.06]); // windscreen
-  // the canvas cover over the bed: hoops and a ridge
-  const hoop = (z: number) => { const pts: number[][] = []; for (let i = 0; i <= 8; i++) { const a = Math.PI * i / 8; pts.push([-Math.cos(a) * 1.1, 1.0 + Math.sin(a) * 1.35 + 0.55, z]); } return pts; };
-  const zs = [-2.9, -1.95, -1, 0, 1.0, 1.5];
-  for (const z of zs) pb.line(CANVAS, ...hoop(z));
-  for (let i = 0; i + 1 < zs.length; i++) { const a = hoop(zs[i]), c = hoop(zs[i + 1]); for (let j = 0; j + 1 < a.length; j++) pb.face(a[j], a[j + 1], c[j + 1], c[j]); }
-  pb.line(CANVAS, [0, 2.9, -2.9], [0, 2.9, 1.5]);
-  b(-1.1, 0.85, -3, 1.1, 1.55, 1.5);                     // bed sides
-  for (const [x, y] of [[-0.55, 1.55], [0.35, 1.55], [-0.1, 2.15]]) b(x - 0.4, y, -3.25, x + 0.4, y + 0.6, -2.65, CRATE); // crates at the tail
-  for (const z of [-2, 2]) for (const s of [-1, 1]) { pb.box(s * 1.0, 0.05, z - 0.45, s * 1.3, 0.95, z + 0.45, BODY); }  // wheels
-  model = pb.build();
-  return model;
-}
+const DRAW_R = 420;
+/** Half length and half width of each vehicle of the convoy (for bumping into it). */
+const SIZE = CONVOY.map((v) => ({ hl: VEHICLES[v.model].length / 2, hw: VEHICLES[v.model].width / 2 }));
+/** The jeeps' roof cannons: reach, time between shots, damage to bandits and to barricades. */
+export const CONVOY_GUN = { range: 42, rate: 1.4, dmg: 1.2, barrier: 0.8 };
 /**
  * What happens to a caravan while you are near it (not saved: it only matters while you watch): how long it has
  * been held up (it stands still while bandits are on it, and then rolls on that much behind its timetable), the
@@ -52,7 +41,7 @@ export const plundered = (id: string) => !!G.char.caravans['lost:' + id];
 /** How much the drovers knock off their prices for you after you saved them from a raid. */
 export const savedBy = (id: string) => !!G.char.caravans['saved:' + id];
 export const CARAVAN_RAID = { chance: 0.12, perDanger: 0.04, minDanger: 1.2, drain: 0.45, radius: 45 };
-interface Wagon { c: Caravan; w: number; road: Road; g: THREE.Group; x: number; z: number; yaw: number }
+interface Wagon { c: Caravan; w: number; road: Road; g: THREE.Group; turret: THREE.Group | null; x: number; z: number; yaw: number; cool: number }
 const wagons = new Map<string, Wagon>();
 let scanT = 0;
 const edgeByKey = new Map<string, Edge>();
@@ -84,7 +73,11 @@ export function updateCaravans(dt: number) {
         const key = c.id + ':' + w;
         if (seen.has(key)) continue;
         seen.add(key);
-        if (!wagons.has(key)) { const g = new THREE.Group(); g.add(wagonModel().clone()); g.visible = false; scene.add(g); wagons.set(key, { c, w, road, g, x: 0, z: 0, yaw: 0 }); }
+        if (!wagons.has(key)) {
+          const spec = CONVOY[w], m = convoyModel(spec.model, spec.gun), g = new THREE.Group();
+          g.add(m.g); g.visible = false; scene.add(g);
+          wagons.set(key, { c, w, road, g, turret: m.turret, x: 0, z: 0, yaw: 0, cool: Math.random() });
+        }
       }
     }
     for (const [k, wg] of wagons) if (!seen.has(k)) { scene.remove(wg.g); wagons.delete(k); }
@@ -105,8 +98,9 @@ export function updateCaravans(dt: number) {
     if (!near) continue;
     const fx = Math.sin(yaw), fz = Math.cos(yaw), hf = T.heightAt(x + fx * 2.5, z + fz * 2.5), hb = T.heightAt(x - fx * 2.5, z - fz * 2.5);
     // a wagon rolling into you shoves you aside
-    const dx = G.pos.x - x, dz = G.pos.z - z, u = dx * fx + dz * fz, v = dx * fz - dz * fx;
-    if (Math.abs(u) < HL + 0.3 && Math.abs(v) < HW + 0.3 && G.pos.y < (hf + hb) / 2 + 3) { const push = (v < 0 ? -1 : 1) * (HW + 0.35) - v; G.pos.x += fz * push; G.pos.z -= fx * push; }
+    const dx = G.pos.x - x, dz = G.pos.z - z, u = dx * fx + dz * fz, v = dx * fz - dz * fx, { hl, hw } = SIZE[wg.w];
+    if (Math.abs(u) < hl + 0.3 && Math.abs(v) < hw + 0.3 && G.pos.y < (hf + hb) / 2 + 3.5) { const push = (v < 0 ? -1 : 1) * (hw + 0.35) - v; G.pos.x += fz * push; G.pos.z -= fx * push; }
+    if (wg.turret) aimGun(wg, dt);
     wg.g.position.set(x, (hf + hb) / 2, z); wg.g.rotation.set(0, 0, 0); wg.g.rotateY(yaw); wg.g.rotateX(-Math.atan2(hf - hb, 5));
   }
 }
@@ -117,7 +111,7 @@ export function caravanHit(x: number, y: number, z: number, r: number): boolean 
     if (!wg.g.visible || Math.abs(x - wg.x) > 6 || Math.abs(z - wg.z) > 6) continue;
     const dx = x - wg.x, dz = z - wg.z, fx = Math.sin(wg.yaw), fz = Math.cos(wg.yaw);
     const u = dx * fx + dz * fz, v = dx * fz - dz * fx;
-    if (Math.abs(u) < HL + r && Math.abs(v) < HW + r && y < wg.g.position.y + 3) return true;
+    if (Math.abs(u) < SIZE[wg.w].hl + r && Math.abs(v) < SIZE[wg.w].hw + r && y < wg.g.position.y + 3.5) return true;
   }
   return false;
 }
@@ -126,7 +120,7 @@ export function nearCaravan(): Caravan | null {
   for (const wg of wagons.values()) {
     if (!wg.g.visible) continue;
     const dx = G.pos.x - wg.x, dz = G.pos.z - wg.z, fx = Math.sin(wg.yaw), fz = Math.cos(wg.yaw);
-    if (Math.abs(dx * fx + dz * fz) < HL + 3 && Math.abs(dx * fz - dz * fx) < HW + 3.5) return wg.c;
+    if (Math.abs(dx * fx + dz * fz) < SIZE[wg.w].hl + 3 && Math.abs(dx * fz - dz * fx) < SIZE[wg.w].hw + 3.5) return wg.c;
   }
   return null;
 }
@@ -147,6 +141,9 @@ function startRaid(c: Caravan, l: Live, lv: number) {
     const b = spawnBandit(role, new THREE.Vector3(x, OW.terrain.heightAt(x, z) + 0.9, z), lv, group);
     b.sight = 60; l.raid.push(b);
   }
+  // they have blocked the road ahead of the convoy
+  const fx = Math.sin(lead.yaw), fz = Math.cos(lead.yaw);
+  placeRoadblock(OW.terrain, lead.x + fx * 16, lead.z + fz * 16, new THREE.Vector3(fx, 0, fz));
   l.raids++; l.raidNear = true;
   showToast('Bandits on the road!');
   logLine(`Bandits fall on the caravan to ${c.toName}. Drive them off before they strip the wagons.`);
@@ -172,6 +169,7 @@ function raids(dt: number) {
     const lead = leadOf(id), alive = l.raid.filter((b) => W_has(b) && b.hp > 0);
     const near = lead ? alive.filter((b) => Math.hypot(b.p.x - lead.x, b.p.z - lead.z) < CARAVAN_RAID.radius) : [];
     if (near.length) { l.delay += dt; l.hp -= CARAVAN_RAID.drain * near.length * dt; }
+    else if (lead && barriersNear(lead.x + Math.sin(lead.yaw) * 8, lead.z + Math.cos(lead.yaw) * 8, 9).length) l.delay += dt; // the road is blocked
     // the bandits go for you once you come close
     for (const b of alive) if (b.state === 'idle' && Math.hypot(b.p.x - G.pos.x, b.p.z - G.pos.z) < 55) alert(b);
     const c = lead?.c;
@@ -181,8 +179,10 @@ function raids(dt: number) {
       if (G.char.escort?.id === id) failEscort('The caravan you were guarding was plundered.');
       continue;
     }
-    if (!near.length && (!alive.length || !lead)) {
-      const killed = l.raid.filter((b) => b.hp <= 0).length, won = killed >= Math.ceil(l.raid.length / 2) && !!c;
+    const blocked = lead ? barriersNear(lead.x + Math.sin(lead.yaw) * 8, lead.z + Math.cos(lead.yaw) * 8, 9).length > 0 : false;
+    if (!near.length && !blocked && (!alive.length || !lead)) {
+      const killed = l.raid.filter((b) => b.hp <= 0).length, there = !!lead && Math.hypot(lead.x - G.pos.x, lead.z - G.pos.z) < 150;
+      const won = killed >= Math.ceil(l.raid.length / 2) && !!c && there;
       l.raid = [];
       if (won && c) {
         const gold = 20 * killed;
@@ -233,3 +233,37 @@ export function escortLine(): string {
 }
 /** Wagons near you for the maps: position, heading, and whether it is your escort or under attack. */
 export const mapWagons = () => [...wagons.values()].filter((w) => w.g.visible).map((w) => ({ x: w.x, z: w.z, yaw: w.yaw, mine: G.char.escort?.id === w.c.id, raided: !!live.get(w.c.id)?.raid.length }));
+
+// ---------- the jeeps' guns ----------
+/** Turn a jeep's cannon towards the nearest raider (or, with none about, a barricade blocking the road) and fire. */
+function aimGun(wg: Wagon, dt: number) {
+  const l = live.get(wg.c.id), t = wg.turret!;
+  wg.cool -= dt;
+  let target: { x: number; y: number; z: number; hit: () => void } | null = null, best = CONVOY_GUN.range;
+  for (const b of l?.raid ?? []) {
+    if (b.hp <= 0 || !b.g.parent) continue;
+    const d = Math.hypot(b.p.x - wg.x, b.p.z - wg.z);
+    if (d < best) { best = d; target = { x: b.p.x, y: b.p.y + 0.3, z: b.p.z, hit: () => shootBandit(b) }; }
+  }
+  if (!target) for (const p of barriersNear(wg.x, wg.z, 30)) {
+    const d = Math.hypot(p.x - wg.x, p.z - wg.z);
+    if (d < best) { best = d; target = { x: p.x, y: p.y + 0.8, z: p.z, hit: () => hurtBarrier(p as Barricade, CONVOY_GUN.barrier) }; }
+  }
+  const want = target ? Math.atan2(target.x - wg.x, target.z - wg.z) - wg.yaw : 0;
+  let da = want - t.rotation.y; da = Math.atan2(Math.sin(da), Math.cos(da));
+  t.rotation.y += Math.sign(da) * Math.min(Math.abs(da), dt * 2.2);
+  if (!target || Math.abs(da) > 0.15 || wg.cool > 0) return;
+  wg.cool = CONVOY_GUN.rate * (0.8 + Math.random() * 0.4);
+  const muzzle = new THREE.Vector3(0, 0.18, 1.3); t.localToWorld(muzzle);
+  const end = new THREE.Vector3(target.x, target.y, target.z);
+  addFx(new THREE.Line(new THREE.BufferGeometry().setFromPoints([muzzle, end]), add(0xc8e0ff)), 0.12);
+  burst(end, 0xc8e0ff, 8, 0.6);
+  makeNoise(muzzle, 70);
+  target.hit();
+}
+/** A convoy gunner's hit on a raider (no bounty for you: they shot it). */
+function shootBandit(b: Bandit) {
+  b.hp -= CONVOY_GUN.dmg; b.flash = 0.12;
+  if (b.state === 'idle') alert(b);
+  if (b.hp <= 0) { burst(b.p.clone(), 0xffb347, 24, 1.3); removeBandit(b); }
+}

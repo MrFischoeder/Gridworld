@@ -9,15 +9,22 @@ import { network, edgePath, type Edge } from './roads';
 import { villageSeed } from './regions';
 import { profileOf, type Good } from './market';
 
-/** Speed (metres per game minute = per real second), the time between departures on a road (game minutes), the share skipped, and how far apart the wagons roll. */
-export const CARAVAN = { speed: 7, period: [360, 960] as const, skip: 0.25, gap: 13, weight: 0.25 };
+/** Speed (metres per game minute = per real second), the time between departures on a road (game minutes), the share skipped, and the market weight of a delivery. */
+export const CARAVAN = { speed: 7, period: [360, 960] as const, skip: 0.25, weight: 0.25 };
+/**
+ * A caravan is a convoy: a heavy truck with the cargo between two gun jeeps. `back` is how far behind the lead
+ * each vehicle rolls (metres, centre to centre).
+ */
+export const CONVOY = [{ model: 'scout', back: 0, gun: true }, { model: 'mastodon', back: 8.5, gun: false }, { model: 'scout', back: 17, gun: true }] as const;
 export interface Caravan {
   id: string; road: string; k: number;
   /** Village ids and names it travels between (from → to). */
   from: number; to: number; fromName: string; toName: string;
   /** Departure time and travel time (game minutes). */
   t0: number; T: number;
-  good: Good; n: number; wagons: number;
+  good: Good; n: number;
+  /** Vehicles in the convoy (CONVOY). */
+  wagons: number;
   /** Travels the road's points backwards (from its `to` end). */
   back: boolean;
 }
@@ -43,10 +50,10 @@ export function caravanOf(world: number, e: Edge, k: number): Caravan | null {
   const back = (k & 1) === 1, [o, d] = back ? [e.b, e.a] : [e.a, e.b];
   const po = profileOf(world, o, villageSeed(world, o)), pd = profileOf(world, d, villageSeed(world, d));
   const good = po.makes.find((g) => pd.wants.includes(g)) ?? po.makes[(h >> 10) & 1];
-  const wagons = 1 + ((h >> 12) % 3);
+  const wagons = CONVOY.length;
   return {
     id: e.key + ':' + k, road: 'road:' + e.key, k, from: o.id, to: d.id, fromName: o.name, toName: d.name,
-    t0: k * periodOf(world, e) + offsetOf(world, e), T: L / CARAVAN.speed, good, n: wagons * (6 + ((h >> 16) % 7)), wagons, back,
+    t0: k * periodOf(world, e) + offsetOf(world, e), T: L / CARAVAN.speed, good, n: 12 + ((h >> 16) % 19), wagons, back,
   };
 }
 /** Departures on road e with t0 in [t1, t2]. */
@@ -60,8 +67,8 @@ export function onRoad(world: number, e: Edge, t: number): Caravan[] {
   const L = roadLength(world, e);
   return departures(world, e, t - L / CARAVAN.speed, t).filter((c) => t < c.t0 + c.T);
 }
-/** How far along the road (metres from its start) caravan c's wagon w is at time t. */
-export const caravanS = (c: Caravan, t: number, w = 0) => Math.max(0, (t - c.t0) * CARAVAN.speed - w * CARAVAN.gap);
+/** How far along the road (metres from its start) vehicle w of caravan c is at time t. */
+export const caravanS = (c: Caravan, t: number, w = 0) => Math.max(0, (t - c.t0) * CARAVAN.speed - CONVOY[w].back);
 
 const byVillage = new Map<string, Edge[]>();
 /** The roads that end at village vid. */
