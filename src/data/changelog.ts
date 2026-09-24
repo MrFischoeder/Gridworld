@@ -4,6 +4,14 @@ export interface Change { v: string; date: string; title: string; notes: string[
 
 export const CHANGELOG: Change[] = [
   {
+    v: '0.24.0', date: '2026-09-24', title: 'Trade between the villages',
+    notes: ['Ten trade goods travel the roads by the crate: grain, timber, ore, salt, dried fish, cloth, tools, medical supplies, fuel and salvaged tech.',
+      'Every village makes two goods (cheap there, plenty in stock) and wants two others (dear there, little in stock). What a village trades follows its land: villages in the hills mine ore and salt, a village on a diesel generator always wants fuel, the far villages sell raw goods and hunger for made ones.',
+      'Ask the general store in any village: "Trade goods by the crate". Buy where a good is made and sell where it is wanted. Every crate you buy or sell moves the price, and the market settles back over a day or two, so flooding one village does not pay for long. Prices also drift over the days.',
+      'Crates are heavy and bulky: a backpack takes two or three. Park your vehicle by the village gates and the store loads and unloads straight from its trunk: a Scout carries 40 crates, a Mastodon 120. A trading run is a caravan, and the roads are not safe.',
+      'The store remembers nothing for you, but you do: every market you visit goes into your ledger, and each good shows the best price you have seen elsewhere, where and how long ago. The merchant also passes on word of nearby markets you have not seen yet and what they pay well for, so it pays to explore.'],
+  },
+  {
     v: '0.23.0', date: '2026-09-24', title: 'Fortify the villages, keep the power on',
     notes: ['Every village elder now has work for you: "How can I help the village?" Help raise the wall from the Stake Fence to a Timber Palisade (planks, logs, nails, rope) and later a Stone Wall (stone, scrap, planks, nails). Bring the materials a load at a time: the elder keeps count, and when all is in, the new wall stands and the village pays you.',
       'Each village draws its power from its own plant outside the fence: a diesel generator, a solar array or a pair of wind turbines, cabled in on wooden poles. Villages differ in the details now.',

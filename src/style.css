@@ -291,3 +291,12 @@ body.is-touch #bUse.on{display:flex}
 #kpMsg{min-height:22px;margin-top:8px;font-size:18px;color:var(--amber)}
 #kpActs{display:flex;flex-direction:column;gap:6px;margin-top:6px}
 #kpActs button{font-size:20px}
+#dlg .panel.wide{width:min(900px,96vw)}
+#dlg .mkt{max-height:46vh;overflow-y:auto;margin:6px 0}
+.mrow{display:grid;grid-template-columns:1fr 60px 56px 106px 50px 106px 50px;gap:6px 8px;align-items:center;border-top:1px solid #0d3a18;padding:5px 0;font-size:20px}
+.mrow.head{opacity:.6;font-size:16px;border-top:0;padding-bottom:0}
+.mrow b{font-weight:400;color:var(--gold);font-size:21px}
+.mrow .tag{font-size:16px;margin-left:6px}
+.mrow .num{text-align:right}
+.mrow .best{grid-column:1/-1;opacity:.65;font-size:16px;margin-top:-4px}
+.mrow .buy{min-width:0;padding:3px 10px;font-size:19px}

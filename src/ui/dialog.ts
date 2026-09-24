@@ -20,6 +20,7 @@ import { count } from '../data/crafting';
 import { loadedVillage, reloadStruct } from '../world/overworld';
 import { gainXp } from '../character';
 import { showToast, logLine } from './hud';
+import { openMarket, renderMarket, marketClick } from './market';
 /** Mirek pays a fifth of the price for a part, less for a worn one. */
 const partBuyback = (s: Slot) => Math.floor(PART_PRICE[s.k]! * PART_BUYBACK * (s.c ?? 100) / 100);
 
@@ -44,6 +45,7 @@ const here = (s: string) => s.replace(/Gridholm/g, town());
 const dlgHead = () => { const n = W.talkNpc!; return `<h2>${n.name}</h2><div class="role">${n.title}</div>`; };
 function renderTalk(text: string) {
   const info = NPC_INFO[W.talkNpc!.role];
+  panel().classList.remove('wide');
   panel().innerHTML = dlgHead() + `<div class="say">${text}</div>` +
     (inGridholm() ? questOptions(W.talkNpc!.role) : []).map((q) => `<button class="opt" data-q="${q.id}" style="color:var(--gold)">${q.label}</button>`).join('') +
     info.opts.map((o) => `<button class="opt" data-o="${o}">${OPT_TEXT[o]}</button>`).join('');
@@ -124,6 +126,8 @@ function giveFortify() {
 }
 dlgEl.addEventListener('click', (e) => {
   if (craftClick(e.target as HTMLElement) || buildClick(e.target as HTMLElement)) return;
+  const mm = marketClick(e.target as HTMLElement);
+  if (mm !== null) { renderMarket(panel(), dlgHead(), mm); return; }
   const t = e.target as HTMLElement, o = t.closest<HTMLElement>('[data-o]'), b = t.closest<HTMLElement>('.buy'), c = G.char;
   if (b && b.dataset.v) { renderVehicleShop(buyVehicle(b.dataset.v as VehicleModel)); return; }
   if (b && b.dataset.sellv) { renderSell(sellVehicle(b.dataset.sellv)); return; }
@@ -179,6 +183,7 @@ dlgEl.addEventListener('click', (e) => {
     case 'chat': renderTalk(VILLAGER_LINES[(Math.random() * VILLAGER_LINES.length) | 0]); break;
     case 'lore': renderTalk(here(loreText())); break;
     case 'fortify': renderFortify(); break;
+    case 'trade': if (openMarket(town())) renderMarket(panel(), dlgHead()); else renderTalk('Hm?'); break;
     case 'work':
       if (!inGridholm()) { renderTalk(`We are too small a place for a notice board. Gridholm posts work on its plaza; that is where the paying jobs are.`); break; }
       renderTalk(r === 'elder' ? 'Read the notice board on the plaza. Folk post their troubles there, and when my name is on a notice, come and see me.'

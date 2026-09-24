@@ -1,4 +1,4 @@
-export type ItemType = 'relic' | 'cons' | 'key' | 'part' | 'quest' | 'attach' | 'mat' | 'tool' | 'weapon' | 'wear';
+export type ItemType = 'relic' | 'cons' | 'key' | 'part' | 'quest' | 'attach' | 'mat' | 'tool' | 'weapon' | 'wear' | 'good';
 export interface ItemDef { name: string; ab: string; type: ItemType; desc: string; stack?: number }
 
 export const ITEMS = {
@@ -15,6 +15,17 @@ export const ITEMS = {
   gloves: { name: 'Work Gloves', ab: 'GLV', type: 'wear', desc: 'tough gloves: take 3% off every hit', stack: 1 },
   trousers: { name: 'Cargo Trousers', ab: 'TRS', type: 'wear', desc: 'reinforced trousers: take 4% off every hit', stack: 1 },
   boots: { name: 'Field Boots', ab: 'BTS', type: 'wear', desc: 'sturdy boots: take 4% off every hit', stack: 1 },
+  // trade goods (gen/market.ts): bulky crates, bought cheap where they are made and sold dear where they are wanted
+  grain: { name: 'Sack of Grain', ab: 'GRN', type: 'good', desc: 'trade good: fifty kilos of grain. Farming villages sell it cheap', stack: 5 },
+  timber: { name: 'Timber Bundle', ab: 'TMB', type: 'good', desc: 'trade good: seasoned beams, bound with rope. Forest villages sell it cheap', stack: 5 },
+  ore: { name: 'Crate of Ore', ab: 'ORE', type: 'good', desc: 'trade good: iron-rich rock from the mountain mines', stack: 5 },
+  salt: { name: 'Salt Blocks', ab: 'SLT', type: 'good', desc: 'trade good: pressed salt, for keeping food through the winter', stack: 5 },
+  fish: { name: 'Dried Fish', ab: 'FSH', type: 'good', desc: 'trade good: a bale of fish dried on lake shores', stack: 5 },
+  cloth: { name: 'Bolt of Cloth', ab: 'CLT', type: 'good', desc: 'trade good: woven cloth, dyed green', stack: 5 },
+  tools: { name: 'Crate of Tools', ab: 'TLS', type: 'good', desc: 'trade good: hammers, saws and files from a village forge', stack: 5 },
+  meds: { name: 'Medical Supplies', ab: 'MED', type: 'good', desc: 'trade good: bandages, salves and tinctures', stack: 5 },
+  fuel: { name: 'Fuel Canister', ab: 'FUL', type: 'good', desc: 'trade good: diesel for the village generators', stack: 5 },
+  tech: { name: 'Salvaged Tech', ab: 'TEC', type: 'good', desc: 'trade good: cleaned and tested machine parts from the ruins', stack: 5 },
   medkit: { name: 'Medkit', ab: '+', type: 'cons', desc: 'restores 50 HP (H key)', stack: 5 },
   key: { name: 'Access Key', ab: 'KEY', type: 'key', desc: 'Opens one locked door. Stand at the door and press E.', stack: 9 },
   bread: { name: 'Bread', ab: 'BRD', type: 'cons', desc: 'dense and filling: 1000 kcal, 5 HP', stack: 9 },
@@ -98,6 +109,7 @@ export const BULK: Record<ItemKey, [kg: number, litres: number]> = {
   planks: [1.5, 1.5], nails: [0.3, 0.2], rope: [0.8, 1.5], wire: [0.5, 0.5], benchkit: [15, 20], flagpole: [9, 14],
   hide: [2, 3], fang: [0.1, 0.1], plate: [3, 2.5], membrane: [0.3, 1], incisor: [0.05, 0.05],
   book: [1, 1], gearbox: [4, 2], datacore: [1, 0.5], logbook: [0.5, 0.5],
+  grain: [12, 14], timber: [16, 20], ore: [18, 10], salt: [10, 7], fish: [7, 10], cloth: [5, 9], tools: [14, 14], meds: [4, 7], fuel: [11, 12], tech: [6, 8],
   wheelL: [12, 22], wheelH: [28, 36], engine: [8, 6], turbo: [6, 5], eguard: [5, 4], plating: [7, 5], cannon: [25, 30],
   reflex: [0.3, 0.3], scope: [0.8, 1], barL: [1.2, 1], barR: [1, 0.8], barS: [0.9, 0.8], magX: [0.5, 0.4], magD: [1.2, 1],
 };

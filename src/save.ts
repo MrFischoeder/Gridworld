@@ -8,6 +8,7 @@ import { wrapC } from './gen/regions';
 import { KCAL } from './data/survival';
 import type { Part } from './gen/base';
 import type { TownState } from './gen/town';
+import type { MarketState } from './gen/market';
 
 /** An item stack. `c` is the condition in percent of a used part (worn tires); such items do not stack. */
 export interface Slot { k: ItemKey; n: number; c?: number }
@@ -60,6 +61,10 @@ export interface Char {
   pid: string;
   /** What you changed about the villages (gen/town.ts), keyed by village id: the wall's tier, materials handed over, the power plant. */
   towns: Record<string, TownState>;
+  /** The markets (gen/market.ts): how trades have shifted each village's stocks. On the server this is shared by everyone. */
+  market: MarketState;
+  /** Prices you have seen, per village id: when, the village's name and place, and [buy, sell] per good. */
+  ledger: Record<string, { t: number; name: string; x: number; z: number; q: Record<string, [number, number]> }>;
 }
 
 export const SAVE_KEY = 'gridWorld.character.v3';
@@ -70,7 +75,7 @@ export const newChar = (): Char => ({
   v: 3, level: 1, xp: 0, gold: 0, world: (Math.random() * 1e6) | 0,
   inv: Array(INV_SIZE).fill(null), mods: Array(MOD_SIZE).fill(null), opened: {}, unlocked: {}, killed: {},
   loc: 'overworld', ow: null, dungeon: null, discovered: {}, containers: {}, vehicles: [], board: { seq: 0, offers: [], stamp: boardPeriod(START_TIME) }, quests: [], camps: {}, time: START_TIME, gunMods: [null, null, null], kcal: KCAL.start, stomach: 0, water: 100, harvest: {}, benches: [], claims: [],
-  hands: [{ k: 'blaster', n: 1 }], back: [{ k: 'blade', n: 1 }, null], wear: {}, pid: Math.random().toString(36).slice(2, 10), towns: {},
+  hands: [{ k: 'blaster', n: 1 }], back: [{ k: 'blade', n: 1 }, null], wear: {}, pid: Math.random().toString(36).slice(2, 10), towns: {}, market: {}, ledger: {},
 });
 
 interface V2 { level?: number; xp?: number; gold?: number; world?: number; inv?: (Slot | null)[]; mods?: (ItemKey | null)[] }
