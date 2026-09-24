@@ -204,6 +204,25 @@ function boardDeco(vm: VillageMap, y: number) {
   g.add(wallSign('NOTICE BOARD', '#ffd060', { x, z: z + 0.1 }, [0, 1], y + 3.4));
   return g;
 }
+/** The map board (every village): a slanted table on two legs with the land drawn on it, under a little roof. */
+function mapBoardDeco(vm: VillageMap, y: number) {
+  const g = new THREE.Group(), pb = new PropBatch(), { x, z } = vm.mapBoard;
+  for (const s of [-1, 1]) pb.box(x + s * 1.2 - 0.07, y, z - 0.07, x + s * 1.2 + 0.07, y + 2.9, z + 0.07, GRID);
+  // the map panel, tilted back towards the reader
+  const lo = y + 0.9, hi = y + 2.2, zb = z - 0.35, zf = z + 0.05;
+  pb.solid8([[x - 1.1, lo, zf], [x + 1.1, lo, zf], [x + 1.1, lo, zf - 0.08], [x - 1.1, lo, zf - 0.08]], [[x - 1.1, hi, zb + 0.08], [x + 1.1, hi, zb + 0.08], [x + 1.1, hi, zb], [x - 1.1, hi, zb]], GRID);
+  const P = (u: number, v: number) => [x + u, lo + (hi - lo) * v + 0.02, zf + (zb - zf) * v + 0.06]; // on the panel's face
+  pb.line(0x2ac8b0, P(-0.8, 0.25), P(-0.55, 0.45), P(-0.75, 0.6), P(-0.95, 0.4), P(-0.8, 0.25)); // a lake
+  pb.line(0xc8ffd8, P(-0.5, 0.1), P(-0.1, 0.4), P(0.3, 0.45), P(0.85, 0.85)); // a road
+  pb.line(0xffd060, P(-0.15, 0.3), P(-0.05, 0.3), P(-0.05, 0.4), P(-0.15, 0.4), P(-0.15, 0.3)); // the village
+  pb.line(0x5cc8ff, P(0.45, 0.65), P(0.55, 0.8), P(0.65, 0.65), P(0.45, 0.65)); // ruins
+  pb.line(0x7dffc8, P(0.6, 0.2), P(0.9, 0.25), P(0.6, 0.3)); // a wreck
+  pb.solid8([[x - 1.5, y + 2.9, z - 0.55], [x + 1.5, y + 2.9, z - 0.55], [x + 1.5, y + 2.9, z + 0.45], [x - 1.5, y + 2.9, z + 0.45]],
+    [[x - 1.5, y + 3.2, z - 0.05], [x + 1.5, y + 3.2, z - 0.05], [x + 1.5, y + 3.2, z - 0.03], [x - 1.5, y + 3.2, z - 0.03]], GRID);
+  g.add(pb.build());
+  g.add(wallSign('MAP', '#9dffe0', { x, z: z + 0.5 }, [0, 1], y + 3.5));
+  return g;
+}
 /** Sign post and painted parking bays of the vehicle yard. */
 function yardDeco(y: number) {
   const g = new THREE.Group(), pb = new PropBatch();
@@ -231,6 +250,7 @@ function loadVillageStruct(poi: Poi): Structure {
   const { group, mesh } = voxelObject(grid, Infinity, OUTLINE);
   group.add(villageDeco(vm, y), gateSign(vm));
   if (vm.home) group.add(boardDeco(vm, y));
+  group.add(mapBoardDeco(vm, y));
   scene.add(group);
   const npcs: Npc[] = [];
   vm.buildings.forEach((b, i) => { if (b.role !== 'house') npcs.push(makeNpc(b.role, residentName(vm, b.role, i), V(b.home!.x, b.home!.y, b.home!.z), b)); });

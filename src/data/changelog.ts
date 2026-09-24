@@ -4,6 +4,11 @@ export interface Change { v: string; date: string; title: string; notes: string[
 
 export const CHANGELOG: Change[] = [
   {
+    v: '0.8.0', date: '2026-09-24', title: 'Compass and village map boards',
+    notes: ['A Compass: buy it from Zofia at the General Store for 40 gold or craft it at a workbench or forge (1 scrap metal, 1 electronic components). Carry it and a compass strip at the top of the screen shows your heading, the way to the nearest village and your quest targets.',
+      'Every village has a map board by its plaza. Press E there to see the land about 900 m around: ruins, bandit camps, crash sites, roads and lakes, arrows to the nearest other villages, and a list with the distance and direction to each place. The places you read about go on your own map (M).'],
+  },
+  {
     v: '0.7.0', date: '2026-09-24', title: 'Developer world map',
     notes: ['For testing: the console (~) has a new "worldmap" command that shows the whole planet with every village; zoom in to see the ruins, bandit camps and crash sites. Click a place or any spot to teleport there.',
       'The console also has "tp <x> <z>" to jump to exact coordinates (Gridholm is at 0 0).'],

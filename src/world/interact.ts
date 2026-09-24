@@ -16,6 +16,7 @@ import { nearFire, cookAll, fireHasWork } from './cooking';
 import { gatherTarget, gatherPrompt, strike, type Target } from './gather';
 import { nearBench, type Bench } from './benches';
 import { openBench } from '../ui/craft';
+import { openAreaMap } from '../ui/areamap';
 import { openStash } from './loot';
 import { openBoard } from '../ui/board';
 import { driving, vehicleSpot, useVehicle, leave, type VehicleSpot } from './vehicles';
@@ -25,6 +26,7 @@ export let npcsActive = () => G.char.loc === 'overworld' && W.npcs.length > 0;
 export function setNpcsActive(f: () => boolean) { npcsActive = f; }
 
 let nearWater: WaterSource | null = null, nearFood: PlantNode | null = null, nearCook = false, nearWork: Bench | null = null, nearGather: Target | null = null;
+let nearMap = false;
 let nearVehicle: VehicleSpot | null = null, nearBoard = false, nearStash: ReturnType<typeof campStashes>[number] | null = null;
 export function updateEntities(dt: number, time: number) {
   const pos = G.pos;
@@ -40,6 +42,8 @@ export function updateEntities(dt: number, time: number) {
   nearVehicle = G.char.loc === 'overworld' ? vehicleSpot() : null;
   const bd = G.char.loc === 'overworld' && OW.village?.home ? OW.village.board : null;
   nearBoard = !!bd && Math.hypot(bd.x - pos.x, bd.z + 0.8 - pos.z) < 2.6;
+  const mb = G.char.loc === 'overworld' && OW.village ? OW.village.mapBoard : null;
+  nearMap = !!mb && Math.hypot(mb.x - pos.x, mb.z + 1 - pos.z) < 2.4;
   nearStash = G.char.loc === 'overworld' ? campStashes().find((s) => Math.hypot(s.x - pos.x, s.z - pos.z) < 1.8) ?? null : null;
   W.nearChest = null; W.nearPortal = null; W.nearLock = null;
   if (npcsActive()) updateNpcs(dt, time); else W.nearNpc = null;
@@ -60,7 +64,7 @@ export function updateEntities(dt: number, time: number) {
     if (along > 0.9 && along < 3 && lat < 1.6 && Math.abs(pos.y - p.y0) < 1 && G.playing && !G.trans) enter = p;
   }
   const { nearNpc, nearLock, nearChest, nearPortal } = W, prompt = el.prompt;
-  const busy = !!(nearNpc || nearLock || nearChest || nearBoard || nearStash || nearVehicle);
+  const busy = !!(nearNpc || nearLock || nearChest || nearBoard || nearMap || nearStash || nearVehicle);
   nearFood = busy ? null : nearPlant();
   nearWork = busy || nearFood ? null : nearBench();
   nearCook = !busy && !nearFood && !nearWork && G.char.loc === 'overworld' && !!nearFire();
@@ -73,6 +77,7 @@ export function updateEntities(dt: number, time: number) {
   }
   else if (nearChest) { prompt.className = ''; prompt.textContent = G.isTouch ? 'Chest' : nearChest.open ? 'E — search the chest' : 'E — open chest'; }
   else if (nearBoard) { prompt.className = ''; prompt.textContent = G.isTouch ? '' : 'E — read the notice board'; }
+  else if (nearMap) { prompt.className = ''; prompt.textContent = 'E — study the map of the surroundings'; }
   else if (nearStash) { prompt.className = ''; prompt.textContent = G.isTouch ? '' : 'E — search the bandit stash'; }
   else if (nearVehicle) { prompt.className = ''; prompt.textContent = G.isTouch ? '' : 'E — ' + nearVehicle.label; }
   else if (nearPortal) { prompt.className = 'portal'; prompt.textContent = nearPortal.label; }
@@ -81,7 +86,7 @@ export function updateEntities(dt: number, time: number) {
   else if (nearGather) { prompt.className = ''; prompt.textContent = gatherPrompt(nearGather); }
   else if (nearCook) { prompt.className = ''; prompt.textContent = fireHasWork() ? 'E — roast your raw meat' : 'A campfire: bring raw meat to roast'; }
   else if (nearWater) { prompt.className = nearWater.kind === 'toxic' ? 'lock' : ''; prompt.textContent = sourcePrompt(nearWater); }
-  prompt.style.display = (nearNpc || nearLock || nearChest || nearBoard || nearStash || nearVehicle || nearPortal || nearFood || nearWork || nearGather || nearCook || nearWater) && G.playing && prompt.textContent ? 'block' : 'none';
+  prompt.style.display = (nearNpc || nearLock || nearChest || nearBoard || nearMap || nearStash || nearVehicle || nearPortal || nearFood || nearWork || nearGather || nearCook || nearWater) && G.playing && prompt.textContent ? 'block' : 'none';
   const canUse = nearNpc || nearChest || nearBoard || nearStash || nearVehicle || (nearLock && hasItem('key'));
   el.bUse.textContent = nearNpc ? 'TALK' : nearLock ? 'UNLOCK' : nearChest ? 'OPEN' : nearBoard ? 'READ' : nearStash ? 'OPEN' : nearVehicle ? (nearVehicle.kind === 'drive' ? 'DRIVE' : 'TRUNK') : 'OPEN';
   el.bUse.classList.toggle('on', !!canUse && G.playing);
@@ -98,6 +103,7 @@ export function interact() {
   if (driving.v) { leave(); return; }
   if (W.nearNpc) openDialog(W.nearNpc); else if (W.nearLock) unlockDoor(W.nearLock); else if (W.nearChest) openChest(W.nearChest);
   else if (nearBoard) openBoard();
+  else if (nearMap && OW.village) openAreaMap({ x: OW.village.ox + 36, z: OW.village.oz + 36, name: OW.village.name });
   else if (nearStash) openStash(nearStash.id, nearStash.name);
   else if (nearVehicle) useVehicle(nearVehicle);
   else if (nearFood) harvest(nearFood);

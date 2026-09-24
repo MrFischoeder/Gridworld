@@ -16,6 +16,7 @@ export const RECIPES: Recipe[] = [
   { out: 'hatchet', n: 1, needs: [['log', 1], ['stone', 2]], at: 'bench' },
   { out: 'pickaxe', n: 1, needs: [['log', 1], ['stone', 3]], at: 'bench' },
   { out: 'flask', n: 1, needs: [['hide', 1]], at: 'bench' },
+  { out: 'compass', n: 1, needs: [['scrap', 1], ['circuit', 1]], at: 'bench' },
   { out: 'medkit', n: 1, needs: [['membrane', 1], ['cap', 3]], at: 'bench' },
   { out: 'benchkit', n: 1, needs: [['log', 6], ['stone', 4]], at: 'bench' },
   { out: 'plating', n: 1, needs: [['scrap', 3], ['plate', 2]], at: 'forge' },

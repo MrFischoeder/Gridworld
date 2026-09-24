@@ -38,7 +38,7 @@ export const BUYS: Partial<Record<NpcRole, Partial<Record<ItemKey, number>>>> = 
 };
 export const COOK_PRICE = 2;
 export function stockFor(role: NpcRole, world: number): [ItemKey, number][] {
-  if (role === 'merchant') return [['medkit', 30], ['emp', 45], ['key', 90], ['recall', 60], ['flask', 15], ['firekit', 12]];
+  if (role === 'merchant') return [['medkit', 30], ['emp', 45], ['key', 90], ['recall', 60], ['flask', 15], ['firekit', 12], ['compass', 40]];
   if (role === 'grocer') return [['bread', 8], ['stew', 18], ['waterF', 25]];
   if (role === 'blacksmith') {
     const a = RELIC_KEYS[hash(world, 11) % RELIC_KEYS.length]; let b = RELIC_KEYS[hash(world, 12) % RELIC_KEYS.length];

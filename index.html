@@ -22,6 +22,7 @@
 </div>
 <div id="bossbar"><span id="bossname">WARDEN</span><div class="bar"><div id="bossfill"></div></div></div>
 <div id="cross"></div>
+<canvas id="compass"></canvas>
 <div id="toast"></div>
 <div id="prompt"></div>
 <div id="log"></div>
@@ -107,6 +108,13 @@
   <canvas id="devmapCv"></canvas>
   <div id="devmapBar"><b>DEV WORLD MAP</b> <span style="color:#ffd060">■ village</span> <span style="color:#5cc8ff">○ ruin</span> <span style="color:#ff6a4a">○ camp</span> <span style="color:#7dffc8">○ wreck</span> · <span id="devmapInfo"></span>
     <button id="devmapHome">Centre on me</button><button id="devmapClose">Close</button></div>
+</div>
+<div id="areamap" class="overlay">
+  <div class="panel">
+    <h2 id="areamapTitle"></h2>
+    <div class="body"><canvas id="areamapCv"></canvas><div id="areamapList"></div></div>
+    <div class="acts"><span class="hint">E or Esc to close · the places go on your map (M)</span><button id="areamapClose">Close</button></div>
+  </div>
 </div>
 <div id="changes" class="overlay">
   <div class="panel">
