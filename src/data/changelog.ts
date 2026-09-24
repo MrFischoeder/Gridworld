@@ -4,6 +4,14 @@ export interface Change { v: string; date: string; title: string; notes: string[
 
 export const CHANGELOG: Change[] = [
   {
+    v: '0.28.0', date: '2026-09-24', title: 'Bandit raids on villages',
+    notes: ['Villages with a bandit camp within about three and a half kilometres are raided from it every few days. The elder tells you which camp troubles the village, how the last raid went and when the scouts expect the next one.',
+      'Be at a village when its raid comes and you fight it: the scouts warn you an hour and a half before, then three waves of bandits march in from the direction of their camp, making for the gates and the power plant outside the fence. Bandits at a gate wear down the village\'s defences (a Timber Palisade or a Stone Wall holds them much longer than the Stake Fence), bandits at the plant wreck it. While a raid is on the village is no safe place: your weapons are out and the bandits fight you inside the fence too.',
+      'Beat all three waves and the village pays you well. Let the defences fall and the raid is lost: the bandits loot and wreck the power plant.',
+      'Raids on villages you are not at are settled without you, by the strength of the wall: a lost one leaves the power plant damaged until someone mends it. The quest tracker shows the fight: the wave, the bandits left and the defences.',
+      'Bandits now edge sideways round fences and walls instead of getting stuck on them.'],
+  },
+  {
     v: '0.27.0', date: '2026-09-24', title: 'Motor convoys and roadblocks',
     notes: ['Caravans are motor convoys now: a heavy HTV-6 Mastodon truck carrying the cargo between two RTV-1 Scout jeeps with roof cannons. When bandits attack, the jeeps turn their guns on them and fire, so a convoy can hold out for a while, but it still needs your help.',
       'Bandits block the road: every roadblock is a row of barricades (crates and spiked frames) across the road, and each barricade can be shot apart with your Blaster or a vehicle cannon (a cannon shell does three times the damage). Roadblocks stay up after their bandits are dead: shoot them down or drive round.',

@@ -19,6 +19,7 @@ import { generateVillage, WALL_TIERS, STONE_TIER, type VillageMap } from '../gen
 import { wallOf } from '../gen/town';
 import { drawPower, setPlantLamps, forgetPower } from './power';
 import { caravanHit, clearCaravans } from './caravans';
+import { raidHere, clearVillageRaid } from './villageraid';
 import { syncQuestWorld } from './quests';
 import { generateRuin } from '../gen/ruins';
 import { generateWreck } from '../gen/wreck';
@@ -392,6 +393,8 @@ function loadStruct(poi: Poi) {
   OW.structs.set(poi.id, s);
   setStreakSources([...OW.structs.values()].map((q) => q.edges));
 }
+/** Every village loaded near you (POI id and map). */
+export const loadedVillages = () => [...OW.structs.values()].filter((s) => s.village).map((s) => ({ id: s.poi.id, poi: s.poi, vm: s.village! }));
 /** The loaded village of that name (its POI id and map), for the residents who talk about it. */
 export function loadedVillage(name: string): { id: number; vm: VillageMap } | null {
   for (const s of OW.structs.values()) if (s.village && s.village.name === name) return { id: s.poi.id, vm: s.village };
@@ -458,7 +461,7 @@ export function openWorld(x: number, z: number) {
   G.space = space; G.ground = groundAt; G.obstacle = (px, py, pz, r) => treeHit(px, py, pz, r) || vehicleHit(px, py, pz, r) || caravanHit(px, py, pz, r) || ambushHit(px, py, pz, r) || baseHit(px, py, pz, r);
   G.floor = baseFloor; G.rayBlock = baseRay; G.solid = baseSolid;
   foeRules.blocked = (p) => nearVillage(p.x, p.z) < 2;
-  foeRules.playerSafe = () => inVillage(G.pos.x, G.pos.z);
+  foeRules.playerSafe = () => inVillage(G.pos.x, G.pos.z) && !raidHere(); // no safe place while bandits raid it
   foeRules.ground = (px, pz) => OW.terrain!.heightAt(px, pz);
   foeRules.shielded = shielded;
   foeRules.shieldHit = (dmg) => { if (driving.v) damageVehicle(driving.v, dmg); };
@@ -499,6 +502,7 @@ export function closeWorld() {
   queue = []; lastChunk = '';
   G.water = null;
   foeRules.blocked = () => false; foeRules.playerSafe = () => false; foeRules.ground = null; foeRules.shielded = () => false; foeRules.shieldHit = () => {};
+  clearVillageRaid();
   clearCaravans();
   G.ground = null; G.obstacle = null; G.floor = null; G.rayBlock = null; G.solid = null;
 }

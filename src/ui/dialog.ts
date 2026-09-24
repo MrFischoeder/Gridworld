@@ -14,7 +14,11 @@ import { buyVehicle, vehiclesForSale, sellVehicle } from '../world/vehicles';
 import { questOptions, questTalk } from '../world/quests';
 import { PART_PRICE, PART_BUYBACK, type ItemKey } from '../data/items';
 import type { Slot } from '../save';
-import { fortifyPlan, handOver, powerKind, powerCondition, powerSite, POWER, POWER_DOWN, POWER_LOW } from '../gen/town';
+import { plantCondition } from '../world/power';
+import { nextRaid, lastRaid, raidSource, raidOutcome } from '../gen/raids';
+import { findPoi } from '../gen/regions';
+import { fmtTime } from '../core/time';
+import { fortifyPlan, handOver, powerKind, powerSite, POWER, POWER_DOWN, POWER_LOW } from '../gen/town';
 import { WALL_TIERS } from '../gen/village';
 import { count } from '../data/crafting';
 import { loadedVillage, reloadStruct } from '../world/overworld';
@@ -98,9 +102,12 @@ function renderFortify(msg?: string) {
   const v = loadedVillage(town()), c = G.char;
   if (!v) { renderTalk('Hm?'); return; }
   const st = c.towns[v.id], plan = fortifyPlan(st), wall = WALL_TIERS[plan ? plan.from : WALL_TIERS.length - 1];
-  const k = powerKind(v.vm.seed), pc = Math.round(powerCondition(v.vm.seed, st, c.time)), side = SIDE_NAME[powerSite(v.vm.seed).side];
+  const k = powerKind(v.vm.seed), pc = Math.round(plantCondition(v.id, v.vm.seed)), side = SIDE_NAME[powerSite(v.vm.seed).side];
   const power = `Our power comes from the <b>${POWER[k].name}</b> outside the ${side} fence: ${pc < POWER_DOWN ? '<span style="color:var(--red,#ff5a3c)">it is down</span>' : pc < POWER_LOW ? 'it is failing' : 'it runs'} (${pc}%). ` +
     (pc < 90 ? `Mend it with ${POWER[k].fix.map(([i, n]) => `${n} ${ITEMS[i].name}`).join(', ')} and we will pay you.` : 'Keep an eye on it for us.');
+  const poi = findPoi(c.world, v.id), nr = poi && nextRaid(c.world, poi, c.time), lr = poi && lastRaid(c.world, poi, c.time);
+  const raids = !poi || !raidSource(c.world, poi) ? 'No bandit camp is near enough to trouble us, thank the stars.'
+    : `Bandits from ${raidSource(c.world, poi)!.name} raid us every few days.` + (lr ? ` The last raid ${raidOutcome(c.world, lr, st) === 'won' ? 'was beaten off' : 'broke through'}.` : '') + (nr && nr.t0 - c.time < 1440 ? ` Our scouts expect them again about ${fmtTime(nr.t0)}.` : '') + ' A stronger wall holds them better.';
   const rows = plan ? plan.rows.map((r) => {
     const have = count(c.inv, r.k), left = r.n - r.given;
     return `<div class="shoprow"><div><b>${ITEMS[r.k].name}</b><br><span>${r.given} / ${r.n} handed over${left > 0 ? ` · you carry ${have}` : ' · done'}</span></div></div>`;
@@ -108,7 +115,7 @@ function renderFortify(msg?: string) {
   const canGive = !!plan && plan.rows.some((r) => r.given < r.n && count(c.inv, r.k) > 0);
   panel().innerHTML = dlgHead() + `<div class="say">${msg ? msg + '<br><br>' : ''}` +
     (plan ? `Our wall is a <b>${wall.name}</b>. Help us raise a <b>${WALL_TIERS[plan.to].name}</b> (${WALL_TIERS[plan.to].h} m) and the village will pay you <b>${plan.gold} gold</b>. Bring the materials a load at a time: we keep count.`
-      : `Our wall is a <b>${wall.name}</b>, as strong as we can make it. Thank you.`) + `<br><br>${power}</div>` + rows +
+      : `Our wall is a <b>${wall.name}</b>, as strong as we can make it. Thank you.`) + `<br><br>${power}<br><br>${raids}</div>` + rows +
     (plan ? `<button class="opt" data-fort="give" ${canGive ? '' : 'disabled'}>Hand over what I carry</button>` : '') +
     `<button class="opt" data-o="back">${OPT_TEXT.back}</button>`;
 }

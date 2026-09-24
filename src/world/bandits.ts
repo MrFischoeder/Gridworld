@@ -94,7 +94,12 @@ function walk(b: Bandit, dx: number, dz: number, speed: number, dt: number) {
   if (!blocked(b, b.p.x + sx, b.p.z + sz)) { b.p.x += sx; b.p.z += sz; }
   else if (!blocked(b, b.p.x + sx, b.p.z)) b.p.x += sx;
   else if (!blocked(b, b.p.x, b.p.z + sz)) b.p.z += sz;
-  else { b.strafe = -b.strafe; return; }
+  else {
+    // blocked straight ahead: slide sideways along the obstacle (round a fence, a wall, a rock)
+    const px = -sz * b.strafe, pz = sx * b.strafe;
+    if (!blocked(b, b.p.x + px, b.p.z + pz)) { b.p.x += px; b.p.z += pz; }
+    else { b.strafe = -b.strafe; return; }
+  }
   b.speed = speed;
   // stand on the terrain, or on a structure floor (camps have their own voxel floor at the pad height)
   const gy = env.ground(b.p.x, b.p.z);

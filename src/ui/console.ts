@@ -1,5 +1,6 @@
 // Developer console, opened with ~ (the backquote key). Cheats for testing.
 import { G } from '../game';
+import { forceRaid } from '../world/villageraid';
 import { ROBOTS, type RobotKind } from '../data/robots';
 import { spawnRobotNear } from '../world/robots';
 import { fmtClock, DAY } from '../core/time';
@@ -61,6 +62,7 @@ const COMMANDS: Record<string, { help: string; run: (args: string[]) => string }
   },
   eat: { help: 'fill food, water and stamina', run: () => { G.char.kcal = 3000; G.char.stomach = 0; G.char.water = 100; G.stamina = 100; G.exhausted = false; return 'Fed and watered.'; } },
   clear: { help: 'clear this log', run: () => { out.innerHTML = ''; return ''; } },
+  raid: { help: 'bandits raid the village you are at, now (a test raid: its outcome is not recorded)', run: () => { close(); return forceRaid(); } },
   ambush: { help: 'set up a bandit ambush ahead (stand on a road)', run: () => (forceAmbush() ? 'Something moves by the road ahead...' : 'Stand on a road, away from places.') },
   worldmap: {
     help: 'map of the whole planet: click a village, ruin, camp, wreck or any spot to teleport there',

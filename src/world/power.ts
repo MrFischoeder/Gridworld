@@ -11,7 +11,9 @@ import { ITEMS, type ItemKey } from '../data/items';
 import { count } from '../data/crafting';
 import { saveChar, gainXp, calcStats } from '../character';
 import { showToast, logLine } from '../ui/hud';
-import { POWER, POWER_DOWN, POWER_LOW, powerKind, powerSite, powerCondition, type PowerKind } from '../gen/town';
+import { POWER, POWER_DOWN, POWER_LOW, powerKind, powerSite, powerCondition, lastFix, type PowerKind } from '../gen/town';
+import { raidHurt } from '../gen/raids';
+import { findPoi } from '../gen/regions';
 import type { VillageMap } from '../gen/village';
 import type { Terrain } from '../gen/terrain';
 
@@ -116,7 +118,12 @@ export function setPlantLamps(id: number, lamps: THREE.Object3D[]) { const p = p
 export function forgetPower(id: number) { plants.delete(id); }
 export const plantOf = (id: number) => plants.get(id);
 
-const cond = (p: Plant) => powerCondition(p.seed, G.char.towns[p.id], G.char.time);
+/** The plant's condition now: its wear, the damage raids fought here did, and the raids it lost while you were away. */
+export function plantCondition(id: number, seed: number): number {
+  const c = G.char, s = c.towns[id], poi = findPoi(c.world, id);
+  return powerCondition(seed, s, c.time, poi ? raidHurt(c.world, poi, s, lastFix(seed, s), c.time) : 0);
+}
+const cond = (p: Plant) => plantCondition(p.id, p.seed);
 /** Once a frame: turbines turn, status lights and village lamps follow the plant's condition. */
 export function updatePower(dt: number) {
   for (const p of plants.values()) {

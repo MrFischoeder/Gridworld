@@ -15,8 +15,10 @@ export interface TownState {
   given?: Partial<Record<ItemKey, number>>;
   /** Game time the power plant was last mended (undefined: never by you, see `lastFix`). */
   fixed?: number;
-  /** Extra damage to the plant (raids, later), in percent. */
+  /** Extra damage to the plant (raids fought while you were there), in percent. */
   hurt?: number;
+  /** How the bandit raids you were there for ended (gen/raids.ts), by raid number. */
+  raids?: Record<number, 'won' | 'lost'>;
 }
 
 /** What it takes to raise the wall to tier i+1 (index = the tier you have), and what the village pays for it. */
@@ -61,9 +63,9 @@ export const powerKind = (seed: number): PowerKind => (['generator', 'solar', 'w
 /** When the plant was last mended: by you, or (never touched) some time in the last few days, per village. */
 export const lastFix = (seed: number, s: TownState | undefined) => s?.fixed ?? -(hash(seed, 0x90e8) % (4 * DAY));
 /** The plant's condition (0..100) at game time `now`. */
-export function powerCondition(seed: number, s: TownState | undefined, now: number): number {
+export function powerCondition(seed: number, s: TownState | undefined, now: number, raidHurt = 0): number {
   const k = powerKind(seed), age = Math.max(0, now - lastFix(seed, s)) / DAY;
-  return Math.max(0, Math.min(100, 100 - age * POWER[k].wear - (s?.hurt ?? 0)));
+  return Math.max(0, Math.min(100, 100 - age * POWER[k].wear - (s?.hurt ?? 0) - raidHurt));
 }
 /**
  * Where the plant stands, in plaza-local metres (the plaza runs 0..72): on a side of the village the seed picks
