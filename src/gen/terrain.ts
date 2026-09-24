@@ -4,6 +4,7 @@ import { hash } from '../core/rng';
 import { regionInfo, regionOf, poisNear, wrapR, CHUNK, REGION, WORLD_W, POLAR_Z, POLE_Z, type Poi, type Rect } from './regions';
 import { regionRoads, nearestOnRoad, roadBounds, type Road } from './roads';
 import { lakesIn, lakeBed, shoreR, type Lake, type WaterHere } from './water';
+import { claimFlatten, claimDist, CLEAR_R, type Claim } from './claims';
 
 export const STEP = 2, CELLS = CHUNK / STEP, VERTS = CELLS + 1;
 export const MAX_H = 25;
@@ -13,7 +14,7 @@ export const rectDist = (r: Rect, x: number, z: number) => Math.hypot(Math.max(r
 export const inRect = (r: Rect, x: number, z: number) => x >= r.x0 && x < r.x1 && z >= r.z0 && z < r.z1;
 
 export interface Pad { poi: Poi; y: number }
-export interface Features { pads: Pad[]; roads: Road[]; lakes: Lake[] }
+export interface Features { pads: Pad[]; roads: Road[]; lakes: Lake[]; claims: Claim[] }
 
 const ROAD_BLEND = 5;
 /**
@@ -30,6 +31,8 @@ export class Terrain {
   private lat = new Map<number, Float32Array>();
   private feat = new Map<number, Features>();
   private padCache = new Map<number, number>();
+  /** Land claimed by players (flagpoles): levelled ground. Player changes, handed in by the runtime. */
+  private claims: Claim[] = [];
   constructor(public world: number) { this.s1 = hash(world, 0x7e11) * 7919; this.s2 = hash(world, 0x7e12) * 7919; }
 
   /** Region roughness, blended smoothly between region centres so there are no seams. */
@@ -59,6 +62,11 @@ export class Terrain {
     return y;
   }
 
+  /** Replace the claims (a flag raised or taken down): heights around them change, so the caches go. */
+  setClaims(list: Claim[]) { this.claims = list.map((c) => ({ ...c })); this.feat.clear(); this.lat.clear(); }
+  /** The claim whose cleared ground covers (x, z), within `margin` more metres. */
+  claimAt(x: number, z: number, margin = 0): Claim | undefined { return this.claims.find((c) => claimDist(c, x, z) < CLEAR_R + margin); }
+
   /** Places and roads that can affect heights inside the rect. */
   featuresIn(r: Rect): Features {
     const cx = (r.x0 + r.x1) / 2, cz = (r.z0 + r.z1) / 2, half = Math.max(r.x1 - r.x0, r.z1 - r.z0) / 2;
@@ -73,7 +81,8 @@ export class Terrain {
         if (b.x1 + m >= r.x0 && b.x0 - m <= r.x1 && b.z1 + m >= r.z0 && b.z0 - m <= r.z1) roads.push(road);
       }
     }
-    return { pads, roads, lakes: lakesIn(this, r) };
+    const claims = this.claims.filter((c) => claimDist(c, cx, cz) < half * 1.42 + CLEAR_R);
+    return { pads, roads, lakes: lakesIn(this, r), claims };
   }
   chunkFeatures(cx: number, cz: number): Features {
     const k = key(cx, cz);
@@ -100,6 +109,7 @@ export class Terrain {
       if (d <= p.poi.flat) h = p.y;
       else if (d < p.poi.flat + p.poi.blend) h += (p.y - h) * (1 - smooth((d - p.poi.flat) / p.poi.blend));
     }
+    for (const c of f.claims) h = claimFlatten(c, x, z, h);
     for (const l of f.lakes) { const b = lakeBed(l, x, z, h); if (b !== null) h = b; }
     return h;
   }

@@ -39,6 +39,7 @@ import { setStreakSources, type EdgeSource } from './fx';
 import { voxelObject, villageDeco, wallSign } from './level';
 import { NPC_INFO, VILLAGER_NAMES, type NpcRole } from '../data/npcs';
 import { DIRV } from '../core/rng';
+import { claimDist, CLAIM } from '../gen/claims';
 
 export const LOAD_R = 4, UNLOAD_R = 6, STRUCT_LOAD = 170, STRUCT_UNLOAD = 240;
 /** Surface structures are drawn in outline style: folds and edges, floor tiles every 2 m, wall seams every 4 m. */
@@ -138,11 +139,13 @@ function buildChunk(cx: number, cz: number, lod = 1): Chunk {
   const lg = new THREE.BufferGeometry(); lg.setAttribute('position', new THREE.Float32BufferAttribute(lines, 3));
   group.add(new THREE.Mesh(fg, sharedFill()), new THREE.LineSegments(lg, sharedLine(Math.abs(z0 + CHUNK / 2) > POLAR_Z + 800 ? ICE_COLOR : GRID)));
   if (road.length) { const rg = new THREE.BufferGeometry(); rg.setAttribute('position', new THREE.Float32BufferAttribute(road, 3)); group.add(new THREE.LineSegments(rg, sharedLine(ROAD_COLOR))); }
-  const wells = chunkWells(T, cx, cz), plants = chunkPlants(T, cx, cz);
+  const wells = chunkWells(T, cx, cz), plants = chunkPlants(T, cx, cz).filter((p) => !T.claimAt(p.x, p.z, 2));
   // felled trees and broken rocks (player changes, keyed by their index in the generated list) are left out
   const trees: Tree[] = [], stumps: Tree[] = [], rocks: Rock[] = [];
-  chunkTrees(T, cx, cz).forEach((t, i) => { const k = `tree:${wrapC(cx)}:${cz}:${i}`; gatherKey.set(t, k); (ripe(k) ? trees : stumps).push(t); });
-  chunkRocks(T, cx, cz).forEach((r, i) => { const k = `rock:${wrapC(cx)}:${cz}:${i}`; gatherKey.set(r, k); if (ripe(k)) rocks.push(r); });
+  // a claimed site is cleared: nothing grows on the levelled ground (the generated lists keep their indices)
+  const cleared = (x: number, z: number) => !!T.claimAt(x, z, 1);
+  chunkTrees(T, cx, cz).forEach((t, i) => { if (t.cols.some(([x, z]) => cleared(x, z))) return; const k = `tree:${wrapC(cx)}:${cz}:${i}`; gatherKey.set(t, k); (ripe(k) ? trees : stumps).push(t); });
+  chunkRocks(T, cx, cz).forEach((r, i) => { if (cleared(r.x, r.z)) return; const k = `rock:${wrapC(cx)}:${cz}:${i}`; gatherKey.set(r, k); if (ripe(k)) rocks.push(r); });
   let nodes: PlantNode[] = [];
   if (trees.length || stumps.length || rocks.length || wells.length || plants.length) {
     const pb = new PropBatch();
@@ -171,6 +174,13 @@ export function rebuildChunkAt(x: number, z: number) {
   if (!old) return;
   OW.chunks.set(ckey(cx, cz), buildChunk(cx, cz, old.lod));
   dropChunk(old);
+}
+/** Rebuild every loaded chunk that comes within r of (x, z) (a claim levelled the ground there). */
+export function rebuildChunksNear(x: number, z: number, r: number) {
+  for (const c of [...OW.chunks.values()]) {
+    const x0 = c.cx * CHUNK, z0 = c.cz * CHUNK, d = Math.hypot(Math.max(x0 - x, 0, x - x0 - CHUNK), Math.max(z0 - z, 0, z - z0 - CHUNK));
+    if (d < r) { OW.chunks.set(ckey(c.cx, c.cz), buildChunk(c.cx, c.cz, c.lod)); dropChunk(c); }
+  }
 }
 function dropChunk(c: Chunk) {
   dropPlants(c.nodes);
@@ -405,6 +415,7 @@ export function updateStreaming(budgetMs = 4) {
 export function openWorld(x: number, z: number) {
   const w = G.char.world;
   if (!OW.terrain || OW.terrain.world !== w) OW.terrain = new Terrain(w);
+  OW.terrain.setClaims(G.char.claims);
   closeWorld();
   G.water = (px, pz) => (inStructure(px, pz) ? null : OW.terrain!.water(px, pz));
   G.space = space; G.ground = groundAt; G.obstacle = (px, py, pz, r) => treeHit(px, py, pz, r) || vehicleHit(px, py, pz, r) || ambushHit(px, py, pz, r);
@@ -515,6 +526,7 @@ export function placeName(x: number, z: number): string {
   if (Math.abs(z) > POLE_Z - 400) return z < 0 ? 'North Pole ice wall' : 'South Pole ice wall';
   if (Math.abs(z) > POLAR_Z) return z < 0 ? 'Northern ice cap' : 'Southern ice cap';
   const lv = Math.round(danger(x, z)), tag = lv ? ` · danger ${lv}` : ' · calm';
+  if (G.char.claims.some((c) => claimDist(c, x, z) < CLAIM.r)) return 'Your claim' + tag;
   for (const s of OW.structs.values()) if (s.poi.type !== 'village' && rectDist(s.poi.rect, x, z) < 10) return s.poi.name + tag;
   return 'Wilds' + tag;
 }

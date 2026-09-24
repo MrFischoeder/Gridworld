@@ -1,4 +1,5 @@
 // Keyboard and mouse. Pointer lock drives mouse look; losing it pauses the game.
+import { isPlacing, cancelPlacing } from '../world/claims';
 import { G, uiOpen } from '../game';
 import { closeTransfer } from './transfer';
 import { closeService } from './service';
@@ -33,6 +34,7 @@ export function initInput(onPause: () => void) {
     if (e.code === 'KeyM' && G.playing) { toggleMap(); return; }
     if (G.mapOpen) { if (e.code === 'Escape') toggleMap(false); if (e.code === 'Equal' || e.code === 'NumpadAdd') zoomMap(1.25); if (e.code === 'Minus' || e.code === 'NumpadSubtract') zoomMap(0.8); }
     if (extraKeys.some((f) => f(e))) return;
+    if (e.code === 'Escape' && isPlacing()) cancelPlacing();
     G.keys[e.code] = true;
     if (e.code === 'Space') e.preventDefault();
     if (!G.playing) return;

@@ -1,6 +1,6 @@
 // The compass strip at the top of the screen (only while you carry a Compass, on the surface): your heading with
 // the cardinal points, a mark towards the nearest village (the next one while you stand in a village) (with its name and distance) and marks for the
-// places your accepted quests send you to.
+// places your accepted quests send you to, and your flags.
 import { G } from '../game';
 import { hasItem } from '../character';
 import { allVillages, wrapDx } from '../gen/regions';
@@ -54,6 +54,7 @@ export function updateCompass(dt: number) {
     ctx.font = '14px VT323, monospace'; ctx.textAlign = sx < 60 ? 'left' : sx > W - 60 ? 'right' : 'center';
     ctx.fillText((edge.startsWith('◀') ? edge : '') + label + (edge.endsWith('▶') ? edge : ''), sx, 43);
   };
+  for (const c of G.char.claims) { const d = Math.hypot(wrapDx(c.x - G.pos.x), c.z - G.pos.z); if (d > 30) mark(c.x, c.z, '#c4ffd2', `Your flag ${fmtDist(d)}`); }
   for (const q of questMarkers()) mark(q.x, q.z, '#ffd060', q.label);
   if (near) mark(near.x, near.z, '#9dffe0', `${near.name} ${fmtDist(Math.hypot(wrapDx(near.x - G.pos.x), near.z - G.pos.z))}`);
 }

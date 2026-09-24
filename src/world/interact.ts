@@ -5,7 +5,7 @@ import { updateNpcs } from './npc';
 import { startStairs } from './doors';
 import { descend } from './level';
 import { hasItem } from '../character';
-import { el } from '../ui/hud';
+import { el, logLine } from '../ui/hud';
 import { openDialog } from '../ui/dialog';
 import { unlockDoor } from './doors';
 import { openChest } from './loot';
@@ -15,6 +15,7 @@ import { nearPlant, plantPrompt, harvest, type PlantNode } from './flora';
 import { nearFire, cookAll, fireHasWork } from './cooking';
 import { gatherTarget, gatherPrompt, strike, type Target } from './gather';
 import { nearBench, type Bench } from './benches';
+import { nearFlag, takeDownFlag, isPlacing, confirmPlacing, placingHint, placingOk, type SavedClaim } from './claims';
 import { openBench } from '../ui/craft';
 import { openAreaMap } from '../ui/areamap';
 import { openStash } from './loot';
@@ -26,7 +27,7 @@ export let npcsActive = () => G.char.loc === 'overworld' && W.npcs.length > 0;
 export function setNpcsActive(f: () => boolean) { npcsActive = f; }
 
 let nearWater: WaterSource | null = null, nearFood: PlantNode | null = null, nearCook = false, nearWork: Bench | null = null, nearGather: Target | null = null;
-let nearMap = false;
+let nearMap = false, nearClaim: SavedClaim | null = null;
 let nearVehicle: VehicleSpot | null = null, nearBoard = false, nearStash: ReturnType<typeof campStashes>[number] | null = null;
 export function updateEntities(dt: number, time: number) {
   const pos = G.pos;
@@ -67,9 +68,10 @@ export function updateEntities(dt: number, time: number) {
   const busy = !!(nearNpc || nearLock || nearChest || nearBoard || nearMap || nearStash || nearVehicle);
   nearFood = busy ? null : nearPlant();
   nearWork = busy || nearFood ? null : nearBench();
-  nearCook = !busy && !nearFood && !nearWork && G.char.loc === 'overworld' && !!nearFire();
-  nearGather = busy || nearFood || nearWork || nearCook ? null : gatherTarget();
-  nearWater = G.char.loc === 'overworld' && !nearFood && !nearCook && !nearWork && !nearGather && !nearNpc && !nearChest && !nearBoard && !nearStash && !nearVehicle ? waterSource(loadedWells()) : null;
+  nearClaim = busy || nearFood || nearWork ? null : nearFlag();
+  nearCook = !busy && !nearFood && !nearWork && !nearClaim && G.char.loc === 'overworld' && !!nearFire();
+  nearGather = busy || nearFood || nearWork || nearClaim || nearCook ? null : gatherTarget();
+  nearWater = G.char.loc === 'overworld' && !nearFood && !nearCook && !nearWork && !nearClaim && !nearGather && !nearNpc && !nearChest && !nearBoard && !nearStash && !nearVehicle ? waterSource(loadedWells()) : null;
   if (nearNpc) { prompt.className = ''; prompt.textContent = G.isTouch ? nearNpc.name : 'E — talk to ' + nearNpc.name; }
   else if (nearLock) {
     prompt.className = 'lock';
@@ -83,10 +85,13 @@ export function updateEntities(dt: number, time: number) {
   else if (nearPortal) { prompt.className = 'portal'; prompt.textContent = nearPortal.label; }
   else if (nearFood) { prompt.className = ''; prompt.textContent = plantPrompt(nearFood); }
   else if (nearWork) { prompt.className = ''; prompt.textContent = 'E — use the workbench'; }
+  else if (nearClaim) { prompt.className = ''; prompt.textContent = 'E — take down your flag (the land goes back to how it was)'; }
   else if (nearGather) { prompt.className = ''; prompt.textContent = gatherPrompt(nearGather); }
   else if (nearCook) { prompt.className = ''; prompt.textContent = fireHasWork() ? 'E — roast your raw meat' : 'A campfire: bring raw meat to roast'; }
   else if (nearWater) { prompt.className = nearWater.kind === 'toxic' ? 'lock' : ''; prompt.textContent = sourcePrompt(nearWater); }
-  prompt.style.display = (nearNpc || nearLock || nearChest || nearBoard || nearMap || nearStash || nearVehicle || nearPortal || nearFood || nearWork || nearGather || nearCook || nearWater) && G.playing && prompt.textContent ? 'block' : 'none';
+  prompt.style.display = (nearNpc || nearLock || nearChest || nearBoard || nearMap || nearStash || nearVehicle || nearPortal || nearFood || nearWork || nearClaim || nearGather || nearCook || nearWater) && G.playing && prompt.textContent ? 'block' : 'none';
+  const hint = placingHint();
+  if (hint !== null) { prompt.className = placingOk() ? '' : 'lock'; prompt.textContent = hint; prompt.style.display = G.playing && hint ? 'block' : 'none'; }
   const canUse = nearNpc || nearChest || nearBoard || nearStash || nearVehicle || (nearLock && hasItem('key'));
   el.bUse.textContent = nearNpc ? 'TALK' : nearLock ? 'UNLOCK' : nearChest ? 'OPEN' : nearBoard ? 'READ' : nearStash ? 'OPEN' : nearVehicle ? (nearVehicle.kind === 'drive' ? 'DRIVE' : 'TRUNK') : 'OPEN';
   el.bUse.classList.toggle('on', !!canUse && G.playing);
@@ -101,6 +106,7 @@ export function updateEntities(dt: number, time: number) {
 /** E key / use button. */
 export function interact() {
   if (driving.v) { leave(); return; }
+  if (isPlacing()) { confirmPlacing(); return; }
   if (W.nearNpc) openDialog(W.nearNpc); else if (W.nearLock) unlockDoor(W.nearLock); else if (W.nearChest) openChest(W.nearChest);
   else if (nearBoard) openBoard();
   else if (nearMap && OW.village) openAreaMap({ x: OW.village.ox + 36, z: OW.village.oz + 36, name: OW.village.name });
@@ -108,6 +114,7 @@ export function interact() {
   else if (nearVehicle) useVehicle(nearVehicle);
   else if (nearFood) harvest(nearFood);
   else if (nearWork) openBench(nearWork);
+  else if (nearClaim) { const err = takeDownFlag(nearClaim); logLine(err || 'You take the flag down. The land is no longer yours.'); }
   else if (nearGather) strike(nearGather);
   else if (nearCook) cookAll();
   else if (nearWater) useWater(nearWater);

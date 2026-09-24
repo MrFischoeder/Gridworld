@@ -19,6 +19,7 @@ import { setRobotEnv, spawnGuards } from './robots';
 import { dangerAt } from '../gen/danger';
 import { clearFires } from './cooking';
 import { clearBenches } from './benches';
+import { clearFlags, cancelPlacing } from './claims';
 import { makeDrone, placeDrone, makeBoss, setDroneRespawn } from './enemies';
 import { drawCrown } from './trees';
 import { sky, horizon, buildHorizon, updateSky, darkSky } from './sky';
@@ -45,7 +46,7 @@ export function voxelObject(grid: VoxelGrid, skyY = Infinity, outline?: OutlineS
 
 /** Removes every entity of the current place (the open world also unloads its chunks and structures). */
 function clearLevel() {
-  closeWorld(); clearCrystals(); clearFires(); clearBenches();
+  closeWorld(); clearCrystals(); clearFires(); clearBenches(); clearFlags(); cancelPlacing(true);
   if (worldGroup) { scene.remove(worldGroup); worldGroup.traverse((o) => (o as THREE.Mesh).geometry?.dispose()); worldGroup = null; }
   [...W.crystals.map((c) => c.m), ...W.pickups.map((p) => p.g), ...W.chests.map((c) => c.g), ...W.doors.map((d) => d.g), ...W.bosses.map((b) => b.g),
     ...W.orbs.map((o) => o.m), ...W.drones.map((t) => t.g), ...W.npcs.map((n) => n.g)].forEach((o) => scene.remove(o));

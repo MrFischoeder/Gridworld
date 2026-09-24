@@ -21,6 +21,7 @@ import { updateRobots } from './world/robots';
 import { updateFlora } from './world/flora';
 import { updateCompass } from './ui/compass';
 import { syncBenches } from './world/benches';
+import { syncFlags, updatePlacing, isPlacing, confirmPlacing, cancelPlacing } from './world/claims';
 import { updateFires } from './world/cooking';
 import { regionRoads } from './gen/roads';
 import { generateQuest } from './gen/quests';
@@ -73,7 +74,7 @@ function frame(now: number) {
   const live = G.playing && !uiOpen() && !G.trans;
   if (outdoors) updateStreaming(G.trans ? 8 : 4);
   // the clock runs whenever the game is not paused in the menu
-  if (G.playing) { G.char.time += dt * MIN_PER_SEC; updateSurvival(dt); updateFlora(dt); updateFires(dt, time); if ((benchT -= dt) <= 0) { benchT = 1; syncBenches(); } }
+  if (G.playing) { G.char.time += dt * MIN_PER_SEC; updateSurvival(dt); updateFlora(dt); updateFires(dt, time); if ((benchT -= dt) <= 0) { benchT = 1; syncBenches(); syncFlags(); } }
   updateCompass(dt); // hides itself while paused
   const clock = fmtClock(G.char.time);
   if (el.clock.textContent !== clock) el.clock.textContent = clock;
@@ -84,7 +85,12 @@ function frame(now: number) {
   if (live) {
     if (driving.v) updateDriving(dt); else moving = updatePlayer(dt);
     if (outdoors) keepOnPlanet(dt);
-    G.cooldown -= dt; if (G.firing && !driving.v) attack();
+    G.cooldown -= dt;
+    if (isPlacing()) { // holding a Flagpole: the mouse picks its spot instead of fighting
+      updatePlacing();
+      if (G.firing) { G.firing = false; confirmPlacing(); }
+      if (G.aiming) { G.aiming = false; cancelPlacing(); }
+    } else if (G.firing && !driving.v) attack();
     updateGun(dt, !driving.v);
     if (driving.v) fireCannon(dt);
     updateDoors(dt);

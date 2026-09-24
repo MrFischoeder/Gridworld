@@ -4,6 +4,12 @@ export interface Change { v: string; date: string; title: string; notes: string[
 
 export const CHANGELOG: Change[] = [
   {
+    v: '0.9.0', date: '2026-09-24', title: 'Flagpoles: claim land for a base',
+    notes: ['Zofia\'s General Store sells a Flagpole (250 gold). Use it from the backpack and a hologram shows where the flag will stand, the levelled floor, how the ground slopes back to the land, how much will be dug out or filled, and the border of your claim. Click to raise it; the right mouse button or Esc cancels. The hologram turns red, with the reason, where a flag cannot stand (villages, places, roads, water, steep ground, the ice).',
+      'Raising the flag levels the ground in a 12 m circle and clears the trees, rocks and plants on it: a site for your base. The land 30 m around the flag is your claim ("Your claim" on the HUD); building on it comes next. The claim is not a safe zone.',
+      'Your flag shows on the compass and on the maps. E at the flag takes it down again and the land goes back to how it was.'],
+  },
+  {
     v: '0.8.1', date: '2026-09-24', title: 'Fix: chests can be searched again',
     notes: ['An opened chest no longer stops working once it is empty: walk up to it and press E to look inside, take things out or leave things in it for later.',
       'Chests opened in older versions (before they kept their contents) open as empty chests you can use for storage.'],
