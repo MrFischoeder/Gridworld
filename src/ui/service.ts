@@ -195,7 +195,7 @@ export function openService(v: Vehicle) {
   if (!G.playing || G.xferOpen || G.packOpen || G.dlgOpen) return;
   cur = v; G.xferOpen = true; G.firing = false; for (const k in G.keys) G.keys[k] = false;
   el.detail.innerHTML = '';
-  render(`Drag parts onto the vehicle or back to your hands or backpack; click a part to fit it or take it off (wheels and the cannon come off into your hands). Mirek sells ${ITEMS[v.spec.wheelItem].name}s, ${ITEMS.engine.name}, ${ITEMS.plating.name}, upgrades and cannons.`);
+  render(`Drag parts onto the vehicle or back to your hands or backpack; click a part to fit it or take it off (wheels and the cannon come off into your hands). Kuba sells ${ITEMS[v.spec.wheelItem].name}s, ${ITEMS.engine.name}, ${ITEMS.plating.name}, upgrades and cannons.`);
   el.root.style.display = 'flex';
   if (document.pointerLockElement) document.exitPointerLock();
 }

@@ -8,6 +8,9 @@ export interface P3 { x: number; y: number; z: number }
 export interface Building {
   name: string; role: Role; x: number; z: number; w: number; d: number; h: number;
   side: Dir; out: [number, number]; door: P3; home?: P3;
+  /** Timber walls (world boxes [x0, y0, z0, x1, y1, z1]): thin walls on the footprint's edge, a doorway in the door
+   *  side. They collide through world/houses.ts, not as voxels (voxels are 1 m thick). */
+  walls: number[][];
   /** The hero's own house (Gridholm only). */
   mine?: boolean;
 }
@@ -39,7 +42,7 @@ export const WALL_TIERS = [
 export const STONE_TIER = 2;
 export interface VillageMap {
   seed: number; village: true; name: string;
-  /** Gridholm, the starting village: the only one with the notice board and Mirek's vehicle yard (for now). */
+  /** Gridholm, the starting village: the only one with the notice board and Kuba's vehicle yard (for now). */
   home: boolean;
   /** World offset of the local layout, and the plaza floor height. */
   ox: number; oz: number; y: number;
@@ -67,6 +70,12 @@ export interface VillageMap {
   walk: [number, number][];
 }
 
+/**
+ * Village houses are timber-framed, like a player's base (data/building.ts): walls `thick` m on the edge of the
+ * footprint, `wall` m high (the building's h), a doorway `doorW` x `doorH` in the middle of the door side, and a
+ * gabled roof `rise` m high over the longer side with an `eave` overhang (drawn by world/houses.ts).
+ */
+export const HOUSE = { thick: 0.25, doorW: 1.4, doorH: 2.3, eave: 0.55, rise: 0.42 };
 /** The plaza is 72 x 72 m inside a 7 m wall; the footprint (with a 1 m apron) is VILLAGE_RECT around the origin. */
 export const VILLAGE_OFFSET = { x: -36, z: -36 };
 const GATE_H = 4;
@@ -128,13 +137,19 @@ export function generateVillage(seed: number, y = 0, cx = 0, cz = 0, name = 'Gri
 
   function finish(towers: Tower[]): VillageMap {
   const buildings: Building[] = [], trees: { x: number; z: number; h: number }[] = [], lamps: { x: number; z: number }[] = [];
-  const B = (name: string, role: Role, x: number, z: number, w: number, d: number, side: Dir, h = 6) => {
-    const cxm = x + (w >> 1), czm = z + (d >> 1);
-    ops.push({ op: 'solid', x, y: 0, z, w, h, d }, { op: 'room', x: x + 1, y: 0, z: z + 1, w: w - 2, h: h - 1, d: d - 2 });
-    const dr = side === 'E' ? { x: x + w - 1, z: czm - 1, w: 1, d: 3 } : side === 'W' ? { x, z: czm - 1, w: 1, d: 3 }
-      : side === 'N' ? { x: cxm - 1, z, w: 3, d: 1 } : { x: cxm - 1, z: z + d - 1, w: 3, d: 1 };
-    ops.push({ op: 'room', x: dr.x, y: 0, z: dr.z, w: dr.w, h: 3, d: dr.d });
-    const b: Building = { name, role, x, z, w, d, h, side, out: DIRV[side], door: { x: dr.x + dr.w / 2, y: 0, z: dr.z + dr.d / 2 } };
+  const B = (name: string, role: Role, x: number, z: number, w: number, d: number, side: Dir, h = 3.2) => {
+    const cxm = x + (w >> 1), czm = z + (d >> 1), t = HOUSE.thick, dh = HOUSE.doorW / 2;
+    // four thin walls on the footprint's edge; the door side is two pieces and a lintel over the doorway
+    const walls: number[][] = [], dc = side === 'E' || side === 'W' ? czm + 0.5 : cxm + 0.5;
+    const wall = (x0: number, z0: number, x1: number, z1: number, door: boolean) => {
+      if (!door) { walls.push([x0, 0, z0, x1, h, z1]); return; }
+      if (x1 - x0 > z1 - z0) walls.push([x0, 0, z0, dc - dh, h, z1], [dc + dh, 0, z0, x1, h, z1], [dc - dh, HOUSE.doorH, z0, dc + dh, h, z1]);
+      else walls.push([x0, 0, z0, x1, h, dc - dh], [x0, 0, dc + dh, x1, h, z1], [x0, HOUSE.doorH, dc - dh, x1, h, dc + dh]);
+    };
+    wall(x, z, x + w, z + t, side === 'N'); wall(x, z + d - t, x + w, z + d, side === 'S');
+    wall(x, z + t, x + t, z + d - t, side === 'W'); wall(x + w - t, z + t, x + w, z + d - t, side === 'E');
+    const door = side === 'E' ? { x: x + w - t / 2, y: 0, z: dc } : side === 'W' ? { x: x + t / 2, y: 0, z: dc } : side === 'N' ? { x: dc, y: 0, z: z + t / 2 } : { x: dc, y: 0, z: z + d - t / 2 };
+    const b: Building = { name, role, x, z, w, d, h, side, out: DIRV[side], door, walls };
     // counter and the keeper's spot by the back wall
     const ix0 = x + 1, ix1 = x + w - 2, iz0 = z + 1, iz1 = z + d - 2;
     if (role !== 'house') {
@@ -152,20 +167,20 @@ export function generateVillage(seed: number, y = 0, cx = 0, cz = 0, name = 'Gri
     buildings.push(b); return b;
   };
   const j = () => ri(-1, 1);
-  B('TAVERN', 'innkeeper', 2, 6 + j(), 15, 12, 'E');
-  B("ELDER'S HALL", 'elder', 2, 25 + j(), 12, 10, 'E');
-  const hz = 43 + j(), mine = B(home ? 'YOUR HOUSE' : '', 'house', 3, hz, 9, 8, 'E');
+  B('TAVERN', 'innkeeper', 3, 6 + j(), 13, 10, 'E', 3.6);
+  B("ELDER'S HALL", 'elder', 3, 24 + j(), 11, 9, 'E', 3.4);
+  const hz = 42 + j(), mine = B(home ? 'YOUR HOUSE' : '', 'house', 4, hz, 8, 7, 'E');
   // in Gridholm that house is the hero's: a bed along the back wall in the far corner and a chest in the near one
   let house: HomeFurniture | null = null;
   if (home) {
     mine.mine = true;
-    const iz0 = hz + 1, iz1 = hz + 7; // the inside runs from x 4 to 10 and z iz0 to iz1 (exclusive)
-    house = { bed: { x0: 4.15, z0: iz0 + 0.15, x1: 5.35, z1: iz0 + 2.35, side: { x: 6.3, z: iz0 + 1.3 } }, chest: { x: 4.7, z: iz1 - 0.65 } };
+    const x0 = 4 + HOUSE.thick, z0 = hz + HOUSE.thick, z1 = hz + 7 - HOUSE.thick; // the inside
+    house = { bed: { x0: x0 + 0.25, z0: z0 + 0.1, x1: x0 + 1.45, z1: z0 + 2.3, side: { x: x0 + 2.4, z: z0 + 1.2 } }, chest: { x: x0 + 0.85, z: z1 - 0.5 } };
   }
-  B('BLACKSMITH', 'blacksmith', 57, 6 + j(), 13, 10, 'W');
-  B('GENERAL STORE', 'merchant', 57, 23 + j(), 13, 10, 'W');
-  B('FOOD & PROVISIONS', 'grocer', 59, 40 + j(), 11, 9, 'W');
-  for (const hx of [12, 28, 44]) B('', 'house', hx + j(), 60 + j(), 9, 8, 'N', 5);
+  B('BLACKSMITH', 'blacksmith', 58, 6 + j(), 11, 9, 'W', 3.4);
+  B('GENERAL STORE', 'merchant', 58, 23 + j(), 11, 9, 'W', 3.4);
+  B('FOOD & PROVISIONS', 'grocer', 60, 40 + j(), 9, 8, 'W');
+  for (const hx of [5, 17, 27, 47, 58]) B('', 'house', hx + j(), 61 + j(), 8, 6, 'N', 3);
   // well, trees, lamps
   late.push({ op: 'solid', x: 35, y: 0, z: 36, w: 2, h: 1, d: 2 });
   const blocked = (x: number, z: number, m: number) => buildings.some((b) => x >= b.x - m && x < b.x + b.w + m && z >= b.z - m && z < b.z + b.d + m)
@@ -197,7 +212,8 @@ export function generateVillage(seed: number, y = 0, cx = 0, cz = 0, name = 'Gri
       return { ...t, x: t.x + ox, z: t.z + oz, ladder: { ...l, x: l.x + ox, z: l.z + oz, deck: { x0: l.deck.x0 + ox, z0: l.deck.z0 + oz, x1: l.deck.x1 + ox, z1: l.deck.z1 + oz } } };
     }),
     board: { x: 41 + ox, z: 45 + oz }, mapBoard: { x: 31 + ox, z: 45 + oz },
-    buildings: buildings.map((b) => ({ ...b, x: b.x + ox, z: b.z + oz, door: P(b.door), home: b.home && P(b.home) })),
+    buildings: buildings.map((b) => ({ ...b, x: b.x + ox, z: b.z + oz, door: P(b.door), home: b.home && P(b.home),
+      walls: b.walls.map(([x0, y0, z0, x1, y1, z1]) => [x0 + ox, y0 + y, z0 + oz, x1 + ox, y1 + y, z1 + oz]) })),
     house: house && { bed: { x0: house.bed.x0 + ox, z0: house.bed.z0 + oz, x1: house.bed.x1 + ox, z1: house.bed.z1 + oz, side: { x: house.bed.side.x + ox, z: house.bed.side.z + oz } },
       chest: { x: house.chest.x + ox, z: house.chest.z + oz } },
     trees: trees.map((t) => ({ ...t, x: t.x + ox, z: t.z + oz })), lamps: lamps.map((l) => ({ x: l.x + ox, z: l.z + oz })),

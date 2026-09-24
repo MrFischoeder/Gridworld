@@ -8,7 +8,7 @@ import { meshVoxels, type OutlineStyle } from '../core/meshing';
 import { generateDungeon } from '../gen/dungeon';
 import { findPoi, allVillages, worldDist, poisNear, GRIDHOLM_ID, CHUNK, type Poi } from '../gen/regions';
 import { isDiscovered } from '../save';
-import { WALL_TIERS, STONE_TIER, type VillageMap } from '../gen/village';
+import { WALL_TIERS, STONE_TIER, HOUSE, type VillageMap } from '../gen/village';
 import { placeTunnelDoors, tryPlaceDoor, type PlacedDoor } from '../gen/doors';
 import { makeDoor, makeStair, arriveVia, signTexture } from './doors';
 import { makeChest, makeHatch, setCrystalXp } from './loot';
@@ -32,6 +32,7 @@ import { setArmedRule, refreshWeaponVisibility } from './weapons';
 import { raidHere } from './villageraid';
 import { PropBatch } from './props';
 import { drawLadder, climbing, onClimbChange } from './ladders';
+import { drawHouse } from './houses';
 import { onDungeonLoaded, syncQuestWorld } from './quests';
 import { driving, leave } from './vehicles';
 import { openWorld, closeWorld, structFor, setEnterRuin, removeDrone, danger, inVillage, OW } from './overworld';
@@ -135,8 +136,8 @@ export function villageDeco(map: VillageMap, y0 = 0) {
   const grp = new THREE.Group();
   const props = new PropBatch();
   for (const b of map.buildings) {
-    props.gableRoof(b.x, b.z, b.x + b.w, b.z + b.d, y0 + b.h, 2.2, 0x4dff7e);
-    if (b.name) grp.add(wallSign(b.name, b.role === 'innkeeper' ? '#ffb347' : '#ffd060', { x: b.door.x, z: b.door.z }, b.out, y0 + 3.5));
+    drawHouse(props, b, y0);
+    if (b.name) grp.add(wallSign(b.name, b.role === 'innkeeper' ? '#ffb347' : '#ffd060', { x: b.door.x + b.out[0] * 0.15, z: b.door.z + b.out[1] * 0.15 }, b.out, y0 + (b.role === 'house' ? HOUSE.doorH + 0.45 : b.h + 0.35)));
   }
   for (const t of map.trees) drawCrown(props, t.x + 0.5, y0 + 2, t.z + 0.5, 1.8, t.h, hash(t.x, t.z, 0x7e3e));
   if (map.house) homeDeco(props, map.house, y0);
@@ -152,13 +153,6 @@ export function villageDeco(map: VillageMap, y0 = 0) {
     props.prism([P(a0, top - c), P(a0, top), P(a0 + c, top)], v, GRID);
     props.prism([P(a1, top - c), P(a1, top), P(a1 - c, top)], v, GRID);
   }
-  }
-  // a spire on the Elder's Hall
-  const hall = map.buildings.find((b) => b.role === 'elder');
-  if (hall) {
-    const cx = hall.x + hall.w / 2, cz = hall.z + hall.d / 2, ry = y0 + hall.h + 2.2;
-    props.box(cx - 0.8, ry - 1.2, cz - 0.8, cx + 0.8, ry + 1.4, cz + 0.8, 0x4dff7e);
-    props.pyramid(cx - 0.9, cz - 0.9, cx + 0.9, cz + 0.9, ry + 1.4, 5.5, 0x4dff7e);
   }
   grp.add(props.build());
   return lampsAndWell(grp, map, y0);

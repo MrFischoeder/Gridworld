@@ -4,6 +4,7 @@ import { scene, lineMat, V, fillMat } from './render';
 import { G, W } from '../game';
 import { NPC_INFO, type NpcRole } from '../data/npcs';
 import type { Building } from '../gen/village';
+import { houseHit } from './houses';
 
 export interface Figure { g: THREE.Group; legL: THREE.Line; legR: THREE.Line; armL: THREE.Line; armR: THREE.Line }
 export interface Npc extends Figure {
@@ -11,6 +12,8 @@ export interface Npc extends Figure {
   target: THREE.Vector3 | null; wait: number; phase: number; face: number; y0: number;
   /** The village they live in. */
   town?: string;
+  /** Where a guard walks his rounds (world cells along the inside of the wall). */
+  route?: [number, number][];
 }
 
 export function textSprite(text: string, color: string, w = 1.9) {
@@ -38,6 +41,12 @@ export function makeNpc(role: NpcRole, name: string, at: THREE.Vector3, building
   const info = NPC_INFO[role], f = makeFigure(info.color);
   const label = textSprite(name, '#' + info.color.toString(16).padStart(6, '0')); label.position.y = 2.15; f.g.add(label);
   f.g.position.copy(at);
+  if (role === 'guard') { // a spear held upright at his right side, a round shield on the left arm
+    const m = lineMat(info.color), sp = new THREE.Line(new THREE.BufferGeometry().setFromPoints([V(0.34, 0.05, 0.12), V(0.34, 2.35, 0.12)]), m);
+    const tip = new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints([V(0.34, 2.35, 0.12), V(0.4, 2.2, 0.12), V(0.34, 2.62, 0.12), V(0.28, 2.2, 0.12)]), m);
+    const shield = new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(Array.from({ length: 10 }, (_, i) => V(0, -0.3 + Math.cos(i / 10 * 6.283) * 0.24, 0.05 + Math.sin(i / 10 * 6.283) * 0.24))), m);
+    shield.position.x = -0.06; f.armL.add(shield); f.g.add(sp, tip);
+  }
   return Object.assign(f, {
     role, name, title: info.title, p: at.clone(), home: at.clone(), building, target: null,
     wait: Math.random() * 2, phase: Math.random() * 6, face: Math.random() * 6, y0: at.y,
@@ -48,7 +57,7 @@ function npcFree(x: number, z: number, y0: number) {
     const cx = Math.floor(x + dx), cz = Math.floor(z + dz);
     if (!G.space.empty(cx, y0, cz) || !G.space.empty(cx, y0 + 1, cz)) return false;
   }
-  return true;
+  return !houseHit(x, y0, z, 0.3);
 }
 export function updateNpcs(dt: number, time: number) {
   W.nearNpc = null; let best = 2.8;
@@ -57,10 +66,11 @@ export function updateNpcs(dt: number, time: number) {
     let moving = false;
     const toP = V(pos.x - n.p.x, 0, pos.z - n.p.z), dP = toP.length();
     if (n === W.talkNpc || (n.role !== 'villager' && dP < 6)) { n.face = Math.atan2(toP.x, toP.z); }
-    else if (n.role === 'villager' && W.villageWalk.length) {
+    else if (n.role === 'guard' && dP < 4) { n.face = Math.atan2(toP.x, toP.z); } // stops to talk
+    else if ((n.role === 'villager' && W.villageWalk.length) || (n.role === 'guard' && n.route?.length)) {
       if (n.wait > 0) n.wait -= dt;
       else {
-        if (!n.target) { const c = W.villageWalk[(Math.random() * W.villageWalk.length) | 0]; n.target = V(c[0] + 0.5, n.y0, c[1] + 0.5); }
+        if (!n.target) { const list = n.route?.length ? n.route : W.villageWalk, c = list[(Math.random() * list.length) | 0]; n.target = V(c[0] + 0.5, n.y0, c[1] + 0.5); }
         const d = n.target.clone().sub(n.p); d.y = 0; const L = d.length();
         if (L < 0.3) { n.target = null; n.wait = 1 + Math.random() * 4; }
         else {

@@ -493,7 +493,7 @@ function setSeeThrough(v: Vehicle, on: boolean) {
 export const toggleCockpit = () => { driving.cockpit = !driving.cockpit; if (driving.v) setSeeThrough(driving.v, driving.cockpit); };
 
 // ---------- selling back to the dealer ----------
-/** Own vehicles parked near the dealer's yard, with what Mirek would pay for each. */
+/** Own vehicles parked near the dealer's yard, with what Kuba would pay for each. */
 export function vehiclesForSale(): { v: Vehicle; price: number; why: string | null }[] {
   return vehicles.filter((v) => v.claimed && Math.hypot(v.st.x - YARD.dealer.x, v.st.z - YARD.dealer.z) < 45).map((v) => ({
     v, price: resaleValue(v.st.model, v.st.parts, PART_PRICE.cannon ?? 0, PART_BUYBACK),

@@ -29,7 +29,7 @@ import { showToast, logLine } from './hud';
 import { openMarket, renderMarket, marketClick } from './market';
 import { caravanClick } from './caravan';
 import { openContracts, renderContracts, contractsClick } from './contracts';
-/** Mirek pays a fifth of the price for a part, less for a worn one. */
+/** Kuba pays a fifth of the price for a part, less for a worn one. */
 const partBuyback = (s: Slot) => Math.floor(PART_PRICE[s.k]! * PART_BUYBACK * (s.c ?? 100) / 100);
 
 const dlgEl = $('dlg'), panel = () => dlgEl.querySelector('.panel') as HTMLElement;
@@ -70,7 +70,7 @@ function renderVehicleShop(msg?: string) {
       <button class="buy" data-k="${k}" data-p="${PART_PRICE[k]}" ${G.char.gold < PART_PRICE[k]! ? 'disabled' : ''}>${PART_PRICE[k]} g</button></div>`).join('') +
     `<button class="opt" data-o="back">${OPT_TEXT.back}</button>`;
 }
-/** Jan and Radek buy what you bring from the wilds (data/npcs BUYS). */
+/** Jan and Oskar buy what you bring from the wilds (data/npcs BUYS). */
 function renderTrade(msg?: string) {
   const buys = BUYS[W.talkNpc!.role] ?? {}, rows = G.char.inv.map((s, i) => ({ s, i })).filter(({ s }) => s && buys[s.k]);
   panel().innerHTML = dlgHead() + `<div class="say">Your gold: <b>${G.char.gold}</b>${msg ? '<br>' + msg : ''}</div>` +
@@ -79,7 +79,7 @@ function renderTrade(msg?: string) {
       : `<div class="say" style="opacity:.7">You have nothing I would buy. I pay for ${Object.keys(buys).map((k) => ITEMS[k as ItemKey].name).join(', ')}.</div>`) +
     `<button class="opt" data-o="back">${OPT_TEXT.back}</button>`;
 }
-/** Mirek buys vehicles back at half price (less for wrecks) and parts for a fifth of what he charges. */
+/** Kuba buys vehicles back at half price (less for wrecks) and parts for a fifth of what he charges. */
 function renderSell(msg?: string) {
   if (W.talkNpc!.role !== 'dealer') { renderTrade(msg); return; }
   const offers = vehiclesForSale(), parts = [...G.char.hands.map((s, i) => ({ s, i: 'h:' + i })), ...G.char.inv.map((s, i) => ({ s, i: 'p:' + i }))].filter(({ s }) => s && PART_PRICE[s.k]);
@@ -100,6 +100,20 @@ function renderShop(msg?: string) {
     `<button class="opt" data-o="back">${OPT_TEXT.back}</button>`;
 }
 const SIDE_NAME = { W: 'west', E: 'east', S: 'south', N: 'north' } as const;
+/** Where the village's raiders come from, how the last raid went and when the scouts expect the next. */
+function raidNews(id: number): string {
+  const c = G.char, poi = findPoi(c.world, id), st = c.towns[id], nr = poi && nextRaid(c.world, poi, c.time), lr = poi && lastRaid(c.world, poi, c.time);
+  return !poi || !raidSource(c.world, poi) ? 'No bandit camp is near enough to trouble us, thank the stars.'
+    : `Bandits from ${raidSource(c.world, poi)!.name} raid us every few days.` + (lr ? ` The last raid ${raidOutcome(c.world, lr, st) === 'won' ? 'was beaten off' : 'broke through'}.` : '') + (nr && nr.t0 - c.time < 1440 ? ` Our scouts expect them again about ${fmtTime(nr.t0)}.` : '') + ' A stronger wall holds them better.';
+}
+/** The captain of the guard's report: the wall, the raiders, the towers. */
+function renderWatch() {
+  const v = loadedVillage(town());
+  if (!v) { renderTalk('Hm?'); return; }
+  const plan = fortifyPlan(G.char.towns[v.id]), wall = WALL_TIERS[plan ? plan.from : WALL_TIERS.length - 1];
+  renderTalk(`We sit behind a <b>${wall.name}</b>. ${raidNews(v.id)} When they come, meet them at the gates, or climb a tower: from up there you see them long before they see you.` +
+    (plan ? ` The Elder is raising money and materials for a ${WALL_TIERS[plan.to].name.toLowerCase()}; help him and my job gets easier.` : ''));
+}
 /** The elder's commissions: raise the fence to the next tier (materials handed over bit by bit), the power plant, the raids, the village's industry (and building its refinery). */
 function renderFortify(msg?: string) {
   const v = loadedVillage(town()), c = G.char;
@@ -108,9 +122,7 @@ function renderFortify(msg?: string) {
   const k = powerKind(v.vm.seed), pc = Math.round(plantCondition(v.id, v.vm.seed)), side = SIDE_NAME[powerSite(v.vm.seed).side];
   const power = `Our power comes from the <b>${POWER[k].name}</b> outside the ${side} fence: ${pc < POWER_DOWN ? '<span style="color:var(--red,#ff5a3c)">it is down</span>' : pc < POWER_LOW ? 'it is failing' : 'it runs'} (${pc}%). ` +
     (pc < 90 ? `Mend it with ${POWER[k].fix.map(([i, n]) => `${n} ${ITEMS[i].name}`).join(', ')} and we will pay you.` : 'Keep an eye on it for us.');
-  const poi = findPoi(c.world, v.id), nr = poi && nextRaid(c.world, poi, c.time), lr = poi && lastRaid(c.world, poi, c.time);
-  const raids = !poi || !raidSource(c.world, poi) ? 'No bandit camp is near enough to trouble us, thank the stars.'
-    : `Bandits from ${raidSource(c.world, poi)!.name} raid us every few days.` + (lr ? ` The last raid ${raidOutcome(c.world, lr, st) === 'won' ? 'was beaten off' : 'broke through'}.` : '') + (nr && nr.t0 - c.time < 1440 ? ` Our scouts expect them again about ${fmtTime(nr.t0)}.` : '') + ' A stronger wall holds them better.';
+  const poi = findPoi(c.world, v.id), raids = raidNews(v.id);
   // the village's industry, and (refinery towns) the commission to build the refinery
   const ind = poi ? industryOf(c.world, poi, v.vm.seed) : 'farm', spec = INDUSTRY[ind], bp = buildPlan(ind, st), sc = poi ? Math.round(siteCondition(c.world, poi, st, c.time)) : 100;
   const trade = poi ? profileOf(c.world, poi, v.vm.seed).makes.map((g) => ITEMS[g].name).join(' and ') : '';
@@ -215,6 +227,7 @@ dlgEl.addEventListener('click', (e) => {
       else if (c.gold < 10) renderTalk('Ten gold for a bed, love. Come back when you have it.');
       else { c.gold -= 10; G.hp = G.S.maxHp; c.kcal = Math.max(c.kcal, 2100); c.stomach = Math.max(c.stomach, 1); c.water = Math.max(c.water, 70); saveChar(); renderTalk('A bowl of soup, a jug of water, and you sleep like a stone. (HP restored, fed and watered)'); }
       break;
+    case 'watch': renderWatch(); break;
     case 'rumour': renderTalk(RUMOURS[(Math.random() * RUMOURS.length) | 0]); break;
     case 'chat': renderTalk(VILLAGER_LINES[(Math.random() * VILLAGER_LINES.length) | 0]); break;
     case 'lore': renderTalk(here(loreText())); break;

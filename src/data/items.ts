@@ -67,17 +67,17 @@ export const ITEMS = {
   compass: { name: 'Compass', ab: 'CMP', type: 'tool', desc: 'carry it and a compass strip shows your heading at the top of the screen, with the way to the nearest village', stack: 1 },
   flagpole: { name: 'Flagpole', ab: 'FLG', type: 'cons', desc: 'claim land for a base: use it to pick a spot (you see how the ground will be levelled), click to raise the flag. The land around it is yours; E at the flag takes it down again', stack: 1 },
   benchkit: { name: 'Workbench Kit', ab: 'WBK', type: 'cons', desc: 'a folding workbench: use it to set it up in front of you, then E at it to craft anywhere', stack: 1 },
-  hide: { name: 'Ravager Hide', ab: 'HID', type: 'mat', desc: 'a tough, spotted hide. Crafting material; Radek buys it', stack: 10 },
-  fang: { name: 'Ravager Fang', ab: 'FNG', type: 'mat', desc: 'a hooked fang. Crafting material; Radek buys it', stack: 10 },
-  plate: { name: 'Bramble Plate', ab: 'PLT', type: 'mat', desc: 'a thorny armour plate from a Bramble. Crafting material; Radek buys it', stack: 10 },
-  membrane: { name: 'Leechwing Membrane', ab: 'MEM', type: 'mat', desc: 'a thin, strong wing membrane. Crafting material; Radek buys it', stack: 10 },
-  incisor: { name: 'Gnawer Incisor', ab: 'INC', type: 'mat', desc: 'a long, sharp rodent tooth. Crafting material; Radek buys it', stack: 10 },
+  hide: { name: 'Ravager Hide', ab: 'HID', type: 'mat', desc: 'a tough, spotted hide. Crafting material; Oskar buys it', stack: 10 },
+  fang: { name: 'Ravager Fang', ab: 'FNG', type: 'mat', desc: 'a hooked fang. Crafting material; Oskar buys it', stack: 10 },
+  plate: { name: 'Bramble Plate', ab: 'PLT', type: 'mat', desc: 'a thorny armour plate from a Bramble. Crafting material; Oskar buys it', stack: 10 },
+  membrane: { name: 'Leechwing Membrane', ab: 'MEM', type: 'mat', desc: 'a thin, strong wing membrane. Crafting material; Oskar buys it', stack: 10 },
+  incisor: { name: 'Gnawer Incisor', ab: 'INC', type: 'mat', desc: 'a long, sharp rodent tooth. Crafting material; Oskar buys it', stack: 10 },
   recall: { name: 'Recall Beacon', ab: 'RCL', type: 'cons', desc: 'returns you to the village from anywhere', stack: 5 },
   emp: { name: 'EMP Charge', ab: 'EMP', type: 'cons', desc: 'damages every drone within 6 m (G key)', stack: 5 },
-  book: { name: 'Ancient Book', ab: 'BOK', type: 'quest', desc: 'a crumbling book of the old machine folk; Elder Bogdan wants it', stack: 1 },
-  gearbox: { name: 'Precision Gearbox', ab: 'GBX', type: 'quest', desc: 'a rare pre-war part; Radek the blacksmith wants it', stack: 1 },
+  book: { name: 'Ancient Book', ab: 'BOK', type: 'quest', desc: 'a crumbling book of the old machine folk; Elder Maciej wants it', stack: 1 },
+  gearbox: { name: 'Precision Gearbox', ab: 'GBX', type: 'quest', desc: 'a rare pre-war part; Oskar the blacksmith wants it', stack: 1 },
   datacore: { name: 'Data Core', ab: 'COR', type: 'quest', desc: 'a sealed memory core; Zofia at the store wants it', stack: 1 },
-  logbook: { name: "Driver's Logbook", ab: 'LOG', type: 'quest', desc: 'a battered logbook from a wreck; Mirek the dealer wants it', stack: 1 },
+  logbook: { name: "Driver's Logbook", ab: 'LOG', type: 'quest', desc: 'a battered logbook from a wreck; Kuba the dealer wants it', stack: 1 },
   wheelL: { name: 'Light Tire', ab: 'TIR', type: 'part', desc: 'tire for the RTV-1 Scout; drag it onto a wheel slot in the vehicle service (E at the front)', stack: 4 },
   wheelH: { name: 'Heavy Tire', ab: 'HTR', type: 'part', desc: 'tire for the HTV-6 Mastodon; drag it onto a wheel slot in the vehicle service (E at the front)', stack: 2 },
   engine: { name: 'Engine Parts', ab: 'ENG', type: 'part', desc: 'repairs a vehicle engine by 50% (drop it on the engine slot)', stack: 5 },
@@ -130,17 +130,17 @@ export const WEAR: Partial<Record<ItemKey, { slot: WearSlot; def: number }>> = {
 export const WEAPON_KIND: Partial<Record<ItemKey, 0 | 1>> = { blaster: 0, blade: 1 };
 /** Too big or awkward for the backpack: carried in your hands (and then you cannot hold a weapon). */
 export const HANDS_ONLY = new Set<ItemKey>(['wheelL', 'wheelH', 'cannon', 'benchkit', 'flagpole']);
-/** Weapons and gear Radek sells. */
-/** Tools and building supplies: what Radek (tools) and Zofia (supplies) charge. */
+/** Weapons and gear Oskar sells. */
+/** Tools and building supplies: what Oskar (tools) and Zofia (supplies) charge. */
 export const TOOL_PRICE: Partial<Record<ItemKey, number>> = { hammer: 20, saw: 35, screwdriver: 10, pliers: 12, welder: 200, torch: 160, shovel: 25, turretkit: 350 };
 export const SUPPLY_PRICE: Partial<Record<ItemKey, number>> = { nails: 3, rope: 6, wire: 5, codelock: 120 };
 export const GEAR_PRICE: Partial<Record<ItemKey, number>> = { blaster: 150, blade: 80, helmet: 60, vest: 120, armour: 260, gloves: 20, trousers: 30, boots: 40 };
 /** The backpack: how much fits (litres), the load you carry easily, and beyond `max` you are overloaded (kg). */
 export const PACK = { vol: 40, comfy: 20, max: 35 };
-/** What Mirek charges for vehicle parts. He buys them back for only a fifth of that. */
+/** What Kuba charges for vehicle parts. He buys them back for only a fifth of that. */
 export const PART_PRICE: Partial<Record<ItemKey, number>> = { wheelL: 40, wheelH: 90, engine: 70, plating: 60, turbo: 220, eguard: 150, cannon: 400 };
 export const PART_BUYBACK = 0.2;
 export const HEAL: Partial<Record<ItemKey, number>> = { medkit: 50 };
-/** Weapon attachments and what Radek the blacksmith charges for them. */
+/** Weapon attachments and what Oskar the blacksmith charges for them. */
 export const ATTACH_PRICE: Partial<Record<ItemKey, number>> = { reflex: 80, scope: 180, barL: 140, barR: 160, barS: 150, magX: 90, magD: 200 };
 export const ATTACH_KEYS = Object.keys(ATTACH_PRICE) as ItemKey[];

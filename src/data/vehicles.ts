@@ -105,7 +105,7 @@ export function health(m: VehicleModel, p: VehicleParts): number {
   const wheels = p.wheels.reduce((a, w) => a + Math.max(0, w), 0) / p.wheels.length;
   return (wheels + p.engine + Math.max(0, p.hull) / VEHICLES[m].hull * 100) / 300;
 }
-/** What Mirek pays: half the price for a vehicle in perfect shape, less for a wreck; a fitted cannon adds its part value. */
+/** What Kuba pays: half the price for a vehicle in perfect shape, less for a wreck; a fitted cannon adds its part value. */
 export function resaleValue(m: VehicleModel, p: VehicleParts, cannonPrice: number, buyback: number): number {
   return Math.floor(VEHICLES[m].price / 2 * (0.3 + 0.7 * health(m, p)) + (p.gun ? cannonPrice * buyback : 0));
 }

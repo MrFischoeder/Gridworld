@@ -4,6 +4,13 @@ export interface Change { v: string; date: string; title: string; notes: string[
 
 export const CHANGELOG: Change[] = [
   {
+    v: '0.34.0', date: '2026-09-24', title: 'Timber houses and new faces',
+    notes: ['Village houses are rebuilt as timber-framed houses, like the bases: thin plank walls on a sill with corner posts, windows with open shutters, a doorway with the door standing open, gabled roofs with shingles and an overhang, boarded gables and chimneys. Shops have an awning over the door and the Elder\'s Hall a bell turret. The houses are smaller and lower than the old blocks, so the villages feel less cramped.',
+      'Gridholm\'s residents have new names: Elder Maciej, Oskar the blacksmith and Kuba the vehicle dealer. Marta still runs the tavern, and Kasia still strolls round the plaza.',
+      'Every village now has a Captain of the Guard (Jakub in Gridholm) who walks his rounds along the inside of the wall with a spear and a shield. Ask him how safe the village is: he knows about the wall, the raiders and when they are expected.',
+      'Gridholm has more folk about: twelve villagers now stroll round the plaza, eight in the other villages.'],
+  },
+  {
     v: '0.33.0', date: '2026-09-24', title: 'Tower ladders',
     notes: ['Every watch tower of a village now has a ladder on the side facing the plaza: the stilt platforms of a fence or palisade, and the stone towers of a walled village.',
       'Press E at the foot of a ladder and you climb it rung by rung, hand over hand, then swing over onto the deck at the top. E at the top takes you back down. While on the ladder, W and S turn you up or down, and Space lets go.',

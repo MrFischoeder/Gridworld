@@ -20,7 +20,7 @@ export const CREATURES: Record<CreatureKind, CreatureSpec> = {
 
 /**
  * What a kill leaves behind besides crystals: [item, chance, min, max]. Only the big herbivore (the Bramble) is
- * food; the rest give materials for crafting later (Radek buys them for now).
+ * food; the rest give materials for crafting later (Oskar buys them for now).
  */
 export const DROPS: Record<CreatureKind, [ItemKey, number, number, number][]> = {
   bramble: [['meatR', 1, 2, 4], ['plate', 0.6, 1, 1]],

@@ -2,6 +2,7 @@
 // standing on it, forests, roads, and light field enemies. Generation is deterministic; this module only
 // decides what is loaded and turns generator output into meshes.
 import { setLadders, dropLadders, ladderHit, ladderFloor } from './ladders';
+import { setHouses, dropHouses, houseHit, houseRay, houseSolid } from './houses';
 import * as THREE from 'three';
 import { scene, V, GRID, localize } from './render';
 import { G, W } from '../game';
@@ -299,10 +300,14 @@ function loadVillageStruct(poi: Poi): Structure {
   }
   const taken = new Set(npcs.map((n) => n.name.replace('Elder ', '')));
   const folk = vm.home ? VILLAGER_NAMES : FOLK.slice(((vm.seed >>> 0) + 3) % 12).filter((n) => !taken.has(n));
-  folk.slice(0, 6).forEach((nm) => { const c = vm.walk[(Math.random() * vm.walk.length) | 0]; npcs.push(makeNpc('villager', nm, V(c[0] + 0.5, y, c[1] + 0.5), null)); });
+  // the captain of the guard walks the inside of the wall, from gate to gate and past the towers
+  const gname = vm.home ? NPC_INFO.guard.name! : folk.pop()!, edge = vm.walk.filter(([x, z]) => Math.min(x - vm.ox, z - vm.oz, vm.ox + 72 - x, vm.oz + 72 - z) < 6);
+  const start = edge.length ? edge[0] : vm.walk[0], guard = makeNpc('guard', gname, V(start[0] + 0.5, y, start[1] + 0.5), null);
+  guard.route = edge; npcs.push(guard);
+  folk.slice(0, vm.home ? 12 : 8).forEach((nm) => { const c = vm.walk[(Math.random() * vm.walk.length) | 0]; npcs.push(makeNpc('villager', nm, V(c[0] + 0.5, y, c[1] + 0.5), null)); });
   for (const n of npcs) n.town = vm.name;
   W.npcs.push(...npcs); W.villageWalk = vm.walk;
-  OW.village = vm; setLadders(poi.id, vm.towers.flatMap((t) => (t.ladder ? [t.ladder] : [])), y);
+  OW.village = vm; setLadders(poi.id, vm.towers.flatMap((t) => (t.ladder ? [t.ladder] : [])), y); setHouses(poi.id, vm);
   return { poi, grid, group, edges: mesh, doors: [], stairs: [], npcs, village: vm };
 }
 export let enterRuin: (id: number) => void = () => {};
@@ -416,7 +421,7 @@ function dropStruct(s: Structure) {
   for (const n of s.npcs) { scene.remove(n.g); W.npcs.splice(W.npcs.indexOf(n), 1); }
   if (s.village && OW.village === s.village) { OW.village = null; W.villageWalk = []; } // another village may have loaded meanwhile
   if (s.camp) despawnCamp(s.poi.id);
-  if (s.village) { forgetPower(s.poi.id); forgetIndustry(s.poi.id); dropLadders(s.poi.id); }
+  if (s.village) { forgetPower(s.poi.id); forgetIndustry(s.poi.id); dropLadders(s.poi.id); dropHouses(s.poi.id); }
   OW.structs.delete(s.poi.id);
   setStreakSources([...OW.structs.values()].map((q) => q.edges));
 }
@@ -461,8 +466,8 @@ export function openWorld(x: number, z: number) {
   OW.terrain.setClaims(G.char.claims);
   closeWorld();
   G.water = (px, pz) => (inStructure(px, pz) ? null : OW.terrain!.water(px, pz));
-  G.space = space; G.ground = groundAt; G.obstacle = (px, py, pz, r) => treeHit(px, py, pz, r) || vehicleHit(px, py, pz, r) || caravanHit(px, py, pz, r) || ambushHit(px, py, pz, r) || baseHit(px, py, pz, r) || ladderHit(px, py, pz, r);
-  G.floor = (x, y, z) => Math.max(baseFloor(x, y, z), ladderFloor(x, y, z)); G.rayBlock = baseRay; G.solid = baseSolid;
+  G.space = space; G.ground = groundAt; G.obstacle = (px, py, pz, r) => treeHit(px, py, pz, r) || vehicleHit(px, py, pz, r) || caravanHit(px, py, pz, r) || ambushHit(px, py, pz, r) || baseHit(px, py, pz, r) || ladderHit(px, py, pz, r) || houseHit(px, py, pz, r);
+  G.floor = (x, y, z) => Math.max(baseFloor(x, y, z), ladderFloor(x, y, z)); G.rayBlock = (o, d, t) => houseRay(o, d, baseRay(o, d, t)); G.solid = (p) => baseSolid(p) || houseSolid(p);
   foeRules.blocked = (p) => nearVillage(p.x, p.z) < 2;
   foeRules.playerSafe = () => inVillage(G.pos.x, G.pos.z) && !raidHere(); // no safe place while bandits raid it
   foeRules.ground = (px, pz) => OW.terrain!.heightAt(px, pz);
