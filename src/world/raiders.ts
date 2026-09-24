@@ -38,10 +38,9 @@ export const raiders: Raider[] = [];
 let raidT = 25;
 
 function crewFigure(v: Vehicle, x: number, y: number, z: number, standing: boolean) {
-  const f = makeFigure(BANDIT);
+  const f = makeFigure(BANDIT, 'drive'); // the driver at the wheel, the gunner on the cannon's handles
   v.group.add(f.g); f.g.position.set(x, y - (standing ? 0 : 0.55), z);
   if (!standing) { f.legL.rotation.x = f.legR.rotation.x = -1.4; }
-  f.armR.rotation.x = f.armL.rotation.x = standing ? -1.2 : -0.9;
   return f.g;
 }
 function spawnRaider(model: VehicleModel, x: number, z: number, heading: number, level: number): Raider {

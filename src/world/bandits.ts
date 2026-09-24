@@ -2,9 +2,10 @@
 // Unsaved (like drones and creatures) except that a cleared camp stays empty for a while (char.camps).
 import * as THREE from 'three';
 import { onNoise } from './noise';
-import { scene, V, add as addMat, fillMat } from './render';
+import { scene, V, add as addMat } from './render';
 import { G, W } from '../game';
 import { makeFigure, textSprite, type Figure } from './npc';
+import { poseRig, muzzleLocal, type Kit } from './rig';
 import { foeRules } from './enemies';
 import { rayWorld, emptyAt } from './player';
 import { burst } from './fx';
@@ -33,6 +34,8 @@ export interface Bandit {
   sight: number;
   /** Set for roadside ambushers. */
   ambush?: number;
+  /** Recoil of the last shot (1 → 0), and a sword stroke on its way (the blow lands mid-swing). */
+  recoil: number; blow: boolean;
 }
 interface Bolt { m: THREE.Line; p: THREE.Vector3; v: THREE.Vector3; dmg: number; life: number }
 const bolts: Bolt[] = [];
@@ -40,20 +43,16 @@ let env: SpawnEnv | null = null, patrolT = 10;
 export function setBanditEnv(e: SpawnEnv | null) { env = e; }
 
 // ---------- model ----------
-const gunGeo = new THREE.BoxGeometry(0.06, 0.08, 0.7), bladeGeo = new THREE.BoxGeometry(0.03, 0.06, 0.75), gunFill = fillMat();
-function armed(fig: Figure, role: BanditRole, mat: THREE.LineBasicMaterial) {
-  const w = new THREE.Group(), geo = role === 'bruiser' ? bladeGeo : gunGeo;
-  w.add(new THREE.Mesh(geo, gunFill), new THREE.LineSegments(new THREE.EdgesGeometry(geo), mat));
-  w.position.set(0, -0.5, 0.25);
-  fig.armR.add(w);
-  fig.armR.rotation.x = role === 'bruiser' ? -0.4 : -1.35;
-  fig.armL.rotation.x = role === 'bruiser' ? 0 : -1.1;
+/** What a bandit carries: gunners a rifle (both hands) or a pistol (one), bruisers a sword and maybe a shield, the boss a scoped rifle. */
+function kitOf(role: BanditRole): { kit: Kit; shield: boolean } {
+  if (role === 'bruiser') return { kit: 'sword', shield: Math.random() < 0.5 };
+  if (role === 'leader') return { kit: 'rifle', shield: false };
+  return { kit: Math.random() < 0.35 ? 'pistol' : 'rifle', shield: false };
 }
 export function spawnBandit(role: BanditRole, at: THREE.Vector3, level: number, group: Bandit[], campId?: number): Bandit {
-  const color = role === 'leader' ? BOSS_COLOR : BANDIT, fig = makeFigure(color), mat = (fig.legL as THREE.Line).material as THREE.LineBasicMaterial;
+  const color = role === 'leader' ? BOSS_COLOR : BANDIT, k = kitOf(role), fig = makeFigure(color, k.kit, k.shield, role === 'leader'), mat = fig.mat;
   const g = new THREE.Group();
   g.add(fig.g); fig.g.position.y = -0.9;
-  armed(fig, role, mat);
   if (role === 'leader') {
     fig.g.scale.setScalar(1.15);
     const tag = textSprite('Bandit Boss', '#ff6a4a', 2.2); tag.position.y = 1.55; g.add(tag);
@@ -63,7 +62,7 @@ export function spawnBandit(role: BanditRole, at: THREE.Vector3, level: number, 
   const b: Bandit = {
     kind: 'bandit', role, g, fig, mat, p: at.clone(), heading: Math.random() * 6.28, speed: 0, r: 0.55,
     hp, maxHp: hp, flash: 0, state: 'idle', timer: Math.random() * 3, fireT: 1 + Math.random(), burst: 0, strafe: Math.random() < 0.5 ? 1 : -1, hitT: 0,
-    home: at.clone(), campId, group, level, fled: false, sight: 34,
+    home: at.clone(), campId, group, level, fled: false, sight: 34, recoil: 0, blow: false,
   };
   group.push(b); W.bandits.push(b);
   return b;
@@ -114,7 +113,9 @@ export function alert(b: Bandit) {
 // gunfire nearby: bandits (who know what a shot sounds like) come for the shooter; ambushers keep lying low
 onNoise((at, r) => { for (const b of W.bandits) if (b.sight > 20 && b.p.distanceTo(at) < r * 0.8) alert(b); });
 function fire(b: Bandit) {
-  const muzzle = V(b.p.x + Math.sin(b.heading) * 0.5, b.p.y + 0.45, b.p.z + Math.cos(b.heading) * 0.5);
+  b.recoil = 1;
+  b.fig.g.updateMatrixWorld(true);
+  const muzzle = b.fig.g.localToWorld(muzzleLocal(b.fig.rig));
   fireBolt(muzzle, (b.role === 'leader' ? 9 : 5) * (1 + b.level * 0.2), b.role === 'leader' ? BOSS_COLOR : BANDIT);
 }
 /** A bolt from `muzzle` at the player (with spread for distance and the player's speed). */
@@ -179,8 +180,10 @@ function think(b: Bandit, dt: number, time: number) {
       face(b, to.x, to.z, dt);
       if (b.role === 'bruiser') {
         if (dist > 1.5) walk(b, to.x, to.z, 6.2, dt);
-        if (dist < 1.8 && b.hitT <= 0) {
-          b.hitT = 0.9;
+        if (dist < 1.8 && b.hitT <= 0) { b.hitT = 0.9; b.blow = true; } // wind up...
+        if (b.blow && b.hitT < 0.55) { // ...and the blade comes down
+          b.blow = false;
+          if (dist > 2.4) break;
           const dmg = 10 * (1 + b.level * 0.2);
           if (driving.v && driving.v.spec.enclosed) damageVehicle(driving.v, dmg * 0.5); else { G.hp -= armoured(dmg); G.dmgFlash = 0.35; }
         }
@@ -205,7 +208,10 @@ function animate(b: Bandit, dt: number) {
   b.g.position.copy(b.p); b.g.rotation.y = b.heading;
   const f = b.fig, ph = performance.now() / 1000 * (4 + b.speed * 1.2), sw = b.speed > 0.2 ? Math.sin(ph) * 0.55 : 0;
   f.legL.rotation.x = sw; f.legR.rotation.x = -sw;
-  if (b.role === 'bruiser') { f.armR.rotation.x = b.hitT > 0.6 ? -1.9 : -0.4 + sw * 0.4; f.armL.rotation.x = -sw * 0.7; }
+  // weapons up while fighting, lowered otherwise; the sword follows its stroke, guns kick when they fire
+  const r = f.rig; r.aim += ((b.state === 'fight' ? 1 : 0) - r.aim) * Math.min(1, dt * 5);
+  b.recoil = Math.max(0, b.recoil - dt * 8);
+  poseRig(r, { swing: sw, aim: r.aim, recoil: b.recoil, strike: b.hitT > 0 ? 1 - b.hitT / 0.9 : -1 });
   b.flash -= dt;
   b.mat.color.setHex(b.flash > 0 ? 0xffffff : b.role === 'leader' ? BOSS_COLOR : BANDIT);
 }
@@ -239,6 +245,8 @@ export function updateBandits(dt: number, time: number) {
 
 // ---------- damage ----------
 export function hurtBandit(b: Bandit, dmg: number) {
+  // a raised shield takes half of what comes from the front
+  if (b.fig.rig.shield && Math.cos(Math.atan2(G.pos.x - b.p.x, G.pos.z - b.p.z) - b.heading) > 0.5) dmg *= 0.5;
   b.hp -= dmg; b.flash = 0.12; G.hitFlash = 0.15;
   alert(b);
   if (b.hp > 0) {
@@ -265,7 +273,7 @@ export function hurtBandit(b: Bandit, dmg: number) {
 }
 export function removeBandit(b: Bandit) {
   scene.remove(b.g);
-  b.g.traverse((o) => { const m = o as THREE.Mesh; if (m.geometry && m.geometry !== gunGeo && m.geometry !== bladeGeo) m.geometry.dispose(); });
+  b.g.traverse((o) => { const m = o as THREE.Mesh; if (m.geometry) m.geometry.dispose(); });
   const i = W.bandits.indexOf(b); if (i >= 0) W.bandits.splice(i, 1);
   const j = b.group.indexOf(b); if (j >= 0) b.group.splice(j, 1);
 }

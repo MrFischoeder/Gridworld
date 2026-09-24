@@ -5,8 +5,10 @@ import { G, W } from '../game';
 import { NPC_INFO, type NpcRole } from '../data/npcs';
 import type { Building } from '../gen/village';
 import { houseHit } from './houses';
+import { makeRig, poseRig, type Rig, type Kit } from './rig';
 
-export interface Figure { g: THREE.Group; legL: THREE.Line; legR: THREE.Line; armL: THREE.Line; armR: THREE.Line }
+/** A figure: body, head, legs (swung by rotation) and a rig of arms holding its kit (world/rig.ts). */
+export interface Figure { g: THREE.Group; legL: THREE.Line; legR: THREE.Line; rig: Rig; mat: THREE.LineBasicMaterial }
 export interface Npc extends Figure {
   role: NpcRole; name: string; title: string; p: THREE.Vector3; home: THREE.Vector3; building: Building | null;
   target: THREE.Vector3 | null; wait: number; phase: number; face: number; y0: number;
@@ -24,7 +26,7 @@ export function textSprite(text: string, color: string, w = 1.9) {
 }
 
 const headGeo = new THREE.IcosahedronGeometry(0.17, 0), bodyGeo = new THREE.BoxGeometry(0.42, 0.6, 0.24), figureFill = fillMat();
-export function makeFigure(color: number): Figure {
+export function makeFigure(color: number, kit: Kit = 'none', shield = false, big = false): Figure {
   const m = lineMat(color), g = new THREE.Group();
   const head = new THREE.LineSegments(new THREE.EdgesGeometry(headGeo), m); head.position.y = 1.62;
   head.add(new THREE.Mesh(headGeo, figureFill));
@@ -32,21 +34,15 @@ export function makeFigure(color: number): Figure {
   const body = new THREE.LineSegments(new THREE.EdgesGeometry(bodyGeo), m); body.position.y = 1.12;
   body.add(new THREE.Mesh(bodyGeo, figureFill));
   const limb = (len: number) => new THREE.Line(new THREE.BufferGeometry().setFromPoints([V(0, 0, 0), V(0, -len, 0)]), m);
-  const legL = limb(0.8), legR = limb(0.8), armL = limb(0.55), armR = limb(0.55);
-  legL.position.set(-0.12, 0.82, 0); legR.position.set(0.12, 0.82, 0); armL.position.set(-0.27, 1.4, 0); armR.position.set(0.27, 1.4, 0);
-  g.add(head, visor, body, legL, legR, armL, armR); scene.add(g);
-  return { g, legL, legR, armL, armR };
+  const legL = limb(0.8), legR = limb(0.8);
+  legL.position.set(-0.12, 0.82, 0); legR.position.set(0.12, 0.82, 0);
+  g.add(head, visor, body, legL, legR); scene.add(g);
+  return { g, legL, legR, rig: makeRig(g, m, kit, shield, big), mat: m };
 }
 export function makeNpc(role: NpcRole, name: string, at: THREE.Vector3, building: Building | null): Npc {
-  const info = NPC_INFO[role], f = makeFigure(info.color);
+  const info = NPC_INFO[role], f = makeFigure(info.color, role === 'guard' ? 'spear' : 'none', role === 'guard');
   const label = textSprite(name, '#' + info.color.toString(16).padStart(6, '0')); label.position.y = 2.15; f.g.add(label);
   f.g.position.copy(at);
-  if (role === 'guard') { // a spear held upright at his right side, a round shield on the left arm
-    const m = lineMat(info.color), sp = new THREE.Line(new THREE.BufferGeometry().setFromPoints([V(0.34, 0.05, 0.12), V(0.34, 2.35, 0.12)]), m);
-    const tip = new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints([V(0.34, 2.35, 0.12), V(0.4, 2.2, 0.12), V(0.34, 2.62, 0.12), V(0.28, 2.2, 0.12)]), m);
-    const shield = new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(Array.from({ length: 10 }, (_, i) => V(0, -0.3 + Math.cos(i / 10 * 6.283) * 0.24, 0.05 + Math.sin(i / 10 * 6.283) * 0.24))), m);
-    shield.position.x = -0.06; f.armL.add(shield); f.g.add(sp, tip);
-  }
   return Object.assign(f, {
     role, name, title: info.title, p: at.clone(), home: at.clone(), building, target: null,
     wait: Math.random() * 2, phase: Math.random() * 6, face: Math.random() * 6, y0: at.y,
@@ -81,7 +77,7 @@ export function updateNpcs(dt: number, time: number) {
     } else { n.face += Math.sin(time * 0.3 + n.phase) * dt * 0.3; }
     n.phase += dt * (moving ? 7 : 0);
     const sw = moving ? Math.sin(n.phase) * 0.5 : 0;
-    n.legL.rotation.x = sw; n.legR.rotation.x = -sw; n.armL.rotation.x = -sw * 0.7; n.armR.rotation.x = sw * 0.7;
+    n.legL.rotation.x = sw; n.legR.rotation.x = -sw; poseRig(n.rig, { swing: sw });
     n.g.position.set(n.p.x, n.y0 + (moving ? Math.abs(Math.sin(n.phase)) * 0.04 : 0), n.p.z);
     let dr = n.face - n.g.rotation.y; dr = Math.atan2(Math.sin(dr), Math.cos(dr)); n.g.rotation.y += dr * Math.min(1, dt * 6);
     if (dP < best && Math.abs(pos.y - n.y0) < 2) { best = dP; W.nearNpc = n; }

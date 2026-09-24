@@ -4,6 +4,14 @@ export interface Change { v: string; date: string; title: string; notes: string[
 
 export const CHANGELOG: Change[] = [
   {
+    v: '0.36.0', date: '2026-09-24', title: 'Hands on the weapons',
+    notes: ['People now have proper arms with elbows, and their hands hold what they carry. A bandit with a rifle holds it in both hands, the barrel lowered while he walks, and shoulders it to fire; it kicks with every shot, and the bolts come out of its muzzle.',
+      'Some gunners carry a pistol instead: held low at their side, then raised in one outstretched hand to shoot.',
+      'Bruisers carry a sword, and half of them a round shield. They hold the blade on guard, then wind up over the shoulder and slash down across you. The blow now lands with the slash, not the moment they reach you. A raised shield takes half the damage of shots from the front, so go for their flank.',
+      'The Bandit Boss carries a longer rifle with a scope. Raider crews keep their hands on the wheel and the cannon\'s handles.',
+      'Jakub and the other guard captains hold their spear upright at their side, with their shield on the other arm, and villagers swing their arms as they walk.'],
+  },
+  {
     v: '0.35.0', date: '2026-09-24', title: 'Furnished houses',
     notes: ['The metre-sized blocks inside the village houses are gone. Every shop now has a panelled counter with an overhanging top and shelves of jars, boxes and bottles behind it, and the wares of the house on the counter: mugs and a keg in the tavern, tongs and a hammer at the smithy, a balance in the general store, baskets of produce and a loaf at the grocer\'s.',
       'The tavern has tables with benches on both sides and barrels behind the bar. The smithy has a stone forge with a glowing mouth and a hood up through the roof, an anvil and a quenching barrel. The store and the grocer\'s have crates, sacks and barrels.',
