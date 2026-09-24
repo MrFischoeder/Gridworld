@@ -12,7 +12,7 @@ import { renderer, camera } from '../world/render';
 import { el } from './hud';
 import { togglePack, closePack } from './backpack';
 import { closeDialog } from './dialog';
-import { interact } from '../world/interact';
+import { interact, lockKey } from '../world/interact';
 import { useItem } from '../world/loot';
 import { drawBack, swapWeapon, holster, armed, reload } from '../world/weapons';
 import { toggleMap, zoomMap } from './worldmap';
@@ -51,6 +51,7 @@ export function initInput(onPause: () => void) {
     if (e.code === 'KeyQ') swapWeapon();
     if (e.code === 'KeyX') holster();
     if (e.code === 'KeyF' && isBuilding()) dismantle();
+    if (e.code === 'KeyL') lockKey();
     if (e.code === 'KeyR') reload();
     if (e.code === 'F3') { e.preventDefault(); el.perf.style.display = el.perf.style.display === 'block' ? 'none' : 'block'; }
   });

@@ -14,7 +14,7 @@ export const setWaterNote = (f: (s: string) => void) => { onWaterNote = f; };
 export const MAX_SLOPE = 0.85, STEP_UP = 0.6;
 
 /** Free point: no voxel there and above the terrain. */
-export const emptyAt = (p: Vec3Like) => spaceEmptyAt(G.space, p) && !(G.ground && p.y < G.ground(p.x, p.z));
+export const emptyAt = (p: Vec3Like) => spaceEmptyAt(G.space, p) && !(G.ground && p.y < G.ground(p.x, p.z)) && !(G.solid && G.solid(p));
 
 /** Distance along a (unit) ray to the terrain surface, marching in half-metre steps. */
 function rayTerrain(o: Vec3Like, d: Vec3Like, maxT: number): number {
@@ -24,7 +24,8 @@ function rayTerrain(o: Vec3Like, d: Vec3Like, maxT: number): number {
 }
 /** Distance along a ray to the first solid thing in the current location. */
 export const rayWorld = (o: Vec3Like, d: Vec3Like, maxT: number) => {
-  const v = rayVoxel(G.space, o, d, maxT);
+  let v = rayVoxel(G.space, o, d, maxT);
+  if (G.rayBlock) v = G.rayBlock(o, d, v);
   return G.ground ? Math.min(v, rayTerrain(o, d, v)) : v;
 };
 
@@ -35,17 +36,20 @@ export function collides(p: THREE.Vector3): boolean {
   for (let x = x0; x <= x1; x++) for (let y = y0; y <= y1; y++) for (let z = z0; z <= z1; z++) if (!G.space.empty(x, y, z)) return true;
   return !!G.obstacle && G.obstacle(p.x, p.y, p.z, R);
 }
+/** Built floors and stairs under (x, z) you can step onto from height y (-Infinity when none). */
+const floorAt = (x: number, y: number, z: number) => (G.floor ? G.floor(x, y, z) : -Infinity);
 function moveAxis(ax: 'x' | 'y' | 'z', amt: number): boolean {
   if (!amt) return false;
   const pos = G.pos, n = Math.ceil(Math.abs(amt) / 0.2), s = amt / n, ground = ax !== 'y' ? G.ground : null;
   for (let i = 0; i < n; i++) {
-    const g0 = ground ? ground(pos.x, pos.z) : 0, y0 = pos.y;
+    const g0 = ground ? Math.max(ground(pos.x, pos.z), floorAt(pos.x, pos.y, pos.z)) : 0, y0 = pos.y;
     pos[ax] += s;
     if (ground) {
-      // walking on terrain: step up gentle slopes, refuse cliffs and very steep ground
-      const g1 = ground(pos.x, pos.z);
+      // walking on terrain: step up gentle slopes, refuse cliffs and very steep ground; built floors and stairs
+      // only need to be within a step
+      const gt = ground(pos.x, pos.z), gf = floorAt(pos.x, pos.y, pos.z), g1 = Math.max(gt, gf);
       if (g1 > pos.y + 0.02) {
-        if (g1 - pos.y > STEP_UP || (g1 - Math.max(g0, pos.y - 0.3)) / Math.abs(s) > MAX_SLOPE) { pos[ax] -= s; return true; }
+        if (g1 - pos.y > STEP_UP || (gf < gt && (g1 - Math.max(g0, pos.y - 0.3)) / Math.abs(s) > MAX_SLOPE)) { pos[ax] -= s; return true; }
         pos.y = g1;
       }
     }
@@ -54,10 +58,11 @@ function moveAxis(ax: 'x' | 'y' | 'z', amt: number): boolean {
   return false;
 }
 /** Keeps the feet on the terrain: no sinking in, and no hopping off when walking downhill. */
-function settleOnGround(wasOnGround: boolean) {
+function settleOnGround(wasOnGround: boolean, yPrev: number) {
   const ground = G.ground, pos = G.pos, vel = G.vel;
   if (!ground) return;
-  const gh = ground(pos.x, pos.z);
+  // a built floor counts if you were above it before this step (so a fast fall still lands on it)
+  const gh = Math.max(ground(pos.x, pos.z), floorAt(pos.x, Math.max(pos.y, yPrev), pos.z));
   if (pos.y < gh || (wasOnGround && vel.y <= 0 && pos.y - gh < 0.45)) {
     const y0 = pos.y; pos.y = gh;
     if (collides(pos)) { pos.y = y0; return; }
@@ -102,11 +107,11 @@ export function updatePlayer(dt: number): boolean {
     if ((keys.Space || G.touchJump) && G.onGround && !over && spendStamina(STAMINA.jump)) { vel.y = JUMP * (wet > 0.45 ? 0.6 : 1); G.onGround = false; burn(BURN.jump); }
     vel.y -= GRAV * dt;
   }
-  const was = G.onGround;
+  const was = G.onGround, yPrev = pos.y;
   if (moveAxis('x', vel.x * dt)) vel.x = 0;
   if (moveAxis('z', vel.z * dt)) vel.z = 0;
   G.onGround = false;
   if (moveAxis('y', vel.y * dt)) { if (vel.y < 0) { G.onGround = true; pos.y = Math.floor(pos.y + 0.001); } vel.y = 0; }
-  if (!G.swimming) settleOnGround(was && vel.y <= 0);
+  if (!G.swimming) settleOnGround(was && vel.y <= 0, yPrev);
   return moving;
 }

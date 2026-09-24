@@ -147,8 +147,9 @@ export function updateOrbs(dt: number) {
   const body = V(G.pos.x, G.pos.y + 0.9, G.pos.z);
   for (let i = W.orbs.length - 1; i >= 0; i--) {
     const o = W.orbs[i]; o.life -= dt;
+    const step = o.v.length() * dt, walled = !!G.rayBlock && G.rayBlock(o.p, o.v.clone().normalize(), step) < step;
     o.p.addScaledVector(o.v, dt); o.m.position.copy(o.p); o.m.rotation.x += dt * 6; o.m.rotation.y += dt * 4;
-    let dead = o.life <= 0 || !emptyAt(o.p);
+    let dead = o.life <= 0 || walled || !emptyAt(o.p);
     if (!dead && o.p.distanceTo(body) < 0.75) { G.hp -= armoured(o.dmg); G.dmgFlash = 0.35; dead = true; }
     if (dead) { burst(o.p, 0xff6a4a, 8, 0.5); scene.remove(o.m); o.m.geometry.dispose(); W.orbs.splice(i, 1); }
   }

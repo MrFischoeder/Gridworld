@@ -4,6 +4,14 @@ export interface Change { v: string; date: string; title: string; notes: string[
 
 export const CHANGELOG: Change[] = [
   {
+    v: '0.12.0', date: '2026-09-24', title: 'Storeys, stairs, walls that stop bullets, code locks',
+    notes: ['Build upwards: a floor on top of your walls is the roof of the room below and the floor of the one above. Walls go up to the third storey; a floor needs a wall under one of its sides or a floor next to it, and a wall up there needs a floor beside it or a wall under it.',
+      'Wooden and Metal Stairs take two cells and climb one storey the way you face when you build them. Leave the stairwell open above them. You walk up stairs and stand on floors; you bump your head on the floor above.',
+      'Walls, shut doors and floors now stop shots and eyes: bandits, robots and creatures cannot see or shoot you through them, and neither can you shoot through them.',
+      'Code Lock (Zofia, 120 gold): stand at one of your doors and press L, choose a 4-digit code. A locked door opens for you; anyone else has to enter the code on the keypad. L again changes the code, leaves the door unlocked or takes the lock off.',
+      'A part that something above rests on cannot be taken down until that is gone.'],
+  },
+  {
     v: '0.11.0', date: '2026-09-24', title: 'Building: walls, doors and roofs',
     notes: ['On your claim press B to open the build list: wooden and metal walls, doors and roofs. Pick one, look where it should stand (a hologram snaps to a 2 m grid round your flag: white when it fits, red with the reason) and click. Right mouse or Esc stops building.',
       'Each part is made from what you carry: planks, nails, rope and wire for wood; scrap metal and wire for metal. The tools stay in your backpack: Hammer and Saw for wood, Welder and Pliers for metal, a Screwdriver for doors.',

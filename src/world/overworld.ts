@@ -40,7 +40,7 @@ import { voxelObject, villageDeco, wallSign } from './level';
 import { NPC_INFO, VILLAGER_NAMES, type NpcRole } from '../data/npcs';
 import { DIRV } from '../core/rng';
 import { claimDist, CLAIM } from '../gen/claims';
-import { baseHit } from './building';
+import { baseHit, baseFloor, baseRay, baseSolid } from './building';
 
 export const LOAD_R = 4, UNLOAD_R = 6, STRUCT_LOAD = 170, STRUCT_UNLOAD = 240;
 /** Surface structures are drawn in outline style: folds and edges, floor tiles every 2 m, wall seams every 4 m. */
@@ -420,6 +420,7 @@ export function openWorld(x: number, z: number) {
   closeWorld();
   G.water = (px, pz) => (inStructure(px, pz) ? null : OW.terrain!.water(px, pz));
   G.space = space; G.ground = groundAt; G.obstacle = (px, py, pz, r) => treeHit(px, py, pz, r) || vehicleHit(px, py, pz, r) || ambushHit(px, py, pz, r) || baseHit(px, py, pz, r);
+  G.floor = baseFloor; G.rayBlock = baseRay; G.solid = baseSolid;
   foeRules.blocked = (p) => nearVillage(p.x, p.z) < 2;
   foeRules.playerSafe = () => inVillage(G.pos.x, G.pos.z);
   foeRules.ground = (px, pz) => OW.terrain!.heightAt(px, pz);
@@ -440,7 +441,7 @@ export function openWorld(x: number, z: number) {
     ground: (px: number, pz: number) => T.heightAt(px, pz),
     danger,
     nearRuin: (px: number, pz: number) => poisNear(T.world, px, pz, 90).some((p) => (p.type === 'ruin' || p.type === 'wreck') && rectDist(p.rect, px, pz) < 60),
-    forbidden: (px: number, pz: number) => nearVillage(px, pz) < 35 || baseHit(px, -1e9, pz, 0.7) || (T.water(px, pz)?.depth ?? 0) > 0.5 || [...OW.structs.values()].some((s) => rectDist(s.poi.rect, px, pz) < 1),
+    forbidden: (px: number, pz: number) => nearVillage(px, pz) < 35 || baseHit(px, T.heightAt(px, pz), pz, 0.7) || (T.water(px, pz)?.depth ?? 0) > 0.5 || [...OW.structs.values()].some((s) => rectDist(s.poi.rect, px, pz) < 1),
   };
   setCreatureEnv(envHooks);
   setRobotEnv(envHooks);
@@ -462,7 +463,7 @@ export function closeWorld() {
   queue = []; lastChunk = '';
   G.water = null;
   foeRules.blocked = () => false; foeRules.playerSafe = () => false; foeRules.ground = null; foeRules.shielded = () => false; foeRules.shieldHit = () => {};
-  G.ground = null; G.obstacle = null;
+  G.ground = null; G.obstacle = null; G.floor = null; G.rayBlock = null; G.solid = null;
 }
 export const structFor = (id: number) => OW.structs.get(id);
 

@@ -46,6 +46,7 @@ export const ITEMS = {
   nails: { name: 'Nails', ab: 'NLS', type: 'mat', desc: 'a packet of nails. For building in wood', stack: 20 },
   rope: { name: 'Rope', ab: 'RPE', type: 'mat', desc: 'a coil of strong rope. For building', stack: 5 },
   wire: { name: 'Wire', ab: 'WIR', type: 'mat', desc: 'a coil of steel wire. For building, doors and metalwork', stack: 10 },
+  codelock: { name: 'Code Lock', ab: 'LCK', type: 'tool', desc: 'a keypad lock for a door you built: stand at the door and press L, then choose a 4-digit code. Others need the code to open it', stack: 3 },
   compass: { name: 'Compass', ab: 'CMP', type: 'tool', desc: 'carry it and a compass strip shows your heading at the top of the screen, with the way to the nearest village', stack: 1 },
   flagpole: { name: 'Flagpole', ab: 'FLG', type: 'cons', desc: 'claim land for a base: use it to pick a spot (you see how the ground will be levelled), click to raise the flag. The land around it is yours; E at the flag takes it down again', stack: 1 },
   benchkit: { name: 'Workbench Kit', ab: 'WBK', type: 'cons', desc: 'a folding workbench: use it to set it up in front of you, then E at it to craft anywhere', stack: 1 },
@@ -91,7 +92,7 @@ export const BULK: Record<ItemKey, [kg: number, litres: number]> = {
   medkit: [0.5, 1], key: [0.05, 0.05], recall: [0.4, 0.3], emp: [0.8, 0.6], flask: [0.3, 0.8], firekit: [1, 1.5],
   bread: [0.4, 1], stew: [0.6, 0.8], waterF: [1, 0.8], waterM: [1, 0.8],
   meatR: [0.5, 0.6], meatC: [0.35, 0.5], cap: [0.15, 0.4], pod: [0.5, 0.8], ncrys: [0.15, 0.2],
-  log: [4, 6], stone: [3, 2], scrap: [1.5, 1.5], circuit: [0.3, 0.4], pcore: [2, 1], hatchet: [1.5, 2], pickaxe: [2.5, 3], compass: [0.2, 0.1],
+  log: [4, 6], stone: [3, 2], scrap: [1.5, 1.5], circuit: [0.3, 0.4], pcore: [2, 1], hatchet: [1.5, 2], pickaxe: [2.5, 3], compass: [0.2, 0.1], codelock: [0.6, 0.5],
   hammer: [1, 1.5], saw: [1, 2.5], screwdriver: [0.2, 0.2], pliers: [0.3, 0.3], welder: [9, 10], torch: [6, 8], shovel: [2, 4],
   planks: [1.5, 1.5], nails: [0.3, 0.2], rope: [0.8, 1.5], wire: [0.5, 0.5], benchkit: [15, 20], flagpole: [9, 14],
   hide: [2, 3], fang: [0.1, 0.1], plate: [3, 2.5], membrane: [0.3, 1], incisor: [0.05, 0.05],
@@ -114,7 +115,7 @@ export const HANDS_ONLY = new Set<ItemKey>(['wheelL', 'wheelH', 'cannon', 'bench
 /** Weapons and gear Radek sells. */
 /** Tools and building supplies: what Radek (tools) and Zofia (supplies) charge. */
 export const TOOL_PRICE: Partial<Record<ItemKey, number>> = { hammer: 20, saw: 35, screwdriver: 10, pliers: 12, welder: 200, torch: 160, shovel: 25 };
-export const SUPPLY_PRICE: Partial<Record<ItemKey, number>> = { nails: 3, rope: 6, wire: 5 };
+export const SUPPLY_PRICE: Partial<Record<ItemKey, number>> = { nails: 3, rope: 6, wire: 5, codelock: 120 };
 export const GEAR_PRICE: Partial<Record<ItemKey, number>> = { blaster: 150, blade: 80, helmet: 60, vest: 120, armour: 260, gloves: 20, trousers: 30, boots: 40 };
 /** The backpack: how much fits (litres), the load you carry easily, and beyond `max` you are overloaded (kg). */
 export const PACK = { vol: 40, comfy: 20, max: 35 };

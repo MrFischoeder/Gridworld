@@ -38,6 +38,12 @@ export const G = {
   ground: null as ((x: number, z: number) => number) | null,
   /** Extra solid obstacles that are not voxels (tree trunks). */
   obstacle: null as ((x: number, y: number, z: number, r: number) => boolean) | null,
+  /** Built floors and stairs (open world): the highest one under (x, z) you can step onto from height y. */
+  floor: null as ((x: number, y: number, z: number) => number) | null,
+  /** Built walls and floors that stop rays (shots, eyes): distance along a unit ray, or maxT. */
+  rayBlock: null as ((o: { x: number; y: number; z: number }, d: { x: number; y: number; z: number }, maxT: number) => number) | null,
+  /** Built walls and floors: is the point inside one? */
+  solid: null as ((p: { x: number; y: number; z: number }) => boolean) | null,
   /** Standing water at a point (open world only). */
   water: null as ((x: number, z: number) => { level: number; depth: number; kind: 'fresh' | 'murky' | 'toxic' } | null) | null,
   /** Swimming (deep water): weapons are away, movement is slow. */

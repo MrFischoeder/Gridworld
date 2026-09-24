@@ -108,13 +108,23 @@
   <div class="row"><button id="start">Play</button><button id="reroll">Roll a new world</button></div>
   <div class="row" style="margin-top:10px"><button id="changelog">Changelog</button><button id="wipe">New character</button></div>
   <label>World seed<input id="seed" inputmode="numeric"></label>
-  <div id="keys">WASD — move · mouse — look · LMB — attack · 1/2 — draw the weapon from your back · Q or wheel — swap · X — sling it on your back · B — build (on your claim)<br>
+  <div id="keys">WASD — move · mouse — look · LMB — attack · 1/2 — draw the weapon from your back · Q or wheel — swap · X — sling it on your back · B — build (on your claim) · L — code lock at a door<br>
     E — talk / open / drive · V — vehicle view · ~ — console · I or Tab — backpack · M — map · H — medkit · G — EMP charge · space — jump · shift — sprint · Esc — pause</div>
 </div>
 <div id="devmap">
   <canvas id="devmapCv"></canvas>
   <div id="devmapBar"><b>DEV WORLD MAP</b> <span style="color:#ffd060">■ village</span> <span style="color:#5cc8ff">○ ruin</span> <span style="color:#ff6a4a">○ camp</span> <span style="color:#7dffc8">○ wreck</span> · <span id="devmapInfo"></span>
     <button id="devmapHome">Centre on me</button><button id="devmapClose">Close</button></div>
+</div>
+<div id="keypad" class="overlay">
+  <div class="panel">
+    <h2 id="kpTitle">Code lock</h2>
+    <div id="kpSub"></div>
+    <div id="kpShow">____</div>
+    <div id="kpKeys"></div>
+    <div id="kpMsg"></div>
+    <div id="kpActs"></div>
+  </div>
 </div>
 <div id="areamap" class="overlay">
   <div class="panel">

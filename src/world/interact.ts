@@ -15,7 +15,7 @@ import { nearPlant, plantPrompt, harvest, type PlantNode } from './flora';
 import { nearFire, cookAll, fireHasWork } from './cooking';
 import { gatherTarget, gatherPrompt, strike, type Target } from './gather';
 import { nearBench, type Bench } from './benches';
-import { nearDoor, toggleDoor, buildHint, buildOk } from './building';
+import { nearDoor, toggleDoor, buildHint, buildOk, doorPrompt, lockMenu } from './building';
 import { nearFlag, takeDownFlag, isPlacing, confirmPlacing, placingHint, placingOk, type SavedClaim } from './claims';
 import { openBench } from '../ui/craft';
 import { openAreaMap } from '../ui/areamap';
@@ -74,7 +74,7 @@ export function updateEntities(dt: number, time: number) {
   nearCook = !busy && !nearFood && !nearWork && !nearClaim && G.char.loc === 'overworld' && !!nearFire();
   nearGather = busy || nearFood || nearWork || nearClaim || nearCook ? null : gatherTarget();
   nearWater = G.char.loc === 'overworld' && !nearFood && !nearCook && !nearWork && !nearClaim && !nearGather && !nearNpc && !nearChest && !nearBoard && !nearStash && !nearVehicle ? waterSource(loadedWells()) : null;
-  if (nearGate) { prompt.className = ''; prompt.textContent = nearGate.p.open ? 'E — shut the door' : 'E — open the door'; }
+  if (nearGate) { prompt.className = ''; prompt.textContent = doorPrompt(nearGate); }
   else if (nearNpc) { prompt.className = ''; prompt.textContent = G.isTouch ? nearNpc.name : 'E — talk to ' + nearNpc.name; }
   else if (nearLock) {
     prompt.className = 'lock';
@@ -108,6 +108,8 @@ export function updateEntities(dt: number, time: number) {
   if (enter) startStairs(enter);
 }
 
+/** L key: the code lock of the door you stand at. */
+export function lockKey() { if (nearGate) lockMenu(nearGate); }
 /** E key / use button. */
 export function interact() {
   if (driving.v) { leave(); return; }

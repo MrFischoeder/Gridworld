@@ -128,8 +128,9 @@ export function updateBolts(dt: number) {
   const body0 = V(G.pos.x, G.pos.y + 0.3, G.pos.z), body1 = V(G.pos.x, G.pos.y + 1.6, G.pos.z);
   for (let i = bolts.length - 1; i >= 0; i--) {
     const o = bolts[i]; o.life -= dt;
+    const step = o.v.length() * dt, walled = !!G.rayBlock && G.rayBlock(o.p, o.v.clone().normalize(), step) < step; // fast bolts skip thin walls otherwise
     o.p.addScaledVector(o.v, dt); o.m.position.copy(o.p);
-    let dead = o.life <= 0 || !emptyAt(o.p);
+    let dead = o.life <= 0 || walled || !emptyAt(o.p);
     // distance from the bolt to the player's body (a vertical segment)
     const cy = Math.max(body0.y, Math.min(body1.y, o.p.y)), hitD = Math.hypot(o.p.x - G.pos.x, o.p.y - cy, o.p.z - G.pos.z);
     const v = driving.v, hitR = v ? Math.max(v.spec.width, v.spec.height) * 0.6 : 0.45;
