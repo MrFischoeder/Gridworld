@@ -20,6 +20,7 @@ import { nearX, wrapDx } from '../gen/regions';
 import { EYE, STEP_UP } from './player';
 import { logLine } from '../ui/hud';
 import { openKeypad } from '../ui/keypad';
+import { syncTurrets } from './turrets';
 import type { Char } from '../save';
 
 type Claim = Char['claims'][number];
@@ -48,6 +49,11 @@ function model(c: Claim, x0: number): THREE.Group {
       const u = p.gx * C, v = p.gz * C;
       B(u, v, u + C, v + C, base - BUILD.slab, base, col);
       for (let k = 0.4; k < C; k += 0.4) L(col, [u + k, base + 0.01, v], [u + k, base + 0.01, v + C]);
+      continue;
+    }
+    if (shape === 'turret') { // the plinth; the turning head is world/turrets.ts
+      const u = p.gx * C + C / 2, v = p.gz * C + C / 2;
+      B(u - 0.4, v - 0.4, u + 0.4, v + 0.4, base, base + 0.25, col); B(u - 0.18, v - 0.18, u + 0.18, v + 0.18, base + 0.25, base + 1, col);
       continue;
     }
     if (shape === 'stairs') {
@@ -256,7 +262,7 @@ export function updateBuilding() {
     const want = qs === 'roof' ? (a.high ? ql === lv + 1 : false) : !a.high && ql === lv;
     if (!want) continue;
     const inRect = a.u >= e[0][0] && a.u <= e[2]?.[0] && a.v >= e[0][1] && a.v <= e[2]?.[1];
-    const d = qs === 'roof' || qs === 'stairs' ? (inRect ? 0.5 : 9)
+    const d = qs === 'roof' || qs === 'stairs' || qs === 'turret' ? (inRect ? (qs === 'turret' ? 0.2 : 0.5) : 9)
       : Math.hypot(a.u - Math.max(Math.min(e[0][0], e[1][0]), Math.min(Math.max(e[0][0], e[1][0]), a.u)), a.v - Math.max(Math.min(e[0][1], e[1][1]), Math.min(Math.max(e[0][1], e[1][1]), a.v)));
     if (d < best) { best = d; aimed = { c, p: q }; }
   }
@@ -275,6 +281,7 @@ export function updateBuilding() {
   };
   const e = partEnds(p);
   if (shape === 'roof') { boxLines(e[0][0], e[0][1], e[2][0], e[2][1], base - BUILD.slab, base); seg([e[0][0], base, e[0][1]], [e[2][0], base, e[2][1]]); seg([e[1][0], base, e[1][1]], [e[3][0], base, e[3][1]]); }
+  else if (shape === 'turret') { const u = p.gx * C + C / 2, v = p.gz * C + C / 2; boxLines(u - 0.4, v - 0.4, u + 0.4, v + 0.4, base, base + 1); boxLines(u - 0.3, v - 0.3, u + 0.3, v + 0.3, base + 1, base + 1.6); }
   else if (shape === 'stairs') {
     boxLines(e[0][0], e[0][1], e[2][0], e[2][1], base, base + 0.05);
     const [[au, av], [bu, bv]] = cellsOf(p).map(([gx, gz]) => [gx * C + C / 2, gz * C + C / 2]);
@@ -295,7 +302,7 @@ export function placePart() {
   if (target.problem) { logLine(target.problem); return; }
   takeAll(G.char.inv, PIECES[kind].needs);
   (target.c.parts ??= []).push(target.p);
-  saveChar(); redraw(target.c); lastKey = '';
+  saveChar(); redraw(target.c); lastKey = ''; syncTurrets();
   logLine(`${PIECES[kind].name} built.` + (lacks(kind) ? ' ' + lacks(kind) + ' for another.' : ''));
 }
 /** F: take down the part you look at. */
@@ -311,7 +318,7 @@ export function dismantle() {
   let lost = 0;
   for (const [m, n] of refund(aimed.p.k)) lost += putItems(G.char.inv, m, n, PACK.vol);
   if (aimed.p.lock && !addItem('codelock')) lost++;
-  saveChar(); redraw(aimed.c); lastKey = '';
+  saveChar(); redraw(aimed.c); lastKey = ''; syncTurrets();
   logLine(`${s.name} taken down.` + (lost ? ' Your backpack is full: some of the materials were left behind.' : ' Half the materials go back into your backpack.'));
   aimed = null;
 }

@@ -4,6 +4,12 @@ export interface Change { v: string; date: string; title: string; notes: string[
 
 export const CHANGELOG: Change[] = [
   {
+    v: '0.13.0', date: '2026-09-24', title: 'Auto turrets',
+    notes: ['Radek sells the Auto Turret (350 gold). Build it on your claim like any other part (B, Auto Turret, with 2 wire, a Screwdriver and Pliers): on the ground, on a floor or up on a roof.',
+      'A turret shoots anything hostile within about 30 m that it can see: creatures, robots, drones, bandits and raiders, but not a calm Bramble. It turns its head towards the nearest target and fires; walls, floors and the land block its view, so give it a clear field of fire (a roof is a good spot). Its shots make noise.',
+      'E at a turret switches it off or on. Taking it down with a Screwdriver gives the turret back.'],
+  },
+  {
     v: '0.12.0', date: '2026-09-24', title: 'Storeys, stairs, walls that stop bullets, code locks',
     notes: ['Build upwards: a floor on top of your walls is the roof of the room below and the floor of the one above. Walls go up to the third storey; a floor needs a wall under one of its sides or a floor next to it, and a wall up there needs a floor beside it or a wall under it.',
       'Wooden and Metal Stairs take two cells and climb one storey the way you face when you build them. Leave the stairwell open above them. You walk up stairs and stand on floors; you bump your head on the floor above.',

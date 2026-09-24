@@ -54,6 +54,17 @@ describe('building on a claim', () => {
     expect(rayLocal([0, 5, 3], [1, 0, 0], 20, boxes)).toBe(20); // over the top
     expect(rayLocal([3, 0.5, 3], [0, 1, 0], 20, solids([{ k: 'roofM', gx: 1, gz: 1, d: 0, lv: 1 }]))).toBeCloseTo(2.3);
   });
+  it('puts turrets on the ground, floors and roofs, not in the air or in each other', () => {
+    const t: Part = { k: 'turret', gx: 2, gz: 2, d: 0, lv: 0 };
+    expect(partProblem([], t)).toBeNull();
+    expect(partProblem([t], { ...t })).toMatch(/already/);
+    expect(partProblem([], { ...t, lv: 1 })).toMatch(/floor or a roof/);
+    const roof: Part = { k: 'roofM', gx: 2, gz: 2, d: 0, lv: 1 };
+    expect(partProblem([wall(2, 2, 0), roof], { ...t, lv: 1 })).toBeNull();
+    expect(partProblem([{ k: 'stairsW', gx: 1, gz: 2, d: 0, lv: 0 }], t)).toMatch(/already/); // stairs and turrets share cells
+    expect(baseHitLocal([t], 5, 0, 5, 0.3)).toBe(true); // its plinth is solid
+    expect(refund('turret')).toEqual([['turretkit', 1], ['wire', 1]]); // the turret itself comes back
+  });
   it('gives back half the materials', () => {
     expect(refund('wallW')).toEqual([['planks', 2], ['nails', 1]]);
     expect(refund('roofM')).toEqual([['scrap', 1]]);

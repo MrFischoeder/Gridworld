@@ -13,7 +13,8 @@ export interface Lock { code: string; on: boolean; auth: string[] }
  * u = gx·cell. Slabs cover the cell (gx, gz) at the top of storey lv - 1. Stairs start in cell (gx, gz) and climb
  * towards d (0 +u, 1 +v, 2 -u, 3 -v) through the next cell.
  */
-export interface Part { k: PieceKind; gx: number; gz: number; d: number; lv?: number; open?: boolean; lock?: Lock }
+/** `off`: a turret switched off. */
+export interface Part { k: PieceKind; gx: number; gz: number; d: number; lv?: number; open?: boolean; lock?: Lock; off?: boolean }
 const C = BUILD.cell, S = BUILD.storey, H = BUILD.wallH, T = BUILD.thick / 2;
 const STEP = [[1, 0], [0, 1], [-1, 0], [0, -1]];
 
@@ -40,13 +41,13 @@ export function partEnds(p: Part): [number, number][] {
 export function slotKeys(p: Part): string[] {
   const s = shapeOf(p), lv = lvOf(p);
   if (s === 'wall' || s === 'door') return [`e:${lv}:${p.gx}:${p.gz}:${p.d}`];
-  return cellsOf(p).map(([x, z]) => `${s === 'roof' ? 'r' : 's'}:${lv}:${x}:${z}`);
+  return cellsOf(p).map(([x, z]) => `${s === 'roof' ? 'r' : 's'}:${lv}:${x}:${z}`); // stairs and turrets share the cells
 }
 
 /** The slot for a part of this shape nearest to the claim-local point (u, v): the closest cell edge, or the cell. */
 export function snap(shape: Shape, u: number, v: number): Pick<Part, 'gx' | 'gz' | 'd'> {
   const fu = u / C, fv = v / C, gx = Math.floor(fu), gz = Math.floor(fv), a = fu - gx, b = fv - gz;
-  if (shape === 'roof' || shape === 'stairs') return { gx, gz, d: 0 };
+  if (shape === 'roof' || shape === 'stairs' || shape === 'turret') return { gx, gz, d: 0 };
   const best = Math.min(a, 1 - a, b, 1 - b);
   if (best === b) return { gx, gz, d: 0 };
   if (best === 1 - b) return { gx, gz: gz + 1, d: 0 };
@@ -60,7 +61,7 @@ export const stairDir = (yaw: number) => { const fu = -Math.sin(yaw), fv = -Math
 export function partProblem(parts: Part[], p: Part): string | null {
   const s = shapeOf(p), lv = lvOf(p), ends = partEnds(p);
   if (ends.some(([u, v]) => Math.hypot(u, v) > CLAIM.flat - 0.3)) return 'Build on the levelled ground round your flag.';
-  if (s === 'roof' ? lv < 1 || lv > BUILD.levels : lv < 0 || lv > BUILD.levels - 1) return s === 'roof' ? 'Floors and roofs go on top of the walls: look up.' : 'That is as high as you can build.';
+  if (s === 'roof' || s === 'turret' ? lv < (s === 'roof' ? 1 : 0) || lv > BUILD.levels : lv < 0 || lv > BUILD.levels - 1) return s === 'roof' ? 'Floors and roofs go on top of the walls: look up.' : 'That is as high as you can build.';
   if ((s === 'wall' || s === 'door') && ends.some(([u, v]) => u === 0 && v === 0)) return 'The flagpole is in the way.';
   if (s !== 'roof' && s !== 'wall' && s !== 'door' && cellsOf(p).some(([x, z]) => (x === 0 || x === -1) && (z === 0 || z === -1))) return 'The flagpole is in the way.';
   const mine = new Set(slotKeys(p));
@@ -77,6 +78,8 @@ export function partProblem(parts: Part[], p: Part): string | null {
   } else if (s === 'stairs') {
     if (cellsOf(p).some(([x, z]) => slabAt(x, z, lv + 1))) return 'There is a floor over it: the stairs need headroom.';
     if (lv > 0 && cellsOf(p).some(([x, z]) => !slabAt(x, z, lv))) return 'Stairs up here need a floor under them.';
+  } else if (s === 'turret') {
+    if (lv > 0 && !slabAt(p.gx, p.gz, lv)) return 'A turret up here needs a floor or a roof under it.';
   } else if (lv > 0) {
     const [a, b] = p.d === 0 ? [[p.gx, p.gz - 1], [p.gx, p.gz]] : [[p.gx - 1, p.gz], [p.gx, p.gz]];
     if (!has((q) => edge(q, p.gx, p.gz, p.d, lv - 1)) && !slabAt(a[0], a[1], lv) && !slabAt(b[0], b[1], lv)) return 'Up here a wall needs a floor beside it or a wall under it.';
@@ -93,6 +96,7 @@ export function solids(parts: Part[]): Box[] {
   for (const p of parts) {
     const s = shapeOf(p), base = floorH(lvOf(p));
     if (s === 'stairs') continue;
+    if (s === 'turret') { const u = p.gx * C + C / 2, v = p.gz * C + C / 2; out.push({ b: [u - 0.4, base, v - 0.4, u + 0.4, base + 1, v + 0.4], slab: false }); continue; }
     if (s === 'roof') { const u = p.gx * C, v = p.gz * C; out.push({ b: [u, base - BUILD.slab, v, u + C, base, v + C], slab: true }); continue; }
     const [[u0, v0]] = partEnds(p), du = p.d === 0 ? 1 : 0, dv = 1 - du;
     const piece = (a0: number, a1: number, h0: number, h1: number) =>
@@ -153,6 +157,6 @@ export function rayLocal(o: [number, number, number], d: [number, number, number
 /** Is the point inside a wall, a shut door or a slab? */
 export const solidAt = (u: number, h: number, v: number, boxes: Box[]) => boxes.some(({ b }) => u >= b[0] && u <= b[3] && h >= b[1] && h <= b[4] && v >= b[2] && v <= b[5]);
 /** Half of what a part took, given back when it is taken down. */
-export const refund = (k: PieceKind) => PIECES[k].needs.map(([m, n]) => [m, Math.floor(n / 2)] as const).filter(([, n]) => n > 0);
+export const refund = (k: PieceKind) => PIECES[k].refund ?? PIECES[k].needs.map(([m, n]) => [m, Math.floor(n / 2)] as [typeof m, number]).filter(([, n]) => n > 0);
 /** A 4-digit code? */
 export const validCode = (s: string) => /^\d{4}$/.test(s);
