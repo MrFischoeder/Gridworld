@@ -48,7 +48,9 @@ import { trailMarks, drawTrailMark } from './trails';
 export const LOAD_R = 4, UNLOAD_R = 6, STRUCT_LOAD = 170, STRUCT_UNLOAD = 240;
 /** Surface structures are drawn in outline style: folds and edges, floor tiles every 2 m, wall seams every 4 m. */
 const OUTLINE = { floor: 2, wall: 4 };
-const ROAD_COLOR = 0xc8ffd8, TILE_COLOR = 0x4dff7e, ICE_COLOR = 0xbfffe8;
+const TILE_COLOR = 0x4dff7e, ICE_COLOR = 0xbfffe8;
+/** Roads and trails: a lighter, shaded strip over the ground (drawn over the terrain fill, under its grid lines). */
+const ROAD_FILL = new THREE.MeshBasicMaterial({ color: 0x0f4020, transparent: true, opacity: 0.8, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -2 });
 /** Chunks reaching above this height (m) are snowy: pale lines. */
 const SNOW_LINE = 115;
 
@@ -124,37 +126,22 @@ function buildChunk(cx: number, cz: number, lod = 1): Chunk {
     const x = x0 + i * STEP, az = z0 + j * STEP;
     if (!hole(x, az, x, az + STEP)) lines.push(x, H(i, j), az, x, H(i, j + 1), az + STEP);
   }
-  // roads: brighter lines along both edges, sampled every metre of the road
-  const road: number[] = [];
+  // roads and mountain trails: a shaded strip on the ground, no lines (a way worn into the land, not a highway)
+  const road: number[] = [], trails = f.roads.filter((r) => r.h);
   for (const r of f.roads) {
-    if (r.h) continue; // trails are drawn below
+    const hw = r.h ? r.half * 0.8 : r.half;
     for (let k = 0; k + 1 < r.pts.length; k++) {
-      const [ax, az] = r.pts[k], [bx, bz] = r.pts[k + 1], L = Math.hypot(bx - ax, bz - az), nx = -(bz - az) / L, nz = (bx - ax) / L;
-      for (let s = 0; s < L; s += 1) {
-        const e = Math.min(L, s + 1);
-        for (const side of (Math.floor(s) % 3 === 0 ? [-2.2, 0, 2.2] : [-2.2, 2.2])) {
-          const px = ax + (bx - ax) * s / L + nx * side, pz = az + (bz - az) * s / L + nz * side;
-          const qx = ax + (bx - ax) * e / L + nx * side, qz = az + (bz - az) * e / L + nz * side;
-          if (px < x0 || px >= x0 + CHUNK || pz < z0 || pz >= z0 + CHUNK) continue;
-          if (holes.some((h) => inRect(h, px, pz) || inRect(h, qx, qz))) continue;
-          road.push(px, T.heightAt(px, pz) + 0.1, pz, qx, T.heightAt(qx, qz) + 0.1, qz);
-        }
-      }
-    }
-  }
-  // mountain trails: dashed edges along the bench
-  const trails = f.roads.filter((r) => r.h);
-  for (const r of trails) {
-    for (let k = 0; k + 1 < r.pts.length; k++) {
-      const [ax, az] = r.pts[k], [bx, bz] = r.pts[k + 1], L = Math.hypot(bx - ax, bz - az), nx = -(bz - az) / L, nz = (bx - ax) / L;
+      const [ax, az] = r.pts[k], [bx, bz] = r.pts[k + 1], L = Math.hypot(bx - ax, bz - az);
+      if (L < 0.01) continue;
+      const nx = -(bz - az) / L * hw, nz = (bx - ax) / L * hw;
       for (let s = 0; s < L; s += 2) {
-        const e = Math.min(L, s + 1.1);
-        for (const side of [-r.half, r.half]) {
-          const px = ax + (bx - ax) * s / L + nx * side, pz = az + (bz - az) * s / L + nz * side;
-          const qx = ax + (bx - ax) * e / L + nx * side, qz = az + (bz - az) * e / L + nz * side;
-          if (px < x0 || px >= x0 + CHUNK || pz < z0 || pz >= z0 + CHUNK) continue;
-          road.push(px, T.heightAt(px, pz) + 0.08, pz, qx, T.heightAt(qx, qz) + 0.08, qz);
-        }
+        const e = Math.min(L, s + 2), px = ax + (bx - ax) * s / L, pz = az + (bz - az) * s / L, qx = ax + (bx - ax) * e / L, qz = az + (bz - az) * e / L;
+        const mx = (px + qx) / 2, mz = (pz + qz) / 2;
+        if (mx < x0 || mx >= x0 + CHUNK || mz < z0 || mz >= z0 + CHUNK) continue;
+        if (holes.some((h) => inRect(h, mx, mz))) continue;
+        const P = (x: number, z: number) => [x, T.heightAt(x, z) + 0.04, z];
+        const a = P(px - nx, pz - nz), b = P(px + nx, pz + nz), c = P(qx + nx, qz + nz), d = P(qx - nx, qz - nz);
+        road.push(...a, ...b, ...c, ...a, ...c, ...d);
       }
     }
   }
@@ -164,7 +151,7 @@ function buildChunk(cx: number, cz: number, lod = 1): Chunk {
   // pale lines on the ice caps and high up the mountains (snow)
   let top = 0; for (let k = 0; k < lat.length; k++) top = Math.max(top, lat[k]);
   group.add(new THREE.Mesh(fg, sharedFill()), new THREE.LineSegments(lg, sharedLine(Math.abs(z0 + CHUNK / 2) > POLAR_Z + 800 || top > SNOW_LINE ? ICE_COLOR : GRID)));
-  if (road.length) { const rg = new THREE.BufferGeometry(); rg.setAttribute('position', new THREE.Float32BufferAttribute(road, 3)); group.add(new THREE.LineSegments(rg, sharedLine(ROAD_COLOR))); }
+  if (road.length) { const rg = new THREE.BufferGeometry(); rg.setAttribute('position', new THREE.Float32BufferAttribute(road, 3)); group.add(new THREE.Mesh(rg, ROAD_FILL)); }
   const caves = chunkCaves(T, cx, cz), wells = chunkWells(T, cx, cz), plants = chunkPlants(T, cx, cz).filter((p) => !T.claimAt(p.x, p.z, 2));
   // felled trees and broken rocks (player changes, keyed by their index in the generated list) are left out
   const trees: Tree[] = [], stumps: Tree[] = [], rocks: Rock[] = [];

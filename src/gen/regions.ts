@@ -164,7 +164,7 @@ function baseInfo(world: number, rx: number, rz: number): RegionInfo {
   const key = world + ':' + rx + ':' + rz;
   let r = baseCache.get(key);
   if (r) return r;
-  if (baseCache.size > 4096) baseCache.clear();
+  if (baseCache.size > 40000) baseCache.clear();
   const R = rng(hash(world, rx, rz, 0x7e61)), ri = rangeInt(R);
   const forest = R(), rough = R();
   const pois: Poi[] = [];
@@ -200,7 +200,7 @@ export function regionInfo(world: number, rx: number, rz: number): RegionInfo {
   const key = world + ':' + rx + ':' + rz;
   let r = cache.get(key);
   if (r) return r;
-  if (cache.size > 4096) cache.clear();
+  if (cache.size > 40000) cache.clear();
   const base = baseInfo(world, rx, rz), pois = [...base.pois];
   // Bandit camps: not in the start region nor within ~480 m of a village, near the middle of their region (so camps
   // never crowd each other), and clear of every ruin around so their flat ground does not overlap.

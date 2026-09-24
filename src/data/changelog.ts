@@ -4,6 +4,12 @@ export interface Change { v: string; date: string; title: string; notes: string[
 
 export const CHANGELOG: Change[] = [
   {
+    v: '0.19.0', date: '2026-09-24', title: 'Roads between towns',
+    notes: ['Roads now join the villages to each other: some towns sit at a crossroads with three or more roads, others at the end of a single one. Follow any road and it takes you to a town.',
+      'Roads no longer lead to ruins, bandit camps or crash sites: they give them a wide berth, so those have to be found by exploring. Roads also go round the mountains.',
+      'Roads and mountain trails are drawn as a plain shaded path worn into the ground instead of a two-lane road with edge lines.'],
+  },
+  {
     v: '0.18.0', date: '2026-09-24', title: 'More mountains, lakes and wells',
     notes: ['Mountains are twice as common: about a quarter of the land now rises into massifs, closer together, with more peaks, trails and caves. The country round Gridholm stays as it was.',
       'Two and a half times as many lakes: more regions have one, and many also have a smaller pond. Clean water is the most common; murky water lies in the low valleys, toxic water mostly near the ruins (and rarely anywhere).',

@@ -78,8 +78,25 @@ export class Terrain {
     const pads = poisNear(this.world, cx, cz, half + 80)
       .filter((p) => rectDist(p.rect, cx, cz) <= half * 1.42 + p.flat + p.blend)
       .map((poi) => ({ poi, y: this.padY(poi) }));
-    const roads: Road[] = [];
-    const take = (road: Road) => { const b = roadBounds(road), m = road.half + (road.h ? TRAIL_BLEND : ROAD_BLEND); if (b.x1 + m >= r.x0 && b.x0 - m <= r.x1 && b.z1 + m >= r.z0 && b.z0 - m <= r.z1) roads.push(road); };
+    const roads: Road[] = [], seen = new Set<string>();
+    const near = (b: Rect, m: number) => b.x1 + m >= r.x0 && b.x0 - m <= r.x1 && b.z1 + m >= r.z0 && b.z0 - m <= r.z1;
+    // a road between villages runs for kilometres and passes through many regions: take it once, and only the
+    // stretches that come near the rect (trails keep all their points: their markers count along them)
+    const take = (road: Road) => {
+      const m = road.half + (road.h ? TRAIL_BLEND : ROAD_BLEND);
+      if (seen.has(road.id) || !near(roadBounds(road), m)) return;
+      seen.add(road.id);
+      if (road.h) { roads.push(road); return; }
+      let run: [number, number][] = [];
+      const flush = () => { if (run.length > 1) roads.push({ ...road, pts: run }); run = []; };
+      for (let i = 0; i + 1 < road.pts.length; i++) {
+        const [ax, az] = road.pts[i], [bx, bz] = road.pts[i + 1];
+        if (!near({ x0: Math.min(ax, bx), z0: Math.min(az, bz), x1: Math.max(ax, bx), z1: Math.max(az, bz) }, m + 1)) { flush(); continue; }
+        if (!run.length) run.push(road.pts[i]);
+        run.push(road.pts[i + 1]);
+      }
+      flush();
+    };
     const [ax, az] = regionOf(cx - 600, cz - 600), [bx, bz] = regionOf(cx + 600, cz + 600);
     for (let rx = ax; rx <= bx; rx++) for (let rz = az; rz <= bz; rz++) regionRoads(this.world, rx, rz).forEach(take);
     // mountain trails reach further from the summit their region holds

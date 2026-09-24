@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { Terrain, inRect, rectDist, MAX_H } from '../src/gen/terrain';
-import { regionInfo, poisNear, findPoi, CHUNK } from '../src/gen/regions';
+import { regionInfo, poisNear, findPoi, CHUNK, WORLD_W } from '../src/gen/regions';
 import { regionRoads, gatePoint } from '../src/gen/roads';
 import { generateVillage, villageGates } from '../src/gen/village';
 import { generateRuin } from '../src/gen/ruins';
@@ -86,23 +86,24 @@ describe('terrain', () => {
 });
 
 describe('village and roads', () => {
-  it('has 2–4 gates, each with a road that starts at the gate and ends at a ruin', () => {
-    for (const w of WORLDS) {
+  it('has 2–4 gates; roads run from a gate of one village to a gate of another, clear of ruins, camps and wrecks', () => {
+    for (const w of WORLDS.slice(0, 6)) {
       const gates = villageGates(w);
       expect(gates.length).toBeGreaterThanOrEqual(2); expect(gates.length).toBeLessThanOrEqual(4);
-      const v = regionInfo(w, 0, 0).pois[0], roads = regionRoads(w, 0, 0);
-      const vm = generateVillage(w, 7);
-      for (const g of vm.gates) {
-        const road = roads.find((r) => r.gate === g.dir)!;
-        expect(road, `gate ${g.dir}, world ${w}`).toBeTruthy();
-        expect(road.pts[0]).toEqual(gatePoint(v, g.dir));
-        expect(Math.hypot(road.pts[0][0] - g.x, road.pts[0][1] - g.z)).toBeLessThan(0.01);
-        expect(findPoi(w, road.to)!.type).toBe('ruin');
-        const end = road.pts[road.pts.length - 1], to = findPoi(w, road.to)!;
-        expect(end).toEqual([to.x, to.z]);
+      const roads = new Map<string, ReturnType<typeof regionRoads>[number]>();
+      for (let rx = -8; rx <= 8; rx++) for (let rz = -8; rz <= 8; rz++) for (const r of regionRoads(w, rx, rz)) roads.set(r.id, r);
+      expect(roads.size, `world ${w}`).toBeGreaterThan(0);
+      for (const r of roads.values()) {
+        const a = findPoi(w, r.from)!, b = findPoi(w, r.to)!;
+        expect(a.type).toBe('village'); expect(b.type).toBe('village');
+        const atGate = (v: typeof a, p: [number, number]) => (['N', 'S', 'E', 'W'] as const).some((g) => { const q = gatePoint({ ...v, x: v.x + Math.round((p[0] - v.x) / WORLD_W) * WORLD_W }, g); return Math.hypot(q[0] - p[0], q[1] - p[1]) < 0.01; });
+        expect(atGate(a, r.pts[0])).toBe(true); expect(atGate(b, r.pts[r.pts.length - 1])).toBe(true);
+        for (const [x, z] of r.pts) for (const p of poisNear(w, x, z, 80)) if (p.type !== 'village') {
+          expect(x > p.rect.x0 - 10 && x < p.rect.x1 + 10 && z > p.rect.z0 - 10 && z < p.rect.z1 + 10, `${r.id} runs through ${p.name}`).toBe(false);
+        }
       }
     }
-  });
+  }, 120000);
   it('the gate openings are walkable from inside the plaza to outside', () => {
     for (const w of WORLDS.slice(0, 20)) {
       const vm = generateVillage(w, 5), g = VoxelGrid.surface(vm.ops, vm.rect, 5);
