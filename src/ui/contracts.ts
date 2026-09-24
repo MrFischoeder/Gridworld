@@ -7,7 +7,7 @@ import { ITEMS } from '../data/items';
 import { calcStats, saveChar, gainXp } from '../character';
 import { offersAt, payFor, CONTRACT, type Contract } from '../gen/contracts';
 import { trade } from '../gen/market';
-import { findPoi, worldDist, nearX, allVillages, villageSeed, GRIDHOLM_ID } from '../gen/regions';
+import { findPoi, worldDist, nearX, allVillages, villageSeed, GRIDHOLM_ID, type Poi } from '../gen/regions';
 import { fmtTime } from '../core/time';
 import { loadedVillage } from '../world/overworld';
 import { carried, takeFrom, putAway, stores } from './market';
@@ -91,7 +91,7 @@ export const contractLines = () => G.char.contracts.map((k) => `▸ ${k.kind ===
 /** Map and compass markers. */
 export const contractMarkers = () => G.char.contracts.map((k) => ({ x: nearX(k.tx, G.pos.x), z: k.tz, label: `${ITEMS[k.good].name} → ${k.toName}` }));
 
-/** Take offer o (at its village's store, or on Gridholm's notice board). A haul loads its crates where it starts. */
+/** Take offer o (at its village's store, or on a notice board). A haul loads its crates where it starts. */
 export function acceptOffer(o: Contract): string {
   const c = G.char, home = findPoi(c.world, o.from);
   if (!home) return 'That notice is gone.';
@@ -115,9 +115,9 @@ export function dropContract(id: string): string {
   c.contracts.splice(c.contracts.indexOf(k), 1); saveChar();
   return k.kind === 'haul' ? `Contract dropped. ${k.fromName} keeps your deposit.` : 'Contract dropped.';
 }
-/** Gridholm's notice board: its own delivery work, and orders from the villages round about (within 9 km). */
-export function boardContracts(): Contract[] {
-  const c = G.char, home = findPoi(c.world, GRIDHOLM_ID);
+/** A village's notice board: its own delivery work, and orders from the villages round about (within 9 km). */
+export function boardContracts(at?: Poi): Contract[] {
+  const c = G.char, home = at ?? findPoi(c.world, GRIDHOLM_ID);
   if (!home) return [];
   const fresh = (o: Contract) => !c.taken.includes(o.id) && !c.contracts.some((k) => k.id === o.id);
   const own = offersAt(c.world, home, villageSeed(c.world, home), c.time).filter(fresh);

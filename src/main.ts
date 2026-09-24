@@ -13,7 +13,7 @@ import { updateLoot } from './world/loot';
 import { updateEntities } from './world/interact';
 import { attack, animateVM, refreshWeaponVisibility, vmScene, syncViewmodel, updateGun, refreshGunLook, syncHeld } from './world/weapons';
 import { updateFx, updateStreaks } from './world/fx';
-import { updateStreaming, updateFieldEnemies, placeName, OW, groundAt, treeHit, animateCamps, keepOnPlanet } from './world/overworld';
+import { updateStreaming, updateFieldEnemies, placeName, OW, groundAt, treeHit, animateCamps, keepOnPlanet, villageHere } from './world/overworld';
 import { collides, setWaterNote } from './world/player';
 import { animateWater } from './world/water';
 import { updateSurvival } from './world/survival';
@@ -88,7 +88,7 @@ function frame(now: number) {
   if (el.clock.textContent !== clock) el.clock.textContent = clock;
   if ((clockT -= dt) <= 0) {
     clockT = 1;
-    if (refreshBoard()) { saveChar(); if (outdoors && Math.hypot(G.pos.x, G.pos.z) < 120) logLine('New notices are up on the board.'); }
+    { const up = refreshBoard(); if (up.length) { saveChar(); const v = outdoors ? villageHere(G.pos.x, G.pos.z) : undefined; if (v && up.includes(v.id)) logLine('New notices are up on the board.'); } }
   }
   if (live) {
     if (driving.v) updateDriving(dt); else moving = updatePlayer(dt);

@@ -38,6 +38,8 @@ export interface Char {
   vehicles: VehicleState[];
   /** Notice board: offers on display, the counter that numbers new notices, and the posting they are from (core/time boardPeriod). */
   board: { seq: number; offers: Quest[]; stamp?: number };
+  /** The notice boards of the other villages (by village id), the same shape, made when you first read one. */
+  boards: Record<number, { seq: number; offers: Quest[]; stamp?: number }>;
   /** Accepted quests (talk / active / ready). */
   quests: Quest[];
   /** Bandit camps cleared by the player: camp id -> when (ms). They are empty until CAMP_RESPAWN_MS has passed. */
@@ -81,7 +83,7 @@ export const ARENA_V3_KEY = 'gridArena.character.v3', V2_KEY = 'gridArena.charac
 export const newChar = (): Char => ({
   v: 3, level: 1, xp: 0, gold: 0, world: (Math.random() * 1e6) | 0,
   inv: Array(INV_SIZE).fill(null), mods: Array(MOD_SIZE).fill(null), opened: {}, unlocked: {}, killed: {},
-  loc: 'overworld', ow: null, dungeon: null, discovered: {}, containers: {}, vehicles: [], board: { seq: 0, offers: [], stamp: boardPeriod(START_TIME) }, quests: [], camps: {}, time: START_TIME, gunMods: [null, null, null], kcal: KCAL.start, stomach: 0, water: 100, harvest: {}, benches: [], claims: [],
+  loc: 'overworld', ow: null, dungeon: null, discovered: {}, containers: {}, vehicles: [], board: { seq: 0, offers: [], stamp: boardPeriod(START_TIME) }, boards: {}, quests: [], camps: {}, time: START_TIME, gunMods: [null, null, null], kcal: KCAL.start, stomach: 0, water: 100, harvest: {}, benches: [], claims: [],
   hands: [{ k: 'blaster', n: 1 }], back: [{ k: 'blade', n: 1 }, null], wear: {}, pid: Math.random().toString(36).slice(2, 10), towns: {}, market: {}, ledger: {}, caravans: {}, escort: null, contracts: [], taken: [],
 });
 

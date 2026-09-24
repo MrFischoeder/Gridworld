@@ -4,6 +4,14 @@ export interface Change { v: string; date: string; title: string; notes: string[
 
 export const CHANGELOG: Change[] = [
   {
+    v: '0.32.0', date: '2026-09-24', title: 'Notice boards everywhere',
+    notes: ['Every village now has a notice board on its plaza, next to the map board. Each posts its own four notices: bounties, hunts, errands for its own residents and bandit camps to clear, all measured from that village.',
+      'Villages out in wilder country pay more for the same work: about a third more for every step of danger.',
+      'A board\'s rewards are claimed at the board that posted them, and errands are run for the resident of that village. The quest tracker, compass and maps point you back there when a job is done.',
+      'Each board also lists its village\'s delivery contracts and the supply orders of villages round about.',
+      'The same bandit camp is no longer posted twice on one board.'],
+  },
+  {
     v: '0.31.0', date: '2026-09-24', title: 'Deliveries on the notice board',
     notes: ['The notice board on Gridholm\'s plaza now has a Deliveries section: Gridholm\'s own delivery contracts plus supply orders from villages within nine kilometres, the four nearest of each posting.',
       'Take a contract right at the board, or drop one you no longer want (a haul\'s deposit is lost). The board shows when the next notices go up.'],

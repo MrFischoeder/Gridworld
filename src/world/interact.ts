@@ -56,7 +56,7 @@ export function updateEntities(dt: number, time: number) {
     return;
   }
   nearVehicle = G.char.loc === 'overworld' ? vehicleSpot() : null;
-  const bd = G.char.loc === 'overworld' && OW.village?.home ? OW.village.board : null;
+  const bd = G.char.loc === 'overworld' && OW.village ? OW.village.board : null;
   nearBoard = !!bd && Math.hypot(bd.x - pos.x, bd.z + 0.8 - pos.z) < 2.6;
   const mb = G.char.loc === 'overworld' && OW.village ? OW.village.mapBoard : null;
   nearMap = !!mb && Math.hypot(mb.x - pos.x, mb.z + 1 - pos.z) < 2.4;

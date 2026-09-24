@@ -3,9 +3,10 @@ import { G, W } from '../game';
 import { escortLine } from './caravans';
 import { raidLine } from './villageraid';
 import { contractLines, contractMarkers } from '../ui/contracts';
-import { generateQuest, compass, km, type Quest } from '../gen/quests';
+import { generateQuest, compass, km, boardPay, GRIDHOLM_TOWN, type Quest, type QuestTown } from '../gen/quests';
+import { ringDanger } from '../gen/danger';
 import { boardPeriod } from '../core/time';
-import { worldDist, nearX, wrapDx } from '../gen/regions';
+import { worldDist, nearX, wrapDx, findPoi, GRIDHOLM_ID, type Poi } from '../gen/regions';
 import type { CreatureKind } from '../data/creatures';
 import { ITEMS, RELIC_KEYS, type ItemKey } from '../data/items';
 import { NPC_INFO, type NpcRole } from '../data/npcs';
@@ -20,39 +21,63 @@ import type { DungeonMap } from '../gen/dungeon';
 
 export const MAX_ACTIVE = 3, OFFERS = 4;
 
-// ---------- the board ----------
-/** Fill the board up to OFFERS notices (numbered, so the same world always posts the same notices in order). */
-export function boardOffers(): Quest[] {
-  const b = G.char.board, T = OW.terrain;
+// ---------- the boards ----------
+// Every village has a notice board. Gridholm's is `char.board` (as ever); the others live in `char.boards` by
+// village id, made the first time you read one. Each posts its own numbered notices, measured from its village.
+type Board = typeof G.char.board;
+export function boardOf(id: number): Board {
+  const c = G.char;
+  if (id === GRIDHOLM_ID) return c.board;
+  return (c.boards[id] ??= { seq: 0, offers: [], stamp: boardPeriod(c.time) });
+}
+/** The village as the quest generator sees it: where it is, how well it pays, who lives there (from the loaded residents). */
+export function questTown(poi: Poi): QuestTown {
+  if (poi.id === GRIDHOLM_ID) return GRIDHOLM_TOWN;
+  const g = findPoi(G.char.world, GRIDHOLM_ID)!, names: QuestTown['names'] = {};
+  for (const n of W.npcs) if (n.town === poi.name && n.role !== 'villager') names[n.role] ??= n.name;
+  return { id: poi.id, name: poi.name, x: poi.x, z: poi.z, home: false, pay: boardPay(ringDanger(Math.max(0, worldDist(poi.x, poi.z, g.x, g.z) - 60))), names };
+}
+/** Who to talk to about a quest, and where its reward is claimed. */
+export const giverOf = (q: Quest) => q.giverName ?? NPC_INFO[q.giver!].name;
+export const townOf = (q: Quest) => q.town ?? GRIDHOLM_ID;
+export const boardName = (q: Quest) => (q.townName ?? 'Gridholm') + "'s board";
+/** Fill a board up to OFFERS notices (numbered, so the same world always posts the same notices in order). */
+export function boardOffers(poi?: Poi): Quest[] {
+  const T = OW.terrain, town = poi ? questTown(poi) : GRIDHOLM_TOWN, b = boardOf(town.id);
   if (!T) return b.offers;
   while (b.offers.length < OFFERS) {
-    const taken = [...G.char.quests, ...b.offers].map((q) => q.item).filter((k): k is ItemKey => !!k);
-    b.offers.push(generateQuest(T, b.seq++, taken));
+    const all = [...G.char.quests, ...b.offers], taken = all.map((q) => q.item).filter((k): k is ItemKey => !!k);
+    const camps = all.map((q) => q.place?.campId).filter((k): k is number => k !== undefined);
+    b.offers.push(generateQuest(T, b.seq++, taken, town, camps));
   }
   return b.offers;
 }
 /**
- * Every BOARD_HOURS game hours new notices go up: the two oldest offers of each posting come down and fresh
- * ones (numbered on from board.seq) take their place. Accepted quests are not touched. Returns true when
- * something changed.
+ * Every BOARD_HOURS game hours new notices go up on every board: the two oldest offers of each posting come
+ * down and fresh ones (numbered on from its seq) take their place when the board is read next (Gridholm's at
+ * once). Accepted quests are not touched. Returns the ids of the boards that changed.
  */
-export function refreshBoard(): boolean {
-  const b = G.char.board, now = boardPeriod(G.char.time);
-  if (b.stamp === undefined || b.stamp > now) { b.stamp = now; return false; } // saves from before the clock
-  if (now === b.stamp) return false;
-  const n = Math.min(b.offers.length, 2 * (now - b.stamp));
-  b.stamp = now; b.offers.splice(0, n); boardOffers();
-  return true;
+export function refreshBoard(): number[] {
+  const c = G.char, now = boardPeriod(c.time), out: number[] = [];
+  const all: [number, Board][] = [[GRIDHOLM_ID, c.board], ...Object.entries(c.boards).map(([k, b]) => [+k, b] as [number, Board])];
+  for (const [id, b] of all) {
+    if (b.stamp === undefined || b.stamp > now) { b.stamp = now; continue; } // saves from before the clock
+    if (now === b.stamp) continue;
+    const n = Math.min(b.offers.length, 2 * (now - b.stamp));
+    b.stamp = now; b.offers.splice(0, n); out.push(id);
+  }
+  if (out.includes(GRIDHOLM_ID)) boardOffers();
+  return out;
 }
-export function accept(id: string): string {
-  const b = G.char.board, i = b.offers.findIndex((q) => q.id === id);
+export function accept(id: string, poi?: Poi): string {
+  const b = boardOf(poi?.id ?? GRIDHOLM_ID), i = b.offers.findIndex((q) => q.id === id);
   if (i < 0) return '';
   if (G.char.quests.length >= MAX_ACTIVE) return `You already carry ${MAX_ACTIVE} tasks. Finish or drop one first.`;
   const q = b.offers.splice(i, 1)[0];
   q.state = q.kind === 'fetch' ? 'talk' : 'active';
   if (q.kind === 'camp') delete G.char.camps[q.place!.campId!]; // word is, they are back
-  G.char.quests.push(q); boardOffers(); saveChar();
-  return q.kind === 'fetch' ? `Taken. Talk to ${NPC_INFO[q.giver!].name}.` : 'Taken: ' + q.title + '.';
+  G.char.quests.push(q); boardOffers(poi); saveChar();
+  return q.kind === 'fetch' ? `Taken. Talk to ${giverOf(q)}.` : 'Taken: ' + q.title + '.';
 }
 export function abandon(id: string): string {
   const q = G.char.quests.find((x) => x.id === id);
@@ -69,9 +94,10 @@ function reward(q: Quest) {
   if (q.kind !== 'bounty' && Math.random() < 0.35) giveLoot(RELIC_KEYS[(Math.random() * RELIC_KEYS.length) | 0]);
   showToast('Quest complete'); saveChar();
 }
-/** Board-given quests are claimed at the board. */
-export function claim(id: string): string {
+/** Board-given quests are claimed at the board that posted them. */
+export function claim(id: string, poi?: Poi): string {
   const q = G.char.quests.find((x) => x.id === id && x.state === 'ready' && x.kind !== 'fetch');
+  if (q && townOf(q) !== (poi?.id ?? GRIDHOLM_ID)) return `Claim that one at ${boardName(q)}.`;
   if (!q) return '';
   reward(q); return `Reward: ${q.reward.gold} gold and ${q.reward.xp} XP.`;
 }
@@ -79,17 +105,17 @@ export function claim(id: string): string {
 // ---------- talking to residents ----------
 export interface QuestTalk { id: string; label: string }
 /** Extra dialogue options a resident has because of the player's quests. */
-export function questOptions(role: NpcRole): QuestTalk[] {
+export function questOptions(role: NpcRole, town: number): QuestTalk[] {
   const out: QuestTalk[] = [];
   for (const q of G.char.quests) {
-    if (q.giver !== role) continue;
+    if (q.giver !== role || townOf(q) !== town) continue;
     if (q.state === 'talk') out.push({ id: q.id, label: 'About your notice on the board...' });
     if (q.state === 'ready' || (q.state === 'active' && hasItem(q.item!))) out.push({ id: q.id, label: `Here is the ${ITEMS[q.item!].name}.` });
   }
   return out;
 }
-export function questTalk(id: string): string {
-  const q = G.char.quests.find((x) => x.id === id);
+export function questTalk(id: string, town: number): string {
+  const q = G.char.quests.find((x) => x.id === id && townOf(x) === town);
   if (!q) return '';
   if (q.state === 'talk') { q.state = 'active'; saveChar(); return q.briefing!; }
   if (q.item && takeOne(q.item)) { reward(q); return `Wonderful, the ${ITEMS[q.item].name}! Here, you earned this: ${q.reward.gold} gold.`; }
@@ -103,13 +129,13 @@ export function onKill(kind: CreatureKind | 'drone' | 'bandit', questId?: string
     if (q.state !== 'active') continue;
     if (q.kind === 'bounty' && q.target === kind) {
       q.progress = (q.progress ?? 0) + 1; changed = true;
-      if (q.progress >= q.count!) { q.state = 'ready'; showToast('Bounty done'); logLine('Claim it at the notice board.'); }
+      if (q.progress >= q.count!) { q.state = 'ready'; showToast('Bounty done'); logLine(`Claim it at ${boardName(q)}.`); }
     }
     if (q.kind === 'hunt' && q.id === questId) {
       if (alpha) q.alphaDead = true; else q.killed = (q.killed ?? 0) + 1;
       changed = true;
       if (alpha) showToast(q.pack!.alpha + ' slain');
-      if (q.alphaDead && q.killed! >= q.pack!.count) { q.state = 'ready'; showToast('Hunt complete'); logLine('Report back at the notice board.'); }
+      if (q.alphaDead && q.killed! >= q.pack!.count) { q.state = 'ready'; showToast('Hunt complete'); logLine(`Report back at ${boardName(q)}.`); }
     }
   }
   if (changed) saveChar();
@@ -117,13 +143,13 @@ export function onKill(kind: CreatureKind | 'drone' | 'bandit', questId?: string
 /** A bandit camp was wiped out. */
 export function onCampCleared(campId: number) {
   for (const q of G.char.quests) if (q.kind === 'camp' && q.state === 'active' && q.place?.campId === campId) {
-    q.state = 'ready'; showToast('Camp cleared'); logLine('Report back at the notice board.'); saveChar();
+    q.state = 'ready'; showToast('Camp cleared'); logLine(`Report back at ${boardName(q)}.`); saveChar();
   }
 }
 /** A quest item was picked up. */
 export function onPickup(k: ItemKey) {
   for (const q of G.char.quests) if (q.kind === 'fetch' && q.item === k && q.state === 'active') {
-    q.state = 'ready'; showToast(ITEMS[k].name + ' found'); logLine(`Bring it to ${NPC_INFO[q.giver!].name}.`); saveChar();
+    q.state = 'ready'; showToast(ITEMS[k].name + ' found'); logLine(`Bring it to ${giverOf(q)}${q.townName ? ' in ' + q.townName : ''}.`); saveChar();
   }
 }
 const questPickupHere = (k: ItemKey) => W.pickups.some((p) => p.k === k);
@@ -156,7 +182,8 @@ export function onDungeonLoaded(map: DungeonMap) {
 // ---------- tracker (HUD) and map markers ----------
 const trackEl = $('qtrack');
 export function questTarget(q: Quest): { x: number; z: number } | null {
-  if (q.state === 'ready' || q.state === 'talk') return null;
+  if (q.state === 'ready' || q.state === 'talk') return q.town !== undefined ? findPoi(G.char.world, q.town) ?? null : null; // back to its village
+  if (q.kind === 'fetch' && hasItem(q.item!) && q.town !== undefined) return findPoi(G.char.world, q.town) ?? null;
   if (q.kind === 'hunt') return q.at!;
   if (q.kind === 'camp') return q.place!;
   if (q.kind === 'fetch' && !hasItem(q.item!)) return q.place!;
@@ -168,8 +195,9 @@ export function updateTracker(dt: number) {
   trackT = 0.4;
   const lines = G.char.quests.map((q) => {
     let s = '▸ ' + q.title;
-    if (q.state === 'talk') s += ` — talk to ${NPC_INFO[q.giver!].name}`;
-    else if (q.state === 'ready') s += q.kind === 'fetch' ? ` — bring it to ${NPC_INFO[q.giver!].name}` : ' — claim at the board';
+    const at = q.townName ? ' in ' + q.townName : '';
+    if (q.state === 'talk') s += ` — talk to ${giverOf(q)}${at}`;
+    else if (q.state === 'ready') s += q.kind === 'fetch' ? ` — bring it to ${giverOf(q)}${at}` : ` — claim at ${boardName(q)}`;
     else if (q.kind === 'bounty') s += ` — ${q.progress ?? 0}/${q.count}`;
     else if (q.kind === 'hunt') s += ` — ${q.killed ?? 0}/${q.pack!.count}${q.alphaDead ? '' : ', ' + q.pack!.alpha + ' alive'}`;
     else if (q.kind === 'camp') s += ' — clear it';
@@ -184,4 +212,4 @@ export function updateTracker(dt: number) {
   trackEl.innerHTML = lines.map((l) => `<div>${l}</div>`).join('');
 }
 export const questMarkers = (): { x: number; z: number; label: string }[] => [...contractMarkers(), ...(
-  G.char.quests.map((q) => ({ t: questTarget(q), q })).filter((m) => m.t).map(({ t, q }) => ({ x: nearX(t!.x, G.pos.x), z: t!.z, label: q.kind === 'hunt' ? q.pack!.alpha : q.kind === 'camp' ? q.place!.name : ITEMS[q.item!].name })))];
+  G.char.quests.map((q) => ({ t: questTarget(q), q })).filter((m) => m.t).map(({ t, q }) => ({ x: nearX(t!.x, G.pos.x), z: t!.z, label: q.state === 'talk' || q.state === 'ready' || (q.kind === 'fetch' && hasItem(q.item!)) ? q.townName! : q.kind === 'hunt' ? q.pack!.alpha : q.kind === 'camp' ? q.place!.name : ITEMS[q.item!].name })))];

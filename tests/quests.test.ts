@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { generateQuest, describeSpot, compass } from '../src/gen/quests';
+import { generateQuest, describeSpot, compass, boardPay, type QuestTown } from '../src/gen/quests';
 import { Terrain } from '../src/gen/terrain';
-import { findPoi } from '../src/gen/regions';
+import { findPoi, allVillages, worldDist, wrapDx } from '../src/gen/regions';
 import { regionVehicle } from '../src/gen/vehicles';
 import { hash } from '../src/core/rng';
 
@@ -47,5 +47,29 @@ describe('notice board quests', () => {
       }
     }
     expect([...kinds].sort()).toEqual(['bounty', 'camp', 'fetch', 'hunt']);
+  });
+  it('other villages post their own notices, measured from the village', () => {
+    const kinds = new Set<string>();
+    for (const w of WORLDS.slice(0, 8)) {
+      const t = new Terrain(w), v = allVillages(w)[3];
+      const town: QuestTown = { id: v.id, name: v.name, x: v.x, z: v.z, home: false, pay: boardPay(2), names: { elder: 'Elder Test' } };
+      for (let n = 0; n < 8; n++) {
+        const q = generateQuest(t, n, [], town);
+        kinds.add(q.kind);
+        expect(q).toEqual(generateQuest(t, n, [], town));
+        expect(q.id).toBe(`q${v.id}.${n}`);
+        expect(q.town).toBe(v.id);
+        expect(q.giver).not.toBe('dealer');
+        expect(q.text).not.toContain('Gridholm');
+        const p = q.kind === 'hunt' ? q.at! : q.place;
+        if (p) {
+          expect(worldDist(p.x, p.z, v.x, v.z)).toBeLessThan(2000);
+          if (q.kind !== 'bounty') expect(q.briefing ?? q.text).toContain(compass(wrapDx(p.x - v.x), p.z - v.z));
+        }
+        if (q.kind === 'fetch' && q.giver === 'elder') expect(q.giverName).toBe('Elder Test');
+      }
+      expect(generateQuest(t, 0, [], town)).not.toEqual(generateQuest(t, 0));
+    }
+    expect(kinds.size).toBeGreaterThan(2);
   });
 });

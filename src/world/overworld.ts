@@ -283,7 +283,7 @@ function loadVillageStruct(poi: Poi): Structure {
   const grid = VoxelGrid.surface(vm.ops, vm.rect, y), shown = vm.tier >= STONE_TIER ? grid : VoxelGrid.surface(vm.shown, vm.rect, y);
   const { group, mesh } = voxelObject(shown, Infinity, OUTLINE);
   group.add(villageDeco(vm, y), gateSign(vm));
-  if (vm.home) group.add(boardDeco(vm, y));
+  group.add(boardDeco(vm, y));
   group.add(mapBoardDeco(vm, y));
   group.add(drawPower(vm, T, poi.id));
   group.add(drawIndustry(vm, T, poi.id));
