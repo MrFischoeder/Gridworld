@@ -4,6 +4,12 @@ export interface Change { v: string; date: string; title: string; notes: string[
 
 export const CHANGELOG: Change[] = [
   {
+    v: '0.40.0', date: '2026-09-24', title: 'Villages of many shapes',
+    notes: ['Villages are no longer all square. Each has a wall of its own shape: square, hexagonal, octagonal or twelve-sided, with watch towers (and ladders) at its corners. Gridholm stays square.',
+      'In villages that are not square, the houses and shops arrange themselves in a ring round the plaza, each facing the middle, pushed out towards the wall and clear of the lanes from the gates. Hexagonal villages have gates to the north and south only.',
+      'The fence, the palisade and the stone wall all follow the shape, and the maps draw every village with its own outline.'],
+  },
+  {
     v: '0.39.0', date: '2026-09-24', title: 'Workers, storehouses and tribute',
     notes: ['Villagers now work every industry site: they hoe the fields, swing picks at the mine, hammer at the pumps, benches and racks, and one carries the crates, one at a time, to the storehouse at the corner of the site.',
       'Every village keeps what it makes in a storehouse. The crates stack up in front of its door as it fills, the caravans take some away, and the goods you buy at the market come out of it. When it is full, the work stops: the workers stand about and the site stands still.',
