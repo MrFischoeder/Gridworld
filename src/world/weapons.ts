@@ -7,8 +7,8 @@ import { rayWorld } from './player';
 import { foes, damageFoe } from './enemies';
 import { el } from '../ui/hud';
 import { BLASTER } from '../data/weapons';
-import { BLADE, STAMINA } from '../data/survival';
-import { spendStamina } from './survival';
+import { BLADE, STAMINA, BURN } from '../data/survival';
+import { spendStamina, burn } from './survival';
 import { makeNoise } from './noise';
 
 export const WEAPONS = [{ name: BLASTER.name, dmg: 1, rate: 0 }, { name: 'Blade', rate: BLADE.rate, dmg: BLADE.dmg }];
@@ -149,6 +149,7 @@ export function attack() {
   } else {
     // every swing costs stamina; exhausted, swings are slow and weak, whatever speeds them up otherwise
     const tired = !spendStamina(STAMINA.swing);
+    burn(BURN.swing);
     slash(tired);
     G.cooldown = tired ? BLADE.tiredRate : WEAPONS[1].rate;
   }

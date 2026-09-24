@@ -2,10 +2,10 @@
 // upgrade slots, the roof mount, the hull, and the backpack below. Drag parts between the backpack and the
 // vehicle, or click one to fit it / take it off. Tires keep their wear when taken off.
 import { G } from '../game';
-import { item, ITEMS } from '../data/items';
+import { item, ITEMS, PACK } from '../data/items';
 import { vehicleTitle, immobile, VEHICLES, ENGINE_UPGRADES } from '../data/vehicles';
 import { saveChar } from '../character';
-import { putSlot, dropStack } from '../inventory';
+import { putSlot, dropStack, roomFor, bulkOf } from '../inventory';
 import { refreshParts, type Vehicle } from '../world/vehicles';
 import type { Slot } from '../save';
 import { $ } from './hud';
@@ -61,6 +61,7 @@ function takeFrom(i: number): Slot | null {
 /** A part comes off the vehicle: into backpack slot j if it is free, else anywhere. */
 function toPack(s: Slot, j = -1): string {
   if (s.c !== undefined && s.c >= 100) delete s.c;
+  if (roomFor(G.char.inv, s.k, PACK.vol) < s.n) return `The ${item(s.k).name.toLowerCase()} is too bulky for your backpack (${Math.floor(PACK.vol - bulkOf(G.char.inv))} of ${PACK.vol} L free).`;
   if (j >= 0 && !G.char.inv[j]) { G.char.inv[j] = s; return ''; }
   if (putSlot(G.char.inv, s) > 0) return `No room in your backpack: the ${item(s.k).name.toLowerCase()} was left behind.`;
   return '';
@@ -80,6 +81,7 @@ function takeTire(i: number, to = -1): string {
   if (c < 0) return '';
   if (to >= 0 && G.char.inv[to]?.k === v.spec.wheelItem) return fitTire(i, to); // dropped on a spare: swap them
   if (c > 0 && !(to >= 0 && !G.char.inv[to]) && !G.char.inv.includes(null)) return 'Your backpack is full.';
+  if (c > 0 && roomFor(G.char.inv, v.spec.wheelItem, PACK.vol) < 1) return `The tire is too bulky for your backpack (${Math.floor(PACK.vol - bulkOf(G.char.inv))} of ${PACK.vol} L free).`;
   p.wheels[i] = -1;
   if (c === 0) return `${wheelName(v, i)}: the wrecked tire went on the scrap heap.`;
   return toPack({ k: v.spec.wheelItem, n: 1, c }, to) || `${wheelName(v, i)}: tire → backpack.`;

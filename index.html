@@ -15,8 +15,8 @@
   <div class="glow"><div id="hudL">Dungeon</div>
     <div id="stat"><div><span id="hpbar"><div id="hpfill"></div></span><span id="wname">Blaster</span></div>
       <div><span id="xpbar"><div id="xpfill"></div></span><span id="lvl">Level 1</span></div>
-      <div><span id="stbar" title="Stamina"><div id="stfill"></div></span><span class="lbl">stamina</span></div>
-      <div><span id="foodbar" class="need" title="Food"><div id="foodfill"></div></span><span id="waterbar" class="need" title="Water"><div id="waterfill"></div></span><span class="lbl">food · water</span></div></div>
+      <div><span id="stbar" title="Stamina"><div id="stfill"></div></span><span class="lbl" id="stlbl">stamina</span></div>
+      <div><span id="foodbar" class="need" title="Calories in store (the thin line: how full your stomach is)"><div id="foodfill"></div><div id="bellyfill"></div></span><span id="waterbar" class="need" title="Water"><div id="waterfill"></div></span><span class="lbl" id="foodlbl">food · water</span></div></div>
     <div id="qtrack"></div></div>
   <div id="right"><span class="t" id="hudR">Gold: 0</span><span id="clock" class="glow"></span><span id="route" class="glow">Route 0%</span><span id="veh" class="glow"></span><canvas id="mini"></canvas></div>
 </div>
@@ -45,7 +45,7 @@
       <div><h3 id="gunName">Blaster</h3><div class="grid mods" id="gunSlots"></div></div>
     </div>
     <div id="gunStats"></div>
-    <h3>Contents</h3>
+    <h3>Contents <span id="packLoad" class="sub"></span></h3>
     <div class="grid" id="inv"></div>
     <div id="detail"></div>
     <button id="packClose">Close backpack</button>

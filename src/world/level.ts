@@ -207,7 +207,7 @@ export function toVillage(how: 'death' | 'recall', id?: number) {
   const v = id !== undefined ? findPoi(c.world, id) ?? known[0] : known.reduce((a, b) => (worldDist(b.x, b.z, from.x, from.z) < worldDist(a.x, a.z, from.x, from.z) ? b : a));
   c.loc = 'overworld'; c.dungeon = null; saveChar();
   loadOverworld({ kind: 'tavern', id: v.id }); G.hp = G.S.maxHp;
-  if (how === 'death') { c.food = Math.max(c.food, 50); c.water = Math.max(c.water, 50); } // the innkeeper fed you
+  if (how === 'death') { c.kcal = Math.max(c.kcal, 1500); c.water = Math.max(c.water, 50); } // the innkeeper fed you
   showToast(how === 'death' ? 'You wake up in the tavern of ' + v.name : v.name);
   arriveVia(null);
 }

@@ -1,17 +1,18 @@
 // Backpack window: 3 relic modules, the Blaster's attachment slots, 12 backpack slots.
 // Items are dragged between slots (or selected and handled with the buttons under the grid).
 import { G } from '../game';
-import { item, type ItemKey } from '../data/items';
+import { item, BULK, PACK, type ItemKey } from '../data/items';
 import { BLASTER, SLOT_NAME, attachSlot } from '../data/weapons';
 import { calcStats, saveChar } from '../character';
-import { dropStack } from '../inventory';
+import { dropStack, bulkOf } from '../inventory';
 import { logLine, $ } from './hud';
 import { useItem } from '../world/loot';
 import { refreshGunLook } from '../world/weapons';
 import { lockPointer } from './input';
-import { slotHTML, bindSlots, itemInfo, parseId } from './slots';
+import { slotHTML, bindSlots, itemInfo, parseId, loadText } from './slots';
 
 let sel: string | null = null;
+const loadEl = $('packLoad');
 const packEl = $('pack'), invEl = $('inv'), modsEl = $('mods'), gunEl = $('gunSlots'), statsEl = $('gunStats'), detailEl = $('detail');
 let note = '';
 
@@ -27,6 +28,7 @@ function renderPack() {
   modsEl.innerHTML = c.mods.map((k, i) => slotHTML('m:' + i, { k, hint: 'Relic' }, sel === 'm:' + i)).join('');
   gunEl.innerHTML = BLASTER.slots.map((s, i) => slotHTML('w:' + i, { k: c.gunMods[i], hint: SLOT_NAME[s], cls: 'att' }, sel === 'w:' + i)).join('');
   invEl.innerHTML = c.inv.map((s, i) => slotHTML('p:' + i, { k: s?.k ?? null, n: s?.n, c: s?.c }, sel === 'p:' + i)).join('');
+  loadEl.innerHTML = loadText();
   statsEl.textContent = `damage ${(g.dmg * G.S.bm).toFixed(2)} · ${(1 / G.S.rate).toFixed(1)} shots/s · range ${g.range} m · magazine ${g.mag} · reload ${g.reload.toFixed(1)} s · zoom ${g.zoom}×`;
   let html = note || 'Drag items between slots. Relics go in the modules, attachments in the Blaster slots.';
   const acts: [string, string][] = [];
@@ -54,6 +56,7 @@ function move(from: string, to: string): string {
   if (!fits(tw, j, a.k)) return tw === 'm' ? 'Only relics go in the modules.' : `That does not fit the ${SLOT_NAME[BLASTER.slots[j]].toLowerCase()} slot.`;
   if (b && !fits(fw, i, b.k)) return 'Swap it with an empty slot or a matching item instead.';
   if (fw === 'p' && tw === 'p') { dropStack(c.inv, i, c.inv, j); return ''; }
+  if (tw === 'p' && bulkOf(c.inv) - (b ? BULK[b.k][1] * b.n : 0) + BULK[a.k][1] > PACK.vol + 1e-6) return 'No room for it in your backpack.';
   // one of the two is a single-item slot (module / attachment): move one item, swap back what was there
   const put = (w: string, idx: number, k: ItemKey | null, n = 1, cond?: number) => {
     if (w === 'm') c.mods[idx] = k; else if (w === 'w') c.gunMods[idx] = k;

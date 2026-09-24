@@ -5,7 +5,7 @@ import { G, W } from '../game';
 import { floorNear, floorAt } from '../core/voxel';
 import { emptyAt, EYE } from './player';
 import { burst, addFx } from './fx';
-import { ITEMS, RELIC_KEYS, ATTACH_KEYS, HEAL, item, type ItemKey } from '../data/items';
+import { ITEMS, RELIC_KEYS, ATTACH_KEYS, HEAL, BULK, item, type ItemKey } from '../data/items';
 import { addItem, gainXp, saveChar, takeOne, progress, progressHas, dungeonKey, depth as depthNow } from '../character';
 import { putItems } from '../inventory';
 import { openTransfer } from '../ui/transfer';
@@ -15,7 +15,7 @@ import { foes, damageFoe } from './enemies';
 import { closePack } from '../ui/backpack';
 import { onPickup } from './quests';
 import { toVillage } from './level';
-import { NOURISH, RAW_SICK, FOOD_COLOR } from '../data/survival';
+import { NOURISH, RAW_SICK, FOOD_COLOR, STOMACH, cantEat } from '../data/survival';
 import { nourish } from './survival';
 import { makeNoise } from './noise';
 import { canRecall } from './level';
@@ -78,7 +78,7 @@ export function updateLoot(dt: number, time: number) {
     if (Math.hypot(p.p.x - G.pos.x, p.p.z - G.pos.z) < 1.3 && Math.abs(p.p.y - body.y) < 2.5 && p.age > 0.4) {
       const where = addItem(p.k);
       if (where) { scene.remove(p.g); W.pickups.splice(i, 1); logLine(ITEMS[p.k].name + ' → backpack'); saveChar(); if (item(p.k).type === 'quest') onPickup(p.k); }
-      else if (!p.warned) { p.warned = true; logLine('Backpack full'); }
+      else if (!p.warned) { p.warned = true; logLine('No room in your backpack'); }
     }
   }
 }
@@ -151,10 +151,15 @@ export function useItem(k: ItemKey): boolean {
   const food = NOURISH[k];
   if (food) {
     const c = G.char;
-    if ((food.food ?? 0) > 0 && !(food.water ?? 0) && c.food >= 99) { logLine('You are not hungry.'); return false; }
-    if ((food.water ?? 0) > 0 && !(food.food ?? 0) && c.water >= 99) { logLine('You are not thirsty.'); return false; }
+    const kcal = food.kcal ?? 0, kg = kcal ? BULK[k][0] : 0; // food fills the stomach by its weight; drinks do not
+    if (kcal) {
+      const no = cantEat(kg, c.kcal, c.stomach);
+      if (no === 'sated') { logLine('You are not hungry.'); return false; }
+      if (no === 'full') { logLine(`Your stomach is full. Wait until you have digested a little (${(STOMACH.cap - c.stomach).toFixed(1)} of ${STOMACH.cap} kg free, this weighs ${kg} kg).`); return false; }
+    }
+    if ((food.water ?? 0) > 0 && !kcal && c.water >= 99) { logLine('You are not thirsty.'); return false; }
     if (!takeOne(k)) { logLine('None left: ' + ITEMS[k].name); return false; }
-    nourish(food.food ?? 0, food.water ?? 0, food.hp ?? 0);
+    nourish(kcal, food.water ?? 0, food.hp ?? 0, kg);
     if (k === 'waterF' || k === 'waterM') {
       addItem('flask'); // the flask is kept
       if (k === 'waterM' && Math.random() < 0.35) { G.hp -= 8; G.dmgFlash = 0.4; logLine('The murky water turns your stomach. -8 HP'); }

@@ -3,8 +3,8 @@ import * as THREE from 'three';
 import { G } from '../game';
 import { rayVoxel, emptyAt as spaceEmptyAt, type Vec3Like } from '../core/voxel';
 import { V } from './render';
-import { STAMINA } from '../data/survival';
-import { drainStamina, spendStamina } from './survival';
+import { STAMINA, BURN } from '../data/survival';
+import { drainStamina, spendStamina, load, loadSpeed, burn } from './survival';
 
 export const R = 0.3, H = 1.7, EYE = 1.55, EPS = 1e-4, GRAV = 20, JUMP = 7.2;
 /** Log hook for water messages (set by the HUD owner; keeps this module free of UI imports). */
@@ -83,10 +83,13 @@ export function updatePlayer(dt: number): boolean {
     if ((toxicWarn -= dt) <= 0) { toxicWarn = 4; onWaterNote('The water burns your skin! Get out!'); }
   }
   // sprinting and swimming cost stamina; out of breath you can only walk (and swim slowly)
-  const wantSprint = (keys.ShiftLeft || keys.ShiftRight) && m > 0.1 && !G.swimming;
-  const sprint = wantSprint && drainStamina(STAMINA.sprint, dt);
+  // a heavy pack slows you down (and burns more); overloaded you cannot run or jump
+  const L = load(), over = L.state === 'over';
+  const wantSprint = (keys.ShiftLeft || keys.ShiftRight) && m > 0.1 && !G.swimming && !over;
+  const sprint = wantSprint && drainStamina(STAMINA.sprint * (L.state === 'heavy' ? 1.4 : 1), dt);
   const swimTired = G.swimming && m > 0.1 && !drainStamina(STAMINA.swim, dt);
-  const speed = (sprint ? 9 : 6) * G.S.speed * (G.swimming ? (swimTired ? 0.25 : 0.45) : wet > 0.45 ? 0.65 : 1);
+  const speed = (sprint ? 9 : 6) * G.S.speed * loadSpeed(L.kg) * (G.swimming ? (swimTired ? 0.25 : 0.45) : wet > 0.45 ? 0.65 : 1);
+  G.activity = m < 0.1 || G.trans ? 1 : sprint ? BURN.sprint : G.swimming ? BURN.swim : BURN.walk;
   const fw = V(-Math.sin(G.yaw), 0, -Math.cos(G.yaw)), rt = V(Math.cos(G.yaw), 0, -Math.sin(G.yaw));
   const want = fw.multiplyScalar(f * speed).addScaledVector(rt, s * speed);
   const k = G.swimming ? 5 : G.onGround ? 14 : 3;
@@ -96,7 +99,7 @@ export function updatePlayer(dt: number): boolean {
     const target = w.level - SWIM_DEPTH - 0.05;
     vel.y += ((target - pos.y) * 5 - vel.y) * Math.min(1, dt * 6);
   } else {
-    if ((keys.Space || G.touchJump) && G.onGround && spendStamina(STAMINA.jump)) { vel.y = JUMP * (wet > 0.45 ? 0.6 : 1); G.onGround = false; }
+    if ((keys.Space || G.touchJump) && G.onGround && !over && spendStamina(STAMINA.jump)) { vel.y = JUMP * (wet > 0.45 ? 0.6 : 1); G.onGround = false; burn(BURN.jump); }
     vel.y -= GRAV * dt;
   }
   const was = G.onGround;

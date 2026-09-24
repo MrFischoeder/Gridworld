@@ -1,6 +1,9 @@
 // Item slots shared by every inventory window (backpack, chests and trunks, vehicle service):
 // how a slot looks, and drag and drop with the mouse or a finger (pointer events).
-import { item, type ItemKey } from '../data/items';
+import { G } from '../game';
+import { item, type ItemKey, BULK, PACK } from '../data/items';
+import { NOURISH } from '../data/survival';
+import { weightOf, bulkOf } from '../inventory';
 
 export interface SlotView {
   k: ItemKey | null; n?: number;
@@ -29,9 +32,17 @@ export function slotHTML(id: string, v: SlotView, selected = false): string {
 }
 
 /** One line about an item for the detail area under the slots. */
+/** "12.4 / 20 kg · 18 / 40 L" for the backpack headers (amber when heavy, red when overloaded or full). */
+export function loadText(): string {
+  const inv = G.char.inv, kg = weightOf(inv), l = bulkOf(inv);
+  const cls = kg > PACK.max ? 'bad' : kg > PACK.comfy ? 'warn' : '';
+  return `<span class="${cls}">${kg.toFixed(1)} kg${kg > PACK.max ? ' OVERLOADED' : kg > PACK.comfy ? ' heavy' : ''}</span> (easy up to ${PACK.comfy}, max ${PACK.max}) · <span class="${l >= PACK.vol - 0.5 ? 'bad' : ''}">${l.toFixed(1)} / ${PACK.vol} L</span>`;
+}
 export function itemInfo(k: ItemKey, c?: number): string {
   const it = item(k);
-  return `<b>${it.name}</b>${c !== undefined ? ` <span class="${c < 35 ? 'bad' : ''}">${Math.round(c)}%</span>` : ''}<br>${it.desc}`;
+  const [kg, l] = BULK[k], food = NOURISH[k];
+  return `<b>${it.name}</b>${c !== undefined ? ` <span class="${c < 35 ? 'bad' : ''}">${Math.round(c)}%</span>` : ''}<br>${it.desc}` +
+    `<br><span class="sub">${kg} kg · ${l} L${food?.kcal ? ` · ${food.kcal} kcal (${Math.round(food.kcal / kg)} kcal/kg)` : ''}</span>`;
 }
 
 export interface SlotHandlers {

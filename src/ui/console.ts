@@ -45,7 +45,7 @@ const COMMANDS: Record<string, { help: string; run: (args: string[]) => string }
       return 'It is now ' + fmtClock(G.char.time) + '.';
     },
   },
-  eat: { help: 'fill food, water and stamina', run: () => { G.char.food = 100; G.char.water = 100; G.stamina = 100; G.exhausted = false; return 'Fed and watered.'; } },
+  eat: { help: 'fill food, water and stamina', run: () => { G.char.kcal = 3000; G.char.stomach = 0; G.char.water = 100; G.stamina = 100; G.exhausted = false; return 'Fed and watered.'; } },
   clear: { help: 'clear this log', run: () => { out.innerHTML = ''; return ''; } },
   ambush: { help: 'set up a bandit ambush ahead (stand on a road)', run: () => (forceAmbush() ? 'Something moves by the road ahead...' : 'Stand on a road, away from places.') },
   spawn: {

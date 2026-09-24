@@ -2,13 +2,13 @@
 // items move freely between them like inside the backpack. Drag an item onto any slot (stacks merge, other
 // items swap places), or click / tap it to send it straight to the other side. Whatever you leave stays inside.
 import { G } from '../game';
-import { item } from '../data/items';
+import { item, PACK } from '../data/items';
 import { moveStack, dropStack, countFree } from '../inventory';
 import { calcStats, saveChar } from '../character';
 import type { Container, Slot } from '../save';
 import { $ } from './hud';
 import { lockPointer } from './input';
-import { slotHTML, bindSlots, itemInfo, parseId } from './slots';
+import { slotHTML, bindSlots, itemInfo, parseId, loadText } from './slots';
 
 export interface TransferSpec {
   title: string; subtitle: string; boxLabel: string;
@@ -31,7 +31,7 @@ function render(msg?: string) {
   el.box.innerHTML = b.items.map((s, i) => slotHTML('b:' + i, view(s))).join('');
   el.gold.innerHTML = b.gold > 0 ? `Gold: ${b.gold}<button data-gold="1">Take gold</button>` : '';
   el.inv.innerHTML = inv.map((s, i) => slotHTML('p:' + i, view(s))).join('');
-  el.invInfo.textContent = `(${inv.length - countFree(inv)}/${inv.length}) · gold ${G.char.gold}`;
+  el.invInfo.innerHTML = `(${inv.length - countFree(inv)}/${inv.length}) · ${loadText()} · gold ${G.char.gold}`;
   el.all.style.display = b.items.some(Boolean) || b.gold > 0 ? '' : 'none';
   if (msg !== undefined) el.msg.textContent = msg;
 }
@@ -44,16 +44,17 @@ bindSlots(el.root, {
     const [fw, i] = parseId(from), [tw, j] = parseId(to), src = list(fw), s = src[i];
     if (!s) return;
     const name = item(s.k).name;
-    dropStack(src, i, list(tw), j);
+    const cap = (w: string) => (w === 'p' ? PACK.vol : undefined);
+    if (!dropStack(src, i, list(tw), j, cap(tw), cap(fw))) { render(fw === tw ? '' : 'It does not fit in your backpack.'); return; }
     changed(fw === tw ? '' : (tw === 'b' ? 'Stored ' : 'Took ') + name + '.');
   },
   click(id) {
     if (!spec) return;
     const [w, i] = parseId(id), src = list(w), s = src[i];
     if (!s) return;
-    const name = item(s.k).name, moved = moveStack(src, i, list(w === 'b' ? 'p' : 'b'));
+    const name = item(s.k).name, moved = moveStack(src, i, list(w === 'b' ? 'p' : 'b'), w === 'b' ? PACK.vol : undefined);
     const where = w === 'b' ? 'Took ' : 'Stored ';
-    changed(moved ? `${where}${name}${moved > 1 ? ' ×' + moved : ''}.` : w === 'b' ? 'Your backpack is full.' : `The ${spec.boxLabel.toLowerCase()} is full.`);
+    changed(moved ? `${where}${name}${moved > 1 ? ' ×' + moved : ''}.` : w === 'b' ? 'No room in your backpack.' : `The ${spec.boxLabel.toLowerCase()} is full.`);
   },
   hover(id) {
     if (!spec) return;
@@ -68,8 +69,8 @@ el.all.onclick = () => {
   if (!spec) return;
   takeGold();
   let left = false;
-  spec.box.items.forEach((_, i) => { moveStack(spec!.box.items, i, G.char.inv); if (spec!.box.items[i]) left = true; });
-  changed(left ? 'Your backpack is full; the rest stays here.' : 'Took everything.');
+  spec.box.items.forEach((_, i) => { moveStack(spec!.box.items, i, G.char.inv, PACK.vol); if (spec!.box.items[i]) left = true; });
+  changed(left ? 'Your backpack is full (slots or bulk); the rest stays here.' : 'Took everything.');
 };
 el.close.onclick = () => closeTransfer();
 

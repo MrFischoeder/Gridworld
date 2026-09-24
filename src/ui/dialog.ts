@@ -102,7 +102,7 @@ dlgEl.addEventListener('click', (e) => {
   if (b) {
     const k = b.dataset.k as keyof typeof ITEMS, p = +b.dataset.p!;
     if (c.gold < p) return renderShop('Not enough gold.');
-    if (!addItem(k)) return renderShop('Your backpack is full.');
+    if (!addItem(k)) return renderShop('No room in your backpack (slots or bulk).');
     c.gold -= p; calcStats(); saveChar(); return renderShop('Bought: ' + ITEMS[k].name + '.');
   }
   const qb = t.closest<HTMLElement>('[data-q]');
@@ -127,9 +127,9 @@ dlgEl.addEventListener('click', (e) => {
       break;
     }
     case 'rest':
-      if (G.hp >= G.S.maxHp && c.food >= 70 && c.water >= 70) renderTalk('You look well rested already. Save your coin.');
+      if (G.hp >= G.S.maxHp && c.kcal >= 2100 && c.water >= 70) renderTalk('You look well rested already. Save your coin.');
       else if (c.gold < 10) renderTalk('Ten gold for a bed, love. Come back when you have it.');
-      else { c.gold -= 10; G.hp = G.S.maxHp; c.food = Math.max(c.food, 70); c.water = Math.max(c.water, 70); saveChar(); renderTalk('A bowl of soup, a jug of water, and you sleep like a stone. (HP restored, fed and watered)'); }
+      else { c.gold -= 10; G.hp = G.S.maxHp; c.kcal = Math.max(c.kcal, 2100); c.stomach = Math.max(c.stomach, 1); c.water = Math.max(c.water, 70); saveChar(); renderTalk('A bowl of soup, a jug of water, and you sleep like a stone. (HP restored, fed and watered)'); }
       break;
     case 'rumour': renderTalk(RUMOURS[(Math.random() * RUMOURS.length) | 0]); break;
     case 'chat': renderTalk(VILLAGER_LINES[(Math.random() * VILLAGER_LINES.length) | 0]); break;

@@ -1,6 +1,7 @@
 // Character rules: stats from level and equipped relics, inventory, XP.
 import { G } from './game';
-import { ITEMS, item, type ItemKey } from './data/items';
+import { ITEMS, PACK, item, type ItemKey } from './data/items';
+import { roomFor } from './inventory';
 import { saveChar as persist } from './save';
 import { showToast, logLine } from './ui/hud';
 import { BLASTER, gunStats } from './data/weapons';
@@ -19,11 +20,14 @@ export function calcStats() {
   G.hp = Math.min(G.hp, G.S.maxHp);
 }
 
-/** Adds an item; new relics go straight into a free module. Returns where it went, or null when full. */
+/** How many more of k the backpack has room for (by bulk). */
+export const packRoom = (k: ItemKey) => roomFor(G.char.inv, k, PACK.vol);
+/** Adds an item; new relics go straight into a free module. Returns where it went, or null when it does not fit. */
 export function addItem(k: ItemKey, n = 1, quiet = false): 'mod' | 'inv' | null {
   const it = item(k), c = G.char;
   if (it.type === 'relic' && !quiet) { const free = c.mods.indexOf(null); if (free >= 0 && !c.mods.includes(k)) { c.mods[free] = k; calcStats(); return 'mod'; } }
   if (it.type === 'relic' && quiet) { const free = c.mods.indexOf(null); if (free >= 0) { c.mods[free] = k; return 'mod'; } }
+  if (packRoom(k) < n) return null;
   if (it.stack) { const s = c.inv.find((x) => x && x.k === k && x.n < it.stack!); if (s) { s.n += n; return 'inv'; } }
   const f = c.inv.indexOf(null); if (f < 0) return null;
   c.inv[f] = { k, n }; return 'inv';

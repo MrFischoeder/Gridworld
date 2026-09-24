@@ -5,6 +5,7 @@ import type { VehicleModel, VehicleParts } from './data/vehicles';
 import type { Quest } from './gen/quests';
 import { START_TIME, boardPeriod } from './core/time';
 import { wrapC } from './gen/regions';
+import { KCAL } from './data/survival';
 
 /** An item stack. `c` is the condition in percent of a used part (worn tires); such items do not stack. */
 export interface Slot { k: ItemKey; n: number; c?: number }
@@ -38,8 +39,8 @@ export interface Char {
   camps: Record<string, number>;
   /** Game clock in game minutes since the world began (core/time). */
   time: number;
-  /** Survival: how fed and how watered you are, 0..100 (data/survival.ts). */
-  food: number; water: number;
+  /** Survival (data/survival.ts): calories in store, food in the stomach (kg), and water 0..100. */
+  kcal: number; stomach: number; water: number;
   /** Attachments fitted to the Blaster, one per slot of data/weapons BLASTER.slots (optic, barrel, magazine). */
   gunMods: (ItemKey | null)[];
   /** Picked plants (gen/flora keys, "crys:<dungeonKey>:<i>" for dungeon crystals) -> game time picked; gone once grown back. */
@@ -53,7 +54,7 @@ export const ARENA_V3_KEY = 'gridArena.character.v3', V2_KEY = 'gridArena.charac
 export const newChar = (): Char => ({
   v: 3, level: 1, xp: 0, gold: 0, world: (Math.random() * 1e6) | 0,
   inv: Array(INV_SIZE).fill(null), mods: Array(MOD_SIZE).fill(null), opened: {}, unlocked: {}, killed: {},
-  loc: 'overworld', ow: null, dungeon: null, discovered: {}, containers: {}, vehicles: [], board: { seq: 0, offers: [], stamp: boardPeriod(START_TIME) }, quests: [], camps: {}, time: START_TIME, gunMods: [null, null, null], food: 100, water: 100, harvest: {},
+  loc: 'overworld', ow: null, dungeon: null, discovered: {}, containers: {}, vehicles: [], board: { seq: 0, offers: [], stamp: boardPeriod(START_TIME) }, quests: [], camps: {}, time: START_TIME, gunMods: [null, null, null], kcal: KCAL.start, stomach: 0, water: 100, harvest: {},
 });
 
 interface V2 { level?: number; xp?: number; gold?: number; world?: number; inv?: (Slot | null)[]; mods?: (ItemKey | null)[] }
@@ -86,7 +87,9 @@ export function loadChar(storage: Pick<Storage, 'getItem'> | null = safeStorage(
   try {
     const raw = storage?.getItem(SAVE_KEY) ?? storage?.getItem(ARENA_V3_KEY);
     if (raw) {
-      const c = Object.assign(newChar(), JSON.parse(raw)) as Char;
+      const c = Object.assign(newChar(), JSON.parse(raw)) as Char & { food?: number };
+      // food used to be a 0..100 bar: it becomes the same share of the calorie store
+      if (typeof c.food === 'number') { if (!('kcal' in JSON.parse(raw))) c.kcal = Math.round(c.food / 100 * KCAL.max); delete c.food; }
       if (c.loc === 'dungeon' && !c.dungeon) c.loc = 'overworld';
       return c;
     }

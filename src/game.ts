@@ -54,6 +54,8 @@ export const G = {
   /** The Blaster with its attachments (character.calcStats), rounds in the magazine, reload timer, aiming. */
   /** Stamina (not saved: you wake rested) and whether you ran it dry (exhausted until it recovers). */
   stamina: 100, exhausted: false, effortT: 0,
+  /** How hard the body works this frame (1 = at rest; data/survival BURN), set by the player's movement. */
+  activity: 1,
   gun: { ...BLASTER.base } as GunStats, ammo: BLASTER.base.mag, reloadT: 0, aiming: false, touchAim: false,
   hitFlash: 0, dmgFlash: 0,
 };
