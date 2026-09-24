@@ -241,6 +241,67 @@ export function updateBandits(dt: number, time: number) {
     think(b, dt, time); animate(b, dt);
   }
   updateBolts(dt);
+  updateCorpses(dt);
+}
+
+// ---------- dying ----------
+// A killed bandit is no longer a foe (out of W.bandits at once), but the body stays a while: the weapon flies from
+// his hand, his knees give, he topples away from the blow (backwards when hit from the front), bounces once, lies
+// still for a few seconds and then sinks into the ground.
+interface Corpse { b: Bandit; t: number; dir: 1 | -1; lie: number; drop: { o: THREE.Object3D; v: THREE.Vector3; spin: THREE.Vector3; rest: boolean }[]; feet: number; slow: number }
+const corpses: Corpse[] = [];
+const FALL = 0.85, LIE = 6, SINK = 1.6;
+const groundUnder = (x: number, z: number, fallback: number) => { const g = G.ground ? G.ground(x, z) : -Infinity; return Number.isFinite(g) && g > fallback - 3 ? Math.max(g, fallback - 0.2) : fallback; };
+/** Take `b` out of the fight and let him fall (away from `from`, when given). */
+export function fallBandit(b: Bandit, from?: THREE.Vector3) {
+  const i = W.bandits.indexOf(b); if (i >= 0) W.bandits.splice(i, 1);
+  const j = b.group.indexOf(b); if (j >= 0) b.group.splice(j, 1);
+  // falls backwards if the blow came from in front of him, else forwards
+  const front = from ? Math.cos(Math.atan2(from.x - b.p.x, from.z - b.p.z) - b.heading) > 0 : Math.random() < 0.5;
+  const drop: Corpse['drop'] = [];
+  b.g.position.copy(b.p); b.g.rotation.y = b.heading; b.g.updateMatrixWorld(true);
+  for (const o of [...b.fig.rig.armR.hand.children.slice(1), ...b.fig.rig.armL.hand.children.slice(1)]) { // the weapon (and the shield) fly loose
+    scene.attach(o);
+    const out = V(Math.sin(b.heading), 0, Math.cos(b.heading)).multiplyScalar(front ? 1.2 : -1.2);
+    drop.push({ o, v: V(out.x + (Math.random() - 0.5) * 1.5, 2.2 + Math.random(), out.z + (Math.random() - 0.5) * 1.5), spin: V((Math.random() - 0.5) * 9, (Math.random() - 0.5) * 6, (Math.random() - 0.5) * 9), rest: false });
+  }
+  b.fig.rig.kit = 'none';
+  b.mat.color.setHex(0xffffff);
+  for (const o of b.g.children) if (o instanceof THREE.Sprite) o.visible = false; // the boss's name tag
+  // lie along the ground where the head comes down: stop short of flat on a rise, a little past it on a slope down
+  const dir = front ? -1 : 1, feet = b.p.y - 0.9, hx = b.p.x + Math.sin(b.heading) * dir * 1.6, hz = b.p.z + Math.cos(b.heading) * dir * 1.6;
+  const slope = Math.max(-0.35, Math.min(0.6, Math.atan2(groundUnder(hx, hz, feet) - feet, 1.6)));
+  corpses.push({ b, t: 0, dir, lie: Math.PI / 2 - 0.06 - slope, drop, feet, slow: b.role === 'leader' ? 1.3 : 1 });
+}
+function updateCorpses(dt: number) {
+  for (let i = corpses.length - 1; i >= 0; i--) {
+    const c = corpses[i], b = c.b, f = b.fig;
+    c.t += dt / c.slow;
+    const t = c.t;
+    // knees buckle (0–0.3 s), then the body topples about the feet with gravity's ease-in, a small bounce on landing
+    const buckle = Math.min(1, t / 0.3), fall = Math.max(0, Math.min(1, (t - 0.15) / (FALL - 0.15)));
+    let th = fall * fall * c.lie;
+    if (t > FALL) { const k = t - FALL; th = c.lie - Math.abs(Math.sin(k * 14)) * Math.exp(-k * 9) * 0.22; }
+    f.g.rotation.x = c.dir * th;
+    // knees give, then the body comes to rest on its side of the torso and head (not half in the ground)
+    f.g.position.y = -0.9 - 0.25 * buckle * (1 - fall) + 0.18 * fall;
+    f.legL.rotation.x = -0.9 * buckle * (1 - fall * 0.7); f.legR.rotation.x = -0.5 * buckle * (1 - fall * 0.7);
+    poseRig(f.rig, { swing: t < FALL + 0.3 ? Math.sin(t * 13) * 0.6 * (1 - Math.min(1, t / (FALL + 0.3))) + c.dir * 0.8 * fall : c.dir * 0.8 });
+    if (t < 0.25) b.mat.color.setHex(0xffffff); else b.mat.color.setHex(b.role === 'leader' ? 0xa84a36 : 0xa87a3a); // the colour drains away
+    if (t > FALL + LIE) b.g.position.y = b.p.y - (t - FALL - LIE) / SINK * 1.2; // sinking
+    for (const d of c.drop) {
+      if (d.rest) { if (t > FALL + LIE) d.o.position.y -= dt * 0.75; continue; }
+      d.v.y -= 20 * dt; d.o.position.addScaledVector(d.v, dt);
+      d.o.rotation.x += d.spin.x * dt; d.o.rotation.y += d.spin.y * dt; d.o.rotation.z += d.spin.z * dt;
+      const gy = groundUnder(d.o.position.x, d.o.position.z, c.feet) + 0.04;
+      if (d.o.position.y <= gy && d.v.y < 0) {
+        d.o.position.y = gy;
+        if (d.v.y < -3) { d.v.y *= -0.3; d.v.x *= 0.5; d.v.z *= 0.5; d.spin.multiplyScalar(0.4); } // one clatter
+        else { d.rest = true; d.o.rotation.x = Math.round(d.o.rotation.x / Math.PI) * Math.PI; d.o.rotation.z = Math.PI / 2 * Math.round(d.o.rotation.z / (Math.PI / 2)); }
+      }
+    }
+    if (t > FALL + LIE + SINK) { for (const d of c.drop) { scene.remove(d.o); d.o.traverse((o) => (o as THREE.Mesh).geometry?.dispose()); } removeBandit(b); corpses.splice(i, 1); }
+  }
 }
 
 // ---------- damage ----------
@@ -254,7 +315,7 @@ export function hurtBandit(b: Bandit, dmg: number) {
     return;
   }
   const at = b.p.clone(), lead = b.role === 'leader';
-  burst(at, lead ? BOSS_COLOR : BANDIT, 30, 1.4);
+  burst(at, lead ? BOSS_COLOR : BANDIT, 14, 0.9);
   const gold = Math.round((6 + Math.random() * 14) * (1 + b.level * 0.5) * (lead ? 4 : 1));
   G.char.gold += gold; logLine(`+${gold} gold`);
   for (let i = 0; i < (lead ? 6 : 2); i++) dropCrystal(at);
@@ -264,7 +325,7 @@ export function hurtBandit(b: Bandit, dmg: number) {
   if (lead && Math.random() < 0.2) dropPickup(at.clone().add(V(-0.6, 0, 0)), 'relic');
   if (lead) gainXp(40);
   const camp = b.campId;
-  removeBandit(b);
+  fallBandit(b, G.pos);
   onKill('bandit');
   if (camp !== undefined && !campAlive(camp)) {
     G.char.camps[camp] = Date.now(); saveChar();
@@ -279,6 +340,8 @@ export function removeBandit(b: Bandit) {
 }
 export function clearBandits() {
   for (const b of [...W.bandits]) removeBandit(b);
+  for (const c of corpses) { for (const d of c.drop) scene.remove(d.o); removeBandit(c.b); }
+  corpses.length = 0;
   for (const o of bolts) { scene.remove(o.m); o.m.geometry.dispose(); }
   bolts.length = 0;
 }

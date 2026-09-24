@@ -12,7 +12,7 @@ import { onRoad, caravanS, caravanOf, escortPay, CONVOY, type Caravan } from '..
 import { convoyModel } from './vehicles';
 import { VEHICLES } from '../data/vehicles';
 import { placeRoadblock, barriersNear, hurtBarrier, type Barricade } from './raiders';
-import { removeBandit } from './bandits';
+import { fallBandit } from './bandits';
 import { burst, addFx } from './fx';
 import { add } from './render';
 import { makeNoise } from './noise';
@@ -265,5 +265,5 @@ function aimGun(wg: Wagon, dt: number) {
 function shootBandit(b: Bandit) {
   b.hp -= CONVOY_GUN.dmg; b.flash = 0.12;
   if (b.state === 'idle') alert(b);
-  if (b.hp <= 0) { burst(b.p.clone(), 0xffb347, 24, 1.3); removeBandit(b); }
+  if (b.hp <= 0) { burst(b.p.clone(), 0xffb347, 12, 1); fallBandit(b); }
 }

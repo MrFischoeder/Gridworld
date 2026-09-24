@@ -4,6 +4,12 @@ export interface Change { v: string; date: string; title: string; notes: string[
 
 export const CHANGELOG: Change[] = [
   {
+    v: '0.37.0', date: '2026-09-24', title: 'Bandits fall',
+    notes: ['Killed bandits no longer vanish in a puff. The body flashes white, the weapon flies from the hand (a shield too) and clatters to the ground, the knees give, and the bandit topples away from the blow: backwards when hit from the front, forwards from behind, with a small bounce as he lands.',
+      'Bodies lie along the ground, even on a slope. Their colour drains away, and after a few seconds they sink into the ground with their weapons. The Bandit Boss falls a little slower, and his name tag goes when he does.',
+      'Bandits shot by caravan guards fall the same way.'],
+  },
+  {
     v: '0.36.0', date: '2026-09-24', title: 'Hands on the weapons',
     notes: ['People now have proper arms with elbows, and their hands hold what they carry. A bandit with a rifle holds it in both hands, the barrel lowered while he walks, and shoulders it to fire; it kicks with every shot, and the bolts come out of its muzzle.',
       'Some gunners carry a pistol instead: held low at their side, then raised in one outstretched hand to shoot.',
