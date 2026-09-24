@@ -18,6 +18,7 @@ import { drawWell, syncLakes, clearLakes } from './water';
 import { generateVillage, WALL_TIERS, STONE_TIER, type VillageMap } from '../gen/village';
 import { wallOf } from '../gen/town';
 import { drawPower, setPlantLamps, forgetPower } from './power';
+import { drawIndustry, forgetIndustry } from './industry';
 import { caravanHit, clearCaravans } from './caravans';
 import { raidHere, clearVillageRaid } from './villageraid';
 import { syncQuestWorld } from './quests';
@@ -285,6 +286,7 @@ function loadVillageStruct(poi: Poi): Structure {
   if (vm.home) group.add(boardDeco(vm, y));
   group.add(mapBoardDeco(vm, y));
   group.add(drawPower(vm, T, poi.id));
+  group.add(drawIndustry(vm, T, poi.id));
   const lamps: THREE.Object3D[] = []; group.traverse((o) => { if (o.name === 'lamp') lamps.push(o); }); setPlantLamps(poi.id, lamps);
   scene.add(group);
   const npcs: Npc[] = [];
@@ -413,7 +415,7 @@ function dropStruct(s: Structure) {
   for (const n of s.npcs) { scene.remove(n.g); W.npcs.splice(W.npcs.indexOf(n), 1); }
   if (s.village && OW.village === s.village) { OW.village = null; W.villageWalk = []; } // another village may have loaded meanwhile
   if (s.camp) despawnCamp(s.poi.id);
-  if (s.village) forgetPower(s.poi.id);
+  if (s.village) { forgetPower(s.poi.id); forgetIndustry(s.poi.id); }
   OW.structs.delete(s.poi.id);
   setStreakSources([...OW.structs.values()].map((q) => q.edges));
 }

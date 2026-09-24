@@ -19,6 +19,8 @@ export interface TownState {
   hurt?: number;
   /** How the bandit raids you were there for ended (gen/raids.ts), by raid number. */
   raids?: Record<number, 'won' | 'lost'>;
+  /** The industry site (gen/industry.ts): when you last mended it, damage bandits did at it and when, the refinery built and its materials so far. */
+  siteFixed?: number; siteHurt?: number; siteHurtT?: number; built?: boolean; bgiven?: Partial<Record<ItemKey, number>>;
 }
 
 /** What it takes to raise the wall to tier i+1 (index = the tier you have), and what the village pays for it. */

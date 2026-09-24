@@ -14,13 +14,15 @@ import { mountainMask } from './mountains';
 import { powerKind } from './town';
 import type { ItemKey } from '../data/items';
 import { caravanShift } from './caravans';
+import { industryOf, INDUSTRY } from './industry';
 
-export type Good = 'grain' | 'timber' | 'ore' | 'salt' | 'fish' | 'cloth' | 'tools' | 'meds' | 'fuel' | 'tech';
-export const GOODS: Good[] = ['grain', 'timber', 'ore', 'salt', 'fish', 'cloth', 'tools', 'meds', 'fuel', 'tech'];
+export type Good = 'grain' | 'carrots' | 'potatoes' | 'timber' | 'coal' | 'ore' | 'copper' | 'salt' | 'fish' | 'crude' | 'cloth' | 'tools' | 'meds' | 'fuel' | 'tech';
+export const GOODS: Good[] = ['grain', 'carrots', 'potatoes', 'timber', 'coal', 'ore', 'copper', 'salt', 'fish', 'crude', 'cloth', 'tools', 'meds', 'fuel', 'tech'];
 /** Base price (gold per crate), and whether the good is raw (made far out) or made (crafted near home). */
 export const GOOD_INFO: Record<Good, { base: number; raw: boolean }> = {
-  grain: { base: 20, raw: true }, timber: { base: 24, raw: true }, ore: { base: 36, raw: true }, salt: { base: 30, raw: true }, fish: { base: 26, raw: true },
-  cloth: { base: 44, raw: false }, tools: { base: 68, raw: false }, meds: { base: 85, raw: false }, fuel: { base: 52, raw: false }, tech: { base: 110, raw: false },
+  grain: { base: 20, raw: true }, carrots: { base: 16, raw: true }, potatoes: { base: 14, raw: true }, timber: { base: 24, raw: true }, coal: { base: 22, raw: true },
+  ore: { base: 36, raw: true }, copper: { base: 48, raw: true }, salt: { base: 30, raw: true }, fish: { base: 26, raw: true }, crude: { base: 40, raw: true },
+  cloth: { base: 44, raw: false }, tools: { base: 68, raw: false }, meds: { base: 85, raw: false }, fuel: { base: 72, raw: false }, tech: { base: 110, raw: false },
 };
 export const isGood = (k: ItemKey): k is Good => k in GOOD_INFO;
 /**
@@ -59,9 +61,13 @@ export function profileOf(world: number, v: Poi, seed: number): MarketProfile {
     for (const g of from) if ((r -= weight(g, making)) <= 0) return g;
     return from[from.length - 1];
   };
-  const makes: Good[] = [], wants: Good[] = [];
-  if (powerKind(seed) === 'generator') wants.push('fuel'); // the generator drinks diesel
-  while (makes.length < 2) makes.push(pick(GOODS.filter((g) => !makes.includes(g) && !wants.includes(g)), true));
+  // what it makes comes from its industry (gen/industry.ts); what it wants: the industry's needs, fuel for a
+  // diesel generator, and the rest by the land and the distance from home
+  const ind = INDUSTRY[industryOf(world, v, seed)], makes: Good[] = [], wants: Good[] = [];
+  const pool = ind.pool.slice();
+  while (makes.length < Math.min(2, pool.length)) { const g = pick(pool.filter((x) => !makes.includes(x)), true); makes.push(g); }
+  for (const g of ind.wants) if (!makes.includes(g) && wants.length < 2) wants.push(g);
+  if (powerKind(seed) === 'generator' && !makes.includes('fuel') && !wants.includes('fuel')) wants.push('fuel'); // the generator drinks diesel
   while (wants.length < 2) wants.push(pick(GOODS.filter((g) => !makes.includes(g) && !wants.includes(g)), false));
   p = { makes, wants };
   if (cache.size > 4000) cache.clear();
@@ -84,12 +90,14 @@ function caravanShiftAt(world: number, vid: number, now: number) {
   if (!s) { if (carCache.size > 500) carCache.clear(); s = caravanShift(world, vid, now, MARKET.half); carCache.set(k, s); }
   return s;
 }
-export function quote(v: Poi, seed: number, world: number, g: Good, state: MarketState, now: number, caravans = true): Quote {
-  const p = profileOf(world, v, seed), r = role(p, g), info = GOOD_INFO[g];
-  const factor = r === 'make' ? MARKET.make : r === 'want' ? MARKET.want : 1;
+export function quote(v: Poi, seed: number, world: number, g: Good, state: MarketState, now: number, caravans = true, prod = 1): Quote {
+  // `prod`: how much the village's industry puts out now (gen/industry.ts production); a wrecked site makes less and
+  // dearer, an unbuilt refinery makes nothing
+  const p = profileOf(world, v, seed), made = role(p, g), r = made === 'make' && prod <= 0 ? 'none' : made, info = GOOD_INFO[g];
+  const factor = r === 'make' ? MARKET.make * (1 + (1 - prod) * 0.9) : r === 'want' ? MARKET.want : 1;
   const ph = (hash(seed, g.length * 131 + g.charCodeAt(0), 0xd71f) % 6283) / 1000, period = 3 + (hash(seed, g.charCodeAt(1), 0xd720) % 5);
   const drift = 1 + MARKET.drift * Math.sin(now / (period * 1440) * Math.PI * 2 + ph);
-  const normal = MARKET.stock[r], shift = shiftNow(state, v.id, g, now) + (caravans ? caravanShiftAt(world, v.id, now)[g] ?? 0 : 0), stock = Math.max(0, Math.round(normal + shift));
+  const normal = MARKET.stock[r] * (r === 'make' ? Math.max(0.15, prod) : 1), shift = shiftNow(state, v.id, g, now) + (caravans ? caravanShiftAt(world, v.id, now)[g] ?? 0 : 0), stock = Math.max(0, Math.round(normal + shift));
   // a flooded stock cheapens, an emptied one dearens, gently (the shift measured against the normal stock)
   const glut = Math.min(2.5, Math.max(0.4, Math.exp(-MARKET.give * shift / (normal + 10))));
   const mid = info.base * factor * drift * glut;

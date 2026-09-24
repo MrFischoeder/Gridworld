@@ -15,6 +15,8 @@ import { questOptions, questTalk } from '../world/quests';
 import { PART_PRICE, PART_BUYBACK, type ItemKey } from '../data/items';
 import type { Slot } from '../save';
 import { plantCondition } from '../world/power';
+import { industryOf, INDUSTRY, buildPlan, handOverBuild, siteCondition } from '../gen/industry';
+import { profileOf } from '../gen/market';
 import { nextRaid, lastRaid, raidSource, raidOutcome } from '../gen/raids';
 import { findPoi } from '../gen/regions';
 import { fmtTime } from '../core/time';
@@ -97,7 +99,7 @@ function renderShop(msg?: string) {
     `<button class="opt" data-o="back">${OPT_TEXT.back}</button>`;
 }
 const SIDE_NAME = { W: 'west', E: 'east', S: 'south', N: 'north' } as const;
-/** The elder's commissions: raise the fence to the next tier (materials handed over bit by bit), and the power plant. */
+/** The elder's commissions: raise the fence to the next tier (materials handed over bit by bit), the power plant, the raids, the village's industry (and building its refinery). */
 function renderFortify(msg?: string) {
   const v = loadedVillage(town()), c = G.char;
   if (!v) { renderTalk('Hm?'); return; }
@@ -108,6 +110,13 @@ function renderFortify(msg?: string) {
   const poi = findPoi(c.world, v.id), nr = poi && nextRaid(c.world, poi, c.time), lr = poi && lastRaid(c.world, poi, c.time);
   const raids = !poi || !raidSource(c.world, poi) ? 'No bandit camp is near enough to trouble us, thank the stars.'
     : `Bandits from ${raidSource(c.world, poi)!.name} raid us every few days.` + (lr ? ` The last raid ${raidOutcome(c.world, lr, st) === 'won' ? 'was beaten off' : 'broke through'}.` : '') + (nr && nr.t0 - c.time < 1440 ? ` Our scouts expect them again about ${fmtTime(nr.t0)}.` : '') + ' A stronger wall holds them better.';
+  // the village's industry, and (refinery towns) the commission to build the refinery
+  const ind = poi ? industryOf(c.world, poi, v.vm.seed) : 'farm', spec = INDUSTRY[ind], bp = buildPlan(ind, st), sc = poi ? Math.round(siteCondition(c.world, poi, st, c.time)) : 100;
+  const trade = poi ? profileOf(c.world, poi, v.vm.seed).makes.map((g) => ITEMS[g].name).join(' and ') : '';
+  const work = bp ? `Oil comes up not far from here, and we mean to put up a <b>refinery</b> that turns crude into fuel. Help us build it and the village will pay you <b>${REFINERY_PAY} gold</b>.`
+    : `We are a ${spec.name.toLowerCase()}: our ${spec.site.toLowerCase()} ${spec.site.endsWith('s') ? 'give' : 'gives'} us ${trade}` + (sc < 90 ? `, but the raids have damaged ${spec.site.endsWith('s') ? 'them' : 'it'} (${sc}%): mend ${spec.site.endsWith('s') ? 'them' : 'it'} with ${spec.fix.map(([i, n]) => `${n} ${ITEMS[i].name}`).join(', ')} and we will pay you.` : '.');
+  const brows = bp ? bp.rows.map((r) => `<div class="shoprow"><div><b>${ITEMS[r.k].name}</b><br><span>${r.given} / ${r.n} for the refinery${r.given < r.n ? ` · you carry ${count(c.inv, r.k)}` : ' · done'}</span></div></div>`).join('') : '';
+  const canBuild = !!bp && bp.rows.some((r) => r.given < r.n && count(c.inv, r.k) > 0);
   const rows = plan ? plan.rows.map((r) => {
     const have = count(c.inv, r.k), left = r.n - r.given;
     return `<div class="shoprow"><div><b>${ITEMS[r.k].name}</b><br><span>${r.given} / ${r.n} handed over${left > 0 ? ` · you carry ${have}` : ' · done'}</span></div></div>`;
@@ -115,9 +124,23 @@ function renderFortify(msg?: string) {
   const canGive = !!plan && plan.rows.some((r) => r.given < r.n && count(c.inv, r.k) > 0);
   panel().innerHTML = dlgHead() + `<div class="say">${msg ? msg + '<br><br>' : ''}` +
     (plan ? `Our wall is a <b>${wall.name}</b>. Help us raise a <b>${WALL_TIERS[plan.to].name}</b> (${WALL_TIERS[plan.to].h} m) and the village will pay you <b>${plan.gold} gold</b>. Bring the materials a load at a time: we keep count.`
-      : `Our wall is a <b>${wall.name}</b>, as strong as we can make it. Thank you.`) + `<br><br>${power}<br><br>${raids}</div>` + rows +
-    (plan ? `<button class="opt" data-fort="give" ${canGive ? '' : 'disabled'}>Hand over what I carry</button>` : '') +
+      : `Our wall is a <b>${wall.name}</b>, as strong as we can make it. Thank you.`) + `<br><br>${power}<br><br>${raids}<br><br>${work}</div>` + rows +
+    (plan ? `<button class="opt" data-fort="give" ${canGive ? '' : 'disabled'}>Hand over what I carry (for the wall)</button>` : '') + brows +
+    (bp ? `<button class="opt" data-rbuild="give" ${canBuild ? '' : 'disabled'}>Hand over what I carry (for the refinery)</button>` : '') +
     `<button class="opt" data-o="back">${OPT_TEXT.back}</button>`;
+}
+const REFINERY_PAY = 1200;
+function giveRefinery() {
+  const v = loadedVillage(town()), c = G.char, poi = v && findPoi(c.world, v.id);
+  if (!v || !poi) return;
+  const st = (c.towns[v.id] ??= {}), k = industryOf(c.world, poi, v.vm.seed);
+  const { taken, built } = handOverBuild(k, st, (i) => count(c.inv, i));
+  for (const [i, n] of taken) { let left = n; for (let j = 0; j < c.inv.length && left; j++) { const s = c.inv[j]; if (s?.k === i) { const m = Math.min(left, s.n); s.n -= m; left -= m; if (s.n <= 0) c.inv[j] = null; } } }
+  if (!built) { saveChar(); renderFortify(taken.length ? 'Handed over: ' + taken.map(([i, n]) => `${ITEMS[i].name} ×${n}`).join(', ') + '.' : 'You carry nothing the refinery still needs.'); return; }
+  c.gold += REFINERY_PAY; gainXp(300); calcStats(); saveChar();
+  closeDialog(); reloadStruct(v.id);
+  showToast(`${v.vm.name} has a refinery`);
+  logLine(`The columns go up, the flare is lit: ${v.vm.name} refines crude into fuel now. They pay you ${REFINERY_PAY} gold.`);
 }
 function giveFortify() {
   const v = loadedVillage(town()), c = G.char;
@@ -161,6 +184,7 @@ dlgEl.addEventListener('click', (e) => {
     c.gold -= p; calcStats(); saveChar(); return renderShop('Bought: ' + ITEMS[k].name + '.');
   }
   if (t.closest('[data-fort]')) { giveFortify(); return; }
+  if (t.closest('[data-rbuild]')) { giveRefinery(); return; }
   const qb = t.closest<HTMLElement>('[data-q]');
   if (qb) { renderTalk(questTalk(qb.dataset.q!) || 'Hm?'); return; }
   if (!o) return;

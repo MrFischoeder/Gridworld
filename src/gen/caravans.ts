@@ -49,7 +49,7 @@ export function caravanOf(world: number, e: Edge, k: number): Caravan | null {
   if (L <= 0) return null;
   const back = (k & 1) === 1, [o, d] = back ? [e.b, e.a] : [e.a, e.b];
   const po = profileOf(world, o, villageSeed(world, o)), pd = profileOf(world, d, villageSeed(world, d));
-  const good = po.makes.find((g) => pd.wants.includes(g)) ?? po.makes[(h >> 10) & 1];
+  const good = po.makes.find((g) => pd.wants.includes(g)) ?? po.makes[((h >> 10) & 1) % po.makes.length];
   const wagons = CONVOY.length;
   return {
     id: e.key + ':' + k, road: 'road:' + e.key, k, from: o.id, to: d.id, fromName: o.name, toName: d.name,

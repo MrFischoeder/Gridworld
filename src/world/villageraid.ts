@@ -13,13 +13,14 @@ import { gainXp, saveChar, calcStats } from '../character';
 import { showToast, logLine } from '../ui/hud';
 import { raidsBetween, raidSource, RAID, type Raid } from '../gen/raids';
 import { powerSite } from '../gen/town';
+import { siteCentre } from './industry';
 import { fmtTime } from '../core/time';
 import { worldDist, nearX } from '../gen/regions';
 import type { VillageMap } from '../gen/village';
 
 /** Waves per raid, the defences' drain per bandit at a gate (per second, by wall tier), damage to the plant. */
 export const VRAID = { waves: 3, drain: [0.7, 0.42, 0.25], plant: 0.25, plantMax: 45, reach: 450, near: 9 };
-interface Target { x: number; z: number; plant: boolean }
+interface Target { x: number; z: number; plant: boolean; site?: boolean }
 interface LiveRaid { plantHurt: number; r: Raid; vid: number; vm: VillageMap; name: string; wave: number; nextT: number; bandits: Bandit[]; defence: number; targets: Target[] }
 let live: LiveRaid | null = null;
 const warned = new Set<string>();
@@ -28,10 +29,11 @@ let tick = 0;
 /** Is a raid on at the village you are in or at (then it is no safe place)? */
 export const raidHere = () => !!live && worldDist(G.pos.x, G.pos.z, live.vm.ox + 36, live.vm.oz + 36) < VRAID.reach;
 
-function targetsOf(vm: VillageMap): Target[] {
+function targetsOf(vm: VillageMap, id: number): Target[] {
   const t: Target[] = vm.gates.map((g) => ({ x: g.x, z: g.z, plant: false }));
-  const p = powerSite(vm.seed);
+  const p = powerSite(vm.seed), s = siteCentre(id);
   t.push({ x: vm.ox + p.x, z: vm.oz + p.z, plant: true });
+  if (s) t.push({ x: s.x, z: s.z, plant: false, site: true });
   return t;
 }
 function spawnWave(L: LiveRaid) {
@@ -44,8 +46,9 @@ function spawnWave(L: LiveRaid) {
     const b = spawnBandit(role, new THREE.Vector3(x, T.heightAt(x, z) + 0.9, z), L.r.strength, group);
     // each makes for the nearest gate or the plant, whichever lies on its side
     // a few go for the power plant, the rest for the nearest gates
-    const gates = L.targets.filter((t) => !t.plant).sort((p, q) => Math.hypot(p.x - x, p.z - z) - Math.hypot(q.x - x, q.z - z));
-    const tg = i % 3 === 1 ? L.targets.find((t) => t.plant)! : gates[i % 4 === 3 && gates.length > 1 ? 1 : 0];
+    const gates = L.targets.filter((t) => !t.plant && !t.site).sort((p, q) => Math.hypot(p.x - x, p.z - z) - Math.hypot(q.x - x, q.z - z));
+    const site = L.targets.find((t) => t.site);
+    const tg = i % 3 === 1 ? L.targets.find((t) => t.plant)! : i % 3 === 2 && site ? site : gates[i % 4 === 3 && gates.length > 1 ? 1 : 0];
     b.home.set(tg.x + (Math.random() - 0.5) * 4, b.p.y, tg.z + (Math.random() - 0.5) * 4); b.state = 'return'; b.sight = 45; b.ambush = -1; // kept up to 240 m away, and not counted as a patrol
     L.bandits.push(b);
   }
@@ -89,7 +92,7 @@ export function updateVillageRaids(dt: number) {
         continue;
       }
       if (now < r.t0 + RAID.duration) {
-        live = { plantHurt: 0, r, vid: v.id, vm: v.vm, name: v.vm.name, wave: 0, nextT: 0, bandits: [], defence: 100, targets: targetsOf(v.vm) };
+        live = { plantHurt: 0, r, vid: v.id, vm: v.vm, name: v.vm.name, wave: 0, nextT: 0, bandits: [], defence: 100, targets: targetsOf(v.vm, v.id) };
         spawnWave(live);
         return;
       }
@@ -103,7 +106,8 @@ function liveTick(dt: number) {
   const tier = Math.min(VRAID.drain.length - 1, G.char.towns[L.vid]?.wall ?? 0);
   for (const b of alive) for (const t of L.targets) {
     if (Math.hypot(b.p.x - t.x, b.p.z - t.z) > VRAID.near) continue;
-    if (t.plant) { if (L.plantHurt < VRAID.plantMax) { const st = (G.char.towns[L.vid] ??= {}), h = VRAID.plant * dt; L.plantHurt += h; st.hurt = Math.min(100, (st.hurt ?? 0) + h); } }
+    if (t.site) { const st = (G.char.towns[L.vid] ??= {}); st.siteHurt = Math.min(80, (st.siteHurt ?? 0) + VRAID.plant * 1.5 * dt); st.siteHurtT = G.char.time; }
+    else if (t.plant) { if (L.plantHurt < VRAID.plantMax) { const st = (G.char.towns[L.vid] ??= {}), h = VRAID.plant * dt; L.plantHurt += h; st.hurt = Math.min(100, (st.hurt ?? 0) + h); } }
     else L.defence -= VRAID.drain[tier] * dt;
     break;
   }
@@ -120,7 +124,7 @@ export function forceRaid(): string {
   const v = loadedVillages().filter((q) => worldDist(G.pos.x, G.pos.z, q.poi.x, q.poi.z) < VRAID.reach).sort((a, b) => worldDist(G.pos.x, G.pos.z, a.poi.x, a.poi.z) - worldDist(G.pos.x, G.pos.z, b.poi.x, b.poi.z))[0];
   if (!v || !OW.terrain) return 'Stand in or by a village.';
   const camp = raidSource(G.char.world, v.poi) ?? { ...v.poi, name: 'the hills', x: v.poi.x + 1500, z: v.poi.z };
-  live = { plantHurt: 0, r: { village: v.id, k: 0, t0: G.char.time, camp, strength: 2 }, vid: v.id, vm: v.vm, name: v.vm.name, wave: 0, nextT: 0, bandits: [], defence: 100, targets: targetsOf(v.vm) };
+  live = { plantHurt: 0, r: { village: v.id, k: 0, t0: G.char.time, camp, strength: 2 }, vid: v.id, vm: v.vm, name: v.vm.name, wave: 0, nextT: 0, bandits: [], defence: 100, targets: targetsOf(v.vm, v.id) };
   spawnWave(live);
   return `Raid on ${v.vm.name}!`;
 }

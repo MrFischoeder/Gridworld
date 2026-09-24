@@ -14,6 +14,13 @@ import { vehicles } from '../world/vehicles';
 import { bearingTo, point8, fmtDist } from './compass';
 import type { Slot } from '../save';
 import { lastArrival } from '../gen/caravans';
+import { industryOf, production, INDUSTRY } from '../gen/industry';
+/** How much the village's industry puts out now (its site's condition; 0 for a refinery not yet built). */
+const prodHere = () => (here ? production(G.char.world, here.poi, here.seed, G.char.towns[here.poi.id], G.char.time) : 1);
+function prodNote(): string {
+  const p = prodHere();
+  return p <= 0 ? ' (its works are not built yet: nothing to sell)' : p < 0.9 ? ` (its ${INDUSTRY[industryOf(G.char.world, here!.poi, here!.seed)].site.toLowerCase()} works at ${Math.round(p * 100)}% after the raids: less to sell, and dearer)` : '';
+}
 
 const TRUNK_REACH = 90; // metres from the village middle: vehicles parked by the gates count
 let here: { poi: Poi; seed: number } | null = null;
@@ -35,7 +42,7 @@ function putAway(g: Good, n: number): number { for (const s of stores()) if (n >
 function record() {
   if (!here) return;
   const c = G.char, q: Record<string, [number, number]> = {};
-  for (const g of GOODS) { const o = quote(here.poi, here.seed, c.world, g, c.market, c.time); q[g] = [o.buy, o.sell]; }
+  for (const g of GOODS) { const o = quote(here.poi, here.seed, c.world, g, c.market, c.time, true, prodHere()); q[g] = [o.buy, o.sell]; }
   c.ledger[here.poi.id] = { t: c.time, name: here.poi.name, x: here.poi.x, z: here.poi.z, q };
 }
 /** The best price paid for `g` elsewhere, from what you have seen. */
@@ -62,7 +69,7 @@ export function renderMarket(panel: HTMLElement, head: string, msg = '') {
   const c = G.char, p = profileOf(c.world, here.poi, here.seed), trunks = stores().length - 1;
   tidyMarket(c.market, c.time); record();
   const rows = GOODS.map((g) => {
-    const q = quote(here!.poi, here!.seed, c.world, g, c.market, c.time), have = carried(g), b = bestElsewhere(g);
+    const q = quote(here!.poi, here!.seed, c.world, g, c.market, c.time, true, prodHere()), have = carried(g), b = bestElsewhere(g);
     const tag = q.role === 'make' ? '<span class="tag" style="color:var(--gold)">made here</span>' : q.role === 'want' ? '<span class="tag" style="color:#9dffe0">wanted here</span>' : '';
     const else_ = b ? `best price seen elsewhere: ${b.p} g at ${b.name} (${fmtDist(worldDist(b.x, b.z, here!.poi.x, here!.poi.z))} ${point8(bearingTo(b.x, b.z))}, ${ago(b.t)})` : '';
     return `<div class="mrow"><div><b>${ITEMS[g].name}</b>${tag}</div><div class="num">${q.stock}</div><div class="num">${have}</div>
@@ -72,7 +79,7 @@ export function renderMarket(panel: HTMLElement, head: string, msg = '') {
       <button class="buy" data-ms="${g}" data-n="${have}" ${have < 2 ? 'disabled' : ''}>all</button>${else_ ? `<div class="best">${else_}</div>` : ''}</div>`;
   }).join('');
   panel.classList.add('wide');
-  panel.innerHTML = head + `<div class="say">${msg ? msg + '<br>' : ''}Gold: <b>${c.gold}</b> · ${here.poi.name} makes ${p.makes.map((g) => ITEMS[g].name).join(' and ')}, and wants ${p.wants.map((g) => ITEMS[g].name).join(' and ')}.<br>
+  panel.innerHTML = head + `<div class="say">${msg ? msg + '<br>' : ''}Gold: <b>${c.gold}</b> · ${here.poi.name} is a ${INDUSTRY[industryOf(c.world, here.poi, here.seed)].name.toLowerCase()}${prodNote()}: it makes ${p.makes.map((g) => ITEMS[g].name).join(' and ')}, and wants ${p.wants.map((g) => ITEMS[g].name).join(' and ')}.<br>
     <span style="opacity:.8">Crates go into your backpack${trunks ? ` and ${trunks > 1 ? 'the trunks of your vehicles' : 'the trunk of your vehicle'} parked by the village` : ' (park a vehicle by the gates to trade by the trunkload)'}. Buy where a good is made, sell where it is wanted; prices move as you trade and settle back over a day or two.</span></div>` +
     `<div class="mkt"><div class="mrow head"><div>good</div><div class="num">stock</div><div class="num">yours</div><div>you pay</div><div></div><div>you get</div><div></div></div>${rows}</div>` + (hearsay() ? `<div class="say" style="opacity:.85">${hearsay()}</div>` : '') + `<button class="opt" data-o="back">Back</button>`;
 }
@@ -93,7 +100,7 @@ export function marketClick(t: HTMLElement): string | null {
   if (buying) {
     let paid = 0, got = 0;
     for (let i = 0; i < n; i++) { // one at a time: every crate moves the price
-      const q = quote(here.poi, here.seed, c.world, g, c.market, c.time);
+      const q = quote(here.poi, here.seed, c.world, g, c.market, c.time, true, prodHere());
       if (q.stock < 1 || c.gold < q.buy) break;
       if (putAway(g, 1) > 0) { if (!got) return 'No room for a crate in your backpack or a trunk nearby.'; break; }
       c.gold -= q.buy; paid += q.buy; got++; trade(c.market, here.poi.id, g, -1, c.time);
@@ -103,7 +110,7 @@ export function marketClick(t: HTMLElement): string | null {
   }
   n = Math.min(n, carried(g));
   let earned = 0;
-  for (let i = 0; i < n; i++) { const q = quote(here.poi, here.seed, c.world, g, c.market, c.time); takeFrom(g, 1); c.gold += q.sell; earned += q.sell; trade(c.market, here.poi.id, g, 1, c.time); }
+  for (let i = 0; i < n; i++) { const q = quote(here.poi, here.seed, c.world, g, c.market, c.time, true, prodHere()); takeFrom(g, 1); c.gold += q.sell; earned += q.sell; trade(c.market, here.poi.id, g, 1, c.time); }
   calcStats(); saveChar();
   return n ? `Sold ${name} ×${n} for ${earned} gold.` : 'You have none to sell.';
 }

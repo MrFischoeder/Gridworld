@@ -18,7 +18,12 @@ export const ITEMS = {
   // trade goods (gen/market.ts): bulky crates, bought cheap where they are made and sold dear where they are wanted
   grain: { name: 'Sack of Grain', ab: 'GRN', type: 'good', desc: 'trade good: fifty kilos of grain. Farming villages sell it cheap', stack: 5 },
   timber: { name: 'Timber Bundle', ab: 'TMB', type: 'good', desc: 'trade good: seasoned beams, bound with rope. Forest villages sell it cheap', stack: 5 },
-  ore: { name: 'Crate of Ore', ab: 'ORE', type: 'good', desc: 'trade good: iron-rich rock from the mountain mines', stack: 5 },
+  ore: { name: 'Crate of Iron Ore', ab: 'IRN', type: 'good', desc: 'trade good: iron ore from a village mine', stack: 5 },
+  carrots: { name: 'Sack of Carrots', ab: 'CRT', type: 'good', desc: 'trade good: carrots from the village fields', stack: 5 },
+  potatoes: { name: 'Sack of Potatoes', ab: 'POT', type: 'good', desc: 'trade good: potatoes from the village fields', stack: 5 },
+  coal: { name: 'Crate of Coal', ab: 'COL', type: 'good', desc: 'trade good: coal from a village mine, for forges and stoves', stack: 5 },
+  copper: { name: 'Crate of Copper Ore', ab: 'CPR', type: 'good', desc: 'trade good: copper ore from a village mine, for wiring and electronics', stack: 5 },
+  crude: { name: 'Barrel of Crude Oil', ab: 'OIL', type: 'good', desc: 'trade good: crude oil from the oil wells; a refinery turns it into fuel', stack: 5 },
   salt: { name: 'Salt Blocks', ab: 'SLT', type: 'good', desc: 'trade good: pressed salt, for keeping food through the winter', stack: 5 },
   fish: { name: 'Dried Fish', ab: 'FSH', type: 'good', desc: 'trade good: a bale of fish dried on lake shores', stack: 5 },
   cloth: { name: 'Bolt of Cloth', ab: 'CLT', type: 'good', desc: 'trade good: woven cloth, dyed green', stack: 5 },
@@ -109,7 +114,7 @@ export const BULK: Record<ItemKey, [kg: number, litres: number]> = {
   planks: [1.5, 1.5], nails: [0.3, 0.2], rope: [0.8, 1.5], wire: [0.5, 0.5], benchkit: [15, 20], flagpole: [9, 14],
   hide: [2, 3], fang: [0.1, 0.1], plate: [3, 2.5], membrane: [0.3, 1], incisor: [0.05, 0.05],
   book: [1, 1], gearbox: [4, 2], datacore: [1, 0.5], logbook: [0.5, 0.5],
-  grain: [12, 14], timber: [16, 20], ore: [18, 10], salt: [10, 7], fish: [7, 10], cloth: [5, 9], tools: [14, 14], meds: [4, 7], fuel: [11, 12], tech: [6, 8],
+  grain: [12, 14], timber: [16, 20], ore: [18, 10], carrots: [10, 14], potatoes: [12, 14], coal: [16, 10], copper: [18, 10], crude: [16, 14], salt: [10, 7], fish: [7, 10], cloth: [5, 9], tools: [14, 14], meds: [4, 7], fuel: [11, 12], tech: [6, 8],
   wheelL: [12, 22], wheelH: [28, 36], engine: [8, 6], turbo: [6, 5], eguard: [5, 4], plating: [7, 5], cannon: [25, 30],
   reflex: [0.3, 0.3], scope: [0.8, 1], barL: [1.2, 1], barR: [1, 0.8], barS: [0.9, 0.8], magX: [0.5, 0.4], magD: [1.2, 1],
 };

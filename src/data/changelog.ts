@@ -4,6 +4,13 @@ export interface Change { v: string; date: string; title: string; notes: string[
 
 export const CHANGELOG: Change[] = [
   {
+    v: '0.29.0', date: '2026-09-24', title: 'Village industries',
+    notes: ['Every village now lives on its own industry, worked at a site outside its fence: farming villages till fields (grain, carrots, potatoes), mining villages dig a mine with a headframe and an adit into a spoil mound (coal, iron ore, copper; mostly near the hills), oil villages pump crude from nodding pumpjacks, and there are sawmills, fish racks and salt pans, workshops (tools, cloth) and salvage yards (tech, medicine).',
+      'Five new trade goods: Sack of Carrots, Sack of Potatoes, Crate of Coal, Crate of Copper Ore and Barrel of Crude Oil (the old Crate of Ore is now Crate of Iron Ore). What a village sells is what its industry makes.',
+      'Refineries: some villages near the oil fields mean to refine crude into fuel, but their refinery has to be built first. The elder commissions it (scrap, electronics, wire and planks, handed over a load at a time); once it stands, its columns rise, its flare burns, and it buys crude and sells fuel.',
+      'Raids hit the industry too: bandits go for the site, and a lost raid wrecks it for a few days. A damaged site makes less, so its goods are scarce and dear, until the villagers patch it up or you mend it (E at the site, with the parts it needs) for pay. The elder and the general store tell you what the village lives on and how its works are doing.'],
+  },
+  {
     v: '0.28.0', date: '2026-09-24', title: 'Bandit raids on villages',
     notes: ['Villages with a bandit camp within about three and a half kilometres are raided from it every few days. The elder tells you which camp troubles the village, how the last raid went and when the scouts expect the next one.',
       'Be at a village when its raid comes and you fight it: the scouts warn you an hour and a half before, then three waves of bandits march in from the direction of their camp, making for the gates and the power plant outside the fence. Bandits at a gate wear down the village\'s defences (a Timber Palisade or a Stone Wall holds them much longer than the Stake Fence), bandits at the plant wreck it. While a raid is on the village is no safe place: your weapons are out and the bandits fight you inside the fence too.',
