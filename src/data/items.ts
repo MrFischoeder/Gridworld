@@ -1,4 +1,4 @@
-export type ItemType = 'relic' | 'cons' | 'key' | 'part' | 'quest' | 'attach';
+export type ItemType = 'relic' | 'cons' | 'key' | 'part' | 'quest' | 'attach' | 'mat';
 export interface ItemDef { name: string; ab: string; type: ItemType; desc: string; stack?: number }
 
 export const ITEMS = {
@@ -14,6 +14,17 @@ export const ITEMS = {
   flask: { name: 'Empty Flask', ab: 'FLS', type: 'cons', desc: 'fill it at a well or a lake (E at the water)', stack: 3 },
   waterF: { name: 'Flask of Clean Water', ab: 'H2O', type: 'cons', desc: 'clean water: water +40 (the flask is kept)', stack: 3 },
   waterM: { name: 'Flask of Murky Water', ab: 'MRK', type: 'cons', desc: 'swamp water: water +25, but it may turn your stomach', stack: 3 },
+  meatR: { name: 'Raw Meat', ab: 'RAW', type: 'cons', desc: 'Bramble meat: food +12 raw, but it may make you sick. Roast it at a campfire (E at the fire) or ask Jan', stack: 8 },
+  meatC: { name: 'Roasted Meat', ab: 'MEA', type: 'cons', desc: 'food +40, 10 HP', stack: 8 },
+  cap: { name: 'Nutrient Cap', ab: 'CAP', type: 'cons', desc: 'a pale mushroom cap from a Nutrient Mushroom Cluster: food +18, water +6', stack: 10 },
+  pod: { name: 'Fruit Pod', ab: 'POD', type: 'cons', desc: 'a juicy pod from an Alien Fruit Pod Tree: food +22, water +18', stack: 8 },
+  ncrys: { name: 'Nutrient Crystal', ab: 'NCR', type: 'cons', desc: 'an edible crystal that grows in the dungeons: food +35, 10 HP', stack: 6 },
+  firekit: { name: 'Fire Kit', ab: 'FIR', type: 'cons', desc: 'lights a campfire at your feet (outdoors); press E at the fire to roast your raw meat', stack: 5 },
+  hide: { name: 'Ravager Hide', ab: 'HID', type: 'mat', desc: 'a tough, spotted hide. Crafting material; Radek buys it', stack: 10 },
+  fang: { name: 'Ravager Fang', ab: 'FNG', type: 'mat', desc: 'a hooked fang. Crafting material; Radek buys it', stack: 10 },
+  plate: { name: 'Bramble Plate', ab: 'PLT', type: 'mat', desc: 'a thorny armour plate from a Bramble. Crafting material; Radek buys it', stack: 10 },
+  membrane: { name: 'Leechwing Membrane', ab: 'MEM', type: 'mat', desc: 'a thin, strong wing membrane. Crafting material; Radek buys it', stack: 10 },
+  incisor: { name: 'Gnawer Incisor', ab: 'INC', type: 'mat', desc: 'a long, sharp rodent tooth. Crafting material; Radek buys it', stack: 10 },
   recall: { name: 'Recall Beacon', ab: 'RCL', type: 'cons', desc: 'returns you to the village from anywhere', stack: 5 },
   emp: { name: 'EMP Charge', ab: 'EMP', type: 'cons', desc: 'damages every drone within 6 m (G key)', stack: 5 },
   book: { name: 'Ancient Book', ab: 'BOK', type: 'quest', desc: 'a crumbling book of the old machine folk; Elder Bogdan wants it', stack: 1 },

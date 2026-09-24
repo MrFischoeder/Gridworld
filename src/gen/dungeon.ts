@@ -11,6 +11,8 @@ export interface DungeonMap {
   ops: Op[];
   rooms: number;
   chests: { x: number; z: number }[];
+  /** Nutrient Crystal clusters (edible, grow back) in some rooms. */
+  crystals: { x: number; z: number }[];
   hatch: { x: number; z: number };
   portals: PortalSpec[];
   doorCands: DoorCand[];
@@ -163,8 +165,13 @@ export function generateDungeon(seed: number, opts: DungeonOpts = {}): DungeonMa
     }
   }
 
+  // Nutrient Crystals grow in the corners of some rooms (own RNG stream: the layout above stays as it was)
+  const C = rng(seed ^ 0x6c5a31), crystals: { x: number; z: number }[] = [];
+  for (const r of rooms) if (r !== rooms[0] && !chestRooms.has(r) && C() < 0.3) {
+    crystals.push({ x: C() < 0.5 ? r.x + 1 : r.x + r.w - 2, z: C() < 0.5 ? r.z + 1 : r.z + r.d - 2 });
+  }
   return {
     seed, spawn: [rooms[0].cx + 0.5, 0, rooms[0].cz + 0.5], ops: [...ops, ...solids, ...corridors, ...stairOps], rooms: rooms.length,
-    chests, hatch, portals, doorCands: [...lockedCands, ...doorCands], bosses, gates,
+    chests, crystals, hatch, portals, doorCands: [...lockedCands, ...doorCands], bosses, gates,
   };
 }

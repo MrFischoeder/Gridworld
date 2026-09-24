@@ -1,7 +1,8 @@
 // Conversations and shops. New options (quests) plug in through OPT_TEXT and the switch below.
 import { G, W } from '../game';
 import { ITEMS } from '../data/items';
-import { NPC_INFO, VILLAGER_LINES, RUMOURS, OPT_TEXT, LORE, stockFor, type OptId } from '../data/npcs';
+import { NPC_INFO, VILLAGER_LINES, RUMOURS, OPT_TEXT, LORE, BUYS, COOK_PRICE, stockFor, type OptId } from '../data/npcs';
+import { putItems } from '../inventory';
 import { addItem, calcStats, saveChar } from '../character';
 import { $ } from './hud';
 import { lockPointer } from './input';
@@ -51,8 +52,18 @@ function renderVehicleShop(msg?: string) {
       <button class="buy" data-k="${k}" data-p="${PART_PRICE[k]}" ${G.char.gold < PART_PRICE[k]! ? 'disabled' : ''}>${PART_PRICE[k]} g</button></div>`).join('') +
     `<button class="opt" data-o="back">${OPT_TEXT.back}</button>`;
 }
+/** Jan and Radek buy what you bring from the wilds (data/npcs BUYS). */
+function renderTrade(msg?: string) {
+  const buys = BUYS[W.talkNpc!.role] ?? {}, rows = G.char.inv.map((s, i) => ({ s, i })).filter(({ s }) => s && buys[s.k]);
+  panel().innerHTML = dlgHead() + `<div class="say">Your gold: <b>${G.char.gold}</b>${msg ? '<br>' + msg : ''}</div>` +
+    (rows.length ? rows.map(({ s, i }) => `<div class="shoprow"><div><b>${ITEMS[s!.k].name} ×${s!.n}</b><br><span>${buys[s!.k]} g each</span></div>
+      <button class="buy" data-trade="${i}">+${buys[s!.k]} g</button><button class="buy" data-tradeall="${i}">all +${buys[s!.k]! * s!.n} g</button></div>`).join('')
+      : `<div class="say" style="opacity:.7">You have nothing I would buy. I pay for ${Object.keys(buys).map((k) => ITEMS[k as ItemKey].name).join(', ')}.</div>`) +
+    `<button class="opt" data-o="back">${OPT_TEXT.back}</button>`;
+}
 /** Mirek buys vehicles back at half price (less for wrecks) and parts for a fifth of what he charges. */
 function renderSell(msg?: string) {
+  if (W.talkNpc!.role !== 'dealer') { renderTrade(msg); return; }
   const offers = vehiclesForSale(), parts = G.char.inv.map((s, i) => ({ s, i })).filter(({ s }) => s && PART_PRICE[s.k]);
   panel().innerHTML = dlgHead() + `<div class="say">Your gold: <b>${G.char.gold}</b>${msg ? '<br>' + msg : ''}</div>` +
     (offers.length ? offers.map((o) => `<div class="shoprow"><div><b>${vehicleTitle(o.v.st.model)}</b><br><span>${o.why ?? 'parked in the yard · condition ' + Math.round(health(o.v.st.model, o.v.st.parts) * 100) + '%'}</span></div>
@@ -79,6 +90,15 @@ dlgEl.addEventListener('click', (e) => {
     if (s && PART_PRICE[s.k]) { c.gold += partBuyback(s); if (--s.n <= 0) c.inv[i] = null; saveChar(); renderSell('Sold: ' + ITEMS[s.k].name + '.'); }
     return;
   }
+  if (b && (b.dataset.trade || b.dataset.tradeall)) {
+    const i = +(b.dataset.trade ?? b.dataset.tradeall!), s = c.inv[i], price = s && BUYS[W.talkNpc!.role]?.[s.k];
+    if (s && price) {
+      const n = b.dataset.tradeall ? s.n : 1;
+      c.gold += price * n; s.n -= n; if (s.n <= 0) c.inv[i] = null; saveChar();
+      renderTrade(`Sold: ${ITEMS[s.k].name}${n > 1 ? ' ×' + n : ''}.`);
+    }
+    return;
+  }
   if (b) {
     const k = b.dataset.k as keyof typeof ITEMS, p = +b.dataset.p!;
     if (c.gold < p) return renderShop('Not enough gold.');
@@ -94,6 +114,18 @@ dlgEl.addEventListener('click', (e) => {
     case 'back': renderTalk('Anything else?'); break;
     case 'shop': renderShop(); break;
     case 'sell': renderSell(); break;
+    case 'cook': {
+      let n = 0; for (const s of c.inv) if (s?.k === 'meatR') n += s.n;
+      if (!n) { renderTalk('Raw meat, friend. Bring me some from a Bramble and I will roast it.'); break; }
+      n = Math.min(n, Math.floor(c.gold / COOK_PRICE));
+      if (!n) { renderTalk(`${COOK_PRICE} gold a piece, and you have not got it.`); break; }
+      let left = n;
+      for (let i = 0; i < c.inv.length && left; i++) { const s = c.inv[i]; if (s?.k === 'meatR') { const m = Math.min(left, s.n); s.n -= m; left -= m; if (s.n <= 0) c.inv[i] = null; } }
+      const lost = putItems(c.inv, 'meatC', n); // the raw pieces made room, so this fits
+      c.gold -= COOK_PRICE * (n - lost); if (lost) putItems(c.inv, 'meatR', lost);
+      saveChar(); renderTalk(`Jan takes your meat to the kitchen and comes back with it sizzling. (Roasted Meat ×${n - lost}, -${COOK_PRICE * (n - lost)} gold)`);
+      break;
+    }
     case 'rest':
       if (G.hp >= G.S.maxHp && c.food >= 70 && c.water >= 70) renderTalk('You look well rested already. Save your coin.');
       else if (c.gold < 10) renderTalk('Ten gold for a bed, love. Come back when you have it.');

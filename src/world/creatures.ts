@@ -6,7 +6,7 @@ import { onNoise } from './noise';
 import { scene, V, lineMat } from './render';
 import { G, W } from '../game';
 import { PropBatch, sharedFill } from './props';
-import { CREATURES, HOSTILE, CALM, type CreatureKind } from '../data/creatures';
+import { CREATURES, HOSTILE, CALM, DROPS, type CreatureKind } from '../data/creatures';
 import { foeRules } from './enemies';
 import { rayWorld } from './player';
 import { burst } from './fx';
@@ -540,6 +540,10 @@ export function hurtCreature(c: Creature, dmg: number) {
   burst(at, HOSTILE, 30, 1.6);
   for (let i = 0; i < s.crystals; i++) dropCrystal(at);
   if (Math.random() < 0.15) dropPickup(at, 'medkit');
+  for (const [k, chance, lo, hi] of DROPS[c.kind]) if (Math.random() < chance) {
+    const n = lo + Math.floor(Math.random() * (hi - lo + 1));
+    for (let i = 0; i < n; i++) dropPickup(V(at.x + (Math.random() - 0.5) * 1.2, at.y, at.z + (Math.random() - 0.5) * 1.2), k);
+  }
   logLine((c.alpha ? ALPHA[c.kind] : s.name) + ' killed');
   const qid = c.questId, alpha = !!c.alpha;
   removeCreature(c);

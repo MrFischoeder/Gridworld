@@ -10,7 +10,7 @@ import { GRID } from './render';
 import type { PropBatch } from './props';
 import type { Tree } from '../gen/trees';
 
-type P = [number, number, number];
+export type P = [number, number, number];
 const BARK = GRID, LEAF = 0x3dff6e, VINE = 0x1f9a44;
 const add = (a: P, b: P, k = 1): P => [a[0] + b[0] * k, a[1] + b[1] * k, a[2] + b[2] * k];
 const sub = (a: P, b: P): P => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
@@ -21,7 +21,7 @@ const cross = (a: P, b: P): P => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] 
  * Faceted tube through points (trunks, branches, the arch): a ring of `sides` corners around every point,
  * lines along the ring edges and the long edges, filled quads between rings.
  */
-function tube(pb: PropBatch, pts: P[], radii: number[], sides: number, color = BARK, twist = 0) {
+export function tube(pb: PropBatch, pts: P[], radii: number[], sides: number, color = BARK, twist = 0) {
   const rings: P[][] = [];
   let u: P = [0, 0, 0];
   for (let i = 0; i < pts.length; i++) {

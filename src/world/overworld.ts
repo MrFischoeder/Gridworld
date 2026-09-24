@@ -11,6 +11,8 @@ import { chunkTrees, chunkRocks, type Tree, type Rock } from '../gen/trees';
 import { drawTree } from './trees';
 import { drawTemple } from './temple';
 import { chunkWells, type Well } from '../gen/water';
+import { chunkPlants, type Plant } from '../gen/flora';
+import { drawPlants, dropPlants, type PlantNode } from './flora';
 import { drawWell, syncLakes, clearLakes } from './water';
 import { generateVillage, type VillageMap } from '../gen/village';
 import { syncQuestWorld } from './quests';
@@ -38,7 +40,7 @@ export const LOAD_R = 4, UNLOAD_R = 6, STRUCT_LOAD = 170, STRUCT_UNLOAD = 240;
 const OUTLINE = { floor: 2, wall: 4 };
 const ROAD_COLOR = 0xc8ffd8, TILE_COLOR = 0x4dff7e, ICE_COLOR = 0xbfffe8;
 
-interface Chunk { cx: number; cz: number; group: THREE.Group; trees: Tree[]; rocks: Rock[]; wells: Well[]; lod: number }
+interface Chunk { cx: number; cz: number; group: THREE.Group; trees: Tree[]; rocks: Rock[]; wells: Well[]; plants: Plant[]; nodes: PlantNode[]; lod: number }
 interface Structure {
   poi: Poi; grid: VoxelGrid; group: THREE.Group; edges: EdgeSource;
   doors: Door[]; stairs: Stair[]; npcs: Npc[]; village?: VillageMap; camp?: CampMap; flames?: THREE.LineSegments;
@@ -73,6 +75,7 @@ export function treeHit(x: number, y: number, z: number, r: number): boolean {
     const c = OW.chunks.get(ckey(cx + i, cz + j)); if (!c) continue;
     for (const t of c.trees) if (y < t.y + 2 + t.h * 0.3) for (const [tx, tz, tr] of t.cols) if (Math.hypot(tx - x, tz - z) < tr + r) return true;
     for (const k of c.rocks) if (k.h > 0.7 && Math.hypot(k.x - x, k.z - z) < k.r * 0.55 + r && y < k.y + k.h * 0.8) return true;
+    for (const p of c.plants) if (y < p.y + 2) for (const [px, pz, pr] of p.cols) if (Math.hypot(px - x, pz - z) < pr + r) return true;
     for (const w of c.wells) if (Math.hypot(w.x - x, w.z - z) < 1.05 + r && y < OW.terrain!.heightAt(w.x, w.z) + 0.9) return true;
   }
   return false;
@@ -130,9 +133,11 @@ function buildChunk(cx: number, cz: number, lod = 1): Chunk {
   const lg = new THREE.BufferGeometry(); lg.setAttribute('position', new THREE.Float32BufferAttribute(lines, 3));
   group.add(new THREE.Mesh(fg, sharedFill()), new THREE.LineSegments(lg, sharedLine(Math.abs(z0 + CHUNK / 2) > POLAR_Z + 800 ? ICE_COLOR : GRID)));
   if (road.length) { const rg = new THREE.BufferGeometry(); rg.setAttribute('position', new THREE.Float32BufferAttribute(road, 3)); group.add(new THREE.LineSegments(rg, sharedLine(ROAD_COLOR))); }
-  const trees = chunkTrees(T, cx, cz), rocks = chunkRocks(T, cx, cz), wells = chunkWells(T, cx, cz);
-  if (trees.length || rocks.length || wells.length) {
+  const trees = chunkTrees(T, cx, cz), rocks = chunkRocks(T, cx, cz), wells = chunkWells(T, cx, cz), plants = chunkPlants(T, cx, cz);
+  let nodes: PlantNode[] = [];
+  if (trees.length || rocks.length || wells.length || plants.length) {
     const pb = new PropBatch();
+    nodes = drawPlants(pb, plants, lod, group);
     for (const w of wells) drawWell(pb, w, T.heightAt(w.x, w.z));
     for (const t of trees) drawTree(pb, t, lod);
     for (const k of rocks) pb.rock(k.x, k.y, k.z, k.r, k.h, k.sides, k.rot, GRID);
@@ -140,9 +145,10 @@ function buildChunk(cx: number, cz: number, lod = 1): Chunk {
   }
   localize(group, x0, z0);
   scene.add(group);
-  return { cx, cz, group, trees, rocks, wells, lod };
+  return { cx, cz, group, trees, rocks, wells, plants, nodes, lod };
 }
 function dropChunk(c: Chunk) {
+  dropPlants(c.nodes);
   scene.remove(c.group);
   c.group.traverse((o) => (o as THREE.Mesh).geometry?.dispose());
 }
@@ -280,6 +286,8 @@ export function animateCamps(time: number) {
     a.needsUpdate = true;
   }
 }
+/** Loaded camp campfires (for cooking). */
+export const campFires = () => [...OW.structs.values()].filter((s) => s.camp).map((s) => ({ x: s.camp!.fire.x, y: s.camp!.y, z: s.camp!.fire.z }));
 /** Loaded camp stashes, for the E interaction. */
 export const campStashes = () => [...OW.structs.values()].filter((s) => s.camp).map((s) => ({ id: s.poi.id, name: s.poi.name, y: s.camp!.y, ...s.camp!.stash }));
 function loadStruct(poi: Poi) {

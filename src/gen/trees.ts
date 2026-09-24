@@ -4,6 +4,7 @@ import { CHUNK, wrapC } from './regions';
 import { rectDist, type Terrain } from './terrain';
 import { nearestOnRoad } from './roads';
 import { lakeBed, shoreR } from './water';
+import { plantsNear, PLANT_SPAN } from './flora';
 
 /** Open ground kept around places: villages keep a wide ring (the vehicle yard sits there). */
 const clearing = (p: { type: string }) => (p.type === 'village' ? 20 : 6);
@@ -47,6 +48,8 @@ function classify(t: Terrain, f: ReturnType<Terrain['chunkFeatures']>, s: { x: n
   const seed = hash(t.world, Math.round(s.x * 100), Math.round(s.z * 100), 0x7e3e), R = rng(seed), roll = R(), rot = R() * 6.283;
   let kind: TreeKind = s.y > 15 + R() * 5 ? 'pine' : 'broad';
   if (roll < 0.012) kind = 'arch'; else if (roll < 0.06) kind = 'twisted'; else if (roll < 0.105) kind = 'umbrella';
+  // edible plants keep their ground: no big tree grows over them (small ones are cleared in chunkTrees)
+  if (TREE_SPAN[kind] && plantsNear(t, s.x, s.z).some((p) => Math.hypot(p.x - s.x, p.z - s.z) < PLANT_SPAN[p.kind] + TREE_SPAN[kind] + 1)) kind = 'broad';
   const span = TREE_SPAN[kind];
   if (span && (f.pads.some((p) => rectDist(p.poi.rect, s.x, s.z) < p.poi.flat + clearing(p.poi) + span) || f.roads.some((rd) => nearestOnRoad(rd, s.x, s.z)[0] < rd.half + span + 1))) kind = 'broad';
   const tr: Tree = { ...s, kind, rot, seed, cols: [[s.x, s.z, 0.35]] };
@@ -88,11 +91,12 @@ export function chunkTrees(t: Terrain, cx: number, cz: number): Tree[] {
   if (c !== cx) return chunkTrees(t, c, cz).map((tr) => shiftTree(tr, (cx - c) * CHUNK));
   const f = t.chunkFeatures(cx, cz), near: Tree[] = [];
   for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) near.push(...bigWanted(t, cx + i, cz + j));
-  const out: Tree[] = [];
+  const out: Tree[] = [], plants = plantsNear(t, cx * CHUNK + CHUNK / 2, cz * CHUNK + CHUNK / 2);
   const wet = (x: number, z: number, m: number) => f.lakes.some((l) => lakeBed(l, x, z, Infinity) !== null && Math.hypot(l.x - x, l.z - z) < shoreR(l, Math.atan2(z - l.z, x - l.x)) * 1.08 + m);
   for (const s of treeSpots(t, cx, cz)) {
     const tr = classify(t, f, s), span = TREE_SPAN[tr.kind];
     if (wet(s.x, s.z, span * 0.6 + 1) || t.water(s.x, s.z)) continue; // no trees in the water
+    if (plants.some((p) => Math.hypot(p.x - s.x, p.z - s.z) < PLANT_SPAN[p.kind] + span + 0.8)) continue;
     const blocked = near.some((b) => b.seed !== tr.seed && Math.hypot(b.x - tr.x, b.z - tr.z) < Math.max(TREE_SPAN[b.kind], span) && (span === 0 || beats(b, tr)));
     if (!blocked) out.push(tr);
   }

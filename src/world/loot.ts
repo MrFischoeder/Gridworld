@@ -15,10 +15,11 @@ import { foes, damageFoe } from './enemies';
 import { closePack } from '../ui/backpack';
 import { onPickup } from './quests';
 import { toVillage } from './level';
-import { NOURISH } from '../data/survival';
+import { NOURISH, RAW_SICK, FOOD_COLOR } from '../data/survival';
 import { nourish } from './survival';
 import { makeNoise } from './noise';
 import { canRecall } from './level';
+import { lightFire } from './cooking';
 
 export interface Crystal { m: THREE.LineSegments; p: THREE.Vector3; v: THREE.Vector3; age: number }
 export interface Pickup { g: THREE.Group; k: ItemKey; p: THREE.Vector3; age: number; warned?: boolean }
@@ -42,6 +43,10 @@ export function dropPickup(at: THREE.Vector3, kind: ItemKey | 'relic') {
     const bar = new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints([V(0.15, 0, 0), V(0.5, 0, 0), V(0.4, 0, 0), V(0.4, -0.1, 0), V(0.5, 0, 0), V(0.5, -0.12, 0)]), add(c));
     if (k === 'key') g.add(ring, bar); else g.add(edgesOf(new THREE.OctahedronGeometry(0.22), add(c)));
     const beam = new THREE.Line(new THREE.BufferGeometry().setFromPoints([V(0, 0.3, 0), V(0, 3, 0)]), add(c)); g.add(beam);
+    scene.add(g); W.pickups.push({ g, k, p: at.clone(), age: 0 }); return;
+  }
+  if (NOURISH[k] || item(k).type === 'mat') { // food (lime) and materials (bone): a small faceted lump
+    g.add(edgesOf(new THREE.DodecahedronGeometry(0.18), add(NOURISH[k] ? FOOD_COLOR : 0xe8e0c0)));
     scene.add(g); W.pickups.push({ g, k, p: at.clone(), age: 0 }); return;
   }
   g.add(edgesOf(new THREE.BoxGeometry(0.3, 0.3, 0.3), add(k === 'medkit' ? 0x9dffe0 : 0x5cc8ff)));
@@ -154,8 +159,10 @@ export function useItem(k: ItemKey): boolean {
       addItem('flask'); // the flask is kept
       if (k === 'waterM' && Math.random() < 0.35) { G.hp -= 8; G.dmgFlash = 0.4; logLine('The murky water turns your stomach. -8 HP'); }
     }
+    if (k === 'meatR' && Math.random() < RAW_SICK.chance) { G.hp -= RAW_SICK.hp; G.dmgFlash = 0.4; logLine(`The raw meat makes you sick. -${RAW_SICK.hp} HP`); }
     return true;
   }
+  if (k === 'firekit') return lightFire();
   if (k === 'flask') { logLine('It is empty. Fill it at a well or a lake (E at the water).'); return false; }
   if (k === 'recall') {
     if (!canRecall()) { logLine('You are already in the village'); return false; }
