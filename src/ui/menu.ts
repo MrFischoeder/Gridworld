@@ -4,6 +4,7 @@ import { $, el, renderSheet } from './hud';
 import { lockPointer } from './input';
 import { newChar } from '../save';
 import { calcStats, saveChar } from '../character';
+import { openChangelog } from './changelog';
 
 const menu = $('menu'), startBtn = $('start'), wipeBtn = $('wipe');
 
@@ -25,6 +26,7 @@ export function initMenu(h: MenuHooks) {
     if (!G.isTouch) lockPointer();
     G.playing = true; menu.style.display = 'none';
   };
+  $('changelog').onclick = openChangelog;
   $('reroll').onclick = () => { h.newWorld((Math.random() * 1e6) | 0); startBtn.textContent = 'Play'; };
   let wipeArmed = false;
   wipeBtn.onclick = () => {
