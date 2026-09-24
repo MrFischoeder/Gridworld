@@ -243,6 +243,7 @@ export function hurtBandit(b: Bandit, dmg: number) {
   G.char.gold += gold; logLine(`+${gold} gold`);
   for (let i = 0; i < (lead ? 6 : 2); i++) dropCrystal(at);
   if (Math.random() < 0.2) dropPickup(at, 'medkit');
+  if (Math.random() < (lead ? 1 : 0.3)) dropPickup(at.clone().add(V(0.3, 0, 0.4)), 'scrap');
   if (lead && Math.random() < 0.3) dropPickup(at.clone().add(V(0.6, 0, 0)), 'key');
   if (lead && Math.random() < 0.2) dropPickup(at.clone().add(V(-0.6, 0, 0)), 'relic');
   if (lead) gainXp(40);

@@ -12,6 +12,7 @@ import { tube, type P } from './trees';
 import { burst } from './fx';
 import type { Plant } from '../gen/flora';
 import { FORAGE, FOOD_COLOR, type ForageKind } from '../data/survival';
+import { GATHER } from '../data/crafting';
 import { ITEMS, PACK } from '../data/items';
 import { putItems } from '../inventory';
 import { saveChar, dungeonKey } from '../character';
@@ -29,12 +30,14 @@ export interface PlantNode {
 const nodes = new Set<PlantNode>();
 
 // ---------- harvest state ----------
-const kindOf = (key: string) => key.split(':')[0] as ForageKind;
+const kindOf = (key: string) => key.split(':')[0];
+/** Game minutes until a picked plant, felled tree or broken rock is back. */
+const regrowOf = (key: string) => { const k = kindOf(key); return k === 'tree' || k === 'rock' ? GATHER[k].regrow : FORAGE[k as ForageKind].regrow; };
 /** Whether the plant has fruit now (never picked, or grown back since). Grown-back entries leave the save. */
 export function ripe(key: string): boolean {
   const h = G.char.harvest, t = h[key];
   if (t === undefined) return true;
-  if (G.char.time - t < FORAGE[kindOf(key)].regrow) return false;
+  if (G.char.time - t < regrowOf(key)) return false;
   delete h[key];
   return true;
 }

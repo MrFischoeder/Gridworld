@@ -227,3 +227,7 @@ body.is-touch #bUse.on{display:flex}
 #packLoad .warn,#xferInvInfo .warn{color:var(--amber)}
 #packLoad .bad,#xferInvInfo .bad{color:#ff7a5c}
 #detail .sub,.detail .sub{opacity:.7;font-size:16px}
+
+#dlg .recipes{max-height:36vh;overflow-y:auto;margin:6px 0}
+#dlg .shoprow.off{opacity:.45}
+#dlg .shoprow .bad{color:#ff7a5c}

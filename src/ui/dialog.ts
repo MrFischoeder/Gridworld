@@ -3,6 +3,7 @@ import { G, W } from '../game';
 import { ITEMS } from '../data/items';
 import { NPC_INFO, VILLAGER_LINES, RUMOURS, OPT_TEXT, LORE, BUYS, COOK_PRICE, stockFor, type OptId } from '../data/npcs';
 import { putItems } from '../inventory';
+import { craftClick, showForge } from './craft';
 import { addItem, calcStats, saveChar } from '../character';
 import { $ } from './hud';
 import { lockPointer } from './input';
@@ -82,6 +83,7 @@ function renderShop(msg?: string) {
     `<button class="opt" data-o="back">${OPT_TEXT.back}</button>`;
 }
 dlgEl.addEventListener('click', (e) => {
+  if (craftClick(e.target as HTMLElement)) return;
   const t = e.target as HTMLElement, o = t.closest<HTMLElement>('[data-o]'), b = t.closest<HTMLElement>('.buy'), c = G.char;
   if (b && b.dataset.v) { renderVehicleShop(buyVehicle(b.dataset.v as VehicleModel)); return; }
   if (b && b.dataset.sellv) { renderSell(sellVehicle(b.dataset.sellv)); return; }
@@ -114,6 +116,7 @@ dlgEl.addEventListener('click', (e) => {
     case 'back': renderTalk('Anything else?'); break;
     case 'shop': renderShop(); break;
     case 'sell': renderSell(); break;
+    case 'craft': showForge(); break;
     case 'cook': {
       let n = 0; for (const s of c.inv) if (s?.k === 'meatR') n += s.n;
       if (!n) { renderTalk('Raw meat, friend. Bring me some from a Bramble and I will roast it.'); break; }

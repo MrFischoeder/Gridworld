@@ -138,6 +138,7 @@ function wreckRaider(r: Raider) {
   p.hull = Math.round(v.spec.hull * (0.15 + Math.random() * 0.3)); p.fuel = Math.round(v.spec.tank * (0.2 + Math.random() * 0.5));
   const t = v.st.trunk; t.gold = 20 + Math.floor(Math.random() * 60);
   if (Math.random() < 0.5) putItems(t.items, 'medkit', 1);
+  putItems(t.items, 'scrap', 2 + Math.floor(Math.random() * 3));
   if (Math.random() < 0.3) putItems(t.items, 'wheelL', 1);
   if (Math.random() < 0.15) putItems(t.items, RELIC_KEYS[(Math.random() * RELIC_KEYS.length) | 0], 1);
   releaseAI(v);

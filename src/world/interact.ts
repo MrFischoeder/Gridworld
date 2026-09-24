@@ -13,6 +13,9 @@ import { OW, campStashes, loadedWells } from './overworld';
 import { waterSource, sourcePrompt, useWater, type WaterSource } from './water';
 import { nearPlant, plantPrompt, harvest, type PlantNode } from './flora';
 import { nearFire, cookAll, fireHasWork } from './cooking';
+import { gatherTarget, gatherPrompt, strike, type Target } from './gather';
+import { nearBench, type Bench } from './benches';
+import { openBench } from '../ui/craft';
 import { openStash } from './loot';
 import { openBoard } from '../ui/board';
 import { driving, vehicleSpot, useVehicle, leave, type VehicleSpot } from './vehicles';
@@ -21,7 +24,7 @@ import { driving, vehicleSpot, useVehicle, leave, type VehicleSpot } from './veh
 export let npcsActive = () => G.char.loc === 'overworld' && W.npcs.length > 0;
 export function setNpcsActive(f: () => boolean) { npcsActive = f; }
 
-let nearWater: WaterSource | null = null, nearFood: PlantNode | null = null, nearCook = false;
+let nearWater: WaterSource | null = null, nearFood: PlantNode | null = null, nearCook = false, nearWork: Bench | null = null, nearGather: Target | null = null;
 let nearVehicle: VehicleSpot | null = null, nearBoard = false, nearStash: ReturnType<typeof campStashes>[number] | null = null;
 export function updateEntities(dt: number, time: number) {
   const pos = G.pos;
@@ -58,8 +61,10 @@ export function updateEntities(dt: number, time: number) {
   const { nearNpc, nearLock, nearChest, nearPortal } = W, prompt = el.prompt;
   const busy = !!(nearNpc || nearLock || nearChest || nearBoard || nearStash || nearVehicle);
   nearFood = busy ? null : nearPlant();
-  nearCook = !busy && !nearFood && G.char.loc === 'overworld' && !!nearFire();
-  nearWater = G.char.loc === 'overworld' && !nearFood && !nearCook && !nearNpc && !nearChest && !nearBoard && !nearStash && !nearVehicle ? waterSource(loadedWells()) : null;
+  nearWork = busy || nearFood ? null : nearBench();
+  nearCook = !busy && !nearFood && !nearWork && G.char.loc === 'overworld' && !!nearFire();
+  nearGather = busy || nearFood || nearWork || nearCook ? null : gatherTarget();
+  nearWater = G.char.loc === 'overworld' && !nearFood && !nearCook && !nearWork && !nearGather && !nearNpc && !nearChest && !nearBoard && !nearStash && !nearVehicle ? waterSource(loadedWells()) : null;
   if (nearNpc) { prompt.className = ''; prompt.textContent = G.isTouch ? nearNpc.name : 'E — talk to ' + nearNpc.name; }
   else if (nearLock) {
     prompt.className = 'lock';
@@ -71,9 +76,11 @@ export function updateEntities(dt: number, time: number) {
   else if (nearVehicle) { prompt.className = ''; prompt.textContent = G.isTouch ? '' : 'E — ' + nearVehicle.label; }
   else if (nearPortal) { prompt.className = 'portal'; prompt.textContent = nearPortal.label; }
   else if (nearFood) { prompt.className = ''; prompt.textContent = plantPrompt(nearFood); }
+  else if (nearWork) { prompt.className = ''; prompt.textContent = 'E — use the workbench'; }
+  else if (nearGather) { prompt.className = ''; prompt.textContent = gatherPrompt(nearGather); }
   else if (nearCook) { prompt.className = ''; prompt.textContent = fireHasWork() ? 'E — roast your raw meat' : 'A campfire: bring raw meat to roast'; }
   else if (nearWater) { prompt.className = nearWater.kind === 'toxic' ? 'lock' : ''; prompt.textContent = sourcePrompt(nearWater); }
-  prompt.style.display = (nearNpc || nearLock || nearChest || nearBoard || nearStash || nearVehicle || nearPortal || nearFood || nearCook || nearWater) && G.playing && prompt.textContent ? 'block' : 'none';
+  prompt.style.display = (nearNpc || nearLock || nearChest || nearBoard || nearStash || nearVehicle || nearPortal || nearFood || nearWork || nearGather || nearCook || nearWater) && G.playing && prompt.textContent ? 'block' : 'none';
   const canUse = nearNpc || nearChest || nearBoard || nearStash || nearVehicle || (nearLock && hasItem('key'));
   el.bUse.textContent = nearNpc ? 'TALK' : nearLock ? 'UNLOCK' : nearChest ? 'OPEN' : nearBoard ? 'READ' : nearStash ? 'OPEN' : nearVehicle ? (nearVehicle.kind === 'drive' ? 'DRIVE' : 'TRUNK') : 'OPEN';
   el.bUse.classList.toggle('on', !!canUse && G.playing);
@@ -93,6 +100,8 @@ export function interact() {
   else if (nearStash) openStash(nearStash.id, nearStash.name);
   else if (nearVehicle) useVehicle(nearVehicle);
   else if (nearFood) harvest(nearFood);
+  else if (nearWork) openBench(nearWork);
+  else if (nearGather) strike(nearGather);
   else if (nearCook) cookAll();
   else if (nearWater) useWater(nearWater);
 }

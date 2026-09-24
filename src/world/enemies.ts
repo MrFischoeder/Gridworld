@@ -159,6 +159,7 @@ function killBoss(b: Boss) {
   dropPickup(at, 'key');
   if (!b.guard || Math.random() < 0.5) dropPickup(at.clone().add(V(0.6, 0, 0)), 'relic');
   if (Math.random() < 0.6) dropPickup(at.clone().add(V(-0.6, 0, 0)), 'medkit');
+  for (let i = 0; i < 3; i++) dropPickup(at.clone().add(V(0, 0, 0.5 + i * 0.4)), 'scrap');
   progress('killed').push(b.idx);
   G.char.gold += 40 * depth; logLine('+' + (40 * depth) + ' gold');
   gainXp(60 * depth); saveChar();
@@ -175,6 +176,7 @@ export function damageFoe(t: Foe, dmg: number) {
     const at = t.g.position.clone(); burst(at, 0xffb347, 26, 1.4);
     const n = 2 + (Math.random() < 0.5 ? 1 : 0); for (let i = 0; i < n; i++) dropCrystal(at);
     const r = Math.random(); if (r < 0.12) dropPickup(at, 'medkit'); else if (r < 0.17) dropPickup(at, 'emp');
+    if (Math.random() < 0.35) dropPickup(at.clone().add(V(0.4, 0, 0.3)), 'scrap');
     respawnDrone(t);
     onKill('drone');
   }

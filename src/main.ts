@@ -18,6 +18,7 @@ import { collides, setWaterNote } from './world/player';
 import { animateWater } from './world/water';
 import { updateSurvival } from './world/survival';
 import { updateFlora } from './world/flora';
+import { syncBenches } from './world/benches';
 import { updateFires } from './world/cooking';
 import { regionRoads } from './gen/roads';
 import { generateQuest } from './gen/quests';
@@ -59,6 +60,7 @@ if (G.char.loc === 'dungeon' && G.char.dungeon) loadDungeon(null); else { G.char
 refreshGunLook();
 renderer.info.autoReset = false;
 let last = performance.now(), perfT = 0, saveT = 0, clockT = 0;
+let benchT = 0; // workbenches in the wilds are synced about once a second
 function frame(now: number) {
   const dt = Math.min((now - last) / 1000, 0.05); last = now;
   const time = now / 1000;
@@ -67,7 +69,7 @@ function frame(now: number) {
   const live = G.playing && !uiOpen() && !G.trans;
   if (outdoors) updateStreaming(G.trans ? 8 : 4);
   // the clock runs whenever the game is not paused in the menu
-  if (G.playing) { G.char.time += dt * MIN_PER_SEC; updateSurvival(dt); updateFlora(dt); updateFires(dt, time); }
+  if (G.playing) { G.char.time += dt * MIN_PER_SEC; updateSurvival(dt); updateFlora(dt); updateFires(dt, time); if ((benchT -= dt) <= 0) { benchT = 1; syncBenches(); } }
   const clock = fmtClock(G.char.time);
   if (el.clock.textContent !== clock) el.clock.textContent = clock;
   if ((clockT -= dt) <= 0) {

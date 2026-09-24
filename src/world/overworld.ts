@@ -6,13 +6,13 @@ import { scene, V, GRID, localize } from './render';
 import { G, W } from '../game';
 import { VoxelGrid, type Space } from '../core/voxel';
 import { Terrain, inRect, rectDist, STEP, CELLS, VERTS } from '../gen/terrain';
-import { CHUNK, poisNear, X_MIN, WORLD_W, POLE_Z, POLAR_Z, worldDist, villageContaining, villageDist, villageSeed, GRIDHOLM_ID, type Poi } from '../gen/regions';
+import { CHUNK, poisNear, X_MIN, WORLD_W, POLE_Z, POLAR_Z, worldDist, villageContaining, villageDist, villageSeed, GRIDHOLM_ID, type Poi, wrapC } from '../gen/regions';
 import { chunkTrees, chunkRocks, type Tree, type Rock } from '../gen/trees';
 import { drawTree } from './trees';
 import { drawTemple } from './temple';
 import { chunkWells, type Well } from '../gen/water';
 import { chunkPlants, type Plant } from '../gen/flora';
-import { drawPlants, dropPlants, type PlantNode } from './flora';
+import { drawPlants, dropPlants, ripe, type PlantNode } from './flora';
 import { drawWell, syncLakes, clearLakes } from './water';
 import { generateVillage, type VillageMap } from '../gen/village';
 import { syncQuestWorld } from './quests';
@@ -133,10 +133,15 @@ function buildChunk(cx: number, cz: number, lod = 1): Chunk {
   const lg = new THREE.BufferGeometry(); lg.setAttribute('position', new THREE.Float32BufferAttribute(lines, 3));
   group.add(new THREE.Mesh(fg, sharedFill()), new THREE.LineSegments(lg, sharedLine(Math.abs(z0 + CHUNK / 2) > POLAR_Z + 800 ? ICE_COLOR : GRID)));
   if (road.length) { const rg = new THREE.BufferGeometry(); rg.setAttribute('position', new THREE.Float32BufferAttribute(road, 3)); group.add(new THREE.LineSegments(rg, sharedLine(ROAD_COLOR))); }
-  const trees = chunkTrees(T, cx, cz), rocks = chunkRocks(T, cx, cz), wells = chunkWells(T, cx, cz), plants = chunkPlants(T, cx, cz);
+  const wells = chunkWells(T, cx, cz), plants = chunkPlants(T, cx, cz);
+  // felled trees and broken rocks (player changes, keyed by their index in the generated list) are left out
+  const trees: Tree[] = [], stumps: Tree[] = [], rocks: Rock[] = [];
+  chunkTrees(T, cx, cz).forEach((t, i) => { const k = `tree:${wrapC(cx)}:${cz}:${i}`; gatherKey.set(t, k); (ripe(k) ? trees : stumps).push(t); });
+  chunkRocks(T, cx, cz).forEach((r, i) => { const k = `rock:${wrapC(cx)}:${cz}:${i}`; gatherKey.set(r, k); if (ripe(k)) rocks.push(r); });
   let nodes: PlantNode[] = [];
-  if (trees.length || rocks.length || wells.length || plants.length) {
+  if (trees.length || stumps.length || rocks.length || wells.length || plants.length) {
     const pb = new PropBatch();
+    for (const t of stumps) for (const [sx, sz, sr] of t.cols) { const r = Math.max(0.25, sr * 0.8); pb.box(sx - r, t.y - 0.1, sz - r, sx + r, t.y + 0.5, sz + r, GRID); }
     nodes = drawPlants(pb, plants, lod, group);
     for (const w of wells) drawWell(pb, w, T.heightAt(w.x, w.z));
     for (const t of trees) drawTree(pb, t, lod);
@@ -146,6 +151,21 @@ function buildChunk(cx: number, cz: number, lod = 1): Chunk {
   localize(group, x0, z0);
   scene.add(group);
   return { cx, cz, group, trees, rocks, wells, plants, nodes, lod };
+}
+/** Save keys of the trees and rocks in loaded chunks ("tree:<cx>:<cz>:<i>", canonical chunk x). */
+export const gatherKey = new WeakMap<object, string>();
+/** Standing trees and workable rocks around (x, z), for the Hatchet and the Pickaxe. */
+export function gatherables(x: number, z: number) {
+  const cx = Math.floor(x / CHUNK), cz = Math.floor(z / CHUNK), trees: Tree[] = [], rocks: Rock[] = [];
+  for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) { const c = OW.chunks.get(ckey(cx + i, cz + j)); if (c) { trees.push(...c.trees); rocks.push(...c.rocks); } }
+  return { trees, rocks };
+}
+/** Rebuild the chunk under (x, z) (a tree was felled, a rock broken up). */
+export function rebuildChunkAt(x: number, z: number) {
+  const cx = Math.floor(x / CHUNK), cz = Math.floor(z / CHUNK), old = OW.chunks.get(ckey(cx, cz));
+  if (!old) return;
+  OW.chunks.set(ckey(cx, cz), buildChunk(cx, cz, old.lod));
+  dropChunk(old);
 }
 function dropChunk(c: Chunk) {
   dropPlants(c.nodes);

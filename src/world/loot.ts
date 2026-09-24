@@ -20,6 +20,7 @@ import { nourish } from './survival';
 import { makeNoise } from './noise';
 import { canRecall } from './level';
 import { lightFire } from './cooking';
+import { placeBench } from './benches';
 
 export interface Crystal { m: THREE.LineSegments; p: THREE.Vector3; v: THREE.Vector3; age: number }
 export interface Pickup { g: THREE.Group; k: ItemKey; p: THREE.Vector3; age: number; warned?: boolean }
@@ -168,6 +169,7 @@ export function useItem(k: ItemKey): boolean {
     return true;
   }
   if (k === 'firekit') return lightFire();
+  if (k === 'benchkit') { if (placeBench()) { closePack(); return true; } return false; }
   if (k === 'flask') { logLine('It is empty. Fill it at a well or a lake (E at the water).'); return false; }
   if (k === 'recall') {
     if (!canRecall()) { logLine('You are already in the village'); return false; }

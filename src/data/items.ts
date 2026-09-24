@@ -1,4 +1,4 @@
-export type ItemType = 'relic' | 'cons' | 'key' | 'part' | 'quest' | 'attach' | 'mat';
+export type ItemType = 'relic' | 'cons' | 'key' | 'part' | 'quest' | 'attach' | 'mat' | 'tool';
 export interface ItemDef { name: string; ab: string; type: ItemType; desc: string; stack?: number }
 
 export const ITEMS = {
@@ -20,6 +20,12 @@ export const ITEMS = {
   pod: { name: 'Fruit Pod', ab: 'POD', type: 'cons', desc: 'a juicy pod from an Alien Fruit Pod Tree: 220 kcal, water +18, but heavy in the stomach', stack: 8 },
   ncrys: { name: 'Nutrient Crystal', ab: 'NCR', type: 'cons', desc: 'an edible crystal that grows in the dungeons: 700 kcal in a tiny bite, 10 HP', stack: 6 },
   firekit: { name: 'Fire Kit', ab: 'FIR', type: 'cons', desc: 'lights a campfire at your feet (outdoors); press E at the fire to roast your raw meat', stack: 5 },
+  log: { name: 'Log', ab: 'LOG', type: 'mat', desc: 'a length of wood, chopped from a tree with a Hatchet. For crafting', stack: 10 },
+  stone: { name: 'Stone', ab: 'STN', type: 'mat', desc: 'a chunk of rock, broken off with a Pickaxe. For crafting', stack: 10 },
+  scrap: { name: 'Scrap Metal', ab: 'SCR', type: 'mat', desc: 'twisted machine parts from drones, bandits and wrecks. For crafting', stack: 10 },
+  hatchet: { name: 'Hatchet', ab: 'HAT', type: 'tool', desc: 'tool: carry it and press E at a tree to chop it (a few blows fell it; logs drop)', stack: 1 },
+  pickaxe: { name: 'Pickaxe', ab: 'PIK', type: 'tool', desc: 'tool: carry it and press E at a rock to break stone off it', stack: 1 },
+  benchkit: { name: 'Workbench Kit', ab: 'WBK', type: 'cons', desc: 'a folding workbench: use it to set it up in front of you, then E at it to craft anywhere', stack: 1 },
   hide: { name: 'Ravager Hide', ab: 'HID', type: 'mat', desc: 'a tough, spotted hide. Crafting material; Radek buys it', stack: 10 },
   fang: { name: 'Ravager Fang', ab: 'FNG', type: 'mat', desc: 'a hooked fang. Crafting material; Radek buys it', stack: 10 },
   plate: { name: 'Bramble Plate', ab: 'PLT', type: 'mat', desc: 'a thorny armour plate from a Bramble. Crafting material; Radek buys it', stack: 10 },
@@ -61,6 +67,7 @@ export const BULK: Record<ItemKey, [kg: number, litres: number]> = {
   medkit: [0.5, 1], key: [0.05, 0.05], recall: [0.4, 0.3], emp: [0.8, 0.6], flask: [0.3, 0.8], firekit: [1, 1.5],
   bread: [0.4, 1], stew: [0.6, 0.8], waterF: [1, 0.8], waterM: [1, 0.8],
   meatR: [0.5, 0.6], meatC: [0.35, 0.5], cap: [0.15, 0.4], pod: [0.5, 0.8], ncrys: [0.15, 0.2],
+  log: [4, 6], stone: [3, 2], scrap: [1.5, 1.5], hatchet: [1.5, 2], pickaxe: [2.5, 3], benchkit: [15, 20],
   hide: [2, 3], fang: [0.1, 0.1], plate: [3, 2.5], membrane: [0.3, 1], incisor: [0.05, 0.05],
   book: [1, 1], gearbox: [4, 2], datacore: [1, 0.5], logbook: [0.5, 0.5],
   wheelL: [12, 22], wheelH: [28, 36], engine: [8, 6], turbo: [6, 5], eguard: [5, 4], plating: [7, 5], cannon: [25, 30],
