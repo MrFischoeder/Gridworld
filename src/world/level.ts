@@ -136,6 +136,7 @@ export function villageDeco(map: VillageMap, y0 = 0) {
     if (b.name) grp.add(wallSign(b.name, b.role === 'innkeeper' ? '#ffb347' : '#ffd060', { x: b.door.x, z: b.door.z }, b.out, y0 + 3.5));
   }
   for (const t of map.trees) drawCrown(props, t.x + 0.5, y0 + 2, t.z + 0.5, 1.8, t.h, hash(t.x, t.z, 0x7e3e));
+  if (map.house) homeDeco(props, map.house, y0);
   if (map.tier < STONE_TIER) fenceDeco(props, map, y0);
   else {
   // guard tower lookouts
@@ -157,6 +158,26 @@ export function villageDeco(map: VillageMap, y0 = 0) {
   }
   grp.add(props.build());
   return lampsAndWell(grp, map, y0);
+}
+/** The hero's bed (a wooden frame with a headboard, a mattress, a pillow and a blanket) and chest, in their house. */
+function homeDeco(pb: PropBatch, h: NonNullable<VillageMap['house']>, y0: number) {
+  const WOOD = 0xb8b060, CLOTH = 0x9dffb4, GOLD = 0xffd060, { x0, z0, x1, z1 } = h.bed;
+  for (const [x, z] of [[x0, z0], [x1 - 0.12, z0], [x1 - 0.12, z1 - 0.12], [x0, z1 - 0.12]]) pb.box(x, y0, z, x + 0.12, y0 + 0.3, z + 0.12, WOOD);
+  pb.box(x0, y0 + 0.3, z0, x1, y0 + 0.42, z1, WOOD);
+  pb.box(x0, y0, z0 - 0.06, x1, y0 + 1.0, z0 + 0.06, WOOD); // headboard against the wall
+  pb.box(x0 + 0.05, y0 + 0.42, z0 + 0.08, x1 - 0.05, y0 + 0.6, z1 - 0.05, CLOTH);
+  pb.box(x0 + 0.2, y0 + 0.6, z0 + 0.15, x1 - 0.2, y0 + 0.72, z0 + 0.55, CLOTH);
+  // the blanket over the foot end, folded back once
+  const by = y0 + 0.62, bz = z0 + 0.8;
+  pb.box(x0 + 0.02, y0 + 0.5, bz, x1 - 0.02, by, z1 - 0.02, WOOD);
+  for (let z = bz + 0.3; z < z1 - 0.1; z += 0.3) pb.seg(CLOTH, [x0 + 0.03, by + 0.005, z], [x1 - 0.03, by + 0.005, z]);
+  pb.box(x0 + 0.02, by, bz, x1 - 0.02, by + 0.05, bz + 0.25, CLOTH);
+  // the chest: a box with a lid, iron bands and a lock plate
+  const { x, z } = h.chest, w = 0.5, d = 0.34;
+  pb.box(x - w, y0, z - d, x + w, y0 + 0.5, z + d, GOLD);
+  pb.box(x - w - 0.03, y0 + 0.5, z - d - 0.03, x + w + 0.03, y0 + 0.66, z + d + 0.03, GOLD);
+  for (const bx of [x - w * 0.6, x + w * 0.6]) pb.line(GOLD, [bx, y0, z - d - 0.01], [bx, y0 + 0.67, z - d - 0.04], [bx, y0 + 0.67, z + d + 0.04], [bx, y0, z + d + 0.01]);
+  pb.box(x + w + 0.01, y0 + 0.36, z - 0.08, x + w + 0.05, y0 + 0.56, z + 0.08, GOLD);
 }
 const STAKE = 0xb8b060, SCRAP = 0x8fb89a;
 /** A repeatable pseudo-random number for drawing a village's fence (0..1). */
@@ -238,7 +259,7 @@ function lampsAndWell(grp: THREE.Group, map: VillageMap, y0: number) {
 }
 
 // ---------- the open world ----------
-export type Arrival = { kind: 'saved' } | { kind: 'new' } | { kind: 'tavern'; id?: number } | { kind: 'ruin'; id: number };
+export type Arrival = { kind: 'saved' } | { kind: 'new' } | { kind: 'tavern'; id?: number; bed?: boolean } | { kind: 'ruin'; id: number };
 export function loadOverworld(a: Arrival) {
   const c = G.char;
   clearLevel(); setLocationLook(true);
@@ -259,7 +280,9 @@ export function loadOverworld(a: Arrival) {
     if (G.ground) G.pos.y = Math.max(G.pos.y, G.ground(G.pos.x, G.pos.z));
   } else {
     const vm = OW.village!;
-    if (a.kind === 'tavern') {
+    if (a.kind === 'tavern' && a.bed && vm.house) { // by your own bed in Gridholm, facing the door
+      G.pos.set(vm.house.bed.side.x, vm.y, vm.house.bed.side.z); G.yaw = -Math.PI / 2;
+    } else if (a.kind === 'tavern') {
       const t = vm.buildings.find((b) => b.role === 'innkeeper')!;
       G.pos.set(t.door.x + t.out[0] * 2, vm.y, t.door.z + t.out[1] * 2); G.yaw = Math.atan2(t.out[0], t.out[1]);
     } else { G.pos.set(...vm.spawn); G.yaw = 0; }
@@ -339,9 +362,11 @@ export function toVillage(how: 'death' | 'recall', id?: number) {
   const known = allVillages(c.world).filter((v) => v.id === GRIDHOLM_ID || isDiscovered(c.discovered, Math.floor(v.x / CHUNK), Math.floor(v.z / CHUNK)));
   const v = id !== undefined ? findPoi(c.world, id) ?? known[0] : known.reduce((a, b) => (worldDist(b.x, b.z, from.x, from.z) < worldDist(a.x, a.z, from.x, from.z) ? b : a));
   c.loc = 'overworld'; c.dungeon = null; saveChar();
-  loadOverworld({ kind: 'tavern', id: v.id }); G.hp = G.S.maxHp;
-  if (how === 'death') { c.kcal = Math.max(c.kcal, 1500); c.water = Math.max(c.water, 50); } // the innkeeper fed you
-  showToast(how === 'death' ? 'You wake up in the tavern of ' + v.name : v.name);
+  // Gridholm is home: you wake up in your own bed there, anywhere else in the tavern
+  const bed = v.id === GRIDHOLM_ID;
+  loadOverworld({ kind: 'tavern', id: v.id, bed }); G.hp = G.S.maxHp;
+  if (how === 'death') { c.kcal = Math.max(c.kcal, 1500); c.water = Math.max(c.water, 50); } // the innkeeper (or a neighbour) fed you
+  showToast(how === 'death' ? (bed ? 'You wake up in your own bed' : 'You wake up in the tavern of ' + v.name) : bed ? 'Home' : v.name);
   arriveVia(null);
 }
 export const canRecall = () => G.char.loc === 'dungeon' || !inVillage(G.pos.x, G.pos.z);

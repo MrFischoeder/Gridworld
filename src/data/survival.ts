@@ -78,3 +78,16 @@ export type ForageKind = keyof typeof FORAGE;
 export const FIRE_LIFE = 240;
 /** Drinking straight from a clean well or lake, per sip. */
 export const SIP = { fresh: 25, murky: 15 };
+
+/**
+ * Sleeping in your bed (world/home.ts): at night (from `night` o'clock until `dawn`) you sleep through to `wake`
+ * o'clock; by day you take a nap of `nap` game minutes. Asleep the body burns `burn` of its resting rate and dries
+ * out at `water` of the waking rate; a night's sleep heals you fully, a nap `napHeal` of your health.
+ */
+export const SLEEP = { night: 20, dawn: 6, wake: 7, nap: 120, burn: 0.85, water: 0.5, napHeal: 0.5 };
+/** How long (game minutes) you sleep when you lie down at game time `t`, and whether it is a full night. */
+export function sleepSpan(t: number): { min: number; night: boolean } {
+  const day = 1440, now = ((t % day) + day) % day, h = now / 60;
+  if (h >= SLEEP.night || h < SLEEP.dawn) { const wake = SLEEP.wake * 60; return { min: (wake - now + day) % day, night: true }; }
+  return { min: SLEEP.nap, night: false };
+}

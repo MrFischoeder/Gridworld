@@ -8,7 +8,11 @@ export interface P3 { x: number; y: number; z: number }
 export interface Building {
   name: string; role: Role; x: number; z: number; w: number; d: number; h: number;
   side: Dir; out: [number, number]; door: P3; home?: P3;
+  /** The hero's own house (Gridholm only). */
+  mine?: boolean;
 }
+/** Inside the hero's house: the bed (its head end against the wall, `yaw` the way you face stepping out of it) and the chest. */
+export interface HomeFurniture { bed: { x0: number; z0: number; x1: number; z1: number; side: { x: number; z: number } }; chest: { x: number; z: number } }
 /** A gap in the village wall. (x, z) is the point just outside, where the road starts. */
 export interface Gate { dir: Dir; x: number; z: number; w: number; /** First cell of the opening along the wall, and the wall cell across it. */ a: number; m: number }
 /** Guard tower footprint (world), standing on the plaza floor (a stone tower, or a watch platform on stilts). */
@@ -48,6 +52,8 @@ export interface VillageMap {
   /** The notice board on the plaza (world x/z; it faces south, towards the spawn). */
   board: { x: number; z: number };
   buildings: Building[];
+  /** The hero's house furniture (world), in Gridholm only. */
+  house: HomeFurniture | null;
   trees: { x: number; z: number; h: number }[];
   lamps: { x: number; z: number }[];
   well: { x: number; z: number };
@@ -142,7 +148,14 @@ export function generateVillage(seed: number, y = 0, cx = 0, cz = 0, name = 'Gri
   const j = () => ri(-1, 1);
   B('TAVERN', 'innkeeper', 2, 6 + j(), 15, 12, 'E');
   B("ELDER'S HALL", 'elder', 2, 25 + j(), 12, 10, 'E');
-  B('', 'house', 3, 43 + j(), 9, 8, 'E');
+  const hz = 43 + j(), mine = B(home ? 'YOUR HOUSE' : '', 'house', 3, hz, 9, 8, 'E');
+  // in Gridholm that house is the hero's: a bed along the back wall in the far corner and a chest in the near one
+  let house: HomeFurniture | null = null;
+  if (home) {
+    mine.mine = true;
+    const iz0 = hz + 1, iz1 = hz + 7; // the inside runs from x 4 to 10 and z iz0 to iz1 (exclusive)
+    house = { bed: { x0: 4.15, z0: iz0 + 0.15, x1: 5.35, z1: iz0 + 2.35, side: { x: 6.3, z: iz0 + 1.3 } }, chest: { x: 4.7, z: iz1 - 0.65 } };
+  }
   B('BLACKSMITH', 'blacksmith', 57, 6 + j(), 13, 10, 'W');
   B('GENERAL STORE', 'merchant', 57, 23 + j(), 13, 10, 'W');
   B('FOOD & PROVISIONS', 'grocer', 59, 40 + j(), 11, 9, 'W');
@@ -176,6 +189,8 @@ export function generateVillage(seed: number, y = 0, cx = 0, cz = 0, name = 'Gri
     towers: towers.map((t) => ({ ...t, x: t.x + ox, z: t.z + oz })),
     board: { x: 41 + ox, z: 45 + oz }, mapBoard: { x: 31 + ox, z: 45 + oz },
     buildings: buildings.map((b) => ({ ...b, x: b.x + ox, z: b.z + oz, door: P(b.door), home: b.home && P(b.home) })),
+    house: house && { bed: { x0: house.bed.x0 + ox, z0: house.bed.z0 + oz, x1: house.bed.x1 + ox, z1: house.bed.z1 + oz, side: { x: house.bed.side.x + ox, z: house.bed.side.z + oz } },
+      chest: { x: house.chest.x + ox, z: house.chest.z + oz } },
     trees: trees.map((t) => ({ ...t, x: t.x + ox, z: t.z + oz })), lamps: lamps.map((l) => ({ x: l.x + ox, z: l.z + oz })),
     well: { x: 36 + ox, z: 37 + oz }, walk: walk.map(([x, z]) => [x + ox, z + oz]),
     tier, wallH: WALL_H, fence: stone ? [] : fenceRuns().map((r) => ({ x0: r.x0 + ox, z0: r.z0 + oz, x1: r.x1 + ox, z1: r.z1 + oz })),

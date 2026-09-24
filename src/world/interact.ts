@@ -26,6 +26,7 @@ import { openBench } from '../ui/craft';
 import { openAreaMap } from '../ui/areamap';
 import { openStash } from './loot';
 import { openBoard } from '../ui/board';
+import { nearHome, homePrompt, useHome } from './home';
 import { driving, vehicleSpot, useVehicle, leave, type VehicleSpot } from './vehicles';
 
 /** Hook for places with people (the village). */
@@ -35,6 +36,7 @@ export function setNpcsActive(f: () => boolean) { npcsActive = f; }
 let nearWater: WaterSource | null = null, nearFood: PlantNode | null = null, nearCook = false, nearWork: Bench | null = null, nearGather: Target | null = null;
 let nearCave: Cave | null = null, caveOut = -1;
 let nearMap = false, nearClaim: SavedClaim | null = null, nearGate: ReturnType<typeof nearDoor> = null, nearGun: ReturnType<typeof nearTurret> = null;
+let nearMine: ReturnType<typeof nearHome> = null;
 let nearVehicle: VehicleSpot | null = null, nearBoard = false, nearStash: ReturnType<typeof campStashes>[number] | null = null;
 export function updateEntities(dt: number, time: number) {
   const pos = G.pos;
@@ -53,6 +55,7 @@ export function updateEntities(dt: number, time: number) {
   const mb = G.char.loc === 'overworld' && OW.village ? OW.village.mapBoard : null;
   nearMap = !!mb && Math.hypot(mb.x - pos.x, mb.z + 1 - pos.z) < 2.4;
   nearStash = G.char.loc === 'overworld' ? campStashes().find((s) => Math.hypot(s.x - pos.x, s.z - pos.z) < 1.8) ?? null : null;
+  nearMine = nearHome();
   nearCave = G.char.loc === 'overworld' ? loadedCaves().find((c) => atMouth(c, pos.x, pos.z)) ?? null : null;
   caveOut = G.char.loc === 'dungeon' && G.char.dungeon?.cave ? caveExitNear() : -1;
   nearGate = nearDoor(); nearGun = nearGate ? null : nearTurret();
@@ -75,17 +78,18 @@ export function updateEntities(dt: number, time: number) {
     if (along > 0.9 && along < 3 && lat < 1.6 && Math.abs(pos.y - p.y0) < 1 && G.playing && !G.trans) enter = p;
   }
   const { nearNpc, nearLock, nearChest, nearPortal } = W, prompt = el.prompt;
-  const busy = !!(nearNpc || nearLock || nearChest || nearBoard || nearMap || nearStash || nearVehicle || nearGate || nearGun || nearCave || caveOut >= 0);
+  const busy = !!(nearMine || nearNpc || nearLock || nearChest || nearBoard || nearMap || nearStash || nearVehicle || nearGate || nearGun || nearCave || caveOut >= 0);
   nearFood = busy ? null : nearPlant();
   nearWork = busy || nearFood ? null : nearBench();
   nearClaim = busy || nearFood || nearWork ? null : nearFlag();
   nearCook = !busy && !nearFood && !nearWork && !nearClaim && G.char.loc === 'overworld' && !!nearFire();
   nearGather = busy || nearFood || nearWork || nearClaim || nearCook ? null : gatherTarget();
-  nearWater = G.char.loc === 'overworld' && !nearFood && !nearCook && !nearWork && !nearClaim && !nearGather && !nearNpc && !nearChest && !nearBoard && !nearStash && !nearVehicle ? waterSource(loadedWells()) : null;
+  nearWater = G.char.loc === 'overworld' && !nearFood && !nearCook && !nearWork && !nearClaim && !nearGather && !nearNpc && !nearChest && !nearBoard && !nearStash && !nearVehicle && !nearMine ? waterSource(loadedWells()) : null;
   if (nearGate) { prompt.className = ''; prompt.textContent = doorPrompt(nearGate); }
   else if (nearCave) { prompt.className = 'portal'; prompt.textContent = 'E — enter ' + nearCave.name + (nearCave.other ? ' (it runs through the mountain)' : ''); }
   else if (caveOut >= 0) { const info = G.char.dungeon!.cave!; prompt.className = 'portal'; prompt.textContent = 'E — leave the cave' + (info.mouths.length > 1 && caveOut !== info.from ? ' (the far side of the mountain)' : ''); }
   else if (nearGun) { prompt.className = ''; prompt.textContent = nearGun.p.off ? 'E — switch the turret on' : 'E — switch the turret off'; }
+  else if (nearMine) { prompt.className = ''; prompt.textContent = homePrompt(nearMine); }
   else if (nearNpc) { prompt.className = ''; prompt.textContent = G.isTouch ? nearNpc.name : 'E — talk to ' + nearNpc.name; }
   else if (nearLock) {
     prompt.className = 'lock';
@@ -103,7 +107,7 @@ export function updateEntities(dt: number, time: number) {
   else if (nearGather) { prompt.className = ''; prompt.textContent = gatherPrompt(nearGather); }
   else if (nearCook) { prompt.className = ''; prompt.textContent = fireHasWork() ? 'E — roast your raw meat' : 'A campfire: bring raw meat to roast'; }
   else if (nearWater) { prompt.className = nearWater.kind === 'toxic' ? 'lock' : ''; prompt.textContent = sourcePrompt(nearWater); }
-  prompt.style.display = (nearGate || nearGun || nearCave || caveOut >= 0 || nearNpc || nearLock || nearChest || nearBoard || nearMap || nearStash || nearVehicle || nearPortal || nearFood || nearWork || nearClaim || nearGather || nearCook || nearWater) && G.playing && prompt.textContent ? 'block' : 'none';
+  prompt.style.display = (nearMine || nearGate || nearGun || nearCave || caveOut >= 0 || nearNpc || nearLock || nearChest || nearBoard || nearMap || nearStash || nearVehicle || nearPortal || nearFood || nearWork || nearClaim || nearGather || nearCook || nearWater) && G.playing && prompt.textContent ? 'block' : 'none';
   const bh = buildHint();
   if (bh !== null && !nearGate && !nearGun) { prompt.className = buildOk() ? '' : 'lock'; prompt.textContent = bh; prompt.style.display = G.playing && bh ? 'block' : 'none'; }
   const hint = placingHint();
@@ -129,6 +133,7 @@ export function interact() {
   if (nearGun) { toggleTurret(nearGun); return; }
   if (nearCave) { enterCave(nearCave); return; }
   if (caveOut >= 0) { exitCave(caveOut); return; }
+  if (nearMine) { useHome(nearMine); return; }
   if (W.nearNpc) openDialog(W.nearNpc); else if (W.nearLock) unlockDoor(W.nearLock); else if (W.nearChest) openChest(W.nearChest);
   else if (nearBoard) openBoard();
   else if (nearMap && OW.village) openAreaMap({ x: OW.village.ox + 36, z: OW.village.oz + 36, name: OW.village.name });

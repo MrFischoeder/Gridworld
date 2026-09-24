@@ -4,6 +4,13 @@ export interface Change { v: string; date: string; title: string; notes: string[
 
 export const CHANGELOG: Change[] = [
   {
+    v: '0.22.0', date: '2026-09-24', title: 'A house of your own',
+    notes: ['You have your own house in Gridholm: the little house by the west fence, south of the Elder\'s Hall, with YOUR HOUSE over the door.',
+      'Inside stands a chest with 24 slots: whatever you put in it stays there, safe, for as long as you like.',
+      'And a bed: lie down at night (from 20:00) and you sleep until 07:00 and wake fully healed and rested; by day you take a two-hour nap that heals half your health. You still get hungry and thirsty while you sleep.',
+      'When you die, or use a Recall Beacon, and Gridholm is the nearest village you know, you now wake up in your own bed instead of the tavern.'],
+  },
+  {
     v: '0.21.0', date: '2026-09-24', title: 'Makeshift village fences',
     notes: ['The villages lost their tall stone walls: they now hide behind low, flimsy fences of sharpened stakes, uneven and leaning, with rails nailed along them and patches of scrap sheet over the holes.',
       'Watch platforms on stilts stand in the corners instead of stone towers, and every gate is a frame of two posts and a crossbeam with the village name.',
