@@ -1,6 +1,7 @@
 // Dungeon sector generator. Pure and deterministic: same seed + opts => identical output.
 import { rng, rangeInt, DIRV, type Dir } from '../core/rng';
 import type { Op } from '../core/voxel';
+import type { RobotKind } from '../data/robots';
 import { sbox, stairOpsFor, SL, type PortalSpec } from './stairs';
 
 export interface DoorCand { axis: 'x' | 'z'; m: number; c: number; locked?: boolean }
@@ -25,6 +26,8 @@ export interface DungeonMap {
   boxes: DecoBox[];
   /** Temple maze or ship corridors (different decoration and loot). */
   style: 'temple' | 'ship';
+  /** Robots standing guard where the level loads (crashed ships): kind and floor spot. Unsaved, like drones. */
+  guards?: { kind: RobotKind; x: number; z: number }[];
 }
 export interface DungeonOpts { surfaceExit?: boolean }
 

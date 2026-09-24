@@ -91,8 +91,24 @@ export function generateShip(seed: number): DungeonMap {
   for (const [h0, h1] of [...holds, [bridge.z, bridge.z] as [number, number]]) { if (h0 > sz) boxes.push({ x: CX - 1, z: sz, w: 3, d: h0 - sz, h: 3, tunnel: true }); sz = h1; }
   // debris from the crash breaks the symmetry a little (never on the keel line)
   const free = debris.filter((o) => o.x + o.w < CX - 1 || o.x > CX + 1);
+  // Robots still guard the wreck (own RNG stream: the layout above stays as it was). The big ones only fit the tall
+  // rooms (the corridors are 3 m high): a sentinel or an assault construct in the engine room, maybe one in the hold.
+  const Gd = rng(seed ^ 0x60b0), guards: NonNullable<DungeonMap['guards']> = [];
+  const mid = (b: DecoBox, dx = 0, dz = 0) => ({ x: b.x + (b.w >> 1) + dx, z: b.z + (b.d >> 1) + dz });
+  for (const b of boxes) {
+    if (b.tunnel) {
+      if (b.w === 3 && b.d > 12 && Gd() < 0.6) guards.push({ kind: 'scout', ...mid(b, 0, Math.round((Gd() - 0.5) * (b.d - 6))) });
+      continue;
+    }
+    const roll = Gd();
+    if (b.h === 7) guards.push({ kind: roll < 0.5 ? 'assault' : 'sentinel', ...mid(b, 0, 2) }, { kind: 'repair', ...mid(b, -6, 0) });
+    else if (b.h === 6) { if (roll < 0.45) guards.push({ kind: 'sentinel', ...mid(b) }); else guards.push({ kind: 'guardian', ...mid(b, -6, 0) }, { kind: 'guardian', ...mid(b, 6, 0) }, { kind: 'repair', ...mid(b, 0, 3) }); }
+    else if (b.w === 17) guards.push({ kind: 'guardian', ...mid(b, -4, 0) }, { kind: 'guardian', ...mid(b, 4, 0) });
+    else if (b.h >= 4) { if (roll < 0.6) guards.push({ kind: 'guardian', ...mid(b) }); if (Gd() < 0.3) guards.push({ kind: 'scout', ...mid(b, 1, 1) }); }
+    else if (b.w === 6 && b.d === 5 && roll < 0.35) guards.push({ kind: 'scout', ...mid(b) });
+  }
   return {
-    seed, spawn, ops: [...ops, ...free, spine], rooms: Math.round(boxes.filter((b) => !b.tunnel).length / 2) + 1,
+    seed, spawn, guards, ops: [...ops, ...free, spine], rooms: Math.round(boxes.filter((b) => !b.tunnel).length / 2) + 1,
     chests, crystals: [], hatch: null, portals: portal ? [portal] : [], doorCands, bosses, gates: [], boxes, style: 'ship',
   };
 }

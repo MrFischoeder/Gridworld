@@ -17,7 +17,7 @@ import { foeRules, makeDrone, type Drone } from './enemies';
 import { rayWorld } from './player';
 import { burst, addFx } from './fx';
 import { dropCrystal, dropPickup } from './loot';
-import { fireBolt } from './bandits';
+import { fireBolt, updateBolts } from './bandits';
 import { onNoise } from './noise';
 import { onKill } from './quests';
 import { logLine } from '../ui/hud';
@@ -174,11 +174,30 @@ function assaultModel(r: Robot) {
 const MODELS: Record<RobotKind, (r: Robot) => void> = { scout: scoutModel, guardian: guardianModel, repair: repairModel, sentinel: sentinelModel, artillery: artilleryModel, assault: assaultModel };
 
 // ---------- spawning ----------
-let env: SpawnEnv | null = null, spawnT = 8;
-export function setRobotEnv(e: SpawnEnv | null) { env = e; }
+let env: SpawnEnv | null = null, spawnT = 8, indoor = false;
+/**
+ * Where robots live now: the open world (they spawn over time, by danger and the threat budget) or `indoor`, inside a
+ * crashed ship (only the guards placed when it loads; walls and ceilings of the voxel level block them).
+ */
+export function setRobotEnv(e: SpawnEnv | null, opts: { indoor?: boolean } = {}) { env = e; indoor = !!opts.indoor; }
+/** Indoors: the robot's footprint is free of walls up to its full height. */
+function roomFor(model: RobotKind, x: number, z: number) {
+  const s = ROBOTS[model], o = s.r * 0.45, top = Math.ceil(s.h);
+  for (const [dx, dz] of [[0, 0], [o, o], [-o, o], [o, -o], [-o, -o]]) for (let y = 0; y < top; y++) if (!G.space.empty(Math.floor(x + dx), y, Math.floor(z + dz))) return false;
+  return true;
+}
+/** Put the guards of a crashed ship in place (world/level.ts). */
+export function spawnGuards(guards: { kind: RobotKind; x: number; z: number }[], level: number) {
+  for (const gd of guards) {
+    for (let k = 0; k < 9; k++) { // step aside from debris if the spot itself is taken
+      const x = gd.x + 0.5 + ((k % 3) - 1) * 1.5, z = gd.z + 0.5 + (Math.floor(k / 3) - 1) * 1.5;
+      if (make(gd.kind, x, z, level, [])) break;
+    }
+  }
+}
 
 function make(model: RobotKind, x: number, z: number, level: number, group: Robot[]): Robot | null {
-  if (!env || env.forbidden(x, z)) return null;
+  if (!env || env.forbidden(x, z) || (indoor && !roomFor(model, x, z))) return null;
   const s = ROBOTS[model], mat = lineMat(ROBOT_COLOR), g = new THREE.Group(), hp = Math.round(s.hp * (1 + level * 0.2));
   const p = V(x, env.ground(x, z) + s.lift, z);
   const r: Robot = {
@@ -236,12 +255,12 @@ export function spawnRobotNear(model: RobotKind, d = 25) {
 onNoise((at, rad) => { for (const r of W.robots) if (r.state !== 'hunt' && r.p.distanceTo(at) < rad * 0.7) alert(r); });
 function alert(r: Robot) { for (const m of r.group.length ? r.group : [r]) if (m.state !== 'hunt') { m.state = 'hunt'; m.timer = 0; } }
 
-function blocked(x: number, z: number) { return !env || env.forbidden(x, z) || foeRules.blocked(V(x, 0, z)); }
+function blocked(r: Robot, x: number, z: number) { return !env || (indoor ? !roomFor(r.model, x, z) : env.forbidden(x, z) || foeRules.blocked(V(x, 0, z))); }
 function walk(r: Robot, dx: number, dz: number, speed: number, dt: number) {
   const L = Math.hypot(dx, dz); r.speed = 0;
   if (L < 1e-3 || !env) return;
   const sx = dx / L * speed * dt, sz = dz / L * speed * dt;
-  if (!blocked(r.p.x + sx, r.p.z + sz)) { r.p.x += sx; r.p.z += sz; } else if (!blocked(r.p.x + sx, r.p.z)) r.p.x += sx; else if (!blocked(r.p.x, r.p.z + sz)) r.p.z += sz; else return;
+  if (!blocked(r, r.p.x + sx, r.p.z + sz)) { r.p.x += sx; r.p.z += sz; } else if (!blocked(r, r.p.x + sx, r.p.z)) r.p.x += sx; else if (!blocked(r, r.p.x, r.p.z + sz)) r.p.z += sz; else return;
   r.speed = speed;
 }
 function face(r: Robot, dx: number, dz: number, dt: number, rate = 5) {
@@ -382,13 +401,14 @@ function animate(r: Robot, dt: number, time: number) {
 
 export function updateRobots(dt: number, time: number) {
   if (!env) return;
-  if ((spawnT -= dt) <= 0) { spawnT = 7; trySpawn(); }
+  if (!indoor && (spawnT -= dt) <= 0) { spawnT = 7; trySpawn(); }
   for (const r of [...W.robots]) {
-    if (r.state !== 'hunt' && r.p.distanceTo(G.pos) > 150) { removeRobot(r); continue; }
+    if (!indoor && r.state !== 'hunt' && r.p.distanceTo(G.pos) > 150) { removeRobot(r); continue; }
     think(r, dt, time);
     animate(r, dt, time);
   }
   updateShells(dt, time);
+  if (indoor) updateBolts(dt); // outdoors the bandits' update moves them
 }
 
 // ---------- damage ----------

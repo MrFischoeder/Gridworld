@@ -15,6 +15,8 @@ import { makeChest, makeHatch, setCrystalXp } from './loot';
 import { placeCrystals, clearCrystals } from './flora';
 import { decorateDungeon } from './dungeondeco';
 import { generateShip } from '../gen/ship';
+import { setRobotEnv, spawnGuards } from './robots';
+import { dangerAt } from '../gen/danger';
 import { clearFires } from './cooking';
 import { clearBenches } from './benches';
 import { makeDrone, placeDrone, makeBoss, setDroneRespawn } from './enemies';
@@ -98,7 +100,13 @@ export function loadDungeon(arriveDir: string | null) {
     const x = i + g.ox, y = j + g.oy, z = k + g.oz;
     if (y >= 0 && y <= 2 && g.empty(x, y, z) && g.empty(x, y + 1, z) && g.empty(x, y + 2, z) && !g.empty(x, y - 1, z)) W.spawnCells.push([x, y, z]);
   }
-  for (let i = 0; i < map.rooms + 1 + d.depth; i++) { const t = makeDrone(); placeDrone(t); W.drones.push(t); }
+  // a crashed ship is guarded by robots (placed by the generator) and only a few stray drones
+  for (let i = 0; i < (wreck ? 2 : map.rooms + 1 + d.depth); i++) { const t = makeDrone(); placeDrone(t); W.drones.push(t); }
+  if (wreck) {
+    const poi = findPoi(c.world, d.ruinId)!, lv = Math.max(2, dangerAt(c.world, poi.x, poi.z, true));
+    setRobotEnv({ ground: () => 0, danger: () => lv, nearRuin: () => false, forbidden: () => false }, { indoor: true });
+    spawnGuards(map.guards ?? [], lv);
+  }
   onDungeonLoaded(map);
   setMiniMode('voxel'); buildMini();
   el.hudL.textContent = wreck ? ruinName(d.ruinId) : 'Depth ' + d.depth + ', sector ' + d.gx + ', ' + d.gz;

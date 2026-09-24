@@ -123,7 +123,7 @@ export function fireBolt(muzzle: THREE.Vector3, dmg: number, color = BANDIT) {
   bolts.push({ m, p: muzzle.clone(), v, dmg, life: 3 });
 }
 let vehicleWarnT = 0;
-function updateBolts(dt: number) {
+export function updateBolts(dt: number) {
   vehicleWarnT -= dt;
   const body0 = V(G.pos.x, G.pos.y + 0.3, G.pos.z), body1 = V(G.pos.x, G.pos.y + 1.6, G.pos.z);
   for (let i = bolts.length - 1; i >= 0; i--) {

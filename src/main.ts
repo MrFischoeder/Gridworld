@@ -84,7 +84,8 @@ function frame(now: number) {
     updateGun(dt, !driving.v);
     if (driving.v) fireCannon(dt);
     updateDoors(dt);
-    if (outdoors) { updateFieldEnemies(dt); updateCreatures(dt, time); updateRobots(dt, time); updateBandits(dt, time); updateRaiders(dt); animateCamps(time); smokeWrecks(dt); animateWater(time); }
+    updateRobots(dt, time); // the open world's robots, or a crashed ship's guards
+    if (outdoors) { updateFieldEnemies(dt); updateCreatures(dt, time); updateBandits(dt, time); updateRaiders(dt); animateCamps(time); smokeWrecks(dt); animateWater(time); }
     updateDrones(dt);
     const boss = updateBosses(dt, time); updateOrbs(dt);
     updateBossBar(boss);

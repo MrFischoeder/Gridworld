@@ -39,6 +39,25 @@ describe('ship interiors', () => {
   });
 });
 
+describe('ship guards', () => {
+  it('every robot fits where it stands (heavy ones only in the tall rooms)', async () => {
+    const { ROBOTS } = await import('../src/data/robots');
+    let heavy = 0, all = 0;
+    for (const s of SEEDS) {
+      const map = generateShip(s), grid = VoxelGrid.fromOps(map.ops);
+      for (const g of map.guards!) {
+        const sp = ROBOTS[g.kind], o = sp.r * 0.45, top = Math.ceil(sp.h);
+        const fits = (x: number, z: number) => [[0, 0], [o, o], [-o, o], [o, -o], [-o, -o]].every(([dx, dz]) => { for (let y = 0; y < top; y++) if (!grid.empty(Math.floor(x + dx), y, Math.floor(z + dz))) return false; return true; });
+        const ok = Array.from({ length: 9 }, (_, k) => [g.x + 0.5 + ((k % 3) - 1) * 1.5, g.z + 0.5 + (Math.floor(k / 3) - 1) * 1.5]).some(([x, z]) => fits(x, z));
+        expect(ok, `${g.kind} at ${g.x},${g.z} seed ${s}`).toBe(true);
+        all++; if (sp.h > 3) heavy++;
+      }
+    }
+    expect(all).toBeGreaterThan(SEEDS.length * 4);
+    expect(heavy).toBeGreaterThanOrEqual(SEEDS.length);
+  });
+});
+
 describe('crash sites', () => {
   const w = hash(3, 9);
   const wrecks: Poi[] = [];
