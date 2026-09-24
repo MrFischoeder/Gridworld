@@ -1,10 +1,10 @@
 // Conversations and shops. New options (quests) plug in through OPT_TEXT and the switch below.
 import { G, W } from '../game';
-import { ITEMS } from '../data/items';
+import { ITEMS, HANDS_ONLY } from '../data/items';
 import { NPC_INFO, VILLAGER_LINES, RUMOURS, OPT_TEXT, LORE, BUYS, COOK_PRICE, stockFor, type OptId } from '../data/npcs';
 import { putItems } from '../inventory';
 import { craftClick, showForge } from './craft';
-import { addItem, calcStats, saveChar } from '../character';
+import { addItem, calcStats, saveChar, listOf, handsChanged } from '../character';
 import { $ } from './hud';
 import { lockPointer } from './input';
 import type { Npc } from '../world/npc';
@@ -65,7 +65,7 @@ function renderTrade(msg?: string) {
 /** Mirek buys vehicles back at half price (less for wrecks) and parts for a fifth of what he charges. */
 function renderSell(msg?: string) {
   if (W.talkNpc!.role !== 'dealer') { renderTrade(msg); return; }
-  const offers = vehiclesForSale(), parts = G.char.inv.map((s, i) => ({ s, i })).filter(({ s }) => s && PART_PRICE[s.k]);
+  const offers = vehiclesForSale(), parts = [...G.char.hands.map((s, i) => ({ s, i: 'h:' + i })), ...G.char.inv.map((s, i) => ({ s, i: 'p:' + i }))].filter(({ s }) => s && PART_PRICE[s.k]);
   panel().innerHTML = dlgHead() + `<div class="say">Your gold: <b>${G.char.gold}</b>${msg ? '<br>' + msg : ''}</div>` +
     (offers.length ? offers.map((o) => `<div class="shoprow"><div><b>${vehicleTitle(o.v.st.model)}</b><br><span>${o.why ?? 'parked in the yard · condition ' + Math.round(health(o.v.st.model, o.v.st.parts) * 100) + '%'}</span></div>
       <button class="buy" data-sellv="${o.v.st.id}" ${o.why ? 'disabled' : ''}>+${o.price} g</button></div>`).join('')
@@ -88,8 +88,8 @@ dlgEl.addEventListener('click', (e) => {
   if (b && b.dataset.v) { renderVehicleShop(buyVehicle(b.dataset.v as VehicleModel)); return; }
   if (b && b.dataset.sellv) { renderSell(sellVehicle(b.dataset.sellv)); return; }
   if (b && b.dataset.sells) {
-    const i = +b.dataset.sells, s = c.inv[i];
-    if (s && PART_PRICE[s.k]) { c.gold += partBuyback(s); if (--s.n <= 0) c.inv[i] = null; saveChar(); renderSell('Sold: ' + ITEMS[s.k].name + '.'); }
+    const [w, i] = b.dataset.sells.split(':'), L = listOf(w), s = L[+i];
+    if (s && PART_PRICE[s.k]) { c.gold += partBuyback(s); if (--s.n <= 0) L[+i] = null; handsChanged(); saveChar(); renderSell('Sold: ' + ITEMS[s.k].name + '.'); }
     return;
   }
   if (b && (b.dataset.trade || b.dataset.tradeall)) {
@@ -104,7 +104,7 @@ dlgEl.addEventListener('click', (e) => {
   if (b) {
     const k = b.dataset.k as keyof typeof ITEMS, p = +b.dataset.p!;
     if (c.gold < p) return renderShop('Not enough gold.');
-    if (!addItem(k)) return renderShop('No room in your backpack (slots or bulk).');
+    if (!addItem(k)) return renderShop(HANDS_ONLY.has(k) ? 'You carry that in your hands, and they are full: put what you hold away first.' : 'No room in your backpack (slots or bulk).');
     c.gold -= p; calcStats(); saveChar(); return renderShop('Bought: ' + ITEMS[k].name + '.');
   }
   const qb = t.closest<HTMLElement>('[data-q]');

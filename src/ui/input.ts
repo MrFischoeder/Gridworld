@@ -12,7 +12,7 @@ import { togglePack, closePack } from './backpack';
 import { closeDialog } from './dialog';
 import { interact } from '../world/interact';
 import { useItem } from '../world/loot';
-import { setWeapon, armed, reload } from '../world/weapons';
+import { drawBack, swapWeapon, holster, armed, reload } from '../world/weapons';
 import { toggleMap, zoomMap } from './worldmap';
 
 export function lockPointer() {
@@ -42,14 +42,15 @@ export function initInput(onPause: () => void) {
     if (e.code === 'KeyV' && driving.v) toggleCockpit();
     if (e.code === 'KeyH') useItem('medkit');
     if (e.code === 'KeyG') useItem('emp');
-    if (e.code === 'Digit1') setWeapon(0);
-    if (e.code === 'Digit2') setWeapon(1);
-    if (e.code === 'KeyQ') setWeapon(1 - G.weapon);
+    if (e.code === 'Digit1') drawBack(0);
+    if (e.code === 'Digit2') drawBack(1);
+    if (e.code === 'KeyQ') swapWeapon();
+    if (e.code === 'KeyX') holster();
     if (e.code === 'KeyR') reload();
     if (e.code === 'F3') { e.preventDefault(); el.perf.style.display = el.perf.style.display === 'block' ? 'none' : 'block'; }
   });
   addEventListener('keyup', (e) => { G.keys[e.code] = false; });
-  addEventListener('wheel', () => { if (G.playing && !uiOpen() && armed()) setWeapon(1 - G.weapon); }, { passive: true });
+  addEventListener('wheel', () => { if (G.playing && !uiOpen() && armed()) swapWeapon(); }, { passive: true });
   renderer.domElement.addEventListener('click', () => { if (G.playing && !uiOpen() && !G.isTouch && !document.pointerLockElement) lockPointer(); });
   document.addEventListener('pointerlockchange', () => {
     if (document.pointerLockElement !== renderer.domElement && !G.isTouch && !uiOpen()) onPause();

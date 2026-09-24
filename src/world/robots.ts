@@ -9,6 +9,7 @@
 // Like the creatures they are not saved. Where they turn up, and how many, is set by the danger level and the
 // shared threat budget (world/threat.ts): near the villages you meet none, further out ever heavier machines.
 import * as THREE from 'three';
+import { armoured } from '../character';
 import { scene, V, lineMat, add as addMat } from './render';
 import { G, W } from '../game';
 import { PropBatch, sharedFill } from './props';
@@ -270,7 +271,7 @@ function face(r: Robot, dx: number, dz: number, dt: number, rate = 5) {
 /** A blow that reaches the player (a closed cab takes it instead). */
 function hit(dmg: number, push = 0, from?: THREE.Vector3) {
   if (foeRules.shielded()) { foeRules.shieldHit(dmg * 0.6); return; }
-  G.hp -= dmg; G.dmgFlash = 0.45;
+  G.hp -= armoured(dmg); G.dmgFlash = 0.45;
   if (push && from) { const d = V(G.pos.x - from.x, 0, G.pos.z - from.z).normalize(); G.vel.x += d.x * push; G.vel.z += d.z * push; G.vel.y += push * 0.4; }
 }
 

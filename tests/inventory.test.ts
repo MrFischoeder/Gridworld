@@ -30,14 +30,15 @@ describe('weight and bulk', () => {
   it('fill the backpack only as far as its litres allow', async () => {
     const { putItems, bulkOf, weightOf, dropStack, moveStack } = await import('../src/inventory');
     const inv: (import('../src/save').Slot | null)[] = Array(12).fill(null);
-    expect(putItems(inv, 'wheelL', 3, 40)).toBe(2); // one 22 L tire fits in 40 L, two do not
-    expect(bulkOf(inv)).toBe(22); expect(weightOf(inv)).toBe(12);
+    expect(putItems(inv, 'wheelL', 1, 40)).toBe(1); // tires are carried in the hands, never in the backpack
+    expect(putItems(inv, 'log', 5, 40)).toBe(0); // 5 logs, 30 L
+    expect(bulkOf(inv)).toBe(30); expect(weightOf(inv)).toBe(20);
     const box: (import('../src/save').Slot | null)[] = [{ k: 'engine', n: 5 }, { k: 'wheelH', n: 1 }, null];
-    // 18 L left: three Engine Parts (6 L each) come over, two stay in the box
-    expect(moveStack(box, 0, inv, 40)).toBe(3); expect(box[0]).toEqual({ k: 'engine', n: 2 });
-    // a Heavy Tire cannot be dragged in, nor swapped for the light one (36 L > 22 L)
+    // 10 L left: one Engine Part (6 L) comes over, four stay in the box
+    expect(moveStack(box, 0, inv, 40)).toBe(1); expect(box[0]).toEqual({ k: 'engine', n: 4 });
+    // a Heavy Tire cannot be dragged in, nor swapped for the logs
     expect(dropStack(box, 1, inv, 5, 40)).toBe(false);
-    const i = inv.findIndex((s) => s?.k === 'wheelL');
+    const i = inv.findIndex((s) => s?.k === 'log');
     expect(dropStack(box, 1, inv, i, 40)).toBe(false);
     // without a cap (a container) anything goes
     expect(dropStack(inv, i, box, 2)).toBe(true);

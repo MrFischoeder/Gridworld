@@ -10,8 +10,11 @@ import { BLASTER } from '../data/weapons';
 import { BLADE, STAMINA, BURN } from '../data/survival';
 import { spendStamina, burn } from './survival';
 import { makeNoise } from './noise';
+import { item, WEAPON_KIND } from '../data/items';
+import { onHandsChanged, stowHeld, saveChar } from '../character';
+import { logLine } from '../ui/hud';
 
-export const WEAPONS = [{ name: BLASTER.name, dmg: 1, rate: 0 }, { name: 'Blade', rate: BLADE.rate, dmg: BLADE.dmg }];
+export const WEAPONS = [{ name: BLASTER.name, dmg: 1, rate: 0 }, { name: 'Energy Blade', rate: BLADE.rate, dmg: BLADE.dmg }];
 /** Weapons are holstered in safe places (the village). */
 export let armed = () => true;
 export function setArmedRule(f: () => boolean) { armed = f; }
@@ -61,17 +64,48 @@ const hilt = part(new THREE.BoxGeometry(0.05, 0.2, 0.05), vmMat); hilt.position.
 const guard = part(new THREE.BoxGeometry(0.18, 0.03, 0.06), vmMat); guard.position.y = 0.21; bladeVM.add(guard);
 const blade = part(new THREE.BoxGeometry(0.03, 0.7, 0.08), bladeMat, true); blade.position.y = 0.58; bladeVM.add(blade);
 bladeVM.visible = false; vmRoot.add(bladeVM);
+/** Something big held in both hands (a wheel, the cannon, a flagpole...): a crate-like bulk low in the view. */
+const carryVM = new THREE.Group();
+const carryMat = lineMat(0xc8ffd6, { fog: false });
+const bulk = part(new THREE.BoxGeometry(0.55, 0.32, 0.4), carryMat); bulk.position.set(0, -0.58, -0.8); bulk.rotation.x = 0.25; carryVM.add(bulk);
+const tyre = part((() => { const g = new THREE.CylinderGeometry(0.34, 0.34, 0.22, 14); g.rotateZ(Math.PI / 2); return g; })(), carryMat); tyre.position.set(0.05, -0.66, -0.95); tyre.rotation.y = 0.35; carryVM.add(tyre);
+carryVM.visible = false; vmRoot.add(carryVM);
 /** Keep the held weapon glued to the camera (call after the camera moved, before rendering vmScene). */
 export function syncViewmodel() { vmRoot.position.copy(camera.position); vmRoot.quaternion.copy(camera.quaternion); }
 
-/** Weapon name, and rounds left for the Blaster. */
+/** What is in your hands: the weapon's name (and rounds left for the Blaster), or the thing you carry. */
 function hudWeapon() {
-  const t = G.weapon === 1 ? WEAPONS[1].name : G.reloadT > 0 ? BLASTER.name + ' · reloading' : `${BLASTER.name} ${G.ammo}/${G.gun.mag}`;
+  const h = G.char.hands[0];
+  const t = G.weapon === 1 ? WEAPONS[1].name : G.weapon === 0 ? (G.reloadT > 0 ? BLASTER.name + ' · reloading' : `${BLASTER.name} ${G.ammo}/${G.gun.mag}`)
+    : h ? 'Hands: ' + item(h.k).name : 'Hands empty';
   if (el.wname.textContent !== t) el.wname.textContent = t;
 }
-export function setWeapon(w: number) {
-  G.weapon = w; const v = armed(); gunVM.visible = v && w === 0; bladeVM.visible = v && w === 1;
-  G.cooldown = Math.max(G.cooldown, 0.15); hudWeapon();
+/** The weapon in your hands decides what you fight with: G.weapon 0 = gun, 1 = blade, -1 = none (empty or full hands). */
+export function syncHeld() {
+  const h = G.char.hands[0], w = h ? WEAPON_KIND[h.k] ?? -1 : -1;
+  if (w !== G.weapon) { G.weapon = w; G.reloadT = 0; G.cooldown = Math.max(G.cooldown, 0.25); }
+  refreshWeaponVisibility(); hudWeapon();
+}
+onHandsChanged(syncHeld);
+/** Keys 1 / 2: take the weapon on that side of your back into your hands (what you held goes onto your back). */
+export function drawBack(i: number) {
+  const c = G.char, b = c.back[i], h = c.hands[0];
+  if (!b) { logLine(`Nothing on your back (slot ${i + 1}).`); return; }
+  if (h && WEAPON_KIND[h.k] === undefined) { logLine(`Your hands are full: ${item(h.k).name}. Put it away first (a trunk, a chest or a vehicle; the backpack window can drop it).`); return; }
+  c.hands[0] = b; c.back[i] = h; saveChar(); syncHeld();
+}
+/** Q / mouse wheel: swap the weapon in your hands for the (first) one on your back. */
+export function swapWeapon() {
+  const i = G.char.back.findIndex((s) => s && WEAPON_KIND[s.k] !== undefined);
+  if (i >= 0) drawBack(i);
+}
+/** X: sling the weapon in your hands onto your back. */
+export function holster() {
+  const h = G.char.hands[0];
+  if (!h) return;
+  if (WEAPON_KIND[h.k] === undefined) { logLine(`You carry the ${item(h.k).name} in your hands.`); return; }
+  const m = stowHeld(); if (m) logLine(m); else saveChar();
+  syncHeld();
 }
 /** Start reloading the Blaster (R, or on its own when the magazine runs dry). Reserve ammo is unlimited for now. */
 export function reload() {
@@ -89,7 +123,7 @@ export function updateGun(dt: number, onFoot: boolean) {
 }
 let aimK = 0;
 /** Re-apply holstered / drawn state after the armed rule may have changed. */
-export function refreshWeaponVisibility() { const v = armed(); gunVM.visible = v && G.weapon === 0; bladeVM.visible = v && G.weapon === 1; }
+export function refreshWeaponVisibility() { const v = armed(); gunVM.visible = v && G.weapon === 0; bladeVM.visible = v && G.weapon === 1; const h = G.char.hands[0]; carryVM.visible = !!h && G.weapon < 0; tyre.visible = h?.k === 'wheelL' || h?.k === 'wheelH'; bulk.visible = !tyre.visible; }
 
 export function animateVM(dt: number, moving: boolean) {
   const bob = moving ? Math.sin(performance.now() / 110) * 0.012 : 0;
@@ -139,7 +173,7 @@ function slash(tired: boolean) {
   }
 }
 export function attack() {
-  if (G.cooldown > 0 || !armed()) return;
+  if (G.cooldown > 0 || !armed() || G.weapon < 0) return;
   if (G.weapon === 0) {
     if (G.reloadT > 0) return;
     if (G.ammo <= 0) { reload(); return; }

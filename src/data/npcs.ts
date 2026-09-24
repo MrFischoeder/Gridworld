@@ -1,5 +1,5 @@
 import { hash } from '../core/rng';
-import { RELIC_KEYS, ATTACH_KEYS, ATTACH_PRICE, type ItemKey } from './items';
+import { RELIC_KEYS, ATTACH_KEYS, ATTACH_PRICE, GEAR_PRICE, type ItemKey } from './items';
 
 export type NpcRole = 'innkeeper' | 'elder' | 'blacksmith' | 'merchant' | 'grocer' | 'dealer' | 'villager';
 /** Dialogue options. New option ids (e.g. quests) are added here and handled in ui/dialog.ts. */
@@ -34,7 +34,8 @@ export const LORE = 'Old ruins stand in the hills around Gridholm. Beneath each 
 /** What the traders (other than Mirek) buy, and for how much. */
 export const BUYS: Partial<Record<NpcRole, Partial<Record<ItemKey, number>>>> = {
   grocer: { meatR: 5, meatC: 9, cap: 3, pod: 4, ncrys: 10 },
-  blacksmith: { hide: 14, fang: 9, plate: 22, membrane: 16, incisor: 5, log: 2, stone: 1, scrap: 5, circuit: 12, pcore: 60 },
+  blacksmith: { hide: 14, fang: 9, plate: 22, membrane: 16, incisor: 5, log: 2, stone: 1, scrap: 5, circuit: 12, pcore: 60,
+    blaster: 60, blade: 30, helmet: 25, vest: 50, armour: 100, gloves: 8, trousers: 12, boots: 16 },
 };
 export const COOK_PRICE = 2;
 export function stockFor(role: NpcRole, world: number): [ItemKey, number][] {
@@ -43,7 +44,8 @@ export function stockFor(role: NpcRole, world: number): [ItemKey, number][] {
   if (role === 'blacksmith') {
     const a = RELIC_KEYS[hash(world, 11) % RELIC_KEYS.length]; let b = RELIC_KEYS[hash(world, 12) % RELIC_KEYS.length];
     if (b === a) b = RELIC_KEYS[(RELIC_KEYS.indexOf(a) + 1) % RELIC_KEYS.length];
-    return [['hatchet', 35], ['pickaxe', 50], [a, 160], [b, 160], ...ATTACH_KEYS.map((k): [ItemKey, number] => [k, ATTACH_PRICE[k]!])];
+    return [['hatchet', 35], ['pickaxe', 50], [a, 160], [b, 160], ...ATTACH_KEYS.map((k): [ItemKey, number] => [k, ATTACH_PRICE[k]!]),
+      ...(Object.keys(GEAR_PRICE) as ItemKey[]).map((k): [ItemKey, number] => [k, GEAR_PRICE[k]!])];
   }
   return [];
 }

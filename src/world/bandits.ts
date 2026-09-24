@@ -9,7 +9,7 @@ import { foeRules } from './enemies';
 import { rayWorld, emptyAt } from './player';
 import { burst } from './fx';
 import { dropCrystal, dropPickup } from './loot';
-import { saveChar, gainXp } from '../character';
+import { saveChar, gainXp, armoured } from '../character';
 import { logLine, showToast } from '../ui/hud';
 import { onKill, onCampCleared } from './quests';
 import { driving, refreshParts as refreshPartsOf, damageVehicle } from './vehicles';
@@ -143,7 +143,7 @@ export function updateBolts(dt: number) {
         refreshPartsOf(v);
         damageVehicle(v, o.dmg);
         if (vehicleWarnT <= 0 && driving.v) { logLine('Your vehicle is taking fire!'); vehicleWarnT = 4; }
-      } else { G.hp -= o.dmg; G.dmgFlash = 0.35; }
+      } else { G.hp -= armoured(o.dmg); G.dmgFlash = 0.35; }
     }
     if (dead) { burst(o.p, BANDIT, 6, 0.35); scene.remove(o.m); o.m.geometry.dispose(); bolts.splice(i, 1); }
   }
@@ -176,7 +176,7 @@ function think(b: Bandit, dt: number, time: number) {
         if (dist < 1.8 && b.hitT <= 0) {
           b.hitT = 0.9;
           const dmg = 10 * (1 + b.level * 0.2);
-          if (driving.v && driving.v.spec.enclosed) damageVehicle(driving.v, dmg * 0.5); else { G.hp -= dmg; G.dmgFlash = 0.35; }
+          if (driving.v && driving.v.spec.enclosed) damageVehicle(driving.v, dmg * 0.5); else { G.hp -= armoured(dmg); G.dmgFlash = 0.35; }
         }
         break;
       }

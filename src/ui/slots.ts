@@ -3,7 +3,8 @@
 import { G } from '../game';
 import { item, type ItemKey, BULK, PACK } from '../data/items';
 import { NOURISH } from '../data/survival';
-import { weightOf, bulkOf } from '../inventory';
+import { bulkOf } from '../inventory';
+import { carriedKg } from '../character';
 
 export interface SlotView {
   k: ItemKey | null; n?: number;
@@ -34,7 +35,7 @@ export function slotHTML(id: string, v: SlotView, selected = false): string {
 /** One line about an item for the detail area under the slots. */
 /** "12.4 / 20 kg · 18 / 40 L" for the backpack headers (amber when heavy, red when overloaded or full). */
 export function loadText(): string {
-  const inv = G.char.inv, kg = weightOf(inv), l = bulkOf(inv);
+  const inv = G.char.inv, kg = carriedKg(), l = bulkOf(inv);
   const cls = kg > PACK.max ? 'bad' : kg > PACK.comfy ? 'warn' : '';
   return `<span class="${cls}">${kg.toFixed(1)} kg${kg > PACK.max ? ' OVERLOADED' : kg > PACK.comfy ? ' heavy' : ''}</span> (easy up to ${PACK.comfy}, max ${PACK.max}) · <span class="${l >= PACK.vol - 0.5 ? 'bad' : ''}">${l.toFixed(1)} / ${PACK.vol} L</span>`;
 }

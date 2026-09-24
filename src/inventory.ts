@@ -1,5 +1,5 @@
 // Moving item stacks between slot lists (backpack, chest, trunk). Pure: no UI, no game state.
-import { item, BULK, type ItemKey } from './data/items';
+import { item, BULK, HANDS_ONLY, type ItemKey } from './data/items';
 import type { Slot } from './save';
 
 /** Worn parts (with a condition) never stack; everything else stacks up to its item's limit. */
@@ -9,9 +9,12 @@ const maxOf = (k: ItemKey) => item(k).stack ?? 1;
 /** Total weight (kg) and bulk (litres) of what the slots hold. */
 export const weightOf = (slots: (Slot | null)[]) => slots.reduce((a, s) => a + (s ? BULK[s.k][0] * s.n : 0), 0);
 export const bulkOf = (slots: (Slot | null)[]) => slots.reduce((a, s) => a + (s ? BULK[s.k][1] * s.n : 0), 0);
-/** How many more of k fit into a list holding at most `cap` litres (no cap: any number). */
+/**
+ * How many more of k fit into a list holding at most `cap` litres (no cap: any number). Only the backpack has a cap,
+ * and things too big for it (HANDS_ONLY: wheels, the cannon, the flagpole...) never go in, whatever room is left.
+ */
 export const roomFor = (slots: (Slot | null)[], k: ItemKey, cap?: number) =>
-  cap === undefined ? Infinity : Math.max(0, Math.floor((cap - bulkOf(slots)) / BULK[k][1] + 1e-6));
+  cap === undefined ? Infinity : HANDS_ONLY.has(k) ? 0 : Math.max(0, Math.floor((cap - bulkOf(slots)) / BULK[k][1] + 1e-6));
 
 /**
  * Puts n of k into the slots (topping up stacks first, then empty slots), no more than fits into `cap` litres.

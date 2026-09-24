@@ -3,7 +3,7 @@ import { G } from '../game';
 import { $, el, renderSheet } from './hud';
 import { lockPointer } from './input';
 import { newChar } from '../save';
-import { calcStats, saveChar } from '../character';
+import { calcStats, saveChar, handsChanged } from '../character';
 import { openChangelog } from './changelog';
 
 const menu = $('menu'), startBtn = $('start'), wipeBtn = $('wipe');
@@ -32,6 +32,6 @@ export function initMenu(h: MenuHooks) {
   wipeBtn.onclick = () => {
     if (!wipeArmed) { wipeArmed = true; wipeBtn.textContent = 'Click again to delete your character'; return; }
     wipeArmed = false; wipeBtn.textContent = 'New character';
-    G.char = newChar(); calcStats(); G.hp = G.S.maxHp; saveChar(); h.freshStart();
+    G.char = newChar(); calcStats(); handsChanged(); G.hp = G.S.maxHp; saveChar(); h.freshStart();
   };
 }

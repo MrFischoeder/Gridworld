@@ -1,4 +1,4 @@
-export type ItemType = 'relic' | 'cons' | 'key' | 'part' | 'quest' | 'attach' | 'mat' | 'tool';
+export type ItemType = 'relic' | 'cons' | 'key' | 'part' | 'quest' | 'attach' | 'mat' | 'tool' | 'weapon' | 'wear';
 export interface ItemDef { name: string; ab: string; type: ItemType; desc: string; stack?: number }
 
 export const ITEMS = {
@@ -7,6 +7,14 @@ export const ITEMS = {
   edge: { name: 'Monomolecular Edge', ab: 'EDG', type: 'relic', desc: '+25% blade damage, longer reach' },
   servo: { name: 'Leg Servos', ab: 'SRV', type: 'relic', desc: '+8% movement speed' },
   cell: { name: 'Power Cell', ab: 'CEL', type: 'relic', desc: 'blaster fires 10% faster' },
+  blaster: { name: 'Blaster', ab: 'BLS', type: 'weapon', desc: 'energy rifle: hold it in your hands to fire, or sling it on your back (keys 1 and 2 draw what is on your back)', stack: 1 },
+  blade: { name: 'Energy Blade', ab: 'BLD', type: 'weapon', desc: 'a humming sword: hard hits for stamina. Hold it in your hands to swing it, or carry it on your back', stack: 1 },
+  helmet: { name: 'Combat Helmet', ab: 'HLM', type: 'wear', desc: 'head armour: takes 8% off every hit', stack: 1 },
+  vest: { name: 'Ballistic Vest', ab: 'VST', type: 'wear', desc: 'body armour, light: takes 15% off every hit', stack: 1 },
+  armour: { name: 'Plate Armour', ab: 'ARM', type: 'wear', desc: 'body armour, heavy: takes 25% off every hit, but weighs 12 kg', stack: 1 },
+  gloves: { name: 'Work Gloves', ab: 'GLV', type: 'wear', desc: 'tough gloves: take 3% off every hit', stack: 1 },
+  trousers: { name: 'Cargo Trousers', ab: 'TRS', type: 'wear', desc: 'reinforced trousers: take 4% off every hit', stack: 1 },
+  boots: { name: 'Field Boots', ab: 'BTS', type: 'wear', desc: 'sturdy boots: take 4% off every hit', stack: 1 },
   medkit: { name: 'Medkit', ab: '+', type: 'cons', desc: 'restores 50 HP (H key)', stack: 5 },
   key: { name: 'Access Key', ab: 'KEY', type: 'key', desc: 'Opens one locked door. Stand at the door and press E.', stack: 9 },
   bread: { name: 'Bread', ab: 'BRD', type: 'cons', desc: 'dense and filling: 1000 kcal, 5 HP', stack: 9 },
@@ -67,6 +75,7 @@ export const INV_SIZE = 12, MOD_SIZE = 3;
  * Equipped relics and fitted attachments are part of your kit and weigh nothing here.
  */
 export const BULK: Record<ItemKey, [kg: number, litres: number]> = {
+  blaster: [3.5, 9], blade: [1.5, 4], helmet: [1.5, 5], vest: [4, 10], armour: [12, 18], gloves: [0.3, 0.5], trousers: [0.8, 1.5], boots: [1.2, 3],
   shield: [1.5, 1], lens: [0.3, 0.3], edge: [0.5, 0.5], servo: [2, 2], cell: [1, 0.5],
   medkit: [0.5, 1], key: [0.05, 0.05], recall: [0.4, 0.3], emp: [0.8, 0.6], flask: [0.3, 0.8], firekit: [1, 1.5],
   bread: [0.4, 1], stew: [0.6, 0.8], waterF: [1, 0.8], waterM: [1, 0.8],
@@ -77,6 +86,20 @@ export const BULK: Record<ItemKey, [kg: number, litres: number]> = {
   wheelL: [12, 22], wheelH: [28, 36], engine: [8, 6], turbo: [6, 5], eguard: [5, 4], plating: [7, 5], cannon: [25, 30],
   reflex: [0.3, 0.3], scope: [0.8, 1], barL: [1.2, 1], barR: [1, 0.8], barS: [0.9, 0.8], magX: [0.5, 0.4], magD: [1.2, 1],
 };
+/** What you wear, one piece per slot: which slot, and the share of every hit it takes off (pieces multiply). */
+export type WearSlot = 'head' | 'body' | 'gloves' | 'legs' | 'feet';
+export const WEAR_SLOTS: WearSlot[] = ['head', 'body', 'gloves', 'legs', 'feet'];
+export const WEAR_NAME: Record<WearSlot, string> = { head: 'Head', body: 'Body', gloves: 'Gloves', legs: 'Legs', feet: 'Feet' };
+export const WEAR: Partial<Record<ItemKey, { slot: WearSlot; def: number }>> = {
+  helmet: { slot: 'head', def: 0.08 }, vest: { slot: 'body', def: 0.15 }, armour: { slot: 'body', def: 0.25 },
+  gloves: { slot: 'gloves', def: 0.03 }, trousers: { slot: 'legs', def: 0.04 }, boots: { slot: 'feet', def: 0.04 },
+};
+/** Weapons in the hands: which one it is for world/weapons.ts (0 = gun, 1 = blade). Only weapons go on your back. */
+export const WEAPON_KIND: Partial<Record<ItemKey, 0 | 1>> = { blaster: 0, blade: 1 };
+/** Too big or awkward for the backpack: carried in your hands (and then you cannot hold a weapon). */
+export const HANDS_ONLY = new Set<ItemKey>(['wheelL', 'wheelH', 'cannon', 'benchkit', 'flagpole']);
+/** Weapons and gear Radek sells. */
+export const GEAR_PRICE: Partial<Record<ItemKey, number>> = { blaster: 150, blade: 80, helmet: 60, vest: 120, armour: 260, gloves: 20, trousers: 30, boots: 40 };
 /** The backpack: how much fits (litres), the load you carry easily, and beyond `max` you are overloaded (kg). */
 export const PACK = { vol: 40, comfy: 20, max: 35 };
 /** What Mirek charges for vehicle parts. He buys them back for only a fifth of that. */

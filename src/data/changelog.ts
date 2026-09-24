@@ -4,6 +4,13 @@ export interface Change { v: string; date: string; title: string; notes: string[
 
 export const CHANGELOG: Change[] = [
   {
+    v: '0.10.0', date: '2026-09-24', title: 'Hands, back and body armour',
+    notes: ['The Blaster and the Energy Blade are now real items. You fight with what is in your hands; two more weapons can be slung on your back (any mix: two rifles, two blades...), and more go in the backpack.',
+      'Keys: 1 and 2 take the weapon on that side of your back into your hands, Q or the mouse wheel swaps, X slings the one in your hands onto your back. The HUD shows what you hold.',
+      'Big things do not fit in the backpack: wheels, the vehicle cannon, the flagpole and the workbench kit are carried in your hands, and while you carry one you cannot hold a weapon. Store it in a trunk or chest, fit it to a vehicle, or sell it. The container and service windows show your hands and back.',
+      'Wear armour and clothes: helmet, ballistic vest or plate armour, gloves, trousers and boots. Each takes a share off every hit (the backpack shows your total); Radek sells them, and weapons too. Everything you wear and carry counts towards your weight.'],
+  },
+  {
     v: '0.9.0', date: '2026-09-24', title: 'Flagpoles: claim land for a base',
     notes: ['Zofia\'s General Store sells a Flagpole (250 gold). Use it from the backpack and a hologram shows where the flag will stand, the levelled floor, how the ground slopes back to the land, how much will be dug out or filled, and the border of your claim. Click to raise it; the right mouse button or Esc cancels. The hologram turns red, with the reason, where a flag cannot stand (villages, places, roads, water, steep ground, the ice).',
       'Raising the flag levels the ground in a 12 m circle and clears the trees, rocks and plants on it: a site for your base. The land 30 m around the flag is your claim ("Your claim" on the HUD); building on it comes next. The claim is not a safe zone.',

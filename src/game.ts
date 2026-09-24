@@ -12,7 +12,8 @@ import type { Robot } from './world/robots';
 import type { DungeonMap } from './gen/dungeon';
 import { BLASTER, type GunStats } from './data/weapons';
 
-export interface Stats { maxHp: number; bm: number; mm: number; range: number; rate: number; speed: number }
+/** `def`: the share of every hit your worn armour takes off (0..1). */
+export interface Stats { maxHp: number; bm: number; mm: number; range: number; rate: number; speed: number; def: number }
 
 export interface Trans {
   phase: 'out' | 'in'; t: number; dur: number;
@@ -24,7 +25,7 @@ export interface Trans {
 
 export const G = {
   char: null as unknown as Char,
-  S: { maxHp: 100, bm: 1, mm: 1, range: 2.6, rate: 0.16, speed: 1 } as Stats,
+  S: { maxHp: 100, bm: 1, mm: 1, range: 2.6, rate: 0.16, speed: 1, def: 0 } as Stats,
   hp: 100,
   pos: new THREE.Vector3(), vel: new THREE.Vector3(),
   yaw: 0, pitch: 0, onGround: false,

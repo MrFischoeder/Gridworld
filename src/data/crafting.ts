@@ -1,6 +1,6 @@
 // Crafting: recipes and the pure rules for making things out of what you carry. world/gather.ts gets the raw
 // materials (wood, stone), ui/craft.ts is the workbench window.
-import type { ItemKey } from './items';
+import { HANDS_ONLY, type ItemKey } from './items';
 import { putItems, roomFor } from '../inventory';
 import type { Slot } from '../save';
 
@@ -46,12 +46,19 @@ function take(inv: (Slot | null)[], k: ItemKey, n: number) {
  * Crafts one batch of the recipe from the backpack. Returns '' when done, else why not (missing materials, or no
  * room for the result once the materials are used). The backpack is left untouched on failure.
  */
-export function craft(inv: (Slot | null)[], r: Recipe, cap?: number): '' | 'missing' | 'room' {
+/**
+ * Makes recipe r from what the backpack holds. Things too big for the backpack (HANDS_ONLY) come out into `hands`,
+ * which must be empty: 'hands' otherwise.
+ */
+export function craft(inv: (Slot | null)[], r: Recipe, cap?: number, hands?: (Slot | null)[]): '' | 'missing' | 'room' | 'hands' {
   if (!hasAll(inv, r)) return 'missing';
+  const big = HANDS_ONLY.has(r.out);
+  if (big && (!hands || hands[0] || r.n !== 1)) return 'hands';
   const copy = inv.map((s) => (s ? { ...s } : null));
   for (const [k, n] of r.needs) take(copy, k, n);
-  if (roomFor(copy, r.out, cap) < r.n || putItems(copy, r.out, r.n) > 0) return 'room';
+  if (!big && (roomFor(copy, r.out, cap) < r.n || putItems(copy, r.out, r.n) > 0)) return 'room';
   inv.splice(0, inv.length, ...copy);
+  if (big) hands![0] = { k: r.out, n: 1 };
   return '';
 }
 

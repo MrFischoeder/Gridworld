@@ -46,6 +46,9 @@
       <div><h3 id="gunName">Blaster</h3><div class="grid mods" id="gunSlots"></div></div>
     </div>
     <div id="gunStats"></div>
+    <h3>Body <span class="sub" id="gearDef"></span></h3>
+    <div class="grid gear" id="gear"></div>
+    <div class="grid gear caps"><span>head</span><span>body</span><span>gloves</span><span>legs</span><span>feet</span><span></span><span>back 1</span><span>back 2</span><span>hands</span></div>
     <h3>Contents <span id="packLoad" class="sub"></span></h3>
     <div class="grid" id="inv"></div>
     <div id="detail"></div>
@@ -72,6 +75,8 @@
     <div id="svcRows"></div>
     <h3>Backpack</h3>
     <div class="grid" id="svcInv"></div>
+    <h3>Hands <span class="sub">(wheels and the cannon are carried in your hands)</span></h3>
+    <div class="grid" id="svcBody"></div>
     <div id="svcDetail" class="detail"></div>
     <div id="svcMsg"></div>
     <div class="acts"><button id="svcClose">Close</button></div>
@@ -87,6 +92,8 @@
     <div id="xferGold"></div>
     <h3>Backpack <span id="xferInvInfo"></span></h3>
     <div class="grid" id="xferInv"></div>
+    <h3>Back and hands</h3>
+    <div class="grid" id="xferBody"></div>
     <div id="xferDetail" class="detail"></div>
     <div id="xferMsg"></div>
     <div class="acts"><button id="xferAll">Take all</button><button id="xferClose">Close</button></div>
@@ -101,7 +108,7 @@
   <div class="row"><button id="start">Play</button><button id="reroll">Roll a new world</button></div>
   <div class="row" style="margin-top:10px"><button id="changelog">Changelog</button><button id="wipe">New character</button></div>
   <label>World seed<input id="seed" inputmode="numeric"></label>
-  <div id="keys">WASD — move · mouse — look · LMB — attack · 1/2, Q or wheel — switch weapon<br>
+  <div id="keys">WASD — move · mouse — look · LMB — attack · 1/2 — draw the weapon from your back · Q or wheel — swap · X — sling it on your back<br>
     E — talk / open / drive · V — vehicle view · ~ — console · I or Tab — backpack · M — map · H — medkit · G — EMP charge · space — jump · shift — sprint · Esc — pause</div>
 </div>
 <div id="devmap">

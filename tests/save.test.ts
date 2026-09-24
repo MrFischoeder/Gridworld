@@ -8,8 +8,8 @@ describe('loadChar', () => {
     const v3 = { v: 3, level: 4, xp: 12, gold: 99, world: 777, inv: [{ k: 'medkit', n: 2 }, ...Array(11).fill(null)], mods: ['lens', null, null],
       opened: { '5:2:1:-1': [0] }, unlocked: {}, killed: {}, loc: 'dungeon', ow: null, dungeon: { ruinId: 5, depth: 2, gx: 1, gz: -1 }, discovered: { '0,0': '0000000000000001' }, containers: {}, vehicles: [], board: { seq: 0, offers: [] }, quests: [], camps: {} };
     // saves from before the game clock start at 08:00 of day 1
-    expect(loadChar(store({ [SAVE_KEY]: JSON.stringify(v3) }))).toEqual({ ...v3, time: 480, gunMods: [null, null, null], kcal: 2400, stomach: 0, water: 100, harvest: {}, benches: [], claims: [] });
-    const timed = { ...v3, time: 5000, gunMods: ['scope', null, 'magX'], kcal: 1234, stomach: 0.6, water: 12, harvest: { 'pod:3:-2': 4000 }, benches: [], claims: [] };
+    expect(loadChar(store({ [SAVE_KEY]: JSON.stringify(v3) }))).toEqual({ ...v3, time: 480, gunMods: [null, null, null], kcal: 2400, stomach: 0, water: 100, harvest: {}, benches: [], claims: [], hands: [{ k: 'blaster', n: 1 }], back: [{ k: 'blade', n: 1 }, null], wear: {} });
+    const timed = { ...v3, time: 5000, gunMods: ['scope', null, 'magX'], kcal: 1234, stomach: 0.6, water: 12, harvest: { 'pod:3:-2': 4000 }, benches: [], claims: [], hands: [null], back: [{ k: 'blaster', n: 1 }, { k: 'blade', n: 1 }], wear: { head: 'helmet' } };
     expect(loadChar(store({ [SAVE_KEY]: JSON.stringify(timed) }))).toEqual(timed);
     // the old 0..100 food bar becomes the same share of the calorie store
     const { kcal: _k, stomach: _s, ...old } = { ...timed, food: 40 };

@@ -4,7 +4,7 @@ import { renderer, camera } from '../world/render';
 import { $ } from './hud';
 import { togglePack } from './backpack';
 import { interact } from '../world/interact';
-import { setWeapon, reload } from '../world/weapons';
+import { swapWeapon, reload } from '../world/weapons';
 
 export function initTouch() {
   if (G.isTouch) document.body.classList.add('is-touch');
@@ -16,7 +16,7 @@ export function initTouch() {
   };
   bindBtn('bFire', () => (G.firing = true), () => (G.firing = false));
   bindBtn('bJump', () => (G.touchJump = true), () => (G.touchJump = false));
-  bindBtn('bSwap', () => setWeapon(1 - G.weapon), () => {});
+  bindBtn('bSwap', () => swapWeapon(), () => {});
   bindBtn('bAim', () => { G.touchAim = !G.touchAim; $('bAim').classList.toggle('on', G.touchAim); }, () => {});
   bindBtn('bReload', reload, () => {});
   bindBtn('bUse', interact, () => {});

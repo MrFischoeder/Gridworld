@@ -17,7 +17,7 @@ import { clearSpot } from '../gen/vehicles';
 import { nearestOnRoad } from '../gen/roads';
 import { CHUNK } from '../gen/regions';
 import type { Terrain } from '../gen/terrain';
-import { gainXp } from '../character';
+import { gainXp, armoured } from '../character';
 import { logLine, showToast } from '../ui/hud';
 import { onKill } from './quests';
 
@@ -112,7 +112,7 @@ function driveRaider(r: Raider, dt: number) {
       logLine('Rammed!');
       damageVehicle(driving.v, 20 * (1 + r.level * 0.2));
     } else {
-      G.hp -= 16 * (1 + r.level * 0.2); G.dmgFlash = 0.5;
+      G.hp -= armoured(16 * (1 + r.level * 0.2)); G.dmgFlash = 0.5;
       const [fx, fz] = [Math.sin(v.st.heading), Math.cos(v.st.heading)];
       G.vel.x += fx * 12; G.vel.z += fz * 12; G.vel.y = 6; G.onGround = false;
     }

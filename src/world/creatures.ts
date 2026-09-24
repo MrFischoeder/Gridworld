@@ -1,6 +1,7 @@
 // Wild creatures of the open world: Ravager packs, territorial Brambles and diving Leechwings.
 // Spawns and movement use Math.random (unsaved, like drones); models are built from PropBatch.
 import * as THREE from 'three';
+import { armoured } from '../character';
 import { nearX } from '../gen/regions';
 import { onNoise } from './noise';
 import { scene, V, lineMat } from './render';
@@ -297,7 +298,7 @@ function walk(c: Creature, dx: number, dz: number, speed: number, dt: number) {
 }
 function bite(dmg: number) {
   if (foeRules.shielded()) { foeRules.shieldHit(dmg * 0.5); return; }
-  G.hp -= dmg; G.dmgFlash = 0.4;
+  G.hp -= armoured(dmg); G.dmgFlash = 0.4;
 }
 const alerted = new WeakSet<Creature[]>();
 

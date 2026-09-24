@@ -11,7 +11,7 @@ import { updateDoors, updateTrans } from './world/doors';
 import { updateDrones, updateBosses, updateOrbs, animateFoes, updateBossBar, foeRules, makeDrone, damageFoe } from './world/enemies';
 import { updateLoot } from './world/loot';
 import { updateEntities } from './world/interact';
-import { attack, animateVM, refreshWeaponVisibility, vmScene, syncViewmodel, updateGun, refreshGunLook } from './world/weapons';
+import { attack, animateVM, refreshWeaponVisibility, vmScene, syncViewmodel, updateGun, refreshGunLook, syncHeld } from './world/weapons';
 import { updateFx, updateStreaks } from './world/fx';
 import { updateStreaming, updateFieldEnemies, placeName, OW, groundAt, treeHit, animateCamps, keepOnPlanet } from './world/overworld';
 import { collides, setWaterNote } from './world/player';
@@ -62,7 +62,7 @@ initMenu({
 
 if (G.char.loc === 'dungeon' && G.char.dungeon) loadDungeon(null); else { G.char.loc = 'overworld'; loadOverworld({ kind: 'saved' }); }
 
-refreshGunLook();
+refreshGunLook(); syncHeld();
 renderer.info.autoReset = false;
 let last = performance.now(), perfT = 0, saveT = 0, clockT = 0;
 let benchT = 0; // workbenches in the wilds are synced about once a second

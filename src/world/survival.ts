@@ -6,7 +6,8 @@
 import { G } from '../game';
 import { STAMINA, DRAIN, LOW, STARVE_DPS, KCAL, STOMACH, burnPerMin } from '../data/survival';
 import { PACK } from '../data/items';
-import { weightOf, bulkOf } from '../inventory';
+import { bulkOf } from '../inventory';
+import { carriedKg } from '../character';
 import { MIN_PER_SEC } from '../core/time';
 import { $, logLine, showToast } from '../ui/hud';
 
@@ -16,7 +17,7 @@ const bar = { st: $('stfill'), food: $('foodfill'), belly: $('bellyfill'), water
 export type Load = 'ok' | 'heavy' | 'over';
 /** What the backpack weighs (kg), how full it is (litres) and how it feels. */
 export function load() {
-  const kg = weightOf(G.char.inv), vol = bulkOf(G.char.inv);
+  const kg = carriedKg(), vol = bulkOf(G.char.inv);
   return { kg, vol, state: (kg > PACK.max ? 'over' : kg > PACK.comfy ? 'heavy' : 'ok') as Load };
 }
 /** Walking speed factor from the load: free up to PACK.comfy, then slower; overloaded you can barely walk. */

@@ -96,6 +96,12 @@ label{font-size:22px;margin-top:16px;display:block}
 #pack .acts{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
 #pack .acts button{background:transparent;color:var(--g);border:1px solid var(--g);padding:3px 14px;font-size:22px}
 #pack .acts button.drop{color:var(--amber);border-color:var(--amber)}
+#gear,.gear.caps{grid-template-columns:repeat(5,1fr) 12px repeat(3,1fr)}
+.gear.caps{margin-top:2px;font-size:14px;opacity:.55;text-align:center}
+
+.slot.wear{color:#c8e0ff;border-color:#4a6a8a}
+.slot.weapon{color:#ffe08a;border-color:#8a7a3a}
+.slot.held{border:2px solid var(--gold);box-shadow:0 0 8px rgba(255,208,96,.45)}
 #packClose{margin-top:14px;background:var(--g);color:#000;border:0;padding:5px 18px;font-size:24px}
 /* touch */
 #stick{position:fixed;left:26px;bottom:calc(env(safe-area-inset-bottom,0px) + 26px);width:120px;height:120px;

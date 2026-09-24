@@ -79,7 +79,7 @@ export function updateLoot(dt: number, time: number) {
     p.g.position.copy(p.p); p.g.position.y += Math.sin(time * 3 + i) * 0.08; p.g.rotation.y = time * 1.5;
     if (Math.hypot(p.p.x - G.pos.x, p.p.z - G.pos.z) < 1.3 && Math.abs(p.p.y - body.y) < 2.5 && p.age > 0.4) {
       const where = addItem(p.k);
-      if (where) { scene.remove(p.g); W.pickups.splice(i, 1); logLine(ITEMS[p.k].name + ' → backpack'); saveChar(); if (item(p.k).type === 'quest') onPickup(p.k); }
+      if (where) { scene.remove(p.g); W.pickups.splice(i, 1); logLine(ITEMS[p.k].name + (where === 'hands' ? ' (in your hands)' : where === 'back' ? ' (on your back)' : ' → backpack')); saveChar(); if (item(p.k).type === 'quest') onPickup(p.k); }
       else if (!p.warned) { p.warned = true; logLine('No room in your backpack'); }
     }
   }

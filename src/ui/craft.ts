@@ -2,9 +2,9 @@
 // Craft button. It lives in the dialogue panel: a village blacksmith's forge opens it from his options (every
 // recipe), a workbench you set up in the wilds opens it on its own (only the plain 'bench' recipes).
 import { G, W } from '../game';
-import { ITEMS, PACK } from '../data/items';
+import { ITEMS, PACK, HANDS_ONLY, WEAPON_KIND } from '../data/items';
 import { RECIPES, canUseAt, count, craft, hasAll, type Station } from '../data/crafting';
-import { saveChar, calcStats } from '../character';
+import { saveChar, calcStats, stowHeld, handsChanged } from '../character';
 import { packBench, type Bench } from '../world/benches';
 import { loadText } from './slots';
 import { $ } from './hud';
@@ -43,9 +43,12 @@ function close() { G.dlgOpen = false; bench = null; dlgEl.style.display = 'none'
 export function craftClick(t: HTMLElement): boolean {
   const c = t.closest<HTMLElement>('[data-craft]');
   if (c) {
-    const r = RECIPES[+c.dataset.craft!], why = craft(G.char.inv, r, PACK.vol);
-    if (!why) { calcStats(); saveChar(); }
-    render(why === 'missing' ? 'You are missing something.' : why === 'room' ? 'No room in your backpack for it.' : `Made: ${ITEMS[r.out].name}${r.n > 1 ? ' ×' + r.n : ''}.`);
+    const r = RECIPES[+c.dataset.craft!];
+    if (HANDS_ONLY.has(r.out) && G.char.hands[0] && WEAPON_KIND[G.char.hands[0].k] !== undefined) stowHeld(); // it comes out into your hands
+    const why = craft(G.char.inv, r, PACK.vol, G.char.hands);
+    if (!why) { calcStats(); handsChanged(); saveChar(); }
+    render(why === 'missing' ? 'You are missing something.' : why === 'room' ? 'No room in your backpack for it.' : why === 'hands' ? `The ${ITEMS[r.out].name} is carried in your hands: free them first.`
+      : `Made: ${ITEMS[r.out].name}${r.n > 1 ? ' ×' + r.n : ''}${HANDS_ONLY.has(r.out) ? ' (in your hands)' : ''}.`);
     return true;
   }
   if (t.closest('[data-cclose]')) { close(); return true; }
