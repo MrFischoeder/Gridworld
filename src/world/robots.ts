@@ -22,7 +22,7 @@ import { fireBolt, updateBolts } from './bandits';
 import { onNoise } from './noise';
 import { onKill } from './quests';
 import { logLine } from '../ui/hud';
-import { mayspawn } from './threat';
+import { mayspawn, FOE_HIT } from './threat';
 import type { SpawnEnv } from './creatures';
 
 type State = 'patrol' | 'hunt' | 'return';
@@ -231,7 +231,7 @@ function trySpawn() {
   if (lv < ROBOTS.scout.min) return;
   const fwx = -Math.sin(G.yaw), fwz = -Math.cos(G.yaw);
   for (let tries = 0; tries < 8; tries++) {
-    const a = Math.atan2(-fwx, -fwz) + (Math.random() - 0.5) * 2.6, d = 55 + Math.random() * 30;
+    const a = Math.atan2(fwx, fwz) + (Math.random() - 0.5) * 3.4, d = 65 + Math.random() * 30; // ahead or to a side
     const x = pos.x + Math.sin(a) * d, z = pos.z + Math.cos(a) * d;
     if (env.forbidden(x, z)) continue;
     const lvHere = env.danger(x, z), kinds = pickGroup(lvHere, env.nearRuin(x, z));
@@ -271,7 +271,7 @@ function face(r: Robot, dx: number, dz: number, dt: number, rate = 5) {
 /** A blow that reaches the player (a closed cab takes it instead). */
 function hit(dmg: number, push = 0, from?: THREE.Vector3) {
   if (foeRules.shielded()) { foeRules.shieldHit(dmg * 0.6); return; }
-  G.hp -= armoured(dmg); G.dmgFlash = 0.45;
+  G.hp -= armoured(dmg * FOE_HIT); G.dmgFlash = 0.45;
   if (push && from) { const d = V(G.pos.x - from.x, 0, G.pos.z - from.z).normalize(); G.vel.x += d.x * push; G.vel.z += d.z * push; G.vel.y += push * 0.4; }
 }
 

@@ -211,7 +211,7 @@ function patrols(dt: number) {
   patrolT = 18;
   const pos = G.pos, lv = env.danger(pos.x, pos.z);
   if (lv < 2 || W.bandits.filter((b) => b.campId === undefined && b.ambush === undefined).length >= 3 || Math.random() > 0.35) return;
-  const a = G.yaw + (Math.random() - 0.5) * 1.6, d = 60 + Math.random() * 20;   // behind the player
+  const a = G.yaw + Math.PI + (Math.random() - 0.5) * 3, d = 70 + Math.random() * 20;   // ahead or to a side
   const x = pos.x + Math.sin(a) * d, z = pos.z + Math.cos(a) * d;
   if (env.forbidden(x, z)) return;
   const group: Bandit[] = [], n = 2 + (lv > 3.5 && Math.random() < 0.4 ? 1 : 0);

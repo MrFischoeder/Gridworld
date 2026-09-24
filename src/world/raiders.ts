@@ -20,6 +20,7 @@ import type { Terrain } from '../gen/terrain';
 import { gainXp, armoured } from '../character';
 import { logLine, showToast } from '../ui/hud';
 import { onKill } from './quests';
+import { mayspawn } from './threat';
 
 export interface RaiderEnv { terrain: Terrain; danger(x: number, z: number): number; forbidden(x: number, z: number): boolean }
 let env: RaiderEnv | null = null;
@@ -59,7 +60,7 @@ function spawnRaidersMaybe(dt: number) {
   if (!env || (raidT -= dt) > 0) return;
   raidT = 20;
   const lv = env.danger(G.pos.x, G.pos.z);
-  if (lv < 3 || raiders.length >= (lv > 5 ? 2 : 1) || Math.random() > (driving.v ? 0.5 : 0.25)) return;
+  if (lv < 3 || raiders.length >= (lv > 5 ? 2 : 1) || Math.random() > (driving.v ? 0.5 : 0.25) || !mayspawn(3, lv)) return;
   const back = driving.v ? driving.v.st.heading + Math.PI : G.yaw;   // G.yaw looks along -forward: + sin/cos is behind
   for (let i = 0; i < 8; i++) {
     const a = back + (Math.random() - 0.5) * 1.2, d = 95 + Math.random() * 30;
@@ -167,13 +168,17 @@ export function ambushHit(x: number, _y: number, z: number, r: number): boolean 
   for (const a of ambushes) for (const o of a.obstacles) if (Math.hypot(o.x - x, o.z - z) < o.r + r) return true;
   return false;
 }
+/** On (or right by) a road here? (Checked before the pacing, so an ambush does not use up an encounter off-road.) */
+const nearRoadHere = (T: Terrain, px: number, pz: number) => T.chunkFeatures(Math.floor(px / CHUNK), Math.floor(pz / CHUNK)).roads.some((rd) => !rd.h && nearestOnRoad(rd, px, pz)[0] < 8);
 function tryAmbush(dt: number, force = false) {
   if (!env || (!force && (ambushT -= dt) > 0)) return false;
   ambushT = 4;
   const T = env.terrain, px = G.pos.x, pz = G.pos.z;
   if (!force && (env.danger(px, pz) < 2.5 || ambushes.length || performance.now() - lastAmbushAt < 150000 || Math.random() > 0.2)) return false;
+  if (!force && !nearRoadHere(T, px, pz)) return false;
+  if (!force && !mayspawn(3, env.danger(px, pz))) return false;
   const f = T.chunkFeatures(Math.floor(px / CHUNK), Math.floor(pz / CHUNK));
-  const road = f.roads.find((rd) => nearestOnRoad(rd, px, pz)[0] < 8);
+  const road = f.roads.find((rd) => !rd.h && nearestOnRoad(rd, px, pz)[0] < 8); // real roads, not mountain trails
   if (!road) return false;
   // which way along the road is the player heading?
   const mv = driving.v ? V(Math.sin(driving.v.st.heading), 0, Math.cos(driving.v.st.heading)) : V(G.vel.x, 0, G.vel.z);

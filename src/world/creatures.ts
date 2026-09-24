@@ -14,7 +14,7 @@ import { burst } from './fx';
 import { dropCrystal, dropPickup } from './loot';
 import { logLine, showToast } from '../ui/hud';
 import { onKill } from './quests';
-import { mayspawn } from './threat';
+import { mayspawn, FOE_HIT } from './threat';
 import { ALPHA, type Quest } from '../gen/quests';
 import { textSprite } from './npc';
 
@@ -238,7 +238,8 @@ function trySpawn() {
   if (Math.random() > 0.55 + heat * 0.12) return;
   const drawn = heard && heat > 0.4 && Math.random() < 0.75, before = W.creatures.length; // the shooting draws them in
   for (let tries = 0; tries < 10; tries++) {
-    const a = drawn ? Math.random() * 6.283 : Math.atan2(-fwx, -fwz) + (Math.random() - 0.5) * 2.6, d = drawn ? 55 + Math.random() * 25 : 45 + Math.random() * 25;
+    // ahead of you or off to a side (so you meet them on the way, not with a pack piling up behind you)
+    const a = drawn ? Math.random() * 6.283 : Math.atan2(fwx, fwz) + (Math.random() - 0.5) * 3.4, d = drawn ? 55 + Math.random() * 25 : 60 + Math.random() * 25;
     const bx = drawn ? lastNoise.x : pos.x, bz = drawn ? lastNoise.z : pos.z, x = bx + Math.sin(a) * d, z = bz + Math.cos(a) * d;
     if (Math.hypot(x - pos.x, z - pos.z) < 40) continue;
     if (env.forbidden(x, z)) continue;
@@ -298,7 +299,7 @@ function walk(c: Creature, dx: number, dz: number, speed: number, dt: number) {
 }
 function bite(dmg: number) {
   if (foeRules.shielded()) { foeRules.shieldHit(dmg * 0.5); return; }
-  G.hp -= armoured(dmg); G.dmgFlash = 0.4;
+  G.hp -= armoured(dmg * FOE_HIT); G.dmgFlash = 0.4;
 }
 const alerted = new WeakSet<Creature[]>();
 

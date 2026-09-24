@@ -4,6 +4,12 @@ export interface Change { v: string; date: string; title: string; notes: string[
 
 export const CHANGELOG: Change[] = [
   {
+    v: '0.17.1', date: '2026-09-24', title: 'Fix: enemies turn up one at a time',
+    notes: ['Encounters are paced: after a group turns up the next one waits a while (about a minute near the villages, 20-30 s in the deepest wilds; gunfire brings them sooner), and nothing new joins while you are fighting. No more waves piling up the moment you stop.',
+      'Enemies now turn up ahead of you or off to a side instead of behind you, so running across the wilds you meet them on the way.',
+      'Fewer foes are about at once (about half the old limit), but creatures and robots hit a third harder. Raiders and roadside ambushes follow the same pacing.'],
+  },
+  {
     v: '0.17.0', date: '2026-09-24', title: 'Developer flight',
     notes: ['For testing: the console (~) has a "fly" command. You fly over the land without gravity or collisions at 40 m/s (Shift: three times as fast): W/S along your view, A/D sideways, Space up, C down. "fly <speed>" sets the speed; "fly" again lands you.',
       'While flying you see much further (twice the land streamed in, the fog pushed back), nothing new spawns, and your weapon is put away.'],
