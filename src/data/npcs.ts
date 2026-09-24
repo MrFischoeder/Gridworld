@@ -1,4 +1,5 @@
 import { hash } from '../core/rng';
+import { BASES_OPEN, BASE_ITEMS } from './building';
 import { RELIC_KEYS, ATTACH_KEYS, ATTACH_PRICE, GEAR_PRICE, TOOL_PRICE, SUPPLY_PRICE, type ItemKey } from './items';
 
 export type NpcRole = 'innkeeper' | 'elder' | 'blacksmith' | 'merchant' | 'grocer' | 'dealer' | 'villager';
@@ -39,6 +40,10 @@ export const BUYS: Partial<Record<NpcRole, Partial<Record<ItemKey, number>>>> = 
 };
 export const COOK_PRICE = 2;
 export function stockFor(role: NpcRole, world: number): [ItemKey, number][] {
+  const stock = stockAll(role, world);
+  return BASES_OPEN ? stock : stock.filter(([k]) => !BASE_ITEMS.includes(k));
+}
+function stockAll(role: NpcRole, world: number): [ItemKey, number][] {
   if (role === 'merchant') return [['medkit', 30], ['emp', 45], ['key', 90], ['recall', 60], ['flask', 15], ['firekit', 12], ['compass', 40], ['flagpole', 250],
     ...(Object.keys(SUPPLY_PRICE) as ItemKey[]).map((k): [ItemKey, number] => [k, SUPPLY_PRICE[k]!])];
   if (role === 'grocer') return [['bread', 8], ['stew', 18], ['waterF', 25]];

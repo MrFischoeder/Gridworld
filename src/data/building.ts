@@ -2,6 +2,16 @@
 // the backpack), and which tool takes it down again. Pure data; gen/base.ts places them, world/building.ts draws them.
 import type { ItemKey } from './items';
 
+/**
+ * Player bases on claims are closed for now: the game is turning towards helping the villages (fortifying them,
+ * a house of your own in town). While false no new flag can be raised and nothing built (B), and the Flagpole,
+ * Auto Turret and Code Lock are not sold; claims, parts, doors, locks and turrets already in a save keep working.
+ */
+export const BASES_OPEN = false;
+/** Items that only serve player bases: kept out of the shops while BASES_OPEN is false. */
+export const BASE_ITEMS: ItemKey[] = ['flagpole', 'turretkit', 'codelock'];
+export const BASES_CLOSED_MSG = 'Building your own base is closed for now.';
+
 export type PieceKind = 'wallW' | 'doorW' | 'roofW' | 'stairsW' | 'wallM' | 'doorM' | 'roofM' | 'stairsM' | 'turret';
 /** 'roof' is a floor slab: the roof of the storey below and the floor of the one above. */
 export type Shape = 'wall' | 'door' | 'roof' | 'stairs' | 'turret';

@@ -4,6 +4,11 @@ export interface Change { v: string; date: string; title: string; notes: string[
 
 export const CHANGELOG: Change[] = [
   {
+    v: '0.20.1', date: '2026-09-24', title: 'Player bases closed for now',
+    notes: ['Building your own base in the wilds is closed for now: a Flagpole can no longer be raised, B no longer opens the build list, and the shops stop selling the Flagpole, the Auto Turret and the Code Lock. The game is turning towards helping the villages instead: fortifying their walls and a house of your own in town (coming later).',
+      'A claim you already have stays as it is: its walls, doors, locks and turrets still work, and E at the flag still takes it down.'],
+  },
+  {
     v: '0.20.0', date: '2026-09-24', title: 'Rings of danger',
     notes: ['Danger now grows in rings round Gridholm: the country round the start is a calm patch (danger about 1), and the further out you travel the harsher it gets, up to 8 some 45 km away. The ring edges wander, so they are no perfect circles.',
       'Further out there is more about: encounters come more often, groups are bigger, and the heavy machines (Sentinels, Artillery Walkers, Assault Constructs, Repair Drones) make up a growing share of what you meet.',

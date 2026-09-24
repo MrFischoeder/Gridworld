@@ -2,7 +2,7 @@
 // tools), and a Build button that starts the build mode (world/building.ts). It lives in the dialogue panel.
 import { G, W } from '../game';
 import { ITEMS } from '../data/items';
-import { PIECES, PIECE_KINDS, type PieceKind } from '../data/building';
+import { PIECES, PIECE_KINDS, BASES_OPEN, BASES_CLOSED_MSG, type PieceKind } from '../data/building';
 import { count } from '../data/crafting';
 import { startBuilding, lacks, stopBuilding, isBuilding } from '../world/building';
 import { claimHere } from '../world/claims';
@@ -28,6 +28,7 @@ function render() {
 export function toggleBuildMenu() {
   if (G.dlgOpen) { if (panel().querySelector('[data-bclose]')) close(); return; }
   if (!G.playing || G.packOpen || G.xferOpen) return;
+  if (!BASES_OPEN) { logLine(BASES_CLOSED_MSG); return; }
   if (G.char.loc !== 'overworld' || !claimHere(G.pos.x, G.pos.z)) { logLine('You can only build on your own claim: raise a Flagpole first.'); return; }
   G.dlgOpen = true; W.talkNpc = null; G.firing = false; for (const k in G.keys) G.keys[k] = false;
   render();

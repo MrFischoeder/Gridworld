@@ -22,6 +22,7 @@ import { canRecall } from './level';
 import { lightFire } from './cooking';
 import { placeBench } from './benches';
 import { startPlacing } from './claims';
+import { BASES_OPEN, BASES_CLOSED_MSG } from '../data/building';
 
 export interface Crystal { m: THREE.LineSegments; p: THREE.Vector3; v: THREE.Vector3; age: number }
 export interface Pickup { g: THREE.Group; k: ItemKey; p: THREE.Vector3; age: number; warned?: boolean }
@@ -175,6 +176,7 @@ export function useItem(k: ItemKey): boolean {
     return true;
   }
   if (k === 'firekit') return lightFire();
+  if (k === 'flagpole' && !BASES_OPEN) { logLine(BASES_CLOSED_MSG); return false; }
   if (k === 'flagpole') { if (startPlacing()) { closePack(); } return false; } // the flag is used up once raised
   if (k === 'benchkit') { if (placeBench()) { closePack(); return true; } return false; }
   if (k === 'flask') { logLine('It is empty. Fill it at a well or a lake (E at the water).'); return false; }
