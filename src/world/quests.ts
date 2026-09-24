@@ -1,5 +1,6 @@
 // Quest progress: kills, quest groups in the open world, quest items in ruins and at wrecks, rewards.
 import { G, W } from '../game';
+import { escortLine } from './caravans';
 import { generateQuest, compass, km, type Quest } from '../gen/quests';
 import { boardPeriod } from '../core/time';
 import { worldDist, nearX, wrapDx } from '../gen/regions';
@@ -175,6 +176,7 @@ export function updateTracker(dt: number) {
     else if (t && q.place?.type === 'ruin') s += ' · in the dungeon below';
     return s;
   });
+  const esc = escortLine(); if (esc) lines.push(esc);
   trackEl.innerHTML = lines.map((l) => `<div>${l}</div>`).join('');
 }
 export const questMarkers = (): { x: number; z: number; label: string }[] =>

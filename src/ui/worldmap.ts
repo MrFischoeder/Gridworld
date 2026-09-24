@@ -1,6 +1,6 @@
 // Surface maps: the minimap (150 m around the player) and the full world map (M), both built from
 // explored chunks only (fog of war). Chunk tiles are rendered once from the deterministic terrain.
-import { nearX } from '../gen/regions';
+import { nearX, wrapDx } from '../gen/regions';
 import { G, W } from '../game';
 import { OW, villageHere } from '../world/overworld';
 import { CHUNK, poisNear } from '../gen/regions';
@@ -10,6 +10,9 @@ import { saveChar } from '../character';
 import { drawPlayerArrow } from './minimap';
 import { vehicles, driving } from '../world/vehicles';
 import { questMarkers } from '../world/quests';
+import { mapWagons, plundered } from '../world/caravans';
+import { network, pathKnown } from '../gen/roads';
+import { onRoad, caravanPos } from '../gen/caravans';
 import { raiders } from '../world/raiders';
 import { $ } from './hud';
 
@@ -99,6 +102,32 @@ function drawArea(ctx: CanvasRenderingContext2D, w: number, h: number, ppm: numb
     const x = X(m.x), y = Z(m.z);
     ctx.strokeStyle = ctx.fillStyle = '#ffd060'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(x, y, labels ? 12 : 6, 0, 6.283); ctx.stroke(); ctx.lineWidth = 1;
     ctx.fillText('!', x, y + 4); if (labels) ctx.fillText(m.label, x, y - 16);
+  }
+  // on the big map: every caravan on the roads between villages you know (from the timetables), as an arrow
+  if (labels) {
+    let budget = 2; // new roads worked out per frame, so zooming far out does not stall the game
+    const world = OW.terrain!.world, r = Math.max(hw, hh) + 2000, known = (v: { x: number; z: number }) => isDiscovered(d, Math.floor(v.x / CHUNK), Math.floor(v.z / CHUNK));
+    for (const e of network(world)) {
+      if (!known(e.a) && !known(e.b)) continue;
+      if (Math.min(Math.hypot(wrapDx(e.a.x - px), e.a.z - pz), Math.hypot(wrapDx(e.b.x - px), e.b.z - pz)) > r + 8000) continue;
+      if (!pathKnown(world, e) && budget-- <= 0) continue;
+      for (const c of onRoad(world, e, G.char.time)) {
+        if (plundered(c.id)) continue;
+        const p = caravanPos(world, e, c, G.char.time);
+        if (!p) continue;
+        const x = X(nearX(p.x, px)), y = Z(p.z);
+        if (x < -10 || y < -10 || x > w + 10 || y > h + 10) continue;
+        ctx.save(); ctx.translate(x, y); ctx.rotate(-p.yaw); ctx.fillStyle = G.char.escort?.id === c.id ? '#ffd060' : '#c8e0ff';
+        ctx.beginPath(); ctx.moveTo(0, 6); ctx.lineTo(-4, -4); ctx.lineTo(4, -4); ctx.closePath(); ctx.fill(); ctx.restore();
+      }
+    }
+  }
+  // caravans on the roads near you: pale wagons (gold: the one you guard, red rim: under attack)
+  for (const c of mapWagons()) {
+    const x = X(nearX(c.x, px)), y = Z(c.z), l = Math.max(3, 3 * ppm), w = Math.max(2, 1.3 * ppm);
+    ctx.save(); ctx.translate(x, y); ctx.rotate(-c.yaw); ctx.strokeStyle = c.mine ? '#ffd060' : '#c8e0ff'; ctx.lineWidth = 1.5; ctx.strokeRect(-w, -l, w * 2, l * 2);
+    if (c.raided) { ctx.strokeStyle = '#ff6a4a'; ctx.strokeRect(-w - 2, -l - 2, w * 2 + 4, l * 2 + 4); }
+    ctx.restore(); ctx.lineWidth = 1;
   }
   for (const r of raiders) { ctx.fillStyle = '#ff6a4a'; ctx.fillRect(X(r.p.x) - 3, Z(r.p.z) - 3, 6, 6); }
   for (const b of W.bandits) { if (b.state === 'idle') continue; ctx.fillStyle = '#ff6a4a'; ctx.fillRect(X(b.p.x) - 2, Z(b.p.z) - 2, 4, 4); }

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { network } from '../src/gen/roads';
-import { departures, onRoad, caravanOf, caravanS, roadsOf, caravanShift, CARAVAN } from '../src/gen/caravans';
+import { departures, onRoad, caravanOf, caravanS, roadsOf, caravanShift, caravanPos, escortPay, CARAVAN } from '../src/gen/caravans';
 import { profileOf, quote, MARKET } from '../src/gen/market';
 import { GRIDHOLM_ID, findPoi, villageSeed } from '../src/gen/regions';
 import { hash } from '../src/core/rng';
@@ -34,5 +34,14 @@ describe('caravans', () => {
       if (shift > 0) { expect(withC).toBeLessThanOrEqual(without); checked++; }
     }
     expect(checked).toBeGreaterThan(5);
+  });
+  it('can be found on the map: from its home gate to the other end of the road, and escorts pay more for longer, wilder roads', () => {
+    const e = roadsOf(w, GRIDHOLM_ID)[0], c = departures(w, e, 0, 2000)[0];
+    const start = caravanPos(w, e, c, c.t0)!, end = caravanPos(w, e, c, c.t0 + c.T)!, mid = caravanPos(w, e, c, c.t0 + c.T / 2)!;
+    const home = findPoi(w, c.from)!, dest = findPoi(w, c.to)!;
+    const near = (p: { x: number; z: number }, v: { x: number; z: number }) => Math.hypot(p.x - v.x, p.z - v.z);
+    expect(near(start, home)).toBeLessThan(80); expect(near(end, dest)).toBeLessThan(80);
+    expect(mid.s).toBeCloseTo(c.T * CARAVAN.speed / 2, 3);
+    expect(escortPay(c, 4)).toBeGreaterThan(escortPay(c, 1));
   });
 });

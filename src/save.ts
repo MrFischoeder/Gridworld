@@ -67,6 +67,8 @@ export interface Char {
   ledger: Record<string, { t: number; name: string; x: number; z: number; q: Record<string, [number, number]> }>;
   /** Crates bought off passing caravans (gen/caravans.ts), by caravan id. */
   caravans: Record<string, number>;
+  /** The caravan you are guarding (world/caravans.ts): its road and departure, where it goes, the pay, how long you have been away from it, raids so far. */
+  escort: { id: string; road: string; k: number; to: number; toName: string; pay: number; away: number; raids: number; second: boolean } | null;
 }
 
 export const SAVE_KEY = 'gridWorld.character.v3';
@@ -77,7 +79,7 @@ export const newChar = (): Char => ({
   v: 3, level: 1, xp: 0, gold: 0, world: (Math.random() * 1e6) | 0,
   inv: Array(INV_SIZE).fill(null), mods: Array(MOD_SIZE).fill(null), opened: {}, unlocked: {}, killed: {},
   loc: 'overworld', ow: null, dungeon: null, discovered: {}, containers: {}, vehicles: [], board: { seq: 0, offers: [], stamp: boardPeriod(START_TIME) }, quests: [], camps: {}, time: START_TIME, gunMods: [null, null, null], kcal: KCAL.start, stomach: 0, water: 100, harvest: {}, benches: [], claims: [],
-  hands: [{ k: 'blaster', n: 1 }], back: [{ k: 'blade', n: 1 }, null], wear: {}, pid: Math.random().toString(36).slice(2, 10), towns: {}, market: {}, ledger: {}, caravans: {},
+  hands: [{ k: 'blaster', n: 1 }], back: [{ k: 'blade', n: 1 }, null], wear: {}, pid: Math.random().toString(36).slice(2, 10), towns: {}, market: {}, ledger: {}, caravans: {}, escort: null,
 });
 
 interface V2 { level?: number; xp?: number; gold?: number; world?: number; inv?: (Slot | null)[]; mods?: (ItemKey | null)[] }

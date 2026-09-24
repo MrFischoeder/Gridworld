@@ -48,6 +48,8 @@ function gateToward(world: number, v: Poi, tx: number, tz: number): Dir {
 }
 
 const pathCache = new Map<string, { pts: [number, number][]; gate: Dir } | null>();
+/** Whether the way of edge e has been worked out already (it takes a few milliseconds the first time). */
+export const pathKnown = (world: number, e: Edge) => pathCache.has(world + ':' + e.key);
 /** The way between the two villages of an edge (in coordinates round village a), or null when there is none. */
 export function edgePath(world: number, e: Edge): { pts: [number, number][]; gate: Dir } | null {
   const key = world + ':' + e.key;

@@ -90,3 +90,19 @@ export function lastArrival(world: number, vid: number, now: number): Caravan | 
     if (c.to === vid && c.t0 + c.T <= now && (!best || c.t0 + c.T > best.t0 + best.T)) best = c;
   return best;
 }
+/** Where caravan c's lead wagon is at time t (road coordinates round the road's first village), and its heading. */
+export function caravanPos(world: number, e: Edge, c: Caravan, t: number, delay = 0): { x: number; z: number; yaw: number; s: number; L: number } | null {
+  const pts = edgePath(world, e)?.pts;
+  if (!pts) return null;
+  const L = roadLength(world, e), s = Math.min(L, Math.max(0, (t - c.t0 - delay) * CARAVAN.speed)), at = c.back ? L - s : s;
+  let rest = at;
+  for (let i = 0; i + 1 < pts.length; i++) {
+    const [ax, az] = pts[i], [bx, bz] = pts[i + 1], l = Math.hypot(bx - ax, bz - az);
+    if (rest <= l || i + 2 === pts.length) { const f = l ? Math.min(1, rest / l) : 0; return { x: ax + (bx - ax) * f, z: az + (bz - az) * f, yaw: Math.atan2(bx - ax, bz - az) + (c.back ? Math.PI : 0), s, L }; }
+    rest -= l;
+  }
+  return null;
+}
+/** Pay for escorting caravan c safely to its destination: more for longer roads and more dangerous land. */
+export const escortPay = (c: Caravan, danger: number) => Math.round((40 + c.T * CARAVAN.speed / 1000 * 30) * (1 + danger * 0.25) / 5) * 5;
+export { roadLength };

@@ -4,6 +4,12 @@ export interface Change { v: string; date: string; title: string; notes: string[
 
 export const CHANGELOG: Change[] = [
   {
+    v: '0.26.0', date: '2026-09-24', title: 'Raids and escorts on the caravan roads',
+    notes: ['Bandits now fall on caravans out on the roads, more often in dangerous land. The wagons stop while the bandits are on them and lose their load bit by bit: drive the bandits off before they strip the wagons. Save a caravan and the drovers pay you and sell you their goods at a friend\'s price; lose it and it is gone for good, its goods never reach the market.',
+      'Escort jobs: talk to the drover of a caravan that has only just set out and they may ask you to ride along to the next village, for pay that grows with the length of the road and the danger. Bandits will try for the wagons on the way, once and maybe twice. Stay with the wagons: wander more than a few hundred metres off for a minute and the drovers will not pay you. Be there when they roll in and you get your money. The quest tracker shows the job.',
+      'Caravans on the map: the wagons near you show on the minimap and the map (gold: the one you guard, red rim: under attack), and the big map shows every caravan on the roads between the villages you know, as an arrow pointing the way it goes.'],
+  },
+  {
     v: '0.25.0', date: '2026-09-24', title: 'Caravans on the roads',
     notes: ['Trade caravans now roll along the roads between the villages: one to three covered wagons one behind the other, crates showing at the tail. Every road has its own timetable, with caravans setting out from each end in turn every six to sixteen hours.',
       'A caravan carries what its home village makes, preferably something the village it is heading for wants. Its setting out thins the stock at home, its arrival fills the market at the other end, so prices move with the traffic: a good is cheap for a while where a caravan has just come in. The general store tells you which caravan came in last.',

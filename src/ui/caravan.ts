@@ -9,7 +9,9 @@ import { quote } from '../gen/market';
 import { findPoi, villageSeed } from '../gen/regions';
 import { fmtTime } from '../core/time';
 import { vehicles } from '../world/vehicles';
-import type { Caravan } from '../gen/caravans';
+import { CARAVAN, escortPay, type Caravan } from '../gen/caravans';
+import { savedBy, takeEscort, plundered } from '../world/caravans';
+import { danger } from '../world/overworld';
 import { $ } from './hud';
 import { lockPointer } from './input';
 
@@ -21,9 +23,9 @@ function price(c: Caravan): number {
   const w = G.char.world, a = findPoi(w, c.from), b = findPoi(w, c.to);
   if (!a || !b) return 50;
   const buy = quote(a, villageSeed(w, a), w, c.good, G.char.market, G.char.time).buy, sell = quote(b, villageSeed(w, b), w, c.good, G.char.market, G.char.time).sell;
-  return Math.round((buy + sell) / 2);
+  return Math.round((buy + sell) / 2 * (savedBy(c.id) ? 0.7 : 1));
 }
-const left = (c: Caravan) => Math.max(0, c.n - (G.char.caravans[c.id] ?? 0));
+const left = (c: Caravan) => (plundered(c.id) ? 0 : Math.max(0, c.n - (G.char.caravans[c.id] ?? 0)));
 function render(msg = '') {
   const c = open!, p = price(c), n = left(c), name = ITEMS[c.good].name, eta = c.t0 + c.T;
   panel().classList.remove('wide');
@@ -32,7 +34,16 @@ function render(msg = '') {
     `<div class="shoprow"><div><b>${name}</b><br><span>${n} left · your gold ${G.char.gold}</span></div>
       <button class="opt" style="width:auto" data-cvb="1" ${n < 1 || G.char.gold < p ? 'disabled' : ''}>buy 1 (${p} g)</button>
       <button class="opt" style="width:auto" data-cvb="5" ${n < 5 || G.char.gold < p * 5 ? 'disabled' : ''}>buy 5</button></div>` +
-    `<button class="opt" data-cvclose="1">Safe travels.</button>`;
+    escortRow(c) + `<button class="opt" data-cvclose="1">Safe travels.</button>`;
+}
+/** The escort offer: only while the caravan is still early on its road. */
+function escortRow(c: Caravan): string {
+  const esc = G.char.escort;
+  if (esc?.id === c.id) return `<div class="say" style="opacity:.85">You are guarding this caravan to ${c.toName}: ${esc.pay} gold on arrival. Stay close.</div>`;
+  const done = (G.char.time - c.t0) * CARAVAN.speed / (c.T * CARAVAN.speed);
+  if (esc || done > 0.35) return '';
+  const pay = escortPay(c, danger(G.pos.x, G.pos.z));
+  return `<button class="opt" data-cvesc="1" style="color:var(--gold)">"Bandits on this road. Ride with us to ${c.toName}? ${pay} gold if we all get there."</button>`;
 }
 export function openCaravan(c: Caravan) {
   if (!G.playing || G.dlgOpen || G.packOpen || G.xferOpen) return;
@@ -45,6 +56,7 @@ function close() { open = null; G.dlgOpen = false; dlgEl.style.display = 'none';
 export function caravanClick(t: HTMLElement): boolean {
   if (!open) return false;
   if (t.closest('[data-cvclose]')) { close(); return true; }
+  if (t.closest('[data-cvesc]')) { render(takeEscort(open)); return true; }
   const b = t.closest<HTMLElement>('[data-cvb]');
   if (!b) return false;
   const c = open, want = +b.dataset.cvb!, p = price(c), ch = G.char;
@@ -59,6 +71,6 @@ export function caravanClick(t: HTMLElement): boolean {
   // forget old caravans (keep the save small)
   const ids = Object.keys(ch.caravans); if (ids.length > 40) for (const id of ids.slice(0, ids.length - 40)) delete ch.caravans[id];
   calcStats(); saveChar();
-  render(got ? `The drover hands down ${got} crate${got > 1 ? 's' : ''} of ${ITEMS[c.good].name}. (-${got * p} gold)` : 'No room for a crate in your backpack or a vehicle beside you.');
+  render(got ? (savedBy(c.id) ? 'For you, a friend\'s price. ' : '') + `The drover hands down ${got} crate${got > 1 ? 's' : ''} of ${ITEMS[c.good].name}. (-${got * p} gold)` : 'No room for a crate in your backpack or a vehicle beside you.');
   return true;
 }
