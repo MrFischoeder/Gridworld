@@ -14,7 +14,7 @@ import { OW, campStashes, loadedWells, loadedCaves } from './overworld';
 import { waterSource, sourcePrompt, useWater, type WaterSource } from './water';
 import { nearPlant, plantPrompt, harvest, type PlantNode } from './flora';
 import { nearFire, cookAll, fireHasWork } from './cooking';
-import { gatherTarget, gatherPrompt, strike, type Target } from './gather';
+import { gatherTarget, gatherPrompt, strike, updateGather, type Target } from './gather';
 import { nearBench, type Bench } from './benches';
 import { nearTurret, toggleTurret } from './turrets';
 import { atMouth } from './caves';
@@ -92,6 +92,7 @@ export function updateEntities(dt: number, time: number) {
   nearClaim = busy || nearFood || nearWork ? null : nearFlag();
   nearCook = !busy && !nearFood && !nearWork && !nearClaim && G.char.loc === 'overworld' && !!nearFire();
   nearGather = busy || nearFood || nearWork || nearClaim || nearCook ? null : gatherTarget();
+  updateGather(dt, nearGather);
   nearWater = G.char.loc === 'overworld' && !nearFood && !nearCook && !nearWork && !nearClaim && !nearGather && !nearNpc && !nearChest && !nearBoard && !nearStash && !nearVehicle && !nearMine && !nearPow && !nearCar && !nearWork2 ? waterSource(loadedWells()) : null;
   if (climbing()) { prompt.className = ''; prompt.textContent = 'W / S — up or down · Space — let go'; }
   else if (nearLad) { prompt.className = ''; prompt.textContent = ladderPrompt(nearLad); }

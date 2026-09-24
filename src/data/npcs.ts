@@ -37,7 +37,7 @@ export const LORE = 'Old ruins stand in the hills around Gridholm. Beneath each 
 /** What the traders (other than Kuba) buy, and for how much. */
 export const BUYS: Partial<Record<NpcRole, Partial<Record<ItemKey, number>>>> = {
   grocer: { meatR: 5, meatC: 9, cap: 3, pod: 4, ncrys: 10 },
-  blacksmith: { hide: 14, fang: 9, plate: 22, membrane: 16, incisor: 5, log: 2, stone: 1, scrap: 5, circuit: 12, pcore: 60, planks: 1,
+  blacksmith: { hide: 14, fang: 9, plate: 22, membrane: 16, incisor: 5, log: 2, stone: 1, scrap: 5, circuit: 12, pcore: 60, planks: 1, ironO: 4, copperO: 6,
     blaster: 60, blade: 30, helmet: 25, vest: 50, armour: 100, gloves: 8, trousers: 12, boots: 16 },
 };
 export const COOK_PRICE = 2;

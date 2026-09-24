@@ -10,7 +10,7 @@ import { G, W } from '../game';
 import { VoxelGrid, type Space } from '../core/voxel';
 import { Terrain, inRect, rectDist, STEP, CELLS, VERTS } from '../gen/terrain';
 import { CHUNK, poisNear, X_MIN, WORLD_W, POLE_Z, POLAR_Z, villageContaining, villageDist, villageSeed, GRIDHOLM_ID, type Poi, wrapC } from '../gen/regions';
-import { chunkTrees, chunkRocks, type Tree, type Rock } from '../gen/trees';
+import { chunkTrees, chunkRocks, type Tree, type Rock, type OreKind } from '../gen/trees';
 import { drawTree } from './trees';
 import { drawTemple } from './temple';
 import { chunkWells, type Well } from '../gen/water';
@@ -52,6 +52,8 @@ import { baseHit, baseFloor, baseRay, baseSolid } from './building';
 import { chunkCaves, type Cave } from '../gen/caves';
 import { drawCave, caveHit } from './caves';
 import { trailMarks, drawTrailMark } from './trails';
+/** Ore veins in rocks: rust for iron, verdigris for copper. */
+export const ORE_COLOR: Record<OreKind, number> = { iron: 0xd0703c, copper: 0x38d0b8 };
 
 export const LOAD_R = 4, UNLOAD_R = 6, STRUCT_LOAD = 170, STRUCT_UNLOAD = 240;
 /** Surface structures are drawn in outline style: folds and edges, floor tiles every 2 m, wall seams every 4 m. */
@@ -177,7 +179,7 @@ function buildChunk(cx: number, cz: number, lod = 1): Chunk {
     for (const cv of caves) drawCave(pb, cv, T);
     for (const m of marks) drawTrailMark(pb, m, T);
     for (const t of trees) drawTree(pb, t, lod);
-    for (const k of rocks) pb.rock(k.x, k.y, k.z, k.r, k.h, k.sides, k.rot, GRID);
+    for (const k of rocks) { pb.rock(k.x, k.y, k.z, k.r, k.h, k.sides, k.rot, GRID); if (k.ore) pb.vein(k.x, k.y, k.z, k.r, k.h, k.sides, k.rot, ORE_COLOR[k.ore]); }
     group.add(pb.build());
   }
   localize(group, x0, z0);

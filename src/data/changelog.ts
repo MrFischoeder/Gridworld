@@ -4,6 +4,13 @@ export interface Change { v: string; date: string; title: string; notes: string[
 
 export const CHANGELOG: Change[] = [
   {
+    v: '0.42.0', date: '2026-09-24', title: 'Hard work: chopping, mining and ore',
+    notes: ['Chopping a tree and breaking a rock is now real work. Hold E and your hero swings the hatchet or pickaxe (you see it in your hands), about one blow a second. A small tree takes around 6 seconds and a big one 15. Let go and your progress is kept while you stay.',
+      'Some rocks carry veins of iron (rust streaks) or copper (green-blue streaks). They are rare near Gridholm and common in the mountains. Mining a vein takes longer and gives ore lumps besides the stones, and a mined-out vein takes 4 days to come back.',
+      'At the forge, iron ore smelts into scrap metal and wire, and copper ore becomes electronic components. At any workbench, 8 lumps and 2 planks pack into a crate of ore for the markets. Oskar buys ore lumps.',
+      'Crafting takes time: a progress bar fills while you work (planks 5 s, tools 5 s, forge work 6–8 s). Craft ×5 makes a batch after batch; closing the window stops the work without wasting materials.'],
+  },
+  {
     v: '0.41.0', date: '2026-09-24', title: 'Shipments, and a name of your own',
     notes: ['A full storehouse no longer stands still for good. The village offers its load to you first: a Shipment, a big haul to another village that pays better than the usual ones, posted at the store and on the notice board.',
       'If nobody takes the shipment within 12 hours, the village sends its own convoy, which empties most of the storehouse, and the works start up again. The elder tells you when the convoy leaves.',

@@ -302,3 +302,5 @@ body.is-touch #bUse.on{display:flex}
 .mrow .num{text-align:right}
 .mrow .best{grid-column:1/-1;opacity:.65;font-size:16px;margin-top:-4px}
 .mrow .buy{min-width:0;padding:3px 10px;font-size:19px}
+
+.cbar{height:6px;border:1px solid var(--g2);margin-top:5px;max-width:260px}#cbarFill{height:100%;width:0;background:var(--g)}

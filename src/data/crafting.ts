@@ -9,18 +9,26 @@ import type { Slot } from '../save';
  * blacksmith's); 'forge' = only at a village blacksmith's (metalwork needs the forge).
  */
 export type Station = 'bench' | 'forge';
-/** `tools` must be in the backpack and are not used up. */
-export interface Recipe { out: ItemKey; n: number; needs: [ItemKey, number][]; at: Station; tools?: ItemKey[] }
+/** `tools` must be in the backpack and are not used up; `time` = seconds of work (default `CRAFT_TIME`). */
+export interface Recipe { out: ItemKey; n: number; needs: [ItemKey, number][]; at: Station; tools?: ItemKey[]; time?: number }
+/** Seconds a recipe takes unless it says otherwise: plain bench work is quicker than the forge's. */
+export const CRAFT_TIME = { bench: 3, forge: 6 };
+export const craftTime = (r: Recipe) => r.time ?? CRAFT_TIME[r.at];
 
 export const RECIPES: Recipe[] = [
-  { out: 'planks', n: 4, needs: [['log', 1]], at: 'bench', tools: ['saw'] },
-  { out: 'firekit', n: 1, needs: [['log', 2]], at: 'bench' },
-  { out: 'hatchet', n: 1, needs: [['log', 1], ['stone', 2]], at: 'bench' },
-  { out: 'pickaxe', n: 1, needs: [['log', 1], ['stone', 3]], at: 'bench' },
+  { out: 'planks', n: 4, needs: [['log', 1]], at: 'bench', tools: ['saw'], time: 5 },
+  { out: 'firekit', n: 1, needs: [['log', 2]], at: 'bench', time: 2 },
+  { out: 'hatchet', n: 1, needs: [['log', 1], ['stone', 2]], at: 'bench', time: 5 },
+  { out: 'pickaxe', n: 1, needs: [['log', 1], ['stone', 3]], at: 'bench', time: 5 },
   { out: 'flask', n: 1, needs: [['hide', 1]], at: 'bench' },
   { out: 'compass', n: 1, needs: [['scrap', 1], ['circuit', 1]], at: 'bench' },
   { out: 'medkit', n: 1, needs: [['membrane', 1], ['cap', 3]], at: 'bench' },
-  { out: 'benchkit', n: 1, needs: [['log', 6], ['stone', 4]], at: 'bench' },
+  { out: 'benchkit', n: 1, needs: [['log', 6], ['stone', 4]], at: 'bench', time: 8 },
+  { out: 'ore', n: 1, needs: [['ironO', 8], ['planks', 2]], at: 'bench', time: 4 },
+  { out: 'copper', n: 1, needs: [['copperO', 8], ['planks', 2]], at: 'bench', time: 4 },
+  { out: 'scrap', n: 2, needs: [['ironO', 2], ['log', 1]], at: 'forge', time: 8 },
+  { out: 'wire', n: 3, needs: [['ironO', 1]], at: 'forge', time: 5 },
+  { out: 'circuit', n: 1, needs: [['copperO', 2], ['scrap', 1]], at: 'forge', time: 8 },
   { out: 'plating', n: 1, needs: [['scrap', 3], ['plate', 2]], at: 'forge' },
   { out: 'engine', n: 1, needs: [['scrap', 4], ['circuit', 1]], at: 'forge' },
   { out: 'emp', n: 1, needs: [['scrap', 2], ['circuit', 1]], at: 'forge' },
@@ -71,8 +79,12 @@ export function craft(inv: (Slot | null)[], r: Recipe, cap?: number, hands?: (Sl
  * weather out again. Regrowth in game minutes (a game day = 1440).
  */
 export const GATHER = {
-  tree: { hits: 4, bigHits: 10, logs: 3, bigLogs: 8, regrow: 3 * 1440, stamina: 16, kcal: 12, noise: 22 },
-  rock: { hits: 3, bigHits: 6, stones: 2, bigStones: 5, regrow: 2 * 1440, stamina: 18, kcal: 14, noise: 18 },
+  tree: { hits: 6, bigHits: 14, logs: 3, bigLogs: 8, regrow: 3 * 1440, stamina: 9, kcal: 8, noise: 22 },
+  rock: { hits: 5, bigHits: 9, stones: 2, bigStones: 5, regrow: 2 * 1440, stamina: 10, kcal: 9, noise: 18 },
+  /** Seconds between blows while you keep at it (hold E): a small tree takes ~6 s, a big one ~15 s. */
+  swing: 1.05,
+  /** A vein: more blows (×), the ore it gives (small / big rock), and it weathers out again slower. */
+  ore: { hits: 1.6, lumps: 3, bigLumps: 6, regrow: 4 * 1440 },
 };
 /** Only rocks this big (radius, m) can be worked; the pebbles are left alone. */
 export const ROCK_MIN_R = 0.55;

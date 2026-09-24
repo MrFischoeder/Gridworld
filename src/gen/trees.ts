@@ -5,6 +5,7 @@ import { rectDist, type Terrain } from './terrain';
 import { nearestOnRoad } from './roads';
 import { lakeBed, shoreR } from './water';
 import { plantsNear, PLANT_SPAN } from './flora';
+import { mountainMask } from './mountains';
 
 /** Open ground kept around places: villages keep a wide ring (the vehicle yard sits there). */
 const clearing = (p: { type: string }) => (p.type === 'village' ? 20 : 6);
@@ -103,7 +104,19 @@ export function chunkTrees(t: Terrain, cx: number, cz: number): Tree[] {
   return out;
 }
 
-export interface Rock { x: number; z: number; y: number; r: number; h: number; sides: number; rot: number }
+/** A rock; `ore` = a vein of metal in it (mined with the Pickaxe: more blows, ore besides the stones). */
+export interface Rock { x: number; z: number; y: number; r: number; h: number; sides: number; rot: number; ore?: OreKind }
+export type OreKind = 'iron' | 'copper';
+/** Veins only in rocks big enough to work (data/crafting ROCK_MIN_R); rare in the lowlands, common in the mountains. */
+export const ORE = { minR: 0.55, base: 0.05, mountain: 0.4, high: 0.08, copper: 0.35, copperHigh: 0.5 };
+/** Whether rock i of chunk (cx, cz) carries ore, and which: its own hash stream, so the rocks themselves never change. */
+export function oreOf(world: number, cx: number, cz: number, i: number, k: { x: number; z: number; y: number; r: number }): OreKind | undefined {
+  if (k.r < ORE.minR) return undefined;
+  const m = Math.min(1, mountainMask(world, k.x, k.z) * 2), p = ORE.base + ORE.mountain * m + (k.y > 40 ? ORE.high : 0);
+  const R = rng(hash(world, cx, cz, i, 0x0e5));
+  if (R() >= p) return undefined;
+  return R() < ORE.copper + (ORE.copperHigh - ORE.copper) * m ? 'copper' : 'iron';
+}
 
 /** Scattered rocks: low faceted pyramids, a few per chunk, never on roads or places. */
 export function chunkRocks(t: Terrain, cx: number, cz: number): Rock[] {
@@ -117,7 +130,9 @@ export function chunkRocks(t: Terrain, cx: number, cz: number): Rock[] {
     if (f.pads.some((p) => rectDist(p.poi.rect, x, z) < p.poi.flat + clearing(p.poi))) continue;
     if (f.roads.some((rd) => nearestOnRoad(rd, x, z)[0] < rd.half + r + 0.5)) continue;
     if (t.water(x, z)) continue;
-    out.push({ x, z, y: t.heightAt(x, z) - 0.15, r, h, sides, rot });
+    const k: Rock = { x, z, y: t.heightAt(x, z) - 0.15, r, h, sides, rot }, ore = oreOf(t.world, cx, cz, out.length, k);
+    if (ore) k.ore = ore;
+    out.push(k);
   }
   return out;
 }

@@ -32,6 +32,7 @@ import { setArmedRule, refreshWeaponVisibility } from './weapons';
 import { raidHere } from './villageraid';
 import { PropBatch } from './props';
 import { drawLadder, climbing, onClimbChange } from './ladders';
+import { working, onWorkChange } from './gather';
 import { drawHouse, drawFurniture } from './houses';
 import { onDungeonLoaded, syncQuestWorld } from './quests';
 import { driving, leave } from './vehicles';
@@ -69,8 +70,9 @@ function setLocationLook(outdoors: boolean) {
   refreshWeaponVisibility();
 }
 /** Weapons are holstered inside the village walls and drawn everywhere else. */
-setArmedRule(() => !driving.v && !G.swimming && !G.fly && !climbing() && (G.char.loc === 'dungeon' || !inVillage(G.pos.x, G.pos.z) || raidHere()));
+setArmedRule(() => !driving.v && !G.swimming && !G.fly && !climbing() && !working() && (G.char.loc === 'dungeon' || !inVillage(G.pos.x, G.pos.z) || raidHere()));
 onClimbChange(refreshWeaponVisibility);
+onWorkChange(refreshWeaponVisibility);
 
 // ---------- dungeon ----------
 const ruinName = (id: number) => findPoi(G.char.world, id)?.name ?? 'Ruins';

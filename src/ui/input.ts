@@ -42,7 +42,7 @@ export function initInput(onPause: () => void) {
     G.keys[e.code] = true;
     if (e.code === 'Space') e.preventDefault();
     if (!G.playing) return;
-    if (e.code === 'KeyE') interact();
+    if (e.code === 'KeyE' && !e.repeat) interact();
     if (e.code === 'KeyV' && driving.v) toggleCockpit();
     if (e.code === 'KeyH') useItem('medkit');
     if (e.code === 'KeyG') useItem('emp');

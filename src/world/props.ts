@@ -94,6 +94,29 @@ export class PropBatch {
     for (let i = 0; i < sides; i++) { const j = (i + 1) % sides; this.seg(color, base[i], base[j]); this.seg(color, base[i], top); this.face(base[i], base[j], top); }
   }
 
+  /**
+   * A vein of ore in a rock drawn by `rock` with the same numbers: zigzag streaks across every other face and a few
+   * glinting nuggets, in the ore's colour.
+   */
+  vein(x: number, y: number, z: number, r: number, h: number, sides: number, rot: number, color: number) {
+    const base: number[][] = [];
+    for (let i = 0; i < sides; i++) { const a = rot + i / sides * 6.283, k = 0.75 + 0.25 * Math.sin(i * 2.7 + rot * 3); base.push([x + Math.cos(a) * r * k, y, z + Math.sin(a) * r * k]); }
+    const top = [x + Math.cos(rot) * r * 0.2, y + h, z + Math.sin(rot) * r * 0.2];
+    // a point on face (a, b, top) at (s along the base, t up), pushed out a hair so it sits on the fill
+    const on = (a: number[], b: number[], s: number, t: number) => {
+      const p = [0, 1, 2].map((q) => (a[q] + (b[q] - a[q]) * s) * (1 - t) + top[q] * t);
+      return [x + (p[0] - x) * 1.015, p[1], z + (p[2] - z) * 1.015];
+    };
+    for (let i = 0; i < sides; i += 2) {
+      const a = base[i], b = base[(i + 1) % sides], w = Math.sin(i * 1.9 + rot) * 0.08;
+      const pts = [on(a, b, 0.08, 0.2 + w), on(a, b, 0.3, 0.42), on(a, b, 0.5, 0.28 - w), on(a, b, 0.72, 0.5), on(a, b, 0.92, 0.36 + w)];
+      for (let j = 0; j + 1 < pts.length; j++) this.seg(color, pts[j], pts[j + 1]);
+      const lo = [on(a, b, 0.2, 0.1), on(a, b, 0.45, 0.16), on(a, b, 0.7, 0.08)];
+      for (let j = 0; j + 1 < lo.length; j++) this.seg(color, lo[j], lo[j + 1]);
+      for (const [s2, t2] of [[0.3, 0.42], [0.72, 0.5]]) { const c = on(a, b, s2, t2), d = 0.05; this.seg(color, [c[0] - d, c[1], c[2]], [c[0] + d, c[1], c[2]]); this.seg(color, [c[0], c[1] - d, c[2]], [c[0], c[1] + d, c[2]]); }
+    }
+  }
+
   /** Solid with 8 corners: bottom loop b0..b3 and top loop t0..t3 (same winding). Good for tapered hoods and cabs. */
   solid8(b: number[][], t: number[][], color: number) {
     for (let i = 0; i < 4; i++) {
