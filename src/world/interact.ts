@@ -56,7 +56,8 @@ export function updateEntities(dt: number, time: number) {
     if (d < 4.5 && Math.abs(pos.y - p.y0) < 4) W.nearPortal = p;
     // the player walked through the doorway onto the stair landing
     const along = (p.axis === 'x' ? pos.x - p.cx : pos.z - p.cz) * (p.o[0] || p.o[1]), lat = Math.abs(p.axis === 'x' ? pos.z - p.cz : pos.x - p.cx);
-    if (along > 0.9 && lat < 1.6 && Math.abs(pos.y - p.y0) < 1 && G.playing && !G.trans) enter = p;
+    // only on the landing just behind the doorway: from behind the building (further along the same line) it does not count
+    if (along > 0.9 && along < 3 && lat < 1.6 && Math.abs(pos.y - p.y0) < 1 && G.playing && !G.trans) enter = p;
   }
   const { nearNpc, nearLock, nearChest, nearPortal } = W, prompt = el.prompt;
   const busy = !!(nearNpc || nearLock || nearChest || nearBoard || nearStash || nearVehicle);
