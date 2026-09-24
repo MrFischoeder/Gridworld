@@ -7,6 +7,7 @@ import { loadChar } from './save';
 import { calcStats, saveChar } from './character';
 import { loadDungeon, loadOverworld, toVillage, saveOverworldPos, enterDungeon } from './world/level';
 import { updatePlayer, EYE } from './world/player';
+import { updateClimb } from './world/ladders';
 import { updateDoors, updateTrans } from './world/doors';
 import { updateDrones, updateBosses, updateOrbs, animateFoes, updateBossBar, foeRules, makeDrone, damageFoe } from './world/enemies';
 import { updateLoot } from './world/loot';
@@ -91,7 +92,7 @@ function frame(now: number) {
     { const up = refreshBoard(); if (up.length) { saveChar(); const v = outdoors ? villageHere(G.pos.x, G.pos.z) : undefined; if (v && up.includes(v.id)) logLine('New notices are up on the board.'); } }
   }
   if (live) {
-    if (driving.v) updateDriving(dt); else moving = updatePlayer(dt);
+    if (driving.v) updateDriving(dt); else if (!updateClimb(dt)) moving = updatePlayer(dt);
     if (outdoors) keepOnPlanet(dt);
     G.cooldown -= dt;
     if (isPlacing()) { // holding a Flagpole: the mouse picks its spot instead of fighting

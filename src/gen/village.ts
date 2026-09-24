@@ -16,7 +16,13 @@ export interface HomeFurniture { bed: { x0: number; z0: number; x1: number; z1: 
 /** A gap in the village wall. (x, z) is the point just outside, where the road starts. */
 export interface Gate { dir: Dir; x: number; z: number; w: number; /** First cell of the opening along the wall, and the wall cell across it. */ a: number; m: number }
 /** Guard tower footprint (world), standing on the plaza floor (a stone tower, or a watch platform on stilts). */
-export interface Tower { x: number; z: number; w: number; d: number; h: number }
+export interface Tower { x: number; z: number; w: number; d: number; h: number; ladder?: Ladder }
+/**
+ * The ladder up a tower: its foot on the face towards the plaza (world x/z, on the face's plane), the face's
+ * outward normal (nx, nz: axis-aligned, pointing at the climber), and the height of the floor at the top above the
+ * plaza (`top`); `deck` is the rect you stand on up there and `stilts` marks a watch platform (no voxels under it).
+ */
+export interface Ladder { x: number; z: number; nx: number; nz: number; top: number; deck: Rect; stilts: boolean }
 /** A straight run of fence along the wall line (world, the line's middle), between corners and gates. */
 export interface FenceRun { x0: number; z0: number; x1: number; z1: number }
 /**
@@ -186,7 +192,10 @@ export function generateVillage(seed: number, y = 0, cx = 0, cz = 0, name = 'Gri
     spawn: [36.5 + ox, y, 50.5 + oz], ops: translateOps(all, ox, y, oz),
     gates: gates.map((g) => (g.dir === 'N' || g.dir === 'S'
       ? { ...g, x: g.x + ox, z: g.z + oz, a: g.a + ox, m: g.m + oz } : { ...g, x: g.x + ox, z: g.z + oz, a: g.a + oz, m: g.m + ox })),
-    towers: towers.map((t) => ({ ...t, x: t.x + ox, z: t.z + oz })),
+    towers: towers.map((t) => {
+      const l = ladderOf(t, stone, PW, PD);
+      return { ...t, x: t.x + ox, z: t.z + oz, ladder: { ...l, x: l.x + ox, z: l.z + oz, deck: { x0: l.deck.x0 + ox, z0: l.deck.z0 + oz, x1: l.deck.x1 + ox, z1: l.deck.z1 + oz } } };
+    }),
     board: { x: 41 + ox, z: 45 + oz }, mapBoard: { x: 31 + ox, z: 45 + oz },
     buildings: buildings.map((b) => ({ ...b, x: b.x + ox, z: b.z + oz, door: P(b.door), home: b.home && P(b.home) })),
     house: house && { bed: { x0: house.bed.x0 + ox, z0: house.bed.z0 + oz, x1: house.bed.x1 + ox, z1: house.bed.z1 + oz, side: { x: house.bed.side.x + ox, z: house.bed.side.z + oz } },
@@ -212,4 +221,21 @@ export function generateVillage(seed: number, y = 0, cx = 0, cz = 0, name = 'Gri
     }
     return out;
   }
+}
+
+/**
+ * Where a tower's ladder goes (plaza coordinates): on the face that looks into the village, over the part of it that
+ * stands inside the wall. Corner towers and the towers by the north and south gates take it on their north/south
+ * face, those by the west and east gates on their west/east face. A watch platform's deck overhangs its stilts by
+ * 0.3 m, so its ladder stands at the deck's edge.
+ */
+export function ladderOf(t: Tower, stone: boolean, PW: number, PD: number): Ladder {
+  const pad = stone ? 0 : 0.3, cx = t.x + t.w / 2, cz = t.z + t.d / 2, top = t.h + (stone ? 0 : 0.2);
+  const deck = { x0: t.x - pad, z0: t.z - pad, x1: t.x + t.w + pad, z1: t.z + t.d + pad };
+  if (cz < 3 || cz > PD - 3) {
+    const n = cz < PD / 2 ? 1 : -1, lo = Math.max(t.x, 0), hi = Math.min(t.x + t.w, PW);
+    return { x: (lo + hi) / 2, z: n > 0 ? deck.z1 : deck.z0, nx: 0, nz: n, top, deck, stilts: !stone };
+  }
+  const n = cx < PW / 2 ? 1 : -1, lo = Math.max(t.z, 0), hi = Math.min(t.z + t.d, PD);
+  return { x: n > 0 ? deck.x1 : deck.x0, z: (lo + hi) / 2, nx: n, nz: 0, top, deck, stilts: !stone };
 }

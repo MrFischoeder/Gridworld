@@ -65,9 +65,10 @@ export class PropBatch {
     this.face(c[0], c[1], c[2], c[3]);
   }
 
-  /** Open lookout on top of a tower: corner posts, a parapet rail and a hipped roof with overhang. */
-  lookout(x0: number, z0: number, x1: number, z1: number, y: number, color: number) {
-    const post = 1.6, rail = 0.8, o = 0.5;
+  /** Open lookout on top of a tower: corner posts, a parapet rail and a hipped roof with overhang (`post` m up; high
+   *  enough to stand under where a ladder leads up). */
+  lookout(x0: number, z0: number, x1: number, z1: number, y: number, color: number, post = 1.6) {
+    const rail = 0.8, o = 0.5;
     for (const [x, z] of [[x0, z0], [x1, z0], [x1, z1], [x0, z1]]) this.box(x - 0.15 + (x === x0 ? 0.15 : -0.15), y, z - 0.15 + (z === z0 ? 0.15 : -0.15), x + 0.15 + (x === x0 ? 0.15 : -0.15), y + post, z + 0.15 + (z === z0 ? 0.15 : -0.15), color);
     const r = [[x0, y + rail, z0], [x1, y + rail, z0], [x1, y + rail, z1], [x0, y + rail, z1]];
     for (let i = 0; i < 4; i++) this.seg(color, r[i], r[(i + 1) % 4]);

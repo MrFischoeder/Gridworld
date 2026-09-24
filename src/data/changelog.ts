@@ -4,6 +4,13 @@ export interface Change { v: string; date: string; title: string; notes: string[
 
 export const CHANGELOG: Change[] = [
   {
+    v: '0.33.0', date: '2026-09-24', title: 'Tower ladders',
+    notes: ['Every watch tower of a village now has a ladder on the side facing the plaza: the stilt platforms of a fence or palisade, and the stone towers of a walled village.',
+      'Press E at the foot of a ladder and you climb it rung by rung, hand over hand, then swing over onto the deck at the top. E at the top takes you back down. While on the ladder, W and S turn you up or down, and Space lets go.',
+      'Your weapons are put away while you climb, and you cannot climb with your hands full.',
+      'Up on a tower a rail keeps you from walking off the edge, and the lookout roofs sit higher, so you can see out over the land.'],
+  },
+  {
     v: '0.32.0', date: '2026-09-24', title: 'Notice boards everywhere',
     notes: ['Every village now has a notice board on its plaza, next to the map board. Each posts its own four notices: bounties, hunts, errands for its own residents and bandit camps to clear, all measured from that village.',
       'Villages out in wilder country pay more for the same work: about a third more for every step of danger.',

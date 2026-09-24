@@ -31,6 +31,7 @@ import { setStreakSources } from './fx';
 import { setArmedRule, refreshWeaponVisibility } from './weapons';
 import { raidHere } from './villageraid';
 import { PropBatch } from './props';
+import { drawLadder, climbing, onClimbChange } from './ladders';
 import { onDungeonLoaded, syncQuestWorld } from './quests';
 import { driving, leave } from './vehicles';
 import { openWorld, closeWorld, structFor, setEnterRuin, removeDrone, danger, inVillage, OW } from './overworld';
@@ -67,7 +68,8 @@ function setLocationLook(outdoors: boolean) {
   refreshWeaponVisibility();
 }
 /** Weapons are holstered inside the village walls and drawn everywhere else. */
-setArmedRule(() => !driving.v && !G.swimming && !G.fly && (G.char.loc === 'dungeon' || !inVillage(G.pos.x, G.pos.z) || raidHere()));
+setArmedRule(() => !driving.v && !G.swimming && !G.fly && !climbing() && (G.char.loc === 'dungeon' || !inVillage(G.pos.x, G.pos.z) || raidHere()));
+onClimbChange(refreshWeaponVisibility);
 
 // ---------- dungeon ----------
 const ruinName = (id: number) => findPoi(G.char.world, id)?.name ?? 'Ruins';
@@ -138,10 +140,11 @@ export function villageDeco(map: VillageMap, y0 = 0) {
   }
   for (const t of map.trees) drawCrown(props, t.x + 0.5, y0 + 2, t.z + 0.5, 1.8, t.h, hash(t.x, t.z, 0x7e3e));
   if (map.house) homeDeco(props, map.house, y0);
+  for (const t of map.towers) if (t.ladder) drawLadder(props, t.ladder, y0, map.tier < STONE_TIER ? STAKE : GRID);
   if (map.tier < STONE_TIER) fenceDeco(props, map, y0);
   else {
   // guard tower lookouts
-  for (const t of map.towers) props.lookout(t.x, t.z, t.x + t.w, t.z + t.d, y0 + t.h, GRID);
+  for (const t of map.towers) props.lookout(t.x, t.z, t.x + t.w, t.z + t.d, y0 + t.h, GRID, 2.5);
   // gate arches: chamfer the top corners of each opening, through the whole wall
   for (const g of map.gates) {
     const along = g.dir === 'N' || g.dir === 'S', c = 1, top = y0 + 4, a0 = g.a, a1 = g.a + g.w;
@@ -245,7 +248,7 @@ function fenceDeco(pb: PropBatch, map: VillageMap, y0: number) {
     }
     pb.box(x0 - 0.3, fy, z0 - 0.3, x1 + 0.3, fy + 0.2, z1 + 0.3, STAKE);
     for (let a = x0; a <= x1 + 0.01; a += 0.6) pb.seg(STAKE, [a, fy + 0.21, z0 - 0.3], [a, fy + 0.21, z1 + 0.3]);
-    pb.lookout(x0 - 0.3, z0 - 0.3, x1 + 0.3, z1 + 0.3, fy + 0.2, STAKE);
+    pb.lookout(x0 - 0.3, z0 - 0.3, x1 + 0.3, z1 + 0.3, fy + 0.2, STAKE, 2.5);
   }
 }
 function lampsAndWell(grp: THREE.Group, map: VillageMap, y0: number) {

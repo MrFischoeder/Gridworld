@@ -82,3 +82,21 @@ describe('generateVillage', () => {
     for (const s of SEEDS) expect(generateVillage(s)).toEqual(generateVillage(s));
   });
 });
+
+describe('tower ladders', () => {
+  it('stand in the open, and lead to a deck you can stand on', () => {
+    for (const s of SEEDS) for (const tier of [0, 1, 2]) {
+      const vm = generateVillage(s, 0, 0, 0, 'Test', false, tier), g = VoxelGrid.surface(vm.ops, vm.rect, vm.y);
+      const free = (x: number, y: number, z: number) => [-0.3, 0.3].every((a) => [-0.3, 0.3].every((b) => g.empty(Math.floor(x + a), Math.floor(y), Math.floor(z + b))));
+      for (const t of vm.towers) {
+        const l = t.ladder!;
+        const sx = l.x + l.nx * 0.45, sz = l.z + l.nz * 0.45;
+        for (let y = 0; y < l.top + 1.7; y += 0.5) expect(free(sx, vm.y + y + 0.01, sz), `${s} tier ${tier} climb at ${sx},${y},${sz}`).toBe(true);
+        const tx = l.x - l.nx * 0.9, tz = l.z - l.nz * 0.9;
+        expect(tx > l.deck.x0 && tx < l.deck.x1 && tz > l.deck.z0 && tz < l.deck.z1).toBe(true);
+        expect(free(tx, vm.y + l.top + 0.01, tz) && free(tx, vm.y + l.top + 1.2, tz), `${s} tier ${tier} deck`).toBe(true);
+        if (!l.stilts) expect(g.empty(Math.floor(tx), vm.y + l.top - 1, Math.floor(tz))).toBe(false);
+      }
+    }
+  });
+});
