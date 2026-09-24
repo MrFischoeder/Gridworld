@@ -29,7 +29,8 @@ describe('crafting', () => {
     expect(canUseAt(rec('plating'), 'bench')).toBe(false);
     expect(canUseAt(rec('plating'), 'forge')).toBe(true);
     expect(canUseAt(rec('hatchet'), 'bench')).toBe(true);
-    expect(hasAll(inv({ k: 'scrap', n: 5 }), rec('engine'))).toBe(true);
+    expect(hasAll(inv({ k: 'scrap', n: 4 }, { k: 'circuit', n: 1 }), rec('engine'))).toBe(true);
+    expect(hasAll(inv({ k: 'scrap', n: 9 }), rec('engine'))).toBe(false);
     for (const r of RECIPES) for (const [k] of r.needs) expect(ITEMS[k], k).toBeTruthy();
   });
 });

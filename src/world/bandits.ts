@@ -15,6 +15,7 @@ import { onKill, onCampCleared } from './quests';
 import { driving, refreshParts as refreshPartsOf, damageVehicle } from './vehicles';
 import { hurtEngine } from '../data/vehicles';
 import type { SpawnEnv } from './creatures';
+import { mayspawn, BANDIT_COST } from './threat';
 import type { BanditRole, CampMap } from '../gen/camps';
 
 export const BANDIT = 0xffb347, BOSS_COLOR = 0xff6a4a;
@@ -208,11 +209,12 @@ function patrols(dt: number) {
   if (!env || (patrolT -= dt) > 0) return;
   patrolT = 18;
   const pos = G.pos, lv = env.danger(pos.x, pos.z);
-  if (lv < 0.8 || W.bandits.filter((b) => b.campId === undefined && b.ambush === undefined).length >= 3 || Math.random() > 0.35) return;
+  if (lv < 2 || W.bandits.filter((b) => b.campId === undefined && b.ambush === undefined).length >= 3 || Math.random() > 0.35) return;
   const a = G.yaw + (Math.random() - 0.5) * 1.6, d = 60 + Math.random() * 20;   // behind the player
   const x = pos.x + Math.sin(a) * d, z = pos.z + Math.cos(a) * d;
   if (env.forbidden(x, z)) return;
-  const group: Bandit[] = [], n = 2 + (Math.random() < 0.4 ? 1 : 0);
+  const group: Bandit[] = [], n = 2 + (lv > 3.5 && Math.random() < 0.4 ? 1 : 0);
+  if (!mayspawn(n * BANDIT_COST, lv)) return;
   for (let i = 0; i < n; i++) {
     const px = x + i * 1.6, pz = z + (i % 2) * 1.4;
     spawnBandit(i === 0 && Math.random() < 0.3 ? 'bruiser' : 'gunner', V(px, env.ground(px, pz) + 0.9, pz), lv, group);

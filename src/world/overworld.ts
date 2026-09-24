@@ -6,12 +6,13 @@ import { scene, V, GRID, localize } from './render';
 import { G, W } from '../game';
 import { VoxelGrid, type Space } from '../core/voxel';
 import { Terrain, inRect, rectDist, STEP, CELLS, VERTS } from '../gen/terrain';
-import { CHUNK, poisNear, X_MIN, WORLD_W, POLE_Z, POLAR_Z, worldDist, villageContaining, villageDist, villageSeed, GRIDHOLM_ID, type Poi, wrapC } from '../gen/regions';
+import { CHUNK, poisNear, X_MIN, WORLD_W, POLE_Z, POLAR_Z, villageContaining, villageDist, villageSeed, GRIDHOLM_ID, type Poi, wrapC } from '../gen/regions';
 import { chunkTrees, chunkRocks, type Tree, type Rock } from '../gen/trees';
 import { drawTree } from './trees';
 import { drawTemple } from './temple';
 import { chunkWells, type Well } from '../gen/water';
 import { chunkPlants, type Plant } from '../gen/flora';
+import { dangerAt } from '../gen/danger';
 import { drawPlants, dropPlants, ripe, type PlantNode } from './flora';
 import { drawWell, syncLakes, clearLakes } from './water';
 import { generateVillage, type VillageMap } from '../gen/village';
@@ -21,10 +22,12 @@ import { tryPlaceDoor } from '../gen/doors';
 import { PropBatch, sharedFill, sharedLine } from './props';
 import { makeStair, type Door, type Stair } from './doors';
 import { makeNpc, type Npc } from './npc';
-import { makeDrone, foeRules, type Drone } from './enemies';
+import { foeRules, type Drone } from './enemies';
 import { spawnVehicles, clearVehicles, vehicleHit, syncFound, shielded, driving, damageVehicle, vehiclesNear } from './vehicles';
 import { logLine, showToast } from '../ui/hud';
 import { setCreatureEnv, clearCreatures } from './creatures';
+import { setRobotEnv, clearRobots } from './robots';
+import { updateThreat } from './threat';
 import { setBanditEnv, clearBandits, spawnCamp, despawnCamp } from './bandits';
 import { setRaiderEnv, clearRaiders, ambushHit } from './raiders';
 import { generateCamp, type CampMap } from '../gen/camps';
@@ -390,6 +393,7 @@ export function openWorld(x: number, z: number) {
     forbidden: (px: number, pz: number) => nearVillage(px, pz) < 35 || (T.water(px, pz)?.depth ?? 0) > 0.5 || [...OW.structs.values()].some((s) => rectDist(s.poi.rect, px, pz) < 1),
   };
   setCreatureEnv(envHooks);
+  setRobotEnv(envHooks);
   setBanditEnv(envHooks);
   setRaiderEnv({ terrain: T, danger, forbidden: envHooks.forbidden });
   // camps loaded before the bandit hooks existed get their bandits now
@@ -398,6 +402,7 @@ export function openWorld(x: number, z: number) {
 export function closeWorld() {
   clearVehicles();
   setCreatureEnv(null); clearCreatures();
+  setRobotEnv(null); clearRobots();
   setBanditEnv(null); clearBandits();
   setRaiderEnv(null); clearRaiders();
   for (const c of OW.chunks.values()) dropChunk(c);
@@ -431,7 +436,7 @@ export function keepOnPlanet(dt: number) {
   const d = x < X_MIN ? WORLD_W : -WORLD_W;
   G.pos.x += d;
   // unsaved foes are simply let go (new ones turn up); loot on the ground moves along
-  clearCreatures(); clearBandits(); clearRaiders();
+  clearCreatures(); clearBandits(); clearRaiders(); clearRobots();
   for (const t of W.drones) scene.remove(t.g);
   W.drones = [];
   for (const c of W.crystals) { c.p.x += d; c.m.position.x += d; }
@@ -449,42 +454,20 @@ export function keepOnPlanet(dt: number) {
 }
 
 // ---------- field enemies ----------
-let spawnT = 1;
-/** How dangerous the fields are here: grows slowly with distance from the start (up to 8), a little more near ruins. */
+/** How dangerous the wilds are here (gen/danger.ts): calm by any village, worse the further out, a bit more near ruins. */
 export function danger(x: number, z: number): number {
   const near = poisNear(OW.terrain!.world, x, z, 80).some((p) => p.type === 'ruin' && rectDist(p.rect, x, z) < 50);
-  return Math.min(8, worldDist(x, z, 0, 0) / 250) + (near ? 0.6 : 0);
+  return dangerAt(OW.terrain!.world, x, z, near);
 }
 export function updateFieldEnemies(dt: number) {
-  const pos = G.pos, T = OW.terrain!;
+  const pos = G.pos;
   for (let i = W.drones.length - 1; i >= 0; i--) {
     const t = W.drones[i];
     if (t.p.distanceTo(pos) > 95) { scene.remove(t.g); W.drones.splice(i, 1); }
   }
-  if ((spawnT -= dt) > 0) return;
-  spawnT = 2.5;
-  if (nearVillage(pos.x, pos.z) < 25) return;
-  const dg = danger(pos.x, pos.z), cap = Math.min(5, 1 + Math.floor(dg * 1.5));
-  if (W.drones.length >= cap || Math.random() > 0.45) return;
-  const fwx = -Math.sin(G.yaw), fwz = -Math.cos(G.yaw);
-  for (let tries = 0; tries < 12; tries++) {
-    // behind the player, out of sight
-    const a = Math.atan2(-fwx, -fwz) + (Math.random() - 0.5) * 2.4, d = 35 + Math.random() * 20;
-    const x = pos.x + Math.sin(a) * d, z = pos.z + Math.cos(a) * d;
-    if (nearVillage(x, z) < 30) continue;
-    if ([...OW.structs.values()].some((s) => rectDist(s.poi.rect, x, z) < 3)) continue;
-    if ((x - pos.x) * fwx + (z - pos.z) * fwz > d * Math.cos(1.0)) continue;
-    const t: Drone = makeDrone();
-    const lv = danger(x, z);
-    t.p.set(x, T.heightAt(x, z) + 1.8, z);
-    t.hp = 1 + Math.floor(lv * 0.7);
-    t.scout = { speed: 2.2 + 0.3 * Math.min(lv, 3), dps: 6 + 3 * Math.min(lv, 4), detect: 9 + 2 * Math.min(lv, 3), lose: 22 };
-    t.g.scale.setScalar(0.8);
-    W.drones.push(t);
-    return;
-  }
+  updateThreat(dt);
 }
-/** Destroyed field drones are gone for good (new ones spawn over time). */
+/** Destroyed field drones (a repair drone's defence drones) are gone for good. */
 export function removeDrone(t: Drone) { scene.remove(t.g); const i = W.drones.indexOf(t); if (i >= 0) W.drones.splice(i, 1); }
 
 // ---------- where am I ----------
@@ -493,8 +476,9 @@ export function placeName(x: number, z: number): string {
   if (v) return v.name + ' (village)';
   if (Math.abs(z) > POLE_Z - 400) return z < 0 ? 'North Pole ice wall' : 'South Pole ice wall';
   if (Math.abs(z) > POLAR_Z) return z < 0 ? 'Northern ice cap' : 'Southern ice cap';
-  for (const s of OW.structs.values()) if ((s.poi.type === 'ruin' || s.poi.type === 'camp') && rectDist(s.poi.rect, x, z) < 10) return s.poi.name;
-  return 'Wilds';
+  const lv = Math.round(danger(x, z)), tag = lv ? ` · danger ${lv}` : ' · calm';
+  for (const s of OW.structs.values()) if ((s.poi.type === 'ruin' || s.poi.type === 'camp') && rectDist(s.poi.rect, x, z) < 10) return s.poi.name + tag;
+  return 'Wilds' + tag;
 }
 
 /** Wells in the loaded chunks (for the E interaction). */

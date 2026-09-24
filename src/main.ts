@@ -17,6 +17,7 @@ import { updateStreaming, updateFieldEnemies, placeName, OW, groundAt, treeHit, 
 import { collides, setWaterNote } from './world/player';
 import { animateWater } from './world/water';
 import { updateSurvival } from './world/survival';
+import { updateRobots } from './world/robots';
 import { updateFlora } from './world/flora';
 import { syncBenches } from './world/benches';
 import { updateFires } from './world/cooking';
@@ -83,7 +84,7 @@ function frame(now: number) {
     updateGun(dt, !driving.v);
     if (driving.v) fireCannon(dt);
     updateDoors(dt);
-    if (outdoors) { updateFieldEnemies(dt); updateCreatures(dt, time); updateBandits(dt, time); updateRaiders(dt); animateCamps(time); smokeWrecks(dt); animateWater(time); }
+    if (outdoors) { updateFieldEnemies(dt); updateCreatures(dt, time); updateRobots(dt, time); updateBandits(dt, time); updateRaiders(dt); animateCamps(time); smokeWrecks(dt); animateWater(time); }
     updateDrones(dt);
     const boss = updateBosses(dt, time); updateOrbs(dt);
     updateBossBar(boss);

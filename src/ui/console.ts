@@ -1,5 +1,7 @@
 // Developer console, opened with ~ (the backquote key). Cheats for testing.
 import { G } from '../game';
+import { ROBOTS, type RobotKind } from '../data/robots';
+import { spawnRobotNear } from '../world/robots';
 import { fmtClock, DAY } from '../core/time';
 import { saveChar } from '../character';
 import { toVillage } from '../world/level';
@@ -49,8 +51,9 @@ const COMMANDS: Record<string, { help: string; run: (args: string[]) => string }
   clear: { help: 'clear this log', run: () => { out.innerHTML = ''; return ''; } },
   ambush: { help: 'set up a bandit ambush ahead (stand on a road)', run: () => (forceAmbush() ? 'Something moves by the road ahead...' : 'Stand on a road, away from places.') },
   spawn: {
-    help: 'spawn ravager | bramble | leechwing | gnawer | bandits | raider [mastodon] (open world)',
+    help: 'spawn ravager | bramble | leechwing | gnawer | bandits | raider [mastodon] | scout | guardian | repair | sentinel | artillery | assault (open world)',
     run: (a) => {
+      if (a[0] in ROBOTS) return spawnRobotNear(a[0] as RobotKind) ? `${ROBOTS[a[0] as RobotKind].name} spawned.` : 'Only in the open world.';
       if (a[0] === 'bandits') return spawnBanditsNear() ? 'Bandits!' : 'Only in the open world.';
       if (a[0] === 'raider') return spawnRaiderNear(a[1] === 'mastodon' ? 'mastodon' : 'scout') ? 'Raiders incoming.' : 'Only in the open world.';
       const k = a[0] as CreatureKind;

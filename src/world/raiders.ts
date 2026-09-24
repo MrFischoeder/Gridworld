@@ -59,7 +59,7 @@ function spawnRaidersMaybe(dt: number) {
   if (!env || (raidT -= dt) > 0) return;
   raidT = 20;
   const lv = env.danger(G.pos.x, G.pos.z);
-  if (lv < 1 || raiders.length >= (lv > 2 ? 2 : 1) || Math.random() > (driving.v ? 0.55 : 0.3)) return;
+  if (lv < 3 || raiders.length >= (lv > 5 ? 2 : 1) || Math.random() > (driving.v ? 0.5 : 0.25)) return;
   const back = driving.v ? driving.v.st.heading + Math.PI : G.yaw;   // G.yaw looks along -forward: + sin/cos is behind
   for (let i = 0; i < 8; i++) {
     const a = back + (Math.random() - 0.5) * 1.2, d = 95 + Math.random() * 30;
@@ -171,7 +171,7 @@ function tryAmbush(dt: number, force = false) {
   if (!env || (!force && (ambushT -= dt) > 0)) return false;
   ambushT = 4;
   const T = env.terrain, px = G.pos.x, pz = G.pos.z;
-  if (!force && (env.danger(px, pz) < 0.8 || ambushes.length || performance.now() - lastAmbushAt < 150000 || Math.random() > 0.2)) return false;
+  if (!force && (env.danger(px, pz) < 2.5 || ambushes.length || performance.now() - lastAmbushAt < 150000 || Math.random() > 0.2)) return false;
   const f = T.chunkFeatures(Math.floor(px / CHUNK), Math.floor(pz / CHUNK));
   const road = f.roads.find((rd) => nearestOnRoad(rd, px, pz)[0] < 8);
   if (!road) return false;

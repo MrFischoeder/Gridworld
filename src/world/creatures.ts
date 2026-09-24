@@ -13,6 +13,7 @@ import { burst } from './fx';
 import { dropCrystal, dropPickup } from './loot';
 import { logLine, showToast } from '../ui/hud';
 import { onKill } from './quests';
+import { mayspawn } from './threat';
 import { ALPHA, type Quest } from '../gen/quests';
 import { textSprite } from './npc';
 
@@ -225,11 +226,15 @@ onNoise((at, r) => {
 });
 export function setCreatureEnv(e: SpawnEnv | null) { env = e; }
 
+/**
+ * Something new turns up behind the player (or around a noise). What it may be depends on the danger there
+ * (gen/danger.ts): gnawer nests and grazing brambles anywhere, ravager packs from 1.2, leechwings from 2.5; how
+ * much there may be at once is the shared threat budget (world/threat.ts).
+ */
 function trySpawn() {
   if (!env) return;
   const pos = G.pos, fwx = -Math.sin(G.yaw), fwz = -Math.cos(G.yaw);
-  const lvNow = env.danger(pos.x, pos.z), cap = Math.min(18, 5 + Math.floor(lvNow * 2) + Math.floor(heat * 2));
-  if (W.creatures.length >= cap || Math.random() > 0.5 + heat * 0.12) return;
+  if (Math.random() > 0.55 + heat * 0.12) return;
   const drawn = heard && heat > 0.4 && Math.random() < 0.75, before = W.creatures.length; // the shooting draws them in
   for (let tries = 0; tries < 10; tries++) {
     const a = drawn ? Math.random() * 6.283 : Math.atan2(-fwx, -fwz) + (Math.random() - 0.5) * 2.6, d = drawn ? 55 + Math.random() * 25 : 45 + Math.random() * 25;
@@ -237,21 +242,27 @@ function trySpawn() {
     if (Math.hypot(x - pos.x, z - pos.z) < 40) continue;
     if (env.forbidden(x, z)) continue;
     const h = env.ground(x, z), lv = env.danger(x, z), roll = Math.random();
-    if (Math.random() < 0.3) { // gnawers turn up anywhere: fields, woods, ruins, hills, lakesides, even the ice
-      const n = 3 + Math.floor(Math.random() * (3 + Math.min(3, lv))), nest: Creature[] = [];
+    if (Math.random() < 0.35) { // gnawers turn up anywhere: fields, woods, ruins, hills, lakesides, even the ice
+      const n = lv < 1 ? 2 + (Math.random() < 0.5 ? 1 : 0) : 3 + Math.floor(Math.random() * (1 + Math.min(3, lv)));
+      if (!mayspawn(n * 0.5, lv, heat)) return;
+      const nest: Creature[] = [];
       for (let i = 0; i < n; i++) {
         const px = x + (Math.random() - 0.5) * 5, pz = z + (Math.random() - 0.5) * 5;
         if (env.forbidden(px, pz)) continue;
         const c = make('gnawer', V(px, env.ground(px, pz) + CREATURES.gnawer.lift, pz), lv);
         c.pack = nest; c.flank = Math.random() * 6.283; nest.push(c);
       }
-    } else if ((env.nearRuin(x, z) || h > 17) && roll < 0.6) {
+    } else if ((env.nearRuin(x, z) || h > 17) && lv >= 2.5 && roll < 0.6) {
+      if (!mayspawn(1.5, lv, heat)) return;
       make('leechwing', V(x, h + 22, z), lv);
     } else if (h < 9 && roll < 0.6) {
-      const n = Math.random() < 0.3 ? 2 : 1;
+      const n = lv > 2 && Math.random() < 0.3 ? 2 : 1;
+      if (!mayspawn(n * 0.4, lv, heat)) return;
       for (let i = 0; i < n; i++) make('bramble', V(x + i * 5, env.ground(x + i * 5, z) + CREATURES.bramble.lift, z), lv);
-    } else if (lv > 0.35 || Math.random() < 0.4) {
-      const n = Math.min(4, 2 + Math.floor(Math.random() * (1 + lv))), pack: Creature[] = [];
+    } else if (lv >= 1.2) {
+      const n = lv < 2.5 ? 2 : Math.min(4, 2 + Math.floor(Math.random() * (lv - 1)));
+      if (!mayspawn(n, lv, heat)) return;
+      const pack: Creature[] = [];
       for (let i = 0; i < n; i++) {
         const px = x + (Math.random() - 0.5) * 6, pz = z + (Math.random() - 0.5) * 6;
         const c = make('ravager', V(px, env.ground(px, pz) + CREATURES.ravager.lift, pz), lv);
@@ -493,7 +504,7 @@ function gnawer(c: Creature, dt: number, to: THREE.Vector3, dist: number, safe: 
 export function updateCreatures(dt: number, time: number) {
   if (!env) return;
   heat *= Math.exp(-dt / 25);
-  if ((spawnT -= dt) <= 0) { spawnT = 3 / (1 + heat); trySpawn(); }
+  if ((spawnT -= dt) <= 0) { spawnT = 4.5 / (1 + heat); trySpawn(); }
   const safe = foeRules.playerSafe(), head = V(G.pos.x, G.pos.y + 1.2, G.pos.z);
   for (let i = W.creatures.length - 1; i >= 0; i--) {
     const c = W.creatures[i], to = head.clone().sub(c.p), dist = to.length();

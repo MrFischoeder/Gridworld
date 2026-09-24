@@ -19,11 +19,15 @@ export const RECIPES: Recipe[] = [
   { out: 'medkit', n: 1, needs: [['membrane', 1], ['cap', 3]], at: 'bench' },
   { out: 'benchkit', n: 1, needs: [['log', 6], ['stone', 4]], at: 'bench' },
   { out: 'plating', n: 1, needs: [['scrap', 3], ['plate', 2]], at: 'forge' },
-  { out: 'engine', n: 1, needs: [['scrap', 5]], at: 'forge' },
-  { out: 'emp', n: 1, needs: [['scrap', 3], ['ncrys', 1]], at: 'forge' },
+  { out: 'engine', n: 1, needs: [['scrap', 4], ['circuit', 1]], at: 'forge' },
+  { out: 'emp', n: 1, needs: [['scrap', 2], ['circuit', 1]], at: 'forge' },
+  { out: 'reflex', n: 1, needs: [['scrap', 1], ['circuit', 2]], at: 'forge' },
   { out: 'barS', n: 1, needs: [['scrap', 2], ['membrane', 2]], at: 'forge' },
   { out: 'edge', n: 1, needs: [['fang', 6], ['incisor', 4], ['scrap', 2]], at: 'forge' },
   { out: 'shield', n: 1, needs: [['plate', 4], ['hide', 2], ['scrap', 4]], at: 'forge' },
+  { out: 'cell', n: 1, needs: [['pcore', 1], ['circuit', 3], ['scrap', 2]], at: 'forge' },
+  { out: 'servo', n: 1, needs: [['pcore', 1], ['circuit', 2], ['scrap', 4]], at: 'forge' },
+  { out: 'turbo', n: 1, needs: [['pcore', 1], ['circuit', 2], ['scrap', 6]], at: 'forge' },
 ];
 /** A forge can make everything; a plain workbench only the 'bench' recipes. */
 export const canUseAt = (r: Recipe, st: Station) => r.at === 'bench' || st === 'forge';

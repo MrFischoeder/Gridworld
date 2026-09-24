@@ -187,16 +187,17 @@ export function regionInfo(world: number, rx: number, rz: number): RegionInfo {
   if (r) return r;
   if (cache.size > 4096) cache.clear();
   const base = baseInfo(world, rx, rz), pois = [...base.pois];
-  // Bandit camps: not in the start region nor right by the village, near the middle of their region (so camps
+  // Bandit camps: not in the start region nor within ~480 m of a village, near the middle of their region (so camps
   // never crowd each other), and clear of every ruin around so their flat ground does not overlap.
   const Rc = rng(hash(world, rx, rz, 0xca4b)), cx = rx * REGION, cz = rz * REGION;
   if (!(rx === 0 && rz === 0) && !polarRegion(rz) && Rc() < (Math.abs(rx) + Math.abs(rz) <= 1 ? 0.25 : 0.4)) {
     const around: Poi[] = [];
-    for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) around.push(...baseInfo(world, rx + i, rz + j).pois);
+    for (let i = -2; i <= 2; i++) for (let j = -2; j <= 2; j++) around.push(...baseInfo(world, rx + i, rz + j).pois);
     for (let t = 0; t < 6; t++) {
       const x = cx + (Rc() - 0.5) * 140, z = cz + (Rc() - 0.5) * 140;
-      if (worldDist(x, z, 0, 0) < 230) continue;
-      if (around.some((p) => Math.hypot(p.x - x, p.z - z) < (p.type === 'village' ? 260 : 130))) continue;
+      // camps keep well out of every village's calm surroundings (see gen/danger.ts)
+      if (worldDist(x, z, 0, 0) < 480) continue;
+      if (around.some((p) => worldDist(p.x, p.z, x, z) < (p.type === 'village' ? 480 : 130))) continue;
       pois.push(campAt(rx, rz, x, z, Rc)); break;
     }
   }
