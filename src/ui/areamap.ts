@@ -6,6 +6,7 @@
 import { G } from '../game';
 import { poisNear, allVillages, CHUNK, POLAR_Z, wrapDx, regionOf, type Poi } from '../gen/regions';
 import { regionRoads } from '../gen/roads';
+import { regionTrails } from '../gen/trails';
 import { discover } from '../save';
 import { saveChar } from '../character';
 import { OW } from '../world/overworld';
@@ -56,10 +57,12 @@ export function openAreaMap(centre: { x: number; z: number; name: string }) {
   // roads
   const [ax, az] = regionOf(centre.x - RANGE, centre.z - RANGE), [bx, bz] = regionOf(centre.x + RANGE, centre.z + RANGE), seen = new Set<string>();
   ctx.strokeStyle = 'rgba(200,255,216,0.55)'; ctx.lineWidth = 2;
-  for (let rx = ax; rx <= bx; rx++) for (let rz = az; rz <= bz; rz++) for (const r of regionRoads(G.char.world, rx, rz)) {
+  for (let rx = ax; rx <= bx; rx++) for (let rz = az; rz <= bz; rz++) for (const r of [...regionRoads(G.char.world, rx, rz), ...regionTrails(T, rx, rz)]) {
     if (seen.has(r.id)) continue; seen.add(r.id);
+    ctx.setLineDash(r.h ? [5, 4] : []); // mountain trails dashed
     ctx.beginPath(); r.pts.forEach(([x, z], i) => (i ? ctx.lineTo(X(x), Y(z)) : ctx.moveTo(X(x), Y(z)))); ctx.stroke();
   }
+  ctx.setLineDash([]);
   // places
   const places = poisNear(G.char.world, centre.x, centre.z, RANGE).filter((p) => Math.abs(wrapDx(p.x - centre.x)) < RANGE && Math.abs(p.z - centre.z) < RANGE);
   ctx.font = '16px VT323, monospace'; ctx.textAlign = 'center';

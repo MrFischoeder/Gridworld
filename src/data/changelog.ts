@@ -4,6 +4,12 @@ export interface Change { v: string; date: string; title: string; notes: string[
 
 export const CHANGELOG: Change[] = [
   {
+    v: '0.15.0', date: '2026-09-24', title: 'Trails to the summits',
+    notes: ['The true peaks of the mountains have names (Mount ...) and a trail up to them from the foot of the mountain. The trails climb at an easy grade, turn across the slope in switchbacks where it gets steep, and run on a level bench cut into the mountainside, so you can walk all the way up.',
+      'A signpost marks the trailhead, stone cairns stand beside the way, and a big cairn with a pennant crowns the summit. The HUD names the trail at its start and the summit (with its height) at the top.',
+      'Trails show on the minimap, the map and the village map boards (dashed). Trees and rocks keep off them.'],
+  },
+  {
     v: '0.14.0', date: '2026-09-24', title: 'Mountains and cave mouths',
     notes: ['Now and then the land rises into mountains: ranges of sharp ridges and peaks up to about 170 m, with snow lines near the tops. Some slopes are too steep to climb. The country round Gridholm stays as it was; villages, ruins, camps, crash sites, roads and lakes keep off the mountains.',
       'Real mountains show on the horizon from a few kilometres away, and the maps shade them paler towards the peaks. The forest thins out up the slopes.',

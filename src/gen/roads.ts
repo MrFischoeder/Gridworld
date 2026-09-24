@@ -4,7 +4,8 @@ import { regionInfo, poisNear, villageSeed, type Poi, type Rect } from './region
 import { villageGates, VILLAGE_OFFSET } from './village';
 import { onMountain } from './mountains';
 
-export interface Road { id: string; from: number; to: number; gate: string; pts: [number, number][]; half: number }
+/** A road between places, or a mountain trail (gen/trails.ts: `gate` 'trail', its height profile `h` per point, the summit's `name`). */
+export interface Road { id: string; from: number; to: number; gate: string; pts: [number, number][]; half: number; h?: number[]; name?: string }
 
 const GATE_POINT = { N: [36, -2], S: [41, 74], E: [74, 37], W: [-2, 39] } as const;
 /** Where the road of a gate starts (just outside the wall apron), for a village centred at its POI. */

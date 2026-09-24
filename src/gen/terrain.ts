@@ -6,6 +6,7 @@ import { regionRoads, nearestOnRoad, roadBounds, type Road } from './roads';
 import { lakesIn, lakeBed, shoreR, type Lake, type WaterHere } from './water';
 import { claimFlatten, claimDist, CLEAR_R, type Claim } from './claims';
 import { mountainMask, mountainLift } from './mountains';
+import { regionTrails, trailHeight } from './trails';
 
 export const STEP = 2, CELLS = CHUNK / STEP, VERTS = CELLS + 1;
 export const MAX_H = 25;
@@ -18,6 +19,8 @@ export interface Pad { poi: Poi; y: number }
 export interface Features { pads: Pad[]; roads: Road[]; lakes: Lake[]; claims: Claim[] }
 
 const ROAD_BLEND = 5;
+/** Trails blend back into the slope more gently: the 2 m height lattice must still see a flat bench across them. */
+const TRAIL_BLEND = 9;
 /**
  * Noise scale s adjusted so a whole number of lattice cells fits round the planet: returns [scale, cells].
  * The adjustment is tiny (e.g. 170 m -> 169.94 m), so the land near Gridholm is practically unchanged.
@@ -76,13 +79,12 @@ export class Terrain {
       .filter((p) => rectDist(p.rect, cx, cz) <= half * 1.42 + p.flat + p.blend)
       .map((poi) => ({ poi, y: this.padY(poi) }));
     const roads: Road[] = [];
+    const take = (road: Road) => { const b = roadBounds(road), m = road.half + (road.h ? TRAIL_BLEND : ROAD_BLEND); if (b.x1 + m >= r.x0 && b.x0 - m <= r.x1 && b.z1 + m >= r.z0 && b.z0 - m <= r.z1) roads.push(road); };
     const [ax, az] = regionOf(cx - 600, cz - 600), [bx, bz] = regionOf(cx + 600, cz + 600);
-    for (let rx = ax; rx <= bx; rx++) for (let rz = az; rz <= bz; rz++) {
-      for (const road of regionRoads(this.world, rx, rz)) {
-        const b = roadBounds(road), m = road.half + ROAD_BLEND;
-        if (b.x1 + m >= r.x0 && b.x0 - m <= r.x1 && b.z1 + m >= r.z0 && b.z0 - m <= r.z1) roads.push(road);
-      }
-    }
+    for (let rx = ax; rx <= bx; rx++) for (let rz = az; rz <= bz; rz++) regionRoads(this.world, rx, rz).forEach(take);
+    // mountain trails reach further from the summit their region holds
+    const [tx, tz] = regionOf(cx - 1500, cz - 1500), [ux, uz] = regionOf(cx + 1500, cz + 1500);
+    for (let rx = tx; rx <= ux; rx++) for (let rz = tz; rz <= uz; rz++) regionTrails(this, rx, rz).forEach(take);
     const claims = this.claims.filter((c) => claimDist(c, cx, cz) < half * 1.42 + CLEAR_R);
     return { pads, roads, lakes: lakesIn(this, r), claims };
   }
@@ -100,12 +102,17 @@ export class Terrain {
   /** Exact height with roads (flat across their width) and places (perfectly flat footprint) applied. */
   exact(x: number, z: number, f: Features = this.chunkFeatures(Math.floor(x / CHUNK), Math.floor(z / CHUNK))): number {
     let h = this.base(x, z);
+    // roads follow the land along their middle; trails follow their own walkable profile (a bench cut in the slope),
+    // and where two trails run close the nearest one decides
+    let td = Infinity, th = 0, thalf = 0;
     for (const r of f.roads) {
+      if (r.h) { const [d, hh] = trailHeight(r, x, z); if (d < td) { td = d; th = hh; thalf = r.half; } continue; }
       const [d, px, pz] = nearestOnRoad(r, x, z);
       if (d >= r.half + ROAD_BLEND) continue;
       const w = d <= r.half ? 1 : 1 - smooth((d - r.half) / ROAD_BLEND), rh = this.base(px, pz);
       h = w >= 1 ? rh : h + (rh - h) * w;
     }
+    if (td < thalf + TRAIL_BLEND) { const w = td <= thalf ? 1 : 1 - smooth((td - thalf) / TRAIL_BLEND); h = w >= 1 ? th : h + (th - h) * w; }
     for (const p of f.pads) {
       const d = rectDist(p.poi.rect, x, z);
       if (d <= p.poi.flat) h = p.y;

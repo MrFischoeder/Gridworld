@@ -43,6 +43,7 @@ import { claimDist, CLAIM } from '../gen/claims';
 import { baseHit, baseFloor, baseRay, baseSolid } from './building';
 import { chunkCaves, type Cave } from '../gen/caves';
 import { drawCave, caveHit } from './caves';
+import { trailMarks, drawTrailMark } from './trails';
 
 export const LOAD_R = 4, UNLOAD_R = 6, STRUCT_LOAD = 170, STRUCT_UNLOAD = 240;
 /** Surface structures are drawn in outline style: folds and edges, floor tiles every 2 m, wall seams every 4 m. */
@@ -126,6 +127,7 @@ function buildChunk(cx: number, cz: number, lod = 1): Chunk {
   // roads: brighter lines along both edges, sampled every metre of the road
   const road: number[] = [];
   for (const r of f.roads) {
+    if (r.h) continue; // trails are drawn below
     for (let k = 0; k + 1 < r.pts.length; k++) {
       const [ax, az] = r.pts[k], [bx, bz] = r.pts[k + 1], L = Math.hypot(bx - ax, bz - az), nx = -(bz - az) / L, nz = (bx - ax) / L;
       for (let s = 0; s < L; s += 1) {
@@ -136,6 +138,22 @@ function buildChunk(cx: number, cz: number, lod = 1): Chunk {
           if (px < x0 || px >= x0 + CHUNK || pz < z0 || pz >= z0 + CHUNK) continue;
           if (holes.some((h) => inRect(h, px, pz) || inRect(h, qx, qz))) continue;
           road.push(px, T.heightAt(px, pz) + 0.1, pz, qx, T.heightAt(qx, qz) + 0.1, qz);
+        }
+      }
+    }
+  }
+  // mountain trails: dashed edges along the bench
+  const trails = f.roads.filter((r) => r.h);
+  for (const r of trails) {
+    for (let k = 0; k + 1 < r.pts.length; k++) {
+      const [ax, az] = r.pts[k], [bx, bz] = r.pts[k + 1], L = Math.hypot(bx - ax, bz - az), nx = -(bz - az) / L, nz = (bx - ax) / L;
+      for (let s = 0; s < L; s += 2) {
+        const e = Math.min(L, s + 1.1);
+        for (const side of [-r.half, r.half]) {
+          const px = ax + (bx - ax) * s / L + nx * side, pz = az + (bz - az) * s / L + nz * side;
+          const qx = ax + (bx - ax) * e / L + nx * side, qz = az + (bz - az) * e / L + nz * side;
+          if (px < x0 || px >= x0 + CHUNK || pz < z0 || pz >= z0 + CHUNK) continue;
+          road.push(px, T.heightAt(px, pz) + 0.08, pz, qx, T.heightAt(qx, qz) + 0.08, qz);
         }
       }
     }
@@ -155,12 +173,14 @@ function buildChunk(cx: number, cz: number, lod = 1): Chunk {
   chunkTrees(T, cx, cz).forEach((t, i) => { if (t.cols.some(([x, z]) => cleared(x, z))) return; const k = `tree:${wrapC(cx)}:${cz}:${i}`; gatherKey.set(t, k); (ripe(k) ? trees : stumps).push(t); });
   chunkRocks(T, cx, cz).forEach((r, i) => { if (cleared(r.x, r.z)) return; const k = `rock:${wrapC(cx)}:${cz}:${i}`; gatherKey.set(r, k); if (ripe(k)) rocks.push(r); });
   let nodes: PlantNode[] = [];
-  if (trees.length || stumps.length || rocks.length || wells.length || plants.length || caves.length) {
+  const marks = trailMarks(trails, x0, z0);
+  if (trees.length || stumps.length || rocks.length || wells.length || plants.length || caves.length || marks.length) {
     const pb = new PropBatch();
     for (const t of stumps) for (const [sx, sz, sr] of t.cols) { const r = Math.max(0.25, sr * 0.8); pb.box(sx - r, t.y - 0.1, sz - r, sx + r, t.y + 0.5, sz + r, GRID); }
     nodes = drawPlants(pb, plants, lod, group);
     for (const w of wells) drawWell(pb, w, T.heightAt(w.x, w.z));
     for (const cv of caves) drawCave(pb, cv, T);
+    for (const m of marks) drawTrailMark(pb, m, T);
     for (const t of trees) drawTree(pb, t, lod);
     for (const k of rocks) pb.rock(k.x, k.y, k.z, k.r, k.h, k.sides, k.rot, GRID);
     group.add(pb.build());
@@ -538,6 +558,12 @@ export function placeName(x: number, z: number): string {
   const lv = Math.round(danger(x, z)), tag = lv ? ` · danger ${lv}` : ' · calm';
   if (G.char.claims.some((c) => claimDist(c, x, z) < CLAIM.r)) return 'Your claim' + tag;
   for (const cv of loadedCaves()) if (Math.hypot(cv.x - x, cv.z - z) < 30) return cv.name + tag;
+  for (const r of OW.terrain!.chunkFeatures(Math.floor(x / CHUNK), Math.floor(z / CHUNK)).roads) {
+    if (!r.h) continue;
+    const top = r.pts[r.pts.length - 1], foot = r.pts[0];
+    if (Math.hypot(top[0] - x, top[1] - z) < 25) return `${r.name}, summit ${Math.round(r.h[r.h.length - 1])} m` + tag;
+    if (Math.hypot(foot[0] - x, foot[1] - z) < 20) return `Trail to ${r.name}` + tag;
+  }
   for (const s of OW.structs.values()) if (s.poi.type !== 'village' && rectDist(s.poi.rect, x, z) < 10) return s.poi.name + tag;
   return 'Wilds' + tag;
 }
