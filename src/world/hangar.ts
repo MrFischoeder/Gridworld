@@ -1,8 +1,8 @@
-// The old hangar by Gridholm and the shuttle in it (gen/shuttle.ts). A long arched shed with timber-and-steel ribs and
+// The old hangar by Gridholm and the shuttle in it, the Chariot of the Ancients (gen/shuttle.ts). A long arched shed with timber-and-steel ribs and
 // a skin of sheet panels, open to the south; inside, the shuttle sits on its cradle between scaffold towers, nose to
 // the door. It shows how far the repair has come: the hull is bare ribs until it is plated, the engine sockets are
 // empty until the engines go in, the cockpit windows light up with the avionics, the belly gets its tiles, and the
-// fuel lines glow once the tanks are full. The project desk by the door (E) opens the delivery window (ui/shuttle.ts).
+// fuel lines glow once the tanks are full. The desk by the door (E) shows the stages (ui/shuttle.ts).
 import * as THREE from 'three';
 import { G } from '../game';
 import { PropBatch } from './props';

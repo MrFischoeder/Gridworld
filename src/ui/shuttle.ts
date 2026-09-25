@@ -1,12 +1,14 @@
-// The shuttle project, at the desk in the old hangar by Gridholm (gen/shuttle.ts, world/hangar.ts): the stages of the
-// repair, what each needs and what has come in, and handing over crates from your backpack and the vehicles parked
-// by the hangar. The hangar pays for every crate (above its base price) and the work shows on the shuttle.
+// The Chariot of the Ancients (the shuttle in the old hangar by Gridholm: gen/shuttle.ts, world/hangar.ts). Nothing
+// is sold here: bring the processed goods it needs to the hangar (in your backpack, or in a vehicle parked by it) and
+// the crew unload them straight onto the Chariot (`updateChariot`, twice a second near the hangar). The desk inside
+// shows the stages of the repair, what each needs and what has come in.
 import { G, W } from '../game';
 import { ITEMS } from '../data/items';
 import { calcStats, saveChar, gainXp } from '../character';
-import { STAGES, SHUTTLE, stageRows, stagesDone, giveToStage, payPerCrate, type StageKey } from '../gen/shuttle';
+import { STAGES, SHUTTLE, CHARIOT, stageRows, stagesDone, giveToStage } from '../gen/shuttle';
 import { findPoi, HANGAR_ID } from '../gen/regions';
-import { reloadStruct } from '../world/overworld';
+import { rectDist } from '../gen/terrain';
+import { OW, reloadStruct } from '../world/overworld';
 import { carried, takeFrom } from './market';
 import { $, showToast, logLine } from './hud';
 import { lockPointer } from './input';
@@ -19,16 +21,14 @@ function render(msg = '') {
   const s = G.char.shuttle, at = hangar(), done = stagesDone(s);
   const stages = STAGES.map((st) => {
     const { rows, done: ok } = stageRows(s, st);
-    const lines = rows.map((r) => { const have = carried(r.g, at); return `${ITEMS[r.g].name} <b>${r.given}/${r.n}</b>${r.given < r.n ? ` <span style="opacity:.75">(you have ${have} · ${payPerCrate(r.g)} g a crate)</span>` : ''}`; }).join('<br>');
-    const can = !ok && rows.some((r) => r.given < r.n && carried(r.g, at) > 0);
-    return `<div class="shoprow"><div><b>${st.name}</b>${ok ? ' <span class="tag" style="color:#9dffe0">done</span>' : ''}<br><span style="opacity:.8">${st.blurb}</span><br><span>${lines}</span></div>
-      ${ok ? '' : `<button class="opt" style="width:auto" data-shs="${st.key}" ${can ? '' : 'disabled'}>Hand over</button>`}</div>`;
+    const lines = rows.map((r) => `${ITEMS[r.g].name} <b>${r.given}/${r.n}</b>${r.given < r.n && carried(r.g, at) ? ` <span style="opacity:.75">(you have ${carried(r.g, at)})</span>` : ''}`).join('<br>');
+    return `<div class="shoprow"><div><b>${st.name}</b>${ok ? ' <span class="tag" style="color:#9dffe0">done</span>' : ''}<br><span style="opacity:.8">${st.blurb}</span><br><span>${lines}</span></div></div>`;
   }).join('');
   panel().classList.add('wide');
-  panel().innerHTML = `<h2>The Shuttle</h2><div class="role">Old Hangar, Gridholm · ${done} of ${STAGES.length} stages done</div>` +
+  panel().innerHTML = `<h2>The ${CHARIOT}</h2><div class="role">Old Hangar, Gridholm · ${done} of ${STAGES.length} stages done</div>` +
     `<div class="say">${msg ? msg + '<br><br>' : ''}` +
-    (done >= STAGES.length ? '<b>The shuttle is whole again: hull, engines, avionics, shield and full tanks. It is ready to fly.</b> (The flight itself is still to come.)'
-      : 'A shuttle from before the machines woke, and the village means to fly it again. Nothing out in the fields or the ruins will mend it: it wants processed goods from the works. Bring the crates here (in your backpack or a vehicle parked by the hangar); the village pays for every one.') +
+    (done >= STAGES.length ? `<b>The ${CHARIOT} is whole again: hull, engines, avionics, shield and full tanks. It is ready to fly.</b> (The flight itself is still to come.)`
+      : `A sky-ship from before the machines woke, and the village means to fly it again. Nothing out in the fields or the ruins will mend it: it wants processed goods from the works, and the works want power. Nothing is bought or sold here: whatever it needs that you bring to the hangar, in your backpack or a vehicle parked by it, the crew unload straight onto the Chariot.`) +
     `</div>${stages}<button class="opt" data-shclose="1">Close</button>`;
 }
 export function openShuttle() {
@@ -38,28 +38,35 @@ export function openShuttle() {
   dlgEl.style.display = 'flex'; if (document.pointerLockElement) document.exitPointerLock();
 }
 function close() { open = false; G.dlgOpen = false; dlgEl.style.display = 'none'; if (!G.isTouch) lockPointer(); }
-/** Clicks in the shuttle window; true when handled. */
+/** Clicks in the Chariot window; true when handled. */
 export function shuttleClick(t: HTMLElement): boolean {
   if (!open) return false;
   if (t.closest('[data-shclose]')) { close(); return true; }
-  const b = t.closest<HTMLElement>('[data-shs]');
-  if (!b) return false;
-  const c = G.char, k = b.dataset.shs as StageKey, st = STAGES.find((x) => x.key === k)!, at = hangar(), before = stageRows(c.shuttle, st).done;
-  let pay = 0, n = 0;
-  const got: string[] = [];
-  for (const [g] of st.needs) {
-    const m = giveToStage(c.shuttle, k, g, carried(g, at));
-    if (!m) continue;
-    takeFrom(g, m, at); pay += m * payPerCrate(g); n += m; got.push(`${ITEMS[g].name} ×${m}`);
+  return false;
+}
+
+let tick = 0;
+/** Twice a second, at the hangar: the crew unload whatever the Chariot still needs from your backpack and vehicles there. */
+export function updateChariot(dt: number) {
+  if ((tick -= dt) > 0) return;
+  tick = 0.5;
+  const c = G.char, at = hangar();
+  if (!at || c.loc !== 'overworld' || !OW.structs.has(HANGAR_ID) || rectDist(at.rect, G.pos.x, G.pos.z) > SHUTTLE.reach) return;
+  const got: string[] = [], finished: string[] = [];
+  let n = 0;
+  for (const st of STAGES) {
+    const before = stageRows(c.shuttle, st).done;
+    for (const [g] of st.needs) {
+      const m = giveToStage(c.shuttle, st.key, g, carried(g, at));
+      if (!m) continue;
+      takeFrom(g, m, at); n += m; got.push(`${ITEMS[g].name} ×${m} for the ${st.name.toLowerCase()}`);
+    }
+    if (!before && stageRows(c.shuttle, st).done) finished.push(st.name);
   }
-  if (!n) { render('You have none of what that stage needs.'); return true; }
-  c.gold += pay; gainXp(n * SHUTTLE.xp); calcStats(); saveChar();
-  const finished = !before && stageRows(c.shuttle, st).done;
-  if (finished) {
-    showToast(`Shuttle: ${st.name} done`);
-    logLine(stagesDone(c.shuttle) >= STAGES.length ? 'The last crate goes in. The shuttle stands whole in the hangar, ready to fly.' : `The crew finish the ${st.name.toLowerCase()}. ${stagesDone(c.shuttle)} of ${STAGES.length} stages done.`);
-    reloadStruct(HANGAR_ID);
-  }
-  render(`Handed over: ${got.join(', ')}. The village pays you ${pay} gold.${finished ? ` <b>The ${st.name.toLowerCase()} is done!</b>` : ''}`);
-  return true;
+  if (!n) return;
+  gainXp(n * SHUTTLE.xp); calcStats(); saveChar();
+  logLine(`The hangar crew unload ${got.join(', ')} onto the Chariot.`);
+  for (const f of finished) { showToast(`The Chariot: ${f} done`); logLine(stagesDone(c.shuttle) >= STAGES.length ? `The last crate goes in. The ${CHARIOT} stands whole in the hangar, ready to fly.` : `The crew finish the ${f.toLowerCase()}. ${stagesDone(c.shuttle)} of ${STAGES.length} stages done.`); }
+  if (finished.length) reloadStruct(HANGAR_ID);
+  if (open) render();
 }

@@ -5,6 +5,7 @@ import { setLadders, dropLadders, ladderHit, ladderFloor } from './ladders';
 import { setHouses, dropHouses, houseHit, houseRay, houseSolid } from './houses';
 import { drawHangar, hangarOps } from './hangar';
 import { drawWorks, forgetWorks } from './works';
+import { drawStations, forgetStations } from './stations';
 import { drawGuards, forgetGuards, guardHit } from './siteguards';
 import { setWalkways, dropWalkways, walkFloor, walkHit } from './walkways';
 import { setDoors, dropDoors, doorHit, doorRay } from './housedoors';
@@ -301,6 +302,7 @@ function loadVillageStruct(poi: Poi): Structure {
   group.add(drawIndustry(vm, T, poi.id));
   group.add(drawGuards(vm, T, poi.id));
   group.add(drawWorks(vm, T, poi.id));
+  group.add(drawStations(vm, T, poi.id));
   const lamps: THREE.Object3D[] = []; group.traverse((o) => { if (o.name === 'lamp') lamps.push(o); }); setPlantLamps(poi.id, lamps);
   scene.add(group);
   const npcs: Npc[] = [];
@@ -442,7 +444,7 @@ function dropStruct(s: Structure) {
   for (const n of s.npcs) { scene.remove(n.g); W.npcs.splice(W.npcs.indexOf(n), 1); }
   if (s.village && OW.village === s.village) { OW.village = null; W.villageWalk = []; } // another village may have loaded meanwhile
   if (s.camp) despawnCamp(s.poi.id);
-  if (s.village) { forgetPower(s.poi.id); forgetIndustry(s.poi.id); dropLadders(s.poi.id); dropWalkways(s.poi.id); for (const h of villageHooks) h.drop(s.poi.id); forgetGuards(s.poi.id); forgetWorks(s.poi.id); dropHouses(s.poi.id); dropDoors(s.poi.id); }
+  if (s.village) { forgetPower(s.poi.id); forgetIndustry(s.poi.id); dropLadders(s.poi.id); dropWalkways(s.poi.id); for (const h of villageHooks) h.drop(s.poi.id); forgetGuards(s.poi.id); forgetWorks(s.poi.id); forgetStations(s.poi.id); dropHouses(s.poi.id); dropDoors(s.poi.id); }
   OW.structs.delete(s.poi.id);
   setStreakSources([...OW.structs.values()].map((q) => q.edges));
 }

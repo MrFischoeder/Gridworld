@@ -7,12 +7,13 @@ import { PropBatch } from './props';
 import { add } from './render';
 import { findPoi } from '../gen/regions';
 import { industryOf } from '../gen/industry';
-import { PLANTS, PLANT_SLOTS, plantSite, plantsOf, running, runPlant, type PlantKind } from '../gen/plants';
+import { PLANTS, PLANT_SLOTS, plantSite, plantsOf, running, runPlant, isStation, specOf, type PlantKind } from '../gen/plants';
+import { poweredAt } from '../gen/energy';
 import type { VillageMap } from '../gen/village';
 import type { Terrain } from '../gen/terrain';
 
 const WOOD = 0xb8b060, METAL = 0xb8c4cc, BRICK = 0xd09070, GLASS = 0x9dffe0, STEELC = 0x8fb89a, HOT = 0xffb347, FLAG = 0xffd060;
-export interface Works { vid: number; slot: number; town: string; x0: number; z0: number; x1: number; z1: number; glow: THREE.Object3D | null }
+export interface Works { vid: number; seed: number; slot: number; town: string; x0: number; z0: number; x1: number; z1: number; glow: THREE.Object3D | null }
 const placed = new Map<number, Works[]>();
 
 /** A faceted cylinder standing on (x, y, z). */
@@ -52,11 +53,11 @@ export function drawWorks(vm: VillageMap, T: Terrain, id: number): THREE.Group {
     };
     const cylAt = (u: number, v: number, r: number, h: number, col: number, lift = 0, r2 = r) => { const [x, z] = P(u, v); cyl(pb, x, H(u, v) + lift, z, r, h, col, 10, r2); };
     const [x0a, z0a] = P(-along / 2, -out / 2), [x1a, z1a] = P(along / 2, out / 2);
-    const w: Works = { vid: id, slot, town: vm.name, x0: Math.min(x0a, x1a), z0: Math.min(z0a, z1a), x1: Math.max(x0a, x1a), z1: Math.max(z0a, z1a), glow: null };
+    const w: Works = { vid: id, seed: vm.seed, slot, town: vm.name, x0: Math.min(x0a, x1a), z0: Math.min(z0a, z1a), x1: Math.max(x0a, x1a), z1: Math.max(z0a, z1a), glow: null };
     const p = plants[slot], k: PlantKind | undefined = p?.k;
     if (!p) {
       // a staked plot (and, if the elder has one going up here, the building site)
-      const building = slot === plants.length && st?.pbuild;
+      const building = slot === plants.length && st?.pbuild && !isStation(st.pbuild.k);
       for (const [u, v] of [[-along / 2 + 1, -out / 2 + 1], [along / 2 - 1, -out / 2 + 1], [along / 2 - 1, out / 2 - 1], [-along / 2 + 1, out / 2 - 1]]) {
         const [x, z] = P(u, v), g = T.heightAt(x, z); pb.box(x - 0.06, g, z - 0.06, x + 0.06, g + 1.1, z + 0.06, WOOD);
         pb.seg(FLAG, [x, g + 1.1, z], [x + 0.3, g + 0.95, z]);
@@ -148,6 +149,11 @@ export function drawWorks(vm: VillageMap, T: Terrain, id: number): THREE.Group {
   return grp;
 }
 export function forgetWorks(id: number) { placed.delete(id); }
+/** Is works w powered at time t (gen/energy.ts)? */
+export function powerOf(w: { vid: number; seed: number; slot: number }): ((t: number) => boolean) | undefined {
+  const poi = findPoi(G.char.world, w.vid);
+  return poi ? poweredAt(G.char.world, poi, w.seed, G.char.towns[w.vid], w.slot) : undefined;
+}
 
 let tick = 0;
 /** Twice a second: the glow shows while a works has something to do. */
@@ -159,8 +165,9 @@ export function updateWorks(dt: number) {
     if (!w.glow) continue;
     const p = plantsOf(G.char.towns[w.vid])[w.slot];
     if (!p) continue;
-    runPlant(p, G.char.time);
-    w.glow.visible = running(p);
+    const pw = powerOf(w);
+    runPlant(p, G.char.time, pw);
+    w.glow.visible = running(p) && (!pw || pw(G.char.time));
     w.glow.scale.setScalar(0.8 + Math.sin(t * 7 + w.slot) * 0.2);
   }
 }
@@ -172,8 +179,9 @@ export function nearWorks(): Works | null {
 }
 export function worksPrompt(w: Works): string {
   const st = G.char.towns[w.vid], p = plantsOf(st)[w.slot];
-  if (!p) return st?.pbuild && w.slot === plantsOf(st).length ? `${/^[AEIOU]/.test(PLANTS[st.pbuild.k].name) ? 'An' : 'A'} ${PLANTS[st.pbuild.k].name} is going up here: the elder keeps count of the materials` : 'An empty plot for a works: ask the elder';
-  runPlant(p, G.char.time);
-  const ready = Object.values(p.out).reduce((a, n) => a + (n ?? 0), 0);
-  return `E — the ${PLANTS[p.k].name} (${running(p) ? 'working' : 'idle'}${ready ? ` · ${ready} crate${ready > 1 ? 's' : ''} ready` : ''})`;
+  if (!p) return st?.pbuild && !isStation(st.pbuild.k) && w.slot === plantsOf(st).length ? `${/^[AEIOU]/.test(specOf(st.pbuild.k).name) ? 'An' : 'A'} ${specOf(st.pbuild.k).name} is going up here: the elder keeps count of the materials` : 'An empty plot for a works: ask the elder';
+  const pw = powerOf(w);
+  runPlant(p, G.char.time, pw);
+  const ready = Object.values(p.out).reduce((a, n) => a + (n ?? 0), 0), on = pw ? pw(G.char.time) : true;
+  return `E — the ${PLANTS[p.k].name} (${!running(p) ? 'idle' : on ? 'working' : 'no power'}${ready ? ` · ${ready} crate${ready > 1 ? 's' : ''} ready` : ''})`;
 }

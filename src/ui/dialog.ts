@@ -23,8 +23,10 @@ import { storeOf } from '../world/industry';
 import { unlockMine } from '../world/housedoors';
 import { shuttleClick } from './shuttle';
 import { fertility } from '../gen/industry';
-import { PLANTS, PLANT_KINDS, PLANT_SLOTS, plantsOf, plantPlan, plantProblem, startPlant, handOverPlant, type PlantKind } from '../gen/plants';
+import { PLANTS, PLANT_KINDS, PLANT_SLOTS, plantsOf, plantPlan, plantProblem, startPlant, handOverPlant, isStation, specOf, running, type PlantKind } from '../gen/plants';
+import { STATIONS, STATION_KINDS, STATION_SLOTS, DRAW, VILLAGE_KW, balance, fuelAt, type StationKind } from '../gen/energy';
 import { worksClick } from './works';
+import { stationClick } from './stations';
 import { shipmentOffer } from '../gen/contracts';
 import { pendingTribute, payTribute } from '../world/villageraid';
 import { findPoi } from '../gen/regions';
@@ -173,27 +175,37 @@ function renderFortify(msg?: string) {
     defenceRows(v.vm, st) +
     `<button class="opt" data-o="back">${OPT_TEXT.back}</button>`;
 }
-// ---------- processing works (gen/plants.ts) ----------
+// ---------- power and processing works (gen/energy.ts, gen/plants.ts) ----------
+const aN = (name: string) => (/^[AEIOU]/.test(name) ? 'an' : 'a');
+function powerText(vid: number, vm: VillageMap, st: TownState | undefined): string {
+  const c = G.char, poi = findPoi(c.world, vid);
+  if (!poi) return '';
+  const b = balance(c.world, poi, vm.seed, st, c.time), stations = st?.stations ?? [];
+  const works = plantsOf(st).map((p, i) => `the ${PLANTS[p.k].name} ${DRAW[p.k]} kW${!running(p) ? ' (idle)' : b.powered[i] ? ' (powered)' : ' <span style="color:var(--red,#ff5a3c)">(no power)</span>'}`);
+  return `<b>Power.</b> We make <b>${Math.round(b.made)} kW</b> now` + (stations.length ? ` (our ${POWER[powerKind(vm.seed)].name.toLowerCase()} and ${stations.map((x) => `the ${STATIONS[x.k].name}${STATIONS[x.k].fuel && fuelAt(x, c.time) <= 0 ? ' (out of ' + ITEMS[STATIONS[x.k].fuel!].name.toLowerCase() + ')' : ''}`).join(' and ')})` : ` from our ${POWER[powerKind(vm.seed)].name.toLowerCase()}`) +
+    `; the village itself takes ${VILLAGE_KW} kW, which leaves <b>${Math.round(Math.max(0, b.made - VILLAGE_KW))} kW</b> for works.` + (works.length ? ` They draw: ${works.join(', ')}.` : '') +
+    ` Every works needs power to run: build power stations first.`;
+}
 function worksText(st: TownState | undefined): string {
-  const built = plantsOf(st), plan = plantPlan(st), free = PLANT_SLOTS - built.length - (plan ? 1 : 0);
+  const built = plantsOf(st), plan = plantPlan(st), free = PLANT_SLOTS - built.length - (plan && !isStation(plan.k) ? 1 : 0), sfree = STATION_SLOTS - (st?.stations?.length ?? 0) - (plan && isStation(plan.k) ? 1 : 0);
   return `<b>Works.</b> Whatever our land gives, any village can process goods, and processed goods fetch the real money. ` +
-    (built.length ? `Outside our fence stand ${built.map((p) => `the <b>${PLANTS[p.k].name}</b>`).join(' and ')}: they are yours to run. ` : '') +
-    (plan ? `The <b>${PLANTS[plan.k].name}</b> is going up: bring the materials, and the fee of <b>${plan.fee} gold</b> pays the builders when it is done. `
-      : free > 0 ? `There is room for ${free === PLANT_SLOTS ? PLANT_SLOTS : 'one more'} works: choose what we should build, you bring the materials and pay the builders.` : 'There is no room for more works here.');
+    (built.length ? `Outside our fence ${built.length > 1 ? 'stand' : 'stands'} ${built.map((p) => `the <b>${PLANTS[p.k].name}</b>`).join(' and ')}: ${built.length > 1 ? 'they are' : 'it is'} yours to run. ` : '') +
+    (plan ? `The <b>${specOf(plan.k).name}</b> is going up: bring the materials, and the fee of <b>${plan.fee} gold</b> pays the builders when it is done. `
+      : `There is room for ${free} more works and ${sfree} more power station${sfree === 1 ? '' : 's'}: choose what we should build, you bring the materials and pay the builders.`);
 }
 function worksRows(st: TownState | undefined): string {
   const c = G.char, plan = plantPlan(st);
   if (plan) {
-    const rows = plan.rows.map((r) => `<div class="shoprow"><div><b>${ITEMS[r.k].name}</b><br><span>${r.given} / ${r.n} for the ${PLANTS[plan.k].name.toLowerCase()}${r.given < r.n ? ` · you carry ${count(c.inv, r.k)}` : ' · done'}</span></div></div>`).join('');
+    const name = specOf(plan.k).name;
+    const rows = plan.rows.map((r) => `<div class="shoprow"><div><b>${ITEMS[r.k].name}</b><br><span>${r.given} / ${r.n} for the ${name.toLowerCase()}${r.given < r.n ? ` · you carry ${count(c.inv, r.k)}` : ' · done'}</span></div></div>`).join('');
     const can = plan.rows.some((r) => r.given < r.n && count(c.inv, r.k) > 0) || (plan.done && c.gold >= plan.fee);
-    return rows + `<button class="opt" data-pgive="1" ${can ? '' : 'disabled'}>${plan.done ? `Pay the builders ${plan.fee} gold` : `Hand over what I carry (${PLANTS[plan.k].name.toLowerCase()})`}</button>`;
+    return rows + `<button class="opt" data-pgive="1" ${can ? '' : 'disabled'}>${plan.done ? `Pay the builders ${plan.fee} gold` : `Hand over what I carry (${name.toLowerCase()})`}</button>`;
   }
-  return PLANT_KINDS.filter((k) => !plantProblem(st, k)).map((k) => {
-    const sp = PLANTS[k];
-    return `<button class="opt" data-pnew="${k}">Build ${/^[AEIOU]/.test(sp.name) ? 'an' : 'a'} ${sp.name}: ${sp.blurb} (${sp.needs.map(([i, n]) => `${n} ${ITEMS[i].name}`).join(', ')}; ${sp.fee} gold)</button>`;
-  }).join('');
+  const btn = (k: PlantKind | StationKind) => { const sp = specOf(k); return `<button class="opt" data-pnew="${k}">Build ${aN(sp.name)} ${sp.name}: ${sp.blurb}${isStation(k) ? `, ${STATIONS[k].kw} kW` : `, draws ${DRAW[k]} kW`} (${sp.needs.map(([i, n]) => `${n} ${ITEMS[i].name}`).join(', ')}; ${sp.fee} gold)</button>`; };
+  const st1 = STATION_KINDS.filter((k) => !plantProblem(st, k)), pl = PLANT_KINDS.filter((k) => !plantProblem(st, k));
+  return (st1.length ? `<div class="say" style="margin:8px 0 0">Power stations</div>${st1.map(btn).join('')}` : '') + (pl.length ? `<div class="say" style="margin:8px 0 0">Works</div>${pl.map(btn).join('')}` : '');
 }
-/** The elder on the works: what the land gives, what stands, what can be built. */
+/** The elder on power and works: what the land gives, the power balance, what stands, what can be built. */
 function renderWorksPanel(msg = '') {
   const v = loadedVillage(town()), c = G.char, poi = v && findPoi(c.world, v.id);
   if (!W.talkNpc) return; // the talk is over (a stale click)
@@ -201,15 +213,16 @@ function renderWorksPanel(msg = '') {
   const st = c.towns[v.id], p = profileOf(c.world, poi, v.vm.seed), fert = fertility(c.world, poi, v.vm.seed);
   const land = `Our land gives us ${p.makes.map((g) => ITEMS[g].name).join(' and ')}` + (fert > 1.15 ? ', and our fields are rich: we grow more than we eat' : fert < 0.85 ? ', though our fields are poor' : '') + '.';
   panel().classList.add('wide');
-  panel().innerHTML = dlgHead() + `<div class="say">${msg ? msg + '<br><br>' : ''}${land} ${worksText(st)}</div>` + worksRows(st) + `<button class="opt" data-o="back">${OPT_TEXT.back}</button>`;
+  panel().innerHTML = dlgHead() + `<div class="say">${msg ? msg + '<br><br>' : ''}${land}<br><br>${powerText(v.id, v.vm, st)}<br><br>${worksText(st)}</div>` + worksRows(st) + `<button class="opt" data-o="back">${OPT_TEXT.back}</button>`;
 }
-function newWorks(k: PlantKind) {
+function newWorks(k: PlantKind | StationKind) {
   const v = loadedVillage(town()), c = G.char;
   if (!v) return;
   const why = startPlant((c.towns[v.id] ??= {}), k);
   if (why) { renderWorksPanel(why); return; }
   saveChar(); reloadStruct(v.id);
-  renderWorksPanel(`We will build ${/^[AEIOU]/.test(PLANTS[k].name) ? 'an' : 'a'} ${PLANTS[k].name} on the plot outside the fence. Bring the materials a load at a time; the builders want ${PLANTS[k].fee} gold when it stands.`);
+  const sp = specOf(k);
+  renderWorksPanel(`We will build ${aN(sp.name)} ${sp.name} on the plot outside the fence. Bring the materials a load at a time; the builders want ${sp.fee} gold when it stands.`);
 }
 function giveWorks() {
   const v = loadedVillage(town()), c = G.char;
@@ -222,13 +235,16 @@ function giveWorks() {
     saveChar();
     const after = plantPlan(st)!;
     renderWorksPanel((taken.length ? 'Handed over: ' + taken.map(([i, n]) => `${ITEMS[i].name} ×${n}`).join(', ') + '. ' : '') +
-      (after.done ? `All the materials are in. The builders want their ${after.fee} gold${c.gold < after.fee ? ', and you do not have it yet' : ''}.` : taken.length ? '' : 'You carry nothing the works still needs.'));
+      (after.done ? `All the materials are in. The builders want their ${after.fee} gold${c.gold < after.fee ? ', and you do not have it yet' : ''}.` : taken.length ? '' : 'You carry nothing it still needs.'));
     return;
   }
   gainXp(plan.xp); calcStats(); saveChar();
   closeDialog(); reloadStruct(v.id);
-  showToast(`${v.vm.name}: the ${PLANTS[built].name} stands`);
-  logLine(`The ${PLANTS[built].name} at ${v.vm.name} is finished and yours to run: load its hopper with ${[...new Set(PLANTS[built].recipes.flatMap((r) => r.in.map(([g]) => ITEMS[g].name)))].join(', ')} and collect what it makes.`);
+  const name = specOf(built).name;
+  showToast(`${v.vm.name}: the ${name} stands`);
+  logLine(isStation(built)
+    ? `The ${name} at ${v.vm.name} is finished: ${STATIONS[built].kw} kW for the works${STATIONS[built].fuel ? `, as long as you keep its bunker full of ${STATIONS[built].fuel === 'coal' ? 'coal' : 'fuel'}` : ''}.`
+    : `The ${name} at ${v.vm.name} is finished and yours to run: load its hopper with ${[...new Set(PLANTS[built].recipes.flatMap((r) => r.in.map(([g]) => ITEMS[g].name)))].join(', ')} and collect what it makes. It draws ${DRAW[built]} kW.`);
 }
 // ---------- defence works: turrets on the wall, barricades round the works and the plant ----------
 const WORK_KINDS: WorkKind[] = ['turret', 'siteGuard', 'plantGuard'];
@@ -310,7 +326,7 @@ function giveFortify() {
 }
 dlgEl.addEventListener('click', (e) => {
   if (craftClick(e.target as HTMLElement) || buildClick(e.target as HTMLElement)) return;
-  if (caravanClick(e.target as HTMLElement) || shuttleClick(e.target as HTMLElement) || worksClick(e.target as HTMLElement)) return;
+  if (caravanClick(e.target as HTMLElement) || shuttleClick(e.target as HTMLElement) || worksClick(e.target as HTMLElement) || stationClick(e.target as HTMLElement)) return;
   const cm = contractsClick(e.target as HTMLElement);
   if (cm !== null) { renderContracts(panel(), dlgHead(), cm); return; }
   const mm = marketClick(e.target as HTMLElement);
@@ -342,7 +358,7 @@ dlgEl.addEventListener('click', (e) => {
   if (t.closest('[data-rbuild]')) { giveRefinery(); return; }
   if (t.closest('[data-sbuild]')) { giveStore(); return; }
   { const w = t.closest<HTMLElement>('[data-work]'); if (w) { giveWork(w.dataset.work as WorkKind); return; } }
-  { const w = t.closest<HTMLElement>('[data-pnew]'); if (w) { newWorks(w.dataset.pnew as PlantKind); return; } }
+  { const w = t.closest<HTMLElement>('[data-pnew]'); if (w) { newWorks(w.dataset.pnew as PlantKind | StationKind); return; } }
   if (t.closest('[data-pgive]')) { giveWorks(); return; }
   if (t.closest('[data-tribute]')) { const v = loadedVillage(town()); const m = v ? payTribute(v.id) : ''; if (W.talkNpc?.role === 'guard') renderWatch(m); else renderFortify(m); return; }
   if (t.closest('[data-buyhouse]')) {

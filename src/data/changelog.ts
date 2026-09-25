@@ -4,6 +4,12 @@ export interface Change { v: string; date: string; title: string; notes: string[
 
 export const CHANGELOG: Change[] = [
   {
+    v: '0.47.0', date: '2026-09-25', title: 'Power stations, and the Chariot of the Ancients',
+    notes: ['Works need electricity now. A village\'s own little plant only just keeps its lamps and homes going, so a works without a power station stands idle. The elder shows the power balance: what the village makes, what it takes itself, and which works get power (in the order they were built).',
+      'Build power stations through the elder, two per village: a Solar Farm (by day only), a Wind Farm (as the wind blows; the turbines turn), a Coal Power Station and a Diesel Generator Bank. The last two give steady power as long as you keep their bunkers filled with coal or fuel. E at a station shows its output and lets you load the bunker or switch it off.',
+      'The locals call the shuttle in the Old Hangar the Chariot of the Ancients. Nothing is bought or sold there any more: bring the processed goods it needs to the hangar, in your backpack or a vehicle parked by it, and the crew unload them straight onto the Chariot. The desk shows how far the repair has come.'],
+  },
+  {
     v: '0.46.0', date: '2026-09-25', title: 'Works, processed goods and the shuttle',
     notes: ['Processing is now the way to earn. Nine new processed goods (steel, copper ingots, plastic resin, glass, copper cable, circuit boards, machine parts, hull alloy, rocket propellant) are worth far more than the raw goods they are made from.',
       'Any village can put up any works, two per village: a smelter, an oil refinery, a glassworks, a wire mill, an electronics shop, a machine shop, an alloy foundry or a chemical works. Ask the elder ("Could we build works here?"), bring the materials and pay the builders. Once it stands it is yours to run: load its hopper with crates (from your backpack or vehicles parked by the village), pick what it makes, and collect the output.',

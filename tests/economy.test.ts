@@ -70,3 +70,39 @@ describe('the shuttle', () => {
     expect(stagesDone(s)).toBe(1);
   });
 });
+
+describe('power', async () => {
+  const { STATIONS, stationKw, fuelAt, loadBunker, balance, VILLAGE_KW, DRAW, windAt } = await import('../src/gen/energy');
+  const { findPoi, GRIDHOLM_ID } = await import('../src/gen/regions');
+  const v = findPoi(1, GRIDHOLM_ID)!;
+  it('a solar farm makes nothing at night, a coal station only while it has coal', () => {
+    expect(stationKw(v, 1, { k: 'solarfarm', on: true, fuel: 0, t: 0 }, 1440 + 0)).toBe(0);
+    expect(stationKw(v, 1, { k: 'solarfarm', on: true, fuel: 0, t: 0 }, 1440 + 720)).toBeGreaterThan(40);
+    const coal = { k: 'coalplant' as const, on: true, fuel: 0, t: 0 };
+    expect(stationKw(v, 1, coal, 10)).toBe(0);
+    expect(loadBunker(coal, 3, 100)).toBe(3);
+    expect(stationKw(v, 1, coal, 100 + 60)).toBe(STATIONS.coalplant.kw);
+    expect(fuelAt(coal, 100 + STATIONS.coalplant.burn! * 3 + 1)).toBe(0);
+    expect(stationKw(v, 1, coal, 100 + STATIONS.coalplant.burn! * 3 + 1)).toBe(0);
+    for (let t = 0; t < 3000; t += 97) { const w = windAt(5, t); expect(w).toBeGreaterThanOrEqual(0.15); expect(w).toBeLessThanOrEqual(1); }
+  });
+  it('powers the works in the order they were built while there is enough', () => {
+    const smelter: PlantState = { k: 'smelter', rec: 0, inp: { ore: 10, coal: 10 }, out: {}, t: 0 };
+    const foundry: PlantState = { k: 'foundry', rec: 0, inp: { steel: 10, copperbar: 10, coal: 10 }, out: {}, t: 0 };
+    const s: TownState = { plants: [smelter, foundry] };
+    const none = balance(1, v, 1, s, 600);
+    expect(none.powered).toEqual([false, false]); // the village's own plant hardly covers the village
+    s.stations = [{ k: 'coalplant', on: true, fuel: 20, t: 0 }];
+    const some = balance(1, v, 1, s, 600);
+    expect(some.made - VILLAGE_KW).toBeGreaterThanOrEqual(DRAW.smelter);
+    expect(some.powered[0]).toBe(true);
+    expect(some.powered[1]).toBe(some.made - VILLAGE_KW - DRAW.smelter >= DRAW.foundry);
+  });
+  it('a works without power makes nothing', () => {
+    const p: PlantState = { k: 'smelter', rec: 0, inp: { ore: 10, coal: 10 }, out: {}, t: 0 };
+    runPlant(p, 600, () => false);
+    expect(p.out.steel ?? 0).toBe(0);
+    runPlant(p, 1200, () => true);
+    expect(p.out.steel).toBe(5);
+  });
+});

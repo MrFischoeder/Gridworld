@@ -8,6 +8,7 @@ import { hash, rng, type Dir } from '../core/rng';
 import { villageGates, WALL_TIERS } from './village';
 import type { ItemKey } from '../data/items';
 import type { PlantState, PlantKind } from './plants';
+import type { StationState, StationKind } from './energy';
 
 export interface TownState {
   /** The wall's tier (0 = the stake fence every village starts with). */
@@ -29,7 +30,9 @@ export interface TownState {
   /** Defence works done (WORKS: turrets on the wall, barricades round the site and the plant) and materials towards the next of each. */
   works?: Partial<Record<WorkKind, number>>; wgiven?: Partial<Record<WorkKind, Partial<Record<ItemKey, number>>>>;
   /** Processing works (gen/plants.ts): those built here, and the one being built. */
-  plants?: PlantState[]; pbuild?: { k: PlantKind; given: Partial<Record<ItemKey, number>> };
+  plants?: PlantState[]; pbuild?: { k: PlantKind | StationKind; given: Partial<Record<ItemKey, number>> };
+  /** Power stations (gen/energy.ts) built here. */
+  stations?: StationState[];
 }
 
 // ---------- defence works ----------

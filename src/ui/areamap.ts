@@ -17,7 +17,7 @@ import { lockPointer } from './input';
 const root = $('areamap'), cv = $<HTMLCanvasElement>('areamapCv'), list = $('areamapList'), title = $('areamapTitle'), ctx = cv.getContext('2d')!;
 const RANGE = 900, SIZE = 640, LABELS = 14;
 const COLOR: Record<string, string> = { village: '#ffd060', ruin: '#5cc8ff', camp: '#ff6a4a', wreck: '#7dffc8', hangar: '#9dffe0' };
-const KIND: Record<string, string> = { village: 'village', ruin: 'ruins', camp: 'bandit camp', wreck: 'crash site', hangar: 'the shuttle' };
+const KIND: Record<string, string> = { village: 'village', ruin: 'ruins', camp: 'bandit camp', wreck: 'crash site', hangar: 'the Chariot' };
 let open = false;
 
 function symbol(p: Poi, x: number, y: number) {

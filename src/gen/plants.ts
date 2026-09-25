@@ -13,6 +13,7 @@ import { powerSite, type TownState } from './town';
 import { industrySite, type Industry } from './industry';
 import type { Good } from './market';
 import type { ItemKey } from '../data/items';
+import { STATIONS, STATION_SLOTS, type StationKind } from './energy';
 
 export type PlantKind = 'smelter' | 'refinery' | 'glassworks' | 'wiremill' | 'electronics' | 'machineshop' | 'foundry' | 'chemworks';
 export const PLANT_KINDS: PlantKind[] = ['smelter', 'refinery', 'glassworks', 'wiremill', 'electronics', 'machineshop', 'foundry', 'chemworks'];
@@ -70,10 +71,12 @@ export const running = (p: PlantState) => has(p, PLANTS[p.k].recipes[p.rec]) && 
  * Settle the batches done by `now`: every `batch` minutes one batch while it can work; idle time does not bank.
  * Returns the batches done. Pure on the state object.
  */
-export function runPlant(p: PlantState, now: number): number {
+export function runPlant(p: PlantState, now: number, pw?: (t: number) => boolean): number {
   const spec = PLANTS[p.k], r = spec.recipes[p.rec];
-  let n = 0;
-  while (now - p.t >= spec.batch && running(p) && n < 500) {
+  let n = 0, steps = 0;
+  while (now - p.t >= spec.batch && running(p) && steps++ < 800) {
+    // `pw`: is there power for it when the batch would finish (gen/energy.ts)? Without, the time passes idle.
+    if (pw && !pw(p.t + spec.batch)) { p.t += spec.batch; continue; }
     for (const [g, k] of r.in) p.inp[g] = (p.inp[g] ?? 0) - k;
     p.out[r.out[0]] = (p.out[r.out[0]] ?? 0) + r.out[1];
     p.t += spec.batch; n++;
@@ -84,8 +87,8 @@ export function runPlant(p: PlantState, now: number): number {
 /** How far the batch under way is (0..1), or null when it stands. */
 export const progress = (p: PlantState, now: number) => (running(p) ? Math.min(1, (now - p.t) / PLANTS[p.k].batch) : null);
 /** Feed n crates of g into the hopper (settles first, so the new crates do not count for time already gone); returns how many went in. */
-export function feed(p: PlantState, g: Good, n: number, now: number): number {
-  runPlant(p, now);
+export function feed(p: PlantState, g: Good, n: number, now: number, pw?: (t: number) => boolean): number {
+  runPlant(p, now, pw);
   if (!PLANTS[p.k].recipes.some((r) => r.in.some(([x]) => x === g))) return 0;
   const k = Math.max(0, Math.min(n, HOPPER - (p.inp[g] ?? 0)));
   const was = running(p);
@@ -94,8 +97,8 @@ export function feed(p: PlantState, g: Good, n: number, now: number): number {
   return k;
 }
 /** Take up to n finished crates of g out. */
-export function collect(p: PlantState, g: Good, n: number, now: number): number {
-  runPlant(p, now);
+export function collect(p: PlantState, g: Good, n: number, now: number, pw?: (t: number) => boolean): number {
+  runPlant(p, now, pw);
   const was = running(p), k = Math.max(0, Math.min(n, p.out[g] ?? 0));
   p.out[g] = (p.out[g] ?? 0) - k;
   if (!p.out[g]) delete p.out[g];
@@ -103,38 +106,48 @@ export function collect(p: PlantState, g: Good, n: number, now: number): number 
   return k;
 }
 /** Switch what it makes (the batch under way is dropped, the hopper kept). */
-export function setRecipe(p: PlantState, rec: number, now: number) { runPlant(p, now); p.rec = rec; p.t = now; }
+export function setRecipe(p: PlantState, rec: number, now: number, pw?: (t: number) => boolean) { runPlant(p, now, pw); p.rec = rec; p.t = now; }
 
 // ---------- building one ----------
 /** The works being built at the village, and what it still needs; or null. */
 export function plantPlan(s: PlantTown | undefined) {
   const b = s?.pbuild;
   if (!b) return null;
-  const spec = PLANTS[b.k], rows = spec.needs.map(([k, n]) => ({ k, n, given: Math.min(n, b.given[k] ?? 0) }));
+  const spec = specOf(b.k), rows = spec.needs.map(([k, n]) => ({ k, n, given: Math.min(n, b.given[k] ?? 0) }));
   return { k: b.k, rows, done: rows.every((r) => r.given >= r.n), fee: spec.fee, xp: spec.xp };
 }
 /** Why works k cannot be started here, or ''. */
-export function plantProblem(s: PlantTown | undefined, k: PlantKind): string {
-  if (s?.pbuild) return 'Another works is being built here: finish it first.';
+export function plantProblem(s: PlantTown | undefined, k: PlantKind | StationKind): string {
+  if (s?.pbuild) return 'Something is being built here already: finish it first.';
+  if (isStation(k)) {
+    if ((s?.stations?.length ?? 0) >= STATION_SLOTS) return `There is room for ${STATION_SLOTS} power stations here, and both are built.`;
+    if (s?.stations?.some((p) => p.k === k)) return 'The village has one of those already.';
+    return '';
+  }
   if ((s?.plants?.length ?? 0) >= PLANT_SLOTS) return `There is room for ${PLANT_SLOTS} works here, and both are built.`;
   if (s?.plants?.some((p) => p.k === k)) return 'The village has one of those already.';
   return '';
 }
+/** Works or power station: the spec (name, needs, fee, xp) of either. */
+export const isStation = (k: PlantKind | StationKind): k is StationKind => k in STATIONS;
+export const specOf = (k: PlantKind | StationKind): { name: string; blurb: string; needs: [ItemKey, number][]; fee: number; xp: number } => (isStation(k) ? STATIONS[k] : PLANTS[k]);
 /** Start building works k (the fee is paid when it is finished). */
-export function startPlant(s: PlantTown, k: PlantKind): string {
+export function startPlant(s: PlantTown, k: PlantKind | StationKind): string {
   const why = plantProblem(s, k);
   if (why) return why;
   s.pbuild = { k, given: {} };
   return '';
 }
 /** Hand over materials for the works being built; it stands once all are in and the fee is paid (`pay` says if you can). */
-export function handOverPlant(s: PlantTown, have: (k: ItemKey) => number, now: number, pay: (fee: number) => boolean): { taken: [ItemKey, number][]; built: PlantKind | null } {
+export function handOverPlant(s: PlantTown, have: (k: ItemKey) => number, now: number, pay: (fee: number) => boolean): { taken: [ItemKey, number][]; built: PlantKind | StationKind | null } {
   const plan = plantPlan(s);
   if (!plan) return { taken: [], built: null };
   const taken: [ItemKey, number][] = [];
   for (const r of plan.rows) { const n = Math.min(r.n - r.given, have(r.k)); if (n > 0) { s.pbuild!.given[r.k] = r.given + n; taken.push([r.k, n]); } }
   if (plantPlan(s)!.done && pay(plan.fee)) {
-    (s.plants ??= []).push({ k: plan.k, rec: 0, inp: {}, out: {}, t: now });
+    const k = plan.k;
+    if (isStation(k)) (s.stations ??= []).push({ k, on: true, fuel: 0, t: now });
+    else (s.plants ??= []).push({ k, rec: 0, inp: {}, out: {}, t: now });
     s.pbuild = undefined;
     return { taken, built: plan.k };
   }

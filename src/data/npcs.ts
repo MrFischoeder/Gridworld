@@ -28,15 +28,16 @@ export const RUMOURS = ['They say the guardians below each carry an Access Key. 
   "If things go wrong down there, a Recall Beacon from Zofia's store will bring you home.",
   'Bandits have dug in out in the wilds. Tents, a fire, a stash of stolen goods. Clear a camp and the stash is yours.',
   'Raw ore sells for little. Smelt it, draw it, cast it, and the same crates are worth three times as much. The elders can put up works in any village.',
-  'They say the shuttle in the old hangar could reach the sky again, if anyone brought it enough hull alloy and circuit boards.',
+  'They say the Chariot of the Ancients in the old hangar could reach the sky again, if anyone brought it enough hull alloy and circuit boards.',
+  'Works stand idle without power. A village that wants to smelt or cast needs a power station first: sun, wind, coal or diesel.',
   'Folk who fled the drones left their vehicles out in the hills. Find one and it is yours, along with whatever is in the trunk.'];
 export const OPT_TEXT: Record<OptId | 'back', string> = {
   rest: 'Rent a bed (10 gold)', rumour: 'Heard any rumours?', work: 'Do you have any work for me?', lore: 'Tell me about the dungeon.',
   shop: 'Show me your wares.', sell: 'I want to sell something.', cook: 'Roast my raw meat (2 gold a piece).', craft: 'Let me use your workbench (crafting).', chat: 'How are things?', fortify: 'How can I help the village? (walls, turrets, power)', trade: 'Trade goods by the crate (market).', contracts: 'Any deliveries to be done? (contracts)', watch: 'How safe is the village?', house: 'About the empty house by the wall...', works: 'Could we build works here? (processing)', bye: 'Goodbye.', back: 'Back',
 };
 export const LORE = 'Old ruins stand in the hills around Gridholm. Beneath each one lies a maze of the old machine folk. Drones patrol it, and guardians seal the deeper passages. Stairs connect it to other sectors, and hatches lead ever deeper. Follow the roads from our gates and you will find them.';
-/** Gridholm's elder adds the shuttle (gen/shuttle.ts). */
-export const LORE_SHUTTLE = ' And north-east of the village, in the old hangar, stands the shuttle our fathers could never fly. We mean to mend it, {name}. It will not be mended with scrap from the ruins: it wants steel, alloy, cable, circuit boards and propellant, made in works. Come to the desk in the hangar when you have any.';
+/** Gridholm's elder adds the Chariot of the Ancients (the shuttle, gen/shuttle.ts). */
+export const LORE_SHUTTLE = ' And north-east of the village, in the old hangar, stands the Chariot of the Ancients, a sky-ship our fathers could never fly. We mean to mend it, {name}. It will not be mended with scrap from the ruins: it wants steel, alloy, cable, circuit boards and propellant, made in works, and works want power. Bring what you make to the hangar: the crew unload it straight onto the Chariot.';
 
 /** What the traders (other than Kuba) buy, and for how much. */
 export const BUYS: Partial<Record<NpcRole, Partial<Record<ItemKey, number>>>> = {

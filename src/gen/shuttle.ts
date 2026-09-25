@@ -1,10 +1,11 @@
-// The shuttle in the old hangar near Gridholm: a spacecraft from before the machines woke, which the village elders
-// mean to fly again. Its repair is the long goal: stage after stage, each needing crates of processed goods that no
-// field, mine or scavenged robot gives you (the robots are few once the ruins and wrecks are cleared): they come out
-// of the works (gen/plants.ts). The hangar pays for every crate you bring (above its base price), so feeding the
-// project is also a living. Stages can be worked in any order; the state is what was handed over (`char.shuttle`).
+// The shuttle in the old hangar near Gridholm, which the locals call the Chariot of the Ancients: a spacecraft from
+// before the machines woke, which the village elders mean to fly again. Its repair is the long goal: stage after
+// stage, each needing crates of processed goods that no field, mine or scavenged robot gives you (the robots are few
+// once the ruins and wrecks are cleared): they come out of the works (gen/plants.ts), and the works need power
+// (gen/energy.ts). Nothing is sold at the hangar: what you bring goes straight onto the Chariot (ui/shuttle.ts
+// unloads it as you arrive), for experience and the goal itself. Stages can be worked in any order; the state is what
+// was handed over (`char.shuttle`).
 import type { Good } from './market';
-import { GOOD_INFO } from './market';
 
 export type StageKey = 'hull' | 'engines' | 'avionics' | 'shield' | 'fuel';
 export interface Stage { key: StageKey; name: string; blurb: string; needs: [Good, number][] }
@@ -15,10 +16,11 @@ export const STAGES: Stage[] = [
   { key: 'shield', name: 'Heat Shield', blurb: 'glass tiles under the belly and the wing edges', needs: [['glass', 24], ['alloy', 4], ['plastic', 6]] },
   { key: 'fuel', name: 'Propellant', blurb: 'the tanks filled for the flight', needs: [['propellant', 30]] },
 ];
-/** What the hangar pays per crate you bring (times its base price), and the xp per crate. */
-export const SHUTTLE = { pay: 1.25, xp: 6 };
+/** Experience per crate that goes onto the Chariot; how near the hangar (m from its rect) the crew unload for you. */
+export const SHUTTLE = { xp: 8, reach: 25 };
+/** What the locals call it. */
+export const CHARIOT = 'Chariot of the Ancients';
 export interface ShuttleState { given: Partial<Record<StageKey, Partial<Record<Good, number>>>> }
-export const payPerCrate = (g: Good) => Math.round(GOOD_INFO[g].base * SHUTTLE.pay);
 /** Each stage's rows (needed, given) and whether it is complete. */
 export function stageRows(s: ShuttleState | undefined, st: Stage) {
   const rows = st.needs.map(([g, n]) => ({ g, n, given: Math.min(n, s?.given[st.key]?.[g] ?? 0) }));
