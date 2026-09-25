@@ -1,0 +1,433 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Gridworld: symulator ekonomiczno-strategiczny z perspektywy pierwszej osoby w świecie z zielonych linii wektorowych. Handluj, buduj fabryki i elektrownie, broń wiosek i uruchom Rydwan Przedwiecznych.">
+<meta property="og:title" content="Gridworld">
+<meta property="og:description" content="Odbuduj cywilizację z perspektywy jednego człowieka i uruchom Rydwan Przedwiecznych.">
+<style>*, *::before, *::after { box-sizing: border-box; } img { max-width: 100%; }</style>
+<title>Gridworld</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=VT323&family=IBM+Plex+Mono:ital,wght@0,400;0,500;0,600;1,400&display=swap">
+<style>
+  /* One deliberate look: the game's own CRT screen. Single theme, every colour set explicitly. */
+  :root {
+    color-scheme: dark;
+    --bg: #020904;
+    --panel: #051509;
+    --line: #2fe060;
+    --line-dim: #134d24;
+    --text: #b9f2c8;
+    --text-dim: #6fa982;
+    --bright: #e4ffec;
+    --amber: #ffb347;
+    --gold: #ffd060;
+    --cyan: #5cc8ff;
+    --display: 'VT323', 'Courier New', monospace;
+    --body: 'IBM Plex Mono', ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  }
+  html { background: var(--bg); }
+  body { background: var(--bg); color: var(--text); font-family: var(--body); font-size: 15px; line-height: 1.65; margin: 0; }
+  body::after { /* scanlines over everything, very faint */
+    content: ''; position: fixed; inset: 0; pointer-events: none; z-index: 50;
+    background: repeating-linear-gradient(to bottom, rgba(0, 0, 0, 0) 0 2px, rgba(0, 0, 0, 0.18) 2px 3px);
+  }
+  a { color: var(--bright); }
+  a:focus-visible, button:focus-visible { outline: 2px solid var(--gold); outline-offset: 3px; }
+  .wrap { max-width: 1060px; margin: 0 auto; padding-inline: 20px; }
+  h1, h2, h3 { font-family: var(--display); font-weight: 400; color: var(--bright); text-wrap: balance; margin: 0; }
+  h2 { font-size: clamp(34px, 5vw, 46px); line-height: 1; letter-spacing: 0.02em; text-shadow: 0 0 12px rgba(47, 224, 96, 0.45); }
+  h3 { font-size: 26px; line-height: 1.1; }
+  p { margin: 0; max-width: 66ch; }
+  .label { font-family: var(--body); font-size: 12px; font-weight: 600; letter-spacing: 0.16em; text-transform: uppercase; color: var(--line); }
+  .num { font-variant-numeric: tabular-nums; }
+
+  /* ---------- hero: live wireframe terrain ---------- */
+  .hero { position: relative; border-bottom: 1px solid var(--line-dim); overflow: hidden; }
+  #terrain { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  .hero-inner { position: relative; padding-block: 88px 64px; display: grid; gap: 22px; }
+  .hero h1 {
+    font-size: clamp(72px, 15vw, 168px); line-height: 0.82; letter-spacing: 0.04em; color: var(--bright);
+    text-shadow: 0 0 6px rgba(157, 255, 180, 0.8), 0 0 30px rgba(47, 224, 96, 0.55);
+  }
+  .hero h1 .ver { font-size: 0.2em; letter-spacing: 0.1em; color: var(--line); vertical-align: top; margin-left: 0.3em; text-shadow: none; }
+  .tagline { font-size: clamp(17px, 2.2vw, 21px); color: var(--bright); max-width: 40ch; line-height: 1.5; }
+  .hero .lede { color: var(--text); max-width: 58ch; background: rgba(2, 9, 4, 0.72); }
+  .actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 6px; }
+  .btn {
+    display: inline-flex; align-items: center; gap: 10px; padding: 11px 18px; text-decoration: none;
+    font-family: var(--display); font-size: 24px; line-height: 1; letter-spacing: 0.04em;
+    border: 1px solid var(--line); color: var(--bright); background: rgba(2, 9, 4, 0.85);
+  }
+  .btn:hover { background: var(--line); color: var(--bg); }
+  .btn.main { background: var(--line); color: var(--bg); }
+  .btn.main:hover { background: var(--bright); }
+  .btn small { font-family: var(--body); font-size: 11px; letter-spacing: 0.08em; opacity: 0.8; }
+
+  section { padding-block: 72px; border-bottom: 1px solid var(--line-dim); }
+  .head { display: grid; gap: 12px; margin-bottom: 36px; }
+  .head p { color: var(--text-dim); }
+
+  /* ---------- the Chariot ---------- */
+  .chariot { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); gap: 44px; align-items: start; }
+  .chariot .story { display: grid; gap: 16px; }
+  .chariot .story strong { color: var(--gold); font-weight: 500; }
+  .manifest { border: 1px solid var(--gold); background: var(--panel); padding: 18px 20px; display: grid; gap: 4px; }
+  .manifest .label { color: var(--gold); margin-bottom: 8px; }
+  .stage { display: grid; grid-template-columns: 26px minmax(0, 1fr) auto; gap: 12px; padding-block: 10px; border-top: 1px dashed rgba(255, 208, 96, 0.28); align-items: baseline; }
+  .stage:first-of-type { border-top: 0; }
+  .stage .n { font-family: var(--display); font-size: 24px; color: var(--gold); }
+  .stage b { color: var(--bright); font-weight: 500; }
+  .stage .needs { display: block; font-size: 12.5px; color: var(--text-dim); }
+  .stage .crates { font-family: var(--display); font-size: 24px; color: var(--gold); }
+  .manifest .total { display: flex; justify-content: space-between; padding-top: 12px; border-top: 1px solid var(--gold); font-family: var(--display); font-size: 26px; color: var(--gold); }
+
+  /* ---------- the economy loop ---------- */
+  .roles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1px; background: var(--line-dim); border: 1px solid var(--line-dim); }
+  .role { background: var(--bg); padding: 22px 20px 24px; display: grid; gap: 10px; align-content: start; }
+  .role h3 { color: var(--line); }
+  .role p { font-size: 14px; }
+  .role .fact { font-size: 12px; color: var(--text-dim); border-top: 1px dashed var(--line-dim); padding-top: 10px; margin-top: 4px; }
+
+  /* ---------- planet readout ---------- */
+  .readout { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1px; background: var(--line-dim); border: 1px solid var(--line); }
+  .cell { background: var(--panel); padding: 18px 18px 16px; display: grid; gap: 4px; align-content: start; }
+  .cell .v { white-space: nowrap; font-family: var(--display); font-size: clamp(34px, 4.4vw, 52px); line-height: 0.95; color: var(--bright); text-shadow: 0 0 10px rgba(47, 224, 96, 0.45); }
+  .cell .v .u { font-size: 0.5em; color: var(--line); margin-left: 4px; }
+  .cell .k { font-size: 12.5px; color: var(--text); }
+  .cell .s { font-size: 11.5px; color: var(--text-dim); line-height: 1.5; }
+  .cell.hostile .v { color: var(--amber); text-shadow: 0 0 10px rgba(255, 179, 71, 0.35); }
+  .cell.gold .v { color: var(--gold); text-shadow: 0 0 10px rgba(255, 208, 96, 0.35); }
+  .cell.cyan .v { color: var(--cyan); text-shadow: 0 0 10px rgba(92, 200, 255, 0.35); }
+  .footnote { margin-top: 14px; font-size: 12px; color: var(--text-dim); max-width: none; }
+
+  .split { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 44px; margin-top: 56px; }
+  .bars { display: grid; gap: 9px; }
+  .bar { display: grid; grid-template-columns: 118px minmax(0, 1fr) 34px; gap: 12px; align-items: center; font-size: 13px; }
+  .bar .track { height: 14px; background: rgba(47, 224, 96, 0.07); border: 1px solid var(--line-dim); }
+  .bar .fill { height: 100%; background: repeating-linear-gradient(90deg, var(--line) 0 6px, transparent 6px 8px); box-shadow: 0 0 8px rgba(47, 224, 96, 0.4); }
+  .bar .c { text-align: right; color: var(--bright); }
+  .rings { display: grid; gap: 6px; }
+  .ring { display: grid; grid-template-columns: 46px minmax(0, 1fr) 72px; gap: 12px; align-items: center; font-size: 13px; }
+  .ring .lv { font-family: var(--display); font-size: 24px; line-height: 1; }
+  .ring .dots { height: 10px; background: linear-gradient(90deg, var(--line), var(--amber) 60%, #ff6a4a); opacity: 0.85; }
+  .ring .d { text-align: right; color: var(--text-dim); }
+
+  /* ---------- the wilds ---------- */
+  .wilds { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 28px 44px; }
+  .wild { display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 16px; align-items: start; }
+  .wild svg { width: 64px; height: 64px; }
+  .wild h3 { font-size: 24px; margin-bottom: 6px; }
+  .wild p { font-size: 14px; }
+  .bestiary { margin-top: 44px; display: flex; flex-wrap: wrap; gap: 8px; }
+  .tag { font-size: 12px; padding: 4px 10px; border: 1px solid var(--line-dim); color: var(--text); }
+  .tag.h { border-color: rgba(255, 179, 71, 0.6); color: var(--amber); }
+
+  /* ---------- direction ---------- */
+  .road { display: grid; gap: 0; border-left: 1px solid var(--line); margin-left: 6px; }
+  .step { position: relative; padding: 0 0 26px 30px; display: grid; gap: 6px; }
+  .step::before { content: ''; position: absolute; left: -7px; top: 6px; width: 13px; height: 13px; background: var(--bg); border: 1px solid var(--line); transform: rotate(45deg); }
+  .step.done::before { background: var(--line); }
+  .step.goal::before { background: var(--gold); border-color: var(--gold); }
+  .step .st { font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-dim); }
+  .step.done .st { color: var(--line); }
+  .step.goal .st, .step.goal h3 { color: var(--gold); }
+  .step h3 { font-size: 26px; }
+  .step p { font-size: 14px; }
+
+  /* ---------- play ---------- */
+  .play { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 44px; align-items: start; }
+  .term { background: #010502; border: 1px solid var(--line); padding: 18px 20px; font-size: 14px; overflow-x: auto; }
+  .term div { white-space: pre; }
+  .term .pr { color: var(--line); }
+  .term .cm { color: var(--text-dim); }
+  .keys { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 8px 16px; font-size: 13.5px; align-items: baseline; }
+  kbd { font-family: var(--body); font-size: 12px; padding: 1px 7px; border: 1px solid var(--line); border-bottom-width: 2px; color: var(--bright); white-space: nowrap; }
+  footer { padding-block: 36px 48px; font-size: 12.5px; color: var(--text-dim); display: flex; flex-wrap: wrap; gap: 12px 28px; justify-content: space-between; }
+
+  @media (max-width: 860px) {
+    .chariot, .split, .play { grid-template-columns: minmax(0, 1fr); gap: 32px; }
+    .roles { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+    .readout { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .wilds { grid-template-columns: minmax(0, 1fr); }
+  }
+  @media (max-width: 520px) {
+    .roles { grid-template-columns: minmax(0, 1fr); }
+    .hero-inner { padding-block: 56px 44px; }
+    .bar { grid-template-columns: 96px minmax(0, 1fr) 28px; }
+    section { padding-block: 52px; }
+  }
+</style>
+
+</head>
+<body>
+<header class="hero">
+  <canvas id="terrain" aria-hidden="true"></canvas>
+  <div class="wrap hero-inner">
+    <span class="label">Symulator ekonomiczno-strategiczny · FPP · w przeglądarce</span>
+    <h1>GRIDWORLD<span class="ver num">v0.51</span></h1>
+    <p class="tagline">Odbuduj cywilizację z perspektywy jednego człowieka. Handluj, stawiaj fabryki i elektrownie, broń wiosek i przeszukuj ruiny obcych, żeby uruchomić Rydwan Przedwiecznych.</p>
+    <p class="lede">Cały świat jest narysowany świecącymi zielonymi liniami na czerni, jak ekran starego terminala. Pod tymi liniami działa żywa gospodarka: ceny, magazyny, karawany i prąd w każdej z ponad stu wiosek.</p>
+    <div class="actions">
+      <a class="btn main" href="https://mrfischoeder.github.io/Gridworld/play/">&#9654; Zagraj w przeglądarce</a>
+      <a class="btn" href="https://github.com/MrFischoeder/Gridworld/archive/refs/heads/claude/new-session-lkzluz.zip">Pobierz grę <small>.ZIP</small></a>
+      <a class="btn" href="https://github.com/MrFischoeder/Gridworld">Kod na GitHubie</a>
+    </div>
+  </div>
+</header>
+
+<main>
+  <section id="rydwan">
+    <div class="wrap chariot">
+      <div class="story">
+        <span class="label" style="color: var(--gold)">Cel gry</span>
+        <h2>Rydwan Przedwiecznych</h2>
+        <p>Planeta należała kiedyś do starożytnej, nieznanej cywilizacji. W starym hangarze za Gridholm, wioską, w której zaczynasz, stoi niedokończony wahadłowiec. Miejscowi nazywają go <strong>Rydwanem Przedwiecznych</strong>.</p>
+        <p>Nie da się go kupić ani złożyć z części znalezionych w ruinach. Każdy etap potrzebuje skrzyń <strong>przetworzonych towarów</strong>, których nie wydobywa ani nie robi żadna wioska. Trzeba je wytopić, wyprodukować i przywieźć.</p>
+        <p>Żeby zbudować Rydwan, najpierw trzeba rozkręcić gospodarkę całego regionu. Rydwan niczego nie kupuje i niczego nie płaci: załoga hangaru rozładowuje wszystko, co przywieziesz, prosto do budowy.</p>
+      </div>
+      <div class="manifest" aria-label="Lista materiałów Rydwanu">
+        <span class="label">Wykaz budowy · 5 etapów</span>
+        <div class="stage"><span class="n num">1</span><span><b>Poszycie kadłuba</b><span class="needs">Stop kadłubowy 12 · Sztaby stali 20</span></span><span class="crates num">32</span></div>
+        <div class="stage"><span class="n num">2</span><span><b>Silniki główne</b><span class="needs">Części maszyn 16 · Stop kadłubowy 8 · Kabel miedziany 10</span></span><span class="crates num">34</span></div>
+        <div class="stage"><span class="n num">3</span><span><b>Awionika</b><span class="needs">Płytki drukowane 14 · Kabel miedziany 12 · Tafle szkła 6</span></span><span class="crates num">32</span></div>
+        <div class="stage"><span class="n num">4</span><span><b>Osłona termiczna</b><span class="needs">Tafle szkła 24 · Stop kadłubowy 4 · Żywica plastikowa 6</span></span><span class="crates num">34</span></div>
+        <div class="stage"><span class="n num">5</span><span><b>Paliwo</b><span class="needs">Paliwo rakietowe 30</span></span><span class="crates num">30</span></div>
+        <div class="total"><span>Razem skrzyń</span><span class="num">162</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="gospodarka">
+    <div class="wrap">
+      <div class="head">
+        <span class="label">Serce gry</span>
+        <h2>Nie samotny wojownik, tylko zarządca</h2>
+        <p>Każda wioska ma swój przemysł, magazyn i elektrownię, a do tego czegoś jej brakuje. Na tych brakach i nadwyżkach opiera się cała rozgrywka. Wszystko widzisz oczami bohatera, a nie z góry jak w klasycznej strategii.</p>
+      </div>
+      <div class="roles">
+        <div class="role"><h3>Handel</h3><p>Kupujesz tanio tam, gdzie czegoś jest w nadmiarze, i sprzedajesz tam, gdzie tego brakuje. Każda sprzedana skrzynia rusza cenę.</p><p class="fact">25 towarów · ceny wracają do normy z połowicznym czasem 36 h</p></div>
+        <div class="role"><h3>Transport</h3><p>Kontrakty na dostawy i przewozy, własne ciężarówki z bagażnikami, eskorta karawan. Karawany jeżdżą po drogach według rozkładu i realnie przesuwają ceny.</p><p class="fact">karawana: 2 jeepy z działkami + ciężarówka z 12–30 skrzyniami</p></div>
+        <div class="role"><h3>Przemysł</h3><p>Zlecasz starszemu budowę hut, rafinerii, hut szkła, wytwórni kabli i elektroniki. Ładujesz surowce, odbierasz towary przetworzone.</p><p class="fact">8 rodzajów zakładów · 2 miejsca na zakłady w każdej wiosce</p></div>
+        <div class="role"><h3>Energia</h3><p>Fabryki bez prądu stoją. Farmy słoneczne pracują za dnia, wiatrowe przy wietrze, a elektrownie węglowe i agregaty diesla spalają paliwo.</p><p class="fact">wioska zużywa 25 kW · elektrownia węglowa daje 140 kW</p></div>
+        <div class="role"><h3>Obrona</h3><p>Bandyci napadają na wioski i karawany i żądają haraczu. Mur z pali zamieniasz w palisadę, a palisadę w kamienny mur z działkami i pomostami.</p><p class="fact">3 poziomy murów · do 6 działek na murach</p></div>
+        <div class="role"><h3>Komputer starszego</h3><p>W domu starszego każdej wioski stoi terminal: stany magazynów, bilans prądu z prognozą na dobę, handel, karawany, znane wioski i postęp Rydwanu.</p><p class="fact">5 ekranów · VILLAGE · POWER · TRADE · VILLAGES · CHARIOT</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="planeta">
+    <div class="wrap">
+      <div class="head">
+        <span class="label">Parametry planety</span>
+        <h2>Świat, który zawija się dookoła</h2>
+        <p>Cała planeta powstaje z jednego ziarna: te same współrzędne dają zawsze ten sam teren, te same wioski i te same ruiny. Na wschodzie i zachodzie świat się zawija, a na północy i południu kończy się lodową ścianą.</p>
+      </div>
+      <div class="readout">
+        <div class="cell"><span class="v num">120<span class="u">km</span></span><span class="k">obwód planety</span><span class="s">po 120 km marszu na wschód wracasz do domu</span></div>
+        <div class="cell"><span class="v num">60<span class="u">km</span></span><span class="k">od bieguna do bieguna</span><span class="s">czapy lodowe od 25 km, lodowa ściana przy 30 km</span></div>
+        <div class="cell"><span class="v num">7 200<span class="u">km²</span></span><span class="k">powierzchni</span><span class="s">110 450 regionów po 256 × 256 m</span></div>
+        <div class="cell"><span class="v num">24<span class="u">min</span></span><span class="k">doba w grze</span><span class="s">wschód, zachód, gwiazdy; 5 rodzajów pogody</span></div>
+        <div class="cell"><span class="v num">~130</span><span class="k">wiosek</span><span class="s">każda z nazwą, mieszkańcami, murem i przemysłem</span></div>
+        <div class="cell"><span class="v num">~1 300<span class="u">km</span></span><span class="k">dróg</span><span class="s">~180 odcinków wyznaczonych przez A* dookoła gór</span></div>
+        <div class="cell cyan"><span class="v num">~29 000</span><span class="k">jezior i stawów</span><span class="s">czyste, mętne i toksyczne</span></div>
+        <div class="cell"><span class="v num">~500</span><span class="k">szlaków na szczyty</span><span class="s">góry do ~170 m, śnieg od 115 m</span></div>
+        <div class="cell gold"><span class="v num">~32 000</span><span class="k">ruin obcych świątyń</span><span class="s">każda z kryptą i lochami w głąb</span></div>
+        <div class="cell gold"><span class="v num">~6 500</span><span class="k">rozbitych statków</span><span class="s">wnętrza strzeżone przez roboty</span></div>
+        <div class="cell"><span class="v num">~1 000</span><span class="k">jaskiń</span><span class="s">część połączona w systemy z dwoma wejściami</span></div>
+        <div class="cell hostile"><span class="v num">~19 500</span><span class="k">obozów bandytów</span><span class="s">z bossem i skrytką na łupy</span></div>
+      </div>
+      <p class="footnote">Liczby policzone z generatorów gry dla dwóch przykładowych światów (ziarna 12345 i 777). Każda nowa postać dostaje własny świat, więc wartości trochę się różnią.</p>
+
+      <div class="split">
+        <div>
+          <div class="head" style="margin-bottom: 20px">
+            <h3>Czym żyją wioski</h3>
+            <p style="font-size: 13px">Przemysł 127 wiosek w świecie o ziarnie 12345. Blisko domu jest więcej farm, dalej kopalń i pól naftowych.</p>
+          </div>
+          <div class="bars" id="industry"></div>
+        </div>
+        <div>
+          <div class="head" style="margin-bottom: 20px">
+            <h3>Pierścienie zagrożenia</h3>
+            <p style="font-size: 13px">Im dalej od Gridholm, tym groźniej. Każda wioska jest schronieniem, a wokół ruin robi się niebezpieczniej.</p>
+          </div>
+          <div class="rings" id="rings"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="dzicz">
+    <div class="wrap">
+      <div class="head">
+        <span class="label">Przygoda</span>
+        <h2>Poza murami</h2>
+        <p>Handel to jedno, ale bohater może też wyruszyć w dzicz. Trzeba tam jeść i pić, polować, rąbać drzewa, kopać rudę i robić narzędzia. Po świecie jeździ się terenówką Scout albo ciężarówką Mastodon, a na dachu można postawić działko.</p>
+      </div>
+      <div class="wilds">
+        <div class="wild">
+          <svg viewBox="0 0 64 64" fill="none" stroke="#ffd060" stroke-width="1.5" aria-hidden="true"><path d="M8 56h48M14 56V30h36v26M20 30V20h24v10M26 20v-8h12v8M28 56V42h8v14" /><path d="M10 56l4-4M50 56l4-4" stroke-opacity="0.5" /></svg>
+          <div><h3>Ruiny obcych świątyń</h3><p>Krzyżowe świątynie z okrągłym murem, obeliskami i wielkim pierścieniem na pylonach. Pod ziemią są lochy ze skrzyniami i strażnikami.</p></div>
+        </div>
+        <div class="wild">
+          <svg viewBox="0 0 64 64" fill="none" stroke="#5cc8ff" stroke-width="1.5" aria-hidden="true"><path d="M6 44l16-10 30-4 6 6-8 8-30 4z" /><path d="M22 34l2 14M52 30l-6-10M34 32v14" /><path d="M6 52h52" stroke="#2fe060" stroke-opacity="0.6" /></svg>
+          <div><h3>Rozbite statki</h3><p>Kadłuby wbite dziobem w ziemię. W środku są maszynownia, ładownia i mostek, a pilnują ich roboty, od zwiadowców po szturmowe konstrukty.</p></div>
+        </div>
+        <div class="wild">
+          <svg viewBox="0 0 64 64" fill="none" stroke="#2fe060" stroke-width="1.5" aria-hidden="true"><path d="M4 56L24 14l10 16 8-10 18 36z" /><path d="M24 56c0-10 4-16 8-16s8 6 8 16" /><path d="M20 24l4-10 4 6" stroke="#e4ffec" /></svg>
+          <div><h3>Góry i jaskinie</h3><p>Pasma górskie z oznakowanymi szlakami na szczyty. W ich zboczach są jaskinie z komorami, krętymi tunelami i kryształami.</p></div>
+        </div>
+        <div class="wild">
+          <svg viewBox="0 0 64 64" fill="none" stroke="#ffb347" stroke-width="1.5" aria-hidden="true"><path d="M8 52l14-24 14 24zM34 52l12-20 12 20z" /><path d="M28 52c0-4 2-7 4-7s4 3 4 7" /><path d="M32 45v-4" /></svg>
+          <div><h3>Bandyci</h3><p>Obozy z namiotami i skrytką, patrole, zasadzki z barykadami na drogach i rajdy pojazdów, których załogę da się zastrzelić przez szybę.</p></div>
+        </div>
+      </div>
+      <div class="bestiary" aria-label="Przeciwnicy">
+        <span class="tag h">Ravager · stada drapieżników</span>
+        <span class="tag h">Bramble · terytorialny olbrzym</span>
+        <span class="tag h">Leechwing · latający łowca</span>
+        <span class="tag h">Gnawer · gniazda gryzoni</span>
+        <span class="tag h">6 typów robotów RD</span>
+        <span class="tag h">strzelcy, siepacze i bossowie</span>
+        <span class="tag">2 pojazdy · 3 miejsca w każdym</span>
+        <span class="tag">głód, pragnienie, zmęczenie, udźwig</span>
+        <span class="tag">własny dom w Gridholm</span>
+      </div>
+    </div>
+  </section>
+
+  <section id="kierunek">
+    <div class="wrap">
+      <div class="head">
+        <span class="label">Kierunek rozwoju</span>
+        <h2>Dokąd zmierza Gridworld</h2>
+        <p>Docelowo: duży symulator ekonomiczno-strategiczny, w którym jeden bohater nadzoruje przepływ towarów między wioskami, a wyprawy w nieznane zasilają gospodarkę jego domu.</p>
+      </div>
+      <div class="road">
+        <div class="step done"><span class="st">Jest w grze</span><h3>Żywa gospodarka regionu</h3><p>Przemysł, magazyny, rynek, kontrakty, karawany, zakłady przetwórcze, elektrownie, obrona wiosek i komputer starszego.</p></div>
+        <div class="step"><span class="st">Następny krok</span><h3>Optymalizacja łańcuchów dostaw</h3><p>Planowanie tras konwojów, reagowanie na braki i nadwyżki, własna sieć transportowa, żeby do Twojej wioski trafiało jak najwięcej i jak najtaniej.</p></div>
+        <div class="step"><span class="st">W planach</span><h3>Ruiny jako źródło technologii</h3><p>Wyprawy do ruin i wraków po to, czego nie zrobi żadna fabryka: rzadkie materiały, artefakty i starożytne schematy, które odblokują nowe maszyny i części Rydwanu.</p></div>
+        <div class="step"><span class="st">W planach</span><h3>Pogoda, która ma znaczenie</h3><p>Burze uszkadzające dachy, deszcz spowalniający transport na drogach, chmury osłabiające farmy słoneczne. Pogoda już działa na niebie, teraz ma zacząć działać w gospodarce.</p></div>
+        <div class="step"><span class="st">W planach</span><h3>Tryb wieloosobowy</h3><p>Do 8 graczy na wspólnym serwerze ze wspólną gospodarką. Można mieszkać w tej samej wiosce albo rozwijać różne i handlować między sobą. Świat jest deterministyczny, więc wszyscy widzą to samo.</p></div>
+        <div class="step goal"><span class="st">Finał</span><h3>Start Rydwanu</h3><p>Ukończenie pięciu etapów budowy i lot z planety.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="graj">
+    <div class="wrap play">
+      <div>
+        <div class="head" style="margin-bottom: 20px">
+          <span class="label">Jak zagrać</span>
+          <h2>Uruchom u siebie</h2>
+          <p>Gra działa w przeglądarce na komputerze z myszą i klawiaturą. Najprościej kliknąć „Zagraj w przeglądarce” na górze strony. Można też pobrać kod i uruchomić grę lokalnie (potrzebny Node.js).</p>
+        </div>
+        <div class="term" role="region" aria-label="Polecenia do uruchomienia gry" tabindex="0">
+          <div class="cm"># rozpakuj pobrane archiwum, potem w jego folderze:</div>
+          <div><span class="pr">&gt;</span> npm install</div>
+          <div><span class="pr">&gt;</span> npm run dev</div>
+          <div class="cm"># na Windows wystarczy też dwuklik: start-gry.bat</div>
+        </div>
+      </div>
+      <div>
+        <div class="head" style="margin-bottom: 20px"><span class="label">Sterowanie</span></div>
+        <div class="keys">
+          <span><kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd></span><span>ruch; mysz rozgląda się, lewy przycisk strzela, prawy celuje</span>
+          <span><kbd>E</kbd></span><span>rozmowa, skrzynie, wsiadanie do pojazdu, praca przy drzewie i skale</span>
+          <span><kbd>I</kbd></span><span>plecak</span>
+          <span><kbd>R</kbd> <kbd>H</kbd></span><span>przeładowanie, apteczka</span>
+          <span><kbd>M</kbd></span><span>mapa świata</span>
+          <span><kbd>1</kbd> <kbd>2</kbd> <kbd>Q</kbd></span><span>broń z pleców, zmiana broni</span>
+          <span><kbd>V</kbd></span><span>widok z kabiny pojazdu</span>
+          <span><kbd>~</kbd></span><span>konsola deweloperska</span>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="wrap">
+  <span>GRIDWORLD v0.51.1 · Vite + TypeScript + three.js · autor: MrFischoeder</span>
+  <a href="https://github.com/MrFischoeder/Gridworld">github.com/MrFischoeder/Gridworld</a>
+</footer>
+
+<script>
+  // Industry of the 127 villages of world 12345 and the danger rings (numbers from the game's generators).
+  const industry = [['Kopalnia', 46], ['Farma', 22], ['Tartak', 19], ['Pola naftowe', 11], ['Rafineria', 11], ['Warsztat', 7], ['Złomowisko', 6], ['Łowisko', 5]];
+  const max = Math.max(...industry.map((r) => r[1]));
+  document.getElementById('industry').innerHTML = industry.map(([k, n]) =>
+    `<div class="bar"><span>${k}</span><span class="track"><span class="fill" style="display:block;width:${(n / max * 100).toFixed(1)}%"></span></span><span class="c num">${n}</span></div>`).join('');
+  const rings = [[0, 'pod murami Gridholm', '0 km'], [1, 'okolica', '0,6 km'], [2, '', '4 km'], [3, '', '8 km'], [4, '', '13 km'], [5, '', '19 km'], [6, '', '26 km'], [7, '', '34 km'], [8, 'dalekie pustkowia', '44 km']];
+  const col = (lv) => lv < 3 ? '#2fe060' : lv < 6 ? '#ffb347' : '#ff6a4a';
+  document.getElementById('rings').innerHTML = rings.map(([lv, name, d]) =>
+    `<div class="ring"><span class="lv num" style="color:${col(lv)}">${lv}</span><span style="display:grid;gap:3px"><span class="dots" style="width:${10 + lv * 11.25}%"></span>${name ? `<span style="font-size:11.5px;color:var(--text-dim)">${name}</span>` : ''}</span><span class="d num">od ${d}</span></div>`).join('');
+
+  // The hero: wireframe land rolling towards you, as the game draws it.
+  (() => {
+    const cv = document.getElementById('terrain'), g = cv.getContext('2d');
+    if (!g) return;
+    const still = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    let W = 0, H = 0, dpr = 1;
+    const size = () => { dpr = Math.min(2, window.devicePixelRatio || 1); W = cv.clientWidth; H = cv.clientHeight; cv.width = W * dpr; cv.height = H * dpr; };
+    const hgt = (x, z) => {
+      const m = Math.max(0, Math.sin(x * 0.045 + 1.3) * Math.cos(z * 0.03) - 0.2);
+      return Math.sin(x * 0.21 + z * 0.13) * 1.1 + Math.cos(x * 0.09 - z * 0.17) * 1.6 + m * m * 22;
+    };
+    const COLS = 44, ROWS = 46, S = 2;
+    let t = 0;
+    const draw = () => {
+      g.setTransform(dpr, 0, 0, dpr, 0, 0);
+      g.fillStyle = '#020904'; g.fillRect(0, 0, W, H);
+      const hz = H * 0.46, f = Math.min(W, 900) * 0.9, camY = 7.5, off = t % S;
+      const px = (x, y, z) => [W * 0.62 + x / z * f, hz - (y - camY) / z * f];
+      // horizon glow
+      const grd = g.createLinearGradient(0, hz - 80, 0, hz + 30);
+      grd.addColorStop(0, 'rgba(47,224,96,0)'); grd.addColorStop(1, 'rgba(47,224,96,0.12)');
+      g.fillStyle = grd; g.fillRect(0, hz - 80, W, 110);
+      const pts = [];
+      for (let r = 0; r < ROWS; r++) {
+        const z = 3 + r * S - off, row = [];
+        for (let c = 0; c <= COLS; c++) { const x = (c - COLS / 2) * S; row.push(px(x, hgt(x, z + t), z)); }
+        pts.push({ z, row });
+      }
+      g.lineWidth = 1;
+      for (let r = ROWS - 1; r >= 0; r--) {
+        const { z, row } = pts[r], a = Math.max(0, Math.min(1, 1.15 - z / (ROWS * S)));
+        // a dark fill under each row hides the lines behind the hills
+        if (r < ROWS - 1) {
+          const back = pts[r + 1].row;
+          g.beginPath(); g.moveTo(row[0][0], row[0][1]);
+          for (const p of row) g.lineTo(p[0], p[1]);
+          for (let c = back.length - 1; c >= 0; c--) g.lineTo(back[c][0], back[c][1]);
+          g.closePath(); g.fillStyle = '#020904'; g.fill();
+        }
+        g.strokeStyle = `rgba(47,224,96,${(a * 0.85).toFixed(3)})`;
+        g.beginPath(); g.moveTo(row[0][0], row[0][1]);
+        for (const p of row) g.lineTo(p[0], p[1]);
+        g.stroke();
+        if (r < ROWS - 1) {
+          const back = pts[r + 1].row;
+          g.beginPath();
+          for (let c = 0; c <= COLS; c++) { g.moveTo(row[c][0], row[c][1]); g.lineTo(back[c][0], back[c][1]); }
+          g.stroke();
+        }
+      }
+      // a dark veil on the left keeps the text readable
+      const veil = g.createLinearGradient(0, 0, W, 0);
+      veil.addColorStop(0, 'rgba(2,9,4,0.92)'); veil.addColorStop(0.5, 'rgba(2,9,4,0.55)'); veil.addColorStop(1, 'rgba(2,9,4,0.05)');
+      g.fillStyle = veil; g.fillRect(0, 0, W, H);
+    };
+    size(); draw();
+    window.addEventListener('resize', () => { size(); draw(); });
+    if (still) return;
+    let last = performance.now();
+    const loop = (now) => { t += Math.min(0.05, (now - last) / 1000) * 3.2; last = now; draw(); requestAnimationFrame(loop); };
+    requestAnimationFrame(loop);
+  })();
+</script>
+
+</body>
+</html>

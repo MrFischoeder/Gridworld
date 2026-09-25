@@ -24,6 +24,9 @@ Browser FPS in a green vector-grid style (wireframe on black, retro sci-fi / Tro
 - **Map format:** voxel maps are ordered op lists `{op:'room'|'solid', x,y,z,w,h,d}` (later ops override earlier). The future map editor will save this format — keep it.
 - **Multiplayer later** (up to 8 players, Node + WebSocket, authoritative server): keep world logic (`core/`, `gen/`) free of three.js and DOM, generators deterministic, game state serialisable.
 
+## Website
+- `docs/index.html` is the game's website (Polish, CRT style, self-contained); `.github/workflows/pages.yml` deploys it to GitHub Pages with the game build under `/play/` (Pages source: GitHub Actions). Keep its version and numbers roughly current when big features land.
+
 ## Layout
 - `core/` — pure: RNG/hash, voxel grids, meshing, noise.
 - `gen/` — pure generators: dungeon, stairs, village, doors placement, reachability; open world: `regions` (256 m regions, POIs), `terrain` (heightfield, flattening), `roads`, `ruins`, `trees`.

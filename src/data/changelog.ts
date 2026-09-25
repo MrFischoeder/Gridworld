@@ -4,6 +4,10 @@ export interface Change { v: string; date: string; title: string; notes: string[
 
 export const CHANGELOG: Change[] = [
   {
+    v: '0.51.1', date: '2026-09-25', title: 'The Gridworld website',
+    notes: ['Gridworld has a website: what the game is about, the numbers of the planet (its size, villages, roads, ruins, wrecks), the economy, the Chariot of the Ancients and where the game is heading. It also lets you play the game straight in the browser.'],
+  },
+  {
     v: '0.51.0', date: '2026-09-25', title: 'People in vehicles',
     notes: ['Whoever rides in a vehicle is now seen in it: you at the wheel when you drive, the raiders\' driver and gunner, the drovers and gunners of the caravans. Everyone who gets in takes the next free seat, so you can see at a glance how many are aboard (the vehicle panel counts them too). Every vehicle has three seats: the driver, a passenger and a gunner standing at the roof cannon.',
       'The Mastodon\'s cab has real windows now, and the Scout\'s roll cage is taller, with a steering wheel in front of the driver.',
