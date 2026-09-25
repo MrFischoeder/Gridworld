@@ -13,7 +13,7 @@ import { dropCrystal, dropPickup } from './loot';
 import { saveChar, gainXp, armoured } from '../character';
 import { logLine, showToast } from '../ui/hud';
 import { onKill, onCampCleared } from './quests';
-import { driving, refreshParts as refreshPartsOf, damageVehicle } from './vehicles';
+import { driving, refreshParts as refreshPartsOf, damageVehicle, rayVehicle, seatPoint } from './vehicles';
 import { hurtEngine } from '../data/vehicles';
 import type { SpawnEnv } from './creatures';
 import { mayspawn, BANDIT_COST } from './threat';
@@ -120,7 +120,8 @@ function fire(b: Bandit) {
 }
 /** A bolt from `muzzle` at the player (with spread for distance and the player's speed). */
 export function fireBolt(muzzle: THREE.Vector3, dmg: number, color = BANDIT) {
-  const target = V(G.pos.x, G.pos.y + 1.1, G.pos.z), dist = target.distanceTo(muzzle);
+  // at you: at the driver's seat when you are driving (the body or the windows decide who takes it, updateBolts)
+  const target = driving.v ? seatPoint(driving.v, 0) : V(G.pos.x, G.pos.y + 1.1, G.pos.z), dist = target.distanceTo(muzzle);
   const spread = 0.035 * dist + Math.hypot(G.vel.x, G.vel.z) * 0.1;
   target.x += (Math.random() - 0.5) * spread; target.y += (Math.random() - 0.5) * spread * 0.5; target.z += (Math.random() - 0.5) * spread;
   const v = target.sub(muzzle).normalize().multiplyScalar(30);
@@ -134,23 +135,30 @@ export function updateBolts(dt: number) {
   const body0 = V(G.pos.x, G.pos.y + 0.3, G.pos.z), body1 = V(G.pos.x, G.pos.y + 1.6, G.pos.z);
   for (let i = bolts.length - 1; i >= 0; i--) {
     const o = bolts[i]; o.life -= dt;
-    const step = o.v.length() * dt, walled = !!G.rayBlock && G.rayBlock(o.p, o.v.clone().normalize(), step) < step; // fast bolts skip thin walls otherwise
+    const step = o.v.length() * dt, dir = o.v.clone().normalize(), walled = !!G.rayBlock && G.rayBlock(o.p, dir, step) < step; // fast bolts skip thin walls otherwise
+    const prev = o.p.clone();
     o.p.addScaledVector(o.v, dt); o.m.position.copy(o.p);
     let dead = o.life <= 0 || walled || !emptyAt(o.p);
-    // distance from the bolt to the player's body (a vertical segment)
-    const cy = Math.max(body0.y, Math.min(body1.y, o.p.y)), hitD = Math.hypot(o.p.x - G.pos.x, o.p.y - cy, o.p.z - G.pos.z);
-    const v = driving.v, hitR = v ? Math.max(v.spec.width, v.spec.height) * 0.6 : 0.45;
-    if (!dead && hitD < hitR && !foeRules.playerSafe()) {
-      dead = true;
-      // a closed cab stops every bolt; in an open one about half of them hit the vehicle instead of the driver
-      if (v && (v.spec.enclosed || Math.random() < 0.45)) {
-        const p = v.st.parts, r = Math.random();
-        if (r < 0.15) hurtEngine(p, 3);
-        else if (r < 0.3) { const k = (Math.random() * p.wheels.length) | 0; if (p.wheels[k] > 0) p.wheels[k] = Math.max(0, p.wheels[k] - 4); }
-        refreshPartsOf(v);
-        damageVehicle(v, o.dmg);
-        if (vehicleWarnT <= 0 && driving.v) { logLine('Your vehicle is taking fire!'); vehicleWarnT = 4; }
-      } else { G.hp -= armoured(o.dmg); G.dmgFlash = 0.35; }
+    const v = driving.v;
+    if (!dead && v && !foeRules.playerSafe()) {
+      // in a vehicle: the bolt hits whatever it meets first, the body or you through a window / over an open side
+      const h = rayVehicle(v, prev, dir, step);
+      if (h) {
+        dead = true; o.p.copy(prev).addScaledVector(dir, h.t);
+        if (h.seat === 0) { G.hp -= armoured(o.dmg); G.dmgFlash = 0.35; }
+        else if (h.seat < 0) {
+          const p = v.st.parts, r = Math.random();
+          if (r < 0.15) hurtEngine(p, 3);
+          else if (r < 0.3) { const k = (Math.random() * p.wheels.length) | 0; if (p.wheels[k] > 0) p.wheels[k] = Math.max(0, p.wheels[k] - 4); }
+          refreshPartsOf(v);
+          damageVehicle(v, o.dmg);
+          if (vehicleWarnT <= 0 && driving.v) { logLine('Your vehicle is taking fire!'); vehicleWarnT = 4; }
+        }
+      }
+    } else if (!dead && !foeRules.playerSafe()) {
+      // on foot: distance from the bolt to the player's body (a vertical segment)
+      const cy = Math.max(body0.y, Math.min(body1.y, o.p.y)), hitD = Math.hypot(o.p.x - G.pos.x, o.p.y - cy, o.p.z - G.pos.z);
+      if (hitD < 0.45) { dead = true; G.hp -= armoured(o.dmg); G.dmgFlash = 0.35; }
     }
     if (dead) { burst(o.p, BANDIT, 6, 0.35); scene.remove(o.m); o.m.geometry.dispose(); bolts.splice(i, 1); }
   }

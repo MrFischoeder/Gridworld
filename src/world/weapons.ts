@@ -5,7 +5,7 @@ import { G } from '../game';
 import { addFx, burst } from './fx';
 import { rayWorld } from './player';
 import { foes, damageFoe } from './enemies';
-import { rayBarrier, hurtBarrier } from './raiders';
+import { rayBarrier, hurtBarrier, rayRaider, hurtCrew, type Raider } from './raiders';
 import { el } from '../ui/hud';
 import { BLASTER } from '../data/weapons';
 import { BLADE, STAMINA, BURN } from '../data/survival';
@@ -142,11 +142,16 @@ export function animateVM(dt: number, moving: boolean) {
 function shoot() {
   const o = camera.position.clone(), d = new THREE.Vector3(); camera.getWorldDirection(d);
   const range = G.gun.range;
-  let tHit = rayWorld(o, d, range), hitT = null;
+  let tHit = rayWorld(o, d, range), hitT = null, seat = -1;
   for (const t of foes()) {
+    if ('kind' in t && t.kind === 'raider') { // a vehicle: its body, or the crew through the windows
+      const h = rayRaider(t as Raider, o, d, tHit);
+      if (h) { tHit = h.t; hitT = t; seat = h.seat; }
+      continue;
+    }
     const rr = t.r || 0.6, oc = o.clone().sub(t.g.position), b = oc.dot(d), c = oc.lengthSq() - rr * rr, disc = b * b - c;
     if (disc < 0) continue; const tt = -b - Math.sqrt(disc);
-    if (tt > 0 && tt < tHit) { tHit = tt; hitT = t; }
+    if (tt > 0 && tt < tHit) { tHit = tt; hitT = t; seat = -1; }
   }
   const bar = rayBarrier(o, d, tHit); // a roadblock in the way takes the shot
   if (bar) { tHit = bar.t; hitT = null; hurtBarrier(bar.p, G.gun.dmg * G.S.bm); }
@@ -154,7 +159,7 @@ function shoot() {
   const gun = V(0.24 * (1 - aimK), -0.2 + aimK * 0.1, -0.75); camera.localToWorld(gun);
   addFx(new THREE.Line(new THREE.BufferGeometry().setFromPoints([gun, end]), add(hitT ? 0xffd27a : 0x9dffb4)), 0.12);
   burst(end, hitT ? 0xffb347 : 0x3dff6e, hitT ? 10 : 6, hitT ? 0.7 : 0.35);
-  if (hitT) damageFoe(hitT, G.gun.dmg * G.S.bm);
+  if (hitT) { if (seat >= 0) hurtCrew(hitT as Raider, seat, G.gun.dmg * G.S.bm); else damageFoe(hitT, G.gun.dmg * G.S.bm); }
   makeNoise(camera.position, G.gun.noise);
 }
 /** A blade swing: hits hard while you have the stamina for it; exhausted it is weak (and slow, see attack()). */

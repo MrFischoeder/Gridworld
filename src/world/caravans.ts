@@ -41,7 +41,9 @@ export const plundered = (id: string) => !!G.char.caravans['lost:' + id];
 /** How much the drovers knock off their prices for you after you saved them from a raid. */
 export const savedBy = (id: string) => !!G.char.caravans['saved:' + id];
 export const CARAVAN_RAID = { chance: 0.12, perDanger: 0.04, minDanger: 1.2, drain: 0.45, radius: 45 };
-interface Wagon { c: Caravan; w: number; road: Road; g: THREE.Group; turret: THREE.Group | null; x: number; z: number; yaw: number; cool: number }
+/** The drovers and gunners riding with a caravan. */
+const CREW = 0xd8c890;
+interface Wagon { c: Caravan; w: number; road: Road; g: THREE.Group; turret: THREE.Group | null; gunner: THREE.Group | null; x: number; z: number; yaw: number; cool: number }
 const wagons = new Map<string, Wagon>();
 let scanT = 0;
 const edgeByKey = new Map<string, Edge>();
@@ -74,9 +76,9 @@ export function updateCaravans(dt: number) {
         if (seen.has(key)) continue;
         seen.add(key);
         if (!wagons.has(key)) {
-          const spec = CONVOY[w], m = convoyModel(spec.model, spec.gun), g = new THREE.Group();
+          const spec = CONVOY[w], m = convoyModel(spec.model, spec.gun, CREW), g = new THREE.Group();
           g.add(m.g); g.visible = false; scene.add(g);
-          wagons.set(key, { c, w, road, g, turret: m.turret, x: 0, z: 0, yaw: 0, cool: Math.random() });
+          wagons.set(key, { c, w, road, g, turret: m.turret, gunner: m.gunner, x: 0, z: 0, yaw: 0, cool: Math.random() });
         }
       }
     }
@@ -100,7 +102,7 @@ export function updateCaravans(dt: number) {
     // a wagon rolling into you shoves you aside
     const dx = G.pos.x - x, dz = G.pos.z - z, u = dx * fx + dz * fz, v = dx * fz - dz * fx, { hl, hw } = SIZE[wg.w];
     if (Math.abs(u) < hl + 0.3 && Math.abs(v) < hw + 0.3 && G.pos.y < (hf + hb) / 2 + 3.5) { const push = (v < 0 ? -1 : 1) * (hw + 0.35) - v; G.pos.x += fz * push; G.pos.z -= fx * push; }
-    if (wg.turret) aimGun(wg, dt);
+    if (wg.turret) { aimGun(wg, dt); if (wg.gunner) wg.gunner.rotation.y = wg.turret.rotation.y; }
     wg.g.position.set(x, (hf + hb) / 2, z); wg.g.rotation.set(0, 0, 0); wg.g.rotateY(yaw); wg.g.rotateX(-Math.atan2(hf - hb, 5));
   }
 }

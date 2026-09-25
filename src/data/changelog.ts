@@ -4,6 +4,13 @@ export interface Change { v: string; date: string; title: string; notes: string[
 
 export const CHANGELOG: Change[] = [
   {
+    v: '0.51.0', date: '2026-09-25', title: 'People in vehicles',
+    notes: ['Whoever rides in a vehicle is now seen in it: you at the wheel when you drive, the raiders\' driver and gunner, the drovers and gunners of the caravans. Everyone who gets in takes the next free seat, so you can see at a glance how many are aboard (the vehicle panel counts them too). Every vehicle has three seats: the driver, a passenger and a gunner standing at the roof cannon.',
+      'The Mastodon\'s cab has real windows now, and the Scout\'s roll cage is taller, with a steering wheel in front of the driver.',
+      'Shots go where they are aimed. A shot through a window or over the side of an open Scout hits the person inside; anywhere else it hits the vehicle. This works both ways: bandits aim at you behind the wheel, and a closed cab only protects the parts of you that are behind metal.',
+      'Kill a raider vehicle\'s gunner and its cannon falls silent. Kill the driver and it rolls to a stop, the rest of the crew bails out, and the vehicle is left almost whole for you to take.'],
+  },
+  {
     v: '0.50.0', date: '2026-09-25', title: 'The village computer',
     notes: ['Every elder\'s hall now has a computer on a desk by the shelves. Press E in front of it to log on.',
       'VILLAGE: what the village makes and wants, the condition and output of its site, how full the storehouse is and when the convoy leaves, the works and what they are doing, the defences, and the last and next raid.',

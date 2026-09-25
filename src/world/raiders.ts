@@ -2,15 +2,14 @@
 import * as THREE from 'three';
 import { scene, V } from './render';
 import { G, W } from '../game';
-import { makeFigure } from './npc';
 import { PropBatch } from './props';
 import { foeRules } from './enemies';
 import { rayWorld } from './player';
 import { burst } from './fx';
 import { dropCrystal } from './loot';
 import { spawnBandit, alert, fireBolt, BANDIT, type Bandit } from './bandits';
-import { spawnAIVehicle, releaseAI, removeVehicle, steerVehicle, bodyToWorld, driving, refreshParts, damageVehicle, type Vehicle } from './vehicles';
-import { VEHICLES, freshParts, wheelCount, hurtEngine, type VehicleModel } from '../data/vehicles';
+import { spawnAIVehicle, releaseAI, removeVehicle, steerVehicle, bodyToWorld, driving, refreshParts, damageVehicle, seatRider, unseat, seatPoint, rayVehicle, type Vehicle } from './vehicles';
+import { VEHICLES, SEATS, freshParts, wheelCount, hurtEngine, type VehicleModel } from '../data/vehicles';
 import { RELIC_KEYS } from '../data/items';
 import { putItems } from '../inventory';
 import { clearSpot } from '../gen/vehicles';
@@ -32,25 +31,23 @@ export interface Raider {
   v: Vehicle; g: THREE.Group; p: THREE.Vector3; r: number;
   hp: number; maxHp: number; level: number;
   fireT: number; burst: number; orbit: number; ramT: number; plan: 'chase' | 'circle' | 'ram' | 'back' | 'unstuck'; planT: number;
-  crew: THREE.Group[];
+  /** Hit points of whoever sits in each seat (0: empty or dead). Shots through the windows hit them (`rayRaider`). */
+  crewHp: number[];
 }
 export const raiders: Raider[] = [];
 let raidT = 25;
 
-function crewFigure(v: Vehicle, x: number, y: number, z: number, standing: boolean) {
-  const f = makeFigure(BANDIT, 'drive'); // the driver at the wheel, the gunner on the cannon's handles
-  v.group.add(f.g); f.g.position.set(x, y - (standing ? 0 : 0.55), z);
-  if (!standing) { f.legL.rotation.x = f.legR.rotation.x = -1.4; }
-  return f.g;
-}
+const gunSeat = (m: VehicleModel) => SEATS[m].findIndex((s) => s.gun);
 function spawnRaider(model: VehicleModel, x: number, z: number, heading: number, level: number): Raider {
   const parts = freshParts(model); parts.gun = true;
   const v = spawnAIVehicle({ id: 'raider-' + Math.random().toString(36).slice(2, 8), model, x, z, heading, parts, trunk: { items: Array(VEHICLES[model].trunk).fill(null), gold: 0 } });
-  const s = v.spec, crew = [crewFigure(v, s.eye[0], s.eye[1] - 1.55, s.eye[2], false), crewFigure(v, s.mount[0], s.mount[1], s.mount[2] - 0.7, true)];
+  const s = v.spec, crewHp = SEATS[model].map(() => 0);
+  // a driver and a gunner; a Mastodon carries a third man beside the driver
+  for (const i of [0, gunSeat(model), ...(model === 'mastodon' ? [1] : [])]) { seatRider(v, i, 'raider', BANDIT); crewHp[i] = Math.round(5 * (1 + level * 0.35)); }
   const g = new THREE.Group(); scene.add(g);
   const hp = Math.round((model === 'mastodon' ? 60 : 30) * (1 + level * 0.3));
   const r: Raider = { kind: 'raider', v, g, p: new THREE.Vector3(), r: Math.max(s.length, s.width) * 0.45, hp, maxHp: hp, level,
-    fireT: 2, burst: 0, orbit: Math.random() < 0.5 ? 1 : -1, ramT: 0, plan: 'chase', planT: 0, crew };
+    fireT: 2, burst: 0, orbit: Math.random() < 0.5 ? 1 : -1, ramT: 0, plan: 'chase', planT: 0, crewHp };
   raiders.push(r);
   logLine('Engines behind you...');
   return r;
@@ -93,7 +90,7 @@ function driveRaider(r: Raider, dt: number) {
   // body centre for weapons and the hit sphere
   r.p.set(v.st.x, v.y + v.spec.height * 0.5, v.st.z); r.g.position.copy(r.p);
   // the gunner swings the turret round and fires in bursts
-  if (v.turret) {
+  if (v.turret && r.crewHp[gunSeat(v.st.model)] > 0) {
     v.turret.rotation.y = Math.atan2(dx, dz) - v.st.heading;
     const muzzle = V(0, 0.18, 1.3); v.turret.localToWorld(muzzle);
     const to = V(G.pos.x, G.pos.y + 1.1, G.pos.z).sub(muzzle), dist = to.length();
@@ -120,16 +117,10 @@ function driveRaider(r: Raider, dt: number) {
 }
 /** Shot to pieces: the crew bails out and fights on foot; the vehicle is left behind as a claimable wreck. */
 function wreckRaider(r: Raider) {
-  const v = r.v, group: Bandit[] = [];
+  const v = r.v;
   burst(r.p, BANDIT, 50, 2.5);
   showToast('Raider vehicle disabled!');
-  for (const c of r.crew) v.group.remove(c);
-  const lv = r.level;
-  for (let i = 0; i < (v.st.model === 'mastodon' ? 3 : 2); i++) {
-    const [x, z] = bodyToWorld(v, (i % 2 ? 1 : -1) * (v.spec.width / 2 + 1.2), -i);
-    const b = spawnBandit(i === 1 ? 'bruiser' : 'gunner', V(x, env ? env.terrain.heightAt(x, z) + 0.9 : r.p.y, z), lv, group);
-    b.sight = 60; alert(b);
-  }
+  bailOut(r);
   // what is left: a battered engine, a wrecked wheel or two, maybe still the gun; some loot in the back
   const p = v.st.parts;
   p.engine = 5 + Math.floor(Math.random() * 25);
@@ -145,6 +136,47 @@ function wreckRaider(r: Raider) {
   for (let i = 0; i < 4; i++) dropCrystal(r.p);
   gainXp(30);
   onKill('bandit');
+  scene.remove(r.g); raiders.splice(raiders.indexOf(r), 1);
+}
+/** Whoever is still alive in the vehicle jumps out and fights on foot. */
+function bailOut(r: Raider) {
+  const v = r.v, group: Bandit[] = [];
+  let n = 0;
+  r.crewHp.forEach((hp, i) => {
+    unseat(v, i);
+    if (hp <= 0) return;
+    const [x, z] = bodyToWorld(v, (n % 2 ? 1 : -1) * (v.spec.width / 2 + 1.2), -n);
+    const b = spawnBandit(n === 1 ? 'bruiser' : 'gunner', V(x, env ? env.terrain.heightAt(x, z) + 0.9 : r.p.y, z), r.level, group);
+    b.sight = 60; alert(b); n++;
+  });
+  r.crewHp.fill(0);
+}
+/** Where a shot from o along d meets this raider: its body (seat -1) or one of the crew through a window. */
+export const rayRaider = (r: Raider, o: THREE.Vector3, d: THREE.Vector3, max: number) => rayVehicle(r.v, o, d, max);
+/**
+ * A shot hit one of the crew. A dead gunner leaves the cannon silent; a dead driver lets the vehicle roll to a stop
+ * and the rest of the crew bail out: the vehicle is left whole (with the damage it had) for you to claim.
+ */
+export function hurtCrew(r: Raider, seat: number, dmg: number) {
+  if (r.crewHp[seat] <= 0) { hurtRaider(r, dmg); return; }
+  const at = seatPoint(r.v, seat);
+  r.crewHp[seat] -= dmg; G.hitFlash = 0.15;
+  burst(at, BANDIT, 8, 0.5);
+  if (r.plan === 'back' || r.plan === 'chase') { r.plan = 'circle'; r.planT = 2; }
+  if (r.crewHp[seat] > 0) return;
+  r.crewHp[seat] = 0; unseat(r.v, seat);
+  burst(at, BANDIT, 24, 0.9); dropCrystal(at); gainXp(8); onKill('bandit');
+  if (seat === 0 || r.crewHp.every((h) => h <= 0)) abandonRaider(r);
+  else logLine('The gunner is down.');
+}
+/** The driver is dead: the others bail out, and the vehicle is yours to take, barely scratched. */
+function abandonRaider(r: Raider) {
+  showToast(r.crewHp.some((h) => h > 0) ? 'Driver down! The crew bails out.' : 'The crew is dead.');
+  bailOut(r);
+  const t = r.v.st.trunk; t.gold = 10 + Math.floor(Math.random() * 40);
+  putItems(t.items, 'scrap', 1 + Math.floor(Math.random() * 3));
+  if (Math.random() < 0.4) putItems(t.items, 'medkit', 1);
+  releaseAI(r.v); gainXp(15);
   scene.remove(r.g); raiders.splice(raiders.indexOf(r), 1);
 }
 export function hurtRaider(r: Raider, dmg: number) {

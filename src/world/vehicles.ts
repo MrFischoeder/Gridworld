@@ -3,11 +3,11 @@ import * as THREE from 'three';
 import { scene, camera, V, GRID } from './render';
 import { G } from '../game';
 import { PropBatch } from './props';
-import { VEHICLES, vehicleTitle, freshParts, upgradeParts, immobile, partPerformance, resaleValue, FUEL_BURN, hurtEngine, engineBoost, type VehicleSpec, type VehicleModel } from '../data/vehicles';
+import { VEHICLES, SEATS, HULL_BOXES, vehicleTitle, freshParts, upgradeParts, immobile, partPerformance, resaleValue, FUEL_BURN, hurtEngine, engineBoost, type VehicleSpec, type VehicleModel } from '../data/vehicles';
 import { PART_PRICE, PART_BUYBACK } from '../data/items';
 import { rayWorld } from './player';
 import { foes, damageFoe } from './enemies';
-import { rayBarrier, hurtBarrier } from './raiders';
+import { rayBarrier, hurtBarrier, rayRaider, hurtCrew, type Raider } from './raiders';
 import { addFx, burst } from './fx';
 import { makeNoise } from './noise';
 import { add as addMat, edgesOf, lineMat } from './render';
@@ -23,8 +23,11 @@ import { collides } from './player';
 import { openTransfer } from '../ui/transfer';
 import { openService } from '../ui/service';
 import { showToast, logLine, el } from '../ui/hud';
+import { makeFigure, type Figure } from './npc';
 
 const BODY = 0x5cff8a, DETAIL = GRID, GLASS = 0x2a9a50;
+/** You, as others see you in a vehicle. */
+const YOU = 0xd8ffe8;
 
 export interface Vehicle {
   st: VehicleState; spec: VehicleSpec; group: THREE.Group;
@@ -37,8 +40,12 @@ export interface Vehicle {
   odo: number;
   /** Driven by bandits (world/raiders.ts): not claimable until they are beaten. */
   ai?: boolean;
+  /** Who sits in each seat (`SEATS[model]`), drawn as a figure; null = empty. */
+  riders: (Rider | null)[];
   speed: number; spin: number; steer: number; y: number; pitch: number; roll: number;
 }
+/** Someone aboard: 'you', a raider crewman, ... (multiplayer will add other players). */
+export interface Rider { who: string; fig: Figure }
 export interface WorldHooks {
   height(x: number, z: number): number;
   /** Depth of standing water at a point (0 on dry land). */
@@ -82,22 +89,38 @@ function scoutBody(pb: PropBatch) {
   // fenders over the wheels
   for (const z of VEHICLES.scout.axles) for (const sx of [-1, 1]) box(pb, sx * 0.78, 0.98, z - 0.58, sx * 1.08, 1.1, z + 0.58);
   // seats
-  for (const x of [-0.42, 0.42]) { box(pb, x - 0.26, 1.0, -0.45, x + 0.26, 1.18, 0.1, DETAIL); box(pb, x - 0.26, 1.0, -0.6, x + 0.26, 1.62, -0.45, DETAIL); }
-  // roll cage and windshield frame (tubes are lines)
-  const cz0 = 0.72, cz1 = -1.25, top = 1.82;
-  for (const x of [-0.8, 0.8]) { pb.line(BODY, [x, 1.0, cz0], [x, top, cz0 - 0.15], [x, top, cz1 + 0.1], [x, 1.0, cz1]); pb.line(BODY, [x, 1.2, 1.0], [x, 1.55, 0.8]); }
+  for (const x of [-0.42, 0.42]) { box(pb, x - 0.26, 0.95, -0.45, x + 0.26, 1.02, 0.1, DETAIL); box(pb, x - 0.26, 0.95, -0.6, x + 0.26, 1.55, -0.45, DETAIL); }
+  steeringWheel(pb, VEHICLES.scout.eye[0], SEATS.scout[0]);
+  // roll cage and windshield frame (tubes are lines), tall enough for the people sitting under it
+  const cz0 = 0.72, cz1 = -1.25, top = 2.1;
+  for (const x of [-0.8, 0.8]) { pb.line(BODY, [x, 1.0, cz0], [x, top, cz0 - 0.15], [x, top, cz1 + 0.1], [x, 1.0, cz1]); pb.line(BODY, [x, 1.2, 1.0], [x, 1.7, 0.75]); }
   pb.line(BODY, [-0.8, top, cz0 - 0.15], [0.8, top, cz0 - 0.15]); pb.line(BODY, [-0.8, top, cz1 + 0.1], [0.8, top, cz1 + 0.1]);
   pb.line(BODY, [-0.8, top, cz1 + 0.1], [0.8, top, cz0 - 0.15]);
-  pb.line(GLASS, [-0.8, 1.2, 1.0], [0.8, 1.2, 1.0], [0.8, 1.55, 0.8], [-0.8, 1.55, 0.8], [-0.8, 1.2, 1.0]);
+  pb.line(GLASS, [-0.8, 1.2, 1.0], [0.8, 1.2, 1.0], [0.8, 1.7, 0.75], [-0.8, 1.7, 0.75], [-0.8, 1.2, 1.0]);
   // cargo bed walls (the trunk) and a spare wheel mount
   box(pb, -0.82, 1.0, -1.95, 0.82, 1.28, -1.85); box(pb, -0.82, 1.0, -1.95, -0.72, 1.28, -0.75); box(pb, 0.72, 1.0, -1.95, 0.82, 1.28, -0.75);
   box(pb, -0.3, 0.7, -2.12, 0.3, 1.3, -1.95, DETAIL);
+}
+/** A steering wheel in front of the driver's seat, where the driver's hands are. */
+function steeringWheel(pb: PropBatch, x: number, s: { y: number; z: number }) {
+  const cy = s.y + 0.3, cz = s.z + 0.44, r = 0.19, pts: number[][] = [];
+  for (let i = 0; i <= 12; i++) { const a = i / 12 * Math.PI * 2; pts.push([x + Math.cos(a) * r, cy + Math.sin(a) * r * 0.8, cz + Math.sin(a) * r * 0.6]); }
+  pb.line(DETAIL, ...pts);
+  pb.line(DETAIL, [x, cy, cz], [x, cy - 0.3, cz + 0.3]); // the column
 }
 function mastodonBody(pb: PropBatch) {
   // chassis beam
   box(pb, -0.65, 0.95, -4.8, 0.65, 1.35, 4.4, DETAIL);
   // cab with a raked windscreen
-  pb.solid8([[-1.72, 1.25, 2.1], [1.72, 1.25, 2.1], [1.72, 1.25, 4.75], [-1.72, 1.25, 4.75]], [[-1.65, 3.25, 2.1], [1.65, 3.25, 2.1], [1.65, 3.25, 4.15], [-1.65, 3.25, 4.15]], BODY);
+  // (built round open windows, so you see who sits inside: body below the sills, pillars, back wall, roof with a hatch)
+  box(pb, -1.72, 1.25, 2.1, 1.72, 2.3, 4.75);
+  box(pb, -1.72, 2.3, 2.1, 1.72, 3.08, 2.25);
+  for (const [x0, x1] of [[-1.72, -1.5], [1.5, 1.72]]) {
+    box(pb, x0, 2.3, 2.25, x1, 3.08, 2.4);
+    pb.solid8([[x0, 2.3, 3.9], [x1, 2.3, 3.9], [x1, 2.3, 4.75], [x0, 2.3, 4.75]], [[x0, 3.08, 3.9], [x1, 3.08, 3.9], [x1, 3.08, 4.2], [x0, 3.08, 4.2]], BODY);
+  }
+  pb.solid8([[-0.08, 2.3, 4.45], [0.08, 2.3, 4.45], [0.08, 2.3, 4.75], [-0.08, 2.3, 4.75]], [[-0.08, 3.08, 4.12], [0.08, 3.08, 4.12], [0.08, 3.08, 4.22], [-0.08, 3.08, 4.22]], BODY);
+  for (const [x0, z0, x1, z1] of [[-1.72, 2.1, -0.45, 4.2], [0.45, 2.1, 1.72, 4.2], [-0.45, 2.95, 0.45, 4.2], [-0.45, 2.1, 0.45, 2.25]]) box(pb, x0, 3.08, z0, x1, 3.25, z1);
   // windows: split windscreen and side windows
   for (const [a, b] of [[-1.5, -0.08], [0.08, 1.5]]) pb.line(GLASS, [a, 2.35, 4.58], [b, 2.35, 4.58], [b, 3.08, 4.2], [a, 3.08, 4.2], [a, 2.35, 4.58]);
   for (const x of [-1.73, 1.73]) pb.line(GLASS, [x, 2.3, 2.4], [x, 2.3, 3.9], [x, 3.0, 3.9], [x, 3.0, 2.4], [x, 2.3, 2.4]);
@@ -109,6 +132,9 @@ function mastodonBody(pb: PropBatch) {
   pb.line(BODY, [-1.15, 2.6, 5.05], [1.15, 2.6, 5.05]);
   // exhaust stack
   box(pb, 1.45, 1.4, 1.75, 1.7, 4.3, 2.0, DETAIL);
+  // the gunner's hatch in the roof, and the wheel
+  pb.line(DETAIL, [-0.45, 3.26, 2.25], [0.45, 3.26, 2.25], [0.45, 3.26, 2.95], [-0.45, 3.26, 2.95], [-0.45, 3.26, 2.25]);
+  steeringWheel(pb, VEHICLES.mastodon.eye[0], SEATS.mastodon[0]);
   // cargo box with panel seams (the trunk)
   box(pb, -1.78, 1.45, -4.95, 1.78, 3.4, 1.8);
   for (let z = -3.65; z < 1.8; z += 1.3) for (const x of [-1.79, 1.79]) pb.line(DETAIL, [x, 1.45, z], [x, 3.4, z]);
@@ -123,14 +149,20 @@ function mastodonBody(pb: PropBatch) {
  * A vehicle model with nothing to drive (the trucks and jeeps of the caravans, world/caravans.ts): body, wheels and,
  * if asked, the roof cannon (returned as `turret` so it can turn). Origin on the ground, facing +z.
  */
-export function convoyModel(model: VehicleModel, cannon: boolean): { g: THREE.Group; turret: THREE.Group | null } {
+export function convoyModel(model: VehicleModel, cannon: boolean, crew?: number): { g: THREE.Group; turret: THREE.Group | null; gunner: THREE.Group | null } {
   const spec = VEHICLES[model], g = new THREE.Group(), pb = new PropBatch();
   if (model === 'scout') scoutBody(pb); else mastodonBody(pb);
   g.add(pb.build());
   for (const z of spec.axles) for (const sx of [-1, 1]) { const w = wheelModel(model).clone(); w.position.set(sx * spec.track, spec.wheelR, z); g.add(w); }
   let turret: THREE.Group | null = null;
   if (cannon) { turret = turretModel(); turret.position.set(...spec.mount); g.add(turret); }
-  return { g, turret };
+  // the crew: a driver, and a gunner at the cannon
+  let gunner: THREE.Group | null = null;
+  if (crew !== undefined) {
+    g.add(seatFigure(model, 0, crew).g);
+    if (cannon) { gunner = seatFigure(model, SEATS[model].findIndex((x) => x.gun), crew).g; g.add(gunner); }
+  }
+  return { g, turret, gunner };
 }
 function makeVehicle(st: VehicleState, claimed = true): Vehicle {
   const spec = VEHICLES[st.model], group = new THREE.Group(), pb = new PropBatch();
@@ -148,10 +180,77 @@ function makeVehicle(st: VehicleState, claimed = true): Vehicle {
   st.parts ??= freshParts(st.model); // saves from before vehicles had parts
   upgradeParts(st.model, st.parts);
   scene.add(group);
-  const v: Vehicle = { st, spec, group, claimed, wheels, turret: null, odo: 0, speed: 0, spin: 0, steer: 0, y: 0, pitch: 0, roll: 0 };
+  const v: Vehicle = { st, spec, group, claimed, wheels, turret: null, odo: 0, riders: SEATS[st.model].map(() => null), speed: 0, spin: 0, steer: 0, y: 0, pitch: 0, roll: 0 };
   refreshParts(v);
   pose(v);
   return v;
+}
+
+// ---------- people aboard ----------
+/**
+ * Put someone in seat i, drawn there: sitting with the legs forward (the driver's hands on the wheel), or the gunner
+ * standing at the roof cannon, turning with it. Returns the figure.
+ */
+export function seatRider(v: Vehicle, i: number, who: string, color: number): Figure {
+  unseat(v, i);
+  const fig = seatFigure(v.st.model, i, color);
+  v.group.add(fig.g);
+  v.riders[i] = { who, fig };
+  if (v === driving.v && driving.cockpit && who === 'you') fig.g.visible = false;
+  return fig;
+}
+/** A figure posed in seat i of a model (body coordinates; the caller adds it to the body group). */
+export function seatFigure(m: VehicleModel, i: number, color: number): Figure {
+  const s = SEATS[m][i], fig = makeFigure(color, i === 0 || s.gun ? 'drive' : 'none');
+  if (s.gun) fig.g.position.set(s.x, s.y, s.z);
+  else { fig.g.position.set(s.x, s.y - 0.82, s.z); fig.legL.rotation.x = fig.legR.rotation.x = -1.45; }
+  return fig;
+}
+export function unseat(v: Vehicle, i: number) {
+  const r = v.riders[i];
+  if (!r) return;
+  v.group.remove(r.fig.g); r.fig.g.traverse((o) => { if ((o as THREE.LineSegments).isLineSegments || (o as THREE.Line).isLine) (o as THREE.Line).geometry.dispose(); });
+  v.riders[i] = null;
+}
+/** The first empty seat (the gunner's last, unless asked for). */
+export function freeSeat(v: Vehicle, gun = false): number {
+  const seats = SEATS[v.st.model];
+  return seats.findIndex((s, i) => !v.riders[i] && !!s.gun === gun);
+}
+export const aboard = (v: Vehicle) => v.riders.filter(Boolean).length;
+/** The middle of the chest of whoever sits in seat i, in world space (what shooters aim at). */
+export function seatPoint(v: Vehicle, i: number): THREE.Vector3 {
+  const s = SEATS[v.st.model][i];
+  v.group.updateMatrixWorld();
+  return v.group.localToWorld(V(s.x, s.gun ? s.y + 1.2 : s.y + 0.4, s.z));
+}
+/** Boxes round a person in seat i (torso, head), body coordinates. */
+function riderBoxes(m: VehicleModel, i: number): number[][] {
+  const { x, y, z, gun } = SEATS[m][i];
+  return gun ? [[x - 0.26, y + 0.8, z - 0.26, x + 0.26, y + 1.45, z + 0.26], [x - 0.18, y + 1.45, z - 0.18, x + 0.18, y + 1.8, z + 0.18]]
+    : [[x - 0.22, y - 0.02, z - 0.15, x + 0.22, y + 0.62, z + 0.15], [x - 0.17, y + 0.62, z - 0.17, x + 0.17, y + 0.98, z + 0.17]];
+}
+const wheelBoxes = (m: VehicleModel) => { const s = VEHICLES[m]; return s.axles.flatMap((z) => [-1, 1].map((sx) => [sx * s.track - s.wheelW / 2, 0, z - s.wheelR, sx * s.track + s.wheelW / 2, s.wheelR * 2, z + s.wheelR])); };
+const inv = new THREE.Matrix4(), ray = new THREE.Ray(), bx = new THREE.Box3(), hitP = new THREE.Vector3();
+/**
+ * A shot from o along d (normalised) meets this vehicle within `max`: at t, either its body (seat -1) or whoever sits
+ * in `seat`, whichever comes first along the line. Windows and open tops let shots through to the people inside.
+ */
+export function rayVehicle(v: Vehicle, o: THREE.Vector3, d: THREE.Vector3, max: number): { t: number; seat: number } | null {
+  const R = Math.max(v.spec.length, v.spec.height) * 0.6, cx = v.st.x - o.x, cy = v.y + v.spec.height / 2 - o.y, cz = v.st.z - o.z;
+  const along = cx * d.x + cy * d.y + cz * d.z;
+  if (along < -R || along > max + R || cx * cx + cy * cy + cz * cz - along * along > R * R) return null; // nowhere near
+  v.group.updateMatrixWorld(); inv.copy(v.group.matrixWorld).invert();
+  ray.origin.copy(o).applyMatrix4(inv); ray.direction.copy(d).transformDirection(inv);
+  let best = max, seat = -2;
+  const test = (b: number[], k: number) => {
+    bx.min.set(b[0], b[1], b[2]); bx.max.set(b[3], b[4], b[5]);
+    if (ray.intersectBox(bx, hitP)) { const t = hitP.distanceTo(ray.origin); if (t < best) { best = t; seat = k; } }
+  };
+  for (const b of HULL_BOXES[v.st.model]) test(b, -1);
+  wheelBoxes(v.st.model).forEach((b, i) => { if (v.st.parts.wheels[i] >= 0) test(b, -1); });
+  v.riders.forEach((r, i) => { if (r && r.fig.g.parent === v.group) for (const b of riderBoxes(v.st.model, i)) test(b, i); });
+  return seat === -2 ? null : { t: best, seat };
 }
 
 // ---------- parts ----------
@@ -235,18 +334,23 @@ export function fireCannon(dt: number) {
   gunCool = 0.55;
   const muzzle = V(0, 0.18, 1.3); v.turret.localToWorld(muzzle);
   const d = new THREE.Vector3(); camera.getWorldDirection(d);
-  let tHit = rayWorld(muzzle, d, 90), hit = null;
+  let tHit = rayWorld(muzzle, d, 90), hit = null, seat = -1;
   for (const t of foes()) {
+    if ('kind' in t && t.kind === 'raider') {
+      const h = rayRaider(t as Raider, muzzle, d, tHit);
+      if (h) { tHit = h.t; hit = t; seat = h.seat; }
+      continue;
+    }
     const rr = (t.r || 0.6) + 0.3, oc = muzzle.clone().sub(t.g.position), b = oc.dot(d), c = oc.lengthSq() - rr * rr, disc = b * b - c;
     if (disc < 0) continue; const tt = -b - Math.sqrt(disc);
-    if (tt > 0 && tt < tHit) { tHit = tt; hit = t; }
+    if (tt > 0 && tt < tHit) { tHit = tt; hit = t; seat = -1; }
   }
   const bar = rayBarrier(muzzle, d, tHit);
   if (bar) { tHit = bar.t; hit = null; hurtBarrier(bar.p, 3 * G.S.bm); }
   const end = muzzle.clone().addScaledVector(d, tHit);
   addFx(new THREE.Line(new THREE.BufferGeometry().setFromPoints([muzzle, end]), addMat(0xffb347)), 0.15);
   burst(end, 0xffb347, hit ? 16 : 8, hit ? 1.1 : 0.5);
-  if (hit) damageFoe(hit, 3 * G.S.bm);
+  if (hit) { if (seat >= 0) hurtCrew(hit as Raider, seat, 3 * G.S.bm); else damageFoe(hit, 3 * G.S.bm); }
   makeNoise(muzzle, 95); // the cannon is heard far and wide
 }
 /** The turret follows the camera. */
@@ -276,6 +380,8 @@ function pose(v: Vehicle) {
   v.roll = Math.atan2((fr + rr) / 2 - (fl + rl) / 2, 2 * s.track);
   v.group.position.set(v.st.x, v.y - 0.05, v.st.z);
   v.group.rotation.set(-v.pitch, v.st.heading, v.roll, 'YXZ');
+  const gi = SEATS[v.st.model].findIndex((x) => x.gun), gunner = v.riders[gi];
+  if (gunner) gunner.fig.g.rotation.y = v.turret ? v.turret.rotation.y : 0; // the gunner turns with the cannon
   for (const w of v.wheels) {
     w.g.rotation.x = v.spin;
     const pivot = (w.g as THREE.Object3D).userData.pivot as THREE.Group;
@@ -372,7 +478,8 @@ export function useVehicle(s: VehicleSpot) {
   }
   const why = immobile(s.v.st.parts);
   if (why) { showToast("It won't move"); logLine(why + ' Service it at the front of the vehicle.'); return; }
-  driving.v = s.v; s.v.speed = 0; driving.since = performance.now(); setSeeThrough(s.v, driving.cockpit);
+  driving.v = s.v; s.v.speed = 0; driving.since = performance.now();
+  seatRider(s.v, 0, 'you', YOU); setSeeThrough(s.v, driving.cockpit);
   G.vel.set(0, 0, 0); G.firing = false;
   G.yaw = s.v.st.heading + Math.PI; G.pitch = -0.12;
   showToast(vehicleTitle(s.v.st.model));
@@ -382,6 +489,7 @@ export function leave(save = true) {
   const v = driving.v;
   if (!v) return;
   driving.v = null; v.speed = 0; v.steer = 0; aimTurret(v); setSeeThrough(v, false);
+  if (v.riders[0]?.who === 'you') unseat(v, 0);
   const spots: [number, number][] = [[v.spec.door[0], v.spec.door[1]], [-v.spec.door[0], v.spec.door[1]], [v.spec.rear[0], v.spec.rear[1]], [v.spec.door[0] + 1, v.spec.door[1]]];
   for (const [lx, lz] of spots) {
     const [x, z] = toWorld(v, lx, lz), y = hooks ? hooks.height(x, z) : v.y;
@@ -465,7 +573,7 @@ export function updateDriving(dt: number) {
   G.pos.set(v.st.x, v.y, v.st.z);
   G.vel.set(0, 0, 0);
   const p = v.st.parts, worst = Math.min(...p.wheels);
-  el.veh.innerHTML = `${vehicleTitle(v.st.model)} · ${Math.round(Math.abs(v.speed) * 3.6)} km/h · seats 1/${s.seats}${s.enclosed ? ' · cab closed' : ''}` +
+  el.veh.innerHTML = `${vehicleTitle(v.st.model)} · ${Math.round(Math.abs(v.speed) * 3.6)} km/h · ${aboard(v)}/${s.seats} aboard${s.enclosed ? ' · cab closed' : ''}` +
     `<br><span${p.hull < s.hull * 0.25 ? ' class="warn"' : ''}>hull ${Math.ceil(p.hull)}/${s.hull}</span> · engine ${Math.round(p.engine)}% · wheels ${Math.round(worst)}%` +
     ` · fuel ${Math.round(p.fuel / s.tank * 100)}%${v.turret ? ' · cannon' : ''}`;
 }
@@ -489,6 +597,8 @@ export function vehicleCamera(camera: THREE.PerspectiveCamera) {
  */
 function setSeeThrough(v: Vehicle, on: boolean) {
   v.group.traverse((o) => { if ((o as THREE.Mesh).isMesh) o.visible = !on; });
+  for (const r of v.riders) r?.fig.g.traverse((o) => { if ((o as THREE.Mesh).isMesh) o.visible = true; }); // the people keep their fill
+  for (const r of v.riders) if (r?.who === 'you') r.fig.g.visible = !on; // your own figure: the camera is in its head
 }
 export const toggleCockpit = () => { driving.cockpit = !driving.cockpit; if (driving.v) setSeeThrough(driving.v, driving.cockpit); };
 
