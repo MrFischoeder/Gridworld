@@ -1,6 +1,6 @@
 // A player bot walks the campaign (src/gen/campaign.ts) of a world and times it: earning, buying a Scout, a Mastodon
-// and a works, hauling goods to the hangar, meeting the two surprises (finding the far wonder from its clue,
-// restoring it stage by stage, diving ruins for relics) and holding the hangar on launch night. It then finds the
+// and a works, hauling goods to the hangar, meeting the three surprises (leaving the Chariot, finding the wonder
+// from its clue, restoring it stage by stage, diving ruins for relics). It then finds the
 // Chariot size that makes the whole campaign last ~80 hours for one player, and shows how long it takes 2 and 4.
 //   npm run sim                         SIM_WORLD=777 npm run sim
 // PACE holds the assumptions about the game (gold per hour, speeds, minutes per dive). They are guesses until
@@ -26,8 +26,8 @@ export const PACE = {
   explore: { base: 30, perKm: 2.5 }, dive: { base: 20, perDanger: 5 },
   /** Extra time per danger level on an expedition (fights, detours). */
   fight: 0.04,
-  /** Hours learning the game at the start; hours for the launch-night defence. */
-  learn: 4, finale: 1.5,
+  /** Hours learning the game at the start. */
+  learn: 4,
 };
 type Veh = 'foot' | 'scout' | 'mastodon';
 interface Bot { t: number; gold: number; veh: Veh; works: boolean; n: number; log: [number, string][] }
@@ -69,7 +69,7 @@ function play(c: Campaign, scale: number, n: number): Bot {
       w.stages.forEach((s, k) => { deliver(b, s.needs, 0, w.danger); b.log.push([b.t, `  ${w.kind.name} ${k + 1}/3: ${s.title}`]); });
     }
   });
-  b.t += PACE.finale; b.log.push([b.t, 'Launch night held: the Chariot flies']);
+  b.log.push([b.t, 'The Chariot flies']);
   return b;
 }
 

@@ -1,7 +1,8 @@
 // The campaign (pure, deterministic from the world seed): the Chariot of the Ancients built stage by stage, twenty
 // wonders of the Ancients over the continent (one per region, each an old ruin to restore), and the surprises on the
-// way: twice the hangar crew finds that the Chariot cannot go on without a part only a far-off wonder can give, and
-// on the night of the launch the bandits come for the hangar. The player learns of each surprise only when it
+// way: three times the hangar crew finds that the Chariot cannot go on without a part only one of those wonders can
+// give, so the player has to leave the Chariot and restore that wonder first, each further out than the last (no one
+// finishes the main quest without the side ones). The player learns of each surprise only when it
 // happens (`visible`), and of each wonder's next trouble only when the stage before it is done. Everything is fixed
 // by the seed, so every player on a server meets the same surprises. Not wired into the game yet: tools/campaign.sim.ts
 // walks a player bot through it to time the whole thing (80 hours alone).
@@ -49,14 +50,14 @@ export interface Wonder {
 /** A surprise: after Chariot stage `after` the crew finds that it needs `wonder`'s part before going on. */
 export interface Blocker { after: number; wonder: number; crew: string; clue: string }
 export interface ChariotStep { key: string; name: string; needs: [Need, number][] }
-export interface Campaign { chariot: ChariotStep[]; wonders: Wonder[]; blockers: Blocker[]; finale: { after: number; waves: number; text: string } }
+export interface Campaign { chariot: ChariotStep[]; wonders: Wonder[]; blockers: Blocker[] }
 
 /** How much the Chariot's stages need, as a multiple of gen/shuttle.ts STAGES (tools/campaign.sim.ts calibrates it to 80 h). */
-export const CHARIOT_SCALE = 1.85;
+export const CHARIOT_SCALE = 1.4;
 /** Stage weights on top of the scale: light at first (a new player, no truck yet), heavier towards the launch. */
 export const CHARIOT_WEIGHTS = [0.5, 0.8, 1.15, 1.35, 1.6];
 /** Where the surprises lie: distance from Gridholm (m) and after which Chariot stage they come. */
-export const SURPRISE = [{ after: 1, dist: [8000, 13000] }, { after: 3, dist: [20000, 30000] }];
+export const SURPRISE = [{ after: 1, dist: [7000, 12000] }, { after: 2, dist: [13000, 20000] }, { after: 4, dist: [21000, 30000] }];
 
 const TWISTS = [
   ['Clearing the site', 'The halls are choked with rubble and something has nested in them.'],
@@ -111,8 +112,7 @@ export function campaign(world: number): Campaign {
       clue: `The ${w.kind.name} stood ${dirOf(w.x, w.z)} of Gridholm, some ${Math.round(w.dist / 1000)} km away, near a place the maps call ${w.near}.` };
   });
   const chariot: ChariotStep[] = STAGES.map((st, i) => ({ key: st.key, name: st.name, needs: st.needs.map(([g, n]) => [g, Math.max(1, Math.round(n * CHARIOT_SCALE * CHARIOT_WEIGHTS[i]))] as [Need, number]) }));
-  const finale = { after: STAGES.length, waves: 6, text: 'The Chariot stands fuelled on the pad. Tonight it flies, and every bandit band for fifty kilometres has heard of it. They come for the hangar at dusk: hold it until the engines are lit.' };
-  return { chariot, wonders, blockers, finale };
+  return { chariot, wonders, blockers };
 }
 
 /** What a player may know: the Chariot's stages so far and the surprises already met (the rest stays hidden). */
@@ -125,6 +125,7 @@ export function visible(c: Campaign, p: CampaignProgress) {
     surprises: met.map((b) => ({ ...b, done: (p.wonders[b.wonder] ?? 0) >= 3, stage: p.wonders[b.wonder] ?? 0 })),
     /** Only a wonder's current stage is known (its trouble shows once you get there). */
     wonderNeeds: (i: number) => c.wonders[i].stages[p.wonders[i] ?? 0] ?? null,
-    finale: p.chariot >= c.finale.after,
+    /** Every stage built and every surprise dealt with: the Chariot can fly. */
+    ready: p.chariot >= c.chariot.length && open.length === 0,
   };
 }

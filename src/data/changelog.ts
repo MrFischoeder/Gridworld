@@ -4,6 +4,11 @@ export interface Change { v: string; date: string; title: string; notes: string[
 
 export const CHANGELOG: Change[] = [
   {
+    v: '0.54.1', date: '2026-09-25', title: 'The road to the launch, reworked',
+    notes: ['No launch-night attack after all. Instead the Chariot will stop you three times: the hangar crew finds it cannot go on without a part that only one of the wonders of the Ancients can give, and you have to leave the Chariot and restore that wonder first. Each lies further out than the last, so nobody reaches the launch without the side roads.',
+      'Timed again by the player bot: about 80 hours alone, of which some 35 go into those three wonders; around 50 hours with a friend and 33 with four.'],
+  },
+  {
     v: '0.54.0', date: '2026-09-25', title: 'The road to the launch (behind the scenes)',
     notes: ['The whole campaign is planned out: the Chariot of the Ancients in five stages, twenty wonders of the Ancients over the continent to restore, and surprises on the way that you will not see coming. Twice the hangar crew will find that the Chariot cannot go on without a part only a far-off wonder can give, and on the night of the launch the bandits come for the hangar.',
       'Each world has its own surprises, the same for every player on it. A player bot has timed the whole road: about 80 hours alone, around 50 with a friend and 32 with four, plus well over 200 hours of optional wonders.',

@@ -8,13 +8,12 @@ describe('campaign', () => {
     expect(JSON.stringify(campaign(12345))).toBe(JSON.stringify(c));
     expect(JSON.stringify(campaign(777).blockers)).not.toBe(JSON.stringify(c.blockers));
   });
-  it('has twenty different wonders and two surprises on different ones, the second further out', () => {
+  it('has twenty different wonders and three surprises on different ones, each further out', () => {
     expect(c.wonders.length).toBe(WONDER_KINDS.length);
     expect(new Set(c.wonders.map((w) => w.kind.name)).size).toBe(WONDER_KINDS.length);
-    expect(c.blockers.map((b) => b.after)).toEqual([1, 3]);
-    expect(c.blockers[0].wonder).not.toBe(c.blockers[1].wonder);
-    expect(c.wonders[c.blockers[1].wonder].dist).toBeGreaterThan(c.wonders[c.blockers[0].wonder].dist);
-    expect(c.finale.after).toBe(c.chariot.length);
+    expect(c.blockers.map((b) => b.after)).toEqual([1, 2, 4]);
+    expect(new Set(c.blockers.map((b) => b.wonder)).size).toBe(3);
+    for (let i = 1; i < 3; i++) expect(c.wonders[c.blockers[i].wonder].dist).toBeGreaterThan(c.wonders[c.blockers[i - 1].wonder].dist);
   });
   it('asks only for goods that exist (or relics)', () => {
     for (const st of [...c.chariot.map((s) => s.needs), ...c.wonders.flatMap((w) => w.stages.map((s) => s.needs))])
@@ -29,7 +28,9 @@ describe('campaign', () => {
     expect(after1.wonderNeeds(b.wonder)).toEqual(c.wonders[b.wonder].stages[0]);
     const mended = visible(c, { chariot: 1, wonders: { [b.wonder]: 3 } });
     expect(mended.blocked).toBe(false);
-    expect(visible(c, { chariot: 3, wonders: { [b.wonder]: 3 } }).blocked).toBe(true); // the second surprise
-    expect(visible(c, { chariot: c.chariot.length, wonders: {} }).finale).toBe(true);
+    expect(visible(c, { chariot: 2, wonders: { [b.wonder]: 3 } }).blocked).toBe(true); // the second surprise
+    const all = Object.fromEntries(c.blockers.map((x) => [x.wonder, 3]));
+    expect(visible(c, { chariot: c.chariot.length, wonders: {} }).ready).toBe(false);
+    expect(visible(c, { chariot: c.chariot.length, wonders: all }).ready).toBe(true);
   });
 });
