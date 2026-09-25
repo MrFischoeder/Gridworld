@@ -4,6 +4,10 @@ export interface Change { v: string; date: string; title: string; notes: string[
 
 export const CHANGELOG: Change[] = [
   {
+    v: '0.51.2', date: '2026-09-25', title: 'Website fix',
+    notes: ['The website and the browser version of the game now publish properly.'],
+  },
+  {
     v: '0.51.1', date: '2026-09-25', title: 'The Gridworld website',
     notes: ['Gridworld has a website: what the game is about, the numbers of the planet (its size, villages, roads, ruins, wrecks), the economy, the Chariot of the Ancients and where the game is heading. It also lets you play the game straight in the browser.'],
   },
