@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="description" content="Gridworld: symulator ekonomiczno-strategiczny z perspektywy pierwszej osoby w świecie z zielonych linii wektorowych. Handluj, buduj fabryki i elektrownie, broń wiosek i uruchom Rydwan Przedwiecznych.">
 <meta property="og:title" content="Gridworld">
+<meta property="og:image" content="https://mrfischoeder.github.io/Gridworld/shots/village.jpg">
 <meta property="og:description" content="Odbuduj cywilizację z perspektywy jednego człowieka i uruchom Rydwan Przedwiecznych.">
 <style>*, *::before, *::after { box-sizing: border-box; } img { max-width: 100%; }</style>
 <title>Gridworld</title>
@@ -147,11 +148,30 @@
   kbd { font-family: var(--body); font-size: 12px; padding: 1px 7px; border: 1px solid var(--line); border-bottom-width: 2px; color: var(--bright); white-space: nowrap; }
   footer { padding-block: 36px 48px; font-size: 12.5px; color: var(--text-dim); display: flex; flex-wrap: wrap; gap: 12px 28px; justify-content: space-between; }
 
+  /* ---------- early version notice ---------- */
+  .early { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 14px 18px; align-items: start; max-width: 720px; padding: 14px 18px; border: 1px dashed var(--amber); background: rgba(2, 9, 4, 0.88); }
+  .early .chip { font-family: var(--display); font-size: 22px; line-height: 1; padding: 4px 9px 3px; background: var(--amber); color: var(--bg); letter-spacing: 0.06em; }
+  .early p { font-size: 13.5px; color: var(--text); }
+  .early b { color: var(--amber); font-weight: 500; }
+
+  /* ---------- screenshots ---------- */
+  .shots { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+  .shots figure { margin: 0; display: grid; gap: 8px; }
+  .shots figure.wide { grid-column: 1 / -1; }
+  .shots a { display: block; border: 1px solid var(--line-dim); line-height: 0; }
+  .shots a:hover { border-color: var(--line); }
+  .shots img { width: 100%; height: auto; aspect-ratio: 16 / 9; object-fit: cover; }
+  .shots figcaption { font-size: 12.5px; color: var(--text-dim); }
+  .shots figcaption b { color: var(--bright); font-weight: 500; }
+  .step.now::before { background: var(--amber); border-color: var(--amber); }
+  .step.now .st, .step.now h3 { color: var(--amber); }
+
   @media (max-width: 860px) {
     .chariot, .split, .play { grid-template-columns: minmax(0, 1fr); gap: 32px; }
     .roles { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
     .readout { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .wilds { grid-template-columns: minmax(0, 1fr); }
+    .shots { grid-template-columns: minmax(0, 1fr); }
   }
   @media (max-width: 520px) {
     .roles { grid-template-columns: minmax(0, 1fr); }
@@ -167,7 +187,7 @@
   <canvas id="terrain" aria-hidden="true"></canvas>
   <div class="wrap hero-inner">
     <span class="label">Symulator ekonomiczno-strategiczny · FPP · w przeglądarce</span>
-    <h1>GRIDWORLD<span class="ver num">v0.51</span></h1>
+    <h1>GRIDWORLD<span class="ver num">v0.51 alpha</span></h1>
     <p class="tagline">Odbuduj cywilizację z perspektywy jednego człowieka. Handluj, stawiaj fabryki i elektrownie, broń wiosek i przeszukuj ruiny obcych, żeby uruchomić Rydwan Przedwiecznych.</p>
     <p class="lede">Cały świat jest narysowany świecącymi zielonymi liniami na czerni, jak ekran starego terminala. Pod tymi liniami działa żywa gospodarka: ceny, magazyny, karawany i prąd w każdej z ponad stu wiosek.</p>
     <div class="actions">
@@ -175,10 +195,34 @@
       <a class="btn" href="https://github.com/MrFischoeder/Gridworld/archive/refs/heads/claude/new-session-lkzluz.zip">Pobierz grę <small>.ZIP</small></a>
       <a class="btn" href="https://github.com/MrFischoeder/Gridworld">Kod na GitHubie</a>
     </div>
+    <div class="early" role="note">
+      <span class="chip">ALPHA</span>
+      <p><b>To bardzo wczesna wersja gry.</b> Wiele może się jeszcze zmienić, od balansu gospodarki po wygląd świata i zasady walki. Teraz najwięcej pracy idzie w <b>tryb wieloosobowy dla około 8 graczy</b> we wspólnym świecie.</p>
+    </div>
   </div>
 </header>
 
 <main>
+  <section id="z-gry">
+    <div class="wrap">
+      <div class="head">
+        <span class="label">Z gry</span>
+        <h2>Tak to wygląda</h2>
+        <p>Zrzuty ekranu z obecnej wersji. Dzień i noc, pogoda i wszystkie modele są rysowane na żywo liniami, bez tekstur.</p>
+      </div>
+      <div class="shots">
+        <figure class="wide"><a href="shots/village.jpg"><img src="shots/village.jpg" alt="Gridholm z lotu ptaka: wioska startowa za palisadą, pola i drogi, w tle obelisk ruin" width="1280" height="720" loading="lazy"></a><figcaption><b>Gridholm z lotu ptaka</b> · wioska startowa za palisadą, pola i drogi, w tle obelisk ruin</figcaption></figure>
+        <figure><a href="shots/dusk.jpg"><img src="shots/dusk.jpg" alt="Gridholm nocą: gwiazdy, chmury i światła wioski" width="1280" height="720" loading="lazy"></a><figcaption><b>Gridholm nocą</b> · gwiazdy, chmury i światła wioski</figcaption></figure>
+        <figure><a href="shots/wreck.jpg"><img src="shots/wreck.jpg" alt="Wrak o zachodzie słońca: rozbity statek z włazem prowadzącym do środka" width="1280" height="720" loading="lazy"></a><figcaption><b>Wrak o zachodzie słońca</b> · rozbity statek z włazem prowadzącym do środka</figcaption></figure>
+        <figure><a href="shots/ruin.jpg"><img src="shots/ruin.jpg" alt="Świątynia obcych: obeliski i pylony nad kryptą z lochami" width="1280" height="720" loading="lazy"></a><figcaption><b>Świątynia obcych</b> · obeliski i pylony nad kryptą z lochami</figcaption></figure>
+        <figure><a href="shots/raiders.jpg"><img src="shots/raiders.jpg" alt="Rajderzy w deszczu: kierowca i strzelec przy działku, widoczni przez szyby" width="1280" height="720" loading="lazy"></a><figcaption><b>Rajderzy w deszczu</b> · kierowca i strzelec przy działku, widoczni przez szyby</figcaption></figure>
+        <figure><a href="shots/chariot.jpg"><img src="shots/chariot.jpg" alt="Rydwan Przedwiecznych: wahadłowiec w hangarze, budowany etap po etapie" width="1280" height="720" loading="lazy"></a><figcaption><b>Rydwan Przedwiecznych</b> · wahadłowiec w hangarze, budowany etap po etapie</figcaption></figure>
+        <figure><a href="shots/storm.jpg"><img src="shots/storm.jpg" alt="Burza: deszcz, nisko zawieszone chmury i błysk pioruna" width="1280" height="720" loading="lazy"></a><figcaption><b>Burza</b> · deszcz, nisko zawieszone chmury i błysk pioruna</figcaption></figure>
+        <figure class="wide"><a href="shots/terminal.jpg"><img src="shots/terminal.jpg" alt="Komputer starszego: ekran energii: ile prądu wioska produkuje i zużywa, prognoza na dobę" width="1280" height="720" loading="lazy"></a><figcaption><b>Komputer starszego</b> · ekran energii: ile prądu wioska produkuje i zużywa, prognoza na dobę</figcaption></figure>
+      </div>
+    </div>
+  </section>
+
   <section id="rydwan">
     <div class="wrap chariot">
       <div class="story">
@@ -308,10 +352,10 @@
       </div>
       <div class="road">
         <div class="step done"><span class="st">Jest w grze</span><h3>Żywa gospodarka regionu</h3><p>Przemysł, magazyny, rynek, kontrakty, karawany, zakłady przetwórcze, elektrownie, obrona wiosek i komputer starszego.</p></div>
+        <div class="step now"><span class="st">W trakcie prac</span><h3>Tryb wieloosobowy dla około 8 graczy</h3><p>Wspólny świat na jednym serwerze i wspólna gospodarka: ceny, magazyny i karawany są te same dla wszystkich. Można mieszkać w tej samej wiosce albo rozwijać różne i handlować między sobą, razem eskortować konwoje i bronić murów. Świat jest generowany deterministycznie, więc każdy gracz widzi dokładnie to samo.</p></div>
         <div class="step"><span class="st">Następny krok</span><h3>Optymalizacja łańcuchów dostaw</h3><p>Planowanie tras konwojów, reagowanie na braki i nadwyżki, własna sieć transportowa, żeby do Twojej wioski trafiało jak najwięcej i jak najtaniej.</p></div>
         <div class="step"><span class="st">W planach</span><h3>Ruiny jako źródło technologii</h3><p>Wyprawy do ruin i wraków po to, czego nie zrobi żadna fabryka: rzadkie materiały, artefakty i starożytne schematy, które odblokują nowe maszyny i części Rydwanu.</p></div>
         <div class="step"><span class="st">W planach</span><h3>Pogoda, która ma znaczenie</h3><p>Burze uszkadzające dachy, deszcz spowalniający transport na drogach, chmury osłabiające farmy słoneczne. Pogoda już działa na niebie, teraz ma zacząć działać w gospodarce.</p></div>
-        <div class="step"><span class="st">W planach</span><h3>Tryb wieloosobowy</h3><p>Do 8 graczy na wspólnym serwerze ze wspólną gospodarką. Można mieszkać w tej samej wiosce albo rozwijać różne i handlować między sobą. Świat jest deterministyczny, więc wszyscy widzą to samo.</p></div>
         <div class="step goal"><span class="st">Finał</span><h3>Start Rydwanu</h3><p>Ukończenie pięciu etapów budowy i lot z planety.</p></div>
       </div>
     </div>
@@ -350,7 +394,7 @@
 </main>
 
 <footer class="wrap">
-  <span>GRIDWORLD v0.51.2 · Vite + TypeScript + three.js · autor: MrFischoeder</span>
+  <span>GRIDWORLD v0.51.3 · wczesna wersja · Vite + TypeScript + three.js · autor: MrFischoeder</span>
   <a href="https://github.com/MrFischoeder/Gridworld">github.com/MrFischoeder/Gridworld</a>
 </footer>
 

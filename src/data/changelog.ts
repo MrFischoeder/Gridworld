@@ -4,6 +4,10 @@ export interface Change { v: string; date: string; title: string; notes: string[
 
 export const CHANGELOG: Change[] = [
   {
+    v: '0.51.3', date: '2026-09-25', title: 'Screenshots on the website',
+    notes: ['The website shows screenshots from the game and says plainly that this is a very early version: much may still change, and multiplayer for about 8 players is being worked on now.'],
+  },
+  {
     v: '0.51.2', date: '2026-09-25', title: 'Website fix',
     notes: ['The website and the browser version of the game now publish properly.'],
   },

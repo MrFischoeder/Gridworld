@@ -25,7 +25,7 @@ Browser FPS in a green vector-grid style (wireframe on black, retro sci-fi / Tro
 - **Multiplayer later** (up to 8 players, Node + WebSocket, authoritative server): keep world logic (`core/`, `gen/`) free of three.js and DOM, generators deterministic, game state serialisable.
 
 ## Website
-- `docs/index.html` is the game's website (Polish, CRT style, self-contained); `.github/workflows/pages.yml` deploys it to GitHub Pages with the game build under `/play/` (Pages source: GitHub Actions). Keep its version and numbers roughly current when big features land.
+- `docs/index.html` is the game's website (Polish, CRT style, self-contained); `.github/workflows/pages.yml` deploys it to GitHub Pages with the game build under `/play/` (Pages source: GitHub Actions). Screenshots in `docs/shots/` (1280×720 JPEG, taken with Playwright from the dev build with the HUD hidden). Keep its version and numbers roughly current when big features land.
 
 ## Layout
 - `core/` — pure: RNG/hash, voxel grids, meshing, noise.
