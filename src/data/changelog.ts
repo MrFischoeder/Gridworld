@@ -4,6 +4,12 @@ export interface Change { v: string; date: string; title: string; notes: string[
 
 export const CHANGELOG: Change[] = [
   {
+    v: '0.53.0', date: '2026-09-25', title: 'Regional projects and new materials (behind the scenes)',
+    notes: ['The economy simulator now trades real goods: new materials (bauxite, sulfur, lithium, rare earths, uranium; aluminium and batteries), villages that rise from settlement to town, city and metropolis by gathering goods, works they build by what pays and what they need, upkeep in machine parts, and what their people use every day.',
+      'Twenty wonders of the Ancients are spread over the continent, one for each region; the villages of a region build theirs together, but the last stage of every wonder needs relics that only you can bring out of ruins and wrecks.',
+      'None of it is in the game yet: the simulator shows how it all would behave over two years of game time, with and without players, before we build it in.'],
+  },
+  {
     v: '0.52.0', date: '2026-09-25', title: 'Villages that live on their own (behind the scenes)',
     notes: ['Groundwork for villages that grow by themselves: people who eat, work and need houses, farms that feed them, works that earn gold, guards who want wages, upkeep that rises as a village grows, bandit raids, and an elder who spends the treasury on what the village needs most.',
       'Nothing of it shows in the game yet: first it runs in a simulator, all the villages of a world for months of game time, so the numbers can be tuned before your villages depend on them. In the tests every village lives through two years, grows several times over and levels off without starving or dying out.'],

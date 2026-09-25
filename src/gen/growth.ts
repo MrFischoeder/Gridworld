@@ -85,6 +85,10 @@ export interface LifeState {
   focus: LifeFocus;
   /** Game day of the last lost raid (-1 never). */
   lostAt: number;
+  /** Housing the village may not build past (its development tier, gen/civ.ts); none when absent. */
+  popCap?: number;
+  /** Lasting boosts (a finished regional project, a higher tier): works' earnings and mood. */
+  bonus?: { gold: number; happy: number };
   /** Tallies (for reports): raids won / lost, food bought / sold, gold earned, spent on building. */
   log: { won: number; lost: number; bought: number; sold: number; earned: number; spent: number; starvedDays: number; razed: number };
 }
@@ -127,7 +131,7 @@ export function lifeInfo(s: LifeState, p: LifePlace) {
   // works: each one earns a little less than the one before
   let worksGold = 0;
   for (let i = 0; i < b.works; i++) worksGold += B.works.gold! * Math.pow(WORKS_FALL, i);
-  worksGold *= staff * edge;
+  worksGold *= staff * edge * (1 + (s.bonus?.gold ?? 0));
   const sprawl = 1 + LIFE.sprawl * count;
   const upkeep = (Object.keys(b) as LifeBuilding[]).reduce((a, k) => a + b[k] * B[k].upkeep, 0) * sprawl + s.guards * LIFE.guardWage;
   return { count, jobs, workers, staff, jobless, housing, store, guardSlots, edge, foodNet, worksGold, upkeep, sprawl };
@@ -168,7 +172,8 @@ export function decide(s: LifeState, p: LifePlace, m: LifeMarket = { food: 1, go
   const foodDays = s.food / Math.max(1, s.pop * LIFE.eat);
   const hungry = i.foodNet < 0 || foodDays < 3;
   if (hungry) want.push(i.jobless > 0 || i.staff >= 0.95 ? 'farm' : 'house');
-  if (s.pop > i.housing * 0.88) want.push('house');
+  const roomToGrow = !s.popCap || i.housing < s.popCap;
+  if (s.pop > i.housing * 0.88 && roomToGrow) want.push('house');
   if (threatened || p.danger >= 3) {
     if (s.guards < i.guardSlots && s.guards < 2 + p.danger) want.push('guard');
     else if (s.guards >= i.guardSlots && s.guards < 2 + p.danger) want.push('barracks');
@@ -178,7 +183,7 @@ export function decide(s: LifeState, p: LifePlace, m: LifeMarket = { food: 1, go
   if (s.food > i.store * 0.85 && i.foodNet > 0 && s.built.granary < Math.ceil(s.built.farm / 2)) want.push('granary');
   if (s.built.works >= 3 && s.built.market < s.built.works / 4) want.push('market');
   // an idle treasury grows the village: more houses (people), then more works
-  if (!want.length && s.gold > 600) want.push(s.pop > i.housing * 0.7 ? 'house' : 'works');
+  if (!want.length && s.gold > 600) want.push(s.pop > i.housing * 0.7 && roomToGrow ? 'house' : 'works');
   // the focus moves its favourite to the front when it is wanted at all
   const fav: Record<LifeFocus, (LifeBuilding | 'guard' | 'wall')[]> = { balanced: [], food: ['farm', 'granary'], industry: ['works', 'market'], defence: ['guard', 'wall', 'barracks'] };
   want.sort((a, b) => (fav[s.focus].includes(b) ? 1 : 0) - (fav[s.focus].includes(a) ? 1 : 0));
@@ -245,7 +250,7 @@ export function stepLife(s: LifeState, p: LifePlace, m: LifeMarket): number {
   // mood eases towards how things are
   const foodDays = s.food / Math.max(1, s.pop * LIFE.eat);
   const target = 0.45 + (foodDays > 2 ? 0.2 : foodDays > 0 ? 0 : -0.35) + (s.pop <= i.housing ? 0.1 : -0.15)
-    + Math.min(0.15, s.guards * 0.03) - (s.lostAt >= 0 && day - s.lostAt < 6 ? 0.2 : 0) + (s.gold > 0 ? 0.05 : -0.1);
+    + Math.min(0.15, s.guards * 0.03) + (s.bonus?.happy ?? 0) - (s.lostAt >= 0 && day - s.lostAt < 6 ? 0.2 : 0) + (s.gold > 0 ? 0.05 : -0.1);
   s.happy += (Math.max(0, Math.min(1, target)) - s.happy) * 0.25 * dt; // a quarter of the way in a day
   // building
   if (s.building && (s.building.left -= 1) <= 0) { s.built[s.building.k]++; s.building = null; }
