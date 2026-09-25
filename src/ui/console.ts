@@ -4,6 +4,8 @@ import { forceRaid } from '../world/villageraid';
 import { ROBOTS, type RobotKind } from '../data/robots';
 import { spawnRobotNear } from '../world/robots';
 import { fmtClock, DAY } from '../core/time';
+import { forceWeather, seen } from '../world/weather';
+import { WEATHER_NAME, type WeatherKind } from '../gen/weather';
 import { saveChar } from '../character';
 import { toVillage } from '../world/level';
 import { GRIDHOLM_ID } from '../gen/regions';
@@ -27,6 +29,16 @@ function print(text: string, err = false) {
 }
 
 const COMMANDS: Record<string, { help: string; run: (args: string[]) => string }> = {
+  weather: {
+    help: '[clear|overcast|rain|fog|storm|auto] force the weather',
+    run: (a) => {
+      const k = a[0];
+      if (!k) return `Weather: ${WEATHER_NAME[seen.kind]}.`;
+      if (k === 'auto') { forceWeather(null); return 'The weather follows the forecast again.'; }
+      if (!(k in WEATHER_NAME)) return 'Use clear, overcast, rain, fog, storm or auto.';
+      forceWeather(k as WeatherKind); return `Weather: ${WEATHER_NAME[k as WeatherKind]} (until "weather auto").`;
+    },
+  },
   help: { help: 'list commands', run: () => Object.entries(COMMANDS).map(([k, c]) => `${k.padEnd(6)} ${c.help}`).join('\n') },
   cash: {
     help: '+10000 gold',

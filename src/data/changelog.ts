@@ -4,6 +4,12 @@ export interface Change { v: string; date: string; title: string; notes: string[
 
 export const CHANGELOG: Change[] = [
   {
+    v: '0.49.0', date: '2026-09-25', title: 'Weather',
+    notes: ['The weather changes now: clear skies, overcast, rain, fog and thunderstorms. Each part of the world has its own weather, and fronts drift in and out over the hours rather than switching at once. Fog likes the early morning.',
+      'Rain falls in streaks slanted by the wind. Cloud banks drift overhead and grey the sky, hiding the stars and the sun. Fog closes in until the far hills vanish. In a thunderstorm, forked lightning strikes out in the land and lights up the whole sky.',
+      'The clock in the corner shows the weather. For now it only changes the look of the world; later it may strike, tear at roofs and dim the solar farms.'],
+  },
+  {
     v: '0.48.0', date: '2026-09-25', title: 'Day and night',
     notes: ['The sky now really changes with the day. At night it is black and full of stars; as the sun comes up the horizon glows amber, and by day the sky turns a bright, hazy green, lighter towards the horizon and glowing round the sun. Dusk brings the amber back before the dark.',
       'The land fades into the horizon\'s colour, and by day you see further. The sun shines brighter by day, and the moon no longer shows as a dark hole in a daytime sky.',

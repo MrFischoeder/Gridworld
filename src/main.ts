@@ -55,6 +55,8 @@ import { updateWallGuns } from './world/wallguns';
 import { updateWorks } from './world/works';
 import { updateStations } from './world/stations';
 import { updateChariot } from './ui/shuttle';
+import { updateWeather, seen } from './world/weather';
+import { WEATHER_NAME } from './gen/weather';
 
 G.char = loadChar();
 document.getElementById('vnum')!.textContent = 'v' + VERSION;
@@ -90,7 +92,7 @@ function frame(now: number) {
   // the clock runs whenever the game is not paused in the menu
   if (G.playing) { G.char.time += dt * MIN_PER_SEC; updateSurvival(dt); updateFlora(dt); updateFires(dt, time); updatePower(dt); updateHouseDoors(dt); updateWallGuns(dt); updateWorks(dt); updateStations(dt); updateChariot(dt); updateCaravans(dt); updateVillageRaids(dt); updateFallen(dt); updateIndustry(dt); updateContracts(dt); if ((benchT -= dt) <= 0) { benchT = 1; syncBenches(); syncFlags(); syncBases(); syncTurrets(); } }
   updateCompass(dt); // hides itself while paused
-  const clock = fmtClock(G.char.time);
+  const clock = fmtClock(G.char.time) + (G.char.loc === 'overworld' && seen.kind !== 'clear' ? ' · ' + WEATHER_NAME[seen.kind] : '');
   if (el.clock.textContent !== clock) el.clock.textContent = clock;
   if ((clockT -= dt) <= 0) {
     clockT = 1;
@@ -130,9 +132,10 @@ function frame(now: number) {
   } else { el.prompt.style.display = 'none'; el.bUse.classList.remove('on'); el.bossbar.style.display = 'none'; }
   if (G.trans) updateTrans(dt, camera); else if (driving.v) vehicleCamera(camera); else camera.position.set(G.pos.x, G.pos.y + EYE, G.pos.z);
   camera.rotation.set(G.pitch, G.yaw, 0);
+  updateWeather(dt, sky.visible);
   if (sky.visible) { sky.position.set(camera.position.x, camera.position.y - 20, camera.position.z); horizon.position.set(camera.position.x, 0, camera.position.z); updateSky(G.char.time, latitude(G.pos.z)); updateFarPeaks(camera.position); } else farPeaks.visible = false;
   // flying (dev): the real land reaches past the horizon rings, so they step aside and the camera sees further
-  if (sky.visible) { horizon.visible = !G.fly; if (G.fly) farPeaks.visible = false; }
+  if (sky.visible) { horizon.visible = !G.fly && seen.fog < 0.45; if (G.fly || seen.fog > 0.45) farPeaks.visible = false; } // fog hides the far ranges
   const far = G.fly ? 600 : 200; if (camera.far !== far) { camera.far = far; camera.updateProjectionMatrix(); }
   el.cross.style.display = driving.v && !driving.cockpit && !driving.v.turret ? 'none' : '';
   animateVM(dt, moving);
