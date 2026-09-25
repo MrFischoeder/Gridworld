@@ -23,7 +23,7 @@ import { addFx, burst } from './fx';
 import { add as addMat } from './render';
 import { BANDIT } from './bandits';
 import type { Npc } from './npc';
-import { powerSite } from '../gen/town';
+import { powerSite, worksOf, GUARDED } from '../gen/town';
 import { siteCentre } from './industry';
 import { fmtTime } from '../core/time';
 import { worldDist, nearX } from '../gen/regions';
@@ -125,8 +125,8 @@ function liveTick(dt: number) {
   const tier = Math.min(VRAID.drain.length - 1, G.char.towns[L.vid]?.wall ?? 0);
   for (const b of alive) for (const t of L.targets) {
     if (Math.hypot(b.p.x - t.x, b.p.z - t.z) > VRAID.near) continue;
-    if (t.site) { const st = (G.char.towns[L.vid] ??= {}); st.siteHurt = Math.min(80, (st.siteHurt ?? 0) + VRAID.plant * 1.5 * dt); st.siteHurtT = G.char.time; }
-    else if (t.plant) { if (L.plantHurt < VRAID.plantMax) { const st = (G.char.towns[L.vid] ??= {}), h = VRAID.plant * dt; L.plantHurt += h; st.hurt = Math.min(100, (st.hurt ?? 0) + h); } }
+    if (t.site) { const st = (G.char.towns[L.vid] ??= {}); st.siteHurt = Math.min(80, (st.siteHurt ?? 0) + VRAID.plant * 1.5 * dt * (worksOf(st, 'siteGuard') ? GUARDED.live : 1)); st.siteHurtT = G.char.time; }
+    else if (t.plant) { if (L.plantHurt < VRAID.plantMax) { const st = (G.char.towns[L.vid] ??= {}), h = VRAID.plant * dt * (worksOf(st, 'plantGuard') ? GUARDED.live : 1); L.plantHurt += h; st.hurt = Math.min(100, (st.hurt ?? 0) + h); } }
     else L.defence -= VRAID.drain[tier] * dt;
     break;
   }

@@ -27,7 +27,20 @@ export interface Tower { x: number; z: number; w: number; d: number; h: number; 
  * outward normal (nx, nz: axis-aligned, pointing at the climber), and the height of the floor at the top above the
  * plaza (`top`); `deck` is the rect you stand on up there and `stilts` marks a watch platform (no voxels under it).
  */
-export interface Ladder { x: number; z: number; nx: number; nz: number; top: number; deck: Rect; stilts: boolean }
+export interface Ladder { x: number; z: number; nx: number; nz: number; top: number; deck: Rect; stilts: boolean;
+  /** A ladder up to the wall-walk (its floor and rail are the walkway's, world/walkways.ts). */
+  walk?: boolean }
+/**
+ * A stretch of the wall-walk: a plank deck on posts along the inside of a palisade or a stone wall, `h` m over the
+ * plaza, from (x0, z0) to (x1, z1) on the wall's middle line; the deck runs `WALK.in0`..`WALK.in1` m inwards (nx, nz
+ * points into the village). From it you look (and shoot) over the wall.
+ */
+export interface WalkRun { x0: number; z0: number; x1: number; z1: number; nx: number; nz: number; h: number }
+export const WALK = { in0: 0.5, in1: 1.7 };
+/** A spot on top of the wall where an auto turret can be mounted (world; `y` over the plaza), facing out (fx, fz). */
+export interface Mount { x: number; z: number; y: number; fx: number; fz: number }
+/** Mount spots per village, at most (the elder commissions the turrets one by one: gen/town.ts WORKS). */
+export const MOUNTS_MAX = 6;
 /** A straight run of fence along the wall line (world, the line's middle), between corners and gates. */
 export interface FenceRun { x0: number; z0: number; x1: number; z1: number }
 /**
@@ -36,9 +49,9 @@ export interface FenceRun { x0: number; z0: number; x1: number; z1: number }
  * with towers and battlements). `h` is the height of the wall (m), `gate` the top of the gate frame.
  */
 export const WALL_TIERS = [
-  { name: 'Stake Fence', h: 2, gate: 3.6, tower: 4.5 },
-  { name: 'Timber Palisade', h: 4, gate: 5, tower: 6.5 },
-  { name: 'Stone Wall', h: 7, gate: 4, tower: 10 },
+  { name: 'Stake Fence', h: 2, gate: 3.6, tower: 4.5, walk: 0 },
+  { name: 'Timber Palisade', h: 4, gate: 5, tower: 6.5, walk: 3.3 },
+  { name: 'Stone Wall', h: 7, gate: 4, tower: 10, walk: 5.6 },
 ] as const;
 /** The first tier built of stone (voxel walls drawn as they are); below it the wall is a fence drawn by world/level.ts. */
 export const STONE_TIER = 2;
@@ -70,6 +83,8 @@ export interface VillageMap {
   well: { x: number; z: number };
   /** Walkable plaza cells for strolling villagers (world x, z). */
   walk: [number, number][];
+  /** The wall-walk (palisade and stone wall; none behind a stake fence), its ladders, and the turret mounts on the wall. */
+  walkway: WalkRun[]; walkLadders: Ladder[]; mounts: Mount[];
 }
 
 /**
@@ -324,7 +339,50 @@ export function generateVillage(seed: number, y = 0, cx = 0, cz = 0, name = 'Gri
     well: { x: 36 + ox, z: 37 + oz }, walk: walk.map(([x, z]) => [x + ox, z + oz]),
     tier, wallH: WALL_H, fence: stone ? [] : fenceRuns().map((r) => ({ x0: r.x0 + ox, z0: r.z0 + oz, x1: r.x1 + ox, z1: r.z1 + oz })),
     shown: translateOps(stone ? all : all.filter((o) => !fenceOps.has(o)), ox, y, oz),
+    ...wallWalk(ox, oz, buildings, trees, towers),
   };
+  }
+  /**
+   * The wall-walk along the inside of the wall (plaza coordinates, moved by ox/oz): the fence runs trimmed clear of the
+   * corner towers (and a stone wall's gate towers), a ladder up to each (two on a long one) where the ground below is
+   * free, and the turret mounts on the wall top: by the gates first, then along the runs.
+   */
+  function wallWalk(ox: number, oz: number, buildings: Building[], trees: { x: number; z: number }[], towers: Tower[]): { walkway: WalkRun[]; walkLadders: Ladder[]; mounts: Mount[] } {
+    const walkway: WalkRun[] = [], walkLadders: Ladder[] = [], byGate: Mount[] = [], along: Mount[] = [];
+    if (!T.walk) return { walkway, walkLadders, mounts: [] };
+    const corner = (x: number, z: number) => poly.some(([vx, vz]) => Math.hypot(vx - x, vz - z) < 1.6) || (square && (x < 0.5 || x > PW - 0.5) && (z < 0.5 || z > PD - 0.5));
+    const clear = (x: number, z: number, r: number) => !buildings.some((b) => x > b.x - r && x < b.x + b.w + r && z > b.z - r && z < b.z + b.d + r)
+      && !towers.some((t) => x > t.x - r && x < t.x + t.w + r && z > t.z - r && z < t.z + t.d + r) && !trees.some((t) => Math.hypot(t.x + 0.5 - x, t.z + 0.5 - z) < r + 1);
+    for (const r of fenceRuns()) {
+      const L = Math.hypot(r.x1 - r.x0, r.z1 - r.z0), ux = (r.x1 - r.x0) / L, uz = (r.z1 - r.z0) / L;
+      let nx = -uz, nz = ux;
+      if ((PC - (r.x0 + r.x1) / 2) * nx + (PC - (r.z0 + r.z1) / 2) * nz < 0) { nx = -nx; nz = -nz; }
+      const endTrim = (x: number, z: number) => (corner(x, z) ? 4.5 : stone ? 3.6 : 0.4);
+      const t0 = endTrim(r.x0, r.z0), t1 = endTrim(r.x1, r.z1);
+      if (L - t0 - t1 < 3) continue;
+      const P = (a: number): [number, number] => [r.x0 + ux * a, r.z0 + uz * a];
+      const [ax, az] = P(t0), [bx, bz] = P(L - t1);
+      walkway.push({ x0: ax + ox, z0: az + oz, x1: bx + ox, z1: bz + oz, nx, nz, h: T.walk });
+      // ladders: at the middle (a long run: at a quarter and three quarters), nudged along to free ground
+      const len = L - t0 - t1, want = len > 28 ? [0.25, 0.75] : [0.5];
+      for (const f of want) {
+        for (let k = 0; k < 60; k++) {
+          const a = t0 + len * f + (k % 2 ? 1 : -1) * Math.ceil(k / 2) * 0.6;
+          if (a < t0 + 0.8 || a > L - t1 - 0.8) continue;
+          const [lx, lz] = P(a), fx = lx + nx * (WALK.in1 + 0.05), fz = lz + nz * (WALK.in1 + 0.05);
+          if (!clear(fx + nx * 0.9, fz + nz * 0.9, 0.75)) continue;
+          const dx = lx + nx * 0.85, dz = lz + nz * 0.85;
+          walkLadders.push({ x: fx + ox, z: fz + oz, nx, nz, top: T.walk, deck: { x0: dx - 0.6 + ox, z0: dz - 0.6 + oz, x1: dx + 0.6 + ox, z1: dz + 0.6 + oz }, stilts: false, walk: true });
+          break;
+        }
+      }
+      // turret mounts on the wall top: 2.5 m from an end at a gate, and the middle of a long run
+      const top = stone ? T.h : T.h + 0.2, m = (a: number): Mount => { const [x, z] = P(a); return { x: x + ox, z: z + oz, y: top, fx: -nx, fz: -nz }; };
+      if (!corner(r.x0, r.z0)) byGate.push(m(Math.min(L / 2, 2.5 + (stone ? 3 : 0))));
+      if (!corner(r.x1, r.z1)) byGate.push(m(Math.max(L / 2, L - 2.5 - (stone ? 3 : 0))));
+      if (len > 8) along.push(m(L / 2));
+    }
+    return { walkway, walkLadders, mounts: [...byGate, ...along].slice(0, MOUNTS_MAX) };
   }
   /** The fence along the wall's middle line, broken at the gates (plaza coordinates). */
   function fenceRuns(): FenceRun[] {

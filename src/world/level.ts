@@ -8,7 +8,7 @@ import { meshVoxels, type OutlineStyle } from '../core/meshing';
 import { generateDungeon } from '../gen/dungeon';
 import { findPoi, allVillages, worldDist, poisNear, GRIDHOLM_ID, CHUNK, type Poi } from '../gen/regions';
 import { isDiscovered } from '../save';
-import { WALL_TIERS, STONE_TIER, HOUSE, type VillageMap } from '../gen/village';
+import { WALL_TIERS, STONE_TIER, HOUSE, WALK, type VillageMap } from '../gen/village';
 import { placeTunnelDoors, tryPlaceDoor, type PlacedDoor } from '../gen/doors';
 import { makeDoor, makeStair, arriveVia, signTexture } from './doors';
 import { makeChest, makeHatch, setCrystalXp } from './loot';
@@ -145,6 +145,7 @@ export function villageDeco(map: VillageMap, y0 = 0) {
   for (const t of map.trees) drawCrown(props, t.x + 0.5, y0 + 2, t.z + 0.5, 1.8, t.h, hash(t.x, t.z, 0x7e3e));
   if (map.house) homeDeco(props, map.house, y0);
   for (const t of map.towers) if (t.ladder) drawLadder(props, t.ladder, y0, map.tier < STONE_TIER ? STAKE : GRID);
+  walkwayDeco(props, map, y0);
   if (map.tier < STONE_TIER) fenceDeco(props, map, y0);
   else {
   // guard tower lookouts
@@ -188,6 +189,42 @@ const rnd = (seed: number, i: number) => (hash(seed, i, 0xfe9c) % 10000) / 10000
  * along the inside, patches of scrap sheet here and there, a gate frame of two posts and a crossbeam at every gate,
  * and watch platforms on stilts in the corners. The collision is the voxel band under it (gen/village.ts).
  */
+/**
+ * The wall-walk (gen/village.ts `WalkRun`): a plank deck on joists along the inside of the wall, carried by posts with
+ * knee braces, a hand rail on the inner side (open where a ladder comes up) with a toe board, and the ladders.
+ */
+function walkwayDeco(pb: PropBatch, map: VillageMap, y0: number) {
+  const C = STAKE;
+  for (const w of map.walkway) {
+    const L = Math.hypot(w.x1 - w.x0, w.z1 - w.z0), ux = (w.x1 - w.x0) / L, uz = (w.z1 - w.z0) / L, h = y0 + w.h;
+    const P = (a: number, y: number, o: number) => [w.x0 + ux * a + w.nx * o, y, w.z0 + uz * a + w.nz * o];
+    const i0 = WALK.in0, i1 = WALK.in1, th = 0.12;
+    // the deck, planks across it and the joist under each end
+    pb.solid8([P(0, h - th, i0), P(L, h - th, i0), P(L, h - th, i1), P(0, h - th, i1)], [P(0, h, i0), P(L, h, i0), P(L, h, i1), P(0, h, i1)], C);
+    for (let a = 0.3; a < L; a += 0.3) pb.seg(C, P(a, h + 0.005, i0), P(a, h + 0.005, i1));
+    // posts every 2 m at the inner edge, braced back to the wall, and the rail on them (a gap at each ladder)
+    const gaps = map.walkLadders.filter((l) => Math.abs((l.x - w.x0) * w.nx + (l.z - w.z0) * w.nz - (i1 + 0.05)) < 0.2)
+      .map((l) => (l.x - w.x0) * ux + (l.z - w.z0) * uz).filter((a) => a > -0.5 && a < L + 0.5);
+    const inGap = (a: number) => gaps.some((g) => Math.abs(a - g) < 0.45), posts: number[] = [];
+    for (let a = 0.1; a < L - 0.4; a += 2) posts.push(a);
+    posts.push(L - 0.1);
+    for (const a of posts) {
+      const q = 0.08, [x, , z] = P(a, 0, i1);
+      pb.solid8([P(a - q, y0, i1 - q), P(a + q, y0, i1 - q), P(a + q, y0, i1 + q), P(a - q, y0, i1 + q)], [P(a - q, h - th, i1 - q), P(a + q, h - th, i1 - q), P(a + q, h - th, i1 + q), P(a - q, h - th, i1 + q)], C);
+      pb.seg(C, P(a, h - 0.9, i1), P(a, h - th, i0)); // the knee brace
+      if (!inGap(a)) pb.box(x - 0.05, h, z - 0.05, x + 0.05, h + 1.05, z + 0.05, C); // a rail post
+    }
+    for (let a = 0; a < L; ) { // the rail and the toe board, in lengths between the gaps
+      let b = L;
+      for (const g of gaps) if (g - 0.45 > a && g - 0.45 < b) b = g - 0.45;
+      if (b - a > 0.2) { pb.seg(C, P(a, h + 1.05, i1), P(b, h + 1.05, i1)); pb.seg(C, P(a, h + 0.55, i1), P(b, h + 0.55, i1)); pb.seg(C, P(a, h + 0.15, i1), P(b, h + 0.15, i1)); }
+      const next = gaps.filter((g) => g + 0.45 > b).sort((p, q) => p - q)[0];
+      a = next !== undefined && b < L ? next + 0.45 : L;
+    }
+    for (const a of [0, L]) pb.seg(C, P(a, h + 1.05, i0), P(a, h + 1.05, i1)); // across the ends
+  }
+  for (const l of map.walkLadders) drawLadder(pb, l, y0, C);
+}
 function fenceDeco(pb: PropBatch, map: VillageMap, y0: number) {
   const H = map.wallH, tall = map.tier > 0;
   let n = 0;
@@ -197,7 +234,7 @@ function fenceDeco(pb: PropBatch, map: VillageMap, y0: number) {
     // stakes
     const gap = tall ? 0.42 : 0.62, w = tall ? 0.2 : 0.14;
     for (let a = gap / 2; a < L; a += gap) {
-      const k = n++, h = H * (0.82 + rnd(map.seed, k) * 0.3), lean = (rnd(map.seed, k + 7e5) - 0.5) * (tall ? 0.15 : 0.4), yb = y0 - 0.1;
+      const k = n++, h = H * (tall ? 0.8 + rnd(map.seed, k) * 0.2 : 0.82 + rnd(map.seed, k) * 0.3), lean = (rnd(map.seed, k + 7e5) - 0.5) * (tall ? 0.15 : 0.4), yb = y0 - 0.1;
       const b = [P(a - w, yb, -w), P(a + w, yb, -w), P(a + w, yb, w), P(a - w, yb, w)];
       const t = b.map(([x, , z]) => [x + nx * lean, y0 + h, z + nz * lean]);
       pb.solid8(b, t, STAKE);

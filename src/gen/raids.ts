@@ -9,7 +9,7 @@
 import { hash } from '../core/rng';
 import { poisNear, worldDist, type Poi } from './regions';
 import { dangerAt } from './danger';
-import type { TownState } from './town';
+import { worksOf, GUARDED, type TownState } from './town';
 
 export const RAID = {
   /** Camps further than this from a village do not raid it (m). */
@@ -69,7 +69,7 @@ export function tribute(r: Raid, wealth: number, wall: number): number {
 /** Damage lost raids have done to the village's power plant since `since` (its last mending), up to `now`. */
 export function raidHurt(world: number, v: Poi, s: TownState | undefined, since: number, now: number): number {
   let h = 0;
-  for (const r of raidsBetween(world, v, since - RAID.duration, now)) if (r.t0 + RAID.duration > since && r.t0 + RAID.duration <= now && raidOutcome(world, r, s) === 'lost') h += RAID.loss;
+  for (const r of raidsBetween(world, v, since - RAID.duration, now)) if (r.t0 + RAID.duration > since && r.t0 + RAID.duration <= now && raidOutcome(world, r, s) === 'lost') h += RAID.loss * (worksOf(s, 'plantGuard') ? GUARDED.lost : 1);
   return h;
 }
 /** The next raid on v after `now` (for the elder's warning), and the last one before it. */

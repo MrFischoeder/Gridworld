@@ -8,7 +8,7 @@
 import { hash, rng, type Dir } from '../core/rng';
 import { allVillages, worldDist, villageSeed, type Poi } from './regions';
 import { mountainMask } from './mountains';
-import { powerSite } from './town';
+import { powerSite, worksOf, GUARDED } from './town';
 import { raidsBetween, raidOutcome, RAID } from './raids';
 import type { TownState } from './town';
 import type { Good } from './market';
@@ -77,7 +77,7 @@ export function siteCondition(world: number, v: Poi, s: TownState | undefined, n
   let dmg = 0;
   for (const r of raidsBetween(world, v, since - RAID.duration, now)) {
     const end = r.t0 + RAID.duration;
-    if (end > since && end <= now && raidOutcome(world, r, s) === 'lost') dmg += SITE.raid * Math.max(0, 1 - (now - end) / SITE.heal);
+    if (end > since && end <= now && raidOutcome(world, r, s) === 'lost') dmg += SITE.raid * (worksOf(s, 'siteGuard') ? GUARDED.lost : 1) * Math.max(0, 1 - (now - end) / SITE.heal);
   }
   if (s?.siteHurt && s.siteHurtT !== undefined && s.siteHurtT > (s.siteFixed ?? -Infinity)) dmg += s.siteHurt * Math.max(0, 1 - (now - s.siteHurtT) / SITE.heal);
   return Math.max(SITE.floor, Math.min(100, 100 - dmg));

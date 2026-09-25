@@ -59,6 +59,7 @@ export function ladderFloor(x: number, y: number, z: number): number {
 export function ladderHit(x: number, y: number, z: number, r: number): boolean {
   if (climb) return false;
   for (const l of all()) {
+    if (l.walk) continue; // the wall-walk has its own rail (world/walkways.ts)
     const top = l.y0 + l.top;
     if (y < top - 0.3 || y > top + 1.6 || !inside(l.deck, x, z, -r) || inside(l.deck, x, z, r)) continue;
     const along = (x - l.x) * -l.nz + (z - l.z) * l.nx, out = (x - l.x) * l.nx + (z - l.z) * l.nz;

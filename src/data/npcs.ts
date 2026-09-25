@@ -30,7 +30,7 @@ export const RUMOURS = ['They say the guardians below each carry an Access Key. 
   'Folk who fled the drones left their vehicles out in the hills. Find one and it is yours, along with whatever is in the trunk.'];
 export const OPT_TEXT: Record<OptId | 'back', string> = {
   rest: 'Rent a bed (10 gold)', rumour: 'Heard any rumours?', work: 'Do you have any work for me?', lore: 'Tell me about the dungeon.',
-  shop: 'Show me your wares.', sell: 'I want to sell something.', cook: 'Roast my raw meat (2 gold a piece).', craft: 'Let me use your workbench (crafting).', chat: 'How are things?', fortify: 'How can I help the village? (walls and power)', trade: 'Trade goods by the crate (market).', contracts: 'Any deliveries to be done? (contracts)', watch: 'How safe is the village?', house: 'About the empty house by the wall...', bye: 'Goodbye.', back: 'Back',
+  shop: 'Show me your wares.', sell: 'I want to sell something.', cook: 'Roast my raw meat (2 gold a piece).', craft: 'Let me use your workbench (crafting).', chat: 'How are things?', fortify: 'How can I help the village? (walls, turrets, power)', trade: 'Trade goods by the crate (market).', contracts: 'Any deliveries to be done? (contracts)', watch: 'How safe is the village?', house: 'About the empty house by the wall...', bye: 'Goodbye.', back: 'Back',
 };
 export const LORE = 'Old ruins stand in the hills around Gridholm. Beneath each one lies a maze of the old machine folk. Drones patrol it, and guardians seal the deeper passages. Stairs connect it to other sectors, and hatches lead ever deeper. Follow the roads from our gates and you will find them.';
 

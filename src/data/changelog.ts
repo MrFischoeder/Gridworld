@@ -4,6 +4,13 @@ export interface Change { v: string; date: string; title: string; notes: string[
 
 export const CHANGELOG: Change[] = [
   {
+    v: '0.45.0', date: '2026-09-25', title: 'Wall-walks, wall turrets and barricades',
+    notes: ['A timber palisade or a stone wall now has a wall-walk: a plank walkway on posts along the inside, with ladders up to it (E to climb) and a hand rail. Stand on it with the wall at your chest and shoot over it at raiders.',
+      'The elder can have auto turrets mounted on the wall (up to six, starting by the gates). Bring a Turret Kit (Oskar sells them again), electronic components, wire and scrap; the village pays you for each. The turrets pick off bandits, creatures and robots outside the walls.',
+      'The elder also wants barricades round the village\'s works (the fields, mine, refinery...) and round the power plant: sandbag walls with steel hedgehogs and spiked timber. Behind them bandits do much less damage, both in the raids you fight and in the ones you miss.',
+      'The palisade\'s stakes are a little shorter, so you can see over them from the wall-walk.'],
+  },
+  {
     v: '0.44.0', date: '2026-09-24', title: 'Doors that open, and a house to buy',
     notes: ['Village doors are real now: they swing open and shut (E), a shut door blocks your way and your shots, and it hides the room behind it.',
       'Shops, the Elder\'s Hall and the tavern stand open by day, from 06:00 to 21:00. At night the shops and the hall are locked, while the tavern is only shut. Folk\'s houses are shut: you may open them by day, but at night they are locked. A door you open or close stays that way until the next dawn or dusk.',

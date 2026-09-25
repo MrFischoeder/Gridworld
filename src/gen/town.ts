@@ -25,6 +25,40 @@ export interface TownState {
   dead?: number[];
   /** The industry site (gen/industry.ts): when you last mended it, damage bandits did at it and when, the refinery built and its materials so far. */
   siteFixed?: number; siteHurt?: number; siteHurtT?: number; built?: boolean; bgiven?: Partial<Record<ItemKey, number>>;
+  /** Defence works done (WORKS: turrets on the wall, barricades round the site and the plant) and materials towards the next of each. */
+  works?: Partial<Record<WorkKind, number>>; wgiven?: Partial<Record<WorkKind, Partial<Record<ItemKey, number>>>>;
+}
+
+// ---------- defence works ----------
+/**
+ * What the elder can commission besides the wall: auto turrets on the wall top (one at a time, up to the wall's
+ * mount spots; they need at least a palisade), and barricades round the industry site and round the power plant
+ * (sandbag walls and spiked timber, one each): bandits there do much less harm.
+ */
+export type WorkKind = 'turret' | 'siteGuard' | 'plantGuard';
+export const WORKS: Record<WorkKind, { name: string; needs: [ItemKey, number][]; gold: number; xp: number; max: number }> = {
+  turret: { name: 'Auto Turret', needs: [['turretkit', 1], ['circuit', 2], ['wire', 4], ['scrap', 4]], gold: 150, xp: 60, max: 6 },
+  siteGuard: { name: 'Barricades round the works', needs: [['planks', 24], ['stone', 20], ['scrap', 8], ['rope', 6]], gold: 220, xp: 90, max: 1 },
+  plantGuard: { name: 'Barricades round the power plant', needs: [['planks', 16], ['stone', 16], ['scrap', 6], ['rope', 4]], gold: 180, xp: 70, max: 1 },
+};
+/** How much less harm bandits do at a barricaded site or plant (live raids), and to it in a lost raid. */
+export const GUARDED = { live: 0.35, lost: 0.5 };
+export const worksOf = (s: TownState | undefined, k: WorkKind) => s?.works?.[k] ?? 0;
+/** The next piece of work k: what is still missing, or null when there is no more to do (`limit`: the spots there are). */
+export function workPlan(s: TownState | undefined, k: WorkKind, limit = WORKS[k].max) {
+  const w = WORKS[k], done = worksOf(s, k);
+  if (done >= Math.min(w.max, limit)) return null;
+  const rows = w.needs.map(([i, n]) => ({ k: i, n, given: Math.min(n, s?.wgiven?.[k]?.[i] ?? 0) }));
+  return { kind: k, done, rows, complete: rows.every((r) => r.given >= r.n), gold: w.gold, xp: w.xp };
+}
+/** Hand over materials for the next piece of work k (bit by bit); it is done once all are in. */
+export function handOverWork(s: TownState, k: WorkKind, have: (i: ItemKey) => number, limit = WORKS[k].max): { taken: [ItemKey, number][]; done: boolean } {
+  const plan = workPlan(s, k, limit);
+  if (!plan) return { taken: [], done: false };
+  const g = ((s.wgiven ??= {})[k] ??= {}), taken: [ItemKey, number][] = [];
+  for (const r of plan.rows) { const n = Math.min(r.n - r.given, have(r.k)); if (n > 0) { g[r.k] = r.given + n; taken.push([r.k, n]); } }
+  if (workPlan(s, k, limit)!.complete) { (s.works ??= {})[k] = plan.done + 1; s.wgiven![k] = {}; return { taken, done: true }; }
+  return { taken, done: false };
 }
 
 /** What it takes to raise the wall to tier i+1 (index = the tier you have), and what the village pays for it. */

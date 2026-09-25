@@ -25,8 +25,8 @@ import { shipmentOffer } from '../gen/contracts';
 import { pendingTribute, payTribute } from '../world/villageraid';
 import { findPoi } from '../gen/regions';
 import { fmtTime } from '../core/time';
-import { fortifyPlan, handOver, powerKind, powerSite, POWER, POWER_DOWN, POWER_LOW } from '../gen/town';
-import { WALL_TIERS } from '../gen/village';
+import { fortifyPlan, handOver, powerKind, powerSite, POWER, POWER_DOWN, POWER_LOW, WORKS, workPlan, handOverWork, worksOf, type WorkKind, type TownState } from '../gen/town';
+import { WALL_TIERS, type VillageMap } from '../gen/village';
 import { count } from '../data/crafting';
 import { loadedVillage, reloadStruct } from '../world/overworld';
 import { gainXp } from '../character';
@@ -161,12 +161,48 @@ function renderFortify(msg?: string) {
   const canGive = !!plan && plan.rows.some((r) => r.given < r.n && count(c.inv, r.k) > 0);
   panel().innerHTML = dlgHead() + `<div class="say">${msg ? msg + '<br><br>' : ''}` +
     (plan ? `Our wall is a <b>${wall.name}</b>. Help us raise a <b>${WALL_TIERS[plan.to].name}</b> (${WALL_TIERS[plan.to].h} m) and the village will pay you <b>${plan.gold} gold</b>. Bring the materials a load at a time: we keep count.`
-      : `Our wall is a <b>${wall.name}</b>, as strong as we can make it. Thank you.`) + `<br><br>${power}<br><br>${raids}<br><br>${work}<br><br>${store}</div>` +
+      : `Our wall is a <b>${wall.name}</b>, as strong as we can make it. Thank you.`) + `<br><br>${power}<br><br>${raids}<br><br>${work}<br><br>${store}<br><br>${defenceText(v.id, v.vm, st)}</div>` +
     (pt ? `<button class="opt" data-tribute="pay" ${c.gold < pt.amount ? 'disabled' : ''} style="color:var(--gold)">Pay the bandits their ${pt.amount} gold</button>` : '') + rows +
     (plan ? `<button class="opt" data-fort="give" ${canGive ? '' : 'disabled'}>Hand over what I carry (for the wall)</button>` : '') + brows +
     (bp ? `<button class="opt" data-rbuild="give" ${canBuild ? '' : 'disabled'}>Hand over what I carry (for the refinery)</button>` : '') + srows +
     (sp ? `<button class="opt" data-sbuild="give" ${canStore ? '' : 'disabled'}>Hand over what I carry (for the ${STORE.tiers[sp.to].name.toLowerCase()})</button>` : '') +
+    defenceRows(v.vm, st) +
     `<button class="opt" data-o="back">${OPT_TEXT.back}</button>`;
+}
+// ---------- defence works: turrets on the wall, barricades round the works and the plant ----------
+const WORK_KINDS: WorkKind[] = ['turret', 'siteGuard', 'plantGuard'];
+const workLimit = (k: WorkKind, vm: VillageMap) => (k === 'turret' ? vm.mounts.length : WORKS[k].max);
+function defenceText(vid: number, vm: VillageMap, st: TownState | undefined): string {
+  const c = G.char, poi = findPoi(c.world, vid), site = poi ? INDUSTRY[industryOf(c.world, poi, vm.seed)].site.toLowerCase() : 'works';
+  const guns = worksOf(st, 'turret'), sg = worksOf(st, 'siteGuard'), pg = worksOf(st, 'plantGuard');
+  const t = !vm.mounts.length ? 'Auto turrets need a wall to stand on: a palisade at least.'
+    : guns >= vm.mounts.length ? `All ${guns} turrets are on the wall.`
+    : `${guns ? `${guns} auto turret${guns > 1 ? 's' : ''} guard${guns > 1 ? '' : 's'} our wall.` : 'No turrets guard our wall yet.'} Bring a <b>Turret Kit</b> and the parts, and we mount another (room for ${vm.mounts.length}): <b>${WORKS.turret.gold} gold</b> each.`;
+  return `<b>Defences.</b> ${t} ${sg ? `Barricades ring the ${site}.` : `Sandbags round the ${site} would keep the bandits from wrecking it (<b>${WORKS.siteGuard.gold} gold</b>).`} ${pg ? 'Barricades ring the power plant.' : `The power plant could use them too (<b>${WORKS.plantGuard.gold} gold</b>).`}`;
+}
+function defenceRows(vm: VillageMap, st: TownState | undefined): string {
+  const c = G.char;
+  return WORK_KINDS.map((k) => {
+    const plan = workPlan(st, k, workLimit(k, vm));
+    if (!plan) return '';
+    const rows = plan.rows.map((r) => `<div class="shoprow"><div><b>${ITEMS[r.k].name}</b><br><span>${r.given} / ${r.n} for the ${WORKS[k].name.toLowerCase()}${r.given < r.n ? ` · you carry ${count(c.inv, r.k)}` : ' · done'}</span></div></div>`).join('');
+    const can = plan.rows.some((r) => r.given < r.n && count(c.inv, r.k) > 0);
+    return rows + `<button class="opt" data-work="${k}" ${can ? '' : 'disabled'}>Hand over what I carry (${WORKS[k].name.toLowerCase()})</button>`;
+  }).join('');
+}
+function giveWork(k: WorkKind) {
+  const v = loadedVillage(town()), c = G.char;
+  if (!v) return;
+  const st = (c.towns[v.id] ??= {}), plan = workPlan(st, k, workLimit(k, v.vm));
+  if (!plan) { renderFortify(); return; }
+  const { taken, done } = handOverWork(st, k, (i) => count(c.inv, i), workLimit(k, v.vm));
+  for (const [i, n] of taken) { let left = n; for (let j = 0; j < c.inv.length && left; j++) { const s = c.inv[j]; if (s?.k === i) { const m = Math.min(left, s.n); s.n -= m; left -= m; if (s.n <= 0) c.inv[j] = null; } } }
+  if (!done) { saveChar(); renderFortify(taken.length ? 'Handed over: ' + taken.map(([i, n]) => `${ITEMS[i].name} ×${n}`).join(', ') + '.' : 'You carry nothing that work still needs.'); return; }
+  c.gold += plan.gold; gainXp(plan.xp); calcStats(); saveChar();
+  closeDialog(); reloadStruct(v.id);
+  showToast(k === 'turret' ? `${v.vm.name}: a turret on the wall` : `${v.vm.name}: ${WORKS[k].name.toLowerCase()}`);
+  logLine(k === 'turret' ? `The villagers haul the turret up and bolt it to the wall. It sweeps the ground outside. They pay you ${plan.gold} gold.`
+    : `The villagers fill the sandbags and stack them round: ${WORKS[k].name.toLowerCase()} stand. They pay you ${plan.gold} gold.`);
 }
 const REFINERY_PAY = 1200;
 /** The bandits' current demand, as the elder or the guard tells it. */
@@ -244,6 +280,7 @@ dlgEl.addEventListener('click', (e) => {
   if (t.closest('[data-fort]')) { giveFortify(); return; }
   if (t.closest('[data-rbuild]')) { giveRefinery(); return; }
   if (t.closest('[data-sbuild]')) { giveStore(); return; }
+  { const w = t.closest<HTMLElement>('[data-work]'); if (w) { giveWork(w.dataset.work as WorkKind); return; } }
   if (t.closest('[data-tribute]')) { const v = loadedVillage(town()); const m = v ? payTribute(v.id) : ''; if (W.talkNpc?.role === 'guard') renderWatch(m); else renderFortify(m); return; }
   if (t.closest('[data-buyhouse]')) {
     const v = loadedVillage(town());
