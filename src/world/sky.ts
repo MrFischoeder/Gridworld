@@ -12,6 +12,26 @@ const starMat = new THREE.PointsMaterial({ color: 0xbfffd0, size: 1.6, sizeAtten
 const ORBIT = 166;
 const moon = new THREE.Group(), sun = new THREE.Group(), Z = new THREE.Vector3(0, 0, 1), EYE = new THREE.Vector3(0, 20, 0);
 
+// The sky dome: a gradient from the horizon up to the zenith, with a glow round the sun; drawn at the far plane so
+// everything else stands in front of it. Its colours follow the time of day (updateSky).
+const domeMat = new THREE.ShaderMaterial({
+  uniforms: { zenith: { value: new THREE.Color() }, horizon: { value: new THREE.Color() }, glow: { value: new THREE.Color() }, sunDir: { value: new THREE.Vector3(0, 1, 0) }, glowK: { value: 0 } },
+  vertexShader: `varying vec3 vDir;
+    void main() { vDir = normalize(position); vec4 p = projectionMatrix * modelViewMatrix * vec4(position, 1.0); gl_Position = p; gl_Position.z = p.w * 0.99999; }`,
+  fragmentShader: `uniform vec3 zenith; uniform vec3 horizon; uniform vec3 glow; uniform vec3 sunDir; uniform float glowK; varying vec3 vDir;
+    void main() {
+      float h = clamp(vDir.y, -0.2, 1.0);
+      vec3 c = mix(horizon, zenith, smoothstep(-0.02, 0.55, h));
+      float s = max(dot(normalize(vDir), sunDir), 0.0);
+      c += glow * glowK * (pow(s, 6.0) * 0.8 + pow(s, 60.0) * 0.6) * smoothstep(-0.25, 0.1, h);
+      gl_FragColor = vec4(c, 1.0);
+    }`,
+  side: THREE.BackSide, depthWrite: false, depthTest: false, fog: false,
+});
+const dome = new THREE.Mesh(new THREE.SphereGeometry(120, 32, 16), domeMat);
+dome.renderOrder = -10; dome.frustumCulled = false;
+let sunDisc: THREE.MeshBasicMaterial, moonFill: THREE.Mesh;
+
 export const sky = (() => {
   const p: number[] = [];
   for (let i = 0; i < 700; i++) {
@@ -42,7 +62,8 @@ export const sky = (() => {
   for (const r of [S, S * 0.7, S * 0.4]) for (let i = 0; i < 32; i++) { const a = i / 32 * 6.283, b = (i + 1) / 32 * 6.283; sp.push(V(Math.cos(a) * r, Math.sin(a) * r, 0.1), V(Math.cos(b) * r, Math.sin(b) * r, 0.1)); }
   for (let i = 0; i < 16; i++) { const a = i / 16 * 6.283, l = i % 2 ? 1.35 : 1.7; sp.push(V(Math.cos(a) * S * 1.15, Math.sin(a) * S * 1.15, 0), V(Math.cos(a) * S * l, Math.sin(a) * S * l, 0)); }
   sun.add(disc, new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(sp), lineMat(0xfff0a0, { fog: false })));
-  grp.add(moon, sun);
+  sunDisc = disc.material as THREE.MeshBasicMaterial; moonFill = globe.children[0] as THREE.Mesh;
+  grp.add(dome, moon, sun);
   grp.visible = false; scene.add(grp); return grp;
 })();
 
@@ -51,20 +72,33 @@ function onOrbit(o: THREE.Object3D, a: number, tilt: number) {
   o.position.set(Math.cos(a) * ORBIT, Math.sin(a) * Math.cos(tilt) * ORBIT, Math.sin(a) * Math.sin(tilt) * ORBIT);
   o.visible = o.position.y > -12;
 }
-const NIGHT = new THREE.Color(0x000000), DAY_SKY = new THREE.Color(0x061c0d), DUSK = new THREE.Color(0x2a1406), tmp = new THREE.Color();
+// Sky colours: [zenith, horizon] at night, by day, and the amber of dawn and dusk.
+const NIGHT_Z = new THREE.Color(0x000000), NIGHT_H = new THREE.Color(0x020a05), DAY_Z = new THREE.Color(0x14603f), DAY_H = new THREE.Color(0x4fae7c);
+const DUSK_Z = new THREE.Color(0x10160c), DUSK_H = new THREE.Color(0xa0561a), SUN_GLOW = new THREE.Color(0xfff2b0), DUSK_GLOW = new THREE.Color(0xff9a40);
+const tmp = new THREE.Color(), tmpZ = new THREE.Color(), SUN_DIM = new THREE.Color(0x2a2408), SUN_LIT = new THREE.Color(0xfff4c8);
 /**
- * Move the sun and the moon for game time t (core/time), fade the stars, and colour the sky: black at night,
- * a dark green by day, an amber glow at dawn and dusk. The fog takes the sky colour so the land fades into it.
+ * Move the sun and the moon for game time t (core/time), fade the stars, and colour the sky: black at night, a bright
+ * hazy green by day (lighter towards the horizon, a glow round the sun), amber at dawn and dusk. The fog takes the
+ * horizon's colour so the land fades into it; by day it lies further off.
  */
 export function updateSky(t: number, lat = 0) {
   const tilt = sunTilt(lat), a = sunAngle(t), day = daylight(t, tilt), glow = twilight(t, tilt);
   onOrbit(sun, a, tilt); onOrbit(moon, a + Math.PI, tilt);
   sun.quaternion.setFromUnitVectors(Z, EYE.clone().sub(sun.position).normalize()); // face the viewer (the sky sits 20 m below the eye)
-  starMat.opacity = Math.max(0, 1 - day * 1.4);
+  starMat.opacity = Math.max(0, 1 - day * 1.6);
   sky.children[0].visible = starMat.opacity > 0.01;
-  tmp.copy(NIGHT).lerp(DAY_SKY, day).lerp(DUSK, glow * 0.55);
+  tmpZ.copy(NIGHT_Z).lerp(DAY_Z, day).lerp(DUSK_Z, glow * 0.5);
+  tmp.copy(NIGHT_H).lerp(DAY_H, day).lerp(DUSK_H, glow * 0.7);
+  const u = domeMat.uniforms;
+  (u.zenith.value as THREE.Color).copy(tmpZ); (u.horizon.value as THREE.Color).copy(tmp);
+  (u.glow.value as THREE.Color).copy(SUN_GLOW).lerp(DUSK_GLOW, glow);
+  (u.sunDir.value as THREE.Vector3).copy(sun.position).normalize();
+  u.glowK.value = Math.min(1, day * 0.6 + glow * 0.9) * (sun.position.y > -30 ? 1 : 0);
   (scene.background as THREE.Color).copy(tmp); fog.color.copy(tmp);
-  fog.near = 14 + 6 * day; fog.far = 112 + 28 * day;
+  // the sun's disc brightens by day; the moon's dark globe takes the sky's colour so it does not punch a hole in it
+  sunDisc.color.copy(SUN_DIM).lerp(SUN_LIT, day);
+  (moonFill.material as THREE.MeshBasicMaterial).color.copy(tmpZ);
+  fog.near = 14 + 12 * day; fog.far = 112 + 55 * day;
   if (G.fly) { fog.near *= 2.5; fog.far *= 2.6; } // flying (dev): see the land further out
 }
 /** Underground: always black. */

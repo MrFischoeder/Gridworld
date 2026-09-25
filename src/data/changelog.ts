@@ -4,6 +4,12 @@ export interface Change { v: string; date: string; title: string; notes: string[
 
 export const CHANGELOG: Change[] = [
   {
+    v: '0.48.0', date: '2026-09-25', title: 'Day and night',
+    notes: ['The sky now really changes with the day. At night it is black and full of stars; as the sun comes up the horizon glows amber, and by day the sky turns a bright, hazy green, lighter towards the horizon and glowing round the sun. Dusk brings the amber back before the dark.',
+      'The land fades into the horizon\'s colour, and by day you see further. The sun shines brighter by day, and the moon no longer shows as a dark hole in a daytime sky.',
+      'Solar farms follow the same sun: full power at noon, none at night.'],
+  },
+  {
     v: '0.47.0', date: '2026-09-25', title: 'Power stations, and the Chariot of the Ancients',
     notes: ['Works need electricity now. A village\'s own little plant only just keeps its lamps and homes going, so a works without a power station stands idle. The elder shows the power balance: what the village makes, what it takes itself, and which works get power (in the order they were built).',
       'Build power stations through the elder, two per village: a Solar Farm (by day only), a Wind Farm (as the wind blows; the turbines turn), a Coal Power Station and a Diesel Generator Bank. The last two give steady power as long as you keep their bunkers filled with coal or fuel. E at a station shows its output and lets you load the bunker or switch it off.',
