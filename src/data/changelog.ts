@@ -4,6 +4,14 @@ export interface Change { v: string; date: string; title: string; notes: string[
 
 export const CHANGELOG: Change[] = [
   {
+    v: '0.46.0', date: '2026-09-25', title: 'Works, processed goods and the shuttle',
+    notes: ['Processing is now the way to earn. Nine new processed goods (steel, copper ingots, plastic resin, glass, copper cable, circuit boards, machine parts, hull alloy, rocket propellant) are worth far more than the raw goods they are made from.',
+      'Any village can put up any works, two per village: a smelter, an oil refinery, a glassworks, a wire mill, an electronics shop, a machine shop, an alloy foundry or a chemical works. Ask the elder ("Could we build works here?"), bring the materials and pay the builders. Once it stands it is yours to run: load its hopper with crates (from your backpack or vehicles parked by the village), pick what it makes, and collect the output.',
+      'Villages still differ in what their land gives: ore, coal, copper, oil, timber, fish and salt, and now quartz sand from mines and lake shores. Farming villages have better or poorer fields. Rich fields grow a surplus, so their food is plentiful and cheap.',
+      'North-east of Gridholm stands the Old Hangar, and in it a shuttle from before the machines woke. Repairing it is the long goal: hull plating, main engines, avionics, heat shield and propellant, each needing processed goods that no field, mine or robot will give you. The desk in the hangar takes your crates and pays well for every one, and you can watch the shuttle come back together.',
+      'Two ruins next to Gridholm may have moved a little to make room for the hangar.'],
+  },
+  {
     v: '0.45.0', date: '2026-09-25', title: 'Wall-walks, wall turrets and barricades',
     notes: ['A timber palisade or a stone wall now has a wall-walk: a plank walkway on posts along the inside, with ladders up to it (E to climb) and a hand rail. Stand on it with the wall at your chest and shoot over it at raiders.',
       'The elder can have auto turrets mounted on the wall (up to six, starting by the gates). Bring a Turret Kit (Oskar sells them again), electronic components, wire and scrap; the village pays you for each. The turrets pick off bandits, creatures and robots outside the walls.',

@@ -16,14 +16,15 @@ import { lockPointer } from './input';
 
 const root = $('areamap'), cv = $<HTMLCanvasElement>('areamapCv'), list = $('areamapList'), title = $('areamapTitle'), ctx = cv.getContext('2d')!;
 const RANGE = 900, SIZE = 640, LABELS = 14;
-const COLOR: Record<string, string> = { village: '#ffd060', ruin: '#5cc8ff', camp: '#ff6a4a', wreck: '#7dffc8' };
-const KIND: Record<string, string> = { village: 'village', ruin: 'ruins', camp: 'bandit camp', wreck: 'crash site' };
+const COLOR: Record<string, string> = { village: '#ffd060', ruin: '#5cc8ff', camp: '#ff6a4a', wreck: '#7dffc8', hangar: '#9dffe0' };
+const KIND: Record<string, string> = { village: 'village', ruin: 'ruins', camp: 'bandit camp', wreck: 'crash site', hangar: 'the shuttle' };
 let open = false;
 
 function symbol(p: Poi, x: number, y: number) {
   ctx.strokeStyle = ctx.fillStyle = COLOR[p.type]; ctx.lineWidth = 2; ctx.beginPath();
   if (p.type === 'village') { ctx.strokeRect(x - 6, y - 6, 12, 12); ctx.fillRect(x - 2, y - 2, 4, 4); return; }
   if (p.type === 'ruin') { ctx.moveTo(x - 6, y + 5); ctx.lineTo(x, y - 6); ctx.lineTo(x + 6, y + 5); ctx.closePath(); }
+  else if (p.type === 'hangar') { ctx.moveTo(x - 7, y + 5); ctx.quadraticCurveTo(x, y - 9, x + 7, y + 5); ctx.closePath(); }
   else if (p.type === 'camp') { ctx.moveTo(x - 6, y + 5); ctx.lineTo(x, y - 5); ctx.lineTo(x + 6, y + 5); ctx.moveTo(x - 3, y + 5); ctx.lineTo(x, y); ctx.lineTo(x + 3, y + 5); }
   else { ctx.moveTo(x - 8, y); ctx.lineTo(x - 3, y - 3); ctx.lineTo(x + 8, y - 1); ctx.lineTo(x + 8, y + 1); ctx.lineTo(x - 3, y + 3); ctx.closePath(); ctx.moveTo(x - 5, y - 2); ctx.lineTo(x - 6, y - 7); }
   ctx.stroke();

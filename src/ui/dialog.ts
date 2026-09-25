@@ -1,7 +1,7 @@
 // Conversations and shops. New options (quests) plug in through OPT_TEXT and the switch below.
 import { G, W } from '../game';
 import { ITEMS, HANDS_ONLY } from '../data/items';
-import { NPC_INFO, VILLAGER_LINES, RUMOURS, OPT_TEXT, LORE, BUYS, COOK_PRICE, HOUSE_PRICE, stockFor, type OptId } from '../data/npcs';
+import { NPC_INFO, VILLAGER_LINES, RUMOURS, OPT_TEXT, LORE, LORE_SHUTTLE, BUYS, COOK_PRICE, HOUSE_PRICE, stockFor, type OptId } from '../data/npcs';
 import { putItems } from '../inventory';
 import { craftClick, showForge } from './craft';
 import { buildClick } from './build';
@@ -21,6 +21,10 @@ import { nextRaid, lastRaid, raidSource, raidOutcome } from '../gen/raids';
 import { storePlan, handOverStore, STORE } from '../gen/store';
 import { storeOf } from '../world/industry';
 import { unlockMine } from '../world/housedoors';
+import { shuttleClick } from './shuttle';
+import { fertility } from '../gen/industry';
+import { PLANTS, PLANT_KINDS, PLANT_SLOTS, plantsOf, plantPlan, plantProblem, startPlant, handOverPlant, type PlantKind } from '../gen/plants';
+import { worksClick } from './works';
 import { shipmentOffer } from '../gen/contracts';
 import { pendingTribute, payTribute } from '../world/villageraid';
 import { findPoi } from '../gen/regions';
@@ -39,7 +43,7 @@ const partBuyback = (s: Slot) => Math.floor(PART_PRICE[s.k]! * PART_BUYBACK * (s
 
 const dlgEl = $('dlg'), panel = () => dlgEl.querySelector('.panel') as HTMLElement;
 /** Elder's lore line; the open world replaces it. */
-export let loreText = (): string => LORE;
+export let loreText = (): string => LORE + (town() === 'Gridholm' ? LORE_SHUTTLE : '');
 
 export function setLoreText(f: () => string) { loreText = f; }
 
@@ -169,6 +173,63 @@ function renderFortify(msg?: string) {
     defenceRows(v.vm, st) +
     `<button class="opt" data-o="back">${OPT_TEXT.back}</button>`;
 }
+// ---------- processing works (gen/plants.ts) ----------
+function worksText(st: TownState | undefined): string {
+  const built = plantsOf(st), plan = plantPlan(st), free = PLANT_SLOTS - built.length - (plan ? 1 : 0);
+  return `<b>Works.</b> Whatever our land gives, any village can process goods, and processed goods fetch the real money. ` +
+    (built.length ? `Outside our fence stand ${built.map((p) => `the <b>${PLANTS[p.k].name}</b>`).join(' and ')}: they are yours to run. ` : '') +
+    (plan ? `The <b>${PLANTS[plan.k].name}</b> is going up: bring the materials, and the fee of <b>${plan.fee} gold</b> pays the builders when it is done. `
+      : free > 0 ? `There is room for ${free === PLANT_SLOTS ? PLANT_SLOTS : 'one more'} works: choose what we should build, you bring the materials and pay the builders.` : 'There is no room for more works here.');
+}
+function worksRows(st: TownState | undefined): string {
+  const c = G.char, plan = plantPlan(st);
+  if (plan) {
+    const rows = plan.rows.map((r) => `<div class="shoprow"><div><b>${ITEMS[r.k].name}</b><br><span>${r.given} / ${r.n} for the ${PLANTS[plan.k].name.toLowerCase()}${r.given < r.n ? ` · you carry ${count(c.inv, r.k)}` : ' · done'}</span></div></div>`).join('');
+    const can = plan.rows.some((r) => r.given < r.n && count(c.inv, r.k) > 0) || (plan.done && c.gold >= plan.fee);
+    return rows + `<button class="opt" data-pgive="1" ${can ? '' : 'disabled'}>${plan.done ? `Pay the builders ${plan.fee} gold` : `Hand over what I carry (${PLANTS[plan.k].name.toLowerCase()})`}</button>`;
+  }
+  return PLANT_KINDS.filter((k) => !plantProblem(st, k)).map((k) => {
+    const sp = PLANTS[k];
+    return `<button class="opt" data-pnew="${k}">Build ${/^[AEIOU]/.test(sp.name) ? 'an' : 'a'} ${sp.name}: ${sp.blurb} (${sp.needs.map(([i, n]) => `${n} ${ITEMS[i].name}`).join(', ')}; ${sp.fee} gold)</button>`;
+  }).join('');
+}
+/** The elder on the works: what the land gives, what stands, what can be built. */
+function renderWorksPanel(msg = '') {
+  const v = loadedVillage(town()), c = G.char, poi = v && findPoi(c.world, v.id);
+  if (!W.talkNpc) return; // the talk is over (a stale click)
+  if (!v || !poi) { renderTalk('Hm?'); return; }
+  const st = c.towns[v.id], p = profileOf(c.world, poi, v.vm.seed), fert = fertility(c.world, poi, v.vm.seed);
+  const land = `Our land gives us ${p.makes.map((g) => ITEMS[g].name).join(' and ')}` + (fert > 1.15 ? ', and our fields are rich: we grow more than we eat' : fert < 0.85 ? ', though our fields are poor' : '') + '.';
+  panel().classList.add('wide');
+  panel().innerHTML = dlgHead() + `<div class="say">${msg ? msg + '<br><br>' : ''}${land} ${worksText(st)}</div>` + worksRows(st) + `<button class="opt" data-o="back">${OPT_TEXT.back}</button>`;
+}
+function newWorks(k: PlantKind) {
+  const v = loadedVillage(town()), c = G.char;
+  if (!v) return;
+  const why = startPlant((c.towns[v.id] ??= {}), k);
+  if (why) { renderWorksPanel(why); return; }
+  saveChar(); reloadStruct(v.id);
+  renderWorksPanel(`We will build ${/^[AEIOU]/.test(PLANTS[k].name) ? 'an' : 'a'} ${PLANTS[k].name} on the plot outside the fence. Bring the materials a load at a time; the builders want ${PLANTS[k].fee} gold when it stands.`);
+}
+function giveWorks() {
+  const v = loadedVillage(town()), c = G.char;
+  if (!v) return;
+  const st = (c.towns[v.id] ??= {}), plan = plantPlan(st);
+  if (!plan) { renderWorksPanel(); return; }
+  const { taken, built } = handOverPlant(st, (i) => count(c.inv, i), c.time, (fee) => { if (c.gold < fee) return false; c.gold -= fee; return true; });
+  for (const [i, n] of taken) { let left = n; for (let j = 0; j < c.inv.length && left; j++) { const s = c.inv[j]; if (s?.k === i) { const m = Math.min(left, s.n); s.n -= m; left -= m; if (s.n <= 0) c.inv[j] = null; } } }
+  if (!built) {
+    saveChar();
+    const after = plantPlan(st)!;
+    renderWorksPanel((taken.length ? 'Handed over: ' + taken.map(([i, n]) => `${ITEMS[i].name} ×${n}`).join(', ') + '. ' : '') +
+      (after.done ? `All the materials are in. The builders want their ${after.fee} gold${c.gold < after.fee ? ', and you do not have it yet' : ''}.` : taken.length ? '' : 'You carry nothing the works still needs.'));
+    return;
+  }
+  gainXp(plan.xp); calcStats(); saveChar();
+  closeDialog(); reloadStruct(v.id);
+  showToast(`${v.vm.name}: the ${PLANTS[built].name} stands`);
+  logLine(`The ${PLANTS[built].name} at ${v.vm.name} is finished and yours to run: load its hopper with ${[...new Set(PLANTS[built].recipes.flatMap((r) => r.in.map(([g]) => ITEMS[g].name)))].join(', ')} and collect what it makes.`);
+}
 // ---------- defence works: turrets on the wall, barricades round the works and the plant ----------
 const WORK_KINDS: WorkKind[] = ['turret', 'siteGuard', 'plantGuard'];
 const workLimit = (k: WorkKind, vm: VillageMap) => (k === 'turret' ? vm.mounts.length : WORKS[k].max);
@@ -249,7 +310,7 @@ function giveFortify() {
 }
 dlgEl.addEventListener('click', (e) => {
   if (craftClick(e.target as HTMLElement) || buildClick(e.target as HTMLElement)) return;
-  if (caravanClick(e.target as HTMLElement)) return;
+  if (caravanClick(e.target as HTMLElement) || shuttleClick(e.target as HTMLElement) || worksClick(e.target as HTMLElement)) return;
   const cm = contractsClick(e.target as HTMLElement);
   if (cm !== null) { renderContracts(panel(), dlgHead(), cm); return; }
   const mm = marketClick(e.target as HTMLElement);
@@ -281,6 +342,8 @@ dlgEl.addEventListener('click', (e) => {
   if (t.closest('[data-rbuild]')) { giveRefinery(); return; }
   if (t.closest('[data-sbuild]')) { giveStore(); return; }
   { const w = t.closest<HTMLElement>('[data-work]'); if (w) { giveWork(w.dataset.work as WorkKind); return; } }
+  { const w = t.closest<HTMLElement>('[data-pnew]'); if (w) { newWorks(w.dataset.pnew as PlantKind); return; } }
+  if (t.closest('[data-pgive]')) { giveWorks(); return; }
   if (t.closest('[data-tribute]')) { const v = loadedVillage(town()); const m = v ? payTribute(v.id) : ''; if (W.talkNpc?.role === 'guard') renderWatch(m); else renderFortify(m); return; }
   if (t.closest('[data-buyhouse]')) {
     const v = loadedVillage(town());
@@ -324,6 +387,7 @@ dlgEl.addEventListener('click', (e) => {
     case 'lore': renderTalk(here(loreText())); break;
     case 'fortify': renderFortify(); break;
     case 'house': renderHouse(); break;
+    case 'works': renderWorksPanel(); break;
     case 'contracts': openContracts(town()); renderContracts(panel(), dlgHead()); break;
     case 'trade': if (openMarket(town())) renderMarket(panel(), dlgHead()); else renderTalk('Hm?'); break;
     case 'work':

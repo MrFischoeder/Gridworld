@@ -24,11 +24,11 @@ export interface IndustrySpec {
 }
 export const INDUSTRY: Record<Industry, IndustrySpec> = {
   farm: { name: 'Farming village', site: 'Fields', pool: ['grain', 'carrots', 'potatoes'], wants: ['tools'], fix: [['planks', 6], ['nails', 10]] },
-  mine: { name: 'Mining village', site: 'Mine', pool: ['coal', 'ore', 'copper'], wants: ['grain'], fix: [['planks', 8], ['scrap', 4]] },
+  mine: { name: 'Mining village', site: 'Mine', pool: ['coal', 'ore', 'copper', 'sand'], wants: ['grain'], fix: [['planks', 8], ['scrap', 4]] },
   oil: { name: 'Oil village', site: 'Oil Wells', pool: ['crude'], wants: ['tools'], fix: [['scrap', 6], ['wire', 4]] },
   refinery: { name: 'Refinery town', site: 'Refinery', pool: ['fuel'], wants: ['crude'], fix: [['scrap', 8], ['circuit', 2]], build: [['scrap', 40], ['circuit', 10], ['wire', 20], ['planks', 30]] },
   lumber: { name: 'Timber village', site: 'Sawmill', pool: ['timber'], wants: ['tools'], fix: [['planks', 4], ['nails', 10]] },
-  fishery: { name: 'Fishing village', site: 'Fish Racks', pool: ['fish', 'salt'], wants: ['grain'], fix: [['planks', 4], ['rope', 3]] },
+  fishery: { name: 'Fishing village', site: 'Fish Racks', pool: ['fish', 'salt', 'sand'], wants: ['grain'], fix: [['planks', 4], ['rope', 3]] },
   workshop: { name: 'Craft village', site: 'Workshops', pool: ['tools', 'cloth'], wants: ['ore'], fix: [['planks', 4], ['scrap', 3]] },
   salvage: { name: 'Salvage village', site: 'Salvage Yard', pool: ['tech', 'meds'], wants: ['copper'], fix: [['scrap', 5], ['wire', 3]] },
 };
@@ -82,10 +82,19 @@ export function siteCondition(world: number, v: Poi, s: TownState | undefined, n
   if (s?.siteHurt && s.siteHurtT !== undefined && s.siteHurtT > (s.siteFixed ?? -Infinity)) dmg += s.siteHurt * Math.max(0, 1 - (now - s.siteHurtT) / SITE.heal);
   return Math.max(SITE.floor, Math.min(100, 100 - dmg));
 }
-/** How much the village's industry puts out now, 0..1 (0: its refinery is not built yet). */
+/**
+ * How good a farming village's fields are: 0.6 (thin, stony soil) .. 1.6 (deep black earth), from the seed and the
+ * land (hills make poorer fields). Anyone can farm, but rich fields make a surplus to sell. 1 for any other village.
+ */
+export function fertility(world: number, v: Poi, seed: number): number {
+  if (industryOf(world, v, seed) !== 'farm') return 1;
+  const hills = mountainMask(world, v.x, v.z), r = (hash(seed, 0xfe27) % 1000) / 1000;
+  return Math.round(Math.max(0.6, Math.min(1.6, 0.6 + r * 1.1 - hills * 0.8)) * 100) / 100;
+}
+/** How much the village's industry puts out now (0: its refinery is not built yet): its condition, times the fields' fertility on a farm. */
 export function production(world: number, v: Poi, seed: number, s: TownState | undefined, now: number): number {
   const k = industryOf(world, v, seed);
-  return siteBuilt(k, s) ? siteCondition(world, v, s, now) / 100 : 0;
+  return siteBuilt(k, s) ? siteCondition(world, v, s, now) / 100 * fertility(world, v, seed) : 0;
 }
 /**
  * Where the site lies, in plaza-local metres: on a side (W, E or S) other than the power plant's, off its middle so

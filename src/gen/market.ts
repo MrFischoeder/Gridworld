@@ -16,14 +16,25 @@ import type { ItemKey } from '../data/items';
 import { caravanShift } from './caravans';
 import { industryOf, INDUSTRY } from './industry';
 
-export type Good = 'grain' | 'carrots' | 'potatoes' | 'timber' | 'coal' | 'ore' | 'copper' | 'salt' | 'fish' | 'crude' | 'cloth' | 'tools' | 'meds' | 'fuel' | 'tech';
-export const GOODS: Good[] = ['grain', 'carrots', 'potatoes', 'timber', 'coal', 'ore', 'copper', 'salt', 'fish', 'crude', 'cloth', 'tools', 'meds', 'fuel', 'tech'];
-/** Base price (gold per crate), and whether the good is raw (made far out) or made (crafted near home). */
-export const GOOD_INFO: Record<Good, { base: number; raw: boolean }> = {
+export type Good = 'grain' | 'carrots' | 'potatoes' | 'timber' | 'coal' | 'ore' | 'copper' | 'salt' | 'fish' | 'crude' | 'sand' | 'cloth' | 'tools' | 'meds' | 'fuel' | 'tech'
+  | 'steel' | 'copperbar' | 'plastic' | 'glass' | 'cable' | 'boards' | 'parts' | 'alloy' | 'propellant';
+export const GOODS: Good[] = ['grain', 'carrots', 'potatoes', 'timber', 'coal', 'ore', 'copper', 'salt', 'fish', 'crude', 'sand', 'cloth', 'tools', 'meds', 'fuel', 'tech',
+  'steel', 'copperbar', 'plastic', 'glass', 'cable', 'boards', 'parts', 'alloy', 'propellant'];
+/**
+ * Base price (gold per crate), and whether the good is raw (dug, pumped, grown: made far out) or made (crafted near
+ * home). `proc`: processed in a works (gen/plants.ts) from other goods; no village's own industry makes it, and its
+ * price pays well for the inputs, so processing is the way to earn (and the shuttle needs it: gen/shuttle.ts).
+ */
+export const GOOD_INFO: Record<Good, { base: number; raw: boolean; proc?: true }> = {
   grain: { base: 20, raw: true }, carrots: { base: 16, raw: true }, potatoes: { base: 14, raw: true }, timber: { base: 24, raw: true }, coal: { base: 22, raw: true },
-  ore: { base: 36, raw: true }, copper: { base: 48, raw: true }, salt: { base: 30, raw: true }, fish: { base: 26, raw: true }, crude: { base: 40, raw: true },
+  ore: { base: 36, raw: true }, copper: { base: 48, raw: true }, salt: { base: 30, raw: true }, fish: { base: 26, raw: true }, crude: { base: 40, raw: true }, sand: { base: 18, raw: true },
   cloth: { base: 44, raw: false }, tools: { base: 68, raw: false }, meds: { base: 85, raw: false }, fuel: { base: 72, raw: false }, tech: { base: 110, raw: false },
+  steel: { base: 140, raw: false, proc: true }, copperbar: { base: 175, raw: false, proc: true }, plastic: { base: 120, raw: false, proc: true },
+  glass: { base: 90, raw: false, proc: true }, cable: { base: 120, raw: false, proc: true }, boards: { base: 480, raw: false, proc: true },
+  parts: { base: 400, raw: false, proc: true }, alloy: { base: 680, raw: false, proc: true }, propellant: { base: 170, raw: false, proc: true },
 };
+/** The processed goods (no village industry makes them; a works does). */
+export const PROCESSED = GOODS.filter((g) => GOOD_INFO[g].proc);
 export const isGood = (k: ItemKey): k is Good => k in GOOD_INFO;
 /**
  * Market tuning: price factors for made / wanted goods, the normal stock of made / neutral / wanted goods (crates),
@@ -94,7 +105,8 @@ export function quote(v: Poi, seed: number, world: number, g: Good, state: Marke
   // `prod`: how much the village's industry puts out now (gen/industry.ts production); a wrecked site makes less and
   // dearer, an unbuilt refinery makes nothing
   const p = profileOf(world, v, seed), made = role(p, g), r = made === 'make' && prod <= 0 ? 'none' : made, info = GOOD_INFO[g];
-  const factor = r === 'make' ? MARKET.make * (1 + (1 - prod) * 0.9) : r === 'want' ? MARKET.want : 1;
+  // (prod above 1: rich fields, more in stock and cheaper)
+  const factor = r === 'make' ? MARKET.make * (1 + (1 - Math.min(1, prod)) * 0.9) / Math.sqrt(Math.max(1, prod)) : r === 'want' ? MARKET.want : 1;
   const ph = (hash(seed, g.length * 131 + g.charCodeAt(0), 0xd71f) % 6283) / 1000, period = 3 + (hash(seed, g.charCodeAt(1), 0xd720) % 5);
   const drift = 1 + MARKET.drift * Math.sin(now / (period * 1440) * Math.PI * 2 + ph);
   const normal = MARKET.stock[r] * (r === 'make' ? Math.max(0.15, prod) : 1), shift = shiftNow(state, v.id, g, now) + (caravans ? caravanShiftAt(world, v.id, now)[g] ?? 0 : 0), stock = Math.max(0, Math.round(normal + shift));

@@ -35,7 +35,7 @@ export const POLE_Z = 117 * REGION + REGION / 2, POLAR_Z = 25000;
 export const latitude = (z: number) => Math.max(-1, Math.min(1, -z / POLE_Z)) * Math.PI / 2;
 const polarRegion = (rz: number) => Math.abs(rz * REGION) + REGION / 2 > POLAR_Z;
 
-export type PoiType = 'village' | 'ruin' | 'camp' | 'wreck';
+export type PoiType = 'village' | 'ruin' | 'camp' | 'wreck' | 'hangar';
 export interface Rect { x0: number; z0: number; x1: number; z1: number }
 export interface Poi {
   type: PoiType;
@@ -68,6 +68,8 @@ const even = (v: number) => 2 * Math.round(v / 2);
 // ---------- villages ----------
 /** Gridholm, the starting village at the origin. */
 export const GRIDHOLM_ID = packId(0, 0, 0);
+/** The old hangar by Gridholm (gen/shuttle.ts), the second place in the start region. */
+export const HANGAR_ID = packId(0, 0, 1);
 /**
  * The planet is cut into cells of VCELL x VCELL regions (~2.5 km); many cells hold one village somewhere inside.
  * Round Gridholm the land is well settled; the further out, the fewer villages there are and the further apart:
@@ -157,6 +159,11 @@ export function villageDist(world: number, x: number, z: number, r = 120): numbe
 /** Ruins are alien temples on a 40 m square (see gen/ruins.ts). */
 export const RUIN_SIZE = 40;
 export const VILLAGE_RECT: Rect = { x0: -38, z0: -38, x1: 38, z1: 38 };
+/**
+ * The old hangar with the shuttle (gen/shuttle.ts), in Gridholm's region north-east of the village, clear of the
+ * vehicle yard on the north road: a long arched shed open to the south, 46 x 34 m.
+ */
+export const HANGAR: Rect = { x0: 64, z0: -118, x1: 110, z1: -84 };
 
 function ruinAt(rx: number, rz: number, i: number, x: number, z: number, R: () => number): Poi {
   const x0 = even(x - RUIN_SIZE / 2), z0 = even(z - RUIN_SIZE / 2);
@@ -208,6 +215,7 @@ function baseInfo(world: number, rx: number, rz: number): RegionInfo {
   if (polarRegion(rz)) { /* nothing lives on the ice */ }
   else if (rx === 0 && rz === 0) {
     pois.push({ type: 'village', id: packId(0, 0, 0), name: 'Gridholm', x: 0, z: 0, rect: { ...VILLAGE_RECT }, flat: 8, blend: 34 });
+    pois.push({ type: 'hangar', id: HANGAR_ID, name: 'Old Hangar', x: (HANGAR.x0 + HANGAR.x1) / 2, z: (HANGAR.z0 + HANGAR.z1) / 2, rect: { ...HANGAR }, flat: 4, blend: 26 });
   } else if (isVillageRegion(world, rx, rz)) {
     const Rv = rng(hash(world, rx, rz, 0x7a3e));
     pois.push(villageAt(rx, rz, V_A[Math.floor(Rv() * V_A.length)] + V_B[Math.floor(Rv() * V_B.length)]));
@@ -217,7 +225,9 @@ function baseInfo(world: number, rx: number, rz: number): RegionInfo {
     const skip = dirs[hash(world, 0x5c1) % 4];
     const dir = dirs.find((d) => DIRV[d][0] === rx && DIRV[d][1] === rz)!;
     if (dir !== skip || R() < 0.35) {
-      const dist = ri(150, 250), lat = ri(-60, 60), o = DIRV[dir];
+      const dist = ri(150, 250), l0 = ri(-60, 60), o = DIRV[dir];
+      // the north and east ones keep to the side away from the hangar (north-east of the village)
+      const lat = dir === 'N' ? -Math.abs(l0) : dir === 'E' ? Math.abs(l0) : l0;
       pois.push(ruinAt(rx, rz, 1, o[0] * dist + (o[0] ? 0 : lat), o[1] * dist + (o[1] ? 0 : lat), R));
     }
   } else if (R() < (Math.abs(rx) <= 1 && Math.abs(rz) <= 1 ? 0.4 : 0.5)) {

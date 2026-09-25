@@ -3,6 +3,8 @@
 // decides what is loaded and turns generator output into meshes.
 import { setLadders, dropLadders, ladderHit, ladderFloor } from './ladders';
 import { setHouses, dropHouses, houseHit, houseRay, houseSolid } from './houses';
+import { drawHangar, hangarOps } from './hangar';
+import { drawWorks, forgetWorks } from './works';
 import { drawGuards, forgetGuards, guardHit } from './siteguards';
 import { setWalkways, dropWalkways, walkFloor, walkHit } from './walkways';
 import { setDoors, dropDoors, doorHit, doorRay } from './housedoors';
@@ -298,6 +300,7 @@ function loadVillageStruct(poi: Poi): Structure {
   group.add(drawPower(vm, T, poi.id));
   group.add(drawIndustry(vm, T, poi.id));
   group.add(drawGuards(vm, T, poi.id));
+  group.add(drawWorks(vm, T, poi.id));
   const lamps: THREE.Object3D[] = []; group.traverse((o) => { if (o.name === 'lamp') lamps.push(o); }); setPlantLamps(poi.id, lamps);
   scene.add(group);
   const npcs: Npc[] = [];
@@ -360,6 +363,15 @@ function loadWreckStruct(poi: Poi): Structure {
   W.portals.push(st);
   return s;
 }
+/** The old hangar with the shuttle (world/hangar.ts): voxel walls and cradle, the arched roof and the shuttle as props. */
+function loadHangarStruct(poi: Poi): Structure {
+  const T = OW.terrain!, y = T.padY(poi);
+  const grid = VoxelGrid.surface(hangarOps(poi, y), poi.rect, y);
+  const { group, mesh } = voxelObject(grid, Infinity, OUTLINE);
+  group.add(drawHangar(poi, y));
+  scene.add(group);
+  return { poi, grid, group, edges: mesh, doors: [], stairs: [], npcs: [] };
+}
 /** Bandit camp: crates and barricades (voxels), A-frame tents, a campfire, the stash; its bandits. */
 function loadCampStruct(poi: Poi): Structure {
   const T = OW.terrain!, y = T.padY(poi), cm = generateCamp(T.world, poi, y);
@@ -405,7 +417,7 @@ export const campFires = () => [...OW.structs.values()].filter((s) => s.camp).ma
 export const campStashes = () => [...OW.structs.values()].filter((s) => s.camp).map((s) => ({ id: s.poi.id, name: s.poi.name, y: s.camp!.y, ...s.camp!.stash }));
 function loadStruct(poi: Poi) {
   if (OW.structs.has(poi.id)) return;
-  const s = poi.type === 'village' ? loadVillageStruct(poi) : poi.type === 'camp' ? loadCampStruct(poi) : poi.type === 'wreck' ? loadWreckStruct(poi) : loadRuinStruct(poi);
+  const s = poi.type === 'village' ? loadVillageStruct(poi) : poi.type === 'camp' ? loadCampStruct(poi) : poi.type === 'wreck' ? loadWreckStruct(poi) : poi.type === 'hangar' ? loadHangarStruct(poi) : loadRuinStruct(poi);
   localize(s.group, poi.x, poi.z);
   OW.structs.set(poi.id, s);
   setStreakSources([...OW.structs.values()].map((q) => q.edges));
@@ -430,7 +442,7 @@ function dropStruct(s: Structure) {
   for (const n of s.npcs) { scene.remove(n.g); W.npcs.splice(W.npcs.indexOf(n), 1); }
   if (s.village && OW.village === s.village) { OW.village = null; W.villageWalk = []; } // another village may have loaded meanwhile
   if (s.camp) despawnCamp(s.poi.id);
-  if (s.village) { forgetPower(s.poi.id); forgetIndustry(s.poi.id); dropLadders(s.poi.id); dropWalkways(s.poi.id); for (const h of villageHooks) h.drop(s.poi.id); forgetGuards(s.poi.id); dropHouses(s.poi.id); dropDoors(s.poi.id); }
+  if (s.village) { forgetPower(s.poi.id); forgetIndustry(s.poi.id); dropLadders(s.poi.id); dropWalkways(s.poi.id); for (const h of villageHooks) h.drop(s.poi.id); forgetGuards(s.poi.id); forgetWorks(s.poi.id); dropHouses(s.poi.id); dropDoors(s.poi.id); }
   OW.structs.delete(s.poi.id);
   setStreakSources([...OW.structs.values()].map((q) => q.edges));
 }

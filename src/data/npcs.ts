@@ -4,12 +4,12 @@ import { RELIC_KEYS, ATTACH_KEYS, ATTACH_PRICE, GEAR_PRICE, TOOL_PRICE, SUPPLY_P
 
 export type NpcRole = 'innkeeper' | 'elder' | 'blacksmith' | 'merchant' | 'grocer' | 'dealer' | 'guard' | 'villager';
 /** Dialogue options. New option ids (e.g. quests) are added here and handled in ui/dialog.ts. */
-export type OptId = 'rest' | 'rumour' | 'work' | 'lore' | 'shop' | 'sell' | 'cook' | 'craft' | 'chat' | 'fortify' | 'trade' | 'contracts' | 'watch' | 'house' | 'bye';
+export type OptId = 'rest' | 'rumour' | 'work' | 'lore' | 'shop' | 'sell' | 'cook' | 'craft' | 'chat' | 'fortify' | 'trade' | 'contracts' | 'watch' | 'house' | 'works' | 'bye';
 export interface NpcInfo { name?: string; title: string; color: number; hello?: string; opts: OptId[] }
 
 export const NPC_INFO: Record<NpcRole, NpcInfo> = {
   innkeeper: { name: 'Marta', title: 'Innkeeper', color: 0xffb347, hello: 'Welcome to the Glowing Grid, {name}! Warm stew, cold ale and a soft bed. What can I do for you?', opts: ['rest', 'rumour', 'work', 'bye'] },
-  elder: { name: 'Elder Maciej', title: 'Village Elder', color: 0xe8fff0, hello: 'Ah, {name}. Welcome to Gridholm. Few travellers come this way since the machines woke up below us.', opts: ['lore', 'house', 'fortify', 'work', 'bye'] },
+  elder: { name: 'Elder Maciej', title: 'Village Elder', color: 0xe8fff0, hello: 'Ah, {name}. Welcome to Gridholm. Few travellers come this way since the machines woke up below us.', opts: ['lore', 'house', 'fortify', 'works', 'work', 'bye'] },
   blacksmith: { name: 'Oskar', title: 'Blacksmith', color: 0xff7a5c, hello: '{name}! The forge is hot. Need something made? I also fit sights, barrels and magazines to blasters. Bring me hides, fangs, plates, wood, stone and scrap and I will pay for them, or use my workbench and the forge yourself.', opts: ['shop', 'craft', 'sell', 'work', 'bye'] },
   merchant: { name: 'Zofia', title: 'General Store', color: 0xffd060, hello: 'Good to see you, {name}. Supplies for the brave and the foolish alike. Have a look. And if you deal in bulk, I buy and sell trade goods by the crate.', opts: ['shop', 'trade', 'contracts', 'work', 'bye'] },
   grocer: { name: 'Jan', title: 'Food & Provisions', color: 0x9dffe0, hello: 'Fresh bread, hot stew! {name}, nobody fights well on an empty stomach. I buy meat and anything edible you pick out there, and I will roast your raw meat for a coin.', opts: ['shop', 'sell', 'cook', 'bye'] },
@@ -27,12 +27,16 @@ export const RUMOURS = ['They say the guardians below each carry an Access Key. 
   'Old Maciej claims there is more beyond the hills than ruins. Other villages, caves, mines... one day we will see.',
   "If things go wrong down there, a Recall Beacon from Zofia's store will bring you home.",
   'Bandits have dug in out in the wilds. Tents, a fire, a stash of stolen goods. Clear a camp and the stash is yours.',
+  'Raw ore sells for little. Smelt it, draw it, cast it, and the same crates are worth three times as much. The elders can put up works in any village.',
+  'They say the shuttle in the old hangar could reach the sky again, if anyone brought it enough hull alloy and circuit boards.',
   'Folk who fled the drones left their vehicles out in the hills. Find one and it is yours, along with whatever is in the trunk.'];
 export const OPT_TEXT: Record<OptId | 'back', string> = {
   rest: 'Rent a bed (10 gold)', rumour: 'Heard any rumours?', work: 'Do you have any work for me?', lore: 'Tell me about the dungeon.',
-  shop: 'Show me your wares.', sell: 'I want to sell something.', cook: 'Roast my raw meat (2 gold a piece).', craft: 'Let me use your workbench (crafting).', chat: 'How are things?', fortify: 'How can I help the village? (walls, turrets, power)', trade: 'Trade goods by the crate (market).', contracts: 'Any deliveries to be done? (contracts)', watch: 'How safe is the village?', house: 'About the empty house by the wall...', bye: 'Goodbye.', back: 'Back',
+  shop: 'Show me your wares.', sell: 'I want to sell something.', cook: 'Roast my raw meat (2 gold a piece).', craft: 'Let me use your workbench (crafting).', chat: 'How are things?', fortify: 'How can I help the village? (walls, turrets, power)', trade: 'Trade goods by the crate (market).', contracts: 'Any deliveries to be done? (contracts)', watch: 'How safe is the village?', house: 'About the empty house by the wall...', works: 'Could we build works here? (processing)', bye: 'Goodbye.', back: 'Back',
 };
 export const LORE = 'Old ruins stand in the hills around Gridholm. Beneath each one lies a maze of the old machine folk. Drones patrol it, and guardians seal the deeper passages. Stairs connect it to other sectors, and hatches lead ever deeper. Follow the roads from our gates and you will find them.';
+/** Gridholm's elder adds the shuttle (gen/shuttle.ts). */
+export const LORE_SHUTTLE = ' And north-east of the village, in the old hangar, stands the shuttle our fathers could never fly. We mean to mend it, {name}. It will not be mended with scrap from the ruins: it wants steel, alloy, cable, circuit boards and propellant, made in works. Come to the desk in the hangar when you have any.';
 
 /** What the traders (other than Kuba) buy, and for how much. */
 export const BUYS: Partial<Record<NpcRole, Partial<Record<ItemKey, number>>>> = {

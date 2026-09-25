@@ -9,6 +9,7 @@ import { KCAL } from './data/survival';
 import type { Part } from './gen/base';
 import type { TownState } from './gen/town';
 import type { MarketState } from './gen/market';
+import type { ShuttleState } from './gen/shuttle';
 import type { Contract } from './gen/contracts';
 
 /** An item stack. `c` is the condition in percent of a used part (worn tires); such items do not stack. */
@@ -26,6 +27,8 @@ export interface Char {
   name: string;
   /** Villages where you own a house (bought from the elder; Gridholm's for now). */
   houses: number[];
+  /** The shuttle project in the hangar by Gridholm (gen/shuttle.ts): crates handed over per stage. */
+  shuttle: ShuttleState;
   level: number; xp: number; gold: number; world: number;
   inv: (Slot | null)[]; mods: (ItemKey | null)[];
   opened: Progress; unlocked: Progress; killed: Progress;
@@ -85,7 +88,7 @@ export const SAVE_KEY = 'gridWorld.character.v3';
 export const ARENA_V3_KEY = 'gridArena.character.v3', V2_KEY = 'gridArena.character.v2', OLD_KEY = 'gridArena.character.v1';
 
 export const newChar = (): Char => ({
-  v: 3, name: '', houses: [], level: 1, xp: 0, gold: 0, world: (Math.random() * 1e6) | 0,
+  v: 3, name: '', houses: [], shuttle: { given: {} }, level: 1, xp: 0, gold: 0, world: (Math.random() * 1e6) | 0,
   inv: Array(INV_SIZE).fill(null), mods: Array(MOD_SIZE).fill(null), opened: {}, unlocked: {}, killed: {},
   loc: 'overworld', ow: null, dungeon: null, discovered: {}, containers: {}, vehicles: [], board: { seq: 0, offers: [], stamp: boardPeriod(START_TIME) }, boards: {}, quests: [], camps: {}, time: START_TIME, gunMods: [null, null, null], kcal: KCAL.start, stomach: 0, water: 100, harvest: {}, benches: [], claims: [],
   hands: [{ k: 'blaster', n: 1 }], back: [{ k: 'blade', n: 1 }, null], wear: {}, pid: Math.random().toString(36).slice(2, 10), towns: {}, market: {}, ledger: {}, caravans: {}, escort: null, contracts: [], taken: [],

@@ -14,6 +14,12 @@ import { OW, campStashes, loadedWells, loadedCaves } from './overworld';
 import { waterSource, sourcePrompt, useWater, type WaterSource } from './water';
 import { nearPlant, plantPrompt, harvest, type PlantNode } from './flora';
 import { nearFire, cookAll, fireHasWork } from './cooking';
+import { openShuttle } from '../ui/shuttle';
+import { openWorks } from '../ui/works';
+import { nearWorks, worksPrompt } from './works';
+import { STAGES, stagesDone } from '../gen/shuttle';
+import { HANGAR_ID, findPoi } from '../gen/regions';
+import { deskOf } from './hangar';
 import { nearHouseDoor, houseDoorPrompt, toggleHouseDoor } from './housedoors';
 import { gatherTarget, gatherPrompt, strike, updateGather, type Target } from './gather';
 import { nearBench, type Bench } from './benches';
@@ -43,7 +49,7 @@ export function setNpcsActive(f: () => boolean) { npcsActive = f; }
 
 let nearWater: WaterSource | null = null, nearFood: PlantNode | null = null, nearCook = false, nearWork: Bench | null = null, nearGather: Target | null = null;
 let nearCave: Cave | null = null, caveOut = -1;
-let nearMap = false, nearClaim: SavedClaim | null = null, nearGate: ReturnType<typeof nearDoor> = null, nearHD: ReturnType<typeof nearHouseDoor> = null, nearGun: ReturnType<typeof nearTurret> = null;
+let nearMap = false, nearClaim: SavedClaim | null = null, nearGate: ReturnType<typeof nearDoor> = null, nearHD: ReturnType<typeof nearHouseDoor> = null, nearDesk = false, nearWk: ReturnType<typeof nearWorks> = null, nearGun: ReturnType<typeof nearTurret> = null;
 let nearMine: ReturnType<typeof nearHome> = null, nearPow: Plant | null = null, nearCar: Caravan | null = null, nearWork2: ReturnType<typeof nearSite> = null;
 let nearLad: ReturnType<typeof nearLadder> = null, nearVehicle: VehicleSpot | null = null, nearBoard = false, nearStash: ReturnType<typeof campStashes>[number] | null = null;
 export function updateEntities(dt: number, time: number) {
@@ -67,7 +73,7 @@ export function updateEntities(dt: number, time: number) {
   nearMine = nearHome(); nearPow = nearMine ? null : nearPower(); nearCar = nearMine || nearPow ? null : nearCaravan(); nearWork2 = nearMine || nearPow || nearCar ? null : nearSite();
   nearCave = G.char.loc === 'overworld' ? loadedCaves().find((c) => atMouth(c, pos.x, pos.z)) ?? null : null;
   caveOut = G.char.loc === 'dungeon' && G.char.dungeon?.cave ? caveExitNear() : -1;
-  nearGate = nearDoor(); nearGun = nearGate ? null : nearTurret(); nearHD = nearGate || nearGun ? null : nearHouseDoor();
+  nearGate = nearDoor(); nearGun = nearGate ? null : nearTurret(); nearHD = nearGate || nearGun ? null : nearHouseDoor(); nearDesk = atShuttleDesk(); nearWk = nearGate || nearGun || nearHD || nearDesk ? null : nearWorks();
   W.nearChest = null; W.nearPortal = null; W.nearLock = null;
   if (npcsActive()) updateNpcs(dt, time); else W.nearNpc = null;
   for (const d of W.doors) if (d.locked && Math.hypot(d.cx - pos.x, d.cz - pos.z) < 3) W.nearLock = d;
@@ -87,7 +93,7 @@ export function updateEntities(dt: number, time: number) {
     if (along > 0.9 && along < 3 && lat < 1.6 && Math.abs(pos.y - p.y0) < 1 && G.playing && !G.trans) enter = p;
   }
   const { nearNpc, nearLock, nearChest, nearPortal } = W, prompt = el.prompt;
-  const busy = !!(nearLad || nearMine || nearPow || nearCar || nearWork2 || nearNpc || nearLock || nearChest || nearBoard || nearMap || nearStash || nearVehicle || nearGate || nearHD || nearGun || nearCave || caveOut >= 0);
+  const busy = !!(nearLad || nearMine || nearPow || nearCar || nearWork2 || nearNpc || nearLock || nearChest || nearBoard || nearMap || nearStash || nearVehicle || nearGate || nearHD || nearDesk || nearWk || nearGun || nearCave || caveOut >= 0);
   nearFood = busy ? null : nearPlant();
   nearWork = busy || nearFood ? null : nearBench();
   nearClaim = busy || nearFood || nearWork ? null : nearFlag();
@@ -98,6 +104,8 @@ export function updateEntities(dt: number, time: number) {
   if (climbing()) { prompt.className = ''; prompt.textContent = 'W / S — up or down · Space — let go'; }
   else if (nearLad) { prompt.className = ''; prompt.textContent = ladderPrompt(nearLad); }
   else if (nearGate) { prompt.className = ''; prompt.textContent = doorPrompt(nearGate); }
+  else if (nearDesk) { prompt.className = ''; prompt.textContent = `E — the shuttle project (${stagesDone(G.char.shuttle)} of ${STAGES.length} stages done)`; }
+  else if (nearWk) { const t = worksPrompt(nearWk); prompt.className = t.startsWith('E') ? '' : 'lock'; prompt.textContent = t; }
   else if (nearHD) { const t = houseDoorPrompt(nearHD); prompt.className = t.locked ? 'lock' : ''; prompt.textContent = t.text; }
   else if (nearCave) { prompt.className = 'portal'; prompt.textContent = 'E — enter ' + nearCave.name + (nearCave.other ? ' (it runs through the mountain)' : ''); }
   else if (caveOut >= 0) { const info = G.char.dungeon!.cave!; prompt.className = 'portal'; prompt.textContent = 'E — leave the cave' + (info.mouths.length > 1 && caveOut !== info.from ? ' (the far side of the mountain)' : ''); }
@@ -123,7 +131,7 @@ export function updateEntities(dt: number, time: number) {
   else if (nearGather) { prompt.className = ''; prompt.textContent = gatherPrompt(nearGather); }
   else if (nearCook) { prompt.className = ''; prompt.textContent = fireHasWork() ? 'E — roast your raw meat' : 'A campfire: bring raw meat to roast'; }
   else if (nearWater) { prompt.className = nearWater.kind === 'toxic' ? 'lock' : ''; prompt.textContent = sourcePrompt(nearWater); }
-  prompt.style.display = (climbing() || nearLad || nearMine || nearPow || nearCar || nearWork2 || nearGate || nearHD || nearGun || nearCave || caveOut >= 0 || nearNpc || nearLock || nearChest || nearBoard || nearMap || nearStash || nearVehicle || nearPortal || nearFood || nearWork || nearClaim || nearGather || nearCook || nearWater) && G.playing && prompt.textContent ? 'block' : 'none';
+  prompt.style.display = (climbing() || nearLad || nearMine || nearPow || nearCar || nearWork2 || nearGate || nearHD || nearDesk || nearWk || nearGun || nearCave || caveOut >= 0 || nearNpc || nearLock || nearChest || nearBoard || nearMap || nearStash || nearVehicle || nearPortal || nearFood || nearWork || nearClaim || nearGather || nearCook || nearWater) && G.playing && prompt.textContent ? 'block' : 'none';
   const bh = buildHint();
   if (bh !== null && !nearGate && !nearGun) { prompt.className = buildOk() ? '' : 'lock'; prompt.textContent = bh; prompt.style.display = G.playing && bh ? 'block' : 'none'; }
   const hint = placingHint();
@@ -139,6 +147,14 @@ export function updateEntities(dt: number, time: number) {
   if (enter) startStairs(enter);
 }
 
+/** Standing at the project desk in the hangar. */
+function atShuttleDesk(): boolean {
+  if (G.char.loc !== 'overworld' || !OW.structs.has(HANGAR_ID)) return false;
+  const p = findPoi(G.char.world, HANGAR_ID);
+  if (!p) return false;
+  const d = deskOf(p);
+  return Math.hypot(G.pos.x - d.x, G.pos.z - (d.z + 1.2)) < 1.6;
+}
 /** L key: the code lock of the door you stand at. */
 export function lockKey() { if (nearGate) lockMenu(nearGate); }
 /** E key / use button. */
@@ -149,6 +165,8 @@ export function interact() {
   if (isPlacing()) { confirmPlacing(); return; }
   if (nearGate) { toggleDoor(nearGate); return; }
   if (nearHD) { const m = toggleHouseDoor(nearHD); if (m) logLine(m); return; }
+  if (nearDesk) { openShuttle(); return; }
+  if (nearWk) { if (!openWorks(nearWk)) logLine(worksPrompt(nearWk) + '.'); return; }
   if (nearGun) { toggleTurret(nearGun); return; }
   if (nearCave) { enterCave(nearCave); return; }
   if (caveOut >= 0) { exitCave(caveOut); return; }
