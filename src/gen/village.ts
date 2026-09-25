@@ -300,7 +300,9 @@ export function generateVillage(seed: number, y = 0, cx = 0, cz = 0, name = 'Gri
     for (let i = 0; i < 6; i++) place('', 'house', 6, 8, 3);
   }
   // well, trees, lamps
-  late.push({ op: 'solid', x: 35, y: 0, z: 36, w: 2, h: 1, d: 2 });
+  // the well only collides: world/water.ts `drawWell` draws it (the same stone well as out in the wilds)
+  const wellOp: Op = { op: 'solid', x: 35, y: 0, z: 36, w: 2, h: 1, d: 2 };
+  late.push(wellOp);
   const blocked = (x: number, z: number, m: number) => !insideWall(poly, x + 0.5, z + 0.5, m + 1) || towers.some((t) => x >= t.x - 3 && x < t.x + t.w + 3 && z >= t.z - 3 && z < t.z + t.d + 3) || buildings.some((b) => x >= b.x - m && x < b.x + b.w + m && z >= b.z - m && z < b.z + b.d + m)
     || (Math.abs(x - 41) < 4 && Math.abs(z - 45) < 3) || (Math.abs(x - 31) < 4 && Math.abs(z - 45) < 3)
     || (Math.abs(x - 36) < 5 && z < 10) || (Math.abs(x - 36) < 4 && Math.abs(z - 37) < 4) || (Math.abs(x - 36) < 3 && Math.abs(z - 50) < 3)
@@ -339,7 +341,7 @@ export function generateVillage(seed: number, y = 0, cx = 0, cz = 0, name = 'Gri
     trees: trees.map((t) => ({ ...t, x: t.x + ox, z: t.z + oz })), lamps: lamps.map((l) => ({ x: l.x + ox, z: l.z + oz })),
     well: { x: 36 + ox, z: 37 + oz }, walk: walk.map(([x, z]) => [x + ox, z + oz]),
     tier, wallH: WALL_H, fence: stone ? [] : fenceRuns().map((r) => ({ x0: r.x0 + ox, z0: r.z0 + oz, x1: r.x1 + ox, z1: r.z1 + oz })),
-    shown: translateOps(stone ? all : all.filter((o) => !fenceOps.has(o)), ox, y, oz),
+    shown: translateOps(all.filter((o) => o !== wellOp && (stone || !fenceOps.has(o))), ox, y, oz),
     ...wallWalk(ox, oz, buildings, trees, towers),
   };
   }

@@ -127,7 +127,10 @@ describe('village and roads', () => {
       expect(shown.empty(x, 5, z)).toBe(true); // drawn as stakes, not voxels
       expect(vm.fence.length).toBeGreaterThanOrEqual(4 + vm.gates.length);
       const stone = generateVillage(w, 5, 0, 0, 'Gridholm', true, STONE_TIER), sg = VoxelGrid.surface(stone.ops, stone.rect, 5);
-      expect(sg.empty(x, 5 + WALL_TIERS[STONE_TIER].h - 1, z)).toBe(false); expect(stone.fence).toEqual([]); expect(stone.shown).toEqual(stone.ops);
+      expect(sg.empty(x, 5 + WALL_TIERS[STONE_TIER].h - 1, z)).toBe(false); expect(stone.fence).toEqual([]);
+      expect(stone.shown.length).toBe(stone.ops.length - 1); // everything but the well is drawn as voxels
+      const wx = Math.floor(vm.well.x), wz = Math.floor(vm.well.z); // the well collides but is drawn as a model (world/water.ts)
+      expect(g.empty(wx, 5, wz)).toBe(false); expect(shown.empty(wx, 5, wz)).toBe(true);
     }
   });
 });

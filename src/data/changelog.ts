@@ -4,6 +4,10 @@ export interface Change { v: string; date: string; title: string; notes: string[
 
 export const CHANGELOG: Change[] = [
   {
+    v: '0.51.4', date: '2026-09-25', title: 'Village wells',
+    notes: ['The well in the middle of every village is now the same old stone well you find out in the wilds: an octagonal wall with water inside, two posts, a crossbar with a rope and bucket, and a little roof.'],
+  },
+  {
     v: '0.51.3', date: '2026-09-25', title: 'Screenshots on the website',
     notes: ['The website shows screenshots from the game and says plainly that this is a very early version: much may still change, and multiplayer for about 8 players is being worked on now.'],
   },

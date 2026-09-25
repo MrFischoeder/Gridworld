@@ -1,6 +1,6 @@
 // Loading places (dungeon sectors, the open world) and moving between them.
 import * as THREE from 'three';
-import { scene, fog, lineMat, add, V, circlePts, fillMat, GRID } from './render';
+import { scene, fog, lineMat, add, V, fillMat, GRID } from './render';
 import { G, W } from '../game';
 import { hash, OPP, DIRV, type Dir } from '../core/rng';
 import { VoxelGrid } from '../core/voxel';
@@ -40,6 +40,7 @@ import { openWorld, closeWorld, structFor, setEnterRuin, removeDrone, danger, in
 import { saveChar, depth } from '../character';
 import { showToast, logLine, el, renderSheet } from '../ui/hud';
 import { buildMini, setMiniMode } from '../ui/minimap';
+import { drawWell } from './water';
 
 let worldGroup: THREE.Group | null = null;
 
@@ -144,6 +145,7 @@ export function villageDeco(map: VillageMap, y0 = 0) {
   }
   for (const t of map.trees) drawCrown(props, t.x + 0.5, y0 + 2, t.z + 0.5, 1.8, t.h, hash(t.x, t.z, 0x7e3e));
   if (map.house) homeDeco(props, map.house, y0);
+  drawWell(props, map.well, y0); // the stone well in the middle, like the wild ones
   for (const t of map.towers) if (t.ladder) drawLadder(props, t.ladder, y0, map.tier < STONE_TIER ? STAKE : GRID);
   walkwayDeco(props, map, y0);
   if (map.tier < STONE_TIER) fenceDeco(props, map, y0);
@@ -159,7 +161,7 @@ export function villageDeco(map: VillageMap, y0 = 0) {
   }
   }
   grp.add(props.build());
-  return lampsAndWell(grp, map, y0);
+  return lamps(grp, map, y0);
 }
 /** The hero's bed (a wooden frame with a headboard, a mattress, a pillow and a blanket) and chest, in their house. */
 function homeDeco(pb: PropBatch, h: NonNullable<VillageMap['house']>, y0: number) {
@@ -285,14 +287,12 @@ function fenceDeco(pb: PropBatch, map: VillageMap, y0: number) {
     pb.lookout(x0 - 0.3, z0 - 0.3, x1 + 0.3, z1 + 0.3, fy + 0.2, STAKE, 2.5);
   }
 }
-function lampsAndWell(grp: THREE.Group, map: VillageMap, y0: number) {
+function lamps(grp: THREE.Group, map: VillageMap, y0: number) {
   for (const l of map.lamps) {
     const pole = new THREE.Line(new THREE.BufferGeometry().setFromPoints([V(l.x, y0, l.z), V(l.x, y0 + 3.2, l.z)]), lineMat(GRID));
     const lamp = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.OctahedronGeometry(0.25)), add(0xffe8a0)); lamp.position.set(l.x, y0 + 3.45, l.z); lamp.name = 'lamp';
     grp.add(pole, lamp);
   }
-  const well = new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(circlePts(1.4, 16)), lineMat(0x5cc8ff)); well.rotation.x = Math.PI / 2; well.position.set(map.well.x, y0 + 1.02, map.well.z);
-  grp.add(well);
   return grp;
 }
 
