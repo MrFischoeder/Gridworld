@@ -145,7 +145,7 @@ export function drawHouse(pb: PropBatch, b: Building, y0: number) {
 }
 
 // ---------- furniture ----------
-const WOOD = 0xb8b060, METAL = 0xa8c8b8, FIRE = 0xffb347, GOLD = 0xffd060, CLOTH = 0x9dffb4, STONE = 0x8fb89a;
+const WOOD = 0xb8b060, METAL = 0xa8c8b8, FIRE = 0xffb347, GOLD = 0xffd060, CLOTH = 0x9dffb4, STONE = 0x8fb89a, TERM = 0xa8c8b8, SCREEN = 0x5cff9a;
 /** An octagonal prism (barrels, jars) round (cx, cz), radius r, from y0 to y1; hoops at the given heights (bulging `bulge`). */
 function octo(pb: PropBatch, cx: number, cz: number, r: number, y0: number, y1: number, col: number, hoops: number[] = [], bulge = 0) {
   const ring = (y: number, rr: number) => Array.from({ length: 8 }, (_, i) => [cx + Math.cos(i * Math.PI / 4 + 0.39) * rr, y, cz + Math.sin(i * Math.PI / 4 + 0.39) * rr]);
@@ -192,6 +192,25 @@ function drawPiece(pb: PropBatch, f: Furn, b: Building, y: number) {
         for (const t of [0.25, 0.6]) { const [a, c] = spot(t); octo(pb, a, c, 0.2, top, top + 0.16, WOOD, [0.5]); for (let i = 0; i < 3; i++) pb.box(a - 0.12 + i * 0.09, top + 0.16, c - 0.05, a - 0.05 + i * 0.09, top + 0.24, c + 0.05, 0xb6ff3a); }
         const [a, c] = spot(0.85); pb.box(a - 0.2, top, c - 0.08, a + 0.2, top + 0.12, c + 0.08, GOLD); // a loaf
       }
+      break;
+    }
+    case 'terminal': { // a desk with a boxy screen, a keyboard and the case beside it; the screen glows with lines of text
+      pb.box(x0, y + h - 0.05, z0, x1, y + h, z1, WOOD); legs(0.06, y + h - 0.05);
+      const scr = (a: number, yy: number, o: number) => front(a, yy, o);
+      const m = len / 2 - 0.12, t = y + h, d = alongX ? z1 - z0 : x1 - x0, back = -d + 0.12;
+      // the monitor: a deep box, its screen a little inset on the side facing the room
+      const b0 = [scr(m - 0.28, t, back), scr(m + 0.28, t, back), scr(m + 0.28, t, back + 0.45), scr(m - 0.28, t, back + 0.45)];
+      pb.solid8(b0, b0.map((p) => [p[0], t + 0.46, p[2]]), TERM);
+      const sf = back + 0.46, sy0 = t + 0.07, sy1 = t + 0.4;
+      pb.line(SCREEN, scr(m - 0.22, sy0, sf), scr(m + 0.22, sy0, sf), scr(m + 0.22, sy1, sf), scr(m - 0.22, sy1, sf), scr(m - 0.22, sy0, sf));
+      for (let k = 0; k < 5; k++) { const yy = sy1 - 0.06 - k * 0.055; pb.seg(SCREEN, scr(m - 0.18, yy, sf + 0.003), scr(m - 0.18 + 0.1 + ((k * 37) % 5) * 0.05, yy, sf + 0.003)); }
+      // keyboard, the case, a cable
+      const k0 = [scr(m - 0.24, t, back + 0.52), scr(m + 0.24, t, back + 0.52), scr(m + 0.24, t, back + 0.7), scr(m - 0.24, t, back + 0.7)];
+      pb.solid8(k0, k0.map((p) => [p[0], t + 0.035, p[2]]), TERM);
+      for (let a = -0.2; a <= 0.2; a += 0.08) pb.seg(TERM, scr(m + a, t + 0.036, back + 0.55), scr(m + a, t + 0.036, back + 0.67));
+      const c0 = [scr(len - 0.3, t, back), scr(len - 0.08, t, back), scr(len - 0.08, t, back + 0.4), scr(len - 0.3, t, back + 0.4)];
+      pb.solid8(c0, c0.map((p) => [p[0], t + 0.42, p[2]]), TERM);
+      pb.seg(SCREEN, scr(len - 0.26, t + 0.3, back + 0.401), scr(len - 0.18, t + 0.3, back + 0.401)); // the power light
       break;
     }
     case 'table': case 'desk': {

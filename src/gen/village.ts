@@ -94,7 +94,7 @@ export interface VillageMap {
  */
 export const HOUSE = { thick: 0.25, doorW: 1.4, doorH: 2.3, eave: 0.55, rise: 0.42 };
 /** Furniture of the village houses: `n` is the way into the room from the back wall (the side the piece faces). */
-export type FurnKind = 'counter' | 'table' | 'bench' | 'stool' | 'shelf' | 'barrel' | 'crate' | 'sack' | 'anvil' | 'hearth' | 'bed' | 'desk';
+export type FurnKind = 'counter' | 'table' | 'bench' | 'stool' | 'shelf' | 'barrel' | 'crate' | 'sack' | 'anvil' | 'hearth' | 'bed' | 'desk' | 'terminal';
 export interface Furn { k: FurnKind; x0: number; z0: number; x1: number; z1: number; h: number; n: [number, number] }
 /** Pieces you walk round (stools you walk past; they are small). */
 export const furnSolid = (k: FurnKind) => k !== 'stool';
@@ -240,6 +240,7 @@ export function generateVillage(seed: number, y = 0, cx = 0, cz = 0, name = 'Gri
     if (role === 'elder') { // a desk before him, two chairs for visitors, benches along the walls, books behind
       F('desk', 3.2, vd - 1, 4.1, vd + 1, 0.8); F('stool', 4.5, vd - 0.75, 4.95, vd - 0.3, 0.46); F('stool', 4.5, vd + 0.3, 4.95, vd + 0.75, 0.46);
       F('bench', 5.2, 0.3, D - 1.8, 0.65, 0.45); F('bench', 5.2, V - 0.65, D - 1.8, V - 0.3, 0.45); F('shelf', 0.25, 0.9, 0.6, vd - 1, 2.2); F('shelf', 0.25, vd + 1, 0.6, V - 0.9, 2.2);
+      F('terminal', 1.0, 0.3, 2.0, 1.5, 0.76); // the village's computer (world/terminal.ts)
     }
     if (role === 'house') { // a bed by the back wall, a table with two stools, a shelf
       F('bed', 0.3, 0.4, 1.3, 2.4, 0.5); F('shelf', 0.25, 3.2, 0.55, 4.8, 1.8);

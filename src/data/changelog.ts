@@ -4,6 +4,14 @@ export interface Change { v: string; date: string; title: string; notes: string[
 
 export const CHANGELOG: Change[] = [
   {
+    v: '0.50.0', date: '2026-09-25', title: 'The village computer',
+    notes: ['Every elder\'s hall now has a computer on a desk by the shelves. Press E in front of it to log on.',
+      'VILLAGE: what the village makes and wants, the condition and output of its site, how full the storehouse is and when the convoy leaves, the works and what they are doing, the defences, and the last and next raid.',
+      'POWER: how much power the village makes, how much it uses itself and how much is left for the works; each source and station, which works get power, and a forecast of the free power over the next 24 hours with the weather.',
+      'TRADE: your delivery contracts, whom you have lately bought from and sold to, the caravans leaving and arriving on the village\'s roads over the next day, and this market\'s prices.',
+      'VILLAGES: every village you have explored, traded with or that shares a road with this one: how far, what it makes and wants, its wall, and the works it has built. CHARIOT: how far the Chariot of the Ancients has come.'],
+  },
+  {
     v: '0.49.0', date: '2026-09-25', title: 'Weather',
     notes: ['The weather changes now: clear skies, overcast, rain, fog and thunderstorms. Each part of the world has its own weather, and fronts drift in and out over the hours rather than switching at once. Fog likes the early morning.',
       'Rain falls in streaks slanted by the wind. Cloud banks drift overhead and grey the sky, hiding the stars and the sun. Fog closes in until the far hills vanish. In a thunderstorm, forked lightning strikes out in the land and lights up the whole sky.',

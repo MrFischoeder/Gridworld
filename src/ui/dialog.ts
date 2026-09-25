@@ -27,6 +27,7 @@ import { PLANTS, PLANT_KINDS, PLANT_SLOTS, plantsOf, plantPlan, plantProblem, st
 import { STATIONS, STATION_KINDS, STATION_SLOTS, DRAW, VILLAGE_KW, balance, fuelAt, type StationKind } from '../gen/energy';
 import { worksClick } from './works';
 import { stationClick } from './stations';
+import { terminalClick } from './terminal';
 import { shipmentOffer } from '../gen/contracts';
 import { pendingTribute, payTribute } from '../world/villageraid';
 import { findPoi } from '../gen/regions';
@@ -326,7 +327,7 @@ function giveFortify() {
 }
 dlgEl.addEventListener('click', (e) => {
   if (craftClick(e.target as HTMLElement) || buildClick(e.target as HTMLElement)) return;
-  if (caravanClick(e.target as HTMLElement) || shuttleClick(e.target as HTMLElement) || worksClick(e.target as HTMLElement) || stationClick(e.target as HTMLElement)) return;
+  if (caravanClick(e.target as HTMLElement) || shuttleClick(e.target as HTMLElement) || worksClick(e.target as HTMLElement) || stationClick(e.target as HTMLElement) || terminalClick(e.target as HTMLElement)) return;
   const cm = contractsClick(e.target as HTMLElement);
   if (cm !== null) { renderContracts(panel(), dlgHead(), cm); return; }
   const mm = marketClick(e.target as HTMLElement);
