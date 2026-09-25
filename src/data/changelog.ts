@@ -4,6 +4,11 @@ export interface Change { v: string; date: string; title: string; notes: string[
 
 export const CHANGELOG: Change[] = [
   {
+    v: '0.52.0', date: '2026-09-25', title: 'Villages that live on their own (behind the scenes)',
+    notes: ['Groundwork for villages that grow by themselves: people who eat, work and need houses, farms that feed them, works that earn gold, guards who want wages, upkeep that rises as a village grows, bandit raids, and an elder who spends the treasury on what the village needs most.',
+      'Nothing of it shows in the game yet: first it runs in a simulator, all the villages of a world for months of game time, so the numbers can be tuned before your villages depend on them. In the tests every village lives through two years, grows several times over and levels off without starving or dying out.'],
+  },
+  {
     v: '0.51.4', date: '2026-09-25', title: 'Village wells',
     notes: ['The well in the middle of every village is now the same old stone well you find out in the wilds: an octagonal wall with water inside, two posts, a crossbar with a rope and bucket, and a little roof.'],
   },
