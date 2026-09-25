@@ -4,6 +4,12 @@ export interface Change { v: string; date: string; title: string; notes: string[
 
 export const CHANGELOG: Change[] = [
   {
+    v: '0.54.0', date: '2026-09-25', title: 'The road to the launch (behind the scenes)',
+    notes: ['The whole campaign is planned out: the Chariot of the Ancients in five stages, twenty wonders of the Ancients over the continent to restore, and surprises on the way that you will not see coming. Twice the hangar crew will find that the Chariot cannot go on without a part only a far-off wonder can give, and on the night of the launch the bandits come for the hangar.',
+      'Each world has its own surprises, the same for every player on it. A player bot has timed the whole road: about 80 hours alone, around 50 with a friend and 32 with four, plus well over 200 hours of optional wonders.',
+      'Not in the game yet: next it gets built in.'],
+  },
+  {
     v: '0.53.0', date: '2026-09-25', title: 'Regional projects and new materials (behind the scenes)',
     notes: ['The economy simulator now trades real goods: new materials (bauxite, sulfur, lithium, rare earths, uranium; aluminium and batteries), villages that rise from settlement to town, city and metropolis by gathering goods, works they build by what pays and what they need, upkeep in machine parts, and what their people use every day.',
       'Twenty wonders of the Ancients are spread over the continent, one for each region; the villages of a region build theirs together, but the last stage of every wonder needs relics that only you can bring out of ruins and wrecks.',

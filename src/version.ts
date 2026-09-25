@@ -2,5 +2,5 @@
 // Bump it with every pushed change (and keep package.json's "version" the same): the middle number for a new
 // feature (0.4.0 -> 0.5.0), the last one for a fix (0.5.0 -> 0.5.1). BUILD says what the latest change was.
 // Every change also gets an entry at the top of data/changelog.ts (the Changelog button in the menu).
-export const VERSION = '0.53.0';
-export const BUILD = '2026-09-25 · goods, tiers and 20 regional projects in the economy simulator (not in the game yet)';
+export const VERSION = '0.54.0';
+export const BUILD = '2026-09-25 · the campaign: Chariot, surprises and wonders, timed by a player bot (not in the game yet)';
