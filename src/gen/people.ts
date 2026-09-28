@@ -20,8 +20,8 @@ export const PEOPLE = {
   overrun: 0.12,
 };
 export const basePeople = (seed: number, home: boolean) => (home ? PEOPLE.home : PEOPLE.min + (hash(seed, 0x9e0) % (PEOPLE.span + 1)));
-/** What the village's food and housing support now (the base; farms will raise it). */
-export const peopleTarget = (seed: number, home: boolean, _s: TownState | undefined) => basePeople(seed, home);
+/** What the village's food supports: the base plus what its farms feed (gen/farms.ts `farmPeople`, repeated here to keep the imports one way). */
+export const peopleTarget = (seed: number, home: boolean, s: TownState | undefined) => basePeople(seed, home) + (s?.farms ?? 0) * Math.round(15 * (0.7 + (hash(seed, 0xf42) % 61) / 100));
 /** People living there at game time `now` (a fraction: shown rounded). */
 export function peopleAt(seed: number, home: boolean, s: TownState | undefined, now: number): number {
   const target = peopleTarget(seed, home, s), a = s?.people;

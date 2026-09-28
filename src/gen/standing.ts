@@ -11,6 +11,7 @@ export const TRUST = {
   store: 12,     // a bigger storehouse
   works: 12,     // a processing works or a power station built
   refinery: 15,  // the refinery built
+  farm: 8,       // a farm cleared and sown
   power: 6,      // the power plant mended
   site: 5,       // the industry site mended
   raid: 15,      // a raid beaten off

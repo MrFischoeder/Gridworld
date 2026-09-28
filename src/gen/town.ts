@@ -37,6 +37,8 @@ export interface TownState {
   trust?: number; share?: { d: number; n: number };
   /** The population's anchor (gen/people.ts): the count at game time t. */
   people?: { n: number; t: number };
+  /** Farms built here (gen/farms.ts) and materials handed over towards the next. */
+  farms?: number; fgiven?: Partial<Record<ItemKey, number>>;
 }
 
 // ---------- defence works ----------

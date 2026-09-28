@@ -12,6 +12,7 @@ import { setDoors, dropDoors, doorHit, doorRay } from './housedoors';
 import { recentDead } from './villageraid';
 import * as THREE from 'three';
 import { setCrash, dropCrash, podHit } from './crashpod';
+import { drawFarms } from './farms';
 import { scene, V, GRID, localize } from './render';
 import { G, W } from '../game';
 import { VoxelGrid, type Space } from '../core/voxel';
@@ -301,6 +302,7 @@ function loadVillageStruct(poi: Poi): Structure {
   group.add(mapBoardDeco(vm, y));
   group.add(drawPower(vm, T, poi.id));
   group.add(drawIndustry(vm, T, poi.id));
+  group.add(drawFarms(vm, T, poi.id));
   group.add(drawGuards(vm, T, poi.id));
   group.add(drawWorks(vm, T, poi.id));
   group.add(drawStations(vm, T, poi.id));
