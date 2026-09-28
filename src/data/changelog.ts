@@ -4,6 +4,12 @@ export interface Change { v: string; date: string; title: string; notes: string[
 
 export const CHANGELOG: Change[] = [
   {
+    v: '0.65.0', date: '2026-09-28', title: 'Far-off riches',
+    notes: ['Many villages away from Gridholm stand by a deposit of a rare material the old industries needed: bauxite from about 3 km out, sulfur from 5 km, lithium brine from 8 km, rare earths from 11 km and uranium only from 15 km. The rarer it is, the further out it first turns up and the fewer villages have it.',
+      'A village shares its deposit with those it trusts: 1 crate a day to someone Known, 2 to a Friend, 3 to the Honoured, besides its usual goods (ask the elder what the village can spare). Near Gridholm there are none: the rare things mean going far.',
+      'The village computer shows each village\'s deposit (VILLAGE and VILLAGES). The rare crates are not traded at the markets; the great works of later updates will need them.'],
+  },
+  {
     v: '0.64.0', date: '2026-09-28', title: 'More current',
     notes: ['Every village\'s own power plant can now be upgraded twice. Ask the elder: "Could our power plant give more?".',
       'Overhauled (×1.5 power): 6 scrap, 4 wire and 2 logs. Wind turbines need the old plans for the Improved Wind Rotor and a solar array those for Solar Cells; a diesel generator needs no plans. Rebuilt with old electronics (×2): 4 electronic components, a power core and 6 wire, found in the ruins and wrecks.',

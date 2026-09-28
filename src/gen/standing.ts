@@ -48,3 +48,12 @@ export function useShare(s: TownState, n: number, now: number) {
   const day = Math.floor(now / DAY);
   s.share = { d: day, n: (s.share && s.share.d === day ? s.share.n : 0) + n };
 }
+/** Crates of the village's rare deposit (gen/deposits.ts) still to take today, by the trust tier. */
+export function rareLeft(s: TownState | undefined, now: number, perTier: number[]): number {
+  const day = Math.floor(now / DAY), used = s?.rshare && s.rshare.d === day ? s.rshare.n : 0;
+  return Math.max(0, perTier[trustTier(s)] - used);
+}
+export function useRare(s: TownState, n: number, now: number) {
+  const day = Math.floor(now / DAY);
+  s.rshare = { d: day, n: (s.rshare && s.rshare.d === day ? s.rshare.n : 0) + n };
+}

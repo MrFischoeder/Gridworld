@@ -7,7 +7,8 @@ import { peopleAt, workersAt } from '../gen/people';
 import { profileOf, type Good } from '../gen/market';
 import { production } from '../gen/industry';
 import { storeAt, takeStore, storeCap } from '../gen/store';
-import { trustOf, trustTier, shareLeft, useShare, TRUST_TIERS } from '../gen/standing';
+import { trustOf, trustTier, shareLeft, useShare, rareLeft, useRare, TRUST_TIERS } from '../gen/standing';
+import { depositOf, RARE_NAME, RARE_SHARE, rareItem } from '../gen/deposits';
 import { loadedVillage } from '../world/overworld';
 import { putAway } from './market';
 import { saveChar, calcStats } from '../character';
@@ -35,10 +36,29 @@ export function shareHTML(town: string, head: string, msg = ''): string {
     s += p.makes.map((g) => `<div class="shoprow"><div><b>${ITEMS[g as ItemKey].name}</b><br><span>made here</span></div>
       <button class="buy" data-share="${g}" data-n="1" ${left && inStore ? '' : 'disabled'}>Take 1</button>${left > 1 ? `<button class="buy" data-share="${g}" data-n="${left}" ${inStore > 1 ? '' : 'disabled'}>Take ${left}</button>` : ''}</div>`).join('');
   }
+  const dep = depositOf(c.world, p.poi);
+  if (dep) {
+    const rl = rareLeft(p.st, c.time, RARE_SHARE), per = RARE_SHARE[k];
+    s += `<div class="say">Near ${p.v.vm.name} lies a deposit of <b>${RARE_NAME[dep]}</b>, rare in these parts. ${per ? `We dig some for you: ${rl} of ${per} crates left today.` : `We dig it for those we know (${TRUST_TIERS[1].name}).`}</div>`;
+    if (per) s += `<div class="shoprow"><div><b>${ITEMS[rareItem(dep)].name}</b><br><span>rare deposit</span></div><button class="buy" data-rare="${dep}" data-n="1" ${rl ? '' : 'disabled'}>Take 1</button>${rl > 1 ? `<button class="buy" data-rare="${dep}" data-n="${rl}">Take ${rl}</button>` : ''}</div>`;
+  }
   return s + `<button class="opt" data-o="back">Back</button>`;
+}
+/** A click on "Take" for the rare deposit: the message, or null when it was not one. */
+function rareClick(p: NonNullable<ReturnType<typeof place>>, b: HTMLElement): string {
+  const c = G.char, dep = depositOf(c.world, p.poi);
+  if (!dep || b.dataset.rare !== dep) return '';
+  const want = Math.min(Number(b.dataset.n) || 1, rareLeft(p.st, c.time, RARE_SHARE));
+  if (!want) return 'That is all we dig for you today.';
+  const n = want - putAway(rareItem(dep) as Good, want, p.poi, true);
+  if (!n) return 'You have no room for a crate: park a vehicle by the village or empty your backpack.';
+  useRare((c.towns[p.v.id] ??= {}), n, c.time); calcStats(); saveChar();
+  return `The diggers bring ${n} × ${ITEMS[rareItem(dep)].name}.`;
 }
 /** A click on "Take": the message, or null when it was not a share button. */
 export function shareClick(town: string, el: HTMLElement): string | null {
+  const r = el.closest<HTMLElement>('[data-rare]');
+  if (r) { const p = place(town); return p ? rareClick(p, r) : ''; }
   const b = el.closest<HTMLElement>('[data-share]');
   if (!b) return null;
   const p = place(town), c = G.char;

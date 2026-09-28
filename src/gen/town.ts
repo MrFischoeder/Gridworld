@@ -34,7 +34,7 @@ export interface TownState {
   /** Power stations (gen/energy.ts) built here. */
   stations?: StationState[];
   /** Your standing here (gen/standing.ts): trust earned, and the crates of its goods taken today (game day, count). */
-  trust?: number; share?: { d: number; n: number };
+  trust?: number; share?: { d: number; n: number }; rshare?: { d: number; n: number };
   /** The population's anchor (gen/people.ts): the count at game time t. */
   people?: { n: number; t: number; tg?: number };
   /** Farms built here (gen/farms.ts) and materials handed over towards the next. */
