@@ -86,6 +86,17 @@ describe('power', async () => {
     expect(stationKw(v, 1, coal, 100 + STATIONS.coalplant.burn! * 3 + 1)).toBe(0);
     for (let t = 0; t < 3000; t += 97) { const w = windAt(5, t); expect(w).toBeGreaterThanOrEqual(0.15); expect(w).toBeLessThanOrEqual(1); }
   });
+  it('a small reactor needs the enrichment plans, holds 4 crates of rods and runs days on each', () => {
+    expect(plantProblem({}, 'reactor', {})).toMatch(/Uranium Enrichment/);
+    expect(plantProblem({}, 'reactor', { enrichment: 1 })).toBe('');
+    expect(plantProblem({}, 'reactor')).toBe(''); // (the check is the caller's: no plans given, no check)
+    const r = { k: 'reactor' as const, on: true, fuel: 0, t: 0 };
+    expect(loadBunker(r, 9, 0)).toBe(4);
+    expect(stationKw(v, 1, r, 60)).toBe(STATIONS.reactor.kw);
+    expect(STATIONS.reactor.burn!).toBeGreaterThanOrEqual(1440 * 3);
+    expect(fuelAt(r, STATIONS.reactor.burn! * 4 + 1)).toBe(0);
+    expect(STATIONS.reactor.fuel).toBe('nfuel');
+  });
   it('powers the works in the order they were built while there is enough', () => {
     const smelter: PlantState = { k: 'smelter', rec: 0, inp: { ore: 10, coal: 10 }, out: {}, t: 0 };
     const foundry: PlantState = { k: 'foundry', rec: 0, inp: { steel: 10, copperbar: 10, coal: 10 }, out: {}, t: 0 };

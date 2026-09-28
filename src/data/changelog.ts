@@ -4,6 +4,15 @@ export interface Change { v: string; date: string; title: string; notes: string[
 
 export const CHANGELOG: Change[] = [
   {
+    v: '0.68.0', date: '2026-09-28', title: 'Small reactors',
+    notes: [
+      'A new power station: the Small Reactor, 250 kW of steady power, more than any other. The elder offers it among the power stations once you have the plans for Uranium Enrichment (steel, hull alloy, copper cable, electronics, power cores and 2000 gold).',
+      'It burns the Nuclear Fuel Rods made by the Old Enrichment Plant: its core holds 4 crates, and one crate lasts 4 days while it is switched on.',
+      'Drawn outside the fence as a concrete dome with a turbine hall, a squat cooling tower and a fence round it.',
+      'The village computer\'s POWER tab now lists the old installations: how far each is restored, and where it lies from the village.',
+    ],
+  },
+  {
     v: '0.67.0', date: '2026-09-28', title: 'The plant wakes',
     notes: [
       'The Old Enrichment Plant has a control desk just inside its gate. Press E there to see the restoration: three stages, each handed over bit by bit from your backpack or a vehicle parked by the plant.',

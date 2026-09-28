@@ -3,7 +3,8 @@
 // a works without power stands still. So power stations come first: you commission them from the elder like works
 // (materials and a fee; `STATION_SLOTS` per village) and run them: a solar farm makes power by day only, a wind farm
 // as the wind blows, a coal power station and a diesel generator bank as long as their bunkers hold coal or fuel,
-// which they burn at a steady rate while switched on.
+// which they burn at a steady rate while switched on, and a small reactor (the plans for Uranium Enrichment, and fuel
+// rods from the Old Enrichment Plant: gen/installs.ts) as long as its core holds rods.
 //
 // The balance is pure and follows the game time: what the village's plant and its stations make at time t, what the
 // village itself takes, and which works that leaves power for (in the order they were built).
@@ -13,18 +14,19 @@ import { latitude, type Poi } from './regions';
 import { powerKind, powerCondition, powerSite, lastFix, POWER_DOWN, type TownState } from './town';
 import { industrySite, type Industry } from './industry';
 import { raidHurt } from './raids';
-import type { Good } from './market';
 import type { ItemKey } from '../data/items';
 import { running, type PlantState } from './plants';
 import { farmsKw } from './farms';
 import { plantMult } from './plantup';
 
-export type StationKind = 'solarfarm' | 'windfarm' | 'coalplant' | 'dieselbank';
-export const STATION_KINDS: StationKind[] = ['solarfarm', 'windfarm', 'coalplant', 'dieselbank'];
+export type StationKind = 'solarfarm' | 'windfarm' | 'coalplant' | 'dieselbank' | 'reactor';
+export const STATION_KINDS: StationKind[] = ['solarfarm', 'windfarm', 'coalplant', 'dieselbank', 'reactor'];
 export interface StationSpec {
   name: string; blurb: string;
-  /** Rated output (kW), and what it burns: a crate of `fuel` every `burn` game minutes while it runs. */
-  kw: number; fuel?: Good; burn?: number;
+  /** Rated output (kW), and what it burns: a crate of `fuel` every `burn` game minutes while it runs (at most `bunker` loaded, else BUNKER). */
+  kw: number; fuel?: ItemKey; burn?: number; bunker?: number;
+  /** The technology whose plans it needs before it can be built. */
+  tech?: string;
   needs: [ItemKey, number][]; fee: number; xp: number;
 }
 export const STATIONS: Record<StationKind, StationSpec> = {
@@ -32,6 +34,7 @@ export const STATIONS: Record<StationKind, StationSpec> = {
   windfarm: { name: 'Wind Farm', blurb: 'three turbines: power as the wind blows', kw: 80, needs: [['scrap', 20], ['wire', 10], ['planks', 20], ['engine', 1]], fee: 650, xp: 140 },
   coalplant: { name: 'Coal Power Station', blurb: 'a boiler and a turbine: steady power while it has coal', kw: 140, fuel: 'coal', burn: 120, needs: [['stone', 40], ['scrap', 20], ['planks', 16], ['engine', 1]], fee: 900, xp: 200 },
   dieselbank: { name: 'Diesel Generator Bank', blurb: 'four big generators: steady power while it has fuel', kw: 110, fuel: 'fuel', burn: 150, needs: [['scrap', 16], ['engine', 2], ['wire', 6]], fee: 800, xp: 180 },
+  reactor: { name: 'Small Reactor', blurb: 'a sealed reactor under a concrete dome: a great deal of steady power while its core holds fuel rods', kw: 250, fuel: 'nfuel', burn: 5760, bunker: 4, tech: 'enrichment', needs: [['steel', 12], ['alloy', 6], ['cable', 8], ['circuit', 10], ['pcore', 2]], fee: 2000, xp: 500 },
 };
 /** Stations per village; the most crates a bunker holds. */
 export const STATION_SLOTS = 2, BUNKER = 30;
@@ -57,6 +60,13 @@ export function windAt(seed: number, t: number): number {
 const sunAt = (v: Poi, t: number) => daylight(t, sunTilt(latitude(v.z)));
 
 // ---------- stations ----------
+/** The most a station's bunker (or core) holds. */
+export const bunkerOf = (k: StationKind) => STATIONS[k].bunker ?? BUNKER;
+/** What a station burns, in words: [one, many, short]. */
+export function fuelWords(k: StationKind): [string, string, string] {
+  const f = STATIONS[k].fuel;
+  return f === 'coal' ? ['crate of coal', 'crates of coal', 'coal'] : f === 'nfuel' ? ['crate of fuel rods', 'crates of fuel rods', 'fuel rods'] : ['canister of fuel', 'canisters of fuel', 'fuel'];
+}
 /** Crates left in a station's bunker at time t. */
 export function fuelAt(st: StationState, t: number): number {
   const spec = STATIONS[st.k];
@@ -73,7 +83,7 @@ export function stationKw(v: Poi, seed: number, st: StationState, t: number): nu
 }
 /** Load n crates into a station's bunker (settling what burnt so far); returns how many went in. */
 export function loadBunker(st: StationState, n: number, now: number): number {
-  const left = fuelAt(st, now), k = Math.max(0, Math.min(n, Math.floor(BUNKER - left)));
+  const left = fuelAt(st, now), k = Math.max(0, Math.min(n, Math.floor(bunkerOf(st.k) - left)));
   st.fuel = left + k; st.t = now;
   return k;
 }

@@ -1,6 +1,7 @@
 // Power stations outside a village's fence (gen/energy.ts): a solar farm (rows of tilted panels and an inverter), a
 // wind farm (three turbines whose rotors turn with the wind), a coal power station (boiler house, cooling tower,
-// stack, coal heap and conveyor) and a diesel generator bank (containers, exhaust stacks, a fuel tank). A building
+// stack, coal heap and conveyor), a diesel generator bank (containers, exhaust stacks, a fuel tank) and a small
+// reactor (a domed containment, a turbine hall, a squat cooling tower, a fence). A building
 // site while one goes up, staked plots where there is room. A lamp on each glows while it makes power. E at one opens
 // its window (ui/stations.ts): the output, and the bunker of a coal or diesel station.
 import * as THREE from 'three';
@@ -10,7 +11,7 @@ import { add } from './render';
 import { findPoi } from '../gen/regions';
 import { industryOf } from '../gen/industry';
 import { isStation, specOf } from '../gen/plants';
-import { STATIONS, STATION_SLOTS, stationSite, stationKw, fuelAt, windAt, type StationKind } from '../gen/energy';
+import { STATIONS, fuelWords, STATION_SLOTS, stationSite, stationKw, fuelAt, windAt, type StationKind } from '../gen/energy';
 import type { VillageMap } from '../gen/village';
 import type { Terrain } from '../gen/terrain';
 
@@ -87,6 +88,18 @@ export function drawStations(vm: VillageMap, T: Terrain, id: number): THREE.Grou
       { const [a, b] = P(3, -3.8), g = H(3, -3.8); pb.pyramid(a - 1.6, b - 1.2, a + 1.6, b + 1.2, g, 1.5, 0x8a9a4a); }
       { const [a, b] = P(3, -3.8), [d, e] = P(0.5, -1.5); pb.line(METAL, [a, H(3, -3.8) + 1.4, b], [d, g0 + 4, e]); pb.line(METAL, [a, H(3, -3.8) + 1.7, b], [d, g0 + 4.3, e]); }
       lampAt = [P(-5, 3.5)[0], H(-5, 3.5) + 14.6, P(-5, 3.5)[1]];
+    } else if (k === 'reactor') {
+      // the containment: a concrete drum under a dome, the turbine hall beside it, a squat cooling tower, a fence
+      const [dx, dz] = P(-3.2, 0.8), dg = T.heightAt(dx, dz) - 0.1, R = 3.4;
+      cyl(pb, dx, dg, dz, R, 5, CONC, 14);
+      for (let l = 0; l < 4; l++) { const a0 = l / 4 * Math.PI / 2, a1 = (l + 1) / 4 * Math.PI / 2; cyl(pb, dx, dg + 5 + Math.sin(a0) * R, dz, Math.cos(a0) * R, (Math.sin(a1) - Math.sin(a0)) * R, CONC, 14, Math.cos(a1) * R + 0.001); }
+      box(3, 0.2, 2.6, 2.4, g0 - 0.1, g0 + 4.2, METAL);
+      { const [a, b2] = P(0.4, -2.2), [d, e] = P(5.6, 2.6); pb.gableRoof(Math.min(a, d), Math.min(b2, e), Math.max(a, d), Math.max(b2, e), g0 + 4.2, 0.9, METAL); }
+      { const [x, z] = P(4.2, -4.2), g = T.heightAt(x, z); cyl(pb, x, g, z, 1.6, 3.5, CONC, 12, 1.1); cyl(pb, x, g + 3.5, z, 1.1, 1.4, CONC, 12, 1.35); }
+      { const [a, b2] = P(-0.2, 0.8), [d, e] = P(0.4, 0.8), g = g0 + 2.6; pb.seg(METAL, [a, g, b2], [d, g, e]); pb.seg(METAL, [a, g + 0.5, b2], [d, g + 0.5, e]); } // the steam lines
+      for (let u = -along / 2 + 0.5; u <= along / 2 - 0.5; u += 2.5) for (const v of [-out / 2 + 0.4, out / 2 - 0.4]) { const [x, z] = P(u, v), g = T.heightAt(x, z); pb.seg(METAL, [x, g, z], [x, g + 1.8, z]); }
+      for (const v of [-out / 2 + 0.4, out / 2 - 0.4]) for (const h of [0.9, 1.7]) { const [x0, z0] = P(-along / 2 + 0.5, v), [x1, z1] = P(along / 2 - 0.5, v); pb.seg(METAL, [x0, H(-along / 2 + 0.5, v) + h, z0], [x1, H(along / 2 - 0.5, v) + h, z1]); }
+      lampAt = [dx, dg + 5 + R + 0.1, dz];
     } else {
       for (let i = 0; i < 4; i++) {
         const u = -along / 2 + 2.5 + i * 3.2; box(u, 1, 1.2, 2.6, H(u, 1) - 0.1, H(u, 1) + 2.6, METAL);
@@ -129,5 +142,5 @@ export function stationPrompt(w: Station): string {
   const st = G.char.towns[w.vid], s = st?.stations?.[w.slot];
   if (!s) return st?.pbuild && isStation(st.pbuild.k) && w.slot === (st.stations?.length ?? 0) ? `${/^[AEIOU]/.test(specOf(st.pbuild.k).name) ? 'An' : 'A'} ${specOf(st.pbuild.k).name} is going up here: the elder keeps count of the materials` : 'An empty plot for a power station: ask the elder';
   const poi = findPoi(G.char.world, w.vid), kw = poi ? Math.round(stationKw(poi, w.seed, s, G.char.time)) : 0, spec = STATIONS[s.k];
-  return `E — the ${spec.name} (${s.on ? `${kw} kW` : 'switched off'}${spec.fuel ? ` · ${Math.floor(fuelAt(s, G.char.time))} ${spec.fuel === 'coal' ? 'crates of coal' : 'canisters of fuel'} left` : ''})`;
+  return `E — the ${spec.name} (${s.on ? `${kw} kW` : 'switched off'}${spec.fuel ? ` · ${Math.ceil(fuelAt(s, G.char.time) * 10) / 10} ${fuelWords(s.k)[1]} left` : ''})`;
 }

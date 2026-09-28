@@ -22,10 +22,11 @@ import { storePlan, handOverStore, STORE } from '../gen/store';
 import { storeOf } from '../world/industry';
 import { unlockMine } from '../world/housedoors';
 import { shuttleClick } from './shuttle';
+import { TECH_BY_ID } from '../gen/tech';
 import { installClick } from './install';
 import { fertility } from '../gen/industry';
 import { PLANTS, PLANT_KINDS, PLANT_SLOTS, plantsOf, plantPlan, plantProblem, startPlant, handOverPlant, isStation, specOf, running, type PlantKind } from '../gen/plants';
-import { STATIONS, STATION_KINDS, STATION_SLOTS, DRAW, VILLAGE_KW, balance, fuelAt, type StationKind } from '../gen/energy';
+import { STATIONS, fuelWords, STATION_KINDS, STATION_SLOTS, DRAW, VILLAGE_KW, balance, fuelAt, type StationKind } from '../gen/energy';
 import { worksClick } from './works';
 import { stationClick } from './stations';
 import { terminalClick } from './terminal';
@@ -211,7 +212,7 @@ function worksRows(st: TownState | undefined): string {
     const can = plan.rows.some((r) => r.given < r.n && count(c.inv, r.k) > 0) || (plan.done && c.gold >= plan.fee);
     return rows + `<button class="opt" data-pgive="1" ${can ? '' : 'disabled'}>${plan.done ? `Pay the builders ${plan.fee} gold` : `Hand over what I carry (${name.toLowerCase()})`}</button>`;
   }
-  const btn = (k: PlantKind | StationKind) => { const sp = specOf(k); return `<button class="opt" data-pnew="${k}">Build ${aN(sp.name)} ${sp.name}: ${sp.blurb}${isStation(k) ? `, ${STATIONS[k].kw} kW` : `, draws ${DRAW[k]} kW`} (${sp.needs.map(([i, n]) => `${n} ${ITEMS[i].name}`).join(', ')}; ${sp.fee} gold)</button>`; };
+  const btn = (k: PlantKind | StationKind) => { const sp = specOf(k), no = plantProblem(st, k, c.tech); if (no) return `<button class="opt" disabled>${sp.name}, ${isStation(k) ? STATIONS[k].kw + ' kW' : ''}: needs the old plans for ${TECH_BY_ID[STATIONS[k as StationKind].tech!].name}</button>`; return `<button class="opt" data-pnew="${k}">Build ${aN(sp.name)} ${sp.name}: ${sp.blurb}${isStation(k) ? `, ${STATIONS[k].kw} kW` : `, draws ${DRAW[k]} kW`} (${sp.needs.map(([i, n]) => `${n} ${ITEMS[i].name}`).join(', ')}; ${sp.fee} gold)</button>`; };
   const st1 = STATION_KINDS.filter((k) => !plantProblem(st, k)), pl = PLANT_KINDS.filter((k) => !plantProblem(st, k));
   return (st1.length ? `<div class="say" style="margin:8px 0 0">Power stations</div>${st1.map(btn).join('')}` : '') + (pl.length ? `<div class="say" style="margin:8px 0 0">Works</div>${pl.map(btn).join('')}` : '');
 }
@@ -228,7 +229,7 @@ function renderWorksPanel(msg = '') {
 function newWorks(k: PlantKind | StationKind) {
   const v = loadedVillage(town()), c = G.char;
   if (!v) return;
-  const why = startPlant((c.towns[v.id] ??= {}), k);
+  const why = startPlant((c.towns[v.id] ??= {}), k, c.tech);
   if (why) { renderWorksPanel(why); return; }
   saveChar(); reloadStruct(v.id);
   const sp = specOf(k);
@@ -253,7 +254,7 @@ function giveWorks() {
   const name = specOf(built).name;
   showToast(`${v.vm.name}: the ${name} stands`);
   logLine(isStation(built)
-    ? `The ${name} at ${v.vm.name} is finished: ${STATIONS[built].kw} kW for the works${STATIONS[built].fuel ? `, as long as you keep its bunker full of ${STATIONS[built].fuel === 'coal' ? 'coal' : 'fuel'}` : ''}.`
+    ? `The ${name} at ${v.vm.name} is finished: ${STATIONS[built].kw} kW for the works${STATIONS[built].fuel ? `, as long as you keep its ${built === 'reactor' ? 'core' : 'bunker'} fed with ${fuelWords(built)[2]}` : ''}.`
     : `The ${name} at ${v.vm.name} is finished and yours to run: load its hopper with ${[...new Set(PLANTS[built].recipes.flatMap((r) => r.in.map(([g]) => ITEMS[g].name)))].join(', ')} and collect what it makes. It draws ${DRAW[built]} kW.`);
 }
 // ---------- defence works: turrets on the wall, barricades round the works and the plant ----------

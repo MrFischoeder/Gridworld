@@ -14,6 +14,7 @@ import { industrySite, type Industry } from './industry';
 import type { Good } from './market';
 import type { ItemKey } from '../data/items';
 import { STATIONS, STATION_SLOTS, type StationKind } from './energy';
+import { TECH_BY_ID } from './tech';
 
 export type PlantKind = 'smelter' | 'refinery' | 'glassworks' | 'wiremill' | 'electronics' | 'machineshop' | 'foundry' | 'chemworks';
 export const PLANT_KINDS: PlantKind[] = ['smelter', 'refinery', 'glassworks', 'wiremill', 'electronics', 'machineshop', 'foundry', 'chemworks'];
@@ -117,9 +118,11 @@ export function plantPlan(s: PlantTown | undefined) {
   return { k: b.k, rows, done: rows.every((r) => r.given >= r.n), fee: spec.fee, xp: spec.xp };
 }
 /** Why works k cannot be started here, or ''. */
-export function plantProblem(s: PlantTown | undefined, k: PlantKind | StationKind): string {
+export function plantProblem(s: PlantTown | undefined, k: PlantKind | StationKind, known?: Record<string, number>): string {
   if (s?.pbuild) return 'Something is being built here already: finish it first.';
   if (isStation(k)) {
+    const tech = STATIONS[k].tech;
+    if (known && tech && known[tech] === undefined) return `Nobody here knows how to build a ${STATIONS[k].name}: it wants the old plans for ${TECH_BY_ID[tech].name}.`;
     if ((s?.stations?.length ?? 0) >= STATION_SLOTS) return `There is room for ${STATION_SLOTS} power stations here, and both are built.`;
     if (s?.stations?.some((p) => p.k === k)) return 'The village has one of those already.';
     return '';
@@ -132,8 +135,8 @@ export function plantProblem(s: PlantTown | undefined, k: PlantKind | StationKin
 export const isStation = (k: PlantKind | StationKind): k is StationKind => k in STATIONS;
 export const specOf = (k: PlantKind | StationKind): { name: string; blurb: string; needs: [ItemKey, number][]; fee: number; xp: number } => (isStation(k) ? STATIONS[k] : PLANTS[k]);
 /** Start building works k (the fee is paid when it is finished). */
-export function startPlant(s: PlantTown, k: PlantKind | StationKind): string {
-  const why = plantProblem(s, k);
+export function startPlant(s: PlantTown, k: PlantKind | StationKind, known?: Record<string, number>): string {
+  const why = plantProblem(s, k, known);
   if (why) return why;
   s.pbuild = { k, given: {} };
   return '';

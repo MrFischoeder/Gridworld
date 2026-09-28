@@ -5,7 +5,7 @@
 // Ancients. It reads only; everything it shows comes from the pure models the rest of the game runs on.
 import { G, W } from '../game';
 import { ITEMS } from '../data/items';
-import { findPoi, allVillages, worldDist, villageSeed, CHUNK, GRIDHOLM_ID, type Poi } from '../gen/regions';
+import { findPoi, allVillages, worldDist, wrapDx, villageSeed, CHUNK, GRIDHOLM_ID, type Poi } from '../gen/regions';
 import { industryOf, INDUSTRY, siteCondition, production, fertility } from '../gen/industry';
 import { profileOf, quote, type Good } from '../gen/market';
 import { storeInfo } from '../gen/store';
@@ -13,7 +13,7 @@ import { wallOf, worksOf, powerKind, POWER, POWER_DOWN } from '../gen/town';
 import { WALL_TIERS, type VillageMap } from '../gen/village';
 import { nextRaid, lastRaid, raidOutcome } from '../gen/raids';
 import { PLANTS, plantsOf, running, runPlant } from '../gen/plants';
-import { STATIONS, DRAW, VILLAGE_KW, balance, baseKw, stationKw, fuelAt, poweredAt } from '../gen/energy';
+import { STATIONS, DRAW, VILLAGE_KW, balance, baseKw, stationKw, fuelAt, fuelWords, poweredAt } from '../gen/energy';
 import { roadsOf, departures, lastArrival } from '../gen/caravans';
 import { STAGES, CHARIOT, stageRows, stagesDone } from '../gen/shuttle';
 import { weatherAt, WEATHER_NAME } from '../gen/weather';
@@ -28,8 +28,9 @@ import { depositOf, RARE_NAME } from '../gen/deposits';
 import { trustOf, trustTier, shareLeft, TRUST_TIERS } from '../gen/standing';
 import { peopleAt, targetNow, workersAt, staffing } from '../gen/people';
 import { farmsOf, upgradedOf } from '../gen/farms';
-import { TECHS, techSites, CARRIER_NAME } from '../gen/tech';
+import { TECHS, techSites, CARRIER_NAME, dirWord } from '../gen/tech';
 import { Terrain } from '../gen/terrain';
+import { installSites, installDone, INSTALL_STAGES } from '../gen/installs';
 import { OW } from '../world/overworld';
 import { lockPointer } from './input';
 
@@ -85,7 +86,7 @@ function powerPage(poi: Poi, vm: VillageMap): string {
   s += row(POWER[kind].name, `${Math.round(baseKw(c.world, poi, seed, st, now))} kW · condition ${Math.round(cond)}%${cond < POWER_DOWN ? ' · DOWN' : ''}`);
   for (const x of st?.stations ?? []) {
     const sp = STATIONS[x.k];
-    s += row(sp.name, `${x.on ? Math.round(stationKw(poi, seed, x, now)) + ' kW' : 'OFF'} of ${sp.kw}` + (sp.fuel ? ` · bunker ${Math.floor(fuelAt(x, now))} ${sp.fuel === 'coal' ? 'coal' : 'fuel'}, ${x.on && fuelAt(x, now) > 0 ? `~${Math.round(fuelAt(x, now) * sp.burn! / 60)} h left` : 'not burning'}` : ''));
+    s += row(sp.name, `${x.on ? Math.round(stationKw(poi, seed, x, now)) + ' kW' : 'OFF'} of ${sp.kw}` + (sp.fuel ? ` · bunker ${Math.ceil(fuelAt(x, now) * 10) / 10} ${fuelWords(x.k)[2]}, ${x.on && fuelAt(x, now) > 0 ? `~${fuelAt(x, now) * sp.burn! > 2880 ? Math.round(fuelAt(x, now) * sp.burn! / 1440) + ' days' : Math.round(fuelAt(x, now) * sp.burn! / 60) + ' h'} left` : 'not burning'}` : ''));
   }
   if (!(st?.stations ?? []).length) s += `<div class="tdim">No power stations. The works need them.</div>`;
   if (b.farms) s += h('FARMS') + row(`${farmsOf(st)} farm${farmsOf(st) > 1 ? 's' : ''}${upgradedOf(st) ? `, ${upgradedOf(st)} with pumps` : ''}`, `draw ${b.farms} kW · ${Math.round(b.farmsPowered * 100)}% powered now (first in line)`);
@@ -99,7 +100,18 @@ function powerPage(poi: Poi, vm: VillageMap): string {
     const t = now + k * 180, bb = balance(c.world, poi, seed, st, t), free = Math.max(0, bb.made - VILLAGE_KW), w = weatherAt(c.world, poi.x, poi.z, t);
     s += `<div class="trow mono"><span>${fmtTime(t)}</span><span>${bar(free / peak, 16)} ${String(Math.round(free)).padStart(4)} kW · ${WEATHER_NAME[w.kind]}</span></div>`;
   }
-  return s;
+  return s + installRows(poi);
+}
+/** The great installations (gen/installs.ts): where they lie from here and how far they are restored. */
+function installRows(poi: Poi): string {
+  const c = G.char, T = OW.terrain && OW.terrain.world === c.world ? OW.terrain : new Terrain(c.world);
+  let s = h('OLD INSTALLATIONS');
+  for (const site of installSites(T)) {
+    const st = c.installs[site.k], n = INSTALL_STAGES[site.k].length, where = `${fmtDist(worldDist(poi.x, poi.z, site.x, site.z))} ${dirWord(wrapDx(site.x - poi.x), site.z - poi.z)}`;
+    const what = installDone(site.k, st) ? `WORKING · ore ${st!.inp} · fuel ready ${st!.out} (as last seen)` : `${st?.stage ?? 0}/${n} STAGES RESTORED`;
+    s += row(site.name, `${what} · ${where}`);
+  }
+  return s + `<div class="tdim">A Small Reactor burns the fuel rods the Old Enrichment Plant makes: a crate lasts ${STATIONS.reactor.burn! / 1440} days at ${STATIONS.reactor.kw} kW.</div>`;
 }
 
 function tradePage(poi: Poi, vm: VillageMap): string {
