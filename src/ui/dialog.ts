@@ -31,6 +31,7 @@ import { terminalClick } from './terminal';
 import { logbookClick } from './logbook';
 import { askLead } from '../world/datacarriers';
 import { ordersHTML, ordersClick } from './orders';
+import { CRAFTING_OPEN } from '../data/crafting';
 import { shipmentOffer } from '../gen/contracts';
 import { pendingTribute, payTribute } from '../world/villageraid';
 import { findPoi } from '../gen/regions';
@@ -71,7 +72,7 @@ function renderTalk(text: string) {
   panel().classList.remove('wide');
   panel().innerHTML = dlgHead() + `<div class="say">${text}</div>` +
     (townId() !== null ? questOptions(W.talkNpc!.role, townId()!) : []).map((q) => `<button class="opt" data-q="${q.id}" style="color:var(--gold)">${q.label}</button>`).join('') +
-    info.opts.filter((o) => o !== 'house' || houseForSale()).map((o) => `<button class="opt" data-o="${o}">${OPT_TEXT[o]}</button>`).join('');
+    info.opts.filter((o) => (o !== 'house' || houseForSale()) && (o !== 'craft' || CRAFTING_OPEN)).map((o) => `<button class="opt" data-o="${o}">${OPT_TEXT[o]}</button>`).join('');
 }
 /** The elder sells the empty house (Gridholm's, for now) until it is yours. */
 const houseForSale = () => { const v = loadedVillage(town()); return !!v?.vm.home && !G.char.houses.includes(v.id); };

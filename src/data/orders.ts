@@ -4,13 +4,18 @@ import type { ItemKey } from './items';
 import { craft, count, type Recipe } from './crafting';
 import type { Slot } from '../save';
 
-/** An order: the technology it needs, what comes out, and what you hand over. */
+/** An order: the technology it needs ('' = none, a basic), what comes out, and what you hand over. */
 export interface Order { tech: string; out: ItemKey; n: number; needs: [ItemKey, number][] }
 export const ORDERS: Order[] = [
-  { tech: 'forging', out: 'hatchet', n: 1, needs: [['log', 1], ['scrap', 1]] },
-  { tech: 'forging', out: 'pickaxe', n: 1, needs: [['log', 1], ['scrap', 2]] },
+  // the basics every smith knows without any plans ('' = no technology), so nobody is stuck without tools
+  { tech: '', out: 'hatchet', n: 1, needs: [['log', 1], ['stone', 2]] },
+  { tech: '', out: 'pickaxe', n: 1, needs: [['log', 1], ['stone', 3]] },
+  { tech: '', out: 'firekit', n: 1, needs: [['log', 2]] },
+  { tech: '', out: 'flask', n: 1, needs: [['hide', 1]] },
   { tech: 'forging', out: 'hammer', n: 1, needs: [['log', 1], ['scrap', 2]] },
   { tech: 'forging', out: 'saw', n: 1, needs: [['log', 1], ['scrap', 2]] },
+  { tech: 'forging', out: 'screwdriver', n: 1, needs: [['scrap', 1], ['log', 1]] },
+  { tech: 'forging', out: 'pliers', n: 1, needs: [['scrap', 2]] },
   { tech: 'framing', out: 'planks', n: 6, needs: [['log', 2]] },
   { tech: 'framing', out: 'nails', n: 10, needs: [['scrap', 1]] },
   { tech: 'furnace', out: 'scrap', n: 3, needs: [['ironO', 2], ['log', 1]] },
@@ -25,14 +30,16 @@ export const ORDERS: Order[] = [
 /** Technologies that are for the villages themselves (farms, power, works), not for the craftsmen's bench. */
 export const VILLAGE_TECHS = ['fields', 'plough', 'rotor', 'solar', 'chips', 'radio', 'chemistry', 'enrichment', 'propellant', 'rail'];
 
+/** The smith knows the work: a basic, or the technology is yours. */
+export const known = (o: Order, tech: Record<string, number>) => !o.tech || tech[o.tech] !== undefined;
 /** Can it be ordered: 'plans' (the technology is not yours), 'missing' (not all materials with you), or ''. */
 export function orderState(o: Order, tech: Record<string, number>, inv: (Slot | null)[]): '' | 'plans' | 'missing' {
-  if (tech[o.tech] === undefined) return 'plans';
+  if (!known(o, tech)) return 'plans';
   return o.needs.every(([k, n]) => count(inv, k) >= n) ? '' : 'missing';
 }
 /** Hands the materials over and takes the work: '' when done, else why not (as `craft`). */
 export function placeOrder(o: Order, tech: Record<string, number>, inv: (Slot | null)[], cap: number, hands: (Slot | null)[]): '' | 'plans' | 'missing' | 'room' | 'hands' {
-  if (tech[o.tech] === undefined) return 'plans';
+  if (!known(o, tech)) return 'plans';
   const r: Recipe = { out: o.out, n: o.n, needs: o.needs, at: 'forge' };
   return craft(inv, r, cap, hands);
 }

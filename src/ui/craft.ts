@@ -5,6 +5,7 @@ import { G, W } from '../game';
 import { ITEMS, PACK, HANDS_ONLY, WEAPON_KIND } from '../data/items';
 import { RECIPES, canUseAt, count, craft, craftTime, hasAll, type Station, type Recipe } from '../data/crafting';
 import { BASES_OPEN } from '../data/building';
+import { CRAFTING_OPEN } from '../data/crafting';
 import { saveChar, calcStats, stowHeld, handsChanged } from '../character';
 import { packBench, type Bench } from '../world/benches';
 import { loadText } from './slots';
@@ -19,7 +20,7 @@ let job: { i: number; t0: number; ms: number; left: number } | null = null, raf 
 /** Draws the recipe list into the dialogue panel. `head` is the title block, `foot` the buttons under the list. */
 function render(msg = '') {
   const inv = G.char.inv;
-  const rows = RECIPES.map((r, i) => {
+  const rows = !CRAFTING_OPEN ? '' : RECIPES.map((r, i) => {
     if (r.out === 'benchkit' && !BASES_OPEN) return ''; // no workbenches in the wilds for now
     const ok = canUseAt(r, station), all = ok && hasAll(inv, r), it = ITEMS[r.out];
     const needs = r.needs.map(([k, n]) => { const have = count(inv, k); return `<span class="${have >= n ? '' : 'bad'}">${ITEMS[k].name} ${have}/${n}</span>`; }).join(' · ') +
@@ -30,7 +31,8 @@ function render(msg = '') {
   }).join('');
   const head = bench ? `<h2>Workbench</h2><div class="role">your own, set up in the wilds</div>` : `<h2>${W.talkNpc?.name ?? 'Forge'}'s workbench</h2><div class="role">the forge: everything can be made here</div>`;
   const foot = bench ? `<button class="opt" data-cpack="1">Pack up the workbench</button><button class="opt" data-cclose="1">Close</button>` : `<button class="opt" data-o="back">Back</button>`;
-  panel().innerHTML = head + `<div class="say">Backpack: ${loadText()}${msg ? '<br>' + msg : ''}</div>` + `<div class="recipes">${rows}</div>` + foot;
+  const frozen = CRAFTING_OPEN ? '' : '<br>You cannot make much by hand out here any more. Village blacksmiths make things for you now (from the old plans you find); you can still pack this workbench up.';
+  panel().innerHTML = head + `<div class="say">Backpack: ${loadText()}${msg ? '<br>' + msg : ''}${frozen}</div>` + `<div class="recipes">${rows}</div>` + foot;
 }
 
 /** From the blacksmith's options: the forge's workbench. */

@@ -2,22 +2,22 @@
 // recovered; you hand over the materials from your backpack and it is done on the spot.
 import { G } from '../game';
 import { ITEMS, PACK } from '../data/items';
-import { ORDERS, orderState, placeOrder } from '../data/orders';
+import { ORDERS, orderState, placeOrder, known as knows } from '../data/orders';
 import { count } from '../data/crafting';
 import { TECH_BY_ID } from '../gen/tech';
 import { saveChar, calcStats, handsChanged } from '../character';
 
 /** The order list, as dialogue panel HTML (after `head`). */
 export function ordersHTML(head: string, msg = ''): string {
-  const c = G.char, known = ORDERS.filter((o) => c.tech[o.tech] !== undefined), lost = ORDERS.filter((o) => c.tech[o.tech] === undefined);
+  const c = G.char, known = ORDERS.filter((o) => knows(o, c.tech)), lost = ORDERS.filter((o) => !knows(o, c.tech));
   const rows = known.map((o) => {
     const i = ORDERS.indexOf(o), st = orderState(o, c.tech, c.inv);
     const needs = o.needs.map(([k, n]) => { const h = count(c.inv, k); return `<span style="color:${h >= n ? 'var(--xp)' : '#ff9a7a'}">${ITEMS[k].name} ${Math.min(h, n)}/${n}</span>`; }).join(' · ');
-    return `<div class="shoprow"><div><b>${ITEMS[o.out].name}${o.n > 1 ? ' ×' + o.n : ''}</b> <span class="tag" style="opacity:.7">${TECH_BY_ID[o.tech].name}</span><br><span>${needs}</span></div>
+    return `<div class="shoprow"><div><b>${ITEMS[o.out].name}${o.n > 1 ? ' ×' + o.n : ''}</b> <span class="tag" style="opacity:.7">${o.tech ? TECH_BY_ID[o.tech].name : 'basic'}</span><br><span>${needs}</span></div>
       <button class="buy" data-make="${i}" ${st ? 'disabled' : ''}>Make</button></div>`;
   }).join('');
   const plans = [...new Set(lost.map((o) => o.tech))].map((t) => TECH_BY_ID[t].name);
-  return head + `<div class="say">${msg ? msg + '<br><br>' : ''}${known.length ? 'Bring me the materials and I will make it. I know the work only from the old plans you found.' : 'I know my hammer and my forge, but the finer work of the old days is lost. Find me the old plans (ask around about old machines) and bring me the materials, and I will make what they show.'}</div>` +
+  return head + `<div class="say">${msg ? msg + '<br><br>' : ''}${known.some((o) => o.tech) ? 'Bring me the materials and I will make it. The finer work I know only from the old plans you found.' : 'Simple tools I can make you from wood and stone. The finer work of the old days is lost: find me the old plans (ask around about old machines) and bring me the materials, and I will make what they show.'}</div>` +
     rows + (plans.length ? `<div class="say" style="opacity:.75">Still lost: ${plans.join(', ')}.</div>` : '') + `<button class="opt" data-o="back">Back</button>`;
 }
 /** A click on "Make": the message to show, or null when it was not an order button. */

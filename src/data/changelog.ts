@@ -4,6 +4,12 @@ export interface Change { v: string; date: string; title: string; notes: string[
 
 export const CHANGELOG: Change[] = [
   {
+    v: '0.59.0', date: '2026-09-28', title: 'The smith\'s trade',
+    notes: ['Crafting by your own hand is set aside for now: things are made in the villages. The blacksmith no longer lends you his workbench, and a workbench you set up in the wilds can only be packed up.',
+      'Instead every blacksmith makes the basics from what you bring, no plans needed: a hatchet and a pickaxe from wood and stone, a fire kit, a flask from a hide. Everything finer needs the old plans: hammer, saw, screwdriver and pliers now come with Forged Tools.',
+      'Electronics, engine parts, tires and plating come from the plans (Basic Circuits, Combustion Engines, Wagon Axles, Blast Furnace), from the shops or from what you find out there.'],
+  },
+  {
     v: '0.58.0', date: '2026-09-28', title: 'Old plans, new work',
     notes: ['The recovered plans are good for something now. Ask the blacksmith: "Make something for me." He makes whatever the plans you found show, from the materials you bring him, on the spot.',
       'Forged Tools: hatchet, pickaxe, hammer, saw. Timber Framing: planks and nails. Blast Furnace: scrap metal and wire from iron ore. Basic Circuits: electronic components from copper ore, and compasses. Wagon Axles: light tires and hull plating. Combustion Engines: engine parts and turbochargers.',

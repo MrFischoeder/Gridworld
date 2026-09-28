@@ -13,6 +13,11 @@ export type Station = 'bench' | 'forge';
 export interface Recipe { out: ItemKey; n: number; needs: [ItemKey, number][]; at: Station; tools?: ItemKey[]; time?: number }
 /** Seconds a recipe takes unless it says otherwise: plain bench work is quicker than the forge's. */
 export const CRAFT_TIME = { bench: 3, forge: 6 };
+/**
+ * Crafting by your own hand is frozen for now (the development plan: things are made in the villages, data/orders.ts):
+ * the blacksmith's 'craft' option is hidden and a workbench in the wilds can only be packed up. The recipes stay for reuse.
+ */
+export const CRAFTING_OPEN = false;
 export const craftTime = (r: Recipe) => r.time ?? CRAFT_TIME[r.at];
 
 export const RECIPES: Recipe[] = [
