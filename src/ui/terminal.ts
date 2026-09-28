@@ -5,7 +5,7 @@
 // Ancients. It reads only; everything it shows comes from the pure models the rest of the game runs on.
 import { G, W } from '../game';
 import { ITEMS } from '../data/items';
-import { findPoi, allVillages, worldDist, villageSeed, CHUNK, type Poi } from '../gen/regions';
+import { findPoi, allVillages, worldDist, villageSeed, CHUNK, GRIDHOLM_ID, type Poi } from '../gen/regions';
 import { industryOf, INDUSTRY, siteCondition, production, fertility } from '../gen/industry';
 import { profileOf, quote, type Good } from '../gen/market';
 import { storeInfo } from '../gen/store';
@@ -25,6 +25,7 @@ import { bearingTo, point8, fmtDist } from './compass';
 import { fmtTime, fmtClock } from '../core/time';
 import { $ } from './hud';
 import { trustOf, trustTier, shareLeft, TRUST_TIERS } from '../gen/standing';
+import { peopleAt, peopleTarget, workersAt, staffing } from '../gen/people';
 import { TECHS, techSites, CARRIER_NAME } from '../gen/tech';
 import { Terrain } from '../gen/terrain';
 import { OW } from '../world/overworld';
@@ -47,6 +48,8 @@ function villagePage(poi: Poi, vm: VillageMap): string {
   const prod = production(c.world, poi, seed, st, now), cond = siteCondition(c.world, poi, st, now), so = storeOf(poi.id, seed), info = storeInfo(seed, st, now, prod);
   let s = h(`${vm.name.toUpperCase()} · ${spec.name.toUpperCase()}`);
   s += row('Makes', p.makes.map(name).join(', ')) + row('Wants', p.wants.map(name).join(', '));
+  { const home = poi.id === GRIDHOLM_ID, n = peopleAt(seed, home, st, now), tg = peopleTarget(seed, home, st);
+    s += row('People', `${Math.round(n)} · ${workersAt(seed, home, st, now)} at work · staffing ×${staffing(seed, home, st, now).toFixed(2)}` + (Math.abs(tg - n) >= 1 ? ` · ${n < tg ? 'growing' : 'shrinking'} to ${tg}` : '')); }
   { const k = trustTier(st), tr = TRUST_TIERS[k]; s += row('Your standing', `${tr.name} · trust ${trustOf(st)}` + (tr.crates ? ` · share ${shareLeft(st, now)}/${tr.crates} crates today` : ` · ${TRUST_TIERS[1].min} for a share`)); }
   if (ind === 'farm') s += row('Fields', `${fert > 1.15 ? 'rich' : fert < 0.85 ? 'poor' : 'fair'} (×${fert.toFixed(2)})`);
   s += row(spec.site, `${bar(cond / 100)} ${Math.round(cond)}% · output ${Math.round(prod * 100)}%`);

@@ -4,6 +4,12 @@ export interface Change { v: string; date: string; title: string; notes: string[
 
 export const CHANGELOG: Change[] = [
   {
+    v: '0.61.0', date: '2026-09-28', title: 'The people behind the walls',
+    notes: ['The few villagers you meet stand for many more: every village now has its own population, 40 to 90 people (Gridholm 70), and a share of them work its fields, mine or workshops.',
+      'The workers drive the output: fewer hands, less from the land and a slower storehouse. Villagers killed in a raid are missed, and a village overrun by bandits loses about an eighth of its people. Over the following days the numbers grow back.',
+      'The village computer (VILLAGE) shows the people, the workers and the staffing; the elder mentions them too. Farms that feed more people come next.'],
+  },
+  {
     v: '0.60.0', date: '2026-09-28', title: 'Standing',
     notes: ['Every village now remembers what you have done for it. Raising its wall, building defences, a storehouse, works or a power station, mending the power plant or the industry site, beating off a raid, fulfilling a delivery contract or a notice of its board all earn its trust.',
       'Trust opens its storehouse. Known (25 trust): the elder spares you 2 crates a day of what the village makes, free. Friend (60): 4 a day. Honoured (100): 8 a day. Ask the elder: "What can the village spare me?". The share renews every midnight and comes out of the storehouse, so it is still bounded by what the village makes.',

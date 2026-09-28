@@ -35,6 +35,8 @@ export interface TownState {
   stations?: StationState[];
   /** Your standing here (gen/standing.ts): trust earned, and the crates of its goods taken today (game day, count). */
   trust?: number; share?: { d: number; n: number };
+  /** The population's anchor (gen/people.ts): the count at game time t. */
+  people?: { n: number; t: number };
 }
 
 // ---------- defence works ----------

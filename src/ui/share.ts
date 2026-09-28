@@ -2,7 +2,8 @@
 // come out of its storehouse into your backpack or a vehicle parked by the village.
 import { G } from '../game';
 import { ITEMS, type ItemKey } from '../data/items';
-import { findPoi } from '../gen/regions';
+import { findPoi, GRIDHOLM_ID } from '../gen/regions';
+import { peopleAt, workersAt } from '../gen/people';
 import { profileOf, type Good } from '../gen/market';
 import { production } from '../gen/industry';
 import { storeAt, takeStore, storeCap } from '../gen/store';
@@ -26,6 +27,7 @@ export function shareHTML(town: string, head: string, msg = ''): string {
   let s = head + `<div class="say">${msg ? msg + '<br><br>' : ''}`;
   s += tier.crates ? `You have done right by ${p.v.vm.name}. What our land gives, we share with you: up to ${tier.crates} crates a day, free.`
     : `We do not know you well yet. Help ${p.v.vm.name} (raise the wall, mend the power plant, stand with us in a raid, bring what we need) and we will share what our land gives.`;
+  s += `<br><span style="opacity:.8">${Math.round(peopleAt(p.seed, p.v.id === GRIDHOLM_ID, p.st, c.time))} people live here, ${workersAt(p.seed, p.v.id === GRIDHOLM_ID, p.st, c.time)} of them at work.</span>`;
   s += '</div>';
   s += `<div class="shoprow"><div><b>${tier.name}</b> · trust ${t}${next ? ` / ${next.min} for ${next.name} (${next.crates} crates a day)` : ''}<br><span style="font-family:monospace">${next ? bar((t - tier.min) / (next.min - tier.min)) : bar(1)}</span></div></div>`;
   if (tier.crates) {

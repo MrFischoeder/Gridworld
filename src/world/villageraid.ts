@@ -12,6 +12,7 @@
 // they tear down part of the wall (it drops a tier) besides wrecking the plant.
 import * as THREE from 'three';
 import { earnTrust } from './standing';
+import { losePeople, PEOPLE } from '../gen/people';
 import { G, W } from '../game';
 import { loadedVillages, OW } from './overworld';
 import { spawnBandit, removeBandit, type Bandit } from './bandits';
@@ -27,7 +28,7 @@ import type { Npc } from './npc';
 import { powerSite, worksOf, GUARDED } from '../gen/town';
 import { siteCentre } from './industry';
 import { fmtTime } from '../core/time';
-import { worldDist, nearX } from '../gen/regions';
+import { worldDist, nearX, findPoi, villageSeed, GRIDHOLM_ID } from '../gen/regions';
 import type { VillageMap } from '../gen/village';
 
 /** Waves per raid, the defences' drain per bandit at a gate (per second, by wall tier), damage to the plant. */
@@ -77,6 +78,7 @@ function finish(L: LiveRaid, won: boolean) {
     c.gold += gold; if (L.r.k > 0) earnTrust(L.vid, 'raid'); calcStats(); gainXp(40 + L.r.strength * 10);
     showToast('Raid repelled'); logLine(`${L.name} holds! The villagers pay you ${gold} gold.`);
   } else {
+    if (L.r.k > 0) lose(L.vid, 0, PEOPLE.overrun);
     showToast(`${L.name} is overrun`); logLine(`The bandits break through at ${L.name}, loot what they can and wreck the power plant.`);
     if ((st.wall ?? 0) > 0 && L.r.k > 0) { // they pull down what they can of the wall
       st.wall = (st.wall ?? 0) - 1; st.given = {};
@@ -193,7 +195,7 @@ function tracer(a: THREE.Vector3, b: THREE.Vector3) { addFx(new THREE.Line(new T
 const falling: { n: Npc; t: number; dir: number }[] = [];
 function killVillager(n: Npc, vid: number) {
   const i = W.npcs.indexOf(n); if (i >= 0) W.npcs.splice(i, 1);
-  ((G.char.towns[vid] ??= {}).dead ??= []).push(G.char.time); saveChar();
+  ((G.char.towns[vid] ??= {}).dead ??= []).push(G.char.time); lose(vid, 1, 0); saveChar();
   falling.push({ n, t: 0, dir: Math.random() < 0.5 ? 1 : -1 });
   logLine(`${n.name} is shot down by the bandits!`);
 }
@@ -207,6 +209,11 @@ export function updateFallen(dt: number) {
   }
 }
 /** Villagers of a village killed in the last two days (they are not there when it loads). */
+/** The village loses people: k killed, or a share of them (gen/people.ts). */
+function lose(vid: number, k: number, share: number) {
+  const c = G.char, poi = findPoi(c.world, vid); if (!poi) return;
+  losePeople((c.towns[vid] ??= {}), villageSeed(c.world, poi), vid === GRIDHOLM_ID, c.time, k, share);
+}
 export const recentDead = (vid: number) => (G.char.towns[vid]?.dead ?? []).filter((t) => G.char.time - t < 2 * 1440).length;
 
 /** The raid for the quest tracker (a pending demand too). */

@@ -6,7 +6,8 @@
 // (gen/market.ts) and wants. Raids wreck the site for a while (lost raids and bandits at the site), which cuts the
 // output; the villagers patch it up over a few days, or you mend it at once. Pure and deterministic.
 import { hash, rng, type Dir } from '../core/rng';
-import { allVillages, worldDist, villageSeed, type Poi } from './regions';
+import { allVillages, worldDist, villageSeed, GRIDHOLM_ID, type Poi } from './regions';
+import { staffing } from './people';
 import { mountainMask } from './mountains';
 import { powerSite, worksOf, GUARDED } from './town';
 import { raidsBetween, raidOutcome, RAID } from './raids';
@@ -91,10 +92,10 @@ export function fertility(world: number, v: Poi, seed: number): number {
   const hills = mountainMask(world, v.x, v.z), r = (hash(seed, 0xfe27) % 1000) / 1000;
   return Math.round(Math.max(0.6, Math.min(1.6, 0.6 + r * 1.1 - hills * 0.8)) * 100) / 100;
 }
-/** How much the village's industry puts out now (0: its refinery is not built yet): its condition, times the fields' fertility on a farm. */
+/** How much the village's industry puts out now (0: its refinery is not built yet): its condition, times the fields' fertility on a farm, times its staffing (gen/people.ts: 1 at the base population). */
 export function production(world: number, v: Poi, seed: number, s: TownState | undefined, now: number): number {
   const k = industryOf(world, v, seed);
-  return siteBuilt(k, s) ? siteCondition(world, v, s, now) / 100 * fertility(world, v, seed) : 0;
+  return siteBuilt(k, s) ? siteCondition(world, v, s, now) / 100 * fertility(world, v, seed) * staffing(seed, v.id === GRIDHOLM_ID, s, now) : 0;
 }
 /**
  * Where the site lies, in plaza-local metres: on a side (W, E or S) other than the power plant's, off its middle so
