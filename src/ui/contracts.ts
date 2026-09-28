@@ -3,6 +3,7 @@
 // their crates into your backpack and the trunks of vehicles parked by the gates, against a deposit. Contracts past
 // their deadline fail (a haul's deposit is lost). Also: the tracker lines and map markers of your contracts.
 import { G } from '../game';
+import { earnTrust } from '../world/standing';
 import { ITEMS } from '../data/items';
 import { calcStats, saveChar, gainXp } from '../character';
 import { offersAt, shipmentOffer, payFor, CONTRACT, type Contract } from '../gen/contracts';
@@ -74,7 +75,7 @@ export function contractsClick(t: HTMLElement): string | null {
   const pay = payFor(k, n);
   k.done += n; c.gold += pay; trade(c.market, v.id, k.good, n, c.time);
   let m = `Handed over ${n} × ${ITEMS[k.good].name}: +${pay} gold.`;
-  if (k.done >= k.n) { c.contracts.splice(c.contracts.indexOf(k), 1); gainXp(20 + k.n * 3); showToast('Contract fulfilled'); m += ' The contract is done.'; }
+  if (k.done >= k.n) { c.contracts.splice(c.contracts.indexOf(k), 1); gainXp(20 + k.n * 3); earnTrust(v.id, 'contract'); showToast('Contract fulfilled'); m += ' The contract is done.'; }
   calcStats(); saveChar();
   return m;
 }

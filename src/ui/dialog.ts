@@ -31,6 +31,8 @@ import { terminalClick } from './terminal';
 import { logbookClick } from './logbook';
 import { askLead } from '../world/datacarriers';
 import { ordersHTML, ordersClick } from './orders';
+import { shareHTML, shareClick } from './share';
+import { earnTrust } from '../world/standing';
 import { CRAFTING_OPEN } from '../data/crafting';
 import { shipmentOffer } from '../gen/contracts';
 import { pendingTribute, payTribute } from '../world/villageraid';
@@ -243,7 +245,7 @@ function giveWorks() {
       (after.done ? `All the materials are in. The builders want their ${after.fee} gold${c.gold < after.fee ? ', and you do not have it yet' : ''}.` : taken.length ? '' : 'You carry nothing it still needs.'));
     return;
   }
-  gainXp(plan.xp); calcStats(); saveChar();
+  gainXp(plan.xp); earnTrust(v.id, 'works'); calcStats(); saveChar();
   closeDialog(); reloadStruct(v.id);
   const name = specOf(built).name;
   showToast(`${v.vm.name}: the ${name} stands`);
@@ -280,7 +282,7 @@ function giveWork(k: WorkKind) {
   const { taken, done } = handOverWork(st, k, (i) => count(c.inv, i), workLimit(k, v.vm));
   for (const [i, n] of taken) { let left = n; for (let j = 0; j < c.inv.length && left; j++) { const s = c.inv[j]; if (s?.k === i) { const m = Math.min(left, s.n); s.n -= m; left -= m; if (s.n <= 0) c.inv[j] = null; } } }
   if (!done) { saveChar(); renderFortify(taken.length ? 'Handed over: ' + taken.map(([i, n]) => `${ITEMS[i].name} ×${n}`).join(', ') + '.' : 'You carry nothing that work still needs.'); return; }
-  c.gold += plan.gold; gainXp(plan.xp); calcStats(); saveChar();
+  c.gold += plan.gold; earnTrust(v.id, 'work'); gainXp(plan.xp); calcStats(); saveChar();
   closeDialog(); reloadStruct(v.id);
   showToast(k === 'turret' ? `${v.vm.name}: a turret on the wall` : `${v.vm.name}: ${WORKS[k].name.toLowerCase()}`);
   logLine(k === 'turret' ? `The villagers haul the turret up and bolt it to the wall. It sweeps the ground outside. They pay you ${plan.gold} gold.`
@@ -299,7 +301,7 @@ function giveStore() {
   const { taken, built } = handOverStore(st, v.vm.seed, c.time, so.prod, (i) => count(c.inv, i));
   for (const [i, n] of taken) { let left = n; for (let j = 0; j < c.inv.length && left; j++) { const s = c.inv[j]; if (s?.k === i) { const m = Math.min(left, s.n); s.n -= m; left -= m; if (s.n <= 0) c.inv[j] = null; } } }
   if (!built) { saveChar(); renderFortify(taken.length ? 'Handed over: ' + taken.map(([i, n]) => `${ITEMS[i].name} ×${n}`).join(', ') + '.' : 'You carry nothing the storehouse still needs.'); return; }
-  c.gold += plan.gold; gainXp(plan.xp); calcStats(); saveChar();
+  c.gold += plan.gold; earnTrust(v.id, 'store'); gainXp(plan.xp); calcStats(); saveChar();
   closeDialog(); reloadStruct(v.id);
   showToast(`${v.vm.name}: a new ${STORE.tiers[plan.to].name.toLowerCase()}`);
   logLine(`${v.vm.name}'s new ${STORE.tiers[plan.to].name.toLowerCase()} holds ${STORE.tiers[plan.to].cap} crates. The village pays you ${plan.gold} gold.`);
@@ -311,7 +313,7 @@ function giveRefinery() {
   const { taken, built } = handOverBuild(k, st, (i) => count(c.inv, i));
   for (const [i, n] of taken) { let left = n; for (let j = 0; j < c.inv.length && left; j++) { const s = c.inv[j]; if (s?.k === i) { const m = Math.min(left, s.n); s.n -= m; left -= m; if (s.n <= 0) c.inv[j] = null; } } }
   if (!built) { saveChar(); renderFortify(taken.length ? 'Handed over: ' + taken.map(([i, n]) => `${ITEMS[i].name} ×${n}`).join(', ') + '.' : 'You carry nothing the refinery still needs.'); return; }
-  c.gold += REFINERY_PAY; gainXp(300); calcStats(); saveChar();
+  c.gold += REFINERY_PAY; earnTrust(v.id, 'refinery'); gainXp(300); calcStats(); saveChar();
   closeDialog(); reloadStruct(v.id);
   showToast(`${v.vm.name} has a refinery`);
   logLine(`The columns go up, the flare is lit: ${v.vm.name} refines crude into fuel now. They pay you ${REFINERY_PAY} gold.`);
@@ -323,7 +325,7 @@ function giveFortify() {
   const { taken, raised } = handOver(st, (k) => count(c.inv, k));
   for (const [k, n] of taken) { let left = n; for (let i = 0; i < c.inv.length && left; i++) { const s = c.inv[i]; if (s?.k === k) { const m = Math.min(left, s.n); s.n -= m; left -= m; if (s.n <= 0) c.inv[i] = null; } } }
   if (!raised) { saveChar(); renderFortify(taken.length ? 'Handed over: ' + taken.map(([k, n]) => `${ITEMS[k].name} ×${n}`).join(', ') + '.' : 'You carry nothing we still need.'); return; }
-  c.gold += plan.gold; gainXp(plan.xp); calcStats(); saveChar();
+  c.gold += plan.gold; earnTrust(v.id, 'wall'); gainXp(plan.xp); calcStats(); saveChar();
   closeDialog();
   reloadStruct(v.id);
   showToast(`${v.vm.name} raises a ${WALL_TIERS[plan.to].name}`);
@@ -332,6 +334,8 @@ function giveFortify() {
 dlgEl.addEventListener('click', (e) => {
   if (craftClick(e.target as HTMLElement) || buildClick(e.target as HTMLElement)) return;
   if (caravanClick(e.target as HTMLElement) || shuttleClick(e.target as HTMLElement) || worksClick(e.target as HTMLElement) || stationClick(e.target as HTMLElement) || terminalClick(e.target as HTMLElement) || logbookClick(e.target as HTMLElement)) return;
+  const sm = shareClick(town(), e.target as HTMLElement);
+  if (sm !== null) { panel().innerHTML = shareHTML(town(), dlgHead(), sm); return; }
   const om = ordersClick(e.target as HTMLElement);
   if (om !== null) { panel().innerHTML = ordersHTML(dlgHead(), om); return; }
   const cm = contractsClick(e.target as HTMLElement);
@@ -406,6 +410,7 @@ dlgEl.addEventListener('click', (e) => {
       break;
     case 'watch': renderWatch(); break;
     case 'rumour': renderTalk(RUMOURS[(Math.random() * RUMOURS.length) | 0]); break;
+    case 'share': panel().classList.remove('wide'); panel().innerHTML = shareHTML(town(), dlgHead()); break;
     case 'make': panel().classList.remove('wide'); panel().innerHTML = ordersHTML(dlgHead()); break;
     case 'oldtech': { const id = townId(), p = id !== null ? findPoi(c.world, id) : null; renderTalk(p ? askLead(p.x, p.z) : 'Hm?'); break; }
     case 'chat': renderTalk(here(VILLAGER_LINES[(Math.random() * VILLAGER_LINES.length) | 0])); break;

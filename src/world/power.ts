@@ -3,6 +3,7 @@
 // red when down), the turbines stop turning and the village lamps go dark when it is down. E at it mends it with
 // the right parts, and the village pays you for the job.
 import * as THREE from 'three';
+import { earnTrust } from './standing';
 import { G } from '../game';
 import { PropBatch } from './props';
 import { add } from './render';
@@ -160,7 +161,7 @@ export function repairPower(p: Plant) {
   const t = (G.char.towns[p.id] ??= {});
   t.fixed = G.char.time; t.hurt = 0;
   const pay = Math.round(POWER[p.kind].pay * (c < POWER_DOWN ? 1.5 : 1));
-  G.char.gold += pay; calcStats(); gainXp(c < POWER_DOWN ? 40 : 25); saveChar();
+  G.char.gold += pay; earnTrust(p.id, 'power'); calcStats(); gainXp(c < POWER_DOWN ? 40 : 25); saveChar();
   showToast(`${p.name} mended`);
   logLine(`${p.town} has power ${c < POWER_DOWN ? 'again' : 'to spare'}. The villagers pay you ${pay} gold.`);
 }

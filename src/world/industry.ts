@@ -5,6 +5,7 @@
 // workbenches) and one carries the crates to the storehouse at its corner (gen/store.ts), where they stack up in
 // front of the door; when the storehouse is full, or the site wrecked, the work stops and they stand about.
 import * as THREE from 'three';
+import { earnTrust } from './standing';
 import { G } from '../game';
 import { PropBatch } from './props';
 import { add } from './render';
@@ -281,7 +282,7 @@ export function repairSite(s: Site) {
   const st = (G.char.towns[s.id] ??= {});
   st.siteFixed = G.char.time; st.siteHurt = 0;
   const pay = Math.round(40 + (100 - c) * 0.8);
-  G.char.gold += pay; calcStats(); gainXp(25); saveChar(); prodT = 0;
+  G.char.gold += pay; earnTrust(s.id, 'site'); calcStats(); gainXp(25); saveChar(); prodT = 0;
   showToast(`${spec.site} mended`); logLine(`${s.town}'s ${spec.site} is back at work. The villagers pay you ${pay} gold.`);
 }
 function take(k: ItemKey, n: number) {

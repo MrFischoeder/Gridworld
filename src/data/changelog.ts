@@ -4,6 +4,12 @@ export interface Change { v: string; date: string; title: string; notes: string[
 
 export const CHANGELOG: Change[] = [
   {
+    v: '0.60.0', date: '2026-09-28', title: 'Standing',
+    notes: ['Every village now remembers what you have done for it. Raising its wall, building defences, a storehouse, works or a power station, mending the power plant or the industry site, beating off a raid, fulfilling a delivery contract or a notice of its board all earn its trust.',
+      'Trust opens its storehouse. Known (25 trust): the elder spares you 2 crates a day of what the village makes, free. Friend (60): 4 a day. Honoured (100): 8 a day. Ask the elder: "What can the village spare me?". The share renews every midnight and comes out of the storehouse, so it is still bounded by what the village makes.',
+      'The village computer shows your standing in each village. The market with its prices stays as it was, side by side.'],
+  },
+  {
     v: '0.59.0', date: '2026-09-28', title: 'The smith\'s trade',
     notes: ['Crafting by your own hand is set aside for now: things are made in the villages. The blacksmith no longer lends you his workbench, and a workbench you set up in the wilds can only be packed up.',
       'Instead every blacksmith makes the basics from what you bring, no plans needed: a hatchet and a pickaxe from wood and stone, a fire kit, a flask from a hide. Everything finer needs the old plans: hammer, saw, screwdriver and pliers now come with Forged Tools.',

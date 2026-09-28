@@ -11,6 +11,7 @@
 // come. While they fight, their gunners shoot at the wall and at any villager in sight, and when the defences fall
 // they tear down part of the wall (it drops a tier) besides wrecking the plant.
 import * as THREE from 'three';
+import { earnTrust } from './standing';
 import { G, W } from '../game';
 import { loadedVillages, OW } from './overworld';
 import { spawnBandit, removeBandit, type Bandit } from './bandits';
@@ -73,7 +74,7 @@ function finish(L: LiveRaid, won: boolean) {
   for (const b of L.bandits) if (b.hp > 0 && b.g.parent) { b.state = 'flee'; b.timer = 8; }
   if (won) {
     const gold = 60 + Math.round(L.r.strength * 25);
-    c.gold += gold; calcStats(); gainXp(40 + L.r.strength * 10);
+    c.gold += gold; if (L.r.k > 0) earnTrust(L.vid, 'raid'); calcStats(); gainXp(40 + L.r.strength * 10);
     showToast('Raid repelled'); logLine(`${L.name} holds! The villagers pay you ${gold} gold.`);
   } else {
     showToast(`${L.name} is overrun`); logLine(`The bandits break through at ${L.name}, loot what they can and wreck the power plant.`);

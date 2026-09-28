@@ -24,6 +24,7 @@ import { describe as describeContract, dueText } from './contracts';
 import { bearingTo, point8, fmtDist } from './compass';
 import { fmtTime, fmtClock } from '../core/time';
 import { $ } from './hud';
+import { trustOf, trustTier, shareLeft, TRUST_TIERS } from '../gen/standing';
 import { TECHS, techSites, CARRIER_NAME } from '../gen/tech';
 import { Terrain } from '../gen/terrain';
 import { OW } from '../world/overworld';
@@ -46,6 +47,7 @@ function villagePage(poi: Poi, vm: VillageMap): string {
   const prod = production(c.world, poi, seed, st, now), cond = siteCondition(c.world, poi, st, now), so = storeOf(poi.id, seed), info = storeInfo(seed, st, now, prod);
   let s = h(`${vm.name.toUpperCase()} · ${spec.name.toUpperCase()}`);
   s += row('Makes', p.makes.map(name).join(', ')) + row('Wants', p.wants.map(name).join(', '));
+  { const k = trustTier(st), tr = TRUST_TIERS[k]; s += row('Your standing', `${tr.name} · trust ${trustOf(st)}` + (tr.crates ? ` · share ${shareLeft(st, now)}/${tr.crates} crates today` : ` · ${TRUST_TIERS[1].min} for a share`)); }
   if (ind === 'farm') s += row('Fields', `${fert > 1.15 ? 'rich' : fert < 0.85 ? 'poor' : 'fair'} (×${fert.toFixed(2)})`);
   s += row(spec.site, `${bar(cond / 100)} ${Math.round(cond)}% · output ${Math.round(prod * 100)}%`);
   s += row(so.name, `${bar(so.n / so.cap)} ${Math.floor(so.n)}/${so.cap} crates` + (info.fullSince !== null && info.convoyAt !== null ? ` · FULL, convoy ${fmtTime(info.convoyAt)}` : ''));

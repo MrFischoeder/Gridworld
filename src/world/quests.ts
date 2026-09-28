@@ -1,5 +1,6 @@
 // Quest progress: kills, quest groups in the open world, quest items in ruins and at wrecks, rewards.
 import { leadLines } from './datacarriers';
+import { earnTrust } from './standing';
 import { G, W } from '../game';
 import { escortLine } from './caravans';
 import { raidLine } from './villageraid';
@@ -90,7 +91,7 @@ export function abandon(id: string): string {
 function reward(q: Quest) {
   q.state = 'done';
   G.char.quests = G.char.quests.filter((x) => x !== q);
-  G.char.gold += q.reward.gold;
+  G.char.gold += q.reward.gold; earnTrust(townOf(q), 'quest');
   logLine(`+${q.reward.gold} gold`); gainXp(q.reward.xp);
   if (q.kind !== 'bounty' && Math.random() < 0.35) giveLoot(RELIC_KEYS[(Math.random() * RELIC_KEYS.length) | 0]);
   showToast('Quest complete'); saveChar();
