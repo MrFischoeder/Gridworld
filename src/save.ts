@@ -1,6 +1,6 @@
 // Character persistence. Only player-made changes are stored, never generated geometry.
 // Versions: v1 (relic counts) -> v2 (backpack, per-dungeon progress) -> v3 (open world).
-import type { InstallKind, InstallState } from './gen/installs';
+import { fixInstall, type InstallKind, type InstallState } from './gen/installs';
 import { INV_SIZE, MOD_SIZE, ITEMS, type ItemKey, type WearSlot } from './data/items';
 import type { VehicleModel, VehicleParts } from './data/vehicles';
 import type { Quest } from './gen/quests';
@@ -140,6 +140,7 @@ export function loadChar(storage: Pick<Storage, 'getItem'> | null = safeStorage(
       if (!('intro' in JSON.parse(raw))) c.intro = true; // characters from before the opening existed have long since walked away from their ship
       // the house in Gridholm used to be yours from the start: whoever already kept things in its chest owns it
       if (!c.houses.length && c.containers['home:chest']) c.houses = [GRIDHOLM_ID];
+      for (const k of Object.keys(c.installs) as InstallKind[]) fixInstall(k, c.installs[k]!);
       return c;
     }
     const v2 = storage?.getItem(V2_KEY);

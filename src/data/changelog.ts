@@ -4,6 +4,16 @@ export interface Change { v: string; date: string; title: string; notes: string[
 
 export const CHANGELOG: Change[] = [
   {
+    v: '0.70.0', date: '2026-09-28', title: 'The chip foundry',
+    notes: [
+      'A second great installation stands 12 to 20 km from Gridholm: the Old Chip Foundry, a sealed clean-room block with a tank farm and a water tower. Console `sites` shows where.',
+      'Restore it at its control desk inside the gate, in three stages: opening the block (logs, stone, scrap), air and water (glass, copper cable, steel), and the etching line (circuit boards, electronics, a power core, and the plans for Integrated Circuits).',
+      'The foundry changes as you work: the rubble and the slab over the air lock go, the fallen roof corner is mended, fans turn on the roof, the water tower gets its roof back, and once it runs its windows glow.',
+      'A restored foundry makes a crate of Microchips from 2 glass panes and 1 copper ingots every 4 game hours. Load each input and collect the chips at the desk.',
+      'The Old Enrichment Plant keeps working as before; its hopper now shows its ore the same way.',
+    ],
+  },
+  {
     v: '0.69.0', date: '2026-09-28', title: 'Fuel orders',
     notes: [
       'A few villages far out (8 km and more from Gridholm) still run an old reactor of their own. Most days they post a fuel order: 1 to 3 crates of Nuclear Fuel Rods, due in 3 to 6 days, paid far better than anything else (from about 520 gold a crate, more in the dangerous lands).',

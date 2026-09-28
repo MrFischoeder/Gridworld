@@ -1,6 +1,6 @@
 // The great installations of the old world (pure, deterministic from the world seed): huge ruined plants standing in
 // fixed places far out on the continent, which the player can one day bring back to life (the uranium enrichment
-// plant first; the chip foundry, the radar station and the rocket fuel complex will follow the same pattern). Each
+// plant, then the chip foundry; the radar station and the rocket fuel complex will follow the same pattern). Each
 // lies in its own distance band from Gridholm on dry, fairly level ground away from villages, places, roads, lakes and
 // the mountains. The ground round it is bare: trees, rocks and plants inside `inInstall` are not generated.
 import { hash } from '../core/rng';
@@ -10,10 +10,11 @@ import { mountainMask } from './mountains';
 import { rectDist, type Terrain } from './terrain';
 import type { ItemKey } from '../data/items';
 
-export type InstallKind = 'uranium';
+export type InstallKind = 'uranium' | 'chips';
 export interface InstallSpec { k: InstallKind; name: string; blurb: string; band: [number, number]; r: number }
 export const INSTALLS: InstallSpec[] = [
   { k: 'uranium', name: 'Old Enrichment Plant', blurb: 'a ruined plant of the old world where ore was once made into reactor fuel: a centrifuge hall, two cooling towers and a stack', band: [15000, 25000], r: 34 },
+  { k: 'chips', name: 'Old Chip Foundry', blurb: 'a sealed fabrication plant of the old world where crystal wafers were etched into chips: a long clean-room block, a tank farm and a water tower', band: [12000, 20000], r: 32 },
 ];
 export interface InstallSite { k: InstallKind; name: string; x: number; z: number; y: number; yaw: number; r: number }
 
@@ -46,6 +47,7 @@ export function installSites(t: Terrain): InstallSite[] {
       const d = d0 + (hash(t.world, i, k, 0x1e58) % 1000) / 1000 * (d1 - d0), x = Math.cos(a) * d, z = Math.sin(a) * d;
       const c: InstallSite = { k: spec.k, name: spec.name, x, z, y: t.heightAt(x, z), yaw: (hash(t.world, i, k, 0x1e59) % 4) * Math.PI / 2, r: spec.r };
       if (!best) best = c;
+      if (out.some((o) => worldDist(o.x, o.z, x, z) < 3000)) continue; // the installations lie well apart
       if (!installMisfit(t, x, z, spec.r)) { best = c; break; }
     }
     out.push(best!);
@@ -69,14 +71,28 @@ export const INSTALL_STAGES: Record<InstallKind, InstallStage[]> = {
     { title: 'The centrifuge hall', text: 'A new roof, and the centrifuges rewired: steel for the trusses, cable for the lines, electronics for the drives.', needs: [['steel', 6], ['cable', 4], ['circuit', 8]], gold: 300, xp: 350 },
     { title: 'The core', text: 'The cascade controller is dead. Only the old plans for enrichment show how it was built, and it wants power cores and hull alloy.', needs: [['pcore', 2], ['alloy', 4], ['circuit', 6]], tech: 'enrichment', gold: 500, xp: 600 },
   ],
+  chips: [
+    { title: 'Opening the block', text: 'The clean-room block is sealed and half buried in its own rubble. Timber for shoring, stone to fill the breaches, scrap to brace the air locks.', needs: [['log', 10], ['stone', 12], ['scrap', 8]], gold: 150, xp: 200 },
+    { title: 'Air and water', text: 'Nothing is made in dust: the filters and the water plant must run first. Glass for the filter housings, cable for the fans and pumps, steel for the ducts.', needs: [['glass', 6], ['cable', 6], ['steel', 4]], gold: 300, xp: 350 },
+    { title: 'The etching line', text: 'The etchers stand dead in their bays. Only the old plans for integrated circuits show how to wake them, and they want circuit boards and a power core.', needs: [['boards', 4], ['circuit', 8], ['pcore', 1]], tech: 'chips', gold: 450, xp: 550 },
+  ],
 };
-/** What a working installation makes: n crates of `inp` into one of `out` every `batch` game minutes. */
-export const INSTALL_WORK: Record<InstallKind, { inp: ItemKey; n: number; out: ItemKey; batch: number; hopper: number; bay: number }> = {
-  uranium: { inp: 'uranium', n: 3, out: 'nfuel', batch: 360, hopper: 30, bay: 10 },
+/** What a working installation makes: the crates of each input in `inp` into one of `out` every `batch` game minutes (at most `hopper` of each input loaded, `bay` made waiting). */
+export interface InstallWork { inp: [ItemKey, number][]; out: ItemKey; batch: number; hopper: number; bay: number; what: string }
+export const INSTALL_WORK: Record<InstallKind, InstallWork> = {
+  uranium: { inp: [['uranium', 3]], out: 'nfuel', batch: 360, hopper: 30, bay: 10, what: 'The centrifuges hum again.' },
+  chips: { inp: [['glass', 2], ['copperbar', 1]], out: 'microchip', batch: 240, hopper: 30, bay: 12, what: 'The etching line glows behind its windows.' },
 };
-/** An installation's saved state: the stage reached (stages done), materials handed over towards the next, and the works: ore in the hopper, fuel ready, when it was last settled. */
-export interface InstallState { stage: number; given: Partial<Record<ItemKey, number>>; inp: number; out: number; t: number }
-export const newInstall = (): InstallState => ({ stage: 0, given: {}, inp: 0, out: 0, t: 0 });
+/** An installation's saved state: the stage reached (stages done), materials handed over towards the next, and the works: inputs in the hopper, output ready, when it was last settled. */
+export interface InstallState { stage: number; given: Partial<Record<ItemKey, number>>; inp: Partial<Record<ItemKey, number>>; out: number; t: number }
+export const newInstall = (): InstallState => ({ stage: 0, given: {}, inp: {}, out: 0, t: 0 });
+/** Saves from before installations took more than one input kept the ore as a number. */
+export function fixInstall(k: InstallKind, s: InstallState): InstallState {
+  if (typeof s.inp === 'number') s.inp = { [INSTALL_WORK[k].inp[0][0]]: s.inp };
+  return s;
+}
+/** How many batches the hopper holds inputs for. */
+export const batchesIn = (k: InstallKind, s: InstallState) => Math.min(...INSTALL_WORK[k].inp.map(([i, n]) => Math.floor((s.inp[i] ?? 0) / n)));
 export const installDone = (k: InstallKind, s: InstallState | undefined) => (s?.stage ?? 0) >= INSTALL_STAGES[k].length;
 /** The next stage: its rows (given / needed), whether the plans are known, whether it is complete; null once restored. */
 export function installPlan(k: InstallKind, s: InstallState | undefined, known: Record<string, number>) {
@@ -100,9 +116,22 @@ export function handOverInstall(k: InstallKind, s: InstallState, known: Record<s
 export function runInstall(k: InstallKind, s: InstallState, now: number) {
   if (!installDone(k, s)) return;
   const w = INSTALL_WORK[k];
-  if (s.inp < w.n || s.out >= w.bay) { s.t = now; return; }
-  const batches = Math.min(Math.floor((now - s.t) / w.batch), Math.floor(s.inp / w.n), w.bay - s.out);
+  if (batchesIn(k, s) < 1 || s.out >= w.bay) { s.t = now; return; }
+  const batches = Math.min(Math.floor((now - s.t) / w.batch), batchesIn(k, s), w.bay - s.out);
   if (batches <= 0) return;
-  s.inp -= batches * w.n; s.out += batches; s.t += batches * w.batch;
-  if (s.inp < w.n || s.out >= w.bay) s.t = now;
+  for (const [i, n] of w.inp) s.inp[i] = (s.inp[i] ?? 0) - batches * n;
+  s.out += batches; s.t += batches * w.batch;
+  if (batchesIn(k, s) < 1 || s.out >= w.bay) s.t = now;
+}
+/** Load up to n crates of input i (up to the hopper); returns how many went in. */
+export function loadInstall(k: InstallKind, s: InstallState, i: ItemKey, n: number, now: number): number {
+  runInstall(k, s, now);
+  const w = INSTALL_WORK[k];
+  if (!w.inp.some(([x]) => x === i)) return 0;
+  const m = Math.max(0, Math.min(n, w.hopper - (s.inp[i] ?? 0)));
+  if (m <= 0) return 0;
+  const before = batchesIn(k, s);
+  s.inp[i] = (s.inp[i] ?? 0) + m;
+  if (before < 1) s.t = now; // it was idle: the batch starts now
+  return m;
 }

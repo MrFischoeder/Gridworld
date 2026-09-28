@@ -4,7 +4,7 @@
 import { G, W } from '../game';
 import { ITEMS, type ItemKey } from '../data/items';
 import { calcStats, saveChar, gainXp } from '../character';
-import { INSTALL_STAGES, INSTALL_WORK, installPlan, handOverInstall, runInstall, installDone, newInstall, type InstallSite } from '../gen/installs';
+import { INSTALL_STAGES, INSTALL_WORK, installPlan, handOverInstall, runInstall, installDone, newInstall, batchesIn, loadInstall, type InstallSite } from '../gen/installs';
 import { TECH_BY_ID } from '../gen/tech';
 import type { Good } from '../gen/market';
 import { nearX, worldDist, wrapDx } from '../gen/regions';
@@ -37,18 +37,19 @@ function render(msg = '') {
     s += `</span><br><span style="opacity:.7">On completion: ${plan.st.gold} gold, ${plan.st.xp} xp.</span></div></div>`;
     if (plan.plans) s += `<button class="opt" data-ins="give" ${plan.rows.some((r) => r.given < r.n && have(r.k) > 0) ? '' : 'disabled'}>Hand over what I carry</button>`;
   } else {
-    const w = INSTALL_WORK[site.k], ore = have(w.inp), running = st.inp >= w.n && st.out < w.bay;
-    s += `The centrifuges hum again. ${w.n} crates of ${ITEMS[w.inp].name.replace(/^Crate of /, '').toLowerCase()} make one crate of ${ITEMS[w.out].name} every ${hours(w.batch)}.</div>` +
-      `<div class="shoprow"><div>${list}<br>Hopper: <b>${st.inp}/${w.hopper}</b> ore · Bay: <b>${st.out}/${w.bay}</b> ${ITEMS[w.out].name}<br><span style="opacity:.8">${running ? `Running: the next crate in ${hours(Math.max(0, w.batch - (c.time - st.t)))}.` : st.out >= w.bay ? 'Stopped: the bay is full.' : `Idle: it needs at least ${w.n} crates of ore.`}</span></div></div>` +
-      `<button class="opt" data-ins="load" ${ore && st.inp < w.hopper ? '' : 'disabled'}>Load ore (you have ${ore} with you)</button>` +
-      `<button class="opt" data-ins="take" ${st.out ? '' : 'disabled'}>Collect the fuel (${st.out})</button>`;
+    const w = INSTALL_WORK[site.k], running = batchesIn(site.k, st) >= 1 && st.out < w.bay, short = (n: string) => n.replace(/^(Crate|Sack) of /, '').toLowerCase();
+    const recipe = w.inp.map(([i, n]) => `${n} ${short(ITEMS[i].name)}`).join(' and ');
+    s += `${w.what} ${recipe} make one crate of ${ITEMS[w.out].name} every ${hours(w.batch)}.</div>` +
+      `<div class="shoprow"><div>${list}<br>Hopper: ${w.inp.map(([i]) => `<b>${st.inp[i] ?? 0}/${w.hopper}</b> ${short(ITEMS[i].name)}`).join(' · ')} · Bay: <b>${st.out}/${w.bay}</b> ${ITEMS[w.out].name}<br><span style="opacity:.8">${running ? `Running: the next crate in ${hours(Math.max(0, w.batch - (c.time - st.t)))}.` : st.out >= w.bay ? 'Stopped: the bay is full.' : `Idle: it needs ${recipe} for a batch.`}</span></div></div>` +
+      w.inp.map(([i]) => { const h = have(i); return `<button class="opt" data-ins="load" data-insk="${i}" ${h && (st.inp[i] ?? 0) < w.hopper ? '' : 'disabled'}>Load ${short(ITEMS[i].name)} (you have ${h} with you)</button>`; }).join('') +
+      `<button class="opt" data-ins="take" ${st.out ? '' : 'disabled'}>Collect the ${ITEMS[w.out].name} (${st.out})</button>`;
   }
   panel().classList.add('wide');
   panel().innerHTML = s + buyers() + `<button class="opt" data-ins="close">Close</button>`;
 }
 /** The villages with old reactors nearest the plant, and whether they order fuel today (the plant's radio log). */
 function buyers(): string {
-  if (!site) return '';
+  if (!site || site.k !== 'uranium') return '';
   const c = G.char, s0 = site, list = reactorVillages(c.world).map((v) => ({ v, d: worldDist(v.x, v.z, s0.x, s0.z) })).sort((a, b) => a.d - b.d).slice(0, 3);
   if (!list.length) return '';
   return `<div class="say" style="opacity:.85">The radio log still lists the old reactors that burn these rods: ` + list.map(({ v, d }) => {
@@ -79,24 +80,23 @@ export function installClick(t: HTMLElement): boolean {
       c.gold += done.gold; gainXp(done.xp);
       showToast(`${site.name}: ${done.title.toLowerCase()} done`);
       const fin = installDone(site.k, st);
-      logLine(fin ? `The last controller clicks into place and the centrifuges spin up. The ${site.name} is working again. You earn ${done.gold} gold.` : `${done.title}: done. You earn ${done.gold} gold.`);
+      logLine(fin ? `${site.k === 'uranium' ? 'The last controller clicks into place and the centrifuges spin up.' : 'The etchers wake one by one and the clean room fills with a violet glow.'} The ${site.name} is working again. You earn ${done.gold} gold.` : `${done.title}: done. You earn ${done.gold} gold.`);
       msg += ` <b>${done.title}: done.</b>`;
       redrawInstalls();
     }
     calcStats(); saveChar(); render(msg); return true;
   }
   if (a === 'load') {
-    runInstall(site.k, st, c.time);
-    const w = INSTALL_WORK[site.k], n = Math.min(w.hopper - st.inp, have(w.inp));
-    if (n > 0) { takeFrom(w.inp as Good, n, at()); if (st.inp < w.n) st.t = c.time; st.inp += n; calcStats(); saveChar(); }
-    render(n > 0 ? `Loaded ${n} crates of ore.` : 'Nothing to load.'); return true;
+    const i = b.dataset.insk as ItemKey, n = loadInstall(site.k, st, i, have(i), c.time);
+    if (n > 0) { takeFrom(i, n, at()); calcStats(); saveChar(); }
+    render(n > 0 ? `Loaded ${n} × ${ITEMS[i].name}.` : 'Nothing to load.'); return true;
   }
   if (a === 'take') {
     runInstall(site.k, st, c.time);
-    const w = INSTALL_WORK[site.k], left = putAway(w.out as Good, st.out, at(), true), got = st.out - left;
+    const w = INSTALL_WORK[site.k], left = putAway(w.out, st.out, at(), true), got = st.out - left;
     if (got > 0 && st.out >= w.bay) st.t = c.time; // the bay had stopped it: it starts again now
     st.out = left; calcStats(); saveChar();
-    render(got ? `Collected ${got} crates of ${ITEMS[w.out].name}${left ? ` (no room for ${left})` : ''}.` : 'No room for the fuel.'); return true;
+    render(got ? `Collected ${got} crates of ${ITEMS[w.out].name}${left ? ` (no room for ${left})` : ''}.` : 'No room for them.'); return true;
   }
   return false;
 }

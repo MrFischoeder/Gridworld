@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { Terrain } from '../src/gen/terrain';
-import { installSites, installMisfit, inInstall, INSTALLS, INSTALL_STAGES, INSTALL_WORK, newInstall, installPlan, handOverInstall, runInstall, installDone } from '../src/gen/installs';
+import { installSites, installMisfit, inInstall, INSTALLS, INSTALL_STAGES, INSTALL_WORK, newInstall, installPlan, handOverInstall, runInstall, installDone, loadInstall, fixInstall } from '../src/gen/installs';
 import { ITEMS } from '../src/data/items';
 import { chunkTrees } from '../src/gen/trees';
 import { CHUNK } from '../src/gen/regions';
@@ -36,14 +36,25 @@ describe('great installations', () => {
     expect(installDone('uranium', s)).toBe(true); expect(installPlan('uranium', s, {})).toBeNull(); expect(s.t).toBe(100);
   });
   it('turn ore into fuel by game time, while fed and with room', () => {
-    const w = INSTALL_WORK.uranium, s = { ...newInstall(), stage: INSTALL_STAGES.uranium.length, inp: 7, t: 0 };
+    const w = INSTALL_WORK.uranium, s = { ...newInstall(), stage: INSTALL_STAGES.uranium.length, inp: { uranium: 7 }, t: 0 };
     runInstall('uranium', s, w.batch - 1); expect(s.out).toBe(0);
     runInstall('uranium', s, w.batch * 10); // ore for two batches only
-    expect(s.out).toBe(2); expect(s.inp).toBe(1); expect(s.t).toBe(w.batch * 10);
-    s.inp = 30; runInstall('uranium', s, w.batch * 10 + 5); runInstall('uranium', s, w.batch * 13 + 5);
-    expect(s.out).toBe(5); expect(s.inp).toBe(21);
-    runInstall('uranium', s, w.batch * 100); expect(s.out).toBe(w.bay); expect(s.inp).toBe(30 - (w.bay - 2) * w.n);
+    expect(s.out).toBe(2); expect(s.inp.uranium).toBe(1); expect(s.t).toBe(w.batch * 10);
+    s.inp.uranium = 30; runInstall('uranium', s, w.batch * 10 + 5); runInstall('uranium', s, w.batch * 13 + 5);
+    expect(s.out).toBe(5); expect(s.inp.uranium).toBe(21);
+    runInstall('uranium', s, w.batch * 100); expect(s.out).toBe(w.bay); expect(s.inp.uranium).toBe(30 - (w.bay - 2) * 3);
     // an unrestored plant makes nothing
-    const u = { ...newInstall(), inp: 9 }; runInstall('uranium', u, 99999); expect(u.out).toBe(0);
+    const u = { ...newInstall(), inp: { uranium: 9 } }; runInstall('uranium', u, 99999); expect(u.out).toBe(0);
+    // old saves kept the ore as a number
+    expect(fixInstall('uranium', { ...newInstall(), inp: 4 as unknown as Record<string, number> }).inp).toEqual({ uranium: 4 });
+  });
+  it('the chip foundry needs every input for a batch', () => {
+    const w = INSTALL_WORK.chips, s = { ...newInstall(), stage: INSTALL_STAGES.chips.length };
+    expect(loadInstall('chips', s, 'glass', 99, 0)).toBe(w.hopper);
+    expect(loadInstall('chips', s, 'uranium', 5, 0)).toBe(0);
+    runInstall('chips', s, w.batch * 5); expect(s.out).toBe(0); // no copper yet
+    expect(loadInstall('chips', s, 'copperbar', 3, w.batch * 5)).toBe(3);
+    runInstall('chips', s, w.batch * 20); expect(s.out).toBe(3); expect(s.inp.glass).toBe(w.hopper - 6); expect(s.inp.copperbar).toBe(0);
+    expect(INSTALL_STAGES.chips[2].tech).toBe('chips');
   });
 });

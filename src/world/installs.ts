@@ -1,4 +1,5 @@
 // The great installations in the world (gen/installs.ts): drawn when you come within reach, dropped when you leave.
+// The chip foundry (`drawChips`) is described at its function.
 // The uranium enrichment plant: a broken perimeter fence with a gate and a warning sign, the centrifuge hall (walls
 // with a doorway, a collapsed corner, bare roof trusses, rows of centrifuges inside, some toppled), two hyperboloid
 // cooling towers (one snapped off), a tall stack and pipes on trestles. Every solid has a dark fill. The hall's walls,
@@ -11,24 +12,19 @@ import { scene } from './render';
 import { PropBatch } from './props';
 import { G } from '../game';
 import { OW } from './overworld';
-import { installSites, INSTALL_STAGES, type InstallSite } from '../gen/installs';
+import { installSites, INSTALL_STAGES, type InstallSite, type InstallKind } from '../gen/installs';
 import { nearX, worldDist } from '../gen/regions';
 import type { Terrain } from '../gen/terrain';
 
 const METAL = 0xa8c8b8, RUST = 0x9aa870, CONC = 0x7fa08c, GLOW = 0xb6ff3a;
 interface Live { s: InstallSite; g: THREE.Group; cos: number; sin: number; stage: number; walls: [number, number, number, number][]; rings: [number, number, number][] }
-/** The control desk in the plant's frame (inside the gate, west of the way in). */
-export const DESK = { x: -6, z: -25 };
+/** The control desk in each installation's frame (inside the gate, west of the way in). */
+export const DESKS: Record<InstallKind, { x: number; z: number }> = { uranium: { x: -6, z: -25 }, chips: { x: -6, z: -23 } };
 const live = new Map<string, Live>();
 
-/** The plant in its own frame (x across, z along; y up from the site's ground height), as far restored as `stage`. */
-function drawUranium(T: Terrain, s: InstallSite, cos: number, sin: number, stage: number): { g: THREE.Group; walls: Live['walls']; rings: Live['rings'] } {
-  const pb = new PropBatch(), walls: Live['walls'] = [], rings: Live['rings'] = [];
-  const cleared = stage >= 1, roofed = stage >= 2, done = stage >= INSTALL_STAGES.uranium.length;
-  const H = (x: number, z: number) => T.heightAt(s.x + x * cos + z * sin, s.z - x * sin + z * cos) - s.y;
+/** The perimeter fence (half-size F): posts every 4 m and two wires, with gaps and leaning posts until cleared; the gate on the -z side. */
+function drawFence(pb: PropBatch, H: (x: number, z: number) => number, F: number, cleared: boolean) {
   const at = (x: number, z: number, dy = 0) => [x, H(x, z) + dy, z];
-  // ---- the perimeter fence: posts every 4 m and two wires, with gaps and leaning posts; the gate on the -z side
-  const F = 30;
   const side = (ax: number, az: number, bx: number, bz: number, seed: number) => {
     const L = Math.hypot(bx - ax, bz - az), n = Math.round(L / 4);
     let prev: number[][] | null = null;
@@ -44,6 +40,29 @@ function drawUranium(T: Terrain, s: InstallSite, cos: number, sin: number, stage
   side(-F, -F, F, -F, 1); side(F, -F, F, F, 3); side(F, F, -F, F, 5); side(-F, F, -F, -F, 7);
   // the gate posts and the warning sign: a trefoil glowing on a board
   for (const gx of [-3.5, 3.5]) pb.box(gx - 0.2, H(gx, -F) - 0.2, -F - 0.2, gx + 0.2, H(gx, -F) + 3, -F + 0.2, CONC);
+}
+/** The control desk: a steel kiosk with a slanted console, its screen lit once work has begun, a lamp once restored. */
+function drawDesk(pb: PropBatch, H: (x: number, z: number) => number, at: { x: number; z: number }, stage: number, done: boolean, rings: Live['rings']) {
+  { const { x, z } = at, y = H(x, z);
+    pb.box(x - 0.8, y - 0.2, z - 0.4, x + 0.8, y + 1, z + 0.4, METAL);
+    pb.face([x - 0.8, y + 1, z - 0.4], [x + 0.8, y + 1, z - 0.4], [x + 0.8, y + 1.25, z + 0.3], [x - 0.8, y + 1.25, z + 0.3]);
+    pb.line(METAL, [x - 0.8, y + 1, z - 0.4], [x + 0.8, y + 1, z - 0.4], [x + 0.8, y + 1.25, z + 0.3], [x - 0.8, y + 1.25, z + 0.3], [x - 0.8, y + 1, z - 0.4]);
+    pb.box(x - 0.6, y + 1.25, z + 0.25, x + 0.6, y + 2.1, z + 0.4, METAL);
+    const sc = stage >= 1 ? GLOW : RUST;
+    pb.line(sc, [x - 0.5, y + 1.35, z + 0.24], [x + 0.5, y + 1.35, z + 0.24], [x + 0.5, y + 2, z + 0.24], [x - 0.5, y + 2, z + 0.24], [x - 0.5, y + 1.35, z + 0.24]);
+    for (let i = 0; i < Math.min(4, stage + 1); i++) pb.seg(sc, [x - 0.4, y + 1.85 - i * 0.14, z + 0.23], [x - 0.4 + 0.2 + ((i * 37) % 5) * 0.12, y + 1.85 - i * 0.14, z + 0.23]);
+    pb.seg(RUST, [x + 0.7, y + 2.1, z + 0.3], [x + 0.7, y + 3.2, z + 0.3]); // a lamp post
+    if (done) pb.box(x + 0.55, y + 3.2, z + 0.15, x + 0.85, y + 3.5, z + 0.45, GLOW);
+    rings.push([x, z, 0.85]);
+  }
+}
+/** The plant in its own frame (x across, z along; y up from the site's ground height), as far restored as `stage`. */
+function drawUranium(T: Terrain, s: InstallSite, cos: number, sin: number, stage: number): { g: THREE.Group; walls: Live['walls']; rings: Live['rings'] } {
+  const pb = new PropBatch(), walls: Live['walls'] = [], rings: Live['rings'] = [];
+  const cleared = stage >= 1, roofed = stage >= 2, done = stage >= INSTALL_STAGES.uranium.length;
+  const H = (x: number, z: number) => T.heightAt(s.x + x * cos + z * sin, s.z - x * sin + z * cos) - s.y;
+  const F = 30;
+  drawFence(pb, H, F, cleared);
   { const sx = 6, sz = -F - 1.5, y = H(sx, sz); pb.seg(RUST, [sx - 0.8, y, sz], [sx - 0.8, y + 1.6, sz]); pb.seg(RUST, [sx + 0.8, y, sz], [sx + 0.8, y + 1.6, sz]);
     pb.box(sx - 1, y + 1.6, sz - 0.05, sx + 1, y + 3.2, sz + 0.05, RUST);
     const cy = y + 2.4, c = [sx, cy, sz - 0.07];
@@ -128,19 +147,84 @@ function drawUranium(T: Terrain, s: InstallSite, cos: number, sin: number, stage
     let prev: number[] | null = null;
     for (let x = X0; x >= -13; x -= 2.5) { const z = tz * 0.4 + (x - X0) / (-13 - X0) * tz * 0.6, y = H(x, z); pb.seg(RUST, [x, y, z], [x, y + 3, z]); const p = [x, y + 3.1, z]; if (prev) pb.seg(METAL, prev, p); prev = p; }
   }
-  // ---- the control desk inside the gate: a steel kiosk with a slanted console, its screen lit once the hall is roofed
-  { const { x, z } = DESK, y = H(x, z);
-    pb.box(x - 0.8, y - 0.2, z - 0.4, x + 0.8, y + 1, z + 0.4, METAL);
-    pb.face([x - 0.8, y + 1, z - 0.4], [x + 0.8, y + 1, z - 0.4], [x + 0.8, y + 1.25, z + 0.3], [x - 0.8, y + 1.25, z + 0.3]);
-    pb.line(METAL, [x - 0.8, y + 1, z - 0.4], [x + 0.8, y + 1, z - 0.4], [x + 0.8, y + 1.25, z + 0.3], [x - 0.8, y + 1.25, z + 0.3], [x - 0.8, y + 1, z - 0.4]);
-    pb.box(x - 0.6, y + 1.25, z + 0.25, x + 0.6, y + 2.1, z + 0.4, METAL);
-    const sc = stage >= 1 ? GLOW : RUST;
-    pb.line(sc, [x - 0.5, y + 1.35, z + 0.24], [x + 0.5, y + 1.35, z + 0.24], [x + 0.5, y + 2, z + 0.24], [x - 0.5, y + 2, z + 0.24], [x - 0.5, y + 1.35, z + 0.24]);
-    for (let i = 0; i < Math.min(4, stage + 1); i++) pb.seg(sc, [x - 0.4, y + 1.85 - i * 0.14, z + 0.23], [x - 0.4 + 0.2 + ((i * 37) % 5) * 0.12, y + 1.85 - i * 0.14, z + 0.23]);
-    pb.seg(RUST, [x + 0.7, y + 2.1, z + 0.3], [x + 0.7, y + 3.2, z + 0.3]); // a lamp post
-    if (done) pb.box(x + 0.55, y + 3.2, z + 0.15, x + 0.85, y + 3.5, z + 0.45, GLOW);
-    rings.push([x, z, 0.85]);
+  drawDesk(pb, H, DESKS.uranium, stage, done, rings);
+  const g = pb.build();
+  return { g, walls, rings };
+}
+
+/**
+ * The chip foundry in its own frame: the long clean-room block (x -14..14, z -8..6, sealed, never entered) with an air
+ * lock on the -z side, a band of windows, roof units; a tank farm to the west, a water tower to the east. Before it is
+ * opened rubble lies banked against the block, a corner of its roof has fallen in, the lock is slabbed shut, a tank has
+ * toppled and the water tower has lost its roof; then the rubble goes and the lock opens (stage 1), the air handlers
+ * and the water plant run (2: fans on the roof, a whole tower), and once restored the windows glow.
+ */
+function drawChips(T: Terrain, s: InstallSite, cos: number, sin: number, stage: number): { g: THREE.Group; walls: Live['walls']; rings: Live['rings'] } {
+  const pb = new PropBatch(), walls: Live['walls'] = [], rings: Live['rings'] = [];
+  const cleared = stage >= 1, aired = stage >= 2, done = stage >= INSTALL_STAGES.chips.length;
+  const H = (x: number, z: number) => T.heightAt(s.x + x * cos + z * sin, s.z - x * sin + z * cos) - s.y;
+  const F = 28;
+  drawFence(pb, H, F, cleared);
+  // ---- the clean-room block
+  const X0 = -14, X1 = 14, Z0 = -8, Z1 = 6, BH = 6, g0 = Math.min(H(X0, Z0), H(X1, Z0), H(X0, Z1), H(X1, Z1)) - 0.3, top = g0 + BH;
+  const wall = (ax: number, az: number, bx: number, bz: number, h: (t: number) => number) => {
+    const n = Math.max(1, Math.round(Math.hypot(bx - ax, bz - az) / 2));
+    for (let i = 0; i < n; i++) {
+      const t0 = i / n, t1 = (i + 1) / n, x0 = ax + (bx - ax) * t0, z0 = az + (bz - az) * t0, x1 = ax + (bx - ax) * t1, z1 = az + (bz - az) * t1;
+      pb.face([x0, g0, z0], [x1, g0, z1], [x1, g0 + h(t1), z1], [x0, g0 + h(t0), z0]);
+      pb.seg(CONC, [x0, g0 + h(t0), z0], [x1, g0 + h(t1), z1]); if (i % 2 === 0) pb.seg(CONC, [x0, g0, z0], [x0, g0 + h(t0), z0]);
+    }
+    pb.seg(CONC, [bx, g0, bz], [bx, g0 + h(1), bz]);
+    walls.push([ax, az, bx, bz]);
+  };
+  const full = () => BH, broken = (t: number) => BH - (t > 0.7 ? (t - 0.7) / 0.3 * 2.2 : 0); // the NE corner fallen in
+  wall(X0, Z0, X1, Z0, full); wall(X1, Z0, X1, Z1, cleared ? full : broken); wall(X1, Z1, X0, Z1, cleared ? full : (t) => broken(1 - t)); wall(X0, Z1, X0, Z0, full);
+  // the flat roof (a gap over the fallen corner until it is opened) and its parapet line
+  const rx1 = cleared ? X1 : X1 - 5;
+  pb.face([X0, top, Z0], [rx1, top, Z0], [rx1, top, Z1], [X0, top, Z1]);
+  if (!cleared) { pb.face([rx1, top, Z0], [X1, top, Z0], [X1, top, Z1 - 5], [rx1, top, Z1 - 5]); pb.line(CONC, [rx1, top, Z1], [rx1, top, Z1 - 5], [X1, top, Z1 - 5]); pb.line(METAL, [rx1 + 0.5, top - 0.2, Z1 - 1], [X1 - 1, g0 + 1, Z1 - 3]); }
+  for (let x = X0 + 4; x < rx1; x += 4) pb.seg(CONC, [x, top, Z0], [x, top, Z1]);
+  // the band of windows along both long sides: dark, then glowing once the line runs
+  for (const ze of [Z0 - 0.03, Z1 + 0.03]) for (let x = X0 + 1.5; x < X1 - 1.5; x += 2.5) {
+    if (!cleared && ze > 0 && x > X1 - 6) continue;
+    pb.line(done ? GLOW : METAL, [x, g0 + 3.4, ze], [x + 1.5, g0 + 3.4, ze], [x + 1.5, g0 + 4.4, ze], [x, g0 + 4.4, ze], [x, g0 + 3.4, ze]);
   }
+  // the air lock: a porch on the -z side; slabbed shut, then an open doorway with a lit frame
+  pb.box(-2.5, g0, Z0 - 3, 2.5, g0 + 3.2, Z0, METAL); walls.push([-2.5, Z0 - 3, -2.5, Z0], [2.5, Z0 - 3, 2.5, Z0], [-2.5, Z0 - 3, 2.5, Z0 - 3]);
+  if (!cleared) pb.box(-1.6, g0, Z0 - 3.35, 1.6, g0 + 2.6, Z0 - 3.05, CONC);
+  else pb.line(done ? GLOW : METAL, [-1.1, g0, Z0 - 3.03], [-1.1, g0 + 2.3, Z0 - 3.03], [1.1, g0 + 2.3, Z0 - 3.03], [1.1, g0, Z0 - 3.03]);
+  // roof units: dead boxes, then air handlers with fan rings
+  for (let i = 0; i < (aired ? 4 : 2); i++) {
+    const x = X0 + 3 + i * 5, z = -1;
+    pb.box(x - 1.3, top, z - 1.3, x + 1.3, top + 1.2, z + 1.3, METAL);
+    if (aired) for (let k = 0; k < 8; k++) pb.seg(done ? GLOW : METAL, [x + Math.cos(k / 8 * 6.283) * 0.9, top + 1.22, z + Math.sin(k / 8 * 6.283) * 0.9], [x + Math.cos((k + 1) / 8 * 6.283) * 0.9, top + 1.22, z + Math.sin((k + 1) / 8 * 6.283) * 0.9]);
+  }
+  // rubble banked against the block
+  if (!cleared) for (let i = 0; i < 12; i++) {
+    const along = i < 6, x = along ? X0 + 2 + i * 4.5 : X1 + 1.2, z = along ? Z1 + 1.2 : Z1 - (i - 6) * 2.2, y = H(x, z);
+    pb.box(x - 0.9, y - 0.1, z - 0.7, x + 0.8, y + 0.6 + (i % 3) * 0.35, z + 0.8, CONC);
+  }
+  // ---- the tank farm: three tanks on plinths (one toppled until cleared), a pipe run to the block
+  const cyl = (x: number, z: number, r: number, h: number, y0: number, c: number, n = 10) => {
+    const P = (i: number, yy: number) => [x + Math.cos(i / n * 6.283) * r, yy, z + Math.sin(i / n * 6.283) * r];
+    for (let i = 0; i < n; i++) { pb.face(P(i, y0), P(i + 1, y0), P(i + 1, y0 + h), P(i, y0 + h)); pb.seg(c, P(i, y0 + h), P(i + 1, y0 + h)); pb.seg(c, P(i, y0), P(i + 1, y0)); if (i % 2 === 0) pb.seg(c, P(i, y0), P(i, y0 + h)); }
+    const cap: number[][] = []; for (let i = 0; i < n; i++) cap.push(P(i, y0 + h)); pb.face(...cap);
+  };
+  const tanks: [number, number][] = [[-21, 9], [-21, 15], [-15, 15]];
+  tanks.forEach(([x, z], i) => {
+    const y = H(x, z);
+    if (i === 2 && !cleared) { const a = [x - 2.5, y + 1, z], b = [x + 2.5, y + 1.4, z + 1]; pb.line(RUST, a, b); pb.line(RUST, [a[0], a[1] + 1.6, a[2]], [b[0], b[1] + 1.6, b[2]]); pb.seg(RUST, a, [a[0], a[1] + 1.6, a[2]]); pb.seg(RUST, b, [b[0], b[1] + 1.6, b[2]]); rings.push([x, z, 1.8]); return; }
+    cyl(x, z, 1.8, 5.5, y - 0.1, aired ? METAL : RUST); rings.push([x, z, 1.9]);
+  });
+  { let prev: number[] | null = null; for (let x = -19; x <= X0; x += 1.7) { const z = 9, y = H(x, z); pb.seg(RUST, [x, y, z], [x, y + 2.6, z]); const p = [x, y + 2.7, z]; if (prev) pb.seg(METAL, prev, p); prev = p; } }
+  // ---- the water tower: four legs with braces and a tank (its roof gone until the water plant runs)
+  { const cx = 20, cz = 13, y = H(cx, cz), lh = 9;
+    for (const [dx, dz] of [[-1.6, -1.6], [1.6, -1.6], [1.6, 1.6], [-1.6, 1.6]]) { pb.seg(METAL, [cx + dx * 1.3, H(cx + dx * 1.3, cz + dz * 1.3), cz + dz * 1.3], [cx + dx, y + lh, cz + dz]); rings.push([cx + dx * 1.3, cz + dz * 1.3, 0.3]); }
+    for (const h of [3, 6]) pb.line(RUST, [cx - 1.9, y + h, cz - 1.9], [cx + 1.9, y + h, cz - 1.9], [cx + 1.9, y + h, cz + 1.9], [cx - 1.9, y + h, cz + 1.9], [cx - 1.9, y + h, cz - 1.9]);
+    cyl(cx, cz, 2.4, 3, y + lh, aired ? METAL : RUST, 12);
+    if (aired) pb.pyramid(cx - 2.4, cz - 2.4, cx + 2.4, cz + 2.4, y + lh + 3, 1, METAL);
+  }
+  drawDesk(pb, H, DESKS.chips, stage, done, rings);
   const g = pb.build();
   return { g, walls, rings };
 }
@@ -156,7 +240,7 @@ export function updateInstalls(dt: number) {
     const key = s.k + ':' + T.world, d = worldDist(s.x, s.z, G.pos.x, G.pos.z), have = live.get(key), stage = G.char.installs[s.k]?.stage ?? 0;
     if (have && (d > 1100 || have.stage !== stage)) { scene.remove(have.g); have.g.traverse((o) => (o as THREE.Mesh).geometry?.dispose()); live.delete(key); }
     if (d < 900 && !live.has(key)) {
-      const cos = Math.cos(s.yaw), sin = Math.sin(s.yaw), m = drawUranium(T, s, cos, sin, stage);
+      const cos = Math.cos(s.yaw), sin = Math.sin(s.yaw), m = (s.k === 'chips' ? drawChips : drawUranium)(T, s, cos, sin, stage);
       m.g.position.set(nearX(s.x, G.pos.x), s.y, s.z); m.g.rotation.y = s.yaw; scene.add(m.g);
       live.set(key, { s, g: m.g, cos, sin, stage, walls: m.walls, rings: m.rings });
     }
@@ -187,7 +271,8 @@ export function nearInstallDesk(): InstallSite | null {
   for (const l of live.values()) {
     const dx = G.pos.x - l.g.position.x, dz = G.pos.z - l.s.z;
     const x = dx * l.cos - dz * l.sin, z = dx * l.sin + dz * l.cos;
-    if (Math.hypot(x - DESK.x, z - (DESK.z - 1)) < 1.4) return l.s;
+    const d = DESKS[l.s.k];
+    if (Math.hypot(x - d.x, z - (d.z - 1)) < 1.4) return l.s;
   }
   return null;
 }

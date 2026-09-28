@@ -30,7 +30,7 @@ import { peopleAt, targetNow, workersAt, staffing } from '../gen/people';
 import { farmsOf, upgradedOf } from '../gen/farms';
 import { TECHS, techSites, CARRIER_NAME, dirWord } from '../gen/tech';
 import { Terrain } from '../gen/terrain';
-import { installSites, installDone, INSTALL_STAGES } from '../gen/installs';
+import { installSites, installDone, INSTALL_STAGES, INSTALL_WORK } from '../gen/installs';
 import { oldReactor, fuelOrder } from '../gen/contracts';
 import { OW } from '../world/overworld';
 import { lockPointer } from './input';
@@ -110,7 +110,7 @@ function installRows(poi: Poi): string {
   let s = h('OLD INSTALLATIONS');
   for (const site of installSites(T)) {
     const st = c.installs[site.k], n = INSTALL_STAGES[site.k].length, where = `${fmtDist(worldDist(poi.x, poi.z, site.x, site.z))} ${dirWord(wrapDx(site.x - poi.x), site.z - poi.z)}`;
-    const what = installDone(site.k, st) ? `WORKING · ore ${st!.inp} · fuel ready ${st!.out} (as last seen)` : `${st?.stage ?? 0}/${n} STAGES RESTORED`;
+    const what = installDone(site.k, st) ? `WORKING · ${ITEMS[INSTALL_WORK[site.k].out].name} ready ${st!.out} (as last seen)` : `${st?.stage ?? 0}/${n} STAGES RESTORED`;
     s += row(site.name, `${what} · ${where}`);
   }
   return s + `<div class="tdim">A Small Reactor burns the fuel rods the Old Enrichment Plant makes: a crate lasts ${STATIONS.reactor.burn! / 1440} days at ${STATIONS.reactor.kw} kW.</div>`;
