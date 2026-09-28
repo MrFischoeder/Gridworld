@@ -29,6 +29,7 @@ import { worksClick } from './works';
 import { stationClick } from './stations';
 import { terminalClick } from './terminal';
 import { logbookClick } from './logbook';
+import { askLead } from '../world/datacarriers';
 import { shipmentOffer } from '../gen/contracts';
 import { pendingTribute, payTribute } from '../world/villageraid';
 import { findPoi } from '../gen/regions';
@@ -401,6 +402,7 @@ dlgEl.addEventListener('click', (e) => {
       break;
     case 'watch': renderWatch(); break;
     case 'rumour': renderTalk(RUMOURS[(Math.random() * RUMOURS.length) | 0]); break;
+    case 'oldtech': { const id = townId(), p = id !== null ? findPoi(c.world, id) : null; renderTalk(p ? askLead(p.x, p.z) : 'Hm?'); break; }
     case 'chat': renderTalk(here(VILLAGER_LINES[(Math.random() * VILLAGER_LINES.length) | 0])); break;
     case 'lore': renderTalk(here(loreText())); break;
     case 'fortify': renderFortify(); break;

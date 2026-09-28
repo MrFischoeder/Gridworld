@@ -1,4 +1,5 @@
 // Quest progress: kills, quest groups in the open world, quest items in ruins and at wrecks, rewards.
+import { leadLines } from './datacarriers';
 import { G, W } from '../game';
 import { escortLine } from './caravans';
 import { raidLine } from './villageraid';
@@ -208,6 +209,7 @@ export function updateTracker(dt: number) {
   });
   const esc = escortLine(); if (esc) lines.push(esc);
   lines.push(...contractLines());
+  lines.push(...leadLines());
   const raid = raidLine(); if (raid) lines.unshift(raid);
   trackEl.innerHTML = lines.map((l) => `<div>${l}</div>`).join('');
 }

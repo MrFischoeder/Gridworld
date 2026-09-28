@@ -4,6 +4,12 @@ export interface Change { v: string; date: string; title: string; notes: string[
 
 export const CHANGELOG: Change[] = [
   {
+    v: '0.57.0', date: '2026-09-28', title: 'Word of mouth',
+    notes: ['Ask around: the innkeeper, the elder, the guard, the vehicle dealer and the villagers now answer "Seen any old machines out there?". Someone always has a story: a shepherd who sheltered in a ruin, a cousin who dug by a wreck, hunters back from a cave, and a violet light where the old data lies.',
+      'Each story is a lead to a real data carrier, the nearest one to that village that you have not found yet (villagers know of places up to 12 km away). It is marked on your map and compass with a violet diamond and listed in the tracker until you take the carrier.',
+      'Two open leads at a time: until you follow one up, people keep reminding you of the nearest instead of telling you more. Ask in villages further out to learn of the rarer knowledge.'],
+  },
+  {
     v: '0.56.0', date: '2026-09-28', title: 'Lost knowledge',
     notes: ['The old civilisation\'s knowledge is not gone, only scattered. Sixteen technologies survive as plans on old data carriers (floppy disks, data disks and memory crystals), each lying in one fixed place of the world: the first vault of a ruin, a crashed ship or a cave. Look for a violet beam over a small pedestal and take the carrier with E.',
       'The simpler knowledge (farming, timber framing, wind rotors, tools) lies within a few km of Gridholm; circuits, furnaces and solar cells further out; chips, radio navigation and engines further still; the rarest (uranium, rocket propellant, rail lines) far out on the continent.',

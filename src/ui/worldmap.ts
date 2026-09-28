@@ -11,6 +11,7 @@ import { saveChar } from '../character';
 import { drawPlayerArrow } from './minimap';
 import { vehicles, driving } from '../world/vehicles';
 import { questMarkers } from '../world/quests';
+import { leadMarkers } from '../world/datacarriers';
 import { mapWagons, plundered } from '../world/caravans';
 import { network, pathKnown } from '../gen/roads';
 import { onRoad, caravanPos } from '../gen/caravans';
@@ -103,6 +104,13 @@ function drawArea(ctx: CanvasRenderingContext2D, w: number, h: number, ppm: numb
     ctx.strokeStyle = ctx.fillStyle = '#c4ffd2'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(x, y, Math.max(4, 30 * ppm), 0, 6.283); ctx.stroke();
     ctx.beginPath(); ctx.moveTo(x, y + 5); ctx.lineTo(x, y - 8); ctx.lineTo(x + 7, y - 5); ctx.lineTo(x, y - 2); ctx.stroke(); ctx.lineWidth = 1;
     if (labels) ctx.fillText('Your flag', x, y - 12);
+  }
+  for (const m of leadMarkers()) { // leads to old data carriers: a violet diamond (held at the edge of the big map when further)
+    let x = X(m.x), y = Z(m.z); const r = labels ? 9 : 5, out = x < 24 || y < 40 || x > w - 24 || y > h - 40;
+    if (out && !labels) continue;
+    if (out) { x = Math.max(24, Math.min(w - 24, x)); y = Math.max(40, Math.min(h - 40, y)); }
+    ctx.strokeStyle = ctx.fillStyle = '#c49cff'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(x, y - r); ctx.lineTo(x + r, y); ctx.lineTo(x, y + r); ctx.lineTo(x - r, y); ctx.closePath(); ctx.stroke(); ctx.lineWidth = 1;
+    if (labels) ctx.fillText(m.label + (out ? ` ${(Math.hypot(m.x - px, m.z - pz) / 1000).toFixed(1)} km` : ''), Math.max(90, Math.min(w - 90, x)), y - 14);
   }
   for (const m of questMarkers()) {
     const x = X(m.x), y = Z(m.z);

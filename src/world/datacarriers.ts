@@ -8,7 +8,8 @@ import { G, W } from '../game';
 import { emptyAt } from './player';
 import { OW } from './overworld';
 import { Terrain } from '../gen/terrain';
-import { siteIn, carrierChest, TECH_BY_ID, CARRIER_NAME, type TechSite } from '../gen/tech';
+import { siteIn, carrierChest, techSites, pickLead, leadText, dirWord, TECH_BY_ID, CARRIER_NAME, type TechSite } from '../gen/tech';
+import { worldDist, wrapDx, nearX } from '../gen/regions';
 import { saveChar } from '../character';
 import { logLine, showToast } from '../ui/hud';
 
@@ -88,3 +89,25 @@ export function spinCarrier(time: number) {
 }
 /** Where the pedestal stands in the loaded dungeon (null: none here). */
 export const carrierSpot = () => (grp ? grp.position.clone() : null);
+
+// ---------- leads (gen/tech.ts pickLead): what the villagers tell of old machines ----------
+/** A villager of the village at (vx, vz) is asked about old machines: their answer (a new lead is remembered). */
+export function askLead(vx: number, vz: number): string {
+  const c = G.char, got = pickLead(techSites(terrain()), c.tech, c.leads, vx, vz);
+  if (!got) return 'Old machines? Nobody round here has seen anything like that for years. Ask in the villages further out.';
+  if (got.fresh) { c.leads.push(got.site.tech); saveChar(); logLine(`New lead: a ${CARRIER_NAME[got.site.carrier].toLowerCase()} in ${got.site.name} (marked on your map).`); }
+  return (got.fresh ? '' : 'Did you not go and look yet? ') + leadText(got.site, vx, vz, c.world);
+}
+/** The leads not yet followed up (heard of, carrier not taken). */
+export const openLeads = (): TechSite[] => { const c = G.char; return c.leads.length ? techSites(terrain()).filter((s) => c.leads.includes(s.tech) && c.tech[s.tech] === undefined) : []; };
+/** Map and compass markers for the open leads. */
+export const leadMarkers = () => openLeads().map((s) => ({ x: nearX(s.x, G.pos.x), z: s.z, label: s.name, short: CARRIER_NAME[s.carrier] }));
+/** Quest tracker lines for the open leads. */
+export function leadLines(): string[] {
+  return openLeads().map((s) => {
+    let t = `<span style="color:#c49cff">Lead:</span> a ${CARRIER_NAME[s.carrier].toLowerCase()} in ${s.name}`;
+    if (G.char.loc === 'overworld') { const dx = wrapDx(s.x - G.pos.x), dz = s.z - G.pos.z, d = worldDist(s.x, s.z, G.pos.x, G.pos.z); t += d < 40 ? ' · right here' : ` · ${d < 1000 ? Math.round(d / 10) * 10 + ' m' : (d / 1000).toFixed(1) + ' km'} ${dirWord(dx, dz)}`; }
+    else if (G.char.dungeon?.ruinId === s.place) t += ' · in here';
+    return t;
+  });
+}

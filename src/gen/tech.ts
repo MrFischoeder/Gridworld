@@ -5,7 +5,7 @@
 // grows with what they need. Recovering a carrier records the technology (`char.tech`); what each one unlocks comes
 // in later steps.
 import { hash } from '../core/rng';
-import { poisNear, regionOf, worldDist, type Poi } from './regions';
+import { poisNear, regionOf, worldDist, wrapDx, type Poi } from './regions';
 import { regionCaves } from './caves';
 import type { Terrain } from './terrain';
 
@@ -81,3 +81,48 @@ export function techSites(t: Terrain): TechSite[] {
 export const siteIn = (t: Terrain, place: number) => techSites(t).find((s) => s.place === place) ?? null;
 /** Which of the place's chests the carrier lies by (the dungeon's chest list is fixed by its seed). */
 export const carrierChest = (world: number, place: number, chests: number) => (chests > 0 ? hash(world, place, 0xd15c) % chests : -1);
+
+// ---------- leads: what the villagers have seen or heard of old machines ----------
+/** At most this many leads you have heard but not followed: asking again repeats the nearest one. */
+export const MAX_LEADS = 2;
+/** Villagers only know of places within this range of their village (m). */
+export const LEAD_RANGE = 12000;
+const DIRS = ['north', 'north-east', 'east', 'south-east', 'south', 'south-west', 'west', 'north-west'];
+/** Compass word for (dx, dz) (z grows southwards). */
+export const dirWord = (dx: number, dz: number) => DIRS[Math.round(((Math.atan2(dx, -dz) * 180 / Math.PI + 360) % 360) / 45) % 8];
+const distWord = (m: number) => (m < 950 ? `some ${Math.max(1, Math.round(m / 100)) * 100} m` : `about ${m < 9500 ? (m / 1000).toFixed(1).replace(/\.0$/, '') : Math.round(m / 1000)} km`);
+const LOOKS: Record<Carrier, string> = { floppy: 'a flat plastic square with a metal shutter', disk: 'a shining disk in a case', crystal: 'a long crystal that hums when you come near' };
+const SAY: Record<TechSite['kind'], string[]> = {
+  ruin: [
+    'A shepherd sheltered from a storm in {place}, {dist} {dir} of here. He swears something in the first vault glows violet, like a lamp that never goes out. {looks}, he said.',
+    'My cousin dug round {place}, {dist} {dir} of here. Down in the first vault there is a little stand with {looks} on it, under a violet light. He was too scared to touch it.',
+  ],
+  wreck: [
+    'Scavengers stripped most of {place}, {dist} {dir} of here, but nobody dared take the thing on the little stand inside: {looks}, lit violet.',
+    'A trader told me that inside {place}, {dist} {dir} of here, there is {looks} glowing in the dark. The robots guard it, or so he said.',
+  ],
+  cave: [
+    'Hunters who went into {place}, {dist} {dir} of here, came back talking of {looks} on a stone deep inside, lit violet.',
+    'Deep in {place}, {dist} {dir} of here, there is a violet light. Old Tomasz saw {looks} there and ran.',
+  ],
+};
+/** What a villager at (vx, vz) says of a site. */
+export function leadText(s: TechSite, vx: number, vz: number, world: number): string {
+  const dx = wrapDx(s.x - vx), dz = s.z - vz, lines = SAY[s.kind], line = lines[hash(world, s.place, 0x1ead) % lines.length];
+  const looks = LOOKS[s.carrier];
+  const place = /^(Ruins|Wreck) /.test(s.name) ? 'the ' + s.name : s.name;
+  return line.replace('{place}', place).replace('{dist}', distWord(Math.hypot(dx, dz))).replace('{dir}', dirWord(dx, dz))
+    .replace(/(^|\. |)\{looks\}/, (_, pre: string) => pre + (pre || line.startsWith('{looks}') ? looks[0].toUpperCase() + looks.slice(1) : looks));
+}
+/**
+ * Which site a villager at (vx, vz) tells of: with MAX_LEADS open leads (heard, not recovered), the nearest of them
+ * again; else the nearest site within LEAD_RANGE not heard of and not recovered. `fresh` = a new lead.
+ */
+export function pickLead(sites: TechSite[], recovered: Record<string, number>, leads: string[], vx: number, vz: number): { site: TechSite; fresh: boolean } | null {
+  const dist = (s: TechSite) => worldDist(s.x, s.z, vx, vz);
+  const open = sites.filter((s) => leads.includes(s.tech) && recovered[s.tech] === undefined).sort((a, b) => dist(a) - dist(b));
+  if (open.length >= MAX_LEADS) return { site: open[0], fresh: false };
+  const next = sites.filter((s) => !leads.includes(s.tech) && recovered[s.tech] === undefined && dist(s) <= LEAD_RANGE).sort((a, b) => dist(a) - dist(b))[0];
+  if (next) return { site: next, fresh: true };
+  return open.length ? { site: open[0], fresh: false } : null;
+}
