@@ -33,6 +33,7 @@ import { askLead } from '../world/datacarriers';
 import { ordersHTML, ordersClick } from './orders';
 import { shareHTML, shareClick } from './share';
 import { farmsHTML, farmsClick, showFarm } from './farms';
+import { plantUpHTML, plantUpClick, showPlantUp } from './plantup';
 import { earnTrust } from '../world/standing';
 import { CRAFTING_OPEN } from '../data/crafting';
 import { shipmentOffer } from '../gen/contracts';
@@ -335,6 +336,8 @@ function giveFortify() {
 dlgEl.addEventListener('click', (e) => {
   if (craftClick(e.target as HTMLElement) || buildClick(e.target as HTMLElement)) return;
   if (caravanClick(e.target as HTMLElement) || shuttleClick(e.target as HTMLElement) || worksClick(e.target as HTMLElement) || stationClick(e.target as HTMLElement) || terminalClick(e.target as HTMLElement) || logbookClick(e.target as HTMLElement)) return;
+  const pm = plantUpClick(town(), e.target as HTMLElement);
+  if (pm !== null) { if (pm.built) { const tn = town(); closeDialog(); showPlantUp(tn); } else panel().innerHTML = plantUpHTML(town(), dlgHead(), pm.msg); return; }
   const fm = farmsClick(town(), e.target as HTMLElement);
   if (fm !== null) { if (fm.built) { const tn = town(); closeDialog(); showFarm(tn); } else panel().innerHTML = farmsHTML(town(), dlgHead(), fm.msg); return; }
   const sm = shareClick(town(), e.target as HTMLElement);
@@ -413,6 +416,7 @@ dlgEl.addEventListener('click', (e) => {
       break;
     case 'watch': renderWatch(); break;
     case 'rumour': renderTalk(RUMOURS[(Math.random() * RUMOURS.length) | 0]); break;
+    case 'plantup': panel().classList.remove('wide'); panel().innerHTML = plantUpHTML(town(), dlgHead()); break;
     case 'farms': panel().classList.remove('wide'); panel().innerHTML = farmsHTML(town(), dlgHead()); break;
     case 'share': panel().classList.remove('wide'); panel().innerHTML = shareHTML(town(), dlgHead()); break;
     case 'make': panel().classList.remove('wide'); panel().innerHTML = ordersHTML(dlgHead()); break;

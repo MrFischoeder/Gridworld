@@ -17,6 +17,7 @@ import type { Good } from './market';
 import type { ItemKey } from '../data/items';
 import { running, type PlantState } from './plants';
 import { farmsKw } from './farms';
+import { plantMult } from './plantup';
 
 export type StationKind = 'solarfarm' | 'windfarm' | 'coalplant' | 'dieselbank';
 export const STATION_KINDS: StationKind[] = ['solarfarm', 'windfarm', 'coalplant', 'dieselbank'];
@@ -79,12 +80,12 @@ export function loadBunker(st: StationState, n: number, now: number): number {
 export function switchStation(st: StationState, on: boolean, now: number) { st.fuel = fuelAt(st, now); st.t = now; st.on = on; }
 
 // ---------- the balance ----------
-/** What the village's own plant makes at time t (nothing once it is down). */
+/** What the village's own plant makes at time t (nothing once it is down), times its upgrade level (gen/plantup.ts). */
 export function baseKw(world: number, v: Poi, seed: number, s: TownState | undefined, t: number): number {
   const kind = powerKind(seed), c = powerCondition(seed, s, t, raidHurt(world, v, s, lastFix(seed, s), t));
   if (c < POWER_DOWN) return 0;
   const k = kind === 'solar' ? sunAt(v, t) * 1.3 : kind === 'wind' ? 0.4 + windAt(seed, t) * 0.8 : 1;
-  return BASE_KW[kind] * Math.min(1, k) * (0.5 + 0.5 * c / 100);
+  return BASE_KW[kind] * Math.min(1, k) * (0.5 + 0.5 * c / 100) * plantMult(s);
 }
 export interface Balance { made: number; village: number; free: number; draw: number; powered: boolean[]; farms: number; farmsPowered: number }
 /**

@@ -12,6 +12,7 @@ export const TRUST = {
   works: 12,     // a processing works or a power station built
   refinery: 15,  // the refinery built
   farm: 8,       // a farm cleared and sown
+  plantup: 10,   // the power plant upgraded
   power: 6,      // the power plant mended
   site: 5,       // the industry site mended
   raid: 15,      // a raid beaten off

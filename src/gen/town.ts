@@ -41,6 +41,8 @@ export interface TownState {
   farms?: number; fgiven?: Partial<Record<ItemKey, number>>;
   /** Farms upgraded with steel ploughs, and materials towards the next upgrade. */
   fup?: number; ugiven?: Partial<Record<ItemKey, number>>;
+  /** The village's own power plant upgraded (gen/plantup.ts) and materials towards the next level. */
+  pup?: number; pupgiven?: Partial<Record<ItemKey, number>>;
 }
 
 // ---------- defence works ----------

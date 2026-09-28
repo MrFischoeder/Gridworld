@@ -4,6 +4,12 @@ export interface Change { v: string; date: string; title: string; notes: string[
 
 export const CHANGELOG: Change[] = [
   {
+    v: '0.64.0', date: '2026-09-28', title: 'More current',
+    notes: ['Every village\'s own power plant can now be upgraded twice. Ask the elder: "Could our power plant give more?".',
+      'Overhauled (×1.5 power): 6 scrap, 4 wire and 2 logs. Wind turbines need the old plans for the Improved Wind Rotor and a solar array those for Solar Cells; a diesel generator needs no plans. Rebuilt with old electronics (×2): 4 electronic components, a power core and 6 wire, found in the ruins and wrecks.',
+      'The upgrades show: longer blades on the turbines, another row of panels and battery cabinets by a solar array, a second stack, a radiator bank and a second generator set by a diesel plant. More power means the farms keep their pumps running and the works more hours in the day. Each upgrade earns the village\'s trust.'],
+  },
+  {
     v: '0.63.0', date: '2026-09-28', title: 'Steel and current',
     notes: ['Farms now need power: 3 kW each for the irrigation pumps and lamps, taken from the village\'s power before any works get theirs. A farm that gets no power feeds only 60% of what it could, so a village\'s power plant matters to its people too (the share over the last day counts, so solar nights and wind lulls even out).',
       'With the old plans for Steel Ploughs, the elder can fit a farm with steel ploughs and a pump (5 scrap and 4 wire, handed over bit by bit). With power it feeds 1.6 times as many people; it draws 8 kW, so a village with several such farms will want a power station.',

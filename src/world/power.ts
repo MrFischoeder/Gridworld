@@ -4,6 +4,7 @@
 // the right parts, and the village pays you for the job.
 import * as THREE from 'three';
 import { earnTrust } from './standing';
+import { plantLevel } from '../gen/plantup';
 import { G } from '../game';
 import { PropBatch } from './props';
 import { add } from './render';
@@ -30,7 +31,7 @@ const plants = new Map<number, Plant>();
 
 /** Draw the plant of village `vm` (id `id`) and remember it; returns its group (added to the village's). */
 export function drawPower(vm: VillageMap, T: Terrain, id: number): THREE.Group {
-  const kind = powerKind(vm.seed), site = powerSite(vm.seed), grp = new THREE.Group(), pb = new PropBatch();
+  const kind = powerKind(vm.seed), site = powerSite(vm.seed), grp = new THREE.Group(), pb = new PropBatch(), up = plantLevel(G.char.towns[id]);
   const x0 = vm.ox + site.x - site.w / 2, z0 = vm.oz + site.z - site.d / 2, x1 = x0 + site.w, z1 = z0 + site.d, cx = (x0 + x1) / 2, cz = (z0 + z1) / 2;
   const [fx, fz] = site.face, rx = -fz, rz = fx; // out from the fence, and along it
   const P = (u: number, v: number) => [cx + rx * u + fx * v, cz + rz * u + fz * v] as const; // u along the fence, v outwards
@@ -53,8 +54,17 @@ export function drawPower(vm: VillageMap, T: Terrain, id: number): THREE.Group {
     const [sx, sz] = P(0.9, -1.0); pb.box(sx - 0.14, g + 2.3, sz - 0.14, sx + 0.14, g + 4.6, sz + 0.14, METAL); // exhaust stack
     pb.box(sx - 0.22, g + 4.6, sz - 0.22, sx + 0.22, g + 4.75, sz + 0.22, METAL);
     const [lx, lz] = P(-0.6, 1.55); lightAt = [lx, g + 2.1, lz];
+    if (up >= 1) { // overhauled: a second stack and a radiator bank
+      const [ax, az] = P(-2.0, -1.0); pb.box(ax - 0.12, g + 2.3, az - 0.12, ax + 0.12, g + 4.2, az + 0.12, METAL);
+      box(-3.1, 0, 0.35, 1.3, g + 0.15, g + 1.8, METAL);
+      for (let k = -1.1; k <= 1.11; k += 0.275) { const [a, b] = P(-3.46, k); pb.seg(METAL, [a, g + 0.3, b], [a, g + 1.7, b]); }
+    }
+    if (up >= 2) { // rebuilt: a second generator set in a container beside it
+      box(-0.4, 3.4, 2.4, 1.0, g - 0.2, g + 2.3, METAL);
+      for (let u = -2.4; u <= 1.61; u += 0.5) { const [a, b] = P(u, 2.39), [c, d] = P(u, 2.39); pb.seg(METAL, [a, g + 0.1, b], [c, g + 2.2, d]); }
+    }
   } else if (kind === 'solar') {
-    for (const v of [-2.2, 1.8]) for (let u = -5; u <= 5.01; u += 2.5) {
+    for (const v of up >= 1 ? [-2.2, 1.8, 4.6] : [-2.2, 1.8]) for (let u = -5; u <= 5.01; u += 2.5) {
       const [x, z] = P(u, v), h = ground(x, z), tilt = 0.55;
       // two posts and a panel leaning back from the fence
       for (const du of [-0.9, 0.9]) { const [a, b] = P(u + du, v); pb.box(a - 0.06, h, b - 0.06, a + 0.06, h + 1.2, b + 0.06, METAL); }
@@ -68,6 +78,7 @@ export function drawPower(vm: VillageMap, T: Terrain, id: number): THREE.Group {
     const [ix, iz] = P(0, -3.8), g = ground(ix, iz);
     pb.box(ix - 0.6, g, iz - 0.4, ix + 0.6, g + 1.5, iz + 0.4, METAL);  // inverter cabinet
     lightAt = [ix, g + 1.65, iz];
+    if (up >= 2) for (const u of [2.2, 3.8]) { const [bx, bz] = P(u, -3.8), bg = ground(bx, bz); pb.box(bx - 0.6, bg, bz - 0.45, bx + 0.6, bg + 1.2, bz + 0.45, METAL); } // battery cabinets
   } else {
     for (const u of [-3.6, 3.6]) {
       const [x, z] = P(u, 0.5), h = ground(x, z), top = h + 12;
@@ -83,7 +94,8 @@ export function drawPower(vm: VillageMap, T: Terrain, id: number): THREE.Group {
       rb.box(-hub, -hub, -0.2, hub, hub, 0.2, METAL);
       for (let b = 0; b < 3; b++) {
         const a = b * Math.PI * 2 / 3, ca = Math.cos(a), sa = Math.sin(a), px = -sa, py = ca;
-        const pts = [[0.3, 0.18], [4.2, 0.12], [4.3, -0.02], [0.3, -0.1]].map(([r, w]) => [ca * r + px * w, sa * r + py * w]);
+        const L2 = 1 + 0.22 * up; // longer blades on an overhauled rotor
+        const pts = [[0.3, 0.18], [4.2 * L2, 0.12], [4.3 * L2, -0.02], [0.3, -0.1]].map(([r, w]) => [ca * r + px * w, sa * r + py * w]);
         rb.solid8(pts.map(([p, q]) => [p, q, -0.03]), pts.map(([p, q]) => [p, q, 0.03]), PANEL);
       }
       const rotor = rb.build(), [hx, hz] = [x + fx * 0.65, z + fz * 0.65];
