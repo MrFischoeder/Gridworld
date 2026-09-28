@@ -30,6 +30,7 @@ import { stationClick } from './stations';
 import { terminalClick } from './terminal';
 import { logbookClick } from './logbook';
 import { askLead } from '../world/datacarriers';
+import { ordersHTML, ordersClick } from './orders';
 import { shipmentOffer } from '../gen/contracts';
 import { pendingTribute, payTribute } from '../world/villageraid';
 import { findPoi } from '../gen/regions';
@@ -330,6 +331,8 @@ function giveFortify() {
 dlgEl.addEventListener('click', (e) => {
   if (craftClick(e.target as HTMLElement) || buildClick(e.target as HTMLElement)) return;
   if (caravanClick(e.target as HTMLElement) || shuttleClick(e.target as HTMLElement) || worksClick(e.target as HTMLElement) || stationClick(e.target as HTMLElement) || terminalClick(e.target as HTMLElement) || logbookClick(e.target as HTMLElement)) return;
+  const om = ordersClick(e.target as HTMLElement);
+  if (om !== null) { panel().innerHTML = ordersHTML(dlgHead(), om); return; }
   const cm = contractsClick(e.target as HTMLElement);
   if (cm !== null) { renderContracts(panel(), dlgHead(), cm); return; }
   const mm = marketClick(e.target as HTMLElement);
@@ -402,6 +405,7 @@ dlgEl.addEventListener('click', (e) => {
       break;
     case 'watch': renderWatch(); break;
     case 'rumour': renderTalk(RUMOURS[(Math.random() * RUMOURS.length) | 0]); break;
+    case 'make': panel().classList.remove('wide'); panel().innerHTML = ordersHTML(dlgHead()); break;
     case 'oldtech': { const id = townId(), p = id !== null ? findPoi(c.world, id) : null; renderTalk(p ? askLead(p.x, p.z) : 'Hm?'); break; }
     case 'chat': renderTalk(here(VILLAGER_LINES[(Math.random() * VILLAGER_LINES.length) | 0])); break;
     case 'lore': renderTalk(here(loreText())); break;

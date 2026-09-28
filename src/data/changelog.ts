@@ -4,6 +4,12 @@ export interface Change { v: string; date: string; title: string; notes: string[
 
 export const CHANGELOG: Change[] = [
   {
+    v: '0.58.0', date: '2026-09-28', title: 'Old plans, new work',
+    notes: ['The recovered plans are good for something now. Ask the blacksmith: "Make something for me." He makes whatever the plans you found show, from the materials you bring him, on the spot.',
+      'Forged Tools: hatchet, pickaxe, hammer, saw. Timber Framing: planks and nails. Blast Furnace: scrap metal and wire from iron ore. Basic Circuits: electronic components from copper ore, and compasses. Wagon Axles: light tires and hull plating. Combustion Engines: engine parts and turbochargers.',
+      'Plans he has no use for (farming, power, chips, radio, chemistry, uranium, rocket fuel, rail) are for the villages themselves; they come later. The old workbench and forge crafting still works for now.'],
+  },
+  {
     v: '0.57.0', date: '2026-09-28', title: 'Word of mouth',
     notes: ['Ask around: the innkeeper, the elder, the guard, the vehicle dealer and the villagers now answer "Seen any old machines out there?". Someone always has a story: a shepherd who sheltered in a ruin, a cousin who dug by a wreck, hunters back from a cave, and a violet light where the old data lies.',
       'Each story is a lead to a real data carrier, the nearest one to that village that you have not found yet (villagers know of places up to 12 km away). It is marked on your map and compass with a violet diamond and listed in the tracker until you take the carrier.',
