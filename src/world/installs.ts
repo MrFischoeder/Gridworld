@@ -2,23 +2,29 @@
 // The uranium enrichment plant: a broken perimeter fence with a gate and a warning sign, the centrifuge hall (walls
 // with a doorway, a collapsed corner, bare roof trusses, rows of centrifuges inside, some toppled), two hyperboloid
 // cooling towers (one snapped off), a tall stack and pipes on trestles. Every solid has a dark fill. The hall's walls,
-// the towers and the stack collide (`installHit`).
+// the towers and the stack collide (`installHit`). The restoration (gen/installs.ts, `char.installs`) shows: cleared
+// (rubble, toppled centrifuges and fallen trusses gone, the fence mended), the hall rebuilt (walls whole, trusses and a
+// roof, every centrifuge standing), restored (the centrifuges glow). The control desk inside the gate opens the
+// restoration window (`nearInstallDesk`, ui/install.ts).
 import * as THREE from 'three';
 import { scene } from './render';
 import { PropBatch } from './props';
 import { G } from '../game';
 import { OW } from './overworld';
-import { installSites, type InstallSite } from '../gen/installs';
+import { installSites, INSTALL_STAGES, type InstallSite } from '../gen/installs';
 import { nearX, worldDist } from '../gen/regions';
 import type { Terrain } from '../gen/terrain';
 
 const METAL = 0xa8c8b8, RUST = 0x9aa870, CONC = 0x7fa08c, GLOW = 0xb6ff3a;
-interface Live { s: InstallSite; g: THREE.Group; cos: number; sin: number; walls: [number, number, number, number][]; rings: [number, number, number][] }
+interface Live { s: InstallSite; g: THREE.Group; cos: number; sin: number; stage: number; walls: [number, number, number, number][]; rings: [number, number, number][] }
+/** The control desk in the plant's frame (inside the gate, west of the way in). */
+export const DESK = { x: -6, z: -25 };
 const live = new Map<string, Live>();
 
-/** The plant in its own frame (x across, z along; y up from the site's ground height). */
-function drawUranium(T: Terrain, s: InstallSite, cos: number, sin: number): { g: THREE.Group; walls: Live['walls']; rings: Live['rings'] } {
+/** The plant in its own frame (x across, z along; y up from the site's ground height), as far restored as `stage`. */
+function drawUranium(T: Terrain, s: InstallSite, cos: number, sin: number, stage: number): { g: THREE.Group; walls: Live['walls']; rings: Live['rings'] } {
   const pb = new PropBatch(), walls: Live['walls'] = [], rings: Live['rings'] = [];
+  const cleared = stage >= 1, roofed = stage >= 2, done = stage >= INSTALL_STAGES.uranium.length;
   const H = (x: number, z: number) => T.heightAt(s.x + x * cos + z * sin, s.z - x * sin + z * cos) - s.y;
   const at = (x: number, z: number, dy = 0) => [x, H(x, z) + dy, z];
   // ---- the perimeter fence: posts every 4 m and two wires, with gaps and leaning posts; the gate on the -z side
@@ -27,9 +33,9 @@ function drawUranium(T: Terrain, s: InstallSite, cos: number, sin: number): { g:
     const L = Math.hypot(bx - ax, bz - az), n = Math.round(L / 4);
     let prev: number[][] | null = null;
     for (let i = 0; i <= n; i++) {
-      const x = ax + (bx - ax) * i / n, z = az + (bz - az) * i / n, broken = (i * 7 + seed) % 11 === 0, gate = az === -F && bz === -F && Math.abs(x) < 3.5;
+      const x = ax + (bx - ax) * i / n, z = az + (bz - az) * i / n, broken = !cleared && (i * 7 + seed) % 11 === 0, gate = az === -F && bz === -F && Math.abs(x) < 3.5;
       if (gate) { prev = null; continue; }
-      const lean = (i * 13 + seed) % 7 === 0 ? 0.7 : 0, top = at(x + lean, z, broken ? 0.9 : 2.4);
+      const lean = !cleared && (i * 13 + seed) % 7 === 0 ? 0.7 : 0, top = at(x + lean, z, broken ? 0.9 : 2.4);
       pb.seg(RUST, at(x, z), top);
       if (prev && !broken) { pb.seg(RUST, prev[0], at(x, z, 1.2)); pb.seg(RUST, prev[1], top); }
       prev = broken ? null : [at(x, z, 1.2), top];
@@ -59,15 +65,30 @@ function drawUranium(T: Terrain, s: InstallSite, cos: number, sin: number): { g:
   const full = () => WH, ragged = (t: number) => WH * (1 - 0.75 * t) + Math.sin(t * 17) * 0.4; // falls away towards the fallen corner
   wall(X0, Z0, -2, Z0, full); wall(2, Z0, X1, Z0, full); // the doorway in between
   pb.face([-2, g0 + 4, Z0], [2, g0 + 4, Z0], [2, g0 + WH, Z0], [-2, g0 + WH, Z0]); pb.line(CONC, [-2, g0, Z0], [-2, g0 + 4, Z0], [2, g0 + 4, Z0], [2, g0, Z0]);
-  wall(X1, Z0, X1, Z1, (t) => WH * (1 - 0.55 * Math.max(0, t - 0.5) * 2)); wall(X1, Z1, X0, Z1, (t) => ragged(1 - t)); wall(X0, Z1, X0, Z0, full);
+  if (roofed) { wall(X1, Z0, X1, Z1, full); wall(X1, Z1, X0, Z1, full); } // rebuilt
+  else { wall(X1, Z0, X1, Z1, (t) => WH * (1 - 0.55 * Math.max(0, t - 0.5) * 2)); wall(X1, Z1, X0, Z1, (t) => ragged(1 - t)); }
+  wall(X0, Z1, X0, Z0, full);
   // roof trusses: bare triangles, the ones by the fallen corner gone or hanging
   for (let x = X0 + 2; x < X1; x += 4) {
-    const fallen = x > 8, hang = x > 4 && x <= 8;
+    const fallen = !roofed && x > 8, hang = !roofed && x > 4 && x <= 8;
+    if (fallen && cleared) continue; // carted off
     if (fallen) { pb.line(METAL, [x, g0 + 0.3, Z1 - 3], [x + 1.5, g0 + 3.5, (Z0 + Z1) / 2], [x - 1, g0 + 0.3, Z0 + 4]); continue; }
     const top = [x, g0 + WH + 2.5, (Z0 + Z1) / 2], a = [x, g0 + WH, Z0], b = hang ? [x, g0 + WH - 2.5, Z1 - 1.5] : [x, g0 + WH, Z1];
     pb.line(METAL, a, top, b, a); pb.seg(METAL, top, [x, g0 + WH, (Z0 + Z1) / 2]);
   }
-  pb.seg(METAL, [X0 + 2, g0 + WH + 2.5, (Z0 + Z1) / 2], [X0 + 10, g0 + WH + 2.5, (Z0 + Z1) / 2]); // the ridge, broken off
+  const ZM = (Z0 + Z1) / 2, RY = g0 + WH + 2.5;
+  if (!roofed) pb.seg(METAL, [X0 + 2, RY, ZM], [X0 + 10, RY, ZM]); // the ridge, broken off
+  else {
+    // the new roof: two sheeted slopes with seams, gables closed
+    pb.seg(done ? GLOW : METAL, [X0, RY, ZM], [X1, RY, ZM]);
+    if (done) for (const ze of [Z0 - 0.03, Z1 + 0.03]) for (let x = X0 + 1; x < X1 - 1; x += 2) pb.line(GLOW, [x, g0 + WH - 1.6, ze], [x + 1.2, g0 + WH - 1.6, ze], [x + 1.2, g0 + WH - 0.8, ze], [x, g0 + WH - 0.8, ze], [x, g0 + WH - 1.6, ze]); // lit clerestory windows
+    for (const ze of [Z0, Z1]) {
+      pb.face([X0, g0 + WH, ze], [X1, g0 + WH, ze], [X1, RY, ZM], [X0, RY, ZM]);
+      pb.seg(METAL, [X0, g0 + WH, ze], [X1, g0 + WH, ze]);
+      for (let x = X0; x <= X1 + 0.01; x += 2) pb.seg(METAL, [x, g0 + WH, ze], [x, RY, ZM]);
+    }
+    for (const xe of [X0, X1]) { pb.face([xe, g0 + WH, Z0], [xe, g0 + WH, Z1], [xe, RY, ZM]); pb.line(CONC, [xe, g0 + WH, Z0], [xe, RY, ZM], [xe, g0 + WH, Z1]); }
+  }
   // centrifuges: rows of tall cylinders on the hall floor, a few toppled
   const cyl = (x: number, z: number, r: number, h: number, y0: number, c: number, n = 8) => {
     const P = (i: number, yy: number) => [x + Math.cos(i / n * 6.283) * r, yy, z + Math.sin(i / n * 6.283) * r];
@@ -77,12 +98,12 @@ function drawUranium(T: Terrain, s: InstallSite, cos: number, sin: number): { g:
   let k = 0;
   for (let x = X0 + 2; x <= X1 - 3; x += 2.2) for (let z = Z0 + 3; z <= Z1 - 2; z += 2.6) {
     k++;
-    if (k % 5 === 3) { const y = g0 + 0.35; pb.line(METAL, [x - 1.8, y, z], [x + 1.8, y + 0.1, z + 0.4]); pb.line(METAL, [x - 1.8, y + 0.6, z], [x + 1.8, y + 0.7, z + 0.4]); continue; } // toppled
-    if (x > 9 && z > 5) continue; // under the rubble
-    cyl(x, z, 0.35, 3.6, g0, METAL, 6);
+    if (k % 5 === 3 && !roofed) { if (cleared) continue; const y = g0 + 0.35; pb.line(METAL, [x - 1.8, y, z], [x + 1.8, y + 0.1, z + 0.4]); pb.line(METAL, [x - 1.8, y + 0.6, z], [x + 1.8, y + 0.7, z + 0.4]); continue; } // toppled
+    if (x > 9 && z > 5 && !roofed) continue; // under the rubble
+    cyl(x, z, 0.35, 3.6, g0, done ? GLOW : METAL, 6);
   }
   // rubble of the fallen corner
-  for (let i = 0; i < 9; i++) { const x = X1 - 2 - (i % 3) * 1.6, z = Z1 - 1.5 - Math.floor(i / 3) * 1.5, y = H(x, z); pb.box(x - 0.6, y - 0.1, z - 0.5, x + 0.5, y + 0.5 + (i % 2) * 0.4, z + 0.6, CONC); }
+  if (!cleared) for (let i = 0; i < 9; i++) { const x = X1 - 2 - (i % 3) * 1.6, z = Z1 - 1.5 - Math.floor(i / 3) * 1.5, y = H(x, z); pb.box(x - 0.6, y - 0.1, z - 0.5, x + 0.5, y + 0.5 + (i % 2) * 0.4, z + 0.6, CONC); }
   // ---- two cooling towers (hyperboloids of lines over a fill); the second snapped off
   const tower = (cx: number, cz: number, R: number, Ht: number, cut: number) => {
     const y0 = H(cx, cz) - 0.4, N = 16, ringAt = (f: number) => R * (0.58 + 0.42 * ((f - 0.72) / 0.72) ** 2); // waisted at 72% of the height, flaring a little at the top
@@ -107,6 +128,19 @@ function drawUranium(T: Terrain, s: InstallSite, cos: number, sin: number): { g:
     let prev: number[] | null = null;
     for (let x = X0; x >= -13; x -= 2.5) { const z = tz * 0.4 + (x - X0) / (-13 - X0) * tz * 0.6, y = H(x, z); pb.seg(RUST, [x, y, z], [x, y + 3, z]); const p = [x, y + 3.1, z]; if (prev) pb.seg(METAL, prev, p); prev = p; }
   }
+  // ---- the control desk inside the gate: a steel kiosk with a slanted console, its screen lit once the hall is roofed
+  { const { x, z } = DESK, y = H(x, z);
+    pb.box(x - 0.8, y - 0.2, z - 0.4, x + 0.8, y + 1, z + 0.4, METAL);
+    pb.face([x - 0.8, y + 1, z - 0.4], [x + 0.8, y + 1, z - 0.4], [x + 0.8, y + 1.25, z + 0.3], [x - 0.8, y + 1.25, z + 0.3]);
+    pb.line(METAL, [x - 0.8, y + 1, z - 0.4], [x + 0.8, y + 1, z - 0.4], [x + 0.8, y + 1.25, z + 0.3], [x - 0.8, y + 1.25, z + 0.3], [x - 0.8, y + 1, z - 0.4]);
+    pb.box(x - 0.6, y + 1.25, z + 0.25, x + 0.6, y + 2.1, z + 0.4, METAL);
+    const sc = stage >= 1 ? GLOW : RUST;
+    pb.line(sc, [x - 0.5, y + 1.35, z + 0.24], [x + 0.5, y + 1.35, z + 0.24], [x + 0.5, y + 2, z + 0.24], [x - 0.5, y + 2, z + 0.24], [x - 0.5, y + 1.35, z + 0.24]);
+    for (let i = 0; i < Math.min(4, stage + 1); i++) pb.seg(sc, [x - 0.4, y + 1.85 - i * 0.14, z + 0.23], [x - 0.4 + 0.2 + ((i * 37) % 5) * 0.12, y + 1.85 - i * 0.14, z + 0.23]);
+    pb.seg(RUST, [x + 0.7, y + 2.1, z + 0.3], [x + 0.7, y + 3.2, z + 0.3]); // a lamp post
+    if (done) pb.box(x + 0.55, y + 3.2, z + 0.15, x + 0.85, y + 3.5, z + 0.45, GLOW);
+    rings.push([x, z, 0.85]);
+  }
   const g = pb.build();
   return { g, walls, rings };
 }
@@ -119,14 +153,17 @@ export function updateInstalls(dt: number) {
   const T = OW.terrain;
   if (!T || G.char.loc !== 'overworld') { dropInstalls(); return; }
   for (const s of installSites(T)) {
-    const key = s.k + ':' + T.world, d = worldDist(s.x, s.z, G.pos.x, G.pos.z), have = live.get(key);
-    if (d < 900 && !have) {
-      const cos = Math.cos(s.yaw), sin = Math.sin(s.yaw), m = drawUranium(T, s, cos, sin);
+    const key = s.k + ':' + T.world, d = worldDist(s.x, s.z, G.pos.x, G.pos.z), have = live.get(key), stage = G.char.installs[s.k]?.stage ?? 0;
+    if (have && (d > 1100 || have.stage !== stage)) { scene.remove(have.g); have.g.traverse((o) => (o as THREE.Mesh).geometry?.dispose()); live.delete(key); }
+    if (d < 900 && !live.has(key)) {
+      const cos = Math.cos(s.yaw), sin = Math.sin(s.yaw), m = drawUranium(T, s, cos, sin, stage);
       m.g.position.set(nearX(s.x, G.pos.x), s.y, s.z); m.g.rotation.y = s.yaw; scene.add(m.g);
-      live.set(key, { s, g: m.g, cos, sin, walls: m.walls, rings: m.rings });
-    } else if (have && d > 1100) { scene.remove(have.g); have.g.traverse((o) => (o as THREE.Mesh).geometry?.dispose()); live.delete(key); }
+      live.set(key, { s, g: m.g, cos, sin, stage, walls: m.walls, rings: m.rings });
+    }
   }
 }
+/** Redraw at once (after a stage is finished). */
+export function redrawInstalls() { tick = 0; updateInstalls(0); }
 export function dropInstalls() { for (const l of live.values()) { scene.remove(l.g); l.g.traverse((o) => (o as THREE.Mesh).geometry?.dispose()); } live.clear(); }
 
 /** The hall's walls, the towers and the stack (for G.obstacle). */
@@ -142,4 +179,15 @@ export function installHit(px: number, py: number, pz: number, r: number): boole
     }
   }
   return false;
+}
+
+/** Standing at an installation's control desk (on the gate side of it). */
+export function nearInstallDesk(): InstallSite | null {
+  if (G.char.loc !== 'overworld') return null;
+  for (const l of live.values()) {
+    const dx = G.pos.x - l.g.position.x, dz = G.pos.z - l.s.z;
+    const x = dx * l.cos - dz * l.sin, z = dx * l.sin + dz * l.cos;
+    if (Math.hypot(x - DESK.x, z - (DESK.z - 1)) < 1.4) return l.s;
+  }
+  return null;
 }

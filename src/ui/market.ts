@@ -51,12 +51,12 @@ export function stores(at: { x: number; z: number } | null = here?.poi ?? null):
   return out;
 }
 /** Crates of g you have with you at `at` (backpack and trunks parked there). */
-export const carried = (g: Good, at = here?.poi ?? null) => stores(at).reduce((a, s) => a + count(s.slots, g), 0);
-export function takeFrom(g: Good, n: number, at = here?.poi ?? null) {
+export const carried = (g: Good, at: { x: number; z: number } | null = here?.poi ?? null) => stores(at).reduce((a, s) => a + count(s.slots, g), 0);
+export function takeFrom(g: Good, n: number, at: { x: number; z: number } | null = here?.poi ?? null) {
   for (const s of stores(at)) for (let i = 0; i < s.slots.length && n > 0; i++) { const x = s.slots[i]; if (x?.k === g) { const m = Math.min(n, x.n); x.n -= m; n -= m; if (x.n <= 0) s.slots[i] = null; } }
 }
 /** Put n crates away; returns how many found no room. */
-export function putAway(g: Good, n: number, at = here?.poi ?? null, trunksFirst = false): number {
+export function putAway(g: Good, n: number, at: { x: number; z: number } | null = here?.poi ?? null, trunksFirst = false): number {
   const list = stores(at);
   for (const s of trunksFirst ? [...list.slice(1), list[0]] : list) if (n > 0) n = putItems(s.slots, g as ItemKey, n, s.cap);
   return n;

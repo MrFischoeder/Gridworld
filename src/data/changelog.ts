@@ -4,6 +4,15 @@ export interface Change { v: string; date: string; title: string; notes: string[
 
 export const CHANGELOG: Change[] = [
   {
+    v: '0.67.0', date: '2026-09-28', title: 'The plant wakes',
+    notes: [
+      'The Old Enrichment Plant has a control desk just inside its gate. Press E there to see the restoration: three stages, each handed over bit by bit from your backpack or a vehicle parked by the plant.',
+      'Clearing the rubble (logs, stone, scrap), the centrifuge hall (steel, cable, electronics) and the core (power cores, alloy, electronics, and the plans for Uranium Enrichment from an old data carrier). Each stage pays gold and xp.',
+      'The plant changes as you work: the rubble and toppled centrifuges go, the fence is mended, the hall gets its walls and a new roof, and once restored its windows and centrifuges glow.',
+      'A restored plant turns 3 crates of uranium ore into a crate of Nuclear Fuel Rods every 6 game hours. Load the ore and collect the fuel at the desk (hopper 30, bay 10).',
+    ],
+  },
+  {
     v: '0.66.0', date: '2026-09-28', title: 'The dead plant',
     notes: ['Far out on the continent, 15 to 25 km from Gridholm, stands the first of the old world\'s great installations: the Old Enrichment Plant, where ore was once made into reactor fuel. Every world has it in its own place, on bare, level ground.',
       'A broken fence with a warning sign at the gate, the centrifuge hall with its fallen corner and bare roof trusses, rows of centrifuges inside (some toppled), two cooling towers (one snapped off) and a tall stack. You can walk into the hall.',

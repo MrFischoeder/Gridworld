@@ -22,6 +22,7 @@ import { storePlan, handOverStore, STORE } from '../gen/store';
 import { storeOf } from '../world/industry';
 import { unlockMine } from '../world/housedoors';
 import { shuttleClick } from './shuttle';
+import { installClick } from './install';
 import { fertility } from '../gen/industry';
 import { PLANTS, PLANT_KINDS, PLANT_SLOTS, plantsOf, plantPlan, plantProblem, startPlant, handOverPlant, isStation, specOf, running, type PlantKind } from '../gen/plants';
 import { STATIONS, STATION_KINDS, STATION_SLOTS, DRAW, VILLAGE_KW, balance, fuelAt, type StationKind } from '../gen/energy';
@@ -335,7 +336,7 @@ function giveFortify() {
 }
 dlgEl.addEventListener('click', (e) => {
   if (craftClick(e.target as HTMLElement) || buildClick(e.target as HTMLElement)) return;
-  if (caravanClick(e.target as HTMLElement) || shuttleClick(e.target as HTMLElement) || worksClick(e.target as HTMLElement) || stationClick(e.target as HTMLElement) || terminalClick(e.target as HTMLElement) || logbookClick(e.target as HTMLElement)) return;
+  if (caravanClick(e.target as HTMLElement) || shuttleClick(e.target as HTMLElement) || installClick(e.target as HTMLElement) || worksClick(e.target as HTMLElement) || stationClick(e.target as HTMLElement) || terminalClick(e.target as HTMLElement) || logbookClick(e.target as HTMLElement)) return;
   const pm = plantUpClick(town(), e.target as HTMLElement);
   if (pm !== null) { if (pm.built) { const tn = town(); closeDialog(); showPlantUp(tn); } else panel().innerHTML = plantUpHTML(town(), dlgHead(), pm.msg); return; }
   const fm = farmsClick(town(), e.target as HTMLElement);

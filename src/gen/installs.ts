@@ -8,6 +8,7 @@ import { CHUNK, worldDist } from './regions';
 import { nearestOnRoad } from './roads';
 import { mountainMask } from './mountains';
 import { rectDist, type Terrain } from './terrain';
+import type { ItemKey } from '../data/items';
 
 export type InstallKind = 'uranium';
 export interface InstallSpec { k: InstallKind; name: string; blurb: string; band: [number, number]; r: number }
@@ -58,3 +59,50 @@ export function inInstall(t: Terrain, x: number, z: number, m = 0): boolean {
   return false;
 }
 export const installAt = (t: Terrain, x: number, z: number, m = 0) => installSites(t).find((s) => worldDist(s.x, s.z, x, z) < s.r + m) ?? null;
+
+// ---------- restoring an installation, and what it makes ----------
+/** A stage of the restoration: what it is called, what the crew say, what it needs (and the plans, if any). */
+export interface InstallStage { title: string; text: string; needs: [ItemKey, number][]; tech?: string; gold: number; xp: number }
+export const INSTALL_STAGES: Record<InstallKind, InstallStage[]> = {
+  uranium: [
+    { title: 'Clearing the rubble', text: 'The hall is choked with fallen trusses and the gate is jammed. Timber for props, stone for the breaches, scrap for the braces.', needs: [['log', 12], ['stone', 10], ['scrap', 6]], gold: 150, xp: 200 },
+    { title: 'The centrifuge hall', text: 'A new roof, and the centrifuges rewired: steel for the trusses, cable for the lines, electronics for the drives.', needs: [['steel', 6], ['cable', 4], ['circuit', 8]], gold: 300, xp: 350 },
+    { title: 'The core', text: 'The cascade controller is dead. Only the old plans for enrichment show how it was built, and it wants power cores and hull alloy.', needs: [['pcore', 2], ['alloy', 4], ['circuit', 6]], tech: 'enrichment', gold: 500, xp: 600 },
+  ],
+};
+/** What a working installation makes: n crates of `inp` into one of `out` every `batch` game minutes. */
+export const INSTALL_WORK: Record<InstallKind, { inp: ItemKey; n: number; out: ItemKey; batch: number; hopper: number; bay: number }> = {
+  uranium: { inp: 'uranium', n: 3, out: 'nfuel', batch: 360, hopper: 30, bay: 10 },
+};
+/** An installation's saved state: the stage reached (stages done), materials handed over towards the next, and the works: ore in the hopper, fuel ready, when it was last settled. */
+export interface InstallState { stage: number; given: Partial<Record<ItemKey, number>>; inp: number; out: number; t: number }
+export const newInstall = (): InstallState => ({ stage: 0, given: {}, inp: 0, out: 0, t: 0 });
+export const installDone = (k: InstallKind, s: InstallState | undefined) => (s?.stage ?? 0) >= INSTALL_STAGES[k].length;
+/** The next stage: its rows (given / needed), whether the plans are known, whether it is complete; null once restored. */
+export function installPlan(k: InstallKind, s: InstallState | undefined, known: Record<string, number>) {
+  const st = INSTALL_STAGES[k][s?.stage ?? 0];
+  if (!st) return null;
+  const rows = st.needs.map(([i, n]) => ({ k: i, n, given: Math.min(n, s?.given[i] ?? 0) }));
+  return { st, n: (s?.stage ?? 0) + 1, rows, plans: !st.tech || known[st.tech] !== undefined, done: rows.every((r) => r.given >= r.n) };
+}
+/** Hand over materials for the current stage (bit by bit; nothing without its plans); moves on to the next once complete. */
+export function handOverInstall(k: InstallKind, s: InstallState, known: Record<string, number>, have: (i: ItemKey) => number, now: number): { taken: [ItemKey, number][]; built: boolean } {
+  const plan = installPlan(k, s, known);
+  if (!plan || !plan.plans) return { taken: [], built: false };
+  const taken: [ItemKey, number][] = [];
+  for (const r of plan.rows) { const n = Math.min(r.n - r.given, have(r.k)); if (n > 0) { s.given[r.k] = r.given + n; taken.push([r.k, n]); } }
+  if (!installPlan(k, s, known)!.done) return { taken, built: false };
+  s.stage++; s.given = {};
+  if (installDone(k, s)) s.t = now; // the works start now
+  return { taken, built: true };
+}
+/** Settle the batches made since it was last looked at (one per batch while the hopper has enough and the bay has room; idle time does not bank). */
+export function runInstall(k: InstallKind, s: InstallState, now: number) {
+  if (!installDone(k, s)) return;
+  const w = INSTALL_WORK[k];
+  if (s.inp < w.n || s.out >= w.bay) { s.t = now; return; }
+  const batches = Math.min(Math.floor((now - s.t) / w.batch), Math.floor(s.inp / w.n), w.bay - s.out);
+  if (batches <= 0) return;
+  s.inp -= batches * w.n; s.out += batches; s.t += batches * w.batch;
+  if (s.inp < w.n || s.out >= w.bay) s.t = now;
+}
