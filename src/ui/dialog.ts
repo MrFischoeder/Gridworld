@@ -191,7 +191,7 @@ function powerText(vid: number, vm: VillageMap, st: TownState | undefined): stri
   const b = balance(c.world, poi, vm.seed, st, c.time), stations = st?.stations ?? [];
   const works = plantsOf(st).map((p, i) => `the ${PLANTS[p.k].name} ${DRAW[p.k]} kW${!running(p) ? ' (idle)' : b.powered[i] ? ' (powered)' : ' <span style="color:var(--red,#ff5a3c)">(no power)</span>'}`);
   return `<b>Power.</b> We make <b>${Math.round(b.made)} kW</b> now` + (stations.length ? ` (our ${POWER[powerKind(vm.seed)].name.toLowerCase()} and ${stations.map((x) => `the ${STATIONS[x.k].name}${STATIONS[x.k].fuel && fuelAt(x, c.time) <= 0 ? ' (out of ' + ITEMS[STATIONS[x.k].fuel!].name.toLowerCase() + ')' : ''}`).join(' and ')})` : ` from our ${POWER[powerKind(vm.seed)].name.toLowerCase()}`) +
-    `; the village itself takes ${VILLAGE_KW} kW, which leaves <b>${Math.round(Math.max(0, b.made - VILLAGE_KW))} kW</b> for works.` + (works.length ? ` They draw: ${works.join(', ')}.` : '') +
+    `; the village itself takes ${VILLAGE_KW} kW` + (b.farms ? ` and the farms ${b.farms} kW` : '') + `, which leaves <b>${Math.round(Math.max(0, b.made - VILLAGE_KW - b.farms))} kW</b> for works.` + (works.length ? ` They draw: ${works.join(', ')}.` : '') +
     ` Every works needs power to run: build power stations first.`;
 }
 function worksText(st: TownState | undefined): string {

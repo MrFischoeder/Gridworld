@@ -36,9 +36,11 @@ export interface TownState {
   /** Your standing here (gen/standing.ts): trust earned, and the crates of its goods taken today (game day, count). */
   trust?: number; share?: { d: number; n: number };
   /** The population's anchor (gen/people.ts): the count at game time t. */
-  people?: { n: number; t: number };
+  people?: { n: number; t: number; tg?: number };
   /** Farms built here (gen/farms.ts) and materials handed over towards the next. */
   farms?: number; fgiven?: Partial<Record<ItemKey, number>>;
+  /** Farms upgraded with steel ploughs, and materials towards the next upgrade. */
+  fup?: number; ugiven?: Partial<Record<ItemKey, number>>;
 }
 
 // ---------- defence works ----------

@@ -24,12 +24,19 @@ export const basePeople = (seed: number, home: boolean) => (home ? PEOPLE.home :
 export const peopleTarget = (seed: number, home: boolean, s: TownState | undefined) => basePeople(seed, home) + (s?.farms ?? 0) * Math.round(15 * (0.7 + (hash(seed, 0xf42) % 61) / 100));
 /** People living there at game time `now` (a fraction: shown rounded). */
 export function peopleAt(seed: number, home: boolean, s: TownState | undefined, now: number): number {
-  const target = peopleTarget(seed, home, s), a = s?.people;
+  const a = s?.people, target = a?.tg ?? peopleTarget(seed, home, s);
   if (!a) return target;
   return target - (target - a.n) * Math.exp(-Math.max(0, now - a.t) / PEOPLE.tau);
 }
 /** Sets the count now to `n` (a loss or a gain), re-anchoring the curve. */
-export function setPeople(s: TownState, seed: number, home: boolean, now: number, n: number) { s.people = { n: Math.max(5, n), t: now }; void seed; void home; }
+export function setPeople(s: TownState, seed: number, home: boolean, now: number, n: number) { s.people = { n: Math.max(5, n), t: now, tg: s.people?.tg }; void seed; void home; }
+/** The target the count is heading for now (the one it was last given, else the plain one). */
+export const targetNow = (seed: number, home: boolean, s: TownState | undefined) => s?.people?.tg ?? peopleTarget(seed, home, s);
+/** A new target (farms fed by more or less power, gen/farms.ts): the curve is re-anchored where it is, so the count never jumps. */
+export function retarget(s: TownState, seed: number, home: boolean, now: number, tg: number) {
+  if (Math.abs(targetNow(seed, home, s) - tg) < 0.5 && s.people) return;
+  s.people = { n: peopleAt(seed, home, s, now), t: now, tg };
+}
 /** Loses `k` people now (killed), or a share (`share` of the count). */
 export function losePeople(s: TownState, seed: number, home: boolean, now: number, k: number, share = 0) {
   const n = peopleAt(seed, home, s, now);

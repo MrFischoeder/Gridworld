@@ -16,6 +16,7 @@ import { raidHurt } from './raids';
 import type { Good } from './market';
 import type { ItemKey } from '../data/items';
 import { running, type PlantState } from './plants';
+import { farmsKw } from './farms';
 
 export type StationKind = 'solarfarm' | 'windfarm' | 'coalplant' | 'dieselbank';
 export const STATION_KINDS: StationKind[] = ['solarfarm', 'windfarm', 'coalplant', 'dieselbank'];
@@ -85,14 +86,17 @@ export function baseKw(world: number, v: Poi, seed: number, s: TownState | undef
   const k = kind === 'solar' ? sunAt(v, t) * 1.3 : kind === 'wind' ? 0.4 + windAt(seed, t) * 0.8 : 1;
   return BASE_KW[kind] * Math.min(1, k) * (0.5 + 0.5 * c / 100);
 }
-export interface Balance { made: number; village: number; free: number; draw: number; powered: boolean[] }
+export interface Balance { made: number; village: number; free: number; draw: number; powered: boolean[]; farms: number; farmsPowered: number }
 /**
  * The village's power at time t: made (its plant and stations), taken by the village, and which works get power: in
- * the order they were built, each that has work to do takes its draw while enough is left.
+ * the order they were built, each that has work to do takes its draw while enough is left. The farms take theirs first.
  */
 export function balance(world: number, v: Poi, seed: number, s: TownState | undefined, t: number): Balance {
   const made = baseKw(world, v, seed, s, t) + (s?.stations ?? []).reduce((a, st) => a + stationKw(v, seed, st, t), 0);
   let free = Math.max(0, made - VILLAGE_KW), draw = 0;
+  // the farms come first (gen/farms.ts): pumps and lamps before the works
+  const farms = farmsKw(s), farmsGot = Math.min(free, farms);
+  free -= farmsGot;
   const powered = (s?.plants ?? []).map((p) => {
     if (!running(p)) return false;
     const d = DRAW[p.k];
@@ -100,7 +104,13 @@ export function balance(world: number, v: Poi, seed: number, s: TownState | unde
     if (free >= d) { free -= d; return true; }
     return false;
   });
-  return { made, village: Math.min(made, VILLAGE_KW), free, draw, powered };
+  return { made, village: Math.min(made, VILLAGE_KW), free, draw, powered, farms, farmsPowered: farms ? farmsGot / farms : 1 };
+}
+/** The share of their power the farms got over the day before t (12 samples, 2 h apart): solar nights and wind lulls average out. */
+export function farmPower(world: number, v: Poi, seed: number, s: TownState | undefined, t: number): number {
+  if (!farmsKw(s)) return 1;
+  let a = 0; for (let k = 0; k < 12; k++) a += balance(world, v, seed, s, t - k * 120).farmsPowered;
+  return a / 12;
 }
 /** Is works i of the village powered at time t? (For gen/plants.ts runPlant.) */
 export const poweredAt = (world: number, v: Poi, seed: number, s: TownState | undefined, i: number) => (t: number) => balance(world, v, seed, s, t).powered[i] ?? false;

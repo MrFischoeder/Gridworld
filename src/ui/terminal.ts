@@ -25,7 +25,8 @@ import { bearingTo, point8, fmtDist } from './compass';
 import { fmtTime, fmtClock } from '../core/time';
 import { $ } from './hud';
 import { trustOf, trustTier, shareLeft, TRUST_TIERS } from '../gen/standing';
-import { peopleAt, peopleTarget, workersAt, staffing } from '../gen/people';
+import { peopleAt, targetNow, workersAt, staffing } from '../gen/people';
+import { farmsOf, upgradedOf } from '../gen/farms';
 import { TECHS, techSites, CARRIER_NAME } from '../gen/tech';
 import { Terrain } from '../gen/terrain';
 import { OW } from '../world/overworld';
@@ -48,7 +49,7 @@ function villagePage(poi: Poi, vm: VillageMap): string {
   const prod = production(c.world, poi, seed, st, now), cond = siteCondition(c.world, poi, st, now), so = storeOf(poi.id, seed), info = storeInfo(seed, st, now, prod);
   let s = h(`${vm.name.toUpperCase()} · ${spec.name.toUpperCase()}`);
   s += row('Makes', p.makes.map(name).join(', ')) + row('Wants', p.wants.map(name).join(', '));
-  { const home = poi.id === GRIDHOLM_ID, n = peopleAt(seed, home, st, now), tg = peopleTarget(seed, home, st);
+  { const home = poi.id === GRIDHOLM_ID, n = peopleAt(seed, home, st, now), tg = Math.round(targetNow(seed, home, st));
     s += row('People', `${Math.round(n)} · ${workersAt(seed, home, st, now)} at work · staffing ×${staffing(seed, home, st, now).toFixed(2)}` + (Math.abs(tg - n) >= 1 ? ` · ${n < tg ? 'growing' : 'shrinking'} to ${tg}` : '')); }
   { const k = trustTier(st), tr = TRUST_TIERS[k]; s += row('Your standing', `${tr.name} · trust ${trustOf(st)}` + (tr.crates ? ` · share ${shareLeft(st, now)}/${tr.crates} crates today` : ` · ${TRUST_TIERS[1].min} for a share`)); }
   if (ind === 'farm') s += row('Fields', `${fert > 1.15 ? 'rich' : fert < 0.85 ? 'poor' : 'fair'} (×${fert.toFixed(2)})`);
@@ -77,7 +78,7 @@ function powerPage(poi: Poi, vm: VillageMap): string {
   const c = G.char, st = c.towns[poi.id], seed = vm.seed, now = c.time, b = balance(c.world, poi, seed, st, now);
   const kind = powerKind(seed), cond = plantCondition(poi.id, seed);
   let s = h(`POWER · ${fmtClock(now)}`);
-  s += row('Made now', `<b>${Math.round(b.made)} kW</b>`) + row('Village use', `${VILLAGE_KW} kW`) + row('Left for works', `${Math.round(Math.max(0, b.made - VILLAGE_KW))} kW`);
+  s += row('Made now', `<b>${Math.round(b.made)} kW</b>`) + row('Village use', `${VILLAGE_KW} kW`) + row('Left for farms and works', `${Math.round(Math.max(0, b.made - VILLAGE_KW))} kW`);
   s += h('SOURCES');
   s += row(POWER[kind].name, `${Math.round(baseKw(c.world, poi, seed, st, now))} kW · condition ${Math.round(cond)}%${cond < POWER_DOWN ? ' · DOWN' : ''}`);
   for (const x of st?.stations ?? []) {
@@ -85,6 +86,7 @@ function powerPage(poi: Poi, vm: VillageMap): string {
     s += row(sp.name, `${x.on ? Math.round(stationKw(poi, seed, x, now)) + ' kW' : 'OFF'} of ${sp.kw}` + (sp.fuel ? ` · bunker ${Math.floor(fuelAt(x, now))} ${sp.fuel === 'coal' ? 'coal' : 'fuel'}, ${x.on && fuelAt(x, now) > 0 ? `~${Math.round(fuelAt(x, now) * sp.burn! / 60)} h left` : 'not burning'}` : ''));
   }
   if (!(st?.stations ?? []).length) s += `<div class="tdim">No power stations. The works need them.</div>`;
+  if (b.farms) s += h('FARMS') + row(`${farmsOf(st)} farm${farmsOf(st) > 1 ? 's' : ''}${upgradedOf(st) ? `, ${upgradedOf(st)} with pumps` : ''}`, `draw ${b.farms} kW · ${Math.round(b.farmsPowered * 100)}% powered now (first in line)`);
   s += h('WORKS');
   const plants = plantsOf(st);
   plants.forEach((p, i) => { s += row(PLANTS[p.k].name, `draws ${DRAW[p.k]} kW · ${!running(p) ? 'idle' : b.powered[i] ? 'powered' : 'NO POWER'}`); });

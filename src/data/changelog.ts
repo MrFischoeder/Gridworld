@@ -4,6 +4,12 @@ export interface Change { v: string; date: string; title: string; notes: string[
 
 export const CHANGELOG: Change[] = [
   {
+    v: '0.63.0', date: '2026-09-28', title: 'Steel and current',
+    notes: ['Farms now need power: 3 kW each for the irrigation pumps and lamps, taken from the village\'s power before any works get theirs. A farm that gets no power feeds only 60% of what it could, so a village\'s power plant matters to its people too (the share over the last day counts, so solar nights and wind lulls even out).',
+      'With the old plans for Steel Ploughs, the elder can fit a farm with steel ploughs and a pump (5 scrap and 4 wire, handed over bit by bit). With power it feeds 1.6 times as many people; it draws 8 kW, so a village with several such farms will want a power station.',
+      'When the farms lose power the village shrinks towards what they can feed, slowly, and grows back once the power returns. The farms panel, the elder\'s power talk and the village computer (POWER) show what the farms draw and get. An upgraded field has a pump mast and a steel plough at its edge.'],
+  },
+  {
     v: '0.62.0', date: '2026-09-28', title: 'Fields',
     notes: ['Ask the elder: "Could we clear land for a farm?". Bring 8 logs and 6 stones (in your backpack or the trunk of a vehicle parked by the village; bit by bit is fine) and the villagers clear a field outside a corner of the wall, fence it and sow it. Up to 3 farms per village.',
       'Each farm feeds more people (15, more on rich soil, fewer on poor). Over the next days the village grows to that number, so it has more hands at work: its fields, mine or workshops put out more, its storehouse fills faster, and so does your share.',
