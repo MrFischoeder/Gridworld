@@ -6,8 +6,8 @@ import { G } from '../game';
 import { earnTrust } from '../world/standing';
 import { ITEMS } from '../data/items';
 import { calcStats, saveChar, gainXp } from '../character';
-import { offersAt, shipmentOffer, payFor, CONTRACT, type Contract } from '../gen/contracts';
-import { trade } from '../gen/market';
+import { offersAt, shipmentOffer, fuelOrder, payFor, CONTRACT, FUEL, type Contract } from '../gen/contracts';
+import { trade, type Good } from '../gen/market';
 import { findPoi, worldDist, nearX, allVillages, villageSeed, GRIDHOLM_ID, type Poi } from '../gen/regions';
 import { fmtTime } from '../core/time';
 import { loadedVillage } from '../world/overworld';
@@ -26,12 +26,14 @@ const where = (x: number, z: number) => `${fmtDist(worldDist(G.pos.x, G.pos.z, x
 const isShipment = (c: Contract) => c.id.startsWith('ship:');
 /** The offers at village v: its full storehouse's shipment first (while it waits for the convoy), then the posted ones. */
 export function localOffers(v: Poi, seed: number): Contract[] {
-  const c = G.char, sh = shipmentOffer(c.world, v, seed, c.towns[v.id], c.time);
-  return [...(sh ? [sh] : []), ...offersAt(c.world, v, seed, c.time)];
+  const c = G.char, sh = shipmentOffer(c.world, v, seed, c.towns[v.id], c.time), fu = fuelOrder(c.world, v, c.time);
+  return [...(sh ? [sh] : []), ...(fu ? [fu] : []), ...offersAt(c.world, v, seed, c.time)];
 }
 export function describe(c: Contract): string {
   const g = ITEMS[c.good].name, convoy = (c as Contract & { convoyAt?: number }).convoyAt;
-  return c.kind === 'supply'
+  return c.good === 'nfuel'
+    ? `<b>Fuel order:</b> ${c.n} × ${g} for the old reactor of ${c.toName}${worldDist(G.pos.x, G.pos.z, c.tx, c.tz) > 400 ? ` (${where(c.tx, c.tz)})` : ''} · ${c.pay} g a crate`
+    : c.kind === 'supply'
     ? `<b>Order:</b> ${c.n} × ${g} for ${c.toName} · ${c.pay} g a crate`
     : isShipment(c)
     ? `<b>Shipment:</b> ${c.n} × ${g} from ${c.fromName}'s full storehouse to ${c.toName} (${where(c.tx, c.tz)}) · ${c.pay} g a crate · deposit ${c.deposit} g, returned on delivery` +
@@ -73,7 +75,7 @@ export function contractsClick(t: HTMLElement): string | null {
   if (!n) return 'You have none of those crates with you.';
   takeFrom(k.good, n, poi);
   const pay = payFor(k, n);
-  k.done += n; c.gold += pay; trade(c.market, v.id, k.good, n, c.time);
+  k.done += n; c.gold += pay; if (k.good !== 'nfuel') trade(c.market, v.id, k.good, n, c.time);
   let m = `Handed over ${n} × ${ITEMS[k.good].name}: +${pay} gold.`;
   if (k.done >= k.n) { c.contracts.splice(c.contracts.indexOf(k), 1); gainXp(20 + k.n * 3); earnTrust(v.id, 'contract'); showToast('Contract fulfilled'); m += ' The contract is done.'; }
   calcStats(); saveChar();
@@ -114,7 +116,7 @@ export function acceptOffer(o: Contract): string {
     if (c.gold < o.deposit) return 'You cannot pay the deposit.';
     const room = stores(home).reduce((s, st) => s + Math.max(0, roomOf(st.slots, o.good, st.cap)), 0);
     if (room < o.n) return `No room for ${o.n} crates: you can take ${room}. Park a vehicle by the gates and come back.`;
-    putAway(o.good, o.n, home, true); c.gold -= o.deposit; trade(c.market, home.id, o.good, -o.n, c.time); // into the trunks first: crates are heavy
+    putAway(o.good, o.n, home, true); c.gold -= o.deposit; trade(c.market, home.id, o.good as Good, -o.n, c.time); // into the trunks first: crates are heavy
     const hs = villageSeed(c.world, home); takeStore((c.towns[home.id] ??= {}), hs, o.n, c.time, production(c.world, home, hs, c.towns[home.id], c.time)); // out of its storehouse
   }
   const { convoyAt: _, ...k } = o as Contract & { convoyAt?: number };
@@ -138,5 +140,9 @@ export function boardContracts(at?: Poi): Contract[] {
   const round = allVillages(c.world).filter((v) => v.id !== home.id && worldDist(v.x, v.z, home.x, home.z) < CONTRACT.far)
     .flatMap((v) => offersAt(c.world, v, villageSeed(c.world, v), c.time).filter((o) => o.kind === 'supply' && fresh(o)))
     .sort((p, q) => worldDist(p.tx, p.tz, home.x, home.z) - worldDist(q.tx, q.tz, home.x, home.z)).slice(0, 4);
-  return [...own, ...round];
+  // fuel orders travel further: the 2 nearest within FUEL.board
+  const fuel = allVillages(c.world).filter((v) => v.id !== home.id && worldDist(v.x, v.z, home.x, home.z) < FUEL.board)
+    .map((v) => fuelOrder(c.world, v, c.time)).filter((o): o is Contract => !!o && fresh(o))
+    .sort((p, q) => worldDist(p.tx, p.tz, home.x, home.z) - worldDist(q.tx, q.tz, home.x, home.z)).slice(0, 2);
+  return [...own, ...round, ...fuel];
 }

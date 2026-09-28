@@ -4,6 +4,15 @@ export interface Change { v: string; date: string; title: string; notes: string[
 
 export const CHANGELOG: Change[] = [
   {
+    v: '0.69.0', date: '2026-09-28', title: 'Fuel orders',
+    notes: [
+      'A few villages far out (8 km and more from Gridholm) still run an old reactor of their own. Most days they post a fuel order: 1 to 3 crates of Nuclear Fuel Rods, due in 3 to 6 days, paid far better than anything else (from about 520 gold a crate, more in the dangerous lands).',
+      'Fuel orders are posted at the village\'s store and on the notice boards of villages up to 20 km away, and handed over at the village\'s store like any other order.',
+      'The Old Enrichment Plant\'s control desk lists the three old reactors nearest to it and what they order today.',
+      'The village computer marks villages with an old reactor (VILLAGES) and shows today\'s order in its own village (VILLAGE).',
+    ],
+  },
+  {
     v: '0.68.0', date: '2026-09-28', title: 'Small reactors',
     notes: [
       'A new power station: the Small Reactor, 250 kW of steady power, more than any other. The elder offers it among the power stations once you have the plans for Uranium Enrichment (steel, hull alloy, copper cable, electronics, power cores and 2000 gold).',

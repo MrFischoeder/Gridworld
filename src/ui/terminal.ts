@@ -31,6 +31,7 @@ import { farmsOf, upgradedOf } from '../gen/farms';
 import { TECHS, techSites, CARRIER_NAME, dirWord } from '../gen/tech';
 import { Terrain } from '../gen/terrain';
 import { installSites, installDone, INSTALL_STAGES } from '../gen/installs';
+import { oldReactor, fuelOrder } from '../gen/contracts';
 import { OW } from '../world/overworld';
 import { lockPointer } from './input';
 
@@ -52,6 +53,7 @@ function villagePage(poi: Poi, vm: VillageMap): string {
   let s = h(`${vm.name.toUpperCase()} · ${spec.name.toUpperCase()}`);
   s += row('Makes', p.makes.map(name).join(', ')) + row('Wants', p.wants.map(name).join(', '));
   { const dep = depositOf(c.world, poi); if (dep) s += row('Rare deposit', RARE_NAME[dep]); }
+  if (oldReactor(c.world, poi)) { const o = fuelOrder(c.world, poi, c.time); s += row('Old reactor', o ? `orders ${o.n} crates of fuel rods today, ${o.pay} g a crate` : 'no fuel order today'); }
   { const home = poi.id === GRIDHOLM_ID, n = peopleAt(seed, home, st, now), tg = Math.round(targetNow(seed, home, st));
     s += row('People', `${Math.round(n)} · ${workersAt(seed, home, st, now)} at work · staffing ×${staffing(seed, home, st, now).toFixed(2)}` + (Math.abs(tg - n) >= 1 ? ` · ${n < tg ? 'growing' : 'shrinking'} to ${tg}` : '')); }
   { const k = trustTier(st), tr = TRUST_TIERS[k]; s += row('Your standing', `${tr.name} · trust ${trustOf(st)}` + (tr.crates ? ` · share ${shareLeft(st, now)}/${tr.crates} crates today` : ` · ${TRUST_TIERS[1].min} for a share`)); }
@@ -152,7 +154,7 @@ function villagesPage(poi: Poi): string {
     const built = [...plantsOf(st).map((x) => PLANTS[x.k].name), ...(st?.stations ?? []).map((x) => STATIONS[x.k].name)];
     const seen = c.ledger[v.id];
     s += `<div class="tline"><b>${v.name}</b> <span class="tdim">${fmtDist(d)} ${point8(bearingTo(v.x, v.z))} · ${ind.name}${linked.has(v.id) ? ' · road' : ''}</span><br>` +
-      `makes ${p.makes.map(name).join(', ')} · wants ${p.wants.map(name).join(', ')}${depositOf(c.world, v) ? ` · <b>deposit: ${RARE_NAME[depositOf(c.world, v)!]}</b>` : ''}` +
+      `makes ${p.makes.map(name).join(', ')} · wants ${p.wants.map(name).join(', ')}${depositOf(c.world, v) ? ` · <b>deposit: ${RARE_NAME[depositOf(c.world, v)!]}</b>` : ''}${oldReactor(c.world, v) ? ' · <b>old reactor (orders fuel rods)</b>' : ''}` +
       `<br><span class="tdim">${WALL_TIERS[wallOf(st)].name}${built.length ? ' · ' + built.join(', ') : ''}${seen ? ` · prices seen ${hours(c.time - seen.t)} ago` : ''}</span></div>`;
   }
   return s;

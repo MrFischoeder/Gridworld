@@ -6,22 +6,26 @@
 //   hand them over at the other end. Pay grows with the distance and the danger on the way.
 // - shipment: a full storehouse (gen/store.ts) offers its load to you first: a big haul, better paid, for as long as
 //   the storehouse waits (`STORE.wait`); if nobody takes it, the village's own convoy carries it off.
+// - fuel order: a village far out that still runs an old reactor of its own (`oldReactor`) orders Nuclear Fuel Rods
+//   (made only by the restored Old Enrichment Plant, gen/installs.ts) now and then, and pays very well for them.
 // Offers are posted every `CONTRACT.period` game minutes, two per village, from the seed: pure, so on the future
 // server every player sees the same notices (a taken offer is marked in the save).
 import { hash, rng } from '../core/rng';
-import { allVillages, worldDist, villageSeed, type Poi } from './regions';
-import { dangerAt } from './danger';
+import { allVillages, worldDist, villageSeed, GRIDHOLM_ID, type Poi } from './regions';
+import { dangerAt, ringDanger } from './danger';
 import { profileOf, quote, GOOD_INFO, type Good } from './market';
 import { storeInfo, storeCap } from './store';
 import { production } from './industry';
 import type { TownState } from './town';
 
+/** What a contract carries: a market good, or fuel rods (gen/installs.ts: not on any market). */
+export type Cargo = Good | 'nfuel';
 export const CONTRACT = { period: 720, perVillage: 2, maxActive: 3, near: 2000, far: 9000, premium: 1.35 };
 export interface Contract {
   id: string; kind: 'supply' | 'haul';
   /** Where it was offered, and where the crates are to go (for supply: the same village). */
   from: number; fromName: string; to: number; toName: string; tx: number; tz: number;
-  good: Good; n: number;
+  good: Cargo; n: number;
   /** Crates handed over so far, pay per crate, the deposit (haul: paid when taken, returned in full at the end) and the deadline (game time). */
   done: number; pay: number; deposit: number; due: number;
 }
@@ -81,4 +85,23 @@ export function shipmentOffer(world: number, v: Poi, seed: number, s: TownState 
 export function payFor(c: Contract, k: number): number {
   const finishing = c.done + k >= c.n;
   return k * c.pay + (c.kind === 'haul' && finishing ? c.deposit : 0);
+}
+
+// ---------- fuel orders: villages with an old reactor ----------
+/** Old reactors: none within `from` m of Gridholm, a `chance` of the villages further out; an order most days (`skip`), 1-3 crates, paid by the danger of its ring (the village itself is a refuge). */
+export const FUEL = { from: 8000, chance: 0.12, period: 1440, skip: 0.35, pay: 520, perDanger: 70, board: 20000 };
+/** Does village v still run an old reactor of its own (so it orders fuel rods)? Fixed per world. */
+export function oldReactor(world: number, v: Poi): boolean {
+  if (v.id === GRIDHOLM_ID || worldDist(v.x, v.z, 0, 0) < FUEL.from) return false;
+  return hash(world, v.id, 0xf0e1) % 1000 < FUEL.chance * 1000;
+}
+/** Every village of a world with an old reactor. */
+export const reactorVillages = (world: number) => allVillages(world).filter((v) => oldReactor(world, v));
+/** The fuel order village v posts for the game day that is on at `now` (null: no reactor, or no order today). */
+export function fuelOrder(world: number, v: Poi, now: number): Contract | null {
+  if (!oldReactor(world, v)) return null;
+  const post = Math.floor(now / FUEL.period), R = rng(hash(world, v.id, post, 0xf0e2));
+  if (R() < FUEL.skip) return null;
+  const n = 1 + Math.floor(R() * 3), pay = Math.round((FUEL.pay + FUEL.perDanger * ringDanger(worldDist(v.x, v.z, 0, 0))) / 10) * 10;
+  return { id: `fuel:${v.id}:${post}`, kind: 'supply', from: v.id, fromName: v.name, to: v.id, toName: v.name, tx: v.x, tz: v.z, good: 'nfuel', n, done: 0, pay, deposit: 0, due: post * FUEL.period + Math.round((3 + R() * 3) * 1440) };
 }
