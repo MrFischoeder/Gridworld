@@ -1,6 +1,7 @@
 // Loading places (dungeon sectors, the open world) and moving between them.
 import * as THREE from 'three';
 import { crashSpawn } from './crashpod';
+import { placeCarrier, dropCarrier } from './datacarriers';
 import { landingSite } from '../gen/landing';
 import { Terrain } from '../gen/terrain';
 import { scene, fog, lineMat, add, V, fillMat, GRID } from './render';
@@ -58,6 +59,7 @@ export function voxelObject(grid: VoxelGrid, skyY = Infinity, outline?: OutlineS
 
 /** Removes every entity of the current place (the open world also unloads its chunks and structures). */
 function clearLevel() {
+  dropCarrier();
   closeWorld(); leaveCave(); clearCrystals(); clearFires(); clearBenches(); clearFlags(); cancelPlacing(true); clearBases(); clearTurrets();
   if (worldGroup) { scene.remove(worldGroup); worldGroup.traverse((o) => (o as THREE.Mesh).geometry?.dispose()); worldGroup = null; }
   [...W.crystals.map((c) => c.m), ...W.pickups.map((p) => p.g), ...W.chests.map((c) => c.g), ...W.doors.map((d) => d.g), ...W.bosses.map((b) => b.g),
@@ -84,6 +86,7 @@ export function loadDungeon(arriveDir: string | null) {
   const c = G.char, d = c.dungeon!;
   if (d.cave) { // a cave system: its own kind of place
     buildCave(d, () => { clearLevel(); setLocationLook(false); }, (g) => { worldGroup = g; });
+    placeCarrier();
     saveChar(); return;
   }
   const seed = hash(c.world, d.ruinId, d.depth, d.gx, d.gz);
@@ -127,6 +130,7 @@ export function loadDungeon(arriveDir: string | null) {
     spawnGuards(map.guards ?? [], lv);
   }
   onDungeonLoaded(map);
+  placeCarrier();
   setMiniMode('voxel'); buildMini();
   el.hudL.textContent = wreck ? ruinName(d.ruinId) : 'Depth ' + d.depth + ', sector ' + d.gx + ', ' + d.gz;
   if (wreck) el.route.style.display = 'none'; // no way further down from a wreck el.seed.value = String(c.world); renderSheet(); saveChar();

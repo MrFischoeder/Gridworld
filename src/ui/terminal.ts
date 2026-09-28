@@ -24,11 +24,14 @@ import { describe as describeContract, dueText } from './contracts';
 import { bearingTo, point8, fmtDist } from './compass';
 import { fmtTime, fmtClock } from '../core/time';
 import { $ } from './hud';
+import { TECHS, techSites, CARRIER_NAME } from '../gen/tech';
+import { Terrain } from '../gen/terrain';
+import { OW } from '../world/overworld';
 import { lockPointer } from './input';
 
 const dlgEl = $('dlg'), panel = () => dlgEl.querySelector('.panel') as HTMLElement;
-type Page = 'village' | 'power' | 'trade' | 'villages' | 'chariot';
-const PAGES: [Page, string][] = [['village', 'VILLAGE'], ['power', 'POWER'], ['trade', 'TRADE'], ['villages', 'VILLAGES'], ['chariot', 'CHARIOT']];
+type Page = 'village' | 'power' | 'trade' | 'villages' | 'archive' | 'chariot';
+const PAGES: [Page, string][] = [['village', 'VILLAGE'], ['power', 'POWER'], ['trade', 'TRADE'], ['villages', 'VILLAGES'], ['archive', 'ARCHIVE'], ['chariot', 'CHARIOT']];
 let open: { vid: number; vm: VillageMap } | null = null, page: Page = 'village';
 
 const name = (g: Good) => ITEMS[g].name;
@@ -134,6 +137,23 @@ function villagesPage(poi: Poi): string {
   return s;
 }
 
+/** The technologies read off the data carriers you found (gen/tech.ts). */
+function archivePage(): string {
+  const c = G.char, sites = techSites(OW.terrain && OW.terrain.world === c.world ? OW.terrain : new Terrain(c.world));
+  const got = TECHS.filter((t) => c.tech[t.id] !== undefined);
+  let s = h(`ARCHIVE · ${got.length} OF ${TECHS.length} RECOVERED`);
+  if (!got.length) s += `<div class="tdim">No data. The old civilisation kept its plans on floppy disks, data disks and memory crystals. Some must still lie in the ruins, the crashed ships and the caves: the simpler knowledge near Gridholm, the rarer further out.</div>`;
+  for (const t of got) {
+    const at = sites.find((x) => x.tech === t.id);
+    s += row(t.name, `${AREA[t.area]} · level ${t.tier}`) + `<div class="tdim">${t.blurb}${at ? ` · from a ${CARRIER_NAME[at.carrier].toLowerCase()}, ${at.name}` : ''}</div>`;
+  }
+  const left = ([1, 2, 3, 4] as const).map((k) => [k, TECHS.filter((t) => t.tier === k && c.tech[t.id] === undefined).length] as const).filter(([, n]) => n);
+  if (left.length) s += h('STILL LOST') + left.map(([k, n]) => row(`Level ${k}`, `${n} ${n > 1 ? 'plans' : 'plan'} · ${TIER_WHERE[k]}`)).join('');
+  return s;
+}
+const AREA: Record<string, string> = { farming: 'Farming', building: 'Building', power: 'Power', metal: 'Metalwork', electronics: 'Electronics', transport: 'Transport', navigation: 'Navigation', chemistry: 'Chemistry', nuclear: 'Nuclear' };
+const TIER_WHERE: Record<number, string> = { 1: 'within a few km of Gridholm', 2: 'some 3 to 8 km out', 3: 'some 8 to 16 km out', 4: 'far out, 16 km and more' };
+
 function chariotPage(): string {
   const s0 = G.char.shuttle;
   let s = h(`${CHARIOT.toUpperCase()} · ${stagesDone(s0)} OF ${STAGES.length}`);
@@ -148,7 +168,7 @@ function render() {
   if (!open) return;
   const poi = findPoi(G.char.world, open.vid);
   if (!poi) return;
-  const body = page === 'village' ? villagePage(poi, open.vm) : page === 'power' ? powerPage(poi, open.vm) : page === 'trade' ? tradePage(poi, open.vm) : page === 'villages' ? villagesPage(poi) : chariotPage();
+  const body = page === 'village' ? villagePage(poi, open.vm) : page === 'power' ? powerPage(poi, open.vm) : page === 'trade' ? tradePage(poi, open.vm) : page === 'villages' ? villagesPage(poi) : page === 'archive' ? archivePage() : chariotPage();
   panel().classList.add('wide');
   panel().innerHTML = `<div class="term"><div class="ttabs">${PAGES.map(([k, t]) => `<button class="ttab${k === page ? ' on' : ''}" data-tt="${k}">${t}</button>`).join('')}</div>` +
     `<div class="tbody">${body}</div><div class="tfoot">${open.vm.name.toUpperCase()} HALL TERMINAL · ${fmtClock(G.char.time)}</div></div>` +

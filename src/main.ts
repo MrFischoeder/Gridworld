@@ -59,6 +59,7 @@ import { updateWeather, seen } from './world/weather';
 import { WEATHER_NAME } from './gen/weather';
 import { introOn, renderIntro } from './ui/intro';
 import { updateCrash } from './world/crashpod';
+import { spinCarrier } from './world/datacarriers';
 
 G.char = loadChar();
 document.getElementById('vnum')!.textContent = 'v' + VERSION;
@@ -125,7 +126,7 @@ function frame(now: number) {
     updateBossBar(boss);
     if (G.god) G.hp = G.S.maxHp;
     if (G.hp <= 0) { el.warp.style.opacity = '1'; toVillage('death'); }
-    updateLoot(dt, time); updateEntities(dt, time);
+    updateLoot(dt, time); spinCarrier(time); updateEntities(dt, time);
     if (outdoors) {
       const name = placeName(G.pos.x, G.pos.z);
       if (el.hudL.textContent !== name) el.hudL.textContent = name;

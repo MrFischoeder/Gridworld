@@ -4,6 +4,13 @@ export interface Change { v: string; date: string; title: string; notes: string[
 
 export const CHANGELOG: Change[] = [
   {
+    v: '0.56.0', date: '2026-09-28', title: 'Lost knowledge',
+    notes: ['The old civilisation\'s knowledge is not gone, only scattered. Sixteen technologies survive as plans on old data carriers (floppy disks, data disks and memory crystals), each lying in one fixed place of the world: the first vault of a ruin, a crashed ship or a cave. Look for a violet beam over a small pedestal and take the carrier with E.',
+      'The simpler knowledge (farming, timber framing, wind rotors, tools) lies within a few km of Gridholm; circuits, furnaces and solar cells further out; chips, radio navigation and engines further still; the rarest (uranium, rocket propellant, rail lines) far out on the continent.',
+      'Every village computer has a new ARCHIVE tab: the plans you have recovered and how many are still lost at each level.',
+      'For now the plans are only recorded: what each one unlocks comes in the next updates.'],
+  },
+  {
     v: '0.55.0', date: '2026-09-28', title: 'Castaways',
     notes: ['You are no longer from here. A new character starts with an opening drawn in the game\'s own lines: your survey ship, the Kestrel, cruising the outer belt of an uncharted system, a meteor stream out of nowhere, the hit that tears off a wing, the tumble into a strange planet\'s gravity and the burning fall through its air. Space, Enter or a click skips it.',
       'You wake in the wreck a few hundred metres out of Gridholm, at the end of the furrow it ploughed. Smoke rises from the torn roof and the crumpled engine and an emergency lamp blinks inside. Search the locker for the survival kit (medkits, water, bread, a fire kit and a compass) and read the flight recorder at the console: what happened, what is left of the ship, and what the scanners saw on the way down.',
