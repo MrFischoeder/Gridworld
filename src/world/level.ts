@@ -1,5 +1,8 @@
 // Loading places (dungeon sectors, the open world) and moving between them.
 import * as THREE from 'three';
+import { crashSpawn } from './crashpod';
+import { landingSite } from '../gen/landing';
+import { Terrain } from '../gen/terrain';
 import { scene, fog, lineMat, add, V, fillMat, GRID } from './render';
 import { G, W } from '../game';
 import { hash, OPP, DIRV, type Dir } from '../core/rng';
@@ -307,6 +310,9 @@ export function loadOverworld(a: Arrival) {
   let x = 0, z = 12, yaw = 0;
   if (a.kind === 'saved' && c.ow) { x = c.ow.x; z = c.ow.z; yaw = c.ow.yaw; }
   if (a.kind === 'ruin') { const p = findPoi(c.world, a.id); if (p) { x = p.x; z = p.z; } }
+  // a new character wakes in the wreck of their ship (world/crashpod.ts): load the land round it
+  const crash = !c.intro && (a.kind === 'new' || (a.kind === 'saved' && !c.ow));
+  if (crash) { const l = landingSite(OW.terrain?.world === c.world ? OW.terrain : new Terrain(c.world)); x = l.x; z = l.z; }
   if (a.kind === 'tavern' && a.id !== undefined) { const p = findPoi(c.world, a.id); if (p) { x = p.x; z = p.z + 12; } }
   G.pos.set(x, G.pos.y, z); // vehicles are placed on the copy of the world nearest to the player
   openWorld(x, z);
@@ -323,6 +329,8 @@ export function loadOverworld(a: Arrival) {
     } else if (a.kind === 'tavern') {
       const t = vm.buildings.find((b) => b.role === 'innkeeper')!;
       G.pos.set(t.door.x + t.out[0] * 2, vm.y, t.door.z + t.out[1] * 2); G.yaw = Math.atan2(t.out[0], t.out[1]);
+    } else if (crash && crashSpawn()) {
+      const sp = crashSpawn()!; G.pos.set(sp.x, OW.terrain!.heightAt(sp.x, sp.z), sp.z); G.yaw = sp.yaw;
     } else { G.pos.set(...vm.spawn); G.yaw = 0; }
   }
   setCrystalXp(() => 3 + 2 * Math.floor(danger(G.pos.x, G.pos.z)));

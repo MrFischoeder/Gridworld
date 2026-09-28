@@ -4,6 +4,13 @@ export interface Change { v: string; date: string; title: string; notes: string[
 
 export const CHANGELOG: Change[] = [
   {
+    v: '0.55.0', date: '2026-09-28', title: 'Castaways',
+    notes: ['You are no longer from here. A new character starts with an opening drawn in the game\'s own lines: your survey ship, the Kestrel, cruising the outer belt of an uncharted system, a meteor stream out of nowhere, the hit that tears off a wing, the tumble into a strange planet\'s gravity and the burning fall through its air. Space, Enter or a click skips it.',
+      'You wake in the wreck a few hundred metres out of Gridholm, at the end of the furrow it ploughed. Smoke rises from the torn roof and the crumpled engine and an emergency lamp blinks inside. Search the locker for the survival kit (medkits, water, bread, a fire kit and a compass) and read the flight recorder at the console: what happened, what is left of the ship, and what the scanners saw on the way down.',
+      'The villagers do not care about the stars. Only you, and the other castaways who will one day come down beside you, want the Chariot of the Ancients to fly: it is your way home.',
+      'Characters that already exist skip the opening. The wreck stays where it fell for everyone.'],
+  },
+  {
     v: '0.54.1', date: '2026-09-25', title: 'The road to the launch, reworked',
     notes: ['No launch-night attack after all. Instead the Chariot will stop you three times: the hangar crew finds it cannot go on without a part that only one of the wonders of the Ancients can give, and you have to leave the Chariot and restore that wonder first. Each lies further out than the last, so nobody reaches the launch without the side roads.',
       'Timed again by the player bot: about 80 hours alone, of which some 35 go into those three wonders; around 50 hours with a friend and 33 with four.'],

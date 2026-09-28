@@ -11,6 +11,7 @@ import { setWalkways, dropWalkways, walkFloor, walkHit } from './walkways';
 import { setDoors, dropDoors, doorHit, doorRay } from './housedoors';
 import { recentDead } from './villageraid';
 import * as THREE from 'three';
+import { setCrash, dropCrash, podHit } from './crashpod';
 import { scene, V, GRID, localize } from './render';
 import { G, W } from '../game';
 import { VoxelGrid, type Space } from '../core/voxel';
@@ -489,13 +490,14 @@ export function openWorld(x: number, z: number) {
   OW.terrain.setClaims(G.char.claims);
   closeWorld();
   G.water = (px, pz) => (inStructure(px, pz) ? null : OW.terrain!.water(px, pz));
-  G.space = space; G.ground = groundAt; G.obstacle = (px, py, pz, r) => treeHit(px, py, pz, r) || vehicleHit(px, py, pz, r) || caravanHit(px, py, pz, r) || ambushHit(px, py, pz, r) || baseHit(px, py, pz, r) || ladderHit(px, py, pz, r) || walkHit(px, py, pz, r) || guardHit(px, py, pz, r) || houseHit(px, py, pz, r) || doorHit(px, py, pz, r);
+  G.space = space; G.ground = groundAt; G.obstacle = (px, py, pz, r) => treeHit(px, py, pz, r) || vehicleHit(px, py, pz, r) || caravanHit(px, py, pz, r) || ambushHit(px, py, pz, r) || baseHit(px, py, pz, r) || ladderHit(px, py, pz, r) || walkHit(px, py, pz, r) || guardHit(px, py, pz, r) || houseHit(px, py, pz, r) || doorHit(px, py, pz, r) || podHit(px, py, pz, r);
   G.floor = (x, y, z) => Math.max(baseFloor(x, y, z), ladderFloor(x, y, z), walkFloor(x, y, z)); G.rayBlock = (o, d, t) => doorRay(o, d, houseRay(o, d, baseRay(o, d, t))); G.solid = (p) => baseSolid(p) || houseSolid(p);
   foeRules.blocked = (p) => nearVillage(p.x, p.z) < 2;
   foeRules.playerSafe = () => inVillage(G.pos.x, G.pos.z) && !raidHere(); // no safe place while bandits raid it
   foeRules.ground = (px, pz) => OW.terrain!.heightAt(px, pz);
   foeRules.shielded = shielded;
   foeRules.shieldHit = (dmg) => { if (driving.v) damageVehicle(driving.v, dmg); };
+  setCrash(OW.terrain);
   updateStructs(x, z);
   const pcx = Math.floor(x / CHUNK), pcz = Math.floor(z / CHUNK);
   for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) OW.chunks.set(ckey(pcx + i, pcz + j), buildChunk(pcx + i, pcz + j));
@@ -521,7 +523,7 @@ export function openWorld(x: number, z: number) {
   for (const s of OW.structs.values()) if (s.camp) spawnCamp(s.camp);
 }
 export function closeWorld() {
-  clearVehicles();
+  clearVehicles(); dropCrash();
   setCreatureEnv(null); clearCreatures();
   setRobotEnv(null); clearRobots();
   setBanditEnv(null); clearBandits();

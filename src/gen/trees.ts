@@ -6,6 +6,7 @@ import { nearestOnRoad } from './roads';
 import { lakeBed, shoreR } from './water';
 import { plantsNear, PLANT_SPAN } from './flora';
 import { mountainMask } from './mountains';
+import { inScar } from './landing';
 
 /** Open ground kept around places: villages keep a wide ring (the vehicle yard sits there). */
 const clearing = (p: { type: string }) => (p.type === 'village' ? 20 : 6);
@@ -97,6 +98,7 @@ export function chunkTrees(t: Terrain, cx: number, cz: number): Tree[] {
   for (const s of treeSpots(t, cx, cz)) {
     const tr = classify(t, f, s), span = TREE_SPAN[tr.kind];
     if (wet(s.x, s.z, span * 0.6 + 1) || t.water(s.x, s.z)) continue; // no trees in the water
+    if (inScar(t, s.x, s.z, 9 + span)) continue; // the hero's ship flattened them
     if (plants.some((p) => Math.hypot(p.x - s.x, p.z - s.z) < PLANT_SPAN[p.kind] + span + 0.8)) continue;
     const blocked = near.some((b) => b.seed !== tr.seed && Math.hypot(b.x - tr.x, b.z - tr.z) < Math.max(TREE_SPAN[b.kind], span) && (span === 0 || beats(b, tr)));
     if (!blocked) out.push(tr);
@@ -129,7 +131,7 @@ export function chunkRocks(t: Terrain, cx: number, cz: number): Rock[] {
     const r = big ? 1.4 + R() * 1.2 : 0.4 + R() * 0.7, h = r * (0.5 + R() * 0.6), sides = 3 + Math.floor(R() * 3), rot = R() * 6.283;
     if (f.pads.some((p) => rectDist(p.poi.rect, x, z) < p.poi.flat + clearing(p.poi))) continue;
     if (f.roads.some((rd) => nearestOnRoad(rd, x, z)[0] < rd.half + r + 0.5)) continue;
-    if (t.water(x, z)) continue;
+    if (t.water(x, z) || inScar(t, x, z, 8 + r)) continue;
     const k: Rock = { x, z, y: t.heightAt(x, z) - 0.15, r, h, sides, rot }, ore = oreOf(t.world, cx, cz, out.length, k);
     if (ore) k.ore = ore;
     out.push(k);

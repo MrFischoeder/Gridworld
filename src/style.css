@@ -316,3 +316,12 @@ body.is-touch #bUse.on{display:flex}
 .trow.mono span:last-child{white-space:pre}
 .tline{font-size:19px;margin:4px 0;line-height:1.25}.tdim{color:#4fa86a;font-size:17px}
 .tfoot{margin-top:10px;color:#3f8a56;font-size:16px;border-top:1px dashed #1f6a34;padding-top:4px}
+/* the opening (ui/intro.ts) */
+body.intro > *:not(#view):not(.fx):not(#intro){visibility:hidden}
+#intro{position:fixed;inset:0;display:none;z-index:50;cursor:none}
+#intro .flash{position:absolute;inset:0;background:#f4fff8;opacity:0;pointer-events:none}
+#intro .cap{position:absolute;left:0;right:0;bottom:17%;text-align:center;font-size:clamp(30px,4.4vw,56px);letter-spacing:.14em;color:var(--g);text-shadow:0 0 10px rgba(61,255,110,.8)}
+#intro .cap.red{color:#ff5a3c;text-shadow:0 0 12px rgba(255,90,60,.85)}
+#intro .sub{position:absolute;left:0;right:0;bottom:calc(17% - 36px);text-align:center;font-size:clamp(18px,2vw,26px);color:var(--txt);opacity:.85}
+#intro .alt{position:absolute;right:4%;top:8%;font-size:30px;color:#ff9a4a;text-shadow:0 0 8px rgba(255,154,74,.8)}
+#intro .hint{position:absolute;right:18px;bottom:14px;font-size:18px;opacity:0;color:var(--txt);transition:opacity .4s}

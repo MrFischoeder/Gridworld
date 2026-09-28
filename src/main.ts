@@ -57,6 +57,8 @@ import { updateStations } from './world/stations';
 import { updateChariot } from './ui/shuttle';
 import { updateWeather, seen } from './world/weather';
 import { WEATHER_NAME } from './gen/weather';
+import { introOn, renderIntro } from './ui/intro';
+import { updateCrash } from './world/crashpod';
 
 G.char = loadChar();
 document.getElementById('vnum')!.textContent = 'v' + VERSION;
@@ -84,6 +86,7 @@ let last = performance.now(), perfT = 0, saveT = 0, clockT = 0;
 let benchT = 0; // workbenches in the wilds are synced about once a second
 function frame(now: number) {
   const dt = Math.min((now - last) / 1000, 0.05); last = now;
+  if (introOn() && !renderIntro(renderer, dt)) { requestAnimationFrame(frame); return; } // the opening has the screen
   const time = now / 1000;
   const outdoors = G.char.loc === 'overworld';
   let moving = false;
@@ -116,7 +119,7 @@ function frame(now: number) {
     if (driving.v) fireCannon(dt);
     updateDoors(dt);
     updateRobots(dt, time); // the open world's robots, or a crashed ship's guards
-    if (outdoors) { updateFieldEnemies(dt); updateCreatures(dt, time); updateBandits(dt, time); updateRaiders(dt); animateCamps(time); smokeWrecks(dt); animateWater(time); }
+    if (outdoors) { updateFieldEnemies(dt); updateCreatures(dt, time); updateBandits(dt, time); updateRaiders(dt); animateCamps(time); smokeWrecks(dt); updateCrash(dt, time); animateWater(time); }
     updateDrones(dt);
     const boss = updateBosses(dt, time); updateOrbs(dt);
     updateBossBar(boss);

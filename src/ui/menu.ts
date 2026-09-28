@@ -5,6 +5,8 @@ import { lockPointer } from './input';
 import { newChar } from '../save';
 import { calcStats, saveChar, handsChanged } from '../character';
 import { openChangelog } from './changelog';
+import { playIntro } from './intro';
+import { renderer } from '../world/render';
 
 const menu = $('menu'), startBtn = $('start'), wipeBtn = $('wipe'), nameIn = $<HTMLInputElement>('heroName'), nameHint = $('nameHint');
 /** A name as the villagers will say it: trimmed, single spaces, letters, digits and a few marks, at most 20 characters. */
@@ -33,7 +35,14 @@ export function initMenu(h: MenuHooks) {
     const s = parseInt(el.seed.value, 10);
     if (Number.isFinite(s) && s !== G.char.world) h.newWorld(s);
     if (!G.isTouch) lockPointer();
-    G.playing = true; menu.style.display = 'none';
+    menu.style.display = 'none';
+    if (G.char.intro) { G.playing = true; return; }
+    // a new character: the opening first, then they wake in the wreck of their ship
+    playIntro(() => {
+      G.char.intro = true; saveChar();
+      if (!G.isTouch && document.pointerLockElement !== renderer.domElement) { showMenu(); return; } // skipped with Esc: the pointer is free
+      G.playing = true;
+    });
   };
   $('changelog').onclick = openChangelog;
   $('reroll').onclick = () => { h.newWorld((Math.random() * 1e6) | 0); startBtn.textContent = 'Play'; };

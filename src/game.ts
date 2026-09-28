@@ -49,7 +49,7 @@ export const G = {
   /** Swimming (deep water): weapons are away, movement is slow. */
   swimming: false,
   mapOpen: false,
-  playing: false, packOpen: false, dlgOpen: false, xferOpen: false, consoleOpen: false, firing: false,
+  playing: false, packOpen: false, dlgOpen: false, xferOpen: false, consoleOpen: false, intro: false, firing: false,
   /** Console cheat: full health that never drops. */
   god: false,
   /** Developer flight (console `fly`): no gravity, no collisions, fast; `flySpeed` in m/s. */
@@ -82,4 +82,4 @@ export const W = {
 
 
 /** Any window that pauses play (backpack, dialogue, container). */
-export const uiOpen = () => G.packOpen || G.dlgOpen || G.xferOpen || G.consoleOpen;
+export const uiOpen = () => G.packOpen || G.dlgOpen || G.xferOpen || G.consoleOpen || G.intro;

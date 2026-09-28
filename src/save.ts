@@ -25,6 +25,8 @@ export interface Char {
   v: 3;
   /** The hero's name, entered in the menu before the first game (everyone calls you by it). */
   name: string;
+  /** Seen the opening (ui/intro.ts: the ship, the meteor storm, the fall). False for a new character: it starts at the crash site. */
+  intro: boolean;
   /** Villages where you own a house (bought from the elder; Gridholm's for now). */
   houses: number[];
   /** The shuttle project in the hangar by Gridholm (gen/shuttle.ts): crates handed over per stage. */
@@ -88,7 +90,7 @@ export const SAVE_KEY = 'gridWorld.character.v3';
 export const ARENA_V3_KEY = 'gridArena.character.v3', V2_KEY = 'gridArena.character.v2', OLD_KEY = 'gridArena.character.v1';
 
 export const newChar = (): Char => ({
-  v: 3, name: '', houses: [], shuttle: { given: {} }, level: 1, xp: 0, gold: 0, world: (Math.random() * 1e6) | 0,
+  v: 3, name: '', intro: false, houses: [], shuttle: { given: {} }, level: 1, xp: 0, gold: 0, world: (Math.random() * 1e6) | 0,
   inv: Array(INV_SIZE).fill(null), mods: Array(MOD_SIZE).fill(null), opened: {}, unlocked: {}, killed: {},
   loc: 'overworld', ow: null, dungeon: null, discovered: {}, containers: {}, vehicles: [], board: { seq: 0, offers: [], stamp: boardPeriod(START_TIME) }, boards: {}, quests: [], camps: {}, time: START_TIME, gunMods: [null, null, null], kcal: KCAL.start, stomach: 0, water: 100, harvest: {}, benches: [], claims: [],
   hands: [{ k: 'blaster', n: 1 }], back: [{ k: 'blade', n: 1 }, null], wear: {}, pid: Math.random().toString(36).slice(2, 10), towns: {}, market: {}, ledger: {}, caravans: {}, escort: null, contracts: [], taken: [],
@@ -98,7 +100,7 @@ interface V2 { level?: number; xp?: number; gold?: number; world?: number; inv?:
 
 /** v1 stored relic counts; they go into free modules first, then the backpack. */
 function migrateV1(o: { level?: number; xp?: number; gold?: number; relics?: Record<string, number> }): Char {
-  const c = newChar();
+  const c = newChar(); c.intro = true;
   Object.assign(c, { level: o.level || 1, xp: o.xp || 0, gold: o.gold || 0 });
   for (const [k, n] of Object.entries(o.relics || {})) {
     if (!(k in ITEMS)) continue;
@@ -112,7 +114,7 @@ function migrateV1(o: { level?: number; xp?: number; gold?: number; relics?: Rec
 }
 /** v2 -> v3: character, backpack and gold stay; dungeon progress (keys without a ruin) is dropped; start in the village. */
 function migrateV2(o: V2): Char {
-  const c = newChar();
+  const c = newChar(); c.intro = true;
   if (o.level) c.level = o.level; if (o.xp) c.xp = o.xp; if (o.gold) c.gold = o.gold;
   if (typeof o.world === 'number') c.world = o.world;
   if (Array.isArray(o.inv)) c.inv = Array.from({ length: INV_SIZE }, (_, i) => o.inv![i] ?? null);
@@ -128,6 +130,7 @@ export function loadChar(storage: Pick<Storage, 'getItem'> | null = safeStorage(
       // food used to be a 0..100 bar: it becomes the same share of the calorie store
       if (typeof c.food === 'number') { if (!('kcal' in JSON.parse(raw))) c.kcal = Math.round(c.food / 100 * KCAL.max); delete c.food; }
       if (c.loc === 'dungeon' && !c.dungeon) c.loc = 'overworld';
+      if (!('intro' in JSON.parse(raw))) c.intro = true; // characters from before the opening existed have long since walked away from their ship
       // the house in Gridholm used to be yours from the start: whoever already kept things in its chest owns it
       if (!c.houses.length && c.containers['home:chest']) c.houses = [GRIDHOLM_ID];
       return c;
