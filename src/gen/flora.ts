@@ -6,6 +6,7 @@ import { CHUNK, POLAR_Z, wrapC } from './regions';
 import { rectDist, type Terrain } from './terrain';
 import { nearestOnRoad } from './roads';
 import { inScar } from './landing';
+import { inInstall } from './installs';
 
 export type PlantKind = 'shroom' | 'pod';
 export interface Plant {
@@ -54,7 +55,7 @@ function makePlants(t: Terrain, cx: number, cz: number): Plant[] {
   const span = PLANT_SPAN[kind], f = t.chunkFeatures(cx, cz);
   if (f.pads.some((p) => rectDist(p.poi.rect, x, z) < p.poi.flat + (p.poi.type === 'village' ? 20 : 6) + span)) return [];
   if (f.roads.some((rd) => nearestOnRoad(rd, x, z)[0] < rd.half + span + 1)) return [];
-  if (inScar(t, x, z, 9 + span)) return []; // the hero's ship tore up the ground here
+  if (inScar(t, x, z, 9 + span) || inInstall(t, x, z, 6 + span)) return []; // the hero's ship tore up the ground here; an old plant stands here
   for (let a = 0; a < 6.28; a += 1.05) if (t.water(x + Math.cos(a) * span, z + Math.sin(a) * span)) return [];
   if (t.water(x, z)) return [];
   const seed = hash(t.world, cx, cz, 0xf10b), rot = R() * 6.283;

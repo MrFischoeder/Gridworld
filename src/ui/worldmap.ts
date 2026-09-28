@@ -7,6 +7,7 @@ import { CHUNK, poisNear, villageSeed, GRIDHOLM_ID } from '../gen/regions';
 import { wallPolygon, villageSides } from '../gen/village';
 import { STEP, VERTS, CELLS, inRect } from '../gen/terrain';
 import { discover, isDiscovered } from '../save';
+import { installSites } from '../gen/installs';
 import { saveChar } from '../character';
 import { drawPlayerArrow } from './minimap';
 import { vehicles, driving } from '../world/vehicles';
@@ -104,6 +105,15 @@ function drawArea(ctx: CanvasRenderingContext2D, w: number, h: number, ppm: numb
     ctx.strokeStyle = ctx.fillStyle = '#c4ffd2'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(x, y, Math.max(4, 30 * ppm), 0, 6.283); ctx.stroke();
     ctx.beginPath(); ctx.moveTo(x, y + 5); ctx.lineTo(x, y - 8); ctx.lineTo(x + 7, y - 5); ctx.lineTo(x, y - 2); ctx.stroke(); ctx.lineWidth = 1;
     if (labels) ctx.fillText('Your flag', x, y - 12);
+  }
+  for (const ins of installSites(OW.terrain!)) { // the great installations, once their ground is explored: a lime hexagon
+    if (!isDiscovered(d, Math.floor(ins.x / CHUNK), Math.floor(ins.z / CHUNK))) continue;
+    const x = X(nearX(ins.x, px)), y = Z(ins.z), r = labels ? 10 : 5;
+    if (x < -20 || y < -20 || x > w + 20 || y > h + 20) continue;
+    ctx.strokeStyle = ctx.fillStyle = '#b6ff3a'; ctx.lineWidth = 2; ctx.beginPath();
+    for (let k = 0; k <= 6; k++) { const a = k / 6 * 6.283; if (k) ctx.lineTo(x + Math.cos(a) * r, y + Math.sin(a) * r); else ctx.moveTo(x + r, y); }
+    ctx.stroke(); ctx.lineWidth = 1;
+    if (labels) ctx.fillText(ins.name, x, y - 15);
   }
   for (const m of leadMarkers()) { // leads to old data carriers: a violet diamond (held at the edge of the big map when further)
     let x = X(m.x), y = Z(m.z); const r = labels ? 9 : 5, out = x < 24 || y < 40 || x > w - 24 || y > h - 40;

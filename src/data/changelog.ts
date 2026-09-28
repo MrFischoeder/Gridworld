@@ -4,6 +4,12 @@ export interface Change { v: string; date: string; title: string; notes: string[
 
 export const CHANGELOG: Change[] = [
   {
+    v: '0.66.0', date: '2026-09-28', title: 'The dead plant',
+    notes: ['Far out on the continent, 15 to 25 km from Gridholm, stands the first of the old world\'s great installations: the Old Enrichment Plant, where ore was once made into reactor fuel. Every world has it in its own place, on bare, level ground.',
+      'A broken fence with a warning sign at the gate, the centrifuge hall with its fallen corner and bare roof trusses, rows of centrifuges inside (some toppled), two cooling towers (one snapped off) and a tall stack. You can walk into the hall.',
+      'Once you have explored its ground it shows on the maps as a lime hexagon. Bringing it back to life comes in the next update.'],
+  },
+  {
     v: '0.65.0', date: '2026-09-28', title: 'Far-off riches',
     notes: ['Many villages away from Gridholm stand by a deposit of a rare material the old industries needed: bauxite from about 3 km out, sulfur from 5 km, lithium brine from 8 km, rare earths from 11 km and uranium only from 15 km. The rarer it is, the further out it first turns up and the fewer villages have it.',
       'A village shares its deposit with those it trusts: 1 crate a day to someone Known, 2 to a Friend, 3 to the Honoured, besides its usual goods (ask the elder what the village can spare). Near Gridholm there are none: the rare things mean going far.',

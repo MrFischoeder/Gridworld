@@ -1,4 +1,6 @@
 // Developer console, opened with ~ (the backquote key). Cheats for testing.
+import { installSites } from '../gen/installs';
+import { OW } from '../world/overworld';
 import { G } from '../game';
 import { forceRaid } from '../world/villageraid';
 import { ROBOTS, type RobotKind } from '../data/robots';
@@ -79,6 +81,10 @@ const COMMANDS: Record<string, { help: string; run: (args: string[]) => string }
   worldmap: {
     help: 'map of the whole planet: click a village, ruin, camp, wreck or any spot to teleport there',
     run: () => { openDevMap(); close(); return 'The planet: ' + planetSize() + '.'; },
+  },
+  sites: {
+    help: 'the great installations: where they are (tp to them)',
+    run: () => { const T = OW.terrain; if (!T) return 'Only on the surface.'; return installSites(T).map((s) => `${s.name}: tp ${Math.round(s.x)} ${Math.round(s.z - s.r - 12)}  (${(Math.hypot(s.x, s.z) / 1000).toFixed(1)} km out)`).join('\n'); },
   },
   tp: {
     help: 'tp <x> <z>: teleport to a point on the surface',
