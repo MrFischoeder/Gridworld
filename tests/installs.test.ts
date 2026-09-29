@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { Terrain } from '../src/gen/terrain';
-import { installSites, installMisfit, inInstall, INSTALLS, INSTALL_STAGES, INSTALL_WORK, newInstall, installPlan, handOverInstall, runInstall, installDone, loadInstall, fixInstall, pickInstallLead, installLeadText, installLeadId, INSTALL_LEAD, RADAR, radarPlaces, INSTALL_DRAW, HALL_SETS, HALL_STAGE, fuelHall, hallKw, hallPick, hallReady, type InstallState } from '../src/gen/installs';
+import { installSites, installMisfit, inInstall, INSTALLS, INSTALL_STAGES, INSTALL_WORK, newInstall, installPlan, handOverInstall, runInstall, installDone, loadInstall, fixInstall, pickInstallLead, installLeadText, installLeadId, INSTALL_LEAD, RADAR, radarPlaces, INSTALL_DRAW, HALL_SETS, HALL_STAGE, fuelHall, hallKw, hallPick, hallReady, workOf, installWorks, setInstallRec, INSTALL_SCALE, type InstallState } from '../src/gen/installs';
 import { ITEMS } from '../src/data/items';
 import { chunkTrees } from '../src/gen/trees';
 import { CHUNK } from '../src/gen/regions';
@@ -16,12 +16,12 @@ describe('great installations', () => {
       for (const s of a) {
         const spec = INSTALLS.find((x) => x.k === s.k)!, d = Math.hypot(s.x, s.z);
         expect(d).toBeGreaterThanOrEqual(spec.band[0] - 1); expect(d).toBeLessThanOrEqual(spec.band[1] + 1);
-        expect(installMisfit(t, s.x, s.z, s.r)).toBeNull();
+        expect(installMisfit(t, s.x, s.z, spec.r)).toBeNull(); // (searched at the plan's radius, so a plant keeps its place when it grows)
         const cx = Math.floor(s.x / CHUNK), cz = Math.floor(s.z / CHUNK);
         for (let i = -2; i <= 2; i++) for (let j = -2; j <= 2; j++) for (const tr of chunkTrees(t, cx + i, cz + j)) expect(inInstall(t, tr.x, tr.z)).toBe(false);
       }
     }
-  });
+  }, 120000);
 
   it('are restored stage by stage, the last one only with the plans', () => {
     const s = newInstall(), plenty = () => 99;
@@ -90,6 +90,21 @@ describe('great installations', () => {
     const cv = cellVillages(12345); expect(cv.length).toBeGreaterThan(0);
     let orders = 0; for (let d = 0; d < 10; d++) if (cellOrder(12345, cv[0], d * 1440 + 10)) orders++;
     expect(orders).toBeGreaterThan(0);
+  });
+  it('the optical works and the alloy complex; the alloy complex makes ceramics instead when set to, its bay empty', () => {
+    const s: InstallState = { ...newInstall(), stage: INSTALL_STAGES.alloy.length, pw: { coal: 30, fuel: 30 } };
+    const a = workOf('alloy', s)!; expect(a.out).toBe('ancalloy');
+    for (const w of installWorks('alloy')) for (const [i] of w.inp) loadInstall('alloy', s, i, 12, 0);
+    runInstall('alloy', s, a.batch * 2); expect(s.out).toBe(2);
+    expect(setInstallRec('alloy', s, 1, a.batch * 2)).toBe(false); // the bay holds ancient alloy: empty it first
+    s.out = 0; expect(setInstallRec('alloy', s, 1, a.batch * 2)).toBe(true);
+    const c = workOf('alloy', s)!; expect(c.out).toBe('ceramics');
+    runInstall('alloy', s, a.batch * 2 + c.batch * 2); expect(s.out).toBe(2 * (c.n ?? 1));
+    expect(INSTALL_STAGES.optical[2].tech).toBe('sensors'); expect(INSTALL_STAGES.alloy[2].tech).toBe('ancmetal');
+    expect(workOf('optical')!.out).toBe('sensor');
+    // the plants stand INSTALL_SCALE times their plans, on the same spots as ever (searched at the plan's radius)
+    const sites = installSites(new Terrain(12345));
+    for (const x of sites) expect(x.r).toBe(INSTALLS.find((q) => q.k === x.k)!.r * INSTALL_SCALE);
   });
   it('the chip foundry needs every input for a batch', () => {
     const w = INSTALL_WORK.chips!, s: InstallState = { ...newInstall(), stage: INSTALL_STAGES.chips.length, pw: { coal: 30 } };

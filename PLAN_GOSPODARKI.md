@@ -201,7 +201,7 @@ Dalej 2 zakłady na wioskę (`PLANT_SLOTS`). Istniejące klucze `PlantKind` zost
   Już ukończone etapy zostają ukończone.
 - Terminal instalacji w stylu z sekcji 11 dokumentu: POWER x/y kW, zapasy każdego wejścia, produkt, NEXT BATCH.
 
-## Etap 5 (0.94–0.96): nowe Ancient Facilities (0.94 ZROBIONE: Propellant i Battery)
+## Etap 5 (0.94–0.96): nowe Ancient Facilities (0.94 i 0.95 ZROBIONE)
 
 **Zasada właściciela (29.09.2026):** to gracz zapewnia dostawy półproduktów do fabryk Starożytnych. Instalacje niczego nie dostają same: każde wejście i paliwo siłowni gracz ładuje przy pulpicie ze swojego plecaka lub bagażników.
 
@@ -217,6 +217,19 @@ Dalej 2 zakłady na wioskę (`PLANT_SLOTS`). Istniejące klucze `PlantKind` zost
   - pobór 150 kW;
   - etap III wymaga nowej technologii `powercells` (tier 3, na końcu `TECHS`).
 - Nowy towar spoza rynku `powercell`. Zamówienia na ogniwa (`cellOrder`) w wioskach złomiarzy od 5 km.
+
+**0.95.0:**
+- Na życzenie właściciela wszystkie instalacje są dwa razy większe (`INSTALL_SCALE` 2).
+  - Plany rysunków zostały, grupa jest skalowana ×2, a wysokość terenu przeliczana (`hOf`).
+  - Miejsca szuka się w promieniu z planu, więc położenia na mapie się nie zmieniły.
+  - `InstallSite.r` to promień rzeczywisty; tyle gołego terenu.
+  - Pulpity mają skalę człowieka, a kolizje liczą się w jednostkach planu.
+- Old Optical Works (14–24 km): glass 2 + rareearth + chems → `sensor` na 240 min; pobór 130 kW; technologia `sensors`.
+- Old Alloy Complex (16–26 km):
+  - steel 2 + aluminium + nickel → `ancalloy` na 300 min;
+  - druga receptura (`INSTALL_MORE`, wybór przy pulpicie, gdy magazyn jest pusty): clay 3 + aluminium + chems → 2 `ceramics`;
+  - pobór 180 kW; technologia `ancmetal` (tier 4).
+- Nowe towary spoza rynku: sensor, ancalloy, ceramics. Użyje ich Rydwan (etap 7) i etap 6.
 
 
 Dopisywane **na końcu `INSTALLS`**, żeby dotychczasowe zostały na miejscu. Każda ma 3 etapy odbudowy, własną siłownię, pulpit i rysunek.

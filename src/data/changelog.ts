@@ -4,6 +4,16 @@ export interface Change { v: string; date: string; title: string; notes: string[
 
 export const CHANGELOG: Change[] = [
   {
+    v: '0.95.0', date: '2026-10-11', title: 'Giants of the old world',
+    notes: [
+      'Every great installation of the Ancients now stands twice as big: halls, towers, tanks, furnaces, stacks, fences and power halls. You see them from far off and they tower over you when you walk in. They stand where they always stood; the control desks stay at a person\'s height by the gate.',
+      'Two more of them: the Old Optical Works (14 to 24 km from Gridholm: glass-roofed grinding halls, a crystal-growing tower and a row of annealing kilns) and the Old Alloy Complex (16 to 26 km: a towering casting hall, two arc furnaces crowned with electrodes, twin stacks and heaps of slag).',
+      'The optical works makes Sensors from glass, Rare Earths and chemicals (130 kW). The alloy complex makes Ancient Alloy from steel, aluminium and nickel, or, set to it at the desk while its bay is empty, 2 crates of Advanced Ceramics from clay, aluminium and chemicals (180 kW). As at the others, you bring every crate yourself.',
+      'Their cores want the plans for Advanced Sensors (8 to 16 km out) and Ancient Metallurgy (16 to 30 km), two new technologies on data carriers.',
+      'New: Sensors, Ancient Alloy and Advanced Ceramics. The Chariot of the Ancients will want them.',
+    ],
+  },
+  {
     v: '0.94.0', date: '2026-10-11', title: 'The fuel works and the cell works',
     notes: [
       'Two more great installations of the Ancients stand far out on the continent: the Old Propellant Plant (10 to 18 km from Gridholm: spherical tanks on legs, two distillation columns, a flare stack and a bunkered mixing house) and the Old Battery Plant (14 to 22 km: a long hall under a sawtooth roof, electrolyte tanks and a brine basin). Villagers within 16 km tell of them; console `sites` shows where they are.',

@@ -8,7 +8,7 @@ import { FORTIFY, WORKS, POWER, type WorkKind } from '../gen/town';
 import { WALL_TIERS } from '../gen/village';
 import { FARM, UPGRADE } from '../gen/farms';
 import { PLANT_LEVELS } from '../gen/plantup';
-import { INSTALLS, INSTALL_STAGES, INSTALL_WORK, HALL_SETS, type InstallKind } from '../gen/installs';
+import { INSTALLS, INSTALL_STAGES, INSTALL_WORK, HALL_SETS, installWorks, type InstallKind } from '../gen/installs';
 import { STAGES } from '../gen/shuttle';
 import { MENU } from '../gen/foodshop';
 import { INDUSTRY, type Industry } from '../gen/industry';
@@ -31,7 +31,7 @@ function build(): Map<ItemKey, Map<UseGroup, string[]>> {
   };
   for (const o of ORDERS) for (const [i] of o.needs) use(i, 'Blacksmith makes', N(o.out));
   for (const k of Object.keys(PLANTS) as PlantKind[]) for (const r of PLANTS[k].recipes) for (const [i] of r.in) use(i, 'Processed into', `${N(r.out[0])} (${PLANTS[k].name})`);
-  for (const k of Object.keys(INSTALL_WORK) as InstallKind[]) { const w = INSTALL_WORK[k]!; for (const [i] of w.inp) use(i, 'Processed into', `${N(w.out)} (${INSTALLS.find((s) => s.k === k)!.name})`); }
+  for (const k of Object.keys(INSTALL_WORK) as InstallKind[]) for (const w of installWorks(k)) for (const [i] of w.inp) use(i, 'Processed into', `${N(w.out)} (${INSTALLS.find((s) => s.k === k)!.name})`);
   for (const d of MENU) for (const i of d.from) use(i, 'Cooked into', N(d.k));
   for (const k of Object.keys(STATIONS) as StationKind[]) { const s = STATIONS[k]; if (s.fuel) use(s.fuel, 'Fuel for', s.name); }
   FORTIFY.forEach((f, i) => { for (const [k] of f.needs) use(k, 'Building', WALL_TIERS[i + 1].name); });

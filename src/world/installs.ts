@@ -12,14 +12,14 @@ import { scene } from './render';
 import { PropBatch } from './props';
 import { G } from '../game';
 import { OW } from './overworld';
-import { installSites, INSTALL_STAGES, HALL_STAGE, type InstallSite, type InstallKind } from '../gen/installs';
+import { installSites, INSTALL_STAGES, HALL_STAGE, INSTALL_SCALE, type InstallSite, type InstallKind } from '../gen/installs';
 import { nearX, worldDist } from '../gen/regions';
 import type { Terrain } from '../gen/terrain';
 
 const METAL = 0xa8c8b8, RUST = 0x9aa870, CONC = 0x7fa08c, GLOW = 0xb6ff3a, HOT_FLAME = 0xffb347;
 interface Live { s: InstallSite; g: THREE.Group; cos: number; sin: number; stage: number; spin?: THREE.Object3D | null; walls: [number, number, number, number][]; rings: [number, number, number][] }
 /** The control desk in each installation's frame (inside the gate, west of the way in). */
-export const DESKS: Record<InstallKind, { x: number; z: number }> = { uranium: { x: -6, z: -25 }, chips: { x: -6, z: -23 }, radar: { x: -6, z: -21 }, propellant: { x: -6, z: -23 }, battery: { x: -6, z: -23 } };
+export const DESKS: Record<InstallKind, { x: number; z: number }> = { uranium: { x: -6, z: -25 }, chips: { x: -6, z: -23 }, radar: { x: -6, z: -21 }, propellant: { x: -6, z: -23 }, battery: { x: -6, z: -23 }, optical: { x: -6, z: -23 }, alloy: { x: -6, z: -26 } };
 const live = new Map<string, Live>();
 
 /** The perimeter fence (half-size F): posts every 4 m and two wires, with gaps and leaning posts until cleared; the gate on the -z side. */
@@ -41,9 +41,16 @@ function drawFence(pb: PropBatch, H: (x: number, z: number) => number, F: number
   // the gate posts and the warning sign: a trefoil glowing on a board
   for (const gx of [-3.5, 3.5]) pb.box(gx - 0.2, H(gx, -F) - 0.2, -F - 0.2, gx + 0.2, H(gx, -F) + 3, -F + 0.2, CONC);
 }
-/** The control desk: a steel kiosk with a slanted console, its screen lit once work has begun, a lamp once restored. */
-function drawDesk(pb: PropBatch, H: (x: number, z: number) => number, at: { x: number; z: number }, stage: number, done: boolean, rings: Live['rings']) {
-  { const { x, z } = at, y = H(x, z);
+/** The plants are drawn from their plans and stand SC times as big: plan coordinates in, the ground's height in plan units out. */
+const SC = INSTALL_SCALE;
+const hOf = (T: Terrain, s: InstallSite, cos: number, sin: number) => (x: number, z: number) => (T.heightAt(s.x + (x * cos + z * sin) * SC, s.z + (-x * sin + z * cos) * SC) - s.y) / SC;
+/**
+ * The control desk: a steel kiosk with a slanted console, its screen lit once work has begun, a lamp once restored.
+ * Drawn at human size (into `pb`, which is not scaled) where the plan puts it; its ring is kept in plan units.
+ */
+function drawDesk(pb: PropBatch, Hp: (x: number, z: number) => number, plan: { x: number; z: number }, stage: number, done: boolean, rings: Live['rings']) {
+  rings.push([plan.x, plan.z, 0.85 / SC]);
+  { const x = plan.x * SC, z = plan.z * SC, y = Hp(plan.x, plan.z) * SC;
     pb.box(x - 0.8, y - 0.2, z - 0.4, x + 0.8, y + 1, z + 0.4, METAL);
     pb.face([x - 0.8, y + 1, z - 0.4], [x + 0.8, y + 1, z - 0.4], [x + 0.8, y + 1.25, z + 0.3], [x - 0.8, y + 1.25, z + 0.3]);
     pb.line(METAL, [x - 0.8, y + 1, z - 0.4], [x + 0.8, y + 1, z - 0.4], [x + 0.8, y + 1.25, z + 0.3], [x - 0.8, y + 1.25, z + 0.3], [x - 0.8, y + 1, z - 0.4]);
@@ -53,11 +60,10 @@ function drawDesk(pb: PropBatch, H: (x: number, z: number) => number, at: { x: n
     for (let i = 0; i < Math.min(4, stage + 1); i++) pb.seg(sc, [x - 0.4, y + 1.85 - i * 0.14, z + 0.23], [x - 0.4 + 0.2 + ((i * 37) % 5) * 0.12, y + 1.85 - i * 0.14, z + 0.23]);
     pb.seg(RUST, [x + 0.7, y + 2.1, z + 0.3], [x + 0.7, y + 3.2, z + 0.3]); // a lamp post
     if (done) pb.box(x + 0.55, y + 3.2, z + 0.15, x + 0.85, y + 3.5, z + 0.45, GLOW);
-    rings.push([x, z, 0.85]);
   }
 }
 /** Where each plant's power hall stands, in its frame (inside the fence, east of the gate). */
-export const HALLS: Partial<Record<InstallKind, { x: number; z: number }>> = { uranium: { x: 16, z: -20 }, chips: { x: 15, z: -19 }, propellant: { x: 15, z: -19 }, battery: { x: 15, z: -19 } };
+export const HALLS: Partial<Record<InstallKind, { x: number; z: number }>> = { uranium: { x: 16, z: -20 }, chips: { x: 15, z: -19 }, propellant: { x: 15, z: -19 }, battery: { x: 15, z: -19 }, optical: { x: 15, z: -19 }, alloy: { x: 16, z: -22 } };
 /**
  * The power hall: a burnt-out shell (low broken walls, a toppled stack) until the second stage brings it back; then a
  * generator house with a gable roof and a door, its stack, a coal bin and a fuel tank, and a lime lamp over the door.
@@ -87,10 +93,10 @@ function drawHall(pb: PropBatch, H: (x: number, z: number) => number, at: { x: n
   cyl(x + hw + 2.2, z - 1, 1.3, 2.4, H(x + hw + 2.2, z - 1) - 0.1, METAL); rings.push([x + hw + 2.2, z - 1, 1.4]); // the fuel tank
 }
 /** The plant in its own frame (x across, z along; y up from the site's ground height), as far restored as `stage`. */
-function drawUranium(T: Terrain, s: InstallSite, cos: number, sin: number, stage: number): { g: THREE.Group; walls: Live['walls']; rings: Live['rings'] } {
+function drawUranium(T: Terrain, s: InstallSite, cos: number, sin: number, stage: number, hb: PropBatch): { g: THREE.Group; walls: Live['walls']; rings: Live['rings'] } {
   const pb = new PropBatch(), walls: Live['walls'] = [], rings: Live['rings'] = [];
   const cleared = stage >= 1, roofed = stage >= 2, done = stage >= INSTALL_STAGES.uranium.length;
-  const H = (x: number, z: number) => T.heightAt(s.x + x * cos + z * sin, s.z - x * sin + z * cos) - s.y;
+  const H = hOf(T, s, cos, sin);
   const F = 30;
   drawFence(pb, H, F, cleared);
   { const sx = 6, sz = -F - 1.5, y = H(sx, sz); pb.seg(RUST, [sx - 0.8, y, sz], [sx - 0.8, y + 1.6, sz]); pb.seg(RUST, [sx + 0.8, y, sz], [sx + 0.8, y + 1.6, sz]);
@@ -178,7 +184,7 @@ function drawUranium(T: Terrain, s: InstallSite, cos: number, sin: number, stage
     for (let x = X0; x >= -13; x -= 2.5) { const z = tz * 0.4 + (x - X0) / (-13 - X0) * tz * 0.6, y = H(x, z); pb.seg(RUST, [x, y, z], [x, y + 3, z]); const p = [x, y + 3.1, z]; if (prev) pb.seg(METAL, prev, p); prev = p; }
   }
   drawHall(pb, H, HALLS.uranium!, stage >= HALL_STAGE, walls, rings);
-  drawDesk(pb, H, DESKS.uranium, stage, done, rings);
+  drawDesk(hb, H, DESKS.uranium, stage, done, rings);
   const g = pb.build();
   return { g, walls, rings };
 }
@@ -190,10 +196,10 @@ function drawUranium(T: Terrain, s: InstallSite, cos: number, sin: number, stage
  * toppled and the water tower has lost its roof; then the rubble goes and the lock opens (stage 1), the air handlers
  * and the water plant run (2: fans on the roof, a whole tower), and once restored the windows glow.
  */
-function drawChips(T: Terrain, s: InstallSite, cos: number, sin: number, stage: number): { g: THREE.Group; walls: Live['walls']; rings: Live['rings'] } {
+function drawChips(T: Terrain, s: InstallSite, cos: number, sin: number, stage: number, hb: PropBatch): { g: THREE.Group; walls: Live['walls']; rings: Live['rings'] } {
   const pb = new PropBatch(), walls: Live['walls'] = [], rings: Live['rings'] = [];
   const cleared = stage >= 1, aired = stage >= 2, done = stage >= INSTALL_STAGES.chips.length;
-  const H = (x: number, z: number) => T.heightAt(s.x + x * cos + z * sin, s.z - x * sin + z * cos) - s.y;
+  const H = hOf(T, s, cos, sin);
   const F = 28;
   drawFence(pb, H, F, cleared);
   // ---- the clean-room block
@@ -256,7 +262,7 @@ function drawChips(T: Terrain, s: InstallSite, cos: number, sin: number, stage: 
     if (aired) pb.pyramid(cx - 2.4, cz - 2.4, cx + 2.4, cz + 2.4, y + lh + 3, 1, METAL);
   }
   drawHall(pb, H, HALLS.chips!, stage >= HALL_STAGE, walls, rings);
-  drawDesk(pb, H, DESKS.chips, stage, done, rings);
+  drawDesk(hb, H, DESKS.chips, stage, done, rings);
   const g = pb.build();
   return { g, walls, rings };
 }
@@ -268,10 +274,10 @@ function drawChips(T: Terrain, s: InstallSite, cos: number, sin: number, stage: 
  * gone; with power and cable (stage 2) the mast stands whole, the shed has a roof and cables run to the bunker and the
  * tower; restored, the dish sits on the tower and turns (a group named 'spin'), its feed horn and the lamps lit.
  */
-function drawRadar(T: Terrain, s: InstallSite, cos: number, sin: number, stage: number): { g: THREE.Group; walls: Live['walls']; rings: Live['rings'] } {
+function drawRadar(T: Terrain, s: InstallSite, cos: number, sin: number, stage: number, hb: PropBatch): { g: THREE.Group; walls: Live['walls']; rings: Live['rings'] } {
   const pb = new PropBatch(), walls: Live['walls'] = [], rings: Live['rings'] = [];
   const cleared = stage >= 1, wired = stage >= 2, done = stage >= INSTALL_STAGES.radar.length;
-  const H = (x: number, z: number) => T.heightAt(s.x + x * cos + z * sin, s.z - x * sin + z * cos) - s.y;
+  const H = hOf(T, s, cos, sin);
   drawFence(pb, H, 26, cleared);
   // ---- the bunker: low concrete walls, a flat roof, the door on the -z side
   const X0 = -12, X1 = -2, Z0 = -6, Z1 = 2, BH = 3, g0 = Math.min(H(X0, Z0), H(X1, Z0), H(X0, Z1), H(X1, Z1)) - 0.3;
@@ -321,7 +327,7 @@ function drawRadar(T: Terrain, s: InstallSite, cos: number, sin: number, stage: 
       for (let t = 0; t <= 1.001; t += 0.25) { const x = 2 + (tx - 2) * t, z = 12 + (tz - 12) * t, yy = H(x, z); pb.seg(RUST, [x, yy, z], [x, yy + 2.4, z]); const p = [x, yy + 2.4, z]; if (prev) pb.seg(METAL, prev, p); prev = p; }
     }
   }
-  drawDesk(pb, H, DESKS.radar, stage, done, rings);
+  drawDesk(hb, H, DESKS.radar, stage, done, rings);
   const g = pb.build();
   g.add(spin ?? dish);
   return { g, walls, rings };
@@ -343,10 +349,10 @@ function sphereAt(pb: PropBatch, x: number, y: number, z: number, r: number, c: 
  * Before it is secured the house is roofless and one sphere lies fallen off its legs; with lines and power (stage 2)
  * the second column stands whole and the racks carry pipes; restored, the flare burns and the columns' rings glow.
  */
-function drawPropellant(T: Terrain, s: InstallSite, cos: number, sin: number, stage: number): { g: THREE.Group; walls: Live['walls']; rings: Live['rings'] } {
+function drawPropellant(T: Terrain, s: InstallSite, cos: number, sin: number, stage: number, hb: PropBatch): { g: THREE.Group; walls: Live['walls']; rings: Live['rings'] } {
   const pb = new PropBatch(), walls: Live['walls'] = [], rings: Live['rings'] = [];
   const cleared = stage >= 1, piped = stage >= 2, done = stage >= INSTALL_STAGES.propellant.length;
-  const H = (x: number, z: number) => T.heightAt(s.x + x * cos + z * sin, s.z - x * sin + z * cos) - s.y;
+  const H = hOf(T, s, cos, sin);
   drawFence(pb, H, 28, cleared);
   // ---- the mixing house: thick concrete walls, a flat roof once secured, blast doors on the -z side
   const X0 = -14, X1 = -2, Z0 = -4, Z1 = 6, g0 = Math.min(H(X0, Z0), H(X1, Z0), H(X0, Z1), H(X1, Z1)) - 0.3, WH = 4.2;
@@ -381,7 +387,7 @@ function drawPropellant(T: Terrain, s: InstallSite, cos: number, sin: number, st
   // ---- pipe racks: posts all along, pipes only once the lines run
   { let prev: number[] | null = null; for (let x = X1 + 1; x <= 18; x += 2.5) { const z = 1, y = H(x, z); pb.seg(RUST, [x, y, z], [x, y + 2.8, z]); const p = [x, y + 2.9, z]; if (prev && piped) { pb.seg(METAL, prev, p); pb.seg(METAL, [prev[0], prev[1] - 0.35, prev[2]], [p[0], p[1] - 0.35, p[2]]); } prev = p; } }
   drawHall(pb, H, HALLS.propellant!, stage >= HALL_STAGE, walls, rings);
-  drawDesk(pb, H, DESKS.propellant, stage, done, rings);
+  drawDesk(hb, H, DESKS.propellant, stage, done, rings);
   return { g: pb.build(), walls, rings };
 }
 /**
@@ -390,10 +396,10 @@ function drawPropellant(T: Terrain, s: InstallSite, cos: number, sin: number, st
  * z 12..20) crusted white. Before it is opened half the roof lies on the floor and rubble banks the walls; the tanks
  * stand rusty until the lines run (stage 2).
  */
-function drawBattery(T: Terrain, s: InstallSite, cos: number, sin: number, stage: number): { g: THREE.Group; walls: Live['walls']; rings: Live['rings'] } {
+function drawBattery(T: Terrain, s: InstallSite, cos: number, sin: number, stage: number, hb: PropBatch): { g: THREE.Group; walls: Live['walls']; rings: Live['rings'] } {
   const pb = new PropBatch(), walls: Live['walls'] = [], rings: Live['rings'] = [];
   const cleared = stage >= 1, lined = stage >= 2, done = stage >= INSTALL_STAGES.battery.length;
-  const H = (x: number, z: number) => T.heightAt(s.x + x * cos + z * sin, s.z - x * sin + z * cos) - s.y;
+  const H = hOf(T, s, cos, sin);
   drawFence(pb, H, 28, cleared);
   // ---- the cell hall: brick walls 5 m, a doorway in the -z wall
   const X0 = -14, X1 = 10, Z0 = -6, Z1 = 8, WH = 5, g0 = Math.min(H(X0, Z0), H(X1, Z0), H(X0, Z1), H(X1, Z1)) - 0.3, BR = 0xd09070;
@@ -423,10 +429,99 @@ function drawBattery(T: Terrain, s: InstallSite, cos: number, sin: number, stage
     for (let x = bx0 + 1; x < bx1; x += 1.6) pb.seg(0xe8e0c0, [x, y + 0.1, bz0 + 0.6], [x + 0.8, y + 0.1, bz1 - 0.6]);
   }
   drawHall(pb, H, HALLS.battery!, stage >= HALL_STAGE, walls, rings);
-  drawDesk(pb, H, DESKS.battery, stage, done, rings);
+  drawDesk(hb, H, DESKS.battery, stage, done, rings);
   return { g: pb.build(), walls, rings };
 }
-const DRAW: Record<InstallKind, typeof drawUranium> = { uranium: drawUranium, chips: drawChips, radar: drawRadar, propellant: drawPropellant, battery: drawBattery };
+/**
+ * The lens and sensor works in its own frame: two long grinding halls (x -16..6 at z -6..0 and 3..9) under pitched
+ * glass roofs, a crystal-growing tower (x 14, z 8) with a lantern, a row of annealing kilns (x 10..22, z -4) and a
+ * clean-air stack. Before it is opened most roof panes lie in shards; with clean air and power (stage 2) the tower
+ * stands its full height; restored, the lantern and the kilns glow.
+ */
+function drawOptical(T: Terrain, s: InstallSite, cos: number, sin: number, stage: number, hb: PropBatch): { g: THREE.Group; walls: Live['walls']; rings: Live['rings'] } {
+  const pb = new PropBatch(), walls: Live['walls'] = [], rings: Live['rings'] = [];
+  const cleared = stage >= 1, aired = stage >= 2, done = stage >= INSTALL_STAGES.optical.length, PANE = 0x9dffe0;
+  const H = hOf(T, s, cos, sin);
+  drawFence(pb, H, 28, cleared);
+  for (const [z0, z1] of [[-6, 0], [3, 9]]) {
+    const X0 = -16, X1 = 6, g0 = Math.min(H(X0, z0), H(X1, z0), H(X0, z1), H(X1, z1)) - 0.3, WH = 3.5, zm = (z0 + z1) / 2, RY = g0 + WH + 2.2;
+    pb.box(X0, g0, z0, X1, g0 + WH, z1, CONC); walls.push([X0, z0, X1, z0], [X1, z0, X1, z1], [X1, z1, X0, z1], [X0, z1, X0, z0]);
+    for (const ze of [z0, z1]) pb.face([X0, g0 + WH, ze], [X1, g0 + WH, ze], [X1, RY, zm], [X0, RY, zm]);
+    for (const xe of [X0, X1]) pb.face([xe, g0 + WH, z0], [xe, g0 + WH, z1], [xe, RY, zm]);
+    pb.seg(done ? GLOW : METAL, [X0, RY, zm], [X1, RY, zm]);
+    for (let x = X0; x <= X1 + 0.01; x += 2) { // rafters, and the panes between them (most broken until opened)
+      for (const ze of [z0, z1]) pb.seg(METAL, [x, g0 + WH, ze], [x, RY, zm]);
+      if (x < X1 && (cleared || (x * 3) % 7 === 1)) for (const ze of [z0, z1]) for (const f of [0.35, 0.7]) pb.seg(PANE, [x, g0 + WH + (RY - g0 - WH) * f, ze + (zm - ze) * f], [x + 2, g0 + WH + (RY - g0 - WH) * f, ze + (zm - ze) * f]);
+    }
+    if (!cleared) for (let i = 0; i < 8; i++) { const x = X0 + 2 + i * 2.6, z = z1 + 1.2, y = H(x, z); pb.seg(PANE, [x, y + 0.05, z], [x + 0.8, y + 0.05, z + 0.5]); }
+  }
+  // the crystal-growing tower: rings every 3 m, a cone and a lantern; snapped at 12 m until the air plant runs
+  { const cx = 14, cz = 8, y = H(cx, cz), h = aired ? 22 : 12;
+    cylAt(pb, cx, cz, 2.5, h, y - 0.2, CONC, 12); rings.push([cx, cz, 2.6]);
+    for (let r = 3; r < h; r += 3) for (let k = 0; k < 12; k++) pb.seg(done ? GLOW : METAL, [cx + Math.cos(k / 12 * 6.283) * 2.55, y + r, cz + Math.sin(k / 12 * 6.283) * 2.55], [cx + Math.cos((k + 1) / 12 * 6.283) * 2.55, y + r, cz + Math.sin((k + 1) / 12 * 6.283) * 2.55]);
+    if (aired) { pb.pyramid(cx - 2.5, cz - 2.5, cx + 2.5, cz + 2.5, y + h, 3, METAL); pb.box(cx - 0.6, y + h + 3, cz - 0.6, cx + 0.6, y + h + 4.2, cz + 0.6, done ? GLOW : METAL); }
+    else pb.seg(RUST, [cx + 2, H(cx + 2, cz - 3) + 1, cz - 3], [cx + 8, H(cx + 8, cz - 9) + 1, cz - 9]);
+  }
+  // the annealing kilns: four brick domes, lit once restored
+  for (let x = 10; x <= 22; x += 4) { const z = -4, y = H(x, z); sphereAt(pb, x, y, z, 1.8, done ? GLOW : 0xd09070); rings.push([x, z, 1.8]); }
+  // the clean-air stack
+  { const cx = -22, cz = 16; cylAt(pb, cx, cz, 0.8, 16, H(cx, cz) - 0.2, METAL, 8); rings.push([cx, cz, 0.9]); }
+  drawHall(pb, H, HALLS.optical!, stage >= HALL_STAGE, walls, rings);
+  drawDesk(hb, H, DESKS.optical, stage, done, rings);
+  return { g: pb.build(), walls, rings };
+}
+/**
+ * The metal works in its own frame: the towering casting hall (x -18..4, z -8..10, walls 14 m under a gable roof),
+ * two arc furnaces (x 12 at z 0 and 9) with three electrodes each under a gantry, twin stacks, heaps of slag and a
+ * conveyor. Before it is secured a corner of the hall has fallen and half the roof is bare trusses; with the
+ * furnaces and power (stage 2) the electrodes hang in their gantries; restored, their tips and the hall's windows glow.
+ */
+function drawAlloy(T: Terrain, s: InstallSite, cos: number, sin: number, stage: number, hb: PropBatch): { g: THREE.Group; walls: Live['walls']; rings: Live['rings'] } {
+  const pb = new PropBatch(), walls: Live['walls'] = [], rings: Live['rings'] = [];
+  const cleared = stage >= 1, fired = stage >= 2, done = stage >= INSTALL_STAGES.alloy.length;
+  const H = hOf(T, s, cos, sin);
+  drawFence(pb, H, 31, cleared);
+  // ---- the casting hall
+  const X0 = -18, X1 = 4, Z0 = -8, Z1 = 10, WH = 14, g0 = Math.min(H(X0, Z0), H(X1, Z0), H(X0, Z1), H(X1, Z1)) - 0.3, ZM = (Z0 + Z1) / 2, RY = g0 + WH + 4;
+  const wall = (ax: number, az: number, bx: number, bz: number, h: (t: number) => number) => {
+    const n = Math.max(1, Math.round(Math.hypot(bx - ax, bz - az) / 3));
+    for (let i = 0; i < n; i++) { const t0 = i / n, t1 = (i + 1) / n, p0 = [ax + (bx - ax) * t0, g0, az + (bz - az) * t0], p1 = [ax + (bx - ax) * t1, g0, az + (bz - az) * t1]; pb.face(p0, p1, [p1[0], g0 + h(t1), p1[2]], [p0[0], g0 + h(t0), p0[2]]); pb.seg(CONC, [p0[0], g0 + h(t0), p0[2]], [p1[0], g0 + h(t1), p1[2]]); pb.seg(CONC, p0, [p0[0], g0 + h(t0), p0[2]]); }
+    walls.push([ax, az, bx, bz]);
+  };
+  const full = () => WH, fallen = (t: number) => WH * (1 - 0.7 * Math.max(0, t - 0.55) / 0.45);
+  wall(X0, Z0, -9, Z0, full); wall(-5, Z0, X1, Z0, full); wall(X1, Z0, X1, Z1, cleared ? full : fallen); wall(X1, Z1, X0, Z1, cleared ? full : (t) => fallen(1 - t)); wall(X0, Z1, X0, Z0, full);
+  pb.face([-9, g0 + 7, Z0], [-5, g0 + 7, Z0], [-5, g0 + WH, Z0], [-9, g0 + WH, Z0]); pb.line(CONC, [-9, g0, Z0], [-9, g0 + 7, Z0], [-5, g0 + 7, Z0], [-5, g0, Z0]); // the great door
+  for (let x = X0; x <= X1 + 0.01; x += 3) { // trusses, and the roof sheeting where the roof still holds
+    const bare = !cleared && x > -6;
+    pb.line(METAL, [x, g0 + WH, Z0], [x, RY, ZM], [x, g0 + WH, Z1]);
+    if (!bare && x < X1) for (const ze of [Z0, Z1]) { pb.face([x, g0 + WH, ze], [x + 3, g0 + WH, ze], [x + 3, RY, ZM], [x, RY, ZM]); pb.seg(METAL, [x, g0 + WH, ze], [x + 3, g0 + WH, ze]); }
+  }
+  for (const xe of [X0, X1]) pb.face([xe, g0 + WH, Z0], [xe, g0 + WH, Z1], [xe, RY, ZM]);
+  for (const ze of [Z0 - 0.03, Z1 + 0.03]) for (let x = X0 + 1.5; x < X1 - 1; x += 3) pb.line(done ? GLOW : METAL, [x, g0 + 9, ze], [x + 1.6, g0 + 9, ze], [x + 1.6, g0 + 12, ze], [x, g0 + 12, ze], [x, g0 + 9, ze]);
+  // crane rails on columns along the front
+  for (let x = X0; x <= X1; x += 5.5) { pb.seg(RUST, [x, H(x, Z0 - 4), Z0 - 4], [x, g0 + 9, Z0 - 4]); rings.push([x, Z0 - 4, 0.35]); }
+  pb.seg(RUST, [X0, g0 + 9, Z0 - 4], [X1, g0 + 9, Z0 - 4]);
+  // ---- the arc furnaces: a squat shell, a domed lid, three electrodes in a gantry
+  for (const fz of [0, 9]) {
+    const fx = 12, y = H(fx, fz);
+    cylAt(pb, fx, fz, 3.5, 5, y - 0.2, RUST, 14); rings.push([fx, fz, 3.6]);
+    pb.pyramid(fx - 3.5, fz - 3.5, fx + 3.5, fz + 3.5, y + 4.8, 1.6, METAL);
+    if (fired) {
+      for (let k = 0; k < 3; k++) { const a = k * 2.094, ex = fx + Math.cos(a) * 1.3, ez = fz + Math.sin(a) * 1.3; pb.seg(METAL, [ex, y + 5.5, ez], [ex, y + 13, ez]); if (done) pb.seg(GLOW, [ex, y + 5.2, ez], [ex, y + 6, ez]); }
+      for (const dz of [-4, 4]) pb.seg(METAL, [fx - 4, y, fz + dz], [fx - 4, y + 14, fz + dz]);
+      pb.seg(METAL, [fx - 4, y + 14, fz - 4], [fx - 4, y + 14, fz + 4]); pb.seg(METAL, [fx - 4, y + 13, fz - 4], [fx + 2, y + 13, fz]);
+    } else pb.seg(RUST, [fx + 2, H(fx + 2, fz + 4) + 0.3, fz + 4], [fx + 9, H(fx + 9, fz + 7) + 0.3, fz + 7]); // an electrode lying in the weeds
+  }
+  // ---- twin stacks
+  for (const [cx, cz] of [[21, 17], [25, 13]]) { cylAt(pb, cx, cz, 1.2, 30, H(cx, cz) - 0.2, CONC, 10); rings.push([cx, cz, 1.3]); }
+  // ---- slag heaps and the conveyor to them
+  for (const [cx, cz, r] of [[-24, 20, 4], [-17, 24, 3]]) { pb.pyramid(cx - r, cz - r, cx + r, cz + r, H(cx, cz) - 0.3, r * 0.9, RUST); rings.push([cx, cz, r * 0.8]); }
+  { let prev: number[] | null = null; for (let t = 0; t <= 1.001; t += 0.2) { const x = X0 + 2 + (-22 - X0 - 2) * t, z = Z1 + (19 - Z1) * t, y = H(x, z); pb.seg(RUST, [x, y, z], [x, y + 2 + 3 * t, z]); const p = [x, y + 2 + 3 * t, z]; if (prev) pb.seg(METAL, prev, p); prev = p; } }
+  drawHall(pb, H, HALLS.alloy!, stage >= HALL_STAGE, walls, rings);
+  drawDesk(hb, H, DESKS.alloy, stage, done, rings);
+  return { g: pb.build(), walls, rings };
+}
+const DRAW: Record<InstallKind, typeof drawUranium> = { optical: drawOptical, alloy: drawAlloy, uranium: drawUranium, chips: drawChips, radar: drawRadar, propellant: drawPropellant, battery: drawBattery };
 
 /** Every second: draw the installations within reach, drop those far behind. */
 let tick = 0;
@@ -440,9 +535,10 @@ export function updateInstalls(dt: number) {
     const key = s.k + ':' + T.world, d = worldDist(s.x, s.z, G.pos.x, G.pos.z), have = live.get(key), stage = G.char.installs[s.k]?.stage ?? 0;
     if (have && (d > 1100 || have.stage !== stage)) { scene.remove(have.g); have.g.traverse((o) => (o as THREE.Mesh).geometry?.dispose()); live.delete(key); }
     if (d < 900 && !live.has(key)) {
-      const cos = Math.cos(s.yaw), sin = Math.sin(s.yaw), m = DRAW[s.k](T, s, cos, sin, stage);
-      m.g.position.set(nearX(s.x, G.pos.x), s.y, s.z); m.g.rotation.y = s.yaw; scene.add(m.g);
-      live.set(key, { s, g: m.g, cos, sin, stage, spin: m.g.getObjectByName('spin') ?? null, walls: m.walls, rings: m.rings });
+      const cos = Math.cos(s.yaw), sin = Math.sin(s.yaw), hb = new PropBatch(), m = DRAW[s.k](T, s, cos, sin, stage, hb);
+      const g = new THREE.Group(); m.g.scale.setScalar(SC); g.add(m.g, hb.build()); // the plant SC times its plans, the desk at human size
+      g.position.set(nearX(s.x, G.pos.x), s.y, s.z); g.rotation.y = s.yaw; scene.add(g);
+      live.set(key, { s, g, cos, sin, stage, spin: g.getObjectByName('spin') ?? null, walls: m.walls, rings: m.rings });
     }
   }
 }
@@ -454,12 +550,12 @@ export function dropInstalls() { for (const l of live.values()) { scene.remove(l
 export function installHit(px: number, py: number, pz: number, r: number): boolean {
   for (const l of live.values()) {
     const dx = px - l.g.position.x, dz = pz - l.s.z;
-    if (Math.abs(dx) > 45 || Math.abs(dz) > 45 || py > l.s.y + 40) continue;
-    const x = dx * l.cos - dz * l.sin, z = dx * l.sin + dz * l.cos; // into the plant's frame
-    for (const [cx, cz, cr] of l.rings) if (Math.hypot(x - cx, z - cz) < cr + r) return true;
+    if (Math.abs(dx) > 45 * SC || Math.abs(dz) > 45 * SC || py > l.s.y + 40 * SC) continue;
+    const x = (dx * l.cos - dz * l.sin) / SC, z = (dx * l.sin + dz * l.cos) / SC, rr = r / SC; // into the plant's frame, in plan units
+    for (const [cx, cz, cr] of l.rings) if (Math.hypot(x - cx, z - cz) < cr + rr) return true;
     for (const [ax, az, bx, bz] of l.walls) {
       const ex = bx - ax, ez = bz - az, L = ex * ex + ez * ez, t = L ? Math.max(0, Math.min(1, ((x - ax) * ex + (z - az) * ez) / L)) : 0;
-      if (Math.hypot(x - ax - ex * t, z - az - ez * t) < r + 0.2) return true;
+      if (Math.hypot(x - ax - ex * t, z - az - ez * t) < rr + 0.2 / SC) return true;
     }
   }
   return false;
@@ -472,7 +568,7 @@ export function nearInstallDesk(): InstallSite | null {
     const dx = G.pos.x - l.g.position.x, dz = G.pos.z - l.s.z;
     const x = dx * l.cos - dz * l.sin, z = dx * l.sin + dz * l.cos;
     const d = DESKS[l.s.k];
-    if (Math.hypot(x - d.x, z - (d.z - 1)) < 1.4) return l.s;
+    if (Math.hypot(x - d.x * SC, z - (d.z * SC - 1)) < 1.4) return l.s; // (the desk stands at human size where its plan puts it)
   }
   return null;
 }

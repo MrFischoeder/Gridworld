@@ -4,7 +4,7 @@
 import { G, W } from '../game';
 import { ITEMS, type ItemKey } from '../data/items';
 import { calcStats, saveChar, gainXp } from '../character';
-import { INSTALL_STAGES, INSTALL_WORK, INSTALL_DRAW, HALL_STAGE, RADAR, radarPlaces, installSites, type InstallKind, type InstallState, installPlan, handOverInstall, runInstall, installDone, newInstall, batchesIn, loadInstall, canRun, hallPick, hallKw, hallReady, hallSets, fuelHall, type InstallSite } from '../gen/installs';
+import { INSTALL_STAGES, INSTALL_WORK, INSTALL_DRAW, HALL_STAGE, RADAR, radarPlaces, installSites, type InstallKind, type InstallState, installPlan, handOverInstall, runInstall, installDone, newInstall, batchesIn, loadInstall, canRun, hallPick, hallKw, hallReady, hallSets, fuelHall, workOf, installWorks, setInstallRec, type InstallSite } from '../gen/installs';
 import { itemName } from './icons';
 import { TECH_BY_ID } from '../gen/tech';
 import type { Good } from '../gen/market';
@@ -46,10 +46,12 @@ function render(msg = '') {
     s += `The dish turns on its tower and the screens in the bunker glow: every village, ruin, wreck and camp within ${RADAR.r / 1000} km shows up, and whatever else is out there.</div>` +
       `<div class="shoprow"><div>${list}</div></div><button class="opt" data-ins="sweep">Sweep again and copy it onto my map</button>`;
   } else {
-    const w = INSTALL_WORK[site.k]!, recipe = w.inp.map(([i, n]) => `${n} ${short(ITEMS[i].name)}`).join(' and ');
+    const w = workOf(site.k, st)!, all = installWorks(site.k), recipe = w.inp.map(([i, n]) => `${n} ${short(ITEMS[i].name)}`).join(' and ');
+    const inputs = [...new Set(all.flatMap((x) => x.inp.map(([i]) => i)))];
+    const choose = all.length > 1 ? `<div class="say" style="margin:6px 0 0">What it makes${st.out ? ' (empty the bay to switch)' : ''}</div>` + all.map((x, i) => `<button class="opt" style="width:auto;${x === w ? 'color:var(--gold)' : ''}" data-ins="rec" data-insr="${i}" ${x === w || st.out ? 'disabled' : ''}>${x === w ? '▸ ' : ''}${x.inp.map(([q, n]) => `${n} ${short(ITEMS[q].name)}`).join(' + ')} → ${x.n ?? 1} ${ITEMS[x.out].name}</button>`).join('') : '';
     s += `${w.what} ${recipe} make ${(w.n ?? 1) > 1 ? `${w.n} crates` : "one crate"} of ${ITEMS[w.out].name} every ${hours(w.batch)}, while the power hall gives ${INSTALL_DRAW[site.k]} kW.</div>` +
-      `<div class="shoprow"><div>${list}</div></div>` + screen(site.k, st) +
-      w.inp.map(([i]) => { const h = have(i); return `<button class="opt" data-ins="load" data-insk="${i}" ${h && (st.inp[i] ?? 0) < w.hopper ? '' : 'disabled'}>Load ${short(ITEMS[i].name)} (${st.inp[i] ?? 0}/${w.hopper} in the hopper · you have ${h} with you)</button>`; }).join('') +
+      `<div class="shoprow"><div>${list}</div></div>` + screen(site.k, st) + choose +
+      inputs.map((i) => { const h = have(i); return `<button class="opt" data-ins="load" data-insk="${i}" ${h && (st.inp[i] ?? 0) < w.hopper ? '' : 'disabled'}>Load ${short(ITEMS[i].name)} (${st.inp[i] ?? 0}/${w.hopper} in the hopper · you have ${h} with you)</button>`; }).join('') +
       `<button class="opt" data-ins="take" ${st.out ? '' : 'disabled'}>Collect the ${ITEMS[w.out].name} (${st.out})</button>`;
   }
   panel().classList.add('wide');
@@ -58,7 +60,7 @@ function render(msg = '') {
 const short = (n: string) => n.replace(/^(Crate|Sack|Barrel|Bale) of /, '').toLowerCase();
 /** The plant's own terminal: power, the hopper, what it makes and when the next batch is due. */
 function screen(k: InstallKind, st: InstallState): string {
-  const w = INSTALL_WORK[k]!, c = G.char, draw = INSTALL_DRAW[k] ?? 0, kw = hallKw(k, st), run = canRun(k, st), pick = hallPick(k, st);
+  const w = workOf(k, st)!, c = G.char, draw = INSTALL_DRAW[k] ?? 0, kw = hallKw(k, st), run = canRun(k, st), pick = hallPick(k, st);
   const pad = (a: string, n = 22) => (a + ':').toUpperCase().padEnd(n);
   let t = `${site!.name.toUpperCase()}\n${pad('Power')}${kw}/${draw} kW${pick ? ' · ' + pick.map((h) => h.name.toLowerCase()).join(' + ') : ''}\n`;
   for (const [i] of w.inp) t += `${pad(short(ITEMS[i].name))}${st.inp[i] ?? 0} crates\n`;
@@ -72,7 +74,7 @@ function hall(k: InstallKind, st: InstallState): string {
   if (!INSTALL_DRAW[k]) return '';
   if (!hallReady(k, st)) return `<div class="say" style="opacity:.8">The power hall by the gate is a burnt-out shell. It comes back with the ${INSTALL_STAGES[k][HALL_STAGE - 1].title.toLowerCase()} stage.</div>`;
   const rows = hallSets(k).map((h) => {
-    const n = st.pw?.[h.fuel] ?? 0, hv = have(h.fuel), per = INSTALL_WORK[k]!.batch / h.burn;
+    const n = st.pw?.[h.fuel] ?? 0, hv = have(h.fuel), per = workOf(k, st)!.batch / h.burn;
     return `<div class="shoprow"><div><b>${h.name}</b> · ${h.kw} kW<br><span>${itemName(h.fuel)} in the bunker ${n > 0 && n < 1 ? n.toFixed(2) : Math.floor(n * 10) / 10}/${h.bunker} · ${per < 1 ? `${Math.round(1 / per)} batches a crate` : `${per.toFixed(1)} crates a batch`} · you have ${hv}</span></div>` +
       `<button class="opt" style="width:auto" data-ins="fuel" data-insk="${h.fuel}" ${hv && n < h.bunker - 1 + 1e-9 ? '' : 'disabled'}>load</button></div>`;
   }).join('');
@@ -108,6 +110,8 @@ const FINISH: Record<InstallKind, string> = {
   radar: 'The dish swings up on its tower, the screens flicker, and the land for miles round fills with blips.',
   propellant: 'Steam rises from the columns, the flare lights, and the first batch runs into the mixing house.',
   battery: 'The formation lines crackle into life and the first racks of cells begin to charge.',
+  optical: 'The crystal tower lights from within and the first sensor heads come off the grinders.',
+  alloy: 'The electrodes drop into the furnaces with a thunderclap and the casting hall glares white.',
 };
 /** The radar station's sweep: every place within its reach goes on your map. */
 function sweep(s: InstallSite): string {
@@ -149,6 +153,11 @@ export function installClick(t: HTMLElement): boolean {
     if (n > 0) { takeFrom(i, n, at()); calcStats(); saveChar(); }
     render(n > 0 ? `Loaded ${n} × ${ITEMS[i].name} into the power hall.` : 'No room in that bunker, or nothing to load.'); return true;
   }
+  if (a === 'rec') {
+    const ok = setInstallRec(site.k, st, +b.dataset.insr!, c.time);
+    if (ok) saveChar();
+    render(ok ? `It is set to make ${ITEMS[workOf(site.k, st)!.out].name} now.` : 'Empty the bay first: it holds one kind at a time.'); return true;
+  }
   if (a === 'load') {
     const i = b.dataset.insk as ItemKey, n = loadInstall(site.k, st, i, have(i), c.time);
     if (n > 0) { takeFrom(i, n, at()); calcStats(); saveChar(); }
@@ -156,10 +165,10 @@ export function installClick(t: HTMLElement): boolean {
   }
   if (a === 'take') {
     runInstall(site.k, st, c.time);
-    const w = INSTALL_WORK[site.k];
+    const w = workOf(site.k, st), was = canRun(site.k, st);
     if (!w) return true;
     const left = putAway(w.out, st.out, at(), true), got = st.out - left;
-    if (got > 0 && st.out >= w.bay) st.t = c.time; // the bay had stopped it: it starts again now
+    if (got > 0 && !was) st.t = c.time; // the bay had stopped it: it starts again now
     st.out = left; calcStats(); saveChar();
     render(got ? `Collected ${got} crates of ${ITEMS[w.out].name}${left ? ` (no room for ${left})` : ''}.` : 'No room for them.'); return true;
   }

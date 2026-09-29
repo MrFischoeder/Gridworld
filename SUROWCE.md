@@ -120,9 +120,12 @@ Każda wioska ma jeden rodzaj zakładu i robi 1–2 towary z jego listy; częś�
 - **Old Chip Foundry:** 2 × Glass Panes, 1 × Copper Ingots, 1 × Industrial Chemicals, 1 × Crate of Rare Earths → 1 × Microchips co 4 h gry
 - **Old Propellant Plant:** 3 × Fuel Canister, 1 × Industrial Chemicals, 1 × Crate of Sulfur → 3 × Rocket Propellant co 3 h gry
 - **Old Battery Plant:** 1 × Crate of Lithium Brine Salt, 1 × Crate of Nickel Ore, 1 × Copper Ingots, 1 × Industrial Chemicals → 1 × Power Cells co 4 h gry
+- **Old Optical Works:** 2 × Glass Panes, 1 × Crate of Rare Earths, 1 × Industrial Chemicals → 1 × Sensors co 4 h gry
+- **Old Alloy Complex:** 2 × Steel Ingots, 1 × Aluminium Ingots, 1 × Crate of Nickel Ore → 1 × Ancient Alloy co 5 h gry
+- **Old Alloy Complex:** 3 × Crate of Clay, 1 × Aluminium Ingots, 1 × Industrial Chemicals → 2 × Advanced Ceramics co 4 h gry
 - **Old Radar Station:** nic nie produkuje; odkrywa na mapie wszystko w promieniu 12 km.
 
-**Siłownie instalacji** (wracają z II etapem odbudowy; partia rusza tylko przy pełnym poborze, zestawy palą paliwo tylko podczas pracy): Old Enrichment Plant pobiera 200 kW, Old Chip Foundry pobiera 100 kW, Old Propellant Plant pobiera 120 kW, Old Battery Plant pobiera 150 kW. Zestawy: Coal boiler 120 kW na Crate of Coal (skrzynia na 2 h pracy, bunkier 30); Diesel sets 100 kW na Fuel Canister (skrzynia na 2.5 h pracy, bunkier 30); The plant's own reactor 250 kW na Nuclear Fuel Rods (skrzynia na 4 dni pracy, bunkier 4). Własny reaktor ma tylko Old Enrichment Plant.
+**Siłownie instalacji** (wracają z II etapem odbudowy; partia rusza tylko przy pełnym poborze, zestawy palą paliwo tylko podczas pracy): Old Enrichment Plant pobiera 200 kW, Old Chip Foundry pobiera 100 kW, Old Propellant Plant pobiera 120 kW, Old Battery Plant pobiera 150 kW, Old Optical Works pobiera 130 kW, Old Alloy Complex pobiera 180 kW. Zestawy: Coal boiler 120 kW na Crate of Coal (skrzynia na 2 h pracy, bunkier 30); Diesel sets 100 kW na Fuel Canister (skrzynia na 2.5 h pracy, bunkier 30); The plant's own reactor 250 kW na Nuclear Fuel Rods (skrzynia na 4 dni pracy, bunkier 4). Własny reaktor ma tylko Old Enrichment Plant.
 
 ### 2.3 Kowal: „Make something for me” (materiały z hali wioski)
 
@@ -254,6 +257,16 @@ Materiały biorą się z hali wioski; złoto płacisz ze swojej sakiewki (opłat
 2. Formation lines and power: 12 × Copper Cable, 6 × Circuit Boards, 6 × Industrial Chemicals, 4 × Glass Panes · nagroda 400 g
 3. The electrolyte plant: 2 × Power Core, 2 × Advanced Alloy, 8 × Electronic Components · plany: **Power Cell Chemistry** · nagroda 500 g
 
+**Old Optical Works**
+1. Opening the lens halls: 8 × Steel Ingots, 8 × Sack of Cement, 6 × Glass Panes, 4 × Machine Parts · nagroda 250 g
+2. Clean air, water and power: 12 × Copper Cable, 6 × Circuit Boards, 6 × Industrial Chemicals, 6 × Glass Panes · nagroda 400 g
+3. The crystal furnace: 1 × Power Core, 4 × Advanced Alloy, 8 × Electronic Components · plany: **Advanced Sensors** · nagroda 500 g
+
+**Old Alloy Complex**
+1. Securing the casting hall: 12 × Steel Ingots, 12 × Sack of Cement, 16 × Pallet of Bricks, 6 × Machine Parts · nagroda 300 g
+2. The arc furnaces and power: 16 × Copper Cable, 4 × Circuit Boards, 6 × Machine Parts, 4 × Industrial Chemicals · nagroda 450 g
+3. The alloy recipe: 2 × Power Core, 6 × Advanced Alloy, 6 × Electronic Components · plany: **Ancient Metallurgy** · nagroda 600 g
+
 ### 3.9 Chariot of the Ancients (Rydwan w hangarze przy Gridholm)
 
 - **Hull Plating:** 12 × Advanced Alloy, 20 × Steel Ingots
@@ -293,60 +306,60 @@ Materiały biorą się z hali wioski; złoto płacisz ze swojej sakiewki (opłat
 
 | Materiał | Objętość | Użycie |
 |---|---|---|
-| Advanced Alloy | 8 L | budowa: Small Reactor; odbudowa: Old Enrichment Plant; odbudowa: Old Radar Station; odbudowa: Old Propellant Plant; odbudowa: Old Battery Plant; Rydwan: Hull Plating; Rydwan: Main Engines; Rydwan: Heat Shield |
-| Aluminium Ingots | 8 L | przetwarzanie: Alloy Foundry → Advanced Alloy |
+| Advanced Alloy | 8 L | budowa: Small Reactor; odbudowa: Old Enrichment Plant; odbudowa: Old Radar Station; odbudowa: Old Propellant Plant; odbudowa: Old Battery Plant; odbudowa: Old Optical Works; odbudowa: Old Alloy Complex; Rydwan: Hull Plating; Rydwan: Main Engines; Rydwan: Heat Shield |
+| Aluminium Ingots | 8 L | przetwarzanie: Alloy Foundry → Advanced Alloy; przetwarzanie: Old Alloy Complex → Ancient Alloy; przetwarzanie: Old Alloy Complex → Advanced Ceramics |
 | Auto Turret | 16 L | budowa: Auto Turret |
 | Bale of Flax Fibre | 16 L | przetwarzanie: Textile Mill → Bolt of Cloth |
 | Bale of Wool | 18 L | przetwarzanie: Textile Mill → Bolt of Cloth |
 | Barrel of Crude Oil | 14 L | przetwarzanie: Oil Refinery → Fuel Canister; przetwarzanie: Oil Refinery → Plastic Resin; przetwarzanie: Chemical Works → Industrial Chemicals; przetwarzanie: Polymer Plant → Plastic Resin |
 | Basket of Eggs | 10 L | sklep spożywczy → Boiled Eggs |
 | Churn of Milk | 20 L | sklep spożywczy → Cup of Milk; sklep spożywczy → Cheese |
-| Circuit Boards | 8 L | odbudowa: Old Enrichment Plant; odbudowa: Old Radar Station; odbudowa: Old Chip Foundry; odbudowa: Old Propellant Plant; odbudowa: Old Battery Plant; Rydwan: Avionics |
-| Copper Cable | 10 L | przetwarzanie: Electronics Shop → Circuit Boards; budowa: Aluminium Works; budowa: Small Reactor; ulepszenie elektrowni: Automated; odbudowa: Old Enrichment Plant; odbudowa: Old Radar Station; odbudowa: Old Chip Foundry; odbudowa: Old Propellant Plant; odbudowa: Old Battery Plant; Rydwan: Main Engines; Rydwan: Avionics |
+| Circuit Boards | 8 L | odbudowa: Old Enrichment Plant; odbudowa: Old Radar Station; odbudowa: Old Chip Foundry; odbudowa: Old Propellant Plant; odbudowa: Old Battery Plant; odbudowa: Old Optical Works; odbudowa: Old Alloy Complex; Rydwan: Avionics |
+| Copper Cable | 10 L | przetwarzanie: Electronics Shop → Circuit Boards; budowa: Aluminium Works; budowa: Small Reactor; ulepszenie elektrowni: Automated; odbudowa: Old Enrichment Plant; odbudowa: Old Radar Station; odbudowa: Old Chip Foundry; odbudowa: Old Propellant Plant; odbudowa: Old Battery Plant; odbudowa: Old Optical Works; odbudowa: Old Alloy Complex; Rydwan: Main Engines; Rydwan: Avionics |
 | Copper Ingots | 8 L | przetwarzanie: Wire Mill → Copper Cable; przetwarzanie: Old Chip Foundry → Microchips; przetwarzanie: Old Battery Plant → Power Cells |
 | Copper Ore | 1.2 L | kowal → Electronic Components |
 | Crate of Bauxite | 10 L | przetwarzanie: Aluminium Works → Aluminium Ingots |
-| Crate of Clay | 10 L | przetwarzanie: Brickworks → Pallet of Bricks |
+| Crate of Clay | 10 L | przetwarzanie: Brickworks → Pallet of Bricks; przetwarzanie: Old Alloy Complex → Advanced Ceramics |
 | Crate of Coal | 10 L | przetwarzanie: Brickworks → Pallet of Bricks; przetwarzanie: Cement Works → Sack of Cement; przetwarzanie: Smelter → Iron Bars; przetwarzanie: Smelter → Copper Ingots; przetwarzanie: Smelter → Lead Ingots; przetwarzanie: Glassworks → Glass Panes; przetwarzanie: Steelworks → Steel Ingots; przetwarzanie: Aluminium Works → Aluminium Ingots; paliwo: siłownie wielkich instalacji; paliwo: Coal Power Station |
 | Crate of Copper Ore | 10 L | przetwarzanie: Smelter → Copper Ingots |
 | Crate of Iron Ore | 10 L | przetwarzanie: Smelter → Iron Bars |
 | Crate of Lead Ore | 8 L | przetwarzanie: Smelter → Lead Ingots |
 | Crate of Limestone | 10 L | przetwarzanie: Cement Works → Sack of Cement; przetwarzanie: Steelworks → Steel Ingots |
 | Crate of Lithium Brine Salt | 10 L | przetwarzanie: Old Battery Plant → Power Cells |
-| Crate of Nickel Ore | 8 L | przetwarzanie: Alloy Foundry → Advanced Alloy; przetwarzanie: Old Battery Plant → Power Cells |
-| Crate of Rare Earths | 8 L | przetwarzanie: Old Chip Foundry → Microchips |
+| Crate of Nickel Ore | 8 L | przetwarzanie: Alloy Foundry → Advanced Alloy; przetwarzanie: Old Battery Plant → Power Cells; przetwarzanie: Old Alloy Complex → Ancient Alloy |
+| Crate of Rare Earths | 8 L | przetwarzanie: Old Chip Foundry → Microchips; przetwarzanie: Old Optical Works → Sensors |
 | Crate of Sulfur | 10 L | przetwarzanie: Chemical Works → Industrial Chemicals; przetwarzanie: Old Propellant Plant → Rocket Propellant |
 | Crate of Uranium Ore | 8 L | przetwarzanie: Old Enrichment Plant → Nuclear Fuel Rods |
-| Electronic Components | 0.4 L | kowal → Compass; kowal → Engine Parts; kowal → Turbocharger; budowa: Auto Turret; budowa: Oil Refinery; budowa: Chemical Works; budowa: Polymer Plant; budowa: Aluminium Works; budowa: Battery Works; budowa: Electronics Shop; budowa: Solar Farm; budowa: Small Reactor; budowa: rafineria; ulepszenie elektrowni: Rebuilt with old electronics; ulepszenie elektrowni: Automated; odbudowa: Old Enrichment Plant; odbudowa: Old Radar Station; odbudowa: Old Chip Foundry; odbudowa: Old Propellant Plant; odbudowa: Old Battery Plant; naprawa: Solar Array; naprawa: Refinery |
+| Electronic Components | 0.4 L | kowal → Compass; kowal → Engine Parts; kowal → Turbocharger; budowa: Auto Turret; budowa: Oil Refinery; budowa: Chemical Works; budowa: Polymer Plant; budowa: Aluminium Works; budowa: Battery Works; budowa: Electronics Shop; budowa: Solar Farm; budowa: Small Reactor; budowa: rafineria; ulepszenie elektrowni: Rebuilt with old electronics; ulepszenie elektrowni: Automated; odbudowa: Old Enrichment Plant; odbudowa: Old Radar Station; odbudowa: Old Chip Foundry; odbudowa: Old Propellant Plant; odbudowa: Old Battery Plant; odbudowa: Old Optical Works; odbudowa: Old Alloy Complex; naprawa: Solar Array; naprawa: Refinery |
 | Engine Parts | 6 L | budowa: Wire Mill; budowa: Steelworks; budowa: Machine Shop; budowa: Wind Farm; budowa: Coal Power Station; budowa: Diesel Generator Bank; naprawa: Diesel Generator; Motor Boat |
 | Fuel Canister | 12 L | przetwarzanie: Old Propellant Plant → Rocket Propellant; paliwo: siłownie wielkich instalacji; paliwo: Diesel Generator Bank; paliwo łodzi motorowej |
-| Glass Panes | 12 L | przetwarzanie: Electronics Shop → Circuit Boards; przetwarzanie: Old Chip Foundry → Microchips; odbudowa: Old Chip Foundry; odbudowa: Old Battery Plant; Rydwan: Avionics; Rydwan: Heat Shield |
-| Industrial Chemicals | 16 L | przetwarzanie: Polymer Plant → Plastic Resin; przetwarzanie: Battery Works → Basic Batteries; przetwarzanie: Old Enrichment Plant → Nuclear Fuel Rods; przetwarzanie: Old Chip Foundry → Microchips; przetwarzanie: Old Propellant Plant → Rocket Propellant; przetwarzanie: Old Battery Plant → Power Cells; odbudowa: Old Enrichment Plant; odbudowa: Old Chip Foundry; odbudowa: Old Propellant Plant; odbudowa: Old Battery Plant |
+| Glass Panes | 12 L | przetwarzanie: Electronics Shop → Circuit Boards; przetwarzanie: Old Chip Foundry → Microchips; przetwarzanie: Old Optical Works → Sensors; odbudowa: Old Chip Foundry; odbudowa: Old Battery Plant; odbudowa: Old Optical Works; Rydwan: Avionics; Rydwan: Heat Shield |
+| Industrial Chemicals | 16 L | przetwarzanie: Polymer Plant → Plastic Resin; przetwarzanie: Battery Works → Basic Batteries; przetwarzanie: Old Enrichment Plant → Nuclear Fuel Rods; przetwarzanie: Old Chip Foundry → Microchips; przetwarzanie: Old Propellant Plant → Rocket Propellant; przetwarzanie: Old Battery Plant → Power Cells; przetwarzanie: Old Optical Works → Sensors; przetwarzanie: Old Alloy Complex → Advanced Ceramics; odbudowa: Old Enrichment Plant; odbudowa: Old Chip Foundry; odbudowa: Old Propellant Plant; odbudowa: Old Battery Plant; odbudowa: Old Optical Works; odbudowa: Old Alloy Complex |
 | Iron Bars | 8 L | przetwarzanie: Steelworks → Steel Ingots |
 | Iron Ore | 1.2 L | kowal → Scrap Metal; kowal → Wire |
 | Lead Ingots | 6 L | przetwarzanie: Battery Works → Basic Batteries |
 | Leechwing Membrane | 1 L | kowal → Gas Mask |
 | Log | 6 L | kowal → Hatchet; kowal → Pickaxe; kowal → Fire Kit; kowal → Hammer; kowal → Saw; kowal → Screwdriver; kowal → Planks; kowal → Scrap Metal; kowal → Light Tire; kowal → Hull Plating; kowal → Mask Filter; budowa: mur Timber Palisade; budowa: Sawmill; budowa: Brickworks; budowa: Smelter; budowa: farma; ulepszenie elektrowni: Overhauled; odbudowa: Old Radar Station; most; przystań; Rowboat; Sailboat; Motor Boat |
-| Machine Parts | 12 L | odbudowa: Old Enrichment Plant; odbudowa: Old Chip Foundry; odbudowa: Old Propellant Plant; odbudowa: Old Battery Plant; Rydwan: Main Engines |
+| Machine Parts | 12 L | odbudowa: Old Enrichment Plant; odbudowa: Old Chip Foundry; odbudowa: Old Propellant Plant; odbudowa: Old Battery Plant; odbudowa: Old Optical Works; odbudowa: Old Alloy Complex; Rydwan: Main Engines |
 | Microchips | 6 L | zamówienia na czipy (wioski rzemieślnicze); ulepszenie elektrowni: Automated; Rydwan: Avionics |
 | Nails | 0.2 L | budowa: mur Timber Palisade; budowa: mur Stone Wall; budowa: Textile Mill; budowa: Machine Shop; naprawa: Fields; naprawa: Sawmill; most; przystań; Rowboat; Sailboat; Motor Boat |
 | Nuclear Fuel Rods | 8 L | paliwo: własny reaktor Old Enrichment Plant; paliwo: Small Reactor; zamówienia na paliwo (stare reaktory) |
-| Pallet of Bricks | 12 L | budowa: Cement Works; budowa: Smelter; budowa: Glassworks; budowa: Steelworks; budowa: Aluminium Works; budowa: Alloy Foundry; budowa: Coal Power Station; odbudowa: Old Battery Plant |
+| Pallet of Bricks | 12 L | budowa: Cement Works; budowa: Smelter; budowa: Glassworks; budowa: Steelworks; budowa: Aluminium Works; budowa: Alloy Foundry; budowa: Coal Power Station; odbudowa: Old Battery Plant; odbudowa: Old Alloy Complex |
 | Planks | 1.5 L | budowa: mur Timber Palisade; budowa: mur Stone Wall; budowa: Barricades round the works; budowa: Barricades round the power plant; budowa: Sawmill; budowa: Brickworks; budowa: Cement Works; budowa: Smelter; budowa: Glassworks; budowa: Wire Mill; budowa: Oil Refinery; budowa: Textile Mill; budowa: Chemical Works; budowa: Electronics Shop; budowa: Solar Farm; budowa: Wind Farm; budowa: Coal Power Station; budowa: rafineria; naprawa: Fields; naprawa: Mine; naprawa: Sawmill; naprawa: Fish Racks; naprawa: Workshops |
 | Plastic Resin | 14 L | przetwarzanie: Electronics Shop → Circuit Boards; Rydwan: Heat Shield |
-| Power Core | 1 L | kowal → Turbocharger; budowa: Alloy Foundry; budowa: Small Reactor; ulepszenie elektrowni: Rebuilt with old electronics; odbudowa: Old Enrichment Plant; odbudowa: Old Chip Foundry; odbudowa: Old Propellant Plant; odbudowa: Old Battery Plant |
+| Power Core | 1 L | kowal → Turbocharger; budowa: Alloy Foundry; budowa: Small Reactor; ulepszenie elektrowni: Rebuilt with old electronics; odbudowa: Old Enrichment Plant; odbudowa: Old Chip Foundry; odbudowa: Old Propellant Plant; odbudowa: Old Battery Plant; odbudowa: Old Optical Works; odbudowa: Old Alloy Complex |
 | Ravager Hide | 3 L | kowal → Empty Flask; kowal → Gas Mask; Sailboat |
 | Rocket Propellant | 14 L | Rydwan: Propellant |
 | Rope | 1.5 L | budowa: mur Timber Palisade; budowa: Barricades round the works; budowa: Barricades round the power plant; naprawa: Wind Turbines; naprawa: Fish Racks; most; przystań; Rowboat; Sailboat; Motor Boat |
 | Sack of Carrots | 14 L | sklep spożywczy → Hearty Stew |
-| Sack of Cement | 16 L | budowa: mur Stone Wall; budowa: Steelworks; budowa: Chemical Works; budowa: Polymer Plant; budowa: Aluminium Works; budowa: Battery Works; budowa: Alloy Foundry; budowa: Coal Power Station; budowa: Small Reactor; odbudowa: Old Enrichment Plant; odbudowa: Old Chip Foundry; odbudowa: Old Propellant Plant; odbudowa: Old Battery Plant |
+| Sack of Cement | 16 L | budowa: mur Stone Wall; budowa: Steelworks; budowa: Chemical Works; budowa: Polymer Plant; budowa: Aluminium Works; budowa: Battery Works; budowa: Alloy Foundry; budowa: Coal Power Station; budowa: Small Reactor; odbudowa: Old Enrichment Plant; odbudowa: Old Chip Foundry; odbudowa: Old Propellant Plant; odbudowa: Old Battery Plant; odbudowa: Old Optical Works; odbudowa: Old Alloy Complex |
 | Sack of Grain | 14 L | sklep spożywczy → Bread |
 | Sack of Potatoes | 14 L | sklep spożywczy → Hearty Stew |
 | Sack of Quartz Sand | 12 L | przetwarzanie: Glassworks → Glass Panes |
 | Salt Blocks | 7 L | przetwarzanie: Chemical Works → Industrial Chemicals |
 | Scrap Metal | 1.5 L | kowal → Hammer; kowal → Saw; kowal → Screwdriver; kowal → Pliers; kowal → Nails; kowal → Electronic Components; kowal → Compass; kowal → Light Tire; kowal → Hull Plating; kowal → Engine Parts; kowal → Gas Mask; kowal → Mask Filter; kowal → Turbocharger; budowa: mur Stone Wall; budowa: Auto Turret; budowa: Barricades round the works; budowa: Barricades round the power plant; budowa: Sawmill; budowa: Brickworks; budowa: Cement Works; budowa: Smelter; budowa: Glassworks; budowa: Wire Mill; budowa: Oil Refinery; budowa: Textile Mill; budowa: Steelworks; budowa: Chemical Works; budowa: Polymer Plant; budowa: Aluminium Works; budowa: Battery Works; budowa: Electronics Shop; budowa: Machine Shop; budowa: Alloy Foundry; budowa: Solar Farm; budowa: Wind Farm; budowa: Coal Power Station; budowa: Diesel Generator Bank; budowa: rafineria; budowa: stalowe pługi; ulepszenie elektrowni: Overhauled; odbudowa: Old Radar Station; naprawa: Diesel Generator; naprawa: Wind Turbines; naprawa: Mine; naprawa: Oil Wells; naprawa: Refinery; naprawa: Workshops; naprawa: Salvage Yard; przystań; Motor Boat |
 | Stack of Lumber | 16 L | budowa: Textile Mill; budowa: Polymer Plant; budowa: Battery Works; budowa: Machine Shop; budowa: Alloy Foundry |
-| Steel Ingots | 8 L | przetwarzanie: Machine Shop → Machine Parts; przetwarzanie: Machine Shop → Crate of Tools; przetwarzanie: Alloy Foundry → Advanced Alloy; budowa: Small Reactor; odbudowa: Old Enrichment Plant; odbudowa: Old Radar Station; odbudowa: Old Chip Foundry; odbudowa: Old Propellant Plant; odbudowa: Old Battery Plant; Rydwan: Hull Plating |
+| Steel Ingots | 8 L | przetwarzanie: Machine Shop → Machine Parts; przetwarzanie: Machine Shop → Crate of Tools; przetwarzanie: Alloy Foundry → Advanced Alloy; przetwarzanie: Old Alloy Complex → Ancient Alloy; budowa: Small Reactor; odbudowa: Old Enrichment Plant; odbudowa: Old Radar Station; odbudowa: Old Chip Foundry; odbudowa: Old Propellant Plant; odbudowa: Old Battery Plant; odbudowa: Old Optical Works; odbudowa: Old Alloy Complex; Rydwan: Hull Plating |
 | Stone | 2 L | kowal → Hatchet; kowal → Pickaxe; budowa: mur Stone Wall; budowa: Barricades round the works; budowa: Barricades round the power plant; budowa: Sawmill; budowa: Brickworks; budowa: Cement Works; budowa: Smelter; budowa: Glassworks; budowa: Coal Power Station; budowa: farma; odbudowa: Old Radar Station; most; przystań |
 | Timber Bundle | 20 L | przetwarzanie: Sawmill → Stack of Lumber; przetwarzanie: Machine Shop → Crate of Tools |
 | Wire | 0.5 L | budowa: Auto Turret; budowa: Wire Mill; budowa: Oil Refinery; budowa: Chemical Works; budowa: Polymer Plant; budowa: Battery Works; budowa: Electronics Shop; budowa: Solar Farm; budowa: Wind Farm; budowa: Diesel Generator Bank; budowa: rafineria; budowa: stalowe pługi; ulepszenie elektrowni: Overhauled; ulepszenie elektrowni: Rebuilt with old electronics; naprawa: Solar Array; naprawa: Wind Turbines; naprawa: Oil Wells; naprawa: Salvage Yard; przystań |

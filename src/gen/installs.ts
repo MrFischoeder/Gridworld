@@ -12,7 +12,7 @@ import { nearRiver } from './rivers';
 import { rectDist, type Terrain } from './terrain';
 import type { ItemKey } from '../data/items';
 
-export type InstallKind = 'uranium' | 'chips' | 'radar' | 'propellant' | 'battery';
+export type InstallKind = 'uranium' | 'chips' | 'radar' | 'propellant' | 'battery' | 'optical' | 'alloy';
 export interface InstallSpec { k: InstallKind; name: string; blurb: string; band: [number, number]; r: number }
 export const INSTALLS: InstallSpec[] = [
   { k: 'uranium', name: 'Old Enrichment Plant', blurb: 'a ruined plant of the old world where ore was once made into reactor fuel: a centrifuge hall, two cooling towers and a stack', band: [15000, 25000], r: 34 },
@@ -21,7 +21,12 @@ export const INSTALLS: InstallSpec[] = [
   // (new ones go last: each is placed after those before it, so the older ones keep their places)
   { k: 'propellant', name: 'Old Propellant Plant', blurb: 'a rocket fuel works of the old world: spherical tanks, two distillation columns, a flare stack and a bunkered mixing house', band: [10000, 18000], r: 30 },
   { k: 'battery', name: 'Old Battery Plant', blurb: 'a cell works of the old world: a long sawtooth-roofed hall, rows of electrolyte tanks and a brine basin', band: [14000, 22000], r: 30 },
+  { k: 'optical', name: 'Old Optical Works', blurb: 'a lens and sensor works of the old world: long glass-roofed grinding halls, a tall crystal-growing tower and a row of annealing kilns', band: [14000, 24000], r: 30 },
+  { k: 'alloy', name: 'Old Alloy Complex', blurb: 'a metal works of the old world: two great arc furnaces crowned with electrodes, a towering casting hall, twin stacks and heaps of slag', band: [16000, 26000], r: 32 },
 ];
+/** How much bigger the plants stand than their plans (and their `r`): the ground is searched at the plan's radius, so a plant's place never moves when it grows. */
+export const INSTALL_SCALE = 2;
+/** `r`: the radius of the plant's bare ground as it stands (the plan's radius × INSTALL_SCALE). */
 export interface InstallSite { k: InstallKind; name: string; x: number; z: number; y: number; yaw: number; r: number }
 
 /** Why a spot does not fit (null: it does). */
@@ -53,7 +58,7 @@ export function installSites(t: Terrain): InstallSite[] {
     for (let k = 0; k < 120; k++) {
       const a = (hash(t.world, i, k, 0x1e57) % 3600) / 3600 * Math.PI * 2, [d0, d1] = spec.band;
       const d = d0 + (hash(t.world, i, k, 0x1e58) % 1000) / 1000 * (d1 - d0), x = Math.cos(a) * d, z = Math.sin(a) * d;
-      const c: InstallSite = { k: spec.k, name: spec.name, x, z, y: t.heightAt(x, z), yaw: (hash(t.world, i, k, 0x1e59) % 4) * Math.PI / 2, r: spec.r };
+      const c: InstallSite = { k: spec.k, name: spec.name, x, z, y: t.heightAt(x, z), yaw: (hash(t.world, i, k, 0x1e59) % 4) * Math.PI / 2, r: spec.r * INSTALL_SCALE };
       if (!best) best = c;
       if (out.some((o) => worldDist(o.x, o.z, x, z) < 3000)) continue; // the installations lie well apart
       if (!installMisfit(t, x, z, spec.r)) { best = c; break; }
@@ -101,6 +106,16 @@ export const INSTALL_STAGES: Record<InstallKind, InstallStage[]> = {
     { title: 'Formation lines and power', text: 'The lines, the electrolyte tanks and the power hall by the gate must run again. Cable for the lines and the hall, circuit boards for the chargers, chemicals for the tanks, glass for the sight gauges.', needs: [['cable', 12], ['boards', 6], ['chems', 6], ['glass', 4]], gold: 400, xp: 400 },
     { title: 'The electrolyte plant', text: 'The cells need an electrolyte nobody remembers how to make. Only the old plans for power cell chemistry show it, and the plant wants power cores and advanced alloy.', needs: [['pcore', 2], ['alloy', 2], ['circuit', 8]], tech: 'powercells', gold: 500, xp: 600 },
   ],
+  optical: [
+    { title: 'Opening the lens halls', text: 'The glass roofs of the grinding halls lie in shards on the benches. Steel for the frames, cement for the footings, glass for the roof panes, machine parts for the grinders.', needs: [['steel', 8], ['cement', 8], ['glass', 6], ['parts', 4]], gold: 250, xp: 250 },
+    { title: 'Clean air, water and power', text: 'A lens is ruined by a speck of dust. The air plant, the water stills and the power hall by the gate must run again: cable, circuit boards, chemicals for the stills, glass for the filter housings.', needs: [['cable', 12], ['boards', 6], ['chems', 6], ['glass', 6]], gold: 400, xp: 400 },
+    { title: 'The crystal furnace', text: 'The tower where the sensor crystals were grown stands cold. Only the old plans for advanced sensors show how it was run, and it wants a power core and advanced alloy.', needs: [['pcore', 1], ['alloy', 4], ['circuit', 8]], tech: 'sensors', gold: 500, xp: 600 },
+  ],
+  alloy: [
+    { title: 'Securing the casting hall', text: 'The casting hall is the tallest thing for kilometres and it leans. Steel for new columns, cement and bricks for the furnace beds, machine parts for the cranes.', needs: [['steel', 12], ['cement', 12], ['bricks', 16], ['parts', 6]], gold: 300, xp: 300 },
+    { title: 'The arc furnaces and power', text: 'The furnaces want more current than anything else here: heavy cable, circuit boards for the regulators, machine parts for the electrode hoists, chemicals for the fluxes, and the power hall by the gate.', needs: [['cable', 16], ['boards', 4], ['parts', 6], ['chems', 4]], gold: 450, xp: 450 },
+    { title: 'The alloy recipe', text: 'Steel, aluminium and nickel alone make only advanced alloy. What the Ancients cast here was more: only the old plans for ancient metallurgy hold the recipe, and the control room wants power cores and advanced alloy.', needs: [['pcore', 2], ['alloy', 6], ['circuit', 6]], tech: 'ancmetal', gold: 600, xp: 700 },
+  ],
 };
 /** What a working installation makes: the crates of each input in `inp` into `n` (1) of `out` every `batch` game minutes (at most `hopper` of each input loaded, `bay` made waiting). */
 export interface InstallWork { inp: [ItemKey, number][]; out: ItemKey; n?: number; batch: number; hopper: number; bay: number; what: string }
@@ -109,14 +124,31 @@ export const INSTALL_WORK: Partial<Record<InstallKind, InstallWork>> = {
   chips: { inp: [['glass', 2], ['copperbar', 1], ['chems', 1], ['rareearth', 1]], out: 'microchip', batch: 240, hopper: 30, bay: 12, what: 'The etching line glows behind its windows.' },
   propellant: { inp: [['fuel', 3], ['chems', 1], ['sulfur', 1]], out: 'propellant', n: 3, batch: 180, hopper: 30, bay: 30, what: 'The columns steam and the mixing house hums.' },
   battery: { inp: [['lithium', 1], ['nickel', 1], ['copperbar', 1], ['chems', 1]], out: 'powercell', batch: 240, hopper: 30, bay: 12, what: 'The formation lines crackle and the cells charge in their racks.' },
+  optical: { inp: [['glass', 2], ['rareearth', 1], ['chems', 1]], out: 'sensor', batch: 240, hopper: 30, bay: 12, what: 'The crystal tower glows and the grinders whine in the lens halls.' },
+  alloy: { inp: [['steel', 2], ['aluminium', 1], ['nickel', 1]], out: 'ancalloy', batch: 300, hopper: 30, bay: 12, what: 'The arc furnaces roar and the casting hall fills with a white glare.' },
 };
+/** Further things an installation can make instead (picked at its desk while its bay is empty): the first is INSTALL_WORK[k]. */
+export const INSTALL_MORE: Partial<Record<InstallKind, InstallWork[]>> = {
+  alloy: [{ inp: [['clay', 3], ['aluminium', 1], ['chems', 1]], out: 'ceramics', n: 2, batch: 240, hopper: 30, bay: 12, what: 'The kiln line glows and the ceramic tiles come out white.' }],
+};
+/** Everything k can make, and what it makes now (`InstallState.rec`). */
+export const installWorks = (k: InstallKind): InstallWork[] => (INSTALL_WORK[k] ? [INSTALL_WORK[k]!, ...(INSTALL_MORE[k] ?? [])] : []);
+export const workOf = (k: InstallKind, s?: InstallState): InstallWork | undefined => installWorks(k)[s?.rec ?? 0] ?? INSTALL_WORK[k];
+/** Switch what k makes (only while its bay is empty: the bay holds one kind); false when it cannot. */
+export function setInstallRec(k: InstallKind, s: InstallState, i: number, now: number): boolean {
+  if (!installWorks(k)[i] || (s.rec ?? 0) === i) return false;
+  runInstall(k, s, now);
+  if (s.out > 0) return false;
+  s.rec = i; s.t = now;
+  return true;
+}
 
 // ---------- the power hall: an installation makes its own power ----------
 /**
  * What a working installation draws (kW). A batch runs only while its power hall gives that much: the hall comes back
  * with the second stage (`HALL_STAGE` stages done) and burns what you bring it, only while a batch is under way.
  */
-export const INSTALL_DRAW: Partial<Record<InstallKind, number>> = { uranium: 200, chips: 100, propellant: 120, battery: 150 };
+export const INSTALL_DRAW: Partial<Record<InstallKind, number>> = { uranium: 200, chips: 100, propellant: 120, battery: 150, optical: 130, alloy: 180 };
 export const HALL_STAGE = 2;
 /** The hall's generator sets: each runs on its own fuel (a crate every `burn` game minutes of work), `bunker` crates at most. */
 export interface HallSet { fuel: ItemKey; name: string; kw: number; burn: number; bunker: number }
@@ -133,7 +165,7 @@ export const hallReady = (k: InstallKind, s: InstallState | undefined) => !!INST
  * gives enough, else the coal boiler and the diesel sets together; null when the hall cannot give the draw.
  */
 export function hallPick(k: InstallKind, s: InstallState): HallSet[] | null {
-  const w = INSTALL_WORK[k], draw = INSTALL_DRAW[k];
+  const w = workOf(k, s), draw = INSTALL_DRAW[k];
   if (!w || !draw || !hallReady(k, s)) return null;
   const ok = hallSets(k).filter((h) => (s.pw?.[h.fuel] ?? 0) >= w.batch / h.burn - 1e-9);
   const one = ok.find((h) => h.kw >= draw);
@@ -160,7 +192,7 @@ export function fuelHall(k: InstallKind, s: InstallState, fuel: ItemKey, n: numb
  * An installation's saved state: the stage reached (stages done), materials handed over towards the next, and the
  * works: inputs in the hopper, output ready, when it was last settled, and the fuel in its power hall's bunkers.
  */
-export interface InstallState { stage: number; given: Partial<Record<ItemKey, number>>; inp: Partial<Record<ItemKey, number>>; out: number; t: number; pw?: Partial<Record<ItemKey, number>> }
+export interface InstallState { stage: number; given: Partial<Record<ItemKey, number>>; inp: Partial<Record<ItemKey, number>>; out: number; t: number; pw?: Partial<Record<ItemKey, number>>; rec?: number }
 export const newInstall = (): InstallState => ({ stage: 0, given: {}, inp: {}, out: 0, t: 0 });
 /** Saves from before installations took more than one input kept the ore as a number. */
 export function fixInstall(k: InstallKind, s: InstallState): InstallState {
@@ -168,7 +200,7 @@ export function fixInstall(k: InstallKind, s: InstallState): InstallState {
   return s;
 }
 /** How many batches the hopper holds inputs for. */
-export const batchesIn = (k: InstallKind, s: InstallState) => Math.min(...(INSTALL_WORK[k]?.inp ?? []).map(([i, n]) => Math.floor((s.inp[i] ?? 0) / n)));
+export const batchesIn = (k: InstallKind, s: InstallState) => Math.min(...(workOf(k, s)?.inp ?? []).map(([i, n]) => Math.floor((s.inp[i] ?? 0) / n)));
 export const installDone = (k: InstallKind, s: InstallState | undefined) => (s?.stage ?? 0) >= INSTALL_STAGES[k].length;
 /** The next stage: its rows (given / needed), whether the plans are known, whether it is complete; null once restored. */
 export function installPlan(k: InstallKind, s: InstallState | undefined, known: Record<string, number>) {
@@ -190,7 +222,7 @@ export function handOverInstall(k: InstallKind, s: InstallState, known: Record<s
 }
 /** Can it work a batch now: restored, the inputs in the hopper, room in the bay and enough power from its hall? */
 export function canRun(k: InstallKind, s: InstallState): boolean {
-  const w = INSTALL_WORK[k];
+  const w = workOf(k, s);
   return !!w && installDone(k, s) && batchesIn(k, s) >= 1 && s.out + (w.n ?? 1) <= w.bay && !!hallPick(k, s);
 }
 /**
@@ -199,7 +231,7 @@ export function canRun(k: InstallKind, s: InstallState): boolean {
  */
 export function runInstall(k: InstallKind, s: InstallState, now: number) {
   if (!installDone(k, s)) return;
-  const w = INSTALL_WORK[k];
+  const w = workOf(k, s);
   if (!w) return; // it makes nothing (the radar station)
   let steps = 0;
   while (now - s.t >= w.batch && canRun(k, s) && steps++ < 400) {
@@ -212,8 +244,8 @@ export function runInstall(k: InstallKind, s: InstallState, now: number) {
 /** Load up to n crates of input i (up to the hopper); returns how many went in. */
 export function loadInstall(k: InstallKind, s: InstallState, i: ItemKey, n: number, now: number): number {
   runInstall(k, s, now);
-  const w = INSTALL_WORK[k];
-  if (!w || !w.inp.some(([x]) => x === i)) return 0;
+  const w = workOf(k, s);
+  if (!w || !installWorks(k).some((x) => x.inp.some(([y]) => y === i))) return 0; // (inputs of any of its recipes)
   const m = Math.max(0, Math.min(n, w.hopper - (s.inp[i] ?? 0)));
   if (m <= 0) return 0;
   const could = canRun(k, s);
@@ -229,6 +261,14 @@ export const installLeadId = (k: InstallKind) => 'install:' + k;
 const IDIRS = ['north', 'north-east', 'east', 'south-east', 'south', 'south-west', 'west', 'north-west'];
 const idir = (dx: number, dz: number) => IDIRS[Math.round(((Math.atan2(dx, -dz) * 180 / Math.PI + 360) % 360) / 45) % 8];
 const ISAY: Record<InstallKind, string[]> = {
+  optical: [
+    'Glass-roofed halls stand {dist} {dir} of here, most of the panes broken, beside a tower like a candle. The old folk say the eyes of the old machines were ground there.',
+    'A glazier from our village went to the old optical works {dist} {dir} of here for panes. He came back with a crystal that bent the light into colours, and a fever.',
+  ],
+  alloy: [
+    'You can see the casting hall of the old alloy works from a day away: {dist} {dir} of here, taller than any tree, with two furnaces like iron pots and hills of black slag.',
+    'My father hauled slag from the old alloy complex {dist} {dir} of here. He said the Ancients melted metals there that no fire of ours could even soften.',
+  ],
   propellant: [
     'Out {dist} {dir} of here stand great iron balls on legs, two tall columns and a flare stack. My uncle says the old world brewed the fuel of the sky-ships there, and that the ground still smells of it.',
     'Carters give a wide berth to the old fuel works {dist} {dir} of here: spheres on stilts, pipes everywhere, a squat house with walls a metre thick. They say one spark once took a whole valley.',

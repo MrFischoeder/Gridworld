@@ -13,7 +13,7 @@ import { WALL_TIERS } from '../src/gen/village';
 import { FARM, UPGRADE, CROPS, type Crop } from '../src/gen/farms';
 import { PLANT_LEVELS } from '../src/gen/plantup';
 import { RARES } from '../src/gen/deposits';
-import { INSTALLS, INSTALL_STAGES, INSTALL_WORK, INSTALL_DRAW, HALL_SETS, type InstallKind } from '../src/gen/installs';
+import { INSTALLS, INSTALL_STAGES, INSTALL_WORK, INSTALL_DRAW, HALL_SETS, installWorks, type InstallKind } from '../src/gen/installs';
 import { STAGES, CHARIOT } from '../src/gen/shuttle';
 import { ORDERS } from '../src/data/orders';
 import { MENU } from '../src/gen/foodshop';
@@ -112,8 +112,8 @@ it('writes SUROWCE.md', () => {
   P('');
   P('### 2.2 Wielkie instalacje (po odbudowie)');
   P('');
-  for (const k of Object.keys(INSTALL_WORK) as InstallKind[]) {
-    const w = INSTALL_WORK[k]!, name = INSTALLS.find((s) => s.k === k)!.name;
+  for (const k of Object.keys(INSTALL_WORK) as InstallKind[]) for (const w of installWorks(k)) {
+    const name = INSTALLS.find((s) => s.k === k)!.name;
     P(`- **${name}:** ${list(w.inp)} → ${w.n ?? 1} × ${N(w.out)} co ${w.batch / 60} h gry`);
     for (const [i] of w.inp) use(i, `przetwarzanie: ${name} → ${N(w.out)}`);
   }
