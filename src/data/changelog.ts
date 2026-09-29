@@ -4,6 +4,18 @@ export interface Change { v: string; date: string; title: string; notes: string[
 
 export const CHANGELOG: Change[] = [
   {
+    v: '0.84.0', date: '2026-10-06', title: 'Rowboats',
+    notes: [
+      'Your finished piers have a slip: at the pier\'s sign choose to build a rowboat (10 logs, 14 nails, 4 rope, handed over bit by bit). When it is done it is launched beside the pier\'s head. You can keep up to three boats.',
+      'E beside your boat gets you in. Row with W (S backs water), turn with A/D; the boat also turns on the spot, one oar against the other. Rowing tires you: out of breath you only row weakly. V switches between the seat and a view from behind.',
+      'Rowboats go wherever the water is deep enough: the sea, rivers and lakes. A river\'s current carries you along; the boat runs aground in the shallows and will not pass under a pier. You can row under bridges.',
+      'E aboard steps you out onto a pier, a bridge, a bank or a beach beside the boat; with nowhere dry, press E again to go over the side. The boat stays where you left it.',
+      'Every boat has a hold of ten slots: F beside it or aboard opens it.',
+      'Your boats show on the minimap and the big map.',
+      'Out on the water the distant ranges on the horizon no longer stand in dark blocks over the sea.',
+    ],
+  },
+  {
     v: '0.83.0', date: '2026-10-05', title: 'Piers on the coast',
     notes: [
       'New item: the Pier Kit (survey stakes, a sounding line and a float), 90 gold at the blacksmith. Stand on a beach, use it and look out to sea: a hologram shows a pier running straight out from the beach until the water under its head is 1.8 m deep (deep enough for a boat). Click to stake it out, right mouse or Esc to cancel.',

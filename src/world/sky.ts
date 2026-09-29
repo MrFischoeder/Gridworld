@@ -123,7 +123,8 @@ horizon.visible = false; scene.add(horizon);
 let horizonWorld = -1;
 interface Ring { radius: number; h: number[]; fill: THREE.BufferGeometry; lines: THREE.BufferGeometry }
 let rings: Ring[] = [], shapedAt: [number, number] | null = null;
-const BASE = -6;
+const BASE_LAND = -6, BASE_SEA = 0.5;
+let shapedLow = false;
 export function buildHorizon(world: number) {
   if (horizonWorld === world) return;
   horizonWorld = world; shapedAt = null;
@@ -141,10 +142,12 @@ export function buildHorizon(world: number) {
   ring(150, 12, 26, 64, 0x26b050); // nearer foothills
 }
 /** Lay out a ring's geometry with each ridge point's height scaled by f (0 = sunk below the horizon). */
-function shapeRing(r: Ring, f: number[]) {
+function shapeRing(r: Ring, f: number[], BASE = BASE_LAND) {
   const n = r.h.length, tri: number[] = [], lines: number[] = [], ridge: number[][] = [];
   for (let i = 0; i < n; i++) { const a = i / n * 6.283; ridge.push([Math.cos(a) * r.radius, BASE + (r.h[i] - BASE) * f[i], Math.sin(a) * r.radius]); }
   for (let i = 0; i < n; i++) {
+    // over the sea (both ends sunk) nothing is drawn: seen from a boat, the sunk fill would stand dark above the water
+    if (f[i] + f[(i + 1) % n] < 0.7) continue;
     const p = ridge[i], q = ridge[(i + 1) % n], pb = [p[0], BASE, p[2]], qb = [q[0], BASE, q[2]];
     tri.push(...pb, ...qb, ...q, ...pb, ...q, ...p);
     lines.push(...p, ...q);
@@ -161,12 +164,14 @@ function shapeRing(r: Ring, f: number[]) {
 }
 /** Over the sea there are no distant ranges: the rings sink where the land a few kilometres off is sea (reshaped every 250 m). */
 export function shapeHorizon(x: number, z: number) {
-  if (shapedAt && Math.hypot(x - shapedAt[0], z - shapedAt[1]) < 250) return;
-  shapedAt = [x, z];
+  // out on the sea (a boat) the ranges stand on the water's horizon, not below it
+  const low = seaMask(horizonWorld, x, z) > 0.2;
+  if (shapedAt && Math.hypot(x - shapedAt[0], z - shapedAt[1]) < 250 && low === shapedLow) return;
+  shapedAt = [x, z]; shapedLow = low;
   for (const r of rings) shapeRing(r, r.h.map((_, i) => {
     const a = i / r.h.length * 6.283; // ring point (cos a, sin a) lies towards +x/+z in world space
     let wet = 0;
     for (const d of [900, 2000, 3500]) if (seaMask(horizonWorld, x + Math.cos(a) * d, z + Math.sin(a) * d) > 0.3) wet++;
     return 1 - wet / 3;
-  }));
+  }), low ? BASE_SEA : BASE_LAND);
 }

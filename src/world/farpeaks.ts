@@ -11,12 +11,14 @@ import { mountainMask } from '../gen/mountains';
 const N = 144, NEAR = 150, FAR = 3200, RING = 145;
 export const farPeaks = new THREE.Group();
 farPeaks.visible = false; scene.add(farPeaks);
-let at = { x: NaN, y: NaN, z: NaN, world: -1 };
+let at = { x: NaN, y: NaN, z: NaN, world: -1, wet: false };
 const noFog = <T extends THREE.Material>(m: T) => { (m as unknown as { fog: boolean }).fog = false; return m; };
 const lineGreen = noFog(lineMat(0x3ad866)), lineSnow = noFog(lineMat(0xbfffe8)), fill = noFog(fillMat(0x000000));
 
 function rebuild(x: number, y: number, z: number) {
   const T = OW.terrain!, w = T.world, eye = y + 1.6;
+  // on the water (a boat, swimming) the silhouettes stand on the sea's horizon, not 30 m below it
+  const B = T.water(x, z) ? -1.2 : -30;
   farPeaks.traverse((o) => (o as THREE.Mesh).geometry?.dispose()); farPeaks.clear();
   // the steepest slope of mountain above the eye in every direction (null: no mountain that way)
   const top: (number | null)[] = [], snow: boolean[] = [];
@@ -37,10 +39,10 @@ function rebuild(x: number, y: number, z: number) {
   for (let i = 0; i < N; i++) {
     const j = (i + 1) % N;
     if (top[i] === null || top[j] === null) continue;
-    const p = pt(i), q = pt(j), pb = [p[0], -30, p[2]], qb = [q[0], -30, q[2]];
+    const p = pt(i), q = pt(j), pb = [p[0], B, p[2]], qb = [q[0], B, q[2]];
     tri.push(...pb, ...qb, ...q, ...pb, ...q, ...p);
     (snow[i] && snow[j] ? white : green).push(...p, ...q);
-    if (i % 3 === 0) green.push(...p, p[0], p[1] - Math.max(1.5, (p[1] + 30) * 0.12), p[2]); // a few facets down the slope
+    if (i % 3 === 0) green.push(...p, p[0], p[1] - Math.max(1.5, (p[1] - B) * 0.12), p[2]); // a few facets down the slope
   }
   if (!tri.length) return;
   const geo = (a: number[]) => { const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(a, 3)); return g; };
@@ -51,8 +53,9 @@ function rebuild(x: number, y: number, z: number) {
 export function updateFarPeaks(cam: THREE.Vector3) {
   if (!OW.terrain || G.char.loc !== 'overworld') { farPeaks.visible = false; return; }
   farPeaks.visible = true;
-  if (at.world !== OW.terrain.world || Math.hypot(cam.x - at.x, cam.z - at.z) > 120 || Math.abs(cam.y - at.y) > 12) {
-    at = { x: cam.x, y: cam.y, z: cam.z, world: OW.terrain.world };
+  const wet = !!OW.terrain.water(cam.x, cam.z);
+  if (at.world !== OW.terrain.world || Math.hypot(cam.x - at.x, cam.z - at.z) > 120 || Math.abs(cam.y - at.y) > 12 || wet !== at.wet) {
+    at = { x: cam.x, y: cam.y, z: cam.z, world: OW.terrain.world, wet };
     rebuild(cam.x, cam.y - 1.6, cam.z);
   }
   farPeaks.position.set(cam.x, at.y, cam.z);

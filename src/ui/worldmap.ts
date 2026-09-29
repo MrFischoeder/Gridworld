@@ -112,6 +112,11 @@ function drawArea(ctx: CanvasRenderingContext2D, w: number, h: number, ppm: numb
     ctx.beginPath(); ctx.moveTo(x - dx * l, y - dz * l); ctx.lineTo(x + dx * l, y + dz * l); ctx.stroke(); ctx.setLineDash([]);
   }
   ctx.lineWidth = 1;
+  for (const b of G.char.boats) { // your boats: a little hull pointing the way it lies
+    const x = X(nearX(b.x, px)), y = Z(b.z), fx = Math.sin(b.yaw), fz = Math.cos(b.yaw), l = Math.max(4, 2.1 * ppm), w = Math.max(2, 0.75 * ppm);
+    ctx.strokeStyle = '#e8fff0'; ctx.lineWidth = 1.5; ctx.beginPath();
+    ctx.moveTo(x + fx * l, y + fz * l); ctx.lineTo(x - fx * l + fz * w, y - fz * l - fx * w); ctx.lineTo(x - fx * l - fz * w, y - fz * l + fx * w); ctx.closePath(); ctx.stroke();
+  }
   for (const c of G.char.claims) { // your flags: a pole and a pennant, the claimed land round them
     const x = X(nearX(c.x, px)), y = Z(c.z);
     ctx.strokeStyle = ctx.fillStyle = '#c4ffd2'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(x, y, Math.max(4, 30 * ppm), 0, 6.283); ctx.stroke();

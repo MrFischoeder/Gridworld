@@ -2,6 +2,7 @@
 import { isPlacing, cancelPlacing } from '../world/claims';
 import { isBridgePlacing, cancelBridgePlacing } from '../world/bridges';
 import { isPierPlacing, cancelPierPlacing } from '../world/piers';
+import { inBoat, openBoatHold, toggleBoatView } from '../world/boats';
 import { isBuilding, stopBuilding, dismantle } from '../world/building';
 import { toggleBuildMenu } from './build';
 import { G, uiOpen } from '../game';
@@ -48,6 +49,8 @@ export function initInput(onPause: () => void) {
     if (!G.playing) return;
     if (e.code === 'KeyE' && !e.repeat) interact();
     if (e.code === 'KeyV' && driving.v) toggleCockpit();
+    if (e.code === 'KeyV' && inBoat()) toggleBoatView();
+    if (e.code === 'KeyF' && !isBuilding() && G.playing) openBoatHold();
     if (e.code === 'KeyH') useItem('medkit');
     if (e.code === 'KeyG') useItem('emp');
     if (e.code === 'Digit1') drawBack(0);

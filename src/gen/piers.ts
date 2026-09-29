@@ -9,6 +9,7 @@
 import { worldDist, poisNear } from './regions';
 import { SEA } from './seas';
 import type { ItemKey } from '../data/items';
+import type { BoatBuild } from './boats';
 
 export const PIER = {
   /** How far along the view the sea is looked for; the root's distance back from the waterline (m). */
@@ -38,6 +39,8 @@ export interface Pier {
   len: number; g0: number;
   given: Partial<Record<ItemKey, number>>;
   done?: number;
+  /** A boat going up on its slip (gen/boats.ts). */
+  boat?: BoatBuild;
 }
 type Water = (x: number, z: number) => { kind: string; depth: number } | null;
 

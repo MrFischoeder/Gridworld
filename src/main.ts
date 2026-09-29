@@ -64,6 +64,7 @@ import { updateFarms } from './world/farms';
 import { updateInstalls } from './world/installs';
 import { updateBridges, isBridgePlacing, updateBridgePlacing, confirmBridgePlacing, cancelBridgePlacing } from './world/bridges';
 import { updatePiers, isPierPlacing, updatePierPlacing, confirmPierPlacing, cancelPierPlacing } from './world/piers';
+import { updateBoats, inBoat, boatCamera } from './world/boats';
 
 G.char = loadChar();
 document.getElementById('vnum')!.textContent = 'v' + VERSION;
@@ -107,7 +108,7 @@ function frame(now: number) {
     { const up = refreshBoard(); if (up.length) { saveChar(); const v = outdoors ? villageHere(G.pos.x, G.pos.z) : undefined; if (v && up.includes(v.id)) logLine('New notices are up on the board.'); } }
   }
   if (live) {
-    if (driving.v) updateDriving(dt); else if (!updateClimb(dt)) moving = updatePlayer(dt);
+    if (driving.v) updateDriving(dt); else if (!(outdoors && updateBoats(dt)) && !updateClimb(dt)) moving = updatePlayer(dt);
     if (outdoors) keepOnPlanet(dt);
     G.cooldown -= dt;
     if (isPlacing()) { // holding a Flagpole: the mouse picks its spot instead of fighting
@@ -126,9 +127,9 @@ function frame(now: number) {
       updateBuilding();
       if (G.firing) { G.firing = false; placePart(); }
       if (G.aiming) { G.aiming = false; stopBuilding(); }
-    } else if (G.firing && !driving.v) attack();
+    } else if (G.firing && !driving.v && !inBoat()) attack();
     updateTurrets(dt);
-    updateGun(dt, !driving.v);
+    updateGun(dt, !driving.v && !inBoat());
     if (driving.v) fireCannon(dt);
     updateDoors(dt);
     updateRobots(dt, time); // the open world's robots, or a crashed ship's guards
@@ -146,7 +147,7 @@ function frame(now: number) {
       if ((saveT -= dt) <= 0) { saveT = 3; saveOverworldPos(); }
     }
   } else { el.prompt.style.display = 'none'; el.bUse.classList.remove('on'); el.bossbar.style.display = 'none'; }
-  if (G.trans) updateTrans(dt, camera); else if (driving.v) vehicleCamera(camera); else camera.position.set(G.pos.x, G.pos.y + EYE, G.pos.z);
+  if (G.trans) updateTrans(dt, camera); else if (driving.v) vehicleCamera(camera); else if (inBoat()) boatCamera(camera); else camera.position.set(G.pos.x, G.pos.y + EYE, G.pos.z);
   camera.rotation.set(G.pitch, G.yaw, 0);
   updateWeather(dt, sky.visible);
   if (sky.visible) { sky.position.set(camera.position.x, camera.position.y - 20, camera.position.z); horizon.position.set(camera.position.x, 0, camera.position.z); shapeHorizon(camera.position.x, camera.position.z); updateSky(G.char.time, latitude(G.pos.z)); updateFarPeaks(camera.position); } else farPeaks.visible = false;
