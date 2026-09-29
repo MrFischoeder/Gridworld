@@ -27,6 +27,7 @@ Browser FPS in a green vector-grid style (wireframe on black, retro sci-fi / Tro
 
 ## Website
 - `docs/index.html` is the game's website (Polish, CRT style, self-contained); `.github/workflows/pages.yml` deploys it to GitHub Pages with the game build under `/play/` (Pages source: GitHub Actions). Screenshots in `docs/shots/` (1280×720 JPEG, taken with Playwright from the dev build with the HUD hidden). Keep its version and numbers roughly current when big features land.
+- `OPIS_GRY.md` (+ `OPIS_GRY.pdf`, rendered like `SUROWCE.pdf`) is the owner's Polish description of the game: concept, story and goal, every system, what is ready and what is not, the plan, and a Polish summary of every version in order. Hand-written: add a line to its history (section 14) and touch the other sections when a big feature lands, then re-render the PDF.
 
 ## Layout
 - `core/` — pure: RNG/hash, voxel grids, meshing, noise.

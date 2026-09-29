@@ -4,6 +4,12 @@ export interface Change { v: string; date: string; title: string; notes: string[
 
 export const CHANGELOG: Change[] = [
   {
+    v: '0.89.1', date: '2026-10-11', title: 'The game described',
+    notes: [
+      'The download now includes OPIS_GRY.md and OPIS_GRY.pdf (in Polish): what GridWorld is, its story and goal (the castaways and the Chariot of the Ancients), every system of the world, what is ready and what is still to come, the plan ahead, and every version so far in order. No change to the game itself.',
+    ],
+  },
+  {
     v: '0.89.0', date: '2026-10-11', title: 'Greater temples',
     notes: [
       'The alien temples are half as big again: taller bodies and pylons, a wider ring of broken walls, longer arms and a longer avenue of bigger obelisks. You see them from much further off. (Their places in the world moved a little.)',
