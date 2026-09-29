@@ -4,6 +4,15 @@ export interface Change { v: string; date: string; title: string; notes: string[
 
 export const CHANGELOG: Change[] = [
   {
+    v: '0.81.0', date: '2026-10-03', title: 'Bridges at the fords',
+    notes: [
+      'Every ford where a road crosses a river is now a bridge site: survey stakes and a line across the water, and a BRIDGE SITE sign at both ends.',
+      'At a sign press E to open the building window: the length of the deck and what the bridge takes (logs, stones, nails and rope, more for a wider river). Hand over what you carry, bit by bit; materials in the trunk of a vehicle parked by the site count too. The piles rise and the logs pile up as the work goes on.',
+      'When everything is in, a timber bridge stands: piles in the river bed, beams, a planked deck well above the water, ramps down to both banks and a rail each side. Walk or drive across dry; caravans roll over it too. You can still swim under it.',
+      'Finishing a bridge gives experience by its length. Bridges stay built for good.',
+    ],
+  },
+  {
     v: '0.80.0', date: '2026-10-02', title: 'Rivers',
     notes: [
       'Rivers now run across the land: from the uplands down to the seas, gathering tributaries on the way, winding through valleys they have cut. Each has a name (you see it at the top when you are by one). A world has well over a hundred of them, some kilometres long.',

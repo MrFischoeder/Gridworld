@@ -22,6 +22,10 @@ import { mayspawn, BANDIT_COST } from './threat';
 import { gainXp, saveChar, calcStats } from '../character';
 import { showToast, logLine } from '../ui/hud';
 import { findPoi, worldDist } from '../gen/regions';
+import { bridgeDeck } from './bridges';
+import type { Terrain } from '../gen/terrain';
+/** Where the wagons roll: the ground, or a bridge's deck over a river. */
+const surface = (T: Terrain, x: number, z: number) => Math.max(T.heightAt(x, z), bridgeDeck(x, z) ?? -Infinity);
 
 const DRAW_R = 420;
 /** Half length and half width of each vehicle of the convoy (for bumping into it). */
@@ -98,7 +102,7 @@ export function updateCaravans(dt: number) {
     const near = Math.hypot(x - G.pos.x, z - G.pos.z) < DRAW_R;
     wg.g.visible = near;
     if (!near) continue;
-    const fx = Math.sin(yaw), fz = Math.cos(yaw), hf = T.heightAt(x + fx * 2.5, z + fz * 2.5), hb = T.heightAt(x - fx * 2.5, z - fz * 2.5);
+    const fx = Math.sin(yaw), fz = Math.cos(yaw), hf = surface(T, x + fx * 2.5, z + fz * 2.5), hb = surface(T, x - fx * 2.5, z - fz * 2.5);
     // a wagon rolling into you shoves you aside
     const dx = G.pos.x - x, dz = G.pos.z - z, u = dx * fx + dz * fz, v = dx * fz - dz * fx, { hl, hw } = SIZE[wg.w];
     if (Math.abs(u) < hl + 0.3 && Math.abs(v) < hw + 0.3 && G.pos.y < (hf + hb) / 2 + 3.5) { const push = (v < 0 ? -1 : 1) * (hw + 0.35) - v; G.pos.x += fz * push; G.pos.z -= fx * push; }
