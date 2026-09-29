@@ -114,7 +114,7 @@ it('writes SUROWCE.md', () => {
   P('');
   for (const k of Object.keys(INSTALL_WORK) as InstallKind[]) {
     const w = INSTALL_WORK[k]!, name = INSTALLS.find((s) => s.k === k)!.name;
-    P(`- **${name}:** ${list(w.inp)} → 1 × ${N(w.out)} co ${w.batch / 60} h gry`);
+    P(`- **${name}:** ${list(w.inp)} → ${w.n ?? 1} × ${N(w.out)} co ${w.batch / 60} h gry`);
     for (const [i] of w.inp) use(i, `przetwarzanie: ${name} → ${N(w.out)}`);
   }
   P(`- **Old Radar Station:** nic nie produkuje; odkrywa na mapie wszystko w promieniu 12 km.`);

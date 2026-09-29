@@ -16,10 +16,10 @@ import { installSites, INSTALL_STAGES, HALL_STAGE, type InstallSite, type Instal
 import { nearX, worldDist } from '../gen/regions';
 import type { Terrain } from '../gen/terrain';
 
-const METAL = 0xa8c8b8, RUST = 0x9aa870, CONC = 0x7fa08c, GLOW = 0xb6ff3a;
+const METAL = 0xa8c8b8, RUST = 0x9aa870, CONC = 0x7fa08c, GLOW = 0xb6ff3a, HOT_FLAME = 0xffb347;
 interface Live { s: InstallSite; g: THREE.Group; cos: number; sin: number; stage: number; spin?: THREE.Object3D | null; walls: [number, number, number, number][]; rings: [number, number, number][] }
 /** The control desk in each installation's frame (inside the gate, west of the way in). */
-export const DESKS: Record<InstallKind, { x: number; z: number }> = { uranium: { x: -6, z: -25 }, chips: { x: -6, z: -23 }, radar: { x: -6, z: -21 } };
+export const DESKS: Record<InstallKind, { x: number; z: number }> = { uranium: { x: -6, z: -25 }, chips: { x: -6, z: -23 }, radar: { x: -6, z: -21 }, propellant: { x: -6, z: -23 }, battery: { x: -6, z: -23 } };
 const live = new Map<string, Live>();
 
 /** The perimeter fence (half-size F): posts every 4 m and two wires, with gaps and leaning posts until cleared; the gate on the -z side. */
@@ -57,7 +57,7 @@ function drawDesk(pb: PropBatch, H: (x: number, z: number) => number, at: { x: n
   }
 }
 /** Where each plant's power hall stands, in its frame (inside the fence, east of the gate). */
-export const HALLS: Partial<Record<InstallKind, { x: number; z: number }>> = { uranium: { x: 16, z: -20 }, chips: { x: 15, z: -19 } };
+export const HALLS: Partial<Record<InstallKind, { x: number; z: number }>> = { uranium: { x: 16, z: -20 }, chips: { x: 15, z: -19 }, propellant: { x: 15, z: -19 }, battery: { x: 15, z: -19 } };
 /**
  * The power hall: a burnt-out shell (low broken walls, a toppled stack) until the second stage brings it back; then a
  * generator house with a gable roof and a door, its stack, a coal bin and a fuel tank, and a lime lamp over the door.
@@ -326,7 +326,107 @@ function drawRadar(T: Terrain, s: InstallSite, cos: number, sin: number, stage: 
   g.add(spin ?? dish);
   return { g, walls, rings };
 }
-const DRAW: Record<InstallKind, typeof drawUranium> = { uranium: drawUranium, chips: drawChips, radar: drawRadar };
+/** A faceted cylinder standing on (x, y0, z) with a closed top. */
+function cylAt(pb: PropBatch, x: number, z: number, r: number, h: number, y0: number, c: number, n = 10) {
+  const P = (i: number, yy: number) => [x + Math.cos(i / n * 6.283) * r, yy, z + Math.sin(i / n * 6.283) * r];
+  for (let i = 0; i < n; i++) { pb.face(P(i, y0), P(i + 1, y0), P(i + 1, y0 + h), P(i, y0 + h)); pb.seg(c, P(i, y0 + h), P(i + 1, y0 + h)); pb.seg(c, P(i, y0), P(i + 1, y0)); if (i % 2 === 0) pb.seg(c, P(i, y0), P(i, y0 + h)); }
+  const cap: number[][] = []; for (let i = 0; i < n; i++) cap.push(P(i, y0 + h)); pb.face(...cap);
+}
+/** A faceted sphere of radius r round (x, y, z). */
+function sphereAt(pb: PropBatch, x: number, y: number, z: number, r: number, c: number) {
+  const n = 10, m = 6, P = (i: number, j: number) => { const a = i / n * 6.283, b = -Math.PI / 2 + j / m * Math.PI; return [x + Math.cos(a) * Math.cos(b) * r, y + Math.sin(b) * r, z + Math.sin(a) * Math.cos(b) * r]; };
+  for (let j = 0; j < m; j++) for (let i = 0; i < n; i++) { pb.face(P(i, j), P(i + 1, j), P(i + 1, j + 1), P(i, j + 1)); pb.seg(c, P(i, j), P(i + 1, j)); if (i % 2 === 0) pb.seg(c, P(i, j), P(i, j + 1)); }
+}
+/**
+ * The rocket fuel works in its own frame: the bunkered mixing house (x -14..-2, z -4..6), three spherical tanks on
+ * legs (x 6, 12, 18 at z 5), two distillation columns (x -18, -13 at z 16), a flare stack (x 21, z 19) and pipe racks.
+ * Before it is secured the house is roofless and one sphere lies fallen off its legs; with lines and power (stage 2)
+ * the second column stands whole and the racks carry pipes; restored, the flare burns and the columns' rings glow.
+ */
+function drawPropellant(T: Terrain, s: InstallSite, cos: number, sin: number, stage: number): { g: THREE.Group; walls: Live['walls']; rings: Live['rings'] } {
+  const pb = new PropBatch(), walls: Live['walls'] = [], rings: Live['rings'] = [];
+  const cleared = stage >= 1, piped = stage >= 2, done = stage >= INSTALL_STAGES.propellant.length;
+  const H = (x: number, z: number) => T.heightAt(s.x + x * cos + z * sin, s.z - x * sin + z * cos) - s.y;
+  drawFence(pb, H, 28, cleared);
+  // ---- the mixing house: thick concrete walls, a flat roof once secured, blast doors on the -z side
+  const X0 = -14, X1 = -2, Z0 = -4, Z1 = 6, g0 = Math.min(H(X0, Z0), H(X1, Z0), H(X0, Z1), H(X1, Z1)) - 0.3, WH = 4.2;
+  const wall = (ax: number, az: number, bx: number, bz: number, ragged: boolean) => {
+    const n = Math.max(1, Math.round(Math.hypot(bx - ax, bz - az) / 2));
+    for (let i = 0; i < n; i++) {
+      const t0 = i / n, t1 = (i + 1) / n, h0 = WH - (ragged ? ((i * 7) % 4) * 0.5 : 0), h1 = WH - (ragged ? (((i + 1) * 7) % 4) * 0.5 : 0);
+      const p0 = [ax + (bx - ax) * t0, g0, az + (bz - az) * t0], p1 = [ax + (bx - ax) * t1, g0, az + (bz - az) * t1];
+      pb.face(p0, p1, [p1[0], g0 + h1, p1[2]], [p0[0], g0 + h0, p0[2]]); pb.seg(CONC, [p0[0], g0 + h0, p0[2]], [p1[0], g0 + h1, p1[2]]); if (i % 2 === 0) pb.seg(CONC, p0, [p0[0], g0 + h0, p0[2]]);
+    }
+    walls.push([ax, az, bx, bz]);
+  };
+  wall(X0, Z0, X1, Z0, !cleared); wall(X1, Z0, X1, Z1, !cleared); wall(X1, Z1, X0, Z1, !cleared); wall(X0, Z1, X0, Z0, !cleared);
+  if (cleared) { pb.face([X0, g0 + WH, Z0], [X1, g0 + WH, Z0], [X1, g0 + WH, Z1], [X0, g0 + WH, Z1]); for (let x = X0 + 3; x < X1; x += 3) pb.seg(CONC, [x, g0 + WH, Z0], [x, g0 + WH, Z1]); }
+  pb.line(done ? GLOW : METAL, [-9.5, g0, Z0 - 0.03], [-9.5, g0 + 2.8, Z0 - 0.03], [-6.5, g0 + 2.8, Z0 - 0.03], [-6.5, g0, Z0 - 0.03]); // the blast doors
+  // ---- three spherical tanks on legs (one fallen until secured)
+  for (const [i, tx] of [6, 12, 18].entries()) {
+    const tz = 5, gy = H(tx, tz), cy = gy + 5.5, R = 2.6;
+    if (i === 2 && !cleared) { sphereAt(pb, tx + 1, H(tx + 1, tz - 5) + R * 0.9, tz - 5, R, RUST); rings.push([tx + 1, tz - 5, R]); for (const a of [0.8, 2.4]) pb.seg(RUST, [tx + Math.cos(a) * 2, gy, tz + Math.sin(a) * 2], [tx + Math.cos(a) * 1.4, gy + 2.2, tz + Math.sin(a) * 1.4]); continue; }
+    for (let k = 0; k < 4; k++) { const a = k * 1.571 + 0.785, lx = tx + Math.cos(a) * 2.1, lz = tz + Math.sin(a) * 2.1; pb.seg(METAL, [lx, H(lx, lz), lz], [tx + Math.cos(a) * 1.8, cy - 0.6, tz + Math.sin(a) * 1.8]); }
+    sphereAt(pb, tx, cy, tz, R, piped ? METAL : RUST); rings.push([tx, tz, 2.3]);
+  }
+  // ---- two distillation columns with ring platforms (the second snapped until the lines run)
+  for (const [cx, cz, h] of [[-18, 16, 18], [-13, 16, piped ? 14 : 6]] as [number, number, number][]) {
+    const y = H(cx, cz); cylAt(pb, cx, cz, 1.1, h, y - 0.2, CONC); rings.push([cx, cz, 1.2]);
+    for (let py = 4; py < h; py += 4.5) for (let k = 0; k < 10; k++) pb.seg(done ? GLOW : RUST, [cx + Math.cos(k / 10 * 6.283) * 1.8, y + py, cz + Math.sin(k / 10 * 6.283) * 1.8], [cx + Math.cos((k + 1) / 10 * 6.283) * 1.8, y + py, cz + Math.sin((k + 1) / 10 * 6.283) * 1.8]);
+    if (!piped && h < 10) pb.seg(RUST, [cx + 1, H(cx + 1, cz - 1) + 0.6, cz - 1], [cx + 9, H(cx + 9, cz - 4) + 0.6, cz - 4]); // the top, lying in the weeds
+  }
+  // ---- the flare stack: a lit flame once restored
+  { const fx = 21, fz = 19, y = H(fx, fz); cylAt(pb, fx, fz, 0.45, 22, y - 0.2, METAL, 8); rings.push([fx, fz, 0.5]);
+    if (done) { pb.line(HOT_FLAME, [fx, y + 22, fz], [fx - 0.4, y + 23.2, fz], [fx, y + 24.4, fz], [fx + 0.4, y + 23.2, fz], [fx, y + 22, fz]); } }
+  // ---- pipe racks: posts all along, pipes only once the lines run
+  { let prev: number[] | null = null; for (let x = X1 + 1; x <= 18; x += 2.5) { const z = 1, y = H(x, z); pb.seg(RUST, [x, y, z], [x, y + 2.8, z]); const p = [x, y + 2.9, z]; if (prev && piped) { pb.seg(METAL, prev, p); pb.seg(METAL, [prev[0], prev[1] - 0.35, prev[2]], [p[0], p[1] - 0.35, p[2]]); } prev = p; } }
+  drawHall(pb, H, HALLS.propellant!, stage >= HALL_STAGE, walls, rings);
+  drawDesk(pb, H, DESKS.propellant, stage, done, rings);
+  return { g: pb.build(), walls, rings };
+}
+/**
+ * The cell works in its own frame: the long cell hall (x -14..10, z -6..8) under a sawtooth roof whose glazed faces
+ * glow once it works, electrolyte tanks to the east (x 15, 19 at z 2, 7), a brine basin to the north-west (x -22..-10,
+ * z 12..20) crusted white. Before it is opened half the roof lies on the floor and rubble banks the walls; the tanks
+ * stand rusty until the lines run (stage 2).
+ */
+function drawBattery(T: Terrain, s: InstallSite, cos: number, sin: number, stage: number): { g: THREE.Group; walls: Live['walls']; rings: Live['rings'] } {
+  const pb = new PropBatch(), walls: Live['walls'] = [], rings: Live['rings'] = [];
+  const cleared = stage >= 1, lined = stage >= 2, done = stage >= INSTALL_STAGES.battery.length;
+  const H = (x: number, z: number) => T.heightAt(s.x + x * cos + z * sin, s.z - x * sin + z * cos) - s.y;
+  drawFence(pb, H, 28, cleared);
+  // ---- the cell hall: brick walls 5 m, a doorway in the -z wall
+  const X0 = -14, X1 = 10, Z0 = -6, Z1 = 8, WH = 5, g0 = Math.min(H(X0, Z0), H(X1, Z0), H(X0, Z1), H(X1, Z1)) - 0.3, BR = 0xd09070;
+  const side = (ax: number, az: number, bx: number, bz: number) => {
+    const n = Math.max(1, Math.round(Math.hypot(bx - ax, bz - az) / 2));
+    for (let i = 0; i < n; i++) { const t0 = i / n, t1 = (i + 1) / n, p0 = [ax + (bx - ax) * t0, g0, az + (bz - az) * t0], p1 = [ax + (bx - ax) * t1, g0, az + (bz - az) * t1]; pb.face(p0, p1, [p1[0], g0 + WH, p1[2]], [p0[0], g0 + WH, p0[2]]); pb.seg(BR, [p0[0], g0 + WH, p0[2]], [p1[0], g0 + WH, p1[2]]); if (i % 2 === 0) pb.seg(BR, p0, [p0[0], g0 + WH, p0[2]]); }
+    walls.push([ax, az, bx, bz]);
+  };
+  side(X0, Z0, -3, Z0); side(1, Z0, X1, Z0); side(X1, Z0, X1, Z1); side(X1, Z1, X0, Z1); side(X0, Z1, X0, Z0);
+  pb.face([-3, g0 + 3.4, Z0], [1, g0 + 3.4, Z0], [1, g0 + WH, Z0], [-3, g0 + WH, Z0]); pb.line(BR, [-3, g0, Z0], [-3, g0 + 3.4, Z0], [1, g0 + 3.4, Z0], [1, g0, Z0]);
+  // the sawtooth roof: teeth along x, glazed faces towards -x; the east half fallen in until the hall is opened
+  for (let x = X0; x < X1 - 0.01; x += 3) {
+    if (!cleared && x >= -2) { pb.line(METAL, [x + 0.5, g0 + 0.4, Z1 - 1], [x + 2, g0 + 2.6, (Z0 + Z1) / 2], [x + 1, g0 + 0.4, Z0 + 1]); continue; }
+    const a = g0 + WH, b = a + 2.2;
+    pb.face([x, a, Z0], [x + 3, a, Z0], [x + 3, a, Z1], [x, a, Z1]);
+    pb.face([x, a, Z0], [x, b, Z0], [x + 3, a, Z0]); pb.face([x, a, Z1], [x, b, Z1], [x + 3, a, Z1]);
+    pb.face([x, b, Z0], [x, b, Z1], [x + 3, a, Z1], [x + 3, a, Z0]);
+    pb.line(METAL, [x, a, Z0], [x, b, Z0], [x + 3, a, Z0]); pb.line(METAL, [x, a, Z1], [x, b, Z1], [x + 3, a, Z1]); pb.seg(METAL, [x, b, Z0], [x, b, Z1]);
+    for (let z = Z0 + 1.5; z < Z1 - 1; z += 2.5) pb.line(done ? GLOW : METAL, [x - 0.02, a + 0.3, z], [x - 0.02, b - 0.3, z], [x - 0.02, b - 0.3, z + 1.6], [x - 0.02, a + 0.3, z + 1.6], [x - 0.02, a + 0.3, z]);
+  }
+  if (!cleared) for (let i = 0; i < 10; i++) { const x = X1 + 1.2, z = Z0 + 1 + i * 1.3, y = H(x, z); pb.box(x - 0.8, y - 0.1, z - 0.6, x + 0.7, y + 0.5 + (i % 3) * 0.4, z + 0.6, CONC); }
+  // ---- electrolyte tanks
+  for (const [tx, tz] of [[15, 2], [19, 2], [15, 7], [19, 7]]) { cylAt(pb, tx, tz, 1.5, 4.2, H(tx, tz) - 0.1, lined ? METAL : RUST); rings.push([tx, tz, 1.6]); if (done) for (let k = 0; k < 10; k++) pb.seg(GLOW, [tx + Math.cos(k / 10 * 6.283) * 1.52, H(tx, tz) + 2.6, tz + Math.sin(k / 10 * 6.283) * 1.52], [tx + Math.cos((k + 1) / 10 * 6.283) * 1.52, H(tx, tz) + 2.6, tz + Math.sin((k + 1) / 10 * 6.283) * 1.52]); }
+  // ---- the brine basin: a low kerb and a crust of pale lines
+  { const bx0 = -22, bx1 = -10, bz0 = 12, bz1 = 20, y = Math.min(H(bx0, bz0), H(bx1, bz1));
+    for (const [ax, az, bx, bz] of [[bx0, bz0, bx1, bz0], [bx1, bz0, bx1, bz1], [bx1, bz1, bx0, bz1], [bx0, bz1, bx0, bz0]]) pb.box(Math.min(ax, bx) - 0.2, y - 0.2, Math.min(az, bz) - 0.2, Math.max(ax, bx) + 0.2, y + 0.5, Math.max(az, bz) + 0.2, CONC);
+    for (let x = bx0 + 1; x < bx1; x += 1.6) pb.seg(0xe8e0c0, [x, y + 0.1, bz0 + 0.6], [x + 0.8, y + 0.1, bz1 - 0.6]);
+  }
+  drawHall(pb, H, HALLS.battery!, stage >= HALL_STAGE, walls, rings);
+  drawDesk(pb, H, DESKS.battery, stage, done, rings);
+  return { g: pb.build(), walls, rings };
+}
+const DRAW: Record<InstallKind, typeof drawUranium> = { uranium: drawUranium, chips: drawChips, radar: drawRadar, propellant: drawPropellant, battery: drawBattery };
 
 /** Every second: draw the installations within reach, drop those far behind. */
 let tick = 0;

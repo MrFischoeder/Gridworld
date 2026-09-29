@@ -4,6 +4,16 @@ export interface Change { v: string; date: string; title: string; notes: string[
 
 export const CHANGELOG: Change[] = [
   {
+    v: '0.94.0', date: '2026-10-11', title: 'The fuel works and the cell works',
+    notes: [
+      'Two more great installations of the Ancients stand far out on the continent: the Old Propellant Plant (10 to 18 km from Gridholm: spherical tanks on legs, two distillation columns, a flare stack and a bunkered mixing house) and the Old Battery Plant (14 to 22 km: a long hall under a sawtooth roof, electrolyte tanks and a brine basin). Villagers within 16 km tell of them; console `sites` shows where they are.',
+      'Both are restored like the others, in three stages at the control desk (steel, cement, machine parts; then cable, circuit boards, chemicals and the power hall; then the core, which wants the plans for Rocket Propellant Synthesis or for Power Cell Chemistry, a new technology on a memory card 8 to 16 km out).',
+      'Nothing comes to them by itself: you bring every crate. The propellant plant blends 3 crates of Rocket Propellant a batch from fuel canisters, Industrial Chemicals and sulfur (120 kW: the coal boiler alone is enough). The battery plant makes Power Cells from lithium, nickel, copper ingots and chemicals (150 kW: the coal boiler and the diesel sets together).',
+      'Rocket Propellant now comes only from the Old Propellant Plant: the village Chemical Works makes Industrial Chemicals only (a works that was blending propellant switches to chemicals; what was made stays in its bay).',
+      'New: Power Cells, and cell orders: salvage villages 5 km and more from Gridholm order them on some days and pay well, like the chip and fuel orders.',
+    ],
+  },
+  {
     v: '0.93.0', date: '2026-10-11', title: 'The old plants need power',
     notes: [
       'The Old Enrichment Plant and the Old Chip Foundry now run on power of their own: each has a power hall by the gate, a burnt-out shell until the second stage of the restoration brings it back as a generator house with a stack, a coal bin and a fuel tank.',

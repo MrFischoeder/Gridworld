@@ -29,7 +29,9 @@ export function localOffers(v: Poi, seed: number): Contract[] {
 }
 export function describe(c: Contract): string {
   const g = ITEMS[c.good].name;
-  return c.good === 'microchip'
+  return c.good === 'powercell'
+    ? `<b>Cell order:</b> ${c.n} × ${g} for the salvagers of ${c.toName}${worldDist(G.pos.x, G.pos.z, c.tx, c.tz) > 400 ? ` (${where(c.tx, c.tz)})` : ''} · ${c.pay} g a crate`
+    : c.good === 'microchip'
     ? `<b>Chip order:</b> ${c.n} × ${g} for the workshops of ${c.toName}${worldDist(G.pos.x, G.pos.z, c.tx, c.tz) > 400 ? ` (${where(c.tx, c.tz)})` : ''} · ${c.pay} g a crate`
     : c.good === 'nfuel'
     ? `<b>Fuel order:</b> ${c.n} × ${g} for the old reactor of ${c.toName}${worldDist(G.pos.x, G.pos.z, c.tx, c.tz) > 400 ? ` (${where(c.tx, c.tz)})` : ''} · ${c.pay} g a crate`

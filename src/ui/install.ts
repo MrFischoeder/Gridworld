@@ -14,7 +14,7 @@ import { Terrain } from '../gen/terrain';
 import { OW } from '../world/overworld';
 import type { Contract } from '../gen/contracts';
 const terrainNow = () => (OW.terrain && OW.terrain.world === G.char.world ? OW.terrain : new Terrain(G.char.world));
-import { reactorVillages, fuelOrder, chipVillages, chipOrder } from '../gen/contracts';
+import { reactorVillages, fuelOrder, chipVillages, chipOrder, cellVillages, cellOrder } from '../gen/contracts';
 import { dirWord } from '../gen/tech';
 import { redrawInstalls } from '../world/installs';
 import { carried, takeFrom, putAway } from './market';
@@ -47,7 +47,7 @@ function render(msg = '') {
       `<div class="shoprow"><div>${list}</div></div><button class="opt" data-ins="sweep">Sweep again and copy it onto my map</button>`;
   } else {
     const w = INSTALL_WORK[site.k]!, recipe = w.inp.map(([i, n]) => `${n} ${short(ITEMS[i].name)}`).join(' and ');
-    s += `${w.what} ${recipe} make one crate of ${ITEMS[w.out].name} every ${hours(w.batch)}, while the power hall gives ${INSTALL_DRAW[site.k]} kW.</div>` +
+    s += `${w.what} ${recipe} make ${(w.n ?? 1) > 1 ? `${w.n} crates` : "one crate"} of ${ITEMS[w.out].name} every ${hours(w.batch)}, while the power hall gives ${INSTALL_DRAW[site.k]} kW.</div>` +
       `<div class="shoprow"><div>${list}</div></div>` + screen(site.k, st) +
       w.inp.map(([i]) => { const h = have(i); return `<button class="opt" data-ins="load" data-insk="${i}" ${h && (st.inp[i] ?? 0) < w.hopper ? '' : 'disabled'}>Load ${short(ITEMS[i].name)} (${st.inp[i] ?? 0}/${w.hopper} in the hopper · you have ${h} with you)</button>`; }).join('') +
       `<button class="opt" data-ins="take" ${st.out ? '' : 'disabled'}>Collect the ${ITEMS[w.out].name} (${st.out})</button>`;
@@ -82,6 +82,7 @@ function hall(k: InstallKind, st: InstallState): string {
 const BUYERS: Partial<Record<InstallKind, { list: (world: number) => Poi[]; order: (world: number, v: Poi, now: number) => Contract | null; who: string }>> = {
   uranium: { list: reactorVillages, order: fuelOrder, who: 'the old reactors that burn these rods' },
   chips: { list: chipVillages, order: chipOrder, who: 'the workshops that build with these chips' },
+  battery: { list: cellVillages, order: cellOrder, who: 'the salvagers who keep the old machines going on these cells' },
 };
 function buyers(): string {
   if (!site) return '';
@@ -105,6 +106,8 @@ const FINISH: Record<InstallKind, string> = {
   uranium: 'The last controller clicks into place and the centrifuges spin up.',
   chips: 'The etchers wake one by one and the clean room fills with a violet glow.',
   radar: 'The dish swings up on its tower, the screens flicker, and the land for miles round fills with blips.',
+  propellant: 'Steam rises from the columns, the flare lights, and the first batch runs into the mixing house.',
+  battery: 'The formation lines crackle into life and the first racks of cells begin to charge.',
 };
 /** The radar station's sweep: every place within its reach goes on your map. */
 function sweep(s: InstallSite): string {

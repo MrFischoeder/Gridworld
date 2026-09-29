@@ -12,12 +12,15 @@ import { nearRiver } from './rivers';
 import { rectDist, type Terrain } from './terrain';
 import type { ItemKey } from '../data/items';
 
-export type InstallKind = 'uranium' | 'chips' | 'radar';
+export type InstallKind = 'uranium' | 'chips' | 'radar' | 'propellant' | 'battery';
 export interface InstallSpec { k: InstallKind; name: string; blurb: string; band: [number, number]; r: number }
 export const INSTALLS: InstallSpec[] = [
   { k: 'uranium', name: 'Old Enrichment Plant', blurb: 'a ruined plant of the old world where ore was once made into reactor fuel: a centrifuge hall, two cooling towers and a stack', band: [15000, 25000], r: 34 },
   { k: 'chips', name: 'Old Chip Foundry', blurb: 'a sealed fabrication plant of the old world where crystal wafers were etched into chips: a long clean-room block, a tank farm and a water tower', band: [12000, 20000], r: 32 },
   { k: 'radar', name: 'Old Radar Station', blurb: 'a listening post of the old world on a rise: a great dish on a lattice tower, a mast held by guy wires and a bunker full of screens', band: [18000, 28000], r: 30 },
+  // (new ones go last: each is placed after those before it, so the older ones keep their places)
+  { k: 'propellant', name: 'Old Propellant Plant', blurb: 'a rocket fuel works of the old world: spherical tanks, two distillation columns, a flare stack and a bunkered mixing house', band: [10000, 18000], r: 30 },
+  { k: 'battery', name: 'Old Battery Plant', blurb: 'a cell works of the old world: a long sawtooth-roofed hall, rows of electrolyte tanks and a brine basin', band: [14000, 22000], r: 30 },
 ];
 export interface InstallSite { k: InstallKind; name: string; x: number; z: number; y: number; yaw: number; r: number }
 
@@ -88,12 +91,24 @@ export const INSTALL_STAGES: Record<InstallKind, InstallStage[]> = {
     { title: 'Air, water and power', text: 'Nothing is made in dust: the filters and the water plant must run first, and the power hall beside the gate. Cable for the fans, pumps and generator sets, circuit boards for the controls, chemicals for the water plant, glass for the filter housings.', needs: [['cable', 12], ['boards', 6], ['chems', 4], ['glass', 6]], gold: 400, xp: 400 },
     { title: 'The etching line', text: 'The etchers stand dead in their bays. Only the old plans for integrated circuits show how to wake them, and they want circuit boards and a power core.', needs: [['boards', 4], ['circuit', 8], ['pcore', 1]], tech: 'chips', gold: 450, xp: 550 },
   ],
+  propellant: [
+    { title: 'Securing the tank farm', text: 'The spheres lean on cracked footings and the mixing house is roofless. Steel for new legs and trusses, cement for the footings, machine parts for the valves.', needs: [['steel', 8], ['cement', 10], ['parts', 4]], gold: 250, xp: 250 },
+    { title: 'Lines, pumps and power', text: 'The pipe racks are rusted through and the power hall by the gate is a shell. Cable for the pumps and the hall, circuit boards for the controls, machine parts for the pumps, chemicals to flush the lines.', needs: [['cable', 10], ['boards', 4], ['parts', 4], ['chems', 6]], gold: 400, xp: 400 },
+    { title: 'The mixing column', text: 'The columns stand cold. Only the old plans for rocket propellant synthesis show how the feed is blended, and the controller wants a power core and advanced alloy.', needs: [['pcore', 1], ['alloy', 4], ['circuit', 6]], tech: 'propellant', gold: 500, xp: 600 },
+  ],
+  battery: [
+    { title: 'Opening the cell hall', text: 'Half the sawtooth roof has come down on the formation lines. Steel for the trusses, cement and bricks for the walls, machine parts for the hoists.', needs: [['steel', 8], ['cement', 8], ['bricks', 10], ['parts', 4]], gold: 250, xp: 250 },
+    { title: 'Formation lines and power', text: 'The lines, the electrolyte tanks and the power hall by the gate must run again. Cable for the lines and the hall, circuit boards for the chargers, chemicals for the tanks, glass for the sight gauges.', needs: [['cable', 12], ['boards', 6], ['chems', 6], ['glass', 4]], gold: 400, xp: 400 },
+    { title: 'The electrolyte plant', text: 'The cells need an electrolyte nobody remembers how to make. Only the old plans for power cell chemistry show it, and the plant wants power cores and advanced alloy.', needs: [['pcore', 2], ['alloy', 2], ['circuit', 8]], tech: 'powercells', gold: 500, xp: 600 },
+  ],
 };
-/** What a working installation makes: the crates of each input in `inp` into one of `out` every `batch` game minutes (at most `hopper` of each input loaded, `bay` made waiting). */
-export interface InstallWork { inp: [ItemKey, number][]; out: ItemKey; batch: number; hopper: number; bay: number; what: string }
+/** What a working installation makes: the crates of each input in `inp` into `n` (1) of `out` every `batch` game minutes (at most `hopper` of each input loaded, `bay` made waiting). */
+export interface InstallWork { inp: [ItemKey, number][]; out: ItemKey; n?: number; batch: number; hopper: number; bay: number; what: string }
 export const INSTALL_WORK: Partial<Record<InstallKind, InstallWork>> = {
   uranium: { inp: [['uranium', 3], ['chems', 1]], out: 'nfuel', batch: 360, hopper: 30, bay: 10, what: 'The centrifuges hum again.' },
   chips: { inp: [['glass', 2], ['copperbar', 1], ['chems', 1], ['rareearth', 1]], out: 'microchip', batch: 240, hopper: 30, bay: 12, what: 'The etching line glows behind its windows.' },
+  propellant: { inp: [['fuel', 3], ['chems', 1], ['sulfur', 1]], out: 'propellant', n: 3, batch: 180, hopper: 30, bay: 30, what: 'The columns steam and the mixing house hums.' },
+  battery: { inp: [['lithium', 1], ['nickel', 1], ['copperbar', 1], ['chems', 1]], out: 'powercell', batch: 240, hopper: 30, bay: 12, what: 'The formation lines crackle and the cells charge in their racks.' },
 };
 
 // ---------- the power hall: an installation makes its own power ----------
@@ -101,7 +116,7 @@ export const INSTALL_WORK: Partial<Record<InstallKind, InstallWork>> = {
  * What a working installation draws (kW). A batch runs only while its power hall gives that much: the hall comes back
  * with the second stage (`HALL_STAGE` stages done) and burns what you bring it, only while a batch is under way.
  */
-export const INSTALL_DRAW: Partial<Record<InstallKind, number>> = { uranium: 200, chips: 100 };
+export const INSTALL_DRAW: Partial<Record<InstallKind, number>> = { uranium: 200, chips: 100, propellant: 120, battery: 150 };
 export const HALL_STAGE = 2;
 /** The hall's generator sets: each runs on its own fuel (a crate every `burn` game minutes of work), `bunker` crates at most. */
 export interface HallSet { fuel: ItemKey; name: string; kw: number; burn: number; bunker: number }
@@ -176,7 +191,7 @@ export function handOverInstall(k: InstallKind, s: InstallState, known: Record<s
 /** Can it work a batch now: restored, the inputs in the hopper, room in the bay and enough power from its hall? */
 export function canRun(k: InstallKind, s: InstallState): boolean {
   const w = INSTALL_WORK[k];
-  return !!w && installDone(k, s) && batchesIn(k, s) >= 1 && s.out < w.bay && !!hallPick(k, s);
+  return !!w && installDone(k, s) && batchesIn(k, s) >= 1 && s.out + (w.n ?? 1) <= w.bay && !!hallPick(k, s);
 }
 /**
  * Settle the batches made since it was last looked at: one per batch while the hopper has enough, the bay has room
@@ -190,7 +205,7 @@ export function runInstall(k: InstallKind, s: InstallState, now: number) {
   while (now - s.t >= w.batch && canRun(k, s) && steps++ < 400) {
     for (const h of hallPick(k, s)!) s.pw![h.fuel] = Math.max(0, (s.pw![h.fuel] ?? 0) - w.batch / h.burn);
     for (const [i, n] of w.inp) s.inp[i] = (s.inp[i] ?? 0) - n;
-    s.out++; s.t += w.batch;
+    s.out += w.n ?? 1; s.t += w.batch;
   }
   if (!canRun(k, s)) s.t = now; // stopped: the clock starts again when it is fed
 }
@@ -214,6 +229,14 @@ export const installLeadId = (k: InstallKind) => 'install:' + k;
 const IDIRS = ['north', 'north-east', 'east', 'south-east', 'south', 'south-west', 'west', 'north-west'];
 const idir = (dx: number, dz: number) => IDIRS[Math.round(((Math.atan2(dx, -dz) * 180 / Math.PI + 360) % 360) / 45) % 8];
 const ISAY: Record<InstallKind, string[]> = {
+  propellant: [
+    'Out {dist} {dir} of here stand great iron balls on legs, two tall columns and a flare stack. My uncle says the old world brewed the fuel of the sky-ships there, and that the ground still smells of it.',
+    'Carters give a wide berth to the old fuel works {dist} {dir} of here: spheres on stilts, pipes everywhere, a squat house with walls a metre thick. They say one spark once took a whole valley.',
+  ],
+  battery: [
+    'There is a long hall with a roof like saw teeth {dist} {dir} of here, rows of tanks beside it and a basin of white crust. The old folk call it the cell works: the old machines drank their power from what was made there.',
+    'A salvager told me of the old battery plant {dist} {dir} of here. Racks and racks of dead cells in a hall half fallen in, and tanks that still bite if you touch the stuff inside.',
+  ],
   uranium: [
     'My grandfather worked at the old enrichment plant, {dist} {dir} of here. Two great cooling towers, one snapped in half, and a hall full of spinning drums. He said the ore that went in came out as something that burns for years.',
     'Travellers talk of a dead plant {dist} {dir} of here: a fence hung with warning signs, a lime trefoil on the gate, two towers like hourglasses. Nobody stays there long.',

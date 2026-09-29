@@ -3,6 +3,7 @@ import { PLANTS, PLANT_KINDS, HOPPER, OUT_CAP, runPlant, feed, collect, startPla
 import { GOOD_INFO, GOODS, PROCESSED } from '../src/gen/market';
 import { RARES, RARE_VALUE, isRare } from '../src/gen/deposits';
 import { CROPS } from '../src/gen/farms';
+import { INSTALL_WORK } from '../src/gen/installs';
 import { TECH_BY_ID } from '../src/gen/tech';
 import { INDUSTRY } from '../src/gen/industry';
 import { STAGES, giveToStage, stageRows, stagesDone, type ShuttleState } from '../src/gen/shuttle';
@@ -10,9 +11,9 @@ import type { TownState } from '../src/gen/town';
 
 describe('processing chains', () => {
   const dug = new Set<Stuff>([...Object.values(INDUSTRY).flatMap((i) => [...i.pool, ...(i.extra?.goods ?? [])]), ...RARES.map((r) => r.k), ...Object.values(CROPS).map((c) => c.out as Stuff)]);
-  const made = new Set<Stuff>(PLANT_KINDS.flatMap((k) => PLANTS[k].recipes.map((r) => r.out[0])));
+  const made = new Set<Stuff>([...PLANT_KINDS.flatMap((k) => PLANTS[k].recipes.map((r) => r.out[0])), ...Object.values(INSTALL_WORK).map((w) => w!.out as Stuff)]);
   const value = (g: Stuff) => (isRare(g) ? RARE_VALUE[g] : GOOD_INFO[g].base);
-  it('every input can be dug, grown or made, and every processed good comes out of some works', () => {
+  it('every input can be dug, grown or made, and every processed good comes out of some works or old plant', () => {
     for (const k of PLANT_KINDS) for (const r of PLANTS[k].recipes) for (const [g] of r.in) expect(dug.has(g) || made.has(g), `${k}: ${g}`).toBe(true);
     for (const g of PROCESSED) expect(made.has(g), g).toBe(true);
     for (const g of PROCESSED) expect(dug.has(g), `${g} is not dug anywhere`).toBe(false);

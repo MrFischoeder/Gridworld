@@ -201,7 +201,23 @@ Dalej 2 zakłady na wioskę (`PLANT_SLOTS`). Istniejące klucze `PlantKind` zost
   Już ukończone etapy zostają ukończone.
 - Terminal instalacji w stylu z sekcji 11 dokumentu: POWER x/y kW, zapasy każdego wejścia, produkt, NEXT BATCH.
 
-## Etap 5 (0.94–0.96): nowe Ancient Facilities
+## Etap 5 (0.94–0.96): nowe Ancient Facilities (0.94 ZROBIONE: Propellant i Battery)
+
+**Zasada właściciela (29.09.2026):** to gracz zapewnia dostawy półproduktów do fabryk Starożytnych. Instalacje niczego nie dostają same: każde wejście i paliwo siłowni gracz ładuje przy pulpicie ze swojego plecaka lub bagażników.
+
+**0.94.0:**
+- Old Propellant Plant (10–18 km):
+  - 3 fuel + 1 chems + 1 sulfur → 3 propellant na 180 min;
+  - pobór 120 kW;
+  - etap III wymaga technologii `propellant`.
+
+  Paliwo rakietowe zniknęło z Chemical Works.
+- Old Battery Plant (14–22 km):
+  - lithium + nickel + copperbar + chems → 1 `powercell` na 240 min;
+  - pobór 150 kW;
+  - etap III wymaga nowej technologii `powercells` (tier 3, na końcu `TECHS`).
+- Nowy towar spoza rynku `powercell`. Zamówienia na ogniwa (`cellOrder`) w wioskach złomiarzy od 5 km.
+
 
 Dopisywane **na końcu `INSTALLS`**, żeby dotychczasowe zostały na miejscu. Każda ma 3 etapy odbudowy, własną siłownię, pulpit i rysunek.
 

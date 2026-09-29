@@ -4,6 +4,8 @@ import { installSites, installMisfit, inInstall, INSTALLS, INSTALL_STAGES, INSTA
 import { ITEMS } from '../src/data/items';
 import { chunkTrees } from '../src/gen/trees';
 import { CHUNK } from '../src/gen/regions';
+import { PLANTS } from '../src/gen/plants';
+import { cellVillages, cellOrder } from '../src/gen/contracts';
 
 describe('great installations', () => {
   it('stand in fixed, fitting places in their band, on bare ground', () => {
@@ -68,6 +70,26 @@ describe('great installations', () => {
     chips.stage = INSTALL_STAGES.chips.length;
     expect(hallPick('chips', chips)!.map((h) => h.fuel)).toEqual(['fuel']);
     expect(INSTALL_DRAW.radar).toBeUndefined(); // the radar station runs on nothing
+  });
+  it('the propellant plant and the battery plant: fed by the player, powered by their halls, the fuel only from the old plant', () => {
+    const w = INSTALL_WORK.propellant!, s: InstallState = { ...newInstall(), stage: INSTALL_STAGES.propellant.length, pw: { coal: 30 } };
+    for (const [i] of w.inp) expect(loadInstall('propellant', s, i, 30, 0)).toBe(30);
+    runInstall('propellant', s, w.batch * 2); expect(s.out).toBe(2 * (w.n ?? 1)); expect(s.inp.fuel).toBe(30 - 2 * 3); // the coal boiler alone runs it
+    runInstall('propellant', s, w.batch * 100); expect(s.out).toBeLessThanOrEqual(w.bay); expect(s.out % 3).toBe(0);
+    expect(INSTALL_STAGES.propellant[2].tech).toBe('propellant'); expect(INSTALL_STAGES.battery[2].tech).toBe('powercells');
+    const b = INSTALL_WORK.battery!, bs: InstallState = { ...newInstall(), stage: INSTALL_STAGES.battery.length, pw: { coal: 30 } };
+    for (const [i] of b.inp) loadInstall('battery', bs, i, 5, 0);
+    runInstall('battery', bs, b.batch * 3); expect(bs.out).toBe(0); // 150 kW: the boiler alone is not enough
+    fuelHall('battery', bs, 'fuel', 10, b.batch * 3); runInstall('battery', bs, b.batch * 6); expect(bs.out).toBe(3);
+    // nobody else makes rocket propellant now: no village works has it
+    expect(Object.values(PLANTS).some((p) => p.recipes.some((r) => r.out[0] === 'propellant'))).toBe(false);
+    // every installation stands in its own place, the new ones well apart from the old
+    const t = new Terrain(12345), sites = installSites(t);
+    expect(sites.map((x) => x.k)).toEqual(INSTALLS.map((x) => x.k));
+    // salvagers far out order the cells
+    const cv = cellVillages(12345); expect(cv.length).toBeGreaterThan(0);
+    let orders = 0; for (let d = 0; d < 10; d++) if (cellOrder(12345, cv[0], d * 1440 + 10)) orders++;
+    expect(orders).toBeGreaterThan(0);
   });
   it('the chip foundry needs every input for a batch', () => {
     const w = INSTALL_WORK.chips!, s: InstallState = { ...newInstall(), stage: INSTALL_STAGES.chips.length, pw: { coal: 30 } };

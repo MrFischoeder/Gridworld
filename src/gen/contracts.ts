@@ -17,9 +17,9 @@ import { profileOf, quote, GOOD_INFO, type Good } from './market';
 import { industryOf } from './industry';
 
 /** What a contract carries: a market good, or fuel rods (gen/installs.ts: not on any market). */
-export type Cargo = Good | 'nfuel' | 'microchip';
+export type Cargo = Good | 'nfuel' | 'microchip' | 'powercell';
 /** Cargo that never goes to a market (a delivery moves no prices). */
-export const offMarket = (g: Cargo): g is 'nfuel' | 'microchip' => g === 'nfuel' || g === 'microchip';
+export const offMarket = (g: Cargo): g is 'nfuel' | 'microchip' | 'powercell' => g === 'nfuel' || g === 'microchip' || g === 'powercell';
 export const CONTRACT = { period: 720, perVillage: 2, maxActive: 3, near: 2000, far: 9000, premium: 1.35 };
 export interface Contract {
   id: string; kind: 'supply' | 'haul';
@@ -101,5 +101,22 @@ export function chipOrder(world: number, v: Poi, now: number): Contract | null {
   const n = 1 + Math.floor(R() * 4), pay = Math.round((CHIPS.pay + CHIPS.perDanger * ringDanger(worldDist(v.x, v.z, 0, 0))) / 10) * 10;
   return { id: `chip:${v.id}:${post}`, kind: 'supply', from: v.id, fromName: v.name, to: v.id, toName: v.name, tx: v.x, tz: v.z, good: 'microchip', n, done: 0, pay, deposit: 0, due: post * CHIPS.period + Math.round((3 + R() * 3) * 1440) };
 }
-/** The fuel and chip orders village v posts today. */
-export const specialOrders = (world: number, v: Poi, now: number): Contract[] => [fuelOrder(world, v, now), chipOrder(world, v, now)].filter((o): o is Contract => !!o);
+// ---------- cell orders: salvage villages keeping the old machines going ----------
+/** Salvage villages from `from` m out order power cells; an order on some days (`skip`), 1-3 crates, paid by the danger of their ring. */
+export const CELLS = { from: 5000, period: 1440, skip: 0.5, pay: 900, perDanger: 60 };
+/** Does village v order power cells (a salvage village away from Gridholm)? Fixed per world. */
+export function cellBuyer(world: number, v: Poi): boolean {
+  if (v.id === GRIDHOLM_ID || worldDist(v.x, v.z, 0, 0) < CELLS.from) return false;
+  return industryOf(world, v, villageSeed(world, v)) === 'salvage';
+}
+export const cellVillages = (world: number) => allVillages(world).filter((v) => cellBuyer(world, v));
+/** The cell order village v posts for the game day that is on at `now` (null: not a buyer, or no order today). */
+export function cellOrder(world: number, v: Poi, now: number): Contract | null {
+  if (!cellBuyer(world, v)) return null;
+  const post = Math.floor(now / CELLS.period), R = rng(hash(world, v.id, post, 0xce11));
+  if (R() < CELLS.skip) return null;
+  const n = 1 + Math.floor(R() * 3), pay = Math.round((CELLS.pay + CELLS.perDanger * ringDanger(worldDist(v.x, v.z, 0, 0))) / 10) * 10;
+  return { id: `cell:${v.id}:${post}`, kind: 'supply', from: v.id, fromName: v.name, to: v.id, toName: v.name, tx: v.x, tz: v.z, good: 'powercell', n, done: 0, pay, deposit: 0, due: post * CELLS.period + Math.round((3 + R() * 3) * 1440) };
+}
+/** The fuel, chip and cell orders village v posts today. */
+export const specialOrders = (world: number, v: Poi, now: number): Contract[] => [fuelOrder(world, v, now), chipOrder(world, v, now), cellOrder(world, v, now)].filter((o): o is Contract => !!o);
