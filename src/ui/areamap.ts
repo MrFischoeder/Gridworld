@@ -3,6 +3,7 @@
 // names (the nearest ones), arrows at the edge towards the nearest other villages, where you stand, and a list of
 // the places with their distance and direction. Reading it also marks those
 // places on your own map (M).
+import { riverSegsIn } from '../gen/rivers';
 import { G } from '../game';
 import { poisNear, allVillages, CHUNK, POLAR_Z, wrapDx, regionOf, type Poi } from '../gen/regions';
 import { regionRoads } from '../gen/roads';
@@ -55,6 +56,12 @@ export function openAreaMap(centre: { x: number; z: number; name: string }) {
   ctx.strokeStyle = 'rgba(61,255,110,0.12)'; ctx.lineWidth = 1; ctx.beginPath();
   for (let d = -RANGE; d <= RANGE; d += 500) { const s = SIZE / 2 + d * k; ctx.moveTo(s, 0); ctx.lineTo(s, SIZE); ctx.moveTo(0, s); ctx.lineTo(SIZE, s); }
   ctx.stroke();
+  // rivers, as wide as they are
+  ctx.strokeStyle = '#2ac8b0'; ctx.lineCap = 'round';
+  for (const sg of riverSegsIn(G.char.world, centre.x - RANGE, centre.z - RANGE, centre.x + RANGE, centre.z + RANGE)) {
+    ctx.lineWidth = Math.max(1.5, (sg.ha + sg.hb) * k); ctx.beginPath(); ctx.moveTo(X(sg.ax), Y(sg.az)); ctx.lineTo(X(sg.bx), Y(sg.bz)); ctx.stroke();
+  }
+  ctx.lineCap = 'butt';
   // roads
   const [ax, az] = regionOf(centre.x - RANGE, centre.z - RANGE), [bx, bz] = regionOf(centre.x + RANGE, centre.z + RANGE), seen = new Set<string>();
   ctx.strokeStyle = 'rgba(200,255,216,0.55)'; ctx.lineWidth = 2;

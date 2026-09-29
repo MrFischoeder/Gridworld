@@ -5,7 +5,8 @@ import { scene, V, GRID, localize } from './render';
 import { G } from '../game';
 import { OW } from './overworld';
 import { lakesIn, shoreR, type Lake, type WaterKind, type Well } from '../gen/water';
-import { SEA, inSea } from '../gen/seas';
+import { SEA, inSea, seaMask } from '../gen/seas';
+import { riversOf, type RiverSeg } from '../gen/rivers';
 import { CHUNK } from '../gen/regions';
 import { CELLS, VERTS, STEP, type Terrain } from '../gen/terrain';
 import { addItem, takeOne, hasItem, saveChar } from '../character';
@@ -75,6 +76,55 @@ export function clearLakes() { for (const m of lakes.values()) dropLake(m); lake
 export function animateWater(time: number) {
   for (const m of lakes.values()) { const s = 0.5 + 0.5 * Math.sin(time * 0.9 + m.lake.x * 0.01); m.a.opacity = 0.15 + 0.45 * s; m.b.opacity = 0.6 - 0.45 * s; }
   const s = 0.5 + 0.5 * Math.sin(time * 0.7); SEA_A.opacity = 0.12 + 0.4 * s; SEA_B.opacity = 0.52 - 0.4 * s;
+  // river ripples: three sets a third of a step apart light up in turn, so the dashes seem to run downstream
+  RIVER_RIP.forEach((m, i) => { const p = ((time * 1.4 - i / 3) % 1 + 1) % 1; m.opacity = 0.08 + 0.55 * Math.max(0, 1 - Math.abs(p - 0.5) * 3); });
+}
+
+// ---------- rivers ----------
+const RIVER_FILL = new THREE.MeshBasicMaterial({ color: WATER_FILL.fresh, transparent: true, opacity: 0.86, depthWrite: false, side: THREE.DoubleSide });
+const RIVER_RIP = [0, 1, 2].map(() => new THREE.LineBasicMaterial({ color: WATER_LINE.fresh, transparent: true, opacity: 0.3 }));
+const RIVER_BANK = new THREE.LineBasicMaterial({ color: WATER_LINE.fresh, transparent: true, opacity: 0.75 });
+/** Ripple dash length and the step between dashes of one set along the flow (m). */
+const DASH = 2.2, RSTEP = 7.5;
+/**
+ * The rivers' water over one terrain chunk (world coordinates; the chunk's group localizes it), or null: a
+ * translucent ribbon at the water level along every stretch whose middle lies in the chunk (a little wider than
+ * the channel: the banks hide its edges), the waterlines on both banks, and three sets of ripple dashes along the
+ * flow that light up in turn (animateWater), so the water seems to run.
+ */
+export function riverSheet(T: Terrain, cx: number, cz: number, segs: RiverSeg[]): THREE.Group | null {
+  const x0 = cx * CHUNK, z0 = cz * CHUNK, mine = segs.filter((s) => { const mx = (s.ax + s.bx) / 2, mz = (s.az + s.bz) / 2; return mx >= x0 && mx < x0 + CHUNK && mz >= z0 && mz < z0 + CHUNK; });
+  if (!mine.length) return null;
+  const list = riversOf(T.world).list, tri: number[] = [], bank: number[] = [], rip: number[][] = [[], [], []];
+  /** Unit normal at point i of river r (averaged over the stretches either side, so the ribbon has no gaps). */
+  const normal = (r: number, i: number): [number, number] => {
+    const R = list[r], a = Math.max(0, i - 1), b = Math.min(R.x.length - 1, i + 1), dx = R.x[b] - R.x[a], dz = R.z[b] - R.z[a], L = Math.hypot(dx, dz) || 1;
+    return [-dz / L, dx / L];
+  };
+  for (const s of mine) {
+    if (seaMask(T.world, (s.ax + s.bx) / 2, (s.az + s.bz) / 2) > 0.45) continue; // out in the open sea already
+    const [nax, naz] = normal(s.r, s.i), [nbx, nbz] = normal(s.r, s.i + 1), wa = s.ha + 0.8, wb = s.hb + 0.8;
+    const A = [s.ax + nax * wa, s.la, s.az + naz * wa], B = [s.ax - nax * wa, s.la, s.az - naz * wa], C = [s.bx - nbx * wb, s.lb, s.bz - nbz * wb], D = [s.bx + nbx * wb, s.lb, s.bz + nbz * wb];
+    tri.push(...A, ...B, ...C, ...A, ...C, ...D);
+    for (const sg of [1, -1]) bank.push(s.ax + nax * s.ha * sg, s.la + 0.03, s.az + naz * s.ha * sg, s.bx + nbx * s.hb * sg, s.lb + 0.03, s.bz + nbz * s.hb * sg);
+    // ripples: dashes placed by the distance along the whole river, so they line up across stretches
+    const R = list[s.r], L = Math.hypot(s.bx - s.ax, s.bz - s.az);
+    if (L < 0.1) continue;
+    let s0 = 0; for (let k = 1; k <= s.i; k++) s0 += Math.hypot(R.x[k] - R.x[k - 1], R.z[k] - R.z[k - 1]);
+    for (let set = 0; set < 3; set++) for (let d = Math.ceil((s0 - set * RSTEP / 3) / RSTEP) * RSTEP + set * RSTEP / 3 - s0; d < L; d += RSTEP) {
+      const u0 = d / L, u1 = Math.min(1, (d + DASH) / L), hw = s.ha + (s.hb - s.ha) * u0;
+      for (const off of [-0.5, 0.1, 0.55]) {
+        const o = off * hw, nx = nax + (nbx - nax) * u0, nz = naz + (nbz - naz) * u0;
+        const p = (u: number) => [s.ax + (s.bx - s.ax) * u + nx * o, s.la + (s.lb - s.la) * u + 0.02, s.az + (s.bz - s.az) * u + nz * o];
+        rip[set].push(...p(u0), ...p(u1));
+      }
+    }
+  }
+  if (!tri.length) return null;
+  const g = new THREE.Group(), geo = (a: number[]) => { const b = new THREE.BufferGeometry(); b.setAttribute('position', new THREE.Float32BufferAttribute(a, 3)); return b; };
+  g.add(new THREE.Mesh(geo(tri), RIVER_FILL), new THREE.LineSegments(geo(bank), RIVER_BANK));
+  rip.forEach((a, i) => { if (a.length) g.add(new THREE.LineSegments(geo(a), RIVER_RIP[i])); });
+  return g;
 }
 
 // ---------- the sea ----------

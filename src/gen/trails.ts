@@ -8,6 +8,7 @@ import { rng, hash } from '../core/rng';
 import { REGION, wrapR, ruinName } from './regions';
 import { mountainMask } from './mountains';
 import { inSea } from './seas';
+import { nearRiver } from './rivers';
 import { lakesIn } from './water';
 import type { Road } from './roads';
 import type { Terrain } from './terrain';
@@ -124,6 +125,7 @@ function climb(t: Terrain, s: Summit): Road | null {
   for (let i = h.length - 2; i >= 0; i--) h[i] = clamp(h[i], h[i + 1], seg(i + 1)); // down from the top...
   for (let i = 1; i < h.length; i++) h[i] = clamp(h[i], h[i - 1], seg(i)); // ...and up from the foot: every step within the grade
   if (h.some((v, i) => Math.abs(v - t.base(pts[i][0], pts[i][1])) > MAX_CUT)) return null;
+  if (pts.some(([x, z]) => nearRiver(t.world, x, z, 12))) return null; // no fords on the mountain paths
   return { id: 'trail:' + s.id, from: s.id, to: s.id, gate: 'trail', pts, half: TRAIL.half, h, name: s.name };
 }
 /** Height of a trail's profile at the point of it nearest to (x, z): [distance, height]. */

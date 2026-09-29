@@ -20,6 +20,7 @@ import { scene, V, GRID, localize } from './render';
 import { G, W } from '../game';
 import { VoxelGrid, type Space } from '../core/voxel';
 import { Terrain, inRect, rectDist, STEP, CELLS, VERTS } from '../gen/terrain';
+import { riversOf, riverNear } from '../gen/rivers';
 import { CHUNK, poisNear, X_MIN, WORLD_W, POLE_Z, POLAR_Z, villageContaining, villageDist, villageSeed, GRIDHOLM_ID, type Poi, wrapC } from '../gen/regions';
 import { chunkTrees, chunkRocks, type Tree, type Rock, type OreKind } from '../gen/trees';
 import { drawTree } from './trees';
@@ -28,7 +29,7 @@ import { chunkWells, type Well } from '../gen/water';
 import { chunkPlants, type Plant } from '../gen/flora';
 import { dangerAt } from '../gen/danger';
 import { drawPlants, dropPlants, ripe, type PlantNode } from './flora';
-import { drawWell, syncLakes, clearLakes, seaSheet } from './water';
+import { drawWell, syncLakes, clearLakes, seaSheet, riverSheet } from './water';
 import { generateVillage, WALL_TIERS, STONE_TIER, type VillageMap } from '../gen/village';
 import { wallOf } from '../gen/town';
 import { drawPower, setPlantLamps, forgetPower } from './power';
@@ -176,6 +177,7 @@ function buildChunk(cx: number, cz: number, lod = 1): Chunk {
   group.add(new THREE.Mesh(fg, sharedFill()), new THREE.LineSegments(lg, sharedLine(Math.abs(z0 + CHUNK / 2) > POLAR_Z + 800 || top > SNOW_LINE ? ICE_COLOR : GRID)));
   if (road.length) { const rg = new THREE.BufferGeometry(); rg.setAttribute('position', new THREE.Float32BufferAttribute(road, 3)); group.add(new THREE.Mesh(rg, ROAD_FILL)); }
   const sea = seaSheet(T, cx, cz, lat, lod); if (sea) group.add(sea);
+  const river = f.rivers.length ? riverSheet(T, cx, cz, f.rivers) : null; if (river) group.add(river);
   const caves = chunkCaves(T, cx, cz), wells = chunkWells(T, cx, cz), plants = chunkPlants(T, cx, cz).filter((p) => !T.claimAt(p.x, p.z, 2));
   // felled trees and broken rocks (player changes, keyed by their index in the generated list) are left out
   const trees: Tree[] = [], stumps: Tree[] = [], rocks: Rock[] = [];
@@ -493,7 +495,7 @@ export function updateStreaming(budgetMs = 4) {
 /** Load (or reload) the open world of the current character's seed, synchronously around (x, z). */
 export function openWorld(x: number, z: number) {
   const w = G.char.world;
-  if (!OW.terrain || OW.terrain.world !== w) OW.terrain = new Terrain(w);
+  if (!OW.terrain || OW.terrain.world !== w) { OW.terrain = new Terrain(w); riversOf(w); } // the rivers are worked out once, while the world loads
   OW.terrain.setClaims(G.char.claims);
   closeWorld();
   G.water = (px, pz) => (inStructure(px, pz) ? null : OW.terrain!.water(px, pz));
@@ -610,6 +612,7 @@ export function placeName(x: number, z: number): string {
   if (Math.abs(z) > POLAR_Z) return z < 0 ? 'Northern ice cap' : 'Southern ice cap';
   const lv = Math.round(danger(x, z)), tag = lv ? ` · danger ${lv}` : ' · calm';
   if (G.char.claims.some((c) => claimDist(c, x, z) < CLAIM.r)) return 'Your claim' + tag;
+  { const segs = OW.terrain!.chunkFeatures(Math.floor(x / CHUNK), Math.floor(z / CHUNK)).rivers, r = riverNear(segs, x, z); if (r && r.d < r.half + 25) return riversOf(OW.terrain!.world).list[r.seg.r].name + tag; }
   for (const cv of loadedCaves()) if (Math.hypot(cv.x - x, cv.z - z) < 30) return cv.name + tag;
   { const ins = installAt(OW.terrain!, x, z, 25); if (ins) return ins.name + tag; }
   for (const r of OW.terrain!.chunkFeatures(Math.floor(x / CHUNK), Math.floor(z / CHUNK)).roads) {

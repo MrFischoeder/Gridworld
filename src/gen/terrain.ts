@@ -1,13 +1,14 @@
 // Heightfield of the open world: seeded noise, shaped per region, flattened under places and along roads.
 import { fbm } from '../core/noise';
 import { hash } from '../core/rng';
-import { regionInfo, regionOf, poisNear, wrapR, CHUNK, REGION, WORLD_W, POLAR_Z, POLE_Z, type Poi, type Rect } from './regions';
+import { regionClimate, regionOf, poisNear, CHUNK, WORLD_W, POLAR_Z, type Poi, type Rect } from './regions';
 import { regionRoads, nearestOnRoad, roadBounds, type Road } from './roads';
 import { lakesIn, lakeBed, shoreR, type Lake, type WaterHere } from './water';
 import { claimFlatten, claimDist, CLEAR_R, type Claim } from './claims';
-import { mountainMask, mountainLift } from './mountains';
 import { regionTrails, trailHeight } from './trails';
-import { seaMask, seaSink, SEA } from './seas';
+import { seaMask, SEA } from './seas';
+import { naturalHeight } from './heights';
+import { riverSegsIn, riverNear, riverCarve, type RiverSeg } from './rivers';
 
 export const STEP = 2, CELLS = CHUNK / STEP, VERTS = CELLS + 1;
 export const MAX_H = 25;
@@ -17,51 +18,26 @@ export const rectDist = (r: Rect, x: number, z: number) => Math.hypot(Math.max(r
 export const inRect = (r: Rect, x: number, z: number) => x >= r.x0 && x < r.x1 && z >= r.z0 && z < r.z1;
 
 export interface Pad { poi: Poi; y: number }
-export interface Features { pads: Pad[]; roads: Road[]; lakes: Lake[]; claims: Claim[] }
+export interface Features { pads: Pad[]; roads: Road[]; lakes: Lake[]; claims: Claim[]; rivers: RiverSeg[] }
 
 const ROAD_BLEND = 5;
 /** Trails blend back into the slope more gently: the 2 m height lattice must still see a flat bench across them. */
 const TRAIL_BLEND = 9;
-/**
- * Noise scale s adjusted so a whole number of lattice cells fits round the planet: returns [scale, cells].
- * The adjustment is tiny (e.g. 170 m -> 169.94 m), so the land near Gridholm is practically unchanged.
- */
+/** Noise scale s adjusted so a whole number of lattice cells fits round the planet (see gen/heights.ts). */
 const wrapScale = (s: number): [number, number] => { const n = Math.round(WORLD_W / s); return [WORLD_W / n, n]; };
-const [S170, P170] = wrapScale(170), [S48, P48] = wrapScale(48), [S90, P90] = wrapScale(90), [S60, P60] = wrapScale(60);
-/** Ice sheet height and the ice wall at the poles. */
-const ICE_Y = 16, WALL_H = 70;
+const [S90, P90] = wrapScale(90);
 
 export class Terrain {
-  private s1: number; private s2: number;
+  private s2: number;
   private lat = new Map<number, Float32Array>();
   private feat = new Map<number, Features>();
   private padCache = new Map<number, number>();
   /** Land claimed by players (flagpoles): levelled ground. Player changes, handed in by the runtime. */
   private claims: Claim[] = [];
-  constructor(public world: number) { this.s1 = hash(world, 0x7e11) * 7919; this.s2 = hash(world, 0x7e12) * 7919; }
+  constructor(public world: number) { this.s2 = hash(world, 0x7e12) * 7919; }
 
-  /** Region roughness, blended smoothly between region centres so there are no seams. */
-  private rough(x: number, z: number): number {
-    const fx = x / REGION, fz = z / REGION, x0 = Math.floor(fx), z0 = Math.floor(fz), tx = smooth(fx - x0), tz = smooth(fz - z0);
-    const v = (rx: number, rz: number) => regionInfo(this.world, wrapR(rx), rz).rough;
-    const a = v(x0, z0), b = v(x0 + 1, z0), c = v(x0, z0 + 1), d = v(x0 + 1, z0 + 1);
-    return a + (b - a) * tx + (c - a) * tz + (a - b - c + d) * tx * tz;
-  }
-  /** Natural terrain before any flattening: gentle hills in 0..25 m, mountains here and there (gen/mountains.ts), the sea bed under the seas (gen/seas.ts); towards the poles an ice sheet, then the ice wall. */
-  base(x: number, z: number): number {
-    const amp = 0.55 + 0.8 * this.rough(x, z);
-    const raw = 12.5 + amp * (46 * (fbm(this.s1, x / S170, z / 170, 4, P170) - 0.5) + 8 * (fbm(this.s2, x / S48, z / 48, 3, P48) - 0.5));
-    let h = 12.5 + 12.5 * Math.tanh((raw - 12.5) / 12.5);
-    h += mountainLift(this.world, x, z, mountainMask(this.world, x, z));
-    h = seaSink(h, seaMask(this.world, x, z)); // the seas: the land goes down under the water
-    const az = Math.abs(z);
-    if (az > POLAR_Z) {
-      const ice = ICE_Y + 3 * (fbm(this.s2 + 5, x / S60, z / 60, 2, P60) - 0.5);
-      h += (ice - h) * smooth(Math.min(1, (az - POLAR_Z) / 2500));
-      if (az > POLE_Z - 120) h += WALL_H * smooth(Math.min(1, (az - (POLE_Z - 120)) / 70)); // a sheer cliff of ice
-    }
-    return h;
-  }
+  /** Natural terrain before any flattening (gen/heights.ts). */
+  base(x: number, z: number): number { return naturalHeight(this.world, x, z); }
   /** Floor height of a place (whole metres, so voxel structures sit exactly on it). */
   padY(p: Poi): number {
     let y = this.padCache.get(p.id);
@@ -105,7 +81,7 @@ export class Terrain {
     const [tx, tz] = regionOf(cx - 1500, cz - 1500), [ux, uz] = regionOf(cx + 1500, cz + 1500);
     for (let rx = tx; rx <= ux; rx++) for (let rz = tz; rz <= uz; rz++) regionTrails(this, rx, rz).forEach(take);
     const claims = this.claims.filter((c) => claimDist(c, cx, cz) < half * 1.42 + CLEAR_R);
-    return { pads, roads, lakes: lakesIn(this, r), claims };
+    return { pads, roads, lakes: lakesIn(this, r), claims, rivers: riverSegsIn(this.world, r.x0, r.z0, r.x1, r.z1) };
   }
   chunkFeatures(cx: number, cz: number): Features {
     const k = key(cx, cz);
@@ -138,6 +114,8 @@ export class Terrain {
       else if (d < p.poi.flat + p.poi.blend) h += (p.y - h) * (1 - smooth((d - p.poi.flat) / p.poi.blend));
     }
     for (const c of f.claims) h = claimFlatten(c, x, z, h);
+    // rivers: banks, valleys and channels; a shallow ford where a road crosses
+    if (f.rivers.length) h = riverCarve(f.rivers, x, z, h, (px, pz) => f.roads.some((r) => !r.h && nearestOnRoad(r, px, pz)[0] < r.half + 8));
     for (const l of f.lakes) { const b = lakeBed(l, x, z, h); if (b !== null) h = b; }
     return h;
   }
@@ -170,13 +148,19 @@ export class Terrain {
       const g = this.heightAt(x, z);
       if (g < l.level) return { level: l.level, depth: l.level - g, kind: l.kind };
     }
+    // rivers: within the channel, below the level; the water runs downstream
+    const segs = this.chunkFeatures(Math.floor(x / CHUNK), Math.floor(z / CHUNK)).rivers;
+    if (segs.length) {
+      const r = riverNear(segs, x, z);
+      if (r && r.d < r.half) { const g = this.heightAt(x, z); if (g < r.level) return { level: r.level, depth: r.level - g, kind: 'fresh', flow: [r.fx * r.speed, r.fz * r.speed] }; }
+    }
     // the sea: wherever its mask reaches and the ground lies below its level
     if (seaMask(this.world, x, z) > 0) { const g = this.heightAt(x, z); if (g < SEA.level) return { level: SEA.level, depth: SEA.level - g, kind: 'sea' }; }
     return null;
   }
   /** Forest density 0..1 at a point: regional amount modulated by large blotches of noise. */
   forest(x: number, z: number): number {
-    const [rx, rz] = regionOf(x, z), reg = regionInfo(this.world, rx, rz).forest;
+    const [rx, rz] = regionOf(x, z), reg = regionClimate(this.world, rx, rz).forest;
     const n = fbm(this.s2 + 17, x / S90, z / 90, 3, P90);
     const cold = Math.abs(z) > POLAR_Z - 3000 ? Math.max(0, 1 - (Math.abs(z) - (POLAR_Z - 3000)) / 2500) : 1; // forests thin out towards the ice
     const h = this.base(x, z), high = Math.max(0, Math.min(1, (80 - h) / 30)) * Math.max(0, Math.min(1, (h - SEA.level - 0.8) / 1.5)); // the forest thins out up the mountains, and none on the beaches

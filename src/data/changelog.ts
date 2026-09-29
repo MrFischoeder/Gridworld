@@ -4,6 +4,18 @@ export interface Change { v: string; date: string; title: string; notes: string[
 
 export const CHANGELOG: Change[] = [
   {
+    v: '0.80.0', date: '2026-10-02', title: 'Rivers',
+    notes: [
+      'Rivers now run across the land: from the uplands down to the seas, gathering tributaries on the way, winding through valleys they have cut. Each has a name (you see it at the top when you are by one). A world has well over a hundred of them, some kilometres long.',
+      'They grow as they go: a small stream at the head, a broad river of 20-30 m by the mouth, deeper in the middle. The water runs downstream: swim in it and the current carries you along.',
+      'River water is fresh: you can drink it and fill a flask from it.',
+      'Where a road meets a river it crosses at a shallow ford: you can wade it, and the Scout and the Mastodon drive through. Bridges will come later.',
+      'Rivers keep clear of Gridholm (the land round it is as it was) and of every village. Ruins, camps, crash sites, lakes, wells, mountain trails, caves and the great installations keep clear of the rivers.',
+      'The maps show the rivers: the minimap and the big map, the map boards in the villages (as wide as they are), and the dev world map.',
+      'Note for old saves: the rivers change the land further out, so some far places you knew may have moved or gone. Gridholm and its surroundings are untouched.',
+    ],
+  },
+  {
     v: '0.79.0', date: '2026-10-01', title: 'Seas',
     notes: [
       'The planet now has seas: a few great bodies of salt water that together cover about a quarter of the land between the ice caps. Every world has its own; the land round Gridholm is as it was, the nearest coast is at least a few kilometres off.',

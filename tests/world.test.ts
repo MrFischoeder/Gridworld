@@ -73,7 +73,7 @@ describe('terrain', () => {
         expect(Number.isInteger(y)).toBe(true);
       }
     }
-  });
+  }, 180000); // 60 worlds, each laying out its roads and rivers
   it('slopes stay walkable almost everywhere', () => {
     const t = new Terrain(WORLDS[5]);
     let steep = 0, n = 0;

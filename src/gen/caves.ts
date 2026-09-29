@@ -6,6 +6,7 @@ import { rng, hash } from '../core/rng';
 import { REGION, CHUNK, wrapR, ruinName } from './regions';
 import { mountainMask } from './mountains';
 import { inSea } from './seas';
+import { nearRiver } from './rivers';
 import type { Terrain } from './terrain';
 
 export interface Cave {
@@ -33,7 +34,7 @@ function rawCaves(t: Terrain, rx: number, rz: number): Cave[] {
   if (mountainMask(t.world, cx, cz) + mountainMask(t.world, cx + 90, cz) + mountainMask(t.world, cx, cz + 90) > 0.2 && R() < 0.45) {
     for (let tries = 0; tries < 30; tries++) {
       const x = cx + (R() - 0.5) * 220, z = cz + (R() - 0.5) * 220, m = mountainMask(t.world, x, z);
-      if (m < 0.25 || m > 0.9 || inSea(t.world, x, z, 30)) continue;
+      if (m < 0.25 || m > 0.9 || inSea(t.world, x, z, 30) || nearRiver(t.world, x, z, 40)) continue;
       const h = (px: number, pz: number) => t.base(px, pz);
       // uphill: the gradient; the mouth faces the other way
       const gx = h(x + 2, z) - h(x - 2, z), gz = h(x, z + 2) - h(x, z - 2), g = Math.hypot(gx, gz);

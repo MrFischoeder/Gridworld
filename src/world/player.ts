@@ -112,6 +112,8 @@ export function updatePlayer(dt: number): boolean {
   G.activity = m < 0.1 || G.trans ? 1 : sprint ? BURN.sprint : G.swimming ? BURN.swim : BURN.walk;
   const fw = V(-Math.sin(G.yaw), 0, -Math.cos(G.yaw)), rt = V(Math.cos(G.yaw), 0, -Math.sin(G.yaw));
   const want = fw.multiplyScalar(f * speed).addScaledVector(rt, s * speed);
+  // a river's current carries a swimmer along (and pushes at your legs when you wade)
+  if (w?.flow && wet > 0.3) { const c = G.swimming ? 1 : 0.35; want.x += w.flow[0] * c; want.z += w.flow[1] * c; }
   const k = G.swimming ? 5 : G.onGround ? 14 : 3;
   vel.x += (want.x - vel.x) * Math.min(1, k * dt); vel.z += (want.z - vel.z) * Math.min(1, k * dt);
   if (G.swimming && w) {

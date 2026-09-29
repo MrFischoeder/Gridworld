@@ -5,6 +5,7 @@ import { G } from '../game';
 import { allVillages, regionInfo, regionOf, X_MIN, WORLD_W, POLE_Z, POLAR_Z, REGION, wrapDx, type Poi } from '../gen/regions';
 import { dangerAt } from '../gen/danger';
 import { seaMask } from '../gen/seas';
+import { riversOf } from '../gen/rivers';
 import { teleportTo } from '../world/level';
 import { $, logLine } from './hud';
 import { lockPointer } from './input';
@@ -66,6 +67,14 @@ function draw() {
   ctx.imageSmoothingEnabled = true;
   let [sx0] = toScreen(X_MIN, 0); sx0 -= Math.ceil(sx0 / sw) * sw;
   for (let sx = sx0; sx < W; sx += sw) ctx.drawImage(sl, sx, sy0, sw, sh);
+  // the rivers
+  ctx.strokeStyle = '#2ac8b0'; ctx.lineWidth = 1.5;
+  for (const r of riversOf(G.char.world).list) {
+    ctx.beginPath();
+    for (let i = 0; i < r.x.length; i += view.mpp > 30 ? 4 : 1) { const [px, py] = toScreen(r.x[i], r.z[i]); if (i) ctx.lineTo(px, py); else ctx.moveTo(px, py); }
+    const [ex, ey] = toScreen(r.x[r.x.length - 1], r.z[r.z.length - 1]); ctx.lineTo(ex, ey);
+    ctx.stroke();
+  }
   // grid: every region when close, every 10 km otherwise; the seam of the planet in amber
   const step = view.mpp < 4 ? REGION : view.mpp < 40 ? 2560 : 10240;
   ctx.strokeStyle = 'rgba(47,224,96,0.18)'; ctx.lineWidth = 1; ctx.beginPath();

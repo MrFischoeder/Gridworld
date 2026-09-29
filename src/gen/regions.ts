@@ -4,6 +4,7 @@
 import { hash, rng, rangeInt, DIRV, type Dir } from '../core/rng';
 import { onMountain } from './mountains';
 import { inSea } from './seas';
+import { nearRiver } from './rivers';
 
 export const REGION = 256, CHUNK = 32;
 
@@ -140,9 +141,9 @@ export function allVillages(world: number): Poi[] {
     v = [];
     for (let gx = 0; gx < NCELL; gx++) for (let gz = -12; gz <= 12; gz++) {
       const c = villageOfCell(world, gx, gz);
-      if (c) v.push(...regionInfo(world, c[0], c[1]).pois.filter((p) => p.type === 'village'));
+      if (c) v.push(...baseInfo(world, c[0], c[1]).pois.filter((p) => p.type === 'village'));
     }
-    v.unshift(regionInfo(world, 0, 0).pois[0]);
+    v.unshift(baseInfo(world, 0, 0).pois[0]);
     villageCache.set(world, v);
   }
   return v;
@@ -201,6 +202,14 @@ function shifted(r: RegionInfo, rx: number, dx: number): RegionInfo {
   return { ...r, rx, pois: r.pois.map((p) => ({ ...p, x: p.x + dx, rect: { x0: p.rect.x0 + dx, z0: p.rect.z0, x1: p.rect.x1 + dx, z1: p.rect.z1 } })) };
 }
 const baseCache = new Map<string, RegionInfo>(), cache = new Map<string, RegionInfo>();
+/**
+ * A region's forest amount and roughness (the first two draws of its stream), without placing anything: the
+ * terrain's heights need them, and the rivers (which the places keep off) need the heights.
+ */
+export function regionClimate(world: number, rx: number, rz: number): { forest: number; rough: number } {
+  const R = rng(hash(world, wrapR(rx), rz, 0x7e61));
+  return { forest: R(), rough: R() };
+}
 /** Village and ruins of a region (camps are added on top, see regionInfo). */
 function baseInfo(world: number, rx: number, rz: number): RegionInfo {
   const c = wrapR(rx);
@@ -210,7 +219,7 @@ function baseInfo(world: number, rx: number, rz: number): RegionInfo {
   if (r) return r;
   if (baseCache.size > 40000) baseCache.clear();
   const R = rng(hash(world, rx, rz, 0x7e61)), ri = rangeInt(R);
-  const forest = R(), rough = R();
+  const [forest, rough] = [R(), R()]; // the same as regionClimate
   const pois: Poi[] = [];
   const cx = rx * REGION, cz = rz * REGION;
   if (polarRegion(rz)) { /* nothing lives on the ice */ }
@@ -233,7 +242,7 @@ function baseInfo(world: number, rx: number, rz: number): RegionInfo {
     }
   } else if (R() < (Math.abs(rx) <= 1 && Math.abs(rz) <= 1 ? 0.4 : 0.5)) {
     const x = cx + ri(-80, 80), z = cz + ri(-80, 80);
-    if (!onMountain(world, x, z, 60) && !inSea(world, x, z, 80)) pois.push(ruinAt(rx, rz, 1, x, z, R));
+    if (!onMountain(world, x, z, 60) && !inSea(world, x, z, 80) && !nearRiver(world, x, z, 110)) pois.push(ruinAt(rx, rz, 1, x, z, R));
   }
   r = { rx, rz, pois, forest, rough };
   baseCache.set(key, r);
@@ -260,7 +269,7 @@ export function regionInfo(world: number, rx: number, rz: number): RegionInfo {
       // camps keep well out of every village's calm surroundings (see gen/danger.ts)
       if (worldDist(x, z, 0, 0) < 480) continue;
       if (around.some((p) => worldDist(p.x, p.z, x, z) < (p.type === 'village' ? 480 : 130))) continue;
-      if (onMountain(world, x, z, 45) || inSea(world, x, z, 60)) continue;
+      if (onMountain(world, x, z, 45) || inSea(world, x, z, 60) || nearRiver(world, x, z, 90)) continue;
       pois.push(campAt(rx, rz, x, z, Rc)); break;
     }
   }
@@ -273,7 +282,7 @@ export function regionInfo(world: number, rx: number, rz: number): RegionInfo {
       const x = cx + (Rw() - 0.5) * 150, z = cz + (Rw() - 0.5) * 150;
       if (worldDist(x, z, 0, 0) < 400) continue;
       if (around.some((p) => worldDist(p.x, p.z, x, z) < (p.type === 'village' ? 400 : 110)) || pois.some((p) => worldDist(p.x, p.z, x, z) < 110)) continue;
-      if (onMountain(world, x, z, 60) || inSea(world, x, z, 80)) continue;
+      if (onMountain(world, x, z, 60) || inSea(world, x, z, 80) || nearRiver(world, x, z, 110)) continue;
       pois.push(wreckAt(rx, rz, x, z, Rw)); break;
     }
   }
