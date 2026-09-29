@@ -1,5 +1,6 @@
 // XP crystals, pickups, chests, the hatch, and item use.
 import * as THREE from 'three';
+import { fitFilter } from './toxic';
 import { scene, lineMat, add, V, circlePts, edgesOf, fillMat } from './render';
 import { G, W } from '../game';
 import { floorNear, floorAt } from '../core/voxel';
@@ -190,6 +191,7 @@ export function useItem(k: ItemKey): boolean {
     if (k === 'meatR' && Math.random() < RAW_SICK.chance) { G.hp -= RAW_SICK.hp; G.dmgFlash = 0.4; logLine(`The raw meat makes you sick. -${RAW_SICK.hp} HP`); }
     return true;
   }
+  if (k === 'filter') return fitFilter('');
   if (k === 'firekit') return lightFire();
   if (k === 'pierkit') { if (startPierPlacing()) closePack(); return false; } // used up when the pier is staked out
   if (k === 'bridgekit') { if (startBridgePlacing()) closePack(); return false; } // used up when the site is staked out

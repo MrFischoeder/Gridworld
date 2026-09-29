@@ -25,6 +25,8 @@ export const ORDERS: Order[] = [
   { tech: 'wagons', out: 'wheelL', n: 1, needs: [['log', 2], ['scrap', 2]] },
   { tech: 'wagons', out: 'plating', n: 1, needs: [['scrap', 3], ['log', 2]] },
   { tech: 'engines', out: 'engine', n: 1, needs: [['scrap', 4], ['circuit', 1]] },
+  { tech: 'filters', out: 'gasmask', n: 1, needs: [['hide', 2], ['membrane', 1], ['scrap', 2]] },
+  { tech: 'filters', out: 'filter', n: 2, needs: [['log', 2], ['scrap', 1]] },
   { tech: 'engines', out: 'turbo', n: 1, needs: [['scrap', 6], ['circuit', 3], ['pcore', 1]] },
 ];
 /** Technologies that are for the villages themselves (farms, power, works), not for the craftsmen's bench. */

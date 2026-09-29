@@ -111,6 +111,12 @@ export function updateSky(t: number, lat = 0) {
   fog.near = (14 + 12 * day) * (1 - wf * 0.8) * (1 - weather.rain * 0.3); fog.far = (112 + 55 * day) * (1 - wf * 0.62) * (1 - weather.rain * 0.25);
   if (G.fly) { fog.near *= 2.5; fog.far *= 2.6; } // flying (dev): see the land further out
 }
+/** Something local thickens the air (the toxic fog, world/toxic.ts): the dome goes towards c by k, the stars, sun and moon fade. */
+export function tintSky(c: THREE.Color, k: number) {
+  const u = domeMat.uniforms;
+  (u.zenith.value as THREE.Color).lerp(c, k); (u.horizon.value as THREE.Color).lerp(c, k); u.glowK.value *= 1 - k;
+  starMat.opacity *= 1 - k; sun.visible &&= k < 0.6; moon.visible &&= k < 0.6;
+}
 /** Underground: always black. */
 export function darkSky() { (scene.background as THREE.Color).set(0x000000); fog.color.set(0x000000); }
 

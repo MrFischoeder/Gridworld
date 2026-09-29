@@ -61,8 +61,9 @@ it('writes SUROWCE.md', () => {
   P(`| ${N('ironO')} | żyły rudy w skałach (zygzaki na skale), więcej w górach; kilofem, obok kamieni |`);
   P(`| ${N('copperO')} | żyły rudy miedzi w skałach, jak wyżej |`);
   P(`| ${N('scrap')} | roboty (${Object.values(ROBOTS).filter((r) => r.loot.some(([k]) => k === 'scrap')).length} rodzajów), bandyci, bagażniki wraków, skrzynie w ruinach i wrakach |`);
-  P(`| ${N('circuit')} | roboty (strażnicy, wartownicy, konstrukty), skrzynie we wrakach |`);
-  P(`| ${N('pcore')} | rzadko: drony naprawcze, wartownicy, konstrukty; skrzynie we wrakach |`);
+  P(`| ${N('circuit')} | roboty (strażnicy, wartownicy, konstrukty), skrzynie we wrakach, szafki skażonych obiektów w toksycznej mgle |`);
+  P(`| ${N('pcore')} | rzadko: drony naprawcze, wartownicy, konstrukty; skrzynie we wrakach; szafki skażonych obiektów w toksycznej mgle (często, potrzebna maska gazowa) |`);
+  P(`| ${N('filter')} | kowal (zamówienie, plany Filter Masks), czasem w szafkach skażonych obiektów |`);
   for (const [cr, drops] of Object.entries(DROPS)) for (const [k] of drops) P(`| ${N(k)} | stworzenie: ${cr[0].toUpperCase() + cr.slice(1)} (upolowane) |`);
   P(`| ${N('cap')}, ${N('pod')}, ${N('ncrys')} | grzyby w lesie, drzewa z owocami, kryształy w podziemiach (jedzenie) |`);
   P('');

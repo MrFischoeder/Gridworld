@@ -62,6 +62,7 @@ import { updateCrash } from './world/crashpod';
 import { spinCarrier } from './world/datacarriers';
 import { updateFarms } from './world/farms';
 import { updateInstalls } from './world/installs';
+import { updateToxic, tintToxic, toxicHere } from './world/toxic';
 import { updateBridges, isBridgePlacing, updateBridgePlacing, confirmBridgePlacing, cancelBridgePlacing } from './world/bridges';
 import { updatePiers, isPierPlacing, updatePierPlacing, confirmPierPlacing, cancelPierPlacing } from './world/piers';
 import { updateBoats, inBoat, boatCamera } from './world/boats';
@@ -99,7 +100,7 @@ function frame(now: number) {
   const live = G.playing && !uiOpen() && !G.trans;
   if (outdoors) updateStreaming(G.trans ? 8 : G.fly ? 14 : 4); // flying fast needs the land streamed in quicker
   // the clock runs whenever the game is not paused in the menu
-  if (G.playing) { G.char.time += dt * MIN_PER_SEC; updateSurvival(dt); updateFlora(dt); updateFires(dt, time); updatePower(dt); updateHouseDoors(dt); updateWallGuns(dt); updateWorks(dt); updateStations(dt); updateChariot(dt); updateCaravans(dt); updateVillageRaids(dt); updateFallen(dt); updateIndustry(dt); updateFarms(dt); updateInstalls(dt); updateBridges(dt); updatePiers(dt); updateContracts(dt); if ((benchT -= dt) <= 0) { benchT = 1; syncBenches(); syncFlags(); syncBases(); syncTurrets(); } }
+  if (G.playing) { G.char.time += dt * MIN_PER_SEC; updateSurvival(dt); updateFlora(dt); updateFires(dt, time); updatePower(dt); updateHouseDoors(dt); updateWallGuns(dt); updateWorks(dt); updateStations(dt); updateChariot(dt); updateCaravans(dt); updateVillageRaids(dt); updateFallen(dt); updateIndustry(dt); updateFarms(dt); updateInstalls(dt); updateToxic(dt); updateBridges(dt); updatePiers(dt); updateContracts(dt); if ((benchT -= dt) <= 0) { benchT = 1; syncBenches(); syncFlags(); syncBases(); syncTurrets(); } }
   updateCompass(dt); // hides itself while paused
   const clock = fmtClock(G.char.time) + (G.char.loc === 'overworld' && seen.kind !== 'clear' ? ' · ' + WEATHER_NAME[seen.kind] : '');
   if (el.clock.textContent !== clock) el.clock.textContent = clock;
@@ -150,9 +151,9 @@ function frame(now: number) {
   if (G.trans) updateTrans(dt, camera); else if (driving.v) vehicleCamera(camera); else if (inBoat()) boatCamera(camera); else camera.position.set(G.pos.x, G.pos.y + EYE, G.pos.z);
   camera.rotation.set(G.pitch, G.yaw, 0);
   updateWeather(dt, sky.visible);
-  if (sky.visible) { sky.position.set(camera.position.x, camera.position.y - 20, camera.position.z); horizon.position.set(camera.position.x, 0, camera.position.z); shapeHorizon(camera.position.x, camera.position.z); updateSky(G.char.time, latitude(G.pos.z)); updateFarPeaks(camera.position); } else farPeaks.visible = false;
+  if (sky.visible) { sky.position.set(camera.position.x, camera.position.y - 20, camera.position.z); horizon.position.set(camera.position.x, 0, camera.position.z); shapeHorizon(camera.position.x, camera.position.z); updateSky(G.char.time, latitude(G.pos.z)); tintToxic(); updateFarPeaks(camera.position); } else farPeaks.visible = false;
   // flying (dev): the real land reaches past the horizon rings, so they step aside and the camera sees further
-  if (sky.visible) { horizon.visible = !G.fly && seen.fog < 0.45; if (G.fly || seen.fog > 0.45) farPeaks.visible = false; } // fog hides the far ranges
+  if (sky.visible) { const thick = seen.fog > 0.45 || toxicHere() > 0.3; horizon.visible = !G.fly && !thick; if (G.fly || thick) farPeaks.visible = false; } // fog hides the far ranges
   const far = G.fly ? 600 : 200; if (camera.far !== far) { camera.far = far; camera.updateProjectionMatrix(); }
   el.cross.style.display = driving.v && !driving.cockpit && !driving.v.turret ? 'none' : '';
   animateVM(dt, moving);

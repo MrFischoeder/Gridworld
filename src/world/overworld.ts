@@ -14,6 +14,7 @@ import { recentDead } from './villageraid';
 import * as THREE from 'three';
 import { setCrash, dropCrash, podHit } from './crashpod';
 import { installHit, dropInstalls } from './installs';
+import { toxicHit, dropToxic, toxicName } from './toxic';
 import { installAt } from '../gen/installs';
 import { drawFarms } from './farms';
 import { scene, V, GRID, localize } from './render';
@@ -502,7 +503,7 @@ export function openWorld(x: number, z: number) {
   OW.terrain.setClaims(G.char.claims);
   closeWorld();
   G.water = (px, pz) => (inStructure(px, pz) ? null : OW.terrain!.water(px, pz));
-  G.space = space; G.ground = groundAt; G.obstacle = (px, py, pz, r) => treeHit(px, py, pz, r) || vehicleHit(px, py, pz, r) || caravanHit(px, py, pz, r) || ambushHit(px, py, pz, r) || baseHit(px, py, pz, r) || ladderHit(px, py, pz, r) || walkHit(px, py, pz, r) || guardHit(px, py, pz, r) || houseHit(px, py, pz, r) || doorHit(px, py, pz, r) || podHit(px, py, pz, r) || installHit(px, py, pz, r) || hallHit(px, py, pz, r) || bridgeHit(px, py, pz, r) || pierHit(px, py, pz, r) || boatHit(px, py, pz, r);
+  G.space = space; G.ground = groundAt; G.obstacle = (px, py, pz, r) => treeHit(px, py, pz, r) || vehicleHit(px, py, pz, r) || caravanHit(px, py, pz, r) || ambushHit(px, py, pz, r) || baseHit(px, py, pz, r) || ladderHit(px, py, pz, r) || walkHit(px, py, pz, r) || guardHit(px, py, pz, r) || houseHit(px, py, pz, r) || doorHit(px, py, pz, r) || podHit(px, py, pz, r) || installHit(px, py, pz, r) || hallHit(px, py, pz, r) || bridgeHit(px, py, pz, r) || pierHit(px, py, pz, r) || boatHit(px, py, pz, r) || toxicHit(px, py, pz, r);
   G.floor = (x, y, z) => Math.max(baseFloor(x, y, z), ladderFloor(x, y, z), walkFloor(x, y, z), bridgeFloor(x, y, z), pierFloor(x, y, z)); G.rayBlock = (o, d, t) => doorRay(o, d, houseRay(o, d, baseRay(o, d, t))); G.solid = (p) => baseSolid(p) || houseSolid(p);
   foeRules.blocked = (p) => nearVillage(p.x, p.z) < 2;
   foeRules.playerSafe = () => inVillage(G.pos.x, G.pos.z) && !raidHere(); // no safe place while bandits raid it
@@ -535,7 +536,7 @@ export function openWorld(x: number, z: number) {
   for (const s of OW.structs.values()) if (s.camp) spawnCamp(s.camp);
 }
 export function closeWorld() {
-  clearVehicles(); dropCrash(); dropInstalls(); clearBridges(); clearPiers();
+  clearVehicles(); dropCrash(); dropInstalls(); dropToxic(); clearBridges(); clearPiers();
   setCreatureEnv(null); clearCreatures();
   setRobotEnv(null); clearRobots();
   setBanditEnv(null); clearBandits();
@@ -618,6 +619,7 @@ export function placeName(x: number, z: number): string {
   { const segs = OW.terrain!.chunkFeatures(Math.floor(x / CHUNK), Math.floor(z / CHUNK)).rivers, r = riverNear(segs, x, z); if (r && r.d < r.half + 25) return riversOf(OW.terrain!.world).list[r.seg.r].name + tag; }
   for (const cv of loadedCaves()) if (Math.hypot(cv.x - x, cv.z - z) < 30) return cv.name + tag;
   { const ins = installAt(OW.terrain!, x, z, 25); if (ins) return ins.name + tag; }
+  { const f = toxicName(x, z); if (f) return f + tag; }
   for (const r of OW.terrain!.chunkFeatures(Math.floor(x / CHUNK), Math.floor(z / CHUNK)).roads) {
     if (!r.h) continue;
     const top = r.pts[r.pts.length - 1], foot = r.pts[0];

@@ -6,7 +6,7 @@ import { fbm } from '../core/noise';
 import { hash } from '../core/rng';
 import { regionClimate, REGION, WORLD_W, POLAR_Z, POLE_Z } from './regions';
 import { mountainMask, mountainLift } from './mountains';
-import { seaMask, seaSink } from './seas';
+import { seaMask, seaSink, isleHeight } from './seas';
 
 const smooth = (t: number) => t * t * (3 - 2 * t);
 /**
@@ -35,7 +35,9 @@ export function naturalHeight(world: number, x: number, z: number): number {
   const raw = 12.5 + amp * (46 * (fbm(s1, x / S170, z / 170, 4, P170) - 0.5) + 8 * (fbm(s2, x / S48, z / 48, 3, P48) - 0.5));
   let h = 12.5 + 12.5 * Math.tanh((raw - 12.5) / 12.5);
   h += mountainLift(world, x, z, mountainMask(world, x, z));
-  h = seaSink(h, seaMask(world, x, z)); // the seas: the land goes down under the water
+  const m = seaMask(world, x, z);
+  h = seaSink(h, m); // the seas: the land goes down under the water
+  if (m > 0.3) h = Math.max(h, isleHeight(world, x, z)); // islands out in the open sea
   const az = Math.abs(z);
   if (az > POLAR_Z) {
     const ice = ICE_Y + 3 * (fbm(s2 + 5, x / S60, z / 60, 2, P60) - 0.5);

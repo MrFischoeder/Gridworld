@@ -98,7 +98,7 @@ label{font-size:22px;margin-top:16px;display:block}
 #pack .acts{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
 #pack .acts button{background:transparent;color:var(--g);border:1px solid var(--g);padding:3px 14px;font-size:22px}
 #pack .acts button.drop{color:var(--amber);border-color:var(--amber)}
-#gear,.gear.caps{grid-template-columns:repeat(5,1fr) 12px repeat(3,1fr)}
+#gear,.gear.caps{grid-template-columns:repeat(6,1fr) 12px repeat(3,1fr)}
 .gear.caps{margin-top:2px;font-size:14px;opacity:.55;text-align:center}
 
 .slot.wear{color:#c8e0ff;border-color:#4a6a8a}
@@ -325,3 +325,10 @@ body.intro > *:not(#view):not(.fx):not(#intro){visibility:hidden}
 #intro .sub{position:absolute;left:0;right:0;bottom:calc(17% - 36px);text-align:center;font-size:clamp(18px,2vw,26px);color:var(--txt);opacity:.85}
 #intro .alt{position:absolute;right:4%;top:8%;font-size:30px;color:#ff9a4a;text-shadow:0 0 8px rgba(255,154,74,.8)}
 #intro .hint{position:absolute;right:18px;bottom:14px;font-size:18px;opacity:0;color:var(--txt);transition:opacity .4s}
+/* toxic fog (ui/toxic.ts) */
+#toxbar{position:fixed;left:50%;transform:translateX(-50%);top:64px;padding:2px 10px;font-size:20px;color:#b6ff3a;border:1px solid #b6ff3a;background:rgba(10,20,2,.7);z-index:6;display:none;letter-spacing:1px;pointer-events:none;white-space:nowrap}
+#toxbar.faint{opacity:.6}
+#toxbar.low{color:#ffd060;border-color:#ffd060}
+#toxbar.bad{color:#ff6a4a;border-color:#ff6a4a;animation:toxblink 1s steps(2) infinite}
+@keyframes toxblink{50%{opacity:.55}}
+#toxhaze{position:fixed;inset:0;pointer-events:none;z-index:4;opacity:0;transition:opacity .6s;background:radial-gradient(ellipse at center,rgba(120,180,20,0) 45%,rgba(90,140,10,.55) 100%)}

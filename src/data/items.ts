@@ -15,6 +15,8 @@ export const ITEMS = {
   gloves: { name: 'Work Gloves', ab: 'GLV', type: 'wear', desc: 'tough gloves: take 3% off every hit', stack: 1 },
   trousers: { name: 'Cargo Trousers', ab: 'TRS', type: 'wear', desc: 'reinforced trousers: take 4% off every hit', stack: 1 },
   boots: { name: 'Field Boots', ab: 'BTS', type: 'wear', desc: 'sturdy boots: take 4% off every hit', stack: 1 },
+  gasmask: { name: 'Gas Mask', ab: 'GSM', type: 'wear', desc: 'a rubber face mask with a screw-in filter: worn on the face, it keeps the toxic fog out of your lungs as long as the filter lasts. Spare filters in the backpack are screwed in when one is spent', stack: 1 },
+  filter: { name: 'Mask Filter', ab: 'FLT', type: 'cons', desc: 'a charcoal filter canister for the gas mask: about five minutes in the thickest fog, longer in thin fog. Use it to screw a fresh one into your mask', stack: 10 },
   // trade goods (gen/market.ts): bulky crates, bought cheap where they are made and sold dear where they are wanted
   grain: { name: 'Sack of Grain', ab: 'GRN', type: 'good', desc: 'trade good: fifty kilos of grain. Farming villages sell it cheap', stack: 5 },
   timber: { name: 'Timber Bundle', ab: 'TMB', type: 'good', desc: 'trade good: seasoned beams, bound with rope. Forest villages sell it cheap', stack: 5 },
@@ -130,7 +132,7 @@ export const INV_SIZE = 12, MOD_SIZE = 3;
  * Equipped relics and fitted attachments are part of your kit and weigh nothing here.
  */
 export const BULK: Record<ItemKey, [kg: number, litres: number]> = {
-  blaster: [3.5, 9], blade: [1.5, 4], helmet: [1.5, 5], vest: [4, 10], armour: [12, 18], gloves: [0.3, 0.5], trousers: [0.8, 1.5], boots: [1.2, 3],
+  blaster: [3.5, 9], blade: [1.5, 4], helmet: [1.5, 5], vest: [4, 10], armour: [12, 18], gloves: [0.3, 0.5], trousers: [0.8, 1.5], boots: [1.2, 3], gasmask: [0.7, 2], filter: [0.25, 0.3],
   shield: [1.5, 1], lens: [0.3, 0.3], edge: [0.5, 0.5], servo: [2, 2], cell: [1, 0.5],
   medkit: [0.5, 1], key: [0.05, 0.05], recall: [0.4, 0.3], emp: [0.8, 0.6], flask: [0.3, 0.8], firekit: [1, 1.5],
   bread: [0.4, 1], stew: [0.6, 0.8], eggsB: [0.15, 0.2], milkC: [0.3, 0.3], cheese: [0.25, 0.3], waterF: [1, 0.8], waterM: [1, 0.8],
@@ -148,12 +150,13 @@ export const BULK: Record<ItemKey, [kg: number, litres: number]> = {
   reflex: [0.3, 0.3], scope: [0.8, 1], barL: [1.2, 1], barR: [1, 0.8], barS: [0.9, 0.8], magX: [0.5, 0.4], magD: [1.2, 1],
 };
 /** What you wear, one piece per slot: which slot, and the share of every hit it takes off (pieces multiply). */
-export type WearSlot = 'head' | 'body' | 'gloves' | 'legs' | 'feet';
-export const WEAR_SLOTS: WearSlot[] = ['head', 'body', 'gloves', 'legs', 'feet'];
-export const WEAR_NAME: Record<WearSlot, string> = { head: 'Head', body: 'Body', gloves: 'Gloves', legs: 'Legs', feet: 'Feet' };
+export type WearSlot = 'head' | 'face' | 'body' | 'gloves' | 'legs' | 'feet';
+export const WEAR_SLOTS: WearSlot[] = ['head', 'face', 'body', 'gloves', 'legs', 'feet'];
+export const WEAR_NAME: Record<WearSlot, string> = { head: 'Head', face: 'Face', body: 'Body', gloves: 'Gloves', legs: 'Legs', feet: 'Feet' };
 export const WEAR: Partial<Record<ItemKey, { slot: WearSlot; def: number }>> = {
   helmet: { slot: 'head', def: 0.08 }, vest: { slot: 'body', def: 0.15 }, armour: { slot: 'body', def: 0.25 },
   gloves: { slot: 'gloves', def: 0.03 }, trousers: { slot: 'legs', def: 0.04 }, boots: { slot: 'feet', def: 0.04 },
+  gasmask: { slot: 'face', def: 0 },
 };
 /** Weapons in the hands: which one it is for world/weapons.ts (0 = gun, 1 = blade). Only weapons go on your back. */
 export const WEAPON_KIND: Partial<Record<ItemKey, 0 | 1>> = { blaster: 0, blade: 1 };

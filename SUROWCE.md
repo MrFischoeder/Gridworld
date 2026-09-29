@@ -17,8 +17,9 @@ Spis: 1. Surowce · 2. Przetwarzanie · 3. Budowy · 4. Indeks: gdzie użyć ka�
 | Iron Ore | żyły rudy w skałach (zygzaki na skale), więcej w górach; kilofem, obok kamieni |
 | Copper Ore | żyły rudy miedzi w skałach, jak wyżej |
 | Scrap Metal | roboty (6 rodzajów), bandyci, bagażniki wraków, skrzynie w ruinach i wrakach |
-| Electronic Components | roboty (strażnicy, wartownicy, konstrukty), skrzynie we wrakach |
-| Power Core | rzadko: drony naprawcze, wartownicy, konstrukty; skrzynie we wrakach |
+| Electronic Components | roboty (strażnicy, wartownicy, konstrukty), skrzynie we wrakach, szafki skażonych obiektów w toksycznej mgle |
+| Power Core | rzadko: drony naprawcze, wartownicy, konstrukty; skrzynie we wrakach; szafki skażonych obiektów w toksycznej mgle (często, potrzebna maska gazowa) |
+| Mask Filter | kowal (zamówienie, plany Filter Masks), czasem w szafkach skażonych obiektów |
 | Raw Meat | stworzenie: Bramble (upolowane) |
 | Bramble Plate | stworzenie: Bramble (upolowane) |
 | Ravager Fang | stworzenie: Ravager (upolowane) |
@@ -121,6 +122,8 @@ Każda wioska ma jeden rodzaj zakładu i robi 1–2 towary z jego listy. Towary 
 | Light Tire | 2 × Log, 2 × Scrap Metal | Wagon Axles |
 | Hull Plating | 3 × Scrap Metal, 2 × Log | Wagon Axles |
 | Engine Parts | 4 × Scrap Metal, 1 × Electronic Components | Combustion Engines |
+| Gas Mask | 2 × Ravager Hide, 1 × Leechwing Membrane, 2 × Scrap Metal | Filter Masks |
+| 2 × Mask Filter | 2 × Log, 1 × Scrap Metal | Filter Masks |
 | Turbocharger | 6 × Scrap Metal, 3 × Electronic Components, 1 × Power Core | Combustion Engines |
 
 ### 2.4 Sklep spożywczy (gotuje z hali wioski)
@@ -267,7 +270,8 @@ Materiały biorą się z hali wioski; złoto płacisz ze swojej sakiewki (opłat
 | Glass Panes | 12 L | przetwarzanie: Electronics Shop → Circuit Boards; przetwarzanie: Old Chip Foundry → Microchips; odbudowa: Old Chip Foundry; Rydwan: Avionics; Rydwan: Heat Shield |
 | Hull Alloy | 8 L | budowa: Small Reactor; odbudowa: Old Enrichment Plant; odbudowa: Old Radar Station; Rydwan: Hull Plating; Rydwan: Main Engines; Rydwan: Heat Shield |
 | Iron Ore | 1.2 L | kowal → Scrap Metal; kowal → Wire |
-| Log | 6 L | kowal → Hatchet; kowal → Pickaxe; kowal → Fire Kit; kowal → Hammer; kowal → Saw; kowal → Screwdriver; kowal → Planks; kowal → Scrap Metal; kowal → Light Tire; kowal → Hull Plating; budowa: mur Timber Palisade; budowa: Smelter; budowa: farma; ulepszenie elektrowni: Overhauled; odbudowa: Old Enrichment Plant; odbudowa: Old Radar Station; odbudowa: Old Chip Foundry; most; przystań; Rowboat; Sailboat; Motor Boat |
+| Leechwing Membrane | 1 L | kowal → Gas Mask |
+| Log | 6 L | kowal → Hatchet; kowal → Pickaxe; kowal → Fire Kit; kowal → Hammer; kowal → Saw; kowal → Screwdriver; kowal → Planks; kowal → Scrap Metal; kowal → Light Tire; kowal → Hull Plating; kowal → Mask Filter; budowa: mur Timber Palisade; budowa: Smelter; budowa: farma; ulepszenie elektrowni: Overhauled; odbudowa: Old Enrichment Plant; odbudowa: Old Radar Station; odbudowa: Old Chip Foundry; most; przystań; Rowboat; Sailboat; Motor Boat |
 | Machine Parts | 12 L | Rydwan: Main Engines |
 | Microchips | 6 L | zamówienia na czipy (wioski rzemieślnicze); ulepszenie elektrowni: Automated; Rydwan: Avionics |
 | Nails | 0.2 L | budowa: mur Timber Palisade; budowa: mur Stone Wall; budowa: Machine Shop; naprawa: Fields; naprawa: Sawmill; most; przystań; Rowboat; Sailboat; Motor Boat |
@@ -275,7 +279,7 @@ Materiały biorą się z hali wioski; złoto płacisz ze swojej sakiewki (opłat
 | Planks | 1.5 L | budowa: mur Timber Palisade; budowa: mur Stone Wall; budowa: Barricades round the works; budowa: Barricades round the power plant; budowa: Smelter; budowa: Oil Refinery; budowa: Glassworks; budowa: Wire Mill; budowa: Electronics Shop; budowa: Machine Shop; budowa: Alloy Foundry; budowa: Chemical Works; budowa: Solar Farm; budowa: Wind Farm; budowa: Coal Power Station; budowa: rafineria; naprawa: Fields; naprawa: Mine; naprawa: Sawmill; naprawa: Fish Racks; naprawa: Workshops |
 | Plastic Resin | 14 L | przetwarzanie: Electronics Shop → Circuit Boards; Rydwan: Heat Shield |
 | Power Core | 1 L | kowal → Turbocharger; budowa: Alloy Foundry; budowa: Small Reactor; ulepszenie elektrowni: Rebuilt with old electronics; odbudowa: Old Enrichment Plant; odbudowa: Old Chip Foundry |
-| Ravager Hide | 3 L | kowal → Empty Flask; Sailboat |
+| Ravager Hide | 3 L | kowal → Empty Flask; kowal → Gas Mask; Sailboat |
 | Rocket Propellant | 14 L | Rydwan: Propellant |
 | Rope | 1.5 L | budowa: mur Timber Palisade; budowa: Barricades round the works; budowa: Barricades round the power plant; naprawa: Wind Turbines; naprawa: Fish Racks; most; przystań; Rowboat; Sailboat; Motor Boat |
 | Sack of Carrots | 14 L | sklep spożywczy → Hearty Stew |
@@ -283,7 +287,7 @@ Materiały biorą się z hali wioski; złoto płacisz ze swojej sakiewki (opłat
 | Sack of Potatoes | 14 L | sklep spożywczy → Hearty Stew |
 | Sack of Quartz Sand | 12 L | przetwarzanie: Glassworks → Glass Panes |
 | Salt Blocks | 7 L | przetwarzanie: Chemical Works → Rocket Propellant |
-| Scrap Metal | 1.5 L | kowal → Hammer; kowal → Saw; kowal → Screwdriver; kowal → Pliers; kowal → Nails; kowal → Electronic Components; kowal → Compass; kowal → Light Tire; kowal → Hull Plating; kowal → Engine Parts; kowal → Turbocharger; budowa: mur Stone Wall; budowa: Auto Turret; budowa: Barricades round the works; budowa: Barricades round the power plant; budowa: Smelter; budowa: Oil Refinery; budowa: Glassworks; budowa: Wire Mill; budowa: Electronics Shop; budowa: Machine Shop; budowa: Alloy Foundry; budowa: Chemical Works; budowa: Solar Farm; budowa: Wind Farm; budowa: Coal Power Station; budowa: Diesel Generator Bank; budowa: rafineria; budowa: stalowe pługi; ulepszenie elektrowni: Overhauled; odbudowa: Old Enrichment Plant; odbudowa: Old Radar Station; odbudowa: Old Chip Foundry; naprawa: Diesel Generator; naprawa: Wind Turbines; naprawa: Mine; naprawa: Oil Wells; naprawa: Refinery; naprawa: Workshops; naprawa: Salvage Yard; przystań; Motor Boat |
+| Scrap Metal | 1.5 L | kowal → Hammer; kowal → Saw; kowal → Screwdriver; kowal → Pliers; kowal → Nails; kowal → Electronic Components; kowal → Compass; kowal → Light Tire; kowal → Hull Plating; kowal → Engine Parts; kowal → Gas Mask; kowal → Mask Filter; kowal → Turbocharger; budowa: mur Stone Wall; budowa: Auto Turret; budowa: Barricades round the works; budowa: Barricades round the power plant; budowa: Smelter; budowa: Oil Refinery; budowa: Glassworks; budowa: Wire Mill; budowa: Electronics Shop; budowa: Machine Shop; budowa: Alloy Foundry; budowa: Chemical Works; budowa: Solar Farm; budowa: Wind Farm; budowa: Coal Power Station; budowa: Diesel Generator Bank; budowa: rafineria; budowa: stalowe pługi; ulepszenie elektrowni: Overhauled; odbudowa: Old Enrichment Plant; odbudowa: Old Radar Station; odbudowa: Old Chip Foundry; naprawa: Diesel Generator; naprawa: Wind Turbines; naprawa: Mine; naprawa: Oil Wells; naprawa: Refinery; naprawa: Workshops; naprawa: Salvage Yard; przystań; Motor Boat |
 | Steel Ingots | 8 L | przetwarzanie: Machine Shop → Machine Parts; przetwarzanie: Machine Shop → Crate of Tools; przetwarzanie: Alloy Foundry → Hull Alloy; budowa: Small Reactor; odbudowa: Old Enrichment Plant; odbudowa: Old Radar Station; odbudowa: Old Chip Foundry; Rydwan: Hull Plating |
 | Stone | 2 L | kowal → Hatchet; kowal → Pickaxe; budowa: mur Stone Wall; budowa: Barricades round the works; budowa: Barricades round the power plant; budowa: Smelter; budowa: Glassworks; budowa: Alloy Foundry; budowa: Coal Power Station; budowa: farma; odbudowa: Old Enrichment Plant; odbudowa: Old Radar Station; odbudowa: Old Chip Foundry; most; przystań |
 | Timber Bundle | 20 L | przetwarzanie: Machine Shop → Crate of Tools |
@@ -293,4 +297,4 @@ Materiały biorą się z hali wioski; złoto płacisz ze swojej sakiewki (opłat
 
 Te rzeczy można tylko sprzedać (na targu albo kowalowi/Janowi), zjeść albo przewieźć w kontraktach:
 
-Dried Fish, Bolt of Cloth, Crate of Tools, Medical Supplies, Salvaged Tech, Crate of Rare Earths, Crate of Lithium Brine Salt, Crate of Sulfur, Crate of Bauxite, Raw Meat, Bramble Plate, Ravager Fang, Leechwing Membrane, Gnawer Incisor.
+Dried Fish, Bolt of Cloth, Crate of Tools, Medical Supplies, Salvaged Tech, Crate of Rare Earths, Crate of Lithium Brine Salt, Crate of Sulfur, Crate of Bauxite, Raw Meat, Bramble Plate, Ravager Fang, Gnawer Incisor.

@@ -1,5 +1,6 @@
 // Developer console, opened with ~ (the backquote key). Cheats for testing.
 import { installSites } from '../gen/installs';
+import { regionFog } from '../gen/toxic';
 import { OW } from '../world/overworld';
 import { G } from '../game';
 import { forceRaid } from '../world/villageraid';
@@ -10,7 +11,7 @@ import { forceWeather, seen } from '../world/weather';
 import { WEATHER_NAME, type WeatherKind } from '../gen/weather';
 import { saveChar } from '../character';
 import { toVillage } from '../world/level';
-import { GRIDHOLM_ID } from '../gen/regions';
+import { GRIDHOLM_ID, regionOf, worldDist } from '../gen/regions';
 import { spawnCreatureNear } from '../world/creatures';
 import { spawnBanditsNear } from '../world/bandits';
 import { spawnRaiderNear, forceAmbush } from '../world/raiders';
@@ -85,6 +86,16 @@ const COMMANDS: Record<string, { help: string; run: (args: string[]) => string }
   sites: {
     help: 'the great installations: where they are (tp to them)',
     run: () => { const T = OW.terrain; if (!T) return 'Only on the surface.'; return installSites(T).map((s) => `${s.name}: tp ${Math.round(s.x)} ${Math.round(s.z - s.r - 12)}  (${(Math.hypot(s.x, s.z) / 1000).toFixed(1)} km out)`).join('\n'); },
+  },
+  fogs: {
+    help: 'fogs [km]: the nearest toxic fog zones within km (default 12) of you (tp to their edge)',
+    run: (a) => {
+      const T = OW.terrain; if (!T) return 'Only on the surface.';
+      const km = parseFloat(a[0]) || 12, n = Math.ceil(km * 1000 / 256), [rx, rz] = regionOf(G.pos.x, G.pos.z), out = [];
+      for (let i = -n; i <= n; i++) for (let j = -n; j <= n; j++) { const f = regionFog(T.world, rx + i, rz + j); if (f) out.push(f); }
+      out.sort((p, q) => worldDist(p.x, p.z, G.pos.x, G.pos.z) - worldDist(q.x, q.z, G.pos.x, G.pos.z));
+      return out.slice(0, 8).map((f) => `${f.name} (${f.kind === 'isle' ? 'island' : 'land'}, ${f.site}): tp ${Math.round(f.x)} ${Math.round(f.z - f.r - 20)}  ${(worldDist(f.x, f.z, G.pos.x, G.pos.z) / 1000).toFixed(1)} km`).join('\n') || 'No toxic fog within ' + km + ' km.';
+    },
   },
   tp: {
     help: 'tp <x> <z>: teleport to a point on the surface',

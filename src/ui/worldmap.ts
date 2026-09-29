@@ -123,6 +123,13 @@ function drawArea(ctx: CanvasRenderingContext2D, w: number, h: number, ppm: numb
     ctx.beginPath(); ctx.moveTo(x, y + 5); ctx.lineTo(x, y - 8); ctx.lineTo(x + 7, y - 5); ctx.lineTo(x, y - 2); ctx.stroke(); ctx.lineWidth = 1;
     if (labels) ctx.fillText('Your flag', x, y - 12);
   }
+  for (const [x0, z0, r, name] of Object.values(G.char.fogs)) { // toxic fog you have found: a dashed lime ring
+    const x = X(nearX(x0, px)), y = Z(z0), rr = Math.max(5, r * ppm);
+    if (x < -rr || y < -rr || x > w + rr || y > h + rr) continue;
+    ctx.strokeStyle = ctx.fillStyle = '#b6ff3a'; ctx.lineWidth = 1.5; ctx.setLineDash([4, 3]); ctx.beginPath(); ctx.arc(x, y, rr, 0, 6.283); ctx.stroke(); ctx.setLineDash([]); ctx.lineWidth = 1;
+    ctx.globalAlpha = 0.18; ctx.fill(); ctx.globalAlpha = 1;
+    if (labels) ctx.fillText(name + ' (toxic fog)', x, y - rr - 6);
+  }
   for (const ins of installSites(OW.terrain!)) { // the great installations, once their ground is explored: a lime hexagon
     if (!isDiscovered(d, Math.floor(ins.x / CHUNK), Math.floor(ins.z / CHUNK))) continue;
     const x = X(nearX(ins.x, px)), y = Z(ins.z), r = labels ? 10 : 5;

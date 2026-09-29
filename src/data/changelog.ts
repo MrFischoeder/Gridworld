@@ -4,6 +4,17 @@ export interface Change { v: string; date: string; title: string; notes: string[
 
 export const CHANGELOG: Change[] = [
   {
+    v: '0.86.0', date: '2026-10-08', title: 'Toxic fog',
+    notes: [
+      'Small islands now rise out of the open seas, a few km offshore and further out: somewhere to sail to.',
+      'Some of them lie under a heavy green toxic fog, and so do patches of land far out, 15 km and more from Gridholm. You see the fog banks from a distance; inside, the air goes thick and green and the fog burns your lungs quickly without protection.',
+      'The Gas Mask (a new Face slot in your backpack) keeps it out while its filter lasts: a Mask Filter lasts about five minutes in the thickest fog, longer in thin fog. Spare filters in your backpack are screwed in when one is spent, or use one to swap it. The bar at the top shows how thick the fog is and what is left of the filter.',
+      'The mask and its filters are made by any village blacksmith once you have recovered the plans for Filter Masks (a new technology, on a data disk 3 to 8 km out): mask from 2 hides, a Leechwing membrane and 2 scrap; 2 filters from 2 logs and a scrap.',
+      'In the middle of every fog stands a contaminated site: an old army depot, a research lab or a crashed probe. Their sealed lockers hold rare things: power cores, electronics, relics, engine parts, spare filters.',
+      'Fog you have found is marked on the maps as a dashed lime ring.',
+    ],
+  },
+  {
     v: '0.85.0', date: '2026-10-07', title: 'Sailboats and motor boats',
     notes: [
       'Two new boats on your piers\' slips, beside the rowboat: the Sailboat (24 logs, 30 nails, 14 rope, 6 Ravager hides) and the Motor Boat (14 logs, 18 nails, 4 rope, 10 scrap, 2 engine parts).',
