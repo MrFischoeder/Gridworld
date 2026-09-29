@@ -4,6 +4,7 @@ import { VERSION, BUILD } from './version';
 import { renderer, scene, camera } from './world/render';
 import { G, W, uiOpen } from './game';
 import { loadChar } from './save';
+import { initItemTips } from './ui/itemtip';
 import { calcStats, saveChar } from './character';
 import { loadDungeon, loadOverworld, toVillage, saveOverworldPos, enterDungeon } from './world/level';
 import { updatePlayer, EYE } from './world/player';
@@ -172,6 +173,7 @@ function frame(now: number) {
   }
   requestAnimationFrame(frame);
 }
+initItemTips();
 requestAnimationFrame(frame);
 
 // Debug handle for automated checks in development builds.

@@ -16,6 +16,7 @@ import type { Slot } from '../save';
 import { lastArrival } from '../gen/caravans';
 import { industryOf, production, INDUSTRY } from '../gen/industry';
 import { stockOf, OWN } from '../gen/hall';
+import { itemName } from './icons';
 /** How much the village's industry puts out now (its site's condition; 0 for a refinery not yet built). */
 const prodHere = () => (here ? production(G.char.world, here.poi, here.seed, G.char.towns[here.poi.id], G.char.time) : 1);
 function prodNote(): string {
@@ -97,7 +98,7 @@ export function renderMarket(panel: HTMLElement, head: string, msg = '') {
     const q = quoteHere(g), have = carried(g), b = bestElsewhere(g);
     const tag = q.role === 'make' ? '<span class="tag" style="color:var(--gold)">made here</span>' : q.role === 'want' ? '<span class="tag" style="color:#9dffe0">wanted here</span>' : '';
     const else_ = b ? `best price seen elsewhere: ${b.p} g at ${b.name} (${fmtDist(worldDist(b.x, b.z, here!.poi.x, here!.poi.z))} ${point8(bearingTo(b.x, b.z))}, ${ago(b.t)})` : '';
-    return `<div class="mrow"><div><b>${ITEMS[g].name}</b>${tag}</div><div class="num">${q.stock}</div><div class="num">${have}</div>
+    return `<div class="mrow"><div>${itemName(g)}${tag}</div><div class="num">${q.stock}</div><div class="num">${have}</div>
       <button class="buy" data-mb="${g}" data-n="1" ${q.stock < 1 || c.gold < q.buy ? 'disabled' : ''}>buy ${q.buy} g</button>
       <button class="buy" data-mb="${g}" data-n="5" ${q.stock < 5 || c.gold < q.buy * 5 ? 'disabled' : ''}>×5</button>
       <button class="buy" data-ms="${g}" data-n="1" ${have < 1 ? 'disabled' : ''}>sell ${q.sell} g</button>

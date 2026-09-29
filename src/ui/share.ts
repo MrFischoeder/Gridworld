@@ -12,6 +12,7 @@ import { depositOf, RARE_NAME, RARE_SHARE, rareItem } from '../gen/deposits';
 import { loadedVillage } from '../world/overworld';
 import { putAway } from './market';
 import { saveChar, calcStats } from '../character';
+import { itemName } from './icons';
 
 function place(town: string) {
   const v = loadedVillage(town), c = G.char, poi = v && findPoi(c.world, v.id);
@@ -33,14 +34,14 @@ export function shareHTML(town: string, head: string, msg = ''): string {
   s += `<div class="shoprow"><div><b>${tier.name}</b> · trust ${t}${next ? ` / ${next.min} for ${next.name} (${next.crates} crates a day)` : ''}<br><span style="font-family:monospace">${next ? bar((t - tier.min) / (next.min - tier.min)) : bar(1)}</span></div></div>`;
   if (tier.crates) {
     s += `<div class="say">Left today: <b>${left}</b> of ${tier.crates} · in the village hall: ${inStore}/${OWN.cap * Math.max(1, sk.makes.length)} crates of our own goods</div>`;
-    s += p.makes.map((g) => `<div class="shoprow"><div><b>${ITEMS[g as ItemKey].name}</b><br><span>made here</span></div>
+    s += p.makes.map((g) => `<div class="shoprow"><div>${itemName(g as ItemKey)}<br><span>made here</span></div>
       <button class="buy" data-share="${g}" data-n="1" ${left && inStore ? '' : 'disabled'}>Take 1</button>${left > 1 ? `<button class="buy" data-share="${g}" data-n="${left}" ${inStore > 1 ? '' : 'disabled'}>Take ${left}</button>` : ''}</div>`).join('');
   }
   const dep = depositOf(c.world, p.poi);
   if (dep) {
     const rl = rareLeft(p.st, c.time, RARE_SHARE), per = RARE_SHARE[k];
     s += `<div class="say">Near ${p.v.vm.name} lies a deposit of <b>${RARE_NAME[dep]}</b>, rare in these parts. ${per ? `We dig some for you: ${rl} of ${per} crates left today.` : `We dig it for those we know (${TRUST_TIERS[1].name}).`}</div>`;
-    if (per) s += `<div class="shoprow"><div><b>${ITEMS[rareItem(dep)].name}</b><br><span>rare deposit</span></div><button class="buy" data-rare="${dep}" data-n="1" ${rl ? '' : 'disabled'}>Take 1</button>${rl > 1 ? `<button class="buy" data-rare="${dep}" data-n="${rl}">Take ${rl}</button>` : ''}</div>`;
+    if (per) s += `<div class="shoprow"><div>${itemName(rareItem(dep))}<br><span>rare deposit</span></div><button class="buy" data-rare="${dep}" data-n="1" ${rl ? '' : 'disabled'}>Take 1</button>${rl > 1 ? `<button class="buy" data-rare="${dep}" data-n="${rl}">Take ${rl}</button>` : ''}</div>`;
   }
   return s + `<button class="opt" data-o="back">Back</button>`;
 }

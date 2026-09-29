@@ -4,6 +4,14 @@ export interface Change { v: string; date: string; title: string; notes: string[
 
 export const CHANGELOG: Change[] = [
   {
+    v: '0.87.0', date: '2026-10-09', title: 'Item icons and tooltips',
+    notes: [
+      'Every item now has its own small line icon in the backpack, chests, trunks, the vehicle service and wherever items sit in slots, with its name under it instead of a two-letter code (the count sits in the corner).',
+      'Hover the mouse over any item to see its full sheet: what kind of thing it is, what it does, its numbers (weapon damage and fire rate, how much armour takes off, what an attachment changes, calories and water of food), weight and bulk (and of the whole stack), the shop or market price, and what it is used for: what the blacksmith makes from it, what it is processed or cooked into, and which buildings, repairs, restorations and Chariot stages need it.',
+      'Shop, market, village hall and building lists show the icons too, with the same sheet on hover.',
+    ],
+  },
+  {
     v: '0.86.0', date: '2026-10-08', title: 'Toxic fog',
     notes: [
       'Small islands now rise out of the open seas, a few km offshore and further out: somewhere to sail to.',

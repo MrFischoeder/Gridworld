@@ -12,6 +12,7 @@ import { carried, takeFrom } from './market';
 import type { Station } from '../world/stations';
 import { $ } from './hud';
 import { lockPointer } from './input';
+import { itemName } from './icons';
 
 const dlgEl = $('dlg'), panel = () => dlgEl.querySelector('.panel') as HTMLElement;
 let open: Station | null = null;
@@ -29,7 +30,7 @@ function render(msg = '') {
   let fuel = '';
   if (spec.fuel) {
     const cap = bunkerOf(s.k), left = fuelAt(s, now), have = carried(spec.fuel as Good, poi), room = Math.floor(cap - left);
-    fuel = `<div class="shoprow"><div><b>${ITEMS[spec.fuel].name}</b><br><span>${s.k === 'reactor' ? 'in the core' : 'in the bunker'} ${left > 0 && left < 1 ? (Math.round(left * 10) / 10) : Math.floor(left)}/${cap}${left > 0 && s.on ? ` · lasts about ${left * spec.burn! > 2880 ? Math.round(left * spec.burn! / 1440) + ' days' : Math.round(left * spec.burn! / 60) + ' h'}` : ''} · you have ${have}</span></div>
+    fuel = `<div class="shoprow"><div>${itemName(spec.fuel)}<br><span>${s.k === 'reactor' ? 'in the core' : 'in the bunker'} ${left > 0 && left < 1 ? (Math.round(left * 10) / 10) : Math.floor(left)}/${cap}${left > 0 && s.on ? ` · lasts about ${left * spec.burn! > 2880 ? Math.round(left * spec.burn! / 1440) + ' days' : Math.round(left * spec.burn! / 60) + ' h'}` : ''} · you have ${have}</span></div>
       <button class="opt" style="width:auto" data-stl="1" ${have && room ? '' : 'disabled'}>load 1</button>
       <button class="opt" style="width:auto" data-stl="999" ${have > 1 && room > 1 ? '' : 'disabled'}>load all</button></div>`;
   }

@@ -12,6 +12,7 @@ import { hallRect, floorPickups, refreshHall } from '../world/hall';
 import { stores, takeFrom, putAway } from './market';
 import { $, logLine } from './hud';
 import { lockPointer } from './input';
+import { itemName } from './icons';
 
 const dlgEl = $('dlg'), panel = () => dlgEl.querySelector('.panel') as HTMLElement;
 let vid: number | null = null;
@@ -36,14 +37,14 @@ function render(msg = '') {
   let s = `<h2>${poi.name} · Village Hall</h2><div class="role">The village's stock · hold ${Math.round(holdVol(st))} / ${HALL.vol} L</div>` +
     `<div class="say">${msg ? msg + '<br><br>' : ''}Whatever is stored here belongs to the village: its builds will draw on it. You can take it back out whenever you like.</div>`;
   s += `<div class="say" style="margin:8px 0 0">In the hold</div>` + (hold.length ? hold.sort((a, b) => ITEMS[a[0]].name.localeCompare(ITEMS[b[0]].name)).map(([k, n]) =>
-    `<div class="shoprow"><div><b>${ITEMS[k].name}</b> ×${n}</div><button class="opt" style="width:auto" data-hout="${k}" data-hn="1">Take 1</button><button class="opt" style="width:auto" data-hout="${k}" data-hn="999">Take all</button></div>`).join('')
+    `<div class="shoprow"><div>${itemName(k)} ×${n}</div><button class="opt" style="width:auto" data-hout="${k}" data-hn="1">Take 1</button><button class="opt" style="width:auto" data-hout="${k}" data-hn="999">Take all</button></div>`).join('')
     : '<div class="say" style="opacity:.7">Empty.</div>');
   s += `<div class="say" style="margin:8px 0 0">The village's own goods (what its site makes and its farms grow; up to ${OWN.cap} crates of each, then that work stops)</div>` +
-    (sk.own.map((g) => `<div class="shoprow"><div><b>${ITEMS[g].name}</b> ×${Math.floor(sk.ownOf(g))}</div></div>`).join('') || '<div class="say" style="opacity:.7">None.</div>') +
+    (sk.own.map((g) => `<div class="shoprow"><div>${itemName(g)} ×${Math.floor(sk.ownOf(g))}</div></div>`).join('') || '<div class="say" style="opacity:.7">None.</div>') +
     `<div class="say" style="opacity:.8">The village's builds use these too. You buy them at the market, or the elder shares them with friends of the village.</div>`;
   s += `<div class="say" style="margin:8px 0 0">With you here (backpack, vehicles by the hall, the floor)</div>` + (mine.length ? mine.map(([k, e]) => {
     const room = holdRoom(st, k), n = e.carried + e.floor;
-    return `<div class="shoprow"><div><b>${ITEMS[k].name}</b> ×${n}${e.floor ? ` <span style="opacity:.7">(${e.floor} on the floor)</span>` : ''}</div><button class="opt" style="width:auto" data-hin="${k}" data-hn="1" ${room ? '' : 'disabled'}>Store 1</button><button class="opt" style="width:auto" data-hin="${k}" data-hn="999" ${room ? '' : 'disabled'}>Store all</button></div>`;
+    return `<div class="shoprow"><div>${itemName(k)} ×${n}${e.floor ? ` <span style="opacity:.7">(${e.floor} on the floor)</span>` : ''}</div><button class="opt" style="width:auto" data-hin="${k}" data-hn="1" ${room ? '' : 'disabled'}>Store 1</button><button class="opt" style="width:auto" data-hin="${k}" data-hn="999" ${room ? '' : 'disabled'}>Store all</button></div>`;
   }).join('') + `<button class="opt" data-hall="1">Store everything I have here</button>` : '<div class="say" style="opacity:.7">Nothing the village could use.</div>');
   panel().classList.add('wide');
   panel().innerHTML = s + `<button class="opt" data-hclose="1">Close</button>`;

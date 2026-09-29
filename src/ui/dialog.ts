@@ -53,6 +53,7 @@ import { showToast, logLine } from './hud';
 import { openMarket, renderMarket, marketClick } from './market';
 import { caravanClick } from './caravan';
 import { openContracts, renderContracts, contractsClick } from './contracts';
+import { itemName } from './icons';
 /** Kuba pays a fifth of the price for a part, less for a worn one. */
 const partBuyback = (s: Slot) => Math.floor(PART_PRICE[s.k]! * PART_BUYBACK * (s.c ?? 100) / 100);
 
@@ -101,7 +102,7 @@ function renderVehicleShop(msg?: string) {
       return `<div class="shoprow"><div><b>${vehicleTitle(m)}</b><br><span>${s.role} · ${s.seats} seats · trunk ${s.trunk} · ${Math.round(s.maxSpeed * 3.6)} km/h${s.enclosed ? ' · closed cab' : ' · open top'}</span></div>
       <button class="buy" data-v="${m}" ${G.char.gold < s.price ? 'disabled' : ''}>${s.price} g</button></div>`;
     }).join('') +
-    PARTS.map((k) => `<div class="shoprow"><div><b>${ITEMS[k].name}</b><br><span>${ITEMS[k].desc}</span></div>
+    PARTS.map((k) => `<div class="shoprow"><div>${itemName(k)}<br><span>${ITEMS[k].desc}</span></div>
       <button class="buy" data-k="${k}" data-p="${PART_PRICE[k]}" ${G.char.gold < PART_PRICE[k]! ? 'disabled' : ''}>${PART_PRICE[k]} g</button></div>`).join('') +
     `<button class="opt" data-o="back">${OPT_TEXT.back}</button>`;
 }
@@ -131,7 +132,7 @@ function renderShop(msg?: string) {
   if (W.talkNpc!.role === 'grocer') { panel().innerHTML = foodHTML(dlgHead(), loadedVillage(town())?.id ?? null, msg); return; }
   const stock = stockFor(W.talkNpc!.role, G.char.world);
   panel().innerHTML = dlgHead() + `<div class="say">Your gold: <b>${G.char.gold}</b>${msg ? '<br>' + msg : ''}</div>` +
-    stock.map(([k, p]) => `<div class="shoprow"><div><b>${ITEMS[k].name}</b><br><span>${ITEMS[k].desc}</span></div>
+    stock.map(([k, p]) => `<div class="shoprow"><div>${itemName(k)}<br><span>${ITEMS[k].desc}</span></div>
       <button class="buy" data-k="${k}" data-p="${p}" ${G.char.gold < p ? 'disabled' : ''}>${p} g</button></div>`).join('') +
     `<button class="opt" data-o="back">${OPT_TEXT.back}</button>`;
 }
@@ -168,11 +169,11 @@ function renderFortify(msg?: string) {
   const trade = poi ? profileOf(c.world, poi, v.vm.seed).makes.map((g) => ITEMS[g].name).join(' and ') : '';
   const work = bp ? `Oil comes up not far from here, and we mean to put up a <b>refinery</b> that turns crude into fuel. Help us build it and the village will pay you <b>${REFINERY_PAY} gold</b>.`
     : `We are a ${spec.name.toLowerCase()}: our ${spec.site.toLowerCase()} ${spec.site.endsWith('s') ? 'give' : 'gives'} us ${trade}` + (sc < 90 ? `, but the raids have damaged ${spec.site.endsWith('s') ? 'them' : 'it'} (${sc}%): mend ${spec.site.endsWith('s') ? 'them' : 'it'} with ${spec.fix.map(([i, n]) => `${n} ${ITEMS[i].name}`).join(', ')} and we will pay you.` : '.');
-  const brows = bp ? bp.rows.map((r) => `<div class="shoprow"><div><b>${ITEMS[r.k].name}</b><br><span>${r.given} / ${r.n} for the refinery${hallNote(hh(r.k), r.given, r.n)}</span></div></div>`).join('') : '';
+  const brows = bp ? bp.rows.map((r) => `<div class="shoprow"><div>${itemName(r.k)}<br><span>${r.given} / ${r.n} for the refinery${hallNote(hh(r.k), r.given, r.n)}</span></div></div>`).join('') : '';
   const canBuild = !!bp && bp.rows.some((r) => r.given < r.n && hh(r.k) > 0);
   const rows = plan ? plan.rows.map((r) => {
     const have = hh(r.k), left = r.n - r.given;
-    return `<div class="shoprow"><div><b>${ITEMS[r.k].name}</b><br><span>${r.given} / ${r.n} handed over${left > 0 ? ` · in the village hall: ${have}` : ' · done'}</span></div></div>`;
+    return `<div class="shoprow"><div>${itemName(r.k)}<br><span>${r.given} / ${r.n} handed over${left > 0 ? ` · in the village hall: ${have}` : ' · done'}</span></div></div>`;
   }).join('') : '';
   const canGive = !!plan && plan.rows.some((r) => r.given < r.n && hh(r.k) > 0);
   panel().innerHTML = dlgHead() + `<div class="say">${msg ? msg + '<br><br>' : ''}` +
@@ -206,7 +207,7 @@ function worksRows(st: TownState | undefined): string {
   const c = G.char, plan = plantPlan(st);
   if (plan) {
     const name = specOf(plan.k).name;
-    const rows = plan.rows.map((r) => `<div class="shoprow"><div><b>${ITEMS[r.k].name}</b><br><span>${r.given} / ${r.n} for the ${name.toLowerCase()}${hallNote(hh(r.k), r.given, r.n)}</span></div></div>`).join('');
+    const rows = plan.rows.map((r) => `<div class="shoprow"><div>${itemName(r.k)}<br><span>${r.given} / ${r.n} for the ${name.toLowerCase()}${hallNote(hh(r.k), r.given, r.n)}</span></div></div>`).join('');
     const can = plan.rows.some((r) => r.given < r.n && hh(r.k) > 0) || (plan.done && c.gold >= plan.fee);
     return rows + `<button class="opt" data-pgive="1" ${can ? '' : 'disabled'}>${plan.done ? `Pay the builders ${plan.fee} gold` : `Build from the village hall's stock (${name.toLowerCase()})`}</button>`;
   }
@@ -270,7 +271,7 @@ function defenceRows(vm: VillageMap, st: TownState | undefined): string {
   return WORK_KINDS.map((k) => {
     const plan = workPlan(st, k, workLimit(k, vm));
     if (!plan) return '';
-    const rows = plan.rows.map((r) => `<div class="shoprow"><div><b>${ITEMS[r.k].name}</b><br><span>${r.given} / ${r.n} for the ${WORKS[k].name.toLowerCase()}${hallNote(hh(r.k), r.given, r.n)}</span></div></div>`).join('');
+    const rows = plan.rows.map((r) => `<div class="shoprow"><div>${itemName(r.k)}<br><span>${r.given} / ${r.n} for the ${WORKS[k].name.toLowerCase()}${hallNote(hh(r.k), r.given, r.n)}</span></div></div>`).join('');
     const can = plan.rows.some((r) => r.given < r.n && hh(r.k) > 0);
     return rows + `<button class="opt" data-work="${k}" ${can ? '' : 'disabled'}>Build from the village hall's stock (${WORKS[k].name.toLowerCase()})</button>`;
   }).join('');
