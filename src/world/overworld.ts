@@ -84,6 +84,8 @@ interface Chunk { cx: number; cz: number; group: THREE.Group; trees: Tree[]; roc
 interface Structure {
   poi: Poi; grid: VoxelGrid; group: THREE.Group; edges: EdgeSource;
   doors: Door[]; stairs: Stair[]; npcs: Npc[]; village?: VillageMap; camp?: CampMap; flames?: THREE.LineSegments;
+  /** Fallen pieces with no voxels under them, for vehicles: world [x, z, r] (a temple's rubble). */
+  blocks?: [number, number, number][];
 }
 
 /** Things that come and go with a loaded village and live in modules this one must not import (world/wallguns.ts). */
@@ -98,6 +100,25 @@ const ckey = (cx: number, cz: number) => (cx + 32768) * 65536 + (cz + 32768);
 let queue: [number, number, number][] = [], lastChunk = '';
 
 // ---------- collision ----------
+/**
+ * Vehicles and places (not villages, which keep vehicles out on their own): a loaded place blocks only where it
+ * really stands: its voxels at the height of a car's body (walls, pillars, crates, a hull) or a hole in its floor
+ * (a stairwell), and the fallen pieces a temple has without voxels. A place not loaded yet blocks its whole square.
+ */
+export function structBlocks(px: number, pz: number, r: number, h: number): boolean {
+  for (const p of poisNear(OW.terrain!.world, px, pz, 50)) {
+    if (p.type === 'village' || rectDist(p.rect, px, pz) > r + 1) continue;
+    const s = OW.structs.get(p.id);
+    if (!s) { if (rectDist(p.rect, px, pz) < r) return true; continue; }
+    if (s.blocks?.some(([x, z, br]) => Math.hypot(x - px, z - pz) < br + r)) return true;
+    for (const [dx, dz] of [[0, 0], [r, 0], [-r, 0], [0, r], [0, -r]]) {
+      const x = Math.floor(px + dx), z = Math.floor(pz + dz);
+      if (!s.grid.covers(x, z)) continue;
+      if (!s.grid.empty(x, Math.floor(h + 0.5), z) || !s.grid.empty(x, Math.floor(h + 1.5), z) || s.grid.empty(x, Math.floor(h - 0.5), z)) return true;
+    }
+  }
+  return false;
+}
 /** Voxel structures on top of open air. Each cell belongs to the structure whose footprint covers it. */
 export const space: Space = {
   empty(x, y, z) { for (const s of OW.structs.values()) if (s.grid.covers(x, z)) return s.grid.empty(x, y, z); return true; },
@@ -352,9 +373,9 @@ function loadRuinStruct(poi: Poi): Structure {
   }
   const tg = new THREE.BufferGeometry(); tg.setAttribute('position', new THREE.Float32BufferAttribute(tl, 3));
   group.add(new THREE.LineSegments(tg, sharedLine(TILE_COLOR)));
-  group.add(drawTemple(rm.temple, poi.id));
+  const tpl = drawTemple(rm.temple, poi.id); group.add(tpl.g);
   scene.add(group);
-  const s: Structure = { poi, grid, group, edges: mesh, doors: [], stairs: [], npcs: [] };
+  const s: Structure = { poi, grid, group, edges: mesh, doors: [], stairs: [], npcs: [], blocks: tpl.blocks };
   OW.structs.set(poi.id, s); // the door below is placed through the shared space
   const p = rm.portal, placed = tryPlaceDoor(space, { axis: p.axis, m: p.m, c: p.c, stair: true, y0: y }, [])!;
   const st = makeStair(p, placed, 0, '▼ ' + poi.name.toUpperCase(), 'Stairs down into the ' + poi.name, () => enterRuin(poi.id));
@@ -519,7 +540,7 @@ export function openWorld(x: number, z: number) {
   spawnVehicles({
     height: (px, pz) => Math.max(T.heightAt(px, pz), bridgeDeck(px, pz) ?? -Infinity, pierDeck(px, pz) ?? -Infinity), // over a bridge or a pier, its deck
     water: (px, pz) => (bridgeDeck(px, pz) !== null || pierDeck(px, pz) !== null ? 0 : T.water(px, pz)?.depth ?? 0),
-    blocked: (px, pz, r) => poisNear(T.world, px, pz, 40).some((p) => rectDist(p.rect, px, pz) < r) || treeHit(px, T.heightAt(px, pz) + 0.5, pz, r) || ambushHit(px, 0, pz, r) || bridgeHit(px, (bridgeDeck(px, pz) ?? -99) + 0.5, pz, r), // a bridge's rails keep you on its deck
+    blocked: (px, pz, r) => structBlocks(px, pz, r, T.heightAt(px, pz)) || treeHit(px, T.heightAt(px, pz) + 0.5, pz, r) || ambushHit(px, 0, pz, r) || bridgeHit(px, (bridgeDeck(px, pz) ?? -99) + 0.5, pz, r), // a bridge's rails keep you on its deck
   });
   syncFound(T, x, z);
   const envHooks = {

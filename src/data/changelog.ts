@@ -4,6 +4,14 @@ export interface Change { v: string; date: string; title: string; notes: string[
 
 export const CHANGELOG: Change[] = [
   {
+    v: '0.89.0', date: '2026-10-11', title: 'Greater temples',
+    notes: [
+      'The alien temples are half as big again: taller bodies and pylons, a wider ring of broken walls, longer arms and a longer avenue of bigger obelisks. You see them from much further off. (Their places in the world moved a little.)',
+      'No more invisible walls round places: a vehicle now stops only at what really stands there, the temple\'s walls, pillars, obelisks and the fallen pieces lying about, a crashed ship\'s hull, a camp\'s crates. You can drive round a temple, up its avenue to the portal, and park right by it. The stairwell down still keeps vehicles out.',
+      'Developer console: the planet map is now opened with `map` and shows every toxic fog zone as a lime ring (found while the map is open); click one to be put at its edge. Rivers no longer draw stray lines across the map where they cross the planet\'s seam.',
+    ],
+  },
+  {
     v: '0.88.1', date: '2026-10-10', title: 'Wiktor waits to be spoken to',
     notes: [
       'Wiktor no longer starts talking the moment you come near. He stands outside the wreck calling into the hatch ("Hello? Is anyone in there? Come out, I am a friend!") until you walk up and talk to him (E).',

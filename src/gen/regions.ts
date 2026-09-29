@@ -158,8 +158,8 @@ export function villageDist(world: number, x: number, z: number, r = 120): numbe
   for (const p of poisNear(world, x, z, r)) if (p.type === 'village') d = Math.min(d, rectD(p.rect, x, z));
   return d;
 }
-/** Ruins are alien temples on a 40 m square (see gen/ruins.ts). */
-export const RUIN_SIZE = 40;
+/** Ruins are alien temples on a 60 m square (see gen/ruins.ts). */
+export const RUIN_SIZE = 60;
 export const VILLAGE_RECT: Rect = { x0: -38, z0: -38, x1: 38, z1: 38 };
 /**
  * The old hangar with the shuttle (gen/shuttle.ts), in Gridholm's region north-east of the village, clear of the
@@ -241,7 +241,7 @@ function baseInfo(world: number, rx: number, rz: number): RegionInfo {
       pois.push(ruinAt(rx, rz, 1, o[0] * dist + (o[0] ? 0 : lat), o[1] * dist + (o[1] ? 0 : lat), R));
     }
   } else if (R() < (Math.abs(rx) <= 1 && Math.abs(rz) <= 1 ? 0.4 : 0.5)) {
-    const x = cx + ri(-80, 80), z = cz + ri(-80, 80);
+    const x = cx + ri(-64, 64), z = cz + ri(-64, 64); // (kept in so neighbouring temples' grounds never meet)
     if (!onMountain(world, x, z, 60) && !inSea(world, x, z, 80) && !nearRiver(world, x, z, 110)) pois.push(ruinAt(rx, rz, 1, x, z, R));
   }
   r = { rx, rz, pois, forest, rough };

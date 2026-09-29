@@ -79,8 +79,8 @@ const COMMANDS: Record<string, { help: string; run: (args: string[]) => string }
   clear: { help: 'clear this log', run: () => { out.innerHTML = ''; return ''; } },
   raid: { help: 'bandits raid the village you are at, now (a test raid: its outcome is not recorded)', run: () => { close(); return forceRaid(); } },
   ambush: { help: 'set up a bandit ambush ahead (stand on a road)', run: () => (forceAmbush() ? 'Something moves by the road ahead...' : 'Stand on a road, away from places.') },
-  worldmap: {
-    help: 'map of the whole planet: click a village, ruin, camp, wreck or any spot to teleport there',
+  map: {
+    help: 'map of the whole planet: click a village, ruin, camp, wreck, toxic fog zone (lime) or any spot to teleport there',
     run: () => { openDevMap(); close(); return 'The planet: ' + planetSize() + '.'; },
   },
   sites: {
@@ -134,7 +134,7 @@ export function open() {
   G.consoleOpen = true; G.firing = false; for (const k in G.keys) G.keys[k] = false;
   root.style.display = 'flex';
   if (document.pointerLockElement) document.exitPointerLock();
-  if (!out.childElementCount) print('GridWorld console. Commands: cash, god, fly, home, worldmap, tp, time, help. ~ or Esc to close.');
+  if (!out.childElementCount) print('GridWorld console. Commands: cash, god, fly, home, map, tp, time, help. ~ or Esc to close.');
   setTimeout(() => input.focus(), 0);
 }
 export function close() {

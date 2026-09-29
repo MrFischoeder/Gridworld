@@ -51,7 +51,7 @@ export function generateRuin(world: number, poi: Poi, y: number): RuinMap {
 
   // The crypt (the round inner chamber) sits a little behind the middle; its portal faces the entrance arm.
   const dir = (['N', 'E', 'S', 'W'] as Dir[])[ri(0, 3)], o = DIRV[dir], along = o[0] !== 0, oo = along ? o[0] : o[1];
-  const m = along ? cx - o[0] * 4 : cz - o[1] * 4, c = along ? cz : cx;
+  const m = along ? cx - o[0] * 6 : cz - o[1] * 6, c = along ? cz : cx;
   const f: TempleFrame = { axis: along ? 'x' : 'z', o: oo, m, c, y };
   /** A voxel box in temple-local cells: u0..u1 along the axis (0 = the portal cell), v0..v1 sideways. */
   const cell = (u: number, v: number): [number, number] => { const a = m + oo * u, b = c + v; return along ? [a, b] : [b, a]; };
@@ -64,55 +64,57 @@ export function generateRuin(world: number, poi: Poi, y: number): RuinMap {
 
   // Body of the temple around the crypt: the solid core the stairwell is cut into, then the side masses.
   ops.push(box('solid', 0, SL + 1, -2, 2, y - 8, 12));
-  ops.push(box('solid', 0, 9, -5, -2, y, 3), box('solid', 0, 9, 2, 5, y, 3));
+  ops.push(box('solid', 0, 14, -8, -2, y, 3), box('solid', 0, 14, 2, 8, y, 3));
+  // under the two portal pylons (drawn in world/temple.ts), so they are solid too
+  ops.push(box('solid', -2, -1, -8, -4, y, 3), box('solid', -2, -1, 4, 8, y, 3));
   ops.push(...stairOpsFor(dir, m, c, false).map((op) => ({ ...op, y: op.y + y })));
 
   // The round inner wall and the four arms, broken: gaps, ragged heights, fallen stretches.
   const occupied = new Set<string>(), put = (u: number, v: number, h: number) => {
-    if (h <= 0 || avenue(u, v) || !inRect(u, v) || (u >= -1 && u <= 10 && Math.abs(v) <= 6)) return;
+    if (h <= 0 || avenue(u, v) || !inRect(u, v) || (u >= -2 && u <= 15 && Math.abs(v) <= 9)) return;
     const k = u + ',' + v; if (occupied.has(k)) return; occupied.add(k);
     const [x, z] = cell(u, v); ops.push({ op: 'solid', x, y, z, w: 1, h, d: 1 });
   };
   let hgt = 2;
   const ragged = () => { hgt = Math.max(0, Math.min(4, hgt + ri(-1, 1))); if (R() < 0.22) return 0; return hgt; };
-  const ringR = 9, rc = 4.5;
-  for (let i = 0; i < 64; i++) { const a = i / 64 * 6.283; put(Math.round(rc + Math.cos(a) * ringR), Math.round(Math.sin(a) * ringR), ragged()); }
-  for (const side of [-1, 1]) for (let k = 0; k < 8; k++) { // side arms: two low walls each
-    put(3 + 0, side * (ringR + 1 + k), ragged()); put(7, side * (ringR + 1 + k), ragged());
+  const ringR = 13.5, rc = 6.75;
+  for (let i = 0; i < 96; i++) { const a = i / 96 * 6.283; put(Math.round(rc + Math.cos(a) * ringR), Math.round(Math.sin(a) * ringR), ragged()); }
+  for (const side of [-1, 1]) for (let k = 0; k < 12; k++) { // side arms: two low walls each
+    put(4, side * Math.round(ringR + 1 + k), ragged()); put(11, side * Math.round(ringR + 1 + k), ragged());
   }
-  for (let k = 0; k < 6; k++) { put(rc + ringR + 1 + k, -2, ragged()); put(rc + ringR + 1 + k, 2, ragged()); } // back arm
+  for (let k = 0; k < 9; k++) { put(Math.round(rc + ringR + 1 + k), -3, ragged()); put(Math.round(rc + ringR + 1 + k), 3, ragged()); } // back arm
 
   // Alien dressing (drawn in world/temple.ts). Everything is weathered: things snapped, toppled, gone.
   const jag = Array.from({ length: 6 }, () => (R() < 0.5 ? R() * 3.5 : R() * 1));
-  const pylons = [0, 1].map(() => { const snapped = R() < 0.65; return { h: snapped ? 7 + R() * 9 : 19 + R() * 7, snapped }; });
+  const pylons = [0, 1].map(() => { const snapped = R() < 0.65; return { h: snapped ? 10 + R() * 13 : 28 + R() * 10, snapped }; });
   const ring = pylons.some((p) => p.snapped) ? (R() < 0.65 ? 'fallen' : 'gone') : R() < 0.4 ? 'fallen' : 'up';
   const obelisks: Obelisk[] = [];
-  for (let u = -6; inRect(u, 5) || inRect(u, -5); u -= 4) for (const s of [-1, 1]) {
-    if (!inRect(u, s * 5) || R() < 0.2) continue; // some are simply gone
+  for (let u = -8; inRect(u, 6) || inRect(u, -6); u -= 6) for (const s of [-1, 1]) {
+    if (!inRect(u, s * 6) || R() < 0.2) continue; // some are simply gone
     const broken = R() < 0.6 ? 0.25 + R() * 0.5 : 0;
-    obelisks.push({ u: u + (R() - 0.5), v: s * (5 + R() * 0.8), h: 6 + R() * 6, w: 1.1 + R() * 0.3, broken, fall: R() * 6.283, lu: (R() - 0.5) * 1.6, lv: (R() - 0.5) * 1.6 });
-    put(Math.round(u), s * 5, 3);
+    obelisks.push({ u: u + (R() - 0.5), v: s * (6 + R() * 0.8), h: 9 + R() * 9, w: 1.6 + R() * 0.45, broken, fall: R() * 6.283, lu: (R() - 0.5) * 2.4, lv: (R() - 0.5) * 2.4 });
+    put(Math.round(u), s * 6, 3); put(Math.round(u) + 1, s * 6, 3);
   }
   const armPylons: Obelisk[] = [];
-  for (const [u, v] of [[5, -(ringR + 9)], [5, ringR + 9], [rc + ringR + 8, 0]] as [number, number][]) {
+  for (const [u, v] of [[7.5, -(ringR + 13)], [7.5, ringR + 13], [rc + ringR + 12, 0]] as [number, number][]) {
     if (!inRect(Math.round(u), Math.round(v)) || R() < 0.2) continue;
-    armPylons.push({ u, v, h: 8 + R() * 7, w: 2 + R() * 0.6, broken: R() < 0.65 ? 0.25 + R() * 0.4 : 0, fall: R() * 6.283, lu: (R() - 0.5) * 1.2, lv: (R() - 0.5) * 1.2 });
-    put(Math.round(u), Math.round(v), 3); put(Math.round(u) + 1, Math.round(v), 3);
+    armPylons.push({ u, v, h: 12 + R() * 10, w: 3 + R() * 0.9, broken: R() < 0.65 ? 0.25 + R() * 0.4 : 0, fall: R() * 6.283, lu: (R() - 0.5) * 1.2, lv: (R() - 0.5) * 1.2 });
+    for (let a = -1; a <= 1; a++) for (let b = -1; b <= 1; b++) put(Math.round(u) + a, Math.round(v) + b, 3);
   }
   const rubble: TempleDeco['rubble'] = [];
-  for (let i = 0; i < 26; i++) {
-    const u = ri(-16, 20), v = ri(-17, 17);
+  for (let i = 0; i < 40; i++) {
+    const u = ri(-24, 30), v = ri(-26, 26);
     if (avenue(u, v) && Math.abs(v) < 2.5) continue;
-    if (!inRect(u, v) || (u >= -1 && u <= 10 && Math.abs(v) <= 6)) continue;
-    rubble.push({ u, v, r: 0.5 + R() * 1.3, h: 0.4 + R() * 1.2, rot: R() * 6.283 });
+    if (!inRect(u, v) || (u >= -3 && u <= 15 && Math.abs(v) <= 9)) continue;
+    rubble.push({ u, v, r: 0.6 + R() * 1.8, h: 0.5 + R() * 1.6, rot: R() * 6.283 });
   }
 
   // Fragments of the old paving along the avenue and in the chamber (drawn brighter on top of the floor).
   const tiles: { x: number; z: number }[] = [];
-  for (let u = -16; u < 0; u++) for (let v = -2; v <= 2; v++) if (R() < 0.55 && inRect(u, v)) { const [x, z] = cell(u, v); tiles.push({ x, z }); }
+  for (let u = -24; u < 0; u++) for (let v = -2; v <= 2; v++) if (R() < 0.55 && inRect(u, v)) { const [x, z] = cell(u, v); tiles.push({ x, z }); }
   const portal: PortalSpec = { key: 'D', dir, m, c, up: false, axis: along ? 'x' : 'z', y0: y };
   return {
     id: poi.id, name: poi.name, y, rect: poi.rect, ops, portal, tiles,
-    temple: { frame: f, bodyW: 6.2, bodyH: 10 + R() * 4, jag, pylons, ring, frames: ri(1, 3), obelisks, armPylons, rubble },
+    temple: { frame: f, bodyW: 9.3, bodyH: 15 + R() * 6, jag, pylons, ring, frames: ri(1, 3), obelisks, armPylons, rubble },
   };
 }

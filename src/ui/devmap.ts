@@ -1,11 +1,13 @@
-// Developer world map (console: `worldmap`): the whole planet, explored or not, with every village; zoom in and
-// the ruins, bandit camps and crash sites of the regions in view appear too. Drag to pan, wheel to zoom, click a
+// Developer world map (console: `map`): the whole planet, explored or not, with every village and every toxic fog
+// zone (lime rings, found by a scan of the planet spread over frames); zoom in and the ruins, bandit camps and crash
+// sites of the regions in view appear too. Drag to pan, wheel to zoom, click a
 // place (or any spot) to teleport there. Only a testing tool: nothing here is part of the game proper.
 import { G } from '../game';
 import { allVillages, regionInfo, regionOf, X_MIN, WORLD_W, POLE_Z, POLAR_Z, REGION, wrapDx, type Poi } from '../gen/regions';
 import { dangerAt } from '../gen/danger';
 import { seaMask } from '../gen/seas';
 import { riversOf } from '../gen/rivers';
+import { regionFog, type FogZone } from '../gen/toxic';
 import { teleportTo } from '../world/level';
 import { $, logLine } from './hud';
 import { lockPointer } from './input';
@@ -13,7 +15,7 @@ import { lockPointer } from './input';
 const root = $('devmap'), cv = $<HTMLCanvasElement>('devmapCv'), info = $('devmapInfo'), ctx = cv.getContext('2d')!;
 /** View: centre (world metres) and scale (metres per pixel). */
 const view = { x: 0, z: 0, mpp: 60 };
-let open = false, hover: Poi | null = null, mouse = { x: 0, y: 0 }, drag: { x: number; y: number; vx: number; vz: number; moved: boolean } | null = null;
+let open = false, hover: Poi | null = null, hoverFog: FogZone | null = null, mouse = { x: 0, y: 0 }, drag: { x: number; y: number; vx: number; vz: number; moved: boolean } | null = null;
 
 const COLOR: Record<string, string> = { village: '#ffd060', ruin: '#5cc8ff', camp: '#ff6a4a', wreck: '#7dffc8' };
 const toScreen = (x: number, z: number) => [cv.width / 2 + wrapDx(x - view.x) / view.mpp, cv.height / 2 + (z - view.z) / view.mpp];
@@ -30,6 +32,19 @@ function places(): Poi[] {
     }
   }
   return out;
+}
+
+/** Every toxic fog zone of the planet: scanned a slice of regions per frame while the map is open (kept per world). */
+const fogScan = { world: NaN, rx: 0, zones: [] as FogZone[], done: false };
+const R_MIN = Math.round(X_MIN / REGION + 0.5), R_Z = Math.ceil(POLAR_Z / REGION);
+function scanFog(ms: number) {
+  const w = G.char.world;
+  if (fogScan.world !== w) Object.assign(fogScan, { world: w, rx: R_MIN, zones: [], done: false });
+  const t0 = performance.now();
+  while (!fogScan.done && performance.now() - t0 < ms) {
+    for (let rz = -R_Z; rz <= R_Z; rz++) { const f = regionFog(w, fogScan.rx, rz); if (f) fogScan.zones.push(f); }
+    if (++fogScan.rx >= R_MIN + WORLD_W / REGION) fogScan.done = true;
+  }
 }
 
 /** The seas of the whole planet, 250 m a pixel (made once per world). */
@@ -71,8 +86,10 @@ function draw() {
   ctx.strokeStyle = '#2ac8b0'; ctx.lineWidth = 1.5;
   for (const r of riversOf(G.char.world).list) {
     ctx.beginPath();
-    for (let i = 0; i < r.x.length; i += view.mpp > 30 ? 4 : 1) { const [px, py] = toScreen(r.x[i], r.z[i]); if (i) ctx.lineTo(px, py); else ctx.moveTo(px, py); }
-    const [ex, ey] = toScreen(r.x[r.x.length - 1], r.z[r.z.length - 1]); ctx.lineTo(ex, ey);
+    let lx = NaN; // a river crossing the planet's seam jumps across the screen: lift the pen there
+    const to = (px: number, py: number) => { if (Number.isNaN(lx) || Math.abs(px - lx) > W / 2) ctx.moveTo(px, py); else ctx.lineTo(px, py); lx = px; };
+    for (let i = 0; i < r.x.length; i += view.mpp > 30 ? 4 : 1) { const [px, py] = toScreen(r.x[i], r.z[i]); to(px, py); }
+    const [ex, ey] = toScreen(r.x[r.x.length - 1], r.z[r.z.length - 1]); to(ex, ey);
     ctx.stroke();
   }
   // grid: every region when close, every 10 km otherwise; the seam of the planet in amber
@@ -83,6 +100,17 @@ function draw() {
   for (let z = Math.floor(wz0 / step) * step; z <= wz1; z += step) { const [, sy] = toScreen(0, z); ctx.moveTo(0, sy); ctx.lineTo(W, sy); }
   ctx.stroke();
   const [seam] = toScreen(X_MIN, 0); ctx.strokeStyle = 'rgba(255,179,71,0.5)'; ctx.beginPath(); ctx.moveTo(seam, 0); ctx.lineTo(seam, H); ctx.stroke();
+  // toxic fog: a lime ring as big as the zone (a dot at least), the site in the middle
+  ctx.lineWidth = 1.5; ctx.font = '15px VT323, monospace'; ctx.textAlign = 'center';
+  hoverFog = null; let fd = 12;
+  for (const f of fogScan.zones) {
+    const [sx, sy] = toScreen(f.x, f.z), r = Math.max(4, f.r / view.mpp);
+    if (sx < -r || sy < -r || sx > W + r || sy > H + r) continue;
+    ctx.strokeStyle = ctx.fillStyle = '#b6ff3a'; ctx.globalAlpha = 0.25; ctx.beginPath(); ctx.arc(sx, sy, r, 0, 6.283); ctx.fill(); ctx.globalAlpha = 1; ctx.stroke();
+    if (view.mpp < 25) ctx.fillText(f.name, sx, sy - r - 4);
+    const d = Math.hypot(sx - mouse.x, sy - mouse.y);
+    if (d < Math.max(fd, r) && d < fd + r) { fd = d; hoverFog = f; }
+  }
   // places
   ctx.font = '15px VT323, monospace'; ctx.textAlign = 'center';
   const list = places(), labels = view.mpp < 25;
@@ -101,12 +129,16 @@ function draw() {
   // the player
   const [px, py] = toScreen(G.pos.x, G.pos.z);
   ctx.strokeStyle = '#3dff6e'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(px, py, 7, 0, 6.283); ctx.moveTo(px, py); ctx.lineTo(px - Math.sin(G.yaw) * 14, py - Math.cos(G.yaw) * 14); ctx.stroke();
+  if (hover) hoverFog = null;
+  if (hoverFog) { const [hx, hy] = toScreen(hoverFog.x, hoverFog.z); ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5; ctx.strokeRect(hx - 8, hy - 8, 16, 16); }
   if (hover) { const [hx, hy] = toScreen(hover.x, hover.z); ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5; ctx.strokeRect(hx - 8, hy - 8, 16, 16); }
   const [mx, mz] = toWorld(mouse.x, mouse.y);
-  info.textContent = (hover ? `${hover.name} (${hover.type})` : `x ${Math.round(mx)}, z ${Math.round(mz)}`) +
+  const fogNote = fogScan.done ? ` · ${fogScan.zones.length} toxic fog zones` : ` · finding toxic fog ${Math.round((fogScan.rx - R_MIN) / (WORLD_W / REGION) * 100)}%`;
+  info.textContent = (hover ? `${hover.name} (${hover.type})` : hoverFog ? `${hoverFog.name} (toxic fog, ${hoverFog.kind === 'isle' ? 'island' : 'land'}, ${hoverFog.site}; click: its edge)` : `x ${Math.round(mx)}, z ${Math.round(mz)}`) + fogNote +
     ` · danger ${dangerAt(G.char.world, hover ? hover.x : mx, hover ? hover.z : mz).toFixed(1)} · ${Math.round(view.mpp * 100) / 100} m/px · click to teleport · drag to pan · wheel to zoom · Esc to close`;
 }
 
+function tick() { if (!open || fogScan.done) return; scanFog(10); draw(); requestAnimationFrame(tick); }
 export function openDevMap() {
   open = true; G.playing = false; G.firing = false; for (const k in G.keys) G.keys[k] = false;
   view.x = G.pos.x; view.z = G.pos.z; if (G.char.loc === 'dungeon') { view.x = 0; view.z = 0; }
@@ -114,6 +146,7 @@ export function openDevMap() {
   if (document.pointerLockElement) document.exitPointerLock();
   setTimeout(() => { if (open && document.pointerLockElement) document.exitPointerLock(); }, 150); // a lock still on its way
   requestAnimationFrame(draw);
+  requestAnimationFrame(tick);
 }
 function closeDevMap() {
   open = false; root.style.display = 'none'; G.playing = true;
@@ -143,6 +176,8 @@ cv.addEventListener('pointerup', (e) => {
   if (!d || d.moved) return;
   const [x, z] = toWorld(e.offsetX, e.offsetY);
   if (!hover && Math.abs(z) > POLE_Z - 300) { info.textContent = 'That is beyond the ice wall.'; return; }
+  // a fog zone: to its edge, where the fog is still thin (the site is in the middle)
+  if (!hover && hoverFog) { const msg = teleportTo(hoverFog.x, hoverFog.z + hoverFog.r * 0.8); closeDevMap(); logLine(msg + ` The toxic fog of ${hoverFog.name} lies to the north.`); return; }
   const msg = teleportTo(hover ? hover.x : x, hover ? hover.z : z, hover ?? undefined);
   closeDevMap(); logLine(msg);
 });
