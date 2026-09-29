@@ -7,6 +7,7 @@ import { hash } from '../core/rng';
 import { CHUNK, worldDist, wrapDx, poisNear, type Poi } from './regions';
 import { nearestOnRoad } from './roads';
 import { mountainMask } from './mountains';
+import { inSea } from './seas';
 import { rectDist, type Terrain } from './terrain';
 import type { ItemKey } from '../data/items';
 
@@ -23,6 +24,7 @@ export interface InstallSite { k: InstallKind; name: string; x: number; z: numbe
 export function installMisfit(t: Terrain, x: number, z: number, r: number): string | null {
   const y0 = t.heightAt(x, z);
   if (mountainMask(t.world, x, z) > 0.12) return 'mountain';
+  if (inSea(t.world, x, z, r + 60)) return 'sea';
   for (let a = 0; a < 6.28; a += 0.785) for (const d of [0, r * 0.5, r]) {
     const px = x + Math.cos(a) * d, pz = z + Math.sin(a) * d;
     if (t.water(px, pz)) return 'water';

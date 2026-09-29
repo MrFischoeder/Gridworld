@@ -5,6 +5,7 @@ import { sunAngle, daylight, twilight, sunTilt } from '../core/time';
 import { rng, hash } from '../core/rng';
 import { G } from '../game';
 import { seen as weather } from './weather';
+import { seaMask } from '../gen/seas';
 
 const noFog = (m: THREE.Material) => { (m as THREE.MeshBasicMaterial).fog = false; return m; };
 
@@ -120,34 +121,52 @@ export function darkSky() { (scene.background as THREE.Color).set(0x000000); fog
 export const horizon = new THREE.Group();
 horizon.visible = false; scene.add(horizon);
 let horizonWorld = -1;
+interface Ring { radius: number; h: number[]; fill: THREE.BufferGeometry; lines: THREE.BufferGeometry }
+let rings: Ring[] = [], shapedAt: [number, number] | null = null;
+const BASE = -6;
 export function buildHorizon(world: number) {
   if (horizonWorld === world) return;
-  horizonWorld = world;
+  horizonWorld = world; shapedAt = null;
   horizon.traverse((o) => (o as THREE.Mesh).geometry?.dispose());
-  horizon.clear();
+  horizon.clear(); rings = [];
   const R = rng(hash(world, 0x4a1b));
   const ring = (radius: number, hMin: number, hMax: number, n: number, color: number) => {
-    const tri: number[] = [], lines: number[] = [], ridge: number[][] = [], base = -6;
-    for (let i = 0; i < n; i++) {
-      const a = i / n * 6.283, peak = i % 2 === 0, h = peak ? hMin + R() * (hMax - hMin) : hMin * (0.3 + R() * 0.4);
-      ridge.push([Math.cos(a) * radius, h, Math.sin(a) * radius]);
-    }
-    for (let i = 0; i < n; i++) {
-      const p = ridge[i], q = ridge[(i + 1) % n], pb = [p[0], base, p[2]], qb = [q[0], base, q[2]];
-      tri.push(...pb, ...qb, ...q, ...pb, ...q, ...p);
-      lines.push(...p, ...q);
-      // facets: from every peak down to the valley on either side, stopping halfway down
-      if (i % 2 === 0) {
-        for (const o of [-1, 1]) {
-          const v = ridge[(i + o + n) % n], m = [(p[0] + v[0]) / 2 * 1.01, v[1] * 0.4, (p[2] + v[2]) / 2 * 1.01];
-          lines.push(...p, ...m);
-        }
-      }
-    }
-    const fg = new THREE.BufferGeometry(); fg.setAttribute('position', new THREE.Float32BufferAttribute(tri, 3));
-    const lg = new THREE.BufferGeometry(); lg.setAttribute('position', new THREE.Float32BufferAttribute(lines, 3));
-    horizon.add(new THREE.Mesh(fg, noFog(fillMat(0x000000))), new THREE.LineSegments(lg, lineMat(color, { fog: false })));
+    const h: number[] = [];
+    for (let i = 0; i < n; i++) h.push(i % 2 === 0 ? hMin + R() * (hMax - hMin) : hMin * (0.3 + R() * 0.4));
+    const r: Ring = { radius, h, fill: new THREE.BufferGeometry(), lines: new THREE.BufferGeometry() };
+    rings.push(r); shapeRing(r, h.map(() => 1));
+    horizon.add(new THREE.Mesh(r.fill, noFog(fillMat(0x000000))), new THREE.LineSegments(r.lines, lineMat(color, { fog: false })));
   };
   ring(162, 26, 48, 48, 0x1a8a3c); // far range, dimmer
   ring(150, 12, 26, 64, 0x26b050); // nearer foothills
+}
+/** Lay out a ring's geometry with each ridge point's height scaled by f (0 = sunk below the horizon). */
+function shapeRing(r: Ring, f: number[]) {
+  const n = r.h.length, tri: number[] = [], lines: number[] = [], ridge: number[][] = [];
+  for (let i = 0; i < n; i++) { const a = i / n * 6.283; ridge.push([Math.cos(a) * r.radius, BASE + (r.h[i] - BASE) * f[i], Math.sin(a) * r.radius]); }
+  for (let i = 0; i < n; i++) {
+    const p = ridge[i], q = ridge[(i + 1) % n], pb = [p[0], BASE, p[2]], qb = [q[0], BASE, q[2]];
+    tri.push(...pb, ...qb, ...q, ...pb, ...q, ...p);
+    lines.push(...p, ...q);
+    // facets: from every peak down to the valley on either side, stopping halfway down
+    if (i % 2 === 0) {
+      for (const o of [-1, 1]) {
+        const v = ridge[(i + o + n) % n], m = [(p[0] + v[0]) / 2 * 1.01, BASE + (v[1] - BASE) * 0.4, (p[2] + v[2]) / 2 * 1.01];
+        lines.push(...p, ...m);
+      }
+    }
+  }
+  r.fill.setAttribute('position', new THREE.Float32BufferAttribute(tri, 3)); r.fill.computeBoundingSphere();
+  r.lines.setAttribute('position', new THREE.Float32BufferAttribute(lines, 3)); r.lines.computeBoundingSphere();
+}
+/** Over the sea there are no distant ranges: the rings sink where the land a few kilometres off is sea (reshaped every 250 m). */
+export function shapeHorizon(x: number, z: number) {
+  if (shapedAt && Math.hypot(x - shapedAt[0], z - shapedAt[1]) < 250) return;
+  shapedAt = [x, z];
+  for (const r of rings) shapeRing(r, r.h.map((_, i) => {
+    const a = i / r.h.length * 6.283; // ring point (cos a, sin a) lies towards +x/+z in world space
+    let wet = 0;
+    for (const d of [900, 2000, 3500]) if (seaMask(horizonWorld, x + Math.cos(a) * d, z + Math.sin(a) * d) > 0.3) wet++;
+    return 1 - wet / 3;
+  }));
 }

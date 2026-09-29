@@ -3,14 +3,16 @@
 //   fresh  clean, safe to drink
 //   murky  swampy valley water: drinkable at a pinch, may turn your stomach
 //   toxic  poisoned by the old machines around ruins: hurts to wade in, never drink it
+//   sea    the salt water of the seas (gen/seas.ts): swim in it, but it will not quench thirst
 // Rivers and streams will come later. Everything else asks `Terrain.water(x, z)` what water is at a point.
 import { rng, hash } from '../core/rng';
 import { REGION, CHUNK, POLAR_Z, wrapR, poisNear, type Rect } from './regions';
 import { regionRoads, nearestOnRoad } from './roads';
 import type { Terrain } from './terrain';
 import { onMountain } from './mountains';
+import { inSea } from './seas';
 
-export type WaterKind = 'fresh' | 'murky' | 'toxic';
+export type WaterKind = 'fresh' | 'murky' | 'toxic' | 'sea';
 export interface Lake {
   /** Stable id (packed region + index), for save keys later. */
   id: number;
@@ -76,7 +78,7 @@ export function regionLakes(t: Terrain, rx: number, rz: number): Lake[] {
     if (Math.abs(z) + r * 2 >= POLAR_Z) return;
     if (out!.some((l) => Math.hypot(l.x - x, l.z - z) < (l.r + r) * LAKE_REACH * 1.3 + 12)) return;
     const pois = poisNear(t.world, x, z, r * 2 + 120);
-    const clear = pois.every((p) => rectD(p.rect, x, z) > r * LAKE_REACH * 1.3 + p.flat + p.blend + 6) && !nearRoad(t.world, x, z, r * LAKE_REACH * 1.3 + 8) && !onMountain(t.world, x, z, r * 2 + 20);
+    const clear = pois.every((p) => rectD(p.rect, x, z) > r * LAKE_REACH * 1.3 + p.flat + p.blend + 6) && !nearRoad(t.world, x, z, r * LAKE_REACH * 1.3 + 8) && !onMountain(t.world, x, z, r * 2 + 20) && !inSea(t.world, x, z, r * 2 + 40);
     if (!clear) return;
     // the level: just under the lowest natural ground around the rim
     let rim = Infinity;
@@ -123,7 +125,7 @@ export function regionWells(t: Terrain, rx: number, rz: number): Well[] {
     for (let i = 0; i < 4 && !out.length; i++) {
       const x = rx * REGION + (R() - 0.5) * 200, z = rz * REGION + (R() - 0.5) * 200;
       if (poisNear(t.world, x, z, 80).some((p) => rectD(p.rect, x, z) < p.flat + p.blend + 4)) continue;
-      if (nearRoad(t.world, x, z, 6) || onMountain(t.world, x, z, 10)) continue;
+      if (nearRoad(t.world, x, z, 6) || onMountain(t.world, x, z, 10) || inSea(t.world, x, z, 20)) continue;
       if (lakesIn(t, { x0: x - 4, z0: z - 4, x1: x + 4, z1: z + 4 }).some((l) => Math.hypot(l.x - x, l.z - z) < l.r * LAKE_REACH * 1.3 + 6)) continue;
       out.push({ x: Math.round(x) + 0.5, z: Math.round(z) + 0.5 });
     }

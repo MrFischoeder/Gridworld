@@ -4,6 +4,7 @@
 import { G } from '../game';
 import { allVillages, regionInfo, regionOf, X_MIN, WORLD_W, POLE_Z, POLAR_Z, REGION, wrapDx, type Poi } from '../gen/regions';
 import { dangerAt } from '../gen/danger';
+import { seaMask } from '../gen/seas';
 import { teleportTo } from '../world/level';
 import { $, logLine } from './hud';
 import { lockPointer } from './input';
@@ -30,6 +31,25 @@ function places(): Poi[] {
   return out;
 }
 
+/** The seas of the whole planet, 250 m a pixel (made once per world). */
+let seaLayer: { world: number; cv: HTMLCanvasElement } | null = null;
+const SEA_PX = 250;
+function seas(): HTMLCanvasElement {
+  const w = G.char.world;
+  if (seaLayer?.world === w) return seaLayer.cv;
+  const c = document.createElement('canvas'), W = Math.round(WORLD_W / SEA_PX), H = Math.round(2 * POLAR_Z / SEA_PX);
+  c.width = W; c.height = H;
+  const x2 = c.getContext('2d')!, img = x2.createImageData(W, H);
+  for (let j = 0; j < H; j++) for (let i = 0; i < W; i++) {
+    const m = seaMask(w, X_MIN + (i + 0.5) * SEA_PX, -POLAR_Z + (j + 0.5) * SEA_PX), o = 4 * (i + W * j);
+    if (m < 0.3) continue;
+    img.data[o] = 10; img.data[o + 1] = 60 - 30 * m; img.data[o + 2] = 140 - 50 * m; img.data[o + 3] = 200;
+  }
+  x2.putImageData(img, 0, 0);
+  seaLayer = { world: w, cv: c };
+  return c;
+}
+
 function draw() {
   if (!open) return;
   cv.width = root.clientWidth; cv.height = root.clientHeight;
@@ -41,6 +61,11 @@ function draw() {
     ctx.fillStyle = 'rgba(191,255,232,0.12)'; ctx.fillRect(0, Math.min(y0, y1), W, Math.abs(y1 - y0));
     ctx.fillStyle = 'rgba(191,255,232,0.5)'; ctx.fillRect(0, y1 - 1, W, 2);
   }
+  // the seas (the planet repeats east-west: draw the copies in view)
+  const sl = seas(), [, sy0] = toScreen(0, -POLAR_Z), sw = WORLD_W / view.mpp, sh = 2 * POLAR_Z / view.mpp;
+  ctx.imageSmoothingEnabled = true;
+  let [sx0] = toScreen(X_MIN, 0); sx0 -= Math.ceil(sx0 / sw) * sw;
+  for (let sx = sx0; sx < W; sx += sw) ctx.drawImage(sl, sx, sy0, sw, sh);
   // grid: every region when close, every 10 km otherwise; the seam of the planet in amber
   const step = view.mpp < 4 ? REGION : view.mpp < 40 ? 2560 : 10240;
   ctx.strokeStyle = 'rgba(47,224,96,0.18)'; ctx.lineWidth = 1; ctx.beginPath();

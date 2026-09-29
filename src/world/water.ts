@@ -5,6 +5,9 @@ import { scene, V, GRID, localize } from './render';
 import { G } from '../game';
 import { OW } from './overworld';
 import { lakesIn, shoreR, type Lake, type WaterKind, type Well } from '../gen/water';
+import { SEA, inSea } from '../gen/seas';
+import { CHUNK } from '../gen/regions';
+import { CELLS, VERTS, STEP, type Terrain } from '../gen/terrain';
 import { addItem, takeOne, hasItem, saveChar } from '../character';
 import { PropBatch } from './props';
 import { SIP } from '../data/survival';
@@ -12,9 +15,9 @@ import { nourish } from './survival';
 import { logLine, showToast } from '../ui/hud';
 
 /** Line colours of the three kinds of water (toxic glows). */
-export const WATER_LINE: Record<WaterKind, number> = { fresh: 0x2ac8b0, murky: 0x8a9a4a, toxic: 0xb6ff3a };
-const WATER_FILL: Record<WaterKind, number> = { fresh: 0x02201c, murky: 0x121604, toxic: 0x142402 };
-export const WATER_NAME: Record<WaterKind, string> = { fresh: 'clean water', murky: 'murky water', toxic: 'toxic water' };
+export const WATER_LINE: Record<WaterKind, number> = { fresh: 0x2ac8b0, murky: 0x8a9a4a, toxic: 0xb6ff3a, sea: 0x2f8fd8 };
+const WATER_FILL: Record<WaterKind, number> = { fresh: 0x02201c, murky: 0x121604, toxic: 0x142402, sea: 0x020d1c };
+export const WATER_NAME: Record<WaterKind, string> = { fresh: 'clean water', murky: 'murky water', toxic: 'toxic water', sea: 'salt water' };
 
 interface LakeMesh { lake: Lake; group: THREE.Group; a: THREE.LineBasicMaterial; b: THREE.LineBasicMaterial }
 const lakes = new Map<number, LakeMesh>();
@@ -71,6 +74,51 @@ export function clearLakes() { for (const m of lakes.values()) dropLake(m); lake
 /** Ripples: the two line sets breathe in turn. */
 export function animateWater(time: number) {
   for (const m of lakes.values()) { const s = 0.5 + 0.5 * Math.sin(time * 0.9 + m.lake.x * 0.01); m.a.opacity = 0.15 + 0.45 * s; m.b.opacity = 0.6 - 0.45 * s; }
+  const s = 0.5 + 0.5 * Math.sin(time * 0.7); SEA_A.opacity = 0.12 + 0.4 * s; SEA_B.opacity = 0.52 - 0.4 * s;
+}
+
+// ---------- the sea ----------
+const SEA_FILL = new THREE.MeshBasicMaterial({ color: WATER_FILL.sea, transparent: true, opacity: 0.88, depthWrite: false, side: THREE.DoubleSide });
+const SEA_A = new THREE.LineBasicMaterial({ color: WATER_LINE.sea, transparent: true, opacity: 0.4 });
+const SEA_B = new THREE.LineBasicMaterial({ color: WATER_LINE.sea, transparent: true, opacity: 0.3 });
+const SEA_SHORE = new THREE.LineBasicMaterial({ color: WATER_LINE.sea, transparent: true, opacity: 0.8 });
+/**
+ * The sea's surface over one terrain chunk (world coordinates; the chunk's group localizes it), or null when the
+ * chunk is dry: a translucent sheet at the sea level (the land stands above it wherever it is dry), two sets of
+ * ripple dashes over the water that breathe in turn (sparser on far chunks) and the shoreline, traced across the
+ * chunk's 2 m height lattice where the ground crosses the level.
+ */
+export function seaSheet(T: Terrain, cx: number, cz: number, lat: Float32Array, lod: number): THREE.Group | null {
+  const x0 = cx * CHUNK, z0 = cz * CHUNK, L = SEA.level;
+  let low = Infinity; for (let k = 0; k < lat.length; k++) low = Math.min(low, lat[k]);
+  if (low >= L || !inSea(T.world, x0 + CHUNK / 2, z0 + CHUNK / 2, CHUNK)) return null;
+  const g = new THREE.Group();
+  const quad = new THREE.BufferGeometry(); quad.setAttribute('position', new THREE.Float32BufferAttribute([x0, L, z0, x0 + CHUNK, L, z0, x0 + CHUNK, L, z0 + CHUNK, x0, L, z0, x0 + CHUNK, L, z0 + CHUNK, x0, L, z0 + CHUNK], 3));
+  g.add(new THREE.Mesh(quad, SEA_FILL));
+  const H = (x: number, z: number) => T.heightAt(Math.min(x, x0 + CHUNK - 0.01), Math.min(z, z0 + CHUNK - 0.01));
+  const gap = 3 * lod;
+  for (const [off, m] of [[0, SEA_A], [gap / 2, SEA_B]] as const) {
+    const pts: number[] = [];
+    for (let z = z0 + off + 0.75; z < z0 + CHUNK; z += gap) for (let x = x0 + ((z - z0) % 2 < 1 ? 0.3 : 1.5); x + 1.6 <= x0 + CHUNK; x += 2.5 * lod)
+      if (H(x, z) < L - 0.1 && H(x + 1.6, z) < L - 0.1) pts.push(x, L + 0.02, z, x + 1.6, L + 0.02, z);
+    if (!pts.length) continue;
+    const lg = new THREE.BufferGeometry(); lg.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3));
+    g.add(new THREE.LineSegments(lg, m));
+  }
+  // the shoreline: marching squares on the lattice
+  const sh: number[] = [], V = (i: number, j: number) => lat[i + VERTS * j] - L;
+  for (let j = 0; j < CELLS; j++) for (let i = 0; i < CELLS; i++) {
+    const c = [[i, j], [i + 1, j], [i + 1, j + 1], [i, j + 1]], cut: number[][] = [];
+    for (let e = 0; e < 4; e++) {
+      const [ai, aj] = c[e], [bi, bj] = c[(e + 1) % 4], a = V(ai, aj), b = V(bi, bj);
+      if ((a < 0) === (b < 0)) continue;
+      const t = a / (a - b);
+      cut.push([x0 + (ai + (bi - ai) * t) * STEP, z0 + (aj + (bj - aj) * t) * STEP]);
+    }
+    for (let k = 0; k + 1 < cut.length; k += 2) sh.push(cut[k][0], L + 0.03, cut[k][1], cut[k + 1][0], L + 0.03, cut[k + 1][1]);
+  }
+  if (sh.length) { const sg = new THREE.BufferGeometry(); sg.setAttribute('position', new THREE.Float32BufferAttribute(sh, 3)); g.add(new THREE.LineSegments(sg, SEA_SHORE)); }
+  return g;
 }
 
 // ---------- wells ----------
@@ -108,7 +156,7 @@ export function waterSource(wells: Well[]): WaterSource | null {
   return null;
 }
 export const sourcePrompt = (s: WaterSource) =>
-  s.kind === 'toxic' ? 'Toxic water: do not drink' : `E — ${hasItem('flask') ? 'fill a flask with' : 'drink'} ${s.where === 'well' ? 'water from the well' : WATER_NAME[s.kind]}`;
+  s.kind === 'toxic' ? 'Toxic water: do not drink' : s.kind === 'sea' ? 'Salt water: not fit to drink' : `E — ${hasItem('flask') ? 'fill a flask with' : 'drink'} ${s.where === 'well' ? 'water from the well' : WATER_NAME[s.kind]}`;
 
 let lastSip = 0;
 /**
@@ -117,6 +165,7 @@ let lastSip = 0;
  */
 export function useWater(s: WaterSource) {
   if (s.kind === 'toxic') { showToast('Toxic'); logLine('The water glows faintly. Drinking it would kill you.'); return; }
+  if (s.kind === 'sea') { showToast('Salt water'); logLine('It is sea water: salt enough to make your thirst worse.'); return; }
   if (takeOne('flask')) {
     if (addItem(s.kind === 'fresh' ? 'waterF' : 'waterM')) logLine(`You fill a flask with ${WATER_NAME[s.kind]}.`);
     else { addItem('flask'); logLine('No room in your backpack.'); }

@@ -45,7 +45,7 @@ export const G = {
   /** Built walls and floors: is the point inside one? */
   solid: null as ((p: { x: number; y: number; z: number }) => boolean) | null,
   /** Standing water at a point (open world only). */
-  water: null as ((x: number, z: number) => { level: number; depth: number; kind: 'fresh' | 'murky' | 'toxic' } | null) | null,
+  water: null as ((x: number, z: number) => { level: number; depth: number; kind: 'fresh' | 'murky' | 'toxic' | 'sea' } | null) | null,
   /** Swimming (deep water): weapons are away, movement is slow. */
   swimming: false,
   mapOpen: false,

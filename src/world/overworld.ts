@@ -28,7 +28,7 @@ import { chunkWells, type Well } from '../gen/water';
 import { chunkPlants, type Plant } from '../gen/flora';
 import { dangerAt } from '../gen/danger';
 import { drawPlants, dropPlants, ripe, type PlantNode } from './flora';
-import { drawWell, syncLakes, clearLakes } from './water';
+import { drawWell, syncLakes, clearLakes, seaSheet } from './water';
 import { generateVillage, WALL_TIERS, STONE_TIER, type VillageMap } from '../gen/village';
 import { wallOf } from '../gen/town';
 import { drawPower, setPlantLamps, forgetPower } from './power';
@@ -175,6 +175,7 @@ function buildChunk(cx: number, cz: number, lod = 1): Chunk {
   let top = 0; for (let k = 0; k < lat.length; k++) top = Math.max(top, lat[k]);
   group.add(new THREE.Mesh(fg, sharedFill()), new THREE.LineSegments(lg, sharedLine(Math.abs(z0 + CHUNK / 2) > POLAR_Z + 800 || top > SNOW_LINE ? ICE_COLOR : GRID)));
   if (road.length) { const rg = new THREE.BufferGeometry(); rg.setAttribute('position', new THREE.Float32BufferAttribute(road, 3)); group.add(new THREE.Mesh(rg, ROAD_FILL)); }
+  const sea = seaSheet(T, cx, cz, lat, lod); if (sea) group.add(sea);
   const caves = chunkCaves(T, cx, cz), wells = chunkWells(T, cx, cz), plants = chunkPlants(T, cx, cz).filter((p) => !T.claimAt(p.x, p.z, 2));
   // felled trees and broken rocks (player changes, keyed by their index in the generated list) are left out
   const trees: Tree[] = [], stumps: Tree[] = [], rocks: Rock[] = [];

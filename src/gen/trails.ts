@@ -7,6 +7,7 @@
 import { rng, hash } from '../core/rng';
 import { REGION, wrapR, ruinName } from './regions';
 import { mountainMask } from './mountains';
+import { inSea } from './seas';
 import { lakesIn } from './water';
 import type { Road } from './roads';
 import type { Terrain } from './terrain';
@@ -81,6 +82,7 @@ function trailhead(t: Terrain, s: Summit): [number, number] | null {
     for (let d = 40; d < Math.min(bd, 1100); d += 12) {
       const x = s.x + dx * d, z = s.z + dz * d;
       if (mountainMask(t.world, x, z) > 0.06 || t.base(x, z) > 36) continue;
+      if (inSea(t.world, x, z, 30)) break; // a peak by the sea: no trail from the shore
       if (lakesIn(t, { x0: x - 30, z0: z - 30, x1: x + 30, z1: z + 30 }).length) break;
       if (d < bd) { bd = d; best = [x, z]; }
       break;

@@ -9,7 +9,7 @@ const WORLDS = [hash(7, 1), hash(7, 2), hash(7, 3), hash(7, 4)];
 
 describe('lakes', () => {
   it('exist in all three kinds, hold water in a bowl and never spill over the rim', () => {
-    const kinds = { fresh: 0, murky: 0, toxic: 0 };
+    const kinds = { fresh: 0, murky: 0, toxic: 0, sea: 0 };
     for (const w of WORLDS) {
       const t = new Terrain(w);
       for (let rx = -12; rx <= 12; rx++) for (let rz = -12; rz <= 12; rz++) for (const l of regionLakes(t, rx, rz)) {

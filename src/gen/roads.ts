@@ -7,6 +7,7 @@ import { hash, DIRV, type Dir } from '../core/rng';
 import { allVillages, villageGap, SETTLED, regionInfo, GRIDHOLM_ID, villageSeed, wrapDx, REGION, POLAR_Z, wrapR, type Poi, type Rect } from './regions';
 import { villageGates, VILLAGE_OFFSET } from './village';
 import { mountainMask } from './mountains';
+import { seaMask } from './seas';
 
 /** A road between places, or a mountain trail (gen/trails.ts: `gate` 'trail', its height profile `h` per point, the summit's `name`). */
 export interface Road { id: string; from: number; to: number; gate: string; pts: [number, number][]; half: number; h?: number[]; name?: string }
@@ -85,7 +86,8 @@ export function findWay(world: number, s: [number, number], t: [number, number],
     let c = cost[n];
     if (c === c) return c; // already known (NaN is not equal to itself)
     const x = x0 + (n % nx) * C, z = z0 + Math.floor(n / nx) * C, m = mountainMask(world, x, z);
-    c = m > 0.3 || Math.abs(z) > POLAR_Z - 300 ? Infinity : 1 + m * 60; // the foothills are costly but passable, the heights are not
+    const w = m > 0.3 ? 0 : seaMask(world, x, z);
+    c = m > 0.3 || w > 0.08 || Math.abs(z) > POLAR_Z - 300 ? Infinity : 1 + m * 60 + w * 120; // the foothills are costly but passable, the heights and the sea are not
     for (const p of c === Infinity ? [] : poisAt(x, z)) {
       const end = ends.includes(p.id), hard = end ? 6 : 15, soft = end ? 6 : p.type === 'village' ? 30 : 80;
       const d = Math.hypot(Math.max(p.rect.x0 - x, 0, x - p.rect.x1), Math.max(p.rect.z0 - z, 0, z - p.rect.z1));

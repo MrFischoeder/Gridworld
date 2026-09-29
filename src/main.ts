@@ -34,7 +34,7 @@ import { updateContracts } from './ui/contracts';
 import { regionRoads } from './gen/roads';
 import { generateQuest } from './gen/quests';
 import { poisNear } from './gen/regions';
-import { sky, horizon, updateSky } from './world/sky';
+import { sky, horizon, updateSky, shapeHorizon } from './world/sky';
 import { MIN_PER_SEC, fmtClock } from './core/time';
 import { latitude } from './gen/regions';
 import { updateCreatures, spawnCreatureNear } from './world/creatures';
@@ -139,7 +139,7 @@ function frame(now: number) {
   if (G.trans) updateTrans(dt, camera); else if (driving.v) vehicleCamera(camera); else camera.position.set(G.pos.x, G.pos.y + EYE, G.pos.z);
   camera.rotation.set(G.pitch, G.yaw, 0);
   updateWeather(dt, sky.visible);
-  if (sky.visible) { sky.position.set(camera.position.x, camera.position.y - 20, camera.position.z); horizon.position.set(camera.position.x, 0, camera.position.z); updateSky(G.char.time, latitude(G.pos.z)); updateFarPeaks(camera.position); } else farPeaks.visible = false;
+  if (sky.visible) { sky.position.set(camera.position.x, camera.position.y - 20, camera.position.z); horizon.position.set(camera.position.x, 0, camera.position.z); shapeHorizon(camera.position.x, camera.position.z); updateSky(G.char.time, latitude(G.pos.z)); updateFarPeaks(camera.position); } else farPeaks.visible = false;
   // flying (dev): the real land reaches past the horizon rings, so they step aside and the camera sees further
   if (sky.visible) { horizon.visible = !G.fly && seen.fog < 0.45; if (G.fly || seen.fog > 0.45) farPeaks.visible = false; } // fog hides the far ranges
   const far = G.fly ? 600 : 200; if (camera.far !== far) { camera.far = far; camera.updateProjectionMatrix(); }

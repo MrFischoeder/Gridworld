@@ -4,6 +4,17 @@ export interface Change { v: string; date: string; title: string; notes: string[
 
 export const CHANGELOG: Change[] = [
   {
+    v: '0.79.0', date: '2026-10-01', title: 'Seas',
+    notes: [
+      'The planet now has seas: a few great bodies of salt water that together cover about a quarter of the land between the ice caps. Every world has its own; the land round Gridholm is as it was, the nearest coast is at least a few kilometres off.',
+      'The land slopes down into them: beaches and shallows along the shore, deep water further out. The sea has its own blue colour, a shoreline and slow ripples, and the distant ranges on the horizon give way to open water where the sea lies.',
+      'You can swim in the sea, but it is salt: you cannot drink it or fill a flask from it. Vehicles stop where it gets too deep. Boats will come later.',
+      'Villages, ruins, bandit camps, crash sites, lakes, wells, roads, trails, caves, the great installations and trees all keep to dry land. Roads go round the seas.',
+      'The maps show the seas: the minimap and the big map in blue, the map boards in the villages too, and the dev world map (console) the seas of the whole planet.',
+      'Note for old saves: the seas change the land further out, so some far places you knew may have moved or gone. Gridholm and its surroundings are untouched.',
+    ],
+  },
+  {
     v: '0.78.2', date: '2026-09-30', title: 'The materials guide as a PDF',
     notes: [
       'The download now also includes SUROWCE.pdf: the same guide to materials, processing and builds, laid out for reading and printing. No change to the game itself.',

@@ -43,7 +43,7 @@ export function openAreaMap(centre: { x: number; z: number; name: string }) {
   const cell = 32, n = Math.ceil(2 * RANGE / cell);
   for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) {
     const x = centre.x - RANGE + (i + 0.5) * cell, z = centre.z - RANGE + (j + 0.5) * cell, w = T.water(x, z);
-    if (w) ctx.fillStyle = w.kind === 'fresh' ? '#0b4a42' : w.kind === 'murky' ? '#2a3216' : '#34501a';
+    if (w) ctx.fillStyle = w.kind === 'sea' ? (w.depth > 12 ? '#06203e' : '#0b3460') : w.kind === 'fresh' ? '#0b4a42' : w.kind === 'murky' ? '#2a3216' : '#34501a';
     else if (Math.abs(z) > POLAR_Z) ctx.fillStyle = '#26403a';
     else {
       const h = T.heightAt(x, z), g = Math.max(0, Math.min(1, (h + 4) / 36)), m = Math.max(0, Math.min(1, (h - 26) / 110)); // mountains pale towards the peaks
