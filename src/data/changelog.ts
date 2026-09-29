@@ -4,6 +4,12 @@ export interface Change { v: string; date: string; title: string; notes: string[
 
 export const CHANGELOG: Change[] = [
   {
+    v: '0.78.1', date: '2026-09-30', title: 'A guide to materials',
+    notes: [
+      'The download now includes SUROWCE.md (in Polish): every raw material and where to get it, what the works, the great installations, the blacksmith and the food shop make of them, everything villages can build and what it takes, and an index of where each material is used. No change to the game itself.',
+    ],
+  },
+  {
     v: '0.78.0', date: '2026-09-29', title: 'Food from the village',
     notes: [
       'The food shop in every village now cooks from what the village has in its hall: bread from grain, hearty stew from potatoes or carrots, boiled eggs from the hens, cups of milk and cheese from the cows.',
