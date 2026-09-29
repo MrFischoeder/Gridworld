@@ -34,6 +34,7 @@ import { terminalClick } from './terminal';
 import { logbookClick } from './logbook';
 import { askLead } from '../world/datacarriers';
 import { ordersHTML, ordersClick } from './orders';
+import { foodHTML, foodClick } from './foodshop';
 import { shareHTML, shareClick } from './share';
 import { farmsHTML, farmsClick, showFarm } from './farms';
 import { plantUpHTML, plantUpClick, showPlantUp } from './plantup';
@@ -125,6 +126,7 @@ function renderSell(msg?: string) {
 }
 function renderShop(msg?: string) {
   if (W.talkNpc!.role === 'dealer') { renderVehicleShop(msg); return; }
+  if (W.talkNpc!.role === 'grocer') { panel().innerHTML = foodHTML(dlgHead(), loadedVillage(town())?.id ?? null, msg); return; }
   const stock = stockFor(W.talkNpc!.role, G.char.world);
   panel().innerHTML = dlgHead() + `<div class="say">Your gold: <b>${G.char.gold}</b>${msg ? '<br>' + msg : ''}</div>` +
     stock.map(([k, p]) => `<div class="shoprow"><div><b>${ITEMS[k].name}</b><br><span>${ITEMS[k].desc}</span></div>
@@ -327,6 +329,8 @@ dlgEl.addEventListener('click', (e) => {
   if (fm !== null) { if (fm.built) { const tn = town(); closeDialog(); showFarm(tn); } else panel().innerHTML = farmsHTML(town(), dlgHead(), fm.msg); return; }
   const sm = shareClick(town(), e.target as HTMLElement);
   if (sm !== null) { panel().innerHTML = shareHTML(town(), dlgHead(), sm); return; }
+  const fdm = foodClick(e.target as HTMLElement, loadedVillage(town())?.id ?? null);
+  if (fdm !== null) { renderShop(fdm); return; }
   const om = ordersClick(e.target as HTMLElement, loadedVillage(town())?.id ?? null);
   if (om !== null) { panel().innerHTML = ordersHTML(dlgHead(), loadedVillage(town())?.id ?? null, om); return; }
   const cm = contractsClick(e.target as HTMLElement);

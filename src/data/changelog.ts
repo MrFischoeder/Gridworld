@@ -4,6 +4,15 @@ export interface Change { v: string; date: string; title: string; notes: string[
 
 export const CHANGELOG: Change[] = [
   {
+    v: '0.78.0', date: '2026-09-29', title: 'Food from the village',
+    notes: [
+      'The food shop in every village now cooks from what the village has in its hall: bread from grain, hearty stew from potatoes or carrots, boiled eggs from the hens, cups of milk and cheese from the cows.',
+      'A crate from the hall makes several portions (10 loaves, 8 stews, 12 servings of eggs, 10 cups of milk or 5 wedges of cheese). The shop shows how many are ready and where they come from; what the village has not got, the shop has not got.',
+      'Without grain in the hall the grocer still bakes a little bread from bought flour, at double the price. Water is always there.',
+      'New food: Boiled Eggs (300 kcal), Cup of Milk (250 kcal, water +25) and Cheese (900 kcal).',
+    ],
+  },
+  {
     v: '0.77.0', date: '2026-09-29', title: 'What the farms grow',
     notes: [
       'Every farm now grows what you choose at the elder\'s farms panel: Wheat (grain), Carrots, Potatoes, Hens (eggs) or Cows (milk). Farms you had grow wheat and potatoes by turns until you change them.',

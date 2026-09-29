@@ -51,6 +51,9 @@ export function cantEat(kg: number, kcal: number, stomach: number): '' | 'full' 
 export const NOURISH: Record<string, { kcal?: number; water?: number; hp?: number }> = {
   bread: { kcal: 1000, hp: 5 },
   stew: { kcal: 650, water: 10, hp: 15 },
+  eggsB: { kcal: 300, hp: 3 },
+  milkC: { kcal: 250, water: 25 },
+  cheese: { kcal: 900, hp: 5 },
   waterF: { water: 40 },
   waterM: { water: 25 },
   meatR: { kcal: 600 },

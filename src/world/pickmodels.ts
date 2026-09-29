@@ -229,7 +229,7 @@ function pickaxe(): THREE.Group {
 const MODELS: Partial<Record<ItemKey, () => THREE.Group>> = {
   log, planks, stone: () => stone(), ironO: () => stone(IRON), copperO: () => stone(COPPER), scrap, circuit, pcore,
   hide, fang, incisor, plate, membrane, meatR: () => meat(false), meatC: () => meat(true), cap: caps, pod, ncrys: () => crystals(),
-  bread, stew: bowl, flask, waterF: flask, waterM: flask, firekit: sticks, hatchet, pickaxe, wire: () => coil(), nails: () => nails(), rope: () => coil(0xc8b890),
+  bread, stew: bowl, eggsB: bowl, milkC: flask, cheese: bread, flask, waterF: flask, waterM: flask, firekit: sticks, hatchet, pickaxe, wire: () => coil(), nails: () => nails(), rope: () => coil(0xc8b890),
 };
 function nails(): THREE.Group {
   const m = new Model();

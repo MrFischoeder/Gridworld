@@ -47,6 +47,8 @@ export interface TownState {
   pup?: number; pupgiven?: Partial<Record<ItemKey, number>>;
   /** The village hall's hold (gen/hall.ts): what you have stored here for the village's builds. */
   hold?: Partial<Record<ItemKey, number>>;
+  /** The food shop's cooked portions (gen/foodshop.ts), by dish. */
+  pantry?: Partial<Record<ItemKey, number>>;
   /** The village's own goods in the hall (gen/hall.ts): an anchor per good (crates at time t). */
   own?: Partial<Record<ItemKey, { n: number; t: number }>>;
 }

@@ -55,7 +55,7 @@ export function stockFor(role: NpcRole, world: number): [ItemKey, number][] {
 function stockAll(role: NpcRole, world: number): [ItemKey, number][] {
   if (role === 'merchant') return [['medkit', 30], ['emp', 45], ['key', 90], ['recall', 60], ['flask', 15], ['firekit', 12], ['compass', 40], ['flagpole', 250],
     ...(Object.keys(SUPPLY_PRICE) as ItemKey[]).map((k): [ItemKey, number] => [k, SUPPLY_PRICE[k]!])];
-  if (role === 'grocer') return [['bread', 8], ['stew', 18], ['waterF', 25]];
+  if (role === 'grocer') return [['waterF', 25]]; // the dishes come from the village hall (ui/foodshop.ts)
   if (role === 'blacksmith') {
     const a = RELIC_KEYS[hash(world, 11) % RELIC_KEYS.length]; let b = RELIC_KEYS[hash(world, 12) % RELIC_KEYS.length];
     if (b === a) b = RELIC_KEYS[(RELIC_KEYS.indexOf(a) + 1) % RELIC_KEYS.length];
