@@ -19,8 +19,9 @@ describe('processing chains', () => {
       expect(worth / cost, `${k} → ${r.out[0]}`).toBeGreaterThan(1.2);
     }
   });
-  it('the shuttle wants only processed goods', () => {
-    for (const st of STAGES) for (const [g] of st.needs) expect(GOOD_INFO[g].proc, g).toBe(true);
+  it('the shuttle wants only processed goods, and microchips for its avionics', () => {
+    for (const st of STAGES) for (const [g] of st.needs) if (g !== 'microchip') expect(GOOD_INFO[g].proc, g).toBe(true); // chips come from the Old Chip Foundry
+    expect(STAGES.find((x) => x.key === 'avionics')!.needs.map(([g]) => g)).toContain('microchip');
     expect(GOODS.length).toBe(new Set(GOODS).size);
   });
 });

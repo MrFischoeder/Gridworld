@@ -37,7 +37,7 @@ export const WONDER_KINDS: WonderKind[] = [
   { name: 'Last Lighthouse', perk: 'Your recall beacon reaches the region', part: 'Homing Lens' },
 ];
 /** Relics of the Ancients: only found in ruins and wrecks (a new item when this goes into the game). */
-export type Need = Good | 'relic';
+export type Need = Good | 'relic' | 'microchip';
 export interface WonderStage { title: string; twist: string; needs: [Need, number][] }
 export interface Wonder {
   kind: WonderKind; x: number; z: number;

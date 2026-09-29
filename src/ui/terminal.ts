@@ -4,7 +4,7 @@
 // our market), the villages you know of (what each makes and wants, what stands there), and the Chariot of the
 // Ancients. It reads only; everything it shows comes from the pure models the rest of the game runs on.
 import { G, W } from '../game';
-import { ITEMS } from '../data/items';
+import { ITEMS, type ItemKey } from '../data/items';
 import { findPoi, allVillages, worldDist, wrapDx, villageSeed, CHUNK, GRIDHOLM_ID, type Poi } from '../gen/regions';
 import { industryOf, INDUSTRY, siteCondition, production, fertility } from '../gen/industry';
 import { profileOf, quote, type Good } from '../gen/market';
@@ -40,7 +40,7 @@ type Page = 'village' | 'power' | 'trade' | 'villages' | 'archive' | 'chariot';
 const PAGES: [Page, string][] = [['village', 'VILLAGE'], ['power', 'POWER'], ['trade', 'TRADE'], ['villages', 'VILLAGES'], ['archive', 'ARCHIVE'], ['chariot', 'CHARIOT']];
 let open: { vid: number; vm: VillageMap } | null = null, page: Page = 'village';
 
-const name = (g: Good) => ITEMS[g].name;
+const name = (g: ItemKey) => ITEMS[g].name;
 const bar = (x: number, n = 12) => { const k = Math.max(0, Math.min(n, Math.round(x * n))); return '█'.repeat(k) + '░'.repeat(n - k); };
 const row = (label: string, value: string) => `<div class="trow"><span>${label}</span><span>${value}</span></div>`;
 const h = (t: string) => `<div class="thead">${t}</div>`;

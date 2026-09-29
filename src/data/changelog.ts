@@ -4,6 +4,14 @@ export interface Change { v: string; date: string; title: string; notes: string[
 
 export const CHANGELOG: Change[] = [
   {
+    v: '0.73.0', date: '2026-09-29', title: 'Chips for the Chariot',
+    notes: [
+      'The Chariot\'s avionics now need 6 crates of Microchips from the Old Chip Foundry, and 8 circuit boards instead of 14 (cable and glass as before). Its flight computers want chips no works can etch, so the way home now runs through the foundry.',
+      'The hangar crew unload microchips like any other crate; the desk and the village computer show the new row.',
+      'Saves that already gave more than 8 circuit boards to the avionics keep the stage at 8 of 8.',
+    ],
+  },
+  {
     v: '0.72.0', date: '2026-09-29', title: 'Word of the old plants',
     notes: [
       'Ask the villagers about old machines within 16 km of a great installation and they tell you of it first: the Old Enrichment Plant or the Old Chip Foundry, with the distance and direction from their village.',

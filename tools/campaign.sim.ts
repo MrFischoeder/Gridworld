@@ -31,7 +31,9 @@ export const PACE = {
 };
 type Veh = 'foot' | 'scout' | 'mastodon';
 interface Bot { t: number; gold: number; veh: Veh; works: boolean; n: number; log: [number, string][] }
-const price = (g: Need, b: Bot) => (g === 'relic' ? 0 : GOOD_INFO[g].base * (b.works && GOOD_INFO[g].proc ? PACE.works.discount : 1));
+// microchips come from the Old Chip Foundry: priced as what goes into them (2 glass + 1 copper ingots) plus the trip there
+const CHIP = 2 * GOOD_INFO.glass.base + GOOD_INFO.copperbar.base + 200;
+const price = (g: Need, b: Bot) => (g === 'relic' ? 0 : g === 'microchip' ? CHIP : GOOD_INFO[g].base * (b.works && GOOD_INFO[g].proc ? PACE.works.discount : 1));
 const income = (b: Bot) => (PACE.income[b.veh] + (b.works ? PACE.works.bonus : 0)) * b.n * (b.n > 1 ? 0.9 : 1);
 function earn(b: Bot, need: number) {
   if (b.gold >= need) return;
