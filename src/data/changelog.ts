@@ -4,6 +4,12 @@ export interface Change { v: string; date: string; title: string; notes: string[
 
 export const CHANGELOG: Change[] = [
   {
+    v: '0.78.2', date: '2026-09-30', title: 'The materials guide as a PDF',
+    notes: [
+      'The download now also includes SUROWCE.pdf: the same guide to materials, processing and builds, laid out for reading and printing. No change to the game itself.',
+    ],
+  },
+  {
     v: '0.78.1', date: '2026-09-30', title: 'A guide to materials',
     notes: [
       'The download now includes SUROWCE.md (in Polish): every raw material and where to get it, what the works, the great installations, the blacksmith and the food shop make of them, everything villages can build and what it takes, and an index of where each material is used. No change to the game itself.',

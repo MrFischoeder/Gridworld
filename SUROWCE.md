@@ -4,7 +4,7 @@ Plik jest generowany z danych gry (`tools/materials.sim.ts`), więc nazwy i licz
 
 **Zasada magazynu:** wszystko, co wioska buduje (mury, zakłady, elektrownie, farmy, ulepszenia, zamówienia u kowala), bierze materiały z **hali magazynowej wioski** (Village Hall, 6000 L pojemności), a nie z plecaka. Do hali trafiają: to, co tam złożysz przy terminalu, oraz własne towary wioski (produkcja jej zakładu i plony farm, do 60 skrzyń każdego).
 
-Spis: 1. Surowce · 2. Przetwarzanie · 3. Budowy · 4. Indeks: gdzie użyć każdego materiału
+Spis: 1. Surowce · 2. Przetwarzanie · 3. Budowy · 4. Indeks: gdzie użyć każdego materiału · 5. Surowce bez zastosowania
 
 ## 1. Surowce: skąd je wziąć
 
