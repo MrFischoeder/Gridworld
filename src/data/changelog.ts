@@ -4,6 +4,17 @@ export interface Change { v: string; date: string; title: string; notes: string[
 
 export const CHANGELOG: Change[] = [
   {
+    v: '0.90.0', date: '2026-10-11', title: 'New raw materials and goods',
+    notes: [
+      'The land gives more: Clay (dug by some farming and fishing villages), Limestone and Lead Ore (some mining villages) and Lumber (sawn boards from some timber villages). They are made there, trade at every market and pile up in those villages\' halls like their other goods.',
+      'A new rare deposit: Nickel Ore, from about 10 km out. Villages that stand by one dig it for friends, like the other rare materials.',
+      'Seven new processed goods, traded at every market: Iron Bars, Pallets of Bricks, Sacks of Cement, Industrial Chemicals, Aluminium Ingots, Lead Ingots and Basic Batteries.',
+      'The works you know can make them for now: the Smelter smelts iron and lead, the Glassworks fires bricks from clay and burns cement from limestone, the Chemical Works makes industrial chemicals from crude oil, salt and sulfur, the Alloy Foundry smelts bauxite into aluminium, and the Electronics Shop fills batteries from lead and chemicals. Works take the rare materials (sulfur, bauxite) into their hoppers too.',
+      'The item sheet of a rare material says what it is worth to the works.',
+      'This is the first step of the new economy: dedicated works (sawmill, brickworks, steelworks, chemical plant...) and uses for the new goods come next.',
+    ],
+  },
+  {
     v: '0.89.2', date: '2026-10-11', title: 'The economy plan',
     notes: [
       'The download now includes PLAN_GOSPODARKI.md (in Polish): the agreed plan for the next big step of the economy, from new raw materials (clay, limestone, lead, nickel) and village works (sawmill, brickworks, cement, iron foundry, steelworks, chemical plant, aluminium works, batteries) through power for industry, six new great installations of the Ancients with their own power halls, to a Chariot that needs the whole planet\'s industry. No change to the game itself.',

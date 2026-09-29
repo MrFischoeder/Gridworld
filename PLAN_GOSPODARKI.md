@@ -32,7 +32,23 @@ Dokument źródłowy mówi, **co** ma powstać. Ten plik mówi, **jak** to wpaso
 
 ---
 
-## Etap 1 (0.90.0): surowce i półprodukty
+## Etap 1 (0.90.0): surowce i półprodukty (ZROBIONE)
+
+**Jak zrobione (różnice wobec planu):**
+- Nowe surowce ziemi są **trzecim towarem** części wiosek. Mają osobny rzut (`IndustrySpec.extra`: kopalnie 60% wapień / ołów, drwale 65% tarcica, rybackie 40% i rolnicze 25% glina). Dzięki temu dotychczasowe dwa towary każdej wioski i to, czego chce, zostały bez zmian. „Chce” losuje się dalej z listy sprzed etapu 1 (`WANT_POOL`).
+- Tarcica (Lumber) jest wyrobem wiosek drwali, a nie towarem przetworzonym.
+- Żeby żaden nowy towar nie był martwy, istniejące zakłady dostały tymczasowe receptury:
+  - Smelter: żelazo, ołów;
+  - Glassworks: cegły, cement;
+  - Chemical Works: chemikalia z ropy, soli i siarki;
+  - Alloy Foundry: aluminium z boksytu;
+  - Electronics Shop: baterie.
+
+  Etap 2 przeniesie je do osobnych zakładów.
+- Zakłady przyjmują rzadkie surowce (`Stuff` = `Good | Rare` w `gen/plants.ts`). Rzadkie mają wartość `RARE_VALUE` w `gen/deposits.ts`: do testu opłacalności i do dymka.
+- Hodowla przeszła do etapu 2 razem z Textile Mill.
+- Na razie bez zastosowań poza przetwarzaniem: tarcica, żelazo, cegły, cement, aluminium, baterie, nikiel. Dostaną je etapy 2 (budowy) i 6.
+
 
 **Nowe surowce (towary rynkowe, raw):**
 

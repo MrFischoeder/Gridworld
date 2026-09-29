@@ -6,6 +6,7 @@ import { NOURISH, BLADE } from '../data/survival';
 import { BLASTER, ATTACHMENTS, SLOT_NAME, type GunStats } from '../data/weapons';
 import { GOOD_INFO } from '../gen/market';
 import { MASK } from '../gen/toxic';
+import { RARE_VALUE, isRare } from '../gen/deposits';
 import { usesOf } from '../data/uses';
 import { itemIcon } from './icons';
 
@@ -53,7 +54,8 @@ function priceLine(k: ItemKey): string {
   const p = GEAR_PRICE[k] ?? TOOL_PRICE[k] ?? SUPPLY_PRICE[k] ?? PART_PRICE[k] ?? ATTACH_PRICE[k];
   if (p) return `shop price ${p} g`;
   const g = (GOOD_INFO as Record<string, { base: number } | undefined>)[k];
-  return g ? `market price about ${g.base} g a crate (cheaper where it is made, dearer where it is wanted)` : '';
+  if (g) return `market price about ${g.base} g a crate (cheaper where it is made, dearer where it is wanted)`;
+  return isRare(k) ? `no market trades it: dug at the villages that stand by a deposit, worth about ${RARE_VALUE[k]} g a crate to the works` : '';
 }
 
 /** The full tooltip for an item (n: how many in the stack, c: condition in percent). */

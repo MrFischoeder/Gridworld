@@ -69,12 +69,13 @@ it('writes SUROWCE.md', () => {
   P('');
   P('### 1.2 Towary, które wioski wydobywają i wytwarzają same');
   P('');
-  P('Każda wioska ma jeden rodzaj zakładu i robi 1–2 towary z jego listy. Towary trafiają do jej hali; kupujesz je na targu, dostajesz w udziale od starszego (za zaufanie) albo przewozisz w kontraktach.');
+  P('Każda wioska ma jeden rodzaj zakładu i robi 1–2 towary z jego listy; część wiosek robi do tego jeszcze jeden z nowszych towarów (glina, wapień, ołów, tarcica: „czasem” w tabeli). Towary trafiają do jej hali; kupujesz je na targu, dostajesz w udziale od starszego (za zaufanie) albo przewozisz w kontraktach.');
   P('');
   P('| Towar | Cena bazowa | Surowy? | Kto go robi |');
   P('|---|---|---|---|');
   for (const g of GOODS.filter((x) => !GOOD_INFO[x].proc)) {
-    const who = (Object.keys(INDUSTRY) as Industry[]).filter((k) => INDUSTRY[k].pool.includes(g)).map((k) => INDUSTRY_PL[k]);
+    const who = (Object.keys(INDUSTRY) as Industry[]).filter((k) => INDUSTRY[k].pool.includes(g)).map((k) => INDUSTRY_PL[k])
+      .concat((Object.keys(INDUSTRY) as Industry[]).filter((k) => INDUSTRY[k].extra?.goods.includes(g)).map((k) => `${INDUSTRY_PL[k]} (czasem, ${INDUSTRY[k].extra!.chance}%)`));
     P(`| ${N(g)} | ${GOOD_INFO[g].base} g | ${GOOD_INFO[g].raw ? 'tak' : 'wyrób'} | ${who.join(', ') || '—'} |`);
   }
   P('');

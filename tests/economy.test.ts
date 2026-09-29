@@ -1,21 +1,26 @@
 import { describe, it, expect } from 'vitest';
-import { PLANTS, PLANT_KINDS, HOPPER, OUT_CAP, runPlant, feed, collect, startPlant, handOverPlant, plantProblem, type PlantState } from '../src/gen/plants';
-import { GOOD_INFO, GOODS, PROCESSED, type Good } from '../src/gen/market';
+import { PLANTS, PLANT_KINDS, HOPPER, OUT_CAP, runPlant, feed, collect, startPlant, handOverPlant, plantProblem, type PlantState, type Stuff } from '../src/gen/plants';
+import { GOOD_INFO, GOODS, PROCESSED } from '../src/gen/market';
+import { RARES, RARE_VALUE, isRare } from '../src/gen/deposits';
 import { INDUSTRY } from '../src/gen/industry';
 import { STAGES, giveToStage, stageRows, stagesDone, type ShuttleState } from '../src/gen/shuttle';
 import type { TownState } from '../src/gen/town';
 
 describe('processing chains', () => {
-  const dug = new Set<Good>(Object.values(INDUSTRY).flatMap((i) => i.pool));
-  const made = new Set<Good>(PLANT_KINDS.flatMap((k) => PLANTS[k].recipes.map((r) => r.out[0])));
+  const dug = new Set<Stuff>([...Object.values(INDUSTRY).flatMap((i) => [...i.pool, ...(i.extra?.goods ?? [])]), ...RARES.map((r) => r.k)]);
+  const made = new Set<Stuff>(PLANT_KINDS.flatMap((k) => PLANTS[k].recipes.map((r) => r.out[0])));
+  const value = (g: Stuff) => (isRare(g) ? RARE_VALUE[g] : GOOD_INFO[g].base);
   it('every input can be dug, grown or made, and every processed good comes out of some works', () => {
     for (const k of PLANT_KINDS) for (const r of PLANTS[k].recipes) for (const [g] of r.in) expect(dug.has(g) || made.has(g), `${k}: ${g}`).toBe(true);
     for (const g of PROCESSED) expect(made.has(g), g).toBe(true);
     for (const g of PROCESSED) expect(dug.has(g), `${g} is not dug anywhere`).toBe(false);
   });
+  it('every good of the land is dug somewhere', () => {
+    for (const g of GOODS) if (GOOD_INFO[g].raw) expect(dug.has(g), g).toBe(true);
+  });
   it('every recipe pays: its output is worth well over its inputs', () => {
     for (const k of PLANT_KINDS) for (const r of PLANTS[k].recipes) {
-      const cost = r.in.reduce((a, [g, n]) => a + GOOD_INFO[g].base * n, 0), worth = GOOD_INFO[r.out[0]].base * r.out[1];
+      const cost = r.in.reduce((a, [g, n]) => a + value(g) * n, 0), worth = GOOD_INFO[r.out[0]].base * r.out[1];
       expect(worth / cost, `${k} → ${r.out[0]}`).toBeGreaterThan(1.2);
     }
   });

@@ -17,9 +17,12 @@ import { caravanShift } from './caravans';
 import { industryOf, INDUSTRY } from './industry';
 
 export type Good = 'grain' | 'carrots' | 'potatoes' | 'timber' | 'coal' | 'ore' | 'copper' | 'salt' | 'fish' | 'crude' | 'sand' | 'cloth' | 'tools' | 'meds' | 'fuel' | 'tech'
-  | 'steel' | 'copperbar' | 'plastic' | 'glass' | 'cable' | 'boards' | 'parts' | 'alloy' | 'propellant';
-export const GOODS: Good[] = ['grain', 'carrots', 'potatoes', 'timber', 'coal', 'ore', 'copper', 'salt', 'fish', 'crude', 'sand', 'cloth', 'tools', 'meds', 'fuel', 'tech',
+  | 'steel' | 'copperbar' | 'plastic' | 'glass' | 'cable' | 'boards' | 'parts' | 'alloy' | 'propellant'
+  | 'clay' | 'limestone' | 'lead' | 'lumber' | 'iron' | 'bricks' | 'cement' | 'chems' | 'aluminium' | 'leadbar' | 'batteries';
+/** The goods before the economy plan's stage 1 (0.90): what villages want is still picked from these, so old villages keep their wants. */
+const WANT_POOL: Good[] = ['grain', 'carrots', 'potatoes', 'timber', 'coal', 'ore', 'copper', 'salt', 'fish', 'crude', 'sand', 'cloth', 'tools', 'meds', 'fuel', 'tech',
   'steel', 'copperbar', 'plastic', 'glass', 'cable', 'boards', 'parts', 'alloy', 'propellant'];
+export const GOODS: Good[] = [...WANT_POOL, 'clay', 'limestone', 'lead', 'lumber', 'iron', 'bricks', 'cement', 'chems', 'aluminium', 'leadbar', 'batteries'];
 /**
  * Base price (gold per crate), and whether the good is raw (dug, pumped, grown: made far out) or made (crafted near
  * home). `proc`: processed in a works (gen/plants.ts) from other goods; no village's own industry makes it, and its
@@ -32,6 +35,10 @@ export const GOOD_INFO: Record<Good, { base: number; raw: boolean; proc?: true }
   steel: { base: 140, raw: false, proc: true }, copperbar: { base: 175, raw: false, proc: true }, plastic: { base: 120, raw: false, proc: true },
   glass: { base: 90, raw: false, proc: true }, cable: { base: 120, raw: false, proc: true }, boards: { base: 480, raw: false, proc: true },
   parts: { base: 400, raw: false, proc: true }, alloy: { base: 680, raw: false, proc: true }, propellant: { base: 170, raw: false, proc: true },
+  clay: { base: 14, raw: true }, limestone: { base: 26, raw: true }, lead: { base: 34, raw: true }, lumber: { base: 46, raw: false },
+  iron: { base: 60, raw: false, proc: true }, bricks: { base: 32, raw: false, proc: true }, cement: { base: 48, raw: false, proc: true },
+  chems: { base: 80, raw: false, proc: true }, aluminium: { base: 200, raw: false, proc: true }, leadbar: { base: 120, raw: false, proc: true },
+  batteries: { base: 280, raw: false, proc: true },
 };
 /** The processed goods (no village industry makes them; a works does). */
 export const PROCESSED = GOODS.filter((g) => GOOD_INFO[g].proc);
@@ -79,7 +86,11 @@ export function profileOf(world: number, v: Poi, seed: number): MarketProfile {
   while (makes.length < Math.min(2, pool.length)) { const g = pick(pool.filter((x) => !makes.includes(x)), true); makes.push(g); }
   for (const g of ind.wants) if (!makes.includes(g) && wants.length < 2) wants.push(g);
   if (powerKind(seed) === 'generator' && !makes.includes('fuel') && !wants.includes('fuel')) wants.push('fuel'); // the generator drinks diesel
-  while (wants.length < 2) wants.push(pick(GOODS.filter((g) => !makes.includes(g) && !wants.includes(g)), false));
+  while (wants.length < 2) wants.push(pick(WANT_POOL.filter((g) => !makes.includes(g) && !wants.includes(g)), false));
+  // the newer goods of the land (clay, limestone, lead, lumber): some villages make one besides the two above, by a
+  // roll of its own so the older picks stay as they were
+  const ex = ind.extra;
+  if (ex && hash(seed, 0x5e7a1) % 100 < ex.chance) { const g = ex.goods[hash(seed, 0x5e7a2) % ex.goods.length]; if (!makes.includes(g) && !wants.includes(g)) makes.push(g); }
   p = { makes, wants };
   if (cache.size > 4000) cache.clear();
   cache.set(key, p);

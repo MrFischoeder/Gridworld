@@ -12,13 +12,16 @@ import { hash, type Dir } from '../core/rng';
 import { powerSite, type TownState } from './town';
 import { industrySite, type Industry } from './industry';
 import type { Good } from './market';
+import type { Rare } from './deposits';
 import type { ItemKey } from '../data/items';
 import { STATIONS, STATION_SLOTS, type StationKind } from './energy';
 import { TECH_BY_ID } from './tech';
 
 export type PlantKind = 'smelter' | 'refinery' | 'glassworks' | 'wiremill' | 'electronics' | 'machineshop' | 'foundry' | 'chemworks';
 export const PLANT_KINDS: PlantKind[] = ['smelter', 'refinery', 'glassworks', 'wiremill', 'electronics', 'machineshop', 'foundry', 'chemworks'];
-export interface Recipe { in: [Good, number][]; out: [Good, number] }
+/** What a works takes in: trade goods, and the rare materials of the deposits (gen/deposits.ts), which no market trades. */
+export type Stuff = Good | Rare;
+export interface Recipe { in: [Stuff, number][]; out: [Good, number] }
 export interface PlantSpec {
   name: string; blurb: string;
   recipes: Recipe[];
@@ -28,29 +31,31 @@ export interface PlantSpec {
   needs: [ItemKey, number][]; fee: number; xp: number;
 }
 export const PLANTS: Record<PlantKind, PlantSpec> = {
-  smelter: { name: 'Smelter', blurb: 'melts ore with coal into ingots', batch: 60,
-    recipes: [{ in: [['ore', 2], ['coal', 1]], out: ['steel', 1] }, { in: [['copper', 2], ['coal', 1]], out: ['copperbar', 1] }],
+  smelter: { name: 'Smelter', blurb: 'melts ore with coal into iron, steel, copper and lead', batch: 60,
+    recipes: [{ in: [['ore', 2], ['coal', 1]], out: ['steel', 1] }, { in: [['copper', 2], ['coal', 1]], out: ['copperbar', 1] },
+      { in: [['ore', 2], ['coal', 1]], out: ['iron', 2] }, { in: [['lead', 2], ['coal', 1]], out: ['leadbar', 1] }],
     needs: [['stone', 40], ['scrap', 12], ['planks', 16], ['log', 8]], fee: 600, xp: 150 },
   refinery: { name: 'Oil Refinery', blurb: 'cracks crude oil into fuel or plastic resin', batch: 60,
     recipes: [{ in: [['crude', 1]], out: ['fuel', 1] }, { in: [['crude', 2]], out: ['plastic', 1] }],
     needs: [['scrap', 30], ['wire', 12], ['circuit', 4], ['planks', 16]], fee: 900, xp: 200 },
-  glassworks: { name: 'Glassworks', blurb: 'melts quartz sand with coal into glass', batch: 45,
-    recipes: [{ in: [['sand', 2], ['coal', 1]], out: ['glass', 1] }],
+  glassworks: { name: 'Glassworks', blurb: 'a coal-fired kiln: glass from quartz sand, bricks from clay, cement from limestone', batch: 45,
+    recipes: [{ in: [['sand', 2], ['coal', 1]], out: ['glass', 1] }, { in: [['clay', 2], ['coal', 1]], out: ['bricks', 2] },
+      { in: [['limestone', 2], ['coal', 1]], out: ['cement', 2] }],
     needs: [['stone', 30], ['scrap', 8], ['planks', 12]], fee: 450, xp: 120 },
   wiremill: { name: 'Wire Mill', blurb: 'draws copper ingots into cable', batch: 45,
     recipes: [{ in: [['copperbar', 1]], out: ['cable', 2] }],
     needs: [['scrap', 16], ['wire', 8], ['planks', 12], ['engine', 1]], fee: 700, xp: 160 },
-  electronics: { name: 'Electronics Shop', blurb: 'etches circuit boards from cable, resin and glass', batch: 90,
-    recipes: [{ in: [['cable', 1], ['plastic', 1], ['glass', 1]], out: ['boards', 1] }],
+  electronics: { name: 'Electronics Shop', blurb: 'etches circuit boards from cable, resin and glass, and fills batteries', batch: 90,
+    recipes: [{ in: [['cable', 1], ['plastic', 1], ['glass', 1]], out: ['boards', 1] }, { in: [['leadbar', 1], ['chems', 1]], out: ['batteries', 1] }],
     needs: [['circuit', 8], ['wire', 10], ['scrap', 10], ['planks', 16]], fee: 1400, xp: 300 },
   machineshop: { name: 'Machine Shop', blurb: 'machines steel into parts, and tools', batch: 75,
     recipes: [{ in: [['steel', 2]], out: ['parts', 1] }, { in: [['steel', 1], ['timber', 1]], out: ['tools', 3] }],
     needs: [['scrap', 20], ['engine', 1], ['planks', 16], ['nails', 20]], fee: 1100, xp: 240 },
-  foundry: { name: 'Alloy Foundry', blurb: 'casts hull alloy from steel, copper and coal', batch: 120,
-    recipes: [{ in: [['steel', 2], ['copperbar', 1], ['coal', 1]], out: ['alloy', 1] }],
+  foundry: { name: 'Alloy Foundry', blurb: 'casts hull alloy from steel, copper and coal, and smelts bauxite into aluminium', batch: 120,
+    recipes: [{ in: [['steel', 2], ['copperbar', 1], ['coal', 1]], out: ['alloy', 1] }, { in: [['bauxite', 2], ['coal', 1]], out: ['aluminium', 1] }],
     needs: [['stone', 50], ['scrap', 24], ['pcore', 1], ['planks', 16]], fee: 1800, xp: 350 },
-  chemworks: { name: 'Chemical Works', blurb: 'blends rocket propellant from fuel and salt', batch: 60,
-    recipes: [{ in: [['fuel', 1], ['salt', 1]], out: ['propellant', 1] }],
+  chemworks: { name: 'Chemical Works', blurb: 'blends rocket propellant from fuel and salt, and industrial chemicals from crude, salt and sulfur', batch: 60,
+    recipes: [{ in: [['fuel', 1], ['salt', 1]], out: ['propellant', 1] }, { in: [['crude', 1], ['salt', 1], ['sulfur', 1]], out: ['chems', 2] }],
     needs: [['scrap', 20], ['wire', 8], ['circuit', 4], ['planks', 12]], fee: 1000, xp: 220 },
 };
 /** Works per village, the most a hopper holds of each input, and the most finished crates the output bay holds. */
@@ -59,7 +64,7 @@ export const PLANT_SLOTS = 2, HOPPER = 40, OUT_CAP = 40;
 export interface PlantState {
   k: PlantKind; rec: number;
   /** Crates in the hopper, finished crates waiting, and the game time up to which the batches are settled. */
-  inp: Partial<Record<Good, number>>; out: Partial<Record<Good, number>>; t: number;
+  inp: Partial<Record<Stuff, number>>; out: Partial<Record<Good, number>>; t: number;
 }
 /** Plant state lives in the village's TownState. */
 type PlantTown = TownState;
@@ -88,7 +93,7 @@ export function runPlant(p: PlantState, now: number, pw?: (t: number) => boolean
 /** How far the batch under way is (0..1), or null when it stands. */
 export const progress = (p: PlantState, now: number) => (running(p) ? Math.min(1, (now - p.t) / PLANTS[p.k].batch) : null);
 /** Feed n crates of g into the hopper (settles first, so the new crates do not count for time already gone); returns how many went in. */
-export function feed(p: PlantState, g: Good, n: number, now: number, pw?: (t: number) => boolean): number {
+export function feed(p: PlantState, g: Stuff, n: number, now: number, pw?: (t: number) => boolean): number {
   runPlant(p, now, pw);
   if (!PLANTS[p.k].recipes.some((r) => r.in.some(([x]) => x === g))) return 0;
   const k = Math.max(0, Math.min(n, HOPPER - (p.inp[g] ?? 0)));

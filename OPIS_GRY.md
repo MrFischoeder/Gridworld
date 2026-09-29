@@ -1,6 +1,6 @@
 # GridWorld: opis gry, cel, plan i historia zmian
 
-Stan na wersję **0.89.2**. Ten dokument opisuje, czym jest GridWorld, jaki jest cel gry, co już w niej jest, czego jeszcze nie ma, dokąd zmierza i jak powstawała, wersja po wersji. Nazwy z gry (przedmioty, miejsca, postacie) są po angielsku, tak jak na ekranie.
+Stan na wersję **0.90.0**. Ten dokument opisuje, czym jest GridWorld, jaki jest cel gry, co już w niej jest, czego jeszcze nie ma, dokąd zmierza i jak powstawała, wersja po wersji. Nazwy z gry (przedmioty, miejsca, postacie) są po angielsku, tak jak na ekranie.
 
 ---
 
@@ -521,3 +521,4 @@ Pełne notatki (po angielsku) są w grze pod przyciskiem **Changelog** w menu g�
 - **0.89.0 Większe świątynie** (o 50%). Brak niewidzialnych ścian dla pojazdów. Komenda `map` pokazuje strefy mgły.
 - **0.89.1 Opis gry.** Ten dokument (OPIS_GRY.md i PDF).
 - **0.89.2 Plan gospodarki.** Uzgodniony plan rozbudowy gospodarki w `PLAN_GOSPODARKI.md` (etapy 0.90–0.99).
+- **0.90.0 Nowe surowce i towary** (etap 1 planu gospodarki). Glina, wapień, ruda ołowiu, tarcica, rzadki nikiel; półprodukty: żelazo, cegły, cement, chemikalia przemysłowe, aluminium, ołów, baterie (na razie w istniejących zakładach).

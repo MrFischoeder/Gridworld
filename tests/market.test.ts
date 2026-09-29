@@ -8,18 +8,22 @@ import { hash } from '../src/core/rng';
 const w = hash(4, 4);
 describe('village markets', () => {
   const vs = allVillages(w).slice(0, 60);
-  it('every village makes one or two goods (by its industry) and wants two others; generator villages want fuel; villages differ', () => {
+  it('every village makes one or two goods (by its industry), maybe a third of the newer ones, and wants two others; generator villages want fuel; villages differ', () => {
     const seen = new Set<string>();
+    let extra = 0;
     for (const v of vs) {
-      const s = villageSeed(w, v), p = profileOf(w, v, s);
+      const s = villageSeed(w, v), p = profileOf(w, v, s), ind = INDUSTRY[industryOf(w, v, s)];
       expect(p).toEqual(profileOf(w, v, s));
-      expect(p.makes.length).toBeGreaterThanOrEqual(1); expect(p.makes.length).toBeLessThanOrEqual(2); expect(p.wants.length).toBe(2);
-      for (const g of p.makes) expect(INDUSTRY[industryOf(w, v, s)].pool).toContain(g);
+      expect(p.makes.length).toBeGreaterThanOrEqual(1); expect(p.makes.length).toBeLessThanOrEqual(3); expect(p.wants.length).toBe(2);
+      const main = p.makes.filter((g) => ind.pool.includes(g)), more = p.makes.filter((g) => !ind.pool.includes(g));
+      expect(main.length).toBeGreaterThanOrEqual(1); expect(main.length).toBeLessThanOrEqual(2); expect(more.length).toBeLessThanOrEqual(1);
+      for (const g of more) { expect(ind.extra?.goods).toContain(g); extra++; }
       for (const g of p.makes) expect(p.wants).not.toContain(g);
       if (powerKind(s) === 'generator' && !p.makes.includes('fuel')) expect(p.wants).toContain('fuel');
       seen.add(p.makes.join() + '|' + p.wants.join());
     }
     expect(seen.size).toBeGreaterThan(20);
+    expect(extra).toBeGreaterThan(5); // clay, limestone, lead and lumber are made somewhere
   });
   it('is cheap where a good is made, dear where it is wanted, so carrying it pays', () => {
     let pairs = 0;

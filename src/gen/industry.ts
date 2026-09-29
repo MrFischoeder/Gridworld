@@ -20,16 +20,18 @@ export interface IndustrySpec {
   name: string; site: string;
   /** What it can make (a village makes up to two of these) and what it always wants. */
   pool: Good[]; wants: Good[];
+  /** A further good some villages of the kind make (a roll of its own, gen/market.ts profileOf): `chance` in 100. */
+  extra?: { goods: Good[]; chance: number };
   /** Parts to mend the site, and (refinery) what it takes to build it. */
   fix: [ItemKey, number][]; build?: [ItemKey, number][];
 }
 export const INDUSTRY: Record<Industry, IndustrySpec> = {
-  farm: { name: 'Farming village', site: 'Fields', pool: ['grain', 'carrots', 'potatoes'], wants: ['tools'], fix: [['planks', 6], ['nails', 10]] },
-  mine: { name: 'Mining village', site: 'Mine', pool: ['coal', 'ore', 'copper', 'sand'], wants: ['grain'], fix: [['planks', 8], ['scrap', 4]] },
+  farm: { name: 'Farming village', site: 'Fields', pool: ['grain', 'carrots', 'potatoes'], wants: ['tools'], extra: { goods: ['clay'], chance: 25 }, fix: [['planks', 6], ['nails', 10]] },
+  mine: { name: 'Mining village', site: 'Mine', pool: ['coal', 'ore', 'copper', 'sand'], wants: ['grain'], extra: { goods: ['limestone', 'lead'], chance: 60 }, fix: [['planks', 8], ['scrap', 4]] },
   oil: { name: 'Oil village', site: 'Oil Wells', pool: ['crude'], wants: ['tools'], fix: [['scrap', 6], ['wire', 4]] },
   refinery: { name: 'Refinery town', site: 'Refinery', pool: ['fuel'], wants: ['crude'], fix: [['scrap', 8], ['circuit', 2]], build: [['scrap', 40], ['circuit', 10], ['wire', 20], ['planks', 30]] },
-  lumber: { name: 'Timber village', site: 'Sawmill', pool: ['timber'], wants: ['tools'], fix: [['planks', 4], ['nails', 10]] },
-  fishery: { name: 'Fishing village', site: 'Fish Racks', pool: ['fish', 'salt', 'sand'], wants: ['grain'], fix: [['planks', 4], ['rope', 3]] },
+  lumber: { name: 'Timber village', site: 'Sawmill', pool: ['timber'], wants: ['tools'], extra: { goods: ['lumber'], chance: 65 }, fix: [['planks', 4], ['nails', 10]] },
+  fishery: { name: 'Fishing village', site: 'Fish Racks', pool: ['fish', 'salt', 'sand'], wants: ['grain'], extra: { goods: ['clay'], chance: 40 }, fix: [['planks', 4], ['rope', 3]] },
   workshop: { name: 'Craft village', site: 'Workshops', pool: ['tools', 'cloth'], wants: ['ore'], fix: [['planks', 4], ['scrap', 3]] },
   salvage: { name: 'Salvage village', site: 'Salvage Yard', pool: ['tech', 'meds'], wants: ['copper'], fix: [['scrap', 5], ['wire', 3]] },
 };

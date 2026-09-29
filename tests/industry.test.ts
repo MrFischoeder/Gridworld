@@ -14,7 +14,7 @@ describe('village industries', () => {
       for (const v of vs) {
         const s = villageSeed(w, v), k = industryOf(w, v, s);
         seen.add(k);
-        for (const g of profileOf(w, v, s).makes) expect(INDUSTRY[k].pool).toContain(g);
+        for (const g of profileOf(w, v, s).makes) expect([...INDUSTRY[k].pool, ...(INDUSTRY[k].extra?.goods ?? [])]).toContain(g);
         if (k === 'refinery') expect(vs.some((o) => o !== v && worldDist(o.x, o.z, v.x, v.z) < 9000 && industryOf(w, o, villageSeed(w, o)) === 'oil')).toBe(true);
         // the site lies outside the fence, on another side than the power plant
         const site = industrySite(s, k), p = powerSite(s);

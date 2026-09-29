@@ -4,7 +4,7 @@
 import { G, W } from '../game';
 import { ITEMS } from '../data/items';
 import { calcStats, saveChar } from '../character';
-import { PLANTS, HOPPER, OUT_CAP, plantsOf, runPlant, progress, feed, collect, setRecipe, type PlantState } from '../gen/plants';
+import { PLANTS, HOPPER, OUT_CAP, plantsOf, runPlant, progress, feed, collect, setRecipe, type PlantState, type Stuff } from '../gen/plants';
 import { findPoi } from '../gen/regions';
 import { GOOD_INFO, type Good } from '../gen/market';
 import { carried, takeFrom, putAway } from './market';
@@ -25,7 +25,7 @@ function render(msg = '') {
   const pw = powerOf(open), on = pw ? pw(now) : true;
   runPlant(p, now, pw);
   const rec = spec.recipes[p.rec], pr = on ? progress(p, now) : null;
-  const name = (g: Good) => ITEMS[g].name, recTxt = (i: number) => { const r = spec.recipes[i]; return r.in.map(([g, n]) => `${n} ${name(g)}`).join(' + ') + ` → ${r.out[1]} ${name(r.out[0])}`; };
+  const name = (g: Stuff) => ITEMS[g].name, recTxt = (i: number) => { const r = spec.recipes[i]; return r.in.map(([g, n]) => `${n} ${name(g)}`).join(' + ') + ` → ${r.out[1]} ${name(r.out[0])}`; };
   const recipes = spec.recipes.length > 1 ? spec.recipes.map((_, i) => `<button class="opt" style="width:auto;${i === p.rec ? 'color:var(--gold)' : ''}" data-wkr="${i}">${i === p.rec ? '▸ ' : ''}${recTxt(i)}</button>`).join('') : '';
   const inputs = [...new Set(spec.recipes.flatMap((r) => r.in.map(([g]) => g)))];
   const rows = inputs.map((g) => {
@@ -68,7 +68,7 @@ export function worksClick(t: HTMLElement): boolean {
   const pw = powerOf(open);
   if (r) { setRecipe(p, +r.dataset.wkr!, now, pw); saveChar(); render('It is set to make something else now.'); return true; }
   if (l) {
-    const g = l.dataset.wkl as Good, n = feed(p, g, Math.min(+l.dataset.n!, carried(g, at)), now, pw);
+    const g = l.dataset.wkl as Stuff, n = feed(p, g, Math.min(+l.dataset.n!, carried(g, at)), now, pw);
     if (n) takeFrom(g, n, at);
     calcStats(); saveChar();
     render(n ? `Loaded ${n} × ${ITEMS[g].name} into the hopper.` : 'The hopper has no room for more of that.');
