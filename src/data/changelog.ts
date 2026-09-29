@@ -4,6 +4,16 @@ export interface Change { v: string; date: string; title: string; notes: string[
 
 export const CHANGELOG: Change[] = [
   {
+    v: '0.75.0', date: '2026-09-29', title: 'Village halls',
+    notes: [
+      'Every village has a storage hall outside its north wall, west of the north gate, with a terminal inside against the back wall.',
+      'At the terminal you move things into the village\'s stock: from your backpack, from your vehicles parked by the hall, and crates you set down on the hall\'s floor. Store one, all of a kind, or everything at once; take anything back out whenever you like.',
+      'The hold takes 6000 litres. Crates stack up along its walls as it fills.',
+      'The terminal also shows the village\'s own goods waiting in its industry storehouse, which belong to the same stock.',
+      'Next: the village\'s builds (farms, the power plant, works, walls, the blacksmith\'s orders) will draw on this stock.',
+    ],
+  },
+  {
     v: '0.74.0', date: '2026-09-29', title: 'The radar station',
     notes: [
       'A third great installation stands 18 to 28 km from Gridholm: the Old Radar Station, a compound with a bunker, a lattice tower, a guyed mast and a generator shed. Its dish lies on its back in the grass.',
