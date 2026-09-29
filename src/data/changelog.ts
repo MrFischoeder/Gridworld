@@ -4,6 +4,12 @@ export interface Change { v: string; date: string; title: string; notes: string[
 
 export const CHANGELOG: Change[] = [
   {
+    v: '0.81.1', date: '2026-10-03', title: 'Save check for bridges',
+    notes: [
+      'The save tests now cover the bridges you build. No change to the game itself.',
+    ],
+  },
+  {
     v: '0.81.0', date: '2026-10-03', title: 'Bridges at the fords',
     notes: [
       'Every ford where a road crosses a river is now a bridge site: survey stakes and a line across the water, and a BRIDGE SITE sign at both ends.',
