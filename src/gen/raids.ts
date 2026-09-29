@@ -66,10 +66,19 @@ export function tribute(r: Raid, wealth: number, wall: number): number {
   const g = (60 + r.strength * 45 + wealth * 0.3) * (1 - Math.min(2, wall) * 0.18);
   return Math.max(50, Math.round(g / 10) * 10);
 }
-/** Damage lost raids have done to the village's power plant since `since` (its last mending), up to `now`. */
+/** Game minutes over which the villagers patch up what a lost raid did to their power plant. */
+export const PLANT_HEAL = 4 * 1440;
+/**
+ * Damage lost raids have done to the village's power plant since `since` (its last mending), up to `now`; each
+ * raid's damage fades as the villagers patch it up over `PLANT_HEAL`.
+ */
 export function raidHurt(world: number, v: Poi, s: TownState | undefined, since: number, now: number): number {
   let h = 0;
-  for (const r of raidsBetween(world, v, since - RAID.duration, now)) if (r.t0 + RAID.duration > since && r.t0 + RAID.duration <= now && raidOutcome(world, r, s) === 'lost') h += RAID.loss * (worksOf(s, 'plantGuard') ? GUARDED.lost : 1);
+  const from = Math.max(since, now - PLANT_HEAL - RAID.duration);
+  for (const r of raidsBetween(world, v, from - RAID.duration, now)) {
+    const end = r.t0 + RAID.duration;
+    if (end > from && end <= now && raidOutcome(world, r, s) === 'lost') h += RAID.loss * (worksOf(s, 'plantGuard') ? GUARDED.lost : 1) * Math.max(0, 1 - (now - end) / PLANT_HEAL);
+  }
   return h;
 }
 /** The next raid on v after `now` (for the elder's warning), and the last one before it. */

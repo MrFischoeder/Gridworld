@@ -12,7 +12,7 @@ import { wallOf, worksOf, powerKind, POWER, POWER_DOWN } from '../gen/town';
 import { WALL_TIERS, type VillageMap } from '../gen/village';
 import { nextRaid, lastRaid, raidOutcome } from '../gen/raids';
 import { PLANTS, plantsOf, running, runPlant } from '../gen/plants';
-import { STATIONS, DRAW, VILLAGE_KW, balance, baseKw, stationKw, fuelAt, fuelWords, poweredAt } from '../gen/energy';
+import { STATIONS, DRAW, VILLAGE_KW, balance, baseKw, stationKw, fuelAt, fuelWords, poweredAt, sitePower, SITE_UNPOWERED } from '../gen/energy';
 import { roadsOf, departures, lastArrival } from '../gen/caravans';
 import { STAGES, CHARIOT, stageRows, stagesDone } from '../gen/shuttle';
 import { weatherAt, WEATHER_NAME } from '../gen/weather';
@@ -85,7 +85,7 @@ function powerPage(poi: Poi, vm: VillageMap): string {
   const c = G.char, st = c.towns[poi.id], seed = vm.seed, now = c.time, b = balance(c.world, poi, seed, st, now);
   const kind = powerKind(seed), cond = plantCondition(poi.id, seed);
   let s = h(`POWER · ${fmtClock(now)}`);
-  s += row('Made now', `<b>${Math.round(b.made)} kW</b>`) + row('Village use', `${VILLAGE_KW} kW`) + row('Left for farms and works', `${Math.round(Math.max(0, b.made - VILLAGE_KW))} kW`);
+  s += row('Made now', `<b>${Math.round(b.made)} kW</b>`) + row('Village use', `${VILLAGE_KW} kW`) + row('Left for farms, industry and works', `${Math.round(Math.max(0, b.made - VILLAGE_KW))} kW`);
   s += h('SOURCES');
   s += row(POWER[kind].name, `${Math.round(baseKw(c.world, poi, seed, st, now))} kW · condition ${Math.round(cond)}%${cond < POWER_DOWN ? ' · DOWN' : ''}`);
   for (const x of st?.stations ?? []) {
@@ -94,6 +94,7 @@ function powerPage(poi: Poi, vm: VillageMap): string {
   }
   if (!(st?.stations ?? []).length) s += `<div class="tdim">No power stations. The works need them.</div>`;
   if (b.farms) s += h('FARMS') + row(`${farmsOf(st)} farm${farmsOf(st) > 1 ? 's' : ''}${upgradedOf(st) ? `, ${upgradedOf(st)} with pumps` : ''}`, `draw ${b.farms} kW · ${Math.round(b.farmsPowered * 100)}% powered now (first in line)`);
+  if (b.site) { const sp = sitePower(c.world, poi, seed, st, now); s += h('INDUSTRY') + row(INDUSTRY[industryOf(c.world, poi, seed)].site, `draw ${b.site} kW · ${Math.round(b.sitePowered * 100)}% powered now · ${Math.round(sp * 100)}% over the last day (output ×${(SITE_UNPOWERED + (1 - SITE_UNPOWERED) * sp).toFixed(2)})`); }
   s += h('WORKS');
   const plants = plantsOf(st);
   plants.forEach((p, i) => { s += row(PLANTS[p.k].name, `draws ${DRAW[p.k]} kW · ${!running(p) ? 'idle' : b.powered[i] ? 'powered' : 'NO POWER'}`); });

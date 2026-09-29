@@ -119,15 +119,16 @@ describe('power', async () => {
   });
   it('powers the works in the order they were built while there is enough', () => {
     const smelter: PlantState = { k: 'smelter', rec: 0, inp: { ore: 10, coal: 10 }, out: {}, t: 0 };
-    const foundry: PlantState = { k: 'foundry', rec: 0, inp: { steel: 10, copperbar: 10, coal: 10 }, out: {}, t: 0 };
+    const foundry: PlantState = { k: 'foundry', rec: 0, inp: { steel: 10, aluminium: 10, nickel: 10 }, out: {}, t: 0 };
     const s: TownState = { plants: [smelter, foundry] };
     const none = balance(1, v, 1, s, 600);
     expect(none.powered).toEqual([false, false]); // the village's own plant hardly covers the village
     s.stations = [{ k: 'coalplant', on: true, fuel: 20, t: 0 }];
     const some = balance(1, v, 1, s, 600);
-    expect(some.made - VILLAGE_KW).toBeGreaterThanOrEqual(DRAW.smelter);
+    expect(some.made - VILLAGE_KW - some.site).toBeGreaterThanOrEqual(DRAW.smelter);
     expect(some.powered[0]).toBe(true);
-    expect(some.powered[1]).toBe(some.made - VILLAGE_KW - DRAW.smelter >= DRAW.foundry);
+    expect(some.powered[1]).toBe(some.made - VILLAGE_KW - some.farms - some.site - DRAW.smelter >= DRAW.foundry);
+    expect(some.sitePowered).toBe(1); // the industry site is fed before the works
   });
   it('a works without power makes nothing', () => {
     const p: PlantState = { k: 'smelter', rec: 0, inp: { ore: 10, coal: 10 }, out: {}, t: 0 };

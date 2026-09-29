@@ -126,10 +126,15 @@ const DAY = 1440;
 export const powerKind = (seed: number): PowerKind => (['generator', 'solar', 'wind'] as const)[hash(seed, 0x90e7) % 3];
 /** When the plant was last mended: by you, or (never touched) some time in the last few days, per village. */
 export const lastFix = (seed: number, s: TownState | undefined) => s?.fixed ?? -(hash(seed, 0x90e8) % (4 * DAY));
+/**
+ * Wear alone never takes a plant below this: the villagers patch it up themselves (a mended plant runs at 100, a
+ * patched one at this; only raids and bandits knock it down further).
+ */
+export const PATCHED = 60;
 /** The plant's condition (0..100) at game time `now`. */
 export function powerCondition(seed: number, s: TownState | undefined, now: number, raidHurt = 0): number {
   const k = powerKind(seed), age = Math.max(0, now - lastFix(seed, s)) / DAY;
-  return Math.max(0, Math.min(100, 100 - age * POWER[k].wear - (s?.hurt ?? 0) - raidHurt));
+  return Math.max(0, Math.min(100, Math.max(PATCHED, 100 - age * POWER[k].wear) - (s?.hurt ?? 0) - raidHurt));
 }
 /**
  * Where the plant stands, in plaza-local metres (the plaza runs 0..72): on a side of the village the seed picks

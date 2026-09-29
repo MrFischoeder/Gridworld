@@ -12,7 +12,7 @@ import { hash, type Dir } from '../core/rng';
 import { daylight, sunTilt } from '../core/time';
 import { latitude, type Poi } from './regions';
 import { powerKind, powerCondition, powerSite, lastFix, POWER_DOWN, type TownState } from './town';
-import { industrySite, type Industry } from './industry';
+import { industrySite, industryOf, siteBuilt, type Industry } from './industry';
 import { raidHurt } from './raids';
 import type { ItemKey } from '../data/items';
 import { running, type PlantState } from './plants';
@@ -39,7 +39,7 @@ export const STATIONS: Record<StationKind, StationSpec> = {
 /** Stations per village; the most crates a bunker holds. */
 export const STATION_SLOTS = 2, BUNKER = 30;
 /** What the village's own plant makes at full condition (kW), and what the village itself takes. */
-export const BASE_KW: Record<ReturnType<typeof powerKind>, number> = { generator: 40, solar: 34, wind: 36 };
+export const BASE_KW: Record<ReturnType<typeof powerKind>, number> = { generator: 55, solar: 55, wind: 52 };
 export const VILLAGE_KW = 25;
 /** What each works draws while it works (kW). */
 export const DRAW: Record<PlantState['k'], number> = { smelter: 60, refinery: 50, glassworks: 45, wiremill: 30, electronics: 35, machineshop: 40, foundry: 80, chemworks: 40,
@@ -98,10 +98,27 @@ export function baseKw(world: number, v: Poi, seed: number, s: TownState | undef
   const k = kind === 'solar' ? sunAt(v, t) * 1.3 : kind === 'wind' ? 0.4 + windAt(seed, t) * 0.8 : 1;
   return BASE_KW[kind] * Math.min(1, k) * (0.5 + 0.5 * c / 100) * plantMult(s);
 }
-export interface Balance { made: number; village: number; free: number; draw: number; powered: boolean[]; farms: number; farmsPowered: number }
 /**
- * The village's power at time t: made (its plant and stations), taken by the village, and which works get power: in
- * the order they were built, each that has work to do takes its draw while enough is left. The farms take theirs first.
+ * What the village's industry site draws (kW): pumps, winches, saws, lamps. Small enough that a village's own plant in
+ * good repair runs a small site; a refinery, or a neglected plant, wants a power station. Without power the site
+ * makes only `SITE_UNPOWERED` of what it could (gen/industry.ts production).
+ */
+export const SITE_KW: Record<Industry, number> = { farm: 3, fishery: 3, lumber: 8, oil: 10, salvage: 10, mine: 12, workshop: 12, refinery: 30 };
+export const SITE_UNPOWERED = 0.5;
+/** What the site draws now (nothing while a refinery is not built). */
+export function siteKw(world: number, v: Poi, seed: number, s: TownState | undefined): number {
+  const k = industryOf(world, v, seed);
+  return siteBuilt(k, s) ? SITE_KW[k] : 0;
+}
+export interface Balance {
+  made: number; village: number; free: number; draw: number; powered: boolean[]; farms: number; farmsPowered: number;
+  /** The industry site's draw and the share of it it got. */
+  site: number; sitePowered: number;
+}
+/**
+ * The village's power at time t: made (its plant and stations), taken by the village, then the farms (pumps and
+ * lamps), then the industry site, then the works in the order they were built (each that has work to do takes its
+ * draw while enough is left).
  */
 export function balance(world: number, v: Poi, seed: number, s: TownState | undefined, t: number): Balance {
   const made = baseKw(world, v, seed, s, t) + (s?.stations ?? []).reduce((a, st) => a + stationKw(v, seed, st, t), 0);
@@ -109,6 +126,9 @@ export function balance(world: number, v: Poi, seed: number, s: TownState | unde
   // the farms come first (gen/farms.ts): pumps and lamps before the works
   const farms = farmsKw(s), farmsGot = Math.min(free, farms);
   free -= farmsGot;
+  // then the industry site (a share of its draw is a share of its power)
+  const site = siteKw(world, v, seed, s), siteGot = Math.min(free, site);
+  free -= siteGot;
   const powered = (s?.plants ?? []).map((p) => {
     if (!running(p)) return false;
     const d = DRAW[p.k];
@@ -116,7 +136,24 @@ export function balance(world: number, v: Poi, seed: number, s: TownState | unde
     if (free >= d) { free -= d; return true; }
     return false;
   });
-  return { made, village: Math.min(made, VILLAGE_KW), free, draw, powered, farms, farmsPowered: farms ? farmsGot / farms : 1 };
+  return { made, village: Math.min(made, VILLAGE_KW), free, draw, powered, farms, farmsPowered: farms ? farmsGot / farms : 1, site, sitePowered: site ? siteGot / site : 1 };
+}
+const siteCache = new Map<string, number>();
+/**
+ * The share of its power the industry site got over the day before t (12 samples, 2 h apart), so solar nights and
+ * wind lulls average out. Cached per game hour and per state of the village's power (stations, repairs, levels).
+ */
+export function sitePower(world: number, v: Poi, seed: number, s: TownState | undefined, t: number): number {
+  if (!siteKw(world, v, seed, s)) return 1;
+  const key = `${world}:${v.id}:${Math.floor(t / 60)}:${s ? JSON.stringify([s.stations, s.fixed, s.hurt, s.pup, s.farms, s.fup, s.built]) : ''}`;
+  let p = siteCache.get(key);
+  if (p === undefined) {
+    p = 0; for (let k = 0; k < 12; k++) p += balance(world, v, seed, s, t - k * 120).sitePowered;
+    p /= 12;
+    if (siteCache.size > 2000) siteCache.clear();
+    siteCache.set(key, p);
+  }
+  return p;
 }
 /** The share of their power the farms got over the day before t (12 samples, 2 h apart): solar nights and wind lulls average out. */
 export function farmPower(world: number, v: Poi, seed: number, s: TownState | undefined, t: number): number {

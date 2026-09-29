@@ -1,6 +1,6 @@
 # GridWorld: opis gry, cel, plan i historia zmian
 
-Stan na wersję **0.91.0**. Ten dokument opisuje, czym jest GridWorld, jaki jest cel gry, co już w niej jest, czego jeszcze nie ma, dokąd zmierza i jak powstawała, wersja po wersji. Nazwy z gry (przedmioty, miejsca, postacie) są po angielsku, tak jak na ekranie.
+Stan na wersję **0.92.0**. Ten dokument opisuje, czym jest GridWorld, jaki jest cel gry, co już w niej jest, czego jeszcze nie ma, dokąd zmierza i jak powstawała, wersja po wersji. Nazwy z gry (przedmioty, miejsca, postacie) są po angielsku, tak jak na ekranie.
 
 ---
 
@@ -523,3 +523,4 @@ Pełne notatki (po angielsku) są w grze pod przyciskiem **Changelog** w menu g�
 - **0.89.2 Plan gospodarki.** Uzgodniony plan rozbudowy gospodarki w `PLAN_GOSPODARKI.md` (etapy 0.90–0.99).
 - **0.90.0 Nowe surowce i towary** (etap 1 planu gospodarki). Glina, wapień, ruda ołowiu, tarcica, rzadki nikiel; półprodukty: żelazo, cegły, cement, chemikalia przemysłowe, aluminium, ołów, baterie (na razie w istniejących zakładach).
 - **0.91.0 Zakłady na każdy krok** (etap 2 planu gospodarki). Tartak, cegielnia, cementownia, przędzalnia, stalownia, zakład polimerów, huta aluminium, fabryka baterii; stal z żelaza, wapienia i węgla; stop z stali, aluminium i niklu; plany dla zakładów tier 2 (3 nowe technologie); len i owce na farmach.
+- **0.92.0 Prąd dla przemysłu** (etap 3 planu gospodarki). Miejsca przemysłu wiosek pobierają prąd (3–30 kW), bez prądu dają połowę; elektrownie wiosek mocniejsze, mieszkańcy sami je łatają (nie spadają poniżej 60%, szkody po najazdach goją się przez 4 dni).

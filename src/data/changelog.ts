@@ -4,6 +4,16 @@ export interface Change { v: string; date: string; title: string; notes: string[
 
 export const CHANGELOG: Change[] = [
   {
+    v: '0.92.0', date: '2026-10-11', title: 'Power for industry',
+    notes: [
+      'A village\'s industry site now draws power: fields 3 kW, fish racks 3, a sawmill 8, oil wells and a salvage yard 10, a mine and workshops 12, a refinery 30. It is fed after the village and its farms and before the works.',
+      'Without power a site makes only half of what it could; how well it was powered over the last day counts, so solar nights and wind lulls even out. Mend the power plant, upgrade it or build a power station and the village\'s goods pile up faster in its hall, sell cheaper and come in bigger shares.',
+      'The villages\' own power plants are a little stronger (55 kW for a generator or solar array, 52 for wind turbines) so a plant in good repair runs the village and a small site.',
+      'Villagers now patch up their own power plant: wear alone never takes it below 60%, and what a lost raid did to it mends over four days. Mending it yourself still brings it to 100%.',
+      'The elder\'s power talk and the village computer\'s POWER tab show the site\'s draw, how much of it it gets now and over the last day, and what that does to its output.',
+    ],
+  },
+  {
     v: '0.91.0', date: '2026-10-11', title: 'Village works for every step',
     notes: [
       'Eight new works the elder can build outside the fence (still two per village): the Sawmill (timber into lumber), the Brickworks (clay and coal into bricks), the Cement Works (limestone and coal into cement), the Textile Mill (flax fibre or wool into cloth), the Steelworks, the Polymer Plant, the Aluminium Works and the Battery Works. Each has its own look: an open saw shed, a ring kiln with a tall stack, a rotary kiln and silos, a brick mill with rows of windows, a converter and a steel hall, reactors and a column, a long potroom with roof vents, a casting shed with acid tanks.',

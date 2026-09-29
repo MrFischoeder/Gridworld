@@ -12,6 +12,7 @@ import { mountainMask } from './mountains';
 import { powerSite, worksOf, GUARDED } from './town';
 import { raidsBetween, raidOutcome, RAID } from './raids';
 import type { TownState } from './town';
+import { sitePower, SITE_UNPOWERED } from './energy';
 import type { Good } from './market';
 import type { ItemKey } from '../data/items';
 
@@ -94,10 +95,16 @@ export function fertility(world: number, v: Poi, seed: number): number {
   const hills = mountainMask(world, v.x, v.z), r = (hash(seed, 0xfe27) % 1000) / 1000;
   return Math.round(Math.max(0.6, Math.min(1.6, 0.6 + r * 1.1 - hills * 0.8)) * 100) / 100;
 }
-/** How much the village's industry puts out now (0: its refinery is not built yet): its condition, times the fields' fertility on a farm, times its staffing (gen/people.ts: 1 at the base population). */
+/**
+ * How much the village's industry puts out now (0: its refinery is not built yet): its condition, times the fields'
+ * fertility on a farm, times its staffing (gen/people.ts: 1 at the base population), times its power (gen/energy.ts:
+ * half without any over the last day).
+ */
 export function production(world: number, v: Poi, seed: number, s: TownState | undefined, now: number): number {
   const k = industryOf(world, v, seed);
-  return siteBuilt(k, s) ? siteCondition(world, v, s, now) / 100 * fertility(world, v, seed) * staffing(seed, v.id === GRIDHOLM_ID, s, now) : 0;
+  if (!siteBuilt(k, s)) return 0;
+  const pw = SITE_UNPOWERED + (1 - SITE_UNPOWERED) * sitePower(world, v, seed, s, now);
+  return siteCondition(world, v, s, now) / 100 * fertility(world, v, seed) * staffing(seed, v.id === GRIDHOLM_ID, s, now) * pw;
 }
 /**
  * Where the site lies, in plaza-local metres: on a side (W, E or S) other than the power plant's, off its middle so

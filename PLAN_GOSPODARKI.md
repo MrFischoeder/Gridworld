@@ -128,7 +128,36 @@ Dalej 2 zakłady na wioskę (`PLANT_SLOTS`). Istniejące klucze `PlantKind` zost
 - Nowe technologie dopisujemy **na końcu `TECHS`**, żeby nośniki dotychczasowych technologii zostały na miejscu.
 - Budowy nowych zakładów biorą Bricks, Cement i Lumber zamiast części desek i kamienia, żeby nowe półprodukty miały zastosowanie od razu.
 
-## Etap 3 (0.92.0): energia ograniczeniem produkcji
+## Etap 3 (0.92.0): energia ograniczeniem produkcji (ZROBIONE)
+
+**Jak zrobione (różnice wobec planu, decyzja właściciela z 29.09.2026: „wioski same dbają o elektrownię”):**
+- Symulacja pokazała, że elektrownie nieodwiedzonych wiosek po kilku dniach były zepsute (zużycie bez napraw i szkody po najazdach). Kara „bez prądu połowa” wyzerowałaby produkcję 78 z 84 wiosek.
+- Dlatego:
+  - Mieszkańcy łatają elektrownię: samo zużycie nie schodzi poniżej `PATCHED` 60% (`powerCondition` w `gen/town.ts`).
+  - Szkody po przegranym najeździe goją się przez `PLANT_HEAL` 4 dni (`raidHurt` w `gen/raids.ts`).
+  - Elektrownie wiosek są mocniejsze: `BASE_KW` 55 / 55 / 52 zamiast 40 / 34 / 36.
+- Pobór przemysłu jest mniejszy niż w planie (`SITE_KW` w `gen/energy.ts`):
+
+  | Miejsce przemysłu | Pobór |
+  |---|---|
+  | pola | 3 kW |
+  | rybołówstwo | 3 kW |
+  | tartak | 8 kW |
+  | szyby naftowe | 10 kW |
+  | złomowisko | 10 kW |
+  | kopalnia | 12 kW |
+  | warsztaty | 12 kW |
+  | rafineria | 30 kW |
+
+  Połatana elektrownia wystarcza na wioskę i drobny przemysł.
+- Działanie:
+  - `production` × (0,5 + 0,5 × zasilenie), gdzie zasilenie to średnia z doby (`sitePower`, 12 próbek co 2 h, cache na godzinę gry).
+  - Kolejność zasilania w `balance`: wioska, farmy, przemysł, zakłady.
+- Wynik (świat 12345, dzień 10):
+  - średnia produkcja 0,74 (wcześniej 0,88);
+  - ok. 17 z 84 wiosek zużywa więcej, niż robi (wcześniej 7);
+  - wioski na słońcu tracą nocą.
+
 
 - Miejsca przemysłu wiosek zaczynają pobierać prąd. Przykładowe liczby w naszej skali:
   - kopalnia 20 kW;

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { raidSource, raidsBetween, raidOutcome, raidHurt, raidOf, RAID } from '../src/gen/raids';
+import { raidSource, raidsBetween, raidOutcome, raidHurt, PLANT_HEAL, raidOf, RAID } from '../src/gen/raids';
 import { allVillages, worldDist } from '../src/gen/regions';
 import { hash } from '../src/core/rng';
 
@@ -27,8 +27,13 @@ describe('village raids', () => {
     expect(held[2]).toBeGreaterThan(held[1]); expect(held[1]).toBeGreaterThan(held[0]); expect(n).toBeGreaterThan(50);
     const v = raided[0], rs = raidsBetween(w, v, 0, 40 * 1440);
     const lostAll = { raids: Object.fromEntries(rs.map((r) => [r.k, 'lost' as const])) }, wonAll = { raids: Object.fromEntries(rs.map((r) => [r.k, 'won' as const])) };
-    expect(raidHurt(w, v, lostAll, 0, 40 * 1440)).toBe(rs.length * RAID.loss);
+    // a lost raid hurts the plant in full when it ends, and the villagers patch it up over PLANT_HEAL
+    const end = rs[3].t0 + RAID.duration, only = { raids: { ...wonAll.raids, [rs[3].k]: 'lost' as const } };
+    expect(raidHurt(w, v, only, 0, end)).toBeCloseTo(RAID.loss, 5);
+    expect(raidHurt(w, v, only, 0, end + PLANT_HEAL / 2)).toBeCloseTo(RAID.loss / 2, 5);
+    expect(raidHurt(w, v, only, 0, end + PLANT_HEAL)).toBe(0);
+    expect(raidHurt(w, v, lostAll, 0, end)).toBeGreaterThanOrEqual(RAID.loss);
     expect(raidHurt(w, v, wonAll, 0, 40 * 1440)).toBe(0);
-    expect(raidHurt(w, v, lostAll, rs[1].t0 + RAID.duration + 1, 40 * 1440)).toBe((rs.length - 2) * RAID.loss); // mended after the second
+    expect(raidHurt(w, v, only, end + 1, end + 60)).toBe(0); // mended after it
   });
 });
