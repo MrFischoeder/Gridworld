@@ -6,6 +6,7 @@
 //   and needs mending with the right parts; below `POWER_DOWN` the lights go out.
 import { hash, rng, type Dir } from '../core/rng';
 import { villageGates, WALL_TIERS } from './village';
+import type { Good } from './market';
 import type { ItemKey } from '../data/items';
 import type { PlantState, PlantKind } from './plants';
 import type { StationState, StationKind } from './energy';
@@ -21,7 +22,7 @@ export interface TownState {
   hurt?: number;
   /** How the bandit raids you were there for ended (gen/raids.ts), by raid number. */
   raids?: Record<number, 'won' | 'lost' | 'paid'>;
-  /** The storehouse (gen/store.ts): crates at a time, its tier, materials handed over towards the next one. */
+  /** The old industry storehouse (before the village hall took its goods): read once by gen/hall.ts, then no longer written. */
   store?: { n: number; t: number }; storeTier?: number; sgiven?: Partial<Record<ItemKey, number>>;
   /** When villagers were killed in raids you were there for (they are missed for a couple of days). */
   dead?: number[];
@@ -45,6 +46,8 @@ export interface TownState {
   pup?: number; pupgiven?: Partial<Record<ItemKey, number>>;
   /** The village hall's hold (gen/hall.ts): what you have stored here for the village's builds. */
   hold?: Partial<Record<ItemKey, number>>;
+  /** The village's own goods in the hall (gen/hall.ts): an anchor per good (crates at time t). */
+  own?: Partial<Record<Good, { n: number; t: number }>>;
 }
 
 // ---------- defence works ----------

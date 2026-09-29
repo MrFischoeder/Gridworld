@@ -60,7 +60,7 @@ export function raidOutcome(world: number, r: Raid, s: TownState | undefined): '
 }
 /**
  * What the bandits demand to leave the village alone: a base by the band's strength, a share of what is in the
- * storehouse (`wealth`, gold), less behind a better wall. Rounded to 10 gold.
+ * hall (`wealth`, gold: its own goods), less behind a better wall. Rounded to 10 gold.
  */
 export function tribute(r: Raid, wealth: number, wall: number): number {
   const g = (60 + r.strength * 45 + wealth * 0.3) * (1 - Math.min(2, wall) * 0.18);

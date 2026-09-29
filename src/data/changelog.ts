@@ -4,6 +4,16 @@ export interface Change { v: string; date: string; title: string; notes: string[
 
 export const CHANGELOG: Change[] = [
   {
+    v: '0.76.0', date: '2026-09-29', title: 'One store for every village',
+    notes: [
+      'The village hall is now the village\'s only store. The storehouse by the industry site is gone (with its tiers, the shipments and the convoy): what the village makes piles up in its hall, up to 60 crates of each good, and while it is at that the work stops. At the site a carrier stacks the crates on a loading pallet.',
+      'Every build draws on the hall\'s stock, never on your backpack: the wall, the refinery, turrets and barricades, works and power stations, farms and steel ploughs, the power plant upgrades, and the blacksmith\'s orders. Store the materials at the hall\'s terminal; each panel shows what the hall has and what it still lacks, and its button builds from the stock.',
+      'The village\'s own goods count too: a build that needs what the village makes takes it from the hall.',
+      'The market, the elder\'s share and haul contracts sell only the village\'s own goods, never what you stored. The market sells them wholesale while the hall is nearly full of them.',
+      'Repairs, loading works and power station bunkers, and the great installations still take what you carry.',
+    ],
+  },
+  {
     v: '0.75.0', date: '2026-09-29', title: 'Village halls',
     notes: [
       'Every village has a storage hall outside its north wall, west of the north gate, with a terminal inside against the back wall.',

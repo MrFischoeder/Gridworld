@@ -7,10 +7,7 @@ import { scene } from '../world/render';
 import { ITEMS, type ItemKey } from '../data/items';
 import { calcStats, saveChar } from '../character';
 import { findPoi, villageSeed } from '../gen/regions';
-import { HALL, holdVol, holdRoom, deposit, withdraw } from '../gen/hall';
-import { profileOf } from '../gen/market';
-import { production } from '../gen/industry';
-import { storeAt, storeCap } from '../gen/store';
+import { HALL, OWN, holdVol, holdRoom, deposit, withdraw, stockOf } from '../gen/hall';
 import { hallRect, floorPickups, refreshHall } from '../world/hall';
 import { stores, takeFrom, putAway } from './market';
 import { $, logLine } from './hud';
@@ -34,14 +31,16 @@ function render(msg = '') {
   const c = G.char, poi = findPoi(c.world, vid), st = c.towns[vid];
   if (!poi) return;
   const hold = Object.entries(st?.hold ?? {}).filter(([, n]) => n) as [ItemKey, number][];
-  const seed = villageSeed(c.world, poi), makes = profileOf(c.world, poi, seed).makes, own = Math.floor(storeAt(seed, st, c.time, production(c.world, poi, seed, st, c.time)));
+  const seed = villageSeed(c.world, poi), sk = stockOf(c.world, poi, seed, st, c.time);
   const mine = [...withYou()].sort((a, b) => ITEMS[a[0]].name.localeCompare(ITEMS[b[0]].name));
   let s = `<h2>${poi.name} · Village Hall</h2><div class="role">The village's stock · hold ${Math.round(holdVol(st))} / ${HALL.vol} L</div>` +
     `<div class="say">${msg ? msg + '<br><br>' : ''}Whatever is stored here belongs to the village: its builds will draw on it. You can take it back out whenever you like.</div>`;
   s += `<div class="say" style="margin:8px 0 0">In the hold</div>` + (hold.length ? hold.sort((a, b) => ITEMS[a[0]].name.localeCompare(ITEMS[b[0]].name)).map(([k, n]) =>
     `<div class="shoprow"><div><b>${ITEMS[k].name}</b> ×${n}</div><button class="opt" style="width:auto" data-hout="${k}" data-hn="1">Take 1</button><button class="opt" style="width:auto" data-hout="${k}" data-hn="999">Take all</button></div>`).join('')
     : '<div class="say" style="opacity:.7">Empty.</div>');
-  s += `<div class="say" style="opacity:.85">The village's own goods in its storehouse: <b>${own}</b> of ${storeCap(st)} crates of ${makes.map((g) => ITEMS[g].name).join(' and ') || 'nothing'} (part of the same stock; the elder shares them with friends of the village).</div>`;
+  s += `<div class="say" style="margin:8px 0 0">The village's own goods (what its ${sk.prod > 0 ? 'land and workers make' : 'site would make'}; up to ${OWN.cap} crates of each, then the work stops)</div>` +
+    (sk.own.map((g) => `<div class="shoprow"><div><b>${ITEMS[g].name}</b> ×${Math.floor(sk.ownOf(g))}</div></div>`).join('') || '<div class="say" style="opacity:.7">None.</div>') +
+    `<div class="say" style="opacity:.8">The village's builds use these too. You buy them at the market, or the elder shares them with friends of the village.</div>`;
   s += `<div class="say" style="margin:8px 0 0">With you here (backpack, vehicles by the hall, the floor)</div>` + (mine.length ? mine.map(([k, e]) => {
     const room = holdRoom(st, k), n = e.carried + e.floor;
     return `<div class="shoprow"><div><b>${ITEMS[k].name}</b> ×${n}${e.floor ? ` <span style="opacity:.7">(${e.floor} on the floor)</span>` : ''}</div><button class="opt" style="width:auto" data-hin="${k}" data-hn="1" ${room ? '' : 'disabled'}>Store 1</button><button class="opt" style="width:auto" data-hin="${k}" data-hn="999" ${room ? '' : 'disabled'}>Store all</button></div>`;

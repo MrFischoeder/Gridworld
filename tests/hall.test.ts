@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { HALL, holdVol, holdRoom, deposit, withdraw, holdOf } from '../src/gen/hall';
+import { HALL, holdVol, holdRoom, deposit, withdraw, holdOf, stockOf, OWN } from '../src/gen/hall';
+import { allVillages, villageSeed } from '../src/gen/regions';
 import { BULK } from '../src/data/items';
 import { industrySite } from '../src/gen/industry';
 import { powerSite } from '../src/gen/town';
@@ -27,5 +28,24 @@ describe('the village hall', () => {
       for (const o of others) expect(over(HALL, o)).toBe(false);
     }
     expect(HALL.x1).toBeLessThan(34 - 4); // the north gate (plaza x 34) and its road stay clear
+  });
+  it('keeps the village\'s own goods beside the hold: they pile up to a cap, builds use both, the market only its own', () => {
+    const v = allVillages(1)[3], seed = villageSeed(1, v), s: TownState = {};
+    const st0 = stockOf(1, v, seed, s, 0), g = st0.own[0];
+    expect(st0.own.length).toBeGreaterThan(0);
+    expect(st0.ownOf(g)).toBeGreaterThan(0); expect(st0.ownOf(g)).toBeLessThanOrEqual(OWN.cap);
+    expect(stockOf(1, v, seed, s, 0).ownOf(g)).toBe(st0.ownOf(g)); // the same without any state
+    const late = stockOf(1, v, seed, s, 400 * 60);
+    if (late.prod >= 1) { expect(late.ownOf(g)).toBeCloseTo(OWN.cap, 5); expect(late.full).toBe(true); }
+    deposit(s, 'log', 5); deposit(s, g, 2);
+    const st = stockOf(1, v, seed, s, 400 * 60), before = st.ownOf(g);
+    expect(st.has('log')).toBe(5);
+    expect(st.has(g)).toBe(2 + Math.floor(before));
+    expect(st.take(g, 3)).toBe(3); expect(holdOf(s, g)).toBe(0); // the hold first ...
+    expect(stockOf(1, v, seed, s, 400 * 60).ownOf(g)).toBeCloseTo(before - 1, 5); // ... then its own goods
+    expect(st.takeOwn('log' as Parameters<typeof st.takeOwn>[0], 5)).toBe(0); // the market never sells what you stored
+    // old saves: the industry storehouse's crates carry over
+    const old: TownState = { store: { n: 20, t: 100 } }, o = stockOf(1, v, seed, old, 100);
+    expect(o.own.reduce((a, x) => a + o.ownOf(x), 0)).toBeCloseTo(20, 5);
   });
 });

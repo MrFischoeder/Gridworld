@@ -1,5 +1,5 @@
 // The elder's farms panel (gen/farms.ts): how many people the village feeds, its farms, and the materials for the
-// next one, handed over from your backpack bit by bit.
+// next one, built from the village hall's stock (ui/stock.ts).
 import { G } from '../game';
 import { ITEMS } from '../data/items';
 import { GRIDHOLM_ID } from '../gen/regions';
@@ -7,22 +7,21 @@ import { FARM, UPGRADE, UNPOWERED, farmsOf, upgradedOf, farmPlan, upgradePlan, h
 import { farmPower } from '../gen/energy';
 import { syncFarmVillage } from '../world/farms';
 import { peopleAt, targetNow } from '../gen/people';
-import { carried, takeFrom } from './market';
+import { stockHas, stockTake } from './stock';
 import { findPoi } from '../gen/regions';
-import type { Good } from '../gen/market';
 import { loadedVillage, reloadStruct } from '../world/overworld';
 import { earnTrust } from '../world/standing';
 import { saveChar, calcStats, gainXp } from '../character';
 import { showToast, logLine } from './hud';
 
-const rowsHTML = (rows: { k: import('../data/items').ItemKey; n: number; given: number }[], have: (k: string) => number) =>
-  rows.map((r) => { const h = have(r.k); return `<span style="color:${r.given >= r.n ? 'var(--xp)' : h ? 'var(--txt)' : '#ff9a7a'}">${ITEMS[r.k].name} ${r.given}/${r.n}${r.given < r.n && h ? ` (you have ${h} with you)` : ''}</span>`; }).join(' · ');
+const rowsHTML = (rows: { k: import('../data/items').ItemKey; n: number; given: number }[], have: (k: import('../data/items').ItemKey) => number) =>
+  rows.map((r) => { const h = have(r.k); return `<span style="color:${r.given >= r.n ? 'var(--xp)' : h ? 'var(--txt)' : '#ff9a7a'}">${ITEMS[r.k].name} ${r.given}/${r.n}${r.given < r.n && h ? ` (in the village hall: ${h})` : ''}</span>`; }).join(' · ');
 
 export function farmsHTML(town: string, head: string, msg = ''): string {
   const v = loadedVillage(town), c = G.char;
   const poi = v && findPoi(c.world, v.id);
   if (!v || !poi) return head + '<div class="say">Hm?</div><button class="opt" data-o="back">Back</button>';
-  const have = (k: string) => carried(k as Good, poi);
+  const have = stockHas(v.id);
   const st = c.towns[v.id], home = v.id === GRIDHOLM_ID, seed = v.vm.seed, n = farmsOf(st), up = upgradedOf(st), plan = farmPlan(st), uplan = upgradePlan(st);
   const now = Math.round(peopleAt(seed, home, st, c.time)), tg = Math.round(targetNow(seed, home, st)), sl = soil(seed);
   let s = head + `<div class="say">${msg ? msg + '<br><br>' : ''}More food, more people; more people, more hands at work. ${v.vm.name} has ${n ? n + (n > 1 ? ' farms' : ' farm') : 'no farms yet'} outside the walls${up ? `, ${up} of them with steel ploughs and pumps` : ''}.`;
@@ -34,12 +33,12 @@ export function farmsHTML(town: string, head: string, msg = ''): string {
   s += '</div>';
   if (plan) {
     s += `<div class="shoprow"><div><b>Farm ${plan.n} of ${FARM.max}</b> <span style="opacity:.7">(${FARM.kw} kW)</span><br><span>${rowsHTML(plan.rows, have)}</span></div></div>`;
-    s += `<button class="opt" data-farm="give" ${plan.rows.some((r) => r.given < r.n && have(r.k) > 0) ? '' : 'disabled'}>Hand over what I carry (for the farm)</button>`;
+    s += `<button class="opt" data-farm="give" ${plan.rows.some((r) => r.given < r.n && have(r.k) > 0) ? '' : 'disabled'}>Build from the village hall's stock (the farm)</button>`;
   } else s += `<div class="say">We have cleared all the land we can guard (${FARM.max} farms).</div>`;
   if (uplan) {
     const known = c.tech[UPGRADE.tech] !== undefined;
     s += `<div class="shoprow"><div><b>Steel ploughs for farm ${uplan.n}</b> <span style="opacity:.7">(${UPGRADE.kw} kW, feeds ×${UPGRADE.mult})</span><br><span>${known ? rowsHTML(uplan.rows, have) : 'Nobody here knows how to make them. The old plans for Steel Ploughs must lie somewhere out there.'}</span></div></div>`;
-    if (known) s += `<button class="opt" data-farm="up" ${uplan.rows.some((r) => r.given < r.n && have(r.k) > 0) ? '' : 'disabled'}>Hand over what I carry (for the steel ploughs)</button>`;
+    if (known) s += `<button class="opt" data-farm="up" ${uplan.rows.some((r) => r.given < r.n && have(r.k) > 0) ? '' : 'disabled'}>Build from the village hall's stock (the steel ploughs)</button>`;
   }
   return s + `<button class="opt" data-o="back">Back</button>`;
 }
@@ -50,10 +49,10 @@ export function farmsClick(town: string, t: HTMLElement): { msg: string; built: 
   const v = loadedVillage(town), c = G.char;
   const poi = v && findPoi(c.world, v.id);
   if (!v || !poi) return { msg: '', built: false };
-  const st = (c.towns[v.id] ??= {}), have = (k: string) => carried(k as Good, poi), upgrade = b.dataset.farm === 'up';
+  const st = (c.towns[v.id] ??= {}), have = stockHas(v.id), upgrade = b.dataset.farm === 'up';
   const { taken, built } = upgrade ? handOverUpgrade(st, c.tech, have) : handOverFarm(st, v.vm.seed, v.id === GRIDHOLM_ID, c.time, have);
-  for (const [k, n] of taken) takeFrom(k as Good, n, poi); // backpack first, then the trunks of vehicles parked by the village
-  const given = taken.length ? 'Handed over: ' + taken.map(([k, n]) => `${ITEMS[k].name} ×${n}.`).join(' ') : `You carry nothing the ${upgrade ? 'ploughs' : 'farm'} still ${upgrade ? 'need' : 'needs'}.`;
+  stockTake(v.id, taken);
+  const given = taken.length ? 'Handed over: ' + taken.map(([k, n]) => `${ITEMS[k].name} ×${n}.`).join(' ') : `The village hall has nothing more of what the ${upgrade ? 'ploughs' : 'farm'} still ${upgrade ? 'need' : 'needs'}: store the materials at its terminal.`;
   if (!built) { calcStats(); saveChar(); return { msg: given, built: false }; }
   syncFarmVillage(v.id);
   if (upgrade) {

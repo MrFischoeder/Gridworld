@@ -6,7 +6,7 @@ import { findPoi, GRIDHOLM_ID } from '../gen/regions';
 import { peopleAt, workersAt } from '../gen/people';
 import { profileOf, type Good } from '../gen/market';
 import { production } from '../gen/industry';
-import { storeAt, takeStore, storeCap } from '../gen/store';
+import { stockOf, OWN } from '../gen/hall';
 import { trustOf, trustTier, shareLeft, useShare, rareLeft, useRare, TRUST_TIERS } from '../gen/standing';
 import { depositOf, RARE_NAME, RARE_SHARE, rareItem } from '../gen/deposits';
 import { loadedVillage } from '../world/overworld';
@@ -23,7 +23,7 @@ function place(town: string) {
 export function shareHTML(town: string, head: string, msg = ''): string {
   const p = place(town), c = G.char;
   if (!p) return head + '<div class="say">Hm?</div><button class="opt" data-o="back">Back</button>';
-  const t = trustOf(p.st), k = trustTier(p.st), tier = TRUST_TIERS[k], next = TRUST_TIERS[k + 1], left = shareLeft(p.st, c.time), inStore = Math.floor(storeAt(p.seed, p.st, c.time, p.prod));
+  const t = trustOf(p.st), k = trustTier(p.st), tier = TRUST_TIERS[k], next = TRUST_TIERS[k + 1], left = shareLeft(p.st, c.time), sk = stockOf(c.world, p.poi, p.seed, p.st, c.time), inStore = Math.floor(sk.own.reduce((a, g) => a + sk.ownOf(g), 0));
   const bar = (x: number) => { const n = Math.max(0, Math.min(12, Math.round(x * 12))); return '█'.repeat(n) + '░'.repeat(12 - n); };
   let s = head + `<div class="say">${msg ? msg + '<br><br>' : ''}`;
   s += tier.crates ? `You have done right by ${p.v.vm.name}. What our land gives, we share with you: up to ${tier.crates} crates a day, free.`
@@ -32,7 +32,7 @@ export function shareHTML(town: string, head: string, msg = ''): string {
   s += '</div>';
   s += `<div class="shoprow"><div><b>${tier.name}</b> · trust ${t}${next ? ` / ${next.min} for ${next.name} (${next.crates} crates a day)` : ''}<br><span style="font-family:monospace">${next ? bar((t - tier.min) / (next.min - tier.min)) : bar(1)}</span></div></div>`;
   if (tier.crates) {
-    s += `<div class="say">Left today: <b>${left}</b> of ${tier.crates} · in the storehouse: ${inStore}/${storeCap(p.st)} crates</div>`;
+    s += `<div class="say">Left today: <b>${left}</b> of ${tier.crates} · in the village hall: ${inStore}/${OWN.cap * Math.max(1, sk.own.length)} crates of our own goods</div>`;
     s += p.makes.map((g) => `<div class="shoprow"><div><b>${ITEMS[g as ItemKey].name}</b><br><span>made here</span></div>
       <button class="buy" data-share="${g}" data-n="1" ${left && inStore ? '' : 'disabled'}>Take 1</button>${left > 1 ? `<button class="buy" data-share="${g}" data-n="${left}" ${inStore > 1 ? '' : 'disabled'}>Take ${left}</button>` : ''}</div>`).join('');
   }
@@ -65,10 +65,10 @@ export function shareClick(town: string, el: HTMLElement): string | null {
   if (!p) return '';
   const g = b.dataset.share as Good, want = Math.min(Number(b.dataset.n) || 1, shareLeft(p.st, c.time));
   if (!want) return 'That is all for today. Come back tomorrow.';
-  const st = (c.towns[p.v.id] ??= {}), got = takeStore(st, p.seed, want, c.time, p.prod);
-  if (!got) return 'The storehouse is empty. Give the workers time.';
+  const st = (c.towns[p.v.id] ??= {}), got = stockOf(c.world, p.poi, p.seed, st, c.time).takeOwn(g, want);
+  if (!got) return 'None of those are in the village hall. Give the workers time.';
   const back = putAway(g, got, p.poi, true);
-  if (back) st.store = { n: (st.store?.n ?? 0) + back, t: c.time }; // what does not fit goes back in
+  if (back) { const o = (st.own ??= {})[g]; st.own[g] = { n: (o?.n ?? 0) + back, t: o?.t ?? c.time }; } // what does not fit goes back in
   const n = got - back;
   if (!n) return 'You have no room for a crate: park a vehicle by the village or empty your backpack.';
   useShare(st, n, c.time); calcStats(); saveChar();

@@ -1,0 +1,25 @@
+// The village's stock (gen/hall.ts stockOf: the hall's hold and its own goods) for the panels: every build of a
+// village draws on it, never on your backpack. Bring things to the village hall and store them at its terminal.
+import { G } from '../game';
+import { ITEMS, type ItemKey } from '../data/items';
+import { findPoi, villageSeed } from '../gen/regions';
+import { stockOf, type Stock } from '../gen/hall';
+
+/** The stock of village `vid` now (its state created if need be, so taking works). */
+export function stockAt(vid: number): Stock | null {
+  const c = G.char, poi = findPoi(c.world, vid);
+  return poi ? stockOf(c.world, poi, villageSeed(c.world, poi), (c.towns[vid] ??= {}), c.time) : null;
+}
+/** How many of k village `vid` has in stock. */
+export const stockHas = (vid: number) => { const s = stockAt(vid); return (k: ItemKey) => s?.has(k) ?? 0; };
+/** Take what a build used out of the stock. */
+export function stockTake(vid: number, taken: [ItemKey, number][]) { const s = stockAt(vid); if (s) for (const [k, n] of taken) s.take(k, n); }
+/** "in the hall: n" for a row still short, or "done". */
+export const hallNote = (have: number, given: number, n: number) => (given >= n ? ' · done' : ` · in the village hall: ${have}`);
+/** What a build still lacks in the stock, in words (empty: nothing). */
+export function lacking(rows: { k: ItemKey; n: number; given: number }[], has: (k: ItemKey) => number): string {
+  const miss = rows.filter((r) => r.given + has(r.k) < r.n).map((r) => `${r.n - r.given - has(r.k)} ${ITEMS[r.k].name}`);
+  return miss.length ? `The village hall still lacks ${miss.join(', ')}: store them at its terminal (outside the north gate).` : '';
+}
+/** The button every build panel shows. */
+export const buildButton = (attr: string, what: string, can: boolean) => `<button class="opt" ${attr} ${can ? '' : 'disabled'}>Build from the village hall's stock (${what})</button>`;

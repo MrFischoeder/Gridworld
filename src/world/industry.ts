@@ -2,8 +2,9 @@
 // (or its building site), a sawmill, fish racks, workshops or a salvage yard, with a sign. Pumpjacks nod and the
 // refinery's flare burns while it produces; E at the site shows how it works and mends it when it is damaged.
 // Villagers work the site (hoeing the rows, swinging picks at the rock face, hammering at the pumps and the
-// workbenches) and one carries the crates to the storehouse at its corner (gen/store.ts), where they stack up in
-// front of the door; when the storehouse is full, or the site wrecked, the work stops and they stand about.
+// workbenches) and one carries the crates to a loading pallet at its corner, where they stack up as the village's own
+// goods pile up in its hall (gen/hall.ts OWN); when they are at the cap, or the site wrecked, the work stops and they
+// stand about.
 import * as THREE from 'three';
 import { earnTrust } from './standing';
 import { G } from '../game';
@@ -16,7 +17,7 @@ import { saveChar, gainXp, calcStats } from '../character';
 import { showToast, logLine } from '../ui/hud';
 import { industryOf, industrySite, production, siteBuilt, siteCondition, INDUSTRY, type Industry } from '../gen/industry';
 import { profileOf, GOOD_INFO } from '../gen/market';
-import { storeAt, storeCap, storeFull, storeTier, STORE } from '../gen/store';
+import { stockOf, OWN } from '../gen/hall';
 import { makeFigure, type Figure } from './npc';
 import { poseRig, type Kit } from './rig';
 import { findPoi } from '../gen/regions';
@@ -66,15 +67,13 @@ export function drawIndustry(vm: VillageMap, T: Terrain, id: number): THREE.Grou
     : kind === 'fishery' ? [[-3, -1.4], [0, 1.6], [2, -1.4]]
     : kind === 'workshop' ? [[-3, -3.6], [4, -2.3], [0.6, -4]]
     : [[-4, -1.8], [1, 0.6], [5, -3.6]];
-  // the storehouse at a free corner of the site, bigger with each tier
+  // the loading pallet at a free corner of the site, where the carrier stacks the crates (they go on to the village hall)
   const [su, sv] = kind === 'farm' ? [along / 2 - 2.8, out / 2 - 3] : kind === 'mine' ? [along / 2 - 2.4, out / 2 - 2.2] : kind === 'oil' ? [0, -out / 2 + 2.4] : kind === 'refinery' ? [5, -out / 2 + 2.6] : [along / 2 - 2.6, -out / 2 + 2.6];
-  const tier = storeTier(c.towns[id]), hu = [1.5, 2, 2.4][tier], hv = [1.1, 1.5, 1.8][tier];
-  shed(su, sv, hu, hv, [2.4, 3, 3.6][tier]);
-  const toVillage = sv > 0 ? -1 : 1; // the door on the side towards the middle of the site
+  const hu = 1.5, hv = 0.2, toVillage = sv > 0 ? -1 : 1;
+  { const [x0p, y0p, z0p] = at(su - hu, sv + toVillage * 0.5), [x1p, , z1p] = at(su + hu, sv + toVillage * 1.3); pb.box(Math.min(x0p, x1p), y0p - 0.05, Math.min(z0p, z1p), Math.max(x0p, x1p), y0p + 0.12, Math.max(z0p, z1p), WOOD); }
   const [dx, dz] = P(su, sv + toVillage * (hv + 0.1));
-  { const g = H(su, sv + toVillage * (hv + 0.05)), [a, , b] = at(su - 0.5, sv + toVillage * (hv + 0.06)), [cc, , d] = at(su + 0.5, sv + toVillage * (hv + 0.06)); pb.face([a, g, b], [cc, g, d], [cc, g + 2, d], [a, g + 2, b]); }
-  // crates in front of it, as many shown as the fill says (updateIndustry)
-  const crates: THREE.Object3D[] = [], rows = [4, 6, 8][tier];
+  // crates on it, as many shown as the village's own goods say (updateIndustry)
+  const crates: THREE.Object3D[] = [], rows = 6;
   for (let i = 0; i < rows * 3; i++) {
     const col = i % rows, lay = Math.floor(i / rows), u = su - hu + 0.35 + col * ((hu * 2 - 0.7) / Math.max(1, rows - 1)), v = sv + toVillage * (hv + 0.75 + (lay === 2 ? 0.7 : 0)), [x, y, z] = at(u, v);
     const cb = new PropBatch(), yy = y + (lay === 1 ? 0.52 : 0); cb.box(x - 0.26, yy, z - 0.26, x + 0.26, yy + 0.5, z + 0.26, WOOD); cb.seg(WOOD, [x - 0.26, yy + 0.25, z - 0.27], [x + 0.26, yy + 0.25, z - 0.27]);
@@ -194,7 +193,7 @@ export function drawIndustry(vm: VillageMap, T: Terrain, id: number): THREE.Grou
 }
 export function forgetIndustry(id: number) { sites.delete(id); }
 const tmpV = new THREE.Vector3();
-/** A worker: walk to a spot and work there a while (or carry a crate to the storehouse and go back for the next). */
+/** A worker: walk to a spot and work there a while (or carry a crate to the loading pallet and go back for the next). */
 function work(s: Site, w: Worker, busy: boolean, dt: number) {
   const f = w.f;
   let moving = false;
@@ -220,13 +219,14 @@ function work(s: Site, w: Worker, busy: boolean, dt: number) {
 }
 
 const prodOf = (s: Site) => { const poi = findPoi(G.char.world, s.id); return poi ? production(G.char.world, poi, s.seed, G.char.towns[s.id], G.char.time) : 1; };
-/** The storehouse of village `id` now: crates, capacity, full (the site stands still), its tier's name. */
+/** The village's own goods now (gen/hall.ts): crates of them in its hall, the most they reach, full (the site stands still). */
 export function storeOf(id: number, seed: number) {
-  const poi = findPoi(G.char.world, id), st = G.char.towns[id], p = poi ? production(G.char.world, poi, seed, st, G.char.time) : 1;
-  const n = storeAt(seed, st, G.char.time, p), cap = storeCap(st);
-  return { n, cap, full: storeFull(seed, st, G.char.time, p), prod: p, name: STORE.tiers[storeTier(st)].name };
+  const poi = findPoi(G.char.world, id);
+  if (!poi) return { n: 0, cap: OWN.cap, full: false, prod: 1, name: 'village hall' };
+  const st = stockOf(G.char.world, poi, seed, G.char.towns[id], G.char.time), n = st.own.reduce((a, g) => a + st.ownOf(g), 0);
+  return { n, cap: OWN.cap * Math.max(1, st.own.length), full: st.full, prod: st.prod, name: 'village hall' };
 }
-/** What the storehouse's contents are worth (for the bandits' demands): crates at the price of what the village makes. */
+/** What the village's own goods are worth (for the bandits' demands): crates at the price of what the village makes. */
 export function storeWealth(id: number, seed: number): number {
   const poi = findPoi(G.char.world, id);
   if (!poi) return 0;
@@ -266,8 +266,8 @@ export function sitePrompt(s: Site): string {
   const spec = INDUSTRY[s.kind];
   if (!siteBuilt(s.kind, G.char.towns[s.id])) return `${s.town}'s ${spec.site} is still to be built: ask the elder about it`;
   const poi = findPoi(G.char.world, s.id), c = poi ? Math.round(siteCondition(G.char.world, poi, G.char.towns[s.id], G.char.time)) : 100;
-  const st = storeOf(s.id, s.seed), store = `${st.name} ${Math.floor(st.n)}/${st.cap}`;
-  if (c >= 90 && st.full) return `${s.town}'s ${spec.site}: stopped, the ${st.name.toLowerCase()} is full (${store}) · its load waits for a carrier (see the elder)`;
+  const st = storeOf(s.id, s.seed), store = `${Math.floor(st.n)}/${st.cap} crates in the village hall`;
+  if (c >= 90 && st.full) return `${s.town}'s ${spec.site}: stopped, the village hall has all it can take of its goods (${store}) · buy or share some`;
   if (c >= 90) return `${s.town}'s ${spec.site}: working (${c}%) · ${store}`;
   return hasAll(s.kind) ? `E — mend the ${spec.site} (${c}%): uses ${need(s.kind)}` : `The ${spec.site} is damaged (${c}%): bring ${need(s.kind)} to mend it`;
 }

@@ -4,8 +4,6 @@
 // - haul: the village sends crates of what it makes to another village (2-9 km off, preferably one that wants them);
 //   you take the crates here against a deposit (their price here), and get the deposit back with your pay when you
 //   hand them over at the other end. Pay grows with the distance and the danger on the way.
-// - shipment: a full storehouse (gen/store.ts) offers its load to you first: a big haul, better paid, for as long as
-//   the storehouse waits (`STORE.wait`); if nobody takes it, the village's own convoy carries it off.
 // - fuel order: a village far out that still runs an old reactor of its own (`oldReactor`) orders Nuclear Fuel Rods
 //   (made only by the restored Old Enrichment Plant, gen/installs.ts) now and then, and pays very well for them.
 // - chip order: a craft village (industry 'workshop') away from Gridholm orders Microchips (made only by the restored
@@ -16,9 +14,7 @@ import { hash, rng } from '../core/rng';
 import { allVillages, worldDist, villageSeed, GRIDHOLM_ID, type Poi } from './regions';
 import { dangerAt, ringDanger } from './danger';
 import { profileOf, quote, GOOD_INFO, type Good } from './market';
-import { storeInfo, storeCap } from './store';
-import { production, industryOf } from './industry';
-import type { TownState } from './town';
+import { industryOf } from './industry';
 
 /** What a contract carries: a market good, or fuel rods (gen/installs.ts: not on any market). */
 export type Cargo = Good | 'nfuel' | 'microchip';
@@ -62,28 +58,6 @@ export function offersAt(world: number, v: Poi, seed: number, now: number): Cont
 function haulPay(world: number, v: Poi, o: Poi, g: Good, km: number) {
   const danger = Math.max(dangerAt(world, v.x, v.z), dangerAt(world, o.x, o.z), dangerAt(world, (v.x + o.x) / 2, (v.z + o.z) / 2));
   return Math.round((6 + km * 5 + GOOD_INFO[g].base * 0.15) * (1 + danger * 0.2));
-}
-export const SHIPMENT = { max: 30, share: 0.5, bonus: 1.25, deposit: 0.5 };
-/**
- * The load of village v's full storehouse, offered as a haul while it waits for its own convoy (null while it is not
- * full). Fixed by the moment it filled up, so it reads the same all through the wait; `convoyAt` is when the offer goes.
- */
-export function shipmentOffer(world: number, v: Poi, seed: number, s: TownState | undefined, now: number): (Contract & { convoyAt: number }) | null {
-  const p = profileOf(world, v, seed), prod = production(world, v, seed, s, now);
-  if (!p.makes.length || prod <= 0) return null;
-  const info = storeInfo(seed, s, now, prod);
-  if (info.fullSince === null || info.convoyAt === null) return null;
-  const t0 = Math.round(info.fullSince), R = rng(hash(seed, t0, 0x5419));
-  const g = p.makes[Math.floor(R() * p.makes.length)];
-  const near = allVillages(world).filter((o) => o.id !== v.id).map((o) => ({ o, d: worldDist(o.x, o.z, v.x, v.z) })).filter(({ d }) => d > CONTRACT.near && d < CONTRACT.far);
-  if (!near.length) return null;
-  const wanting = near.filter(({ o }) => profileOf(world, o, villageSeed(world, o)).wants.includes(g));
-  const { o, d } = (wanting.length ? wanting : near)[Math.floor(R() * (wanting.length || near.length))], km = d / 1000;
-  const n = Math.min(SHIPMENT.max, Math.round(storeCap(s) * SHIPMENT.share / p.makes.length) || 1);
-  const per = Math.round(haulPay(world, v, o, g, km) * SHIPMENT.bonus);
-  const deposit = Math.round(n * quote(v, seed, world, g, {}, t0, false).buy * SHIPMENT.deposit);
-  return { id: `ship:${v.id}:${t0}`, kind: 'haul', from: v.id, fromName: v.name, to: o.id, toName: o.name, tx: o.x, tz: o.z, good: g, n, done: 0, pay: per, deposit,
-    due: info.convoyAt + Math.round((1 + km / 2.5) * 1440), convoyAt: info.convoyAt };
 }
 /** What delivering `k` more crates of contract c pays (a finished haul also returns the deposit). */
 export function payFor(c: Contract, k: number): number {
