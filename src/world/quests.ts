@@ -3,6 +3,7 @@ import { leadLines } from './datacarriers';
 import { earnTrust } from './standing';
 import { G, W } from '../game';
 import { escortLine } from './caravans';
+import { guideLine, guideMarker } from './guide';
 import { raidLine } from './villageraid';
 import { contractLines, contractMarkers } from '../ui/contracts';
 import { generateQuest, compass, km, boardPay, GRIDHOLM_TOWN, type Quest, type QuestTown } from '../gen/quests';
@@ -212,7 +213,8 @@ export function updateTracker(dt: number) {
   lines.push(...contractLines());
   lines.push(...leadLines());
   const raid = raidLine(); if (raid) lines.unshift(raid);
+  const gl = guideLine(); if (gl) lines.unshift(gl);
   trackEl.innerHTML = lines.map((l) => `<div>${l}</div>`).join('');
 }
-export const questMarkers = (): { x: number; z: number; label: string }[] => [...contractMarkers(), ...(
+export const questMarkers = (): { x: number; z: number; label: string }[] => [...(guideMarker() ? [guideMarker()!] : []), ...contractMarkers(), ...(
   G.char.quests.map((q) => ({ t: questTarget(q), q })).filter((m) => m.t).map(({ t, q }) => ({ x: nearX(t!.x, G.pos.x), z: t!.z, label: q.state === 'talk' || q.state === 'ready' || (q.kind === 'fetch' && hasItem(q.item!)) ? q.townName! : q.kind === 'hunt' ? q.pack!.alpha : q.kind === 'camp' ? q.place!.name : ITEMS[q.item!].name })))];

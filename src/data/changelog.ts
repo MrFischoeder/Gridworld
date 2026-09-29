@@ -4,6 +4,15 @@ export interface Change { v: string; date: string; title: string; notes: string[
 
 export const CHANGELOG: Change[] = [
   {
+    v: '0.88.0', date: '2026-10-10', title: 'A welcome at the wreck',
+    notes: [
+      'A new character is no longer left to find Gridholm alone: Wiktor, a scout of Gridholm who saw your ship fall, waits outside the wreck. Step out and he greets you, begs you not to shoot and walks you to the village gate, stopping to wait and call when you fall behind, and chatting on the way.',
+      'At the gate he sends you to Elder Maciej, Marta at the tavern and Oskar the smith, then walks on into the village.',
+      'He cannot be hurt: shots and blades pass him by, and shooting near him only makes him shout. You can talk to him with E, the quest tracker shows where he is taking you and the maps and compass mark him.',
+      'Characters that already know the way are not met again.',
+    ],
+  },
+  {
     v: '0.87.0', date: '2026-10-09', title: 'Item icons and tooltips',
     notes: [
       'Every item now has its own small line icon in the backpack, chests, trunks, the vehicle service and wherever items sit in slots, with its name under it instead of a two-letter code (the count sits in the corner).',

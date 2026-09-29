@@ -356,3 +356,7 @@ body.intro > *:not(#view):not(.fx):not(#intro){visibility:hidden}
 #itip .bad{color:#ff6a4a}
 .iname{display:inline-flex;align-items:center;gap:6px;cursor:help}
 .iname .ico{width:22px;height:22px;flex:none;color:var(--g)}
+/* a spoken line (ui/speech.ts) */
+#speech{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 70px);max-width:min(900px,86vw);text-align:center;font-size:22px;line-height:1.15;color:var(--txt);background:rgba(1,13,4,.78);border:1px solid #2a7a4a;padding:6px 16px;pointer-events:none;opacity:0;transition:opacity .5s;z-index:7;text-shadow:0 0 6px rgba(0,0,0,.9)}
+#speech b{font-weight:400;color:#9dffb4}
+body.intro #speech{display:none}

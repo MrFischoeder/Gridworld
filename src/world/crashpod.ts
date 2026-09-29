@@ -89,6 +89,8 @@ export function podHit(px: number, py: number, pz: number, r: number): boolean {
   return false;
 }
 
+/** The crash site of the loaded world (null before `setCrash`). */
+export const crashLanding = () => site;
 /** Where a new character wakes: inside by the locker, facing the open hatch. */
 export function crashSpawn(): { x: number; z: number; yaw: number } | null {
   if (!site) return null;

@@ -44,7 +44,7 @@ export function network(world: number): Edge[] {
   return out;
 }
 /** The gate of village v facing (tx, tz) best. */
-function gateToward(world: number, v: Poi, tx: number, tz: number): Dir {
+export function gateToward(world: number, v: Poi, tx: number, tz: number): Dir {
   const dx = tx - v.x, dz = tz - v.z, d = Math.hypot(dx, dz) || 1;
   return villageGates(villageSeed(world, v), v.id === GRIDHOLM_ID).map((g) => ({ g, s: (DIRV[g][0] * dx + DIRV[g][1] * dz) / d })).sort((p, q) => q.s - p.s)[0].g;
 }
