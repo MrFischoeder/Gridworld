@@ -4,6 +4,15 @@ export interface Change { v: string; date: string; title: string; notes: string[
 
 export const CHANGELOG: Change[] = [
   {
+    v: '0.85.0', date: '2026-10-07', title: 'Sailboats and motor boats',
+    notes: [
+      'Two new boats on your piers\' slips, beside the rowboat: the Sailboat (24 logs, 30 nails, 14 rope, 6 Ravager hides) and the Motor Boat (14 logs, 18 nails, 4 rope, 10 scrap, 2 engine parts).',
+      'The Sailboat sails on the wind of the weather: Space raises and lowers the sail, W lets the sheet out and S hauls it in, A/D work the rudder. It is fastest with the wind on the beam and cannot sail into the wind: tack across it. The prompt tells you how the wind comes and whether to let out or haul in. With the sail down you row with the spare oars. Its mast will not pass under a bridge. Hold: 24 slots.',
+      'The Motor Boat is the fastest on the water, against wind and current: W/S throttle and reverse, A/D steer. It burns fuel: R pours a Fuel Canister (from its hold or your backpack) into the 40 L tank; a new one comes with 10 L. Hold: 18 slots.',
+      'The materials guide (SUROWCE.md / .pdf) now lists bridges, piers and boats.',
+    ],
+  },
+  {
     v: '0.84.0', date: '2026-10-06', title: 'Rowboats',
     notes: [
       'Your finished piers have a slip: at the pier\'s sign choose to build a rowboat (10 logs, 14 nails, 4 rope, handed over bit by bit). When it is done it is launched beside the pier\'s head. You can keep up to three boats.',

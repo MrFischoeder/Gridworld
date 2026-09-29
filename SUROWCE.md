@@ -73,7 +73,7 @@ Każda wioska ma jeden rodzaj zakładu i robi 1–2 towary z jego listy. Towary 
 ### 1.5 Kupowane w sklepach
 
 - **Zofia (sklep ogólny):** Nails 3 g, Rope 6 g, Wire 5 g, Code Lock 120 g
-- **Oskar (kowal):** Hammer 20 g, Saw 35 g, Screwdriver 10 g, Pliers 12 g, Welder 200 g, Acetylene Torch 160 g, Shovel 25 g, Auto Turret 350 g
+- **Oskar (kowal):** Hammer 20 g, Saw 35 g, Screwdriver 10 g, Pliers 12 g, Welder 200 g, Acetylene Torch 160 g, Shovel 25 g, Auto Turret 350 g, Bridge Kit 80 g, Pier Kit 90 g
 - **Kuba (pojazdy, Gridholm):** Light Tire 40 g, Heavy Tire 90 g, Engine Parts 70 g, Hull Plating 60 g, Turbocharger 220 g, Engine Guard 150 g, Vehicle Cannon 400 g
 
 ## 2. Przetwarzanie: co z czego
@@ -232,7 +232,16 @@ Materiały biorą się z hali wioski; złoto płacisz ze swojej sakiewki (opłat
 - **Workshops** (wioska rzemieślnicza): 4 × Planks, 3 × Scrap Metal
 - **Salvage Yard** (wioska złomiarzy): 5 × Scrap Metal, 3 × Wire
 
-### 3.11 Za złoto
+### 3.11 Mosty, przystanie i łodzie (budujesz sam, materiały z plecaka i bagażnika)
+
+- **Most na brodzie drogi** albo w wybranym miejscu (Bridge Kit u kowala): na długość pomostu: Log 1 na 1.6 m, Stone 1 na 4 m, Nails 1 na 2 m, Rope 1 na 6 m (np. pomost 40 m: 25 × Log, 10 × Stone, 20 × Nails, 7 × Rope)
+- **Przystań** (Pier Kit u kowala): na długość pomostu: Log 1 na 1.4 m, Stone 1 na 5 m, Nails 1 na 2 m, Rope 1 na 4 m, do tego 3 × Scrap Metal, 2 × Wire na głowicę
+- **Rowboat** (na pochylni gotowej przystani): 10 × Log, 14 × Nails, 4 × Rope
+- **Sailboat** (na pochylni gotowej przystani): 24 × Log, 30 × Nails, 14 × Rope, 6 × Ravager Hide
+- **Motor Boat** (na pochylni gotowej przystani): 14 × Log, 18 × Nails, 4 × Rope, 10 × Scrap Metal, 2 × Engine Parts
+- Łódź motorowa pali **Fuel Canister** (20 L w kanistrze, bak 40 L)
+
+### 3.12 Za złoto
 
 - Dom w Gridholm: 750 g · pojazdy u Kuby: RTV-1 Scout 350 g, HTV-6 Mastodon 900 g
 
@@ -253,32 +262,32 @@ Materiały biorą się z hali wioski; złoto płacisz ze swojej sakiewki (opłat
 | Crate of Iron Ore | 10 L | przetwarzanie: Smelter → Steel Ingots |
 | Crate of Uranium Ore | 8 L | przetwarzanie: Old Enrichment Plant → Nuclear Fuel Rods |
 | Electronic Components | 0.4 L | kowal → Compass; kowal → Engine Parts; kowal → Turbocharger; budowa: Auto Turret; budowa: Oil Refinery; budowa: Electronics Shop; budowa: Chemical Works; budowa: Solar Farm; budowa: Small Reactor; budowa: rafineria; ulepszenie elektrowni: Rebuilt with old electronics; ulepszenie elektrowni: Automated; odbudowa: Old Enrichment Plant; odbudowa: Old Radar Station; odbudowa: Old Chip Foundry; naprawa: Solar Array; naprawa: Refinery |
-| Engine Parts | 6 L | budowa: Wire Mill; budowa: Machine Shop; budowa: Wind Farm; budowa: Coal Power Station; budowa: Diesel Generator Bank; naprawa: Diesel Generator |
-| Fuel Canister | 12 L | przetwarzanie: Chemical Works → Rocket Propellant; paliwo: Diesel Generator Bank |
+| Engine Parts | 6 L | budowa: Wire Mill; budowa: Machine Shop; budowa: Wind Farm; budowa: Coal Power Station; budowa: Diesel Generator Bank; naprawa: Diesel Generator; Motor Boat |
+| Fuel Canister | 12 L | przetwarzanie: Chemical Works → Rocket Propellant; paliwo: Diesel Generator Bank; paliwo łodzi motorowej |
 | Glass Panes | 12 L | przetwarzanie: Electronics Shop → Circuit Boards; przetwarzanie: Old Chip Foundry → Microchips; odbudowa: Old Chip Foundry; Rydwan: Avionics; Rydwan: Heat Shield |
 | Hull Alloy | 8 L | budowa: Small Reactor; odbudowa: Old Enrichment Plant; odbudowa: Old Radar Station; Rydwan: Hull Plating; Rydwan: Main Engines; Rydwan: Heat Shield |
 | Iron Ore | 1.2 L | kowal → Scrap Metal; kowal → Wire |
-| Log | 6 L | kowal → Hatchet; kowal → Pickaxe; kowal → Fire Kit; kowal → Hammer; kowal → Saw; kowal → Screwdriver; kowal → Planks; kowal → Scrap Metal; kowal → Light Tire; kowal → Hull Plating; budowa: mur Timber Palisade; budowa: Smelter; budowa: farma; ulepszenie elektrowni: Overhauled; odbudowa: Old Enrichment Plant; odbudowa: Old Radar Station; odbudowa: Old Chip Foundry |
+| Log | 6 L | kowal → Hatchet; kowal → Pickaxe; kowal → Fire Kit; kowal → Hammer; kowal → Saw; kowal → Screwdriver; kowal → Planks; kowal → Scrap Metal; kowal → Light Tire; kowal → Hull Plating; budowa: mur Timber Palisade; budowa: Smelter; budowa: farma; ulepszenie elektrowni: Overhauled; odbudowa: Old Enrichment Plant; odbudowa: Old Radar Station; odbudowa: Old Chip Foundry; most; przystań; Rowboat; Sailboat; Motor Boat |
 | Machine Parts | 12 L | Rydwan: Main Engines |
 | Microchips | 6 L | zamówienia na czipy (wioski rzemieślnicze); ulepszenie elektrowni: Automated; Rydwan: Avionics |
-| Nails | 0.2 L | budowa: mur Timber Palisade; budowa: mur Stone Wall; budowa: Machine Shop; naprawa: Fields; naprawa: Sawmill |
+| Nails | 0.2 L | budowa: mur Timber Palisade; budowa: mur Stone Wall; budowa: Machine Shop; naprawa: Fields; naprawa: Sawmill; most; przystań; Rowboat; Sailboat; Motor Boat |
 | Nuclear Fuel Rods | 8 L | paliwo: Small Reactor; zamówienia na paliwo (stare reaktory) |
 | Planks | 1.5 L | budowa: mur Timber Palisade; budowa: mur Stone Wall; budowa: Barricades round the works; budowa: Barricades round the power plant; budowa: Smelter; budowa: Oil Refinery; budowa: Glassworks; budowa: Wire Mill; budowa: Electronics Shop; budowa: Machine Shop; budowa: Alloy Foundry; budowa: Chemical Works; budowa: Solar Farm; budowa: Wind Farm; budowa: Coal Power Station; budowa: rafineria; naprawa: Fields; naprawa: Mine; naprawa: Sawmill; naprawa: Fish Racks; naprawa: Workshops |
 | Plastic Resin | 14 L | przetwarzanie: Electronics Shop → Circuit Boards; Rydwan: Heat Shield |
 | Power Core | 1 L | kowal → Turbocharger; budowa: Alloy Foundry; budowa: Small Reactor; ulepszenie elektrowni: Rebuilt with old electronics; odbudowa: Old Enrichment Plant; odbudowa: Old Chip Foundry |
-| Ravager Hide | 3 L | kowal → Empty Flask |
+| Ravager Hide | 3 L | kowal → Empty Flask; Sailboat |
 | Rocket Propellant | 14 L | Rydwan: Propellant |
-| Rope | 1.5 L | budowa: mur Timber Palisade; budowa: Barricades round the works; budowa: Barricades round the power plant; naprawa: Wind Turbines; naprawa: Fish Racks |
+| Rope | 1.5 L | budowa: mur Timber Palisade; budowa: Barricades round the works; budowa: Barricades round the power plant; naprawa: Wind Turbines; naprawa: Fish Racks; most; przystań; Rowboat; Sailboat; Motor Boat |
 | Sack of Carrots | 14 L | sklep spożywczy → Hearty Stew |
 | Sack of Grain | 14 L | sklep spożywczy → Bread |
 | Sack of Potatoes | 14 L | sklep spożywczy → Hearty Stew |
 | Sack of Quartz Sand | 12 L | przetwarzanie: Glassworks → Glass Panes |
 | Salt Blocks | 7 L | przetwarzanie: Chemical Works → Rocket Propellant |
-| Scrap Metal | 1.5 L | kowal → Hammer; kowal → Saw; kowal → Screwdriver; kowal → Pliers; kowal → Nails; kowal → Electronic Components; kowal → Compass; kowal → Light Tire; kowal → Hull Plating; kowal → Engine Parts; kowal → Turbocharger; budowa: mur Stone Wall; budowa: Auto Turret; budowa: Barricades round the works; budowa: Barricades round the power plant; budowa: Smelter; budowa: Oil Refinery; budowa: Glassworks; budowa: Wire Mill; budowa: Electronics Shop; budowa: Machine Shop; budowa: Alloy Foundry; budowa: Chemical Works; budowa: Solar Farm; budowa: Wind Farm; budowa: Coal Power Station; budowa: Diesel Generator Bank; budowa: rafineria; budowa: stalowe pługi; ulepszenie elektrowni: Overhauled; odbudowa: Old Enrichment Plant; odbudowa: Old Radar Station; odbudowa: Old Chip Foundry; naprawa: Diesel Generator; naprawa: Wind Turbines; naprawa: Mine; naprawa: Oil Wells; naprawa: Refinery; naprawa: Workshops; naprawa: Salvage Yard |
+| Scrap Metal | 1.5 L | kowal → Hammer; kowal → Saw; kowal → Screwdriver; kowal → Pliers; kowal → Nails; kowal → Electronic Components; kowal → Compass; kowal → Light Tire; kowal → Hull Plating; kowal → Engine Parts; kowal → Turbocharger; budowa: mur Stone Wall; budowa: Auto Turret; budowa: Barricades round the works; budowa: Barricades round the power plant; budowa: Smelter; budowa: Oil Refinery; budowa: Glassworks; budowa: Wire Mill; budowa: Electronics Shop; budowa: Machine Shop; budowa: Alloy Foundry; budowa: Chemical Works; budowa: Solar Farm; budowa: Wind Farm; budowa: Coal Power Station; budowa: Diesel Generator Bank; budowa: rafineria; budowa: stalowe pługi; ulepszenie elektrowni: Overhauled; odbudowa: Old Enrichment Plant; odbudowa: Old Radar Station; odbudowa: Old Chip Foundry; naprawa: Diesel Generator; naprawa: Wind Turbines; naprawa: Mine; naprawa: Oil Wells; naprawa: Refinery; naprawa: Workshops; naprawa: Salvage Yard; przystań; Motor Boat |
 | Steel Ingots | 8 L | przetwarzanie: Machine Shop → Machine Parts; przetwarzanie: Machine Shop → Crate of Tools; przetwarzanie: Alloy Foundry → Hull Alloy; budowa: Small Reactor; odbudowa: Old Enrichment Plant; odbudowa: Old Radar Station; odbudowa: Old Chip Foundry; Rydwan: Hull Plating |
-| Stone | 2 L | kowal → Hatchet; kowal → Pickaxe; budowa: mur Stone Wall; budowa: Barricades round the works; budowa: Barricades round the power plant; budowa: Smelter; budowa: Glassworks; budowa: Alloy Foundry; budowa: Coal Power Station; budowa: farma; odbudowa: Old Enrichment Plant; odbudowa: Old Radar Station; odbudowa: Old Chip Foundry |
+| Stone | 2 L | kowal → Hatchet; kowal → Pickaxe; budowa: mur Stone Wall; budowa: Barricades round the works; budowa: Barricades round the power plant; budowa: Smelter; budowa: Glassworks; budowa: Alloy Foundry; budowa: Coal Power Station; budowa: farma; odbudowa: Old Enrichment Plant; odbudowa: Old Radar Station; odbudowa: Old Chip Foundry; most; przystań |
 | Timber Bundle | 20 L | przetwarzanie: Machine Shop → Crate of Tools |
-| Wire | 0.5 L | budowa: Auto Turret; budowa: Oil Refinery; budowa: Wire Mill; budowa: Electronics Shop; budowa: Chemical Works; budowa: Solar Farm; budowa: Wind Farm; budowa: Diesel Generator Bank; budowa: rafineria; budowa: stalowe pługi; ulepszenie elektrowni: Overhauled; ulepszenie elektrowni: Rebuilt with old electronics; naprawa: Solar Array; naprawa: Wind Turbines; naprawa: Oil Wells; naprawa: Salvage Yard |
+| Wire | 0.5 L | budowa: Auto Turret; budowa: Oil Refinery; budowa: Wire Mill; budowa: Electronics Shop; budowa: Chemical Works; budowa: Solar Farm; budowa: Wind Farm; budowa: Diesel Generator Bank; budowa: rafineria; budowa: stalowe pługi; ulepszenie elektrowni: Overhauled; ulepszenie elektrowni: Rebuilt with old electronics; naprawa: Solar Array; naprawa: Wind Turbines; naprawa: Oil Wells; naprawa: Salvage Yard; przystań |
 
 ## 5. Surowce bez zastosowania w budowach i przetwarzaniu (na razie)
 

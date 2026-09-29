@@ -2,7 +2,7 @@
 import { isPlacing, cancelPlacing } from '../world/claims';
 import { isBridgePlacing, cancelBridgePlacing } from '../world/bridges';
 import { isPierPlacing, cancelPierPlacing } from '../world/piers';
-import { inBoat, openBoatHold, toggleBoatView } from '../world/boats';
+import { inBoat, openBoatHold, toggleBoatView, toggleSail, refuel } from '../world/boats';
 import { isBuilding, stopBuilding, dismantle } from '../world/building';
 import { toggleBuildMenu } from './build';
 import { G, uiOpen } from '../game';
@@ -50,6 +50,7 @@ export function initInput(onPause: () => void) {
     if (e.code === 'KeyE' && !e.repeat) interact();
     if (e.code === 'KeyV' && driving.v) toggleCockpit();
     if (e.code === 'KeyV' && inBoat()) toggleBoatView();
+    if (e.code === 'Space' && !e.repeat && inBoat()) toggleSail();
     if (e.code === 'KeyF' && !isBuilding() && G.playing) openBoatHold();
     if (e.code === 'KeyH') useItem('medkit');
     if (e.code === 'KeyG') useItem('emp');
@@ -59,7 +60,7 @@ export function initInput(onPause: () => void) {
     if (e.code === 'KeyX') holster();
     if (e.code === 'KeyF' && isBuilding()) dismantle();
     if (e.code === 'KeyL') lockKey();
-    if (e.code === 'KeyR') reload();
+    if (e.code === 'KeyR' && !refuel()) reload();
     if (e.code === 'F3') { e.preventDefault(); el.perf.style.display = el.perf.style.display === 'block' ? 'none' : 'block'; }
   });
   addEventListener('keyup', (e) => { G.keys[e.code] = false; });

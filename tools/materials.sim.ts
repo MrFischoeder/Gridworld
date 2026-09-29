@@ -23,6 +23,9 @@ import { TECH_BY_ID } from '../src/gen/tech';
 import { HOUSE_PRICE } from '../src/data/npcs';
 import { FUEL, CHIPS } from '../src/gen/contracts';
 import { OWN, HALL } from '../src/gen/hall';
+import { BRIDGE } from '../src/gen/bridges';
+import { PIER } from '../src/gen/piers';
+import { BOATS, type BoatKind } from '../src/gen/boats';
 
 const N = (k: ItemKey) => ITEMS[k]?.name ?? k;
 const list = (xs: [ItemKey, number][]) => xs.map(([k, n]) => `${n} × ${N(k)}`).join(', ');
@@ -194,7 +197,18 @@ it('writes SUROWCE.md', () => {
   for (const [k, p] of Object.entries(POWER)) { P(`- **${p.name}:** ${list(p.fix)}`); for (const [i] of p.fix) use(i, `naprawa: ${p.name}`); void k; }
   for (const k of Object.keys(INDUSTRY) as Industry[]) { P(`- **${INDUSTRY[k].site}** (${INDUSTRY_PL[k]}): ${list(INDUSTRY[k].fix)}`); for (const [i] of INDUSTRY[k].fix) use(i, `naprawa: ${INDUSTRY[k].site}`); }
   P('');
-  P('### 3.11 Za złoto');
+  P('### 3.11 Mosty, przystanie i łodzie (budujesz sam, materiały z plecaka i bagażnika)');
+  P('');
+  const per = (m: Partial<Record<ItemKey, number>>) => (Object.entries(m) as [ItemKey, number][]).map(([k, r]) => `${N(k)} 1 na ${(1 / r).toFixed(1).replace('.0', '')} m`).join(', ');
+  P(`- **Most na brodzie drogi** albo w wybranym miejscu (Bridge Kit u kowala): na długość pomostu: ${per(BRIDGE.per)} (np. pomost 40 m: ${(Object.entries(BRIDGE.per) as [ItemKey, number][]).map(([k, r]) => `${Math.ceil(40 * r)} × ${N(k)}`).join(', ')})`);
+  for (const k of Object.keys(BRIDGE.per) as ItemKey[]) use(k, 'most');
+  P(`- **Przystań** (Pier Kit u kowala): na długość pomostu: ${per(PIER.per)}, do tego ${list(Object.entries(PIER.fittings) as [ItemKey, number][])} na głowicę`);
+  for (const k of [...Object.keys(PIER.per), ...Object.keys(PIER.fittings)] as ItemKey[]) use(k, 'przystań');
+  for (const k of Object.keys(BOATS) as BoatKind[]) { P(`- **${BOATS[k].name}** (na pochylni gotowej przystani): ${list(BOATS[k].needs)}`); for (const [i] of BOATS[k].needs) use(i, BOATS[k].name); }
+  P(`- Łódź motorowa pali **${N('fuel')}** (${BOATS.motor.motor!.can} L w kanistrze, bak ${BOATS.motor.motor!.tank} L)`);
+  use('fuel', 'paliwo łodzi motorowej');
+  P('');
+  P('### 3.12 Za złoto');
   P('');
   P(`- Dom w Gridholm: ${HOUSE_PRICE} g · pojazdy u Kuby: RTV-1 Scout 350 g, HTV-6 Mastodon 900 g`);
   P('');

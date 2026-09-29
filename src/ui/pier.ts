@@ -82,7 +82,7 @@ export function pierClick(t: HTMLElement): boolean {
     let msg = taken.length ? 'Handed over: ' + taken.map(([k, n]) => `${ITEMS[k].name} ×${n}.`).join(' ') : 'You carry nothing the boat still needs.';
     if (built) {
       const spec = BOATS[p.boat.k], s = p.len - PIER.head / 2, v = PIER.headW / 2 + spec.beam / 2 + 0.7;
-      c.boats.push({ id: `boat:${c.pid}:${Math.round(c.time)}:${c.boats.length}`, k: p.boat.k, x: p.x + s * p.dx - v * p.dz, z: p.z + s * p.dz + v * p.dx, yaw: Math.atan2(p.dx, p.dz), t: c.time });
+      c.boats.push({ id: `boat:${c.pid}:${Math.round(c.time)}:${c.boats.length}`, k: p.boat.k, x: p.x + s * p.dx - v * p.dz, z: p.z + s * p.dz + v * p.dx, yaw: Math.atan2(p.dx, p.dz), t: c.time, ...(spec.motor ? { fuel: 10 } : {}) }); // a motor boat comes with a little fuel in the tank
       delete p.boat; gainXp(spec.xp); redrawBoats();
       showToast(`${spec.name} launched`);
       logLine(`Your ${spec.name.toLowerCase()} slides off the slip and lies beside the pier's head. +${spec.xp} xp`);
