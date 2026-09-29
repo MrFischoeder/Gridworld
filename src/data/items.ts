@@ -90,6 +90,7 @@ export const ITEMS = {
   codelock: { name: 'Code Lock', ab: 'LCK', type: 'tool', desc: 'a keypad lock for a door you built: stand at the door and press L, then choose a 4-digit code. Others need the code to open it', stack: 3 },
   compass: { name: 'Compass', ab: 'CMP', type: 'tool', desc: 'carry it and a compass strip shows your heading at the top of the screen, with the way to the nearest village', stack: 1 },
   bridgekit: { name: 'Bridge Kit', ab: 'BRK', type: 'cons', desc: 'survey stakes, a line and a plumb: use it by a river to pick where a bridge will cross (straight over the water), click to stake out the site. Then bring the materials to its sign', stack: 1 },
+  pierkit: { name: 'Pier Kit', ab: 'PRK', type: 'cons', desc: 'survey stakes, a sounding line and a float: stand on a beach and use it looking out to sea to stake out a pier out to water deep enough for a boat, click to mark the site. Then bring the materials to its sign', stack: 1 },
   flagpole: { name: 'Flagpole', ab: 'FLG', type: 'cons', desc: 'claim land for a base: use it to pick a spot (you see how the ground will be levelled), click to raise the flag. The land around it is yours; E at the flag takes it down again', stack: 1 },
   benchkit: { name: 'Workbench Kit', ab: 'WBK', type: 'cons', desc: 'a folding workbench: use it to set it up in front of you, then E at it to craft anywhere', stack: 1 },
   hide: { name: 'Ravager Hide', ab: 'HID', type: 'mat', desc: 'a tough, spotted hide. Crafting material; Oskar buys it', stack: 10 },
@@ -137,7 +138,7 @@ export const BULK: Record<ItemKey, [kg: number, litres: number]> = {
   log: [4, 6], stone: [3, 2], scrap: [1.5, 1.5], circuit: [0.3, 0.4], pcore: [2, 1], hatchet: [1.5, 2], pickaxe: [2.5, 3], compass: [0.2, 0.1], codelock: [0.6, 0.5], turretkit: [18, 16],
   hammer: [1, 1.5], saw: [1, 2.5], screwdriver: [0.2, 0.2], pliers: [0.3, 0.3], welder: [9, 10], torch: [6, 8], shovel: [2, 4],
   ironO: [2.5, 1.2], copperO: [2.5, 1.2],
-  planks: [1.5, 1.5], nails: [0.3, 0.2], rope: [0.8, 1.5], wire: [0.5, 0.5], benchkit: [15, 20], flagpole: [9, 14], bridgekit: [3, 4],
+  planks: [1.5, 1.5], nails: [0.3, 0.2], rope: [0.8, 1.5], wire: [0.5, 0.5], benchkit: [15, 20], flagpole: [9, 14], bridgekit: [3, 4], pierkit: [3, 4],
   hide: [2, 3], fang: [0.1, 0.1], plate: [3, 2.5], membrane: [0.3, 1], incisor: [0.05, 0.05],
   book: [1, 1], gearbox: [4, 2], datacore: [1, 0.5], logbook: [0.5, 0.5],
   grain: [12, 14], timber: [16, 20], ore: [18, 10], carrots: [10, 14], potatoes: [12, 14], coal: [16, 10], copper: [18, 10], crude: [16, 14], salt: [10, 7], fish: [7, 10], cloth: [5, 9], tools: [14, 14], meds: [4, 7], fuel: [11, 12], tech: [6, 8],
@@ -160,7 +161,7 @@ export const WEAPON_KIND: Partial<Record<ItemKey, 0 | 1>> = { blaster: 0, blade:
 export const HANDS_ONLY = new Set<ItemKey>(['wheelL', 'wheelH', 'cannon', 'benchkit', 'flagpole']);
 /** Weapons and gear Oskar sells. */
 /** Tools and building supplies: what Oskar (tools) and Zofia (supplies) charge. */
-export const TOOL_PRICE: Partial<Record<ItemKey, number>> = { hammer: 20, saw: 35, screwdriver: 10, pliers: 12, welder: 200, torch: 160, shovel: 25, turretkit: 350, bridgekit: 80 };
+export const TOOL_PRICE: Partial<Record<ItemKey, number>> = { hammer: 20, saw: 35, screwdriver: 10, pliers: 12, welder: 200, torch: 160, shovel: 25, turretkit: 350, bridgekit: 80, pierkit: 90 };
 export const SUPPLY_PRICE: Partial<Record<ItemKey, number>> = { nails: 3, rope: 6, wire: 5, codelock: 120 };
 export const GEAR_PRICE: Partial<Record<ItemKey, number>> = { blaster: 150, blade: 80, helmet: 60, vest: 120, armour: 260, gloves: 20, trousers: 30, boots: 40 };
 /** The backpack: how much fits (litres), the load you carry easily, and beyond `max` you are overloaded (kg). */

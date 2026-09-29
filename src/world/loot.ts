@@ -23,6 +23,7 @@ import { lightFire } from './cooking';
 import { placeBench } from './benches';
 import { startPlacing } from './claims';
 import { startBridgePlacing } from './bridges';
+import { startPierPlacing } from './piers';
 import { BASES_OPEN, BASES_CLOSED_MSG } from '../data/building';
 import { lyingModel } from './pickmodels';
 
@@ -190,6 +191,7 @@ export function useItem(k: ItemKey): boolean {
     return true;
   }
   if (k === 'firekit') return lightFire();
+  if (k === 'pierkit') { if (startPierPlacing()) closePack(); return false; } // used up when the pier is staked out
   if (k === 'bridgekit') { if (startBridgePlacing()) closePack(); return false; } // used up when the site is staked out
   if (k === 'flagpole' && !BASES_OPEN) { logLine(BASES_CLOSED_MSG); return false; }
   if (k === 'flagpole') { if (startPlacing()) { closePack(); } return false; } // the flag is used up once raised

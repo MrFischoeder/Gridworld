@@ -4,6 +4,16 @@ export interface Change { v: string; date: string; title: string; notes: string[
 
 export const CHANGELOG: Change[] = [
   {
+    v: '0.83.0', date: '2026-10-05', title: 'Piers on the coast',
+    notes: [
+      'New item: the Pier Kit (survey stakes, a sounding line and a float), 90 gold at the blacksmith. Stand on a beach, use it and look out to sea: a hologram shows a pier running straight out from the beach until the water under its head is 1.8 m deep (deep enough for a boat). Click to stake it out, right mouse or Esc to cancel.',
+      'The hologram turns red and says why when it cannot go there: no sea in front of you (piers are not for lakes and rivers), water too shallow for 45 m, a shore too steep, a village or another place too close, or another pier.',
+      'Build it like a bridge: bring logs, stones, nails, rope, some scrap and wire to its sign on the beach and hand them over bit by bit. While it is unfinished you can pull up the stakes and get everything back.',
+      'A finished pier has a planked deck on piles ramping up from the beach, and a wider head with bollards, a lamp and a crate: E at the crate stores goods there. Walk or drive out onto it. Boats will tie up here when they come.',
+      'Piers show on the minimap and the big map like bridges.',
+    ],
+  },
+  {
     v: '0.82.0', date: '2026-10-04', title: 'Bridges anywhere',
     notes: [
       'New item: the Bridge Kit (survey stakes, a line and a plumb), 80 gold at the blacksmith. Use it from your backpack by a river: a hologram shows the bridge straight across the water from the bank you stand on, with its piles and ramps. Click to stake out the site, right mouse or Esc to cancel.',

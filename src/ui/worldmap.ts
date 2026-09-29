@@ -105,6 +105,7 @@ function drawArea(ctx: CanvasRenderingContext2D, w: number, h: number, ppm: numb
   const bars: [number, number, number, number, number, boolean][] = [];
   for (const b of Object.values(G.char.bridges)) if (b.done && b.at) bars.push([...b.at, true]);
   for (const f of G.char.bridgeSites) if (!G.char.bridges[f.id]?.done) bars.push([f.x, f.z, f.dx, f.dz, f.end, false]);
+  for (const p of G.char.piers) bars.push([p.x + p.dx * p.len / 2, p.z + p.dz * p.len / 2, p.dx, p.dz, p.len / 2, !!p.done]); // piers too
   for (const [bx, bz, dx, dz, e, done] of bars) {
     const x = X(nearX(bx, px)), y = Z(bz), l = Math.max(4, e * ppm);
     ctx.strokeStyle = done ? '#e8fff0' : '#ffd060'; ctx.lineWidth = done ? Math.max(2, 5.4 * ppm) : 1.5; ctx.setLineDash(done ? [] : [3, 3]);
