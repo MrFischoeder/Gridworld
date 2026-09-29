@@ -4,6 +4,14 @@ export interface Change { v: string; date: string; title: string; notes: string[
 
 export const CHANGELOG: Change[] = [
   {
+    v: '0.88.1', date: '2026-10-10', title: 'Wiktor waits to be spoken to',
+    notes: [
+      'Wiktor no longer starts talking the moment you come near. He stands outside the wreck calling into the hatch ("Hello? Is anyone in there? Come out, I am a friend!") until you walk up and talk to him (E).',
+      'Then he introduces himself and tells you to look through your ship once more and take everything you can carry. Talk to him again when you are ready and he sets off for Gridholm.',
+      'On the way he points out what you pass, left or right: old ruins (dangerous, treasure below, but not today), other crashed ships, bandit camps, the Chariot\'s hangar, a lake with clean water. He never stops for them: keep walking.',
+    ],
+  },
+  {
     v: '0.88.0', date: '2026-10-10', title: 'A welcome at the wreck',
     notes: [
       'A new character is no longer left to find Gridholm alone: Wiktor, a scout of Gridholm who saw your ship fall, waits outside the wreck. Step out and he greets you, begs you not to shoot and walks you to the village gate, stopping to wait and call when you fall behind, and chatting on the way.',
