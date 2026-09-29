@@ -1,6 +1,6 @@
 # GridWorld: opis gry, cel, plan i historia zmian
 
-Stan na wersję **0.95.0**. Ten dokument opisuje, czym jest GridWorld, jaki jest cel gry, co już w niej jest, czego jeszcze nie ma, dokąd zmierza i jak powstawała, wersja po wersji. Nazwy z gry (przedmioty, miejsca, postacie) są po angielsku, tak jak na ekranie.
+Stan na wersję **0.96.0**. Ten dokument opisuje, czym jest GridWorld, jaki jest cel gry, co już w niej jest, czego jeszcze nie ma, dokąd zmierza i jak powstawała, wersja po wersji. Nazwy z gry (przedmioty, miejsca, postacie) są po angielsku, tak jak na ekranie.
 
 ---
 
@@ -46,7 +46,7 @@ Gracz budzi się we wraku. W szafce czekają pierwsze zapasy, a rejestrator lotu
 ### Planeta i jej przeszłość
 Planeta należała kiedyś do potężnej cywilizacji Starożytnych. Zostały po niej:
 - obce świątynie z kryptami i lochami;
-- porzucone wielkie instalacje: wzbogacalnia uranu, fabryka czipów, stacja radarowa;
+- porzucone wielkie instalacje (dziewięć): wzbogacalnia uranu, fabryka czipów, stacja radarowa, fabryka paliwa rakietowego, fabryka ogniw, zakłady optyczne, kombinat stopów, zakłady precyzyjne i fabryka robotów;
 - rozbite statki;
 - maszyny bojowe (roboty), które wciąż strzegą ruin.
 
@@ -164,7 +164,7 @@ Gra jest pomyślana jako **kooperacja do 8 graczy** na autorytatywnym serwerze (
 - **Wraki frachtowców** na wpół zakopane w ziemi. W środku są zatoki: maszynownia, śluza, kajuty, ładownia, mostek. Pilnują ich roboty.
 - **Obozy bandytów**: namioty, barykady, ognisko, skrytka i boss. Po oczyszczeniu stoją puste przez 30 minut.
 - **Hangar Rydwanu** przy Gridholm.
-- **Wielkie instalacje** (dalej w rozdziale 10): Old Enrichment Plant (15–25 km), Old Chip Foundry (12–20 km), Old Radar Station (18–28 km).
+- **Wielkie instalacje** (dalej w rozdziale 10), dwa razy większe od reszty świata: Old Enrichment Plant (15–25 km), Old Chip Foundry (12–20 km), Old Radar Station (18–28 km), Old Propellant Plant (10–18 km), Old Battery Plant (14–22 km), Old Optical Works (14–24 km), Old Alloy Complex (16–26 km), Old Precision Works (18–28 km), Old Robotics Plant (20–28 km).
 - **Miejsce katastrofy** gracza: wrak Kestrela z bruzdą w ziemi, 260–430 m od Gridholm.
 
 ---
@@ -301,16 +301,22 @@ To serce gry. Gracz nie ma własnej bazy (budowanie w dziczy jest zamknięte). Z
 
 ## 10. Wiedza i wielkie instalacje
 
-- **16 + 1 technologii** na starych nośnikach (dyskietki, dyski, kryształy pamięci). Każda leży w stałym miejscu świata: w ruinie, wraku albo jaskini, tym dalej, im wyższy poziom (od 600 m do 30 km).
+- **25 technologii** na starych nośnikach (dyskietki, dyski, kryształy pamięci). Każda leży w stałym miejscu świata: w ruinie, wraku albo jaskini, tym dalej, im wyższy poziom (od 600 m do 30 km).
   - Przykłady: Irrigated Fields, Forged Tools, Steel Ploughs, Solar Cells, Integrated Circuits, Radio Triangulation, Uranium Enrichment, Rocket Propellant Synthesis, Filter Masks.
 - **Plotki**: mieszkańcy pytani o stare maszyny wskazują nośniki i instalacje, z kierunkiem i odległością.
 - **Zamówienia u kowala**: z odzyskanych planów kowal robi narzędzia, maski i filtry z zapasów hali.
 - **Wielkie instalacje**:
   - **Old Enrichment Plant** robi z uranu pręty paliwowe;
   - **Old Chip Foundry** robi ze szkła i miedzi mikroczipy;
-  - **Old Radar Station** odkrywa na mapie wszystko w promieniu 12 km.
+  - **Old Radar Station** odkrywa na mapie wszystko w promieniu 12 km;
+  - **Old Propellant Plant** robi paliwo rakietowe (jedyne źródło);
+  - **Old Battery Plant** robi ogniwa (Power Cells);
+  - **Old Optical Works** robi sensory;
+  - **Old Alloy Complex** robi Ancient Alloy albo Advanced Ceramics;
+  - **Old Precision Works** robi ze stali, Ancient Alloy i mikroczipów komponenty precyzyjne (Precision Components);
+  - **Old Robotics Plant**, największa ze wszystkich, robi z mikroczipów, sensorów, komponentów precyzyjnych i ogniw moduły automatyki (Automation Units): szczyt łańcucha produkcji.
 
-  Każdą odbudowuje się w trzech etapach przy jej pulpicie sterowniczym. Na ostatni etap potrzebne są plany.
+  Każdą odbudowuje się w trzech etapach przy jej pulpicie sterowniczym. Na ostatni etap potrzebne są plany. Od drugiego etapu działa jej własna siłownia (kocioł na węgiel, agregaty diesla, w wzbogacalni reaktor); gracz dowozi każde wejście i każde paliwo sam.
 
 ## 11. Interfejs i pomoce
 
@@ -338,7 +344,7 @@ To serce gry. Gracz nie ma własnej bazy (budowanie w dziczy jest zamknięte). Z
 - wioski z pełną odbudową (mury, obrona, prąd, farmy, zakłady, stacje, hala, jedzenie, ludność, reputacja);
 - handel, kontrakty i karawany;
 - technologie i plotki;
-- trzy wielkie instalacje;
+- dziewięć wielkich instalacji z siłowniami;
 - toksyczna mgła;
 - zbieranie etapów Rydwanu w hangarze.
 
@@ -527,3 +533,4 @@ Pełne notatki (po angielsku) są w grze pod przyciskiem **Changelog** w menu g�
 - **0.93.0 Stare zakłady potrzebują prądu** (etap 4 planu gospodarki). Wzbogacalnia i fabryka czipów mają własne siłownie (wracają z II etapem; kocioł węglowy 120 kW, zespoły diesla 100 kW, własny reaktor wzbogacalni 250 kW); nowe wejścia (chemikalia, ziemie rzadkie), etapy odbudowy ze stalą, cementem, częściami i chemikaliami; ekran terminala przy pulpicie.
 - **0.94.0 Fabryka paliwa i fabryka ogniw** (etap 5 planu gospodarki, część 1). Old Propellant Plant (paliwo rakietowe, jedyne źródło) i Old Battery Plant (Power Cells), z siłowniami i trzema etapami; gracz dowozi wszystkie wejścia; nowa technologia Power Cell Chemistry; zamówienia na ogniwa w wioskach złomiarzy.
 - **0.95.0 Olbrzymy dawnego świata** (etap 5, część 2). Wszystkie instalacje Starożytnych dwa razy większe (pulpity w skali człowieka, położenie bez zmian); Old Optical Works (sensory) i Old Alloy Complex (Ancient Alloy lub Advanced Ceramics); technologie Advanced Sensors i Ancient Metallurgy.
+- **0.96.0 Szczyt łańcucha** (etap 5, część 3). Old Precision Works (Precision Components ze stali, Ancient Alloy i mikroczipów) i Old Robotics Plant (Automation Units z mikroczipów, sensorów, komponentów precyzyjnych i ogniw), obie w podwójnej skali; technologie Precision Manufacturing i Automation; etap 5 zamknięty.

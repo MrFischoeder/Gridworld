@@ -106,6 +106,19 @@ describe('great installations', () => {
     const sites = installSites(new Terrain(12345));
     for (const x of sites) expect(x.r).toBe(INSTALLS.find((q) => q.k === x.k)!.r * INSTALL_SCALE);
   });
+  it('the precision works and the robotics plant: the top of the chain, fed with what the other old plants make, off the ice', () => {
+    const p = workOf('precision')!, r = workOf('robotics')!;
+    expect(p.out).toBe('precision'); expect(r.out).toBe('automation');
+    expect(p.inp.map(([i]) => i)).toEqual(['steel', 'ancalloy', 'microchip']);
+    expect(r.inp.map(([i]) => i)).toEqual(['microchip', 'sensor', 'precision', 'powercell']);
+    expect(ITEMS.precision.name).toBe('Precision Components'); expect(ITEMS.automation.name).toBe('Automation Units');
+    expect(INSTALL_STAGES.precision[2].tech).toBe('precision'); expect(INSTALL_STAGES.robotics[2].tech).toBe('automation');
+    expect(INSTALL_DRAW.precision).toBeGreaterThan(0); expect(INSTALL_DRAW.robotics).toBeGreaterThan(0);
+    const s: InstallState = { ...newInstall(), stage: INSTALL_STAGES.robotics.length, pw: { coal: 30, fuel: 30 } } // (200 kW: the boiler and the diesel sets together);
+    for (const [i] of r.inp) expect(loadInstall('robotics', s, i, 3, 0)).toBe(3);
+    runInstall('robotics', s, r.batch * 5); expect(s.out).toBe(3);
+    for (const w of [12345, 777]) for (const x of installSites(new Terrain(w))) if (x.k === 'precision' || x.k === 'robotics') expect(Math.abs(x.z)).toBeLessThan(25000 - 1999);
+  }, 120000);
   it('the chip foundry needs every input for a batch', () => {
     const w = INSTALL_WORK.chips!, s: InstallState = { ...newInstall(), stage: INSTALL_STAGES.chips.length, pw: { coal: 30 } };
     expect(loadInstall('chips', s, 'glass', 99, 0)).toBe(w.hopper);

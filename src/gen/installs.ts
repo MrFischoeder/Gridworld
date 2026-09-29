@@ -4,7 +4,7 @@
 // lies in its own distance band from Gridholm on dry, fairly level ground away from villages, places, roads, lakes and
 // the mountains. The ground round it is bare: trees, rocks and plants inside `inInstall` are not generated.
 import { hash } from '../core/rng';
-import { CHUNK, worldDist, wrapDx, poisNear, type Poi } from './regions';
+import { CHUNK, POLAR_Z, worldDist, wrapDx, poisNear, type Poi } from './regions';
 import { nearestOnRoad } from './roads';
 import { mountainMask } from './mountains';
 import { inSea } from './seas';
@@ -12,7 +12,7 @@ import { nearRiver } from './rivers';
 import { rectDist, type Terrain } from './terrain';
 import type { ItemKey } from '../data/items';
 
-export type InstallKind = 'uranium' | 'chips' | 'radar' | 'propellant' | 'battery' | 'optical' | 'alloy';
+export type InstallKind = 'uranium' | 'chips' | 'radar' | 'propellant' | 'battery' | 'optical' | 'alloy' | 'precision' | 'robotics';
 export interface InstallSpec { k: InstallKind; name: string; blurb: string; band: [number, number]; r: number }
 export const INSTALLS: InstallSpec[] = [
   { k: 'uranium', name: 'Old Enrichment Plant', blurb: 'a ruined plant of the old world where ore was once made into reactor fuel: a centrifuge hall, two cooling towers and a stack', band: [15000, 25000], r: 34 },
@@ -23,6 +23,8 @@ export const INSTALLS: InstallSpec[] = [
   { k: 'battery', name: 'Old Battery Plant', blurb: 'a cell works of the old world: a long sawtooth-roofed hall, rows of electrolyte tanks and a brine basin', band: [14000, 22000], r: 30 },
   { k: 'optical', name: 'Old Optical Works', blurb: 'a lens and sensor works of the old world: long glass-roofed grinding halls, a tall crystal-growing tower and a row of annealing kilns', band: [14000, 24000], r: 30 },
   { k: 'alloy', name: 'Old Alloy Complex', blurb: 'a metal works of the old world: two great arc furnaces crowned with electrodes, a towering casting hall, twin stacks and heaps of slag', band: [16000, 26000], r: 32 },
+  { k: 'precision', name: 'Old Precision Works', blurb: 'a machining works of the old world: a vaulted hall of machine tools, a tall test tower and a white measuring dome', band: [18000, 28000], r: 30 },
+  { k: 'robotics', name: 'Old Robotics Plant', blurb: 'the greatest works of the old world: an assembly hall like a hangar, a gantry yard, giant robot arms on their pedestals and a walled test arena under a control tower', band: [20000, 28000], r: 34 },
 ];
 /** How much bigger the plants stand than their plans (and their `r`): the ground is searched at the plan's radius, so a plant's place never moves when it grows. */
 export const INSTALL_SCALE = 2;
@@ -59,6 +61,7 @@ export function installSites(t: Terrain): InstallSite[] {
       const a = (hash(t.world, i, k, 0x1e57) % 3600) / 3600 * Math.PI * 2, [d0, d1] = spec.band;
       const d = d0 + (hash(t.world, i, k, 0x1e58) % 1000) / 1000 * (d1 - d0), x = Math.cos(a) * d, z = Math.sin(a) * d;
       const c: InstallSite = { k: spec.k, name: spec.name, x, z, y: t.heightAt(x, z), yaw: (hash(t.world, i, k, 0x1e59) % 4) * Math.PI / 2, r: spec.r * INSTALL_SCALE };
+      if (i >= 7 && Math.abs(z) > POLAR_Z - 2000) continue; // (the far ones keep off the ice; the older ones kept their places)
       if (!best) best = c;
       if (out.some((o) => worldDist(o.x, o.z, x, z) < 3000)) continue; // the installations lie well apart
       if (!installMisfit(t, x, z, spec.r)) { best = c; break; }
@@ -116,6 +119,16 @@ export const INSTALL_STAGES: Record<InstallKind, InstallStage[]> = {
     { title: 'The arc furnaces and power', text: 'The furnaces want more current than anything else here: heavy cable, circuit boards for the regulators, machine parts for the electrode hoists, chemicals for the fluxes, and the power hall by the gate.', needs: [['cable', 16], ['boards', 4], ['parts', 6], ['chems', 4]], gold: 450, xp: 450 },
     { title: 'The alloy recipe', text: 'Steel, aluminium and nickel alone make only advanced alloy. What the Ancients cast here was more: only the old plans for ancient metallurgy hold the recipe, and the control room wants power cores and advanced alloy.', needs: [['pcore', 2], ['alloy', 6], ['circuit', 6]], tech: 'ancmetal', gold: 600, xp: 700 },
   ],
+  precision: [
+    { title: 'Opening the machine hall', text: 'The vault of the machine hall has sagged onto the lathes and the test tower leans on its guys. Steel for the ribs, cement for the machine beds, machine parts for the travelling cranes.', needs: [['steel', 10], ['cement', 10], ['parts', 6]], gold: 300, xp: 300 },
+    { title: 'Drives, air and power', text: 'A machine that cuts to a hair wants steady current and still air. Cable for the drives and the power hall by the gate, circuit boards for the controls, chemicals for the coolant, glass for the measuring dome.', needs: [['cable', 12], ['boards', 6], ['chems', 4], ['glass', 4]], gold: 450, xp: 450 },
+    { title: 'The master machines', text: 'The master machines that made the other machines stand dead. Only the old plans for precision manufacturing show how to true them, and they want microchips, ancient alloy for the spindles and electronics.', needs: [['microchip', 4], ['ancalloy', 2], ['circuit', 6]], tech: 'precision', gold: 600, xp: 700 },
+  ],
+  robotics: [
+    { title: 'Raising the assembly hall', text: 'The assembly hall is the size of a hangar and its roof lies on the lines. Steel for the trusses, cement and bricks for the walls and the pedestals, machine parts for the gantries.', needs: [['steel', 14], ['cement', 12], ['bricks', 10], ['parts', 8]], gold: 350, xp: 350 },
+    { title: 'The lines and power', text: 'The assembly lines, the gantries and the power hall by the gate must run again: heavy cable, circuit boards for the line controllers, power cells for the robot arms, chemicals for the paint and the coolant.', needs: [['cable', 16], ['boards', 8], ['powercell', 2], ['chems', 4]], gold: 500, xp: 500 },
+    { title: 'Waking the arms', text: 'The great arms hang limp over the lines. Only the old plans for automation show how to teach them their work, and they want microchips, sensors to see with and precision components for their joints.', needs: [['microchip', 6], ['sensor', 4], ['precision', 4]], tech: 'automation', gold: 800, xp: 900 },
+  ],
 };
 /** What a working installation makes: the crates of each input in `inp` into `n` (1) of `out` every `batch` game minutes (at most `hopper` of each input loaded, `bay` made waiting). */
 export interface InstallWork { inp: [ItemKey, number][]; out: ItemKey; n?: number; batch: number; hopper: number; bay: number; what: string }
@@ -126,6 +139,8 @@ export const INSTALL_WORK: Partial<Record<InstallKind, InstallWork>> = {
   battery: { inp: [['lithium', 1], ['nickel', 1], ['copperbar', 1], ['chems', 1]], out: 'powercell', batch: 240, hopper: 30, bay: 12, what: 'The formation lines crackle and the cells charge in their racks.' },
   optical: { inp: [['glass', 2], ['rareearth', 1], ['chems', 1]], out: 'sensor', batch: 240, hopper: 30, bay: 12, what: 'The crystal tower glows and the grinders whine in the lens halls.' },
   alloy: { inp: [['steel', 2], ['aluminium', 1], ['nickel', 1]], out: 'ancalloy', batch: 300, hopper: 30, bay: 12, what: 'The arc furnaces roar and the casting hall fills with a white glare.' },
+  precision: { inp: [['steel', 2], ['ancalloy', 1], ['microchip', 1]], out: 'precision', batch: 300, hopper: 30, bay: 12, what: 'The machine hall hums and the test tower blinks its lamps.' },
+  robotics: { inp: [['microchip', 1], ['sensor', 1], ['precision', 1], ['powercell', 1]], out: 'automation', batch: 360, hopper: 20, bay: 10, what: 'The great arms swing over the lines and a robot walks the test arena.' },
 };
 /** Further things an installation can make instead (picked at its desk while its bay is empty): the first is INSTALL_WORK[k]. */
 export const INSTALL_MORE: Partial<Record<InstallKind, InstallWork[]>> = {
@@ -148,7 +163,7 @@ export function setInstallRec(k: InstallKind, s: InstallState, i: number, now: n
  * What a working installation draws (kW). A batch runs only while its power hall gives that much: the hall comes back
  * with the second stage (`HALL_STAGE` stages done) and burns what you bring it, only while a batch is under way.
  */
-export const INSTALL_DRAW: Partial<Record<InstallKind, number>> = { uranium: 200, chips: 100, propellant: 120, battery: 150, optical: 130, alloy: 180 };
+export const INSTALL_DRAW: Partial<Record<InstallKind, number>> = { uranium: 200, chips: 100, propellant: 120, battery: 150, optical: 130, alloy: 180, precision: 160, robotics: 200 };
 export const HALL_STAGE = 2;
 /** The hall's generator sets: each runs on its own fuel (a crate every `burn` game minutes of work), `bunker` crates at most. */
 export interface HallSet { fuel: ItemKey; name: string; kw: number; burn: number; bunker: number }
@@ -261,6 +276,14 @@ export const installLeadId = (k: InstallKind) => 'install:' + k;
 const IDIRS = ['north', 'north-east', 'east', 'south-east', 'south', 'south-west', 'west', 'north-west'];
 const idir = (dx: number, dz: number) => IDIRS[Math.round(((Math.atan2(dx, -dz) * 180 / Math.PI + 360) % 360) / 45) % 8];
 const ISAY: Record<InstallKind, string[]> = {
+  precision: [
+    'There is a hall with a round roof {dist} {dir} of here, full of machines finer than a watch, and beside it a white dome and a tower with lamps. The old folk say the machines that made machines stood there.',
+    'A tinker told me of the old precision works {dist} {dir} of here. He brought back a gauge block so true that two of them stuck together like magnets.',
+  ],
+  robotics: [
+    'Far out, {dist} {dir} of here, stands a hall as big as a hill, and giant iron arms bent over it like sleeping herons. Our grandmothers said the old world was built by those arms.',
+    'Hunters who went to the old robot plant {dist} {dir} of here swear a walking machine stands in a walled yard there, frozen mid-step, taller than a house.',
+  ],
   optical: [
     'Glass-roofed halls stand {dist} {dir} of here, most of the panes broken, beside a tower like a candle. The old folk say the eyes of the old machines were ground there.',
     'A glazier from our village went to the old optical works {dist} {dir} of here for panes. He came back with a crystal that bent the light into colours, and a fever.',

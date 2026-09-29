@@ -39,6 +39,8 @@ export const TECHS: Tech[] = [
   { id: 'powercells', name: 'Power Cell Chemistry', area: 'chemistry', tier: 3, blurb: 'Lithium, nickel and an electrolyte nobody remembers: cells that hold a day\'s power in a crate.' },
   { id: 'sensors', name: 'Advanced Sensors', area: 'electronics', tier: 3, blurb: 'Crystals grown in a furnace and ground into lenses: eyes that see heat, distance and the shape of metal.' },
   { id: 'ancmetal', name: 'Ancient Metallurgy', area: 'metal', tier: 4, blurb: 'The alloy the Ancients built their ships of: lighter than steel, harder than anything since.' },
+  { id: 'precision', name: 'Precision Manufacturing', area: 'metal', tier: 4, blurb: 'The master machines that cut to a hair and made every other machine: bearings, gears and spindles that never wear.' },
+  { id: 'automation', name: 'Automation', area: 'electronics', tier: 4, blurb: 'How the Ancients taught arms of steel to work alone: drives, sensors and a small mind in one sealed case.' },
 ];
 export const TECH_BY_ID: Record<string, Tech> = Object.fromEntries(TECHS.map((t) => [t.id, t]));
 /** How far from Gridholm (m) each tier's carriers lie. */

@@ -4,6 +4,15 @@ export interface Change { v: string; date: string; title: string; notes: string[
 
 export const CHANGELOG: Change[] = [
   {
+    v: '0.96.0', date: '2026-10-12', title: 'The top of the chain',
+    notes: [
+      'The Old Precision Works (18 to 28 km from Gridholm): a barrel-vaulted hall full of machine tools, a lattice test tower and a white measuring dome. Restored, it makes Precision Components from steel, Ancient Alloy and microchips (160 kW).',
+      'The Old Robotics Plant (20 to 28 km), the greatest of the Ancient works: an assembly hall like a hangar, a gantry yard, three giant robot arms on their pedestals, a walled test arena with a walker frozen mid-step, and a control tower. Restored, the arms rise and one of them turns, and it makes Automation Units from microchips, sensors, precision components and power cells (200 kW: its boiler and diesel sets together).',
+      'Their cores want the plans for Precision Manufacturing and Automation, two new technologies on data carriers far out. As at the other old plants, you bring every crate and every fuel yourself.',
+      'Villagers now tell of both in their rumours of old machines; they stand clear of the polar ice.',
+    ],
+  },
+  {
     v: '0.95.0', date: '2026-10-11', title: 'Giants of the old world',
     notes: [
       'Every great installation of the Ancients now stands twice as big: halls, towers, tanks, furnaces, stacks, fences and power halls. You see them from far off and they tower over you when you walk in. They stand where they always stood; the control desks stay at a person\'s height by the gate.',

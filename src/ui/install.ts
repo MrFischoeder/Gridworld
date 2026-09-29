@@ -112,6 +112,8 @@ const FINISH: Record<InstallKind, string> = {
   battery: 'The formation lines crackle into life and the first racks of cells begin to charge.',
   optical: 'The crystal tower lights from within and the first sensor heads come off the grinders.',
   alloy: 'The electrodes drop into the furnaces with a thunderclap and the casting hall glares white.',
+  precision: 'The master machines true themselves spindle by spindle, and the lamps on the test tower blink green.',
+  robotics: 'The great arms lift from their sleep, the lines start to roll, and in the arena the walker takes its step.',
 };
 /** The radar station's sweep: every place within its reach goes on your map. */
 function sweep(s: InstallSite): string {

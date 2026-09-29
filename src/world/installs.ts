@@ -19,7 +19,7 @@ import type { Terrain } from '../gen/terrain';
 const METAL = 0xa8c8b8, RUST = 0x9aa870, CONC = 0x7fa08c, GLOW = 0xb6ff3a, HOT_FLAME = 0xffb347;
 interface Live { s: InstallSite; g: THREE.Group; cos: number; sin: number; stage: number; spin?: THREE.Object3D | null; walls: [number, number, number, number][]; rings: [number, number, number][] }
 /** The control desk in each installation's frame (inside the gate, west of the way in). */
-export const DESKS: Record<InstallKind, { x: number; z: number }> = { uranium: { x: -6, z: -25 }, chips: { x: -6, z: -23 }, radar: { x: -6, z: -21 }, propellant: { x: -6, z: -23 }, battery: { x: -6, z: -23 }, optical: { x: -6, z: -23 }, alloy: { x: -6, z: -26 } };
+export const DESKS: Record<InstallKind, { x: number; z: number }> = { uranium: { x: -6, z: -25 }, chips: { x: -6, z: -23 }, radar: { x: -6, z: -21 }, propellant: { x: -6, z: -23 }, battery: { x: -6, z: -23 }, optical: { x: -6, z: -23 }, alloy: { x: -6, z: -26 }, precision: { x: -6, z: -23 }, robotics: { x: -6, z: -28 } };
 const live = new Map<string, Live>();
 
 /** The perimeter fence (half-size F): posts every 4 m and two wires, with gaps and leaning posts until cleared; the gate on the -z side. */
@@ -63,7 +63,7 @@ function drawDesk(pb: PropBatch, Hp: (x: number, z: number) => number, plan: { x
   }
 }
 /** Where each plant's power hall stands, in its frame (inside the fence, east of the gate). */
-export const HALLS: Partial<Record<InstallKind, { x: number; z: number }>> = { uranium: { x: 16, z: -20 }, chips: { x: 15, z: -19 }, propellant: { x: 15, z: -19 }, battery: { x: 15, z: -19 }, optical: { x: 15, z: -19 }, alloy: { x: 16, z: -22 } };
+export const HALLS: Partial<Record<InstallKind, { x: number; z: number }>> = { uranium: { x: 16, z: -20 }, chips: { x: 15, z: -19 }, propellant: { x: 15, z: -19 }, battery: { x: 15, z: -19 }, optical: { x: 15, z: -19 }, alloy: { x: 16, z: -22 }, precision: { x: 15, z: -19 }, robotics: { x: 17, z: -25 } };
 /**
  * The power hall: a burnt-out shell (low broken walls, a toppled stack) until the second stage brings it back; then a
  * generator house with a gable roof and a door, its stack, a coal bin and a fuel tank, and a lime lamp over the door.
@@ -521,7 +521,144 @@ function drawAlloy(T: Terrain, s: InstallSite, cos: number, sin: number, stage: 
   drawDesk(hb, H, DESKS.alloy, stage, done, rings);
   return { g: pb.build(), walls, rings };
 }
-const DRAW: Record<InstallKind, typeof drawUranium> = { optical: drawOptical, alloy: drawAlloy, uranium: drawUranium, chips: drawChips, radar: drawRadar, propellant: drawPropellant, battery: drawBattery };
+/** A square beam of width w from a to b (arms, braces), with a dark fill and its edges drawn. */
+function beam(pb: PropBatch, a: number[], b: number[], w: number, c: number) {
+  const d = [b[0] - a[0], b[1] - a[1], b[2] - a[2]], L = Math.hypot(d[0], d[1], d[2]) || 1, u = d.map((v) => v / L);
+  const up = Math.abs(u[1]) < 0.9 ? [0, 1, 0] : [1, 0, 0];
+  const cr = (x: number[], y: number[]) => [x[1] * y[2] - x[2] * y[1], x[2] * y[0] - x[0] * y[2], x[0] * y[1] - x[1] * y[0]];
+  let p = cr(u, up); const pl = Math.hypot(p[0], p[1], p[2]); p = p.map((v) => v / pl * w / 2);
+  const q = cr(u, p);
+  const at = (o: number[], i: number) => { const sp = i === 0 || i === 3 ? 1 : -1, sq = i < 2 ? 1 : -1; return [o[0] + p[0] * sp + q[0] * sq, o[1] + p[1] * sp + q[1] * sq, o[2] + p[2] * sp + q[2] * sq]; };
+  for (let i = 0; i < 4; i++) { const j = (i + 1) % 4; pb.face(at(a, i), at(a, j), at(b, j), at(b, i)); pb.seg(c, at(a, i), at(b, i)); pb.seg(c, at(a, i), at(a, j)); pb.seg(c, at(b, i), at(b, j)); }
+  pb.face(at(a, 0), at(a, 1), at(a, 2), at(a, 3)); pb.face(at(b, 0), at(b, 1), at(b, 2), at(b, 3));
+}
+/**
+ * The machining works in its own frame: the vaulted machine hall (x -18..4, z -6..10, walls 5 m under a barrel vault)
+ * with rows of machine tools inside, a lattice test tower (x 14, z 8), a white measuring dome (x 16, z -4) and a stack.
+ * Before it is opened the far half of the vault has fallen in and its ribs lie in the weeds; with drives and power
+ * (stage 2) the test tower stands its full height with its lamps; restored, the hall's windows, the lamps and the
+ * dome's slit glow.
+ */
+function drawPrecision(T: Terrain, s: InstallSite, cos: number, sin: number, stage: number, hb: PropBatch): { g: THREE.Group; walls: Live['walls']; rings: Live['rings'] } {
+  const pb = new PropBatch(), walls: Live['walls'] = [], rings: Live['rings'] = [];
+  const cleared = stage >= 1, powered = stage >= 2, done = stage >= INSTALL_STAGES.precision.length, WHITE = 0xd8f0e0;
+  const H = hOf(T, s, cos, sin);
+  drawFence(pb, H, 28, cleared);
+  // ---- the machine hall
+  const X0 = -18, X1 = 4, Z0 = -6, Z1 = 10, WH = 5, RISE = 5, ZM = (Z0 + Z1) / 2, R = (Z1 - Z0) / 2, g0 = Math.min(H(X0, Z0), H(X1, Z0), H(X0, Z1), H(X1, Z1)) - 0.3;
+  const wall = (ax: number, az: number, bx: number, bz: number) => { pb.box(Math.min(ax, bx) - 0.15, g0, Math.min(az, bz) - 0.15, Math.max(ax, bx) + 0.15, g0 + WH, Math.max(az, bz) + 0.15, CONC); walls.push([ax, az, bx, bz]); };
+  wall(X0, Z0, -10, Z0); wall(-6, Z0, X1, Z0); wall(X1, Z0, X1, Z1); wall(X1, Z1, X0, Z1); wall(X0, Z1, X0, Z0);
+  pb.face([-10, g0 + 3.6, Z0 - 0.16], [-6, g0 + 3.6, Z0 - 0.16], [-6, g0 + WH, Z0 - 0.16], [-10, g0 + WH, Z0 - 0.16]); // over the door
+  const arc = (x: number, t: number) => [x, g0 + WH + Math.sin(t * Math.PI) * RISE, ZM - Math.cos(t * Math.PI) * R];
+  for (let x = X0; x <= X1 + 0.01; x += 2) {
+    const fallen = !cleared && x > -5;
+    if (fallen) { if ((x * 5) % 3 === 0) { const y = H(x, Z1 + 3); pb.line(RUST, [x, y + 0.2, Z1 + 1], [x + 3, y + 0.4, Z1 + 5], [x + 6, y + 0.2, Z1 + 8]); } continue; }
+    for (let i = 0; i < 8; i++) { pb.seg(METAL, arc(x, i / 8), arc(x, (i + 1) / 8)); if (x < X1 && (cleared || x + 2 <= -5)) { pb.face(arc(x, i / 8), arc(x + 2, i / 8), arc(x + 2, (i + 1) / 8), arc(x, (i + 1) / 8)); if (i % 2 === 0) pb.seg(METAL, arc(x, i / 8), arc(x + 2, i / 8)); } }
+  }
+  for (const xe of cleared ? [X0, X1] : [X0]) { const pts: number[][] = []; for (let i = 0; i <= 8; i++) pts.push(arc(xe, i / 8)); pb.face(...pts); }
+  for (const ze of [Z0 - 0.17, Z1 + 0.17]) for (let x = X0 + 1; x < X1 - 1; x += 3) if (Math.abs(x + 8) > 2.5 || ze > 0) pb.line(done ? GLOW : METAL, [x, g0 + 2, ze], [x + 1.4, g0 + 2, ze], [x + 1.4, g0 + 3.8, ze], [x, g0 + 3.8, ze], [x, g0 + 2, ze]);
+  // the machine tools: two rows of lathes and mills, a gantry mill at the far end
+  for (let x = X0 + 2; x < X1 - 2; x += 3.5) for (const z of [-2, 5]) { const hh = 1.2 + ((x * 7 + z) % 3 + 3) % 3 * 0.3; pb.box(x, g0 + 0.3, z, x + 2.2, g0 + 0.3 + hh, z + 1.2, METAL); if (done) pb.seg(GLOW, [x + 0.3, g0 + 0.35 + hh, z + 0.6], [x + 1.9, g0 + 0.35 + hh, z + 0.6]); }
+  // ---- the test tower: a lattice of four legs, braced every 3 m; snapped at 12 m until it has power
+  { const cx = 14, cz = 8, y = H(cx, cz) - 0.2, h = powered ? 24 : 12, w = 2;
+    for (const [dx, dz] of [[-w, -w], [w, -w], [w, w], [-w, w]]) { pb.seg(METAL, [cx + dx, y, cz + dz], [cx + dx * 0.5, y + h, cz + dz * 0.5]); rings.push([cx + dx, cz + dz, 0.4]); }
+    for (let r = 0; r + 3 <= h; r += 3) { const k0 = 1 - 0.5 * r / 24, k1 = 1 - 0.5 * (r + 3) / 24; for (const [ax, az, bx, bz] of [[-1, -1, 1, -1], [1, -1, 1, 1], [1, 1, -1, 1], [-1, 1, -1, -1]]) { pb.seg(METAL, [cx + ax * w * k0, y + r, cz + az * w * k0], [cx + bx * w * k1, y + r + 3, cz + bz * w * k1]); pb.seg(METAL, [cx + ax * w * k1, y + r + 3, cz + az * w * k1], [cx + bx * w * k1, y + r + 3, cz + bz * w * k1]); } }
+    if (powered) { pb.box(cx - 1.6, y + h, cz - 1.6, cx + 1.6, y + h + 2.2, cz + 1.6, METAL); for (const [dx, dz] of [[-1.6, -1.6], [1.6, 1.6]]) pb.box(cx + dx - 0.25, y + h + 2.2, cz + dz - 0.25, cx + dx + 0.25, y + h + 2.7, cz + dz + 0.25, done ? GLOW : RUST); }
+    else pb.line(RUST, [cx + 2, H(cx + 2, cz + 3) + 0.3, cz + 3], [cx + 7, H(cx + 7, cz + 9) + 0.5, cz + 9], [cx + 10, H(cx + 10, cz + 12) + 0.3, cz + 12]);
+  }
+  // ---- the measuring dome: a white hemisphere on a ring wall, its observing slit lit once restored
+  { const cx = 16, cz = -4, y = H(cx, cz); cylAt(pb, cx, cz, 4.2, 1.6, y - 0.3, WHITE, 16); sphereAt(pb, cx, y + 1.3, cz, 4.2, WHITE); rings.push([cx, cz, 4.3]);
+    pb.line(done ? GLOW : WHITE, [cx - 0.5, y + 2.2, cz - 4.1], [cx - 0.5, y + 5.4, cz - 0.8], [cx + 0.5, y + 5.4, cz - 0.8], [cx + 0.5, y + 2.2, cz - 4.1], [cx - 0.5, y + 2.2, cz - 4.1]);
+    if (!cleared) for (let i = 0; i < 5; i++) { const x = cx + 5 + i * 0.8, z = cz + 2 - i * 1.1; pb.seg(WHITE, [x, H(x, z) + 0.05, z], [x + 0.7, H(x, z) + 0.05, z + 0.4]); }
+  }
+  // ---- the coolant stack
+  { const cx = -23, cz = 17; cylAt(pb, cx, cz, 0.9, 18, H(cx, cz) - 0.2, METAL, 8); rings.push([cx, cz, 1]); }
+  drawHall(pb, H, HALLS.precision!, stage >= HALL_STAGE, walls, rings);
+  drawDesk(hb, H, DESKS.precision, stage, done, rings);
+  return { g: pb.build(), walls, rings };
+}
+/** A giant robot arm on its pedestal at (x, y, z) facing `yaw`: shoulder, upper arm, forearm, a three-fingered grip. Raised to work, or hanging limp. */
+function robotArm(pb: PropBatch, x: number, y: number, z: number, yaw: number, raised: boolean, lit: boolean) {
+  const c = Math.cos(yaw), sn = Math.sin(yaw), P = (f: number, up: number) => [x + c * f, y + up, z + sn * f];
+  cylAt(pb, x, z, 2.2, 2, y - 0.2, CONC, 12); cylAt(pb, x, z, 1.5, 2, y + 1.8, METAL, 10);
+  const sh = P(0, 4.6), el = raised ? P(4, 12.5) : P(3.2, 9), wr = raised ? P(10.5, 9) : P(4.2, 1.5);
+  beam(pb, P(0, 3.6), sh, 1.8, METAL); beam(pb, sh, el, 1.3, METAL); beam(pb, el, wr, 1, METAL);
+  for (const f of [-0.7, 0, 0.7]) { const tip = [wr[0] - sn * f + c * 0.4, wr[1] - 1.6, wr[2] + c * f + sn * 0.4]; pb.seg(lit ? GLOW : RUST, [wr[0] - sn * f * 0.5, wr[1], wr[2] + c * f * 0.5], tip); }
+  if (lit) pb.box(el[0] - 0.35, el[1] - 0.35, el[2] - 0.35, el[0] + 0.35, el[1] + 0.35, el[2] + 0.35, GLOW);
+}
+/**
+ * The robot works in its own frame, the greatest of them all: the assembly hall (x -24..6, z -4..16, walls 12 m under
+ * an arched roof, a great door in the front), a gantry yard (x 10..28, z -8..6), three giant robot arms on their
+ * pedestals (z 14), the walled test arena (x -24..-12, z 21..31) with a giant walker frozen mid-step, and the
+ * control tower (x -27, z -18). Before the hall is raised its roof is bare arches and a corner has fallen; with the
+ * lines and power (stage 2) the gantries carry their bridges; restored, the arms rise to work (the first one turns,
+ * a group named 'spin'), the walker's eye, the windows and the tower's cab glow.
+ */
+function drawRobotics(T: Terrain, s: InstallSite, cos: number, sin: number, stage: number, hb: PropBatch): { g: THREE.Group; walls: Live['walls']; rings: Live['rings'] } {
+  const pb = new PropBatch(), walls: Live['walls'] = [], rings: Live['rings'] = [];
+  const cleared = stage >= 1, powered = stage >= 2, done = stage >= INSTALL_STAGES.robotics.length;
+  const H = hOf(T, s, cos, sin);
+  drawFence(pb, H, 33, cleared);
+  // ---- the assembly hall
+  const X0 = -24, X1 = 6, Z0 = -4, Z1 = 16, WH = 12, RISE = 6, ZM = (Z0 + Z1) / 2, R = (Z1 - Z0) / 2, g0 = Math.min(H(X0, Z0), H(X1, Z0), H(X0, Z1), H(X1, Z1)) - 0.3;
+  const wall = (ax: number, az: number, bx: number, bz: number, h: (t: number) => number) => {
+    const n = Math.max(1, Math.round(Math.hypot(bx - ax, bz - az) / 3));
+    for (let i = 0; i < n; i++) { const t0 = i / n, t1 = (i + 1) / n, p0 = [ax + (bx - ax) * t0, g0, az + (bz - az) * t0], p1 = [ax + (bx - ax) * t1, g0, az + (bz - az) * t1]; pb.face(p0, p1, [p1[0], g0 + h(t1), p1[2]], [p0[0], g0 + h(t0), p0[2]]); pb.seg(CONC, [p0[0], g0 + h(t0), p0[2]], [p1[0], g0 + h(t1), p1[2]]); pb.seg(CONC, p0, [p0[0], g0 + h(t0), p0[2]]); }
+    walls.push([ax, az, bx, bz]);
+  };
+  const full = () => WH, fallen = (t: number) => WH * (1 - 0.75 * Math.max(0, t - 0.5) / 0.5);
+  wall(X0, Z0, -15, Z0, full); wall(-3, Z0, X1, Z0, full); wall(X1, Z0, X1, Z1, cleared ? full : fallen); wall(X1, Z1, X0, Z1, cleared ? full : (t) => fallen(1 - t)); wall(X0, Z1, X0, Z0, full);
+  pb.face([-15, g0 + 9, Z0], [-3, g0 + 9, Z0], [-3, g0 + WH, Z0], [-15, g0 + WH, Z0]); pb.line(CONC, [-15, g0, Z0], [-15, g0 + 9, Z0], [-3, g0 + 9, Z0], [-3, g0, Z0]); // the great door
+  const arc = (x: number, t: number) => [x, g0 + WH + Math.sin(t * Math.PI) * RISE, ZM - Math.cos(t * Math.PI) * R];
+  for (let x = X0; x <= X1 + 0.01; x += 3) {
+    for (let i = 0; i < 10; i++) pb.seg(METAL, arc(x, i / 10), arc(x, (i + 1) / 10));
+    if (x < X1 && (cleared || x < -12)) for (let i = 0; i < 10; i++) { pb.face(arc(x, i / 10), arc(x + 3, i / 10), arc(x + 3, (i + 1) / 10), arc(x, (i + 1) / 10)); if (i % 2 === 0) pb.seg(METAL, arc(x, i / 10), arc(x + 3, i / 10)); }
+  }
+  { const pts: number[][] = []; for (let i = 0; i <= 10; i++) pts.push(arc(X0, i / 10)); pb.face(...pts); }
+  if (cleared) { const pts: number[][] = []; for (let i = 0; i <= 10; i++) pts.push(arc(X1, i / 10)); pb.face(...pts); }
+  for (const ze of [Z0 - 0.03, Z1 + 0.03]) for (let x = X0 + 1.5; x < X1 - 1; x += 3) if ((ze > 0 || x < -16 || x > -3) && (cleared || ze < 0 || x < -9)) pb.line(done ? GLOW : METAL, [x, g0 + 8, ze], [x + 1.8, g0 + 8, ze], [x + 1.8, g0 + 11, ze], [x, g0 + 11, ze], [x, g0 + 8, ze]);
+  // the assembly line inside: a long conveyor with half-built frames on it
+  pb.box(X0 + 3, g0 + 0.3, ZM - 1.5, X1 - 3, g0 + 1.3, ZM + 1.5, METAL);
+  for (let x = X0 + 5; x < X1 - 4; x += 5) { pb.box(x - 0.8, g0 + 1.3, ZM - 0.8, x + 0.8, g0 + 3.2, ZM + 0.8, done ? GLOW : RUST); }
+  // ---- the gantry yard: two rows of columns, their bridges once the lines run
+  { const XA = 10, XB = 28;
+    for (let x = XA; x <= XB; x += 6) for (const z of [-8, 6]) { const y = H(x, z); pb.box(x - 0.5, y - 0.2, z - 0.5, x + 0.5, y + 15, z + 0.5, RUST); rings.push([x, z, 0.6]); }
+    const yT = H((XA + XB) / 2, -1) + 15;
+    if (powered) {
+      for (const z of [-8, 6]) beam(pb, [XA, yT, z], [XB, yT, z], 0.9, METAL);
+      for (const x of [15, 23]) { beam(pb, [x, yT + 0.9, -8], [x, yT + 0.9, 6], 1.2, METAL); pb.seg(METAL, [x, yT + 0.3, -1], [x, yT - 6, -1]); pb.box(x - 0.8, yT - 7, -1.8, x + 0.8, yT - 6, -0.2, done ? GLOW : METAL); }
+    } else pb.line(RUST, [XA + 2, H(XA + 2, 9) + 0.5, 9], [XA + 16, H(XA + 16, 11) + 0.5, 11]); // a bridge beam lying by the yard
+  }
+  // ---- the giant arms on their pedestals (the first turns when restored)
+  const arms: [number, number, number][] = [[22, 22, 0], [12, 26, -Math.PI / 2], [30, 14, -Math.PI / 2]]; // (the turning one sweeps clear of the hall and the gantries)
+  let spin: THREE.Group | null = null;
+  arms.forEach(([ax, az, yaw], i) => {
+    rings.push([ax, az, 2.3]);
+    if (done && i === 0) { const ab = new PropBatch(); robotArm(ab, 0, 0, 0, Math.PI, true, true); spin = new THREE.Group(); spin.name = 'spin'; spin.position.set(ax, H(ax, az), az); spin.add(ab.build()); return; }
+    robotArm(pb, ax, H(ax, az), az, yaw, done, done);
+  });
+  // ---- the test arena and the walker frozen mid-step
+  { const AX0 = -24, AX1 = 12 - 24, AZ0 = 21, AZ1 = 31, ay = Math.min(H(AX0, AZ0), H(AX1, AZ1)) - 0.2;
+    for (const [ax, az, bx, bz] of [[AX0, AZ0, -20, AZ0], [-16, AZ0, AX1, AZ0], [AX1, AZ0, AX1, AZ1], [AX1, AZ1, AX0, AZ1], [AX0, AZ1, AX0, AZ0]] as [number, number, number, number][]) { pb.box(Math.min(ax, bx) - 0.3, ay, Math.min(az, bz) - 0.3, Math.max(ax, bx) + 0.3, ay + 2.6, Math.max(az, bz) + 0.3, CONC); walls.push([ax, az, bx, bz]); }
+    const wx = -18, wz = 27, wy = H(wx, wz);
+    beam(pb, [wx - 1.2, wy, wz - 1.5], [wx - 1.2, wy + 5, wz - 0.4], 0.9, METAL); beam(pb, [wx + 1.2, wy, wz + 1.6], [wx + 1.2, wy + 5, wz + 0.4], 0.9, METAL); // legs mid-stride
+    pb.box(wx - 2, wy + 5, wz - 1.4, wx + 2, wy + 8.5, wz + 1.4, METAL); rings.push([wx - 1.2, wz - 1.5, 0.6], [wx + 1.2, wz + 1.6, 0.6]);
+    beam(pb, [wx - 2.4, wy + 8, wz], [wx - 3, wy + 5.5, wz - 1.2], 0.7, METAL); beam(pb, [wx + 2.4, wy + 8, wz], [wx + 3, wy + 5.5, wz + 1.2], 0.7, METAL);
+    pb.box(wx - 0.9, wy + 8.5, wz - 0.9, wx + 0.9, wy + 9.8, wz + 0.9, METAL);
+    pb.box(wx - 0.5, wy + 9, wz - 0.95, wx + 0.5, wy + 9.4, wz - 0.9, done ? GLOW : RUST); // its eye, looking to the gate
+  }
+  // ---- the control tower: a concrete shaft, a glazed cab
+  { const cx = -27, cz = -18, y = H(cx, cz); cylAt(pb, cx, cz, 2, 18, y - 0.2, CONC, 10); rings.push([cx, cz, 2.1]);
+    pb.box(cx - 3.2, y + 18, cz - 3.2, cx + 3.2, y + 21, cz + 3.2, METAL); pb.pyramid(cx - 3.6, cz - 3.6, cx + 3.6, cz + 3.6, y + 21, 1.2, METAL);
+    for (const [ax, az, bx, bz] of [[-3.25, -3.25, 3.25, -3.25], [3.25, -3.25, 3.25, 3.25], [3.25, 3.25, -3.25, 3.25], [-3.25, 3.25, -3.25, -3.25]]) pb.line(done ? GLOW : RUST, [cx + ax, y + 19, cz + az], [cx + bx, y + 19, cz + bz], [cx + bx, y + 20.4, cz + bz], [cx + ax, y + 20.4, cz + az], [cx + ax, y + 19, cz + az]);
+  }
+  drawHall(pb, H, HALLS.robotics!, stage >= HALL_STAGE, walls, rings);
+  drawDesk(hb, H, DESKS.robotics, stage, done, rings);
+  const g = pb.build();
+  if (spin) g.add(spin);
+  return { g, walls, rings };
+}
+const DRAW: Record<InstallKind, typeof drawUranium> = { precision: drawPrecision, robotics: drawRobotics, optical: drawOptical, alloy: drawAlloy, uranium: drawUranium, chips: drawChips, radar: drawRadar, propellant: drawPropellant, battery: drawBattery };
 
 /** Every second: draw the installations within reach, drop those far behind. */
 let tick = 0;

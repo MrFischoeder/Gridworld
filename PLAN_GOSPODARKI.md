@@ -201,7 +201,7 @@ Dalej 2 zakłady na wioskę (`PLANT_SLOTS`). Istniejące klucze `PlantKind` zost
   Już ukończone etapy zostają ukończone.
 - Terminal instalacji w stylu z sekcji 11 dokumentu: POWER x/y kW, zapasy każdego wejścia, produkt, NEXT BATCH.
 
-## Etap 5 (0.94–0.96): nowe Ancient Facilities (0.94 i 0.95 ZROBIONE)
+## Etap 5 (0.94–0.96): nowe Ancient Facilities (ZROBIONE)
 
 **Zasada właściciela (29.09.2026):** to gracz zapewnia dostawy półproduktów do fabryk Starożytnych. Instalacje niczego nie dostają same: każde wejście i paliwo siłowni gracz ładuje przy pulpicie ze swojego plecaka lub bagażników.
 
@@ -231,6 +231,13 @@ Dalej 2 zakłady na wioskę (`PLANT_SLOTS`). Istniejące klucze `PlantKind` zost
   - pobór 180 kW; technologia `ancmetal` (tier 4).
 - Nowe towary spoza rynku: sensor, ancalloy, ceramics. Użyje ich Rydwan (etap 7) i etap 6.
 
+**0.96.0:**
+- Old Precision Works (18–28 km, r 30): steel 2 + ancalloy + microchip → `precision` (Precision Components) na 300 min; pobór 160 kW; technologia `precision` (Precision Manufacturing, tier 4).
+- Old Robotics Plant (20–28 km, r 34): microchip + sensor + precision + powercell → `automation` (Automation Units) na 360 min; pobór 200 kW (kocioł i agregaty razem albo reaktor); technologia `automation` (Automation, tier 4).
+  - Pas skrócony z 22–32 km do 20–28 km, a obie nowe instalacje omijają czapy lodowe (|z| < 23 km; czapy zaczynają się na 25 km). Starsze instalacje zostały na swoich miejscach.
+- Etapy odbudowy: precyzyjne I steel/cement/parts, II cable/boards/chems/glass, III microchip/ancalloy/circuit; robotyka I steel/cement/bricks/parts, II cable/boards/powercell/chems, III microchip/sensor/precision.
+- Nowe towary spoza rynku: precision, automation. Zastosowania w etapie 6.
+
 
 Dopisywane **na końcu `INSTALLS`**, żeby dotychczasowe zostały na miejscu. Każda ma 3 etapy odbudowy, własną siłownię, pulpit i rysunek.
 
@@ -241,7 +248,7 @@ Dopisywane **na końcu `INSTALLS`**, żeby dotychczasowe zostały na miejscu. Ka
 | Old Optical Works | Glass + Rare Earths + Chemicals | Sensors | 14–24 km | nowa: Advanced Sensors |
 | Old Alloy Complex | Steel + Aluminium + Nickel | Ancient Alloy; drugi produkt Advanced Ceramics z Clay + Aluminium + Chemicals | 16–26 km | nowa: Ancient Metallurgy |
 | Old Precision Works | Steel + Ancient Alloy + Microchips | Precision Components | 18–28 km | nowa: Precision Manufacturing |
-| Old Robotics Plant | Microchips + Sensors + Precision Components + Power Cells | Automation Units | 22–32 km | nowa: Automation |
+| Old Robotics Plant | Microchips + Sensors + Precision Components + Power Cells | Automation Units | 20–28 km | nowa: Automation |
 
 **Advanced Ceramics:** w dokumencie źródłowym brakowało receptury. Uzupełniamy ją jako drugi produkt Old Alloy Complex.
 
