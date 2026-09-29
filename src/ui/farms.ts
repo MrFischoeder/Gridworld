@@ -3,11 +3,12 @@
 import { G } from '../game';
 import { ITEMS } from '../data/items';
 import { GRIDHOLM_ID } from '../gen/regions';
-import { FARM, UPGRADE, UNPOWERED, farmsOf, upgradedOf, farmPlan, upgradePlan, handOverFarm, handOverUpgrade, farmsKw, soil, farmPeople } from '../gen/farms';
+import { FARM, UPGRADE, UNPOWERED, CROPS, CROP_KINDS, cropOf, farmYield, type Crop, farmsOf, upgradedOf, farmPlan, upgradePlan, handOverFarm, handOverUpgrade, farmsKw, soil, farmPeople } from '../gen/farms';
 import { farmPower } from '../gen/energy';
 import { syncFarmVillage } from '../world/farms';
 import { peopleAt, targetNow } from '../gen/people';
-import { stockHas, stockTake } from './stock';
+import { stockHas, stockTake, stockAt } from './stock';
+import { settleOwn, anchorNew } from '../gen/hall';
 import { findPoi } from '../gen/regions';
 import { loadedVillage, reloadStruct } from '../world/overworld';
 import { earnTrust } from '../world/standing';
@@ -31,6 +32,16 @@ export function farmsHTML(town: string, head: string, msg = ''): string {
     s += `<br><span style="opacity:.8">The farms draw ${kw} kW (${FARM.kw} each, ${UPGRADE.kw} with pumps), before any works. Over the last day they got ${Math.round(p * 100)}% of it${p < 0.95 ? `: without power they feed only ${Math.round(UNPOWERED * 100)}% of what they could. A power station would help` : ''}.</span>`;
   }
   s += '</div>';
+  // what each farm grows, and the choice
+  if (n) {
+    const fy = farmYield(seed, st), sk = stockAt(v.id);
+    s += `<div class="say" style="margin:8px 0 0">What the farms grow (the harvest goes into the village hall)</div>`;
+    for (let i = 0; i < n; i++) {
+      const cr = cropOf(st, i), out = CROPS[cr].out;
+      s += `<div class="shoprow"><div><b>Farm ${i + 1}: ${CROPS[cr].name}</b>${i < up ? ' <span style="opacity:.7">(steel ploughs)</span>' : ''}<br><span style="opacity:.8">${CROPS[cr].blurb} · the farms make ${((fy[out] ?? 0) * 24).toFixed(1)} ${ITEMS[out].name} a day · in the hall: ${sk ? Math.floor(sk.ownOf(out)) : 0}</span><br>` +
+        CROP_KINDS.filter((k) => k !== cr).map((k) => `<button class="opt" style="width:auto;display:inline-block;margin:4px 4px 0 0" data-crop="${i}:${k}">${CROPS[k].name}</button>`).join('') + `</div></div>`;
+    }
+  }
   if (plan) {
     s += `<div class="shoprow"><div><b>Farm ${plan.n} of ${FARM.max}</b> <span style="opacity:.7">(${FARM.kw} kW)</span><br><span>${rowsHTML(plan.rows, have)}</span></div></div>`;
     s += `<button class="opt" data-farm="give" ${plan.rows.some((r) => r.given < r.n && have(r.k) > 0) ? '' : 'disabled'}>Build from the village hall's stock (the farm)</button>`;
@@ -44,16 +55,20 @@ export function farmsHTML(town: string, head: string, msg = ''): string {
 }
 /** A click on a farm button: the message (and whether something was finished: the dialogue closes, the village is rebuilt), or null when it was not one. */
 export function farmsClick(town: string, t: HTMLElement): { msg: string; built: boolean } | null {
+  const cb = t.closest<HTMLElement>('[data-crop]');
+  if (cb) return cropClick(town, cb);
   const b = t.closest<HTMLElement>('[data-farm]');
   if (!b) return null;
   const v = loadedVillage(town), c = G.char;
   const poi = v && findPoi(c.world, v.id);
   if (!v || !poi) return { msg: '', built: false };
   const st = (c.towns[v.id] ??= {}), have = stockHas(v.id), upgrade = b.dataset.farm === 'up';
+  settleOwn(c.world, poi, v.vm.seed, st, c.time); // the harvest so far is kept at the old yield
   const { taken, built } = upgrade ? handOverUpgrade(st, c.tech, have) : handOverFarm(st, v.vm.seed, v.id === GRIDHOLM_ID, c.time, have);
   stockTake(v.id, taken);
   const given = taken.length ? 'Handed over: ' + taken.map(([k, n]) => `${ITEMS[k].name} ×${n}.`).join(' ') : `The village hall has nothing more of what the ${upgrade ? 'ploughs' : 'farm'} still ${upgrade ? 'need' : 'needs'}: store the materials at its terminal.`;
   if (!built) { calcStats(); saveChar(); return { msg: given, built: false }; }
+  anchorNew(c.world, poi, v.vm.seed, st, c.time);
   syncFarmVillage(v.id);
   if (upgrade) {
     c.gold += UPGRADE.gold; gainXp(UPGRADE.xp); earnTrust(v.id, 'farm'); calcStats(); saveChar();
@@ -65,6 +80,20 @@ export function farmsClick(town: string, t: HTMLElement): { msg: string; built: 
     logLine(`The villagers clear the land and sow it. ${v.vm.name} will feed ${farmPeople(v.vm.seed)} more people in a few days. They pay you ${FARM.gold} gold.`);
   }
   return { msg: given, built: true };
+}
+/** Sow farm i with another crop: the harvest so far stays in the hall, the new one starts now. */
+function cropClick(town: string, b: HTMLElement): { msg: string; built: boolean } {
+  const v = loadedVillage(town), c = G.char, poi = v && findPoi(c.world, v.id);
+  if (!v || !poi) return { msg: '', built: false };
+  const [i, k] = b.dataset.crop!.split(':'), st = (c.towns[v.id] ??= {}), idx = Number(i), crop = k as Crop;
+  if (!CROPS[crop] || idx >= farmsOf(st)) return { msg: '', built: false };
+  settleOwn(c.world, poi, v.vm.seed, st, c.time);
+  st.crops ??= []; for (let j = 0; j < farmsOf(st); j++) st.crops[j] = cropOf(st, j);
+  st.crops[idx] = crop;
+  anchorNew(c.world, poi, v.vm.seed, st, c.time);
+  saveChar();
+  logLine(`Farm ${idx + 1} at ${v.vm.name} now grows ${CROPS[crop].name.toLowerCase()}: ${CROPS[crop].blurb}.`);
+  return { msg: '', built: true }; // the village is redrawn with the new field
 }
 /** After the dialogue has closed: rebuild the village so the new field shows. */
 export function showFarm(town: string) { const v = loadedVillage(town); if (v) reloadStruct(v.id); }

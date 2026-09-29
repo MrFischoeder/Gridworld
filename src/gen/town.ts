@@ -6,7 +6,6 @@
 //   and needs mending with the right parts; below `POWER_DOWN` the lights go out.
 import { hash, rng, type Dir } from '../core/rng';
 import { villageGates, WALL_TIERS } from './village';
-import type { Good } from './market';
 import type { ItemKey } from '../data/items';
 import type { PlantState, PlantKind } from './plants';
 import type { StationState, StationKind } from './energy';
@@ -40,6 +39,8 @@ export interface TownState {
   people?: { n: number; t: number; tg?: number };
   /** Farms built here (gen/farms.ts) and materials handed over towards the next. */
   farms?: number; fgiven?: Partial<Record<ItemKey, number>>;
+  /** What each farm grows (gen/farms.ts CROPS), by farm. */
+  crops?: import('./farms').Crop[];
   /** Farms upgraded with steel ploughs, and materials towards the next upgrade. */
   fup?: number; ugiven?: Partial<Record<ItemKey, number>>;
   /** The village's own power plant upgraded (gen/plantup.ts) and materials towards the next level. */
@@ -47,7 +48,7 @@ export interface TownState {
   /** The village hall's hold (gen/hall.ts): what you have stored here for the village's builds. */
   hold?: Partial<Record<ItemKey, number>>;
   /** The village's own goods in the hall (gen/hall.ts): an anchor per good (crates at time t). */
-  own?: Partial<Record<Good, { n: number; t: number }>>;
+  own?: Partial<Record<ItemKey, { n: number; t: number }>>;
 }
 
 // ---------- defence works ----------

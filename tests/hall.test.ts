@@ -48,4 +48,22 @@ describe('the village hall', () => {
     const old: TownState = { store: { n: 20, t: 100 } }, o = stockOf(1, v, seed, old, 100);
     expect(o.own.reduce((a, x) => a + o.ownOf(x), 0)).toBeCloseTo(20, 5);
   });
+  it('farms put what they grow into the hall, from when they start on it', async () => {
+    const { farmYield, CROPS, UPGRADE, soil } = await import('../src/gen/farms');
+    const { settleOwn, anchorNew } = await import('../src/gen/hall');
+    const v = allVillages(1)[5], seed = villageSeed(1, v), s: TownState = {};
+    settleOwn(1, v, seed, s, 1000); s.farms = 2; s.fup = 1; s.crops = ['hens', 'hens']; anchorNew(1, v, seed, s, 1000);
+    const perH = farmYield(seed, s).eggs!;
+    expect(perH).toBeCloseTo(CROPS.hens.perDay / 24 * soil(seed) * (UPGRADE.mult + 1), 5);
+    const a = stockOf(1, v, seed, s, 1000), b = stockOf(1, v, seed, s, 1000 + 600);
+    expect(a.ownOf('eggs')).toBe(0);
+    expect(b.ownOf('eggs')).toBeCloseTo(perH * 10, 5);
+    expect(b.has('eggs')).toBe(Math.floor(perH * 10));
+    expect(stockOf(1, v, seed, s, 1000 + 1e6).ownOf('eggs')).toBe(OWN.cap);
+    expect(b.full).toBe(stockOf(1, v, seed, s, 1600).full); // the farms do not stop the industry site
+    // sowing another crop: the eggs so far stay, the milk starts now
+    settleOwn(1, v, seed, s, 1600); s.crops = ['hens', 'cows']; anchorNew(1, v, seed, s, 1600);
+    const c = stockOf(1, v, seed, s, 1600 + 60);
+    expect(c.ownOf('milk')).toBeGreaterThan(0); expect(c.ownOf('eggs')).toBeGreaterThan(b.ownOf('eggs'));
+  });
 });

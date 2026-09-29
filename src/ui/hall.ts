@@ -38,7 +38,7 @@ function render(msg = '') {
   s += `<div class="say" style="margin:8px 0 0">In the hold</div>` + (hold.length ? hold.sort((a, b) => ITEMS[a[0]].name.localeCompare(ITEMS[b[0]].name)).map(([k, n]) =>
     `<div class="shoprow"><div><b>${ITEMS[k].name}</b> ×${n}</div><button class="opt" style="width:auto" data-hout="${k}" data-hn="1">Take 1</button><button class="opt" style="width:auto" data-hout="${k}" data-hn="999">Take all</button></div>`).join('')
     : '<div class="say" style="opacity:.7">Empty.</div>');
-  s += `<div class="say" style="margin:8px 0 0">The village's own goods (what its ${sk.prod > 0 ? 'land and workers make' : 'site would make'}; up to ${OWN.cap} crates of each, then the work stops)</div>` +
+  s += `<div class="say" style="margin:8px 0 0">The village's own goods (what its site makes and its farms grow; up to ${OWN.cap} crates of each, then that work stops)</div>` +
     (sk.own.map((g) => `<div class="shoprow"><div><b>${ITEMS[g].name}</b> ×${Math.floor(sk.ownOf(g))}</div></div>`).join('') || '<div class="say" style="opacity:.7">None.</div>') +
     `<div class="say" style="opacity:.8">The village's builds use these too. You buy them at the market, or the elder shares them with friends of the village.</div>`;
   s += `<div class="say" style="margin:8px 0 0">With you here (backpack, vehicles by the hall, the floor)</div>` + (mine.length ? mine.map(([k, e]) => {

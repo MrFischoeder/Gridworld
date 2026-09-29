@@ -1,6 +1,7 @@
 // Farms (pure): fields cleared outside a village's corners (up to FARM.max). Each feeds more people, so the village's
 // population target rises (gen/people.ts), and with it its workers and its output. Built through the elder with wood
-// and stone handed over bit by bit, no plans needed.
+// and stone from the village hall, no plans needed. Each farm grows the crop you choose for it (`CROPS`): its yield
+// goes into the village hall (gen/hall.ts stockOf), more on rich soil and with steel ploughs.
 import { hash } from '../core/rng';
 import type { ItemKey } from '../data/items';
 import type { TownState } from './town';
@@ -66,4 +67,24 @@ export function handOverFarm(s: TownState, seed: number, home: boolean, now: num
 export function farmPlot(seed: number, i: number): { x0: number; z0: number; x1: number; z1: number } {
   const corners: [number, number][] = [[-10, -10], [82, -10], [82, 82], [-10, 82]], k = (hash(seed, 0xf43) + i) % 4, [cx, cz] = corners[k];
   return { x0: cx - 6, z0: cz - 6, x1: cx + 6, z1: cz + 6 };
+}
+
+// ---------- what each farm grows ----------
+export type Crop = 'wheat' | 'carrots' | 'potatoes' | 'hens' | 'cows';
+/** The crops a farm can grow: what goes into the village hall and how many crates a game day on fair soil. */
+export const CROPS: Record<Crop, { name: string; out: ItemKey; perDay: number; blurb: string }> = {
+  wheat: { name: 'Wheat', out: 'grain', perDay: 4, blurb: 'grain for bread' },
+  carrots: { name: 'Carrots', out: 'carrots', perDay: 4, blurb: 'rows of carrots' },
+  potatoes: { name: 'Potatoes', out: 'potatoes', perDay: 5, blurb: 'potatoes, the most food a field gives' },
+  hens: { name: 'Hens', out: 'eggs', perDay: 3, blurb: 'a coop and a run: eggs' },
+  cows: { name: 'Cows', out: 'milk', perDay: 3, blurb: 'a byre and a pasture: milk' },
+};
+export const CROP_KINDS = Object.keys(CROPS) as Crop[];
+/** What farm i grows (farms you have not set: wheat and potatoes by turns, as they were drawn before). */
+export const cropOf = (s: TownState | undefined, i: number): Crop => s?.crops?.[i] ?? (i % 2 === 0 ? 'wheat' : 'potatoes');
+/** Crates a game hour the village's farms put into its hall, by what they yield (the first `upgradedOf` farms have steel ploughs). */
+export function farmYield(seed: number, s: TownState | undefined): Partial<Record<ItemKey, number>> {
+  const out: Partial<Record<ItemKey, number>> = {}, up = upgradedOf(s), sl = soil(seed);
+  for (let i = 0; i < farmsOf(s); i++) { const c = CROPS[cropOf(s, i)]; out[c.out] = (out[c.out] ?? 0) + c.perDay / 24 * sl * (i < up ? UPGRADE.mult : 1); }
+  return out;
 }

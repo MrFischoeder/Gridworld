@@ -40,7 +40,7 @@ function glutted(): boolean {
   const c = G.char;
   if (!here) return false;
   const sk = stockOf(c.world, here.poi, here.seed, c.towns[here.poi.id], c.time);
-  return sk.own.length > 0 && sk.own.reduce((a, g) => a + sk.ownOf(g), 0) >= OWN.cap * sk.own.length * GLUT;
+  return sk.makes.length > 0 && sk.makes.reduce((a, g) => a + sk.ownOf(g), 0) >= OWN.cap * sk.makes.length * GLUT;
 }
 const TRUNK_REACH = 90; // metres from the village middle: vehicles parked by the gates count
 let here: { poi: Poi; seed: number } | null = null;

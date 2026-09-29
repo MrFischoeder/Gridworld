@@ -223,8 +223,8 @@ const prodOf = (s: Site) => { const poi = findPoi(G.char.world, s.id); return po
 export function storeOf(id: number, seed: number) {
   const poi = findPoi(G.char.world, id);
   if (!poi) return { n: 0, cap: OWN.cap, full: false, prod: 1, name: 'village hall' };
-  const st = stockOf(G.char.world, poi, seed, G.char.towns[id], G.char.time), n = st.own.reduce((a, g) => a + st.ownOf(g), 0);
-  return { n, cap: OWN.cap * Math.max(1, st.own.length), full: st.full, prod: st.prod, name: 'village hall' };
+  const st = stockOf(G.char.world, poi, seed, G.char.towns[id], G.char.time), n = st.makes.reduce((a, g) => a + st.ownOf(g), 0);
+  return { n, cap: OWN.cap * Math.max(1, st.makes.length), full: st.full, prod: st.prod, name: 'village hall' };
 }
 /** What the village's own goods are worth (for the bandits' demands): crates at the price of what the village makes. */
 export function storeWealth(id: number, seed: number): number {

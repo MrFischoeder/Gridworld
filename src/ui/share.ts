@@ -23,7 +23,7 @@ function place(town: string) {
 export function shareHTML(town: string, head: string, msg = ''): string {
   const p = place(town), c = G.char;
   if (!p) return head + '<div class="say">Hm?</div><button class="opt" data-o="back">Back</button>';
-  const t = trustOf(p.st), k = trustTier(p.st), tier = TRUST_TIERS[k], next = TRUST_TIERS[k + 1], left = shareLeft(p.st, c.time), sk = stockOf(c.world, p.poi, p.seed, p.st, c.time), inStore = Math.floor(sk.own.reduce((a, g) => a + sk.ownOf(g), 0));
+  const t = trustOf(p.st), k = trustTier(p.st), tier = TRUST_TIERS[k], next = TRUST_TIERS[k + 1], left = shareLeft(p.st, c.time), sk = stockOf(c.world, p.poi, p.seed, p.st, c.time), inStore = Math.floor(sk.makes.reduce((a, g) => a + sk.ownOf(g), 0));
   const bar = (x: number) => { const n = Math.max(0, Math.min(12, Math.round(x * 12))); return '█'.repeat(n) + '░'.repeat(12 - n); };
   let s = head + `<div class="say">${msg ? msg + '<br><br>' : ''}`;
   s += tier.crates ? `You have done right by ${p.v.vm.name}. What our land gives, we share with you: up to ${tier.crates} crates a day, free.`
@@ -32,7 +32,7 @@ export function shareHTML(town: string, head: string, msg = ''): string {
   s += '</div>';
   s += `<div class="shoprow"><div><b>${tier.name}</b> · trust ${t}${next ? ` / ${next.min} for ${next.name} (${next.crates} crates a day)` : ''}<br><span style="font-family:monospace">${next ? bar((t - tier.min) / (next.min - tier.min)) : bar(1)}</span></div></div>`;
   if (tier.crates) {
-    s += `<div class="say">Left today: <b>${left}</b> of ${tier.crates} · in the village hall: ${inStore}/${OWN.cap * Math.max(1, sk.own.length)} crates of our own goods</div>`;
+    s += `<div class="say">Left today: <b>${left}</b> of ${tier.crates} · in the village hall: ${inStore}/${OWN.cap * Math.max(1, sk.makes.length)} crates of our own goods</div>`;
     s += p.makes.map((g) => `<div class="shoprow"><div><b>${ITEMS[g as ItemKey].name}</b><br><span>made here</span></div>
       <button class="buy" data-share="${g}" data-n="1" ${left && inStore ? '' : 'disabled'}>Take 1</button>${left > 1 ? `<button class="buy" data-share="${g}" data-n="${left}" ${inStore > 1 ? '' : 'disabled'}>Take ${left}</button>` : ''}</div>`).join('');
   }

@@ -4,6 +4,16 @@ export interface Change { v: string; date: string; title: string; notes: string[
 
 export const CHANGELOG: Change[] = [
   {
+    v: '0.77.0', date: '2026-09-29', title: 'What the farms grow',
+    notes: [
+      'Every farm now grows what you choose at the elder\'s farms panel: Wheat (grain), Carrots, Potatoes, Hens (eggs) or Cows (milk). Farms you had grow wheat and potatoes by turns until you change them.',
+      'The harvest goes into the village hall: about 3 to 5 crates a day per farm, more on rich soil and half as much again with steel ploughs, up to 60 crates of each, then that farm rests. The hall\'s terminal and the farms panel show what is in.',
+      'Sowing another crop keeps what was harvested so far; the new one starts from the day you choose it.',
+      'The fields show it: grain or leafy rows with a scarecrow, or a pasture with a coop and hens, or a byre and cows.',
+      'New goods: Basket of Eggs and Churn of Milk (not traded at markets yet). Next: the village shop makes food from the hall\'s stock.',
+    ],
+  },
+  {
     v: '0.76.0', date: '2026-09-29', title: 'One store for every village',
     notes: [
       'The village hall is now the village\'s only store. The storehouse by the industry site is gone (with its tiers, the shipments and the convoy): what the village makes piles up in its hall, up to 60 crates of each good, and while it is at that the work stops. At the site a carrier stacks the crates on a loading pallet.',
