@@ -1,7 +1,8 @@
-// Upgrading a village's own power plant (pure): two levels over the plant it was built with. Level 1 needs the
+// Upgrading a village's own power plant (pure): three levels over the plant it was built with. Level 1 needs the
 // plans for the plant's kind (Improved Wind Rotor for wind turbines, Solar Cells for a solar array; a diesel
 // generator needs none) and common metal; level 2 needs electronics from the old world (components and a power
-// core, found in ruins and wrecks). Each level multiplies what the plant makes (gen/energy.ts baseKw).
+// core, found in ruins and wrecks); level 3 automates it with microchips from the Old Chip Foundry (gen/installs.ts).
+// Each level multiplies what the plant makes (gen/energy.ts baseKw).
 import type { ItemKey } from '../data/items';
 import { powerKind, type TownState, type PowerKind } from './town';
 
@@ -10,6 +11,7 @@ export const PLANT_LEVELS: PlantLevel[] = [
   { name: 'as built', mult: 1, tech: {}, needs: [], gold: 0, xp: 0 },
   { name: 'Overhauled', mult: 1.5, tech: { wind: 'rotor', solar: 'solar' }, needs: [['scrap', 6], ['wire', 4], ['log', 2]], gold: 60, xp: 80 },
   { name: 'Rebuilt with old electronics', mult: 2, tech: {}, needs: [['circuit', 4], ['pcore', 1], ['wire', 6]], gold: 120, xp: 150 },
+  { name: 'Automated', mult: 2.5, tech: {}, needs: [['microchip', 4], ['cable', 4], ['circuit', 2]], gold: 200, xp: 250 },
 ];
 export const plantLevel = (s: TownState | undefined) => Math.min(PLANT_LEVELS.length - 1, s?.pup ?? 0);
 export const plantMult = (s: TownState | undefined) => PLANT_LEVELS[plantLevel(s)].mult;

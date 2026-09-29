@@ -4,6 +4,14 @@ export interface Change { v: string; date: string; title: string; notes: string[
 
 export const CHANGELOG: Change[] = [
   {
+    v: '0.71.0', date: '2026-09-29', title: 'What chips are for',
+    notes: [
+      'A village\'s own power plant has a third upgrade: Automated, 2.5 times what it made as built. It needs 4 crates of Microchips from the Old Chip Foundry, 4 copper cable and 2 electronic components (the elder\'s power plant option). An automated plant gets a control cabinet with a lit screen and a radio mast.',
+      'Craft villages 3 km and more from Gridholm order Microchips for their radios and tools: 1 to 4 crates on most days, from about 680 gold a crate (more in the dangerous lands), due in 3 to 6 days. The orders are posted at their stores and on notice boards up to 20 km away.',
+      'The Old Chip Foundry\'s control desk lists the three nearest workshops that buy chips and what they order today; the village computer marks them.',
+    ],
+  },
+  {
     v: '0.70.0', date: '2026-09-28', title: 'The chip foundry',
     notes: [
       'A second great installation stands 12 to 20 km from Gridholm: the Old Chip Foundry, a sealed clean-room block with a tank farm and a water tower. Console `sites` shows where.',

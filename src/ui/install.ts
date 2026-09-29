@@ -8,7 +8,7 @@ import { INSTALL_STAGES, INSTALL_WORK, installPlan, handOverInstall, runInstall,
 import { TECH_BY_ID } from '../gen/tech';
 import type { Good } from '../gen/market';
 import { nearX, worldDist, wrapDx } from '../gen/regions';
-import { reactorVillages, fuelOrder } from '../gen/contracts';
+import { reactorVillages, fuelOrder, chipVillages, chipOrder } from '../gen/contracts';
 import { dirWord } from '../gen/tech';
 import { redrawInstalls } from '../world/installs';
 import { carried, takeFrom, putAway } from './market';
@@ -47,13 +47,17 @@ function render(msg = '') {
   panel().classList.add('wide');
   panel().innerHTML = s + buyers() + `<button class="opt" data-ins="close">Close</button>`;
 }
-/** The villages with old reactors nearest the plant, and whether they order fuel today (the plant's radio log). */
+/** The buyers of what this installation makes nearest to it, and whether they order today (its radio log). */
+const BUYERS = {
+  uranium: { list: reactorVillages, order: fuelOrder, who: 'the old reactors that burn these rods' },
+  chips: { list: chipVillages, order: chipOrder, who: 'the workshops that build with these chips' },
+};
 function buyers(): string {
-  if (!site || site.k !== 'uranium') return '';
-  const c = G.char, s0 = site, list = reactorVillages(c.world).map((v) => ({ v, d: worldDist(v.x, v.z, s0.x, s0.z) })).sort((a, b) => a.d - b.d).slice(0, 3);
+  if (!site) return '';
+  const c = G.char, s0 = site, b = BUYERS[s0.k], list = b.list(c.world).map((v) => ({ v, d: worldDist(v.x, v.z, s0.x, s0.z) })).sort((a, q) => a.d - q.d).slice(0, 3);
   if (!list.length) return '';
-  return `<div class="say" style="opacity:.85">The radio log still lists the old reactors that burn these rods: ` + list.map(({ v, d }) => {
-    const o = fuelOrder(c.world, v, c.time);
+  return `<div class="say" style="opacity:.85">The radio log still lists ${b.who}: ` + list.map(({ v, d }) => {
+    const o = b.order(c.world, v, c.time);
     return `<b>${v.name}</b> (${(d / 1000).toFixed(1)} km ${dirWord(wrapDx(v.x - s0.x), v.z - s0.z)} of here${o ? `, orders ${o.n} today at ${o.pay} g a crate` : ', no order today'})`;
   }).join(', ') + '. Their orders are posted at their stores and on the notice boards round about.</div>';
 }

@@ -7,7 +7,7 @@ import { allVillages, villageSeed } from '../src/gen/regions';
 const seedOf = (kind: string) => { for (let s = 1; s < 500; s++) if (powerKind(s) === kind) return s; throw new Error(kind); };
 
 describe('power plant upgrades', () => {
-  it('wind and solar need their plans for level 1, a generator none; level 2 needs electronics', () => {
+  it('wind and solar need their plans for level 1, a generator none; level 2 needs electronics, level 3 microchips', () => {
     expect(levelTech(seedOf('wind'), {})).toBe('rotor');
     expect(levelTech(seedOf('solar'), {})).toBe('solar');
     expect(levelTech(seedOf('generator'), {})).toBeNull();
@@ -18,6 +18,9 @@ describe('power plant upgrades', () => {
     expect(plantLevel(s)).toBe(1);
     expect(plantUpPlan(seed, s, {})!.rows.map((r) => r.k)).toContain('pcore');
     expect(handOverPlantUp(seed, s, {}, () => 99).built).toBe(true);
+    expect(plantUpPlan(seed, s, {})!.rows.map((r) => r.k)).toContain('microchip');
+    expect(handOverPlantUp(seed, s, {}, () => 99).built).toBe(true);
+    expect(plantLevel(s)).toBe(3);
     expect(plantUpPlan(seed, s, {})).toBeNull();
   });
   it('each level multiplies what the plant makes', () => {

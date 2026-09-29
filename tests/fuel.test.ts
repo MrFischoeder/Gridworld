@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { reactorVillages, oldReactor, fuelOrder, FUEL } from '../src/gen/contracts';
+import { reactorVillages, oldReactor, fuelOrder, FUEL, chipVillages, chipBuyer, chipOrder, specialOrders, CHIPS } from '../src/gen/contracts';
 import { allVillages, worldDist, GRIDHOLM_ID } from '../src/gen/regions';
 
 describe('fuel orders', () => {
@@ -27,5 +27,24 @@ describe('fuel orders', () => {
     expect(orders).toBeGreaterThan(15); expect(orders).toBeLessThan(40);
     const other = allVillages(12345).find((x) => !oldReactor(12345, x))!;
     expect(fuelOrder(12345, other, 0)).toBeNull();
+  });
+  it('chip orders come from craft villages away from Gridholm', () => {
+    for (const w of [12345, 777, 1]) {
+      const r = chipVillages(w);
+      expect(r.length).toBeGreaterThan(3); expect(r.length).toBeLessThan(45);
+      for (const v of r) { expect(v.id).not.toBe(GRIDHOLM_ID); expect(worldDist(v.x, v.z, 0, 0)).toBeGreaterThanOrEqual(CHIPS.from); }
+    }
+    const v = chipVillages(12345)[0];
+    let orders = 0;
+    for (let day = 0; day < 40; day++) {
+      const o = chipOrder(12345, v, day * 1440 + 60);
+      if (!o) continue;
+      orders++;
+      expect(o.good).toBe('microchip'); expect(o.n).toBeGreaterThanOrEqual(1); expect(o.n).toBeLessThanOrEqual(4); expect(o.pay).toBeGreaterThanOrEqual(CHIPS.pay);
+      expect(specialOrders(12345, v, day * 1440 + 60)).toContainEqual(o);
+    }
+    expect(orders).toBeGreaterThan(10);
+    const other = allVillages(12345).find((x) => !chipBuyer(12345, x))!;
+    expect(chipOrder(12345, other, 0)).toBeNull();
   });
 });

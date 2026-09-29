@@ -8,6 +8,8 @@
 //   the storehouse waits (`STORE.wait`); if nobody takes it, the village's own convoy carries it off.
 // - fuel order: a village far out that still runs an old reactor of its own (`oldReactor`) orders Nuclear Fuel Rods
 //   (made only by the restored Old Enrichment Plant, gen/installs.ts) now and then, and pays very well for them.
+// - chip order: a craft village (industry 'workshop') away from Gridholm orders Microchips (made only by the restored
+//   Old Chip Foundry) for its radios and tools, the same way.
 // Offers are posted every `CONTRACT.period` game minutes, two per village, from the seed: pure, so on the future
 // server every player sees the same notices (a taken offer is marked in the save).
 import { hash, rng } from '../core/rng';
@@ -15,11 +17,13 @@ import { allVillages, worldDist, villageSeed, GRIDHOLM_ID, type Poi } from './re
 import { dangerAt, ringDanger } from './danger';
 import { profileOf, quote, GOOD_INFO, type Good } from './market';
 import { storeInfo, storeCap } from './store';
-import { production } from './industry';
+import { production, industryOf } from './industry';
 import type { TownState } from './town';
 
 /** What a contract carries: a market good, or fuel rods (gen/installs.ts: not on any market). */
-export type Cargo = Good | 'nfuel';
+export type Cargo = Good | 'nfuel' | 'microchip';
+/** Cargo that never goes to a market (a delivery moves no prices). */
+export const offMarket = (g: Cargo): g is 'nfuel' | 'microchip' => g === 'nfuel' || g === 'microchip';
 export const CONTRACT = { period: 720, perVillage: 2, maxActive: 3, near: 2000, far: 9000, premium: 1.35 };
 export interface Contract {
   id: string; kind: 'supply' | 'haul';
@@ -105,3 +109,23 @@ export function fuelOrder(world: number, v: Poi, now: number): Contract | null {
   const n = 1 + Math.floor(R() * 3), pay = Math.round((FUEL.pay + FUEL.perDanger * ringDanger(worldDist(v.x, v.z, 0, 0))) / 10) * 10;
   return { id: `fuel:${v.id}:${post}`, kind: 'supply', from: v.id, fromName: v.name, to: v.id, toName: v.name, tx: v.x, tz: v.z, good: 'nfuel', n, done: 0, pay, deposit: 0, due: post * FUEL.period + Math.round((3 + R() * 3) * 1440) };
 }
+
+// ---------- chip orders: craft villages building radios and tools ----------
+/** Craft villages from `from` m out order chips; an order on most days (`skip`), 1-4 crates, paid by the danger of their ring. */
+export const CHIPS = { from: 3000, period: 1440, skip: 0.45, pay: 680, perDanger: 45, board: 20000 };
+/** Does village v order microchips (a craft village away from Gridholm)? Fixed per world. */
+export function chipBuyer(world: number, v: Poi): boolean {
+  if (v.id === GRIDHOLM_ID || worldDist(v.x, v.z, 0, 0) < CHIPS.from) return false;
+  return industryOf(world, v, villageSeed(world, v)) === 'workshop';
+}
+export const chipVillages = (world: number) => allVillages(world).filter((v) => chipBuyer(world, v));
+/** The chip order village v posts for the game day that is on at `now` (null: not a buyer, or no order today). */
+export function chipOrder(world: number, v: Poi, now: number): Contract | null {
+  if (!chipBuyer(world, v)) return null;
+  const post = Math.floor(now / CHIPS.period), R = rng(hash(world, v.id, post, 0xc419));
+  if (R() < CHIPS.skip) return null;
+  const n = 1 + Math.floor(R() * 4), pay = Math.round((CHIPS.pay + CHIPS.perDanger * ringDanger(worldDist(v.x, v.z, 0, 0))) / 10) * 10;
+  return { id: `chip:${v.id}:${post}`, kind: 'supply', from: v.id, fromName: v.name, to: v.id, toName: v.name, tx: v.x, tz: v.z, good: 'microchip', n, done: 0, pay, deposit: 0, due: post * CHIPS.period + Math.round((3 + R() * 3) * 1440) };
+}
+/** The fuel and chip orders village v posts today. */
+export const specialOrders = (world: number, v: Poi, now: number): Contract[] => [fuelOrder(world, v, now), chipOrder(world, v, now)].filter((o): o is Contract => !!o);

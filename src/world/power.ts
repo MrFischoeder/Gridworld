@@ -28,6 +28,7 @@ export interface Plant {
   light: THREE.LineSegments; rotors: THREE.Object3D[]; lamps: THREE.Object3D[];
 }
 const plants = new Map<number, Plant>();
+const AUTO = 0xb6ff3a; // the automation's lit screen and mast lamps
 
 /** Draw the plant of village `vm` (id `id`) and remember it; returns its group (added to the village's). */
 export function drawPower(vm: VillageMap, T: Terrain, id: number): THREE.Group {
@@ -94,7 +95,7 @@ export function drawPower(vm: VillageMap, T: Terrain, id: number): THREE.Group {
       rb.box(-hub, -hub, -0.2, hub, hub, 0.2, METAL);
       for (let b = 0; b < 3; b++) {
         const a = b * Math.PI * 2 / 3, ca = Math.cos(a), sa = Math.sin(a), px = -sa, py = ca;
-        const L2 = 1 + 0.22 * up; // longer blades on an overhauled rotor
+        const L2 = 1 + 0.22 * Math.min(2, up); // longer blades on an overhauled rotor (automation adds none)
         const pts = [[0.3, 0.18], [4.2 * L2, 0.12], [4.3 * L2, -0.02], [0.3, -0.1]].map(([r, w]) => [ca * r + px * w, sa * r + py * w]);
         rb.solid8(pts.map(([p, q]) => [p, q, -0.03]), pts.map(([p, q]) => [p, q, 0.03]), PANEL);
       }
@@ -105,6 +106,13 @@ export function drawPower(vm: VillageMap, T: Terrain, id: number): THREE.Group {
     const [lx, lz] = P(0, -2.2), g = ground(lx, lz);
     pb.box(lx - 0.5, g, lz - 0.35, lx + 0.5, g + 1.3, lz + 0.35, METAL);
     lightAt = [lx, g + 1.45, lz];
+  }
+  if (up >= 3) { // automated: a control cabinet with a lit screen and a radio mast beside the plant's light
+    const [ax, az] = [lightAt[0] + rx * 1.4, lightAt[2] + rz * 1.4], g = ground(ax, az);
+    pb.box(ax - 0.45, g, az - 0.3, ax + 0.45, g + 1.6, az + 0.3, METAL);
+    const sx = ax - fx * 0.31, sz = az - fz * 0.31;
+    for (let k = 0; k < 3; k++) pb.seg(AUTO, [sx - rx * 0.3, g + 1.1 - k * 0.2, sz - rz * 0.3], [sx + rx * (0.1 + k * 0.08), g + 1.1 - k * 0.2, sz + rz * (0.1 + k * 0.08)]);
+    pb.seg(METAL, [ax, g + 1.6, az], [ax, g + 4.2, az]); pb.seg(AUTO, [ax - 0.3, g + 4.2, az], [ax + 0.3, g + 4.2, az]); pb.seg(AUTO, [ax, g + 4.2, az - 0.3], [ax, g + 4.2, az + 0.3]);
   }
   // the cable in: poles from the plant to the fence
   const [ex, ez] = P(0, -site.w / 2 - 0.5);
