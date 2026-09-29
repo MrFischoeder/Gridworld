@@ -4,10 +4,15 @@
 import { G, W } from '../game';
 import { ITEMS, type ItemKey } from '../data/items';
 import { calcStats, saveChar, gainXp } from '../character';
-import { INSTALL_STAGES, INSTALL_WORK, installPlan, handOverInstall, runInstall, installDone, newInstall, batchesIn, loadInstall, type InstallSite } from '../gen/installs';
+import { INSTALL_STAGES, INSTALL_WORK, RADAR, radarPlaces, installSites, type InstallKind, installPlan, handOverInstall, runInstall, installDone, newInstall, batchesIn, loadInstall, type InstallSite } from '../gen/installs';
 import { TECH_BY_ID } from '../gen/tech';
 import type { Good } from '../gen/market';
-import { nearX, worldDist, wrapDx } from '../gen/regions';
+import { nearX, worldDist, wrapDx, CHUNK, type Poi } from '../gen/regions';
+import { discover } from '../save';
+import { Terrain } from '../gen/terrain';
+import { OW } from '../world/overworld';
+import type { Contract } from '../gen/contracts';
+const terrainNow = () => (OW.terrain && OW.terrain.world === G.char.world ? OW.terrain : new Terrain(G.char.world));
 import { reactorVillages, fuelOrder, chipVillages, chipOrder } from '../gen/contracts';
 import { dirWord } from '../gen/tech';
 import { redrawInstalls } from '../world/installs';
@@ -36,8 +41,11 @@ function render(msg = '') {
     else s += plan.rows.map((r) => { const h = have(r.k); return `<span style="color:${r.given >= r.n ? 'var(--xp)' : h ? 'var(--txt)' : '#ff9a7a'}">${ITEMS[r.k].name} ${r.given}/${r.n}${r.given < r.n && h ? ` (you have ${h} with you)` : ''}</span>`; }).join(' · ');
     s += `</span><br><span style="opacity:.7">On completion: ${plan.st.gold} gold, ${plan.st.xp} xp.</span></div></div>`;
     if (plan.plans) s += `<button class="opt" data-ins="give" ${plan.rows.some((r) => r.given < r.n && have(r.k) > 0) ? '' : 'disabled'}>Hand over what I carry</button>`;
+  } else if (!INSTALL_WORK[site.k]) {
+    s += `The dish turns on its tower and the screens in the bunker glow: every village, ruin, wreck and camp within ${RADAR.r / 1000} km shows up, and whatever else is out there.</div>` +
+      `<div class="shoprow"><div>${list}</div></div><button class="opt" data-ins="sweep">Sweep again and copy it onto my map</button>`;
   } else {
-    const w = INSTALL_WORK[site.k], running = batchesIn(site.k, st) >= 1 && st.out < w.bay, short = (n: string) => n.replace(/^(Crate|Sack) of /, '').toLowerCase();
+    const w = INSTALL_WORK[site.k]!, running = batchesIn(site.k, st) >= 1 && st.out < w.bay, short = (n: string) => n.replace(/^(Crate|Sack) of /, '').toLowerCase();
     const recipe = w.inp.map(([i, n]) => `${n} ${short(ITEMS[i].name)}`).join(' and ');
     s += `${w.what} ${recipe} make one crate of ${ITEMS[w.out].name} every ${hours(w.batch)}.</div>` +
       `<div class="shoprow"><div>${list}<br>Hopper: ${w.inp.map(([i]) => `<b>${st.inp[i] ?? 0}/${w.hopper}</b> ${short(ITEMS[i].name)}`).join(' · ')} · Bay: <b>${st.out}/${w.bay}</b> ${ITEMS[w.out].name}<br><span style="opacity:.8">${running ? `Running: the next crate in ${hours(Math.max(0, w.batch - (c.time - st.t)))}.` : st.out >= w.bay ? 'Stopped: the bay is full.' : `Idle: it needs ${recipe} for a batch.`}</span></div></div>` +
@@ -48,13 +56,15 @@ function render(msg = '') {
   panel().innerHTML = s + buyers() + `<button class="opt" data-ins="close">Close</button>`;
 }
 /** The buyers of what this installation makes nearest to it, and whether they order today (its radio log). */
-const BUYERS = {
+const BUYERS: Partial<Record<InstallKind, { list: (world: number) => Poi[]; order: (world: number, v: Poi, now: number) => Contract | null; who: string }>> = {
   uranium: { list: reactorVillages, order: fuelOrder, who: 'the old reactors that burn these rods' },
   chips: { list: chipVillages, order: chipOrder, who: 'the workshops that build with these chips' },
 };
 function buyers(): string {
   if (!site) return '';
-  const c = G.char, s0 = site, b = BUYERS[s0.k], list = b.list(c.world).map((v) => ({ v, d: worldDist(v.x, v.z, s0.x, s0.z) })).sort((a, q) => a.d - q.d).slice(0, 3);
+  const c = G.char, s0 = site, b = BUYERS[s0.k];
+  if (!b) return '';
+  const list = b.list(c.world).map((v) => ({ v, d: worldDist(v.x, v.z, s0.x, s0.z) })).sort((a, q) => a.d - q.d).slice(0, 3);
   if (!list.length) return '';
   return `<div class="say" style="opacity:.85">The radio log still lists ${b.who}: ` + list.map(({ v, d }) => {
     const o = b.order(c.world, v, c.time);
@@ -66,6 +76,22 @@ export function openInstall(s: InstallSite) {
   site = s; G.dlgOpen = true; W.talkNpc = null; G.firing = false; for (const k in G.keys) G.keys[k] = false;
   render();
   dlgEl.style.display = 'flex'; if (document.pointerLockElement) document.exitPointerLock();
+}
+/** What the crew say when an installation comes back to life. */
+const FINISH: Record<InstallKind, string> = {
+  uranium: 'The last controller clicks into place and the centrifuges spin up.',
+  chips: 'The etchers wake one by one and the clean room fills with a violet glow.',
+  radar: 'The dish swings up on its tower, the screens flicker, and the land for miles round fills with blips.',
+};
+/** The radar station's sweep: every place within its reach goes on your map. */
+function sweep(s: InstallSite): string {
+  const c = G.char, places = radarPlaces(c.world, s), sites = installSites(terrainNow()).filter((o) => o !== s && worldDist(o.x, o.z, s.x, s.z) <= RADAR.r);
+  let n = 0;
+  for (const p of [...places, ...sites]) if (discover(c.discovered, Math.floor(p.x / CHUNK), Math.floor(p.z / CHUNK))) n++;
+  const v = places.filter((p) => p.type === 'village').length;
+  if (n) { saveChar(); logLine(`The radar copies ${n} new place${n === 1 ? '' : 's'} onto your map (M).`); }
+  const all = places.length + sites.length;
+  return n ? `The sweep shows ${all} places within ${RADAR.r / 1000} km (${v} villages${sites.length ? `, ${sites.map((o) => 'the ' + o.name).join(' and ')}` : ''}): ${Math.min(n, all)} of them are new on your map.` : `The sweep shows ${all} places within ${RADAR.r / 1000} km; you already have them all on your map.`;
 }
 function close() { site = null; G.dlgOpen = false; dlgEl.style.display = 'none'; if (!G.isTouch) lockPointer(); }
 /** Clicks in the restoration window; true when handled. */
@@ -84,12 +110,14 @@ export function installClick(t: HTMLElement): boolean {
       c.gold += done.gold; gainXp(done.xp);
       showToast(`${site.name}: ${done.title.toLowerCase()} done`);
       const fin = installDone(site.k, st);
-      logLine(fin ? `${site.k === 'uranium' ? 'The last controller clicks into place and the centrifuges spin up.' : 'The etchers wake one by one and the clean room fills with a violet glow.'} The ${site.name} is working again. You earn ${done.gold} gold.` : `${done.title}: done. You earn ${done.gold} gold.`);
+      logLine(fin ? `${FINISH[site.k]} The ${site.name} is working again. You earn ${done.gold} gold.` : `${done.title}: done. You earn ${done.gold} gold.`);
       msg += ` <b>${done.title}: done.</b>`;
+      if (fin && !INSTALL_WORK[site.k]) msg += ' ' + sweep(site);
       redrawInstalls();
     }
     calcStats(); saveChar(); render(msg); return true;
   }
+  if (a === 'sweep') { render(sweep(site)); return true; }
   if (a === 'load') {
     const i = b.dataset.insk as ItemKey, n = loadInstall(site.k, st, i, have(i), c.time);
     if (n > 0) { takeFrom(i, n, at()); calcStats(); saveChar(); }
@@ -97,7 +125,9 @@ export function installClick(t: HTMLElement): boolean {
   }
   if (a === 'take') {
     runInstall(site.k, st, c.time);
-    const w = INSTALL_WORK[site.k], left = putAway(w.out, st.out, at(), true), got = st.out - left;
+    const w = INSTALL_WORK[site.k];
+    if (!w) return true;
+    const left = putAway(w.out, st.out, at(), true), got = st.out - left;
     if (got > 0 && st.out >= w.bay) st.t = c.time; // the bay had stopped it: it starts again now
     st.out = left; calcStats(); saveChar();
     render(got ? `Collected ${got} crates of ${ITEMS[w.out].name}${left ? ` (no room for ${left})` : ''}.` : 'No room for them.'); return true;

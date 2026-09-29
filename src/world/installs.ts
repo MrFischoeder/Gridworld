@@ -17,9 +17,9 @@ import { nearX, worldDist } from '../gen/regions';
 import type { Terrain } from '../gen/terrain';
 
 const METAL = 0xa8c8b8, RUST = 0x9aa870, CONC = 0x7fa08c, GLOW = 0xb6ff3a;
-interface Live { s: InstallSite; g: THREE.Group; cos: number; sin: number; stage: number; walls: [number, number, number, number][]; rings: [number, number, number][] }
+interface Live { s: InstallSite; g: THREE.Group; cos: number; sin: number; stage: number; spin?: THREE.Object3D | null; walls: [number, number, number, number][]; rings: [number, number, number][] }
 /** The control desk in each installation's frame (inside the gate, west of the way in). */
-export const DESKS: Record<InstallKind, { x: number; z: number }> = { uranium: { x: -6, z: -25 }, chips: { x: -6, z: -23 } };
+export const DESKS: Record<InstallKind, { x: number; z: number }> = { uranium: { x: -6, z: -25 }, chips: { x: -6, z: -23 }, radar: { x: -6, z: -21 } };
 const live = new Map<string, Live>();
 
 /** The perimeter fence (half-size F): posts every 4 m and two wires, with gaps and leaning posts until cleared; the gate on the -z side. */
@@ -229,9 +229,77 @@ function drawChips(T: Terrain, s: InstallSite, cos: number, sin: number, stage: 
   return { g, walls, rings };
 }
 
+/**
+ * The radar station in its own frame: the bunker (x -12..-2, z -6..2) with its door on the -z side, a lattice tower
+ * (x 8, z 4) that carries the dish, a guyed mast (x -16, z 14), a generator shed (x 2, z 14). Before it is cleared the
+ * dish lies on its back in the grass, rubble buries the bunker door and the mast has snapped; cleared, the rubble is
+ * gone; with power and cable (stage 2) the mast stands whole, the shed has a roof and cables run to the bunker and the
+ * tower; restored, the dish sits on the tower and turns (a group named 'spin'), its feed horn and the lamps lit.
+ */
+function drawRadar(T: Terrain, s: InstallSite, cos: number, sin: number, stage: number): { g: THREE.Group; walls: Live['walls']; rings: Live['rings'] } {
+  const pb = new PropBatch(), walls: Live['walls'] = [], rings: Live['rings'] = [];
+  const cleared = stage >= 1, wired = stage >= 2, done = stage >= INSTALL_STAGES.radar.length;
+  const H = (x: number, z: number) => T.heightAt(s.x + x * cos + z * sin, s.z - x * sin + z * cos) - s.y;
+  drawFence(pb, H, 26, cleared);
+  // ---- the bunker: low concrete walls, a flat roof, the door on the -z side
+  const X0 = -12, X1 = -2, Z0 = -6, Z1 = 2, BH = 3, g0 = Math.min(H(X0, Z0), H(X1, Z0), H(X0, Z1), H(X1, Z1)) - 0.3;
+  pb.box(X0, g0, Z0, X1, g0 + BH, Z1, CONC); walls.push([X0, Z0, X1, Z0], [X1, Z0, X1, Z1], [X1, Z1, X0, Z1], [X0, Z1, X0, Z0]);
+  pb.line(done ? GLOW : METAL, [-8.2, g0, Z0 - 0.03], [-8.2, g0 + 2.2, Z0 - 0.03], [-6.8, g0 + 2.2, Z0 - 0.03], [-6.8, g0, Z0 - 0.03]); // the door
+  if (!cleared) for (let i = 0; i < 7; i++) { const x = -9.5 + i * 0.6, z = Z0 - 1 - (i % 3) * 0.5, y = H(x, z); pb.box(x - 0.7, y - 0.1, z - 0.6, x + 0.6, y + 0.9 + (i % 2) * 0.5, z + 0.6, CONC); }
+  for (let x = X0 + 1; x < X1; x += 2.5) pb.seg(CONC, [x, g0 + BH, Z0], [x, g0 + BH, Z1]);
+  // ---- the lattice tower: four legs tapering to a platform at 13 m
+  const TX = 8, TZ = 4, ty = H(TX, TZ), TH = 13;
+  const leg = (i: number, t: number) => { const c = [[-1.8, -1.8], [1.8, -1.8], [1.8, 1.8], [-1.8, 1.8]][i], k = 1 - 0.6 * t; return [TX + c[0] * k, ty + t * TH, TZ + c[1] * k]; };
+  for (let i = 0; i < 4; i++) {
+    pb.seg(METAL, leg(i, 0), leg(i, 1)); rings.push([leg(i, 0)[0], leg(i, 0)[2], 0.3]);
+    for (let k = 0; k < 5; k++) { const a = k / 5, b = (k + 1) / 5; pb.seg(RUST, leg(i, a), leg((i + 1) % 4, b)); pb.seg(RUST, leg((i + 1) % 4, a), leg(i, b)); }
+  }
+  pb.box(TX - 1.3, ty + TH, TZ - 1.3, TX + 1.3, ty + TH + 0.3, TZ + 1.3, METAL);
+  // ---- the dish: a shallow bowl of rings and ribs, lying in the grass or turning on the tower
+  const db = new PropBatch(), R = 5, ring = (r: number) => r * r / 14;
+  for (let k = 0; k < 16; k++) {
+    const a0 = k / 16 * 6.283, a1 = (k + 1) / 16 * 6.283;
+    for (let j = 0; j < 4; j++) {
+      const r0 = R * j / 4, r1 = R * (j + 1) / 4, P = (r: number, a: number) => [Math.cos(a) * r, ring(r), Math.sin(a) * r];
+      db.face(P(r0, a0), P(r1, a0), P(r1, a1), P(r0, a1));
+      db.seg(done ? GLOW : METAL, P(r1, a0), P(r1, a1));
+    }
+    db.seg(METAL, [0, 0, 0], [Math.cos(a0) * R, ring(R), Math.sin(a0) * R]);
+  }
+  for (const a of [0, 2.094, 4.189]) db.seg(METAL, [Math.cos(a) * R * 0.9, ring(R * 0.9), Math.sin(a) * R * 0.9], [0, 3.2, 0]); // the feed horn's struts
+  db.box(-0.25, 3.1, -0.25, 0.25, 3.6, 0.25, done ? GLOW : METAL);
+  const dish = db.build();
+  let spin: THREE.Group | null = null;
+  if (done) { spin = new THREE.Group(); spin.name = 'spin'; spin.position.set(TX, ty + TH + 0.6, TZ); dish.rotation.x = -0.55; spin.add(dish); }
+  else { const dx = 15, dz = -9; dish.position.set(dx, H(dx, dz) + 1.4, dz); dish.rotation.set(2.7, 0.4, 0.2); rings.push([dx, dz, 4.5]); } // on its back, rim dug in
+  // ---- the mast on guy wires: snapped until the power comes back
+  { const mx = -16, mz = 14, my = H(mx, mz), MH = wired ? 22 : 9;
+    pb.seg(METAL, [mx, my, mz], [mx, my + MH, mz]); rings.push([mx, mz, 0.3]);
+    for (let y = 3; y < MH; y += 3) pb.line(RUST, [mx - 0.3, my + y, mz], [mx, my + y + 0.3, mz], [mx + 0.3, my + y, mz]);
+    for (const a of [0.3, 2.4, 4.5]) { const ax = mx + Math.cos(a) * 9, az = mz + Math.sin(a) * 9; pb.seg(RUST, [ax, H(ax, az), az], [mx, my + (wired ? 16 : 8), mz]); }
+    if (!wired) pb.seg(METAL, [mx + 1, H(mx + 1, mz + 1), mz + 1], [mx + 11, H(mx + 11, mz + 6), mz + 6]); // the top, lying in the grass
+    else if (done) pb.box(mx - 0.2, my + MH, mz - 0.2, mx + 0.2, my + MH + 0.4, mz + 0.2, GLOW);
+  }
+  // ---- the generator shed and, once wired, the cable runs
+  { const sx0 = -1, sx1 = 5, sz0 = 12, sz1 = 16, y = Math.min(H(sx0, sz0), H(sx1, sz1)) - 0.2;
+    pb.box(sx0, y, sz0, sx1, y + 2.6, sz1, METAL); walls.push([sx0, sz0, sx1, sz0], [sx1, sz0, sx1, sz1], [sx1, sz1, sx0, sz1], [sx0, sz1, sx0, sz0]);
+    if (wired) pb.gableRoof(sx0 - 0.3, sz0 - 0.3, sx1 + 0.3, sz1 + 0.3, y + 2.6, 0.8, METAL);
+    if (wired) for (const [tx, tz] of [[-2, 0], [TX - 1.8, TZ + 1.8]]) {
+      let prev: number[] | null = null;
+      for (let t = 0; t <= 1.001; t += 0.25) { const x = 2 + (tx - 2) * t, z = 12 + (tz - 12) * t, yy = H(x, z); pb.seg(RUST, [x, yy, z], [x, yy + 2.4, z]); const p = [x, yy + 2.4, z]; if (prev) pb.seg(METAL, prev, p); prev = p; }
+    }
+  }
+  drawDesk(pb, H, DESKS.radar, stage, done, rings);
+  const g = pb.build();
+  g.add(spin ?? dish);
+  return { g, walls, rings };
+}
+const DRAW: Record<InstallKind, typeof drawUranium> = { uranium: drawUranium, chips: drawChips, radar: drawRadar };
+
 /** Every second: draw the installations within reach, drop those far behind. */
 let tick = 0;
 export function updateInstalls(dt: number) {
+  for (const l of live.values()) if (l.spin) l.spin.rotation.y += dt * 0.35; // a working radar dish turns
   if ((tick -= dt) > 0) return;
   tick = 1;
   const T = OW.terrain;
@@ -240,9 +308,9 @@ export function updateInstalls(dt: number) {
     const key = s.k + ':' + T.world, d = worldDist(s.x, s.z, G.pos.x, G.pos.z), have = live.get(key), stage = G.char.installs[s.k]?.stage ?? 0;
     if (have && (d > 1100 || have.stage !== stage)) { scene.remove(have.g); have.g.traverse((o) => (o as THREE.Mesh).geometry?.dispose()); live.delete(key); }
     if (d < 900 && !live.has(key)) {
-      const cos = Math.cos(s.yaw), sin = Math.sin(s.yaw), m = (s.k === 'chips' ? drawChips : drawUranium)(T, s, cos, sin, stage);
+      const cos = Math.cos(s.yaw), sin = Math.sin(s.yaw), m = DRAW[s.k](T, s, cos, sin, stage);
       m.g.position.set(nearX(s.x, G.pos.x), s.y, s.z); m.g.rotation.y = s.yaw; scene.add(m.g);
-      live.set(key, { s, g: m.g, cos, sin, stage, walls: m.walls, rings: m.rings });
+      live.set(key, { s, g: m.g, cos, sin, stage, spin: m.g.getObjectByName('spin') ?? null, walls: m.walls, rings: m.rings });
     }
   }
 }

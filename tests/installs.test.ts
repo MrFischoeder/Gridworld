@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { Terrain } from '../src/gen/terrain';
-import { installSites, installMisfit, inInstall, INSTALLS, INSTALL_STAGES, INSTALL_WORK, newInstall, installPlan, handOverInstall, runInstall, installDone, loadInstall, fixInstall, pickInstallLead, installLeadText, installLeadId, INSTALL_LEAD } from '../src/gen/installs';
+import { installSites, installMisfit, inInstall, INSTALLS, INSTALL_STAGES, INSTALL_WORK, newInstall, installPlan, handOverInstall, runInstall, installDone, loadInstall, fixInstall, pickInstallLead, installLeadText, installLeadId, INSTALL_LEAD, RADAR, radarPlaces } from '../src/gen/installs';
 import { ITEMS } from '../src/data/items';
 import { chunkTrees } from '../src/gen/trees';
 import { CHUNK } from '../src/gen/regions';
@@ -36,7 +36,7 @@ describe('great installations', () => {
     expect(installDone('uranium', s)).toBe(true); expect(installPlan('uranium', s, {})).toBeNull(); expect(s.t).toBe(100);
   });
   it('turn ore into fuel by game time, while fed and with room', () => {
-    const w = INSTALL_WORK.uranium, s = { ...newInstall(), stage: INSTALL_STAGES.uranium.length, inp: { uranium: 7 }, t: 0 };
+    const w = INSTALL_WORK.uranium!, s = { ...newInstall(), stage: INSTALL_STAGES.uranium.length, inp: { uranium: 7 }, t: 0 };
     runInstall('uranium', s, w.batch - 1); expect(s.out).toBe(0);
     runInstall('uranium', s, w.batch * 10); // ore for two batches only
     expect(s.out).toBe(2); expect(s.inp.uranium).toBe(1); expect(s.t).toBe(w.batch * 10);
@@ -49,7 +49,7 @@ describe('great installations', () => {
     expect(fixInstall('uranium', { ...newInstall(), inp: 4 as unknown as Record<string, number> }).inp).toEqual({ uranium: 4 });
   });
   it('the chip foundry needs every input for a batch', () => {
-    const w = INSTALL_WORK.chips, s = { ...newInstall(), stage: INSTALL_STAGES.chips.length };
+    const w = INSTALL_WORK.chips!, s = { ...newInstall(), stage: INSTALL_STAGES.chips.length };
     expect(loadInstall('chips', s, 'glass', 99, 0)).toBe(w.hopper);
     expect(loadInstall('chips', s, 'uranium', 5, 0)).toBe(0);
     runInstall('chips', s, w.batch * 5); expect(s.out).toBe(0); // no copper yet
@@ -67,5 +67,16 @@ describe('great installations', () => {
     expect(pickInstallLead(sites.filter((x) => x.k === got!.k), [], () => true, vx, vz)).toBeNull(); // found
     expect(pickInstallLead(sites, [], () => false, s.x + INSTALL_LEAD + 30000, s.z + 40000)).toBeNull(); // too far
     expect(installLeadText(s, s.x + 9000, s.z, 12345)).toMatch(/west/);
+  });
+  it('the radar station makes nothing but shows the places round it', () => {
+    expect(INSTALL_WORK.radar).toBeUndefined();
+    expect(INSTALL_STAGES.radar[2].tech).toBe('radio');
+    const s = { ...newInstall(), stage: 3 };
+    runInstall('radar', s, 9999); expect(s.out).toBe(0);
+    expect(loadInstall('radar', s, 'glass', 5, 0)).toBe(0);
+    const t = new Terrain(777), site = installSites(t).find((x) => x.k === 'radar')!, p = radarPlaces(777, site);
+    expect(p.some((q) => q.type === 'village')).toBe(true);
+    for (const q of p) expect(Math.hypot(q.x - site.x, q.z - site.z)).toBeLessThanOrEqual(RADAR.r + 1);
+    for (const o of installSites(t)) if (o !== site) expect(Math.hypot(o.x - site.x, o.z - site.z)).toBeGreaterThan(3000);
   });
 });

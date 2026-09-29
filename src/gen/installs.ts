@@ -4,17 +4,18 @@
 // lies in its own distance band from Gridholm on dry, fairly level ground away from villages, places, roads, lakes and
 // the mountains. The ground round it is bare: trees, rocks and plants inside `inInstall` are not generated.
 import { hash } from '../core/rng';
-import { CHUNK, worldDist, wrapDx } from './regions';
+import { CHUNK, worldDist, wrapDx, poisNear, type Poi } from './regions';
 import { nearestOnRoad } from './roads';
 import { mountainMask } from './mountains';
 import { rectDist, type Terrain } from './terrain';
 import type { ItemKey } from '../data/items';
 
-export type InstallKind = 'uranium' | 'chips';
+export type InstallKind = 'uranium' | 'chips' | 'radar';
 export interface InstallSpec { k: InstallKind; name: string; blurb: string; band: [number, number]; r: number }
 export const INSTALLS: InstallSpec[] = [
   { k: 'uranium', name: 'Old Enrichment Plant', blurb: 'a ruined plant of the old world where ore was once made into reactor fuel: a centrifuge hall, two cooling towers and a stack', band: [15000, 25000], r: 34 },
   { k: 'chips', name: 'Old Chip Foundry', blurb: 'a sealed fabrication plant of the old world where crystal wafers were etched into chips: a long clean-room block, a tank farm and a water tower', band: [12000, 20000], r: 32 },
+  { k: 'radar', name: 'Old Radar Station', blurb: 'a listening post of the old world on a rise: a great dish on a lattice tower, a mast held by guy wires and a bunker full of screens', band: [18000, 28000], r: 30 },
 ];
 export interface InstallSite { k: InstallKind; name: string; x: number; z: number; y: number; yaw: number; r: number }
 
@@ -71,6 +72,11 @@ export const INSTALL_STAGES: Record<InstallKind, InstallStage[]> = {
     { title: 'The centrifuge hall', text: 'A new roof, and the centrifuges rewired: steel for the trusses, cable for the lines, electronics for the drives.', needs: [['steel', 6], ['cable', 4], ['circuit', 8]], gold: 300, xp: 350 },
     { title: 'The core', text: 'The cascade controller is dead. Only the old plans for enrichment show how it was built, and it wants power cores and hull alloy.', needs: [['pcore', 2], ['alloy', 4], ['circuit', 6]], tech: 'enrichment', gold: 500, xp: 600 },
   ],
+  radar: [
+    { title: 'Clearing the compound', text: 'The dish lies on its back in the weeds and the bunker door is buried. Timber and stone to shore up the bunker, scrap to brace the tower.', needs: [['log', 10], ['stone', 8], ['scrap', 10]], gold: 150, xp: 200 },
+    { title: 'Power and cable', text: 'The generator shed is a ruin and the cable runs are eaten through. Copper cable, steel for the tower and the mast, electronics for the switchgear.', needs: [['cable', 8], ['steel', 6], ['circuit', 6]], gold: 250, xp: 300 },
+    { title: 'The dish and the console', text: 'The dish goes back up on its tower. Only the old plans for radio triangulation show how to aim it and read the screens; it wants circuit boards and hull alloy for the mount.', needs: [['boards', 4], ['circuit', 8], ['alloy', 4]], tech: 'radio', gold: 400, xp: 500 },
+  ],
   chips: [
     { title: 'Opening the block', text: 'The clean-room block is sealed and half buried in its own rubble. Timber for shoring, stone to fill the breaches, scrap to brace the air locks.', needs: [['log', 10], ['stone', 12], ['scrap', 8]], gold: 150, xp: 200 },
     { title: 'Air and water', text: 'Nothing is made in dust: the filters and the water plant must run first. Glass for the filter housings, cable for the fans and pumps, steel for the ducts.', needs: [['glass', 6], ['cable', 6], ['steel', 4]], gold: 300, xp: 350 },
@@ -79,7 +85,7 @@ export const INSTALL_STAGES: Record<InstallKind, InstallStage[]> = {
 };
 /** What a working installation makes: the crates of each input in `inp` into one of `out` every `batch` game minutes (at most `hopper` of each input loaded, `bay` made waiting). */
 export interface InstallWork { inp: [ItemKey, number][]; out: ItemKey; batch: number; hopper: number; bay: number; what: string }
-export const INSTALL_WORK: Record<InstallKind, InstallWork> = {
+export const INSTALL_WORK: Partial<Record<InstallKind, InstallWork>> = {
   uranium: { inp: [['uranium', 3]], out: 'nfuel', batch: 360, hopper: 30, bay: 10, what: 'The centrifuges hum again.' },
   chips: { inp: [['glass', 2], ['copperbar', 1]], out: 'microchip', batch: 240, hopper: 30, bay: 12, what: 'The etching line glows behind its windows.' },
 };
@@ -88,11 +94,11 @@ export interface InstallState { stage: number; given: Partial<Record<ItemKey, nu
 export const newInstall = (): InstallState => ({ stage: 0, given: {}, inp: {}, out: 0, t: 0 });
 /** Saves from before installations took more than one input kept the ore as a number. */
 export function fixInstall(k: InstallKind, s: InstallState): InstallState {
-  if (typeof s.inp === 'number') s.inp = { [INSTALL_WORK[k].inp[0][0]]: s.inp };
+  if (typeof s.inp === 'number') s.inp = INSTALL_WORK[k] ? { [INSTALL_WORK[k]!.inp[0][0]]: s.inp } : {};
   return s;
 }
 /** How many batches the hopper holds inputs for. */
-export const batchesIn = (k: InstallKind, s: InstallState) => Math.min(...INSTALL_WORK[k].inp.map(([i, n]) => Math.floor((s.inp[i] ?? 0) / n)));
+export const batchesIn = (k: InstallKind, s: InstallState) => Math.min(...(INSTALL_WORK[k]?.inp ?? []).map(([i, n]) => Math.floor((s.inp[i] ?? 0) / n)));
 export const installDone = (k: InstallKind, s: InstallState | undefined) => (s?.stage ?? 0) >= INSTALL_STAGES[k].length;
 /** The next stage: its rows (given / needed), whether the plans are known, whether it is complete; null once restored. */
 export function installPlan(k: InstallKind, s: InstallState | undefined, known: Record<string, number>) {
@@ -116,6 +122,7 @@ export function handOverInstall(k: InstallKind, s: InstallState, known: Record<s
 export function runInstall(k: InstallKind, s: InstallState, now: number) {
   if (!installDone(k, s)) return;
   const w = INSTALL_WORK[k];
+  if (!w) return; // it makes nothing (the radar station)
   if (batchesIn(k, s) < 1 || s.out >= w.bay) { s.t = now; return; }
   const batches = Math.min(Math.floor((now - s.t) / w.batch), batchesIn(k, s), w.bay - s.out);
   if (batches <= 0) return;
@@ -127,7 +134,7 @@ export function runInstall(k: InstallKind, s: InstallState, now: number) {
 export function loadInstall(k: InstallKind, s: InstallState, i: ItemKey, n: number, now: number): number {
   runInstall(k, s, now);
   const w = INSTALL_WORK[k];
-  if (!w.inp.some(([x]) => x === i)) return 0;
+  if (!w || !w.inp.some(([x]) => x === i)) return 0;
   const m = Math.max(0, Math.min(n, w.hopper - (s.inp[i] ?? 0)));
   if (m <= 0) return 0;
   const before = batchesIn(k, s);
@@ -147,6 +154,10 @@ const ISAY: Record<InstallKind, string[]> = {
     'My grandfather worked at the old enrichment plant, {dist} {dir} of here. Two great cooling towers, one snapped in half, and a hall full of spinning drums. He said the ore that went in came out as something that burns for years.',
     'Travellers talk of a dead plant {dist} {dir} of here: a fence hung with warning signs, a lime trefoil on the gate, two towers like hourglasses. Nobody stays there long.',
   ],
+  radar: [
+    'On a rise {dist} {dir} of here stands an old listening post: a dish as big as a barn roof, fallen on its back. The old folk say it could see a caravan a day\'s ride away.',
+    'Hunters use the old radar station {dist} {dir} of here as a landmark: a lattice tower, a mast on wires, a dish lying in the grass. The bunker under it is sealed.',
+  ],
   chips: [
     'There is a sealed block of the old world {dist} {dir} of here, with a water tower and a row of tanks. The traders call it the chip foundry: they say the old machines were born there, etched in crystal.',
     'A scavenger told me of a long windowless building {dist} {dir} of here, still sealed after all these years. Clean rooms, he called them. He could not get the air lock open.',
@@ -162,3 +173,9 @@ export function pickInstallLead(sites: InstallSite[], leads: string[], found: (s
   return sites.filter((s) => !leads.includes(installLeadId(s.k)) && !found(s) && worldDist(s.x, s.z, vx, vz) <= INSTALL_LEAD)
     .sort((a, b) => worldDist(a.x, a.z, vx, vz) - worldDist(b.x, b.z, vx, vz))[0] ?? null;
 }
+
+// ---------- the radar station: what it shows once restored ----------
+/** How far the restored radar station sees (m). */
+export const RADAR = { r: 12000 };
+/** The villages, ruins, wrecks and camps within RADAR.r of the station (for the map). */
+export const radarPlaces = (world: number, s: InstallSite): Poi[] => poisNear(world, s.x, s.z, RADAR.r).filter((p) => worldDist(p.x, p.z, s.x, s.z) <= RADAR.r);

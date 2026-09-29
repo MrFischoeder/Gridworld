@@ -4,6 +4,16 @@ export interface Change { v: string; date: string; title: string; notes: string[
 
 export const CHANGELOG: Change[] = [
   {
+    v: '0.74.0', date: '2026-09-29', title: 'The radar station',
+    notes: [
+      'A third great installation stands 18 to 28 km from Gridholm: the Old Radar Station, a compound with a bunker, a lattice tower, a guyed mast and a generator shed. Its dish lies on its back in the grass.',
+      'Restore it at its control desk in three stages: clearing the compound (logs, stone, scrap), power and cable (copper cable, steel, electronics), and the dish and the console (circuit boards, electronics, hull alloy, and the plans for Radio Triangulation).',
+      'The station changes as you work: the rubble at the bunker door goes, the snapped mast stands whole, the shed gets its roof and cables run to the bunker and the tower; restored, the dish goes up on its tower and turns.',
+      'A restored station makes nothing, but its sweep copies every village, ruin, wreck and camp within 12 km onto your map (and any great installation in reach). Sweep again at the desk whenever you like.',
+      'Villagers within 16 km of it tell of it when asked about old machines.',
+    ],
+  },
+  {
     v: '0.73.0', date: '2026-09-29', title: 'Chips for the Chariot',
     notes: [
       'The Chariot\'s avionics now need 6 crates of Microchips from the Old Chip Foundry, and 8 circuit boards instead of 14 (cable and glass as before). Its flight computers want chips no works can etch, so the way home now runs through the foundry.',
