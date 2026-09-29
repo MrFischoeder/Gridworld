@@ -211,9 +211,12 @@ function worksRows(st: TownState | undefined): string {
     const can = plan.rows.some((r) => r.given < r.n && hh(r.k) > 0) || (plan.done && c.gold >= plan.fee);
     return rows + `<button class="opt" data-pgive="1" ${can ? '' : 'disabled'}>${plan.done ? `Pay the builders ${plan.fee} gold` : `Build from the village hall's stock (${name.toLowerCase()})`}</button>`;
   }
-  const btn = (k: PlantKind | StationKind) => { const sp = specOf(k), no = plantProblem(st, k, c.tech); if (no) return `<button class="opt" disabled>${sp.name}, ${isStation(k) ? STATIONS[k].kw + ' kW' : ''}: needs the old plans for ${TECH_BY_ID[STATIONS[k as StationKind].tech!].name}</button>`; return `<button class="opt" data-pnew="${k}">Build ${aN(sp.name)} ${sp.name}: ${sp.blurb}${isStation(k) ? `, ${STATIONS[k].kw} kW` : `, draws ${DRAW[k]} kW`} (${sp.needs.map(([i, n]) => `${n} ${ITEMS[i].name}`).join(', ')}; ${sp.fee} gold)</button>`; };
+  const btn = (k: PlantKind | StationKind) => { const sp = specOf(k), no = plantProblem(st, k, c.tech); if (no) return `<button class="opt" disabled>${sp.name}, ${isStation(k) ? STATIONS[k].kw + ' kW' : `draws ${DRAW[k]} kW`}: needs the old plans for ${TECH_BY_ID[sp.tech!].name}</button>`; return `<button class="opt" data-pnew="${k}">Build ${aN(sp.name)} ${sp.name}: ${sp.blurb}${isStation(k) ? `, ${STATIONS[k].kw} kW` : `, draws ${DRAW[k]} kW`} (${sp.needs.map(([i, n]) => `${n} ${ITEMS[i].name}`).join(', ')}; ${sp.fee} gold)</button>`; };
   const st1 = STATION_KINDS.filter((k) => !plantProblem(st, k)), pl = PLANT_KINDS.filter((k) => !plantProblem(st, k));
-  return (st1.length ? `<div class="say" style="margin:8px 0 0">Power stations</div>${st1.map(btn).join('')}` : '') + (pl.length ? `<div class="say" style="margin:8px 0 0">Works</div>${pl.map(btn).join('')}` : '');
+  const plain = pl.filter((k) => !PLANTS[k].tech), plans = pl.filter((k) => PLANTS[k].tech);
+  return (st1.length ? `<div class="say" style="margin:8px 0 0">Power stations</div>${st1.map(btn).join('')}` : '') +
+    (plain.length ? `<div class="say" style="margin:8px 0 0">Works anyone can build</div>${plain.map(btn).join('')}` : '') +
+    (plans.length ? `<div class="say" style="margin:8px 0 0">Works that want the old plans</div>${plans.map(btn).join('')}` : '');
 }
 /** The elder on power and works: what the land gives, the power balance, what stands, what can be built. */
 function renderWorksPanel(msg = '') {

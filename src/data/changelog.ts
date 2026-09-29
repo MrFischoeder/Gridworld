@@ -4,6 +4,18 @@ export interface Change { v: string; date: string; title: string; notes: string[
 
 export const CHANGELOG: Change[] = [
   {
+    v: '0.91.0', date: '2026-10-11', title: 'Village works for every step',
+    notes: [
+      'Eight new works the elder can build outside the fence (still two per village): the Sawmill (timber into lumber), the Brickworks (clay and coal into bricks), the Cement Works (limestone and coal into cement), the Textile Mill (flax fibre or wool into cloth), the Steelworks, the Polymer Plant, the Aluminium Works and the Battery Works. Each has its own look: an open saw shed, a ring kiln with a tall stack, a rotary kiln and silos, a brick mill with rows of windows, a converter and a steel hall, reactors and a column, a long potroom with roof vents, a casting shed with acid tanks.',
+      'Steel is made in two steps now: the Smelter smelts iron ore into iron bars (and copper and lead ore into ingots), and the Steelworks blows iron into steel with coal and limestone.',
+      'Advanced Alloy (the old hull alloy) is cast at the Alloy Foundry from steel, aluminium and nickel. Aluminium comes from the new Aluminium Works, batteries from the Battery Works, and the Polymer Plant makes twice the plastic a refinery gets from the same crude, with chemicals.',
+      'Some works need the old plans: the Steelworks (Blast Furnace), the Chemical Works and the Polymer Plant (Industrial Chemistry), the Electronics Shop (Basic Circuits), the Machine Shop (Forged Tools), and three new technologies on data carriers: Aluminium Processing and Battery Chemistry (3 to 8 km out) and Alloy Metallurgy (8 to 16 km). The elder lists the works anyone can build first. Works you have already built keep working.',
+      'Two new farm crops: Flax (fibre) and Sheep (wool), for the Textile Mill. New goods: Bale of Flax Fibre and Bale of Wool.',
+      'Bricks, cement and lumber go into building now: the new works, the Smelter and the Glassworks take bricks, the Stone Wall takes cement, the Coal Power Station bricks and cement, the Small Reactor cement.',
+      'Works that were making something they no longer make switch to their first recipe.',
+    ],
+  },
+  {
     v: '0.90.0', date: '2026-10-11', title: 'New raw materials and goods',
     notes: [
       'The land gives more: Clay (dug by some farming and fishing villages), Limestone and Lead Ore (some mining villages) and Lumber (sawn boards from some timber villages). They are made there, trade at every market and pile up in those villages\' halls like their other goods.',

@@ -18,11 +18,12 @@ import { industryOf, INDUSTRY } from './industry';
 
 export type Good = 'grain' | 'carrots' | 'potatoes' | 'timber' | 'coal' | 'ore' | 'copper' | 'salt' | 'fish' | 'crude' | 'sand' | 'cloth' | 'tools' | 'meds' | 'fuel' | 'tech'
   | 'steel' | 'copperbar' | 'plastic' | 'glass' | 'cable' | 'boards' | 'parts' | 'alloy' | 'propellant'
-  | 'clay' | 'limestone' | 'lead' | 'lumber' | 'iron' | 'bricks' | 'cement' | 'chems' | 'aluminium' | 'leadbar' | 'batteries';
+  | 'clay' | 'limestone' | 'lead' | 'lumber' | 'iron' | 'bricks' | 'cement' | 'chems' | 'aluminium' | 'leadbar' | 'batteries'
+  | 'fibre' | 'wool';
 /** The goods before the economy plan's stage 1 (0.90): what villages want is still picked from these, so old villages keep their wants. */
 const WANT_POOL: Good[] = ['grain', 'carrots', 'potatoes', 'timber', 'coal', 'ore', 'copper', 'salt', 'fish', 'crude', 'sand', 'cloth', 'tools', 'meds', 'fuel', 'tech',
   'steel', 'copperbar', 'plastic', 'glass', 'cable', 'boards', 'parts', 'alloy', 'propellant'];
-export const GOODS: Good[] = [...WANT_POOL, 'clay', 'limestone', 'lead', 'lumber', 'iron', 'bricks', 'cement', 'chems', 'aluminium', 'leadbar', 'batteries'];
+export const GOODS: Good[] = [...WANT_POOL, 'clay', 'limestone', 'lead', 'lumber', 'iron', 'bricks', 'cement', 'chems', 'aluminium', 'leadbar', 'batteries', 'fibre', 'wool'];
 /**
  * Base price (gold per crate), and whether the good is raw (dug, pumped, grown: made far out) or made (crafted near
  * home). `proc`: processed in a works (gen/plants.ts) from other goods; no village's own industry makes it, and its
@@ -39,6 +40,7 @@ export const GOOD_INFO: Record<Good, { base: number; raw: boolean; proc?: true }
   iron: { base: 60, raw: false, proc: true }, bricks: { base: 32, raw: false, proc: true }, cement: { base: 48, raw: false, proc: true },
   chems: { base: 80, raw: false, proc: true }, aluminium: { base: 200, raw: false, proc: true }, leadbar: { base: 120, raw: false, proc: true },
   batteries: { base: 280, raw: false, proc: true },
+  fibre: { base: 16, raw: true }, wool: { base: 20, raw: true }, // (grown on the farms you build: gen/farms.ts CROPS)
 };
 /** The processed goods (no village industry makes them; a works does). */
 export const PROCESSED = GOODS.filter((g) => GOOD_INFO[g].proc);

@@ -17,8 +17,11 @@ import type { ItemKey } from '../data/items';
 import { STATIONS, STATION_SLOTS, type StationKind } from './energy';
 import { TECH_BY_ID } from './tech';
 
-export type PlantKind = 'smelter' | 'refinery' | 'glassworks' | 'wiremill' | 'electronics' | 'machineshop' | 'foundry' | 'chemworks';
-export const PLANT_KINDS: PlantKind[] = ['smelter', 'refinery', 'glassworks', 'wiremill', 'electronics', 'machineshop', 'foundry', 'chemworks'];
+export type PlantKind = 'smelter' | 'refinery' | 'glassworks' | 'wiremill' | 'electronics' | 'machineshop' | 'foundry' | 'chemworks'
+  | 'sawmill' | 'brickworks' | 'cementworks' | 'textile' | 'steelworks' | 'polymer' | 'alworks' | 'batteryworks';
+/** In the order the elder offers them: the plain works (tier 1, anyone can build) first, then those that want old plans (tier 2). */
+export const PLANT_KINDS: PlantKind[] = ['sawmill', 'brickworks', 'cementworks', 'smelter', 'glassworks', 'wiremill', 'refinery', 'textile',
+  'steelworks', 'chemworks', 'polymer', 'alworks', 'batteryworks', 'electronics', 'machineshop', 'foundry'];
 /** What a works takes in: trade goods, and the rare materials of the deposits (gen/deposits.ts), which no market trades. */
 export type Stuff = Good | Rare;
 export interface Recipe { in: [Stuff, number][]; out: [Good, number] }
@@ -29,35 +32,64 @@ export interface PlantSpec {
   batch: number;
   /** What it takes to build: materials (handed over bit by bit), the fee in gold, the xp. */
   needs: [ItemKey, number][]; fee: number; xp: number;
+  /** The old plans (gen/tech.ts) it takes to put one up (tier 2); none for the plain works. Works built before stay. */
+  tech?: string;
 }
 export const PLANTS: Record<PlantKind, PlantSpec> = {
-  smelter: { name: 'Smelter', blurb: 'melts ore with coal into iron, steel, copper and lead', batch: 60,
-    recipes: [{ in: [['ore', 2], ['coal', 1]], out: ['steel', 1] }, { in: [['copper', 2], ['coal', 1]], out: ['copperbar', 1] },
-      { in: [['ore', 2], ['coal', 1]], out: ['iron', 2] }, { in: [['lead', 2], ['coal', 1]], out: ['leadbar', 1] }],
-    needs: [['stone', 40], ['scrap', 12], ['planks', 16], ['log', 8]], fee: 600, xp: 150 },
-  refinery: { name: 'Oil Refinery', blurb: 'cracks crude oil into fuel or plastic resin', batch: 60,
-    recipes: [{ in: [['crude', 1]], out: ['fuel', 1] }, { in: [['crude', 2]], out: ['plastic', 1] }],
-    needs: [['scrap', 30], ['wire', 12], ['circuit', 4], ['planks', 16]], fee: 900, xp: 200 },
-  glassworks: { name: 'Glassworks', blurb: 'a coal-fired kiln: glass from quartz sand, bricks from clay, cement from limestone', batch: 45,
-    recipes: [{ in: [['sand', 2], ['coal', 1]], out: ['glass', 1] }, { in: [['clay', 2], ['coal', 1]], out: ['bricks', 2] },
-      { in: [['limestone', 2], ['coal', 1]], out: ['cement', 2] }],
-    needs: [['stone', 30], ['scrap', 8], ['planks', 12]], fee: 450, xp: 120 },
+  // ---- tier 1: anyone can build them ----
+  sawmill: { name: 'Sawmill', blurb: 'saws timber into lumber', batch: 30,
+    recipes: [{ in: [['timber', 1]], out: ['lumber', 1] }],
+    needs: [['log', 12], ['stone', 10], ['planks', 8], ['scrap', 6]], fee: 350, xp: 90 },
+  brickworks: { name: 'Brickworks', blurb: 'fires clay into bricks in a coal kiln', batch: 45,
+    recipes: [{ in: [['clay', 2], ['coal', 1]], out: ['bricks', 2] }],
+    needs: [['stone', 30], ['planks', 10], ['log', 6], ['scrap', 6]], fee: 400, xp: 100 },
+  cementworks: { name: 'Cement Works', blurb: 'burns limestone with coal in a rotary kiln and grinds it into cement', batch: 45,
+    recipes: [{ in: [['limestone', 2], ['coal', 1]], out: ['cement', 2] }],
+    needs: [['stone', 20], ['bricks', 10], ['scrap', 10], ['planks', 10]], fee: 500, xp: 120 },
+  smelter: { name: 'Smelter', blurb: 'melts ore with coal into iron, copper and lead', batch: 60,
+    recipes: [{ in: [['ore', 2], ['coal', 1]], out: ['iron', 2] }, { in: [['copper', 2], ['coal', 1]], out: ['copperbar', 1] },
+      { in: [['lead', 2], ['coal', 1]], out: ['leadbar', 1] }],
+    needs: [['stone', 20], ['bricks', 12], ['scrap', 12], ['planks', 16], ['log', 8]], fee: 600, xp: 150 },
+  glassworks: { name: 'Glassworks', blurb: 'melts quartz sand with coal into glass', batch: 45,
+    recipes: [{ in: [['sand', 2], ['coal', 1]], out: ['glass', 1] }],
+    needs: [['stone', 15], ['bricks', 10], ['scrap', 8], ['planks', 12]], fee: 450, xp: 120 },
   wiremill: { name: 'Wire Mill', blurb: 'draws copper ingots into cable', batch: 45,
     recipes: [{ in: [['copperbar', 1]], out: ['cable', 2] }],
     needs: [['scrap', 16], ['wire', 8], ['planks', 12], ['engine', 1]], fee: 700, xp: 160 },
-  electronics: { name: 'Electronics Shop', blurb: 'etches circuit boards from cable, resin and glass, and fills batteries', batch: 90,
-    recipes: [{ in: [['cable', 1], ['plastic', 1], ['glass', 1]], out: ['boards', 1] }, { in: [['leadbar', 1], ['chems', 1]], out: ['batteries', 1] }],
-    needs: [['circuit', 8], ['wire', 10], ['scrap', 10], ['planks', 16]], fee: 1400, xp: 300 },
-  machineshop: { name: 'Machine Shop', blurb: 'machines steel into parts, and tools', batch: 75,
-    recipes: [{ in: [['steel', 2]], out: ['parts', 1] }, { in: [['steel', 1], ['timber', 1]], out: ['tools', 3] }],
-    needs: [['scrap', 20], ['engine', 1], ['planks', 16], ['nails', 20]], fee: 1100, xp: 240 },
-  foundry: { name: 'Alloy Foundry', blurb: 'casts hull alloy from steel, copper and coal, and smelts bauxite into aluminium', batch: 120,
-    recipes: [{ in: [['steel', 2], ['copperbar', 1], ['coal', 1]], out: ['alloy', 1] }, { in: [['bauxite', 2], ['coal', 1]], out: ['aluminium', 1] }],
-    needs: [['stone', 50], ['scrap', 24], ['pcore', 1], ['planks', 16]], fee: 1800, xp: 350 },
-  chemworks: { name: 'Chemical Works', blurb: 'blends rocket propellant from fuel and salt, and industrial chemicals from crude, salt and sulfur', batch: 60,
+  refinery: { name: 'Oil Refinery', blurb: 'cracks crude oil into fuel, or (wastefully) plastic resin', batch: 60,
+    recipes: [{ in: [['crude', 1]], out: ['fuel', 1] }, { in: [['crude', 2]], out: ['plastic', 1] }],
+    needs: [['scrap', 30], ['wire', 12], ['circuit', 4], ['planks', 16]], fee: 900, xp: 200 },
+  textile: { name: 'Textile Mill', blurb: 'spins and weaves flax fibre and wool into cloth', batch: 60,
+    recipes: [{ in: [['fibre', 2]], out: ['cloth', 1] }, { in: [['wool', 3]], out: ['cloth', 2] }],
+    needs: [['lumber', 14], ['planks', 6], ['nails', 20], ['scrap', 4]], fee: 400, xp: 100 },
+  // ---- tier 2: they want the old plans ----
+  steelworks: { name: 'Steelworks', blurb: 'blows iron into steel with coal and limestone', batch: 60, tech: 'furnace',
+    recipes: [{ in: [['iron', 1], ['coal', 1], ['limestone', 1]], out: ['steel', 1] }],
+    needs: [['bricks', 30], ['cement', 12], ['scrap', 24], ['engine', 1]], fee: 1200, xp: 280 },
+  chemworks: { name: 'Chemical Works', blurb: 'blends rocket propellant, and makes industrial chemicals from crude, salt and sulfur', batch: 60, tech: 'chemistry',
     recipes: [{ in: [['fuel', 1], ['salt', 1]], out: ['propellant', 1] }, { in: [['crude', 1], ['salt', 1], ['sulfur', 1]], out: ['chems', 2] }],
-    needs: [['scrap', 20], ['wire', 8], ['circuit', 4], ['planks', 12]], fee: 1000, xp: 220 },
+    needs: [['scrap', 20], ['wire', 8], ['circuit', 4], ['cement', 8], ['planks', 12]], fee: 1000, xp: 220 },
+  polymer: { name: 'Polymer Plant', blurb: 'cooks crude oil with chemicals into plastic resin, twice what a refinery gets', batch: 60, tech: 'chemistry',
+    recipes: [{ in: [['crude', 1], ['chems', 1]], out: ['plastic', 2] }],
+    needs: [['scrap', 20], ['wire', 10], ['circuit', 4], ['cement', 8], ['lumber', 10]], fee: 1100, xp: 240 },
+  alworks: { name: 'Aluminium Works', blurb: 'smelts bauxite into aluminium in electrolytic pots: it eats power', batch: 90, tech: 'aluminium',
+    recipes: [{ in: [['bauxite', 2], ['coal', 1]], out: ['aluminium', 1] }],
+    needs: [['bricks', 24], ['cement', 16], ['scrap', 20], ['cable', 6], ['circuit', 6]], fee: 1600, xp: 320 },
+  batteryworks: { name: 'Battery Works', blurb: 'casts lead plates and fills them with acid: basic batteries', batch: 75, tech: 'batteries',
+    recipes: [{ in: [['leadbar', 1], ['chems', 1]], out: ['batteries', 1] }],
+    needs: [['scrap', 14], ['wire', 8], ['circuit', 6], ['lumber', 10], ['cement', 6]], fee: 1000, xp: 220 },
+  electronics: { name: 'Electronics Shop', blurb: 'etches circuit boards from cable, resin and glass', batch: 90, tech: 'circuits',
+    recipes: [{ in: [['cable', 1], ['plastic', 1], ['glass', 1]], out: ['boards', 1] }],
+    needs: [['circuit', 8], ['wire', 10], ['scrap', 10], ['planks', 16]], fee: 1400, xp: 300 },
+  machineshop: { name: 'Machine Shop', blurb: 'machines steel into parts, and tools', batch: 75, tech: 'forging',
+    recipes: [{ in: [['steel', 2]], out: ['parts', 1] }, { in: [['steel', 1], ['timber', 1]], out: ['tools', 3] }],
+    needs: [['scrap', 20], ['engine', 1], ['lumber', 10], ['nails', 20]], fee: 1100, xp: 240 },
+  foundry: { name: 'Alloy Foundry', blurb: 'casts advanced alloy from steel, aluminium and nickel', batch: 120, tech: 'alloys',
+    recipes: [{ in: [['steel', 1], ['aluminium', 1], ['nickel', 1]], out: ['alloy', 1] }],
+    needs: [['bricks', 20], ['cement', 10], ['scrap', 24], ['pcore', 1], ['lumber', 10]], fee: 1800, xp: 350 },
 };
+/** Keep a saved works valid when the recipes change (old saves): an unknown recipe falls back to the first. */
+export function fixPlant(p: PlantState) { if (!PLANTS[p.k]?.recipes[p.rec]) p.rec = 0; }
 /** Works per village, the most a hopper holds of each input, and the most finished crates the output bay holds. */
 export const PLANT_SLOTS = 2, HOPPER = 40, OUT_CAP = 40;
 
@@ -132,13 +164,15 @@ export function plantProblem(s: PlantTown | undefined, k: PlantKind | StationKin
     if (s?.stations?.some((p) => p.k === k)) return 'The village has one of those already.';
     return '';
   }
+  const tech = PLANTS[k].tech;
+  if (known && tech && known[tech] === undefined) return `Nobody here knows how to build a ${PLANTS[k].name}: it wants the old plans for ${TECH_BY_ID[tech].name}.`;
   if ((s?.plants?.length ?? 0) >= PLANT_SLOTS) return `There is room for ${PLANT_SLOTS} works here, and both are built.`;
   if (s?.plants?.some((p) => p.k === k)) return 'The village has one of those already.';
   return '';
 }
 /** Works or power station: the spec (name, needs, fee, xp) of either. */
 export const isStation = (k: PlantKind | StationKind): k is StationKind => k in STATIONS;
-export const specOf = (k: PlantKind | StationKind): { name: string; blurb: string; needs: [ItemKey, number][]; fee: number; xp: number } => (isStation(k) ? STATIONS[k] : PLANTS[k]);
+export const specOf = (k: PlantKind | StationKind): { name: string; blurb: string; needs: [ItemKey, number][]; fee: number; xp: number; tech?: string } => (isStation(k) ? STATIONS[k] : PLANTS[k]);
 /** Start building works k (the fee is paid when it is finished). */
 export function startPlant(s: PlantTown, k: PlantKind | StationKind, known?: Record<string, number>): string {
   const why = plantProblem(s, k, known);

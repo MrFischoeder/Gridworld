@@ -1,6 +1,7 @@
 // Character persistence. Only player-made changes are stored, never generated geometry.
 // Versions: v1 (relic counts) -> v2 (backpack, per-dungeon progress) -> v3 (open world).
 import { fixInstall, type InstallKind, type InstallState } from './gen/installs';
+import { fixPlant } from './gen/plants';
 import type { BridgeState, Ford } from './gen/bridges';
 import type { Pier } from './gen/piers';
 import type { Boat } from './gen/boats';
@@ -159,6 +160,7 @@ export function loadChar(storage: Pick<Storage, 'getItem'> | null = safeStorage(
       // the house in Gridholm used to be yours from the start: whoever already kept things in its chest owns it
       if (!c.houses.length && c.containers['home:chest']) c.houses = [GRIDHOLM_ID];
       for (const k of Object.keys(c.installs) as InstallKind[]) fixInstall(k, c.installs[k]!);
+      for (const t of Object.values(c.towns)) for (const p of t?.plants ?? []) fixPlant(p); // works whose recipes changed
       return c;
     }
     const v2 = storage?.getItem(V2_KEY);

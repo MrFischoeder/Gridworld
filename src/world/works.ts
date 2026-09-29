@@ -129,6 +129,74 @@ export function drawWorks(vm: VillageMap, T: Terrain, id: number): THREE.Group {
         glowAt = [P(3.5, -1)[0], g0 + 4.2, P(3.5, -1)[1]];
         break;
       }
+      case 'sawmill': { // an open saw shed with a circular saw, a log deck and stacks of boards
+        for (const [u, v] of [[-5, -1], [5, -1], [5, 5], [-5, 5], [0, -1], [0, 5]]) { const [x, z] = P(u, v); pb.box(x - 0.15, g0 - 0.1, z - 0.15, x + 0.15, g0 + 3.2, z + 0.15, WOOD); }
+        { const [a, b] = P(-5.3, -1.3), [d, e] = P(5.3, 5.3); pb.gableRoof(Math.min(a, d), Math.min(b, e), Math.max(a, d), Math.max(b, e), g0 + 3.2, 1.2, WOOD); }
+        { const [x, z] = P(0, 2); cyl(pb, x, g0 + 0.9, z, 0.7, 0.08, METAL, 12); pb.box(x - 1.5, g0, z - 0.4, x + 1.5, g0 + 0.9, z + 0.4, WOOD); }
+        for (let i = 0; i < 5; i++) box(-6.5, 3 - (i % 3) * 0.55, 0.28, 2.6, H(-6.5, 3) + (i < 3 ? 0 : 0.5), H(-6.5, 3) + (i < 3 ? 0.5 : 1), WOOD);
+        for (const u of [4, 6.5]) box(u, -3.5, 0.9, 1.3, H(u, -3.5), H(u, -3.5) + 1.1, WOOD);
+        glowAt = [P(0, 2)[0], g0 + 2.2, P(0, 2)[1]];
+        break;
+      }
+      case 'brickworks': { // a long ring kiln, its tall stack, a drying shed and pallets of bricks
+        box(0, 2, 6, 2.2, g0 - 0.1, g0 + 2.4, BRICK);
+        for (let u = -5; u <= 5; u += 2) { const [a, b] = P(u, -0.2); pb.line(HOT, [a - rx * 0.4, g0, b - rz * 0.4], [a - rx * 0.4, g0 + 1.2, b - rz * 0.4], [a + rx * 0.4, g0 + 1.2, b + rz * 0.4], [a + rx * 0.4, g0, b + rz * 0.4]); }
+        cylAt(7, 4, 0.8, 13, BRICK, 0, 0.55);
+        for (let i = 0; i < 3; i++) box(-5 + i * 2.2, -3.8, 0.8, 0.6, H(-5, -3.8), H(-5, -3.8) + 0.9, BRICK);
+        glowAt = [P(0, -0.3)[0], g0 + 0.8, P(0, -0.3)[1]];
+        break;
+      }
+      case 'cementworks': { // a rotary kiln on piers, a preheater tower and two silos
+        for (const u of [-5, -1, 3]) box(u, 1, 0.3, 0.6, H(u, 1), g0 + 1.6 + (u + 5) * 0.08, BRICK);
+        { const [a, b] = P(-6, 1), [d, e] = P(4.5, 1); for (const dy of [1.9, 3.1]) for (const dv of [-0.7, 0.7]) pb.line(METAL, [a + fx * dv, g0 + dy, b + fz * dv], [d + fx * dv, g0 + dy + 0.8, e + fz * dv]);
+          for (let i = 0; i <= 5; i++) { const t = i / 5, x = a + (d - a) * t, z = b + (e - b) * t, y = g0 + 1.9 + 0.8 * t; pb.seg(METAL, [x - fx * 0.7, y, z - fz * 0.7], [x + fx * 0.7, y + 1.2, z + fz * 0.7]); } }
+        box(6.5, 1.5, 1.4, 1.4, H(6.5, 1.5) - 0.1, H(6.5, 1.5) + 9, STEELC);
+        for (const u of [-6, -3.2]) cylAt(u, 4.5, 1.2, 7, METAL, 0, 1.2);
+        glowAt = [P(-6, 1)[0], g0 + 2.2, P(-6, 1)[1]];
+        break;
+      }
+      case 'textile': { // a two-storey brick mill with rows of windows, a stack and bales by the door
+        box(0, 2.5, 6.5, 2.8, g0 - 0.1, g0 + 6, BRICK);
+        { const [a, b] = P(-6.8, 2.5), [d, e] = P(6.8, 2.5); pb.gableRoof(Math.min(a, d) - Math.abs(fx) * 3, Math.min(b, e) - Math.abs(fz) * 3, Math.max(a, d) + Math.abs(fx) * 3, Math.max(b, e) + Math.abs(fz) * 3, g0 + 6, 1.4, BRICK); }
+        for (const y of [1.3, 3.8]) for (let u = -5.5; u <= 5; u += 1.6) { const [a, b] = P(u, -0.32), [d, e] = P(u + 0.9, -0.32); pb.line(GLASS, [a, g0 + y, b], [d, g0 + y, e], [d, g0 + y + 1.2, e], [a, g0 + y + 1.2, b], [a, g0 + y, b]); }
+        cylAt(7.5, 4.5, 0.5, 10, BRICK);
+        for (let i = 0; i < 3; i++) box(-6 + i * 1.3, -3.5, 0.55, 0.55, H(-6, -3.5), H(-6, -3.5) + 0.9, WOOD);
+        glowAt = [P(0, -0.4)[0], g0 + 4.4, P(0, -0.4)[1]];
+        break;
+      }
+      case 'steelworks': { // a tilting converter on trunnions, the steel hall behind, two stacks
+        box(3, 2.5, 4, 2.8, g0 - 0.1, g0 + 7, STEELC);
+        for (const v of [-0.8, 0.8]) { const [x, z] = P(-4, 1 + v); pb.box(x - 0.2, g0, z - 0.2, x + 0.2, g0 + 3.2, z + 0.2, METAL); }
+        cylAt(-4, 1, 1.6, 3.4, METAL, 1.5, 1.1);
+        for (const u of [5.5, 7.2]) cylAt(u, 5, 0.5, 13, BRICK);
+        glowAt = [P(-4, 1)[0], g0 + 5.1, P(-4, 1)[1]];
+        break;
+      }
+      case 'polymer': { // three slim reactors, a column, a pipe rack and drums
+        for (const u of [-5, -2.5, 0]) { cylAt(u, 3, 0.8, 5, METAL, 0.8); cylAt(u, 3, 0.15, 0.8, METAL); }
+        cylAt(4, 3.5, 0.7, 11, METAL);
+        box(0, 0.5, 7, 0.12, g0 + 3, g0 + 3.2, METAL);
+        for (let u = -6; u <= 6; u += 3) { const [x, z] = P(u, 0.5); pb.seg(METAL, [x, g0, z], [x, g0 + 3, z]); }
+        for (let i = 0; i < 4; i++) cylAt(-6 + i * 1.1, -3.5, 0.4, 0.9, i % 2 ? HOT : METAL);
+        glowAt = [P(4, 3.5)[0], g0 + 11.4, P(4, 3.5)[1]];
+        break;
+      }
+      case 'alworks': { // a long low potroom with roof vents, a transformer yard and busbars
+        box(0, 2.5, 7.5, 2.5, g0 - 0.1, g0 + 3.4, STEELC);
+        for (let u = -6.5; u <= 6.5; u += 1.6) box(u, 2.5, 0.35, 0.8, g0 + 3.4, g0 + 4.1, METAL);
+        for (const u of [-6.5, -4.5]) box(u, -3.4, 0.7, 0.9, H(u, -3.4), H(u, -3.4) + 1.8, METAL);
+        { const [a, b] = P(-5.5, -2.5), [d, e] = P(-5.5, 0); for (const dy of [2.2, 2.6]) pb.seg(HOT, [a, g0 + dy, b], [d, g0 + dy, e]); }
+        for (let u = -6; u <= 6; u += 2) { const [a, b] = P(u, 0.05); pb.seg(HOT, [a, g0 + 1, b], [a, g0 + 2, b]); }
+        glowAt = [P(0, -0.1)[0], g0 + 1.5, P(0, -0.1)[1]];
+        break;
+      }
+      case 'batteryworks': { // a casting shed, acid tanks under little roofs, pallets of cells
+        shed(1, 2.5, 5, 2.5, 3.4, STEELC);
+        for (const u of [-5.5, -3.5]) { const [x, z] = P(u, 3), g = H(u, 3); cyl(pb, x, g, z, 0.8, 2, METAL, 10); dome(pb, x, g + 2, z, 0.8, METAL); }
+        for (let i = 0; i < 4; i++) box(-6 + i * 1.3, -3.5, 0.5, 0.45, H(-6, -3.5), H(-6, -3.5) + 0.7, i % 2 ? HOT : STEELC);
+        glowAt = [P(1, -0.1)[0], g0 + 2, P(1, -0.1)[1]];
+        break;
+      }
       case 'chemworks': {
         for (const [u, v] of [[-4, 2], [0, 2.5]]) { const [x, z] = P(u, v), g = H(u, v); cyl(pb, x, g, z, 0.3, 1.2, METAL, 6); dome(pb, x, g + 1.2, z, 1.8, METAL); }
         cylAt(4, 2, 0.8, 8, METAL); shed(4, -2, 2.5, 1.5, 2.8);

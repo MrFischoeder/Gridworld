@@ -33,6 +33,9 @@ export const TECHS: Tech[] = [
   { id: 'rail', name: 'Rail Lines', area: 'transport', tier: 4, blurb: 'Tracks, points and locomotives: freight running on its own across the land.' },
   // (new technologies go last: each one's site is hashed from its place in this list)
   { id: 'filters', name: 'Filter Masks', area: 'chemistry', tier: 2, blurb: 'Rubber face masks and charcoal filter canisters: breathing in the poisoned fog of the old world.' },
+  { id: 'aluminium', name: 'Aluminium Processing', area: 'metal', tier: 2, blurb: 'Dissolving bauxite and smelting it with a great deal of current: the light metal of the old world.' },
+  { id: 'batteries', name: 'Battery Chemistry', area: 'chemistry', tier: 2, blurb: 'Lead plates in acid, sealed in cells: current you can carry.' },
+  { id: 'alloys', name: 'Alloy Metallurgy', area: 'metal', tier: 3, blurb: 'Steel, aluminium and nickel melted together in exact measure: plates that hold against heat and strain.' },
 ];
 export const TECH_BY_ID: Record<string, Tech> = Object.fromEntries(TECHS.map((t) => [t.id, t]));
 /** How far from Gridholm (m) each tier's carriers lie. */

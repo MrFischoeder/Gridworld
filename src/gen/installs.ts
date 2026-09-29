@@ -74,12 +74,12 @@ export const INSTALL_STAGES: Record<InstallKind, InstallStage[]> = {
   uranium: [
     { title: 'Clearing the rubble', text: 'The hall is choked with fallen trusses and the gate is jammed. Timber for props, stone for the breaches, scrap for the braces.', needs: [['log', 12], ['stone', 10], ['scrap', 6]], gold: 150, xp: 200 },
     { title: 'The centrifuge hall', text: 'A new roof, and the centrifuges rewired: steel for the trusses, cable for the lines, electronics for the drives.', needs: [['steel', 6], ['cable', 4], ['circuit', 8]], gold: 300, xp: 350 },
-    { title: 'The core', text: 'The cascade controller is dead. Only the old plans for enrichment show how it was built, and it wants power cores and hull alloy.', needs: [['pcore', 2], ['alloy', 4], ['circuit', 6]], tech: 'enrichment', gold: 500, xp: 600 },
+    { title: 'The core', text: 'The cascade controller is dead. Only the old plans for enrichment show how it was built, and it wants power cores and advanced alloy.', needs: [['pcore', 2], ['alloy', 4], ['circuit', 6]], tech: 'enrichment', gold: 500, xp: 600 },
   ],
   radar: [
     { title: 'Clearing the compound', text: 'The dish lies on its back in the weeds and the bunker door is buried. Timber and stone to shore up the bunker, scrap to brace the tower.', needs: [['log', 10], ['stone', 8], ['scrap', 10]], gold: 150, xp: 200 },
     { title: 'Power and cable', text: 'The generator shed is a ruin and the cable runs are eaten through. Copper cable, steel for the tower and the mast, electronics for the switchgear.', needs: [['cable', 8], ['steel', 6], ['circuit', 6]], gold: 250, xp: 300 },
-    { title: 'The dish and the console', text: 'The dish goes back up on its tower. Only the old plans for radio triangulation show how to aim it and read the screens; it wants circuit boards and hull alloy for the mount.', needs: [['boards', 4], ['circuit', 8], ['alloy', 4]], tech: 'radio', gold: 400, xp: 500 },
+    { title: 'The dish and the console', text: 'The dish goes back up on its tower. Only the old plans for radio triangulation show how to aim it and read the screens; it wants circuit boards and advanced alloy for the mount.', needs: [['boards', 4], ['circuit', 8], ['alloy', 4]], tech: 'radio', gold: 400, xp: 500 },
   ],
   chips: [
     { title: 'Opening the block', text: 'The clean-room block is sealed and half buried in its own rubble. Timber for shoring, stone to fill the breaches, scrap to brace the air locks.', needs: [['log', 10], ['stone', 12], ['scrap', 8]], gold: 150, xp: 200 },

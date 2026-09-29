@@ -11,7 +11,7 @@ import { OW } from './overworld';
 import type { VillageMap } from '../gen/village';
 import type { Terrain } from '../gen/terrain';
 
-const WOOD = 0xb8b060, SOIL = 0x6f8f76, CROP = 0xd8ff7a, GRAIN = 0xe8d880, METAL = 0xa8c8b8, ANIMAL = 0xe8e0c0;
+const WOOD = 0xb8b060, SOIL = 0x6f8f76, CROP = 0xd8ff7a, GRAIN = 0xe8d880, METAL = 0xa8c8b8, ANIMAL = 0xe8e0c0, FLAX = 0x7ab8ff;
 
 export function drawFarms(vm: VillageMap, T: Terrain, id: number): THREE.Group {
   const n = farmsOf(G.char.towns[id]), up = upgradedOf(G.char.towns[id]), pb = new PropBatch();
@@ -26,7 +26,16 @@ export function drawFarms(vm: VillageMap, T: Terrain, id: number): THREE.Group {
     };
     edge(x0, z0, x1, z0); edge(x1, z0, x1, z1); edge(x1, z1, x0, z1); edge(x0, z1, x0, z0);
     const crop = cropOf(G.char.towns[id], i);
-    if (crop === 'wheat' || crop === 'carrots' || crop === 'potatoes') {
+    if (crop === 'flax') {
+      // tall thin stalks in close rows with a small blue flower on top
+      for (let x = x0 + 1.2; x < x1 - 1; x += 1.2) {
+        pb.line(SOIL, at(x, z0 + 0.8, 0.03), at(x, (z0 + z1) / 2, 0.03), at(x, z1 - 0.8, 0.03));
+        for (let z = z0 + 1.1; z < z1 - 0.8; z += 0.7) {
+          const [px, py, pz] = at(x, z);
+          pb.seg(CROP, [px, py, pz], [px - 0.04, py + 1.05, pz]); pb.seg(FLAX, [px - 0.12, py + 1.05, pz], [px + 0.04, py + 1.12, pz]);
+        }
+      }
+    } else if (crop === 'wheat' || crop === 'carrots' || crop === 'potatoes') {
       // crop rows over furrows: tall grain, or low leafy rows (potatoes bushier)
       for (let x = x0 + 1.2; x < x1 - 1; x += 1.5) {
         pb.line(SOIL, at(x, z0 + 0.8, 0.03), at(x, (z0 + z1) / 2, 0.03), at(x, z1 - 0.8, 0.03));
@@ -39,10 +48,11 @@ export function drawFarms(vm: VillageMap, T: Terrain, id: number): THREE.Group {
     } else {
       // livestock: grass tufts, a shelter at the back, the animals about the field
       for (let x = x0 + 1; x < x1 - 0.8; x += 1.7) for (let z = z0 + 1; z < z1 - 0.8; z += 1.9) { const [px, py, pz] = at(x + ((x * 7 + z * 3) % 1), z); pb.seg(CROP, [px - 0.12, py, pz], [px, py + 0.25, pz]); pb.seg(CROP, [px + 0.12, py, pz], [px, py + 0.25, pz]); }
-      const cows = crop === 'cows', [hx, hy, hz] = at(x0 + 3, z0 + 2.5), hw = cows ? 2.2 : 1.2, hd = cows ? 1.6 : 1, hh = cows ? 2.2 : 1.3;
+      const cows = crop === 'cows', sheep = crop === 'sheep', [hx, hy, hz] = at(x0 + 3, z0 + 2.5);
+      const hw = cows ? 2.2 : sheep ? 1.8 : 1.2, hd = cows ? 1.6 : sheep ? 1.2 : 1, hh = cows ? 2.2 : sheep ? 1.6 : 1.3;
       pb.box(hx - hw, hy - 0.1, hz - hd, hx + hw, hy + hh, hz + hd, WOOD);
-      pb.gableRoof(hx - hw - 0.2, hz - hd - 0.2, hx + hw + 0.2, hz + hd + 0.2, hy + hh, cows ? 0.9 : 0.5, WOOD);
-      const n = cows ? 3 : 7;
+      pb.gableRoof(hx - hw - 0.2, hz - hd - 0.2, hx + hw + 0.2, hz + hd + 0.2, hy + hh, cows ? 0.9 : sheep ? 0.7 : 0.5, WOOD);
+      const n = cows ? 3 : sheep ? 5 : 7;
       for (let k = 0; k < n; k++) {
         const ax = x0 + 3 + ((k * 37 + i * 11) % 70) / 10, az = z0 + 6 + ((k * 53 + i * 7) % 50) / 10, [px, py, pz] = at(ax, az), yaw = k * 1.3;
         const c = Math.cos(yaw), sn = Math.sin(yaw), P = (u: number, v: number, y: number) => [px + u * c - v * sn, py + y, pz + u * sn + v * c];
@@ -50,6 +60,10 @@ export function drawFarms(vm: VillageMap, T: Terrain, id: number): THREE.Group {
           pb.box(px - 0.45, py + 0.7, pz - 0.45, px + 0.45, py + 1.3, pz + 0.45, ANIMAL);
           for (const [u, v] of [[-0.35, -0.3], [0.35, -0.3], [-0.35, 0.3], [0.35, 0.3]]) pb.seg(ANIMAL, P(u, v, 0), P(u, v, 0.7));
           pb.line(ANIMAL, P(0.55, 0, 1.2), P(0.95, 0, 1.35), P(1.05, 0, 1.05), P(0.55, 0, 0.95));
+        } else if (sheep) { // a woolly body (a squat box), thin legs, a dark head
+          pb.box(px - 0.35, py + 0.4, pz - 0.28, px + 0.35, py + 0.85, pz + 0.28, ANIMAL);
+          for (const [u, v] of [[-0.25, -0.18], [0.25, -0.18], [-0.25, 0.18], [0.25, 0.18]]) pb.seg(ANIMAL, P(u, v, 0), P(u, v, 0.4));
+          pb.line(SOIL, P(0.4, 0, 0.8), P(0.62, 0, 0.82), P(0.66, 0, 0.62), P(0.42, 0, 0.6));
         } else { // a hen: a small body, a head, legs
           pb.line(ANIMAL, P(-0.15, 0, 0.2), P(0.1, 0, 0.35), P(0.2, 0, 0.45), P(0.18, 0, 0.3), P(0.1, 0, 0.15), P(-0.15, 0, 0.2));
           pb.seg(ANIMAL, P(0, 0, 0.15), P(0, 0, 0));
@@ -65,7 +79,7 @@ export function drawFarms(vm: VillageMap, T: Terrain, id: number): THREE.Group {
       pb.line(METAL, [px - 0.9, py + 0.15, pz], [px + 0.9, py + 0.15, pz], [px + 1.2, py + 0.7, pz]); pb.seg(METAL, [px - 0.4, py + 0.15, pz], [px - 0.6, py, pz + 0.3]); pb.seg(METAL, [px + 0.3, py + 0.15, pz], [px + 0.1, py, pz + 0.3]);
     }
     // a scarecrow in the middle of a sown field
-    if (crop !== 'hens' && crop !== 'cows') {
+    if (crop !== 'hens' && crop !== 'cows' && crop !== 'sheep') {
       const [sx, sy, sz] = at((x0 + x1) / 2, (z0 + z1) / 2);
       pb.seg(WOOD, [sx, sy, sz], [sx, sy + 2.2, sz]); pb.seg(WOOD, [sx - 0.8, sy + 1.6, sz], [sx + 0.8, sy + 1.6, sz]);
       pb.box(sx - 0.18, sy + 2.2, sz - 0.18, sx + 0.18, sy + 2.55, sz + 0.18, GRAIN);

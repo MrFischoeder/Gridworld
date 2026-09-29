@@ -28,7 +28,7 @@ export const RUMOURS = ['They say the guardians below each carry an Access Key. 
   "If things go wrong down there, a Recall Beacon from Zofia's store will bring you home.",
   'Bandits have dug in out in the wilds. Tents, a fire, a stash of stolen goods. Clear a camp and the stash is yours.',
   'Raw ore sells for little. Smelt it, draw it, cast it, and the same crates are worth three times as much. The elders can put up works in any village.',
-  'They say the Chariot of the Ancients in the old hangar could reach the sky again, if anyone brought it enough hull alloy and circuit boards.',
+  'They say the Chariot of the Ancients in the old hangar could reach the sky again, if anyone brought it enough advanced alloy and circuit boards.',
   'Works stand idle without power. A village that wants to smelt or cast needs a power station first: sun, wind, coal or diesel.',
   'Folk who fled the drones left their vehicles out in the hills. Find one and it is yours, along with whatever is in the trunk.'];
 export const OPT_TEXT: Record<OptId | 'back', string> = {

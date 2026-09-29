@@ -70,7 +70,7 @@ export function farmPlot(seed: number, i: number): { x0: number; z0: number; x1:
 }
 
 // ---------- what each farm grows ----------
-export type Crop = 'wheat' | 'carrots' | 'potatoes' | 'hens' | 'cows';
+export type Crop = 'wheat' | 'carrots' | 'potatoes' | 'hens' | 'cows' | 'flax' | 'sheep';
 /** The crops a farm can grow: what goes into the village hall and how many crates a game day on fair soil. */
 export const CROPS: Record<Crop, { name: string; out: ItemKey; perDay: number; blurb: string }> = {
   wheat: { name: 'Wheat', out: 'grain', perDay: 4, blurb: 'grain for bread' },
@@ -78,6 +78,8 @@ export const CROPS: Record<Crop, { name: string; out: ItemKey; perDay: number; b
   potatoes: { name: 'Potatoes', out: 'potatoes', perDay: 5, blurb: 'potatoes, the most food a field gives' },
   hens: { name: 'Hens', out: 'eggs', perDay: 3, blurb: 'a coop and a run: eggs' },
   cows: { name: 'Cows', out: 'milk', perDay: 3, blurb: 'a byre and a pasture: milk' },
+  flax: { name: 'Flax', out: 'fibre', perDay: 4, blurb: 'tall blue-flowered flax: fibre for a textile mill' },
+  sheep: { name: 'Sheep', out: 'wool', perDay: 3, blurb: 'a fold and a pasture: wool for a textile mill' },
 };
 export const CROP_KINDS = Object.keys(CROPS) as Crop[];
 /** What farm i grows (farms you have not set: wheat and potatoes by turns, as they were drawn before). */

@@ -81,7 +81,20 @@ W tym etapie towary pojawiają się na rynkach, w pulach przemysłów i w cenach
 
 Mięso dostają też kury i krowy, skórę (`hide`, już istnieje) krowy. Textile Mill (Fibre / Wool → Cloth) w etapie 2.
 
-## Etap 2 (0.91.0): zakłady wiosek i specjalizacja
+## Etap 2 (0.91.0): zakłady wiosek i specjalizacja (ZROBIONE)
+
+**Jak zrobione (różnice wobec planu):**
+- 16 rodzajów zakładów, dalej 2 na wioskę. Starszy pokazuje osobno zakłady dla każdego i te, które wymagają planów (`PlantSpec.tech`, sprawdzane w `plantProblem` razem z wiedzą gracza).
+- Smelter został pod swoją nazwą: robi żelazo, sztaby miedzi i ołów (w dokumencie Iron Foundry, Copper Smelter i Lead Smelter).
+- Oil Refinery zachowała drogie plastik z ropy (2 ropy → 1 plastik). Polymer Plant robi 2 plastiku z 1 ropy i 1 chemikaliów. Dzięki temu płytki drukowane nie zależą od siarki.
+- Chemical Works dalej miesza paliwo rakietowe (do etapu 5, Old Propellant Plant). Wymaga teraz planów Industrial Chemistry.
+- Machine Shop: parts dalej ze stali (bez miedzi); wymaga Forged Tools.
+- Nowe technologie na końcu `TECHS`: Aluminium Processing (tier 2), Battery Chemistry (tier 2), Alloy Metallurgy (tier 3).
+- Hodowla: len (Flax → Fibre) i owce (Sheep → Wool) jako nowe uprawy; świnie i mięso pominięte.
+- Cegły, cement i tarcica weszły do budów: nowych zakładów, Smeltera i Glassworks, Stone Wall, elektrowni węglowej i reaktora.
+- Stare zapisy: `fixPlant` przestawia zakład z nieistniejącą recepturą na pierwszą.
+- Cable z Wire Mill zostało bez plastiku (etap 2b odłożony: kabel jest potrzebny wcześnie).
+
 
 Dalej 2 zakłady na wioskę (`PLANT_SLOTS`). Istniejące klucze `PlantKind` zostają, żeby stare zapisy działały. Stan z nieistniejącą już recepturą wraca do receptury 0.
 
