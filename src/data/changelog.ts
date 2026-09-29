@@ -4,6 +4,15 @@ export interface Change { v: string; date: string; title: string; notes: string[
 
 export const CHANGELOG: Change[] = [
   {
+    v: '0.82.0', date: '2026-10-04', title: 'Bridges anywhere',
+    notes: [
+      'New item: the Bridge Kit (survey stakes, a line and a plumb), 80 gold at the blacksmith. Use it from your backpack by a river: a hologram shows the bridge straight across the water from the bank you stand on, with its piles and ramps. Click to stake out the site, right mouse or Esc to cancel.',
+      'The hologram turns red and says why when a bridge cannot go there: the river is too wide (over ~24 m), the banks are too steep, it runs out into the sea there, two rivers meet, a village or another place is too close, or another bridge or bridge site is.',
+      'A staked-out site works like a ford\'s: bring logs, stones, nails and rope to its sign and the bridge rises as you hand them over. While it is unfinished you can pull up the stakes: what you handed over and the kit come back.',
+      'Bridges now show on the minimap and the big map: built ones as a white bar across the river, your unfinished sites dashed in gold.',
+    ],
+  },
+  {
     v: '0.81.1', date: '2026-10-03', title: 'Save check for bridges',
     notes: [
       'The save tests now cover the bridges you build. No change to the game itself.',

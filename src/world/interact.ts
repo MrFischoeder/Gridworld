@@ -19,7 +19,7 @@ import { openInstall } from '../ui/install';
 import { openHall } from '../ui/hall';
 import { nearHallTerminal } from './hall';
 import { nearInstallDesk } from './installs';
-import { nearBridgeSign, built as bridgeBuilt } from './bridges';
+import { nearBridgeSign, built as bridgeBuilt, isBridgePlacing, confirmBridgePlacing, bridgePlacingHint, bridgePlacingOk } from './bridges';
 import { openBridge } from '../ui/bridge';
 import type { Ford } from '../gen/bridges';
 import { INSTALL_STAGES, installDone } from '../gen/installs';
@@ -164,6 +164,8 @@ export function updateEntities(dt: number, time: number) {
   prompt.style.display = (climbing() || nearHall !== null || nearIns || nearBrg || nearData || nearLock2 || nearRec || nearLad || nearMine || nearPow || nearCar || nearWork2 || nearGate || nearHD || nearDesk || nearWk || nearSt || nearTerm || nearTerm || nearGun || nearCave || caveOut >= 0 || nearNpc || nearLock || nearChest || nearBoard || nearMap || nearStash || nearVehicle || nearPortal || nearFood || nearWork || nearClaim || nearGather || nearCook || nearWater) && G.playing && prompt.textContent ? 'block' : 'none';
   const bh = buildHint();
   if (bh !== null && !nearGate && !nearGun) { prompt.className = buildOk() ? '' : 'lock'; prompt.textContent = bh; prompt.style.display = G.playing && bh ? 'block' : 'none'; }
+  const bhint = bridgePlacingHint();
+  if (bhint !== null) { prompt.className = bridgePlacingOk() ? '' : 'lock'; prompt.textContent = bhint; prompt.style.display = G.playing && bhint ? 'block' : 'none'; }
   const hint = placingHint();
   if (hint !== null) { prompt.className = placingOk() ? '' : 'lock'; prompt.textContent = hint; prompt.style.display = G.playing && hint ? 'block' : 'none'; }
   const canUse = nearNpc || nearChest || nearBoard || nearStash || nearVehicle || (nearLock && hasItem('key'));
@@ -199,6 +201,7 @@ export function interact() {
   if (nearRec) { openLogbook(); return; }
   if (nearLad) { const m = startClimb(nearLad); if (m) logLine(m); return; }
   if (isPlacing()) { confirmPlacing(); return; }
+  if (isBridgePlacing()) { confirmBridgePlacing(); return; }
   if (nearGate) { toggleDoor(nearGate); return; }
   if (nearHD) { const m = toggleHouseDoor(nearHD); if (m) logLine(m); return; }
   if (nearDesk) { openShuttle(); return; }

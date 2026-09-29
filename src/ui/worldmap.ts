@@ -101,6 +101,16 @@ function drawArea(ctx: CanvasRenderingContext2D, w: number, h: number, ppm: numb
     ctx.save(); ctx.translate(x, y); ctx.rotate(-v.st.heading); ctx.strokeStyle = '#e8fff0'; ctx.strokeRect(-w, -l, w * 2, l * 2); ctx.restore();
     if (labels) { ctx.fillStyle = '#e8fff0'; ctx.fillText(v.spec.name, x, y - l - 6); }
   }
+  // bridges: the built ones, and the sites you staked out (dashed)
+  const bars: [number, number, number, number, number, boolean][] = [];
+  for (const b of Object.values(G.char.bridges)) if (b.done && b.at) bars.push([...b.at, true]);
+  for (const f of G.char.bridgeSites) if (!G.char.bridges[f.id]?.done) bars.push([f.x, f.z, f.dx, f.dz, f.end, false]);
+  for (const [bx, bz, dx, dz, e, done] of bars) {
+    const x = X(nearX(bx, px)), y = Z(bz), l = Math.max(4, e * ppm);
+    ctx.strokeStyle = done ? '#e8fff0' : '#ffd060'; ctx.lineWidth = done ? Math.max(2, 5.4 * ppm) : 1.5; ctx.setLineDash(done ? [] : [3, 3]);
+    ctx.beginPath(); ctx.moveTo(x - dx * l, y - dz * l); ctx.lineTo(x + dx * l, y + dz * l); ctx.stroke(); ctx.setLineDash([]);
+  }
+  ctx.lineWidth = 1;
   for (const c of G.char.claims) { // your flags: a pole and a pennant, the claimed land round them
     const x = X(nearX(c.x, px)), y = Z(c.z);
     ctx.strokeStyle = ctx.fillStyle = '#c4ffd2'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(x, y, Math.max(4, 30 * ppm), 0, 6.283); ctx.stroke();

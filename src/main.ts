@@ -62,7 +62,7 @@ import { updateCrash } from './world/crashpod';
 import { spinCarrier } from './world/datacarriers';
 import { updateFarms } from './world/farms';
 import { updateInstalls } from './world/installs';
-import { updateBridges } from './world/bridges';
+import { updateBridges, isBridgePlacing, updateBridgePlacing, confirmBridgePlacing, cancelBridgePlacing } from './world/bridges';
 
 G.char = loadChar();
 document.getElementById('vnum')!.textContent = 'v' + VERSION;
@@ -113,6 +113,10 @@ function frame(now: number) {
       updatePlacing();
       if (G.firing) { G.firing = false; confirmPlacing(); }
       if (G.aiming) { G.aiming = false; cancelPlacing(); }
+    } else if (isBridgePlacing()) { // a Bridge Kit: the mouse picks where the bridge crosses
+      updateBridgePlacing();
+      if (G.firing) { G.firing = false; confirmBridgePlacing(); }
+      if (G.aiming) { G.aiming = false; cancelBridgePlacing(); }
     } else if (isBuilding()) { // building on your claim: the mouse builds
       updateBuilding();
       if (G.firing) { G.firing = false; placePart(); }

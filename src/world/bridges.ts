@@ -10,8 +10,11 @@ import { PropBatch } from './props';
 import { textSprite } from './npc';
 import { G } from '../game';
 import { OW } from './overworld';
-import { regionOf } from '../gen/regions';
-import { regionFords, deckY, deckAt, bridgeLocal, bridgeProgress, BRIDGE, type Ford } from '../gen/bridges';
+import { regionOf, nearX } from '../gen/regions';
+import { regionFords, deckY, deckAt, bridgeLocal, bridgeProgress, planBridge, bridgeProblem, fordsNear, BRIDGE, type Ford } from '../gen/bridges';
+import { driving } from './vehicles';
+import { takeOne, saveChar } from '../character';
+import { logLine, showToast } from '../ui/hud';
 
 const WOOD = 0x2fe060, DARK = 0x1f9a44, STAKE = 0xffd060;
 /** Fords are drawn within this distance (m) and dropped past `DROP`. */
@@ -96,8 +99,10 @@ export function updateBridges(dt: number) {
   scanT = 0.5;
   const T = OW.terrain;
   if (!T || G.char.loc !== 'overworld') { clearBridges(); return; }
-  const [rx, rz] = regionOf(G.pos.x, G.pos.z), seen = new Set<string>();
-  for (let i = -2; i <= 2; i++) for (let j = -2; j <= 2; j++) for (const f of regionFords(T.world, rx + i, rz + j, (x, z) => T.heightAt(x, z))) {
+  const [rx, rz] = regionOf(G.pos.x, G.pos.z), seen = new Set<string>(), all: Ford[] = [];
+  for (let i = -2; i <= 2; i++) for (let j = -2; j <= 2; j++) all.push(...regionFords(T.world, rx + i, rz + j, (x, z) => T.heightAt(x, z)));
+  for (const f of G.char.bridgeSites) all.push({ ...f, x: nearX(f.x, G.pos.x) }); // your own, on this copy of the planet
+  for (const f of all) {
     if (Math.hypot(f.x - G.pos.x, f.z - G.pos.z) > NEAR) continue;
     seen.add(f.id);
     const l = live.get(f.id), rev = revOf(f);
@@ -106,7 +111,7 @@ export function updateBridges(dt: number) {
     const g = draw(f); scene.add(g);
     live.set(f.id, { f, g, rev });
   }
-  for (const [id, l] of live) if (!seen.has(id) && Math.hypot(l.f.x - G.pos.x, l.f.z - G.pos.z) > DROP) { drop(l); live.delete(id); }
+  for (const [id, l] of live) if (!seen.has(id) && (Math.hypot(l.f.x - G.pos.x, l.f.z - G.pos.z) > DROP || (!l.f.road && !G.char.bridgeSites.some((f) => f.id === id)))) { drop(l); live.delete(id); } // far off, or your site given up
 }
 export function clearBridges() { for (const l of live.values()) drop(l); live.clear(); }
 /** Redraw now (a bridge was finished). */
@@ -142,4 +147,71 @@ export function nearBridgeSign(): Ford | null {
     if (Math.abs(Math.abs(s) - (l.f.end + 1)) < 1.8 && Math.abs(v + BRIDGE.w / 2 + 1.4) < 1.8) return l.f; // the signs stand on the group's +x side, -v here
   }
   return null;
+}
+
+// ---------- staking out a bridge anywhere (a Bridge Kit) ----------
+const OK = 0xe8fff0, BAD = 0xff5a3c;
+const matA = new THREE.LineBasicMaterial({ color: OK, transparent: true, opacity: 0.9, depthTest: false, fog: false });
+const matB = new THREE.LineBasicMaterial({ color: OK, transparent: true, opacity: 0.45, depthTest: false, fog: false });
+let placing = false, preview: THREE.Group | null = null, plan: Ford | null = null, problem: string | null = null, last = { x: NaN, z: NaN, t: 0 };
+export const isBridgePlacing = () => placing;
+/** Use a Bridge Kit: start choosing where the bridge crosses. */
+export function startBridgePlacing(): boolean {
+  if (G.char.loc !== 'overworld' || !OW.terrain) { logLine('Bridges are built outdoors, over rivers.'); return false; }
+  if (driving.v) { logLine('Get out of the vehicle first.'); return false; }
+  placing = true; plan = null; problem = null; last = { x: NaN, z: NaN, t: 0 };
+  logLine('Look at the river where the bridge should cross: click to stake out the site, right mouse button or Esc to cancel.');
+  return true;
+}
+export function cancelBridgePlacing(quiet = false) {
+  if (!placing) return;
+  placing = false; plan = null;
+  if (preview) { scene.remove(preview); preview.traverse((o) => (o as THREE.Line).geometry?.dispose()); preview = null; }
+  if (!quiet) logLine('You put the Bridge Kit away.');
+}
+export const bridgePlacingHint = () => (!placing ? null : problem ?? 'Click — stake out a bridge here · right mouse / Esc — cancel');
+export const bridgePlacingOk = () => !!plan && !problem;
+/** Stake out the site where the hologram stands. */
+export function confirmBridgePlacing() {
+  if (!placing) return;
+  if (!plan || problem) { logLine(problem ?? 'Look at a river to bridge it'); return; }
+  if (!takeOne('bridgekit')) { cancelBridgePlacing(true); return; }
+  const f: Ford = { ...plan, id: `bridge:own:${G.char.pid}:${Math.round(G.char.time)}:${G.char.bridgeSites.length}` };
+  G.char.bridgeSites.push(f); G.char.bridges[f.id] = { given: {} }; saveChar();
+  cancelBridgePlacing(true); scanT = 0;
+  showToast('Bridge site staked out');
+  logLine(`The site is staked out over the ${f.river}: ${Math.round(2 * f.end)} m of deck. Bring the materials to its sign.`);
+}
+/** The ground point the player looks at (up to 70 m away). */
+function aim(): [number, number] {
+  const T = OW.terrain!, cp = Math.cos(G.pitch), dx = -Math.sin(G.yaw) * cp, dy = Math.sin(G.pitch), dz = -Math.cos(G.yaw) * cp, y0 = G.pos.y + 1.6;
+  for (let t = 2; t <= 70; t += 0.5) { const x = G.pos.x + dx * t, z = G.pos.z + dz * t; if (y0 + dy * t <= Math.max(T.heightAt(x, z), T.water(x, z)?.level ?? -Infinity)) return [x, z]; }
+  const h = Math.hypot(dx, dz) || 1; return [G.pos.x + dx / h * 30, G.pos.z + dz / h * 30];
+}
+/** Every frame while staking out: follow the view, plan the bridge, check it, redraw the hologram when it moved. */
+export function updateBridgePlacing() {
+  if (!placing) return;
+  const T = OW.terrain;
+  if (G.char.loc !== 'overworld' || driving.v || !T) { cancelBridgePlacing(true); return; }
+  const now = performance.now(), [x, z] = aim();
+  if (Math.hypot(x - last.x, z - last.z) < 0.75 || now - last.t < 120) return;
+  last = { x, z, t: now };
+  const ground = (px: number, pz: number) => T.heightAt(px, pz);
+  plan = planBridge(T.world, x, z, G.pos.x, G.pos.z, ground);
+  const others = plan ? [...fordsNear(T.world, plan.x, plan.z, 200, ground), ...G.char.bridgeSites] : [];
+  problem = bridgeProblem(T.world, plan, others);
+  if (!preview) { preview = new THREE.Group(); preview.renderOrder = 10; scene.add(preview); }
+  preview.traverse((o) => (o as THREE.Line).geometry?.dispose()); preview.clear();
+  if (!plan) return;
+  const f = plan, hw = BRIDGE.w / 2, a: number[] = [], b: number[] = [];
+  const W = (s: number, v: number, y: number) => [f.x + s * f.dx - v * f.dz, y, f.z + s * f.dz + v * f.dx];
+  for (let s = -f.end; s < f.end - 0.01; s += 2) for (const v of [-hw, hw]) a.push(...W(s, v, deckY(f, s) + 0.05), ...W(s + 2, v, deckY(f, s + 2) + 0.05));
+  for (let s = -f.end; s <= f.end + 0.01; s += 4) b.push(...W(s, -hw, deckY(f, s) + 0.05), ...W(s, hw, deckY(f, s) + 0.05));
+  for (let s = -(f.half + BRIDGE.flat); s <= f.half + BRIDGE.flat + 0.01; s += 4) for (const v of [-hw + 0.4, hw - 0.4]) { const [px, , pz] = W(s, v, 0); b.push(...W(s, v, T.heightAt(px, pz)), ...W(s, v, deckY(f, s))); }
+  for (const s of [-f.end, f.end]) for (const v of [-hw, hw]) { const [px, , pz] = W(s, v, 0), g = T.heightAt(px, pz); a.push(...W(s, v, g), ...W(s, v, g + 1.2)); }
+  for (const [pts, m] of [[a, matA], [b, matB]] as const) {
+    const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3));
+    const l = new THREE.LineSegments(geo, m); l.renderOrder = 10; l.frustumCulled = false; preview.add(l);
+  }
+  matA.color.setHex(problem ? BAD : OK); matB.color.setHex(problem ? BAD : OK);
 }

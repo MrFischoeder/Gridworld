@@ -1,5 +1,6 @@
 // Keyboard and mouse. Pointer lock drives mouse look; losing it pauses the game.
 import { isPlacing, cancelPlacing } from '../world/claims';
+import { isBridgePlacing, cancelBridgePlacing } from '../world/bridges';
 import { isBuilding, stopBuilding, dismantle } from '../world/building';
 import { toggleBuildMenu } from './build';
 import { G, uiOpen } from '../game';
@@ -37,6 +38,7 @@ export function initInput(onPause: () => void) {
     if (G.mapOpen) { if (e.code === 'Escape') toggleMap(false); if (e.code === 'Equal' || e.code === 'NumpadAdd') zoomMap(1.25); if (e.code === 'Minus' || e.code === 'NumpadSubtract') zoomMap(0.8); }
     if (extraKeys.some((f) => f(e))) return;
     if (e.code === 'Escape' && isPlacing()) cancelPlacing();
+    if (e.code === 'Escape' && isBridgePlacing()) cancelBridgePlacing();
     if (e.code === 'Escape' && isBuilding()) stopBuilding();
     if (e.code === 'KeyB' && G.playing) { toggleBuildMenu(); return; }
     G.keys[e.code] = true;

@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { regionFords, deckY, deckAt, bridgeNeeds, bridgeRows, handOverBridge, bridgeProgress, BRIDGE, type BridgeState, type Ford } from '../src/gen/bridges';
+import { regionFords, deckY, deckAt, bridgeNeeds, bridgeRows, handOverBridge, bridgeProgress, planBridge, bridgeProblem, PLACE, BRIDGE, type BridgeState, type Ford } from '../src/gen/bridges';
+import { riversOf, riverSegsIn, riverNear } from '../src/gen/rivers';
 import { Terrain } from '../src/gen/terrain';
 import { regionOf, NR, REGION } from '../src/gen/regions';
 import { network, edgePath } from '../src/gen/roads';
@@ -52,5 +53,24 @@ describe('bridges', () => {
     expect(r.taken.find(([k]) => k === 'log')![1]).toBe(need.get('log')! - 5);
     expect(handOverBridge(f, st, () => 999, 300).taken).toEqual([]);
     expect(bridgeRows(f, undefined).every((x) => x.given === 0)).toBe(true);
+  });
+  it('can be staked out anywhere over a river, straight across it', () => {
+    let ok = 0, n = 0;
+    for (const r of riversOf(W).list.filter((q) => q.x.length > 200).slice(0, 25)) {
+      const i = Math.floor(r.x.length / 2), fx = r.x[i + 1] - r.x[i], fz = r.z[i + 1] - r.z[i], L = Math.hypot(fx, fz), nx = -fz / L, nz = fx / L;
+      // look at a point on the bank, standing further back on the same side
+      const f = planBridge(W, r.x[i] + nx * (r.half[i] + 3), r.z[i] + nz * (r.half[i] + 3), r.x[i] + nx * 40, r.z[i] + nz * 40, ground)!;
+      expect(f, r.name).toBeTruthy(); n++;
+      expect(f.dx * (f.x - (r.x[i] + nx * 40)) + f.dz * (f.z - (r.z[i] + nz * 40))).toBeGreaterThan(0); // away from the player
+      const h = riverNear(riverSegsIn(W, f.x - 5, f.z - 5, f.x + 5, f.z + 5), f.x, f.z)!;
+      expect(h.d).toBeLessThan(0.5);
+      expect(Math.abs(f.dx * h.fx + f.dz * h.fz)).toBeLessThan(0.35); // square to the flow there (the stretch next to it may bend a little)
+      const p = bridgeProblem(W, f, []);
+      if (!p) { ok++; expect(bridgeProblem(W, f, [f])).toMatch(/too close/); }
+      if (f.half > PLACE.maxHalf) expect(p).toMatch(/too wide/);
+    }
+    expect(n).toBeGreaterThan(10); expect(ok).toBeGreaterThan(3);
+    expect(planBridge(W, 0, 0, 10, 10, ground)).toBeNull(); // by Gridholm there is no river
+    expect(bridgeProblem(W, null, [])).toMatch(/Look at a river/);
   });
 });

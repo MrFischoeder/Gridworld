@@ -5,7 +5,8 @@
 // `BRIDGE.clear` above the water over the channel and its banks, then ramping down to the ground at both ends
 // (`half + BRIDGE.reach` from the middle). The players build it: the materials are handed over bit by bit
 // (`handOverBridge`), and when all are in the bridge stands (`BridgeState.done`). Saved: `char.bridges[id]`.
-import { wrapR, REGION, type Rect } from './regions';
+import { wrapR, wrapDx, worldDist, regionOf, poisNear, REGION, type Rect } from './regions';
+import { SEA } from './seas';
 import { regionRoads, type Road } from './roads';
 import { riverSegsIn, riverNear, riversOf } from './rivers';
 import type { ItemKey } from '../data/items';
@@ -36,7 +37,8 @@ export interface Ford {
   /** Distance from the middle to each end of the deck, and the ground there (-end, +end). */
   end: number; g0: number; g1: number;
 }
-export interface BridgeState { given: Partial<Record<ItemKey, number>>; done?: number }
+/** `at` (set when it is finished) puts it on the maps: its middle, direction and half-length. */
+export interface BridgeState { given: Partial<Record<ItemKey, number>>; done?: number; at?: [number, number, number, number, number] }
 
 /** Where two segments cross (the parameter along each), or null. */
 function cross(ax: number, az: number, bx: number, bz: number, cx: number, cz: number, ex: number, ez: number): [number, number] | null {
@@ -120,8 +122,50 @@ export function handOverBridge(f: Ford, s: BridgeState, have: (k: ItemKey) => nu
   const taken: [ItemKey, number][] = [];
   for (const r of bridgeRows(f, s)) { const n = Math.min(r.n - r.given, have(r.k)); if (n > 0) { s.given[r.k] = r.given + n; taken.push([r.k, n]); } }
   if (bridgeRows(f, s).some((r) => r.given < r.n)) return { taken, built: false };
-  s.done = now; s.given = {};
+  s.done = now; s.given = {}; s.at = [f.x, f.z, f.dx, f.dz, f.end];
   return { taken, built: true };
 }
+// ---------- bridges anywhere (a Bridge Kit) ----------
+/** A player's own bridge: the widest river it spans (half-width, m), the steepest ramp, how far it looks for the river. */
+export const PLACE = { maxHalf: 12, ramp: 0.45, reach: 40, apart: 60, village: 120 };
+/**
+ * A bridge over the river nearest to (x, z), straight across it, facing away from (px, pz), or null with no river
+ * within `PLACE.reach`. `road` is '' (it carries no road).
+ */
+export function planBridge(world: number, x: number, z: number, px: number, pz: number, ground: (x: number, z: number) => number): Ford | null {
+  const segs = riverSegsIn(world, x - PLACE.reach, z - PLACE.reach, x + PLACE.reach, z + PLACE.reach), h = riverNear(segs, x, z);
+  if (!h || h.d > h.half + PLACE.reach) return null;
+  // the middle: on the river's middle line; across it: square to the flow, pointing away from the player
+  const s = h.seg, ex = s.bx - s.ax, ez = s.bz - s.az, L2 = ex * ex + ez * ez || 1, u = Math.max(0, Math.min(1, ((x - s.ax) * ex + (z - s.az) * ez) / L2));
+  const mx = s.ax + ex * u, mz = s.az + ez * u;
+  let dx = -h.fz, dz = h.fx;
+  if (dx * (mx - px) + dz * (mz - pz) < 0) { dx = -dx; dz = -dz; }
+  const end = h.half + BRIDGE.reach, names = riversOf(world).list;
+  return { id: '', x: mx, z: mz, dx, dz, river: names[s.r].name, road: '', level: h.level, half: h.half, end, g0: ground(mx - dx * end, mz - dz * end), g1: ground(mx + dx * end, mz + dz * end) };
+}
+/** Why a planned bridge cannot go there (null: it can). `others` = bridges and bridge sites already there. */
+export function bridgeProblem(world: number, f: Ford | null, others: Ford[]): string | null {
+  if (!f) return 'Look at a river to bridge it';
+  if (f.half > PLACE.maxHalf) return `The ${f.river} is too wide to bridge here`;
+  if (f.level <= SEA.level + 0.05) return 'Too close to the sea: the river runs out into it here';
+  const run = f.end - f.half - BRIDGE.flat, top = f.level + BRIDGE.clear;
+  if (Math.abs(f.g0 - top) / run > PLACE.ramp || Math.abs(f.g1 - top) / run > PLACE.ramp) return 'The banks are too steep here';
+  // another river close by (where two meet the water is wider and wilder)
+  const segs = riverSegsIn(world, f.x - f.end, f.z - f.end, f.x + f.end, f.z + f.end), mine = riverNear(segs, f.x, f.z)!.seg.r;
+  if (segs.some((sg) => sg.r !== mine && riverNear([sg], f.x, f.z)!.d < f.end + 10)) return 'Too close to where two rivers meet';
+  for (const p of poisNear(world, f.x, f.z, f.end + 150)) {
+    const d = Math.hypot(Math.max(p.rect.x0 - f.x, 0, f.x - p.rect.x1), Math.max(p.rect.z0 - f.z, 0, f.z - p.rect.z1));
+    if (d < (p.type === 'village' ? PLACE.village : f.end + p.flat + p.blend + 6)) return `Too close to ${p.type === 'village' ? p.name : 'the ' + p.name}`;
+  }
+  if (others.some((o) => worldDist(o.x, o.z, f.x, f.z) < PLACE.apart)) return 'Another bridge or bridge site is too close';
+  return null;
+}
+/** The fords round (x, z) (their sites count as bridges for spacing). */
+export function fordsNear(world: number, x: number, z: number, r: number, ground: (x: number, z: number) => number): Ford[] {
+  const [rx0, rz0] = regionOf(x - r, z - r), [rx1, rz1] = regionOf(x + r, z + r), out: Ford[] = [];
+  for (let i = rx0; i <= rx1; i++) for (let j = rz0; j <= rz1; j++) out.push(...regionFords(world, i, j, ground).filter((f) => Math.hypot(wrapDx(f.x - x), f.z - z) < r));
+  return out;
+}
+
 /** Experience for finishing a bridge. */
 export const bridgeXp = (f: Ford) => Math.round(2 * f.end * BRIDGE.xp);
