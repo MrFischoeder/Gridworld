@@ -115,12 +115,12 @@ function drawArea(ctx: CanvasRenderingContext2D, w: number, h: number, ppm: numb
     ctx.stroke(); ctx.lineWidth = 1;
     if (labels) ctx.fillText(ins.name, x, y - 15);
   }
-  for (const m of leadMarkers()) { // leads to old data carriers: a violet diamond (held at the edge of the big map when further)
+  for (const m of leadMarkers()) { // leads: a violet diamond for a data carrier, a lime one for a great installation (held at the edge of the big map when further)
     let x = X(m.x), y = Z(m.z); const r = labels ? 9 : 5, out = x < 24 || y < 40 || x > w - 24 || y > h - 40;
     if (out && !labels) continue;
     if (out) { x = Math.max(24, Math.min(w - 24, x)); y = Math.max(40, Math.min(h - 40, y)); }
-    ctx.strokeStyle = ctx.fillStyle = '#c49cff'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(x, y - r); ctx.lineTo(x + r, y); ctx.lineTo(x, y + r); ctx.lineTo(x - r, y); ctx.closePath(); ctx.stroke(); ctx.lineWidth = 1;
-    if (labels) ctx.fillText(m.label + (out ? ` ${(Math.hypot(m.x - px, m.z - pz) / 1000).toFixed(1)} km` : ''), Math.max(90, Math.min(w - 90, x)), y - 14);
+    ctx.strokeStyle = ctx.fillStyle = m.c; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(x, y - r); ctx.lineTo(x + r, y); ctx.lineTo(x, y + r); ctx.lineTo(x - r, y); ctx.closePath(); ctx.stroke(); ctx.lineWidth = 1;
+    if (labels) { const t = m.label + (out ? ` ${(Math.hypot(m.x - px, m.z - pz) / 1000).toFixed(1)} km` : ''), hw2 = ctx.measureText(t).width / 2 + 6; ctx.fillText(t, Math.max(hw2, Math.min(w - hw2, x)), y - 14); } // kept whole on the screen
   }
   for (const m of questMarkers()) {
     const x = X(m.x), y = Z(m.z);

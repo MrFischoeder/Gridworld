@@ -4,6 +4,14 @@ export interface Change { v: string; date: string; title: string; notes: string[
 
 export const CHANGELOG: Change[] = [
   {
+    v: '0.72.0', date: '2026-09-29', title: 'Word of the old plants',
+    notes: [
+      'Ask the villagers about old machines within 16 km of a great installation and they tell you of it first: the Old Enrichment Plant or the Old Chip Foundry, with the distance and direction from their village.',
+      'The lead goes on your map and compass as a lime diamond (data carriers stay violet) and into the quest tracker, until you reach the place.',
+      'Lead labels at the edge of the big map are no longer cut off.',
+    ],
+  },
+  {
     v: '0.71.0', date: '2026-09-29', title: 'What chips are for',
     notes: [
       'A village\'s own power plant has a third upgrade: Automated, 2.5 times what it made as built. It needs 4 crates of Microchips from the Old Chip Foundry, 4 copper cable and 2 electronic components (the elder\'s power plant option). An automated plant gets a control cabinet with a lit screen and a radio mast.',

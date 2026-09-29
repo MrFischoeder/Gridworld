@@ -57,6 +57,6 @@ export function updateCompass(dt: number) {
   };
   for (const c of G.char.claims) { const d = Math.hypot(wrapDx(c.x - G.pos.x), c.z - G.pos.z); if (d > 30) mark(c.x, c.z, '#c4ffd2', `Your flag ${fmtDist(d)}`); }
   for (const q of questMarkers()) mark(q.x, q.z, '#ffd060', q.label);
-  for (const q of leadMarkers()) mark(q.x, q.z, '#c49cff', q.short);
+  for (const q of leadMarkers()) mark(q.x, q.z, q.c, q.short);
   if (near) mark(near.x, near.z, '#9dffe0', `${near.name} ${fmtDist(Math.hypot(wrapDx(near.x - G.pos.x), near.z - G.pos.z))}`);
 }

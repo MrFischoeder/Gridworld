@@ -4,7 +4,7 @@
 // lies in its own distance band from Gridholm on dry, fairly level ground away from villages, places, roads, lakes and
 // the mountains. The ground round it is bare: trees, rocks and plants inside `inInstall` are not generated.
 import { hash } from '../core/rng';
-import { CHUNK, worldDist } from './regions';
+import { CHUNK, worldDist, wrapDx } from './regions';
 import { nearestOnRoad } from './roads';
 import { mountainMask } from './mountains';
 import { rectDist, type Terrain } from './terrain';
@@ -134,4 +134,31 @@ export function loadInstall(k: InstallKind, s: InstallState, i: ItemKey, n: numb
   s.inp[i] = (s.inp[i] ?? 0) + m;
   if (before < 1) s.t = now; // it was idle: the batch starts now
   return m;
+}
+
+// ---------- leads: what the villagers have heard of the great installations ----------
+/** Villagers know of an installation within this range of their village (m); the lead id in `char.leads`. */
+export const INSTALL_LEAD = 16000;
+export const installLeadId = (k: InstallKind) => 'install:' + k;
+const IDIRS = ['north', 'north-east', 'east', 'south-east', 'south', 'south-west', 'west', 'north-west'];
+const idir = (dx: number, dz: number) => IDIRS[Math.round(((Math.atan2(dx, -dz) * 180 / Math.PI + 360) % 360) / 45) % 8];
+const ISAY: Record<InstallKind, string[]> = {
+  uranium: [
+    'My grandfather worked at the old enrichment plant, {dist} {dir} of here. Two great cooling towers, one snapped in half, and a hall full of spinning drums. He said the ore that went in came out as something that burns for years.',
+    'Travellers talk of a dead plant {dist} {dir} of here: a fence hung with warning signs, a lime trefoil on the gate, two towers like hourglasses. Nobody stays there long.',
+  ],
+  chips: [
+    'There is a sealed block of the old world {dist} {dir} of here, with a water tower and a row of tanks. The traders call it the chip foundry: they say the old machines were born there, etched in crystal.',
+    'A scavenger told me of a long windowless building {dist} {dir} of here, still sealed after all these years. Clean rooms, he called them. He could not get the air lock open.',
+  ],
+};
+/** What a villager at (vx, vz) says of an installation. */
+export function installLeadText(s: InstallSite, vx: number, vz: number, world: number): string {
+  const dx = wrapDx(s.x - vx), dz = s.z - vz, d = Math.hypot(dx, dz), lines = ISAY[s.k], line = lines[hash(world, s.k.length, s.k.charCodeAt(0), 0x1ea5) % lines.length];
+  return line.replace('{dist}', `about ${d < 9500 ? (d / 1000).toFixed(1).replace(/\.0$/, '') : Math.round(d / 1000)} km`).replace('{dir}', idir(dx, dz));
+}
+/** The nearest installation within INSTALL_LEAD of (vx, vz) not yet heard of and not yet found (`found(k)`), or null. */
+export function pickInstallLead(sites: InstallSite[], leads: string[], found: (s: InstallSite) => boolean, vx: number, vz: number): InstallSite | null {
+  return sites.filter((s) => !leads.includes(installLeadId(s.k)) && !found(s) && worldDist(s.x, s.z, vx, vz) <= INSTALL_LEAD)
+    .sort((a, b) => worldDist(a.x, a.z, vx, vz) - worldDist(b.x, b.z, vx, vz))[0] ?? null;
 }

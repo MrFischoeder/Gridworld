@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { Terrain } from '../src/gen/terrain';
-import { installSites, installMisfit, inInstall, INSTALLS, INSTALL_STAGES, INSTALL_WORK, newInstall, installPlan, handOverInstall, runInstall, installDone, loadInstall, fixInstall } from '../src/gen/installs';
+import { installSites, installMisfit, inInstall, INSTALLS, INSTALL_STAGES, INSTALL_WORK, newInstall, installPlan, handOverInstall, runInstall, installDone, loadInstall, fixInstall, pickInstallLead, installLeadText, installLeadId, INSTALL_LEAD } from '../src/gen/installs';
 import { ITEMS } from '../src/data/items';
 import { chunkTrees } from '../src/gen/trees';
 import { CHUNK } from '../src/gen/regions';
@@ -56,5 +56,16 @@ describe('great installations', () => {
     expect(loadInstall('chips', s, 'copperbar', 3, w.batch * 5)).toBe(3);
     runInstall('chips', s, w.batch * 20); expect(s.out).toBe(3); expect(s.inp.glass).toBe(w.hopper - 6); expect(s.inp.copperbar).toBe(0);
     expect(INSTALL_STAGES.chips[2].tech).toBe('chips');
+  });
+  it('villagers tell of the nearest installation they know of, once', () => {
+    const t = new Terrain(12345), sites = installSites(t), s = sites[0];
+    const vx = s.x + 9000, vz = s.z; // a village 9 km east of it
+    const got = pickInstallLead(sites, [], () => false, vx, vz);
+    expect(got).not.toBeNull();
+    expect(installLeadText(got!, vx, vz, 12345)).toMatch(/about \d+(\.\d)? km (north|south|east|west)/);
+    expect(pickInstallLead(sites.filter((x) => x.k === got!.k), [installLeadId(got!.k)], () => false, vx, vz)).toBeNull(); // heard of
+    expect(pickInstallLead(sites.filter((x) => x.k === got!.k), [], () => true, vx, vz)).toBeNull(); // found
+    expect(pickInstallLead(sites, [], () => false, s.x + INSTALL_LEAD + 30000, s.z + 40000)).toBeNull(); // too far
+    expect(installLeadText(s, s.x + 9000, s.z, 12345)).toMatch(/west/);
   });
 });
