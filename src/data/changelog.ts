@@ -4,6 +4,12 @@ export interface Change { v: string; date: string; title: string; notes: string[
 
 export const CHANGELOG: Change[] = [
   {
+    v: '0.89.2', date: '2026-10-11', title: 'The economy plan',
+    notes: [
+      'The download now includes PLAN_GOSPODARKI.md (in Polish): the agreed plan for the next big step of the economy, from new raw materials (clay, limestone, lead, nickel) and village works (sawmill, brickworks, cement, iron foundry, steelworks, chemical plant, aluminium works, batteries) through power for industry, six new great installations of the Ancients with their own power halls, to a Chariot that needs the whole planet\'s industry. No change to the game itself.',
+    ],
+  },
+  {
     v: '0.89.1', date: '2026-10-11', title: 'The game described',
     notes: [
       'The download now includes OPIS_GRY.md and OPIS_GRY.pdf (in Polish): what GridWorld is, its story and goal (the castaways and the Chariot of the Ancients), every system of the world, what is ready and what is still to come, the plan ahead, and every version so far in order. No change to the game itself.',

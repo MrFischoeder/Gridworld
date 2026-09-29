@@ -1,6 +1,6 @@
 # GridWorld: opis gry, cel, plan i historia zmian
 
-Stan na wersję **0.89.1**. Ten dokument opisuje, czym jest GridWorld, jaki jest cel gry, co już w niej jest, czego jeszcze nie ma, dokąd zmierza i jak powstawała, wersja po wersji. Nazwy z gry (przedmioty, miejsca, postacie) są po angielsku, tak jak na ekranie.
+Stan na wersję **0.89.2**. Ten dokument opisuje, czym jest GridWorld, jaki jest cel gry, co już w niej jest, czego jeszcze nie ma, dokąd zmierza i jak powstawała, wersja po wersji. Nazwy z gry (przedmioty, miejsca, postacie) są po angielsku, tak jak na ekranie.
 
 ---
 
@@ -365,6 +365,8 @@ Wyniki symulacji posłużyły do decyzji, że gra ma się opierać na prostych, 
 
 ## 13. Plan rozwoju
 
+**Najbliżej (0.90–0.99): rozbudowa gospodarki** według `PLAN_GOSPODARKI.md`. Nowe surowce (glina, wapień, ołów, nikiel), półprodukty i zakłady wiosek (tier 1 od startu, tier 2 z planów), prąd jako ograniczenie przemysłu, sześć nowych instalacji Starożytnych z własnymi siłowniami (paliwo rakietowe, ogniwa, sensory, stop Starożytnych, precyzyjne komponenty, automatyka) i Rydwan wymagający całej gospodarki planety.
+
 Kierunek wyznaczony przez właściciela projektu, w przybliżonej kolejności:
 
 1. **Kampania w grze.** Cuda Starożytnych przy ruinach (3 etapy każdy, premie regionalne), trzy niespodzianki, które zatrzymują Rydwan, wskazówki załogi hangaru.
@@ -518,3 +520,4 @@ Pełne notatki (po angielsku) są w grze pod przyciskiem **Changelog** w menu g�
 - **0.88.1 Wiktor czeka, aż się do niego odezwiesz.** Woła, radzi przeszukać wrak, po drodze pokazuje miejsca.
 - **0.89.0 Większe świątynie** (o 50%). Brak niewidzialnych ścian dla pojazdów. Komenda `map` pokazuje strefy mgły.
 - **0.89.1 Opis gry.** Ten dokument (OPIS_GRY.md i PDF).
+- **0.89.2 Plan gospodarki.** Uzgodniony plan rozbudowy gospodarki w `PLAN_GOSPODARKI.md` (etapy 0.90–0.99).
