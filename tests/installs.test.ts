@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { Terrain } from '../src/gen/terrain';
-import { installSites, installMisfit, inInstall, INSTALLS, INSTALL_STAGES, INSTALL_WORK, newInstall, installPlan, handOverInstall, runInstall, installDone, loadInstall, fixInstall, pickInstallLead, installLeadText, installLeadId, INSTALL_LEAD, RADAR, radarPlaces } from '../src/gen/installs';
+import { installSites, installMisfit, inInstall, INSTALLS, INSTALL_STAGES, INSTALL_WORK, newInstall, installPlan, handOverInstall, runInstall, installDone, loadInstall, fixInstall, pickInstallLead, installLeadText, installLeadId, INSTALL_LEAD, RADAR, radarPlaces, INSTALL_DRAW, HALL_SETS, HALL_STAGE, fuelHall, hallKw, hallPick, hallReady, type InstallState } from '../src/gen/installs';
 import { ITEMS } from '../src/data/items';
 import { chunkTrees } from '../src/gen/trees';
 import { CHUNK } from '../src/gen/regions';
@@ -35,26 +35,49 @@ describe('great installations', () => {
     expect(handOverInstall('uranium', s, { enrichment: 5 }, plenty, 100).built).toBe(true);
     expect(installDone('uranium', s)).toBe(true); expect(installPlan('uranium', s, {})).toBeNull(); expect(s.t).toBe(100);
   });
-  it('turn ore into fuel by game time, while fed and with room', () => {
-    const w = INSTALL_WORK.uranium!, s = { ...newInstall(), stage: INSTALL_STAGES.uranium.length, inp: { uranium: 7 }, t: 0 };
+  it('turn ore and chemicals into fuel by game time, while fed, powered and with room', () => {
+    const w = INSTALL_WORK.uranium!, s: InstallState = { ...newInstall(), stage: INSTALL_STAGES.uranium.length, inp: { uranium: 7, chems: 30 }, t: 0, pw: { nfuel: 4 } };
     runInstall('uranium', s, w.batch - 1); expect(s.out).toBe(0);
     runInstall('uranium', s, w.batch * 10); // ore for two batches only
-    expect(s.out).toBe(2); expect(s.inp.uranium).toBe(1); expect(s.t).toBe(w.batch * 10);
+    expect(s.out).toBe(2); expect(s.inp.uranium).toBe(1); expect(s.inp.chems).toBe(28); expect(s.t).toBe(w.batch * 10);
+    expect(s.pw!.nfuel).toBeCloseTo(4 - 2 * w.batch / 5760, 6); // its own reactor burnt a little of a crate for each batch
     s.inp.uranium = 30; runInstall('uranium', s, w.batch * 10 + 5); runInstall('uranium', s, w.batch * 13 + 5);
     expect(s.out).toBe(5); expect(s.inp.uranium).toBe(21);
     runInstall('uranium', s, w.batch * 100); expect(s.out).toBe(w.bay); expect(s.inp.uranium).toBe(30 - (w.bay - 2) * 3);
     // an unrestored plant makes nothing
-    const u = { ...newInstall(), inp: { uranium: 9 } }; runInstall('uranium', u, 99999); expect(u.out).toBe(0);
+    const u = { ...newInstall(), inp: { uranium: 9, chems: 9 }, pw: { nfuel: 4 } }; runInstall('uranium', u, 99999); expect(u.out).toBe(0);
     // old saves kept the ore as a number
     expect(fixInstall('uranium', { ...newInstall(), inp: 4 as unknown as Record<string, number> }).inp).toEqual({ uranium: 4 });
   });
+  it('a plant makes nothing without power: its hall comes back with the second stage and burns what you bring', () => {
+    const w = INSTALL_WORK.uranium!, done = INSTALL_STAGES.uranium.length;
+    const s: InstallState = { ...newInstall(), stage: done, inp: { uranium: 30, chems: 30 }, t: 0 };
+    runInstall('uranium', s, w.batch * 5); expect(s.out).toBe(0); // no fuel in the hall
+    expect(fuelHall('uranium', s, 'coal', 50, w.batch * 5)).toBe(HALL_SETS[0].bunker);
+    runInstall('uranium', s, w.batch * 10); expect(s.out).toBe(0); // the coal boiler alone gives 120 of 200 kW
+    expect(hallKw('uranium', s)).toBe(120);
+    expect(fuelHall('uranium', s, 'fuel', 10, w.batch * 10)).toBe(10);
+    expect(hallPick('uranium', s)!.map((h) => h.fuel)).toEqual(['coal', 'fuel']);
+    runInstall('uranium', s, w.batch * 12); expect(s.out).toBe(2);
+    expect(s.pw!.coal).toBeCloseTo(30 - 2 * w.batch / 120, 6); expect(s.pw!.fuel).toBeCloseTo(10 - 2 * w.batch / 150, 6);
+    // the hall is a ruin until the second stage; the chip foundry has no reactor, and one set is enough for it
+    const early: InstallState = { ...newInstall(), stage: HALL_STAGE - 1 };
+    expect(fuelHall('uranium', early, 'coal', 5, 0)).toBe(0); expect(hallReady('uranium', early)).toBe(false);
+    const chips: InstallState = { ...newInstall(), stage: HALL_STAGE };
+    expect(fuelHall('chips', chips, 'nfuel', 2, 0)).toBe(0); expect(fuelHall('chips', chips, 'fuel', 5, 0)).toBe(5);
+    chips.stage = INSTALL_STAGES.chips.length;
+    expect(hallPick('chips', chips)!.map((h) => h.fuel)).toEqual(['fuel']);
+    expect(INSTALL_DRAW.radar).toBeUndefined(); // the radar station runs on nothing
+  });
   it('the chip foundry needs every input for a batch', () => {
-    const w = INSTALL_WORK.chips!, s = { ...newInstall(), stage: INSTALL_STAGES.chips.length };
+    const w = INSTALL_WORK.chips!, s: InstallState = { ...newInstall(), stage: INSTALL_STAGES.chips.length, pw: { coal: 30 } };
     expect(loadInstall('chips', s, 'glass', 99, 0)).toBe(w.hopper);
     expect(loadInstall('chips', s, 'uranium', 5, 0)).toBe(0);
+    expect(loadInstall('chips', s, 'chems', 10, 0)).toBe(10); expect(loadInstall('chips', s, 'rareearth', 10, 0)).toBe(10);
     runInstall('chips', s, w.batch * 5); expect(s.out).toBe(0); // no copper yet
     expect(loadInstall('chips', s, 'copperbar', 3, w.batch * 5)).toBe(3);
     runInstall('chips', s, w.batch * 20); expect(s.out).toBe(3); expect(s.inp.glass).toBe(w.hopper - 6); expect(s.inp.copperbar).toBe(0);
+    expect(s.inp.chems).toBe(7); expect(s.inp.rareearth).toBe(7);
     expect(INSTALL_STAGES.chips[2].tech).toBe('chips');
   });
   it('villagers tell of the nearest installation they know of, once', () => {

@@ -8,7 +8,7 @@ import { FORTIFY, WORKS, POWER, type WorkKind } from '../gen/town';
 import { WALL_TIERS } from '../gen/village';
 import { FARM, UPGRADE } from '../gen/farms';
 import { PLANT_LEVELS } from '../gen/plantup';
-import { INSTALLS, INSTALL_STAGES, INSTALL_WORK, type InstallKind } from '../gen/installs';
+import { INSTALLS, INSTALL_STAGES, INSTALL_WORK, HALL_SETS, type InstallKind } from '../gen/installs';
 import { STAGES } from '../gen/shuttle';
 import { MENU } from '../gen/foodshop';
 import { INDUSTRY, type Industry } from '../gen/industry';
@@ -50,6 +50,7 @@ function build(): Map<ItemKey, Map<UseGroup, string[]>> {
   for (const k of [...Object.keys(PIER.per), ...Object.keys(PIER.fittings)] as ItemKey[]) use(k, 'Building', 'Pier');
   for (const k of Object.keys(BOATS) as BoatKind[]) for (const [i] of BOATS[k].needs) use(i, 'Building', BOATS[k].name);
   use('fuel', 'Fuel for', 'Motor Boat');
+  for (const h of HALL_SETS) use(h.fuel, 'Fuel for', h.fuel === 'nfuel' ? 'the Old Enrichment Plant\'s own reactor' : 'the power halls of the old plants');
   use('filter', 'Other', 'breathing in toxic fog (in a Gas Mask)');
   return m;
 }

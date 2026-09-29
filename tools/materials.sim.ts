@@ -13,7 +13,7 @@ import { WALL_TIERS } from '../src/gen/village';
 import { FARM, UPGRADE, CROPS, type Crop } from '../src/gen/farms';
 import { PLANT_LEVELS } from '../src/gen/plantup';
 import { RARES } from '../src/gen/deposits';
-import { INSTALLS, INSTALL_STAGES, INSTALL_WORK, type InstallKind } from '../src/gen/installs';
+import { INSTALLS, INSTALL_STAGES, INSTALL_WORK, INSTALL_DRAW, HALL_SETS, type InstallKind } from '../src/gen/installs';
 import { STAGES, CHARIOT } from '../src/gen/shuttle';
 import { ORDERS } from '../src/data/orders';
 import { MENU } from '../src/gen/foodshop';
@@ -118,6 +118,9 @@ it('writes SUROWCE.md', () => {
     for (const [i] of w.inp) use(i, `przetwarzanie: ${name} → ${N(w.out)}`);
   }
   P(`- **Old Radar Station:** nic nie produkuje; odkrywa na mapie wszystko w promieniu 12 km.`);
+  P('');
+  P(`**Siłownie instalacji** (wracają z II etapem odbudowy; partia rusza tylko przy pełnym poborze, zestawy palą paliwo tylko podczas pracy): ${Object.entries(INSTALL_DRAW).map(([k, kw]) => `${INSTALLS.find((s) => s.k === k)!.name} pobiera ${kw} kW`).join(', ')}. Zestawy: ${HALL_SETS.map((h) => `${h.name} ${h.kw} kW na ${N(h.fuel)} (skrzynia na ${h.burn >= 1440 ? h.burn / 1440 + ' dni' : h.burn / 60 + ' h'} pracy, bunkier ${h.bunker})`).join('; ')}. Własny reaktor ma tylko Old Enrichment Plant.`);
+  for (const h of HALL_SETS) use(h.fuel, h.fuel === 'nfuel' ? 'paliwo: własny reaktor Old Enrichment Plant' : 'paliwo: siłownie wielkich instalacji');
   P('');
   P('### 2.3 Kowal: „Make something for me” (materiały z hali wioski)');
   P('');

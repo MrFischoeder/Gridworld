@@ -170,7 +170,21 @@ Dalej 2 zakłady na wioskę (`PLANT_SLOTS`). Istniejące klucze `PlantKind` zost
 - Kolejność zasilania w `balance`: wioska, farmy, miejsce przemysłu, zakłady (w kolejności budowy).
 - Elder i terminal pokazują nowy podział w zakładce POWER.
 
-## Etap 4 (0.93.0): model Ancient Facility na dwóch istniejących instalacjach
+## Etap 4 (0.93.0): model Ancient Facility na dwóch istniejących instalacjach (ZROBIONE)
+
+**Jak zrobione:**
+- Pobór: wzbogacalnia 200 kW, fabryka czipów 100 kW (`INSTALL_DRAW`).
+- Siłownia (`HALL_SETS`, `HALL_STAGE` 2) ma zestawy:
+  - kocioł węglowy: 120 kW, skrzynia węgla na 2 h;
+  - zespoły diesla: 100 kW, kanister na 2,5 h;
+  - tylko we wzbogacalni własny reaktor: 250 kW, skrzynia prętów na 4 dni.
+
+  Bunkry mieszczą 30 / 30 / 4 skrzynie.
+- Zasilanie partii (`hallPick`): jeden zestaw, jeśli wystarczy, w przeciwnym razie kocioł i diesle razem. Paliwo spala się tylko podczas partii.
+- Pętla z planu działa: wzbogacalnia rusza na węglu i dieslu razem, a potem może jechać na własnych prętach.
+- Stare zapisy: gotowe instalacje stoją, dopóki gracz nie dowiezie paliwa i nowych wejść. Ukończone etapy zostają ukończone. Materiały oddane na etap w toku, jeśli ich już nie ma w wymaganiach, przepadają.
+- Radar bez zmian (nic nie produkuje).
+
 
 - **Siłownia instalacji** powstaje w etapie II odbudowy. Ma własny bunkier z paliwem (węgiel / Fuel / pręty) i moc, np.:
   - Enrichment: generatory 150 kW, a po rozruchu pierwszych prętów własny reaktor 250 kW;

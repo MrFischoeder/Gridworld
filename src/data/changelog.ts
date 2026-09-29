@@ -4,6 +4,16 @@ export interface Change { v: string; date: string; title: string; notes: string[
 
 export const CHANGELOG: Change[] = [
   {
+    v: '0.93.0', date: '2026-10-11', title: 'The old plants need power',
+    notes: [
+      'The Old Enrichment Plant and the Old Chip Foundry now run on power of their own: each has a power hall by the gate, a burnt-out shell until the second stage of the restoration brings it back as a generator house with a stack, a coal bin and a fuel tank.',
+      'A batch runs only while the hall gives the plant\'s draw: 100 kW for the chip foundry (the coal boiler or the diesel sets alone), 200 kW for the enrichment plant (both together, or the plant\'s own reactor on the rods it makes, 250 kW). Load coal, fuel canisters or fuel rods into the hall\'s bunkers at the control desk; the sets burn only while a batch is under way.',
+      'New inputs: the enrichment plant makes fuel rods from uranium ore and Industrial Chemicals; the chip foundry makes microchips from glass, copper ingots, Industrial Chemicals and Rare Earths.',
+      'The restoration stages follow the old plants\' real needs: first the structure (steel, cement, machine parts), then the systems and the power hall (cable, circuit boards, machine parts, chemicals, and glass for the foundry\'s filters), then the core as before. Stages already restored stay restored.',
+      'The control desk shows the plant\'s own screen: power given and drawn, every input in the hopper, what it makes and when the next batch is due, or why it waits.',
+    ],
+  },
+  {
     v: '0.92.0', date: '2026-10-11', title: 'Power for industry',
     notes: [
       'A village\'s industry site now draws power: fields 3 kW, fish racks 3, a sawmill 8, oil wells and a salvage yard 10, a mine and workshops 12, a refinery 30. It is fed after the village and its farms and before the works.',

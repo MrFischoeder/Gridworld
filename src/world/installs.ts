@@ -12,7 +12,7 @@ import { scene } from './render';
 import { PropBatch } from './props';
 import { G } from '../game';
 import { OW } from './overworld';
-import { installSites, INSTALL_STAGES, type InstallSite, type InstallKind } from '../gen/installs';
+import { installSites, INSTALL_STAGES, HALL_STAGE, type InstallSite, type InstallKind } from '../gen/installs';
 import { nearX, worldDist } from '../gen/regions';
 import type { Terrain } from '../gen/terrain';
 
@@ -55,6 +55,36 @@ function drawDesk(pb: PropBatch, H: (x: number, z: number) => number, at: { x: n
     if (done) pb.box(x + 0.55, y + 3.2, z + 0.15, x + 0.85, y + 3.5, z + 0.45, GLOW);
     rings.push([x, z, 0.85]);
   }
+}
+/** Where each plant's power hall stands, in its frame (inside the fence, east of the gate). */
+export const HALLS: Partial<Record<InstallKind, { x: number; z: number }>> = { uranium: { x: 16, z: -20 }, chips: { x: 15, z: -19 } };
+/**
+ * The power hall: a burnt-out shell (low broken walls, a toppled stack) until the second stage brings it back; then a
+ * generator house with a gable roof and a door, its stack, a coal bin and a fuel tank, and a lime lamp over the door.
+ */
+function drawHall(pb: PropBatch, H: (x: number, z: number) => number, at: { x: number; z: number }, ready: boolean, walls: Live['walls'], rings: Live['rings']) {
+  const { x, z } = at, hw = 5, hd = 3.5, g = Math.min(H(x - hw, z - hd), H(x + hw, z - hd), H(x - hw, z + hd), H(x + hw, z + hd)) - 0.2;
+  const cyl = (cx: number, cz: number, r: number, h: number, y0: number, c: number, n = 10) => {
+    const P = (i: number, yy: number) => [cx + Math.cos(i / n * 6.283) * r, yy, cz + Math.sin(i / n * 6.283) * r];
+    for (let i = 0; i < n; i++) { pb.face(P(i, y0), P(i + 1, y0), P(i + 1, y0 + h), P(i, y0 + h)); pb.seg(c, P(i, y0 + h), P(i + 1, y0 + h)); pb.seg(c, P(i, y0), P(i + 1, y0)); if (i % 2 === 0) pb.seg(c, P(i, y0), P(i, y0 + h)); }
+    const cap: number[][] = []; for (let i = 0; i < n; i++) cap.push(P(i, y0 + h)); pb.face(...cap);
+  };
+  if (!ready) {
+    // the shell: broken wall stubs, a stack lying across the rubble
+    for (let i = 0; i < 8; i++) { const u = -hw + 0.6 + i * 1.3, hh = 0.5 + ((i * 7) % 5) * 0.35; pb.box(x + u, g, z - hd, x + u + 1.1, g + hh, z - hd + 0.35, CONC); if (i % 3 !== 1) pb.box(x + u, g, z + hd - 0.35, x + u + 1.1, g + hh * 0.8, z + hd, CONC); }
+    pb.line(RUST, [x + hw + 1, H(x + hw + 1, z + 2) + 0.6, z + 2], [x - 2, H(x - 2, z + 6) + 0.6, z + 6]);
+    pb.line(RUST, [x + hw + 1, H(x + hw + 1, z + 2) + 1.8, z + 2], [x - 2, H(x - 2, z + 6) + 1.8, z + 6]);
+    return;
+  }
+  pb.box(x - hw, g, z - hd, x + hw, g + 4.5, z + hd, CONC);
+  pb.gableRoof(x - hw - 0.3, z - hd - 0.3, x + hw + 0.3, z + hd + 0.3, g + 4.5, 1.4, METAL);
+  walls.push([x - hw, z - hd, x + hw, z - hd], [x + hw, z - hd, x + hw, z + hd], [x + hw, z + hd, x - hw, z + hd], [x - hw, z + hd, x - hw, z - hd]);
+  pb.line(METAL, [x - 1.2, g, z - hd - 0.03], [x - 1.2, g + 2.6, z - hd - 0.03], [x + 1.2, g + 2.6, z - hd - 0.03], [x + 1.2, g, z - hd - 0.03]); // the door
+  for (const u of [-3.6, 2.4]) pb.line(METAL, [x + u, g + 1.6, z - hd - 0.03], [x + u + 1.2, g + 1.6, z - hd - 0.03], [x + u + 1.2, g + 2.8, z - hd - 0.03], [x + u, g + 2.8, z - hd - 0.03], [x + u, g + 1.6, z - hd - 0.03]);
+  pb.box(x - 0.25, g + 3, z - hd - 0.45, x + 0.25, g + 3.35, z - hd - 0.1, GLOW); // the lamp
+  cyl(x + hw - 1.2, z + hd - 1.2, 0.7, 12, g, CONC); // the stack
+  pb.box(x - hw - 3.2, H(x - hw - 2, z), z - 2, x - hw - 0.6, H(x - hw - 2, z) + 1.4, z + 2, RUST); rings.push([x - hw - 1.9, z, 2]); // the coal bin
+  cyl(x + hw + 2.2, z - 1, 1.3, 2.4, H(x + hw + 2.2, z - 1) - 0.1, METAL); rings.push([x + hw + 2.2, z - 1, 1.4]); // the fuel tank
 }
 /** The plant in its own frame (x across, z along; y up from the site's ground height), as far restored as `stage`. */
 function drawUranium(T: Terrain, s: InstallSite, cos: number, sin: number, stage: number): { g: THREE.Group; walls: Live['walls']; rings: Live['rings'] } {
@@ -147,6 +177,7 @@ function drawUranium(T: Terrain, s: InstallSite, cos: number, sin: number, stage
     let prev: number[] | null = null;
     for (let x = X0; x >= -13; x -= 2.5) { const z = tz * 0.4 + (x - X0) / (-13 - X0) * tz * 0.6, y = H(x, z); pb.seg(RUST, [x, y, z], [x, y + 3, z]); const p = [x, y + 3.1, z]; if (prev) pb.seg(METAL, prev, p); prev = p; }
   }
+  drawHall(pb, H, HALLS.uranium!, stage >= HALL_STAGE, walls, rings);
   drawDesk(pb, H, DESKS.uranium, stage, done, rings);
   const g = pb.build();
   return { g, walls, rings };
@@ -224,6 +255,7 @@ function drawChips(T: Terrain, s: InstallSite, cos: number, sin: number, stage: 
     cyl(cx, cz, 2.4, 3, y + lh, aired ? METAL : RUST, 12);
     if (aired) pb.pyramid(cx - 2.4, cz - 2.4, cx + 2.4, cz + 2.4, y + lh + 3, 1, METAL);
   }
+  drawHall(pb, H, HALLS.chips!, stage >= HALL_STAGE, walls, rings);
   drawDesk(pb, H, DESKS.chips, stage, done, rings);
   const g = pb.build();
   return { g, walls, rings };

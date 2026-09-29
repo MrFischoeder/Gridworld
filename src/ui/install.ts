@@ -4,7 +4,8 @@
 import { G, W } from '../game';
 import { ITEMS, type ItemKey } from '../data/items';
 import { calcStats, saveChar, gainXp } from '../character';
-import { INSTALL_STAGES, INSTALL_WORK, RADAR, radarPlaces, installSites, type InstallKind, installPlan, handOverInstall, runInstall, installDone, newInstall, batchesIn, loadInstall, type InstallSite } from '../gen/installs';
+import { INSTALL_STAGES, INSTALL_WORK, INSTALL_DRAW, HALL_STAGE, RADAR, radarPlaces, installSites, type InstallKind, type InstallState, installPlan, handOverInstall, runInstall, installDone, newInstall, batchesIn, loadInstall, canRun, hallPick, hallKw, hallReady, hallSets, fuelHall, type InstallSite } from '../gen/installs';
+import { itemName } from './icons';
 import { TECH_BY_ID } from '../gen/tech';
 import type { Good } from '../gen/market';
 import { nearX, worldDist, wrapDx, CHUNK, type Poi } from '../gen/regions';
@@ -45,15 +46,37 @@ function render(msg = '') {
     s += `The dish turns on its tower and the screens in the bunker glow: every village, ruin, wreck and camp within ${RADAR.r / 1000} km shows up, and whatever else is out there.</div>` +
       `<div class="shoprow"><div>${list}</div></div><button class="opt" data-ins="sweep">Sweep again and copy it onto my map</button>`;
   } else {
-    const w = INSTALL_WORK[site.k]!, running = batchesIn(site.k, st) >= 1 && st.out < w.bay, short = (n: string) => n.replace(/^(Crate|Sack) of /, '').toLowerCase();
-    const recipe = w.inp.map(([i, n]) => `${n} ${short(ITEMS[i].name)}`).join(' and ');
-    s += `${w.what} ${recipe} make one crate of ${ITEMS[w.out].name} every ${hours(w.batch)}.</div>` +
-      `<div class="shoprow"><div>${list}<br>Hopper: ${w.inp.map(([i]) => `<b>${st.inp[i] ?? 0}/${w.hopper}</b> ${short(ITEMS[i].name)}`).join(' · ')} · Bay: <b>${st.out}/${w.bay}</b> ${ITEMS[w.out].name}<br><span style="opacity:.8">${running ? `Running: the next crate in ${hours(Math.max(0, w.batch - (c.time - st.t)))}.` : st.out >= w.bay ? 'Stopped: the bay is full.' : `Idle: it needs ${recipe} for a batch.`}</span></div></div>` +
-      w.inp.map(([i]) => { const h = have(i); return `<button class="opt" data-ins="load" data-insk="${i}" ${h && (st.inp[i] ?? 0) < w.hopper ? '' : 'disabled'}>Load ${short(ITEMS[i].name)} (you have ${h} with you)</button>`; }).join('') +
+    const w = INSTALL_WORK[site.k]!, recipe = w.inp.map(([i, n]) => `${n} ${short(ITEMS[i].name)}`).join(' and ');
+    s += `${w.what} ${recipe} make one crate of ${ITEMS[w.out].name} every ${hours(w.batch)}, while the power hall gives ${INSTALL_DRAW[site.k]} kW.</div>` +
+      `<div class="shoprow"><div>${list}</div></div>` + screen(site.k, st) +
+      w.inp.map(([i]) => { const h = have(i); return `<button class="opt" data-ins="load" data-insk="${i}" ${h && (st.inp[i] ?? 0) < w.hopper ? '' : 'disabled'}>Load ${short(ITEMS[i].name)} (${st.inp[i] ?? 0}/${w.hopper} in the hopper · you have ${h} with you)</button>`; }).join('') +
       `<button class="opt" data-ins="take" ${st.out ? '' : 'disabled'}>Collect the ${ITEMS[w.out].name} (${st.out})</button>`;
   }
   panel().classList.add('wide');
-  panel().innerHTML = s + buyers() + `<button class="opt" data-ins="close">Close</button>`;
+  panel().innerHTML = s + hall(site.k, st) + buyers() + `<button class="opt" data-ins="close">Close</button>`;
+}
+const short = (n: string) => n.replace(/^(Crate|Sack|Barrel|Bale) of /, '').toLowerCase();
+/** The plant's own terminal: power, the hopper, what it makes and when the next batch is due. */
+function screen(k: InstallKind, st: InstallState): string {
+  const w = INSTALL_WORK[k]!, c = G.char, draw = INSTALL_DRAW[k] ?? 0, kw = hallKw(k, st), run = canRun(k, st), pick = hallPick(k, st);
+  const pad = (a: string, n = 22) => (a + ':').toUpperCase().padEnd(n);
+  let t = `${site!.name.toUpperCase()}\n${pad('Power')}${kw}/${draw} kW${pick ? ' · ' + pick.map((h) => h.name.toLowerCase()).join(' + ') : ''}\n`;
+  for (const [i] of w.inp) t += `${pad(short(ITEMS[i].name))}${st.inp[i] ?? 0} crates\n`;
+  t += `${pad('Production')}${ITEMS[w.out].name.toUpperCase()} · ${st.out}/${w.bay} in the bay\n`;
+  const left = Math.max(0, w.batch - (c.time - st.t));
+  t += `${pad('Next batch')}${run ? `${String(Math.floor(left / 60)).padStart(2, '0')}:${String(Math.floor(left % 60)).padStart(2, '0')}` : st.out >= w.bay ? 'STOPPED · THE BAY IS FULL' : batchesIn(k, st) < 1 ? 'WAITING FOR ' + w.inp.filter(([i, n]) => (st.inp[i] ?? 0) < n).map(([i]) => short(ITEMS[i].name).toUpperCase()).join(', ') : 'NO POWER'}`;
+  return `<pre style="font-family:monospace;white-space:pre-wrap;color:var(--xp);background:#010d04;border:1px solid #2fe06055;padding:8px 10px;margin:6px 0">${t}</pre>`;
+}
+/** The power hall: its generator sets and their bunkers (once the second stage has brought it back). */
+function hall(k: InstallKind, st: InstallState): string {
+  if (!INSTALL_DRAW[k]) return '';
+  if (!hallReady(k, st)) return `<div class="say" style="opacity:.8">The power hall by the gate is a burnt-out shell. It comes back with the ${INSTALL_STAGES[k][HALL_STAGE - 1].title.toLowerCase()} stage.</div>`;
+  const rows = hallSets(k).map((h) => {
+    const n = st.pw?.[h.fuel] ?? 0, hv = have(h.fuel), per = INSTALL_WORK[k]!.batch / h.burn;
+    return `<div class="shoprow"><div><b>${h.name}</b> · ${h.kw} kW<br><span>${itemName(h.fuel)} in the bunker ${n > 0 && n < 1 ? n.toFixed(2) : Math.floor(n * 10) / 10}/${h.bunker} · ${per < 1 ? `${Math.round(1 / per)} batches a crate` : `${per.toFixed(1)} crates a batch`} · you have ${hv}</span></div>` +
+      `<button class="opt" style="width:auto" data-ins="fuel" data-insk="${h.fuel}" ${hv && n < h.bunker - 1 + 1e-9 ? '' : 'disabled'}>load</button></div>`;
+  }).join('');
+  return `<div class="say" style="margin:8px 0 0"><b>The power hall.</b> A batch needs ${INSTALL_DRAW[k]} kW: ${k === 'uranium' ? 'the coal boiler and the diesel sets together, or the plant\'s own reactor on its own rods' : 'the coal boiler or the diesel sets'}. The sets burn only while a batch is under way.</div>` + rows;
 }
 /** The buyers of what this installation makes nearest to it, and whether they order today (its radio log). */
 const BUYERS: Partial<Record<InstallKind, { list: (world: number) => Poi[]; order: (world: number, v: Poi, now: number) => Contract | null; who: string }>> = {
@@ -118,6 +141,11 @@ export function installClick(t: HTMLElement): boolean {
     calcStats(); saveChar(); render(msg); return true;
   }
   if (a === 'sweep') { render(sweep(site)); return true; }
+  if (a === 'fuel') {
+    const i = b.dataset.insk as ItemKey, n = fuelHall(site.k, st, i, have(i), c.time);
+    if (n > 0) { takeFrom(i, n, at()); calcStats(); saveChar(); }
+    render(n > 0 ? `Loaded ${n} × ${ITEMS[i].name} into the power hall.` : 'No room in that bunker, or nothing to load.'); return true;
+  }
   if (a === 'load') {
     const i = b.dataset.insk as ItemKey, n = loadInstall(site.k, st, i, have(i), c.time);
     if (n > 0) { takeFrom(i, n, at()); calcStats(); saveChar(); }

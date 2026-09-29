@@ -71,9 +71,11 @@ export const installAt = (t: Terrain, x: number, z: number, m = 0) => installSit
 /** A stage of the restoration: what it is called, what the crew say, what it needs (and the plans, if any). */
 export interface InstallStage { title: string; text: string; needs: [ItemKey, number][]; tech?: string; gold: number; xp: number }
 export const INSTALL_STAGES: Record<InstallKind, InstallStage[]> = {
+  // (the economy plan's model: I the structure (steel, cement, machine parts), II the systems and the power hall
+  // (cable, boards, parts, chemicals), III the core (the plans and rare parts))
   uranium: [
-    { title: 'Clearing the rubble', text: 'The hall is choked with fallen trusses and the gate is jammed. Timber for props, stone for the breaches, scrap for the braces.', needs: [['log', 12], ['stone', 10], ['scrap', 6]], gold: 150, xp: 200 },
-    { title: 'The centrifuge hall', text: 'A new roof, and the centrifuges rewired: steel for the trusses, cable for the lines, electronics for the drives.', needs: [['steel', 6], ['cable', 4], ['circuit', 8]], gold: 300, xp: 350 },
+    { title: 'Securing the plant', text: 'The hall is choked with fallen trusses, the gate is jammed and the walls are cracked through. Steel for new props and trusses, cement for the breaches, machine parts for the cranes.', needs: [['steel', 8], ['cement', 10], ['parts', 4]], gold: 250, xp: 250 },
+    { title: 'Power and control', text: 'A new roof over the centrifuges, and the power hall beside the gate brought back: cable for the lines, circuit boards and machine parts for the drives and the generator sets, chemicals to flush the cascade.', needs: [['cable', 10], ['boards', 4], ['parts', 4], ['chems', 4]], gold: 400, xp: 400 },
     { title: 'The core', text: 'The cascade controller is dead. Only the old plans for enrichment show how it was built, and it wants power cores and advanced alloy.', needs: [['pcore', 2], ['alloy', 4], ['circuit', 6]], tech: 'enrichment', gold: 500, xp: 600 },
   ],
   radar: [
@@ -82,19 +84,68 @@ export const INSTALL_STAGES: Record<InstallKind, InstallStage[]> = {
     { title: 'The dish and the console', text: 'The dish goes back up on its tower. Only the old plans for radio triangulation show how to aim it and read the screens; it wants circuit boards and advanced alloy for the mount.', needs: [['boards', 4], ['circuit', 8], ['alloy', 4]], tech: 'radio', gold: 400, xp: 500 },
   ],
   chips: [
-    { title: 'Opening the block', text: 'The clean-room block is sealed and half buried in its own rubble. Timber for shoring, stone to fill the breaches, scrap to brace the air locks.', needs: [['log', 10], ['stone', 12], ['scrap', 8]], gold: 150, xp: 200 },
-    { title: 'Air and water', text: 'Nothing is made in dust: the filters and the water plant must run first. Glass for the filter housings, cable for the fans and pumps, steel for the ducts.', needs: [['glass', 6], ['cable', 6], ['steel', 4]], gold: 300, xp: 350 },
+    { title: 'Opening the block', text: 'The clean-room block is sealed and half buried in its own rubble, a corner of its roof fallen in. Steel for the new beams, cement to seal the breaches, machine parts for the air locks.', needs: [['steel', 10], ['cement', 10], ['parts', 6]], gold: 250, xp: 250 },
+    { title: 'Air, water and power', text: 'Nothing is made in dust: the filters and the water plant must run first, and the power hall beside the gate. Cable for the fans, pumps and generator sets, circuit boards for the controls, chemicals for the water plant, glass for the filter housings.', needs: [['cable', 12], ['boards', 6], ['chems', 4], ['glass', 6]], gold: 400, xp: 400 },
     { title: 'The etching line', text: 'The etchers stand dead in their bays. Only the old plans for integrated circuits show how to wake them, and they want circuit boards and a power core.', needs: [['boards', 4], ['circuit', 8], ['pcore', 1]], tech: 'chips', gold: 450, xp: 550 },
   ],
 };
 /** What a working installation makes: the crates of each input in `inp` into one of `out` every `batch` game minutes (at most `hopper` of each input loaded, `bay` made waiting). */
 export interface InstallWork { inp: [ItemKey, number][]; out: ItemKey; batch: number; hopper: number; bay: number; what: string }
 export const INSTALL_WORK: Partial<Record<InstallKind, InstallWork>> = {
-  uranium: { inp: [['uranium', 3]], out: 'nfuel', batch: 360, hopper: 30, bay: 10, what: 'The centrifuges hum again.' },
-  chips: { inp: [['glass', 2], ['copperbar', 1]], out: 'microchip', batch: 240, hopper: 30, bay: 12, what: 'The etching line glows behind its windows.' },
+  uranium: { inp: [['uranium', 3], ['chems', 1]], out: 'nfuel', batch: 360, hopper: 30, bay: 10, what: 'The centrifuges hum again.' },
+  chips: { inp: [['glass', 2], ['copperbar', 1], ['chems', 1], ['rareearth', 1]], out: 'microchip', batch: 240, hopper: 30, bay: 12, what: 'The etching line glows behind its windows.' },
 };
-/** An installation's saved state: the stage reached (stages done), materials handed over towards the next, and the works: inputs in the hopper, output ready, when it was last settled. */
-export interface InstallState { stage: number; given: Partial<Record<ItemKey, number>>; inp: Partial<Record<ItemKey, number>>; out: number; t: number }
+
+// ---------- the power hall: an installation makes its own power ----------
+/**
+ * What a working installation draws (kW). A batch runs only while its power hall gives that much: the hall comes back
+ * with the second stage (`HALL_STAGE` stages done) and burns what you bring it, only while a batch is under way.
+ */
+export const INSTALL_DRAW: Partial<Record<InstallKind, number>> = { uranium: 200, chips: 100 };
+export const HALL_STAGE = 2;
+/** The hall's generator sets: each runs on its own fuel (a crate every `burn` game minutes of work), `bunker` crates at most. */
+export interface HallSet { fuel: ItemKey; name: string; kw: number; burn: number; bunker: number }
+export const HALL_SETS: HallSet[] = [
+  { fuel: 'coal', name: 'Coal boiler', kw: 120, burn: 120, bunker: 30 },
+  { fuel: 'fuel', name: 'Diesel sets', kw: 100, burn: 150, bunker: 30 },
+  { fuel: 'nfuel', name: 'The plant\'s own reactor', kw: 250, burn: 5760, bunker: 4 },
+];
+/** The sets of k's hall: every hall has a coal boiler and diesel sets; the enrichment plant also its own reactor, which burns the rods it makes. */
+export const hallSets = (k: InstallKind) => HALL_SETS.filter((h) => h.fuel !== 'nfuel' || k === 'uranium');
+export const hallReady = (k: InstallKind, s: InstallState | undefined) => !!INSTALL_DRAW[k] && (s?.stage ?? 0) >= HALL_STAGE;
+/**
+ * The sets that would power one batch now (enough fuel in each for a whole batch), cheapest first: one set alone if it
+ * gives enough, else the coal boiler and the diesel sets together; null when the hall cannot give the draw.
+ */
+export function hallPick(k: InstallKind, s: InstallState): HallSet[] | null {
+  const w = INSTALL_WORK[k], draw = INSTALL_DRAW[k];
+  if (!w || !draw || !hallReady(k, s)) return null;
+  const ok = hallSets(k).filter((h) => (s.pw?.[h.fuel] ?? 0) >= w.batch / h.burn - 1e-9);
+  const one = ok.find((h) => h.kw >= draw);
+  if (one) return [one];
+  const pair = ok.filter((h) => h.fuel !== 'nfuel');
+  return pair.reduce((a, h) => a + h.kw, 0) >= draw && pair.length > 1 ? pair : null;
+}
+/** The power the hall could give now (kW): every set with fuel in its bunker. */
+export const hallKw = (k: InstallKind, s: InstallState | undefined) => (hallReady(k, s) ? hallSets(k).filter((h) => (s!.pw?.[h.fuel] ?? 0) > 1e-9).reduce((a, h) => a + h.kw, 0) : 0);
+/** Load up to n crates of fuel into the hall's bunker for it; returns how many went in. */
+export function fuelHall(k: InstallKind, s: InstallState, fuel: ItemKey, n: number, now: number): number {
+  const h = hallSets(k).find((x) => x.fuel === fuel);
+  if (!h || !hallReady(k, s)) return 0;
+  runInstall(k, s, now);
+  const have = s.pw?.[fuel] ?? 0, m = Math.max(0, Math.min(n, Math.floor(h.bunker - have + 1e-9)));
+  if (m <= 0) return 0;
+  const could = canRun(k, s);
+  (s.pw ??= {})[fuel] = have + m;
+  if (!could) s.t = now; // it was waiting for power: the batch starts now
+  return m;
+}
+
+/**
+ * An installation's saved state: the stage reached (stages done), materials handed over towards the next, and the
+ * works: inputs in the hopper, output ready, when it was last settled, and the fuel in its power hall's bunkers.
+ */
+export interface InstallState { stage: number; given: Partial<Record<ItemKey, number>>; inp: Partial<Record<ItemKey, number>>; out: number; t: number; pw?: Partial<Record<ItemKey, number>> }
 export const newInstall = (): InstallState => ({ stage: 0, given: {}, inp: {}, out: 0, t: 0 });
 /** Saves from before installations took more than one input kept the ore as a number. */
 export function fixInstall(k: InstallKind, s: InstallState): InstallState {
@@ -122,17 +173,26 @@ export function handOverInstall(k: InstallKind, s: InstallState, known: Record<s
   if (installDone(k, s)) s.t = now; // the works start now
   return { taken, built: true };
 }
-/** Settle the batches made since it was last looked at (one per batch while the hopper has enough and the bay has room; idle time does not bank). */
+/** Can it work a batch now: restored, the inputs in the hopper, room in the bay and enough power from its hall? */
+export function canRun(k: InstallKind, s: InstallState): boolean {
+  const w = INSTALL_WORK[k];
+  return !!w && installDone(k, s) && batchesIn(k, s) >= 1 && s.out < w.bay && !!hallPick(k, s);
+}
+/**
+ * Settle the batches made since it was last looked at: one per batch while the hopper has enough, the bay has room
+ * and the power hall gives the draw (its sets burn their fuel for that batch); idle time does not bank.
+ */
 export function runInstall(k: InstallKind, s: InstallState, now: number) {
   if (!installDone(k, s)) return;
   const w = INSTALL_WORK[k];
   if (!w) return; // it makes nothing (the radar station)
-  if (batchesIn(k, s) < 1 || s.out >= w.bay) { s.t = now; return; }
-  const batches = Math.min(Math.floor((now - s.t) / w.batch), batchesIn(k, s), w.bay - s.out);
-  if (batches <= 0) return;
-  for (const [i, n] of w.inp) s.inp[i] = (s.inp[i] ?? 0) - batches * n;
-  s.out += batches; s.t += batches * w.batch;
-  if (batchesIn(k, s) < 1 || s.out >= w.bay) s.t = now;
+  let steps = 0;
+  while (now - s.t >= w.batch && canRun(k, s) && steps++ < 400) {
+    for (const h of hallPick(k, s)!) s.pw![h.fuel] = Math.max(0, (s.pw![h.fuel] ?? 0) - w.batch / h.burn);
+    for (const [i, n] of w.inp) s.inp[i] = (s.inp[i] ?? 0) - n;
+    s.out++; s.t += w.batch;
+  }
+  if (!canRun(k, s)) s.t = now; // stopped: the clock starts again when it is fed
 }
 /** Load up to n crates of input i (up to the hopper); returns how many went in. */
 export function loadInstall(k: InstallKind, s: InstallState, i: ItemKey, n: number, now: number): number {
@@ -141,9 +201,9 @@ export function loadInstall(k: InstallKind, s: InstallState, i: ItemKey, n: numb
   if (!w || !w.inp.some(([x]) => x === i)) return 0;
   const m = Math.max(0, Math.min(n, w.hopper - (s.inp[i] ?? 0)));
   if (m <= 0) return 0;
-  const before = batchesIn(k, s);
+  const could = canRun(k, s);
   s.inp[i] = (s.inp[i] ?? 0) + m;
-  if (before < 1) s.t = now; // it was idle: the batch starts now
+  if (!could) s.t = now; // it was idle: the batch starts now
   return m;
 }
 
