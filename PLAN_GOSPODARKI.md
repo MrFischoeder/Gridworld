@@ -302,7 +302,42 @@ Kolejność wydań: 0.94 Propellant i Battery, 0.95 Optical i Alloy Complex, 0.9
 - Zapisy: to, co gracz już oddał, zostaje w `char.shuttle.given`. Etap ukończony po staremu zostaje ukończony. Nowe wymagania dotyczą tylko etapów nieukończonych.
 - `gen/campaign.ts` (cuda i niespodzianki) dostaje nowe dobra w etapach „machine hall” i „heart”.
 
-## Etap 8 (0.99.0): balans
+## Etap 8 (0.99.0): balans (WSTRZYMANY na prośbę właściciela, bo będą jeszcze zmiany)
+
+**Stan na 0.98.1:** w grze nic się nie zmieniło. Są tylko narzędzia i wnioski:
+- `tools/balance.sim.ts` wypisuje:
+  - koszt skrzyni każdego wyrobu starych fabryk (wejścia + najtańsze paliwo siłowni) i czas partii;
+  - marże zamówień;
+  - koszt odbudowy każdej fabryki, ulepszeń wiosek i etapów Rydwanu.
+- `tools/worth.ts` to wspólna wycena skrzyń.
+- `tools/uses.sim.ts` wypisuje towary i materiały, które mają mniej niż 2 zastosowania.
+- `tools/campaign.sim.ts` liczy:
+  - odbudowę potrzebnych fabryk (z łańcuchem wejść), szukanie fabryki i planów (nośnik w paśmie tieru) oraz dowóz wszystkich 3 etapów naraz;
+  - czekanie na partie (`PACE.plantWait`);
+  - dochód z zamówień odbudowanych fabryk (`PACE.orders`);
+  - rozbicie czasu i złota na kategorie.
+
+  Poprawiony błąd: czas partii był liczony w godzinach gry jak w realnych, a gra idzie 60× szybciej. Cel w symulacji to 100 h (wybór właściciela).
+- **Wnioski (świat 12345, stare dane):**
+  - kampania trwa ok. 150 h solo;
+  - ok. 50 h to stałe koszty: szukanie fabryk i planów, nurkowania, dojazdy;
+  - odbudowa 6 potrzebnych fabryk to ok. 77 tys. zł materiałów;
+  - 80 h solo jest nieosiągalne bez zmiany założeń `PACE` o zarobkach;
+  - zamówienia na pręty paliwowe przy niskim zagrożeniu wychodzą na minus.
+- **Szkic zmian (niewprowadzony), łatka `tools/stage8-draft.patch`** (`git apply tools/stage8-draft.patch`):
+  - odbudowa fabryk o połowę tańsza;
+  - stare fabryki dają 2 skrzynie na partię;
+  - ulepszenie „Automated line” (2 automation + 2 precision + 6 cable, partie ×0,7; uogólnione z anteny radaru);
+  - ceramika w Small Reactor;
+  - silniki Rydwanu z 6 precision;
+  - zamówienia: pręty 680, czipy 480, ogniwa 560;
+  - grupa „Trade” w indeksie zastosowań;
+  - lżejsze cuda i `CHARIOT_SCALE` 0,4.
+
+  Z tym szkicem wychodziło ok. 102–112 h solo, 66–72 h we dwóch i 50–54 h we czterech. Testy trzeba by dopasować.
+- Nie zrobione: pomiar wydajności (F3) przy instalacjach.
+
+Pierwotny plan etapu:
 
 - `tools/campaign.sim.ts` uczy się nowych łańcuchów (liczba zakładów, siłownie instalacji, odległości złóż). Cel: nadal ok. 80 h w pojedynkę.
 - `SUROWCE.md`: sprawdzenie, że każdy surowiec ma co najmniej 2 zastosowania i każda receptura zarabia co najmniej 1,2× wartości wejść (istniejący test).

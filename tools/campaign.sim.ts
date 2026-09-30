@@ -8,11 +8,14 @@
 import { it } from 'vitest';
 import { campaign, CHARIOT_SCALE, CHARIOT_WEIGHTS, type Campaign, type Need } from '../src/gen/campaign';
 import { STAGES, type AncientGood } from '../src/gen/shuttle';
-import { installWorks, INSTALLS } from '../src/gen/installs';
-import { RARE_VALUE, isRare } from '../src/gen/deposits';
+import { INSTALLS, INSTALL_STAGES, type InstallKind } from '../src/gen/installs';
+import { TECH_BY_ID, TIER_BAND } from '../src/gen/tech';
+import { ringDanger } from '../src/gen/danger';
+import { worth, plantOf, crate } from './worth';
 import { GOOD_INFO } from '../src/gen/market';
 
-const WORLD = Number(process.env.SIM_WORLD ?? 12345), TARGET = 80;
+const RS = Number(process.env.RS ?? 1), CS = Number(process.env.CS ?? CHARIOT_SCALE);
+const WORLD = Number(process.env.SIM_WORLD ?? 12345), TARGET = 100; // (the owner's target after economy stage 8: ~100 h alone with the whole chain of old plants)
 export const PACE = {
   /** Gold per real hour from trading, contracts and quests: on foot, with a Scout, with a Mastodon. */
   income: { foot: 350, scout: 700, mastodon: 1100 },
@@ -28,29 +31,25 @@ export const PACE = {
   explore: { base: 30, perKm: 2.5 }, dive: { base: 20, perDanger: 5 },
   /** Extra time per danger level on an expedition (fights, detours). */
   fight: 0.04,
-  /** Gold-equivalent per crate made at an old plant: the drive out with its inputs, its fuel and the drive back. */
-  plantTrip: 250,
+  /** Gold-equivalent per crate made at an old plant: hauling its inputs out and the crate back. */
+  plantTrip: 120,
+  /** Gold per hour the orders for an old plant's goods add once it works (chip, cell and fuel orders: the margin over its inputs, a few crates a day). */
+  orders: { chips: 300, battery: 400, uranium: 250 } as Partial<Record<InstallKind, number>>,
+  /** The share of an old plant's working hours the player spends waiting (the rest they spend earning meanwhile). */
+  plantWait: 0.35,
   /** Hours learning the game at the start. */
   learn: 4,
 };
 type Veh = 'foot' | 'scout' | 'mastodon';
-interface Bot { t: number; gold: number; veh: Veh; works: boolean; n: number; log: [number, string][] }
-// the old plants' goods: priced as what goes into a batch (market goods, rare crates, other old plants' goods) per crate
-// made, plus the trip to the plant (PACE.plantTrip) and its fuel
-const ANCIENT_COST: Partial<Record<string, number>> = {};
-function ancient(g: string): number {
-  if (ANCIENT_COST[g] !== undefined) return ANCIENT_COST[g]!;
-  for (const s of INSTALLS) for (const w of installWorks(s.k)) if (w.out === g) {
-    const inp = w.inp.reduce((a, [i, n]) => a + n * (i in GOOD_INFO ? GOOD_INFO[i as keyof typeof GOOD_INFO].base : isRare(i as never) ? RARE_VALUE[i as keyof typeof RARE_VALUE] : ancient(i)), 0);
-    return (ANCIENT_COST[g] = (inp + PACE.plantTrip) / (w.n ?? 1));
-  }
-  return (ANCIENT_COST[g] = 400);
-}
-const price = (g: Need, b: Bot) => (g === 'relic' ? 0 : !(g in GOOD_INFO) ? ancient(g as AncientGood) : GOOD_INFO[g as keyof typeof GOOD_INFO].base * (b.works && GOOD_INFO[g as keyof typeof GOOD_INFO].proc ? PACE.works.discount : 1));
-const income = (b: Bot) => (PACE.income[b.veh] + (b.works ? PACE.works.bonus : 0)) * b.n * (b.n > 1 ? 0.9 : 1);
+interface Bot { parts?: Record<string, number>; t: number; gold: number; veh: Veh; works: boolean; n: number; log: [number, string][]; plants: Set<InstallKind> }
+/** Goods only an old plant makes (off the market, or on it but made nowhere else). */
+const plantGood = (g: string) => !(g in GOOD_INFO) || g === 'propellant';
+const price = (g: Need, b: Bot) => (g === 'relic' ? 0 : plantGood(g) ? worth(g) + PACE.plantTrip : GOOD_INFO[g as keyof typeof GOOD_INFO].base * (b.works && GOOD_INFO[g as keyof typeof GOOD_INFO].proc ? PACE.works.discount : 1));
+const income = (b: Bot) => (PACE.income[b.veh] + (b.works ? PACE.works.bonus : 0) + [...b.plants].reduce((a, k) => a + (PACE.orders[k] ?? 0), 0)) * b.n * (b.n > 1 ? 0.9 : 1);
+function add(b: Bot, k: string, h: number) { b.t += h; (b.parts ??= {})[k] = (b.parts[k] ?? 0) + h; }
 function earn(b: Bot, need: number) {
   if (b.gold >= need) return;
-  b.t += (need - b.gold) / income(b); b.gold = need;
+  add(b, 'earn', (need - b.gold) / income(b)); b.gold = need;
 }
 /** Buy what speeds everything up, as soon as it pays: a Scout, a Mastodon, a works. */
 function invest(b: Bot, stage: number) {
@@ -58,30 +57,52 @@ function invest(b: Bot, stage: number) {
   if (stage >= 1 && b.veh === 'scout') { earn(b, PACE.vehicle.mastodon); b.gold -= PACE.vehicle.mastodon; b.veh = 'mastodon'; b.log.push([b.t, 'Mastodon bought']); }
   if (stage >= 1 && !b.works) { earn(b, PACE.works.cost); b.gold -= PACE.works.cost; b.works = true; b.log.push([b.t, 'Own processing works']); }
 }
+/**
+ * Bring an old plant back first (and the plants its inputs come from): find it and the plans for its core (a data
+ * carrier out in its tier's band), haul its three stages' materials out to it.
+ */
+function restore(b: Bot, k: InstallKind) {
+  if (b.plants.has(k)) return;
+  b.plants.add(k);
+  const spec = INSTALLS.find((s) => s.k === k)!, dist = (spec.band[0] + spec.band[1]) / 2, danger = ringDanger(dist);
+  for (const st of INSTALL_STAGES[k]) for (const [i] of st.needs) if (plantOf(i as string)) restore(b, plantOf(i as string)!.k);
+  add(b, 'find', (PACE.explore.base + PACE.explore.perKm * dist / 1000) / 60 / Math.min(b.n, 2)); // finding it
+  const tech = INSTALL_STAGES[k].find((s) => s.tech)?.tech;
+  if (tech) { const [d0, d1] = TIER_BAND[TECH_BY_ID[tech].tier]; const td = (d0 + d1) / 2; add(b, 'plans', (2 * td / PACE.speed[b.veh] / 3600 + (PACE.dive.base + PACE.dive.perDanger * ringDanger(td)) / 60) * (1 + PACE.fight * ringDanger(td)) / Math.min(b.n, 2)); }
+  // a player who knows the plant brings all three stages' materials in as few loads as the truck allows
+  deliver(b, INSTALL_STAGES[k].flatMap((st) => st.needs).filter(([i]) => i in GOOD_INFO || plantOf(i as string)).map(([i, n]) => [i, Math.max(1, Math.round(n * RS))]) as [Need, number][], dist, danger, 'haul-restore');
+  b.log.push([b.t, `  restored the ${spec.name}`]);
+}
 /** Buy and haul a list of goods to a place `dist` m away (relics are dived for there, at `danger`). */
-function deliver(b: Bot, needs: [Need, number][], dist: number, danger: number) {
+function deliver(b: Bot, needs: [Need, number][], dist: number, danger: number, tag = 'haul') {
+  for (const [g, n] of needs) {
+    const p = g !== 'relic' && plantGood(g) ? plantOf(g) : null;
+    if (!p) continue;
+    restore(b, p.k);
+    add(b, 'wait', n * crate(p.k, p.w).hours / 60 * PACE.plantWait / b.n); // waiting on the plant's batches (game hours: a game hour is a real minute)
+  }
   const goods = needs.filter(([g]) => g !== 'relic'), relics = needs.find(([g]) => g === 'relic')?.[1] ?? 0;
   const cost = goods.reduce((a, [g, n]) => a + n * price(g, b), 0);
-  earn(b, cost); b.gold -= cost;
+  earn(b, cost); b.gold -= cost; (b.parts ??= {})['gold:' + tag] = (b.parts['gold:' + tag] ?? 0) + cost / 1000;
   const crates = goods.reduce((a, [, n]) => a + n, 0), trips = Math.ceil(crates / PACE.cap[b.veh] / b.n);
   const run = (PACE.marketDist + dist) * 2 / PACE.speed[b.veh] / 60;
-  b.t += trips * (PACE.tripBase + run) / 60 * (1 + PACE.fight * danger);
-  if (relics) b.t += Math.ceil(relics / b.n) * (PACE.dive.base + PACE.dive.perDanger * danger) / 60 * (1 + PACE.fight * danger);
+  add(b, tag, trips * (PACE.tripBase + run) / 60 * (1 + PACE.fight * danger));
+  if (relics) add(b, 'dive', Math.ceil(relics / b.n) * (PACE.dive.base + PACE.dive.perDanger * danger) / 60 * (1 + PACE.fight * danger));
 }
 /** The whole campaign with the Chariot's goods at `scale` × gen/shuttle.ts STAGES. */
 function play(c: Campaign, scale: number, n: number): Bot {
-  const b: Bot = { t: PACE.learn, gold: 0, veh: 'foot', works: false, n, log: [] };
+  const b: Bot = { t: PACE.learn, gold: 0, veh: 'foot', works: false, n, log: [], plants: new Set() };
   STAGES.forEach((st, i) => {
     invest(b, i);
-    deliver(b, st.needs.map(([g, k]) => [g, Math.max(1, Math.round(k * scale * CHARIOT_WEIGHTS[i]))] as [Need, number]), 0, 0);
+    deliver(b, st.needs.map(([g, k]) => [g, Math.max(1, Math.round(k * scale * CHARIOT_WEIGHTS[i]))] as [Need, number]), 0, 0, 'chariot');
     b.log.push([b.t, `Chariot ${i + 1}/${STAGES.length}: ${st.name}`]);
     for (const bl of c.blockers.filter((x) => x.after === i + 1)) {
       const w = c.wonders[bl.wonder];
       b.log.push([b.t, `SURPRISE: needs ${w.kind.part} from the ${w.kind.name} (${(w.dist / 1000).toFixed(1)} km, danger ${w.danger.toFixed(1)})`]);
-      b.t += (PACE.explore.base + PACE.explore.perKm * w.dist / 1000) / 60 / Math.min(n, 2);
+      add(b, 'find', (PACE.explore.base + PACE.explore.perKm * w.dist / 1000) / 60 / Math.min(n, 2));
       b.log.push([b.t, `  found the ${w.kind.name}`]);
-      b.t += 2 * w.dist / PACE.speed[b.veh] / 3600 * (1 + PACE.fight * w.danger); // there and back once; goods come from the villages round it
-      w.stages.forEach((s, k) => { deliver(b, s.needs, 0, w.danger); b.log.push([b.t, `  ${w.kind.name} ${k + 1}/3: ${s.title}`]); });
+      add(b, 'haul', 2 * w.dist / PACE.speed[b.veh] / 3600 * (1 + PACE.fight * w.danger)); // there and back once; goods come from the villages round it
+      w.stages.forEach((s, k) => { deliver(b, s.needs, 0, w.danger, 'wonder'); b.log.push([b.t, `  ${w.kind.name} ${k + 1}/3: ${s.title}`]); });
     }
   });
   b.log.push([b.t, 'The Chariot flies']);
@@ -100,14 +121,16 @@ it(`campaign timing: world ${WORLD}`, () => {
   console.log(`\nChariot scale for ${TARGET} h alone: ${scale.toFixed(2)} × gen/shuttle.ts STAGES (CHARIOT_SCALE is ${CHARIOT_SCALE})`);
   console.log('Chariot at that scale: ' + STAGES.map((s, i) => `${s.name}: ${s.needs.map(([g, n]) => `${Math.max(1, Math.round(n * scale * CHARIOT_WEIGHTS[i]))} ${g}`).join(', ')}`).join(' | '));
   for (const n of [1, 2, 4]) {
-    const b = play(c, CHARIOT_SCALE, n);
+    const b = play(c, CS, n);
     console.log(`\n${n} player${n > 1 ? 's' : ''} (CHARIOT_SCALE ${CHARIOT_SCALE}): ${b.t.toFixed(1)} h`);
     if (n === 1) for (const [t, what] of b.log) console.log(`  ${t.toFixed(1).padStart(5)} h  ${what}`);
+    console.log('  where the time goes: ' + Object.entries(b.parts ?? {}).filter(([k]) => !k.startsWith('gold:')).map(([k, h]) => `${k} ${h.toFixed(1)} h`).join(', '));
+    console.log('  gold spent (thousands): ' + Object.entries(b.parts ?? {}).filter(([k]) => k.startsWith('gold:')).map(([k, g]) => `${k.slice(5)} ${g.toFixed(1)}k`).join(', '));
   }
   // side wonders: how long each takes alone (with a Mastodon and a works, from Gridholm)
   const side = c.wonders.map((w, i) => {
     if (c.blockers.some((b) => b.wonder === i)) return null;
-    const b: Bot = { t: 0, gold: 0, veh: 'mastodon', works: true, n: 1, log: [] };
+    const b: Bot = { t: 0, gold: 0, veh: 'mastodon', works: true, n: 1, log: [], plants: new Set(INSTALLS.map((x) => x.k)) };
     b.t += (PACE.explore.base + PACE.explore.perKm * w.dist / 1000) / 60;
     b.t += 2 * w.dist / PACE.speed[b.veh] / 3600 * (1 + PACE.fight * w.danger);
     for (const s of w.stages) deliver(b, s.needs, 0, w.danger);

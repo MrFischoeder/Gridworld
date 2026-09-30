@@ -1,0 +1,359 @@
+diff --git a/src/data/uses.ts b/src/data/uses.ts
+index f7f96a6..55a57cf 100644
+--- a/src/data/uses.ts
++++ b/src/data/uses.ts
+@@ -9,16 +9,18 @@ import { WALL_TIERS } from '../gen/village';
+ import { FARM, UPGRADE } from '../gen/farms';
+ import { PLANT_LEVELS } from '../gen/plantup';
+ import { IMPROVE, IMPROVE_KINDS } from '../gen/improve';
+-import { INSTALLS, INSTALL_STAGES, INSTALL_WORK, HALL_SETS, RADAR_UP, installWorks, type InstallKind } from '../gen/installs';
++import { INSTALLS, INSTALL_STAGES, INSTALL_WORK, HALL_SETS, RADAR_UP, LINE_UP, installWorks, type InstallKind } from '../gen/installs';
+ import { STAGES } from '../gen/shuttle';
+ import { MENU } from '../gen/foodshop';
+ import { INDUSTRY, type Industry } from '../gen/industry';
+ import { BRIDGE } from '../gen/bridges';
+ import { PIER } from '../gen/piers';
+ import { BOATS, type BoatKind } from '../gen/boats';
++import { GOODS } from '../gen/market';
++import { BUYS } from './npcs';
+ 
+ /** The kinds of use, in the order the tooltip lists them. */
+-export const USE_GROUPS = ['Blacksmith makes', 'Processed into', 'Cooked into', 'Fuel for', 'Building', 'Repairs', 'Restoring', 'The Chariot', 'Other'] as const;
++export const USE_GROUPS = ['Blacksmith makes', 'Processed into', 'Cooked into', 'Fuel for', 'Building', 'Repairs', 'Restoring', 'The Chariot', 'Trade', 'Other'] as const;
+ export type UseGroup = typeof USE_GROUPS[number];
+ let index: Map<ItemKey, Map<UseGroup, string[]>> | null = null;
+ const N = (k: ItemKey) => ITEMS[k]?.name ?? k;
+@@ -45,6 +47,10 @@ function build(): Map<ItemKey, Map<UseGroup, string[]>> {
+   for (const l of PLANT_LEVELS.slice(1)) for (const [i] of l.needs) use(i, 'Building', `Power plant: ${l.name}`);
+   for (const k of IMPROVE_KINDS) for (const [i] of IMPROVE[k].needs) use(i, 'Building', `Village improvement: ${IMPROVE[k].name}`);
+   for (const [i] of RADAR_UP.needs) use(i, 'Restoring', 'Old Radar Station: the sensor array');
++  for (const [i] of LINE_UP.needs) use(i, 'Restoring', 'the automated line of any old plant that makes something');
++  for (const g of GOODS) use(g, 'Trade', 'bought and sold at every village market');
++  for (const [role, list] of Object.entries(BUYS)) for (const k of Object.keys(list!) as ItemKey[]) use(k, 'Trade', role === 'blacksmith' ? 'sold to the blacksmith' : 'sold to the cook');
++  use('microchip', 'Trade', 'chip orders of the workshop villages'); use('powercell', 'Trade', 'cell orders of the salvage villages'); use('nfuel', 'Trade', 'fuel orders of the villages with old reactors');
+   for (const k of Object.keys(INSTALL_STAGES) as InstallKind[]) for (const st of INSTALL_STAGES[k]) for (const [i] of st.needs) use(i, 'Restoring', INSTALLS.find((s) => s.k === k)!.name);
+   for (const st of STAGES) for (const [g] of st.needs) use(g as ItemKey, 'The Chariot', `${st.name}`);
+   for (const p of Object.values(POWER)) for (const [i] of p.fix) use(i, 'Repairs', p.name);
+diff --git a/src/gen/campaign.ts b/src/gen/campaign.ts
+index 8d35e78..ea9d0ee 100644
+--- a/src/gen/campaign.ts
++++ b/src/gen/campaign.ts
+@@ -53,7 +53,7 @@ export interface ChariotStep { key: string; name: string; needs: [Need, number][
+ export interface Campaign { chariot: ChariotStep[]; wonders: Wonder[]; blockers: Blocker[] }
+ 
+ /** How much the Chariot's stages need, as a multiple of gen/shuttle.ts STAGES (tools/campaign.sim.ts calibrates it to 80 h). */
+-export const CHARIOT_SCALE = 0.7;
++export const CHARIOT_SCALE = 0.4;
+ /** Stage weights on top of the scale: light at first (a new player, no truck yet), heavier towards the launch. */
+ export const CHARIOT_WEIGHTS = [0.5, 0.8, 1.15, 1.35, 1.45, 1.6];
+ /** Where the surprises lie: distance from Gridholm (m) and after which Chariot stage they come. */
+@@ -82,9 +82,10 @@ function wonderStages(seed: number, danger: number): WonderStage[] {
+   const p3 = PROC[5 + hash(seed, 3) % 3], a3 = ANCIENT[hash(seed, 7) % ANCIENT.length];
+   const t2 = TWISTS[1 + hash(seed, 4) % 3], t3 = TWISTS[4 + hash(seed, 5) % 2];
+   return [
+-    { title: TWISTS[0][0], twist: TWISTS[0][1], needs: [['timber', n(20)], ['tools', n(6)]] },
+-    { title: t2[0], twist: t2[1], needs: [[p1, n(8)], [p2, n(6)]] },
+-    { title: t3[0], twist: t3[1], needs: [['relic', 2 + Math.round(danger / 3)], [p3, n(3)], [a3, 1 + Math.round(danger / 3)]] },
++    // (economy stage 8: lighter, since the old plants behind the heart's part cost a crew many hours already)
++    { title: TWISTS[0][0], twist: TWISTS[0][1], needs: [['timber', n(14)], ['tools', n(4)]] },
++    { title: t2[0], twist: t2[1], needs: [[p1, n(6)], [p2, n(4)]] },
++    { title: t3[0], twist: t3[1], needs: [['relic', 2 + Math.round(danger / 3)], [p3, n(2)], [a3, 1 + Math.round(danger / 4)]] },
+   ];
+ }
+ 
+diff --git a/src/gen/contracts.ts b/src/gen/contracts.ts
+index a07bbe3..74b1534 100644
+--- a/src/gen/contracts.ts
++++ b/src/gen/contracts.ts
+@@ -67,7 +67,7 @@ export function payFor(c: Contract, k: number): number {
+ 
+ // ---------- fuel orders: villages with an old reactor ----------
+ /** Old reactors: none within `from` m of Gridholm, a `chance` of the villages further out; an order most days (`skip`), 1-3 crates, paid by the danger of its ring (the village itself is a refuge). */
+-export const FUEL = { from: 8000, chance: 0.12, period: 1440, skip: 0.35, pay: 520, perDanger: 70, board: 20000 };
++export const FUEL = { from: 8000, chance: 0.12, period: 1440, skip: 0.35, pay: 680, perDanger: 70, board: 20000 };
+ /** Does village v still run an old reactor of its own (so it orders fuel rods)? Fixed per world. */
+ export function oldReactor(world: number, v: Poi): boolean {
+   if (v.id === GRIDHOLM_ID || worldDist(v.x, v.z, 0, 0) < FUEL.from) return false;
+@@ -86,7 +86,7 @@ export function fuelOrder(world: number, v: Poi, now: number): Contract | null {
+ 
+ // ---------- chip orders: craft villages building radios and tools ----------
+ /** Craft villages from `from` m out order chips; an order on most days (`skip`), 1-4 crates, paid by the danger of their ring. */
+-export const CHIPS = { from: 3000, period: 1440, skip: 0.45, pay: 680, perDanger: 45, board: 20000 };
++export const CHIPS = { from: 3000, period: 1440, skip: 0.45, pay: 480, perDanger: 45, board: 20000 };
+ /** Does village v order microchips (a craft village away from Gridholm)? Fixed per world. */
+ export function chipBuyer(world: number, v: Poi): boolean {
+   if (v.id === GRIDHOLM_ID || worldDist(v.x, v.z, 0, 0) < CHIPS.from) return false;
+@@ -103,7 +103,7 @@ export function chipOrder(world: number, v: Poi, now: number): Contract | null {
+ }
+ // ---------- cell orders: salvage villages keeping the old machines going ----------
+ /** Salvage villages from `from` m out order power cells; an order on some days (`skip`), 1-3 crates, paid by the danger of their ring. */
+-export const CELLS = { from: 5000, period: 1440, skip: 0.5, pay: 900, perDanger: 60 };
++export const CELLS = { from: 5000, period: 1440, skip: 0.5, pay: 560, perDanger: 60 };
+ /** Does village v order power cells (a salvage village away from Gridholm)? Fixed per world. */
+ export function cellBuyer(world: number, v: Poi): boolean {
+   if (v.id === GRIDHOLM_ID || worldDist(v.x, v.z, 0, 0) < CELLS.from) return false;
+diff --git a/src/gen/energy.ts b/src/gen/energy.ts
+index 32e888e..42131de 100644
+--- a/src/gen/energy.ts
++++ b/src/gen/energy.ts
+@@ -35,7 +35,7 @@ export const STATIONS: Record<StationKind, StationSpec> = {
+   windfarm: { name: 'Wind Farm', blurb: 'three turbines: power as the wind blows', kw: 80, needs: [['scrap', 20], ['wire', 10], ['planks', 20], ['engine', 1]], fee: 650, xp: 140 },
+   coalplant: { name: 'Coal Power Station', blurb: 'a boiler and a turbine: steady power while it has coal', kw: 140, fuel: 'coal', burn: 120, needs: [['stone', 10], ['bricks', 20], ['cement', 8], ['scrap', 20], ['planks', 16], ['engine', 1]], fee: 900, xp: 200 },
+   dieselbank: { name: 'Diesel Generator Bank', blurb: 'four big generators: steady power while it has fuel', kw: 110, fuel: 'fuel', burn: 150, needs: [['scrap', 16], ['engine', 2], ['wire', 6]], fee: 800, xp: 180 },
+-  reactor: { name: 'Small Reactor', blurb: 'a sealed reactor under a concrete dome: a great deal of steady power while its core holds fuel rods', kw: 250, fuel: 'nfuel', burn: 5760, bunker: 4, tech: 'enrichment', needs: [['steel', 12], ['alloy', 6], ['cable', 8], ['circuit', 10], ['pcore', 2], ['cement', 20]], fee: 2000, xp: 500 },
++  reactor: { name: 'Small Reactor', blurb: 'a sealed reactor under a concrete dome: a great deal of steady power while its core holds fuel rods', kw: 250, fuel: 'nfuel', burn: 5760, bunker: 4, tech: 'enrichment', needs: [['steel', 12], ['alloy', 6], ['cable', 8], ['circuit', 10], ['pcore', 2], ['cement', 20], ['ceramics', 4]], fee: 2000, xp: 500 },
+ };
+ /** Stations per village; the most crates a bunker holds. */
+ export const STATION_SLOTS = 2, BUNKER = 30;
+diff --git a/src/gen/installs.ts b/src/gen/installs.ts
+index ecdc9c1..1f264cf 100644
+--- a/src/gen/installs.ts
++++ b/src/gen/installs.ts
+@@ -81,66 +81,67 @@ export const installAt = (t: Terrain, x: number, z: number, m = 0) => installSit
+ // ---------- restoring an installation, and what it makes ----------
+ /** A stage of the restoration: what it is called, what the crew say, what it needs (and the plans, if any). */
+ export interface InstallStage { title: string; text: string; needs: [ItemKey, number][]; tech?: string; gold: number; xp: number }
++/** (Economy plan stage 8: every stage's materials halved, so the old plants are within reach of one crew.) */
+ export const INSTALL_STAGES: Record<InstallKind, InstallStage[]> = {
+   // (the economy plan's model: I the structure (steel, cement, machine parts), II the systems and the power hall
+   // (cable, boards, parts, chemicals), III the core (the plans and rare parts))
+   uranium: [
+-    { title: 'Securing the plant', text: 'The hall is choked with fallen trusses, the gate is jammed and the walls are cracked through. Steel for new props and trusses, cement for the breaches, machine parts for the cranes.', needs: [['steel', 8], ['cement', 10], ['parts', 4]], gold: 250, xp: 250 },
+-    { title: 'Power and control', text: 'A new roof over the centrifuges, and the power hall beside the gate brought back: cable for the lines, circuit boards and machine parts for the drives and the generator sets, chemicals to flush the cascade.', needs: [['cable', 10], ['boards', 4], ['parts', 4], ['chems', 4]], gold: 400, xp: 400 },
+-    { title: 'The core', text: 'The cascade controller is dead. Only the old plans for enrichment show how it was built, and it wants power cores and advanced alloy.', needs: [['pcore', 2], ['alloy', 4], ['circuit', 6]], tech: 'enrichment', gold: 500, xp: 600 },
++    { title: 'Securing the plant', text: 'The hall is choked with fallen trusses, the gate is jammed and the walls are cracked through. Steel for new props and trusses, cement for the breaches, machine parts for the cranes.', needs: [['steel', 4], ['cement', 5], ['parts', 2]], gold: 250, xp: 250 },
++    { title: 'Power and control', text: 'A new roof over the centrifuges, and the power hall beside the gate brought back: cable for the lines, circuit boards and machine parts for the drives and the generator sets, chemicals to flush the cascade.', needs: [['cable', 5], ['boards', 2], ['parts', 2], ['chems', 2]], gold: 400, xp: 400 },
++    { title: 'The core', text: 'The cascade controller is dead. Only the old plans for enrichment show how it was built, and it wants power cores and advanced alloy.', needs: [['pcore', 1], ['alloy', 2], ['circuit', 3]], tech: 'enrichment', gold: 500, xp: 600 },
+   ],
+   radar: [
+-    { title: 'Clearing the compound', text: 'The dish lies on its back in the weeds and the bunker door is buried. Timber and stone to shore up the bunker, scrap to brace the tower.', needs: [['log', 10], ['stone', 8], ['scrap', 10]], gold: 150, xp: 200 },
+-    { title: 'Power and cable', text: 'The generator shed is a ruin and the cable runs are eaten through. Copper cable, steel for the tower and the mast, electronics for the switchgear.', needs: [['cable', 8], ['steel', 6], ['circuit', 6]], gold: 250, xp: 300 },
+-    { title: 'The dish and the console', text: 'The dish goes back up on its tower. Only the old plans for radio triangulation show how to aim it and read the screens; it wants circuit boards and advanced alloy for the mount.', needs: [['boards', 4], ['circuit', 8], ['alloy', 4]], tech: 'radio', gold: 400, xp: 500 },
++    { title: 'Clearing the compound', text: 'The dish lies on its back in the weeds and the bunker door is buried. Timber and stone to shore up the bunker, scrap to brace the tower.', needs: [['log', 5], ['stone', 4], ['scrap', 5]], gold: 150, xp: 200 },
++    { title: 'Power and cable', text: 'The generator shed is a ruin and the cable runs are eaten through. Copper cable, steel for the tower and the mast, electronics for the switchgear.', needs: [['cable', 4], ['steel', 3], ['circuit', 3]], gold: 250, xp: 300 },
++    { title: 'The dish and the console', text: 'The dish goes back up on its tower. Only the old plans for radio triangulation show how to aim it and read the screens; it wants circuit boards and advanced alloy for the mount.', needs: [['boards', 2], ['circuit', 4], ['alloy', 2]], tech: 'radio', gold: 400, xp: 500 },
+   ],
+   chips: [
+-    { title: 'Opening the block', text: 'The clean-room block is sealed and half buried in its own rubble, a corner of its roof fallen in. Steel for the new beams, cement to seal the breaches, machine parts for the air locks.', needs: [['steel', 10], ['cement', 10], ['parts', 6]], gold: 250, xp: 250 },
+-    { title: 'Air, water and power', text: 'Nothing is made in dust: the filters and the water plant must run first, and the power hall beside the gate. Cable for the fans, pumps and generator sets, circuit boards for the controls, chemicals for the water plant, glass for the filter housings.', needs: [['cable', 12], ['boards', 6], ['chems', 4], ['glass', 6]], gold: 400, xp: 400 },
+-    { title: 'The etching line', text: 'The etchers stand dead in their bays. Only the old plans for integrated circuits show how to wake them, and they want circuit boards and a power core.', needs: [['boards', 4], ['circuit', 8], ['pcore', 1]], tech: 'chips', gold: 450, xp: 550 },
++    { title: 'Opening the block', text: 'The clean-room block is sealed and half buried in its own rubble, a corner of its roof fallen in. Steel for the new beams, cement to seal the breaches, machine parts for the air locks.', needs: [['steel', 5], ['cement', 5], ['parts', 3]], gold: 250, xp: 250 },
++    { title: 'Air, water and power', text: 'Nothing is made in dust: the filters and the water plant must run first, and the power hall beside the gate. Cable for the fans, pumps and generator sets, circuit boards for the controls, chemicals for the water plant, glass for the filter housings.', needs: [['cable', 6], ['boards', 3], ['chems', 2], ['glass', 3]], gold: 400, xp: 400 },
++    { title: 'The etching line', text: 'The etchers stand dead in their bays. Only the old plans for integrated circuits show how to wake them, and they want circuit boards and a power core.', needs: [['boards', 2], ['circuit', 4], ['pcore', 1]], tech: 'chips', gold: 450, xp: 550 },
+   ],
+   propellant: [
+-    { title: 'Securing the tank farm', text: 'The spheres lean on cracked footings and the mixing house is roofless. Steel for new legs and trusses, cement for the footings, machine parts for the valves.', needs: [['steel', 8], ['cement', 10], ['parts', 4]], gold: 250, xp: 250 },
+-    { title: 'Lines, pumps and power', text: 'The pipe racks are rusted through and the power hall by the gate is a shell. Cable for the pumps and the hall, circuit boards for the controls, machine parts for the pumps, chemicals to flush the lines.', needs: [['cable', 10], ['boards', 4], ['parts', 4], ['chems', 6]], gold: 400, xp: 400 },
+-    { title: 'The mixing column', text: 'The columns stand cold. Only the old plans for rocket propellant synthesis show how the feed is blended, and the controller wants a power core and advanced alloy.', needs: [['pcore', 1], ['alloy', 4], ['circuit', 6]], tech: 'propellant', gold: 500, xp: 600 },
++    { title: 'Securing the tank farm', text: 'The spheres lean on cracked footings and the mixing house is roofless. Steel for new legs and trusses, cement for the footings, machine parts for the valves.', needs: [['steel', 4], ['cement', 5], ['parts', 2]], gold: 250, xp: 250 },
++    { title: 'Lines, pumps and power', text: 'The pipe racks are rusted through and the power hall by the gate is a shell. Cable for the pumps and the hall, circuit boards for the controls, machine parts for the pumps, chemicals to flush the lines.', needs: [['cable', 5], ['boards', 2], ['parts', 2], ['chems', 3]], gold: 400, xp: 400 },
++    { title: 'The mixing column', text: 'The columns stand cold. Only the old plans for rocket propellant synthesis show how the feed is blended, and the controller wants a power core and advanced alloy.', needs: [['pcore', 1], ['alloy', 2], ['circuit', 3]], tech: 'propellant', gold: 500, xp: 600 },
+   ],
+   battery: [
+-    { title: 'Opening the cell hall', text: 'Half the sawtooth roof has come down on the formation lines. Steel for the trusses, cement and bricks for the walls, machine parts for the hoists.', needs: [['steel', 8], ['cement', 8], ['bricks', 10], ['parts', 4]], gold: 250, xp: 250 },
+-    { title: 'Formation lines and power', text: 'The lines, the electrolyte tanks and the power hall by the gate must run again. Cable for the lines and the hall, circuit boards for the chargers, chemicals for the tanks, glass for the sight gauges.', needs: [['cable', 12], ['boards', 6], ['chems', 6], ['glass', 4]], gold: 400, xp: 400 },
+-    { title: 'The electrolyte plant', text: 'The cells need an electrolyte nobody remembers how to make. Only the old plans for power cell chemistry show it, and the plant wants power cores and advanced alloy.', needs: [['pcore', 2], ['alloy', 2], ['circuit', 8]], tech: 'powercells', gold: 500, xp: 600 },
++    { title: 'Opening the cell hall', text: 'Half the sawtooth roof has come down on the formation lines. Steel for the trusses, cement and bricks for the walls, machine parts for the hoists.', needs: [['steel', 4], ['cement', 4], ['bricks', 5], ['parts', 2]], gold: 250, xp: 250 },
++    { title: 'Formation lines and power', text: 'The lines, the electrolyte tanks and the power hall by the gate must run again. Cable for the lines and the hall, circuit boards for the chargers, chemicals for the tanks, glass for the sight gauges.', needs: [['cable', 6], ['boards', 3], ['chems', 3], ['glass', 2]], gold: 400, xp: 400 },
++    { title: 'The electrolyte plant', text: 'The cells need an electrolyte nobody remembers how to make. Only the old plans for power cell chemistry show it, and the plant wants power cores and advanced alloy.', needs: [['pcore', 1], ['alloy', 1], ['circuit', 4]], tech: 'powercells', gold: 500, xp: 600 },
+   ],
+   optical: [
+-    { title: 'Opening the lens halls', text: 'The glass roofs of the grinding halls lie in shards on the benches. Steel for the frames, cement for the footings, glass for the roof panes, machine parts for the grinders.', needs: [['steel', 8], ['cement', 8], ['glass', 6], ['parts', 4]], gold: 250, xp: 250 },
+-    { title: 'Clean air, water and power', text: 'A lens is ruined by a speck of dust. The air plant, the water stills and the power hall by the gate must run again: cable, circuit boards, chemicals for the stills, glass for the filter housings.', needs: [['cable', 12], ['boards', 6], ['chems', 6], ['glass', 6]], gold: 400, xp: 400 },
+-    { title: 'The crystal furnace', text: 'The tower where the sensor crystals were grown stands cold. Only the old plans for advanced sensors show how it was run, and it wants a power core and advanced alloy.', needs: [['pcore', 1], ['alloy', 4], ['circuit', 8]], tech: 'sensors', gold: 500, xp: 600 },
++    { title: 'Opening the lens halls', text: 'The glass roofs of the grinding halls lie in shards on the benches. Steel for the frames, cement for the footings, glass for the roof panes, machine parts for the grinders.', needs: [['steel', 4], ['cement', 4], ['glass', 3], ['parts', 2]], gold: 250, xp: 250 },
++    { title: 'Clean air, water and power', text: 'A lens is ruined by a speck of dust. The air plant, the water stills and the power hall by the gate must run again: cable, circuit boards, chemicals for the stills, glass for the filter housings.', needs: [['cable', 6], ['boards', 3], ['chems', 3], ['glass', 3]], gold: 400, xp: 400 },
++    { title: 'The crystal furnace', text: 'The tower where the sensor crystals were grown stands cold. Only the old plans for advanced sensors show how it was run, and it wants a power core and advanced alloy.', needs: [['pcore', 1], ['alloy', 2], ['circuit', 4]], tech: 'sensors', gold: 500, xp: 600 },
+   ],
+   alloy: [
+-    { title: 'Securing the casting hall', text: 'The casting hall is the tallest thing for kilometres and it leans. Steel for new columns, cement and bricks for the furnace beds, machine parts for the cranes.', needs: [['steel', 12], ['cement', 12], ['bricks', 16], ['parts', 6]], gold: 300, xp: 300 },
+-    { title: 'The arc furnaces and power', text: 'The furnaces want more current than anything else here: heavy cable, circuit boards for the regulators, machine parts for the electrode hoists, chemicals for the fluxes, and the power hall by the gate.', needs: [['cable', 16], ['boards', 4], ['parts', 6], ['chems', 4]], gold: 450, xp: 450 },
+-    { title: 'The alloy recipe', text: 'Steel, aluminium and nickel alone make only advanced alloy. What the Ancients cast here was more: only the old plans for ancient metallurgy hold the recipe, and the control room wants power cores and advanced alloy.', needs: [['pcore', 2], ['alloy', 6], ['circuit', 6]], tech: 'ancmetal', gold: 600, xp: 700 },
++    { title: 'Securing the casting hall', text: 'The casting hall is the tallest thing for kilometres and it leans. Steel for new columns, cement and bricks for the furnace beds, machine parts for the cranes.', needs: [['steel', 6], ['cement', 6], ['bricks', 8], ['parts', 3]], gold: 300, xp: 300 },
++    { title: 'The arc furnaces and power', text: 'The furnaces want more current than anything else here: heavy cable, circuit boards for the regulators, machine parts for the electrode hoists, chemicals for the fluxes, and the power hall by the gate.', needs: [['cable', 8], ['boards', 2], ['parts', 3], ['chems', 2]], gold: 450, xp: 450 },
++    { title: 'The alloy recipe', text: 'Steel, aluminium and nickel alone make only advanced alloy. What the Ancients cast here was more: only the old plans for ancient metallurgy hold the recipe, and the control room wants power cores and advanced alloy.', needs: [['pcore', 1], ['alloy', 3], ['circuit', 3]], tech: 'ancmetal', gold: 600, xp: 700 },
+   ],
+   precision: [
+-    { title: 'Opening the machine hall', text: 'The vault of the machine hall has sagged onto the lathes and the test tower leans on its guys. Steel for the ribs, cement for the machine beds, machine parts for the travelling cranes.', needs: [['steel', 10], ['cement', 10], ['parts', 6]], gold: 300, xp: 300 },
+-    { title: 'Drives, air and power', text: 'A machine that cuts to a hair wants steady current and still air. Cable for the drives and the power hall by the gate, circuit boards for the controls, chemicals for the coolant, glass for the measuring dome.', needs: [['cable', 12], ['boards', 6], ['chems', 4], ['glass', 4]], gold: 450, xp: 450 },
+-    { title: 'The master machines', text: 'The master machines that made the other machines stand dead. Only the old plans for precision manufacturing show how to true them, and they want microchips, ancient alloy for the spindles and electronics.', needs: [['microchip', 4], ['ancalloy', 2], ['circuit', 6]], tech: 'precision', gold: 600, xp: 700 },
++    { title: 'Opening the machine hall', text: 'The vault of the machine hall has sagged onto the lathes and the test tower leans on its guys. Steel for the ribs, cement for the machine beds, machine parts for the travelling cranes.', needs: [['steel', 5], ['cement', 5], ['parts', 3]], gold: 300, xp: 300 },
++    { title: 'Drives, air and power', text: 'A machine that cuts to a hair wants steady current and still air. Cable for the drives and the power hall by the gate, circuit boards for the controls, chemicals for the coolant, glass for the measuring dome.', needs: [['cable', 6], ['boards', 3], ['chems', 2], ['glass', 2]], gold: 450, xp: 450 },
++    { title: 'The master machines', text: 'The master machines that made the other machines stand dead. Only the old plans for precision manufacturing show how to true them, and they want microchips, ancient alloy for the spindles and electronics.', needs: [['microchip', 2], ['ancalloy', 1], ['circuit', 3]], tech: 'precision', gold: 600, xp: 700 },
+   ],
+   robotics: [
+-    { title: 'Raising the assembly hall', text: 'The assembly hall is the size of a hangar and its roof lies on the lines. Steel for the trusses, cement and bricks for the walls and the pedestals, machine parts for the gantries.', needs: [['steel', 14], ['cement', 12], ['bricks', 10], ['parts', 8]], gold: 350, xp: 350 },
+-    { title: 'The lines and power', text: 'The assembly lines, the gantries and the power hall by the gate must run again: heavy cable, circuit boards for the line controllers, power cells for the robot arms, chemicals for the paint and the coolant.', needs: [['cable', 16], ['boards', 8], ['powercell', 2], ['chems', 4]], gold: 500, xp: 500 },
+-    { title: 'Waking the arms', text: 'The great arms hang limp over the lines. Only the old plans for automation show how to teach them their work, and they want microchips, sensors to see with and precision components for their joints.', needs: [['microchip', 6], ['sensor', 4], ['precision', 4]], tech: 'automation', gold: 800, xp: 900 },
++    { title: 'Raising the assembly hall', text: 'The assembly hall is the size of a hangar and its roof lies on the lines. Steel for the trusses, cement and bricks for the walls and the pedestals, machine parts for the gantries.', needs: [['steel', 7], ['cement', 6], ['bricks', 5], ['parts', 4]], gold: 350, xp: 350 },
++    { title: 'The lines and power', text: 'The assembly lines, the gantries and the power hall by the gate must run again: heavy cable, circuit boards for the line controllers, power cells for the robot arms, chemicals for the paint and the coolant.', needs: [['cable', 8], ['boards', 4], ['powercell', 1], ['chems', 2]], gold: 500, xp: 500 },
++    { title: 'Waking the arms', text: 'The great arms hang limp over the lines. Only the old plans for automation show how to teach them their work, and they want microchips, sensors to see with and precision components for their joints.', needs: [['microchip', 3], ['sensor', 2], ['precision', 2]], tech: 'automation', gold: 800, xp: 900 },
+   ],
+ };
+-/** What a working installation makes: the crates of each input in `inp` into `n` (1) of `out` every `batch` game minutes (at most `hopper` of each input loaded, `bay` made waiting). */
++/** What a working installation makes (the Ancients' plants are thriftier than any village works: most make 2 crates a batch): the crates of each input in `inp` into `n` (1) of `out` every `batch` game minutes (at most `hopper` of each input loaded, `bay` made waiting). */
+ export interface InstallWork { inp: [ItemKey, number][]; out: ItemKey; n?: number; batch: number; hopper: number; bay: number; what: string }
+ export const INSTALL_WORK: Partial<Record<InstallKind, InstallWork>> = {
+   uranium: { inp: [['uranium', 3], ['chems', 1]], out: 'nfuel', batch: 360, hopper: 30, bay: 10, what: 'The centrifuges hum again.' },
+-  chips: { inp: [['glass', 2], ['copperbar', 1], ['chems', 1], ['rareearth', 1]], out: 'microchip', batch: 240, hopper: 30, bay: 12, what: 'The etching line glows behind its windows.' },
++  chips: { inp: [['glass', 2], ['copperbar', 1], ['chems', 1], ['rareearth', 1]], out: 'microchip', n: 2, batch: 240, hopper: 30, bay: 12, what: 'The etching line glows behind its windows.' },
+   propellant: { inp: [['fuel', 3], ['chems', 1], ['sulfur', 1]], out: 'propellant', n: 3, batch: 180, hopper: 30, bay: 30, what: 'The columns steam and the mixing house hums.' },
+-  battery: { inp: [['lithium', 1], ['nickel', 1], ['copperbar', 1], ['chems', 1]], out: 'powercell', batch: 240, hopper: 30, bay: 12, what: 'The formation lines crackle and the cells charge in their racks.' },
+-  optical: { inp: [['glass', 2], ['rareearth', 1], ['chems', 1]], out: 'sensor', batch: 240, hopper: 30, bay: 12, what: 'The crystal tower glows and the grinders whine in the lens halls.' },
+-  alloy: { inp: [['steel', 2], ['aluminium', 1], ['nickel', 1]], out: 'ancalloy', batch: 300, hopper: 30, bay: 12, what: 'The arc furnaces roar and the casting hall fills with a white glare.' },
+-  precision: { inp: [['steel', 2], ['ancalloy', 1], ['microchip', 1]], out: 'precision', batch: 300, hopper: 30, bay: 12, what: 'The machine hall hums and the test tower blinks its lamps.' },
+-  robotics: { inp: [['microchip', 1], ['sensor', 1], ['precision', 1], ['powercell', 1]], out: 'automation', batch: 360, hopper: 20, bay: 10, what: 'The great arms swing over the lines and a robot walks the test arena.' },
++  battery: { inp: [['lithium', 1], ['nickel', 1], ['copperbar', 1], ['chems', 1]], out: 'powercell', n: 2, batch: 240, hopper: 30, bay: 12, what: 'The formation lines crackle and the cells charge in their racks.' },
++  optical: { inp: [['glass', 2], ['rareearth', 1], ['chems', 1]], out: 'sensor', n: 2, batch: 240, hopper: 30, bay: 12, what: 'The crystal tower glows and the grinders whine in the lens halls.' },
++  alloy: { inp: [['steel', 2], ['aluminium', 1], ['nickel', 1]], out: 'ancalloy', n: 2, batch: 300, hopper: 30, bay: 12, what: 'The arc furnaces roar and the casting hall fills with a white glare.' },
++  precision: { inp: [['steel', 2], ['ancalloy', 1], ['microchip', 1]], out: 'precision', n: 2, batch: 300, hopper: 30, bay: 12, what: 'The machine hall hums and the test tower blinks its lamps.' },
++  robotics: { inp: [['microchip', 1], ['sensor', 1], ['precision', 1], ['powercell', 1]], out: 'automation', n: 2, batch: 360, hopper: 20, bay: 10, what: 'The great arms swing over the lines and a robot walks the test arena.' },
+ };
+ /** Further things an installation can make instead (picked at its desk while its bay is empty): the first is INSTALL_WORK[k]. */
+ export const INSTALL_MORE: Partial<Record<InstallKind, InstallWork[]>> = {
+@@ -184,7 +185,7 @@ export const hallReady = (k: InstallKind, s: InstallState | undefined) => !!INST
+ export function hallPick(k: InstallKind, s: InstallState): HallSet[] | null {
+   const w = workOf(k, s), draw = INSTALL_DRAW[k];
+   if (!w || !draw || !hallReady(k, s)) return null;
+-  const ok = hallSets(k).filter((h) => (s.pw?.[h.fuel] ?? 0) >= w.batch / h.burn - 1e-9);
++  const ok = hallSets(k).filter((h) => (s.pw?.[h.fuel] ?? 0) >= batchOf(k, s) / h.burn - 1e-9);
+   const one = ok.find((h) => h.kw >= draw);
+   if (one) return [one];
+   const pair = ok.filter((h) => h.fuel !== 'nfuel');
+@@ -253,10 +254,11 @@ export function runInstall(k: InstallKind, s: InstallState, now: number) {
+   const w = workOf(k, s);
+   if (!w) return; // it makes nothing (the radar station)
+   let steps = 0;
+-  while (now - s.t >= w.batch && canRun(k, s) && steps++ < 400) {
+-    for (const h of hallPick(k, s)!) s.pw![h.fuel] = Math.max(0, (s.pw![h.fuel] ?? 0) - w.batch / h.burn);
++  const B = batchOf(k, s);
++  while (now - s.t >= B && canRun(k, s) && steps++ < 400) {
++    for (const h of hallPick(k, s)!) s.pw![h.fuel] = Math.max(0, (s.pw![h.fuel] ?? 0) - B / h.burn);
+     for (const [i, n] of w.inp) s.inp[i] = (s.inp[i] ?? 0) - n;
+-    s.out += w.n ?? 1; s.t += w.batch;
++    s.out += w.n ?? 1; s.t += B;
+   }
+   if (!canRun(k, s)) s.t = now; // stopped: the clock starts again when it is fed
+ }
+@@ -335,19 +337,28 @@ export const RADAR = { r: 12000 };
+ export const RADAR_UP = { r: 20000, needs: [['sensor', 4], ['microchip', 2], ['cable', 6]] as [ItemKey, number][], gold: 300, xp: 400 };
+ /** How far the radar sees now. */
+ export const radarRange = (s: InstallState | undefined) => (s?.up ? RADAR_UP.r : RADAR.r);
+-/** The upgrade's rows (given / needed), or null once done or while the station is not restored. */
+-export function radarUpPlan(s: InstallState | undefined) {
+-  if (!s || s.up || !installDone('radar', s)) return null;
+-  const rows = RADAR_UP.needs.map(([i, n]) => ({ k: i, n, given: Math.min(n, s.upgiven?.[i] ?? 0) }));
++/** (Economy plan stage 8) every working plant takes an automated line once restored: automation units run it faster. */
++export const LINE_UP = { needs: [['automation', 2], ['precision', 2], ['cable', 6]] as [ItemKey, number][], fast: 0.7, gold: 400, xp: 500 };
++/** What an installation's upgrade needs (the radar's sensor array, else the automated line), or null. */
++export const upOf = (k: InstallKind) => (k === 'radar' ? RADAR_UP : INSTALL_WORK[k] ? LINE_UP : null);
++/** Game minutes a batch takes now: the automated line cuts it. */
++export const batchOf = (k: InstallKind, s: InstallState | undefined) => (workOf(k, s)?.batch ?? 0) * (s?.up && k !== 'radar' ? LINE_UP.fast : 1);
++/** The upgrade's rows (given / needed), or null once done or while the plant is not restored. */
++export function installUpPlan(k: InstallKind, s: InstallState | undefined) {
++  const up = upOf(k);
++  if (!up || !s || s.up || !installDone(k, s)) return null;
++  const rows = up.needs.map(([i, n]) => ({ k: i, n, given: Math.min(n, s.upgiven?.[i] ?? 0) }));
+   return { rows, done: rows.every((r) => r.given >= r.n) };
+ }
+-/** Hand over materials for the radar's upgrade (bit by bit); true once it is done. */
+-export function handOverRadarUp(s: InstallState, have: (i: ItemKey) => number): { taken: [ItemKey, number][]; built: boolean } {
+-  const plan = radarUpPlan(s);
++export const radarUpPlan = (s: InstallState | undefined) => installUpPlan('radar', s);
++export const handOverRadarUp = (s: InstallState, have: (i: ItemKey) => number) => handOverInstallUp('radar', s, have);
++/** Hand over materials for an installation's upgrade (bit by bit); built once it is done. */
++export function handOverInstallUp(k: InstallKind, s: InstallState, have: (i: ItemKey) => number): { taken: [ItemKey, number][]; built: boolean } {
++  const plan = installUpPlan(k, s);
+   if (!plan) return { taken: [], built: false };
+   const g = (s.upgiven ??= {}), taken: [ItemKey, number][] = [];
+   for (const r of plan.rows) { const n = Math.min(r.n - r.given, have(r.k)); if (n > 0) { g[r.k] = r.given + n; taken.push([r.k, n]); } }
+-  if (!radarUpPlan(s)!.done) return { taken, built: false };
++  if (!installUpPlan(k, s)!.done) return { taken, built: false };
+   s.up = true; delete s.upgiven;
+   return { taken, built: true };
+ }
+diff --git a/src/gen/shuttle.ts b/src/gen/shuttle.ts
+index 2ffa84d..dd07e7b 100644
+--- a/src/gen/shuttle.ts
++++ b/src/gen/shuttle.ts
+@@ -19,7 +19,7 @@ export type StageKey = 'hull' | 'engines' | 'avionics' | 'shield' | 'power' | 'f
+ export interface Stage { key: StageKey; name: string; blurb: string; needs: [ChariotGood, number][] }
+ export const STAGES: Stage[] = [
+   { key: 'hull', name: 'Hull Plating', blurb: 'new plates over the torn skin of the fuselage and wings: steel for the frames, aluminium and ancient alloy for the skin', needs: [['steel', 16], ['aluminium', 10], ['ancalloy', 6]] },
+-  { key: 'engines', name: 'Main Engines', blurb: 'the three engines rebuilt: turbopumps and nozzles of ancient alloy, bearings and valves only the precision works can make', needs: [['ancalloy', 6], ['precision', 8], ['cable', 10]] },
++  { key: 'engines', name: 'Main Engines', blurb: 'the three engines rebuilt: turbopumps and nozzles of ancient alloy, bearings and valves only the precision works can make', needs: [['ancalloy', 6], ['precision', 6], ['cable', 10]] },
+   { key: 'avionics', name: 'Avionics', blurb: 'flight computers, sensors and the cockpit panels: the flight computers want chips no works can etch, the eyes sensor heads no one can grow', needs: [['boards', 8], ['microchip', 6], ['sensor', 4], ['cable', 12]] },
+   { key: 'shield', name: 'Heat Shield', blurb: 'ceramic tiles under the belly and the wing edges, on a frame of ancient alloy', needs: [['ceramics', 16], ['ancalloy', 4]] },
+   { key: 'power', name: 'Power System', blurb: 'racks of power cells in the belly and the chips that run them: the Chariot\'s heart before the engines light', needs: [['powercell', 8], ['microchip', 4], ['cable', 8]] },
+diff --git a/src/ui/install.ts b/src/ui/install.ts
+index f43e0a4..1da3d39 100644
+--- a/src/ui/install.ts
++++ b/src/ui/install.ts
+@@ -4,7 +4,7 @@
+ import { G, W } from '../game';
+ import { ITEMS, type ItemKey } from '../data/items';
+ import { calcStats, saveChar, gainXp } from '../character';
+-import { INSTALL_STAGES, INSTALL_WORK, INSTALL_DRAW, HALL_STAGE, radarRange, radarUpPlan, handOverRadarUp, RADAR_UP, radarPlaces, installSites, type InstallKind, type InstallState, installPlan, handOverInstall, runInstall, installDone, newInstall, batchesIn, loadInstall, canRun, hallPick, hallKw, hallReady, hallSets, fuelHall, workOf, installWorks, setInstallRec, type InstallSite } from '../gen/installs';
++import { INSTALL_STAGES, INSTALL_WORK, INSTALL_DRAW, HALL_STAGE, radarRange, radarUpPlan, RADAR_UP, LINE_UP, installUpPlan, handOverInstallUp, batchOf, radarPlaces, installSites, type InstallKind, type InstallState, installPlan, handOverInstall, runInstall, installDone, newInstall, batchesIn, loadInstall, canRun, hallPick, hallKw, hallReady, hallSets, fuelHall, workOf, installWorks, setInstallRec, type InstallSite } from '../gen/installs';
+ import { itemName } from './icons';
+ import { TECH_BY_ID } from '../gen/tech';
+ import type { Good } from '../gen/market';
+@@ -55,10 +55,16 @@ function render(msg = '') {
+     const w = workOf(site.k, st)!, all = installWorks(site.k), recipe = w.inp.map(([i, n]) => `${n} ${short(ITEMS[i].name)}`).join(' and ');
+     const inputs = [...new Set(all.flatMap((x) => x.inp.map(([i]) => i)))];
+     const choose = all.length > 1 ? `<div class="say" style="margin:6px 0 0">What it makes${st.out ? ' (empty the bay to switch)' : ''}</div>` + all.map((x, i) => `<button class="opt" style="width:auto;${x === w ? 'color:var(--gold)' : ''}" data-ins="rec" data-insr="${i}" ${x === w || st.out ? 'disabled' : ''}>${x === w ? '▸ ' : ''}${x.inp.map(([q, n]) => `${n} ${short(ITEMS[q].name)}`).join(' + ')} → ${x.n ?? 1} ${ITEMS[x.out].name}</button>`).join('') : '';
+-    s += `${w.what} ${recipe} make ${(w.n ?? 1) > 1 ? `${w.n} crates` : "one crate"} of ${ITEMS[w.out].name} every ${hours(w.batch)}, while the power hall gives ${INSTALL_DRAW[site.k]} kW.</div>` +
++    s += `${w.what} ${recipe} make ${(w.n ?? 1) > 1 ? `${w.n} crates` : "one crate"} of ${ITEMS[w.out].name} every ${hours(batchOf(site.k, st))}${st.up ? ' on the automated line' : ''}, while the power hall gives ${INSTALL_DRAW[site.k]} kW.</div>` +
+       `<div class="shoprow"><div>${list}</div></div>` + screen(site.k, st) + choose +
+       inputs.map((i) => { const h = have(i); return `<button class="opt" data-ins="load" data-insk="${i}" ${h && (st.inp[i] ?? 0) < w.hopper ? '' : 'disabled'}>Load ${short(ITEMS[i].name)} (${st.inp[i] ?? 0}/${w.hopper} in the hopper · you have ${h} with you)</button>`; }).join('') +
+       `<button class="opt" data-ins="take" ${st.out ? '' : 'disabled'}>Collect the ${ITEMS[w.out].name} (${st.out})</button>`;
++    const up = installUpPlan(site.k, st);
++    if (up) {
++      s += `<div class="shoprow"><div><b>Automated line</b> <span style="opacity:.7">(batches ${Math.round((1 - LINE_UP.fast) * 100)}% faster · ${LINE_UP.gold} gold, ${LINE_UP.xp} xp)</span><br><span style="opacity:.8">Automation units and precision parts on the old line: it runs without waiting on hands.</span><br><span>` +
++        up.rows.map((r) => { const h = have(r.k); return `<span style="color:${r.given >= r.n ? 'var(--xp)' : h ? 'var(--txt)' : '#ff9a7a'}">${ITEMS[r.k].name} ${r.given}/${r.n}${r.given < r.n && h ? ` (you have ${h})` : ''}</span>`; }).join(' · ') +
++        `</span></div><button class="opt" style="width:auto" data-ins="up" ${up.rows.some((r) => r.given < r.n && have(r.k) > 0) ? '' : 'disabled'}>hand over</button></div>`;
++    }
+   }
+   panel().classList.add('wide');
+   panel().innerHTML = s + hall(site.k, st) + buyers() + `<button class="opt" data-ins="close">Close</button>`;
+@@ -71,7 +77,7 @@ function screen(k: InstallKind, st: InstallState): string {
+   let t = `${site!.name.toUpperCase()}\n${pad('Power')}${kw}/${draw} kW${pick ? ' · ' + pick.map((h) => h.name.toLowerCase()).join(' + ') : ''}\n`;
+   for (const [i] of w.inp) t += `${pad(short(ITEMS[i].name))}${st.inp[i] ?? 0} crates\n`;
+   t += `${pad('Production')}${ITEMS[w.out].name.toUpperCase()} · ${st.out}/${w.bay} in the bay\n`;
+-  const left = Math.max(0, w.batch - (c.time - st.t));
++  const left = Math.max(0, batchOf(k, st) - (c.time - st.t));
+   t += `${pad('Next batch')}${run ? `${String(Math.floor(left / 60)).padStart(2, '0')}:${String(Math.floor(left % 60)).padStart(2, '0')}` : st.out >= w.bay ? 'STOPPED · THE BAY IS FULL' : batchesIn(k, st) < 1 ? 'WAITING FOR ' + w.inp.filter(([i, n]) => (st.inp[i] ?? 0) < n).map(([i]) => short(ITEMS[i].name).toUpperCase()).join(', ') : 'NO POWER'}`;
+   return `<pre style="font-family:monospace;white-space:pre-wrap;color:var(--xp);background:#010d04;border:1px solid #2fe06055;padding:8px 10px;margin:6px 0">${t}</pre>`;
+ }
+@@ -80,7 +86,7 @@ function hall(k: InstallKind, st: InstallState): string {
+   if (!INSTALL_DRAW[k]) return '';
+   if (!hallReady(k, st)) return `<div class="say" style="opacity:.8">The power hall by the gate is a burnt-out shell. It comes back with the ${INSTALL_STAGES[k][HALL_STAGE - 1].title.toLowerCase()} stage.</div>`;
+   const rows = hallSets(k).map((h) => {
+-    const n = st.pw?.[h.fuel] ?? 0, hv = have(h.fuel), per = workOf(k, st)!.batch / h.burn;
++    const n = st.pw?.[h.fuel] ?? 0, hv = have(h.fuel), per = batchOf(k, st) / h.burn;
+     return `<div class="shoprow"><div><b>${h.name}</b> · ${h.kw} kW<br><span>${itemName(h.fuel)} in the bunker ${n > 0 && n < 1 ? n.toFixed(2) : Math.floor(n * 10) / 10}/${h.bunker} · ${per < 1 ? `${Math.round(1 / per)} batches a crate` : `${per.toFixed(1)} crates a batch`} · you have ${hv}</span></div>` +
+       `<button class="opt" style="width:auto" data-ins="fuel" data-insk="${h.fuel}" ${hv && n < h.bunker - 1 + 1e-9 ? '' : 'disabled'}>load</button></div>`;
+   }).join('');
+@@ -157,13 +163,19 @@ export function installClick(t: HTMLElement): boolean {
+   }
+   if (a === 'sweep') { render(sweep(site)); return true; }
+   if (a === 'up') {
+-    const { taken, built } = handOverRadarUp(st, have);
++    const radar = site.k === 'radar';
++    runInstall(site.k, st, c.time); // (batches so far at the old speed)
++    const { taken, built } = handOverInstallUp(site.k, st, have);
+     for (const [k, n] of taken) takeFrom(k as Good, n, at());
+-    let msg = taken.length ? 'Handed over: ' + taken.map(([k, n]) => `${ITEMS[k].name} ×${n}.`).join(' ') : 'You carry nothing the sensor array still needs.';
+-    if (built) {
++    let msg = taken.length ? 'Handed over: ' + taken.map(([k, n]) => `${ITEMS[k].name} ×${n}.`).join(' ') : `You carry nothing the ${radar ? 'sensor array' : 'automated line'} still needs.`;
++    if (built && radar) {
+       c.gold += RADAR_UP.gold; gainXp(RADAR_UP.xp);
+       showToast(`${site.name}: the sensor array hears ${RADAR_UP.r / 1000} km`);
+       msg += ' <b>The sensor array is in.</b> ' + sweep(site);
++    } else if (built) {
++      c.gold += LINE_UP.gold; gainXp(LINE_UP.xp);
++      showToast(`${site.name}: the automated line runs`);
++      msg += ' <b>The automated line runs.</b>';
+     }
+     calcStats(); saveChar(); render(msg); return true;
+   }

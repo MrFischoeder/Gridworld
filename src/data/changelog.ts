@@ -4,6 +4,12 @@ export interface Change { v: string; date: string; title: string; notes: string[
 
 export const CHANGELOG: Change[] = [
   {
+    v: '0.98.1', date: '2026-10-15', title: 'Measuring the economy',
+    notes: [
+      'Nothing changes in play. New tools behind the scenes measure what every good of the old plants costs, what the orders pay and how long the whole road to the Chariot takes, ready for the balance pass once the remaining changes are in.',
+    ],
+  },
+  {
     v: '0.98.0', date: '2026-10-14', title: 'The last buyer',
     notes: [
       'The Chariot of the Ancients now wants what only the old plants make. Hull Plating: steel, aluminium and ancient alloy. Main Engines: ancient alloy, precision components and cable. Avionics: circuit boards, microchips, sensors and cable. Heat Shield: advanced ceramics and ancient alloy. Propellant as before.',
