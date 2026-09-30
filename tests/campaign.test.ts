@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { ANCIENT_GOODS } from '../src/gen/shuttle';
 import { campaign, visible, WONDER_KINDS } from '../src/gen/campaign';
 import { GOOD_INFO } from '../src/gen/market';
 
@@ -15,9 +16,9 @@ describe('campaign', () => {
     expect(new Set(c.blockers.map((b) => b.wonder)).size).toBe(3);
     for (let i = 1; i < 3; i++) expect(c.wonders[c.blockers[i].wonder].dist).toBeGreaterThan(c.wonders[c.blockers[i - 1].wonder].dist);
   });
-  it('asks only for goods that exist (or relics, or the foundry\'s microchips)', () => {
+  it('asks only for goods that exist (or relics, or the old plants\' goods)', () => {
     for (const st of [...c.chariot.map((s) => s.needs), ...c.wonders.flatMap((w) => w.stages.map((s) => s.needs))])
-      for (const [g, n] of st) { expect(g === 'relic' || g === 'microchip' || g in GOOD_INFO).toBe(true); expect(n).toBeGreaterThan(0); }
+      for (const [g, n] of st) { expect(g === 'relic' || (ANCIENT_GOODS as readonly string[]).includes(g) || g in GOOD_INFO).toBe(true); expect(n).toBeGreaterThan(0); }
   });
   it('keeps the surprises hidden until they happen, and a wonder\'s troubles one stage at a time', () => {
     const b = c.blockers[0];

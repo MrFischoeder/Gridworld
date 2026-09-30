@@ -7,7 +7,9 @@
 // playtests measure them; change them here and the calibration follows.
 import { it } from 'vitest';
 import { campaign, CHARIOT_SCALE, CHARIOT_WEIGHTS, type Campaign, type Need } from '../src/gen/campaign';
-import { STAGES } from '../src/gen/shuttle';
+import { STAGES, type AncientGood } from '../src/gen/shuttle';
+import { installWorks, INSTALLS } from '../src/gen/installs';
+import { RARE_VALUE, isRare } from '../src/gen/deposits';
 import { GOOD_INFO } from '../src/gen/market';
 
 const WORLD = Number(process.env.SIM_WORLD ?? 12345), TARGET = 80;
@@ -26,14 +28,25 @@ export const PACE = {
   explore: { base: 30, perKm: 2.5 }, dive: { base: 20, perDanger: 5 },
   /** Extra time per danger level on an expedition (fights, detours). */
   fight: 0.04,
+  /** Gold-equivalent per crate made at an old plant: the drive out with its inputs, its fuel and the drive back. */
+  plantTrip: 250,
   /** Hours learning the game at the start. */
   learn: 4,
 };
 type Veh = 'foot' | 'scout' | 'mastodon';
 interface Bot { t: number; gold: number; veh: Veh; works: boolean; n: number; log: [number, string][] }
-// microchips come from the Old Chip Foundry: priced as what goes into them (2 glass + 1 copper ingots) plus the trip there
-const CHIP = 2 * GOOD_INFO.glass.base + GOOD_INFO.copperbar.base + 200;
-const price = (g: Need, b: Bot) => (g === 'relic' ? 0 : g === 'microchip' ? CHIP : GOOD_INFO[g].base * (b.works && GOOD_INFO[g].proc ? PACE.works.discount : 1));
+// the old plants' goods: priced as what goes into a batch (market goods, rare crates, other old plants' goods) per crate
+// made, plus the trip to the plant (PACE.plantTrip) and its fuel
+const ANCIENT_COST: Partial<Record<string, number>> = {};
+function ancient(g: string): number {
+  if (ANCIENT_COST[g] !== undefined) return ANCIENT_COST[g]!;
+  for (const s of INSTALLS) for (const w of installWorks(s.k)) if (w.out === g) {
+    const inp = w.inp.reduce((a, [i, n]) => a + n * (i in GOOD_INFO ? GOOD_INFO[i as keyof typeof GOOD_INFO].base : isRare(i as never) ? RARE_VALUE[i as keyof typeof RARE_VALUE] : ancient(i)), 0);
+    return (ANCIENT_COST[g] = (inp + PACE.plantTrip) / (w.n ?? 1));
+  }
+  return (ANCIENT_COST[g] = 400);
+}
+const price = (g: Need, b: Bot) => (g === 'relic' ? 0 : !(g in GOOD_INFO) ? ancient(g as AncientGood) : GOOD_INFO[g as keyof typeof GOOD_INFO].base * (b.works && GOOD_INFO[g as keyof typeof GOOD_INFO].proc ? PACE.works.discount : 1));
 const income = (b: Bot) => (PACE.income[b.veh] + (b.works ? PACE.works.bonus : 0)) * b.n * (b.n > 1 ? 0.9 : 1);
 function earn(b: Bot, need: number) {
   if (b.gold >= need) return;

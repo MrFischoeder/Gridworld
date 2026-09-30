@@ -14,7 +14,7 @@ import { KCAL } from './data/survival';
 import type { Part } from './gen/base';
 import type { TownState } from './gen/town';
 import type { MarketState } from './gen/market';
-import type { ShuttleState } from './gen/shuttle';
+import { fixShuttle, type ShuttleState } from './gen/shuttle';
 import type { Contract } from './gen/contracts';
 
 /** An item stack. `c` is the condition in percent of a used part (worn tires); such items do not stack. */
@@ -115,7 +115,7 @@ export const SAVE_KEY = 'gridWorld.character.v3';
 export const ARENA_V3_KEY = 'gridArena.character.v3', V2_KEY = 'gridArena.character.v2', OLD_KEY = 'gridArena.character.v1';
 
 export const newChar = (): Char => ({
-  v: 3, name: '', intro: false, tech: {}, leads: [], installs: {}, bridges: {}, bridgeSites: [], piers: [], boats: [], filter: 0, fogs: {}, guide: 0, houses: [], shuttle: { given: {} }, level: 1, xp: 0, gold: 0, world: (Math.random() * 1e6) | 0,
+  v: 3, name: '', intro: false, tech: {}, leads: [], installs: {}, bridges: {}, bridgeSites: [], piers: [], boats: [], filter: 0, fogs: {}, guide: 0, houses: [], shuttle: { given: {}, v: 2 }, level: 1, xp: 0, gold: 0, world: (Math.random() * 1e6) | 0,
   inv: Array(INV_SIZE).fill(null), mods: Array(MOD_SIZE).fill(null), opened: {}, unlocked: {}, killed: {},
   loc: 'overworld', ow: null, dungeon: null, discovered: {}, containers: {}, vehicles: [], board: { seq: 0, offers: [], stamp: boardPeriod(START_TIME) }, boards: {}, quests: [], camps: {}, time: START_TIME, gunMods: [null, null, null], kcal: KCAL.start, stomach: 0, water: 100, harvest: {}, benches: [], claims: [],
   hands: [{ k: 'blaster', n: 1 }], back: [{ k: 'blade', n: 1 }, null], wear: {}, pid: Math.random().toString(36).slice(2, 10), towns: {}, market: {}, ledger: {}, caravans: {}, escort: null, contracts: [], taken: [],
@@ -161,6 +161,10 @@ export function loadChar(storage: Pick<Storage, 'getItem'> | null = safeStorage(
       if (!c.houses.length && c.containers['home:chest']) c.houses = [GRIDHOLM_ID];
       for (const k of Object.keys(c.installs) as InstallKind[]) fixInstall(k, c.installs[k]!);
       for (const t of Object.values(c.towns)) for (const p of t?.plants ?? []) fixPlant(p); // works whose recipes changed
+      { // stages finished before the Chariot wanted the old plants' goods stay finished; crates it no longer takes go to Gridholm's hall
+        const back = Object.entries(fixShuttle(c.shuttle));
+        if (back.length) { const hold = ((c.towns[GRIDHOLM_ID] ??= {}).hold ??= {}); for (const [g, n] of back) hold[g as ItemKey] = (hold[g as ItemKey] ?? 0) + n!; }
+      }
       return c;
     }
     const v2 = storage?.getItem(V2_KEY);

@@ -4,6 +4,14 @@ export interface Change { v: string; date: string; title: string; notes: string[
 
 export const CHANGELOG: Change[] = [
   {
+    v: '0.98.0', date: '2026-10-14', title: 'The last buyer',
+    notes: [
+      'The Chariot of the Ancients now wants what only the old plants make. Hull Plating: steel, aluminium and ancient alloy. Main Engines: ancient alloy, precision components and cable. Avionics: circuit boards, microchips, sensors and cable. Heat Shield: advanced ceramics and ancient alloy. Propellant as before.',
+      'A sixth stage, the Power System (power cells, microchips, cable), goes in before the propellant. Once done, racks of cells stand by the Chariot\'s cradle with a cable into its belly.',
+      'Old saves: a stage you finished stays finished. Crates you gave to an unfinished stage that it no longer takes are waiting for you in Gridholm\'s village hall.',
+    ],
+  },
+  {
     v: '0.97.0', date: '2026-10-13', title: 'What the old parts are for',
     notes: [
       'Village improvements: ask the elder "What could the old parts do for us?" and build them from the village hall\'s stock. Battery Bank (power cells, batteries): gives power back at night and in a lull, and stands as racks of cells by the power plant. Battery Lamps: the village takes 15 kW instead of 25, and its lamps stay lit when the plant is down. Automated Site (automation units, precision components): the industry site makes half as much again and needs no hands. Sensor Sights (sensors, microchips): the wall turrets see half as far again and fire faster. Armoured Wall (aluminium, advanced alloy, on a stone wall): raids break on it more often and a live raid wears the gates down slower.',

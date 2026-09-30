@@ -280,7 +280,15 @@ Kolejność wydań: 0.94 Propellant i Battery, 0.95 Optical i Alloy Complex, 0.9
 | Basic Batteries | lampy i radio wiosek, latarka gracza, turrety |
 | Aluminium, Advanced Alloy | kadłuby łodzi i pojazdów (lżejsze), Stone Wall v2 |
 
-## Etap 7 (0.98.0): Rydwan jako końcowy konsument
+## Etap 7 (0.98.0): Rydwan jako końcowy konsument (ZROBIONE)
+
+**Jak zrobione:**
+- `STAGES` w `gen/shuttle.ts`: Hull Plating 16 steel + 10 aluminium + 6 ancalloy; Main Engines 6 ancalloy + 8 precision + 10 cable; Avionics 8 boards + 6 microchip + 4 sensor + 12 cable; Heat Shield 16 ceramics + 4 ancalloy; **Power System** (nowy, przed paliwem) 8 powercell + 4 microchip + 8 cable; Propellant 30 propellant.
+- Zapisy: `fixShuttle` (raz, `ShuttleState.v` 2) sprawdza etapy według starych wymagań (`LEGACY_NEEDS`); ukończone trafiają do `ShuttleState.done` i zostają ukończone. Z nieukończonych skrzynie, których nowe wymagania nie biorą (albo nadmiar), wracają do hali Gridholm (`towns[0].hold`).
+- Hangar: po Power System przy cokole stoją szafy ogniw, kabel do kadłuba i świecąca szyna wzdłuż niego.
+- Kampania (`gen/campaign.ts`): drugi towar hali maszyn losowany także z aluminium, akumulatorów i chemikaliów; serce cudu wymaga dodatkowo wyrobu starej fabryki (1 + zagrożenie / 3). Wagi etapów Rydwanu na 6 etapów; `CHARIOT_SCALE` 0,7 (symulacja wycenia wyroby starych fabryk z ich wejść + koszt wyprawy `PACE.plantTrip`): świat 12345 80 h w pojedynkę, 50 h we dwóch, 33 h we czterech (inne światy 83–89 h).
+- `gen/civ.ts` (warstwa symulacji) zostaje przy swoich materiałach.
+
 
 | System | Wymagania |
 |---|---|

@@ -1,6 +1,6 @@
 # GridWorld: opis gry, cel, plan i historia zmian
 
-Stan na wersję **0.97.0**. Ten dokument opisuje, czym jest GridWorld, jaki jest cel gry, co już w niej jest, czego jeszcze nie ma, dokąd zmierza i jak powstawała, wersja po wersji. Nazwy z gry (przedmioty, miejsca, postacie) są po angielsku, tak jak na ekranie.
+Stan na wersję **0.98.0**. Ten dokument opisuje, czym jest GridWorld, jaki jest cel gry, co już w niej jest, czego jeszcze nie ma, dokąd zmierza i jak powstawała, wersja po wersji. Nazwy z gry (przedmioty, miejsca, postacie) są po angielsku, tak jak na ekranie.
 
 ---
 
@@ -55,14 +55,15 @@ Dzisiejsi mieszkańcy żyją w prostych wioskach za płotami z zaostrzonych pali
 ### Cel: Rydwan Starożytnych
 W hangarze pod Gridholm stoi prom Starożytnych, który miejscowi nazywają **Rydwanem Starożytnych** (Chariot of the Ancients). Tylko rozbitkowie chcą, żeby poleciał, bo to ich jedyna droga do domu.
 
-Rydwan odbudowuje się w pięciu etapach:
+Rydwan odbudowuje się w sześciu etapach. Każdy wymaga czegoś, co robią tylko wielkie instalacje Starożytnych:
 
 | Etap | Co wymaga |
 |---|---|
-| **Hull Plating** (poszycie) | stal, stop kadłubowy |
-| **Main Engines** (silniki) | części maszyn, stop, kabel |
-| **Avionics** (awionika) | płytki drukowane, **mikroczipy ze Starej Fabryki Czipów**, kabel, szkło |
-| **Heat Shield** (osłona termiczna) | szkło, stop, plastik |
+| **Hull Plating** (poszycie) | 16 stali, 10 aluminium, 6 Ancient Alloy |
+| **Main Engines** (silniki) | 6 Ancient Alloy, 8 Precision Components, 10 kabla |
+| **Avionics** (awionika) | 8 płytek, 6 mikroczipów, 4 sensory, 12 kabla |
+| **Heat Shield** (osłona termiczna) | 16 Advanced Ceramics, 4 Ancient Alloy |
+| **Power System** (zasilanie) | 8 Power Cells, 4 mikroczipy, 8 kabla |
 | **Propellant** (paliwo) | 30 skrzyń paliwa rakietowego |
 
 Tych dóbr nie znajdzie się w dziczy. Trzeba je wyprodukować. To wymaga:
@@ -111,7 +112,7 @@ Gra jest pomyślana jako **kooperacja do 8 graczy** na autorytatywnym serwerze (
    - wielkie instalacje;
    - toksyczna mgła z zamkniętymi szafkami;
    - wyspy, na które płynie się łodzią.
-7. **Rydwan.** Dobra przetworzone w zakładach wiosek i czipy z fabryki trafiają do hangaru.
+7. **Rydwan.** Dobra przetworzone w zakładach wiosek i wyroby starych fabryk (stop, komponenty, czipy, sensory, ceramika, ogniwa, paliwo rakietowe) trafiają do hangaru.
 
 ---
 
@@ -541,3 +542,4 @@ Pełne notatki (po angielsku) są w grze pod przyciskiem **Changelog** w menu g�
 - **0.95.0 Olbrzymy dawnego świata** (etap 5, część 2). Wszystkie instalacje Starożytnych dwa razy większe (pulpity w skali człowieka, położenie bez zmian); Old Optical Works (sensory) i Old Alloy Complex (Ancient Alloy lub Advanced Ceramics); technologie Advanced Sensors i Ancient Metallurgy.
 - **0.96.0 Szczyt łańcucha** (etap 5, część 3). Old Precision Works (Precision Components ze stali, Ancient Alloy i mikroczipów) i Old Robotics Plant (Automation Units z mikroczipów, sensorów, komponentów precyzyjnych i ogniw), obie w podwójnej skali; technologie Precision Manufacturing i Automation; etap 5 zamknięty.
 - **0.97.0 Do czego służą stare części** (etap 6). Ulepszenia wiosek (bank akumulatorów, lampy akumulatorowe, zautomatyzowane miejsce przemysłu, celowniki sensorowe turretów, opancerzony mur); stojaki ogniw w siłowniach starych fabryk; antena sensorowa radaru (20 km); u kowala napęd precyzyjny do pojazdów i kompas z sensorem, który wskazuje instalacje i znane strefy mgły; automatyzacja elektrowni wymaga też komponentów precyzyjnych.
+- **0.98.0 Rydwan na końcu łańcucha** (etap 7). Rydwan ma sześć etapów (nowy Power System) i każdy wymaga wyrobów starych fabryk; etapy ukończone w starych zapisach zostają ukończone, a skrzynie, których nowe wymagania już nie biorą, wracają do hali Gridholm; kampania (cuda) dostała nowe dobra i nową kalibrację (~80 h w pojedynkę).

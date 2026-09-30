@@ -1,12 +1,12 @@
 import { describe, it, expect } from 'vitest';
 import { PLANTS, PLANT_KINDS, HOPPER, OUT_CAP, runPlant, feed, collect, startPlant, handOverPlant, plantProblem, fixPlant, type PlantState, type PlantKind, type Stuff } from '../src/gen/plants';
-import { GOOD_INFO, GOODS, PROCESSED } from '../src/gen/market';
+import { GOOD_INFO, GOODS, PROCESSED, type Good } from '../src/gen/market';
 import { RARES, RARE_VALUE, isRare } from '../src/gen/deposits';
 import { CROPS } from '../src/gen/farms';
 import { INSTALL_WORK } from '../src/gen/installs';
 import { TECH_BY_ID } from '../src/gen/tech';
 import { INDUSTRY } from '../src/gen/industry';
-import { STAGES, giveToStage, stageRows, stagesDone, type ShuttleState } from '../src/gen/shuttle';
+import { STAGES, giveToStage, stageRows, stagesDone, fixShuttle, type ShuttleState } from '../src/gen/shuttle';
 import type { TownState } from '../src/gen/town';
 
 describe('processing chains', () => {
@@ -27,8 +27,10 @@ describe('processing chains', () => {
       expect(worth / cost, `${k} → ${r.out[0]}`).toBeGreaterThan(1.2);
     }
   });
-  it('the shuttle wants only processed goods, and microchips for its avionics', () => {
-    for (const st of STAGES) for (const [g] of st.needs) if (g !== 'microchip') expect(GOOD_INFO[g].proc, g).toBe(true); // chips come from the Old Chip Foundry
+  it('the shuttle wants only processed goods and the old plants\' goods, every stage something from them', () => {
+    const made = new Set(Object.values(INSTALL_WORK).map((w) => w!.out as string)); made.add('ceramics');
+    for (const st of STAGES) for (const [g] of st.needs) expect(made.has(g) || GOOD_INFO[g as Good].proc, g).toBe(true);
+    for (const st of STAGES) expect(st.needs.some(([g]) => made.has(g)), st.key).toBe(true);
     expect(STAGES.find((x) => x.key === 'avionics')!.needs.map(([g]) => g)).toContain('microchip');
     expect(GOODS.length).toBe(new Set(GOODS).size);
   });
@@ -89,6 +91,20 @@ describe('the shuttle', () => {
     expect(giveToStage(s, 'fuel', 'propellant', 50)).toBe(30);
     expect(stageRows(s, STAGES.find((x) => x.key === 'fuel')!).done).toBe(true);
     expect(stagesDone(s)).toBe(1);
+    expect(s.done).toEqual(['fuel']);
+  });
+  it('a stage finished under the old needs stays finished; the new power stage is open', () => {
+    const s: ShuttleState = { given: { hull: { alloy: 12, steel: 20 }, shield: { glass: 24, alloy: 4, plastic: 3 } } };
+    const back = fixShuttle(s);
+    expect(s.done).toEqual(['hull']);
+    expect(back).toEqual({ glass: 24, plastic: 3, alloy: 4 }); // the shield's old crates come back (the new shield takes ancient alloy, not advanced alloy)
+    expect(s.given.shield).toEqual({});
+    expect(stageRows(s, STAGES.find((x) => x.key === 'hull')!).done).toBe(true);
+    expect(stageRows(s, STAGES.find((x) => x.key === 'shield')!).done).toBe(false); // half done: it now wants ceramics
+    expect(giveToStage(s, 'hull', 'steel', 5)).toBe(0);
+    expect(stagesDone(s)).toBe(1);
+    expect(STAGES.map((x) => x.key)).toEqual(['hull', 'engines', 'avionics', 'shield', 'power', 'fuel']);
+    const again = JSON.parse(JSON.stringify(s)); fixShuttle(again); expect(again.done).toEqual(['hull']);
   });
 });
 

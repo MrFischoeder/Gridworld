@@ -9,7 +9,7 @@
 import { hash } from '../core/rng';
 import { allVillages, poisNear, worldDist, wrapDx, GRIDHOLM_ID, type Poi } from './regions';
 import { ringDanger } from './danger';
-import { STAGES } from './shuttle';
+import { STAGES, type AncientGood } from './shuttle';
 import type { Good } from './market';
 
 /** What a wonder is, what it gives the region once restored, and the part the Chariot may one day need from it. */
@@ -37,7 +37,7 @@ export const WONDER_KINDS: WonderKind[] = [
   { name: 'Last Lighthouse', perk: 'Your recall beacon reaches the region', part: 'Homing Lens' },
 ];
 /** Relics of the Ancients: only found in ruins and wrecks (a new item when this goes into the game). */
-export type Need = Good | 'relic' | 'microchip';
+export type Need = Good | 'relic' | AncientGood;
 export interface WonderStage { title: string; twist: string; needs: [Need, number][] }
 export interface Wonder {
   kind: WonderKind; x: number; z: number;
@@ -53,9 +53,9 @@ export interface ChariotStep { key: string; name: string; needs: [Need, number][
 export interface Campaign { chariot: ChariotStep[]; wonders: Wonder[]; blockers: Blocker[] }
 
 /** How much the Chariot's stages need, as a multiple of gen/shuttle.ts STAGES (tools/campaign.sim.ts calibrates it to 80 h). */
-export const CHARIOT_SCALE = 1.4;
+export const CHARIOT_SCALE = 0.7;
 /** Stage weights on top of the scale: light at first (a new player, no truck yet), heavier towards the launch. */
-export const CHARIOT_WEIGHTS = [0.5, 0.8, 1.15, 1.35, 1.6];
+export const CHARIOT_WEIGHTS = [0.5, 0.8, 1.15, 1.35, 1.45, 1.6];
 /** Where the surprises lie: distance from Gridholm (m) and after which Chariot stage they come. */
 export const SURPRISE = [{ after: 1, dist: [7000, 12000] }, { after: 2, dist: [13000, 20000] }, { after: 4, dist: [21000, 30000] }];
 
@@ -68,18 +68,23 @@ const TWISTS = [
   ['The heart', 'The core is dark and cold. It wakes only to the relics of its makers.'],
 ];
 const PROC: Good[] = ['steel', 'glass', 'cable', 'parts', 'plastic', 'copperbar', 'boards', 'alloy'];
+/** (Economy stage 7) the machine hall's second good may be one of the newer intermediates, the heart wants a good of the old plants. */
+const PROC2: Good[] = ['steel', 'glass', 'cable', 'parts', 'plastic', 'aluminium', 'batteries', 'chems'];
+const ANCIENT: AncientGood[] = ['microchip', 'sensor', 'ancalloy', 'ceramics', 'precision', 'powercell'];
 const DIRS = ['north', 'north-east', 'east', 'south-east', 'south', 'south-west', 'west', 'north-west'];
 /** Compass word for a point seen from Gridholm (z grows southwards in the world). */
 const dirOf = (x: number, z: number) => DIRS[Math.round(((Math.atan2(wrapDx(x), -z) * 180 / Math.PI + 360) % 360) / 45) % 8];
 
 function wonderStages(seed: number, danger: number): WonderStage[] {
   const k = 1 + danger * 0.12, n = (base: number) => Math.round(base * k);
-  const p1 = PROC[hash(seed, 1) % 5], p2 = PROC[(hash(seed, 1) % 5 + 1 + hash(seed, 2) % 4) % 5], p3 = PROC[5 + hash(seed, 3) % 3];
+  const i1 = hash(seed, 1) % 5, p1 = PROC[i1];
+  let p2 = PROC2[hash(seed, 2) % PROC2.length]; if (p2 === p1) p2 = PROC2[5 + hash(seed, 6) % 3];
+  const p3 = PROC[5 + hash(seed, 3) % 3], a3 = ANCIENT[hash(seed, 7) % ANCIENT.length];
   const t2 = TWISTS[1 + hash(seed, 4) % 3], t3 = TWISTS[4 + hash(seed, 5) % 2];
   return [
     { title: TWISTS[0][0], twist: TWISTS[0][1], needs: [['timber', n(20)], ['tools', n(6)]] },
     { title: t2[0], twist: t2[1], needs: [[p1, n(8)], [p2, n(6)]] },
-    { title: t3[0], twist: t3[1], needs: [['relic', 2 + Math.round(danger / 3)], [p3, n(3)]] },
+    { title: t3[0], twist: t3[1], needs: [['relic', 2 + Math.round(danger / 3)], [p3, n(3)], [a3, 1 + Math.round(danger / 3)]] },
   ];
 }
 

@@ -293,10 +293,11 @@ Materiały biorą się z hali wioski; złoto płacisz ze swojej sakiewki (opłat
 
 ### 3.9 Chariot of the Ancients (Rydwan w hangarze przy Gridholm)
 
-- **Hull Plating:** 12 × Advanced Alloy, 20 × Steel Ingots
-- **Main Engines:** 16 × Machine Parts, 8 × Advanced Alloy, 10 × Copper Cable
-- **Avionics:** 8 × Circuit Boards, 6 × Microchips, 12 × Copper Cable, 6 × Glass Panes
-- **Heat Shield:** 24 × Glass Panes, 4 × Advanced Alloy, 6 × Plastic Resin
+- **Hull Plating:** 16 × Steel Ingots, 10 × Aluminium Ingots, 6 × Ancient Alloy
+- **Main Engines:** 6 × Ancient Alloy, 8 × Precision Components, 10 × Copper Cable
+- **Avionics:** 8 × Circuit Boards, 6 × Microchips, 4 × Sensors, 12 × Copper Cable
+- **Heat Shield:** 16 × Advanced Ceramics, 4 × Ancient Alloy
+- **Power System:** 8 × Power Cells, 4 × Microchips, 8 × Copper Cable
 - **Propellant:** 30 × Rocket Propellant
 
 ### 3.10 Naprawy (materiały z plecaka)
@@ -330,9 +331,10 @@ Materiały biorą się z hali wioski; złoto płacisz ze swojej sakiewki (opłat
 
 | Materiał | Objętość | Użycie |
 |---|---|---|
-| Advanced Alloy | 8 L | kowal → Precision Drivetrain; budowa: Small Reactor; ulepszenie wioski: Armoured Wall; odbudowa: Old Enrichment Plant; odbudowa: Old Radar Station; odbudowa: Old Propellant Plant; odbudowa: Old Battery Plant; odbudowa: Old Optical Works; odbudowa: Old Alloy Complex; Rydwan: Hull Plating; Rydwan: Main Engines; Rydwan: Heat Shield |
-| Aluminium Ingots | 8 L | przetwarzanie: Alloy Foundry → Advanced Alloy; przetwarzanie: Old Alloy Complex → Ancient Alloy; przetwarzanie: Old Alloy Complex → Advanced Ceramics; ulepszenie wioski: Armoured Wall |
-| Ancient Alloy | 6 L | przetwarzanie: Old Precision Works → Precision Components; odbudowa: Old Precision Works |
+| Advanced Alloy | 8 L | kowal → Precision Drivetrain; budowa: Small Reactor; ulepszenie wioski: Armoured Wall; odbudowa: Old Enrichment Plant; odbudowa: Old Radar Station; odbudowa: Old Propellant Plant; odbudowa: Old Battery Plant; odbudowa: Old Optical Works; odbudowa: Old Alloy Complex |
+| Advanced Ceramics | 10 L | Rydwan: Heat Shield |
+| Aluminium Ingots | 8 L | przetwarzanie: Alloy Foundry → Advanced Alloy; przetwarzanie: Old Alloy Complex → Ancient Alloy; przetwarzanie: Old Alloy Complex → Advanced Ceramics; ulepszenie wioski: Armoured Wall; Rydwan: Hull Plating |
+| Ancient Alloy | 6 L | przetwarzanie: Old Precision Works → Precision Components; odbudowa: Old Precision Works; Rydwan: Hull Plating; Rydwan: Main Engines; Rydwan: Heat Shield |
 | Auto Turret | 16 L | budowa: Auto Turret |
 | Automation Units | 12 L | ulepszenie wioski: Automated Site |
 | Bale of Flax Fibre | 16 L | przetwarzanie: Textile Mill → Bolt of Cloth |
@@ -342,7 +344,7 @@ Materiały biorą się z hali wioski; złoto płacisz ze swojej sakiewki (opłat
 | Basket of Eggs | 10 L | sklep spożywczy → Boiled Eggs |
 | Churn of Milk | 20 L | sklep spożywczy → Cup of Milk; sklep spożywczy → Cheese |
 | Circuit Boards | 8 L | odbudowa: Old Enrichment Plant; odbudowa: Old Radar Station; odbudowa: Old Chip Foundry; odbudowa: Old Propellant Plant; odbudowa: Old Battery Plant; odbudowa: Old Optical Works; odbudowa: Old Alloy Complex; odbudowa: Old Precision Works; odbudowa: Old Robotics Plant; Rydwan: Avionics |
-| Copper Cable | 10 L | przetwarzanie: Electronics Shop → Circuit Boards; budowa: Aluminium Works; budowa: Small Reactor; ulepszenie elektrowni: Automated; ulepszenie wioski: Battery Bank; ulepszenie wioski: Battery Lamps; ulepszenie wioski: Automated Site; ulepszenie wioski: Sensor Sights; odbudowa: Old Enrichment Plant; odbudowa: Old Radar Station; odbudowa: Old Chip Foundry; odbudowa: Old Propellant Plant; odbudowa: Old Battery Plant; odbudowa: Old Optical Works; odbudowa: Old Alloy Complex; odbudowa: Old Precision Works; odbudowa: Old Robotics Plant; ulepszenie: radar (sensor array); Rydwan: Main Engines; Rydwan: Avionics |
+| Copper Cable | 10 L | przetwarzanie: Electronics Shop → Circuit Boards; budowa: Aluminium Works; budowa: Small Reactor; ulepszenie elektrowni: Automated; ulepszenie wioski: Battery Bank; ulepszenie wioski: Battery Lamps; ulepszenie wioski: Automated Site; ulepszenie wioski: Sensor Sights; odbudowa: Old Enrichment Plant; odbudowa: Old Radar Station; odbudowa: Old Chip Foundry; odbudowa: Old Propellant Plant; odbudowa: Old Battery Plant; odbudowa: Old Optical Works; odbudowa: Old Alloy Complex; odbudowa: Old Precision Works; odbudowa: Old Robotics Plant; ulepszenie: radar (sensor array); Rydwan: Main Engines; Rydwan: Avionics; Rydwan: Power System |
 | Copper Ingots | 8 L | przetwarzanie: Wire Mill → Copper Cable; przetwarzanie: Old Chip Foundry → Microchips; przetwarzanie: Old Battery Plant → Power Cells |
 | Copper Ore | 1.2 L | kowal → Electronic Components |
 | Crate of Bauxite | 10 L | przetwarzanie: Aluminium Works → Aluminium Ingots |
@@ -360,23 +362,23 @@ Materiały biorą się z hali wioski; złoto płacisz ze swojej sakiewki (opłat
 | Electronic Components | 0.4 L | kowal → Compass; kowal → Engine Parts; kowal → Turbocharger; kowal → Sensor Compass; budowa: Auto Turret; budowa: Oil Refinery; budowa: Chemical Works; budowa: Polymer Plant; budowa: Aluminium Works; budowa: Battery Works; budowa: Electronics Shop; budowa: Solar Farm; budowa: Small Reactor; budowa: rafineria; ulepszenie elektrowni: Rebuilt with old electronics; ulepszenie elektrowni: Automated; odbudowa: Old Enrichment Plant; odbudowa: Old Radar Station; odbudowa: Old Chip Foundry; odbudowa: Old Propellant Plant; odbudowa: Old Battery Plant; odbudowa: Old Optical Works; odbudowa: Old Alloy Complex; odbudowa: Old Precision Works; naprawa: Solar Array; naprawa: Refinery |
 | Engine Parts | 6 L | budowa: Wire Mill; budowa: Steelworks; budowa: Machine Shop; budowa: Wind Farm; budowa: Coal Power Station; budowa: Diesel Generator Bank; naprawa: Diesel Generator; Motor Boat |
 | Fuel Canister | 12 L | przetwarzanie: Old Propellant Plant → Rocket Propellant; paliwo: siłownie wielkich instalacji; paliwo: Diesel Generator Bank; paliwo łodzi motorowej |
-| Glass Panes | 12 L | przetwarzanie: Electronics Shop → Circuit Boards; przetwarzanie: Old Chip Foundry → Microchips; przetwarzanie: Old Optical Works → Sensors; ulepszenie wioski: Battery Lamps; odbudowa: Old Chip Foundry; odbudowa: Old Battery Plant; odbudowa: Old Optical Works; odbudowa: Old Precision Works; Rydwan: Avionics; Rydwan: Heat Shield |
+| Glass Panes | 12 L | przetwarzanie: Electronics Shop → Circuit Boards; przetwarzanie: Old Chip Foundry → Microchips; przetwarzanie: Old Optical Works → Sensors; ulepszenie wioski: Battery Lamps; odbudowa: Old Chip Foundry; odbudowa: Old Battery Plant; odbudowa: Old Optical Works; odbudowa: Old Precision Works |
 | Industrial Chemicals | 16 L | przetwarzanie: Polymer Plant → Plastic Resin; przetwarzanie: Battery Works → Basic Batteries; przetwarzanie: Old Enrichment Plant → Nuclear Fuel Rods; przetwarzanie: Old Chip Foundry → Microchips; przetwarzanie: Old Propellant Plant → Rocket Propellant; przetwarzanie: Old Battery Plant → Power Cells; przetwarzanie: Old Optical Works → Sensors; przetwarzanie: Old Alloy Complex → Advanced Ceramics; odbudowa: Old Enrichment Plant; odbudowa: Old Chip Foundry; odbudowa: Old Propellant Plant; odbudowa: Old Battery Plant; odbudowa: Old Optical Works; odbudowa: Old Alloy Complex; odbudowa: Old Precision Works; odbudowa: Old Robotics Plant |
 | Iron Bars | 8 L | przetwarzanie: Steelworks → Steel Ingots |
 | Iron Ore | 1.2 L | kowal → Scrap Metal; kowal → Wire |
 | Lead Ingots | 6 L | przetwarzanie: Battery Works → Basic Batteries |
 | Leechwing Membrane | 1 L | kowal → Gas Mask |
 | Log | 6 L | kowal → Hatchet; kowal → Pickaxe; kowal → Fire Kit; kowal → Hammer; kowal → Saw; kowal → Screwdriver; kowal → Planks; kowal → Scrap Metal; kowal → Light Tire; kowal → Hull Plating; kowal → Mask Filter; budowa: mur Timber Palisade; budowa: Sawmill; budowa: Brickworks; budowa: Smelter; budowa: farma; ulepszenie elektrowni: Overhauled; odbudowa: Old Radar Station; most; przystań; Rowboat; Sailboat; Motor Boat |
-| Machine Parts | 12 L | kowal → Precision Drivetrain; odbudowa: Old Enrichment Plant; odbudowa: Old Chip Foundry; odbudowa: Old Propellant Plant; odbudowa: Old Battery Plant; odbudowa: Old Optical Works; odbudowa: Old Alloy Complex; odbudowa: Old Precision Works; odbudowa: Old Robotics Plant; Rydwan: Main Engines |
-| Microchips | 6 L | przetwarzanie: Old Precision Works → Precision Components; przetwarzanie: Old Robotics Plant → Automation Units; zamówienia na czipy (wioski rzemieślnicze); ulepszenie elektrowni: Automated; ulepszenie wioski: Sensor Sights; odbudowa: Old Precision Works; odbudowa: Old Robotics Plant; ulepszenie: radar (sensor array); Rydwan: Avionics |
+| Machine Parts | 12 L | kowal → Precision Drivetrain; odbudowa: Old Enrichment Plant; odbudowa: Old Chip Foundry; odbudowa: Old Propellant Plant; odbudowa: Old Battery Plant; odbudowa: Old Optical Works; odbudowa: Old Alloy Complex; odbudowa: Old Precision Works; odbudowa: Old Robotics Plant |
+| Microchips | 6 L | przetwarzanie: Old Precision Works → Precision Components; przetwarzanie: Old Robotics Plant → Automation Units; zamówienia na czipy (wioski rzemieślnicze); ulepszenie elektrowni: Automated; ulepszenie wioski: Sensor Sights; odbudowa: Old Precision Works; odbudowa: Old Robotics Plant; ulepszenie: radar (sensor array); Rydwan: Avionics; Rydwan: Power System |
 | Nails | 0.2 L | budowa: mur Timber Palisade; budowa: mur Stone Wall; budowa: Textile Mill; budowa: Machine Shop; naprawa: Fields; naprawa: Sawmill; most; przystań; Rowboat; Sailboat; Motor Boat |
 | Nuclear Fuel Rods | 8 L | paliwo: własny reaktor Old Enrichment Plant; paliwo: Small Reactor; zamówienia na paliwo (stare reaktory) |
 | Pallet of Bricks | 12 L | budowa: Cement Works; budowa: Smelter; budowa: Glassworks; budowa: Steelworks; budowa: Aluminium Works; budowa: Alloy Foundry; budowa: Coal Power Station; ulepszenie wioski: Battery Bank; odbudowa: Old Battery Plant; odbudowa: Old Alloy Complex; odbudowa: Old Robotics Plant |
 | Planks | 1.5 L | budowa: mur Timber Palisade; budowa: mur Stone Wall; budowa: Barricades round the works; budowa: Barricades round the power plant; budowa: Sawmill; budowa: Brickworks; budowa: Cement Works; budowa: Smelter; budowa: Glassworks; budowa: Wire Mill; budowa: Oil Refinery; budowa: Textile Mill; budowa: Chemical Works; budowa: Electronics Shop; budowa: Solar Farm; budowa: Wind Farm; budowa: Coal Power Station; budowa: rafineria; naprawa: Fields; naprawa: Mine; naprawa: Sawmill; naprawa: Fish Racks; naprawa: Workshops |
-| Plastic Resin | 14 L | przetwarzanie: Electronics Shop → Circuit Boards; Rydwan: Heat Shield |
-| Power Cells | 8 L | przetwarzanie: Old Robotics Plant → Automation Units; paliwo: siłownie wielkich instalacji; ulepszenie wioski: Battery Bank; odbudowa: Old Robotics Plant |
+| Plastic Resin | 14 L | przetwarzanie: Electronics Shop → Circuit Boards |
+| Power Cells | 8 L | przetwarzanie: Old Robotics Plant → Automation Units; paliwo: siłownie wielkich instalacji; ulepszenie wioski: Battery Bank; odbudowa: Old Robotics Plant; Rydwan: Power System |
 | Power Core | 1 L | kowal → Turbocharger; budowa: Alloy Foundry; budowa: Small Reactor; ulepszenie elektrowni: Rebuilt with old electronics; odbudowa: Old Enrichment Plant; odbudowa: Old Chip Foundry; odbudowa: Old Propellant Plant; odbudowa: Old Battery Plant; odbudowa: Old Optical Works; odbudowa: Old Alloy Complex |
-| Precision Components | 6 L | przetwarzanie: Old Robotics Plant → Automation Units; kowal → Precision Drivetrain; ulepszenie elektrowni: Automated; ulepszenie wioski: Automated Site; odbudowa: Old Robotics Plant |
+| Precision Components | 6 L | przetwarzanie: Old Robotics Plant → Automation Units; kowal → Precision Drivetrain; ulepszenie elektrowni: Automated; ulepszenie wioski: Automated Site; odbudowa: Old Robotics Plant; Rydwan: Main Engines |
 | Ravager Hide | 3 L | kowal → Empty Flask; kowal → Gas Mask; Sailboat |
 | Rocket Propellant | 14 L | Rydwan: Propellant |
 | Rope | 1.5 L | budowa: mur Timber Palisade; budowa: Barricades round the works; budowa: Barricades round the power plant; naprawa: Wind Turbines; naprawa: Fish Racks; most; przystań; Rowboat; Sailboat; Motor Boat |
@@ -387,7 +389,7 @@ Materiały biorą się z hali wioski; złoto płacisz ze swojej sakiewki (opłat
 | Sack of Quartz Sand | 12 L | przetwarzanie: Glassworks → Glass Panes |
 | Salt Blocks | 7 L | przetwarzanie: Chemical Works → Industrial Chemicals |
 | Scrap Metal | 1.5 L | kowal → Hammer; kowal → Saw; kowal → Screwdriver; kowal → Pliers; kowal → Nails; kowal → Electronic Components; kowal → Compass; kowal → Light Tire; kowal → Hull Plating; kowal → Engine Parts; kowal → Gas Mask; kowal → Mask Filter; kowal → Turbocharger; kowal → Sensor Compass; budowa: mur Stone Wall; budowa: Auto Turret; budowa: Barricades round the works; budowa: Barricades round the power plant; budowa: Sawmill; budowa: Brickworks; budowa: Cement Works; budowa: Smelter; budowa: Glassworks; budowa: Wire Mill; budowa: Oil Refinery; budowa: Textile Mill; budowa: Steelworks; budowa: Chemical Works; budowa: Polymer Plant; budowa: Aluminium Works; budowa: Battery Works; budowa: Electronics Shop; budowa: Machine Shop; budowa: Alloy Foundry; budowa: Solar Farm; budowa: Wind Farm; budowa: Coal Power Station; budowa: Diesel Generator Bank; budowa: rafineria; budowa: stalowe pługi; ulepszenie elektrowni: Overhauled; odbudowa: Old Radar Station; naprawa: Diesel Generator; naprawa: Wind Turbines; naprawa: Mine; naprawa: Oil Wells; naprawa: Refinery; naprawa: Workshops; naprawa: Salvage Yard; przystań; Motor Boat |
-| Sensors | 6 L | przetwarzanie: Old Robotics Plant → Automation Units; kowal → Sensor Compass; ulepszenie wioski: Sensor Sights; odbudowa: Old Robotics Plant; ulepszenie: radar (sensor array) |
+| Sensors | 6 L | przetwarzanie: Old Robotics Plant → Automation Units; kowal → Sensor Compass; ulepszenie wioski: Sensor Sights; odbudowa: Old Robotics Plant; ulepszenie: radar (sensor array); Rydwan: Avionics |
 | Stack of Lumber | 16 L | budowa: Textile Mill; budowa: Polymer Plant; budowa: Battery Works; budowa: Machine Shop; budowa: Alloy Foundry |
 | Steel Ingots | 8 L | przetwarzanie: Machine Shop → Machine Parts; przetwarzanie: Machine Shop → Crate of Tools; przetwarzanie: Alloy Foundry → Advanced Alloy; przetwarzanie: Old Alloy Complex → Ancient Alloy; przetwarzanie: Old Precision Works → Precision Components; budowa: Small Reactor; ulepszenie wioski: Automated Site; ulepszenie wioski: Armoured Wall; odbudowa: Old Enrichment Plant; odbudowa: Old Radar Station; odbudowa: Old Chip Foundry; odbudowa: Old Propellant Plant; odbudowa: Old Battery Plant; odbudowa: Old Optical Works; odbudowa: Old Alloy Complex; odbudowa: Old Precision Works; odbudowa: Old Robotics Plant; Rydwan: Hull Plating |
 | Stone | 2 L | kowal → Hatchet; kowal → Pickaxe; budowa: mur Stone Wall; budowa: Barricades round the works; budowa: Barricades round the power plant; budowa: Sawmill; budowa: Brickworks; budowa: Cement Works; budowa: Smelter; budowa: Glassworks; budowa: Coal Power Station; budowa: farma; odbudowa: Old Radar Station; most; przystań |
