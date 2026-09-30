@@ -1,10 +1,11 @@
 // The window of a power station (E at it; gen/energy.ts, world/stations.ts): what it makes now, the village's power
 // balance, and for a coal or diesel station its bunker (load crates from your backpack and the vehicles parked by
 // the village) and the switch (off, it burns nothing and makes nothing).
+import { villageKw } from '../gen/improve';
 import { G, W } from '../game';
 import { ITEMS } from '../data/items';
 import { calcStats, saveChar } from '../character';
-import { STATIONS, bunkerOf, fuelWords, VILLAGE_KW, stationKw, fuelAt, loadBunker, switchStation, balance, type StationState } from '../gen/energy';
+import { STATIONS, bunkerOf, fuelWords, stationKw, fuelAt, loadBunker, switchStation, balance, type StationState } from '../gen/energy';
 import { PLANTS, running } from '../gen/plants';
 import { findPoi } from '../gen/regions';
 import type { Good } from '../gen/market';
@@ -37,7 +38,7 @@ function render(msg = '') {
   panel().classList.add('wide');
   panel().innerHTML = `<h2>${spec.name}</h2><div class="role">${open.town} · ${spec.blurb}</div>` +
     `<div class="say">${msg ? msg + '<br><br>' : ''}Now: <b>${s.on ? kw + ' kW' : 'switched off'}</b> (rated ${spec.kw} kW). ${how}<br><br>` +
-    `The village makes ${Math.round(b.made)} kW in all and takes ${VILLAGE_KW} kW itself; ${Math.round(Math.max(0, b.made - VILLAGE_KW))} kW are left for the works.${works ? '<br>' + works : ''}</div>` +
+    `The village makes ${Math.round(b.made)} kW in all and takes ${villageKw(G.char.towns[open.vid])} kW itself; ${Math.round(Math.max(0, b.made - villageKw(G.char.towns[open.vid])))} kW are left for the works.${works ? '<br>' + works : ''}</div>` +
     fuel + (spec.fuel ? `<button class="opt" data-sts="1">${s.on ? 'Switch it off (save the fuel)' : 'Switch it on'}</button>` : '') + `<button class="opt" data-stclose="1">Close</button>`;
 }
 /** Open the window of station w; false when there is none (an empty plot, a building site). */

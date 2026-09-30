@@ -1,4 +1,5 @@
 // Conversations and shops. New options (quests) plug in through OPT_TEXT and the switch below.
+import { villageKw } from '../gen/improve';
 import { G, W } from '../game';
 import { ITEMS, HANDS_ONLY } from '../data/items';
 import { NPC_INFO, VILLAGER_LINES, RUMOURS, OPT_TEXT, LORE, LORE_SHUTTLE, BUYS, COOK_PRICE, HOUSE_PRICE, stockFor, type OptId } from '../data/npcs';
@@ -29,7 +30,7 @@ import { stockHas, stockTake, hallNote } from './stock';
 import { hallClick } from './hall';
 import { fertility } from '../gen/industry';
 import { PLANTS, PLANT_KINDS, PLANT_SLOTS, plantsOf, plantPlan, plantProblem, startPlant, handOverPlant, isStation, specOf, running, type PlantKind } from '../gen/plants';
-import { STATIONS, fuelWords, STATION_KINDS, STATION_SLOTS, DRAW, VILLAGE_KW, balance, fuelAt, type StationKind } from '../gen/energy';
+import { STATIONS, fuelWords, STATION_KINDS, STATION_SLOTS, DRAW, balance, fuelAt, type StationKind } from '../gen/energy';
 import { worksClick } from './works';
 import { stationClick } from './stations';
 import { terminalClick } from './terminal';
@@ -40,6 +41,7 @@ import { foodHTML, foodClick } from './foodshop';
 import { shareHTML, shareClick } from './share';
 import { farmsHTML, farmsClick, showFarm } from './farms';
 import { plantUpHTML, plantUpClick, showPlantUp } from './plantup';
+import { improveHTML, improveClick } from './improve';
 import { earnTrust } from '../world/standing';
 import { CRAFTING_OPEN } from '../data/crafting';
 import { pendingTribute, payTribute } from '../world/villageraid';
@@ -193,7 +195,7 @@ function powerText(vid: number, vm: VillageMap, st: TownState | undefined): stri
   const b = balance(c.world, poi, vm.seed, st, c.time), stations = st?.stations ?? [];
   const works = plantsOf(st).map((p, i) => `the ${PLANTS[p.k].name} ${DRAW[p.k]} kW${!running(p) ? ' (idle)' : b.powered[i] ? ' (powered)' : ' <span style="color:var(--red,#ff5a3c)">(no power)</span>'}`);
   return `<b>Power.</b> We make <b>${Math.round(b.made)} kW</b> now` + (stations.length ? ` (our ${POWER[powerKind(vm.seed)].name.toLowerCase()} and ${stations.map((x) => `the ${STATIONS[x.k].name}${STATIONS[x.k].fuel && fuelAt(x, c.time) <= 0 ? ' (out of ' + ITEMS[STATIONS[x.k].fuel!].name.toLowerCase() + ')' : ''}`).join(' and ')})` : ` from our ${POWER[powerKind(vm.seed)].name.toLowerCase()}`) +
-    `; the village itself takes ${VILLAGE_KW} kW` + (b.farms ? `, the farms ${b.farms} kW` : '') +
+    `; the village itself takes ${villageKw(st)} kW` + (b.farms ? `, the farms ${b.farms} kW` : '') +
     (b.site ? `, our ${INDUSTRY[industryOf(c.world, poi, vm.seed)].site.toLowerCase()} ${b.site} kW${b.sitePowered < 1 ? ` <span style="color:var(--red,#ff5a3c)">(${Math.round(b.sitePowered * 100)}% powered: it makes less)</span>` : ''}` : '') +
     `, which leaves <b>${Math.round(b.free + b.powered.reduce((a, on, i) => a + (on ? DRAW[plantsOf(st)[i].k] : 0), 0))} kW</b> for works.` + (works.length ? ` They draw: ${works.join(', ')}.` : '') +
     ` Every works needs power to run: build power stations first.`;
@@ -333,6 +335,8 @@ dlgEl.addEventListener('click', (e) => {
   if (caravanClick(e.target as HTMLElement) || shuttleClick(e.target as HTMLElement) || installClick(e.target as HTMLElement) || bridgeClick(e.target as HTMLElement) || pierClick(e.target as HTMLElement) || hallClick(e.target as HTMLElement) || worksClick(e.target as HTMLElement) || stationClick(e.target as HTMLElement) || terminalClick(e.target as HTMLElement) || logbookClick(e.target as HTMLElement)) return;
   const pm = plantUpClick(town(), e.target as HTMLElement);
   if (pm !== null) { if (pm.built) { const tn = town(); closeDialog(); showPlantUp(tn); } else panel().innerHTML = plantUpHTML(town(), dlgHead(), pm.msg); return; }
+  const im = improveClick(town(), e.target as HTMLElement);
+  if (im !== null) { if (im.built) { const tn = town(); closeDialog(); showPlantUp(tn); } else panel().innerHTML = improveHTML(town(), dlgHead(), im.msg); return; }
   const fm = farmsClick(town(), e.target as HTMLElement);
   if (fm !== null) { if (fm.built) { const tn = town(); closeDialog(); showFarm(tn); } else panel().innerHTML = farmsHTML(town(), dlgHead(), fm.msg); return; }
   const sm = shareClick(town(), e.target as HTMLElement);
@@ -413,6 +417,7 @@ dlgEl.addEventListener('click', (e) => {
     case 'watch': renderWatch(); break;
     case 'rumour': renderTalk(RUMOURS[(Math.random() * RUMOURS.length) | 0]); break;
     case 'plantup': panel().classList.remove('wide'); panel().innerHTML = plantUpHTML(town(), dlgHead()); break;
+    case 'improve': panel().classList.add('wide'); panel().innerHTML = improveHTML(town(), dlgHead()); break;
     case 'farms': panel().classList.remove('wide'); panel().innerHTML = farmsHTML(town(), dlgHead()); break;
     case 'share': panel().classList.remove('wide'); panel().innerHTML = shareHTML(town(), dlgHead()); break;
     case 'make': panel().classList.remove('wide'); panel().innerHTML = ordersHTML(dlgHead(), loadedVillage(town())?.id ?? null); break;

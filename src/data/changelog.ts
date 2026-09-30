@@ -4,6 +4,16 @@ export interface Change { v: string; date: string; title: string; notes: string[
 
 export const CHANGELOG: Change[] = [
   {
+    v: '0.97.0', date: '2026-10-13', title: 'What the old parts are for',
+    notes: [
+      'Village improvements: ask the elder "What could the old parts do for us?" and build them from the village hall\'s stock. Battery Bank (power cells, batteries): gives power back at night and in a lull, and stands as racks of cells by the power plant. Battery Lamps: the village takes 15 kW instead of 25, and its lamps stay lit when the plant is down. Automated Site (automation units, precision components): the industry site makes half as much again and needs no hands. Sensor Sights (sensors, microchips): the wall turrets see half as far again and fire faster. Armoured Wall (aluminium, advanced alloy, on a stone wall): raids break on it more often and a live raid wears the gates down slower.',
+      'The power halls of the old plants take Cell Racks: 160 kW on power cells, a crate for 8 hours of work. A hall now runs any two sets together when one is not enough.',
+      'The Old Radar Station takes a sensor array once restored (sensors, microchips, cable): it hears 20 km instead of 12.',
+      'New orders at the blacksmith: the Precision Drivetrain (plans for Precision Manufacturing: +20% top speed, +25% acceleration, half the engine wear from knocks; fits an engine upgrade slot) and the Sensor Compass (plans for Advanced Sensors: the compass strip also points to the nearest old installation not yet restored and the nearest toxic fog you have found).',
+      'The Automated power plant level now also wants 2 precision components.',
+    ],
+  },
+  {
     v: '0.96.0', date: '2026-10-12', title: 'The top of the chain',
     notes: [
       'The Old Precision Works (18 to 28 km from Gridholm): a barrel-vaulted hall full of machine tools, a lattice test tower and a white measuring dome. Restored, it makes Precision Components from steel, Ancient Alloy and microchips (160 kW).',

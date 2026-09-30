@@ -13,6 +13,7 @@ import { makeNoise } from './noise';
 import type { Mount } from '../gen/village';
 import { villageHooks } from './overworld';
 import { worksOf } from '../gen/town';
+import { hasImprove, SIGHTS } from '../gen/improve';
 
 export const WALL_GUN = { range: 60, rate: 0.5, dmg: 1.3, turn: 2.6, noise: 40 };
 interface Gun { m: Mount; g: THREE.Group; head: THREE.Group; yaw: number; home: number; cd: number; look: number; target: Foe | null }
@@ -60,13 +61,15 @@ const hostile = (f: Foe) => !('kind' in f && f.kind === 'bramble' && (f as { sta
 export function updateWallGuns(dt: number) {
   if (!guns.size || G.char.loc !== 'overworld') return;
   const all = foes(), t0 = performance.now() / 1000;
-  for (const list of guns.values()) for (const t of list) {
+  for (const [id, list] of guns) {
+  const sharp = hasImprove(G.char.towns[id], 'sights'), range = WALL_GUN.range * (sharp ? SIGHTS.range : 1), rate = WALL_GUN.rate * (sharp ? SIGHTS.rate : 1);
+  for (const t of list) {
     t.cd -= dt; t.look -= dt;
     const o = t.head.getWorldPosition(new THREE.Vector3());
-    if (t.target && (!all.includes(t.target) || t.target.g.position.distanceTo(o) > WALL_GUN.range)) t.target = null;
+    if (t.target && (!all.includes(t.target) || t.target.g.position.distanceTo(o) > range)) t.target = null;
     if (t.look <= 0) {
       t.look = 0.35;
-      let best: Foe | null = null, bd = WALL_GUN.range;
+      let best: Foe | null = null, bd = range;
       for (const f of all) {
         if (!hostile(f)) continue;
         const to = f.g.position.clone().sub(o), d = to.length();
@@ -83,13 +86,14 @@ export function updateWallGuns(dt: number) {
     t.yaw += Math.max(-WALL_GUN.turn * dt, Math.min(WALL_GUN.turn * dt, dy));
     t.head.rotation.set(pitch, t.yaw, 0, 'YXZ');
     if (t.target && Math.abs(dy) < 0.12 && t.cd <= 0) {
-      t.cd = WALL_GUN.rate;
+      t.cd = rate;
       const end = t.target.g.position.clone(), muzzle = new THREE.Vector3(0, 0.02, -1.15).applyEuler(t.head.rotation).add(o);
       addFx(new THREE.Line(new THREE.BufferGeometry().setFromPoints([muzzle, end]), add(0x9dffe0)), 0.08);
       burst(end, 0xffb347, 6, 0.4); burst(muzzle, 0xffe0a0, 3, 0.2);
       makeNoise(o, WALL_GUN.noise);
       const flash = G.hitFlash; damageFoe(t.target, WALL_GUN.dmg); G.hitFlash = flash; // the hit marker is for your own shots
     }
+  }
   }
 }
 

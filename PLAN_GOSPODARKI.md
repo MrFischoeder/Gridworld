@@ -254,7 +254,21 @@ Dopisywane **na końcu `INSTALLS`**, żeby dotychczasowe zostały na miejscu. Ka
 
 Kolejność wydań: 0.94 Propellant i Battery, 0.95 Optical i Alloy Complex, 0.96 Precision i Robotics. Plotki w wioskach (`askLead`) i konsola `sites` obejmują nowe instalacje od razu.
 
-## Etap 6 (0.97.0): zastosowania komponentów (żadnych quest-itemów)
+## Etap 6 (0.97.0): zastosowania komponentów (żadnych quest-itemów) (ZROBIONE)
+
+**Jak zrobione:**
+- Ulepszenia wiosek (`gen/improve.ts`, u starszego „What could the old parts do for us?”, z zapasów hali, jednorazowe):
+  - Battery Bank: 4 powercell + 6 batteries + 6 cable + 6 bricks; oddaje połowę niedoboru słońca i wiatru poniżej ich mocy znamionowej, najwyżej 60 kW (bez stanu: liczone z chwili, jak reszta bilansu);
+  - Battery Lamps: 4 batteries + 4 glass + 4 cable; wioska bierze 15 kW zamiast 25, lampy świecą przy padniętej elektrowni;
+  - Automated Site: 2 automation + 2 precision + 6 cable + 4 steel; produkcja ×1,5 i obsada liczona co najmniej jako pełna;
+  - Sensor Sights: 2 sensor + 2 microchip + 4 cable; turrety na murach zasięg ×1,5, szybkostrzelność ×1/0,65;
+  - Armoured Wall: 8 aluminium + 6 alloy + 8 steel + 10 cement, tylko na kamiennym murze; +6 pkt. szansy obrony w rzucie, zużycie bram w najeździe ×0,6.
+- Siłownie instalacji: nowy zestaw Cell racks (160 kW na power cells, skrzynia na 8 h pracy, bunkier 12), dopisany na końcu `HALL_SETS`; hala łączy dowolne dwa zestawy.
+- Radar v2: antena sensorowa (4 sensor + 2 microchip + 6 cable) po odbudowie, zasięg 12 → 20 km.
+- U kowala: Precision Drivetrain (plany Precision Manufacturing; 2 precision + 2 parts + 1 alloy; ulepszenie silnika: +20% prędkości, +25% przyspieszenia, połowa zużycia silnika) i Sensor Compass (plany Advanced Sensors; 1 sensor + 2 circuit + 1 scrap; kompas wskazuje najbliższą nieodbudowaną instalację i znaną strefę mgły do 30 km).
+- Poziom Automated elektrowni wymaga też 2 precision (zapisy: przekazane materiały zostają).
+- Odłożone: silnik elektryczny łodzi i pojazdów, latarka gracza, lżejsze kadłuby, karawany bez eskorty, radio wiosek, naprawy instalacji. Wrócą przy balansie (etap 8), jeśli będą potrzebne.
+
 
 | Komponent | Zastosowania |
 |---|---|

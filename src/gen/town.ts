@@ -45,6 +45,8 @@ export interface TownState {
   fup?: number; ugiven?: Partial<Record<ItemKey, number>>;
   /** The village's own power plant upgraded (gen/plantup.ts) and materials towards the next level. */
   pup?: number; pupgiven?: Partial<Record<ItemKey, number>>;
+  /** Village improvements built (gen/improve.ts), and materials towards each. */
+  imp?: Partial<Record<import('./improve').ImproveKind, boolean>>; igiven?: Partial<Record<import('./improve').ImproveKind, Partial<Record<ItemKey, number>>>>;
   /** The village hall's hold (gen/hall.ts): what you have stored here for the village's builds. */
   hold?: Partial<Record<ItemKey, number>>;
   /** The food shop's cooked portions (gen/foodshop.ts), by dish. */

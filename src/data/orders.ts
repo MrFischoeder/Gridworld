@@ -28,6 +28,9 @@ export const ORDERS: Order[] = [
   { tech: 'filters', out: 'gasmask', n: 1, needs: [['hide', 2], ['membrane', 1], ['scrap', 2]] },
   { tech: 'filters', out: 'filter', n: 2, needs: [['log', 2], ['scrap', 1]] },
   { tech: 'engines', out: 'turbo', n: 1, needs: [['scrap', 6], ['circuit', 3], ['pcore', 1]] },
+  // the components of the old plants (economy stage 6)
+  { tech: 'precision', out: 'drivetrain', n: 1, needs: [['precision', 2], ['parts', 2], ['alloy', 1]] },
+  { tech: 'sensors', out: 'scanner', n: 1, needs: [['sensor', 1], ['circuit', 2], ['scrap', 1]] },
 ];
 /** Technologies that are for the villages themselves (farms, power, works), not for the craftsmen's bench. */
 export const VILLAGE_TECHS = ['fields', 'plough', 'rotor', 'solar', 'chips', 'radio', 'chemistry', 'enrichment', 'propellant', 'rail', 'aluminium', 'batteries', 'alloys', 'powercells', 'sensors', 'ancmetal', 'precision', 'automation'];

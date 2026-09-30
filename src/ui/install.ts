@@ -4,7 +4,7 @@
 import { G, W } from '../game';
 import { ITEMS, type ItemKey } from '../data/items';
 import { calcStats, saveChar, gainXp } from '../character';
-import { INSTALL_STAGES, INSTALL_WORK, INSTALL_DRAW, HALL_STAGE, RADAR, radarPlaces, installSites, type InstallKind, type InstallState, installPlan, handOverInstall, runInstall, installDone, newInstall, batchesIn, loadInstall, canRun, hallPick, hallKw, hallReady, hallSets, fuelHall, workOf, installWorks, setInstallRec, type InstallSite } from '../gen/installs';
+import { INSTALL_STAGES, INSTALL_WORK, INSTALL_DRAW, HALL_STAGE, radarRange, radarUpPlan, handOverRadarUp, RADAR_UP, radarPlaces, installSites, type InstallKind, type InstallState, installPlan, handOverInstall, runInstall, installDone, newInstall, batchesIn, loadInstall, canRun, hallPick, hallKw, hallReady, hallSets, fuelHall, workOf, installWorks, setInstallRec, type InstallSite } from '../gen/installs';
 import { itemName } from './icons';
 import { TECH_BY_ID } from '../gen/tech';
 import type { Good } from '../gen/market';
@@ -43,8 +43,14 @@ function render(msg = '') {
     s += `</span><br><span style="opacity:.7">On completion: ${plan.st.gold} gold, ${plan.st.xp} xp.</span></div></div>`;
     if (plan.plans) s += `<button class="opt" data-ins="give" ${plan.rows.some((r) => r.given < r.n && have(r.k) > 0) ? '' : 'disabled'}>Hand over what I carry</button>`;
   } else if (!INSTALL_WORK[site.k]) {
-    s += `The dish turns on its tower and the screens in the bunker glow: every village, ruin, wreck and camp within ${RADAR.r / 1000} km shows up, and whatever else is out there.</div>` +
+    s += `The dish turns on its tower and the screens in the bunker glow: every village, ruin, wreck and camp within ${radarRange(st) / 1000} km shows up, and whatever else is out there.</div>` +
       `<div class="shoprow"><div>${list}</div></div><button class="opt" data-ins="sweep">Sweep again and copy it onto my map</button>`;
+    const up = radarUpPlan(st);
+    if (up) {
+      s += `<div class="shoprow"><div><b>Sensor array</b> <span style="opacity:.7">(sees ${RADAR_UP.r / 1000} km · ${RADAR_UP.gold} gold, ${RADAR_UP.xp} xp)</span><br><span style="opacity:.8">Sensor heads and chips in the dish's feed: it would hear twice as far.</span><br><span>` +
+        up.rows.map((r) => { const h = have(r.k); return `<span style="color:${r.given >= r.n ? 'var(--xp)' : h ? 'var(--txt)' : '#ff9a7a'}">${ITEMS[r.k].name} ${r.given}/${r.n}${r.given < r.n && h ? ` (you have ${h})` : ''}</span>`; }).join(' · ') +
+        `</span></div><button class="opt" style="width:auto" data-ins="up" ${up.rows.some((r) => r.given < r.n && have(r.k) > 0) ? '' : 'disabled'}>hand over</button></div>`;
+    }
   } else {
     const w = workOf(site.k, st)!, all = installWorks(site.k), recipe = w.inp.map(([i, n]) => `${n} ${short(ITEMS[i].name)}`).join(' and ');
     const inputs = [...new Set(all.flatMap((x) => x.inp.map(([i]) => i)))];
@@ -78,7 +84,7 @@ function hall(k: InstallKind, st: InstallState): string {
     return `<div class="shoprow"><div><b>${h.name}</b> · ${h.kw} kW<br><span>${itemName(h.fuel)} in the bunker ${n > 0 && n < 1 ? n.toFixed(2) : Math.floor(n * 10) / 10}/${h.bunker} · ${per < 1 ? `${Math.round(1 / per)} batches a crate` : `${per.toFixed(1)} crates a batch`} · you have ${hv}</span></div>` +
       `<button class="opt" style="width:auto" data-ins="fuel" data-insk="${h.fuel}" ${hv && n < h.bunker - 1 + 1e-9 ? '' : 'disabled'}>load</button></div>`;
   }).join('');
-  return `<div class="say" style="margin:8px 0 0"><b>The power hall.</b> A batch needs ${INSTALL_DRAW[k]} kW: ${k === 'uranium' ? 'the coal boiler and the diesel sets together, or the plant\'s own reactor on its own rods' : 'the coal boiler or the diesel sets'}. The sets burn only while a batch is under way.</div>` + rows;
+  return `<div class="say" style="margin:8px 0 0"><b>The power hall.</b> A batch needs ${INSTALL_DRAW[k]} kW: ${k === 'uranium' ? 'two sets together, or the plant\'s own reactor on its own rods' : 'one set if it is strong enough, else two together'}. The sets burn only while a batch is under way.</div>` + rows;
 }
 /** The buyers of what this installation makes nearest to it, and whether they order today (its radio log). */
 const BUYERS: Partial<Record<InstallKind, { list: (world: number) => Poi[]; order: (world: number, v: Poi, now: number) => Contract | null; who: string }>> = {
@@ -117,13 +123,13 @@ const FINISH: Record<InstallKind, string> = {
 };
 /** The radar station's sweep: every place within its reach goes on your map. */
 function sweep(s: InstallSite): string {
-  const c = G.char, places = radarPlaces(c.world, s), sites = installSites(terrainNow()).filter((o) => o !== s && worldDist(o.x, o.z, s.x, s.z) <= RADAR.r);
+  const c = G.char, R = radarRange(c.installs[s.k]), places = radarPlaces(c.world, s, R), sites = installSites(terrainNow()).filter((o) => o !== s && worldDist(o.x, o.z, s.x, s.z) <= R);
   let n = 0;
   for (const p of [...places, ...sites]) if (discover(c.discovered, Math.floor(p.x / CHUNK), Math.floor(p.z / CHUNK))) n++;
   const v = places.filter((p) => p.type === 'village').length;
   if (n) { saveChar(); logLine(`The radar copies ${n} new place${n === 1 ? '' : 's'} onto your map (M).`); }
   const all = places.length + sites.length;
-  return n ? `The sweep shows ${all} places within ${RADAR.r / 1000} km (${v} villages${sites.length ? `, ${sites.map((o) => 'the ' + o.name).join(' and ')}` : ''}): ${Math.min(n, all)} of them are new on your map.` : `The sweep shows ${all} places within ${RADAR.r / 1000} km; you already have them all on your map.`;
+  return n ? `The sweep shows ${all} places within ${R / 1000} km (${v} villages${sites.length ? `, ${sites.map((o) => 'the ' + o.name).join(' and ')}` : ''}): ${Math.min(n, all)} of them are new on your map.` : `The sweep shows ${all} places within ${R / 1000} km; you already have them all on your map.`;
 }
 function close() { site = null; G.dlgOpen = false; dlgEl.style.display = 'none'; if (!G.isTouch) lockPointer(); }
 /** Clicks in the restoration window; true when handled. */
@@ -150,6 +156,17 @@ export function installClick(t: HTMLElement): boolean {
     calcStats(); saveChar(); render(msg); return true;
   }
   if (a === 'sweep') { render(sweep(site)); return true; }
+  if (a === 'up') {
+    const { taken, built } = handOverRadarUp(st, have);
+    for (const [k, n] of taken) takeFrom(k as Good, n, at());
+    let msg = taken.length ? 'Handed over: ' + taken.map(([k, n]) => `${ITEMS[k].name} ×${n}.`).join(' ') : 'You carry nothing the sensor array still needs.';
+    if (built) {
+      c.gold += RADAR_UP.gold; gainXp(RADAR_UP.xp);
+      showToast(`${site.name}: the sensor array hears ${RADAR_UP.r / 1000} km`);
+      msg += ' <b>The sensor array is in.</b> ' + sweep(site);
+    }
+    calcStats(); saveChar(); render(msg); return true;
+  }
   if (a === 'fuel') {
     const i = b.dataset.insk as ItemKey, n = fuelHall(site.k, st, i, have(i), c.time);
     if (n > 0) { takeFrom(i, n, at()); calcStats(); saveChar(); }

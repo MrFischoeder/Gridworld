@@ -3,6 +3,7 @@
 // the next day hour by hour), trade (your contracts, what you have bought and sold where, the caravans on our roads,
 // our market), the villages you know of (what each makes and wants, what stands there), and the Chariot of the
 // Ancients. It reads only; everything it shows comes from the pure models the rest of the game runs on.
+import { villageKw, IMPROVE, IMPROVE_KINDS, hasImprove } from '../gen/improve';
 import { G, W } from '../game';
 import { ITEMS, type ItemKey } from '../data/items';
 import { findPoi, allVillages, worldDist, wrapDx, villageSeed, CHUNK, GRIDHOLM_ID, type Poi } from '../gen/regions';
@@ -12,7 +13,7 @@ import { wallOf, worksOf, powerKind, POWER, POWER_DOWN } from '../gen/town';
 import { WALL_TIERS, type VillageMap } from '../gen/village';
 import { nextRaid, lastRaid, raidOutcome } from '../gen/raids';
 import { PLANTS, plantsOf, running, runPlant } from '../gen/plants';
-import { STATIONS, DRAW, VILLAGE_KW, balance, baseKw, stationKw, fuelAt, fuelWords, poweredAt, sitePower, SITE_UNPOWERED } from '../gen/energy';
+import { STATIONS, DRAW, balance, baseKw, stationKw, fuelAt, fuelWords, poweredAt, sitePower, SITE_UNPOWERED } from '../gen/energy';
 import { roadsOf, departures, lastArrival } from '../gen/caravans';
 import { STAGES, CHARIOT, stageRows, stagesDone } from '../gen/shuttle';
 import { weatherAt, WEATHER_NAME } from '../gen/weather';
@@ -63,6 +64,7 @@ function villagePage(poi: Poi, vm: VillageMap): string {
   s += row(spec.site, `${bar(cond / 100)} ${Math.round(cond)}% · output ${Math.round(prod * 100)}%`);
   s += row('Own goods in the hall', `${bar(so.n / so.cap)} ${Math.floor(so.n)}/${so.cap} crates` + (so.full ? ' · FULL, the work stops' : ''));
   { const hv = holdVol(st); if (hv) s += row('Stored in the hall', `${Math.round(hv)} / ${HALL.vol} L`); }
+  { const im = IMPROVE_KINDS.filter((k) => hasImprove(st, k)); if (im.length) s += row('Improvements', im.map((k) => IMPROVE[k].name).join(', ')); }
   s += h('WORKS');
   const plants = plantsOf(st);
   if (!plants.length) s += `<div class="tdim">No works built. Ask the elder.</div>`;
@@ -86,7 +88,7 @@ function powerPage(poi: Poi, vm: VillageMap): string {
   const c = G.char, st = c.towns[poi.id], seed = vm.seed, now = c.time, b = balance(c.world, poi, seed, st, now);
   const kind = powerKind(seed), cond = plantCondition(poi.id, seed);
   let s = h(`POWER · ${fmtClock(now)}`);
-  s += row('Made now', `<b>${Math.round(b.made)} kW</b>`) + row('Village use', `${VILLAGE_KW} kW`) + row('Left for farms, industry and works', `${Math.round(Math.max(0, b.made - VILLAGE_KW))} kW`);
+  s += row('Made now', `<b>${Math.round(b.made)} kW</b>`) + (b.bank > 0.5 ? row('Of it, battery bank', `${Math.round(b.bank)} kW`) : '') + row('Village use', `${villageKw(st)} kW`) + row('Left for farms, industry and works', `${Math.round(Math.max(0, b.made - villageKw(st)))} kW`);
   s += h('SOURCES');
   s += row(POWER[kind].name, `${Math.round(baseKw(c.world, poi, seed, st, now))} kW · condition ${Math.round(cond)}%${cond < POWER_DOWN ? ' · DOWN' : ''}`);
   for (const x of st?.stations ?? []) {
@@ -101,9 +103,9 @@ function powerPage(poi: Poi, vm: VillageMap): string {
   plants.forEach((p, i) => { s += row(PLANTS[p.k].name, `draws ${DRAW[p.k]} kW · ${!running(p) ? 'idle' : b.powered[i] ? 'powered' : 'NO POWER'}`); });
   if (!plants.length) s += `<div class="tdim">No works.</div>`;
   s += h('NEXT 24 HOURS (free for works)');
-  const peak = Math.max(40, ...Array.from({ length: 8 }, (_, k) => balance(c.world, poi, seed, st, now + k * 180).made - VILLAGE_KW));
+  const peak = Math.max(40, ...Array.from({ length: 8 }, (_, k) => balance(c.world, poi, seed, st, now + k * 180).made - villageKw(st)));
   for (let k = 0; k < 8; k++) {
-    const t = now + k * 180, bb = balance(c.world, poi, seed, st, t), free = Math.max(0, bb.made - VILLAGE_KW), w = weatherAt(c.world, poi.x, poi.z, t);
+    const t = now + k * 180, bb = balance(c.world, poi, seed, st, t), free = Math.max(0, bb.made - villageKw(st)), w = weatherAt(c.world, poi.x, poi.z, t);
     s += `<div class="trow mono"><span>${fmtTime(t)}</span><span>${bar(free / peak, 16)} ${String(Math.round(free)).padStart(4)} kW · ${WEATHER_NAME[w.kind]}</span></div>`;
   }
   return s + installRows(poi);

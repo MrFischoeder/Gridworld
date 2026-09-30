@@ -10,6 +10,7 @@
 // village with a full storehouse). Pay it (at the elder or the captain of the guard) and they leave; refuse and they
 // come. While they fight, their gunners shoot at the wall and at any villager in sight, and when the defences fall
 // they tear down part of the wall (it drops a tier) besides wrecking the plant.
+import { armourDrain } from '../gen/improve';
 import * as THREE from 'three';
 import { earnTrust } from './standing';
 import { losePeople, PEOPLE } from '../gen/people';
@@ -130,7 +131,7 @@ function liveTick(dt: number) {
     if (Math.hypot(b.p.x - t.x, b.p.z - t.z) > VRAID.near) continue;
     if (t.site) { const st = (G.char.towns[L.vid] ??= {}); st.siteHurt = Math.min(80, (st.siteHurt ?? 0) + VRAID.plant * 1.5 * dt * (worksOf(st, 'siteGuard') ? GUARDED.live : 1)); st.siteHurtT = G.char.time; }
     else if (t.plant) { if (L.plantHurt < VRAID.plantMax) { const st = (G.char.towns[L.vid] ??= {}), h = VRAID.plant * dt * (worksOf(st, 'plantGuard') ? GUARDED.live : 1); L.plantHurt += h; st.hurt = Math.min(100, (st.hurt ?? 0) + h); } }
-    else L.defence -= VRAID.drain[tier] * dt;
+    else L.defence -= VRAID.drain[tier] * armourDrain(G.char.towns[L.vid]) * dt;
     break;
   }
   shelling(L, alive, dt);

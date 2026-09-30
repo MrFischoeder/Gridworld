@@ -10,6 +10,7 @@ import { hash } from '../core/rng';
 import { poisNear, worldDist, type Poi } from './regions';
 import { dangerAt } from './danger';
 import { worksOf, GUARDED, type TownState } from './town';
+import { armourHold } from './improve';
 
 export const RAID = {
   /** Camps further than this from a village do not raid it (m). */
@@ -52,7 +53,7 @@ export function raidsBetween(world: number, v: Poi, t1: number, t2: number): Rai
 export function raidOutcome(world: number, r: Raid, s: TownState | undefined): 'won' | 'lost' | 'paid' {
   const seen = s?.raids?.[r.k];
   if (seen) return seen;
-  const wall = Math.min(RAID.hold.length - 1, s?.wall ?? 0), hold = RAID.hold[wall] - (r.strength - 2) * 0.04;
+  const wall = Math.min(RAID.hold.length - 1, s?.wall ?? 0), hold = RAID.hold[wall] + armourHold(s) - (r.strength - 2) * 0.04;
   // a weak village facing a strong band often pays rather than fight
   const pay = Math.max(0.05, 0.35 + (r.strength - 2) * 0.05 - wall * 0.12);
   if ((hash(world, r.village, r.k, 0x4a20) % 1000) / 1000 < pay) return 'paid';

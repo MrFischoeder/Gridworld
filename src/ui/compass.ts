@@ -1,12 +1,15 @@
 // The compass strip at the top of the screen (only while you carry a Compass, on the surface): your heading with
 // the cardinal points, a mark towards the nearest village (the next one while you stand in a village) (with its name and distance) and marks for the
-// places your accepted quests send you to, and your flags.
+// places your accepted quests send you to, and your flags. The Sensor Compass (`scanner`) also marks the nearest old
+// installation not yet restored within SCAN_R and the nearest toxic fog you have found.
 import { G } from '../game';
 import { hasItem } from '../character';
 import { allVillages, wrapDx } from '../gen/regions';
 import { questMarkers } from '../world/quests';
 import { leadMarkers } from '../world/datacarriers';
 import { $ } from './hud';
+import { OW } from '../world/overworld';
+import { installSites, installDone } from '../gen/installs';
 
 const cv = $<HTMLCanvasElement>('compass'), ctx = cv.getContext('2d')!;
 const W = 460, H = 46, SPAN = 150; // degrees across the strip
@@ -20,15 +23,26 @@ export const heading = () => ((-G.yaw * 180 / Math.PI) % 360 + 360) % 360;
 export const point8 = (b: number) => NAMES[(Math.round(b / 45) * 45) % 360];
 export const fmtDist = (m: number) => (m < 1000 ? Math.round(m / 10) * 10 + ' m' : (m / 1000).toFixed(1) + ' km');
 
-let nearT = 0, near: { name: string; x: number; z: number } | null = null;
+type Mark = { name: string; x: number; z: number } | null;
+let nearT = 0, near: Mark = null, old: Mark = null, fog: Mark = null;
+/** How far the sensor compass sees old installations and known fog (m). */
+export const SCAN_R = 30000;
 export function updateCompass(dt: number) {
-  const on = G.char.loc === 'overworld' && hasItem('compass') && G.playing;
+  const scan = hasItem('scanner'), on = G.char.loc === 'overworld' && (scan || hasItem('compass')) && G.playing;
   cv.style.display = on ? 'block' : 'none';
   if (!on) return;
   if ((nearT -= dt) <= 0) { // the nearest village, looked up now and then
     nearT = 1;
     let bd = Infinity; near = null;
     for (const v of allVillages(G.char.world)) { const d = Math.hypot(wrapDx(v.x - G.pos.x), v.z - G.pos.z); if (d > 150 && d < bd) { bd = d; near = { name: v.name, x: v.x, z: v.z }; } }
+    // the sensor compass: the nearest old installation not yet restored within SCAN_R, and the nearest fog you found
+    old = null; fog = null;
+    if (scan && OW.terrain) {
+      let od = SCAN_R;
+      for (const s of installSites(OW.terrain)) { const d = Math.hypot(wrapDx(s.x - G.pos.x), s.z - G.pos.z); if (d < od && d > s.r && !installDone(s.k, G.char.installs[s.k])) { od = d; old = { name: s.name, x: s.x, z: s.z } as Mark; } }
+      let fd = SCAN_R;
+      for (const [x, z, r, name] of Object.values(G.char.fogs)) { const d = Math.hypot(wrapDx(x - G.pos.x), z - G.pos.z); if (d < fd && d > r) { fd = d; fog = { name, x, z } as Mark; } }
+    }
   }
   const h = heading(), px = (b: number) => { let d = b - h; d = ((d + 540) % 360) - 180; return W / 2 + d / SPAN * W; };
   ctx.clearRect(0, 0, W, H);
@@ -58,5 +72,8 @@ export function updateCompass(dt: number) {
   for (const c of G.char.claims) { const d = Math.hypot(wrapDx(c.x - G.pos.x), c.z - G.pos.z); if (d > 30) mark(c.x, c.z, '#c4ffd2', `Your flag ${fmtDist(d)}`); }
   for (const q of questMarkers()) mark(q.x, q.z, '#ffd060', q.label);
   for (const q of leadMarkers()) mark(q.x, q.z, q.c, q.short);
+  const o = old as Mark, f = fog as Mark;
+  if (o) mark(o.x, o.z, '#b6ff3a', `${o.name} ${fmtDist(Math.hypot(wrapDx(o.x - G.pos.x), o.z - G.pos.z))}`);
+  if (f) mark(f.x, f.z, '#d8ff6a', `${f.name} ${fmtDist(Math.hypot(wrapDx(f.x - G.pos.x), f.z - G.pos.z))}`);
   if (near) mark(near.x, near.z, '#9dffe0', `${near.name} ${fmtDist(Math.hypot(wrapDx(near.x - G.pos.x), near.z - G.pos.z))}`);
 }

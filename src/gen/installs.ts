@@ -171,6 +171,8 @@ export const HALL_SETS: HallSet[] = [
   { fuel: 'coal', name: 'Coal boiler', kw: 120, burn: 120, bunker: 30 },
   { fuel: 'fuel', name: 'Diesel sets', kw: 100, burn: 150, bunker: 30 },
   { fuel: 'nfuel', name: 'The plant\'s own reactor', kw: 250, burn: 5760, bunker: 4 },
+  // (economy stage 6) racks of power cells from the Old Battery Plant: clean, strong and long, in any hall
+  { fuel: 'powercell', name: 'Cell racks', kw: 160, burn: 480, bunker: 12 },
 ];
 /** The sets of k's hall: every hall has a coal boiler and diesel sets; the enrichment plant also its own reactor, which burns the rods it makes. */
 export const hallSets = (k: InstallKind) => HALL_SETS.filter((h) => h.fuel !== 'nfuel' || k === 'uranium');
@@ -186,7 +188,8 @@ export function hallPick(k: InstallKind, s: InstallState): HallSet[] | null {
   const one = ok.find((h) => h.kw >= draw);
   if (one) return [one];
   const pair = ok.filter((h) => h.fuel !== 'nfuel');
-  return pair.reduce((a, h) => a + h.kw, 0) >= draw && pair.length > 1 ? pair : null;
+  for (let i = 0; i < pair.length; i++) for (let j = i + 1; j < pair.length; j++) if (pair[i].kw + pair[j].kw >= draw) return [pair[i], pair[j]];
+  return pair.reduce((a, h) => a + h.kw, 0) >= draw && pair.length > 2 ? pair : null;
 }
 /** The power the hall could give now (kW): every set with fuel in its bunker. */
 export const hallKw = (k: InstallKind, s: InstallState | undefined) => (hallReady(k, s) ? hallSets(k).filter((h) => (s!.pw?.[h.fuel] ?? 0) > 1e-9).reduce((a, h) => a + h.kw, 0) : 0);
@@ -207,7 +210,8 @@ export function fuelHall(k: InstallKind, s: InstallState, fuel: ItemKey, n: numb
  * An installation's saved state: the stage reached (stages done), materials handed over towards the next, and the
  * works: inputs in the hopper, output ready, when it was last settled, and the fuel in its power hall's bunkers.
  */
-export interface InstallState { stage: number; given: Partial<Record<ItemKey, number>>; inp: Partial<Record<ItemKey, number>>; out: number; t: number; pw?: Partial<Record<ItemKey, number>>; rec?: number }
+/** `up` / `upgiven`: an upgrade after restoration (the radar's: RADAR_UP) and materials towards it. */
+export interface InstallState { stage: number; given: Partial<Record<ItemKey, number>>; inp: Partial<Record<ItemKey, number>>; out: number; t: number; pw?: Partial<Record<ItemKey, number>>; rec?: number; up?: boolean; upgiven?: Partial<Record<ItemKey, number>> }
 export const newInstall = (): InstallState => ({ stage: 0, given: {}, inp: {}, out: 0, t: 0 });
 /** Saves from before installations took more than one input kept the ore as a number. */
 export function fixInstall(k: InstallKind, s: InstallState): InstallState {
@@ -327,5 +331,25 @@ export function pickInstallLead(sites: InstallSite[], leads: string[], found: (s
 // ---------- the radar station: what it shows once restored ----------
 /** How far the restored radar station sees (m). */
 export const RADAR = { r: 12000 };
+/** (Economy stage 6) the radar station's upgrade once restored: sensors and chips in the dish, and it sees `r` m. */
+export const RADAR_UP = { r: 20000, needs: [['sensor', 4], ['microchip', 2], ['cable', 6]] as [ItemKey, number][], gold: 300, xp: 400 };
+/** How far the radar sees now. */
+export const radarRange = (s: InstallState | undefined) => (s?.up ? RADAR_UP.r : RADAR.r);
+/** The upgrade's rows (given / needed), or null once done or while the station is not restored. */
+export function radarUpPlan(s: InstallState | undefined) {
+  if (!s || s.up || !installDone('radar', s)) return null;
+  const rows = RADAR_UP.needs.map(([i, n]) => ({ k: i, n, given: Math.min(n, s.upgiven?.[i] ?? 0) }));
+  return { rows, done: rows.every((r) => r.given >= r.n) };
+}
+/** Hand over materials for the radar's upgrade (bit by bit); true once it is done. */
+export function handOverRadarUp(s: InstallState, have: (i: ItemKey) => number): { taken: [ItemKey, number][]; built: boolean } {
+  const plan = radarUpPlan(s);
+  if (!plan) return { taken: [], built: false };
+  const g = (s.upgiven ??= {}), taken: [ItemKey, number][] = [];
+  for (const r of plan.rows) { const n = Math.min(r.n - r.given, have(r.k)); if (n > 0) { g[r.k] = r.given + n; taken.push([r.k, n]); } }
+  if (!radarUpPlan(s)!.done) return { taken, built: false };
+  s.up = true; delete s.upgiven;
+  return { taken, built: true };
+}
 /** The villages, ruins, wrecks and camps within RADAR.r of the station (for the map). */
-export const radarPlaces = (world: number, s: InstallSite): Poi[] => poisNear(world, s.x, s.z, RADAR.r).filter((p) => worldDist(p.x, p.z, s.x, s.z) <= RADAR.r);
+export const radarPlaces = (world: number, s: InstallSite, r = RADAR.r): Poi[] => poisNear(world, s.x, s.z, r).filter((p) => worldDist(p.x, p.z, s.x, s.z) <= r);

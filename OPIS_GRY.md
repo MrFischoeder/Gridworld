@@ -1,6 +1,6 @@
 # GridWorld: opis gry, cel, plan i historia zmian
 
-Stan na wersję **0.96.0**. Ten dokument opisuje, czym jest GridWorld, jaki jest cel gry, co już w niej jest, czego jeszcze nie ma, dokąd zmierza i jak powstawała, wersja po wersji. Nazwy z gry (przedmioty, miejsca, postacie) są po angielsku, tak jak na ekranie.
+Stan na wersję **0.97.0**. Ten dokument opisuje, czym jest GridWorld, jaki jest cel gry, co już w niej jest, czego jeszcze nie ma, dokąd zmierza i jak powstawała, wersja po wersji. Nazwy z gry (przedmioty, miejsca, postacie) są po angielsku, tak jak na ekranie.
 
 ---
 
@@ -273,6 +273,12 @@ To serce gry. Gracz nie ma własnej bazy (budowanie w dziczy jest zamknięte). Z
   - Stalowe pługi podnoszą plon, a farmy potrzebują prądu na pompy.
 - **Sklep z jedzeniem** gotuje z zapasów hali: chleb, gulasz, jajka, mleko i ser.
 - **Zakłady przetwórcze** (2 na wioskę): huta, rafineria, huta szkła, walcownia drutu, elektronika, warsztat maszynowy, odlewnia, chemia. Z surowców robią 9 dóbr przetworzonych: stal, sztaby miedzi, plastik, szkło, kabel, płytki, części, stop, paliwo rakietowe.
+- **Ulepszenia wioski** z części starych fabryk (u starszego, z zapasów hali):
+  - Battery Bank (ogniwa, akumulatory) oddaje prąd nocą i przy ciszy wiatrowej;
+  - Battery Lamps: wioska bierze mniej prądu, a lampy świecą nawet przy padniętej elektrowni;
+  - Automated Site (moduły automatyki, komponenty precyzyjne): miejsce przemysłu daje o połowę więcej i nie potrzebuje rąk do pracy;
+  - Sensor Sights (sensory, mikroczipy): turrety na murach widzą dalej i strzelają szybciej;
+  - Armoured Wall (aluminium, stop, na kamiennym murze): najazdy częściej się rozbijają.
 
 **Ludzie i reputacja**
 - **Ludność**: 40–90 osób (Gridholm 70). Farmy ją podnoszą, straty w najazdach zmniejszają.
@@ -534,3 +540,4 @@ Pełne notatki (po angielsku) są w grze pod przyciskiem **Changelog** w menu g�
 - **0.94.0 Fabryka paliwa i fabryka ogniw** (etap 5 planu gospodarki, część 1). Old Propellant Plant (paliwo rakietowe, jedyne źródło) i Old Battery Plant (Power Cells), z siłowniami i trzema etapami; gracz dowozi wszystkie wejścia; nowa technologia Power Cell Chemistry; zamówienia na ogniwa w wioskach złomiarzy.
 - **0.95.0 Olbrzymy dawnego świata** (etap 5, część 2). Wszystkie instalacje Starożytnych dwa razy większe (pulpity w skali człowieka, położenie bez zmian); Old Optical Works (sensory) i Old Alloy Complex (Ancient Alloy lub Advanced Ceramics); technologie Advanced Sensors i Ancient Metallurgy.
 - **0.96.0 Szczyt łańcucha** (etap 5, część 3). Old Precision Works (Precision Components ze stali, Ancient Alloy i mikroczipów) i Old Robotics Plant (Automation Units z mikroczipów, sensorów, komponentów precyzyjnych i ogniw), obie w podwójnej skali; technologie Precision Manufacturing i Automation; etap 5 zamknięty.
+- **0.97.0 Do czego służą stare części** (etap 6). Ulepszenia wiosek (bank akumulatorów, lampy akumulatorowe, zautomatyzowane miejsce przemysłu, celowniki sensorowe turretów, opancerzony mur); stojaki ogniw w siłowniach starych fabryk; antena sensorowa radaru (20 km); u kowala napęd precyzyjny do pojazdów i kompas z sensorem, który wskazuje instalacje i znane strefy mgły; automatyzacja elektrowni wymaga też komponentów precyzyjnych.

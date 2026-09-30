@@ -8,6 +8,7 @@
 import { hash, rng, type Dir } from '../core/rng';
 import { allVillages, worldDist, villageSeed, GRIDHOLM_ID, type Poi } from './regions';
 import { staffing } from './people';
+import { autoMult, autoStaffing } from './improve';
 import { mountainMask } from './mountains';
 import { powerSite, worksOf, GUARDED } from './town';
 import { raidsBetween, raidOutcome, RAID } from './raids';
@@ -104,7 +105,7 @@ export function production(world: number, v: Poi, seed: number, s: TownState | u
   const k = industryOf(world, v, seed);
   if (!siteBuilt(k, s)) return 0;
   const pw = SITE_UNPOWERED + (1 - SITE_UNPOWERED) * sitePower(world, v, seed, s, now);
-  return siteCondition(world, v, s, now) / 100 * fertility(world, v, seed) * staffing(seed, v.id === GRIDHOLM_ID, s, now) * pw;
+  return siteCondition(world, v, s, now) / 100 * fertility(world, v, seed) * autoStaffing(s, staffing(seed, v.id === GRIDHOLM_ID, s, now)) * pw * autoMult(s);
 }
 /**
  * Where the site lies, in plaza-local metres: on a side (W, E or S) other than the power plant's, off its middle so

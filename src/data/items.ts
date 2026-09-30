@@ -110,6 +110,7 @@ export const ITEMS = {
   wire: { name: 'Wire', ab: 'WIR', type: 'mat', desc: 'a coil of steel wire. For building, doors and metalwork', stack: 10 },
   turretkit: { name: 'Auto Turret', ab: 'TUR', type: 'part', desc: 'a turret in a crate: build it on your claim (B, Auto Turret) on the ground, a floor or a roof. It shoots whatever hostile comes in range and sight. E at it switches it on or off', stack: 1 },
   codelock: { name: 'Code Lock', ab: 'LCK', type: 'tool', desc: 'a keypad lock for a door you built: stand at the door and press L, then choose a 4-digit code. Others need the code to open it', stack: 3 },
+  scanner: { name: 'Sensor Compass', ab: 'SCN', type: 'tool', desc: 'a compass with a sensor head from the Old Optical Works: carry it and the compass strip also points to the nearest old installation within 30 km and the nearest toxic fog you have found', stack: 1 },
   compass: { name: 'Compass', ab: 'CMP', type: 'tool', desc: 'carry it and a compass strip shows your heading at the top of the screen, with the way to the nearest village', stack: 1 },
   bridgekit: { name: 'Bridge Kit', ab: 'BRK', type: 'cons', desc: 'survey stakes, a line and a plumb: use it by a river to pick where a bridge will cross (straight over the water), click to stake out the site. Then bring the materials to its sign', stack: 1 },
   pierkit: { name: 'Pier Kit', ab: 'PRK', type: 'cons', desc: 'survey stakes, a sounding line and a float: stand on a beach and use it looking out to sea to stake out a pier out to water deep enough for a boat, click to mark the site. Then bring the materials to its sign', stack: 1 },
@@ -129,6 +130,7 @@ export const ITEMS = {
   wheelL: { name: 'Light Tire', ab: 'TIR', type: 'part', desc: 'tire for the RTV-1 Scout; drag it onto a wheel slot in the vehicle service (E at the front)', stack: 4 },
   wheelH: { name: 'Heavy Tire', ab: 'HTR', type: 'part', desc: 'tire for the HTV-6 Mastodon; drag it onto a wheel slot in the vehicle service (E at the front)', stack: 2 },
   engine: { name: 'Engine Parts', ab: 'ENG', type: 'part', desc: 'repairs a vehicle engine by 50% (drop it on the engine slot)', stack: 5 },
+  drivetrain: { name: 'Precision Drivetrain', ab: 'PDT', type: 'part', desc: 'engine upgrade built from precision components: bearings and gears that never bind. +20% top speed, +25% acceleration, and the engine wears half as fast from knocks', stack: 1 },
   turbo: { name: 'Turbocharger', ab: 'TRB', type: 'part', desc: 'engine upgrade: +15% top speed, +30% acceleration', stack: 1 },
   eguard: { name: 'Engine Guard', ab: 'EGD', type: 'part', desc: 'engine upgrade: armour plate that halves engine damage', stack: 1 },
   plating: { name: 'Hull Plating', ab: 'HUL', type: 'part', desc: 'armour plates that patch 40% of a vehicle hull (fit them at the front of the vehicle)', stack: 5 },
@@ -167,7 +169,7 @@ export const BULK: Record<ItemKey, [kg: number, litres: number]> = {
   eggs: [6, 10], milk: [22, 20], microchip: [6, 6], powercell: [14, 8], sensor: [5, 6], ancalloy: [16, 6], ceramics: [12, 10], precision: [10, 6], automation: [24, 12], nfuel: [30, 8], bauxite: [20, 10], sulfur: [14, 10], lithium: [12, 10], rareearth: [22, 8], uranium: [25, 8],
   sand: [20, 12], steel: [20, 8], copperbar: [20, 8], plastic: [12, 14], glass: [14, 12], cable: [10, 10], boards: [5, 8], parts: [15, 12], alloy: [20, 8], propellant: [15, 14],
   clay: [22, 10], limestone: [22, 10], lead: [24, 8], nickel: [22, 8], lumber: [14, 16], iron: [20, 8], bricks: [24, 12], cement: [25, 16], chems: [18, 16], aluminium: [8, 8], leadbar: [26, 6], batteries: [16, 10], fibre: [10, 16], wool: [8, 18],
-  wheelL: [12, 22], wheelH: [28, 36], engine: [8, 6], turbo: [6, 5], eguard: [5, 4], plating: [7, 5], cannon: [25, 30],
+  wheelL: [12, 22], wheelH: [28, 36], engine: [8, 6], turbo: [6, 5], drivetrain: [9, 6], scanner: [0.4, 0.3], eguard: [5, 4], plating: [7, 5], cannon: [25, 30],
   reflex: [0.3, 0.3], scope: [0.8, 1], barL: [1.2, 1], barR: [1, 0.8], barS: [0.9, 0.8], magX: [0.5, 0.4], magD: [1.2, 1],
 };
 /** What you wear, one piece per slot: which slot, and the share of every hit it takes off (pieces multiply). */

@@ -12,8 +12,9 @@ import { FORTIFY, WORKS, POWER, type WorkKind } from '../src/gen/town';
 import { WALL_TIERS } from '../src/gen/village';
 import { FARM, UPGRADE, CROPS, type Crop } from '../src/gen/farms';
 import { PLANT_LEVELS } from '../src/gen/plantup';
+import { IMPROVE, IMPROVE_KINDS } from '../src/gen/improve';
 import { RARES } from '../src/gen/deposits';
-import { INSTALLS, INSTALL_STAGES, INSTALL_WORK, INSTALL_DRAW, HALL_SETS, installWorks, type InstallKind } from '../src/gen/installs';
+import { INSTALLS, INSTALL_STAGES, INSTALL_WORK, INSTALL_DRAW, HALL_SETS, RADAR_UP, installWorks, type InstallKind } from '../src/gen/installs';
 import { STAGES, CHARIOT } from '../src/gen/shuttle';
 import { ORDERS } from '../src/data/orders';
 import { MENU } from '../src/gen/foodshop';
@@ -185,6 +186,10 @@ it('writes SUROWCE.md', () => {
   P('');
   PLANT_LEVELS.slice(1).forEach((l) => { P(`- **${l.name}** (× ${l.mult} mocy): ${list(l.needs)}${Object.keys(l.tech).length ? ` · plany: ${Object.entries(l.tech).map(([p, t]) => `${p === 'wind' ? 'wiatraki' : 'panele'} — ${TECH_BY_ID[t!]?.name}`).join(', ')}` : ''}`); for (const [i] of l.needs) use(i, `ulepszenie elektrowni: ${l.name}`); });
   P('');
+  P('**Ulepszenia wioski** (u starszego: „What could the old parts do for us?”, z zapasów hali wioski; jednorazowe):');
+  P('');
+  for (const k of IMPROVE_KINDS) { const u = IMPROVE[k]; P(`- **${u.name}**: ${list(u.needs)}${u.wall ? ' · wymaga kamiennego muru' : ''} · wioska płaci ${u.gold} g`); for (const [i] of u.needs) use(i, `ulepszenie wioski: ${u.name}`); }
+  P('');
   P('### 3.8 Wielkie instalacje (odbudowa w 3 etapach, materiały z plecaka i bagażnika)');
   P('');
   for (const k of Object.keys(INSTALL_STAGES) as InstallKind[]) {
@@ -193,6 +198,8 @@ it('writes SUROWCE.md', () => {
     INSTALL_STAGES[k].forEach((st, i) => { P(`${i + 1}. ${st.title}: ${list(st.needs)}${tech(st.tech)} · nagroda ${st.gold} g`); for (const [m] of st.needs) use(m, `odbudowa: ${name}`); });
     P('');
   }
+  P(`**Old Radar Station, sensor array** (po odbudowie, zasięg ${RADAR_UP.r / 1000} km): ${list(RADAR_UP.needs)} · nagroda ${RADAR_UP.gold} g`); for (const [m] of RADAR_UP.needs) use(m, 'ulepszenie: radar (sensor array)');
+  P('');
   P(`### 3.9 ${CHARIOT} (Rydwan w hangarze przy Gridholm)`);
   P('');
   for (const st of STAGES) { P(`- **${st.name}:** ${list(st.needs)}`); for (const [g] of st.needs) use(g, `Rydwan: ${st.name}`); }

@@ -18,6 +18,7 @@ import type { ItemKey } from '../data/items';
 import { running, type PlantState } from './plants';
 import { farmsKw } from './farms';
 import { plantMult } from './plantup';
+import { bankKw, villageKw, VILLAGE_BASE_KW } from './improve';
 
 export type StationKind = 'solarfarm' | 'windfarm' | 'coalplant' | 'dieselbank' | 'reactor';
 export const STATION_KINDS: StationKind[] = ['solarfarm', 'windfarm', 'coalplant', 'dieselbank', 'reactor'];
@@ -40,7 +41,8 @@ export const STATIONS: Record<StationKind, StationSpec> = {
 export const STATION_SLOTS = 2, BUNKER = 30;
 /** What the village's own plant makes at full condition (kW), and what the village itself takes. */
 export const BASE_KW: Record<ReturnType<typeof powerKind>, number> = { generator: 55, solar: 55, wind: 52 };
-export const VILLAGE_KW = 25;
+/** What the village takes before any improvement (gen/improve.ts villageKw: less with battery lamps). */
+export const VILLAGE_KW = VILLAGE_BASE_KW;
 /** What each works draws while it works (kW). */
 export const DRAW: Record<PlantState['k'], number> = { smelter: 60, refinery: 50, glassworks: 45, wiremill: 30, electronics: 35, machineshop: 40, foundry: 80, chemworks: 40,
   sawmill: 15, brickworks: 25, cementworks: 35, textile: 15, steelworks: 70, polymer: 45, alworks: 120, batteryworks: 35 };
@@ -110,7 +112,20 @@ export function siteKw(world: number, v: Poi, seed: number, s: TownState | undef
   const k = industryOf(world, v, seed);
   return siteBuilt(k, s) ? SITE_KW[k] : 0;
 }
+/** The renewables' rating and their output now (kW): the own plant if solar or wind, the solar and wind farms that are on (for the battery bank). */
+function renewables(world: number, v: Poi, seed: number, s: TownState | undefined, t: number): [number, number] {
+  let rated = 0, now = 0;
+  const kind = powerKind(seed);
+  if (kind !== 'generator') {
+    const c = powerCondition(seed, s, t, raidHurt(world, v, s, lastFix(seed, s), t));
+    if (c >= POWER_DOWN) { rated += BASE_KW[kind] * (0.5 + 0.5 * c / 100) * plantMult(s); now += baseKw(world, v, seed, s, t); }
+  }
+  for (const st of s?.stations ?? []) if (st.on && (st.k === 'solarfarm' || st.k === 'windfarm')) { rated += STATIONS[st.k].kw; now += stationKw(v, seed, st, t); }
+  return [rated, now];
+}
 export interface Balance {
+  /** Of `made`: what the battery bank gave back (gen/improve.ts). */
+  bank: number;
   made: number; village: number; free: number; draw: number; powered: boolean[]; farms: number; farmsPowered: number;
   /** The industry site's draw and the share of it it got. */
   site: number; sitePowered: number;
@@ -121,8 +136,9 @@ export interface Balance {
  * draw while enough is left).
  */
 export function balance(world: number, v: Poi, seed: number, s: TownState | undefined, t: number): Balance {
-  const made = baseKw(world, v, seed, s, t) + (s?.stations ?? []).reduce((a, st) => a + stationKw(v, seed, st, t), 0);
-  let free = Math.max(0, made - VILLAGE_KW), draw = 0;
+  const bank = s?.imp?.bank ? bankKw(s, ...renewables(world, v, seed, s, t)) : 0;
+  const made = baseKw(world, v, seed, s, t) + (s?.stations ?? []).reduce((a, st) => a + stationKw(v, seed, st, t), 0) + bank, vkw = villageKw(s);
+  let free = Math.max(0, made - vkw), draw = 0;
   // the farms come first (gen/farms.ts): pumps and lamps before the works
   const farms = farmsKw(s), farmsGot = Math.min(free, farms);
   free -= farmsGot;
@@ -136,7 +152,7 @@ export function balance(world: number, v: Poi, seed: number, s: TownState | unde
     if (free >= d) { free -= d; return true; }
     return false;
   });
-  return { made, village: Math.min(made, VILLAGE_KW), free, draw, powered, farms, farmsPowered: farms ? farmsGot / farms : 1, site, sitePowered: site ? siteGot / site : 1 };
+  return { bank, made, village: Math.min(made, vkw), free, draw, powered, farms, farmsPowered: farms ? farmsGot / farms : 1, site, sitePowered: site ? siteGot / site : 1 };
 }
 const siteCache = new Map<string, number>();
 /**
@@ -145,7 +161,7 @@ const siteCache = new Map<string, number>();
  */
 export function sitePower(world: number, v: Poi, seed: number, s: TownState | undefined, t: number): number {
   if (!siteKw(world, v, seed, s)) return 1;
-  const key = `${world}:${v.id}:${Math.floor(t / 60)}:${s ? JSON.stringify([s.stations, s.fixed, s.hurt, s.pup, s.farms, s.fup, s.built]) : ''}`;
+  const key = `${world}:${v.id}:${Math.floor(t / 60)}:${s ? JSON.stringify([s.stations, s.fixed, s.hurt, s.pup, s.farms, s.fup, s.built, s.imp]) : ''}`;
   let p = siteCache.get(key);
   if (p === undefined) {
     p = 0; for (let k = 0; k < 12; k++) p += balance(world, v, seed, s, t - k * 120).sitePowered;

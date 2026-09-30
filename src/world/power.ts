@@ -2,6 +2,7 @@
 // the fence, cabled in on poles. It wears down; its status light shows how it runs (pale green, gold when failing,
 // red when down), the turbines stop turning and the village lamps go dark when it is down. E at it mends it with
 // the right parts, and the village pays you for the job.
+import { hasImprove } from '../gen/improve';
 import * as THREE from 'three';
 import { earnTrust } from './standing';
 import { plantLevel } from '../gen/plantup';
@@ -114,6 +115,14 @@ export function drawPower(vm: VillageMap, T: Terrain, id: number): THREE.Group {
     for (let k = 0; k < 3; k++) pb.seg(AUTO, [sx - rx * 0.3, g + 1.1 - k * 0.2, sz - rz * 0.3], [sx + rx * (0.1 + k * 0.08), g + 1.1 - k * 0.2, sz + rz * (0.1 + k * 0.08)]);
     pb.seg(METAL, [ax, g + 1.6, az], [ax, g + 4.2, az]); pb.seg(AUTO, [ax - 0.3, g + 4.2, az], [ax + 0.3, g + 4.2, az]); pb.seg(AUTO, [ax, g + 4.2, az - 0.3], [ax, g + 4.2, az + 0.3]);
   }
+  if (hasImprove(G.char.towns[id], 'bank')) { // the battery bank (gen/improve.ts): a pad with racks of cells under a lean-to roof
+    const [bx, bz] = P(-5.5, -1), g = ground(bx, bz);
+    box(-5.5, -1, 1.6, 1.1, g - 0.2, g + 0.1, METAL);
+    for (const u of [-6.4, -5.5, -4.6]) { box(u, -1, 0.35, 0.8, g + 0.1, g + 1.7, METAL); const [a, b] = P(u, -1 - 0.81 * 1); for (let k = 0; k < 3; k++) pb.seg(AUTO, [a - rx * 0.2, g + 0.5 + k * 0.4, b - rz * 0.2], [a + rx * 0.2, g + 0.5 + k * 0.4, b + rz * 0.2]); }
+    box(-5.5, -1, 1.8, 1.3, g + 2.1, g + 2.2, METAL);
+    for (const [u, v] of [[-7.2, -2.2], [-3.8, -2.2], [-7.2, 0.2], [-3.8, 0.2]]) { const [a, b] = P(u, v); pb.seg(METAL, [a, g + 0.1, b], [a, g + 2.1, b]); }
+    void bx; void bz;
+  }
   // the cable in: poles from the plant to the fence
   const [ex, ez] = P(0, -site.w / 2 - 0.5);
   let prev: number[] | null = null;
@@ -152,7 +161,8 @@ export function updatePower(dt: number) {
     for (const r of p.rotors) r.rotateZ(dt * (up ? 1.2 + 0.4 * Math.sin(hash(p.id) + G.char.time * 0.01) : 0));
     ((p.light.material as THREE.LineBasicMaterial).color).setHex(!up ? LIGHT.down : c < POWER_LOW ? LIGHT.low : LIGHT.ok);
     p.light.visible = up || Math.sin(performance.now() / 180) > 0; // a dead plant's light blinks red
-    for (const l of p.lamps) l.visible = up;
+    const lit = up || hasImprove(G.char.towns[p.id], 'lamps'); // battery lamps stay lit
+    for (const l of p.lamps) l.visible = lit;
   }
 }
 /** The plant you stand at (within a couple of metres of its site). */

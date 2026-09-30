@@ -105,7 +105,7 @@ export interface VehicleParts {
 }
 export const ENGINE_MODS = 2;
 /** Items that fit the engine upgrade slots. */
-export const ENGINE_UPGRADES: ItemKey[] = ['turbo', 'eguard'];
+export const ENGINE_UPGRADES: ItemKey[] = ['turbo', 'eguard', 'drivetrain'];
 export const freshParts = (m: VehicleModel): VehicleParts => ({ wheels: Array(wheelCount(m)).fill(100), engine: 100, gun: false, hull: VEHICLES[m].hull, fuel: VEHICLES[m].tank, mods: Array(ENGINE_MODS).fill(null) });
 /** Saves from before hull points and fuel: a full hull and a full tank. */
 export function upgradeParts(m: VehicleModel, p: VehicleParts): VehicleParts {
@@ -129,9 +129,12 @@ export function partPerformance(p: VehicleParts): number {
 }
 const has = (p: VehicleParts, k: ItemKey) => !!p.mods?.includes(k);
 /** Top speed and acceleration factors from engine upgrades. */
-export const engineBoost = (p: VehicleParts) => (has(p, 'turbo') ? { speed: 1.15, accel: 1.3 } : { speed: 1, accel: 1 });
+export const engineBoost = (p: VehicleParts) => {
+  const t = has(p, 'turbo'), d = has(p, 'drivetrain');
+  return { speed: (t ? 1.15 : 1) * (d ? 1.2 : 1), accel: (t ? 1.3 : 1) * (d ? 1.25 : 1) };
+};
 /** Damage to the engine, halved by an Engine Guard. */
-export function hurtEngine(p: VehicleParts, dmg: number) { p.engine = Math.max(0, Math.round(p.engine - dmg * (has(p, 'eguard') ? 0.5 : 1))); }
+export function hurtEngine(p: VehicleParts, dmg: number) { p.engine = Math.max(0, Math.round(p.engine - dmg * (has(p, 'eguard') ? 0.5 : 1) * (has(p, 'drivetrain') ? 0.5 : 1))); }
 /** Overall health 0..1: wheels (missing ones count as 0), engine and hull. */
 export function health(m: VehicleModel, p: VehicleParts): number {
   const wheels = p.wheels.reduce((a, w) => a + Math.max(0, w), 0) / p.wheels.length;

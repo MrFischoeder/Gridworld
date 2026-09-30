@@ -8,7 +8,8 @@ import { FORTIFY, WORKS, POWER, type WorkKind } from '../gen/town';
 import { WALL_TIERS } from '../gen/village';
 import { FARM, UPGRADE } from '../gen/farms';
 import { PLANT_LEVELS } from '../gen/plantup';
-import { INSTALLS, INSTALL_STAGES, INSTALL_WORK, HALL_SETS, installWorks, type InstallKind } from '../gen/installs';
+import { IMPROVE, IMPROVE_KINDS } from '../gen/improve';
+import { INSTALLS, INSTALL_STAGES, INSTALL_WORK, HALL_SETS, RADAR_UP, installWorks, type InstallKind } from '../gen/installs';
 import { STAGES } from '../gen/shuttle';
 import { MENU } from '../gen/foodshop';
 import { INDUSTRY, type Industry } from '../gen/industry';
@@ -42,6 +43,8 @@ function build(): Map<ItemKey, Map<UseGroup, string[]>> {
   for (const [i] of FARM.needs) use(i, 'Building', 'Farm');
   for (const [i] of UPGRADE.needs) use(i, 'Building', 'Steel ploughs');
   for (const l of PLANT_LEVELS.slice(1)) for (const [i] of l.needs) use(i, 'Building', `Power plant: ${l.name}`);
+  for (const k of IMPROVE_KINDS) for (const [i] of IMPROVE[k].needs) use(i, 'Building', `Village improvement: ${IMPROVE[k].name}`);
+  for (const [i] of RADAR_UP.needs) use(i, 'Restoring', 'Old Radar Station: the sensor array');
   for (const k of Object.keys(INSTALL_STAGES) as InstallKind[]) for (const st of INSTALL_STAGES[k]) for (const [i] of st.needs) use(i, 'Restoring', INSTALLS.find((s) => s.k === k)!.name);
   for (const st of STAGES) for (const [g] of st.needs) use(g as ItemKey, 'The Chariot', `${st.name}`);
   for (const p of Object.values(POWER)) for (const [i] of p.fix) use(i, 'Repairs', p.name);

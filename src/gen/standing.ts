@@ -13,6 +13,7 @@ export const TRUST = {
   refinery: 15,  // the refinery built
   farm: 8,       // a farm cleared and sown
   plantup: 10,   // the power plant upgraded
+  improve: 12,   // a village improvement built (gen/improve.ts)
   power: 6,      // the power plant mended
   site: 5,       // the industry site mended
   raid: 15,      // a raid beaten off
