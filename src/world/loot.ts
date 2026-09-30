@@ -27,10 +27,12 @@ import { startBridgePlacing } from './bridges';
 import { startPierPlacing } from './piers';
 import { BASES_OPEN, BASES_CLOSED_MSG } from '../data/building';
 import { lyingModel } from './pickmodels';
+import { vehicles, driving, refreshParts } from './vehicles';
+import { repairWithKit, vehicleTitle } from '../data/vehicles';
 
 export interface Crystal { m: THREE.LineSegments; p: THREE.Vector3; v: THREE.Vector3; age: number }
 /** `rest`: it lies on the ground as what it is (world/pickmodels.ts) instead of floating and spinning as a token. */
-export interface Pickup { g: THREE.Group; k: ItemKey; p: THREE.Vector3; age: number; warned?: boolean; rest?: boolean }
+export interface Pickup { g: THREE.Group; k: ItemKey; p: THREE.Vector3; age: number; warned?: boolean; rest?: boolean; n?: number }
 export interface Chest { g: THREE.Group; lidPivot: THREE.Group; beam: THREE.Line; beamMat: THREE.LineBasicMaterial; i: number; open: boolean; anim: number }
 export interface Hatch { g: THREE.Group; rings: THREE.LineLoop[] }
 
@@ -42,7 +44,7 @@ export function dropCrystal(at: THREE.Vector3) {
   const v = V(Math.random() - 0.5, 0.3 + Math.random() * 0.4, Math.random() - 0.5).multiplyScalar(4);
   W.crystals.push({ m, p: at.clone(), v, age: 0 });
 }
-export function dropPickup(at: THREE.Vector3, kind: ItemKey | 'relic') {
+export function dropPickup(at: THREE.Vector3, kind: ItemKey | 'relic', n = 1) {
   const k: ItemKey = kind === 'relic' ? RELIC_KEYS[(Math.random() * RELIC_KEYS.length) | 0] : kind;
   const g = new THREE.Group();
   if (k === 'key' || item(k).type === 'relic' || item(k).type === 'quest') {
@@ -51,20 +53,24 @@ export function dropPickup(at: THREE.Vector3, kind: ItemKey | 'relic') {
     const bar = new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints([V(0.15, 0, 0), V(0.5, 0, 0), V(0.4, 0, 0), V(0.4, -0.1, 0), V(0.5, 0, 0), V(0.5, -0.12, 0)]), add(c));
     if (k === 'key') g.add(ring, bar); else g.add(edgesOf(new THREE.OctahedronGeometry(0.22), add(c)));
     const beam = new THREE.Line(new THREE.BufferGeometry().setFromPoints([V(0, 0.3, 0), V(0, 3, 0)]), add(c)); g.add(beam);
-    scene.add(g); W.pickups.push({ g, k, p: at.clone(), age: 0 }); return;
+    scene.add(g); W.pickups.push({ g, k, p: at.clone(), age: 0, n }); return;
   }
   const lying = lyingModel(k, item(k).type);
   if (lying) { // logs, teeth, hides, scrap...: lying on the ground, turned any which way
     g.add(lying); g.rotation.y = Math.random() * 6.283;
-    scene.add(g); W.pickups.push({ g, k, p: at.clone(), age: 0, rest: true }); return;
+    scene.add(g); W.pickups.push({ g, k, p: at.clone(), age: 0, rest: true, n }); return;
   }
   if (NOURISH[k] || item(k).type === 'mat') { // food (lime) and materials (bone): a small faceted lump
     g.add(edgesOf(new THREE.DodecahedronGeometry(0.18), add(NOURISH[k] ? FOOD_COLOR : 0xe8e0c0)));
-    scene.add(g); W.pickups.push({ g, k, p: at.clone(), age: 0 }); return;
+    scene.add(g); W.pickups.push({ g, k, p: at.clone(), age: 0, n }); return;
+  }
+  if (item(k).type === 'ammo') { // a box of rounds: a small brass-coloured case
+    g.add(edgesOf(new THREE.BoxGeometry(0.28, 0.14, 0.18), add(0xffd060)), edgesOf(new THREE.BoxGeometry(0.24, 0.02, 0.14).translate(0, 0.08, 0), add(0xffd060)));
+    scene.add(g); W.pickups.push({ g, k, p: at.clone(), age: 0, n }); return;
   }
   g.add(edgesOf(new THREE.BoxGeometry(0.3, 0.3, 0.3), add(k === 'medkit' ? 0x9dffe0 : 0x5cc8ff)));
   if (k === 'medkit') { const c = new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints([V(-0.1, 0, 0.16), V(0.1, 0, 0.16), V(0, -0.1, 0.16), V(0, 0.1, 0.16)]), add(0x9dffe0)); g.add(c); }
-  scene.add(g); W.pickups.push({ g, k, p: at.clone(), age: 0 });
+  scene.add(g); W.pickups.push({ g, k, p: at.clone(), age: 0, n });
 }
 /** Where a lying pickup meets the ground: the terrain under it, or the voxel floor it settled over (tokens hover ~0.47 m up). */
 function restY(p: THREE.Vector3): number {
@@ -95,8 +101,8 @@ export function updateLoot(dt: number, time: number) {
     if (p.rest) p.g.position.set(p.p.x, restY(p.p), p.p.z);
     else { p.g.position.copy(p.p); p.g.position.y += Math.sin(time * 3 + i) * 0.08; p.g.rotation.y = time * 1.5; }
     if (Math.hypot(p.p.x - G.pos.x, p.p.z - G.pos.z) < 1.3 && Math.abs(p.p.y - body.y) < 2.5 && p.age > 0.4) {
-      const where = addItem(p.k);
-      if (where) { scene.remove(p.g); W.pickups.splice(i, 1); logLine(ITEMS[p.k].name + (where === 'hands' ? ' (in your hands)' : where === 'back' ? ' (on your back)' : ' → backpack')); saveChar(); if (item(p.k).type === 'quest') onPickup(p.k); }
+      const where = addItem(p.k, p.n ?? 1);
+      if (where) { scene.remove(p.g); W.pickups.splice(i, 1); logLine(ITEMS[p.k].name + ((p.n ?? 1) > 1 ? ' ×' + p.n : '') + (where === 'hands' ? ' (in your hands)' : where === 'back' ? ' (on your back)' : ' → backpack')); saveChar(); if (item(p.k).type === 'quest') onPickup(p.k); }
       else if (!p.warned) { p.warned = true; logLine('No room in your backpack'); }
     }
   }
@@ -122,6 +128,14 @@ export function makeChest(c: { x: number; z: number }, i: number): Chest | null 
 export const chestKey = (c: Chest) => 'chest:' + dungeonKey() + ':' + c.i;
 export const chestContents = (c: Chest): Container | undefined => G.char.containers[chestKey(c)];
 
+/** A handful of rounds of some kind (loot): energy cells most often, then pistol rounds, shells, rifle rounds. */
+export function rollAmmo(scale = 1): [ItemKey, number] {
+  const r = Math.random(), f = (lo: number, hi: number) => Math.max(1, Math.round((lo + Math.random() * (hi - lo)) * scale));
+  return r < 0.4 ? ['ammoE', f(15, 40)] : r < 0.7 ? ['ammo9', f(12, 30)] : r < 0.85 ? ['ammoS', f(5, 12)] : ['ammoR', f(4, 10)];
+}
+/** Guns and melee weapons that turn up as loot (the Blaster and the energy blade are the ship's own). */
+export const LOOT_GUNS: ItemKey[] = ['pistol', 'smg', 'shotgun', 'rifle'], LOOT_MELEE: ItemKey[] = ['machete', 'spear', 'sledge'];
+const pick = <T,>(a: T[]) => a[(Math.random() * a.length) | 0];
 /** What a chest holds, rolled once when it is first opened and saved from then on. */
 function rollChest(): Container {
   const depth = depthNow(), items: (Slot | null)[] = Array(8).fill(null);
@@ -131,12 +145,16 @@ function rollChest(): Container {
   if (Math.random() < 0.25) add('emp');
   if (Math.random() < 0.2) add('key');
   if (Math.random() < 0.15) add(ATTACH_KEYS[(Math.random() * ATTACH_KEYS.length) | 0]);
+  if (Math.random() < 0.5) { const [k, n] = rollAmmo(0.7 + depth * 0.3); putItems(items, k, n); }
+  if (Math.random() < 0.07) add(pick(LOOT_GUNS)); else if (Math.random() < 0.07) add(pick(LOOT_MELEE));
   if (G.map?.style === 'ship') { // a freighter's lockers: salvage and ship's stores
     putItems(items, 'scrap', 1 + Math.floor(Math.random() * 3));
     if (Math.random() < 0.6) putItems(items, 'circuit', 1 + Math.floor(Math.random() * 2));
     if (Math.random() < 0.12) putItems(items, 'pcore', 1);
     if (Math.random() < 0.4) putItems(items, 'bread', 1 + Math.floor(Math.random() * 2));
     if (Math.random() < 0.25) putItems(items, Math.random() < 0.5 ? 'engine' : 'plating', 1);
+    if (Math.random() < 0.5) putItems(items, 'ammoE', 10 + Math.floor(Math.random() * 30)); // the crew's cell lockers
+    if (Math.random() < 0.15) putItems(items, 'repairkit', 1);
   }
   return { items, gold: (15 + Math.floor(Math.random() * 26)) * depth };
 }
@@ -192,6 +210,7 @@ export function useItem(k: ItemKey): boolean {
     return true;
   }
   if (k === 'filter') return fitFilter('');
+  if (k === 'repairkit') return useRepairKit();
   if (k === 'firekit') return lightFire();
   if (k === 'pierkit') { if (startPierPlacing()) closePack(); return false; } // used up when the pier is staked out
   if (k === 'bridgekit') { if (startBridgePlacing()) closePack(); return false; } // used up when the site is staked out
@@ -234,8 +253,30 @@ export function openStash(id: number, name: string) {
     if (Math.random() < 0.25) add('wheelL');
     if (Math.random() < 0.2) add('engine');
     if (Math.random() < 0.2) add(ATTACH_KEYS[(Math.random() * ATTACH_KEYS.length) | 0]);
+    for (let i = 0; i < 2; i++) if (Math.random() < 0.6) { const [k, n] = rollAmmo(); add(k, n); } // the bandits' own rounds
+    if (Math.random() < 0.18) add(pick(LOOT_GUNS)); else if (Math.random() < 0.12) add(pick(LOOT_MELEE));
     c.containers[key] = { items, gold: 40 + Math.floor(Math.random() * 90) };
     saveChar();
   }
   openTransfer({ title: 'Bandit stash', subtitle: name, boxLabel: 'Inside', box: c.containers[key] });
+}
+
+/** The Vehicle Repair Kit on the vehicle you drive or the nearest of yours within 7 m. */
+function useRepairKit(): boolean {
+  let v = driving.v, best = 49;
+  if (!v) for (const u of vehicles) {
+    if (!u.claimed || u.ai) continue;
+    const d = (u.st.x - G.pos.x) ** 2 + (u.st.z - G.pos.z) ** 2;
+    if (d < best) { best = d; v = u; }
+  }
+  if (!v) { logLine('Stand by one of your vehicles to use the repair kit.'); return false; }
+  const name = vehicleTitle(v.st.model);
+  if (v.st.parts.hull <= 0) { logLine(`The ${name} is a wreck: the kit cannot patch that. Fit Hull Plating in the service window.`); return false; }
+  const probe = structuredClone(v.st.parts);
+  if (!repairWithKit(v.st.model, probe)) { logLine(`The ${name} needs no patching.`); return false; }
+  if (!takeOne('repairkit')) return false;
+  const did = repairWithKit(v.st.model, v.st.parts);
+  refreshParts(v); saveChar();
+  logLine(`Patched up the ${name}: ${did}.`);
+  return true;
 }

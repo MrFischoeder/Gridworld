@@ -1,6 +1,6 @@
 # GridWorld: opis gry, cel, plan i historia zmian
 
-Stan na wersję **0.98.0**. Ten dokument opisuje, czym jest GridWorld, jaki jest cel gry, co już w niej jest, czego jeszcze nie ma, dokąd zmierza i jak powstawała, wersja po wersji. Nazwy z gry (przedmioty, miejsca, postacie) są po angielsku, tak jak na ekranie.
+Stan na wersję **0.99.0**. Ten dokument opisuje, czym jest GridWorld, jaki jest cel gry, co już w niej jest, czego jeszcze nie ma, dokąd zmierza i jak powstawała, wersja po wersji. Nazwy z gry (przedmioty, miejsca, postacie) są po angielsku, tak jak na ekranie.
 
 ---
 
@@ -179,15 +179,17 @@ Gra jest pomyślana jako **kooperacja do 8 graczy** na autorytatywnym serwerze (
   - Woda: picie ze studni, jezior i rzek, napełnianie manierek.
 - **Plecak**: 40 L objętości to twardy limit. Waga powyżej 20 kg spowalnia, powyżej 35 kg to przeciążenie.
 - **Ręce, plecy, ubranie.**
-  - Broń to przedmioty: Blaster (karabin energetyczny) i Energy Blade.
+  - Broń to przedmioty. Palna: Blaster (karabin energetyczny), Old Pistol, Scrap SMG, Scattergun (śrut), Hunting Rifle (luneta 3×). Biała: Energy Blade, Machete, Spear (pchnięcie, duży zasięg), Sledgehammer (wolny, miażdżący).
   - Dwie sztuki mogą być na plecach.
   - Pancerz i odzież są w slotach, do tego maska przeciwgazowa na twarz.
   - Duże rzeczy (koła, działko) nosi się tylko w rękach.
 - **Broń**:
+  - **amunicja jest ograniczona**: każda broń ma swój magazynek i przeładowuje się z nabojów w plecaku (Energy Cells, Pistol Rounds, Shotgun Shells, Rifle Rounds); na początku naboje tylko się znajduje (skrzynie, obozy, bandyci, roboty, wraki, szafki we mgle), później kowal je robi, jeśli ma się plany Gunsmithing (lub Battery Chemistry dla ogniw);
   - magazynek i przeładowanie, celowanie z przybliżeniem, luneta przy 3×;
   - dodatki: celowniki, lufy (tłumik), magazynki;
   - ostrze bije mocno, ale kosztuje staminę;
   - hałas strzałów ściąga stworzenia z okolicy.
+- **Tablet GPS** (plany Radio Triangulation): dokładna pozycja, wysokość i kierunek pod kompasem oraz punkt nawigacyjny stawiany prawym kliknięciem na mapie świata.
 - **Ekwipunek w slotach** z przeciąganiem, ikonami i dymkiem z pełnymi parametrami: rodzaj, opis, liczby, waga, objętość, cena, do czego służy.
 - **Śmierć** przenosi do najbliższej odkrytej wioski (do własnego łóżka, jeśli ma się dom).
 - **Dom gracza w Gridholm** (750 złota): łóżko, w którym się śpi do rana, i skrzynia na 24 sloty.
@@ -232,6 +234,7 @@ Gra jest pomyślana jako **kooperacja do 8 graczy** na autorytatywnym serwerze (
   - Mają koła, silnik, kadłub, bak, działko na dachu, ulepszenia silnika i bagażnik.
   - Mają 3 miejsca: kierowca, pasażer i strzelec przy działku.
   - Serwis naprawia koła, silnik i kadłub (poszycie).
+  - **Vehicle Repair Kit** łata pojazd w terenie (kadłub, silnik, koła); nie wskrzesza wraku.
 - **Budowle gracza nad wodą**:
   - **Mosty** na brodach dróg albo w dowolnym miejscu rzeki (Bridge Kit);
   - **Pomosty** na wybrzeżu morza (Pier Kit), z lampą i skrzynią.
@@ -543,3 +546,4 @@ Pełne notatki (po angielsku) są w grze pod przyciskiem **Changelog** w menu g�
 - **0.96.0 Szczyt łańcucha** (etap 5, część 3). Old Precision Works (Precision Components ze stali, Ancient Alloy i mikroczipów) i Old Robotics Plant (Automation Units z mikroczipów, sensorów, komponentów precyzyjnych i ogniw), obie w podwójnej skali; technologie Precision Manufacturing i Automation; etap 5 zamknięty.
 - **0.97.0 Do czego służą stare części** (etap 6). Ulepszenia wiosek (bank akumulatorów, lampy akumulatorowe, zautomatyzowane miejsce przemysłu, celowniki sensorowe turretów, opancerzony mur); stojaki ogniw w siłowniach starych fabryk; antena sensorowa radaru (20 km); u kowala napęd precyzyjny do pojazdów i kompas z sensorem, który wskazuje instalacje i znane strefy mgły; automatyzacja elektrowni wymaga też komponentów precyzyjnych.
 - **0.98.0 Rydwan na końcu łańcucha** (etap 7). Rydwan ma sześć etapów (nowy Power System) i każdy wymaga wyrobów starych fabryk; etapy ukończone w starych zapisach zostają ukończone, a skrzynie, których nowe wymagania już nie biorą, wracają do hali Gridholm; kampania (cuda) dostała nowe dobra i nową kalibrację (~80 h w pojedynkę).
+- **0.99.0 Amunicja, nowa broń, GPS i naprawy w polu.** Amunicja jest ograniczona (każda broń ma własny magazynek i własny rodzaj nabojów, przeładowanie z plecaka); na początku tylko do znalezienia, potem u kowala z planami Gunsmithing (nowa technologia) lub Battery Chemistry. Nowa broń palna (pistolet, pistolet maszynowy, strzelba, karabin myśliwski) i biała (maczeta, włócznia, młot). Tablet GPS z punktem nawigacyjnym. Zestaw do naprawy pojazdów (kadłub, silnik, koła) u Kuby lub u kowala z planami Combustion Engines.

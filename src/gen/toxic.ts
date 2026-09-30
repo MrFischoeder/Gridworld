@@ -164,5 +164,7 @@ export function lockerLoot(world: number, f: FogZone, i: number): [ItemKey, numb
   if (R(11) < 0.3) add('medkit', 1);
   if (f.site === 'lab' && R(12) < 0.5) add('glass', 1 + Math.floor(R(13) * 2));
   if (f.site === 'depot' && R(12) < 0.5) add('steel', 1);
+  if (R(14) < 0.6) add('ammoE', 20 + Math.floor(R(15) * 40)); // (new draws on their own keys: the older contents stay)
+  if (R(16) < 0.25) add(R(17) < 0.5 ? 'ammoR' : 'ammoS', 6 + Math.floor(R(18) * 8));
   return out;
 }

@@ -1,7 +1,8 @@
 // The compass strip at the top of the screen (only while you carry a Compass, on the surface): your heading with
 // the cardinal points, a mark towards the nearest village (the next one while you stand in a village) (with its name and distance) and marks for the
 // places your accepted quests send you to, and your flags. The Sensor Compass (`scanner`) also marks the nearest old
-// installation not yet restored within SCAN_R and the nearest toxic fog you have found.
+// installation not yet restored within SCAN_R and the nearest toxic fog you have found. The GPS Tablet (`tablet`)
+// shows the strip too, marks your waypoint (set with a right click on the big map) and adds the GPS line under it.
 import { G } from '../game';
 import { hasItem } from '../character';
 import { allVillages, wrapDx } from '../gen/regions';
@@ -10,6 +11,9 @@ import { leadMarkers } from '../world/datacarriers';
 import { $ } from './hud';
 import { OW } from '../world/overworld';
 import { installSites, installDone } from '../gen/installs';
+import { WAYPOINT_C } from './worldmap';
+
+const gps = $('gps');
 
 const cv = $<HTMLCanvasElement>('compass'), ctx = cv.getContext('2d')!;
 const W = 460, H = 46, SPAN = 150; // degrees across the strip
@@ -28,9 +32,16 @@ let nearT = 0, near: Mark = null, old: Mark = null, fog: Mark = null;
 /** How far the sensor compass sees old installations and known fog (m). */
 export const SCAN_R = 30000;
 export function updateCompass(dt: number) {
-  const scan = hasItem('scanner'), on = G.char.loc === 'overworld' && (scan || hasItem('compass')) && G.playing;
+  const scan = hasItem('scanner'), tab = hasItem('tablet'), on = G.char.loc === 'overworld' && (scan || tab || hasItem('compass')) && G.playing;
   cv.style.display = on ? 'block' : 'none';
+  gps.style.display = on && tab ? 'block' : 'none';
   if (!on) return;
+  const wp = G.char.waypoint;
+  if (tab) {
+    const wd = wp && Math.hypot(wrapDx(wp[0] - G.pos.x), wp[1] - G.pos.z);
+    gps.textContent = `GPS ${Math.round(G.pos.x)}, ${Math.round(G.pos.z)} · ${Math.round(G.pos.y)} m · ${Math.round(heading())}°` +
+      (wp ? ` · WP ${fmtDist(wd!)} ${point8(bearingTo(wp[0], wp[1]))}` : ' · no waypoint');
+  }
   if ((nearT -= dt) <= 0) { // the nearest village, looked up now and then
     nearT = 1;
     let bd = Infinity; near = null;
@@ -75,5 +86,6 @@ export function updateCompass(dt: number) {
   const o = old as Mark, f = fog as Mark;
   if (o) mark(o.x, o.z, '#b6ff3a', `${o.name} ${fmtDist(Math.hypot(wrapDx(o.x - G.pos.x), o.z - G.pos.z))}`);
   if (f) mark(f.x, f.z, '#d8ff6a', `${f.name} ${fmtDist(Math.hypot(wrapDx(f.x - G.pos.x), f.z - G.pos.z))}`);
+  if (wp && tab) mark(wp[0], wp[1], WAYPOINT_C, `Waypoint ${fmtDist(Math.hypot(wrapDx(wp[0] - G.pos.x), wp[1] - G.pos.z))}`);
   if (near) mark(near.x, near.z, '#9dffe0', `${near.name} ${fmtDist(Math.hypot(wrapDx(near.x - G.pos.x), near.z - G.pos.z))}`);
 }

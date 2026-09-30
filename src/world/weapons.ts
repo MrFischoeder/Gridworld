@@ -1,4 +1,6 @@
-// Player weapons: the hitscan Blaster (stats and attachments from data/weapons, magazine and reload, aiming zoom) and a melee blade arc.
+// Player weapons: hitscan guns (data/weapons.ts GUNS: the Blaster with its attachments, the pistol, SMG, scattergun and
+// hunting rifle; magazines and reloads out of the backpack's rounds, aiming zoom) and melee swings (MELEE: the energy
+// blade, machete, spear, sledgehammer). Each has its own model in your hands.
 import * as THREE from 'three';
 import { camera, lineMat, add, V } from './render';
 import { G } from '../game';
@@ -7,15 +9,15 @@ import { rayWorld } from './player';
 import { foes, damageFoe } from './enemies';
 import { rayBarrier, hurtBarrier, rayRaider, hurtCrew, type Raider } from './raiders';
 import { el } from '../ui/hud';
-import { BLASTER } from '../data/weapons';
+import { gunOf, meleeOf, type GunLook, type MeleeLook } from '../data/weapons';
 import { BLADE, STAMINA, BURN } from '../data/survival';
 import { spendStamina, burn } from './survival';
 import { makeNoise } from './noise';
-import { item, WEAPON_KIND } from '../data/items';
-import { onHandsChanged, stowHeld, saveChar } from '../character';
+import { item, WEAPON_KIND, type ItemKey } from '../data/items';
+import { onHandsChanged, stowHeld, saveChar, calcStats } from '../character';
+import { count } from '../data/crafting';
 import { logLine } from '../ui/hud';
 
-export const WEAPONS = [{ name: BLASTER.name, dmg: 1, rate: 0 }, { name: 'Energy Blade', rate: BLADE.rate, dmg: BLADE.dmg }];
 /** Weapons are holstered in safe places (the village). */
 export let armed = () => true;
 export function setArmedRule(f: () => boolean) { armed = f; }
@@ -43,6 +45,7 @@ const cell = part(new THREE.BoxGeometry(0.075, 0.05, 0.12), vmMat); cell.positio
 gunVM.position.set(0.24, -0.22, -0.45); vmRoot.add(gunVM);
 // attachments: shown on the held gun when fitted
 const cyl = (r: number, len: number) => { const g = new THREE.CylinderGeometry(r, r, len, 8); g.rotateX(Math.PI / 2); return g; };
+const cylY = (r: number, len: number) => new THREE.CylinderGeometry(r, r, len, 6);
 const attach = (o: THREE.Object3D, x: number, y: number, z: number) => { o.position.set(x, y, z); o.visible = false; gunVM.add(o); return o; };
 const LOOK = {
   reflex: attach(new THREE.Group().add(part(new THREE.BoxGeometry(0.04, 0.012, 0.06), vmMat), (() => { const f = part(new THREE.BoxGeometry(0.05, 0.045, 0.006), vmMat); f.position.set(0, 0.028, -0.02); return f; })()), 0, 0.05, -0.06),
@@ -60,11 +63,31 @@ export function refreshGunLook() {
   sight.visible = !m[0]; cell.visible = !m[2];
   hudWeapon();
 }
+// the other guns: each its own model, shown in place of the Blaster's
+const gunLooks: Record<GunLook, THREE.Group> = { blaster: gunVM } as Record<GunLook, THREE.Group>;
+function gunModel(parts: [THREE.BufferGeometry, number, number, number, number?][]): THREE.Group {
+  const g = new THREE.Group();
+  for (const [geo, x, y, z, rx] of parts) { const o = part(geo, vmMat); o.position.set(x, y, z); if (rx) o.rotation.x = rx; g.add(o); }
+  g.position.set(0.24, -0.22, -0.45); g.visible = false; vmRoot.add(g); return g;
+}
+gunLooks.pistol = gunModel([[new THREE.BoxGeometry(0.05, 0.07, 0.22), 0, 0.02, -0.08], [new THREE.BoxGeometry(0.045, 0.13, 0.06), 0, -0.07, 0.02, 0.25], [cyl(0.014, 0.06), 0, 0.03, -0.21]]);
+gunLooks.smg = gunModel([[new THREE.BoxGeometry(0.07, 0.09, 0.34), 0, 0, -0.1], [new THREE.BoxGeometry(0.035, 0.18, 0.05), 0, -0.13, -0.12], [new THREE.BoxGeometry(0.045, 0.12, 0.05), 0, -0.1, 0.06, 0.3], [cyl(0.016, 0.14), 0, 0.01, -0.33], [new THREE.BoxGeometry(0.03, 0.05, 0.16), 0, 0.02, 0.16]]);
+gunLooks.shotgun = gunModel([[new THREE.BoxGeometry(0.07, 0.08, 0.3), 0, 0, 0.02], [cyl(0.024, 0.5), -0.017, 0.03, -0.35], [cyl(0.024, 0.5), 0.017, 0.03, -0.35], [cyl(0.03, 0.2), 0, -0.03, -0.25], [new THREE.BoxGeometry(0.05, 0.1, 0.22), 0, -0.05, 0.22, 0.2]]);
+gunLooks.rifle = gunModel([[new THREE.BoxGeometry(0.06, 0.07, 0.4), 0, 0, 0], [cyl(0.015, 0.45), 0, 0.02, -0.42], [cyl(0.022, 0.26), 0, 0.085, -0.05], [cyl(0.03, 0.04), 0, 0.085, -0.19], [new THREE.BoxGeometry(0.05, 0.11, 0.26), 0, -0.04, 0.3, 0.15], [new THREE.BoxGeometry(0.02, 0.02, 0.05), 0.04, 0.03, 0.08]]);
+const meleeLooks = {} as Record<MeleeLook, THREE.Group>;
 export const bladeVM = new THREE.Group();
 const hilt = part(new THREE.BoxGeometry(0.05, 0.2, 0.05), vmMat); hilt.position.y = 0.1; bladeVM.add(hilt);
 const guard = part(new THREE.BoxGeometry(0.18, 0.03, 0.06), vmMat); guard.position.y = 0.21; bladeVM.add(guard);
 const blade = part(new THREE.BoxGeometry(0.03, 0.7, 0.08), bladeMat, true); blade.position.y = 0.58; bladeVM.add(blade);
-bladeVM.visible = false; vmRoot.add(bladeVM);
+bladeVM.visible = false; vmRoot.add(bladeVM); meleeLooks.blade = bladeVM;
+function meleeModel(parts: [THREE.BufferGeometry, number, number, number, number?][]): THREE.Group {
+  const g = new THREE.Group();
+  for (const [geo, x, y, z, rz] of parts) { const o = part(geo, vmMat); o.position.set(x, y, z); if (rz) o.rotation.z = rz; g.add(o); }
+  g.visible = false; vmRoot.add(g); return g;
+}
+meleeLooks.machete = meleeModel([[new THREE.BoxGeometry(0.04, 0.16, 0.04), 0, 0.08, 0], [new THREE.BoxGeometry(0.06, 0.02, 0.05), 0, 0.17, 0], [new THREE.BoxGeometry(0.012, 0.52, 0.07), 0, 0.44, 0.01]]);
+meleeLooks.spear = meleeModel([[cylY(0.018, 1.5), 0, 0.35, 0], [new THREE.ConeGeometry(0.035, 0.22, 4), 0, 1.2, 0]]);
+meleeLooks.sledge = meleeModel([[cylY(0.02, 0.7), 0, 0.02, 0], [new THREE.BoxGeometry(0.22, 0.11, 0.11), 0, 0.4, 0]]);
 /** Something big held in both hands (a wheel, the cannon, a flagpole...): a crate-like bulk low in the view. */
 const carryVM = new THREE.Group();
 const carryMat = lineMat(0xc8ffd6, { fog: false });
@@ -74,16 +97,37 @@ carryVM.visible = false; vmRoot.add(carryVM);
 /** Keep the held weapon glued to the camera (call after the camera moved, before rendering vmScene). */
 export function syncViewmodel() { vmRoot.position.copy(camera.position); vmRoot.quaternion.copy(camera.quaternion); }
 
-/** What is in your hands: the weapon's name (and rounds left for the Blaster), or the thing you carry. */
+/** The gun / melee weapon in your hands (null when it is not one), and the rounds for the gun left in the backpack. */
+const curGun = () => gunOf(G.char.hands[0]?.k);
+const curMelee = () => meleeOf(G.char.hands[0]?.k);
+const reserve = () => { const g = curGun(); return g ? count(G.char.inv, g.ammo) : 0; };
+/** Take up to n rounds of k out of the backpack; returns how many. */
+function takeRounds(k: ItemKey, n: number): number {
+  let got = 0;
+  for (const [i, s] of G.char.inv.entries()) {
+    if (!s || s.k !== k || got >= n) continue;
+    const m = Math.min(s.n, n - got); s.n -= m; got += m;
+    if (s.n <= 0) G.char.inv[i] = null;
+  }
+  return got;
+}
+/** What is in your hands: the weapon's name (rounds in the magazine and in the backpack for a gun), or the thing you carry. */
 function hudWeapon() {
-  const h = G.char.hands[0];
-  const t = G.weapon === 1 ? WEAPONS[1].name : G.weapon === 0 ? (G.reloadT > 0 ? BLASTER.name + ' · reloading' : `${BLASTER.name} ${G.ammo}/${G.gun.mag}`)
+  const h = G.char.hands[0], g = curGun(), m = curMelee();
+  const t = m ? m.name : g ? (G.reloadT > 0 ? g.name + ' · reloading' : `${g.name} ${G.ammo}/${G.gun.mag} · ${reserve()}`)
     : h ? 'Hands: ' + item(h.k).name : 'Hands empty';
   if (el.wname.textContent !== t) el.wname.textContent = t;
 }
-/** The weapon in your hands decides what you fight with: G.weapon 0 = gun, 1 = blade, -1 = none (empty or full hands). */
+let heldKey: ItemKey | null = null, heldFor: object | null = null;
+/** The weapon in your hands decides what you fight with: G.weapon 0 = gun, 1 = melee, -1 = none (empty or full hands). */
 export function syncHeld() {
-  const h = G.char.hands[0], w = h ? WEAPON_KIND[h.k] ?? -1 : -1;
+  const h = G.char.hands[0], k = h?.k ?? null, w = h ? WEAPON_KIND[h.k] ?? -1 : -1;
+  if (k !== heldKey || heldFor !== G.char) { // each gun keeps its own magazine (and a loaded or new character starts from its own)
+    if (heldKey && gunOf(heldKey) && heldFor === G.char) G.char.loaded[heldKey] = G.ammo;
+    heldKey = k; heldFor = G.char; calcStats();
+    if (k && gunOf(k)) G.ammo = Math.min(G.char.loaded[k] ?? 0, G.gun.mag);
+    G.reloadT = 0;
+  }
   if (w !== G.weapon) { G.weapon = w; G.reloadT = 0; G.cooldown = Math.max(G.cooldown, 0.25); }
   refreshWeaponVisibility(); hudWeapon();
 }
@@ -108,14 +152,25 @@ export function holster() {
   const m = stowHeld(); if (m) logLine(m); else saveChar();
   syncHeld();
 }
-/** Start reloading the Blaster (R, or on its own when the magazine runs dry). Reserve ammo is unlimited for now. */
+let dryAt = -99;
+/** Start reloading the gun in your hands (R, or on its own when the magazine runs dry), if the backpack holds its rounds. */
 export function reload() {
-  if (G.weapon !== 0 || G.reloadT > 0 || G.ammo >= G.gun.mag || !armed()) return;
+  const g = curGun();
+  if (G.weapon !== 0 || !g || G.reloadT > 0 || G.ammo >= G.gun.mag || !armed()) return;
+  if (reserve() <= 0) {
+    const now = performance.now() / 1000;
+    if (now - dryAt > 3) { dryAt = now; logLine(`No ${item(g.ammo).name} left for the ${g.name}. Search chests, stashes and the fallen, or have a blacksmith make more.`); }
+    return;
+  }
   G.reloadT = G.gun.reload; hudWeapon();
 }
 /** Reload timer, and the aiming zoom (right mouse button / AIM on touch): the camera narrows its field of view. */
 export function updateGun(dt: number, onFoot: boolean) {
-  if (G.reloadT > 0 && (G.reloadT -= dt) <= 0) { G.reloadT = 0; G.ammo = G.gun.mag; }
+  if (G.reloadT > 0 && (G.reloadT -= dt) <= 0) {
+    G.reloadT = 0;
+    const g = curGun();
+    if (g) { G.ammo += takeRounds(g.ammo, G.gun.mag - G.ammo); if (heldKey) G.char.loaded[heldKey] = G.ammo; saveChar(); }
+  }
   const aim = onFoot && G.weapon === 0 && armed() && (G.aiming || G.touchAim), fov = aim ? 75 / G.gun.zoom : 75;
   if (Math.abs(camera.fov - fov) > 0.05) { camera.fov += (fov - camera.fov) * Math.min(1, dt * 12); camera.updateProjectionMatrix(); }
   aimK += ((aim ? 1 : 0) - aimK) * Math.min(1, dt * 12);
@@ -123,24 +178,33 @@ export function updateGun(dt: number, onFoot: boolean) {
   hudWeapon();
 }
 let aimK = 0;
+const activeGun = () => gunLooks[curGun()?.look ?? 'blaster'];
+const activeMelee = () => meleeLooks[curMelee()?.look ?? 'blade'];
 /** Re-apply holstered / drawn state after the armed rule may have changed. */
-export function refreshWeaponVisibility() { const v = armed(); gunVM.visible = v && G.weapon === 0; bladeVM.visible = v && G.weapon === 1; const h = G.char.hands[0]; carryVM.visible = !!h && G.weapon < 0; tyre.visible = h?.k === 'wheelL' || h?.k === 'wheelH'; bulk.visible = !tyre.visible; }
+export function refreshWeaponVisibility() {
+  const v = armed(), gv = activeGun(), mv = activeMelee();
+  for (const o of Object.values(gunLooks)) o.visible = v && G.weapon === 0 && o === gv;
+  for (const o of Object.values(meleeLooks)) o.visible = v && G.weapon === 1 && o === mv;
+  const h = G.char.hands[0]; carryVM.visible = !!h && G.weapon < 0; tyre.visible = h?.k === 'wheelL' || h?.k === 'wheelH'; bulk.visible = !tyre.visible;
+}
 
 export function animateVM(dt: number, moving: boolean) {
   const bob = moving ? Math.sin(performance.now() / 110) * 0.012 : 0;
   // aiming brings the gun to the middle; a long scope hides it (the scope overlay takes over); reloading dips it
-  const k = aimK, dip = G.reloadT > 0 ? Math.sin(Math.min(1, 1 - G.reloadT / G.gun.reload) * Math.PI) * 0.12 : 0;
-  gunVM.position.set(0.24 * (1 - k), -0.22 + bob * (1 - k) + k * 0.1 - dip, -0.45 + Math.max(0, G.cooldown - 0.08) * 0.4 + k * 0.05);
-  gunVM.rotation.x = -dip * 3;
-  gunVM.scale.setScalar(k > 0.5 && G.gun.zoom >= 3 ? 0.0001 : 1);
+  const k = aimK, dip = G.reloadT > 0 ? Math.sin(Math.min(1, 1 - G.reloadT / G.gun.reload) * Math.PI) * 0.12 : 0, gv = activeGun();
+  gv.position.set(0.24 * (1 - k), -0.22 + bob * (1 - k) + k * 0.1 - dip, -0.45 + Math.max(0, G.cooldown - 0.08) * 0.4 + k * 0.05);
+  gv.rotation.x = -dip * 3;
+  gv.scale.setScalar(k > 0.5 && G.gun.zoom >= 3 ? 0.0001 : 1);
   if (G.swingT > 0) G.swingT = Math.max(0, G.swingT - dt);
-  const sw = G.swingT > 0, s = sw ? 1 - G.swingT / 0.26 : 0, e = s < 0.5 ? s * 2 : 1;
-  bladeVM.position.set(0.34 - (sw ? e * 0.45 : 0), -0.36 + bob, -0.5);
-  bladeVM.rotation.set(-0.35 - (sw ? e * 0.9 : 0), 0, sw ? -0.9 + e * 2.2 : -0.5);
+  const sw = G.swingT > 0, s = sw ? 1 - G.swingT / swingDur : 0, e = s < 0.5 ? s * 2 : 1, mv = activeMelee(), spear = curMelee()?.look === 'spear';
+  if (spear) { mv.position.set(0.3, -0.34 + bob, -0.5 - (sw ? Math.sin(s * Math.PI) * 0.7 : 0)); mv.rotation.set(-1.45, 0, -0.1); } // a thrust
+  else { mv.position.set(0.34 - (sw ? e * 0.45 : 0), -0.36 + bob, -0.5); mv.rotation.set(-0.35 - (sw ? e * 0.9 : 0), 0, sw ? -0.9 + e * 2.2 : -0.5); }
 }
+let swingDur = 0.26;
 
-function shoot() {
-  const o = camera.position.clone(), d = new THREE.Vector3(); camera.getWorldDirection(d);
+/** One ray of a shot (a pellet of the scattergun is one too): what it hits takes dmg; a tracer to where it ends. */
+function ray(d: THREE.Vector3, dmg: number) {
+  const o = camera.position.clone();
   const range = G.gun.range;
   let tHit = rayWorld(o, d, range), hitT = null, seat = -1;
   for (const t of foes()) {
@@ -154,45 +218,57 @@ function shoot() {
     if (tt > 0 && tt < tHit) { tHit = tt; hitT = t; seat = -1; }
   }
   const bar = rayBarrier(o, d, tHit); // a roadblock in the way takes the shot
-  if (bar) { tHit = bar.t; hitT = null; hurtBarrier(bar.p, G.gun.dmg * G.S.bm); }
+  if (bar) { tHit = bar.t; hitT = null; hurtBarrier(bar.p, dmg); }
   const end = o.clone().addScaledVector(d, tHit);
   const gun = V(0.24 * (1 - aimK), -0.2 + aimK * 0.1, -0.75); camera.localToWorld(gun);
   addFx(new THREE.Line(new THREE.BufferGeometry().setFromPoints([gun, end]), add(hitT ? 0xffd27a : 0x9dffb4)), 0.12);
   burst(end, hitT ? 0xffb347 : 0x3dff6e, hitT ? 10 : 6, hitT ? 0.7 : 0.35);
-  if (hitT) { if (seat >= 0) hurtCrew(hitT as Raider, seat, G.gun.dmg * G.S.bm); else damageFoe(hitT, G.gun.dmg * G.S.bm); }
+  if (hitT) { if (seat >= 0) hurtCrew(hitT as Raider, seat, dmg); else damageFoe(hitT, dmg); }
+}
+function shoot() {
+  const d = new THREE.Vector3(); camera.getWorldDirection(d);
+  const g = curGun()!, n = g.pellets ?? 1, spread = (g.spread ?? 0) * (aimK > 0.5 ? 0.7 : 1);
+  const right = new THREE.Vector3().crossVectors(d, camera.up).normalize(), up = new THREE.Vector3().crossVectors(right, d);
+  for (let i = 0; i < n; i++) {
+    const p = n > 1 ? d.clone().addScaledVector(right, (Math.random() - 0.5) * 2 * spread).addScaledVector(up, (Math.random() - 0.5) * 2 * spread).normalize() : d;
+    ray(p, G.gun.dmg * G.S.bm);
+  }
   makeNoise(camera.position, G.gun.noise);
 }
-/** A blade swing: hits hard while you have the stamina for it; exhausted it is weak (and slow, see attack()). */
+/** A melee swing (a thrust with the spear): hits hard while you have the stamina for it; exhausted it is weak (and slow, see attack()). */
 function slash(tired: boolean) {
-  G.swingT = tired ? 0.45 : 0.26;
+  const m = curMelee()!;
+  swingDur = G.swingT = tired ? Math.max(0.45, m.rate * 1.1) : Math.min(0.5, m.rate * 0.62);
   const o = camera.position.clone(), f = new THREE.Vector3(); camera.getWorldDirection(f);
   const right = new THREE.Vector3().crossVectors(f, camera.up).normalize(), up = new THREE.Vector3().crossVectors(right, f);
-  const pts: THREE.Vector3[] = [];
+  const pts: THREE.Vector3[] = [], reach = G.S.range, wide = m.look === 'spear' ? 0.25 : 0.7;
   for (let i = 0; i <= 12; i++) {
-    const a = -0.7 + 1.4 * i / 12;
-    pts.push(o.clone().addScaledVector(f, Math.cos(a) * 1.6).addScaledVector(right, -Math.sin(a) * 1.6).addScaledVector(up, -0.25 + Math.sin(a) * 0.25));
+    const a = -wide + 2 * wide * i / 12;
+    pts.push(o.clone().addScaledVector(f, Math.cos(a) * reach * 0.62).addScaledVector(right, -Math.sin(a) * reach * 0.62).addScaledVector(up, -0.25 + Math.sin(a) * 0.25));
   }
-  addFx(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), add(0xc8ffd6)), 0.18);
+  addFx(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), add(m.look === 'blade' ? 0xc8ffd6 : 0xe8e0c0)), 0.18);
   for (const t of foes()) {
     const v = t.g.position.clone().sub(o), dist = v.length();
-    if (dist > G.S.range + (t.r || 0.5)) continue;
-    if (v.normalize().dot(f) < Math.cos(0.7)) continue;
-    burst(t.g.position.clone(), 0xc8ffd6, tired ? 6 : 14, tired ? 0.5 : 0.9); damageFoe(t, WEAPONS[1].dmg * G.S.mm * (tired ? BLADE.tiredDmg : 1));
+    if (dist > reach + (t.r || 0.5)) continue;
+    if (v.normalize().dot(f) < Math.cos(wide)) continue;
+    burst(t.g.position.clone(), 0xc8ffd6, tired ? 6 : 14, tired ? 0.5 : 0.9); damageFoe(t, m.dmg * G.S.mm * (tired ? BLADE.tiredDmg : 1));
   }
 }
 export function attack() {
   if (G.cooldown > 0 || !armed() || G.weapon < 0) return;
   if (G.weapon === 0) {
-    if (G.reloadT > 0) return;
+    if (G.reloadT > 0 || !curGun()) return;
     if (G.ammo <= 0) { reload(); return; }
-    shoot(); G.ammo--;
+    shoot(); G.ammo--; if (heldKey) G.char.loaded[heldKey] = G.ammo;
     if (G.ammo <= 0) reload();
     G.cooldown = G.S.rate;
   } else {
     // every swing costs stamina; exhausted, swings are slow and weak, whatever speeds them up otherwise
-    const tired = !spendStamina(STAMINA.swing);
-    burn(BURN.swing);
+    const m = curMelee();
+    if (!m) return;
+    const tired = !spendStamina(STAMINA.swing * m.stamina);
+    burn(BURN.swing * m.stamina);
     slash(tired);
-    G.cooldown = tired ? BLADE.tiredRate : WEAPONS[1].rate;
+    G.cooldown = tired ? BLADE.tiredRate * m.rate / BLADE.rate : m.rate;
   }
 }

@@ -1,4 +1,4 @@
-export type ItemType = 'relic' | 'cons' | 'key' | 'part' | 'quest' | 'attach' | 'mat' | 'tool' | 'weapon' | 'wear' | 'good';
+export type ItemType = 'relic' | 'cons' | 'key' | 'part' | 'quest' | 'attach' | 'mat' | 'tool' | 'weapon' | 'wear' | 'good' | 'ammo';
 export interface ItemDef { name: string; ab: string; type: ItemType; desc: string; stack?: number }
 
 export const ITEMS = {
@@ -9,6 +9,19 @@ export const ITEMS = {
   cell: { name: 'Power Cell', ab: 'CEL', type: 'relic', desc: 'blaster fires 10% faster' },
   blaster: { name: 'Blaster', ab: 'BLS', type: 'weapon', desc: 'energy rifle: hold it in your hands to fire, or sling it on your back (keys 1 and 2 draw what is on your back)', stack: 1 },
   blade: { name: 'Energy Blade', ab: 'BLD', type: 'weapon', desc: 'a humming sword: hard hits for stamina. Hold it in your hands to swing it, or carry it on your back', stack: 1 },
+  pistol: { name: 'Old Pistol', ab: 'PST', type: 'weapon', desc: 'a heavy old-world pistol: quick to raise, hits hard at short range. Fires Pistol Rounds', stack: 1 },
+  smg: { name: 'Scrap SMG', ab: 'SMG', type: 'weapon', desc: 'a submachine gun welded together from scrap: a hail of light rounds up close. Fires Pistol Rounds', stack: 1 },
+  shotgun: { name: 'Scattergun', ab: 'SHG', type: 'weapon', desc: 'a pump shotgun: a cone of pellets that tears apart anything within twenty metres. Fires Shotgun Shells', stack: 1 },
+  rifle: { name: 'Hunting Rifle', ab: 'RFL', type: 'weapon', desc: 'a bolt-action rifle with a fixed scope: slow, loud and deadly far away. Fires Rifle Rounds', stack: 1 },
+  machete: { name: 'Machete', ab: 'MCH', type: 'weapon', desc: 'a long heavy knife: quick, light swings that cost little stamina', stack: 1 },
+  spear: { name: 'Spear', ab: 'SPR', type: 'weapon', desc: 'a steel-tipped spear: keeps things at arm\'s length and more', stack: 1 },
+  sledge: { name: 'Sledgehammer', ab: 'SLG', type: 'weapon', desc: 'a two-handed hammer: slow, tiring swings that crush almost anything', stack: 1 },
+  ammoE: { name: 'Energy Cells', ab: 'ENC', type: 'ammo', desc: 'charge cells for energy weapons such as the Blaster. The old world left crates of them; later a blacksmith with the plans for lead batteries can fill new ones', stack: 60 },
+  ammo9: { name: 'Pistol Rounds', ab: '9MM', type: 'ammo', desc: 'short brass cartridges for pistols and submachine guns', stack: 50 },
+  ammoS: { name: 'Shotgun Shells', ab: 'SHL', type: 'ammo', desc: 'paper-and-brass shells full of lead pellets, for the scattergun', stack: 24 },
+  ammoR: { name: 'Rifle Rounds', ab: 'RFR', type: 'ammo', desc: 'long rifle cartridges, for the hunting rifle', stack: 30 },
+  tablet: { name: 'GPS Tablet', ab: 'GPS', type: 'tool', desc: 'a rugged tablet that finds itself by the old satellites: carry it and the compass strip shows your exact position and height, and you can set a waypoint on the world map (right click) that the compass and the maps point to', stack: 1 },
+  repairkit: { name: 'Vehicle Repair Kit', ab: 'RPK', type: 'cons', desc: 'patches, bolts, a tyre plug and a can of sealant: use it beside one of your vehicles (or while driving) to mend its hull by 40%, its engine by 30 points and every tyre on it by 25 points, out in the field', stack: 3 },
   helmet: { name: 'Combat Helmet', ab: 'HLM', type: 'wear', desc: 'head armour: takes 8% off every hit', stack: 1 },
   vest: { name: 'Ballistic Vest', ab: 'VST', type: 'wear', desc: 'body armour, light: takes 15% off every hit', stack: 1 },
   armour: { name: 'Plate Armour', ab: 'ARM', type: 'wear', desc: 'body armour, heavy: takes 25% off every hit, but weighs 12 kg', stack: 1 },
@@ -154,7 +167,7 @@ export const INV_SIZE = 12, MOD_SIZE = 3;
  * Equipped relics and fitted attachments are part of your kit and weigh nothing here.
  */
 export const BULK: Record<ItemKey, [kg: number, litres: number]> = {
-  blaster: [3.5, 9], blade: [1.5, 4], helmet: [1.5, 5], vest: [4, 10], armour: [12, 18], gloves: [0.3, 0.5], trousers: [0.8, 1.5], boots: [1.2, 3], gasmask: [0.7, 2], filter: [0.25, 0.3],
+  blaster: [3.5, 9], blade: [1.5, 4], pistol: [1.2, 1.5], smg: [2.8, 5], shotgun: [3.4, 8], rifle: [4, 10], machete: [0.9, 2], spear: [1.8, 6], sledge: [6, 6], ammoE: [0.02, 0.02], ammo9: [0.012, 0.01], ammoS: [0.04, 0.04], ammoR: [0.025, 0.02], tablet: [0.6, 0.5], repairkit: [3, 4], helmet: [1.5, 5], vest: [4, 10], armour: [12, 18], gloves: [0.3, 0.5], trousers: [0.8, 1.5], boots: [1.2, 3], gasmask: [0.7, 2], filter: [0.25, 0.3],
   shield: [1.5, 1], lens: [0.3, 0.3], edge: [0.5, 0.5], servo: [2, 2], cell: [1, 0.5],
   medkit: [0.5, 1], key: [0.05, 0.05], recall: [0.4, 0.3], emp: [0.8, 0.6], flask: [0.3, 0.8], firekit: [1, 1.5],
   bread: [0.4, 1], stew: [0.6, 0.8], eggsB: [0.15, 0.2], milkC: [0.3, 0.3], cheese: [0.25, 0.3], waterF: [1, 0.8], waterM: [1, 0.8],
@@ -182,18 +195,18 @@ export const WEAR: Partial<Record<ItemKey, { slot: WearSlot; def: number }>> = {
   gasmask: { slot: 'face', def: 0 },
 };
 /** Weapons in the hands: which one it is for world/weapons.ts (0 = gun, 1 = blade). Only weapons go on your back. */
-export const WEAPON_KIND: Partial<Record<ItemKey, 0 | 1>> = { blaster: 0, blade: 1 };
+export const WEAPON_KIND: Partial<Record<ItemKey, 0 | 1>> = { blaster: 0, pistol: 0, smg: 0, shotgun: 0, rifle: 0, blade: 1, machete: 1, spear: 1, sledge: 1 };
 /** Too big or awkward for the backpack: carried in your hands (and then you cannot hold a weapon). */
 export const HANDS_ONLY = new Set<ItemKey>(['wheelL', 'wheelH', 'cannon', 'benchkit', 'flagpole']);
 /** Weapons and gear Oskar sells. */
 /** Tools and building supplies: what Oskar (tools) and Zofia (supplies) charge. */
 export const TOOL_PRICE: Partial<Record<ItemKey, number>> = { hammer: 20, saw: 35, screwdriver: 10, pliers: 12, welder: 200, torch: 160, shovel: 25, turretkit: 350, bridgekit: 80, pierkit: 90 };
 export const SUPPLY_PRICE: Partial<Record<ItemKey, number>> = { nails: 3, rope: 6, wire: 5, codelock: 120 };
-export const GEAR_PRICE: Partial<Record<ItemKey, number>> = { blaster: 150, blade: 80, helmet: 60, vest: 120, armour: 260, gloves: 20, trousers: 30, boots: 40 };
+export const GEAR_PRICE: Partial<Record<ItemKey, number>> = { blaster: 150, blade: 80, pistol: 140, shotgun: 240, machete: 60, spear: 45, sledge: 70, helmet: 60, vest: 120, armour: 260, gloves: 20, trousers: 30, boots: 40 };
 /** The backpack: how much fits (litres), the load you carry easily, and beyond `max` you are overloaded (kg). */
 export const PACK = { vol: 40, comfy: 20, max: 35 };
 /** What Kuba charges for vehicle parts. He buys them back for only a fifth of that. */
-export const PART_PRICE: Partial<Record<ItemKey, number>> = { wheelL: 40, wheelH: 90, engine: 70, plating: 60, turbo: 220, eguard: 150, cannon: 400 };
+export const PART_PRICE: Partial<Record<ItemKey, number>> = { wheelL: 40, wheelH: 90, engine: 70, plating: 60, turbo: 220, eguard: 150, cannon: 400, repairkit: 90 };
 export const PART_BUYBACK = 0.2;
 export const HEAL: Partial<Record<ItemKey, number>> = { medkit: 50 };
 /** Weapon attachments and what Oskar the blacksmith charges for them. */

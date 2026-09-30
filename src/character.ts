@@ -1,22 +1,24 @@
 // Character rules: stats from level and equipped relics, inventory, XP.
 import { G } from './game';
 import { ITEMS, PACK, item, BULK, WEAR, WEAPON_KIND, HANDS_ONLY, type ItemKey } from './data/items';
-import { roomFor, weightOf, putSlot } from './inventory';
+import { roomFor, weightOf, putSlot, putItems } from './inventory';
 import type { Slot } from './save';
 import { saveChar as persist } from './save';
 import { showToast, logLine } from './ui/hud';
-import { BLASTER, gunStats } from './data/weapons';
+import { BLASTER, gunStats, gunOf, meleeOf } from './data/weapons';
 
 export const saveChar = () => persist(G.char);
 
 export function calcStats() {
   const c = G.char, L = c.level - 1, r = (k: ItemKey) => c.mods.filter((m) => m === k).length;
-  c.gunMods ??= [null, null, null];
-  G.gun = gunStats(BLASTER, c.gunMods);
+  c.gunMods ??= [null, null, null]; c.loaded ??= { blaster: BLASTER.base.mag };
+  // the gun in your hands (the Blaster's stats when you hold none, for the backpack's numbers); attachments fit the Blaster only
+  const hk = c.hands[0]?.k, gun = gunOf(hk) ?? BLASTER, mel = meleeOf(hk) ?? meleeOf('blade')!;
+  G.gun = gunStats(gun, gun === BLASTER ? c.gunMods : []);
   G.ammo = Math.min(G.ammo, G.gun.mag);
   G.S = {
     maxHp: 100 + L * 15 + r('shield') * 20, bm: (1 + L * 0.12) * (1 + r('lens') * 0.25), mm: (1 + L * 0.12) * (1 + r('edge') * 0.25),
-    range: 2.6 + r('edge') * 0.3, rate: G.gun.interval * Math.pow(0.9, r('cell')), speed: 1 + r('servo') * 0.08,
+    range: mel.reach + r('edge') * 0.3, rate: G.gun.interval * Math.pow(0.9, r('cell')), speed: 1 + r('servo') * 0.08,
     def: 1 - Object.values(c.wear).reduce((a, k) => a * (1 - (k ? WEAR[k]?.def ?? 0 : 0)), 1),
   };
   G.hp = Math.min(G.hp, G.S.maxHp);
@@ -63,9 +65,11 @@ export function addItem(k: ItemKey, n = 1, quiet = false): 'mod' | 'inv' | 'hand
   }
   if (WEAPON_KIND[k] !== undefined && n === 1) { const f = c.back.indexOf(null); if (f >= 0) { c.back[f] = { k, n: 1 }; return 'back'; } }
   if (packRoom(k) < n) return null;
-  if (it.stack) { const s = c.inv.find((x) => x && x.k === k && x.n < it.stack!); if (s) { s.n += n; return 'inv'; } }
-  const f = c.inv.indexOf(null); if (f < 0) return null;
-  c.inv[f] = { k, n }; return 'inv';
+  // all of it or nothing, spread over stacks as they allow (a box of 40 rounds may fill one stack and start the next)
+  const copy = c.inv.map((s) => (s ? { ...s } : null));
+  if (putItems(copy, k, n, PACK.vol) > 0) return null;
+  copy.forEach((s, i) => { c.inv[i] = s; });
+  void it; return 'inv';
 }
 
 /** Uses up one k from the backpack or, failing that, from your hands. */

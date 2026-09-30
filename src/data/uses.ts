@@ -2,6 +2,7 @@
 // tooltip (ui/itemtip.ts) lists it under "Used for". Pure; built once on first use.
 import { ITEMS, type ItemKey } from './items';
 import { ORDERS } from './orders';
+import { GUNS } from './weapons';
 import { PLANTS, type PlantKind } from '../gen/plants';
 import { STATIONS, type StationKind } from '../gen/energy';
 import { FORTIFY, WORKS, POWER, type WorkKind } from '../gen/town';
@@ -55,6 +56,8 @@ function build(): Map<ItemKey, Map<UseGroup, string[]>> {
   use('fuel', 'Fuel for', 'Motor Boat');
   for (const h of HALL_SETS) use(h.fuel, 'Fuel for', h.fuel === 'nfuel' ? 'the Old Enrichment Plant\'s own reactor' : 'the power halls of the old plants');
   use('filter', 'Other', 'breathing in toxic fog (in a Gas Mask)');
+  for (const g of Object.values(GUNS)) use(g!.ammo, 'Other', `rounds for the ${g!.name}`);
+  use('repairkit', 'Repairs', 'your vehicles in the field (hull, engine, wheels)');
   return m;
 }
 /** What the item is used for, by kind of use (empty when nothing takes it). */

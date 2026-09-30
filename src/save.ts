@@ -5,7 +5,8 @@ import { fixPlant } from './gen/plants';
 import type { BridgeState, Ford } from './gen/bridges';
 import type { Pier } from './gen/piers';
 import type { Boat } from './gen/boats';
-import { INV_SIZE, MOD_SIZE, ITEMS, type ItemKey, type WearSlot } from './data/items';
+import { INV_SIZE, MOD_SIZE, ITEMS, PACK, type ItemKey, type WearSlot } from './data/items';
+import { putItems } from './inventory';
 import type { VehicleModel, VehicleParts } from './data/vehicles';
 import type { Quest } from './gen/quests';
 import { START_TIME, boardPeriod } from './core/time';
@@ -84,6 +85,10 @@ export interface Char {
   kcal: number; stomach: number; water: number;
   /** Attachments fitted to the Blaster, one per slot of data/weapons BLASTER.slots (optic, barrel, magazine). */
   gunMods: (ItemKey | null)[];
+  /** Rounds in each gun's magazine (data/weapons.ts GUNS; ammunition is limited: reloads come out of the backpack). */
+  loaded: Partial<Record<ItemKey, number>>;
+  /** The GPS Tablet's waypoint (world x, z), or null. */
+  waypoint: [number, number] | null;
   /** Picked plants (gen/flora keys, "crys:<dungeonKey>:<i>" for dungeon crystals) -> game time picked; gone once grown back. */
   harvest: Record<string, number>;
   /** Workbenches the player has set up in the wilds (world position, facing). */
@@ -117,7 +122,7 @@ export const ARENA_V3_KEY = 'gridArena.character.v3', V2_KEY = 'gridArena.charac
 export const newChar = (): Char => ({
   v: 3, name: '', intro: false, tech: {}, leads: [], installs: {}, bridges: {}, bridgeSites: [], piers: [], boats: [], filter: 0, fogs: {}, guide: 0, houses: [], shuttle: { given: {}, v: 2 }, level: 1, xp: 0, gold: 0, world: (Math.random() * 1e6) | 0,
   inv: Array(INV_SIZE).fill(null), mods: Array(MOD_SIZE).fill(null), opened: {}, unlocked: {}, killed: {},
-  loc: 'overworld', ow: null, dungeon: null, discovered: {}, containers: {}, vehicles: [], board: { seq: 0, offers: [], stamp: boardPeriod(START_TIME) }, boards: {}, quests: [], camps: {}, time: START_TIME, gunMods: [null, null, null], kcal: KCAL.start, stomach: 0, water: 100, harvest: {}, benches: [], claims: [],
+  loc: 'overworld', ow: null, dungeon: null, discovered: {}, containers: {}, vehicles: [], board: { seq: 0, offers: [], stamp: boardPeriod(START_TIME) }, boards: {}, quests: [], camps: {}, time: START_TIME, gunMods: [null, null, null], loaded: { blaster: 20 }, waypoint: null, kcal: KCAL.start, stomach: 0, water: 100, harvest: {}, benches: [], claims: [],
   hands: [{ k: 'blaster', n: 1 }], back: [{ k: 'blade', n: 1 }, null], wear: {}, pid: Math.random().toString(36).slice(2, 10), towns: {}, market: {}, ledger: {}, caravans: {}, escort: null, contracts: [], taken: [],
 });
 
@@ -147,6 +152,8 @@ function migrateV2(o: V2): Char {
   return c;
 }
 
+/** Energy Cells an old save gets when ammunition stops being endless. */
+export const OLD_SAVE_CELLS = 120;
 export function loadChar(storage: Pick<Storage, 'getItem'> | null = safeStorage()): Char {
   try {
     const raw = storage?.getItem(SAVE_KEY) ?? storage?.getItem(ARENA_V3_KEY);
@@ -164,6 +171,10 @@ export function loadChar(storage: Pick<Storage, 'getItem'> | null = safeStorage(
       { // stages finished before the Chariot wanted the old plants' goods stay finished; crates it no longer takes go to Gridholm's hall
         const back = Object.entries(fixShuttle(c.shuttle));
         if (back.length) { const hold = ((c.towns[GRIDHOLM_ID] ??= {}).hold ??= {}); for (const [g, n] of back) hold[g as ItemKey] = (hold[g as ItemKey] ?? 0) + n!; }
+      }
+      if (!('loaded' in JSON.parse(raw))) { // ammunition used to be endless: a full Blaster and a stock of cells (what finds no room waits in Gridholm's hall)
+        const left = putItems(c.inv, 'ammoE', OLD_SAVE_CELLS, PACK.vol);
+        if (left > 0) { const hold = ((c.towns[GRIDHOLM_ID] ??= {}).hold ??= {}); hold.ammoE = (hold.ammoE ?? 0) + left; }
       }
       return c;
     }

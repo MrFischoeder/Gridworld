@@ -268,6 +268,7 @@ body.is-touch #bUse.on{display:flex}
 #devmapBar button{float:right;margin-left:8px;font-family:inherit;font-size:17px;background:transparent;color:var(--g);border:1px solid var(--g);padding:1px 10px;cursor:pointer}
 
 /* compass strip (while carrying a Compass) */
+#gps{position:fixed;top:calc(env(safe-area-inset-top,0px) + 54px);left:50%;transform:translateX(-50%);font:16px VT323,monospace;color:#8fd8ff;background:rgba(0,8,3,.7);padding:1px 10px;white-space:nowrap;pointer-events:none;display:none;z-index:5}
 #compass{position:fixed;top:calc(env(safe-area-inset-top,0px) + 6px);left:50%;transform:translateX(-50%);width:460px;height:46px;pointer-events:none;display:none;z-index:5}
 
 /* the village map board's window */

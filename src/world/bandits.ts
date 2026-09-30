@@ -9,7 +9,7 @@ import { poseRig, muzzleLocal, type Kit } from './rig';
 import { foeRules } from './enemies';
 import { rayWorld, emptyAt } from './player';
 import { burst } from './fx';
-import { dropCrystal, dropPickup } from './loot';
+import { dropCrystal, dropPickup, rollAmmo, LOOT_GUNS } from './loot';
 import { saveChar, gainXp, armoured } from '../character';
 import { logLine, showToast } from '../ui/hud';
 import { onKill, onCampCleared } from './quests';
@@ -331,6 +331,8 @@ export function hurtBandit(b: Bandit, dmg: number) {
   if (Math.random() < (lead ? 1 : 0.3)) dropPickup(at.clone().add(V(0.3, 0, 0.4)), 'scrap');
   if (lead && Math.random() < 0.3) dropPickup(at.clone().add(V(0.6, 0, 0)), 'key');
   if (lead && Math.random() < 0.2) dropPickup(at.clone().add(V(-0.6, 0, 0)), 'relic');
+  if (Math.random() < (lead ? 1 : 0.35)) { const [k, n] = rollAmmo(lead ? 1.5 : 0.5); dropPickup(at.clone().add(V(-0.3, 0, -0.4)), k, n); } // their rounds
+  if (Math.random() < (lead ? 0.3 : 0.04)) dropPickup(at.clone().add(V(0, 0, -0.7)), LOOT_GUNS[(Math.random() * LOOT_GUNS.length) | 0]);
   if (lead) gainXp(40);
   const camp = b.campId;
   fallBandit(b, G.pos);

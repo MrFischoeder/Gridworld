@@ -31,6 +31,20 @@ export const ORDERS: Order[] = [
   // the components of the old plants (economy stage 6)
   { tech: 'precision', out: 'drivetrain', n: 1, needs: [['precision', 2], ['parts', 2], ['alloy', 1]] },
   { tech: 'sensors', out: 'scanner', n: 1, needs: [['sensor', 1], ['circuit', 2], ['scrap', 1]] },
+  // arms and rounds: at first only found (chests, stashes, the fallen), made once the plans are yours
+  { tech: 'gunsmith', out: 'ammo9', n: 30, needs: [['leadbar', 1], ['chems', 1], ['scrap', 1]] },
+  { tech: 'gunsmith', out: 'ammoS', n: 16, needs: [['leadbar', 1], ['chems', 1], ['scrap', 1]] },
+  { tech: 'gunsmith', out: 'ammoR', n: 20, needs: [['leadbar', 1], ['chems', 1], ['steel', 1]] },
+  { tech: 'gunsmith', out: 'pistol', n: 1, needs: [['steel', 2], ['scrap', 3]] },
+  { tech: 'gunsmith', out: 'smg', n: 1, needs: [['steel', 2], ['scrap', 6], ['wire', 2]] },
+  { tech: 'gunsmith', out: 'shotgun', n: 1, needs: [['steel', 3], ['lumber', 1], ['scrap', 2]] },
+  { tech: 'gunsmith', out: 'rifle', n: 1, needs: [['steel', 3], ['lumber', 1], ['glass', 1], ['scrap', 2]] },
+  { tech: 'batteries', out: 'ammoE', n: 40, needs: [['batteries', 1], ['circuit', 1]] },
+  { tech: 'forging', out: 'machete', n: 1, needs: [['scrap', 3], ['hide', 1]] },
+  { tech: 'forging', out: 'spear', n: 1, needs: [['log', 2], ['scrap', 2]] },
+  { tech: 'forging', out: 'sledge', n: 1, needs: [['log', 1], ['scrap', 5]] },
+  { tech: 'radio', out: 'tablet', n: 1, needs: [['circuit', 3], ['glass', 1], ['batteries', 1], ['pcore', 1]] },
+  { tech: 'engines', out: 'repairkit', n: 1, needs: [['scrap', 4], ['wire', 2], ['circuit', 1], ['rope', 1]] },
 ];
 /** Technologies that are for the villages themselves (farms, power, works), not for the craftsmen's bench. */
 export const VILLAGE_TECHS = ['fields', 'plough', 'rotor', 'solar', 'chips', 'radio', 'chemistry', 'enrichment', 'propellant', 'rail', 'aluminium', 'batteries', 'alloys', 'powercells', 'sensors', 'ancmetal', 'precision', 'automation'];

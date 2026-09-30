@@ -6,7 +6,7 @@ import { PropBatch } from './props';
 import { foeRules } from './enemies';
 import { rayWorld } from './player';
 import { burst } from './fx';
-import { dropCrystal } from './loot';
+import { dropCrystal, rollAmmo } from './loot';
 import { spawnBandit, alert, fireBolt, BANDIT, type Bandit } from './bandits';
 import { spawnAIVehicle, releaseAI, removeVehicle, steerVehicle, bodyToWorld, driving, refreshParts, damageVehicle, seatRider, unseat, seatPoint, rayVehicle, type Vehicle } from './vehicles';
 import { VEHICLES, SEATS, freshParts, wheelCount, hurtEngine, type VehicleModel } from '../data/vehicles';
@@ -130,7 +130,9 @@ function wreckRaider(r: Raider) {
   const t = v.st.trunk; t.gold = 20 + Math.floor(Math.random() * 60);
   if (Math.random() < 0.5) putItems(t.items, 'medkit', 1);
   putItems(t.items, 'scrap', 2 + Math.floor(Math.random() * 3));
+  { const [k, n] = rollAmmo(); putItems(t.items, k, n); }
   if (Math.random() < 0.3) putItems(t.items, 'wheelL', 1);
+  if (Math.random() < 0.2) putItems(t.items, 'repairkit', 1);
   if (Math.random() < 0.15) putItems(t.items, RELIC_KEYS[(Math.random() * RELIC_KEYS.length) | 0], 1);
   releaseAI(v);
   for (let i = 0; i < 4; i++) dropCrystal(r.p);
@@ -175,6 +177,7 @@ function abandonRaider(r: Raider) {
   bailOut(r);
   const t = r.v.st.trunk; t.gold = 10 + Math.floor(Math.random() * 40);
   putItems(t.items, 'scrap', 1 + Math.floor(Math.random() * 3));
+  { const [k, n] = rollAmmo(); putItems(t.items, k, n); }
   if (Math.random() < 0.4) putItems(t.items, 'medkit', 1);
   releaseAI(r.v); gainXp(15);
   scene.remove(r.g); raiders.splice(raiders.indexOf(r), 1);

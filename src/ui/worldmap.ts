@@ -9,7 +9,10 @@ import { STEP, VERTS, CELLS, inRect } from '../gen/terrain';
 import { SEA } from '../gen/seas';
 import { discover, isDiscovered } from '../save';
 import { installSites } from '../gen/installs';
-import { saveChar } from '../character';
+import { saveChar, hasItem } from '../character';
+
+/** The colour of the GPS waypoint (maps and compass). */
+export const WAYPOINT_C = '#8fd8ff';
 import { drawPlayerArrow } from './minimap';
 import { vehicles, driving } from '../world/vehicles';
 import { questMarkers } from '../world/quests';
@@ -151,6 +154,16 @@ function drawArea(ctx: CanvasRenderingContext2D, w: number, h: number, ppm: numb
     ctx.strokeStyle = ctx.fillStyle = '#ffd060'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(x, y, labels ? 12 : 6, 0, 6.283); ctx.stroke(); ctx.lineWidth = 1;
     ctx.fillText('!', x, y + 4); if (labels) ctx.fillText(m.label, x, y - 16);
   }
+  const wp = G.char.waypoint;
+  if (wp) { // the GPS Tablet's waypoint: a pale blue cross in a ring, held at the edge of the big map when further
+    let x = X(nearX(wp[0], px)), y = Z(wp[1]); const out = x < 24 || y < 40 || x > w - 24 || y > h - 40, r = labels ? 10 : 5;
+    if (!out || labels) {
+      if (out) { x = Math.max(24, Math.min(w - 24, x)); y = Math.max(40, Math.min(h - 40, y)); }
+      ctx.strokeStyle = ctx.fillStyle = WAYPOINT_C; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(x, y, r, 0, 6.283);
+      ctx.moveTo(x - r - 4, y); ctx.lineTo(x + r + 4, y); ctx.moveTo(x, y - r - 4); ctx.lineTo(x, y + r + 4); ctx.stroke(); ctx.lineWidth = 1;
+      if (labels) ctx.fillText(`Waypoint ${(Math.hypot(wrapDx(wp[0] - px), wp[1] - pz) / 1000).toFixed(1)} km`, x, y - r - 8);
+    }
+  }
   // on the big map: every caravan on the roads between villages you know (from the timetables), as an arrow
   if (labels) {
     let budget = 2; // new roads worked out per frame, so zooming far out does not stall the game
@@ -198,7 +211,7 @@ function drawFullMap() {
   if (big.width !== w || big.height !== h) { big.width = w; big.height = h; }
   drawArea(bctx, w, h, zoom, true);
   bctx.fillStyle = '#3dff6e'; bctx.font = '22px VT323, monospace'; bctx.textAlign = 'left';
-  bctx.fillText('WORLD MAP — M or Esc to close · wheel / + - to zoom', 16, h - 16);
+  bctx.fillText('WORLD MAP — M or Esc to close · wheel / + - to zoom' + (hasItem('tablet') ? ' · right click: set / clear the GPS waypoint' : ''), 16, h - 16);
   bctx.textAlign = 'right'; bctx.fillText(villageHere(G.pos.x, G.pos.z)?.name ?? $('hudL').textContent ?? '', w - 16, 30);
 }
 export function toggleMap(open = !G.mapOpen) {
@@ -208,5 +221,13 @@ export function toggleMap(open = !G.mapOpen) {
 export const zoomMap = (f: number) => { zoom = Math.max(0.15, Math.min(4, zoom * f)); };
 big.addEventListener('wheel', (e) => zoomMap(e.deltaY < 0 ? 1.2 : 1 / 1.2), { passive: true });
 big.addEventListener('click', () => toggleMap(false));
+/** The GPS Tablet: a right click on the big map sets a waypoint there (on the old one: clears it). */
+big.addEventListener('contextmenu', (e) => {
+  e.preventDefault();
+  if (!hasItem('tablet')) return;
+  const x = G.pos.x + (e.clientX - innerWidth / 2) / zoom, z = G.pos.z + (e.clientY - innerHeight / 2) / zoom, wp = G.char.waypoint;
+  G.char.waypoint = wp && Math.hypot(nearX(wp[0], x) - x, wp[1] - z) * zoom < 14 ? null : [x, z];
+  saveChar();
+});
 $('mini').addEventListener('click', () => toggleMap());
 $('mini').addEventListener('touchstart', (e) => { e.preventDefault(); toggleMap(); }, { passive: false });

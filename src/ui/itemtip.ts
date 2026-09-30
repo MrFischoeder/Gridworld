@@ -3,7 +3,7 @@
 // effects), weight and bulk, the stack, what the traders ask for it and what it is used for (data/uses.ts).
 import { ITEMS, BULK, WEAR, WEAR_NAME, HEAL, HANDS_ONLY, GEAR_PRICE, TOOL_PRICE, SUPPLY_PRICE, PART_PRICE, ATTACH_PRICE, type ItemKey, type ItemType, type ItemDef } from '../data/items';
 import { NOURISH, BLADE } from '../data/survival';
-import { BLASTER, ATTACHMENTS, SLOT_NAME, type GunStats } from '../data/weapons';
+import { BLASTER, ATTACHMENTS, SLOT_NAME, GUNS, MELEE, type GunStats } from '../data/weapons';
 import { GOOD_INFO } from '../gen/market';
 import { MASK } from '../gen/toxic';
 import { RARE_VALUE, isRare } from '../gen/deposits';
@@ -12,7 +12,7 @@ import { itemIcon } from './icons';
 
 export const TYPE_NAME: Record<ItemType, string> = {
   relic: 'Relic module', cons: 'Consumable', key: 'Key', part: 'Vehicle part', quest: 'Quest item', attach: 'Weapon attachment',
-  mat: 'Material', tool: 'Tool', weapon: 'Weapon', wear: 'Clothing and armour', good: 'Trade good',
+  mat: 'Material', tool: 'Tool', weapon: 'Weapon', wear: 'Clothing and armour', good: 'Trade good', ammo: 'Ammunition',
 };
 const PREFIX = /^(Crate of |Sack of |Flask of |Barrel of |Bolt of |Churn of |Basket of |Cup of )/;
 /** The name shortened for a slot's label ("Sack of Grain" -> "Grain"). */
@@ -38,8 +38,12 @@ function attachLines(k: ItemKey): string[] {
 /** The item's numbers, one per line. */
 function statLines(k: ItemKey): string[] {
   const out: string[] = [], w = WEAR[k], f = NOURISH[k];
-  if (k === 'blaster') { const s = BLASTER.base; out.push(`damage ${s.dmg} a shot · ${Math.round(1 / s.interval)} shots/s`, `range ${s.range} m · magazine ${s.mag} · reload ${s.reload} s`, `heard ${s.noise} m away · 3 attachment slots`); }
-  if (k === 'blade') out.push(`damage ${BLADE.dmg} a swing · a swing every ${BLADE.rate} s`, 'each swing costs stamina; exhausted: slower and half as strong');
+  const gun = GUNS[k], mel = MELEE[k];
+  if (gun) { const s = gun.base; out.push(`damage ${s.dmg}${gun.pellets ? ` × ${gun.pellets} pellets` : ''} a shot · ${(1 / s.interval).toFixed(s.interval > 0.5 ? 1 : 0)} shots/s`, `range ${s.range} m · magazine ${s.mag} · reload ${s.reload} s${s.zoom >= 2 ? ` · scope ${s.zoom}×` : ''}`, `fires ${ITEMS[gun.ammo].name} · heard ${s.noise} m away${gun.slots.length ? ` · ${gun.slots.length} attachment slots` : ''}`); }
+  if (mel) out.push(`damage ${mel.dmg} a swing · a swing every ${mel.rate} s · reach ${mel.reach} m`, `each swing costs ${mel.stamina === 1 ? '' : `${mel.stamina}× the `}stamina${mel.stamina === 1 ? '' : ' of a blade swing'}; exhausted: slower and half as strong`);
+  const users = Object.values(GUNS).filter((g) => g!.ammo === k).map((g) => g!.name);
+  if (users.length) out.push(`rounds for the ${users.join(' and the ')} · loaded when you reload (R)`);
+  void BLADE;
   if (w) out.push(`worn on: ${WEAR_NAME[w.slot]}${w.def ? ` · takes ${Math.round(w.def * 100)}% off every hit` : ''}`);
   if (k === 'gasmask') out.push('keeps out toxic fog while a filter is fitted');
   if (k === 'filter') out.push(`lasts ${MASK.filter / 60} min in the thickest fog, longer in thin fog`);

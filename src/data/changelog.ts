@@ -4,6 +4,17 @@ export interface Change { v: string; date: string; title: string; notes: string[
 
 export const CHANGELOG: Change[] = [
   {
+    v: '0.99.0', date: '2026-10-16', title: 'Rounds, new arms, GPS and field repairs',
+    notes: [
+      'Ammunition is limited now. Every gun keeps its own magazine and reloads from the rounds in your backpack: Energy Cells for the Blaster, Pistol Rounds, Shotgun Shells and Rifle Rounds. With none left, R does nothing.',
+      'At first rounds are only found: in chests, bandit stashes and camps, on fallen bandits and robots, in raider wrecks, crashed ships and the lockers in the toxic fog. The ship\'s locker holds a first box of cells. Old characters get 120 Energy Cells.',
+      'New firearms: the Old Pistol, the Scrap SMG, the Scattergun (seven pellets a shot) and the Hunting Rifle (a 3× scope, hits hard, loud). New melee weapons: the Machete (quick and light), the Spear (long reach, a thrust) and the Sledgehammer (slow, crushing, tiring). Found out there; Oskar sells some and buys them back.',
+      'New technology to find: Gunsmithing. With its plans the blacksmith makes pistol rounds, shells and rifle rounds from lead, industrial chemicals and scrap or steel, and all four new guns. With Battery Chemistry plans he fills Energy Cells from basic batteries; with Forged Tools he forges the machete, spear and sledgehammer.',
+      'The GPS Tablet (Radio Triangulation plans: circuits, glass, a lead battery and a power core): your exact position, altitude and heading under the compass, and a waypoint: right click on the world map to set it, again on it to clear it. The compass and the maps mark it.',
+      'The Vehicle Repair Kit (Kuba sells it; Combustion Engines plans let the blacksmith make it): use it by one of your vehicles or while driving to patch the hull, the engine and every fitted wheel in the field. It cannot bring back a wreck.',
+    ],
+  },
+  {
     v: '0.98.1', date: '2026-10-15', title: 'Measuring the economy',
     notes: [
       'Nothing changes in play. New tools behind the scenes measure what every good of the old plants costs, what the orders pay and how long the whole road to the Chariot takes, ready for the balance pass once the remaining changes are in.',

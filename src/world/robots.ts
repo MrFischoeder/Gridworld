@@ -428,6 +428,7 @@ export function hurtRobot(r: Robot, dmg: number) {
     const n = lo + Math.floor(Math.random() * (hi - lo + 1));
     for (let i = 0; i < n; i++) dropPickup(V(at.x + (Math.random() - 0.5) * 1.6, at.y, at.z + (Math.random() - 0.5) * 1.6), k);
   }
+  if (Math.random() < 0.25) dropPickup(V(at.x + 0.5, at.y, at.z), 'ammoE', 5 + Math.floor(Math.random() * 12)); // its charge cells
   logLine(s.name + ' destroyed');
   wreckRobot(r);
   onKill('drone');

@@ -113,6 +113,21 @@ export function upgradeParts(m: VehicleModel, p: VehicleParts): VehicleParts {
   return p;
 }
 
+/** The Vehicle Repair Kit: a field patch (hull +40% of full, engine +30, every fitted wheel +25). It cannot bring back a
+ * wreck (hull 0: Hull Plating in the service window) or a missing wheel. Returns what it did, or '' when nothing needed it. */
+export const KIT = { hull: 0.4, engine: 30, wheel: 25 };
+export function repairWithKit(m: VehicleModel, p: VehicleParts): string {
+  if (p.hull <= 0) return '';
+  const max = VEHICLES[m].hull, out: string[] = [];
+  const h = Math.min(max, p.hull + max * KIT.hull);
+  if (h > p.hull) { out.push(`hull ${Math.round(p.hull / max * 100)} → ${Math.round(h / max * 100)}%`); p.hull = h; }
+  if (p.engine < 100) { const e = Math.min(100, p.engine + KIT.engine); out.push(`engine ${Math.round(p.engine)} → ${Math.round(e)}%`); p.engine = e; }
+  let w = 0;
+  p.wheels = p.wheels.map((c) => { if (c < 0 || c >= 100) return c; w++; return Math.min(100, c + KIT.wheel); });
+  if (w) out.push(`${w} wheel${w > 1 ? 's' : ''} +${KIT.wheel}%`);
+  return out.join(', ');
+}
+
 /** Why a vehicle will not move, or null when it can. */
 export function immobile(p: VehicleParts): string | null {
   if (p.hull <= 0) return 'The hull is shot to pieces.';
