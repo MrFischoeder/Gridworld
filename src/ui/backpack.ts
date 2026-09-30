@@ -2,7 +2,7 @@
 // back, what you hold in your hands) and 12 backpack slots.
 // Items are dragged between slots (or selected and handled with the buttons under the grid).
 import { G } from '../game';
-import { item, BULK, WEAR, WEAR_SLOTS, WEAR_NAME, gearOf, WEAPON_KIND, HANDS_ONLY, type ItemKey } from '../data/items';
+import { item, BULK, WEAR, WEAR_SLOTS, WEAR_NAME, gearOf, WEAPON_KIND, HANDS_ONLY, HAND_TOOLS, type ItemKey } from '../data/items';
 import { BLASTER, SLOT_NAME, attachSlot } from '../data/weapons';
 import { calcStats, saveChar, listOf, stowHeld, handsChanged, packVol } from '../character';
 import { dropStack, bulkOf } from '../inventory';
@@ -54,6 +54,7 @@ function renderPack() {
     else if (it.type === 'wear') acts.push(['on', 'Wear']);
     else if (it.type === 'weapon') acts.push(['hold', 'Take in hands'], ['on', 'Sling on back']);
     else if (it.type === 'cons') acts.push(['use', 'Use']);
+    else if (HAND_TOOLS.has(s.k)) acts.push(['hold', 'Take in hands']);
     if (w === 'p' || w === 'h' || w === 'k') acts.push(['drop', 'Drop']);
   } else sel = null;
   note = '';
@@ -112,7 +113,8 @@ function quick(id: string, act: string): string {
   const toPack = () => { const f = c.inv.indexOf(null); return f < 0 ? 'Your backpack is full.' : move(id, 'p:' + f); };
   if (act === 'hold') {
     const h = c.hands[0];
-    if (h && WEAPON_KIND[h.k] === undefined) return `Your hands are full: ${item(h.k).name}. Put it away first.`;
+    if (h && WEAPON_KIND[h.k] === undefined && !HAND_TOOLS.has(h.k)) return `Your hands are full: ${item(h.k).name}. Put it away first.`;
+    if (h && HAND_TOOLS.has(h.k) && w !== 'p') { const m = stowHeld(); if (m) return m; } // the tool goes into the backpack
     return move(id, 'h:0'); // what you held takes its place
   }
   if (act === 'stow') { const m = stowHeld(); return m; }

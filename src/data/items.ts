@@ -126,14 +126,14 @@ export const ITEMS = {
   scrap: { name: 'Scrap Metal', ab: 'SCR', type: 'mat', desc: 'twisted machine parts from drones, bandits and wrecks. For crafting', stack: 10 },
   circuit: { name: 'Electronic Components', ab: 'ELC', type: 'mat', desc: 'circuit boards, sensors and wiring salvaged from robots. For crafting', stack: 10 },
   pcore: { name: 'Power Core', ab: 'PWR', type: 'mat', desc: 'a still-humming energy core from a heavy robot. Rare; for crafting', stack: 5 },
-  hatchet: { name: 'Hatchet', ab: 'HAT', type: 'tool', desc: 'tool: carry it and press E at a tree to chop it (a few blows fell it; logs drop)', stack: 1 },
-  pickaxe: { name: 'Pickaxe', ab: 'PIK', type: 'tool', desc: 'tool: carry it and press E at a rock to break stone off it', stack: 1 },
-  hammer: { name: 'Hammer', ab: 'HMR', type: 'tool', desc: 'tool: carry it to build in wood (walls, doors, roofs) and to take wooden parts down', stack: 1 },
+  hatchet: { name: 'Hatchet', ab: 'HAT', type: 'tool', desc: 'tool: hold it in your hands and press E at a tree to chop it (a few blows fell it; logs drop). In the backpack it does nothing: E at a tree takes it into your hands', stack: 1 },
+  pickaxe: { name: 'Pickaxe', ab: 'PIK', type: 'tool', desc: 'tool: hold it in your hands and press E at a rock to break stone off it. In the backpack it does nothing: E at a rock takes it into your hands', stack: 1 },
+  hammer: { name: 'Hammer', ab: 'HMR', type: 'tool', desc: 'tool: hold it in your hands to build in wood (walls, doors, roofs) and to take wooden parts down', stack: 1 },
   saw: { name: 'Saw', ab: 'SAW', type: 'tool', desc: 'tool: cuts logs into planks at a workbench, and planks to size when you build in wood', stack: 1 },
   screwdriver: { name: 'Screwdriver', ab: 'SCD', type: 'tool', desc: 'tool: fits the hinges and locks of doors', stack: 1 },
   pliers: { name: 'Pliers', ab: 'PLR', type: 'tool', desc: 'tool: bends and ties wire when you build in metal', stack: 1 },
   welder: { name: 'Welder', ab: 'WLD', type: 'tool', desc: 'tool: welds scrap into metal walls, doors and roofs. Heavy', stack: 1 },
-  torch: { name: 'Acetylene Torch', ab: 'TRC', type: 'tool', desc: 'tool: cuts metal: carry it to take metal parts of a building down', stack: 1 },
+  torch: { name: 'Acetylene Torch', ab: 'TRC', type: 'tool', desc: 'tool: cuts metal: hold it in your hands to take metal parts of a building down', stack: 1 },
   shovel: { name: 'Shovel', ab: 'SHV', type: 'tool', desc: 'tool: for digging and earthworks (foundations and ditches will need it)', stack: 1 },
   planks: { name: 'Planks', ab: 'PLK', type: 'mat', desc: 'sawn boards: a log makes four with a Saw at a workbench. For building', stack: 20 },
   nails: { name: 'Nails', ab: 'NLS', type: 'mat', desc: 'a packet of nails. For building in wood', stack: 20 },
@@ -217,6 +217,8 @@ export const WEAR: Partial<Record<ItemKey, { slot: WearSlot; def: number }>> = {
 };
 /** Weapons in the hands: which one it is for world/weapons.ts (0 = gun, 1 = blade). Only weapons go on your back. */
 export const WEAPON_KIND: Partial<Record<ItemKey, 0 | 1>> = { blaster: 0, pistol: 0, smg: 0, shotgun: 0, rifle: 0, blade: 1, machete: 1, spear: 1, sledge: 1 };
+/** Tools that work only from your hands (a hatchet in the backpack fells no tree); instruments like the compass work carried. */
+export const HAND_TOOLS = new Set<ItemKey>(['hatchet', 'pickaxe', 'hammer', 'saw', 'screwdriver', 'pliers', 'welder', 'torch', 'shovel']);
 /** Too big or awkward for the backpack: carried in your hands (and then you cannot hold a weapon). */
 export const HANDS_ONLY = new Set<ItemKey>(['wheelL', 'wheelH', 'cannon', 'benchkit', 'flagpole']);
 /** Weapons and gear Oskar sells. */

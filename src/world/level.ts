@@ -39,7 +39,7 @@ import { setArmedRule, refreshWeaponVisibility } from './weapons';
 import { raidHere } from './villageraid';
 import { PropBatch } from './props';
 import { drawLadder, climbing, onClimbChange } from './ladders';
-import { working, onWorkChange } from './gather';
+import { working, onWorkChange, setToolRule } from './gather';
 import { drawHouse, drawFurniture } from './houses';
 import { onDungeonLoaded, syncQuestWorld } from './quests';
 import { driving, leave } from './vehicles';
@@ -79,6 +79,7 @@ function setLocationLook(outdoors: boolean) {
   refreshWeaponVisibility();
 }
 /** Weapons are holstered inside the village walls and drawn everywhere else. */
+setToolRule(() => !driving.v && !inBoat() && !G.swimming && !climbing());
 setArmedRule(() => !driving.v && !inBoat() && !G.swimming && !G.fly && !climbing() && !working() && (G.char.loc === 'dungeon' || !inVillage(G.pos.x, G.pos.z) || raidHere()));
 onClimbChange(refreshWeaponVisibility);
 onWorkChange(refreshWeaponVisibility);

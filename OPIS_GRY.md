@@ -1,6 +1,6 @@
 # GridWorld: opis gry, cel, plan i historia zmian
 
-Stan na wersję **0.100.0**. Ten dokument opisuje, czym jest GridWorld, jaki jest cel gry, co już w niej jest, czego jeszcze nie ma, dokąd zmierza i jak powstawała, wersja po wersji. Nazwy z gry (przedmioty, miejsca, postacie) są po angielsku, tak jak na ekranie.
+Stan na wersję **0.101.0**. Ten dokument opisuje, czym jest GridWorld, jaki jest cel gry, co już w niej jest, czego jeszcze nie ma, dokąd zmierza i jak powstawała, wersja po wersji. Nazwy z gry (przedmioty, miejsca, postacie) są po angielsku, tak jak na ekranie.
 
 ---
 
@@ -186,6 +186,7 @@ Gra jest pomyślana jako **kooperacja do 8 graczy** na autorytatywnym serwerze (
   - Pancerz i odzież są w slotach, do tego maska przeciwgazowa na twarz.
   - Zbroja w trzech rodzajach, każdy z kompletem na głowę, tułów, dłonie, nogi i stopy: **skórzana** (u każdego kowala ze skór), **pleciona** (tkanina przeszyta drutem, plany Woven Armour) i **kompozytowa** (plastik, stop i ceramika, plany Composite Armour; cały komplet zatrzymuje około połowy każdego trafienia).
   - Duże rzeczy (koła, działko) nosi się tylko w rękach.
+  - **Narzędzia działają tylko z rąk**: siekiera, kilof i narzędzia budowlane muszą być trzymane w rękach (E przy drzewie lub skale bierze właściwe narzędzie z plecaka do rąk). Kompas, kompas z sensorem i tablet GPS działają z plecaka.
 - **Broń**:
   - **amunicja jest ograniczona**: każda broń ma swój magazynek i przeładowuje się z nabojów w plecaku (Energy Cells, Pistol Rounds, Shotgun Shells, Rifle Rounds); na początku naboje tylko się znajduje (skrzynie, obozy, bandyci, roboty, wraki, szafki we mgle), później kowal je robi, jeśli ma się plany Gunsmithing (lub Battery Chemistry dla ogniw);
   - magazynek i przeładowanie, celowanie z przybliżeniem, luneta przy 3×;
@@ -551,3 +552,4 @@ Pełne notatki (po angielsku) są w grze pod przyciskiem **Changelog** w menu g�
 - **0.98.0 Rydwan na końcu łańcucha** (etap 7). Rydwan ma sześć etapów (nowy Power System) i każdy wymaga wyrobów starych fabryk; etapy ukończone w starych zapisach zostają ukończone, a skrzynie, których nowe wymagania już nie biorą, wracają do hali Gridholm; kampania (cuda) dostała nowe dobra i nową kalibrację (~80 h w pojedynkę).
 - **0.99.0 Amunicja, nowa broń, GPS i naprawy w polu.** Amunicja jest ograniczona (każda broń ma własny magazynek i własny rodzaj nabojów, przeładowanie z plecaka); na początku tylko do znalezienia, potem u kowala z planami Gunsmithing (nowa technologia) lub Battery Chemistry. Nowa broń palna (pistolet, pistolet maszynowy, strzelba, karabin myśliwski) i biała (maczeta, włócznia, młot). Tablet GPS z punktem nawigacyjnym. Zestaw do naprawy pojazdów (kadłub, silnik, koła) u Kuby lub u kowala z planami Combustion Engines.
 - **0.100.0 Zbroje, plecaki i egzoszkielety.** Dwa nowe sloty na ciele (Pack i Frame). Trzy większe plecaki (55, 70 i 90 L), dwa egzoszkielety (większy udźwig, szybszy chód, mniejsze zużycie staminy), zbroja w trzech rodzajach: skórzana, pleciona i kompozytowa. Nowe technologie: Woven Armour, Composite Armour i Exoframes.
+- **0.101.0 Narzędzia w rękach.** Siekiera, kilof i narzędzia budowlane działają tylko trzymane w rękach, nie z plecaka; E przy drzewie lub skale bierze narzędzie do rąk, a trzymaną siekierę lub kilof widać w dłoniach.

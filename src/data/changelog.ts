@@ -4,6 +4,16 @@ export interface Change { v: string; date: string; title: string; notes: string[
 
 export const CHANGELOG: Change[] = [
   {
+    v: '0.101.0', date: '2026-10-18', title: 'Tools in your hands',
+    notes: [
+      'A tool in the backpack is not enough any more: the Hatchet, the Pickaxe and the building tools work only while you hold them in your hands.',
+      'At a tree or a rock with the right tool in your backpack, E takes it into your hands (your weapon goes on your back); then hold E to work. The backpack has a Take in hands button for every tool.',
+      'The hatchet or pickaxe you hold is drawn in your hands, at rest and while you swing.',
+      'Building on a claim: the first tool of a part (the hammer for wood) must be in your hands, the others carried; taking a part down needs its tool in your hands.',
+      'The compass, the sensor compass and the GPS tablet still work from the backpack.',
+    ],
+  },
+  {
     v: '0.100.0', date: '2026-10-17', title: 'Armour, packs and exoskeletons',
     notes: [
       'Two new slots on your body: Pack and Frame.',

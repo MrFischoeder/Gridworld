@@ -54,6 +54,22 @@ export function stowHeld(): string {
   return `Your hands are full (${item(s.k).name}) and there is nowhere to put it.`;
 }
 
+/** Whether k is in your hands (tools work only from there, not from the backpack). */
+export const inHands = (k: ItemKey) => G.char.hands[0]?.k === k;
+/** Takes k from the backpack into your hands; what you held goes on your back or into the backpack. '' when done. */
+export function takeInHands(k: ItemKey): string {
+  const c = G.char;
+  if (c.hands[0]?.k === k) return '';
+  const i = c.inv.findIndex((s) => s?.k === k);
+  if (i < 0) return `You have no ${item(k).name}.`;
+  const m = stowHeld();
+  if (m) return m;
+  const s = c.inv[i]!;
+  if (s.n > 1) { s.n--; c.hands[0] = { k, n: 1, ...(s.c !== undefined ? { c: s.c } : {}) }; } else { c.hands[0] = s; c.inv[i] = null; }
+  handsChanged(); saveChar();
+  return '';
+}
+
 /** How many more of k the backpack has room for (by bulk); for things carried in the hands, whether your hands can take it. */
 export const packRoom = (k: ItemKey) => (HANDS_ONLY.has(k) ? (!G.char.hands[0] || WEAPON_KIND[G.char.hands[0].k] !== undefined && G.char.back.includes(null) ? 1 : 0) : roomFor(G.char.inv, k, packVol()));
 /**

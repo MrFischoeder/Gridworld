@@ -1,5 +1,5 @@
-// Gathering raw materials: with a Hatchet in the backpack E at a tree chops it, with a Pickaxe E at a big rock breaks
-// stone off it. It is work, not a click: hold E and the hero keeps swinging (a blow every `GATHER.swing` s, the tool
+// Gathering raw materials: with a Hatchet in your hands E at a tree chops it, with a Pickaxe in your hands E at a big
+// rock breaks stone off it (a tool in the backpack does nothing: E at the tree or rock takes it into your hands first). It is work, not a click: hold E and the hero keeps swinging (a blow every `GATHER.swing` s, the tool
 // in both hands in front of the view), a small tree falls after ~6 s, a big one after ~15; let go and the blows so far
 // are kept while you stay. Some rocks carry a vein of ore (gen/trees.ts `oreOf`: iron or copper, mostly in the
 // mountains), which takes longer and gives ore lumps besides the stones. Felled trees and broken rocks are player
@@ -7,7 +7,7 @@
 import * as THREE from 'three';
 import { G } from '../game';
 import { GATHER, ROCK_MIN_R } from '../data/crafting';
-import { hasItem, saveChar } from '../character';
+import { hasItem, saveChar, inHands, takeInHands } from '../character';
 import { spendStamina, burn } from './survival';
 import { makeNoise } from './noise';
 import { burst } from './fx';
@@ -17,7 +17,7 @@ import { TREE_SPAN, type OreKind } from '../gen/trees';
 import { logLine } from '../ui/hud';
 import { camera, lineMat } from './render';
 
-export interface Target { kind: 'tree' | 'rock'; key: string; x: number; y: number; z: number; big: boolean; ore?: OreKind }
+export interface Target { kind: 'tree' | 'rock'; key: string; x: number; y: number; z: number; big: boolean; ore?: OreKind; held: boolean }
 /** Blows landed so far on trees and rocks that still stand (forgotten when you walk away). */
 const blows = new Map<string, number>();
 const ORE_NAME: Record<OreKind, string> = { iron: 'iron', copper: 'copper' };
@@ -25,18 +25,18 @@ const ORE_NAME: Record<OreKind, string> = { iron: 'iron', copper: 'copper' };
 /** The tree or rock in reach that the tools you carry can work, if any. */
 export function gatherTarget(): Target | null {
   if (G.char.loc !== 'overworld') return null;
-  const axe = hasItem('hatchet'), pick = hasItem('pickaxe');
+  const axe = hasItem('hatchet'), pick = hasItem('pickaxe'), axeH = inHands('hatchet'), pickH = inHands('pickaxe');
   if (!axe && !pick) return null;
   const p = G.pos, { trees, rocks } = gatherables(p.x, p.z);
   let best: Target | null = null, bd = Infinity;
   if (axe) for (const t of trees) for (const [x, z, r] of t.cols) {
     const d = Math.hypot(x - p.x, z - p.z) - r;
-    if (d < 1.4 && d < bd && Math.abs(t.y - p.y) < 2) { bd = d; best = { kind: 'tree', key: gatherKey.get(t)!, x, y: t.y, z, big: TREE_SPAN[t.kind] > 0 }; }
+    if (d < 1.4 && d < bd && Math.abs(t.y - p.y) < 2) { bd = d; best = { kind: 'tree', key: gatherKey.get(t)!, x, y: t.y, z, big: TREE_SPAN[t.kind] > 0, held: axeH }; }
   }
   if (pick) for (const k of rocks) {
     if (k.r < ROCK_MIN_R) continue;
     const d = Math.hypot(k.x - p.x, k.z - p.z) - k.r * 0.8;
-    if (d < 1.3 && d < bd && Math.abs(k.y - p.y) < 2) { bd = d; best = { kind: 'rock', key: gatherKey.get(k)!, x: k.x, y: k.y, z: k.z, big: k.r > 1.3, ore: k.ore }; }
+    if (d < 1.3 && d < bd && Math.abs(k.y - p.y) < 2) { bd = d; best = { kind: 'rock', key: gatherKey.get(k)!, x: k.x, y: k.y, z: k.z, big: k.r > 1.3, ore: k.ore, held: pickH }; }
   }
   return best;
 }
@@ -45,7 +45,9 @@ const need = (t: Target) => {
   return t.ore ? Math.round(n * GATHER.ore.hits) : n;
 };
 const bar = (n: number, of: number) => { const k = Math.round(n / of * 10); return '▮'.repeat(k) + '▯'.repeat(10 - k); };
+const toolOf = (t: Target) => (t.kind === 'tree' ? 'hatchet' : 'pickaxe');
 export function gatherPrompt(t: Target) {
+  if (!t.held) return `E — take the ${t.kind === 'tree' ? 'hatchet' : 'pickaxe'} in your hands (tools work only from your hands)`;
   const n = blows.get(t.key) ?? 0, what = t.kind === 'tree' ? 'chop the tree' : t.ore ? `mine the ${ORE_NAME[t.ore]} vein` : 'break the rock';
   return n || work ? `${work ? (t.kind === 'tree' ? 'Chopping' : 'Mining') : 'Hold E — ' + what} ${bar(n, need(t))} ${n}/${need(t)}` : `Hold E — ${what}`;
 }
@@ -69,8 +71,21 @@ for (const zz of [-0.06, -0.2]) { const h = new THREE.LineSegments(new THREE.Edg
 const pivot = new THREE.Group(); pivot.add(tool); pivot.position.set(0.16, -0.3, -0.3); pivot.visible = false; camera.add(pivot);
 
 function stop() { if (!work) return; work = null; pivot.visible = false; onChange(); }
+/** When a tool held in the hands may be shown in front of the view (set by world/level.ts: not driving, not in a boat,
+ * not swimming or climbing). */
+let toolShown = () => true;
+export function setToolRule(f: () => boolean) { toolShown = f; }
+/** A hatchet or pickaxe in your hands, at rest in front of the view while you are not working. */
+function restPose() {
+  const h = G.char.hands[0]?.k, on = (h === 'hatchet' || h === 'pickaxe') && G.playing && toolShown();
+  pivot.visible = on;
+  if (!on) return;
+  axeHead.visible = h === 'hatchet'; pickHead.visible = h === 'pickaxe';
+  pivot.rotation.set(0.35, 0, -0.45); pivot.position.set(0.24, -0.32, -0.28);
+}
 /** E pressed at a tree or rock: start working it (the blows land while E is held). */
 export function strike(t: Target) {
+  if (!t.held) { const m = takeInHands(toolOf(t)); if (m) logLine(m); return; }
   if (work?.key === t.key) return;
   work = { key: t.key, t: 0, landed: false };
   axeHead.visible = t.kind === 'tree'; pickHead.visible = t.kind === 'rock';
@@ -78,8 +93,8 @@ export function strike(t: Target) {
 }
 /** Every frame (world/interact.ts) with the target in reach, if any: swing while E is held. */
 export function updateGather(dt: number, t: Target | null) {
-  if (!work) return;
-  if (!t || t.key !== work.key || !G.keys.KeyE || !G.playing || G.dlgOpen) { stop(); return; }
+  if (!work) { restPose(); return; }
+  if (!t || !t.held || t.key !== work.key || !G.keys.KeyE || !G.playing || G.dlgOpen) { stop(); return; }
   // wind up over the shoulder, then the blow; the blow lands at the bottom of the swing
   work.t += dt / GATHER.swing;
   const ph = work.t % 1, raise = ph < 0.7 ? ph / 0.7 : 1 - (ph - 0.7) / 0.3;

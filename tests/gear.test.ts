@@ -35,3 +35,12 @@ describe('armour, packs and exoskeletons', () => {
     expect(EXO.exoL!.comfy).toBeGreaterThan(BULK.exoL[0]); expect(EXO.exoH!.comfy).toBeGreaterThan(BULK.exoH[0]);
   });
 });
+
+import { HAND_TOOLS } from '../src/data/items';
+describe('tools work from the hands', () => {
+  it('every hand tool is a tool; instruments that work carried are not hand tools', () => {
+    for (const k of HAND_TOOLS) expect(ITEMS[k].type).toBe('tool');
+    for (const k of ['compass', 'scanner', 'tablet'] as ItemKey[]) expect(HAND_TOOLS.has(k)).toBe(false);
+    for (const k of ['hatchet', 'pickaxe', 'hammer', 'torch'] as ItemKey[]) expect(HAND_TOOLS.has(k)).toBe(true);
+  });
+});

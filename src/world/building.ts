@@ -2,14 +2,15 @@
 // or metal), what they do to the world (walls and shut doors stop you, creatures, shots and eyes; slabs and stairs
 // carry you), code locks on doors, and the build mode: pick a part in the build list (B), a hologram snaps to the
 // grid round your flag on the storey you stand on (white when it fits, red with the reason), a click builds it from
-// what your backpack holds (the tools stay), F takes down the part you look at (hammer for wood, torch for metal;
+// what your backpack holds (the first tool of a part in your hands, the others carried; they stay), F takes down the
+// part you look at with its tool in your hands (hammer for wood, torch for metal;
 // half the materials come back), E opens and shuts doors, L sets a door's code lock. The rules are pure, in
 // gen/base.ts; the parts are saved with the claim.
 import * as THREE from 'three';
 import { scene } from './render';
 import { G } from '../game';
 import { PropBatch } from './props';
-import { saveChar, takeOne, addItem, packVol } from '../character';
+import { saveChar, takeOne, addItem, packVol, inHands } from '../character';
 import { count, takeAll } from '../data/crafting';
 import { putItems } from '../inventory';
 import { ITEMS } from '../data/items';
@@ -222,7 +223,7 @@ export const isBuilding = () => kind !== null;
 export function lacks(k: PieceKind): string | null {
   const s = PIECES[k], inv = G.char.inv;
   const miss = [...s.needs.filter(([m, n]) => count(inv, m) < n).map(([m, n]) => `${ITEMS[m].name} ${count(inv, m)}/${n}`),
-    ...s.tools.filter((t) => !count(inv, t)).map((t) => 'tool: ' + ITEMS[t].name)];
+    ...s.tools.filter((t, i) => (i === 0 ? !inHands(t) : !count(inv, t) && !inHands(t))).map((t, i) => (i === 0 ? `the ${ITEMS[t].name} in your hands` : 'tool: ' + ITEMS[t].name))];
   return miss.length ? 'Needs ' + miss.join(', ') : null;
 }
 export function startBuilding(k: PieceKind): boolean {
@@ -310,7 +311,7 @@ export function dismantle() {
   if (!kind) return;
   if (!aimed) { logLine('Look at the part you want to take down.'); return; }
   const s = PIECES[aimed.p.k], parts = aimed.c.parts!;
-  if (!count(G.char.inv, s.cut)) { logLine(`You need a ${ITEMS[s.cut].name} to take ${s.mat === 'wood' ? 'wooden' : 'metal'} parts down.`); return; }
+  if (!inHands(s.cut)) { logLine(`Hold a ${ITEMS[s.cut].name} in your hands to take ${s.mat === 'wood' ? 'wooden' : 'metal'} parts down.`); return; }
   if (aimed.p.lock && !authed(aimed.p)) { logLine('It is locked: you cannot take it down without the code.'); return; }
   const lv = lvOf(aimed.p);
   if (parts.some((q) => q !== aimed!.p && lvOf(q) > lv && partProblem(parts.filter((o) => o !== aimed!.p && o !== q), q))) { logLine('Something above rests on it: take that down first.'); return; }

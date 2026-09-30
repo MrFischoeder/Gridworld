@@ -1,7 +1,7 @@
 // The item tooltip: hover the mouse over any item slot (or anything carrying data-k) and a panel follows the cursor
 // with everything about the item: its kind, what it does, its numbers (weapon and armour values, food, attachments'
 // effects), weight and bulk, the stack, what the traders ask for it and what it is used for (data/uses.ts).
-import { ITEMS, BULK, WEAR, WEAR_NAME, PACK, PACK_VOL, EXO, HEAL, HANDS_ONLY, GEAR_PRICE, TOOL_PRICE, SUPPLY_PRICE, PART_PRICE, ATTACH_PRICE, type ItemKey, type ItemType, type ItemDef } from '../data/items';
+import { ITEMS, BULK, WEAR, WEAR_NAME, PACK, PACK_VOL, EXO, HEAL, HANDS_ONLY, HAND_TOOLS, GEAR_PRICE, TOOL_PRICE, SUPPLY_PRICE, PART_PRICE, ATTACH_PRICE, type ItemKey, type ItemType, type ItemDef } from '../data/items';
 import { NOURISH, BLADE } from '../data/survival';
 import { BLASTER, ATTACHMENTS, SLOT_NAME, GUNS, MELEE, type GunStats } from '../data/weapons';
 import { GOOD_INFO } from '../gen/market';
@@ -54,6 +54,7 @@ function statLines(k: ItemKey): string[] {
   if (HEAL[k]) out.push(`heals ${HEAL[k]} HP`);
   out.push(...attachLines(k));
   if (HANDS_ONLY.has(k)) out.push('too big for the backpack: carried in your hands');
+  if (HAND_TOOLS.has(k)) out.push('works only from your hands: take it in your hands to use it');
   return out;
 }
 /** What the traders ask for it (new), or the base market price of a trade good. */
