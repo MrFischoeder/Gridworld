@@ -45,6 +45,27 @@ export const ORDERS: Order[] = [
   { tech: 'forging', out: 'sledge', n: 1, needs: [['log', 1], ['scrap', 5]] },
   { tech: 'radio', out: 'tablet', n: 1, needs: [['circuit', 3], ['glass', 1], ['batteries', 1], ['pcore', 1]] },
   { tech: 'engines', out: 'repairkit', n: 1, needs: [['scrap', 4], ['wire', 2], ['circuit', 1], ['rope', 1]] },
+  // armour in three kinds (hide for anyone, woven and composite with the plans), bigger packs and exoskeletons
+  { tech: '', out: 'hideCap', n: 1, needs: [['hide', 1]] },
+  { tech: '', out: 'hideCoat', n: 1, needs: [['hide', 3], ['rope', 1]] },
+  { tech: '', out: 'hideGloves', n: 1, needs: [['hide', 1]] },
+  { tech: '', out: 'hideLegs', n: 1, needs: [['hide', 2]] },
+  { tech: '', out: 'hideBoots', n: 1, needs: [['hide', 2]] },
+  { tech: '', out: 'rucksack', n: 1, needs: [['hide', 3], ['rope', 2], ['log', 1]] },
+  { tech: 'weaving', out: 'wovenHood', n: 1, needs: [['cloth', 1], ['wire', 1]] },
+  { tech: 'weaving', out: 'wovenJacket', n: 1, needs: [['cloth', 3], ['wire', 3], ['hide', 1]] },
+  { tech: 'weaving', out: 'wovenGloves', n: 1, needs: [['cloth', 1], ['wire', 1]] },
+  { tech: 'weaving', out: 'wovenLegs', n: 1, needs: [['cloth', 2], ['wire', 2]] },
+  { tech: 'weaving', out: 'wovenBoots', n: 1, needs: [['cloth', 1], ['hide', 1], ['wire', 1]] },
+  { tech: 'weaving', out: 'framepack', n: 1, needs: [['cloth', 2], ['aluminium', 1], ['rope', 2]] },
+  { tech: 'composites', out: 'compHelm', n: 1, needs: [['plastic', 1], ['alloy', 1], ['cloth', 1]] },
+  { tech: 'composites', out: 'compVest', n: 1, needs: [['plastic', 2], ['alloy', 2], ['cloth', 2], ['ceramics', 1]] },
+  { tech: 'composites', out: 'compGloves', n: 1, needs: [['plastic', 1], ['cloth', 1]] },
+  { tech: 'composites', out: 'compLegs', n: 1, needs: [['plastic', 1], ['alloy', 1], ['cloth', 1]] },
+  { tech: 'composites', out: 'compBoots', n: 1, needs: [['plastic', 1], ['alloy', 1], ['hide', 1]] },
+  { tech: 'composites', out: 'cargopack', n: 1, needs: [['plastic', 2], ['alloy', 1], ['cloth', 2]] },
+  { tech: 'exoframe', out: 'exoL', n: 1, needs: [['steel', 3], ['parts', 2], ['wire', 4], ['hide', 2]] },
+  { tech: 'automation', out: 'exoH', n: 1, needs: [['ancalloy', 2], ['precision', 2], ['powercell', 2], ['automation', 1], ['cable', 4]] },
 ];
 /** Technologies that are for the villages themselves (farms, power, works), not for the craftsmen's bench. */
 export const VILLAGE_TECHS = ['fields', 'plough', 'rotor', 'solar', 'chips', 'radio', 'chemistry', 'enrichment', 'propellant', 'rail', 'aluminium', 'batteries', 'alloys', 'powercells', 'sensors', 'ancmetal', 'precision', 'automation'];

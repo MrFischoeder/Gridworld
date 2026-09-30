@@ -2,9 +2,9 @@
 // back, what you hold in your hands) and 12 backpack slots.
 // Items are dragged between slots (or selected and handled with the buttons under the grid).
 import { G } from '../game';
-import { item, BULK, PACK, WEAR, WEAR_SLOTS, WEAR_NAME, WEAPON_KIND, HANDS_ONLY, type ItemKey } from '../data/items';
+import { item, BULK, WEAR, WEAR_SLOTS, WEAR_NAME, gearOf, WEAPON_KIND, HANDS_ONLY, type ItemKey } from '../data/items';
 import { BLASTER, SLOT_NAME, attachSlot } from '../data/weapons';
-import { calcStats, saveChar, listOf, stowHeld, handsChanged } from '../character';
+import { calcStats, saveChar, listOf, stowHeld, handsChanged, packVol } from '../character';
 import { dropStack, bulkOf } from '../inventory';
 import { logLine, $ } from './hud';
 import { useItem } from '../world/loot';
@@ -86,8 +86,12 @@ function move(from: string, to: string): string {
   if (b && !fits(fw, i, b.k)) return b && fw === 'p' ? why(fw, i, b.k) : 'Swap it with an empty slot or a matching item instead.';
   if (fw === 'p' && tw === 'p') { dropStack(c.inv, i, c.inv, j); return ''; }
   const vol = (x: { k: ItemKey; n: number } | null) => (x ? BULK[x.k][1] * x.n : 0);
-  if (tw === 'p' && bulkOf(c.inv) - vol(b) + vol(a) > PACK.vol + 1e-6) return 'No room for it in your backpack.';
-  if (fw === 'p' && b && bulkOf(c.inv) - vol(a) + vol(b) > PACK.vol + 1e-6) return 'No room for it in your backpack.';
+  // the backpack's litres after the move: a pack going on or coming off changes them
+  const packIdx = WEAR_SLOTS.indexOf('pack'), wearAfter = { ...c.wear };
+  if (tw === 'g' && j === packIdx) wearAfter.pack = a.k;
+  if (fw === 'g' && i === packIdx) wearAfter.pack = b?.k ?? null;
+  const room = gearOf(wearAfter).vol, after = bulkOf(c.inv) + (tw === 'p' ? vol(a) - vol(b) : 0) + (fw === 'p' ? vol(b) - vol(a) : 0);
+  if (after > room + 1e-6) return room < packVol() ? `Empty the backpack down to ${room} L first: without that pack it holds no more.` : 'No room for it in your backpack.';
   const single = (w: string) => w === 'm' || w === 'w' || w === 'g' || w === 'k';
   const put = (w: string, idx: number, x: { k: ItemKey; n: number; c?: number } | null) => {
     if (w === 'm') c.mods[idx] = x?.k ?? null; else if (w === 'w') c.gunMods[idx] = x?.k ?? null;

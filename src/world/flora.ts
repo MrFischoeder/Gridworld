@@ -13,9 +13,9 @@ import { burst } from './fx';
 import type { Plant } from '../gen/flora';
 import { FORAGE, FOOD_COLOR, type ForageKind } from '../data/survival';
 import { GATHER } from '../data/crafting';
-import { ITEMS, PACK } from '../data/items';
+import { ITEMS } from '../data/items';
 import { putItems } from '../inventory';
-import { saveChar, dungeonKey } from '../character';
+import { saveChar, dungeonKey, packVol } from '../character';
 import { logLine } from '../ui/hud';
 
 const FOOD = FOOD_COLOR, STEM = GRID, CAP = 0x3dff6e;
@@ -187,7 +187,7 @@ export const plantPrompt = (n: PlantNode) => (n.kind === 'shroom' ? 'E — pick 
 export function harvest(n: PlantNode) {
   const f = FORAGE[n.kind], k = f.item;
   const want = n.kind === 'pod' ? n.n : f.min + Math.floor(Math.random() * (f.max - f.min + 1));
-  const left = putItems(G.char.inv, k, want, PACK.vol), got = want - left;
+  const left = putItems(G.char.inv, k, want, packVol()), got = want - left;
   if (!got) { logLine('Your backpack is full.'); return; }
   G.char.harvest[n.key] = G.char.time;
   n.fruit.visible = false;

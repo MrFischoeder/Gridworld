@@ -1,6 +1,6 @@
 // Character rules: stats from level and equipped relics, inventory, XP.
 import { G } from './game';
-import { ITEMS, PACK, item, BULK, WEAR, WEAPON_KIND, HANDS_ONLY, type ItemKey } from './data/items';
+import { ITEMS, item, BULK, WEAR, WEAPON_KIND, HANDS_ONLY, gearOf, type ItemKey } from './data/items';
 import { roomFor, weightOf, putSlot, putItems } from './inventory';
 import type { Slot } from './save';
 import { saveChar as persist } from './save';
@@ -18,11 +18,16 @@ export function calcStats() {
   G.ammo = Math.min(G.ammo, G.gun.mag);
   G.S = {
     maxHp: 100 + L * 15 + r('shield') * 20, bm: (1 + L * 0.12) * (1 + r('lens') * 0.25), mm: (1 + L * 0.12) * (1 + r('edge') * 0.25),
-    range: mel.reach + r('edge') * 0.3, rate: G.gun.interval * Math.pow(0.9, r('cell')), speed: 1 + r('servo') * 0.08,
+    range: mel.reach + r('edge') * 0.3, rate: G.gun.interval * Math.pow(0.9, r('cell')), speed: (1 + r('servo') * 0.08) * gearOf(c.wear).speed, stamina: gearOf(c.wear).stamina,
     def: 1 - Object.values(c.wear).reduce((a, k) => a * (1 - (k ? WEAR[k]?.def ?? 0 : 0)), 1),
   };
   G.hp = Math.min(G.hp, G.S.maxHp);
 }
+
+/** What you wear makes of the backpack and your legs (a bigger pack, an exoskeleton): data/items.ts gearOf. */
+export const gear = () => gearOf(G.char.wear);
+/** The backpack's litres now. */
+export const packVol = () => gearOf(G.char.wear).vol;
 
 /** A hit on the player after worn armour took its share off. */
 export const armoured = (dmg: number) => dmg * (1 - G.S.def);
@@ -45,12 +50,12 @@ export function stowHeld(): string {
   const c = G.char, s = c.hands[0];
   if (!s) return '';
   if (WEAPON_KIND[s.k] !== undefined) { const f = c.back.indexOf(null); if (f >= 0) { c.back[f] = s; c.hands[0] = null; handsChanged(); return ''; } }
-  if (putSlot(c.inv, s, PACK.vol) === 0) { c.hands[0] = null; handsChanged(); return ''; }
+  if (putSlot(c.inv, s, packVol()) === 0) { c.hands[0] = null; handsChanged(); return ''; }
   return `Your hands are full (${item(s.k).name}) and there is nowhere to put it.`;
 }
 
 /** How many more of k the backpack has room for (by bulk); for things carried in the hands, whether your hands can take it. */
-export const packRoom = (k: ItemKey) => (HANDS_ONLY.has(k) ? (!G.char.hands[0] || WEAPON_KIND[G.char.hands[0].k] !== undefined && G.char.back.includes(null) ? 1 : 0) : roomFor(G.char.inv, k, PACK.vol));
+export const packRoom = (k: ItemKey) => (HANDS_ONLY.has(k) ? (!G.char.hands[0] || WEAPON_KIND[G.char.hands[0].k] !== undefined && G.char.back.includes(null) ? 1 : 0) : roomFor(G.char.inv, k, packVol()));
 /**
  * Adds an item; new relics go straight into a free module, things too big for the backpack into your hands (a weapon you
  * held goes onto your back), weapons onto a free back slot. Returns where it went, or null when it does not fit.
@@ -67,7 +72,7 @@ export function addItem(k: ItemKey, n = 1, quiet = false): 'mod' | 'inv' | 'hand
   if (packRoom(k) < n) return null;
   // all of it or nothing, spread over stacks as they allow (a box of 40 rounds may fill one stack and start the next)
   const copy = c.inv.map((s) => (s ? { ...s } : null));
-  if (putItems(copy, k, n, PACK.vol) > 0) return null;
+  if (putItems(copy, k, n, packVol()) > 0) return null;
   copy.forEach((s, i) => { c.inv[i] = s; });
   void it; return 'inv';
 }

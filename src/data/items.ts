@@ -22,6 +22,26 @@ export const ITEMS = {
   ammoR: { name: 'Rifle Rounds', ab: 'RFR', type: 'ammo', desc: 'long rifle cartridges, for the hunting rifle', stack: 30 },
   tablet: { name: 'GPS Tablet', ab: 'GPS', type: 'tool', desc: 'a rugged tablet that finds itself by the old satellites: carry it and the compass strip shows your exact position and height, and you can set a waypoint on the world map (right click) that the compass and the maps point to', stack: 1 },
   repairkit: { name: 'Vehicle Repair Kit', ab: 'RPK', type: 'cons', desc: 'patches, bolts, a tyre plug and a can of sealant: use it beside one of your vehicles (or while driving) to mend its hull by 40%, its engine by 30 points and every tyre on it by 25 points, out in the field', stack: 3 },
+  hideCap: { name: 'Hide Cap', ab: 'HCP', type: 'wear', desc: 'a stitched cap of Ravager hide: takes 4% off every hit', stack: 1 },
+  hideCoat: { name: 'Hide Coat', ab: 'HCT', type: 'wear', desc: 'a coat of layered, hardened hide: takes 10% off every hit', stack: 1 },
+  hideGloves: { name: 'Hide Gloves', ab: 'HGL', type: 'wear', desc: 'hide gloves: take 2% off every hit', stack: 1 },
+  hideLegs: { name: 'Hide Leggings', ab: 'HLG', type: 'wear', desc: 'hide leggings: take 4% off every hit', stack: 1 },
+  hideBoots: { name: 'Hide Boots', ab: 'HBT', type: 'wear', desc: 'hide boots with thick soles: take 3% off every hit', stack: 1 },
+  wovenHood: { name: 'Woven Hood', ab: 'WHD', type: 'wear', desc: 'a hood of tight-woven cloth over wire mesh: takes 7% off every hit', stack: 1 },
+  wovenJacket: { name: 'Woven Jacket', ab: 'WJK', type: 'wear', desc: 'many layers of woven cloth quilted round steel wire: takes 17% off every hit and stays light', stack: 1 },
+  wovenGloves: { name: 'Woven Gloves', ab: 'WGL', type: 'wear', desc: 'mesh-lined gloves: take 4% off every hit', stack: 1 },
+  wovenLegs: { name: 'Woven Trousers', ab: 'WLG', type: 'wear', desc: 'quilted, wire-woven trousers: take 7% off every hit', stack: 1 },
+  wovenBoots: { name: 'Woven Boots', ab: 'WBT', type: 'wear', desc: 'boots with woven uppers and hide soles: take 5% off every hit', stack: 1 },
+  compHelm: { name: 'Composite Helmet', ab: 'CHM', type: 'wear', desc: 'a shell of plastic and alloy laid up over cloth: takes 12% off every hit', stack: 1 },
+  compVest: { name: 'Composite Armour', ab: 'CAR', type: 'wear', desc: 'plates of ceramic and advanced alloy in a plastic-and-cloth carrier: takes 30% off every hit at less than half the weight of plate', stack: 1 },
+  compGloves: { name: 'Composite Gloves', ab: 'CGL', type: 'wear', desc: 'gloves with composite knuckle plates: take 6% off every hit', stack: 1 },
+  compLegs: { name: 'Composite Greaves', ab: 'CLG', type: 'wear', desc: 'composite leg plates on woven trousers: take 10% off every hit', stack: 1 },
+  compBoots: { name: 'Composite Boots', ab: 'CBT', type: 'wear', desc: 'boots with composite shin guards: take 8% off every hit', stack: 1 },
+  rucksack: { name: 'Hide Rucksack', ab: 'RKS', type: 'wear', desc: 'a big rucksack of stitched hide on a wooden frame: worn on the back, your backpack holds 55 L instead of 40', stack: 1 },
+  framepack: { name: 'Frame Pack', ab: 'FRP', type: 'wear', desc: 'a woven-cloth pack on a light aluminium frame: your backpack holds 70 L', stack: 1 },
+  cargopack: { name: 'Composite Cargo Pack', ab: 'CGP', type: 'wear', desc: 'a hard-shelled composite cargo pack: your backpack holds 90 L', stack: 1 },
+  exoL: { name: 'Salvage Exoframe', ab: 'EXF', type: 'wear', desc: 'a strapped-on frame of steel struts and sprung joints along the legs and back: you carry 15 kg more with ease (20 kg more before you are overloaded), walk a little faster and sprinting tires you a fifth less', stack: 1 },
+  exoH: { name: 'Powered Exoskeleton', ab: 'EXP', type: 'wear', desc: 'an Ancient-style powered frame: servo joints, a power cell in the spine and a small mind that walks with you. You carry 30 kg more with ease (40 kg more before you are overloaded), move an eighth faster and sprinting tires you far less', stack: 1 },
   helmet: { name: 'Combat Helmet', ab: 'HLM', type: 'wear', desc: 'head armour: takes 8% off every hit', stack: 1 },
   vest: { name: 'Ballistic Vest', ab: 'VST', type: 'wear', desc: 'body armour, light: takes 15% off every hit', stack: 1 },
   armour: { name: 'Plate Armour', ab: 'ARM', type: 'wear', desc: 'body armour, heavy: takes 25% off every hit, but weighs 12 kg', stack: 1 },
@@ -167,7 +187,7 @@ export const INV_SIZE = 12, MOD_SIZE = 3;
  * Equipped relics and fitted attachments are part of your kit and weigh nothing here.
  */
 export const BULK: Record<ItemKey, [kg: number, litres: number]> = {
-  blaster: [3.5, 9], blade: [1.5, 4], pistol: [1.2, 1.5], smg: [2.8, 5], shotgun: [3.4, 8], rifle: [4, 10], machete: [0.9, 2], spear: [1.8, 6], sledge: [6, 6], ammoE: [0.02, 0.02], ammo9: [0.012, 0.01], ammoS: [0.04, 0.04], ammoR: [0.025, 0.02], tablet: [0.6, 0.5], repairkit: [3, 4], helmet: [1.5, 5], vest: [4, 10], armour: [12, 18], gloves: [0.3, 0.5], trousers: [0.8, 1.5], boots: [1.2, 3], gasmask: [0.7, 2], filter: [0.25, 0.3],
+  blaster: [3.5, 9], blade: [1.5, 4], pistol: [1.2, 1.5], smg: [2.8, 5], shotgun: [3.4, 8], rifle: [4, 10], machete: [0.9, 2], spear: [1.8, 6], sledge: [6, 6], ammoE: [0.02, 0.02], ammo9: [0.012, 0.01], ammoS: [0.04, 0.04], ammoR: [0.025, 0.02], tablet: [0.6, 0.5], repairkit: [3, 4], helmet: [1.5, 5], vest: [4, 10], armour: [12, 18], gloves: [0.3, 0.5], trousers: [0.8, 1.5], boots: [1.2, 3], gasmask: [0.7, 2], filter: [0.25, 0.3], hideCap: [0.8, 2], hideCoat: [3, 6], hideGloves: [0.3, 0.5], hideLegs: [1.2, 2], hideBoots: [1, 2.5], wovenHood: [1, 3], wovenJacket: [3.5, 6], wovenGloves: [0.3, 0.5], wovenLegs: [1.5, 2], wovenBoots: [1.1, 2.5], compHelm: [1.3, 4], compVest: [5, 8], compGloves: [0.4, 0.6], compLegs: [2, 3], compBoots: [1.3, 3], rucksack: [1.5, 3], framepack: [2.5, 4], cargopack: [3, 5], exoL: [9, 10], exoH: [14, 12],
   shield: [1.5, 1], lens: [0.3, 0.3], edge: [0.5, 0.5], servo: [2, 2], cell: [1, 0.5],
   medkit: [0.5, 1], key: [0.05, 0.05], recall: [0.4, 0.3], emp: [0.8, 0.6], flask: [0.3, 0.8], firekit: [1, 1.5],
   bread: [0.4, 1], stew: [0.6, 0.8], eggsB: [0.15, 0.2], milkC: [0.3, 0.3], cheese: [0.25, 0.3], waterF: [1, 0.8], waterM: [1, 0.8],
@@ -186,13 +206,14 @@ export const BULK: Record<ItemKey, [kg: number, litres: number]> = {
   reflex: [0.3, 0.3], scope: [0.8, 1], barL: [1.2, 1], barR: [1, 0.8], barS: [0.9, 0.8], magX: [0.5, 0.4], magD: [1.2, 1],
 };
 /** What you wear, one piece per slot: which slot, and the share of every hit it takes off (pieces multiply). */
-export type WearSlot = 'head' | 'face' | 'body' | 'gloves' | 'legs' | 'feet';
-export const WEAR_SLOTS: WearSlot[] = ['head', 'face', 'body', 'gloves', 'legs', 'feet'];
-export const WEAR_NAME: Record<WearSlot, string> = { head: 'Head', face: 'Face', body: 'Body', gloves: 'Gloves', legs: 'Legs', feet: 'Feet' };
+export type WearSlot = 'head' | 'face' | 'body' | 'gloves' | 'legs' | 'feet' | 'pack' | 'frame';
+export const WEAR_SLOTS: WearSlot[] = ['head', 'face', 'body', 'gloves', 'legs', 'feet', 'pack', 'frame'];
+export const WEAR_NAME: Record<WearSlot, string> = { head: 'Head', face: 'Face', body: 'Body', gloves: 'Gloves', legs: 'Legs', feet: 'Feet', pack: 'Pack', frame: 'Frame' };
 export const WEAR: Partial<Record<ItemKey, { slot: WearSlot; def: number }>> = {
   helmet: { slot: 'head', def: 0.08 }, vest: { slot: 'body', def: 0.15 }, armour: { slot: 'body', def: 0.25 },
   gloves: { slot: 'gloves', def: 0.03 }, trousers: { slot: 'legs', def: 0.04 }, boots: { slot: 'feet', def: 0.04 },
   gasmask: { slot: 'face', def: 0 },
+  hideCap: { slot: 'head', def: 0.04 }, hideCoat: { slot: 'body', def: 0.1 }, hideGloves: { slot: 'gloves', def: 0.02 }, hideLegs: { slot: 'legs', def: 0.04 }, hideBoots: { slot: 'feet', def: 0.03 }, wovenHood: { slot: 'head', def: 0.07 }, wovenJacket: { slot: 'body', def: 0.17 }, wovenGloves: { slot: 'gloves', def: 0.04 }, wovenLegs: { slot: 'legs', def: 0.07 }, wovenBoots: { slot: 'feet', def: 0.05 }, compHelm: { slot: 'head', def: 0.12 }, compVest: { slot: 'body', def: 0.3 }, compGloves: { slot: 'gloves', def: 0.06 }, compLegs: { slot: 'legs', def: 0.1 }, compBoots: { slot: 'feet', def: 0.08 }, rucksack: { slot: 'pack', def: 0 }, framepack: { slot: 'pack', def: 0 }, cargopack: { slot: 'pack', def: 0 }, exoL: { slot: 'frame', def: 0 }, exoH: { slot: 'frame', def: 0 },
 };
 /** Weapons in the hands: which one it is for world/weapons.ts (0 = gun, 1 = blade). Only weapons go on your back. */
 export const WEAPON_KIND: Partial<Record<ItemKey, 0 | 1>> = { blaster: 0, pistol: 0, smg: 0, shotgun: 0, rifle: 0, blade: 1, machete: 1, spear: 1, sledge: 1 };
@@ -205,6 +226,18 @@ export const SUPPLY_PRICE: Partial<Record<ItemKey, number>> = { nails: 3, rope: 
 export const GEAR_PRICE: Partial<Record<ItemKey, number>> = { blaster: 150, blade: 80, pistol: 140, shotgun: 240, machete: 60, spear: 45, sledge: 70, helmet: 60, vest: 120, armour: 260, gloves: 20, trousers: 30, boots: 40 };
 /** The backpack: how much fits (litres), the load you carry easily, and beyond `max` you are overloaded (kg). */
 export const PACK = { vol: 40, comfy: 20, max: 35 };
+/** A bigger pack worn in the 'pack' slot: the backpack's litres. */
+export const PACK_VOL: Partial<Record<ItemKey, number>> = { rucksack: 55, framepack: 70, cargopack: 90 };
+/** An exoskeleton in the 'frame' slot: extra kg carried with ease / before overload, walking speed and sprint stamina factors. */
+export const EXO: Partial<Record<ItemKey, { comfy: number; max: number; speed: number; stamina: number }>> = {
+  exoL: { comfy: 15, max: 20, speed: 1.06, stamina: 0.8 },
+  exoH: { comfy: 30, max: 40, speed: 1.12, stamina: 0.6 },
+};
+/** What you wear makes of the backpack and your legs: litres, easy and overload limits (kg), speed and stamina factors. */
+export function gearOf(wear: Partial<Record<WearSlot, ItemKey | null>>) {
+  const p = wear.pack, x = wear.frame ? EXO[wear.frame] : undefined;
+  return { vol: (p && PACK_VOL[p]) || PACK.vol, comfy: PACK.comfy + (x?.comfy ?? 0), max: PACK.max + (x?.max ?? 0), speed: x?.speed ?? 1, stamina: x?.stamina ?? 1 };
+}
 /** What Kuba charges for vehicle parts. He buys them back for only a fifth of that. */
 export const PART_PRICE: Partial<Record<ItemKey, number>> = { wheelL: 40, wheelH: 90, engine: 70, plating: 60, turbo: 220, eguard: 150, cannon: 400, repairkit: 90 };
 export const PART_BUYBACK = 0.2;

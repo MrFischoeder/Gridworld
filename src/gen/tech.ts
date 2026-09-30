@@ -42,6 +42,9 @@ export const TECHS: Tech[] = [
   { id: 'precision', name: 'Precision Manufacturing', area: 'metal', tier: 4, blurb: 'The master machines that cut to a hair and made every other machine: bearings, gears and spindles that never wear.' },
   { id: 'automation', name: 'Automation', area: 'electronics', tier: 4, blurb: 'How the Ancients taught arms of steel to work alone: drives, sensors and a small mind in one sealed case.' },
   { id: 'gunsmith', name: 'Gunsmithing', area: 'metal', tier: 2, blurb: 'Barrels, springs and the loading of cartridges: how the Ancients\' simple firearms and their rounds were made by hand.' },
+  { id: 'weaving', name: 'Woven Armour', area: 'building', tier: 2, blurb: 'Cloth quilted in many layers round steel wire, and light frames of aluminium: armour you can march in, packs that carry more.' },
+  { id: 'composites', name: 'Composite Armour', area: 'chemistry', tier: 3, blurb: 'Plastic, cloth and alloy laid up in layers and cured: shells lighter than steel that stop what steel stops.' },
+  { id: 'exoframe', name: 'Exoframes', area: 'metal', tier: 3, blurb: 'Struts, sprung joints and harness: a frame along the legs and back that carries the load for the one who wears it.' },
 ];
 export const TECH_BY_ID: Record<string, Tech> = Object.fromEntries(TECHS.map((t) => [t.id, t]));
 /** How far from Gridholm (m) each tier's carriers lie. */

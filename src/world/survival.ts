@@ -5,9 +5,8 @@
 // thirsty, you tire and recover slowly; starving or parched, you lose health.
 import { G } from '../game';
 import { STAMINA, DRAIN, LOW, STARVE_DPS, KCAL, STOMACH, burnPerMin } from '../data/survival';
-import { PACK } from '../data/items';
 import { bulkOf } from '../inventory';
-import { carriedKg } from '../character';
+import { carriedKg, gear } from '../character';
 import { MIN_PER_SEC } from '../core/time';
 import { $, logLine, showToast } from '../ui/hud';
 
@@ -18,12 +17,14 @@ export type Load = 'ok' | 'heavy' | 'over';
 /** What the backpack weighs (kg), how full it is (litres) and how it feels. */
 export function load() {
   const kg = carriedKg(), vol = bulkOf(G.char.inv);
-  return { kg, vol, state: (kg > PACK.max ? 'over' : kg > PACK.comfy ? 'heavy' : 'ok') as Load };
+  const g = gear();
+  return { kg, vol, state: (kg > g.max ? 'over' : kg > g.comfy ? 'heavy' : 'ok') as Load };
 }
 /** Walking speed factor from the load: free up to PACK.comfy, then slower; overloaded you can barely walk. */
 export function loadSpeed(kg: number) {
-  if (kg <= PACK.comfy) return 1;
-  if (kg <= PACK.max) return 1 - 0.3 * (kg - PACK.comfy) / (PACK.max - PACK.comfy);
+  const g = gear();
+  if (kg <= g.comfy) return 1;
+  if (kg <= g.max) return 1 - 0.3 * (kg - g.comfy) / (g.max - g.comfy);
   return 0.45;
 }
 
@@ -31,6 +32,7 @@ export function loadSpeed(kg: number) {
 /** Spend stamina on an effort. Returns false (and spends nothing) when there is not enough or you are exhausted. */
 export function spendStamina(n: number, force = false): boolean {
   if (G.god) return true;
+  n *= G.S.stamina; // an exoskeleton takes part of the effort
   if (!force && (G.exhausted || G.stamina < n * 0.5)) return false;
   G.stamina = Math.max(0, G.stamina - n); G.effortT = 0;
   if (G.stamina <= 0 && !G.exhausted) { G.exhausted = true; showToast('Exhausted'); }
@@ -40,7 +42,7 @@ export function spendStamina(n: number, force = false): boolean {
 export function drainStamina(n: number, dt: number): boolean {
   if (G.god) return true;
   if (G.exhausted) return false;
-  G.stamina = Math.max(0, G.stamina - n * dt); G.effortT = 0;
+  G.stamina = Math.max(0, G.stamina - n * G.S.stamina * dt); G.effortT = 0;
   if (G.stamina <= 0) { G.exhausted = true; showToast('Exhausted'); }
   return true;
 }

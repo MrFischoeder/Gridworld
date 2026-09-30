@@ -2,9 +2,9 @@
 // upgrade slots, the roof mount, the hull, and the backpack below. Drag parts between the backpack and the
 // vehicle, or click one to fit it / take it off. Tires keep their wear when taken off.
 import { G } from '../game';
-import { item, ITEMS, PACK, HANDS_ONLY, WEAPON_KIND } from '../data/items';
+import { item, ITEMS, HANDS_ONLY, WEAPON_KIND } from '../data/items';
 import { vehicleTitle, immobile, VEHICLES, ENGINE_UPGRADES } from '../data/vehicles';
-import { saveChar, stowHeld, handsChanged } from '../character';
+import { saveChar, stowHeld, handsChanged, packVol } from '../character';
 import { putSlot, dropStack, roomFor, bulkOf } from '../inventory';
 import { refreshParts, type Vehicle } from '../world/vehicles';
 import type { Slot } from '../save';
@@ -71,7 +71,7 @@ function toPack(s: Slot, to = ''): string {
     if (G.char.hands[0]) { const m = stowHeld(); if (m) return m; }
     G.char.hands[0] = s; return '';
   }
-  if (roomFor(G.char.inv, s.k, PACK.vol) < s.n) return `The ${item(s.k).name.toLowerCase()} is too bulky for your backpack (${Math.floor(PACK.vol - bulkOf(G.char.inv))} of ${PACK.vol} L free).`;
+  if (roomFor(G.char.inv, s.k, packVol()) < s.n) return `The ${item(s.k).name.toLowerCase()} is too bulky for your backpack (${Math.floor(packVol() - bulkOf(G.char.inv))} of ${packVol()} L free).`;
   const [L, j] = to ? listOf(to) : [G.char.inv, -1];
   if (L === G.char.inv && j >= 0 && !L[j]) { L[j] = s; return ''; }
   if (putSlot(G.char.inv, s) > 0) return `No room in your backpack: the ${item(s.k).name.toLowerCase()} was left behind.`;
@@ -93,7 +93,7 @@ function takeTire(i: number, to = ''): string {
   if (to && slotAt(to)?.k === v.spec.wheelItem) return fitTire(i, to); // dropped on a spare: swap them
   const h = G.char.hands[0];
   if (c > 0 && h && WEAPON_KIND[h.k] === undefined) return `Your hands are full (${item(h.k).name}): put it down or fit it first.`;
-  if (c > 0 && h && G.char.back.indexOf(null) < 0 && roomFor(G.char.inv, h.k, PACK.vol) < 1) return 'Free your hands first: there is nowhere to put your weapon.';
+  if (c > 0 && h && G.char.back.indexOf(null) < 0 && roomFor(G.char.inv, h.k, packVol()) < 1) return 'Free your hands first: there is nowhere to put your weapon.';
   p.wheels[i] = -1;
   if (c === 0) return `${wheelName(v, i)}: the wrecked tire went on the scrap heap.`;
   return toPack({ k: v.spec.wheelItem, n: 1, c }) || `${wheelName(v, i)}: you take the tire in your hands.`;
@@ -171,7 +171,7 @@ bindSlots(el.root, {
     if (mine(from) && mine(to)) {
       const [A] = listOf(from), [B] = listOf(to), s = A[i], d = B[j];
       if (B === G.char.inv && s && HANDS_ONLY.has(s.k) || A === G.char.inv && d && HANDS_ONLY.has(d.k)) { done('That is too big for the backpack.'); return; }
-      dropStack(A, i, B, j, B === G.char.inv ? PACK.vol : undefined, A === G.char.inv ? PACK.vol : undefined); done(''); return;
+      dropStack(A, i, B, j, B === G.char.inv ? packVol() : undefined, A === G.char.inv ? packVol() : undefined); done(''); return;
     }
     if (mine(from)) { done(apply(from, to)); return; }
     if (mine(to)) { done(takeOff(from, to)); return; }

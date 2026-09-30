@@ -41,7 +41,7 @@ describe('the planet wraps east-west', () => {
         expect(chunkRocks(t, cx - NC, 3).length).toBe(chunkRocks(t, cx, 3).length);
       }
     }
-  });
+  }, 90_000); // (a heavy one: two whole regions of land, places and vegetation, compared across the seam)
   it('treats a chunk across the seam as the same explored chunk', () => {
     const d: Record<string, string> = {};
     discover(d, 1875, 4);

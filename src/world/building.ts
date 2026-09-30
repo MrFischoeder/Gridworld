@@ -9,10 +9,10 @@ import * as THREE from 'three';
 import { scene } from './render';
 import { G } from '../game';
 import { PropBatch } from './props';
-import { saveChar, takeOne, addItem } from '../character';
+import { saveChar, takeOne, addItem, packVol } from '../character';
 import { count, takeAll } from '../data/crafting';
 import { putItems } from '../inventory';
-import { PACK, ITEMS } from '../data/items';
+import { ITEMS } from '../data/items';
 import { PIECES, BUILD, type PieceKind } from '../data/building';
 import { partEnds, snap, partProblem, baseHitLocal, refund, solids, floorLocal, rayLocal, solidAt, shapeOf, lvOf, floorH, cellsOf, stairDir, validCode, type Part, type Box } from '../gen/base';
 import { claimDist, CLAIM } from '../gen/claims';
@@ -316,7 +316,7 @@ export function dismantle() {
   if (parts.some((q) => q !== aimed!.p && lvOf(q) > lv && partProblem(parts.filter((o) => o !== aimed!.p && o !== q), q))) { logLine('Something above rests on it: take that down first.'); return; }
   parts.splice(parts.indexOf(aimed.p), 1);
   let lost = 0;
-  for (const [m, n] of refund(aimed.p.k)) lost += putItems(G.char.inv, m, n, PACK.vol);
+  for (const [m, n] of refund(aimed.p.k)) lost += putItems(G.char.inv, m, n, packVol());
   if (aimed.p.lock && !addItem('codelock')) lost++;
   saveChar(); redraw(aimed.c); lastKey = ''; syncTurrets();
   logLine(`${s.name} taken down.` + (lost ? ' Your backpack is full: some of the materials were left behind.' : ' Half the materials go back into your backpack.'));

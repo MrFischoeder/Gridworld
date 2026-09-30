@@ -98,7 +98,7 @@ label{font-size:22px;margin-top:16px;display:block}
 #pack .acts{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
 #pack .acts button{background:transparent;color:var(--g);border:1px solid var(--g);padding:3px 14px;font-size:22px}
 #pack .acts button.drop{color:var(--amber);border-color:var(--amber)}
-#gear,.gear.caps{grid-template-columns:repeat(6,minmax(0,1fr)) 12px repeat(3,minmax(0,1fr))}
+#gear,.gear.caps{grid-template-columns:repeat(8,minmax(0,1fr)) 12px repeat(3,minmax(0,1fr))}
 #gear .slot .nm{display:none}
 #gear .slot .hint{font-size:12px}
 #gear .slot.iconic .ico{width:70%}

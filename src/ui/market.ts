@@ -3,10 +3,10 @@
 // Crates come from and go to your backpack and the trunks of your vehicles parked by the village, so a vehicle
 // makes a caravan. Every visit writes the prices into your ledger; the merchant passes on word of nearby markets.
 import { G } from '../game';
-import { ITEMS, PACK, type ItemKey } from '../data/items';
+import { ITEMS, type ItemKey } from '../data/items';
 import { count } from '../data/crafting';
 import { putItems } from '../inventory';
-import { calcStats, saveChar } from '../character';
+import { calcStats, saveChar, packVol } from '../character';
 import { GOODS, quote, trade, tidyMarket, profileOf, type Good } from '../gen/market';
 import { allVillages, findPoi, villageSeed, worldDist, type Poi } from '../gen/regions';
 import { loadedVillage } from '../world/overworld';
@@ -49,7 +49,7 @@ let here: { poi: Poi; seed: number } | null = null;
 const ago = (t: number) => { const h = (G.char.time - t) / 60; return h < 1 ? 'just now' : h < 24 ? Math.round(h) + ' h ago' : Math.round(h / 24) + ' d ago'; };
 /** Your backpack, then the trunks of your vehicles parked by village `at` (the market's village by default). */
 export function stores(at: { x: number; z: number } | null = here?.poi ?? null): { name: string; slots: (Slot | null)[]; cap?: number }[] {
-  const out: { name: string; slots: (Slot | null)[]; cap?: number }[] = [{ name: 'backpack', slots: G.char.inv, cap: PACK.vol }];
+  const out: { name: string; slots: (Slot | null)[]; cap?: number }[] = [{ name: 'backpack', slots: G.char.inv, cap: packVol() }];
   if (at) for (const v of vehicles) if (v.claimed && !v.ai && worldDist(v.st.x, v.st.z, at.x, at.z) < TRUNK_REACH) out.push({ name: 'trunk', slots: v.st.trunk.items });
   return out;
 }

@@ -1,6 +1,6 @@
 # GridWorld: opis gry, cel, plan i historia zmian
 
-Stan na wersję **0.99.0**. Ten dokument opisuje, czym jest GridWorld, jaki jest cel gry, co już w niej jest, czego jeszcze nie ma, dokąd zmierza i jak powstawała, wersja po wersji. Nazwy z gry (przedmioty, miejsca, postacie) są po angielsku, tak jak na ekranie.
+Stan na wersję **0.100.0**. Ten dokument opisuje, czym jest GridWorld, jaki jest cel gry, co już w niej jest, czego jeszcze nie ma, dokąd zmierza i jak powstawała, wersja po wersji. Nazwy z gry (przedmioty, miejsca, postacie) są po angielsku, tak jak na ekranie.
 
 ---
 
@@ -178,10 +178,13 @@ Gra jest pomyślana jako **kooperacja do 8 graczy** na autorytatywnym serwerze (
   - Jedzenie wypełnia **żołądek** wagą, więc lekkie i kaloryczne jedzenie karmi najlepiej.
   - Woda: picie ze studni, jezior i rzek, napełnianie manierek.
 - **Plecak**: 40 L objętości to twardy limit. Waga powyżej 20 kg spowalnia, powyżej 35 kg to przeciążenie.
+  - Większe plecaki zakłada się w slot **Pack**: Hide Rucksack 55 L (ze skór, u każdego kowala), Frame Pack 70 L (plany Woven Armour), Composite Cargo Pack 90 L (plany Composite Armour).
+  - **Egzoszkielety** w slocie **Frame**: Salvage Exoframe (plany Exoframes; +15 kg swobodnie, +20 kg do przeciążenia, 6% szybciej, 20% mniej staminy) i Powered Exoskeleton (plany Automation, części starych fabryk; +30/+40 kg, 12% szybciej, 40% mniej staminy).
 - **Ręce, plecy, ubranie.**
   - Broń to przedmioty. Palna: Blaster (karabin energetyczny), Old Pistol, Scrap SMG, Scattergun (śrut), Hunting Rifle (luneta 3×). Biała: Energy Blade, Machete, Spear (pchnięcie, duży zasięg), Sledgehammer (wolny, miażdżący).
   - Dwie sztuki mogą być na plecach.
   - Pancerz i odzież są w slotach, do tego maska przeciwgazowa na twarz.
+  - Zbroja w trzech rodzajach, każdy z kompletem na głowę, tułów, dłonie, nogi i stopy: **skórzana** (u każdego kowala ze skór), **pleciona** (tkanina przeszyta drutem, plany Woven Armour) i **kompozytowa** (plastik, stop i ceramika, plany Composite Armour; cały komplet zatrzymuje około połowy każdego trafienia).
   - Duże rzeczy (koła, działko) nosi się tylko w rękach.
 - **Broń**:
   - **amunicja jest ograniczona**: każda broń ma swój magazynek i przeładowuje się z nabojów w plecaku (Energy Cells, Pistol Rounds, Shotgun Shells, Rifle Rounds); na początku naboje tylko się znajduje (skrzynie, obozy, bandyci, roboty, wraki, szafki we mgle), później kowal je robi, jeśli ma się plany Gunsmithing (lub Battery Chemistry dla ogniw);
@@ -547,3 +550,4 @@ Pełne notatki (po angielsku) są w grze pod przyciskiem **Changelog** w menu g�
 - **0.97.0 Do czego służą stare części** (etap 6). Ulepszenia wiosek (bank akumulatorów, lampy akumulatorowe, zautomatyzowane miejsce przemysłu, celowniki sensorowe turretów, opancerzony mur); stojaki ogniw w siłowniach starych fabryk; antena sensorowa radaru (20 km); u kowala napęd precyzyjny do pojazdów i kompas z sensorem, który wskazuje instalacje i znane strefy mgły; automatyzacja elektrowni wymaga też komponentów precyzyjnych.
 - **0.98.0 Rydwan na końcu łańcucha** (etap 7). Rydwan ma sześć etapów (nowy Power System) i każdy wymaga wyrobów starych fabryk; etapy ukończone w starych zapisach zostają ukończone, a skrzynie, których nowe wymagania już nie biorą, wracają do hali Gridholm; kampania (cuda) dostała nowe dobra i nową kalibrację (~80 h w pojedynkę).
 - **0.99.0 Amunicja, nowa broń, GPS i naprawy w polu.** Amunicja jest ograniczona (każda broń ma własny magazynek i własny rodzaj nabojów, przeładowanie z plecaka); na początku tylko do znalezienia, potem u kowala z planami Gunsmithing (nowa technologia) lub Battery Chemistry. Nowa broń palna (pistolet, pistolet maszynowy, strzelba, karabin myśliwski) i biała (maczeta, włócznia, młot). Tablet GPS z punktem nawigacyjnym. Zestaw do naprawy pojazdów (kadłub, silnik, koła) u Kuby lub u kowala z planami Combustion Engines.
+- **0.100.0 Zbroje, plecaki i egzoszkielety.** Dwa nowe sloty na ciele (Pack i Frame). Trzy większe plecaki (55, 70 i 90 L), dwa egzoszkielety (większy udźwig, szybszy chód, mniejsze zużycie staminy), zbroja w trzech rodzajach: skórzana, pleciona i kompozytowa. Nowe technologie: Woven Armour, Composite Armour i Exoframes.

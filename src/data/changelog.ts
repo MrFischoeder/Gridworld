@@ -4,6 +4,16 @@ export interface Change { v: string; date: string; title: string; notes: string[
 
 export const CHANGELOG: Change[] = [
   {
+    v: '0.100.0', date: '2026-10-17', title: 'Armour, packs and exoskeletons',
+    notes: [
+      'Two new slots on your body: Pack and Frame.',
+      'Bigger packs: the Hide Rucksack (55 L, any blacksmith makes it from hides and rope), the Frame Pack (70 L, Woven Armour plans) and the Composite Cargo Pack (90 L, Composite Armour plans). You cannot take a big pack off while the backpack holds more than it would without it.',
+      'Exoskeletons: the Salvage Exoframe (Exoframes plans: steel, machine parts, wire, hide) lets you carry 15 kg more with ease and 20 kg more before you are overloaded, walk 6% faster and spend a fifth less stamina. The Powered Exoskeleton (Automation plans, parts of the old plants) adds 30 / 40 kg, 12% more speed and 40% less stamina.',
+      'Armour in three kinds, each a full set of head, body, gloves, legs and feet: hide (any blacksmith, from hides), woven cloth over wire (Woven Armour plans) and composite shells of plastic, alloy and ceramic (Composite Armour plans). The composite set stops about half of every hit; its body piece beats plate armour at less than half the weight.',
+      'Three new technologies to find: Woven Armour, Composite Armour and Exoframes.',
+    ],
+  },
+  {
     v: '0.99.0', date: '2026-10-16', title: 'Rounds, new arms, GPS and field repairs',
     notes: [
       'Ammunition is limited now. Every gun keeps its own magazine and reloads from the rounds in your backpack: Energy Cells for the Blaster, Pistol Rounds, Shotgun Shells and Rifle Rounds. With none left, R does nothing.',
