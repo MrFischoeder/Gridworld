@@ -4,6 +4,13 @@ export interface Change { v: string; date: string; title: string; notes: string[
 
 export const CHANGELOG: Change[] = [
   {
+    v: '0.101.1', date: '2026-10-18', title: 'Solid tools',
+    notes: [
+      'The hatchet, the pickaxe and every other hand tool are solid now: you no longer see the world through them, in your hands or lying on the ground.',
+      'Every hand tool has its own model in your hands (hammer, saw, screwdriver, pliers, welder, torch, shovel), not a plain box, and its own model when dropped.',
+    ],
+  },
+  {
     v: '0.101.0', date: '2026-10-18', title: 'Tools in your hands',
     notes: [
       'A tool in the backpack is not enough any more: the Hatchet, the Pickaxe and the building tools work only while you hold them in your hands.',

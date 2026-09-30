@@ -15,7 +15,8 @@ import { dropPickup } from './loot';
 import { gatherables, gatherKey, rebuildChunkAt, ORE_COLOR } from './overworld';
 import { TREE_SPAN, type OreKind } from '../gen/trees';
 import { logLine } from '../ui/hud';
-import { camera, lineMat } from './render';
+import { camera } from './render';
+import { TOOL_KEYS, toolModel, isToolModel, type ToolKey } from './toolmodels';
 
 export interface Target { kind: 'tree' | 'rock'; key: string; x: number; y: number; z: number; big: boolean; ore?: OreKind; held: boolean }
 /** Blows landed so far on trees and rocks that still stand (forgotten when you walk away). */
@@ -59,15 +60,11 @@ let onChange: () => void = () => {};
 /** The weapon goes away while you work (world/weapons.ts refreshes on this). */
 export function onWorkChange(f: () => void) { onChange = f; }
 
-// the tool in both hands, in front of the view: a hatchet or a pickaxe, swung down at each blow
+// the tool in your hands, in front of the view (solid models from world/toolmodels.ts): a hatchet or a pickaxe swung
+// down at each blow, any other hand tool held at rest
 const tool = new THREE.Group(), GRIP = 0x9dffb4;
-const handle = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(0.035, 0.035, 0.62)), lineMat(GRIP));
-handle.position.z = -0.31; tool.add(handle);
-const axeHead = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(0.03, 0.16, 0.12)), lineMat(0xd8d8c0));
-axeHead.position.set(0, 0.07, -0.58); tool.add(axeHead);
-const pickHead = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.CylinderGeometry(0.018, 0.035, 0.44, 5)), lineMat(0xd8d8c0));
-pickHead.position.set(0, 0, -0.6); tool.add(pickHead);
-for (const zz of [-0.06, -0.2]) { const h = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(0.05, 0.04, 0.08)), lineMat(GRIP)); h.position.set(0, -0.03, zz); tool.add(h); }
+const models = Object.fromEntries(TOOL_KEYS.map((k) => { const m = toolModel(k, GRIP, 0xd8d8c0); m.visible = false; tool.add(m); return [k, m]; })) as Record<ToolKey, THREE.Group>;
+const showTool = (k: ToolKey | null) => { for (const t of TOOL_KEYS) models[t].visible = t === k; };
 const pivot = new THREE.Group(); pivot.add(tool); pivot.position.set(0.16, -0.3, -0.3); pivot.visible = false; camera.add(pivot);
 
 function stop() { if (!work) return; work = null; pivot.visible = false; onChange(); }
@@ -77,18 +74,18 @@ let toolShown = () => true;
 export function setToolRule(f: () => boolean) { toolShown = f; }
 /** A hatchet or pickaxe in your hands, at rest in front of the view while you are not working. */
 function restPose() {
-  const h = G.char.hands[0]?.k, on = (h === 'hatchet' || h === 'pickaxe') && G.playing && toolShown();
+  const h = G.char.hands[0]?.k, on = isToolModel(h) && G.playing && toolShown();
   pivot.visible = on;
   if (!on) return;
-  axeHead.visible = h === 'hatchet'; pickHead.visible = h === 'pickaxe';
-  pivot.rotation.set(0.35, 0, -0.45); pivot.position.set(0.24, -0.32, -0.28);
+  showTool(h);
+  pivot.rotation.set(0.12, 0.3, -0.35); pivot.position.set(0.28, -0.36, -0.22);
 }
 /** E pressed at a tree or rock: start working it (the blows land while E is held). */
 export function strike(t: Target) {
   if (!t.held) { const m = takeInHands(toolOf(t)); if (m) logLine(m); return; }
   if (work?.key === t.key) return;
   work = { key: t.key, t: 0, landed: false };
-  axeHead.visible = t.kind === 'tree'; pickHead.visible = t.kind === 'rock';
+  showTool(t.kind === 'tree' ? 'hatchet' : 'pickaxe');
   pivot.visible = true; onChange();
 }
 /** Every frame (world/interact.ts) with the target in reach, if any: swing while E is held. */

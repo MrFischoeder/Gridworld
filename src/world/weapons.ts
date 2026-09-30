@@ -13,7 +13,7 @@ import { gunOf, meleeOf, type GunLook, type MeleeLook } from '../data/weapons';
 import { BLADE, STAMINA, BURN } from '../data/survival';
 import { spendStamina, burn } from './survival';
 import { makeNoise } from './noise';
-import { item, WEAPON_KIND, type ItemKey } from '../data/items';
+import { item, WEAPON_KIND, HAND_TOOLS, type ItemKey } from '../data/items';
 import { onHandsChanged, stowHeld, saveChar, calcStats } from '../character';
 import { count } from '../data/crafting';
 import { logLine } from '../ui/hud';
@@ -185,7 +185,7 @@ export function refreshWeaponVisibility() {
   const v = armed(), gv = activeGun(), mv = activeMelee();
   for (const o of Object.values(gunLooks)) o.visible = v && G.weapon === 0 && o === gv;
   for (const o of Object.values(meleeLooks)) o.visible = v && G.weapon === 1 && o === mv;
-  const h = G.char.hands[0]; carryVM.visible = !!h && G.weapon < 0 && h.k !== 'hatchet' && h.k !== 'pickaxe'; // (those two are drawn by world/gather.ts) tyre.visible = h?.k === 'wheelL' || h?.k === 'wheelH'; bulk.visible = !tyre.visible;
+  const h = G.char.hands[0]; carryVM.visible = !!h && G.weapon < 0 && !HAND_TOOLS.has(h.k); // (hand tools are drawn by world/gather.ts) tyre.visible = h?.k === 'wheelL' || h?.k === 'wheelH'; bulk.visible = !tyre.visible;
 }
 
 export function animateVM(dt: number, moving: boolean) {

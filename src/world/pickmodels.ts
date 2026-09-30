@@ -5,6 +5,7 @@
 // on the ground (`LYING`) instead of letting them hover and spin like the old tokens.
 import * as THREE from 'three';
 import { add, fillMat, V } from './render';
+import { TOOL_KEYS, lyingTool } from './toolmodels';
 import { FOOD_COLOR } from '../data/survival';
 import type { ItemKey } from '../data/items';
 
@@ -212,24 +213,12 @@ function crate(): THREE.Group {
   for (let i = 1; i < 3; i++) m.seg(WOOD, V(-s / 2, s * 0.8 + 0.002, -s * 0.4 + i * s * 0.8 / 3), V(s / 2, s * 0.8 + 0.002, -s * 0.4 + i * s * 0.8 / 3));
   return m.done();
 }
-function hatchet(): THREE.Group {
-  const m = new Model();
-  m.tube(WOOD, [V(-0.22, 0.02, 0), V(0.18, 0.02, 0)], [0.018, 0.018], 4);
-  m.line(STEEL, [V(0.12, 0.02, 0), V(0.14, 0.02, 0.1), V(0.22, 0.02, 0.12), V(0.2, 0.02, -0.02), V(0.2, 0.02, -0.03)], true);
-  return m.done();
-}
-function pickaxe(): THREE.Group {
-  const m = new Model();
-  m.tube(WOOD, [V(-0.26, 0.02, 0), V(0.16, 0.02, 0)], [0.018, 0.018], 4);
-  m.tube(STEEL, [V(0.16, 0.02, -0.2), V(0.18, 0.02, 0), V(0.16, 0.02, 0.2)], [0.004, 0.025, 0.004], 4);
-  return m.done();
-}
 
 /** Things that have a lying model, and how to make it. */
 const MODELS: Partial<Record<ItemKey, () => THREE.Group>> = {
   log, planks, stone: () => stone(), ironO: () => stone(IRON), copperO: () => stone(COPPER), scrap, circuit, pcore,
   hide, fang, incisor, plate, membrane, meatR: () => meat(false), meatC: () => meat(true), cap: caps, pod, ncrys: () => crystals(),
-  bread, stew: bowl, eggsB: bowl, milkC: flask, cheese: bread, flask, waterF: flask, waterM: flask, firekit: sticks, hatchet, pickaxe, wire: () => coil(), nails: () => nails(), rope: () => coil(0xc8b890),
+  bread, stew: bowl, eggsB: bowl, milkC: flask, cheese: bread, flask, waterF: flask, waterM: flask, firekit: sticks, ...Object.fromEntries(TOOL_KEYS.map((k) => [k, () => lyingTool(k, WOOD, STEEL)])), wire: () => coil(), nails: () => nails(), rope: () => coil(0xc8b890),
 };
 function nails(): THREE.Group {
   const m = new Model();

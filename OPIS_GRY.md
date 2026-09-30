@@ -1,6 +1,6 @@
 # GridWorld: opis gry, cel, plan i historia zmian
 
-Stan na wersję **0.101.0**. Ten dokument opisuje, czym jest GridWorld, jaki jest cel gry, co już w niej jest, czego jeszcze nie ma, dokąd zmierza i jak powstawała, wersja po wersji. Nazwy z gry (przedmioty, miejsca, postacie) są po angielsku, tak jak na ekranie.
+Stan na wersję **0.101.1**. Ten dokument opisuje, czym jest GridWorld, jaki jest cel gry, co już w niej jest, czego jeszcze nie ma, dokąd zmierza i jak powstawała, wersja po wersji. Nazwy z gry (przedmioty, miejsca, postacie) są po angielsku, tak jak na ekranie.
 
 ---
 
@@ -553,3 +553,4 @@ Pełne notatki (po angielsku) są w grze pod przyciskiem **Changelog** w menu g�
 - **0.99.0 Amunicja, nowa broń, GPS i naprawy w polu.** Amunicja jest ograniczona (każda broń ma własny magazynek i własny rodzaj nabojów, przeładowanie z plecaka); na początku tylko do znalezienia, potem u kowala z planami Gunsmithing (nowa technologia) lub Battery Chemistry. Nowa broń palna (pistolet, pistolet maszynowy, strzelba, karabin myśliwski) i biała (maczeta, włócznia, młot). Tablet GPS z punktem nawigacyjnym. Zestaw do naprawy pojazdów (kadłub, silnik, koła) u Kuby lub u kowala z planami Combustion Engines.
 - **0.100.0 Zbroje, plecaki i egzoszkielety.** Dwa nowe sloty na ciele (Pack i Frame). Trzy większe plecaki (55, 70 i 90 L), dwa egzoszkielety (większy udźwig, szybszy chód, mniejsze zużycie staminy), zbroja w trzech rodzajach: skórzana, pleciona i kompozytowa. Nowe technologie: Woven Armour, Composite Armour i Exoframes.
 - **0.101.0 Narzędzia w rękach.** Siekiera, kilof i narzędzia budowlane działają tylko trzymane w rękach, nie z plecaka; E przy drzewie lub skale bierze narzędzie do rąk, a trzymaną siekierę lub kilof widać w dłoniach.
+- **0.101.1 Pełne modele narzędzi.** Siekiera, kilof i pozostałe narzędzia ręczne mają pełne (nieprześwitujące) modele, w dłoni i leżące na ziemi; każde narzędzie ma własny kształt w ręku.
