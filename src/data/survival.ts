@@ -57,6 +57,7 @@ export const NOURISH: Record<string, { kcal?: number; water?: number; hp?: numbe
   waterF: { water: 40 },
   waterM: { water: 25 },
   meatR: { kcal: 600 },
+  fishR: { kcal: 250 },
   meatC: { kcal: 750, hp: 10 },
   cap: { kcal: 45, water: 6 },
   pod: { kcal: 220, water: 18 },

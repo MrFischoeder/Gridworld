@@ -547,6 +547,7 @@ export function openWorld(x: number, z: number) {
     ground: (px: number, pz: number) => T.heightAt(px, pz),
     danger,
     nearRuin: (px: number, pz: number) => poisNear(T.world, px, pz, 90).some((p) => (p.type === 'ruin' || p.type === 'wreck') && rectDist(p.rect, px, pz) < 60),
+    water: (px: number, pz: number) => T.water(px, pz),
     forbidden: (px: number, pz: number) => nearVillage(px, pz) < 35 || baseHit(px, T.heightAt(px, pz), pz, 0.7) || (T.water(px, pz)?.depth ?? 0) > 0.5 || [...OW.structs.values()].some((s) => rectDist(s.poi.rect, px, pz) < 1),
   };
   setCreatureEnv(envHooks);

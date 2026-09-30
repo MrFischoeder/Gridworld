@@ -106,13 +106,13 @@ const COMMANDS: Record<string, { help: string; run: (args: string[]) => string }
     },
   },
   spawn: {
-    help: 'spawn ravager | bramble | leechwing | gnawer | bandits | raider [mastodon] | scout | guardian | repair | sentinel | artillery | assault (open world)',
+    help: 'spawn ravager | bramble | leechwing | gnawer | skitter | lurker | silverfin | bandits | raider [mastodon] | scout | guardian | repair | sentinel | artillery | assault (open world)',
     run: (a) => {
       if (a[0] in ROBOTS) return spawnRobotNear(a[0] as RobotKind) ? `${ROBOTS[a[0] as RobotKind].name} spawned.` : 'Only in the open world.';
       if (a[0] === 'bandits') return spawnBanditsNear() ? 'Bandits!' : 'Only in the open world.';
       if (a[0] === 'raider') return spawnRaiderNear(a[1] === 'mastodon' ? 'mastodon' : 'scout') ? 'Raiders incoming.' : 'Only in the open world.';
       const k = a[0] as CreatureKind;
-      if (!(k in CREATURES)) return 'Usage: spawn ravager | bramble | leechwing | gnawer | bandits';
+      if (!(k in CREATURES)) return 'Usage: spawn ravager | bramble | leechwing | gnawer | skitter | lurker | silverfin | bandits';
       return spawnCreatureNear(k) ? `${CREATURES[k].name} spawned.` : 'Only in the open world.';
     },
   },

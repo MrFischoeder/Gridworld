@@ -26,6 +26,11 @@ Spis: 1. Surowce · 2. Przetwarzanie · 3. Budowy · 4. Indeks: gdzie użyć ka�
 | Ravager Hide | stworzenie: Ravager (upolowane) |
 | Leechwing Membrane | stworzenie: Leechwing (upolowane) |
 | Gnawer Incisor | stworzenie: Gnawer (upolowane) |
+| Leechwing Membrane | stworzenie: Skitter (upolowane) |
+| Raw Fish | stworzenie: Lurker (upolowane) |
+| Ravager Hide | stworzenie: Lurker (upolowane) |
+| Ravager Fang | stworzenie: Lurker (upolowane) |
+| Raw Fish | stworzenie: Silverfin (upolowane) |
 | Nutrient Cap, Fruit Pod, Nutrient Crystal | grzyby w lesie, drzewa z owocami, kryształy w podziemiach (jedzenie) |
 
 ### 1.2 Towary, które wioski wydobywają i wytwarzają same
@@ -434,4 +439,4 @@ Materiały biorą się z hali wioski; złoto płacisz ze swojej sakiewki (opłat
 
 Te rzeczy można tylko sprzedać (na targu albo kowalowi/Janowi), zjeść albo przewieźć w kontraktach:
 
-Dried Fish, Crate of Tools, Medical Supplies, Salvaged Tech, Raw Meat, Bramble Plate, Ravager Fang, Gnawer Incisor.
+Dried Fish, Crate of Tools, Medical Supplies, Salvaged Tech, Raw Meat, Bramble Plate, Ravager Fang, Gnawer Incisor, Raw Fish.

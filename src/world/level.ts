@@ -130,7 +130,7 @@ export function loadDungeon(arriveDir: string | null) {
   for (let i = 0; i < (wreck ? 2 : map.rooms + 1 + d.depth); i++) { const t = makeDrone(); placeDrone(t); W.drones.push(t); }
   if (wreck) {
     const poi = findPoi(c.world, d.ruinId)!, lv = Math.max(2, dangerAt(c.world, poi.x, poi.z, true));
-    setRobotEnv({ ground: () => 0, danger: () => lv, nearRuin: () => false, forbidden: () => false }, { indoor: true });
+    setRobotEnv({ ground: () => 0, danger: () => lv, nearRuin: () => false, forbidden: () => false, water: () => null }, { indoor: true });
     spawnGuards(map.guards ?? [], lv);
   }
   onDungeonLoaded(map);

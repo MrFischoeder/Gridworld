@@ -4,6 +4,15 @@ export interface Change { v: string; date: string; title: string; notes: string[
 
 export const CHANGELOG: Change[] = [
   {
+    v: '0.102.0', date: '2026-10-19', title: 'Wings and fins',
+    notes: [
+      'Skitterwings: small beaked fliers that now and then turn up in flocks of three to five in the near wilds. They flutter a few metres up, follow you once they have seen you and swoop down one or two at a time to peck. One hit brings one down.',
+      'The sea is alive. Sea Lurkers roam it with their dorsal fin cutting the surface: swim within their reach and one circles in, lunges and bites, then comes again. From a boat they only circle. They are found from the danger-1 ring outwards, two together far out.',
+      'Shoals of Silverfin drift near the surface, dart away from anyone close and now and then leap out of the water. They are harmless.',
+      'New food: Raw Fish (250 kcal, fine raw), from Silverfin and Sea Lurkers; what a sea creature leaves floats on the surface. Jan buys it.',
+    ],
+  },
+  {
     v: '0.101.1', date: '2026-10-18', title: 'Solid tools',
     notes: [
       'The hatchet, the pickaxe and every other hand tool are solid now: you no longer see the world through them, in your hands or lying on the ground.',

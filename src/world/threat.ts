@@ -8,7 +8,7 @@ import { ROBOTS } from '../data/robots';
 import type { CreatureKind } from '../data/creatures';
 import { inVillage } from './overworld';
 
-const CREATURE_COST: Record<CreatureKind, number> = { gnawer: 0.5, ravager: 1, bramble: 0.4, leechwing: 1.5 };
+const CREATURE_COST: Record<CreatureKind, number> = { gnawer: 0.5, ravager: 1, bramble: 0.4, leechwing: 1.5, skitter: 0.3, lurker: 1.2, silverfin: 0 };
 export const BANDIT_COST = 1.5;
 /** Threat allowed at a danger level (at 0: a small nest of gnawers or one bramble; at 8: a small army). */
 export const budget = (lv: number) => 1 + lv * 1.1;
@@ -36,7 +36,7 @@ export function threat(): number {
 /** Is anything hostile close enough to count as a fight going on? */
 function fighting(): boolean {
   const p = G.pos, near = (q: { x: number; z: number }) => Math.hypot(q.x - p.x, q.z - p.z) < FIGHT_R;
-  return W.creatures.some((c) => near(c.p) && !(c.kind === 'bramble' && c.state === 'roam')) || W.robots.some((r) => near(r.p)) || W.bandits.some((b) => b.campId === undefined && near(b.p));
+  return W.creatures.some((c) => near(c.p) && c.kind !== 'silverfin' && !(c.kind === 'bramble' && c.state === 'roam')) || W.robots.some((r) => near(r.p)) || W.bandits.some((b) => b.campId === undefined && near(b.p));
 }
 /**
  * Whether an encounter costing `cost` may turn up where the danger is `lv`. When it may, the next one is put off

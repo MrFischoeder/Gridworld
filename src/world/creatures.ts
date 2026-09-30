@@ -1,4 +1,5 @@
-// Wild creatures of the open world: Ravager packs, territorial Brambles and diving Leechwings.
+// Wild creatures of the open world: Ravager packs, territorial Brambles and diving Leechwings, Gnawer nests,
+// Skitterwing flocks fluttering low in the near wilds, and in the sea Sea Lurkers and shoals of Silverfin.
 // Spawns and movement use Math.random (unsaved, like drones); models are built from PropBatch.
 import * as THREE from 'three';
 import { armoured } from '../character';
@@ -7,7 +8,7 @@ import { onNoise } from './noise';
 import { scene, V, lineMat } from './render';
 import { G, W } from '../game';
 import { PropBatch, sharedFill } from './props';
-import { CREATURES, HOSTILE, CALM, DROPS, type CreatureKind } from '../data/creatures';
+import { CREATURES, HOSTILE, CALM, DROPS, FLYERS, SWIMMERS, type CreatureKind } from '../data/creatures';
 import { foeRules } from './enemies';
 import { rayWorld } from './player';
 import { burst } from './fx';
@@ -186,9 +187,48 @@ function gnawerModel(c: Creature) {
   }
 }
 
+/** Skitterwing: a small beaked flier, wings beating fast. */
+function skitterModel(c: Creature) {
+  const pb = new PropBatch(), m = c.mat, K = 0;
+  box8(pb, [[-0.08, -0.07, -0.18], [0.08, -0.07, -0.18], [0.06, -0.05, 0.14], [-0.06, -0.05, 0.14]], [[-0.07, 0.07, -0.18], [0.07, 0.07, -0.18], [0.05, 0.06, 0.14], [-0.05, 0.06, 0.14]], K);
+  spike(pb, [0, 0, 0.14], [0, -0.15, 1], 0.16, 0.035, K); // the beak
+  for (const s of [-1, 1]) pb.line(K, [s * 0.04, 0.04, 0.12], [s * 0.05, 0.05, 0.15]); // eyes
+  pb.face([0, 0.02, -0.18], [-0.12, 0.02, -0.4], [0.12, 0.02, -0.4]); pb.line(K, [0, 0.02, -0.18], [-0.12, 0.02, -0.4], [0.12, 0.02, -0.4], [0, 0.02, -0.18]); // tail fan
+  c.g.add(finish(pb, m));
+  for (const s of [-1, 1]) {
+    const wb = new PropBatch(), pts: P[] = [[0, 0, 0.08], [0.35 * s, 0.05, 0.02], [0.5 * s, 0.02, -0.12], [0.1 * s, 0, -0.14]];
+    wb.face(pts[0], pts[1], pts[2]); wb.face(pts[0], pts[2], pts[3]); wb.line(K, ...pts, pts[0]); wb.line(K, pts[0], pts[2]);
+    const wing = new THREE.Group(); wing.add(finish(wb, m)); wing.position.set(s * 0.07, 0.04, 0); c.g.add(wing); c.wings.push(wing);
+  }
+}
+/** Sea Lurker: a long finned eel, its dorsal fin cutting the surface; the tail half on a pivot so it can sweep. */
+function lurkerModel(c: Creature) {
+  const pb = new PropBatch(), m = c.mat, K = 0;
+  const body: [number, number][] = [[1.3, 0.12], [0.9, 0.28], [0.3, 0.32], [-0.3, 0.3]];
+  for (let i = 0; i + 1 < body.length; i++) { const [z0, w0] = body[i], [z1, w1] = body[i + 1]; box8(pb, [[-w0, -w0, z0], [w0, -w0, z0], [w1, -w1, z1], [-w1, -w1, z1]], [[-w0 * 0.8, w0, z0], [w0 * 0.8, w0, z0], [w1 * 0.8, w1, z1], [-w1 * 0.8, w1, z1]], K); }
+  for (const s of [-1, 1]) { pb.line(K, [s * 0.14, 0.12, 1.05], [s * 0.18, 0.14, 1.12]); spike(pb, [s * 0.28, -0.1, 0.5], [s, -0.4, -0.6], 0.45, 0.06, K); } // eyes, side fins
+  const fin: P[] = [[0, 0.3, 0.55], [0, 1.05, -0.05], [0, 0.3, -0.3]]; pb.face(fin[0], fin[1], fin[2]); pb.line(K, ...fin, fin[0]); // the dorsal fin
+  for (let i = 0; i < 6; i++) pb.line(K, [0.1 - (i % 2) * 0.2, -0.12, 1.25 - i * 0.07], [0, -0.02, 1.22 - i * 0.07]); // teeth
+  c.g.add(finish(pb, m));
+  const tb = new PropBatch(), tail: [number, number][] = [[0, 0.3], [-0.6, 0.22], [-1.2, 0.14], [-1.7, 0.06]];
+  for (let i = 0; i + 1 < tail.length; i++) { const [z0, w0] = tail[i], [z1, w1] = tail[i + 1]; box8(tb, [[-w0, -w0, z0], [w0, -w0, z0], [w1, -w1, z1], [-w1, -w1, z1]], [[-w0 * 0.8, w0, z0], [w0 * 0.8, w0, z0], [w1 * 0.8, w1, z1], [-w1 * 0.8, w1, z1]], K); }
+  const fluke: P[] = [[0, 0, -1.7], [0, 0.45, -2.2], [0, -0.45, -2.2]]; tb.face(fluke[0], fluke[1], fluke[2]); tb.line(K, ...fluke, fluke[0]);
+  c.tail = new THREE.Group(); c.tail.add(finish(tb, m)); c.tail.position.z = -0.3; c.g.add(c.tail);
+}
+/** Silverfin: a small sea fish with a forked tail. */
+function silverfinModel(c: Creature) {
+  const pb = new PropBatch(), m = c.mat, K = 0;
+  box8(pb, [[-0.05, -0.1, -0.2], [0.05, -0.1, -0.2], [0.03, -0.05, 0.22], [-0.03, -0.05, 0.22]], [[-0.05, 0.1, -0.2], [0.05, 0.1, -0.2], [0.03, 0.05, 0.22], [-0.03, 0.05, 0.22]], K);
+  const t: P[] = [[0, 0, -0.2], [0, 0.12, -0.38], [0, 0, -0.3], [0, -0.12, -0.38]]; pb.face(t[0], t[1], t[2]); pb.face(t[0], t[2], t[3]); pb.line(K, ...t, t[0]);
+  c.g.add(finish(pb, m));
+}
+/** The colour a creature is drawn in: amber when hostile, olive for a calm Bramble, silver for the shoal fish. */
+const FISH = 0xa8d8e8;
+const baseColor = (c: Creature) => (c.kind === 'silverfin' ? FISH : c.kind === 'bramble' && c.state === 'roam' ? CALM : HOSTILE);
+
 // ---------- spawning ----------
 function make(kind: CreatureKind, p: THREE.Vector3, level: number): Creature {
-  const s = CREATURES[kind], mat = lineMat(kind === 'bramble' ? CALM : HOSTILE), g = new THREE.Group();
+  const s = CREATURES[kind], mat = lineMat(kind === 'bramble' ? CALM : kind === 'silverfin' ? FISH : HOSTILE), g = new THREE.Group();
   const hp = Math.round(s.hp * (1 + level * 0.35));
   const c: Creature = {
     kind, g, mat, p: p.clone(), heading: Math.random() * 6.28, speed: 0, hp, maxHp: hp, r: s.r, flash: 0,
@@ -196,7 +236,8 @@ function make(kind: CreatureKind, p: THREE.Vector3, level: number): Creature {
     pack: null, flank: 0, home: p.clone(), dir: V(Math.random() - 0.5, 0, Math.random() - 0.5).normalize(), level, hurt: false, dmgMul: 1,
     noiseAt: null, orbit: Math.random() * 6.283, bank: 0, prey: null, spotted: false,
   };
-  if (kind === 'ravager') ravagerModel(c); else if (kind === 'bramble') brambleModel(c); else if (kind === 'gnawer') gnawerModel(c); else leechwingModel(c);
+  if (kind === 'ravager') ravagerModel(c); else if (kind === 'bramble') brambleModel(c); else if (kind === 'gnawer') gnawerModel(c);
+  else if (kind === 'skitter') skitterModel(c); else if (kind === 'lurker') lurkerModel(c); else if (kind === 'silverfin') silverfinModel(c); else leechwingModel(c);
   g.position.copy(p); g.rotation.order = 'YXZ'; scene.add(g);
   W.creatures.push(c);
   return c;
@@ -208,6 +249,8 @@ export interface SpawnEnv {
   nearRuin(x: number, z: number): boolean;
   /** Too close to the village or inside a structure. */
   forbidden(x: number, z: number): boolean;
+  /** The water at a point (Terrain.water): the sea creatures keep to 'sea' deep enough for them. */
+  water(x: number, z: number): { level: number; depth: number; kind: string } | null;
 }
 let env: SpawnEnv | null = null, spawnT = 2;
 /**
@@ -219,7 +262,7 @@ const lastNoise = new THREE.Vector3();
 onNoise((at, r) => {
   heat = Math.min(4, heat + r / 55); lastNoise.copy(at); heard = true;
   for (const c of W.creatures) {
-    if (c.kind === 'bramble') continue; // grazers do not care about a bang in the distance
+    if (c.kind === 'bramble' || c.kind === 'skitter' || SWIMMERS.includes(c.kind)) continue; // grazers, fliers and the fish do not care about a bang in the distance
     const reach = c.kind === 'leechwing' ? r * 1.8 : r; // flyers hear it from further and see it from above
     if (Math.hypot(c.p.x - at.x, c.p.z - at.z) > reach) continue;
     if (c.state === 'roam' || c.state === 'investigate') { c.state = 'investigate'; c.noiseAt = at.clone(); c.timer = 14; }
@@ -242,9 +285,20 @@ function trySpawn() {
     const a = drawn ? Math.random() * 6.283 : Math.atan2(fwx, fwz) + (Math.random() - 0.5) * 3.4, d = drawn ? 55 + Math.random() * 25 : 60 + Math.random() * 25;
     const bx = drawn ? lastNoise.x : pos.x, bz = drawn ? lastNoise.z : pos.z, x = bx + Math.sin(a) * d, z = bz + Math.cos(a) * d;
     if (Math.hypot(x - pos.x, z - pos.z) < 40) continue;
+    const w = env.water(x, z);
+    if (w?.kind === 'sea') { // out at sea: a Sea Lurker hunting, or a shoal of Silverfin
+      if (w.depth < 2.5) continue;
+      spawnSea(x, z, w.level, env.danger(x, z));
+      return;
+    }
     if (env.forbidden(x, z)) continue;
     const h = env.ground(x, z), lv = env.danger(x, z), roll = Math.random();
-    if (Math.random() < 0.35) { // gnawers turn up anywhere: fields, woods, ruins, hills, lakesides, even the ice
+    if (lv >= 0.6 && lv < 2.2 && Math.random() < 0.12) { // now and then a flock of Skitterwings in the near wilds
+      const n = 3 + Math.floor(Math.random() * 3);
+      if (!mayspawn(n * 0.3, lv, heat)) return;
+      const flock: Creature[] = [];
+      for (let i = 0; i < n; i++) { const c = make('skitter', V(x + (Math.random() - 0.5) * 6, h + 5 + Math.random() * 3, z + (Math.random() - 0.5) * 6), lv); c.pack = flock; c.flank = Math.random() * 6.283; flock.push(c); }
+    } else if (Math.random() < 0.35) { // gnawers turn up anywhere: fields, woods, ruins, hills, lakesides, even the ice
       const n = lv < 1 ? 2 + (Math.random() < 0.5 ? 1 : 0) : 3 + Math.floor(Math.random() * (1 + Math.min(3, lv)));
       if (!mayspawn(n * 0.5, lv, heat)) return;
       const nest: Creature[] = [];
@@ -274,6 +328,19 @@ function trySpawn() {
     if (drawn) for (const c of W.creatures.slice(before)) if (c.kind !== 'bramble') { c.state = 'investigate'; c.noiseAt = lastNoise.clone(); c.timer = 20; }
     return;
   }
+}
+
+/** A sea spawn at (x, z): a Sea Lurker (from danger 1; two further out) or a shoal of Silverfin. */
+function spawnSea(x: number, z: number, level: number, lv: number) {
+  if (lv >= 1 && Math.random() < 0.45) {
+    const n = lv > 4 && Math.random() < 0.35 ? 2 : 1;
+    if (!mayspawn(1.2 * n, lv, heat)) return;
+    for (let i = 0; i < n; i++) make('lurker', V(x + i * 6, level - LURK_DEPTH, z), lv);
+    return;
+  }
+  if (!mayspawn(0.1, lv, heat)) return;
+  const shoal: Creature[] = [], n = 5 + Math.floor(Math.random() * 5);
+  for (let i = 0; i < n; i++) { const c = make('silverfin', V(x + (Math.random() - 0.5) * 5, level - FIN_DEPTH, z + (Math.random() - 0.5) * 5), lv); c.pack = shoal; c.flank = Math.random() * 6.283; shoal.push(c); }
 }
 
 // ---------- behaviour ----------
@@ -502,6 +569,136 @@ function gnawer(c: Creature, dt: number, to: THREE.Vector3, dist: number, safe: 
   }
 }
 
+/**
+ * Skitterwings: a flock flutters in jittery loops a few metres up round where it settled. Once one sees you (within
+ * ~28 m) the flock follows you and, one or two at a time, they swoop down, peck and flap back up. Harmless alone,
+ * a nuisance in numbers; a single blow or shot brings one down.
+ */
+function skitter(c: Creature, dt: number, to: THREE.Vector3, dist: number, safe: boolean) {
+  const s = CREATURES.skitter, g = env!.ground(c.p.x, c.p.z), flock = c.pack ?? [c];
+  c.timer -= dt;
+  const fly = (tx: number, ty: number, tz: number, speed: number, turn: number) => {
+    const want = V(tx - c.p.x, ty - c.p.y, tz - c.p.z), L = want.length();
+    if (L > 0.01) want.divideScalar(L);
+    want.x += (Math.random() - 0.5) * 0.6; want.y += (Math.random() - 0.5) * 0.4; want.z += (Math.random() - 0.5) * 0.6; // the flutter
+    c.dir.lerp(want.normalize(), Math.min(1, turn * dt)).normalize();
+    c.p.addScaledVector(c.dir, speed * dt);
+    const floor = env!.ground(c.p.x, c.p.z) + 0.8;
+    if (c.p.y < floor) { c.p.y = floor; if (c.dir.y < 0) c.dir.y = 0.2; }
+    c.heading = Math.atan2(c.dir.x, c.dir.z); c.speed = speed;
+  };
+  const sees = () => !safe && dist < 28 && rayWorld(c.p, to.clone().normalize(), dist) >= dist - 0.5;
+  if (safe && c.state !== 'roam') { c.state = 'roam'; c.home.set(c.p.x, c.home.y, c.p.z); }
+  switch (c.state) {
+    case 'roam': {
+      c.orbit += dt * (1.2 + (c.flank % 1));
+      fly(c.home.x + Math.cos(c.orbit) * 5, g + 5 + Math.sin(c.orbit * 1.7) * 1.5, c.home.z + Math.sin(c.orbit * 1.3) * 5, 5, 3);
+      if (c.timer <= 0) { c.timer = 0.5; if (sees()) for (const m of flock) { m.state = 'hunt'; m.timer = 1 + Math.random() * 3; } }
+      break;
+    }
+    case 'hunt': { // follow above you, then swoop, one or two at a time
+      c.orbit += dt * 1.6;
+      fly(G.pos.x + Math.cos(c.orbit + c.flank) * 6, G.pos.y + 5 + Math.sin(c.orbit * 2) * 1.2, G.pos.z + Math.sin(c.orbit + c.flank) * 6, 9, 3);
+      if (c.timer <= 0 && flock.filter((m) => m.state === 'dive').length < 2) { c.state = 'dive'; c.timer = 2.5; }
+      if (dist > 60) { c.state = 'roam'; c.home.set(c.p.x, c.home.y, c.p.z); }
+      break;
+    }
+    case 'dive':
+      fly(G.pos.x, G.pos.y + 1.4, G.pos.z, s.speed, 6);
+      if (dist < 1.2) { bite((s.damage + c.level * 0.5) * c.dmgMul); c.state = 'climb'; c.timer = 1.4; }
+      else if (c.timer <= 0) { c.state = 'climb'; c.timer = 1; }
+      break;
+    case 'climb':
+      fly(c.p.x - to.x, G.pos.y + 7, c.p.z - to.z, 9, 4);
+      if (c.timer <= 0) { c.state = 'hunt'; c.timer = 2 + Math.random() * 4; }
+      break;
+    default: c.state = 'roam';
+  }
+}
+
+/** Depth of the sea creatures' bodies under the surface (the Lurker's fin and the fish's backs just break it). */
+const LURK_DEPTH = 0.55, FIN_DEPTH = 0.35;
+/** Swim over the sea towards a direction, keeping to water at least `min` deep (turning along the shore). */
+function swim(c: Creature, dx: number, dz: number, speed: number, dt: number, depth: number, min: number) {
+  const L = Math.hypot(dx, dz);
+  c.speed = 0;
+  if (L < 1e-3 || !env) return;
+  const ok = (x: number, z: number) => { const w = env!.water(x, z); return !!w && w.kind === 'sea' && w.depth >= min; };
+  let hx = dx / L, hz = dz / L;
+  if (!ok(c.p.x + hx * 3, c.p.z + hz * 3)) { // the shallows ahead: turn along them
+    let found = false;
+    for (const a of [0.6, -0.6, 1.2, -1.2, 2, -2, 3]) { const cx = hx * Math.cos(a) - hz * Math.sin(a), cz = hx * Math.sin(a) + hz * Math.cos(a); if (ok(c.p.x + cx * 3, c.p.z + cz * 3)) { hx = cx; hz = cz; found = true; break; } }
+    if (!found) return;
+  }
+  c.p.x += hx * speed * dt; c.p.z += hz * speed * dt;
+  const w = env.water(c.p.x, c.p.z);
+  if (w) c.p.y += (w.level - depth - c.p.y) * Math.min(1, dt * 4);
+  let dh = Math.atan2(hx, hz) - c.heading; dh = Math.atan2(Math.sin(dh), Math.cos(dh));
+  c.heading += dh * Math.min(1, dt * 3);
+  c.speed = speed;
+}
+/** Is the player in the sea (swimming or wading), not dry aboard a boat or on a pier? */
+function playerInSea(): boolean {
+  const w = env!.water(G.pos.x, G.pos.z);
+  return !!w && w.kind === 'sea' && G.pos.y < w.level + 0.3;
+}
+/**
+ * Sea Lurkers roam the open sea with the dorsal fin just out of the water. Someone swimming within ~45 m is hunted:
+ * the Lurker circles in, then lunges and bites, and pulls away to come again. A boat it only circles, showing its fin.
+ */
+function lurker(c: Creature, dt: number, to: THREE.Vector3, _dist: number, safe: boolean) {
+  const s = CREATURES.lurker, speed = s.speed + Math.min(2, c.level * 0.3), flat = Math.hypot(to.x, to.z), prey = !safe && playerInSea();
+  c.timer -= dt;
+  switch (c.state) {
+    case 'roam': {
+      if (c.timer <= 0) { c.dir.set(Math.random() - 0.5, 0, Math.random() - 0.5); c.timer = 4 + Math.random() * 5; }
+      const back = c.home.clone().sub(c.p); back.y = 0;
+      if (back.length() > 40) c.dir.copy(back);
+      swim(c, c.dir.x, c.dir.z, 2.5, dt, LURK_DEPTH, 1.6);
+      if (flat < 45 && !safe) { c.state = 'stalk'; c.timer = prey ? 3 + Math.random() * 3 : 8; if (prey) logLine('A fin cuts the water near you!'); }
+      break;
+    }
+    case 'stalk': { // circle the swimmer (or the boat), closing in
+      c.orbit += dt * 0.5;
+      const R = prey ? 4 + Math.max(0, c.timer) * 2 : 9;
+      swim(c, G.pos.x + Math.cos(c.orbit) * R - c.p.x, G.pos.z + Math.sin(c.orbit) * R - c.p.z, speed * 0.8, dt, LURK_DEPTH, 1.6);
+      if (prey && c.timer <= 0) { c.state = 'dash'; c.timer = 2.5; }
+      if (!prey && c.timer <= 0) { c.state = 'roam'; c.home.set(c.p.x, c.home.y, c.p.z); c.timer = 3; }
+      if (flat > 70) { c.state = 'roam'; c.home.set(c.p.x, c.home.y, c.p.z); }
+      break;
+    }
+    case 'dash':
+      swim(c, to.x, to.z, speed * 1.5, dt, LURK_DEPTH * 0.5, 1.2);
+      if (prey && flat < 1.9) { bite((s.damage + 3 * c.level) * c.dmgMul); c.state = 'retreat'; c.timer = 2; }
+      else if (c.timer <= 0 || !prey) { c.state = 'stalk'; c.timer = 3; }
+      break;
+    case 'retreat':
+      swim(c, -to.x, -to.z, speed, dt, LURK_DEPTH, 1.6);
+      if (c.timer <= 0) { c.state = 'stalk'; c.timer = 2 + Math.random() * 3; }
+      break;
+    default: c.state = 'roam';
+  }
+  if (c.tail) c.tail.rotation.y = Math.sin(c.anim * 1.2) * (0.25 + c.speed * 0.03);
+}
+/** Silverfin: a shoal drifts and turns together; anyone close sends it darting away. Now and then one leaps. */
+function silverfin(c: Creature, dt: number, to: THREE.Vector3) {
+  const shoal = c.pack ?? [c], lead = shoal[0];
+  c.timer -= dt;
+  if (c === lead && c.timer <= 0) { c.dir.set(Math.random() - 0.5, 0, Math.random() - 0.5); c.timer = 3 + Math.random() * 4; }
+  const scared = Math.hypot(to.x, to.z) < 12 || c.hurt;
+  const dx = scared ? -to.x : lead.dir.x + (lead.p.x - c.p.x) * 0.3 + Math.cos(c.flank) * 0.2, dz = scared ? -to.z : lead.dir.z + (lead.p.z - c.p.z) * 0.3 + Math.sin(c.flank) * 0.2;
+  if (c.state === 'climb') { // a leap: out of the water in a little arc
+    c.orbit += dt * 1.8;
+    const w = env!.water(c.p.x, c.p.z), k = Math.min(1, c.orbit);
+    c.p.x += Math.sin(c.heading) * 3 * dt; c.p.z += Math.cos(c.heading) * 3 * dt;
+    if (w) c.p.y = w.level - FIN_DEPTH + Math.sin(k * Math.PI) * 1.2;
+    if (k >= 1) c.state = 'roam';
+    return;
+  }
+  swim(c, dx, dz, scared ? CREATURES.silverfin.speed : 1.8, dt, FIN_DEPTH, 1.2);
+  if (Math.random() < dt * 0.05) { c.state = 'climb'; c.orbit = 0; }
+}
+
 /** Spawning, behaviour and animation of every creature (open world only). */
 export function updateCreatures(dt: number, time: number) {
   if (!env) return;
@@ -511,7 +708,10 @@ export function updateCreatures(dt: number, time: number) {
   for (let i = W.creatures.length - 1; i >= 0; i--) {
     const c = W.creatures[i], to = head.clone().sub(c.p), dist = to.length();
     if (Math.hypot(to.x, to.z) > (c.questId ? 240 : c.kind === 'leechwing' ? 220 : 130)) { removeCreature(c); continue; }
-    if (c.state === 'investigate' && c.kind !== 'leechwing') investigate(c, dt, to, dist, safe);
+    if (c.state === 'investigate' && (c.kind === 'ravager' || c.kind === 'bramble' || c.kind === 'gnawer')) investigate(c, dt, to, dist, safe);
+    else if (c.kind === 'skitter') skitter(c, dt, to, dist, safe);
+    else if (c.kind === 'lurker') lurker(c, dt, to, dist, safe);
+    else if (c.kind === 'silverfin') silverfin(c, dt, to);
     else if (c.kind === 'ravager') ravager(c, dt, to, dist, safe);
     else if (c.kind === 'bramble') bramble(c, dt, to, dist, safe);
     else if (c.kind === 'gnawer') gnawer(c, dt, to, dist, safe);
@@ -526,7 +726,12 @@ function animate(c: Creature, dt: number, time: number) {
   const sw = c.speed > 0.1 ? Math.sin(c.anim * 1.6) * Math.min(0.7, 0.2 + c.speed * 0.06) : 0;
   c.legs.forEach((l, i) => { l.rotation.x = (i === 0 || i === 3 ? 1 : -1) * sw; });
   if (c.tail) c.tail.rotation.y = Math.sin(time * (c.state === 'hunt' ? 12 : 4) + c.flank) * (c.state === 'hunt' ? 0.45 : 0.25);
-  if (c.wings.length) {
+  if (c.kind === 'skitter') { // fast beating wings, nose along the flight path
+    const beat = 0.2 + Math.sin(time * 30 + c.flank) * 0.7;
+    c.wings[0].rotation.z = -beat; c.wings[1].rotation.z = beat;
+    c.g.rotation.x = -Math.asin(Math.max(-1, Math.min(1, c.dir.y))) * 0.6;
+  } else if (c.kind === 'silverfin') c.g.rotation.x = c.state === 'climb' ? -Math.cos(Math.min(1, c.orbit) * Math.PI) * 0.7 : 0;
+  else if (c.wings.length) {
     // gliding on outstretched wings, beating hard when climbing, folded back in a dive; nose follows the flight path
     const beat = c.state === 'climb' ? 0.5 + Math.sin(time * 11) * 0.45 : c.state === 'stalk' ? 0.25 + Math.sin(time * 5) * 0.2 : 0.12 + Math.sin(time * 2.2) * 0.1;
     const lift = c.state === 'dive' ? 0.95 : beat;
@@ -535,7 +740,7 @@ function animate(c: Creature, dt: number, time: number) {
   }
   c.flash -= dt;
   if (c.flash > 0) c.mat.color.setHex(0xffffff);
-  else c.mat.color.setHex(c.kind === 'bramble' && c.state === 'roam' ? CALM : HOSTILE);
+  else c.mat.color.setHex(baseColor(c));
 }
 
 // ---------- damage ----------
@@ -549,11 +754,16 @@ export function hurtCreature(c: Creature, dmg: number) {
   if (c.kind === 'ravager' && c.state === 'roam') for (const m of c.pack ?? [c]) { m.state = 'hunt'; m.timer = 2; }
   if (c.kind === 'leechwing' && (c.state === 'roam' || c.state === 'investigate')) { c.prey = null; c.spotted = true; c.state = 'stalk'; c.timer = 2; }
   if (c.kind === 'gnawer') for (const m of c.pack ?? [c]) { m.hurt = true; if (m.state === 'roam') { m.state = 'hunt'; m.timer = 0; } }
+  if (c.kind === 'skitter') for (const m of c.pack ?? [c]) if (m.state === 'roam') { m.state = 'hunt'; m.timer = Math.random() * 2; }
+  if (c.kind === 'lurker' && (c.state === 'roam' || c.state === 'stalk')) { c.state = 'stalk'; c.timer = 1; }
+  if (c.kind === 'silverfin') for (const m of c.pack ?? [c]) m.hurt = true;
   if (c.hp > 0) return;
   const at = c.p.clone(), s = CREATURES[c.kind];
-  burst(at, HOSTILE, 12, 1.1);
+  const sea = SWIMMERS.includes(c.kind) ? env?.water(at.x, at.z) : null;
+  if (sea) at.y = sea.level + 0.47; // what a sea creature leaves floats on the surface
+  burst(at, baseColor(c), 12, 1.1);
   for (let i = 0; i < s.crystals; i++) dropCrystal(at);
-  if (Math.random() < 0.15) dropPickup(at, 'medkit');
+  if (c.kind !== 'silverfin' && Math.random() < 0.15) dropPickup(at, 'medkit');
   for (const [k, chance, lo, hi] of DROPS[c.kind]) if (Math.random() < chance) {
     const n = lo + Math.floor(Math.random() * (hi - lo + 1));
     for (let i = 0; i < n; i++) dropPickup(V(at.x + (Math.random() - 0.5) * 1.2, at.y, at.z + (Math.random() - 0.5) * 1.2), k);
@@ -577,7 +787,7 @@ function fallCreature(c: Creature) {
   const away = V(c.p.x - G.pos.x, 0, c.p.z - G.pos.z).normalize();
   const slide = away.multiplyScalar(c.kind === 'bramble' ? 0.8 : 1.6 + c.speed * 0.25);
   c.mat.color.setHex(0xffffff);
-  dead.push({ c, t: 0, side: Math.random() < 0.5 ? 1 : -1, land: -1, vy: c.kind === 'leechwing' ? c.dir.y * CREATURES.leechwing.speed * 0.3 : 0,
+  dead.push({ c, t: 0, side: Math.random() < 0.5 ? 1 : -1, land: -1, vy: FLYERS.includes(c.kind) ? c.dir.y * CREATURES[c.kind].speed * 0.3 : 0,
     spin: V((Math.random() - 0.5) * 7, 0, (Math.random() - 0.5) * 9), slide, y0: c.p.y });
 }
 const ease = (t: number) => t * t * (3 - 2 * t);
@@ -586,7 +796,13 @@ function updateDead(dt: number) {
     const d = dead[i], c = d.c;
     d.t += dt;
     const t = d.t, gy = env ? env.ground(c.p.x, c.p.z) : d.y0 - CREATURES[c.kind].lift;
-    if (c.kind === 'leechwing') {
+    if (SWIMMERS.includes(c.kind)) { // belly up, floating to the surface, then down to the bottom
+      const w = env?.water(c.p.x, c.p.z), k = ease(Math.min(1, t / 0.8));
+      c.g.rotation.z = d.side * Math.PI * k;
+      if (w && d.land < 0) c.p.y += (w.level - 0.1 - c.p.y) * Math.min(1, dt * 2);
+      if (d.land < 0 && k >= 1) d.land = t;
+      if (c.tail) c.tail.rotation.y = Math.sin(t * 8) * 0.3 * Math.exp(-t * 2);
+    } else if (FLYERS.includes(c.kind)) {
       if (d.land < 0) { // falling, tumbling, the wings flapping weakly
         d.vy -= 20 * dt; c.p.y += d.vy * dt; c.p.addScaledVector(d.slide, dt * 3);
         c.g.rotation.x += d.spin.x * dt; c.g.rotation.z += d.spin.z * dt;
@@ -619,7 +835,7 @@ function updateDead(dt: number) {
     }
     c.mat.color.setHex(t < 0.2 ? 0xffffff : DRAINED);
     const lie = d.land < 0 ? 0 : t - d.land;
-    if (lie > LIE_C) c.p.y -= dt * 0.8; // sinking
+    if (lie > LIE_C) c.p.y -= dt * (SWIMMERS.includes(c.kind) ? 0.5 : 0.8); // sinking
     c.g.position.copy(c.p);
     if (lie > LIE_C + SINK_C || t > 20) { removeCreature(c); dead.splice(i, 1); }
   }
@@ -637,6 +853,17 @@ export function spawnCreatureNear(kind: CreatureKind, d = 18) {
   if (!env) return false;
   const x = G.pos.x - Math.sin(G.yaw) * d, z = G.pos.z - Math.cos(G.yaw) * d;
   const lv = env.danger(x, z);
+  if (kind === 'skitter') { const flock: Creature[] = []; for (let i = 0; i < 4; i++) { const c = make(kind, V(x + (Math.random() - 0.5) * 5, env.ground(x, z) + 5, z + (Math.random() - 0.5) * 5), lv); c.pack = flock; c.flank = Math.random() * 6.283; flock.push(c); } return true; }
+  if (SWIMMERS.includes(kind)) { // the nearest deep sea round you
+    for (let r = 10; r <= 80; r += 10) for (let a = 0; a < 6.283; a += 0.5) {
+      const sx = G.pos.x + Math.sin(a) * r, sz = G.pos.z + Math.cos(a) * r, w = env.water(sx, sz);
+      if (w?.kind !== 'sea' || w.depth < 2.5) continue;
+      if (kind === 'lurker') make('lurker', V(sx, w.level - LURK_DEPTH, sz), lv);
+      else { const shoal: Creature[] = []; for (let i = 0; i < 7; i++) { const c = make('silverfin', V(sx + (Math.random() - 0.5) * 4, w.level - FIN_DEPTH, sz + (Math.random() - 0.5) * 4), lv); c.pack = shoal; c.flank = Math.random() * 6.283; shoal.push(c); } }
+      return true;
+    }
+    return false;
+  }
   if (kind === 'gnawer') { const nest: Creature[] = []; for (let i = 0; i < 5; i++) { const px = x + (Math.random() - 0.5) * 4, pz = z + (Math.random() - 0.5) * 4, c = make(kind, V(px, env.ground(px, pz) + CREATURES.gnawer.lift, pz), lv); c.pack = nest; c.flank = Math.random() * 6.283; nest.push(c); } return true; }
   if (kind === 'ravager') { const pack: Creature[] = []; for (let i = 0; i < 3; i++) { const c = make(kind, V(x + i * 1.5, env.ground(x + i * 1.5, z) + CREATURES.ravager.lift, z), lv); c.flank = (i - 1) * 1.1; c.pack = pack; pack.push(c); } }
   else make(kind, V(x, env.ground(x, z) + (kind === 'leechwing' ? 12 : CREATURES[kind].lift), z), lv);

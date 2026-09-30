@@ -1,6 +1,6 @@
 # GridWorld: opis gry, cel, plan i historia zmian
 
-Stan na wersję **0.101.1**. Ten dokument opisuje, czym jest GridWorld, jaki jest cel gry, co już w niej jest, czego jeszcze nie ma, dokąd zmierza i jak powstawała, wersja po wersji. Nazwy z gry (przedmioty, miejsca, postacie) są po angielsku, tak jak na ekranie.
+Stan na wersję **0.102.0**. Ten dokument opisuje, czym jest GridWorld, jaki jest cel gry, co już w niej jest, czego jeszcze nie ma, dokąd zmierza i jak powstawała, wersja po wersji. Nazwy z gry (przedmioty, miejsca, postacie) są po angielsku, tak jak na ekranie.
 
 ---
 
@@ -205,6 +205,9 @@ Gra jest pomyślana jako **kooperacja do 8 graczy** na autorytatywnym serwerze (
   - **Bramble**: terytorialny roślinożerca, szarżuje, z przodu opancerzony; daje mięso;
   - **Leechwing**: krąży, poluje z powietrza, nurkuje;
   - **Gnawer**: szczurze gniazda, które rzucają się rojem.
+  - **Skitterwing**: małe latające stworki w stadkach, czasem w pierwszej strefie; pikują i dziobią.
+  - **Sea Lurker** (morze): drapieżnik z płetwą nad wodą, atakuje pływających; łódź tylko okrąża.
+  - **Silverfin** (morze): niegroźne ławice ryb, uciekają i wyskakują z wody; dają surową rybę.
 - **Roboty** (arkusz RD):
   - Scout Automaton;
   - Guardian Drone (działo energetyczne);
@@ -554,3 +557,4 @@ Pełne notatki (po angielsku) są w grze pod przyciskiem **Changelog** w menu g�
 - **0.100.0 Zbroje, plecaki i egzoszkielety.** Dwa nowe sloty na ciele (Pack i Frame). Trzy większe plecaki (55, 70 i 90 L), dwa egzoszkielety (większy udźwig, szybszy chód, mniejsze zużycie staminy), zbroja w trzech rodzajach: skórzana, pleciona i kompozytowa. Nowe technologie: Woven Armour, Composite Armour i Exoframes.
 - **0.101.0 Narzędzia w rękach.** Siekiera, kilof i narzędzia budowlane działają tylko trzymane w rękach, nie z plecaka; E przy drzewie lub skale bierze narzędzie do rąk, a trzymaną siekierę lub kilof widać w dłoniach.
 - **0.101.1 Pełne modele narzędzi.** Siekiera, kilof i pozostałe narzędzia ręczne mają pełne (nieprześwitujące) modele, w dłoni i leżące na ziemi; każde narzędzie ma własny kształt w ręku.
+- **0.102.0 Skrzydła i płetwy.** Stadka małych Skitterwingów czasem pojawiają się w pierwszej strefie zagrożenia: trzepoczą nisko, pikują i dziobią. W morzu żyją Sea Lurkery (drapieżniki z płetwą nad wodą, atakują pływających, łódź tylko okrążają) i ławice Silverfin (niegroźne, wyskakują z wody). Nowe jedzenie: surowa ryba.
