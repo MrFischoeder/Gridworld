@@ -14,6 +14,7 @@ import { recentDead } from './villageraid';
 import * as THREE from 'three';
 import { setCrash, dropCrash, podHit } from './crashpod';
 import { installHit, dropInstalls } from './installs';
+import { cityHit, cityRay, dropCities, cityName } from './cities';
 import { toxicHit, dropToxic, toxicName } from './toxic';
 import { installAt } from '../gen/installs';
 import { drawFarms } from './farms';
@@ -524,8 +525,8 @@ export function openWorld(x: number, z: number) {
   OW.terrain.setClaims(G.char.claims);
   closeWorld();
   G.water = (px, pz) => (inStructure(px, pz) ? null : OW.terrain!.water(px, pz));
-  G.space = space; G.ground = groundAt; G.obstacle = (px, py, pz, r) => treeHit(px, py, pz, r) || vehicleHit(px, py, pz, r) || caravanHit(px, py, pz, r) || ambushHit(px, py, pz, r) || baseHit(px, py, pz, r) || ladderHit(px, py, pz, r) || walkHit(px, py, pz, r) || guardHit(px, py, pz, r) || houseHit(px, py, pz, r) || doorHit(px, py, pz, r) || podHit(px, py, pz, r) || installHit(px, py, pz, r) || hallHit(px, py, pz, r) || bridgeHit(px, py, pz, r) || pierHit(px, py, pz, r) || boatHit(px, py, pz, r) || toxicHit(px, py, pz, r);
-  G.floor = (x, y, z) => Math.max(baseFloor(x, y, z), ladderFloor(x, y, z), walkFloor(x, y, z), bridgeFloor(x, y, z), pierFloor(x, y, z)); G.rayBlock = (o, d, t) => doorRay(o, d, houseRay(o, d, baseRay(o, d, t))); G.solid = (p) => baseSolid(p) || houseSolid(p);
+  G.space = space; G.ground = groundAt; G.obstacle = (px, py, pz, r) => treeHit(px, py, pz, r) || vehicleHit(px, py, pz, r) || caravanHit(px, py, pz, r) || ambushHit(px, py, pz, r) || baseHit(px, py, pz, r) || ladderHit(px, py, pz, r) || walkHit(px, py, pz, r) || guardHit(px, py, pz, r) || houseHit(px, py, pz, r) || doorHit(px, py, pz, r) || podHit(px, py, pz, r) || installHit(px, py, pz, r) || cityHit(px, py, pz, r) || hallHit(px, py, pz, r) || bridgeHit(px, py, pz, r) || pierHit(px, py, pz, r) || boatHit(px, py, pz, r) || toxicHit(px, py, pz, r);
+  G.floor = (x, y, z) => Math.max(baseFloor(x, y, z), ladderFloor(x, y, z), walkFloor(x, y, z), bridgeFloor(x, y, z), pierFloor(x, y, z)); G.rayBlock = (o, d, t) => cityRay(o, d, doorRay(o, d, houseRay(o, d, baseRay(o, d, t)))); G.solid = (p) => baseSolid(p) || houseSolid(p);
   foeRules.blocked = (p) => nearVillage(p.x, p.z) < 2;
   foeRules.playerSafe = () => inVillage(G.pos.x, G.pos.z) && !raidHere(); // no safe place while bandits raid it
   foeRules.ground = (px, pz) => OW.terrain!.heightAt(px, pz);
@@ -540,7 +541,7 @@ export function openWorld(x: number, z: number) {
   spawnVehicles({
     height: (px, pz) => Math.max(T.heightAt(px, pz), bridgeDeck(px, pz) ?? -Infinity, pierDeck(px, pz) ?? -Infinity), // over a bridge or a pier, its deck
     water: (px, pz) => (bridgeDeck(px, pz) !== null || pierDeck(px, pz) !== null ? 0 : T.water(px, pz)?.depth ?? 0),
-    blocked: (px, pz, r) => structBlocks(px, pz, r, T.heightAt(px, pz)) || treeHit(px, T.heightAt(px, pz) + 0.5, pz, r) || ambushHit(px, 0, pz, r) || bridgeHit(px, (bridgeDeck(px, pz) ?? -99) + 0.5, pz, r), // a bridge's rails keep you on its deck
+    blocked: (px, pz, r) => structBlocks(px, pz, r, T.heightAt(px, pz)) || treeHit(px, T.heightAt(px, pz) + 0.5, pz, r) || ambushHit(px, 0, pz, r) || cityHit(px, T.heightAt(px, pz) + 0.5, pz, r) || bridgeHit(px, (bridgeDeck(px, pz) ?? -99) + 0.5, pz, r), // a bridge's rails keep you on its deck
   });
   syncFound(T, x, z);
   const envHooks = {
@@ -548,7 +549,7 @@ export function openWorld(x: number, z: number) {
     danger,
     nearRuin: (px: number, pz: number) => poisNear(T.world, px, pz, 90).some((p) => (p.type === 'ruin' || p.type === 'wreck') && rectDist(p.rect, px, pz) < 60),
     water: (px: number, pz: number) => T.water(px, pz),
-    forbidden: (px: number, pz: number) => nearVillage(px, pz) < 35 || baseHit(px, T.heightAt(px, pz), pz, 0.7) || (T.water(px, pz)?.depth ?? 0) > 0.5 || [...OW.structs.values()].some((s) => rectDist(s.poi.rect, px, pz) < 1),
+    forbidden: (px: number, pz: number) => nearVillage(px, pz) < 35 || baseHit(px, T.heightAt(px, pz), pz, 0.7) || cityHit(px, T.heightAt(px, pz) + 0.5, pz, 0.7) || (T.water(px, pz)?.depth ?? 0) > 0.5 || [...OW.structs.values()].some((s) => rectDist(s.poi.rect, px, pz) < 1),
   };
   setCreatureEnv(envHooks);
   setRobotEnv(envHooks);
@@ -558,7 +559,7 @@ export function openWorld(x: number, z: number) {
   for (const s of OW.structs.values()) if (s.camp) spawnCamp(s.camp);
 }
 export function closeWorld() {
-  clearVehicles(); dropCrash(); dropInstalls(); dropToxic(); clearBridges(); clearPiers();
+  clearVehicles(); dropCrash(); dropInstalls(); dropCities(); dropToxic(); clearBridges(); clearPiers();
   setCreatureEnv(null); clearCreatures();
   setRobotEnv(null); clearRobots();
   setBanditEnv(null); clearBandits();
@@ -641,6 +642,7 @@ export function placeName(x: number, z: number): string {
   { const segs = OW.terrain!.chunkFeatures(Math.floor(x / CHUNK), Math.floor(z / CHUNK)).rivers, r = riverNear(segs, x, z); if (r && r.d < r.half + 25) return riversOf(OW.terrain!.world).list[r.seg.r].name + tag; }
   for (const cv of loadedCaves()) if (Math.hypot(cv.x - x, cv.z - z) < 30) return cv.name + tag;
   { const ins = installAt(OW.terrain!, x, z, 25); if (ins) return ins.name + tag; }
+  { const cn = cityName(x, z); if (cn) return cn + tag; }
   { const f = toxicName(x, z); if (f) return f + tag; }
   for (const r of OW.terrain!.chunkFeatures(Math.floor(x / CHUNK), Math.floor(z / CHUNK)).roads) {
     if (!r.h) continue;

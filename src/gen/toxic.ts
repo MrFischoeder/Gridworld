@@ -13,6 +13,7 @@ import { seaMask, islesNear } from './seas';
 import { naturalHeight } from './heights';
 import { mountainMask } from './mountains';
 import { nearRiver } from './rivers';
+import { inCity } from './cities';
 import { regionRoads, nearestOnRoad } from './roads';
 import type { ItemKey } from '../data/items';
 
@@ -81,6 +82,7 @@ function landIn(world: number, rx: number, rz: number): FogZone | null {
   for (let a = 0; a < 6.28; a += 0.785) if (Math.abs(naturalHeight(world, x + Math.cos(a) * FOG.site, z + Math.sin(a) * FOG.site) - y) > 3) return null; // the site wants level ground
   if (nearRiver(world, x, z, FOG.site + 20)) return null;
   if (villageDist(world, x, z, r + FOG.village) < r + FOG.village) return null;
+  if (inCity(world, x, z, r + 100)) return null;
   if (poisNear(world, x, z, r + FOG.place).some((p) => p.type === 'camp' || rectDist(p.rect, x, z) < FOG.site + FOG.place)) return null; // ruins and wrecks may lie in the fog, not under the site
   for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) for (const rd of regionRoads(world, rx + i, rz + j)) if (nearestOnRoad(rd, x, z)[0] < r + 20) return null;
   return { id: `fog:${rx}:${rz}`, kind: 'land', x, z, r, y, yaw: u01(world, rx, rz, 0xf075) * Math.PI * 2, site: (['depot', 'lab', 'probe'] as const)[hash(world, rx, rz, 0xf076) % 3], name: LAND_NAMES[hash(world, rx, rz, 0xf077) % LAND_NAMES.length] };

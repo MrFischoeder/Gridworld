@@ -5,6 +5,7 @@ import { hash, rng, rangeInt, DIRV, type Dir } from '../core/rng';
 import { onMountain } from './mountains';
 import { inSea } from './seas';
 import { nearRiver } from './rivers';
+import { inCity, CITY } from './cities';
 
 export const REGION = 256, CHUNK = 32;
 
@@ -99,6 +100,7 @@ function candidate(world: number, gx: number, gz: number): [number, number] | nu
   else if (polarRegion(rz) || polarRegion(rz + Math.sign(rz))) out = null;
   else if (Math.max(Math.abs(wrapR(rx)), Math.abs(rz)) < 6) out = null; // keep the start region to Gridholm
   else if (onMountain(world, wrapR(rx) * REGION, rz * REGION, 90) || inSea(world, wrapR(rx) * REGION, rz * REGION, 160)) out = null; // no village in the mountains or the sea
+  else if (inCity(world, wrapR(rx) * REGION, rz * REGION, CITY.village)) out = null; // nor in a dead city
   candCache.set(k, out);
   return out;
 }
@@ -242,7 +244,7 @@ function baseInfo(world: number, rx: number, rz: number): RegionInfo {
     }
   } else if (R() < (Math.abs(rx) <= 1 && Math.abs(rz) <= 1 ? 0.4 : 0.5)) {
     const x = cx + ri(-64, 64), z = cz + ri(-64, 64); // (kept in so neighbouring temples' grounds never meet)
-    if (!onMountain(world, x, z, 60) && !inSea(world, x, z, 80) && !nearRiver(world, x, z, 110)) pois.push(ruinAt(rx, rz, 1, x, z, R));
+    if (!onMountain(world, x, z, 60) && !inSea(world, x, z, 80) && !nearRiver(world, x, z, 110) && !inCity(world, x, z, CITY.place)) pois.push(ruinAt(rx, rz, 1, x, z, R));
   }
   r = { rx, rz, pois, forest, rough };
   baseCache.set(key, r);
@@ -269,7 +271,7 @@ export function regionInfo(world: number, rx: number, rz: number): RegionInfo {
       // camps keep well out of every village's calm surroundings (see gen/danger.ts)
       if (worldDist(x, z, 0, 0) < 480) continue;
       if (around.some((p) => worldDist(p.x, p.z, x, z) < (p.type === 'village' ? 480 : 130))) continue;
-      if (onMountain(world, x, z, 45) || inSea(world, x, z, 60) || nearRiver(world, x, z, 90)) continue;
+      if (onMountain(world, x, z, 45) || inSea(world, x, z, 60) || nearRiver(world, x, z, 90) || inCity(world, x, z, CITY.place)) continue;
       pois.push(campAt(rx, rz, x, z, Rc)); break;
     }
   }
@@ -282,7 +284,7 @@ export function regionInfo(world: number, rx: number, rz: number): RegionInfo {
       const x = cx + (Rw() - 0.5) * 150, z = cz + (Rw() - 0.5) * 150;
       if (worldDist(x, z, 0, 0) < 400) continue;
       if (around.some((p) => worldDist(p.x, p.z, x, z) < (p.type === 'village' ? 400 : 110)) || pois.some((p) => worldDist(p.x, p.z, x, z) < 110)) continue;
-      if (onMountain(world, x, z, 60) || inSea(world, x, z, 80) || nearRiver(world, x, z, 110)) continue;
+      if (onMountain(world, x, z, 60) || inSea(world, x, z, 80) || nearRiver(world, x, z, 110) || inCity(world, x, z, CITY.place)) continue;
       pois.push(wreckAt(rx, rz, x, z, Rw)); break;
     }
   }

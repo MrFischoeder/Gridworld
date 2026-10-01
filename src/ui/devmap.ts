@@ -9,6 +9,7 @@ import { seaMask } from '../gen/seas';
 import { riversOf } from '../gen/rivers';
 import { regionFog, type FogZone } from '../gen/toxic';
 import { teleportTo } from '../world/level';
+import { citySites } from '../gen/cities';
 import { $, logLine } from './hud';
 import { lockPointer } from './input';
 
@@ -110,6 +111,13 @@ function draw() {
     if (view.mpp < 25) ctx.fillText(f.name, sx, sy - r - 4);
     const d = Math.hypot(sx - mouse.x, sy - mouse.y);
     if (d < Math.max(fd, r) && d < fd + r) { fd = d; hoverFog = f; }
+  }
+  // the dead cities: a pale grey-green disc as big as the city
+  for (const c of citySites(G.char.world)) {
+    const [sx, sy] = toScreen(c.x, c.z), r = Math.max(5, c.r / view.mpp);
+    if (sx < -r || sy < -r || sx > W + r || sy > H + r) continue;
+    ctx.strokeStyle = ctx.fillStyle = '#9ad8a8'; ctx.globalAlpha = 0.2; ctx.beginPath(); ctx.arc(sx, sy, r, 0, 6.283); ctx.fill(); ctx.globalAlpha = 1; ctx.stroke();
+    ctx.fillText(c.name + ' (' + c.pattern + ')', sx, sy - r - 4);
   }
   // places
   ctx.font = '15px VT323, monospace'; ctx.textAlign = 'center';

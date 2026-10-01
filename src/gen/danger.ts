@@ -5,6 +5,7 @@
 // danger of its ring coming back over the next few hundred metres. Ruins add a little.
 import { allVillages, worldDist, nearX, wrapDx } from './regions';
 import { hash } from '../core/rng';
+import { cityDanger } from './cities';
 
 const rectD = (r: { x0: number; z0: number; x1: number; z1: number }, x: number, z: number) =>
   Math.hypot(Math.max(r.x0 - x, 0, x - r.x1), Math.max(r.z0 - z, 0, z - r.z1));
@@ -56,7 +57,7 @@ export function dangerAt(world: number, x: number, z: number, nearRuin = false):
     const ring = ringDanger(home * (home > DANGER.safe ? 1 / wobble(world, x, z, home) : 1));
     // every village is a refuge: calm outside its walls, the ring's danger returning over the next few hundred metres
     const vf = villageFar(world, x, z);
-    base = ring * smooth((vf - DANGER.safe) / DANGER.refuge);
+    base = ring * smooth((vf - DANGER.safe) / DANGER.refuge) + cityDanger(world, x, z); // the dead cities are worse
     if (cache.size > 20000) cache.clear();
     cache.set(k, base);
   }

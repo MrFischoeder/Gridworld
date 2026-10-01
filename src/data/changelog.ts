@@ -4,6 +4,17 @@ export interface Change { v: string; date: string; title: string; notes: string[
 
 export const CHANGELOG: Change[] = [
   {
+    v: '0.105.0', date: '2026-10-22', title: 'The dead cities',
+    notes: [
+      'Ten great ruined cities of the old world now stand on the planet, each a kilometre or more across: walking through one takes minutes. The nearest two lie 4 to 8 km from Gridholm, the others further out.',
+      'Every city is laid out its own way: a plain grid of blocks, a warped old town, a city of rings and spokes round a plaza, or a grid cut by diagonal boulevards. Each has its own block sizes, its own core of towers and its own share of fallen buildings.',
+      'Streets with kerbs and sidewalks, centre lines and crossings, lamp posts (some bent or down) and wrecked cars. Buildings show their floors and window bays; their crowns are broken, the gutted towers stand as bare frames of columns and slabs with beams hanging, and the fallen ones are heaps of rubble.',
+      'The cities are dangerous: the danger there is two steps higher than around them. Buildings block your way, your shots and the sight of whatever hunts you.',
+      'The maps show the cities you have seen: their outline and name, and the streets and buildings of the parts you have explored.',
+      'No villages, temples, crash sites or camps stand in a city, and rivers and roads go round them, so some worlds have a few villages fewer and some rivers run elsewhere.',
+    ],
+  },
+  {
     v: '0.104.1', date: '2026-10-21', title: 'A good neighbour',
     notes: [
       'The server now installs beside other apps on the same machine without touching them: its own folder, its own copy of Node.js, its own port (8517 by default; the installer stops if it is taken) and no changes to any web server, proxy or firewall.',

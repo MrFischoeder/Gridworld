@@ -19,6 +19,7 @@ import { WORLD_W, X_MIN, POLAR_Z, REGION, wrapDx, wrapX, allVillages, ruinName }
 import { seaMask, SEA } from './seas';
 import { mountainMask } from './mountains';
 import { naturalHeight } from './heights';
+import { citySites } from './cities';
 
 export const RIVER = {
   /** Grid cell of the drainage map (m). */
@@ -88,6 +89,7 @@ function drainage(world: number): Grid {
   };
   close(0, 0, RIVER.clear);
   for (const v of vs) close(v.x, v.z, RIVER.village);
+  for (const cty of citySites(world)) close(cty.x, cty.z, cty.r + 150); // and round the dead cities
   for (let k = 0; k < n; k++) if (closed[k]) cost[k] += 400;
   // Dijkstra from every sea cell outwards: par[k] = where cell k drains to
   const dist = new Float32Array(n).fill(Infinity), par = new Int32Array(n).fill(-1), heap: number[] = [], hk: number[] = [];

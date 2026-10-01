@@ -1,5 +1,6 @@
 // Developer console, opened with ~ (the backquote key). Cheats for testing.
 import { installSites } from '../gen/installs';
+import { citySites } from '../gen/cities';
 import { regionFog } from '../gen/toxic';
 import { OW } from '../world/overworld';
 import { G } from '../game';
@@ -86,6 +87,10 @@ const COMMANDS: Record<string, { help: string; run: (args: string[]) => string }
   sites: {
     help: 'the great installations: where they are (tp to them)',
     run: () => { const T = OW.terrain; if (!T) return 'Only on the surface.'; return installSites(T).map((s) => `${s.name}: tp ${Math.round(s.x)} ${Math.round(s.z - s.r - 12)}  (${(Math.hypot(s.x, s.z) / 1000).toFixed(1)} km out)`).join('\n'); },
+  },
+  cities: {
+    help: 'the dead cities: where they are (tp to their edge)',
+    run: () => { const T = OW.terrain; if (!T) return 'Only on the surface.'; return citySites(T.world).map((c) => `${c.name} (${c.pattern}, ${(c.r * 2 / 1000).toFixed(1)} km across): tp ${Math.round(c.x)} ${Math.round(c.z - c.r + 30)}  (${(Math.hypot(c.x, c.z) / 1000).toFixed(1)} km out)`).join('\n'); },
   },
   fogs: {
     help: 'fogs [km]: the nearest toxic fog zones within km (default 12) of you (tp to their edge)',

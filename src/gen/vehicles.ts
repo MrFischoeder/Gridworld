@@ -4,6 +4,7 @@ import { VEHICLES, freshParts, wheelCount, ENGINE_MODS, type VehicleModel, type 
 import { REGION, CHUNK, POLAR_Z, poisNear, wrapR } from './regions';
 import { rectDist, type Terrain } from './terrain';
 import { treeTrunks, chunkRocks } from './trees';
+import { inCity } from './cities';
 
 export interface Parking { id: string; model: VehicleModel; x: number; z: number; heading: number; parts: VehicleParts }
 
@@ -50,7 +51,7 @@ export function regionVehicle(t: Terrain, rx: number, rz: number): Parking | nul
   const model: VehicleModel = R() < 0.75 ? 'scout' : 'mastodon';
   for (let i = 0; i < 8; i++) {
     const x = rx * REGION + (R() - 0.5) * 180, z = rz * REGION + (R() - 0.5) * 180, heading = R() * 6.283;
-    if (!clearSpot(t, model, x, z, heading)) continue;
+    if (inCity(t.world, x, z, 10) || !clearSpot(t, model, x, z, heading)) continue; // (the cities have their own wrecks)
     // abandoned for a reason: worn or missing wheels and a tired engine, sometimes beyond driving
     const wheels = Array.from({ length: wheelCount(model) }, () => (R() < 0.22 ? -1 : 15 + Math.floor(R() * 70)));
     const engine = R() < 0.2 ? 0 : 10 + Math.floor(R() * 60);

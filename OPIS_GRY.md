@@ -1,6 +1,6 @@
 # GridWorld: opis gry, cel, plan i historia zmian
 
-Stan na wersję **0.104.1**. Ten dokument opisuje, czym jest GridWorld, jaki jest cel gry, co już w niej jest, czego jeszcze nie ma, dokąd zmierza i jak powstawała, wersja po wersji. Nazwy z gry (przedmioty, miejsca, postacie) są po angielsku, tak jak na ekranie.
+Stan na wersję **0.105.0**. Ten dokument opisuje, czym jest GridWorld, jaki jest cel gry, co już w niej jest, czego jeszcze nie ma, dokąd zmierza i jak powstawała, wersja po wersji. Nazwy z gry (przedmioty, miejsca, postacie) są po angielsku, tak jak na ekranie.
 
 ---
 
@@ -122,7 +122,7 @@ Gra jest pomyślana jako **kooperacja do 8 graczy** na autorytatywnym serwerze (
 - Świat zawija się ze wschodu na zachód po ok. **120 km** (470 regionów po 256 m).
 - Na północy i południu kończy się czapami lodowymi (od 25 km) i ścianą lodu (ok. 30 km), której nie da się przejść.
 - Słońce stoi wysoko nad równikiem. Przy biegunach trwa wieczny zmierzch.
-- Około **140 wiosek** na świat. Gęsto przy Gridholm (co ok. 1,4 km), rzadko daleko (co ok. 5 km).
+- Około **100 wiosek** na świat (80–120; część terenu zajmują martwe miasta). Gęsto przy Gridholm (co ok. 1,4 km), rzadko daleko (co ok. 5 km).
 - **Pierścienie niebezpieczeństwa** wokół Gridholm:
 
   | Odległość | Niebezpieczeństwo |
@@ -167,6 +167,7 @@ Gra jest pomyślana jako **kooperacja do 8 graczy** na autorytatywnym serwerze (
 - **Hangar Rydwanu** przy Gridholm.
 - **Wielkie instalacje** (dalej w rozdziale 10), dwa razy większe od reszty świata: Old Enrichment Plant (15–25 km), Old Chip Foundry (12–20 km), Old Radar Station (18–28 km), Old Propellant Plant (10–18 km), Old Battery Plant (14–22 km), Old Optical Works (14–24 km), Old Alloy Complex (16–26 km), Old Precision Works (18–28 km), Old Robotics Plant (20–28 km).
 - **Miejsce katastrofy** gracza: wrak Kestrela z bruzdą w ziemi, 260–430 m od Gridholm.
+- **Martwe miasta** (10 na świat): zrujnowane metropolie dawnego świata, każda ponad kilometr średnicy, dwie najbliższe 4–8 km od Gridholm. Każde ma własny układ ulic (siatka, pokręcone stare miasto, pierścienie i promienie, siatka z ukośnymi bulwarami), centrum wieżowców z połamanymi szczytami, wypalone szkielety, kopce gruzu, latarnie i wraki aut. Niebezpieczeństwo jest tam o 2 wyższe; nie ma w nich wiosek ani innych miejsc, a rzeki i drogi je omijają.
 
 ---
 
@@ -561,3 +562,4 @@ Pełne notatki (po angielsku) są w grze pod przyciskiem **Changelog** w menu g�
 - **0.103.0 Razem (multiplayer, pierwszy krok).** Gracz, który uruchomi grę przez start-gry.bat, wybiera w menu Host a game; znajomi w tej samej sieci otwierają w przeglądarce jego adres i klikają Join (do 8 graczy). Świat i zegar gospodarza są wspólne, własny zapis dołączającego czeka w kopii (Back to my own world). Inni gracze widoczni jako postacie w swoich kolorach z imieniem i tym, co trzymają; czat pod T. Gdy gospodarz wyjdzie, gospodarzem zostaje najdłużej grający. Wrogowie, łupy i wioski są na razie osobne dla każdego.
 - **0.104.0 Własny serwer.** Gra może stać na serwerze VPS: jeden program podaje grę przeglądarce i prowadzi tryb wieloosobowy na jednym porcie. Świat należy do serwera (stałe ziarno, zegar chodzi i zapisuje się także bez graczy), nikt nie musi być gospodarzem. W menu nazwa serwera, kto jest online i przycisk Join the server. Instalacja jedną komendą (deploy/install.sh, z domeną także https), Dockerfile, instrukcja w SERWER.md.
 - **0.104.1 Dobry sąsiad.** Serwer instaluje się obok innych aplikacji, niczego w nich nie ruszając: własny folder, własny Node.js, własny port 8517 (skrypt przerywa, gdy jest zajęty), bez zmian w serwerze WWW, proxy i zaporze. Gra działa też za portalem pod podścieżką, np. https://domena/gridworld/.
+- **0.105.0 Martwe miasta.** Na planecie stoi 10 wielkich zrujnowanych miast dawnego świata, każde ponad kilometr średnicy (przejście zajmuje minuty); dwa najbliższe 4–8 km od Gridholm. Każde ma własny układ (zwykła siatka kwartałów, pokręcone stare miasto, pierścienie i promienie wokół placu, siatka przecięta ukośnymi bulwarami), własne centrum wieżowców i odsetek zawalonych budynków. Ulice z krawężnikami, pasami, przejściami, latarniami i wrakami aut; budynki z siatką pięter i okien, połamanymi szczytami, wypalone szkielety z wiszącymi belkami, kopce gruzu. Miasta są niebezpieczne (zagrożenie +2), budynki zatrzymują ruch i strzały. Na mapie widać obrys i ulice odkrytych części. W miastach nie ma wiosek, świątyń, wraków i obozów, a rzeki i drogi je omijają.

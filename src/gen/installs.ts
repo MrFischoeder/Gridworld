@@ -9,6 +9,7 @@ import { nearestOnRoad } from './roads';
 import { mountainMask } from './mountains';
 import { inSea } from './seas';
 import { nearRiver } from './rivers';
+import { inCity } from './cities';
 import { rectDist, type Terrain } from './terrain';
 import type { ItemKey } from '../data/items';
 
@@ -37,6 +38,7 @@ export function installMisfit(t: Terrain, x: number, z: number, r: number): stri
   if (mountainMask(t.world, x, z) > 0.12) return 'mountain';
   if (inSea(t.world, x, z, r + 60)) return 'sea';
   if (nearRiver(t.world, x, z, r + 80)) return 'river';
+  if (inCity(t.world, x, z, r + 150)) return 'city';
   for (let a = 0; a < 6.28; a += 0.785) for (const d of [0, r * 0.5, r]) {
     const px = x + Math.cos(a) * d, pz = z + Math.sin(a) * d;
     if (t.water(px, pz)) return 'water';

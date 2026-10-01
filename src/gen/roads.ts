@@ -9,6 +9,7 @@ import { villageGates, VILLAGE_OFFSET } from './village';
 import { mountainMask } from './mountains';
 import { seaMask } from './seas';
 import { nearRiver } from './rivers';
+import { inCity } from './cities';
 
 /** A road between places, or a mountain trail (gen/trails.ts: `gate` 'trail', its height profile `h` per point, the summit's `name`). */
 export interface Road { id: string; from: number; to: number; gate: string; pts: [number, number][]; half: number; h?: number[]; name?: string }
@@ -90,6 +91,7 @@ export function findWay(world: number, s: [number, number], t: [number, number],
     const w = m > 0.3 ? 0 : seaMask(world, x, z);
     c = m > 0.3 || w > 0.08 || Math.abs(z) > POLAR_Z - 300 ? Infinity : 1 + m * 60 + w * 120; // the foothills are costly but passable, the heights and the sea are not
     if (c < Infinity && nearRiver(world, x, z, 20)) c += 30; // a river is crossed only where it must be (at a ford)
+    if (c < Infinity && inCity(world, x, z, 40)) c = Infinity; // the dead cities are gone round
     for (const p of c === Infinity ? [] : poisAt(x, z)) {
       const end = ends.includes(p.id), hard = end ? 6 : 15, soft = end ? 6 : p.type === 'village' ? 30 : 80;
       const d = Math.hypot(Math.max(p.rect.x0 - x, 0, x - p.rect.x1), Math.max(p.rect.z0 - z, 0, z - p.rect.z1));

@@ -9,6 +9,7 @@ import { STEP, VERTS, CELLS, inRect } from '../gen/terrain';
 import { SEA } from '../gen/seas';
 import { discover, isDiscovered } from '../save';
 import { installSites } from '../gen/installs';
+import { cityAt, citySites, cityLayout, worldToCity, bldsNear, inBld, segDist, CITY } from '../gen/cities';
 import { saveChar, hasItem } from '../character';
 
 /** The colour of the GPS waypoint (maps and compass). */
@@ -34,6 +35,17 @@ function tile(cx: number, cz: number): HTMLCanvasElement {
   if (cv) return cv;
   cv = document.createElement('canvas'); cv.width = cv.height = CELLS;
   const ctx = cv.getContext('2d')!, img = ctx.createImageData(CELLS, CELLS), lat = T.lattice(cx, cz), f = T.chunkFeatures(cx, cz);
+  // a dead city here: its streets and buildings show on the map
+  const city = cityAt(T.world, cx * CHUNK + CHUNK / 2, cz * CHUNK + CHUNK / 2, CHUNK), L = city ? cityLayout(T.world, city) : null;
+  const cityPx = (x: number, z: number): [number, number, number] | null => {
+    if (!city || !L) return null;
+    const [u, v] = worldToCity(city, x, z);
+    if (Math.hypot(u, v) > city.r) return null;
+    for (const k of bldsNear(L, u, v, 1)) if (inBld(L.blds[k], u, v, 0)) return L.blds[k].st === 2 ? [70, 110, 70] : L.blds[k].f > 12 ? [170, 230, 180] : [120, 180, 130];
+    const near = L.sIdx[Math.max(0, Math.min(L.n - 1, Math.floor((u + L.half) / L.cell))) + L.n * Math.max(0, Math.min(L.n - 1, Math.floor((v + L.half) / L.cell)))];
+    for (const k of near) { const s = L.streets[k]; if (segDist(u, v, s.ax, s.az, s.bx, s.bz) < s.w / 2) return [45, 75, 50]; }
+    return [22, 48, 26];
+  };
   for (let j = 0; j < CELLS; j++) for (let i = 0; i < CELLS; i++) {
     // contour lines every 4 m in the lowlands, every 12 m up the mountains
     const h = lat[i + VERTS * j], cs = h > 26 ? 12 : 4, band = Math.floor(h / cs) !== Math.floor(lat[i + 1 + VERTS * j] / cs) || Math.floor(h / cs) !== Math.floor(lat[i + VERTS * (j + 1)] / cs);
@@ -41,7 +53,9 @@ function tile(cx: number, cz: number): HTMLCanvasElement {
     let r = 0, g = 28 + Math.min(h, 25) * 3.2, b = 10 + Math.min(h, 25) * 1.2;
     if (h > 25) { const m = Math.min(1, (h - 25) / 120); r = 30 + m * 150; g = 108 + m * 120; b = 40 + m * 150; } // rock, pale towards the peaks
     if (band) { g += 30; b += 12; }
-    if (f.pads.some((p) => inRect(p.poi.rect, x, z))) { r = 10; g = 90; b = 40; }
+    const cp = cityPx(x, z);
+    if (cp) [r, g, b] = cp;
+    else if (f.pads.some((p) => inRect(p.poi.rect, x, z))) { r = 10; g = 90; b = 40; }
     else if (f.roads.some((rd) => nearest(rd.pts, x, z) < rd.half + 0.5)) { r = 60; g = 170; b = 90; }
     else if (f.lakes.length || f.rivers.length || h < SEA.level) { const w = T.water(x, z); if (w) [r, g, b] = w.kind === 'sea' ? [8, 60 - Math.min(30, w.depth), 130 - Math.min(60, w.depth * 1.5)] : w.kind === 'toxic' ? [110, 190, 20] : w.kind === 'murky' ? [70, 80, 30] : [15, 110, 100]; }
     const o = 4 * (i + CELLS * j); img.data[o] = r; img.data[o + 1] = g; img.data[o + 2] = b; img.data[o + 3] = 255;
@@ -132,6 +146,14 @@ function drawArea(ctx: CanvasRenderingContext2D, w: number, h: number, ppm: numb
     ctx.strokeStyle = ctx.fillStyle = '#b6ff3a'; ctx.lineWidth = 1.5; ctx.setLineDash([4, 3]); ctx.beginPath(); ctx.arc(x, y, rr, 0, 6.283); ctx.stroke(); ctx.setLineDash([]); ctx.lineWidth = 1;
     ctx.globalAlpha = 0.18; ctx.fill(); ctx.globalAlpha = 1;
     if (labels) ctx.fillText(name + ' (toxic fog)', x, y - rr - 6);
+  }
+  for (const c of citySites(OW.terrain!.world)) { // the dead cities, once you have seen them: an outline and the name
+    const x = X(nearX(c.x, px)), y = Z(c.z), rr = Math.max(6, c.r * ppm);
+    if (x < -rr || y < -rr || x > w + rr || y > h + rr) continue;
+    const seen = Math.hypot(wrapDx(c.x - px), c.z - pz) < c.r + CITY.fade || [0, 0.5, 0.9].some((k) => [0, 1, 2, 3, 4, 5, 6, 7].some((a) => isDiscovered(d, Math.floor((c.x + Math.cos(a * 0.785) * c.r * k) / CHUNK), Math.floor((c.z + Math.sin(a * 0.785) * c.r * k) / CHUNK))));
+    if (!seen) continue;
+    ctx.strokeStyle = ctx.fillStyle = '#9ad8a8'; ctx.lineWidth = 1.5; ctx.setLineDash([6, 4]); ctx.beginPath(); ctx.arc(x, y, rr, 0, 6.283); ctx.stroke(); ctx.setLineDash([]); ctx.lineWidth = 1;
+    if (labels) ctx.fillText('Ruins of ' + c.name, x, y - rr - 6);
   }
   for (const ins of installSites(OW.terrain!)) { // the great installations, once their ground is explored: a lime hexagon
     if (!isDiscovered(d, Math.floor(ins.x / CHUNK), Math.floor(ins.z / CHUNK))) continue;
