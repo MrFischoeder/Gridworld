@@ -4,6 +4,16 @@ export interface Change { v: string; date: string; title: string; notes: string[
 
 export const CHANGELOG: Change[] = [
   {
+    v: '0.104.0', date: '2026-10-21', title: 'A server of its own',
+    notes: [
+      'GridWorld can run on its own server (a VPS) that stays up: one program serves the game to the browser and runs the multiplayer. Nobody has to host any more: the world belongs to the server.',
+      'Opened from such a server, the main menu shows the server\'s name and who is online, and one button: Join the server. Type your hero\'s name, join, then Play.',
+      'The server\'s world has a fixed seed and its own clock, which keeps running and is saved, so the day goes on while everyone is away.',
+      'Setting it up on a fresh Ubuntu or Debian VPS takes one command (deploy/install.sh; with a domain it also gets https). SERWER.md explains it, and there is a Dockerfile too.',
+      'Your hero is still saved in your browser, and enemies, loot and villages are still each player\'s own.',
+    ],
+  },
+  {
     v: '0.103.0', date: '2026-10-20', title: 'Together (multiplayer, first step)',
     notes: [
       'Multiplayer: up to 8 castaways in one world. The player who starts the game with start-gry.bat presses Host a game in the main menu; friends on the same network open the host\'s address in their browser (start-gry.bat prints it, e.g. http://192.168.1.20:5173) and press Join.',

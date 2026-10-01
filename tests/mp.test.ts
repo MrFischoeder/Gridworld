@@ -8,8 +8,8 @@ type Msg = { t: string; [k: string]: any };
 let http: Server | null = null, mp: ReturnType<typeof createMp> | null = null;
 afterEach(() => { mp?.close(); http?.close(); http = mp = null; });
 
-async function server() {
-  mp = createMp(() => {}); http = createServer(); mp.attach(http);
+async function server(opts?: { world?: number; time?: number }) {
+  mp = createMp(() => {}, opts); http = createServer(); mp.attach(http);
   await new Promise<void>((r) => http!.listen(0, r));
   return (http.address() as { port: number }).port;
 }
@@ -58,6 +58,24 @@ describe('multiplayer server', () => {
     const ninth = await client(port, { name: 'Late', world: 7 });
     await ninth.wait('full');
     for (const c of eight) c.ws.close();
+  });
+  it('a dedicated server owns the world and runs the clock: nobody hosts', async () => {
+    const port = await server({ world: 777, time: 600 });
+    const a = await client(port, { name: 'Ada', world: 1, time: 5 });
+    const wa = await a.wait('welcome');
+    expect(wa.dedicated).toBe(true); expect(wa.host).toBe(0); expect(wa.world).toBe(777);
+    expect(wa.time).toBeGreaterThanOrEqual(600); expect(wa.time).toBeLessThan(601);
+    a.send({ t: 'state', p: [1, 2, 3], yaw: 0, pitch: 0, loc: 'o', held: '', mv: false, time: 99999 }); // ignored
+    const snap = await a.wait('snap'); // alone, the snapshots still bring the clock
+    expect(snap.time).toBeGreaterThanOrEqual(600); expect(snap.time).toBeLessThan(605);
+    const b = await client(port, { name: 'Bob', world: 2 });
+    expect((await b.wait('welcome')).world).toBe(777);
+    a.ws.close();
+    await b.wait('leave');
+    await new Promise((r) => setTimeout(r, 150));
+    expect(b.got.some((m) => m.t === 'host')).toBe(false);
+    expect(mp!.state().world).toBe(777);
+    b.ws.close();
   });
   it('turns what the player typed into a server address', () => {
     const here = { protocol: 'http:', host: '192.168.1.20:5173' };

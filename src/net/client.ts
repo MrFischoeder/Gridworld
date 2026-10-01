@@ -13,8 +13,8 @@ export interface Peer {
   st: PeerState | null; prev: PeerState | null; at: number;
 }
 export interface NetHooks {
-  /** Joined: the host's world seed and clock (for the host: their own). */
-  welcome(world: number, time: number, host: boolean): void;
+  /** Joined: the host's world seed and clock (for the host: their own); on a dedicated server, the server's. */
+  welcome(world: number, time: number, host: boolean, dedicated: boolean): void;
   /** Lines for the log / chat ("Ada joined", a chat message...). */
   say(text: string, kind: 'chat' | 'info' | 'error'): void;
   /** The host's clock, with every snapshot. */
@@ -29,9 +29,22 @@ export const net = {
   id: 0, host: 0,
   peers: new Map<number, Peer>(),
   address: '',
+  /** A dedicated server (server/main.mjs): the world and the clock are the server's, nobody hosts. */
+  dedicated: false,
 };
 export const online = () => net.id > 0;
 export const isHost = () => online() && net.id === net.host;
+
+/** Is the page served by a dedicated server (server/main.mjs)? It answers mp/info next to the page. */
+export interface ServerInfo { dedicated: boolean; name: string; world: number; online: number; max: number; players: string[]; version: string }
+export async function serverInfo(): Promise<ServerInfo | null> {
+  try {
+    const r = await fetch('mp/info', { cache: 'no-store' });
+    if (!r.ok || !(r.headers.get('content-type') ?? '').includes('json')) return null;
+    const j = await r.json();
+    return j && j.dedicated ? j as ServerInfo : null;
+  } catch { return null; }
+}
 
 /** ws://… for what the player typed: "", "localhost:5173", "192.168.1.5", "ws://…", "http://…". */
 export function serverUrl(input: string, here: { protocol: string; host: string }): string {
@@ -59,9 +72,9 @@ export function connect(url: string, me: { name: string; world: number; time: nu
     try { m = JSON.parse(String(e.data)); } catch { return; }
     switch (m.t) {
       case 'welcome':
-        welcomed = true; net.id = m.id; net.host = m.host; net.peers.clear();
+        welcomed = true; net.id = m.id; net.host = m.host; net.dedicated = !!m.dedicated; net.peers.clear();
         for (const p of m.players) if (p.id !== m.id) net.peers.set(p.id, { id: p.id, name: p.name, st: null, prev: null, at: 0 });
-        h.welcome(m.world, m.time, m.id === m.host);
+        h.welcome(m.world, m.time, m.id === m.host, net.dedicated);
         break;
       case 'join': net.peers.set(m.id, { id: m.id, name: m.name, st: null, prev: null, at: 0 }); h.say(`${m.name} joined the game.`, 'info'); break;
       case 'leave': net.peers.delete(m.id); h.say(`${m.name} left the game.`, 'info'); break;
@@ -83,13 +96,13 @@ export function connect(url: string, me: { name: string; world: number; time: nu
   };
   ws.onclose = () => {
     if (net.ws !== ws) return;
-    net.ws = null; net.id = 0; net.host = 0; net.peers.clear();
+    net.ws = null; net.id = 0; net.host = 0; net.dedicated = false; net.peers.clear();
     h.closed(why || (welcomed ? 'Disconnected from the server.' : `Could not reach a server at ${url}.`));
   };
 }
 export function disconnect() {
   const ws = net.ws;
-  net.ws = null; net.id = 0; net.host = 0; net.peers.clear();
+  net.ws = null; net.id = 0; net.host = 0; net.dedicated = false; net.peers.clear();
   if (ws) { ws.onclose = null; ws.close(); }
 }
 export function sendState(s: PeerState, time?: number) {
