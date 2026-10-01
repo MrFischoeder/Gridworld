@@ -46,12 +46,15 @@ export async function serverInfo(): Promise<ServerInfo | null> {
   } catch { return null; }
 }
 
-/** ws://… for what the player typed: "", "localhost:5173", "192.168.1.5", "ws://…", "http://…". */
-export function serverUrl(input: string, here: { protocol: string; host: string }): string {
+/** ws://… for what the player typed: "", "localhost:5173", "192.168.1.5", "ws://…", "http://…".
+ * Empty = the server this page came from, next to the page (so a game behind a portal at /gridworld/ uses
+ * /gridworld/mp). */
+export function serverUrl(input: string, here: { protocol: string; host: string; pathname?: string }): string {
   let s = input.trim();
-  if (!s) s = here.host;
+  const ws = here.protocol === 'https:' ? 'wss://' : 'ws://';
+  if (!s) return new URL('mp', ws + here.host + (here.pathname ?? '/').replace(/[^/]*$/, '')).toString();
   if (/^https?:\/\//.test(s)) s = s.replace(/^http/, 'ws');
-  if (!/^wss?:\/\//.test(s)) s = (here.protocol === 'https:' ? 'wss://' : 'ws://') + s;
+  if (!/^wss?:\/\//.test(s)) s = ws + s;
   const u = new URL(s);
   if (!u.pathname || u.pathname === '/') u.pathname = '/mp';
   return u.toString();

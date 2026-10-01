@@ -91,10 +91,12 @@ export function createMp(log = (m) => console.log('[mp] ' + m), opts = {}) {
     for (const p of players.values()) send(p.ws, { t: 'snap', time: t, ps: states.filter((s) => s.id !== p.id) });
   }, MP.rate);
 
-  /** Take over WebSocket upgrades on `path` of an http(s) server (others, like Vite's own, are left alone). */
+  /** Take over WebSocket upgrades on `path` of an http(s) server (others, like Vite's own, are left alone);
+   * also on <prefix>`path`, for a reverse proxy that passes a sub-path (/gridworld/mp) on unchanged. */
   const attach = (server, path = MP.path) => {
     server.on('upgrade', (req, socket, head) => {
-      if ((req.url ?? '').split('?')[0] !== path) return;
+      const p = (req.url ?? '').split('?')[0];
+      if (p !== path && !p.endsWith(path)) return;
       wss.handleUpgrade(req, socket, head, (ws) => wss.emit('connection', ws, req));
     });
   };

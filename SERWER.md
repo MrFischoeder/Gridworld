@@ -4,39 +4,41 @@ Serwer dedykowany to jeden program Node (`server/main.mjs`), który na jednym po
 
 Gracze nie instalują niczego: otwierają adres serwera w przeglądarce, wpisują imię bohatera i klikają **Join the server**, potem **Play**.
 
-## Instalacja na VPS (Ubuntu / Debian), jedna komenda
+## Instalacja obok innych aplikacji (np. IONOS VPS z portalem)
 
-Na świeżym VPS-ie (min. 1 GB RAM, Node instaluje się sam), jako root:
+Skrypt nie rusza niczego, co już jest na serwerze:
+- gra ląduje we własnym folderze `/opt/gridworld`, z własnym Node.js w `/opt/gridworld-node` (systemowy Node, jeśli jest, zostaje bez zmian),
+- działa jako własny użytkownik i usługa `gridworld`,
+- zajmuje jeden port, domyślnie **8517**; jeśli jest zajęty, skrypt przerywa i prosi o inny (`PORT=8518`),
+- nie zmienia konfiguracji serwera WWW, proxy, portalu ani zapory.
 
-```
-curl -fsSL https://raw.githubusercontent.com/MrFischoeder/Gridworld/claude/new-session-lkzluz/deploy/install.sh | sudo bash
-```
-
-Na końcu skrypt wypisze adres, np. `http://203.0.113.10:8080/`. To ten adres podajesz znajomym.
-
-Ustawienia (opcjonalne) podaje się przed `bash`, np.:
+Jako root (np. w aplikacji Termius na telefonie):
 
 ```
-curl -fsSL .../deploy/install.sh | sudo SERVER_NAME="Serwer Kuby" WORLD_SEED=12345 PORT=8080 bash
+curl -fsSL https://raw.githubusercontent.com/MrFischoeder/Gridworld/claude/new-session-lkzluz/deploy/install.sh | sudo SERVER_NAME="Mój serwer" bash
 ```
 
-- `SERVER_NAME` – nazwa widoczna w menu gry,
-- `WORLD_SEED` – ziarno świata (czytane tylko przy pierwszym starcie; potem obowiązuje zapisane, chyba że `FORCE_SEED=1`),
-- `PORT` – port (domyślnie 8080; trzeba go otworzyć w zaporze dostawcy VPS-a, jeśli ma własną),
-- `DOMAIN` – domena skierowana na VPS (rekord A). Wtedy skrypt stawia Caddy z darmowym certyfikatem i gra działa pod `https://twoja-domena/` (porty 80 i 443).
+Na końcu skrypt wypisze adres i przykład wpisu do proxy. Dwie drogi do gry:
+
+1. **Bezpośrednio:** `http://IP-SERWERA:8517/`, po otwarciu portu TCP 8517 w zasadach zapory IONOS (Sieć → Zasady zapory).
+2. **Przez Twój portal / proxy**, np. pod `https://twoja-domena/gridworld/`: dodaj w nim przekierowanie na `http://127.0.0.1:8517/` z włączonymi WebSocketami (gra rozmawia przez `/gridworld/mp`). Dla nginx skrypt wypisuje gotowy blok `location`. Gra działa zarówno gdy proxy obcina przedrostek `/gridworld`, jak i gdy go zostawia. Jeśli gra ma być dostępna tylko przez portal, dodaj `HOST=127.0.0.1` przed `bash`.
+
+Ustawienia (opcjonalne, przed `bash`): `SERVER_NAME` (nazwa w menu), `WORLD_SEED` (ziarno świata, czytane przy pierwszym starcie; potem obowiązuje zapisane, chyba że `FORCE_SEED=1`), `PORT`, `HOST`, `DIR`.
+
+Usunięcie gry (nic innego nie znika): `systemctl disable --now gridworld; rm -rf /opt/gridworld /opt/gridworld-node /etc/systemd/system/gridworld.service; userdel gridworld`.
 
 ## Obsługa
 
 - aktualizacja do najnowszej wersji gry: uruchom tę samą komendę jeszcze raz (świat i zegar zostają),
 - logi: `journalctl -u gridworld -f`,
 - restart / stop: `systemctl restart gridworld`, `systemctl stop gridworld`,
-- stan: `curl http://localhost:8080/mp/info` (nazwa, świat, kto jest online).
+- stan: `curl http://localhost:8517/mp/info` (nazwa, świat, kto jest online).
 
 ## Docker (zamiast skryptu)
 
 ```
 docker build -t gridworld .
-docker run -d --name gridworld -p 8080:8080 -v gridworld-data:/app/server/data --restart unless-stopped gridworld
+docker run -d --name gridworld -p 8517:8517 -v gridworld-data:/app/server/data --restart unless-stopped gridworld
 ```
 
 ## Ręcznie
@@ -44,7 +46,7 @@ docker run -d --name gridworld -p 8080:8080 -v gridworld-data:/app/server/data -
 ```
 git clone -b claude/new-session-lkzluz https://github.com/MrFischoeder/Gridworld.git && cd Gridworld
 npm ci && npm run build
-PORT=8080 SERVER_NAME="Mój serwer" npm run serve
+PORT=8517 SERVER_NAME="Mój serwer" npm run serve
 ```
 
 ## Czego jeszcze nie ma

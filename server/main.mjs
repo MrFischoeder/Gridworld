@@ -5,9 +5,10 @@
 //
 //   npm run build && npm run serve          (or: node server/main.mjs)
 //
-// Settings (environment): PORT (8080), HOST (0.0.0.0), WORLD_SEED (a number; only read the first time, then the
+// Settings (environment): PORT (8517), HOST (0.0.0.0), WORLD_SEED (a number; only read the first time, then the
 // saved one wins unless FORCE_SEED=1), DATA_DIR (server/data: server.json keeps the seed and the clock),
-// SERVER_NAME (shown in the menu), DIST (the built game, dist/).
+// SERVER_NAME (shown in the menu), DIST (the built game, dist/). Behind a reverse proxy at a sub-path (a portal
+// with several apps, e.g. https://example.pl/gridworld/) it works whether the proxy strips the prefix or not.
 // GET /mp/info answers {dedicated, name, world, online, max, players, version} for the game's menu and for checks.
 import { createServer } from 'node:http';
 import { readFile, writeFile, mkdir, rename, stat } from 'node:fs/promises';
@@ -19,7 +20,7 @@ import { createMp, MP } from './mp.mjs';
 
 const here = fileURLToPath(new URL('.', import.meta.url));
 const env = process.env;
-const PORT = Number(env.PORT) || 8080, HOST = env.HOST || '0.0.0.0';
+const PORT = Number(env.PORT) || 8517, HOST = env.HOST || '0.0.0.0';
 const DIST = resolve(env.DIST || join(here, '..', 'dist'));
 const DATA = resolve(env.DATA_DIR || join(here, 'data'));
 const NAME = (env.SERVER_NAME || 'GridWorld server').slice(0, 40);
@@ -54,8 +55,8 @@ const TYPES = {
 if (!existsSync(join(DIST, 'index.html'))) log(`warning: no game build in ${DIST} (run npm run build); only the relay works`);
 
 const http = createServer(async (req, res) => {
-  const url = (req.url || '/').split('?')[0];
-  if (url === MP.path + '/info' || url === '/mp-info') {
+  let url = (req.url || '/').split('?')[0];
+  if (url.endsWith(MP.path + '/info')) {
     const s = mp.state();
     res.writeHead(200, { 'content-type': 'application/json', 'cache-control': 'no-store', 'access-control-allow-origin': '*' });
     res.end(JSON.stringify({ dedicated: true, name: NAME, world, time: Math.round(s.time), online: s.n, max: MP.max, players: s.names, version: VERSION }));
@@ -66,6 +67,8 @@ const http = createServer(async (req, res) => {
   let rel;
   try { rel = normalize(decodeURIComponent(url)).replace(/^([/\\])+/, ''); } catch { res.writeHead(400); res.end(); return; }
   let file = resolve(DIST, rel || 'index.html');
+  // a proxy that passes /gridworld/assets/x.js on unchanged: try the path without its first part
+  if (!existsSync(file) && rel.includes('/')) file = resolve(DIST, rel.slice(rel.indexOf('/') + 1));
   if (file !== DIST && !file.startsWith(DIST + sep)) { res.writeHead(403); res.end(); return; }
   try { if ((await stat(file)).isDirectory()) file = join(file, 'index.html'); } catch { file = join(DIST, 'index.html'); }
   try {

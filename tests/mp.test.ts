@@ -83,5 +83,9 @@ describe('multiplayer server', () => {
     expect(serverUrl('10.0.0.5:7777', here)).toBe('ws://10.0.0.5:7777/mp');
     expect(serverUrl('http://example.org:5173', here)).toBe('ws://example.org:5173/mp');
     expect(serverUrl('wss://game.example/x', here)).toBe('wss://game.example/x');
+    // behind a portal at a sub-path: the server next to the page
+    expect(serverUrl('', { protocol: 'https:', host: 'apps.example.pl', pathname: '/gridworld/' })).toBe('wss://apps.example.pl/gridworld/mp');
+    expect(serverUrl('', { protocol: 'https:', host: 'apps.example.pl', pathname: '/gridworld/index.html' })).toBe('wss://apps.example.pl/gridworld/mp');
+    expect(serverUrl('', { protocol: 'http:', host: 'h:8517', pathname: '/' })).toBe('ws://h:8517/mp');
   });
 });

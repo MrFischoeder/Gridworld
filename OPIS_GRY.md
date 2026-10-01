@@ -1,6 +1,6 @@
 # GridWorld: opis gry, cel, plan i historia zmian
 
-Stan na wersję **0.104.0**. Ten dokument opisuje, czym jest GridWorld, jaki jest cel gry, co już w niej jest, czego jeszcze nie ma, dokąd zmierza i jak powstawała, wersja po wersji. Nazwy z gry (przedmioty, miejsca, postacie) są po angielsku, tak jak na ekranie.
+Stan na wersję **0.104.1**. Ten dokument opisuje, czym jest GridWorld, jaki jest cel gry, co już w niej jest, czego jeszcze nie ma, dokąd zmierza i jak powstawała, wersja po wersji. Nazwy z gry (przedmioty, miejsca, postacie) są po angielsku, tak jak na ekranie.
 
 ---
 
@@ -560,3 +560,4 @@ Pełne notatki (po angielsku) są w grze pod przyciskiem **Changelog** w menu g�
 - **0.102.0 Skrzydła i płetwy.** Stadka małych Skitterwingów czasem pojawiają się w pierwszej strefie zagrożenia: trzepoczą nisko, pikują i dziobią. W morzu żyją Sea Lurkery (drapieżniki z płetwą nad wodą, atakują pływających, łódź tylko okrążają) i ławice Silverfin (niegroźne, wyskakują z wody). Nowe jedzenie: surowa ryba.
 - **0.103.0 Razem (multiplayer, pierwszy krok).** Gracz, który uruchomi grę przez start-gry.bat, wybiera w menu Host a game; znajomi w tej samej sieci otwierają w przeglądarce jego adres i klikają Join (do 8 graczy). Świat i zegar gospodarza są wspólne, własny zapis dołączającego czeka w kopii (Back to my own world). Inni gracze widoczni jako postacie w swoich kolorach z imieniem i tym, co trzymają; czat pod T. Gdy gospodarz wyjdzie, gospodarzem zostaje najdłużej grający. Wrogowie, łupy i wioski są na razie osobne dla każdego.
 - **0.104.0 Własny serwer.** Gra może stać na serwerze VPS: jeden program podaje grę przeglądarce i prowadzi tryb wieloosobowy na jednym porcie. Świat należy do serwera (stałe ziarno, zegar chodzi i zapisuje się także bez graczy), nikt nie musi być gospodarzem. W menu nazwa serwera, kto jest online i przycisk Join the server. Instalacja jedną komendą (deploy/install.sh, z domeną także https), Dockerfile, instrukcja w SERWER.md.
+- **0.104.1 Dobry sąsiad.** Serwer instaluje się obok innych aplikacji, niczego w nich nie ruszając: własny folder, własny Node.js, własny port 8517 (skrypt przerywa, gdy jest zajęty), bez zmian w serwerze WWW, proxy i zaporze. Gra działa też za portalem pod podścieżką, np. https://domena/gridworld/.

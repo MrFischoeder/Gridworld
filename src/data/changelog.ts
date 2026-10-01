@@ -4,6 +4,13 @@ export interface Change { v: string; date: string; title: string; notes: string[
 
 export const CHANGELOG: Change[] = [
   {
+    v: '0.104.1', date: '2026-10-21', title: 'A good neighbour',
+    notes: [
+      'The server now installs beside other apps on the same machine without touching them: its own folder, its own copy of Node.js, its own port (8517 by default; the installer stops if it is taken) and no changes to any web server, proxy or firewall.',
+      'The game works behind a portal or reverse proxy at a sub-path, such as https://your-domain/gridworld/: the page, the server info and the multiplayer connection all follow the page\'s own address.',
+    ],
+  },
+  {
     v: '0.104.0', date: '2026-10-21', title: 'A server of its own',
     notes: [
       'GridWorld can run on its own server (a VPS) that stays up: one program serves the game to the browser and runs the multiplayer. Nobody has to host any more: the world belongs to the server.',
