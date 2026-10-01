@@ -1,6 +1,6 @@
 # GridWorld: opis gry, cel, plan i historia zmian
 
-Stan na wersję **0.102.0**. Ten dokument opisuje, czym jest GridWorld, jaki jest cel gry, co już w niej jest, czego jeszcze nie ma, dokąd zmierza i jak powstawała, wersja po wersji. Nazwy z gry (przedmioty, miejsca, postacie) są po angielsku, tak jak na ekranie.
+Stan na wersję **0.103.0**. Ten dokument opisuje, czym jest GridWorld, jaki jest cel gry, co już w niej jest, czego jeszcze nie ma, dokąd zmierza i jak powstawała, wersja po wersji. Nazwy z gry (przedmioty, miejsca, postacie) są po angielsku, tak jak na ekranie.
 
 ---
 
@@ -375,7 +375,7 @@ Wyniki symulacji posłużyły do decyzji, że gra ma się opierać na prostych, 
 **Czego jeszcze nie ma:**
 - lotu Rydwanem i zakończenia gry;
 - cudów Starożytnych i niespodzianek w samej grze;
-- trybu wieloosobowego (serwer, inni gracze i ich statki);
+- pełnego trybu wieloosobowego: jest już pierwszy krok (wspólny świat, widoczni inni gracze, czat), ale wrogowie, łupy, wioski i pojazdy nie są jeszcze wspólne, nie ma statków innych graczy;
 - kombinezonu przeciwchemicznego, mgły w lochach i stworzeń mgły;
 - nurkowania;
 - spalania paliwa przez pojazdy (bak jest pokazywany, ale na razie się nie opróżnia);
@@ -558,3 +558,4 @@ Pełne notatki (po angielsku) są w grze pod przyciskiem **Changelog** w menu g�
 - **0.101.0 Narzędzia w rękach.** Siekiera, kilof i narzędzia budowlane działają tylko trzymane w rękach, nie z plecaka; E przy drzewie lub skale bierze narzędzie do rąk, a trzymaną siekierę lub kilof widać w dłoniach.
 - **0.101.1 Pełne modele narzędzi.** Siekiera, kilof i pozostałe narzędzia ręczne mają pełne (nieprześwitujące) modele, w dłoni i leżące na ziemi; każde narzędzie ma własny kształt w ręku.
 - **0.102.0 Skrzydła i płetwy.** Stadka małych Skitterwingów czasem pojawiają się w pierwszej strefie zagrożenia: trzepoczą nisko, pikują i dziobią. W morzu żyją Sea Lurkery (drapieżniki z płetwą nad wodą, atakują pływających, łódź tylko okrążają) i ławice Silverfin (niegroźne, wyskakują z wody). Nowe jedzenie: surowa ryba.
+- **0.103.0 Razem (multiplayer, pierwszy krok).** Gracz, który uruchomi grę przez start-gry.bat, wybiera w menu Host a game; znajomi w tej samej sieci otwierają w przeglądarce jego adres i klikają Join (do 8 graczy). Świat i zegar gospodarza są wspólne, własny zapis dołączającego czeka w kopii (Back to my own world). Inni gracze widoczni jako postacie w swoich kolorach z imieniem i tym, co trzymają; czat pod T. Gdy gospodarz wyjdzie, gospodarzem zostaje najdłużej grający. Wrogowie, łupy i wioski są na razie osobne dla każdego.

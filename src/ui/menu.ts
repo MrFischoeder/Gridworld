@@ -7,6 +7,7 @@ import { calcStats, saveChar, handsChanged } from '../character';
 import { openChangelog } from './changelog';
 import { playIntro } from './intro';
 import { renderer } from '../world/render';
+import { mpLocked, refreshMp } from './mp';
 
 const menu = $('menu'), startBtn = $('start'), wipeBtn = $('wipe'), nameIn = $<HTMLInputElement>('heroName'), nameHint = $('nameHint');
 /** A name as the villagers will say it: trimmed, single spaces, letters, digits and a few marks, at most 20 characters. */
@@ -21,7 +22,7 @@ export interface MenuHooks {
 }
 
 export function showMenu() {
-  G.playing = false; G.firing = false; menu.style.display = 'flex'; startBtn.textContent = 'Resume'; showName(); renderSheet();
+  G.playing = false; G.firing = false; menu.style.display = 'flex'; startBtn.textContent = 'Resume'; showName(); renderSheet(); refreshMp();
 }
 
 export function initMenu(h: MenuHooks) {
@@ -33,7 +34,7 @@ export function initMenu(h: MenuHooks) {
     if (!n) { nameHint.textContent = 'Your hero needs a name first.'; nameIn.focus(); return; }
     if (n !== G.char.name) { G.char.name = n; saveChar(); }
     const s = parseInt(el.seed.value, 10);
-    if (Number.isFinite(s) && s !== G.char.world) h.newWorld(s);
+    if (Number.isFinite(s) && s !== G.char.world && !mpLocked()) h.newWorld(s); // (online, the host's world is everyone's)
     if (!G.isTouch) lockPointer();
     menu.style.display = 'none';
     if (G.char.intro) { G.playing = true; return; }
@@ -45,7 +46,7 @@ export function initMenu(h: MenuHooks) {
     });
   };
   $('changelog').onclick = openChangelog;
-  $('reroll').onclick = () => { h.newWorld((Math.random() * 1e6) | 0); startBtn.textContent = 'Play'; };
+  $('reroll').onclick = () => { if (mpLocked()) { nameHint.textContent = 'Leave the multiplayer game first: online, the host\'s world is everyone\'s.'; return; } h.newWorld((Math.random() * 1e6) | 0); startBtn.textContent = 'Play'; };
   let wipeArmed = false;
   wipeBtn.onclick = () => {
     if (!wipeArmed) { wipeArmed = true; wipeBtn.textContent = 'Click again to delete your character'; return; }

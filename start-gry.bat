@@ -30,7 +30,13 @@ echo.
 echo  Uruchamiam GridWorld. Gra otworzy sie w przegladarce.
 echo  Aby zakonczyc, zamknij to okno (albo Ctrl+C).
 echo.
-call npm run dev -- --open --strictPort --port 5173
+echo  GRA WIELOOSOBOWA: ten komputer jest serwerem. W menu gry kliknij "Host a game".
+echo  Znajomi w tej samej sieci otwieraja w przegladarce adres z linii "Network:" ponizej
+echo  (np. http://192.168.1.20:5173) i klikaja "Join". Twoje adresy w sieci lokalnej:
+for /f "tokens=2 delims=:" %%a in ('ipconfig ^| findstr /c:"IPv4"') do for /f "tokens=*" %%b in ("%%a") do echo     http://%%b:5173
+echo  (Jesli Windows zapyta o zapore, zezwol na dostep w sieci prywatnej.)
+echo.
+call npm run dev -- --open --strictPort --port 5173 --host
 if errorlevel 1 (
   echo.
   echo  Port 5173 jest zajety: prawdopodobnie dziala jeszcze STARA wersja gry.

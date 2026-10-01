@@ -4,6 +4,16 @@ export interface Change { v: string; date: string; title: string; notes: string[
 
 export const CHANGELOG: Change[] = [
   {
+    v: '0.103.0', date: '2026-10-20', title: 'Together (multiplayer, first step)',
+    notes: [
+      'Multiplayer: up to 8 castaways in one world. The player who starts the game with start-gry.bat presses Host a game in the main menu; friends on the same network open the host\'s address in their browser (start-gry.bat prints it, e.g. http://192.168.1.20:5173) and press Join.',
+      'The host\'s world and clock are everyone\'s. A friend whose own world is another one comes over to the host\'s; their own save is kept, and Back to my own world in the menu brings it back.',
+      'You see the others walking about the open world, or in the same dungeon sector, each in their own colour with their name over their head and what they hold in their hands.',
+      'Chat: press T while playing online, type, Enter to send. Who joins or leaves shows in the chat and the log; the badge in the corner says how many are online.',
+      'If the host leaves, the player who has been in the game longest hosts it. Enemies, loot and the villages are still each player\'s own for now: sharing them comes in the next steps.',
+    ],
+  },
+  {
     v: '0.102.0', date: '2026-10-19', title: 'Wings and fins',
     notes: [
       'Skitterwings: small beaked fliers that now and then turn up in flocks of three to five in the near wilds. They flutter a few metres up, follow you once they have seen you and swoop down one or two at a time to peck. One hit brings one down.',

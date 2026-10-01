@@ -68,6 +68,8 @@ import { updateGuide } from './world/guide';
 import { updateBridges, isBridgePlacing, updateBridgePlacing, confirmBridgePlacing, cancelBridgePlacing } from './world/bridges';
 import { updatePiers, isPierPlacing, updatePierPlacing, confirmPierPlacing, cancelPierPlacing } from './world/piers';
 import { updateBoats, inBoat, boatCamera } from './world/boats';
+import { initMp } from './ui/mp';
+import { updatePeers } from './world/peers';
 
 G.char = loadChar();
 document.getElementById('vnum')!.textContent = 'v' + VERSION;
@@ -85,6 +87,13 @@ initMenu({
     saveChar(); loadOverworld({ kind: 'new' });
   },
   freshStart() { loadOverworld({ kind: 'new' }); },
+});
+initMp({
+  switchWorld(seed) { // into the host's world: as rolling a new world, the character kept
+    const c = G.char;
+    Object.assign(c, { world: seed, loc: 'overworld', ow: null, dungeon: null, discovered: {}, opened: {}, unlocked: {}, killed: {} });
+    saveChar(); loadOverworld({ kind: 'new' });
+  },
 });
 
 if (G.char.loc === 'dungeon' && G.char.dungeon) loadDungeon(null); else { G.char.loc = 'overworld'; loadOverworld({ kind: 'saved' }); }
@@ -158,6 +167,7 @@ function frame(now: number) {
   if (sky.visible) { const thick = seen.fog > 0.45 || toxicHere() > 0.3; horizon.visible = !G.fly && !thick; if (G.fly || thick) farPeaks.visible = false; } // fog hides the far ranges
   const far = G.fly ? 600 : 200; if (camera.far !== far) { camera.far = far; camera.updateProjectionMatrix(); }
   el.cross.style.display = driving.v && !driving.cockpit && !driving.v.turret ? 'none' : '';
+  updatePeers(dt, moving); // multiplayer: say where you are, draw the others
   animateVM(dt, moving);
   animateFoes(dt, time, camera.position);
   updateFx(dt);

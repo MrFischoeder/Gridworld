@@ -361,3 +361,16 @@ body.intro > *:not(#view):not(.fx):not(#intro){visibility:hidden}
 #speech{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 70px);max-width:min(900px,86vw);text-align:center;font-size:22px;line-height:1.15;color:var(--txt);background:rgba(1,13,4,.78);border:1px solid #2a7a4a;padding:6px 16px;pointer-events:none;opacity:0;transition:opacity .5s;z-index:7;text-shadow:0 0 6px rgba(0,0,0,.9)}
 #speech b{font-weight:400;color:#9dffb4}
 body.intro #speech{display:none}
+
+/* multiplayer: the menu panel, the chat box (T) and the online badge */
+#mpBox{margin-top:14px;border-top:1px solid rgba(61,255,110,.35);padding-top:10px;max-width:40em}
+#mpBox .mpTitle{color:var(--g);font-size:22px;letter-spacing:2px}#mpBox .mpTitle span{opacity:.6;font-size:18px;letter-spacing:0}
+#mpBox button{font-size:22px;padding:5px 16px;margin-right:8px}
+#mpAddr{width:16em}
+#mpStatus{opacity:.85;font-size:18px;margin-top:6px}#mpList{font-size:20px;margin-top:4px}
+#chatlog{position:fixed;left:14px;bottom:calc(env(safe-area-inset-bottom,0px) + 150px);font-size:19px;max-width:44vw;pointer-events:none;z-index:6}
+#chatlog .chat{color:#e8fff0;text-shadow:0 0 4px #000;transition:opacity 1.5s}#chatlog .chat.info{color:#9dffe0}#chatlog .chat.error{color:#ff9a7a}
+#chatlog .chat.old{opacity:0}
+#chatIn{display:none;position:fixed;left:14px;bottom:calc(env(safe-area-inset-bottom,0px) + 118px);width:min(44vw,560px);font:19px VT323,monospace;
+  background:rgba(0,10,4,.85);color:#e8fff0;border:1px solid var(--g);padding:3px 8px;z-index:7}
+#mpBadge{position:fixed;right:16px;top:240px;font-size:18px;color:#9dffe0;pointer-events:none}

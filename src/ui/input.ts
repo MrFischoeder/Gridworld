@@ -10,6 +10,8 @@ import { closeTransfer } from './transfer';
 import { closeService } from './service';
 import { closeBoard } from './board';
 import { toggleConsole } from './console';
+import { openChat } from './mp';
+import { online } from '../net/client';
 import { driving, toggleCockpit } from '../world/vehicles';
 import { renderer, camera } from '../world/render';
 import { el } from './hud';
@@ -37,6 +39,7 @@ export function initInput(onPause: () => void) {
     if (G.dlgOpen) { if (e.code === 'Escape') closeDialog(); return; }
     if (G.xferOpen) { if (e.code === 'Escape' || e.code === 'KeyE') { closeTransfer(); closeService(); closeBoard(); } return; }
     if (e.code === 'KeyM' && G.playing) { toggleMap(); return; }
+    if (e.code === 'KeyT' && G.playing && online()) { e.preventDefault(); openChat(); return; }
     if (G.mapOpen) { if (e.code === 'Escape') toggleMap(false); if (e.code === 'Equal' || e.code === 'NumpadAdd') zoomMap(1.25); if (e.code === 'Minus' || e.code === 'NumpadSubtract') zoomMap(0.8); }
     if (extraKeys.some((f) => f(e))) return;
     if (e.code === 'Escape' && isPlacing()) cancelPlacing();
