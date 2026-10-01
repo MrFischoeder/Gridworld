@@ -35,11 +35,11 @@ describe('multiplayer server', () => {
     expect(wb.world).toBe(4242); expect(wb.time).toBe(900); expect(wb.host).toBe(wa.id);
     expect(wb.players.map((p: { name: string }) => p.name)).toEqual(['Ada', 'Ada 2']); // the same name gets a number
     expect((await a.wait('join')).name).toBe('Ada 2');
-    a.send({ t: 'state', p: [10, 2, -5], yaw: 1, pitch: 0, loc: 'o', held: 'blaster', mv: true, time: 960 });
+    a.send({ t: 'state', p: [10, 2, -5], yaw: 1, pitch: 0, loc: 'o', held: 'blaster', mv: true, time: 960, cars: [[0, 5, 1, 6, 0.5, 0, 0, 1, 1], 'junk', [1, 2]] });
     b.send({ t: 'state', p: [0, 0, 0], yaw: 0, pitch: 0, loc: 'o', held: '', mv: false, time: 1 }); // a guest's clock is ignored
     const snap = await b.wait('snap', 2);
     expect(snap.time).toBe(960);
-    expect(snap.ps).toEqual([{ id: wa.id, p: [10, 2, -5], yaw: 1, pitch: 0, loc: 'o', held: 'blaster', mv: true, away: false }]);
+    expect(snap.ps).toEqual([{ id: wa.id, p: [10, 2, -5], yaw: 1, pitch: 0, loc: 'o', held: 'blaster', mv: true, away: false, cars: [[0, 5, 1, 6, 0.5, 0, 0, 1, 1], [1, 2]] }]);
     b.send({ t: 'chat', text: 'hello <b>there</b>' });
     expect((await a.wait('chat')).text).toBe('hello bthere/b');
     // the host leaves: the other player hosts, the world stays

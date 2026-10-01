@@ -7,11 +7,35 @@ export const PROTOCOL = 2;
 export const SEND_EVERY = 0.1;
 
 /** `away`: in the menu (still in the game: the others see you standing there). */
-export interface PeerState { p: [number, number, number]; yaw: number; pitch: number; loc: string; held: string; mv: boolean; away?: boolean }
+/**
+ * A player's own vehicles, as others see them: [model (0 Scout, 1 Mastodon), x, y, z, heading, pitch, roll, cannon 0/1,
+ * driven 0/1] each (body pose as world/vehicles.ts sets it), in the order of their save.
+ */
+export type PeerCar = [number, number, number, number, number, number, number, number, number];
+export interface PeerState { p: [number, number, number]; yaw: number; pitch: number; loc: string; held: string; mv: boolean; away?: boolean; cars?: PeerCar[] }
 export interface Peer {
   id: number; name: string;
   /** The last two states and when they came: the drawing eases between them. */
   st: PeerState | null; prev: PeerState | null; at: number;
+  /** The last few states with the times they came (performance.now), oldest first: drawing samples them a little in the past. */
+  hist: { t: number; s: PeerState }[];
+}
+/** How far behind the newest snapshot the others are drawn (ms): enough to have two snapshots round any moment. */
+export const PEER_DELAY = 220;
+/**
+ * Where a peer was at time t (performance.now): the two states round it and how far between them. Before the oldest
+ * or after the newest it holds the end one (k 0), so a late packet makes them pause rather than jump back.
+ */
+export function peerAt(p: Peer, t: number): { a: PeerState; b: PeerState; k: number } | null {
+  const h = p.hist;
+  if (!h.length) return null;
+  if (t <= h[0].t) return { a: h[0].s, b: h[0].s, k: 0 };
+  for (let i = 1; i < h.length; i++) if (t <= h[i].t) {
+    const a = h[i - 1], b = h[i];
+    return { a: a.s, b: b.s, k: (t - a.t) / Math.max(1, b.t - a.t) };
+  }
+  const last = h[h.length - 1].s;
+  return { a: last, b: last, k: 0 };
 }
 export interface NetHooks {
   /** Joined: the host's world seed and clock (for the host: their own); on a dedicated server, the server's. */
@@ -82,10 +106,10 @@ export function connect(url: string, me: { name: string; world: number; time: nu
     switch (m.t) {
       case 'welcome':
         welcomed = true; net.id = m.id; net.host = m.host; net.dedicated = !!m.dedicated; net.room = m.room ?? null; net.peers.clear();
-        for (const p of m.players) if (p.id !== m.id) net.peers.set(p.id, { id: p.id, name: p.name, st: null, prev: null, at: 0 });
+        for (const p of m.players) if (p.id !== m.id) net.peers.set(p.id, { id: p.id, name: p.name, st: null, prev: null, at: 0, hist: [] });
         h.welcome(m.world, m.time, m.id === m.host, net.dedicated);
         break;
-      case 'join': net.peers.set(m.id, { id: m.id, name: m.name, st: null, prev: null, at: 0 }); h.say(`${m.name} joined the game.`, 'info'); break;
+      case 'join': net.peers.set(m.id, { id: m.id, name: m.name, st: null, prev: null, at: 0, hist: [] }); h.say(`${m.name} joined the game.`, 'info'); break;
       case 'leave': net.peers.delete(m.id); h.say(`${m.name} left the game.`, 'info'); break;
       case 'host': net.host = m.id; h.say(m.id === net.id ? 'The host left: you host the game now.' : `${net.peers.get(m.id)?.name ?? 'Someone'} hosts the game now.`, 'info'); break;
       case 'snap': {
@@ -93,7 +117,8 @@ export function connect(url: string, me: { name: string; world: number; time: nu
         for (const s of m.ps) {
           const p = net.peers.get(s.id);
           if (!p) continue;
-          p.prev = p.st; p.st = { p: s.p, yaw: s.yaw, pitch: s.pitch, loc: s.loc, held: s.held, mv: s.mv, away: !!s.away }; p.at = now;
+          p.prev = p.st; p.st = { p: s.p, yaw: s.yaw, pitch: s.pitch, loc: s.loc, held: s.held, mv: s.mv, away: !!s.away, cars: Array.isArray(s.cars) ? s.cars : [] }; p.at = now;
+          p.hist.push({ t: now, s: p.st }); if (p.hist.length > 8) p.hist.shift();
         }
         if (!isHost()) h.clock(m.time);
         break;

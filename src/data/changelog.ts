@@ -4,6 +4,14 @@ export interface Change { v: string; date: string; title: string; notes: string[
 
 export const CHANGELOG: Change[] = [
   {
+    v: '0.106.1', date: '2026-10-23', title: 'Shared vehicles',
+    notes: [
+      'In multiplayer you now see the other players\' vehicles: the ones they bought or found, parked where they left them, and the one they drive, with the driver sitting at the wheel instead of floating in the air.',
+      'Other players\' vehicles block your way like any other, but only their owner can drive them, open the trunk or service them.',
+      'Other players move more smoothly: they are drawn a fifth of a second behind, between the last updates, so uneven packets no longer make them stutter and jump.',
+    ],
+  },
+  {
     v: '0.106.0', date: '2026-10-23', title: 'The server list and the cryo-pods',
     notes: [
       'Multiplayer on a dedicated server now shows a list of its game servers: each with its name, who is playing, and whether it is running or paused. Pick one and press Join, or create your own with a name (in a fresh world or in yours).',

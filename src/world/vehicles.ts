@@ -370,6 +370,11 @@ function toLocal(v: Vehicle, x: number, z: number): [number, number] {
   const h = v.st.heading, c = Math.cos(h), s = Math.sin(h), dx = x - v.st.x, dz = z - v.st.z;
   return [dx * c - dz * s, dx * s + dz * c];
 }
+/** A world point in the frame of a body at (x, z) turned by heading h (for vehicles drawn without a Vehicle). */
+export function toLocalOf(h: number, x0: number, z0: number, x: number, z: number): [number, number] {
+  const c = Math.cos(h), s = Math.sin(h), dx = x - x0, dz = z - z0;
+  return [dx * c - dz * s, dx * s + dz * c];
+}
 /** Rest the body on its wheels: height from the wheel contact points, pitch and roll from their differences. */
 function pose(v: Vehicle) {
   const s = v.spec, H = hooks ? hooks.height : () => 0, zf = s.axles[0], zr = s.axles[s.axles.length - 1];
@@ -673,3 +678,14 @@ export function steerVehicle(v: Vehicle, tx: number, tz: number, want: number, d
 /** Point in world x/z from vehicle body coordinates. */
 export const bodyToWorld = (v: Vehicle, lx: number, lz: number) => toWorld(v, lx, lz);
 
+
+/** Your own vehicles as the other players see them (net/client.ts PeerCar): model, where, the body's pose, cannon, driven. */
+export function myCars(): [number, number, number, number, number, number, number, number, number][] {
+  const out: [number, number, number, number, number, number, number, number, number][] = [];
+  for (const v of vehicles) {
+    if (v.ai || !G.char.vehicles.includes(v.st)) continue;
+    const r = (n: number) => Math.round(n * 100) / 100;
+    out.push([v.st.model === 'scout' ? 0 : 1, r(v.st.x), r(v.y), r(v.st.z), r(v.st.heading), r(v.pitch), r(v.roll), v.st.parts.gun ? 1 : 0, v === driving.v ? 1 : 0]);
+  }
+  return out;
+}

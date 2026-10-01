@@ -14,19 +14,19 @@
 // Protocol (JSON text frames), client → server:
 //   {t:'hello', name, ver, world, time, room?, create?: {name, world}}   first message; `room` picks a dedicated room,
 //                                                                          `create` makes one; hosted: world / time for the host
-//   {t:'state', p:[x,y,z], yaw, pitch, loc, held, mv, away, time?}   ~10 times a second; time from a hosted room's host only
+//   {t:'state', p:[x,y,z], yaw, pitch, loc, held, mv, away, cars, time?}   cars: the player's own vehicles (net/client.ts PeerCar)   ~10 times a second; time from a hosted room's host only
 //   {t:'chat', text}
 // server → client:
 //   {t:'welcome', id, host, world, time, players:[{id, name}], dedicated, room:{id, name}}   host 0 on a dedicated server
 //   {t:'full'} / {t:'refused', why}
 //   {t:'join', id, name} / {t:'leave', id, name} / {t:'host', id}
-//   {t:'snap', time, ps:[{id, p, yaw, pitch, loc, held, mv, away}]}  everybody in your room but you
+//   {t:'snap', time, ps:[{id, p, yaw, pitch, loc, held, mv, away, cars}]}  everybody in your room but you
 //   {t:'chat', id, name, text}
 import { WebSocketServer } from 'ws';
 import { pathToFileURL } from 'node:url';
 import { randomInt } from 'node:crypto';
 
-export const MP = { path: '/mp', port: 7777, max: 8, rate: 100, nameMax: 20, chatMax: 200, roomName: 28, rooms: 12, roomTtl: 14 };
+export const MP = { path: '/mp', port: 7777, max: 8, rate: 100, nameMax: 20, chatMax: 200, roomName: 28, rooms: 12, roomTtl: 14, cars: 8 };
 /** Protocol version: a client with another one is refused (the game shows why). */
 export const PROTOCOL = 2;
 
@@ -106,7 +106,7 @@ export function createMp(log = (m) => console.log('[mp] ' + m), opts = {}) {
         return;
       }
       if (m.t === 'state') {
-        me.st = { p: Array.isArray(m.p) ? m.p.slice(0, 3).map(num) : [0, 0, 0], yaw: num(m.yaw), pitch: num(m.pitch), loc: clean(m.loc, 80), held: clean(m.held, 24), mv: !!m.mv, away: !!m.away };
+        me.st = { p: Array.isArray(m.p) ? m.p.slice(0, 3).map(num) : [0, 0, 0], yaw: num(m.yaw), pitch: num(m.pitch), loc: clean(m.loc, 80), held: clean(m.held, 24), mv: !!m.mv, away: !!m.away, cars: Array.isArray(m.cars) ? m.cars.slice(0, MP.cars).filter(Array.isArray).map((c) => c.slice(0, 9).map(num)) : [] };
         if (!dedicated && me.id === room.hostId && typeof m.time === 'number') room.time0 = num(m.time);
       } else if (m.t === 'chat') {
         const text = clean(m.text, MP.chatMax);

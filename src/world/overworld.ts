@@ -40,6 +40,7 @@ import { wallOf } from '../gen/town';
 import { drawPower, setPlantLamps, forgetPower } from './power';
 import { drawIndustry, forgetIndustry } from './industry';
 import { caravanHit, clearCaravans } from './caravans';
+import { peerCarHit } from './peers';
 import { raidHere, clearVillageRaid } from './villageraid';
 import { syncQuestWorld } from './quests';
 import { generateRuin } from '../gen/ruins';
@@ -526,7 +527,7 @@ export function openWorld(x: number, z: number) {
   primeInstalls(w, G.char.claims); // the installations' sites are worked out in a worker meanwhile
   closeWorld();
   G.water = (px, pz) => (inStructure(px, pz) ? null : OW.terrain!.water(px, pz));
-  G.space = space; G.ground = groundAt; G.obstacle = (px, py, pz, r) => treeHit(px, py, pz, r) || vehicleHit(px, py, pz, r) || caravanHit(px, py, pz, r) || ambushHit(px, py, pz, r) || baseHit(px, py, pz, r) || ladderHit(px, py, pz, r) || walkHit(px, py, pz, r) || guardHit(px, py, pz, r) || houseHit(px, py, pz, r) || doorHit(px, py, pz, r) || podHit(px, py, pz, r) || installHit(px, py, pz, r) || cityHit(px, py, pz, r) || hallHit(px, py, pz, r) || bridgeHit(px, py, pz, r) || pierHit(px, py, pz, r) || boatHit(px, py, pz, r) || toxicHit(px, py, pz, r);
+  G.space = space; G.ground = groundAt; G.obstacle = (px, py, pz, r) => treeHit(px, py, pz, r) || vehicleHit(px, py, pz, r) || caravanHit(px, py, pz, r) || peerCarHit(px, py, pz, r) || ambushHit(px, py, pz, r) || baseHit(px, py, pz, r) || ladderHit(px, py, pz, r) || walkHit(px, py, pz, r) || guardHit(px, py, pz, r) || houseHit(px, py, pz, r) || doorHit(px, py, pz, r) || podHit(px, py, pz, r) || installHit(px, py, pz, r) || cityHit(px, py, pz, r) || hallHit(px, py, pz, r) || bridgeHit(px, py, pz, r) || pierHit(px, py, pz, r) || boatHit(px, py, pz, r) || toxicHit(px, py, pz, r);
   G.floor = (x, y, z) => Math.max(baseFloor(x, y, z), ladderFloor(x, y, z), walkFloor(x, y, z), bridgeFloor(x, y, z), pierFloor(x, y, z)); G.rayBlock = (o, d, t) => cityRay(o, d, doorRay(o, d, houseRay(o, d, baseRay(o, d, t)))); G.solid = (p) => baseSolid(p) || houseSolid(p);
   foeRules.blocked = (p) => nearVillage(p.x, p.z) < 2;
   foeRules.playerSafe = () => inVillage(G.pos.x, G.pos.z) && !raidHere(); // no safe place while bandits raid it
@@ -542,7 +543,7 @@ export function openWorld(x: number, z: number) {
   spawnVehicles({
     height: (px, pz) => Math.max(T.heightAt(px, pz), bridgeDeck(px, pz) ?? -Infinity, pierDeck(px, pz) ?? -Infinity), // over a bridge or a pier, its deck
     water: (px, pz) => (bridgeDeck(px, pz) !== null || pierDeck(px, pz) !== null ? 0 : T.water(px, pz)?.depth ?? 0),
-    blocked: (px, pz, r) => structBlocks(px, pz, r, T.heightAt(px, pz)) || treeHit(px, T.heightAt(px, pz) + 0.5, pz, r) || ambushHit(px, 0, pz, r) || cityHit(px, T.heightAt(px, pz) + 0.5, pz, r) || bridgeHit(px, (bridgeDeck(px, pz) ?? -99) + 0.5, pz, r), // a bridge's rails keep you on its deck
+    blocked: (px, pz, r) => structBlocks(px, pz, r, T.heightAt(px, pz)) || treeHit(px, T.heightAt(px, pz) + 0.5, pz, r) || ambushHit(px, 0, pz, r) || peerCarHit(px, T.heightAt(px, pz) + 0.5, pz, r) || cityHit(px, T.heightAt(px, pz) + 0.5, pz, r) || bridgeHit(px, (bridgeDeck(px, pz) ?? -99) + 0.5, pz, r), // a bridge's rails keep you on its deck
   });
   syncFound(T, x, z);
   const envHooks = {
