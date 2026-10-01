@@ -1,12 +1,16 @@
 // The hero's crash site (gen/landing.ts): the Kestrel lying broken a few hundred metres out of Gridholm at the end
 // of the furrow it ploughed, smoke rising from the gash in its roof and the crumpled engine, an emergency lamp
 // blinking inside. You can walk in through the open hatch (the hull collides, `podHit`), search the locker (the
-// survival kit, container 'ship:locker') and read the flight recorder at the console (ui/logbook.ts). Every new
-// character wakes up inside it (level.ts `loadOverworld` with a 'new' arrival).
+// survival kit, container 'ship:locker') and read the flight recorder at the console (ui/logbook.ts). The pilot lies
+// dead over the console; the crew slept in the cryo-pods along the walls. Every castaway wakes from their own pod
+// (`podOf`: one each, by their place on the server; alone, the first), and wakes there again after dying (level.ts
+// `loadOverworld` with a 'new' or 'pod' arrival). A pod stands open while its castaway is in the game, the others
+// shut with a sleeper behind the frost (`syncPods`).
 import * as THREE from 'three';
 import { scene, add, lineMat } from './render';
 import { PropBatch } from './props';
-import { drawLander, landerWalls, HULL_C, SCORCH_C, WARN_C, LOCKER, CONSOLE } from './lander';
+import { drawLander, landerWalls, drawPod, drawPilot, HULL_C, SCORCH_C, WARN_C, LOCKER, CONSOLE, PODS, POD_C } from './lander';
+import { net } from '../net/client';
 import { landingSite, LANDING, type Landing } from '../gen/landing';
 import { rng, hash } from '../core/rng';
 import type { Terrain } from '../gen/terrain';
@@ -15,6 +19,7 @@ import { putItems } from '../inventory';
 import type { Slot } from '../save';
 
 let site: Landing | null = null, grp: THREE.Group | null = null, lamp: THREE.Object3D | null = null, walls: [number, number, number, number][] = [];
+let pods: THREE.Group | null = null, podKey = '';
 let cos = 1, sin = 0, gy = 0;
 interface Puff { o: THREE.LineLoop; t: number; life: number; v: number }
 const puffs: Puff[] = [];
@@ -37,6 +42,7 @@ export function setCrash(t: Terrain) {
   walls = landerWalls(true);
   const pb = new PropBatch(), R = rng(hash(t.world, 0xc4a5));
   drawLander(pb, { broken: true });
+  drawPilot(pb);
   const h = (lx: number, lz: number) => { const [x, z] = crashWorld(lx, lz); return t.heightAt(x, z) - gy; };
   // the furrow ploughed behind the ship: two berms of thrown-up earth, lower and narrower towards where it touched down
   for (const s of [1, -1]) {
@@ -71,11 +77,38 @@ export function setCrash(t: Terrain) {
   grp.add(handle);
   grp.position.set(site.x, gy, site.z); grp.rotation.y = site.yaw;
   scene.add(grp);
+  podKey = ''; syncPods();
+}
+/** The pod a castaway wakes from: by their place on the server (alone, the first). */
+export const podOf = (id: number) => (Math.max(1, id) - 1) % PODS.length;
+export const myPod = () => (net.id ? podOf(net.id) : 0);
+/** Which pods stand open: yours and those of the others in the game. */
+function openPods(): boolean[] {
+  const open = PODS.map(() => false);
+  open[myPod()] = true;
+  for (const p of net.peers.values()) open[podOf(p.id)] = true;
+  return open;
+}
+/** Redraw the pods when who is in the game changes. */
+export function syncPods() {
+  if (!grp) return;
+  const open = openPods(), key = open.map(Number).join('');
+  if (key === podKey) return;
+  podKey = key;
+  if (pods) { grp.remove(pods); pods.traverse((o) => (o as THREE.Mesh).geometry?.dispose()); }
+  const pb = new PropBatch();
+  open.forEach((o, i) => drawPod(pb, i, o));
+  pods = pb.build();
+  for (let i = 0; i < PODS.length; i++) if (open[i]) { // a soft light in each open pod
+    const l = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.OctahedronGeometry(0.07)), add(POD_C));
+    l.position.set(PODS[i].x + (PODS[i].x > 0 ? -0.3 : 0.3), 2.0, PODS[i].z); pods.add(l);
+  }
+  grp.add(pods);
 }
 export function dropCrash() {
   if (grp) { scene.remove(grp); grp.traverse((o) => { const m = o as THREE.Mesh; m.geometry?.dispose(); }); }
   for (const p of puffs) p.o.geometry.dispose();
-  grp = null; lamp = null; puffs.length = 0; site = null;
+  grp = null; lamp = null; pods = null; podKey = ''; puffs.length = 0; site = null;
 }
 
 /** Hull, wings and engines as walls (the hatch is open). */
@@ -91,10 +124,11 @@ export function podHit(px: number, py: number, pz: number, r: number): boolean {
 
 /** The crash site of the loaded world (null before `setCrash`). */
 export const crashLanding = () => site;
-/** Where a new character wakes: inside by the locker, facing the open hatch. */
-export function crashSpawn(): { x: number; z: number; yaw: number } | null {
+/** Where a castaway wakes: just out of their cryo-pod (`pod`, default your own), facing the open hatch. */
+export function crashSpawn(pod = myPod()): { x: number; z: number; yaw: number } | null {
   if (!site) return null;
-  const [x, z] = crashWorld(-0.9, -0.9), [hx, hz] = crashWorld(2.2, 0.15); // looking out of the open hatch
+  const p = PODS[pod], n = p.x > 0 ? -1 : 1;
+  const [x, z] = crashWorld(p.x + n * 0.95, p.z - 0.1), [hx, hz] = crashWorld(2.2, 0.15); // looking out of the open hatch
   return { x, z, yaw: Math.atan2(-(hx - x), -(hz - z)) };
 }
 const localNear = (lx: number, lz: number, d: number) => { if (!site || G.char.loc !== 'overworld') return false; if (Math.abs(G.pos.x - site.x) > 20 || Math.abs(G.pos.z - site.z) > 20) return false; const [x, z] = toLocal(G.pos.x, G.pos.z); return Math.hypot(x - lx, z - lz) < d; };
@@ -118,6 +152,7 @@ export function updateCrash(dt: number, time: number) {
   const near = Math.hypot(G.pos.x - site.x, G.pos.z - site.z) < 260;
   grp.visible = G.char.loc === 'overworld';
   if (lamp) lamp.visible = Math.sin(time * 5) > 0;
+  syncPods();
   if (near && (puffT -= dt) <= 0) {
     puffT = 0.35;
     for (const [x, y, z] of [[0.9, 3, -1.5], [1.5, 2.6, -10.6]]) {

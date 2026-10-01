@@ -15,6 +15,14 @@ export const NOSE: [number, number, number] = [0, 1.1, 9.2];
 export const HATCH = { z0: -0.6, z1: 0.9, h: 2.25 };
 /** The locker by the port wall and the flight console in the nose (ship-local, for interaction). */
 export const LOCKER = { x: -1.7, z: -3.2 }, CONSOLE = { x: 0, z: 3.6 };
+/**
+ * The cryo-pods the crew sleep in (ship-local middles, against the walls, opening towards the aisle): two aft on the
+ * starboard side, two forward on the port side. Each castaway wakes from their own (`podOf` in world/crashpod.ts).
+ */
+export const PODS: { x: number; z: number }[] = [{ x: 1.72, z: -4.5 }, { x: -1.74, z: -0.55 }, { x: 1.72, z: -3.15 }, { x: -1.74, z: 0.8 }];
+export const POD_C = 0x9dffe0, FROST_C = 0x7fb8c8;
+/** The pilot's name (they did not make it). */
+export const PILOT = 'Commander Ilse Varga';
 
 function ring(z: number, w: number, y0: number, y1: number): number[][] {
   const c = 0.35 * Math.min(w, (y1 - y0) / 2);
@@ -125,6 +133,57 @@ export function drawLander(pb: PropBatch, o: LanderOpts) {
   }
 }
 /**
+ * A cryo-pod (ship-local, `pods` index into PODS): a plinth, a shell against the wall, a door facing the aisle. Shut:
+ * frosted glass with the sleeper's outline behind it and a cold status strip. Open: the door swung out on its hinge,
+ * the inside lit, a breath of vapour on the deck.
+ */
+export function drawPod(pb: PropBatch, i: number, open: boolean) {
+  const { x: cx, z: cz } = PODS[i], n = cx > 0 ? -1 : 1; // n: towards the aisle
+  const P = (w: number, u: number, y: number) => [cx + w * n, y, cz + u];
+  const W0 = -0.42, W1 = 0.32, U = 0.45, Y0 = 0.22, Y1 = 2.15;
+  // plinth and shell (back, sides, top)
+  { const a = P(-0.46, -0.48, 0), b = P(0.4, 0.48, Y0); pb.box(Math.min(a[0], b[0]), 0, Math.min(a[2], b[2]), Math.max(a[0], b[0]), Y0, Math.max(a[2], b[2]), HULL_C); }
+  const quad = (q: number[][], c: number) => { pb.face(...q); for (let k = 0; k < 4; k++) pb.seg(c, q[k], q[(k + 1) % 4]); };
+  quad([P(W0, -U, Y0), P(W0, U, Y0), P(W0, U, Y1), P(W0, -U, Y1)], HULL_C);
+  for (const u of [-U, U]) quad([P(W0, u, Y0), P(W1, u, Y0), P(W1, u, Y1), P(W0, u, Y1)], HULL_C);
+  quad([P(W0, -U, Y1), P(W1, -U, Y1), P(W1, U, Y1), P(W0, U, Y1)], HULL_C);
+  pb.seg(HULL_C, P(W1, -U, Y1 - 0.25), P(W1, U, Y1 - 0.25)); // the lid's rim
+  if (!open) {
+    // the door: frosted glass, the sleeper's outline seen through it, a cold strip at the top
+    const d = [P(W1, -U, Y0), P(W1, U, Y0), P(W1, U, Y1 - 0.25), P(W1, -U, Y1 - 0.25)];
+    pb.face(...d);
+    const f = (w: number, u: number, y: number) => P(W1 + 0.012 + w, u, y);
+    for (const [u0, y0, u1, y1] of [[-0.35, 0.5, -0.1, 0.8], [0.05, 1.3, 0.3, 1.55], [-0.3, 1.6, -0.12, 1.75]]) pb.seg(FROST_C, f(0, u0, y0), f(0, u1, y1));
+    const head = Array.from({ length: 7 }, (_, k) => f(0, Math.cos(k / 6 * 6.283) * 0.11, 1.68 + Math.sin(k / 6 * 6.283) * 0.13));
+    pb.line(FROST_C, ...head);
+    pb.line(FROST_C, f(0, -0.22, 1.42), f(0, 0.22, 1.42)); pb.line(FROST_C, f(0, -0.2, 1.42), f(0, -0.13, 0.75), f(0, -0.1, 0.3)); pb.line(FROST_C, f(0, 0.2, 1.42), f(0, 0.13, 0.75), f(0, 0.1, 0.3));
+    pb.seg(ENGINE_C, f(0, -0.3, Y1 - 0.4), f(0, 0.3, Y1 - 0.4));
+    return;
+  }
+  // open: the door out on its hinge (the +u edge), the inside lit, vapour on the deck
+  const swing = 1.92, len = 2 * U, fw = W1 + Math.sin(swing) * len, fu = U - Math.cos(swing) * len; // swung ~110° about the hinge at (W1, +U)
+  quad([P(W1, U, Y0 + 0.02), P(fw, fu, Y0 + 0.02), P(fw, fu, Y1 - 0.27), P(W1, U, Y1 - 0.27)], HULL_C);
+  pb.line(POD_C, P(W0 + 0.03, -U + 0.08, Y0 + 0.1), P(W0 + 0.03, U - 0.08, Y0 + 0.1), P(W0 + 0.03, U - 0.08, Y1 - 0.12), P(W0 + 0.03, -U + 0.08, Y1 - 0.12), P(W0 + 0.03, -U + 0.08, Y0 + 0.1));
+  pb.line(POD_C, P(W0 + 0.06, -0.14, 1.62), P(W0 + 0.06, 0.14, 1.62), P(W0 + 0.06, 0.14, 1.88), P(W0 + 0.06, -0.14, 1.88), P(W0 + 0.06, -0.14, 1.62)); // the headrest
+  for (const y of [0.7, 1.15]) pb.seg(POD_C, P(W0 + 0.06, -0.3, y), P(W0 + 0.06, 0.3, y)); // the straps
+  pb.seg(POD_C, P(W1, -U, Y1 - 0.4), P(W1, -U + 0.25, Y1 - 0.4)); // the status light, green now
+  for (let k = 0; k < 4; k++) { const u = -0.35 + k * 0.22, w = W1 + 0.1 + (k % 2) * 0.25; pb.seg(FROST_C, P(w, u, 0.04), P(w + 0.35, u + 0.12, 0.06)); } // vapour
+}
+/** The pilot, slumped over the flight console in the left seat: they did not make it. */
+export function drawPilot(pb: PropBatch) {
+  const cz = CONSOLE.z, x = -0.7, SUIT = 0x8ab0a0;
+  pb.box(x - 0.2, 0.42, cz - 1.05, x + 0.2, 0.62, cz - 0.7, SUIT); // hips on the seat
+  pb.solid8([[x - 0.22, 0.6, cz - 1.0], [x + 0.22, 0.6, cz - 1.0], [x + 0.22, 0.6, cz - 0.72], [x - 0.22, 0.6, cz - 0.72]], // the back, bent forward over the console
+    [[x - 0.24, 1.08, cz - 0.15], [x + 0.24, 1.08, cz - 0.15], [x + 0.24, 1.0, cz + 0.12], [x - 0.24, 1.0, cz + 0.12]], SUIT);
+  pb.box(x - 0.13, 0.97, cz + 0.2, x + 0.13, 1.24, cz + 0.5, HULL_C); // the helmet, resting on the console
+  pb.seg(GLASS_C, [x - 0.1, 1.0, cz + 0.51], [x + 0.1, 1.2, cz + 0.51]); // a crack across the visor
+  for (const s of [-1, 1]) {
+    pb.line(SUIT, [x + s * 0.12, 0.55, cz - 0.75], [x + s * 0.13, 0.55, cz - 0.3], [x + s * 0.14, 0.02, cz - 0.25]); // a leg
+    pb.line(SUIT, [x + s * 0.24, 1.05, cz - 0.05], [x + s * 0.32, 0.6, cz + 0.05], [x + s * 0.3, 0.2, cz]); // an arm hanging
+  }
+  pb.seg(WARN_C, [x - 0.15, 0.97, cz + 0.6], [x + 0.15, 0.97, cz + 0.6]); // a dead lamp on the console before them
+}
+/**
  * The hull's outline in plan (ship-local x, z) for collisions: wall segments, with the hatch left open when broken,
  * plus the wings, the engines and, inside, the console.
  */
@@ -135,6 +194,9 @@ export function landerWalls(broken: boolean): [number, number, number, number][]
   if (!broken) out.push([2.2, HATCH.z0, 2.2, HATCH.z1]);
   poly([[-2.2, -6], [-7.6, -7.2], [-7.6, -5.6], [-2.2, -2]]);
   poly(broken ? [[2.2, -6], [3.4, -6.2], [3.6, -5.4], [3.4, -3.3], [2.2, -2]] : [[2.2, -6], [7.6, -7.2], [7.6, -5.6], [2.2, -2]]);
-  if (broken) { poly([[-1.3, CONSOLE.z + 0.2], [1.3, CONSOLE.z + 0.2], [1.3, CONSOLE.z + 0.9], [-1.3, CONSOLE.z + 0.9]], true); poly([[LOCKER.x - 0.35, LOCKER.z - 1.1], [LOCKER.x - 0.35, LOCKER.z + 1.15]]); }
+  if (broken) {
+    poly([[-1.3, CONSOLE.z + 0.2], [1.3, CONSOLE.z + 0.2], [1.3, CONSOLE.z + 0.9], [-1.3, CONSOLE.z + 0.9]], true); poly([[LOCKER.x - 0.35, LOCKER.z - 1.1], [LOCKER.x - 0.35, LOCKER.z + 1.15]]);
+    for (const p of PODS) { const n = p.x > 0 ? -1 : 1, w = p.x + 0.34 * n; poly([[p.x, p.z - 0.47], [w, p.z - 0.47], [w, p.z + 0.47], [p.x, p.z + 0.47]]); } // the pods' fronts and sides
+  }
   return out;
 }

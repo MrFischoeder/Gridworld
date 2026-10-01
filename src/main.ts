@@ -93,7 +93,7 @@ initMp({
   switchWorld(seed) { // into the host's world: as rolling a new world, the character kept
     const c = G.char;
     Object.assign(c, { world: seed, loc: 'overworld', ow: null, dungeon: null, discovered: {}, opened: {}, unlocked: {}, killed: {} });
-    saveChar(); loadOverworld({ kind: 'new' });
+    saveChar(); loadOverworld({ kind: 'pod' }); // a castaway arrives in a new world by waking from their cryo-pod in the crashed ship
   },
 });
 

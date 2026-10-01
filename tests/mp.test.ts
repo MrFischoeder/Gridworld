@@ -8,7 +8,7 @@ type Msg = { t: string; [k: string]: any };
 let http: Server | null = null, mp: ReturnType<typeof createMp> | null = null;
 afterEach(() => { mp?.close(); http?.close(); http = mp = null; });
 
-async function server(opts?: { world?: number; time?: number }) {
+async function server(opts?: { world?: number; time?: number; rooms?: { id: string; name: string; world: number; time: number }[] }) {
   mp = createMp(() => {}, opts); http = createServer(); mp.attach(http);
   await new Promise<void>((r) => http!.listen(0, r));
   return (http.address() as { port: number }).port;
@@ -39,7 +39,7 @@ describe('multiplayer server', () => {
     b.send({ t: 'state', p: [0, 0, 0], yaw: 0, pitch: 0, loc: 'o', held: '', mv: false, time: 1 }); // a guest's clock is ignored
     const snap = await b.wait('snap', 2);
     expect(snap.time).toBe(960);
-    expect(snap.ps).toEqual([{ id: wa.id, p: [10, 2, -5], yaw: 1, pitch: 0, loc: 'o', held: 'blaster', mv: true }]);
+    expect(snap.ps).toEqual([{ id: wa.id, p: [10, 2, -5], yaw: 1, pitch: 0, loc: 'o', held: 'blaster', mv: true, away: false }]);
     b.send({ t: 'chat', text: 'hello <b>there</b>' });
     expect((await a.wait('chat')).text).toBe('hello bthere/b');
     // the host leaves: the other player hosts, the world stays
@@ -76,6 +76,33 @@ describe('multiplayer server', () => {
     expect(b.got.some((m) => m.t === 'host')).toBe(false);
     expect(mp!.state().world).toBe(777);
     b.ws.close();
+  });
+  it('a dedicated server holds many rooms: list, create, join one; each room its own world, players and clock', async () => {
+    const port = await server({ rooms: [{ id: 'main', name: 'Main', world: 11, time: 100 }, { id: 'r2', name: 'Night Shift', world: 22, time: 5000 }] });
+    expect(mp!.list().map((r) => [r.id, r.name, r.world, r.online, r.running])).toEqual([['main', 'Main', 11, 0, false], ['r2', 'Night Shift', 22, 0, false]]);
+    // an empty room's clock stands still
+    const t0 = mp!.list()[1].time; await new Promise((r) => setTimeout(r, 1100)); expect(mp!.list()[1].time).toBe(t0);
+    const a = await client(port, { name: 'Ada', room: 'r2' }), wa = await a.wait('welcome');
+    expect(wa.room).toEqual({ id: 'r2', name: 'Night Shift' }); expect(wa.world).toBe(22); expect(wa.host).toBe(0);
+    const b = await client(port, { name: 'Bob' }), wb = await b.wait('welcome'); // no room: the main one
+    expect(wb.world).toBe(11); expect(wb.players.map((p: { name: string }) => p.name)).toEqual(['Bob']);
+    // with someone in it a room's clock runs; the rooms do not see each other
+    await new Promise((r) => setTimeout(r, 1100));
+    expect(mp!.list()[1].time).toBeGreaterThan(5000.9); expect(mp!.list()[1].running).toBe(true);
+    a.send({ t: 'state', p: [1, 1, 1], yaw: 0, pitch: 0, loc: 'o', held: '', mv: false, away: true });
+    await b.wait('snap', 3); expect(b.got.filter((m) => m.t === 'snap').every((m) => m.ps.length === 0)).toBe(true);
+    // create a room (and join it); a taken name is refused
+    const c = await client(port, { name: 'Cy', create: { name: 'Cy Base', world: 33 } }), wc = await c.wait('welcome');
+    expect(wc.world).toBe(33); expect(wc.room.name).toBe('Cy Base'); expect(mp!.list().length).toBe(3);
+    const d = await client(port, { name: 'Di', create: { name: 'cy base' } });
+    expect((await d.wait('refused')).why).toMatch(/already/);
+    const e = await client(port, { name: 'Ed', room: 'nope' });
+    expect((await e.wait('refused')).why).toMatch(/gone/);
+    // the room empties: its clock stops where it was
+    a.ws.close(); await new Promise((r) => setTimeout(r, 150));
+    const stopped = mp!.list()[1].time; await new Promise((r) => setTimeout(r, 1100));
+    expect(mp!.list()[1].time).toBe(stopped); expect(mp!.list()[1].running).toBe(false);
+    b.ws.close(); c.ws.close();
   });
   it('turns what the player typed into a server address', () => {
     const here = { protocol: 'http:', host: '192.168.1.20:5173' };

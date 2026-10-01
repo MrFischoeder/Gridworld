@@ -1,6 +1,6 @@
 # GridWorld: opis gry, cel, plan i historia zmian
 
-Stan na wersję **0.105.1**. Ten dokument opisuje, czym jest GridWorld, jaki jest cel gry, co już w niej jest, czego jeszcze nie ma, dokąd zmierza i jak powstawała, wersja po wersji. Nazwy z gry (przedmioty, miejsca, postacie) są po angielsku, tak jak na ekranie.
+Stan na wersję **0.106.0**. Ten dokument opisuje, czym jest GridWorld, jaki jest cel gry, co już w niej jest, czego jeszcze nie ma, dokąd zmierza i jak powstawała, wersja po wersji. Nazwy z gry (przedmioty, miejsca, postacie) są po angielsku, tak jak na ekranie.
 
 ---
 
@@ -30,7 +30,7 @@ Gra powstała z jednoplikowego prototypu **Grid Arena** (areny z dronami w locha
 ## 2. Fabuła i cel gry
 
 ### Rozbitkowie
-Gracze nie są stąd. To astronauci z przyszłości, załoga statków zwiadowczych. Ich statki spadły na nieznaną planetę po uderzeniu roju meteorów.
+Gracze nie są stąd. To astronauci z przyszłości, zespół zwiadowczy, który leciał uśpiony w komorach kriogenicznych. Ich statek spadł na nieznaną planetę po uderzeniu roju meteorów. Gracze nie są pilotami: statek prowadziła komandor **Ilse Varga**, która nie przeżyła katastrofy (leży pochylona nad konsolą).
 
 Nowa postać zaczyna od intra narysowanego liniami gry:
 - statek SV-9 **Kestrel** leci przez zewnętrzny pas nieznanego układu;
@@ -38,7 +38,7 @@ Nowa postać zaczyna od intra narysowanego liniami gry:
 - statek koziołkuje w stronę planety, wchodzi w atmosferę i się rozbija;
 - ekran pokazuje „SYSTEMS OFFLINE”, potem „<IMIĘ>. WAKE UP.”
 
-Gracz budzi się we wraku. W szafce czekają pierwsze zapasy, a rejestrator lotu podpowiada, gdzie jest najbliższa osada. Przed wrakiem stoi **Wiktor**, zwiadowca z Gridholm:
+Gracz budzi się we wraku, wychodząc z własnej komory kriogenicznej. Każdy gracz ma swoją komorę (są cztery): im więcej graczy na serwerze, tym więcej komór stoi otwartych. Po śmierci gracz budzi się znowu w swojej komorze. W szafce czekają pierwsze zapasy, a rejestrator lotu podpowiada, gdzie jest najbliższa osada. Przed wrakiem stoi **Wiktor**, zwiadowca z Gridholm:
 - woła do włazu, dopóki gracz z nim nie porozmawia;
 - radzi zabrać ze statku wszystko, co się da;
 - prowadzi do bramy wioski i po drodze pokazuje ruiny, wraki, obozy i jeziora.
@@ -564,3 +564,4 @@ Pełne notatki (po angielsku) są w grze pod przyciskiem **Changelog** w menu g�
 - **0.104.1 Dobry sąsiad.** Serwer instaluje się obok innych aplikacji, niczego w nich nie ruszając: własny folder, własny Node.js, własny port 8517 (skrypt przerywa, gdy jest zajęty), bez zmian w serwerze WWW, proxy i zaporze. Gra działa też za portalem pod podścieżką, np. https://domena/gridworld/.
 - **0.105.0 Martwe miasta.** Na planecie stoi 10 wielkich zrujnowanych miast dawnego świata, każde ponad kilometr średnicy (przejście zajmuje minuty); dwa najbliższe 4–8 km od Gridholm. Każde ma własny układ (zwykła siatka kwartałów, pokręcone stare miasto, pierścienie i promienie wokół placu, siatka przecięta ukośnymi bulwarami), własne centrum wieżowców i odsetek zawalonych budynków. Ulice z krawężnikami, pasami, przejściami, latarniami i wrakami aut; budynki z siatką pięter i okien, połamanymi szczytami, wypalone szkielety z wiszącymi belkami, kopce gruzu. Miasta są niebezpieczne (zagrożenie +2), budynki zatrzymują ruch i strzały. Na mapie widać obrys i ulice odkrytych części. W miastach nie ma wiosek, świątyń, wraków i obozów, a rzeki i drogi je omijają.
 - **0.105.1 Szybszy start.** Wyszukiwanie miejsc wielkich instalacji (kilka sekund) blokowało menu i pole imienia przy starcie; teraz liczy się w tle, w osobnym wątku przeglądarki.
+- **0.106.0 Lista serwerów i komory kriogeniczne.** Serwer na VPS pokazuje w menu listę swoich serwerów gry (nazwa, kto gra, czy działa, czy stoi w pauzie); gracz wybiera jeden i klika Join albo zakłada własny z nazwą (w nowym świecie albo w swoim). Serwer działa, dopóki ktoś na nim jest, a gdy ostatni gracz wyjdzie, jego zegar staje. Gracz, który wyjdzie do menu, nie znika: zostaje w świecie z dopiskiem „(in menu)”, a świat toczy się dalej dla innych. Fabuła: gracze nie są pilotami; pilotka zginęła w katastrofie i leży nad konsolą, a gracze budzą się z komór kriogenicznych, każdy ze swojej (więcej graczy, więcej otwartych komór). Po śmierci budzisz się znowu w swojej komorze na statku.

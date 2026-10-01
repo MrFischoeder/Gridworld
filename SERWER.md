@@ -1,8 +1,13 @@
 # Serwer GridWorld na VPS
 
-Serwer dedykowany to jeden program Node (`server/main.mjs`), który na jednym porcie podaje graczom samą grę (przeglądarka) i obsługuje tryb wieloosobowy (`/mp`). Świat należy do serwera: ma stałe ziarno i własny zegar, który chodzi także wtedy, gdy nikt nie gra. Ziarno i zegar zapisują się w `server/data/server.json` co 30 sekund i przy zatrzymaniu.
+Serwer dedykowany to jeden program Node (`server/main.mjs`), który na jednym porcie podaje graczom samą grę (przeglądarka) i obsługuje tryb wieloosobowy (`/mp`). Na jednej maszynie może stać kilka **serwerów gry** (do 12): pierwszy, główny, nazywa się tak jak `SERVER_NAME`; kolejne zakładają gracze z menu. Każdy ma własny świat (ziarno) i własny zegar.
 
-Gracze nie instalują niczego: otwierają adres serwera w przeglądarce, wpisują imię bohatera i klikają **Join the server**, potem **Play**.
+- Serwer gry **działa, dopóki ktoś na nim jest**. Gdy wyjdzie ostatni gracz, jego zegar staje (pauza) i rusza znowu, gdy ktoś wróci.
+- Gracz, który wyjdzie do menu, **nie znika**: jego postać zostaje w świecie z dopiskiem „(in menu)”, a świat toczy się dalej.
+- Serwery gry, na które nikt nie wrócił przez 14 dni, są usuwane (główny nigdy).
+- Lista, ziarna i zegary zapisują się w `server/data/server.json` co 30 sekund i przy zatrzymaniu.
+
+Gracze nie instalują niczego: otwierają adres serwera w przeglądarce, wpisują imię bohatera, w okienku multiplayer widzą **listę serwerów** (nazwa, ilu gra, czy działa, czy stoi w pauzie) i klikają **Join** przy wybranym, albo wpisują nazwę i klikają **Create a server** (zaznaczone „in my own world” = w świecie z ich zapisu, inaczej nowy świat). Potem **Play**. Po aktualizacji serwera gracze muszą odświeżyć stronę (Ctrl+F5): stara wersja gry dostanie komunikat, żeby to zrobić.
 
 ## Instalacja obok innych aplikacji (np. IONOS VPS z portalem)
 
@@ -53,4 +58,4 @@ PORT=8517 SERVER_NAME="Mój serwer" npm run serve
 
 - Postać gracza zapisuje się w jego przeglądarce (dla adresu serwera osobno niż przy grze lokalnej), nie na serwerze.
 - Wrogowie, łupy, skrzynie, wioski, pojazdy i łodzie nie są wspólne: każdy gracz ma swoje. Wspólne są świat (ziarno), zegar, pozycje graczy i czat.
-- Brak haseł i kont: każdy, kto zna adres, może dołączyć (do 8 graczy naraz).
+- Brak haseł i kont: każdy, kto zna adres, może dołączyć (do 8 graczy naraz na każdym serwerze gry) i założyć nowy serwer gry.

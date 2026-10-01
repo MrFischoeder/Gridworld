@@ -3,10 +3,11 @@
 // it with `sendState` (about 10 times a second) and reads `peers`.
 
 /** Must match PROTOCOL in server/mp.mjs. */
-export const PROTOCOL = 1;
+export const PROTOCOL = 2;
 export const SEND_EVERY = 0.1;
 
-export interface PeerState { p: [number, number, number]; yaw: number; pitch: number; loc: string; held: string; mv: boolean }
+/** `away`: in the menu (still in the game: the others see you standing there). */
+export interface PeerState { p: [number, number, number]; yaw: number; pitch: number; loc: string; held: string; mv: boolean; away?: boolean }
 export interface Peer {
   id: number; name: string;
   /** The last two states and when they came: the drawing eases between them. */
@@ -29,14 +30,18 @@ export const net = {
   id: 0, host: 0,
   peers: new Map<number, Peer>(),
   address: '',
-  /** A dedicated server (server/main.mjs): the world and the clock are the server's, nobody hosts. */
+  /** A dedicated server (server/main.mjs): the world and the clock are the room's, nobody hosts. */
   dedicated: false,
+  /** The room (game server) you are in on a dedicated server. */
+  room: null as { id: string; name: string } | null,
 };
 export const online = () => net.id > 0;
 export const isHost = () => online() && net.id === net.host;
 
 /** Is the page served by a dedicated server (server/main.mjs)? It answers mp/info next to the page. */
-export interface ServerInfo { dedicated: boolean; name: string; world: number; online: number; max: number; players: string[]; version: string }
+/** A game server ("room") of a dedicated server, as the menu lists it: `running` while someone is in it. */
+export interface RoomInfo { id: string; name: string; world: number; time: number; online: number; max: number; running: boolean; players: string[] }
+export interface ServerInfo { dedicated: boolean; name: string; world: number; online: number; max: number; players: string[]; version: string; rooms?: RoomInfo[] }
 export async function serverInfo(): Promise<ServerInfo | null> {
   try {
     const r = await fetch('mp/info', { cache: 'no-store' });
@@ -62,20 +67,21 @@ export function serverUrl(input: string, here: { protocol: string; host: string;
 
 let hooks: NetHooks | null = null;
 /** Connect and say hello; the hooks hear the rest. */
-export function connect(url: string, me: { name: string; world: number; time: number }, h: NetHooks) {
+/** `room`: the dedicated server's room to join; `create`: make a new room (its name and world) and join it. */
+export function connect(url: string, me: { name: string; world: number; time: number; room?: string; create?: { name: string; world?: number } }, h: NetHooks) {
   disconnect();
   hooks = h; net.address = url;
   let ws: WebSocket;
   try { ws = new WebSocket(url); } catch { h.closed(`Not a server address: ${url}`); return; }
   net.ws = ws;
   let welcomed = false, why = '';
-  ws.onopen = () => ws.send(JSON.stringify({ t: 'hello', ver: PROTOCOL, name: me.name, world: me.world, time: me.time }));
+  ws.onopen = () => ws.send(JSON.stringify({ t: 'hello', ver: PROTOCOL, name: me.name, world: me.world, time: me.time, room: me.room, create: me.create }));
   ws.onmessage = (e) => {
     let m: any;
     try { m = JSON.parse(String(e.data)); } catch { return; }
     switch (m.t) {
       case 'welcome':
-        welcomed = true; net.id = m.id; net.host = m.host; net.dedicated = !!m.dedicated; net.peers.clear();
+        welcomed = true; net.id = m.id; net.host = m.host; net.dedicated = !!m.dedicated; net.room = m.room ?? null; net.peers.clear();
         for (const p of m.players) if (p.id !== m.id) net.peers.set(p.id, { id: p.id, name: p.name, st: null, prev: null, at: 0 });
         h.welcome(m.world, m.time, m.id === m.host, net.dedicated);
         break;
@@ -87,7 +93,7 @@ export function connect(url: string, me: { name: string; world: number; time: nu
         for (const s of m.ps) {
           const p = net.peers.get(s.id);
           if (!p) continue;
-          p.prev = p.st; p.st = { p: s.p, yaw: s.yaw, pitch: s.pitch, loc: s.loc, held: s.held, mv: s.mv }; p.at = now;
+          p.prev = p.st; p.st = { p: s.p, yaw: s.yaw, pitch: s.pitch, loc: s.loc, held: s.held, mv: s.mv, away: !!s.away }; p.at = now;
         }
         if (!isHost()) h.clock(m.time);
         break;
@@ -99,13 +105,13 @@ export function connect(url: string, me: { name: string; world: number; time: nu
   };
   ws.onclose = () => {
     if (net.ws !== ws) return;
-    net.ws = null; net.id = 0; net.host = 0; net.dedicated = false; net.peers.clear();
+    net.ws = null; net.id = 0; net.host = 0; net.dedicated = false; net.room = null; net.peers.clear();
     h.closed(why || (welcomed ? 'Disconnected from the server.' : `Could not reach a server at ${url}.`));
   };
 }
 export function disconnect() {
   const ws = net.ws;
-  net.ws = null; net.id = 0; net.host = 0; net.dedicated = false; net.peers.clear();
+  net.ws = null; net.id = 0; net.host = 0; net.dedicated = false; net.room = null; net.peers.clear();
   if (ws) { ws.onclose = null; ws.close(); }
 }
 export function sendState(s: PeerState, time?: number) {

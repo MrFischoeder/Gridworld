@@ -29,7 +29,7 @@ const kitOf = (held: string): Kit => {
   return 'none';
 };
 
-interface Avatar { f: Figure; kit: Kit; label: THREE.Sprite; phase: number }
+interface Avatar { f: Figure; kit: Kit; away: boolean; label: THREE.Sprite; phase: number }
 const avatars = new Map<number, Avatar>();
 function drop(id: number) {
   const a = avatars.get(id);
@@ -37,13 +37,14 @@ function drop(id: number) {
   scene.remove(a.f.g); (a.label.material as THREE.SpriteMaterial).map?.dispose(); a.label.material.dispose();
   avatars.delete(id);
 }
-function avatar(id: number, name: string, kit: Kit): Avatar {
+function avatar(id: number, name: string, kit: Kit, away: boolean): Avatar {
   const old = avatars.get(id);
-  if (old && old.kit === kit) return old;
+  if (old && old.kit === kit && old.away === away) return old;
   if (old) drop(id);
-  const c = peerColor(id), f = makeFigure(c, kit), label = textSprite(name, '#' + c.toString(16).padStart(6, '0'));
+  // a player in the menu stays in the world (the others see them standing there), marked as away
+  const c = peerColor(id), f = makeFigure(c, kit), label = textSprite(away ? name + ' (in menu)' : name, '#' + c.toString(16).padStart(6, '0'));
   label.position.y = 2.2; f.g.add(label);
-  const a: Avatar = { f, kit, label, phase: Math.random() * 6 };
+  const a: Avatar = { f, kit, away, label, phase: Math.random() * 6 };
   avatars.set(id, a);
   return a;
 }
@@ -54,7 +55,7 @@ export function updatePeers(dt: number, moving: boolean) {
   if (!net.id) { for (const id of [...avatars.keys()]) drop(id); return; }
   if ((sendT -= dt) <= 0) {
     sendT = SEND_EVERY;
-    const s: PeerState = { p: [G.pos.x, G.pos.y, G.pos.z], yaw: G.yaw, pitch: G.pitch, loc: myLoc(), held: G.char.hands[0]?.k ?? '', mv: moving };
+    const s: PeerState = { p: [G.pos.x, G.pos.y, G.pos.z], yaw: G.yaw, pitch: G.pitch, loc: myLoc(), held: G.char.hands[0]?.k ?? '', mv: moving && G.playing, away: !G.playing };
     sendState(s, isHost() ? G.char.time : undefined);
   }
   const here = myLoc(), now = performance.now();
@@ -62,7 +63,7 @@ export function updatePeers(dt: number, moving: boolean) {
   for (const p of net.peers.values()) {
     const s = p.st;
     if (!s || s.loc !== here) { drop(p.id); continue; }
-    const a = avatar(p.id, p.name, kitOf(s.held));
+    const a = avatar(p.id, p.name, kitOf(s.held), !!s.away);
     // ease from the previous snapshot to the last one over the time between them
     const k = Math.min(1, (now - p.at) / (SEND_EVERY * 1000)), q = p.prev && p.prev.loc === s.loc ? p.prev : s;
     const x = q.p[0] + (s.p[0] - q.p[0]) * k, y = q.p[1] + (s.p[1] - q.p[1]) * k, z = q.p[2] + (s.p[2] - q.p[2]) * k;

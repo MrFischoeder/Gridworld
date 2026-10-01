@@ -367,6 +367,13 @@ body.intro #speech{display:none}
 #mpBox .mpTitle{color:var(--g);font-size:22px;letter-spacing:2px}#mpBox .mpTitle span{opacity:.6;font-size:18px;letter-spacing:0}
 #mpBox button{font-size:22px;padding:5px 16px;margin-right:8px}
 #mpAddr{width:16em}
+#mpRooms{margin-top:6px;max-height:12.5em;overflow:auto}#mpRooms:empty{display:none}
+#mpRooms .room{display:flex;align-items:center;gap:10px;padding:3px 6px;border:1px solid rgba(61,255,110,.25);margin-bottom:4px;font-size:19px}
+#mpRooms .room b{color:#e8fff0;font-weight:normal;min-width:9em}#mpRooms .room .dot{color:#3dff6e}#mpRooms .room .dot.off{color:#6a8a74}
+#mpRooms .room .who{opacity:.75;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}#mpRooms .room button{font-size:19px;padding:2px 12px;margin:0}
+#mpRooms .room.here{border-color:var(--g);background:rgba(61,255,110,.08)}
+#mpNew{margin-top:6px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}#mpNewName{width:13em;font:19px VT323,monospace}
+#mpNew .mine{font-size:18px;opacity:.85}#mpNew button{font-size:19px;padding:3px 12px;margin:0}
 #mpStatus{opacity:.85;font-size:18px;margin-top:6px}#mpList{font-size:20px;margin-top:4px}
 #chatlog{position:fixed;left:14px;bottom:calc(env(safe-area-inset-bottom,0px) + 150px);font-size:19px;max-width:44vw;pointer-events:none;z-index:6}
 #chatlog .chat{color:#e8fff0;text-shadow:0 0 4px #000;transition:opacity 1.5s}#chatlog .chat.info{color:#9dffe0}#chatlog .chat.error{color:#ff9a7a}

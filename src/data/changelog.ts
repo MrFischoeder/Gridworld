@@ -4,6 +4,18 @@ export interface Change { v: string; date: string; title: string; notes: string[
 
 export const CHANGELOG: Change[] = [
   {
+    v: '0.106.0', date: '2026-10-23', title: 'The server list and the cryo-pods',
+    notes: [
+      'Multiplayer on a dedicated server now shows a list of its game servers: each with its name, who is playing, and whether it is running or paused. Pick one and press Join, or create your own with a name (in a fresh world or in yours).',
+      'A server runs while anyone is on it and pauses when the last player leaves: its clock stands still until somebody comes back.',
+      'Going to the menu no longer takes you out of the game: your character stays where you left it, marked (in menu), and the world keeps running for the others.',
+      'You were never the pilot. Commander Ilse Varga flew the SV-9 Kestrel and did not survive the crash: she lies slumped over the console. The survey team slept in cryo-pods in the cabin, and you wake from one of them.',
+      'Every castaway has their own cryo-pod: the more players on the server, the more pods stand open.',
+      'When you die you wake up again in your cryo-pod aboard the ship, healed and with some strength back.',
+      'Players with an older version of the game are told to reload the page (Ctrl+F5) before joining.',
+    ],
+  },
+  {
     v: '0.105.1', date: '2026-10-22', title: 'A quicker start',
     notes: [
       'The game starts much faster: working out where the great installations stand took several seconds when the menu first appeared, freezing the menu and the name field. It now runs in the background while you play.',

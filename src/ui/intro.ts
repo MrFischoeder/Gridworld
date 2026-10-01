@@ -5,7 +5,7 @@
 import * as THREE from 'three';
 import { G } from '../game';
 import { PropBatch } from '../world/props';
-import { drawLander, HULL_C, ENGINE_C, SHIP_NAME } from '../world/lander';
+import { drawLander, HULL_C, ENGINE_C, SHIP_NAME, PILOT } from '../world/lander';
 import { GRID, fillMat, lineMat, add } from '../world/render';
 
 const LEN = 24.5;
@@ -209,13 +209,13 @@ export function renderIntro(renderer: THREE.WebGLRenderer, dt: number): boolean 
   // ---- captions and the flashes
   const who = (G.char.name || 'Pilot').toUpperCase();
   if (t < 2.3) say(`${SHIP_NAME.toUpperCase()} · DEEP SURVEY`, 0.4, 'Day 214 · the outer belt of an uncharted system');
-  else if (t < T.alert) say(`PILOT: ${who}`, 2.3, 'All systems nominal');
+  else if (t < T.alert) say('CREW IN CRYO-SLEEP', 2.3, `${who} and the survey team · ${PILOT} at the controls`);
   else if (t < T.hit) say('PROXIMITY ALERT', T.alert, 'Meteor stream, not on any chart · evasive manoeuvres', Math.floor(t * 3) % 2 === 0);
   else if (t < T.fall + 1.5) say('HULL BREACH', T.hit, 'Starboard wing lost · main drive offline', true);
   else if (t < T.entry) say('CAPTURED BY GRAVITY', T.fall + 1.5, 'Uncharted planet · no control of the descent', true);
   else if (t < T.crash) say('ATMOSPHERIC ENTRY', T.entry, 'Brace · brace · brace', Math.floor(t * 4) % 2 === 0);
   else if (t < T.wake) say('SYSTEMS OFFLINE', T.crash + 0.8, '');
-  else say(`${who}. WAKE UP.`, T.wake, 'The ship is gone. You are not.');
+  else say(`${who}. WAKE UP.`, T.wake, 'Cryo-pod opening. The pilot did not make it. You did.');
   let fl = 0;
   if (t >= T.hit && t < T.hit + 0.6) fl = 1 - (t - T.hit) / 0.6;
   if (t >= T.crash) fl = t < T.crash + 0.25 ? 1 : 0;

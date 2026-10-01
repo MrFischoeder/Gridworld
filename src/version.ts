@@ -2,5 +2,5 @@
 // Bump it with every pushed change (and keep package.json's "version" the same): the middle number for a new
 // feature (0.4.0 -> 0.5.0), the last one for a fix (0.5.0 -> 0.5.1). BUILD says what the latest change was.
 // Every change also gets an entry at the top of data/changelog.ts (the Changelog button in the menu).
-export const VERSION = '0.105.1';
-export const BUILD = '2026-10-22 · Faster start: the great installations are found in a background worker';
+export const VERSION = '0.106.0';
+export const BUILD = '2026-10-23 · Server list with rooms that pause when empty, players in the menu stay in the world, cryo-pods and the dead pilot';

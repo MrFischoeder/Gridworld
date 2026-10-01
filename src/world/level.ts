@@ -1,4 +1,5 @@
 // Loading places (dungeon sectors, the open world) and moving between them.
+import { SHIP_NAME } from './lander';
 import * as THREE from 'three';
 import { crashSpawn } from './crashpod';
 import { placeCarrier, dropCarrier } from './datacarriers';
@@ -308,7 +309,8 @@ function lamps(grp: THREE.Group, map: VillageMap, y0: number) {
 }
 
 // ---------- the open world ----------
-export type Arrival = { kind: 'saved' } | { kind: 'new' } | { kind: 'tavern'; id?: number; bed?: boolean } | { kind: 'ruin'; id: number };
+/** `pod`: out of your cryo-pod in the crashed ship (after dying). */
+export type Arrival = { kind: 'saved' } | { kind: 'new' } | { kind: 'pod' } | { kind: 'tavern'; id?: number; bed?: boolean } | { kind: 'ruin'; id: number };
 export function loadOverworld(a: Arrival) {
   const c = G.char;
   clearLevel(); setLocationLook(true);
@@ -319,7 +321,7 @@ export function loadOverworld(a: Arrival) {
   if (a.kind === 'saved' && c.ow) { x = c.ow.x; z = c.ow.z; yaw = c.ow.yaw; }
   if (a.kind === 'ruin') { const p = findPoi(c.world, a.id); if (p) { x = p.x; z = p.z; } }
   // a new character wakes in the wreck of their ship (world/crashpod.ts): load the land round it
-  const crash = !c.intro && (a.kind === 'new' || (a.kind === 'saved' && !c.ow));
+  const crash = a.kind === 'pod' || (!c.intro && (a.kind === 'new' || (a.kind === 'saved' && !c.ow)));
   if (crash) { const l = landingSite(OW.terrain?.world === c.world ? OW.terrain : new Terrain(c.world)); x = l.x; z = l.z; }
   if (a.kind === 'tavern' && a.id !== undefined) { const p = findPoi(c.world, a.id); if (p) { x = p.x; z = p.z + 12; } }
   G.pos.set(x, G.pos.y, z); // vehicles are placed on the copy of the world nearest to the player
@@ -407,11 +409,20 @@ export function exitToRuin() {
   loadOverworld({ kind: 'ruin', id }); showToast(ruinName(id)); arriveVia(W.arrivalStair);
 }
 /**
- * Where a beacon or a bad day takes you: the nearest village you have been to (its tavern), else Gridholm.
- * `id` picks a village directly (the console's `home` goes to Gridholm).
+ * Where a beacon takes you: the nearest village you have been to (its tavern), else Gridholm. `id` picks a village
+ * directly (the console's `home` goes to Gridholm). A bad day ('death') ends where the castaway first woke: out of
+ * their cryo-pod in the crashed ship (world/crashpod.ts), the ship's medical systems having patched them up.
  */
 export function toVillage(how: 'death' | 'recall', id?: number) {
   const c = G.char;
+  if (how === 'death' && id === undefined) {
+    c.loc = 'overworld'; c.dungeon = null; saveChar();
+    loadOverworld({ kind: 'pod' }); G.hp = G.S.maxHp;
+    c.kcal = Math.max(c.kcal, 1500); c.water = Math.max(c.water, 50); // the pod's drip kept you going
+    showToast('You wake up in your cryo-pod aboard the ' + SHIP_NAME);
+    arriveVia(null);
+    return;
+  }
   const from = c.loc === 'dungeon' && c.dungeon ? c.dungeon.cave?.mouths[0] ?? findPoi(c.world, c.dungeon.ruinId) ?? { x: 0, z: 0 } : { x: G.pos.x, z: G.pos.z };
   const known = allVillages(c.world).filter((v) => v.id === GRIDHOLM_ID || isDiscovered(c.discovered, Math.floor(v.x / CHUNK), Math.floor(v.z / CHUNK)));
   const v = id !== undefined ? findPoi(c.world, id) ?? known[0] : known.reduce((a, b) => (worldDist(b.x, b.z, from.x, from.z) < worldDist(a.x, a.z, from.x, from.z) ? b : a));

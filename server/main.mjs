@@ -1,15 +1,17 @@
 // GridWorld dedicated server, for a VPS: one Node process that serves the built game (dist/) over http and the
-// multiplayer relay (server/mp.mjs) at /mp, on one port. The server owns the world: its seed is fixed (WORLD_SEED,
-// else rolled once and kept), and so is its clock, which keeps running and is saved, so the world goes on when
-// everyone has gone home. Players open http://<server>:<port>/ in a browser and press "Join the server".
+// multiplayer relay (server/mp.mjs) at /mp, on one port. It holds several game servers ("rooms"): the first, 'main',
+// named SERVER_NAME on WORLD_SEED (else a rolled seed), and any the players create from the menu, each with its own
+// world and clock (running while someone is in it, standing still while it is empty). The rooms and their clocks are
+// saved. Players open http://<server>:<port>/ in a browser, pick a server from the list (or create one) and join.
 //
 //   npm run build && npm run serve          (or: node server/main.mjs)
 //
 // Settings (environment): PORT (8517), HOST (0.0.0.0), WORLD_SEED (a number; only read the first time, then the
 // saved one wins unless FORCE_SEED=1), DATA_DIR (server/data: server.json keeps the seed and the clock),
-// SERVER_NAME (shown in the menu), DIST (the built game, dist/). Behind a reverse proxy at a sub-path (a portal
+// SERVER_NAME (the first server's name in the list), DIST (the built game, dist/). Behind a reverse proxy at a sub-path (a portal
 // with several apps, e.g. https://example.pl/gridworld/) it works whether the proxy strips the prefix or not.
-// GET /mp/info answers {dedicated, name, world, online, max, players, version} for the game's menu and for checks.
+// GET /mp/info answers {dedicated, name, version, rooms: [{id, name, world, time, online, max, running, players}], and
+// the first room's world / online / players} for the game's menu and for checks.
 import { createServer } from 'node:http';
 import { readFile, writeFile, mkdir, rename, stat } from 'node:fs/promises';
 import { existsSync, readFileSync } from 'node:fs';
@@ -28,19 +30,22 @@ const SAVE = join(DATA, 'server.json');
 const VERSION = (() => { try { return JSON.parse(readFileSync(join(here, '..', 'package.json'), 'utf8')).version; } catch { return '?'; } })();
 const log = (m) => console.log(`${new Date().toISOString()} ${m}`);
 
-// the world: the saved one, else WORLD_SEED, else a fresh roll (kept from then on)
+// the rooms: the saved ones (an older file held only the first room's world and time); the first room's world is
+// WORLD_SEED on the first start (or with FORCE_SEED=1), else a fresh roll kept from then on
 let saved = null;
 try { saved = JSON.parse(await readFile(SAVE, 'utf8')); } catch { /* first start */ }
-const seedEnv = Number(env.WORLD_SEED);
-const world = (env.FORCE_SEED === '1' || !saved) && Number.isFinite(seedEnv) && env.WORLD_SEED !== undefined && env.WORLD_SEED !== ''
-  ? seedEnv | 0 : saved ? saved.world | 0 : randomInt(1, 2 ** 31 - 1);
-const time = saved && saved.world === world ? Number(saved.time) || 0 : 7 * 60; // a new world starts at 07:00 of day 1
-const mp = createMp((m) => log('[mp] ' + m), { world, time });
+const seedEnv = Number(env.WORLD_SEED), seedSet = env.WORLD_SEED !== undefined && env.WORLD_SEED !== '' && Number.isFinite(seedEnv);
+let rooms = Array.isArray(saved?.rooms) ? saved.rooms : saved ? [{ id: 'main', name: NAME, world: saved.world | 0, time: Number(saved.time) || 0 }] : [];
+if (!rooms.length || rooms[0].id !== 'main') rooms.unshift({ id: 'main', name: NAME, world: seedSet ? seedEnv | 0 : randomInt(1, 2 ** 31 - 1), time: 7 * 60 }); // a new world starts at 07:00 of day 1
+if (env.FORCE_SEED === '1' && seedSet && rooms[0].world !== (seedEnv | 0)) rooms[0] = { ...rooms[0], world: seedEnv | 0, time: 7 * 60 };
+rooms[0].name = NAME; // (the first server's name follows SERVER_NAME)
+const mp = createMp((m) => log('[mp] ' + m), { rooms });
+const world = rooms[0].world;
 
 async function persist() {
   await mkdir(DATA, { recursive: true });
-  const tmp = SAVE + '.tmp';
-  await writeFile(tmp, JSON.stringify({ world, time: Math.round(mp.state().time), saved: new Date().toISOString() }, null, 1));
+  const tmp = SAVE + '.tmp', list = mp.list().map(({ id, name, world, time, created, last }) => ({ id, name, world, time, created, last }));
+  await writeFile(tmp, JSON.stringify({ rooms: list, saved: new Date().toISOString() }, null, 1));
   await rename(tmp, SAVE);
 }
 await persist();
@@ -57,9 +62,9 @@ if (!existsSync(join(DIST, 'index.html'))) log(`warning: no game build in ${DIST
 const http = createServer(async (req, res) => {
   let url = (req.url || '/').split('?')[0];
   if (url.endsWith(MP.path + '/info')) {
-    const s = mp.state();
+    const s = mp.state(), list = mp.list().map(({ id, name, world, time, online, max, running, players }) => ({ id, name, world, time, online, max, running, players }));
     res.writeHead(200, { 'content-type': 'application/json', 'cache-control': 'no-store', 'access-control-allow-origin': '*' });
-    res.end(JSON.stringify({ dedicated: true, name: NAME, world, time: Math.round(s.time), online: s.n, max: MP.max, players: s.names, version: VERSION }));
+    res.end(JSON.stringify({ dedicated: true, name: NAME, world, time: Math.round(s.time), online: s.n, max: MP.max, players: s.names, version: VERSION, rooms: list }));
     return;
   }
   if (req.method !== 'GET' && req.method !== 'HEAD') { res.writeHead(405); res.end(); return; }
