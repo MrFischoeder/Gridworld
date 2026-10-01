@@ -10,7 +10,7 @@ import { OW } from './overworld';
 import { Terrain } from '../gen/terrain';
 import { siteIn, carrierChest, techSites, pickLead, leadText, dirWord, TECH_BY_ID, CARRIER_NAME, type TechSite } from '../gen/tech';
 import { worldDist, wrapDx, nearX, CHUNK } from '../gen/regions';
-import { installSites, pickInstallLead, installLeadText, installLeadId, type InstallSite } from '../gen/installs';
+import { installSites, installSitesReady, pickInstallLead, installLeadText, installLeadId, type InstallSite } from '../gen/installs';
 import { isDiscovered } from '../save';
 import { saveChar } from '../character';
 import { logLine, showToast } from '../ui/hud';
@@ -109,7 +109,7 @@ export const openLeads = (): TechSite[] => { const c = G.char; return c.leads.le
 /** An installation counts as found once the ground it stands on is on your map. */
 const installFound = (s: InstallSite) => isDiscovered(G.char.discovered, Math.floor(s.x / CHUNK), Math.floor(s.z / CHUNK));
 /** The great installations heard of and not yet found. */
-export const openInstallLeads = (): InstallSite[] => { const c = G.char; return c.leads.some((l) => l.startsWith('install:')) ? installSites(terrain()).filter((s) => c.leads.includes(installLeadId(s.k)) && !installFound(s)) : []; };
+export const openInstallLeads = (): InstallSite[] => { const c = G.char; return c.leads.some((l) => l.startsWith('install:')) ? (installSitesReady(c.world) ?? []).filter((s) => c.leads.includes(installLeadId(s.k)) && !installFound(s)) : []; };
 /** Map and compass markers for the open leads: violet for data carriers, lime for great installations. */
 export const leadMarkers = () => [
   ...openLeads().map((s) => ({ x: nearX(s.x, G.pos.x), z: s.z, label: s.name, short: CARRIER_NAME[s.carrier], c: '#c49cff' })),

@@ -13,7 +13,7 @@ import { setDoors, dropDoors, doorHit, doorRay } from './housedoors';
 import { recentDead } from './villageraid';
 import * as THREE from 'three';
 import { setCrash, dropCrash, podHit } from './crashpod';
-import { installHit, dropInstalls } from './installs';
+import { installHit, dropInstalls, primeInstalls } from './installs';
 import { cityHit, cityRay, dropCities, cityName } from './cities';
 import { toxicHit, dropToxic, toxicName } from './toxic';
 import { installAt } from '../gen/installs';
@@ -523,6 +523,7 @@ export function openWorld(x: number, z: number) {
   const w = G.char.world;
   if (!OW.terrain || OW.terrain.world !== w) { OW.terrain = new Terrain(w); riversOf(w); } // the rivers are worked out once, while the world loads
   OW.terrain.setClaims(G.char.claims);
+  primeInstalls(w, G.char.claims); // the installations' sites are worked out in a worker meanwhile
   closeWorld();
   G.water = (px, pz) => (inStructure(px, pz) ? null : OW.terrain!.water(px, pz));
   G.space = space; G.ground = groundAt; G.obstacle = (px, py, pz, r) => treeHit(px, py, pz, r) || vehicleHit(px, py, pz, r) || caravanHit(px, py, pz, r) || ambushHit(px, py, pz, r) || baseHit(px, py, pz, r) || ladderHit(px, py, pz, r) || walkHit(px, py, pz, r) || guardHit(px, py, pz, r) || houseHit(px, py, pz, r) || doorHit(px, py, pz, r) || podHit(px, py, pz, r) || installHit(px, py, pz, r) || cityHit(px, py, pz, r) || hallHit(px, py, pz, r) || bridgeHit(px, py, pz, r) || pierHit(px, py, pz, r) || boatHit(px, py, pz, r) || toxicHit(px, py, pz, r);

@@ -52,11 +52,14 @@ export function installMisfit(t: Terrain, x: number, z: number, r: number): stri
 }
 
 const cache = new Map<number, InstallSite[]>();
+let searching = false;
 /** Every installation of a world: for each, the first of a hashed list of spots in its band that fits (the first spot if none does). */
 export function installSites(t: Terrain): InstallSite[] {
   const hit = cache.get(t.world); if (hit) return hit;
   const out: InstallSite[] = [];
   cache.set(t.world, out); // (filled below; set first so a nested call during the search sees no sites rather than recursing)
+  searching = true;
+  try {
   INSTALLS.forEach((spec, i) => {
     let best: InstallSite | null = null;
     for (let k = 0; k < 120; k++) {
@@ -70,15 +73,24 @@ export function installSites(t: Terrain): InstallSite[] {
     }
     out.push(best!);
   });
+  } finally { searching = false; }
   return out;
 }
+/** The installations if they are worked out already (by the worker started in openWorld, or an earlier call), else
+ * null. Things done every frame (the maps, the drawing, the place name) use this so they never stall the game while
+ * the search runs (it takes seconds: every spot it tries asks for the terrain's features far out). */
+export const installSitesReady = (world: number): InstallSite[] | null => (searching ? null : cache.get(world) ?? null);
+/** The sites a worker worked out (world/installworker.ts): the same as `installSites` would give. */
+export function seedInstallSites(world: number, sites: InstallSite[]) { if (!cache.has(world)) cache.set(world, sites); }
+/** No installation lies nearer Gridholm than this (the nearest band starts at 10 km): the cheap early out. */
+const NEAREST = 9500;
 /** Is (x, z) on the bare ground of an installation (within its radius plus m)? */
 export function inInstall(t: Terrain, x: number, z: number, m = 0): boolean {
-  if (Math.hypot(x, z) < 12000) return false; // all of them lie far out: a cheap early out near home
+  if (Math.hypot(wrapDx(x), z) < NEAREST) return false; // all of them lie far out: a cheap early out near home
   for (const s of installSites(t)) if (worldDist(s.x, s.z, x, z) < s.r + m) return true;
   return false;
 }
-export const installAt = (t: Terrain, x: number, z: number, m = 0) => installSites(t).find((s) => worldDist(s.x, s.z, x, z) < s.r + m) ?? null;
+export const installAt = (t: Terrain, x: number, z: number, m = 0) => (Math.hypot(wrapDx(x), z) < NEAREST ? null : installSites(t).find((s) => worldDist(s.x, s.z, x, z) < s.r + m) ?? null);
 
 // ---------- restoring an installation, and what it makes ----------
 /** A stage of the restoration: what it is called, what the crew say, what it needs (and the plans, if any). */

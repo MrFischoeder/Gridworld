@@ -1,6 +1,6 @@
 # GridWorld: opis gry, cel, plan i historia zmian
 
-Stan na wersję **0.105.0**. Ten dokument opisuje, czym jest GridWorld, jaki jest cel gry, co już w niej jest, czego jeszcze nie ma, dokąd zmierza i jak powstawała, wersja po wersji. Nazwy z gry (przedmioty, miejsca, postacie) są po angielsku, tak jak na ekranie.
+Stan na wersję **0.105.1**. Ten dokument opisuje, czym jest GridWorld, jaki jest cel gry, co już w niej jest, czego jeszcze nie ma, dokąd zmierza i jak powstawała, wersja po wersji. Nazwy z gry (przedmioty, miejsca, postacie) są po angielsku, tak jak na ekranie.
 
 ---
 
@@ -563,3 +563,4 @@ Pełne notatki (po angielsku) są w grze pod przyciskiem **Changelog** w menu g�
 - **0.104.0 Własny serwer.** Gra może stać na serwerze VPS: jeden program podaje grę przeglądarce i prowadzi tryb wieloosobowy na jednym porcie. Świat należy do serwera (stałe ziarno, zegar chodzi i zapisuje się także bez graczy), nikt nie musi być gospodarzem. W menu nazwa serwera, kto jest online i przycisk Join the server. Instalacja jedną komendą (deploy/install.sh, z domeną także https), Dockerfile, instrukcja w SERWER.md.
 - **0.104.1 Dobry sąsiad.** Serwer instaluje się obok innych aplikacji, niczego w nich nie ruszając: własny folder, własny Node.js, własny port 8517 (skrypt przerywa, gdy jest zajęty), bez zmian w serwerze WWW, proxy i zaporze. Gra działa też za portalem pod podścieżką, np. https://domena/gridworld/.
 - **0.105.0 Martwe miasta.** Na planecie stoi 10 wielkich zrujnowanych miast dawnego świata, każde ponad kilometr średnicy (przejście zajmuje minuty); dwa najbliższe 4–8 km od Gridholm. Każde ma własny układ (zwykła siatka kwartałów, pokręcone stare miasto, pierścienie i promienie wokół placu, siatka przecięta ukośnymi bulwarami), własne centrum wieżowców i odsetek zawalonych budynków. Ulice z krawężnikami, pasami, przejściami, latarniami i wrakami aut; budynki z siatką pięter i okien, połamanymi szczytami, wypalone szkielety z wiszącymi belkami, kopce gruzu. Miasta są niebezpieczne (zagrożenie +2), budynki zatrzymują ruch i strzały. Na mapie widać obrys i ulice odkrytych części. W miastach nie ma wiosek, świątyń, wraków i obozów, a rzeki i drogi je omijają.
+- **0.105.1 Szybszy start.** Wyszukiwanie miejsc wielkich instalacji (kilka sekund) blokowało menu i pole imienia przy starcie; teraz liczy się w tle, w osobnym wątku przeglądarki.

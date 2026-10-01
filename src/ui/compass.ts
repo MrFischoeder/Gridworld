@@ -10,7 +10,7 @@ import { questMarkers } from '../world/quests';
 import { leadMarkers } from '../world/datacarriers';
 import { $ } from './hud';
 import { OW } from '../world/overworld';
-import { installSites, installDone } from '../gen/installs';
+import { installSitesReady, installDone } from '../gen/installs';
 import { WAYPOINT_C } from './worldmap';
 
 const gps = $('gps');
@@ -50,7 +50,7 @@ export function updateCompass(dt: number) {
     old = null; fog = null;
     if (scan && OW.terrain) {
       let od = SCAN_R;
-      for (const s of installSites(OW.terrain)) { const d = Math.hypot(wrapDx(s.x - G.pos.x), s.z - G.pos.z); if (d < od && d > s.r && !installDone(s.k, G.char.installs[s.k])) { od = d; old = { name: s.name, x: s.x, z: s.z } as Mark; } }
+      for (const s of installSitesReady(OW.terrain.world) ?? []) { const d = Math.hypot(wrapDx(s.x - G.pos.x), s.z - G.pos.z); if (d < od && d > s.r && !installDone(s.k, G.char.installs[s.k])) { od = d; old = { name: s.name, x: s.x, z: s.z } as Mark; } }
       let fd = SCAN_R;
       for (const [x, z, r, name] of Object.values(G.char.fogs)) { const d = Math.hypot(wrapDx(x - G.pos.x), z - G.pos.z); if (d < fd && d > r) { fd = d; fog = { name, x, z } as Mark; } }
     }

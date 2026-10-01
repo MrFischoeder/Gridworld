@@ -12,7 +12,7 @@ import { scene } from './render';
 import { PropBatch } from './props';
 import { G } from '../game';
 import { OW } from './overworld';
-import { installSites, INSTALL_STAGES, HALL_STAGE, INSTALL_SCALE, type InstallSite, type InstallKind } from '../gen/installs';
+import { installSites, installSitesReady, seedInstallSites, INSTALL_STAGES, HALL_STAGE, INSTALL_SCALE, type InstallSite, type InstallKind } from '../gen/installs';
 import { nearX, worldDist } from '../gen/regions';
 import type { Terrain } from '../gen/terrain';
 
@@ -668,7 +668,9 @@ export function updateInstalls(dt: number) {
   tick = 1;
   const T = OW.terrain;
   if (!T || G.char.loc !== 'overworld') { dropInstalls(); return; }
-  for (const s of installSites(T)) {
+  // (wait for the worker's answer near home; far out, where a plant may stand, work it out here if need be)
+  const sites = installSitesReady(T.world) ?? (Math.hypot(G.pos.x, G.pos.z) > 8500 ? installSites(T) : null);
+  for (const s of sites ?? []) {
     const key = s.k + ':' + T.world, d = worldDist(s.x, s.z, G.pos.x, G.pos.z), have = live.get(key), stage = G.char.installs[s.k]?.stage ?? 0;
     if (have && (d > 1100 || have.stage !== stage)) { scene.remove(have.g); have.g.traverse((o) => (o as THREE.Mesh).geometry?.dispose()); live.delete(key); }
     if (d < 900 && !live.has(key)) {
@@ -678,6 +680,18 @@ export function updateInstalls(dt: number) {
       live.set(key, { s, g, cos, sin, stage, spin: g.getObjectByName('spin') ?? null, walls: m.walls, rings: m.rings });
     }
   }
+}
+let primed = NaN;
+/** Start working out the installations' sites in a worker (openWorld): nothing waits for it. */
+export function primeInstalls(world: number, claims: unknown[]) {
+  if (installSitesReady(world) || primed === world || typeof Worker === 'undefined') return;
+  primed = world;
+  try {
+    const w = new Worker(new URL('./installworker.ts', import.meta.url), { type: 'module' });
+    w.onmessage = (e: MessageEvent<{ world: number; sites: InstallSite[] }>) => { seedInstallSites(e.data.world, e.data.sites); w.terminate(); };
+    w.onerror = () => { w.terminate(); primed = NaN; };
+    w.postMessage({ world, claims: JSON.parse(JSON.stringify(claims)) });
+  } catch { primed = NaN; /* no workers here: worked out when first needed */ }
 }
 /** Redraw at once (after a stage is finished). */
 export function redrawInstalls() { tick = 0; updateInstalls(0); }

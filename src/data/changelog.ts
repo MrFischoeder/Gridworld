@@ -4,6 +4,12 @@ export interface Change { v: string; date: string; title: string; notes: string[
 
 export const CHANGELOG: Change[] = [
   {
+    v: '0.105.1', date: '2026-10-22', title: 'A quicker start',
+    notes: [
+      'The game starts much faster: working out where the great installations stand took several seconds when the menu first appeared, freezing the menu and the name field. It now runs in the background while you play.',
+    ],
+  },
+  {
     v: '0.105.0', date: '2026-10-22', title: 'The dead cities',
     notes: [
       'Ten great ruined cities of the old world now stand on the planet, each a kilometre or more across: walking through one takes minutes. The nearest two lie 4 to 8 km from Gridholm, the others further out.',

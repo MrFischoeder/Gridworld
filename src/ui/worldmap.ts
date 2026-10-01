@@ -8,7 +8,7 @@ import { wallPolygon, villageSides } from '../gen/village';
 import { STEP, VERTS, CELLS, inRect } from '../gen/terrain';
 import { SEA } from '../gen/seas';
 import { discover, isDiscovered } from '../save';
-import { installSites } from '../gen/installs';
+import { installSitesReady } from '../gen/installs';
 import { cityAt, citySites, cityLayout, worldToCity, bldsNear, inBld, segDist, CITY } from '../gen/cities';
 import { saveChar, hasItem } from '../character';
 
@@ -155,7 +155,7 @@ function drawArea(ctx: CanvasRenderingContext2D, w: number, h: number, ppm: numb
     ctx.strokeStyle = ctx.fillStyle = '#9ad8a8'; ctx.lineWidth = 1.5; ctx.setLineDash([6, 4]); ctx.beginPath(); ctx.arc(x, y, rr, 0, 6.283); ctx.stroke(); ctx.setLineDash([]); ctx.lineWidth = 1;
     if (labels) ctx.fillText('Ruins of ' + c.name, x, y - rr - 6);
   }
-  for (const ins of installSites(OW.terrain!)) { // the great installations, once their ground is explored: a lime hexagon
+  for (const ins of installSitesReady(OW.terrain!.world) ?? []) { // the great installations, once their ground is explored: a lime hexagon
     if (!isDiscovered(d, Math.floor(ins.x / CHUNK), Math.floor(ins.z / CHUNK))) continue;
     const x = X(nearX(ins.x, px)), y = Z(ins.z), r = labels ? 10 : 5;
     if (x < -20 || y < -20 || x > w + 20 || y > h + 20) continue;
