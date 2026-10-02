@@ -8,6 +8,7 @@
 // (a name, the hero's own world or a fresh one). Nobody hosts: each room's world and clock are its own; the clock
 // runs while anyone is in the room (also in the menu: you stay in the game, the others see you "in menu"). A build made with VITE_MP_SERVER
 // set (e.g. wss://game.example.com/mp) offers that server in the address field.
+import { joinWorld } from '../world/share';
 import { G } from '../game';
 import { $, logLine } from './hud';
 import { saveChar } from '../character';
@@ -21,6 +22,8 @@ const SOLO_KEY = SAVE_KEY + '.solo';
 export interface MpHooks {
   /** Move the hero to the host's world (as "Roll a new world", keeping the character). */
   switchWorld(seed: number): void;
+  /** Redraw the world you are in from the save (after taking the server's state of it). */
+  reloadWorld(): void;
 }
 
 const box = $('mpBox'), addr = $<HTMLInputElement>('mpAddr'), status = $('mpStatus'), list = $('mpList');
@@ -94,9 +97,13 @@ function start(url: string, room?: string, create?: { name: string; world?: numb
         // into the host's world: the hero's own save waits (once) to be restored with "Back to my own world"
         try { if (!solo()) localStorage.setItem(SOLO_KEY, JSON.stringify(G.char)); } catch { /* storage full or blocked */ }
         G.char.time = time;
+        joinWorld(); // the server's shared world (villages, bridges, chests...) replaces the copy in your save
         hooks?.switchWorld(world);
         say(`You have come to the ${dedicated ? 'server' : 'host'}\'s world. Your own save waits for you: "Back to my own world" in the menu.`, 'info');
-      } else if (!host) G.char.time = time;
+      } else {
+        if (!host) G.char.time = time;
+        if (joinWorld()) hooks?.reloadWorld(); // the same world, but the server's state of it
+      }
       say(host ? 'You host the game: others can join you now.' : dedicated ? `Joined ${net.room?.name ?? ded?.name ?? 'the server'}.` : 'Joined the game.', 'info');
       saveChar(); look();
     },

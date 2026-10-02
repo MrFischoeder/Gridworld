@@ -45,6 +45,26 @@ export interface NetDrop { id: string; k: string; n: number; c?: number; p: [num
 let gotHook: ((d: NetDrop) => void) | null = null;
 /** Who receives an item the server handed you (world/drops.ts). */
 export function onGot(f: (d: NetDrop) => void) { gotHook = f; }
+/** The shared world (src/world/share.ts): {field: {key: value}}. */
+export type WorldDoc = Record<string, Record<string, unknown>>;
+export interface WorldHooks {
+  /** Joined: the room's shared world, whether anyone has brought one yet, and the room's world seed. */
+  welcome(doc: WorldDoc, seeded: boolean, world: number): void;
+  /** Take this whole world (someone else brought theirs first). */
+  doc(doc: WorldDoc): void;
+  /** The others' changes. */
+  set(ch: [string, string, unknown][]): void;
+}
+let worldHooks: WorldHooks | null = null;
+export function onWorld(h: WorldHooks) { worldHooks = h; }
+/** Changes to the shared world; null deletes. */
+export function sendWorld(ch: [string, string, unknown][]): boolean {
+  if (!online() || net.ws?.readyState !== 1 || !ch.length) return false;
+  net.ws.send(JSON.stringify({ t: 'wset', ch }));
+  return true;
+}
+/** Bring your world to a room nobody has brought one to. */
+export function seedWorld(doc: WorldDoc) { if (online() && net.ws?.readyState === 1) net.ws.send(JSON.stringify({ t: 'wseed', doc })); }
 export interface NetHooks {
   /** Joined: the host's world seed and clock (for the host: their own); on a dedicated server, the server's. */
   welcome(world: number, time: number, host: boolean, dedicated: boolean): void;
@@ -118,6 +138,7 @@ export function connect(url: string, me: { name: string; world: number; time: nu
         welcomed = true; net.id = m.id; net.host = m.host; net.dedicated = !!m.dedicated; net.room = m.room ?? null; net.peers.clear();
         net.drops = new Map((Array.isArray(m.drops) ? m.drops : []).map((d: NetDrop) => [d.id, d]));
         for (const p of m.players) if (p.id !== m.id) net.peers.set(p.id, { id: p.id, name: p.name, st: null, prev: null, at: 0, hist: [] });
+        worldHooks?.welcome(m.wdoc ?? {}, !!m.wseeded, m.world);
         h.welcome(m.world, m.time, m.id === m.host, net.dedicated);
         break;
       case 'join': net.peers.set(m.id, { id: m.id, name: m.name, st: null, prev: null, at: 0, hist: [] }); h.say(`${m.name} joined the game.`, 'info'); break;
@@ -134,6 +155,8 @@ export function connect(url: string, me: { name: string; world: number; time: nu
         if (!isHost()) h.clock(m.time);
         break;
       }
+      case 'wset': worldHooks?.set(m.ch); break;
+      case 'wdoc': worldHooks?.doc(m.doc ?? {}); break;
       case 'drop': net.drops.set(m.d.id, m.d); break;
       case 'gone': net.drops.delete(m.id); break;
       case 'got': net.drops.delete(m.d.id); gotHook?.(m.d); break;

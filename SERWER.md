@@ -5,6 +5,7 @@ Serwer dedykowany to jeden program Node (`server/main.mjs`), który na jednym po
 - Serwer gry **działa, dopóki ktoś na nim jest**. Gdy wyjdzie ostatni gracz, jego zegar staje (pauza) i rusza znowu, gdy ktoś wróci.
 - Gracz, który wyjdzie do menu, **nie znika**: jego postać zostaje w świecie z dopiskiem „(in menu)”, a świat toczy się dalej.
 - Serwery gry, na które nikt nie wrócił przez 14 dni, są usuwane (główny nigdy).
+- **Świat jest wspólny**: wioski, rynki, mosty, pomosty, łodzie, instalacje, Rydwan, skrzynie, ścięte drzewa, obozy bandytów. Serwer zapisuje go w osobnym pliku na każdy serwer gry (`server/data/world-<id>.json`). Pierwszy gracz, który już grał w tym świecie, wnosi swój postęp; potem świat należy do serwera. Osobiste zostają ekwipunek, złoto, poziom, zadania, mapa, pojazdy.
 - Przedmioty położone przez graczy na ziemi (Drop w plecaku) serwer pamięta i pokazuje wszystkim; leżą 6 godzin, także po restarcie.
 - Lista, ziarna i zegary zapisują się w `server/data/server.json` co 30 sekund i przy zatrzymaniu.
 

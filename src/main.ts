@@ -76,6 +76,10 @@ import { SEATS } from './data/vehicles';
 /** Riding at another player's cannon (the crosshair stays for aiming it). */
 const SEATS_GUN = () => { const o = ride.on, g = o ? ghostOf(o.owner, o.idx) : null; return !!g && !!SEATS[g.m][o!.seat]?.gun; };
 import { syncDrops, clearLocalDrops } from './world/drops';
+import { syncWorld, setWorldReload } from './world/share';
+/** Redraw the open world from the save where you stand (after taking the server's shared world). */
+function reloadWorld() { if (G.char.loc !== 'overworld') return; saveOverworldPos(); loadOverworld({ kind: 'saved' }); }
+setWorldReload(reloadWorld);
 
 G.char = loadChar();
 document.getElementById('vnum')!.textContent = 'v' + VERSION;
@@ -100,6 +104,7 @@ initMp({
     Object.assign(c, { world: seed, loc: 'overworld', ow: null, dungeon: null, discovered: {}, opened: {}, unlocked: {}, killed: {} });
     clearLocalDrops(); saveChar(); loadOverworld({ kind: 'pod' }); // a castaway arrives in a new world by waking from their cryo-pod in the crashed ship
   },
+  reloadWorld,
 });
 
 if (G.char.loc === 'dungeon' && G.char.dungeon) loadDungeon(null); else { G.char.loc = 'overworld'; loadOverworld({ kind: 'saved' }); }
@@ -175,6 +180,7 @@ function frame(now: number) {
   el.cross.style.display = driving.v && !driving.cockpit && !driving.v.turret ? 'none' : riding() && !ride.cockpit && !SEATS_GUN() ? 'none' : '';
   updatePeers(dt, moving); // multiplayer: say where you are, draw the others
   syncDrops(false, dt); // what the players put down on the ground
+  syncWorld(dt); // the shared world: send what changed here
   animateVM(dt, moving);
   animateFoes(dt, time, camera.position);
   updateFx(dt);

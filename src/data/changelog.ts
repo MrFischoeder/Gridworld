@@ -4,6 +4,16 @@ export interface Change { v: string; date: string; title: string; notes: string[
 
 export const CHANGELOG: Change[] = [
   {
+    v: '0.109.0', date: '2026-10-26', title: 'One world for everyone',
+    notes: [
+      'On a server everyone now plays in one shared world. What one player does to it, the others see within a second or two.',
+      'Shared: the villages (walls, defences, farms and crops, works, power stations, plant upgrades, improvements, the village hall\'s stock, standing), the markets, bridges, piers and boats, the great installations, the Chariot, the contents of chests and what has been looted or unlocked in the ruins, felled trees and picked plants, cleared bandit camps and what became of the caravans.',
+      'Your own things stay yours: your kit, gold, level, quests and contracts, your map and the plans you have found, your vehicles and the chest in your house.',
+      'The first player to join a server who already played its world brings their progress along; everyone after that joins the shared world. Your own single-player save waits for you as before ("Back to my own world").',
+      'If two players change the same thing at the same moment, the later change wins.',
+    ],
+  },
+  {
     v: '0.108.0', date: '2026-10-25', title: 'Room for one more',
     notes: [
       'In multiplayer you can ride along in another player\'s vehicle: walk up to its door and press E to take a free seat, the passenger\'s or the gunner\'s. E gets you out beside it, V switches between the chase view and the view from your seat.',

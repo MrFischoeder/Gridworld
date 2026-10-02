@@ -18,6 +18,9 @@
 //   {t:'chat', text}
 //   {t:'drop', k, n, c?, p:[x,y,z], loc}   an item put down at your feet (taken out of your own kit first)
 //   {t:'take', id}                       pick a lying item up: only the first to ask gets it
+//   {t:'wset', ch:[[field, key, value|null], ...]}   changes to the shared world (villages, bridges, chests...: see
+//                                                      src/world/share.ts); null deletes
+//   {t:'wseed', doc}                     the first player who already played this world brings their world along
 // server → client:
 //   {t:'welcome', id, host, world, time, players:[{id, name}], dedicated, room:{id, name}}   host 0 on a dedicated server
 //   {t:'full'} / {t:'refused', why}
@@ -26,13 +29,16 @@
 //   {t:'chat', id, name, text}
 //   {t:'drop', d:{id, k, n, c?, p, loc, by, at}}   an item now lies there (also to the one who dropped it)
 //   {t:'got', d} to the one who took it / {t:'gone', id} to everyone else (or to a taker who came too late)
+//   {t:'wset', ch} the others' changes to the shared world / {t:'wdoc', doc} the whole of it (adopt it)
+// The welcome also carries `wdoc` (the shared world: {field: {key: value}}) and `wseeded` (whether anyone has brought
+// a world to it yet). The shared world is kept with the room (server/main.mjs saves it in its own file).
 // The welcome also carries `drops`: everything lying in the room's world. Lying items are kept with the room (saved by
 // server/main.mjs) and vanish after `MP.dropTtl` hours.
 import { WebSocketServer } from 'ws';
 import { pathToFileURL } from 'node:url';
 import { randomInt } from 'node:crypto';
 
-export const MP = { path: '/mp', port: 7777, max: 8, rate: 100, nameMax: 20, chatMax: 200, roomName: 28, rooms: 12, roomTtl: 14, cars: 8, drops: 300, dropTtl: 6 };
+export const MP = { path: '/mp', port: 7777, max: 8, rate: 100, nameMax: 20, chatMax: 200, roomName: 28, rooms: 12, roomTtl: 14, cars: 8, drops: 300, dropTtl: 6, payload: 4 * 1024 * 1024 };
 /** Protocol version: a client with another one is refused (the game shows why). */
 export const PROTOCOL = 2;
 
@@ -47,12 +53,12 @@ const DAY = 86400000;
  */
 export function createMp(log = (m) => console.log('[mp] ' + m), opts = {}) {
   const dedicated = Array.isArray(opts.rooms) || typeof opts.world === 'number';
-  const wss = new WebSocketServer({ noServer: true, maxPayload: 16 * 1024 });
+  const wss = new WebSocketServer({ noServer: true, maxPayload: MP.payload });
   /** @type {Map<string, any>} */
   const rooms = new Map();
   let nextId = 1, dropSeq = 1;
   const newRoom = (r) => {
-    const room = { id: r.id, name: clean(r.name, MP.roomName) || 'GridWorld', world: r.world == null ? null : r.world | 0, time0: num(r.time), run: 0, since: 0, players: new Map(), hostId: 0, created: r.created ?? Date.now(), last: r.last ?? Date.now(), drops: new Map((Array.isArray(r.drops) ? r.drops : []).map((d) => [d.id, d])) };
+    const room = { id: r.id, name: clean(r.name, MP.roomName) || 'GridWorld', world: r.world == null ? null : r.world | 0, time0: num(r.time), run: 0, since: 0, players: new Map(), hostId: 0, created: r.created ?? Date.now(), last: r.last ?? Date.now(), drops: new Map((Array.isArray(r.drops) ? r.drops : []).map((d) => [d.id, d])), doc: r.doc && typeof r.doc === 'object' ? r.doc : {}, seeded: !!r.seeded, dirty: false };
     rooms.set(room.id, room);
     return room;
   };
@@ -106,7 +112,7 @@ export function createMp(log = (m) => console.log('[mp] ' + m), opts = {}) {
         me = { id: nextId++, ws, name, st: null, joined: Date.now() };
         if (!room.players.size && !dedicated) { room.hostId = me.id; room.world = num(m.world) | 0; room.time0 = num(m.time); log(`${name} hosts world ${room.world}`); }
         room.players.set(me.id, me); room.last = Date.now(); occupied(room, true);
-        send(ws, { t: 'welcome', id: me.id, host: room.hostId, world: room.world, time: clock(room), dedicated, room: { id: room.id, name: room.name }, drops: [...room.drops.values()], players: [...room.players.values()].map((p) => ({ id: p.id, name: p.name })) });
+        send(ws, { t: 'welcome', id: me.id, host: room.hostId, world: room.world, time: clock(room), dedicated, room: { id: room.id, name: room.name }, drops: [...room.drops.values()], wdoc: room.doc, wseeded: room.seeded, players: [...room.players.values()].map((p) => ({ id: p.id, name: p.name })) });
         all(room, { t: 'join', id: me.id, name }, me.id);
         log(`${name} joined ${room.name} (${room.players.size}/${MP.max})`);
         return;
@@ -128,6 +134,18 @@ export function createMp(log = (m) => console.log('[mp] ' + m), opts = {}) {
         room.drops.delete(d.id);
         send(ws, { t: 'got', d });
         all(room, { t: 'gone', id: d.id }, me.id);
+      } else if (m.t === 'wset' && Array.isArray(m.ch)) {
+        const ch = [];
+        for (const c of m.ch) {
+          if (!Array.isArray(c) || typeof c[0] !== 'string' || typeof c[1] !== 'string') continue;
+          const f = (room.doc[c[0]] ??= {});
+          if (c[2] === null || c[2] === undefined) delete f[c[1]]; else f[c[1]] = c[2];
+          ch.push([c[0], c[1], c[2] ?? null]);
+        }
+        if (ch.length) { room.seeded = true; room.dirty = true; all(room, { t: 'wset', ch }, me.id); }
+      } else if (m.t === 'wseed' && m.doc && typeof m.doc === 'object') {
+        if (room.seeded) send(ws, { t: 'wdoc', doc: room.doc }); // someone was first: take theirs
+        else { room.doc = m.doc; room.seeded = true; room.dirty = true; all(room, { t: 'wdoc', doc: room.doc }, me.id); log(`${me.name} brought their world to ${room.name}`); }
       } else if (m.t === 'chat') {
         const text = clean(m.text, MP.chatMax);
         if (text) all(room, { t: 'chat', id: me.id, name: me.name, text });
@@ -142,7 +160,7 @@ export function createMp(log = (m) => console.log('[mp] ' + m), opts = {}) {
       if (!dedicated && me.id === room.hostId) { // the longest-connected player hosts now; the world stays
         const next = [...room.players.values()].sort((a, b) => a.joined - b.joined)[0];
         room.hostId = next ? next.id : 0;
-        if (next) all(room, { t: 'host', id: room.hostId }); else { room.world = null; room.drops.clear(); log('empty: the next player to join hosts'); }
+        if (next) all(room, { t: 'host', id: room.hostId }); else { room.world = null; room.drops.clear(); room.doc = {}; room.seeded = false; log('empty: the next player to join hosts'); }
       }
     });
   });
@@ -174,9 +192,11 @@ export function createMp(log = (m) => console.log('[mp] ' + m), opts = {}) {
   const list = () => [...rooms.values()].map((r) => ({ id: r.id, name: r.name, world: r.world, time: Math.round(clock(r)), online: r.players.size, max: MP.max, running: r.players.size > 0, players: [...r.players.values()].map((p) => p.name), created: r.created, last: r.last }));
   /** What server/main.mjs saves: the rooms with their clocks and the items lying in their worlds. */
   const save = () => list().map(({ id, name, world, time, created, last }) => ({ id, name, world, time, created, last, drops: [...rooms.get(id).drops.values()] }));
+  /** The rooms' shared worlds that changed since the last call (server/main.mjs writes each to its own file). */
+  const dirtyDocs = () => [...rooms.values()].filter((r) => r.dirty).map((r) => { r.dirty = false; return { id: r.id, doc: r.doc, seeded: r.seeded }; });
   const first = () => rooms.values().next().value;
   return {
-    attach, close, dedicated, list, save,
+    attach, close, dedicated, list, save, dirtyDocs,
     get players() { return first().players; },
     state: () => { const r = first(); return { hostId: r.hostId, world: r.world, time: clock(r), n: r.players.size, names: [...r.players.values()].map((p) => p.name) }; },
   };

@@ -39,6 +39,9 @@ let rooms = Array.isArray(saved?.rooms) ? saved.rooms : saved ? [{ id: 'main', n
 if (!rooms.length || rooms[0].id !== 'main') rooms.unshift({ id: 'main', name: NAME, world: seedSet ? seedEnv | 0 : randomInt(1, 2 ** 31 - 1), time: 7 * 60 }); // a new world starts at 07:00 of day 1
 if (env.FORCE_SEED === '1' && seedSet && rooms[0].world !== (seedEnv | 0)) rooms[0] = { ...rooms[0], world: seedEnv | 0, time: 7 * 60 };
 rooms[0].name = NAME; // (the first server's name follows SERVER_NAME)
+// each room's shared world (villages, bridges, chests...) lives in its own file: it can grow large
+const docFile = (id) => join(DATA, 'world-' + String(id).replace(/[^\w-]/g, '') + '.json');
+for (const r of rooms) { try { const w = JSON.parse(await readFile(docFile(r.id), 'utf8')); r.doc = w.doc; r.seeded = w.seeded; } catch { /* none yet */ } }
 const mp = createMp((m) => log('[mp] ' + m), { rooms });
 const world = rooms[0].world;
 
@@ -47,6 +50,7 @@ async function persist() {
   const tmp = SAVE + '.tmp', list = mp.save();
   await writeFile(tmp, JSON.stringify({ rooms: list, saved: new Date().toISOString() }, null, 1));
   await rename(tmp, SAVE);
+  for (const d of mp.dirtyDocs()) { const f = docFile(d.id); await writeFile(f + '.tmp', JSON.stringify({ doc: d.doc, seeded: d.seeded })); await rename(f + '.tmp', f); }
 }
 await persist();
 const timer = setInterval(() => persist().catch((e) => log('could not save: ' + e.message)), 30000);

@@ -127,6 +127,29 @@ describe('multiplayer server', () => {
     expect((await d.wait('welcome')).drops[0]).toMatchObject({ k: 'lwheel', c: 63, by: 'Ada' });
     d.ws.close();
   });
+  it('the shared world: the first who played it brings it, changes reach the others, a newcomer gets it all, it is kept', async () => {
+    const port = await server({ rooms: [{ id: 'main', name: 'Main', world: 11, time: 100 }] });
+    const a = await client(port, { name: 'Ada' }), wa = await a.wait('welcome');
+    expect(wa.wdoc).toEqual({}); expect(wa.wseeded).toBe(false);
+    a.send({ t: 'wseed', doc: { towns: { '5': { wall: 1 } }, harvest: { 'tree:1:2:3': 50 } } });
+    const b = await client(port, { name: 'Bob' }), wb = await b.wait('welcome');
+    expect(wb.wseeded).toBe(true); expect(wb.wdoc.towns['5']).toEqual({ wall: 1 });
+    // a second seed is refused: the latecomer is handed the room's world
+    b.send({ t: 'wseed', doc: { towns: {} } });
+    expect((await b.wait('wdoc')).doc.towns['5']).toEqual({ wall: 1 });
+    // changes reach the others (not the sender); null deletes
+    b.send({ t: 'wset', ch: [['towns', '5', { wall: 2 }], ['harvest', 'tree:1:2:3', null], ['containers', 'chest:x:0', { items: [], gold: 4 }]] });
+    const set = await a.wait('wset');
+    expect(set.ch).toEqual([['towns', '5', { wall: 2 }], ['harvest', 'tree:1:2:3', null], ['containers', 'chest:x:0', { items: [], gold: 4 }]]);
+    expect(b.got.some((m) => m.t === 'wset')).toBe(false);
+    const docs = mp!.dirtyDocs();
+    expect(docs[0].doc).toEqual({ towns: { '5': { wall: 2 } }, harvest: {}, containers: { 'chest:x:0': { items: [], gold: 4 } } });
+    expect(mp!.dirtyDocs()).toEqual([]); // nothing new since
+    a.ws.close(); b.ws.close(); mp!.close(); http!.close();
+    const port2 = await server({ rooms: [{ id: 'main', name: 'Main', world: 11, time: 100, doc: docs[0].doc, seeded: true } as never] }), c = await client(port2, { name: 'Cy' });
+    expect((await c.wait('welcome')).wdoc.towns['5']).toEqual({ wall: 2 });
+    c.ws.close();
+  });
   it('turns what the player typed into a server address', () => {
     const here = { protocol: 'http:', host: '192.168.1.20:5173' };
     expect(serverUrl('', here)).toBe('ws://192.168.1.20:5173/mp');
