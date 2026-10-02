@@ -42,6 +42,8 @@ export interface Vehicle {
   ai?: boolean;
   /** Who sits in each seat (`SEATS[model]`), drawn as a figure; null = empty. */
   riders: (Rider | null)[];
+  /** Another player at the cannon (world/peers.ts): where they aim it, body-relative. */
+  gunYaw?: number;
   speed: number; spin: number; steer: number; y: number; pitch: number; roll: number;
 }
 /** Someone aboard: 'you', a raider crewman, ... (multiplayer will add other players). */
@@ -55,7 +57,11 @@ export interface WorldHooks {
 }
 let hooks: WorldHooks | null = null;
 export const vehicles: Vehicle[] = [];
-export const driving = { v: null as Vehicle | null, cockpit: false, since: 0 };
+/** The vehicle you are in (your own) and your seat in it (`SEATS` index: 0 the driver's). */
+export const driving = { v: null as Vehicle | null, cockpit: false, since: 0, seat: 0 };
+/** The gunner's seat of a model. */
+export const gunSeat = (m: VehicleModel) => SEATS[m].findIndex((s) => s.gun);
+export const SEAT_NAMES = ['driver', 'passenger', 'gunner'];
 
 // ---------- models ----------
 const wheelCache = new Map<VehicleModel, THREE.Group>();
@@ -327,12 +333,20 @@ export function smokeWrecks(dt: number) {
 // ---------- cannon ----------
 let gunCool = 0;
 /** Fire the roof cannon where the camera looks. */
+/** Whether you work the cannon of your own vehicle: from the gunner's seat, or from the wheel while no one stands at it. */
+export function myCannon(v: Vehicle): boolean {
+  return v === driving.v && (driving.seat === gunSeat(v.st.model) || (driving.seat === 0 && v.gunYaw === undefined));
+}
 export function fireCannon(dt: number) {
   const v = driving.v;
   gunCool -= dt;
-  if (!v || !v.turret || !G.firing || gunCool > 0) return;
+  if (!v || !v.turret || !G.firing || gunCool > 0 || !myCannon(v)) return;
   gunCool = 0.55;
-  const muzzle = V(0, 0.18, 1.3); v.turret.localToWorld(muzzle);
+  shootCannon(v.turret);
+}
+/** Fire a roof cannon along the camera (yours, or another player's you stand at: world/ride.ts). */
+export function shootCannon(turret: THREE.Object3D) {
+  const muzzle = V(0, 0.18, 1.3); turret.localToWorld(muzzle);
   const d = new THREE.Vector3(); camera.getWorldDirection(d);
   let tHit = rayWorld(muzzle, d, 90), hit = null, seat = -1;
   for (const t of foes()) {
@@ -356,7 +370,9 @@ export function fireCannon(dt: number) {
 /** The turret follows the camera. */
 function aimTurret(v: Vehicle) {
   if (!v.turret) return;
-  v.turret.rotation.y = v === driving.v ? G.yaw + Math.PI - v.st.heading : 0;
+  if (v.gunYaw !== undefined) v.turret.rotation.y = v.gunYaw; // another player at the cannon
+  else if (myCannon(v)) v.turret.rotation.y = G.yaw + Math.PI - v.st.heading;
+  else if (v !== driving.v) v.turret.rotation.y = 0;
 }
 
 // ---------- geometry helpers ----------
@@ -483,8 +499,10 @@ export function useVehicle(s: VehicleSpot) {
   }
   const why = immobile(s.v.st.parts);
   if (why) { showToast("It won't move"); logLine(why + ' Service it at the front of the vehicle.'); return; }
-  driving.v = s.v; s.v.speed = 0; driving.since = performance.now();
-  seatRider(s.v, 0, 'you', YOU); setSeeThrough(s.v, driving.cockpit);
+  const seat = s.v.riders[0] ? s.v.riders.findIndex((r) => !r) : 0; // the wheel, unless someone else sits there
+  if (seat < 0) { showToast('No free seat'); return; }
+  driving.v = s.v; s.v.speed = 0; driving.since = performance.now(); driving.seat = seat;
+  seatRider(s.v, seat, 'you', YOU); setSeeThrough(s.v, driving.cockpit);
   G.vel.set(0, 0, 0); G.firing = false;
   G.yaw = s.v.st.heading + Math.PI; G.pitch = -0.12;
   showToast(vehicleTitle(s.v.st.model));
@@ -494,7 +512,7 @@ export function leave(save = true) {
   const v = driving.v;
   if (!v) return;
   driving.v = null; v.speed = 0; v.steer = 0; aimTurret(v); setSeeThrough(v, false);
-  if (v.riders[0]?.who === 'you') unseat(v, 0);
+  v.riders.forEach((r, i) => { if (r?.who === 'you') unseat(v, i); });
   const spots: [number, number][] = [[v.spec.door[0], v.spec.door[1]], [-v.spec.door[0], v.spec.door[1]], [v.spec.rear[0], v.spec.rear[1]], [v.spec.door[0] + 1, v.spec.door[1]]];
   for (const [lx, lz] of spots) {
     const [x, z] = toWorld(v, lx, lz), y = hooks ? hooks.height(x, z) : v.y;
@@ -544,9 +562,10 @@ function hullBlocked(v: Vehicle, x: number, z: number, h: number): boolean {
 }
 export function updateDriving(dt: number) {
   const v = driving.v!, s = v.spec, k = G.keys, stick = G.stick, boost = engineBoost(v.st.parts), perf = partPerformance(v.st.parts), maxSpeed = s.maxSpeed * perf * boost.speed;
-  const thr = Math.max(-1, Math.min(1, (k.KeyW ? 1 : 0) - (k.KeyS ? 1 : 0) - stick.dy));
-  const steer = Math.max(-1, Math.min(1, (k.KeyA ? 1 : 0) - (k.KeyD ? 1 : 0) - stick.dx));
-  const brake = k.Space || G.touchJump;
+  const wheel = driving.seat === 0; // from another seat nobody drives: it rolls to a stop
+  const thr = wheel ? Math.max(-1, Math.min(1, (k.KeyW ? 1 : 0) - (k.KeyS ? 1 : 0) - stick.dy)) : 0;
+  const steer = wheel ? Math.max(-1, Math.min(1, (k.KeyA ? 1 : 0) - (k.KeyD ? 1 : 0) - stick.dx)) : 0;
+  const brake = wheel ? k.Space || G.touchJump : true;
   // throttle, rolling drag, brakes, and gravity along the slope
   v.speed += thr * s.accel * perf * boost.accel * dt * (thr * v.speed < 0 ? 2 : 1);
   v.speed -= v.speed * (thr ? 0.15 : 0.9) * dt;
@@ -577,16 +596,27 @@ export function updateDriving(dt: number) {
   if (immobile(v.st.parts)) { leave(); return; }
   G.pos.set(v.st.x, v.y, v.st.z);
   G.vel.set(0, 0, 0);
+  if (driving.seat !== 0 && v.riders[driving.seat]?.who !== 'you') { seatRider(v, driving.seat, 'you', YOU); }
   const p = v.st.parts, worst = Math.min(...p.wheels);
-  el.veh.innerHTML = `${vehicleTitle(v.st.model)} · ${Math.round(Math.abs(v.speed) * 3.6)} km/h · ${aboard(v)}/${s.seats} aboard${s.enclosed ? ' · cab closed' : ''}` +
+  el.veh.innerHTML = `${vehicleTitle(v.st.model)} · ${SEAT_NAMES[driving.seat] ?? 'seat'} · ${Math.round(Math.abs(v.speed) * 3.6)} km/h · ${aboard(v)}/${s.seats} aboard${s.enclosed ? ' · cab closed' : ''}` +
     `<br><span${p.hull < s.hull * 0.25 ? ' class="warn"' : ''}>hull ${Math.ceil(p.hull)}/${s.hull}</span> · engine ${Math.round(p.engine)}% · wheels ${Math.round(worst)}%` +
     ` · fuel ${Math.round(p.fuel / s.tank * 100)}%${v.turret ? ' · cannon' : ''}`;
+}
+/** Keys 1 / 2 / 3 in your own vehicle: move to the driver's, the passenger's or the gunner's seat if it is free. */
+export function switchSeat(i: number) {
+  const v = driving.v;
+  if (!v || i === driving.seat || i < 0 || i >= SEATS[v.st.model].length) return;
+  if (v.riders[i]) { showToast(`The ${SEAT_NAMES[i]}'s seat is taken`); return; }
+  if (SEATS[v.st.model][i].gun && !v.turret) { showToast('No cannon on the roof'); return; }
+  unseat(v, driving.seat); driving.seat = i; seatRider(v, i, 'you', YOU); setSeeThrough(v, driving.cockpit);
+  showToast(i === 0 ? 'At the wheel' : `In the ${SEAT_NAMES[i]}'s seat`);
 }
 /** Chase camera behind and above the vehicle (or the driver's eye in cockpit view, V). */
 export function vehicleCamera(camera: THREE.PerspectiveCamera) {
   const v = driving.v!, s = v.spec;
   if (driving.cockpit) {
-    const e = V(s.eye[0], s.eye[1], s.eye[2]).applyEuler(v.group.rotation).add(v.group.position);
+    const st = SEATS[v.st.model][driving.seat], eye = driving.seat === 0 ? s.eye : [st.x, st.y + (st.gun ? 1.6 : 0.75), st.z];
+    const e = V(eye[0], eye[1], eye[2]).applyEuler(v.group.rotation).add(v.group.position);
     camera.position.copy(e);
     return;
   }
@@ -679,13 +709,14 @@ export function steerVehicle(v: Vehicle, tx: number, tz: number, want: number, d
 export const bodyToWorld = (v: Vehicle, lx: number, lz: number) => toWorld(v, lx, lz);
 
 
-/** Your own vehicles as the other players see them (net/client.ts PeerCar): model, where, the body's pose, cannon, driven. */
-export function myCars(): [number, number, number, number, number, number, number, number, number][] {
-  const out: [number, number, number, number, number, number, number, number, number][] = [];
-  for (const v of vehicles) {
-    if (v.ai || !G.char.vehicles.includes(v.st)) continue;
+/** Your own vehicles in the order the others know them by (`myCars`, the index in a ride). */
+export const myCarList = () => vehicles.filter((v) => !v.ai && G.char.vehicles.includes(v.st));
+/** Your own vehicles as the other players see them (net/client.ts PeerCar): model, where, the body's pose, cannon, your seat + 1 (0 = not in it), the cannon's yaw. */
+export function myCars(): number[][] {
+  const out: number[][] = [];
+  for (const v of myCarList()) {
     const r = (n: number) => Math.round(n * 100) / 100;
-    out.push([v.st.model === 'scout' ? 0 : 1, r(v.st.x), r(v.y), r(v.st.z), r(v.st.heading), r(v.pitch), r(v.roll), v.st.parts.gun ? 1 : 0, v === driving.v ? 1 : 0]);
+    out.push([v.st.model === 'scout' ? 0 : 1, r(v.st.x), r(v.y), r(v.st.z), r(v.st.heading), r(v.pitch), r(v.roll), v.st.parts.gun ? 1 : 0, v === driving.v ? driving.seat + 1 : 0, r(v.turret?.rotation.y ?? 0)]);
   }
   return out;
 }

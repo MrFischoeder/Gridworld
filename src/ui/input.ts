@@ -1,4 +1,5 @@
 // Keyboard and mouse. Pointer lock drives mouse look; losing it pauses the game.
+import { riding, rideSeat, toggleRideView } from '../world/ride';
 import { isPlacing, cancelPlacing } from '../world/claims';
 import { isBridgePlacing, cancelBridgePlacing } from '../world/bridges';
 import { isPierPlacing, cancelPierPlacing } from '../world/piers';
@@ -12,7 +13,7 @@ import { closeBoard } from './board';
 import { toggleConsole } from './console';
 import { openChat } from './mp';
 import { online } from '../net/client';
-import { driving, toggleCockpit } from '../world/vehicles';
+import { driving, toggleCockpit, switchSeat } from '../world/vehicles';
 import { renderer, camera } from '../world/render';
 import { el } from './hud';
 import { togglePack, closePack } from './backpack';
@@ -52,13 +53,16 @@ export function initInput(onPause: () => void) {
     if (!G.playing) return;
     if (e.code === 'KeyE' && !e.repeat) interact();
     if (e.code === 'KeyV' && driving.v) toggleCockpit();
+    if (e.code === 'KeyV' && riding()) toggleRideView();
     if (e.code === 'KeyV' && inBoat()) toggleBoatView();
     if (e.code === 'Space' && !e.repeat && inBoat()) toggleSail();
     if (e.code === 'KeyF' && !isBuilding() && G.playing) openBoatHold();
     if (e.code === 'KeyH') useItem('medkit');
     if (e.code === 'KeyG') useItem('emp');
-    if (e.code === 'Digit1') drawBack(0);
-    if (e.code === 'Digit2') drawBack(1);
+    const seatKey = e.code === 'Digit1' ? 0 : e.code === 'Digit2' ? 1 : e.code === 'Digit3' ? 2 : -1;
+    if (seatKey >= 0 && (driving.v || riding())) { if (driving.v) switchSeat(seatKey); else rideSeat(seatKey); } // in a vehicle the numbers pick the seat
+    else if (e.code === 'Digit1') drawBack(0);
+    else if (e.code === 'Digit2') drawBack(1);
     if (e.code === 'KeyQ') swapWeapon();
     if (e.code === 'KeyX') holster();
     if (e.code === 'KeyF' && isBuilding()) dismantle();

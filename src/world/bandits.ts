@@ -121,7 +121,7 @@ function fire(b: Bandit) {
 /** A bolt from `muzzle` at the player (with spread for distance and the player's speed). */
 export function fireBolt(muzzle: THREE.Vector3, dmg: number, color = BANDIT) {
   // at you: at the driver's seat when you are driving (the body or the windows decide who takes it, updateBolts)
-  const target = driving.v ? seatPoint(driving.v, 0) : V(G.pos.x, G.pos.y + 1.1, G.pos.z), dist = target.distanceTo(muzzle);
+  const target = driving.v ? seatPoint(driving.v, driving.seat) : V(G.pos.x, G.pos.y + 1.1, G.pos.z), dist = target.distanceTo(muzzle);
   const spread = 0.035 * dist + Math.hypot(G.vel.x, G.vel.z) * 0.1;
   target.x += (Math.random() - 0.5) * spread; target.y += (Math.random() - 0.5) * spread * 0.5; target.z += (Math.random() - 0.5) * spread;
   const v = target.sub(muzzle).normalize().multiplyScalar(30);
@@ -145,7 +145,7 @@ export function updateBolts(dt: number) {
       const h = rayVehicle(v, prev, dir, step);
       if (h) {
         dead = true; o.p.copy(prev).addScaledVector(dir, h.t);
-        if (h.seat === 0) { G.hp -= armoured(o.dmg); G.dmgFlash = 0.35; }
+        if (h.seat === driving.seat) { G.hp -= armoured(o.dmg); G.dmgFlash = 0.35; }
         else if (h.seat < 0) {
           const p = v.st.parts, r = Math.random();
           if (r < 0.15) hurtEngine(p, 3);

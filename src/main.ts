@@ -70,7 +70,11 @@ import { updateBridges, isBridgePlacing, updateBridgePlacing, confirmBridgePlaci
 import { updatePiers, isPierPlacing, updatePierPlacing, confirmPierPlacing, cancelPierPlacing } from './world/piers';
 import { updateBoats, inBoat, boatCamera } from './world/boats';
 import { initMp } from './ui/mp';
-import { updatePeers } from './world/peers';
+import { updatePeers, ride, ghostOf } from './world/peers';
+import { riding, updateRide, rideCamera } from './world/ride';
+import { SEATS } from './data/vehicles';
+/** Riding at another player's cannon (the crosshair stays for aiming it). */
+const SEATS_GUN = () => { const o = ride.on, g = o ? ghostOf(o.owner, o.idx) : null; return !!g && !!SEATS[g.m][o!.seat]?.gun; };
 import { syncDrops, clearLocalDrops } from './world/drops';
 
 G.char = loadChar();
@@ -122,7 +126,7 @@ function frame(now: number) {
     { const up = refreshBoard(); if (up.length) { saveChar(); const v = outdoors ? villageHere(G.pos.x, G.pos.z) : undefined; if (v && up.includes(v.id)) logLine('New notices are up on the board.'); } }
   }
   if (live) {
-    if (driving.v) updateDriving(dt); else if (!(outdoors && updateBoats(dt)) && !updateClimb(dt)) moving = updatePlayer(dt);
+    if (driving.v) updateDriving(dt); else if (riding()) updateRide(dt); else if (!(outdoors && updateBoats(dt)) && !updateClimb(dt)) moving = updatePlayer(dt);
     if (outdoors) keepOnPlanet(dt);
     G.cooldown -= dt;
     if (isPlacing()) { // holding a Flagpole: the mouse picks its spot instead of fighting
@@ -141,9 +145,9 @@ function frame(now: number) {
       updateBuilding();
       if (G.firing) { G.firing = false; placePart(); }
       if (G.aiming) { G.aiming = false; stopBuilding(); }
-    } else if (G.firing && !driving.v && !inBoat()) attack();
+    } else if (G.firing && !driving.v && !inBoat() && !riding()) attack();
     updateTurrets(dt);
-    updateGun(dt, !driving.v && !inBoat());
+    updateGun(dt, !driving.v && !inBoat() && !riding());
     if (driving.v) fireCannon(dt);
     updateDoors(dt);
     updateRobots(dt, time); // the open world's robots, or a crashed ship's guards
@@ -161,14 +165,14 @@ function frame(now: number) {
       if ((saveT -= dt) <= 0) { saveT = 3; saveOverworldPos(); }
     }
   } else { el.prompt.style.display = 'none'; el.bUse.classList.remove('on'); el.bossbar.style.display = 'none'; }
-  if (G.trans) updateTrans(dt, camera); else if (driving.v) vehicleCamera(camera); else if (inBoat()) boatCamera(camera); else camera.position.set(G.pos.x, G.pos.y + EYE, G.pos.z);
+  if (G.trans) updateTrans(dt, camera); else if (driving.v) vehicleCamera(camera); else if (riding()) rideCamera(camera); else if (inBoat()) boatCamera(camera); else camera.position.set(G.pos.x, G.pos.y + EYE, G.pos.z);
   camera.rotation.set(G.pitch, G.yaw, 0);
   updateWeather(dt, sky.visible);
   if (sky.visible) { sky.position.set(camera.position.x, camera.position.y - 20, camera.position.z); horizon.position.set(camera.position.x, 0, camera.position.z); shapeHorizon(camera.position.x, camera.position.z); updateSky(G.char.time, latitude(G.pos.z)); tintToxic(); updateFarPeaks(camera.position); } else farPeaks.visible = false;
   // flying (dev): the real land reaches past the horizon rings, so they step aside and the camera sees further
   if (sky.visible) { const thick = seen.fog > 0.45 || toxicHere() > 0.3; horizon.visible = !G.fly && !thick; if (G.fly || thick) farPeaks.visible = false; } // fog hides the far ranges
   const far = G.fly ? 600 : 200; if (camera.far !== far) { camera.far = far; camera.updateProjectionMatrix(); }
-  el.cross.style.display = driving.v && !driving.cockpit && !driving.v.turret ? 'none' : '';
+  el.cross.style.display = driving.v && !driving.cockpit && !driving.v.turret ? 'none' : riding() && !ride.cockpit && !SEATS_GUN() ? 'none' : '';
   updatePeers(dt, moving); // multiplayer: say where you are, draw the others
   syncDrops(false, dt); // what the players put down on the ground
   animateVM(dt, moving);

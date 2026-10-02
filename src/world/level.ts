@@ -1,4 +1,5 @@
 // Loading places (dungeon sectors, the open world) and moving between them.
+import { riding, getOff } from './ride';
 import { SHIP_NAME } from './lander';
 import * as THREE from 'three';
 import { crashSpawn } from './crashpod';
@@ -80,8 +81,8 @@ function setLocationLook(outdoors: boolean) {
   refreshWeaponVisibility();
 }
 /** Weapons are holstered inside the village walls and drawn everywhere else. */
-setToolRule(() => !driving.v && !inBoat() && !G.swimming && !climbing());
-setArmedRule(() => !driving.v && !inBoat() && !G.swimming && !G.fly && !climbing() && !working() && (G.char.loc === 'dungeon' || !inVillage(G.pos.x, G.pos.z) || raidHere()));
+setToolRule(() => !driving.v && !riding() && !inBoat() && !G.swimming && !climbing());
+setArmedRule(() => !driving.v && !riding() && !inBoat() && !G.swimming && !G.fly && !climbing() && !working() && (G.char.loc === 'dungeon' || !inVillage(G.pos.x, G.pos.z) || raidHere()));
 onClimbChange(refreshWeaponVisibility);
 onWorkChange(refreshWeaponVisibility);
 
@@ -356,6 +357,7 @@ export function teleportTo(x: number, z: number, poi?: Poi): string {
   const c = G.char;
   if (G.trans) return 'Busy travelling, try again in a moment.';
   if (driving.v) leave();
+  if (riding()) getOff(true);
   c.loc = 'overworld'; c.dungeon = null;
   if (poi?.type === 'village') loadOverworld({ kind: 'tavern', id: poi.id });
   else if (poi && (poi.type === 'ruin' || poi.type === 'wreck')) loadOverworld({ kind: 'ruin', id: poi.id });

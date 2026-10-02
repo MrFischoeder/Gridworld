@@ -14,7 +14,7 @@
 // Protocol (JSON text frames), client → server:
 //   {t:'hello', name, ver, world, time, room?, create?: {name, world}}   first message; `room` picks a dedicated room,
 //                                                                          `create` makes one; hosted: world / time for the host
-//   {t:'state', p:[x,y,z], yaw, pitch, loc, held, mv, away, cars, time?}   cars: the player's own vehicles (net/client.ts PeerCar)   ~10 times a second; time from a hosted room's host only
+//   {t:'state', p:[x,y,z], yaw, pitch, loc, held, mv, away, cars, ride?, gun?, time?}   cars: the player's own vehicles (net/client.ts PeerCar)   ~10 times a second; time from a hosted room's host only
 //   {t:'chat', text}
 //   {t:'drop', k, n, c?, p:[x,y,z], loc}   an item put down at your feet (taken out of your own kit first)
 //   {t:'take', id}                       pick a lying item up: only the first to ask gets it
@@ -112,7 +112,7 @@ export function createMp(log = (m) => console.log('[mp] ' + m), opts = {}) {
         return;
       }
       if (m.t === 'state') {
-        me.st = { p: Array.isArray(m.p) ? m.p.slice(0, 3).map(num) : [0, 0, 0], yaw: num(m.yaw), pitch: num(m.pitch), loc: clean(m.loc, 80), held: clean(m.held, 24), mv: !!m.mv, away: !!m.away, cars: Array.isArray(m.cars) ? m.cars.slice(0, MP.cars).filter(Array.isArray).map((c) => c.slice(0, 9).map(num)) : [] };
+        me.st = { p: Array.isArray(m.p) ? m.p.slice(0, 3).map(num) : [0, 0, 0], yaw: num(m.yaw), pitch: num(m.pitch), loc: clean(m.loc, 80), held: clean(m.held, 24), mv: !!m.mv, away: !!m.away, cars: Array.isArray(m.cars) ? m.cars.slice(0, MP.cars).filter(Array.isArray).map((c) => c.slice(0, 10).map(num)) : [], ride: Array.isArray(m.ride) ? m.ride.slice(0, 3).map(num) : undefined, gun: typeof m.gun === 'number' ? num(m.gun) : undefined };
         if (!dedicated && me.id === room.hostId && typeof m.time === 'number') room.time0 = num(m.time);
       } else if (m.t === 'drop') {
         const k = clean(m.k, 24), n = Math.max(1, Math.min(9999, Math.floor(num(m.n))));

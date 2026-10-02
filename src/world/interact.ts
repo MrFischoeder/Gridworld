@@ -69,6 +69,7 @@ import { ITEMS } from '../data/items';
 import type { Caravan } from '../gen/caravans';
 import { driving, vehicleSpot, useVehicle, leave, type VehicleSpot } from './vehicles';
 import { nearDrop, dropPrompt, takeDrop } from './drops';
+import { riding, rideSpot, ridePrompt, board as boardRide, getOff, type RideSpot } from './ride';
 import type { Pickup } from './loot';
 
 /** Hook for places with people (the village). */
@@ -79,7 +80,7 @@ let nearWater: WaterSource | null = null, nearFood: PlantNode | null = null, nea
 let nearCave: Cave | null = null, caveOut = -1;
 let nearLock2 = false, nearRec = false, nearData: ReturnType<typeof nearCarrier> = null;
 let nearIns: InstallSite | null = null, nearHall: number | null = null, nearBrg: Ford | null = null, nearPier: Pier | null = null, nearPCrate: Pier | null = null, nearBt: Boat | null = null, nearFogL: ReturnType<typeof nearFogLocker> = null, nearGd = false;
-let nearDp: Pickup | null = null;
+let nearDp: Pickup | null = null, nearRide: RideSpot | null = null;
 let nearMap = false, nearClaim: SavedClaim | null = null, nearGate: ReturnType<typeof nearDoor> = null, nearHD: ReturnType<typeof nearHouseDoor> = null, nearDesk = false, nearWk: ReturnType<typeof nearWorks> = null, nearSt: ReturnType<typeof nearStation> = null, nearTerm: ReturnType<typeof nearTerminal> = null, nearGun: ReturnType<typeof nearTurret> = null;
 let nearMine: ReturnType<typeof nearHome> = null, nearPow: Plant | null = null, nearCar: Caravan | null = null, nearWork2: ReturnType<typeof nearSite> = null;
 let nearLad: ReturnType<typeof nearLadder> = null, nearVehicle: VehicleSpot | null = null, nearBoard = false, nearStash: ReturnType<typeof campStashes>[number] | null = null;
@@ -94,7 +95,14 @@ export function updateEntities(dt: number, time: number) {
     el.bUse.textContent = 'EXIT'; el.bUse.classList.toggle('on', G.playing);
     return;
   }
+  if (riding()) { // along for the ride in another player's vehicle: the HUD line says the keys
+    if (npcsActive()) updateNpcs(dt, time);
+    W.nearNpc = null; W.nearChest = null; W.nearPortal = null; W.nearLock = null; nearVehicle = null; nearRide = null; nearDp = null;
+    el.prompt.style.display = 'none'; el.bUse.textContent = 'EXIT'; el.bUse.classList.toggle('on', G.playing);
+    return;
+  }
   nearVehicle = G.char.loc === 'overworld' ? vehicleSpot() : null;
+  nearRide = nearVehicle ? null : rideSpot();
   const bd = G.char.loc === 'overworld' && OW.village ? OW.village.board : null;
   nearBoard = !!bd && Math.hypot(bd.x - pos.x, bd.z + 0.8 - pos.z) < 2.6;
   const mb = G.char.loc === 'overworld' && OW.village ? OW.village.mapBoard : null;
@@ -128,7 +136,7 @@ export function updateEntities(dt: number, time: number) {
     if (along > 0.9 && along < 3 && lat < 1.6 && Math.abs(pos.y - p.y0) < 1 && G.playing && !G.trans) enter = p;
   }
   const { nearNpc, nearLock, nearChest, nearPortal } = W, prompt = el.prompt;
-  const busy = !!(inBoat() || nearDp || nearGd || nearFogL || nearBt || nearHall !== null || nearIns || nearBrg || nearPier || nearPCrate || nearData || nearLock2 || nearRec || nearLad || nearMine || nearPow || nearCar || nearWork2 || nearNpc || nearLock || nearChest || nearBoard || nearMap || nearStash || nearVehicle || nearGate || nearHD || nearDesk || nearWk || nearSt || nearTerm || nearSt || nearGun || nearCave || caveOut >= 0);
+  const busy = !!(inBoat() || nearDp || nearRide || nearGd || nearFogL || nearBt || nearHall !== null || nearIns || nearBrg || nearPier || nearPCrate || nearData || nearLock2 || nearRec || nearLad || nearMine || nearPow || nearCar || nearWork2 || nearNpc || nearLock || nearChest || nearBoard || nearMap || nearStash || nearVehicle || nearGate || nearHD || nearDesk || nearWk || nearSt || nearTerm || nearSt || nearGun || nearCave || caveOut >= 0);
   nearFood = busy ? null : nearPlant();
   nearWork = busy || nearFood ? null : nearBench();
   nearClaim = busy || nearFood || nearWork ? null : nearFlag();
@@ -138,6 +146,7 @@ export function updateEntities(dt: number, time: number) {
   nearWater = G.char.loc === 'overworld' && !nearFood && !nearCook && !nearWork && !nearClaim && !nearGather && !nearNpc && !nearChest && !nearBoard && !nearStash && !nearVehicle && !nearMine && !nearPow && !nearCar && !nearWork2 ? waterSource(loadedWells()) : null;
   if (climbing()) { prompt.className = ''; prompt.textContent = 'W / S — up or down · Space — let go'; }
   else if (nearDp) { prompt.className = ''; prompt.textContent = dropPrompt(nearDp); }
+  else if (nearRide) { prompt.className = nearRide.seat < 0 ? 'lock' : ''; prompt.textContent = ridePrompt(nearRide); }
   else if (nearHall !== null) { prompt.className = ''; prompt.textContent = 'E — the village hall\'s terminal (the village\'s stock)'; }
   else if (nearBt) { prompt.className = ''; prompt.textContent = `E — get into the ${BOATS[nearBt.k].name.toLowerCase()} · F — its hold`; }
   else if (nearPier) { prompt.className = ''; prompt.textContent = nearPier.done ? 'E — the pier' : 'E — build the pier'; }
@@ -180,7 +189,7 @@ export function updateEntities(dt: number, time: number) {
   else if (nearGather) { prompt.className = ''; prompt.textContent = gatherPrompt(nearGather); }
   else if (nearCook) { prompt.className = ''; prompt.textContent = fireHasWork() ? 'E — roast your raw meat' : 'A campfire: bring raw meat to roast'; }
   else if (nearWater) { prompt.className = nearWater.kind === 'toxic' || nearWater.kind === 'sea' ? 'lock' : ''; prompt.textContent = sourcePrompt(nearWater); }
-  prompt.style.display = (climbing() || nearDp || nearGd || nearFogL || nearBt || nearHall !== null || nearIns || nearBrg || nearPier || nearPCrate || nearData || nearLock2 || nearRec || nearLad || nearMine || nearPow || nearCar || nearWork2 || nearGate || nearHD || nearDesk || nearWk || nearSt || nearTerm || nearTerm || nearGun || nearCave || caveOut >= 0 || nearNpc || nearLock || nearChest || nearBoard || nearMap || nearStash || nearVehicle || nearPortal || nearFood || nearWork || nearClaim || nearGather || nearCook || nearWater) && G.playing && prompt.textContent ? 'block' : 'none';
+  prompt.style.display = (climbing() || nearDp || nearRide || nearGd || nearFogL || nearBt || nearHall !== null || nearIns || nearBrg || nearPier || nearPCrate || nearData || nearLock2 || nearRec || nearLad || nearMine || nearPow || nearCar || nearWork2 || nearGate || nearHD || nearDesk || nearWk || nearSt || nearTerm || nearTerm || nearGun || nearCave || caveOut >= 0 || nearNpc || nearLock || nearChest || nearBoard || nearMap || nearStash || nearVehicle || nearPortal || nearFood || nearWork || nearClaim || nearGather || nearCook || nearWater) && G.playing && prompt.textContent ? 'block' : 'none';
   const bh = buildHint();
   if (bh !== null && !nearGate && !nearGun) { prompt.className = buildOk() ? '' : 'lock'; prompt.textContent = bh; prompt.style.display = G.playing && bh ? 'block' : 'none'; }
   const bth = boatHint();
@@ -215,9 +224,11 @@ export function lockKey() { if (nearGate) lockMenu(nearGate); }
 /** E key / use button. */
 export function interact() {
   if (driving.v) { leave(); return; }
+  if (riding()) { getOff(); return; }
   if (climbing()) return;
   if (inBoat()) { stepOff(); return; }
   if (nearDp) { takeDrop(nearDp); return; }
+  if (nearRide) { boardRide(nearRide); return; }
   if (nearBt) { board(nearBt); return; }
   if (nearHall !== null) { openHall(nearHall); return; }
   if (nearIns) { openInstall(nearIns); return; }

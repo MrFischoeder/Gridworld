@@ -7,8 +7,8 @@ import { scene } from './render';
 import { makeFigure, textSprite, type Figure } from './npc';
 import { poseRig, type Kit } from './rig';
 import { net, sendState, isHost, SEND_EVERY, type PeerState, type PeerCar, peerAt, PEER_DELAY } from '../net/client';
-import { convoyModel, seatFigure, myCars, toLocalOf } from './vehicles';
-import { VEHICLES, type VehicleModel } from '../data/vehicles';
+import { convoyModel, seatFigure, myCars, toLocalOf, myCarList, driving, seatRider, unseat, gunSeat } from './vehicles';
+import { VEHICLES, SEATS, type VehicleModel } from '../data/vehicles';
 import { nearX } from '../gen/regions';
 import { dungeonKey } from '../character';
 import { WEAPON_KIND, type ItemKey } from '../data/items';
@@ -54,10 +54,10 @@ function avatar(id: number, name: string, kit: Kit, away: boolean): Avatar {
 let sendT = 0;
 /** Every frame: send where you are now and then, and draw the others. */
 export function updatePeers(dt: number, moving: boolean) {
-  if (!net.id) { for (const id of [...avatars.keys()]) drop(id); return; }
+  if (!net.id) { if (avatars.size || ghosts.size || ride.on) clearPeers(); return; }
   if ((sendT -= dt) <= 0) {
     sendT = SEND_EVERY;
-    const s: PeerState = { p: [G.pos.x, G.pos.y, G.pos.z], yaw: G.yaw, pitch: G.pitch, loc: myLoc(), held: G.char.hands[0]?.k ?? '', mv: moving && G.playing, away: !G.playing, cars: myCars() };
+    const s: PeerState = { p: [G.pos.x, G.pos.y, G.pos.z], yaw: G.yaw, pitch: G.pitch, loc: myLoc(), held: G.char.hands[0]?.k ?? '', mv: moving && G.playing, away: !G.playing, cars: myCars(), ride: ride.on ? [ride.on.owner, ride.on.idx, ride.on.seat] : undefined, gun: ride.on ? ride.gun : undefined };
     sendState(s, isHost() ? G.char.time : undefined);
   }
   const here = myLoc(), now = performance.now();
@@ -74,8 +74,8 @@ export function updatePeers(dt: number, moving: boolean) {
     a.f.g.position.set(here === 'o' ? nearX(x, G.pos.x) : x, y, z);
     let dy = e.yaw - q.yaw; dy = Math.atan2(Math.sin(dy), Math.cos(dy));
     a.f.g.rotation.y = q.yaw + dy * k + Math.PI; // the figure faces +z, the player looks along -z
-    // driving: their figure sits in their car (drawn with the car below), only the name stays over it
-    const seated = here === 'o' && !!e.cars?.some((c) => c[8]);
+    // in a vehicle (theirs or someone's): their figure sits in it (drawn with the vehicle), only the name stays over it
+    const seated = here === 'o' && (!!e.cars?.some((c) => c[8]) || !!e.ride);
     if (seated !== a.seated) { a.seated = seated; for (const o of a.f.g.children) if (o !== a.label) o.visible = !seated; }
     if (seated) continue;
     a.phase += dt * (s.mv ? 9 : 0);
@@ -85,21 +85,52 @@ export function updatePeers(dt: number, moving: boolean) {
   }
 }
 /** Forget every figure (leaving the game, loading another place). */
-export function clearPeers() { for (const id of [...avatars.keys()]) drop(id); for (const k of [...ghosts.keys()]) dropGhost(k); }
+export function clearPeers() {
+  for (const id of [...avatars.keys()]) drop(id);
+  for (const k of [...ghosts.keys()]) dropGhost(k);
+  ride.on = null;
+  for (const v of myCarList()) { v.riders.forEach((r, i) => { if (r?.who.startsWith('peer:')) unseat(v, i); }); v.gunYaw = undefined; }
+}
 
 // ---------- the others' vehicles ----------
 // Every player sends where their own vehicles stand (and which one they drive); here each is drawn as a body with
-// wheels (and the cannon), the driver in the seat, eased between snapshots while it moves. They block you and your
-// vehicle like any other, but only their owner can drive them, open the trunk or service them.
-interface Ghost { g: THREE.Group; m: VehicleModel; gun: boolean; driver: Figure | null; x: number; y: number; z: number; h: number; p: number; r: number }
+// wheels (and the cannon), the people aboard in their seats, eased between snapshots while it moves. They block you
+// and your vehicle like any other. Only their owner drives them (their game moves them), but anyone can ride along
+// in a free seat (world/ride.ts) and work the cannon from the gunner's.
+/** Who sits in a seat: 'p<id>' another player, 'me' you. */
+export type Occupant = string | null;
+export interface Ghost {
+  g: THREE.Group; m: VehicleModel; gun: boolean; turret: THREE.Group | null; owner: number; idx: number;
+  x: number; y: number; z: number; h: number; p: number; r: number;
+  /** The seats taken now, and the players who reached for a taken seat (the later ones give way). */
+  occ: Occupant[]; bumped: Set<string>;
+  figs: (Figure | null)[]; figKey: Occupant[];
+  /** The cannon's yaw as its owner's game shows it. */
+  aim: number;
+}
 const ghosts = new Map<string, Ghost>();
 const MODELS: VehicleModel[] = ['scout', 'mastodon'];
+const ME_C = 0xd8ffe8;
+/** You riding in another player's vehicle (world/ride.ts runs it): whose, which of theirs, which seat, the cannon's yaw. */
+export const ride = { on: null as { owner: number; idx: number; seat: number } | null, gun: 0, cockpit: false };
+export const ghostOf = (owner: number, idx: number) => ghosts.get(owner + ':' + idx) ?? null;
+export const allGhosts = () => ghosts.values();
 function dropGhost(k: string) {
   const g = ghosts.get(k);
   if (!g) return;
   scene.remove(g.g); ghosts.delete(k);
 }
 const lerpAng = (a: number, b: number, k: number) => a + Math.atan2(Math.sin(b - a), Math.cos(b - a)) * k;
+/** Seat the riders who asked for seat s of a vehicle whose owner sits in `own` (-1 = not in it): the owner first, then by id. */
+function seatsFor(n: number, own: number, riders: { id: string; seat: number; n: number }[]): { occ: Occupant[]; bumped: Set<string>; byId: Map<string, number> } {
+  const occ: Occupant[] = Array(n).fill(null), bumped = new Set<string>(), byId = new Map<string, number>();
+  if (own >= 0 && own < n) occ[own] = 'owner';
+  for (const r of riders.sort((a, b) => a.n - b.n)) {
+    if (r.seat < 1 || r.seat >= n || occ[r.seat]) { bumped.add(r.id); continue; } // the wheel stays the owner's
+    occ[r.seat] = r.id; byId.set(r.id, r.seat);
+  }
+  return { occ, bumped, byId };
+}
 function syncCars(here: string, now: number) {
   const seen = new Set<string>();
   if (here === 'o') for (const p of net.peers.values()) {
@@ -111,19 +142,54 @@ function syncCars(here: string, now: number) {
       seen.add(key);
       let g = ghosts.get(key);
       if (g && (g.m !== m || g.gun !== gun)) { dropGhost(key); g = undefined; }
-      if (!g) { g = { g: convoyModel(m, gun).g, m, gun, driver: null, x: c[1], y: c[2], z: c[3], h: c[4], p: c[5], r: c[6] }; scene.add(g.g); ghosts.set(key, g); }
+      if (!g) {
+        const cm = convoyModel(m, gun), n = SEATS[m].length;
+        g = { g: cm.g, m, gun, turret: cm.turret, owner: p.id, idx: i, x: c[1], y: c[2], z: c[3], h: c[4], p: c[5], r: c[6], occ: Array(n).fill(null), bumped: new Set(), figs: Array(n).fill(null), figKey: Array(n).fill(null), aim: 0 };
+        scene.add(g.g); ghosts.set(key, g);
+      }
       const q = prev?.[i] && prev[i][0] === c[0] ? prev[i] : c;
       g.x = q[1] + (c[1] - q[1]) * k; g.y = q[2] + (c[2] - q[2]) * k; g.z = q[3] + (c[3] - q[3]) * k;
       g.h = lerpAng(q[4], c[4], k); g.p = q[5] + (c[5] - q[5]) * k; g.r = q[6] + (c[6] - q[6]) * k;
+      g.aim = c.length > 9 ? lerpAng(q[9] ?? c[9], c[9], k) : 0;
       g.x = nearX(g.x, G.pos.x);
       g.g.position.set(g.x, g.y - 0.05, g.z);
       g.g.rotation.set(-g.p, g.h, g.r, 'YXZ');
-      const driven = !!c[8];
-      if (driven && !g.driver) { g.driver = seatFigure(m, 0, peerColor(p.id)); g.g.add(g.driver.g); }
-      else if (!driven && g.driver) { g.g.remove(g.driver.g); g.driver = null; }
+      // who sits where: the owner (their seat + 1 in c[8]; older games send 1 for driving), then the riders
+      const riders: { id: string; seat: number; n: number }[] = [];
+      for (const o of net.peers.values()) { const r = o.st?.ride; if (r && r[0] === p.id && r[1] === i) riders.push({ id: 'p' + o.id, seat: r[2], n: o.id }); }
+      if (ride.on && ride.on.owner === p.id && ride.on.idx === i) riders.push({ id: 'me', seat: ride.on.seat, n: net.id });
+      const st = seatsFor(SEATS[m].length, (c[8] | 0) - 1, riders);
+      g.occ = st.occ.map((o) => (o === 'owner' ? 'p' + p.id : o)); g.bumped = st.bumped;
+      g.occ.forEach((o, si) => {
+        if (g!.figKey[si] === o) return;
+        if (g!.figs[si]) g!.g.remove(g!.figs[si]!.g);
+        g!.figs[si] = null; g!.figKey[si] = o;
+        if (!o) return;
+        const f = seatFigure(m, si, o === 'me' ? ME_C : peerColor(+o.slice(1)));
+        g!.figs[si] = f; g!.g.add(f.g);
+      });
+      const gs = SEATS[m].findIndex((x) => x.gun), meGun = ride.on && ride.on.owner === p.id && ride.on.idx === i && g.occ[gs] === 'me';
+      if (g.turret) g.turret.rotation.y = meGun ? ride.gun : g.aim;
+      if (gs >= 0 && g.figs[gs]) g.figs[gs]!.g.rotation.y = g.turret ? g.turret.rotation.y : 0; // the gunner turns with the cannon
+      const mine = g.occ.indexOf('me');
+      if (mine >= 0 && g.figs[mine]) g.figs[mine]!.g.visible = !ride.cockpit; // in the seat's view your own figure would fill the screen
     });
   }
   for (const k of [...ghosts.keys()]) if (!seen.has(k)) dropGhost(k);
+  syncMyRiders();
+}
+/** The players riding in your own vehicles: seated there, the one at the cannon aiming it. */
+function syncMyRiders() {
+  const list = myCarList();
+  list.forEach((v, i) => {
+    const riders: { id: string; seat: number; n: number }[] = [];
+    for (const o of net.peers.values()) { const r = o.st?.ride; if (r && r[0] === net.id && r[1] === i) riders.push({ id: 'peer:' + o.id, seat: r[2], n: o.id }); }
+    const own = v === driving.v ? driving.seat : -1, st = seatsFor(SEATS[v.st.model].length, own, riders);
+    v.riders.forEach((r, si) => { if (r && r.who.startsWith('peer:') && st.occ[si] !== r.who) unseat(v, si); });
+    st.occ.forEach((o, si) => { if (o && o !== 'owner' && v.riders[si]?.who !== o) seatRider(v, si, o, peerColor(+o.slice(5))); });
+    const gs = gunSeat(v.st.model), gunner = st.occ[gs];
+    v.gunYaw = gunner && gunner !== 'owner' ? net.peers.get(+gunner.slice(5))?.st?.gun ?? 0 : undefined;
+  });
 }
 /** Another player's vehicle in the way (for you on foot and for your vehicle). */
 export function peerCarHit(x: number, y: number, z: number, r: number): boolean {

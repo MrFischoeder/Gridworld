@@ -4,6 +4,16 @@ export interface Change { v: string; date: string; title: string; notes: string[
 
 export const CHANGELOG: Change[] = [
   {
+    v: '0.108.0', date: '2026-10-25', title: 'Room for one more',
+    notes: [
+      'In multiplayer you can ride along in another player\'s vehicle: walk up to its door and press E to take a free seat, the passenger\'s or the gunner\'s. E gets you out beside it, V switches between the chase view and the view from your seat.',
+      'Keys 1, 2 and 3 move you between the free seats: the driver\'s, the passenger\'s and the gunner\'s. The wheel stays with the vehicle\'s owner.',
+      'In your own vehicle you can change seats too. Away from the wheel nobody drives, so the vehicle rolls to a stop.',
+      'From the gunner\'s seat you work the roof cannon: aim it with your view and fire. The others see it turn. While a friend stands at your cannon, the driver no longer fires it.',
+      'Everyone sees who sits where. If two players reach for the same seat at once, the later one moves to another free seat or gets out.',
+    ],
+  },
+  {
     v: '0.107.0', date: '2026-10-24', title: 'Leave it on the ground',
     notes: [
       'Drop in the backpack no longer destroys the item: it is laid on the ground at your feet, as what it is, and E picks it up again.',

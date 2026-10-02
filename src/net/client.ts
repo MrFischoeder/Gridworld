@@ -9,10 +9,13 @@ export const SEND_EVERY = 0.1;
 /** `away`: in the menu (still in the game: the others see you standing there). */
 /**
  * A player's own vehicles, as others see them: [model (0 Scout, 1 Mastodon), x, y, z, heading, pitch, roll, cannon 0/1,
- * driven 0/1] each (body pose as world/vehicles.ts sets it), in the order of their save.
+ * the owner's seat + 1 (0 = not in it), the cannon's yaw (body-relative)] each (body pose as world/vehicles.ts sets
+ * it), in the order of their save. Older clients send 9 numbers (the 9th 1 = driving).
  */
-export type PeerCar = [number, number, number, number, number, number, number, number, number];
-export interface PeerState { p: [number, number, number]; yaw: number; pitch: number; loc: string; held: string; mv: boolean; away?: boolean; cars?: PeerCar[] }
+export type PeerCar = number[];
+export interface PeerState { p: [number, number, number]; yaw: number; pitch: number; loc: string; held: string; mv: boolean; away?: boolean; cars?: PeerCar[];
+  /** Riding in another player's vehicle: [owner id, the vehicle's index in their cars, seat]; `gun` = where they aim its cannon. */
+  ride?: [number, number, number]; gun?: number }
 export interface Peer {
   id: number; name: string;
   /** The last two states and when they came: the drawing eases between them. */
@@ -125,7 +128,7 @@ export function connect(url: string, me: { name: string; world: number; time: nu
         for (const s of m.ps) {
           const p = net.peers.get(s.id);
           if (!p) continue;
-          p.prev = p.st; p.st = { p: s.p, yaw: s.yaw, pitch: s.pitch, loc: s.loc, held: s.held, mv: s.mv, away: !!s.away, cars: Array.isArray(s.cars) ? s.cars : [] }; p.at = now;
+          p.prev = p.st; p.st = { p: s.p, yaw: s.yaw, pitch: s.pitch, loc: s.loc, held: s.held, mv: s.mv, away: !!s.away, cars: Array.isArray(s.cars) ? s.cars : [], ride: Array.isArray(s.ride) ? s.ride : undefined, gun: typeof s.gun === 'number' ? s.gun : undefined }; p.at = now;
           p.hist.push({ t: now, s: p.st }); if (p.hist.length > 8) p.hist.shift();
         }
         if (!isHost()) h.clock(m.time);
