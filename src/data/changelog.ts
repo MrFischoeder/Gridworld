@@ -4,6 +4,15 @@ export interface Change { v: string; date: string; title: string; notes: string[
 
 export const CHANGELOG: Change[] = [
   {
+    v: '0.110.0', date: '2026-10-27', title: 'The cities swarm',
+    notes: [
+      'The dead cities are no longer empty: machines of the old world guard their streets in squads, gnawers nest in the rubble and scavenger gangs hold out in the ruins. The closer to a city\'s core, the more of them and the bigger the groups.',
+      'Each city has hundreds of such groups at fixed places along its streets. They wake as you come within about 100 m, so walking through a city means fighting street by street, often with several groups at once.',
+      'A group you have wiped out stays quiet for about 45 game minutes, then something moves back in.',
+      'Bring friends, a vehicle with a cannon, and plenty of ammunition.',
+    ],
+  },
+  {
     v: '0.109.0', date: '2026-10-26', title: 'One world for everyone',
     notes: [
       'On a server everyone now plays in one shared world. What one player does to it, the others see within a second or two.',

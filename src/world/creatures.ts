@@ -870,6 +870,17 @@ export function spawnCreatureNear(kind: CreatureKind, d = 18) {
   return true;
 }
 
+/** A gnawer nest of n at (x, z) (a city's rubble: world/citygarrisons.ts). */
+export function spawnNest(x: number, z: number, lv: number, n: number): Creature[] {
+  if (!env) return [];
+  const nest: Creature[] = [];
+  for (let i = 0; i < n; i++) {
+    const px = x + (Math.random() - 0.5) * 6, pz = z + (Math.random() - 0.5) * 6;
+    if (env.forbidden(px, pz)) continue;
+    const c = make('gnawer', V(px, env.ground(px, pz) + CREATURES.gnawer.lift, pz), lv); c.pack = nest; c.flank = Math.random() * 6.283; nest.push(c);
+  }
+  return nest;
+}
 /** Bring a notice-board hunt group into the world: the survivors so far, plus the leader if still alive. */
 export function spawnQuestGroup(q: Quest) {
   if (!env || !q.at || !q.pack) return;

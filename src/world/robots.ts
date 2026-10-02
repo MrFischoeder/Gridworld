@@ -247,6 +247,18 @@ function trySpawn() {
     return;
   }
 }
+/** A city's machines (world/citygarrisons.ts): `n` of the usual groups for the danger there, together at (x, z). */
+export function spawnRobotSquad(x: number, z: number, lv: number, n: number): Robot[] {
+  const squad: Robot[] = [];
+  for (let g = 0; g < n; g++) {
+    const kinds = pickGroup(lv, true);
+    kinds.forEach((k, i) => {
+      const a = Math.random() * 6.283, d = 2 + i * 2.2 + g * 3;
+      make(k, x + Math.cos(a) * d, z + Math.sin(a) * d, lv, squad);
+    });
+  }
+  return squad;
+}
 /** Console / testing: put a robot (with its usual company) in front of the player. */
 export function spawnRobotNear(model: RobotKind, d = 25) {
   if (!env) return false;

@@ -320,3 +320,32 @@ export function inBld(b: Bld, u: number, v: number, m: number): boolean {
 /** How tall a building stands (m), and how tall its fallen heap is. */
 export const bldTop = (b: Bld) => (b.st === 2 ? Math.min(4.5, 1.8 + b.f * 0.2) : b.f * CITY.floor);
 export { segDist };
+
+// ---------- the city's garrisons ----------
+// The dead cities swarm: machines of the old world still guard them, gnawers nest in the rubble, scavenger gangs hold
+// the streets. Every city has its garrisons at fixed spots on its streets (from the seed: a share of the street
+// pieces, more of them towards the core); world/citygarrisons.ts wakes them as you come near.
+export type GarrisonKind = 'machines' | 'nest' | 'gang';
+export interface Garrison { k: number; u: number; v: number; kind: GarrisonKind; size: number }
+export const GARRISON = {
+  /** Share of the street pieces with a garrison: at the edge and at the core (%). */
+  edge: 30, core: 70,
+  /** Machines / nests / gangs (weights). */
+  mix: [55, 25, 20] as [number, number, number],
+};
+const garrisons = new Map<string, Garrison[]>();
+/** The garrisons of a city (city frame), cached. */
+export function cityGarrisons(world: number, c: CitySite): Garrison[] {
+  const key = world + ':' + c.i, hit = garrisons.get(key); if (hit) return hit;
+  const L = cityLayout(world, c), out: Garrison[] = [];
+  L.streets.forEach((s, k) => {
+    const u = (s.ax + s.bx) / 2, v = (s.az + s.bz) / 2;
+    const toCore = Math.min(1, Math.hypot(u - L.core[0], v - L.core[1]) / c.r), share = GARRISON.core + (GARRISON.edge - GARRISON.core) * toCore;
+    if (hash(world, c.i, k, 0x6a77) % 100 >= share) return;
+    const r = hash(world, c.i, k, 0x6a78) % 100, [a, b] = GARRISON.mix;
+    const kind: GarrisonKind = r < a ? 'machines' : r < a + b ? 'nest' : 'gang';
+    out.push({ k, u, v, kind, size: 1 + (toCore < 0.4 ? 1 : 0) + (hash(world, c.i, k, 0x6a79) % 3 === 0 ? 1 : 0) });
+  });
+  garrisons.set(key, out);
+  return out;
+}
