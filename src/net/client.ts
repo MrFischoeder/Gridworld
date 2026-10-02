@@ -37,6 +37,11 @@ export function peerAt(p: Peer, t: number): { a: PeerState; b: PeerState; k: num
   const last = h[h.length - 1].s;
   return { a: last, b: last, k: 0 };
 }
+/** An item lying in the room's world (server/mp.mjs): put down by `by`, at p in the place `loc` (see world/peers.ts myLoc). */
+export interface NetDrop { id: string; k: string; n: number; c?: number; p: [number, number, number]; loc: string; by: string; at: number }
+let gotHook: ((d: NetDrop) => void) | null = null;
+/** Who receives an item the server handed you (world/drops.ts). */
+export function onGot(f: (d: NetDrop) => void) { gotHook = f; }
 export interface NetHooks {
   /** Joined: the host's world seed and clock (for the host: their own); on a dedicated server, the server's. */
   welcome(world: number, time: number, host: boolean, dedicated: boolean): void;
@@ -58,6 +63,8 @@ export const net = {
   dedicated: false,
   /** The room (game server) you are in on a dedicated server. */
   room: null as { id: string; name: string } | null,
+  /** Everything lying on the ground in the room's world, by id. */
+  drops: new Map<string, NetDrop>(),
 };
 export const online = () => net.id > 0;
 export const isHost = () => online() && net.id === net.host;
@@ -106,6 +113,7 @@ export function connect(url: string, me: { name: string; world: number; time: nu
     switch (m.t) {
       case 'welcome':
         welcomed = true; net.id = m.id; net.host = m.host; net.dedicated = !!m.dedicated; net.room = m.room ?? null; net.peers.clear();
+        net.drops = new Map((Array.isArray(m.drops) ? m.drops : []).map((d: NetDrop) => [d.id, d]));
         for (const p of m.players) if (p.id !== m.id) net.peers.set(p.id, { id: p.id, name: p.name, st: null, prev: null, at: 0, hist: [] });
         h.welcome(m.world, m.time, m.id === m.host, net.dedicated);
         break;
@@ -123,6 +131,9 @@ export function connect(url: string, me: { name: string; world: number; time: nu
         if (!isHost()) h.clock(m.time);
         break;
       }
+      case 'drop': net.drops.set(m.d.id, m.d); break;
+      case 'gone': net.drops.delete(m.id); break;
+      case 'got': net.drops.delete(m.d.id); gotHook?.(m.d); break;
       case 'chat': h.say(`${m.name}: ${m.text}`, 'chat'); break;
       case 'full': why = 'The server is full (8 players).'; break;
       case 'refused': why = m.why; break;
@@ -130,18 +141,30 @@ export function connect(url: string, me: { name: string; world: number; time: nu
   };
   ws.onclose = () => {
     if (net.ws !== ws) return;
-    net.ws = null; net.id = 0; net.host = 0; net.dedicated = false; net.room = null; net.peers.clear();
+    net.ws = null; net.id = 0; net.host = 0; net.dedicated = false; net.room = null; net.peers.clear(); net.drops.clear();
     h.closed(why || (welcomed ? 'Disconnected from the server.' : `Could not reach a server at ${url}.`));
   };
 }
 export function disconnect() {
   const ws = net.ws;
-  net.ws = null; net.id = 0; net.host = 0; net.dedicated = false; net.room = null; net.peers.clear();
+  net.ws = null; net.id = 0; net.host = 0; net.dedicated = false; net.room = null; net.peers.clear(); net.drops.clear();
   if (ws) { ws.onclose = null; ws.close(); }
 }
 export function sendState(s: PeerState, time?: number) {
   if (!online() || net.ws?.readyState !== 1) return;
   net.ws.send(JSON.stringify({ t: 'state', ...s, ...(isHost() && time !== undefined ? { time } : {}) }));
+}
+/** Put an item down where you stand (already taken out of your kit). */
+export function sendDrop(k: string, n: number, c: number | undefined, p: [number, number, number], loc: string): boolean {
+  if (!online() || net.ws?.readyState !== 1) return false;
+  net.ws.send(JSON.stringify({ t: 'drop', k, n, c, p, loc }));
+  return true;
+}
+/** Ask for a lying item: the server answers 'got' if you were first, 'gone' if not. */
+export function sendTake(id: string): boolean {
+  if (!online() || net.ws?.readyState !== 1) return false;
+  net.ws.send(JSON.stringify({ t: 'take', id }));
+  return true;
 }
 export function sendChat(text: string) {
   const t = text.trim().slice(0, 200);

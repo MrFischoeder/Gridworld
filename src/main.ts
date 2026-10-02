@@ -71,6 +71,7 @@ import { updatePiers, isPierPlacing, updatePierPlacing, confirmPierPlacing, canc
 import { updateBoats, inBoat, boatCamera } from './world/boats';
 import { initMp } from './ui/mp';
 import { updatePeers } from './world/peers';
+import { syncDrops, clearLocalDrops } from './world/drops';
 
 G.char = loadChar();
 document.getElementById('vnum')!.textContent = 'v' + VERSION;
@@ -93,7 +94,7 @@ initMp({
   switchWorld(seed) { // into the host's world: as rolling a new world, the character kept
     const c = G.char;
     Object.assign(c, { world: seed, loc: 'overworld', ow: null, dungeon: null, discovered: {}, opened: {}, unlocked: {}, killed: {} });
-    saveChar(); loadOverworld({ kind: 'pod' }); // a castaway arrives in a new world by waking from their cryo-pod in the crashed ship
+    clearLocalDrops(); saveChar(); loadOverworld({ kind: 'pod' }); // a castaway arrives in a new world by waking from their cryo-pod in the crashed ship
   },
 });
 
@@ -169,6 +170,7 @@ function frame(now: number) {
   const far = G.fly ? 600 : 200; if (camera.far !== far) { camera.far = far; camera.updateProjectionMatrix(); }
   el.cross.style.display = driving.v && !driving.cockpit && !driving.v.turret ? 'none' : '';
   updatePeers(dt, moving); // multiplayer: say where you are, draw the others
+  syncDrops(false, dt); // what the players put down on the ground
   animateVM(dt, moving);
   animateFoes(dt, time, camera.position);
   updateFx(dt);

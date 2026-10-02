@@ -16,17 +16,23 @@
 //                                                                          `create` makes one; hosted: world / time for the host
 //   {t:'state', p:[x,y,z], yaw, pitch, loc, held, mv, away, cars, time?}   cars: the player's own vehicles (net/client.ts PeerCar)   ~10 times a second; time from a hosted room's host only
 //   {t:'chat', text}
+//   {t:'drop', k, n, c?, p:[x,y,z], loc}   an item put down at your feet (taken out of your own kit first)
+//   {t:'take', id}                       pick a lying item up: only the first to ask gets it
 // server → client:
 //   {t:'welcome', id, host, world, time, players:[{id, name}], dedicated, room:{id, name}}   host 0 on a dedicated server
 //   {t:'full'} / {t:'refused', why}
 //   {t:'join', id, name} / {t:'leave', id, name} / {t:'host', id}
 //   {t:'snap', time, ps:[{id, p, yaw, pitch, loc, held, mv, away, cars}]}  everybody in your room but you
 //   {t:'chat', id, name, text}
+//   {t:'drop', d:{id, k, n, c?, p, loc, by, at}}   an item now lies there (also to the one who dropped it)
+//   {t:'got', d} to the one who took it / {t:'gone', id} to everyone else (or to a taker who came too late)
+// The welcome also carries `drops`: everything lying in the room's world. Lying items are kept with the room (saved by
+// server/main.mjs) and vanish after `MP.dropTtl` hours.
 import { WebSocketServer } from 'ws';
 import { pathToFileURL } from 'node:url';
 import { randomInt } from 'node:crypto';
 
-export const MP = { path: '/mp', port: 7777, max: 8, rate: 100, nameMax: 20, chatMax: 200, roomName: 28, rooms: 12, roomTtl: 14, cars: 8 };
+export const MP = { path: '/mp', port: 7777, max: 8, rate: 100, nameMax: 20, chatMax: 200, roomName: 28, rooms: 12, roomTtl: 14, cars: 8, drops: 300, dropTtl: 6 };
 /** Protocol version: a client with another one is refused (the game shows why). */
 export const PROTOCOL = 2;
 
@@ -44,9 +50,9 @@ export function createMp(log = (m) => console.log('[mp] ' + m), opts = {}) {
   const wss = new WebSocketServer({ noServer: true, maxPayload: 16 * 1024 });
   /** @type {Map<string, any>} */
   const rooms = new Map();
-  let nextId = 1;
+  let nextId = 1, dropSeq = 1;
   const newRoom = (r) => {
-    const room = { id: r.id, name: clean(r.name, MP.roomName) || 'GridWorld', world: r.world == null ? null : r.world | 0, time0: num(r.time), run: 0, since: 0, players: new Map(), hostId: 0, created: r.created ?? Date.now(), last: r.last ?? Date.now() };
+    const room = { id: r.id, name: clean(r.name, MP.roomName) || 'GridWorld', world: r.world == null ? null : r.world | 0, time0: num(r.time), run: 0, since: 0, players: new Map(), hostId: 0, created: r.created ?? Date.now(), last: r.last ?? Date.now(), drops: new Map((Array.isArray(r.drops) ? r.drops : []).map((d) => [d.id, d])) };
     rooms.set(room.id, room);
     return room;
   };
@@ -100,7 +106,7 @@ export function createMp(log = (m) => console.log('[mp] ' + m), opts = {}) {
         me = { id: nextId++, ws, name, st: null, joined: Date.now() };
         if (!room.players.size && !dedicated) { room.hostId = me.id; room.world = num(m.world) | 0; room.time0 = num(m.time); log(`${name} hosts world ${room.world}`); }
         room.players.set(me.id, me); room.last = Date.now(); occupied(room, true);
-        send(ws, { t: 'welcome', id: me.id, host: room.hostId, world: room.world, time: clock(room), dedicated, room: { id: room.id, name: room.name }, players: [...room.players.values()].map((p) => ({ id: p.id, name: p.name })) });
+        send(ws, { t: 'welcome', id: me.id, host: room.hostId, world: room.world, time: clock(room), dedicated, room: { id: room.id, name: room.name }, drops: [...room.drops.values()], players: [...room.players.values()].map((p) => ({ id: p.id, name: p.name })) });
         all(room, { t: 'join', id: me.id, name }, me.id);
         log(`${name} joined ${room.name} (${room.players.size}/${MP.max})`);
         return;
@@ -108,6 +114,20 @@ export function createMp(log = (m) => console.log('[mp] ' + m), opts = {}) {
       if (m.t === 'state') {
         me.st = { p: Array.isArray(m.p) ? m.p.slice(0, 3).map(num) : [0, 0, 0], yaw: num(m.yaw), pitch: num(m.pitch), loc: clean(m.loc, 80), held: clean(m.held, 24), mv: !!m.mv, away: !!m.away, cars: Array.isArray(m.cars) ? m.cars.slice(0, MP.cars).filter(Array.isArray).map((c) => c.slice(0, 9).map(num)) : [] };
         if (!dedicated && me.id === room.hostId && typeof m.time === 'number') room.time0 = num(m.time);
+      } else if (m.t === 'drop') {
+        const k = clean(m.k, 24), n = Math.max(1, Math.min(9999, Math.floor(num(m.n))));
+        if (!k || !Array.isArray(m.p)) return;
+        if (room.drops.size >= MP.drops) { const old = room.drops.keys().next().value; room.drops.delete(old); all(room, { t: 'gone', id: old }); }
+        const d = { id: 'd' + (dropSeq++).toString(36) + randomInt(1000, 9999).toString(36), k, n, p: m.p.slice(0, 3).map(num), loc: clean(m.loc, 80), by: me.name, at: Date.now() };
+        if (typeof m.c === 'number' && Number.isFinite(m.c)) d.c = m.c;
+        room.drops.set(d.id, d);
+        all(room, { t: 'drop', d });
+      } else if (m.t === 'take') {
+        const d = room.drops.get(String(m.id));
+        if (!d) { send(ws, { t: 'gone', id: String(m.id) }); return; } // someone was quicker
+        room.drops.delete(d.id);
+        send(ws, { t: 'got', d });
+        all(room, { t: 'gone', id: d.id }, me.id);
       } else if (m.t === 'chat') {
         const text = clean(m.text, MP.chatMax);
         if (text) all(room, { t: 'chat', id: me.id, name: me.name, text });
@@ -122,7 +142,7 @@ export function createMp(log = (m) => console.log('[mp] ' + m), opts = {}) {
       if (!dedicated && me.id === room.hostId) { // the longest-connected player hosts now; the world stays
         const next = [...room.players.values()].sort((a, b) => a.joined - b.joined)[0];
         room.hostId = next ? next.id : 0;
-        if (next) all(room, { t: 'host', id: room.hostId }); else { room.world = null; log('empty: the next player to join hosts'); }
+        if (next) all(room, { t: 'host', id: room.hostId }); else { room.world = null; room.drops.clear(); log('empty: the next player to join hosts'); }
       }
     });
   });
@@ -136,8 +156,9 @@ export function createMp(log = (m) => console.log('[mp] ' + m), opts = {}) {
   }, MP.rate);
   // empty rooms nobody has come back to are forgotten (never the first one)
   const sweep = setInterval(() => {
+    for (const r of rooms.values()) for (const d of [...r.drops.values()]) if (Date.now() - d.at > MP.dropTtl * 3600000) { r.drops.delete(d.id); all(r, { t: 'gone', id: d.id }); }
     for (const r of [...rooms.values()]) if (r.id !== 'main' && !r.players.size && Date.now() - r.last > MP.roomTtl * DAY) { rooms.delete(r.id); log(`server "${r.name}" forgotten (empty for ${MP.roomTtl} days)`); }
-  }, 3600000);
+  }, 60000);
 
   /** Take over WebSocket upgrades on `path` of an http(s) server (others, like Vite's own, are left alone);
    * also on <prefix>`path`, for a reverse proxy that passes a sub-path (/gridworld/mp) on unchanged. */
@@ -151,9 +172,11 @@ export function createMp(log = (m) => console.log('[mp] ' + m), opts = {}) {
   const close = () => { clearInterval(timer); clearInterval(sweep); for (const r of rooms.values()) for (const p of r.players.values()) p.ws.terminate(); wss.close(); };
   /** The rooms as the menu lists them, and as server/main.mjs saves them. */
   const list = () => [...rooms.values()].map((r) => ({ id: r.id, name: r.name, world: r.world, time: Math.round(clock(r)), online: r.players.size, max: MP.max, running: r.players.size > 0, players: [...r.players.values()].map((p) => p.name), created: r.created, last: r.last }));
+  /** What server/main.mjs saves: the rooms with their clocks and the items lying in their worlds. */
+  const save = () => list().map(({ id, name, world, time, created, last }) => ({ id, name, world, time, created, last, drops: [...rooms.get(id).drops.values()] }));
   const first = () => rooms.values().next().value;
   return {
-    attach, close, dedicated, list,
+    attach, close, dedicated, list, save,
     get players() { return first().players; },
     state: () => { const r = first(); return { hostId: r.hostId, world: r.world, time: clock(r), n: r.players.size, names: [...r.players.values()].map((p) => p.name) }; },
   };

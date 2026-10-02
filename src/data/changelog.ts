@@ -4,6 +4,15 @@ export interface Change { v: string; date: string; title: string; notes: string[
 
 export const CHANGELOG: Change[] = [
   {
+    v: '0.107.0', date: '2026-10-24', title: 'Leave it on the ground',
+    notes: [
+      'Drop in the backpack no longer destroys the item: it is laid on the ground at your feet, as what it is, and E picks it up again.',
+      'In multiplayer everyone in the same place sees what you put down and can pick it up: this is how you hand over gear, weapons, food or wheels to a friend. The note says who left it.',
+      'Only the first to reach for an item gets it, so nothing is ever doubled. A worn part keeps its condition.',
+      'On a server the items stay on the ground for 6 hours, even if you leave, and survive a server restart. Playing alone, they lie there until you leave the game.',
+    ],
+  },
+  {
     v: '0.106.1', date: '2026-10-23', title: 'Shared vehicles',
     notes: [
       'In multiplayer you now see the other players\' vehicles: the ones they bought or found, parked where they left them, and the one they drive, with the driver sitting at the wheel instead of floating in the air.',

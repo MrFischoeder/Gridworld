@@ -5,6 +5,7 @@ Serwer dedykowany to jeden program Node (`server/main.mjs`), który na jednym po
 - Serwer gry **działa, dopóki ktoś na nim jest**. Gdy wyjdzie ostatni gracz, jego zegar staje (pauza) i rusza znowu, gdy ktoś wróci.
 - Gracz, który wyjdzie do menu, **nie znika**: jego postać zostaje w świecie z dopiskiem „(in menu)”, a świat toczy się dalej.
 - Serwery gry, na które nikt nie wrócił przez 14 dni, są usuwane (główny nigdy).
+- Przedmioty położone przez graczy na ziemi (Drop w plecaku) serwer pamięta i pokazuje wszystkim; leżą 6 godzin, także po restarcie.
 - Lista, ziarna i zegary zapisują się w `server/data/server.json` co 30 sekund i przy zatrzymaniu.
 
 Gracze nie instalują niczego: otwierają adres serwera w przeglądarce, wpisują imię bohatera, w okienku multiplayer widzą **listę serwerów** (nazwa, ilu gra, czy działa, czy stoi w pauzie) i klikają **Join** przy wybranym, albo wpisują nazwę i klikają **Create a server** (zaznaczone „in my own world” = w świecie z ich zapisu, inaczej nowy świat). Potem **Play**. Po aktualizacji serwera gracze muszą odświeżyć stronę (Ctrl+F5): stara wersja gry dostanie komunikat, żeby to zrobić.

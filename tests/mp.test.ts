@@ -104,6 +104,29 @@ describe('multiplayer server', () => {
     expect(mp!.list()[1].time).toBe(stopped); expect(mp!.list()[1].running).toBe(false);
     b.ws.close(); c.ws.close();
   });
+  it('items put down lie for everyone in the room; only the first to take one gets it; they are kept with the room', async () => {
+    const port = await server({ rooms: [{ id: 'main', name: 'Main', world: 11, time: 100 }] });
+    const a = await client(port, { name: 'Ada' }), b = await client(port, { name: 'Bob' });
+    await a.wait('welcome'); await b.wait('welcome');
+    a.send({ t: 'drop', k: 'medkit', n: 2, p: [5, 1, 6], loc: 'o' });
+    a.send({ t: 'drop', k: 'lwheel', n: 1, c: 63, p: [7, 1, 6], loc: 'o' });
+    const da = await a.wait('drop'), db = await b.wait('drop', 2);
+    expect(da.d).toMatchObject({ k: 'medkit', n: 2, p: [5, 1, 6], loc: 'o', by: 'Ada' });
+    expect(db.d).toMatchObject({ k: 'lwheel', c: 63 });
+    // both ask for the medkits at once: one gets them, the other hears they are gone
+    a.send({ t: 'take', id: da.d.id }); b.send({ t: 'take', id: da.d.id });
+    await new Promise((r) => setTimeout(r, 200));
+    const gots = [...a.got, ...b.got].filter((m) => m.t === 'got');
+    expect(gots.length).toBe(1); expect(gots[0].d.k).toBe('medkit');
+    expect(mp!.save()[0].drops.map((d) => d.k)).toEqual(['lwheel']);
+    // a newcomer sees what lies there; a restart keeps it
+    const c = await client(port, { name: 'Cy' }), wc = await c.wait('welcome');
+    expect(wc.drops.map((d: { k: string }) => d.k)).toEqual(['lwheel']);
+    const kept = mp!.save(); a.ws.close(); b.ws.close(); c.ws.close(); mp!.close(); http!.close();
+    const port2 = await server({ rooms: kept }), d = await client(port2, { name: 'Di' });
+    expect((await d.wait('welcome')).drops[0]).toMatchObject({ k: 'lwheel', c: 63, by: 'Ada' });
+    d.ws.close();
+  });
   it('turns what the player typed into a server address', () => {
     const here = { protocol: 'http:', host: '192.168.1.20:5173' };
     expect(serverUrl('', here)).toBe('ws://192.168.1.20:5173/mp');

@@ -1,6 +1,7 @@
 // Backpack window: 3 relic modules, the Blaster's attachment slots, your body (what you wear, two weapons on your
 // back, what you hold in your hands) and 12 backpack slots.
 // Items are dragged between slots (or selected and handled with the buttons under the grid).
+import { dropAtFeet } from '../world/drops';
 import { G } from '../game';
 import { item, BULK, WEAR, WEAR_SLOTS, WEAR_NAME, gearOf, WEAPON_KIND, HANDS_ONLY, HAND_TOOLS, type ItemKey } from '../data/items';
 import { BLASTER, SLOT_NAME, attachSlot } from '../data/weapons';
@@ -137,7 +138,7 @@ packEl.addEventListener('click', (e) => {
   const [w, i] = parseId(sel), act = a.dataset.a!;
   if (act === 'off' || act === 'on' || act === 'hold' || act === 'stow') { const m = quick(sel, act); if (m) logLine(m); note = m; sel = null; }
   if (act === 'use' && (w === 'p' || w === 'h')) { const s = listOf(w)[i]; if (s) useItem(s.k); }
-  if (act === 'drop' && (w === 'p' || w === 'h' || w === 'k')) { listOf(w)[i] = null; sel = null; }
+  if (act === 'drop' && (w === 'p' || w === 'h' || w === 'k')) { const s = listOf(w)[i]; listOf(w)[i] = null; sel = null; if (s) dropAtFeet(s); } // laid at your feet, for you or anyone to pick up
   changed();
 });
 export function openPack() {

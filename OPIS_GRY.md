@@ -1,6 +1,6 @@
 # GridWorld: opis gry, cel, plan i historia zmian
 
-Stan na wersję **0.106.1**. Ten dokument opisuje, czym jest GridWorld, jaki jest cel gry, co już w niej jest, czego jeszcze nie ma, dokąd zmierza i jak powstawała, wersja po wersji. Nazwy z gry (przedmioty, miejsca, postacie) są po angielsku, tak jak na ekranie.
+Stan na wersję **0.107.0**. Ten dokument opisuje, czym jest GridWorld, jaki jest cel gry, co już w niej jest, czego jeszcze nie ma, dokąd zmierza i jak powstawała, wersja po wersji. Nazwy z gry (przedmioty, miejsca, postacie) są po angielsku, tak jak na ekranie.
 
 ---
 
@@ -566,3 +566,4 @@ Pełne notatki (po angielsku) są w grze pod przyciskiem **Changelog** w menu g�
 - **0.105.1 Szybszy start.** Wyszukiwanie miejsc wielkich instalacji (kilka sekund) blokowało menu i pole imienia przy starcie; teraz liczy się w tle, w osobnym wątku przeglądarki.
 - **0.106.0 Lista serwerów i komory kriogeniczne.** Serwer na VPS pokazuje w menu listę swoich serwerów gry (nazwa, kto gra, czy działa, czy stoi w pauzie); gracz wybiera jeden i klika Join albo zakłada własny z nazwą (w nowym świecie albo w swoim). Serwer działa, dopóki ktoś na nim jest, a gdy ostatni gracz wyjdzie, jego zegar staje. Gracz, który wyjdzie do menu, nie znika: zostaje w świecie z dopiskiem „(in menu)”, a świat toczy się dalej dla innych. Fabuła: gracze nie są pilotami; pilotka zginęła w katastrofie i leży nad konsolą, a gracze budzą się z komór kriogenicznych, każdy ze swojej (więcej graczy, więcej otwartych komór). Po śmierci budzisz się znowu w swojej komorze na statku.
 - **0.106.1 Wspólne pojazdy.** W trybie wieloosobowym widać pojazdy innych graczy: zaparkowane tam, gdzie je zostawili, i ten, którym jadą, z kierowcą za kierownicą (wcześniej kierowca wisiał w powietrzu, a auta nie było). Cudze auta blokują drogę, ale prowadzić je, otwierać bagażnik i serwisować może tylko właściciel. Inni gracze poruszają się płynniej: są rysowani z małym opóźnieniem, między dwiema ostatnimi pozycjami, więc nierówno przychodzące pakiety nie powodują szarpania.
+- **0.107.0 Zostaw to na ziemi.** „Drop” w plecaku nie niszczy już przedmiotu, tylko kładzie go pod nogami, a E podnosi go z powrotem. W grze wieloosobowej wszyscy w tym samym miejscu widzą położone rzeczy (z dopiskiem, kto je zostawił) i mogą je podnieść: tak przekazuje się sprzęt, broń, jedzenie czy koła. Przedmiot dostaje tylko ten, kto pierwszy po niego sięgnie, więc nic się nie duplikuje. Na serwerze rzeczy leżą 6 godzin, także po wyjściu gracza i po restarcie serwera.

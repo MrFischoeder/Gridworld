@@ -44,7 +44,7 @@ const world = rooms[0].world;
 
 async function persist() {
   await mkdir(DATA, { recursive: true });
-  const tmp = SAVE + '.tmp', list = mp.list().map(({ id, name, world, time, created, last }) => ({ id, name, world, time, created, last }));
+  const tmp = SAVE + '.tmp', list = mp.save();
   await writeFile(tmp, JSON.stringify({ rooms: list, saved: new Date().toISOString() }, null, 1));
   await rename(tmp, SAVE);
 }
