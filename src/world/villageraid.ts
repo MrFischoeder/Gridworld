@@ -10,6 +10,7 @@
 // village with a full storehouse). Pay it (at the elder or the captain of the guard) and they leave; refuse and they
 // come. While they fight, their gunners shoot at the wall and at any villager in sight, and when the defences fall
 // they tear down part of the wall (it drops a tier) besides wrecking the plant.
+import { spawnAuthority } from './remote';
 import { armourDrain } from '../gen/improve';
 import * as THREE from 'three';
 import { earnTrust } from './standing';
@@ -115,6 +116,7 @@ export function updateVillageRaids(dt: number) {
         continue;
       }
       if (now < r.t0 + RAID.duration) {
+        if (!spawnAuthority()) return; // another player here runs the raid (you fight their bandits)
         live = { shootT: 2, killT: 25, plantHurt: 0, r, vid: v.id, vm: v.vm, name: v.vm.name, wave: 0, nextT: 0, bandits: [], defence: 100, targets: targetsOf(v.vm, v.id) };
         spawnWave(live);
         return;

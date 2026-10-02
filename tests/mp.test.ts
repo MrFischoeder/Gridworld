@@ -150,6 +150,25 @@ describe('multiplayer server', () => {
     expect((await c.wait('welcome')).wdoc.towns['5']).toEqual({ wall: 2 });
     c.ws.close();
   });
+  it('the shared foes: word of them goes to the rest of the room, hits and harm to one player, nothing else passes', async () => {
+    const port = await server({ rooms: [{ id: 'main', name: 'Main', world: 11, time: 100 }] });
+    const a = await client(port, { name: 'Ada' }), wa = await a.wait('welcome');
+    const b = await client(port, { name: 'Bob' }), wb = await b.wait('welcome');
+    const c = await client(port, { name: 'Cy' }); await c.wait('welcome');
+    a.send({ t: 'cast', m: { t: 'foes', loc: 'o', list: [[1, 0, 'gnawer', 5, 1, 5, 0, 3, 3, 1, 'roam']] } });
+    expect((await b.wait('foes')).from).toBe(wa.id);
+    expect((await c.wait('foes')).list[0][2]).toBe('gnawer');
+    b.send({ t: 'to', to: wa.id, m: { t: 'fhit', nid: 1, dmg: 2 } });
+    expect(await a.wait('fhit')).toMatchObject({ nid: 1, dmg: 2, from: wb.id });
+    a.send({ t: 'to', to: wb.id, m: { t: 'kill', nid: 1 } });
+    await b.wait('kill');
+    a.send({ t: 'cast', m: { t: 'wset', ch: [['towns', '1', { wall: 9 }]] } }); // not a foe message: dropped
+    a.send({ t: 'cast', m: { t: 'bolt', loc: 'o', p: [0, 1, 0], v: [30, 0, 0], c: 1 } });
+    await c.wait('bolt');
+    expect(a.got.some((m) => m.t === 'foes' || m.t === 'bolt')).toBe(false); // not back to the sender
+    expect(c.got.some((m) => m.t === 'kill' || m.t === 'fhit' || m.t === 'wset')).toBe(false);
+    for (const x of [a, b, c]) x.ws.close();
+  });
   it('turns what the player typed into a server address', () => {
     const here = { protocol: 'http:', host: '192.168.1.20:5173' };
     expect(serverUrl('', here)).toBe('ws://192.168.1.20:5173/mp');

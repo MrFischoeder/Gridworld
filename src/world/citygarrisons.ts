@@ -9,6 +9,7 @@ import { citySites, cityGarrisons, cityToWorld, type Garrison, type CitySite } f
 import { nearX, worldDist } from '../gen/regions';
 import { spawnRobotSquad, removeRobot, type Robot } from './robots';
 import { spawnNest, removeCreature, type Creature } from './creatures';
+import { spawnAuthority } from './remote';
 import { spawnBandit, removeBandit, type Bandit } from './bandits';
 
 export const GARRISON_RT = {
@@ -57,7 +58,7 @@ export function updateGarrisons(dt: number) {
     if (!l.foes.some(alive)) { live.delete(l.key); if (d < GARRISON_RT.wake) beaten.set(l.key, now + GARRISON_RT.respawn); }
   }
   let room = GARRISON_RT.awake - live.size;
-  if (room <= 0) return;
+  if (room <= 0 || !spawnAuthority()) return; // another player here wakes them (you see theirs)
   for (const c of citySites(T.world)) {
     if (worldDist(c.x, c.z, G.pos.x, G.pos.z) > c.r + GARRISON_RT.wake) continue;
     const near: [Garrison, number, number, number][] = [];

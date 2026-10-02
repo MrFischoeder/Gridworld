@@ -21,6 +21,10 @@
 //   {t:'wset', ch:[[field, key, value|null], ...]}   changes to the shared world (villages, bridges, chests...: see
 //                                                      src/world/share.ts); null deletes
 //   {t:'wseed', doc}                     the first player who already played this world brings their world along
+//   {t:'cast', m} / {t:'to', to, m}       the shared foes (src/world/foesync.ts), passed to everyone else in the room /
+//                                          to player `to` as m + {from}: m.t one of 'foes' (my foes: where, how hurt),
+//                                          'bolt' (one of mine fired), 'fhit' (I hit your foe), 'kill' (your shot killed
+//                                          mine), 'hurt' (my foe hurt you)
 // server → client:
 //   {t:'welcome', id, host, world, time, players:[{id, name}], dedicated, room:{id, name}}   host 0 on a dedicated server
 //   {t:'full'} / {t:'refused', why}
@@ -30,6 +34,7 @@
 //   {t:'drop', d:{id, k, n, c?, p, loc, by, at}}   an item now lies there (also to the one who dropped it)
 //   {t:'got', d} to the one who took it / {t:'gone', id} to everyone else (or to a taker who came too late)
 //   {t:'wset', ch} the others' changes to the shared world / {t:'wdoc', doc} the whole of it (adopt it)
+//   {...m, from} what another player cast or sent you (see 'cast' / 'to')
 // The welcome also carries `wdoc` (the shared world: {field: {key: value}}) and `wseeded` (whether anyone has brought
 // a world to it yet). The shared world is kept with the room (server/main.mjs saves it in its own file).
 // The welcome also carries `drops`: everything lying in the room's world. Lying items are kept with the room (saved by
@@ -39,6 +44,8 @@ import { pathToFileURL } from 'node:url';
 import { randomInt } from 'node:crypto';
 
 export const MP = { path: '/mp', port: 7777, max: 8, rate: 100, nameMax: 20, chatMax: 200, roomName: 28, rooms: 12, roomTtl: 14, cars: 8, drops: 300, dropTtl: 6, payload: 4 * 1024 * 1024 };
+/** What players may pass to each other through 'cast' (everyone else in the room) and 'to' (one player). */
+const RELAY = new Set(['foes', 'bolt', 'fhit', 'kill', 'hurt']);
 /** Protocol version: a client with another one is refused (the game shows why). */
 export const PROTOCOL = 2;
 
@@ -146,6 +153,11 @@ export function createMp(log = (m) => console.log('[mp] ' + m), opts = {}) {
       } else if (m.t === 'wseed' && m.doc && typeof m.doc === 'object') {
         if (room.seeded) send(ws, { t: 'wdoc', doc: room.doc }); // someone was first: take theirs
         else { room.doc = m.doc; room.seeded = true; room.dirty = true; all(room, { t: 'wdoc', doc: room.doc }, me.id); log(`${me.name} brought their world to ${room.name}`); }
+      } else if ((m.t === 'cast' || m.t === 'to') && m.m && typeof m.m === 'object' && RELAY.has(m.m.t)) {
+        // the shared foes (src/world/foesync.ts): passed on as they are, with who sent them
+        const out = { ...m.m, from: me.id };
+        if (m.t === 'cast') all(room, out, me.id);
+        else { const p = room.players.get(num(m.to)); if (p) send(p.ws, out); }
       } else if (m.t === 'chat') {
         const text = clean(m.text, MP.chatMax);
         if (text) all(room, { t: 'chat', id: me.id, name: me.name, text });

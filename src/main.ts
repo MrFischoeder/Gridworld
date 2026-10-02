@@ -77,6 +77,7 @@ import { SEATS } from './data/vehicles';
 const SEATS_GUN = () => { const o = ride.on, g = o ? ghostOf(o.owner, o.idx) : null; return !!g && !!SEATS[g.m][o!.seat]?.gun; };
 import { syncDrops, clearLocalDrops } from './world/drops';
 import { syncWorld, setWorldReload } from './world/share';
+import { syncFoes } from './world/foesync';
 import { updateGarrisons } from './world/citygarrisons';
 /** Redraw the open world from the save where you stand (after taking the server's shared world). */
 function reloadWorld() { if (G.char.loc !== 'overworld') return; saveOverworldPos(); loadOverworld({ kind: 'saved' }); }
@@ -182,6 +183,7 @@ function frame(now: number) {
   updatePeers(dt, moving); // multiplayer: say where you are, draw the others
   syncDrops(false, dt); // what the players put down on the ground
   syncWorld(dt); // the shared world: send what changed here
+  syncFoes(dt); // the shared foes: tell the others about yours, drop copies nobody speaks for
   animateVM(dt, moving);
   animateFoes(dt, time, camera.position);
   updateFx(dt);

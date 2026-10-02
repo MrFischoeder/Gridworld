@@ -1,6 +1,6 @@
 # GridWorld: opis gry, cel, plan i historia zmian
 
-Stan na wersję **0.110.0**. Ten dokument opisuje, czym jest GridWorld, jaki jest cel gry, co już w niej jest, czego jeszcze nie ma, dokąd zmierza i jak powstawała, wersja po wersji. Nazwy z gry (przedmioty, miejsca, postacie) są po angielsku, tak jak na ekranie.
+Stan na wersję **0.111.0**. Ten dokument opisuje, czym jest GridWorld, jaki jest cel gry, co już w niej jest, czego jeszcze nie ma, dokąd zmierza i jak powstawała, wersja po wersji. Nazwy z gry (przedmioty, miejsca, postacie) są po angielsku, tak jak na ekranie.
 
 ---
 
@@ -376,7 +376,7 @@ Wyniki symulacji posłużyły do decyzji, że gra ma się opierać na prostych, 
 **Czego jeszcze nie ma:**
 - lotu Rydwanem i zakończenia gry;
 - cudów Starożytnych i niespodzianek w samej grze;
-- pełnego trybu wieloosobowego: jest już pierwszy krok (wspólny świat, widoczni inni gracze, czat), ale wrogowie, łupy, wioski i pojazdy nie są jeszcze wspólne, nie ma statków innych graczy;
+- pełnego trybu wieloosobowego: jest wspólny świat (wioski, rynki, budowle, skrzynie), wspólni wrogowie, wspólna jazda pojazdami, przedmioty rzucane na ziemię i czat, ale pojazdy rabusiów, drony w podziemiach i bossowie nie są jeszcze wspólni, a postać zapisuje się w przeglądarce, nie na serwerze; nie ma statków innych graczy;
 - kombinezonu przeciwchemicznego, mgły w lochach i stworzeń mgły;
 - nurkowania;
 - spalania paliwa przez pojazdy (bak jest pokazywany, ale na razie się nie opróżnia);
@@ -570,3 +570,4 @@ Pełne notatki (po angielsku) są w grze pod przyciskiem **Changelog** w menu g�
 - **0.108.0 Miejsce dla jeszcze jednego.** Wspólna jazda: E przy drzwiach cudzego pojazdu zajmuje wolne miejsce pasażera albo strzelca, E wysiada obok, V zmienia widok. Klawisze 1, 2 i 3 przesiadają między wolnymi miejscami (kierowca, pasażer, strzelec); kierownica zostaje u właściciela pojazdu. We własnym pojeździe też można się przesiąść, a gdy nikt nie siedzi za kierownicą, pojazd się zatrzymuje. Ze stanowiska strzelca obsługuje się działko na dachu: celuje się widokiem, inni widzą, jak się obraca. Wszyscy widzą, kto gdzie siedzi.
 - **0.109.0 Jeden świat dla wszystkich.** Na serwerze wszyscy grają w jednym, wspólnym świecie: wioski (mury, obrona, farmy i uprawy, zakłady, elektrownie, ulepszenia, magazyn w ratuszu, zaufanie), rynki, mosty, pomosty i łodzie, wielkie instalacje, Rydwan, zawartość skrzyń i postęp w ruinach, ścięte drzewa i zebrane rośliny, rozbite obozy bandytów i losy karawan. Zmiany jednego gracza inni widzą po sekundzie lub dwóch. Własne pozostają: ekwipunek, złoto, poziom, zadania i kontrakty, mapa i znalezione plany, pojazdy i skrzynia w domu. Pierwszy gracz, który już grał w świecie serwera, wnosi do niego swój postęp; kolejni dołączają do wspólnego świata.
 - **0.110.0 Miasta pełne wrogów.** Martwe miasta roją się od przeciwników: oddziały maszyn dawnego świata pilnują ulic, gryzonie gnieżdżą się w gruzach, a gangi szabrowników okupują ruiny. Każde miasto ma setki takich grup w stałych miejscach przy ulicach, więcej i większych bliżej centrum. Budzą się, gdy podejdziesz na ok. 100 m, więc przez miasto idzie się ulica po ulicy, często z kilkoma grupami naraz (w centrum ok. 50 wrogów wokół gracza). Wybita grupa milknie na ok. 45 minut gry.
+- **0.111.0 Wspólni wrogowie.** Na serwerze wszyscy gracze walczą z tymi samymi wrogami: stwory, roboty i bandyci (losowe spotkania, obozy, garnizony miast, napady na wioski, strażnicy wraków) są wspólni. Wrogów w danym miejscu prowadzi gra pierwszego gracza, pozostali widzą ich ruchy i pociski, mogą do nich strzelać, a zabójstwo, łup i nagrodę dostaje ten, kto zadał ostatni cios. Wrogowie idą na najbliższego gracza. Jeszcze osobno: pojazdy rabusiów, drony w podziemiach, bossowie.

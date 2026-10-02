@@ -18,6 +18,7 @@ import { onKill } from './quests';
 import { mayspawn, FOE_HIT } from './threat';
 import { ALPHA, type Quest } from '../gen/quests';
 import { textSprite } from './npc';
+import { stepRemote, withTarget } from './remote';
 
 type State = 'roam' | 'hunt' | 'dash' | 'retreat' | 'threat' | 'charge' | 'recover' | 'stalk' | 'dive' | 'climb' | 'investigate';
 
@@ -704,18 +705,21 @@ export function updateCreatures(dt: number, time: number) {
   if (!env) return;
   heat *= Math.exp(-dt / 25);
   if ((spawnT -= dt) <= 0) { spawnT = 4.5 / (1 + heat); trySpawn(); }
-  const safe = foeRules.playerSafe(), head = V(G.pos.x, G.pos.y + 1.2, G.pos.z);
   for (let i = W.creatures.length - 1; i >= 0; i--) {
-    const c = W.creatures[i], to = head.clone().sub(c.p), dist = to.length();
-    if (Math.hypot(to.x, to.z) > (c.questId ? 240 : c.kind === 'leechwing' ? 220 : 130)) { removeCreature(c); continue; }
-    if (c.state === 'investigate' && (c.kind === 'ravager' || c.kind === 'bramble' || c.kind === 'gnawer')) investigate(c, dt, to, dist, safe);
-    else if (c.kind === 'skitter') skitter(c, dt, to, dist, safe);
-    else if (c.kind === 'lurker') lurker(c, dt, to, dist, safe);
-    else if (c.kind === 'silverfin') silverfin(c, dt, to);
-    else if (c.kind === 'ravager') ravager(c, dt, to, dist, safe);
-    else if (c.kind === 'bramble') bramble(c, dt, to, dist, safe);
-    else if (c.kind === 'gnawer') gnawer(c, dt, to, dist, safe);
-    else leechwing(c, dt, to, dist, safe);
+    const c = W.creatures[i];
+    if (stepRemote(c, dt)) { animate(c, dt, time); continue; } // another player's: it does what its owner says
+    if (Math.hypot(G.pos.x - c.p.x, G.pos.z - c.p.z) > (c.questId ? 240 : c.kind === 'leechwing' ? 220 : 130)) { removeCreature(c); continue; }
+    withTarget(c.p.x, c.p.z, () => {
+      const to = V(G.pos.x, G.pos.y + 1.2, G.pos.z).sub(c.p), dist = to.length(), safe = foeRules.playerSafe();
+      if (c.state === 'investigate' && (c.kind === 'ravager' || c.kind === 'bramble' || c.kind === 'gnawer')) investigate(c, dt, to, dist, safe);
+      else if (c.kind === 'skitter') skitter(c, dt, to, dist, safe);
+      else if (c.kind === 'lurker') lurker(c, dt, to, dist, safe);
+      else if (c.kind === 'silverfin') silverfin(c, dt, to);
+      else if (c.kind === 'ravager') ravager(c, dt, to, dist, safe);
+      else if (c.kind === 'bramble') bramble(c, dt, to, dist, safe);
+      else if (c.kind === 'gnawer') gnawer(c, dt, to, dist, safe);
+      else leechwing(c, dt, to, dist, safe);
+    });
     animate(c, dt, time);
   }
   updateDead(dt);
@@ -781,7 +785,7 @@ export function hurtCreature(c: Creature, dmg: number) {
 interface Dead { c: Creature; t: number; side: 1 | -1; land: number; vy: number; spin: THREE.Vector3; slide: THREE.Vector3; y0: number }
 const dead: Dead[] = [];
 const LIE_C = 5, SINK_C = 1.5, DRAINED = 0x8a6a3a;
-function fallCreature(c: Creature) {
+export function fallCreature(c: Creature) {
   const i = W.creatures.indexOf(c); if (i >= 0) W.creatures.splice(i, 1);
   if (c.pack) { const j = c.pack.indexOf(c); if (j >= 0) c.pack.splice(j, 1); }
   const away = V(c.p.x - G.pos.x, 0, c.p.z - G.pos.z).normalize();
@@ -870,6 +874,8 @@ export function spawnCreatureNear(kind: CreatureKind, d = 18) {
   return true;
 }
 
+/** A copy of another player's creature (world/foesync.ts). */
+export function spawnRemoteCreature(kind: CreatureKind, p: THREE.Vector3, level: number): Creature { return make(kind, p, level); }
 /** A gnawer nest of n at (x, z) (a city's rubble: world/citygarrisons.ts). */
 export function spawnNest(x: number, z: number, lv: number, n: number): Creature[] {
   if (!env) return [];

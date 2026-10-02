@@ -8,6 +8,7 @@
 //   assault    RD-06: a hunched heavy biped with a hammer arm; charges and smashes you off your feet
 // Like the creatures they are not saved. Where they turn up, and how many, is set by the danger level and the
 // shared threat budget (world/threat.ts): near the villages you meet none, further out ever heavier machines.
+import { stepRemote, withTarget, otherPlayers, hurtOther } from './remote';
 import * as THREE from 'three';
 import { armoured } from '../character';
 import { scene, V, lineMat, add as addMat } from './render';
@@ -248,6 +249,13 @@ function trySpawn() {
   }
 }
 /** A city's machines (world/citygarrisons.ts): `n` of the usual groups for the danger there, together at (x, z). */
+/** A copy of another player's robot (world/foesync.ts): wherever its owner says, forbidden ground or not. */
+export function spawnRemoteRobot(model: RobotKind, x: number, y: number, z: number, level: number): Robot | null {
+  const was = env; if (!was) return null;
+  env = { ...was, forbidden: () => false };
+  const wasIn = indoor; indoor = false;
+  try { const r = make(model, x, z, level, []); if (r) r.p.y = y; return r; } finally { env = was; indoor = wasIn; }
+}
 export function spawnRobotSquad(x: number, z: number, lv: number, n: number): Robot[] {
   const squad: Robot[] = [];
   for (let g = 0; g < n; g++) {
@@ -309,6 +317,10 @@ function updateShells(dt: number, time: number) {
     burst(s.at.clone().add(V(0, 0.5, 0)), 0xff6a4a, 40, 2.2);
     const d = Math.hypot(G.pos.x - s.at.x, G.pos.z - s.at.z);
     if (d < SHELL.radius && Math.abs(G.pos.y - s.at.y) < 3 && !foeRules.playerSafe()) hit(s.dmg * (1 - d / SHELL.radius * 0.6), 6, s.at);
+    for (const t of otherPlayers()) { // the blast reaches the other players there too
+      const e = Math.hypot(t.x - s.at.x, t.z - s.at.z);
+      if (e < SHELL.radius && Math.abs(t.y - s.at.y) < 3) hurtOther(t.id, s.dmg * (1 - e / SHELL.radius * 0.6) * FOE_HIT);
+    }
     scene.remove(s.ring); s.ring.geometry.dispose(); shells.splice(i, 1);
   }
 }
@@ -418,8 +430,9 @@ export function updateRobots(dt: number, time: number) {
   if (!env) return;
   if (!indoor && (spawnT -= dt) <= 0) { spawnT = 7; trySpawn(); }
   for (const r of [...W.robots]) {
+    if (stepRemote(r, dt)) { animate(r, dt, time); continue; } // another player's: it does what its owner says
     if (!indoor && r.state !== 'hunt' && r.p.distanceTo(G.pos) > 150) { removeRobot(r); continue; }
-    think(r, dt, time);
+    withTarget(r.p.x, r.p.z, () => think(r, dt, time));
     animate(r, dt, time);
   }
   updateShells(dt, time);
@@ -453,7 +466,7 @@ export function hurtRobot(r: Robot, dmg: number) {
 interface Scrap { r: Robot; t: number; dir: 1 | -1; land: number; vy: number; y0: number; parts: { o: THREE.Object3D; v: THREE.Vector3; spin: THREE.Vector3; rest: boolean }[]; smokeT: number }
 const scraps: Scrap[] = [];
 const SHUDDER = 0.7, COLLAPSE = 0.7, LIE_R = 6, SINK_R = 1.8, DARK = 0x6a4a2a;
-function wreckRobot(r: Robot) {
+export function wreckRobot(r: Robot) {
   const i = W.robots.indexOf(r); if (i >= 0) W.robots.splice(i, 1);
   const j = r.group.indexOf(r); if (j >= 0) r.group.splice(j, 1);
   const front = Math.cos(Math.atan2(G.pos.x - r.p.x, G.pos.z - r.p.z) - r.heading) > 0;

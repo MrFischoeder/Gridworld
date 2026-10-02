@@ -160,6 +160,7 @@ export function connect(url: string, me: { name: string; world: number; time: nu
       case 'drop': net.drops.set(m.d.id, m.d); break;
       case 'gone': net.drops.delete(m.id); break;
       case 'got': net.drops.delete(m.d.id); gotHook?.(m.d); break;
+      case 'foes': case 'bolt': case 'fhit': case 'kill': case 'hurt': relayHook?.(m); break;
       case 'chat': h.say(`${m.name}: ${m.text}`, 'chat'); break;
       case 'full': why = 'The server is full (8 players).'; break;
       case 'refused': why = m.why; break;
@@ -190,6 +191,16 @@ export function sendDrop(k: string, n: number, c: number | undefined, p: [number
 export function sendTake(id: string): boolean {
   if (!online() || net.ws?.readyState !== 1) return false;
   net.ws.send(JSON.stringify({ t: 'take', id }));
+  return true;
+}
+/** The shared foes (world/foesync.ts): a message from another player ({t, from, ...}). */
+export type Relay = { t: 'foes' | 'bolt' | 'fhit' | 'kill' | 'hurt'; from: number; [k: string]: unknown };
+let relayHook: ((m: Relay) => void) | null = null;
+export function onRelay(f: (m: Relay) => void) { relayHook = f; }
+/** Pass m to everyone else in the room (to = undefined) or to one player. */
+export function relay(m: { t: Relay['t']; [k: string]: unknown }, to?: number): boolean {
+  if (!online() || net.ws?.readyState !== 1) return false;
+  net.ws.send(JSON.stringify(to === undefined ? { t: 'cast', m } : { t: 'to', to, m }));
   return true;
 }
 export function sendChat(text: string) {

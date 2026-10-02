@@ -1,4 +1,5 @@
 // Drones, bosses (gate guardians and rare elites) and their projectiles.
+import { remoteOf, hitOwner } from './remote';
 import * as THREE from 'three';
 import { onNoise } from './noise';
 import { scene, lineMat, add, V, circlePts, edgesOf } from './render';
@@ -171,6 +172,7 @@ function killBoss(b: Boss) {
 export const foes = (): Foe[] => (W.drones as Foe[]).concat(W.bosses, W.creatures, W.bandits, raiders, W.robots);
 
 export function damageFoe(t: Foe, dmg: number) {
+  if (remoteOf(t)) { (t as { flash: number }).flash = 0.12; G.hitFlash = 0.15; hitOwner(t, dmg); return; } // another player's foe: their game reckons it
   if ('kind' in t) { if (t.kind === 'bandit') hurtBandit(t, dmg); else if (t.kind === 'raider') hurtRaider(t, dmg); else if (t.kind === 'robot') hurtRobot(t, dmg); else hurtCreature(t, dmg); return; }
   if (t.boss) { t.hp -= dmg; t.flash = 0.1; t.engaged = true; G.hitFlash = 0.15; if (t.hp <= 0) killBoss(t); return; }
   t.hp -= dmg; t.flash = 0.12; t.chasing = true; G.hitFlash = 0.15;

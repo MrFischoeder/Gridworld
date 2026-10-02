@@ -1,5 +1,6 @@
 // Bandits: human enemies with guns and blades. They live in camps and patrol the wilds.
 // Unsaved (like drones and creatures) except that a cleared camp stays empty for a while (char.camps).
+import { stepRemote, withTarget, proxied, otherPlayers, hurtOther, boltOut, spawnAuthority } from './remote';
 import * as THREE from 'three';
 import { onNoise } from './noise';
 import { scene, V, add as addMat } from './render';
@@ -37,7 +38,7 @@ export interface Bandit {
   /** Recoil of the last shot (1 → 0), and a sword stroke on its way (the blow lands mid-swing). */
   recoil: number; blow: boolean;
 }
-interface Bolt { m: THREE.Line; p: THREE.Vector3; v: THREE.Vector3; dmg: number; life: number }
+interface Bolt { m: THREE.Line; p: THREE.Vector3; v: THREE.Vector3; dmg: number; life: number; ghost?: boolean }
 const bolts: Bolt[] = [];
 let env: SpawnEnv | null = null, patrolT = 10;
 export function setBanditEnv(e: SpawnEnv | null) { env = e; }
@@ -71,7 +72,7 @@ export function spawnBandit(role: BanditRole, at: THREE.Vector3, level: number, 
 // ---------- camps ----------
 const campClearedRecently = (id: number) => { const t = G.char.camps[id]; return !!t && Date.now() - t < CAMP_RESPAWN_MS; };
 export function spawnCamp(c: CampMap) {
-  if (!env || campClearedRecently(c.id) || W.bandits.some((b) => b.campId === c.id)) return;
+  if (!env || campClearedRecently(c.id) || W.bandits.some((b) => b.campId === c.id) || !spawnAuthority()) return; // another player here holds the camp's bandits
   const lv = env.danger(c.fire.x, c.fire.z), group: Bandit[] = [];
   for (const s of c.spawns) spawnBandit(s.role, V(s.x, c.y + 0.9, s.z), lv, group, c.id);
 }
@@ -121,13 +122,20 @@ function fire(b: Bandit) {
 /** A bolt from `muzzle` at the player (with spread for distance and the player's speed). */
 export function fireBolt(muzzle: THREE.Vector3, dmg: number, color = BANDIT) {
   // at you: at the driver's seat when you are driving (the body or the windows decide who takes it, updateBolts)
-  const target = driving.v ? seatPoint(driving.v, driving.seat) : V(G.pos.x, G.pos.y + 1.1, G.pos.z), dist = target.distanceTo(muzzle);
+  const target = driving.v && !proxied() ? seatPoint(driving.v, driving.seat) : V(G.pos.x, G.pos.y + 1.1, G.pos.z), dist = target.distanceTo(muzzle);
   const spread = 0.035 * dist + Math.hypot(G.vel.x, G.vel.z) * 0.1;
   target.x += (Math.random() - 0.5) * spread; target.y += (Math.random() - 0.5) * spread * 0.5; target.z += (Math.random() - 0.5) * spread;
   const v = target.sub(muzzle).normalize().multiplyScalar(30);
   const m = new THREE.Line(new THREE.BufferGeometry().setFromPoints([V(0, 0, 0), v.clone().normalize().multiplyScalar(-0.9)]), addMat(color));
   m.position.copy(muzzle); scene.add(m);
   bolts.push({ m, p: muzzle.clone(), v, dmg, life: 3 });
+  boltOut(muzzle, v, color);
+}
+/** Another player's foe fired: the bolt is drawn here, but its harm is reckoned in the owner's game (world/foesync.ts). */
+export function ghostBolt(p: THREE.Vector3, v: THREE.Vector3, color: number) {
+  const m = new THREE.Line(new THREE.BufferGeometry().setFromPoints([V(0, 0, 0), v.clone().normalize().multiplyScalar(-0.9)]), addMat(color));
+  m.position.copy(p); scene.add(m);
+  bolts.push({ m, p: p.clone(), v: v.clone(), dmg: 0, life: 3, ghost: true });
 }
 let vehicleWarnT = 0;
 export function updateBolts(dt: number) {
@@ -140,7 +148,12 @@ export function updateBolts(dt: number) {
     o.p.addScaledVector(o.v, dt); o.m.position.copy(o.p);
     let dead = o.life <= 0 || walled || !emptyAt(o.p);
     const v = driving.v;
-    if (!dead && v && !foeRules.playerSafe()) {
+    if (!dead) for (const t of o.ghost ? [] : otherPlayers()) { // the other players here, as upright bodies
+      const cy = Math.max(t.y + 0.3, Math.min(t.y + 1.6, o.p.y));
+      if (Math.hypot(o.p.x - t.x, o.p.y - cy, o.p.z - t.z) < 0.5) { dead = true; hurtOther(t.id, o.dmg); break; }
+    }
+    if (dead || o.ghost) { /* a drawn bolt only meets walls and the others; its owner's game decides whom it hurts */ }
+    else if (v && !foeRules.playerSafe()) {
       // in a vehicle: the bolt hits whatever it meets first, the body or you through a window / over an open side
       const h = rayVehicle(v, prev, dir, step);
       if (h) {
@@ -245,8 +258,9 @@ export function updateBandits(dt: number, time: number) {
   if (env) patrols(dt);
   for (let i = W.bandits.length - 1; i >= 0; i--) {
     const b = W.bandits[i];
+    if (stepRemote(b, dt)) { animate(b, dt); continue; } // another player's: it does what its owner says
     if (b.campId === undefined && Math.hypot(b.p.x - G.pos.x, b.p.z - G.pos.z) > (b.ambush !== undefined ? 240 : 160)) { removeBandit(b); continue; }
-    think(b, dt, time); animate(b, dt);
+    withTarget(b.p.x, b.p.z, () => think(b, dt, time)); animate(b, dt);
   }
   updateBolts(dt);
   updateCorpses(dt);

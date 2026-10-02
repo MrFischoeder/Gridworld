@@ -1,4 +1,5 @@
 // Loading places (dungeon sectors, the open world) and moving between them.
+import { spawnAuthority } from './remote';
 import { riding, getOff } from './ride';
 import { SHIP_NAME } from './lander';
 import * as THREE from 'three';
@@ -133,7 +134,7 @@ export function loadDungeon(arriveDir: string | null) {
   if (wreck) {
     const poi = findPoi(c.world, d.ruinId)!, lv = Math.max(2, dangerAt(c.world, poi.x, poi.z, true));
     setRobotEnv({ ground: () => 0, danger: () => lv, nearRuin: () => false, forbidden: () => false, water: () => null }, { indoor: true });
-    spawnGuards(map.guards ?? [], lv);
+    if (spawnAuthority()) spawnGuards(map.guards ?? [], lv); // else the player already inside has them (shared foes)
   }
   onDungeonLoaded(map);
   placeCarrier();

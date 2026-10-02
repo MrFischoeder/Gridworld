@@ -3,6 +3,7 @@
 // dangerous land, less when gunfire has been heard), nothing new joins while you are fighting, and how much may be
 // about at once grows with the danger level (gen/danger.ts). Fewer foes, but they hit harder (FOE_HIT).
 // Right after you leave a village nothing new turns up for a little while.
+import { spawnAuthority } from './remote';
 import { G, W } from '../game';
 import { ROBOTS } from '../data/robots';
 import type { CreatureKind } from '../data/creatures';
@@ -43,6 +44,7 @@ function fighting(): boolean {
  * (the caller spawns it now). Gunfire (`heat`) brings the next one sooner and lets a little more in.
  */
 export function mayspawn(cost: number, lv: number, heat = 0): boolean {
+  if (!spawnAuthority()) return false; // another player here spawns the foes (world/remote.ts); you see theirs
   if (G.fly || outside <= GRACE || next - heat * 6 > 0 || fighting()) return false;
   if (threat() + cost > budget(lv) + heat * 0.6) return false;
   next = gap(lv);

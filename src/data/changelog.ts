@@ -4,6 +4,15 @@ export interface Change { v: string; date: string; title: string; notes: string[
 
 export const CHANGELOG: Change[] = [
   {
+    v: '0.111.0', date: '2026-10-28', title: 'Shared foes',
+    notes: [
+      'On a server everyone now fights the same enemies: creatures, robots and bandits (field spawns, camps, city garrisons, village raids, wreck guards) are the same for every player in a place.',
+      'The first player in an area brings the foes; the others see them move, see their shots fly and can shoot them. Whoever lands the killing blow gets the kill, the loot and the bounty.',
+      'Foes go for whichever player is nearest, so a friend can draw them off you.',
+      'Not shared yet: raider vehicles, dungeon drones and bosses. If the player who brought a group of foes leaves, those foes go with them.',
+    ],
+  },
+  {
     v: '0.110.0', date: '2026-10-27', title: 'The cities swarm',
     notes: [
       'The dead cities are no longer empty: machines of the old world guard their streets in squads, gnawers nest in the rubble and scavenger gangs hold out in the ruins. The closer to a city\'s core, the more of them and the bigger the groups.',

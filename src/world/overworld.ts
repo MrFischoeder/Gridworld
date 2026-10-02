@@ -1,6 +1,7 @@
 // The open world: terrain streamed in 32 m chunks around the player, voxel structures (the village, ruins)
 // standing on it, forests, roads, and light field enemies. Generation is deterministic; this module only
 // decides what is loaded and turns generator output into meshes.
+import { proxied } from './remote';
 import { setLadders, dropLadders, ladderHit, ladderFloor } from './ladders';
 import { setHouses, dropHouses, houseHit, houseRay, houseSolid } from './houses';
 import { drawHangar, hangarOps } from './hangar';
@@ -532,7 +533,7 @@ export function openWorld(x: number, z: number) {
   foeRules.blocked = (p) => nearVillage(p.x, p.z) < 2;
   foeRules.playerSafe = () => inVillage(G.pos.x, G.pos.z) && !raidHere(); // no safe place while bandits raid it
   foeRules.ground = (px, pz) => OW.terrain!.heightAt(px, pz);
-  foeRules.shielded = shielded;
+  foeRules.shielded = () => !proxied() && shielded(); // a foe's turn against another player: your cab is not theirs
   foeRules.shieldHit = (dmg) => { if (driving.v) damageVehicle(driving.v, dmg); };
   setCrash(OW.terrain);
   updateStructs(x, z);

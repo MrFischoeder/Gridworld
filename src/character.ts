@@ -6,6 +6,7 @@ import type { Slot } from './save';
 import { saveChar as persist } from './save';
 import { showToast, logLine } from './ui/hud';
 import { BLASTER, gunStats, gunOf, meleeOf } from './data/weapons';
+import { proxied } from './world/remote';
 
 export const saveChar = () => persist(G.char);
 
@@ -30,7 +31,7 @@ export const gear = () => gearOf(G.char.wear);
 export const packVol = () => gearOf(G.char.wear).vol;
 
 /** A hit on the player after worn armour took its share off. */
-export const armoured = (dmg: number) => dmg * (1 - G.S.def);
+export const armoured = (dmg: number) => (proxied() ? dmg : dmg * (1 - G.S.def));
 /** Everything you carry (kg): the backpack, your hands, your back and what you wear. */
 export function carriedKg(): number {
   const c = G.char;
