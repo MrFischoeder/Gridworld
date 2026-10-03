@@ -5,11 +5,13 @@
 // the caravans' fates. The hero's own things stay theirs: kit, gold, xp, quests, contracts, maps, knowledge, vehicles
 // (shared through world/peers.ts), the house chest.
 // Once a second the shared parts of the save are compared with what was last sent (key by key) and the changes go to
-// the server; the others' changes are written into the save and shown (a village rebuilt, a tree gone...). The last
-// change to a key wins. The first player to join who already played the room's world brings their world along.
-import { G } from '../game';
-import { net, online, sendWorld, seedWorld, onWorld, type WorldDoc } from '../net/client';
-import { saveChar } from '../character';
+// the server; the others' changes are written into the save and shown (a village rebuilt, a tree gone...).
+// Independent property edits merge; conflicting leaves follow server order. The first player to join who already
+// played the room's world brings their world along.
+import { mergeWorld, mergeProgress } from '../net/worlddoc.mjs';
+import { G, W } from '../game';
+import { net, activeContainers, online, sendWorld, seedWorld, onWorld, type WorldDoc } from '../net/client';
+import { saveChar, dungeonKey } from '../character';
 import { OW, reloadStruct, rebuildChunkAt } from './overworld';
 import { CHUNK, HANGAR_ID, nearX } from '../gen/regions';
 import type { Char } from '../save';
@@ -78,6 +80,17 @@ const townLook = (t: unknown) => {
   return JSON.stringify([s.wall, s.works, s.farms, s.crops, s.fup, s.pup, s.imp, s.built, s.pbuild, (s.plants as { k: string }[] | undefined)?.map((p) => p.k), (s.stations as { k: string }[] | undefined)?.map((p) => p.k)]);
 };
 function show(f: string, k: string, before: unknown, after: unknown) {
+  if (G.char.loc === 'dungeon' && G.char.dungeon && k === dungeonKey()) {
+    const indices = Array.isArray(after) ? after : [];
+    if (f === 'opened') for (const c of W.chests) {
+      const open = indices.includes(c.i);
+      if (open !== c.open) { c.open = open; c.anim = open ? 0.001 : 0; }
+    }
+    if (f === 'unlocked') for (const d of W.doors) if (d.locked && indices.includes(d.idx)) {
+      d.locked = false; d.panelMat.color.setHex(0x6dffa0); d.frameMat.color.setHex(0xb07a20); d.lock.visible = false;
+    }
+    return;
+  }
   if (!OW.terrain || G.char.loc !== 'overworld') return; // underground, or not loaded: seen when you come back
   if (f === 'towns' && townLook(before) !== townLook(after)) reloadStruct(+k);
   else if (f === 'shuttle') reloadStruct(HANGAR_ID);
@@ -92,33 +105,52 @@ let reload: () => void = () => {};
 /** How to redraw the whole world after taking another one (main.ts). */
 export function setWorldReload(f: () => void) { reload = f; }
 
-let pending: { doc: WorldDoc; seeded: boolean; world: number } | null = null;
+let seeding = false;
+let pending: { doc: WorldDoc; seeded: boolean; world: number; canSeed: boolean } | null = null;
 onWorld({
-  welcome(doc, seeded, world) { pending = { doc, seeded, world }; },
-  doc(doc) { adopt(doc); saveChar(); reload(); },
-  set(ch) {
-    for (const [fk, k, v] of ch) {
+  welcome(doc, seeded, world) { seeding = false; inFlight = 0; pending = { doc, seeded, world, canSeed: G.char.world === world }; },
+  doc(doc, from) { adopt(doc, seeding && from === net.id); seeding = false; saveChar(); reload(); },
+  set(ch, from, seq, force) {
+    if (from === net.id && seq === inFlight) inFlight = 0;
+    for (const [fk, k, v, rejected] of ch) {
       const f = SHARED.find((x) => x.f === fk);
       if (!f || f.skip?.(k)) continue;
       const before = entries(G.char, f).find(([kk]) => kk === k)?.[1], was = before === undefined ? undefined : JSON.stringify(before);
-      put(G.char, f, k, v);
+      const baseline = last.get(fk)?.get(k);
+      const authoritative = rejected || (force && !(from === net.id && fk === 'containers' && activeContainers.has(k)));
+      const merge = ['opened', 'unlocked', 'killed'].includes(fk) ? mergeProgress : mergeWorld;
+      const rebased = authoritative ? v : merge(v, baseline === undefined ? undefined : JSON.parse(baseline), before);
+      put(G.char, f, k, rebased);
       const m = last.get(fk) ?? new Map<string, string>(); last.set(fk, m);
       if (v === null || v === undefined) m.delete(k); else m.set(k, JSON.stringify(v));
-      if (was !== (v == null ? undefined : JSON.stringify(v))) show(fk, k, before === undefined ? undefined : JSON.parse(was!), v);
+      if (was !== (rebased == null ? undefined : JSON.stringify(rebased))) show(fk, k, before === undefined ? undefined : JSON.parse(was!), rebased);
     }
     saveChar();
   },
 });
 /** Replace the shared parts of your save with the server's world. */
-function adopt(doc: WorldDoc) {
+function adopt(doc: WorldDoc, keepEdits = false) {
   const c = G.char;
   for (const f of SHARED) {
-    const want = doc[f.f] ?? {};
+    const want = { ...(doc[f.f] ?? {}) };
+    if (keepEdits) {
+      const live = Object.fromEntries(entries(c, f));
+      for (const k of new Set([...Object.keys(want), ...Object.keys(live)])) {
+        const baseline = last.get(f.f)?.get(k);
+        const merge = ['opened', 'unlocked', 'killed'].includes(f.f) ? mergeProgress : mergeWorld;
+        const value = merge(want[k], baseline === undefined ? undefined : JSON.parse(baseline), live[k]);
+        if (value === undefined) delete want[k]; else want[k] = value;
+      }
+    }
     for (const [k] of entries(c, f)) if (!(k in want)) put(c, f, k, null);
     for (const [k, v] of Object.entries(want)) put(c, f, k, v);
     if (f.kind === 'one' && !('_' in want)) put(c, f, '_', null);
   }
   remember(doc);
+  if (c.loc === 'dungeon' && c.dungeon) {
+    const key = dungeonKey();
+    show('opened', key, undefined, c.opened[key]); show('unlocked', key, undefined, c.unlocked[key]);
+  }
 }
 /**
  * Just joined (ui/mp.ts, after keeping a copy of your own save): bring your world to a room nobody has brought one to
@@ -127,27 +159,31 @@ function adopt(doc: WorldDoc) {
 export function joinWorld(): boolean {
   const p = pending; pending = null;
   if (!p) return false;
-  if (!p.seeded && G.char.world === p.world) { const d = worldDoc(); seedWorld(d); remember(d); return false; }
+  if (!p.seeded && p.canSeed) { const d = worldDoc(); seeding = true; seedWorld(d); remember(d); return false; }
   adopt(p.doc); saveChar();
   return true;
 }
 
-let clock = 0;
+let clock = 0, sequence = 0, inFlight = 0;
 /** Main loop: once a second, send what changed in the shared world since last time. */
 export function syncWorld(dt: number) {
-  if (!online() || !net.id || pending) return;
+  if (!online() || !net.id || pending || seeding || inFlight) return;
   if ((clock -= dt) > 0) return;
   clock = 1;
-  const ch: [string, string, unknown][] = [];
+  const ch: [string, string, unknown, unknown?][] = [];
   for (const f of SHARED) {
     const m = last.get(f.f) ?? new Map<string, string>(); last.set(f.f, m);
     const seen = new Set<string>();
     for (const [k, v] of entries(G.char, f)) {
       seen.add(k);
+      if (f.f === 'containers' && activeContainers.has(k)) continue; // transfer windows publish through their reservation
       const j = JSON.stringify(v);
-      if (m.get(k) !== j) { m.set(k, j); ch.push([f.f, k, v]); }
+      if (m.get(k) !== j) { const base = m.get(k); ch.push([f.f, k, v, base === undefined ? null : JSON.parse(base)]); }
     }
-    for (const k of [...m.keys()]) if (!seen.has(k)) { m.delete(k); ch.push([f.f, k, null]); }
+    for (const k of [...m.keys()]) if (!seen.has(k)) { ch.push([f.f, k, null, JSON.parse(m.get(k)!)]); }
   }
-  if (ch.length) sendWorld(ch);
+  if (ch.length && sendWorld(ch, sequence + 1)) {
+    inFlight = ++sequence;
+    for (const [f, k, v] of ch) { const m = last.get(f)!; if (v == null) m.delete(k); else m.set(k, JSON.stringify(v)); }
+  }
 }

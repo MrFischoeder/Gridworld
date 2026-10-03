@@ -1,12 +1,13 @@
 // Container window (chests, bandit stashes, vehicle trunks): the container on top, the backpack below, and
 // items move freely between them like inside the backpack. Drag an item onto any slot (stacks merge, other
 // items swap places), or click / tap it to send it straight to the other side. Whatever you leave stays inside.
+import { online, lockContainer, unlockContainer, saveContainer, activeContainers, net } from '../net/client';
 import { G } from '../game';
 import { item, HANDS_ONLY, WEAPON_KIND } from '../data/items';
 import { moveStack, dropStack, countFree } from '../inventory';
 import { calcStats, saveChar, stowHeld, handsChanged, packVol } from '../character';
 import type { Container, Slot } from '../save';
-import { $ } from './hud';
+import { $, showToast } from './hud';
 import { lockPointer } from './input';
 import { slotHTML, bindSlots, itemInfo, parseId, loadText } from './slots';
 
@@ -19,6 +20,7 @@ export interface TransferSpec {
 const el = { root: $('xfer'), title: $('xferTitle'), sub: $('xferSub'), boxLabel: $('xferBoxLabel'), box: $('xferBox'), gold: $('xferGold'),
   inv: $('xferInv'), body: $('xferBody'), invInfo: $('xferInvInfo'), detail: $('xferDetail'), msg: $('xferMsg'), all: $('xferAll'), close: $('xferClose') };
 let spec: TransferSpec | null = null;
+let locked: string | null = null, opening = false;
 
 /** Slot lists by id prefix: b = the container, p = backpack, k = your back, h = your hands. */
 const list = (w: string): (Slot | null)[] => (w === 'b' ? spec!.box.items : w === 'h' ? G.char.hands : w === 'k' ? G.char.back : G.char.inv);
@@ -37,12 +39,13 @@ function render(msg?: string) {
   el.all.style.display = b.items.some(Boolean) || b.gold > 0 ? '' : 'none';
   if (msg !== undefined) el.msg.textContent = msg;
 }
+function canTransfer() { if (locked && !activeContainers.has(locked)) { locked = null; closeTransfer(); return false; } return true; }
 function takeGold() { if (!spec) return; G.char.gold += spec.box.gold; spec.box.gold = 0; }
-const changed = (msg: string) => { calcStats(); handsChanged(); saveChar(); render(msg); };
+const changed = (msg: string) => { if (locked && spec) saveContainer(locked, spec.box); calcStats(); handsChanged(); saveChar(); render(msg); };
 
 bindSlots(el.root, {
   drop(from, to) {
-    if (!spec) return;
+    if (!spec || !canTransfer()) return;
     const [fw, i] = parseId(from), [tw, j] = parseId(to), src = list(fw), s = src[i];
     if (!s) return;
     const name = item(s.k).name, dst = list(tw)[j];
@@ -53,7 +56,7 @@ bindSlots(el.root, {
     changed(fw === tw ? '' : (tw === 'b' ? 'Stored ' : 'Took ') + name + '.');
   },
   click(id) {
-    if (!spec) return;
+    if (!spec || !canTransfer()) return;
     const [w, i] = parseId(id), src = list(w), s = src[i];
     if (!s) return;
     const name = item(s.k).name;
@@ -68,16 +71,16 @@ bindSlots(el.root, {
     changed(moved ? `${where}${name}${moved > 1 ? ' ×' + moved : ''}.` : w === 'b' ? 'No room in your backpack.' : `The ${spec.boxLabel.toLowerCase()} is full.`);
   },
   hover(id) {
-    if (!spec) return;
+    if (!spec || !canTransfer()) return;
     const [w, i] = id ? parseId(id) : ['', -1], s = id ? list(w)[i] : null;
     el.detail.innerHTML = s ? itemInfo(s.k, s.c) : '';
   },
 });
 el.root.addEventListener('click', (e) => {
-  if (spec && (e.target as HTMLElement).closest('[data-gold]')) { takeGold(); saveChar(); render('Gold taken.'); }
+  if (spec && canTransfer() && (e.target as HTMLElement).closest('[data-gold]')) { takeGold(); changed('Gold taken.'); }
 });
 el.all.onclick = () => {
-  if (!spec) return;
+  if (!spec || !canTransfer()) return;
   takeGold();
   let left = false;
   spec.box.items.forEach((_, i) => { moveStack(spec!.box.items, i, G.char.inv, packVol()); if (spec!.box.items[i]) left = true; });
@@ -85,8 +88,21 @@ el.all.onclick = () => {
 };
 el.close.onclick = () => closeTransfer();
 
-export function openTransfer(s: TransferSpec) {
-  if (!G.playing || G.xferOpen || G.packOpen || G.dlgOpen) return;
+export async function openTransfer(s: TransferSpec) {
+  if (!G.playing || G.xferOpen || G.packOpen || G.dlgOpen || opening) return;
+  const key = online() ? Object.entries(G.char.containers).find(([k, v]) => !k.startsWith('home:') && v === s.box)?.[0] : undefined;
+  if (key) {
+    opening = true;
+    const id = net.id, ok = await lockContainer(key, s.box);
+    opening = false;
+    if (!ok || net.id !== id || !G.playing || G.xferOpen || G.packOpen || G.dlgOpen) {
+      if (ok && net.id === id) unlockContainer(key);
+      if (!ok && online()) showToast('Someone else is using this container');
+      return;
+    }
+    locked = key;
+    s.box = G.char.containers[key];
+  }
   spec = s; G.xferOpen = true; G.firing = false; for (const k in G.keys) G.keys[k] = false;
   el.detail.innerHTML = '';
   render('Drag items between the two, or click one to move it across. Whatever you leave stays here.');
@@ -96,6 +112,8 @@ export function openTransfer(s: TransferSpec) {
 export function closeTransfer() {
   if (!G.xferOpen || !spec) return;
   G.xferOpen = false; el.root.style.display = 'none';
+  if (locked && activeContainers.has(locked)) { unlockContainer(locked, spec.box); locked = null; }
+  locked = null;
   const cb = spec.onClose; spec = null; cb?.();
   if (!G.isTouch) lockPointer();
 }

@@ -4,6 +4,42 @@ export interface Change { v: string; date: string; title: string; notes: string[
 
 export const CHANGELOG: Change[] = [
   {
+    v: '0.113.0', date: '2026-10-03', title: 'Three floors, one way down',
+    notes: [
+      'Ruin and city-vault labyrinths have at most three floors. Floors 1 and 2 each have exactly one descent; floor 3 has none.',
+      'The descent is in the starting room, close to the stairs back up. Press E to descend one floor instead of falling automatically.',
+      'Upstairs leads back one floor at a time, with the first floor returning to the surface entrance. There are no side-sector passages.',
+      'Old saves deeper than floor 3 resume on floor 3. Natural caves and crashed ships keep their existing layouts.',
+    ],
+  },
+  {
+    v: '0.112.0', date: '2026-10-03', title: 'Beneath the ruined cities',
+    notes: [
+      'Every large ruined city has four underground entrances, spread across its streets and marked with cyan VAULT signs. Approach an entrance and press E.',
+      'Each entrance leads to its own single-level labyrinth with stairs back to the same entrance. There are no passages into deeper levels or neighbouring sectors.',
+      'Entrances and their labyrinths stay the same when you reload a save or explore together in multiplayer.',
+    ],
+  },
+  {
+    v: '0.111.2', date: '2026-10-03', title: 'A way out of the labyrinth',
+    notes: [
+      'Ruins now have one self-contained level. The four passages into neighbouring sectors and the automatic hatch into deeper levels are gone.',
+      'Every ruin level has stairs back to the surface near its entrance, reachable without unlocking the guardian gates.',
+      'If your save is already deep inside an old ruin, its rooms and saved loot stay in place, with a direct surface exit added.',
+      'Natural cave systems and crashed ships keep their existing layouts.',
+    ],
+  },
+  {
+    v: '0.111.1', date: '2026-10-03', title: 'Multiplayer consistency fixes',
+    notes: [
+      'World changes now return to everyone, including the player who made them. Independent property edits and different dungeon openings are preserved when players act together.',
+      'Only one player at a time can search a shared chest or locker. The next player sees what remains, and the chest becomes available when its visitor closes it or disconnects.',
+      'The server resolves competing passenger and gunner seat requests. Drivers and riders keep their existing roles; removed vehicles release their passengers.',
+      'Joining applies the current shared dungeon progress after changing worlds. Hosted games retain their shared world while everyone is disconnected, until the server restarts.',
+      'Servers and clients must both update to this version. Vehicle ownership, raiders, dungeon drones and bosses retain their existing multiplayer limitations.',
+    ],
+  },
+  {
     v: '0.111.0', date: '2026-10-28', title: 'Shared foes',
     notes: [
       'On a server everyone now fights the same enemies: creatures, robots and bandits (field spawns, camps, city garrisons, village raids, wreck guards) are the same for every player in a place.',

@@ -1,13 +1,14 @@
 // The other players (multiplayer stage 1): a figure with a name label for everyone online who is in the same place
 // as you (the open world, or the same dungeon sector), eased between the snapshots the server sends ten times a
 // second, legs walking while they move, holding what they hold. Runtime only: nothing here is saved.
+import { getOff } from './ride';
 import * as THREE from 'three';
 import { G } from '../game';
 import { scene } from './render';
 import { makeFigure, textSprite, type Figure } from './npc';
 import { poseRig, type Kit } from './rig';
-import { net, sendState, isHost, SEND_EVERY, type PeerState, type PeerCar, peerAt, PEER_DELAY } from '../net/client';
-import { convoyModel, seatFigure, myCars, toLocalOf, myCarList, driving, seatRider, unseat, gunSeat } from './vehicles';
+import { net, sendState, isHost, SEND_EVERY, type PeerState, type PeerCar, peerAt, PEER_DELAY, onSeats } from '../net/client';
+import { convoyModel, seatFigure, myCars, toLocalOf, myCarList, driving, seatRider, unseat, gunSeat, leave } from './vehicles';
 import { VEHICLES, SEATS, type VehicleModel } from '../data/vehicles';
 import { nearX } from '../gen/regions';
 import { dungeonKey } from '../character';
@@ -57,7 +58,7 @@ export function updatePeers(dt: number, moving: boolean) {
   if (!net.id) { if (avatars.size || ghosts.size || ride.on) clearPeers(); return; }
   if ((sendT -= dt) <= 0) {
     sendT = SEND_EVERY;
-    const s: PeerState = { p: [G.pos.x, G.pos.y, G.pos.z], yaw: G.yaw, pitch: G.pitch, loc: myLoc(), held: G.char.hands[0]?.k ?? '', mv: moving && G.playing, away: !G.playing, cars: myCars(), ride: ride.on ? [ride.on.owner, ride.on.idx, ride.on.seat] : undefined, gun: ride.on ? ride.gun : undefined };
+    const s: PeerState = { p: [G.pos.x, G.pos.y, G.pos.z], yaw: G.yaw, pitch: G.pitch, loc: myLoc(), held: G.char.hands[0]?.k ?? '', mv: moving && G.playing, away: !G.playing, cars: myCars(), carIds: myCarList().map((v) => v.st.id), ride: ride.on ? [ride.on.owner, ride.on.idx, ride.on.seat] : undefined, gun: ride.on ? ride.gun : undefined };
     sendState(s, isHost() ? G.char.time : undefined);
   }
   const here = myLoc(), now = performance.now();
@@ -113,6 +114,12 @@ const MODELS: VehicleModel[] = ['scout', 'mastodon'];
 const ME_C = 0xd8ffe8;
 /** You riding in another player's vehicle (world/ride.ts runs it): whose, which of theirs, which seat, the cannon's yaw. */
 export const ride = { on: null as { owner: number; idx: number; seat: number } | null, gun: 0, cockpit: false };
+onSeats((m) => {
+  const wanted = ride.on ? [ride.on.owner, ride.on.idx, ride.on.seat] : null;
+  if (ride.on && JSON.stringify(wanted) === JSON.stringify(m.requested) && !m.ride) getOff(true);
+  const list = myCarList(), v = driving.v, idx = v ? list.indexOf(v) : -1;
+  if (idx >= 0 && m.requestedSeats?.[idx] === driving.seat + 1 && m.seats?.[idx] !== driving.seat + 1) leave();
+});
 export const ghostOf = (owner: number, idx: number) => ghosts.get(owner + ':' + idx) ?? null;
 export const allGhosts = () => ghosts.values();
 function dropGhost(k: string) {
@@ -135,7 +142,7 @@ function syncCars(here: string, now: number) {
   const seen = new Set<string>();
   if (here === 'o') for (const p of net.peers.values()) {
     const at = peerAt(p, now - PEER_DELAY), cars = at?.b.cars;
-    if (!at || !cars) continue;
+    if (!at || !cars || p.st?.loc !== here) continue;
     const k = at.k, prev = at.a.cars;
     cars.forEach((c: PeerCar, i) => {
       const m = MODELS[c[0]] ?? 'scout', gun = !!c[7], key = p.id + ':' + i;
@@ -147,7 +154,7 @@ function syncCars(here: string, now: number) {
         g = { g: cm.g, m, gun, turret: cm.turret, owner: p.id, idx: i, x: c[1], y: c[2], z: c[3], h: c[4], p: c[5], r: c[6], occ: Array(n).fill(null), bumped: new Set(), figs: Array(n).fill(null), figKey: Array(n).fill(null), aim: 0 };
         scene.add(g.g); ghosts.set(key, g);
       }
-      const q = prev?.[i] && prev[i][0] === c[0] ? prev[i] : c;
+      const q = prev?.[i] && prev[i][0] === c[0] && at.a.carIds?.[i] === at.b.carIds?.[i] ? prev[i] : c;
       g.x = q[1] + (c[1] - q[1]) * k; g.y = q[2] + (c[2] - q[2]) * k; g.z = q[3] + (c[3] - q[3]) * k;
       g.h = lerpAng(q[4], c[4], k); g.p = q[5] + (c[5] - q[5]) * k; g.r = q[6] + (c[6] - q[6]) * k;
       g.aim = c.length > 9 ? lerpAng(q[9] ?? c[9], c[9], k) : 0;
@@ -158,7 +165,7 @@ function syncCars(here: string, now: number) {
       const riders: { id: string; seat: number; n: number }[] = [];
       for (const o of net.peers.values()) { const r = o.st?.ride; if (r && r[0] === p.id && r[1] === i) riders.push({ id: 'p' + o.id, seat: r[2], n: o.id }); }
       if (ride.on && ride.on.owner === p.id && ride.on.idx === i) riders.push({ id: 'me', seat: ride.on.seat, n: net.id });
-      const st = seatsFor(SEATS[m].length, (c[8] | 0) - 1, riders);
+      const st = seatsFor(SEATS[m].length, ((p.st?.cars?.[i]?.[8] ?? 0) | 0) - 1, riders);
       g.occ = st.occ.map((o) => (o === 'owner' ? 'p' + p.id : o)); g.bumped = st.bumped;
       g.occ.forEach((o, si) => {
         if (g!.figKey[si] === o) return;

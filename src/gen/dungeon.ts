@@ -29,7 +29,14 @@ export interface DungeonMap {
   /** Robots standing guard where the level loads (crashed ships): kind and floor spot. Unsaved, like drones. */
   guards?: { kind: RobotKind; x: number; z: number }[];
 }
-export interface DungeonOpts { surfaceExit?: boolean }
+export const MAX_DUNGEON_DEPTH = 3;
+export interface DungeonOpts {
+  /** Omit for a standalone surface level; gameplay passes its current depth. */
+  depth?: number;
+  surfaceExit?: boolean;
+  /** Old unbounded sector network, retained for compatibility checks; gameplay uses a self-contained ruin. */
+  legacy?: boolean;
+}
 
 interface Room {
   x: number; y: number; z: number; w: number; h: number; d: number; cx: number; cz: number;
@@ -130,7 +137,7 @@ export function generateDungeon(seed: number, opts: DungeonOpts = {}): DungeonMa
   }
 
   const last = zones[NZ_ - 1][0];
-  const hatch = { x: last.cx, z: last.cz };
+  const hatch = opts.legacy ? { x: last.cx, z: last.cz } : opts.depth !== undefined && opts.depth >= 1 && opts.depth < MAX_DUNGEON_DEPTH ? { x: rooms[0].cx, z: rooms[0].cz } : null;
   const inside = (r: Room, m = 1) => ({ x: ri(r.x + m, r.x + r.w - 1 - m), z: ri(r.z + m, r.z + r.d - 1 - m) });
   const chests: { x: number; z: number }[] = [], chestRooms = new Set<Room>();
   for (const r of rooms) if (r.dead) { chests.push(inside(r)); chestRooms.add(r); }
@@ -144,7 +151,7 @@ export function generateDungeon(seed: number, opts: DungeonOpts = {}): DungeonMa
   const free = (bx: Box, host: Room) => [...ops, ...corridors].every((o) => o === host.op || !hits(bx, o)) && stairBoxes.every((o) => !hits(bx, o));
   const wallOf = (r: Room, dir: Dir) => dir === 'W' ? { m: r.x - 1, lo: r.z + 2, hi: r.z + r.d - 3 } : dir === 'E' ? { m: r.x + r.w, lo: r.z + 2, hi: r.z + r.d - 3 }
     : dir === 'N' ? { m: r.z - 1, lo: r.x + 2, hi: r.x + r.w - 3 } : { m: r.z + r.d, lo: r.x + 2, hi: r.x + r.w - 3 };
-  if (opts.surfaceExit) { // way back up to the surface from the start room
+  if (opts.surfaceExit ?? !opts.legacy) { // way back up to the surface from the start room
     const r = rooms[0]; let done = false;
     for (const dir of ['N', 'W', 'E', 'S'] as Dir[]) {
       if (done) break; const wl = wallOf(r, dir); if (wl.hi < wl.lo) continue;
@@ -159,7 +166,8 @@ export function generateDungeon(seed: number, opts: DungeonOpts = {}): DungeonMa
   const order: Record<Dir, (p: Room, q: Room) => number> = {
     W: (p, q) => p.x - q.x, E: (p, q) => (q.x + q.w) - (p.x + p.w), N: (p, q) => p.zone - q.zone, S: (p, q) => q.zone - p.zone,
   };
-  for (const dir of ['N', 'W', 'E', 'S'] as Dir[]) {
+  const sectorDirs: Dir[] = opts.legacy ? ['N', 'W', 'E', 'S'] : [];
+  for (const dir of sectorDirs) {
     const cands = pool.slice().sort(order[dir]).concat(rooms.filter((r) => r !== last && r !== rooms[0]));
     let done = false;
     for (const r of cands) {

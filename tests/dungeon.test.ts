@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { generateDungeon, type DungeonMap } from '../src/gen/dungeon';
+import { generateDungeon, MAX_DUNGEON_DEPTH, type DungeonMap } from '../src/gen/dungeon';
 import { generateVillage } from '../src/gen/village';
 import { VoxelGrid, floorAt, floorNear } from '../src/core/voxel';
 import { placeTunnelDoors, tryPlaceDoor, setDoorCells, type PlacedDoor } from '../src/gen/doors';
@@ -32,17 +32,57 @@ describe('generateDungeon', () => {
     }
   });
 
-  it('places all four stairwells (and the surface exit when asked)', () => {
+  it('the legacy layout retains four stairwells for compatibility checks', () => {
     for (const s of SEEDS) {
-      const keys = generateDungeon(s).portals.map((p) => p.key).sort();
+      const keys = generateDungeon(s, { legacy: true }).portals.map((p) => p.key).sort();
       expect(keys, 'seed ' + s).toEqual(['E', 'N', 'S', 'W']);
-      expect(generateDungeon(s, { surfaceExit: true }).portals.map((p) => p.key)).toContain('V');
+      expect(generateDungeon(s, { legacy: true, surfaceExit: true }).portals.map((p) => p.key)).toContain('V');
     }
   });
 
-  it('with doors open, the hatch, every chest and every stairwell are reachable from the spawn', () => {
+  it('limits playable labyrinths to one accessible descent per floor, ending at floor three', () => {
+    for (const seed of SEEDS) for (const depth of [1, 2, 3, 4, 12]) {
+      const map = generateDungeon(seed, { depth });
+      expect(map.portals.map(p => p.key)).toEqual(['V']);
+      if (depth < MAX_DUNGEON_DEPTH) {
+        expect(map.hatch).toEqual({ x: Math.floor(map.spawn[0]), z: Math.floor(map.spawn[2]) });
+        const { grid, doors } = build(map);
+        const hatchFloor = floorAt(grid, map.hatch!.x, map.hatch!.z, grid.oy + 1, grid.oy + grid.ny - 1);
+        expect(hatchFloor).not.toBeNull();
+        expect(hatchFloor![1]).toBe(0);
+        for (const d of doors) if (!d.stair && !d.locked) setDoorCells(grid, d.cells, false);
+        expect(columnReached(reachableCells(grid, spawnCell(map)), map.hatch!.x, map.hatch!.z, -1, 12)).toBe(true);
+      } else expect(map.hatch).toBeNull();
+    }
+  });
+
+  it('standalone generation keeps one surface exit and preserves existing rooms and loot', () => {
     for (const s of SEEDS) {
-      const map = generateDungeon(s, { surfaceExit: s % 2 === 0 });
+      const map = generateDungeon(s);
+      expect(map.portals.map((p) => p.key)).toEqual(['V']);
+      expect(map.hatch).toBeNull();
+      const legacy = generateDungeon(s, { legacy: true });
+      // Persisted chest, guardian and door indices continue to refer to the same objects.
+      expect(map.chests).toEqual(legacy.chests);
+      expect(map.bosses).toEqual(legacy.bosses);
+      expect(map.doorCands).toEqual(legacy.doorCands);
+      expect(map.boxes).toEqual(legacy.boxes);
+      expect(map.spawn).toEqual(legacy.spawn);
+    }
+  });
+
+  it('the exit is reachable without keys, including seeds from old deep and remote saves', () => {
+    for (const s of SEEDS) for (const seed of [s, hash(s, 7, 25, -12, 19)]) {
+      const map = generateDungeon(seed), { grid, doors, stairDoors } = build(map);
+      for (const d of doors) if (!d.stair && !d.locked) setDoorCells(grid, d.cells, false);
+      expect(stairDoors[0], 'surface stair door, seed ' + seed).toBeTruthy();
+      const seen = reachableCells(grid, spawnCell(map)), [x, z] = stairFront(map.portals[0]);
+      expect(columnReached(seen, x, z, -1, 12), 'unlocked return route, seed ' + seed).toBe(true);
+    }
+  });
+
+  it('with doors open, every chest and exit remains reachable in both layouts', () => {
+    for (const s of SEEDS) for (const map of [generateDungeon(s), generateDungeon(s, { legacy: true, surfaceExit: s % 2 === 0 })]) {
       const { grid, doors, stairDoors } = build(map);
       for (const d of doors) if (!d.stair) setDoorCells(grid, d.cells, false);
       const seen = reachableCells(grid, spawnCell(map));
@@ -50,7 +90,7 @@ describe('generateDungeon', () => {
       // objects stand where the game puts them: on the nearest floor cell around their nominal spot
       const floor = (x: number, z: number) => floorAt(grid, x, z, grid.oy + 1, grid.oy + grid.ny - 1)!;
       const chestFloor = (x: number, z: number) => floorNear(grid, x, z, 0, grid.oy + 1, grid.oy + grid.ny - 1)!;
-      expect(seen.has(floor(map.hatch!.x, map.hatch!.z).join(',')), 'hatch, seed ' + s).toBe(true);
+      if (map.hatch) expect(seen.has(floor(map.hatch.x, map.hatch.z).join(',')), 'hatch, seed ' + s).toBe(true);
       map.chests.forEach((c, i) => expect(seen.has(chestFloor(c.x, c.z).join(',')), `chest ${i}, seed ${s}`).toBe(true));
       map.portals.forEach((p, i) => { expect(stairDoors[i]).toBeTruthy(); expect(at(...stairFront(p)), `stair ${p.key}, seed ${s}`).toBe(true); });
     }
@@ -59,7 +99,7 @@ describe('generateDungeon', () => {
   it('locked gate doors seal the hatch, while the first guardian stays reachable', () => {
     let gated = 0;
     for (const s of SEEDS) {
-      const map = generateDungeon(s);
+      const map = generateDungeon(s, { legacy: true });
       const { grid, doors } = build(map);
       if (!map.gates.length) continue;
       gated++;
