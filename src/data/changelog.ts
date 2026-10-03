@@ -4,6 +4,15 @@ export interface Change { v: string; date: string; title: string; notes: string[
 
 export const CHANGELOG: Change[] = [
   {
+    v: '0.113.0', date: '2026-10-03', title: 'Three floors, one way down',
+    notes: [
+      'Ruin and city-vault labyrinths have at most three floors. Floors 1 and 2 each have exactly one descent; floor 3 has none.',
+      'The descent is in the starting room, close to the stairs back up. Press E to descend one floor instead of falling automatically.',
+      'Upstairs leads back one floor at a time, with the first floor returning to the surface entrance. There are no side-sector passages.',
+      'Old saves deeper than floor 3 resume on floor 3. Natural caves and crashed ships keep their existing layouts.',
+    ],
+  },
+  {
     v: '0.112.0', date: '2026-10-03', title: 'Beneath the ruined cities',
     notes: [
       'Every large ruined city has four underground entrances, spread across its streets and marked with cyan VAULT signs. Approach an entrance and press E.',

@@ -29,7 +29,10 @@ export interface DungeonMap {
   /** Robots standing guard where the level loads (crashed ships): kind and floor spot. Unsaved, like drones. */
   guards?: { kind: RobotKind; x: number; z: number }[];
 }
+export const MAX_DUNGEON_DEPTH = 3;
 export interface DungeonOpts {
+  /** Omit for a standalone surface level; gameplay passes its current depth. */
+  depth?: number;
   surfaceExit?: boolean;
   /** Old unbounded sector network, retained for compatibility checks; gameplay uses a self-contained ruin. */
   legacy?: boolean;
@@ -134,7 +137,7 @@ export function generateDungeon(seed: number, opts: DungeonOpts = {}): DungeonMa
   }
 
   const last = zones[NZ_ - 1][0];
-  const hatch = opts.legacy ? { x: last.cx, z: last.cz } : null;
+  const hatch = opts.legacy ? { x: last.cx, z: last.cz } : opts.depth !== undefined && opts.depth >= 1 && opts.depth < MAX_DUNGEON_DEPTH ? { x: rooms[0].cx, z: rooms[0].cz } : null;
   const inside = (r: Room, m = 1) => ({ x: ri(r.x + m, r.x + r.w - 1 - m), z: ri(r.z + m, r.z + r.d - 1 - m) });
   const chests: { x: number; z: number }[] = [], chestRooms = new Set<Room>();
   for (const r of rooms) if (r.dead) { chests.push(inside(r)); chestRooms.add(r); }

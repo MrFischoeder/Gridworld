@@ -35,7 +35,7 @@ describe('city underground entrances', () => {
   it('rejects identifiers outside the city entrance namespace', () => {
     for (const id of [-1, 0, CITY_VAULT_BASE - 1, CITY_VAULT_BASE + CITY.n * CITY_VAULTS, CITY_VAULT_BASE + 0.5, NaN]) expect(cityEntrance(12345, id)).toBeUndefined();
   });
-  it('keeps old dungeon seeds and gives each entrance a separate single-level labyrinth', () => {
+  it('keeps old dungeon seeds and gives each entrance a separate labyrinth with a terminal third floor', () => {
     const world = 12345, pos = { ruinId: 21, depth: 1, gx: 0, gz: 0 };
     expect(dungeonSeed(world, pos)).toBe(hash(world, 21, 1, 0, 0));
     const seeds = new Set<number>();
@@ -43,7 +43,7 @@ describe('city underground entrances', () => {
       const seed = dungeonSeed(world, { ...pos, ruinId: e.id });
       expect(seeds.has(seed)).toBe(false); seeds.add(seed);
       expect(seed).not.toBe(dungeonSeed(world, { ...pos, ruinId: e.id | 0 }));
-      const map = generateDungeon(seed);
+      const map = generateDungeon(seed, { depth: 3 });
       expect(map.portals.map(p => p.key)).toEqual(['V']);
       expect(map.hatch).toBeNull();
       const grid = VoxelGrid.fromOps(map.ops), doors = placeTunnelDoors(grid, map.doorCands), p = map.portals[0];

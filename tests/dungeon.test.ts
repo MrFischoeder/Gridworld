@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { generateDungeon, type DungeonMap } from '../src/gen/dungeon';
+import { generateDungeon, MAX_DUNGEON_DEPTH, type DungeonMap } from '../src/gen/dungeon';
 import { generateVillage } from '../src/gen/village';
 import { VoxelGrid, floorAt, floorNear } from '../src/core/voxel';
 import { placeTunnelDoors, tryPlaceDoor, setDoorCells, type PlacedDoor } from '../src/gen/doors';
@@ -40,7 +40,23 @@ describe('generateDungeon', () => {
     }
   });
 
-  it('each playable ruin has one surface exit, no sector transitions and no automatic descent', () => {
+  it('limits playable labyrinths to one accessible descent per floor, ending at floor three', () => {
+    for (const seed of SEEDS) for (const depth of [1, 2, 3, 4, 12]) {
+      const map = generateDungeon(seed, { depth });
+      expect(map.portals.map(p => p.key)).toEqual(['V']);
+      if (depth < MAX_DUNGEON_DEPTH) {
+        expect(map.hatch).toEqual({ x: Math.floor(map.spawn[0]), z: Math.floor(map.spawn[2]) });
+        const { grid, doors } = build(map);
+        const hatchFloor = floorAt(grid, map.hatch!.x, map.hatch!.z, grid.oy + 1, grid.oy + grid.ny - 1);
+        expect(hatchFloor).not.toBeNull();
+        expect(hatchFloor![1]).toBe(0);
+        for (const d of doors) if (!d.stair && !d.locked) setDoorCells(grid, d.cells, false);
+        expect(columnReached(reachableCells(grid, spawnCell(map)), map.hatch!.x, map.hatch!.z, -1, 12)).toBe(true);
+      } else expect(map.hatch).toBeNull();
+    }
+  });
+
+  it('standalone generation keeps one surface exit and preserves existing rooms and loot', () => {
     for (const s of SEEDS) {
       const map = generateDungeon(s);
       expect(map.portals.map((p) => p.key)).toEqual(['V']);

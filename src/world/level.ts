@@ -13,7 +13,7 @@ import { G, W } from '../game';
 import { hash, OPP, DIRV, type Dir } from '../core/rng';
 import { VoxelGrid } from '../core/voxel';
 import { meshVoxels, type OutlineStyle } from '../core/meshing';
-import { generateDungeon } from '../gen/dungeon';
+import { generateDungeon, MAX_DUNGEON_DEPTH } from '../gen/dungeon';
 import { findPoi, allVillages, worldDist, nearX, poisNear, GRIDHOLM_ID, CHUNK, type Poi } from '../gen/regions';
 import { isDiscovered } from '../save';
 import { WALL_TIERS, STONE_TIER, HOUSE, WALK, type VillageMap } from '../gen/village';
@@ -97,10 +97,11 @@ export function loadDungeon(arriveDir: string | null) {
     placeCarrier();
     saveChar(); return;
   }
-  const seed = dungeonSeed(c.world, d);
   const wreck = findPoi(c.world, d.ruinId)?.type === 'wreck';
-  // Old deep/remote saves keep their sector seed and loot indices, but now have a direct surface exit.
-  const map = wreck ? generateShip(seed) : generateDungeon(seed);
+  if (!wreck) d.depth = Math.max(1, Math.min(MAX_DUNGEON_DEPTH, d.depth));
+  const seed = dungeonSeed(c.world, d);
+  // Old saves below the depth limit resume at the deepest supported floor; no sector travel is generated.
+  const map = wreck ? generateShip(seed) : generateDungeon(seed, { depth: d.depth });
   clearLevel(); G.map = map;
   setLocationLook(false);
   setDroneRespawn(placeDrone); setCrystalXp(() => 5 * depth());
@@ -118,7 +119,7 @@ export function loadDungeon(arriveDir: string | null) {
     const o = DIRV[p.dir], tx = d.gx + o[0], tz = d.gz + o[1];
     const name = ruinName(d.ruinId);
     W.portals.push(p.key === 'V'
-      ? makeStair(p, pd, placed.length - 1, '▲ ' + name.toUpperCase(), 'Stairs up to the ' + name, exitToRuin)
+      ? makeStair(p, pd, placed.length - 1, '▲ ' + (d.depth > 1 && !wreck ? 'DEPTH ' + (d.depth - 1) : name.toUpperCase()), d.depth > 1 && !wreck ? 'Stairs up to depth ' + (d.depth - 1) : 'Stairs up to the ' + name, () => { if (d.depth > 1 && !wreck) ascend(); else exitToRuin(); })
       : makeStair(p, pd, placed.length - 1, (p.up ? '▲ ' : '▼ ') + 'SECTOR ' + tx + ', ' + tz, 'Stairs ' + (p.up ? 'up' : 'down') + ' to sector ' + tx + ', ' + tz, () => travel(p.dir)));
   }
   W.bosses = map.bosses.map(makeBoss).filter((x) => !!x);
@@ -380,7 +381,17 @@ export function saveOverworldPos() {
 }
 
 // ---------- moving between places ----------
-export function descend() { G.char.dungeon!.depth++; saveChar(); loadDungeon(null); showToast('Depth ' + depth()); logLine('Drones are tougher down here'); }
+export function descend() {
+  const d = G.char.dungeon;
+  if (!d || d.cave || G.trans || !W.hatch || d.depth >= MAX_DUNGEON_DEPTH) return;
+  d.depth++; saveChar(); loadDungeon('V'); showToast('Depth ' + depth()); arriveVia(W.arrivalStair);
+}
+export function ascend() {
+  const d = G.char.dungeon;
+  if (!d || d.cave) return;
+  if (d.depth <= 1) { exitToRuin(); return; }
+  d.depth--; saveChar(); loadDungeon(null); showToast('Depth ' + depth()); arriveVia(null);
+}
 export function travel(dir: Dir) {
   const d = G.char.dungeon!;
   d.gx += DIRV[dir][0]; d.gz += DIRV[dir][1]; saveChar();
