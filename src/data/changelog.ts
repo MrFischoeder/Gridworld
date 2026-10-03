@@ -4,6 +4,15 @@ export interface Change { v: string; date: string; title: string; notes: string[
 
 export const CHANGELOG: Change[] = [
   {
+    v: '0.116.0', date: '2026-10-03', title: 'Ravines and rough country',
+    notes: [
+      'Dry mainland ravines are 50–100 metres wide and 320–600 metres long, with steep walls and a flat bottom. Two broad paths descend along their walls so you can walk down and back out without jumping.',
+      'Use a Bridge Kit beside a ravine to stake out a vehicle-width crossing. Bring the materials to its sign; completed bridges carry people and cars over the gap and are shared in multiplayer.',
+      'Local boulder fields contain dense clusters of large rocks that block vehicles, encouraging off-road detours. Existing roads and the starting area remain clear.',
+      'Generated ravines and boulders also appear in existing worlds; terrain around saved structures can change. A new world is recommended.',
+    ],
+  },
+  {
     v: '0.115.0', date: '2026-10-03', title: 'Across the great seas',
     notes: [
       'Each world has two or three large continents separated by wide seas. Long sea crossings give boats and coastal transport a purpose.',
