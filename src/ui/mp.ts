@@ -93,15 +93,15 @@ function start(url: string, room?: string, create?: { name: string; world?: numb
   connect(url, { name: G.char.name, world: G.char.world, time: G.char.time, room, create }, {
     welcome(world, time, host, dedicated) {
       connecting = false;
-      if (!host && world !== G.char.world) {
+      if (world !== G.char.world) {
         // into the host's world: the hero's own save waits (once) to be restored with "Back to my own world"
         try { if (!solo()) localStorage.setItem(SOLO_KEY, JSON.stringify(G.char)); } catch { /* storage full or blocked */ }
         G.char.time = time;
-        joinWorld(); // the server's shared world (villages, bridges, chests...) replaces the copy in your save
         hooks?.switchWorld(world);
+        if (joinWorld()) hooks?.reloadWorld(); // apply after switching, which resets dungeon progress
         say(`You have come to the ${dedicated ? 'server' : 'host'}\'s world. Your own save waits for you: "Back to my own world" in the menu.`, 'info');
       } else {
-        if (!host) G.char.time = time;
+        G.char.time = time;
         if (joinWorld()) hooks?.reloadWorld(); // the same world, but the server's state of it
       }
       say(host ? 'You host the game: others can join you now.' : dedicated ? `Joined ${net.room?.name ?? ded?.name ?? 'the server'}.` : 'Joined the game.', 'info');
