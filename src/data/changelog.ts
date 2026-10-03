@@ -4,6 +4,16 @@ export interface Change { v: string; date: string; title: string; notes: string[
 
 export const CHANGELOG: Change[] = [
   {
+    v: '0.115.0', date: '2026-10-03', title: 'Across the great seas',
+    notes: [
+      'Each world has two or three large continents separated by wide seas. Long sea crossings give boats and coastal transport a purpose.',
+      'There are twelve large ruined cities instead of ten, spread evenly between the continents. Each still has four underground entrances.',
+      'Old industrial installations are searched for on dry continents, including distant shores; their previous narrow distance bands no longer force them into water.',
+      'Gridholm remains on the home continent, with dry land around the starting area. Small offshore islands and the polar ice remain.',
+      'This changes generated terrain and settlements in existing worlds. Start a new world for a fresh exploration of the new geography.',
+    ],
+  },
+  {
     v: '0.114.1', date: '2026-10-03', title: 'Anchored armoured defences',
     notes: [
       'Ship interiors now use stationary mounted security turrets instead of walking robot guards. Labyrinth turrets also stay anchored: only their aiming head turns.',

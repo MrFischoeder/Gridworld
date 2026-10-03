@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { seaMask, seaThreshold, SEA } from '../src/gen/seas';
+import { seaMask, seaThreshold, isleHeight, SEA } from '../src/gen/seas';
 import { Terrain } from '../src/gen/terrain';
 import { allVillages, regionInfo, X_MIN, WORLD_W, POLAR_Z, NR, REGION } from '../src/gen/regions';
 import { network, edgePath } from '../src/gen/roads';
@@ -8,12 +8,12 @@ import { chunkTrees } from '../src/gen/trees';
 const WORLDS = [12345, 777, 42];
 
 describe('seas', () => {
-  it('cover about a quarter of the land between the ice caps', () => {
+  it('separate the continents with roughly half the planet covered by sea', () => {
     for (const w of WORLDS) {
       let sea = 0, n = 0;
       for (let z = -POLAR_Z + 150; z < POLAR_Z; z += 700) for (let x = X_MIN + 150; x < X_MIN + WORLD_W; x += 700) { n++; if (seaMask(w, x, z) > 0.3) sea++; }
-      expect(sea / n, `world ${w}`).toBeGreaterThan(0.2);
-      expect(sea / n, `world ${w}`).toBeLessThan(0.3);
+      expect(sea / n, `world ${w}`).toBeGreaterThan(0.4);
+      expect(sea / n, `world ${w}`).toBeLessThan(0.65);
     }
   });
   it('leave the land round Gridholm as it was', () => {
@@ -30,7 +30,7 @@ describe('seas', () => {
     const w = WORLDS[0], t = new Terrain(w);
     let found = 0;
     for (let z = -POLAR_Z + 500; z < POLAR_Z && found < 20; z += 1300) for (let x = X_MIN; x < X_MIN + WORLD_W && found < 20; x += 1300) {
-      if (seaMask(w, x, z) < 0.9) continue;
+      if (seaMask(w, x, z) < 0.9 || isleHeight(w, x, z) > SEA.level - 10) continue;
       found++;
       const h = t.water(x, z);
       expect(h?.kind).toBe('sea');

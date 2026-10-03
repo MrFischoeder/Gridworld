@@ -1,12 +1,13 @@
 // The great installations of the old world (pure, deterministic from the world seed): huge ruined plants standing in
-// fixed places far out on the continent, which the player can one day bring back to life (the uranium enrichment
+// fixed places across the continents, which the player can one day bring back to life (the uranium enrichment
 // plant, then the chip foundry; the radar station and the rocket fuel complex will follow the same pattern). Each
 // lies in its own distance band from Gridholm on dry, fairly level ground away from villages, places, roads, lakes and
 // the mountains. The ground round it is bare: trees, rocks and plants inside `inInstall` are not generated.
 import { hash } from '../core/rng';
-import { CHUNK, POLAR_Z, worldDist, wrapDx, poisNear, type Poi } from './regions';
+import { CHUNK, POLAR_Z, worldDist, wrapX, wrapDx, poisNear, type Poi } from './regions';
 import { nearestOnRoad } from './roads';
 import { mountainMask } from './mountains';
+import { continents } from './continents';
 import { inSea } from './seas';
 import { nearRiver } from './rivers';
 import { inCity } from './cities';
@@ -16,16 +17,16 @@ import type { ItemKey } from '../data/items';
 export type InstallKind = 'uranium' | 'chips' | 'radar' | 'propellant' | 'battery' | 'optical' | 'alloy' | 'precision' | 'robotics';
 export interface InstallSpec { k: InstallKind; name: string; blurb: string; band: [number, number]; r: number }
 export const INSTALLS: InstallSpec[] = [
-  { k: 'uranium', name: 'Old Enrichment Plant', blurb: 'a ruined plant of the old world where ore was once made into reactor fuel: a centrifuge hall, two cooling towers and a stack', band: [15000, 25000], r: 34 },
-  { k: 'chips', name: 'Old Chip Foundry', blurb: 'a sealed fabrication plant of the old world where crystal wafers were etched into chips: a long clean-room block, a tank farm and a water tower', band: [12000, 20000], r: 32 },
-  { k: 'radar', name: 'Old Radar Station', blurb: 'a listening post of the old world on a rise: a great dish on a lattice tower, a mast held by guy wires and a bunker full of screens', band: [18000, 28000], r: 30 },
+  { k: 'uranium', name: 'Old Enrichment Plant', blurb: 'a ruined plant of the old world where ore was once made into reactor fuel: a centrifuge hall, two cooling towers and a stack', band: [15000, 65000], r: 34 },
+  { k: 'chips', name: 'Old Chip Foundry', blurb: 'a sealed fabrication plant of the old world where crystal wafers were etched into chips: a long clean-room block, a tank farm and a water tower', band: [12000, 65000], r: 32 },
+  { k: 'radar', name: 'Old Radar Station', blurb: 'a listening post of the old world on a rise: a great dish on a lattice tower, a mast held by guy wires and a bunker full of screens', band: [18000, 65000], r: 30 },
   // (new ones go last: each is placed after those before it, so the older ones keep their places)
-  { k: 'propellant', name: 'Old Propellant Plant', blurb: 'a rocket fuel works of the old world: spherical tanks, two distillation columns, a flare stack and a bunkered mixing house', band: [10000, 18000], r: 30 },
-  { k: 'battery', name: 'Old Battery Plant', blurb: 'a cell works of the old world: a long sawtooth-roofed hall, rows of electrolyte tanks and a brine basin', band: [14000, 22000], r: 30 },
-  { k: 'optical', name: 'Old Optical Works', blurb: 'a lens and sensor works of the old world: long glass-roofed grinding halls, a tall crystal-growing tower and a row of annealing kilns', band: [14000, 24000], r: 30 },
-  { k: 'alloy', name: 'Old Alloy Complex', blurb: 'a metal works of the old world: two great arc furnaces crowned with electrodes, a towering casting hall, twin stacks and heaps of slag', band: [16000, 26000], r: 32 },
-  { k: 'precision', name: 'Old Precision Works', blurb: 'a machining works of the old world: a vaulted hall of machine tools, a tall test tower and a white measuring dome', band: [18000, 28000], r: 30 },
-  { k: 'robotics', name: 'Old Robotics Plant', blurb: 'the greatest works of the old world: an assembly hall like a hangar, a gantry yard, giant robot arms on their pedestals and a walled test arena under a control tower', band: [20000, 28000], r: 34 },
+  { k: 'propellant', name: 'Old Propellant Plant', blurb: 'a rocket fuel works of the old world: spherical tanks, two distillation columns, a flare stack and a bunkered mixing house', band: [10000, 65000], r: 30 },
+  { k: 'battery', name: 'Old Battery Plant', blurb: 'a cell works of the old world: a long sawtooth-roofed hall, rows of electrolyte tanks and a brine basin', band: [14000, 65000], r: 30 },
+  { k: 'optical', name: 'Old Optical Works', blurb: 'a lens and sensor works of the old world: long glass-roofed grinding halls, a tall crystal-growing tower and a row of annealing kilns', band: [14000, 65000], r: 30 },
+  { k: 'alloy', name: 'Old Alloy Complex', blurb: 'a metal works of the old world: two great arc furnaces crowned with electrodes, a towering casting hall, twin stacks and heaps of slag', band: [16000, 65000], r: 32 },
+  { k: 'precision', name: 'Old Precision Works', blurb: 'a machining works of the old world: a vaulted hall of machine tools, a tall test tower and a white measuring dome', band: [18000, 65000], r: 30 },
+  { k: 'robotics', name: 'Old Robotics Plant', blurb: 'the greatest works of the old world: an assembly hall like a hangar, a gantry yard, giant robot arms on their pedestals and a walled test arena under a control tower', band: [20000, 65000], r: 34 },
 ];
 /** How much bigger the plants stand than their plans (and their `r`): the ground is searched at the plan's radius, so a plant's place never moves when it grows. */
 export const INSTALL_SCALE = 2;
@@ -53,20 +54,24 @@ export function installMisfit(t: Terrain, x: number, z: number, r: number): stri
 
 const cache = new Map<number, InstallSite[]>();
 let searching = false;
-/** Every installation of a world: for each, the first of a hashed list of spots in its band that fits (the first spot if none does). */
+/** Every installation of a world: for each, the first of a hashed list of spots on the continents within its distance band that fits (the first eligible spot if none does). */
 export function installSites(t: Terrain): InstallSite[] {
   const hit = cache.get(t.world); if (hit) return hit;
   const out: InstallSite[] = [];
   cache.set(t.world, out); // (filled below; set first so a nested call during the search sees no sites rather than recursing)
+  const land = continents(t.world);
   searching = true;
   try {
   INSTALLS.forEach((spec, i) => {
     let best: InstallSite | null = null;
-    for (let k = 0; k < 120; k++) {
-      const a = (hash(t.world, i, k, 0x1e57) % 3600) / 3600 * Math.PI * 2, [d0, d1] = spec.band;
-      const d = d0 + (hash(t.world, i, k, 0x1e58) % 1000) / 1000 * (d1 - d0), x = Math.cos(a) * d, z = Math.sin(a) * d;
+    for (let k = 0; k < 400; k++) {
+      const a = (hash(t.world, i, k, 0x1e57) % 3600) / 3600 * Math.PI * 2;
+      const continent = land[hash(t.world, i, k, 0x1e60) % land.length];
+      const reach = 0.2 + Math.sqrt(hash(t.world, i, k, 0x1e58) / 1e6) * 0.65;
+      const x = wrapX(continent.x + Math.cos(a) * continent.rx * reach), z = continent.z + Math.sin(a) * continent.rz * reach;
+      const distance = worldDist(x, z, 0, 0);
+      if (distance < spec.band[0] || distance > spec.band[1] || Math.abs(z) > POLAR_Z - 2000) continue;
       const c: InstallSite = { k: spec.k, name: spec.name, x, z, y: t.heightAt(x, z), yaw: (hash(t.world, i, k, 0x1e59) % 4) * Math.PI / 2, r: spec.r * INSTALL_SCALE };
-      if (i >= 7 && Math.abs(z) > POLAR_Z - 2000) continue; // (the far ones keep off the ice; the older ones kept their places)
       if (!best) best = c;
       if (out.some((o) => worldDist(o.x, o.z, x, z) < 3000)) continue; // the installations lie well apart
       if (!installMisfit(t, x, z, spec.r)) { best = c; break; }
