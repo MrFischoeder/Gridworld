@@ -132,9 +132,10 @@ describe('multiplayer server', () => {
     const port = await server({ rooms: [{ id: 'main', name: 'Main', world: 11, time: 100 }] });
     const a = await client(port, { name: 'Ada' }), wa = await a.wait('welcome');
     expect(wa.wdoc).toEqual({}); expect(wa.wseeded).toBe(false);
-    a.send({ t: 'wseed', doc: { towns: { '5': { wall: 1 } }, harvest: { 'tree:1:2:3': 50 } } });
+    a.send({ t: 'wseed', doc: { towns: { '5': { wall: 1 } }, harvest: { 'tree:1:2:3': 50 }, cityGarrisons: { '1:5': { until: 700, hp: { '0': 0, '1': 7 } } } } });
     const b = await client(port, { name: 'Bob' }), wb = await b.wait('welcome');
     expect(wb.wseeded).toBe(true); expect(wb.wdoc.towns['5']).toEqual({ wall: 1 });
+    expect(wb.wdoc.cityGarrisons['1:5']).toEqual({ until: 700, hp: { '0': 0, '1': 7 } });
     // a second seed is refused: the latecomer is handed the room's world
     b.send({ t: 'wseed', doc: { towns: {} } });
     expect((await b.wait('wdoc')).doc.towns['5']).toEqual({ wall: 1 });
@@ -144,11 +145,13 @@ describe('multiplayer server', () => {
     expect(set.ch).toEqual([['towns', '5', { wall: 2 }], ['harvest', 'tree:1:2:3', null], ['containers', 'chest:x:0', { items: [], gold: 4 }]]);
     expect((await b.wait('wset')).ch).toEqual(set.ch);
     const docs = mp!.dirtyDocs();
-    expect(docs[0].doc).toEqual({ towns: { '5': { wall: 2 } }, harvest: {}, containers: { 'chest:x:0': { items: [], gold: 4 } } });
+    expect(docs[0].doc).toEqual({ towns: { '5': { wall: 2 } }, harvest: {}, containers: { 'chest:x:0': { items: [], gold: 4 } }, cityGarrisons: { '1:5': { until: 700, hp: { '0': 0, '1': 7 } } } });
     expect(mp!.dirtyDocs()).toEqual([]); // nothing new since
     a.ws.close(); b.ws.close(); mp!.close(); http!.close();
     const port2 = await server({ rooms: [{ id: 'main', name: 'Main', world: 11, time: 100, doc: docs[0].doc, seeded: true } as never] }), c = await client(port2, { name: 'Cy' });
-    expect((await c.wait('welcome')).wdoc.towns['5']).toEqual({ wall: 2 });
+    const restored = await c.wait('welcome');
+    expect(restored.wdoc.towns['5']).toEqual({ wall: 2 });
+    expect(restored.wdoc.cityGarrisons['1:5']).toEqual({ until: 700, hp: { '0': 0, '1': 7 } });
     c.ws.close();
   });
   it('the shared foes: word of them goes to the rest of the room, hits and harm to one player, nothing else passes', async () => {

@@ -334,24 +334,25 @@ export { segDist };
 export type GarrisonKind = 'machines' | 'nest' | 'gang';
 export interface Garrison { k: number; u: number; v: number; kind: GarrisonKind; size: number }
 export const GARRISON = {
-  /** Share of the street pieces with a garrison: at the edge and at the core (%). */
-  edge: 30, core: 70,
-  /** Machines / nests / gangs (weights). */
+  count: 16, gap: 150,
+  /** Ten real minutes of active play, expressed in game minutes (one per second). */
+  respawn: 600,
   mix: [55, 25, 20] as [number, number, number],
 };
 const garrisons = new Map<string, Garrison[]>();
-/** The garrisons of a city (city frame), cached. */
+/** A bounded, evenly separated selection of seeded street posts. */
 export function cityGarrisons(world: number, c: CitySite): Garrison[] {
   const key = world + ':' + c.i, hit = garrisons.get(key); if (hit) return hit;
   const L = cityLayout(world, c), out: Garrison[] = [];
-  L.streets.forEach((s, k) => {
-    const u = (s.ax + s.bx) / 2, v = (s.az + s.bz) / 2;
-    const toCore = Math.min(1, Math.hypot(u - L.core[0], v - L.core[1]) / c.r), share = GARRISON.core + (GARRISON.edge - GARRISON.core) * toCore;
-    if (hash(world, c.i, k, 0x6a77) % 100 >= share) return;
-    const r = hash(world, c.i, k, 0x6a78) % 100, [a, b] = GARRISON.mix;
-    const kind: GarrisonKind = r < a ? 'machines' : r < a + b ? 'nest' : 'gang';
-    out.push({ k, u, v, kind, size: 1 + (toCore < 0.4 ? 1 : 0) + (hash(world, c.i, k, 0x6a79) % 3 === 0 ? 1 : 0) });
-  });
-  garrisons.set(key, out);
-  return out;
+  const candidates = L.streets.map((s, k) => ({ k, u: (s.ax + s.bx) / 2, v: (s.az + s.bz) / 2 }))
+    .sort((a, b) => hash(world, c.i, a.k, 0x6a77) - hash(world, c.i, b.k, 0x6a77) || a.k - b.k);
+  for (const p of candidates) {
+    if (out.length >= GARRISON.count) break;
+    if (out.some(g => Math.hypot(g.u - p.u, g.v - p.v) < GARRISON.gap)) continue;
+    const toCore = Math.hypot(p.u - L.core[0], p.v - L.core[1]) / c.r;
+    const roll = hash(world, c.i, p.k, 0x6a78) % 100;
+    const kind: GarrisonKind = out.length < 3 ? (['machines', 'nest', 'gang'] as const)[out.length] : roll < 55 ? 'machines' : roll < 80 ? 'nest' : 'gang';
+    out.push({ ...p, kind, size: toCore < 0.4 ? 2 : 1 });
+  }
+  garrisons.set(key, out); return out;
 }

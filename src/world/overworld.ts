@@ -54,6 +54,7 @@ import { makeNpc, type Npc } from './npc';
 import { foeRules, type Drone } from './enemies';
 import { spawnVehicles, clearVehicles, vehicleHit, syncFound, shielded, driving, damageVehicle, vehiclesNear } from './vehicles';
 import { logLine, showToast } from '../ui/hud';
+import { dropGarrisons } from './citygarrisons';
 import { setCreatureEnv, clearCreatures } from './creatures';
 import { setRobotEnv, clearRobots } from './robots';
 import { updateThreat } from './threat';
@@ -562,7 +563,7 @@ export function openWorld(x: number, z: number) {
   for (const s of OW.structs.values()) if (s.camp) spawnCamp(s.camp);
 }
 export function closeWorld() {
-  clearVehicles(); dropCrash(); dropInstalls(); dropCities(); dropToxic(); clearBridges(); clearPiers();
+  dropGarrisons(); clearVehicles(); dropCrash(); dropInstalls(); dropCities(); dropToxic(); clearBridges(); clearPiers();
   setCreatureEnv(null); clearCreatures();
   setRobotEnv(null); clearRobots();
   setBanditEnv(null); clearBandits();

@@ -78,7 +78,7 @@ function tell() {
     const n = nidOf(f), t = typeOf(f);
     next.set(n, f);
     const kind = t === TYPE.robot ? (f as Robot).model : t === TYPE.bandit ? (f as Bandit).role : (f as Creature).kind;
-    list.push([n, t, kind, r2(f.p.x), r2(f.p.y), r2(f.p.z), r2(f.heading), r2(f.hp), f.maxHp, r2(f.level), f.state]);
+    list.push([n, t, kind, r2(f.p.x), r2(f.p.y), r2(f.p.z), r2(f.heading), r2(f.hp), f.maxHp, r2(f.level), f.state, f.cityPost]);
   }
   for (const [n, f] of mine) if (!next.has(n) && f.hp <= 0) dying.set(n, now + FOESYNC.dead);
   for (const [n, until] of dying) { if (until < now) dying.delete(n); else list.push([n, -1]); }
@@ -135,6 +135,7 @@ function heard(from: number, loc: string, list: unknown[]) {
     }
     const r = remoteOf(f);
     if (r) { r.x = x; r.y = y; r.z = z; r.h = h; r.hp = hp; r.maxHp = maxHp; }
+    if (typeof e[11] === 'string') f.cityPost = e[11];
     if (typeof state === 'string') (f as { state: string }).state = state;
   }
   for (const [n, c] of [...o.foes]) if (!seen.has(n)) { o.foes.delete(n); drop(c); } // gone from its owner's game
@@ -148,9 +149,9 @@ onRelay((m: Relay) => {
     const f = mineOf(+(m.nid as number));
     if (!f) return;
     const flash = G.hitFlash;
-    damageFoe(f, Math.max(0, Math.min(1e4, +(m.dmg as number) || 0)));
+    damageFoe(f, Math.max(0, Math.min(1e4, +(m.dmg as number) || 0)), !m.npc);
     G.hitFlash = flash; // not your shot
-    if (f.hp <= 0) relay({ t: 'kill', nid: m.nid }, m.from);
+    if (f.hp <= 0 && !m.npc) relay({ t: 'kill', nid: m.nid }, m.from);
   } else if (m.t === 'kill') { // your shot killed their foe: it dies here as yours (loot, xp, bounties)
     const c = copyOf(m.from, +(m.nid as number));
     if (!c) return;
@@ -174,7 +175,7 @@ setRemoteHooks({
   others,
   authority,
   hurt: (id, dmg, a) => { relay({ t: 'hurt', dmg: Math.round(dmg * 100) / 100, a, loc: myLoc() }, id); },
-  hit: (o, dmg) => { const r = remoteOf(o); if (r) relay({ t: 'fhit', nid: r.nid, dmg }, r.owner); },
+  hit: (o, dmg, npc) => { const r = remoteOf(o); if (r) relay({ t: 'fhit', nid: r.nid, dmg, npc }, r.owner); },
   bolt: (p: THREE.Vector3, v: THREE.Vector3, c: number) => { if (online() && company()) relay({ t: 'bolt', loc: myLoc(), p: [r2(p.x), r2(p.y), r2(p.z)], v: [r2(v.x), r2(v.y), r2(v.z)], c }); },
 });
 

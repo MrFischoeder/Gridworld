@@ -1,6 +1,7 @@
 // Bandits: human enemies with guns and blades. They live in camps and patrol the wilds.
 // Unsaved (like drones and creatures) except that a cleared camp stays empty for a while (char.camps).
-import { stepRemote, withTarget, proxied, otherPlayers, hurtOther, boltOut, spawnAuthority } from './remote';
+import { targetingFoe, actingFoe, combatFoes, factionOf, hitCombatFoe, type CombatFoe, stepRemote, withFoeTarget, proxied, otherPlayers, hurtOther, boltOut, spawnAuthority } from './remote';
+import { hostile, shotSphere } from '../core/factions';
 import * as THREE from 'three';
 import { onNoise } from './noise';
 import { scene, V, add as addMat } from './render';
@@ -25,6 +26,8 @@ export const BANDIT = 0xffb347, BOSS_COLOR = 0xff6a4a;
 export const CAMP_RESPAWN_MS = 30 * 60 * 1000;
 
 export interface Bandit {
+  /** Fixed city post; transmitted to prevent duplicate garrisons on another client. */
+  cityPost?: string;
   kind: 'bandit'; boss?: false; role: BanditRole;
   g: THREE.Group; fig: Figure; mat: THREE.LineBasicMaterial;
   p: THREE.Vector3; heading: number; speed: number; r: number;
@@ -38,7 +41,7 @@ export interface Bandit {
   /** Recoil of the last shot (1 → 0), and a sword stroke on its way (the blow lands mid-swing). */
   recoil: number; blow: boolean;
 }
-interface Bolt { m: THREE.Line; p: THREE.Vector3; v: THREE.Vector3; dmg: number; life: number; ghost?: boolean }
+interface Bolt { m: THREE.Line; p: THREE.Vector3; v: THREE.Vector3; dmg: number; life: number; ghost?: boolean; source?: CombatFoe }
 const bolts: Bolt[] = [];
 let env: SpawnEnv | null = null, patrolT = 10;
 export function setBanditEnv(e: SpawnEnv | null) { env = e; }
@@ -128,7 +131,7 @@ export function fireBolt(muzzle: THREE.Vector3, dmg: number, color = BANDIT) {
   const v = target.sub(muzzle).normalize().multiplyScalar(30);
   const m = new THREE.Line(new THREE.BufferGeometry().setFromPoints([V(0, 0, 0), v.clone().normalize().multiplyScalar(-0.9)]), addMat(color));
   m.position.copy(muzzle); scene.add(m);
-  bolts.push({ m, p: muzzle.clone(), v, dmg, life: 3 });
+  bolts.push({ m, p: muzzle.clone(), v, dmg, life: 3, source: actingFoe() ?? undefined });
   boltOut(muzzle, v, color);
 }
 /** Another player's foe fired: the bolt is drawn here, but its harm is reckoned in the owner's game (world/foesync.ts). */
@@ -147,6 +150,15 @@ export function updateBolts(dt: number) {
     const prev = o.p.clone();
     o.p.addScaledVector(o.v, dt); o.m.position.copy(o.p);
     let dead = o.life <= 0 || walled || !emptyAt(o.p);
+    if (!dead && !o.ghost && o.source) {
+      let target: CombatFoe | null = null, nearest = step;
+      for (const f of combatFoes()) {
+        if (f === o.source || f.hp <= 0 || !hostile(factionOf(o.source), factionOf(f))) continue;
+        const h = shotSphere(prev.x, prev.y, prev.z, dir.x, dir.y, dir.z, step, f.p.x, f.p.y, f.p.z, Math.max(0.45, f.r));
+        if (h !== null && h <= nearest) { nearest = h; target = f; }
+      }
+      if (target) { dead = true; o.p.copy(prev).addScaledVector(dir, nearest); hitCombatFoe(target, o.dmg, o.source); }
+    }
     const v = driving.v;
     if (!dead) for (const t of o.ghost ? [] : otherPlayers()) { // the other players here, as upright bodies
       const cy = Math.max(t.y + 0.3, Math.min(t.y + 1.6, o.p.y));
@@ -178,7 +190,7 @@ export function updateBolts(dt: number) {
 }
 
 function think(b: Bandit, dt: number, time: number) {
-  const to = V(G.pos.x - b.p.x, G.pos.y + 1.1 - b.p.y, G.pos.z - b.p.z), dist = to.length(), safe = foeRules.playerSafe();
+  const to = V(G.pos.x - b.p.x, G.pos.y + 1.1 - b.p.y, G.pos.z - b.p.z), dist = to.length(), safe = !targetingFoe() && foeRules.playerSafe();
   const sees = () => rayWorld(b.p, to.clone().normalize(), dist) >= dist - 0.4;
   b.timer -= dt; b.fireT -= dt; b.hitT -= dt;
   if (b.state !== 'return' && (safe || dist > 75)) { b.state = 'return'; }
@@ -206,7 +218,7 @@ function think(b: Bandit, dt: number, time: number) {
           b.blow = false;
           if (dist > 2.4) break;
           const dmg = 10 * (1 + b.level * 0.2);
-          if (driving.v && driving.v.spec.enclosed) damageVehicle(driving.v, dmg * 0.5); else { G.hp -= armoured(dmg); G.dmgFlash = 0.35; }
+          if (driving.v && !proxied() && driving.v.spec.enclosed) damageVehicle(driving.v, dmg * 0.5); else { G.hp -= armoured(dmg); G.dmgFlash = 0.35; }
         }
         break;
       }
@@ -259,8 +271,8 @@ export function updateBandits(dt: number, time: number) {
   for (let i = W.bandits.length - 1; i >= 0; i--) {
     const b = W.bandits[i];
     if (stepRemote(b, dt)) { animate(b, dt); continue; } // another player's: it does what its owner says
-    if (b.campId === undefined && Math.hypot(b.p.x - G.pos.x, b.p.z - G.pos.z) > (b.ambush !== undefined ? 240 : 160)) { removeBandit(b); continue; }
-    withTarget(b.p.x, b.p.z, () => think(b, dt, time)); animate(b, dt);
+    if (!b.cityPost && b.campId === undefined && Math.hypot(b.p.x - G.pos.x, b.p.z - G.pos.z) > (b.ambush !== undefined ? 240 : 160)) { removeBandit(b); continue; }
+    withFoeTarget(b, () => think(b, dt, time)); animate(b, dt);
   }
   updateBolts(dt);
   updateCorpses(dt);
@@ -327,7 +339,7 @@ function updateCorpses(dt: number) {
 }
 
 // ---------- damage ----------
-export function hurtBandit(b: Bandit, dmg: number) {
+export function hurtBandit(b: Bandit, dmg: number, credit = true) {
   // a raised shield takes half of what comes from the front
   if (b.fig.rig.shield && Math.cos(Math.atan2(G.pos.x - b.p.x, G.pos.z - b.p.z) - b.heading) > 0.5) dmg *= 0.5;
   b.hp -= dmg; b.flash = 0.12; G.hitFlash = 0.15;
@@ -339,7 +351,7 @@ export function hurtBandit(b: Bandit, dmg: number) {
   const at = b.p.clone(), lead = b.role === 'leader';
   burst(at, lead ? BOSS_COLOR : BANDIT, 14, 0.9);
   const gold = Math.round((6 + Math.random() * 14) * (1 + b.level * 0.5) * (lead ? 4 : 1));
-  G.char.gold += gold; logLine(`+${gold} gold`);
+  if (credit) { G.char.gold += gold; logLine(`+${gold} gold`); }
   for (let i = 0; i < (lead ? 6 : 2); i++) dropCrystal(at);
   if (Math.random() < 0.2) dropPickup(at, 'medkit');
   if (Math.random() < (lead ? 1 : 0.3)) dropPickup(at.clone().add(V(0.3, 0, 0.4)), 'scrap');
@@ -347,10 +359,10 @@ export function hurtBandit(b: Bandit, dmg: number) {
   if (lead && Math.random() < 0.2) dropPickup(at.clone().add(V(-0.6, 0, 0)), 'relic');
   if (Math.random() < (lead ? 1 : 0.35)) { const [k, n] = rollAmmo(lead ? 1.5 : 0.5); dropPickup(at.clone().add(V(-0.3, 0, -0.4)), k, n); } // their rounds
   if (Math.random() < (lead ? 0.3 : 0.04)) dropPickup(at.clone().add(V(0, 0, -0.7)), LOOT_GUNS[(Math.random() * LOOT_GUNS.length) | 0]);
-  if (lead) gainXp(40);
+  if (lead && credit) gainXp(40);
   const camp = b.campId;
   fallBandit(b, G.pos);
-  onKill('bandit');
+  if (credit) onKill('bandit');
   if (camp !== undefined && !campAlive(camp)) {
     G.char.camps[camp] = Date.now(); saveChar();
     showToast('Camp cleared'); onCampCleared(camp);

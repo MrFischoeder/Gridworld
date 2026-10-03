@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { citySites, cityLayout, cityGarrisons, inCity, cityDanger, corners, inBld, segDist, CITY, PATTERNS } from '../src/gen/cities';
+import { citySites, cityLayout, cityGarrisons, inCity, cityDanger, corners, inBld, segDist, CITY, GARRISON, PATTERNS } from '../src/gen/cities';
 import { allVillages, regionInfo, regionOf, worldDist } from '../src/gen/regions';
 import { seaMask } from '../src/gen/seas';
 import { mountainMask } from '../src/gen/mountains';
@@ -61,10 +61,11 @@ describe('dead cities', () => {
 });
 
 describe('city garrisons', () => {
-  it('every city has many garrisons on its streets, more towards the core, of every kind, the same each time', () => {
+  it('every city has sixteen separated street posts, all factions and stronger core groups', () => {
     for (const c of citySites(12345)) {
       const g = cityGarrisons(12345, c), L = cityLayout(12345, c);
-      expect(g.length).toBeGreaterThan(L.streets.length * 0.25);
+      expect(g).toHaveLength(GARRISON.count);
+      for (const a of g) for (const b of g) if (a !== b) expect(Math.hypot(a.u - b.u, a.v - b.v)).toBeGreaterThanOrEqual(GARRISON.gap);
       expect(new Set(g.map((x) => x.kind)).size).toBe(3);
       expect(cityGarrisons(12345, c)).toBe(g);
       const near = g.filter((x) => Math.hypot(x.u - L.core[0], x.v - L.core[1]) < c.r * 0.3), far = g.filter((x) => Math.hypot(x.u - L.core[0], x.v - L.core[1]) > c.r * 0.8);

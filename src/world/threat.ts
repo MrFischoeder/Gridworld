@@ -7,6 +7,7 @@ import { spawnAuthority } from './remote';
 import { G, W } from '../game';
 import { ROBOTS } from '../data/robots';
 import type { CreatureKind } from '../data/creatures';
+import { inCity } from '../gen/cities';
 import { inVillage } from './overworld';
 
 const CREATURE_COST: Record<CreatureKind, number> = { gnawer: 0.5, ravager: 1, bramble: 0.4, leechwing: 1.5, skitter: 0.3, lurker: 1.2, silverfin: 0 };
@@ -44,6 +45,7 @@ function fighting(): boolean {
  * (the caller spawns it now). Gunfire (`heat`) brings the next one sooner and lets a little more in.
  */
 export function mayspawn(cost: number, lv: number, heat = 0): boolean {
+  if (inCity(G.char.world, G.pos.x, G.pos.z)) return false; // city posts replace endless field encounters
   if (!spawnAuthority()) return false; // another player here spawns the foes (world/remote.ts); you see theirs
   if (G.fly || outside <= GRACE || next - heat * 6 > 0 || fighting()) return false;
   if (threat() + cost > budget(lv) + heat * 0.6) return false;

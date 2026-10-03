@@ -4,6 +4,16 @@ export interface Change { v: string; date: string; title: string; notes: string[
 
 export const CHANGELOG: Change[] = [
   {
+    v: '0.117.0', date: '2026-10-03', title: 'City posts and rival factions',
+    notes: [
+      'Each ruined city has sixteen spaced-out enemy posts instead of hundreds. At most three nearby posts are awake at once, with smaller fixed groups.',
+      'A defeated post stays quiet for ten real minutes of active world time. Reinforcements wait until you move away from the post. Casualties and wounded survivors persist when you leave, reload or join multiplayer.',
+      'Random wilderness encounters no longer spawn inside cities: their fixed garrisons provide the threat.',
+      'Robots and wildlife can attack nearby bandits, who can fight back. Robots and wildlife never target or damage each other. Players remain hostile targets for all three groups.',
+      'Melee, shots, delayed robot bursts and artillery follow faction rules. Enemy-on-enemy kills do not grant the player direct gold, kill credit or kill-based quest progress.',
+    ],
+  },
+  {
     v: '0.116.0', date: '2026-10-03', title: 'Ravines and rough country',
     notes: [
       'Dry mainland ravines are 50–100 metres wide and 320–600 metres long, with steep walls and a flat bottom. Two broad paths descend along their walls so you can walk down and back out without jumping.',

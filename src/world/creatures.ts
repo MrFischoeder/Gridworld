@@ -18,11 +18,13 @@ import { onKill } from './quests';
 import { mayspawn, FOE_HIT } from './threat';
 import { ALPHA, type Quest } from '../gen/quests';
 import { textSprite } from './npc';
-import { stepRemote, withTarget } from './remote';
+import { targetingFoe, stepRemote, withFoeTarget } from './remote';
 
 type State = 'roam' | 'hunt' | 'dash' | 'retreat' | 'threat' | 'charge' | 'recover' | 'stalk' | 'dive' | 'climb' | 'investigate';
 
 export interface Creature {
+  /** Fixed city post; transmitted to prevent duplicate garrisons on another client. */
+  cityPost?: string;
   kind: CreatureKind; boss?: false;
   g: THREE.Group; mat: THREE.LineBasicMaterial;
   /** Body centre (the hit sphere is around it). */
@@ -505,7 +507,7 @@ function leechwing(c: Creature, dt: number, to: THREE.Vector3, dist: number, saf
       steer(target.x, target.y, target.z, s.speed, 2.6);
       const d = c.p.distanceTo(target);
       if (c.prey && d < 1.6) { // caught one
-        const p = c.prey; c.prey = null; burst(p.p.clone(), HOSTILE, 12, 0.8); removeCreature(p);
+        const p = c.prey; p.hp = 0; c.prey = null; burst(p.p.clone(), HOSTILE, 12, 0.8); removeCreature(p);
         c.state = 'climb'; c.timer = 3;
       } else if (!c.prey && dist < 1.8) { bite((s.damage + 3 * c.level) * c.dmgMul); c.state = 'climb'; c.timer = 3; }
       else if (c.timer <= 0) { c.state = 'climb'; c.timer = 2.5; }
@@ -708,9 +710,9 @@ export function updateCreatures(dt: number, time: number) {
   for (let i = W.creatures.length - 1; i >= 0; i--) {
     const c = W.creatures[i];
     if (stepRemote(c, dt)) { animate(c, dt, time); continue; } // another player's: it does what its owner says
-    if (Math.hypot(G.pos.x - c.p.x, G.pos.z - c.p.z) > (c.questId ? 240 : c.kind === 'leechwing' ? 220 : 130)) { removeCreature(c); continue; }
-    withTarget(c.p.x, c.p.z, () => {
-      const to = V(G.pos.x, G.pos.y + 1.2, G.pos.z).sub(c.p), dist = to.length(), safe = foeRules.playerSafe();
+    if (!c.cityPost && Math.hypot(G.pos.x - c.p.x, G.pos.z - c.p.z) > (c.questId ? 240 : c.kind === 'leechwing' ? 220 : 130)) { removeCreature(c); continue; }
+    withFoeTarget(c, () => {
+      const to = V(G.pos.x, G.pos.y + 1.2, G.pos.z).sub(c.p), dist = to.length(), safe = !targetingFoe() && foeRules.playerSafe();
       if (c.state === 'investigate' && (c.kind === 'ravager' || c.kind === 'bramble' || c.kind === 'gnawer')) investigate(c, dt, to, dist, safe);
       else if (c.kind === 'skitter') skitter(c, dt, to, dist, safe);
       else if (c.kind === 'lurker') lurker(c, dt, to, dist, safe);
@@ -748,7 +750,7 @@ function animate(c: Creature, dt: number, time: number) {
 }
 
 // ---------- damage ----------
-export function hurtCreature(c: Creature, dmg: number) {
+export function hurtCreature(c: Creature, dmg: number, credit = true) {
   // the Bramble's head and front plates shrug off most of a hit
   if (c.kind === 'bramble') {
     const toShooter = V(G.pos.x - c.p.x, 0, G.pos.z - c.p.z).normalize();
@@ -775,7 +777,7 @@ export function hurtCreature(c: Creature, dmg: number) {
   logLine((c.alpha ? ALPHA[c.kind] : s.name) + ' killed');
   const qid = c.questId, alpha = !!c.alpha;
   fallCreature(c);
-  onKill(c.kind, qid, alpha);
+  if (credit) onKill(c.kind, qid, alpha);
 }
 
 // ---------- dying ----------
