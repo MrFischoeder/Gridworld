@@ -4,6 +4,15 @@ export interface Change { v: string; date: string; title: string; notes: string[
 
 export const CHANGELOG: Change[] = [
   {
+    v: '0.111.2', date: '2026-10-03', title: 'A way out of the labyrinth',
+    notes: [
+      'Ruins now have one self-contained level. The four passages into neighbouring sectors and the automatic hatch into deeper levels are gone.',
+      'Every ruin level has stairs back to the surface near its entrance, reachable without unlocking the guardian gates.',
+      'If your save is already deep inside an old ruin, its rooms and saved loot stay in place, with a direct surface exit added.',
+      'Natural cave systems and crashed ships keep their existing layouts.',
+    ],
+  },
+  {
     v: '0.111.1', date: '2026-10-03', title: 'Multiplayer consistency fixes',
     notes: [
       'World changes now return to everyone, including the player who made them. Independent property edits and different dungeon openings are preserved when players act together.',

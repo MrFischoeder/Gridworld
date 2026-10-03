@@ -98,7 +98,8 @@ export function loadDungeon(arriveDir: string | null) {
   }
   const seed = hash(c.world, d.ruinId, d.depth, d.gx, d.gz);
   const wreck = findPoi(c.world, d.ruinId)?.type === 'wreck';
-  const map = wreck ? generateShip(seed) : generateDungeon(seed, { surfaceExit: d.depth === 1 && d.gx === 0 && d.gz === 0 });
+  // Old deep/remote saves keep their sector seed and loot indices, but now have a direct surface exit.
+  const map = wreck ? generateShip(seed) : generateDungeon(seed);
   clearLevel(); G.map = map;
   setLocationLook(false);
   setDroneRespawn(placeDrone); setCrystalXp(() => 5 * depth());
