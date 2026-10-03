@@ -8,12 +8,13 @@ import { placeCarrier, dropCarrier } from './datacarriers';
 import { landingSite } from '../gen/landing';
 import { Terrain } from '../gen/terrain';
 import { scene, fog, lineMat, add, V, fillMat, GRID } from './render';
+import { cityEntrance, dungeonSeed } from '../gen/citydungeons';
 import { G, W } from '../game';
 import { hash, OPP, DIRV, type Dir } from '../core/rng';
 import { VoxelGrid } from '../core/voxel';
 import { meshVoxels, type OutlineStyle } from '../core/meshing';
 import { generateDungeon } from '../gen/dungeon';
-import { findPoi, allVillages, worldDist, poisNear, GRIDHOLM_ID, CHUNK, type Poi } from '../gen/regions';
+import { findPoi, allVillages, worldDist, nearX, poisNear, GRIDHOLM_ID, CHUNK, type Poi } from '../gen/regions';
 import { isDiscovered } from '../save';
 import { WALL_TIERS, STONE_TIER, HOUSE, WALK, type VillageMap } from '../gen/village';
 import { placeTunnelDoors, tryPlaceDoor, type PlacedDoor } from '../gen/doors';
@@ -88,7 +89,7 @@ onClimbChange(refreshWeaponVisibility);
 onWorkChange(refreshWeaponVisibility);
 
 // ---------- dungeon ----------
-const ruinName = (id: number) => findPoi(G.char.world, id)?.name ?? 'Ruins';
+const ruinName = (id: number) => cityEntrance(G.char.world, id)?.name ?? findPoi(G.char.world, id)?.name ?? 'Ruins';
 export function loadDungeon(arriveDir: string | null) {
   const c = G.char, d = c.dungeon!;
   if (d.cave) { // a cave system: its own kind of place
@@ -96,7 +97,7 @@ export function loadDungeon(arriveDir: string | null) {
     placeCarrier();
     saveChar(); return;
   }
-  const seed = hash(c.world, d.ruinId, d.depth, d.gx, d.gz);
+  const seed = dungeonSeed(c.world, d);
   const wreck = findPoi(c.world, d.ruinId)?.type === 'wreck';
   // Old deep/remote saves keep their sector seed and loot indices, but now have a direct surface exit.
   const map = wreck ? generateShip(seed) : generateDungeon(seed);
@@ -402,6 +403,7 @@ export function exitCave(i: number) {
   if (info.mouths.length > 1 && i !== info.from) logLine('You come out on the far side of the mountain.');
 }
 export function enterDungeon(ruinId: number) {
+  saveOverworldPos();
   const c = G.char;
   c.loc = 'dungeon'; c.dungeon = { ruinId, depth: 1, gx: 0, gz: 0 }; saveChar();
   loadDungeon('V'); showToast(ruinName(ruinId)); logLine('Depth 1'); arriveVia(W.arrivalStair);
@@ -409,6 +411,12 @@ export function enterDungeon(ruinId: number) {
 setEnterRuin(enterDungeon);
 export function exitToRuin() {
   const c = G.char, id = c.dungeon!.ruinId;
+  const entrance = cityEntrance(c.world, id);
+  if (entrance) {
+    c.ow = { x: nearX(entrance.x, c.ow?.x ?? entrance.x), y: -1e4, z: entrance.z, yaw: c.ow?.yaw ?? 0 };
+    c.loc = 'overworld'; c.dungeon = null; saveChar();
+    loadOverworld({ kind: 'saved' }); showToast(entrance.name); arriveVia(null); return;
+  }
   c.loc = 'overworld'; c.dungeon = null; saveChar();
   loadOverworld({ kind: 'ruin', id }); showToast(ruinName(id)); arriveVia(W.arrivalStair);
 }
@@ -427,7 +435,7 @@ export function toVillage(how: 'death' | 'recall', id?: number) {
     arriveVia(null);
     return;
   }
-  const from = c.loc === 'dungeon' && c.dungeon ? c.dungeon.cave?.mouths[0] ?? findPoi(c.world, c.dungeon.ruinId) ?? { x: 0, z: 0 } : { x: G.pos.x, z: G.pos.z };
+  const from = c.loc === 'dungeon' && c.dungeon ? c.dungeon.cave?.mouths[0] ?? cityEntrance(c.world, c.dungeon.ruinId) ?? findPoi(c.world, c.dungeon.ruinId) ?? { x: 0, z: 0 } : { x: G.pos.x, z: G.pos.z };
   const known = allVillages(c.world).filter((v) => v.id === GRIDHOLM_ID || isDiscovered(c.discovered, Math.floor(v.x / CHUNK), Math.floor(v.z / CHUNK)));
   const v = id !== undefined ? findPoi(c.world, id) ?? known[0] : known.reduce((a, b) => (worldDist(b.x, b.z, from.x, from.z) < worldDist(a.x, a.z, from.x, from.z) ? b : a));
   c.loc = 'overworld'; c.dungeon = null; saveChar();

@@ -5,6 +5,8 @@
 // and slabs with beams hanging, a fallen one a heap of rubble over the stubs of its walls; rubble at the feet of the
 // walls. Streets: kerbs and sidewalks, centre dashes, crossings at the junctions, lamp posts (some bent or down) and
 // wrecked cars. Buildings, heaps and cars collide (`cityHit`), and buildings stop shots and sight (`cityRay`).
+import { cityEntrances, type CityEntrance } from '../gen/citydungeons';
+import { textSprite } from './npc';
 import * as THREE from 'three';
 import { scene } from './render';
 import { PropBatch } from './props';
@@ -27,15 +29,16 @@ interface Live {
 }
 const live = new Map<number, Live>();
 /** What each tile holds (by tile index), worked out once per layout. */
-const tileItems = new WeakMap<CityLayout, { nt: number; b: number[][]; s: number[][]; c: number[][] }>();
-function itemsOf(L: CityLayout) {
+const tileItems = new WeakMap<CityLayout, { nt: number; b: number[][]; s: number[][]; c: number[][]; e: number[][] }>();
+function itemsOf(world: number, L: CityLayout) {
   let t = tileItems.get(L);
   if (t) return t;
   const nt = Math.ceil(2 * L.half / TILE), idx = (u: number, v: number) => Math.max(0, Math.min(nt - 1, Math.floor((u + L.half) / TILE))) + nt * Math.max(0, Math.min(nt - 1, Math.floor((v + L.half) / TILE)));
-  t = { nt, b: Array.from({ length: nt * nt }, () => []), s: Array.from({ length: nt * nt }, () => []), c: Array.from({ length: nt * nt }, () => []) };
+  t = { nt, b: Array.from({ length: nt * nt }, () => []), s: Array.from({ length: nt * nt }, () => []), c: Array.from({ length: nt * nt }, () => []), e: Array.from({ length: nt * nt }, () => []) };
   L.blds.forEach((b, k) => t!.b[idx(b.x, b.z)].push(k));
   L.streets.forEach((s, k) => t!.s[idx((s.ax + s.bx) / 2, (s.az + s.bz) / 2)].push(k));
   L.cars.forEach((c, k) => t!.c[idx(c.x, c.z)].push(k));
+  cityEntrances(world, L.c).forEach((e, k) => t!.e[idx(e.u, e.v)].push(k));
   tileItems.set(L, t);
   return t;
 }
@@ -179,15 +182,32 @@ function drawCar(pb: PropBatch, c: Car, H: (u: number, v: number) => number) {
   if (R() < 0.7) pb.solid8([P(-1.1, -0.8, 0.95), P(0.9, -0.8, 0.95), P(0.9, 0.8, 0.95 + tilt), P(-1.1, 0.8, 0.95 + tilt)], [P(-0.8, -0.7, 1.55), P(0.5, -0.7, 1.55), P(0.5, 0.7, 1.55 + tilt), P(-0.8, 0.7, 1.55 + tilt)], CAR);
 }
 function buildTile(T: Terrain, l: Live, k: number): Tile {
-  const it = itemsOf(l.L), pb = new PropBatch(), H = groundOf(T, l), R = rng(l.c.i * 7919 + k * 31 + 1);
+  const it = itemsOf(T.world, l.L), pb = new PropBatch(), H = groundOf(T, l), R = rng(l.c.i * 7919 + k * 31 + 1);
   for (const i of it.s[k]) drawStreet(pb, l.L.streets[i], R, H);
   for (const i of it.b[k]) drawBld(pb, l.L.blds[i], baseOf(T, l, i), H);
   for (const i of it.c[k]) drawCar(pb, l.L.cars[i], H);
+  const entrances = cityEntrances(T.world, l.c);
+  for (const i of it.e[k]) {
+    const e = entrances[i], y = H(e.u, e.v), color = 0x5cc8ff;
+    pb.box(e.u - 1.6, y + 0.04, e.v - 2, e.u + 1.6, y + 0.14, e.v + 2, color);
+    for (let step = 0; step < 6; step++) pb.seg(color, [e.u - 1.3, y + 0.16, e.v - 1.5 + step * 0.5], [e.u + 1.3, y + 0.16, e.v - 1.5 + step * 0.5]);
+    for (const side of [-1, 1]) pb.seg(color, [e.u + side * 1.6, y, e.v - 2], [e.u + side * 1.6, y + 1.2, e.v - 2]);
+    pb.line(color, [e.u - 0.5, y + 1.6, e.v], [e.u, y + 1.1, e.v], [e.u + 0.5, y + 1.6, e.v]);
+  }
   const g = pb.build();
+  for (const i of it.e[k]) {
+    const e = entrances[i], sign = textSprite('▼ VAULT ' + (e.n + 1), '#5cc8ff', 3.4);
+    sign.position.set(e.u, H(e.u, e.v) + 2.2, e.v); g.add(sign);
+  }
   l.root.add(g);
   return { g };
 }
-function dropTile(t: Tile) { t.g.removeFromParent(); t.g.traverse((o) => (o as THREE.Mesh).geometry?.dispose()); }
+function dropTile(t: Tile) {
+  t.g.removeFromParent(); t.g.traverse((o) => {
+    if (o instanceof THREE.Sprite) { o.material.map?.dispose(); o.material.dispose(); }
+    else (o as THREE.Mesh).geometry?.dispose();
+  });
+}
 function dropCity(key: number) {
   const l = live.get(key);
   if (!l) return;
@@ -216,7 +236,7 @@ export function updateCities(dt: number) {
   // tiles: the nearest missing ones first, a time budget a frame
   const t0 = performance.now();
   for (const l of live.values()) {
-    const it = itemsOf(l.L), [pu, pv] = worldToCity(l.c, G.pos.x, G.pos.z), center = (k: number): [number, number] => [(k % it.nt + 0.5) * TILE - l.L.half, (Math.floor(k / it.nt) + 0.5) * TILE - l.L.half];
+    const it = itemsOf(T.world, l.L), [pu, pv] = worldToCity(l.c, G.pos.x, G.pos.z), center = (k: number): [number, number] => [(k % it.nt + 0.5) * TILE - l.L.half, (Math.floor(k / it.nt) + 0.5) * TILE - l.L.half];
     for (const [k, t] of l.tiles) { const [u, v] = center(k); if (Math.hypot(u - pu, v - pv) > TILE_OUT) { dropTile(t); l.tiles.delete(k); } }
     const want: [number, number][] = [];
     const i0 = Math.max(0, Math.floor((pu - TILE_IN + l.L.half) / TILE)), i1 = Math.min(it.nt - 1, Math.floor((pu + TILE_IN + l.L.half) / TILE));
@@ -224,7 +244,7 @@ export function updateCities(dt: number) {
     for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) {
       const k = i + it.nt * j; if (l.tiles.has(k)) continue;
       const [u, v] = center(k), d = Math.hypot(u - pu, v - pv);
-      if (d < TILE_IN && (it.b[k].length || it.s[k].length)) want.push([d, k]);
+      if (d < TILE_IN && (it.b[k].length || it.s[k].length || it.e[k].length)) want.push([d, k]);
     }
     want.sort((a, b) => a[0] - b[0]);
     for (const [, k] of want) { if (performance.now() - t0 > 6 && l.tiles.size) break; l.tiles.set(k, buildTile(T, l, k)); }
@@ -297,4 +317,16 @@ export function cityName(x: number, z: number): string | null {
   if (!T) return null;
   for (const c of citySites(T.world)) if (worldDist(c.x, c.z, x, z) < c.r + 20) return 'Ruins of ' + c.name;
   return null;
+}
+
+/** An entrance within use distance, on the player's copy of the planet and at street level. */
+export function nearCityEntrance(): CityEntrance | null {
+  const T = OW.terrain;
+  if (!T || G.char.loc !== 'overworld') return null;
+  let best: CityEntrance | null = null, distance = 2.6;
+  for (const l of live.values()) for (const e of cityEntrances(T.world, l.c)) {
+    const x = nearX(e.x, G.pos.x), d = Math.hypot(x - G.pos.x, e.z - G.pos.z);
+    if (d < distance && Math.abs(G.pos.y - T.heightAt(x, e.z)) < 1.5) { best = e; distance = d; }
+  }
+  return best;
 }

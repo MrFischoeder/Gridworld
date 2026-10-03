@@ -4,6 +4,14 @@ export interface Change { v: string; date: string; title: string; notes: string[
 
 export const CHANGELOG: Change[] = [
   {
+    v: '0.112.0', date: '2026-10-03', title: 'Beneath the ruined cities',
+    notes: [
+      'Every large ruined city has four underground entrances, spread across its streets and marked with cyan VAULT signs. Approach an entrance and press E.',
+      'Each entrance leads to its own single-level labyrinth with stairs back to the same entrance. There are no passages into deeper levels or neighbouring sectors.',
+      'Entrances and their labyrinths stay the same when you reload a save or explore together in multiplayer.',
+    ],
+  },
+  {
     v: '0.111.2', date: '2026-10-03', title: 'A way out of the labyrinth',
     notes: [
       'Ruins now have one self-contained level. The four passages into neighbouring sectors and the automatic hatch into deeper levels are gone.',

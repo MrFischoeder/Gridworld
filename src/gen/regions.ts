@@ -300,6 +300,7 @@ export function poisNear(world: number, x: number, z: number, r: number): Poi[] 
   return out;
 }
 export const findPoi = (world: number, id: number): Poi | undefined => {
+  if (!Number.isInteger(id) || id !== (id | 0)) return; // city vault IDs are outside the region namespace
   const rx = (id << 0) >> 17, rz = ((id << 15) >> 17);
   return regionInfo(world, rx, rz).pois.find((p) => p.id === id);
 };
