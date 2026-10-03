@@ -1,5 +1,4 @@
 // Loading places (dungeon sectors, the open world) and moving between them.
-import { spawnAuthority } from './remote';
 import { riding, getOff } from './ride';
 import { SHIP_NAME } from './lander';
 import * as THREE from 'three';
@@ -25,8 +24,6 @@ import { makeChest, makeHatch, setCrystalXp } from './loot';
 import { placeCrystals, clearCrystals } from './flora';
 import { decorateDungeon } from './dungeondeco';
 import { generateShip } from '../gen/ship';
-import { setRobotEnv, spawnGuards } from './robots';
-import { dangerAt } from '../gen/danger';
 import { clearFires } from './cooking';
 import { clearBenches } from './benches';
 import { clearFlags, cancelPlacing } from './claims';
@@ -136,14 +133,10 @@ export function loadDungeon(arriveDir: string | null) {
     const x = i + g.ox, y = j + g.oy, z = k + g.oz;
     if (y >= 0 && y <= 2 && g.empty(x, y, z) && g.empty(x, y + 1, z) && g.empty(x, y + 2, z) && !g.empty(x, y - 1, z)) W.spawnCells.push([x, y, z]);
   }
-  // a crashed ship is guarded by robots (placed by the generator) and only a few stray drones
+  // A crashed ship retains only a few stray drones alongside its anchored security guns.
   for (let i = 0; i < (wreck ? 2 : map.rooms + 1 + d.depth); i++) { const t = makeDrone(); placeDrone(t); W.drones.push(t); }
-  if (wreck) {
-    const poi = findPoi(c.world, d.ruinId)!, lv = Math.max(2, dangerAt(c.world, poi.x, poi.z, true));
-    setRobotEnv({ ground: () => 0, danger: () => lv, nearRuin: () => false, forbidden: () => false, water: () => null }, { indoor: true });
-    if (spawnAuthority()) spawnGuards(map.guards ?? [], lv); // else the player already inside has them (shared foes)
-  }
-  if (!wreck) { loadMountedTurrets(dungeonTurrets(map, G.grid)); G.obstacle = mountedTurretHit; }
+  // Ship security and labyrinth defences are anchored guns, separate from roaming enemy robots.
+  loadMountedTurrets(dungeonTurrets(map, G.grid)); G.obstacle = mountedTurretHit;
   onDungeonLoaded(map);
   placeCarrier();
   setMiniMode('voxel'); buildMini();

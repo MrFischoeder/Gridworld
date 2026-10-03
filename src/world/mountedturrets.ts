@@ -16,9 +16,13 @@ export function mountedTurretModel(spec: MountedTurretSpec, color = 0xff6a4a) {
   const base = solid(new THREE.CylinderGeometry(0.6, 0.6, 0.18, 8));
   const normal = new THREE.Vector3(...spec.normal);
   base.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), normal); base.position.copy(normal).multiplyScalar(spec.mount === 'wall' ? -0.6 : -0.45); g.add(base);
+  // Heavy stationary housing with armour plates; only the barrel/sensor head turns.
+  const housing = solid(new THREE.BoxGeometry(0.85, 0.7, 0.85)); g.add(housing);
+  const brace = solid(new THREE.CylinderGeometry(0.14, 0.14, 0.45, 8));
+  brace.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), normal); brace.position.copy(normal).multiplyScalar(-0.25); g.add(brace);
   head.add(solid(new THREE.BoxGeometry(0.65, 0.4, 0.65)));
   const barrel = solid(new THREE.CylinderGeometry(0.07, 0.07, 0.6, 8).rotateX(Math.PI / 2)); barrel.position.z = -0.55; head.add(barrel);
-  const sensor = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.12, 0.06), new THREE.MeshBasicMaterial({ color: 0xff6a4a })); sensor.position.set(0, 0.25, -0.25); head.add(sensor);
+  const sensor = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.12, 0.06), new THREE.MeshBasicMaterial({ color: 0xff6a4a })); sensor.position.set(0, 0.4, -0.25); head.add(sensor);
   g.position.set(spec.x, spec.y, spec.z); g.add(head); return { g, head, sensor };
 }
 function drop(t: Gun) { t.g.removeFromParent(); t.g.traverse(o => (o as THREE.Mesh).geometry?.dispose()); (t.sensor.material as THREE.Material).dispose(); }
@@ -31,7 +35,7 @@ export function loadMountedTurrets(specs: MountedTurretSpec[]) {
 }
 export function damageMountedTurret(t: Gun, damage: number) {
   if (!live.includes(t)) return;
-  t.hp -= damage; G.hitFlash = 0.15; burst(t.g.position, 0xffb347, 8, 0.4);
+  t.hp -= Math.max(0, damage) * (1 - S.armour); G.hitFlash = 0.15; burst(t.g.position, 0xffb347, 8, 0.4);
   if (t.hp > 0) return;
   progress('killed').push(S.progressBase + t.spec.id); saveChar(); drop(t); live.splice(live.indexOf(t), 1); showToast('Defence turret destroyed');
 }

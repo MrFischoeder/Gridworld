@@ -26,11 +26,21 @@ describe('ancient turret combat', () => {
     updateMountedTurrets(S.warning / 2); expect(G.hp).toBe(100);
     G.pos.x = S.range + 1; updateMountedTurrets(5); expect(G.hp).toBe(100);
   });
+  it('keeps its mount and housing fixed while tracking and firing, and withstands unarmoured lethal damage', () => {
+    const hit = rayMountedTurret(origin, direction, 8)!;
+    const before = hit.gun.g.position.clone(), base = hit.gun.g.children[0], orientation = base.quaternion.clone();
+    damageMountedTurret(hit.gun, S.hp);
+    expect(rayMountedTurret(origin, direction, 8)).not.toBeNull();
+    for (let i = 0; i < 60; i++) { G.pos.z = Math.sin(i) * 3; updateMountedTurrets(0.05); }
+    expect(hit.gun.g.position.equals(before)).toBe(true); expect(base.quaternion.equals(orientation)).toBe(true);
+    expect(state.killed).toEqual([]);
+    expect(G.hp).toBeLessThan(100 - S.damage); // sustained fire, not a single warning shot
+  });
   it('can be shot, stays destroyed after reload and observes shared destruction', () => {
     expect(mountedTurretHit(0, 0, 0, 0.3)).toBe(true);
     expect(rayMountedTurret(origin, direction, 4)).toBeNull(); // cover closer than the turret wins
     const hit = rayMountedTurret(origin, direction, 8)!; expect(hit.t).toBeCloseTo(5 - S.radius);
-    damageMountedTurret(hit.gun, S.hp); expect(state.saves).toBe(1); expect(mountedTurretHit(0, 0, 0, 0.3)).toBe(false);
+    damageMountedTurret(hit.gun, S.hp / (1 - S.armour)); expect(state.saves).toBe(1); expect(mountedTurretHit(0, 0, 0, 0.3)).toBe(false);
     expect(state.killed).toEqual([S.progressBase]);
     loadMountedTurrets([spec]); expect(rayMountedTurret(origin, direction, 8)).toBeNull();
     state.killed.length = 0; loadMountedTurrets([spec]); state.killed.push(S.progressBase);

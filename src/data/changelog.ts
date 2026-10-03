@@ -4,6 +4,14 @@ export interface Change { v: string; date: string; title: string; notes: string[
 
 export const CHANGELOG: Change[] = [
   {
+    v: '0.114.1', date: '2026-10-03', title: 'Anchored armoured defences',
+    notes: [
+      'Ship interiors now use stationary mounted security turrets instead of walking robot guards. Labyrinth turrets also stay anchored: only their aiming head turns.',
+      'Heavy armour increases turret health from 8 to 32 and absorbs half of incoming damage. Their fixed housing and mounting brace are clearly visible.',
+      'Turrets maintain automatic fire every 0.45 seconds while a player remains visible in range. Walls and closed doors still block shots.',
+    ],
+  },
+  {
     v: '0.114.0', date: '2026-10-03', title: 'Small steps and ancient defences',
     notes: [
       'Ruin stairwells now have real 25 cm steps. Walk or sprint up and down without jumping.',
