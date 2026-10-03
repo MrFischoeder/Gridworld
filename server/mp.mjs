@@ -18,8 +18,9 @@
 //   {t:'chat', text}
 //   {t:'drop', k, n, c?, p:[x,y,z], loc}   an item put down at your feet (taken out of your own kit first)
 //   {t:'take', id}                       pick a lying item up: only the first to ask gets it
-//   {t:'wset', ch:[[field, key, value|null], ...]}   changes to the shared world (villages, bridges, chests...: see
+//   {t:'wset', seq, ch:[[field, key, value|null, baseline], ...]}   changes to the shared world (villages, bridges, chests...: see
 //                                                      src/world/share.ts); null deletes
+//   {t:'wlock', f:'containers', k, value, req} / {t:'wsave'|'wunlock', f, k, value} reserve / edit / release a container
 //   {t:'wseed', doc}                     the first player who already played this world brings their world along
 //   {t:'cast', m} / {t:'to', to, m}       the shared foes (src/world/foesync.ts), passed to everyone else in the room /
 //                                          to player `to` as m + {from}: m.t one of 'foes' (my foes: where, how hurt),
@@ -33,12 +34,13 @@
 //   {t:'chat', id, name, text}
 //   {t:'drop', d:{id, k, n, c?, p, loc, by, at}}   an item now lies there (also to the one who dropped it)
 //   {t:'got', d} to the one who took it / {t:'gone', id} to everyone else (or to a taker who came too late)
-//   {t:'wset', ch} the others' changes to the shared world / {t:'wdoc', doc} the whole of it (adopt it)
+//   {t:'wset', ch, from, seq} ordered changes to everyone, including the writer to the shared world / {t:'wdoc', doc} the whole of it (adopt it)
 //   {...m, from} what another player cast or sent you (see 'cast' / 'to')
 // The welcome also carries `wdoc` (the shared world: {field: {key: value}}) and `wseeded` (whether anyone has brought
 // a world to it yet). The shared world is kept with the room (server/main.mjs saves it in its own file).
 // The welcome also carries `drops`: everything lying in the room's world. Lying items are kept with the room (saved by
 // server/main.mjs) and vanish after `MP.dropTtl` hours.
+import { mergeWorld, mergeProgress } from '../src/net/worlddoc.mjs';
 import { WebSocketServer } from 'ws';
 import { pathToFileURL } from 'node:url';
 import { randomInt } from 'node:crypto';
@@ -47,11 +49,16 @@ export const MP = { path: '/mp', port: 7777, max: 8, rate: 100, nameMax: 20, cha
 /** What players may pass to each other through 'cast' (everyone else in the room) and 'to' (one player). */
 const RELAY = new Set(['foes', 'bolt', 'fhit', 'kill', 'hurt']);
 /** Protocol version: a client with another one is refused (the game shows why). */
-export const PROTOCOL = 2;
+export const PROTOCOL = 3;
 
 const clean = (s, n) => String(s ?? '').replace(/[\u0000-\u001f<>]/g, '').trim().slice(0, n);
 const num = (v) => (typeof v === 'number' && Number.isFinite(v) ? v : 0);
 const DAY = 86400000;
+const FIELDS = new Set(['towns', 'market', 'installs', 'bridges', 'bridgeSites', 'piers', 'boats', 'shuttle', 'containers', 'opened', 'unlocked', 'killed', 'harvest', 'camps', 'caravans']);
+const safeKey = (k) => typeof k === 'string' && !['__proto__', 'constructor', 'prototype'].includes(k);
+const worldKey = (f, k) => FIELDS.has(f) && safeKey(k) && !(f === 'containers' && k.startsWith('home:'));
+const object = (v) => v && typeof v === 'object' && !Array.isArray(v);
+const cleanDoc = (doc) => Object.fromEntries(Object.entries(doc).filter(([f, v]) => FIELDS.has(f) && object(v)).map(([f, v]) => [f, Object.fromEntries(Object.entries(v).filter(([k]) => worldKey(f, k)))]));
 
 /**
  * The game state of one server: its rooms, their players, worlds and clocks, and the snapshot timer.
@@ -65,7 +72,7 @@ export function createMp(log = (m) => console.log('[mp] ' + m), opts = {}) {
   const rooms = new Map();
   let nextId = 1, dropSeq = 1;
   const newRoom = (r) => {
-    const room = { id: r.id, name: clean(r.name, MP.roomName) || 'GridWorld', world: r.world == null ? null : r.world | 0, time0: num(r.time), run: 0, since: 0, players: new Map(), hostId: 0, created: r.created ?? Date.now(), last: r.last ?? Date.now(), drops: new Map((Array.isArray(r.drops) ? r.drops : []).map((d) => [d.id, d])), doc: r.doc && typeof r.doc === 'object' ? r.doc : {}, seeded: !!r.seeded, dirty: false };
+    const room = { id: r.id, name: clean(r.name, MP.roomName) || 'GridWorld', world: r.world == null ? null : r.world | 0, time0: num(r.time), run: 0, since: 0, players: new Map(), hostId: 0, created: r.created ?? Date.now(), last: r.last ?? Date.now(), drops: new Map((Array.isArray(r.drops) ? r.drops : []).map((d) => [d.id, d])), doc: object(r.doc) ? cleanDoc(r.doc) : {}, locks: new Map(), seeded: !!r.seeded, dirty: false };
     rooms.set(room.id, room);
     return room;
   };
@@ -117,7 +124,7 @@ export function createMp(log = (m) => console.log('[mp] ' + m), opts = {}) {
         let name = clean(m.name, MP.nameMax) || 'Castaway';
         if ([...room.players.values()].some((p) => p.name === name)) name = `${name} ${nextId}`;
         me = { id: nextId++, ws, name, st: null, joined: Date.now() };
-        if (!room.players.size && !dedicated) { room.hostId = me.id; room.world = num(m.world) | 0; room.time0 = num(m.time); log(`${name} hosts world ${room.world}`); }
+        if (!room.players.size && !dedicated) { room.hostId = me.id; if (room.world === null) { room.world = num(m.world) | 0; room.time0 = num(m.time); } log(`${name} hosts world ${room.world}`); }
         room.players.set(me.id, me); room.last = Date.now(); occupied(room, true);
         send(ws, { t: 'welcome', id: me.id, host: room.hostId, world: room.world, time: clock(room), dedicated, room: { id: room.id, name: room.name }, drops: [...room.drops.values()], wdoc: room.doc, wseeded: room.seeded, players: [...room.players.values()].map((p) => ({ id: p.id, name: p.name })) });
         all(room, { t: 'join', id: me.id, name }, me.id);
@@ -125,7 +132,30 @@ export function createMp(log = (m) => console.log('[mp] ' + m), opts = {}) {
         return;
       }
       if (m.t === 'state') {
+        const previousCars = me.st?.cars, previousIds = me.st?.carIds;
         me.st = { p: Array.isArray(m.p) ? m.p.slice(0, 3).map(num) : [0, 0, 0], yaw: num(m.yaw), pitch: num(m.pitch), loc: clean(m.loc, 80), held: clean(m.held, 24), mv: !!m.mv, away: !!m.away, cars: Array.isArray(m.cars) ? m.cars.slice(0, MP.cars).filter(Array.isArray).map((c) => c.slice(0, 10).map(num)) : [], ride: Array.isArray(m.ride) ? m.ride.slice(0, 3).map(num) : undefined, gun: typeof m.gun === 'number' ? num(m.gun) : undefined };
+        if (Array.isArray(m.carIds)) me.st.carIds = m.carIds.slice(0, MP.cars).map((id) => clean(id, 100));
+        // The owner still simulates the vehicle; the server alone grants its seats.
+        const seatOK = (car, seat) => car && Number.isInteger(seat) && seat >= 0 && seat < 3 && (seat !== 2 || !!car[7]);
+        const taken = (owner, idx, seat, except) => [...room.players.values()].some((p) => p.id !== except && p.st?.ride?.[0] === owner && p.st.ride[1] === idx && p.st.ride[2] === seat);
+        me.st.cars.forEach((car, idx) => {
+          const seat = car[8] - 1;
+          if (car[8] && (!seatOK(car, seat) || taken(me.id, idx, seat, me.id))) car[8] = 0;
+        });
+        const r = me.st.ride, owner = r && room.players.get(r[0]), car = owner?.st?.cars[r?.[1]];
+        if (r && (me.st.loc !== 'o' || owner?.st?.loc !== 'o' || owner.id === me.id || !Number.isInteger(r[1]) || r[2] < 1 || !seatOK(car, r[2]) || car[8] === r[2] + 1 || taken(r[0], r[1], r[2], me.id) || me.st.cars.some((c) => c[8]))) me.st.ride = undefined;
+        if (!me.st.ride || me.st.ride[2] !== 2) me.st.gun = undefined;
+        send(ws, { t: 'seats', ride: me.st.ride ?? null, requested: m.ride ?? null, seats: me.st.cars.map((c) => c[8] ?? 0), requestedSeats: Array.isArray(m.cars) ? m.cars.filter(Array.isArray).slice(0, MP.cars).map((c) => c[8] ?? 0) : [] });
+        // Removed cars, changed locations and missing cannons revoke the affected riders immediately.
+        for (const p of room.players.values()) {
+          const ride = p.st?.ride;
+          if (!ride || ride[0] !== me.id) continue;
+          const c = me.st.cars[ride[1]];
+          if (me.st.loc !== 'o' || !seatOK(c, ride[2]) || previousCars?.[ride[1]]?.[0] !== c?.[0] || previousIds?.[ride[1]] !== me.st.carIds?.[ride[1]]) {
+            p.st.ride = undefined; p.st.gun = undefined;
+            send(p.ws, { t: 'seats', ride: null, requested: ride });
+          }
+        }
         if (!dedicated && me.id === room.hostId && typeof m.time === 'number') room.time0 = num(m.time);
       } else if (m.t === 'drop') {
         const k = clean(m.k, 24), n = Math.max(1, Math.min(9999, Math.floor(num(m.n))));
@@ -144,15 +174,44 @@ export function createMp(log = (m) => console.log('[mp] ' + m), opts = {}) {
       } else if (m.t === 'wset' && Array.isArray(m.ch)) {
         const ch = [];
         for (const c of m.ch) {
-          if (!Array.isArray(c) || typeof c[0] !== 'string' || typeof c[1] !== 'string') continue;
-          const f = (room.doc[c[0]] ??= {});
-          if (c[2] === null || c[2] === undefined) delete f[c[1]]; else f[c[1]] = c[2];
-          ch.push([c[0], c[1], c[2] ?? null]);
+          if (!Array.isArray(c) || !worldKey(c[0], c[1])) continue;
+          const [field, key, value, base] = c, f = (room.doc[field] ??= {});
+          const lock = room.locks.get(field + ':' + key);
+          const stale = field === 'containers' && c.length > 3 && JSON.stringify(base ?? null) !== JSON.stringify(f[key] ?? null);
+          if ((!lock || lock === me.id) && !stale) {
+            const merge = ['opened', 'unlocked', 'killed'].includes(field) ? mergeProgress : mergeWorld;
+            const v = c.length > 3 ? merge(f[key], base, value) : value;
+            if (v == null) delete f[key]; else f[key] = v;
+            room.seeded = true; room.dirty = true;
+          }
+          ch.push(stale || (lock && lock !== me.id) ? [field, key, f[key] ?? null, true] : [field, key, f[key] ?? null]);
         }
-        if (ch.length) { room.seeded = true; room.dirty = true; all(room, { t: 'wset', ch }, me.id); }
+        // Echo to the writer too: every client observes the same server order, including conflicts.
+        send(ws, { t: 'wset', ch, from: me.id, seq: m.seq });
+        const accepted = ch.filter((c) => !c[3]);
+        if (accepted.length) all(room, { t: 'wset', ch: accepted, from: me.id, seq: m.seq }, me.id);
+      } else if (m.t === 'wlock' && worldKey(m.f, m.k) && m.f === 'containers') {
+        const key = m.f + ':' + m.k, holder = room.locks.get(key);
+        const ok = !holder || holder === me.id;
+        if (ok) {
+          room.locks.set(key, me.id);
+          const f = (room.doc[m.f] ??= {});
+          if (!(m.k in f) && object(m.value)) { f[m.k] = m.value; room.seeded = true; room.dirty = true; }
+          all(room, { t: 'wset', ch: [[m.f, m.k, f[m.k] ?? null]], force: true });
+        }
+        send(ws, { t: 'wlock', req: m.req, ok });
+      } else if ((m.t === 'wunlock' || m.t === 'wsave') && worldKey(m.f, m.k)) {
+        const key = m.f + ':' + m.k;
+        if (room.locks.get(key) !== me.id) return;
+        if (object(m.value)) {
+          (room.doc[m.f] ??= {})[m.k] = m.value;
+          room.seeded = true; room.dirty = true;
+          all(room, { t: 'wset', ch: [[m.f, m.k, m.value]], force: true, from: me.id });
+        }
+        if (m.t === 'wunlock') room.locks.delete(key);
       } else if (m.t === 'wseed' && m.doc && typeof m.doc === 'object') {
         if (room.seeded) send(ws, { t: 'wdoc', doc: room.doc }); // someone was first: take theirs
-        else { room.doc = m.doc; room.seeded = true; room.dirty = true; all(room, { t: 'wdoc', doc: room.doc }, me.id); log(`${me.name} brought their world to ${room.name}`); }
+        else { room.doc = cleanDoc(m.doc); room.seeded = true; room.dirty = true; all(room, { t: 'wdoc', doc: room.doc, from: me.id }); log(`${me.name} brought their world to ${room.name}`); }
       } else if ((m.t === 'cast' || m.t === 'to') && m.m && typeof m.m === 'object' && RELAY.has(m.m.t)) {
         // the shared foes (src/world/foesync.ts): passed on as they are, with who sent them
         const out = { ...m.m, from: me.id };
@@ -165,14 +224,17 @@ export function createMp(log = (m) => console.log('[mp] ' + m), opts = {}) {
     });
     ws.on('close', () => {
       if (!me) return;
-      room.players.delete(me.id); room.last = Date.now();
+      room.players.delete(me.id);
+      for (const [key, id] of room.locks) if (id === me.id) room.locks.delete(key);
+      room.last = Date.now();
+      for (const p of room.players.values()) if (p.st?.ride?.[0] === me.id) { const requested = p.st.ride; p.st.ride = undefined; p.st.gun = undefined; send(p.ws, { t: 'seats', ride: null, requested }); }
       all(room, { t: 'leave', id: me.id, name: me.name });
       log(`${me.name} left ${room.name} (${room.players.size}/${MP.max})`);
       if (!room.players.size) occupied(room, false); // nobody left: the room's clock stands still
       if (!dedicated && me.id === room.hostId) { // the longest-connected player hosts now; the world stays
         const next = [...room.players.values()].sort((a, b) => a.joined - b.joined)[0];
         room.hostId = next ? next.id : 0;
-        if (next) all(room, { t: 'host', id: room.hostId }); else { room.world = null; room.drops.clear(); room.doc = {}; room.seeded = false; log('empty: the next player to join hosts'); }
+        if (next) all(room, { t: 'host', id: room.hostId }); else log('empty: keeping the world for reconnecting players');
       }
     });
   });

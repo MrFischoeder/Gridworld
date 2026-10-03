@@ -3,7 +3,7 @@
 // it with `sendState` (about 10 times a second) and reads `peers`.
 
 /** Must match PROTOCOL in server/mp.mjs. */
-export const PROTOCOL = 2;
+export const PROTOCOL = 3;
 export const SEND_EVERY = 0.1;
 
 /** `away`: in the menu (still in the game: the others see you standing there). */
@@ -13,7 +13,7 @@ export const SEND_EVERY = 0.1;
  * it), in the order of their save. Older clients send 9 numbers (the 9th 1 = driving).
  */
 export type PeerCar = number[];
-export interface PeerState { p: [number, number, number]; yaw: number; pitch: number; loc: string; held: string; mv: boolean; away?: boolean; cars?: PeerCar[];
+export interface PeerState { p: [number, number, number]; yaw: number; pitch: number; loc: string; held: string; mv: boolean; away?: boolean; cars?: PeerCar[]; carIds?: string[];
   /** Riding in another player's vehicle: [owner id, the vehicle's index in their cars, seat]; `gun` = where they aim its cannon. */
   ride?: [number, number, number]; gun?: number }
 export interface Peer {
@@ -51,16 +51,16 @@ export interface WorldHooks {
   /** Joined: the room's shared world, whether anyone has brought one yet, and the room's world seed. */
   welcome(doc: WorldDoc, seeded: boolean, world: number): void;
   /** Take this whole world (someone else brought theirs first). */
-  doc(doc: WorldDoc): void;
-  /** The others' changes. */
-  set(ch: [string, string, unknown][]): void;
+  doc(doc: WorldDoc, from?: number): void;
+  /** Server-ordered changes, including our acknowledgements; force/rejected values replace stale local data. */
+  set(ch: [string, string, unknown, boolean?][], from?: number, seq?: number, force?: boolean): void;
 }
 let worldHooks: WorldHooks | null = null;
 export function onWorld(h: WorldHooks) { worldHooks = h; }
 /** Changes to the shared world; null deletes. */
-export function sendWorld(ch: [string, string, unknown][]): boolean {
+export function sendWorld(ch: [string, string, unknown, unknown?][], seq?: number): boolean {
   if (!online() || net.ws?.readyState !== 1 || !ch.length) return false;
-  net.ws.send(JSON.stringify({ t: 'wset', ch }));
+  net.ws.send(JSON.stringify({ t: 'wset', ch, seq }));
   return true;
 }
 /** Bring your world to a room nobody has brought one to. */
@@ -76,6 +76,7 @@ export interface NetHooks {
   closed(why: string): void;
 }
 
+export const activeContainers = new Set<string>();
 export const net = {
   ws: null as WebSocket | null,
   /** Our id on the server, and the host's (0 = not connected). */
@@ -133,6 +134,7 @@ export function connect(url: string, me: { name: string; world: number; time: nu
   ws.onmessage = (e) => {
     let m: any;
     try { m = JSON.parse(String(e.data)); } catch { return; }
+    if (net.ws !== ws) return;
     switch (m.t) {
       case 'welcome':
         welcomed = true; net.id = m.id; net.host = m.host; net.dedicated = !!m.dedicated; net.room = m.room ?? null; net.peers.clear();
@@ -149,14 +151,16 @@ export function connect(url: string, me: { name: string; world: number; time: nu
         for (const s of m.ps) {
           const p = net.peers.get(s.id);
           if (!p) continue;
-          p.prev = p.st; p.st = { p: s.p, yaw: s.yaw, pitch: s.pitch, loc: s.loc, held: s.held, mv: s.mv, away: !!s.away, cars: Array.isArray(s.cars) ? s.cars : [], ride: Array.isArray(s.ride) ? s.ride : undefined, gun: typeof s.gun === 'number' ? s.gun : undefined }; p.at = now;
+          p.prev = p.st; p.st = { p: s.p, yaw: s.yaw, pitch: s.pitch, loc: s.loc, held: s.held, mv: s.mv, away: !!s.away, cars: Array.isArray(s.cars) ? s.cars : [], carIds: s.carIds, ride: Array.isArray(s.ride) ? s.ride : undefined, gun: typeof s.gun === 'number' ? s.gun : undefined }; p.at = now;
           p.hist.push({ t: now, s: p.st }); if (p.hist.length > 8) p.hist.shift();
         }
         if (!isHost()) h.clock(m.time);
         break;
       }
-      case 'wset': worldHooks?.set(m.ch); break;
-      case 'wdoc': worldHooks?.doc(m.doc ?? {}); break;
+      case 'seats': seatHook?.(m); break;
+      case 'wlock': lockReplies.get(m.req)?.(!!m.ok); lockReplies.delete(m.req); break;
+      case 'wset': worldHooks?.set(m.ch, m.from, m.seq, !!m.force); break;
+      case 'wdoc': worldHooks?.doc(m.doc ?? {}, m.from); break;
       case 'drop': net.drops.set(m.d.id, m.d); break;
       case 'gone': net.drops.delete(m.id); break;
       case 'got': net.drops.delete(m.d.id); gotHook?.(m.d); break;
@@ -168,12 +172,14 @@ export function connect(url: string, me: { name: string; world: number; time: nu
   };
   ws.onclose = () => {
     if (net.ws !== ws) return;
+    clearLocks();
     net.ws = null; net.id = 0; net.host = 0; net.dedicated = false; net.room = null; net.peers.clear(); net.drops.clear();
     h.closed(why || (welcomed ? 'Disconnected from the server.' : `Could not reach a server at ${url}.`));
   };
 }
 export function disconnect() {
   const ws = net.ws;
+  clearLocks();
   net.ws = null; net.id = 0; net.host = 0; net.dedicated = false; net.room = null; net.peers.clear(); net.drops.clear();
   if (ws) { ws.onclose = null; ws.close(); }
 }
@@ -210,3 +216,27 @@ export function sendChat(text: string) {
   hooks?.say(`You: ${t}`, 'chat');
   return true;
 }
+
+let lockSeq = 0;
+const lockReplies = new Map<number, (ok: boolean) => void>();
+function clearLocks() { activeContainers.clear(); for (const reply of lockReplies.values()) reply(false); lockReplies.clear(); }
+/** Reserve a shared container before changing the hero's inventory. Released on close or disconnect. */
+export function lockContainer(k: string, value: unknown): Promise<boolean> {
+  if (!online() || net.ws?.readyState !== 1) return Promise.resolve(false);
+  const req = ++lockSeq;
+  return new Promise((resolve) => {
+    lockReplies.set(req, (ok) => { if (ok) activeContainers.add(k); resolve(ok); });
+    net.ws!.send(JSON.stringify({ t: 'wlock', f: 'containers', k, value, req }));
+  });
+}
+export function saveContainer(k: string, value: unknown) {
+  if (online() && net.ws?.readyState === 1) net.ws.send(JSON.stringify({ t: 'wsave', f: 'containers', k, value }));
+}
+export function unlockContainer(k: string, value?: unknown) {
+  activeContainers.delete(k);
+  if (online() && net.ws?.readyState === 1) net.ws.send(JSON.stringify({ t: 'wunlock', f: 'containers', k, value }));
+}
+
+export interface SeatDecision { ride: [number, number, number] | null; requested: [number, number, number] | null; seats?: number[]; requestedSeats?: number[] }
+let seatHook: ((m: SeatDecision) => void) | null = null;
+export function onSeats(f: (m: SeatDecision) => void) { seatHook = f; }
