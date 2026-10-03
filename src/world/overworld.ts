@@ -49,7 +49,7 @@ import { generateWreck } from '../gen/wreck';
 import { drawWreck } from './wreck';
 import { tryPlaceDoor } from '../gen/doors';
 import { PropBatch, sharedFill, sharedLine } from './props';
-import { makeStair, type Door, type Stair } from './doors';
+import { makeStair, disposeStair, type Door, type Stair } from './doors';
 import { makeNpc, type Npc } from './npc';
 import { foeRules, type Drone } from './enemies';
 import { spawnVehicles, clearVehicles, vehicleHit, syncFound, shielded, driving, damageVehicle, vehiclesNear } from './vehicles';
@@ -478,7 +478,7 @@ export function reloadStruct(id: number) {
 function dropStruct(s: Structure) {
   scene.remove(s.group); s.group.traverse((o) => (o as THREE.Mesh).geometry?.dispose());
   for (const d of s.doors) { scene.remove(d.g); W.doors.splice(W.doors.indexOf(d), 1); }
-  for (const st of s.stairs) W.portals.splice(W.portals.indexOf(st), 1);
+  for (const st of s.stairs) { disposeStair(st); W.portals.splice(W.portals.indexOf(st), 1); }
   for (const n of s.npcs) { scene.remove(n.g); W.npcs.splice(W.npcs.indexOf(n), 1); }
   if (s.village && OW.village === s.village) { OW.village = null; W.villageWalk = []; } // another village may have loaded meanwhile
   if (s.camp) despawnCamp(s.poi.id);

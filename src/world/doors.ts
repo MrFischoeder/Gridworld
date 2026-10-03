@@ -4,6 +4,8 @@ import { scene, lineMat, V, circlePts } from './render';
 import { G, W } from '../game';
 import { DIRV, type Dir } from '../core/rng';
 import { setDoorCells, type PlacedDoor } from '../gen/doors';
+import { smallSteps, type StepBox } from '../core/steps';
+import { PropBatch } from './props';
 import type { PortalSpec } from '../gen/stairs';
 import { EYE } from './player';
 import { burst } from './fx';
@@ -20,6 +22,7 @@ export interface Stair {
   axis: 'x' | 'z'; label: string; spawn: THREE.Vector3; yawIn: number; yawOut: number;
   /** Set on the stairwell of a ruin (its way down). */
   ruinId?: number;
+  steps: StepBox[]; stepModel: THREE.Group;
 }
 
 function panelGeo() {
@@ -78,7 +81,7 @@ export function unlockDoor(d: Door) {
 // ---------- stairwells ----------
 /** Eye-height point along a stairwell (t: 0 = doorway, < 0 = inside the room). */
 export function stairPoint(st: Pick<Stair, 'up' | 'cx' | 'cz' | 'o' | 'y0'>, t: number) {
-  const fl = t <= 1 ? 0 : (st.up ? Math.min(t - 1, 6) : -Math.min(t - 1, 6));
+  const fl = (st.up ? 1 : -1) * Math.max(0, Math.min(t - 0.25, 6));
   return V(st.cx + st.o[0] * t, st.y0 + fl + EYE, st.cz + st.o[1] * t);
 }
 export function signTexture(text: string, color: string, font = 56) {
@@ -99,9 +102,15 @@ export function makeStair(p: PortalSpec, placed: PlacedDoor, idx: number, text: 
   sign.position.set(0, 3.45, inward * 0.52); if (inward < 0) sign.rotation.y = Math.PI;
   door.g.add(sign);
   door.frameMat.color.setHex(0x5cc8ff);
+  const steps = smallSteps({ ...p, y0: placed.y0 });
+  const stepBatch = new PropBatch();
+  for (const b of steps) stepBatch.box(b.x - door.cx, b.y - door.y0, b.z - door.cz, b.x + b.w - door.cx, b.y + b.h - door.y0, b.z + b.d - door.cz, 0x5cc8ff);
+  const stepModel = stepBatch.build();
+  if (p.axis === 'x') stepModel.rotation.y = -Math.PI / 2;
+  door.g.add(stepModel);
   const inv = V(-o[0], 0, -o[1]), y0 = placed.y0;
   return {
-    door, key: p.key, go, dir: p.dir, up: p.up, o, cx, cz, y0, axis: p.axis, label,
+    door, steps, stepModel, key: p.key, go, dir: p.dir, up: p.up, o, cx, cz, y0, axis: p.axis, label,
     spawn: V(cx + inv.x * 2.2, y0, cz + inv.z * 2.2), yawIn: Math.atan2(o[0], o[1]), yawOut: Math.atan2(-o[0], -o[1]),
   };
 }
@@ -137,3 +146,6 @@ export function updateTrans(dt: number, camera: THREE.Camera) {
   if (T.st.door) { T.st.door.open = 1; setDoorBlock(T.st.door, false); }
   if (k >= 1) { if (T.phase === 'out') T.go!(); else { G.trans = null; el.warp.style.opacity = '0'; } }
 }
+
+/** Only the new stair geometry is owned here; door panels use shared geometry. */
+export function disposeStair(st: Stair) { st.stepModel.traverse(o => (o as THREE.Mesh).geometry?.dispose()); }

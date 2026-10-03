@@ -137,7 +137,7 @@ export function generateDungeon(seed: number, opts: DungeonOpts = {}): DungeonMa
   }
 
   const last = zones[NZ_ - 1][0];
-  const hatch = opts.legacy ? { x: last.cx, z: last.cz } : opts.depth !== undefined && opts.depth >= 1 && opts.depth < MAX_DUNGEON_DEPTH ? { x: rooms[0].cx, z: rooms[0].cz } : null;
+  const hatch = opts.legacy ? { x: last.cx, z: last.cz } : null;
   const inside = (r: Room, m = 1) => ({ x: ri(r.x + m, r.x + r.w - 1 - m), z: ri(r.z + m, r.z + r.d - 1 - m) });
   const chests: { x: number; z: number }[] = [], chestRooms = new Set<Room>();
   for (const r of rooms) if (r.dead) { chests.push(inside(r)); chestRooms.add(r); }
@@ -161,6 +161,19 @@ export function generateDungeon(seed: number, opts: DungeonOpts = {}): DungeonMa
         stairBoxes.push(probe); stairOps.push(...stairOpsFor(dir, wl.m, c, true));
         portals.push({ key: 'V', dir, m: wl.m, c, up: true, axis: DIRV[dir][0] ? 'x' : 'z' }); done = true;
       }
+    }
+  }
+  if (!opts.legacy && opts.depth !== undefined && opts.depth >= 1 && opts.depth < MAX_DUNGEON_DEPTH) {
+    const r = rooms[0]; let done = false;
+    for (const dir of ['S', 'E', 'W', 'N'] as Dir[]) {
+      const wl = wallOf(r, dir);
+      for (let c = wl.lo; c <= wl.hi && !done; c++) {
+        const probe = sbox(dir, wl.m, c, 0, SL + 1, 0, 1, 'x', 2);
+        if (!free(probe, r)) continue;
+        stairBoxes.push(probe); stairOps.push(...stairOpsFor(dir, wl.m, c, false));
+        portals.push({ key: 'D', dir, m: wl.m, c, up: false, axis: DIRV[dir][0] ? 'x' : 'z' }); done = true;
+      }
+      if (done) break;
     }
   }
   const order: Record<Dir, (p: Room, q: Room) => number> = {

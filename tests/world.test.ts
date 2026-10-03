@@ -1,3 +1,4 @@
+import { smallSteps, stepHit } from '../src/core/steps';
 import { describe, it, expect } from 'vitest';
 import { Terrain, inRect, rectDist, MAX_H } from '../src/gen/terrain';
 import { regionInfo, poisNear, findPoi, CHUNK, WORLD_W } from '../src/gen/regions';
@@ -153,7 +154,10 @@ describe('ruins', () => {
         expect(seen.has(`${fx},${y},${fz}`), `${p.name} world ${w}`).toBe(true);
         // the shaft itself leads down: open the door and walk to the bottom landing
         const d = tryPlaceDoor(ground, { axis: pt.axis, m: pt.m, c: pt.c, stair: true, y0: y }, [])!; setDoorCells(ground, d.cells, false);
-        const deep = reachableCells(ground, [fx, y, fz]);
+        // Reachability samples the new fractional solids as well as the cleared voxel shaft.
+        const steps = smallSteps({ ...pt, y0: y });
+        const walking: Space = { empty: (x, yy, z) => ground.empty(x, yy, z) && !stepHit(steps, x + 0.5, yy, z + 0.5, 0, 1), setCell: ground.setCell };
+        const deep = reachableCells(walking, [fx, y, fz]);
         const bm = pt.m + (o[0] || o[1]) * 8, [bx, bz] = pt.axis === 'x' ? [bm, pt.c] : [pt.c, bm];
         expect(deep.has(`${bx},${y - 6},${bz}`), `shaft of ${p.name}`).toBe(true);
       }

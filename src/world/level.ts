@@ -8,6 +8,8 @@ import { placeCarrier, dropCarrier } from './datacarriers';
 import { landingSite } from '../gen/landing';
 import { Terrain } from '../gen/terrain';
 import { scene, fog, lineMat, add, V, fillMat, GRID } from './render';
+import { dungeonTurrets } from '../gen/mountedturrets';
+import { clearMountedTurrets, loadMountedTurrets, mountedTurretHit } from './mountedturrets';
 import { cityEntrance, dungeonSeed } from '../gen/citydungeons';
 import { G, W } from '../game';
 import { hash, OPP, DIRV, type Dir } from '../core/rng';
@@ -18,7 +20,7 @@ import { findPoi, allVillages, worldDist, nearX, poisNear, GRIDHOLM_ID, CHUNK, t
 import { isDiscovered } from '../save';
 import { WALL_TIERS, STONE_TIER, HOUSE, WALK, type VillageMap } from '../gen/village';
 import { placeTunnelDoors, tryPlaceDoor, type PlacedDoor } from '../gen/doors';
-import { makeDoor, makeStair, arriveVia, signTexture } from './doors';
+import { makeDoor, makeStair, disposeStair, arriveVia, signTexture } from './doors';
 import { makeChest, makeHatch, setCrystalXp } from './loot';
 import { placeCrystals, clearCrystals } from './flora';
 import { decorateDungeon } from './dungeondeco';
@@ -66,12 +68,13 @@ export function voxelObject(grid: VoxelGrid, skyY = Infinity, outline?: OutlineS
 
 /** Removes every entity of the current place (the open world also unloads its chunks and structures). */
 function clearLevel() {
-  dropCarrier();
+  dropCarrier(); clearMountedTurrets();
   closeWorld(); leaveCave(); clearCrystals(); clearFires(); clearBenches(); clearFlags(); cancelPlacing(true); cancelBridgePlacing(true); cancelPierPlacing(true); clearBoats(); clearBases(); clearTurrets();
   if (worldGroup) { scene.remove(worldGroup); worldGroup.traverse((o) => (o as THREE.Mesh).geometry?.dispose()); worldGroup = null; }
   [...W.crystals.map((c) => c.m), ...W.pickups.map((p) => p.g), ...W.chests.map((c) => c.g), ...W.doors.map((d) => d.g), ...W.bosses.map((b) => b.g),
     ...W.orbs.map((o) => o.m), ...W.drones.map((t) => t.g), ...W.npcs.map((n) => n.g)].forEach((o) => scene.remove(o));
   if (W.hatch) scene.remove(W.hatch.g);
+  W.portals.forEach(disposeStair);
   W.crystals = []; W.pickups = []; W.doors = []; W.orbs = []; W.chests = []; W.bosses = []; W.drones = []; W.npcs = []; W.portals = [];
   W.hatch = null; W.spawnCells = []; W.arrivalStair = null; W.villageWalk = []; W.nearNpc = null; W.talkNpc = null;
   G.map = null;
@@ -120,6 +123,7 @@ export function loadDungeon(arriveDir: string | null) {
     const name = ruinName(d.ruinId);
     W.portals.push(p.key === 'V'
       ? makeStair(p, pd, placed.length - 1, '▲ ' + (d.depth > 1 && !wreck ? 'DEPTH ' + (d.depth - 1) : name.toUpperCase()), d.depth > 1 && !wreck ? 'Stairs up to depth ' + (d.depth - 1) : 'Stairs up to the ' + name, () => { if (d.depth > 1 && !wreck) ascend(); else exitToRuin(); })
+      : p.key === 'D' ? makeStair(p, pd, placed.length - 1, '▼ DEPTH ' + (d.depth + 1), 'Stairs down to depth ' + (d.depth + 1), descend)
       : makeStair(p, pd, placed.length - 1, (p.up ? '▲ ' : '▼ ') + 'SECTOR ' + tx + ', ' + tz, 'Stairs ' + (p.up ? 'up' : 'down') + ' to sector ' + tx + ', ' + tz, () => travel(p.dir)));
   }
   W.bosses = map.bosses.map(makeBoss).filter((x) => !!x);
@@ -139,6 +143,7 @@ export function loadDungeon(arriveDir: string | null) {
     setRobotEnv({ ground: () => 0, danger: () => lv, nearRuin: () => false, forbidden: () => false, water: () => null }, { indoor: true });
     if (spawnAuthority()) spawnGuards(map.guards ?? [], lv); // else the player already inside has them (shared foes)
   }
+  if (!wreck) { loadMountedTurrets(dungeonTurrets(map, G.grid)); G.obstacle = mountedTurretHit; }
   onDungeonLoaded(map);
   placeCarrier();
   setMiniMode('voxel'); buildMini();
@@ -383,14 +388,14 @@ export function saveOverworldPos() {
 // ---------- moving between places ----------
 export function descend() {
   const d = G.char.dungeon;
-  if (!d || d.cave || G.trans || !W.hatch || d.depth >= MAX_DUNGEON_DEPTH) return;
+  if (!d || d.cave || (!W.hatch && !W.portals.some(p => p.key === 'D')) || d.depth >= MAX_DUNGEON_DEPTH) return;
   d.depth++; saveChar(); loadDungeon('V'); showToast('Depth ' + depth()); arriveVia(W.arrivalStair);
 }
 export function ascend() {
   const d = G.char.dungeon;
   if (!d || d.cave) return;
   if (d.depth <= 1) { exitToRuin(); return; }
-  d.depth--; saveChar(); loadDungeon(null); showToast('Depth ' + depth()); arriveVia(null);
+  d.depth--; saveChar(); loadDungeon('D'); showToast('Depth ' + depth()); arriveVia(W.arrivalStair);
 }
 export function travel(dir: Dir) {
   const d = G.char.dungeon!;

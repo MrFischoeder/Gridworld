@@ -25,6 +25,7 @@ import { updateCompass } from './ui/compass';
 import { syncBenches } from './world/benches';
 import { syncFlags, updatePlacing, isPlacing, confirmPlacing, cancelPlacing } from './world/claims';
 import { syncBases, isBuilding, updateBuilding, placePart, stopBuilding } from './world/building';
+import { updateMountedTurrets } from './world/mountedturrets';
 import { syncTurrets, updateTurrets } from './world/turrets';
 import { updateFires } from './world/cooking';
 import { updatePower } from './world/power';
@@ -153,7 +154,7 @@ function frame(now: number) {
       if (G.firing) { G.firing = false; placePart(); }
       if (G.aiming) { G.aiming = false; stopBuilding(); }
     } else if (G.firing && !driving.v && !inBoat() && !riding()) attack();
-    updateTurrets(dt);
+    updateTurrets(dt); updateMountedTurrets(dt);
     updateGun(dt, !driving.v && !inBoat() && !riding());
     if (driving.v) fireCannon(dt);
     updateDoors(dt);

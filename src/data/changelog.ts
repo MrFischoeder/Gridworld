@@ -4,6 +4,16 @@ export interface Change { v: string; date: string; title: string; notes: string[
 
 export const CHANGELOG: Change[] = [
   {
+    v: '0.114.0', date: '2026-10-03', title: 'Small steps and ancient defences',
+    notes: [
+      'Ruin stairwells now have real 25 cm steps. Walk or sprint up and down without jumping.',
+      'The single descent on floors 1 and 2 is now a marked staircase near the return stairs, rather than a flat hatch. The three-floor limit remains.',
+      'Labyrinths contain automatic ancient turrets mounted in walls, floors and ceilings. Their sensors warn before firing; walls and closed doors block their shots.',
+      'Shoot or strike a turret to destroy it. Destroyed defences stay gone after reloading and their destruction is shared in multiplayer.',
+      'These ancient defences use a reusable mount and model specification for future player construction. Building these mounted variants is not available yet.',
+    ],
+  },
+  {
     v: '0.113.0', date: '2026-10-03', title: 'Three floors, one way down',
     notes: [
       'Ruin and city-vault labyrinths have at most three floors. Floors 1 and 2 each have exactly one descent; floor 3 has none.',
