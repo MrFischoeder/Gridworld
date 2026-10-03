@@ -4,6 +4,16 @@ export interface Change { v: string; date: string; title: string; notes: string[
 
 export const CHANGELOG: Change[] = [
   {
+    v: '0.111.1', date: '2026-10-03', title: 'Multiplayer consistency fixes',
+    notes: [
+      'World changes now return to everyone, including the player who made them. Independent property edits and different dungeon openings are preserved when players act together.',
+      'Only one player at a time can search a shared chest or locker. The next player sees what remains, and the chest becomes available when its visitor closes it or disconnects.',
+      'The server resolves competing passenger and gunner seat requests. Drivers and riders keep their existing roles; removed vehicles release their passengers.',
+      'Joining applies the current shared dungeon progress after changing worlds. Hosted games retain their shared world while everyone is disconnected, until the server restarts.',
+      'Servers and clients must both update to this version. Vehicle ownership, raiders, dungeon drones and bosses retain their existing multiplayer limitations.',
+    ],
+  },
+  {
     v: '0.111.0', date: '2026-10-28', title: 'Shared foes',
     notes: [
       'On a server everyone now fights the same enemies: creatures, robots and bandits (field spawns, camps, city garrisons, village raids, wreck guards) are the same for every player in a place.',
