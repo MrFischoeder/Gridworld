@@ -396,3 +396,16 @@ body.intro #speech{display:none}
 
 #gate-transit{position:fixed;inset:0;width:100vw;height:100vh;z-index:10000;background:#010508}
 .gate-actions{display:flex;justify-content:center;gap:12px}
+
+/* Drone opening: the film owns the screen and returns to the existing menu. */
+body.cinematic > *:not(#view):not(#cinematic){visibility:hidden}
+#cinematic{position:fixed;inset:0;z-index:80;color:#c1ffd4;pointer-events:none}
+#cinematic .letterbox{position:absolute;left:0;right:0;height:7%;background:#000}
+#cinematic .top{top:0} #cinematic .bottom{bottom:0}
+#cinematic .shot{position:absolute;left:4%;top:10%;font-size:20px;letter-spacing:.13em;text-transform:uppercase;opacity:.7}
+#cinematic .credits{position:absolute;left:0;right:0;bottom:14%;text-align:center;text-shadow:0 0 18px #2fe060}
+#cinematic h1{font-size:clamp(48px,6vw,88px);margin:0 0 12px;color:#8bffac;font-weight:normal}
+#cinematic .credits p{font-size:clamp(22px,2.3vw,32px);margin:6px 0;letter-spacing:.08em}
+#cinematic .music{color:#80e8ff}
+#cinematic .veil{position:absolute;inset:0;background:#000}
+#cinematic .skip{position:absolute;right:24px;bottom:12px;pointer-events:auto;font-size:18px;background:#000c;color:#c1ffd4}

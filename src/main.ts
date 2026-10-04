@@ -125,10 +125,14 @@ if (G.char.loc === 'dungeon' && G.char.dungeon) loadDungeon(null); else { G.char
 
 refreshGunLook(); syncHeld();
 renderer.info.autoReset = false;
+let cinematic: typeof import('./ui/cinematic') | null = null;
 let last = performance.now(), perfT = 0, saveT = 0, clockT = 0;
+addEventListener('visibilitychange', () => { last = performance.now(); });
 let benchT = 0; // workbenches in the wilds are synced about once a second
 function frame(now: number) {
-  const dt = Math.min((now - last) / 1000, 0.05); last = now;
+  const elapsed = (now - last) / 1000;
+  const dt = Math.min(elapsed, 0.05); last = now;
+  if (cinematic?.cinematicOn()) { cinematic.renderCinematic(renderer, elapsed); requestAnimationFrame(frame); return; }
   if (introOn() && !renderIntro(renderer, dt)) { requestAnimationFrame(frame); return; } // the opening has the screen
   const time = now / 1000;
   const outdoors = G.char.loc === 'overworld';
@@ -217,7 +221,10 @@ function frame(now: number) {
   requestAnimationFrame(frame);
 }
 initItemTips();
-requestAnimationFrame(frame);
+// Load the display models after gameplay modules initialise, avoiding their world import cycles.
+void import('./ui/cinematic').then(module => {
+  cinematic = module; module.playCinematic(() => showMenu(false)); last = performance.now(); requestAnimationFrame(frame);
+});
 
 // Gate travel moves the existing occupants and vehicle, then streams the destination.
 setGateTravel((gate, x, z, heading, car) => {

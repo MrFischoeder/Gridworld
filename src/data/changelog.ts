@@ -4,6 +4,14 @@ export interface Change { v: string; date: string; title: string; notes: string[
 
 export const CHANGELOG: Change[] = [
   {
+    v: '0.124.0', date: '2026-10-04', title: 'Twenty-second drone opening',
+    notes: [
+      'A twenty-second opening film plays before the menu: fly through Gridholm’s gate and circle its houses, then discover ancient ruins and an active portal, fallen cities, rivers and mountain ranges.',
+      'Close flybys show robots, armed bandits, wild fauna and a moving vehicle convoy using the game’s models. GRIDWORLD gradually appears, followed by Designed by Luki and Music by Iskra.',
+      'Skip with the on-screen button, Space, Enter or Escape; replay with Opening film in the menu. The separate showcase leaves your position, world clock, foes and saves untouched. New heroes still have their shipwreck story after Play.',
+    ],
+  },
+  {
     v: '0.123.0', date: '2026-10-04', title: 'Faceted natural boulders',
     notes: [
       'Scattered stones and large terrain boulders now have broad bodies, uneven shoulders and flat broken crowns instead of pyramid tips. Their faceted shapes vary deterministically.',

@@ -21,8 +21,8 @@ export interface MenuHooks {
   freshStart(): void;
 }
 
-export function showMenu() {
-  G.playing = false; G.firing = false; menu.style.display = 'flex'; startBtn.textContent = 'Resume'; showName(); renderSheet(); refreshMp();
+export function showMenu(resume = true) {
+  G.playing = false; G.firing = false; menu.style.display = 'flex'; if (resume) startBtn.textContent = 'Resume'; showName(); renderSheet(); refreshMp();
 }
 
 export function initMenu(h: MenuHooks) {
@@ -45,6 +45,7 @@ export function initMenu(h: MenuHooks) {
       G.playing = true;
     });
   };
+  $('replayCinematic').onclick = async () => { const film = await import('./cinematic'); film.playCinematic(() => showMenu(false)); };
   $('changelog').onclick = openChangelog;
   $('reroll').onclick = () => { if (mpLocked()) { nameHint.textContent = 'Leave the multiplayer game first: online, the host\'s world is everyone\'s.'; return; } h.newWorld((Math.random() * 1e6) | 0); startBtn.textContent = 'Play'; };
   let wipeArmed = false;
