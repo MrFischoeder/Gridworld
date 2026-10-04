@@ -10,7 +10,6 @@ import { seaMask } from './seas';
 import { mountainMask } from './mountains';
 import { nearRiver } from './rivers';
 import { inCity } from './cities';
-import { chasmsIn } from './chasms';
 import { lakesIn, LAKE_REACH } from './water';
 
 export const GATE_CLEAR = 24, GATE_BLEND = 10;
@@ -41,7 +40,7 @@ function gateNetwork(world: number, count: number): WorldGate[] {
       if (poisNear(world, x, z, 220).some(p => Math.hypot(Math.max(p.rect.x0 - x, 0, x - p.rect.x1), Math.max(p.rect.z0 - z, 0, z - p.rect.z1)) < p.flat + p.blend + 35)) continue;
       if (seaMask(world, x, z) > 0 || mountainMask(world, x, z) > .01 || nearRiver(world, x, z, 65)) continue;
       const rect = { x0: x - 25, z0: z - 25, x1: x + 25, z1: z + 25 };
-      if (chasmsIn(world, rect).length || lakesIn(base, rect).some(l => Math.hypot(l.x - x, l.z - z) < l.r * LAKE_REACH * 1.3 + 30)) continue;
+      if (lakesIn(base, rect).some(l => Math.hypot(l.x - x, l.z - z) < l.r * LAKE_REACH * 1.3 + 30)) continue;
       site = [x, z, Math.round(base.base(x, z))]; break;
     }
     if (!site) throw new Error(`No dry site for ancient gate ${id} in world ${world}`);

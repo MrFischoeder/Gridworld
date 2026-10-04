@@ -1,11 +1,10 @@
 // Developer world map (console: `map`): the whole planet, explored or not, with every village and every toxic fog
-// zone (lime rings), ancient gate and canyon (orange rim and descent paths); zoom in and the ruins, bandit camps and crash
+// zone (lime rings), ancient gate and megalith; zoom in and the ruins, bandit camps and crash
 // sites of the regions in view appear too. Drag to pan, wheel to zoom, click a
 // place (or any spot) to teleport there. Only a testing tool: nothing here is part of the game proper.
 import { G } from '../game';
 import { allVillages, regionInfo, regionOf, X_MIN, WORLD_W, POLE_Z, POLAR_Z, REGION, wrapDx, type Poi } from '../gen/regions';
 import { worldGates, gateName, gatePoint, type WorldGate } from '../gen/worldgates';
-import { chasmsIn, chasmPath, CHASM_CELL, type Chasm } from '../gen/chasms';
 import { worldMegaliths, megalithPoint, type Megalith } from '../gen/megaliths';
 import { dangerAt } from '../gen/danger';
 import { seaMask } from '../gen/seas';
@@ -20,7 +19,7 @@ const root = $('devmap'), cv = $<HTMLCanvasElement>('devmapCv'), info = $('devma
 /** View: centre (world metres) and scale (metres per pixel). */
 const view = { x: 0, z: 0, mpp: 60 };
 let hoverMegalith: Megalith | null = null;
-let hoverGate: WorldGate | null = null, hoverChasm: Chasm | null = null;
+let hoverGate: WorldGate | null = null;
 let open = false, hover: Poi | null = null, hoverFog: FogZone | null = null, mouse = { x: 0, y: 0 }, drag: { x: number; y: number; vx: number; vz: number; moved: boolean } | null = null;
 
 const COLOR: Record<string, string> = { village: '#ffd060', ruin: '#5cc8ff', camp: '#ff6a4a', wreck: '#7dffc8' };
@@ -50,20 +49,6 @@ function scanFog(ms: number) {
   while (!fogScan.done && performance.now() - t0 < ms) {
     for (let rz = -R_Z; rz <= R_Z; rz++) { const f = regionFog(w, fogScan.rx, rz); if (f) fogScan.zones.push(f); }
     if (++fogScan.rx >= R_MIN + WORLD_W / REGION) fogScan.done = true;
-  }
-}
-
-/** Whole-planet canyon index, deduplicated by stable id and generated in short frame slices. */
-const canyonScan = { world: NaN, column: 0, row: 0, start: 0, zones: new Map<string, Chasm>(), done: false };
-const C_Z = Math.ceil(POLAR_Z / CHASM_CELL), C_N = WORLD_W / CHASM_CELL;
-function scanCanyons(ms: number) {
-  const world = G.char.world;
-  if (canyonScan.world !== world) Object.assign(canyonScan, { world, column: 0, row: -C_Z, start: Math.floor(view.x / CHASM_CELL), zones: new Map<string, Chasm>(), done: false });
-  const started = performance.now();
-  while (!canyonScan.done && performance.now() - started < ms) {
-    const x = (canyonScan.start + canyonScan.column) * CHASM_CELL, z = canyonScan.row * CHASM_CELL;
-    for (const c of chasmsIn(world, { x0: x, z0: z, x1: x + CHASM_CELL, z1: z + CHASM_CELL })) canyonScan.zones.set(c.id, c);
-    if (++canyonScan.row >= C_Z) { canyonScan.row = -C_Z; if (++canyonScan.column >= C_N) canyonScan.done = true; }
   }
 }
 
@@ -153,24 +138,6 @@ function draw() {
     const d = Math.hypot(sx - mouse.x, sy - mouse.y);
     if (d < hd) { hd = d; hover = p; }
   }
-  // Canyon rims retain their real orientation and footprint; dots remain visible at planetary zoom.
-  hoverChasm = null; let cd = 10;
-  for (const c of canyonScan.zones.values()) {
-    const [sx, sy] = toScreen(c.x, c.z), halfL = Math.max(5, c.length / view.mpp / 2), halfW = Math.max(2, c.width / view.mpp / 2);
-    if (sx < -halfL - halfW || sy < -halfL - halfW || sx > W + halfL + halfW || sy > H + halfL + halfW) continue;
-    ctx.save(); ctx.translate(sx, sy); ctx.rotate(Math.atan2(c.dz, c.dx));
-    ctx.fillStyle = 'rgba(255,154,74,.2)'; ctx.strokeStyle = '#ff9a4a'; ctx.lineWidth = 2;
-    ctx.fillRect(-halfL, -halfW, halfL * 2, halfW * 2); ctx.strokeRect(-halfL, -halfW, halfL * 2, halfW * 2); ctx.restore();
-    if (view.mpp < 2) for (let i = 0; i < c.entries; i++) {
-      ctx.strokeStyle = '#ffd060'; ctx.lineWidth = 2; ctx.beginPath();
-      for (let j = 0; j <= 12; j++) { const [x, z] = chasmPath(c, i, j / 12), [px, py] = toScreen(x, z); if (j) ctx.lineTo(px, py); else ctx.moveTo(px, py); }
-      ctx.stroke(); const [x, z] = chasmPath(c, i, 0), [px, py] = toScreen(x, z); ctx.fillStyle = '#ffd060'; ctx.fillRect(px - 3, py - 3, 6, 6);
-    }
-    if (labels) { ctx.fillStyle = '#ff9a4a'; ctx.fillText('Canyon', sx, sy - halfL * Math.abs(c.dz) - halfW - 6); }
-    const ox = mouse.x - sx, oz = mouse.y - sy, u = ox * c.dx + oz * c.dz, v = -ox * c.dz + oz * c.dx;
-    const distance = Math.hypot(Math.max(0, Math.abs(u) - halfL), Math.max(0, Math.abs(v) - halfW));
-    if (distance < cd) { cd = distance; hoverChasm = c; }
-  }
   hoverMegalith = null; let md = 12;
   const monuments = worldMegaliths(G.char.world);
   for (const m of monuments) {
@@ -191,11 +158,9 @@ function draw() {
     ctx.closePath(); ctx.stroke(); if (labels) ctx.fillText(gateName(g), sx, sy - r - 6);
     const d = Math.hypot(sx - mouse.x, sy - mouse.y); if (d < gd) { gd = d; hoverGate = g; }
   }
-  if (hoverGate) { hover = null; hoverFog = null; hoverChasm = null; hoverMegalith = null; }
-  else if (hoverMegalith) { hover = null; hoverFog = null; hoverChasm = null; }
-  else if (hover) hoverChasm = null;
-  else if (hoverChasm) hoverFog = null;
-  const feature = hoverGate ?? hoverMegalith ?? hoverChasm;
+  if (hoverGate) { hover = null; hoverFog = null; hoverMegalith = null; }
+  else if (hoverMegalith) { hover = null; hoverFog = null; }
+  const feature = hoverGate ?? hoverMegalith;
   if (feature) { const [sx, sy] = toScreen(feature.x, feature.z); ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5; ctx.strokeRect(sx - 10, sy - 10, 20, 20); }
   // the player
   const [px, py] = toScreen(G.pos.x, G.pos.z);
@@ -205,16 +170,14 @@ function draw() {
   if (hover) { const [hx, hy] = toScreen(hover.x, hover.z); ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5; ctx.strokeRect(hx - 8, hy - 8, 16, 16); }
   const [mx, mz] = toWorld(mouse.x, mouse.y);
   const fogNote = fogScan.done ? ` · ${fogScan.zones.length} toxic fog zones` : ` · finding toxic fog ${Math.round((fogScan.rx - R_MIN) / (WORLD_W / REGION) * 100)}%`;
-  const canyonNote = canyonScan.done ? ` · ${canyonScan.zones.size} canyons` : ` · finding canyons ${Math.floor((canyonScan.column + (canyonScan.row + C_Z) / (2 * C_Z)) / C_N * 100)}%`;
-  info.textContent = (hoverGate ? `${gateName(hoverGate)} (portal; click: beside the ring)` : hoverMegalith ? `${hoverMegalith.name} (${hoverMegalith.id}, ${Math.round(hoverMegalith.radius * 2)} m across, ${Math.round(hoverMegalith.height)} m tall; click: outer edge)` : hoverChasm ? `Canyon ${hoverChasm.id} (${Math.round(hoverChasm.length)} × ${Math.round(hoverChasm.width)} m, depth ${Math.round(hoverChasm.depth)} m, ${hoverChasm.entries} paths; click: path entrance)` : hover ? `${hover.name} (${hover.type})` : hoverFog ? `${hoverFog.name} (toxic fog, ${hoverFog.kind === 'isle' ? 'island' : 'land'}, ${hoverFog.site}; click: its edge)` : `x ${Math.round(mx)}, z ${Math.round(mz)}`) + ` · ${gates.length} portals · ${monuments.length} megaliths` + canyonNote + fogNote +
+  info.textContent = (hoverGate ? `${gateName(hoverGate)} (portal; click: beside the ring)` : hoverMegalith ? `${hoverMegalith.name} (${hoverMegalith.id}, ${Math.round(hoverMegalith.radius * 2)} m across, ${Math.round(hoverMegalith.height)} m tall; click: outer edge)` : hover ? `${hover.name} (${hover.type})` : hoverFog ? `${hoverFog.name} (toxic fog, ${hoverFog.kind === 'isle' ? 'island' : 'land'}, ${hoverFog.site}; click: its edge)` : `x ${Math.round(mx)}, z ${Math.round(mz)}`) + ` · ${gates.length} portals · ${monuments.length} megaliths` + fogNote +
     ` · danger ${dangerAt(G.char.world, hover ? hover.x : mx, hover ? hover.z : mz).toFixed(1)} · ${Math.round(view.mpp * 100) / 100} m/px · click to teleport · drag to pan · wheel to zoom · Esc to close`;
 }
 
-function tick() { if (!open || (fogScan.done && canyonScan.done)) return; scanFog(6); scanCanyons(4); draw(); requestAnimationFrame(tick); }
+function tick() { if (!open || fogScan.done) return; scanFog(6); draw(); requestAnimationFrame(tick); }
 export function openDevMap() {
   open = true; G.playing = false; G.firing = false; for (const k in G.keys) G.keys[k] = false;
   view.x = G.pos.x; view.z = G.pos.z; if (G.char.loc === 'dungeon') { view.x = 0; view.z = 0; }
-  scanCanyons(4);
   root.style.display = 'block';
   if (document.pointerLockElement) document.exitPointerLock();
   setTimeout(() => { if (open && document.pointerLockElement) document.exitPointerLock(); }, 150); // a lock still on its way
@@ -251,7 +214,6 @@ cv.addEventListener('pointerup', (e) => {
   if (!hover && Math.abs(z) > POLE_Z - 300) { info.textContent = 'That is beyond the ice wall.'; return; }
   if (hoverGate) { const g = hoverGate, [gx, gz] = gatePoint(g, 0, 7); const msg = teleportTo(gx, gz); closeDevMap(); logLine(msg + ` Beside ${gateName(g)}.`); return; }
   if (hoverMegalith) { const m = hoverMegalith, [mx, mz] = megalithPoint(m, 0, m.radius + 10); const msg = teleportTo(mx, mz); closeDevMap(); logLine(msg + ` At ${m.name}.`); return; }
-  if (hoverChasm) { const c = hoverChasm, [cx, cz] = chasmPath(c, 0, 0); const msg = teleportTo(cx, cz); closeDevMap(); logLine(msg + ` At the descent into ${c.id}.`); return; }
   // a fog zone: to its edge, where the fog is still thin (the site is in the middle)
   if (!hover && hoverFog) { const msg = teleportTo(hoverFog.x, hoverFog.z + hoverFog.r * 0.8); closeDevMap(); logLine(msg + ` The toxic fog of ${hoverFog.name} lies to the north.`); return; }
   const msg = teleportTo(hover ? hover.x : x, hover ? hover.z : z, hover ?? undefined);

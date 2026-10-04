@@ -15,6 +15,7 @@ import { saveChar, dungeonKey } from '../character';
 import { OW, reloadStruct, rebuildChunkAt } from './overworld';
 import { CHUNK, HANGAR_ID, nearX } from '../gen/regions';
 import type { Char } from '../save';
+import { retireOldCrossings } from '../gen/bridges';
 
 type Kind = 'map' | 'list' | 'one';
 interface Field { f: keyof Char; kind: Kind; skip?: (k: string) => boolean }
@@ -125,6 +126,7 @@ onWorld({
       if (v === null || v === undefined) m.delete(k); else m.set(k, JSON.stringify(v));
       if (was !== (rebased == null ? undefined : JSON.stringify(rebased))) show(fk, k, before === undefined ? undefined : JSON.parse(was!), rebased);
     }
+    retireOldCrossings(G.char);
     saveChar();
   },
 });
@@ -146,6 +148,7 @@ function adopt(doc: WorldDoc, keepEdits = false) {
     for (const [k, v] of Object.entries(want)) put(c, f, k, v);
     if (f.kind === 'one' && !('_' in want)) put(c, f, '_', null);
   }
+  retireOldCrossings(c);
   remember(doc);
   if (c.loc === 'dungeon' && c.dungeon) {
     const key = dungeonKey();

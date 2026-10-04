@@ -3,6 +3,10 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.127.0', date: '2026-10-04', title: 'Canyons removed', notes: [
+    'Canyon generation, descent paths, developer map markers and canyon bridge planning have been removed. Existing worlds use the underlying natural terrain again.',
+    'Old bridges over removed canyons are retired when loading saves or shared worlds. River bridges, rocky fields, portals and megaliths remain available.',
+  ] },
   {
     v: '0.126.0', date: '2026-10-04', title: 'Twelve colossal megalithic sanctuaries',
     notes: [

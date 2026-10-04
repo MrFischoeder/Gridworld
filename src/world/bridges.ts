@@ -157,10 +157,10 @@ let placing = false, preview: THREE.Group | null = null, plan: Ford | null = nul
 export const isBridgePlacing = () => placing;
 /** Use a Bridge Kit: start choosing where the bridge crosses. */
 export function startBridgePlacing(): boolean {
-  if (G.char.loc !== 'overworld' || !OW.terrain) { logLine('Bridges are built outdoors, over rivers or ravines.'); return false; }
+  if (G.char.loc !== 'overworld' || !OW.terrain) { logLine('Bridges are built outdoors, over rivers.'); return false; }
   if (driving.v) { logLine('Get out of the vehicle first.'); return false; }
   placing = true; plan = null; problem = null; last = { x: NaN, z: NaN, t: 0 };
-  logLine('Look at the river or ravine where the bridge should cross: click to stake out the site, right mouse button or Esc to cancel.');
+  logLine('Look at the river where the bridge should cross: click to stake out the site, right mouse button or Esc to cancel.');
   return true;
 }
 export function cancelBridgePlacing(quiet = false) {
@@ -174,7 +174,7 @@ export const bridgePlacingOk = () => !!plan && !problem;
 /** Stake out the site where the hologram stands. */
 export function confirmBridgePlacing() {
   if (!placing) return;
-  if (!plan || problem) { logLine(problem ?? 'Look at a river or ravine to bridge it'); return; }
+  if (!plan || problem) { logLine(problem ?? 'Look at a river to bridge it'); return; }
   if (!takeOne('bridgekit')) { cancelBridgePlacing(true); return; }
   const f: Ford = { ...plan, id: `bridge:own:${G.char.pid}:${Math.round(G.char.time)}:${G.char.bridgeSites.length}` };
   G.char.bridgeSites.push(f); G.char.bridges[f.id] = { given: {} }; saveChar();
