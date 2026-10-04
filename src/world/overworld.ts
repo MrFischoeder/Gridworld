@@ -18,7 +18,7 @@ import { recentDead } from './villageraid';
 import * as THREE from 'three';
 import { setCrash, dropCrash, podHit } from './crashpod';
 import { installHit, dropInstalls, primeInstalls } from './installs';
-import { cityHit, cityRay, dropCities, cityName } from './cities';
+import { cityHit, cityRay, dropCities, cityName, cityVaultHint } from './cities';
 import { toxicHit, dropToxic, toxicName } from './toxic';
 import { installAt } from '../gen/installs';
 import { drawFarms } from './farms';
@@ -681,7 +681,7 @@ export function placeName(x: number, z: number): string {
   for (const cv of loadedCaves()) if (Math.hypot(cv.x - x, cv.z - z) < 30) return cv.name + tag;
   { const ins = installAt(OW.terrain!, x, z, 25); if (ins) return ins.name + tag; }
   { const mn = megalithName(x, z); if (mn) return mn + ' (megalith)' + tag; }
-  { const cn = cityName(x, z); if (cn) return cn + tag; }
+  { const cn = cityName(x, z); if (cn) return cn + cityVaultHint(x,z) + tag; }
   { const f = toxicName(x, z); if (f) return f + tag; }
   for (const r of OW.terrain!.chunkFeatures(Math.floor(x / CHUNK), Math.floor(z / CHUNK)).roads) {
     if (!r.h) continue;

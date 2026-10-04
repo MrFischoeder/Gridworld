@@ -13,7 +13,7 @@ import { PropBatch } from './props';
 import { G } from '../game';
 import { OW } from './overworld';
 import { rng } from '../core/rng';
-import { citySites, cityLayout, worldToCity, bldsNear, carsNear, inBld, bldTop, corners, CITY, type CityLayout, type CitySite, type Bld, type Street, type Car } from '../gen/cities';
+import { citySites, cityAt, cityLayout, worldToCity, bldsNear, carsNear, inBld, bldTop, corners, CITY, type CityLayout, type CitySite, type Bld, type Street, type Car } from '../gen/cities';
 import { nearX, worldDist } from '../gen/regions';
 import type { Terrain } from '../gen/terrain';
 
@@ -29,16 +29,15 @@ interface Live {
 }
 const live = new Map<number, Live>();
 /** What each tile holds (by tile index), worked out once per layout. */
-const tileItems = new WeakMap<CityLayout, { nt: number; b: number[][]; s: number[][]; c: number[][]; e: number[][] }>();
-function itemsOf(world: number, L: CityLayout) {
+const tileItems = new WeakMap<CityLayout, { nt: number; b: number[][]; s: number[][]; c: number[][] }>();
+function itemsOf(L: CityLayout) {
   let t = tileItems.get(L);
   if (t) return t;
   const nt = Math.ceil(2 * L.half / TILE), idx = (u: number, v: number) => Math.max(0, Math.min(nt - 1, Math.floor((u + L.half) / TILE))) + nt * Math.max(0, Math.min(nt - 1, Math.floor((v + L.half) / TILE)));
-  t = { nt, b: Array.from({ length: nt * nt }, () => []), s: Array.from({ length: nt * nt }, () => []), c: Array.from({ length: nt * nt }, () => []), e: Array.from({ length: nt * nt }, () => []) };
+  t = { nt, b: Array.from({ length: nt * nt }, () => []), s: Array.from({ length: nt * nt }, () => []), c: Array.from({ length: nt * nt }, () => []) };
   L.blds.forEach((b, k) => t!.b[idx(b.x, b.z)].push(k));
   L.streets.forEach((s, k) => t!.s[idx((s.ax + s.bx) / 2, (s.az + s.bz) / 2)].push(k));
   L.cars.forEach((c, k) => t!.c[idx(c.x, c.z)].push(k));
-  cityEntrances(world, L.c).forEach((e, k) => t!.e[idx(e.u, e.v)].push(k));
   tileItems.set(L, t);
   return t;
 }
@@ -182,26 +181,43 @@ function drawCar(pb: PropBatch, c: Car, H: (u: number, v: number) => number) {
   if (R() < 0.7) pb.solid8([P(-1.1, -0.8, 0.95), P(0.9, -0.8, 0.95), P(0.9, 0.8, 0.95 + tilt), P(-1.1, 0.8, 0.95 + tilt)], [P(-0.8, -0.7, 1.55), P(0.5, -0.7, 1.55), P(0.5, 0.7, 1.55 + tilt), P(-0.8, 0.7, 1.55 + tilt)], CAR);
 }
 function buildTile(T: Terrain, l: Live, k: number): Tile {
-  const it = itemsOf(T.world, l.L), pb = new PropBatch(), H = groundOf(T, l), R = rng(l.c.i * 7919 + k * 31 + 1);
+  const it = itemsOf(l.L), pb = new PropBatch(), H = groundOf(T, l), R = rng(l.c.i * 7919 + k * 31 + 1);
   for (const i of it.s[k]) drawStreet(pb, l.L.streets[i], R, H);
   for (const i of it.b[k]) drawBld(pb, l.L.blds[i], baseOf(T, l, i), H);
   for (const i of it.c[k]) drawCar(pb, l.L.cars[i], H);
-  const entrances = cityEntrances(T.world, l.c);
-  for (const i of it.e[k]) {
-    const e = entrances[i], y = H(e.u, e.v), color = 0x5cc8ff;
-    pb.box(e.u - 1.6, y + 0.04, e.v - 2, e.u + 1.6, y + 0.14, e.v + 2, color);
-    for (let step = 0; step < 6; step++) pb.seg(color, [e.u - 1.3, y + 0.16, e.v - 1.5 + step * 0.5], [e.u + 1.3, y + 0.16, e.v - 1.5 + step * 0.5]);
-    for (const side of [-1, 1]) pb.seg(color, [e.u + side * 1.6, y, e.v - 2], [e.u + side * 1.6, y + 1.2, e.v - 2]);
-    pb.line(color, [e.u - 0.5, y + 1.6, e.v], [e.u, y + 1.1, e.v], [e.u + 0.5, y + 1.6, e.v]);
-  }
   const g = pb.build();
-  for (const i of it.e[k]) {
-    const e = entrances[i], sign = textSprite('▼ VAULT ' + (e.n + 1), '#5cc8ff', 3.4);
-    sign.position.set(e.u, H(e.u, e.v) + 2.2, e.v); g.add(sign);
-  }
   l.root.add(g);
   return { g };
 }
+/** All vault signs load with their city, independently of the street tile queue. */
+function cityVaultModel(T: Terrain, l: Live): THREE.Group {
+  const pb = new PropBatch(), H = groundOf(T, l), entries = cityEntrances(T.world, l.c), color = 0x5cc8ff;
+  for (const e of entries) {
+    const { u, v } = e, y = H(u, v);
+    // A low hatch with an open lid, rails and a tall beacon: centre and approach stay walkable.
+    pb.box(u - 2, y + .03, v - 2.5, u + 2, y + .12, v + 2.5, color);
+    pb.box(u - 2.1, y, v - 2.7, u - 1.7, y + 3.8, v - 2.3, color);
+    pb.box(u + 1.7, y, v - 2.7, u + 2.1, y + 3.8, v - 2.3, color);
+    pb.box(u - 2.1, y + 3.5, v - 2.7, u + 2.1, y + 3.9, v - 2.3, color);
+    for (const side of [-1, 1]) {
+      pb.seg(color, [u + side * 2, y, v + 2.5], [u + side * 2, y + 1.1, v + 2.5]);
+      pb.seg(color, [u + side * 2, y + 1.1, v + 2.5], [u + side * 2, y + 1.1, v - 2.5]);
+    }
+    // The raised hatch lid is a filled sloping panel; tread lines identify the descent below it.
+    pb.solid8([[u-1.65,y+.15,v+.6],[u+1.65,y+.15,v+.6],[u+1.65,y+2.4,v-2.3],[u-1.65,y+2.4,v-2.3]],
+      [[u-1.65,y+.23,v+.6],[u+1.65,y+.23,v+.6],[u+1.65,y+2.48,v-2.3],[u-1.65,y+2.48,v-2.3]], color);
+    for (let step = 0; step < 6; step++) pb.seg(color, [u-1.6,y+.14,v-.5+step*.5], [u+1.6,y+.14,v-.5+step*.5]);
+    pb.seg(color, [u+2.1,y,v-2.5], [u+2.1,y+9,v-2.5]);
+    pb.line(color, [u+1.2,y+8.7,v-2.5], [u+2.1,y+7.5,v-2.5], [u+3,y+8.7,v-2.5]);
+  }
+  const g = pb.build(); g.name = 'city-vaults'; g.userData.entrances = entries.map(e => e.id);
+  for (const e of entries) {
+    const sign = textSprite('VAULT ' + (e.n + 1) + ' [E]', '#5cc8ff', 6);
+    sign.position.set(e.u, H(e.u,e.v)+4.8, e.v-2.5); g.add(sign);
+  }
+  return g;
+}
+
 function dropTile(t: Tile) {
   t.g.removeFromParent(); t.g.traverse((o) => {
     if (o instanceof THREE.Sprite) { o.material.map?.dispose(); o.material.dispose(); }
@@ -212,6 +228,7 @@ function dropCity(key: number) {
   const l = live.get(key);
   if (!l) return;
   for (const t of l.tiles.values()) dropTile(t);
+  for (const g of [...l.root.children]) dropTile({ g: g as THREE.Group });
   scene.remove(l.root); live.delete(key);
 }
 
@@ -230,13 +247,14 @@ export function updateCities(dt: number) {
         const L = cityLayout(T.world, c), ox = nearX(c.x, G.pos.x), root = new THREE.Group();
         root.position.set(ox, 0, c.z); root.rotation.y = c.yaw; scene.add(root);
         live.set(c.i, { c, L, root, ox, co: Math.cos(c.yaw), si: Math.sin(c.yaw), tiles: new Map(), base: new Float32Array(L.blds.length).fill(NaN) });
+        const entryGroup = cityVaultModel(T, live.get(c.i)!); root.add(entryGroup);
       }
     }
   }
   // tiles: the nearest missing ones first, a time budget a frame
   const t0 = performance.now();
   for (const l of live.values()) {
-    const it = itemsOf(T.world, l.L), [pu, pv] = worldToCity(l.c, G.pos.x, G.pos.z), center = (k: number): [number, number] => [(k % it.nt + 0.5) * TILE - l.L.half, (Math.floor(k / it.nt) + 0.5) * TILE - l.L.half];
+    const it = itemsOf(l.L), [pu, pv] = worldToCity(l.c, G.pos.x, G.pos.z), center = (k: number): [number, number] => [(k % it.nt + 0.5) * TILE - l.L.half, (Math.floor(k / it.nt) + 0.5) * TILE - l.L.half];
     for (const [k, t] of l.tiles) { const [u, v] = center(k); if (Math.hypot(u - pu, v - pv) > TILE_OUT) { dropTile(t); l.tiles.delete(k); } }
     const want: [number, number][] = [];
     const i0 = Math.max(0, Math.floor((pu - TILE_IN + l.L.half) / TILE)), i1 = Math.min(it.nt - 1, Math.floor((pu + TILE_IN + l.L.half) / TILE));
@@ -244,7 +262,7 @@ export function updateCities(dt: number) {
     for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) {
       const k = i + it.nt * j; if (l.tiles.has(k)) continue;
       const [u, v] = center(k), d = Math.hypot(u - pu, v - pv);
-      if (d < TILE_IN && (it.b[k].length || it.s[k].length || it.e[k].length)) want.push([d, k]);
+      if (d < TILE_IN && (it.b[k].length || it.s[k].length )) want.push([d, k]);
     }
     want.sort((a, b) => a[0] - b[0]);
     for (const [, k] of want) { if (performance.now() - t0 > 6 && l.tiles.size) break; l.tiles.set(k, buildTile(T, l, k)); }
@@ -323,10 +341,24 @@ export function cityName(x: number, z: number): string | null {
 export function nearCityEntrance(): CityEntrance | null {
   const T = OW.terrain;
   if (!T || G.char.loc !== 'overworld') return null;
-  let best: CityEntrance | null = null, distance = 2.6;
-  for (const l of live.values()) for (const e of cityEntrances(T.world, l.c)) {
+  // Interaction must be ready even before the city mesh queue has loaded its first tile.
+  const city = cityAt(T.world, G.pos.x, G.pos.z);
+  if (!city) return null;
+  let best: CityEntrance | null = null, distance = 4;
+  for (const e of cityEntrances(T.world, city)) {
     const x = nearX(e.x, G.pos.x), d = Math.hypot(x - G.pos.x, e.z - G.pos.z);
     if (d < distance && Math.abs(G.pos.y - T.heightAt(x, e.z)) < 1.5) { best = e; distance = d; }
   }
   return best;
+}
+
+/** Street signs guide the player to the closest vault; the map reveals all entrances of the current city. */
+export function cityVaultHint(x: number, z: number): string {
+  for (const l of live.values()) {
+    if (worldDist(x,z,l.c.x,l.c.z)>l.c.r) continue;
+    const entries = cityEntrances(G.char.world,l.c);
+    const e = entries.reduce((a,b)=>worldDist(x,z,a.x,a.z)<worldDist(x,z,b.x,b.z)?a:b);
+    return ` · Underground ${e.n+1}: ${Math.round(worldDist(x,z,e.x,e.z))} m · M map`;
+  }
+  return '';
 }

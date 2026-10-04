@@ -3,6 +3,12 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.128.0', date: '2026-10-04', title: 'Compact megaliths and visible city vaults', notes: [
+    'All twelve megaliths are 25% narrower and 30% lower, including stonework, collisions and cleared grounds. Sanctuaries span about 173–248 metres and reach up to 55 metres. Their reserved locations and ids stay the same.',
+    'Every ruined city has four to six separated underground entrances. Tall blue signs, raised hatch lids and guide beacons identify them; all signs load with the city instead of waiting for street tiles.',
+    'The city HUD shows the closest underground entrance and its distance. Entering a city reveals its entrances on the local and world maps; the developer map marks them when zoomed in. Approach a sign and press E to descend.',
+    'The original four entrance addresses, positions and dungeon seeds remain compatible with existing saves. The three-floor limit is unchanged.',
+  ] },
   { v: '0.127.1', date: '2026-10-04', title: 'Safe landings on rocks and ruins', notes: [
     'Landing on a rock or a city ruin no longer rounds your feet down into its collider. Vertical movement stops precisely at fractional surfaces, so you can walk away and jump again.',
     'Shallow integer-rounded contact positions left by older saves are recovered. Voxel floors, small stairs and ceilings keep their collision boundaries.',

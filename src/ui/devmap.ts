@@ -2,6 +2,7 @@
 // zone (lime rings), ancient gate and megalith; zoom in and the ruins, bandit camps and crash
 // sites of the regions in view appear too. Drag to pan, wheel to zoom, click a
 // place (or any spot) to teleport there. Only a testing tool: nothing here is part of the game proper.
+import { cityEntrances, type CityEntrance } from '../gen/citydungeons';
 import { G } from '../game';
 import { allVillages, regionInfo, regionOf, X_MIN, WORLD_W, POLE_Z, POLAR_Z, REGION, wrapDx, type Poi } from '../gen/regions';
 import { worldGates, gateName, gatePoint, type WorldGate } from '../gen/worldgates';
@@ -18,6 +19,7 @@ import { lockPointer } from './input';
 const root = $('devmap'), cv = $<HTMLCanvasElement>('devmapCv'), info = $('devmapInfo'), ctx = cv.getContext('2d')!;
 /** View: centre (world metres) and scale (metres per pixel). */
 const view = { x: 0, z: 0, mpp: 60 };
+let hoverVault: CityEntrance | null = null;
 let hoverMegalith: Megalith | null = null;
 let hoverGate: WorldGate | null = null;
 let open = false, hover: Poi | null = null, hoverFog: FogZone | null = null, mouse = { x: 0, y: 0 }, drag: { x: number; y: number; vx: number; vz: number; moved: boolean } | null = null;
@@ -138,6 +140,18 @@ function draw() {
     const d = Math.hypot(sx - mouse.x, sy - mouse.y);
     if (d < hd) { hd = d; hover = p; }
   }
+  hoverVault = null; let vd = 12;
+  if (view.mpp < 12) for (const city of citySites(G.char.world)) {
+    const [cx,cy] = toScreen(city.x,city.z), extent = city.r/view.mpp;
+    if (cx+extent<0 || cy+extent<0 || cx-extent>W || cy-extent>H) continue;
+    for (const e of cityEntrances(G.char.world,city)) {
+      const [sx,sy] = toScreen(e.x,e.z);
+      ctx.strokeStyle = ctx.fillStyle = '#5cc8ff'; ctx.lineWidth = 2; ctx.strokeRect(sx-6,sy-6,12,12);
+      ctx.beginPath(); ctx.moveTo(sx-4,sy-2); ctx.lineTo(sx,sy+4); ctx.lineTo(sx+4,sy-2); ctx.stroke();
+      if (view.mpp<3) ctx.fillText('Underground '+(e.n+1),sx,sy-12);
+      const d = Math.hypot(sx-mouse.x,sy-mouse.y); if (d<vd) { vd=d; hoverVault=e; }
+    }
+  }
   hoverMegalith = null; let md = 12;
   const monuments = worldMegaliths(G.char.world);
   for (const m of monuments) {
@@ -158,9 +172,10 @@ function draw() {
     ctx.closePath(); ctx.stroke(); if (labels) ctx.fillText(gateName(g), sx, sy - r - 6);
     const d = Math.hypot(sx - mouse.x, sy - mouse.y); if (d < gd) { gd = d; hoverGate = g; }
   }
-  if (hoverGate) { hover = null; hoverFog = null; hoverMegalith = null; }
-  else if (hoverMegalith) { hover = null; hoverFog = null; }
-  const feature = hoverGate ?? hoverMegalith;
+  if (hoverGate) { hover = null; hoverFog = null; hoverMegalith = null; hoverVault = null; }
+  else if (hoverMegalith) { hover = null; hoverFog = null; hoverVault = null; }
+  else if (hoverVault) { hover = null; hoverFog = null; }
+  const feature = hoverGate ?? hoverMegalith ?? hoverVault;
   if (feature) { const [sx, sy] = toScreen(feature.x, feature.z); ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5; ctx.strokeRect(sx - 10, sy - 10, 20, 20); }
   // the player
   const [px, py] = toScreen(G.pos.x, G.pos.z);
@@ -170,7 +185,7 @@ function draw() {
   if (hover) { const [hx, hy] = toScreen(hover.x, hover.z); ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5; ctx.strokeRect(hx - 8, hy - 8, 16, 16); }
   const [mx, mz] = toWorld(mouse.x, mouse.y);
   const fogNote = fogScan.done ? ` · ${fogScan.zones.length} toxic fog zones` : ` · finding toxic fog ${Math.round((fogScan.rx - R_MIN) / (WORLD_W / REGION) * 100)}%`;
-  info.textContent = (hoverGate ? `${gateName(hoverGate)} (portal; click: beside the ring)` : hoverMegalith ? `${hoverMegalith.name} (${hoverMegalith.id}, ${Math.round(hoverMegalith.radius * 2)} m across, ${Math.round(hoverMegalith.height)} m tall; click: outer edge)` : hover ? `${hover.name} (${hover.type})` : hoverFog ? `${hoverFog.name} (toxic fog, ${hoverFog.kind === 'isle' ? 'island' : 'land'}, ${hoverFog.site}; click: its edge)` : `x ${Math.round(mx)}, z ${Math.round(mz)}`) + ` · ${gates.length} portals · ${monuments.length} megaliths` + fogNote +
+  info.textContent = (hoverGate ? `${gateName(hoverGate)} (portal; click: beside the ring)` : hoverMegalith ? `${hoverMegalith.name} (${hoverMegalith.id}, ${Math.round(hoverMegalith.radius * 2)} m across, ${Math.round(hoverMegalith.height)} m tall; click: outer edge)` : hoverVault ? `${hoverVault.name} (underground; click: entrance, E: descend)` : hover ? `${hover.name} (${hover.type})` : hoverFog ? `${hoverFog.name} (toxic fog, ${hoverFog.kind === 'isle' ? 'island' : 'land'}, ${hoverFog.site}; click: its edge)` : `x ${Math.round(mx)}, z ${Math.round(mz)}`) + ` · ${gates.length} portals · ${monuments.length} megaliths` + fogNote +
     ` · danger ${dangerAt(G.char.world, hover ? hover.x : mx, hover ? hover.z : mz).toFixed(1)} · ${Math.round(view.mpp * 100) / 100} m/px · click to teleport · drag to pan · wheel to zoom · Esc to close`;
 }
 
@@ -214,6 +229,7 @@ cv.addEventListener('pointerup', (e) => {
   if (!hover && Math.abs(z) > POLE_Z - 300) { info.textContent = 'That is beyond the ice wall.'; return; }
   if (hoverGate) { const g = hoverGate, [gx, gz] = gatePoint(g, 0, 7); const msg = teleportTo(gx, gz); closeDevMap(); logLine(msg + ` Beside ${gateName(g)}.`); return; }
   if (hoverMegalith) { const m = hoverMegalith, [mx, mz] = megalithPoint(m, 0, m.radius + 10); const msg = teleportTo(mx, mz); closeDevMap(); logLine(msg + ` At ${m.name}.`); return; }
+  if (hoverVault) { const e = hoverVault, msg = teleportTo(e.x,e.z); closeDevMap(); logLine(msg + ` At ${e.name}. Press E to enter.`); return; }
   // a fog zone: to its edge, where the fog is still thin (the site is in the middle)
   if (!hover && hoverFog) { const msg = teleportTo(hoverFog.x, hoverFog.z + hoverFog.r * 0.8); closeDevMap(); logLine(msg + ` The toxic fog of ${hoverFog.name} lies to the north.`); return; }
   const msg = teleportTo(hover ? hover.x : x, hover ? hover.z : z, hover ?? undefined);

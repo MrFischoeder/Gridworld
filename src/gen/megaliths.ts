@@ -13,6 +13,8 @@ import { Terrain } from './terrain';
 import { installSites } from './installs';
 import { regionRoads, nearestOnRoad } from './roads';
 
+// Scale geometry and cleared grounds together; survey with the original footprint to preserve reserved sites.
+export const MEGALITH_XZ_SCALE = .75, MEGALITH_Y_SCALE = .7;
 export const MEGALITH_COUNT = 12, MEGALITH_BLEND = 35, MEGALITH_HOME_GAP = 3500;
 export const MEGALITH_DESIGNS = [
   { name: 'Crown of the First Dawn', radius: 100, height: 42, count: 16, rings: 1, form: 'crown' },
@@ -45,7 +47,7 @@ export function worldMegaliths(world: number): Megalith[] {
       const x = wrapX(Math.round(c.x + Math.cos(angle) * c.rx * fraction)), z = Math.round(c.z + Math.sin(angle) * c.rz * fraction);
       if (Math.hypot(wrapDx(x), z) < MEGALITH_HOME_GAP + reach || inCity(world, x, z, reach + 60)) continue;
       if (factories.some(f => worldDist(f.x, f.z, x, z) < reach + f.r + 40)) continue;
-      if (out.some(m => worldDist(m.x, m.z, x, z) < reach + m.radius + MEGALITH_BLEND + 900)) continue;
+      if (out.some(m => worldDist(m.x, m.z, x, z) < reach + MEGALITH_DESIGNS[m.index].radius + 15 + MEGALITH_BLEND + 900)) continue;
       if (poisNear(world, x, z, reach + 220).some(p => Math.hypot(Math.max(p.rect.x0 - x, 0, x - p.rect.x1), Math.max(p.rect.z0 - z, 0, z - p.rect.z1)) < reach + p.flat + 5)) continue;
       let lo = Infinity, hi = -Infinity, dry = true;
       for (const dx of [-reach, 0, reach]) for (const dz of [-reach, 0, reach]) {
@@ -62,7 +64,7 @@ export function worldMegaliths(world: number): Megalith[] {
       site = [x, z, Math.round((lo + hi) / 2)]; break;
     }
     if (!site) throw new Error(`No dry site for megalith ${index} in world ${world}`);
-    out.push({ id: `megalith:${index}`, index, name: design.name, x: site[0], z: site[1], y: site[2], yaw: R() * Math.PI * 2, radius, height: design.height + (design.form === 'obelisk' ? 10 : 0), seed: hash(world, index, 0x6e6b) });
+    out.push({ id: `megalith:${index}`, index, name: design.name, x: site[0], z: site[1], y: site[2], yaw: R() * Math.PI * 2, radius: radius * MEGALITH_XZ_SCALE, height: design.height + (design.form === 'obelisk' ? 10 : 0), seed: hash(world, index, 0x6e6b) });
   }
   out.forEach(m => m.height = Math.max(...megalithStones(m).map(b => b.y + b.h)));
   if (cache.size > 64) cache.clear(); cache.set(world, out); return out;
@@ -114,7 +116,7 @@ export function megalithStones(m: Megalith): MegalithStone[] {
     if (d.form === 'star') for (let i = 0; i < 5; i++) { const a = i * Math.PI * 2 / 5; stone(Math.cos(a) * 30, Math.sin(a) * 30, 0, 9, 9, 35, -a); }
     if (d.form === 'constellation') for (let i = 0; i < 7; i++) stone((R() - .5) * 55, (R() - .5) * 55, 0, 7, 7, 24 + R() * 18, R() * Math.PI);
   }
-  return stones;
+  return stones.map(b => ({ ...b, x: b.x * MEGALITH_XZ_SCALE, z: b.z * MEGALITH_XZ_SCALE, w: b.w * MEGALITH_XZ_SCALE, d: b.d * MEGALITH_XZ_SCALE, y: b.y * MEGALITH_Y_SCALE, h: b.h * MEGALITH_Y_SCALE }));
 }
 /** Capsule-height actor collision with individual stones; the courtyard and arch openings remain passable. */
 export function megalithStoneHit(stones: readonly MegalithStone[], x: number, y: number, z: number, radius: number, height = 1.7): boolean {
