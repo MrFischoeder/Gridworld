@@ -1,3 +1,4 @@
+import { gatesNear, gateName } from '../gen/worldgates';
 // Surface maps: the minimap (150 m around the player) and the full world map (M), both built from
 // explored chunks only (fog of war). Chunk tiles are rendered once from the deterministic terrain.
 import { nearX, wrapDx } from '../gen/regions';
@@ -110,6 +111,13 @@ function drawArea(ctx: CanvasRenderingContext2D, w: number, h: number, ppm: numb
     }
     else { ctx.strokeStyle = ctx.fillStyle = '#5cc8ff'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(x - 5, y - 4); ctx.lineTo(x + 5, y - 4); ctx.lineTo(x, y + 5); ctx.closePath(); ctx.stroke(); }
     if (labels) ctx.fillText(p.name, x, y - 12);
+  }
+  for (const g of gatesNear(G.char.world, px, pz, Math.hypot(hw, hh) + 30)) {
+    if (!isDiscovered(d, Math.floor(g.x / CHUNK), Math.floor(g.z / CHUNK))) continue;
+    const x = X(g.x), y = Z(g.z), r = labels ? 9 : 5;
+    ctx.strokeStyle = ctx.fillStyle = '#80e8ff'; ctx.lineWidth = 2; ctx.beginPath();
+    for (let i = 0; i < 8; i++) { const a = Math.PI / 8 + i * Math.PI / 4; (i ? ctx.lineTo : ctx.moveTo).call(ctx, x + Math.cos(a) * r, y + Math.sin(a) * r); }
+    ctx.closePath(); ctx.stroke(); if (labels) ctx.fillText(gateName(g), x, y - r - 7);
   }
   ctx.lineWidth = 1;
   for (const v of vehicles) {

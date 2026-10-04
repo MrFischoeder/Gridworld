@@ -67,7 +67,7 @@ const lakeCache = new Map<string, Lake[]>();
  * roads and the ice (frozen lakes can come later). Their level sits just below the lowest point of the rim, so
  * the water never spills over the land around it.
  */
-export function regionLakes(t: Terrain, rx: number, rz: number): Lake[] {
+export function regionLakes(t: Pick<Terrain, 'world' | 'base'>, rx: number, rz: number): Lake[] {
   const c = wrapR(rx);
   if (c !== rx) return regionLakes(t, c, rz).map((l) => ({ ...l, x: l.x + (rx - c) * REGION }));
   const key = t.world + ':' + rx + ':' + rz;
@@ -105,7 +105,7 @@ export function regionLakes(t: Terrain, rx: number, rz: number): Lake[] {
   return out;
 }
 /** Lakes whose water may reach into the rect (for terrain features). */
-export function lakesIn(t: Terrain, r: Rect): Lake[] {
+export function lakesIn(t: Pick<Terrain, 'world' | 'base'>, r: Rect): Lake[] {
   const out: Lake[] = [], m = 45 * LAKE_REACH * 1.25;
   const rx0 = Math.floor((r.x0 - m + REGION / 2) / REGION), rx1 = Math.floor((r.x1 + m + REGION / 2) / REGION);
   const rz0 = Math.floor((r.z0 - m + REGION / 2) / REGION), rz1 = Math.floor((r.z1 + m + REGION / 2) / REGION);

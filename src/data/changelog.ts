@@ -4,6 +4,15 @@ export interface Change { v: string; date: string; title: string; notes: string[
 
 export const CHANGELOG: Change[] = [
   {
+    v: '0.120.0', date: '2026-10-04', title: 'Ancient addressed world gates',
+    notes: [
+      'Forty ancient alien gates stand on dry ground across the continents, with one near Gridholm. Each weathered octagonal stone ring has six distinct symbols; its two grounded corners are unmarked.',
+      'Use the nearby console with E, then press three symbols in address order. Every gate has a unique address, recorded in the engraved archive alongside its own address.',
+      'A valid address opens a shimmering portal for 45 seconds of active play. Walk through on foot to arrive safely outside the destination ring, with your health and inventory intact; dial the previous gate to return.',
+      'Each gate has its own seeded scatter of boulders. Cleared level approaches need no jumping, and discovered gates have octagonal cyan markers on both surface maps.',
+    ],
+  },
+  {
     v: '0.119.0', date: '2026-10-04', title: 'One vehicle condition and protected occupants',
     notes: [
       'Every vehicle has one condition percentage. Gunfire, direct enemy attacks and collisions damage this pool; wheels and engines no longer break separately.',

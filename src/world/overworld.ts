@@ -1,3 +1,5 @@
+import { syncWorldGates, clearWorldGates, worldGateHit, worldGateRay } from './worldgates';
+import { inGateClearing } from '../gen/worldgates';
 // The open world: terrain streamed in 32 m chunks around the player, voxel structures (the village, ruins)
 // standing on it, forests, roads, and light field enemies. Generation is deterministic; this module only
 // decides what is loaded and turns generator output into meshes.
@@ -212,7 +214,7 @@ function buildChunk(cx: number, cz: number, lod = 1): Chunk {
   // felled trees and broken rocks (player changes, keyed by their index in the generated list) are left out
   const trees: Tree[] = [], stumps: Tree[] = [], rocks: Rock[] = [];
   // a claimed site is cleared: nothing grows on the levelled ground (the generated lists keep their indices)
-  const cleared = (x: number, z: number) => !!T.claimAt(x, z, 1);
+  const cleared = (x: number, z: number) => !!T.claimAt(x, z, 1) || inGateClearing(T.world, x, z, 2);
   chunkTrees(T, cx, cz).forEach((t, i) => { if (t.cols.some(([x, z]) => cleared(x, z))) return; const k = `tree:${wrapC(cx)}:${cz}:${i}`; gatherKey.set(t, k); (ripe(k) ? trees : stumps).push(t); });
   chunkRocks(T, cx, cz).forEach((r, i) => { if (cleared(r.x, r.z)) return; const k = `rock:${wrapC(cx)}:${cz}:${i}`; gatherKey.set(r, k); if (ripe(k)) rocks.push(r); });
   let nodes: PlantNode[] = [];
@@ -530,6 +532,7 @@ export function updateStreaming(budgetMs = 4) {
     queue.sort((a, b) => Math.hypot(b[0] - pcx, b[1] - pcz) - Math.hypot(a[0] - pcx, a[1] - pcz)); // nearest last (popped first)
     for (const c of [...OW.chunks.values()]) if (Math.max(Math.abs(c.cx - pcx), Math.abs(c.cz - pcz)) > (G.fly ? LOAD_R * 2 + 2 : UNLOAD_R)) { dropChunk(c); OW.chunks.delete(ckey(c.cx, c.cz)); }
     updateStructs(x, z);
+    syncWorldGates(OW.terrain!, x, z);
     syncLakes(x, z);
     syncFound(OW.terrain!, x, z);
     syncQuestWorld();
@@ -551,8 +554,8 @@ export function openWorld(x: number, z: number) {
   primeInstalls(w, G.char.claims); // the installations' sites are worked out in a worker meanwhile
   closeWorld();
   G.water = (px, pz) => (inStructure(px, pz) ? null : OW.terrain!.water(px, pz));
-  G.space = space; G.ground = groundAt; G.obstacle = (px, py, pz, r) => treeHit(px, py, pz, r) || vehicleHit(px, py, pz, r) || caravanHit(px, py, pz, r) || peerCarHit(px, py, pz, r) || ambushHit(px, py, pz, r) || baseHit(px, py, pz, r) || ladderHit(px, py, pz, r) || walkHit(px, py, pz, r) || guardHit(px, py, pz, r) || houseHit(px, py, pz, r) || doorHit(px, py, pz, r) || podHit(px, py, pz, r) || installHit(px, py, pz, r) || cityHit(px, py, pz, r) || hallHit(px, py, pz, r) || bridgeHit(px, py, pz, r) || pierHit(px, py, pz, r) || boatHit(px, py, pz, r) || toxicHit(px, py, pz, r);
-  G.floor = (x, y, z) => Math.max(baseFloor(x, y, z), ladderFloor(x, y, z), walkFloor(x, y, z), bridgeFloor(x, y, z), pierFloor(x, y, z)); G.rayBlock = (o, d, t) => cityRay(o, d, doorRay(o, d, houseRay(o, d, baseRay(o, d, t)))); G.solid = (p) => baseSolid(p) || houseSolid(p);
+  G.space = space; G.ground = groundAt; G.obstacle = (px, py, pz, r) => worldGateHit(px, py, pz, r) || treeHit(px, py, pz, r) || vehicleHit(px, py, pz, r) || caravanHit(px, py, pz, r) || peerCarHit(px, py, pz, r) || ambushHit(px, py, pz, r) || baseHit(px, py, pz, r) || ladderHit(px, py, pz, r) || walkHit(px, py, pz, r) || guardHit(px, py, pz, r) || houseHit(px, py, pz, r) || doorHit(px, py, pz, r) || podHit(px, py, pz, r) || installHit(px, py, pz, r) || cityHit(px, py, pz, r) || hallHit(px, py, pz, r) || bridgeHit(px, py, pz, r) || pierHit(px, py, pz, r) || boatHit(px, py, pz, r) || toxicHit(px, py, pz, r);
+  G.floor = (x, y, z) => Math.max(baseFloor(x, y, z), ladderFloor(x, y, z), walkFloor(x, y, z), bridgeFloor(x, y, z), pierFloor(x, y, z)); G.rayBlock = (o, d, t) => worldGateRay(o, d, cityRay(o, d, doorRay(o, d, houseRay(o, d, baseRay(o, d, t))))); G.solid = (p) => worldGateHit(p.x, p.y, p.z, 0) || baseSolid(p) || houseSolid(p);
   foeRules.blocked = (p) => nearVillage(p.x, p.z) < 2;
   foeRules.playerSafe = () => inVillage(G.pos.x, G.pos.z) && !raidHere(); // no safe place while bandits raid it
   foeRules.ground = (px, pz) => OW.terrain!.heightAt(px, pz);
@@ -560,6 +563,7 @@ export function openWorld(x: number, z: number) {
   foeRules.shieldHit = (dmg) => hitOccupiedVehicle(dmg);
   setCrash(OW.terrain);
   updateStructs(x, z);
+  syncWorldGates(OW.terrain, x, z);
   const pcx = Math.floor(x / CHUNK), pcz = Math.floor(z / CHUNK);
   for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) OW.chunks.set(ckey(pcx + i, pcz + j), buildChunk(pcx + i, pcz + j));
   lastChunk = '';
@@ -567,7 +571,7 @@ export function openWorld(x: number, z: number) {
   spawnVehicles({
     height: (px, pz) => Math.max(T.heightAt(px, pz), bridgeDeck(px, pz) ?? -Infinity, pierDeck(px, pz) ?? -Infinity), // over a bridge or a pier, its deck
     water: (px, pz) => (bridgeDeck(px, pz) !== null || pierDeck(px, pz) !== null ? 0 : T.water(px, pz)?.depth ?? 0),
-    blocked: (px, pz, r) => structBlocks(px, pz, r, T.heightAt(px, pz)) || treeHit(px, T.heightAt(px, pz) + 0.5, pz, r) || ambushHit(px, 0, pz, r) || peerCarHit(px, T.heightAt(px, pz) + 0.5, pz, r) || cityHit(px, T.heightAt(px, pz) + 0.5, pz, r) || bridgeHit(px, (bridgeDeck(px, pz) ?? -99) + 0.5, pz, r), // a bridge's rails keep you on its deck
+    blocked: (px, pz, r) => inGateClearing(T.world, px, pz, r) || structBlocks(px, pz, r, T.heightAt(px, pz)) || treeHit(px, T.heightAt(px, pz) + 0.5, pz, r) || ambushHit(px, 0, pz, r) || peerCarHit(px, T.heightAt(px, pz) + 0.5, pz, r) || cityHit(px, T.heightAt(px, pz) + 0.5, pz, r) || bridgeHit(px, (bridgeDeck(px, pz) ?? -99) + 0.5, pz, r), // a bridge's rails keep you on its deck
   });
   syncFound(T, x, z);
   const envHooks = {
@@ -575,7 +579,7 @@ export function openWorld(x: number, z: number) {
     danger,
     nearRuin: (px: number, pz: number) => poisNear(T.world, px, pz, 90).some((p) => (p.type === 'ruin' || p.type === 'wreck') && rectDist(p.rect, px, pz) < 60),
     water: (px: number, pz: number) => T.water(px, pz),
-    forbidden: (px: number, pz: number) => nearVillage(px, pz) < 35 || baseHit(px, T.heightAt(px, pz), pz, 0.7) || cityHit(px, T.heightAt(px, pz) + 0.5, pz, 0.7) || (T.water(px, pz)?.depth ?? 0) > 0.5 || [...OW.structs.values()].some((s) => rectDist(s.poi.rect, px, pz) < 1),
+    forbidden: (px: number, pz: number) => inGateClearing(T.world, px, pz, 4) || nearVillage(px, pz) < 35 || baseHit(px, T.heightAt(px, pz), pz, 0.7) || cityHit(px, T.heightAt(px, pz) + 0.5, pz, 0.7) || (T.water(px, pz)?.depth ?? 0) > 0.5 || [...OW.structs.values()].some((s) => rectDist(s.poi.rect, px, pz) < 1),
   };
   setCreatureEnv(envHooks);
   setRobotEnv(envHooks);
@@ -585,6 +589,7 @@ export function openWorld(x: number, z: number) {
   for (const s of OW.structs.values()) if (s.camp) spawnCamp(s.camp);
 }
 export function closeWorld() {
+  clearWorldGates();
   dropGarrisons(); clearVehicles(); dropCrash(); dropInstalls(); dropCities(); dropToxic(); clearBridges(); clearPiers();
   setCreatureEnv(null); clearCreatures();
   setRobotEnv(null); clearRobots();
@@ -637,6 +642,7 @@ export function keepOnPlanet(dt: number) {
   const pcx = Math.floor(G.pos.x / CHUNK), pcz = Math.floor(G.pos.z / CHUNK);
   for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) OW.chunks.set(ckey(pcx + i, pcz + j), buildChunk(pcx + i, pcz + j));
   updateStructs(G.pos.x, G.pos.z);
+  syncWorldGates(OW.terrain!, G.pos.x, G.pos.z);
   showToast('You have gone round the world');
 }
 

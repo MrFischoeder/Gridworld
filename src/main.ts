@@ -1,3 +1,5 @@
+import { setGateTravel, updateWorldGates } from './world/worldgates';
+import { gateName } from './gen/worldgates';
 // Entry point: load the character, build the first place, run the frame loop.
 import { setVehicleProtection } from './world/damage';
 import { relay, net } from './net/client';
@@ -8,7 +10,7 @@ import { G, W, uiOpen } from './game';
 import { loadChar } from './save';
 import { initItemTips } from './ui/itemtip';
 import { calcStats, saveChar, armoured } from './character';
-import { loadDungeon, loadOverworld, toVillage, saveOverworldPos, enterDungeon } from './world/level';
+import { loadDungeon, loadOverworld, toVillage, saveOverworldPos, enterDungeon, teleportTo } from './world/level';
 import { updatePlayer, EYE } from './world/player';
 import { updateClimb } from './world/ladders';
 import { updateDoors, updateTrans } from './world/doors';
@@ -47,7 +49,7 @@ import { updateRaiders, spawnRaiderNear, forceAmbush, raiders } from './world/ra
 import { updateTracker, boardOffers, accept, syncQuestWorld, refreshBoard } from './world/quests';
 import { driving, updateDriving, vehicleCamera, vehicles, buyVehicle, fireCannon, smokeWrecks, damageVehicle } from './world/vehicles';
 import { interact } from './world/interact';
-import { el, updateHud, logLine } from './ui/hud';
+import { el, updateHud, logLine, showToast } from './ui/hud';
 import { drawMini } from './ui/minimap';
 import { toggleMap } from './ui/worldmap';
 import { initInput } from './ui/input';
@@ -141,7 +143,7 @@ function frame(now: number) {
   }
   if (live) {
     if (driving.v) updateDriving(dt); else if (riding()) updateRide(dt); else if (!(outdoors && updateBoats(dt)) && !updateClimb(dt)) moving = updatePlayer(dt);
-    if (outdoors) keepOnPlanet(dt);
+    if (outdoors) { keepOnPlanet(dt); updateWorldGates(dt, !driving.v && !riding() && !inBoat()); }
     G.cooldown -= dt;
     if (isPlacing()) { // holding a Flagpole: the mouse picks its spot instead of fighting
       updatePlacing();
@@ -209,6 +211,13 @@ function frame(now: number) {
 }
 initItemTips();
 requestAnimationFrame(frame);
+
+// Surface gate travel uses the same streamed-world transition as other surface arrivals.
+setGateTravel((gate, x, z) => {
+  G.yaw = gate.yaw + Math.PI;
+  teleportTo(x, z);
+  showToast('Arrived at ' + gateName(gate) + '. Its console can open your return route.');
+});
 
 // Debug handle for automated checks in development builds.
 if (import.meta.env.DEV) Object.assign(window, { __game: { G, W, OW, camera, scene, renderer, regionRoads, poisNear, groundAt, treeHit, collides, vehicles, driving, interact, buy: buyVehicle, foeRules, makeDrone, spawnCreature: spawnCreatureNear, damageFoe, boardOffers, accept, syncQuestWorld, enterDungeon, generateQuest, spawnBandits: spawnBanditsNear, spawnRaider: spawnRaiderNear, forceAmbush, raiders, damageVehicle } });

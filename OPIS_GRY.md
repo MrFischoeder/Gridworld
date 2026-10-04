@@ -1,6 +1,6 @@
 # GridWorld: opis gry, cel, plan i historia zmian
 
-Stan na wersję **0.111.0**. Ten dokument opisuje, czym jest GridWorld, jaki jest cel gry, co już w niej jest, czego jeszcze nie ma, dokąd zmierza i jak powstawała, wersja po wersji. Nazwy z gry (przedmioty, miejsca, postacie) są po angielsku, tak jak na ekranie.
+Stan na wersję **0.120.0**. Ten dokument opisuje, czym jest GridWorld, jaki jest cel gry, co już w niej jest, czego jeszcze nie ma, dokąd zmierza i jak powstawała, wersja po wersji. Nazwy z gry (przedmioty, miejsca, postacie) są po angielsku, tak jak na ekranie.
 
 ---
 
@@ -138,6 +138,14 @@ Gra jest pomyślana jako **kooperacja do 8 graczy** na autorytatywnym serwerze (
   | 44 km | 8 |
 
   Granice pierścieni falują. Każda wioska jest azylem. Przy ruinach jest groźniej.
+
+### Bramy Starożytnych
+- **40 teleportów na planecie**, na suchym terenie wszystkich kontynentów. Pierwsza brama znajduje się 450–1100 m od Gridholm.
+- Starożytny, obcy pierścień jest ośmiokątny, z sześcioma wyraźnie różnymi symbolami na górnych narożnikach. Dwa narożniki przy ziemi nie mają oznaczeń. Kamień ma pęknięcia i zdobienia, a przy każdej bramie leży inny układ głazów.
+- Obok stoi mniejszy kamienny panel z tymi samymi sześcioma znakami: Eye, Trident, Spiral, Bolt, Twin moons, Star. **E** otwiera konsolę, a trzy kliknięcia w odpowiedniej kolejności wybierają adres. Każda brama ma własny, niepowtarzalny adres z trzech symboli; znaki mogą się powtarzać.
+- Adres tej bramy widać na panelu i w konsoli. Rozwijane archiwum pokazuje pozostałe adresy, żeby można było wybrać cel i wrócić. Własny adres i nieprzypisana kombinacja nie otwierają przejścia.
+- Po poprawnym wyborze pojawia się migocząca powierzchnia teleportu. Przechodzi się przez pierścień **pieszo**, bez skakania, w ciągu 45 sekund aktywnej gry. Konsola wstrzymuje odliczanie. Lądowanie wypada przed pierścieniem docelowym; zdrowie i ekwipunek zostają zachowane.
+- Odkryte bramy mają błękitne, ośmiokątne ikony na minimapie i mapie świata. Rozmieszczenie, adresy i głazy są stałe dla ziarna świata, również w istniejących zapisach.
 
 ### Krajobraz
 - **Teren**:
@@ -579,3 +587,5 @@ Pełne notatki (po angielsku) są w grze pod przyciskiem **Changelog** w menu g�
 - **0.118.0 Palisady i wyposażenie.** Obozy bandytów otacza wysoka palisada z zaostrzonych drewnianych pali z otwartymi wejściami od północy i południa. Skrzynie skarbów i obozowe skrytki mają deski, zaokrąglone wieka, okucia, zawiasy, zamki i uchwyty; skrzynie w podziemiach zachowują animację otwierania. Komputery w magazynach wiosek, dawnych zakładach, przy elektrowniach i we wraku statku używają modelu z domu starszego: monitor CRT, klawiatura i osobna obudowa.
 
 - **0.119.0 Jeden stan pojazdu.** Osobne uszkodzenia kół i silnika zastępuje wspólny stan użyteczności. Ostrzał, zderzenia i ataki przeciwników uszkadzają pojazd; zwykła jazda nie powoduje zużycia. Kierowca, pasażer i strzelec nie tracą zdrowia wewnątrz, również w otwartym łaziku i w cudzym pojeździe. Przy 0% pojazd zatrzymuje się i pasażerowie wysiadają bez obrażeń. Serwis i zestaw naprawczy odnawiają wspólny stan. Zachowano zgodność zapisów i wyposażenie.
+
+- **0.120.0 Bramy Starożytnych.** Sieć 40 obcych, kamiennych, ośmiokątnych teleportów na kontynentach. Sześć różnych symboli na górnych narożnikach, dwa dolne bez znaków. Panel przy każdej bramie wybiera unikalny trzyznakowy adres; archiwum podaje adresy do podróży i powrotu. Przejście pieszo przenosi przed docelowy pierścień bez zmiany zdrowia i ekwipunku. Bramy mają różne rozsypane głazy, płaskie podejścia i znaczniki na mapach.
