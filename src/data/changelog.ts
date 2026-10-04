@@ -3,6 +3,11 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.130.0', date: '2026-10-04', title: 'Ocean seam on the developer map', notes: [
+    'The developer map opens on the whole planet with its longitude seam in the broad ocean between continents. Mainland coastlines stay together; Gridholm no longer needs to be in the centre.',
+    'Panning and zooming repeat rivers, villages, cities, underground entrances, portals, megaliths, toxic fog and the player together with the terrain. Clicking any repeated marker reaches the same original location.',
+    'Overview restores the whole-planet view; Centre on me follows the player. This display change works in existing worlds without moving places or changing saves.',
+  ] },
   { v: '0.129.0', date: '2026-10-04', title: 'Organic coasts and larger ocean islands', notes: [
     'Continents have asymmetric headlands, deep bays and many smaller coves instead of almost elliptical outlines. Two or three mainlands remain separated by broad oceans, with Gridholm safely inland.',
     'Ocean islands grow from nominal radii of 60–220 metres to 240–700 metres, with gentle 6–18 metre hills. Their full lobed shores and underwater footprints remain continuous across generator cells and the planet seam.',

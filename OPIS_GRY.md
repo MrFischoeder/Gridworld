@@ -1,10 +1,12 @@
 # GridWorld: opis gry, cel, plan i historia zmian
 
-Stan na wersję **0.129.0**. Ten dokument opisuje, czym jest GridWorld, jaki jest cel gry, co już w niej jest, czego jeszcze nie ma, dokąd zmierza i jak powstawała, wersja po wersji. Nazwy z gry (przedmioty, miejsca, postacie) są po angielsku, tak jak na ekranie.
+Stan na wersję **0.130.0**. Ten dokument opisuje, czym jest GridWorld, jaki jest cel gry, co już w niej jest, czego jeszcze nie ma, dokąd zmierza i jak powstawała, wersja po wersji. Nazwy z gry (przedmioty, miejsca, postacie) są po angielsku, tak jak na ekranie.
 
 ---
 
 ## 1. Czym jest GridWorld
+
+Mapa deweloperska (komenda `map` w konsoli) otwiera widok całej planety z granicą zawijania na szerokim oceanie między kontynentami. Kontynenty w tym widoku nie są przecięte na pół; Gridholm nie musi być w centrum. Przeciąganie i oddalanie mapy zawija razem tło, rzeki, miasta, wioski, wejścia do podziemi, portale, megality, mgły i znacznik gracza. Kliknięcie dowolnej powtórzonej kopii oznaczenia prowadzi do tego samego miejsca. Przycisk Overview przywraca widok całej planety, a Centre on me centruje gracza przy obecnym powiększeniu. Zmiana dotyczy wyświetlania i działa też w istniejących światach bez przenoszenia lokacji.
 
 Kaniony zostały usunięte z generatora świata i map. Dotyczy to także istniejących zapisów: teren wraca do naturalnej rzeźby, a dawne mosty nad kanionami są wycofywane. Mosty rzeczne pozostają dostępne.
 
@@ -609,3 +611,5 @@ Pełne notatki (po angielsku) są w grze pod przyciskiem **Changelog** w menu g�
 - **0.120.0 Bramy Starożytnych.** Sieć 40 obcych, kamiennych, ośmiokątnych teleportów na kontynentach. Sześć różnych symboli na górnych narożnikach, dwa dolne bez znaków. Panel przy każdej bramie wybiera unikalny trzyznakowy adres; archiwum podaje adresy do podróży i powrotu. Przejście pieszo przenosi przed docelowy pierścień bez zmiany zdrowia i ekwipunku. Bramy mają różne rozsypane głazy, płaskie podejścia i znaczniki na mapach.
 
 - **0.129.0 Organiczne wybrzeża i większe wyspy.** Kontynenty mają półwyspy, głębokie zatoki i liczne zatoczki, przy zachowanych szerokich oceanach. Wyspy powiększono do nominalnej średnicy 480–1400 m i wzgórz 6–18 m. Poprawiono wyszukiwanie pełnych obrzeży na granicach komórek i planety; mapa deweloperska pokazuje wyspy. Nowa geografia przelicza się w istniejących światach.
+
+- **0.130.0 Oceaniczna granica mapy deweloperskiej.** Widok całej planety zaczyna i kończy się na oceanie pomiędzy kontynentami. Wszystkie warstwy i znaczniki powtarzają się zgodnie przy przesuwaniu i oddalaniu, a kliknięcia trafiają do oryginalnych lokacji. Przycisk Overview przywraca pełny widok; istniejące światy zachowują geografię i zapisy.
