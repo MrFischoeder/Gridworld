@@ -200,20 +200,22 @@ export function spawnGuards(guards: { kind: RobotKind; x: number; z: number }[],
   }
 }
 
-function make(model: RobotKind, x: number, z: number, level: number, group: Robot[]): Robot | null {
-  if (!env || env.forbidden(x, z) || (indoor && !roomFor(model, x, z))) return null;
+function make(model: RobotKind, x: number, z: number, level: number, group: Robot[], showcase = false): Robot | null {
+  if (!showcase && (!env || env.forbidden(x, z) || (indoor && !roomFor(model, x, z)))) return null;
   const s = ROBOTS[model], mat = lineMat(ROBOT_COLOR), g = new THREE.Group(), hp = Math.round(s.hp * (1 + level * 0.2));
-  const p = V(x, env.ground(x, z) + s.lift, z);
+  const p = V(x, (showcase ? 0 : env!.ground(x, z)) + s.lift, z);
   const r: Robot = {
     kind: 'robot', model, g, mat, p, heading: Math.random() * 6.283, speed: 0, hp, maxHp: hp, r: s.r, flash: 0, level,
     state: 'patrol', timer: Math.random() * 2, atkT: 1 + Math.random(), anim: Math.random() * 10, home: p.clone(),
     legs: [], arms: [], biped: false, group, flank: (Math.random() - 0.5) * 2.4, swing: 0, drones: [], charge: 0,
   };
   MODELS[model](r);
-  g.position.copy(p); g.rotation.order = 'YXZ'; scene.add(g);
-  group.push(r); W.robots.push(r);
+  g.position.copy(p); g.rotation.order = 'YXZ';
+  if (!showcase) { scene.add(g); group.push(r); W.robots.push(r); }
   return r;
 }
+/** A display-only model: no world registration, AI or combat. */
+export const showcaseRobot = (model: RobotKind) => make(model, 0, 0, 1, [], true)!;
 /** Fixed city roster, using the normal placement and collision checks. */
 export function spawnCityRobot(model: RobotKind, x: number, z: number, level: number, group: Robot[]): Robot | null { return make(model, x, z, level, group); }
 /** What turns up at this danger: a pack of scouts, a guardian patrol (maybe with a repair drone), a sentinel, an artillery walker, an assault construct. */

@@ -230,7 +230,10 @@ const FISH = 0xa8d8e8;
 const baseColor = (c: Creature) => (c.kind === 'silverfin' ? FISH : c.kind === 'bramble' && c.state === 'roam' ? CALM : HOSTILE);
 
 // ---------- spawning ----------
-function make(kind: CreatureKind, p: THREE.Vector3, level: number): Creature {
+/** A display-only creature, kept out of gameplay state and combat. */
+export const showcaseCreature = (kind: CreatureKind) => make(kind, V(0, CREATURES[kind].lift, 0), 1, true);
+
+function make(kind: CreatureKind, p: THREE.Vector3, level: number, showcase = false): Creature {
   const s = CREATURES[kind], mat = lineMat(kind === 'bramble' ? CALM : kind === 'silverfin' ? FISH : HOSTILE), g = new THREE.Group();
   const hp = Math.round(s.hp * (1 + level * 0.35));
   const c: Creature = {
@@ -241,8 +244,8 @@ function make(kind: CreatureKind, p: THREE.Vector3, level: number): Creature {
   };
   if (kind === 'ravager') ravagerModel(c); else if (kind === 'bramble') brambleModel(c); else if (kind === 'gnawer') gnawerModel(c);
   else if (kind === 'skitter') skitterModel(c); else if (kind === 'lurker') lurkerModel(c); else if (kind === 'silverfin') silverfinModel(c); else leechwingModel(c);
-  g.position.copy(p); g.rotation.order = 'YXZ'; scene.add(g);
-  W.creatures.push(c);
+  g.position.copy(p); g.rotation.order = 'YXZ';
+  if (!showcase) { scene.add(g); W.creatures.push(c); }
   return c;
 }
 export interface SpawnEnv {

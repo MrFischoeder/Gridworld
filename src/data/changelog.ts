@@ -4,6 +4,22 @@ export interface Change { v: string; date: string; title: string; notes: string[
 
 export const CHANGELOG: Change[] = [
   {
+    v: '0.125.0', date: '2026-10-04', title: 'Developer map portals and canyons',
+    notes: [
+      'The console’s developer map shows all 40 ancient portals as cyan octagons and scans the planet for canyons, drawn as orange rims with their real orientation and size.',
+      'Zoom in to see the canyon descent paths and entrances. Hover for dimensions and depth; click a canyon to arrive at its path entrance or a portal to arrive beside its ring.',
+      'The legend and scan counters identify the new landmarks, including unexplored places. Canyon discovery runs in short frame slices and is cached per world.',
+    ],
+  },
+  {
+    v: '0.124.0', date: '2026-10-04', title: 'Twenty-second drone opening',
+    notes: [
+      'A twenty-second opening film plays before the menu: fly through Gridholm’s gate and circle its houses, then discover ancient ruins and an active portal, fallen cities, rivers and mountain ranges.',
+      'Close flybys show robots, armed bandits, wild fauna and a moving vehicle convoy using the game’s models. GRIDWORLD gradually appears, followed by Designed by Luki and Music by Iskra.',
+      'Skip with the on-screen button, Space, Enter or Escape; replay with Opening film in the menu. The separate showcase leaves your position, world clock, foes and saves untouched. New heroes still have their shipwreck story after Play.',
+    ],
+  },
+  {
     v: '0.123.0', date: '2026-10-04', title: 'Faceted natural boulders',
     notes: [
       'Scattered stones and large terrain boulders now have broad bodies, uneven shoulders and flat broken crowns instead of pyramid tips. Their faceted shapes vary deterministically.',
