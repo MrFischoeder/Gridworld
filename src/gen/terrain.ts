@@ -1,5 +1,6 @@
 // Heightfield of the open world: seeded noise, shaped per region, flattened under places and along roads.
 import { gatesNear, GATE_CLEAR, GATE_BLEND, type WorldGate } from './worldgates';
+import { megalithsIn, MEGALITH_BLEND, type Megalith } from './megaliths';
 import { fbm } from '../core/noise';
 import { hash } from '../core/rng';
 import { regionClimate, regionOf, poisNear, CHUNK, WORLD_W, POLAR_Z, type Poi, type Rect } from './regions';
@@ -20,7 +21,7 @@ export const rectDist = (r: Rect, x: number, z: number) => Math.hypot(Math.max(r
 export const inRect = (r: Rect, x: number, z: number) => x >= r.x0 && x < r.x1 && z >= r.z0 && z < r.z1;
 
 export interface Pad { poi: Poi; y: number }
-export interface Features { pads: Pad[]; roads: Road[]; lakes: Lake[]; claims: Claim[]; rivers: RiverSeg[]; chasms: Chasm[]; gates: WorldGate[] }
+export interface Features { pads: Pad[]; roads: Road[]; lakes: Lake[]; claims: Claim[]; rivers: RiverSeg[]; chasms: Chasm[]; gates: WorldGate[]; megaliths: Megalith[] }
 
 const ROAD_BLEND = 5;
 /** Trails blend back into the slope more gently: the 2 m height lattice must still see a flat bench across them. */
@@ -36,7 +37,7 @@ export class Terrain {
   private padCache = new Map<number, number>();
   /** Land claimed by players (flagpoles): levelled ground. Player changes, handed in by the runtime. */
   private claims: Claim[] = [];
-  constructor(public world: number) { this.s2 = hash(world, 0x7e12) * 7919; }
+  constructor(public world: number, public readonly includeMegaliths = true) { this.s2 = hash(world, 0x7e12) * 7919; }
 
   /** Natural terrain before any flattening (gen/heights.ts). */
   base(x: number, z: number): number { return naturalHeight(this.world, x, z); }
@@ -83,7 +84,7 @@ export class Terrain {
     const [tx, tz] = regionOf(cx - 1500, cz - 1500), [ux, uz] = regionOf(cx + 1500, cz + 1500);
     for (let rx = tx; rx <= ux; rx++) for (let rz = tz; rz <= uz; rz++) regionTrails(this, rx, rz).forEach(take);
     const claims = this.claims.filter((c) => claimDist(c, cx, cz) < half * 1.42 + CLEAR_R);
-    return { pads, roads, gates: gatesNear(this.world, cx, cz, half * 1.42 + GATE_CLEAR + GATE_BLEND), lakes: lakesIn(this, r), claims, chasms: chasmsIn(this.world, r), rivers: riverSegsIn(this.world, r.x0, r.z0, r.x1, r.z1) };
+    return { pads, roads, megaliths: this.includeMegaliths ? megalithsIn(this.world, r) : [], gates: gatesNear(this.world, cx, cz, half * 1.42 + GATE_CLEAR + GATE_BLEND), lakes: lakesIn(this, r), claims, chasms: chasmsIn(this.world, r), rivers: riverSegsIn(this.world, r.x0, r.z0, r.x1, r.z1) };
   }
   chunkFeatures(cx: number, cz: number): Features {
     const k = key(cx, cz);
@@ -124,6 +125,11 @@ export class Terrain {
       const d = Math.hypot(x - g.x, z - g.z);
       if (d <= GATE_CLEAR) h = g.y;
       else if (d < GATE_CLEAR + GATE_BLEND) h += (g.y - h) * (1 - smooth((d - GATE_CLEAR) / GATE_BLEND));
+    }
+    for (const m of f.megaliths) {
+      const d = Math.hypot(x - m.x, z - m.z);
+      if (d <= m.radius) h = m.y;
+      else if (d < m.radius + MEGALITH_BLEND) h += (m.y - h) * (1 - smooth((d - m.radius) / MEGALITH_BLEND));
     }
     return h;
   }

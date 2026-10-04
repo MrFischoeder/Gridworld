@@ -42,6 +42,7 @@ export function claimProblem(t: Terrain, x: number, z: number, others: Claim[]):
   if (villageDist(t.world, x, z) < 150) return 'Too close to a village.';
   for (const c of others) if (claimDist(c, x, z) < 2 * CLAIM.r) return 'Too close to your other claim.';
   const reach = CLEAR_R + 4, f = t.featuresIn({ x0: x - reach, z0: z - reach, x1: x + reach, z1: z + reach });
+  if (f.megaliths.length) return 'Too close to an ancient megalith.';
   if (f.gates.length) return 'Too close to an ancient gate.';
   const place = poisNear(t.world, x, z, CLEAR_R + 120).find((p) => rectD(p.rect, x, z) < CLEAR_R + p.flat + p.blend);
   if (place) return 'Too close to ' + place.name + '.';

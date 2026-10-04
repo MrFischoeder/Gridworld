@@ -4,6 +4,15 @@ export interface Change { v: string; date: string; title: string; notes: string[
 
 export const CHANGELOG: Change[] = [
   {
+    v: '0.126.0', date: '2026-10-04', title: 'Twelve colossal megalithic sanctuaries',
+    notes: [
+      'Twelve enormous Stonehenge-inspired monuments stand across the continents: crowned, twin and triple stone circles, a horseshoe, an avenue, a spiral, cardinal arches, a broken halo, a star assembly, a towering obelisk, a giant gate and a constellation court.',
+      'Sanctuaries span 230–330 metres, with pillars and lintels up to 78 metres high. Weathered stone faces have opaque fills, fractures and old carvings; open archways and courtyards remain passable.',
+      'Every monument has a fixed name, id and seeded location, reserved for future special purposes. They do not activate a quest or portal yet. Their grounds are kept clear and cannot be claimed as a base.',
+      'Stonework blocks movement, vehicles, shots and sight. The local view extends near these huge sites, and their named markers appear on the explored map and the full developer map. Click a developer marker to visit the outer edge.',
+    ],
+  },
+  {
     v: '0.125.0', date: '2026-10-04', title: 'Developer map portals and canyons',
     notes: [
       'The console’s developer map shows all 40 ancient portals as cyan octagons and scans the planet for canyons, drawn as orange rims with their real orientation and size.',

@@ -11,7 +11,7 @@ import { continents } from './continents';
 import { inSea } from './seas';
 import { nearRiver } from './rivers';
 import { inCity } from './cities';
-import { rectDist, type Terrain } from './terrain';
+import { rectDist, Terrain } from './terrain';
 import type { ItemKey } from '../data/items';
 
 export type InstallKind = 'uranium' | 'chips' | 'radar' | 'propellant' | 'battery' | 'optical' | 'alloy' | 'precision' | 'robotics';
@@ -57,6 +57,8 @@ let searching = false;
 /** Every installation of a world: for each, the first of a hashed list of spots on the continents within its distance band that fits (the first eligible spot if none does). */
 export function installSites(t: Terrain): InstallSite[] {
   const hit = cache.get(t.world); if (hit) return hit;
+  // Survey the original seeded foundation, independently of new monument pads or player flattening.
+  if (t.includeMegaliths) t = new Terrain(t.world, false);
   const out: InstallSite[] = [];
   cache.set(t.world, out); // (filled below; set first so a nested call during the search sees no sites rather than recursing)
   const land = continents(t.world);
