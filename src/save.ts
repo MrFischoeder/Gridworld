@@ -2,7 +2,7 @@
 // Versions: v1 (relic counts) -> v2 (backpack, per-dungeon progress) -> v3 (open world).
 import { fixInstall, type InstallKind, type InstallState } from './gen/installs';
 import { fixPlant } from './gen/plants';
-import type { BridgeState, Ford } from './gen/bridges';
+import { retireOldCrossings, type BridgeState, type Ford } from './gen/bridges';
 import type { Pier } from './gen/piers';
 import type { Boat } from './gen/boats';
 import { INV_SIZE, MOD_SIZE, ITEMS, PACK, type ItemKey, type WearSlot } from './data/items';
@@ -178,6 +178,7 @@ export function loadChar(storage: Pick<Storage, 'getItem'> | null = safeStorage(
         const left = putItems(c.inv, 'ammoE', OLD_SAVE_CELLS, PACK.vol);
         if (left > 0) { const hold = ((c.towns[GRIDHOLM_ID] ??= {}).hold ??= {}); hold.ammoE = (hold.ammoE ?? 0) + left; }
       }
+      retireOldCrossings(c);
       return c;
     }
     const v2 = storage?.getItem(V2_KEY);

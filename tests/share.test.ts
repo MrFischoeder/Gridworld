@@ -122,3 +122,14 @@ describe('shared world client reconciliation', () => {
       .toEqual({ stock: { wood: 3, ore: 4 }, items: [2] });
   });
 });
+
+it('retires obsolete crossings on shared snapshots and incoming changes', () => {
+  const old = { id: 'old', kind: 'chasm', x: 1, z: 2 };
+  const river = { id: 'river', x: 3, z: 4 };
+  welcome({ bridgeSites: { old, river }, bridges: { old: { given: {}, done: 100 }, river: { given: { log: 3 } } } });
+  expect(state.G.char.bridgeSites).toEqual([river]);
+  expect(state.G.char.bridges).toEqual({ river: { given: { log: 3 } } });
+  state.hooks!.set([['bridgeSites', 'old', old], ['bridges', 'old', { given: {}, done: 200 }]], 2, 0);
+  expect(state.G.char.bridgeSites).toEqual([river]);
+  expect(state.G.char.bridges.old).toBeUndefined();
+});

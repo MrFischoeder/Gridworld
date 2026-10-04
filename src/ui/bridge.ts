@@ -25,7 +25,7 @@ function render(msg = '') {
     s += `A timber bridge, ${BRIDGE.w} m wide, carries traffic across: people on foot, wagons and vehicles cross dry. It was finished on ${fmtClock(st.done)}.</div>`;
   } else {
     const rows = bridgeRows(site, st);
-    s += `${own ? 'Your stakes mark where the bridge will cross.' : 'Here the road wades the river.'} A timber bridge would carry ${own ? 'you' : 'it'} over: piles, beams and a planked deck ${site.kind === 'chasm' ? 'above the ravine' : BRIDGE.clear + ' m above the water'}, ramps down to the banks and a rail each side. Anyone can build it, bit by bit: bring the materials here (in your backpack, or in the trunk of a vehicle parked by the site).</div>` +
+    s += `${own ? 'Your stakes mark where the bridge will cross.' : 'Here the road wades the river.'} A timber bridge would carry ${own ? 'you' : 'it'} over: piles, beams and a planked deck ${BRIDGE.clear} m above the water, ramps down to the banks and a rail each side. Anyone can build it, bit by bit: bring the materials here (in your backpack, or in the trunk of a vehicle parked by the site).</div>` +
       `<div class="shoprow"><div>` + rows.map((r) => { const h = have(r.k); return `<span style="color:${r.given >= r.n ? 'var(--xp)' : h ? 'var(--txt)' : '#ff9a7a'}">${ITEMS[r.k].name} ${r.given}/${r.n}${r.given < r.n && h ? ` (you have ${h} with you)` : ''}</span>`; }).join(' · ') +
       `<br><span style="opacity:.7">Logs from any tree (a Hatchet), stones from the rocks (a Pickaxe); nails and rope at the village store. On completion: ${bridgeXp(site)} xp.</span></div></div>` +
       `<button class="opt" data-brg="give" ${rows.some((r) => r.given < r.n && have(r.k) > 0) ? '' : 'disabled'}>Hand over what I carry</button>` +

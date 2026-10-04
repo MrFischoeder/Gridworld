@@ -13,7 +13,6 @@ import { onMountain } from './mountains';
 import { inSea } from './seas';
 import { nearRiver } from './rivers';
 import { inCity } from './cities';
-import { chasmsIn } from './chasms';
 
 export type WaterKind = 'fresh' | 'murky' | 'toxic' | 'sea';
 export interface Lake {
@@ -81,7 +80,6 @@ export function regionLakes(t: Pick<Terrain, 'world' | 'base'>, rx: number, rz: 
   const tryLake = (id: number, x: number, z: number, r: number, p1: number, p2: number, kr: number, low: boolean) => {
     if (Math.abs(z) + r * 2 >= POLAR_Z) return;
     // Reject at the source so map markers and Terrain.water agree about which lakes exist.
-    if (chasmsIn(t.world, { x0: x - r * 2, z0: z - r * 2, x1: x + r * 2, z1: z + r * 2 }).length) return;
     if (out!.some((l) => Math.hypot(l.x - x, l.z - z) < (l.r + r) * LAKE_REACH * 1.3 + 12)) return;
     const pois = poisNear(t.world, x, z, r * 2 + 120);
     const clear = pois.every((p) => rectD(p.rect, x, z) > r * LAKE_REACH * 1.3 + p.flat + p.blend + 6) && !nearRoad(t.world, x, z, r * LAKE_REACH * 1.3 + 8) && !onMountain(t.world, x, z, r * 2 + 20) && !inSea(t.world, x, z, r * 2 + 40) && !nearRiver(t.world, x, z, r * 2 + 50) && !inCity(t.world, x, z, r * 2 + 40);

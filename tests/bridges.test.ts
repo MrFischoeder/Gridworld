@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { regionFords, deckY, deckAt, bridgeNeeds, bridgeRows, handOverBridge, bridgeProgress, planBridge, bridgeProblem, PLACE, BRIDGE, type BridgeState, type Ford } from '../src/gen/bridges';
+import { retireOldCrossings, regionFords, deckY, deckAt, bridgeNeeds, bridgeRows, handOverBridge, bridgeProgress, planBridge, bridgeProblem, PLACE, BRIDGE, type BridgeState, type Ford } from '../src/gen/bridges';
 import { riversOf, riverSegsIn, riverNear } from '../src/gen/rivers';
 import { Terrain } from '../src/gen/terrain';
 import { regionOf, NR, REGION } from '../src/gen/regions';
@@ -73,4 +73,20 @@ describe('bridges', () => {
     expect(planBridge(W, 0, 0, 10, 10, ground)).toBeNull(); // by Gridholm there is no river
     expect(bridgeProblem(W, null, [])).toMatch(/Look at a river/);
   });
+});
+
+
+it('retires obsolete crossings from persisted worlds while keeping river bridges intact', () => {
+  const river: Ford = { id: 'river', x: 0, z: 0, dx: 1, dz: 0, river: 'Fresh River', road: '', level: 5, half: 4, end: 14, g0: 5, g1: 5 };
+  // The discriminator only exists on retired crossings from older builds.
+  const old = { ...river, id: 'old', kind: 'chasm' };
+  const c = { bridgeSites: [old, river], bridges: { old: { given: {}, done: 100 }, river: { given: { log: 2 } }, road: { given: {}, done: 50 } } as Record<string, BridgeState> };
+  const expected = structuredClone(c.bridges.river);
+  retireOldCrossings(c);
+  expect(c.bridgeSites).toEqual([river]);
+  expect(c.bridges.old).toBeUndefined();
+  expect(c.bridges.river).toEqual(expected);
+  expect(c.bridges.road.done).toBe(50);
+  retireOldCrossings(c);
+  expect(c.bridgeSites).toEqual([river]);
 });

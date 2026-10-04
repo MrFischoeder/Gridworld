@@ -11,7 +11,6 @@ import { regionTrails, trailHeight } from './trails';
 import { seaMask, SEA } from './seas';
 import { naturalHeight } from './heights';
 import { riverSegsIn, riverNear, riverCarve, type RiverSeg } from './rivers';
-import { chasmsIn, chasmHeight, type Chasm } from './chasms';
 
 export const STEP = 2, CELLS = CHUNK / STEP, VERTS = CELLS + 1;
 export const MAX_H = 25;
@@ -21,7 +20,7 @@ export const rectDist = (r: Rect, x: number, z: number) => Math.hypot(Math.max(r
 export const inRect = (r: Rect, x: number, z: number) => x >= r.x0 && x < r.x1 && z >= r.z0 && z < r.z1;
 
 export interface Pad { poi: Poi; y: number }
-export interface Features { pads: Pad[]; roads: Road[]; lakes: Lake[]; claims: Claim[]; rivers: RiverSeg[]; chasms: Chasm[]; gates: WorldGate[]; megaliths: Megalith[] }
+export interface Features { pads: Pad[]; roads: Road[]; lakes: Lake[]; claims: Claim[]; rivers: RiverSeg[]; gates: WorldGate[]; megaliths: Megalith[] }
 
 const ROAD_BLEND = 5;
 /** Trails blend back into the slope more gently: the 2 m height lattice must still see a flat bench across them. */
@@ -84,7 +83,7 @@ export class Terrain {
     const [tx, tz] = regionOf(cx - 1500, cz - 1500), [ux, uz] = regionOf(cx + 1500, cz + 1500);
     for (let rx = tx; rx <= ux; rx++) for (let rz = tz; rz <= uz; rz++) regionTrails(this, rx, rz).forEach(take);
     const claims = this.claims.filter((c) => claimDist(c, cx, cz) < half * 1.42 + CLEAR_R);
-    return { pads, roads, megaliths: this.includeMegaliths ? megalithsIn(this.world, r) : [], gates: gatesNear(this.world, cx, cz, half * 1.42 + GATE_CLEAR + GATE_BLEND), lakes: lakesIn(this, r), claims, chasms: chasmsIn(this.world, r), rivers: riverSegsIn(this.world, r.x0, r.z0, r.x1, r.z1) };
+    return { pads, roads, megaliths: this.includeMegaliths ? megalithsIn(this.world, r) : [], gates: gatesNear(this.world, cx, cz, half * 1.42 + GATE_CLEAR + GATE_BLEND), lakes: lakesIn(this, r), claims, rivers: riverSegsIn(this.world, r.x0, r.z0, r.x1, r.z1) };
   }
   chunkFeatures(cx: number, cz: number): Features {
     const k = key(cx, cz);
@@ -111,7 +110,6 @@ export class Terrain {
       h = w >= 1 ? rh : h + (rh - h) * w;
     }
     if (td < thalf + TRAIL_BLEND) { const w = td <= thalf ? 1 : 1 - smooth((td - thalf) / TRAIL_BLEND); h = w >= 1 ? th : h + (th - h) * w; }
-    for (const c of f.chasms) h = chasmHeight(this.world, c, x, z, h);
     for (const p of f.pads) {
       const d = rectDist(p.poi.rect, x, z);
       if (d <= p.poi.flat) h = p.y;

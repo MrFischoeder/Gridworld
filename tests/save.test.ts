@@ -69,3 +69,11 @@ describe('rename to GridWorld', () => {
     expect(c).toMatchObject({ level: 7, gold: 5, world: 1 });
   });
 });
+
+it('removes retired crossings when opening an existing character save', () => {
+  const old = { id: 'old', kind: 'chasm', x: 1, z: 2 };
+  const river = { id: 'river', x: 3, z: 4 };
+  const c = loadChar(store({ [SAVE_KEY]: JSON.stringify({ bridgeSites: [old, river], bridges: { old: { given: {}, done: 100 }, river: { given: { log: 3 } } } }) }));
+  expect(c.bridgeSites).toEqual([river]);
+  expect(c.bridges).toEqual({ river: { given: { log: 3 } } });
+});

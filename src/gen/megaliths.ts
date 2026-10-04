@@ -7,7 +7,6 @@ import { mountainMask } from './mountains';
 import { naturalHeight } from './heights';
 import { nearRiver } from './rivers';
 import { lakesIn, LAKE_REACH } from './water';
-import { chasmsIn } from './chasms';
 import { inCity } from './cities';
 import { gatesNear } from './worldgates';
 import { Terrain } from './terrain';
@@ -55,7 +54,7 @@ export function worldMegaliths(world: number): Megalith[] {
       }
       if (!dry || hi - lo > 24 || nearRiver(world, x, z, reach + 80)) continue;
       const rect = { x0: x - reach, z0: z - reach, x1: x + reach, z1: z + reach };
-      if (chasmsIn(world, rect).length || lakesIn(base, rect).some(l => Math.hypot(l.x - x, l.z - z) < reach + l.r * LAKE_REACH + 20)) continue;
+      if (lakesIn(base, rect).some(l => Math.hypot(l.x - x, l.z - z) < reach + l.r * LAKE_REACH + 20)) continue;
       if (gatesNear(world, x, z, reach + 100).length) continue;
       const [rx, rz] = regionOf(x, z); let road = false;
       for (let i = -2; i <= 2 && !road; i++) for (let j = -2; j <= 2 && !road; j++) if (regionRoads(world, rx + i, rz + j).some(r => nearestOnRoad(r, x, z)[0] < reach + r.half + 20)) road = true;

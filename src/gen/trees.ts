@@ -11,7 +11,6 @@ import { inInstall } from './installs';
 import { inCity } from './cities';
 import { inFogSite } from './toxic';
 import { boulderDensity } from './boulders';
-import { chasmLocal } from './chasms';
 
 /** Open ground kept around places: villages keep a wide ring (the vehicle yard sits there). */
 const clearing = (p: { type: string }) => (p.type === 'village' ? 20 : 6);
@@ -36,7 +35,6 @@ function treeSpots(t: Terrain, cx: number, cz: number) {
     if (roll > t.forest(x, z) * 0.85) continue;
     if (f.pads.some((p) => rectDist(p.poi.rect, x, z) < p.poi.flat + clearing(p.poi))) continue;
     if (f.roads.some((rd) => nearestOnRoad(rd, x, z)[0] < rd.half + 3.5)) continue;
-    if (f.chasms.some(c => { const [u, v] = chasmLocal(c, x, z); return Math.abs(u) < c.length / 2 + 20 && Math.abs(v) < c.width / 2 + 25; })) continue;
     // stand the trunk on the lowest ground under it so it never floats
     const y = Math.min(t.heightAt(x - 0.3, z - 0.3), t.heightAt(x + 0.3, z - 0.3), t.heightAt(x - 0.3, z + 0.3), t.heightAt(x + 0.3, z + 0.3));
     out.push({ x, z, y, h, r });
@@ -138,7 +136,6 @@ export function chunkRocks(t: Terrain, cx: number, cz: number): Rock[] {
     if (f.pads.some((p) => rectDist(p.poi.rect, x, z) < p.poi.flat + clearing(p.poi))) continue;
     if (f.roads.some((rd) => nearestOnRoad(rd, x, z)[0] < rd.half + r + 0.5)) continue;
     if (t.water(x, z) || inScar(t, x, z, 8 + r) || inInstall(t, x, z, 4 + r) || inCity(t.world, x, z, 2 + r) || inFogSite(t.world, x, z, 2 + r)) continue;
-    if (f.chasms.some(c => { const [u, v] = chasmLocal(c, x, z); return Math.abs(u) < c.length / 2 + r + 20 && Math.abs(v) < c.width / 2 + r + 25; })) continue;
     const k: Rock = { x, z, y: t.heightAt(x, z) - 0.15, r, h, sides, rot }, ore = oreOf(t.world, cx, cz, out.length, k);
     if (ore) k.ore = ore;
     out.push(k);
@@ -151,7 +148,6 @@ export function chunkRocks(t: Terrain, cx: number, cz: number): Rock[] {
     if (roll > boulderDensity(t.world, x, z) * 0.85) continue;
     if (f.pads.some(p => rectDist(p.poi.rect, x, z) < p.poi.flat + clearing(p.poi) + r)) continue;
     if (f.roads.some(rd => nearestOnRoad(rd, x, z)[0] < rd.half + r + 2)) continue;
-    if (f.chasms.some(c => { const [u, v] = chasmLocal(c, x, z); return Math.abs(u) < c.length / 2 + r + 20 && Math.abs(v) < c.width / 2 + r + 25; })) continue;
     if (t.water(x, z) || inScar(t, x, z, 8 + r) || inInstall(t, x, z, 4 + r) || inCity(t.world, x, z, 2 + r) || inFogSite(t.world, x, z, 2 + r)) continue;
     const y = Math.min(t.heightAt(x - r * 0.5, z), t.heightAt(x + r * 0.5, z), t.heightAt(x, z - r * 0.5), t.heightAt(x, z + r * 0.5)) - 0.2;
     out.push({ x, z, y, r, h, rot, sides: 6 });
