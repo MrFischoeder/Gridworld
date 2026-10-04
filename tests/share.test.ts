@@ -9,7 +9,7 @@ const state = vi.hoisted(() => ({
 }));
 vi.mock('../src/game', () => ({ G: state.G, W: state.W }));
 vi.mock('../src/net/client', () => ({
-  net: state.net, activeContainers: state.active, online: () => state.online, sendWorld: state.send, seedWorld: state.seed,
+  net: state.net, activeContainers: state.active, activeTowns: new Set<string>(), online: () => state.online, sendWorld: state.send, seedWorld: state.seed,
   onWorld: (h: WorldHooks) => { state.hooks = h; },
 }));
 vi.mock('../src/character', () => ({ saveChar: state.save, dungeonKey: () => 'dungeon' }));
@@ -41,6 +41,8 @@ describe('shared world client reconciliation', () => {
     state.G.char.world = world;
     joinWorld();
     expect(state.seed).not.toHaveBeenCalled(); expect(state.G.char.harvest).toEqual({});
+    expect(state.G.char.settlementRules).toBe(1);
+    expect(Object.values(state.G.char.towns).every((t: any) => t.settlement?.v === 1)).toBe(true);
   });
   it('waits for a seed acknowledgement and retains edits made while seeding', () => {
     state.G.char.harvest.tree = 1;

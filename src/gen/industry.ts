@@ -1,3 +1,4 @@
+import { progressive, projectDone, type Project } from './settlement';
 // What a village lives on: its industry, worked at a site outside its fence. Farming villages till fields (grain,
 // carrots, potatoes), mining villages dig a mine (coal, iron ore, copper; mostly by the hills), oil villages pump
 // crude from their wells, and a village with oil wells not far off may put up a refinery that turns crude into fuel
@@ -74,8 +75,9 @@ export function industryOf(world: number, v: Poi, seed: number): Industry {
   cache.set(key, k);
   return k;
 }
+export const industryProject = (k: Industry): Project | null => ['mine', 'lumber', 'oil', 'refinery'].includes(k) ? k as Project : null;
 /** Is the village's site standing (a refinery must be built first)? */
-export const siteBuilt = (k: Industry, s: TownState | undefined) => !INDUSTRY[k].build || !!s?.built;
+export const siteBuilt = (k: Industry, s: TownState | undefined) => progressive(s) ? (industryProject(k) ? projectDone(s, industryProject(k)!) : !!s?.built) : !INDUSTRY[k].build || !!s?.built;
 /** The site's condition 0..100: lost raids and bandits at the site knock it down, and it heals with time or your repair. */
 export function siteCondition(world: number, v: Poi, s: TownState | undefined, now: number): number {
   const since = Math.max(s?.siteFixed ?? -Infinity, now - SITE.heal - RAID.duration * 2);
@@ -103,7 +105,7 @@ export function fertility(world: number, v: Poi, seed: number): number {
  */
 export function production(world: number, v: Poi, seed: number, s: TownState | undefined, now: number): number {
   const k = industryOf(world, v, seed);
-  if (!siteBuilt(k, s)) return 0;
+  if (!siteBuilt(k, s) || (s?.settlement?.v === 1 && k === 'refinery')) return 0;
   const pw = SITE_UNPOWERED + (1 - SITE_UNPOWERED) * sitePower(world, v, seed, s, now);
   return siteCondition(world, v, s, now) / 100 * fertility(world, v, seed) * autoStaffing(s, staffing(seed, v.id === GRIDHOLM_ID, s, now)) * pw * autoMult(s);
 }
@@ -121,7 +123,8 @@ export function industrySite(seed: number, k: Industry): { x: number; z: number;
 }
 /** The refinery commission: what is still missing (like the wall's in gen/town.ts), or null once built. */
 export function buildPlan(k: Industry, s: TownState | undefined) {
-  const need = INDUSTRY[k].build;
+  if (progressive(s) && industryProject(k)) return null;
+  const need = s?.settlement?.v === 1 ? (INDUSTRY[k].build ?? [['log', 16], ['stone', 12], ['scrap', 6]] as [ItemKey, number][]) : INDUSTRY[k].build;
   if (!need || s?.built) return null;
   const rows = need.map(([i, n]) => ({ k: i, n, given: Math.min(n, s?.bgiven?.[i] ?? 0) }));
   return { rows, done: rows.every((r) => r.given >= r.n) };
@@ -129,6 +132,7 @@ export function buildPlan(k: Industry, s: TownState | undefined) {
 /** Hand over materials for the refinery; builds it once everything is in. */
 export function handOverBuild(k: Industry, s: TownState, have: (i: ItemKey) => number): { taken: [ItemKey, number][]; built: boolean } {
   const plan = buildPlan(k, s);
+  if (s.settlement?.v === 1 && !s.settlement.done?.power) return { taken: [], built: false };
   if (!plan) return { taken: [], built: false };
   s.bgiven ??= {};
   const taken: [ItemKey, number][] = [];

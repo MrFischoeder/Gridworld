@@ -1,3 +1,6 @@
+import { commsRuin, initializeSettlements } from '../gen/settlement';
+import { findPoi } from '../gen/regions';
+import { GRIDHOLM_ID } from '../gen/regions';
 // The shared world (multiplayer): on a server everyone plays in one world, so what belongs to the world rather than to
 // a hero lives on the server (server/mp.mjs keeps it per room) and every change reaches everyone: the villages (walls,
 // farms, works, stations, the hall's stock, defences...), the markets, bridges, piers and boats, the great
@@ -10,7 +13,7 @@
 // played the room's world brings their world along.
 import { mergeWorld, mergeProgress } from '../net/worlddoc.mjs';
 import { G, W } from '../game';
-import { net, activeContainers, online, sendWorld, seedWorld, onWorld, type WorldDoc } from '../net/client';
+import { net, activeContainers, activeTowns, online, sendWorld, seedWorld, onWorld, type WorldDoc } from '../net/client';
 import { saveChar, dungeonKey } from '../character';
 import { OW, reloadStruct, rebuildChunkAt } from './overworld';
 import { CHUNK, HANGAR_ID, nearX } from '../gen/regions';
@@ -78,7 +81,8 @@ function put(c: Char, f: Field, k: string, v: unknown) {
 /** The parts of a village that change how it looks (a change rebuilds it). */
 const townLook = (t: unknown) => {
   const s = (t ?? {}) as Record<string, unknown>;
-  return JSON.stringify([s.wall, s.works, s.farms, s.crops, s.fup, s.pup, s.imp, s.built, s.pbuild, (s.plants as { k: string }[] | undefined)?.map((p) => p.k), (s.stations as { k: string }[] | undefined)?.map((p) => p.k)]);
+  const settlement = s.settlement as { v?: number; done?: unknown } | undefined;
+  return JSON.stringify([s.wall, s.works, s.farms, s.crops, s.fup, s.pup, s.imp, s.built, settlement?.v, settlement?.done, s.pbuild, (s.plants as { k: string }[] | undefined)?.map((p) => p.k), (s.stations as { k: string }[] | undefined)?.map((p) => p.k)]);
 };
 function show(f: string, k: string, before: unknown, after: unknown) {
   if (G.char.loc === 'dungeon' && G.char.dungeon && k === dungeonKey()) {
@@ -93,7 +97,11 @@ function show(f: string, k: string, before: unknown, after: unknown) {
     return;
   }
   if (!OW.terrain || G.char.loc !== 'overworld') return; // underground, or not loaded: seen when you come back
-  if (f === 'towns' && townLook(before) !== townLook(after)) reloadStruct(+k);
+  if (f === 'towns' && townLook(before) !== townLook(after)) {
+    reloadStruct(+k);
+    const v = findPoi(G.char.world, +k), r = v && G.char.towns[k]?.settlement && commsRuin(G.char.world, v);
+    if (r) reloadStruct(r.id);
+  }
   else if (f === 'shuttle') reloadStruct(HANGAR_ID);
   else if (f === 'harvest' && (k.startsWith('tree:') || k.startsWith('rock:'))) {
     const [, cx, cz] = k.split(':').map(Number);
@@ -118,7 +126,8 @@ onWorld({
       if (!f || f.skip?.(k)) continue;
       const before = entries(G.char, f).find(([kk]) => kk === k)?.[1], was = before === undefined ? undefined : JSON.stringify(before);
       const baseline = last.get(fk)?.get(k);
-      const authoritative = rejected || (force && !(from === net.id && fk === 'containers' && activeContainers.has(k)));
+      const ownReservation = from === net.id && (fk === 'containers' && activeContainers.has(k) || fk === 'towns' && activeTowns.has(k));
+      const authoritative = rejected || (force && !ownReservation);
       const merge = ['opened', 'unlocked', 'killed'].includes(fk) ? mergeProgress : mergeWorld;
       const rebased = authoritative ? v : merge(v, baseline === undefined ? undefined : JSON.parse(baseline), before);
       put(G.char, f, k, rebased);
@@ -148,6 +157,7 @@ function adopt(doc: WorldDoc, keepEdits = false) {
     for (const [k, v] of Object.entries(want)) put(c, f, k, v);
     if (f.kind === 'one' && !('_' in want)) put(c, f, '_', null);
   }
+  c.settlementRules = c.towns[GRIDHOLM_ID]?.settlement?.v === 1 ? 1 : 0;
   retireOldCrossings(c);
   remember(doc);
   if (c.loc === 'dungeon' && c.dungeon) {
@@ -163,7 +173,10 @@ export function joinWorld(): boolean {
   const p = pending; pending = null;
   if (!p) return false;
   if (!p.seeded && p.canSeed) { const d = worldDoc(); seeding = true; seedWorld(d); remember(d); return false; }
-  adopt(p.doc); saveChar();
+  adopt(p.doc);
+  // A room with no persisted world starts with the new rules, not the visiting character's old buildings.
+  if (!p.seeded) { G.char.settlementRules = 1; initializeSettlements(G.char); }
+  saveChar();
   return true;
 }
 
@@ -180,6 +193,7 @@ export function syncWorld(dt: number) {
     for (const [k, v] of entries(G.char, f)) {
       seen.add(k);
       if (f.f === 'containers' && activeContainers.has(k)) continue; // transfer windows publish through their reservation
+      if (f.f === 'towns' && activeTowns.has(k)) continue; // stock transactions publish atomically on release
       const j = JSON.stringify(v);
       if (m.get(k) !== j) { const base = m.get(k); ch.push([f.f, k, v, base === undefined ? null : JSON.parse(base)]); }
     }

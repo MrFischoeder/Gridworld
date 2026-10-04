@@ -1,3 +1,4 @@
+import { progressive } from '../gen/settlement';
 // Every village's industry site outside the fence (gen/industry.ts): tilled fields, a mine, oil wells, a refinery
 // (or its building site), a sawmill, fish racks, workshops or a salvage yard, with a sign. Pumpjacks nod and the
 // refinery's flare burns while it produces; E at the site shows how it works and mends it when it is damaged.
@@ -15,7 +16,7 @@ import { ITEMS, type ItemKey } from '../data/items';
 import { count } from '../data/crafting';
 import { saveChar, gainXp, calcStats } from '../character';
 import { showToast, logLine } from '../ui/hud';
-import { industryOf, industrySite, production, siteBuilt, siteCondition, INDUSTRY, type Industry } from '../gen/industry';
+import { industryOf, industrySite, production, siteBuilt, industryProject, siteCondition, INDUSTRY, type Industry } from '../gen/industry';
 import { profileOf, GOOD_INFO } from '../gen/market';
 import { stockOf, OWN } from '../gen/hall';
 import { makeFigure, type Figure } from './npc';
@@ -41,8 +42,17 @@ function cyl(pb: PropBatch, x: number, y: number, z: number, r: number, h: numbe
 /** Draw the site of village vm (POI id) and remember it; returns its group. */
 export function drawIndustry(vm: VillageMap, T: Terrain, id: number): THREE.Group {
   const c = G.char, poi = findPoi(c.world, id)!, kind = industryOf(c.world, poi, vm.seed), site = industrySite(vm.seed, kind);
+  if (progressive(c.towns[id]) && industryProject(kind)) { sites.delete(id); return new THREE.Group(); }
   const grp = new THREE.Group(), pb = new PropBatch(), built = siteBuilt(kind, c.towns[id]);
   const x0 = vm.ox + site.x - site.w / 2, z0 = vm.oz + site.z - site.d / 2, x1 = x0 + site.w, z1 = z0 + site.d, cx = (x0 + x1) / 2, cz = (z0 + z1) / 2;
+  if (!built) {
+    sites.delete(id);
+    for (const [x, z] of [[x0, z0], [x1, z0], [x1, z1], [x0, z1]]) pb.seg(WOOD, [x, T.heightAt(x, z), z], [x, T.heightAt(x, z) + 1, z]);
+    // Natural deposit/clearing instead of a functioning industrial building.
+    if (kind === 'mine' || kind === 'salvage') pb.box(cx - 2, T.heightAt(cx, cz), cz - 1, cx + 2, T.heightAt(cx, cz) + .8, cz + 1, ROCK);
+    const sign = textSprite(INDUSTRY[kind].site.toUpperCase() + ' SITE — ASK THE ELDER', '#ffd060', 4);
+    sign.position.set(cx, T.heightAt(cx, cz) + 2, cz); grp.add(pb.build(), sign); return grp;
+  }
   const [fx, fz] = site.face, rx = -fz, rz = fx, along = site.side === 'S' ? site.w : site.d, out = site.side === 'S' ? site.d : site.w;
   const P = (u: number, v: number): [number, number] => [cx + rx * u + fx * v, cz + rz * u + fz * v];
   const H = (u: number, v: number) => { const [x, z] = P(u, v); return T.heightAt(x, z); };

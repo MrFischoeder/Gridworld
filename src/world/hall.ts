@@ -7,16 +7,17 @@ import { G, W } from '../game';
 import { drawComputer } from './computer';
 import { PropBatch } from './props';
 import { wallSign } from './level';
-import { HALL, HALL_TERMINAL, holdVol } from '../gen/hall';
+import { hallSpec, hallTerminal, holdVol } from '../gen/hall';
 import type { VillageMap } from '../gen/village';
 import type { Terrain } from '../gen/terrain';
 
 const WOOD = 0xb8b060, METAL = 0xb8c4cc, CRATE = 0xc8a060;
-interface Hall { id: number; ox: number; oz: number; y0: number; segs: [number, number, number, number][]; crates: THREE.Group | null; grp: THREE.Group; T: Terrain }
+interface Hall { id: number; ox: number; oz: number; y0: number; segs: [number, number, number, number][]; crates: THREE.Group | null; grp: THREE.Group; T: Terrain; spec: ReturnType<typeof hallSpec>; terminal: ReturnType<typeof hallTerminal> }
 const halls = new Map<number, Hall>();
 
 /** Draw the hall of village vm (id `id`); returns its group (added to the village's). */
 export function drawHall(vm: VillageMap, T: Terrain, id: number): THREE.Group {
+  const HALL = hallSpec(G.char.towns[id]), HALL_TERMINAL = hallTerminal(G.char.towns[id]);
   const grp = new THREE.Group(), pb = new PropBatch(), ox = vm.ox, oz = vm.oz;
   const X0 = ox + HALL.x0, X1 = ox + HALL.x1, Z0 = oz + HALL.z0, Z1 = oz + HALL.z1, dx = ox + (HALL.x0 + HALL.x1) / 2;
   const y0 = Math.min(T.heightAt(X0, Z0), T.heightAt(X1, Z0), T.heightAt(X0, Z1), T.heightAt(X1, Z1)) - 0.3, top = y0 + HALL.h;
@@ -29,7 +30,7 @@ export function drawHall(vm: VillageMap, T: Terrain, id: number): THREE.Group {
     pb.seg(WOOD, [ax, y0 + 0.4, az], [bx, y0 + 0.4, bz]); pb.seg(WOOD, [ax, top, az], [bx, top, bz]);
     segs.push([ax, az, bx, bz]);
   };
-  const d0 = dx - HALL.door / 2, d1 = dx + HALL.door / 2, dh = 2.6;
+  const d0 = dx - HALL.door / 2, d1 = dx + HALL.door / 2, dh = HALL.h >= 6 ? 4.8 : 2.6;
   wall(X0, Z0, X1, Z0); wall(X1, Z0, X1, Z1); wall(X0, Z1, X0, Z0);
   wall(X1, Z1, d1, Z1); wall(d0, Z1, X0, Z1);
   pb.face([d1, y0 + dh, Z1], [d0, y0 + dh, Z1], [d0, top, Z1], [d1, top, Z1]); pb.line(WOOD, [d0, y0, Z1], [d0, y0 + dh, Z1], [d1, y0 + dh, Z1], [d1, y0, Z1]);
@@ -43,8 +44,8 @@ export function drawHall(vm: VillageMap, T: Terrain, id: number): THREE.Group {
     segs.push([tx - 0.7, tz - 0.35, tx + 0.7, tz - 0.35], [tx - 0.7, tz + 0.35, tx + 0.7, tz + 0.35]);
   }
   grp.add(pb.build());
-  grp.add(wallSign('VILLAGE HALL', '#ffd060', { x: dx, z: Z1 }, [0, 1], top - 0.6));
-  const h: Hall = { id, ox, oz, y0, segs, crates: null, grp, T };
+  grp.add(wallSign(HALL.h >= 6 ? 'VEHICLE WAREHOUSE' : 'VILLAGE WAREHOUSE', '#ffd060', { x: dx, z: Z1 }, [0, 1], top - 0.6));
+  const h: Hall = { id, ox, oz, y0, segs, crates: null, grp, T, spec: HALL, terminal: HALL_TERMINAL };
   halls.set(id, h);
   drawCrates(h);
   return grp;
@@ -52,6 +53,7 @@ export function drawHall(vm: VillageMap, T: Terrain, id: number): THREE.Group {
 /** Crates stacked along the walls, one for every 250 litres in the hold (at most 40). */
 function drawCrates(h: Hall) {
   if (h.crates) { h.grp.remove(h.crates); h.crates.traverse((o) => (o as THREE.Mesh).geometry?.dispose()); }
+  const HALL = h.spec;
   const pb = new PropBatch(), n = Math.min(40, Math.ceil(holdVol(G.char.towns[h.id]) / 250));
   for (let i = 0; i < n; i++) {
     const row = i % 20, lay = Math.floor(i / 20), side = row % 2, k = Math.floor(row / 2);
@@ -70,7 +72,10 @@ export function forgetHall(id: number) { halls.delete(id); }
 /** The hall's walls, the doorway left open (for G.obstacle). */
 export function hallHit(px: number, py: number, pz: number, r: number): boolean {
   for (const h of halls.values()) {
+    const HALL = h.spec;
     if (px < h.ox + HALL.x0 - 2 || px > h.ox + HALL.x1 + 2 || pz < h.oz + HALL.z0 - 2 || pz > h.oz + HALL.z1 + 2 || py > h.y0 + HALL.h + 2) continue;
+    const dx = h.ox + (HALL.x0 + HALL.x1) / 2;
+    if (Math.abs(pz - (h.oz + HALL.z1)) < r + .15 && Math.abs(px - dx) < HALL.door / 2 + r && py + 1.7 > h.y0 + (HALL.h >= 6 ? 4.8 : 2.6)) return true;
     for (const [ax, az, bx, bz] of h.segs) {
       const ex = bx - ax, ez = bz - az, L = ex * ex + ez * ez, t = L ? Math.max(0, Math.min(1, ((px - ax) * ex + (pz - az) * ez) / L)) : 0;
       if (Math.hypot(px - ax - ex * t, pz - az - ez * t) < r + 0.15) return true;
@@ -81,11 +86,11 @@ export function hallHit(px: number, py: number, pz: number, r: number): boolean 
 /** Standing at a hall's terminal: the village's id. */
 export function nearHallTerminal(): number | null {
   if (G.char.loc !== 'overworld') return null;
-  for (const h of halls.values()) if (Math.hypot(G.pos.x - (h.ox + HALL_TERMINAL.stand.x), G.pos.z - (h.oz + HALL_TERMINAL.stand.z)) < 1.2) return h.id;
+  for (const h of halls.values()) if (Math.hypot(G.pos.x - (h.ox + h.terminal.stand.x), G.pos.z - (h.oz + h.terminal.stand.z)) < 1.2) return h.id;
   return null;
 }
 /** The hall's rect in world coordinates (for what lies on its floor). */
-export function hallRect(id: number) { const h = halls.get(id); return h ? { x0: h.ox + HALL.x0, x1: h.ox + HALL.x1, z0: h.oz + HALL.z0, z1: h.oz + HALL.z1, ox: h.ox, oz: h.oz } : null; }
+export function hallRect(id: number) { const h = halls.get(id), HALL = h?.spec; return h && HALL ? { x0: h.ox + HALL.x0, x1: h.ox + HALL.x1, z0: h.oz + HALL.z0, z1: h.oz + HALL.z1, ox: h.ox, oz: h.oz } : null; }
 /** The pickups lying on the hall's floor. */
 export function floorPickups(id: number) {
   const r = hallRect(id);

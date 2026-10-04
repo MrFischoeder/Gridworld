@@ -1,3 +1,4 @@
+import { progressive, projectDone } from '../gen/settlement';
 // The notice board window: offers to take, your tasks, rewards to claim.
 import { G } from '../game';
 import { boardOffers, accept, abandon, claim, giverOf, townOf, boardName, MAX_ACTIVE } from '../world/quests';
@@ -17,11 +18,12 @@ function mine(q: Quest) {
   const at = q.townName ? ` in ${q.townName}` : '', mineHere = townOf(q) === here?.id;
   const status = q.state === 'talk' ? `Talk to ${giverOf(q)}${at}.`
     : q.state === 'ready' ? (q.kind === 'fetch' ? `Bring the item to ${giverOf(q)}${at}.` : mineHere ? 'Done! Claim your reward.' : `Done! Claim your reward at ${boardName(q)}.`)
+    : q.kind === 'resource' ? `Bring ${q.count} items from your backpack to this board.`
     : q.kind === 'bounty' ? `Progress: ${q.progress ?? 0}/${q.count}`
     : q.kind === 'hunt' ? `Killed ${q.killed ?? 0}/${q.pack!.count}${q.alphaDead ? ', ' + q.pack!.alpha + ' slain' : ''}` : q.kind === 'camp' ? 'Clear the camp.' : 'Under way.';
   const brief = q.kind === 'fetch' && q.state !== 'talk' ? q.briefing! : q.text;
   return `<div class="notice"><b>${q.title}</b><br>${brief}<br><span class="rw">${status} · reward ${q.reward.gold} gold, ${q.reward.xp} XP</span><br>` +
-    (q.state === 'ready' && q.kind !== 'fetch' && mineHere ? `<button class="go" data-claim="${q.id}">Claim reward</button>` : '') +
+    ((q.state === 'ready' || q.kind === 'resource') && q.kind !== 'fetch' && mineHere ? `<button class="go" data-claim="${q.id}">Claim reward</button>` : '') +
     `<button data-drop="${q.id}">Drop</button></div>`;
 }
 function offer(q: Quest, full: boolean) {
@@ -41,7 +43,7 @@ function render(msg?: string) {
   const qs = G.char.quests, full = qs.length >= MAX_ACTIVE;
   const t = G.char.time;
   el.body.innerHTML = `<div class="rw" style="margin-bottom:6px">${fmtClock(t)} · new notices go up at ${fmtTime(nextPosting(t))}</div>` + (qs.length ? `<h3>Your tasks (${qs.length}/${MAX_ACTIVE})</h3>` + qs.map(mine).join('') : '') +
-    `<h3>${here?.name ?? 'Gridholm'} notices</h3>` + boardOffers(here).map((q) => offer(q, full)).join('') + deliveries();
+    `<h3>${here?.name ?? 'Gridholm'} notices</h3>` + boardOffers(here).map((q) => offer(q, full)).join('') + (!progressive(G.char.towns[here!.id]) || projectDone(G.char.towns[here!.id], 'warehouse') ? deliveries() : '<div class="rw">Main development tutorial: speak to the village elder. Long-distance delivery work opens with the vehicle warehouse.</div>');
   if (msg !== undefined) el.msg.textContent = msg;
 }
 el.root.addEventListener('click', (e) => {

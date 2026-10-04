@@ -3,7 +3,7 @@ import { gatesNear, GATE_CLEAR, GATE_BLEND, type WorldGate } from './worldgates'
 import { megalithsIn, MEGALITH_BLEND, type Megalith } from './megaliths';
 import { fbm } from '../core/noise';
 import { hash } from '../core/rng';
-import { regionClimate, regionOf, poisNear, CHUNK, WORLD_W, POLAR_Z, type Poi, type Rect } from './regions';
+import { regionClimate, regionOf, poisNear, CHUNK, WORLD_W, POLAR_Z, nearX, type Poi, type Rect } from './regions';
 import { regionRoads, nearestOnRoad, roadBounds, type Road } from './roads';
 import { lakesIn, lakeBed, shoreR, type Lake, type WaterHere } from './water';
 import { claimFlatten, claimDist, CLEAR_R, type Claim } from './claims';
@@ -36,6 +36,9 @@ export class Terrain {
   private padCache = new Map<number, number>();
   /** Land claimed by players (flagpoles): levelled ground. Player changes, handed in by the runtime. */
   private claims: Claim[] = [];
+  private settlementPads: Pad[] = [];
+  /** Reserved construction plots of new settlements; the rules come from runtime, not saved geometry. */
+  setSettlementPads(pads: Pad[]) { this.settlementPads = pads; this.feat.clear(); this.lat.clear(); }
   constructor(public world: number, public readonly includeMegaliths = true) { this.s2 = hash(world, 0x7e12) * 7919; }
 
   /** Natural terrain before any flattening (gen/heights.ts). */
@@ -58,6 +61,11 @@ export class Terrain {
     const pads = poisNear(this.world, cx, cz, half + 80)
       .filter((p) => rectDist(p.rect, cx, cz) <= half * 1.42 + p.flat + p.blend)
       .map((poi) => ({ poi, y: this.padY(poi) }));
+    for (const p of this.settlementPads) {
+      const dx = nearX((p.poi.rect.x0 + p.poi.rect.x1) / 2, cx) - (p.poi.rect.x0 + p.poi.rect.x1) / 2;
+      const rect = { ...p.poi.rect, x0: p.poi.rect.x0 + dx, x1: p.poi.rect.x1 + dx };
+      if (rectDist(rect, cx, cz) <= half * 1.42 + p.poi.flat + p.poi.blend) pads.push({ ...p, poi: { ...p.poi, rect } });
+    }
     const roads: Road[] = [], seen = new Set<string>();
     const near = (b: Rect, m: number) => b.x1 + m >= r.x0 && b.x0 - m <= r.x1 && b.z1 + m >= r.z0 && b.z0 - m <= r.z1;
     // a road between villages runs for kilometres and passes through many regions: take it once, and only the

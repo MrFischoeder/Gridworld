@@ -108,7 +108,8 @@ initTouch();
 initMenu({
   newWorld(seed) {
     const c = G.char;
-    Object.assign(c, { world: seed, loc: 'overworld', ow: null, dungeon: null, discovered: {}, opened: {}, unlocked: {}, killed: {} });
+    try { localStorage.setItem('gridWorld.world.backup.' + c.world, JSON.stringify(c)); } catch { /* unavailable */ }
+    Object.assign(c, { settlementRules: 1, settlementRewards: [], towns: {}, market: {}, boards: {}, board: { seq: 0, offers: [] }, quests: [], world: seed, loc: 'overworld', ow: null, dungeon: null, discovered: {}, opened: {}, unlocked: {}, killed: {} });
     saveChar(); loadOverworld({ kind: 'new' });
   },
   freshStart() { loadOverworld({ kind: 'new' }); },

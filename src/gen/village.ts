@@ -15,6 +15,8 @@ export interface Building {
   furniture: Furn[];
   /** The hero's own house (Gridholm only). */
   mine?: boolean;
+  /** 0 ruined, 1 being repaired, 2 restored; absent in established worlds. */
+  condition?: 0 | 1 | 2;
 }
 /** Inside the hero's house: the bed (its head end against the wall, `yaw` the way you face stepping out of it) and the chest. */
 export interface HomeFurniture { bed: { x0: number; z0: number; x1: number; z1: number; side: { x: number; z: number } }; chest: { x: number; z: number } }

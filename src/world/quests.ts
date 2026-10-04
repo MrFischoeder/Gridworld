@@ -1,3 +1,6 @@
+import { progressive, development, tutorialStep } from '../gen/settlement';
+import { count } from '../data/crafting';
+import { settlementMarker } from './settlement';
 // Quest progress: kills, quest groups in the open world, quest items in ruins and at wrecks, rewards.
 import { leadLines } from './datacarriers';
 import { earnTrust } from './standing';
@@ -6,7 +9,7 @@ import { escortLine } from './caravans';
 import { guideLine, guideMarker } from './guide';
 import { raidLine } from './villageraid';
 import { contractLines, contractMarkers } from '../ui/contracts';
-import { generateQuest, compass, km, boardPay, GRIDHOLM_TOWN, type Quest, type QuestTown } from '../gen/quests';
+import { generateQuest, basicQuest, compass, km, boardPay, GRIDHOLM_TOWN, type Quest, type QuestTown } from '../gen/quests';
 import { ringDanger } from '../gen/danger';
 import { boardPeriod } from '../core/time';
 import { worldDist, nearX, wrapDx, findPoi, GRIDHOLM_ID, type Poi } from '../gen/regions';
@@ -48,10 +51,11 @@ export const boardName = (q: Quest) => (q.townName ?? 'Gridholm') + "'s board";
 export function boardOffers(poi?: Poi): Quest[] {
   const T = OW.terrain, town = poi ? questTown(poi) : GRIDHOLM_TOWN, b = boardOf(town.id);
   if (!T) return b.offers;
-  while (b.offers.length < OFFERS) {
+  const small = progressive(G.char.towns[town.id]), limit = small ? (development(G.char.towns[town.id]) < 3 ? 2 : 3) : OFFERS;
+  while (b.offers.length < limit) {
     const all = [...G.char.quests, ...b.offers], taken = all.map((q) => q.item).filter((k): k is ItemKey => !!k);
     const camps = all.map((q) => q.place?.campId).filter((k): k is number => k !== undefined);
-    b.offers.push(generateQuest(T, b.seq++, taken, town, camps));
+    b.offers.push(small ? basicQuest(G.char.world, b.seq++, town) : generateQuest(T, b.seq++, taken, town, camps));
   }
   return b.offers;
 }
@@ -99,9 +103,13 @@ function reward(q: Quest) {
 }
 /** Board-given quests are claimed at the board that posted them. */
 export function claim(id: string, poi?: Poi): string {
-  const q = G.char.quests.find((x) => x.id === id && x.state === 'ready' && x.kind !== 'fetch');
+  const q = G.char.quests.find((x) => x.id === id && (x.state === 'ready' || x.kind === 'resource' && x.state === 'active') && x.kind !== 'fetch');
   if (q && townOf(q) !== (poi?.id ?? GRIDHOLM_ID)) return `Claim that one at ${boardName(q)}.`;
   if (!q) return '';
+  if (q.kind === 'resource') {
+    if (count(G.char.inv, q.item!) < q.count!) return `Bring ${q.count} ${ITEMS[q.item!].name} in your backpack.`;
+    for (let i = 0; i < q.count!; i++) takeOne(q.item!);
+  }
   reward(q); return `Reward: ${q.reward.gold} gold and ${q.reward.xp} XP.`;
 }
 
@@ -201,6 +209,7 @@ export function updateTracker(dt: number) {
     const at = q.townName ? ' in ' + q.townName : '';
     if (q.state === 'talk') s += ` — talk to ${giverOf(q)}${at}`;
     else if (q.state === 'ready') s += q.kind === 'fetch' ? ` — bring it to ${giverOf(q)}${at}` : ` — claim at ${boardName(q)}`;
+    else if (q.kind === 'resource') s += ` — bring ${q.count} ${ITEMS[q.item!].name} to ${boardName(q)}`;
     else if (q.kind === 'bounty') s += ` — ${q.progress ?? 0}/${q.count}`;
     else if (q.kind === 'hunt') s += ` — ${q.killed ?? 0}/${q.pack!.count}${q.alphaDead ? '' : ', ' + q.pack!.alpha + ' alive'}`;
     else if (q.kind === 'camp') s += ' — clear it';
@@ -213,8 +222,10 @@ export function updateTracker(dt: number) {
   lines.push(...contractLines());
   lines.push(...leadLines());
   const raid = raidLine(); if (raid) lines.unshift(raid);
+  const step = G.char.guide === 2 ? tutorialStep(G.char.towns[GRIDHOLM_ID]) : null;
+  if (step && step.title !== 'A thriving settlement') lines.unshift('▸ Elder: ' + step.title);
   const gl = guideLine(); if (gl) lines.unshift(gl);
   trackEl.innerHTML = lines.map((l) => `<div>${l}</div>`).join('');
 }
-export const questMarkers = (): { x: number; z: number; label: string }[] => [...(guideMarker() ? [guideMarker()!] : []), ...contractMarkers(), ...(
+export const questMarkers = (): { x: number; z: number; label: string }[] => [...(settlementMarker() ? [settlementMarker()!] : []), ...(guideMarker() ? [guideMarker()!] : []), ...contractMarkers(), ...(
   G.char.quests.map((q) => ({ t: questTarget(q), q })).filter((m) => m.t).map(({ t, q }) => ({ x: nearX(t!.x, G.pos.x), z: t!.z, label: q.state === 'talk' || q.state === 'ready' || (q.kind === 'fetch' && hasItem(q.item!)) ? q.townName! : q.kind === 'hunt' ? q.pack!.alpha : q.kind === 'camp' ? q.place!.name : ITEMS[q.item!].name })))];

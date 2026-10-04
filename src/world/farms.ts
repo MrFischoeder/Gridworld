@@ -1,3 +1,7 @@
+import { refineStock } from '../gen/hall';
+import { progressive } from '../gen/settlement';
+import { peopleAt } from '../gen/people';
+import { reloadStruct } from './overworld';
 // The farms a village has built (gen/farms.ts): fenced fields outside the corners of its wall, crop rows over furrows,
 // or grass with a coop and hens or a byre and cows (gen/farms.ts CROPS), a scarecrow. Drawn with the village (world/overworld.ts loadVillageStruct).
 import * as THREE from 'three';
@@ -101,5 +105,12 @@ export function syncFarmVillage(vid: number) {
 export function updateFarms(dt: number) {
   if ((tick -= dt) > 0) return;
   tick = 5;
-  for (const s of OW.structs.values()) if (s.village) syncFarmVillage(s.poi.id);
+  for (const s of [...OW.structs.values()]) if (s.village) {
+    syncFarmVillage(s.poi.id);
+    const st = G.char.towns[s.poi.id];
+    if (!progressive(st) || !st) continue;
+    refineStock(G.char.world, s.poi, s.village.seed, st, G.char.time);
+    const homes = s.village.buildings.filter((b) => b.role === 'house' && !b.mine), occupied = Math.max(0, Math.floor((peopleAt(s.village.seed, s.poi.id === GRIDHOLM_ID, st, G.char.time) - 8) / 6));
+    if (homes.some((b, i) => i < occupied && b.condition !== undefined && b.condition < 2)) reloadStruct(s.poi.id);
+  }
 }

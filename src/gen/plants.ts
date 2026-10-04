@@ -156,6 +156,7 @@ export function plantPlan(s: PlantTown | undefined) {
 }
 /** Why works k cannot be started here, or ''. */
 export function plantProblem(s: PlantTown | undefined, k: PlantKind | StationKind, known?: Record<string, number>): string {
+  if (s?.settlement?.v === 1 && !s.settlement.done?.power) return 'Build the village power plant through the elder first.';
   if (s?.pbuild) return 'Something is being built here already: finish it first.';
   if (isStation(k)) {
     const tech = STATIONS[k].tech;

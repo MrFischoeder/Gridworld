@@ -3,7 +3,7 @@
 import { G } from '../game';
 import { ITEMS } from '../data/items';
 import { GRIDHOLM_ID } from '../gen/regions';
-import { FARM, UPGRADE, UNPOWERED, CROPS, CROP_KINDS, cropOf, farmYield, type Crop, farmsOf, upgradedOf, farmPlan, upgradePlan, handOverFarm, handOverUpgrade, farmsKw, soil, farmPeople } from '../gen/farms';
+import { FARM, UPGRADE, UNPOWERED, CROPS, CROP_KINDS, cropOf, farmYield, type Crop, farmsOf, upgradedOf, farmPlan, farmProblem, upgradePlan, handOverFarm, handOverUpgrade, farmsKw, soil, farmPeople } from '../gen/farms';
 import { farmPower } from '../gen/energy';
 import { syncFarmVillage } from '../world/farms';
 import { peopleAt, targetNow } from '../gen/people';
@@ -45,7 +45,7 @@ export function farmsHTML(town: string, head: string, msg = ''): string {
   if (plan) {
     s += `<div class="shoprow"><div><b>Farm ${plan.n} of ${FARM.max}</b> <span style="opacity:.7">(${FARM.kw} kW)</span><br><span>${rowsHTML(plan.rows, have)}</span></div></div>`;
     s += `<button class="opt" data-farm="give" ${plan.rows.some((r) => r.given < r.n && have(r.k) > 0) ? '' : 'disabled'}>Build from the village hall's stock (the farm)</button>`;
-  } else s += `<div class="say">We have cleared all the land we can guard (${FARM.max} farms).</div>`;
+  } else s += `<div class="say">${farmProblem(st) || `We have cleared all the land we can guard (${FARM.max} farms).`}</div>`;
   if (uplan) {
     const known = c.tech[UPGRADE.tech] !== undefined;
     s += `<div class="shoprow"><div><b>Steel ploughs for farm ${uplan.n}</b> <span style="opacity:.7">(${UPGRADE.kw} kW, feeds ×${UPGRADE.mult})</span><br><span>${known ? rowsHTML(uplan.rows, have) : 'Nobody here knows how to make them. The old plans for Steel Ploughs must lie somewhere out there.'}</span></div></div>`;

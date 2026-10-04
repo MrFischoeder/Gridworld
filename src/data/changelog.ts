@@ -3,6 +3,15 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.131.0', date: '2026-10-04', title: 'From a small settlement to working industry', notes: [
+    'Version 0.130.0 is frozen at tag v0.130.0. Existing characters keep their established villages; new worlds start with eight residents, a small 800-litre warehouse and marked construction sites instead of working power plants or industry.',
+    'Vacant homes have broken walls and roofs. Farms and infrastructure repair the village, increase its housing and gradually attract new families.',
+    'The elder guides a sequential tutorial: supplies, first farm, nearby satellite receiver and GPS tablet, second farm, vehicle warehouse, power, mine, sawmill, oil well, refinery and third farm. Starter tools and rewards are issued once to each traveller.',
+    'Restore communications at a surface console beside a real nearby ruin. Tutorial markers guide you before GPS is available. Early notice boards offer just two small resource deliveries or kill jobs; long-distance deliveries open with the vehicle warehouse.',
+    'The large warehouse stands outside the north fence with a six-metre vehicle entrance and 24,000 litres of storage. Drive a Mastodon inside, leave the cab and unload cargo directly at the terminal; excess cargo stays in its trunk.',
+    'The starting smith offers basic tools. The first farm unlocks boards and nails without lost plans; advanced work requires village development and the relevant technology. Constructed extraction sites feed shared village stock; the refinery consumes real crude to make fuel.',
+    'Settlement construction and repairs synchronize through the shared multiplayer world. Village-stock transactions are reserved before changing materials or vehicle cargo; multiplayer clients and servers now use protocol 6 and must both be updated. Older save JSON is backed up locally before migration, and generating another world also attempts to retain a snapshot of the previous character.',
+  ] },
   { v: '0.130.0', date: '2026-10-04', title: 'Ocean seam on the developer map', notes: [
     'The developer map opens on the whole planet with its longitude seam in the broad ocean between continents. Mainland coastlines stay together; Gridholm no longer needs to be in the centre.',
     'Panning and zooming repeat rivers, villages, cities, underground entrances, portals, megaliths, toxic fog and the player together with the terrain. Clicking any repeated marker reaches the same original location.',

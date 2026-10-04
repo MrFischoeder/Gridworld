@@ -1,6 +1,6 @@
 # GridWorld: opis gry, cel, plan i historia zmian
 
-Stan na wersję **0.130.0**. Ten dokument opisuje, czym jest GridWorld, jaki jest cel gry, co już w niej jest, czego jeszcze nie ma, dokąd zmierza i jak powstawała, wersja po wersji. Nazwy z gry (przedmioty, miejsca, postacie) są po angielsku, tak jak na ekranie.
+Stan na wersję **0.131.0**. Ten dokument opisuje, czym jest GridWorld, jaki jest cel gry, co już w niej jest, czego jeszcze nie ma, dokąd zmierza i jak powstawała, wersja po wersji. Nazwy z gry (przedmioty, miejsca, postacie) są po angielsku, tak jak na ekranie.
 
 ---
 
@@ -277,8 +277,19 @@ Gra jest pomyślana jako **kooperacja do 8 graczy** na autorytatywnym serwerze (
 
 To serce gry. Gracz nie ma własnej bazy (budowanie w dziczy jest zamknięte). Zamiast tego pomaga wioskom.
 
+**Nowy start osady (nowe światy od 0.131.0)**
+- Wioska zaczyna z ośmioma mieszkańcami. Działających elektrowni i zakładów przemysłowych jeszcze nie ma: stoją oznaczenia miejsc pod budowę, złoże rudy, wyciek ropy i skład drewna.
+- Niezamieszkane domy mają przerwane ściany, odsłonięte krokwie i dziurawe dachy. Rozwój farm i infrastruktury poprawia ich stan; nowe rodziny przybywają stopniowo, do limitu jedzenia i odbudowanych mieszkań.
+- Najważniejsze zadania daje starszy: narzędzia i zgromadzenie drewna/kamienia → pierwsza farma → odbiornik satelitarny w pobliskich ruinach i tablet GPS → druga farma → magazyn dla pojazdów → elektrownia → kopalnia → tartak → szyb naftowy → rafineria → trzecia farma.
+- Odbiornik naprawia się przy terminalu na powierzchni, na zachodnim skraju wskazanych ruin. Znacznik tutorialu prowadzi do niego bez posiadania GPS. Materiały do naprawy pochodzą z magazynu.
+- Tablica początkowo daje dwa proste zlecenia: dostarczyć niewielką ilość zasobów lub pokonać dwóch przeciwników. Kontrakty przewozowe pojawiają się po zbudowaniu dużego magazynu.
+- Kowal zaczyna od siekiery, kilofa, zestawu do rozpalania i bukłaka. Po pierwszej farmie potrafi robić deski i gwoździe bez szukania planów; dalszy asortyment wymaga rozwoju oraz odpowiednich starych planów.
+- Kopalnia, tartak i szyb dają towary dopiero po budowie. Rafineria zużywa rzeczywistą ropę z zapasu wioski, a nie wytwarza paliwa bez wsadu.
+- Budowy, zamówienia i rozładunek rezerwują zapas wioski na czas transakcji w multiplayerze: równoczesne kliknięcia nie wydają tych samych materiałów dwukrotnie. Protokół multiplayer ma numer 6: klient i serwer muszą być z tej wersji (aktualizacja serwera zachowuje jego zapisane światy). Gracze dołączający przyjmują reguły świata serwera; nowy pusty pokój serwera zaczyna od małych osad.
+- Wcześniejsze zapisy zachowują swoją gospodarkę i budynki. Kod 0.130.0 ma zamrożony tag `v0.130.0`; instrukcja powrotu i kopii zapisu jest w `FROZEN_0.130.0.md`.
+
 **Hala i magazyn**
-- **Hala wioski** to jedyny magazyn wioski.
+- **Hala wioski** to jeden wspólny zapas. W nowym świecie zaczyna jako mały magazyn 800 L, do którego można wejść. Kolejny etap stawia magazyn 24 × 24 m, 24 000 L, poza północnym ogrodzeniem: otwór 6 m szerokości i 4,8 m wysokości pozwala wjechać również Mastodonem. Po zaparkowaniu w środku i wyjściu z kabiny terminal rozładowuje bagażnik bezpośrednio do zapasu; nadmiar pozostaje w pojeździe. Dawne zapisy zachowują halę 6000 L.
 - Wszystko, co wioska produkuje, trafia do hali.
 - Każda budowa (mury, farmy, zakłady, elektrownie, ulepszenia, zamówienia u kowala) bierze materiały tylko z zapasu hali.
 - Gracz składa materiały przez terminal w hali.
@@ -613,3 +624,5 @@ Pełne notatki (po angielsku) są w grze pod przyciskiem **Changelog** w menu g�
 - **0.129.0 Organiczne wybrzeża i większe wyspy.** Kontynenty mają półwyspy, głębokie zatoki i liczne zatoczki, przy zachowanych szerokich oceanach. Wyspy powiększono do nominalnej średnicy 480–1400 m i wzgórz 6–18 m. Poprawiono wyszukiwanie pełnych obrzeży na granicach komórek i planety; mapa deweloperska pokazuje wyspy. Nowa geografia przelicza się w istniejących światach.
 
 - **0.130.0 Oceaniczna granica mapy deweloperskiej.** Widok całej planety zaczyna i kończy się na oceanie pomiędzy kontynentami. Wszystkie warstwy i znaczniki powtarzają się zgodnie przy przesuwaniu i oddalaniu, a kliknięcia trafiają do oryginalnych lokacji. Przycisk Overview przywraca pełny widok; istniejące światy zachowują geografię i zapisy.
+
+- **0.131.0 Od małej osady do przemysłu.** Zamrożona wersja 0.130.0, mały start nowych światów, zrujnowane puste domy i stopniowy przyrost mieszkańców. Tutorial starszego prowadzi przez zasoby, farmy, odbudowę odbiornika GPS w pobliskich ruinach, magazyn z wjazdem i rozładunkiem pojazdu oraz budowę kopalni, tartaku, elektrowni, szybu i rafinerii. Ograniczony początkowy kowal i krótkie zlecenia poboczne; zachowanie starszych zapisów i wspólne budowy w multiplayerze.

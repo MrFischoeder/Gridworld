@@ -1,3 +1,9 @@
+import { drawSettlementSites, drawSettlementComms, settlementHit, settlementFloor, settlementRay, settlementSolid, forgetSettlement } from './settlement';
+import { settlementVillage } from '../gen/settlement-village';
+import { initializeSettlements, progressive, RESOURCE_PLOTS, development } from '../gen/settlement';
+import { peopleAt } from '../gen/people';
+import { VEHICLE_HALL } from '../gen/hall';
+import { allVillages } from '../gen/regions';
 import { syncMegaliths, clearMegaliths, megalithHit, megalithRay, megalithName, megalithFloor, nearMegalith } from './megaliths';
 import { syncWorldGates, clearWorldGates, worldGateHit, worldGateRay } from './worldgates';
 import { inGateClearing } from '../gen/worldgates';
@@ -334,6 +340,9 @@ function residentName(vm: VillageMap, role: NpcRole, i: number): string {
 function loadVillageStruct(poi: Poi): Structure {
   const T = OW.terrain!, y = T.padY(poi), home = poi.id === GRIDHOLM_ID;
   const vm = generateVillage(villageSeed(T.world, poi), y, poi.x, poi.z, poi.name, home, wallOf(G.char.towns[poi.id]));
+  const st = G.char.towns[poi.id];
+  const pop = peopleAt(vm.seed, home, st, G.char.time);
+  settlementVillage(vm, st, pop, G.char.houses.includes(poi.id));
   // the fence of a village that is not walled in stone yet only collides: it is drawn as stakes by villageDeco
   const grid = VoxelGrid.surface(vm.ops, vm.rect, y), shown = vm.tier >= STONE_TIER ? grid : VoxelGrid.surface(vm.shown, vm.rect, y);
   const { group, mesh } = voxelObject(shown, Infinity, OUTLINE);
@@ -347,11 +356,12 @@ function loadVillageStruct(poi: Poi): Structure {
   group.add(drawWorks(vm, T, poi.id));
   group.add(drawStations(vm, T, poi.id));
   group.add(drawHall(vm, T, poi.id));
+  group.add(drawSettlementSites(vm, T, poi.id));
   const lamps: THREE.Object3D[] = []; group.traverse((o) => { if (o.name === 'lamp') lamps.push(o); }); setPlantLamps(poi.id, lamps);
   scene.add(group);
   const npcs: Npc[] = [];
-  vm.buildings.forEach((b, i) => { if (b.role !== 'house') npcs.push(makeNpc(b.role, residentName(vm, b.role, i), V(b.home!.x, b.home!.y, b.home!.z), b)); });
-  if (vm.home) {
+  vm.buildings.forEach((b, i) => { if (b.role !== 'house' && b.condition !== 0 && b.condition !== 1) npcs.push(makeNpc(b.role, residentName(vm, b.role, i), V(b.home!.x, b.home!.y, b.home!.z), b)); });
+  if (vm.home && (!progressive(st) || development(st) >= 3)) {
     // the vehicle dealer and his yard just outside the north gate
     npcs.push(makeNpc('dealer', NPC_INFO.dealer.name!, V(YARD.dealer.x, y, YARD.dealer.z), null));
     group.add(yardDeco(y));
@@ -362,7 +372,7 @@ function loadVillageStruct(poi: Poi): Structure {
   const gname = vm.home ? NPC_INFO.guard.name! : folk.pop()!, edge = vm.walk.filter(([x, z]) => Math.min(x - vm.ox, z - vm.oz, vm.ox + 72 - x, vm.oz + 72 - z) < 6);
   const start = edge.length ? edge[0] : vm.walk[0], guard = makeNpc('guard', gname, V(start[0] + 0.5, y, start[1] + 0.5), null);
   guard.route = edge; npcs.push(guard);
-  folk.slice(0, Math.max(2, (vm.home ? 12 : 8) - recentDead(poi.id))).forEach((nm) => { const c = vm.walk[(Math.random() * vm.walk.length) | 0]; npcs.push(makeNpc('villager', nm, V(c[0] + 0.5, y, c[1] + 0.5), null)); });
+  folk.slice(0, progressive(st) ? Math.max(0, Math.min(folk.length, Math.floor(pop) - npcs.length)) : Math.max(2, (vm.home ? 12 : 8) - recentDead(poi.id))).forEach((nm) => { const c = vm.walk[(Math.random() * vm.walk.length) | 0]; npcs.push(makeNpc('villager', nm, V(c[0] + 0.5, y, c[1] + 0.5), null)); });
   for (const n of npcs) n.town = vm.name;
   W.npcs.push(...npcs); W.villageWalk = vm.walk;
   OW.village = vm; setLadders(poi.id, [...vm.towers.flatMap((t) => (t.ladder ? [t.ladder] : [])), ...vm.walkLadders], y); setWalkways(poi.id, vm.walkway, vm.walkLadders, y); for (const h of villageHooks) h.load(poi.id, vm, y); setHouses(poi.id, vm); setDoors(poi.id, vm);
@@ -382,7 +392,7 @@ function loadRuinStruct(poi: Poi): Structure {
   }
   const tg = new THREE.BufferGeometry(); tg.setAttribute('position', new THREE.Float32BufferAttribute(tl, 3));
   group.add(new THREE.LineSegments(tg, sharedLine(TILE_COLOR)));
-  const tpl = drawTemple(rm.temple, poi.id); group.add(tpl.g);
+  const tpl = drawTemple(rm.temple, poi.id); group.add(tpl.g, drawSettlementComms(poi, T));
   scene.add(group);
   const s: Structure = { poi, grid, group, edges: mesh, doors: [], stairs: [], npcs: [], blocks: tpl.blocks };
   OW.structs.set(poi.id, s); // the door below is placed through the shared space
@@ -503,6 +513,7 @@ export function reloadStruct(id: number) {
   dropStruct(s); loadStruct(s.poi);
 }
 function dropStruct(s: Structure) {
+  forgetSettlement(s.poi.id);
   scene.remove(s.group); s.group.traverse((o) => (o as THREE.Mesh).geometry?.dispose());
   for (const d of s.doors) { scene.remove(d.g); W.doors.splice(W.doors.indexOf(d), 1); }
   for (const st of s.stairs) { disposeStair(st); W.portals.splice(W.portals.indexOf(st), 1); }
@@ -551,14 +562,21 @@ export function updateStreaming(budgetMs = 4) {
 
 /** Load (or reload) the open world of the current character's seed, synchronously around (x, z). */
 export function openWorld(x: number, z: number) {
+  initializeSettlements(G.char);
   const w = G.char.world;
   if (!OW.terrain || OW.terrain.world !== w) { OW.terrain = new Terrain(w); riversOf(w); } // the rivers are worked out once, while the world loads
   OW.terrain.setClaims(G.char.claims);
+  const pads = allVillages(w).filter((v) => progressive(G.char.towns[v.id])).flatMap((v) => {
+    const ox = v.x - 36, oz = v.z - 36, y = OW.terrain!.padY(v);
+    const rects = [VEHICLE_HALL, ...Object.values(RESOURCE_PLOTS).map((p) => ({ x0: p.x - 9, x1: p.x + 9, z0: p.z - 8, z1: p.z + 8 }))];
+    return rects.map((r, i) => ({ y, poi: { ...v, id: -v.id * 8 - i - 1, rect: { x0: ox + r.x0, x1: ox + r.x1, z0: oz + r.z0, z1: oz + r.z1 }, flat: 3, blend: 12 } }));
+  });
+  OW.terrain.setSettlementPads(pads);
   primeInstalls(w, G.char.claims); // the installations' sites are worked out in a worker meanwhile
   closeWorld();
   G.water = (px, pz) => (inStructure(px, pz) ? null : OW.terrain!.water(px, pz));
-  G.space = space; G.ground = groundAt; G.obstacle = (px, py, pz, r) => megalithHit(px, py, pz, r) || worldGateHit(px, py, pz, r) || treeHit(px, py, pz, r) || vehicleHit(px, py, pz, r) || caravanHit(px, py, pz, r) || peerCarHit(px, py, pz, r) || ambushHit(px, py, pz, r) || baseHit(px, py, pz, r) || ladderHit(px, py, pz, r) || walkHit(px, py, pz, r) || guardHit(px, py, pz, r) || houseHit(px, py, pz, r) || doorHit(px, py, pz, r) || podHit(px, py, pz, r) || installHit(px, py, pz, r) || cityHit(px, py, pz, r) || hallHit(px, py, pz, r) || bridgeHit(px, py, pz, r) || pierHit(px, py, pz, r) || boatHit(px, py, pz, r) || toxicHit(px, py, pz, r);
-  G.floor = (x, y, z) => Math.max(megalithFloor(x, y, z), baseFloor(x, y, z), ladderFloor(x, y, z), walkFloor(x, y, z), bridgeFloor(x, y, z), pierFloor(x, y, z)); G.rayBlock = (o, d, t) => megalithRay(o, d, worldGateRay(o, d, cityRay(o, d, doorRay(o, d, houseRay(o, d, baseRay(o, d, t)))))); G.solid = (p) => megalithHit(p.x, p.y, p.z, 0) || worldGateHit(p.x, p.y, p.z, 0) || baseSolid(p) || houseSolid(p);
+  G.space = space; G.ground = groundAt; G.obstacle = (px, py, pz, r) => settlementHit(px, py, pz, r) || megalithHit(px, py, pz, r) || worldGateHit(px, py, pz, r) || treeHit(px, py, pz, r) || vehicleHit(px, py, pz, r) || caravanHit(px, py, pz, r) || peerCarHit(px, py, pz, r) || ambushHit(px, py, pz, r) || baseHit(px, py, pz, r) || ladderHit(px, py, pz, r) || walkHit(px, py, pz, r) || guardHit(px, py, pz, r) || houseHit(px, py, pz, r) || doorHit(px, py, pz, r) || podHit(px, py, pz, r) || installHit(px, py, pz, r) || cityHit(px, py, pz, r) || hallHit(px, py, pz, r) || bridgeHit(px, py, pz, r) || pierHit(px, py, pz, r) || boatHit(px, py, pz, r) || toxicHit(px, py, pz, r);
+  G.floor = (x, y, z) => Math.max(settlementFloor(x, y, z), megalithFloor(x, y, z), baseFloor(x, y, z), ladderFloor(x, y, z), walkFloor(x, y, z), bridgeFloor(x, y, z), pierFloor(x, y, z)); G.rayBlock = (o, d, t) => settlementRay(o, d, megalithRay(o, d, worldGateRay(o, d, cityRay(o, d, doorRay(o, d, houseRay(o, d, baseRay(o, d, t))))))); G.solid = (p) => settlementSolid(p) || megalithHit(p.x, p.y, p.z, 0) || worldGateHit(p.x, p.y, p.z, 0) || baseSolid(p) || houseSolid(p);
   foeRules.blocked = (p) => megalithHit(p.x, p.y, p.z, .7) || nearVillage(p.x, p.z) < 2;
   foeRules.playerSafe = () => inVillage(G.pos.x, G.pos.z) && !raidHere(); // no safe place while bandits raid it
   foeRules.ground = (px, pz) => OW.terrain!.heightAt(px, pz);
@@ -575,7 +593,7 @@ export function openWorld(x: number, z: number) {
   spawnVehicles({
     height: (px, pz) => Math.max(T.heightAt(px, pz), bridgeDeck(px, pz) ?? -Infinity, pierDeck(px, pz) ?? -Infinity), // over a bridge or a pier, its deck
     water: (px, pz) => (bridgeDeck(px, pz) !== null || pierDeck(px, pz) !== null ? 0 : T.water(px, pz)?.depth ?? 0),
-    blocked: (px, pz, r) => megalithHit(px, T.heightAt(px, pz) + .5, pz, r) || worldGateHit(px, T.heightAt(px, pz) + .5, pz, r) || structBlocks(px, pz, r, T.heightAt(px, pz)) || treeHit(px, T.heightAt(px, pz) + 0.5, pz, r) || ambushHit(px, 0, pz, r) || peerCarHit(px, T.heightAt(px, pz) + 0.5, pz, r) || cityHit(px, T.heightAt(px, pz) + 0.5, pz, r) || bridgeHit(px, (bridgeDeck(px, pz) ?? -99) + 0.5, pz, r), // a bridge's rails keep you on its deck
+    blocked: (px, pz, r) => settlementHit(px, T.heightAt(px, pz), pz, r) || megalithHit(px, T.heightAt(px, pz) + .5, pz, r) || worldGateHit(px, T.heightAt(px, pz) + .5, pz, r) || structBlocks(px, pz, r, T.heightAt(px, pz)) || treeHit(px, T.heightAt(px, pz) + 0.5, pz, r) || ambushHit(px, 0, pz, r) || peerCarHit(px, T.heightAt(px, pz) + 0.5, pz, r) || cityHit(px, T.heightAt(px, pz) + 0.5, pz, r) || hallHit(px, T.heightAt(px, pz), pz, r) || bridgeHit(px, (bridgeDeck(px, pz) ?? -99) + 0.5, pz, r), // a bridge's rails keep you on its deck
   });
   syncFound(T, x, z);
   const envHooks = {

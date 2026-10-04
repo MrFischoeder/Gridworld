@@ -39,6 +39,17 @@ export const houseSolid = (p: { x: number; y: number; z: number }) => all.length
 export function drawHouse(pb: PropBatch, b: Building, y0: number) {
   const t = HOUSE.thick, top = y0 + b.h, x0 = b.x, z0 = b.z, x1 = b.x + b.w, z1 = b.z + b.d;
   const rnd = (i: number) => (hash(b.x * 7 + b.z, i, 0x40fe) % 1000) / 1000;
+  if (b.condition !== undefined && b.condition < 2) {
+    const col = b.condition === 0 ? 0x8c8068 : 0xb8b060;
+    for (const w of b.walls) pb.box(...w as [number, number, number, number, number, number], col);
+    for (const [x, z] of [[x0, z0], [x1, z0], [x0, z1], [x1, z1]]) pb.seg(col, [x, y0, z], [x, y0 + (b.condition === 1 ? b.h : b.h * .65), z]);
+    // Exposed rafters and missing roof sections. Restored homes use the complete model below.
+    const ridge = top + 1.1, mid = (z0 + z1) / 2;
+    for (let x = x0 + .7; x < x1; x += 2) pb.line(col, [x, top - .7, z0], [x, ridge, mid], [x, top - .7, z1]);
+    if (b.condition === 1) pb.gableRoof(x0, z0, (x0 + x1) / 2, z1, top, 1.1, col);
+    for (let i = 0; i < 4; i++) pb.seg(col, [x0 + .5 + i, y0 + .08, z0 + 1], [x0 + 2 + i, y0 + .08, z0 + 2.5]);
+    return;
+  }
   // plank walls
   for (const [a, h0, c, e, h1, f] of b.walls) {
     pb.box(a, h0, c, e, h1, f, WALL);

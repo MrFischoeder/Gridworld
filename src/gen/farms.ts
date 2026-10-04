@@ -2,6 +2,7 @@
 // population target rises (gen/people.ts), and with it its workers and its output. Built through the elder with wood
 // and stone from the village hall, no plans needed. Each farm grows the crop you choose for it (`CROPS`): its yield
 // goes into the village hall (gen/hall.ts stockOf), more on rich soil and with steel ploughs.
+import { progressive, projectDone, SETTLEMENT_START, housingCapacity } from './settlement';
 import { hash } from '../core/rng';
 import type { ItemKey } from '../data/items';
 import type { TownState } from './town';
@@ -26,7 +27,8 @@ export const farmsKw = (s: TownState | undefined) => (farmsOf(s) - upgradedOf(s)
  */
 export function farmTarget(seed: number, home: boolean, s: TownState | undefined, p: number): number {
   const F = farmPeople(seed), plain = farmsOf(s) - upgradedOf(s), up = upgradedOf(s);
-  return basePeople(seed, home) + Math.round(F * (plain * (UNPOWERED + (1 - UNPOWERED) * p) + up * (UNPOWERED + (UPGRADE.mult - UNPOWERED) * p)));
+  const n = (progressive(s) ? SETTLEMENT_START : basePeople(seed, home)) + Math.round(F * (plain * (UNPOWERED + (1 - UNPOWERED) * p) + up * (UNPOWERED + (UPGRADE.mult - UNPOWERED) * p)));
+  return progressive(s) ? Math.min(n, housingCapacity(s)) : n;
 }
 /** What the next upgrade still needs, or null when every farm has it. */
 export function upgradePlan(s: TownState | undefined) {
@@ -45,8 +47,16 @@ export function handOverUpgrade(s: TownState, tech: Record<string, number>, have
   s.fup = upgradedOf(s) + 1; s.ugiven = {};
   return { taken, built: true };
 }
+export function farmProblem(s: TownState | undefined): string {
+  if (!progressive(s)) return '';
+  if (!s?.settlement?.supplies) return 'Report the stored supplies to the elder first.';
+  if (farmsOf(s) === 1 && !projectDone(s, 'comms')) return 'Restore the satellite receiver before building the second farm.';
+  if (farmsOf(s) === 2 && !projectDone(s, 'refinery')) return 'Develop the warehouse, power and industry before building the third farm.';
+  return '';
+}
 /** What the next farm still needs, or null when the village has all it can take. */
 export function farmPlan(s: TownState | undefined) {
+  if (farmProblem(s)) return null;
   if (farmsOf(s) >= FARM.max) return null;
   const rows = FARM.needs.map(([k, n]) => ({ k, n, given: Math.min(n, s?.fgiven?.[k] ?? 0) }));
   return { n: farmsOf(s) + 1, rows, done: rows.every((r) => r.given >= r.n) };

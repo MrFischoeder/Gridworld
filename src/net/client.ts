@@ -3,7 +3,7 @@
 // it with `sendState` (about 10 times a second) and reads `peers`.
 
 /** Must match PROTOCOL in server/mp.mjs. */
-export const PROTOCOL = 5;
+export const PROTOCOL = 6;
 export const SEND_EVERY = 0.1;
 
 /** `away`: in the menu (still in the game: the others see you standing there). */
@@ -77,6 +77,7 @@ export interface NetHooks {
 }
 
 export const activeContainers = new Set<string>();
+export const activeTowns = new Set<string>();
 export const net = {
   ws: null as WebSocket | null,
   /** Our id on the server, and the host's (0 = not connected). */
@@ -275,7 +276,20 @@ export function sendChat(text: string) {
 
 let lockSeq = 0;
 const lockReplies = new Map<number, (ok: boolean) => void>();
-function clearLocks() { activeContainers.clear(); for (const reply of lockReplies.values()) reply(false); lockReplies.clear(); }
+function clearLocks() { activeContainers.clear(); activeTowns.clear(); for (const reply of lockReplies.values()) reply(false); lockReplies.clear(); }
+/** Short reservation for an atomic village-stock transaction; the server sends current state before granting it. */
+export function lockTown(k: string, value: unknown): Promise<boolean> {
+  if (!online() || net.ws?.readyState !== 1) return Promise.resolve(false);
+  const req = ++lockSeq;
+  return new Promise((resolve) => {
+    lockReplies.set(req, (ok) => { if (ok) activeTowns.add(k); resolve(ok); });
+    net.ws!.send(JSON.stringify({ t: 'wlock', f: 'towns', k, value, req }));
+  });
+}
+export function unlockTown(k: string, value?: unknown) {
+  activeTowns.delete(k);
+  if (online() && net.ws?.readyState === 1) net.ws.send(JSON.stringify({ t: 'wunlock', f: 'towns', k, value }));
+}
 /** Reserve a shared container before changing the hero's inventory. Released on close or disconnect. */
 export function lockContainer(k: string, value: unknown): Promise<boolean> {
   if (!online() || net.ws?.readyState !== 1) return Promise.resolve(false);
