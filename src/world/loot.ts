@@ -1,4 +1,5 @@
 // XP crystals, pickups, chests, the hatch, and item use.
+import { environmentalDamage } from './damage';
 import * as THREE from 'three';
 import { fitFilter } from './toxic';
 import { PropBatch } from './props';
@@ -206,9 +207,9 @@ export function useItem(k: ItemKey): boolean {
     nourish(kcal, food.water ?? 0, food.hp ?? 0, kg);
     if (k === 'waterF' || k === 'waterM') {
       addItem('flask'); // the flask is kept
-      if (k === 'waterM' && Math.random() < 0.35) { G.hp -= 8; G.dmgFlash = 0.4; logLine('The murky water turns your stomach. -8 HP'); }
+      if (k === 'waterM' && Math.random() < 0.35) { environmentalDamage(8); G.dmgFlash = 0.4; logLine('The murky water turns your stomach. -8 HP'); }
     }
-    if (k === 'meatR' && Math.random() < RAW_SICK.chance) { G.hp -= RAW_SICK.hp; G.dmgFlash = 0.4; logLine(`The raw meat makes you sick. -${RAW_SICK.hp} HP`); }
+    if (k === 'meatR' && Math.random() < RAW_SICK.chance) { environmentalDamage(RAW_SICK.hp); G.dmgFlash = 0.4; logLine(`The raw meat makes you sick. -${RAW_SICK.hp} HP`); }
     return true;
   }
   if (k === 'filter') return fitFilter('');
@@ -273,7 +274,6 @@ function useRepairKit(): boolean {
   }
   if (!v) { logLine('Stand by one of your vehicles to use the repair kit.'); return false; }
   const name = vehicleTitle(v.st.model);
-  if (v.st.parts.hull <= 0) { logLine(`The ${name} is a wreck: the kit cannot patch that. Fit Hull Plating in the service window.`); return false; }
   const probe = structuredClone(v.st.parts);
   if (!repairWithKit(v.st.model, probe)) { logLine(`The ${name} needs no patching.`); return false; }
   if (!takeOne('repairkit')) return false;

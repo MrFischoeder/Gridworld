@@ -1,4 +1,5 @@
 // Player movement: AABB against voxels, gravity and jumping.
+import { environmentalDamage } from './damage';
 import * as THREE from 'three';
 import { stepFloor, stepHit, boxRay } from '../core/steps';
 import { G, W } from '../game';
@@ -102,7 +103,7 @@ export function updatePlayer(dt: number): boolean {
   const w = G.water ? G.water(pos.x, pos.z) : null, wet = w ? w.level - pos.y : 0;
   G.swimming = !!w && wet > SWIM_DEPTH;
   if (w && w.kind === 'toxic' && wet > 0.15 && !G.god) {
-    G.hp -= 6 * dt; G.dmgFlash = Math.max(G.dmgFlash, 0.2);
+    environmentalDamage(6 * dt); G.dmgFlash = Math.max(G.dmgFlash, 0.2);
     if ((toxicWarn -= dt) <= 0) { toxicWarn = 4; onWaterNote('The water burns your skin! Get out!'); }
   }
   // sprinting and swimming cost stamina; out of breath you can only walk (and swim slowly)

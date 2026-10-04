@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { dropStack, moveStack, putSlot, putItems } from '../src/inventory';
 import { gunStats, BLASTER, attachSlot } from '../src/data/weapons';
-import { freshParts, upgradeParts, engineBoost, hurtEngine, type VehicleParts } from '../src/data/vehicles';
+import { freshParts, upgradeParts, engineBoost, damageCondition, type VehicleParts } from '../src/data/vehicles';
 import type { Slot } from '../src/save';
 
 const slots = (...s: (Slot | null)[]) => s;
@@ -42,12 +42,12 @@ describe('gun attachments', () => {
   });
 });
 describe('engine upgrades', () => {
-  it('turbo boosts, the guard halves engine damage, old saves get empty slots', () => {
+  it('turbo boosts, the guard halves vehicle damage, old saves get empty slots', () => {
     const p = freshParts('scout');
     expect(engineBoost(p).speed).toBe(1);
     p.mods = ['turbo', 'eguard'];
     expect(engineBoost(p).speed).toBeGreaterThan(1);
-    hurtEngine(p, 20); expect(p.engine).toBe(90);
+    damageCondition(p, 20); expect(p.hull).toBe(110);
     const old = { wheels: [100, 100, 100, 100], engine: 100, gun: false } as unknown as VehicleParts;
     expect(upgradeParts('scout', old).mods).toEqual([null, null]);
   });

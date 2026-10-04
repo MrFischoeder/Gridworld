@@ -3,6 +3,7 @@
 // wears down and spares from the backpack are screwed in as each is spent), and the contaminated site in the middle
 // of every zone: an old army depot, a research lab or a crashed probe, drawn with a dark fill under its lines, whose
 // sealed lockers hold rare things (`char.containers['fog:<zone>:<i>']`, rolled once from the world by `lockerLoot`).
+import { environmentalDamage } from './damage';
 import * as THREE from 'three';
 import { scene } from './render';
 import { PropBatch } from './props';
@@ -197,7 +198,7 @@ export function updateToxic(dt: number) {
       c.filter = Math.max(0, c.filter - filterWear(here) * dt);
       if (c.filter <= 0 && !fitFilter('spent')) { showToast('Filter spent!'); logLine('Your filter is spent and you have no spare: get out of the fog!'); }
     } else if (!G.god) {
-      G.hp -= fogHarm(here) * dt; G.dmgFlash = Math.max(G.dmgFlash, 0.15 + 0.2 * here);
+      environmentalDamage(fogHarm(here) * dt); G.dmgFlash = Math.max(G.dmgFlash, 0.15 + 0.2 * here);
       if ((warnT -= dt) <= 0) { warnT = 5; logLine(masked() ? 'The fog seeps through your empty mask: you need a filter!' : 'The green fog burns your throat and eyes! You need a gas mask.'); }
     }
   }

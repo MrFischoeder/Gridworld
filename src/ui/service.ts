@@ -1,8 +1,6 @@
-// Vehicle service window (E at the front of a vehicle): slots for every wheel's tire, the engine and its
-// upgrade slots, the roof mount, the hull, and the backpack below. Drag parts between the backpack and the
-// vehicle, or click one to fit it / take it off. Tires keep their wear when taken off.
+// Vehicle service: one condition pool, optional upgrades and roof cannon.
 import { G } from '../game';
-import { item, ITEMS, HANDS_ONLY, WEAPON_KIND } from '../data/items';
+import { item, ITEMS, HANDS_ONLY } from '../data/items';
 import { vehicleTitle, immobile, VEHICLES, ENGINE_UPGRADES } from '../data/vehicles';
 import { saveChar, stowHeld, handsChanged, packVol } from '../character';
 import { putSlot, dropStack, roomFor, bulkOf } from '../inventory';
@@ -15,34 +13,18 @@ import { slotHTML, bindSlots, itemInfo, parseId } from './slots';
 const el = { root: $('svc'), title: $('svcTitle'), sub: $('svcSub'), rows: $('svcRows'), inv: $('svcInv'), body: $('svcBody'), detail: $('svcDetail'), msg: $('svcMsg'), close: $('svcClose') };
 let cur: Vehicle | null = null;
 
-function wheelName(v: Vehicle, i: number, short = false) {
-  const axle = Math.floor(i / 2), n = v.spec.axles.length, side = i % 2 ? 'right' : 'left';
-  const pos = axle === 0 ? 'Front' : axle === n - 1 ? 'Rear' : 'Middle';
-  return short ? pos[0] + side[0].toUpperCase() : pos + ' ' + side + ' wheel';
-}
 const bar = (c: number, max: number) => `<span class="bar"><i style="width:${Math.max(0, c) / max * 100}%;${c / max < 0.35 ? 'background:var(--amber)' : ''}"></i></span>`;
 
 function render(msg?: string) {
-  const v = cur!, p = v.st.parts, wk = v.spec.wheelItem, why = immobile(p), spec = VEHICLES[v.st.model];
+  const v = cur!, p = v.st.parts, why = immobile(p), spec = VEHICLES[v.st.model];
   el.title.textContent = vehicleTitle(v.st.model);
   el.sub.textContent = v.spec.role + ' · ' + (why ? "won't move: " + why.toLowerCase() : 'ready to drive');
-  let h = '<h3>Wheels</h3><div class="svcgrid">';
-  for (let a = 0; a < v.spec.axles.length; a++) {
-    const lbl = a === 0 ? 'Front axle' : a === v.spec.axles.length - 1 ? 'Rear axle' : 'Middle axle';
-    for (const s of [0, 1]) {
-      const i = a * 2 + s, c = p.wheels[i];
-      h += slotHTML('wh:' + i, c < 0 ? { k: null, hint: wheelName(v, i, true), title: wheelName(v, i) + ': no tire' }
-        : { k: wk, c, title: `${wheelName(v, i)}: ${item(wk).name}, ${c === 0 ? 'wrecked' : Math.round(c) + '%'}`, cls: c === 0 ? 'wrecked' : '' });
-    }
-    h += `<div class="lbl">${lbl}</div><div></div><div></div>`;
-  }
-  h += '</div><h3>Engine and mounts</h3><div class="svcgrid">';
-  h += slotHTML('en', { k: 'engine', text: 'ENG', c: p.engine, fixed: true, cls: 'fixedslot', title: `Engine ${Math.round(p.engine)}%: drop Engine Parts here to repair it (+50%)` });
-  p.mods.forEach((k, i) => { h += slotHTML('em:' + i, { k, hint: 'Upgrade', title: k ? undefined : 'Engine upgrade slot: Turbocharger or Engine Guard' }); });
+  let h = '<h3>Vehicle condition and equipment</h3><div class="svcgrid">';
+  h += slotHTML('hull', { k: 'plating', text: 'STATE', c: p.hull / spec.hull * 100, fixed: true, cls: 'fixedslot', title: 'One condition pool for the whole vehicle. Drop Hull Plating (+40%), Engine Parts (+50%), a matching tire (+20%) or a Repair Kit (+40%) here.' });
+  p.mods.forEach((k, i) => { h += slotHTML('em:' + i, { k, hint: 'Upgrade' }); });
   h += slotHTML('gun', { k: p.gun ? 'cannon' : null, hint: 'Roof', title: p.gun ? undefined : 'Roof mount: Vehicle Cannon' });
-  h += slotHTML('hull', { k: 'plating', text: 'HULL', c: p.hull / spec.hull * 100, fixed: true, cls: 'fixedslot', title: `Hull ${Math.ceil(p.hull)}/${spec.hull}: drop Hull Plating here (+40%)` });
-  h += '<div></div></div>';
-  h += `<div class="svcbar">Hull ${bar(p.hull, spec.hull)} ${Math.max(0, Math.ceil(p.hull))}/${spec.hull} · Engine ${Math.round(p.engine)}%</div>`;
+  h += '</div>';
+  h += `<div class="svcbar">Condition ${bar(p.hull, spec.hull)} ${Math.ceil(p.hull / spec.hull * 100)}%</div>`;
   h += `<div class="svcbar">Fuel ${bar(p.fuel, spec.tank)} ${Math.round(p.fuel)}/${spec.tank} L <span style="opacity:.6">(no need to refuel yet)</span></div>`;
   el.rows.innerHTML = h;
   el.inv.innerHTML = G.char.inv.map((s, i) => slotHTML('p:' + i, { k: s?.k ?? null, n: s?.n, c: s?.c })).join('');
@@ -77,27 +59,6 @@ function toPack(s: Slot, to = ''): string {
   if (putSlot(G.char.inv, s) > 0) return `No room in your backpack: the ${item(s.k).name.toLowerCase()} was left behind.`;
   return '';
 }
-function fitTire(i: number, from: string): string {
-  const v = cur!, p = v.st.parts, s = slotAt(from);
-  if (!s || s.k !== v.spec.wheelItem) return s && (s.k === 'wheelL' || s.k === 'wheelH') ? `The ${item(s.k).name} does not fit the ${vehicleTitle(v.st.model)}.` : '';
-  const tire = takeFrom(from)!, old = p.wheels[i];
-  p.wheels[i] = tire.c ?? 100;
-  let m = `${wheelName(v, i)}: new tire on.`;
-  if (old === 0) m += ' The old one was scrap.';
-  else if (old > 0) m += ' ' + (toPack({ k: v.spec.wheelItem, n: 1, c: old }) || 'You hold the old tire.');
-  return m;
-}
-function takeTire(i: number, to = ''): string {
-  const v = cur!, p = v.st.parts, c = p.wheels[i];
-  if (c < 0) return '';
-  if (to && slotAt(to)?.k === v.spec.wheelItem) return fitTire(i, to); // dropped on a spare: swap them
-  const h = G.char.hands[0];
-  if (c > 0 && h && WEAPON_KIND[h.k] === undefined) return `Your hands are full (${item(h.k).name}): put it down or fit it first.`;
-  if (c > 0 && h && G.char.back.indexOf(null) < 0 && roomFor(G.char.inv, h.k, packVol()) < 1) return 'Free your hands first: there is nowhere to put your weapon.';
-  p.wheels[i] = -1;
-  if (c === 0) return `${wheelName(v, i)}: the wrecked tire went on the scrap heap.`;
-  return toPack({ k: v.spec.wheelItem, n: 1, c }) || `${wheelName(v, i)}: you take the tire in your hands.`;
-}
 function fitUpgrade(slot: number, from: string): string {
   const p = cur!.st.parts, s = slotAt(from);
   if (!s || !ENGINE_UPGRADES.includes(s.k)) return s ? 'Only engine upgrades go there.' : '';
@@ -110,17 +71,13 @@ function fitUpgrade(slot: number, from: string): string {
 function apply(from: string, to: string): string {
   const v = cur!, p = v.st.parts, s = slotAt(from), [w, j] = parseId(to), max = VEHICLES[v.st.model].hull;
   if (!s) return '';
-  if (w === 'wh') return fitTire(j, from) || `Only a ${item(v.spec.wheelItem).name} fits there.`;
   if (w === 'em') return fitUpgrade(j, from);
-  if (w === 'en') {
-    if (s.k !== 'engine') return 'Drop Engine Parts on the engine to repair it.';
-    if (p.engine >= 100) return 'The engine is in perfect shape.';
-    takeFrom(from); p.engine = Math.min(100, p.engine + 50); return 'Engine repaired.';
-  }
   if (w === 'hull') {
-    if (s.k !== 'plating') return 'Drop Hull Plating on the hull to patch it.';
-    if (p.hull >= max) return 'The hull is in perfect shape.';
-    takeFrom(from); p.hull = Math.min(max, Math.max(0, p.hull) + Math.round(max * 0.4)); return p.hull >= max ? 'The hull is as good as new.' : 'Plates bolted on.';
+    const amount = s.k === 'engine' ? .5 : s.k === v.spec.wheelItem ? .2 : s.k === 'plating' || s.k === 'repairkit' ? .4 : 0;
+    if (!amount) return 'Use Hull Plating, Engine Parts, a matching tire or a Vehicle Repair Kit.';
+    if (p.hull >= max) return 'Vehicle condition is 100%.';
+    takeFrom(from); p.hull = Math.min(max, Math.max(0, p.hull) + max * amount);
+    return `Vehicle repaired: condition ${Math.ceil(p.hull / max * 100)}%.`;
   }
   if (w === 'gun') {
     if (s.k !== 'cannon') return 'Only a Vehicle Cannon fits the roof mount.';
@@ -132,7 +89,6 @@ function apply(from: string, to: string): string {
 /** Takes whatever sits in vehicle slot `from` off: into your slot `to` (or wherever it goes). */
 function takeOff(from: string, to = ''): string {
   const p = cur!.st.parts, [w, j] = parseId(from);
-  if (w === 'wh') return takeTire(j, to);
   if (w === 'em' && p.mods[j]) {
     if (to && slotAt(to)) return fitUpgrade(j, to);
     const k = p.mods[j]!, m = toPack({ k, n: 1 }, to);
@@ -144,20 +100,14 @@ function takeOff(from: string, to = ''): string {
     if (!m) p.gun = false;
     return m || 'You lift the cannon off the roof: it is in your hands.';
   }
-  if (w === 'en' || w === 'hull') return w === 'en' ? 'The engine stays in; repair it with Engine Parts.' : 'Patch the hull with Hull Plating.';
+  if (w === 'hull') return 'Repair the whole vehicle using the condition slot.';
   return '';
 }
 /** Click on one of your parts: fit it where it makes the most sense. */
 function autoFit(from: string): string {
   const v = cur!, p = v.st.parts, s = slotAt(from);
   if (!s) return '';
-  if (s.k === v.spec.wheelItem) {
-    const worst = p.wheels.reduce((b, c, j) => (c < p.wheels[b] ? j : b), 0);
-    if (p.wheels[worst] >= (s.c ?? 100)) return 'Every wheel is in better shape than this tire.';
-    return fitTire(worst, from);
-  }
-  if (s.k === 'engine') return apply(from, 'en');
-  if (s.k === 'plating') return apply(from, 'hull');
+  if (s.k === v.spec.wheelItem || s.k === 'engine' || s.k === 'plating' || s.k === 'repairkit') return apply(from, 'hull');
   if (s.k === 'cannon') return apply(from, 'gun');
   if (ENGINE_UPGRADES.includes(s.k)) { const f = p.mods.indexOf(null); return f < 0 ? 'Both upgrade slots are taken. Take one off first.' : apply(from, 'em:' + f); }
   return `The ${item(s.k).name} is no use on a vehicle.`;
@@ -175,7 +125,6 @@ bindSlots(el.root, {
     }
     if (mine(from)) { done(apply(from, to)); return; }
     if (mine(to)) { done(takeOff(from, to)); return; }
-    if (fw === 'wh' && tw === 'wh') { const w = cur.st.parts.wheels; [w[i], w[j]] = [w[j], w[i]]; done('Tires swapped round.'); return; }
     if (fw === 'em' && tw === 'em') { const m = cur.st.parts.mods; [m[i], m[j]] = [m[j], m[i]]; done(''); return; }
     done('That does not go there.');
   },
@@ -195,7 +144,7 @@ export function openService(v: Vehicle) {
   if (!G.playing || G.xferOpen || G.packOpen || G.dlgOpen) return;
   cur = v; G.xferOpen = true; G.firing = false; for (const k in G.keys) G.keys[k] = false;
   el.detail.innerHTML = '';
-  render(`Drag parts onto the vehicle or back to your hands or backpack; click a part to fit it or take it off (wheels and the cannon come off into your hands). Kuba sells ${ITEMS[v.spec.wheelItem].name}s, ${ITEMS.engine.name}, ${ITEMS.plating.name}, upgrades and cannons.`);
+  render(`Repair one shared vehicle condition. Drag repair supplies onto STATE; click equipment to fit it or take it off. Kuba sells ${ITEMS[v.spec.wheelItem].name}s, ${ITEMS.engine.name}, ${ITEMS.plating.name}, upgrades and cannons.`);
   el.root.style.display = 'flex';
   if (document.pointerLockElement) document.exitPointerLock();
 }

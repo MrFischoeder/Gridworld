@@ -1,10 +1,11 @@
 // Ancient mounted defences. Model/mount data are reusable; player construction is a future feature.
+import { hurtPlayer } from './damage';
 import * as THREE from 'three';
 import { G } from '../game';
 import { scene, lineMat, fillMat, add } from './render';
 import { addFx, burst } from './fx';
 import { rayWorld, H } from './player';
-import { armoured, progress, progressHas, saveChar } from '../character';
+import { progress, progressHas, saveChar } from '../character';
 import { MOUNTED_TURRET as S, type MountedTurretSpec } from '../data/mountedturrets';
 import { showToast } from '../ui/hud';
 interface Gun { spec: MountedTurretSpec; g: THREE.Group; head: THREE.Group; sensor: THREE.Mesh; hp: number; charge: number; cd: number }
@@ -69,6 +70,6 @@ export function updateMountedTurrets(dt: number) {
     t.cd = S.rate;
     const muzzle = t.g.position.clone().addScaledVector(direction, 0.8);
     addFx(new THREE.Line(new THREE.BufferGeometry().setFromPoints([muzzle, target]), add(0xff5a3c)), 0.15);
-    burst(muzzle, 0xffee88, 4, 0.2); G.hp -= armoured(S.damage); G.dmgFlash = 0.3;
+    burst(muzzle, 0xffee88, 4, 0.2); hurtPlayer(S.damage, true, .3);
   }
 }

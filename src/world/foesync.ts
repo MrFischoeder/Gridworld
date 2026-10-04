@@ -5,11 +5,12 @@
 // owner (`fhit`), whose game takes it; a foe that dies of it is reported back (`kill`) and the shooter's copy dies as
 // if it were their own (loot, xp, bounties). The owner's foes go for the nearest player (`withTarget`): the harm they
 // do to another player is sent to them (`hurt`), and the bolts they fire are drawn by everyone (`bolt`).
+import { myCarList, damageVehicle } from './vehicles';
+import { hurtPlayer } from './damage';
 import * as THREE from 'three';
 import { G, W } from '../game';
 import { net, online, relay, onRelay, type Relay } from '../net/client';
 import { nearX } from '../gen/regions';
-import { armoured } from '../character';
 import { V } from './render';
 import { myLoc } from './peers';
 import { setRemoteHooks, markRemote, unmarkRemote, remoteOf, type Target } from './remote';
@@ -161,9 +162,14 @@ onRelay((m: Relay) => {
   } else if (m.t === 'hurt') { // their foe hurt you
     if (m.loc !== undefined && m.loc !== myLoc()) return;
     const dmg = Math.max(0, Math.min(500, +(m.dmg as number) || 0));
-    if (!dmg || foeRules.playerSafe()) return;
-    if (foeRules.shielded()) { foeRules.shieldHit(dmg * 0.5); return; }
-    G.hp -= m.a ? armoured(dmg) : dmg; G.dmgFlash = 0.35;
+    if (!dmg) return;
+    if (m.car !== undefined || m.carIndex !== undefined) {
+      const v = myCarList().find(v => v.st.id === m.car) ?? (m.car === undefined && Number.isInteger(m.carIndex) ? myCarList()[Number(m.carIndex)] : undefined);
+      if (v && v.riders.some(r => r?.who === 'peer:' + m.from)) damageVehicle(v, dmg);
+      return;
+    }
+    if (foeRules.playerSafe()) return;
+    hurtPlayer(dmg, !!m.a);
   } else if (m.t === 'bolt') {
     if (m.loc !== myLoc() || !Array.isArray(m.p) || !Array.isArray(m.v)) return;
     const [x, y, z] = m.p as number[], [vx, vy, vz] = m.v as number[];

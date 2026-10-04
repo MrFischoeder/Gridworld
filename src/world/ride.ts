@@ -35,6 +35,7 @@ export function rideSpot(): RideSpot | null {
   if (G.char.loc !== 'overworld' || ride.on) return null;
   let best: RideSpot | null = null, bd = 2.4;
   for (const g of allGhosts()) {
+    if (g.condition <= 0) continue;
     if (Math.abs(G.pos.y - g.y) > 2.5) continue;
     const s = VEHICLES[g.m];
     for (const side of [-1, 1]) {
@@ -84,6 +85,7 @@ export const toggleRideView = () => { ride.cockpit = !ride.cockpit; };
 export function updateRide(dt: number) {
   const on = ride.on!, g = ghostOf(on.owner, on.idx);
   if (!g) { ride.on = null; el.veh.innerHTML = ''; showToast('The vehicle is gone'); logLine('The vehicle you rode in is gone (its owner left or went elsewhere).'); return; }
+  if (g.condition <= 0) { getOff(true); showToast('Vehicle disabled: condition 0%'); return; }
   if (g.bumped.has('me')) { // someone else got to that seat first
     const s = freeSeat(g, on.seat);
     if (s < 0) { getOff(true); showToast('No seat left for you'); return; }
@@ -98,7 +100,7 @@ export function updateRide(dt: number) {
     if (G.firing && cool <= 0) { cool = 0.55; g.g.updateMatrixWorld(true); shootCannon(g.turret); }
   }
   el.veh.innerHTML = `${ownerName(g)}'s ${title(g)} · the ${SEAT_NAMES[on.seat]}'s seat${gunner ? ' · you work the cannon' : ''}` +
-    `<br>1 / 2 / 3 change seats · V view · E get out`;
+    `<br>condition ${Math.ceil(g.condition)}% · 1 / 2 / 3 change seats · V view · E get out`;
 }
 const tmp = new THREE.Vector3();
 /** Behind and above the vehicle, or the seat's own view (V). */

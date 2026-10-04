@@ -8,9 +8,9 @@
 //   assault    RD-06: a hunched heavy biped with a hammer arm; charges and smashes you off your feet
 // Like the creatures they are not saved. Where they turn up, and how many, is set by the danger level and the
 // shared threat budget (world/threat.ts): near the villages you meet none, further out ever heavier machines.
+import { hurtPlayer } from './damage';
 import { targetingFoe, stepRemote, withFoeTarget, hitCombatFoe, otherPlayers, hurtOther } from './remote';
 import * as THREE from 'three';
-import { armoured } from '../character';
 import { scene, V, lineMat, add as addMat } from './render';
 import { G, W } from '../game';
 import { PropBatch, sharedFill } from './props';
@@ -294,10 +294,9 @@ function face(r: Robot, dx: number, dz: number, dt: number, rate = 5) {
   let dh = Math.atan2(dx, dz) - r.heading; dh = Math.atan2(Math.sin(dh), Math.cos(dh));
   r.heading += dh * Math.min(1, dt * rate);
 }
-/** A blow that reaches the player (a closed cab takes it instead). */
+/** A blow that reaches the player (any occupied vehicle takes it instead). */
 function hit(dmg: number, push = 0, from?: THREE.Vector3) {
-  if (foeRules.shielded()) { foeRules.shieldHit(dmg * 0.6); return; }
-  G.hp -= armoured(dmg * FOE_HIT); G.dmgFlash = 0.45;
+  if (hurtPlayer(dmg * FOE_HIT, true, .45)) return;
   if (push && from) { const d = V(G.pos.x - from.x, 0, G.pos.z - from.z).normalize(); G.vel.x += d.x * push; G.vel.z += d.z * push; G.vel.y += push * 0.4; }
 }
 

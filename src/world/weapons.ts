@@ -7,8 +7,9 @@ import { G } from '../game';
 import { addFx, burst } from './fx';
 import { rayMountedTurret, damageMountedTurret } from './mountedturrets';
 import { rayWorld } from './player';
+import { vehicles, rayVehicle, damageVehicle, type Vehicle } from './vehicles';
 import { foes, damageFoe } from './enemies';
-import { rayBarrier, hurtBarrier, rayRaider, hurtCrew, type Raider } from './raiders';
+import { rayBarrier, hurtBarrier, rayRaider, type Raider } from './raiders';
 import { el } from '../ui/hud';
 import { gunOf, meleeOf, type GunLook, type MeleeLook } from '../data/weapons';
 import { BLADE, STAMINA, BURN } from '../data/survival';
@@ -207,27 +208,34 @@ let swingDur = 0.26;
 function ray(d: THREE.Vector3, dmg: number) {
   const o = camera.position.clone();
   const range = G.gun.range;
-  let tHit = rayWorld(o, d, range), hitT = null, seat = -1;
+  let tHit = rayWorld(o, d, range), hitT = null;
   for (const t of foes()) {
     if ('kind' in t && t.kind === 'raider') { // a vehicle: its body, or the crew through the windows
       const h = rayRaider(t as Raider, o, d, tHit);
-      if (h) { tHit = h.t; hitT = t; seat = h.seat; }
+      if (h) { tHit = h.t; hitT = t; }
       continue;
     }
     const rr = t.r || 0.6, oc = o.clone().sub(t.g.position), b = oc.dot(d), c = oc.lengthSq() - rr * rr, disc = b * b - c;
     if (disc < 0) continue; const tt = -b - Math.sqrt(disc);
-    if (tt > 0 && tt < tHit) { tHit = tt; hitT = t; seat = -1; }
+    if (tt > 0 && tt < tHit) { tHit = tt; hitT = t; }
+  }
+  let car: Vehicle | null = null;
+  for (const v of vehicles) {
+    if (v.ai) continue; // raiders already use the foe damage path
+    const h = rayVehicle(v, o, d, tHit);
+    if (h) { tHit = h.t; car = v; hitT = null; }
   }
   let turret = rayMountedTurret(o, d, tHit);
-  if (turret) { tHit = turret.t; hitT = null; }
+  if (turret) { tHit = turret.t; hitT = null; car = null; }
   const bar = rayBarrier(o, d, tHit); // a roadblock in the way takes the shot
-  if (bar) { tHit = bar.t; hitT = null; turret = null; hurtBarrier(bar.p, dmg); }
+  if (bar) { tHit = bar.t; hitT = null; turret = null; car = null; hurtBarrier(bar.p, dmg); }
   const end = o.clone().addScaledVector(d, tHit);
   const gun = V(0.24 * (1 - aimK), -0.2 + aimK * 0.1, -0.75); camera.localToWorld(gun);
   addFx(new THREE.Line(new THREE.BufferGeometry().setFromPoints([gun, end]), add(hitT || turret ? 0xffd27a : 0x9dffb4)), 0.12);
   burst(end, hitT || turret ? 0xffb347 : 0x3dff6e, hitT || turret ? 10 : 6, hitT || turret ? 0.7 : 0.35);
+  if (car) { damageVehicle(car, dmg); G.hitFlash = .15; }
   if (turret) damageMountedTurret(turret.gun, dmg);
-  if (hitT) { if (seat >= 0) hurtCrew(hitT as Raider, seat, dmg); else damageFoe(hitT, dmg); }
+  if (hitT) damageFoe(hitT, dmg);
 }
 function shoot() {
   const d = new THREE.Vector3(); camera.getWorldDirection(d);

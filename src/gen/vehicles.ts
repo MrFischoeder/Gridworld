@@ -57,7 +57,8 @@ export function regionVehicle(t: Terrain, rx: number, rz: number): Parking | nul
     const engine = R() < 0.2 ? 0 : 10 + Math.floor(R() * 60);
     // rolled after the older fields so the wheels and engine of existing worlds stay the same
     const hull = Math.round(VEHICLES[model].hull * (0.2 + R() * 0.6)), fuel = Math.round(VEHICLES[model].tank * (0.1 + R() * 0.5));
-    return { id: `found:${rx}:${rz}`, model, x, z, heading, parts: { wheels, engine, gun: false, hull, fuel, mods: Array(ENGINE_MODS).fill(null) } };
+    void engine; // consume legacy draws to keep existing locations and condition rolls stable
+    return { id: `found:${rx}:${rz}`, model, x, z, heading, parts: { wheels: wheels.map(() => 100), engine: 100, gun: false, hull, fuel, mods: Array(ENGINE_MODS).fill(null) } };
   }
   return null;
 }

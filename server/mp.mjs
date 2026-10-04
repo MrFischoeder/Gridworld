@@ -133,10 +133,10 @@ export function createMp(log = (m) => console.log('[mp] ' + m), opts = {}) {
       }
       if (m.t === 'state') {
         const previousCars = me.st?.cars, previousIds = me.st?.carIds;
-        me.st = { p: Array.isArray(m.p) ? m.p.slice(0, 3).map(num) : [0, 0, 0], yaw: num(m.yaw), pitch: num(m.pitch), loc: clean(m.loc, 80), held: clean(m.held, 24), mv: !!m.mv, away: !!m.away, cars: Array.isArray(m.cars) ? m.cars.slice(0, MP.cars).filter(Array.isArray).map((c) => c.slice(0, 10).map(num)) : [], ride: Array.isArray(m.ride) ? m.ride.slice(0, 3).map(num) : undefined, gun: typeof m.gun === 'number' ? num(m.gun) : undefined };
+        me.st = { p: Array.isArray(m.p) ? m.p.slice(0, 3).map(num) : [0, 0, 0], yaw: num(m.yaw), pitch: num(m.pitch), loc: clean(m.loc, 80), held: clean(m.held, 24), mv: !!m.mv, away: !!m.away, cars: Array.isArray(m.cars) ? m.cars.slice(0, MP.cars).filter(Array.isArray).map((c) => c.slice(0, 11).map(num)) : [], ride: Array.isArray(m.ride) ? m.ride.slice(0, 3).map(num) : undefined, gun: typeof m.gun === 'number' ? num(m.gun) : undefined };
         if (Array.isArray(m.carIds)) me.st.carIds = m.carIds.slice(0, MP.cars).map((id) => clean(id, 100));
         // The owner still simulates the vehicle; the server alone grants its seats.
-        const seatOK = (car, seat) => car && Number.isInteger(seat) && seat >= 0 && seat < 3 && (seat !== 2 || !!car[7]);
+        const seatOK = (car, seat) => car && (car[10] === undefined || car[10] > 0) && Number.isInteger(seat) && seat >= 0 && seat < 3 && (seat !== 2 || !!car[7]);
         const taken = (owner, idx, seat, except) => [...room.players.values()].some((p) => p.id !== except && p.st?.ride?.[0] === owner && p.st.ride[1] === idx && p.st.ride[2] === seat);
         me.st.cars.forEach((car, idx) => {
           const seat = car[8] - 1;

@@ -3,11 +3,11 @@ import * as THREE from 'three';
 import { scene, camera, V, GRID } from './render';
 import { G } from '../game';
 import { PropBatch } from './props';
-import { VEHICLES, SEATS, HULL_BOXES, vehicleTitle, freshParts, upgradeParts, immobile, partPerformance, resaleValue, FUEL_BURN, hurtEngine, engineBoost, type VehicleSpec, type VehicleModel } from '../data/vehicles';
+import { VEHICLES, SEATS, HULL_BOXES, vehicleTitle, freshParts, upgradeParts, immobile, partPerformance, resaleValue, FUEL_BURN, damageCondition, crashDamage, engineBoost, type VehicleSpec, type VehicleModel } from '../data/vehicles';
 import { PART_PRICE, PART_BUYBACK } from '../data/items';
 import { rayWorld } from './player';
 import { foes, damageFoe } from './enemies';
-import { rayBarrier, hurtBarrier, rayRaider, hurtCrew, type Raider } from './raiders';
+import { rayBarrier, hurtBarrier, rayRaider, type Raider } from './raiders';
 import { addFx, burst } from './fx';
 import { makeNoise } from './noise';
 import { add as addMat, edgesOf, lineMat } from './render';
@@ -36,8 +36,6 @@ export interface Vehicle {
   wheels: { g: THREE.Group; front: boolean }[];
   /** Roof cannon (present when one is fitted). */
   turret: THREE.Group | null;
-  /** Metres driven since the last wear tick. */
-  odo: number;
   /** Driven by bandits (world/raiders.ts): not claimable until they are beaten. */
   ai?: boolean;
   /** Who sits in each seat (`SEATS[model]`), drawn as a figure; null = empty. */
@@ -186,7 +184,7 @@ function makeVehicle(st: VehicleState, claimed = true): Vehicle {
   st.parts ??= freshParts(st.model); // saves from before vehicles had parts
   upgradeParts(st.model, st.parts);
   scene.add(group);
-  const v: Vehicle = { st, spec, group, claimed, wheels, turret: null, odo: 0, riders: SEATS[st.model].map(() => null), speed: 0, spin: 0, steer: 0, y: 0, pitch: 0, roll: 0 };
+  const v: Vehicle = { st, spec, group, claimed, wheels, turret: null, riders: SEATS[st.model].map(() => null), speed: 0, spin: 0, steer: 0, y: 0, pitch: 0, roll: 0 };
   refreshParts(v);
   pose(v);
   return v;
@@ -239,8 +237,7 @@ function riderBoxes(m: VehicleModel, i: number): number[][] {
 const wheelBoxes = (m: VehicleModel) => { const s = VEHICLES[m]; return s.axles.flatMap((z) => [-1, 1].map((sx) => [sx * s.track - s.wheelW / 2, 0, z - s.wheelR, sx * s.track + s.wheelW / 2, s.wheelR * 2, z + s.wheelR])); };
 const inv = new THREE.Matrix4(), ray = new THREE.Ray(), bx = new THREE.Box3(), hitP = new THREE.Vector3();
 /**
- * A shot from o along d (normalised) meets this vehicle within `max`: at t, either its body (seat -1) or whoever sits
- * in `seat`, whichever comes first along the line. Windows and open tops let shots through to the people inside.
+ * A shot from o along d (normalised) meets this vehicle within `max`: at t, its body or an occupant silhouette. Both are vehicle hits (seat -1).
  */
 export function rayVehicle(v: Vehicle, o: THREE.Vector3, d: THREE.Vector3, max: number): { t: number; seat: number } | null {
   const R = Math.max(v.spec.length, v.spec.height) * 0.6, cx = v.st.x - o.x, cy = v.y + v.spec.height / 2 - o.y, cz = v.st.z - o.z;
@@ -255,7 +252,7 @@ export function rayVehicle(v: Vehicle, o: THREE.Vector3, d: THREE.Vector3, max: 
   };
   for (const b of HULL_BOXES[v.st.model]) test(b, -1);
   wheelBoxes(v.st.model).forEach((b, i) => { if (v.st.parts.wheels[i] >= 0) test(b, -1); });
-  v.riders.forEach((r, i) => { if (r && r.fig.g.parent === v.group) for (const b of riderBoxes(v.st.model, i)) test(b, i); });
+  v.riders.forEach((r, i) => { if (r && r.fig.g.parent === v.group) for (const b of riderBoxes(v.st.model, i)) test(b, -1); });
   return seat === -2 ? null : { t: best, seat };
 }
 
@@ -269,53 +266,42 @@ function turretModel(): THREE.Group {
   g.add(edgesOf(new THREE.CylinderGeometry(0.42, 0.42, 0.06, 10), turretMat));
   return g;
 }
-/** Show fitted parts: missing wheels are not drawn, a cannon sits on the roof. */
+/** Wheels are permanent; only optional roof equipment is fitted or removed. */
 export function refreshParts(v: Vehicle) {
-  v.wheels.forEach((w, i) => { ((w.g as THREE.Object3D).userData.pivot as THREE.Group).visible = v.st.parts.wheels[i] >= 0; });
+  v.wheels.forEach((w) => { ((w.g as THREE.Object3D).userData.pivot as THREE.Group).visible = true; });
   if (v.st.parts.gun && !v.turret) {
     v.turret = turretModel(); v.turret.position.set(...v.spec.mount); v.group.add(v.turret);
   } else if (!v.st.parts.gun && v.turret) {
     v.group.remove(v.turret); v.turret.traverse((o) => (o as THREE.Mesh).geometry?.dispose()); v.turret = null;
   }
 }
-/** Wear from driving and knocks from crashes. */
-function wear(v: Vehicle, metres: number, crash: number) {
-  const p = v.st.parts;
-  v.odo += metres;
-  if (FUEL_BURN) p.fuel = Math.max(0, p.fuel - metres / 1000 * v.spec.fuelUse * FUEL_BURN);
-  while (v.odo >= 100) { v.odo -= 100; p.wheels = p.wheels.map((w) => (w > 0 ? Math.max(1, w - 0.6) : w)); }
-  if (crash > 6) {
-    const i = (Math.random() * p.wheels.length) | 0, hit = Math.min(35, (crash - 6) * 3);
-    if (p.wheels[i] > 0) p.wheels[i] = Math.max(0, Math.round(p.wheels[i] - hit));
-    hurtEngine(p, hit * 0.4);
-    damageVehicle(v, (crash - 6) * 2.5 * v.spec.hull / 120);
-    const why = immobile(p);
-    if (why) { showToast('Breakdown! ' + why); v.speed = 0; }
-  }
+/** Driving consumes fuel when enabled, but never condition. */
+function consumeFuel(v: Vehicle, metres: number) {
+  if (FUEL_BURN) v.st.parts.fuel = Math.max(0, v.st.parts.fuel - metres / 1000 * v.spec.fuelUse * FUEL_BURN);
 }
 
 // ---------- hull ----------
 let hullWarnAt = 0;
 /**
  * Hull damage from gunfire, rams and crashes. At 0 the vehicle is wrecked: it stops, smokes, and the driver
- * is thrown out (hurt if the cab is open). Hull Plating fitted at the front brings it back.
+ * leaves without injury. Service or a repair kit brings it back.
  * Returns true when this hit wrecked it.
  */
 export function damageVehicle(v: Vehicle, dmg: number): boolean {
   const p = v.st.parts;
-  if (p.hull <= 0 || dmg <= 0) return false;
-  p.hull = Math.max(0, p.hull - dmg);
+  if (p.hull <= 0 || !Number.isFinite(dmg) || dmg <= 0) return false;
+  damageCondition(p, dmg);
   if (v === driving.v) {
     G.dmgFlash = Math.max(G.dmgFlash, 0.12);
-    if (p.hull < v.spec.hull * 0.25 && performance.now() > hullWarnAt) { hullWarnAt = performance.now() + 6000; logLine('Hull critical!'); }
+    if (p.hull < v.spec.hull * 0.25 && performance.now() > hullWarnAt) { hullWarnAt = performance.now() + 6000; logLine('Vehicle condition critical!'); }
   }
   if (p.hull > 0) return false;
+  v.speed = 0;
   burst(V(v.st.x, v.y + v.spec.height * 0.6, v.st.z), 0xffb347, 60, v.spec.length * 0.5);
   if (v === driving.v) {
     showToast(vehicleTitle(v.st.model) + ' wrecked!');
-    logLine('The hull gave out. Patch it with Hull Plating at the front of the vehicle.');
+    logLine('Vehicle condition reached 0%. Use a Vehicle Repair Kit or service it at the front.');
     leave();
-    if (!v.spec.enclosed) G.hp -= 15;
     G.dmgFlash = 0.6;
   }
   if (v.claimed) saveChar();
@@ -348,23 +334,30 @@ export function fireCannon(dt: number) {
 export function shootCannon(turret: THREE.Object3D) {
   const muzzle = V(0, 0.18, 1.3); turret.localToWorld(muzzle);
   const d = new THREE.Vector3(); camera.getWorldDirection(d);
-  let tHit = rayWorld(muzzle, d, 90), hit = null, seat = -1;
+  let tHit = rayWorld(muzzle, d, 90), hit = null;
   for (const t of foes()) {
     if ('kind' in t && t.kind === 'raider') {
       const h = rayRaider(t as Raider, muzzle, d, tHit);
-      if (h) { tHit = h.t; hit = t; seat = h.seat; }
+      if (h) { tHit = h.t; hit = t; }
       continue;
     }
     const rr = (t.r || 0.6) + 0.3, oc = muzzle.clone().sub(t.g.position), b = oc.dot(d), c = oc.lengthSq() - rr * rr, disc = b * b - c;
     if (disc < 0) continue; const tt = -b - Math.sqrt(disc);
-    if (tt > 0 && tt < tHit) { tHit = tt; hit = t; seat = -1; }
+    if (tt > 0 && tt < tHit) { tHit = tt; hit = t; }
+  }
+  let car: Vehicle | null = null;
+  for (const candidate of vehicles) {
+    if (candidate.ai || candidate === driving.v || candidate.group === turret.parent) continue;
+    const h = rayVehicle(candidate, muzzle, d, tHit);
+    if (h) { tHit = h.t; car = candidate; hit = null; }
   }
   const bar = rayBarrier(muzzle, d, tHit);
-  if (bar) { tHit = bar.t; hit = null; hurtBarrier(bar.p, 3 * G.S.bm); }
+  if (bar) { tHit = bar.t; hit = null; car = null; hurtBarrier(bar.p, 3 * G.S.bm); }
   const end = muzzle.clone().addScaledVector(d, tHit);
   addFx(new THREE.Line(new THREE.BufferGeometry().setFromPoints([muzzle, end]), addMat(0xffb347)), 0.15);
   burst(end, 0xffb347, hit ? 16 : 8, hit ? 1.1 : 0.5);
-  if (hit) { if (seat >= 0) hurtCrew(hit as Raider, seat, 3 * G.S.bm); else damageFoe(hit, 3 * G.S.bm); }
+  if (car) damageVehicle(car, 3 * G.S.bm);
+  if (hit) damageFoe(hit, 3 * G.S.bm);
   makeNoise(muzzle, 95); // the cannon is heard far and wide
 }
 /** The turret follows the camera. */
@@ -461,8 +454,6 @@ export function buyVehicle(model: VehicleModel): string {
   c.vehicles.push(st); vehicles.push(makeVehicle(st)); saveChar();
   return `Your ${vehicleTitle(model)} is waiting in the yard outside the north gate.`;
 }
-/** Drones cannot reach the driver of a vehicle with a closed cab. */
-export const shielded = () => !!driving.v && driving.v.spec.enclosed;
 export function clearVehicles() {
   if (driving.v) leave(false);
   for (const v of vehicles) dropVehicle(v);
@@ -579,14 +570,14 @@ export function updateDriving(dt: number) {
   const H = hooks!.height, ahead = H(nx + fx * s.length / 2, nz + fz * s.length / 2), behind = H(nx - fx * s.length / 2, nz - fz * s.length / 2);
   const climb = (ahead - behind) / s.length * Math.sign(v.speed || 1);
   if (hullBlocked(v, nx, nz, nh) && blockedByWater) v.speed = 0; // the water is too deep: it just won't go on
-  else if (hullBlocked(v, nx, nz, nh) || climb > 0.8) {
+  else if (hullBlocked(v, nx, nz, nh)) {
     const impact = Math.abs(v.speed);
     if (impact > 6) showToast('Crash!');
     v.speed = -v.speed * 0.25;
-    wear(v, 0, impact);
+    damageVehicle(v, crashDamage(v.st.model, impact));
     if (driving.v !== v) return; // the crash wrecked it
-  } else {
-    wear(v, Math.abs(v.speed) * dt, 0);
+  } else if (climb > 0.8) { v.speed = 0; } else {
+    consumeFuel(v, Math.abs(v.speed) * dt);
     v.st.x = nx; v.st.z = nz; v.st.heading = nh;
     if (!driving.cockpit) G.yaw += dh * 0.9; // the chase camera swings with the vehicle
     else G.yaw += dh;
@@ -597,9 +588,9 @@ export function updateDriving(dt: number) {
   G.pos.set(v.st.x, v.y, v.st.z);
   G.vel.set(0, 0, 0);
   if (driving.seat !== 0 && v.riders[driving.seat]?.who !== 'you') { seatRider(v, driving.seat, 'you', YOU); }
-  const p = v.st.parts, worst = Math.min(...p.wheels);
+  const p = v.st.parts;
   el.veh.innerHTML = `${vehicleTitle(v.st.model)} · ${SEAT_NAMES[driving.seat] ?? 'seat'} · ${Math.round(Math.abs(v.speed) * 3.6)} km/h · ${aboard(v)}/${s.seats} aboard${s.enclosed ? ' · cab closed' : ''}` +
-    `<br><span${p.hull < s.hull * 0.25 ? ' class="warn"' : ''}>hull ${Math.ceil(p.hull)}/${s.hull}</span> · engine ${Math.round(p.engine)}% · wheels ${Math.round(worst)}%` +
+    `<br><span${p.hull < s.hull * 0.25 ? ' class="warn"' : ''}>condition ${Math.ceil(p.hull / s.hull * 100)}%</span>` +
     ` · fuel ${Math.round(p.fuel / s.tank * 100)}%${v.turret ? ' · cannon' : ''}`;
 }
 /** Keys 1 / 2 / 3 in your own vehicle: move to the driver's, the passenger's or the gunner's seat if it is free. */
@@ -699,7 +690,8 @@ export function steerVehicle(v: Vehicle, tx: number, tz: number, want: number, d
   const nh = v.st.heading + turn, [fx, fz] = fwd(nh), nx = v.st.x + fx * v.speed * dt, nz = v.st.z + fz * v.speed * dt;
   const H = hooks!.height, ahead = H(nx + fx * s.length / 2, nz + fz * s.length / 2), behind = H(nx - fx * s.length / 2, nz - fz * s.length / 2);
   let ok = true;
-  if (hullBlocked(v, nx, nz, nh) || (ahead - behind) / s.length * Math.sign(v.speed || 1) > 0.8) { v.speed = -v.speed * 0.25; ok = false; }
+  if (hullBlocked(v, nx, nz, nh)) { if (!blockedByWater) damageVehicle(v, crashDamage(v.st.model, v.speed)); v.speed = -v.speed * .25; ok = false; }
+  else if ((ahead - behind) / s.length * Math.sign(v.speed || 1) > .8) { v.speed = 0; ok = false; }
   else { v.st.x = nx; v.st.z = nz; v.st.heading = nh; }
   v.spin += v.speed / s.wheelR * dt;
   pose(v);
@@ -716,7 +708,7 @@ export function myCars(): number[][] {
   const out: number[][] = [];
   for (const v of myCarList()) {
     const r = (n: number) => Math.round(n * 100) / 100;
-    out.push([v.st.model === 'scout' ? 0 : 1, r(v.st.x), r(v.y), r(v.st.z), r(v.st.heading), r(v.pitch), r(v.roll), v.st.parts.gun ? 1 : 0, v === driving.v ? driving.seat + 1 : 0, r(v.turret?.rotation.y ?? 0)]);
+    out.push([v.st.model === 'scout' ? 0 : 1, r(v.st.x), r(v.y), r(v.st.z), r(v.st.heading), r(v.pitch), r(v.roll), v.st.parts.gun ? 1 : 0, v === driving.v ? driving.seat + 1 : 0, r(v.turret?.rotation.y ?? 0), r(v.st.parts.hull / v.spec.hull * 100)]);
   }
   return out;
 }

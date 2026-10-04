@@ -1,8 +1,8 @@
 // Wild creatures of the open world: Ravager packs, territorial Brambles and diving Leechwings, Gnawer nests,
 // Skitterwing flocks fluttering low in the near wilds, and in the sea Sea Lurkers and shoals of Silverfin.
 // Spawns and movement use Math.random (unsaved, like drones); models are built from PropBatch.
+import { hurtPlayer } from './damage';
 import * as THREE from 'three';
-import { armoured } from '../character';
 import { nearX } from '../gen/regions';
 import { onNoise } from './noise';
 import { scene, V, lineMat } from './render';
@@ -368,8 +368,7 @@ function walk(c: Creature, dx: number, dz: number, speed: number, dt: number) {
   c.p.y = env.ground(c.p.x, c.p.z) + CREATURES[c.kind].lift;
 }
 function bite(dmg: number) {
-  if (foeRules.shielded()) { foeRules.shieldHit(dmg * 0.5); return; }
-  G.hp -= armoured(dmg * FOE_HIT); G.dmgFlash = 0.4;
+  hurtPlayer(dmg * FOE_HIT, true, .4);
 }
 const alerted = new WeakSet<Creature[]>();
 

@@ -7,11 +7,13 @@ vi.mock('../src/world/fx', () => ({ addFx: vi.fn(), burst: vi.fn() }));
 vi.mock('../src/character', () => ({ armoured: (n: number) => n * 0.5, progress: () => state.killed, progressHas: (_k: string, n: number) => state.killed.includes(n), saveChar: () => { state.saves++; } }));
 vi.mock('../src/ui/hud', () => ({ showToast: vi.fn() }));
 import { G } from '../src/game';
+import { armoured } from '../src/character';
+import { setVehicleProtection } from '../src/world/damage';
 import { clearMountedTurrets, loadMountedTurrets, updateMountedTurrets, rayMountedTurret, damageMountedTurret, mountedTurretHit } from '../src/world/mountedturrets';
 import { MOUNTED_TURRET as S, type MountedTurretSpec } from '../src/data/mountedturrets';
 const spec: MountedTurretSpec = { id: 0, mount: 'floor', x: 0, y: 0.55, z: 0, normal: [0, 1, 0] };
 const origin = new THREE.Vector3(5, 0.55, 0), direction = new THREE.Vector3(-1, 0, 0);
-beforeEach(() => { clearMountedTurrets(); state.blocked = false; state.killed.length = 0; state.saves = 0; G.pos.set(10, 0, 0); G.hp = 100; loadMountedTurrets([spec]); });
+beforeEach(() => { setVehicleProtection(() => false, () => {}, armoured); clearMountedTurrets(); state.blocked = false; state.killed.length = 0; state.saves = 0; G.pos.set(10, 0, 0); G.hp = 100; loadMountedTurrets([spec]); });
 describe('ancient turret combat', () => {
   it('warns before firing, honours its cooldown and applies armour', () => {
     updateMountedTurrets(S.warning - 0.01); expect(G.hp).toBe(100);

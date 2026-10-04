@@ -1,11 +1,13 @@
 // Entry point: load the character, build the first place, run the frame loop.
+import { setVehicleProtection } from './world/damage';
+import { relay, net } from './net/client';
 import './style.css';
 import { VERSION, BUILD } from './version';
 import { renderer, scene, camera } from './world/render';
 import { G, W, uiOpen } from './game';
 import { loadChar } from './save';
 import { initItemTips } from './ui/itemtip';
-import { calcStats, saveChar } from './character';
+import { calcStats, saveChar, armoured } from './character';
 import { loadDungeon, loadOverworld, toVillage, saveOverworldPos, enterDungeon } from './world/level';
 import { updatePlayer, EYE } from './world/player';
 import { updateClimb } from './world/ladders';
@@ -84,6 +86,10 @@ import { updateGarrisons } from './world/citygarrisons';
 function reloadWorld() { if (G.char.loc !== 'overworld') return; saveOverworldPos(); loadOverworld({ kind: 'saved' }); }
 setWorldReload(reloadWorld);
 
+setVehicleProtection(() => !!driving.v || riding(), damage => {
+  if (driving.v) damageVehicle(driving.v, damage);
+  else if (ride.on) relay({ t: 'hurt', dmg: damage, loc: 'o', car: net.peers.get(ride.on.owner)?.st?.carIds?.[ride.on.idx], carIndex: ride.on.idx }, ride.on.owner);
+}, armoured);
 G.char = loadChar();
 document.getElementById('vnum')!.textContent = 'v' + VERSION;
 document.getElementById('version')!.textContent = BUILD;

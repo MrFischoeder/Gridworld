@@ -1,8 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import * as THREE from 'three';
-const state = vi.hoisted(() => ({ G: {} as any, W: { robots: [] as any[], creatures: [] as any[], bandits: [] as any[] }, net: { id: 1, peers: new Map<number, any>() }, heard: null as any, relay: vi.fn(), damage: vi.fn() }));
+const state = vi.hoisted(() => ({ G: {} as any, W: { robots: [] as any[], creatures: [] as any[], bandits: [] as any[] }, net: { id: 1, peers: new Map<number, any>() }, cars: [] as any[], carDamage: vi.fn(), heard: null as any, relay: vi.fn(), damage: vi.fn() }));
 vi.mock('../src/game', () => state);
 vi.mock('../src/net/client', () => ({ net: state.net, online: () => true, relay: state.relay, onRelay: (fn: any) => { state.heard = fn; } }));
+vi.mock('../src/world/vehicles', () => ({ myCarList: () => state.cars, damageVehicle: state.carDamage }));
 vi.mock('../src/world/peers', () => ({ myLoc: () => 'surface' }));
 vi.mock('../src/character', () => ({ armoured: (damage: number) => damage }));
 vi.mock('../src/world/render', async () => { const { Vector3 } = await import('three'); return { V: (x: number, y: number, z: number) => new Vector3(x, y, z) }; });
@@ -18,12 +19,24 @@ vi.mock('../src/world/enemies', () => ({ damageFoe: state.damage, foeRules: { pl
 import { syncFoes, dropCopies } from '../src/world/foesync';
 import { unmarkRemote, hitOwner } from '../src/world/remote';
 beforeEach(() => {
+  state.cars.length = 0; state.carDamage.mockClear();
   dropCopies(); state.W.bandits.length = 0; state.relay.mockClear(); state.damage.mockReset();
   Object.assign(state.G, { pos: new THREE.Vector3(0, 0, 0), vel: new THREE.Vector3(), hp: 100, hitFlash: 0 });
   state.net.peers.set(2, { id: 2, st: { loc: 'surface', p: [5, 0, 0] } });
   syncFoes(1); state.relay.mockClear();
 });
 describe('shared city posts and faction damage', () => {
+  it('routes a passenger hit to the specified owned vehicle, without touching player HP', () => {
+    const v = { st: { id: 'scout-1' }, riders: [{ who: 'peer:2' }] }; state.cars.push(v);
+    state.heard({ t: 'hurt', from: 2, loc: 'surface', dmg: 30, car: 'scout-1', carIndex: 0 });
+    expect(state.carDamage).toHaveBeenCalledWith(v, 30); expect(state.G.hp).toBe(100);
+  });
+  it('rejects stale vehicle ids and hits from someone who is not aboard', () => {
+    state.cars.push({ st: { id: 'replacement' }, riders: [{ who: 'peer:2' }] });
+    state.heard({ t: 'hurt', from: 2, loc: 'surface', dmg: 30, car: 'old-car', carIndex: 0 });
+    state.heard({ t: 'hurt', from: 3, loc: 'surface', dmg: 30, car: 'replacement' });
+    expect(state.carDamage).not.toHaveBeenCalled(); expect(state.G.hp).toBe(100);
+  });
   it('preserves the post identity through receiving and sending actual foe snapshots', () => {
     state.heard({ t: 'foes', from: 2, loc: 'surface', list: [[77, 2, 'gunner', 5, 1, 0, 0, 20, 20, 3, 'idle', '1:5']] });
     const f = state.W.bandits[0]; expect(f.cityPost).toBe('1:5');

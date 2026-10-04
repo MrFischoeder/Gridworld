@@ -4,6 +4,15 @@ export interface Change { v: string; date: string; title: string; notes: string[
 
 export const CHANGELOG: Change[] = [
   {
+    v: '0.119.0', date: '2026-10-04', title: 'One vehicle condition and protected occupants',
+    notes: [
+      'Every vehicle has one condition percentage. Gunfire, direct enemy attacks and collisions damage this pool; wheels and engines no longer break separately.',
+      'Drivers, passengers and roof gunners take no damage while aboard, including in the open Scout and another player\'s vehicle. The hit that disables a vehicle never spills onto its occupants.',
+      'Ordinary driving causes no wear. A vehicle retains full performance until condition reaches 0%, then stops and its occupants get out unharmed.',
+      'Service and repair kits restore the shared condition, including disabled vehicles. Existing saves retain hull damage, equipment and cargo while old wheel and engine faults are retired.',
+    ],
+  },
+  {
     v: '0.118.0', date: '2026-10-04', title: 'Timber camps and detailed props',
     notes: [
       'Bandit camps are enclosed by tall sharpened timber palisades, with open north and south entrances.',

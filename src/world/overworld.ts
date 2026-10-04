@@ -1,7 +1,7 @@
 // The open world: terrain streamed in 32 m chunks around the player, voxel structures (the village, ruins)
 // standing on it, forests, roads, and light field enemies. Generation is deterministic; this module only
 // decides what is loaded and turns generator output into meshes.
-import { proxied } from './remote';
+import { insideVehicle, hitOccupiedVehicle } from './damage';
 import { setLadders, dropLadders, ladderHit, ladderFloor } from './ladders';
 import { setHouses, dropHouses, houseHit, houseRay, houseSolid } from './houses';
 import { drawHangar, hangarOps } from './hangar';
@@ -52,7 +52,7 @@ import { PropBatch, sharedFill, sharedLine } from './props';
 import { makeStair, disposeStair, type Door, type Stair } from './doors';
 import { makeNpc, type Npc } from './npc';
 import { foeRules, type Drone } from './enemies';
-import { spawnVehicles, clearVehicles, vehicleHit, syncFound, shielded, driving, damageVehicle, vehiclesNear } from './vehicles';
+import { spawnVehicles, clearVehicles, vehicleHit, syncFound, driving, vehiclesNear } from './vehicles';
 import { logLine, showToast } from '../ui/hud';
 import { dropGarrisons } from './citygarrisons';
 import { setCreatureEnv, clearCreatures } from './creatures';
@@ -556,8 +556,8 @@ export function openWorld(x: number, z: number) {
   foeRules.blocked = (p) => nearVillage(p.x, p.z) < 2;
   foeRules.playerSafe = () => inVillage(G.pos.x, G.pos.z) && !raidHere(); // no safe place while bandits raid it
   foeRules.ground = (px, pz) => OW.terrain!.heightAt(px, pz);
-  foeRules.shielded = () => !proxied() && shielded(); // a foe's turn against another player: your cab is not theirs
-  foeRules.shieldHit = (dmg) => { if (driving.v) damageVehicle(driving.v, dmg); };
+  foeRules.shielded = () => insideVehicle(); // a foe's turn against another player: your cab is not theirs
+  foeRules.shieldHit = (dmg) => hitOccupiedVehicle(dmg);
   setCrash(OW.terrain);
   updateStructs(x, z);
   const pcx = Math.floor(x / CHUNK), pcz = Math.floor(z / CHUNK);

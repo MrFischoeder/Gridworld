@@ -1,4 +1,5 @@
 // Bandits on wheels (raider vehicles) and roadside ambushes with a roadblock. Unsaved, like other enemies.
+import { hurtPlayer } from './damage';
 import * as THREE from 'three';
 import { scene, V } from './render';
 import { G, W } from '../game';
@@ -8,15 +9,15 @@ import { rayWorld } from './player';
 import { burst } from './fx';
 import { dropCrystal, rollAmmo } from './loot';
 import { spawnBandit, alert, fireBolt, BANDIT, type Bandit } from './bandits';
-import { spawnAIVehicle, releaseAI, removeVehicle, steerVehicle, bodyToWorld, driving, refreshParts, damageVehicle, seatRider, unseat, seatPoint, rayVehicle, type Vehicle } from './vehicles';
-import { VEHICLES, SEATS, freshParts, wheelCount, hurtEngine, type VehicleModel } from '../data/vehicles';
+import { spawnAIVehicle, releaseAI, removeVehicle, steerVehicle, bodyToWorld, driving, damageVehicle, seatRider, unseat, rayVehicle, type Vehicle } from './vehicles';
+import { VEHICLES, SEATS, freshParts, type VehicleModel } from '../data/vehicles';
 import { RELIC_KEYS } from '../data/items';
 import { putItems } from '../inventory';
 import { clearSpot } from '../gen/vehicles';
 import { nearestOnRoad } from '../gen/roads';
 import { CHUNK } from '../gen/regions';
 import type { Terrain } from '../gen/terrain';
-import { gainXp, armoured } from '../character';
+import { gainXp } from '../character';
 import { logLine, showToast } from '../ui/hud';
 import { onKill } from './quests';
 import { mayspawn } from './threat';
@@ -104,12 +105,10 @@ function driveRaider(r: Raider, dt: number) {
   if (!safe && d < v.spec.length * 0.55 + 0.6 && Math.abs(v.speed) > 5 && r.ramT <= 0) {
     r.ramT = 1.5;
     if (driving.v) {
-      const p = driving.v.st.parts, k = (Math.random() * p.wheels.length) | 0;
-      if (p.wheels[k] > 0) p.wheels[k] = Math.max(0, p.wheels[k] - 12); hurtEngine(p, 6); refreshParts(driving.v);
       logLine('Rammed!');
       damageVehicle(driving.v, 20 * (1 + r.level * 0.2));
     } else {
-      G.hp -= armoured(16 * (1 + r.level * 0.2)); G.dmgFlash = 0.5;
+      hurtPlayer(16 * (1 + r.level * 0.2), true, .5);
       const [fx, fz] = [Math.sin(v.st.heading), Math.cos(v.st.heading)];
       G.vel.x += fx * 12; G.vel.z += fz * 12; G.vel.y = 6; G.onGround = false;
     }
@@ -121,12 +120,10 @@ function wreckRaider(r: Raider) {
   burst(r.p, BANDIT, 50, 2.5);
   showToast('Raider vehicle disabled!');
   bailOut(r);
-  // what is left: a battered engine, a wrecked wheel or two, maybe still the gun; some loot in the back
+  // A disabled vehicle, possibly still with its roof gun, and loot in the back.
   const p = v.st.parts;
-  p.engine = 5 + Math.floor(Math.random() * 25);
-  for (let i = 0; i < wheelCount(v.st.model); i++) if (Math.random() < 0.3) p.wheels[i] = 0; else p.wheels[i] = 30 + Math.floor(Math.random() * 50);
   p.gun = Math.random() < 0.5;
-  p.hull = Math.round(v.spec.hull * (0.15 + Math.random() * 0.3)); p.fuel = Math.round(v.spec.tank * (0.2 + Math.random() * 0.5));
+  p.hull = 0; p.fuel = Math.round(v.spec.tank * (0.2 + Math.random() * 0.5));
   const t = v.st.trunk; t.gold = 20 + Math.floor(Math.random() * 60);
   if (Math.random() < 0.5) putItems(t.items, 'medkit', 1);
   putItems(t.items, 'scrap', 2 + Math.floor(Math.random() * 3));
@@ -155,39 +152,14 @@ function bailOut(r: Raider) {
 }
 /** Where a shot from o along d meets this raider: its body (seat -1) or one of the crew through a window. */
 export const rayRaider = (r: Raider, o: THREE.Vector3, d: THREE.Vector3, max: number) => rayVehicle(r.v, o, d, max);
-/**
- * A shot hit one of the crew. A dead gunner leaves the cannon silent; a dead driver lets the vehicle roll to a stop
- * and the rest of the crew bail out: the vehicle is left whole (with the damage it had) for you to claim.
- */
-export function hurtCrew(r: Raider, seat: number, dmg: number) {
-  if (r.crewHp[seat] <= 0) { hurtRaider(r, dmg); return; }
-  const at = seatPoint(r.v, seat);
-  r.crewHp[seat] -= dmg; G.hitFlash = 0.15;
-  burst(at, BANDIT, 8, 0.5);
-  if (r.plan === 'back' || r.plan === 'chase') { r.plan = 'circle'; r.planT = 2; }
-  if (r.crewHp[seat] > 0) return;
-  r.crewHp[seat] = 0; unseat(r.v, seat);
-  burst(at, BANDIT, 24, 0.9); dropCrystal(at); gainXp(8); onKill('bandit');
-  if (seat === 0 || r.crewHp.every((h) => h <= 0)) abandonRaider(r);
-  else logLine('The gunner is down.');
-}
-/** The driver is dead: the others bail out, and the vehicle is yours to take, barely scratched. */
-function abandonRaider(r: Raider) {
-  showToast(r.crewHp.some((h) => h > 0) ? 'Driver down! The crew bails out.' : 'The crew is dead.');
-  bailOut(r);
-  const t = r.v.st.trunk; t.gold = 10 + Math.floor(Math.random() * 40);
-  putItems(t.items, 'scrap', 1 + Math.floor(Math.random() * 3));
-  { const [k, n] = rollAmmo(); putItems(t.items, k, n); }
-  if (Math.random() < 0.4) putItems(t.items, 'medkit', 1);
-  releaseAI(r.v); gainXp(15);
-  scene.remove(r.g); raiders.splice(raiders.indexOf(r), 1);
-}
+/** Every shot reduces the vehicle condition; its occupants are protected until they bail out. */
 export function hurtRaider(r: Raider, dmg: number) {
-  r.hp -= dmg; G.hitFlash = 0.15;
-  burst(r.p.clone().add(V(0, 0.5, 0)), BANDIT, 6, 0.6);
+  damageVehicle(r.v, dmg); r.hp = r.maxHp * r.v.st.parts.hull / r.v.spec.hull; G.hitFlash = .15;
+  burst(r.p.clone().add(V(0, .5, 0)), BANDIT, 6, .6);
   if (r.plan === 'back' || r.plan === 'chase') { r.plan = 'circle'; r.planT = 2; }
   if (r.hp <= 0) wreckRaider(r);
 }
+
 function dropRaider(r: Raider) {
   removeVehicle(r.v); scene.remove(r.g);
   const i = raiders.indexOf(r); if (i >= 0) raiders.splice(i, 1);
@@ -313,6 +285,8 @@ export function updateRaiders(dt: number) {
   for (const r of [...raiders]) {
     if (Math.hypot(r.v.st.x - G.pos.x, r.v.st.z - G.pos.z) > 260) { dropRaider(r); continue; }
     driveRaider(r, dt);
+    r.hp = r.maxHp * r.v.st.parts.hull / r.v.spec.hull;
+    if (r.v.st.parts.hull <= 0) wreckRaider(r);
   }
 }
 export function clearRaiders() {

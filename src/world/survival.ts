@@ -3,6 +3,7 @@
 // for a while. The body burns calories all the time, faster the harder you work and the more you carry; food adds
 // them back, but only as much as the stomach holds, and it digests slowly. Water runs down with time. Hungry or
 // thirsty, you tire and recover slowly; starving or parched, you lose health.
+import { environmentalDamage } from './damage';
 import { G } from '../game';
 import { STAMINA, DRAIN, LOW, STARVE_DPS, KCAL, STOMACH, burnPerMin } from '../data/survival';
 import { bulkOf } from '../inventory';
@@ -76,7 +77,7 @@ export function updateSurvival(dt: number) {
   if (G.exhausted && G.stamina >= STAMINA.recover) G.exhausted = false;
   // starving or parched: health drains away
   const empty = (c.water <= 0 ? 1 : 0) + (c.kcal <= 0 ? 1 : 0);
-  if (empty) { G.hp -= STARVE_DPS * empty * dt; }
+  if (empty) { environmentalDamage(STARVE_DPS * empty * dt); }
   const low = c.water <= 0 ? 'You are dying of thirst!' : c.kcal <= 0 ? 'You are starving!' : c.water < LOW ? 'You are thirsty.' : c.kcal < KCAL.low ? 'You are hungry.' : '';
   warnT -= dt;
   if (low && (low !== lastLow || warnT <= 0)) { logLine(low); warnT = empty ? 20 : 60; }

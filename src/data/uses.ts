@@ -57,7 +57,7 @@ function build(): Map<ItemKey, Map<UseGroup, string[]>> {
   for (const h of HALL_SETS) use(h.fuel, 'Fuel for', h.fuel === 'nfuel' ? 'the Old Enrichment Plant\'s own reactor' : 'the power halls of the old plants');
   use('filter', 'Other', 'breathing in toxic fog (in a Gas Mask)');
   for (const g of Object.values(GUNS)) use(g!.ammo, 'Other', `rounds for the ${g!.name}`);
-  use('repairkit', 'Repairs', 'your vehicles in the field (hull, engine, wheels)');
+  use('repairkit', 'Repairs', 'the shared condition of your vehicles in the field');
   return m;
 }
 /** What the item is used for, by kind of use (empty when nothing takes it). */

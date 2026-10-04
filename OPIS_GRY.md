@@ -241,8 +241,8 @@ Gra jest pomyślana jako **kooperacja do 8 graczy** na autorytatywnym serwerze (
   - Kupuje się je u Kuby albo znajduje porzucone w dziczy (uszkodzone).
   - Mają koła, silnik, kadłub, bak, działko na dachu, ulepszenia silnika i bagażnik.
   - Mają 3 miejsca: kierowca, pasażer i strzelec przy działku.
-  - Serwis naprawia koła, silnik i kadłub (poszycie).
-  - **Vehicle Repair Kit** łata pojazd w terenie (kadłub, silnik, koła); nie wskrzesza wraku.
+  - Pojazd ma jeden stan użyteczności 0–100%; serwis i zestaw naprawczy odnawiają właśnie ten stan. Koła i silnik nie mają osobnych uszkodzeń.
+  - **Vehicle Repair Kit** przywraca 40% stanu pojazdu w terenie, także po jego unieruchomieniu. Ostrzał, zderzenia z przeszkodami i bezpośrednie ataki przeciwników uszkadzają pojazd, a jazda nie powoduje zużycia. Wszyscy pasażerowie są chronieni do chwili opuszczenia pojazdu, również w łaziku i w multiplayerze. Przy 0% pojazd zatrzymuje się, a pasażerowie wysiadają bez obrażeń.
 - **Budowle gracza nad wodą**:
   - **Mosty** na brodach dróg albo w dowolnym miejscu rzeki (Bridge Kit);
   - **Pomosty** na wybrzeżu morza (Pier Kit), z lampą i skrzynią.
@@ -577,3 +577,5 @@ Pełne notatki (po angielsku) są w grze pod przyciskiem **Changelog** w menu g�
 - **0.117.0 Garnizony i frakcje.** Wielkie miasta mają po 16 placówek, z mniejszymi grupami i najwyżej trzema aktywnymi w pobliżu. Po wybiciu placówki przez 10 rzeczywistych minut aktywnego czasu świata nie ma posiłków; polegli i zdrowie ocalałych pozostają zapisane przy objazdach, wczytaniu i w multiplayerze. Zwykłe losowe spotkania nie pojawiają się w miastach. Roboty oraz dzikie stworzenia mogą walczyć z bandytami, którzy odpowiadają ogniem, ale roboty i zwierzęta nie walczą ze sobą. Walka między przeciwnikami nie przyznaje graczowi bezpośredniego złota ani postępu zadań.
 
 - **0.118.0 Palisady i wyposażenie.** Obozy bandytów otacza wysoka palisada z zaostrzonych drewnianych pali z otwartymi wejściami od północy i południa. Skrzynie skarbów i obozowe skrytki mają deski, zaokrąglone wieka, okucia, zawiasy, zamki i uchwyty; skrzynie w podziemiach zachowują animację otwierania. Komputery w magazynach wiosek, dawnych zakładach, przy elektrowniach i we wraku statku używają modelu z domu starszego: monitor CRT, klawiatura i osobna obudowa.
+
+- **0.119.0 Jeden stan pojazdu.** Osobne uszkodzenia kół i silnika zastępuje wspólny stan użyteczności. Ostrzał, zderzenia i ataki przeciwników uszkadzają pojazd; zwykła jazda nie powoduje zużycia. Kierowca, pasażer i strzelec nie tracą zdrowia wewnątrz, również w otwartym łaziku i w cudzym pojeździe. Przy 0% pojazd zatrzymuje się i pasażerowie wysiadają bez obrażeń. Serwis i zestaw naprawczy odnawiają wspólny stan. Zachowano zgodność zapisów i wyposażenie.

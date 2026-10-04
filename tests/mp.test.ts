@@ -237,6 +237,20 @@ describe('multiplayer server', () => {
     expect((await c.wait('welcome')).wdoc.containers['chest:1']).toEqual(empty);
     winner.ws.close(); c.ws.close();
   });
+  it('shares condition and revokes occupied seats when a vehicle reaches zero', async () => {
+    const port = await server({ world: 11 });
+    const a = await client(port, { name: 'Owner' }), wa = await a.wait('welcome');
+    const b = await client(port, { name: 'Rider' }); await b.wait('welcome');
+    const state = { t: 'state', p: [0, 0, 0], loc: 'o' }, car = [0, 5, 1, 6, 0, 0, 0, 1, 1, 0, 65];
+    a.send({ ...state, cars: [car], carIds: ['scout-1'] }); await a.wait('seats');
+    b.send({ ...state, ride: [wa.id, 0, 1] }); expect((await b.wait('seats')).ride).toEqual([wa.id, 0, 1]);
+    const snap = await b.until((m) => m.t === 'snap' && m.ps.some((p: any) => p.id === wa.id));
+    expect(snap.ps.find((p: any) => p.id === wa.id).cars[0][10]).toBe(65);
+    a.send({ ...state, cars: [[...car.slice(0, 10), 0]], carIds: ['scout-1'] });
+    expect((await a.wait('seats', 2)).seats).toEqual([0]); expect((await b.wait('seats', 2)).ride).toBeNull();
+    b.send({ ...state, ride: [wa.id, 0, 1] }); expect((await b.wait('seats', 3)).ride).toBeNull();
+    a.ws.close(); b.ws.close();
+  });
   it('vehicle poses and driver/passenger/gunner seats agree, with only one rider per seat', async () => {
     const port = await server({ world: 11 });
     const a = await client(port, { name: 'Driver' }), wa = await a.wait('welcome');

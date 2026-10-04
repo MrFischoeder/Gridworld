@@ -9,7 +9,7 @@ export const SEND_EVERY = 0.1;
 /** `away`: in the menu (still in the game: the others see you standing there). */
 /**
  * A player's own vehicles, as others see them: [model (0 Scout, 1 Mastodon), x, y, z, heading, pitch, roll, cannon 0/1,
- * the owner's seat + 1 (0 = not in it), the cannon's yaw (body-relative)] each (body pose as world/vehicles.ts sets
+ * the owner's seat + 1 (0 = not in it), the cannon's yaw (body-relative), condition percent] each (body pose as world/vehicles.ts sets
  * it), in the order of their save. Older clients send 9 numbers (the 9th 1 = driving).
  */
 export type PeerCar = number[];

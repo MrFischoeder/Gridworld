@@ -108,6 +108,7 @@ export interface Ghost {
   figs: (Figure | null)[]; figKey: Occupant[];
   /** The cannon's yaw as its owner's game shows it. */
   aim: number;
+  condition: number;
 }
 const ghosts = new Map<string, Ghost>();
 const MODELS: VehicleModel[] = ['scout', 'mastodon'];
@@ -151,12 +152,13 @@ function syncCars(here: string, now: number) {
       if (g && (g.m !== m || g.gun !== gun)) { dropGhost(key); g = undefined; }
       if (!g) {
         const cm = convoyModel(m, gun), n = SEATS[m].length;
-        g = { g: cm.g, m, gun, turret: cm.turret, owner: p.id, idx: i, x: c[1], y: c[2], z: c[3], h: c[4], p: c[5], r: c[6], occ: Array(n).fill(null), bumped: new Set(), figs: Array(n).fill(null), figKey: Array(n).fill(null), aim: 0 };
+        g = { g: cm.g, m, gun, turret: cm.turret, owner: p.id, idx: i, x: c[1], y: c[2], z: c[3], h: c[4], p: c[5], r: c[6], occ: Array(n).fill(null), bumped: new Set(), figs: Array(n).fill(null), figKey: Array(n).fill(null), aim: 0, condition: c[10] ?? 100 };
         scene.add(g.g); ghosts.set(key, g);
       }
       const q = prev?.[i] && prev[i][0] === c[0] && at.a.carIds?.[i] === at.b.carIds?.[i] ? prev[i] : c;
       g.x = q[1] + (c[1] - q[1]) * k; g.y = q[2] + (c[2] - q[2]) * k; g.z = q[3] + (c[3] - q[3]) * k;
       g.h = lerpAng(q[4], c[4], k); g.p = q[5] + (c[5] - q[5]) * k; g.r = q[6] + (c[6] - q[6]) * k;
+      g.condition = c[10] ?? 100;
       g.aim = c.length > 9 ? lerpAng(q[9] ?? c[9], c[9], k) : 0;
       g.x = nearX(g.x, G.pos.x);
       g.g.position.set(g.x, g.y - 0.05, g.z);
