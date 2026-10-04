@@ -57,7 +57,20 @@ function moveAxis(ax: 'x' | 'y' | 'z', amt: number): boolean {
         pos.y = g1;
       }
     }
-    if (collides(pos)) { pos[ax] -= s; pos.y = y0; return true; }
+    if (collides(pos)) {
+      pos[ax] -= s; pos.y = y0;
+      if (ax === 'y' && !collides(pos)) {
+        // Stop at the last free height, including fractional prop tops and ceilings.
+        // Integer snapping can put the feet inside a rock or a city ruin.
+        let free = 0, blocked = 1;
+        while (Math.abs(s) * (blocked - free) > EPS) {
+          const t = (free + blocked) / 2; pos.y = y0 + s * t;
+          if (collides(pos)) blocked = t; else free = t;
+        }
+        pos.y = y0 + s * free;
+      }
+      return true;
+    }
   }
   return false;
 }
@@ -73,6 +86,20 @@ function settleOnGround(wasOnGround: boolean, yPrev: number) {
     if (vel.y < 0) vel.y = 0;
     G.onGround = true;
   }
+}
+
+/** An old build could save integer-rounded feet inside a fractional surface. */
+function recoverRoundedContact() {
+  const { pos, vel } = G;
+  if (vel.y > 0 || Math.abs(pos.y - Math.round(pos.y)) > EPS || !collides(pos)) return;
+  const y0 = pos.y; pos.y = y0 + 1;
+  if (collides(pos)) { pos.y = y0; return; } // not a shallow landing penetration
+  let blocked = y0, free = y0 + 1;
+  while (free - blocked > EPS) {
+    pos.y = (blocked + free) / 2;
+    if (collides(pos)) blocked = pos.y; else free = pos.y;
+  }
+  pos.y = free; vel.y = 0; G.onGround = true;
 }
 
 /** Water deeper than this over the feet lifts the player off the bottom: swimming. */
@@ -95,6 +122,7 @@ function flyStep(dt: number) {
 /** One physics step from input. Returns whether the player is walking (for view bob). */
 export function updatePlayer(dt: number): boolean {
   if (G.fly) { flyStep(dt); return false; }
+  recoverRoundedContact();
   const { keys, stick, vel, pos } = G;
   let f = (keys.KeyW ? 1 : 0) - (keys.KeyS ? 1 : 0) - stick.dy, s = (keys.KeyD ? 1 : 0) - (keys.KeyA ? 1 : 0) + stick.dx;
   const m = Math.hypot(f, s); if (m > 1) { f /= m; s /= m; }
@@ -132,7 +160,7 @@ export function updatePlayer(dt: number): boolean {
   if (moveAxis('x', vel.x * dt)) vel.x = 0;
   if (moveAxis('z', vel.z * dt)) vel.z = 0;
   G.onGround = false;
-  if (moveAxis('y', vel.y * dt)) { if (vel.y < 0) { G.onGround = true; if (!W.portals.some(s => Number.isFinite(stepFloor(s.steps, pos.x, pos.y, pos.z)))) pos.y = Math.floor(pos.y + 0.001); } vel.y = 0; }
+  if (moveAxis('y', vel.y * dt)) { if (vel.y < 0) G.onGround = true; vel.y = 0; }
   if (!G.swimming) settleOnGround(was && vel.y <= 0, yPrev);
   return moving;
 }

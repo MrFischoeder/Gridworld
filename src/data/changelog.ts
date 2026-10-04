@@ -3,6 +3,10 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.127.1', date: '2026-10-04', title: 'Safe landings on rocks and ruins', notes: [
+    'Landing on a rock or a city ruin no longer rounds your feet down into its collider. Vertical movement stops precisely at fractional surfaces, so you can walk away and jump again.',
+    'Shallow integer-rounded contact positions left by older saves are recovered. Voxel floors, small stairs and ceilings keep their collision boundaries.',
+  ] },
   { v: '0.127.0', date: '2026-10-04', title: 'Canyons removed', notes: [
     'Canyon generation, descent paths, developer map markers and canyon bridge planning have been removed. Existing worlds use the underlying natural terrain again.',
     'Old bridges over removed canyons are retired when loading saves or shared worlds. River bridges, rocky fields, portals and megaliths remain available.',

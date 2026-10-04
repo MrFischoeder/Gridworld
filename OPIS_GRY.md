@@ -1,6 +1,6 @@
 # GridWorld: opis gry, cel, plan i historia zmian
 
-Stan na wersję **0.127.0**. Ten dokument opisuje, czym jest GridWorld, jaki jest cel gry, co już w niej jest, czego jeszcze nie ma, dokąd zmierza i jak powstawała, wersja po wersji. Nazwy z gry (przedmioty, miejsca, postacie) są po angielsku, tak jak na ekranie.
+Stan na wersję **0.127.1**. Ten dokument opisuje, czym jest GridWorld, jaki jest cel gry, co już w niej jest, czego jeszcze nie ma, dokąd zmierza i jak powstawała, wersja po wersji. Nazwy z gry (przedmioty, miejsca, postacie) są po angielsku, tak jak na ekranie.
 
 ---
 
@@ -594,6 +594,7 @@ Pełne notatki (po angielsku) są w grze pod przyciskiem **Changelog** w menu g�
 
 - **0.119.0 Jeden stan pojazdu.** Osobne uszkodzenia kół i silnika zastępuje wspólny stan użyteczności. Ostrzał, zderzenia i ataki przeciwników uszkadzają pojazd; zwykła jazda nie powoduje zużycia. Kierowca, pasażer i strzelec nie tracą zdrowia wewnątrz, również w otwartym łaziku i w cudzym pojeździe. Przy 0% pojazd zatrzymuje się i pasażerowie wysiadają bez obrażeń. Serwis i zestaw naprawczy odnawiają wspólny stan. Zachowano zgodność zapisów i wyposażenie.
 
+- **0.127.1 Lądowanie na kamieniach i ruinach.** Usunięto zaokrąglanie wysokości stóp do pełnych metrów po lądowaniu. Postać zatrzymuje się na dokładnej granicy kolizji kamienia, ruiny, podłogi lub sufitu i może odejść oraz ponownie skoczyć. Naprawiane są płytko zatopione, zaokrąglone pozycje ze starych zapisów.
 - **0.127.0 Usunięcie kanionów.** Usunięto generator kanionów, ścieżki zejścia, skanowanie i oznaczenia na mapie oraz projektowanie mostów nad kanionami. Zapisane światy mają ponownie naturalny teren; dawne mosty nad kanionami są wycofywane. Mosty rzeczne i pola głazów pozostają.
 - **0.126.0 Dwanaście kolosalnych megalitów.** Odrębne, wielkie układy Stonehenge o średnicy 230–330 m i wysokości do 78 m, z kamiennymi filarami, nadprożami i rzeźbieniami. Stałe lokalizacje i identyfikatory pod przyszłe funkcje, kolizje i osłona przed ostrzałem, oczyszczone dziedzińce, znaczniki na mapach oraz wydłużony widok przy monumentach.
 - **0.125.0 Portale i kaniony na mapie deweloperskiej.** Polecenie map w konsoli pokazuje wszystkie 40 portali jako turkusowe ośmiokąty i kaniony jako pomarańczowe obrysy. W zbliżeniu widać ścieżki zejścia; najechanie podaje rozmiar i głębokość, a kliknięcie przenosi obok pierścienia albo na początek ścieżki. Skanowanie kanionów działa stopniowo, także poza odkrytym terenem.
