@@ -1,5 +1,6 @@
 // Water in the open world: lake surfaces, wells, drinking and filling flasks. The shape of the water (and
 // what kind it is) comes from gen/water.ts through Terrain.water(); this module draws it and lets you use it.
+import { environmentalDamage } from './damage';
 import * as THREE from 'three';
 import { scene, V, GRID, localize } from './render';
 import { G } from '../game';
@@ -225,6 +226,6 @@ export function useWater(s: WaterSource) {
   lastSip = performance.now();
   if (G.char.water >= 99) { logLine('You are not thirsty.'); return; }
   if (s.kind === 'fresh') { logLine('You drink the cool water.'); nourish(0, SIP.fresh); }
-  else if (Math.random() < 0.35) { G.hp -= 6; G.dmgFlash = 0.35; nourish(0, SIP.murky); logLine('The swamp water turns your stomach. -6 HP'); }
+  else if (Math.random() < 0.35) { environmentalDamage(6); G.dmgFlash = 0.35; nourish(0, SIP.murky); logLine('The swamp water turns your stomach. -6 HP'); }
   else { logLine('It tastes of mud, but it is water.'); nourish(0, SIP.murky); }
 }

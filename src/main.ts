@@ -1,11 +1,13 @@
 // Entry point: load the character, build the first place, run the frame loop.
+import { setVehicleProtection } from './world/damage';
+import { relay, net } from './net/client';
 import './style.css';
 import { VERSION, BUILD } from './version';
 import { renderer, scene, camera } from './world/render';
 import { G, W, uiOpen } from './game';
 import { loadChar } from './save';
 import { initItemTips } from './ui/itemtip';
-import { calcStats, saveChar } from './character';
+import { calcStats, saveChar, armoured } from './character';
 import { loadDungeon, loadOverworld, toVillage, saveOverworldPos, enterDungeon } from './world/level';
 import { updatePlayer, EYE } from './world/player';
 import { updateClimb } from './world/ladders';
@@ -25,6 +27,7 @@ import { updateCompass } from './ui/compass';
 import { syncBenches } from './world/benches';
 import { syncFlags, updatePlacing, isPlacing, confirmPlacing, cancelPlacing } from './world/claims';
 import { syncBases, isBuilding, updateBuilding, placePart, stopBuilding } from './world/building';
+import { updateMountedTurrets } from './world/mountedturrets';
 import { syncTurrets, updateTurrets } from './world/turrets';
 import { updateFires } from './world/cooking';
 import { updatePower } from './world/power';
@@ -44,7 +47,7 @@ import { updateRaiders, spawnRaiderNear, forceAmbush, raiders } from './world/ra
 import { updateTracker, boardOffers, accept, syncQuestWorld, refreshBoard } from './world/quests';
 import { driving, updateDriving, vehicleCamera, vehicles, buyVehicle, fireCannon, smokeWrecks, damageVehicle } from './world/vehicles';
 import { interact } from './world/interact';
-import { el, updateHud, logLine } from './ui/hud';
+import { el, updateHud, logLine, showToast } from './ui/hud';
 import { drawMini } from './ui/minimap';
 import { toggleMap } from './ui/worldmap';
 import { initInput } from './ui/input';
@@ -79,10 +82,19 @@ import { syncDrops, clearLocalDrops } from './world/drops';
 import { syncWorld, setWorldReload } from './world/share';
 import { syncFoes } from './world/foesync';
 import { updateGarrisons } from './world/citygarrisons';
+import { refreshGateConsole } from './ui/worldgates';
+import { teleportVehicle, vehiclesNear } from './world/vehicles';
+import { setRideWarpArrival } from './world/ride';
+import { setGateTravel, updateWorldGates, gateTravelPending } from './world/worldgates';
+import { gateName } from './gen/worldgates';
 /** Redraw the open world from the save where you stand (after taking the server's shared world). */
 function reloadWorld() { if (G.char.loc !== 'overworld') return; saveOverworldPos(); loadOverworld({ kind: 'saved' }); }
 setWorldReload(reloadWorld);
 
+setVehicleProtection(() => !!driving.v || riding(), damage => {
+  if (driving.v) damageVehicle(driving.v, damage);
+  else if (ride.on) relay({ t: 'hurt', dmg: damage, loc: 'o', car: net.peers.get(ride.on.owner)?.st?.carIds?.[ride.on.idx], carIndex: ride.on.idx }, ride.on.owner);
+}, armoured);
 G.char = loadChar();
 document.getElementById('vnum')!.textContent = 'v' + VERSION;
 document.getElementById('version')!.textContent = BUILD;
@@ -121,10 +133,12 @@ function frame(now: number) {
   const time = now / 1000;
   const outdoors = G.char.loc === 'overworld';
   let moving = false;
-  const live = G.playing && !uiOpen() && !G.trans;
+  const live = G.playing && !uiOpen() && !G.trans && !gateTravelPending();
   if (outdoors) updateStreaming(G.trans ? 8 : G.fly ? 14 : 4); // flying fast needs the land streamed in quicker
+  if (outdoors) updateWorldGates(dt);
+  refreshGateConsole();
   // the clock runs whenever the game is not paused in the menu
-  if (G.playing) { G.char.time += dt * MIN_PER_SEC; updateSurvival(dt); updateFlora(dt); updateFires(dt, time); updatePower(dt); updateHouseDoors(dt); updateWallGuns(dt); updateWorks(dt); updateStations(dt); updateChariot(dt); updateCaravans(dt); updateVillageRaids(dt); updateFallen(dt); updateIndustry(dt); updateFarms(dt); updateInstalls(dt); updateCities(dt); updateToxic(dt); updateGuide(dt); updateBridges(dt); updatePiers(dt); updateContracts(dt); if ((benchT -= dt) <= 0) { benchT = 1; syncBenches(); syncFlags(); syncBases(); syncTurrets(); } }
+  if (G.playing && !gateTravelPending()) { G.char.time += dt * MIN_PER_SEC; updateSurvival(dt); updateFlora(dt); updateFires(dt, time); updatePower(dt); updateHouseDoors(dt); updateWallGuns(dt); updateWorks(dt); updateStations(dt); updateChariot(dt); updateCaravans(dt); updateVillageRaids(dt); updateFallen(dt); updateIndustry(dt); updateFarms(dt); updateInstalls(dt); updateCities(dt); updateToxic(dt); updateGuide(dt); updateBridges(dt); updatePiers(dt); updateContracts(dt); if ((benchT -= dt) <= 0) { benchT = 1; syncBenches(); syncFlags(); syncBases(); syncTurrets(); } }
   updateCompass(dt); // hides itself while paused
   const clock = fmtClock(G.char.time) + (G.char.loc === 'overworld' && seen.kind !== 'clear' ? ' · ' + WEATHER_NAME[seen.kind] : '');
   if (el.clock.textContent !== clock) el.clock.textContent = clock;
@@ -134,7 +148,7 @@ function frame(now: number) {
   }
   if (live) {
     if (driving.v) updateDriving(dt); else if (riding()) updateRide(dt); else if (!(outdoors && updateBoats(dt)) && !updateClimb(dt)) moving = updatePlayer(dt);
-    if (outdoors) keepOnPlanet(dt);
+    if (outdoors) { keepOnPlanet(dt); updateWorldGates(0, !riding() && !inBoat()); }
     G.cooldown -= dt;
     if (isPlacing()) { // holding a Flagpole: the mouse picks its spot instead of fighting
       updatePlacing();
@@ -153,7 +167,7 @@ function frame(now: number) {
       if (G.firing) { G.firing = false; placePart(); }
       if (G.aiming) { G.aiming = false; stopBuilding(); }
     } else if (G.firing && !driving.v && !inBoat() && !riding()) attack();
-    updateTurrets(dt);
+    updateTurrets(dt); updateMountedTurrets(dt);
     updateGun(dt, !driving.v && !inBoat() && !riding());
     if (driving.v) fireCannon(dt);
     updateDoors(dt);
@@ -190,10 +204,12 @@ function frame(now: number) {
   updateHud(dt); updateTracker(dt);
   updateStreaks(dt); drawMini();
   renderer.info.reset(); // two passes per frame: count both (F3 overlay)
-  renderer.render(scene, camera);
-  // held weapon on top of the world
-  camera.updateMatrixWorld(); syncViewmodel();
-  renderer.autoClear = false; renderer.clearDepth(); renderer.render(vmScene, camera); renderer.autoClear = true;
+  if (!gateTravelPending()) {
+    // The opaque transit canvas owns the screen; spare the GPU hidden world and weapon passes.
+    renderer.render(scene, camera);
+    camera.updateMatrixWorld(); syncViewmodel();
+    renderer.autoClear = false; renderer.clearDepth(); renderer.render(vmScene, camera); renderer.autoClear = true;
+  }
   if ((perfT -= dt) <= 0 && el.perf.style.display === 'block') {
     perfT = 0.5; const r = renderer.info.render;
     el.perf.textContent = `${Math.round(1 / Math.max(dt, 1e-3))} fps\nlines ${r.lines}\ntriangles ${r.triangles}\ncalls ${r.calls}\nfoes ${W.drones.length}`;
@@ -202,6 +218,17 @@ function frame(now: number) {
 }
 initItemTips();
 requestAnimationFrame(frame);
+
+// Gate travel moves the existing occupants and vehicle, then streams the destination.
+setGateTravel((gate, x, z, heading, car) => {
+  if (car) {
+    const delta = heading - car.st.heading;
+    teleportVehicle(car, x, z, heading); G.yaw += delta;
+  } else { G.pos.set(x, gate.y, z); G.vel.set(0, 0, 0); G.yaw = heading + Math.PI; }
+  vehiclesNear(x); updateStreaming(12); saveOverworldPos();
+  showToast('Arrived at ' + gateName(gate) + '. The connection stays open until its timer ends.');
+});
+setRideWarpArrival(() => { vehiclesNear(G.pos.x); updateStreaming(12); saveOverworldPos(); });
 
 // Debug handle for automated checks in development builds.
 if (import.meta.env.DEV) Object.assign(window, { __game: { G, W, OW, camera, scene, renderer, regionRoads, poisNear, groundAt, treeHit, collides, vehicles, driving, interact, buy: buyVehicle, foeRules, makeDrone, spawnCreature: spawnCreatureNear, damageFoe, boardOffers, accept, syncQuestWorld, enterDungeon, generateQuest, spawnBandits: spawnBanditsNear, spawnRaider: spawnRaiderNear, forceAmbush, raiders, damageVehicle } });

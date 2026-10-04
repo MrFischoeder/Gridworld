@@ -4,13 +4,14 @@
 // crates are a group of their own, redrawn when the hold changes (`refreshHall`).
 import * as THREE from 'three';
 import { G, W } from '../game';
+import { drawComputer } from './computer';
 import { PropBatch } from './props';
 import { wallSign } from './level';
 import { HALL, HALL_TERMINAL, holdVol } from '../gen/hall';
 import type { VillageMap } from '../gen/village';
 import type { Terrain } from '../gen/terrain';
 
-const WOOD = 0xb8b060, METAL = 0xb8c4cc, SCREEN = 0x9dffe0, CRATE = 0xc8a060;
+const WOOD = 0xb8b060, METAL = 0xb8c4cc, CRATE = 0xc8a060;
 interface Hall { id: number; ox: number; oz: number; y0: number; segs: [number, number, number, number][]; crates: THREE.Group | null; grp: THREE.Group; T: Terrain }
 const halls = new Map<number, Hall>();
 
@@ -38,9 +39,7 @@ export function drawHall(vm: VillageMap, T: Terrain, id: number): THREE.Group {
   for (const x of [X0 + 0.5, X1 - 0.5]) for (let z = Z0 + 0.8; z <= Z1 - 0.79; z += 2.1) pb.seg(METAL, [x, y0, z], [x, y0 + 2.3, z]);
   // the terminal against the back wall: a desk, a screen with lines of text, a case
   { const tx = ox + HALL_TERMINAL.x, tz = oz + HALL_TERMINAL.z;
-    pb.box(tx - 0.7, y0, tz - 0.35, tx + 0.7, y0 + 1.05, tz + 0.35, METAL);
-    pb.box(tx - 0.45, y0 + 1.05, tz - 0.25, tx + 0.45, y0 + 1.7, tz - 0.15, METAL);
-    for (let i = 0; i < 4; i++) pb.seg(SCREEN, [tx - 0.35, y0 + 1.58 - i * 0.12, tz - 0.14], [tx - 0.35 + 0.25 + (i % 3) * 0.15, y0 + 1.58 - i * 0.12, tz - 0.14]);
+    drawComputer(pb, { x0: tx - 0.7, x1: tx + 0.7, z0: tz - 0.4, z1: tz + 0.4, h: 1.05, n: [0, 1] }, y0);
     segs.push([tx - 0.7, tz - 0.35, tx + 0.7, tz - 0.35], [tx - 0.7, tz + 0.35, tx + 0.7, tz + 0.35]);
   }
   grp.add(pb.build());

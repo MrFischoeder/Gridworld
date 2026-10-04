@@ -1,3 +1,4 @@
+import { gateTravelPending } from '../world/worldgates';
 // Keyboard and mouse. Pointer lock drives mouse look; losing it pauses the game.
 import { riding, rideSeat, toggleRideView } from '../world/ride';
 import { isPlacing, cancelPlacing } from '../world/claims';
@@ -33,8 +34,9 @@ export const onKey = (f: (e: KeyboardEvent) => boolean) => extraKeys.push(f);
 export function initInput(onPause: () => void) {
   addEventListener('keydown', (e) => {
     if (e.target === el.seed) return;
+    if (gateTravelPending()) { e.preventDefault(); return; }
     if (e.code === 'Backquote') { e.preventDefault(); toggleConsole(); return; }
-    if (G.consoleOpen) return;
+    if (G.consoleOpen || gateTravelPending()) return;
     if (e.code === 'KeyI' || e.code === 'Tab') { e.preventDefault(); if (!G.dlgOpen && !G.xferOpen) togglePack(); return; }
     if (G.packOpen) { if (e.code === 'Escape') closePack(); return; }
     if (G.dlgOpen) { if (e.code === 'Escape') closeDialog(); return; }
@@ -77,12 +79,12 @@ export function initInput(onPause: () => void) {
     if (document.pointerLockElement !== renderer.domElement && !G.isTouch && !uiOpen()) onPause();
   });
   addEventListener('mousemove', (e) => {
-    if (document.pointerLockElement !== renderer.domElement) return;
+    if (gateTravelPending() || document.pointerLockElement !== renderer.domElement) return;
     const s = 0.0022 * camera.fov / 75; // slower look while zoomed in
     G.yaw -= e.movementX * s; G.pitch -= e.movementY * s; G.pitch = Math.max(-1.5, Math.min(1.5, G.pitch));
   });
   addEventListener('mousedown', (e) => {
-    if (!document.pointerLockElement) return;
+    if (gateTravelPending() || !document.pointerLockElement) return;
     if (e.button === 0) G.firing = true;
     if (e.button === 2) G.aiming = true;
   });

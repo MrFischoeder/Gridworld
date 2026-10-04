@@ -3,16 +3,34 @@
 // view, E gets you out beside it. From the gunner's seat you work its cannon: you aim it with the view and fire, the
 // others see it turn. Where the vehicle is and who sits where comes from world/peers.ts (`ride`, the ghosts).
 import * as THREE from 'three';
+import { finishGateTransit } from '../ui/gatetransit';
 import { G } from '../game';
 import { V } from './render';
 import { ride, allGhosts, ghostOf, type Ghost } from './peers';
-import { net } from '../net/client';
+import { net, onVehicleWarp } from '../net/client';
 import { VEHICLES, SEATS, vehicleTitle } from '../data/vehicles';
 import { SEAT_NAMES, shootCannon } from './vehicles';
 import { showToast, logLine, el } from '../ui/hud';
 import { collides } from './player';
 
 export const riding = () => !!ride.on;
+let warpArrival = () => {};
+export function setRideWarpArrival(fn: () => void) { warpArrival = fn; }
+onVehicleWarp(m => {
+  const g = ghostOf(m.owner, m.index), c = m.car;
+  if (g) {
+    const delta = c[4] - g.h;
+    g.x = c[1]; g.y = c[2]; g.z = c[3]; g.h = c[4]; g.p = c[5]; g.r = c[6];
+    g.g.position.set(g.x, g.y - .05, g.z); g.g.rotation.set(-g.p, g.h, g.r, 'YXZ');
+    if (ride.on?.owner === m.owner && ride.on.idx === m.index) G.yaw += delta;
+  }
+  if (ride.on?.owner === m.owner && ride.on.idx === m.index) {
+    // Keep the passenger or gunner's seat. Do not call getOff or reload the whole world.
+    G.pos.set(c[1], c[2], c[3]); G.vel.set(0, 0, 0); warpArrival();
+    finishGateTransit(m.trip); net.gateTravelling = false;
+    showToast('Your vehicle travelled through the ancient gate.');
+  }
+});
 const ownerName = (g: Ghost) => net.peers.get(g.owner)?.name ?? 'Someone';
 const title = (g: Ghost) => vehicleTitle(g.m);
 const toWorld = (g: Ghost, lx: number, lz: number): [number, number] => {
@@ -35,6 +53,7 @@ export function rideSpot(): RideSpot | null {
   if (G.char.loc !== 'overworld' || ride.on) return null;
   let best: RideSpot | null = null, bd = 2.4;
   for (const g of allGhosts()) {
+    if (g.condition <= 0) continue;
     if (Math.abs(G.pos.y - g.y) > 2.5) continue;
     const s = VEHICLES[g.m];
     for (const side of [-1, 1]) {
@@ -84,6 +103,7 @@ export const toggleRideView = () => { ride.cockpit = !ride.cockpit; };
 export function updateRide(dt: number) {
   const on = ride.on!, g = ghostOf(on.owner, on.idx);
   if (!g) { ride.on = null; el.veh.innerHTML = ''; showToast('The vehicle is gone'); logLine('The vehicle you rode in is gone (its owner left or went elsewhere).'); return; }
+  if (g.condition <= 0) { getOff(true); showToast('Vehicle disabled: condition 0%'); return; }
   if (g.bumped.has('me')) { // someone else got to that seat first
     const s = freeSeat(g, on.seat);
     if (s < 0) { getOff(true); showToast('No seat left for you'); return; }
@@ -98,7 +118,7 @@ export function updateRide(dt: number) {
     if (G.firing && cool <= 0) { cool = 0.55; g.g.updateMatrixWorld(true); shootCannon(g.turret); }
   }
   el.veh.innerHTML = `${ownerName(g)}'s ${title(g)} · the ${SEAT_NAMES[on.seat]}'s seat${gunner ? ' · you work the cannon' : ''}` +
-    `<br>1 / 2 / 3 change seats · V view · E get out`;
+    `<br>condition ${Math.ceil(g.condition)}% · 1 / 2 / 3 change seats · V view · E get out`;
 }
 const tmp = new THREE.Vector3();
 /** Behind and above the vehicle, or the seat's own view (V). */

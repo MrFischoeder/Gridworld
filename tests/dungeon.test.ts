@@ -43,16 +43,15 @@ describe('generateDungeon', () => {
   it('limits playable labyrinths to one accessible descent per floor, ending at floor three', () => {
     for (const seed of SEEDS) for (const depth of [1, 2, 3, 4, 12]) {
       const map = generateDungeon(seed, { depth });
-      expect(map.portals.map(p => p.key)).toEqual(['V']);
-      if (depth < MAX_DUNGEON_DEPTH) {
-        expect(map.hatch).toEqual({ x: Math.floor(map.spawn[0]), z: Math.floor(map.spawn[2]) });
-        const { grid, doors } = build(map);
-        const hatchFloor = floorAt(grid, map.hatch!.x, map.hatch!.z, grid.oy + 1, grid.oy + grid.ny - 1);
-        expect(hatchFloor).not.toBeNull();
-        expect(hatchFloor![1]).toBe(0);
-        for (const d of doors) if (!d.stair && !d.locked) setDoorCells(grid, d.cells, false);
-        expect(columnReached(reachableCells(grid, spawnCell(map)), map.hatch!.x, map.hatch!.z, -1, 12)).toBe(true);
-      } else expect(map.hatch).toBeNull();
+      expect(map.portals.map(p => p.key)).toEqual(depth < MAX_DUNGEON_DEPTH ? ['V', 'D'] : ['V']);
+      expect(map.hatch).toBeNull();
+      const { grid, doors } = build(map);
+      for (const d of doors) if (!d.stair && !d.locked) setDoorCells(grid, d.cells, false);
+      const seen = reachableCells(grid, spawnCell(map));
+      for (const p of map.portals) {
+        const [x, z] = stairFront(p);
+        expect(columnReached(seen, x, z, -1, 12)).toBe(true);
+      }
     }
   });
 

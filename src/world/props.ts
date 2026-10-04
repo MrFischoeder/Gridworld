@@ -1,5 +1,6 @@
 // Batched wireframe props with dark fills (roofs, tree crowns). Many props share one fill mesh and one line mesh.
 import * as THREE from 'three';
+import { rockShape, rockFacePoint } from '../gen/rockshape';
 import { lineMat, fillMat } from './render';
 
 export class PropBatch {
@@ -86,12 +87,17 @@ export class PropBatch {
     this.face(t[0], t[1], t[2]); this.face(u[0], u[1], u[2]);
   }
 
-  /** Faceted rock: an irregular n-sided pyramid with an off-centre apex. */
+  /** Broad faceted boulder with uneven shoulders and a broken, flat crown. */
   rock(x: number, y: number, z: number, r: number, h: number, sides: number, rot: number, color: number) {
-    const base: number[][] = [];
-    for (let i = 0; i < sides; i++) { const a = rot + i / sides * 6.283, k = 0.75 + 0.25 * Math.sin(i * 2.7 + rot * 3); base.push([x + Math.cos(a) * r * k, y, z + Math.sin(a) * r * k]); }
-    const top = [x + Math.cos(rot) * r * 0.2, y + h, z + Math.sin(rot) * r * 0.2];
-    for (let i = 0; i < sides; i++) { const j = (i + 1) % sides; this.seg(color, base[i], base[j]); this.seg(color, base[i], top); this.face(base[i], base[j], top); }
+    const rings = rockShape(r, h, sides, rot).map(ring => ring.map(p => [x + p[0], y + p[1], z + p[2]]));
+    sides = rings[0].length;
+    for (let band = 0; band < 2; band++) for (let i = 0; i < sides; i++) {
+      const j = (i + 1) % sides;
+      this.face(rings[band][i], rings[band][j], rings[band + 1][j], rings[band + 1][i]);
+      this.seg(color, rings[band][i], rings[band + 1][i]);
+    }
+    for (const ring of rings) for (let i = 0; i < sides; i++) this.seg(color, ring[i], ring[(i + 1) % sides]);
+    this.face(...rings[0]); this.face(...rings[2]);
   }
 
   /**
@@ -99,21 +105,30 @@ export class PropBatch {
    * glinting nuggets, in the ore's colour.
    */
   vein(x: number, y: number, z: number, r: number, h: number, sides: number, rot: number, color: number) {
-    const base: number[][] = [];
-    for (let i = 0; i < sides; i++) { const a = rot + i / sides * 6.283, k = 0.75 + 0.25 * Math.sin(i * 2.7 + rot * 3); base.push([x + Math.cos(a) * r * k, y, z + Math.sin(a) * r * k]); }
-    const top = [x + Math.cos(rot) * r * 0.2, y + h, z + Math.sin(rot) * r * 0.2];
-    // a point on face (a, b, top) at (s along the base, t up), pushed out a hair so it sits on the fill
-    const on = (a: number[], b: number[], s: number, t: number) => {
-      const p = [0, 1, 2].map((q) => (a[q] + (b[q] - a[q]) * s) * (1 - t) + top[q] * t);
-      return [x + (p[0] - x) * 1.015, p[1], z + (p[2] - z) * 1.015];
+    const shape = rockShape(r, h, sides, rot);
+    sides = shape[0].length;
+    const on = (i: number, band: 0 | 1, s: number, t: number) => {
+      const { point, normal } = rockFacePoint(shape, band, i, s, t), gap = Math.min(r, h) * .004;
+      return [x + point[0] + normal[0] * gap, y + point[1] + normal[1] * gap, z + point[2] + normal[2] * gap];
     };
-    for (let i = 0; i < sides; i += 2) {
-      const a = base[i], b = base[(i + 1) % sides], w = Math.sin(i * 1.9 + rot) * 0.08;
-      const pts = [on(a, b, 0.08, 0.2 + w), on(a, b, 0.3, 0.42), on(a, b, 0.5, 0.28 - w), on(a, b, 0.72, 0.5), on(a, b, 0.92, 0.36 + w)];
-      for (let j = 0; j + 1 < pts.length; j++) this.seg(color, pts[j], pts[j + 1]);
-      const lo = [on(a, b, 0.2, 0.1), on(a, b, 0.45, 0.16), on(a, b, 0.7, 0.08)];
-      for (let j = 0; j + 1 < lo.length; j++) this.seg(color, lo[j], lo[j + 1]);
-      for (const [s2, t2] of [[0.3, 0.42], [0.72, 0.5]]) { const c = on(a, b, s2, t2), d = 0.05; this.seg(color, [c[0] - d, c[1], c[2]], [c[0] + d, c[1], c[2]]); this.seg(color, [c[0], c[1] - d, c[2]], [c[0], c[1] + d, c[2]]); }
+    const stroke = (i: number, band: 0 | 1, points: number[][]) => {
+      for (let j = 0; j + 1 < points.length; j++) {
+        const [s0, t0] = points[j], [s1, t1] = points[j + 1], a = s0 - t0, b = s1 - t1;
+        const first = on(i, band, s0, t0), last = on(i, band, s1, t1);
+        if (a * b < 0) {
+          // Follow the fold between the two filled triangles instead of cutting through the stone.
+          const k = a / (a - b), seam = on(i, band, s0 + (s1 - s0) * k, t0 + (t1 - t0) * k);
+          this.seg(color, first, seam); this.seg(color, seam, last);
+        } else this.seg(color, first, last);
+      }
+    };
+    for (const band of [0, 1] as const) for (let i = 0; i < sides; i += 2) {
+      const w = Math.sin(i * 1.9 + rot) * 0.08;
+      stroke(i, band, [[0.08, 0.2 + w], [0.3, 0.42], [0.5, 0.28 - w], [0.72, 0.5], [0.92, 0.36 + w]]);
+      stroke(i, band, [[0.2, 0.1], [0.45, 0.16], [0.7, 0.08]]);
+      for (const [s, t] of [[0.3, 0.42], [0.72, 0.5]]) {
+        stroke(i, band, [[s - .025, t], [s + .025, t]]); stroke(i, band, [[s, t - .025], [s, t + .025]]);
+      }
     }
   }
 

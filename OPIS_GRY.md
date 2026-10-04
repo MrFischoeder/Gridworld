@@ -1,6 +1,6 @@
 # GridWorld: opis gry, cel, plan i historia zmian
 
-Stan na wersję **0.111.0**. Ten dokument opisuje, czym jest GridWorld, jaki jest cel gry, co już w niej jest, czego jeszcze nie ma, dokąd zmierza i jak powstawała, wersja po wersji. Nazwy z gry (przedmioty, miejsca, postacie) są po angielsku, tak jak na ekranie.
+Stan na wersję **0.123.0**. Ten dokument opisuje, czym jest GridWorld, jaki jest cel gry, co już w niej jest, czego jeszcze nie ma, dokąd zmierza i jak powstawała, wersja po wersji. Nazwy z gry (przedmioty, miejsca, postacie) są po angielsku, tak jak na ekranie.
 
 ---
 
@@ -139,7 +139,16 @@ Gra jest pomyślana jako **kooperacja do 8 graczy** na autorytatywnym serwerze (
 
   Granice pierścieni falują. Każda wioska jest azylem. Przy ruinach jest groźniej.
 
+### Bramy Starożytnych
+- **40 teleportów na planecie**, na suchym terenie wszystkich kontynentów. Pierwsza brama znajduje się 450–1100 m od Gridholm.
+- Starożytny, obcy pierścień jest ośmiokątny, z sześcioma wyraźnie różnymi symbolami na górnych narożnikach. Dwa narożniki przy ziemi nie mają oznaczeń. Kamień ma pęknięcia i zdobienia, a przy każdej bramie leży inny układ głazów.
+- Obok stoi mniejszy kamienny panel z tymi samymi sześcioma znakami: Eye, Trident, Spiral, Bolt, Twin moons, Star. **E** otwiera konsolę, a trzy kliknięcia w odpowiedniej kolejności wybierają adres. Symbole na pierścieniu zapalają się kolejno; konsola pokazuje same znaki, bez angielskich nazw. **Activate** otwiera połączenie, a **Cancel** kasuje wybór. Każda brama ma własny, niepowtarzalny adres z trzech symboli; znaki mogą się powtarzać.
+- Adres tej bramy jest wyryty na panelu i widoczny w konsoli. Przy bramie stoi osobny kamienny tablet: **E** pokazuje trzy stałe, losowo dobrane adresy innych bram. Własny adres i nieprzypisana kombinacja nie otwierają przejścia.
+- Po poprawnym wyborze pojawia się migocząca powierzchnia teleportu. Połączenie przyjmuje podróżnych **w obu kierunkach przez 45 rzeczywistych sekund**, także podczas otwartych menu. Na górnej belce bramy docelowej oraz w jej konsoli pojawia się adres bramy, która wywołała połączenie. Transport trwa **około pięciu sekund**; ekran wypełnia animacja ciągłych świetlnych linii przelatujących obok gracza. Oba terminale są w tym czasie zablokowane; przejście nie resetuje czasu. Wejście w 44. sekundzie pozwala dokończyć podróż: bramy pozostają otwarte i zablokowane do zakończenia wszystkich rozpoczętych transportów, ale po 45. sekundzie nie przyjmują nowych podróżnych. Powiększony pierścień pozwala przejść pieszo lub przejechać największym Mastodonem z działkiem. Pojazd z dwoma lub trzema graczami przenosi całą załogę, zachowując miejsca, stan, paliwo, wyposażenie i ładunek. Lądowanie wypada przed docelowym pierścieniem; zajęty wyjazd wymaga poczekania.
+- Odkryte bramy mają błękitne, ośmiokątne ikony na minimapie i mapie świata. Rozmieszczenie, adresy i głazy są stałe dla ziarna świata, również w istniejących zapisach.
+
 ### Krajobraz
+- Skały i wielkie głazy mają nieregularne, wielościenne bryły z szeroką podstawą, załamanymi bokami i ściętą górą zamiast piramidalnego czubka. Ten sam model obejmuje gruz w ruinach i kamienie przy jaskiniach. Kolorowe żyły rudy biegną po rzeczywistych ścianach skał; rozmieszczenie, kolizje, wydobycie i wcześniejsze zapisy pozostają zgodne.
 - **Teren**:
   - pagórki i doliny;
   - **góry** do ok. 170 m ze śniegiem na szczytach (ok. jednej czwartej lądu);
@@ -241,8 +250,8 @@ Gra jest pomyślana jako **kooperacja do 8 graczy** na autorytatywnym serwerze (
   - Kupuje się je u Kuby albo znajduje porzucone w dziczy (uszkodzone).
   - Mają koła, silnik, kadłub, bak, działko na dachu, ulepszenia silnika i bagażnik.
   - Mają 3 miejsca: kierowca, pasażer i strzelec przy działku.
-  - Serwis naprawia koła, silnik i kadłub (poszycie).
-  - **Vehicle Repair Kit** łata pojazd w terenie (kadłub, silnik, koła); nie wskrzesza wraku.
+  - Pojazd ma jeden stan użyteczności 0–100%; serwis i zestaw naprawczy odnawiają właśnie ten stan. Koła i silnik nie mają osobnych uszkodzeń.
+  - **Vehicle Repair Kit** przywraca 40% stanu pojazdu w terenie, także po jego unieruchomieniu. Ostrzał, zderzenia z przeszkodami i bezpośrednie ataki przeciwników uszkadzają pojazd, a jazda nie powoduje zużycia. Wszyscy pasażerowie są chronieni do chwili opuszczenia pojazdu, również w łaziku i w multiplayerze. Przy 0% pojazd zatrzymuje się, a pasażerowie wysiadają bez obrażeń.
 - **Budowle gracza nad wodą**:
   - **Mosty** na brodach dróg albo w dowolnym miejscu rzeki (Bridge Kit);
   - **Pomosty** na wybrzeżu morza (Pier Kit), z lampą i skrzynią.
@@ -571,3 +580,16 @@ Pełne notatki (po angielsku) są w grze pod przyciskiem **Changelog** w menu g�
 - **0.109.0 Jeden świat dla wszystkich.** Na serwerze wszyscy grają w jednym, wspólnym świecie: wioski (mury, obrona, farmy i uprawy, zakłady, elektrownie, ulepszenia, magazyn w ratuszu, zaufanie), rynki, mosty, pomosty i łodzie, wielkie instalacje, Rydwan, zawartość skrzyń i postęp w ruinach, ścięte drzewa i zebrane rośliny, rozbite obozy bandytów i losy karawan. Zmiany jednego gracza inni widzą po sekundzie lub dwóch. Własne pozostają: ekwipunek, złoto, poziom, zadania i kontrakty, mapa i znalezione plany, pojazdy i skrzynia w domu. Pierwszy gracz, który już grał w świecie serwera, wnosi do niego swój postęp; kolejni dołączają do wspólnego świata.
 - **0.110.0 Miasta pełne wrogów.** Martwe miasta roją się od przeciwników: oddziały maszyn dawnego świata pilnują ulic, gryzonie gnieżdżą się w gruzach, a gangi szabrowników okupują ruiny. Każde miasto ma setki takich grup w stałych miejscach przy ulicach, więcej i większych bliżej centrum. Budzą się, gdy podejdziesz na ok. 100 m, więc przez miasto idzie się ulica po ulicy, często z kilkoma grupami naraz (w centrum ok. 50 wrogów wokół gracza). Wybita grupa milknie na ok. 45 minut gry.
 - **0.111.0 Wspólni wrogowie.** Na serwerze wszyscy gracze walczą z tymi samymi wrogami: stwory, roboty i bandyci (losowe spotkania, obozy, garnizony miast, napady na wioski, strażnicy wraków) są wspólni. Wrogów w danym miejscu prowadzi gra pierwszego gracza, pozostali widzą ich ruchy i pociski, mogą do nich strzelać, a zabójstwo, łup i nagrodę dostaje ten, kto zadał ostatni cios. Wrogowie idą na najbliższego gracza. Jeszcze osobno: pojazdy rabusiów, drony w podziemiach, bossowie.
+
+- **0.116.0 Przepaście i pola głazów.** Na suchych kontynentach pojawiają się wąwozy szerokie na 50–100 m, długie na 320–600 m, z dwoma łagodnymi zejściami wzdłuż ścian. Bridge Kit pozwala wyznaczyć nad nimi most dla pieszych i samochodów, zbudować go z materiałów i zapisać we wspólnym świecie. Skupiska głazów o promieniu 2,5–5,5 m utrudniają jazdę poza drogami. Generator zmienia także teren istniejących zapisów; zalecany nowy świat.
+
+- **0.117.0 Garnizony i frakcje.** Wielkie miasta mają po 16 placówek, z mniejszymi grupami i najwyżej trzema aktywnymi w pobliżu. Po wybiciu placówki przez 10 rzeczywistych minut aktywnego czasu świata nie ma posiłków; polegli i zdrowie ocalałych pozostają zapisane przy objazdach, wczytaniu i w multiplayerze. Zwykłe losowe spotkania nie pojawiają się w miastach. Roboty oraz dzikie stworzenia mogą walczyć z bandytami, którzy odpowiadają ogniem, ale roboty i zwierzęta nie walczą ze sobą. Walka między przeciwnikami nie przyznaje graczowi bezpośredniego złota ani postępu zadań.
+
+- **0.118.0 Palisady i wyposażenie.** Obozy bandytów otacza wysoka palisada z zaostrzonych drewnianych pali z otwartymi wejściami od północy i południa. Skrzynie skarbów i obozowe skrytki mają deski, zaokrąglone wieka, okucia, zawiasy, zamki i uchwyty; skrzynie w podziemiach zachowują animację otwierania. Komputery w magazynach wiosek, dawnych zakładach, przy elektrowniach i we wraku statku używają modelu z domu starszego: monitor CRT, klawiatura i osobna obudowa.
+
+- **0.119.0 Jeden stan pojazdu.** Osobne uszkodzenia kół i silnika zastępuje wspólny stan użyteczności. Ostrzał, zderzenia i ataki przeciwników uszkadzają pojazd; zwykła jazda nie powoduje zużycia. Kierowca, pasażer i strzelec nie tracą zdrowia wewnątrz, również w otwartym łaziku i w cudzym pojeździe. Przy 0% pojazd zatrzymuje się i pasażerowie wysiadają bez obrażeń. Serwis i zestaw naprawczy odnawiają wspólny stan. Zachowano zgodność zapisów i wyposażenie.
+
+- **0.123.0 Naturalne, wielościenne skały.** Piramidalne kamienie zastąpione głazami o szerokiej podstawie, nieregularnych bokach i ściętej górze. Zmiana obejmuje teren, gruz w ruinach i kamienie przy jaskiniach. Żyły rudy dopasowane do nowych ścian; rozmieszczenie, kolizje i wydobywanie zgodne z dotychczasowymi zapisami.
+- **0.122.0 Wybieranie adresu i animacja podróży.** Symbole zapalają się kolejno na pierścieniu. Przyciski Activate i Cancel zastępują automatyczne otwieranie; znikają angielskie nazwy znaków. Brama docelowa pokazuje kod źródłowy. Pięciosekundowy transport całej załogi ma animację ciągłych linii, a bramy nie zamykają się przed ukończeniem podróży rozpoczętej przed upływem 45 sekund.
+- **0.121.0 Bramy dla pojazdów i stałe tablety.** Własny adres wyryty na terminalu, trzy stałe adresy na osobnym tablecie. Dwukierunkowe połączenie przez 45 rzeczywistych sekund blokuje obie konsole. Powiększone bramy przepuszczają Mastodona z dwoma lub trzema graczami, zachowując miejsca i cały ładunek.
+- **0.120.0 Bramy Starożytnych.** Sieć 40 obcych, kamiennych, ośmiokątnych teleportów na kontynentach. Sześć różnych symboli na górnych narożnikach, dwa dolne bez znaków. Panel przy każdej bramie wybiera unikalny trzyznakowy adres; archiwum podaje adresy do podróży i powrotu. Przejście pieszo przenosi przed docelowy pierścień bez zmiany zdrowia i ekwipunku. Bramy mają różne rozsypane głazy, płaskie podejścia i znaczniki na mapach.

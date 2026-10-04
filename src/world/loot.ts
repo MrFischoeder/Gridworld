@@ -1,7 +1,10 @@
 // XP crystals, pickups, chests, the hatch, and item use.
+import { environmentalDamage } from './damage';
 import * as THREE from 'three';
 import { fitFilter } from './toxic';
-import { scene, lineMat, add, V, circlePts, edgesOf, fillMat } from './render';
+import { PropBatch } from './props';
+import { chestBase, chestLid } from './chestmodel';
+import { scene, add, V, circlePts, edgesOf } from './render';
 import { G, W } from '../game';
 import { floorNear, floorAt } from '../core/voxel';
 import { emptyAt, EYE } from './player';
@@ -113,16 +116,12 @@ export function updateLoot(dt: number, time: number) {
 }
 
 // ---------- chests and the hatch ----------
-const goldMat = lineMat(0xffd060), chestFill = fillMat(0x0d0a02);
-const chestBase = new THREE.BoxGeometry(0.9, 0.5, 0.6), chestLid = new THREE.BoxGeometry(0.9, 0.18, 0.6);
-/** Chest part: a dark solid box with gold edges. */
-const chestPart = (g: THREE.BoxGeometry) => { const o = new THREE.Group(); o.add(new THREE.Mesh(g, chestFill), edgesOf(g, goldMat)); return o; };
 export function makeChest(c: { x: number; z: number }, i: number): Chest | null {
   const gr = G.grid, f = floorNear(G.space, c.x, c.z, 0, gr.oy + 1, gr.oy + gr.ny - 1); if (!f) return null;
   const g = new THREE.Group(); g.position.set(f[0] + 0.5, f[1], f[2] + 0.5);
-  const base = chestPart(chestBase); base.position.y = 0.25; g.add(base);
+  const base = new PropBatch(); chestBase(base); g.add(base.build());
   const lidPivot = new THREE.Group(); lidPivot.position.set(0, 0.5, -0.3); g.add(lidPivot);
-  const lid = chestPart(chestLid); lid.position.set(0, 0.09, 0.3); lidPivot.add(lid);
+  const lid = new PropBatch(); chestLid(lid); lidPivot.add(lid.build());
   const beamMat = add(0xffd060);
   const beam = new THREE.Line(new THREE.BufferGeometry().setFromPoints([V(0, 0.6, 0), V(0, 5, 0)]), beamMat);
   g.add(beam); g.rotation.y = (i * 1.7) % 6.28; scene.add(g);
@@ -208,9 +207,9 @@ export function useItem(k: ItemKey): boolean {
     nourish(kcal, food.water ?? 0, food.hp ?? 0, kg);
     if (k === 'waterF' || k === 'waterM') {
       addItem('flask'); // the flask is kept
-      if (k === 'waterM' && Math.random() < 0.35) { G.hp -= 8; G.dmgFlash = 0.4; logLine('The murky water turns your stomach. -8 HP'); }
+      if (k === 'waterM' && Math.random() < 0.35) { environmentalDamage(8); G.dmgFlash = 0.4; logLine('The murky water turns your stomach. -8 HP'); }
     }
-    if (k === 'meatR' && Math.random() < RAW_SICK.chance) { G.hp -= RAW_SICK.hp; G.dmgFlash = 0.4; logLine(`The raw meat makes you sick. -${RAW_SICK.hp} HP`); }
+    if (k === 'meatR' && Math.random() < RAW_SICK.chance) { environmentalDamage(RAW_SICK.hp); G.dmgFlash = 0.4; logLine(`The raw meat makes you sick. -${RAW_SICK.hp} HP`); }
     return true;
   }
   if (k === 'filter') return fitFilter('');
@@ -275,7 +274,6 @@ function useRepairKit(): boolean {
   }
   if (!v) { logLine('Stand by one of your vehicles to use the repair kit.'); return false; }
   const name = vehicleTitle(v.st.model);
-  if (v.st.parts.hull <= 0) { logLine(`The ${name} is a wreck: the kit cannot patch that. Fit Hull Plating in the service window.`); return false; }
   const probe = structuredClone(v.st.parts);
   if (!repairWithKit(v.st.model, probe)) { logLine(`The ${name} needs no patching.`); return false; }
   if (!takeOne('repairkit')) return false;

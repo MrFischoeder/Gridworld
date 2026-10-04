@@ -1,5 +1,6 @@
 // Drones, bosses (gate guardians and rare elites) and their projectiles.
-import { remoteOf, hitOwner } from './remote';
+import { hurtPlayer } from './damage';
+import { remoteOf, hitOwner, setCombatHooks, type CombatFoe } from './remote';
 import * as THREE from 'three';
 import { onNoise } from './noise';
 import { scene, lineMat, add, V, circlePts, edgesOf } from './render';
@@ -8,7 +9,7 @@ import { floorAt } from '../core/voxel';
 import { emptyAt, rayWorld } from './player';
 import { burst } from './fx';
 import { dropCrystal, dropPickup } from './loot';
-import { droneHp, droneDps, gainXp, saveChar, progress, progressHas, depth as depthNow, armoured } from '../character';
+import { droneHp, droneDps, gainXp, saveChar, progress, progressHas, depth as depthNow } from '../character';
 import { showToast, logLine, el } from '../ui/hud';
 import type { BossSpec } from '../gen/dungeon';
 import { hurtCreature, type Creature } from './creatures';
@@ -52,9 +53,9 @@ export function placeDrone(t: Drone) {
 export const foeRules = {
   blocked: (_p: THREE.Vector3) => false,
   playerSafe: () => false,
-  /** The player is out of reach of contact damage (inside a closed vehicle cab). */
+  /** The player is out of reach of contact damage (aboard a vehicle). */
   shielded: () => false,
-  /** Damage that the closed cab took instead of the player (goes to the vehicle's hull). */
+  /** Damage absorbed by the occupied vehicle. */
   shieldHit: (_dmg: number) => {},
   /** Hover height above the ground for field drones. */
   ground: null as ((x: number, z: number) => number) | null,
@@ -81,7 +82,7 @@ export function updateDrones(dt: number) {
     if (t.chasing && dist > (sc ? sc.lose : 28)) t.chasing = false;
     if (dist < 1.5 && !safe) {
       const dmg = (sc ? sc.dps : droneDps()) * dt;
-      if (foeRules.shielded()) foeRules.shieldHit(dmg * 0.5); else { G.hp -= armoured(dmg); G.dmgFlash = 0.25; }
+      hurtPlayer(dmg, true, .25);
     }
   }
 }
@@ -137,7 +138,7 @@ export function updateBosses(dt: number, time: number): Boss | null {
         }
         b.fireT = Math.max(0.7, 1.5 - (depth - 1) * 0.1) * (b.hp < b.maxHp * 0.5 ? 0.7 : 1);
       }
-      if (dist < 2.2) { G.hp -= armoured(droneDps() * 1.5 * dt); G.dmgFlash = 0.25; }
+      if (dist < 2.2) { hurtPlayer(droneDps() * 1.5 * dt, true, .25); }
       shown = b;
     }
     const mv = target.clone().sub(b.p), ml = mv.length(); if (ml > 0.05) b.p.addScaledVector(mv.normalize(), Math.min(ml, (b.engaged ? 3 : 2) * dt));
@@ -151,7 +152,7 @@ export function updateOrbs(dt: number) {
     const step = o.v.length() * dt, walled = !!G.rayBlock && G.rayBlock(o.p, o.v.clone().normalize(), step) < step;
     o.p.addScaledVector(o.v, dt); o.m.position.copy(o.p); o.m.rotation.x += dt * 6; o.m.rotation.y += dt * 4;
     let dead = o.life <= 0 || walled || !emptyAt(o.p);
-    if (!dead && o.p.distanceTo(body) < 0.75) { G.hp -= armoured(o.dmg); G.dmgFlash = 0.35; dead = true; }
+    if (!dead && o.p.distanceTo(body) < 0.75) { hurtPlayer(o.dmg); dead = true; }
     if (dead) { burst(o.p, 0xff6a4a, 8, 0.5); scene.remove(o.m); o.m.geometry.dispose(); W.orbs.splice(i, 1); }
   }
 }
@@ -171,9 +172,9 @@ function killBoss(b: Boss) {
 }
 export const foes = (): Foe[] => (W.drones as Foe[]).concat(W.bosses, W.creatures, W.bandits, raiders, W.robots);
 
-export function damageFoe(t: Foe, dmg: number) {
-  if (remoteOf(t)) { (t as { flash: number }).flash = 0.12; G.hitFlash = 0.15; hitOwner(t, dmg); return; } // another player's foe: their game reckons it
-  if ('kind' in t) { if (t.kind === 'bandit') hurtBandit(t, dmg); else if (t.kind === 'raider') hurtRaider(t, dmg); else if (t.kind === 'robot') hurtRobot(t, dmg); else hurtCreature(t, dmg); return; }
+export function damageFoe(t: Foe, dmg: number, credit = true) {
+  if (remoteOf(t)) { (t as { flash: number }).flash = 0.12; G.hitFlash = 0.15; hitOwner(t, dmg, !credit); return; } // another player's foe: their game reckons it
+  if ('kind' in t) { if (t.kind === 'bandit') hurtBandit(t, dmg, credit); else if (t.kind === 'raider') hurtRaider(t, dmg); else if (t.kind === 'robot') hurtRobot(t, dmg, credit); else hurtCreature(t, dmg, credit); return; }
   if (t.boss) { t.hp -= dmg; t.flash = 0.1; t.engaged = true; G.hitFlash = 0.15; if (t.hp <= 0) killBoss(t); return; }
   t.hp -= dmg; t.flash = 0.12; t.chasing = true; G.hitFlash = 0.15;
   if (t.hp <= 0) {
@@ -208,3 +209,13 @@ export function updateBossBar(boss: Boss | null) {
   el.bossbar.style.display = boss ? 'block' : 'none';
   if (boss) { el.bossName.textContent = boss.name; el.bossFill.style.width = Math.max(0, boss.hp / boss.maxHp * 100) + '%'; }
 }
+
+// NPC combat uses the same armour/death paths, with the attacker's position and no player kill credit.
+setCombatHooks({
+  visible: (from, to) => { const d = to.clone().sub(from), n = d.length(); return n < 0.01 || rayWorld(from, d.divideScalar(n), n) >= n - 0.4; },
+  hit: (target: CombatFoe, damage, source) => {
+    const position = G.pos.clone(), flash = G.hitFlash;
+    G.pos.copy(source.p);
+    try { damageFoe(target as Foe, damage, false); } finally { G.pos.copy(position); G.hitFlash = flash; }
+  },
+});

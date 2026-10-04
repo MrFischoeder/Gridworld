@@ -10,6 +10,7 @@ import { SEA } from './seas';
 import { regionRoads, type Road } from './roads';
 import { riverSegsIn, riverNear, riversOf } from './rivers';
 import type { ItemKey } from '../data/items';
+import { chasmsIn, chasmLocal, chasmPoint } from './chasms';
 
 export const BRIDGE = {
   /** Deck width (m): the road's width and a little more. */
@@ -27,6 +28,7 @@ export const BRIDGE = {
 
 /** A ford where a road crosses a river: the site of a bridge. */
 export interface Ford {
+  kind?: 'chasm';
   /** 'bridge:<road id>:<river>:<stretch>' (canonical: the same on every copy of the planet). */
   id: string;
   /** The middle of the crossing, the road's direction there (unit) and across it. */
@@ -133,6 +135,16 @@ export const PLACE = { maxHalf: 12, ramp: 0.45, reach: 40, apart: 60, village: 1
  * within `PLACE.reach`. `road` is '' (it carries no road).
  */
 export function planBridge(world: number, x: number, z: number, px: number, pz: number, ground: (x: number, z: number) => number): Ford | null {
+  for (const c of chasmsIn(world, { x0: x - 80, z0: z - 80, x1: x + 80, z1: z + 80 })) {
+    const [u, v] = chasmLocal(c, x, z);
+    if (Math.abs(u) > c.length / 2 - 35 || Math.abs(v) > c.width / 2 + 40) continue;
+    const [mx, mz] = chasmPoint(c, u, 0), half = c.width / 2 + 5, end = half + 20;
+    let dx = -c.dz, dz = c.dx;
+    if (dx * (mx - px) + dz * (mz - pz) < 0) { dx = -dx; dz = -dz; }
+    const g0 = ground(mx - dx * end, mz - dz * end), g1 = ground(mx + dx * end, mz + dz * end);
+    const level = Math.max(g0, g1) + 0.5 - BRIDGE.clear;
+    return { kind: 'chasm', id: '', x: mx, z: mz, dx, dz, river: 'Ravine', road: '', level, half, end, g0, g1 };
+  }
   const segs = riverSegsIn(world, x - PLACE.reach, z - PLACE.reach, x + PLACE.reach, z + PLACE.reach), h = riverNear(segs, x, z);
   if (!h || h.d > h.half + PLACE.reach) return null;
   // the middle: on the river's middle line; across it: square to the flow, pointing away from the player
@@ -145,14 +157,14 @@ export function planBridge(world: number, x: number, z: number, px: number, pz: 
 }
 /** Why a planned bridge cannot go there (null: it can). `others` = bridges and bridge sites already there. */
 export function bridgeProblem(world: number, f: Ford | null, others: Ford[]): string | null {
-  if (!f) return 'Look at a river to bridge it';
-  if (f.half > PLACE.maxHalf) return `The ${f.river} is too wide to bridge here`;
-  if (f.level <= SEA.level + 0.05) return 'Too close to the sea: the river runs out into it here';
+  if (!f) return 'Look at a river or ravine to bridge it';
+  if (f.half > (f.kind === 'chasm' ? 55 : PLACE.maxHalf)) return `The ${f.river} is too wide to bridge here`;
+  if (!f.kind && f.level <= SEA.level + 0.05) return 'Too close to the sea: the river runs out into it here';
   const run = f.end - f.half - BRIDGE.flat, top = f.level + BRIDGE.clear;
   if (Math.abs(f.g0 - top) / run > PLACE.ramp || Math.abs(f.g1 - top) / run > PLACE.ramp) return 'The banks are too steep here';
   // another river close by (where two meet the water is wider and wilder)
-  const segs = riverSegsIn(world, f.x - f.end, f.z - f.end, f.x + f.end, f.z + f.end), mine = riverNear(segs, f.x, f.z)!.seg.r;
-  if (segs.some((sg) => sg.r !== mine && riverNear([sg], f.x, f.z)!.d < f.end + 10)) return 'Too close to where two rivers meet';
+  const segs = riverSegsIn(world, f.x - f.end, f.z - f.end, f.x + f.end, f.z + f.end), mine = riverNear(segs, f.x, f.z)?.seg.r;
+  if (!f.kind && segs.some((sg) => sg.r !== mine && riverNear([sg], f.x, f.z)!.d < f.end + 10)) return 'Too close to where two rivers meet';
   for (const p of poisNear(world, f.x, f.z, f.end + 150)) {
     const d = Math.hypot(Math.max(p.rect.x0 - f.x, 0, f.x - p.rect.x1), Math.max(p.rect.z0 - f.z, 0, f.z - p.rect.z1));
     if (d < (p.type === 'village' ? PLACE.village : f.end + p.flat + p.blend + 6)) return `Too close to ${p.type === 'village' ? p.name : 'the ' + p.name}`;

@@ -2,6 +2,7 @@
 // the fence, cabled in on poles. It wears down; its status light shows how it runs (pale green, gold when failing,
 // red when down), the turbines stop turning and the village lamps go dark when it is down. E at it mends it with
 // the right parts, and the village pays you for the job.
+import { drawComputer } from './computer';
 import { hasImprove } from '../gen/improve';
 import * as THREE from 'three';
 import { earnTrust } from './standing';
@@ -110,9 +111,7 @@ export function drawPower(vm: VillageMap, T: Terrain, id: number): THREE.Group {
   }
   if (up >= 3) { // automated: a control cabinet with a lit screen and a radio mast beside the plant's light
     const [ax, az] = [lightAt[0] + rx * 1.4, lightAt[2] + rz * 1.4], g = ground(ax, az);
-    pb.box(ax - 0.45, g, az - 0.3, ax + 0.45, g + 1.6, az + 0.3, METAL);
-    const sx = ax - fx * 0.31, sz = az - fz * 0.31;
-    for (let k = 0; k < 3; k++) pb.seg(AUTO, [sx - rx * 0.3, g + 1.1 - k * 0.2, sz - rz * 0.3], [sx + rx * (0.1 + k * 0.08), g + 1.1 - k * 0.2, sz + rz * (0.1 + k * 0.08)]);
+    drawComputer(pb, { x0: ax - 0.7, x1: ax + 0.7, z0: az - 0.4, z1: az + 0.4, h: 1, n: [0, 1] }, g);
     pb.seg(METAL, [ax, g + 1.6, az], [ax, g + 4.2, az]); pb.seg(AUTO, [ax - 0.3, g + 4.2, az], [ax + 0.3, g + 4.2, az]); pb.seg(AUTO, [ax, g + 4.2, az - 0.3], [ax, g + 4.2, az + 0.3]);
   }
   if (hasImprove(G.char.towns[id], 'bank')) { // the battery bank (gen/improve.ts): a pad with racks of cells under a lean-to roof

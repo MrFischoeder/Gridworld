@@ -14,10 +14,7 @@ export function sbox(dir: Dir, m: number, c: number, t0: number, t1: number, y: 
 
 export function stairOpsFor(dir: Dir, m: number, c: number, up: boolean): Op[] {
   const out = [sbox(dir, m, c, -3, 0, 0, 3, 'room'), sbox(dir, m, c, 1, SL, up ? 0 : -7, 10, 'room')] as Op[];
-  for (let k = 1; k <= SL; k++) {
-    const h = up ? (k <= 1 ? 0 : Math.min(k - 1, 6)) : (k <= 1 ? 7 : Math.max(1, 8 - k));
-    if (h > 0) out.push(sbox(dir, m, c, k, k, up ? 0 : -7, h, 'solid') as Op);
-  }
+  // Fractional steps are rendered and collided separately (core/steps.ts).
   return out;
 }
 

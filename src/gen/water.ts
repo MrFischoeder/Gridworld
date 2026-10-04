@@ -13,6 +13,7 @@ import { onMountain } from './mountains';
 import { inSea } from './seas';
 import { nearRiver } from './rivers';
 import { inCity } from './cities';
+import { chasmsIn } from './chasms';
 
 export type WaterKind = 'fresh' | 'murky' | 'toxic' | 'sea';
 export interface Lake {
@@ -66,7 +67,7 @@ const lakeCache = new Map<string, Lake[]>();
  * roads and the ice (frozen lakes can come later). Their level sits just below the lowest point of the rim, so
  * the water never spills over the land around it.
  */
-export function regionLakes(t: Terrain, rx: number, rz: number): Lake[] {
+export function regionLakes(t: Pick<Terrain, 'world' | 'base'>, rx: number, rz: number): Lake[] {
   const c = wrapR(rx);
   if (c !== rx) return regionLakes(t, c, rz).map((l) => ({ ...l, x: l.x + (rx - c) * REGION }));
   const key = t.world + ':' + rx + ':' + rz;
@@ -79,6 +80,8 @@ export function regionLakes(t: Terrain, rx: number, rz: number): Lake[] {
   const low = t.base(x, z) < 9;
   const tryLake = (id: number, x: number, z: number, r: number, p1: number, p2: number, kr: number, low: boolean) => {
     if (Math.abs(z) + r * 2 >= POLAR_Z) return;
+    // Reject at the source so map markers and Terrain.water agree about which lakes exist.
+    if (chasmsIn(t.world, { x0: x - r * 2, z0: z - r * 2, x1: x + r * 2, z1: z + r * 2 }).length) return;
     if (out!.some((l) => Math.hypot(l.x - x, l.z - z) < (l.r + r) * LAKE_REACH * 1.3 + 12)) return;
     const pois = poisNear(t.world, x, z, r * 2 + 120);
     const clear = pois.every((p) => rectD(p.rect, x, z) > r * LAKE_REACH * 1.3 + p.flat + p.blend + 6) && !nearRoad(t.world, x, z, r * LAKE_REACH * 1.3 + 8) && !onMountain(t.world, x, z, r * 2 + 20) && !inSea(t.world, x, z, r * 2 + 40) && !nearRiver(t.world, x, z, r * 2 + 50) && !inCity(t.world, x, z, r * 2 + 40);
@@ -102,7 +105,7 @@ export function regionLakes(t: Terrain, rx: number, rz: number): Lake[] {
   return out;
 }
 /** Lakes whose water may reach into the rect (for terrain features). */
-export function lakesIn(t: Terrain, r: Rect): Lake[] {
+export function lakesIn(t: Pick<Terrain, 'world' | 'base'>, r: Rect): Lake[] {
   const out: Lake[] = [], m = 45 * LAKE_REACH * 1.25;
   const rx0 = Math.floor((r.x0 - m + REGION / 2) / REGION), rx1 = Math.floor((r.x1 + m + REGION / 2) / REGION);
   const rz0 = Math.floor((r.z0 - m + REGION / 2) / REGION), rz1 = Math.floor((r.z1 + m + REGION / 2) / REGION);

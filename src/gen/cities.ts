@@ -12,17 +12,18 @@
 // Dependencies: only the natural land (heights, sea, mountains) and the planet's numbers, so gen/regions.ts can ask
 // `inCity` while placing villages and temples without an import loop at evaluation time.
 import { hash, rng } from '../core/rng';
-import { POLAR_Z, worldDist, wrapDx, ruinName } from './regions';
+import { POLAR_Z, worldDist, wrapDx, wrapX, ruinName } from './regions';
 import { mountainMask } from './mountains';
+import { continents } from './continents';
 import { seaMask } from './seas';
 import { naturalHeight } from './heights';
 
 export type CityPattern = 'grid' | 'warped' | 'radial' | 'diagonal';
 export const CITY = {
   /** How many cities a world has (fewer when the land has no room), their radius (m). */
-  n: 10, r: [520, 820] as [number, number],
-  /** Distance bands from Gridholm (m): the first two cities lie nearer, the rest anywhere in the wide band. */
-  near: [3800, 8000] as [number, number], band: [7000, 26000] as [number, number],
+  n: 12, r: [520, 820] as [number, number],
+  /** The first two cities stay near Gridholm; the others sample their assigned continent. */
+  near: [3800, 8000] as [number, number],
   /** Least distance between two cities' edges (m), and from the poles' ice. */
   apart: 4500, ice: 1500,
   /** How far other things keep off a city's edge (m): villages, places. */
@@ -60,12 +61,17 @@ export function citySites(world: number): CitySite[] {
   const hit = cache.get(world); if (hit) return hit;
   const out: CitySite[] = [];
   cache.set(world, out); // (set first: a nested call while searching sees no cities rather than recursing)
+  const land = continents(world);
   for (let i = 0; i < CITY.n; i++) {
-    const [d0, d1] = i < 2 ? CITY.near : CITY.band;
+    const continent = land[Math.floor(i * land.length / CITY.n)];
+    const [d0, d1] = CITY.near;
     for (let k = 0; k < 400; k++) {
       const h = (s: number) => (hash(world, i, k, s) % 100000) / 100000;
       const a = h(0xc171) * Math.PI * 2, d = d0 + h(0xc172) * (d1 - d0), r = CITY.r[0] + h(0xc173) * (CITY.r[1] - CITY.r[0]);
-      const x = Math.cos(a) * d, z = Math.sin(a) * d;
+      const reach = Math.sqrt(h(0xc176)) * 0.78;
+      const x = i < 2 ? Math.cos(a) * d : wrapX(continent.x + Math.cos(a) * continent.rx * reach);
+      const z = i < 2 ? Math.sin(a) * d : continent.z + Math.sin(a) * continent.rz * reach;
+      if (Math.hypot(wrapDx(x), z) < CITY.near[0]) continue;
       if (out.some((o) => worldDist(o.x, o.z, x, z) < o.r + r + CITY.apart)) continue;
       if (misfit(world, x, z, r)) continue;
       const R = rng(hash(world, i, k, 0xc174));
@@ -328,24 +334,25 @@ export { segDist };
 export type GarrisonKind = 'machines' | 'nest' | 'gang';
 export interface Garrison { k: number; u: number; v: number; kind: GarrisonKind; size: number }
 export const GARRISON = {
-  /** Share of the street pieces with a garrison: at the edge and at the core (%). */
-  edge: 30, core: 70,
-  /** Machines / nests / gangs (weights). */
+  count: 16, gap: 150,
+  /** Ten real minutes of active play, expressed in game minutes (one per second). */
+  respawn: 600,
   mix: [55, 25, 20] as [number, number, number],
 };
 const garrisons = new Map<string, Garrison[]>();
-/** The garrisons of a city (city frame), cached. */
+/** A bounded, evenly separated selection of seeded street posts. */
 export function cityGarrisons(world: number, c: CitySite): Garrison[] {
   const key = world + ':' + c.i, hit = garrisons.get(key); if (hit) return hit;
   const L = cityLayout(world, c), out: Garrison[] = [];
-  L.streets.forEach((s, k) => {
-    const u = (s.ax + s.bx) / 2, v = (s.az + s.bz) / 2;
-    const toCore = Math.min(1, Math.hypot(u - L.core[0], v - L.core[1]) / c.r), share = GARRISON.core + (GARRISON.edge - GARRISON.core) * toCore;
-    if (hash(world, c.i, k, 0x6a77) % 100 >= share) return;
-    const r = hash(world, c.i, k, 0x6a78) % 100, [a, b] = GARRISON.mix;
-    const kind: GarrisonKind = r < a ? 'machines' : r < a + b ? 'nest' : 'gang';
-    out.push({ k, u, v, kind, size: 1 + (toCore < 0.4 ? 1 : 0) + (hash(world, c.i, k, 0x6a79) % 3 === 0 ? 1 : 0) });
-  });
-  garrisons.set(key, out);
-  return out;
+  const candidates = L.streets.map((s, k) => ({ k, u: (s.ax + s.bx) / 2, v: (s.az + s.bz) / 2 }))
+    .sort((a, b) => hash(world, c.i, a.k, 0x6a77) - hash(world, c.i, b.k, 0x6a77) || a.k - b.k);
+  for (const p of candidates) {
+    if (out.length >= GARRISON.count) break;
+    if (out.some(g => Math.hypot(g.u - p.u, g.v - p.v) < GARRISON.gap)) continue;
+    const toCore = Math.hypot(p.u - L.core[0], p.v - L.core[1]) / c.r;
+    const roll = hash(world, c.i, p.k, 0x6a78) % 100;
+    const kind: GarrisonKind = out.length < 3 ? (['machines', 'nest', 'gang'] as const)[out.length] : roll < 55 ? 'machines' : roll < 80 ? 'nest' : 'gang';
+    out.push({ ...p, kind, size: toCore < 0.4 ? 2 : 1 });
+  }
+  garrisons.set(key, out); return out;
 }

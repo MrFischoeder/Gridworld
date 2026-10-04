@@ -1,6 +1,7 @@
 // The hero's ship, the survey vessel Kestrel: a small human craft from the future, drawn in the game's line style
 // (pale cyan lines over dark fills). The same model flies whole through the opening (ui/intro.ts) and lies broken at
 // the crash site by Gridholm (world/crashpod.ts). Ship-local metres: x to starboard, y up from the deck, z to the nose.
+import { drawComputer } from './computer';
 import { PropBatch } from './props';
 
 export const SHIP_NAME = 'SV-9 Kestrel';
@@ -122,8 +123,8 @@ export function drawLander(pb: PropBatch, o: LanderOpts) {
     const cz = CONSOLE.z;
     const b0 = T([-1.3, 0, cz + 0.2]), b1 = T([1.3, 0.95, cz + 0.9]); // (an axis-aligned box: `at` may only shift)
     pb.box(b0[0], b0[1], b0[2], b1[0], b1[1], b1[2], HULL_C);
-    seg(GLASS_C, [-0.9, 1.0, cz + 0.4], [0.9, 1.0, cz + 0.4]); seg(GLASS_C, [-0.9, 1.25, cz + 0.8], [0.9, 1.25, cz + 0.8]);
-    seg(WARN_C, [-0.3, 0.97, cz + 0.55], [0.3, 0.97, cz + 0.55]);
+    const cp = T([0, 0, cz + 0.55]);
+    drawComputer(pb, { x0: cp[0] - 0.7, x1: cp[0] + 0.7, z0: cp[2] - 0.4, z1: cp[2] + 0.4, h: 0.95, n: [0, -1] }, cp[1]);
     for (const s of [-0.7, 0.7]) { const q = [[s - 0.3, 0.5, cz - 0.9], [s + 0.3, 0.5, cz - 0.9], [s + 0.3, 1.2, cz - 1.1], [s - 0.3, 1.2, cz - 1.1]]; for (let n = 0; n < 4; n++) seg(HULL_C, q[n], q[(n + 1) % 4]); seg(HULL_C, [s, 0, cz - 0.8], [s, 0.5, cz - 0.9]); }
     const L = LOCKER;
     for (let n = 0; n < 3; n++) {

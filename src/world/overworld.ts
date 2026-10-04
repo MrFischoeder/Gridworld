@@ -1,7 +1,9 @@
+import { syncWorldGates, clearWorldGates, worldGateHit, worldGateRay } from './worldgates';
+import { inGateClearing } from '../gen/worldgates';
 // The open world: terrain streamed in 32 m chunks around the player, voxel structures (the village, ruins)
 // standing on it, forests, roads, and light field enemies. Generation is deterministic; this module only
 // decides what is loaded and turns generator output into meshes.
-import { proxied } from './remote';
+import { insideVehicle, hitOccupiedVehicle } from './damage';
 import { setLadders, dropLadders, ladderHit, ladderFloor } from './ladders';
 import { setHouses, dropHouses, houseHit, houseRay, houseSolid } from './houses';
 import { drawHangar, hangarOps } from './hangar';
@@ -49,23 +51,25 @@ import { generateWreck } from '../gen/wreck';
 import { drawWreck } from './wreck';
 import { tryPlaceDoor } from '../gen/doors';
 import { PropBatch, sharedFill, sharedLine } from './props';
-import { makeStair, type Door, type Stair } from './doors';
+import { makeStair, disposeStair, type Door, type Stair } from './doors';
 import { makeNpc, type Npc } from './npc';
 import { foeRules, type Drone } from './enemies';
-import { spawnVehicles, clearVehicles, vehicleHit, syncFound, shielded, driving, damageVehicle, vehiclesNear } from './vehicles';
+import { spawnVehicles, clearVehicles, vehicleHit, syncFound, driving, vehiclesNear } from './vehicles';
 import { logLine, showToast } from '../ui/hud';
+import { dropGarrisons } from './citygarrisons';
 import { setCreatureEnv, clearCreatures } from './creatures';
 import { setRobotEnv, clearRobots } from './robots';
 import { updateThreat } from './threat';
 import { setBanditEnv, clearBandits, spawnCamp, despawnCamp } from './bandits';
 import { setRaiderEnv, clearRaiders, ambushHit } from './raiders';
+import { drawClosedChest } from './chestmodel';
 import { generateCamp, type CampMap } from '../gen/camps';
 import { add as addMat } from './render';
 import { YARD } from '../gen/vehicles';
 import { setStreakSources, type EdgeSource } from './fx';
 import { voxelObject, villageDeco, wallSign } from './level';
 import { NPC_INFO, VILLAGER_NAMES, type NpcRole } from '../data/npcs';
-import { DIRV } from '../core/rng';
+import { DIRV, hash } from '../core/rng';
 import { claimDist, CLAIM } from '../gen/claims';
 import { baseHit, baseFloor, baseRay, baseSolid } from './building';
 import { chunkCaves, type Cave } from '../gen/caves';
@@ -210,7 +214,7 @@ function buildChunk(cx: number, cz: number, lod = 1): Chunk {
   // felled trees and broken rocks (player changes, keyed by their index in the generated list) are left out
   const trees: Tree[] = [], stumps: Tree[] = [], rocks: Rock[] = [];
   // a claimed site is cleared: nothing grows on the levelled ground (the generated lists keep their indices)
-  const cleared = (x: number, z: number) => !!T.claimAt(x, z, 1);
+  const cleared = (x: number, z: number) => !!T.claimAt(x, z, 1) || inGateClearing(T.world, x, z, 2);
   chunkTrees(T, cx, cz).forEach((t, i) => { if (t.cols.some(([x, z]) => cleared(x, z))) return; const k = `tree:${wrapC(cx)}:${cz}:${i}`; gatherKey.set(t, k); (ripe(k) ? trees : stumps).push(t); });
   chunkRocks(T, cx, cz).forEach((r, i) => { if (cleared(r.x, r.z)) return; const k = `rock:${wrapC(cx)}:${cz}:${i}`; gatherKey.set(r, k); if (ripe(k)) rocks.push(r); });
   let nodes: PlantNode[] = [];
@@ -412,12 +416,33 @@ function loadHangarStruct(poi: Poi): Structure {
   scene.add(group);
   return { poi, grid, group, edges: mesh, doors: [], stairs: [], npcs: [] };
 }
-/** Bandit camp: crates and barricades (voxels), A-frame tents, a campfire, the stash; its bandits. */
+/** Bandit camp: colliding timber palisade and crates, tents, campfire and treasure stash. */
 function loadCampStruct(poi: Poi): Structure {
   const T = OW.terrain!, y = T.padY(poi), cm = generateCamp(T.world, poi, y);
   const grid = VoxelGrid.surface(cm.ops, cm.rect, y);
-  const { group, mesh } = voxelObject(grid, Infinity, OUTLINE);
+  const { group, mesh } = voxelObject(VoxelGrid.surface(cm.ops.filter(o => !cm.palisade.includes(o)), cm.rect, y), Infinity, OUTLINE);
   const pb = new PropBatch();
+  for (const o of cm.palisade) {
+    const alongX = o.z === cm.rect.z0 || o.z === cm.rect.z1 - 1;
+    for (const offset of [.25, .75]) {
+      const x = o.x + (alongX ? offset : .5), z = o.z + (alongX ? .5 : offset);
+      const h = 3 + (hash(cm.id, o.x * 2 + offset * 4, o.z) % 100) / 500;
+      const ring = (yy: number) => Array.from({ length: 8 }, (_, k) => {
+        const angle = (k + .5) * Math.PI / 4;
+        return [x + Math.cos(angle) * (alongX ? .26 : .5), yy, z + Math.sin(angle) * (alongX ? .5 : .26)];
+      });
+      const bottom = ring(y), top = ring(y + h), tip = [x, y + h + .4, z];
+      for (let k = 0; k < 8; k++) {
+        const j = (k + 1) % 8;
+        pb.face(bottom[k], bottom[j], top[j], top[k]); pb.face(top[k], top[j], tip);
+        pb.seg(0xb8b060, bottom[k], top[k]); pb.seg(0xb8b060, top[k], top[j]); pb.seg(0xb8b060, top[k], tip);
+      }
+    }
+    for (const h of [.8, 2.1]) {
+      if (alongX) pb.box(o.x, y + h, o.z + .05, o.x + 1, y + h + .12, o.z + .95, 0x8fb89a);
+      else pb.box(o.x + .05, y + h, o.z, o.x + .95, y + h + .12, o.z + 1, 0x8fb89a);
+    }
+  }
   for (const t of cm.tents) {
     pb.gableRoof(t.x0, t.z0, t.x1, t.z1, y, 2.3, 0xb8b060);
     const along = t.x1 - t.x0 >= t.z1 - t.z0;
@@ -427,7 +452,7 @@ function loadCampStruct(poi: Poi): Structure {
   for (let i = 0; i < 7; i++) { const a = i / 7 * 6.283; pb.rock(cm.fire.x + Math.cos(a) * 0.9, y - 0.05, cm.fire.z + Math.sin(a) * 0.9, 0.28, 0.25, 4, a, GRID); }
   // the stash: a heavy crate
   const sx = cm.stash.x, sz = cm.stash.z;
-  pb.box(sx - 0.5, y, sz - 0.4, sx + 0.5, y + 0.7, sz + 0.4, 0xffd060);
+  drawClosedChest(pb, sx, y, sz);
   group.add(pb.build());
   const flames = new THREE.LineSegments(new THREE.BufferGeometry(), addMat(0xffb347));
   flames.geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(10 * 6), 3));
@@ -478,7 +503,7 @@ export function reloadStruct(id: number) {
 function dropStruct(s: Structure) {
   scene.remove(s.group); s.group.traverse((o) => (o as THREE.Mesh).geometry?.dispose());
   for (const d of s.doors) { scene.remove(d.g); W.doors.splice(W.doors.indexOf(d), 1); }
-  for (const st of s.stairs) W.portals.splice(W.portals.indexOf(st), 1);
+  for (const st of s.stairs) { disposeStair(st); W.portals.splice(W.portals.indexOf(st), 1); }
   for (const n of s.npcs) { scene.remove(n.g); W.npcs.splice(W.npcs.indexOf(n), 1); }
   if (s.village && OW.village === s.village) { OW.village = null; W.villageWalk = []; } // another village may have loaded meanwhile
   if (s.camp) despawnCamp(s.poi.id);
@@ -507,6 +532,7 @@ export function updateStreaming(budgetMs = 4) {
     queue.sort((a, b) => Math.hypot(b[0] - pcx, b[1] - pcz) - Math.hypot(a[0] - pcx, a[1] - pcz)); // nearest last (popped first)
     for (const c of [...OW.chunks.values()]) if (Math.max(Math.abs(c.cx - pcx), Math.abs(c.cz - pcz)) > (G.fly ? LOAD_R * 2 + 2 : UNLOAD_R)) { dropChunk(c); OW.chunks.delete(ckey(c.cx, c.cz)); }
     updateStructs(x, z);
+    syncWorldGates(OW.terrain!, x, z);
     syncLakes(x, z);
     syncFound(OW.terrain!, x, z);
     syncQuestWorld();
@@ -528,15 +554,16 @@ export function openWorld(x: number, z: number) {
   primeInstalls(w, G.char.claims); // the installations' sites are worked out in a worker meanwhile
   closeWorld();
   G.water = (px, pz) => (inStructure(px, pz) ? null : OW.terrain!.water(px, pz));
-  G.space = space; G.ground = groundAt; G.obstacle = (px, py, pz, r) => treeHit(px, py, pz, r) || vehicleHit(px, py, pz, r) || caravanHit(px, py, pz, r) || peerCarHit(px, py, pz, r) || ambushHit(px, py, pz, r) || baseHit(px, py, pz, r) || ladderHit(px, py, pz, r) || walkHit(px, py, pz, r) || guardHit(px, py, pz, r) || houseHit(px, py, pz, r) || doorHit(px, py, pz, r) || podHit(px, py, pz, r) || installHit(px, py, pz, r) || cityHit(px, py, pz, r) || hallHit(px, py, pz, r) || bridgeHit(px, py, pz, r) || pierHit(px, py, pz, r) || boatHit(px, py, pz, r) || toxicHit(px, py, pz, r);
-  G.floor = (x, y, z) => Math.max(baseFloor(x, y, z), ladderFloor(x, y, z), walkFloor(x, y, z), bridgeFloor(x, y, z), pierFloor(x, y, z)); G.rayBlock = (o, d, t) => cityRay(o, d, doorRay(o, d, houseRay(o, d, baseRay(o, d, t)))); G.solid = (p) => baseSolid(p) || houseSolid(p);
+  G.space = space; G.ground = groundAt; G.obstacle = (px, py, pz, r) => worldGateHit(px, py, pz, r) || treeHit(px, py, pz, r) || vehicleHit(px, py, pz, r) || caravanHit(px, py, pz, r) || peerCarHit(px, py, pz, r) || ambushHit(px, py, pz, r) || baseHit(px, py, pz, r) || ladderHit(px, py, pz, r) || walkHit(px, py, pz, r) || guardHit(px, py, pz, r) || houseHit(px, py, pz, r) || doorHit(px, py, pz, r) || podHit(px, py, pz, r) || installHit(px, py, pz, r) || cityHit(px, py, pz, r) || hallHit(px, py, pz, r) || bridgeHit(px, py, pz, r) || pierHit(px, py, pz, r) || boatHit(px, py, pz, r) || toxicHit(px, py, pz, r);
+  G.floor = (x, y, z) => Math.max(baseFloor(x, y, z), ladderFloor(x, y, z), walkFloor(x, y, z), bridgeFloor(x, y, z), pierFloor(x, y, z)); G.rayBlock = (o, d, t) => worldGateRay(o, d, cityRay(o, d, doorRay(o, d, houseRay(o, d, baseRay(o, d, t))))); G.solid = (p) => worldGateHit(p.x, p.y, p.z, 0) || baseSolid(p) || houseSolid(p);
   foeRules.blocked = (p) => nearVillage(p.x, p.z) < 2;
   foeRules.playerSafe = () => inVillage(G.pos.x, G.pos.z) && !raidHere(); // no safe place while bandits raid it
   foeRules.ground = (px, pz) => OW.terrain!.heightAt(px, pz);
-  foeRules.shielded = () => !proxied() && shielded(); // a foe's turn against another player: your cab is not theirs
-  foeRules.shieldHit = (dmg) => { if (driving.v) damageVehicle(driving.v, dmg); };
+  foeRules.shielded = () => insideVehicle(); // a foe's turn against another player: your cab is not theirs
+  foeRules.shieldHit = (dmg) => hitOccupiedVehicle(dmg);
   setCrash(OW.terrain);
   updateStructs(x, z);
+  syncWorldGates(OW.terrain, x, z);
   const pcx = Math.floor(x / CHUNK), pcz = Math.floor(z / CHUNK);
   for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) OW.chunks.set(ckey(pcx + i, pcz + j), buildChunk(pcx + i, pcz + j));
   lastChunk = '';
@@ -544,7 +571,7 @@ export function openWorld(x: number, z: number) {
   spawnVehicles({
     height: (px, pz) => Math.max(T.heightAt(px, pz), bridgeDeck(px, pz) ?? -Infinity, pierDeck(px, pz) ?? -Infinity), // over a bridge or a pier, its deck
     water: (px, pz) => (bridgeDeck(px, pz) !== null || pierDeck(px, pz) !== null ? 0 : T.water(px, pz)?.depth ?? 0),
-    blocked: (px, pz, r) => structBlocks(px, pz, r, T.heightAt(px, pz)) || treeHit(px, T.heightAt(px, pz) + 0.5, pz, r) || ambushHit(px, 0, pz, r) || peerCarHit(px, T.heightAt(px, pz) + 0.5, pz, r) || cityHit(px, T.heightAt(px, pz) + 0.5, pz, r) || bridgeHit(px, (bridgeDeck(px, pz) ?? -99) + 0.5, pz, r), // a bridge's rails keep you on its deck
+    blocked: (px, pz, r) => worldGateHit(px, T.heightAt(px, pz) + .5, pz, r) || structBlocks(px, pz, r, T.heightAt(px, pz)) || treeHit(px, T.heightAt(px, pz) + 0.5, pz, r) || ambushHit(px, 0, pz, r) || peerCarHit(px, T.heightAt(px, pz) + 0.5, pz, r) || cityHit(px, T.heightAt(px, pz) + 0.5, pz, r) || bridgeHit(px, (bridgeDeck(px, pz) ?? -99) + 0.5, pz, r), // a bridge's rails keep you on its deck
   });
   syncFound(T, x, z);
   const envHooks = {
@@ -552,7 +579,7 @@ export function openWorld(x: number, z: number) {
     danger,
     nearRuin: (px: number, pz: number) => poisNear(T.world, px, pz, 90).some((p) => (p.type === 'ruin' || p.type === 'wreck') && rectDist(p.rect, px, pz) < 60),
     water: (px: number, pz: number) => T.water(px, pz),
-    forbidden: (px: number, pz: number) => nearVillage(px, pz) < 35 || baseHit(px, T.heightAt(px, pz), pz, 0.7) || cityHit(px, T.heightAt(px, pz) + 0.5, pz, 0.7) || (T.water(px, pz)?.depth ?? 0) > 0.5 || [...OW.structs.values()].some((s) => rectDist(s.poi.rect, px, pz) < 1),
+    forbidden: (px: number, pz: number) => inGateClearing(T.world, px, pz, 4) || nearVillage(px, pz) < 35 || baseHit(px, T.heightAt(px, pz), pz, 0.7) || cityHit(px, T.heightAt(px, pz) + 0.5, pz, 0.7) || (T.water(px, pz)?.depth ?? 0) > 0.5 || [...OW.structs.values()].some((s) => rectDist(s.poi.rect, px, pz) < 1),
   };
   setCreatureEnv(envHooks);
   setRobotEnv(envHooks);
@@ -562,7 +589,8 @@ export function openWorld(x: number, z: number) {
   for (const s of OW.structs.values()) if (s.camp) spawnCamp(s.camp);
 }
 export function closeWorld() {
-  clearVehicles(); dropCrash(); dropInstalls(); dropCities(); dropToxic(); clearBridges(); clearPiers();
+  clearWorldGates();
+  dropGarrisons(); clearVehicles(); dropCrash(); dropInstalls(); dropCities(); dropToxic(); clearBridges(); clearPiers();
   setCreatureEnv(null); clearCreatures();
   setRobotEnv(null); clearRobots();
   setBanditEnv(null); clearBandits();
@@ -614,6 +642,7 @@ export function keepOnPlanet(dt: number) {
   const pcx = Math.floor(G.pos.x / CHUNK), pcz = Math.floor(G.pos.z / CHUNK);
   for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) OW.chunks.set(ckey(pcx + i, pcz + j), buildChunk(pcx + i, pcz + j));
   updateStructs(G.pos.x, G.pos.z);
+  syncWorldGates(OW.terrain!, G.pos.x, G.pos.z);
   showToast('You have gone round the world');
 }
 

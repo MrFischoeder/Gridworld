@@ -1,5 +1,5 @@
 // Loading places (dungeon sectors, the open world) and moving between them.
-import { spawnAuthority } from './remote';
+import { drawClosedChest } from './chestmodel';
 import { riding, getOff } from './ride';
 import { SHIP_NAME } from './lander';
 import * as THREE from 'three';
@@ -8,6 +8,8 @@ import { placeCarrier, dropCarrier } from './datacarriers';
 import { landingSite } from '../gen/landing';
 import { Terrain } from '../gen/terrain';
 import { scene, fog, lineMat, add, V, fillMat, GRID } from './render';
+import { dungeonTurrets } from '../gen/mountedturrets';
+import { clearMountedTurrets, loadMountedTurrets, mountedTurretHit } from './mountedturrets';
 import { cityEntrance, dungeonSeed } from '../gen/citydungeons';
 import { G, W } from '../game';
 import { hash, OPP, DIRV, type Dir } from '../core/rng';
@@ -18,13 +20,11 @@ import { findPoi, allVillages, worldDist, nearX, poisNear, GRIDHOLM_ID, CHUNK, t
 import { isDiscovered } from '../save';
 import { WALL_TIERS, STONE_TIER, HOUSE, WALK, type VillageMap } from '../gen/village';
 import { placeTunnelDoors, tryPlaceDoor, type PlacedDoor } from '../gen/doors';
-import { makeDoor, makeStair, arriveVia, signTexture } from './doors';
+import { makeDoor, makeStair, disposeStair, arriveVia, signTexture } from './doors';
 import { makeChest, makeHatch, setCrystalXp } from './loot';
 import { placeCrystals, clearCrystals } from './flora';
 import { decorateDungeon } from './dungeondeco';
 import { generateShip } from '../gen/ship';
-import { setRobotEnv, spawnGuards } from './robots';
-import { dangerAt } from '../gen/danger';
 import { clearFires } from './cooking';
 import { clearBenches } from './benches';
 import { clearFlags, cancelPlacing } from './claims';
@@ -66,12 +66,13 @@ export function voxelObject(grid: VoxelGrid, skyY = Infinity, outline?: OutlineS
 
 /** Removes every entity of the current place (the open world also unloads its chunks and structures). */
 function clearLevel() {
-  dropCarrier();
+  dropCarrier(); clearMountedTurrets();
   closeWorld(); leaveCave(); clearCrystals(); clearFires(); clearBenches(); clearFlags(); cancelPlacing(true); cancelBridgePlacing(true); cancelPierPlacing(true); clearBoats(); clearBases(); clearTurrets();
   if (worldGroup) { scene.remove(worldGroup); worldGroup.traverse((o) => (o as THREE.Mesh).geometry?.dispose()); worldGroup = null; }
   [...W.crystals.map((c) => c.m), ...W.pickups.map((p) => p.g), ...W.chests.map((c) => c.g), ...W.doors.map((d) => d.g), ...W.bosses.map((b) => b.g),
     ...W.orbs.map((o) => o.m), ...W.drones.map((t) => t.g), ...W.npcs.map((n) => n.g)].forEach((o) => scene.remove(o));
   if (W.hatch) scene.remove(W.hatch.g);
+  W.portals.forEach(disposeStair);
   W.crystals = []; W.pickups = []; W.doors = []; W.orbs = []; W.chests = []; W.bosses = []; W.drones = []; W.npcs = []; W.portals = [];
   W.hatch = null; W.spawnCells = []; W.arrivalStair = null; W.villageWalk = []; W.nearNpc = null; W.talkNpc = null;
   G.map = null;
@@ -120,6 +121,7 @@ export function loadDungeon(arriveDir: string | null) {
     const name = ruinName(d.ruinId);
     W.portals.push(p.key === 'V'
       ? makeStair(p, pd, placed.length - 1, '▲ ' + (d.depth > 1 && !wreck ? 'DEPTH ' + (d.depth - 1) : name.toUpperCase()), d.depth > 1 && !wreck ? 'Stairs up to depth ' + (d.depth - 1) : 'Stairs up to the ' + name, () => { if (d.depth > 1 && !wreck) ascend(); else exitToRuin(); })
+      : p.key === 'D' ? makeStair(p, pd, placed.length - 1, '▼ DEPTH ' + (d.depth + 1), 'Stairs down to depth ' + (d.depth + 1), descend)
       : makeStair(p, pd, placed.length - 1, (p.up ? '▲ ' : '▼ ') + 'SECTOR ' + tx + ', ' + tz, 'Stairs ' + (p.up ? 'up' : 'down') + ' to sector ' + tx + ', ' + tz, () => travel(p.dir)));
   }
   W.bosses = map.bosses.map(makeBoss).filter((x) => !!x);
@@ -132,13 +134,10 @@ export function loadDungeon(arriveDir: string | null) {
     const x = i + g.ox, y = j + g.oy, z = k + g.oz;
     if (y >= 0 && y <= 2 && g.empty(x, y, z) && g.empty(x, y + 1, z) && g.empty(x, y + 2, z) && !g.empty(x, y - 1, z)) W.spawnCells.push([x, y, z]);
   }
-  // a crashed ship is guarded by robots (placed by the generator) and only a few stray drones
+  // A crashed ship retains only a few stray drones alongside its anchored security guns.
   for (let i = 0; i < (wreck ? 2 : map.rooms + 1 + d.depth); i++) { const t = makeDrone(); placeDrone(t); W.drones.push(t); }
-  if (wreck) {
-    const poi = findPoi(c.world, d.ruinId)!, lv = Math.max(2, dangerAt(c.world, poi.x, poi.z, true));
-    setRobotEnv({ ground: () => 0, danger: () => lv, nearRuin: () => false, forbidden: () => false, water: () => null }, { indoor: true });
-    if (spawnAuthority()) spawnGuards(map.guards ?? [], lv); // else the player already inside has them (shared foes)
-  }
+  // Ship security and labyrinth defences are anchored guns, separate from roaming enemy robots.
+  loadMountedTurrets(dungeonTurrets(map, G.grid)); G.obstacle = mountedTurretHit;
   onDungeonLoaded(map);
   placeCarrier();
   setMiniMode('voxel'); buildMini();
@@ -182,7 +181,7 @@ export function villageDeco(map: VillageMap, y0 = 0) {
 }
 /** The hero's bed (a wooden frame with a headboard, a mattress, a pillow and a blanket) and chest, in their house. */
 function homeDeco(pb: PropBatch, h: NonNullable<VillageMap['house']>, y0: number) {
-  const WOOD = 0xb8b060, CLOTH = 0x9dffb4, GOLD = 0xffd060, { x0, z0, x1, z1 } = h.bed;
+  const WOOD = 0xb8b060, CLOTH = 0x9dffb4, { x0, z0, x1, z1 } = h.bed;
   for (const [x, z] of [[x0, z0], [x1 - 0.12, z0], [x1 - 0.12, z1 - 0.12], [x0, z1 - 0.12]]) pb.box(x, y0, z, x + 0.12, y0 + 0.3, z + 0.12, WOOD);
   pb.box(x0, y0 + 0.3, z0, x1, y0 + 0.42, z1, WOOD);
   pb.box(x0, y0, z0 - 0.06, x1, y0 + 1.0, z0 + 0.06, WOOD); // headboard against the wall
@@ -193,12 +192,7 @@ function homeDeco(pb: PropBatch, h: NonNullable<VillageMap['house']>, y0: number
   pb.box(x0 + 0.02, y0 + 0.5, bz, x1 - 0.02, by, z1 - 0.02, WOOD);
   for (let z = bz + 0.3; z < z1 - 0.1; z += 0.3) pb.seg(CLOTH, [x0 + 0.03, by + 0.005, z], [x1 - 0.03, by + 0.005, z]);
   pb.box(x0 + 0.02, by, bz, x1 - 0.02, by + 0.05, bz + 0.25, CLOTH);
-  // the chest: a box with a lid, iron bands and a lock plate
-  const { x, z } = h.chest, w = 0.5, d = 0.34;
-  pb.box(x - w, y0, z - d, x + w, y0 + 0.5, z + d, GOLD);
-  pb.box(x - w - 0.03, y0 + 0.5, z - d - 0.03, x + w + 0.03, y0 + 0.66, z + d + 0.03, GOLD);
-  for (const bx of [x - w * 0.6, x + w * 0.6]) pb.line(GOLD, [bx, y0, z - d - 0.01], [bx, y0 + 0.67, z - d - 0.04], [bx, y0 + 0.67, z + d + 0.04], [bx, y0, z + d + 0.01]);
-  pb.box(x + w + 0.01, y0 + 0.36, z - 0.08, x + w + 0.05, y0 + 0.56, z + 0.08, GOLD);
+  drawClosedChest(pb, h.chest.x, y0, h.chest.z);
 }
 const STAKE = 0xb8b060, SCRAP = 0x8fb89a;
 /** A repeatable pseudo-random number for drawing a village's fence (0..1). */
@@ -383,14 +377,14 @@ export function saveOverworldPos() {
 // ---------- moving between places ----------
 export function descend() {
   const d = G.char.dungeon;
-  if (!d || d.cave || G.trans || !W.hatch || d.depth >= MAX_DUNGEON_DEPTH) return;
+  if (!d || d.cave || (!W.hatch && !W.portals.some(p => p.key === 'D')) || d.depth >= MAX_DUNGEON_DEPTH) return;
   d.depth++; saveChar(); loadDungeon('V'); showToast('Depth ' + depth()); arriveVia(W.arrivalStair);
 }
 export function ascend() {
   const d = G.char.dungeon;
   if (!d || d.cave) return;
   if (d.depth <= 1) { exitToRuin(); return; }
-  d.depth--; saveChar(); loadDungeon(null); showToast('Depth ' + depth()); arriveVia(null);
+  d.depth--; saveChar(); loadDungeon('D'); showToast('Depth ' + depth()); arriveVia(W.arrivalStair);
 }
 export function travel(dir: Dir) {
   const d = G.char.dungeon!;

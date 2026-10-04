@@ -4,6 +4,105 @@ export interface Change { v: string; date: string; title: string; notes: string[
 
 export const CHANGELOG: Change[] = [
   {
+    v: '0.123.0', date: '2026-10-04', title: 'Faceted natural boulders',
+    notes: [
+      'Scattered stones and large terrain boulders now have broad bodies, uneven shoulders and flat broken crowns instead of pyramid tips. Their faceted shapes vary deterministically.',
+      'The same stone model updates rubble in ruins, cave entrances, trail markers and decorative stones throughout the world, with opaque dark fills beneath the wireframe.',
+      'Coloured ore veins follow the new stone faces and their folds. Rock placement, collision, mining rewards and existing harvested-rock saves are preserved.',
+    ],
+  },
+  {
+    v: '0.122.0', date: '2026-10-04', title: 'Manual gate dialling and animated transit',
+    notes: [
+      'Symbols light up on the ring as you enter them. Select three symbols, then press Activate; Cancel clears the draft. The console shows symbols without their English names.',
+      'The receiving gate displays the initiating gate address in three large slots on its upper lintel, and in its console.',
+      'Walk or drive through for a five-second journey with continuous light trails flying past. Vehicle passengers and roof gunners see the same transit and keep their seats and cargo.',
+      'Entering before the 45-second deadline reserves your journey. Both gates stay open and their terminals stay locked until every accepted traveller arrives; no new journey starts after the deadline.',
+    ],
+  },
+  {
+    v: '0.121.0', date: '2026-10-04', title: 'Vehicle gates and permanent address tablets',
+    notes: [
+      'Your gate address is engraved on its console. A stationary stone tablet nearby permanently lists three seeded random destination addresses.',
+      'Connections stay open in both directions for 45 real seconds, including time in menus. Both terminals lock until the connection expires; crossing never resets the timer.',
+      'Larger rings and clear approaches admit the largest Mastodon, including its roof cannon and gunner. Driving through preserves the vehicle, condition, fuel, equipment and cargo.',
+      'Multiplayer passengers and gunners travel with the driver, retain their seats and appear immediately at the destination. Two-player and three-player vehicle crossings are supported.',
+    ],
+  },
+  {
+    v: '0.120.0', date: '2026-10-04', title: 'Ancient addressed world gates',
+    notes: [
+      'Forty ancient alien gates stand on dry ground across the continents, with one near Gridholm. Each weathered octagonal stone ring has six distinct symbols; its two grounded corners are unmarked.',
+      'Use the nearby console with E, then press three symbols in address order. Every gate has a unique address, recorded in the engraved archive alongside its own address.',
+      'A valid address opens a shimmering portal for 45 seconds of active play. Walk through on foot to arrive safely outside the destination ring, with your health and inventory intact; dial the previous gate to return.',
+      'Each gate has its own seeded scatter of boulders. Cleared level approaches need no jumping, and discovered gates have octagonal cyan markers on both surface maps.',
+    ],
+  },
+  {
+    v: '0.119.0', date: '2026-10-04', title: 'One vehicle condition and protected occupants',
+    notes: [
+      'Every vehicle has one condition percentage. Gunfire, direct enemy attacks and collisions damage this pool; wheels and engines no longer break separately.',
+      'Drivers, passengers and roof gunners take no damage while aboard, including in the open Scout and another player\'s vehicle. The hit that disables a vehicle never spills onto its occupants.',
+      'Ordinary driving causes no wear. A vehicle retains full performance until condition reaches 0%, then stops and its occupants get out unharmed.',
+      'Service and repair kits restore the shared condition, including disabled vehicles. Existing saves retain hull damage, equipment and cargo while old wheel and engine faults are retired.',
+    ],
+  },
+  {
+    v: '0.118.0', date: '2026-10-04', title: 'Timber camps and detailed props',
+    notes: [
+      'Bandit camps are enclosed by tall sharpened timber palisades, with open north and south entrances.',
+      'Treasure chests and camp stashes have wooden planks, curved lids, metal bands, hinges, locks and carrying handles. Dungeon lids still open on their hinges.',
+      'Village halls, ancient facilities, power controls and the crashed ship use the elder\'s CRT computer model with a keyboard and separate case.',
+    ],
+  },
+  {
+    v: '0.117.0', date: '2026-10-03', title: 'City posts and rival factions',
+    notes: [
+      'Each ruined city has sixteen spaced-out enemy posts instead of hundreds. At most three nearby posts are awake at once, with smaller fixed groups.',
+      'A defeated post stays quiet for ten real minutes of active world time. Reinforcements wait until you move away from the post. Casualties and wounded survivors persist when you leave, reload or join multiplayer.',
+      'Random wilderness encounters no longer spawn inside cities: their fixed garrisons provide the threat.',
+      'Robots and wildlife can attack nearby bandits, who can fight back. Robots and wildlife never target or damage each other. Players remain hostile targets for all three groups.',
+      'Melee, shots, delayed robot bursts and artillery follow faction rules. Enemy-on-enemy kills do not grant the player direct gold, kill credit or kill-based quest progress.',
+    ],
+  },
+  {
+    v: '0.116.0', date: '2026-10-03', title: 'Ravines and rough country',
+    notes: [
+      'Dry mainland ravines are 50–100 metres wide and 320–600 metres long, with steep walls and a flat bottom. Two broad paths descend along their walls so you can walk down and back out without jumping.',
+      'Use a Bridge Kit beside a ravine to stake out a vehicle-width crossing. Bring the materials to its sign; completed bridges carry people and cars over the gap and are shared in multiplayer.',
+      'Local boulder fields contain dense clusters of large rocks that block vehicles, encouraging off-road detours. Existing roads and the starting area remain clear.',
+      'Generated ravines and boulders also appear in existing worlds; terrain around saved structures can change. A new world is recommended.',
+    ],
+  },
+  {
+    v: '0.115.0', date: '2026-10-03', title: 'Across the great seas',
+    notes: [
+      'Each world has two or three large continents separated by wide seas. Long sea crossings give boats and coastal transport a purpose.',
+      'There are twelve large ruined cities instead of ten, spread evenly between the continents. Each still has four underground entrances.',
+      'Old industrial installations are searched for on dry continents, including distant shores; their previous narrow distance bands no longer force them into water.',
+      'Gridholm remains on the home continent, with dry land around the starting area. Small offshore islands and the polar ice remain.',
+      'This changes generated terrain and settlements in existing worlds. Start a new world for a fresh exploration of the new geography.',
+    ],
+  },
+  {
+    v: '0.114.1', date: '2026-10-03', title: 'Anchored armoured defences',
+    notes: [
+      'Ship interiors now use stationary mounted security turrets instead of walking robot guards. Labyrinth turrets also stay anchored: only their aiming head turns.',
+      'Heavy armour increases turret health from 8 to 32 and absorbs half of incoming damage. Their fixed housing and mounting brace are clearly visible.',
+      'Turrets maintain automatic fire every 0.45 seconds while a player remains visible in range. Walls and closed doors still block shots.',
+    ],
+  },
+  {
+    v: '0.114.0', date: '2026-10-03', title: 'Small steps and ancient defences',
+    notes: [
+      'Ruin stairwells now have real 25 cm steps. Walk or sprint up and down without jumping.',
+      'The single descent on floors 1 and 2 is now a marked staircase near the return stairs, rather than a flat hatch. The three-floor limit remains.',
+      'Labyrinths contain automatic ancient turrets mounted in walls, floors and ceilings. Their sensors warn before firing; walls and closed doors block their shots.',
+      'Shoot or strike a turret to destroy it. Destroyed defences stay gone after reloading and their destruction is shared in multiplayer.',
+      'These ancient defences use a reusable mount and model specification for future player construction. Building these mounted variants is not available yet.',
+    ],
+  },
+  {
     v: '0.113.0', date: '2026-10-03', title: 'Three floors, one way down',
     notes: [
       'Ruin and city-vault labyrinths have at most three floors. Floors 1 and 2 each have exactly one descent; floor 3 has none.',

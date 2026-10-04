@@ -4,7 +4,47 @@
 // The owner's foes go for the nearest player (`withTarget`): for a turn the foe sees that player where you are, and
 // whatever it does to "you" in that turn is sent to them instead.
 import * as THREE from 'three';
-import { G } from '../game';
+import { G, W } from '../game';
+import { hostile, type Faction } from '../core/factions';
+
+export interface CombatFoe { kind: string; hp: number; p: THREE.Vector3; r: number }
+export const factionOf = (f: CombatFoe): Faction => f.kind === 'robot' ? 'robot' : f.kind === 'bandit' ? 'bandit' : 'wildlife';
+export const combatFoes = (): CombatFoe[] => [...W.robots, ...W.creatures, ...W.bandits];
+let combatHit: (target: CombatFoe, dmg: number, source: CombatFoe) => void = () => {};
+let visible: (from: THREE.Vector3, to: THREE.Vector3) => boolean = () => true;
+let actor: CombatFoe | null = null, npcTarget: CombatFoe | null = null;
+export const actingFoe = () => actor;
+export const targetingFoe = () => npcTarget !== null;
+export function setCombatHooks(h: { hit: typeof combatHit; visible: typeof visible }) { combatHit = h.hit; visible = h.visible; }
+export function hitCombatFoe(target: CombatFoe, dmg: number, source: CombatFoe) {
+  if (target.hp > 0 && hostile(factionOf(source), factionOf(target))) combatHit(target, dmg, source);
+}
+/** Run the existing mind against the nearest visible hostile faction or a player. */
+export function withFoeTarget(f: CombatFoe, fn: () => void) {
+  const wasActor = actor; actor = f;
+  let target: CombatFoe | null = null, best = Math.hypot(G.pos.x - f.p.x, G.pos.z - f.p.z);
+  for (const p of others()) best = Math.min(best, Math.hypot(p.x - f.p.x, p.z - f.p.z));
+  for (const candidate of combatFoes()) {
+    if (candidate === f || candidate.hp <= 0 || !hostile(factionOf(f), factionOf(candidate))) continue;
+    const distance = candidate.p.distanceTo(f.p);
+    if (distance > 60 || distance >= best || !visible(f.p, candidate.p)) continue;
+    best = distance; target = candidate;
+  }
+  try {
+    if (!target) { withTarget(f.p.x, f.p.z, fn); return; }
+    const savedPos = G.pos.clone(), velocity = G.vel.clone(), hp = G.hp, flash = G.dmgFlash;
+    const oldProxy = proxy, oldTarget = npcTarget;
+    npcTarget = target; proxy = true;
+    // Creature and robot positions are body centres; the old minds aim 1.1 m above feet.
+    G.pos.set(target.p.x, target.p.y - 1.1, target.p.z); G.vel.set(0, 0, 0);
+    try { fn(); } finally {
+      const damage = hp - G.hp;
+      G.pos.copy(savedPos); G.vel.copy(velocity); G.hp = hp; G.dmgFlash = flash;
+      proxy = oldProxy; npcTarget = oldTarget;
+      if (damage > 0) hitCombatFoe(target, damage, f);
+    }
+  } finally { actor = wasActor; }
+}
 
 export interface RemoteFoe { owner: number; nid: number; x: number; y: number; z: number; h: number; hp: number; maxHp: number }
 const remote = new WeakMap<object, RemoteFoe>();
@@ -31,10 +71,10 @@ export interface Target { id: number; x: number; y: number; z: number }
 let others: () => Target[] = () => [];
 let hurtPeer: (id: number, dmg: number, armour: boolean) => void = () => {};
 let authority: () => boolean = () => true;
-let hit: (o: object, dmg: number) => void = () => {};
+let hit: (o: object, dmg: number, npc?: boolean) => void = () => {};
 let bolt: (p: THREE.Vector3, v: THREE.Vector3, color: number) => void = () => {};
 /** world/foesync.ts: who else is here, how to hurt them, whether your game spawns the foes here. */
-export function setRemoteHooks(h: { others: () => Target[]; hurt: (id: number, dmg: number, armour: boolean) => void; authority: () => boolean; hit: (o: object, dmg: number) => void; bolt: (p: THREE.Vector3, v: THREE.Vector3, color: number) => void }) {
+export function setRemoteHooks(h: { others: () => Target[]; hurt: (id: number, dmg: number, armour: boolean) => void; authority: () => boolean; hit: (o: object, dmg: number, npc?: boolean) => void; bolt: (p: THREE.Vector3, v: THREE.Vector3, color: number) => void }) {
   others = h.others; hurtPeer = h.hurt; authority = h.authority; hit = h.hit; bolt = h.bolt;
 }
 /** Whether your game spawns the foes where you are (alone, or the first player here): the others see yours. */
@@ -42,7 +82,7 @@ export const spawnAuthority = () => authority();
 /** The other players here (same place, in the game), for bolts and blasts that may hit them. */
 export const otherPlayers = () => others();
 /** You hit another player's foe: tell its owner. */
-export const hitOwner = (o: object, dmg: number) => hit(o, dmg);
+export const hitOwner = (o: object, dmg: number, npc = false) => hit(o, dmg, npc);
 /** One of your foes fired a bolt (the others draw it). */
 export const boltOut = (p: THREE.Vector3, v: THREE.Vector3, color: number) => bolt(p, v, color);
 export const hurtOther = (id: number, dmg: number, armour = true) => hurtPeer(id, dmg, armour);

@@ -5,11 +5,12 @@
 // owner (`fhit`), whose game takes it; a foe that dies of it is reported back (`kill`) and the shooter's copy dies as
 // if it were their own (loot, xp, bounties). The owner's foes go for the nearest player (`withTarget`): the harm they
 // do to another player is sent to them (`hurt`), and the bolts they fire are drawn by everyone (`bolt`).
+import { myCarList, damageVehicle } from './vehicles';
+import { hurtPlayer } from './damage';
 import * as THREE from 'three';
 import { G, W } from '../game';
 import { net, online, relay, onRelay, type Relay } from '../net/client';
 import { nearX } from '../gen/regions';
-import { armoured } from '../character';
 import { V } from './render';
 import { myLoc } from './peers';
 import { setRemoteHooks, markRemote, unmarkRemote, remoteOf, type Target } from './remote';
@@ -78,7 +79,7 @@ function tell() {
     const n = nidOf(f), t = typeOf(f);
     next.set(n, f);
     const kind = t === TYPE.robot ? (f as Robot).model : t === TYPE.bandit ? (f as Bandit).role : (f as Creature).kind;
-    list.push([n, t, kind, r2(f.p.x), r2(f.p.y), r2(f.p.z), r2(f.heading), r2(f.hp), f.maxHp, r2(f.level), f.state]);
+    list.push([n, t, kind, r2(f.p.x), r2(f.p.y), r2(f.p.z), r2(f.heading), r2(f.hp), f.maxHp, r2(f.level), f.state, f.cityPost]);
   }
   for (const [n, f] of mine) if (!next.has(n) && f.hp <= 0) dying.set(n, now + FOESYNC.dead);
   for (const [n, until] of dying) { if (until < now) dying.delete(n); else list.push([n, -1]); }
@@ -135,6 +136,7 @@ function heard(from: number, loc: string, list: unknown[]) {
     }
     const r = remoteOf(f);
     if (r) { r.x = x; r.y = y; r.z = z; r.h = h; r.hp = hp; r.maxHp = maxHp; }
+    if (typeof e[11] === 'string') f.cityPost = e[11];
     if (typeof state === 'string') (f as { state: string }).state = state;
   }
   for (const [n, c] of [...o.foes]) if (!seen.has(n)) { o.foes.delete(n); drop(c); } // gone from its owner's game
@@ -148,9 +150,9 @@ onRelay((m: Relay) => {
     const f = mineOf(+(m.nid as number));
     if (!f) return;
     const flash = G.hitFlash;
-    damageFoe(f, Math.max(0, Math.min(1e4, +(m.dmg as number) || 0)));
+    damageFoe(f, Math.max(0, Math.min(1e4, +(m.dmg as number) || 0)), !m.npc);
     G.hitFlash = flash; // not your shot
-    if (f.hp <= 0) relay({ t: 'kill', nid: m.nid }, m.from);
+    if (f.hp <= 0 && !m.npc) relay({ t: 'kill', nid: m.nid }, m.from);
   } else if (m.t === 'kill') { // your shot killed their foe: it dies here as yours (loot, xp, bounties)
     const c = copyOf(m.from, +(m.nid as number));
     if (!c) return;
@@ -160,9 +162,14 @@ onRelay((m: Relay) => {
   } else if (m.t === 'hurt') { // their foe hurt you
     if (m.loc !== undefined && m.loc !== myLoc()) return;
     const dmg = Math.max(0, Math.min(500, +(m.dmg as number) || 0));
-    if (!dmg || foeRules.playerSafe()) return;
-    if (foeRules.shielded()) { foeRules.shieldHit(dmg * 0.5); return; }
-    G.hp -= m.a ? armoured(dmg) : dmg; G.dmgFlash = 0.35;
+    if (!dmg) return;
+    if (m.car !== undefined || m.carIndex !== undefined) {
+      const v = myCarList().find(v => v.st.id === m.car) ?? (m.car === undefined && Number.isInteger(m.carIndex) ? myCarList()[Number(m.carIndex)] : undefined);
+      if (v && v.riders.some(r => r?.who === 'peer:' + m.from)) damageVehicle(v, dmg);
+      return;
+    }
+    if (foeRules.playerSafe()) return;
+    hurtPlayer(dmg, !!m.a);
   } else if (m.t === 'bolt') {
     if (m.loc !== myLoc() || !Array.isArray(m.p) || !Array.isArray(m.v)) return;
     const [x, y, z] = m.p as number[], [vx, vy, vz] = m.v as number[];
@@ -174,7 +181,7 @@ setRemoteHooks({
   others,
   authority,
   hurt: (id, dmg, a) => { relay({ t: 'hurt', dmg: Math.round(dmg * 100) / 100, a, loc: myLoc() }, id); },
-  hit: (o, dmg) => { const r = remoteOf(o); if (r) relay({ t: 'fhit', nid: r.nid, dmg }, r.owner); },
+  hit: (o, dmg, npc) => { const r = remoteOf(o); if (r) relay({ t: 'fhit', nid: r.nid, dmg, npc }, r.owner); },
   bolt: (p: THREE.Vector3, v: THREE.Vector3, c: number) => { if (online() && company()) relay({ t: 'bolt', loc: myLoc(), p: [r2(p.x), r2(p.y), r2(p.z)], v: [r2(v.x), r2(v.y), r2(v.z)], c }); },
 });
 

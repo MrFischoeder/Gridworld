@@ -62,8 +62,7 @@ export const SEATS: Record<VehicleModel, Seat[]> = {
 };
 /**
  * The solid parts of each body as boxes [x0, y0, z0, x1, y1, z1] (body coordinates; the wheels are added from the
- * spec). A shot meets these or the people inside: whatever is nearer along its line takes it, so through a window,
- * over the side of an open tub or through the gunner's hatch it hits the person, anywhere else the vehicle.
+ * spec). A shot meets these or an occupant silhouette: both reduce the same vehicle condition pool.
  */
 export const HULL_BOXES: Record<VehicleModel, number[][]> = {
   scout: [
@@ -93,11 +92,8 @@ export const wheelCount = (m: VehicleModel) => VEHICLES[m].axles.length * 2;
  */
 export const FUEL_BURN = 0;
 
-/**
- * Part conditions in percent. A wheel at -1 is missing; at 0 it is wrecked. Either stops the vehicle,
- * as does a dead engine or a wrecked hull. Worn parts cost speed.
- * `hull` is in hull points (max = the spec's `hull`), `fuel` in litres (max = `tank`).
- */
+/** A single condition pool (`hull`, in points), fuel and optional equipment.
+ * Wheels and engine remain in the save format only for older characters; they have no separate damage. */
 export interface VehicleParts {
   wheels: number[]; engine: number; gun: boolean; hull: number; fuel: number;
   /** Engine upgrade slots (ENGINE_MODS long): Turbocharger, Engine Guard. */
@@ -109,52 +105,41 @@ export const ENGINE_UPGRADES: ItemKey[] = ['turbo', 'eguard', 'drivetrain'];
 export const freshParts = (m: VehicleModel): VehicleParts => ({ wheels: Array(wheelCount(m)).fill(100), engine: 100, gun: false, hull: VEHICLES[m].hull, fuel: VEHICLES[m].tank, mods: Array(ENGINE_MODS).fill(null) });
 /** Saves from before hull points and fuel: a full hull and a full tank. */
 export function upgradeParts(m: VehicleModel, p: VehicleParts): VehicleParts {
+  p.wheels = Array(wheelCount(m)).fill(100); p.engine = 100;
   p.hull ??= VEHICLES[m].hull; p.fuel ??= VEHICLES[m].tank; p.mods ??= Array(ENGINE_MODS).fill(null);
   return p;
 }
 
-/** The Vehicle Repair Kit: a field patch (hull +40% of full, engine +30, every fitted wheel +25). It cannot bring back a
- * wreck (hull 0: Hull Plating in the service window) or a missing wheel. Returns what it did, or '' when nothing needed it. */
-export const KIT = { hull: 0.4, engine: 30, wheel: 25 };
+/** Field repairs restore the same condition pool as service repairs, including a disabled vehicle. */
+export const KIT = { hull: 0.4 };
 export function repairWithKit(m: VehicleModel, p: VehicleParts): string {
-  if (p.hull <= 0) return '';
-  const max = VEHICLES[m].hull, out: string[] = [];
-  const h = Math.min(max, p.hull + max * KIT.hull);
-  if (h > p.hull) { out.push(`hull ${Math.round(p.hull / max * 100)} → ${Math.round(h / max * 100)}%`); p.hull = h; }
-  if (p.engine < 100) { const e = Math.min(100, p.engine + KIT.engine); out.push(`engine ${Math.round(p.engine)} → ${Math.round(e)}%`); p.engine = e; }
-  let w = 0;
-  p.wheels = p.wheels.map((c) => { if (c < 0 || c >= 100) return c; w++; return Math.min(100, c + KIT.wheel); });
-  if (w) out.push(`${w} wheel${w > 1 ? 's' : ''} +${KIT.wheel}%`);
-  return out.join(', ');
+  const max = VEHICLES[m].hull, before = p.hull;
+  p.hull = Math.min(max, Math.max(0, before) + max * KIT.hull);
+  return p.hull > before ? `condition ${Math.round(before / max * 100)} → ${Math.round(p.hull / max * 100)}%` : '';
 }
-
-/** Why a vehicle will not move, or null when it can. */
+/** Only zero condition (or no fuel) prevents driving. */
 export function immobile(p: VehicleParts): string | null {
-  if (p.hull <= 0) return 'The hull is shot to pieces.';
+  if (p.hull <= 0) return 'Vehicle condition is 0%.';
   if (p.fuel <= 0) return 'The tank is empty.';
-  if (p.wheels.some((w) => w < 0)) return 'A wheel is missing.';
-  if (p.wheels.some((w) => w === 0)) return 'A wheel is wrecked.';
-  if (p.engine <= 0) return 'The engine is dead.';
   return null;
 }
-/** Speed / acceleration factor from the state of the parts (1 = like new). */
-export function partPerformance(p: VehicleParts): number {
-  const wheels = p.wheels.reduce((a, w) => a + Math.max(0, w), 0) / p.wheels.length / 100;
-  return (0.55 + 0.45 * wheels) * (0.45 + 0.55 * p.engine / 100);
-}
+/** A usable vehicle retains full driving performance. */
+export function partPerformance(p: VehicleParts): number { return p.hull > 0 ? 1 : 0; }
 const has = (p: VehicleParts, k: ItemKey) => !!p.mods?.includes(k);
 /** Top speed and acceleration factors from engine upgrades. */
 export const engineBoost = (p: VehicleParts) => {
   const t = has(p, 'turbo'), d = has(p, 'drivetrain');
   return { speed: (t ? 1.15 : 1) * (d ? 1.2 : 1), accel: (t ? 1.3 : 1) * (d ? 1.25 : 1) };
 };
-/** Damage to the engine, halved by an Engine Guard. */
-export function hurtEngine(p: VehicleParts, dmg: number) { p.engine = Math.max(0, Math.round(p.engine - dmg * (has(p, 'eguard') ? 0.5 : 1) * (has(p, 'drivetrain') ? 0.5 : 1))); }
-/** Overall health 0..1: wheels (missing ones count as 0), engine and hull. */
-export function health(m: VehicleModel, p: VehicleParts): number {
-  const wheels = p.wheels.reduce((a, w) => a + Math.max(0, w), 0) / p.wheels.length;
-  return (wheels + p.engine + Math.max(0, p.hull) / VEHICLES[m].hull * 100) / 300;
+/** All attacks and impacts reduce one condition pool; equipment can protect the whole vehicle. */
+export function damageCondition(p: VehicleParts, damage: number): boolean {
+  if (!Number.isFinite(damage) || damage <= 0 || p.hull <= 0) return false;
+  p.hull = Math.max(0, p.hull - damage * (has(p, 'eguard') ? .5 : 1) * (has(p, 'drivetrain') ? .5 : 1));
+  return p.hull === 0;
 }
+/** Impact damage only; ordinary movement and slopes do not cause wear. */
+export const crashDamage = (m: VehicleModel, speed: number) => Math.max(0, Math.abs(speed) - 6) * 2.5 * VEHICLES[m].hull / 120;
+export function health(m: VehicleModel, p: VehicleParts): number { return Math.max(0, Math.min(1, p.hull / VEHICLES[m].hull)); }
 /** What Kuba pays: half the price for a vehicle in perfect shape, less for a wreck; a fitted cannon adds its part value. */
 export function resaleValue(m: VehicleModel, p: VehicleParts, cannonPrice: number, buyback: number): number {
   return Math.floor(VEHICLES[m].price / 2 * (0.3 + 0.7 * health(m, p)) + (p.gun ? cannonPrice * buyback : 0));

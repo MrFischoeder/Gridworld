@@ -41,7 +41,7 @@ describe('toxic fog zones', () => {
   it('come on islands and far out on land, never near home or a village', () => {
     const isles = zones.filter((f) => f.kind === 'isle'), land = zones.filter((f) => f.kind === 'land');
     expect(isles.length).toBeGreaterThan(4);
-    expect(land.length).toBeGreaterThan(4);
+    expect(land.length).toBeGreaterThanOrEqual(4); // Less mainland area, with the same fog placement density.
     for (const f of zones) {
       expect(Math.hypot(f.x, f.z)).toBeGreaterThan(FOG.isleFrom);
       expect(f.r).toBeLessThanOrEqual(FOG.maxR);

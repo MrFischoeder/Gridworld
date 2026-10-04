@@ -1,3 +1,4 @@
+import { continents, nearestContinent } from '../src/gen/continents';
 import { describe, it, expect } from 'vitest';
 import { Terrain } from '../src/gen/terrain';
 import { regionInfo, wrapR, wrapC, wrapX, wrapDx, nearX, worldDist, NR, WORLD_W, X_MIN, POLE_Z, POLAR_Z, REGION, CHUNK, latitude } from '../src/gen/regions';
@@ -82,7 +83,8 @@ describe('villages', () => {
     for (const w of WORLDS) {
       const vs = allVillages(w), t = new Terrain(w);
       expect(vs[0].id).toBe(GRIDHOLM_ID); expect(vs[0].name).toBe('Gridholm');
-      expect(vs.length).toBeGreaterThan(90); // (the dead cities took the land of a few)
+      expect(vs.length).toBeGreaterThan(50); // Half the former land is now sea; settlement density on dry land is unchanged.
+      expect(new Set(vs.map(v => nearestContinent(w, v.x, v.z).i)).size).toBe(continents(w).length);
       // mean distance to the nearest other village: well settled near home, far apart out in the wilds
       const spacing = (lo: number, hi: number) => {
         const inb = vs.filter((v) => { const d = worldDist(v.x, v.z, 0, 0); return d >= lo && d < hi; });

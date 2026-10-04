@@ -24,7 +24,7 @@ export const SHARED: Field[] = [
   { f: 'bridgeSites', kind: 'list' }, { f: 'piers', kind: 'list' }, { f: 'boats', kind: 'list' }, { f: 'shuttle', kind: 'one' },
   { f: 'containers', kind: 'map', skip: (k) => k.startsWith('home:') }, // your house chest is yours
   { f: 'opened', kind: 'map' }, { f: 'unlocked', kind: 'map' }, { f: 'killed', kind: 'map' },
-  { f: 'harvest', kind: 'map' }, { f: 'camps', kind: 'map' }, { f: 'caravans', kind: 'map' },
+  { f: 'harvest', kind: 'map' }, { f: 'camps', kind: 'map' }, { f: 'cityGarrisons', kind: 'map' }, { f: 'caravans', kind: 'map' },
 ];
 const EMPTY: Partial<Record<keyof Char, () => unknown>> = { shuttle: () => ({ given: {}, v: 2 }) };
 

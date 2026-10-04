@@ -8,9 +8,9 @@
 //   assault    RD-06: a hunched heavy biped with a hammer arm; charges and smashes you off your feet
 // Like the creatures they are not saved. Where they turn up, and how many, is set by the danger level and the
 // shared threat budget (world/threat.ts): near the villages you meet none, further out ever heavier machines.
-import { stepRemote, withTarget, otherPlayers, hurtOther } from './remote';
+import { hurtPlayer } from './damage';
+import { targetingFoe, stepRemote, withFoeTarget, hitCombatFoe, otherPlayers, hurtOther } from './remote';
 import * as THREE from 'three';
-import { armoured } from '../character';
 import { scene, V, lineMat, add as addMat } from './render';
 import { G, W } from '../game';
 import { PropBatch, sharedFill } from './props';
@@ -28,6 +28,8 @@ import type { SpawnEnv } from './creatures';
 
 type State = 'patrol' | 'hunt' | 'return';
 export interface Robot {
+  /** Fixed city post; transmitted to prevent duplicate garrisons on another client. */
+  cityPost?: string;
   kind: 'robot'; model: RobotKind; boss?: false;
   g: THREE.Group; mat: THREE.LineBasicMaterial;
   p: THREE.Vector3; heading: number; speed: number;
@@ -212,6 +214,8 @@ function make(model: RobotKind, x: number, z: number, level: number, group: Robo
   group.push(r); W.robots.push(r);
   return r;
 }
+/** Fixed city roster, using the normal placement and collision checks. */
+export function spawnCityRobot(model: RobotKind, x: number, z: number, level: number, group: Robot[]): Robot | null { return make(model, x, z, level, group); }
 /** What turns up at this danger: a pack of scouts, a guardian patrol (maybe with a repair drone), a sentinel, an artillery walker, an assault construct. */
 function pickGroup(lv: number, ruin: boolean): RobotKind[] {
   const opts: [number, RobotKind[]][] = [];
@@ -290,15 +294,14 @@ function face(r: Robot, dx: number, dz: number, dt: number, rate = 5) {
   let dh = Math.atan2(dx, dz) - r.heading; dh = Math.atan2(Math.sin(dh), Math.cos(dh));
   r.heading += dh * Math.min(1, dt * rate);
 }
-/** A blow that reaches the player (a closed cab takes it instead). */
+/** A blow that reaches the player (any occupied vehicle takes it instead). */
 function hit(dmg: number, push = 0, from?: THREE.Vector3) {
-  if (foeRules.shielded()) { foeRules.shieldHit(dmg * 0.6); return; }
-  G.hp -= armoured(dmg * FOE_HIT); G.dmgFlash = 0.45;
+  if (hurtPlayer(dmg * FOE_HIT, true, .45)) return;
   if (push && from) { const d = V(G.pos.x - from.x, 0, G.pos.z - from.z).normalize(); G.vel.x += d.x * push; G.vel.z += d.z * push; G.vel.y += push * 0.4; }
 }
 
 // artillery shells: a ring marks where it will land, then the blast
-interface Shell { at: THREE.Vector3; t: number; dmg: number; ring: THREE.LineLoop }
+interface Shell { at: THREE.Vector3; t: number; dmg: number; source: Robot; ring: THREE.LineLoop }
 const shells: Shell[] = [];
 function lob(r: Robot) {
   const lead = V(G.vel.x, 0, G.vel.z).multiplyScalar(SHELL.flight * 0.6);
@@ -306,7 +309,7 @@ function lob(r: Robot) {
   at.y = env ? env.ground(at.x, at.z) + 0.1 : G.pos.y;
   const pts: THREE.Vector3[] = []; for (let i = 0; i < 24; i++) { const a = i / 24 * 6.283; pts.push(V(Math.cos(a) * SHELL.radius, 0, Math.sin(a) * SHELL.radius)); }
   const ring = new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(pts), addMat(0xff6a4a)); ring.position.copy(at); scene.add(ring);
-  shells.push({ at, t: SHELL.flight, dmg: ROBOTS.artillery.dmg * (1 + r.level * 0.1), ring });
+  shells.push({ at, t: SHELL.flight, dmg: ROBOTS.artillery.dmg * (1 + r.level * 0.1), source: r, ring });
   const muzzle = r.g.localToWorld(V(0, 1.25, 4.5)); burst(muzzle, 0xff6a4a, 14, 1);
 }
 function updateShells(dt: number, time: number) {
@@ -321,12 +324,16 @@ function updateShells(dt: number, time: number) {
       const e = Math.hypot(t.x - s.at.x, t.z - s.at.z);
       if (e < SHELL.radius && Math.abs(t.y - s.at.y) < 3) hurtOther(t.id, s.dmg * (1 - e / SHELL.radius * 0.6) * FOE_HIT);
     }
+    for (const b of [...W.bandits]) {
+      const e = Math.hypot(b.p.x - s.at.x, b.p.z - s.at.z);
+      if (e < SHELL.radius && Math.abs(b.p.y - s.at.y) < 3) hitCombatFoe(b, s.dmg * (1 - e / SHELL.radius * 0.6) * FOE_HIT, s.source);
+    }
     scene.remove(s.ring); s.ring.geometry.dispose(); shells.splice(i, 1);
   }
 }
 
 function think(r: Robot, dt: number, time: number) {
-  const s = ROBOTS[r.model], to = V(G.pos.x - r.p.x, G.pos.y + 1.1 - r.p.y, G.pos.z - r.p.z), dist = Math.hypot(to.x, to.z), safe = foeRules.playerSafe();
+  const s = ROBOTS[r.model], to = V(G.pos.x - r.p.x, G.pos.y + 1.1 - r.p.y, G.pos.z - r.p.z), dist = Math.hypot(to.x, to.z), safe = !targetingFoe() && foeRules.playerSafe();
   const sees = () => rayWorld(r.p, to.clone().normalize(), to.length()) >= to.length() - 0.5;
   r.timer -= dt; r.atkT -= dt;
   if (r.state === 'hunt' && (safe || dist > s.sight * 2.2)) r.state = 'return';
@@ -384,7 +391,7 @@ function think(r: Robot, dt: number, time: number) {
       if (dist < 3.2 + s.r * 0.5 && r.atkT <= 0) { r.atkT = 2; r.swing = 1; hit(22 * lvl, 9, r.p); burst(G.pos.clone(), ROBOT_COLOR, 14, 0.8); break; }
       if (r.atkT <= 0 && dist < 34 && sees()) {
         r.atkT = 3.2;
-        for (let i = 0; i < 3; i++) setTimeout(() => { if (W.robots.includes(r)) fireBolt(r.g.localToWorld(V(i % 2 ? 1.2 : -1.2, -0.2, 1.5)), s.dmg * lvl, 0xff9a3a); }, i * 180);
+        for (let i = 0; i < 3; i++) setTimeout(() => { if (W.robots.includes(r)) withFoeTarget(r, () => fireBolt(r.g.localToWorld(V(i % 2 ? 1.2 : -1.2, -0.2, 1.5)), s.dmg * lvl, 0xff9a3a)); }, i * 180);
       }
       break;
     }
@@ -431,8 +438,8 @@ export function updateRobots(dt: number, time: number) {
   if (!indoor && (spawnT -= dt) <= 0) { spawnT = 7; trySpawn(); }
   for (const r of [...W.robots]) {
     if (stepRemote(r, dt)) { animate(r, dt, time); continue; } // another player's: it does what its owner says
-    if (!indoor && r.state !== 'hunt' && r.p.distanceTo(G.pos) > 150) { removeRobot(r); continue; }
-    withTarget(r.p.x, r.p.z, () => think(r, dt, time));
+    if (!r.cityPost && !indoor && r.state !== 'hunt' && r.p.distanceTo(G.pos) > 150) { removeRobot(r); continue; }
+    withFoeTarget(r, () => think(r, dt, time));
     animate(r, dt, time);
   }
   updateShells(dt, time);
@@ -441,7 +448,7 @@ export function updateRobots(dt: number, time: number) {
 }
 
 // ---------- damage ----------
-export function hurtRobot(r: Robot, dmg: number) {
+export function hurtRobot(r: Robot, dmg: number, credit = true) {
   const s = ROBOTS[r.model];
   r.hp -= dmg * s.armour; r.flash = 0.12; G.hitFlash = 0.15;
   if (r.state !== 'hunt') alert(r);
@@ -456,7 +463,7 @@ export function hurtRobot(r: Robot, dmg: number) {
   if (Math.random() < 0.25) dropPickup(V(at.x + 0.5, at.y, at.z), 'ammoE', 5 + Math.floor(Math.random() * 12)); // its charge cells
   logLine(s.name + ' destroyed');
   wreckRobot(r);
-  onKill('drone');
+  if (credit) onKill('drone');
 }
 
 // ---------- breaking down ----------

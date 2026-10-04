@@ -25,12 +25,12 @@ describe('arms, rounds, the GPS tablet and the repair kit', () => {
     }
     expect(TECHS.map((t) => t.id).slice(-4)).toEqual(['gunsmith', 'weaving', 'composites', 'exoframe']); // appended: the others keep their sites
   });
-  it('the repair kit patches hull, engine and wheels but not a wreck or a missing wheel', () => {
+  it('the repair kit repairs the shared condition pool, including a disabled vehicle', () => {
     const p = freshParts('scout'), max = VEHICLES.scout.hull;
     expect(repairWithKit('scout', p)).toBe('');
     p.hull = max * 0.3; p.engine = 50; p.wheels = [60, -1, 100, 90];
     expect(repairWithKit('scout', p)).not.toBe('');
-    expect(p.hull).toBeCloseTo(max * (0.3 + KIT.hull)); expect(p.engine).toBe(80); expect(p.wheels).toEqual([85, -1, 100, 100]);
-    p.hull = 0; expect(repairWithKit('scout', p)).toBe('');
+    expect(p.hull).toBeCloseTo(max * (0.3 + KIT.hull)); expect(p.engine).toBe(50); expect(p.wheels).toEqual([60, -1, 100, 90]);
+    p.hull = 0; expect(repairWithKit('scout', p)).not.toBe(''); expect(p.hull).toBe(max * KIT.hull);
   });
 });
