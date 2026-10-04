@@ -126,7 +126,7 @@ export function oreOf(world: number, cx: number, cz: number, i: number, k: { x: 
   return R() < ORE.copper + (ORE.copperHigh - ORE.copper) * m ? 'copper' : 'iron';
 }
 
-/** Scattered rocks: low faceted pyramids, a few per chunk, never on roads or places. */
+/** Scattered rocks: irregular faceted boulders, a few per chunk, never on roads or places. */
 export function chunkRocks(t: Terrain, cx: number, cz: number): Rock[] {
   const c = wrapC(cx);
   if (c !== cx) return chunkRocks(t, c, cz).map((k) => ({ ...k, x: k.x + (cx - c) * CHUNK }));

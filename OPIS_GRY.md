@@ -1,6 +1,6 @@
 # GridWorld: opis gry, cel, plan i historia zmian
 
-Stan na wersję **0.122.0**. Ten dokument opisuje, czym jest GridWorld, jaki jest cel gry, co już w niej jest, czego jeszcze nie ma, dokąd zmierza i jak powstawała, wersja po wersji. Nazwy z gry (przedmioty, miejsca, postacie) są po angielsku, tak jak na ekranie.
+Stan na wersję **0.123.0**. Ten dokument opisuje, czym jest GridWorld, jaki jest cel gry, co już w niej jest, czego jeszcze nie ma, dokąd zmierza i jak powstawała, wersja po wersji. Nazwy z gry (przedmioty, miejsca, postacie) są po angielsku, tak jak na ekranie.
 
 ---
 
@@ -148,6 +148,7 @@ Gra jest pomyślana jako **kooperacja do 8 graczy** na autorytatywnym serwerze (
 - Odkryte bramy mają błękitne, ośmiokątne ikony na minimapie i mapie świata. Rozmieszczenie, adresy i głazy są stałe dla ziarna świata, również w istniejących zapisach.
 
 ### Krajobraz
+- Skały i wielkie głazy mają nieregularne, wielościenne bryły z szeroką podstawą, załamanymi bokami i ściętą górą zamiast piramidalnego czubka. Ten sam model obejmuje gruz w ruinach i kamienie przy jaskiniach. Kolorowe żyły rudy biegną po rzeczywistych ścianach skał; rozmieszczenie, kolizje, wydobycie i wcześniejsze zapisy pozostają zgodne.
 - **Teren**:
   - pagórki i doliny;
   - **góry** do ok. 170 m ze śniegiem na szczytach (ok. jednej czwartej lądu);
@@ -588,6 +589,7 @@ Pełne notatki (po angielsku) są w grze pod przyciskiem **Changelog** w menu g�
 
 - **0.119.0 Jeden stan pojazdu.** Osobne uszkodzenia kół i silnika zastępuje wspólny stan użyteczności. Ostrzał, zderzenia i ataki przeciwników uszkadzają pojazd; zwykła jazda nie powoduje zużycia. Kierowca, pasażer i strzelec nie tracą zdrowia wewnątrz, również w otwartym łaziku i w cudzym pojeździe. Przy 0% pojazd zatrzymuje się i pasażerowie wysiadają bez obrażeń. Serwis i zestaw naprawczy odnawiają wspólny stan. Zachowano zgodność zapisów i wyposażenie.
 
+- **0.123.0 Naturalne, wielościenne skały.** Piramidalne kamienie zastąpione głazami o szerokiej podstawie, nieregularnych bokach i ściętej górze. Zmiana obejmuje teren, gruz w ruinach i kamienie przy jaskiniach. Żyły rudy dopasowane do nowych ścian; rozmieszczenie, kolizje i wydobywanie zgodne z dotychczasowymi zapisami.
 - **0.122.0 Wybieranie adresu i animacja podróży.** Symbole zapalają się kolejno na pierścieniu. Przyciski Activate i Cancel zastępują automatyczne otwieranie; znikają angielskie nazwy znaków. Brama docelowa pokazuje kod źródłowy. Pięciosekundowy transport całej załogi ma animację ciągłych linii, a bramy nie zamykają się przed ukończeniem podróży rozpoczętej przed upływem 45 sekund.
 - **0.121.0 Bramy dla pojazdów i stałe tablety.** Własny adres wyryty na terminalu, trzy stałe adresy na osobnym tablecie. Dwukierunkowe połączenie przez 45 rzeczywistych sekund blokuje obie konsole. Powiększone bramy przepuszczają Mastodona z dwoma lub trzema graczami, zachowując miejsca i cały ładunek.
 - **0.120.0 Bramy Starożytnych.** Sieć 40 obcych, kamiennych, ośmiokątnych teleportów na kontynentach. Sześć różnych symboli na górnych narożnikach, dwa dolne bez znaków. Panel przy każdej bramie wybiera unikalny trzyznakowy adres; archiwum podaje adresy do podróży i powrotu. Przejście pieszo przenosi przed docelowy pierścień bez zmiany zdrowia i ekwipunku. Bramy mają różne rozsypane głazy, płaskie podejścia i znaczniki na mapach.

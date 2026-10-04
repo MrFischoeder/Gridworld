@@ -4,6 +4,14 @@ export interface Change { v: string; date: string; title: string; notes: string[
 
 export const CHANGELOG: Change[] = [
   {
+    v: '0.123.0', date: '2026-10-04', title: 'Faceted natural boulders',
+    notes: [
+      'Scattered stones and large terrain boulders now have broad bodies, uneven shoulders and flat broken crowns instead of pyramid tips. Their faceted shapes vary deterministically.',
+      'The same stone model updates rubble in ruins, cave entrances, trail markers and decorative stones throughout the world, with opaque dark fills beneath the wireframe.',
+      'Coloured ore veins follow the new stone faces and their folds. Rock placement, collision, mining rewards and existing harvested-rock saves are preserved.',
+    ],
+  },
+  {
     v: '0.122.0', date: '2026-10-04', title: 'Manual gate dialling and animated transit',
     notes: [
       'Symbols light up on the ring as you enter them. Select three symbols, then press Activate; Cancel clears the draft. The console shows symbols without their English names.',
