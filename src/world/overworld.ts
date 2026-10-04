@@ -1,3 +1,4 @@
+import { syncMegaliths, clearMegaliths, megalithHit, megalithRay, megalithName, megalithFloor, nearMegalith } from './megaliths';
 import { syncWorldGates, clearWorldGates, worldGateHit, worldGateRay } from './worldgates';
 import { inGateClearing } from '../gen/worldgates';
 // The open world: terrain streamed in 32 m chunks around the player, voxel structures (the village, ruins)
@@ -210,11 +211,12 @@ function buildChunk(cx: number, cz: number, lod = 1): Chunk {
   if (road.length) { const rg = new THREE.BufferGeometry(); rg.setAttribute('position', new THREE.Float32BufferAttribute(road, 3)); group.add(new THREE.Mesh(rg, ROAD_FILL)); }
   const sea = seaSheet(T, cx, cz, lat, lod); if (sea) group.add(sea);
   const river = f.rivers.length ? riverSheet(T, cx, cz, f.rivers) : null; if (river) group.add(river);
-  const caves = chunkCaves(T, cx, cz), wells = chunkWells(T, cx, cz), plants = chunkPlants(T, cx, cz).filter((p) => !T.claimAt(p.x, p.z, 2));
+  const inMonument = (x: number, z: number) => f.megaliths.some(m => Math.hypot(x - m.x, z - m.z) < m.radius + 3);
+  const caves = chunkCaves(T, cx, cz).filter(c => !inMonument(c.x, c.z)), wells = chunkWells(T, cx, cz).filter(w => !inMonument(w.x, w.z)), plants = chunkPlants(T, cx, cz).filter((p) => !T.claimAt(p.x, p.z, 2) && !inMonument(p.x, p.z));
   // felled trees and broken rocks (player changes, keyed by their index in the generated list) are left out
   const trees: Tree[] = [], stumps: Tree[] = [], rocks: Rock[] = [];
   // a claimed site is cleared: nothing grows on the levelled ground (the generated lists keep their indices)
-  const cleared = (x: number, z: number) => !!T.claimAt(x, z, 1) || inGateClearing(T.world, x, z, 2);
+  const cleared = (x: number, z: number) => inMonument(x, z) || !!T.claimAt(x, z, 1) || inGateClearing(T.world, x, z, 2);
   chunkTrees(T, cx, cz).forEach((t, i) => { if (t.cols.some(([x, z]) => cleared(x, z))) return; const k = `tree:${wrapC(cx)}:${cz}:${i}`; gatherKey.set(t, k); (ripe(k) ? trees : stumps).push(t); });
   chunkRocks(T, cx, cz).forEach((r, i) => { if (cleared(r.x, r.z)) return; const k = `rock:${wrapC(cx)}:${cz}:${i}`; gatherKey.set(r, k); if (ripe(k)) rocks.push(r); });
   let nodes: PlantNode[] = [];
@@ -524,15 +526,16 @@ export function updateStreaming(budgetMs = 4) {
   if (k !== lastChunk) {
     lastChunk = k;
     queue = [];
-    const LR = G.fly ? LOAD_R * 2 : LOAD_R; // flying (dev) sees further
+    const LR = G.fly ? LOAD_R * 2 : nearMegalith(x, z) ? LOAD_R + 2 : LOAD_R; // flying (dev) sees further
     for (let i = -LR; i <= LR; i++) for (let j = -LR; j <= LR; j++) {
       const c = OW.chunks.get(ckey(pcx + i, pcz + j)), lod = lodFor(pcx + i, pcz + j, pcx, pcz);
       if (!c || c.lod !== lod) queue.push([pcx + i, pcz + j, lod]);
     }
     queue.sort((a, b) => Math.hypot(b[0] - pcx, b[1] - pcz) - Math.hypot(a[0] - pcx, a[1] - pcz)); // nearest last (popped first)
-    for (const c of [...OW.chunks.values()]) if (Math.max(Math.abs(c.cx - pcx), Math.abs(c.cz - pcz)) > (G.fly ? LOAD_R * 2 + 2 : UNLOAD_R)) { dropChunk(c); OW.chunks.delete(ckey(c.cx, c.cz)); }
+    for (const c of [...OW.chunks.values()]) if (Math.max(Math.abs(c.cx - pcx), Math.abs(c.cz - pcz)) > (G.fly ? LOAD_R * 2 + 2 : nearMegalith(x, z) ? UNLOAD_R + 2 : UNLOAD_R)) { dropChunk(c); OW.chunks.delete(ckey(c.cx, c.cz)); }
     updateStructs(x, z);
     syncWorldGates(OW.terrain!, x, z);
+    syncMegaliths(OW.terrain!.world, x, z);
     syncLakes(x, z);
     syncFound(OW.terrain!, x, z);
     syncQuestWorld();
@@ -554,9 +557,9 @@ export function openWorld(x: number, z: number) {
   primeInstalls(w, G.char.claims); // the installations' sites are worked out in a worker meanwhile
   closeWorld();
   G.water = (px, pz) => (inStructure(px, pz) ? null : OW.terrain!.water(px, pz));
-  G.space = space; G.ground = groundAt; G.obstacle = (px, py, pz, r) => worldGateHit(px, py, pz, r) || treeHit(px, py, pz, r) || vehicleHit(px, py, pz, r) || caravanHit(px, py, pz, r) || peerCarHit(px, py, pz, r) || ambushHit(px, py, pz, r) || baseHit(px, py, pz, r) || ladderHit(px, py, pz, r) || walkHit(px, py, pz, r) || guardHit(px, py, pz, r) || houseHit(px, py, pz, r) || doorHit(px, py, pz, r) || podHit(px, py, pz, r) || installHit(px, py, pz, r) || cityHit(px, py, pz, r) || hallHit(px, py, pz, r) || bridgeHit(px, py, pz, r) || pierHit(px, py, pz, r) || boatHit(px, py, pz, r) || toxicHit(px, py, pz, r);
-  G.floor = (x, y, z) => Math.max(baseFloor(x, y, z), ladderFloor(x, y, z), walkFloor(x, y, z), bridgeFloor(x, y, z), pierFloor(x, y, z)); G.rayBlock = (o, d, t) => worldGateRay(o, d, cityRay(o, d, doorRay(o, d, houseRay(o, d, baseRay(o, d, t))))); G.solid = (p) => worldGateHit(p.x, p.y, p.z, 0) || baseSolid(p) || houseSolid(p);
-  foeRules.blocked = (p) => nearVillage(p.x, p.z) < 2;
+  G.space = space; G.ground = groundAt; G.obstacle = (px, py, pz, r) => megalithHit(px, py, pz, r) || worldGateHit(px, py, pz, r) || treeHit(px, py, pz, r) || vehicleHit(px, py, pz, r) || caravanHit(px, py, pz, r) || peerCarHit(px, py, pz, r) || ambushHit(px, py, pz, r) || baseHit(px, py, pz, r) || ladderHit(px, py, pz, r) || walkHit(px, py, pz, r) || guardHit(px, py, pz, r) || houseHit(px, py, pz, r) || doorHit(px, py, pz, r) || podHit(px, py, pz, r) || installHit(px, py, pz, r) || cityHit(px, py, pz, r) || hallHit(px, py, pz, r) || bridgeHit(px, py, pz, r) || pierHit(px, py, pz, r) || boatHit(px, py, pz, r) || toxicHit(px, py, pz, r);
+  G.floor = (x, y, z) => Math.max(megalithFloor(x, y, z), baseFloor(x, y, z), ladderFloor(x, y, z), walkFloor(x, y, z), bridgeFloor(x, y, z), pierFloor(x, y, z)); G.rayBlock = (o, d, t) => megalithRay(o, d, worldGateRay(o, d, cityRay(o, d, doorRay(o, d, houseRay(o, d, baseRay(o, d, t)))))); G.solid = (p) => megalithHit(p.x, p.y, p.z, 0) || worldGateHit(p.x, p.y, p.z, 0) || baseSolid(p) || houseSolid(p);
+  foeRules.blocked = (p) => megalithHit(p.x, p.y, p.z, .7) || nearVillage(p.x, p.z) < 2;
   foeRules.playerSafe = () => inVillage(G.pos.x, G.pos.z) && !raidHere(); // no safe place while bandits raid it
   foeRules.ground = (px, pz) => OW.terrain!.heightAt(px, pz);
   foeRules.shielded = () => insideVehicle(); // a foe's turn against another player: your cab is not theirs
@@ -564,6 +567,7 @@ export function openWorld(x: number, z: number) {
   setCrash(OW.terrain);
   updateStructs(x, z);
   syncWorldGates(OW.terrain, x, z);
+  syncMegaliths(w, x, z);
   const pcx = Math.floor(x / CHUNK), pcz = Math.floor(z / CHUNK);
   for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) OW.chunks.set(ckey(pcx + i, pcz + j), buildChunk(pcx + i, pcz + j));
   lastChunk = '';
@@ -571,7 +575,7 @@ export function openWorld(x: number, z: number) {
   spawnVehicles({
     height: (px, pz) => Math.max(T.heightAt(px, pz), bridgeDeck(px, pz) ?? -Infinity, pierDeck(px, pz) ?? -Infinity), // over a bridge or a pier, its deck
     water: (px, pz) => (bridgeDeck(px, pz) !== null || pierDeck(px, pz) !== null ? 0 : T.water(px, pz)?.depth ?? 0),
-    blocked: (px, pz, r) => worldGateHit(px, T.heightAt(px, pz) + .5, pz, r) || structBlocks(px, pz, r, T.heightAt(px, pz)) || treeHit(px, T.heightAt(px, pz) + 0.5, pz, r) || ambushHit(px, 0, pz, r) || peerCarHit(px, T.heightAt(px, pz) + 0.5, pz, r) || cityHit(px, T.heightAt(px, pz) + 0.5, pz, r) || bridgeHit(px, (bridgeDeck(px, pz) ?? -99) + 0.5, pz, r), // a bridge's rails keep you on its deck
+    blocked: (px, pz, r) => megalithHit(px, T.heightAt(px, pz) + .5, pz, r) || worldGateHit(px, T.heightAt(px, pz) + .5, pz, r) || structBlocks(px, pz, r, T.heightAt(px, pz)) || treeHit(px, T.heightAt(px, pz) + 0.5, pz, r) || ambushHit(px, 0, pz, r) || peerCarHit(px, T.heightAt(px, pz) + 0.5, pz, r) || cityHit(px, T.heightAt(px, pz) + 0.5, pz, r) || bridgeHit(px, (bridgeDeck(px, pz) ?? -99) + 0.5, pz, r), // a bridge's rails keep you on its deck
   });
   syncFound(T, x, z);
   const envHooks = {
@@ -579,7 +583,7 @@ export function openWorld(x: number, z: number) {
     danger,
     nearRuin: (px: number, pz: number) => poisNear(T.world, px, pz, 90).some((p) => (p.type === 'ruin' || p.type === 'wreck') && rectDist(p.rect, px, pz) < 60),
     water: (px: number, pz: number) => T.water(px, pz),
-    forbidden: (px: number, pz: number) => inGateClearing(T.world, px, pz, 4) || nearVillage(px, pz) < 35 || baseHit(px, T.heightAt(px, pz), pz, 0.7) || cityHit(px, T.heightAt(px, pz) + 0.5, pz, 0.7) || (T.water(px, pz)?.depth ?? 0) > 0.5 || [...OW.structs.values()].some((s) => rectDist(s.poi.rect, px, pz) < 1),
+    forbidden: (px: number, pz: number) => megalithHit(px, T.heightAt(px, pz), pz, .7) || inGateClearing(T.world, px, pz, 4) || nearVillage(px, pz) < 35 || baseHit(px, T.heightAt(px, pz), pz, 0.7) || cityHit(px, T.heightAt(px, pz) + 0.5, pz, 0.7) || (T.water(px, pz)?.depth ?? 0) > 0.5 || [...OW.structs.values()].some((s) => rectDist(s.poi.rect, px, pz) < 1),
   };
   setCreatureEnv(envHooks);
   setRobotEnv(envHooks);
@@ -589,6 +593,7 @@ export function openWorld(x: number, z: number) {
   for (const s of OW.structs.values()) if (s.camp) spawnCamp(s.camp);
 }
 export function closeWorld() {
+  clearMegaliths();
   clearWorldGates();
   dropGarrisons(); clearVehicles(); dropCrash(); dropInstalls(); dropCities(); dropToxic(); clearBridges(); clearPiers();
   setCreatureEnv(null); clearCreatures();
@@ -643,6 +648,7 @@ export function keepOnPlanet(dt: number) {
   for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) OW.chunks.set(ckey(pcx + i, pcz + j), buildChunk(pcx + i, pcz + j));
   updateStructs(G.pos.x, G.pos.z);
   syncWorldGates(OW.terrain!, G.pos.x, G.pos.z);
+  syncMegaliths(OW.terrain!.world, G.pos.x, G.pos.z);
   showToast('You have gone round the world');
 }
 
@@ -674,6 +680,7 @@ export function placeName(x: number, z: number): string {
   { const segs = OW.terrain!.chunkFeatures(Math.floor(x / CHUNK), Math.floor(z / CHUNK)).rivers, r = riverNear(segs, x, z); if (r && r.d < r.half + 25) return riversOf(OW.terrain!.world).list[r.seg.r].name + tag; }
   for (const cv of loadedCaves()) if (Math.hypot(cv.x - x, cv.z - z) < 30) return cv.name + tag;
   { const ins = installAt(OW.terrain!, x, z, 25); if (ins) return ins.name + tag; }
+  { const mn = megalithName(x, z); if (mn) return mn + ' (megalith)' + tag; }
   { const cn = cityName(x, z); if (cn) return cn + tag; }
   { const f = toxicName(x, z); if (f) return f + tag; }
   for (const r of OW.terrain!.chunkFeatures(Math.floor(x / CHUNK), Math.floor(z / CHUNK)).roads) {

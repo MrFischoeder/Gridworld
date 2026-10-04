@@ -1,3 +1,4 @@
+import { megalithsNear } from '../gen/megaliths';
 import { gatesNear, gateName } from '../gen/worldgates';
 // Surface maps: the minimap (150 m around the player) and the full world map (M), both built from
 // explored chunks only (fog of war). Chunk tiles are rendered once from the deterministic terrain.
@@ -118,6 +119,13 @@ function drawArea(ctx: CanvasRenderingContext2D, w: number, h: number, ppm: numb
     ctx.strokeStyle = ctx.fillStyle = '#80e8ff'; ctx.lineWidth = 2; ctx.beginPath();
     for (let i = 0; i < 8; i++) { const a = Math.PI / 8 + i * Math.PI / 4; (i ? ctx.lineTo : ctx.moveTo).call(ctx, x + Math.cos(a) * r, y + Math.sin(a) * r); }
     ctx.closePath(); ctx.stroke(); if (labels) ctx.fillText(gateName(g), x, y - r - 7);
+  }
+  for (const m of megalithsNear(G.char.world, px, pz, Math.hypot(hw, hh))) {
+    if (!isDiscovered(d, Math.floor(m.x / CHUNK), Math.floor(m.z / CHUNK))) continue;
+    const x = X(m.x), y = Z(m.z), r = Math.max(labels ? 8 : 5, m.radius * ppm);
+    ctx.strokeStyle = ctx.fillStyle = '#d1c597'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.stroke();
+    ctx.strokeRect(x - 4, y - 3, 2, 7); ctx.strokeRect(x + 2, y - 3, 2, 7); ctx.fillRect(x - 5, y - 5, 10, 2);
+    if (labels) ctx.fillText(m.name, x, y - r - 7);
   }
   ctx.lineWidth = 1;
   for (const v of vehicles) {

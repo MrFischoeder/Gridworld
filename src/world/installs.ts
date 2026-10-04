@@ -7,6 +7,7 @@
 // (rubble, toppled centrifuges and fallen trusses gone, the fence mended), the hall rebuilt (walls whole, trusses and a
 // roof, every centrifuge standing), restored (the centrifuges glow). The control desk inside the gate opens the
 // restoration window (`nearInstallDesk`, ui/install.ts).
+import { seedMegalithSites, type Megalith } from '../gen/megaliths';
 import * as THREE from 'three';
 import { scene } from './render';
 import { drawComputer } from './computer';
@@ -683,7 +684,10 @@ export function primeInstalls(world: number, claims: unknown[]) {
   primed = world;
   try {
     const w = new Worker(new URL('./installworker.ts', import.meta.url), { type: 'module' });
-    w.onmessage = (e: MessageEvent<{ world: number; sites: InstallSite[] }>) => { seedInstallSites(e.data.world, e.data.sites); w.terminate(); };
+    w.onmessage = (e: MessageEvent<{ world: number; sites: InstallSite[]; megaliths?: Megalith[] }>) => {
+      seedInstallSites(e.data.world, e.data.sites);
+      if (e.data.megaliths) { seedMegalithSites(e.data.world, e.data.megaliths); w.terminate(); }
+    };
     w.onerror = () => { w.terminate(); primed = NaN; };
     w.postMessage({ world, claims: JSON.parse(JSON.stringify(claims)) });
   } catch { primed = NaN; /* no workers here: worked out when first needed */ }

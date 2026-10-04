@@ -1,10 +1,12 @@
 # GridWorld: opis gry, cel, plan i historia zmian
 
-Stan na wersję **0.125.0**. Ten dokument opisuje, czym jest GridWorld, jaki jest cel gry, co już w niej jest, czego jeszcze nie ma, dokąd zmierza i jak powstawała, wersja po wersji. Nazwy z gry (przedmioty, miejsca, postacie) są po angielsku, tak jak na ekranie.
+Stan na wersję **0.126.0**. Ten dokument opisuje, czym jest GridWorld, jaki jest cel gry, co już w niej jest, czego jeszcze nie ma, dokąd zmierza i jak powstawała, wersja po wersji. Nazwy z gry (przedmioty, miejsca, postacie) są po angielsku, tak jak na ekranie.
 
 ---
 
 ## 1. Czym jest GridWorld
+
+Na planecie stoi dokładnie 12 ogromnych, megalitycznych monumentów inspirowanych Stonehenge. Mają 230–330 m średnicy, a kamienne filary i nadproża dochodzą do 78 m wysokości. Układy są różne: koronowany krąg, dwa i trzy kręgi, podkowa, aleja, spirala, cztery bramy, przerwany pierścień, gwiazda, obelisk, wielka brama i konstelacja. Każdy ma własną stałą nazwę i identyfikator megalith:0–11 oraz deterministyczną lokalizację na kontynencie. Są zarezerwowane do przyszłych specjalnych celów — aktualnie nie uruchamiają zadania ani teleportu. Teren pod nimi jest płaski i oczyszczony, a filary i nadproża blokują ruch oraz ostrzał; prześwity i dziedzińce pozostają dostępne. Mapy oznaczają je jasnym symbolem kamiennego nadproża, a mapa deweloperska pozwala kliknięciem odwiedzić zewnętrzną krawędź. W ich pobliżu nie można zakładać bazy.
 
 Przed menu uruchamia się 20-sekundowy film z lotem kamery przez bramę Gridholm i oblotem wioski. Następne ujęcia prezentują starożytne ruiny i aktywny portal, zrujnowane miasto, rzekę i góry, roboty, bandytów, faunę oraz jadący konwój. Stopniowo pojawiają się GRIDWORLD, „Designed by Luki” i niżej „Music by Iskra”. Film można pominąć przyciskiem, spacją, Enterem lub Escape i powtórzyć z menu przez Opening film. Osobna scena pokazowa nie zmienia zapisu ani pozycji gracza; fabularny prolog katastrofy statku pozostaje przy rozpoczęciu przygody nową postacią.
 
@@ -591,6 +593,7 @@ Pełne notatki (po angielsku) są w grze pod przyciskiem **Changelog** w menu g�
 
 - **0.119.0 Jeden stan pojazdu.** Osobne uszkodzenia kół i silnika zastępuje wspólny stan użyteczności. Ostrzał, zderzenia i ataki przeciwników uszkadzają pojazd; zwykła jazda nie powoduje zużycia. Kierowca, pasażer i strzelec nie tracą zdrowia wewnątrz, również w otwartym łaziku i w cudzym pojeździe. Przy 0% pojazd zatrzymuje się i pasażerowie wysiadają bez obrażeń. Serwis i zestaw naprawczy odnawiają wspólny stan. Zachowano zgodność zapisów i wyposażenie.
 
+- **0.126.0 Dwanaście kolosalnych megalitów.** Odrębne, wielkie układy Stonehenge o średnicy 230–330 m i wysokości do 78 m, z kamiennymi filarami, nadprożami i rzeźbieniami. Stałe lokalizacje i identyfikatory pod przyszłe funkcje, kolizje i osłona przed ostrzałem, oczyszczone dziedzińce, znaczniki na mapach oraz wydłużony widok przy monumentach.
 - **0.125.0 Portale i kaniony na mapie deweloperskiej.** Polecenie map w konsoli pokazuje wszystkie 40 portali jako turkusowe ośmiokąty i kaniony jako pomarańczowe obrysy. W zbliżeniu widać ścieżki zejścia; najechanie podaje rozmiar i głębokość, a kliknięcie przenosi obok pierścienia albo na początek ścieżki. Skanowanie kanionów działa stopniowo, także poza odkrytym terenem.
 - **0.124.0 Film wejściowy z drona.** Dwudziestosekundowa prezentacja wioski, ruin, portalu, miasta, rzeki, gór, trzech grup przeciwników i konwoju. Stopniowe napisy GRIDWORLD, Designed by Luki i Music by Iskra; pomijanie, powtórka z menu i brak wpływu na zapis gry.
 - **0.123.0 Naturalne, wielościenne skały.** Piramidalne kamienie zastąpione głazami o szerokiej podstawie, nieregularnych bokach i ściętej górze. Zmiana obejmuje teren, gruz w ruinach i kamienie przy jaskiniach. Żyły rudy dopasowane do nowych ścian; rozmieszczenie, kolizje i wydobywanie zgodne z dotychczasowymi zapisami.

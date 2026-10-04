@@ -3,7 +3,8 @@ import { setVehicleProtection } from './world/damage';
 import { relay, net } from './net/client';
 import './style.css';
 import { VERSION, BUILD } from './version';
-import { renderer, scene, camera } from './world/render';
+import { nearMegalith } from './world/megaliths';
+import { renderer, scene, camera, fog } from './world/render';
 import { G, W, uiOpen } from './game';
 import { loadChar } from './save';
 import { initItemTips } from './ui/itemtip';
@@ -194,9 +195,12 @@ function frame(now: number) {
   camera.rotation.set(G.pitch, G.yaw, 0);
   updateWeather(dt, sky.visible);
   if (sky.visible) { sky.position.set(camera.position.x, camera.position.y - 20, camera.position.z); horizon.position.set(camera.position.x, 0, camera.position.z); shapeHorizon(camera.position.x, camera.position.z); updateSky(G.char.time, latitude(G.pos.z)); tintToxic(); updateFarPeaks(camera.position); } else farPeaks.visible = false;
+  // A sanctuary spans hundreds of metres: give it room in clear weather while preserving dense fog.
+  const monumentView = sky.visible && nearMegalith(G.pos.x, G.pos.z);
+  if (monumentView && !G.fly && seen.fog < .45 && toxicHere() < .3) { fog.near *= 1.8; fog.far *= 2.5; }
   // flying (dev): the real land reaches past the horizon rings, so they step aside and the camera sees further
   if (sky.visible) { const thick = seen.fog > 0.45 || toxicHere() > 0.3; horizon.visible = !G.fly && !thick; if (G.fly || thick) farPeaks.visible = false; } // fog hides the far ranges
-  const far = G.fly ? 600 : 200; if (camera.far !== far) { camera.far = far; camera.updateProjectionMatrix(); }
+  const far = G.fly || monumentView ? 600 : 200; if (camera.far !== far) { camera.far = far; camera.updateProjectionMatrix(); }
   el.cross.style.display = driving.v && !driving.cockpit && !driving.v.turret ? 'none' : riding() && !ride.cockpit && !SEATS_GUN() ? 'none' : '';
   updatePeers(dt, moving); // multiplayer: say where you are, draw the others
   syncDrops(false, dt); // what the players put down on the ground
