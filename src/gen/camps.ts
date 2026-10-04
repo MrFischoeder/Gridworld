@@ -1,4 +1,4 @@
-// Bandit camps: a campfire ringed by tents, crates and low barricades to fight from, and a stash.
+// Bandit camps: tents, cover crates, a fire and a stash inside a timber palisade.
 import { rng, hash, rangeInt } from '../core/rng';
 import type { Op } from '../core/voxel';
 import type { Poi, Rect } from './regions';
@@ -10,6 +10,8 @@ export interface CampMap {
   ops: Op[];
   /** A-frame tents (drawn only; you can walk into them). */
   tents: Rect[];
+  /** Solid palisade cells, with four-metre north/south entrances. */
+  palisade: Op[];
   fire: { x: number; z: number };
   stash: { x: number; z: number };
   spawns: { x: number; z: number; role: BanditRole }[];
@@ -37,6 +39,8 @@ export function generateCamp(world: number, poi: Poi, y: number): CampMap {
     if (hits({ x0: x - 1, z0: z - 1, x1: x + w + 1, z1: z + 2 })) continue;
     ops.push({ op: 'solid', x, y, z, w, h: R() < 0.3 ? 2 : 1, d: 1 }); used.push(r); placed++;
   }
+  // Consume the former barricade draws to preserve the seeded stash/spawn sequence.
+  const crateCount = ops.length;
   // low barricades along the edge, with gaps to walk through
   const edge: [number, number][] = [];
   for (let x = x0 + 1; x < x1 - 1; x++) edge.push([x, z0], [x, z1 - 1]);
@@ -46,6 +50,12 @@ export function generateCamp(world: number, poi: Poi, y: number): CampMap {
     if (run <= 0) run = R() < 0.55 ? ri(2, 5) : -ri(2, 4);
     if (run > 0) { ops.push({ op: 'solid', x, y, z, w: 1, h: R() < 0.2 ? 2 : 1, d: 1 }); run--; } else run++;
   }
+  ops.splice(crateCount);
+  const palisade: Op[] = [];
+  const gate0 = Math.floor(cx) - 2;
+  for (let x = x0; x < x1; x++) if (x < gate0 || x >= gate0 + 4) for (const z of [z0, z1 - 1]) palisade.push({ op: 'solid', x, y, z, w: 1, h: 3, d: 1 });
+  for (let z = z0 + 1; z < z1 - 1; z++) for (const x of [x0, x1 - 1]) palisade.push({ op: 'solid', x, y, z, w: 1, h: 3, d: 1 });
+  ops.push(...palisade);
   // the stash sits by the first tent
   const t0 = tents[0] ?? { x0: cx + 3, z0: cz, x1: cx + 4, z1: cz + 1 };
   const stash = { x: t0.x1 + 0.5, z: (t0.z0 + t0.z1) / 2 };
@@ -61,5 +71,5 @@ export function generateCamp(world: number, poi: Poi, y: number): CampMap {
       spawns.push({ x, z, role }); break;
     }
   }
-  return { id: poi.id, name: poi.name, y, rect: poi.rect, ops, tents, fire, stash, spawns };
+  return { id: poi.id, name: poi.name, y, rect: poi.rect, ops, tents, palisade, fire, stash, spawns };
 }

@@ -4,6 +4,14 @@ export interface Change { v: string; date: string; title: string; notes: string[
 
 export const CHANGELOG: Change[] = [
   {
+    v: '0.118.0', date: '2026-10-04', title: 'Timber camps and detailed props',
+    notes: [
+      'Bandit camps are enclosed by tall sharpened timber palisades, with open north and south entrances.',
+      'Treasure chests and camp stashes have wooden planks, curved lids, metal bands, hinges, locks and carrying handles. Dungeon lids still open on their hinges.',
+      'Village halls, ancient facilities, power controls and the crashed ship use the elder\'s CRT computer model with a keyboard and separate case.',
+    ],
+  },
+  {
     v: '0.117.0', date: '2026-10-03', title: 'City posts and rival factions',
     notes: [
       'Each ruined city has sixteen spaced-out enemy posts instead of hundreds. At most three nearby posts are awake at once, with smaller fixed groups.',

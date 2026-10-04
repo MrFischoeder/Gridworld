@@ -1,4 +1,5 @@
 // Loading places (dungeon sectors, the open world) and moving between them.
+import { drawClosedChest } from './chestmodel';
 import { riding, getOff } from './ride';
 import { SHIP_NAME } from './lander';
 import * as THREE from 'three';
@@ -180,7 +181,7 @@ export function villageDeco(map: VillageMap, y0 = 0) {
 }
 /** The hero's bed (a wooden frame with a headboard, a mattress, a pillow and a blanket) and chest, in their house. */
 function homeDeco(pb: PropBatch, h: NonNullable<VillageMap['house']>, y0: number) {
-  const WOOD = 0xb8b060, CLOTH = 0x9dffb4, GOLD = 0xffd060, { x0, z0, x1, z1 } = h.bed;
+  const WOOD = 0xb8b060, CLOTH = 0x9dffb4, { x0, z0, x1, z1 } = h.bed;
   for (const [x, z] of [[x0, z0], [x1 - 0.12, z0], [x1 - 0.12, z1 - 0.12], [x0, z1 - 0.12]]) pb.box(x, y0, z, x + 0.12, y0 + 0.3, z + 0.12, WOOD);
   pb.box(x0, y0 + 0.3, z0, x1, y0 + 0.42, z1, WOOD);
   pb.box(x0, y0, z0 - 0.06, x1, y0 + 1.0, z0 + 0.06, WOOD); // headboard against the wall
@@ -191,12 +192,7 @@ function homeDeco(pb: PropBatch, h: NonNullable<VillageMap['house']>, y0: number
   pb.box(x0 + 0.02, y0 + 0.5, bz, x1 - 0.02, by, z1 - 0.02, WOOD);
   for (let z = bz + 0.3; z < z1 - 0.1; z += 0.3) pb.seg(CLOTH, [x0 + 0.03, by + 0.005, z], [x1 - 0.03, by + 0.005, z]);
   pb.box(x0 + 0.02, by, bz, x1 - 0.02, by + 0.05, bz + 0.25, CLOTH);
-  // the chest: a box with a lid, iron bands and a lock plate
-  const { x, z } = h.chest, w = 0.5, d = 0.34;
-  pb.box(x - w, y0, z - d, x + w, y0 + 0.5, z + d, GOLD);
-  pb.box(x - w - 0.03, y0 + 0.5, z - d - 0.03, x + w + 0.03, y0 + 0.66, z + d + 0.03, GOLD);
-  for (const bx of [x - w * 0.6, x + w * 0.6]) pb.line(GOLD, [bx, y0, z - d - 0.01], [bx, y0 + 0.67, z - d - 0.04], [bx, y0 + 0.67, z + d + 0.04], [bx, y0, z + d + 0.01]);
-  pb.box(x + w + 0.01, y0 + 0.36, z - 0.08, x + w + 0.05, y0 + 0.56, z + 0.08, GOLD);
+  drawClosedChest(pb, h.chest.x, y0, h.chest.z);
 }
 const STAKE = 0xb8b060, SCRAP = 0x8fb89a;
 /** A repeatable pseudo-random number for drawing a village's fence (0..1). */

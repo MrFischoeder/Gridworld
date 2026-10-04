@@ -9,6 +9,7 @@
 // restoration window (`nearInstallDesk`, ui/install.ts).
 import * as THREE from 'three';
 import { scene } from './render';
+import { drawComputer } from './computer';
 import { PropBatch } from './props';
 import { G } from '../game';
 import { OW } from './overworld';
@@ -45,19 +46,13 @@ function drawFence(pb: PropBatch, H: (x: number, z: number) => number, F: number
 const SC = INSTALL_SCALE;
 const hOf = (T: Terrain, s: InstallSite, cos: number, sin: number) => (x: number, z: number) => (T.heightAt(s.x + (x * cos + z * sin) * SC, s.z + (-x * sin + z * cos) * SC) - s.y) / SC;
 /**
- * The control desk: a steel kiosk with a slanted console, its screen lit once work has begun, a lamp once restored.
+ * The control desk uses the elder-house CRT computer; its screen lights once work begins, its lamp once restored.
  * Drawn at human size (into `pb`, which is not scaled) where the plan puts it; its ring is kept in plan units.
  */
 function drawDesk(pb: PropBatch, Hp: (x: number, z: number) => number, plan: { x: number; z: number }, stage: number, done: boolean, rings: Live['rings']) {
   rings.push([plan.x, plan.z, 0.85 / SC]);
   { const x = plan.x * SC, z = plan.z * SC, y = Hp(plan.x, plan.z) * SC;
-    pb.box(x - 0.8, y - 0.2, z - 0.4, x + 0.8, y + 1, z + 0.4, METAL);
-    pb.face([x - 0.8, y + 1, z - 0.4], [x + 0.8, y + 1, z - 0.4], [x + 0.8, y + 1.25, z + 0.3], [x - 0.8, y + 1.25, z + 0.3]);
-    pb.line(METAL, [x - 0.8, y + 1, z - 0.4], [x + 0.8, y + 1, z - 0.4], [x + 0.8, y + 1.25, z + 0.3], [x - 0.8, y + 1.25, z + 0.3], [x - 0.8, y + 1, z - 0.4]);
-    pb.box(x - 0.6, y + 1.25, z + 0.25, x + 0.6, y + 2.1, z + 0.4, METAL);
-    const sc = stage >= 1 ? GLOW : RUST;
-    pb.line(sc, [x - 0.5, y + 1.35, z + 0.24], [x + 0.5, y + 1.35, z + 0.24], [x + 0.5, y + 2, z + 0.24], [x - 0.5, y + 2, z + 0.24], [x - 0.5, y + 1.35, z + 0.24]);
-    for (let i = 0; i < Math.min(4, stage + 1); i++) pb.seg(sc, [x - 0.4, y + 1.85 - i * 0.14, z + 0.23], [x - 0.4 + 0.2 + ((i * 37) % 5) * 0.12, y + 1.85 - i * 0.14, z + 0.23]);
+    drawComputer(pb, { x0: x - 0.8, x1: x + 0.8, z0: z - 0.4, z1: z + 0.4, h: 1, n: [0, -1] }, y, stage >= 1 ? 0x5cff9a : RUST);
     pb.seg(RUST, [x + 0.7, y + 2.1, z + 0.3], [x + 0.7, y + 3.2, z + 0.3]); // a lamp post
     if (done) pb.box(x + 0.55, y + 3.2, z + 0.15, x + 0.85, y + 3.5, z + 0.45, GLOW);
   }

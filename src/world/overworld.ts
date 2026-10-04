@@ -60,13 +60,14 @@ import { setRobotEnv, clearRobots } from './robots';
 import { updateThreat } from './threat';
 import { setBanditEnv, clearBandits, spawnCamp, despawnCamp } from './bandits';
 import { setRaiderEnv, clearRaiders, ambushHit } from './raiders';
+import { drawClosedChest } from './chestmodel';
 import { generateCamp, type CampMap } from '../gen/camps';
 import { add as addMat } from './render';
 import { YARD } from '../gen/vehicles';
 import { setStreakSources, type EdgeSource } from './fx';
 import { voxelObject, villageDeco, wallSign } from './level';
 import { NPC_INFO, VILLAGER_NAMES, type NpcRole } from '../data/npcs';
-import { DIRV } from '../core/rng';
+import { DIRV, hash } from '../core/rng';
 import { claimDist, CLAIM } from '../gen/claims';
 import { baseHit, baseFloor, baseRay, baseSolid } from './building';
 import { chunkCaves, type Cave } from '../gen/caves';
@@ -413,12 +414,33 @@ function loadHangarStruct(poi: Poi): Structure {
   scene.add(group);
   return { poi, grid, group, edges: mesh, doors: [], stairs: [], npcs: [] };
 }
-/** Bandit camp: crates and barricades (voxels), A-frame tents, a campfire, the stash; its bandits. */
+/** Bandit camp: colliding timber palisade and crates, tents, campfire and treasure stash. */
 function loadCampStruct(poi: Poi): Structure {
   const T = OW.terrain!, y = T.padY(poi), cm = generateCamp(T.world, poi, y);
   const grid = VoxelGrid.surface(cm.ops, cm.rect, y);
-  const { group, mesh } = voxelObject(grid, Infinity, OUTLINE);
+  const { group, mesh } = voxelObject(VoxelGrid.surface(cm.ops.filter(o => !cm.palisade.includes(o)), cm.rect, y), Infinity, OUTLINE);
   const pb = new PropBatch();
+  for (const o of cm.palisade) {
+    const alongX = o.z === cm.rect.z0 || o.z === cm.rect.z1 - 1;
+    for (const offset of [.25, .75]) {
+      const x = o.x + (alongX ? offset : .5), z = o.z + (alongX ? .5 : offset);
+      const h = 3 + (hash(cm.id, o.x * 2 + offset * 4, o.z) % 100) / 500;
+      const ring = (yy: number) => Array.from({ length: 8 }, (_, k) => {
+        const angle = (k + .5) * Math.PI / 4;
+        return [x + Math.cos(angle) * (alongX ? .26 : .5), yy, z + Math.sin(angle) * (alongX ? .5 : .26)];
+      });
+      const bottom = ring(y), top = ring(y + h), tip = [x, y + h + .4, z];
+      for (let k = 0; k < 8; k++) {
+        const j = (k + 1) % 8;
+        pb.face(bottom[k], bottom[j], top[j], top[k]); pb.face(top[k], top[j], tip);
+        pb.seg(0xb8b060, bottom[k], top[k]); pb.seg(0xb8b060, top[k], top[j]); pb.seg(0xb8b060, top[k], tip);
+      }
+    }
+    for (const h of [.8, 2.1]) {
+      if (alongX) pb.box(o.x, y + h, o.z + .05, o.x + 1, y + h + .12, o.z + .95, 0x8fb89a);
+      else pb.box(o.x + .05, y + h, o.z, o.x + .95, y + h + .12, o.z + 1, 0x8fb89a);
+    }
+  }
   for (const t of cm.tents) {
     pb.gableRoof(t.x0, t.z0, t.x1, t.z1, y, 2.3, 0xb8b060);
     const along = t.x1 - t.x0 >= t.z1 - t.z0;
@@ -428,7 +450,7 @@ function loadCampStruct(poi: Poi): Structure {
   for (let i = 0; i < 7; i++) { const a = i / 7 * 6.283; pb.rock(cm.fire.x + Math.cos(a) * 0.9, y - 0.05, cm.fire.z + Math.sin(a) * 0.9, 0.28, 0.25, 4, a, GRID); }
   // the stash: a heavy crate
   const sx = cm.stash.x, sz = cm.stash.z;
-  pb.box(sx - 0.5, y, sz - 0.4, sx + 0.5, y + 0.7, sz + 0.4, 0xffd060);
+  drawClosedChest(pb, sx, y, sz);
   group.add(pb.build());
   const flames = new THREE.LineSegments(new THREE.BufferGeometry(), addMat(0xffb347));
   flames.geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(10 * 6), 3));
