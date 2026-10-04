@@ -1,15 +1,32 @@
 import * as THREE from 'three';
 import { G } from '../game';
-import { gatesNear, gateLocal, gatePoint, gateDestination, gateName, gateRocks, GATE_SECONDS, type WorldGate } from '../gen/worldgates';
-import { ringHit, crossedGate } from '../gen/gategeometry';
+import { gatesNear, gateLocal, gatePoint, gateRocks, tabletDestinations, worldGates, GATE_PANEL, GATE_TABLET, GATE_SECONDS, type WorldGate } from '../gen/worldgates';
+import { GateConnections, type GateLink } from '../../shared/gates.mjs';
+import { ringHit, crossedGate, vehicleFitsGate } from '../gen/gategeometry';
+import { net, online, liveGateLinks, requestGateDial, requestGateTravel } from '../net/client';
+import { driving, myCarList, myCars, vehicles, type Vehicle } from './vehicles';
+import { riding } from './ride';
+import { flushPeerState } from './peers';
+import { worldDist, wrapDx } from '../gen/regions';
+import { VEHICLES, SEATS } from '../data/vehicles';
+import { showToast } from '../ui/hud';
 import type { Terrain } from '../gen/terrain';
 import { scene, disposeTree } from './render';
 import { gateModel, gateEnergy } from './gatemodel';
 
-interface LoadedGate { site: WorldGate; group: THREE.Group; energy: THREE.Mesh; rocks: (ReturnType<typeof gateRocks>[number] & { y: number })[]; to: WorldGate | null; left: number; previous: [number, number, number] }
+interface LoadedGate { site: WorldGate; group: THREE.Group; energy: THREE.Mesh; rocks: (ReturnType<typeof gateRocks>[number] & { y: number })[]; previous: [number, number, number] }
 const loaded = new Map<number, LoadedGate>();
-let travel: (gate: WorldGate, x: number, z: number) => void = () => {};
+let travel: (gate: WorldGate, x: number, z: number, heading: number, car: Vehicle | null) => void = () => {};
 export function setGateTravel(fn: typeof travel) { travel = fn; }
+let single = new GateConnections(() => Date.now()), connectionKey = '', pendingTravel = false;
+export const gateTravelPending = () => pendingTravel;
+function connections(): GateLink[] {
+  const key = `${G.char.world}:${online() ? `${net.room?.id}:${net.id}` : 'solo'}`;
+  if (key !== connectionKey) { connectionKey = key; single = new GateConnections(() => Date.now()); }
+  return online() ? liveGateLinks() : single.state();
+}
+export function gateConnection(id: number): GateLink | null { return connections().find(l => l.a === id || l.b === id) ?? null; }
+export const gateSecondsLeft = (id: number) => Math.max(0, Math.ceil(((gateConnection(id)?.until ?? 0) - Date.now()) / 1000));
 function localPlayer(g: WorldGate): [number, number, number] {
   const [x, z] = gateLocal(g, G.pos.x, G.pos.z); return [x, G.pos.y - g.y + 1, z];
 }
@@ -20,45 +37,83 @@ export function syncWorldGates(T: Terrain, x: number, z: number) {
     const existing = loaded.get(site.id);
     if (existing) { existing.site = site; existing.group.position.x = site.x; continue; }
     const height = (u: number, v: number) => { const [px, pz] = gatePoint(site, u, v); return T.heightAt(px, pz) - site.y; };
-    const group = gateModel(site, height);
+    const group = gateModel(site, height, tabletDestinations(T.world, site).map(g => g.address));
     group.position.set(site.x, site.y, site.z); group.rotation.y = site.yaw;
     const energy = gateEnergy(); group.add(energy); scene.add(group);
-    loaded.set(site.id, { site, group, energy, rocks: gateRocks(site).map(b => ({ ...b, y: height(b.x, b.z) - .15 })), to: null, left: 0, previous: localPlayer(site) });
+    loaded.set(site.id, { site, group, energy, rocks: gateRocks(site).map(b => ({ ...b, y: height(b.x, b.z) - .15 })), previous: localPlayer(site) });
   }
 }
 export function clearWorldGates() {
   for (const g of loaded.values()) { disposeTree(g.group); (g.energy.material as THREE.Material).dispose(); }
   loaded.clear();
 }
-export function nearGatePanel(): WorldGate | null {
+function nearDevice(point: readonly [number, number]): WorldGate | null {
   if (G.char.loc !== 'overworld') return null;
   for (const g of loaded.values()) {
     const [x, z] = gateLocal(g.site, G.pos.x, G.pos.z);
-    if (Math.hypot(x - 6.3, z - 4.1) < 2.3 && Math.abs(G.pos.y - g.site.y) < 1.3) return g.site;
+    if (Math.hypot(x - point[0], z - point[1] - 1.2) < 2.3 && Math.abs(G.pos.y - g.site.y) < 1.3) return g.site;
   }
   return null;
 }
-export function dialWorldGate(source: WorldGate, symbols: readonly number[]): string {
+export const nearGatePanel = () => nearDevice(GATE_PANEL);
+export const nearGateTablet = () => nearDevice(GATE_TABLET);
+export async function dialWorldGate(source: WorldGate, symbols: readonly number[]): Promise<string> {
   const g = loaded.get(source.id), near = nearGatePanel();
-  if (!g || near?.id !== source.id) return 'Stand beside this gate\'s console.';
-  const to = gateDestination(G.char.world, source.id, symbols);
-  // Invalid dialing also disconnects a previous opening, so stale destinations cannot be entered by mistake.
-  g.to = to; g.left = to ? GATE_SECONDS : 0; g.energy.visible = !!to; g.previous = localPlayer(g.site);
-  return to ? `Connected to ${gateName(to)}. Walk through the ring within ${GATE_SECONDS} seconds.` : 'No connection. This address is unassigned or belongs to this gate.';
+  if (!g || near?.id !== source.id || driving.v || riding()) return 'Stand beside this gate\'s console on foot.';
+  if (gateConnection(source.id)) return `Terminal locked for ${gateSecondsLeft(source.id)} seconds.`;
+  connections();
+  if (online()) flushPeerState();
+  const result = online() ? await requestGateDial(source.id, symbols) : single.open(G.char.world, source.id, symbols);
+  if (!result.ok) return result.why ?? 'No connection.';
+  return `Connection open for ${GATE_SECONDS} seconds. Both terminals are locked. Walk or drive through the ring.`;
 }
-export function shutWorldGate(source: WorldGate) {
-  const g = loaded.get(source.id); if (g) { g.to = null; g.left = 0; g.energy.visible = false; }
+
+/** Avoid an occupied exit while leaving enough room for the whole truck behind the portal plane. */
+function landing(to: WorldGate, car: Vehicle | null, side: number): [number, number] | null {
+  const length = car?.spec.length ?? 1, width = car?.spec.width ?? .8;
+  const occupied = vehicles.filter(v => v !== car).map(v => ({ x: v.st.x, z: v.st.z, w: v.spec.width, l: v.spec.length, h: v.st.heading }));
+  for (const p of net.peers.values()) if (p.st?.loc === 'o') for (const c of p.st.cars ?? []) {
+    const s = VEHICLES[c[0] === 1 ? 'mastodon' : 'scout']; occupied.push({ x: c[1], z: c[3], w: s.width, l: s.length, h: c[4] });
+  }
+  for (const offset of [0, width + 2, -width - 2]) {
+    const point = gatePoint(to, offset, side * (length / 2 + 4));
+    const clear = occupied.every(o => {
+      if (worldDist(point[0], point[1], o.x, o.z) > length + o.l + 4) return true;
+      const dx = wrapDx(point[0] - o.x), dz = point[1] - o.z;
+      const x = dx * Math.cos(o.h) - dz * Math.sin(o.h), z = dx * Math.sin(o.h) + dz * Math.cos(o.h), a = to.yaw - o.h;
+      return Math.abs(x) > o.w / 2 + Math.abs(Math.cos(a)) * width / 2 + Math.abs(Math.sin(a)) * length / 2 + .5 || Math.abs(z) > o.l / 2 + Math.abs(Math.cos(a)) * length / 2 + Math.abs(Math.sin(a)) * width / 2 + .5;
+    });
+    if (clear) return point;
+  }
+  return null;
 }
-export function updateWorldGates(dt: number, onFoot: boolean) {
+function beginTravel(g: LoadedGate, to: WorldGate, side: number) {
+  const car = driving.v, point = landing(to, car, side);
+  if (!point) { if (car) car.speed = 0; showToast('The destination exit is occupied. Wait for it to clear.'); return; }
+  const [x, z] = point, heading = to.yaw + (side < 0 ? Math.PI : 0), world = G.char.world;
+  if (!online()) { travel(to, x, z, heading, car); return; }
+  const index = car ? myCarList().indexOf(car) : -1, pose = car ? [...myCars()[index]] : null;
+  if (pose) { pose[1] = x; pose[2] = to.y; pose[3] = z; pose[4] = heading; pose[5] = pose[6] = 0; }
+  flushPeerState(); pendingTravel = net.gateTravelling = true;
+  void requestGateTravel(g.site.id, car && pose ? { index, id: car.st.id, pose } : undefined).then(result => {
+    if (result.ok && result.to === to.id && G.char.world === world && G.char.loc === 'overworld' && driving.v === car) travel(to, x, z, heading, car);
+    else { if (car) car.speed = 0; showToast(result.why ?? 'The connection closed.'); }
+  }).finally(() => { pendingTravel = net.gateTravelling = false; });
+}
+export function updateWorldGates(dt: number, canTravel = false) {
   if (G.char.loc !== 'overworld') return;
   for (const g of loaded.values()) {
-    const now = localPlayer(g.site);
-    if (g.to && (g.left -= dt) <= 0) shutWorldGate(g.site);
-    if (g.to) {
+    const now = localPlayer(g.site), link = gateConnection(g.site.id);
+    g.energy.visible = !!link;
+    if (link) {
       (g.energy.material as THREE.ShaderMaterial).uniforms.time.value += dt;
-      if (onFoot && crossedGate(g.previous, now)) {
-        const to = g.to, [x, z] = gatePoint(to, 0, 4); shutWorldGate(g.site);
-        travel(to, x, z); return; // travelling rebuilds the streamed world and its loaded gate map
+      if (canTravel && !pendingTravel && !riding() && crossedGate(g.previous, now)) {
+        const car = driving.v, [x] = gateLocal(g.site, G.pos.x, G.pos.z);
+        const height = car ? Math.max(car.spec.height, ...SEATS[car.st.model].map(s => s.y + 1.9), car.turret ? car.spec.mount[1] + 2 : 0) : 0;
+        if (!car || vehicleFitsGate(x, car.y - g.site.y, car.st.heading - g.site.yaw, car.spec.width, car.spec.length, height)) {
+          const to = worldGates(G.char.world)[link.a === g.site.id ? link.b : link.a];
+          beginTravel(g, to, g.previous[2] >= 0 ? 1 : -1); g.previous = now; return;
+        }
       }
     }
     g.previous = now;
@@ -68,7 +123,8 @@ export function worldGateHit(px: number, py: number, pz: number, r: number): boo
   for (const g of loaded.values()) {
     const [x, z] = gateLocal(g.site, px, pz), y = py - g.site.y;
     if (ringHit(x, y, z, r)) return true;
-    if (Math.abs(x - 6.3) < .9 + r && Math.abs(z - 3) < .65 + r && y > -r && y < 2.45 + r) return true;
+    if (Math.abs(x - GATE_PANEL[0]) < 1 + r && Math.abs(z - GATE_PANEL[1]) < .8 + r && y > -r && y < 2.45 + r) return true;
+    if (Math.abs(x - GATE_TABLET[0]) < 1.8 + r && Math.abs(z - GATE_TABLET[1]) < .8 + r && y > -r && y < 2.9 + r) return true;
     for (const b of g.rocks) if (y > b.y - r && y < b.y + b.h + r && Math.hypot(x - b.x, z - b.z) < b.r + r) return true;
   }
   return false;

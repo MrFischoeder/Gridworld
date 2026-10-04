@@ -519,6 +519,11 @@ export function leave(save = true) {
 export function vehiclesNear(x: number) {
   for (const v of vehicles) { const nx = nearX(v.st.x, x); if (nx !== v.st.x) { v.st.x = nx; pose(v); } }
 }
+/** Move the existing vehicle, including its cargo and all seat figures, without unloading or recreating it. */
+export function teleportVehicle(v: Vehicle, x: number, z: number, heading: number) {
+  v.st.x = x; v.st.z = z; v.st.heading = heading; v.speed = 0; v.steer = 0;
+  pose(v); G.pos.set(v.st.x, v.y, v.st.z); G.vel.set(0, 0, 0);
+}
 /** Player collision with parked vehicles (their body box). */
 export function vehicleHit(x: number, y: number, z: number, r: number): boolean {
   for (const v of vehicles) {

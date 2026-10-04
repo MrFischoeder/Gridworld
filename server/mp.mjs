@@ -44,12 +44,13 @@ import { mergeWorld, mergeProgress } from '../src/net/worlddoc.mjs';
 import { WebSocketServer } from 'ws';
 import { pathToFileURL } from 'node:url';
 import { randomInt } from 'node:crypto';
+import { GateConnections } from '../shared/gates.mjs';
 
 export const MP = { path: '/mp', port: 7777, max: 8, rate: 100, nameMax: 20, chatMax: 200, roomName: 28, rooms: 12, roomTtl: 14, cars: 8, drops: 300, dropTtl: 6, payload: 4 * 1024 * 1024 };
 /** What players may pass to each other through 'cast' (everyone else in the room) and 'to' (one player). */
 const RELAY = new Set(['foes', 'bolt', 'fhit', 'kill', 'hurt']);
 /** Protocol version: a client with another one is refused (the game shows why). */
-export const PROTOCOL = 3;
+export const PROTOCOL = 4;
 
 const clean = (s, n) => String(s ?? '').replace(/[\u0000-\u001f<>]/g, '').trim().slice(0, n);
 const num = (v) => (typeof v === 'number' && Number.isFinite(v) ? v : 0);
@@ -73,6 +74,7 @@ export function createMp(log = (m) => console.log('[mp] ' + m), opts = {}) {
   let nextId = 1, dropSeq = 1;
   const newRoom = (r) => {
     const room = { id: r.id, name: clean(r.name, MP.roomName) || 'GridWorld', world: r.world == null ? null : r.world | 0, time0: num(r.time), run: 0, since: 0, players: new Map(), hostId: 0, created: r.created ?? Date.now(), last: r.last ?? Date.now(), drops: new Map((Array.isArray(r.drops) ? r.drops : []).map((d) => [d.id, d])), doc: object(r.doc) ? cleanDoc(r.doc) : {}, locks: new Map(), seeded: !!r.seeded, dirty: false };
+    room.gates = new GateConnections();
     rooms.set(room.id, room);
     return room;
   };
@@ -126,12 +128,32 @@ export function createMp(log = (m) => console.log('[mp] ' + m), opts = {}) {
         me = { id: nextId++, ws, name, st: null, joined: Date.now() };
         if (!room.players.size && !dedicated) { room.hostId = me.id; if (room.world === null) { room.world = num(m.world) | 0; room.time0 = num(m.time); } log(`${name} hosts world ${room.world}`); }
         room.players.set(me.id, me); room.last = Date.now(); occupied(room, true);
-        send(ws, { t: 'welcome', id: me.id, host: room.hostId, world: room.world, time: clock(room), dedicated, room: { id: room.id, name: room.name }, drops: [...room.drops.values()], wdoc: room.doc, wseeded: room.seeded, players: [...room.players.values()].map((p) => ({ id: p.id, name: p.name })) });
+        send(ws, { t: 'welcome', id: me.id, host: room.hostId, world: room.world, time: clock(room), dedicated, room: { id: room.id, name: room.name }, drops: [...room.drops.values()], wdoc: room.doc, wseeded: room.seeded, links: room.gates.state(), now: Date.now(), players: [...room.players.values()].map((p) => ({ id: p.id, name: p.name })) });
         all(room, { t: 'join', id: me.id, name }, me.id);
         log(`${name} joined ${room.name} (${room.players.size}/${MP.max})`);
         return;
       }
-      if (m.t === 'state') {
+      if (m.t === 'gdial') {
+        const result = me.st?.loc === 'o' && !me.st.ride && !me.st.cars.some(c => c[8]) ? room.gates.open(room.world, m.gate, m.symbols) : { ok: false, why: 'Use a gate terminal on foot, on the surface.' };
+        const state = { links: room.gates.state(), now: Date.now() };
+        if (result.ok) all(room, { t: 'gates', ...state });
+        send(ws, { t: 'gdial', req: m.req, ...result, ...state });
+      } else if (m.t === 'gtravel') {
+        const link = room.gates.at(m.gate), to = link ? (link.a === m.gate ? link.b : link.a) : undefined;
+        let ok = !!link && me.st?.loc === 'o' && !me.st.ride;
+        const warp = m.car, index = warp?.index, car = me.st?.cars[index];
+        if (warp) {
+          ok = ok && Number.isInteger(index) && car && me.st.carIds?.[index] === warp.id && !!car[8] && (car[10] ?? 100) > 0 && Array.isArray(warp.pose) && warp.pose.length === 11 && warp.pose.every(n => typeof n === 'number' && Number.isFinite(n)) && warp.pose[0] === car[0];
+          if (ok) {
+            // Keep the same vehicle and seats. Only its pose changes; cargo belongs to the owner's save.
+            const pose = [...car]; for (let i = 1; i <= 6; i++) pose[i] = warp.pose[i];
+            me.st.cars[index] = pose; me.st.p = pose.slice(1, 4);
+            for (const p of room.players.values()) if (p.st?.ride?.[0] === me.id && p.st.ride[1] === index) p.st.p = pose.slice(1, 4);
+            all(room, { t: 'vwarp', owner: me.id, index, carId: warp.id, car: pose, to });
+          }
+        } else if (ok && me.st.cars.some(c => c[8])) ok = false;
+        send(ws, { t: 'gtravel', req: m.req, ok: !!ok, to, why: ok ? undefined : 'The connection closed or this is not your occupied vehicle.' });
+      } else if (m.t === 'state') {
         const previousCars = me.st?.cars, previousIds = me.st?.carIds;
         me.st = { p: Array.isArray(m.p) ? m.p.slice(0, 3).map(num) : [0, 0, 0], yaw: num(m.yaw), pitch: num(m.pitch), loc: clean(m.loc, 80), held: clean(m.held, 24), mv: !!m.mv, away: !!m.away, cars: Array.isArray(m.cars) ? m.cars.slice(0, MP.cars).filter(Array.isArray).map((c) => c.slice(0, 11).map(num)) : [], ride: Array.isArray(m.ride) ? m.ride.slice(0, 3).map(num) : undefined, gun: typeof m.gun === 'number' ? num(m.gun) : undefined };
         if (Array.isArray(m.carIds)) me.st.carIds = m.carIds.slice(0, MP.cars).map((id) => clean(id, 100));
@@ -243,7 +265,7 @@ export function createMp(log = (m) => console.log('[mp] ' + m), opts = {}) {
     for (const room of rooms.values()) {
       if (room.players.size < (dedicated ? 1 : 2)) continue; // alone in a dedicated room the snapshots still carry its clock
       const t = clock(room), states = [...room.players.values()].filter((p) => p.st).map((p) => ({ id: p.id, ...p.st }));
-      for (const p of room.players.values()) send(p.ws, { t: 'snap', time: t, ps: states.filter((s) => s.id !== p.id) });
+      for (const p of room.players.values()) send(p.ws, { t: 'snap', time: t, links: room.gates.state(), now: Date.now(), ps: states.filter((s) => s.id !== p.id) });
     }
   }, MP.rate);
   // empty rooms nobody has come back to are forgotten (never the first one)

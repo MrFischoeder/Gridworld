@@ -1,3 +1,4 @@
+import { gateAddresses } from '../shared/gates.mjs';
 import { describe, it, expect, afterEach } from 'vitest';
 import { createServer, type Server } from 'node:http';
 import { WebSocket } from 'ws';
@@ -296,4 +297,32 @@ describe('multiplayer server', () => {
     expect(serverUrl('', { protocol: 'https:', host: 'apps.example.pl', pathname: '/gridworld/index.html' })).toBe('wss://apps.example.pl/gridworld/mp');
     expect(serverUrl('', { protocol: 'http:', host: 'h:8517', pathname: '/' })).toBe('ws://h:8517/mp');
   });
+});
+
+for (const occupants of [2, 3]) it(`transports a vehicle with ${occupants} players while retaining seats and locking both terminals`, async () => {
+  const port = await server({ world: 12345 });
+  const owner = await client(port, { name: 'Driver' }), id = (await owner.wait('welcome')).id;
+  const riders = [];
+  for (let seat = 1; seat < occupants; seat++) { const c = await client(port, { name: 'Rider' + seat }); await c.wait('welcome'); riders.push(c); }
+  const state = { t: 'state', loc: 'o', p: [0, 0, 0] }, addresses = gateAddresses(12345);
+  owner.send(state); owner.send({ t: 'gdial', gate: 0, symbols: addresses[20], req: 1 });
+  const opened = await owner.wait('gdial'); expect(opened.ok).toBe(true); const until = opened.links[0].until;
+  const car = [1, 1, 3, 2, 0, 0, 0, 1, 1, .75, 67];
+  owner.send({ ...state, cars: [car], carIds: ['loaded-mastodon'] }); await owner.wait('seats');
+  for (let i = 0; i < riders.length; i++) { riders[i].send({ ...state, ride: [id, 0, i + 1] }); expect((await riders[i].wait('seats')).ride).toEqual([id, 0, i + 1]); }
+  riders[0].send({ t: 'gdial', gate: 20, symbols: addresses[1], req: 1 }); expect((await riders[0].wait('gdial')).ok).toBe(false);
+  owner.send({ t: 'gtravel', gate: 0, req: 2, car: { index: 0, id: 'stale-id', pose: car } }); expect((await owner.wait('gtravel')).ok).toBe(false);
+  const pose = [...car]; pose.splice(1, 6, 600, 4, 6010, 2, 0, 0);
+  owner.send({ t: 'gtravel', gate: 0, req: 3, car: { index: 0, id: 'loaded-mastodon', pose } }); expect((await owner.wait('gtravel', 2)).ok).toBe(true);
+  for (let i = 0; i < riders.length; i++) {
+    expect(await riders[i].wait('vwarp')).toMatchObject({ carId: 'loaded-mastodon', car: pose, to: 20 });
+    const snap = await riders[i].until(m => m.t === 'snap' && m.ps.some((p: any) => p.id === id && p.cars[0][1] === 600));
+    expect(snap.ps.find((p: any) => p.id === id).cars[0]).toEqual(pose);
+    expect(snap.links[0].until).toBe(until);
+    expect(riders[i].got.filter(m => m.t === 'seats').at(-1)!.ride).toEqual([id, 0, i + 1]);
+  }
+  owner.send({ t: 'gtravel', gate: 20, req: 4, car: { index: 0, id: 'loaded-mastodon', pose: car } }); expect((await owner.wait('gtravel', 3)).ok).toBe(true);
+  const late = await client(port, { name: 'Observer' }); const welcome = await late.wait('welcome'); expect(welcome.links).toEqual(opened.links);
+  late.send(state); late.send({ t: 'gdial', gate: 20, symbols: addresses[1], req: 1 }); expect((await late.wait('gdial')).ok).toBe(false);
+  for (const c of [owner, ...riders, late]) c.ws.close();
 });

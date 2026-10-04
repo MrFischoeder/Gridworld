@@ -4,6 +4,15 @@ export interface Change { v: string; date: string; title: string; notes: string[
 
 export const CHANGELOG: Change[] = [
   {
+    v: '0.121.0', date: '2026-10-04', title: 'Vehicle gates and permanent address tablets',
+    notes: [
+      'Your gate address is engraved on its console. A stationary stone tablet nearby permanently lists three seeded random destination addresses.',
+      'Connections stay open in both directions for 45 real seconds, including time in menus. Both terminals lock until the connection expires; crossing never resets the timer.',
+      'Larger rings and clear approaches admit the largest Mastodon, including its roof cannon and gunner. Driving through preserves the vehicle, condition, fuel, equipment and cargo.',
+      'Multiplayer passengers and gunners travel with the driver, retain their seats and appear immediately at the destination. Two-player and three-player vehicle crossings are supported.',
+    ],
+  },
+  {
     v: '0.120.0', date: '2026-10-04', title: 'Ancient addressed world gates',
     notes: [
       'Forty ancient alien gates stand on dry ground across the continents, with one near Gridholm. Each weathered octagonal stone ring has six distinct symbols; its two grounded corners are unmarked.',

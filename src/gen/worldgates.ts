@@ -1,4 +1,6 @@
 // Ancient surface gates: a fixed, seeded network. No geometry or connection state is saved.
+import { gateAddresses, GATE_COUNT, GATE_SECONDS } from '../../shared/gates.mjs';
+export { GATE_COUNT, GATE_SECONDS };
 import { hash, rng } from '../core/rng';
 import { type GateAddress } from '../data/gates';
 import { continents } from './continents';
@@ -11,16 +13,16 @@ import { inCity } from './cities';
 import { chasmsIn } from './chasms';
 import { lakesIn, LAKE_REACH } from './water';
 
-export const GATE_COUNT = 40, GATE_CLEAR = 12, GATE_BLEND = 8, GATE_SECONDS = 45;
+export const GATE_CLEAR = 24, GATE_BLEND = 10;
+export const GATE_PANEL = [14, 4] as const, GATE_TABLET = [-14, 4] as const;
 export interface WorldGate { id: number; x: number; z: number; y: number; yaw: number; address: GateAddress; seed: number }
 const cache = new Map<number, WorldGate[]>();
 export const gateName = (g: Pick<WorldGate, 'id'>) => `Ancient Gate ${String(g.id + 1).padStart(2, '0')}`;
 
 function gateNetwork(world: number, count: number): WorldGate[] {
   const got = cache.get(world); if (got && got.length >= count) return got;
-  const R = rng(hash(world, 0x6a7e)), cs = continents(world), out: WorldGate[] = got ? [...got] : [];
-  const addresses = Array.from({ length: 216 }, (_, i) => i);
-  for (let i = addresses.length - 1; i > 0; i--) { const j = Math.floor(R() * (i + 1)); [addresses[i], addresses[j]] = [addresses[j], addresses[i]]; }
+  const cs = continents(world), out: WorldGate[] = got ? [...got] : [];
+  const addresses = gateAddresses(world);
   const base = { world, base: (x: number, z: number) => naturalHeight(world, x, z) };
   for (let id = out.length; id < count; id++) {
     const Q = rng(hash(world, id, 0x6a7f)), c = cs[id % cs.length];
@@ -43,9 +45,8 @@ function gateNetwork(world: number, count: number): WorldGate[] {
       site = [x, z, Math.round(base.base(x, z))]; break;
     }
     if (!site) throw new Error(`No dry site for ancient gate ${id} in world ${world}`);
-    const n = addresses[id];
     out.push({ id, x: site[0], z: site[1], y: site[2], yaw: Q() * Math.PI * 2,
-      address: [Math.floor(n / 36), Math.floor(n / 6) % 6, n % 6], seed: hash(world, id, 0x6a80) });
+      address: addresses[id], seed: hash(world, id, 0x6a80) });
   }
   if (cache.size > 128) cache.clear(); cache.set(world, out); return out;
 }
@@ -75,10 +76,18 @@ export function gatePoint(g: WorldGate, x: number, z: number): [number, number] 
 export function gateRocks(g: WorldGate): { x: number; z: number; r: number; h: number; rot: number; sides: number }[] {
   const R = rng(g.seed), out = [];
   for (let i = 0, n = 12 + Math.floor(R() * 12); i < n; i++) {
-    const a = R() * Math.PI * 2, d = 8 + R() * 8, x = Math.cos(a) * d, z = Math.sin(a) * d;
+    const a = R() * Math.PI * 2, d = 17 + R() * 10, x = Math.cos(a) * d, z = Math.sin(a) * d;
     const r = .6 + R() * 1.6;
-    if (Math.abs(x) - r < 2.5 && Math.abs(z) - r < 13 || Math.hypot(x - 6.3, z - 3) - r < 2.4) continue;
+    if (Math.abs(x) - r < 5 && Math.abs(z) - r < 24 || [GATE_PANEL, GATE_TABLET].some(([px, pz]) => Math.hypot(x - px, z - pz) - r < 3)) continue;
     out.push({ x, z, r, h: r * (.7 + R()), rot: R() * Math.PI * 2, sides: 5 + Math.floor(R() * 3) });
   }
   return out;
+}
+
+/** Three different destinations, permanently engraved on this gate's stationary tablet. */
+export function tabletDestinations(world: number, gate: WorldGate): Pick<WorldGate, 'id' | 'address'>[] {
+  // The tablet needs addresses, not terrain surveys of all forty remote sites.
+  const list = gateAddresses(world).map((address, id) => ({ id, address })).filter(g => g.id !== gate.id), R = rng(hash(gate.seed, 0x7ab1));
+  for (let i = list.length - 1; i > 0; i--) { const j = Math.floor(R() * (i + 1)); [list[i], list[j]] = [list[j], list[i]]; }
+  return list.slice(0, 3);
 }

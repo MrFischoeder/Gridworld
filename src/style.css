@@ -390,5 +390,6 @@ body.intro #speech{display:none}
 .gate-keys{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;max-width:480px;margin:auto}
 .gate-keys button{display:flex;flex-direction:column;align-items:center;padding:8px;color:#80e8ff;border-color:#889b87;background:#050d12}
 .gate-keys button:hover,.gate-keys button:focus-visible{background:#12353e;border-color:#80e8ff}.gate-message{min-height:2.4em;color:#e1d4ac}
-.gate-ui details{margin:12px 0}.gate-ui summary{cursor:pointer;color:#c8b77c}.gate-directory{max-height:200px;overflow:auto;margin-top:8px}
-.gate-directory>div{display:flex;align-items:center;gap:14px;border-bottom:1px solid #304038;padding:5px 0;font-size:20px}.gate-directory b{font-weight:normal;min-width:145px}
+
+.gate-keys button:disabled{opacity:.4;cursor:not-allowed}.gate-ui button:disabled:hover{background:#050d12;border-color:#889b87}
+.gate-tablet-addresses>div{display:flex;align-items:center;gap:20px;padding:18px 0;border-bottom:1px solid #889b87;flex-wrap:wrap}.gate-tablet-addresses b{font-weight:normal}.gate-tablet-addresses .gate-address svg{width:48px;height:48px}

@@ -6,13 +6,29 @@ import * as THREE from 'three';
 import { G } from '../game';
 import { V } from './render';
 import { ride, allGhosts, ghostOf, type Ghost } from './peers';
-import { net } from '../net/client';
+import { net, onVehicleWarp } from '../net/client';
 import { VEHICLES, SEATS, vehicleTitle } from '../data/vehicles';
 import { SEAT_NAMES, shootCannon } from './vehicles';
 import { showToast, logLine, el } from '../ui/hud';
 import { collides } from './player';
 
 export const riding = () => !!ride.on;
+let warpArrival = () => {};
+export function setRideWarpArrival(fn: () => void) { warpArrival = fn; }
+onVehicleWarp(m => {
+  const g = ghostOf(m.owner, m.index), c = m.car;
+  if (g) {
+    const delta = c[4] - g.h;
+    g.x = c[1]; g.y = c[2]; g.z = c[3]; g.h = c[4]; g.p = c[5]; g.r = c[6];
+    g.g.position.set(g.x, g.y - .05, g.z); g.g.rotation.set(-g.p, g.h, g.r, 'YXZ');
+    if (ride.on?.owner === m.owner && ride.on.idx === m.index) G.yaw += delta;
+  }
+  if (ride.on?.owner === m.owner && ride.on.idx === m.index) {
+    // Keep the passenger or gunner's seat. Do not call getOff or reload the whole world.
+    G.pos.set(c[1], c[2], c[3]); G.vel.set(0, 0, 0); warpArrival();
+    showToast('Your vehicle travelled through the ancient gate.');
+  }
+});
 const ownerName = (g: Ghost) => net.peers.get(g.owner)?.name ?? 'Someone';
 const title = (g: Ghost) => vehicleTitle(g.m);
 const toWorld = (g: Ghost, lx: number, lz: number): [number, number] => {

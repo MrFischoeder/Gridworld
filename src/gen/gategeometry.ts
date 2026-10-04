@@ -1,5 +1,5 @@
 // Local coordinates shared by the stone model, collision and the swept portal crossing test.
-export const GATE_OUTER = 4.8, GATE_INNER = 3.65, GATE_CENTRE = GATE_OUTER * Math.cos(Math.PI / 8), GATE_DEPTH = .65;
+export const GATE_OUTER = 11, GATE_INNER = 9.6, GATE_CENTRE = GATE_OUTER * Math.cos(Math.PI / 8), GATE_DEPTH = 1;
 export const UNMARKED_CORNERS = [5, 6] as const;
 export function gatePolygon(r: number): [number, number][] {
   return Array.from({ length: 8 }, (_, i) => {
@@ -28,4 +28,9 @@ export function crossedGate(a: readonly [number, number, number], b: readonly [n
   if (Math.hypot(b[0] - a[0], b[1] - a[1], b[2] - a[2]) > 15 || a[2] === b[2] || a[2] * b[2] > 0) return false;
   const t = a[2] / (a[2] - b[2]);
   return t >= 0 && t <= 1 && insidePolygon(GATE_OPENING, a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t);
+}
+/** Includes the vehicle's projected footprint, roof cannon and standing gunner, with a small safety margin. */
+export function vehicleFitsGate(x: number, y: number, heading: number, width: number, length: number, height: number): boolean {
+  const half = Math.abs(Math.cos(heading)) * width / 2 + Math.abs(Math.sin(heading)) * length / 2 + .3;
+  return [x - half, x + half].every(px => [.05, height + .2].every(py => insidePolygon(GATE_OPENING, px, y + py)));
 }

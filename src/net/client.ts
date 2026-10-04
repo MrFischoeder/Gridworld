@@ -3,7 +3,7 @@
 // it with `sendState` (about 10 times a second) and reads `peers`.
 
 /** Must match PROTOCOL in server/mp.mjs. */
-export const PROTOCOL = 3;
+export const PROTOCOL = 4;
 export const SEND_EVERY = 0.1;
 
 /** `away`: in the menu (still in the game: the others see you standing there). */
@@ -87,11 +87,40 @@ export const net = {
   dedicated: false,
   /** The room (game server) you are in on a dedicated server. */
   room: null as { id: string; name: string } | null,
+  /** Suppress stale movement packets while a server-authorized gate transfer is in flight. */
+  gateTravelling: false,
   /** Everything lying on the ground in the room's world, by id. */
   drops: new Map<string, NetDrop>(),
 };
 export const online = () => net.id > 0;
 export const isHost = () => online() && net.id === net.host;
+
+import type { GateLink } from '../../shared/gates.mjs';
+export interface VehicleWarp { owner: number; index: number; carId: string; car: PeerCar; to: number }
+export interface GateDecision { ok: boolean; why?: string; to?: number }
+let gateLinks: GateLink[] = [], vehicleWarpHook: ((m: VehicleWarp) => void) | null = null;
+let gateReq = 0;
+const gateReplies = new Map<number, { finish: (m: GateDecision) => void; timer: ReturnType<typeof setTimeout> }>();
+export function liveGateLinks(): GateLink[] { return gateLinks.filter(l => l.until > Date.now()); }
+export function onVehicleWarp(fn: (m: VehicleWarp) => void) { vehicleWarpHook = fn; }
+function receiveGates(m: { links?: GateLink[]; now?: number }) {
+  const now = Date.now(), serverNow = m.now ?? now;
+  gateLinks = (m.links ?? []).map(l => ({ ...l, until: now + l.until - serverNow }));
+}
+function gateRequest(m: object): Promise<GateDecision> {
+  if (!online() || net.ws?.readyState !== 1) return Promise.resolve({ ok: false, why: 'Disconnected from the server.' });
+  const req = ++gateReq;
+  return new Promise(resolve => {
+    const timer = setTimeout(() => { gateReplies.delete(req); resolve({ ok: false, why: 'The gate request timed out. Try again.' }); }, 5000);
+    gateReplies.set(req, { finish: resolve, timer }); net.ws!.send(JSON.stringify({ ...m, req }));
+  });
+}
+export const requestGateDial = (gate: number, symbols: readonly number[]) => gateRequest({ t: 'gdial', gate, symbols });
+export const requestGateTravel = (gate: number, car?: { index: number; id: string; pose: PeerCar }) => gateRequest({ t: 'gtravel', gate, car });
+function clearGateRequests() {
+  net.gateTravelling = false;
+  gateLinks = []; for (const r of gateReplies.values()) { clearTimeout(r.timer); r.finish({ ok: false, why: 'Disconnected from the server.' }); } gateReplies.clear();
+}
 
 /** Is the page served by a dedicated server (server/main.mjs)? It answers mp/info next to the page. */
 /** A game server ("room") of a dedicated server, as the menu lists it: `running` while someone is in it. */
@@ -139,6 +168,7 @@ export function connect(url: string, me: { name: string; world: number; time: nu
       case 'welcome':
         welcomed = true; net.id = m.id; net.host = m.host; net.dedicated = !!m.dedicated; net.room = m.room ?? null; net.peers.clear();
         net.drops = new Map((Array.isArray(m.drops) ? m.drops : []).map((d: NetDrop) => [d.id, d]));
+        receiveGates(m);
         for (const p of m.players) if (p.id !== m.id) net.peers.set(p.id, { id: p.id, name: p.name, st: null, prev: null, at: 0, hist: [] });
         worldHooks?.welcome(m.wdoc ?? {}, !!m.wseeded, m.world);
         h.welcome(m.world, m.time, m.id === m.host, net.dedicated);
@@ -148,14 +178,29 @@ export function connect(url: string, me: { name: string; world: number; time: nu
       case 'host': net.host = m.id; h.say(m.id === net.id ? 'The host left: you host the game now.' : `${net.peers.get(m.id)?.name ?? 'Someone'} hosts the game now.`, 'info'); break;
       case 'snap': {
         const now = performance.now();
+        receiveGates(m);
         for (const s of m.ps) {
           const p = net.peers.get(s.id);
           if (!p) continue;
+          if (p.st && (p.st.loc !== s.loc || Math.hypot(p.st.p[0] - s.p[0], p.st.p[2] - s.p[2]) > 80)) p.hist = [];
           p.prev = p.st; p.st = { p: s.p, yaw: s.yaw, pitch: s.pitch, loc: s.loc, held: s.held, mv: s.mv, away: !!s.away, cars: Array.isArray(s.cars) ? s.cars : [], carIds: s.carIds, ride: Array.isArray(s.ride) ? s.ride : undefined, gun: typeof s.gun === 'number' ? s.gun : undefined }; p.at = now;
           p.hist.push({ t: now, s: p.st }); if (p.hist.length > 8) p.hist.shift();
         }
         if (!isHost()) h.clock(m.time);
         break;
+      }
+      case 'gates': receiveGates(m); break;
+      case 'gdial': case 'gtravel': {
+        if (m.links) receiveGates(m);
+        const r = gateReplies.get(m.req); if (r) { clearTimeout(r.timer); gateReplies.delete(m.req); r.finish(m); } break;
+      }
+      case 'vwarp': {
+        const p = net.peers.get(m.owner);
+        if (p?.st && p.st.carIds?.[m.index] === m.carId) {
+          const cars = [...(p.st.cars ?? [])]; cars[m.index] = m.car;
+          p.st = { ...p.st, p: [m.car[1], m.car[2], m.car[3]], cars }; p.prev = p.st; p.at = performance.now(); p.hist = [{ t: p.at, s: p.st }];
+        }
+        vehicleWarpHook?.(m); break;
       }
       case 'seats': seatHook?.(m); break;
       case 'wlock': lockReplies.get(m.req)?.(!!m.ok); lockReplies.delete(m.req); break;
@@ -173,6 +218,7 @@ export function connect(url: string, me: { name: string; world: number; time: nu
   ws.onclose = () => {
     if (net.ws !== ws) return;
     clearLocks();
+    clearGateRequests();
     net.ws = null; net.id = 0; net.host = 0; net.dedicated = false; net.room = null; net.peers.clear(); net.drops.clear();
     h.closed(why || (welcomed ? 'Disconnected from the server.' : `Could not reach a server at ${url}.`));
   };
@@ -180,6 +226,7 @@ export function connect(url: string, me: { name: string; world: number; time: nu
 export function disconnect() {
   const ws = net.ws;
   clearLocks();
+  clearGateRequests();
   net.ws = null; net.id = 0; net.host = 0; net.dedicated = false; net.room = null; net.peers.clear(); net.drops.clear();
   if (ws) { ws.onclose = null; ws.close(); }
 }

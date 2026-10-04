@@ -53,14 +53,17 @@ function avatar(id: number, name: string, kit: Kit, away: boolean): Avatar {
 }
 
 let sendT = 0;
+/** Flush seating and the current vehicle pose before requesting a gate transfer. */
+export function flushPeerState(moving = false) {
+  if (!net.id) return;
+  sendT = SEND_EVERY;
+  const s: PeerState = { p: [G.pos.x, G.pos.y, G.pos.z], yaw: G.yaw, pitch: G.pitch, loc: myLoc(), held: G.char.hands[0]?.k ?? '', mv: moving && G.playing, away: !G.playing, cars: myCars(), carIds: myCarList().map(v => v.st.id), ride: ride.on ? [ride.on.owner, ride.on.idx, ride.on.seat] : undefined, gun: ride.on ? ride.gun : undefined };
+  sendState(s, isHost() ? G.char.time : undefined);
+}
 /** Every frame: send where you are now and then, and draw the others. */
 export function updatePeers(dt: number, moving: boolean) {
   if (!net.id) { if (avatars.size || ghosts.size || ride.on) clearPeers(); return; }
-  if ((sendT -= dt) <= 0) {
-    sendT = SEND_EVERY;
-    const s: PeerState = { p: [G.pos.x, G.pos.y, G.pos.z], yaw: G.yaw, pitch: G.pitch, loc: myLoc(), held: G.char.hands[0]?.k ?? '', mv: moving && G.playing, away: !G.playing, cars: myCars(), carIds: myCarList().map((v) => v.st.id), ride: ride.on ? [ride.on.owner, ride.on.idx, ride.on.seat] : undefined, gun: ride.on ? ride.gun : undefined };
-    sendState(s, isHost() ? G.char.time : undefined);
-  }
+  if ((sendT -= dt) <= 0 && !net.gateTravelling) flushPeerState(moving);
   const here = myLoc(), now = performance.now();
   for (const id of [...avatars.keys()]) if (!net.peers.has(id)) drop(id);
   syncCars(here, now);
@@ -155,7 +158,7 @@ function syncCars(here: string, now: number) {
         g = { g: cm.g, m, gun, turret: cm.turret, owner: p.id, idx: i, x: c[1], y: c[2], z: c[3], h: c[4], p: c[5], r: c[6], occ: Array(n).fill(null), bumped: new Set(), figs: Array(n).fill(null), figKey: Array(n).fill(null), aim: 0, condition: c[10] ?? 100 };
         scene.add(g.g); ghosts.set(key, g);
       }
-      const q = prev?.[i] && prev[i][0] === c[0] && at.a.carIds?.[i] === at.b.carIds?.[i] ? prev[i] : c;
+      const q = prev?.[i] && prev[i][0] === c[0] && at.a.carIds?.[i] === at.b.carIds?.[i] && Math.hypot(prev[i][1] - c[1], prev[i][3] - c[3]) < 80 ? prev[i] : c;
       g.x = q[1] + (c[1] - q[1]) * k; g.y = q[2] + (c[2] - q[2]) * k; g.z = q[3] + (c[3] - q[3]) * k;
       g.h = lerpAng(q[4], c[4], k); g.p = q[5] + (c[5] - q[5]) * k; g.r = q[6] + (c[6] - q[6]) * k;
       g.condition = c[10] ?? 100;

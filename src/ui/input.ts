@@ -1,3 +1,4 @@
+import { gateTravelPending } from '../world/worldgates';
 // Keyboard and mouse. Pointer lock drives mouse look; losing it pauses the game.
 import { riding, rideSeat, toggleRideView } from '../world/ride';
 import { isPlacing, cancelPlacing } from '../world/claims';
@@ -34,7 +35,7 @@ export function initInput(onPause: () => void) {
   addEventListener('keydown', (e) => {
     if (e.target === el.seed) return;
     if (e.code === 'Backquote') { e.preventDefault(); toggleConsole(); return; }
-    if (G.consoleOpen) return;
+    if (G.consoleOpen || gateTravelPending()) return;
     if (e.code === 'KeyI' || e.code === 'Tab') { e.preventDefault(); if (!G.dlgOpen && !G.xferOpen) togglePack(); return; }
     if (G.packOpen) { if (e.code === 'Escape') closePack(); return; }
     if (G.dlgOpen) { if (e.code === 'Escape') closeDialog(); return; }

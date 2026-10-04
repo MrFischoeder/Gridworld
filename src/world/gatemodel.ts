@@ -1,7 +1,7 @@
 import * as THREE from 'three';
-import { GATE_GLYPHS } from '../data/gates';
-import { GATE_OUTLINE, GATE_OPENING, GATE_DEPTH, GATE_CENTRE, UNMARKED_CORNERS } from '../gen/gategeometry';
-import { gateRocks, type WorldGate } from '../gen/worldgates';
+import { GATE_GLYPHS, type GateAddress } from '../data/gates';
+import { GATE_OUTLINE, GATE_OPENING, GATE_DEPTH, GATE_CENTRE, GATE_INNER, UNMARKED_CORNERS } from '../gen/gategeometry';
+import { gateRocks, GATE_PANEL, GATE_TABLET, type WorldGate } from '../gen/worldgates';
 import { rng, hash } from '../core/rng';
 import { PropBatch } from './props';
 
@@ -22,7 +22,7 @@ function boulder(pb: PropBatch, b: ReturnType<typeof gateRocks>[number], y: numb
   pb.face(...rings[2]); for (let i = 0; i < b.sides; i++) pb.seg(STONE, rings[2][i], rings[2][(i + 1) % b.sides]);
 }
 /** Batched opaque stonework: only four draw calls including all engravings and scattered boulders. */
-export function gateModel(g: WorldGate, rockHeight: (x: number, z: number) => number): THREE.Group {
+export function gateModel(g: WorldGate, rockHeight: (x: number, z: number) => number, tablet: readonly GateAddress[] = []): THREE.Group {
   const pb = new PropBatch(), R = rng(g.seed);
   for (let i = 0, symbol = 0; i < 8; i++) {
     const j = (i + 1) % 8, [ox, oy] = GATE_OUTLINE[i], [nx, ny] = GATE_OPENING[i];
@@ -38,14 +38,14 @@ export function gateModel(g: WorldGate, rockHeight: (x: number, z: number) => nu
     }
     if (!(UNMARKED_CORNERS as readonly number[]).includes(i)) {
       const x = (ox + nx) / 2, y = (oy + ny) / 2;
-      for (const z of [-GATE_DEPTH - .025, GATE_DEPTH + .025]) glyph(pb, symbol, x, y, z, .32);
+      for (const z of [-GATE_DEPTH - .025, GATE_DEPTH + .025]) glyph(pb, symbol, x, y, z, .45);
       symbol++;
     }
   }
   // Thin slabs lie flush with the cleared terrain: no jumping onto the portal or console.
-  pb.box(-5.4, -.3, -1.5, 5.4, 0, 1.5, STONE);
-  for (let i = -4; i <= 4; i++) pb.seg(CARVING, [i, .012, -1.5], [i + .2, .012, 1.5]);
-  const x = 6.3, z = 3;
+  pb.box(-12, -.3, -2, 12, 0, 2, STONE);
+  for (let i = -11; i <= 11; i++) pb.seg(CARVING, [i, .012, -2], [i + .2, .012, 2]);
+  const [x, z] = GATE_PANEL;
   pb.solid8([[x - .75, -.1, z - .65], [x + .75, -.1, z - .65], [x + .75, -.1, z + .65], [x - .75, -.1, z + .65]],
     [[x - .48, 1.6, z - .5], [x + .48, 1.6, z - .5], [x + .48, 1.6, z + .5], [x - .48, 1.6, z + .5]], STONE);
   pb.box(x - .9, 1.25, z - .55, x + .9, 2.45, z + .6, CARVING);
@@ -55,7 +55,16 @@ export function gateModel(g: WorldGate, rockHeight: (x: number, z: number) => nu
     glyph(pb, i, gx, gy, z + .65, .17);
   }
   // Own address is carved on the pedestal below the keys, never on the two grounded ring corners.
-  g.address.forEach((id, i) => glyph(pb, id, x + (i - 1) * .35, .85, z + .64, .13));
+  pb.box(x - .95, .4, z + .57, x + .95, 1.12, z + .68, CARVING);
+  g.address.forEach((id, i) => glyph(pb, id, x + (i - 1) * .57, .76, z + .70, .22));
+  const [tx, tz] = GATE_TABLET;
+  pb.solid8([[tx - 1.8, -.1, tz - .75], [tx + 1.8, -.1, tz - .75], [tx + 1.8, -.1, tz + .75], [tx - 1.8, -.1, tz + .75]],
+    [[tx - 1.5, 2.9, tz - .35], [tx + 1.5, 2.9, tz - .35], [tx + 1.5, 2.9, tz + .62], [tx - 1.5, 2.9, tz + .62]], STONE);
+  tablet.forEach((a, row) => {
+    const y = 2.3 - row * .8;
+    pb.line(CARVING, [tx - 1.3, y - .36, tz + .78], [tx + 1.3, y - .36, tz + .78]);
+    a.forEach((id, i) => glyph(pb, id, tx + (i - 1) * .85, y, tz + .8, .3));
+  });
   gateRocks(g).forEach((b, i) => boulder(pb, b, rockHeight(b.x, b.z) - .15, hash(g.seed, i)));
   const group = pb.build(); group.name = `ancient-gate:${g.id}`; return group;
 }
@@ -64,13 +73,13 @@ export function gateModel(g: WorldGate, rockHeight: (x: number, z: number) => nu
 export function gateEnergy(): THREE.Mesh {
   const shape = new THREE.Shape(); GATE_OPENING.forEach(([x, y], i) => i ? shape.lineTo(x, y) : shape.moveTo(x, y)); shape.closePath();
   const material = new THREE.ShaderMaterial({
-    uniforms: { time: { value: 0 }, centre: { value: GATE_CENTRE } },
+    uniforms: { time: { value: 0 }, centre: { value: GATE_CENTRE }, radius: { value: GATE_INNER } },
     transparent: true, side: THREE.DoubleSide, depthWrite: false, forceSinglePass: true,
     vertexShader: `varying vec2 stonePosition;
       void main() { stonePosition = position.xy; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
-    fragmentShader: `uniform float time; uniform float centre; varying vec2 stonePosition;
+    fragmentShader: `uniform float time; uniform float centre; uniform float radius; varying vec2 stonePosition;
       void main() {
-        vec2 p = (stonePosition - vec2(0.0, centre)) / 3.65;
+        vec2 p = (stonePosition - vec2(0.0, centre)) / radius;
         float r = length(p), a = atan(p.y, p.x);
         float ripple = sin(r * 32.0 - time * 4.0 + sin(a * 6.0 + time) * 1.5);
         float veins = pow(max(0.0, ripple), 8.0);
