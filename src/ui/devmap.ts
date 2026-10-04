@@ -8,7 +8,7 @@ import { allVillages, regionInfo, regionOf, X_MIN, WORLD_W, POLE_Z, POLAR_Z, REG
 import { worldGates, gateName, gatePoint, type WorldGate } from '../gen/worldgates';
 import { worldMegaliths, megalithPoint, type Megalith } from '../gen/megaliths';
 import { dangerAt } from '../gen/danger';
-import { seaMask } from '../gen/seas';
+import { seaMask, isleHeight, SEA } from '../gen/seas';
 import { riversOf } from '../gen/rivers';
 import { regionFog, type FogZone } from '../gen/toxic';
 import { teleportTo } from '../world/level';
@@ -64,8 +64,10 @@ function seas(): HTMLCanvasElement {
   c.width = W; c.height = H;
   const x2 = c.getContext('2d')!, img = x2.createImageData(W, H);
   for (let j = 0; j < H; j++) for (let i = 0; i < W; i++) {
-    const m = seaMask(w, X_MIN + (i + 0.5) * SEA_PX, -POLAR_Z + (j + 0.5) * SEA_PX), o = 4 * (i + W * j);
+    const x = X_MIN + (i + 0.5) * SEA_PX, z = -POLAR_Z + (j + 0.5) * SEA_PX;
+    const m = seaMask(w, x, z), o = 4 * (i + W * j);
     if (m < 0.3) continue;
+    if (isleHeight(w, x, z) > SEA.level) continue;
     img.data[o] = 10; img.data[o + 1] = 60 - 30 * m; img.data[o + 2] = 140 - 50 * m; img.data[o + 3] = 200;
   }
   x2.putImageData(img, 0, 0);

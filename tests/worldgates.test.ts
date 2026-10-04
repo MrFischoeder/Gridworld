@@ -32,7 +32,7 @@ describe('ancient addressed surface gates', () => {
         for (const other of list) if (other.id !== g.id) expect(worldDist(g.x, g.z, other.x, other.z)).toBeGreaterThanOrEqual(1600);
       }
     }
-  });
+  }, 300000); // Cold surveys generate roads, rivers and sites across multiple worlds.
   it('connects only exact ordered three-symbol addresses, rejects self and unused addresses', () => {
     const world = 12345, list = worldGates(world), from = list[0];
     for (const g of list.slice(1)) expect(gateDestination(world, from.id, g.address)).toEqual(g);

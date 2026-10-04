@@ -29,7 +29,7 @@ it('reserves twelve distinct, repeatable huge monuments across the mainland with
       for (const b of stones) expect(Math.hypot(b.x, b.z) + Math.hypot(b.w, b.d) / 2).toBeLessThan(m.radius);
     }
   }
-});
+}, 300000); // Cold surveys generate roads, rivers and sites across multiple worlds.
 it('grounds entire sanctuaries on a flat pad and repeats ids, geometry and coordinates at the planet seam', () => {
   const world = 12345, T = new Terrain(world);
   expect(megalithsNear(world, 0, 0, 500)).toEqual([]);

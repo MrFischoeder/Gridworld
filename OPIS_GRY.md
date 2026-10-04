@@ -1,6 +1,6 @@
 # GridWorld: opis gry, cel, plan i historia zmian
 
-Stan na wersję **0.128.0**. Ten dokument opisuje, czym jest GridWorld, jaki jest cel gry, co już w niej jest, czego jeszcze nie ma, dokąd zmierza i jak powstawała, wersja po wersji. Nazwy z gry (przedmioty, miejsca, postacie) są po angielsku, tak jak na ekranie.
+Stan na wersję **0.129.0**. Ten dokument opisuje, czym jest GridWorld, jaki jest cel gry, co już w niej jest, czego jeszcze nie ma, dokąd zmierza i jak powstawała, wersja po wersji. Nazwy z gry (przedmioty, miejsca, postacie) są po angielsku, tak jak na ekranie.
 
 ---
 
@@ -157,6 +157,7 @@ Gra jest pomyślana jako **kooperacja do 8 graczy** na autorytatywnym serwerze (
 
 ### Krajobraz
 - Skały i wielkie głazy mają nieregularne, wielościenne bryły z szeroką podstawą, załamanymi bokami i ściętą górą zamiast piramidalnego czubka. Ten sam model obejmuje gruz w ruinach i kamienie przy jaskiniach. Kolorowe żyły rudy biegną po rzeczywistych ścianach skał; rozmieszczenie, kolizje, wydobycie i wcześniejsze zapisy pozostają zgodne.
+- Kontynenty mają nieregularne półwyspy, większe zatoki i liczne mniejsze zatoczki. Dwa lub trzy lądy nadal oddzielają szerokie oceany; okolica Gridholm pozostaje sucha. Wybrzeża i wyspy przeliczają się także w istniejących światach, więc miejsca wybierane na suchym lądzie mogą się przesunąć; do nowej eksploracji najlepiej rozpocząć nowy świat.
 - **Teren**:
   - pagórki i doliny;
   - **góry** do ok. 170 m ze śniegiem na szczytach (ok. jednej czwartej lądu);
@@ -165,9 +166,9 @@ Gra jest pomyślana jako **kooperacja do 8 graczy** na autorytatywnym serwerze (
 - **Woda**:
   - **jeziora** czyste, mętne i toksyczne (świecące);
   - **studnie** w wioskach i w dziczy;
-  - **morza**: ok. 25% lądu między czapami, słone, z plażami i płyciznami;
+  - **morza**: około połowy powierzchni między czapami, słone, z plażami i płyciznami;
   - **rzeki**: 150–200 na świat, od gór do mórz, z dopływami, nazwami i nurtem, który niesie pływaka; drogi przecinają je brodami;
-  - **wyspy** na otwartym morzu (ok. 150).
+  - **wyspy** na otwartym morzu: nominalnie 480–1400 m średnicy, z nieregularnym brzegiem i łagodnymi wzgórzami 6–18 m ponad wodą; widoczne także na mapie deweloperskiej.
 - **Las**: sosny, drzewa liściaste i trzy olbrzymy (Ancient Twisted, Umbrella, Hollow Arch, przez który można przejść), jadalne grzyby i drzewa z owocami.
 - **Pogoda**: bezchmurnie, pochmurno, deszcz, mgła (częściej rano) i burze z piorunami. Każda okolica ma własną pogodę, a fronty przesuwają się godzinami.
 - **Zegar gry**: 1 sekunda = 1 minuta gry, doba trwa 24 minuty.
@@ -606,3 +607,5 @@ Pełne notatki (po angielsku) są w grze pod przyciskiem **Changelog** w menu g�
 - **0.122.0 Wybieranie adresu i animacja podróży.** Symbole zapalają się kolejno na pierścieniu. Przyciski Activate i Cancel zastępują automatyczne otwieranie; znikają angielskie nazwy znaków. Brama docelowa pokazuje kod źródłowy. Pięciosekundowy transport całej załogi ma animację ciągłych linii, a bramy nie zamykają się przed ukończeniem podróży rozpoczętej przed upływem 45 sekund.
 - **0.121.0 Bramy dla pojazdów i stałe tablety.** Własny adres wyryty na terminalu, trzy stałe adresy na osobnym tablecie. Dwukierunkowe połączenie przez 45 rzeczywistych sekund blokuje obie konsole. Powiększone bramy przepuszczają Mastodona z dwoma lub trzema graczami, zachowując miejsca i cały ładunek.
 - **0.120.0 Bramy Starożytnych.** Sieć 40 obcych, kamiennych, ośmiokątnych teleportów na kontynentach. Sześć różnych symboli na górnych narożnikach, dwa dolne bez znaków. Panel przy każdej bramie wybiera unikalny trzyznakowy adres; archiwum podaje adresy do podróży i powrotu. Przejście pieszo przenosi przed docelowy pierścień bez zmiany zdrowia i ekwipunku. Bramy mają różne rozsypane głazy, płaskie podejścia i znaczniki na mapach.
+
+- **0.129.0 Organiczne wybrzeża i większe wyspy.** Kontynenty mają półwyspy, głębokie zatoki i liczne zatoczki, przy zachowanych szerokich oceanach. Wyspy powiększono do nominalnej średnicy 480–1400 m i wzgórz 6–18 m. Poprawiono wyszukiwanie pełnych obrzeży na granicach komórek i planety; mapa deweloperska pokazuje wyspy. Nowa geografia przelicza się w istniejących światach.

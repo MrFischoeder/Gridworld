@@ -3,6 +3,12 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.129.0', date: '2026-10-04', title: 'Organic coasts and larger ocean islands', notes: [
+    'Continents have asymmetric headlands, deep bays and many smaller coves instead of almost elliptical outlines. Two or three mainlands remain separated by broad oceans, with Gridholm safely inland.',
+    'Ocean islands grow from nominal radii of 60–220 metres to 240–700 metres, with gentle 6–18 metre hills. Their full lobed shores and underwater footprints remain continuous across generator cells and the planet seam.',
+    'The developer map now shows offshore island land as well as mainland coastlines. Geography remains deterministic for every world seed.',
+    'Coastlines and offshore terrain regenerate in existing worlds; places that require dry mainland may move. Use a new world for a fresh exploration of the revised geography.',
+  ] },
   { v: '0.128.0', date: '2026-10-04', title: 'Compact megaliths and visible city vaults', notes: [
     'All twelve megaliths are 25% narrower and 30% lower, including stonework, collisions and cleared grounds. Sanctuaries span about 173–248 metres and reach up to 55 metres. Their reserved locations and ids stay the same.',
     'Every ruined city has four to six separated underground entrances. Tall blue signs, raised hatch lids and guide beacons identify them; all signs load with the city instead of waiting for street tiles.',

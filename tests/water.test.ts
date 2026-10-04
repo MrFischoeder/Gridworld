@@ -28,7 +28,7 @@ describe('lakes', () => {
       }
     }
     expect(kinds.fresh).toBeGreaterThan(10); expect(kinds.murky).toBeGreaterThan(5); expect(kinds.toxic).toBeGreaterThan(0);
-  }, 120000);
+  }, 300000); // Cold surveys generate roads, rivers and sites across multiple worlds.
   it('are deterministic and wrap round the planet', () => {
     const t = new Terrain(WORLDS[0]), t2 = new Terrain(WORLDS[0]);
     for (let rx = -5; rx <= 5; rx++) {

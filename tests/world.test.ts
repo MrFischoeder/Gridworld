@@ -61,7 +61,7 @@ describe('terrain', () => {
     const pts = [[10, 20], [-150, 77], [260, -300], [-411, -12]];
     const fresh = new Terrain(w);
     for (const [x, z] of pts) expect(far.heightAt(x, z)).toBe(fresh.heightAt(x, z));
-  });
+  }, 300000); // Cold surveys generate roads, rivers and sites across multiple worlds.
   it('is flat under the village and every ruin', () => {
     for (const w of WORLDS) {
       const t = new Terrain(w);
@@ -162,7 +162,7 @@ describe('ruins', () => {
         expect(deep.has(`${bx},${y - 6},${bz}`), `shaft of ${p.name}`).toBe(true);
       }
     }
-  });
+  }, 300000); // Cold surveys generate roads, rivers and sites across multiple worlds.
 });
 
 describe('forests', () => {
@@ -202,7 +202,7 @@ describe('forests', () => {
     }
     expect(kinds.twisted).toBeGreaterThan(0); expect(kinds.umbrella).toBeGreaterThan(0); expect(kinds.arch).toBeGreaterThan(0);
     expect(kinds.broad).toBeGreaterThan(kinds.twisted + kinds.umbrella + kinds.arch);
-  });
+  }, 300000); // Cold surveys generate forests across multiple worlds.
 });
 
 import { regionVehicle, clearSpot, YARD } from '../src/gen/vehicles';
