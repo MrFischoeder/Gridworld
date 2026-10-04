@@ -4,6 +4,15 @@ export interface Change { v: string; date: string; title: string; notes: string[
 
 export const CHANGELOG: Change[] = [
   {
+    v: '0.122.0', date: '2026-10-04', title: 'Manual gate dialling and animated transit',
+    notes: [
+      'Symbols light up on the ring as you enter them. Select three symbols, then press Activate; Cancel clears the draft. The console shows symbols without their English names.',
+      'The receiving gate displays the initiating gate address in three large slots on its upper lintel, and in its console.',
+      'Walk or drive through for a five-second journey with continuous light trails flying past. Vehicle passengers and roof gunners see the same transit and keep their seats and cargo.',
+      'Entering before the 45-second deadline reserves your journey. Both gates stay open and their terminals stay locked until every accepted traveller arrives; no new journey starts after the deadline.',
+    ],
+  },
+  {
     v: '0.121.0', date: '2026-10-04', title: 'Vehicle gates and permanent address tablets',
     notes: [
       'Your gate address is engraved on its console. A stationary stone tablet nearby permanently lists three seeded random destination addresses.',

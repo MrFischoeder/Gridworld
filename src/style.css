@@ -393,3 +393,6 @@ body.intro #speech{display:none}
 
 .gate-keys button:disabled{opacity:.4;cursor:not-allowed}.gate-ui button:disabled:hover{background:#050d12;border-color:#889b87}
 .gate-tablet-addresses>div{display:flex;align-items:center;gap:20px;padding:18px 0;border-bottom:1px solid #889b87;flex-wrap:wrap}.gate-tablet-addresses b{font-weight:normal}.gate-tablet-addresses .gate-address svg{width:48px;height:48px}
+
+#gate-transit{position:fixed;inset:0;width:100vw;height:100vh;z-index:10000;background:#010508}
+.gate-actions{display:flex;justify-content:center;gap:12px}

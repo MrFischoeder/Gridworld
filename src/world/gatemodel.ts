@@ -6,8 +6,8 @@ import { rng, hash } from '../core/rng';
 import { PropBatch } from './props';
 
 const STONE = 0x889b87, CARVING = 0xc8b77c, GLYPH = 0x80e8ff;
-function glyph(pb: PropBatch, id: number, x: number, y: number, z: number, r: number) {
-  for (const path of GATE_GLYPHS[id].paths) pb.line(GLYPH, ...path.map(([u, v]) => [x + u * r, y + v * r, z]));
+function glyph(pb: PropBatch, id: number, x: number, y: number, z: number, r: number, colour = GLYPH) {
+  for (const path of GATE_GLYPHS[id].paths) pb.line(colour, ...path.map(([u, v]) => [x + u * r, y + v * r, z]));
 }
 /** Weathered boulders have uneven shoulders and a broken flat crown, rather than a pyramid peak. */
 function boulder(pb: PropBatch, b: ReturnType<typeof gateRocks>[number], y: number, seed: number) {
@@ -21,7 +21,7 @@ function boulder(pb: PropBatch, b: ReturnType<typeof gateRocks>[number], y: numb
   }
   pb.face(...rings[2]); for (let i = 0; i < b.sides; i++) pb.seg(STONE, rings[2][i], rings[2][(i + 1) % b.sides]);
 }
-/** Batched opaque stonework: only four draw calls including all engravings and scattered boulders. */
+/** Opaque stonework, permanent engravings and scattered boulders are batched by material. */
 export function gateModel(g: WorldGate, rockHeight: (x: number, z: number) => number, tablet: readonly GateAddress[] = []): THREE.Group {
   const pb = new PropBatch(), R = rng(g.seed);
   for (let i = 0, symbol = 0; i < 8; i++) {
@@ -38,9 +38,13 @@ export function gateModel(g: WorldGate, rockHeight: (x: number, z: number) => nu
     }
     if (!(UNMARKED_CORNERS as readonly number[]).includes(i)) {
       const x = (ox + nx) / 2, y = (oy + ny) / 2;
-      for (const z of [-GATE_DEPTH - .025, GATE_DEPTH + .025]) glyph(pb, symbol, x, y, z, .45);
+      for (const z of [-GATE_DEPTH - .025, GATE_DEPTH + .025]) glyph(pb, symbol, x, y, z, .45, 0x315b65);
       symbol++;
     }
+  }
+  // Three large slots below the upper lintel show the ordered dial / incoming address.
+  for (const z of [-GATE_DEPTH - .12, GATE_DEPTH + .12]) {
+    pb.box(-2.2, GATE_CENTRE + GATE_INNER - .45, z - .04, 2.2, GATE_CENTRE + GATE_INNER + .6, z + .04, CARVING);
   }
   // Thin slabs lie flush with the cleared terrain: no jumping onto the portal or console.
   pb.box(-12, -.3, -2, 12, 0, 2, STONE);
@@ -67,6 +71,20 @@ export function gateModel(g: WorldGate, rockHeight: (x: number, z: number) => nu
   });
   gateRocks(g).forEach((b, i) => boulder(pb, b, rockHeight(b.x, b.z) - .15, hash(g.seed, i)));
   const group = pb.build(); group.name = `ancient-gate:${g.id}`; return group;
+}
+
+/** Highlight entered symbols in sequence; repetitions still occupy distinct address slots. */
+export function gateSignals(symbols: readonly number[]): THREE.Group {
+  const pb = new PropBatch();
+  const marked = GATE_OUTLINE.map((p, i) => ({ p, inner: GATE_OPENING[i], i })).filter(v => !(UNMARKED_CORNERS as readonly number[]).includes(v.i));
+  for (const id of new Set(symbols)) {
+    const { p: [ox, oy], inner: [nx, ny] } = marked[id], colour = id === symbols.at(-1) ? 0xe8ffff : 0x80e8ff;
+    for (const z of [-GATE_DEPTH - .03, GATE_DEPTH + .03]) glyph(pb, id, (ox + nx) / 2, (oy + ny) / 2, z, .45, colour);
+  }
+  symbols.forEach((id, i) => {
+    for (const z of [-GATE_DEPTH - .18, GATE_DEPTH + .18]) glyph(pb, id, (i - 1) * 1.4, GATE_CENTRE + GATE_INNER + .07, z, .4, i === symbols.length - 1 ? 0xe8ffff : GLYPH);
+  });
+  const group = pb.build(); group.name = 'gate-dial-signals'; group.userData.symbols = [...symbols]; return group;
 }
 
 /** A deliberately translucent energy sheet; stonework behind it still has opaque fills. */

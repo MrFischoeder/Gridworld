@@ -3,6 +3,7 @@
 // view, E gets you out beside it. From the gunner's seat you work its cannon: you aim it with the view and fire, the
 // others see it turn. Where the vehicle is and who sits where comes from world/peers.ts (`ride`, the ghosts).
 import * as THREE from 'three';
+import { finishGateTransit } from '../ui/gatetransit';
 import { G } from '../game';
 import { V } from './render';
 import { ride, allGhosts, ghostOf, type Ghost } from './peers';
@@ -26,6 +27,7 @@ onVehicleWarp(m => {
   if (ride.on?.owner === m.owner && ride.on.idx === m.index) {
     // Keep the passenger or gunner's seat. Do not call getOff or reload the whole world.
     G.pos.set(c[1], c[2], c[3]); G.vel.set(0, 0, 0); warpArrival();
+    finishGateTransit(m.trip); net.gateTravelling = false;
     showToast('Your vehicle travelled through the ancient gate.');
   }
 });

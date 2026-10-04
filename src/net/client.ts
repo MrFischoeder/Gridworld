@@ -3,7 +3,7 @@
 // it with `sendState` (about 10 times a second) and reads `peers`.
 
 /** Must match PROTOCOL in server/mp.mjs. */
-export const PROTOCOL = 4;
+export const PROTOCOL = 5;
 export const SEND_EVERY = 0.1;
 
 /** `away`: in the menu (still in the game: the others see you standing there). */
@@ -96,22 +96,29 @@ export const online = () => net.id > 0;
 export const isHost = () => online() && net.id === net.host;
 
 import type { GateLink } from '../../shared/gates.mjs';
-export interface VehicleWarp { owner: number; index: number; carId: string; car: PeerCar; to: number }
+export interface VehicleWarp { owner: number; index: number; carId: string; car: PeerCar; to: number; trip: number }
 export interface GateDecision { ok: boolean; why?: string; to?: number }
+let gateDrafts = new Map<number, number[]>();
+let gateTransitHook: ((m: GateTransitEvent) => void) | null = null;
+export type GateTransitEvent = { t: 'gdepart'; trip: number; players: number[]; finishAt: number } | { t: 'gabort'; trip?: number };
+export function onGateTransit(fn: (m: GateTransitEvent) => void) { gateTransitHook = fn; }
+export const liveGateDraft = (id: number) => gateDrafts.get(id) ?? [];
+export const sendGateDraft = (gate: number, symbols: readonly number[]) => { if (online()) net.ws?.send(JSON.stringify({ t: 'gdraft', gate, symbols })); };
 let gateLinks: GateLink[] = [], vehicleWarpHook: ((m: VehicleWarp) => void) | null = null;
 let gateReq = 0;
 const gateReplies = new Map<number, { finish: (m: GateDecision) => void; timer: ReturnType<typeof setTimeout> }>();
-export function liveGateLinks(): GateLink[] { return gateLinks.filter(l => l.until > Date.now()); }
+export function liveGateLinks(): GateLink[] { return gateLinks.filter(l => l.until > Date.now() || !!l.inTransit); }
 export function onVehicleWarp(fn: (m: VehicleWarp) => void) { vehicleWarpHook = fn; }
-function receiveGates(m: { links?: GateLink[]; now?: number }) {
+function receiveGates(m: { links?: GateLink[]; drafts?: { gate: number; symbols: number[] }[]; now?: number }) {
   const now = Date.now(), serverNow = m.now ?? now;
-  gateLinks = (m.links ?? []).map(l => ({ ...l, until: now + l.until - serverNow }));
+  gateLinks = (m.links ?? []).map(l => ({ ...l, until: now + l.until - serverNow, finishAt: l.finishAt === undefined ? undefined : now + l.finishAt - serverNow }));
+  if (m.drafts) gateDrafts = new Map(m.drafts.map(d => [d.gate, d.symbols]));
 }
 function gateRequest(m: object): Promise<GateDecision> {
   if (!online() || net.ws?.readyState !== 1) return Promise.resolve({ ok: false, why: 'Disconnected from the server.' });
   const req = ++gateReq;
   return new Promise(resolve => {
-    const timer = setTimeout(() => { gateReplies.delete(req); resolve({ ok: false, why: 'The gate request timed out. Try again.' }); }, 5000);
+    const timer = setTimeout(() => { gateReplies.delete(req); resolve({ ok: false, why: 'The gate request timed out. Try again.' }); }, 15000);
     gateReplies.set(req, { finish: resolve, timer }); net.ws!.send(JSON.stringify({ ...m, req }));
   });
 }
@@ -119,7 +126,7 @@ export const requestGateDial = (gate: number, symbols: readonly number[]) => gat
 export const requestGateTravel = (gate: number, car?: { index: number; id: string; pose: PeerCar }) => gateRequest({ t: 'gtravel', gate, car });
 function clearGateRequests() {
   net.gateTravelling = false;
-  gateLinks = []; for (const r of gateReplies.values()) { clearTimeout(r.timer); r.finish({ ok: false, why: 'Disconnected from the server.' }); } gateReplies.clear();
+  gateLinks = []; gateDrafts.clear(); gateTransitHook?.({ t: 'gabort' }); for (const r of gateReplies.values()) { clearTimeout(r.timer); r.finish({ ok: false, why: 'Disconnected from the server.' }); } gateReplies.clear();
 }
 
 /** Is the page served by a dedicated server (server/main.mjs)? It answers mp/info next to the page. */
@@ -190,6 +197,8 @@ export function connect(url: string, me: { name: string; world: number; time: nu
         break;
       }
       case 'gates': receiveGates(m); break;
+      case 'gdepart': gateTransitHook?.({ ...m, finishAt: Date.now() + m.finishAt - m.now }); break;
+      case 'gabort': gateTransitHook?.(m); break;
       case 'gdial': case 'gtravel': {
         if (m.links) receiveGates(m);
         const r = gateReplies.get(m.req); if (r) { clearTimeout(r.timer); gateReplies.delete(m.req); r.finish(m); } break;

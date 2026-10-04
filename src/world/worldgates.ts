@@ -1,9 +1,9 @@
 import * as THREE from 'three';
 import { G } from '../game';
 import { gatesNear, gateLocal, gatePoint, gateRocks, tabletDestinations, worldGates, GATE_PANEL, GATE_TABLET, GATE_SECONDS, type WorldGate } from '../gen/worldgates';
-import { GateConnections, type GateLink } from '../../shared/gates.mjs';
+import { GateConnections, gateAddresses, GATE_TRANSIT_SECONDS, type GateLink } from '../../shared/gates.mjs';
 import { ringHit, crossedGate, vehicleFitsGate } from '../gen/gategeometry';
-import { net, online, liveGateLinks, requestGateDial, requestGateTravel } from '../net/client';
+import { net, online, liveGateLinks, requestGateDial, requestGateTravel, onGateTransit, liveGateDraft, sendGateDraft } from '../net/client';
 import { driving, myCarList, myCars, vehicles, type Vehicle } from './vehicles';
 import { riding } from './ride';
 import { flushPeerState } from './peers';
@@ -12,20 +12,35 @@ import { VEHICLES, SEATS } from '../data/vehicles';
 import { showToast } from '../ui/hud';
 import type { Terrain } from '../gen/terrain';
 import { scene, disposeTree } from './render';
-import { gateModel, gateEnergy } from './gatemodel';
+import { startGateTransit, finishGateTransit, gateTransitActive } from '../ui/gatetransit';
+import { gateModel, gateEnergy, gateSignals } from './gatemodel';
 
-interface LoadedGate { site: WorldGate; group: THREE.Group; energy: THREE.Mesh; rocks: (ReturnType<typeof gateRocks>[number] & { y: number })[]; previous: [number, number, number] }
+interface LoadedGate { site: WorldGate; group: THREE.Group; energy: THREE.Mesh; signal: THREE.Group | null; signalKey: string; rocks: (ReturnType<typeof gateRocks>[number] & { y: number })[]; previous: [number, number, number] }
 const loaded = new Map<number, LoadedGate>();
 let travel: (gate: WorldGate, x: number, z: number, heading: number, car: Vehicle | null) => void = () => {};
 export function setGateTravel(fn: typeof travel) { travel = fn; }
 let single = new GateConnections(() => Date.now()), connectionKey = '', pendingTravel = false;
-export const gateTravelPending = () => pendingTravel;
+export const gateTravelPending = () => pendingTravel || gateTransitActive();
 function connections(): GateLink[] {
   const key = `${G.char.world}:${online() ? `${net.room?.id}:${net.id}` : 'solo'}`;
   if (key !== connectionKey) { connectionKey = key; single = new GateConnections(() => Date.now()); }
   return online() ? liveGateLinks() : single.state();
 }
 export function gateConnection(id: number): GateLink | null { return connections().find(l => l.a === id || l.b === id) ?? null; }
+export function gateDialSymbols(id: number): number[] {
+  const link = gateConnection(id);
+  if (link) return gateAddresses(G.char.world)[id === link.a ? link.b : link.a];
+  return online() ? liveGateDraft(id) : single.draft(id);
+}
+export function setGateDraft(id: number, symbols: readonly number[]) {
+  connections();
+  if (online()) { flushPeerState(); sendGateDraft(id, symbols); }
+  else single.setDraft(id, symbols);
+}
+onGateTransit(m => {
+  if (m.t === 'gdepart' && m.players.includes(net.id)) { net.gateTravelling = true; startGateTransit(m.trip); }
+  else if (m.t === 'gabort') { finishGateTransit(m.trip); net.gateTravelling = false; }
+});
 export const gateSecondsLeft = (id: number) => Math.max(0, Math.ceil(((gateConnection(id)?.until ?? 0) - Date.now()) / 1000));
 function localPlayer(g: WorldGate): [number, number, number] {
   const [x, z] = gateLocal(g, G.pos.x, G.pos.z); return [x, G.pos.y - g.y + 1, z];
@@ -40,7 +55,7 @@ export function syncWorldGates(T: Terrain, x: number, z: number) {
     const group = gateModel(site, height, tabletDestinations(T.world, site).map(g => g.address));
     group.position.set(site.x, site.y, site.z); group.rotation.y = site.yaw;
     const energy = gateEnergy(); group.add(energy); scene.add(group);
-    loaded.set(site.id, { site, group, energy, rocks: gateRocks(site).map(b => ({ ...b, y: height(b.x, b.z) - .15 })), previous: localPlayer(site) });
+    loaded.set(site.id, { site, group, energy, signal: null, signalKey: '', rocks: gateRocks(site).map(b => ({ ...b, y: height(b.x, b.z) - .15 })), previous: localPlayer(site) });
   }
 }
 export function clearWorldGates() {
@@ -61,6 +76,8 @@ export async function dialWorldGate(source: WorldGate, symbols: readonly number[
   const g = loaded.get(source.id), near = nearGatePanel();
   if (!g || near?.id !== source.id || driving.v || riding()) return 'Stand beside this gate\'s console on foot.';
   if (gateConnection(source.id)) return `Terminal locked for ${gateSecondsLeft(source.id)} seconds.`;
+  // Resolve the remote terrain before starting the admission clock, never during a late crossing.
+  worldGates(G.char.world);
   connections();
   if (online()) flushPeerState();
   const result = online() ? await requestGateDial(source.id, symbols) : single.open(G.char.world, source.id, symbols);
@@ -91,23 +108,37 @@ function beginTravel(g: LoadedGate, to: WorldGate, side: number) {
   const car = driving.v, point = landing(to, car, side);
   if (!point) { if (car) car.speed = 0; showToast('The destination exit is occupied. Wait for it to clear.'); return; }
   const [x, z] = point, heading = to.yaw + (side < 0 ? Math.PI : 0), world = G.char.world;
-  if (!online()) { travel(to, x, z, heading, car); return; }
+  if (!online()) {
+    const connection = single, accepted = connection.begin(g.site.id);
+    if (!accepted) return;
+    pendingTravel = true; startGateTransit(accepted.token); if (car) car.speed = 0;
+    setTimeout(() => {
+      try { if (G.char.world === world && G.char.loc === 'overworld' && driving.v === car) travel(to, x, z, heading, car); }
+      finally { connection.finish(accepted.token); finishGateTransit(accepted.token); pendingTravel = false; }
+    }, GATE_TRANSIT_SECONDS * 1000);
+    return;
+  }
   const index = car ? myCarList().indexOf(car) : -1, pose = car ? [...myCars()[index]] : null;
   if (pose) { pose[1] = x; pose[2] = to.y; pose[3] = z; pose[4] = heading; pose[5] = pose[6] = 0; }
   flushPeerState(); pendingTravel = net.gateTravelling = true;
   void requestGateTravel(g.site.id, car && pose ? { index, id: car.st.id, pose } : undefined).then(result => {
     if (result.ok && result.to === to.id && G.char.world === world && G.char.loc === 'overworld' && driving.v === car) travel(to, x, z, heading, car);
     else { if (car) car.speed = 0; showToast(result.why ?? 'The connection closed.'); }
-  }).finally(() => { pendingTravel = net.gateTravelling = false; });
+  }).finally(() => { finishGateTransit(); pendingTravel = net.gateTravelling = false; });
 }
 export function updateWorldGates(dt: number, canTravel = false) {
   if (G.char.loc !== 'overworld') return;
   for (const g of loaded.values()) {
     const now = localPlayer(g.site), link = gateConnection(g.site.id);
     g.energy.visible = !!link;
+    const symbols = gateDialSymbols(g.site.id), key = symbols.join(',');
+    if (key !== g.signalKey) {
+      if (g.signal) { g.group.remove(g.signal); disposeTree(g.signal); }
+      g.signal = gateSignals(symbols); g.signalKey = key; g.group.add(g.signal);
+    }
     if (link) {
       (g.energy.material as THREE.ShaderMaterial).uniforms.time.value += dt;
-      if (canTravel && !pendingTravel && !riding() && crossedGate(g.previous, now)) {
+      if (canTravel && !gateTravelPending() && !riding() && crossedGate(g.previous, now)) {
         const car = driving.v, [x] = gateLocal(g.site, G.pos.x, G.pos.z);
         const height = car ? Math.max(car.spec.height, ...SEATS[car.st.model].map(s => s.y + 1.9), car.turret ? car.spec.mount[1] + 2 : 0) : 0;
         if (!car || vehicleFitsGate(x, car.y - g.site.y, car.st.heading - g.site.yaw, car.spec.width, car.spec.length, height)) {

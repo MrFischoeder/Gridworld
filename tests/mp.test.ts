@@ -1,5 +1,5 @@
 import { gateAddresses } from '../shared/gates.mjs';
-import { describe, it, expect, afterEach } from 'vitest';
+import { describe, it, expect, afterEach, vi } from 'vitest';
 import { createServer, type Server } from 'node:http';
 import { WebSocket } from 'ws';
 import { createMp, PROTOCOL } from '../server/mp.mjs';
@@ -7,7 +7,7 @@ import { PROTOCOL as CLIENT_PROTOCOL, serverUrl } from '../src/net/client';
 
 type Msg = { t: string; [k: string]: any };
 let http: Server | null = null, mp: ReturnType<typeof createMp> | null = null;
-afterEach(() => { mp?.close(); http?.close(); http = mp = null; });
+afterEach(() => { mp?.close(); http?.close(); vi.restoreAllMocks(); http = mp = null; });
 
 async function server(opts?: { world?: number; time?: number; rooms?: { id: string; name: string; world: number; time: number }[] }) {
   mp = createMp(() => {}, opts); http = createServer(); mp.attach(http);
@@ -20,8 +20,8 @@ async function client(port: number, hello: object) {
   ws.on('message', (d) => got.push(JSON.parse(String(d))));
   await new Promise((r) => ws.on('open', r));
   ws.send(JSON.stringify({ t: 'hello', ver: PROTOCOL, ...hello }));
-  const wait = async (t: string, n = 1) => { for (let i = 0; i < 100; i++) { if (got.filter((m) => m.t === t).length >= n) return got.filter((m) => m.t === t)[n - 1]; await new Promise((r) => setTimeout(r, 20)); } throw new Error('no ' + t); };
-  const until = async (test: (m: Msg) => boolean) => { for (let i = 0; i < 100; i++) { const found = got.find(test); if (found) return found; await new Promise((r) => setTimeout(r, 20)); } throw new Error('no matching message'); };
+  const wait = async (t: string, n = 1) => { for (let i = 0; i < 400; i++) { if (got.filter((m) => m.t === t).length >= n) return got.filter((m) => m.t === t)[n - 1]; await new Promise((r) => setTimeout(r, 20)); } throw new Error('no ' + t); };
+  const until = async (test: (m: Msg) => boolean) => { for (let i = 0; i < 400; i++) { const found = got.find(test); if (found) return found; await new Promise((r) => setTimeout(r, 20)); } throw new Error('no matching message'); };
   return { ws, got, wait, until, send: (m: object) => ws.send(JSON.stringify(m)) };
 }
 
@@ -313,7 +313,13 @@ for (const occupants of [2, 3]) it(`transports a vehicle with ${occupants} playe
   riders[0].send({ t: 'gdial', gate: 20, symbols: addresses[1], req: 1 }); expect((await riders[0].wait('gdial')).ok).toBe(false);
   owner.send({ t: 'gtravel', gate: 0, req: 2, car: { index: 0, id: 'stale-id', pose: car } }); expect((await owner.wait('gtravel')).ok).toBe(false);
   const pose = [...car]; pose.splice(1, 6, 600, 4, 6010, 2, 0, 0);
-  owner.send({ t: 'gtravel', gate: 0, req: 3, car: { index: 0, id: 'loaded-mastodon', pose } }); expect((await owner.wait('gtravel', 2)).ok).toBe(true);
+  owner.send({ t: 'gtravel', gate: 0, req: 3, car: { index: 0, id: 'loaded-mastodon', pose } });
+  const departure = await owner.wait('gdepart'); expect(departure.players).toHaveLength(occupants);
+  expect(owner.got.filter(m => m.t === 'gtravel')).toHaveLength(1); // No arrival reply or vehicle jump on admission.
+  owner.send({ ...state, cars: [[...car.slice(0, 8), 0, 0, 0]], carIds: ['replacement-car'] });
+  const during = await riders[0].until(m => m.t === 'snap' && m.links[0]?.inTransit === 1);
+  expect(during.ps.find((p: any) => p.id === id).cars[0]).toEqual(car);
+  expect((await owner.wait('gtravel', 2)).ok).toBe(true);
   for (let i = 0; i < riders.length; i++) {
     expect(await riders[i].wait('vwarp')).toMatchObject({ carId: 'loaded-mastodon', car: pose, to: 20 });
     const snap = await riders[i].until(m => m.t === 'snap' && m.ps.some((p: any) => p.id === id && p.cars[0][1] === 600));
@@ -325,4 +331,28 @@ for (const occupants of [2, 3]) it(`transports a vehicle with ${occupants} playe
   const late = await client(port, { name: 'Observer' }); const welcome = await late.wait('welcome'); expect(welcome.links).toEqual(opened.links);
   late.send(state); late.send({ t: 'gdial', gate: 20, symbols: addresses[1], req: 1 }); expect((await late.wait('gdial')).ok).toBe(false);
   for (const c of [owner, ...riders, late]) c.ws.close();
+});
+
+it('finishes a foot journey admitted in second 44 after the deadline, then releases both terminal locks', async () => {
+  let now = 100000; vi.spyOn(Date, 'now').mockImplementation(() => now);
+  const port = await server({ world: 12345 }), a = await client(port, { name: 'Walker' }), b = await client(port, { name: 'Observer' });
+  await a.wait('welcome'); await b.wait('welcome'); const state = { t: 'state', loc: 'o', p: [0, 0, 0] };
+  a.send(state); b.send(state); a.send({ t: 'gdial', gate: 0, symbols: gateAddresses(12345)[20], req: 1 }); expect((await a.wait('gdial')).ok).toBe(true);
+  now += 44000; a.send({ t: 'gtravel', gate: 0, req: 2 }); await a.wait('gdepart'); now += 2000;
+  b.send({ t: 'gdial', gate: 20, symbols: gateAddresses(12345)[1], req: 1 }); const held = await b.wait('gdial');
+  expect(held.ok).toBe(false); expect(held.links[0]).toMatchObject({ a: 0, b: 20, until: 145000, inTransit: 1 });
+  b.send({ t: 'gtravel', gate: 20, req: 2 }); expect((await b.wait('gtravel')).ok).toBe(false);
+  expect((await a.wait('gtravel')).ok).toBe(true);
+  const released = await b.until(m => m.t === 'gates' && m.links.length === 0); expect(released.links).toEqual([]);
+  a.ws.close(); b.ws.close();
+});
+it('cancels a departing vehicle when its owner disconnects and releases the waiting crew', async () => {
+  const port = await server({ world: 12345 }), a = await client(port, { name: 'Driver' }), b = await client(port, { name: 'Rider' });
+  const id = (await a.wait('welcome')).id; await b.wait('welcome'); const state = { t: 'state', loc: 'o', p: [0, 0, 0] };
+  a.send(state); a.send({ t: 'gdial', gate: 0, symbols: gateAddresses(12345)[20], req: 1 }); await a.wait('gdial');
+  const car = [1, 0, 0, 0, 0, 0, 0, 1, 1, 0, 100];
+  a.send({ ...state, cars: [car], carIds: ['truck'] }); await a.wait('seats'); b.send({ ...state, ride: [id, 0, 1] }); await b.wait('seats');
+  a.send({ t: 'gtravel', gate: 0, req: 2, car: { index: 0, id: 'truck', pose: car } }); const departing = await b.wait('gdepart'); a.ws.close();
+  expect((await b.wait('gabort')).trip).toBe(departing.trip); expect((await b.wait('seats', 2)).ride).toBeNull();
+  const released = await b.until(m => m.t === 'gates' && !m.links[0]?.inTransit); expect(released.links[0].inTransit).toBeUndefined(); b.ws.close();
 });
