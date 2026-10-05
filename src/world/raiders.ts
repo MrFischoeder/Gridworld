@@ -7,9 +7,9 @@ import { PropBatch } from './props';
 import { foeRules } from './enemies';
 import { rayWorld } from './player';
 import { burst } from './fx';
-import { dropCrystal, rollAmmo } from './loot';
+import { dropCrystal, rollAmmo, lootQuiet } from './loot';
 import { spawnBandit, alert, fireBolt, BANDIT, type Bandit } from './bandits';
-import { spawnAIVehicle, releaseAI, removeVehicle, steerVehicle, bodyToWorld, driving, damageVehicle, seatRider, unseat, rayVehicle, type Vehicle } from './vehicles';
+import { placeAI, spawnAIVehicle, releaseAI, removeVehicle, steerVehicle, bodyToWorld, driving, damageVehicle, seatRider, unseat, rayVehicle, type Vehicle } from './vehicles';
 import { VEHICLES, SEATS, freshParts, type VehicleModel } from '../data/vehicles';
 import { RELIC_KEYS } from '../data/items';
 import { putItems } from '../inventory';
@@ -21,6 +21,7 @@ import { gainXp } from '../character';
 import { logLine, showToast } from '../ui/hud';
 import { onKill } from './quests';
 import { mayspawn } from './threat';
+import { remoteOf, unmarkRemote, hitOwner, proxied, withTarget, nearestPlayer } from './remote';
 
 export interface RaiderEnv { terrain: Terrain; danger(x: number, z: number): number; forbidden(x: number, z: number): boolean }
 let env: RaiderEnv | null = null;
@@ -39,7 +40,7 @@ export const raiders: Raider[] = [];
 let raidT = 25;
 
 const gunSeat = (m: VehicleModel) => SEATS[m].findIndex((s) => s.gun);
-function spawnRaider(model: VehicleModel, x: number, z: number, heading: number, level: number): Raider {
+function spawnRaider(model: VehicleModel, x: number, z: number, heading: number, level: number, copy = false): Raider {
   const parts = freshParts(model); parts.gun = true;
   const v = spawnAIVehicle({ id: 'raider-' + Math.random().toString(36).slice(2, 8), model, x, z, heading, parts, trunk: { items: Array(VEHICLES[model].trunk).fill(null), gold: 0 } });
   const s = v.spec, crewHp = SEATS[model].map(() => 0);
@@ -50,8 +51,18 @@ function spawnRaider(model: VehicleModel, x: number, z: number, heading: number,
   const r: Raider = { kind: 'raider', v, g, p: new THREE.Vector3(), r: Math.max(s.length, s.width) * 0.45, hp, maxHp: hp, level,
     fireT: 2, burst: 0, orbit: Math.random() < 0.5 ? 1 : -1, ramT: 0, plan: 'chase', planT: 0, crewHp };
   raiders.push(r);
-  logLine('Engines behind you...');
+  if (!copy) logLine('Engines behind you...');
   return r;
+}
+/** A copy of another player's raider (world/foesync.ts). */
+export const spawnRemoteRaider = (model: VehicleModel, x: number, z: number, heading: number, level: number) => spawnRaider(model, x, z, heading, level, true);
+/** Your shot finished another player's raider: their game wrecks it and bails its crew out; yours gives the reward. */
+export function remoteRaiderKilled(r: Raider) {
+  unmarkRemote(r);
+  burst(r.p, BANDIT, 50, 2.5); showToast('Raider vehicle disabled!');
+  for (let i = 0; i < 4; i++) dropCrystal(r.p);
+  gainXp(30); onKill('bandit');
+  dropRaider(r);
 }
 function spawnRaidersMaybe(dt: number) {
   if (!env || (raidT -= dt) > 0) return;
@@ -68,12 +79,13 @@ function spawnRaidersMaybe(dt: number) {
   }
 }
 function driveRaider(r: Raider, dt: number) {
+  const drv = proxied() ? null : driving.v; // going for another player: your own vehicle is not theirs
   const v = r.v, dx = G.pos.x - v.st.x, dz = G.pos.z - v.st.z, d = Math.hypot(dx, dz), safe = foeRules.playerSafe(), fast = v.spec.maxSpeed;
   r.planT -= dt; r.ramT -= dt; r.fireT -= dt;
   if (safe) r.plan = 'back';
   else if (r.plan === 'unstuck' && r.planT > 0) { /* keep backing out */ }
   else if (r.planT <= 0) {
-    r.plan = d > 35 ? 'chase' : !driving.v && Math.random() < 0.35 ? 'ram' : 'circle';
+    r.plan = d > 35 ? 'chase' : !drv && Math.random() < 0.35 ? 'ram' : 'circle';
     r.planT = r.plan === 'ram' ? 2.5 : 3 + Math.random() * 3;
     if (Math.random() < 0.3) r.orbit = -r.orbit;
   }
@@ -104,9 +116,9 @@ function driveRaider(r: Raider, dt: number) {
   // ramming someone on foot (or another vehicle)
   if (!safe && d < v.spec.length * 0.55 + 0.6 && Math.abs(v.speed) > 5 && r.ramT <= 0) {
     r.ramT = 1.5;
-    if (driving.v) {
+    if (drv) {
       logLine('Rammed!');
-      damageVehicle(driving.v, 20 * (1 + r.level * 0.2));
+      damageVehicle(drv, 20 * (1 + r.level * 0.2));
     } else {
       hurtPlayer(16 * (1 + r.level * 0.2), true, .5);
       const [fx, fz] = [Math.sin(v.st.heading), Math.cos(v.st.heading)];
@@ -133,8 +145,7 @@ function wreckRaider(r: Raider) {
   if (Math.random() < 0.15) putItems(t.items, RELIC_KEYS[(Math.random() * RELIC_KEYS.length) | 0], 1);
   releaseAI(v);
   for (let i = 0; i < 4; i++) dropCrystal(r.p);
-  gainXp(30);
-  onKill('bandit');
+  if (!lootQuiet()) { gainXp(30); onKill('bandit'); } // another player's shot: the reward is theirs
   scene.remove(r.g); raiders.splice(raiders.indexOf(r), 1);
 }
 /** Whoever is still alive in the vehicle jumps out and fights on foot. */
@@ -154,13 +165,14 @@ function bailOut(r: Raider) {
 export const rayRaider = (r: Raider, o: THREE.Vector3, d: THREE.Vector3, max: number) => rayVehicle(r.v, o, d, max);
 /** Every shot reduces the vehicle condition; its occupants are protected until they bail out. */
 export function hurtRaider(r: Raider, dmg: number) {
+  if (remoteOf(r)) { G.hitFlash = .15; burst(r.p.clone().add(V(0, .5, 0)), BANDIT, 6, .6); hitOwner(r, dmg); return; } // another player's raider
   damageVehicle(r.v, dmg); r.hp = r.maxHp * r.v.st.parts.hull / r.v.spec.hull; G.hitFlash = .15;
   burst(r.p.clone().add(V(0, .5, 0)), BANDIT, 6, .6);
   if (r.plan === 'back' || r.plan === 'chase') { r.plan = 'circle'; r.planT = 2; }
   if (r.hp <= 0) wreckRaider(r);
 }
 
-function dropRaider(r: Raider) {
+export function dropRaider(r: Raider) {
   removeVehicle(r.v); scene.remove(r.g);
   const i = raiders.indexOf(r); if (i >= 0) raiders.splice(i, 1);
 }
@@ -171,8 +183,9 @@ function dropRaider(r: Raider) {
  * hit points: shots from your Blaster or a vehicle cannon wear it down (`rayBarrier`, `hurtBarrier`), and once it
  * is shot to pieces the way is open. It stays when its bandits are dead; it goes when you are far away.
  */
-export interface Barricade { x: number; y: number; z: number; r: number; hp: number; max: number; g: THREE.Group }
-interface Ambush { id: number; pieces: Barricade[]; x: number; z: number; sprung: boolean; done?: boolean }
+/** `ang` / `big`: how it was put down (another player's game draws the same). */
+export interface Barricade { x: number; y: number; z: number; r: number; hp: number; max: number; g: THREE.Group; ang: number; big: boolean }
+interface Ambush { id: number; pieces: Barricade[]; x: number; z: number; sprung: boolean; done?: boolean; copy?: boolean }
 const ambushes: Ambush[] = [];
 /** Hit points of one barricade (a Blaster shot does about 1, a vehicle cannon shell 3). */
 export const BARRICADE_HP = 14;
@@ -194,7 +207,7 @@ export function placeRoadblock(T: Terrain, bx: number, bz: number, dir: THREE.Ve
   for (const k of [-2.3, 0, 2.3]) {
     const ox = bx + side.x * k, oz = bz + side.z * k, oy = T.heightAt(ox, oz), g = barricadeModel(ox, oy, oz, dir, side, k === 0);
     scene.add(g);
-    pieces.push({ x: ox, y: oy, z: oz, r: 1.0, hp: BARRICADE_HP, max: BARRICADE_HP, g });
+    pieces.push({ x: ox, y: oy, z: oz, r: 1.0, hp: BARRICADE_HP, max: BARRICADE_HP, g, ang: Math.atan2(dir.x, dir.z), big: k === 0 });
   }
   ambushes.push({ id, pieces, x: bx, z: bz, sprung: false });
   return id;
@@ -211,8 +224,26 @@ export function rayBarrier(o: THREE.Vector3, d: THREE.Vector3, max: number): { t
   }
   return best;
 }
+/** Your own barricades (the others draw copies: world/foesync.ts). */
+export const barricades = () => ambushes.filter((a) => !a.copy).flatMap((a) => a.pieces);
+export const barricadeAlive = (p: Barricade) => ambushes.some((a) => a.pieces.includes(p));
+/** A copy of another player's barricade. */
+export function placeBarricadeCopy(x: number, y: number, z: number, ang: number, big: boolean, hp: number, max: number): Barricade {
+  const dir = V(Math.sin(ang), 0, Math.cos(ang)), g = barricadeModel(x, y, z, dir, V(-dir.z, 0, dir.x), big);
+  scene.add(g);
+  const p: Barricade = { x, y, z, r: 1.0, hp, max, g, ang, big };
+  let a = ambushes.find((o) => o.copy);
+  if (!a) { a = { id: -1, pieces: [], x, z, sprung: true, done: true, copy: true }; ambushes.push(a); }
+  a.pieces.push(p);
+  return p;
+}
+export function removeBarricade(p: Barricade) {
+  scene.remove(p.g); p.g.traverse((o) => (o as THREE.Mesh).geometry?.dispose());
+  for (const a of ambushes) { const i = a.pieces.indexOf(p); if (i >= 0) a.pieces.splice(i, 1); }
+}
 /** Damage a barricade; shot to pieces it falls apart and the road opens there. */
 export function hurtBarrier(p: Barricade, dmg: number) {
+  if (remoteOf(p)) { burst(V(p.x, p.y + 0.8, p.z), 0xb8b060, 6, 0.6); hitOwner(p, dmg); return; } // another player's
   p.hp -= dmg;
   burst(V(p.x, p.y + 0.8, p.z), 0xb8b060, 6, 0.6);
   if (p.hp > 0) return;
@@ -271,7 +302,8 @@ function updateAmbushes() {
     if (!a.sprung && left.some((b) => b.state === 'fight')) { a.sprung = true; showToast('Ambush!'); }
     if (a.sprung && !left.length && !a.done) { a.done = true; logLine(a.pieces.length ? 'The ambush is broken. The roadblock still stands: shoot it apart or go round.' : 'The ambush is broken.'); }
     // the barricades stay until they are shot apart, or until you are far away
-    if (!a.pieces.length || Math.hypot(a.x - G.pos.x, a.z - G.pos.z) > 230) {
+    if (a.copy) { if (!a.pieces.length) ambushes.splice(i, 1); continue; } // copies come and go with their owner's word
+    if (!a.pieces.length || nearestPlayer(a.x, a.z) > 230) {
       for (const p of a.pieces) { scene.remove(p.g); p.g.traverse((o) => (o as THREE.Mesh).geometry?.dispose()); }
       ambushes.splice(i, 1);
     }
@@ -283,8 +315,18 @@ export function updateRaiders(dt: number) {
   if (!env) return;
   spawnRaidersMaybe(dt); tryAmbush(dt); updateAmbushes();
   for (const r of [...raiders]) {
-    if (Math.hypot(r.v.st.x - G.pos.x, r.v.st.z - G.pos.z) > 260) { dropRaider(r); continue; }
-    driveRaider(r, dt);
+    const rm = remoteOf(r);
+    if (rm) { // another player's raider: it drives where its owner says
+      const v = r.v, k = Math.min(1, dt * 7), far = Math.hypot(rm.x - v.st.x, rm.z - v.st.z) > 30;
+      let dh = rm.h - v.st.heading; dh = Math.atan2(Math.sin(dh), Math.cos(dh));
+      const nx = far ? rm.x : v.st.x + (rm.x - v.st.x) * k, nz = far ? rm.z : v.st.z + (rm.z - v.st.z) * k;
+      placeAI(v, nx, nz, v.st.heading + dh * k, Math.hypot(nx - v.st.x, nz - v.st.z) / Math.max(dt, 1e-3), dt);
+      if (v.turret && rm.aux !== undefined) v.turret.rotation.y = rm.aux;
+      r.p.set(v.st.x, v.y + v.spec.height * 0.5, v.st.z); r.g.position.copy(r.p); r.hp = rm.hp;
+      continue;
+    }
+    if (nearestPlayer(r.v.st.x, r.v.st.z) > 260) { dropRaider(r); continue; }
+    withTarget(r.v.st.x, r.v.st.z, () => driveRaider(r, dt));
     r.hp = r.maxHp * r.v.st.parts.hull / r.v.spec.hull;
     if (r.v.st.parts.hull <= 0) wreckRaider(r);
   }

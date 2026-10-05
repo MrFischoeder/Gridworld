@@ -19,9 +19,14 @@ import { OW, reloadStruct, rebuildChunkAt } from './overworld';
 import { CHUNK, HANGAR_ID, nearX } from '../gen/regions';
 import type { Char } from '../save';
 import { retireOldCrossings } from '../gen/bridges';
+import { boardPeriod } from '../core/time';
 
 type Kind = 'map' | 'list' | 'one';
-interface Field { f: keyof Char; kind: Kind; skip?: (k: string) => boolean }
+/** `key`: what names an entry of a list (its `id` unless given). */
+interface Field { f: keyof Char; kind: Kind; skip?: (k: string) => boolean; key?: (o: Record<string, unknown>) => string }
+/** Claims and benches have no id: a flag or a bench is known by where it stands. */
+const at = (o: Record<string, unknown>) => (+(o.x as number)).toFixed(1) + ':' + (+(o.z as number)).toFixed(1);
+const keyOf = (f: Field, o: Record<string, unknown>) => (f.key ? f.key(o) : String(o.id));
 /** The parts of the save that are the world's. */
 export const SHARED: Field[] = [
   { f: 'towns', kind: 'map' }, { f: 'market', kind: 'map' }, { f: 'installs', kind: 'map' }, { f: 'bridges', kind: 'map' },
@@ -29,8 +34,10 @@ export const SHARED: Field[] = [
   { f: 'containers', kind: 'map', skip: (k) => k.startsWith('home:') }, // your house chest is yours
   { f: 'opened', kind: 'map' }, { f: 'unlocked', kind: 'map' }, { f: 'killed', kind: 'map' },
   { f: 'harvest', kind: 'map' }, { f: 'camps', kind: 'map' }, { f: 'cityGarrisons', kind: 'map' }, { f: 'caravans', kind: 'map' },
+  // the players' land claims with what is built on them, wild workbenches and the notice boards are the world's too
+  { f: 'claims', kind: 'list', key: at }, { f: 'benches', kind: 'list', key: at }, { f: 'board', kind: 'one' }, { f: 'boards', kind: 'map' },
 ];
-const EMPTY: Partial<Record<keyof Char, () => unknown>> = { shuttle: () => ({ given: {}, v: 2 }) };
+const EMPTY: Partial<Record<keyof Char, () => unknown>> = { shuttle: () => ({ given: {}, v: 2 }), board: () => ({ seq: 0, offers: [], stamp: boardPeriod(G.char.time) }) };
 
 /** What was last sent or heard, per field and key, as JSON. */
 let last = new Map<string, Map<string, string>>();
@@ -39,7 +46,7 @@ const bag = (c: Char, f: Field) => c[f.f] as unknown;
 function entries(c: Char, f: Field): [string, unknown][] {
   const v = bag(c, f);
   if (f.kind === 'one') return v === undefined ? [] : [['_', v]];
-  if (f.kind === 'list') return ((v as { id: string }[]) ?? []).map((o) => [o.id, o]);
+  if (f.kind === 'list') return ((v as Record<string, unknown>[]) ?? []).map((o) => [keyOf(f, o), o]);
   return Object.entries((v as Record<string, unknown>) ?? {}).filter(([k]) => !f.skip?.(k));
 }
 /** The shared world as it stands in your save. */
@@ -67,9 +74,9 @@ function put(c: Char, f: Field, k: string, v: unknown) {
     return;
   }
   if (f.kind === 'list') {
-    const list = cur as { id: string }[], i = list.findIndex((o) => o.id === k);
+    const list = cur as Record<string, unknown>[], i = list.findIndex((o) => keyOf(f, o) === k);
     if (v === null || v === undefined) { if (i >= 0) list.splice(i, 1); return; }
-    if (i >= 0) patchInto(list[i] as unknown as Record<string, unknown>, structuredClone(v) as Record<string, unknown>); else list.push(structuredClone(v) as { id: string });
+    if (i >= 0) patchInto(list[i], structuredClone(v) as Record<string, unknown>); else list.push(structuredClone(v) as Record<string, unknown>);
     return;
   }
   const map = cur as Record<string, unknown>;
@@ -103,6 +110,9 @@ function show(f: string, k: string, before: unknown, after: unknown) {
     if (r) reloadStruct(r.id);
   }
   else if (f === 'shuttle') reloadStruct(HANGAR_ID);
+  else if (f === 'claims') { // a flag raised or taken down reshapes the ground; a base built on changes its look
+    claimsHook(after as Char['claims'][number] | undefined ?? before as Char['claims'][number] | undefined);
+  }
   else if (f === 'harvest' && (k.startsWith('tree:') || k.startsWith('rock:'))) {
     const [, cx, cz] = k.split(':').map(Number);
     rebuildChunkAt(nearX(cx * CHUNK + CHUNK / 2, G.pos.x), cz * CHUNK + CHUNK / 2);
@@ -110,6 +120,9 @@ function show(f: string, k: string, before: unknown, after: unknown) {
   // bridges, piers, boats, installations, flora and the market redraw from the save on their own
 }
 
+let claimsHook: (at?: { x: number; z: number }) => void = () => {};
+/** world/claims.ts: how the ground and the bases follow another player's claim (kept out of this module's imports). */
+export function onClaimsChanged(f: typeof claimsHook) { claimsHook = f; }
 let reload: () => void = () => {};
 /** How to redraw the whole world after taking another one (main.ts). */
 export function setWorldReload(f: () => void) { reload = f; }

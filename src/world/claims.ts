@@ -14,6 +14,8 @@ import { driving } from './vehicles';
 import { nearX } from '../gen/regions';
 import { CLAIM, CLEAR_R, claimFlatten, claimProblem, padHeight, claimDist, type Claim } from '../gen/claims';
 import { EYE } from './player';
+import { redraw as redrawBase, syncBases } from './building';
+import { onClaimsChanged } from './share';
 import type { Char } from '../save';
 
 export type SavedClaim = Char['claims'][number];
@@ -31,7 +33,9 @@ function flagModel(c: SavedClaim, x: number): THREE.Group {
   return pb.build();
 }
 /** Draw the flags within sight, drop far ones (called now and then, and after a change). */
+let hooked = false;
 export function syncFlags() {
+  if (!hooked) { hooked = true; onClaimsChanged(claimsChanged); } // (registered late: share.ts and this module import each other)
   const p = G.pos, want = new Set<SavedClaim>();
   if (G.char.loc === 'overworld') for (const c of G.char.claims) if (Math.hypot(nearX(c.x, p.x) - p.x, c.z - p.z) < 260) want.add(c);
   for (const [c, g] of drawn) if (!want.has(c) || Math.abs(g.userData.x - nearX(c.x, p.x)) > 1) { scene.remove(g); g.traverse((o) => (o as THREE.Mesh).geometry?.dispose()); drawn.delete(c); }
@@ -48,6 +52,15 @@ function applyClaims(at?: Claim) {
   for (const b of G.char.benches) if (claimDist(at ?? b, b.x, b.z) < CLEAR_R) b.y = T.heightAt(nearX(b.x, G.pos.x), b.z);
   const g = T.heightAt(G.pos.x, G.pos.z); if (G.pos.y < g) G.pos.y = g;
   syncFlags();
+}
+
+/** Another player raised, took down or built on a claim at `at` (world/share.ts): the ground and the base follow. */
+export function claimsChanged(at?: { x: number; z: number }) {
+  if (!at) return;
+  applyClaims(at as Claim);
+  const c = G.char.claims.find((o) => Math.abs(o.x - at.x) < 0.05 && Math.abs(o.z - at.z) < 0.05);
+  if (c) redrawBase(c);
+  syncBases();
 }
 
 /** The claim whose land covers (x, z). */

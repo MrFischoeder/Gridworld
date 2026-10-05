@@ -1,6 +1,6 @@
 // Drones, bosses (gate guardians and rare elites) and their projectiles.
 import { hurtPlayer } from './damage';
-import { remoteOf, hitOwner, setCombatHooks, type CombatFoe } from './remote';
+import { remoteOf, hitOwner, setCombatHooks, stepRemoteP, withTarget, proxied, otherPlayers, hurtOther, boltOut, type CombatFoe } from './remote';
 import * as THREE from 'three';
 import { onNoise } from './noise';
 import { scene, lineMat, add, V, circlePts, edgesOf } from './render';
@@ -8,7 +8,7 @@ import { G, W } from '../game';
 import { floorAt } from '../core/voxel';
 import { emptyAt, rayWorld } from './player';
 import { burst } from './fx';
-import { dropCrystal, dropPickup } from './loot';
+import { dropCrystal, dropPickup, lootQuiet } from './loot';
 import { droneHp, droneDps, gainXp, saveChar, progress, progressHas, depth as depthNow } from '../character';
 import { showToast, logLine, el } from '../ui/hud';
 import type { BossSpec } from '../gen/dungeon';
@@ -69,8 +69,14 @@ function droneMove(t: Drone, d: THREE.Vector3) {
   }
 }
 export function updateDrones(dt: number) {
-  const head = V(G.pos.x, G.pos.y + 1.2, G.pos.z), safe = foeRules.playerSafe();
   for (const t of W.drones) {
+    if (stepRemoteP(t, dt)) continue; // another player's (shared foes): it does what its owner says
+    withTarget(t.p.x, t.p.z, () => droneTurn(t, dt));
+  }
+}
+function droneTurn(t: Drone, dt: number) {
+  {
+    const head = V(G.pos.x, G.pos.y + 1.2, G.pos.z), safe = foeRules.playerSafe();
     const to = head.clone().sub(t.p), dist = to.length(), sc = t.scout;
     if (safe) t.chasing = false; // the village: pursuers give up at the gate
     else if (dist < (sc ? sc.detect : 16)) { const dir = to.clone().normalize(); if (rayWorld(t.p, dir, dist) >= dist - 0.01) t.chasing = true; }
@@ -114,11 +120,23 @@ const inRoom = (b: Boss, x: number, z: number, m = 0) => x >= b.room.x - m && x 
 function fireOrb(from: THREE.Vector3, dir: THREE.Vector3, dmg: number) {
   const m = edgesOf(new THREE.OctahedronGeometry(0.22), add(0xff6a4a));
   scene.add(m); W.orbs.push({ m, p: from.clone(), v: dir.clone().multiplyScalar(9), dmg, life: 6 });
+  boltOut(from, dir.clone().multiplyScalar(9), 0xff6a4a); // the other players see it fly (their game draws it harmless)
 }
 export function updateBosses(dt: number, time: number): Boss | null {
-  const head = V(G.pos.x, G.pos.y + 1.2, G.pos.z); let shown: Boss | null = null;
+  let shown: Boss | null = null;
   const depth = depthNow();
   for (const b of W.bosses) {
+    if (stepRemoteP(b, dt)) { if (b.engaged && inRoom(b, G.pos.x, G.pos.z, 6)) shown = b; continue; } // another player's
+    let mine = false;
+    withTarget(b.p.x, b.p.z, () => { mine = !proxied(); if (bossTurn(b, dt, time, depth) && mine) shown = b; });
+  }
+  return shown;
+}
+/** One boss's turn against the player nearest to it (`withTarget`); true while it fights. */
+function bossTurn(b: Boss, dt: number, time: number, depth: number): boolean {
+  const head = V(G.pos.x, G.pos.y + 1.2, G.pos.z);
+  let fighting = false;
+  {
     const inside = inRoom(b, G.pos.x, G.pos.z, 1);
     if (inside) b.engaged = true; else if (!inRoom(b, G.pos.x, G.pos.z, 6)) b.engaged = false;
     const to = head.clone().sub(b.p), dist = to.length();
@@ -139,11 +157,11 @@ export function updateBosses(dt: number, time: number): Boss | null {
         b.fireT = Math.max(0.7, 1.5 - (depth - 1) * 0.1) * (b.hp < b.maxHp * 0.5 ? 0.7 : 1);
       }
       if (dist < 2.2) { hurtPlayer(droneDps() * 1.5 * dt, true, .25); }
-      shown = b;
+      fighting = true;
     }
     const mv = target.clone().sub(b.p), ml = mv.length(); if (ml > 0.05) b.p.addScaledVector(mv.normalize(), Math.min(ml, (b.engaged ? 3 : 2) * dt));
   }
-  return shown;
+  return fighting;
 }
 export function updateOrbs(dt: number) {
   const body = V(G.pos.x, G.pos.y + 0.9, G.pos.z);
@@ -153,6 +171,7 @@ export function updateOrbs(dt: number) {
     o.p.addScaledVector(o.v, dt); o.m.position.copy(o.p); o.m.rotation.x += dt * 6; o.m.rotation.y += dt * 4;
     let dead = o.life <= 0 || walled || !emptyAt(o.p);
     if (!dead && o.p.distanceTo(body) < 0.75) { hurtPlayer(o.dmg); dead = true; }
+    if (!dead) for (const t of otherPlayers()) if (o.p.distanceTo(V(t.x, t.y + 0.9, t.z)) < 0.75) { hurtOther(t.id, o.dmg); dead = true; break; }
     if (dead) { burst(o.p, 0xff6a4a, 8, 0.5); scene.remove(o.m); o.m.geometry.dispose(); W.orbs.splice(i, 1); }
   }
 }
@@ -165,8 +184,8 @@ function killBoss(b: Boss) {
   if (Math.random() < 0.6) dropPickup(at.clone().add(V(-0.6, 0, 0)), 'medkit');
   for (let i = 0; i < 3; i++) dropPickup(at.clone().add(V(0, 0, 0.5 + i * 0.4)), 'scrap');
   progress('killed').push(b.idx);
-  G.char.gold += 40 * depth; logLine('+' + (40 * depth) + ' gold');
-  gainXp(60 * depth); saveChar();
+  if (!lootQuiet()) { G.char.gold += 40 * depth; logLine('+' + (40 * depth) + ' gold'); gainXp(60 * depth); } // another player's kill: theirs
+  saveChar();
   scene.remove(b.g); W.bosses.splice(W.bosses.indexOf(b), 1);
   showToast(b.name + ' destroyed');
 }
@@ -183,7 +202,7 @@ export function damageFoe(t: Foe, dmg: number, credit = true) {
     const r = Math.random(); if (r < 0.12) dropPickup(at, 'medkit'); else if (r < 0.17) dropPickup(at, 'emp');
     if (Math.random() < 0.35) dropPickup(at.clone().add(V(0.4, 0, 0.3)), 'scrap');
     respawnDrone(t);
-    onKill('drone');
+    if (!lootQuiet()) onKill('drone');
   }
 }
 /** What happens to a destroyed drone; dungeons recycle it elsewhere in the level. */

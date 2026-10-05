@@ -99,7 +99,8 @@ function model(c: Claim, x0: number): THREE.Group {
   }
   return pb.build();
 }
-function redraw(c: Claim) {
+/** Draw a base again after it changed (also another player's change: world/share.ts). */
+export function redraw(c: Claim) {
   rev++;
   const g = drawn.get(c);
   if (g) { scene.remove(g); g.traverse((o) => (o as THREE.Mesh).geometry?.dispose()); drawn.delete(c); }

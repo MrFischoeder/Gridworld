@@ -174,6 +174,22 @@ describe('multiplayer server', () => {
     expect(c.got.some((m) => m.t === 'kill' || m.t === 'fhit' || m.t === 'wset')).toBe(false);
     for (const x of [a, b, c]) x.ws.close();
   });
+  it('everything is shared: loot anyone walks over, hits on a gun of the place, bases, workbenches and notice boards', async () => {
+    const port = await server({ rooms: [{ id: 'main', name: 'Main', world: 11, time: 100 }] });
+    const a = await client(port, { name: 'Ada' }), b = await client(port, { name: 'Bob' });
+    await a.wait('welcome'); await b.wait('welcome');
+    a.send({ t: 'drop', k: 'scrap', n: 1, p: [1, 1, 1], loc: 'd:1:1:0:0', auto: true }); // a kill's loot
+    const loot = await b.wait('drop');
+    expect(loot.d).toMatchObject({ k: 'scrap', auto: true, loc: 'd:1:1:0:0' });
+    b.send({ t: 'take', id: loot.d.id });
+    expect((await b.wait('got')).d.k).toBe('scrap');
+    b.send({ t: 'cast', m: { t: 'thit', id: 2, dmg: 3, loc: 'd:1:1:0:0' } });
+    expect(await a.wait('thit')).toMatchObject({ id: 2, dmg: 3 });
+    a.send({ t: 'wset', ch: [['claims', '10.0:20.0', { x: 10, z: 20, y: 3, t: 1, parts: [] }], ['benches', '4.0:5.0', { x: 4, y: 1, z: 5, yaw: 0 }], ['board', '_', { seq: 3, offers: [], stamp: 2 }], ['boards', '77', { seq: 1, offers: [] }]] });
+    const set = await b.wait('wset');
+    expect(set.ch.map((c: unknown[]) => c[0])).toEqual(['claims', 'benches', 'board', 'boards']);
+    for (const x of [a, b]) x.ws.close();
+  });
   it('concurrent world writes converge, merge independent properties, and survive hosted reconnects', async () => {
     const port = await server();
     const a = await client(port, { name: 'A', world: 11 }), b = await client(port, { name: 'B', world: 99 });

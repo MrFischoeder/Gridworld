@@ -1,6 +1,6 @@
 # GridWorld: opis gry, cel, plan i historia zmian
 
-Stan na wersję **0.133.0**. Ten dokument opisuje, czym jest GridWorld, jaki jest cel gry, co już w niej jest, czego jeszcze nie ma, dokąd zmierza i jak powstawała, wersja po wersji. Nazwy z gry (przedmioty, miejsca, postacie) są po angielsku, tak jak na ekranie.
+Stan na wersję **0.134.0**. Ten dokument opisuje, czym jest GridWorld, jaki jest cel gry, co już w niej jest, czego jeszcze nie ma, dokąd zmierza i jak powstawała, wersja po wersji. Nazwy z gry (przedmioty, miejsca, postacie) są po angielsku, tak jak na ekranie.
 
 ---
 
@@ -409,7 +409,7 @@ Wyniki symulacji posłużyły do decyzji, że gra ma się opierać na prostych, 
 **Czego jeszcze nie ma:**
 - lotu Rydwanem i zakończenia gry;
 - cudów Starożytnych i niespodzianek w samej grze;
-- pełnego trybu wieloosobowego: jest wspólny świat (wioski, rynki, budowle, skrzynie), wspólni wrogowie, wspólna jazda pojazdami, przedmioty rzucane na ziemię i czat, ale pojazdy rabusiów, drony w podziemiach i bossowie nie są jeszcze wspólni, a postać zapisuje się w przeglądarce, nie na serwerze; nie ma statków innych graczy;
+- pełnego trybu wieloosobowego: wszystko w świecie jest już wspólne (wioski, rynki, budowle, działki, tablice ogłoszeń, skrzynie, łupy na ziemi, wszyscy wrogowie z rabusiami, dronami, bossami i wieżyczkami, wspólna jazda pojazdami, czat), ale postać zapisuje się w przeglądarce, nie na serwerze, a spacery mieszkańców wiosek nie są zsynchronizowane; nie ma statków innych graczy;
 - kombinezonu przeciwchemicznego, mgły w lochach i stworzeń mgły;
 - nurkowania;
 - spalania paliwa przez pojazdy (bak jest pokazywany, ale na razie się nie opróżnia);
@@ -632,3 +632,5 @@ Pełne notatki (po angielsku) są w grze pod przyciskiem **Changelog** w menu g�
 - **0.132.0 Naturalne miejsca urobku.** Kamieniołom i własny tartak przy każdej rozwijanej wiosce, około 100 m poza palisadą; rzadsze, oznaczone kolorami złoża metali i bulgoczące rozlewiska ropy. Rzeczywiste skalne zagłębienia, łagodne wejścia, kolizje zgodne ze skałami, produkcja lokalnych surowców oraz tutorial dopasowany do dostępnych złóż. Istniejące budowy i zapasy pozostają zachowane; multiplayer używa protokołu 7.
 
 - **0.133.0 Łagodniejsze wieżyczki, wraki z załogą robotów.** Wieżyczki obronne w podziemiach i wrakach obracają głowicę powoli, dłużej ostrzegają (bursztynowy czujnik) i strzelają krótkimi seriami po trzy pociski z dwusekundową przerwą i lekkim rozrzutem, więc da się przed nimi uciec w bok albo za osłonę. Głowica ma nowy kształt: fasetowana kopułka z wizjerem i podwójną lufą, osadzona w niskim pierścieniu. We wrakach statków jest już tylko jedna wieżyczka, za to wróciła załoga robotów: zwiadowcy, strażnicy, drony naprawcze, sentinele i konstrukty szturmowe.
+
+- **0.134.0 Jeden świat dla wszystkich.** Na serwerze wspólne jest już wszystko w świecie: łup z wrogów, kłody i kamienie leżą raz dla wszystkich i bierze je ten, kto pierwszy po nich przejdzie; pojazdy rabusiów, blokady dróg, drony i bossowie w podziemiach są wspólni jak inni wrogowie, a nagrodę dostaje ten, kto zadał ostatni cios. Wieżyczki strzelają do najbliższego gracza, a trafienia w nie liczą się u wszystkich. Gdy gracz wychodzi, jego wrogowie zostają i walczą dalej u pozostałych. Wspólne są też działki graczy z budowlami, warsztaty w terenie i tablice ogłoszeń. Własna zostaje tylko postać: ekwipunek, złoto, doświadczenie, zadania, mapa i wiedza. Protokół multiplayer 8.

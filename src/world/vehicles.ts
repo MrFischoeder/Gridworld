@@ -669,6 +669,10 @@ function tint(v: Vehicle, hostile: boolean) {
   });
 }
 /** The raiders are beaten: the vehicle stays where it is, a claimable wreck. */
+/** Put a copy of another player's raider vehicle where its owner says (world/raiders.ts, shared foes). */
+export function placeAI(v: Vehicle, x: number, z: number, heading: number, speed: number, dt: number) {
+  v.st.x = x; v.st.z = z; v.st.heading = heading; v.speed = speed; v.spin += speed / v.spec.wheelR * dt; pose(v);
+}
 export function releaseAI(v: Vehicle) { v.ai = false; v.speed = 0; v.steer = 0; tint(v, false); refreshParts(v); pose(v); }
 export function removeVehicle(v: Vehicle) { const i = vehicles.indexOf(v); if (i >= 0) { dropVehicle(v); vehicles.splice(i, 1); } }
 /**

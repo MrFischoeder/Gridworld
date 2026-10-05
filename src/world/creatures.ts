@@ -18,7 +18,7 @@ import { onKill } from './quests';
 import { mayspawn, FOE_HIT } from './threat';
 import { ALPHA, type Quest } from '../gen/quests';
 import { textSprite } from './npc';
-import { targetingFoe, stepRemote, withFoeTarget } from './remote';
+import { targetingFoe, stepRemote, withFoeTarget, nearestPlayer } from './remote';
 
 type State = 'roam' | 'hunt' | 'dash' | 'retreat' | 'threat' | 'charge' | 'recover' | 'stalk' | 'dive' | 'climb' | 'investigate';
 
@@ -712,7 +712,7 @@ export function updateCreatures(dt: number, time: number) {
   for (let i = W.creatures.length - 1; i >= 0; i--) {
     const c = W.creatures[i];
     if (stepRemote(c, dt)) { animate(c, dt, time); continue; } // another player's: it does what its owner says
-    if (!c.cityPost && Math.hypot(G.pos.x - c.p.x, G.pos.z - c.p.z) > (c.questId ? 240 : c.kind === 'leechwing' ? 220 : 130)) { removeCreature(c); continue; }
+    if (!c.cityPost && nearestPlayer(c.p.x, c.p.z) > (c.questId ? 240 : c.kind === 'leechwing' ? 220 : 130)) { removeCreature(c); continue; }
     withFoeTarget(c, () => {
       const to = V(G.pos.x, G.pos.y + 1.2, G.pos.z).sub(c.p), dist = to.length(), safe = !targetingFoe() && foeRules.playerSafe();
       if (c.state === 'investigate' && (c.kind === 'ravager' || c.kind === 'bramble' || c.kind === 'gnawer')) investigate(c, dt, to, dist, safe);

@@ -1,7 +1,7 @@
 // Bandits: human enemies with guns and blades. They live in camps and patrol the wilds.
 // Unsaved (like drones and creatures) except that a cleared camp stays empty for a while (char.camps).
 import { hurtPlayer } from './damage';
-import { targetingFoe, actingFoe, combatFoes, factionOf, hitCombatFoe, type CombatFoe, stepRemote, withFoeTarget, proxied, otherPlayers, hurtOther, boltOut, spawnAuthority } from './remote';
+import { targetingFoe, actingFoe, combatFoes, factionOf, hitCombatFoe, type CombatFoe, stepRemote, withFoeTarget, proxied, otherPlayers, hurtOther, boltOut, spawnAuthority, nearestPlayer } from './remote';
 import { hostile, shotSphere } from '../core/factions';
 import * as THREE from 'three';
 import { onNoise } from './noise';
@@ -260,7 +260,7 @@ export function updateBandits(dt: number, time: number) {
   for (let i = W.bandits.length - 1; i >= 0; i--) {
     const b = W.bandits[i];
     if (stepRemote(b, dt)) { animate(b, dt); continue; } // another player's: it does what its owner says
-    if (!b.cityPost && b.campId === undefined && Math.hypot(b.p.x - G.pos.x, b.p.z - G.pos.z) > (b.ambush !== undefined ? 240 : 160)) { removeBandit(b); continue; }
+    if (!b.cityPost && b.campId === undefined && nearestPlayer(b.p.x, b.p.z) > (b.ambush !== undefined ? 240 : 160)) { removeBandit(b); continue; }
     withFoeTarget(b, () => think(b, dt, time)); animate(b, dt);
   }
   updateBolts(dt);

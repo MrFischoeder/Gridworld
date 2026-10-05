@@ -8,6 +8,7 @@ import { rayWorld, H } from './player';
 import { progress, progressHas, saveChar } from '../character';
 import { MOUNTED_TURRET as S, type MountedTurretSpec } from '../data/mountedturrets';
 import { showToast } from '../ui/hud';
+import { withTarget, spawnAuthority, boltOut, turretHitOut } from './remote';
 interface Gun { spec: MountedTurretSpec; g: THREE.Group; head: THREE.Group; sensor: THREE.Mesh; hp: number; charge: number; cd: number; shots: number }
 const live: Gun[] = [];
 /** Same model works on any mounting plane; the head aims independently from its base. */
@@ -36,6 +37,8 @@ export function mountedTurretModel(spec: MountedTurretSpec, color = 0xff6a4a) {
   g.position.set(spec.x, spec.y, spec.z); g.add(head); return { g, head, sensor };
 }
 function drop(t: Gun) { t.g.removeFromParent(); t.g.traverse(o => (o as THREE.Mesh).geometry?.dispose()); (t.sensor.material as THREE.Material).dispose(); }
+/** Another player hit a gun of this place (world/foesync.ts). */
+export function remoteTurretHit(id: number, damage: number) { const t = live.find((g) => g.spec.id === id); if (t) { const f = G.hitFlash; damageMountedTurret(t, damage, false); G.hitFlash = f; } }
 export function clearMountedTurrets() { for (const t of live) drop(t); live.length = 0; }
 export function loadMountedTurrets(specs: MountedTurretSpec[]) {
   clearMountedTurrets();
@@ -43,8 +46,9 @@ export function loadMountedTurrets(specs: MountedTurretSpec[]) {
     const model = mountedTurretModel(spec); scene.add(model.g); live.push({ spec, ...model, hp: S.hp, charge: 0, cd: 0, shots: 0 });
   }
 }
-export function damageMountedTurret(t: Gun, damage: number) {
+export function damageMountedTurret(t: Gun, damage: number, tell = true) {
   if (!live.includes(t)) return;
+  if (tell) turretHitOut(t.spec.id, damage); // everyone's copy of the gun takes the same hit
   t.hp -= Math.max(0, damage) * (1 - S.armour); G.hitFlash = 0.15; burst(t.g.position, 0xffb347, 8, 0.4);
   if (t.hp > 0) return;
   progress('killed').push(S.progressBase + t.spec.id); saveChar(); drop(t); live.splice(live.indexOf(t), 1); showToast('Defence turret destroyed');
@@ -68,23 +72,29 @@ const aimer = new THREE.Object3D(), want = new THREE.Quaternion(), fwd = new THR
  * head points: a target running across faster than the head turns, or out of sight between bursts, is not hit.
  */
 export function updateMountedTurrets(dt: number) {
-  const target = G.pos.clone(); target.y += 1.1;
   for (let i = live.length - 1; i >= 0; i--) {
     const t = live[i];
     if (progressHas('killed', S.progressBase + t.spec.id)) { drop(t); live.splice(i, 1); continue; }
+    // shared (multiplayer): the first player's game works the guns, at whoever is nearest; the others see them turn
+    withTarget(t.g.position.x, t.g.position.z, () => gunTurn(t, dt));
+  }
+}
+function gunTurn(t: Gun, dt: number) {
+  const target = G.pos.clone(); target.y += 1.1;
+  {
     t.cd = Math.max(0, t.cd - dt);
     const direction = target.clone().sub(t.g.position), distance = direction.length();
     const visible = distance > 0.8 && distance < S.range && rayWorld(t.g.position, direction.normalize(), distance) >= distance - 0.05;
     t.charge = visible ? Math.min(S.warning, t.charge + dt) : 0;
     (t.sensor.material as THREE.MeshBasicMaterial).color.setHex(t.charge > 0 ? 0xffee88 : 0xff6a4a);
-    if (!visible) { t.shots = 0; continue; }
+    if (!visible) { t.shots = 0; return; }
     aimer.position.copy(t.g.position); aimer.lookAt(target); aimer.rotateY(Math.PI); // models face -Z; lookAt faces +Z
     want.copy(aimer.quaternion);
     t.head.quaternion.rotateTowards(want, S.turn * dt);
     fwd.set(0, 0, -1).applyQuaternion(t.head.quaternion);
     const off = fwd.angleTo(direction);
-    if (t.cd > 0) continue;
-    if (!t.shots) { if (t.charge < S.warning || off > S.aim) continue; t.shots = S.burst; }
+    if (t.cd > 0 || !spawnAuthority()) return; // only the first player's game fires (the shots reach everyone)
+    if (!t.shots) { if (t.charge < S.warning || off > S.aim) return; t.shots = S.burst; }
     t.shots--; t.cd = t.shots ? S.gap : S.pause;
     // the shot leaves along the barrels with a little scatter; it hits if it passes within the body's reach
     const shot = fwd.clone().add(new THREE.Vector3((Math.random() - 0.5) * 2, (Math.random() - 0.5) * 2, (Math.random() - 0.5) * 2).multiplyScalar(S.spread)).normalize();
@@ -92,7 +102,7 @@ export function updateMountedTurrets(dt: number) {
     const miss = muzzle.clone().addScaledVector(shot, along).distanceTo(target);
     const end = muzzle.clone().addScaledVector(shot, Math.min(S.range, rayWorld(muzzle, shot, S.range)));
     addFx(new THREE.Line(new THREE.BufferGeometry().setFromPoints([muzzle, miss < 0.45 ? target : end]), add(0xff5a3c)), 0.12);
-    burst(muzzle, 0xffee88, 4, 0.2);
+    burst(muzzle, 0xffee88, 4, 0.2); boltOut(muzzle, shot.clone().multiplyScalar(60), 0xff5a3c);
     if (miss < 0.45) hurtPlayer(S.damage, true, .3);
   }
 }

@@ -9,7 +9,7 @@
 // Like the creatures they are not saved. Where they turn up, and how many, is set by the danger level and the
 // shared threat budget (world/threat.ts): near the villages you meet none, further out ever heavier machines.
 import { hurtPlayer } from './damage';
-import { targetingFoe, stepRemote, withFoeTarget, hitCombatFoe, otherPlayers, hurtOther } from './remote';
+import { targetingFoe, stepRemote, withFoeTarget, hitCombatFoe, otherPlayers, hurtOther, nearestPlayer } from './remote';
 import * as THREE from 'three';
 import { scene, V, lineMat, add as addMat } from './render';
 import { G, W } from '../game';
@@ -440,7 +440,7 @@ export function updateRobots(dt: number, time: number) {
   if (!indoor && (spawnT -= dt) <= 0) { spawnT = 7; trySpawn(); }
   for (const r of [...W.robots]) {
     if (stepRemote(r, dt)) { animate(r, dt, time); continue; } // another player's: it does what its owner says
-    if (!r.cityPost && !indoor && r.state !== 'hunt' && r.p.distanceTo(G.pos) > 150) { removeRobot(r); continue; }
+    if (!r.cityPost && !indoor && r.state !== 'hunt' && nearestPlayer(r.p.x, r.p.z) > 150) { removeRobot(r); continue; }
     withFoeTarget(r, () => think(r, dt, time));
     animate(r, dt, time);
   }

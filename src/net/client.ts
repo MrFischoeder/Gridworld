@@ -3,7 +3,7 @@
 // it with `sendState` (about 10 times a second) and reads `peers`.
 
 /** Must match PROTOCOL in server/mp.mjs. */
-export const PROTOCOL = 7;
+export const PROTOCOL = 8;
 export const SEND_EVERY = 0.1;
 
 /** `away`: in the menu (still in the game: the others see you standing there). */
@@ -41,7 +41,8 @@ export function peerAt(p: Peer, t: number): { a: PeerState; b: PeerState; k: num
   return { a: last, b: last, k: 0 };
 }
 /** An item lying in the room's world (server/mp.mjs): put down by `by`, at p in the place `loc` (see world/peers.ts myLoc). */
-export interface NetDrop { id: string; k: string; n: number; c?: number; p: [number, number, number]; loc: string; by: string; at: number }
+/** `auto`: loot (a kill's drops, logs from a felled tree...) taken by walking over it, as alone. */
+export interface NetDrop { id: string; k: string; n: number; c?: number; p: [number, number, number]; loc: string; by: string; at: number; auto?: boolean }
 let gotHook: ((d: NetDrop) => void) | null = null;
 /** Who receives an item the server handed you (world/drops.ts). */
 export function onGot(f: (d: NetDrop) => void) { gotHook = f; }
@@ -219,7 +220,7 @@ export function connect(url: string, me: { name: string; world: number; time: nu
       case 'drop': net.drops.set(m.d.id, m.d); break;
       case 'gone': net.drops.delete(m.id); break;
       case 'got': net.drops.delete(m.d.id); gotHook?.(m.d); break;
-      case 'foes': case 'bolt': case 'fhit': case 'kill': case 'hurt': relayHook?.(m); break;
+      case 'foes': case 'bolt': case 'fhit': case 'kill': case 'hurt': case 'thit': relayHook?.(m); break;
       case 'chat': h.say(`${m.name}: ${m.text}`, 'chat'); break;
       case 'full': why = 'The server is full (8 players).'; break;
       case 'refused': why = m.why; break;
@@ -245,9 +246,9 @@ export function sendState(s: PeerState, time?: number) {
   net.ws.send(JSON.stringify({ t: 'state', ...s, ...(isHost() && time !== undefined ? { time } : {}) }));
 }
 /** Put an item down where you stand (already taken out of your kit). */
-export function sendDrop(k: string, n: number, c: number | undefined, p: [number, number, number], loc: string): boolean {
+export function sendDrop(k: string, n: number, c: number | undefined, p: [number, number, number], loc: string, auto = false): boolean {
   if (!online() || net.ws?.readyState !== 1) return false;
-  net.ws.send(JSON.stringify({ t: 'drop', k, n, c, p, loc }));
+  net.ws.send(JSON.stringify({ t: 'drop', k, n, c, p, loc, ...(auto ? { auto } : {}) }));
   return true;
 }
 /** Ask for a lying item: the server answers 'got' if you were first, 'gone' if not. */
@@ -257,7 +258,7 @@ export function sendTake(id: string): boolean {
   return true;
 }
 /** The shared foes (world/foesync.ts): a message from another player ({t, from, ...}). */
-export type Relay = { t: 'foes' | 'bolt' | 'fhit' | 'kill' | 'hurt'; from: number; [k: string]: unknown };
+export type Relay = { t: 'foes' | 'bolt' | 'fhit' | 'kill' | 'hurt' | 'thit'; from: number; [k: string]: unknown };
 let relayHook: ((m: Relay) => void) | null = null;
 export function onRelay(f: (m: Relay) => void) { relayHook = f; }
 /** Pass m to everyone else in the room (to = undefined) or to one player. */

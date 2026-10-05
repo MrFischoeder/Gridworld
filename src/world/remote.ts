@@ -46,7 +46,8 @@ export function withFoeTarget(f: CombatFoe, fn: () => void) {
   } finally { actor = wasActor; }
 }
 
-export interface RemoteFoe { owner: number; nid: number; x: number; y: number; z: number; h: number; hp: number; maxHp: number }
+/** `aux`: one more number some kinds need (a raider's cannon yaw). */
+export interface RemoteFoe { owner: number; nid: number; x: number; y: number; z: number; h: number; hp: number; maxHp: number; aux?: number }
 const remote = new WeakMap<object, RemoteFoe>();
 /** A copy of another player's foe (its owner and id there, and where its owner last saw it). */
 export const remoteOf = (o: object): RemoteFoe | undefined => remote.get(o);
@@ -54,6 +55,22 @@ export function markRemote(o: object, r: RemoteFoe) { remote.set(o, r); }
 export function unmarkRemote(o: object) { remote.delete(o); }
 
 /** Ease a copy towards where its owner last saw it; false if it is not a copy (run its own mind then). */
+/** Ease a copy that has only a position (a dungeon drone, a boss) to its owner's word; false if it is not a copy. */
+export function stepRemoteP(o: { p: THREE.Vector3; hp: number }, dt: number): boolean {
+  const r = remote.get(o);
+  if (!r) return false;
+  const k = Math.min(1, dt * 7);
+  if (Math.hypot(r.x - o.p.x, r.z - o.p.z) > 30) o.p.set(r.x, r.y, r.z);
+  else { o.p.x += (r.x - o.p.x) * k; o.p.y += (r.y - o.p.y) * k; o.p.z += (r.z - o.p.z) * k; }
+  o.hp = r.hp;
+  return true;
+}
+/** How far the nearest player (you or another in your place) is from (x, z): foes go only when nobody is near. */
+export function nearestPlayer(x: number, z: number): number {
+  let d = Math.hypot(G.pos.x - x, G.pos.z - z);
+  for (const p of others()) d = Math.min(d, Math.hypot(p.x - x, p.z - z));
+  return d;
+}
 export function stepRemote(o: { p: THREE.Vector3; heading: number; speed: number; hp: number; maxHp: number }, dt: number): boolean {
   const r = remote.get(o);
   if (!r) return false;
@@ -83,6 +100,10 @@ export const spawnAuthority = () => authority();
 export const otherPlayers = () => others();
 /** You hit another player's foe: tell its owner. */
 export const hitOwner = (o: object, dmg: number, npc = false) => hit(o, dmg, npc);
+let turretHit: (id: number, dmg: number) => void = () => {};
+/** world/foesync.ts: how to tell the others a gun of this place was hit. */
+export function setTurretHook(f: (id: number, dmg: number) => void) { turretHit = f; }
+export const turretHitOut = (id: number, dmg: number) => turretHit(id, dmg);
 /** One of your foes fired a bolt (the others draw it). */
 export const boltOut = (p: THREE.Vector3, v: THREE.Vector3, color: number) => bolt(p, v, color);
 export const hurtOther = (id: number, dmg: number, armour = true) => hurtPeer(id, dmg, armour);

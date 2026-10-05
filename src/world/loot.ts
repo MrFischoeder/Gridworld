@@ -39,20 +39,36 @@ export interface Crystal { m: THREE.LineSegments; p: THREE.Vector3; v: THREE.Vec
  * `drop`: put down by a player (world/drops.ts): it waits for E instead of being picked up by walking over it; `c` the
  * condition of a worn part, `by` who put it down, `taking` when you last asked the server for it.
  */
-export interface Pickup { g: THREE.Group; k: ItemKey; p: THREE.Vector3; age: number; warned?: boolean; rest?: boolean; n?: number; drop?: string; c?: number; by?: string; taking?: number }
+export interface Pickup { g: THREE.Group; k: ItemKey; p: THREE.Vector3; age: number; warned?: boolean; rest?: boolean; n?: number; drop?: string; c?: number; by?: string; taking?: number; auto?: boolean }
 export interface Chest { g: THREE.Group; lidPivot: THREE.Group; beam: THREE.Line; beamMat: THREE.LineBasicMaterial; i: number; open: boolean; anim: number }
 export interface Hatch { g: THREE.Group; rings: THREE.LineLoop[] }
 
 // ---------- XP crystals and drone loot ----------
 const crystalGeo = new THREE.EdgesGeometry(new THREE.OctahedronGeometry(0.14));
 const crystalMat = add(0x9dffe0);
+// In multiplayer what falls to the ground is everyone's: `setGroundHook` (world/drops.ts) hands it to the server, which
+// shows it to all and gives it to whoever reaches it first. `quietLoot` drops nothing (another player's kill of your foe:
+// their game drops the loot and the crystals).
+let ground: ((at: THREE.Vector3, k: ItemKey, n: number) => boolean) | null = null, quiet = 0;
+let autoTake: (p: Pickup) => void = () => {};
+export function setGroundHook(f: typeof ground, take: (p: Pickup) => void) { ground = f; autoTake = take; }
+export function quietLoot(fn: () => void) { quiet++; try { fn(); } finally { quiet--; } }
+/** True while a kill's rewards belong to another player (see `quietLoot`). */
+export const lootQuiet = () => quiet > 0;
 export function dropCrystal(at: THREE.Vector3) {
+  if (quiet) return;
   const m = new THREE.LineSegments(crystalGeo, crystalMat); m.scale.y = 1.6; scene.add(m);
   const v = V(Math.random() - 0.5, 0.3 + Math.random() * 0.4, Math.random() - 0.5).multiplyScalar(4);
   W.crystals.push({ m, p: at.clone(), v, age: 0 });
 }
 export function dropPickup(at: THREE.Vector3, kind: ItemKey | 'relic', n = 1): Pickup {
   const k: ItemKey = kind === 'relic' ? RELIC_KEYS[(Math.random() * RELIC_KEYS.length) | 0] : kind;
+  // nothing (quiet), or the server's (online): not drawn here, the server's copy comes back for everyone
+  if (quiet || (item(k).type !== 'quest' && ground?.(at, k, n))) return { g: new THREE.Group(), k, p: at.clone(), age: 0, n };
+  return drawPickup(at, k, n);
+}
+/** Draw a pickup lying here (also the server's: world/drops.ts). */
+export function drawPickup(at: THREE.Vector3, k: ItemKey, n = 1): Pickup {
   const g = new THREE.Group();
   if (k === 'key' || item(k).type === 'relic' || item(k).type === 'quest') {
     const c = k === 'key' ? 0xff7a5c : 0xffd060;
@@ -107,7 +123,8 @@ export function updateLoot(dt: number, time: number) {
     { const np = p.p.clone(); np.y -= dt * 4; if (emptyAt(V(np.x, np.y - 0.45, np.z))) p.p.copy(np); } // settles onto the floor
     if (p.rest) p.g.position.set(p.p.x, restY(p.p), p.p.z);
     else { p.g.position.copy(p.p); p.g.position.y += Math.sin(time * 3 + i) * 0.08; p.g.rotation.y = time * 1.5; }
-    if (!p.drop && Math.hypot(p.p.x - G.pos.x, p.p.z - G.pos.z) < 1.3 && Math.abs(p.p.y - body.y) < 2.5 && p.age > 0.4) {
+    if (p.drop && p.auto && Math.hypot(p.p.x - G.pos.x, p.p.z - G.pos.z) < 1.3 && Math.abs(p.p.y - body.y) < 2.5 && p.age > 0.4) autoTake(p); // the server's loot
+    else if (!p.drop && Math.hypot(p.p.x - G.pos.x, p.p.z - G.pos.z) < 1.3 && Math.abs(p.p.y - body.y) < 2.5 && p.age > 0.4) {
       const where = addItem(p.k, p.n ?? 1);
       if (where) { scene.remove(p.g); W.pickups.splice(i, 1); logLine(ITEMS[p.k].name + ((p.n ?? 1) > 1 ? ' ×' + p.n : '') + (where === 'hands' ? ' (in your hands)' : where === 'back' ? ' (on your back)' : ' → backpack')); saveChar(); if (item(p.k).type === 'quest') onPickup(p.k); }
       else if (!p.warned) { p.warned = true; logLine('No room in your backpack'); }

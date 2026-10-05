@@ -1,12 +1,16 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import * as THREE from 'three';
-const state = vi.hoisted(() => ({ G: {} as any, W: { robots: [] as any[], creatures: [] as any[], bandits: [] as any[] }, net: { id: 1, peers: new Map<number, any>() }, cars: [] as any[], carDamage: vi.fn(), heard: null as any, relay: vi.fn(), damage: vi.fn() }));
+const state = vi.hoisted(() => ({ G: {} as any, W: { robots: [] as any[], creatures: [] as any[], bandits: [] as any[], drones: [] as any[], bosses: [] as any[] }, net: { id: 1, peers: new Map<number, any>() }, cars: [] as any[], carDamage: vi.fn(), heard: null as any, relay: vi.fn(), damage: vi.fn() }));
 vi.mock('../src/game', () => state);
 vi.mock('../src/net/client', () => ({ net: state.net, online: () => true, relay: state.relay, onRelay: (fn: any) => { state.heard = fn; } }));
 vi.mock('../src/world/vehicles', () => ({ myCarList: () => state.cars, damageVehicle: state.carDamage }));
 vi.mock('../src/world/peers', () => ({ myLoc: () => 'surface' }));
 vi.mock('../src/character', () => ({ armoured: (damage: number) => damage }));
-vi.mock('../src/world/render', async () => { const { Vector3 } = await import('three'); return { V: (x: number, y: number, z: number) => new Vector3(x, y, z) }; });
+vi.mock('../src/world/render', async () => { const { Vector3, Scene } = await import('three'); return { V: (x: number, y: number, z: number) => new Vector3(x, y, z), scene: new Scene() }; });
+vi.mock('../src/world/raiders', () => ({ raiders: [], spawnRemoteRaider: vi.fn(), remoteRaiderKilled: vi.fn(), dropRaider: vi.fn(), hurtRaider: vi.fn(), barricades: () => [], barricadeAlive: () => false, placeBarricadeCopy: vi.fn(), removeBarricade: vi.fn(), hurtBarrier: vi.fn() }));
+vi.mock('../src/world/loot', () => ({ quietLoot: (fn: () => void) => fn() }));
+vi.mock('../src/world/fx', () => ({ burst: vi.fn() }));
+vi.mock('../src/world/mountedturrets', () => ({ remoteTurretHit: vi.fn() }));
 vi.mock('../src/world/robots', () => ({ spawnRemoteRobot: vi.fn(), wreckRobot: vi.fn(), removeRobot: vi.fn() }));
 vi.mock('../src/world/creatures', () => ({ spawnRemoteCreature: vi.fn(), fallCreature: vi.fn(), removeCreature: vi.fn() }));
 vi.mock('../src/world/bandits', () => ({
@@ -15,7 +19,7 @@ vi.mock('../src/world/bandits', () => ({
     state.W.bandits.push(f); return f;
   }, fallBandit: vi.fn(), removeBandit: (f: any) => { state.W.bandits.splice(state.W.bandits.indexOf(f), 1); }, ghostBolt: vi.fn(),
 }));
-vi.mock('../src/world/enemies', () => ({ damageFoe: state.damage, foeRules: { playerSafe: () => false, shielded: () => false } }));
+vi.mock('../src/world/enemies', () => ({ makeDrone: vi.fn(), damageFoe: state.damage, foeRules: { playerSafe: () => false, shielded: () => false } }));
 import { syncFoes, dropCopies } from '../src/world/foesync';
 import { unmarkRemote, hitOwner } from '../src/world/remote';
 beforeEach(() => {

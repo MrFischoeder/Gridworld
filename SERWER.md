@@ -6,7 +6,8 @@ Serwer dedykowany to jeden program Node (`server/main.mjs`), który na jednym po
 - Gracz, który wyjdzie do menu, **nie znika**: jego postać zostaje w świecie z dopiskiem „(in menu)”, a świat toczy się dalej.
 - Serwery gry, na które nikt nie wrócił przez 14 dni, są usuwane (główny nigdy).
 - **Świat jest wspólny**: wioski, rynki, mosty, pomosty, łodzie, instalacje, Rydwan, skrzynie, ścięte drzewa, obozy bandytów. Serwer zapisuje go w osobnym pliku na każdy serwer gry (`server/data/world-<id>.json`). Pierwszy gracz, który już grał w tym świecie, wnosi swój postęp; potem świat należy do serwera. Osobiste zostają ekwipunek, złoto, poziom, zadania, mapa, pojazdy.
-- **Wrogowie są wspólni**: stwory, roboty i bandyci (losowe spotkania, obozy, garnizony miast, napady na wioski, strażnicy wraków). Pierwszy gracz w danym miejscu „prowadzi” wrogów, pozostali widzą ich ruchy i strzały i mogą ich zabijać (zabójstwo i łup dostaje ten, kto zadał ostatni cios). Wrogowie atakują najbliższego gracza.
+- **Wszystko w świecie jest wspólne**: także działki graczy z budowlami, warsztaty w terenie i tablice ogłoszeń (zadanie wzięte przez jednego znika u innych), a to, co spada na ziemię (łup z wrogów, kłody, kamienie), leży raz dla wszystkich i bierze je ten, kto pierwszy po nim przejdzie (łup leży na serwerze pół godziny). Własne zostają tylko: ekwipunek, złoto, doświadczenie, zadania, mapa i wiedza postaci.
+- **Wrogowie są wspólni**: stwory, roboty, bandyci, pojazdy rabusiów i ich blokady dróg, drony i bossowie w podziemiach, wieżyczki (losowe spotkania, obozy, garnizony miast, napady na wioski, strażnicy wraków). Gdy gracz wyjdzie, jego wrogowie zostają i walczą dalej u pozostałych. Pierwszy gracz w danym miejscu „prowadzi” wrogów, pozostali widzą ich ruchy i strzały i mogą ich zabijać (zabójstwo i łup dostaje ten, kto zadał ostatni cios). Wrogowie atakują najbliższego gracza.
 - Przedmioty położone przez graczy na ziemi (Drop w plecaku) serwer pamięta i pokazuje wszystkim; leżą 6 godzin, także po restarcie.
 - Lista, ziarna i zegary zapisują się w `server/data/server.json` co 30 sekund i przy zatrzymaniu.
 
@@ -60,5 +61,5 @@ PORT=8517 SERVER_NAME="Mój serwer" npm run serve
 ## Czego jeszcze nie ma
 
 - Postać gracza zapisuje się w jego przeglądarce (dla adresu serwera osobno niż przy grze lokalnej), nie na serwerze.
-- Nie są jeszcze wspólne: pojazdy rabusiów, drony w podziemiach i bossowie. Gdy gracz, który prowadził grupę wrogów, wyjdzie z gry, ta grupa znika razem z nim.
+- Nie są zsynchronizowane: spacery mieszkańców wiosek (tylko wygląd) i chwilowe zatrzymanie karawany w czasie napadu. Porzucony wrak pojazdu rabusiów można zająć tylko u gracza, w którego grze go pokonano. Protokół multiplayer: 8 (serwer i gra muszą być w tej samej wersji).
 - Brak haseł i kont: każdy, kto zna adres, może dołączyć (do 8 graczy naraz na każdym serwerze gry) i założyć nowy serwer gry.

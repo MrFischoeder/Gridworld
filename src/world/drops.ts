@@ -4,7 +4,7 @@
 import * as THREE from 'three';
 import { G, W } from '../game';
 import { scene } from './render';
-import { dropPickup, type Pickup } from './loot';
+import { drawPickup, setGroundHook, type Pickup } from './loot';
 import { net, online, sendDrop, sendTake, onGot, type NetDrop } from '../net/client';
 import { myLoc } from './peers';
 import { nearX } from '../gen/regions';
@@ -44,14 +44,19 @@ function give(d: NetDrop): boolean {
   c.inv[i] = { k, n: d.n, c: d.c }; return true;
 }
 function took(d: NetDrop) {
-  if (give(d)) { saveChar(); logLine(`Picked up ${label(d.k, d.n)}${d.by && d.by !== G.char.name ? ` (left by ${d.by})` : ''}.`); }
+  if (give(d)) { saveChar(); logLine(`Picked up ${label(d.k, d.n)}${d.by && d.by !== G.char.name && !d.auto ? ` (left by ${d.by})` : ''}.`); }
   else { // no room after all: it goes back down where it was
     showToast('No room for it'); logLine(`No room for ${label(d.k, d.n)}: it stays on the ground.`);
-    if (!sendDrop(d.k, d.n, d.c, d.p, d.loc)) local.set(d.id, d);
+    if (!sendDrop(d.k, d.n, d.c, d.p, d.loc)) local.set(d.id, d); // (now only for E, so it is not taken again at once)
   }
   syncDrops(true);
 }
 onGot(took);
+// online, loot falls into the shared world: the server lays it down for everyone (in the open world or a dungeon);
+// hooked on the first `syncDrops` (loot.ts and this module import each other)
+let hooked = false;
+const hook = () => setGroundHook((at, k, n) => (G.char.loc === 'overworld' || G.char.loc === 'dungeon') && sendDrop(k, n, undefined, [Math.round(at.x * 100) / 100, Math.round(at.y * 100) / 100, Math.round(at.z * 100) / 100], myLoc(), true),
+  (p) => { if (p.drop) takeDrop(p); });
 
 /** The lying item you stand by (E picks it up). */
 export function nearDrop(): Pickup | null {
@@ -74,6 +79,7 @@ export function takeDrop(p: Pickup) {
 let clock = 0;
 /** Draw the lying items of the place you are in, and drop the ones taken away (main loop; `now` = at once). */
 export function syncDrops(now = false, dt = 0) {
+  if (!hooked) { hooked = true; hook(); }
   if (!now && (clock -= dt) > 0) return;
   clock = 0.25;
   const here = G.char.loc === 'overworld' || G.char.loc === 'dungeon' ? myLoc() : '', src = source();
@@ -88,8 +94,8 @@ export function syncDrops(now = false, dt = 0) {
   for (const d of src.values()) {
     if (d.loc !== here || shown.has(d.id) || !ITEMS[d.k as ItemKey]) continue;
     const x = here === 'o' ? nearX(d.p[0], G.pos.x) : d.p[0];
-    const p = dropPickup(new THREE.Vector3(x, d.p[1], d.p[2]), d.k as ItemKey, d.n);
-    p.drop = d.id; p.c = d.c; p.by = d.by; p.age = 1;
+    const p = drawPickup(new THREE.Vector3(x, d.p[1], d.p[2]), d.k as ItemKey, d.n);
+    p.drop = d.id; p.c = d.c; p.by = d.by; p.age = d.auto ? 0 : 1; p.auto = d.auto;
     shown.set(d.id, p);
   }
 }

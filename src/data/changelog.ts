@@ -3,6 +3,14 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.134.0', date: '2026-10-05', title: 'One world for everyone', notes: [
+    'On a server everything in the world is now shared. What falls to the ground (a kill\'s loot, logs from a felled tree, stones from a rock) lies there for everyone, once, and goes to whoever walks over it first.',
+    'Raider vehicles, roadblocks, dungeon drones and the bosses of the depths are the same for every player in a place, like the other enemies. The killing blow earns the reward; the enemy\'s own game no longer drops a second set of loot.',
+    'Ancient defence turrets fire at whichever player is nearest, and every hit on a turret counts for everyone.',
+    'When a player leaves or moves on, the enemies they brought stay and fight on in the game of the players still there, instead of vanishing.',
+    'Land claims with everything built on them, wild workbenches and the villages\' notice boards are shared: a notice taken by one player is gone for the others.',
+    'Your character (equipment, gold, experience, quests, maps and knowledge) remains your own. Multiplayer protocol is now 8: update both the server and the game.',
+  ] },
   { v: '0.133.0', date: '2026-10-05', title: 'Gentler turrets, crewed wrecks', notes: [
     'Mounted defence turrets are much less deadly. Their heads turn slowly, so they need a moment to swing round onto you, and they only open fire once they are lined up after a longer warning (the sensor glows amber).',
     'Turrets now fire short three-round bursts with a two-second pause between them, and their shots scatter a little. Keep moving across their line of fire, or step out of sight between bursts.',
