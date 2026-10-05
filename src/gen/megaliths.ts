@@ -1,4 +1,5 @@
-// Twelve reserved ancient landmarks. Stable ids are future quest anchors; no activation state is generated or saved.
+// Reserved ancient landmarks: twelve stone sanctuaries, then ten valleys of colossal stone heads (appended, so the
+// first twelve keep their sites). Stable ids are future quest anchors; no activation state is generated or saved.
 import { hash, rng } from '../core/rng';
 import { continents } from './continents';
 import { wrapX, wrapDx, nearX, worldDist, poisNear, regionOf, type Rect } from './regions';
@@ -15,7 +16,7 @@ import { regionRoads, nearestOnRoad } from './roads';
 
 // Scale geometry and cleared grounds together; survey with the original footprint to preserve reserved sites.
 export const MEGALITH_XZ_SCALE = .75, MEGALITH_Y_SCALE = .7;
-export const MEGALITH_COUNT = 12, MEGALITH_BLEND = 35, MEGALITH_HOME_GAP = 3500;
+export const MEGALITH_COUNT = 22, MEGALITH_BLEND = 35, MEGALITH_HOME_GAP = 3500;
 export const MEGALITH_DESIGNS = [
   { name: 'Crown of the First Dawn', radius: 100, height: 42, count: 16, rings: 1, form: 'crown' },
   { name: 'The Twin Horizons', radius: 120, height: 46, count: 18, rings: 2, form: 'circles' },
@@ -29,10 +30,32 @@ export const MEGALITH_DESIGNS = [
   { name: 'The Longest Shadow', radius: 125, height: 68, count: 14, rings: 1, form: 'obelisk' },
   { name: 'The Gate of Giants', radius: 105, height: 62, count: 12, rings: 1, form: 'gate' },
   { name: 'The Last Constellation', radius: 150, height: 56, count: 24, rings: 2, form: 'constellation' },
+  // the colossal heads: faceted stone faces with glowing visor eyes, buried to the shoulders among boulders
+  { name: 'Vale of the Watchers', radius: 120, height: 58, count: 6, rings: 1, form: 'heads', layout: 'valley' },
+  { name: 'Council of Stone Faces', radius: 125, height: 56, count: 7, rings: 1, form: 'heads', layout: 'council' },
+  { name: 'The Seaward Gaze', radius: 115, height: 54, count: 7, rings: 1, form: 'heads', layout: 'row' },
+  { name: 'The Sunken Choir', radius: 120, height: 62, count: 6, rings: 1, form: 'heads', layout: 'sunken' },
+  { name: 'The Twin Guardians', radius: 110, height: 66, count: 5, rings: 1, form: 'heads', layout: 'twin' },
+  { name: 'The Leaning Elders', radius: 115, height: 56, count: 5, rings: 1, form: 'heads', layout: 'leaning' },
+  { name: 'The Grand Assembly', radius: 140, height: 58, count: 9, rings: 1, form: 'heads', layout: 'assembly' },
+  { name: 'Eyes of the Old Sky', radius: 110, height: 60, count: 5, rings: 1, form: 'heads', layout: 'outward' },
+  { name: 'The Patriarch', radius: 120, height: 76, count: 5, rings: 1, form: 'heads', layout: 'patriarch' },
+  { name: 'The Long Vigil', radius: 135, height: 60, count: 8, rings: 1, form: 'heads', layout: 'vigil' },
 ] as const;
+type HeadLayout = 'valley' | 'council' | 'row' | 'sunken' | 'twin' | 'leaning' | 'assembly' | 'outward' | 'patriarch' | 'vigil';
+/**
+ * One colossal head in its site's frame: base (`y`, below 0 when sunk deep), height `h`, facing (`yaw`: its face looks
+ * along (sin yaw, cos yaw)), a forward `lean`. Its shape is fixed by `h` (world/megaliths.ts `HEAD_RINGS`).
+ */
+export interface MegalithHead { x: number; z: number; y: number; h: number; yaw: number; lean: number }
+/** A boulder round a head's feet (drawn by `PropBatch.rock`). */
+export interface MegalithRock { x: number; z: number; r: number; h: number; sides: number; rot: number }
+/** A head's footprint for collision, in its own frame: half-widths across and along (its shoulders), as a share of h. */
+export const HEAD_FOOT = { w: .5, d: .4 };
 export interface Megalith { id: string; index: number; name: string; x: number; y: number; z: number; yaw: number; radius: number; height: number; seed: number }
 /** Local oriented stone volume. Uprights and overhead lintels share this model and collision data. */
-export interface MegalithStone { x: number; z: number; y: number; w: number; d: number; h: number; yaw: number; cap: boolean }
+/** `kind`: an invisible volume for a head or a boulder (drawn by their own models, collides like a stone). */
+export interface MegalithStone { x: number; z: number; y: number; w: number; d: number; h: number; yaw: number; cap: boolean; kind?: 'head' | 'rock' }
 const cache = new Map<number, Megalith[]>();
 export function worldMegaliths(world: number): Megalith[] {
   const found = cache.get(world); if (found) return found;
@@ -84,6 +107,59 @@ export function megalithPoint(m: Megalith, x: number, z: number): [number, numbe
 export function megalithLocal(m: Megalith, x: number, z: number): [number, number] {
   const dx = wrapDx(x - m.x), dz = z - m.z, c = Math.cos(m.yaw), s = Math.sin(m.yaw); return [c * dx - s * dz, s * dx + c * dz];
 }
+const facing = (x: number, z: number, tx: number, tz: number) => Math.atan2(tx - x, tz - z);
+/** The heads and boulders of a head site, in plan units (the site's frame before the scales). */
+function headPlan(m: Megalith): { heads: MegalithHead[]; rocks: MegalithRock[] } {
+  const d = MEGALITH_DESIGNS[m.index];
+  if (d.form !== 'heads') return { heads: [], rocks: [] };
+  const R = rng(hash(m.seed, 0x4ead)), heads: MegalithHead[] = [], R0 = d.radius, top = d.height;
+  const jit = (a: number) => (R() - .5) * 2 * a;
+  const head = (x: number, z: number, h: number, yaw: number, sink = .08 + R() * .06, lean = jit(.05)) => heads.push({ x, z, y: -h * sink, h, yaw: yaw + jit(.08), lean });
+  const tall = () => top * (.74 + R() * .26);
+  switch (d.layout as HeadLayout) {
+    case 'valley': for (let i = 0; i < 3; i++) for (const side of [-1, 1]) head(side * (20 + R() * 5), (i - 1) * 36 + jit(5), tall(), side > 0 ? -Math.PI / 2 : Math.PI / 2); break;
+    case 'council': for (let i = 0; i < d.count; i++) { const a = i / d.count * Math.PI * 2, r = R0 * .48; const x = Math.cos(a) * r, z = Math.sin(a) * r; head(x, z, tall(), facing(x, z, 0, 0)); } break;
+    case 'row': for (let i = 0; i < d.count; i++) head((i - (d.count - 1) / 2) * 15, jit(3), tall(), 0); break;
+    case 'sunken': for (let n = 0, tries = 0; n < d.count && tries < 400; tries++) {
+      const a = R() * Math.PI * 2, r = R0 * (.1 + R() * .45), x = Math.cos(a) * r, z = Math.sin(a) * r;
+      if (heads.some(o => Math.hypot(o.x - x, o.z - z) < 26)) continue;
+      head(x, z, tall(), facing(x, z, 0, 0) + jit(.9), .22 + R() * .2, jit(.12)); n++;
+    } break;
+    case 'twin': for (const side of [-1, 1]) head(side * 19, 0, top * (.95 + R() * .05), 0);
+      for (let i = 0; i < 3; i++) head((i - 1) * 22, -42, top * (.6 + R() * .1), 0); break;
+    case 'leaning': for (let i = 0; i < d.count; i++) { const a = (i / (d.count - 1) - .5) * 2.2, r = R0 * .45; const x = Math.sin(a) * r, z = Math.cos(a) * r - R0 * .15; head(x, z, tall(), facing(x, z, 0, -R0 * .15) + jit(.2), .1, (R() < .5 ? 1 : -1) * (.08 + R() * .07)); } break;
+    case 'assembly': for (let i = 0; i < 5; i++) { const a = (i / 4 - .5) * 2.1, x = Math.sin(a) * R0 * .55, z = Math.cos(a) * R0 * .55; head(x, z, tall(), facing(x, z, 0, 0)); }
+      for (let i = 0; i < 4; i++) { const a = (i / 3 - .5) * 1.6, x = Math.sin(a) * R0 * .3, z = Math.cos(a) * R0 * .3; head(x, z, top * (.66 + R() * .1), facing(x, z, 0, 0)); } break;
+    case 'outward': for (let i = 0; i < d.count; i++) { const a = i / d.count * Math.PI * 2 + jit(.15), x = Math.cos(a) * R0 * .33, z = Math.sin(a) * R0 * .33; head(x, z, tall(), Math.atan2(x, z)); } break;
+    case 'patriarch': head(0, 0, top, 0, .06, 0);
+      for (let i = 0; i < 4; i++) { const a = (i + .5) / 4 * Math.PI * 2, x = Math.cos(a) * R0 * .45, z = Math.sin(a) * R0 * .45; head(x, z, top * (.55 + R() * .1), facing(x, z, 0, 0)); } break;
+    case 'vigil': for (let i = 0; i < d.count; i++) { const k = i / (d.count - 1), x = (k - .5) * R0 * .9, z = (k - .5) * R0 * .9; head(x, z, top * (.55 + .45 * k), Math.PI * .75 + jit(.1)); } break;
+  }
+  // boulders round every head's shoulders, as if the ground had heaved round them
+  const rocks: MegalithRock[] = [];
+  for (const o of heads) {
+    const n = 6 + Math.floor(R() * 4);
+    for (let i = 0; i < n; i++) {
+      const a = R() * Math.PI * 2, reach = o.h * (.27 + R() * .2), r = 3.5 + R() * 6;
+      if (d.layout === 'valley' && Math.abs(o.x + Math.cos(a) * reach) < r + 6) continue; // the way between the Watchers stays open
+      rocks.push({ x: o.x + Math.cos(a) * reach, z: o.z + Math.sin(a) * reach, r, h: r * (.7 + R() * .8), sides: 6 + Math.floor(R() * 3), rot: R() * Math.PI });
+    }
+  }
+  for (let n = 0, tries = 0; n < 10 && tries < 200; tries++) { // great boulders strewn over the site, clear of the heads
+    const a = R() * Math.PI * 2, d0 = R0 * (.15 + R() * .55), x = Math.cos(a) * d0, z = Math.sin(a) * d0, r = 5 + R() * 7;
+    if (heads.some(o => Math.hypot(o.x - x, o.z - z) < o.h * .35 + r) || (d.layout === 'valley' && Math.abs(x) < r + 6)) continue;
+    rocks.push({ x, z, r, h: r * (.8 + R() * .9), sides: 7 + Math.floor(R() * 3), rot: R() * Math.PI }); n++;
+  }
+  return { heads, rocks };
+}
+/** A head site's heads and boulders in the site's frame (scaled like its stones). */
+export function megalithHeads(m: Megalith): { heads: MegalithHead[]; rocks: MegalithRock[] } {
+  const p = headPlan(m), XS = MEGALITH_XZ_SCALE, YS = MEGALITH_Y_SCALE;
+  return {
+    heads: p.heads.map(o => ({ ...o, x: o.x * XS, z: o.z * XS, y: o.y * YS, h: o.h * YS })),
+    rocks: p.rocks.map(o => ({ ...o, x: o.x * XS, z: o.z * XS, r: o.r * XS, h: o.h * YS })),
+  };
+}
 export function megalithStones(m: Megalith): MegalithStone[] {
   const d = MEGALITH_DESIGNS[m.index], R = rng(m.seed), stones: MegalithStone[] = [];
   const stone = (x: number, z: number, y: number, w: number, depth: number, h: number, yaw: number, cap = false) => stones.push({ x, z, y, w, d: depth, h, yaw, cap });
@@ -101,7 +177,11 @@ export function megalithStones(m: Megalith): MegalithStone[] {
       else arch(x, z, yaw, height + (i % 3 - 1) * 2, Math.min(26, radius * Math.PI * 2 / count * .8));
     }
   };
-  if (d.form === 'avenue') {
+  if (d.form === 'heads') { // the heads and their boulders collide as plain volumes (their models are drawn apart)
+    const p = headPlan(m);
+    for (const o of p.heads) stones.push({ x: o.x, z: o.z, y: o.y, w: o.h * HEAD_FOOT.w, d: o.h * HEAD_FOOT.d, h: o.h, yaw: o.yaw, cap: false, kind: 'head' });
+    for (const o of p.rocks) stones.push({ x: o.x, z: o.z, y: 0, w: o.r * 1.5, d: o.r * 1.5, h: o.h, yaw: o.rot, cap: false, kind: 'rock' });
+  } else if (d.form === 'avenue') {
     for (let i = 0; i < 7; i++) arch(0, (i - 3) * 34, 0, d.height + (3 - Math.abs(i - 3)) * 5, 50);
   } else if (d.form === 'spiral') {
     for (let i = 0; i < d.count; i++) { const a = i / (d.count - 1) * Math.PI * 3.5, r = 24 + i * 3.8; arch(Math.cos(a) * r, Math.sin(a) * r, -a - Math.PI / 2, 22 + i / d.count * 26, 20); }

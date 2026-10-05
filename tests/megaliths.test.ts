@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest';
-import { worldMegaliths, megalithsNear, megalithStones, megalithStoneHit, megalithPoint, megalithLocal, MEGALITH_DESIGNS, MEGALITH_BLEND, MEGALITH_XZ_SCALE, MEGALITH_Y_SCALE } from '../src/gen/megaliths';
+import { worldMegaliths, megalithsNear, megalithStones, megalithStoneHit, megalithPoint, megalithLocal, megalithHeads, MEGALITH_DESIGNS, MEGALITH_BLEND, MEGALITH_XZ_SCALE, MEGALITH_Y_SCALE, MEGALITH_COUNT } from '../src/gen/megaliths';
 import { installSites } from '../src/gen/installs';
 import { claimProblem } from '../src/gen/claims';
 import { Terrain } from '../src/gen/terrain';
@@ -8,18 +8,18 @@ import { nearestContinent, continents } from '../src/gen/continents';
 import { worldGates } from '../src/gen/worldgates';
 import { seaMask } from '../src/gen/seas';
 
-it('reserves twelve distinct, repeatable huge monuments across the mainland without moving existing gates', () => {
+it('reserves twelve sanctuaries and ten head valleys, distinct, repeatable huge monuments across the mainland without moving existing gates', () => {
   for (const world of [12345, 42, 777]) {
     const factories = structuredClone(installSites(new Terrain(world, false)));
     const gates = structuredClone(worldGates(world)), list = worldMegaliths(world);
     expect(installSites(new Terrain(world))).toEqual(factories);
-    expect(list).toHaveLength(12); expect(worldMegaliths(world)).toEqual(list); expect(worldGates(world)).toEqual(gates);
-    expect(new Set(list.map(m => m.id)).size).toBe(12); expect(new Set(list.map(m => m.name)).size).toBe(12);
+    expect(list).toHaveLength(MEGALITH_COUNT); expect(MEGALITH_COUNT).toBe(22); expect(worldMegaliths(world)).toEqual(list); expect(worldGates(world)).toEqual(gates);
+    expect(new Set(list.map(m => m.id)).size).toBe(22); expect(new Set(list.map(m => m.name)).size).toBe(22);
     expect(new Set(list.map(m => nearestContinent(world, m.x, m.z).i)).size).toBe(continents(world).length);
     for (const m of list) {
       expect(m.radius * 2).toBeGreaterThanOrEqual(172.5); expect(m.radius * 2).toBeLessThanOrEqual(247.5);
       expect(m.radius).toBe((MEGALITH_DESIGNS[m.index].radius+15)*MEGALITH_XZ_SCALE);
-      expect(m.height).toBeGreaterThanOrEqual(32); expect(m.height).toBeLessThanOrEqual(78*MEGALITH_Y_SCALE);
+      expect(m.height).toBeGreaterThanOrEqual(MEGALITH_DESIGNS[m.index].form === 'heads' ? 20 : 32); expect(m.height).toBeLessThanOrEqual(78*MEGALITH_Y_SCALE);
       expect(seaMask(world, m.x, m.z)).toBe(0); expect(Math.hypot(m.x, m.z)).toBeGreaterThan(3500);
       for (const f of factories) expect(worldDist(m.x, m.z, f.x, f.z)).toBeGreaterThan(m.radius + MEGALITH_BLEND + f.r + 40);
       for (const g of gates) expect(worldDist(m.x, m.z, g.x, g.z)).toBeGreaterThan(m.radius + MEGALITH_BLEND + 100);
@@ -53,4 +53,20 @@ it('collides with uprights and lintels individually and leaves the giant gate op
   expect(megalithStoneHit(stones, 0, 58*MEGALITH_Y_SCALE, 0, .5)).toBe(true);
   for (const b of stones.filter(b => !b.cap)) expect(megalithStoneHit(stones, b.x, 0, b.z, .4)).toBe(true);
   for (let z = -45; z <= 20; z += 2) expect(megalithStoneHit(stones, 0, 0, z, 2, 6)).toBe(false);
+});
+
+it('raises colossal heads among boulders at the ten head sites, solid where they stand, open between them', () => {
+  const world = 12345, list = worldMegaliths(world).filter(m => MEGALITH_DESIGNS[m.index].form === 'heads');
+  expect(list).toHaveLength(10);
+  for (const m of list) {
+    const { heads, rocks } = megalithHeads(m), d = MEGALITH_DESIGNS[m.index];
+    expect(heads).toHaveLength(d.count); expect(rocks.length).toBeGreaterThanOrEqual(heads.length * 3);
+    expect(megalithHeads(m)).toEqual({ heads, rocks });
+    const stones = megalithStones(m);
+    for (const o of heads) {
+      expect(o.h).toBeGreaterThan(15); expect(o.y).toBeLessThanOrEqual(0); expect(Math.abs(o.lean)).toBeLessThan(.25);
+      expect(megalithStoneHit(stones, o.x, 0, o.z, .4)).toBe(true); // you cannot walk through a head
+    }
+    for (const a of heads) for (const b of heads) if (a !== b) expect(Math.hypot(a.x - b.x, a.z - b.z)).toBeGreaterThan(8);
+  }
 });

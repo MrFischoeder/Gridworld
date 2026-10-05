@@ -3,6 +3,11 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.135.0', date: '2026-10-05', title: 'The colossal heads', notes: [
+    'Ten new ancient landmarks stand on the continents: valleys of colossal stone heads, buried to the shoulders among great boulders, 15 to 50 metres tall, their faceted faces carved with heavy brows, long noses and ears, and visor eyes lit with rows of glowing script.',
+    'Each site is different: the Vale of the Watchers (two rows facing across a path), the Council of Stone Faces (a circle looking inwards), the Seaward Gaze (a line looking one way), the Sunken Choir (half swallowed by the earth), the Twin Guardians, the Leaning Elders, the Grand Assembly, the Eyes of the Old Sky (looking outwards), the Patriarch (one giant among four) and the Long Vigil (a growing line).',
+    'The heads and boulders are solid; you can walk between them. Their names show when you arrive, and they appear on the maps like the other monuments. The twelve existing monuments keep their places.',
+  ] },
   { v: '0.134.0', date: '2026-10-05', title: 'One world for everyone', notes: [
     'On a server everything in the world is now shared. What falls to the ground (a kill\'s loot, logs from a felled tree, stones from a rock) lies there for everyone, once, and goes to whoever walks over it first.',
     'Raider vehicles, roadblocks, dungeon drones and the bosses of the depths are the same for every player in a place, like the other enemies. The killing blow earns the reward; the enemy\'s own game no longer drops a second set of loot.',
