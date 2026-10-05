@@ -8,7 +8,7 @@ import { rayWorld, H } from './player';
 import { progress, progressHas, saveChar } from '../character';
 import { MOUNTED_TURRET as S, type MountedTurretSpec } from '../data/mountedturrets';
 import { showToast } from '../ui/hud';
-interface Gun { spec: MountedTurretSpec; g: THREE.Group; head: THREE.Group; sensor: THREE.Mesh; hp: number; charge: number; cd: number }
+interface Gun { spec: MountedTurretSpec; g: THREE.Group; head: THREE.Group; sensor: THREE.Mesh; hp: number; charge: number; cd: number; shots: number }
 const live: Gun[] = [];
 /** Same model works on any mounting plane; the head aims independently from its base. */
 export function mountedTurretModel(spec: MountedTurretSpec, color = 0xff6a4a) {
@@ -17,13 +17,22 @@ export function mountedTurretModel(spec: MountedTurretSpec, color = 0xff6a4a) {
   const base = solid(new THREE.CylinderGeometry(0.6, 0.6, 0.18, 8));
   const normal = new THREE.Vector3(...spec.normal);
   base.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), normal); base.position.copy(normal).multiplyScalar(spec.mount === 'wall' ? -0.6 : -0.45); g.add(base);
-  // Heavy stationary housing with armour plates; only the barrel/sensor head turns.
-  const housing = solid(new THREE.BoxGeometry(0.85, 0.7, 0.85)); g.add(housing);
+  // Heavy stationary housing; only the domed head with its barrels turns.
+  // a low armoured collar against the mount; the dome stands out of it
+  const housing = solid(new THREE.CylinderGeometry(0.5, 0.58, 0.3, 8));
+  housing.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), normal); housing.position.copy(normal).multiplyScalar(-0.3); g.add(housing);
   const brace = solid(new THREE.CylinderGeometry(0.14, 0.14, 0.45, 8));
   brace.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), normal); brace.position.copy(normal).multiplyScalar(-0.25); g.add(brace);
-  head.add(solid(new THREE.BoxGeometry(0.65, 0.4, 0.65)));
-  const barrel = solid(new THREE.CylinderGeometry(0.07, 0.07, 0.6, 8).rotateX(Math.PI / 2)); barrel.position.z = -0.55; head.add(barrel);
-  const sensor = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.12, 0.06), new THREE.MeshBasicMaterial({ color: 0xff6a4a })); sensor.position.set(0, 0.4, -0.25); head.add(sensor);
+  // The turning head: a squat faceted ball dome with an armour belt, a visor slit and twin barrels under it.
+  const dome = solid(new THREE.SphereGeometry(0.42, 10, 6).scale(1, 0.78, 1)); head.add(dome);
+  const belt = solid(new THREE.CylinderGeometry(0.45, 0.45, 0.1, 10)); head.add(belt);
+  for (const side of [-1, 1]) { // cheek plates either side of the slit
+    const cheek = solid(new THREE.BoxGeometry(0.08, 0.26, 0.3)); cheek.position.set(side * 0.38, 0, -0.08); head.add(cheek);
+  }
+  for (const side of [-1, 1]) {
+    const barrel = solid(new THREE.CylinderGeometry(0.045, 0.055, 0.55, 6).rotateX(Math.PI / 2)); barrel.position.set(side * 0.1, -0.1, -0.6); head.add(barrel);
+  }
+  const sensor = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.06, 0.05), new THREE.MeshBasicMaterial({ color: 0xff6a4a })); sensor.position.set(0, 0.12, -0.39); head.add(sensor);
   g.position.set(spec.x, spec.y, spec.z); g.add(head); return { g, head, sensor };
 }
 function drop(t: Gun) { t.g.removeFromParent(); t.g.traverse(o => (o as THREE.Mesh).geometry?.dispose()); (t.sensor.material as THREE.Material).dispose(); }
@@ -31,7 +40,7 @@ export function clearMountedTurrets() { for (const t of live) drop(t); live.leng
 export function loadMountedTurrets(specs: MountedTurretSpec[]) {
   clearMountedTurrets();
   for (const spec of specs) if (!progressHas('killed', S.progressBase + spec.id)) {
-    const model = mountedTurretModel(spec); scene.add(model.g); live.push({ spec, ...model, hp: S.hp, charge: 0, cd: 0 });
+    const model = mountedTurretModel(spec); scene.add(model.g); live.push({ spec, ...model, hp: S.hp, charge: 0, cd: 0, shots: 0 });
   }
 }
 export function damageMountedTurret(t: Gun, damage: number) {
@@ -53,6 +62,11 @@ export function rayMountedTurret(o: THREE.Vector3, d: THREE.Vector3, max: number
   }
   return found;
 }
+const aimer = new THREE.Object3D(), want = new THREE.Quaternion(), fwd = new THREE.Vector3();
+/**
+ * The guns track you slowly (`S.turn`), wait `S.warning` s with their sensor amber, then fire short bursts along where the
+ * head points: a target running across faster than the head turns, or out of sight between bursts, is not hit.
+ */
 export function updateMountedTurrets(dt: number) {
   const target = G.pos.clone(); target.y += 1.1;
   for (let i = live.length - 1; i >= 0; i--) {
@@ -63,13 +77,22 @@ export function updateMountedTurrets(dt: number) {
     const visible = distance > 0.8 && distance < S.range && rayWorld(t.g.position, direction.normalize(), distance) >= distance - 0.05;
     t.charge = visible ? Math.min(S.warning, t.charge + dt) : 0;
     (t.sensor.material as THREE.MeshBasicMaterial).color.setHex(t.charge > 0 ? 0xffee88 : 0xff6a4a);
-    if (!visible) continue;
-    t.head.lookAt(target); // models face -Z; Object3D.lookAt faces +Z
-    t.head.rotateY(Math.PI);
-    if (t.charge < S.warning || t.cd > 0) continue;
-    t.cd = S.rate;
-    const muzzle = t.g.position.clone().addScaledVector(direction, 0.8);
-    addFx(new THREE.Line(new THREE.BufferGeometry().setFromPoints([muzzle, target]), add(0xff5a3c)), 0.15);
-    burst(muzzle, 0xffee88, 4, 0.2); hurtPlayer(S.damage, true, .3);
+    if (!visible) { t.shots = 0; continue; }
+    aimer.position.copy(t.g.position); aimer.lookAt(target); aimer.rotateY(Math.PI); // models face -Z; lookAt faces +Z
+    want.copy(aimer.quaternion);
+    t.head.quaternion.rotateTowards(want, S.turn * dt);
+    fwd.set(0, 0, -1).applyQuaternion(t.head.quaternion);
+    const off = fwd.angleTo(direction);
+    if (t.cd > 0) continue;
+    if (!t.shots) { if (t.charge < S.warning || off > S.aim) continue; t.shots = S.burst; }
+    t.shots--; t.cd = t.shots ? S.gap : S.pause;
+    // the shot leaves along the barrels with a little scatter; it hits if it passes within the body's reach
+    const shot = fwd.clone().add(new THREE.Vector3((Math.random() - 0.5) * 2, (Math.random() - 0.5) * 2, (Math.random() - 0.5) * 2).multiplyScalar(S.spread)).normalize();
+    const muzzle = t.g.position.clone().addScaledVector(shot, 0.85), along = Math.max(0, target.clone().sub(muzzle).dot(shot));
+    const miss = muzzle.clone().addScaledVector(shot, along).distanceTo(target);
+    const end = muzzle.clone().addScaledVector(shot, Math.min(S.range, rayWorld(muzzle, shot, S.range)));
+    addFx(new THREE.Line(new THREE.BufferGeometry().setFromPoints([muzzle, miss < 0.45 ? target : end]), add(0xff5a3c)), 0.12);
+    burst(muzzle, 0xffee88, 4, 0.2);
+    if (miss < 0.45) hurtPlayer(S.damage, true, .3);
   }
 }

@@ -15,11 +15,24 @@ const spec: MountedTurretSpec = { id: 0, mount: 'floor', x: 0, y: 0.55, z: 0, no
 const origin = new THREE.Vector3(5, 0.55, 0), direction = new THREE.Vector3(-1, 0, 0);
 beforeEach(() => { setVehicleProtection(() => false, () => {}, armoured); clearMountedTurrets(); state.blocked = false; state.killed.length = 0; state.saves = 0; G.pos.set(10, 0, 0); G.hp = 100; loadMountedTurrets([spec]); });
 describe('ancient turret combat', () => {
-  it('warns before firing, honours its cooldown and applies armour', () => {
+  it('warns before firing, fires short bursts with a pause between them and applies armour', () => {
     updateMountedTurrets(S.warning - 0.01); expect(G.hp).toBe(100);
     updateMountedTurrets(0.02); expect(G.hp).toBe(100 - S.damage / 2);
-    updateMountedTurrets(S.rate - 0.1); expect(G.hp).toBe(100 - S.damage / 2);
-    updateMountedTurrets(0.11); expect(G.hp).toBe(100 - S.damage);
+    for (let k = 1; k < S.burst; k++) {
+      updateMountedTurrets(S.gap - 0.02); expect(G.hp).toBe(100 - k * S.damage / 2);
+      updateMountedTurrets(0.03); expect(G.hp).toBe(100 - (k + 1) * S.damage / 2);
+    }
+    const burst = 100 - S.burst * S.damage / 2;
+    updateMountedTurrets(S.pause - 0.1); expect(G.hp).toBe(burst);
+    updateMountedTurrets(0.11); expect(G.hp).toBe(burst - S.damage / 2);
+  });
+  it('turns slowly: a target that steps round behind it is safe until the head has come round', () => {
+    updateMountedTurrets(S.warning + 0.05); const after = G.hp; expect(after).toBeLessThan(100); // locked on, firing
+    G.pos.set(-10, 0, 0); // half a turn away, still in sight
+    for (let i = 0; i < 30; i++) updateMountedTurrets(0.05); // 1.5 s: not yet round (π / S.turn ≈ 2.1 s)
+    expect(G.hp).toBe(after);
+    for (let i = 0; i < 80; i++) updateMountedTurrets(0.05);
+    expect(G.hp).toBeLessThan(after); // round now: it fires again
   });
   it('cannot shoot through cover or outside range, and reacquires with a fresh warning', () => {
     state.blocked = true; updateMountedTurrets(5); expect(G.hp).toBe(100);
@@ -33,7 +46,7 @@ describe('ancient turret combat', () => {
     const before = hit.gun.g.position.clone(), base = hit.gun.g.children[0], orientation = base.quaternion.clone();
     damageMountedTurret(hit.gun, S.hp);
     expect(rayMountedTurret(origin, direction, 8)).not.toBeNull();
-    for (let i = 0; i < 60; i++) { G.pos.z = Math.sin(i) * 3; updateMountedTurrets(0.05); }
+    for (let i = 0; i < 80; i++) { G.pos.z = Math.sin(i * 0.05) * 3; updateMountedTurrets(0.05); }
     expect(hit.gun.g.position.equals(before)).toBe(true); expect(base.quaternion.equals(orientation)).toBe(true);
     expect(state.killed).toEqual([]);
     expect(G.hp).toBeLessThan(100 - S.damage); // sustained fire, not a single warning shot

@@ -1,6 +1,6 @@
 # GridWorld: opis gry, cel, plan i historia zmian
 
-Stan na wersję **0.132.0**. Ten dokument opisuje, czym jest GridWorld, jaki jest cel gry, co już w niej jest, czego jeszcze nie ma, dokąd zmierza i jak powstawała, wersja po wersji. Nazwy z gry (przedmioty, miejsca, postacie) są po angielsku, tak jak na ekranie.
+Stan na wersję **0.133.0**. Ten dokument opisuje, czym jest GridWorld, jaki jest cel gry, co już w niej jest, czego jeszcze nie ma, dokąd zmierza i jak powstawała, wersja po wersji. Nazwy z gry (przedmioty, miejsca, postacie) są po angielsku, tak jak na ekranie.
 
 ---
 
@@ -630,3 +630,5 @@ Pełne notatki (po angielsku) są w grze pod przyciskiem **Changelog** w menu g�
 - **0.131.0 Od małej osady do przemysłu.** Zamrożona wersja 0.130.0, mały start nowych światów, zrujnowane puste domy i stopniowy przyrost mieszkańców. Tutorial starszego prowadzi przez zasoby, farmy, odbudowę odbiornika GPS w pobliskich ruinach, magazyn z wjazdem i rozładunkiem pojazdu oraz budowę kopalni, tartaku, elektrowni, szybu i rafinerii. Ograniczony początkowy kowal i krótkie zlecenia poboczne; zachowanie starszych zapisów i wspólne budowy w multiplayerze.
 
 - **0.132.0 Naturalne miejsca urobku.** Kamieniołom i własny tartak przy każdej rozwijanej wiosce, około 100 m poza palisadą; rzadsze, oznaczone kolorami złoża metali i bulgoczące rozlewiska ropy. Rzeczywiste skalne zagłębienia, łagodne wejścia, kolizje zgodne ze skałami, produkcja lokalnych surowców oraz tutorial dopasowany do dostępnych złóż. Istniejące budowy i zapasy pozostają zachowane; multiplayer używa protokołu 7.
+
+- **0.133.0 Łagodniejsze wieżyczki, wraki z załogą robotów.** Wieżyczki obronne w podziemiach i wrakach obracają głowicę powoli, dłużej ostrzegają (bursztynowy czujnik) i strzelają krótkimi seriami po trzy pociski z dwusekundową przerwą i lekkim rozrzutem, więc da się przed nimi uciec w bok albo za osłonę. Głowica ma nowy kształt: fasetowana kopułka z wizjerem i podwójną lufą, osadzona w niskim pierścieniu. We wrakach statków jest już tylko jedna wieżyczka, za to wróciła załoga robotów: zwiadowcy, strażnicy, drony naprawcze, sentinele i konstrukty szturmowe.

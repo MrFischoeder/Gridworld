@@ -3,7 +3,8 @@ import type { Space } from '../core/voxel';
 import type { DungeonMap } from './dungeon';
 import type { MountedTurretSpec, TurretMount } from '../data/mountedturrets';
 /** Independent RNG namespace: defence placement never changes rooms, loot or door indices. */
-export function dungeonTurrets(map: DungeonMap, space: Space): MountedTurretSpec[] {
+/** `max`: how many of the wall / floor / ceiling guns to keep, in that order (a crashed ship keeps fewer). */
+export function dungeonTurrets(map: DungeonMap, space: Space, max = 3): MountedTurretSpec[] {
   const rooms = map.boxes.filter(b => !b.tunnel && Math.hypot(b.x + b.w / 2 - map.spawn[0], b.z + b.d / 2 - map.spawn[2]) > 12)
     .sort((a, b) => hash(map.seed, a.x, a.z, 0x7a11) - hash(map.seed, b.x, b.z, 0x7a11));
   const out: MountedTurretSpec[] = [];
@@ -15,5 +16,5 @@ export function dungeonTurrets(map: DungeonMap, space: Space): MountedTurretSpec
     if (out.some(t => Math.hypot(t.x - x, t.z - z) < 5)) continue;
     out.push({ id: out.length, mount, x, y, z, normal: [nx, ny, 0] }); break;
   }
-  return out;
+  return out.slice(0, max);
 }

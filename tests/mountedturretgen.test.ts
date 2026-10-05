@@ -11,6 +11,7 @@ describe('mounted dungeon defences', () => {
       const map = type === 'ship' ? generateShip(hash(12345, i)) : generateDungeon(hash(12345, i), { depth: i % 3 + 1 }), grid = VoxelGrid.fromOps(map.ops), guns = dungeonTurrets(map, grid);
       expect(guns.map(g => g.mount)).toEqual(['wall', 'floor', 'ceiling']);
       expect(dungeonTurrets(map, grid)).toEqual(guns);
+      expect(dungeonTurrets(map, grid, 1)).toEqual(guns.slice(0, 1)); // a crashed ship keeps one
       for (const g of guns) {
         expect(Math.hypot(g.x - map.spawn[0], g.z - map.spawn[2])).toBeGreaterThan(12);
         expect(grid.empty(Math.floor(g.x), Math.floor(g.y), Math.floor(g.z))).toBe(true);

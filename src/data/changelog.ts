@@ -3,6 +3,12 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.133.0', date: '2026-10-05', title: 'Gentler turrets, crewed wrecks', notes: [
+    'Mounted defence turrets are much less deadly. Their heads turn slowly, so they need a moment to swing round onto you, and they only open fire once they are lined up after a longer warning (the sensor glows amber).',
+    'Turrets now fire short three-round bursts with a two-second pause between them, and their shots scatter a little. Keep moving across their line of fire, or step out of sight between bursts.',
+    'The turret head is now a faceted armoured dome with a visor slit and twin barrels, standing out of a low collar on its mount.',
+    'Crashed ships have a single turret instead of three, but their robot crew is back: scouts, guardians, repair drones, sentinels and assault constructs patrol the corridors, cargo hold and engine room.',
+  ] },
   { v: '0.132.0', date: '2026-10-05', title: 'Natural village resource sites', notes: [
     'Every developing village has a stone quarry and its own sawmill woodland about 100 metres beyond the fence. Quarries are broad piles of irregular boulders with room for a stone-cutting shed; sawmill sites begin as standing groves around an open work yard.',
     'Ore seams occur at roughly 35% of villages and oil fields at roughly 22%. Gridholm retains an introductory iron seam. Iron, copper, lead, nickel and coal have distinct colours and element markings; mines extract their actual local ore instead of making every metal.',

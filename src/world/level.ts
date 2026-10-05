@@ -9,6 +9,10 @@ import { landingSite } from '../gen/landing';
 import { Terrain } from '../gen/terrain';
 import { scene, fog, lineMat, add, V, fillMat, GRID } from './render';
 import { dungeonTurrets } from '../gen/mountedturrets';
+import { MOUNTED_TURRET } from '../data/mountedturrets';
+import { setRobotEnv, spawnGuards, clearRobots } from './robots';
+import { spawnAuthority } from './remote';
+import { dangerAt } from '../gen/danger';
 import { clearMountedTurrets, loadMountedTurrets, mountedTurretHit } from './mountedturrets';
 import { cityEntrance, dungeonSeed } from '../gen/citydungeons';
 import { G, W } from '../game';
@@ -66,7 +70,7 @@ export function voxelObject(grid: VoxelGrid, skyY = Infinity, outline?: OutlineS
 
 /** Removes every entity of the current place (the open world also unloads its chunks and structures). */
 function clearLevel() {
-  dropCarrier(); clearMountedTurrets();
+  dropCarrier(); clearMountedTurrets(); clearRobots();
   closeWorld(); leaveCave(); clearCrystals(); clearFires(); clearBenches(); clearFlags(); cancelPlacing(true); cancelBridgePlacing(true); cancelPierPlacing(true); clearBoats(); clearBases(); clearTurrets();
   if (worldGroup) { scene.remove(worldGroup); worldGroup.traverse((o) => (o as THREE.Mesh).geometry?.dispose()); worldGroup = null; }
   [...W.crystals.map((c) => c.m), ...W.pickups.map((p) => p.g), ...W.chests.map((c) => c.g), ...W.doors.map((d) => d.g), ...W.bosses.map((b) => b.g),
@@ -137,12 +141,19 @@ export function loadDungeon(arriveDir: string | null) {
   // A crashed ship retains only a few stray drones alongside its anchored security guns.
   for (let i = 0; i < (wreck ? 2 : map.rooms + 1 + d.depth); i++) { const t = makeDrone(); placeDrone(t); W.drones.push(t); }
   // Ship security and labyrinth defences are anchored guns, separate from roaming enemy robots.
-  loadMountedTurrets(dungeonTurrets(map, G.grid)); G.obstacle = mountedTurretHit;
+  loadMountedTurrets(dungeonTurrets(map, G.grid, wreck ? MOUNTED_TURRET.wreck : 3)); G.obstacle = mountedTurretHit;
+  // ... and its robot crew still patrols the ship (on a server only the first player aboard brings them: shared foes)
+  if (wreck) {
+    const poi = findPoi(c.world, d.ruinId)!, lv = Math.max(2, dangerAt(c.world, poi.x, poi.z, true));
+    setRobotEnv({ ground: () => 0, danger: () => lv, nearRuin: () => false, forbidden: () => false, water: () => null }, { indoor: true });
+    if (spawnAuthority()) spawnGuards(map.guards ?? [], lv);
+  }
   onDungeonLoaded(map);
   placeCarrier();
   setMiniMode('voxel'); buildMini();
   el.hudL.textContent = wreck ? ruinName(d.ruinId) : 'Depth ' + d.depth + ', sector ' + d.gx + ', ' + d.gz;
-  if (wreck) el.route.style.display = 'none'; // no way further down from a wreck el.seed.value = String(c.world); renderSheet(); saveChar();
+  if (wreck) el.route.style.display = 'none'; // no way further down from a wreck
+  el.seed.value = String(c.world); renderSheet(); saveChar();
 }
 
 // ---------- village decoration ----------
