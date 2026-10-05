@@ -2,7 +2,7 @@
 // population target rises (gen/people.ts), and with it its workers and its output. Built through the elder with wood
 // and stone from the village hall, no plans needed. Each farm grows the crop you choose for it (`CROPS`): its yield
 // goes into the village hall (gen/hall.ts stockOf), more on rich soil and with steel ploughs.
-import { progressive, projectDone, SETTLEMENT_START, housingCapacity } from './settlement';
+import { progressive, projectDone, localIndustryDone, SETTLEMENT_START, housingCapacity } from './settlement';
 import { hash } from '../core/rng';
 import type { ItemKey } from '../data/items';
 import type { TownState } from './town';
@@ -51,7 +51,7 @@ export function farmProblem(s: TownState | undefined): string {
   if (!progressive(s)) return '';
   if (!s?.settlement?.supplies) return 'Report the stored supplies to the elder first.';
   if (farmsOf(s) === 1 && !projectDone(s, 'comms')) return 'Restore the satellite receiver before building the second farm.';
-  if (farmsOf(s) === 2 && !projectDone(s, 'refinery')) return 'Develop the warehouse, power and industry before building the third farm.';
+  if (farmsOf(s) === 2 && !localIndustryDone(s)) return 'Develop the warehouse, power and available local industry before building the third farm.';
   return '';
 }
 /** What the next farm still needs, or null when the village has all it can take. */

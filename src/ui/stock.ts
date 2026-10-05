@@ -6,6 +6,7 @@ import { findPoi, villageSeed } from '../gen/regions';
 import { stockOf, refineStock, type Stock } from '../gen/hall';
 import { online, net, lockTown, unlockTown } from '../net/client';
 import { showToast } from './hud';
+import { initializeSettlements } from '../gen/settlement';
 
 /** No inventory is changed until the shared stock is reserved and refreshed from the server. */
 export async function withTownStock(vid: number, action: () => void): Promise<boolean> {
@@ -13,7 +14,11 @@ export async function withTownStock(vid: number, action: () => void): Promise<bo
   const key = String(vid), connection = net.id;
   const locked = await lockTown(key, G.char.towns[key] ?? {});
   if (!locked || net.id !== connection) { if (locked && net.id === connection) unlockTown(key); showToast('The village stock is in use. Try again shortly.'); return false; }
-  try { action(); return true; }
+  try {
+    // A persisted 0.131 room may return a town before its deposit metadata was migrated locally.
+    initializeSettlements(G.char);
+    action(); return true;
+  }
   finally { unlockTown(key, G.char.towns[key]); }
 }
 

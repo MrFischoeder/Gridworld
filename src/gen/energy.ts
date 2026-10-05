@@ -111,7 +111,7 @@ export const SITE_UNPOWERED = 0.5;
 /** What the site draws now (nothing while a refinery is not built). */
 export function siteKw(world: number, v: Poi, seed: number, s: TownState | undefined): number {
   const k = industryOf(world, v, seed);
-  return (siteBuilt(k, s) && !(progressive(s) && industryProject(k)) ? SITE_KW[k] : 0) + (progressive(s) ? (projectDone(s, 'mine') ? 12 : 0) + (projectDone(s, 'lumber') ? 8 : 0) + (projectDone(s, 'oil') ? 10 : 0) + (projectDone(s, 'refinery') ? 30 : 0) : 0);
+  return (siteBuilt(k, s) && !(progressive(s) && industryProject(k)) ? SITE_KW[k] : 0) + (progressive(s) ? (projectDone(s, 'quarry') ? 6 : 0) + (projectDone(s, 'mine') ? 12 : 0) + (projectDone(s, 'lumber') ? 8 : 0) + (projectDone(s, 'oil') ? 10 : 0) + (projectDone(s, 'refinery') ? 30 : 0) : 0);
 }
 /** The renewables' rating and their output now (kW): the own plant if solar or wind, the solar and wind farms that are on (for the battery bank). */
 function renewables(world: number, v: Poi, seed: number, s: TownState | undefined, t: number): [number, number] {

@@ -1,6 +1,7 @@
 import { G } from '../game';
 import { addItem, gainXp, saveChar, calcStats } from '../character';
-import { PROJECTS, projectPlan, projectProblem, projectDone, buildProject, tutorialStep, commsRuin, progressive, type Project } from '../gen/settlement';
+import { PROJECTS, projectPlan, projectProblem, projectDone, buildProject, tutorialStep, commsRuin, progressive, depositsOf, type Project } from '../gen/settlement';
+import { ORES } from '../gen/resource-sites';
 import { findPoi, villageSeed, worldDist, GRIDHOLM_ID } from '../gen/regions';
 import { settleOwn, anchorNew } from '../gen/hall';
 import { peopleAt, setPeople } from '../gen/people';
@@ -24,6 +25,10 @@ export function developmentHTML(vid: number, head: string, msg = '', atComms = f
   const has = stockHas(vid), ruin = commsRuin(c.world, v);
   let h = head + `<div class="say">${msg ? msg + '<br><br>' : ''}<b>Village tutorial: ${step.title}</b><br>${step.text}<br><br>Bring materials to our warehouse terminal. Houses are repaired as our food supply and works grow; families arrive gradually.</div>`;
   h += `<button class="opt" data-devkit="${vid}">Receive the elder's starter tools and earned rewards</button>`;
+  if (!atComms) {
+    const d = depositsOf(s);
+    h += `<div class="say">Local resources · about 100 m beyond the fence:<br>Stone quarry · west. Sawmill woodland · east.<br>${d.ore ? ORES[d.ore].name + ' (' + ORES[d.ore].symbol + ') · south.' : 'No local ore seam: bring metals from other villages.'}<br>${d.oil ? 'Oil seeps · north.' : 'No local oil field: import crude or fuel.'}</div>`;
+  }
   if (step.supplies) h += `<div class="say">Wood: ${has('log')}/4 · stone: ${has('stone')}/4</div><button class="opt" data-devsupplies="${vid}" ${has('log') >= 4 && has('stone') >= 4 ? '' : 'disabled'}>Report the stored supplies</button>`;
   if (step.farm) h += '<button class="opt" data-o="farms">Build the next farm</button>';
   const keys = (atComms ? ['comms'] : step.project ? [step.project] : []) as Project[];

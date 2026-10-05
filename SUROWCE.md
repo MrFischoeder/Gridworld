@@ -4,7 +4,7 @@ Plik jest generowany z danych gry (`tools/materials.sim.ts`), więc nazwy i licz
 
 **Zasada magazynu:** wszystko, co wioska buduje (mury, zakłady, elektrownie, farmy, ulepszenia, zamówienia u kowala), bierze materiały z **hali magazynowej wioski** (Village Hall: nowe osady 800 L, po budowie magazynu dla pojazdów 24 000 L; starsze zapisy zachowują 6000 L), a nie z plecaka. Do hali trafiają: to, co tam złożysz przy terminalu, oraz własne towary wioski (produkcja jej zakładu i plony farm, do 60 skrzyń każdego).
 
-**Nowe osady 0.131.0:** starszy wydaje jednorazowo siekierę i kilof na początek. Wykorzystaj je do pierwszych dostaw drewna i kamienia. Po pierwszej farmie kowal robi deski (2 Log → 6 Planks) i gwoździe (1 Scrap → 10 Nails) bez dodatkowych planów. Po przywróceniu łączności w pobliskich ruinach każdy gracz otrzymuje tablet GPS; jeśli nie ma miejsca, nagroda czeka w magazynie.
+**Nowe osady (od 0.131.0, rozbudowane w 0.132.0):** starszy wydaje jednorazowo siekierę i kilof na początek. Wykorzystaj je do pierwszych dostaw drewna i kamienia. Po pierwszej farmie kowal robi deski (2 Log → 6 Planks) i gwoździe (1 Scrap → 10 Nails) bez dodatkowych planów. Po przywróceniu łączności w pobliskich ruinach każdy gracz otrzymuje tablet GPS; jeśli nie ma miejsca, nagroda czeka w magazynie.
 
 | Budowa nowej osady | Materiały z magazynu |
 | --- | --- |
@@ -12,12 +12,13 @@ Plik jest generowany z danych gry (`tools/materials.sim.ts`), więc nazwy i licz
 | Odbiornik satelitarny w ruinach | 6 Log, 6 Stone, 4 Scrap |
 | Magazyn dla pojazdów | 30 Log, 24 Stone, 24 Planks, 20 Nails |
 | Elektrownia wioski | 12 Scrap, 8 Wire, 2 Circuit |
-| Kopalnia żelaza | 18 Log, 12 Stone, 12 Planks, 6 Scrap |
+| Kamieniołom | 16 Log, 12 Planks, 4 Scrap |
+| Kopalnia lokalnej rudy | 18 Log, 12 Stone, 12 Planks, 6 Scrap |
 | Tartak | 20 Log, 10 Stone, 8 Scrap |
 | Szyb naftowy | 16 Scrap, 8 Wire, 12 Planks |
 | Rafineria | 24 Scrap, 4 Circuit, 12 Wire, 18 Planks |
 
-Kopalnia produkuje skrzynie rudy żelaza, węgla i miedzi; tartak Timber i Lumber; szyb Crude Oil. Paliwo z nowej rafinerii powstaje z jednej skrzyni Crude Oil na jeden Fuel Canister, najwyżej co 2 godziny czasu gry, dopóki jest wsad i miejsce w zapasie. Wydobycie zależy od dostępu do prądu. Wszystkie budowy przyjmują materiały partiami. Zaparkowany wewnątrz dużego magazynu pojazd rozładowuje się przyciskiem terminala; towary, które się nie zmieszczą, zostają w bagażniku.
+Kamieniołom i tartak są dostępne przy każdej rozwijanej wiosce, około 105 m od palisady. Kamieniołom daje Stone (0,8/h), tartak Log (0,8/h), Timber (0,5/h) i Lumber (0,3/h), przed wpływem pracowników i prądu. Kopalnia wymaga lokalnego złoża: wydobywa tylko przypisany metal (Fe, Cu, Pb, Ni) albo węgiel (C), 0,6 skrzyni/h, dodatkowo przy żelazie/miedzi 0,3 grudki Iron Ore/Copper Ore na godzinę. Ropa występuje przy części wiosek; szyb daje Crude Oil (0,7/h). Wydobyte wcześniej zapasy zostają dostępne, nawet gdy stary typ kopalni produkował kilka surowców. Paliwo z nowej rafinerii powstaje z jednej skrzyni Crude Oil na jeden Fuel Canister, najwyżej co 2 godziny czasu gry, dopóki jest wsad i miejsce w zapasie. Wydobycie zależy od dostępu do prądu. Wszystkie budowy przyjmują materiały partiami. Zaparkowany wewnątrz dużego magazynu pojazd rozładowuje się przyciskiem terminala; towary, które się nie zmieszczą, zostają w bagażniku.
 
 
 Spis: 1. Surowce · 2. Przetwarzanie · 3. Budowy · 4. Indeks: gdzie użyć każdego materiału · 5. Surowce bez zastosowania

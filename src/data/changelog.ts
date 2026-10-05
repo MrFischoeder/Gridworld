@@ -3,6 +3,14 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.132.0', date: '2026-10-05', title: 'Natural village resource sites', notes: [
+    'Every developing village has a stone quarry and its own sawmill woodland about 100 metres beyond the fence. Quarries are broad piles of irregular boulders with room for a stone-cutting shed; sawmill sites begin as standing groves around an open work yard.',
+    'Ore seams occur at roughly 35% of villages and oil fields at roughly 22%. Gridholm retains an introductory iron seam. Iron, copper, lead, nickel and coal have distinct colours and element markings; mines extract their actual local ore instead of making every metal.',
+    'Ore deposits lie in real shallow terrain bowls bordered by veined rocks, with a clear walk-in gap and matching walkable ground. Oil fields have irregular black pools, continuously expanding bubble rings and pulsing jets of dark sludge.',
+    'The elder guides quarry and sawmill construction in every settlement, then only the rare extraction projects available there. Villages without metal or oil deposits can complete their tutorial and third farm; missing resources can be transported between villages.',
+    'Constructed quarries supply building stone; sawmills supply logs as well as timber and lumber. Existing commissioned mines, oil wells, partial deliveries and extracted goods survive migration. New scenery also appears in existing developing worlds; the frozen 0.130.0 rules are preserved.',
+    'Resource scenery uses seeded batches and reusable animation buffers. Boulder collision follows its faceted faces, allowing movement off crowns and shoulders. Multiplayer protocol is now 7: update both client and server.',
+  ] },
   { v: '0.131.0', date: '2026-10-04', title: 'From a small settlement to working industry', notes: [
     'Version 0.130.0 is frozen at tag v0.130.0. Existing characters keep their established villages; new worlds start with eight residents, a small 800-litre warehouse and marked construction sites instead of working power plants or industry.',
     'Vacant homes have broken walls and roofs. Farms and infrastructure repair the village, increase its housing and gradually attract new families.',

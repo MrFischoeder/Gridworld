@@ -1,6 +1,6 @@
 # GridWorld: opis gry, cel, plan i historia zmian
 
-Stan na wersję **0.131.0**. Ten dokument opisuje, czym jest GridWorld, jaki jest cel gry, co już w niej jest, czego jeszcze nie ma, dokąd zmierza i jak powstawała, wersja po wersji. Nazwy z gry (przedmioty, miejsca, postacie) są po angielsku, tak jak na ekranie.
+Stan na wersję **0.132.0**. Ten dokument opisuje, czym jest GridWorld, jaki jest cel gry, co już w niej jest, czego jeszcze nie ma, dokąd zmierza i jak powstawała, wersja po wersji. Nazwy z gry (przedmioty, miejsca, postacie) są po angielsku, tak jak na ekranie.
 
 ---
 
@@ -278,14 +278,16 @@ Gra jest pomyślana jako **kooperacja do 8 graczy** na autorytatywnym serwerze (
 To serce gry. Gracz nie ma własnej bazy (budowanie w dziczy jest zamknięte). Zamiast tego pomaga wioskom.
 
 **Nowy start osady (nowe światy od 0.131.0)**
-- Wioska zaczyna z ośmioma mieszkańcami. Działających elektrowni i zakładów przemysłowych jeszcze nie ma: stoją oznaczenia miejsc pod budowę, złoże rudy, wyciek ropy i skład drewna.
+- Wioska zaczyna z ośmioma mieszkańcami. Działających elektrowni i zakładów przemysłowych jeszcze nie ma: stoją oznaczenia miejsc pod budowę, naturalne miejsca przyszłego urobku.
 - Niezamieszkane domy mają przerwane ściany, odsłonięte krokwie i dziurawe dachy. Rozwój farm i infrastruktury poprawia ich stan; nowe rodziny przybywają stopniowo, do limitu jedzenia i odbudowanych mieszkań.
-- Najważniejsze zadania daje starszy: narzędzia i zgromadzenie drewna/kamienia → pierwsza farma → odbiornik satelitarny w pobliskich ruinach i tablet GPS → druga farma → magazyn dla pojazdów → elektrownia → kopalnia → tartak → szyb naftowy → rafineria → trzecia farma.
+- Najważniejsze zadania daje starszy: narzędzia i zgromadzenie drewna/kamienia → pierwsza farma → odbiornik satelitarny w pobliskich ruinach i tablet GPS → druga farma → magazyn dla pojazdów → elektrownia → kamieniołom → tartak → lokalna kopalnia i szyb/rafineria (jeśli występują odpowiednie złoża) → trzecia farma.
 - Odbiornik naprawia się przy terminalu na powierzchni, na zachodnim skraju wskazanych ruin. Znacznik tutorialu prowadzi do niego bez posiadania GPS. Materiały do naprawy pochodzą z magazynu.
 - Tablica początkowo daje dwa proste zlecenia: dostarczyć niewielką ilość zasobów lub pokonać dwóch przeciwników. Kontrakty przewozowe pojawiają się po zbudowaniu dużego magazynu.
 - Kowal zaczyna od siekiery, kilofa, zestawu do rozpalania i bukłaka. Po pierwszej farmie potrafi robić deski i gwoździe bez szukania planów; dalszy asortyment wymaga rozwoju oraz odpowiednich starych planów.
+- Każda rozwijana osada ma kamieniołom i tartak około 105 m od obrysu palisady. Kamieniołom to duża sterta nieregularnych skał z wolnym miejscem na zakład, tartak zaczyna jako zagajnik z placem pośrodku. Kamieniołom dostarcza Stone, a tartak Log, Timber i Lumber po budowie.
+- Złoża rud występują przy około 35% wiosek, ropa przy około 22%; Gridholm ma startowe żelazo. Żelazo (Fe), miedź (Cu), ołów (Pb), nikiel (Ni) i węgiel (C) mają własne kolory i oznaczenia. Rudy leżą w płytkich skalnych zagłębieniach z łagodnym zejściem; ropa tworzy czarne kałuże z animowanymi bąblami i wytryskami. Kopalnia wydobywa lokalny typ rudy. Starszy pomija niewystępujące złoża, więc brak ropy/metalu nie blokuje ukończenia rozwoju.
 - Kopalnia, tartak i szyb dają towary dopiero po budowie. Rafineria zużywa rzeczywistą ropę z zapasu wioski, a nie wytwarza paliwa bez wsadu.
-- Budowy, zamówienia i rozładunek rezerwują zapas wioski na czas transakcji w multiplayerze: równoczesne kliknięcia nie wydają tych samych materiałów dwukrotnie. Protokół multiplayer ma numer 6: klient i serwer muszą być z tej wersji (aktualizacja serwera zachowuje jego zapisane światy). Gracze dołączający przyjmują reguły świata serwera; nowy pusty pokój serwera zaczyna od małych osad.
+- Budowy, zamówienia i rozładunek rezerwują zapas wioski na czas transakcji w multiplayerze: równoczesne kliknięcia nie wydają tych samych materiałów dwukrotnie. Protokół multiplayer ma numer 7: klient i serwer muszą być z tej wersji (aktualizacja serwera zachowuje jego zapisane światy). Gracze dołączający przyjmują reguły świata serwera; nowy pusty pokój serwera zaczyna od małych osad.
 - Wcześniejsze zapisy zachowują swoją gospodarkę i budynki. Kod 0.130.0 ma zamrożony tag `v0.130.0`; instrukcja powrotu i kopii zapisu jest w `FROZEN_0.130.0.md`.
 
 **Hala i magazyn**
@@ -626,3 +628,5 @@ Pełne notatki (po angielsku) są w grze pod przyciskiem **Changelog** w menu g�
 - **0.130.0 Oceaniczna granica mapy deweloperskiej.** Widok całej planety zaczyna i kończy się na oceanie pomiędzy kontynentami. Wszystkie warstwy i znaczniki powtarzają się zgodnie przy przesuwaniu i oddalaniu, a kliknięcia trafiają do oryginalnych lokacji. Przycisk Overview przywraca pełny widok; istniejące światy zachowują geografię i zapisy.
 
 - **0.131.0 Od małej osady do przemysłu.** Zamrożona wersja 0.130.0, mały start nowych światów, zrujnowane puste domy i stopniowy przyrost mieszkańców. Tutorial starszego prowadzi przez zasoby, farmy, odbudowę odbiornika GPS w pobliskich ruinach, magazyn z wjazdem i rozładunkiem pojazdu oraz budowę kopalni, tartaku, elektrowni, szybu i rafinerii. Ograniczony początkowy kowal i krótkie zlecenia poboczne; zachowanie starszych zapisów i wspólne budowy w multiplayerze.
+
+- **0.132.0 Naturalne miejsca urobku.** Kamieniołom i własny tartak przy każdej rozwijanej wiosce, około 100 m poza palisadą; rzadsze, oznaczone kolorami złoża metali i bulgoczące rozlewiska ropy. Rzeczywiste skalne zagłębienia, łagodne wejścia, kolizje zgodne ze skałami, produkcja lokalnych surowców oraz tutorial dopasowany do dostępnych złóż. Istniejące budowy i zapasy pozostają zachowane; multiplayer używa protokołu 7.

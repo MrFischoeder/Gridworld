@@ -11,6 +11,7 @@ import { regionTrails, trailHeight } from './trails';
 import { seaMask, SEA } from './seas';
 import { naturalHeight } from './heights';
 import { riverSegsIn, riverNear, riverCarve, type RiverSeg } from './rivers';
+import { depositDepth } from './resource-sites';
 
 export const STEP = 2, CELLS = CHUNK / STEP, VERTS = CELLS + 1;
 export const MAX_H = 25;
@@ -19,7 +20,7 @@ const smooth = (t: number) => t * t * (3 - 2 * t);
 export const rectDist = (r: Rect, x: number, z: number) => Math.hypot(Math.max(r.x0 - x, 0, x - r.x1), Math.max(r.z0 - z, 0, z - r.z1));
 export const inRect = (r: Rect, x: number, z: number) => x >= r.x0 && x < r.x1 && z >= r.z0 && z < r.z1;
 
-export interface Pad { poi: Poi; y: number }
+export interface Pad { poi: Poi; y: number; surface?: boolean; depression?: boolean }
 export interface Features { pads: Pad[]; roads: Road[]; lakes: Lake[]; claims: Claim[]; rivers: RiverSeg[]; gates: WorldGate[]; megaliths: Megalith[] }
 
 const ROAD_BLEND = 5;
@@ -119,6 +120,7 @@ export class Terrain {
     }
     if (td < thalf + TRAIL_BLEND) { const w = td <= thalf ? 1 : 1 - smooth((td - thalf) / TRAIL_BLEND); h = w >= 1 ? th : h + (th - h) * w; }
     for (const p of f.pads) {
+      if (p.surface) continue;
       const d = rectDist(p.poi.rect, x, z);
       if (d <= p.poi.flat) h = p.y;
       else if (d < p.poi.flat + p.poi.blend) h += (p.y - h) * (1 - smooth((d - p.poi.flat) / p.poi.blend));
@@ -136,6 +138,13 @@ export class Terrain {
       const d = Math.hypot(x - m.x, z - m.z);
       if (d <= m.radius) h = m.y;
       else if (d < m.radius + MEGALITH_BLEND) h += (m.y - h) * (1 - smooth((d - m.radius) / MEGALITH_BLEND));
+    }
+    // Reserved extraction yards stay dry and retain their visible ground, including walkable ore bowls.
+    for (const p of f.pads) if (p.surface) {
+      const d = rectDist(p.poi.rect, x, z);
+      if (d >= p.poi.flat + p.poi.blend) continue;
+      const r = p.poi.rect, y = p.y - (p.depression ? depositDepth(x - (r.x0 + r.x1) / 2, z - (r.z0 + r.z1) / 2) : 0);
+      h = d <= p.poi.flat ? y : h + (y - h) * (1 - smooth((d - p.poi.flat) / p.poi.blend));
     }
     return h;
   }

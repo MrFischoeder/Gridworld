@@ -73,13 +73,13 @@ export interface Stock {
   full: boolean;
 }
 export function stockOf(world: number, v: Poi, seed: number, s: TownState | undefined, now: number): Stock {
-  const makes = profileOf(world, v, seed).makes, prod = production(world, v, seed, s, now), m = Math.max(1, makes.length), fy = farmYield(seed, s);
+  const makes = progressive(s) && industryProject(industryOf(world, v, seed)) ? [] : profileOf(world, v, seed).makes, prod = production(world, v, seed, s, now), m = Math.max(1, makes.length), fy = farmYield(seed, s);
   const resourcePower = progressive(s) ? .5 + .5 * sitePower(world, v, seed, s, now) : 1;
   for (const [k, n] of Object.entries(resourceYield(s))) {
     if (prod > 0 && industryProject(industryOf(world, v, seed)) && makes.includes(k as Good)) continue;
     fy[k as ItemKey] = (fy[k as ItemKey] ?? 0) + n! * resourcePower * staffing(seed, v.id === GRIDHOLM_ID, s, now);
   }
-  const own = [...new Set<ItemKey>([...makes, ...(Object.keys(fy) as ItemKey[])])];
+  const own = [...new Set<ItemKey>([...makes, ...(Object.keys(fy) as ItemKey[]), ...(progressive(s) ? Object.keys(s?.own ?? {}) as ItemKey[] : [])])];
   const ownOf = (g: ItemKey) => (own.includes(g) ? ownAt(seed, s, g, makes.indexOf(g as Good), m, now, prod, fy[g] ?? 0) : 0);
   const st: Stock = {
     own, makes, prod, ownOf,

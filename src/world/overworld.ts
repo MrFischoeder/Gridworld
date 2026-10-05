@@ -1,6 +1,7 @@
 import { drawSettlementSites, drawSettlementComms, settlementHit, settlementFloor, settlementRay, settlementSolid, forgetSettlement } from './settlement';
 import { settlementVillage } from '../gen/settlement-village';
-import { initializeSettlements, progressive, RESOURCE_PLOTS, development } from '../gen/settlement';
+import { initializeSettlements, progressive, RESOURCE_PLOTS, projectAvailable, development } from '../gen/settlement';
+import { RESOURCE_YARD, type ResourceProject } from '../gen/resource-sites';
 import { peopleAt } from '../gen/people';
 import { VEHICLE_HALL } from '../gen/hall';
 import { allVillages } from '../gen/regions';
@@ -170,7 +171,7 @@ const lodFor = (cx: number, cz: number, pcx: number, pcz: number) => (Math.max(M
 
 function buildChunk(cx: number, cz: number, lod = 1): Chunk {
   const T = OW.terrain!, lat = T.lattice(cx, cz), f = T.chunkFeatures(cx, cz), x0 = cx * CHUNK, z0 = cz * CHUNK;
-  const holes = f.pads.map((p) => p.poi.rect);
+  const holes = f.pads.filter((p) => !p.surface).map((p) => p.poi.rect);
   const hole = (ax: number, az: number, bx: number, bz: number) => holes.some((r) => Math.min(ax, bx) >= r.x0 && Math.max(ax, bx) <= r.x1 && Math.min(az, bz) >= r.z0 && Math.max(az, bz) <= r.z1);
   const H = (i: number, j: number) => lat[i + VERTS * j];
   const tri: number[] = [], lines: number[] = [];
@@ -568,8 +569,9 @@ export function openWorld(x: number, z: number) {
   OW.terrain.setClaims(G.char.claims);
   const pads = allVillages(w).filter((v) => progressive(G.char.towns[v.id])).flatMap((v) => {
     const ox = v.x - 36, oz = v.z - 36, y = OW.terrain!.padY(v);
-    const rects = [VEHICLE_HALL, ...Object.values(RESOURCE_PLOTS).map((p) => ({ x0: p.x - 9, x1: p.x + 9, z0: p.z - 8, z1: p.z + 8 }))];
-    return rects.map((r, i) => ({ y, poi: { ...v, id: -v.id * 8 - i - 1, rect: { x0: ox + r.x0, x1: ox + r.x1, z0: oz + r.z0, z1: oz + r.z1 }, flat: 3, blend: 12 } }));
+    const plots = Object.entries(RESOURCE_PLOTS).filter(([k]) => projectAvailable(G.char.towns[v.id], k as ResourceProject));
+    const rects = [{ rect: VEHICLE_HALL, depression: false, y }, ...plots.map(([k, p]) => ({ rect: { x0: p.x - RESOURCE_YARD.halfX, x1: p.x + RESOURCE_YARD.halfX, z0: p.z - RESOURCE_YARD.halfZ, z1: p.z + RESOURCE_YARD.halfZ }, depression: k === 'mine', y: Math.max(4, y) }))];
+    return rects.map(({ rect: r, depression, y }, i) => ({ y, surface: true, depression, poi: { ...v, id: -v.id * 8 - i - 1, rect: { x0: ox + r.x0, x1: ox + r.x1, z0: oz + r.z0, z1: oz + r.z1 }, flat: 3, blend: 12 } }));
   });
   OW.terrain.setSettlementPads(pads);
   primeInstalls(w, G.char.claims); // the installations' sites are worked out in a worker meanwhile
