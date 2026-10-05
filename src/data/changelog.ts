@@ -3,6 +3,11 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.136.0', date: '2026-10-05', title: 'Beside the backpack', notes: [
+    'Opening the backpack now also shows what lies on the ground around you (within 3 m) in a panel beside it. Click an item there, or drag it into the backpack, to pick it up; drag one of yours onto the ground (or press Drop) to put it down at your feet. Pick up all takes everything at once.',
+    'Chests, stashes, trunks, lockers and holds now open beside the backpack too, so the whole backpack (modules, body, contents) is there while you move things. Click an item in the container to take it, drag between the two, or select one of yours and press Store. E or Esc closes it.',
+    'Fixed: hovering an item in the chest window rewrote the line under the slots and resized the window, so with the cursor on the edge of an icon the window flickered. The item tooltip is now the only thing that appears on hover, and the windows keep their size.',
+  ] },
   { v: '0.135.0', date: '2026-10-05', title: 'The colossal heads', notes: [
     'Ten new ancient landmarks stand on the continents: valleys of colossal stone heads, buried to the shoulders among great boulders, 15 to 50 metres tall, their faceted faces carved with heavy brows, long noses and ears, and visor eyes lit with rows of glowing script.',
     'Each site is different: the Vale of the Watchers (two rows facing across a path), the Council of Stone Faces (a circle looking inwards), the Seaward Gaze (a line looking one way), the Sunken Choir (half swallowed by the earth), the Twin Guardians, the Leaning Elders, the Grand Assembly, the Eyes of the Old Sky (looking outwards), the Patriarch (one giant among four) and the Long Vigil (a growing line).',

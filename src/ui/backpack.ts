@@ -1,6 +1,8 @@
 // Backpack window: 3 relic modules, the Blaster's attachment slots, your body (what you wear, two weapons on your
 // back, what you hold in your hands) and 12 backpack slots.
 // Items are dragged between slots (or selected and handled with the buttons under the grid).
+// Beside it stands a side panel: what lies on the ground around you (ui/ground.ts), or the chest, trunk or locker you
+// opened (ui/transfer.ts). Items move between the two by dragging, a click, or the buttons.
 import { dropAtFeet } from '../world/drops';
 import { G } from '../game';
 import { item, BULK, WEAR, WEAR_SLOTS, WEAR_NAME, gearOf, WEAPON_KIND, HANDS_ONLY, HAND_TOOLS, type ItemKey } from '../data/items';
@@ -17,6 +19,31 @@ let sel: string | null = null;
 const loadEl = $('packLoad');
 const packEl = $('pack'), invEl = $('inv'), modsEl = $('mods'), gunEl = $('gunSlots'), statsEl = $('gunStats'), detailEl = $('detail'), gearEl = $('gear'), defEl = $('gearDef');
 let note = '';
+
+/** The panel beside the backpack: its slot ids use `prefix` ('f' the ground, 'b' a container). */
+export interface PackSide {
+  prefix: string;
+  /** Fills the side panel (#sideTitle, #sideGrid...). */
+  render(): void;
+  /** A drag that starts or ends on the side panel. Returns a message for the detail line (or ''). */
+  drop(from: string, to: string): string;
+  /** A click on one of its slots. */
+  click(id: string): string;
+  /** The extra button for a selected backpack / back / hands item, e.g. ['store', 'Store'], and what it does. */
+  act?: [string, string];
+  doAct?(id: string): string;
+  /** The window is closing. */
+  close(): void;
+}
+const sideEl = $('packSide');
+let side: PackSide | null = null, ground: PackSide | null = null;
+/** ui/ground.ts registers the default side panel. */
+export function setGroundSide(s: PackSide) { ground = s; }
+const isSide = (id: string) => !!side && parseId(id)[0] === side.prefix;
+/** Redraws the whole window (after something changed from outside, e.g. a pickup reached the backpack). */
+export function refreshPack() { if (G.packOpen) renderPack(); }
+/** The side panel showing now. */
+export const packSide = () => side;
 
 /**
  * Item in a slot: m = modules, w = weapon attachments, p = backpack, g = what you wear (WEAR_SLOTS index),
@@ -42,7 +69,7 @@ function renderPack() {
   statsEl.textContent = `damage ${(g.dmg * G.S.bm).toFixed(2)} · ${(1 / G.S.rate).toFixed(1)} shots/s · range ${g.range} m · magazine ${g.mag} · reload ${g.reload.toFixed(1)} s · zoom ${g.zoom}×`;
   let html = note || 'Drag items between slots. Weapons go in your hands or on your back, armour and clothes on your body, relics in the modules, attachments in the Blaster slots. Wheels and other big things only fit in your hands.';
   const acts: [string, string][] = [];
-  const s = sel ? at(sel) : null;
+  const s = sel && !isSide(sel) ? at(sel) : null;
   if (sel && s) {
     const [w] = parseId(sel), it = item(s.k);
     html = itemInfo(s.k, s.c) + (w === 'm' ? '<br>Equipped in a module' : w === 'w' ? '<br>Fitted to the Blaster' : w === 'g' ? '<br>Worn' : w === 'k' ? '<br>On your back' : w === 'h' ? '<br>In your hands' : '');
@@ -59,7 +86,9 @@ function renderPack() {
     if (w === 'p' || w === 'h' || w === 'k') acts.push(['drop', 'Drop']);
   } else sel = null;
   note = '';
+  if (sel && s && side?.act && (parseId(sel)[0] === 'p' || parseId(sel)[0] === 'h' || parseId(sel)[0] === 'k')) acts.unshift(side.act);
   detailEl.innerHTML = html + (acts.length ? '<div class="acts">' + acts.map(([a, t]) => `<button class="${a === 'drop' ? 'drop' : ''}" data-a="${a}">${t}</button>`).join('') + '</div>' : '');
+  side?.render();
 }
 function changed() { calcStats(); refreshGunLook(); handsChanged(); saveChar(); renderPack(); }
 
@@ -129,26 +158,33 @@ function quick(id: string, act: string): string {
 }
 
 bindSlots(packEl, {
-  drop(from, to) { note = move(from, to); sel = null; changed(); },
-  click(id) { sel = sel === id ? null : id; renderPack(); },
+  drop(from, to) { note = side && (isSide(from) || isSide(to)) ? side.drop(from, to) : move(from, to); sel = null; if (G.packOpen) changed(); },
+  click(id) {
+    if (side && isSide(id)) { note = side.click(id); sel = null; if (G.packOpen) changed(); return; }
+    sel = sel === id ? null : id; renderPack();
+  },
 });
 packEl.addEventListener('click', (e) => {
   const a = (e.target as HTMLElement).closest<HTMLElement>('[data-a]');
   if (!a || !sel) return;
-  const [w, i] = parseId(sel), act = a.dataset.a!;
+  const id = sel, [w, i] = parseId(id), act = a.dataset.a!;
   if (act === 'off' || act === 'on' || act === 'hold' || act === 'stow') { const m = quick(sel, act); if (m) logLine(m); note = m; sel = null; }
   if (act === 'use' && (w === 'p' || w === 'h')) { const s = listOf(w)[i]; if (s) useItem(s.k); }
+  if (side?.act && act === side.act[0] && side.doAct) { note = side.doAct(id); sel = null; if (!G.packOpen) return; }
   if (act === 'drop' && (w === 'p' || w === 'h' || w === 'k')) { const s = listOf(w)[i]; listOf(w)[i] = null; sel = null; if (s) dropAtFeet(s); } // laid at your feet, for you or anyone to pick up
   changed();
 });
-export function openPack() {
+/** Opens the backpack, with `with` (a container) beside it instead of the ground. */
+export function openPack(with_?: PackSide) {
   if (!G.playing || G.packOpen || G.dlgOpen || G.xferOpen) return;
+  side = with_ ?? ground; sideEl.style.display = side ? '' : 'none';
   G.packOpen = true; G.firing = false; for (const k in G.keys) G.keys[k] = false; sel = null; renderPack(); packEl.style.display = 'flex';
   if (document.pointerLockElement) document.exitPointerLock();
 }
 export function closePack() {
   if (!G.packOpen) return;
   G.packOpen = false; packEl.style.display = 'none';
+  const s = side; side = null; s?.close();
   if (!G.isTouch) lockPointer();
 }
 export const togglePack = () => (G.packOpen ? closePack() : openPack());

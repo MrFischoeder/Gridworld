@@ -89,6 +89,7 @@ import { teleportVehicle, vehiclesNear } from './world/vehicles';
 import { setRideWarpArrival } from './world/ride';
 import { setGateTravel, updateWorldGates, gateTravelPending } from './world/worldgates';
 import { gateName } from './gen/worldgates';
+import './ui/ground'; // the ground beside the backpack (after the world modules: it imports world/loot)
 /** Redraw the open world from the save where you stand (after taking the server's shared world). */
 function reloadWorld() { if (G.char.loc !== 'overworld') return; saveOverworldPos(); loadOverworld({ kind: 'saved' }); }
 setWorldReload(reloadWorld);

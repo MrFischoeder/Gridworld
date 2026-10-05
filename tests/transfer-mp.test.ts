@@ -18,12 +18,19 @@ vi.mock('../src/ui/hud', () => ({
 }));
 vi.mock('../src/character', () => ({ calcStats: vi.fn(), saveChar: vi.fn(), stowHeld: vi.fn(), handsChanged: vi.fn(), packVol: () => 1000 }));
 vi.mock('../src/ui/input', () => ({ lockPointer: vi.fn() }));
+// the container opens beside the backpack (ui/backpack.ts)
+const pack = vi.hoisted(() => ({ side: null as any }));
+vi.mock('../src/ui/backpack', () => ({
+  openPack: (s: any) => { if (state.G.packOpen) return; pack.side = s; state.G.packOpen = true; },
+  closePack: () => { if (!state.G.packOpen) return; state.G.packOpen = false; const s = pack.side; pack.side = null; s?.close(); },
+  refreshPack: vi.fn(), packSide: () => pack.side,
+}));
 vi.mock('../src/ui/slots', () => ({ slotHTML: () => '', bindSlots: vi.fn(), itemInfo: () => '', parseId: (s: string) => s.split(':'), loadText: () => '' }));
 import { openTransfer, closeTransfer } from '../src/ui/transfer';
-const clickGold = () => state.elements.get('xfer').click({ target: { closest: () => true } });
+const clickGold = () => state.elements.get('packSide').click({ target: { closest: () => true } });
 beforeEach(() => {
   closeTransfer(); vi.clearAllMocks(); state.active.clear(); state.online = false; state.net.id = 1;
-  state.G.char = newChar(); state.G.playing = true; state.G.xferOpen = false;
+  state.G.char = newChar(); state.G.playing = true; state.G.packOpen = false; state.G.packOpen = false; pack.side = null;
   vi.stubGlobal('document', { pointerLockElement: null });
 });
 const spec = (box: any) => ({ title: 'Chest', subtitle: '', boxLabel: 'Chest', box });
@@ -42,7 +49,7 @@ describe('shared container transfer UI', () => {
     let grant!: (ok: boolean) => void;
     state.lock.mockImplementation(() => new Promise<boolean>((resolve) => { grant = resolve; }));
     const opening = openTransfer(spec(box));
-    expect(state.G.xferOpen).toBe(false);
+    expect(state.G.packOpen).toBe(false);
     box.gold = 3; state.active.add('chest'); grant(true); await opening;
     const before = state.G.char.gold; clickGold();
     expect(state.G.char.gold).toBe(before + 3); expect(state.save).toHaveBeenCalledWith('chest', box);
@@ -51,7 +58,7 @@ describe('shared container transfer UI', () => {
   it('a denied lock cannot open the chest or change the inventory', async () => {
     state.online = true; const box = { items: [], gold: 10 }; state.G.char.containers.chest = box;
     state.lock.mockResolvedValue(false); const before = structuredClone(state.G.char);
-    await openTransfer(spec(box)); expect(state.G.xferOpen).toBe(false);
+    await openTransfer(spec(box)); expect(state.G.packOpen).toBe(false);
     expect(state.G.char).toEqual(before); expect(state.toast).toHaveBeenCalled();
   });
   it('an old transfer closes without taking anything after disconnect/reconnect', async () => {
@@ -59,7 +66,7 @@ describe('shared container transfer UI', () => {
     state.lock.mockImplementation(async () => { state.active.add('chest'); return true; });
     await openTransfer(spec(box)); state.active.clear(); state.net.id = 2;
     const gold = state.G.char.gold; clickGold();
-    expect(state.G.xferOpen).toBe(false); expect(state.G.char.gold).toBe(gold); expect(box.gold).toBe(10);
+    expect(state.G.packOpen).toBe(false); expect(state.G.char.gold).toBe(gold); expect(box.gold).toBe(10);
     expect(state.save).not.toHaveBeenCalled(); expect(state.unlock).not.toHaveBeenCalled();
   });
 });

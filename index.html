@@ -43,7 +43,17 @@
 <div class="btn" id="bFire">FIRE</div>
 
 <div id="pack" class="overlay">
-  <div class="panel">
+ <div class="packrow">
+  <div class="panel side" id="packSide">
+    <h2 id="sideTitle"></h2>
+    <div class="role" id="sideSub"></div>
+    <h3 id="sideLabel"></h3>
+    <div class="grid" id="sideGrid"></div>
+    <div id="sideGold"></div>
+    <div id="sideMsg"></div>
+    <div class="acts"><button id="sideAll">Take all</button></div>
+  </div>
+  <div class="panel main">
     <h2>Backpack</h2>
     <div class="packtop">
       <div><h3>Modules <span class="sub">(relics work only here)</span></h3><div class="grid mods" id="mods"></div></div>
@@ -56,8 +66,9 @@
     <h3>Contents <span id="packLoad" class="sub"></span></h3>
     <div class="grid" id="inv"></div>
     <div id="detail"></div>
-    <button id="packClose">Close backpack</button>
+    <button id="packClose">Close</button>
   </div>
+ </div>
 </div>
 
 <div id="dlg" class="overlay"><div class="panel"></div></div>
@@ -84,23 +95,6 @@
     <div id="svcDetail" class="detail"></div>
     <div id="svcMsg"></div>
     <div class="acts"><button id="svcClose">Close</button></div>
-  </div>
-</div>
-
-<div id="xfer" class="overlay">
-  <div class="panel">
-    <h2 id="xferTitle"></h2>
-    <div class="role" id="xferSub"></div>
-    <h3 id="xferBoxLabel"></h3>
-    <div class="grid" id="xferBox"></div>
-    <div id="xferGold"></div>
-    <h3>Backpack <span id="xferInvInfo"></span></h3>
-    <div class="grid" id="xferInv"></div>
-    <h3>Back and hands</h3>
-    <div class="grid" id="xferBody"></div>
-    <div id="xferDetail" class="detail"></div>
-    <div id="xferMsg"></div>
-    <div class="acts"><button id="xferAll">Take all</button><button id="xferClose">Close</button></div>
   </div>
 </div>
 

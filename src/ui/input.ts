@@ -17,7 +17,7 @@ import { online } from '../net/client';
 import { driving, toggleCockpit, switchSeat } from '../world/vehicles';
 import { renderer, camera } from '../world/render';
 import { el } from './hud';
-import { togglePack, closePack } from './backpack';
+import { togglePack, closePack, packSide } from './backpack';
 import { closeDialog } from './dialog';
 import { interact, lockKey } from '../world/interact';
 import { useItem } from '../world/loot';
@@ -38,7 +38,7 @@ export function initInput(onPause: () => void) {
     if (e.code === 'Backquote') { e.preventDefault(); toggleConsole(); return; }
     if (G.consoleOpen || gateTravelPending()) return;
     if (e.code === 'KeyI' || e.code === 'Tab') { e.preventDefault(); if (!G.dlgOpen && !G.xferOpen) togglePack(); return; }
-    if (G.packOpen) { if (e.code === 'Escape') closePack(); return; }
+    if (G.packOpen) { if (e.code === 'Escape' || e.code === 'KeyE' && !e.repeat && packSide()?.prefix === 'b') closePack(); return; }
     if (G.dlgOpen) { if (e.code === 'Escape') closeDialog(); return; }
     if (G.xferOpen) { if (e.code === 'Escape' || e.code === 'KeyE') { closeTransfer(); closeService(); closeBoard(); } return; }
     if (e.code === 'KeyM' && G.playing) { toggleMap(); return; }

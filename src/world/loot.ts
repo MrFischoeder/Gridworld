@@ -125,11 +125,18 @@ export function updateLoot(dt: number, time: number) {
     else { p.g.position.copy(p.p); p.g.position.y += Math.sin(time * 3 + i) * 0.08; p.g.rotation.y = time * 1.5; }
     if (p.drop && p.auto && Math.hypot(p.p.x - G.pos.x, p.p.z - G.pos.z) < 1.3 && Math.abs(p.p.y - body.y) < 2.5 && p.age > 0.4) autoTake(p); // the server's loot
     else if (!p.drop && Math.hypot(p.p.x - G.pos.x, p.p.z - G.pos.z) < 1.3 && Math.abs(p.p.y - body.y) < 2.5 && p.age > 0.4) {
-      const where = addItem(p.k, p.n ?? 1);
-      if (where) { scene.remove(p.g); W.pickups.splice(i, 1); logLine(ITEMS[p.k].name + ((p.n ?? 1) > 1 ? ' ×' + p.n : '') + (where === 'hands' ? ' (in your hands)' : where === 'back' ? ' (on your back)' : ' → backpack')); saveChar(); if (item(p.k).type === 'quest') onPickup(p.k); }
-      else if (!p.warned) { p.warned = true; logLine('No room in your backpack'); }
+      if (!grabPickup(p) && !p.warned) { p.warned = true; logLine('No room in your backpack'); }
     }
   }
+}
+/** Takes a pickup that is not a shared drop (loot, relics, keys) into your kit. False if there is no room. */
+export function grabPickup(p: Pickup): boolean {
+  const where = addItem(p.k, p.n ?? 1), i = W.pickups.indexOf(p);
+  if (!where) return false;
+  scene.remove(p.g); if (i >= 0) W.pickups.splice(i, 1);
+  logLine(ITEMS[p.k].name + ((p.n ?? 1) > 1 ? ' ×' + p.n : '') + (where === 'hands' ? ' (in your hands)' : where === 'back' ? ' (on your back)' : ' → backpack')); saveChar();
+  if (item(p.k).type === 'quest') onPickup(p.k);
+  return true;
 }
 
 // ---------- chests and the hatch ----------
