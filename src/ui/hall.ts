@@ -1,3 +1,5 @@
+import { vehicles } from '../world/vehicles';
+import { unloadCargo, cargoVehicleInside } from '../gen/hall';
 // The village hall's terminal (gen/hall.ts, world/hall.ts): the village's stock. Top: what is in the hold (take it
 // back out: into your backpack first, then the trunks of your vehicles parked by the hall) and the village's own goods
 // in its industry storehouse (part of the same stock; the elder shares them). Below: what you have here, in your
@@ -7,7 +9,7 @@ import { scene } from '../world/render';
 import { ITEMS, type ItemKey } from '../data/items';
 import { calcStats, saveChar } from '../character';
 import { findPoi, villageSeed } from '../gen/regions';
-import { HALL, OWN, holdVol, holdRoom, deposit, withdraw, stockOf } from '../gen/hall';
+import { hallSpec, OWN, holdVol, holdRoom, deposit, withdraw, stockOf, refineStock } from '../gen/hall';
 import { hallRect, floorPickups, refreshHall } from '../world/hall';
 import { stores, takeFrom, putAway } from './market';
 import { $, logLine } from './hud';
@@ -31,10 +33,11 @@ function render(msg = '') {
   if (vid === null) return;
   const c = G.char, poi = findPoi(c.world, vid), st = c.towns[vid];
   if (!poi) return;
+  if (st) refineStock(c.world, poi, villageSeed(c.world, poi), st, c.time);
   const hold = Object.entries(st?.hold ?? {}).filter(([, n]) => n) as [ItemKey, number][];
   const seed = villageSeed(c.world, poi), sk = stockOf(c.world, poi, seed, st, c.time);
   const mine = [...withYou()].sort((a, b) => ITEMS[a[0]].name.localeCompare(ITEMS[b[0]].name));
-  let s = `<h2>${poi.name} · Village Hall</h2><div class="role">The village's stock · hold ${Math.round(holdVol(st))} / ${HALL.vol} L</div>` +
+  let s = `<h2>${poi.name} · Village Hall</h2><div class="role">The village's stock · hold ${Math.round(holdVol(st))} / ${hallSpec(st).vol} L</div>` +
     `<div class="say">${msg ? msg + '<br><br>' : ''}Whatever is stored here belongs to the village: its builds will draw on it. You can take it back out whenever you like.</div>`;
   s += `<div class="say" style="margin:8px 0 0">In the hold</div>` + (hold.length ? hold.sort((a, b) => ITEMS[a[0]].name.localeCompare(ITEMS[b[0]].name)).map(([k, n]) =>
     `<div class="shoprow"><div>${itemName(k)} ×${n}</div><button class="opt" style="width:auto" data-hout="${k}" data-hn="1">Take 1</button><button class="opt" style="width:auto" data-hout="${k}" data-hn="999">Take all</button></div>`).join('')
@@ -46,8 +49,9 @@ function render(msg = '') {
     const room = holdRoom(st, k), n = e.carried + e.floor;
     return `<div class="shoprow"><div>${itemName(k)} ×${n}${e.floor ? ` <span style="opacity:.7">(${e.floor} on the floor)</span>` : ''}</div><button class="opt" style="width:auto" data-hin="${k}" data-hn="1" ${room ? '' : 'disabled'}>Store 1</button><button class="opt" style="width:auto" data-hin="${k}" data-hn="999" ${room ? '' : 'disabled'}>Store all</button></div>`;
   }).join('') + `<button class="opt" data-hall="1">Store everything I have here</button>` : '<div class="say" style="opacity:.7">Nothing the village could use.</div>');
+  if (hallSpec(st).h >= 6) s += '<button class="opt" data-hvehicle="1">Unload vehicles parked inside this warehouse</button><div class="say">Park fully inside, exit the cab and use this terminal. Cargo moves straight from the trunk into the hold.</div>';
   panel().classList.add('wide');
-  panel().innerHTML = s + `<button class="opt" data-hclose="1">Close</button>`;
+  panel().innerHTML = `<div data-stock-town="${vid}">` + s + `<button class="opt" data-hclose="1">Close</button></div>`;
 }
 /** Store up to n of k: the floor first, then the backpack and the trunks. Returns how many went in. */
 function store(k: ItemKey, n: number): number {
@@ -72,6 +76,11 @@ function close() { vid = null; G.dlgOpen = false; dlgEl.style.display = 'none'; 
 export function hallClick(t: HTMLElement): boolean {
   if (vid === null) return false;
   if (t.closest('[data-hclose]')) { close(); return true; }
+  if (t.closest('[data-hvehicle]')) {
+    const r = hallRect(vid), st = (G.char.towns[vid] ??= {}); let n = 0;
+    if (r && hallSpec(st).h >= 6) for (const v of vehicles) if (v.claimed && !v.ai && cargoVehicleInside(r, v.st, v.spec)) n += unloadCargo(st, v.st.trunk.items);
+    calcStats(); saveChar(); refreshHall(vid); render(n ? `Unloaded ${n} items directly from vehicle trunks.` : 'Park your vehicle fully inside, or make room in the hold.'); return true;
+  }
   const out = t.closest<HTMLElement>('[data-hout]'), inn = t.closest<HTMLElement>('[data-hin]'), all = t.closest('[data-hall]');
   if (!out && !inn && !all) return false;
   const st = (G.char.towns[vid] ??= {});

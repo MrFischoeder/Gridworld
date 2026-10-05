@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest';
-import { worldMegaliths, megalithsNear, megalithStones, megalithStoneHit, megalithPoint, megalithLocal, MEGALITH_DESIGNS, MEGALITH_BLEND } from '../src/gen/megaliths';
+import { worldMegaliths, megalithsNear, megalithStones, megalithStoneHit, megalithPoint, megalithLocal, MEGALITH_DESIGNS, MEGALITH_BLEND, MEGALITH_XZ_SCALE, MEGALITH_Y_SCALE } from '../src/gen/megaliths';
 import { installSites } from '../src/gen/installs';
 import { claimProblem } from '../src/gen/claims';
 import { Terrain } from '../src/gen/terrain';
@@ -17,7 +17,9 @@ it('reserves twelve distinct, repeatable huge monuments across the mainland with
     expect(new Set(list.map(m => m.id)).size).toBe(12); expect(new Set(list.map(m => m.name)).size).toBe(12);
     expect(new Set(list.map(m => nearestContinent(world, m.x, m.z).i)).size).toBe(continents(world).length);
     for (const m of list) {
-      expect(m.radius * 2).toBeGreaterThanOrEqual(200); expect(m.height).toBeGreaterThanOrEqual(40);
+      expect(m.radius * 2).toBeGreaterThanOrEqual(172.5); expect(m.radius * 2).toBeLessThanOrEqual(247.5);
+      expect(m.radius).toBe((MEGALITH_DESIGNS[m.index].radius+15)*MEGALITH_XZ_SCALE);
+      expect(m.height).toBeGreaterThanOrEqual(32); expect(m.height).toBeLessThanOrEqual(78*MEGALITH_Y_SCALE);
       expect(seaMask(world, m.x, m.z)).toBe(0); expect(Math.hypot(m.x, m.z)).toBeGreaterThan(3500);
       for (const f of factories) expect(worldDist(m.x, m.z, f.x, f.z)).toBeGreaterThan(m.radius + MEGALITH_BLEND + f.r + 40);
       for (const g of gates) expect(worldDist(m.x, m.z, g.x, g.z)).toBeGreaterThan(m.radius + MEGALITH_BLEND + 100);
@@ -27,7 +29,7 @@ it('reserves twelve distinct, repeatable huge monuments across the mainland with
       for (const b of stones) expect(Math.hypot(b.x, b.z) + Math.hypot(b.w, b.d) / 2).toBeLessThan(m.radius);
     }
   }
-});
+}, 300000); // Cold surveys generate roads, rivers and sites across multiple worlds.
 it('grounds entire sanctuaries on a flat pad and repeats ids, geometry and coordinates at the planet seam', () => {
   const world = 12345, T = new Terrain(world);
   expect(megalithsNear(world, 0, 0, 500)).toEqual([]);
@@ -48,7 +50,7 @@ it('collides with uprights and lintels individually and leaves the giant gate op
   const m = { id: 'megalith:10', index, name: design.name, x: 0, y: 0, z: 0, yaw: 0, radius: design.radius + 15, height: design.height, seed: 12345 };
   const stones = megalithStones(m);
   expect(megalithStoneHit(stones, 0, 0, 0, 2, 6)).toBe(false);
-  expect(megalithStoneHit(stones, 0, 58, 0, .5)).toBe(true);
+  expect(megalithStoneHit(stones, 0, 58*MEGALITH_Y_SCALE, 0, .5)).toBe(true);
   for (const b of stones.filter(b => !b.cap)) expect(megalithStoneHit(stones, b.x, 0, b.z, .4)).toBe(true);
   for (let z = -45; z <= 20; z += 2) expect(megalithStoneHit(stones, 0, 0, z, 2, 6)).toBe(false);
 });

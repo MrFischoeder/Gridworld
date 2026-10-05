@@ -1,14 +1,18 @@
 # GridWorld: opis gry, cel, plan i historia zmian
 
-Stan na wersję **0.127.0**. Ten dokument opisuje, czym jest GridWorld, jaki jest cel gry, co już w niej jest, czego jeszcze nie ma, dokąd zmierza i jak powstawała, wersja po wersji. Nazwy z gry (przedmioty, miejsca, postacie) są po angielsku, tak jak na ekranie.
+Stan na wersję **0.132.0**. Ten dokument opisuje, czym jest GridWorld, jaki jest cel gry, co już w niej jest, czego jeszcze nie ma, dokąd zmierza i jak powstawała, wersja po wersji. Nazwy z gry (przedmioty, miejsca, postacie) są po angielsku, tak jak na ekranie.
 
 ---
 
 ## 1. Czym jest GridWorld
 
+Mapa deweloperska (komenda `map` w konsoli) otwiera widok całej planety z granicą zawijania na szerokim oceanie między kontynentami. Kontynenty w tym widoku nie są przecięte na pół; Gridholm nie musi być w centrum. Przeciąganie i oddalanie mapy zawija razem tło, rzeki, miasta, wioski, wejścia do podziemi, portale, megality, mgły i znacznik gracza. Kliknięcie dowolnej powtórzonej kopii oznaczenia prowadzi do tego samego miejsca. Przycisk Overview przywraca widok całej planety, a Centre on me centruje gracza przy obecnym powiększeniu. Zmiana dotyczy wyświetlania i działa też w istniejących światach bez przenoszenia lokacji.
+
 Kaniony zostały usunięte z generatora świata i map. Dotyczy to także istniejących zapisów: teren wraca do naturalnej rzeźby, a dawne mosty nad kanionami są wycofywane. Mosty rzeczne pozostają dostępne.
 
-Na planecie stoi dokładnie 12 ogromnych, megalitycznych monumentów inspirowanych Stonehenge. Mają 230–330 m średnicy, a kamienne filary i nadproża dochodzą do 78 m wysokości. Układy są różne: koronowany krąg, dwa i trzy kręgi, podkowa, aleja, spirala, cztery bramy, przerwany pierścień, gwiazda, obelisk, wielka brama i konstelacja. Każdy ma własną stałą nazwę i identyfikator megalith:0–11 oraz deterministyczną lokalizację na kontynencie. Są zarezerwowane do przyszłych specjalnych celów — aktualnie nie uruchamiają zadania ani teleportu. Teren pod nimi jest płaski i oczyszczony, a filary i nadproża blokują ruch oraz ostrzał; prześwity i dziedzińce pozostają dostępne. Mapy oznaczają je jasnym symbolem kamiennego nadproża, a mapa deweloperska pozwala kliknięciem odwiedzić zewnętrzną krawędź. W ich pobliżu nie można zakładać bazy.
+Każde zrujnowane miasto ma 4–6 rozdzielonych wejść do podziemi, na wolnych ulicach. Oznaczają je podniesione pokrywy włazów, poręcze i wysokie niebieskie znaki. Oznaczenia ładowane są od razu z miastem, niezależnie od kolejki fragmentów ulic. Po wejściu do miasta jego zejścia widać na minimapie i mapie M, a HUD podaje odległość do najbliższego. Mapa deweloperska pokazuje zejścia w zbliżeniu i pozwala się do nich przenieść. Aby zejść, podejdź do znaku i naciśnij E. Dawne cztery wejścia zachowują adresy, pozycje i labirynty ze starych zapisów; maksymalna głębokość nadal wynosi trzy poziomy.
+
+Na planecie stoi dokładnie 12 ogromnych, megalitycznych monumentów inspirowanych Stonehenge. Po przeskalowaniu mają około 173–248 m średnicy, a kamienne filary i nadproża dochodzą do 55 m wysokości. Układy są różne: koronowany krąg, dwa i trzy kręgi, podkowa, aleja, spirala, cztery bramy, przerwany pierścień, gwiazda, obelisk, wielka brama i konstelacja. Każdy ma własną stałą nazwę i identyfikator megalith:0–11 oraz deterministyczną lokalizację na kontynencie. Są zarezerwowane do przyszłych specjalnych celów — aktualnie nie uruchamiają zadania ani teleportu. Teren pod nimi jest płaski i oczyszczony, a filary i nadproża blokują ruch oraz ostrzał; prześwity i dziedzińce pozostają dostępne. Mapy oznaczają je jasnym symbolem kamiennego nadproża, a mapa deweloperska pozwala kliknięciem odwiedzić zewnętrzną krawędź. W ich pobliżu nie można zakładać bazy.
 
 Przed menu uruchamia się 20-sekundowy film z lotem kamery przez bramę Gridholm i oblotem wioski. Następne ujęcia prezentują starożytne ruiny i aktywny portal, zrujnowane miasto, rzekę i góry, roboty, bandytów, faunę oraz jadący konwój. Stopniowo pojawiają się GRIDWORLD, „Designed by Luki” i niżej „Music by Iskra”. Film można pominąć przyciskiem, spacją, Enterem lub Escape i powtórzyć z menu przez Opening film. Osobna scena pokazowa nie zmienia zapisu ani pozycji gracza; fabularny prolog katastrofy statku pozostaje przy rozpoczęciu przygody nową postacią.
 
@@ -155,6 +159,7 @@ Gra jest pomyślana jako **kooperacja do 8 graczy** na autorytatywnym serwerze (
 
 ### Krajobraz
 - Skały i wielkie głazy mają nieregularne, wielościenne bryły z szeroką podstawą, załamanymi bokami i ściętą górą zamiast piramidalnego czubka. Ten sam model obejmuje gruz w ruinach i kamienie przy jaskiniach. Kolorowe żyły rudy biegną po rzeczywistych ścianach skał; rozmieszczenie, kolizje, wydobycie i wcześniejsze zapisy pozostają zgodne.
+- Kontynenty mają nieregularne półwyspy, większe zatoki i liczne mniejsze zatoczki. Dwa lub trzy lądy nadal oddzielają szerokie oceany; okolica Gridholm pozostaje sucha. Wybrzeża i wyspy przeliczają się także w istniejących światach, więc miejsca wybierane na suchym lądzie mogą się przesunąć; do nowej eksploracji najlepiej rozpocząć nowy świat.
 - **Teren**:
   - pagórki i doliny;
   - **góry** do ok. 170 m ze śniegiem na szczytach (ok. jednej czwartej lądu);
@@ -163,9 +168,9 @@ Gra jest pomyślana jako **kooperacja do 8 graczy** na autorytatywnym serwerze (
 - **Woda**:
   - **jeziora** czyste, mętne i toksyczne (świecące);
   - **studnie** w wioskach i w dziczy;
-  - **morza**: ok. 25% lądu między czapami, słone, z plażami i płyciznami;
+  - **morza**: około połowy powierzchni między czapami, słone, z plażami i płyciznami;
   - **rzeki**: 150–200 na świat, od gór do mórz, z dopływami, nazwami i nurtem, który niesie pływaka; drogi przecinają je brodami;
-  - **wyspy** na otwartym morzu (ok. 150).
+  - **wyspy** na otwartym morzu: nominalnie 480–1400 m średnicy, z nieregularnym brzegiem i łagodnymi wzgórzami 6–18 m ponad wodą; widoczne także na mapie deweloperskiej.
 - **Las**: sosny, drzewa liściaste i trzy olbrzymy (Ancient Twisted, Umbrella, Hollow Arch, przez który można przejść), jadalne grzyby i drzewa z owocami.
 - **Pogoda**: bezchmurnie, pochmurno, deszcz, mgła (częściej rano) i burze z piorunami. Każda okolica ma własną pogodę, a fronty przesuwają się godzinami.
 - **Zegar gry**: 1 sekunda = 1 minuta gry, doba trwa 24 minuty.
@@ -272,8 +277,21 @@ Gra jest pomyślana jako **kooperacja do 8 graczy** na autorytatywnym serwerze (
 
 To serce gry. Gracz nie ma własnej bazy (budowanie w dziczy jest zamknięte). Zamiast tego pomaga wioskom.
 
+**Nowy start osady (nowe światy od 0.131.0)**
+- Wioska zaczyna z ośmioma mieszkańcami. Działających elektrowni i zakładów przemysłowych jeszcze nie ma: stoją oznaczenia miejsc pod budowę, naturalne miejsca przyszłego urobku.
+- Niezamieszkane domy mają przerwane ściany, odsłonięte krokwie i dziurawe dachy. Rozwój farm i infrastruktury poprawia ich stan; nowe rodziny przybywają stopniowo, do limitu jedzenia i odbudowanych mieszkań.
+- Najważniejsze zadania daje starszy: narzędzia i zgromadzenie drewna/kamienia → pierwsza farma → odbiornik satelitarny w pobliskich ruinach i tablet GPS → druga farma → magazyn dla pojazdów → elektrownia → kamieniołom → tartak → lokalna kopalnia i szyb/rafineria (jeśli występują odpowiednie złoża) → trzecia farma.
+- Odbiornik naprawia się przy terminalu na powierzchni, na zachodnim skraju wskazanych ruin. Znacznik tutorialu prowadzi do niego bez posiadania GPS. Materiały do naprawy pochodzą z magazynu.
+- Tablica początkowo daje dwa proste zlecenia: dostarczyć niewielką ilość zasobów lub pokonać dwóch przeciwników. Kontrakty przewozowe pojawiają się po zbudowaniu dużego magazynu.
+- Kowal zaczyna od siekiery, kilofa, zestawu do rozpalania i bukłaka. Po pierwszej farmie potrafi robić deski i gwoździe bez szukania planów; dalszy asortyment wymaga rozwoju oraz odpowiednich starych planów.
+- Każda rozwijana osada ma kamieniołom i tartak około 105 m od obrysu palisady. Kamieniołom to duża sterta nieregularnych skał z wolnym miejscem na zakład, tartak zaczyna jako zagajnik z placem pośrodku. Kamieniołom dostarcza Stone, a tartak Log, Timber i Lumber po budowie.
+- Złoża rud występują przy około 35% wiosek, ropa przy około 22%; Gridholm ma startowe żelazo. Żelazo (Fe), miedź (Cu), ołów (Pb), nikiel (Ni) i węgiel (C) mają własne kolory i oznaczenia. Rudy leżą w płytkich skalnych zagłębieniach z łagodnym zejściem; ropa tworzy czarne kałuże z animowanymi bąblami i wytryskami. Kopalnia wydobywa lokalny typ rudy. Starszy pomija niewystępujące złoża, więc brak ropy/metalu nie blokuje ukończenia rozwoju.
+- Kopalnia, tartak i szyb dają towary dopiero po budowie. Rafineria zużywa rzeczywistą ropę z zapasu wioski, a nie wytwarza paliwa bez wsadu.
+- Budowy, zamówienia i rozładunek rezerwują zapas wioski na czas transakcji w multiplayerze: równoczesne kliknięcia nie wydają tych samych materiałów dwukrotnie. Protokół multiplayer ma numer 7: klient i serwer muszą być z tej wersji (aktualizacja serwera zachowuje jego zapisane światy). Gracze dołączający przyjmują reguły świata serwera; nowy pusty pokój serwera zaczyna od małych osad.
+- Wcześniejsze zapisy zachowują swoją gospodarkę i budynki. Kod 0.130.0 ma zamrożony tag `v0.130.0`; instrukcja powrotu i kopii zapisu jest w `FROZEN_0.130.0.md`.
+
 **Hala i magazyn**
-- **Hala wioski** to jedyny magazyn wioski.
+- **Hala wioski** to jeden wspólny zapas. W nowym świecie zaczyna jako mały magazyn 800 L, do którego można wejść. Kolejny etap stawia magazyn 24 × 24 m, 24 000 L, poza północnym ogrodzeniem: otwór 6 m szerokości i 4,8 m wysokości pozwala wjechać również Mastodonem. Po zaparkowaniu w środku i wyjściu z kabiny terminal rozładowuje bagażnik bezpośrednio do zapasu; nadmiar pozostaje w pojeździe. Dawne zapisy zachowują halę 6000 L.
 - Wszystko, co wioska produkuje, trafia do hali.
 - Każda budowa (mury, farmy, zakłady, elektrownie, ulepszenia, zamówienia u kowala) bierze materiały tylko z zapasu hali.
 - Gracz składa materiały przez terminal w hali.
@@ -594,6 +612,8 @@ Pełne notatki (po angielsku) są w grze pod przyciskiem **Changelog** w menu g�
 
 - **0.119.0 Jeden stan pojazdu.** Osobne uszkodzenia kół i silnika zastępuje wspólny stan użyteczności. Ostrzał, zderzenia i ataki przeciwników uszkadzają pojazd; zwykła jazda nie powoduje zużycia. Kierowca, pasażer i strzelec nie tracą zdrowia wewnątrz, również w otwartym łaziku i w cudzym pojeździe. Przy 0% pojazd zatrzymuje się i pasażerowie wysiadają bez obrażeń. Serwis i zestaw naprawczy odnawiają wspólny stan. Zachowano zgodność zapisów i wyposażenie.
 
+- **0.128.0 Mniejsze megality i widoczne wejścia miejskie.** Megality mają o 25% mniejszą szerokość i o 30% mniejszą wysokość; zmniejszono też kolizje i oczyszczone podłoże, zachowując stałe miejsca. Każde miasto ma 4–6 wejść do podziemi: wysokie niebieskie znaki, od razu ładowane modele, znaczniki na mapach i odległość na HUD. Dawne adresy i labirynty są zachowane.
+- **0.127.1 Lądowanie na kamieniach i ruinach.** Usunięto zaokrąglanie wysokości stóp do pełnych metrów po lądowaniu. Postać zatrzymuje się na dokładnej granicy kolizji kamienia, ruiny, podłogi lub sufitu i może odejść oraz ponownie skoczyć. Naprawiane są płytko zatopione, zaokrąglone pozycje ze starych zapisów.
 - **0.127.0 Usunięcie kanionów.** Usunięto generator kanionów, ścieżki zejścia, skanowanie i oznaczenia na mapie oraz projektowanie mostów nad kanionami. Zapisane światy mają ponownie naturalny teren; dawne mosty nad kanionami są wycofywane. Mosty rzeczne i pola głazów pozostają.
 - **0.126.0 Dwanaście kolosalnych megalitów.** Odrębne, wielkie układy Stonehenge o średnicy 230–330 m i wysokości do 78 m, z kamiennymi filarami, nadprożami i rzeźbieniami. Stałe lokalizacje i identyfikatory pod przyszłe funkcje, kolizje i osłona przed ostrzałem, oczyszczone dziedzińce, znaczniki na mapach oraz wydłużony widok przy monumentach.
 - **0.125.0 Portale i kaniony na mapie deweloperskiej.** Polecenie map w konsoli pokazuje wszystkie 40 portali jako turkusowe ośmiokąty i kaniony jako pomarańczowe obrysy. W zbliżeniu widać ścieżki zejścia; najechanie podaje rozmiar i głębokość, a kliknięcie przenosi obok pierścienia albo na początek ścieżki. Skanowanie kanionów działa stopniowo, także poza odkrytym terenem.
@@ -602,3 +622,11 @@ Pełne notatki (po angielsku) są w grze pod przyciskiem **Changelog** w menu g�
 - **0.122.0 Wybieranie adresu i animacja podróży.** Symbole zapalają się kolejno na pierścieniu. Przyciski Activate i Cancel zastępują automatyczne otwieranie; znikają angielskie nazwy znaków. Brama docelowa pokazuje kod źródłowy. Pięciosekundowy transport całej załogi ma animację ciągłych linii, a bramy nie zamykają się przed ukończeniem podróży rozpoczętej przed upływem 45 sekund.
 - **0.121.0 Bramy dla pojazdów i stałe tablety.** Własny adres wyryty na terminalu, trzy stałe adresy na osobnym tablecie. Dwukierunkowe połączenie przez 45 rzeczywistych sekund blokuje obie konsole. Powiększone bramy przepuszczają Mastodona z dwoma lub trzema graczami, zachowując miejsca i cały ładunek.
 - **0.120.0 Bramy Starożytnych.** Sieć 40 obcych, kamiennych, ośmiokątnych teleportów na kontynentach. Sześć różnych symboli na górnych narożnikach, dwa dolne bez znaków. Panel przy każdej bramie wybiera unikalny trzyznakowy adres; archiwum podaje adresy do podróży i powrotu. Przejście pieszo przenosi przed docelowy pierścień bez zmiany zdrowia i ekwipunku. Bramy mają różne rozsypane głazy, płaskie podejścia i znaczniki na mapach.
+
+- **0.129.0 Organiczne wybrzeża i większe wyspy.** Kontynenty mają półwyspy, głębokie zatoki i liczne zatoczki, przy zachowanych szerokich oceanach. Wyspy powiększono do nominalnej średnicy 480–1400 m i wzgórz 6–18 m. Poprawiono wyszukiwanie pełnych obrzeży na granicach komórek i planety; mapa deweloperska pokazuje wyspy. Nowa geografia przelicza się w istniejących światach.
+
+- **0.130.0 Oceaniczna granica mapy deweloperskiej.** Widok całej planety zaczyna i kończy się na oceanie pomiędzy kontynentami. Wszystkie warstwy i znaczniki powtarzają się zgodnie przy przesuwaniu i oddalaniu, a kliknięcia trafiają do oryginalnych lokacji. Przycisk Overview przywraca pełny widok; istniejące światy zachowują geografię i zapisy.
+
+- **0.131.0 Od małej osady do przemysłu.** Zamrożona wersja 0.130.0, mały start nowych światów, zrujnowane puste domy i stopniowy przyrost mieszkańców. Tutorial starszego prowadzi przez zasoby, farmy, odbudowę odbiornika GPS w pobliskich ruinach, magazyn z wjazdem i rozładunkiem pojazdu oraz budowę kopalni, tartaku, elektrowni, szybu i rafinerii. Ograniczony początkowy kowal i krótkie zlecenia poboczne; zachowanie starszych zapisów i wspólne budowy w multiplayerze.
+
+- **0.132.0 Naturalne miejsca urobku.** Kamieniołom i własny tartak przy każdej rozwijanej wiosce, około 100 m poza palisadą; rzadsze, oznaczone kolorami złoża metali i bulgoczące rozlewiska ropy. Rzeczywiste skalne zagłębienia, łagodne wejścia, kolizje zgodne ze skałami, produkcja lokalnych surowców oraz tutorial dopasowany do dostępnych złóż. Istniejące budowy i zapasy pozostają zachowane; multiplayer używa protokołu 7.

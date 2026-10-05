@@ -105,6 +105,9 @@ export interface Char {
   pid: string;
   /** What you changed about the villages (gen/town.ts), keyed by village id: the wall's tier, materials handed over, the power plant. */
   towns: Record<string, TownState>;
+  /** New-world settlement rules; 0 preserves settlements in older saves. */
+  settlementRules: 0 | 1;
+  settlementRewards?: string[];
   /** The markets (gen/market.ts): how trades have shifted each village's stocks. On the server this is shared by everyone. */
   market: MarketState;
   /** Prices you have seen, per village id: when, the village's name and place, and [buy, sell] per good. */
@@ -122,7 +125,7 @@ export const SAVE_KEY = 'gridWorld.character.v3';
 export const ARENA_V3_KEY = 'gridArena.character.v3', V2_KEY = 'gridArena.character.v2', OLD_KEY = 'gridArena.character.v1';
 
 export const newChar = (): Char => ({
-  v: 3, name: '', intro: false, tech: {}, leads: [], installs: {}, bridges: {}, bridgeSites: [], cityGarrisons: {}, piers: [], boats: [], filter: 0, fogs: {}, guide: 0, houses: [], shuttle: { given: {}, v: 2 }, level: 1, xp: 0, gold: 0, world: (Math.random() * 1e6) | 0,
+  v: 3, settlementRules: 1, name: '', intro: false, tech: {}, leads: [], installs: {}, bridges: {}, bridgeSites: [], cityGarrisons: {}, piers: [], boats: [], filter: 0, fogs: {}, guide: 0, houses: [], shuttle: { given: {}, v: 2 }, level: 1, xp: 0, gold: 0, world: (Math.random() * 1e6) | 0,
   inv: Array(INV_SIZE).fill(null), mods: Array(MOD_SIZE).fill(null), opened: {}, unlocked: {}, killed: {},
   loc: 'overworld', ow: null, dungeon: null, discovered: {}, containers: {}, vehicles: [], board: { seq: 0, offers: [], stamp: boardPeriod(START_TIME) }, boards: {}, quests: [], camps: {}, time: START_TIME, gunMods: [null, null, null], loaded: { blaster: 20 }, waypoint: null, kcal: KCAL.start, stomach: 0, water: 100, harvest: {}, benches: [], claims: [],
   hands: [{ k: 'blaster', n: 1 }], back: [{ k: 'blade', n: 1 }, null], wear: {}, pid: Math.random().toString(36).slice(2, 10), towns: {}, market: {}, ledger: {}, caravans: {}, escort: null, contracts: [], taken: [],
@@ -132,7 +135,7 @@ interface V2 { level?: number; xp?: number; gold?: number; world?: number; inv?:
 
 /** v1 stored relic counts; they go into free modules first, then the backpack. */
 function migrateV1(o: { level?: number; xp?: number; gold?: number; relics?: Record<string, number> }): Char {
-  const c = newChar(); c.intro = true; c.guide = 2;
+  const c = newChar(); c.settlementRules = 0; c.intro = true; c.guide = 2;
   Object.assign(c, { level: o.level || 1, xp: o.xp || 0, gold: o.gold || 0 });
   for (const [k, n] of Object.entries(o.relics || {})) {
     if (!(k in ITEMS)) continue;
@@ -146,7 +149,7 @@ function migrateV1(o: { level?: number; xp?: number; gold?: number; relics?: Rec
 }
 /** v2 -> v3: character, backpack and gold stay; dungeon progress (keys without a ruin) is dropped; start in the village. */
 function migrateV2(o: V2): Char {
-  const c = newChar(); c.intro = true; c.guide = 2;
+  const c = newChar(); c.settlementRules = 0; c.intro = true; c.guide = 2;
   if (o.level) c.level = o.level; if (o.xp) c.xp = o.xp; if (o.gold) c.gold = o.gold;
   if (typeof o.world === 'number') c.world = o.world;
   if (Array.isArray(o.inv)) c.inv = Array.from({ length: INV_SIZE }, (_, i) => o.inv![i] ?? null);
@@ -156,11 +159,16 @@ function migrateV2(o: V2): Char {
 
 /** Energy Cells an old save gets when ammunition stops being endless. */
 export const OLD_SAVE_CELLS = 120;
-export function loadChar(storage: Pick<Storage, 'getItem'> | null = safeStorage()): Char {
+export function loadChar(storage: Pick<Storage, 'getItem'> & Partial<Pick<Storage, 'setItem'>> | null = safeStorage()): Char {
   try {
     const raw = storage?.getItem(SAVE_KEY) ?? storage?.getItem(ARENA_V3_KEY);
     if (raw) {
       const c = Object.assign(newChar(), JSON.parse(raw)) as Char & { food?: number };
+      if (!('settlementRules' in JSON.parse(raw))) {
+        c.settlementRules = 0;
+        // Keep the original serialized character for the frozen release; never replace an earlier backup.
+        try { if (!storage?.getItem('gridWorld.frozen.0.130.0')) storage?.setItem?.('gridWorld.frozen.0.130.0', raw); } catch { /* a failed backup must not discard the loaded character */ }
+      }
       // food used to be a 0..100 bar: it becomes the same share of the calorie store
       if (typeof c.food === 'number') { if (!('kcal' in JSON.parse(raw))) c.kcal = Math.round(c.food / 100 * KCAL.max); delete c.food; }
       if (c.loc === 'dungeon' && !c.dungeon) c.loc = 'overworld';

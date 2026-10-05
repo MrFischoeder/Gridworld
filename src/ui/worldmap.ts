@@ -1,3 +1,4 @@
+import { cityEntrances } from '../gen/citydungeons';
 import { megalithsNear } from '../gen/megaliths';
 import { gatesNear, gateName } from '../gen/worldgates';
 // Surface maps: the minimap (150 m around the player) and the full world map (M), both built from
@@ -112,6 +113,19 @@ function drawArea(ctx: CanvasRenderingContext2D, w: number, h: number, ppm: numb
     }
     else { ctx.strokeStyle = ctx.fillStyle = '#5cc8ff'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(x - 5, y - 4); ctx.lineTo(x + 5, y - 4); ctx.lineTo(x, y + 5); ctx.closePath(); ctx.stroke(); }
     if (labels) ctx.fillText(p.name, x, y - 12);
+  }
+  // City signs advertise every street entrance as soon as you enter the city.
+  const currentCity = cityAt(G.char.world, px, pz);
+  for (const city of citySites(G.char.world)) {
+    if (Math.abs(wrapDx(city.x-px)) > hw+city.r || Math.abs(city.z-pz) > hh+city.r) continue;
+    for (const e of cityEntrances(G.char.world, city)) {
+      if (currentCity?.i !== city.i && !isDiscovered(d, Math.floor(e.x/CHUNK), Math.floor(e.z/CHUNK))) continue;
+      const x = X(nearX(e.x,px)), y = Z(e.z);
+      if (x < -15 || y < -15 || x > w+15 || y > h+15) continue;
+      ctx.strokeStyle = ctx.fillStyle = '#5cc8ff'; ctx.lineWidth = 2;
+      ctx.strokeRect(x-6,y-6,12,12); ctx.beginPath(); ctx.moveTo(x-4,y-2); ctx.lineTo(x,y+4); ctx.lineTo(x+4,y-2); ctx.stroke();
+      if (labels) ctx.fillText('Underground '+(e.n+1),x,y-13);
+    }
   }
   for (const g of gatesNear(G.char.world, px, pz, Math.hypot(hw, hh) + 30)) {
     if (!isDiscovered(d, Math.floor(g.x / CHUNK), Math.floor(g.z / CHUNK))) continue;

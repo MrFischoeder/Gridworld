@@ -7,7 +7,7 @@ import { ITEMS, type ItemKey } from '../data/items';
 import { count } from '../data/crafting';
 import { putItems } from '../inventory';
 import { calcStats, saveChar, packVol } from '../character';
-import { GOODS, quote, trade, tidyMarket, profileOf, type Good } from '../gen/market';
+import { GOODS, quote, trade, tidyMarket, profileFor, type Good } from '../gen/market';
 import { allVillages, findPoi, villageSeed, worldDist, type Poi } from '../gen/regions';
 import { loadedVillage } from '../world/overworld';
 import { vehicles } from '../world/vehicles';
@@ -29,7 +29,7 @@ function prodNote(): string {
  * never more than the market's usual stock.
  */
 function quoteHere(g: Good) {
-  const c = G.char, q = quote(here!.poi, here!.seed, c.world, g, c.market, c.time, true, prodHere());
+  const c = G.char, q = quote(here!.poi, here!.seed, c.world, g, c.market, c.time, true, prodHere(), c.towns[here!.poi.id]);
   if (q.role !== 'make') return q;
   const n = stockOf(c.world, here!.poi, here!.seed, c.towns[here!.poi.id], c.time).ownOf(g);
   const cheap = glutted();
@@ -68,7 +68,7 @@ export function putAway(g: ItemKey, n: number, at: { x: number; z: number } | nu
 function record() {
   if (!here) return;
   const c = G.char, q: Record<string, [number, number]> = {};
-  for (const g of GOODS) { const o = quote(here.poi, here.seed, c.world, g, c.market, c.time, true, prodHere()); q[g] = [o.buy, o.sell]; }
+  for (const g of GOODS) { const o = quote(here.poi, here.seed, c.world, g, c.market, c.time, true, prodHere(), c.towns[here!.poi.id]); q[g] = [o.buy, o.sell]; }
   c.ledger[here.poi.id] = { t: c.time, name: here.poi.name, x: here.poi.x, z: here.poi.z, q };
 }
 /** The best price paid for `g` elsewhere, from what you have seen. */
@@ -87,12 +87,12 @@ function hearsay(): string {
 function rumours(): string {
   if (!here) return '';
   const c = G.char, vs = allVillages(c.world).filter((v) => v.id !== here!.poi.id && !c.ledger[v.id]).map((v) => ({ v, d: worldDist(v.x, v.z, here!.poi.x, here!.poi.z) })).filter((o) => o.d < 9000).sort((a, b) => a.d - b.d).slice(0, 2);
-  return vs.map(({ v, d }) => { const p = profileOf(c.world, v, villageSeed(c.world, v)); return `Traders say <b>${v.name}</b> (${fmtDist(d)} ${point8(bearingTo(v.x, v.z))}) pays well for ${p.wants.map((g) => ITEMS[g].name).join(' and ')}.`; }).join('<br>');
+  return vs.map(({ v, d }) => { const p = profileFor(c.world, v, villageSeed(c.world, v), c.towns[v.id]); return `Traders say <b>${v.name}</b> (${fmtDist(d)} ${point8(bearingTo(v.x, v.z))}) pays well for ${p.wants.map((g) => ITEMS[g].name).join(' and ')}.`; }).join('<br>');
 }
 
 export function renderMarket(panel: HTMLElement, head: string, msg = '') {
   if (!here) return;
-  const c = G.char, p = profileOf(c.world, here.poi, here.seed), trunks = stores().length - 1;
+  const c = G.char, p = profileFor(c.world, here.poi, here.seed, c.towns[here.poi.id]), trunks = stores().length - 1;
   tidyMarket(c.market, c.time); record();
   const rows = GOODS.map((g) => {
     const q = quoteHere(g), have = carried(g), b = bestElsewhere(g);
@@ -137,7 +137,7 @@ export function marketClick(t: HTMLElement): string | null {
   }
   n = Math.min(n, carried(g));
   let earned = 0;
-  for (let i = 0; i < n; i++) { const q = quote(here.poi, here.seed, c.world, g, c.market, c.time, true, prodHere()); takeFrom(g, 1); c.gold += q.sell; earned += q.sell; trade(c.market, here.poi.id, g, 1, c.time); }
+  for (let i = 0; i < n; i++) { const q = quote(here.poi, here.seed, c.world, g, c.market, c.time, true, prodHere(), c.towns[here!.poi.id]); takeFrom(g, 1); c.gold += q.sell; earned += q.sell; trade(c.market, here.poi.id, g, 1, c.time); }
   calcStats(); saveChar();
   return n ? `Sold ${name} ×${n} for ${earned} gold.` : 'You have none to sell.';
 }

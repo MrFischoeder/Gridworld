@@ -14,7 +14,9 @@ import { mountainMask } from './mountains';
 import { powerKind } from './town';
 import type { ItemKey } from '../data/items';
 import { caravanShift } from './caravans';
-import { industryOf, INDUSTRY } from './industry';
+import { industryOf, industryProject, siteBuilt, INDUSTRY } from './industry';
+import { progressive, resourceYield, projectDone } from './settlement';
+import type { TownState } from './town';
 
 export type Good = 'grain' | 'carrots' | 'potatoes' | 'timber' | 'coal' | 'ore' | 'copper' | 'salt' | 'fish' | 'crude' | 'sand' | 'cloth' | 'tools' | 'meds' | 'fuel' | 'tech'
   | 'steel' | 'copperbar' | 'plastic' | 'glass' | 'cable' | 'boards' | 'parts' | 'alloy' | 'propellant'
@@ -53,6 +55,13 @@ export const isGood = (k: ItemKey): k is Good => k in GOOD_INFO;
 export const MARKET = { make: 0.6, want: 1.6, stock: { make: 40, none: 14, want: 4 }, spread: 0.1, give: 0.9, half: 36 * 60, drift: 0.12 };
 
 export interface MarketProfile { makes: Good[]; wants: Good[] }
+/** In developing settlements, raw goods come from the actual commissioned local deposits. */
+export function profileFor(world: number, v: Poi, seed: number, s: TownState | undefined): MarketProfile {
+  const p = profileOf(world, v, seed); if (!progressive(s)) return p;
+  const k = industryOf(world, v, seed), primary = industryProject(k) || !siteBuilt(k, s) ? [] : p.makes;
+  const raw = Object.keys(resourceYield(s)).filter(g => GOODS.includes(g as Good)) as Good[];
+  const makes = [...new Set([...primary, ...raw])]; return { makes, wants: p.wants.filter(g => !makes.includes(g)) };
+}
 export type MarketState = Record<string, { d: number; t: number }>;
 const cache = new Map<string, MarketProfile>();
 /** What village `v` makes and wants. */
@@ -114,10 +123,11 @@ function caravanShiftAt(world: number, vid: number, now: number) {
   if (!s) { if (carCache.size > 500) carCache.clear(); s = caravanShift(world, vid, now, MARKET.half); carCache.set(k, s); }
   return s;
 }
-export function quote(v: Poi, seed: number, world: number, g: Good, state: MarketState, now: number, caravans = true, prod = 1): Quote {
+export function quote(v: Poi, seed: number, world: number, g: Good, state: MarketState, now: number, caravans = true, prod = 1, settlement?: TownState): Quote {
   // `prod`: how much the village's industry puts out now (gen/industry.ts production); a wrecked site makes less and
   // dearer, an unbuilt refinery makes nothing
-  const p = profileOf(world, v, seed), made = role(p, g), r = made === 'make' && prod <= 0 ? 'none' : made, info = GOOD_INFO[g];
+  if (progressive(settlement) && ((resourceYield(settlement)[g] ?? 0) > 0 || g === 'fuel' && projectDone(settlement, 'refinery'))) prod = 1;
+  const p = profileFor(world, v, seed, settlement), made = role(p, g), r = made === 'make' && prod <= 0 ? 'none' : made, info = GOOD_INFO[g];
   // (prod above 1: rich fields, more in stock and cheaper)
   const factor = r === 'make' ? MARKET.make * (1 + (1 - Math.min(1, prod)) * 0.9) / Math.sqrt(Math.max(1, prod)) : r === 'want' ? MARKET.want : 1;
   const ph = (hash(seed, g.length * 131 + g.charCodeAt(0), 0xd71f) % 6283) / 1000, period = 3 + (hash(seed, g.charCodeAt(1), 0xd720) % 5);

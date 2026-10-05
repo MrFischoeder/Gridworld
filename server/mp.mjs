@@ -50,7 +50,7 @@ export const MP = { path: '/mp', port: 7777, max: 8, rate: 100, nameMax: 20, cha
 /** What players may pass to each other through 'cast' (everyone else in the room) and 'to' (one player). */
 const RELAY = new Set(['foes', 'bolt', 'fhit', 'kill', 'hurt']);
 /** Protocol version: a client with another one is refused (the game shows why). */
-export const PROTOCOL = 5;
+export const PROTOCOL = 7;
 
 const clean = (s, n) => String(s ?? '').replace(/[\u0000-\u001f<>]/g, '').trim().slice(0, n);
 const num = (v) => (typeof v === 'number' && Number.isFinite(v) ? v : 0);
@@ -226,7 +226,7 @@ export function createMp(log = (m) => console.log('[mp] ' + m), opts = {}) {
         send(ws, { t: 'wset', ch, from: me.id, seq: m.seq });
         const accepted = ch.filter((c) => !c[3]);
         if (accepted.length) all(room, { t: 'wset', ch: accepted, from: me.id, seq: m.seq }, me.id);
-      } else if (m.t === 'wlock' && worldKey(m.f, m.k) && m.f === 'containers') {
+      } else if (m.t === 'wlock' && worldKey(m.f, m.k) && ['containers', 'towns'].includes(m.f)) {
         const key = m.f + ':' + m.k, holder = room.locks.get(key);
         const ok = !holder || holder === me.id;
         if (ok) {

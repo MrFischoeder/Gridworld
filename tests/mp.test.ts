@@ -209,6 +209,32 @@ describe('multiplayer server', () => {
     expect(a.got.filter((m) => m.t === 'wset')).toEqual(b.got.filter((m) => m.t === 'wset'));
     a.ws.close(); b.ws.close();
   });
+  it('reserves village stock before simultaneous builds and releases the reservation on disconnect', async () => {
+    const port = await server({ world: 11 });
+    const a = await client(port, { name: 'Builder A' }), b = await client(port, { name: 'Builder B' });
+    await a.wait('welcome'); await b.wait('welcome');
+    const town = { farms: 2, hold: { log: 30, stone: 24, planks: 24, nails: 20 }, settlement: { v: 1, done: { comms: true } } };
+    a.send({ t: 'wlock', f: 'towns', k: '5', req: 1, value: town });
+    b.send({ t: 'wlock', f: 'towns', k: '5', req: 1, value: town });
+    const ra = await a.wait('wlock'), rb = await b.wait('wlock');
+    expect([ra.ok, rb.ok].filter(Boolean)).toHaveLength(1);
+    const winner = ra.ok ? a : b, loser = ra.ok ? b : a;
+    const built = { ...town, hold: {}, settlement: { v: 1, done: { comms: true, warehouse: true } } };
+    loser.send({ t: 'wset', ch: [['towns', '5', built, town]] });
+    expect((await loser.wait('wset', 2)).ch[0]).toEqual(['towns', '5', town, true]);
+    winner.send({ t: 'wunlock', f: 'towns', k: '5', value: built });
+    expect((await loser.wait('wset', 3)).ch[0]).toEqual(['towns', '5', built]);
+    loser.send({ t: 'wlock', f: 'towns', k: '5', req: 2, value: town });
+    expect((await loser.wait('wlock', 2)).ok).toBe(true);
+    // Refresh precedes the grant; this second builder sees completed work and no materials to spend again.
+    expect((await loser.wait('wset', 4)).ch[0]).toEqual(['towns', '5', built]);
+    loser.ws.close(); await winner.wait('leave');
+    winner.send({ t: 'wlock', f: 'towns', k: '5', req: 2 });
+    expect((await winner.wait('wlock', 2)).ok).toBe(true);
+    const newcomer = await client(port, { name: 'Newcomer' });
+    expect((await newcomer.wait('welcome')).wdoc.towns['5']).toEqual(built);
+    winner.ws.close(); newcomer.ws.close();
+  });
   it('shared containers have one editor, reject stale writes, and release locks on disconnect', async () => {
     const port = await server({ world: 11 });
     const a = await client(port, { name: 'A' }), b = await client(port, { name: 'B' });

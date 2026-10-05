@@ -32,6 +32,7 @@ import { updateMountedTurrets } from './world/mountedturrets';
 import { syncTurrets, updateTurrets } from './world/turrets';
 import { updateFires } from './world/cooking';
 import { updatePower } from './world/power';
+import { updateSettlementSites } from './world/settlement';
 import { updateCaravans } from './world/caravans';
 import { updateVillageRaids, updateFallen } from './world/villageraid';
 import { updateIndustry } from './world/industry';
@@ -108,7 +109,8 @@ initTouch();
 initMenu({
   newWorld(seed) {
     const c = G.char;
-    Object.assign(c, { world: seed, loc: 'overworld', ow: null, dungeon: null, discovered: {}, opened: {}, unlocked: {}, killed: {} });
+    try { localStorage.setItem('gridWorld.world.backup.' + c.world, JSON.stringify(c)); } catch { /* unavailable */ }
+    Object.assign(c, { settlementRules: 1, settlementRewards: [], towns: {}, market: {}, boards: {}, board: { seq: 0, offers: [] }, quests: [], world: seed, loc: 'overworld', ow: null, dungeon: null, discovered: {}, opened: {}, unlocked: {}, killed: {} });
     saveChar(); loadOverworld({ kind: 'new' });
   },
   freshStart() { loadOverworld({ kind: 'new' }); },
@@ -143,7 +145,7 @@ function frame(now: number) {
   if (outdoors) updateWorldGates(dt);
   refreshGateConsole();
   // the clock runs whenever the game is not paused in the menu
-  if (G.playing && !gateTravelPending()) { G.char.time += dt * MIN_PER_SEC; updateSurvival(dt); updateFlora(dt); updateFires(dt, time); updatePower(dt); updateHouseDoors(dt); updateWallGuns(dt); updateWorks(dt); updateStations(dt); updateChariot(dt); updateCaravans(dt); updateVillageRaids(dt); updateFallen(dt); updateIndustry(dt); updateFarms(dt); updateInstalls(dt); updateCities(dt); updateToxic(dt); updateGuide(dt); updateBridges(dt); updatePiers(dt); updateContracts(dt); if ((benchT -= dt) <= 0) { benchT = 1; syncBenches(); syncFlags(); syncBases(); syncTurrets(); } }
+  if (G.playing && !gateTravelPending()) { G.char.time += dt * MIN_PER_SEC; updateSurvival(dt); updateFlora(dt); updateFires(dt, time); updatePower(dt); updateSettlementSites(dt); updateHouseDoors(dt); updateWallGuns(dt); updateWorks(dt); updateStations(dt); updateChariot(dt); updateCaravans(dt); updateVillageRaids(dt); updateFallen(dt); updateIndustry(dt); updateFarms(dt); updateInstalls(dt); updateCities(dt); updateToxic(dt); updateGuide(dt); updateBridges(dt); updatePiers(dt); updateContracts(dt); if ((benchT -= dt) <= 0) { benchT = 1; syncBenches(); syncFlags(); syncBases(); syncTurrets(); } }
   updateCompass(dt); // hides itself while paused
   const clock = fmtClock(G.char.time) + (G.char.loc === 'overworld' && seen.kind !== 'clear' ? ' · ' + WEATHER_NAME[seen.kind] : '');
   if (el.clock.textContent !== clock) el.clock.textContent = clock;

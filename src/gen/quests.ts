@@ -9,7 +9,7 @@ import { NPC_INFO, type NpcRole } from '../data/npcs';
 import { ITEMS, type ItemKey } from '../data/items';
 import { VEHICLES } from '../data/vehicles';
 
-export type QuestKind = 'bounty' | 'hunt' | 'fetch' | 'camp';
+export type QuestKind = 'bounty' | 'hunt' | 'fetch' | 'camp' | 'resource';
 export type QuestState = 'offer' | 'talk' | 'active' | 'ready' | 'done';
 export interface QuestPlace { type: 'ruin' | 'wreck' | 'camp'; ruinId?: number; campId?: number; vehicleId?: string; x: number; z: number; name: string }
 export interface Quest {
@@ -147,4 +147,15 @@ export function generateQuest(t: Terrain, n: number, taken: ItemKey[] = [], T: Q
   else if (roll < 0.75) { q = camp(t, id, R, T); if (q && camps.includes(q.place!.campId!)) q = null; } // one notice per camp
   q ??= bounty(id, R, T);
   return T.home ? q : { ...q, town: T.id, townName: T.name };
+}
+
+/** Modest new-settlement side jobs: local material deliveries or a couple of ordinary enemies. */
+export function basicQuest(world: number, seq: number, town: QuestTown): Quest {
+  const h = hash(world, town.id, seq + 0x5e78), base = { id: `basic:${town.id}:${seq}`, state: 'offer' as const, town: town.id, townName: town.name, reward: { gold: 25, xp: 15 } };
+  if (seq % 2 === 0) {
+    const item = h % 2 ? 'log' : 'stone', count = h % 2 ? 2 : 3;
+    return { ...base, kind: 'resource', item, count, title: `Supplies: ${count} ${ITEMS[item].name}`, text: `Bring ${count} ${ITEMS[item].name} in your backpack to this board. These small jobs support the elder's main village tutorial.` };
+  }
+  const target = (['ravager', 'bramble', 'bandit'] as const)[h % 3];
+  return { ...base, kind: 'bounty', target, count: 2, progress: 0, title: `Bounty: 2 ${plural(target, 2)}`, text: `Kill two ${plural(target, 2)} and claim the reward here. The elder has our main development objectives.` };
 }

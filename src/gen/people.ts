@@ -4,6 +4,7 @@
 // it back. Only one anchor is saved per village (`TownState.people`), so nothing needs stepping: the count at any
 // time is worked out from the anchor, like the storehouse. Workers are a share of the people; the industry site's
 // output scales with how many there are against the base (`staffing`, 1 at the base).
+import { progressive, SETTLEMENT_START, housingCapacity } from './settlement';
 import { hash } from '../core/rng';
 import type { TownState } from './town';
 
@@ -21,11 +22,11 @@ export const PEOPLE = {
 };
 export const basePeople = (seed: number, home: boolean) => (home ? PEOPLE.home : PEOPLE.min + (hash(seed, 0x9e0) % (PEOPLE.span + 1)));
 /** What the village's food supports: the base plus what its farms feed (gen/farms.ts `farmPeople`, repeated here to keep the imports one way). */
-export const peopleTarget = (seed: number, home: boolean, s: TownState | undefined) => basePeople(seed, home) + (s?.farms ?? 0) * Math.round(15 * (0.7 + (hash(seed, 0xf42) % 61) / 100));
+export const peopleTarget = (seed: number, home: boolean, s: TownState | undefined) => progressive(s) ? Math.min(housingCapacity(s), SETTLEMENT_START + (s?.farms ?? 0) * Math.round(15 * (0.7 + (hash(seed, 0xf42) % 61) / 100))) : basePeople(seed, home) + (s?.farms ?? 0) * Math.round(15 * (0.7 + (hash(seed, 0xf42) % 61) / 100));
 /** People living there at game time `now` (a fraction: shown rounded). */
 export function peopleAt(seed: number, home: boolean, s: TownState | undefined, now: number): number {
   const a = s?.people, target = a?.tg ?? peopleTarget(seed, home, s);
-  if (!a) return target;
+  if (!a) return progressive(s) ? SETTLEMENT_START + (target - SETTLEMENT_START) * (1 - Math.exp(-Math.max(0, now) / PEOPLE.tau)) : target;
   return target - (target - a.n) * Math.exp(-Math.max(0, now - a.t) / PEOPLE.tau);
 }
 /** Sets the count now to `n` (a loss or a gain), re-anchoring the curve. */

@@ -30,7 +30,7 @@ import { peopleAt, targetNow, workersAt, staffing } from '../gen/people';
 import { farmsOf, upgradedOf } from '../gen/farms';
 import { TECHS, techSites, CARRIER_NAME, dirWord } from '../gen/tech';
 import { Terrain } from '../gen/terrain';
-import { holdVol, HALL } from '../gen/hall';
+import { holdVol, hallSpec } from '../gen/hall';
 import { installSites, installDone, INSTALL_STAGES, workOf } from '../gen/installs';
 import { oldReactor, fuelOrder, chipBuyer, chipOrder, cellBuyer, cellOrder } from '../gen/contracts';
 import { OW } from '../world/overworld';
@@ -63,7 +63,7 @@ function villagePage(poi: Poi, vm: VillageMap): string {
   if (ind === 'farm') s += row('Fields', `${fert > 1.15 ? 'rich' : fert < 0.85 ? 'poor' : 'fair'} (×${fert.toFixed(2)})`);
   s += row(spec.site, `${bar(cond / 100)} ${Math.round(cond)}% · output ${Math.round(prod * 100)}%`);
   s += row('Own goods in the hall', `${bar(so.n / so.cap)} ${Math.floor(so.n)}/${so.cap} crates` + (so.full ? ' · FULL, the work stops' : ''));
-  { const hv = holdVol(st); if (hv) s += row('Stored in the hall', `${Math.round(hv)} / ${HALL.vol} L`); }
+  { const hv = holdVol(st); if (hv) s += row('Stored in the hall', `${Math.round(hv)} / ${hallSpec(st).vol} L`); }
   { const im = IMPROVE_KINDS.filter((k) => hasImprove(st, k)); if (im.length) s += row('Improvements', im.map((k) => IMPROVE[k].name).join(', ')); }
   s += h('WORKS');
   const plants = plantsOf(st);

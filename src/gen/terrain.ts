@@ -3,7 +3,7 @@ import { gatesNear, GATE_CLEAR, GATE_BLEND, type WorldGate } from './worldgates'
 import { megalithsIn, MEGALITH_BLEND, type Megalith } from './megaliths';
 import { fbm } from '../core/noise';
 import { hash } from '../core/rng';
-import { regionClimate, regionOf, poisNear, CHUNK, WORLD_W, POLAR_Z, type Poi, type Rect } from './regions';
+import { regionClimate, regionOf, poisNear, CHUNK, WORLD_W, POLAR_Z, nearX, type Poi, type Rect } from './regions';
 import { regionRoads, nearestOnRoad, roadBounds, type Road } from './roads';
 import { lakesIn, lakeBed, shoreR, type Lake, type WaterHere } from './water';
 import { claimFlatten, claimDist, CLEAR_R, type Claim } from './claims';
@@ -11,6 +11,7 @@ import { regionTrails, trailHeight } from './trails';
 import { seaMask, SEA } from './seas';
 import { naturalHeight } from './heights';
 import { riverSegsIn, riverNear, riverCarve, type RiverSeg } from './rivers';
+import { depositDepth } from './resource-sites';
 
 export const STEP = 2, CELLS = CHUNK / STEP, VERTS = CELLS + 1;
 export const MAX_H = 25;
@@ -19,7 +20,7 @@ const smooth = (t: number) => t * t * (3 - 2 * t);
 export const rectDist = (r: Rect, x: number, z: number) => Math.hypot(Math.max(r.x0 - x, 0, x - r.x1), Math.max(r.z0 - z, 0, z - r.z1));
 export const inRect = (r: Rect, x: number, z: number) => x >= r.x0 && x < r.x1 && z >= r.z0 && z < r.z1;
 
-export interface Pad { poi: Poi; y: number }
+export interface Pad { poi: Poi; y: number; surface?: boolean; depression?: boolean }
 export interface Features { pads: Pad[]; roads: Road[]; lakes: Lake[]; claims: Claim[]; rivers: RiverSeg[]; gates: WorldGate[]; megaliths: Megalith[] }
 
 const ROAD_BLEND = 5;
@@ -36,6 +37,9 @@ export class Terrain {
   private padCache = new Map<number, number>();
   /** Land claimed by players (flagpoles): levelled ground. Player changes, handed in by the runtime. */
   private claims: Claim[] = [];
+  private settlementPads: Pad[] = [];
+  /** Reserved construction plots of new settlements; the rules come from runtime, not saved geometry. */
+  setSettlementPads(pads: Pad[]) { this.settlementPads = pads; this.feat.clear(); this.lat.clear(); }
   constructor(public world: number, public readonly includeMegaliths = true) { this.s2 = hash(world, 0x7e12) * 7919; }
 
   /** Natural terrain before any flattening (gen/heights.ts). */
@@ -58,6 +62,11 @@ export class Terrain {
     const pads = poisNear(this.world, cx, cz, half + 80)
       .filter((p) => rectDist(p.rect, cx, cz) <= half * 1.42 + p.flat + p.blend)
       .map((poi) => ({ poi, y: this.padY(poi) }));
+    for (const p of this.settlementPads) {
+      const dx = nearX((p.poi.rect.x0 + p.poi.rect.x1) / 2, cx) - (p.poi.rect.x0 + p.poi.rect.x1) / 2;
+      const rect = { ...p.poi.rect, x0: p.poi.rect.x0 + dx, x1: p.poi.rect.x1 + dx };
+      if (rectDist(rect, cx, cz) <= half * 1.42 + p.poi.flat + p.poi.blend) pads.push({ ...p, poi: { ...p.poi, rect } });
+    }
     const roads: Road[] = [], seen = new Set<string>();
     const near = (b: Rect, m: number) => b.x1 + m >= r.x0 && b.x0 - m <= r.x1 && b.z1 + m >= r.z0 && b.z0 - m <= r.z1;
     // a road between villages runs for kilometres and passes through many regions: take it once, and only the
@@ -111,6 +120,7 @@ export class Terrain {
     }
     if (td < thalf + TRAIL_BLEND) { const w = td <= thalf ? 1 : 1 - smooth((td - thalf) / TRAIL_BLEND); h = w >= 1 ? th : h + (th - h) * w; }
     for (const p of f.pads) {
+      if (p.surface) continue;
       const d = rectDist(p.poi.rect, x, z);
       if (d <= p.poi.flat) h = p.y;
       else if (d < p.poi.flat + p.poi.blend) h += (p.y - h) * (1 - smooth((d - p.poi.flat) / p.poi.blend));
@@ -128,6 +138,13 @@ export class Terrain {
       const d = Math.hypot(x - m.x, z - m.z);
       if (d <= m.radius) h = m.y;
       else if (d < m.radius + MEGALITH_BLEND) h += (m.y - h) * (1 - smooth((d - m.radius) / MEGALITH_BLEND));
+    }
+    // Reserved extraction yards stay dry and retain their visible ground, including walkable ore bowls.
+    for (const p of f.pads) if (p.surface) {
+      const d = rectDist(p.poi.rect, x, z);
+      if (d >= p.poi.flat + p.poi.blend) continue;
+      const r = p.poi.rect, y = p.y - (p.depression ? depositDepth(x - (r.x0 + r.x1) / 2, z - (r.z0 + r.z1) / 2) : 0);
+      h = d <= p.poi.flat ? y : h + (y - h) * (1 - smooth((d - p.poi.flat) / p.poi.blend));
     }
     return h;
   }

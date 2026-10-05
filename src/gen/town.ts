@@ -11,6 +11,7 @@ import type { PlantState, PlantKind } from './plants';
 import type { StationState, StationKind } from './energy';
 
 export interface TownState {
+  settlement?: import('./settlement').SettlementState;
   /** The wall's tier (0 = the stake fence every village starts with). */
   wall?: number;
   /** Materials handed over towards the next tier. */
@@ -135,6 +136,7 @@ export const lastFix = (seed: number, s: TownState | undefined) => s?.fixed ?? -
 export const PATCHED = 60;
 /** The plant's condition (0..100) at game time `now`. */
 export function powerCondition(seed: number, s: TownState | undefined, now: number, raidHurt = 0): number {
+  if (s?.settlement?.v === 1 && !s.settlement.done?.power) return 0;
   const k = powerKind(seed), age = Math.max(0, now - lastFix(seed, s)) / DAY;
   return Math.max(0, Math.min(100, Math.max(PATCHED, 100 - age * POWER[k].wear) - (s?.hurt ?? 0) - raidHurt));
 }

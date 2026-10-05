@@ -1,3 +1,9 @@
+import { withTownStock } from './stock';
+import { online } from '../net/client';
+import { settleOwn, anchorNew } from '../gen/hall';
+import { developmentHTML, developmentClick } from './settlement';
+import { settlementConsoleClick } from '../world/settlement';
+import { progressive, development, smithAllows } from '../gen/settlement';
 import { gateConsoleClick } from './worldgates';
 // Conversations and shops. New options (quests) plug in through OPT_TEXT and the switch below.
 import { villageKw } from '../gen/improve';
@@ -23,7 +29,6 @@ import { nextRaid, lastRaid, raidSource, raidOutcome } from '../gen/raids';
 import { storeOf } from '../world/industry';
 import { unlockMine } from '../world/housedoors';
 import { shuttleClick } from './shuttle';
-import { TECH_BY_ID } from '../gen/tech';
 import { installClick } from './install';
 import { bridgeClick } from './bridge';
 import { pierClick } from './pier';
@@ -84,7 +89,8 @@ function renderTalk(text: string) {
   panel().classList.remove('wide');
   panel().innerHTML = dlgHead() + `<div class="say">${text}</div>` +
     (townId() !== null ? questOptions(W.talkNpc!.role, townId()!) : []).map((q) => `<button class="opt" data-q="${q.id}" style="color:var(--gold)">${q.label}</button>`).join('') +
-    info.opts.filter((o) => (o !== 'house' || houseForSale()) && (o !== 'craft' || CRAFTING_OPEN)).map((o) => `<button class="opt" data-o="${o}">${OPT_TEXT[o]}</button>`).join('');
+    (W.talkNpc!.role === 'elder' && progressive(G.char.towns[townId()!]) ? '<button class="opt" data-o="development">Village development — next tutorial objective</button>' : '') +
+    info.opts.filter((o) => (o !== 'house' || houseForSale()) && (o !== 'craft' || CRAFTING_OPEN) && (!progressive(G.char.towns[townId()!]) || W.talkNpc!.role !== 'elder' || ['lore', 'bye'].includes(o) || (development(G.char.towns[townId()!]) >= 5 && o !== 'work'))).map((o) => `<button class="opt" data-o="${o}">${OPT_TEXT[o]}</button>`).join('');
 }
 /** The elder sells the empty house (Gridholm's, for now) until it is yours. */
 const houseForSale = () => { const v = loadedVillage(town()); return !!v?.vm.home && !G.char.houses.includes(v.id); };
@@ -133,7 +139,7 @@ function renderSell(msg?: string) {
 function renderShop(msg?: string) {
   if (W.talkNpc!.role === 'dealer') { renderVehicleShop(msg); return; }
   if (W.talkNpc!.role === 'grocer') { panel().innerHTML = foodHTML(dlgHead(), loadedVillage(town())?.id ?? null, msg); return; }
-  const stock = stockFor(W.talkNpc!.role, G.char.world);
+  const stock = stockFor(W.talkNpc!.role, G.char.world).filter(([k]) => W.talkNpc!.role !== 'blacksmith' || smithAllows(G.char.towns[townId()!], k));
   panel().innerHTML = dlgHead() + `<div class="say">Your gold: <b>${G.char.gold}</b>${msg ? '<br>' + msg : ''}</div>` +
     stock.map(([k, p]) => `<div class="shoprow"><div>${itemName(k)}<br><span>${ITEMS[k].desc}</span></div>
       <button class="buy" data-k="${k}" data-p="${p}" ${G.char.gold < p ? 'disabled' : ''}>${p} g</button></div>`).join('') +
@@ -170,9 +176,9 @@ function renderFortify(msg?: string) {
   // the village's industry, and (refinery towns) the commission to build the refinery
   const ind = poi ? industryOf(c.world, poi, v.vm.seed) : 'farm', spec = INDUSTRY[ind], bp = buildPlan(ind, st), sc = poi ? Math.round(siteCondition(c.world, poi, st, c.time)) : 100;
   const trade = poi ? profileOf(c.world, poi, v.vm.seed).makes.map((g) => ITEMS[g].name).join(' and ') : '';
-  const work = bp ? `Oil comes up not far from here, and we mean to put up a <b>refinery</b> that turns crude into fuel. Help us build it and the village will pay you <b>${REFINERY_PAY} gold</b>.`
+  const work = bp && progressive(st) ? `This marked site has no functioning ${spec.site.toLowerCase()} yet. Store the materials to build it.` : bp ? `Oil comes up not far from here, and we mean to put up a <b>refinery</b> that turns crude into fuel. Help us build it and the village will pay you <b>${REFINERY_PAY} gold</b>.`
     : `We are a ${spec.name.toLowerCase()}: our ${spec.site.toLowerCase()} ${spec.site.endsWith('s') ? 'give' : 'gives'} us ${trade}` + (sc < 90 ? `, but the raids have damaged ${spec.site.endsWith('s') ? 'them' : 'it'} (${sc}%): mend ${spec.site.endsWith('s') ? 'them' : 'it'} with ${spec.fix.map(([i, n]) => `${n} ${ITEMS[i].name}`).join(', ')} and we will pay you.` : '.');
-  const brows = bp ? bp.rows.map((r) => `<div class="shoprow"><div>${itemName(r.k)}<br><span>${r.given} / ${r.n} for the refinery${hallNote(hh(r.k), r.given, r.n)}</span></div></div>`).join('') : '';
+  const brows = bp ? bp.rows.map((r) => `<div class="shoprow"><div>${itemName(r.k)}<br><span>${r.given} / ${r.n} for the ${spec.site.toLowerCase()}${hallNote(hh(r.k), r.given, r.n)}</span></div></div>`).join('') : '';
   const canBuild = !!bp && bp.rows.some((r) => r.given < r.n && hh(r.k) > 0);
   const rows = plan ? plan.rows.map((r) => {
     const have = hh(r.k), left = r.n - r.given;
@@ -184,7 +190,7 @@ function renderFortify(msg?: string) {
       : `Our wall is a <b>${wall.name}</b>, as strong as we can make it. Thank you.`) + `<br><br>${power}<br><br>${raids}<br><br>${work}<br><br>${store}<br><br>${defenceText(v.id, v.vm, st)}</div>` +
     (pt ? `<button class="opt" data-tribute="pay" ${c.gold < pt.amount ? 'disabled' : ''} style="color:var(--gold)">Pay the bandits their ${pt.amount} gold</button>` : '') + rows +
     (plan ? `<button class="opt" data-fort="give" ${canGive ? '' : 'disabled'}>Build from the village hall's stock (the wall)</button>` : '') + brows +
-    (bp ? `<button class="opt" data-rbuild="give" ${canBuild ? '' : 'disabled'}>Build from the village hall's stock (the refinery)</button>` : '') +
+    (bp ? `<button class="opt" data-rbuild="give" ${canBuild ? '' : 'disabled'}>Build from the village hall's stock (the ${spec.site.toLowerCase()})</button>` : '') +
     defenceRows(v.vm, st) +
     `<button class="opt" data-o="back">${OPT_TEXT.back}</button>`;
 }
@@ -216,7 +222,7 @@ function worksRows(st: TownState | undefined): string {
     const can = plan.rows.some((r) => r.given < r.n && hh(r.k) > 0) || (plan.done && c.gold >= plan.fee);
     return rows + `<button class="opt" data-pgive="1" ${can ? '' : 'disabled'}>${plan.done ? `Pay the builders ${plan.fee} gold` : `Build from the village hall's stock (${name.toLowerCase()})`}</button>`;
   }
-  const btn = (k: PlantKind | StationKind) => { const sp = specOf(k), no = plantProblem(st, k, c.tech); if (no) return `<button class="opt" disabled>${sp.name}, ${isStation(k) ? STATIONS[k].kw + ' kW' : `draws ${DRAW[k]} kW`}: needs the old plans for ${TECH_BY_ID[sp.tech!].name}</button>`; return `<button class="opt" data-pnew="${k}">Build ${aN(sp.name)} ${sp.name}: ${sp.blurb}${isStation(k) ? `, ${STATIONS[k].kw} kW` : `, draws ${DRAW[k]} kW`} (${sp.needs.map(([i, n]) => `${n} ${ITEMS[i].name}`).join(', ')}; ${sp.fee} gold)</button>`; };
+  const btn = (k: PlantKind | StationKind) => { const sp = specOf(k), no = plantProblem(st, k, c.tech); if (no) return `<button class="opt" disabled>${sp.name}, ${isStation(k) ? STATIONS[k].kw + ' kW' : `draws ${DRAW[k]} kW`}: ${no}</button>`; return `<button class="opt" data-pnew="${k}">Build ${aN(sp.name)} ${sp.name}: ${sp.blurb}${isStation(k) ? `, ${STATIONS[k].kw} kW` : `, draws ${DRAW[k]} kW`} (${sp.needs.map(([i, n]) => `${n} ${ITEMS[i].name}`).join(', ')}; ${sp.fee} gold)</button>`; };
   const st1 = STATION_KINDS.filter((k) => !plantProblem(st, k)), pl = PLANT_KINDS.filter((k) => !plantProblem(st, k));
   const plain = pl.filter((k) => !PLANTS[k].tech), plans = pl.filter((k) => PLANTS[k].tech);
   return (st1.length ? `<div class="say" style="margin:8px 0 0">Power stations</div>${st1.map(btn).join('')}` : '') +
@@ -310,13 +316,15 @@ function giveRefinery() {
   const v = loadedVillage(town()), c = G.char, poi = v && findPoi(c.world, v.id);
   if (!v || !poi) return;
   const st = (c.towns[v.id] ??= {}), k = industryOf(c.world, poi, v.vm.seed);
+  settleOwn(c.world, poi, v.vm.seed, st, c.time);
   const { taken, built } = handOverBuild(k, st, stockHas(v.id));
   stockTake(v.id, taken);
-  if (!built) { saveChar(); renderFortify(taken.length ? 'Handed over: ' + taken.map(([i, n]) => `${ITEMS[i].name} ×${n}`).join(', ') + '.' : 'The village hall has nothing more of what the refinery needs: store the materials at its terminal.'); return; }
+  if (!built) { saveChar(); renderFortify(taken.length ? 'Handed over: ' + taken.map(([i, n]) => `${ITEMS[i].name} ×${n}`).join(', ') + '.' : 'The village hall has no more of the required materials: store them at its terminal.'); return; }
+  anchorNew(c.world, poi, v.vm.seed, st, c.time);
   c.gold += REFINERY_PAY; earnTrust(v.id, 'refinery'); gainXp(300); calcStats(); saveChar();
   closeDialog(); reloadStruct(v.id);
-  showToast(`${v.vm.name} has a refinery`);
-  logLine(`The columns go up, the flare is lit: ${v.vm.name} refines crude into fuel now. They pay you ${REFINERY_PAY} gold.`);
+  showToast(`${v.vm.name} has a ${INDUSTRY[k].site.toLowerCase()}`);
+  logLine(`${v.vm.name}'s ${INDUSTRY[k].site.toLowerCase()} is built. They pay you ${REFINERY_PAY} gold.`);
 }
 function giveFortify() {
   const v = loadedVillage(town()), c = G.char;
@@ -331,7 +339,29 @@ function giveFortify() {
   showToast(`${v.vm.name} raises a ${WALL_TIERS[plan.to].name}`);
   logLine(`The villagers work through the night and the new wall stands. They pay you ${plan.gold} gold.`);
 }
-dlgEl.addEventListener('click', (e) => {
+let economicPending = false, economicDispatch = false;
+dlgEl.addEventListener('click', async (e) => {
+  const target = e.target as HTMLElement;
+  const mutation = target.closest('[data-devkit], [data-devsupplies], [data-devbuild], [data-devgps], [data-hin], [data-hout], [data-hall], [data-hvehicle], [data-farm], [data-crop], [data-make], [data-fort], [data-rbuild], [data-work], [data-pnew], [data-pgive], [data-plantup], [data-imp], [data-share], [data-rare], [data-food], .buy');
+  if (online() && mutation && !economicDispatch) {
+    if (economicPending) return;
+    const dev = target.closest<HTMLElement>('[data-devkit], [data-devsupplies], [data-devbuild], [data-devgps]');
+    const warehouse = target.closest<HTMLElement>('[data-stock-town]');
+    const id = dev ? +(dev.dataset.devvid ?? dev.dataset.devkit ?? dev.dataset.devsupplies ?? dev.dataset.devgps!) : warehouse ? +warehouse.dataset.stockTown! : townId();
+    if (id !== null && Number.isFinite(id)) {
+      economicPending = true;
+      try { await withTownStock(id, () => {
+        if (!target.isConnected || !G.dlgOpen) return;
+        economicDispatch = true;
+        try { target.click(); } finally { economicDispatch = false; }
+      }); } finally { economicPending = false; }
+      return;
+    }
+  }
+
+  if (settlementConsoleClick(e.target as HTMLElement)) return;
+  const dm = developmentClick(e.target as HTMLElement, townId());
+  if (dm !== null) { panel().innerHTML = developmentHTML(townId()!, dlgHead(), dm); return; }
   if (craftClick(e.target as HTMLElement) || buildClick(e.target as HTMLElement)) return;
   if (gateConsoleClick(e.target as HTMLElement) || caravanClick(e.target as HTMLElement) || shuttleClick(e.target as HTMLElement) || installClick(e.target as HTMLElement) || bridgeClick(e.target as HTMLElement) || pierClick(e.target as HTMLElement) || hallClick(e.target as HTMLElement) || worksClick(e.target as HTMLElement) || stationClick(e.target as HTMLElement) || terminalClick(e.target as HTMLElement) || logbookClick(e.target as HTMLElement)) return;
   const pm = plantUpClick(town(), e.target as HTMLElement);
@@ -369,6 +399,7 @@ dlgEl.addEventListener('click', (e) => {
   }
   if (b) {
     const k = b.dataset.k as keyof typeof ITEMS, p = +b.dataset.p!;
+    if (W.talkNpc!.role === 'blacksmith' && !smithAllows(c.towns[townId()!], k)) return renderShop('The forge needs more village development.');
     if (c.gold < p) return renderShop('Not enough gold.');
     if (!addItem(k)) return renderShop(HANDS_ONLY.has(k) ? 'You carry that in your hands, and they are full: put what you hold away first.' : 'No room in your backpack (slots or bulk).');
     c.gold -= p; calcStats(); saveChar(); return renderShop('Bought: ' + ITEMS[k].name + '.');
@@ -392,7 +423,8 @@ dlgEl.addEventListener('click', (e) => {
   if (qb) { const id = townId(); renderTalk((id !== null && questTalk(qb.dataset.q!, id)) || 'Hm?'); return; }
   if (!o) return;
   const r = W.talkNpc!.role;
-  switch (o.dataset.o as OptId | 'back') {
+  switch (o.dataset.o as OptId | 'back' | 'development') {
+    case 'development': { const id = townId(); if (id !== null) panel().innerHTML = developmentHTML(id, dlgHead()); break; }
     case 'bye': closeDialog(); break;
     case 'back': renderTalk('Anything else?'); break;
     case 'shop': renderShop(); break;

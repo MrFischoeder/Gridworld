@@ -71,5 +71,5 @@ describe('notice board quests', () => {
       expect(generateQuest(t, 0, [], town)).not.toEqual(generateQuest(t, 0));
     }
     expect(kinds.size).toBeGreaterThan(2);
-  });
+  }, 300000); // Cold surveys generate roads, rivers and sites across multiple worlds.
 });

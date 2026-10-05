@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { CITY, citySites, cityLayout, bldsNear, carsNear, inBld, worldToCity } from '../src/gen/cities';
-import { CITY_VAULTS, CITY_VAULT_BASE, cityEntrances, cityEntrance, dungeonSeed } from '../src/gen/citydungeons';
+import { CITY_VAULTS, CITY_VAULT_BASE, cityEntrances, cityEntrance, cityVaultCount, dungeonSeed } from '../src/gen/citydungeons';
 import { findPoi } from '../src/gen/regions';
 import { VoxelGrid } from '../src/core/voxel';
 import { placeTunnelDoors, tryPlaceDoor, setDoorCells } from '../src/gen/doors';
@@ -9,12 +9,14 @@ import { DIRV, hash } from '../src/core/rng';
 import { generateDungeon } from '../src/gen/dungeon';
 
 describe('city underground entrances', () => {
-  it('places four distinct, separated, unobstructed entrances in every city across world layouts', () => {
+  it('places four to six distinct, separated, unobstructed entrances in every city across world layouts', () => {
     for (const world of [12345, 4242, 777]) {
       const ids = new Set<number>();
       for (const city of citySites(world)) {
         const entries = cityEntrances(world, city), L = cityLayout(world, city);
-        expect(entries).toHaveLength(CITY_VAULTS);
+        expect(entries).toHaveLength(cityVaultCount(world, city));
+        expect(entries.length).toBeGreaterThanOrEqual(4); expect(entries.length).toBeLessThanOrEqual(6);
+        for (const e of entries.slice(0,4)) expect(e.id).toBe(CITY_VAULT_BASE+city.i*4+e.n);
         expect(cityEntrances(world, city)).toEqual(entries);
         for (const e of entries) {
           expect(ids.has(e.id)).toBe(false); ids.add(e.id);

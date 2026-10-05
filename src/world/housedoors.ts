@@ -55,6 +55,7 @@ export function setDoors(vid: number, vm: VillageMap) {
   dropDoors(vid);
   const list: Door[] = [];
   for (const b of vm.buildings) {
+    if (b.condition !== undefined && b.condition < 2) continue;
     const kind: Kind = b.mine ? 'mine' : b.role === 'innkeeper' ? 'inn' : b.role === 'house' ? 'house' : 'shop';
     const [ox, oz] = b.out, ux = -oz, uz = ox, w = HOUSE.doorW / 2, t = HOUSE.thick;
     // hinged at the jamb on +u, on the inner face of the wall; shut it runs along -u, open it lies back into the room

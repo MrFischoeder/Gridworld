@@ -1,4 +1,4 @@
-// Seas separating two or three large continents, with seeded coast detail and small offshore islands.
+// Seas separating two or three large continents, with seeded coast detail and offshore islands.
 // Gridholm stays on the home continent; the polar ice buffer remains dry. Pure and deterministic.
 import { fbm } from '../core/noise';
 import { continents, continentDistance } from './continents';
@@ -47,17 +47,19 @@ export const inSea = (world: number, x: number, z: number, margin = 0) =>
   seaMask(world, x, z) > 0.01 || (margin > 0 && [0, 1.57, 3.14, 4.71].some((a) => seaMask(world, x + Math.cos(a) * margin, z + Math.sin(a) * margin) > 0.01));
 
 // ---------- islands ----------
-// Small islands out in the open sea: on a grid of `ISLE.cell` cells round the planet, some cells hold one (a hashed
+// Islands out in the open sea: on a grid of `ISLE.cell` cells round the planet, some cells hold one (a hashed
 // spot, size and height) where the sea is deep enough round it. `naturalHeight` raises the sea bed to them.
 export const ISLE = {
   /** Grid cell (m, adjusted to fit round the planet), the share of cells with an island. */
   cell: 1600, chance: 0.35,
   /** The dry island's radius (m) and top above the sea (m). */
-  r: [60, 220] as [number, number], top: [3, 11] as [number, number],
+  r: [240, 700] as [number, number], top: [6, 18] as [number, number],
   /** The sea mask wanted at the middle (open water, the coast out of sight). */
   mask: 0.6,
   /** The island's foot reaches this many times its dry radius under water. */
   foot: 1.7,
+  /** Maximum lobed radius relative to r; include it when finding nearby footprints. */
+  edgeMax: 1.22,
 };
 export interface Isle { i: number; j: number; x: number; z: number; r: number; top: number; ph: number }
 let isleGrid: [number, number] | null = null;
@@ -82,12 +84,15 @@ export function isleOf(world: number, i: number, j: number): Isle | null {
 }
 /** The islands whose foot may reach (x, z) (their x on the copy of the planet near x). */
 export function islesNear(world: number, x: number, z: number, m = 0): Isle[] {
-  const [c, n] = IG(), fi = Math.floor((wrapX(x) - X_MIN) / c), fj = Math.floor(z / c), out: Isle[] = [];
-  for (let di = -1; di <= 1; di++) for (let dj = -1; dj <= 1; dj++) {
-    const s = isleOf(world, ((fi + di) % n + n) % n, fj + dj);
+  const [c, n] = IG(), wx = wrapX(x), out: Isle[] = [];
+  const reach = ISLE.r[1] * ISLE.foot * ISLE.edgeMax + m;
+  const ax = Math.floor((wx - reach - X_MIN) / c), bx = Math.floor((wx + reach - X_MIN) / c);
+  const az = Math.floor((z - reach) / c), bz = Math.floor((z + reach) / c);
+  for (let i = ax; i <= bx; i++) for (let j = az; j <= bz; j++) {
+    const s = isleOf(world, ((i % n) + n) % n, j);
     if (!s) continue;
     const sx = x + wrapDx(s.x - x);
-    if (Math.hypot(sx - x, s.z - z) < s.r * ISLE.foot + m) out.push(sx === s.x ? s : { ...s, x: sx });
+    if (Math.hypot(sx - x, s.z - z) < s.r * ISLE.foot * ISLE.edgeMax + m) out.push(sx === s.x ? s : { ...s, x: sx });
   }
   return out;
 }
