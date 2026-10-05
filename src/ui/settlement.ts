@@ -3,7 +3,7 @@ import { addItem, gainXp, saveChar, calcStats } from '../character';
 import { PROJECTS, projectPlan, projectProblem, projectDone, buildProject, tutorialStep, commsRuin, progressive, depositsOf, type Project } from '../gen/settlement';
 import { ORES } from '../gen/resource-sites';
 import { findPoi, villageSeed, worldDist, GRIDHOLM_ID } from '../gen/regions';
-import { settleOwn, anchorNew } from '../gen/hall';
+import { settleOwn, anchorNew, hallStands } from '../gen/hall';
 import { peopleAt, setPeople } from '../gen/people';
 import { ITEMS, type ItemKey } from '../data/items';
 import { stockHas, stockTake } from './stock';
@@ -23,7 +23,7 @@ export function developmentHTML(vid: number, head: string, msg = '', atComms = f
   const c = G.char, s = c.towns[vid], step = tutorialStep(s), v = findPoi(c.world, vid);
   if (!step || !v) return head + '<div class="say">This village keeps its established buildings.</div><button class="opt" data-o="back">Back</button>';
   const has = stockHas(vid), ruin = commsRuin(c.world, v);
-  let h = head + `<div class="say">${msg ? msg + '<br><br>' : ''}<b>Village tutorial: ${step.title}</b><br>${step.text}<br><br>Bring materials to our warehouse terminal. Houses are repaired as our food supply and works grow; families arrive gradually.</div>`;
+  let h = head + `<div class="say">${msg ? msg + '<br><br>' : ''}<b>Village tutorial: ${step.title}</b><br>${step.text}<br><br>Bring materials to the village stores${hallStands(s) ? ' at the warehouse terminal' : ': to me, until the warehouse stands'}. Houses are repaired as our food supply and works grow; families arrive gradually.</div>`;
   h += `<button class="opt" data-devkit="${vid}">Receive the elder's starter tools and earned rewards</button>`;
   if (!atComms) {
     const d = depositsOf(s);
@@ -55,14 +55,14 @@ export function developmentClick(t: HTMLElement, vid: number | null, atComms = f
     settlementReward(vid, 'starter-hatchet', 'hatchet'); settlementReward(vid, 'starter-pickaxe', 'pickaxe');
     for (let i = 1; i <= (s.farms ?? 0); i++) settlementReward(vid, `farm-${i}`);
     for (const k of Object.keys(PROJECTS) as Project[]) if (projectDone(s, k)) settlementReward(vid, k, k === 'comms' ? 'tablet' : undefined);
-    msg = 'Starter tools and rewards are issued once per traveller. Anything that did not fit is in the warehouse. Use the hatchet on trees and the pickaxe on rocks; hold E to work.';
+    msg = 'Starter tools and rewards are issued once per traveller. Anything that did not fit is in the village stores. Use the hatchet on trees and the pickaxe on rocks; hold E to work.';
   } else if (button.dataset.devsupplies) {
     const has = stockHas(vid);
     if (has('log') < 4 || has('stone') < 4) return 'Store four logs and four stones first.';
     s.settlement!.supplies = true; settlementReward(vid, 'supplies'); msg = 'Good. Keep these materials in stock and collect enough for the first farm.';
   } else if (button.dataset.devgps) {
     if (!atComms || !projectDone(s, 'comms')) return 'The receiver has not been restored.';
-    msg = settlementReward(vid, 'comms', 'tablet') ? 'Satellite link online. Your GPS tablet is ready (or in the warehouse if your pack was full).' : 'You already received your GPS tablet.';
+    msg = settlementReward(vid, 'comms', 'tablet') ? 'Satellite link online. Your GPS tablet is ready (or in the village stores if your pack was full).' : 'You already received your GPS tablet.';
   } else {
     const k = button.dataset.devbuild as Project;
     if (!(k in PROJECTS)) return 'Unknown project.';
@@ -81,7 +81,7 @@ export function developmentClick(t: HTMLElement, vid: number | null, atComms = f
       if (k === 'comms') reloadStruct(commsRuin(c.world, v)!.id);
       settlementReward(vid, k, k === 'comms' ? 'tablet' : undefined);
       msg = PROJECTS[k].name + ' built. The elder has the next objective.';
-    } else msg = result.taken.length ? 'Materials delivered. The remaining requirements are shown below.' : 'Store the missing materials in the warehouse first.';
+    } else msg = result.taken.length ? 'Materials delivered. The remaining requirements are shown below.' : 'Bring the missing materials to the village stores first.';
   }
   calcStats(); saveChar(); return msg;
 }

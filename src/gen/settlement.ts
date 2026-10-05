@@ -19,7 +19,7 @@ export const progressive = (s: TownState | undefined) => s?.settlement?.v === 1;
 export const projectDone = (s: TownState | undefined, k: Project) => !!s?.settlement?.done?.[k];
 export const SETTLEMENT_START = 8;
 export const PROJECTS: Record<Project, { name: string; needs: [ItemKey, number][]; description: string }> = {
-  warehouse: { name: 'Vehicle warehouse', needs: [['log', 30], ['stone', 24], ['planks', 24], ['nails', 20]], description: 'Build the large warehouse outside the north fence. Drive inside and unload your vehicle at the terminal.' },
+  warehouse: { name: 'Vehicle warehouse', needs: [['log', 30], ['stone', 24], ['planks', 24], ['nails', 20]], description: 'Build the plank warehouse outside the north fence. From then on the village stores are kept there: drive in through its wide doors and unload your vehicle at the terminal.' },
   power: { name: 'Village power plant', needs: [['scrap', 12], ['wire', 8], ['circuit', 2]], description: 'Build electricity on the marked site outside the fence. Farms work by hand until then.' },
   comms: { name: 'Satellite link', needs: [['log', 6], ['stone', 6], ['scrap', 4]], description: 'Restore the receiver in the nearby communications ruin. Use its console to reconnect the satellites and receive a GPS tablet.' },
   quarry: { name: 'Stone quarry', needs: [['log', 16], ['planks', 12], ['scrap', 4]], description: 'Build stone-cutting works beside the large pile of boulders about 100 metres beyond our fence. Every village has its own quarry; it supplies building stone.' },
@@ -100,8 +100,8 @@ export function commsRuin(world: number, v: Poi): Poi | null {
 }
 export function tutorialStep(s: TownState | undefined): { title: string; text: string; project?: Project; farm?: number; supplies?: boolean } | null {
   if (!progressive(s)) return null;
-  if (!s!.settlement!.supplies) return { title: 'Gather and store supplies', text: 'Collect 4 logs and 4 stones. Use the small warehouse terminal outside the north fence, then report to the elder. Ask the elder for starter tools, then hold E at trees and rocks.', supplies: true };
-  if (!(s?.farms ?? 0)) return { title: 'Build the first farm', text: 'Store 8 logs and 6 stones in the warehouse. Ask the elder to build a farm; it feeds new families even without electricity.', farm: 1 };
+  if (!s!.settlement!.supplies) return { title: 'Gather and store supplies', text: 'Collect 4 logs and 4 stones and leave them with the elder: until a warehouse stands, he keeps the village\'s stores. Then report to him. Ask the elder for starter tools, then hold E at trees and rocks.', supplies: true };
+  if (!(s?.farms ?? 0)) return { title: 'Build the first farm', text: 'Bring 8 logs and 6 stones to the village stores. Ask the elder to build a farm; it feeds new families even without electricity.', farm: 1 };
   if (!projectDone(s, 'comms')) return { title: 'Restore satellite communications', text: PROJECTS.comms.description, project: 'comms' };
   if ((s?.farms ?? 0) < 2) return { title: 'Build the second farm', text: 'Extend food production and repair more homes with a second farm.', farm: 2 };
   for (const k of ['warehouse', 'power', 'quarry', 'lumber', 'mine', 'oil', 'refinery'] as Project[]) if (projectAvailable(s, k) && !projectDone(s, k)) return { title: PROJECTS[k].name, text: PROJECTS[k].description, project: k };

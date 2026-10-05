@@ -22,7 +22,7 @@ export function ordersHTML(head: string, vid: number | null, msg = ''): string {
       <button class="buy" data-make="${i}" ${missing ? 'disabled' : ''}>Make</button></div>`;
   }).join('');
   const plans = [...new Set(lost.map((o) => o.tech))].map((t) => TECH_BY_ID[t].name);
-  return head + `<div class="say">${msg ? msg + '<br><br>' : ''}${progressive(st) ? 'Our forge expands as the village grows. ' : ''}${known.some((o) => o.tech) ? 'I take the materials from the village hall: store them at its terminal (outside the north gate) and I will make it. The finer work I know only from the old plans you found.' : 'Simple tools I can make you from wood and stone. The finer work of the old days is lost: find me the old plans (ask around about old machines) and store the materials in the village hall, and I will make what they show.'}</div>` +
+  return head + `<div class="say">${msg ? msg + '<br><br>' : ''}${progressive(st) ? 'Our forge expands as the village grows. ' : ''}${known.some((o) => o.tech) ? 'I take the materials from the village hall: bring them to the village stores and I will make it. The finer work I know only from the old plans you found.' : 'Simple tools I can make you from wood and stone. The finer work of the old days is lost: find me the old plans (ask around about old machines) and store the materials in the village hall, and I will make what they show.'}</div>` +
     rows + (plans.length ? `<div class="say" style="opacity:.75">Still lost: ${plans.join(', ')}.</div>` : '') + `<button class="opt" data-o="back">Back</button>`;
 }
 /** A click on "Make": the message to show, or null when it was not an order button. */
@@ -34,7 +34,7 @@ export function ordersClick(t: HTMLElement, vid: number | null): string | null {
   const st = c.towns[vid];
   if (!smithAllows(st, o.out) || !(knows(o, c.tech) || starterRecipe(st, o.out))) return 'This work needs more village development or its old plans.';
   const has = stockHas(vid);
-  if (!o.needs.every(([k, n]) => has(k) >= n)) return 'The village hall does not have all the materials. Store them at its terminal.';
+  if (!o.needs.every(([k, n]) => has(k) >= n)) return 'The village stores do not have all the materials. Bring them there first.';
   let made = 0;
   for (let i = 0; i < o.n; i++) if (addItem(o.out)) made++; else break;
   if (!made) return c.hands[0] ? 'That one is too big for a backpack: empty your hands first.' : 'You have no room for it in your backpack.';

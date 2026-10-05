@@ -33,7 +33,7 @@ import { installClick } from './install';
 import { bridgeClick } from './bridge';
 import { pierClick } from './pier';
 import { stockHas, stockTake, hallNote } from './stock';
-import { hallClick } from './hall';
+import { hallClick, openStoresHere, storesWithElder } from './hall';
 import { fertility } from '../gen/industry';
 import { PLANTS, PLANT_KINDS, PLANT_SLOTS, plantsOf, plantPlan, plantProblem, startPlant, handOverPlant, isStation, specOf, running, type PlantKind } from '../gen/plants';
 import { STATIONS, fuelWords, STATION_KINDS, STATION_SLOTS, DRAW, balance, fuelAt, type StationKind } from '../gen/energy';
@@ -90,6 +90,7 @@ function renderTalk(text: string) {
   panel().innerHTML = dlgHead() + `<div class="say">${text}</div>` +
     (townId() !== null ? questOptions(W.talkNpc!.role, townId()!) : []).map((q) => `<button class="opt" data-q="${q.id}" style="color:var(--gold)">${q.label}</button>`).join('') +
     (W.talkNpc!.role === 'elder' && progressive(G.char.towns[townId()!]) ? '<button class="opt" data-o="development">Village development — next tutorial objective</button>' : '') +
+    (W.talkNpc!.role === 'elder' && townId() !== null && storesWithElder(townId()!) ? '<button class="opt" data-o="stores">Leave materials with me (the village stores)</button>' : '') +
     info.opts.filter((o) => (o !== 'house' || houseForSale()) && (o !== 'craft' || CRAFTING_OPEN) && (!progressive(G.char.towns[townId()!]) || W.talkNpc!.role !== 'elder' || ['lore', 'bye'].includes(o) || (development(G.char.towns[townId()!]) >= 5 && o !== 'work'))).map((o) => `<button class="opt" data-o="${o}">${OPT_TEXT[o]}</button>`).join('');
 }
 /** The elder sells the empty house (Gridholm's, for now) until it is yours. */
@@ -259,7 +260,7 @@ function giveWorks() {
     saveChar();
     const after = plantPlan(st)!;
     renderWorksPanel((taken.length ? 'Handed over: ' + taken.map(([i, n]) => `${ITEMS[i].name} ×${n}`).join(', ') + '. ' : '') +
-      (after.done ? `All the materials are in. The builders want their ${after.fee} gold${c.gold < after.fee ? ', and you do not have it yet' : ''}.` : taken.length ? '' : 'The village hall has nothing more of what it needs: store the materials at its terminal.'));
+      (after.done ? `All the materials are in. The builders want their ${after.fee} gold${c.gold < after.fee ? ', and you do not have it yet' : ''}.` : taken.length ? '' : 'The village hall has nothing more of what it needs: bring the materials to the village stores.'));
     return;
   }
   gainXp(plan.xp); earnTrust(v.id, 'works'); calcStats(); saveChar();
@@ -297,7 +298,7 @@ function giveWork(k: WorkKind) {
   if (!plan) { renderFortify(); return; }
   const { taken, done } = handOverWork(st, k, stockHas(v.id), workLimit(k, v.vm));
   stockTake(v.id, taken);
-  if (!done) { saveChar(); renderFortify(taken.length ? 'Handed over: ' + taken.map(([i, n]) => `${ITEMS[i].name} ×${n}`).join(', ') + '.' : 'The village hall has nothing more of what that work needs: store the materials at its terminal.'); return; }
+  if (!done) { saveChar(); renderFortify(taken.length ? 'Handed over: ' + taken.map(([i, n]) => `${ITEMS[i].name} ×${n}`).join(', ') + '.' : 'The village hall has nothing more of what that work needs: bring the materials to the village stores.'); return; }
   c.gold += plan.gold; earnTrust(v.id, 'work'); gainXp(plan.xp); calcStats(); saveChar();
   closeDialog(); reloadStruct(v.id);
   showToast(k === 'turret' ? `${v.vm.name}: a turret on the wall` : `${v.vm.name}: ${WORKS[k].name.toLowerCase()}`);
@@ -319,7 +320,7 @@ function giveRefinery() {
   settleOwn(c.world, poi, v.vm.seed, st, c.time);
   const { taken, built } = handOverBuild(k, st, stockHas(v.id));
   stockTake(v.id, taken);
-  if (!built) { saveChar(); renderFortify(taken.length ? 'Handed over: ' + taken.map(([i, n]) => `${ITEMS[i].name} ×${n}`).join(', ') + '.' : 'The village hall has no more of the required materials: store them at its terminal.'); return; }
+  if (!built) { saveChar(); renderFortify(taken.length ? 'Handed over: ' + taken.map(([i, n]) => `${ITEMS[i].name} ×${n}`).join(', ') + '.' : 'The village hall has no more of the required materials: bring them to the village stores.'); return; }
   anchorNew(c.world, poi, v.vm.seed, st, c.time);
   c.gold += REFINERY_PAY; earnTrust(v.id, 'refinery'); gainXp(300); calcStats(); saveChar();
   closeDialog(); reloadStruct(v.id);
@@ -332,7 +333,7 @@ function giveFortify() {
   const st = (c.towns[v.id] ??= {}), plan = fortifyPlan(st)!;
   const { taken, raised } = handOver(st, stockHas(v.id));
   stockTake(v.id, taken);
-  if (!raised) { saveChar(); renderFortify(taken.length ? 'Handed over: ' + taken.map(([k, n]) => `${ITEMS[k].name} ×${n}`).join(', ') + '.' : 'The village hall has nothing more of what the wall needs: store the materials at its terminal.'); return; }
+  if (!raised) { saveChar(); renderFortify(taken.length ? 'Handed over: ' + taken.map(([k, n]) => `${ITEMS[k].name} ×${n}`).join(', ') + '.' : 'The village hall has nothing more of what the wall needs: bring the materials to the village stores.'); return; }
   c.gold += plan.gold; earnTrust(v.id, 'wall'); gainXp(plan.xp); calcStats(); saveChar();
   closeDialog();
   reloadStruct(v.id);
@@ -423,8 +424,9 @@ dlgEl.addEventListener('click', async (e) => {
   if (qb) { const id = townId(); renderTalk((id !== null && questTalk(qb.dataset.q!, id)) || 'Hm?'); return; }
   if (!o) return;
   const r = W.talkNpc!.role;
-  switch (o.dataset.o as OptId | 'back' | 'development') {
+  switch (o.dataset.o as OptId | 'back' | 'development' | 'stores') {
     case 'development': { const id = townId(); if (id !== null) panel().innerHTML = developmentHTML(id, dlgHead()); break; }
+    case 'stores': { const id = townId(); if (id !== null && storesWithElder(id)) openStoresHere(id, dlgHead(), () => renderTalk('Anything else?')); break; }
     case 'bye': closeDialog(); break;
     case 'back': renderTalk('Anything else?'); break;
     case 'shop': renderShop(); break;

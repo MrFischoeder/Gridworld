@@ -52,6 +52,8 @@ export interface WorldHooks {
   water(x: number, z: number): number;
   /** True where a vehicle may not go (places, trees, rocks...). r = clearance radius around the point. */
   blocked(x: number, z: number, r: number): boolean;
+  /** The height the chase camera must stay under at a point (a roof over it), or undefined in the open. */
+  ceiling?(x: number, z: number): number | undefined;
 }
 let hooks: WorldHooks | null = null;
 export const vehicles: Vehicle[] = [];
@@ -618,8 +620,14 @@ export function vehicleCamera(camera: THREE.PerspectiveCamera) {
   }
   const dist = s.length * 0.9 + 4, cy = Math.cos(G.pitch), f = V(-Math.sin(G.yaw) * cy, Math.sin(G.pitch), -Math.cos(G.yaw) * cy);
   const target = V(v.st.x, v.y + s.height * 0.85, v.st.z);
-  const p = target.clone().addScaledVector(f, -dist); p.y += 1.2;
+  // under a roof (parked in the warehouse) the camera comes in closer, so it stays inside, and keeps below the eaves
+  const under = hooks?.ceiling?.(v.st.x, v.st.z);
+  let p = target.clone().addScaledVector(f, -dist);
+  for (let d = dist, i = 0; under !== undefined && hooks!.ceiling!(p.x, p.z) === undefined && i < 10; i++) { d *= 0.82; p = target.clone().addScaledVector(f, -d); }
+  p.y += 1.2;
   if (hooks) p.y = Math.max(p.y, hooks.height(p.x, p.z) + 0.6);
+  const roof = Math.min(hooks?.ceiling?.(p.x, p.z) ?? Infinity, under ?? Infinity);
+  if (roof < Infinity) p.y = Math.min(p.y, roof);
   camera.position.copy(p);
 }
 /**

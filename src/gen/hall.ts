@@ -25,8 +25,17 @@ export const HALL = { x0: 2, x1: 14, z0: -19, z1: -11, h: 4.2, door: 1.6, vol: 6
 /** The terminal inside, against the back wall (plaza-local), and where you stand to use it. */
 export const HALL_TERMINAL = { x: 8, z: -17.9, stand: { x: 8, z: -16.6 } };
 
+/** A new settlement before its warehouse stands: no building, the elder keeps the village's supplies (`vol` litres; the rect is unused). */
 export const SMALL_HALL = { x0: 5, x1: 11, z0: -17, z1: -12, h: 3, door: 1.6, vol: 800 };
-export const VEHICLE_HALL = { x0: 2, x1: 26, z0: -53, z1: -29, h: 6, door: 6, vol: 24000 };
+/** The settlement's warehouse: a plank barn with a wide doorway, so a vehicle drives in and parks by the terminal. */
+export const VEHICLE_HALL = { x0: 2, x1: 26, z0: -53, z1: -29, h: 6, door: 8, vol: 24000 };
+/** Whether the village has a store building: established villages always, a new settlement once its warehouse is built (before that the elder keeps the stores). */
+export const hallStands = (s: TownState | undefined) => !progressive(s) || projectDone(s, 'warehouse');
+/** Items exempt from the materials rule: parts the village's builds use (defence turrets, the works' machinery). */
+const BUILD_PARTS = new Set<ItemKey>(['turretkit', 'engine']);
+/** What the village stores take: materials, raw and processed goods (and the parts its builds use); never personal things
+ *  (weapons, ammunition, medkits and food, tools, clothes, relics, keys): those belong in your own house's chest. */
+export const storable = (k: ItemKey) => { const t = ITEMS[k]?.type; return t === 'mat' || t === 'good' || BUILD_PARTS.has(k); };
 export function hallSpec(s: TownState | undefined) { return progressive(s) ? (projectDone(s, 'warehouse') ? VEHICLE_HALL : SMALL_HALL) : HALL; }
 export function hallTerminal(s: TownState | undefined) {
   const h = hallSpec(s); return { x: (h.x0 + h.x1) / 2, z: h.z0 + 1.1, stand: { x: (h.x0 + h.x1) / 2, z: h.z0 + 2.4 } };
@@ -114,7 +123,7 @@ export function anchorNew(world: number, v: Poi, seed: number, s: TownState, now
 export function unloadCargo(s: TownState, slots: ({ k: ItemKey; n: number } | null)[]): number {
   let total = 0;
   for (let i = 0; i < slots.length; i++) {
-    const a = slots[i]; if (!a || ['weapon', 'relic', 'quest'].includes(ITEMS[a.k].type) || a.k === 'key') continue;
+    const a = slots[i]; if (!a || !storable(a.k)) continue;
     const n = deposit(s, a.k, a.n); a.n -= n; total += n; if (!a.n) slots[i] = null;
   }
   return total;

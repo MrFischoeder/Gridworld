@@ -37,7 +37,7 @@ export function improveClick(town: string, t: HTMLElement): { msg: string; built
   const k = b.dataset.imp as ImproveKind, st = (c.towns[v.id] ??= {}), spec = IMPROVE[k];
   const { taken, built } = handOverImprove(k, st, stockHas(v.id));
   stockTake(v.id, taken);
-  const given = taken.length ? 'Handed over: ' + taken.map(([i, n]) => `${ITEMS[i].name} ×${n}.`).join(' ') : `The village hall has nothing more of what the ${spec.name.toLowerCase()} still needs: store the materials at its terminal.`;
+  const given = taken.length ? 'Handed over: ' + taken.map(([i, n]) => `${ITEMS[i].name} ×${n}.`).join(' ') : `The village hall has nothing more of what the ${spec.name.toLowerCase()} still needs: bring the materials to the village stores.`;
   if (!built) { calcStats(); saveChar(); return { msg: given, built: false }; }
   c.gold += spec.gold; gainXp(spec.xp); earnTrust(v.id, 'improve'); calcStats(); saveChar();
   showToast(`${v.vm.name}: ${spec.name}`);

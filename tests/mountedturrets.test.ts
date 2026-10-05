@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as THREE from 'three';
 const state = vi.hoisted(() => { vi.stubGlobal('window', {}); vi.stubGlobal('navigator', { maxTouchPoints: 0 }); return { blocked: false, killed: [] as number[], saves: 0 }; });
 vi.mock('../src/world/render', () => ({ scene: new THREE.Scene(), lineMat: (color: number) => new THREE.LineBasicMaterial({ color }), fillMat: () => new THREE.MeshBasicMaterial(), add: (color: number) => new THREE.LineBasicMaterial({ color }) }));
@@ -13,7 +13,8 @@ import { clearMountedTurrets, loadMountedTurrets, updateMountedTurrets, rayMount
 import { MOUNTED_TURRET as S, type MountedTurretSpec } from '../src/data/mountedturrets';
 const spec: MountedTurretSpec = { id: 0, mount: 'floor', x: 0, y: 0.55, z: 0, normal: [0, 1, 0] };
 const origin = new THREE.Vector3(5, 0.55, 0), direction = new THREE.Vector3(-1, 0, 0);
-beforeEach(() => { setVehicleProtection(() => false, () => {}, armoured); clearMountedTurrets(); state.blocked = false; state.killed.length = 0; state.saves = 0; G.pos.set(10, 0, 0); G.hp = 100; loadMountedTurrets([spec]); });
+beforeEach(() => { vi.spyOn(Math, 'random').mockReturnValue(0.5); /* no scatter: every shot flies straight */ setVehicleProtection(() => false, () => {}, armoured); clearMountedTurrets(); state.blocked = false; state.killed.length = 0; state.saves = 0; G.pos.set(10, 0, 0); G.hp = 100; loadMountedTurrets([spec]); });
+afterEach(() => { vi.restoreAllMocks(); });
 describe('ancient turret combat', () => {
   it('warns before firing, fires short bursts with a pause between them and applies armour', () => {
     updateMountedTurrets(S.warning - 0.01); expect(G.hp).toBe(100);

@@ -66,7 +66,7 @@ export function farmsClick(town: string, t: HTMLElement): { msg: string; built: 
   settleOwn(c.world, poi, v.vm.seed, st, c.time); // the harvest so far is kept at the old yield
   const { taken, built } = upgrade ? handOverUpgrade(st, c.tech, have) : handOverFarm(st, v.vm.seed, v.id === GRIDHOLM_ID, c.time, have);
   stockTake(v.id, taken);
-  const given = taken.length ? 'Handed over: ' + taken.map(([k, n]) => `${ITEMS[k].name} ×${n}.`).join(' ') : `The village hall has nothing more of what the ${upgrade ? 'ploughs' : 'farm'} still ${upgrade ? 'need' : 'needs'}: store the materials at its terminal.`;
+  const given = taken.length ? 'Handed over: ' + taken.map(([k, n]) => `${ITEMS[k].name} ×${n}.`).join(' ') : `The village hall has nothing more of what the ${upgrade ? 'ploughs' : 'farm'} still ${upgrade ? 'need' : 'needs'}: bring the materials to the village stores.`;
   if (!built) { calcStats(); saveChar(); return { msg: given, built: false }; }
   anchorNew(c.world, poi, v.vm.seed, st, c.time);
   syncFarmVillage(v.id);

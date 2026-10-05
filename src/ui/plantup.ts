@@ -35,7 +35,7 @@ export function plantUpClick(town: string, t: HTMLElement): { msg: string; built
   const st = (c.towns[v.id] ??= {}), seed = v.vm.seed;
   const { taken, built } = handOverPlantUp(seed, st, c.tech, stockHas(v.id));
   stockTake(v.id, taken);
-  const given = taken.length ? 'Handed over: ' + taken.map(([k, n]) => `${ITEMS[k].name} ×${n}.`).join(' ') : 'The village hall has nothing more of what the plant still needs: store the materials at its terminal.';
+  const given = taken.length ? 'Handed over: ' + taken.map(([k, n]) => `${ITEMS[k].name} ×${n}.`).join(' ') : 'The village hall has nothing more of what the plant still needs: bring the materials to the village stores.';
   if (!built) { calcStats(); saveChar(); return { msg: given, built: false }; }
   const lv = PLANT_LEVELS[plantLevel(st)], kind = powerKind(seed);
   c.gold += lv.gold; gainXp(lv.xp); earnTrust(v.id, 'plantup'); calcStats(); saveChar();

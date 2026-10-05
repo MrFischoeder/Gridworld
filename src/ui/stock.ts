@@ -1,5 +1,5 @@
 // The village's stock (gen/hall.ts stockOf: the hall's hold and its own goods) for the panels: every build of a
-// village draws on it, never on your backpack. Bring things to the village hall and store them at its terminal.
+// village draws on it, never on your backpack. Bring things to the village stores (the warehouse terminal, or the elder before a new settlement has a warehouse).
 import { G } from '../game';
 import { ITEMS, type ItemKey } from '../data/items';
 import { findPoi, villageSeed } from '../gen/regions';
@@ -37,7 +37,7 @@ export const hallNote = (have: number, given: number, n: number) => (given >= n 
 /** What a build still lacks in the stock, in words (empty: nothing). */
 export function lacking(rows: { k: ItemKey; n: number; given: number }[], has: (k: ItemKey) => number): string {
   const miss = rows.filter((r) => r.given + has(r.k) < r.n).map((r) => `${r.n - r.given - has(r.k)} ${ITEMS[r.k].name}`);
-  return miss.length ? `The village hall still lacks ${miss.join(', ')}: store them at its terminal (outside the north gate).` : '';
+  return miss.length ? `The village hall still lacks ${miss.join(', ')}: bring them to the village stores (the warehouse terminal outside the north gate, or the elder while there is no warehouse).` : '';
 }
 /** The button every build panel shows. */
 export const buildButton = (attr: string, what: string, can: boolean) => `<button class="opt" ${attr} ${can ? '' : 'disabled'}>Build from the village hall's stock (${what})</button>`;

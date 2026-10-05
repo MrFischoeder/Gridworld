@@ -3,6 +3,11 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.137.0', date: '2026-10-05', title: 'The village stores', notes: [
+    'A new settlement has no storehouse at first: bring the logs, stones and other materials to the elder (Leave materials with me). He keeps the village\'s stores until the warehouse is built; its plot outside the north fence is staked out meanwhile.',
+    'The warehouse is now a big plank barn: boarded walls on posts with knee braces, a gable roof over wide double doors standing open, a plank floor, timber racks and a painted parking bay. Drive a truck straight in, park in the bay and unload it at the terminal; the camera stays under the roof while you are inside. The older village halls get the same plank look.',
+    'The village stores take only materials: wood, stone, ore and metals, building supplies, crates of goods and what the works make of them (and the turret kits and engine parts the builds need). Weapons, ammunition, medkits, food, tools and clothes stay yours: keep them in the chest of your own house. Unloading a vehicle leaves such things in its trunk.',
+  ] },
   { v: '0.136.0', date: '2026-10-05', title: 'Beside the backpack', notes: [
     'Opening the backpack now also shows what lies on the ground around you (within 3 m) in a panel beside it. Click an item there, or drag it into the backpack, to pick it up; drag one of yours onto the ground (or press Drop) to put it down at your feet. Pick up all takes everything at once.',
     'Chests, stashes, trunks, lockers and holds now open beside the backpack too, so the whole backpack (modules, body, contents) is there while you move things. Click an item in the container to take it, drag between the two, or select one of yours and press Store. E or Esc closes it.',
