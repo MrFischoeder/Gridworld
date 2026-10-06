@@ -9,9 +9,12 @@ import { villageGates, WALL_TIERS } from './village';
 import type { ItemKey } from '../data/items';
 import type { PlantState, PlantKind } from './plants';
 import type { StationState, StationKind } from './energy';
+import { startJob, jobOf } from './construction';
 
 export interface TownState {
   settlement?: import('./settlement').SettlementState;
+  /** Builds under way (gen/construction.ts): key = kind[:sub-kind]. */
+  jobs?: Record<string, import('./construction').Job>;
   /** The wall's tier (0 = the stake fence every village starts with). */
   wall?: number;
   /** Materials handed over towards the next tier. */
@@ -79,14 +82,18 @@ export function workPlan(s: TownState | undefined, k: WorkKind, limit = WORKS[k]
   return { kind: k, done, rows, complete: rows.every((r) => r.given >= r.n), gold: w.gold, xp: w.xp };
 }
 /** Hand over materials for the next piece of work k (bit by bit); it is done once all are in. */
-export function handOverWork(s: TownState, k: WorkKind, have: (i: ItemKey) => number, limit = WORKS[k].max): { taken: [ItemKey, number][]; done: boolean } {
+export function handOverWork(s: TownState, k: WorkKind, have: (i: ItemKey) => number, limit = WORKS[k].max, at?: number): { taken: [ItemKey, number][]; done: boolean; started?: boolean } {
   const plan = workPlan(s, k, limit);
-  if (!plan) return { taken: [], done: false };
+  if (!plan || jobOf(s, 'work', k)) return { taken: [], done: false };
   const g = ((s.wgiven ??= {})[k] ??= {}), taken: [ItemKey, number][] = [];
   for (const r of plan.rows) { const n = Math.min(r.n - r.given, have(r.k)); if (n > 0) { g[r.k] = r.given + n; taken.push([r.k, n]); } }
-  if (workPlan(s, k, limit)!.complete) { (s.works ??= {})[k] = plan.done + 1; s.wgiven![k] = {}; return { taken, done: true }; }
-  return { taken, done: false };
+  if (!workPlan(s, k, limit)!.complete) return { taken, done: false };
+  if (at !== undefined) { startJob(s, 'work', k, at); return { taken, done: false, started: true }; } // the builders take their time
+  completeWork(s, k);
+  return { taken, done: true };
 }
+/** Piece of work k stands (its builders are done). */
+export function completeWork(s: TownState, k: WorkKind) { (s.works ??= {})[k] = worksOf(s, k) + 1; (s.wgiven ??= {})[k] = {}; }
 
 /** What it takes to raise the wall to tier i+1 (index = the tier you have), and what the village pays for it. */
 export const FORTIFY: { needs: [ItemKey, number][]; gold: number; xp: number }[] = [
@@ -102,9 +109,9 @@ export function fortifyPlan(s: TownState | undefined) {
   return { from: t, to: t + 1, rows, done: rows.every((r) => r.given >= r.n), gold: f.gold, xp: f.xp };
 }
 /** Hand over up to `have(k)` of each missing material; returns what was taken. Raises the wall when complete. */
-export function handOver(s: TownState, have: (k: ItemKey) => number): { taken: [ItemKey, number][]; raised: boolean } {
+export function handOver(s: TownState, have: (k: ItemKey) => number, at?: number): { taken: [ItemKey, number][]; raised: boolean; started?: boolean } {
   const plan = fortifyPlan(s);
-  if (!plan) return { taken: [], raised: false };
+  if (!plan || jobOf(s, 'wall')) return { taken: [], raised: false };
   const taken: [ItemKey, number][] = [];
   s.given ??= {};
   for (const r of plan.rows) {
@@ -112,9 +119,13 @@ export function handOver(s: TownState, have: (k: ItemKey) => number): { taken: [
     if (n > 0) { s.given[r.k] = r.given + n; taken.push([r.k, n]); }
   }
   const after = fortifyPlan(s)!;
-  if (after.done) { s.wall = plan.to; s.given = {}; return { taken, raised: true }; }
-  return { taken, raised: false };
+  if (!after.done) return { taken, raised: false };
+  if (at !== undefined) { startJob(s, 'wall', String(plan.to), at); return { taken, raised: false, started: true }; }
+  completeWall(s);
+  return { taken, raised: true };
 }
+/** The wall goes up a tier (its builders are done). */
+export function completeWall(s: TownState) { s.wall = wallOf(s) + 1; s.given = {}; }
 
 // ---------- power ----------
 export type PowerKind = 'generator' | 'solar' | 'wind';

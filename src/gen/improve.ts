@@ -12,6 +12,7 @@
 //   live raid wears the gates down slower (world/villageraid.ts).
 import type { ItemKey } from '../data/items';
 import type { TownState } from './town';
+import { startJob, jobOf } from './construction';
 
 export type ImproveKind = 'bank' | 'lamps' | 'automation' | 'sights' | 'armour';
 export const IMPROVE_KINDS: ImproveKind[] = ['bank', 'lamps', 'automation', 'sights', 'armour'];
@@ -39,15 +40,17 @@ export function improvePlan(k: ImproveKind, s: TownState | undefined) {
   return { spec, rows, problem, done: rows.every((r) => r.given >= r.n) };
 }
 /** Hand over materials for k (bit by bit); builds it once complete. */
-export function handOverImprove(k: ImproveKind, s: TownState, have: (i: ItemKey) => number): { taken: [ItemKey, number][]; built: boolean } {
+export function handOverImprove(k: ImproveKind, s: TownState, have: (i: ItemKey) => number, at?: number): { taken: [ItemKey, number][]; built: boolean; started?: boolean } {
   const plan = improvePlan(k, s);
-  if (!plan || plan.problem) return { taken: [], built: false };
+  if (!plan || plan.problem || jobOf(s, 'improve', k)) return { taken: [], built: false };
   const g = ((s.igiven ??= {})[k] ??= {}), taken: [ItemKey, number][] = [];
   for (const r of plan.rows) { const n = Math.min(r.n - r.given, have(r.k)); if (n > 0) { g[r.k] = r.given + n; taken.push([r.k, n]); } }
   if (!improvePlan(k, s)!.done) return { taken, built: false };
-  (s.imp ??= {})[k] = true; delete s.igiven![k];
+  if (at !== undefined) { startJob(s, 'improve', k, at); return { taken, built: false, started: true }; }
+  completeImprove(s, k);
   return { taken, built: true };
 }
+export function completeImprove(s: TownState, k: ImproveKind) { (s.imp ??= {})[k] = true; if (s.igiven) delete s.igiven[k]; }
 
 // ---------- the effects ----------
 /** The battery bank: what it gives back (kW) is BANK.back of the renewables' shortfall below their rating, at most BANK.kw. */

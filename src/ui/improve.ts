@@ -9,6 +9,7 @@ import { earnTrust } from '../world/standing';
 import { stockHas, stockTake } from './stock';
 import { saveChar, calcStats, gainXp } from '../character';
 import { showToast, logLine } from './hud';
+import { buildersLine, jobHTML, building } from './jobs';
 
 export function improveHTML(town: string, head: string, msg = ''): string {
   const v = loadedVillage(town), c = G.char, poi = v && findPoi(c.world, v.id);
@@ -20,6 +21,7 @@ export function improveHTML(town: string, head: string, msg = ''): string {
   for (const k of IMPROVE_KINDS) {
     const plan = improvePlan(k, st);
     if (!plan) continue;
+    if (building(st, 'improve', k)) { s += jobHTML(st, 'improve', k, 'the ' + plan.spec.name.toLowerCase()); continue; }
     s += `<div class="shoprow"><div><b>${plan.spec.name}</b> <span style="opacity:.7">(${plan.spec.gold} gold, ${plan.spec.xp} xp)</span><br><span style="opacity:.8">${plan.spec.blurb}.</span><br><span>`;
     s += plan.problem ? `<span style="color:#ff9a7a">${plan.problem}</span>` : plan.rows.map((r) => { const h = have(r.k); return `<span style="color:${r.given >= r.n ? 'var(--xp)' : h ? 'var(--txt)' : '#ff9a7a'}">${ITEMS[r.k].name} ${r.given}/${r.n}${r.given < r.n && h ? ` (in the hall: ${h})` : ''}</span>`; }).join(' · ');
     s += `</span></div>`;
@@ -35,9 +37,13 @@ export function improveClick(town: string, t: HTMLElement): { msg: string; built
   const v = loadedVillage(town), c = G.char;
   if (!v) return { msg: '', built: false };
   const k = b.dataset.imp as ImproveKind, st = (c.towns[v.id] ??= {}), spec = IMPROVE[k];
-  const { taken, built } = handOverImprove(k, st, stockHas(v.id));
+  const { taken, built, started } = handOverImprove(k, st, stockHas(v.id), c.time);
   stockTake(v.id, taken);
   const given = taken.length ? 'Handed over: ' + taken.map(([i, n]) => `${ITEMS[i].name} ×${n}.`).join(' ') : `The village hall has nothing more of what the ${spec.name.toLowerCase()} still needs: bring the materials to the village stores.`;
+  if (started) {
+    c.gold += spec.gold; gainXp(spec.xp); earnTrust(v.id, 'improve'); calcStats(); saveChar();
+    return { msg: `${given} <b>All in: the builders start on the ${spec.name.toLowerCase()}</b>, ${buildersLine(st, 'improve', k)} The village pays you ${spec.gold} gold.`, built: false };
+  }
   if (!built) { calcStats(); saveChar(); return { msg: given, built: false }; }
   c.gold += spec.gold; gainXp(spec.xp); earnTrust(v.id, 'improve'); calcStats(); saveChar();
   showToast(`${v.vm.name}: ${spec.name}`);

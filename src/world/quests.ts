@@ -1,4 +1,5 @@
 import { progressive, development, tutorialStep } from '../gen/settlement';
+import { jobLines } from './jobsites';
 import { count } from '../data/crafting';
 import { settlementMarker } from './settlement';
 // Quest progress: kills, quest groups in the open world, quest items in ruins and at wrecks, rewards.
@@ -223,6 +224,7 @@ export function updateTracker(dt: number) {
   lines.push(...leadLines());
   const raid = raidLine(); if (raid) lines.unshift(raid);
   const step = G.char.guide === 2 ? tutorialStep(G.char.towns[GRIDHOLM_ID]) : null;
+  lines.unshift(...jobLines());
   if (step && step.title !== 'A thriving settlement') lines.unshift('▸ Elder: ' + step.title);
   const gl = guideLine(); if (gl) lines.unshift(gl);
   trackEl.innerHTML = lines.map((l) => `<div>${l}</div>`).join('');

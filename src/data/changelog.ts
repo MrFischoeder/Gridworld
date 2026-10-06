@@ -3,6 +3,14 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.153.0', date: '2026-10-06', title: 'Builders at work', notes: [
+    'Village builds now take time. Once the last materials are handed over, the villagers start work, and the build stands only when they are done. This covers farms, steel ploughs, walls, turrets and sandbags, the refinery, works and power stations, power plant upgrades, improvements, and the new settlements\' projects. A farm takes 14 game hours, a stone wall 24, works 16. A game hour is a real minute.',
+    'Each build has a construction site where it will stand. Stakes and builder\'s lines mark it out, and a scaffold rises as the work goes on. A stack of timber and stone shrinks, and a sign shows how far along it is. Two builders hammer at the scaffold while a third carries from the stack.',
+    'The elder\'s panels show a build under way with its progress and the time left. The quest tracker lists every build in progress. When one is finished you get a message, even if you are far away.',
+    'The village pays you, and you earn its trust, when the builders start rather than when they finish. Works and stations take their fee then too.',
+    'Multiplayer: a build under way is part of the village\'s shared state. Every player sees the same site and the same progress. Whichever game is running when the time is up finishes it, and the result is the same for everyone.',
+    'Dev console: `jobs` lists the builds under way, and `jobs done` finishes them now.',
+  ] },
   { v: '0.152.0', date: '2026-10-06', title: 'Single player, multiplayer', notes: [
     'The opening film now plays first, as soon as the game opens: a black loading screen covers the loading, so the menu no longer flashes up before the film.',
     'The menu has two big buttons, Single player and Multiplayer. Multiplayer opens the server panel (× closes it). Single player always means your own world: after playing on someone else\'s server it brings your own save back.',

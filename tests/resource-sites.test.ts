@@ -37,7 +37,7 @@ describe('village extraction landmarks', () => {
   });
   it('never charges for absent deposits and lets villages without rare resources finish their tutorial', () => {
     const s = developed();
-    expect(buildProject(s, 'mine', () => 999)).toEqual({ taken: [], built: false }); expect(s.settlement!.given).toBeUndefined();
+    expect(buildProject(s, 'mine', () => 999)).toMatchObject({ taken: [], built: false }); expect(s.settlement!.given).toBeUndefined();
     expect(buildProject(s, 'oil', () => 999).built).toBe(false); expect(tutorialStep(s)?.project).toBe('quarry');
     for (const k of ['quarry', 'lumber'] as const) expect(buildProject(s, k, () => 999).built).toBe(true);
     expect(localIndustryDone(s)).toBe(true); expect(farmProblem(s)).toBe(''); expect(tutorialStep(s)?.farm).toBe(3);

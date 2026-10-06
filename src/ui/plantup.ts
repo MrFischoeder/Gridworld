@@ -12,6 +12,7 @@ import { earnTrust } from '../world/standing';
 import { stockHas, stockTake } from './stock';
 import { saveChar, calcStats, gainXp } from '../character';
 import { showToast, logLine } from './hud';
+import { buildersLine, jobHTML, building } from './jobs';
 
 export function plantUpHTML(town: string, head: string, msg = ''): string {
   const v = loadedVillage(town), c = G.char, poi = v && findPoi(c.world, v.id);
@@ -20,6 +21,7 @@ export function plantUpHTML(town: string, head: string, msg = ''): string {
   const have = stockHas(v.id);
   let s = head + `<div class="say">${msg ? msg + '<br><br>' : ''}Our ${POWER[kind].name.toLowerCase()} makes <b>${Math.round(baseKw(c.world, poi, seed, st, c.time))} kW</b> now (at best ${Math.round(BASE_KW[kind] * PLANT_LEVELS[lv].mult)} kW: ${PLANT_LEVELS[lv].name.toLowerCase()}). The village, the farms and the works all live on it.</div>`;
   if (!plan) return s + `<div class="say">It is as good as the old world ever made them.</div><button class="opt" data-o="back">Back</button>`;
+  if (building(st, 'plantup', String(plan.to))) return s + jobHTML(st, 'plantup', String(plan.to), `the plant, ${plan.lv.name.toLowerCase()}`) + `<button class="opt" data-o="back">Back</button>`;
   s += `<div class="shoprow"><div><b>${plan.lv.name}</b> <span style="opacity:.7">(×${plan.lv.mult} power, ${Math.round(BASE_KW[kind] * plan.lv.mult)} kW at best)</span><br><span>`;
   if (!plan.plans) s += `Nobody here knows how. The old plans for ${TECH_BY_ID[plan.tech!].name} must lie somewhere out there.`;
   else s += plan.rows.map((r) => { const h = have(r.k); return `<span style="color:${r.given >= r.n ? 'var(--xp)' : h ? 'var(--txt)' : '#ff9a7a'}">${ITEMS[r.k].name} ${r.given}/${r.n}${r.given < r.n && h ? ` (in the village hall: ${h})` : ''}</span>`; }).join(' · ');
@@ -33,9 +35,14 @@ export function plantUpClick(town: string, t: HTMLElement): { msg: string; built
   const v = loadedVillage(town), c = G.char, poi = v && findPoi(c.world, v.id);
   if (!v || !poi) return { msg: '', built: false };
   const st = (c.towns[v.id] ??= {}), seed = v.vm.seed;
-  const { taken, built } = handOverPlantUp(seed, st, c.tech, stockHas(v.id));
+  const to = plantLevel(st) + 1, { taken, built, started } = handOverPlantUp(seed, st, c.tech, stockHas(v.id), c.time);
   stockTake(v.id, taken);
   const given = taken.length ? 'Handed over: ' + taken.map(([k, n]) => `${ITEMS[k].name} ×${n}.`).join(' ') : 'The village hall has nothing more of what the plant still needs: bring the materials to the village stores.';
+  if (started) {
+    const lv = PLANT_LEVELS[to];
+    c.gold += lv.gold; gainXp(lv.xp); earnTrust(v.id, 'plantup'); calcStats(); saveChar();
+    return { msg: `${given} <b>All in: the fitters start on the power plant</b>, ${buildersLine(st, 'plantup', String(to))} The village pays you ${lv.gold} gold.`, built: false };
+  }
   if (!built) { calcStats(); saveChar(); return { msg: given, built: false }; }
   const lv = PLANT_LEVELS[plantLevel(st)], kind = powerKind(seed);
   c.gold += lv.gold; gainXp(lv.xp); earnTrust(v.id, 'plantup'); calcStats(); saveChar();

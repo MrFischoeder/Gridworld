@@ -8,6 +8,7 @@ import type { ItemKey } from '../data/items';
 import type { TownState } from './town';
 import { peopleAt, setPeople, basePeople, PEOPLE } from './people';
 import { assign } from './workforce';
+import { startJob, jobOf } from './construction';
 
 export const FARM = { max: 3, people: 15, needs: [['log', 8], ['stone', 6]] as [ItemKey, number][], xp: 60, gold: 40, kw: 3 };
 /** Steel ploughs and pumps (the Steel Ploughs plans): an upgraded farm feeds `mult` × as many, but draws more power. */
@@ -38,16 +39,18 @@ export function upgradePlan(s: TownState | undefined) {
   return { n: upgradedOf(s) + 1, rows, done: rows.every((r) => r.given >= r.n) };
 }
 /** Hand over materials for the next upgrade (needs the Steel Ploughs plans); upgrades a farm once complete. */
-export function handOverUpgrade(s: TownState, tech: Record<string, number>, have: (k: ItemKey) => number): { taken: [ItemKey, number][]; built: boolean } {
+export function handOverUpgrade(s: TownState, tech: Record<string, number>, have: (k: ItemKey) => number, at?: number): { taken: [ItemKey, number][]; built: boolean; started?: boolean } {
   const plan = upgradePlan(s);
-  if (!plan || tech[UPGRADE.tech] === undefined) return { taken: [], built: false };
+  if (!plan || tech[UPGRADE.tech] === undefined || jobOf(s, 'plough')) return { taken: [], built: false };
   s.ugiven ??= {};
   const taken: [ItemKey, number][] = [];
   for (const r of plan.rows) { const n = Math.min(r.n - r.given, have(r.k)); if (n > 0) { s.ugiven[r.k] = r.given + n; taken.push([r.k, n]); } }
   if (!upgradePlan(s)!.done) return { taken, built: false };
-  s.fup = upgradedOf(s) + 1; s.ugiven = {};
+  if (at !== undefined) { startJob(s, 'plough', undefined, at); return { taken, built: false, started: true }; }
+  completeUpgrade(s);
   return { taken, built: true };
 }
+export function completeUpgrade(s: TownState) { s.fup = upgradedOf(s) + 1; s.ugiven = {}; }
 export function farmProblem(s: TownState | undefined): string {
   if (!progressive(s)) return '';
   if (!s?.settlement?.supplies) return 'Report the stored supplies to the elder first.';
@@ -63,16 +66,21 @@ export function farmPlan(s: TownState | undefined) {
   return { n: farmsOf(s) + 1, rows, done: rows.every((r) => r.given >= r.n) };
 }
 /** Hand over materials for the next farm; builds it once complete (the population curve is re-anchored first, so it grows from where it is). */
-export function handOverFarm(s: TownState, seed: number, home: boolean, now: number, have: (k: ItemKey) => number): { taken: [ItemKey, number][]; built: boolean } {
+export function handOverFarm(s: TownState, seed: number, home: boolean, now: number, have: (k: ItemKey) => number, timed = false): { taken: [ItemKey, number][]; built: boolean; started?: boolean } {
   const plan = farmPlan(s);
-  if (!plan) return { taken: [], built: false };
+  if (!plan || jobOf(s, 'farm')) return { taken: [], built: false };
   s.fgiven ??= {};
   const taken: [ItemKey, number][] = [];
   for (const r of plan.rows) { const n = Math.min(r.n - r.given, have(r.k)); if (n > 0) { s.fgiven[r.k] = r.given + n; taken.push([r.k, n]); } }
   if (!farmPlan(s)!.done) return { taken, built: false };
+  if (timed) { startJob(s, 'farm', undefined, now); return { taken, built: false, started: true }; }
+  completeFarm(s, seed, home, now);
+  return { taken, built: true };
+}
+/** The farm stands (the population curve is re-anchored first, so it grows from where it is). */
+export function completeFarm(s: TownState, seed: number, home: boolean, now: number) {
   setPeople(s, seed, home, now, peopleAt(seed, home, s, now));
   s.farms = farmsOf(s) + 1; s.fgiven = {};
-  return { taken, built: true };
 }
 /** The i-th farm's field in plaza-local metres: outside a corner of the wall, clear of the sites on the sides and the gates. */
 export function farmPlot(seed: number, i: number): { x0: number; z0: number; x1: number; z1: number } {

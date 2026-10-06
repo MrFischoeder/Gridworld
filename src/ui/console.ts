@@ -12,7 +12,8 @@ import { forceWeather, seen } from '../world/weather';
 import { WEATHER_NAME, type WeatherKind } from '../gen/weather';
 import { saveChar } from '../character';
 import { toVillage } from '../world/level';
-import { GRIDHOLM_ID, regionOf, worldDist } from '../gen/regions';
+import { GRIDHOLM_ID, regionOf, worldDist, findPoi } from '../gen/regions';
+import { jobShare } from '../gen/construction';
 import { spawnCreatureNear } from '../world/creatures';
 import { spawnBanditsNear } from '../world/bandits';
 import { spawnRaiderNear, forceAmbush } from '../world/raiders';
@@ -79,6 +80,17 @@ const COMMANDS: Record<string, { help: string; run: (args: string[]) => string }
   eat: { help: 'fill food, water and stamina', run: () => { G.char.kcal = 3000; G.char.stomach = 0; G.char.water = 100; G.stamina = 100; G.exhausted = false; return 'Fed and watered.'; } },
   clear: { help: 'clear this log', run: () => { out.innerHTML = ''; return ''; } },
   raid: { help: 'bandits raid the village you are at, now (a test raid: its outcome is not recorded)', run: () => { close(); return forceRaid(); } },
+  jobs: {
+    help: '[done] the builds under way in every village; done = finish them now',
+    run: (a) => {
+      const c = G.char, out: string[] = [];
+      for (const [id, s] of Object.entries(c.towns)) for (const j of Object.values(s?.jobs ?? {})) {
+        if (a[0] === 'done') j.t = c.time - j.h * 60;
+        out.push(`${findPoi(c.world, +id)?.name ?? id}: ${j.k}${j.a ? ' ' + j.a : ''} · ${Math.floor(jobShare(j, c.time) * 100)}%`);
+      }
+      return out.length ? out.join('\n') + (a[0] === 'done' ? '\n(finishing them now)' : '') : 'No builds under way.';
+    },
+  },
   ambush: { help: 'set up a bandit ambush ahead (stand on a road)', run: () => (forceAmbush() ? 'Something moves by the road ahead...' : 'Stand on a road, away from places.') },
   map: {
     help: 'map of the whole planet: click a village, ruin, camp, wreck, toxic fog zone (lime) or any spot to teleport there',

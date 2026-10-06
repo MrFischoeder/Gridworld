@@ -43,7 +43,7 @@ describe('new settlements and frozen saves', () => {
   it('partial shared deliveries enforce development order and never charge a completed project twice', () => {
     const s = fresh();
     expect(tutorialStep(s)?.supplies).toBe(true);
-    expect(buildProject(s, 'warehouse', () => 999)).toEqual({ taken: [], built: false });
+    expect(buildProject(s, 'warehouse', () => 999)).toMatchObject({ taken: [], built: false });
     expect(handOverFarm(s, world, true, 1000, () => 999).built).toBe(false);
     s.settlement!.supplies = true;
     expect(handOverFarm(s, world, true, 1000, () => 999).built).toBe(true);
@@ -52,7 +52,7 @@ describe('new settlements and frozen saves', () => {
     expect(first.built).toBe(false); expect(first.taken).toEqual([['log', 3]]);
     const rest = buildProject(s, 'comms', () => 999); expect(rest.built).toBe(true);
     expect(rest.taken).toEqual([['log', 3], ['stone', 6], ['scrap', 4]]);
-    expect(buildProject(s, 'comms', () => 999)).toEqual({ taken: [], built: false });
+    expect(buildProject(s, 'comms', () => 999)).toMatchObject({ taken: [], built: false });
     expect(projectProblem(s, 'warehouse')).not.toBe('');
     handOverFarm(s, world, true, 1000, () => 999);
     for (const k of ['warehouse', 'power', 'mine', 'lumber', 'oil', 'refinery'] as const) {

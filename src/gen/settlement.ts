@@ -4,6 +4,7 @@ import type { ItemKey } from '../data/items';
 import { hash } from '../core/rng';
 import { allVillages, poisNear, GRIDHOLM_ID, worldDist, type Poi } from './regions';
 import { villageDeposits, ORES, type Deposits } from './resource-sites';
+import { startJob, jobOf } from './construction';
 export { RESOURCE_PLOTS } from './resource-sites';
 
 export type Project = 'warehouse' | 'power' | 'comms' | 'quarry' | 'mine' | 'lumber' | 'oil' | 'refinery' | 'foodworks' | 'relay';
@@ -88,21 +89,27 @@ export function projectPlan(s: TownState | undefined, k: Project) {
   return needs.map(([i, n]) => ({ k: i, n, given: Math.min(n, s?.settlement?.given?.[k]?.[i] ?? 0) }));
 }
 /** Partial deliveries; callers remove exactly `taken` from shared stock. Repeated completion is a no-op. */
-export function buildProject(s: TownState, k: Project, have: (i: ItemKey) => number) {
+export function buildProject(s: TownState, k: Project, have: (i: ItemKey) => number, at?: number) {
   const taken: [ItemKey, number][] = [];
-  if (projectProblem(s, k)) return { taken, built: false };
+  if (projectProblem(s, k) || jobOf(s, 'project', k)) return { taken, built: false, stage: false, started: false };
   const g = ((s.settlement!.given ??= {})[k] ??= {});
   for (const r of projectPlan(s, k)) {
     const n = Math.max(0, Math.min(r.n - r.given, Math.floor(have(r.k))));
     if (n) { g[r.k] = r.given + n; taken.push([r.k, n]); }
   }
-  let built = projectPlan(s, k).every((r) => r.given === r.n), stage = false;
-  if (built && k === 'comms' && isStation(s)) { // a stage of the station: the next one, until the last
+  if (!projectPlan(s, k).every((r) => r.given === r.n)) return { taken, built: false, stage: false, started: false };
+  if (at !== undefined) { startJob(s, 'project', k, at); return { taken, built: false, stage: false, started: true }; } // the builders take their time
+  return { taken, ...completeProject(s, k) };
+}
+/** Project k (or the station's current stage) stands: its builders are done. */
+export function completeProject(s: TownState, k: Project): { built: boolean; stage: boolean } {
+  let built = true, stage = false;
+  if (k === 'comms' && isStation(s)) { // a stage of the station: the next one, until the last
     s.settlement!.stage = stationStage(s) + 1; delete s.settlement!.given![k]; stage = true;
     built = s.settlement!.stage >= STATION_STAGES.length;
   }
   if (built) { (s.settlement!.done ??= {})[k] = true; delete s.settlement!.given![k]; }
-  return { taken, built, stage };
+  return { built, stage };
 }
 /** Development repairs housing before migrants arrive. Food still limits population separately. */
 export function development(s: TownState | undefined): number {

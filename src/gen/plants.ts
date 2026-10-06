@@ -16,6 +16,7 @@ import type { Rare } from './deposits';
 import type { ItemKey } from '../data/items';
 import { STATIONS, STATION_SLOTS, type StationKind } from './energy';
 import { TECH_BY_ID } from './tech';
+import { startJob, jobOf, hoursOf } from './construction';
 
 export type PlantKind = 'smelter' | 'refinery' | 'glassworks' | 'wiremill' | 'electronics' | 'machineshop' | 'foundry' | 'chemworks'
   | 'sawmill' | 'brickworks' | 'cementworks' | 'textile' | 'steelworks' | 'polymer' | 'alworks' | 'batteryworks' | 'electrical' | 'stoneworks' | 'metallurgy' | 'siliconworks' | 'advelec' | 'avionworks' | 'lifeworks';
@@ -213,19 +214,26 @@ export function startPlant(s: PlantTown, k: PlantKind | StationKind, known?: Rec
   return '';
 }
 /** Hand over materials for the works being built; it stands once all are in and the fee is paid (`pay` says if you can). */
-export function handOverPlant(s: PlantTown, have: (k: ItemKey) => number, now: number, pay: (fee: number) => boolean): { taken: [ItemKey, number][]; built: PlantKind | StationKind | null } {
+export function handOverPlant(s: PlantTown, have: (k: ItemKey) => number, now: number, pay: (fee: number) => boolean, timed = false): { taken: [ItemKey, number][]; built: PlantKind | StationKind | null; started?: boolean } {
   const plan = plantPlan(s);
-  if (!plan) return { taken: [], built: null };
+  if (!plan || jobOf(s as TownState, 'plant')) return { taken: [], built: null };
   const taken: [ItemKey, number][] = [];
   for (const r of plan.rows) { const n = Math.min(r.n - r.given, have(r.k)); if (n > 0) { s.pbuild!.given[r.k] = r.given + n; taken.push([r.k, n]); } }
-  if (plantPlan(s)!.done && pay(plan.fee)) {
-    const k = plan.k;
-    if (isStation(k)) (s.stations ??= []).push({ k, on: true, fuel: 0, t: now });
-    else (s.plants ??= []).push({ k, rec: 0, inp: {}, out: {}, t: now });
-    s.pbuild = undefined;
+  if (plantPlan(s)!.done && pay(plan.fee)) { // (the builders are paid when they start)
+    if (timed) { startJob(s as TownState, 'plant', plan.k, now, hoursOf('plant', plan.k)); return { taken, built: null, started: true }; }
+    completePlant(s, now);
     return { taken, built: plan.k };
   }
   return { taken, built: null };
+}
+/** The works or station being built stands. */
+export function completePlant(s: PlantTown, now: number): PlantKind | StationKind | null {
+  const k = s.pbuild?.k;
+  if (!k) return null;
+  if (isStation(k)) (s.stations ??= []).push({ k, on: true, fuel: 0, t: now });
+  else (s.plants ??= []).push({ k, rec: 0, inp: {}, out: {}, t: now });
+  s.pbuild = undefined;
+  return k;
 }
 
 // ---------- where they stand ----------

@@ -15,6 +15,7 @@ import { loadedVillage, reloadStruct } from '../world/overworld';
 import { earnTrust } from '../world/standing';
 import { saveChar, calcStats, gainXp } from '../character';
 import { showToast, logLine } from './hud';
+import { buildersLine, jobHTML, building } from './jobs';
 
 const rowsHTML = (rows: { k: import('../data/items').ItemKey; n: number; given: number }[], have: (k: import('../data/items').ItemKey) => number) =>
   rows.map((r) => { const h = have(r.k); return `<span style="color:${r.given >= r.n ? 'var(--xp)' : h ? 'var(--txt)' : '#ff9a7a'}">${ITEMS[r.k].name} ${r.given}/${r.n}${r.given < r.n && h ? ` (in the village hall: ${h})` : ''}</span>`; }).join(' · ');
@@ -43,11 +44,13 @@ export function farmsHTML(town: string, head: string, msg = ''): string {
         CROP_KINDS.filter((k) => k !== cr).map((k) => `<button class="opt" style="width:auto;display:inline-block;margin:4px 4px 0 0" data-crop="${i}:${k}">${CROPS[k].name}</button>`).join('') + `</div></div>`;
     }
   }
-  if (plan) {
+  if (plan && building(st, 'farm')) s += jobHTML(st, 'farm', undefined, `farm ${plan.n}`);
+  else if (plan) {
     s += `<div class="shoprow"><div><b>Farm ${plan.n} of ${FARM.max}</b> <span style="opacity:.7">(${FARM.kw} kW)</span><br><span>${rowsHTML(plan.rows, have)}</span></div></div>`;
     s += `<button class="opt" data-farm="give" ${plan.rows.some((r) => r.given < r.n && have(r.k) > 0) ? '' : 'disabled'}>Build from the village hall's stock (the farm)</button>`;
   } else s += `<div class="say">${farmProblem(st) || `We have cleared all the land we can guard (${FARM.max} farms).`}</div>`;
-  if (uplan) {
+  if (uplan && building(st, 'plough')) s += jobHTML(st, 'plough', undefined, `steel ploughs for farm ${uplan.n}`);
+  else if (uplan) {
     const known = c.tech[UPGRADE.tech] !== undefined;
     s += `<div class="shoprow"><div><b>Steel ploughs for farm ${uplan.n}</b> <span style="opacity:.7">(${UPGRADE.kw} kW, feeds ×${UPGRADE.mult})</span><br><span>${known ? rowsHTML(uplan.rows, have) : 'Nobody here knows how to make them. The old plans for Steel Ploughs must lie somewhere out there.'}</span></div></div>`;
     if (known) s += `<button class="opt" data-farm="up" ${uplan.rows.some((r) => r.given < r.n && have(r.k) > 0) ? '' : 'disabled'}>Build from the village hall's stock (the steel ploughs)</button>`;
@@ -65,9 +68,14 @@ export function farmsClick(town: string, t: HTMLElement): { msg: string; built: 
   if (!v || !poi) return { msg: '', built: false };
   const st = (c.towns[v.id] ??= {}), have = stockHas(v.id), upgrade = b.dataset.farm === 'up';
   settleOwn(c.world, poi, v.vm.seed, st, c.time); // the harvest so far is kept at the old yield
-  const { taken, built } = upgrade ? handOverUpgrade(st, c.tech, have) : handOverFarm(st, v.vm.seed, v.id === GRIDHOLM_ID, c.time, have);
+  const { taken, built, started } = upgrade ? handOverUpgrade(st, c.tech, have, c.time) : handOverFarm(st, v.vm.seed, v.id === GRIDHOLM_ID, c.time, have, true);
   stockTake(v.id, taken);
   const given = taken.length ? 'Handed over: ' + taken.map(([k, n]) => `${ITEMS[k].name} ×${n}.`).join(' ') : `The village hall has nothing more of what the ${upgrade ? 'ploughs' : 'farm'} still ${upgrade ? 'need' : 'needs'}: bring the materials to the village stores.`;
+  if (started) { // the builders take over: they are paid now, the farm stands when they are done (world/jobsites.ts)
+    if (upgrade) { c.gold += UPGRADE.gold; gainXp(UPGRADE.xp); } else { c.gold += FARM.gold; gainXp(FARM.xp); }
+    earnTrust(v.id, 'farm'); calcStats(); saveChar();
+    return { msg: `${given} <b>All in: the villagers start on the ${upgrade ? 'steel ploughs' : 'new farm'}</b>, ${buildersLine(st, upgrade ? 'plough' : 'farm')} They pay you ${upgrade ? UPGRADE.gold : FARM.gold} gold.`, built: false };
+  }
   if (!built) { calcStats(); saveChar(); return { msg: given, built: false }; }
   anchorNew(c.world, poi, v.vm.seed, st, c.time);
   syncFarmVillage(v.id);

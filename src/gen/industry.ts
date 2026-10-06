@@ -14,6 +14,7 @@ import { mountainMask } from './mountains';
 import { powerSite, worksOf, GUARDED } from './town';
 import { raidsBetween, raidOutcome, RAID } from './raids';
 import type { TownState } from './town';
+import { startJob, jobOf } from './construction';
 import { sitePower, SITE_UNPOWERED } from './energy';
 import type { Good } from './market';
 import type { ItemKey } from '../data/items';
@@ -130,13 +131,16 @@ export function buildPlan(k: Industry, s: TownState | undefined) {
   return { rows, done: rows.every((r) => r.given >= r.n) };
 }
 /** Hand over materials for the refinery; builds it once everything is in. */
-export function handOverBuild(k: Industry, s: TownState, have: (i: ItemKey) => number): { taken: [ItemKey, number][]; built: boolean } {
+export function handOverBuild(k: Industry, s: TownState, have: (i: ItemKey) => number, at?: number): { taken: [ItemKey, number][]; built: boolean; started?: boolean } {
   const plan = buildPlan(k, s);
   if (s.settlement?.v === 1 && !s.settlement.done?.power) return { taken: [], built: false };
-  if (!plan) return { taken: [], built: false };
+  if (!plan || jobOf(s, 'refinery')) return { taken: [], built: false };
   s.bgiven ??= {};
   const taken: [ItemKey, number][] = [];
   for (const r of plan.rows) { const n = Math.min(r.n - r.given, have(r.k)); if (n > 0) { s.bgiven[r.k] = r.given + n; taken.push([r.k, n]); } }
-  if (buildPlan(k, s)!.done) { s.built = true; s.bgiven = {}; return { taken, built: true }; }
-  return { taken, built: false };
+  if (!buildPlan(k, s)!.done) return { taken, built: false };
+  if (at !== undefined) { startJob(s, 'refinery', undefined, at); return { taken, built: false, started: true }; }
+  completeBuild(s);
+  return { taken, built: true };
 }
+export function completeBuild(s: TownState) { s.built = true; s.bgiven = {}; }
