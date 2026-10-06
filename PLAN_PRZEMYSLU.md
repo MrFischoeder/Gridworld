@@ -69,8 +69,11 @@ Plan wdrożenia dokumentu właściciela „GridWorld 03 — Surowce, przemysł, 
 - **Zastosowania:** mały reaktor, bank baterii, Automated Site, elektrownia poziomu 3, Sensor Sights, Sensor Compass, macierz radaru, Powered Exoskeleton.
 - **MP:** towary i zakłady we wspólnym stanie wiosek i rynku, łupy przez wspólne zrzuty; protokół bez zmian.
 
-### 5. Kompleksy
-- Aerospace Components Plant, Ancient Power Complex, materiały kompozytowe.
+### 5. Kompleksy (0.146, zrobione)
+- **Stara Fabryka Lotnicza** (Old Aerospace Works, technologia Aerospace Engineering): 2 tytan + 2 aluminium + kompozyt + stal stopowa → komponenty lotnicze (Aerospace Components), do programu kosmicznego w etapie 6.
+- **Starożytny Kompleks Energetyczny** (technologia Ancient Power Grid): po odbudowie i załadowaniu prętów paliwowych (skrzynia na 2 doby, najwyżej 8) zasila wszystkie stare zakłady w promieniu 16 km, których hala energetyczna stoi; ich partie nie spalają wtedy własnego paliwa.
+- **Materiały kompozytowe:** Stary Kompleks Stopów robi też arkusze kompozytowe (2 żywica + 2 tkanina + tytan → 2); potrzebne do fabryki lotniczej i kamizelki kompozytowej.
+- **MP:** stan instalacji (także prętów w rdzeniu) we wspólnym `installs`; zasięg sieci liczony z ziarna świata i wspólnego stanu, tak samo u każdego; protokół bez zmian.
 
 ### 6. Program kosmiczny
 - Avionics Modules, Life Support, Rocket Propulsion.

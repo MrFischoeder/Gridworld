@@ -59,7 +59,7 @@ export const ORDERS: Order[] = [
   { tech: 'weaving', out: 'wovenBoots', n: 1, needs: [['cloth', 1], ['hide', 1], ['wire', 1]] },
   { tech: 'weaving', out: 'framepack', n: 1, needs: [['cloth', 2], ['aluminium', 1], ['rope', 2]] },
   { tech: 'composites', out: 'compHelm', n: 1, needs: [['plastic', 1], ['alloy', 1], ['cloth', 1]] },
-  { tech: 'composites', out: 'compVest', n: 1, needs: [['plastic', 2], ['alloy', 2], ['cloth', 2], ['ceramics', 1]] },
+  { tech: 'composites', out: 'compVest', n: 1, needs: [['plastic', 2], ['alloy', 2], ['cloth', 2], ['ceramics', 1], ['composite', 1]] },
   { tech: 'composites', out: 'compGloves', n: 1, needs: [['plastic', 1], ['cloth', 1]] },
   { tech: 'composites', out: 'compLegs', n: 1, needs: [['plastic', 1], ['alloy', 1], ['cloth', 1]] },
   { tech: 'composites', out: 'compBoots', n: 1, needs: [['plastic', 1], ['alloy', 1], ['hide', 1]] },
@@ -68,7 +68,7 @@ export const ORDERS: Order[] = [
   { tech: 'automation', out: 'exoH', n: 1, needs: [['ancalloy', 2], ['precision', 2], ['powercell', 2], ['automation', 1], ['cable', 4], ['titanium', 2], ['advsteel', 2], ['pcm', 1]] },
 ];
 /** Technologies that are for the villages themselves (farms, power, works), not for the craftsmen's bench. */
-export const VILLAGE_TECHS = ['fields', 'plough', 'rotor', 'solar', 'chips', 'radio', 'chemistry', 'enrichment', 'propellant', 'rail', 'aluminium', 'batteries', 'alloys', 'powercells', 'sensors', 'ancmetal', 'precision', 'automation', 'electricity', 'metallurgy', 'semiconductors', 'computing'];
+export const VILLAGE_TECHS = ['fields', 'plough', 'rotor', 'solar', 'chips', 'radio', 'chemistry', 'enrichment', 'propellant', 'rail', 'aluminium', 'batteries', 'alloys', 'powercells', 'sensors', 'ancmetal', 'precision', 'automation', 'electricity', 'metallurgy', 'semiconductors', 'computing', 'aerospace', 'powergrid'];
 
 /** The smith knows the work: a basic, or the technology is yours. */
 export const known = (o: Order, tech: Record<string, number>) => !o.tech || tech[o.tech] !== undefined;

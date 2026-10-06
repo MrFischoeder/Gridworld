@@ -4,7 +4,7 @@
 import { G, W } from '../game';
 import { ITEMS, type ItemKey } from '../data/items';
 import { calcStats, saveChar, gainXp } from '../character';
-import { INSTALL_STAGES, INSTALL_WORK, INSTALL_DRAW, HALL_STAGE, radarRange, radarUpPlan, handOverRadarUp, RADAR_UP, radarPlaces, installSites, type InstallKind, type InstallState, installPlan, handOverInstall, runInstall, installDone, newInstall, batchesIn, loadInstall, canRun, hallPick, hallKw, hallReady, hallSets, fuelHall, workOf, installWorks, setInstallRec, type InstallSite } from '../gen/installs';
+import { INSTALL_STAGES, INSTALL_WORK, INSTALL_DRAW, HALL_STAGE, radarRange, radarUpPlan, handOverRadarUp, RADAR_UP, radarPlaces, installSites, type InstallKind, type InstallState, installPlan, handOverInstall, runInstall, installDone, newInstall, batchesIn, loadInstall, canRun, hallPick, hallKw, hallReady, hallSets, fuelHall, workOf, installWorks, setInstallRec, type InstallSite, installSitesReady, gridFor, plexLeft, plexUntil, fuelPlex, POWERPLEX, INSTALLS } from '../gen/installs';
 import { itemName } from './icons';
 import { TECH_BY_ID } from '../gen/tech';
 import type { Good } from '../gen/market';
@@ -26,12 +26,15 @@ let site: InstallSite | null = null;
 const at = () => (site ? { x: nearX(site.x, G.pos.x), z: site.z } : null);
 const stateOf = (s: InstallSite) => (G.char.installs[s.k] ??= newInstall());
 const have = (k: ItemKey) => carried(k as Good, at());
+/** Until when the Ancient Power Complex powers this plant (0 = not). */
+const sitesNow = () => installSitesReady(G.char.world) ?? installSites(terrainNow());
+const gridOf = (k: InstallKind) => gridFor(sitesNow(), G.char.installs, k);
 const hours = (m: number) => (m >= 60 ? Math.round(m / 60) + ' h' : Math.round(m) + ' min');
 
 function render(msg = '') {
   if (!site) return;
   const c = G.char, st = stateOf(site), stages = INSTALL_STAGES[site.k];
-  runInstall(site.k, st, c.time);
+  runInstall(site.k, st, c.time, gridOf(site.k));
   const list = stages.map((x, i) => `<span style="color:${i < st.stage ? 'var(--xp)' : i === st.stage ? 'var(--txt)' : '#6a8a70'}">${i + 1}. ${x.title}${i < st.stage ? ' ✓' : ''}</span>`).join(' · ');
   let s = `<h2>${site.name}</h2><div class="role">Control desk · ${Math.min(st.stage, stages.length)} of ${stages.length} stages restored</div>` +
     `<div class="say">${msg ? msg + '<br><br>' : ''}`;
@@ -42,6 +45,10 @@ function render(msg = '') {
     else s += plan.rows.map((r) => { const h = have(r.k); return `<span style="color:${r.given >= r.n ? 'var(--xp)' : h ? 'var(--txt)' : '#ff9a7a'}">${ITEMS[r.k].name} ${r.given}/${r.n}${r.given < r.n && h ? ` (you have ${h} with you)` : ''}</span>`; }).join(' · ');
     s += `</span><br><span style="opacity:.7">On completion: ${plan.st.gold} gold, ${plan.st.xp} xp.</span></div></div>`;
     if (plan.plans) s += `<button class="opt" data-ins="give" ${plan.rows.some((r) => r.given < r.n && have(r.k) > 0) ? '' : 'disabled'}>Hand over what I carry</button>`;
+  } else if (site.k === 'powerplex') {
+    s += plex(st) + `<div class="shoprow"><div>${list}</div></div>`;
+    const hv = have('nfuel'), left = plexLeft(st, c.time);
+    s += `<button class="opt" data-ins="rods" ${hv && left < POWERPLEX.bunker - 1 + 1e-9 ? '' : 'disabled'}>Load fuel rods into the core (${left.toFixed(1)}/${POWERPLEX.bunker} · you have ${hv} with you)</button>`;
   } else if (!INSTALL_WORK[site.k]) {
     s += `The dish turns on its tower and the screens in the bunker glow: every village, ruin, wreck and camp within ${radarRange(st) / 1000} km shows up, and whatever else is out there.</div>` +
       `<div class="shoprow"><div>${list}</div></div><button class="opt" data-ins="sweep">Sweep again and copy it onto my map</button>`;
@@ -63,10 +70,21 @@ function render(msg = '') {
   panel().classList.add('wide');
   panel().innerHTML = s + hall(site.k, st) + buyers() + `<button class="opt" data-ins="close">Close</button>`;
 }
+/** The complex's control room: the core's rods, how long they last, and the old plants on its lines. */
+function plex(st: InstallState): string {
+  const c = G.char, left = plexLeft(st, c.time), until = plexUntil(st), me = sitesNow().find((x) => x.k === 'powerplex');
+  let s = `The core hums under its dome. While it holds fuel rods (a crate every ${hours(POWERPLEX.burn)}, ${POWERPLEX.bunker} at most) the pylons carry ${POWERPLEX.kw} kW to every old plant within ${POWERPLEX.reach / 1000} km whose power hall stands: their batches then burn none of their own fuel.</div>`;
+  s += `<div class="say">${left > 0 ? `Rods in the core: <b>${left.toFixed(1)}</b>, enough for ${hours(until - c.time)}.` : '<b>The core is cold:</b> load fuel rods from the Old Enrichment Plant.'}</div>`;
+  if (me) {
+    const near = sitesNow().filter((x) => x.k !== 'powerplex' && INSTALL_WORK[x.k] && worldDist(x.x, x.z, me.x, me.z) <= POWERPLEX.reach);
+    s += `<div class="say">On its lines: ${near.length ? near.map((x) => `<b>${x.name}</b> (${(worldDist(x.x, x.z, me.x, me.z) / 1000).toFixed(1)} km ${dirWord(wrapDx(x.x - me.x), x.z - me.z)}${hallReady(x.k, c.installs[x.k]) ? '' : ', its power hall still a shell'})`).join(', ') : 'none of the old plants: the others lie beyond its reach'}. ${INSTALLS.length} old works stand on this world.</div>`;
+  }
+  return s;
+}
 const short = (n: string) => n.replace(/^(Crate|Sack|Barrel|Bale) of /, '').toLowerCase();
 /** The plant's own terminal: power, the hopper, what it makes and when the next batch is due. */
 function screen(k: InstallKind, st: InstallState): string {
-  const w = workOf(k, st)!, c = G.char, draw = INSTALL_DRAW[k] ?? 0, kw = hallKw(k, st), run = canRun(k, st), pick = hallPick(k, st);
+  const g = gridOf(k), w = workOf(k, st)!, c = G.char, draw = INSTALL_DRAW[k] ?? 0, kw = hallKw(k, st, g, c.time), run = canRun(k, st, g), pick = hallPick(k, st, g);
   const pad = (a: string, n = 22) => (a + ':').toUpperCase().padEnd(n);
   let t = `${site!.name.toUpperCase()}\n${pad('Power')}${kw}/${draw} kW${pick ? ' · ' + pick.map((h) => h.name.toLowerCase()).join(' + ') : ''}\n`;
   for (const [i] of w.inp) t += `${pad(short(ITEMS[i].name))}${st.inp[i] ?? 0} crates\n`;
@@ -84,7 +102,8 @@ function hall(k: InstallKind, st: InstallState): string {
     return `<div class="shoprow"><div><b>${h.name}</b> · ${h.kw} kW<br><span>${itemName(h.fuel)} in the bunker ${n > 0 && n < 1 ? n.toFixed(2) : Math.floor(n * 10) / 10}/${h.bunker} · ${per < 1 ? `${Math.round(1 / per)} batches a crate` : `${per.toFixed(1)} crates a batch`} · you have ${hv}</span></div>` +
       `<button class="opt" style="width:auto" data-ins="fuel" data-insk="${h.fuel}" ${hv && n < h.bunker - 1 + 1e-9 ? '' : 'disabled'}>load</button></div>`;
   }).join('');
-  return `<div class="say" style="margin:8px 0 0"><b>The power hall.</b> A batch needs ${INSTALL_DRAW[k]} kW: ${k === 'uranium' ? 'two sets together, or the plant\'s own reactor on its own rods' : 'one set if it is strong enough, else two together'}. The sets burn only while a batch is under way.</div>` + rows;
+  const g = gridOf(k), grid = g > G.char.time ? `<div class="say" style="margin:8px 0 0;color:var(--xp)">The Ancient Power Complex feeds this plant along its pylons for ${hours(g - G.char.time)} more: its batches burn no fuel of their own.</div>` : '';
+  return grid + `<div class="say" style="margin:8px 0 0"><b>The power hall.</b> A batch needs ${INSTALL_DRAW[k]} kW: ${k === 'uranium' ? 'two sets together, or the plant\'s own reactor on its own rods' : 'one set if it is strong enough, else two together'}. The sets burn only while a batch is under way.</div>` + rows;
 }
 /** The buyers of what this installation makes nearest to it, and whether they order today (its radio log). */
 const BUYERS: Partial<Record<InstallKind, { list: (world: number) => Poi[]; order: (world: number, v: Poi, now: number) => Contract | null; who: string }>> = {
@@ -120,6 +139,8 @@ const FINISH: Record<InstallKind, string> = {
   alloy: 'The electrodes drop into the furnaces with a thunderclap and the casting hall glares white.',
   precision: 'The master machines true themselves spindle by spindle, and the lamps on the test tower blink green.',
   robotics: 'The great arms lift from their sleep, the lines start to roll, and in the arena the walker takes its step.',
+  aerospace: 'The jigs close round the first new frame, the tunnel fan winds up to a howl, and the test stand roars.',
+  powerplex: 'Deep under the dome the core wakes with a sound like a held breath, and the pylons begin to sing.',
 };
 /** The radar station's sweep: every place within its reach goes on your map. */
 function sweep(s: InstallSite): string {
@@ -168,9 +189,14 @@ export function installClick(t: HTMLElement): boolean {
     calcStats(); saveChar(); render(msg); return true;
   }
   if (a === 'fuel') {
-    const i = b.dataset.insk as ItemKey, n = fuelHall(site.k, st, i, have(i), c.time);
+    const i = b.dataset.insk as ItemKey, n = fuelHall(site.k, st, i, have(i), c.time, gridOf(site.k));
     if (n > 0) { takeFrom(i, n, at()); calcStats(); saveChar(); }
     render(n > 0 ? `Loaded ${n} × ${ITEMS[i].name} into the power hall.` : 'No room in that bunker, or nothing to load.'); return true;
+  }
+  if (a === 'rods') {
+    const n = fuelPlex(st, have('nfuel'), c.time);
+    if (n > 0) { takeFrom('nfuel', n, at()); calcStats(); saveChar(); }
+    render(n > 0 ? `Loaded ${n} × ${ITEMS.nfuel.name} into the core.` : 'No room in the core, or no rods to load.'); return true;
   }
   if (a === 'rec') {
     const ok = setInstallRec(site.k, st, +b.dataset.insr!, c.time);
@@ -178,13 +204,14 @@ export function installClick(t: HTMLElement): boolean {
     render(ok ? `It is set to make ${ITEMS[workOf(site.k, st)!.out].name} now.` : 'Empty the bay first: it holds one kind at a time.'); return true;
   }
   if (a === 'load') {
-    const i = b.dataset.insk as ItemKey, n = loadInstall(site.k, st, i, have(i), c.time);
+    const i = b.dataset.insk as ItemKey, n = loadInstall(site.k, st, i, have(i), c.time, gridOf(site.k));
     if (n > 0) { takeFrom(i, n, at()); calcStats(); saveChar(); }
     render(n > 0 ? `Loaded ${n} × ${ITEMS[i].name}.` : 'Nothing to load.'); return true;
   }
   if (a === 'take') {
-    runInstall(site.k, st, c.time);
-    const w = workOf(site.k, st), was = canRun(site.k, st);
+    const g = gridOf(site.k);
+    runInstall(site.k, st, c.time, g);
+    const w = workOf(site.k, st), was = canRun(site.k, st, g);
     if (!w) return true;
     const left = putAway(w.out, st.out, at(), true), got = st.out - left;
     if (got > 0 && !was) st.t = c.time; // the bay had stopped it: it starts again now

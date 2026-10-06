@@ -12,7 +12,8 @@ const SETS: [ItemClass, string[]][] = [
   ['industrial', ['parts', 'tools', 'motor', 'pump', 'gears', 'pipes', 'engine', 'plating']],
   ['electrical', ['cable', 'boards', 'circuit', 'batteries', 'generator', 'powercell', 'wire', 'control', 'hpe', 'pcm']],
   ['advanced', ['microchip', 'sensor', 'precision', 'automation', 'pcore', 'ancalloy', 'ceramics', 'alloy', 'optics', 'computer']],
-  ['material', ['steel', 'copperbar', 'plastic', 'glass', 'iron', 'bricks', 'cement', 'chems', 'aluminium', 'leadbar', 'silicon', 'lumber', 'cloth', 'fuel', 'propellant', 'nfuel', 'planks', 'nails', 'rope', 'scrap', 'meds', 'tech']],
+  ['aerospace', ['aerocomp']],
+  ['material', ['steel', 'copperbar', 'plastic', 'glass', 'iron', 'bricks', 'cement', 'chems', 'aluminium', 'leadbar', 'silicon', 'composite', 'lumber', 'cloth', 'fuel', 'propellant', 'nfuel', 'planks', 'nails', 'rope', 'scrap', 'meds', 'tech']],
   ['raw', ['log', 'stone', 'ironO', 'copperO', 'hide', 'fang', 'plate', 'membrane', 'incisor']],
 ];
 const BY = new Map<string, ItemClass>(SETS.flatMap(([c, ks]) => ks.map((k) => [k, c] as [string, ItemClass])));

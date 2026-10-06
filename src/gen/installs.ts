@@ -14,7 +14,7 @@ import { inCity } from './cities';
 import { rectDist, Terrain } from './terrain';
 import type { ItemKey } from '../data/items';
 
-export type InstallKind = 'uranium' | 'chips' | 'radar' | 'propellant' | 'battery' | 'optical' | 'alloy' | 'precision' | 'robotics';
+export type InstallKind = 'uranium' | 'chips' | 'radar' | 'propellant' | 'battery' | 'optical' | 'alloy' | 'precision' | 'robotics' | 'aerospace' | 'powerplex';
 export interface InstallSpec { k: InstallKind; name: string; blurb: string; band: [number, number]; r: number }
 export const INSTALLS: InstallSpec[] = [
   { k: 'uranium', name: 'Old Enrichment Plant', blurb: 'a ruined plant of the old world where ore was once made into reactor fuel: a centrifuge hall, two cooling towers and a stack', band: [15000, 65000], r: 34 },
@@ -27,6 +27,9 @@ export const INSTALLS: InstallSpec[] = [
   { k: 'alloy', name: 'Old Alloy Complex', blurb: 'a metal works of the old world: two great arc furnaces crowned with electrodes, a towering casting hall, twin stacks and heaps of slag', band: [16000, 65000], r: 32 },
   { k: 'precision', name: 'Old Precision Works', blurb: 'a machining works of the old world: a vaulted hall of machine tools, a tall test tower and a white measuring dome', band: [18000, 65000], r: 30 },
   { k: 'robotics', name: 'Old Robotics Plant', blurb: 'the greatest works of the old world: an assembly hall like a hangar, a gantry yard, giant robot arms on their pedestals and a walled test arena under a control tower', band: [20000, 65000], r: 34 },
+  // (0.146, the industry document's complexes)
+  { k: 'aerospace', name: 'Old Aerospace Works', blurb: 'an airframe works of the old world: a hangar-sized assembly hall with a fuselage on its jigs, a long wind tunnel and an engine test stand', band: [20000, 65000], r: 34 },
+  { k: 'powerplex', name: 'Ancient Power Complex', blurb: 'the power station of the old world: a domed reactor hall, two great turbine halls, a switchyard and pylons striding off towards the other old plants', band: [12000, 65000], r: 34 },
 ];
 /** How much bigger the plants stand than their plans (and their `r`): the ground is searched at the plan's radius, so a plant's place never moves when it grows. */
 export const INSTALL_SCALE = 2;
@@ -149,7 +152,17 @@ export const INSTALL_STAGES: Record<InstallKind, InstallStage[]> = {
     { title: 'Raising the assembly hall', text: 'The assembly hall is the size of a hangar and its roof lies on the lines. Steel for the trusses, cement and bricks for the walls and the pedestals, machine parts for the gantries.', needs: [['steel', 14], ['cement', 12], ['bricks', 10], ['parts', 8]], gold: 350, xp: 350 },
     { title: 'The lines and power', text: 'The assembly lines, the gantries and the power hall by the gate must run again: heavy cable, circuit boards for the line controllers, power cells for the robot arms, chemicals for the paint and the coolant.', needs: [['cable', 16], ['boards', 8], ['powercell', 2], ['chems', 4]], gold: 500, xp: 500 },
     { title: 'Waking the arms', text: 'The great arms hang limp over the lines. Only the old plans for automation show how to teach them their work, and they want microchips, sensors to see with and precision components for their joints.', needs: [['microchip', 6], ['sensor', 4], ['precision', 4]], tech: 'automation', gold: 800, xp: 900 },
+  ],  aerospace: [
+    { title: 'Clearing the assembly hangar', text: 'The hangar doors have come off their rails and the jigs are buried under the fallen roof. Steel for the trusses, cement and cut stone for the floor that must carry an airframe, machine parts for the overhead cranes.', needs: [['steel', 14], ['cement', 12], ['cutstone', 10], ['parts', 8]], gold: 350, xp: 350 },
+    { title: 'The wind tunnel and power', text: 'The tunnel\'s great fan and the test stand must turn again, and the power hall by the gate with them: heavy cable, control units for the jigs, electric motors for the fan, pumps for the test stand\'s coolant, chemicals.', needs: [['cable', 16], ['control', 4], ['motor', 4], ['pump', 2], ['chems', 4]], gold: 500, xp: 500 },
+    { title: 'The airframe line', text: 'The jigs hold a half-built fuselage, as the Ancients left it. Only the old plans for aerospace engineering show how its frames go together, and they want computers for the line, titanium and composite for the test pieces, and precision components.', needs: [['computer', 2], ['titanium', 4], ['composite', 4], ['precision', 2]], tech: 'aerospace', gold: 800, xp: 900 },
   ],
+  powerplex: [
+    { title: 'Clearing the turbine halls', text: 'The turbine halls stand roofless and the reactor dome is cracked. Steel for the roof trusses, cement and bricks for the walls, machine parts for the cranes that lift the turbine casings.', needs: [['steel', 16], ['cement', 16], ['bricks', 12], ['parts', 8]], gold: 400, xp: 400 },
+    { title: 'Generators and the switchyard', text: 'The turbines need new generators, the switchyard its breakers and the pylons their lines: generators, heavy cable, high-power electronics for the switchgear, pumps for the cooling circuit.', needs: [['generator', 4], ['cable', 20], ['hpe', 2], ['pump', 2]], gold: 550, xp: 550 },
+    { title: 'Waking the core', text: 'The core sleeps under its dome. Only the old plans for the ancient power grid tell how to wake it safely, and they want power control modules, a computer for the control room, advanced steel for the vessel and power cores.', needs: [['pcm', 4], ['computer', 1], ['advsteel', 6], ['pcore', 2]], tech: 'powergrid', gold: 900, xp: 1000 },
+  ],
+
 };
 /** What a working installation makes: the crates of each input in `inp` into `n` (1) of `out` every `batch` game minutes (at most `hopper` of each input loaded, `bay` made waiting). */
 export interface InstallWork { inp: [ItemKey, number][]; out: ItemKey; n?: number; batch: number; hopper: number; bay: number; what: string }
@@ -161,11 +174,14 @@ export const INSTALL_WORK: Partial<Record<InstallKind, InstallWork>> = {
   optical: { inp: [['glass', 2], ['rareearth', 1], ['chems', 1]], out: 'sensor', batch: 240, hopper: 30, bay: 12, what: 'The crystal tower glows and the grinders whine in the lens halls.' },
   alloy: { inp: [['steel', 2], ['aluminium', 1], ['nickel', 1]], out: 'ancalloy', batch: 300, hopper: 30, bay: 12, what: 'The arc furnaces roar and the casting hall fills with a white glare.' },
   precision: { inp: [['steel', 2], ['ancalloy', 1], ['microchip', 1]], out: 'precision', batch: 300, hopper: 30, bay: 12, what: 'The machine hall hums and the test tower blinks its lamps.' },
+  aerospace: { inp: [['titanium', 2], ['aluminium', 2], ['composite', 1], ['advsteel', 1]], out: 'aerocomp', batch: 360, hopper: 20, bay: 10, what: 'The jigs close on a new frame and the wind tunnel howls.' },
   robotics: { inp: [['microchip', 1], ['sensor', 1], ['precision', 1], ['powercell', 1]], out: 'automation', batch: 360, hopper: 20, bay: 10, what: 'The great arms swing over the lines and a robot walks the test arena.' },
 };
 /** Further things an installation can make instead (picked at its desk while its bay is empty): the first is INSTALL_WORK[k]. */
 export const INSTALL_MORE: Partial<Record<InstallKind, InstallWork[]>> = {
-  alloy: [{ inp: [['clay', 3], ['aluminium', 1], ['chems', 1]], out: 'ceramics', n: 2, batch: 240, hopper: 30, bay: 12, what: 'The kiln line glows and the ceramic tiles come out white.' }],
+  alloy: [{ inp: [['clay', 3], ['aluminium', 1], ['chems', 1]], out: 'ceramics', n: 2, batch: 240, hopper: 30, bay: 12, what: 'The kiln line glows and the ceramic tiles come out white.' },
+    // (0.146) composite: resin and cloth laid up round titanium mesh and baked
+    { inp: [['plastic', 2], ['cloth', 2], ['titanium', 1]], out: 'composite', n: 2, batch: 240, hopper: 30, bay: 12, what: 'The autoclaves hiss and the laid-up composite sheets come out black and stiff.' }],
 };
 /** Everything k can make, and what it makes now (`InstallState.rec`). */
 export const installWorks = (k: InstallKind): InstallWork[] => (INSTALL_WORK[k] ? [INSTALL_WORK[k]!, ...(INSTALL_MORE[k] ?? [])] : []);
@@ -184,10 +200,10 @@ export function setInstallRec(k: InstallKind, s: InstallState, i: number, now: n
  * What a working installation draws (kW). A batch runs only while its power hall gives that much: the hall comes back
  * with the second stage (`HALL_STAGE` stages done) and burns what you bring it, only while a batch is under way.
  */
-export const INSTALL_DRAW: Partial<Record<InstallKind, number>> = { uranium: 200, chips: 100, propellant: 120, battery: 150, optical: 130, alloy: 180, precision: 160, robotics: 200 };
+export const INSTALL_DRAW: Partial<Record<InstallKind, number>> = { uranium: 200, chips: 100, propellant: 120, battery: 150, optical: 130, alloy: 180, precision: 160, robotics: 200, aerospace: 220 };
 export const HALL_STAGE = 2;
 /** The hall's generator sets: each runs on its own fuel (a crate every `burn` game minutes of work), `bunker` crates at most. */
-export interface HallSet { fuel: ItemKey; name: string; kw: number; burn: number; bunker: number }
+export interface HallSet { fuel: ItemKey; name: string; kw: number; burn: number; bunker: number; grid?: boolean }
 export const HALL_SETS: HallSet[] = [
   { fuel: 'coal', name: 'Coal boiler', kw: 120, burn: 120, bunker: 30 },
   { fuel: 'fuel', name: 'Diesel sets', kw: 100, burn: 150, bunker: 30 },
@@ -202,9 +218,10 @@ export const hallReady = (k: InstallKind, s: InstallState | undefined) => !!INST
  * The sets that would power one batch now (enough fuel in each for a whole batch), cheapest first: one set alone if it
  * gives enough, else the coal boiler and the diesel sets together; null when the hall cannot give the draw.
  */
-export function hallPick(k: InstallKind, s: InstallState): HallSet[] | null {
+export function hallPick(k: InstallKind, s: InstallState, grid = 0): HallSet[] | null {
   const w = workOf(k, s), draw = INSTALL_DRAW[k];
   if (!w || !draw || !hallReady(k, s)) return null;
+  if (grid >= s.t + w.batch) return [GRID]; // the Ancient Power Complex carries the whole batch: no fuel burnt
   const ok = hallSets(k).filter((h) => (s.pw?.[h.fuel] ?? 0) >= w.batch / h.burn - 1e-9);
   const one = ok.find((h) => h.kw >= draw);
   if (one) return [one];
@@ -213,15 +230,15 @@ export function hallPick(k: InstallKind, s: InstallState): HallSet[] | null {
   return pair.reduce((a, h) => a + h.kw, 0) >= draw && pair.length > 2 ? pair : null;
 }
 /** The power the hall could give now (kW): every set with fuel in its bunker. */
-export const hallKw = (k: InstallKind, s: InstallState | undefined) => (hallReady(k, s) ? hallSets(k).filter((h) => (s!.pw?.[h.fuel] ?? 0) > 1e-9).reduce((a, h) => a + h.kw, 0) : 0);
+export const hallKw = (k: InstallKind, s: InstallState | undefined, grid = 0, now = 0) => (hallReady(k, s) ? (grid > now ? POWERPLEX.kw : 0) + hallSets(k).filter((h) => (s!.pw?.[h.fuel] ?? 0) > 1e-9).reduce((a, h) => a + h.kw, 0) : 0);
 /** Load up to n crates of fuel into the hall's bunker for it; returns how many went in. */
-export function fuelHall(k: InstallKind, s: InstallState, fuel: ItemKey, n: number, now: number): number {
+export function fuelHall(k: InstallKind, s: InstallState, fuel: ItemKey, n: number, now: number, grid = 0): number {
   const h = hallSets(k).find((x) => x.fuel === fuel);
   if (!h || !hallReady(k, s)) return 0;
-  runInstall(k, s, now);
+  runInstall(k, s, now, grid);
   const have = s.pw?.[fuel] ?? 0, m = Math.max(0, Math.min(n, Math.floor(h.bunker - have + 1e-9)));
   if (m <= 0) return 0;
-  const could = canRun(k, s);
+  const could = canRun(k, s, grid);
   (s.pw ??= {})[fuel] = have + m;
   if (!could) s.t = now; // it was waiting for power: the batch starts now
   return m;
@@ -261,37 +278,66 @@ export function handOverInstall(k: InstallKind, s: InstallState, known: Record<s
   return { taken, built: true };
 }
 /** Can it work a batch now: restored, the inputs in the hopper, room in the bay and enough power from its hall? */
-export function canRun(k: InstallKind, s: InstallState): boolean {
+export function canRun(k: InstallKind, s: InstallState, grid = 0): boolean {
   const w = workOf(k, s);
-  return !!w && installDone(k, s) && batchesIn(k, s) >= 1 && s.out + (w.n ?? 1) <= w.bay && !!hallPick(k, s);
+  return !!w && installDone(k, s) && batchesIn(k, s) >= 1 && s.out + (w.n ?? 1) <= w.bay && !!hallPick(k, s, grid);
 }
 /**
  * Settle the batches made since it was last looked at: one per batch while the hopper has enough, the bay has room
  * and the power hall gives the draw (its sets burn their fuel for that batch); idle time does not bank.
  */
-export function runInstall(k: InstallKind, s: InstallState, now: number) {
+export function runInstall(k: InstallKind, s: InstallState, now: number, grid = 0) {
   if (!installDone(k, s)) return;
   const w = workOf(k, s);
   if (!w) return; // it makes nothing (the radar station)
   let steps = 0;
-  while (now - s.t >= w.batch && canRun(k, s) && steps++ < 400) {
-    for (const h of hallPick(k, s)!) s.pw![h.fuel] = Math.max(0, (s.pw![h.fuel] ?? 0) - w.batch / h.burn);
+  while (now - s.t >= w.batch && canRun(k, s, grid) && steps++ < 400) {
+    for (const h of hallPick(k, s, grid)!) if (!h.grid) s.pw![h.fuel] = Math.max(0, (s.pw![h.fuel] ?? 0) - w.batch / h.burn);
     for (const [i, n] of w.inp) s.inp[i] = (s.inp[i] ?? 0) - n;
     s.out += w.n ?? 1; s.t += w.batch;
   }
-  if (!canRun(k, s)) s.t = now; // stopped: the clock starts again when it is fed
+  if (!canRun(k, s, grid)) s.t = now; // stopped: the clock starts again when it is fed
 }
 /** Load up to n crates of input i (up to the hopper); returns how many went in. */
-export function loadInstall(k: InstallKind, s: InstallState, i: ItemKey, n: number, now: number): number {
-  runInstall(k, s, now);
+export function loadInstall(k: InstallKind, s: InstallState, i: ItemKey, n: number, now: number, grid = 0): number {
+  runInstall(k, s, now, grid);
   const w = workOf(k, s);
   if (!w || !installWorks(k).some((x) => x.inp.some(([y]) => y === i))) return 0; // (inputs of any of its recipes)
   const m = Math.max(0, Math.min(n, w.hopper - (s.inp[i] ?? 0)));
   if (m <= 0) return 0;
-  const could = canRun(k, s);
+  const could = canRun(k, s, grid);
   s.inp[i] = (s.inp[i] ?? 0) + m;
   if (!could) s.t = now; // it was idle: the batch starts now
   return m;
+}
+
+// ---------- the Ancient Power Complex: once restored and fed fuel rods, it powers the old plants in reach ----------
+/**
+ * Its core burns a crate of fuel rods every `burn` game minutes while it holds any (it never stops once lit), up to
+ * `bunker` crates; while it burns, every restored plant within `reach` whose power hall is back runs on its lines
+ * (`kw` each) and burns none of its own fuel. Its state: `pw.nfuel` crates at time `t` (an anchor, settled on loading).
+ */
+export const POWERPLEX = { kw: 400, reach: 16000, burn: 2880, bunker: 8 };
+/** The power hall's 'set' when the grid carries a batch (never burns anything). */
+const GRID: HallSet = { fuel: 'nfuel', name: 'The Ancient grid', kw: POWERPLEX.kw, burn: Infinity, bunker: 0, grid: true };
+/** Crates of rods left in the complex's core at `now`. */
+export const plexLeft = (s: InstallState | undefined, now: number) => (installDone('powerplex', s) ? Math.max(0, (s!.pw?.nfuel ?? 0) - (now - s!.t) / POWERPLEX.burn) : 0);
+/** Game time until which the complex gives power (0 = none). */
+export const plexUntil = (s: InstallState | undefined) => (installDone('powerplex', s) && (s!.pw?.nfuel ?? 0) > 0 ? s!.t + s!.pw!.nfuel! * POWERPLEX.burn : 0);
+/** Load up to n crates of rods into the core; returns how many went in. */
+export function fuelPlex(s: InstallState, n: number, now: number): number {
+  if (!installDone('powerplex', s)) return 0;
+  const left = plexLeft(s, now), m = Math.max(0, Math.min(n, Math.floor(POWERPLEX.bunker - left + 1e-9)));
+  if (m <= 0) return 0;
+  (s.pw ??= {}).nfuel = left + m; s.t = now;
+  return m;
+}
+/** The grid an installation k gets: the time until which the complex powers it (0 = out of reach, not restored, or no rods). */
+export function gridFor(sites: InstallSite[], installs: Partial<Record<InstallKind, InstallState>>, k: InstallKind): number {
+  if (k === 'powerplex') return 0;
+  const p = sites.find((x) => x.k === 'powerplex'), me = sites.find((x) => x.k === k);
+  if (!p || !me || worldDist(p.x, p.z, me.x, me.z) > POWERPLEX.reach) return 0;
+  return plexUntil(installs.powerplex);
 }
 
 // ---------- leads: what the villagers have heard of the great installations ----------
@@ -301,6 +347,14 @@ export const installLeadId = (k: InstallKind) => 'install:' + k;
 const IDIRS = ['north', 'north-east', 'east', 'south-east', 'south', 'south-west', 'west', 'north-west'];
 const idir = (dx: number, dz: number) => IDIRS[Math.round(((Math.atan2(dx, -dz) * 180 / Math.PI + 360) % 360) / 45) % 8];
 const ISAY: Record<InstallKind, string[]> = {
+  aerospace: [
+    'There is a hangar {dist} {dir} of here bigger than our whole village, with a ship\'s body still standing in it on iron legs, and a tube beside it long as a road. The old folk say the Ancients built their flying ships there.',
+    'A scavenger I know camped at the old aerospace works {dist} {dir} of here. He said the wind in the long tube moans all night like something alive.',
+  ],
+  powerplex: [
+    'There is a domed hall {dist} {dir} of here with two long halls beside it, and iron towers walk away from it in every direction, carrying dead wires. The old folk say it lit the whole world once.',
+    'My grandfather went to the old power complex {dist} {dir} of here. He said the ground hums there even now, and no bird sings near the dome.',
+  ],
   precision: [
     'There is a hall with a round roof {dist} {dir} of here, full of machines finer than a watch, and beside it a white dome and a tower with lamps. The old folk say the machines that made machines stood there.',
     'A tinker told me of the old precision works {dist} {dir} of here. He brought back a gauge block so true that two of them stuck together like magnets.',

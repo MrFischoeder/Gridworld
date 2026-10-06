@@ -1,9 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import { Terrain } from '../src/gen/terrain';
-import { installSites, installMisfit, inInstall, INSTALLS, INSTALL_STAGES, INSTALL_WORK, newInstall, installPlan, handOverInstall, runInstall, installDone, loadInstall, fixInstall, pickInstallLead, installLeadText, installLeadId, INSTALL_LEAD, RADAR, radarPlaces, INSTALL_DRAW, HALL_SETS, HALL_STAGE, fuelHall, hallKw, hallPick, hallReady, workOf, installWorks, setInstallRec, INSTALL_SCALE, type InstallState } from '../src/gen/installs';
+import { installSites, installMisfit, inInstall, INSTALLS, INSTALL_STAGES, INSTALL_WORK, newInstall, installPlan, handOverInstall, runInstall, installDone, loadInstall, fixInstall, pickInstallLead, installLeadText, installLeadId, INSTALL_LEAD, RADAR, radarPlaces, INSTALL_DRAW, HALL_SETS, HALL_STAGE, fuelHall, hallKw, hallPick, hallReady, workOf, installWorks, setInstallRec, INSTALL_SCALE, POWERPLEX, plexLeft, plexUntil, fuelPlex, gridFor, type InstallState } from '../src/gen/installs';
 import { ITEMS } from '../src/data/items';
 import { chunkTrees } from '../src/gen/trees';
-import { CHUNK } from '../src/gen/regions';
+import { CHUNK, worldDist } from '../src/gen/regions';
 import { PLANTS } from '../src/gen/plants';
 import { cellVillages, cellOrder } from '../src/gen/contracts';
 
@@ -118,6 +118,33 @@ describe('great installations', () => {
     for (const [i] of r.inp) expect(loadInstall('robotics', s, i, 3, 0)).toBe(3);
     runInstall('robotics', s, r.batch * 5); expect(s.out).toBe(3);
     for (const w of [12345, 777]) for (const x of installSites(new Terrain(w))) if (x.k === 'precision' || x.k === 'robotics') expect(Math.abs(x.z)).toBeLessThan(25000 - 1999);
+  }, 120000);
+  it('the aerospace works and the power complex (0.146): appended last, off the ice; the complex powers the old plants in reach', () => {
+    expect(INSTALLS.slice(-2).map((x) => x.k)).toEqual(['aerospace', 'powerplex']);
+    const a = workOf('aerospace')!;
+    expect(a.out).toBe('aerocomp'); expect(a.inp.map(([i]) => i)).toEqual(['titanium', 'aluminium', 'composite', 'advsteel']);
+    expect(INSTALL_STAGES.aerospace[2].tech).toBe('aerospace'); expect(INSTALL_STAGES.powerplex[2].tech).toBe('powergrid');
+    expect(installWorks('alloy').map((w) => w.out)).toEqual(['ancalloy', 'ceramics', 'composite']); // (appended: the old recipes keep their numbers)
+    expect(workOf('powerplex')).toBeUndefined();
+    // the core burns its rods by time
+    const p: InstallState = { ...newInstall(), stage: INSTALL_STAGES.powerplex.length, t: 0 };
+    expect(fuelPlex(p, 20, 0)).toBe(POWERPLEX.bunker);
+    expect(plexLeft(p, POWERPLEX.burn)).toBeCloseTo(POWERPLEX.bunker - 1);
+    expect(plexUntil(p)).toBe(POWERPLEX.bunker * POWERPLEX.burn);
+    expect(fuelPlex(p, 5, POWERPLEX.burn * 2)).toBe(2);
+    // a plant on the grid runs without fuel of its own, while the grid lasts
+    const s: InstallState = { ...newInstall(), stage: INSTALL_STAGES.robotics.length, t: 0 }, r = workOf('robotics')!;
+    for (const [i] of r.inp) loadInstall('robotics', s, i, 3, 0, 0);
+    runInstall('robotics', s, r.batch * 5, 0); expect(s.out).toBe(0); // no fuel, no grid
+    s.t = 0; runInstall('robotics', s, r.batch * 5, r.batch * 2); expect(s.out).toBe(2); // the grid ran out after two batches
+    expect(hallKw('robotics', s, r.batch * 10, r.batch * 5)).toBe(POWERPLEX.kw);
+    for (const w of [12345, 777]) {
+      const sites = installSites(new Terrain(w)), plex = sites.find((x) => x.k === 'powerplex')!;
+      expect(Math.abs(plex.z)).toBeLessThan(25000 - 1999);
+      const inst = { powerplex: { ...newInstall(), stage: 3, t: 0, pw: { nfuel: 2 } } };
+      for (const x of sites) if (x.k !== 'powerplex') expect(gridFor(sites, inst, x.k)).toBe(worldDist(x.x, x.z, plex.x, plex.z) <= POWERPLEX.reach ? 2 * POWERPLEX.burn : 0);
+      expect(gridFor(sites, {}, 'robotics')).toBe(0);
+    }
   }, 120000);
   it('the chip foundry needs every input for a batch', () => {
     const w = INSTALL_WORK.chips!, s: InstallState = { ...newInstall(), stage: INSTALL_STAGES.chips.length, pw: { coal: 30 } };

@@ -3,6 +3,12 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.146.0', date: '2026-10-06', title: 'Airframes and the Ancient grid', notes: [
+    'Two more great works of the Ancients stand on the world. Villagers tell of them like the others, and they are restored the same way, in three stages.',
+    'The Old Aerospace Works: a hangar-sized assembly hall with a half-built fuselage on its jigs, a long wind tunnel and an engine test stand. Restored with the plans for Aerospace Engineering, it builds Aerospace Components from titanium, aluminium, composite sheets and advanced steel.',
+    'The Ancient Power Complex: a domed reactor hall, two turbine halls, a switchyard and pylons. Restored with the plans for the Ancient Power Grid and fed fuel rods (a crate lasts two days, eight at most), it powers every old plant within 16 km whose power hall stands. While it runs, their batches burn none of their own coal, diesel or cells. Its control desk shows which plants are on its lines.',
+    'The Old Alloy Complex can now also bake Composite Sheets from resin, cloth and titanium. The Composite Vest now takes one sheet.',
+  ] },
   { v: '0.145.0', date: '2026-10-06', title: 'Electronics', notes: [
     'Six new electronic goods, all traded on the markets: Purified Silicon, Control Units, Optical Components, High-Power Electronics, Computer Systems and Power Control Modules.',
     'Silicon Processing refines glass with chemicals into purified silicon. It wants the plans for the Semiconductor Industry and a lot of power.',

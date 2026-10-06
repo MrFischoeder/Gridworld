@@ -21,7 +21,7 @@ import type { Terrain } from '../gen/terrain';
 const METAL = 0xa8c8b8, RUST = 0x9aa870, CONC = 0x7fa08c, GLOW = 0xb6ff3a, HOT_FLAME = 0xffb347;
 interface Live { s: InstallSite; g: THREE.Group; cos: number; sin: number; stage: number; spin?: THREE.Object3D | null; walls: [number, number, number, number][]; rings: [number, number, number][] }
 /** The control desk in each installation's frame (inside the gate, west of the way in). */
-export const DESKS: Record<InstallKind, { x: number; z: number }> = { uranium: { x: -6, z: -25 }, chips: { x: -6, z: -23 }, radar: { x: -6, z: -21 }, propellant: { x: -6, z: -23 }, battery: { x: -6, z: -23 }, optical: { x: -6, z: -23 }, alloy: { x: -6, z: -26 }, precision: { x: -6, z: -23 }, robotics: { x: -6, z: -28 } };
+export const DESKS: Record<InstallKind, { x: number; z: number }> = { uranium: { x: -6, z: -25 }, chips: { x: -6, z: -23 }, radar: { x: -6, z: -21 }, propellant: { x: -6, z: -23 }, battery: { x: -6, z: -23 }, optical: { x: -6, z: -23 }, alloy: { x: -6, z: -26 }, precision: { x: -6, z: -23 }, robotics: { x: -6, z: -28 }, aerospace: { x: -6, z: -28 }, powerplex: { x: -6, z: -28 } };
 const live = new Map<string, Live>();
 
 /** The perimeter fence (half-size F): posts every 4 m and two wires, with gaps and leaning posts until cleared; the gate on the -z side. */
@@ -59,7 +59,7 @@ function drawDesk(pb: PropBatch, Hp: (x: number, z: number) => number, plan: { x
   }
 }
 /** Where each plant's power hall stands, in its frame (inside the fence, east of the gate). */
-export const HALLS: Partial<Record<InstallKind, { x: number; z: number }>> = { uranium: { x: 16, z: -20 }, chips: { x: 15, z: -19 }, propellant: { x: 15, z: -19 }, battery: { x: 15, z: -19 }, optical: { x: 15, z: -19 }, alloy: { x: 16, z: -22 }, precision: { x: 15, z: -19 }, robotics: { x: 17, z: -25 } };
+export const HALLS: Partial<Record<InstallKind, { x: number; z: number }>> = { uranium: { x: 16, z: -20 }, chips: { x: 15, z: -19 }, propellant: { x: 15, z: -19 }, battery: { x: 15, z: -19 }, optical: { x: 15, z: -19 }, alloy: { x: 16, z: -22 }, precision: { x: 15, z: -19 }, robotics: { x: 17, z: -25 }, aerospace: { x: 17, z: -25 } };
 /**
  * The power hall: a burnt-out shell (low broken walls, a toppled stack) until the second stage brings it back; then a
  * generator house with a gable roof and a door, its stack, a coal bin and a fuel tank, and a lime lamp over the door.
@@ -654,7 +654,117 @@ function drawRobotics(T: Terrain, s: InstallSite, cos: number, sin: number, stag
   if (spin) g.add(spin);
   return { g, walls, rings };
 }
-const DRAW: Record<InstallKind, typeof drawUranium> = { precision: drawPrecision, robotics: drawRobotics, optical: drawOptical, alloy: drawAlloy, uranium: drawUranium, chips: drawChips, radar: drawRadar, propellant: drawPropellant, battery: drawBattery };
+/** A faceted tube along x from x0 to x1 round (y, z), radius r (open ends: give `caps` to close them). */
+function tubeX(pb: PropBatch, x0: number, x1: number, y: number, z: number, r: number, c: number, n = 10, caps = false) {
+  const P = (x: number, i: number) => [x, y + Math.sin(i / n * 6.283) * r, z + Math.cos(i / n * 6.283) * r];
+  for (let i = 0; i < n; i++) { pb.face(P(x0, i), P(x1, i), P(x1, i + 1), P(x0, i + 1)); if (i % 2 === 0) pb.seg(c, P(x0, i), P(x1, i)); pb.seg(c, P(x0, i), P(x0, i + 1)); pb.seg(c, P(x1, i), P(x1, i + 1)); }
+  if (caps) for (const x of [x0, x1]) { const cap: number[][] = []; for (let i = 0; i < n; i++) cap.push(P(x, i)); pb.face(...cap); }
+}
+/**
+ * The airframe works in its own frame: the assembly hangar (x -24..6, z -4..16, walls 11 m under an arched roof, the
+ * great door open in the front) with a fuselage on its jigs inside, the wind tunnel (a long tube at z 26 from x -22 to
+ * 18 with a bell mouth and the fan house), and the engine test stand (x 22, z 4: a concrete block with a nacelle and a
+ * blast deflector). Before it is cleared half the roof lies in, a door leaf leans on the wall and the tunnel is broken
+ * in two; with the tunnel and power (stage 2) the tube is whole and the fan house roofed; restored, the fuselage is
+ * skinned, the hangar's windows and the stand's lamps glow.
+ */
+function drawAerospace(T: Terrain, s: InstallSite, cos: number, sin: number, stage: number, hb: PropBatch): { g: THREE.Group; walls: Live['walls']; rings: Live['rings'] } {
+  const pb = new PropBatch(), walls: Live['walls'] = [], rings: Live['rings'] = [];
+  const cleared = stage >= 1, powered = stage >= 2, done = stage >= INSTALL_STAGES.aerospace.length;
+  const H = hOf(T, s, cos, sin);
+  drawFence(pb, H, 33, cleared);
+  // ---- the hangar
+  const X0 = -24, X1 = 6, Z0 = -4, Z1 = 16, WH = 11, RISE = 7, ZM = (Z0 + Z1) / 2, R = (Z1 - Z0) / 2, g0 = Math.min(H(X0, Z0), H(X1, Z0), H(X0, Z1), H(X1, Z1)) - 0.3;
+  const wall = (ax: number, az: number, bx: number, bz: number) => { pb.box(Math.min(ax, bx) - 0.2, g0, Math.min(az, bz) - 0.2, Math.max(ax, bx) + 0.2, g0 + WH, Math.max(az, bz) + 0.2, CONC); walls.push([ax, az, bx, bz]); };
+  wall(X0, Z0, -17, Z0); wall(-1, Z0, X1, Z0); wall(X1, Z0, X1, Z1); wall(X1, Z1, X0, Z1); wall(X0, Z1, X0, Z0);
+  pb.face([-17, g0 + 9, Z0 - 0.21], [-1, g0 + 9, Z0 - 0.21], [-1, g0 + WH, Z0 - 0.21], [-17, g0 + WH, Z0 - 0.21]); // over the great door
+  const arc = (x: number, t: number) => [x, g0 + WH + Math.sin(t * Math.PI) * RISE, ZM - Math.cos(t * Math.PI) * R];
+  for (let x = X0; x <= X1 + 0.01; x += 3) {
+    if (!cleared && x > -9) { if (x % 2 === 0) { const y = H(x, ZM); pb.line(RUST, [x, y + 0.3, Z0 + 2], [x + 2, y + 1.2, ZM], [x + 1, y + 0.3, Z1 - 2]); } continue; }
+    for (let i = 0; i < 10; i++) pb.seg(METAL, arc(x, i / 10), arc(x, (i + 1) / 10));
+    if (x < X1 && (cleared || x + 3 <= -9)) for (let i = 0; i < 10; i++) { pb.face(arc(x, i / 10), arc(x + 3, i / 10), arc(x + 3, (i + 1) / 10), arc(x, (i + 1) / 10)); if (i % 2 === 0) pb.seg(METAL, arc(x, i / 10), arc(x + 3, i / 10)); }
+  }
+  for (const xe of cleared ? [X0, X1] : [X0]) { const pts: number[][] = []; for (let i = 0; i <= 10; i++) pts.push(arc(xe, i / 10)); pb.face(...pts); }
+  for (const ze of [Z0 - 0.22, Z1 + 0.22]) for (let x = X0 + 1.5; x < X1 - 1; x += 3) if ((ze > 0 || x < -18 || x > -1) && (cleared || x < -9)) pb.line(done ? GLOW : METAL, [x, g0 + 7, ze], [x + 1.8, g0 + 7, ze], [x + 1.8, g0 + 9.5, ze], [x, g0 + 9.5, ze], [x, g0 + 7, ze]);
+  if (!cleared) beam(pb, [-12, H(-12, Z0 - 4), Z0 - 4.5], [-10, g0 + 8.5, Z0 - 0.5], 0.5, RUST); // a door leaf leaning on the wall
+  // the fuselage on its jigs: ribs along x, skinned once restored, and a jig frame at each end
+  { const fy = g0 + 4.2, fr = 2.6;
+    for (let x = -20; x <= -2; x += 2) { const pts: number[][] = []; for (let i = 0; i <= 12; i++) { const a = i / 12 * 6.283; pts.push([x, fy + Math.sin(a) * fr, ZM + Math.cos(a) * fr]); } pb.line(done ? METAL : RUST, ...pts); }
+    if (done) tubeX(pb, -20, -2, fy, ZM, fr, METAL, 12, true);
+    for (const x of [-21, -1]) { pb.box(x - 0.3, g0, ZM - 3.4, x + 0.3, fy + 0.4, ZM - 3, METAL); pb.box(x - 0.3, g0, ZM + 3, x + 0.3, fy + 0.4, ZM + 3.4, METAL); pb.seg(METAL, [x, fy + 0.4, ZM - 3.2], [x, fy + 0.4, ZM + 3.2]); }
+    { const cone: number[][] = []; for (let i = 0; i <= 12; i++) { const a = i / 12 * 6.283; cone.push([-2, fy + Math.sin(a) * fr, ZM + Math.cos(a) * fr]); } for (let i = 0; i < 12; i += 2) pb.seg(done ? METAL : RUST, cone[i], [2.5, fy, ZM]); }
+  }
+  // ---- the wind tunnel: a long tube on piers, a bell mouth, the fan house; broken in two until powered
+  { const ty = H(-2, 26) + 4, tz = 26, r = 2.4;
+    for (let x = -20; x <= 16; x += 6) { const y = H(x, tz); pb.box(x - 0.5, y - 0.2, tz - 1.2, x + 0.5, ty - r + 0.2, tz + 1.2, CONC); rings.push([x, tz, 1.3]); }
+    if (powered) tubeX(pb, -18, 12, ty, tz, r, METAL, 10, false);
+    else { tubeX(pb, -18, -4, ty, tz, r, RUST, 10, false); const y = H(4, tz + 3); tubeX(pb, 0, 12, y + r, tz + 3, r, RUST, 10, false); }
+    tubeX(pb, -22, -18, ty, tz, r * 1.7, METAL, 12, false); pb.line(METAL, [-18, ty + r * 1.7, tz], [-18, ty + r, tz]); // the bell mouth
+    const fx = 12, fy = H(16, tz) - 0.2; pb.box(fx, fy, tz - 4, fx + 7, fy + 9, tz + 4, CONC); walls.push([fx, tz - 4, fx + 7, tz - 4], [fx + 7, tz - 4, fx + 7, tz + 4], [fx + 7, tz + 4, fx, tz + 4], [fx, tz + 4, fx, tz - 4]);
+    if (powered) pb.gableRoof(fx - 0.3, tz - 4.3, fx + 7.3, tz + 4.3, fy + 9, 1.5, METAL);
+    if (done) for (let i = 0; i < 6; i++) { const a = i / 6 * 6.283; pb.seg(GLOW, [fx - 0.05, ty, tz], [fx - 0.05, ty + Math.sin(a) * r * 0.9, tz + Math.cos(a) * r * 0.9]); }
+  }
+  // ---- the engine test stand: a concrete block, the engine in its cradle, a curved blast deflector behind
+  { const cx = 22, cz = 4, y = H(cx, cz) - 0.2;
+    pb.box(cx - 3, y, cz - 3, cx + 3, y + 3, cz + 3, CONC); rings.push([cx, cz, 3.2]);
+    tubeX(pb, cx - 2.5, cx + 2.5, y + 4.4, cz, 1.2, done ? METAL : RUST, 10, true);
+    for (const dx of [-1.8, 1.8]) pb.seg(METAL, [cx + dx, y + 3, cz], [cx + dx, y + 3.4, cz]);
+    for (let i = 0; i < 6; i++) { const t = i / 5; pb.line(CONC, [cx + 6 + t * 2, H(cx + 7, cz) + t * t * 5, cz - 4], [cx + 6 + t * 2, H(cx + 7, cz) + t * t * 5, cz + 4]); }
+    if (done) for (const [dx, dz] of [[-3, -3], [3, 3]]) pb.box(cx + dx - 0.25, y + 3, cz + dz - 0.25, cx + dx + 0.25, y + 3.5, cz + dz + 0.25, GLOW);
+  }
+  drawHall(pb, H, HALLS.aerospace!, stage >= HALL_STAGE, walls, rings);
+  drawDesk(hb, H, DESKS.aerospace, stage, done, rings);
+  return { g: pb.build(), walls, rings };
+}
+/** A lattice pylon at (x, z): four legs narrowing to a cross-arm with insulators. */
+function pylon(pb: PropBatch, x: number, y: number, z: number, h: number, c: number, lit: boolean) {
+  const w = 1.6;
+  for (const [dx, dz] of [[-w, -w], [w, -w], [w, w], [-w, w]]) pb.seg(c, [x + dx, y, z + dz], [x + dx * 0.3, y + h, z + dz * 0.3]);
+  for (let r = 0; r + 4 <= h; r += 4) { const k0 = 1 - 0.7 * r / h, k1 = 1 - 0.7 * (r + 4) / h; pb.seg(c, [x - w * k0, y + r, z - w * k0], [x + w * k1, y + r + 4, z + w * k1]); pb.seg(c, [x + w * k0, y + r, z - w * k0], [x - w * k1, y + r + 4, z + w * k1]); }
+  pb.seg(c, [x, y + h, z - 5], [x, y + h, z + 5]);
+  for (const dz of [-4.5, 0, 4.5]) pb.seg(lit ? GLOW : c, [x, y + h, z + dz], [x, y + h - 1.2, z + dz]);
+}
+/**
+ * The power complex in its own frame: the domed reactor hall (x -12, z 8, r 9), two long turbine halls (x 2..24 at
+ * z -2..5 and z 10..17), the switchyard (x -26..-14, z -18..-6: transformers and breaker posts) and pylons. Before the
+ * halls are cleared they are roofless and the dome is cracked open; with generators and the switchyard (stage 2) the
+ * yard's breakers and the lines between the pylons are up; restored, the dome's ring, the windows and the
+ * insulators glow.
+ */
+function drawPowerplex(T: Terrain, s: InstallSite, cos: number, sin: number, stage: number, hb: PropBatch): { g: THREE.Group; walls: Live['walls']; rings: Live['rings'] } {
+  const pb = new PropBatch(), walls: Live['walls'] = [], rings: Live['rings'] = [];
+  const cleared = stage >= 1, powered = stage >= 2, done = stage >= INSTALL_STAGES.powerplex.length, WHITE = 0xd8f0e0;
+  const H = hOf(T, s, cos, sin);
+  drawFence(pb, H, 33, cleared);
+  // ---- the reactor: a ring wall under a dome, cracked open until cleared
+  { const cx = -12, cz = 8, y = H(cx, cz) - 0.3, r = 9;
+    cylAt(pb, cx, cz, r, 8, y, CONC, 16); rings.push([cx, cz, r + 0.2]);
+    if (cleared) sphereAt(pb, cx, y + 8, cz, r, WHITE);
+    else { for (let i = 0; i < 7; i++) { const a = i / 7 * 6.283; pb.line(WHITE, [cx + Math.cos(a) * r, y + 8, cz + Math.sin(a) * r], [cx + Math.cos(a) * r * 0.6, y + 13, cz + Math.sin(a) * r * 0.6], [cx + Math.cos(a + 0.3) * r * 0.25, y + 14, cz + Math.sin(a + 0.3) * r * 0.25]); } }
+    if (done) { const pts: number[][] = []; for (let i = 0; i <= 16; i++) { const a = i / 16 * 6.283; pts.push([cx + Math.cos(a) * (r + 0.05), y + 6.5, cz + Math.sin(a) * (r + 0.05)]); } pb.line(GLOW, ...pts); }
+  }
+  // ---- the turbine halls
+  for (const [z0, z1] of [[-2, 5], [10, 17]]) {
+    const x0 = 2, x1 = 24, g = Math.min(H(x0, z0), H(x1, z0), H(x0, z1), H(x1, z1)) - 0.3, h = 9;
+    pb.box(x0, g, z0, x1, g + h, z1, CONC); walls.push([x0, z0, x1, z0], [x1, z0, x1, z1], [x1, z1, x0, z1], [x0, z1, x0, z0]);
+    if (cleared) pb.gableRoof(x0 - 0.3, z0 - 0.3, x1 + 0.3, z1 + 0.3, g + h, 1.8, METAL);
+    else for (let x = x0 + 3; x < x1; x += 6) { const y = H(x, z1 + 3); pb.line(RUST, [x, y + 0.2, z1 + 1], [x + 3, y + 0.8, z1 + 3], [x + 6, y + 0.2, z1 + 5]); }
+    for (let x = x0 + 1.5; x < x1 - 1; x += 3) for (const ze of [z0 - 0.03, z1 + 0.03]) pb.line(done ? GLOW : METAL, [x, g + 5, ze], [x + 1.6, g + 5, ze], [x + 1.6, g + 7.5, ze], [x, g + 7.5, ze], [x, g + 5, ze]);
+    cylAt(pb, 26, (z0 + z1) / 2, 0.9, 20, H(26, (z0 + z1) / 2) - 0.2, CONC, 8); rings.push([26, (z0 + z1) / 2, 1]);
+  }
+  // ---- the switchyard: transformers and breaker posts, the lines once up
+  { const y = H(-20, -12);
+    for (let x = -25; x <= -15; x += 5) { pb.box(x - 1.2, y - 0.2, -10, x + 1.2, y + 2.6, -7.5, METAL); rings.push([x, -8.7, 1.4]); for (const dx of [-0.7, 0, 0.7]) pb.seg(METAL, [x + dx, y + 2.6, -8.7], [x + dx, y + 3.6, -8.7]); }
+    if (powered) for (let x = -25; x <= -15; x += 5) for (const z of [-17, -14]) { pb.seg(METAL, [x, y, z], [x, y + 5, z]); pb.seg(done ? GLOW : METAL, [x - 0.4, y + 5, z], [x + 0.4, y + 5, z]); }
+  }
+  // ---- the pylons striding off to the north and east (their lines up once powered)
+  const pyl: [number, number][] = [[-2, 26], [14, 26], [30, 22]];
+  for (const [x, z] of pyl) { pylon(pb, x, H(x, z) - 0.2, z, 22, powered ? METAL : RUST, done); rings.push([x, z, 1.8]); }
+  if (powered) for (let i = 0; i + 1 < pyl.length; i++) for (const dz of [-4.5, 0, 4.5]) { const [ax, az] = pyl[i], [bx, bz] = pyl[i + 1], ya = H(ax, az) + 20.6, yb = H(bx, bz) + 20.6, m = [(ax + bx) / 2, (ya + yb) / 2 - 2.5, (az + bz) / 2 + dz]; pb.line(done ? GLOW : METAL, [ax, ya, az + dz], m, [bx, yb, bz + dz]); }
+  drawDesk(hb, H, DESKS.powerplex, stage, done, rings);
+  return { g: pb.build(), walls, rings };
+}
+const DRAW: Record<InstallKind, typeof drawUranium> = { aerospace: drawAerospace, powerplex: drawPowerplex, precision: drawPrecision, robotics: drawRobotics, optical: drawOptical, alloy: drawAlloy, uranium: drawUranium, chips: drawChips, radar: drawRadar, propellant: drawPropellant, battery: drawBattery };
 
 /** Every second: draw the installations within reach, drop those far behind. */
 let tick = 0;
