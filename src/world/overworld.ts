@@ -362,8 +362,8 @@ function loadVillageStruct(poi: Poi): Structure {
   scene.add(group);
   const npcs: Npc[] = [];
   vm.buildings.forEach((b, i) => { if (b.role !== 'house' && b.condition !== 0 && b.condition !== 1) npcs.push(makeNpc(b.role, residentName(vm, b.role, i), V(b.home!.x, b.home!.y, b.home!.z), b)); });
-  if (vm.home && (!progressive(st) || development(st) >= 3)) {
-    // the vehicle dealer and his yard just outside the north gate
+  if (vm.home && (!progressive(st) || development(st) >= 2)) {
+    // the mechanic (once the settlement has its first spare hands) and his yard just outside the north gate
     npcs.push(makeNpc('dealer', NPC_INFO.dealer.name!, V(YARD.dealer.x, y, YARD.dealer.z), null));
     group.add(yardDeco(y));
   }

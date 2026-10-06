@@ -2,6 +2,8 @@
 // tooltip (ui/itemtip.ts) lists it under "Used for". Pure; built once on first use.
 import { ITEMS, type ItemKey } from './items';
 import { ORDERS } from './orders';
+import { GARAGE } from './garage';
+import { vehicleTitle } from './vehicles';
 import { GUNS } from './weapons';
 import { PLANTS, type PlantKind } from '../gen/plants';
 import { STATIONS, type StationKind } from '../gen/energy';
@@ -32,6 +34,7 @@ function build(): Map<ItemKey, Map<UseGroup, string[]>> {
     gs.set(g, a); m.set(k, gs);
   };
   for (const o of ORDERS) for (const [i] of o.needs) use(i, 'Blacksmith makes', N(o.out));
+  for (const g of GARAGE) for (const [i] of g.needs) use(i, 'Other', 'the mechanic: ' + (g.car ? vehicleTitle(g.car) : N(g.out!)));
   for (const k of Object.keys(PLANTS) as PlantKind[]) for (const r of PLANTS[k].recipes) for (const [i] of r.in) use(i, 'Processed into', `${N(r.out[0])} (${PLANTS[k].name})`);
   for (const k of Object.keys(INSTALL_WORK) as InstallKind[]) for (const w of installWorks(k)) for (const [i] of w.inp) use(i, 'Processed into', `${N(w.out)} (${INSTALLS.find((s) => s.k === k)!.name})`);
   for (const d of MENU) for (const i of d.from) use(i, 'Cooked into', N(d.k));

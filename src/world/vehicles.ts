@@ -440,6 +440,10 @@ function claim(v: Vehicle) {
   if (Math.random() < 0.6) putItems(t.items, 'medkit', 1 + Math.floor(Math.random() * 2));
   if (Math.random() < 0.3) putItems(t.items, 'emp', 1);
   if (Math.random() < 0.2) putItems(t.items, RELIC_KEYS[(Math.random() * RELIC_KEYS.length) | 0], 1);
+  // (0.148) spares the last owner carried: salvage for the mechanic
+  if (Math.random() < 0.4) putItems(t.items, 'gears', 1 + Math.floor(Math.random() * 2));
+  if (Math.random() < 0.3) putItems(t.items, 'parts', 1);
+  if (Math.random() < 0.25) putItems(t.items, 'engine', 1);
   G.char.vehicles.push(v.st); saveChar();
   showToast('Found: ' + vehicleTitle(v.st.model));
 }
@@ -449,12 +453,20 @@ function claim(v: Vehicle) {
 export function buyVehicle(model: VehicleModel): string {
   const spec = VEHICLES[model], c = G.char;
   if (c.gold < spec.price) return 'Not enough gold.';
-  const bay = YARD.bays.find((b) => !vehicles.some((v) => Math.hypot(v.st.x - b.x, v.st.z - b.z) < 7));
-  if (!bay) return 'The yard is full. Drive one of your vehicles away first.';
+  if (!yardBay()) return 'The yard is full. Drive one of your vehicles away first.';
   c.gold -= spec.price;
-  const st = stateOf({ id: model + '-' + Date.now().toString(36), model, x: bay.x, z: bay.z, heading: YARD.heading, parts: freshParts(model) });
-  c.vehicles.push(st); vehicles.push(makeVehicle(st)); saveChar();
+  parkNew(model);
   return `Your ${vehicleTitle(model)} is waiting in the yard outside the north gate.`;
+}
+/** The first free bay of Gridholm's yard, or null. */
+export const yardBay = () => YARD.bays.find((b) => !vehicles.some((v) => Math.hypot(v.st.x - b.x, v.st.z - b.z) < 7)) ?? null;
+/** A new vehicle of yours parked in the yard's first free bay (false when it is full). */
+export function parkNew(model: VehicleModel): boolean {
+  const bay = yardBay();
+  if (!bay) return false;
+  const st = stateOf({ id: model + '-' + Date.now().toString(36), model, x: bay.x, z: bay.z, heading: YARD.heading, parts: freshParts(model) });
+  G.char.vehicles.push(st); vehicles.push(makeVehicle(st)); saveChar();
+  return true;
 }
 export function clearVehicles() {
   if (driving.v) leave(false);

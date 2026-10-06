@@ -110,6 +110,8 @@ export interface Char {
   settlementRewards?: string[];
   /** Work ordered from village craftsmen (ui/orders.ts): world, village, order (index in data/orders.ts ORDERS), pieces still to collect, game time ready. Yours alone (not shared). */
   forge?: { w: number; v: number; i: number; n: number; done: number; told?: 1 }[];
+  /** Work ordered from the mechanic (data/garage.ts GARAGE index): world, village, game time ready. Yours alone. */
+  garage?: { w: number; v: number; i: number; done: number; n?: number; told?: 1 }[];
   /** The markets (gen/market.ts): how trades have shifted each village's stocks. On the server this is shared by everyone. */
   market: MarketState;
   /** Prices you have seen, per village id: when, the village's name and place, and [buy, sell] per good. */

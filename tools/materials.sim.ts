@@ -17,6 +17,8 @@ import { RARES } from '../src/gen/deposits';
 import { INSTALLS, INSTALL_STAGES, INSTALL_WORK, INSTALL_DRAW, HALL_SETS, RADAR_UP, installWorks, type InstallKind } from '../src/gen/installs';
 import { STAGES, CHARIOT } from '../src/gen/shuttle';
 import { ORDERS } from '../src/data/orders';
+import { GARAGE } from '../src/data/garage';
+import { vehicleTitle } from '../src/data/vehicles';
 import { MENU } from '../src/gen/foodshop';
 import { DROPS } from '../src/data/creatures';
 import { ROBOTS } from '../src/data/robots';
@@ -132,6 +134,16 @@ it('writes SUROWCE.md', () => {
   for (const o of ORDERS) {
     P(`| ${o.n > 1 ? o.n + ' × ' : ''}${N(o.out)} | ${list(o.needs)} | ${o.tech ? TECH_BY_ID[o.tech]?.name ?? o.tech : 'podstawowe (bez planów)'} |`);
     for (const [i] of o.needs) use(i, `kowal → ${N(o.out)}`);
+  }
+  P('');
+  P('**Warsztat mechanika** (Kuba, „Build me something in your workshop”; salvage z hali wioski, praca w godzinach gry):');
+  P('');
+  P('| Wyrób | Z czego | Czas |');
+  P('|---|---|---|');
+  for (const g of GARAGE) {
+    const out = g.car ? vehicleTitle(g.car) : `${g.n > 1 ? g.n + ' × ' : ''}${N(g.out!)}`;
+    P(`| ${out} | ${list(g.needs)} | ${g.hours} h |`);
+    for (const [i] of g.needs) use(i, `mechanik → ${out}`);
   }
   P('');
   P('### 2.4 Sklep spożywczy (gotuje z hali wioski)');

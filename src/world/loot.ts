@@ -175,6 +175,8 @@ function rollChest(): Container {
   if (Math.random() < 0.15) add(ATTACH_KEYS[(Math.random() * ATTACH_KEYS.length) | 0]);
   if (Math.random() < 0.5) { const [k, n] = rollAmmo(0.7 + depth * 0.3); putItems(items, k, n); }
   if (Math.random() < 0.07) add(pick(LOOT_GUNS)); else if (Math.random() < 0.07) add(pick(LOOT_MELEE));
+  // (0.148) the old machines' leavings: salvage the mechanic builds vehicles from
+  if (Math.random() < 0.15) add('parts'); else if (Math.random() < 0.1) add('gears');
   if (G.map?.style === 'ship') { // a freighter's lockers: salvage and ship's stores
     putItems(items, 'scrap', 1 + Math.floor(Math.random() * 3));
     if (Math.random() < 0.6) putItems(items, 'circuit', 1 + Math.floor(Math.random() * 2));
@@ -185,6 +187,7 @@ function rollChest(): Container {
     if (Math.random() < 0.15) putItems(items, 'repairkit', 1);
     // the ship's machinery, stripped out (industrial components: salvage before the works can make them)
     if (Math.random() < 0.3) putItems(items, 'gears', 1 + Math.floor(Math.random() * 2));
+    if (Math.random() < 0.3) putItems(items, 'parts', 1 + Math.floor(Math.random() * 2)); // (0.148) machine parts for the mechanic
     if (Math.random() < 0.25) putItems(items, 'motor', 1);
     if (Math.random() < 0.2) putItems(items, 'pipes', 1 + Math.floor(Math.random() * 2));
     if (Math.random() < 0.1) putItems(items, Math.random() < 0.6 ? 'generator' : 'pump', 1);

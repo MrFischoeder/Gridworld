@@ -3,6 +3,12 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.148.0', date: '2026-10-06', title: 'The mechanic', notes: [
+    'Kuba is now the village mechanic. In a new world he opens his yard earlier, once the settlement reaches its second level of development.',
+    'His workshop ("Build me something in your workshop.") builds an RTV-1 Scout or an HTV-6 Mastodon from salvage, and makes Vehicle Repair Kits. The salvage is scrap, machine parts, gears, engine parts and electronic components, taken from the village hall when you order.',
+    'Workshop jobs take game hours: order, go about your business, and come back to collect. A finished vehicle waits in the yard, and you hear when a job is ready. Two jobs at a time.',
+    'In a new world nobody makes engines any more: Kuba sells no new vehicles and no engine parts. Machine parts now turn up as salvage from Guardians, Sentinels and Assault Constructs, in ruin and wreck chests, and with gears and engine parts in the trunks of abandoned vehicles.',
+  ] },
   { v: '0.147.0', date: '2026-10-06', title: 'The space program', notes: [
     'Three aerospace components join the chain: Avionics Modules, Life Support Systems and Rocket Engines.',
     'The Avionics Works builds avionics racks from a computer system, two sensors and a control unit. It wants the plans for Spacecraft Avionics.',

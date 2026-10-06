@@ -44,6 +44,7 @@ import { terminalClick } from './terminal';
 import { logbookClick } from './logbook';
 import { askLead } from '../world/datacarriers';
 import { ordersHTML, ordersClick } from './orders';
+import { garageHTML, garageClick } from './garage';
 import { foodHTML, foodClick } from './foodshop';
 import { shareHTML, shareClick } from './share';
 import { farmsHTML, farmsClick, showFarm } from './farms';
@@ -107,13 +108,14 @@ function renderHouse(msg = '') {
 }
 const PARTS = Object.keys(PART_PRICE) as ItemKey[];
 function renderVehicleShop(msg?: string) {
-  panel().innerHTML = dlgHead() + `<div class="say">Your gold: <b>${G.char.gold}</b>${msg ? '<br>' + msg : ''}</div>` +
-    (Object.keys(VEHICLES) as VehicleModel[]).map((m) => {
+  const salvage = progressive(G.char.towns[townId()!]); // (a new world: vehicles and engine parts only from salvage, built in the workshop)
+  panel().innerHTML = dlgHead() + `<div class="say">Your gold: <b>${G.char.gold}</b>${msg ? '<br>' + msg : ''}${salvage ? '<br>I have no new vehicles to sell and no engine parts: nobody makes them any more. Bring me salvage and I build you one in the workshop.' : ''}</div>` +
+    (salvage ? [] : Object.keys(VEHICLES) as VehicleModel[]).map((m) => {
       const s = VEHICLES[m];
       return `<div class="shoprow"><div><b>${vehicleTitle(m)}</b><br><span>${s.role} · ${s.seats} seats · trunk ${s.trunk} · ${Math.round(s.maxSpeed * 3.6)} km/h${s.enclosed ? ' · closed cab' : ' · open top'}</span></div>
       <button class="buy" data-v="${m}" ${G.char.gold < s.price ? 'disabled' : ''}>${s.price} g</button></div>`;
     }).join('') +
-    PARTS.map((k) => `<div class="shoprow"><div>${itemName(k)}<br><span>${ITEMS[k].desc}</span></div>
+    PARTS.filter((k) => !salvage || k !== 'engine').map((k) => `<div class="shoprow"><div>${itemName(k)}<br><span>${ITEMS[k].desc}</span></div>
       <button class="buy" data-k="${k}" data-p="${PART_PRICE[k]}" ${G.char.gold < PART_PRICE[k]! ? 'disabled' : ''}>${PART_PRICE[k]} g</button></div>`).join('') +
     `<button class="opt" data-o="back">${OPT_TEXT.back}</button>`;
 }
@@ -376,6 +378,8 @@ dlgEl.addEventListener('click', async (e) => {
   if (sm !== null) { panel().innerHTML = shareHTML(town(), dlgHead(), sm); return; }
   const fdm = foodClick(e.target as HTMLElement, loadedVillage(town())?.id ?? null);
   if (fdm !== null) { renderShop(fdm); return; }
+  const gm = garageClick(e.target as HTMLElement, loadedVillage(town())?.id ?? null);
+  if (gm !== null) { panel().innerHTML = garageHTML(dlgHead(), loadedVillage(town())?.id ?? null, gm); return; }
   const om = ordersClick(e.target as HTMLElement, loadedVillage(town())?.id ?? null);
   if (om !== null) { panel().innerHTML = ordersHTML(dlgHead(), loadedVillage(town())?.id ?? null, om); return; }
   const cm = contractsClick(e.target as HTMLElement);
@@ -457,6 +461,7 @@ dlgEl.addEventListener('click', async (e) => {
     case 'farms': panel().classList.remove('wide'); panel().innerHTML = farmsHTML(town(), dlgHead()); break;
     case 'status': { const id = townId(); panel().classList.remove('wide'); if (id !== null) panel().innerHTML = statusHTML(id, dlgHead()); break; }
     case 'share': panel().classList.remove('wide'); panel().innerHTML = shareHTML(town(), dlgHead()); break;
+    case 'garage': panel().classList.remove('wide'); panel().innerHTML = garageHTML(dlgHead(), loadedVillage(town())?.id ?? null); break;
     case 'make': panel().classList.remove('wide'); panel().innerHTML = ordersHTML(dlgHead(), loadedVillage(town())?.id ?? null); break;
     case 'oldtech': { const id = townId(), p = id !== null ? findPoi(c.world, id) : null; renderTalk(p ? askLead(p.x, p.z) : 'Hm?'); break; }
     case 'chat': renderTalk(here(VILLAGER_LINES[(Math.random() * VILLAGER_LINES.length) | 0])); break;
