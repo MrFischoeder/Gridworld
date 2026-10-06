@@ -11,7 +11,7 @@ import { leadMarkers } from '../world/datacarriers';
 import { $ } from './hud';
 import { OW } from '../world/overworld';
 import { installSitesReady, installDone } from '../gen/installs';
-import { WAYPOINT_C, gpsOn } from './worldmap';
+import { WAYPOINT_C, gpsOn, routeAhead } from './worldmap';
 
 const gps = $('gps');
 
@@ -86,6 +86,7 @@ export function updateCompass(dt: number) {
   const o = old as Mark, f = fog as Mark;
   if (o) mark(o.x, o.z, '#b6ff3a', `${o.name} ${fmtDist(Math.hypot(wrapDx(o.x - G.pos.x), o.z - G.pos.z))}`);
   if (f) mark(f.x, f.z, '#d8ff6a', `${f.name} ${fmtDist(Math.hypot(wrapDx(f.x - G.pos.x), f.z - G.pos.z))}`);
+  { const ra = tab ? routeAhead() : null; if (ra) mark(ra[0], ra[1], WAYPOINT_C, 'Route'); }
   if (wp && tab) mark(wp[0], wp[1], WAYPOINT_C, `Waypoint ${fmtDist(Math.hypot(wrapDx(wp[0] - G.pos.x), wp[1] - G.pos.z))}`);
   if (near) mark(near.x, near.z, '#9dffe0', `${near.name} ${fmtDist(Math.hypot(wrapDx(near.x - G.pos.x), near.z - G.pos.z))}`);
 }

@@ -211,3 +211,56 @@ export function roadBounds(r: Road): Rect {
   }
   return b;
 }
+
+/**
+ * A route by road (document 04 stage D3, the glove's route planner): from the village nearest (sx, sz) to the village
+ * nearest (tx, tz) over the road network, shortest by the villages' straight distances (Dijkstra), every edge's way
+ * worked out only for the edges the route takes (an edge with no way is struck out and the search runs again).
+ * Returns the polyline from (sx, sz) through the roads to (tx, tz) and the villages passed, or null with no route.
+ */
+export function planRoute(world: number, sx: number, sz: number, tx: number, tz: number): { pts: [number, number][]; via: Poi[] } | null {
+  const vs = allVillages(world), near = (x: number, z: number) => vs.reduce((b, v) => (Math.hypot(wrapDx(v.x - x), v.z - z) < Math.hypot(wrapDx(b.x - x), b.z - z) ? v : b));
+  const from = near(sx, sz), to = near(tx, tz), dead = new Set<string>();
+  for (let tries = 0; tries < 12; tries++) {
+    const adj = new Map<number, { o: Poi; e: Edge; w: number }[]>();
+    for (const e of network(world)) {
+      if (dead.has(e.key)) continue;
+      const w = Math.hypot(wrapDx(e.b.x - e.a.x), e.b.z - e.a.z);
+      (adj.get(e.a.id) ?? adj.set(e.a.id, []).get(e.a.id)!).push({ o: e.b, e, w });
+      (adj.get(e.b.id) ?? adj.set(e.b.id, []).get(e.b.id)!).push({ o: e.a, e, w });
+    }
+    const dist = new Map<number, number>([[from.id, 0]]), prev = new Map<number, { v: Poi; e: Edge }>(), done = new Set<number>();
+    const open: Poi[] = [from];
+    while (open.length) {
+      open.sort((a, b) => dist.get(a.id)! - dist.get(b.id)!);
+      const v = open.shift()!;
+      if (done.has(v.id)) continue;
+      done.add(v.id);
+      if (v.id === to.id) break;
+      for (const { o, e, w } of adj.get(v.id) ?? []) {
+        const d = dist.get(v.id)! + w;
+        if (d < (dist.get(o.id) ?? Infinity)) { dist.set(o.id, d); prev.set(o.id, { v, e }); open.push(o); }
+      }
+    }
+    if (from.id !== to.id && !prev.has(to.id)) return null; // no road joins them
+    const legs: { v: Poi; e: Edge }[] = [];
+    for (let id = to.id; id !== from.id; id = legs[legs.length - 1].v.id) legs.push(prev.get(id)!);
+    legs.reverse();
+    const pts: [number, number][] = [[sx, sz]], via: Poi[] = [from];
+    let ok = true;
+    for (const { v, e } of legs) {
+      const p = edgePath(world, e);
+      if (!p) { dead.add(e.key); ok = false; break; }
+      // the way runs from e.a in coordinates round it: shift it next to where we are and turn it round if we go b → a
+      const last = pts[pts.length - 1][0], endX = v.id === e.a.id ? p.pts[0][0] : p.pts[p.pts.length - 1][0], shift = last + wrapDx(endX - last) - endX;
+      let way = p.pts.map(([x, z]) => [x + shift, z] as [number, number]);
+      if (v.id !== e.a.id) way = way.reverse();
+      pts.push(...way);
+      via.push(v.id === e.a.id ? e.b : e.a);
+    }
+    if (!ok) continue;
+    pts.push([pts[pts.length - 1][0] + wrapDx(tx - pts[pts.length - 1][0]), tz]);
+    return { pts, via };
+  }
+  return null;
+}

@@ -3,6 +3,12 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.151.0', date: '2026-10-06', title: 'Relays and routes', notes: [
+    'Relay masts: once a settlement\'s receiver works and Gridholm\'s station answers, its console can raise a relay mast. It takes scrap, wire, electronics, logs and gears.',
+    'An orbital scan within 4 km of a village with a relay mast uses that mast\'s own satellite pass, apart from the rest of the world, and reaches 4.5 km instead of 3. The more relays you raise, the more often you can scan.',
+    'Routes by road: with a GPS (the satellite link or a tablet), press R on the satellite map to plan a route by road from the village nearest you to the one nearest your waypoint. The route shows as a dashed line on both maps, and the compass strip leads you along it. Press R again to clear it.',
+    'The map no longer stalls when it is zoomed far out after a big scan: new tiles fill in a few at a time, nearest first.',
+  ] },
   { v: '0.150.0', date: '2026-10-06', title: 'Eyes in orbit', notes: [
     'With the satellite link up, your glove computer is a GPS, with no tablet needed. It shows coordinates, height and heading on the compass strip, and a right click on the satellite map sets a waypoint.',
     'Orbital scans: press O on the satellite map and a passing satellite looks at the ground round your waypoint (or round you, with none set). Every place, old works and toxic fog within 3 km goes on your map.',

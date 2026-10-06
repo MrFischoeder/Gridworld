@@ -6,7 +6,7 @@ import { allVillages, poisNear, GRIDHOLM_ID, worldDist, type Poi } from './regio
 import { villageDeposits, ORES, type Deposits } from './resource-sites';
 export { RESOURCE_PLOTS } from './resource-sites';
 
-export type Project = 'warehouse' | 'power' | 'comms' | 'quarry' | 'mine' | 'lumber' | 'oil' | 'refinery' | 'foodworks';
+export type Project = 'warehouse' | 'power' | 'comms' | 'quarry' | 'mine' | 'lumber' | 'oil' | 'refinery' | 'foodworks' | 'relay';
 export interface SettlementState {
   v: 1;
   done?: Partial<Record<Project, boolean>>;
@@ -32,6 +32,7 @@ export const PROJECTS: Record<Project, { name: string; needs: [ItemKey, number][
   lumber: { name: 'Sawmill', needs: [['log', 20], ['stone', 10], ['scrap', 8]], description: 'Build the marked timber works. It supplies timber and sawn lumber.' },
   oil: { name: 'Oil well', needs: [['scrap', 16], ['wire', 8], ['planks', 12]], description: 'Build a pump at the natural oil seep. Crude oil collects in village stock.' },
   refinery: { name: 'Oil refinery', needs: [['scrap', 24], ['circuit', 4], ['wire', 12], ['planks', 18]], description: 'Build a refinery beside the oil well. It consumes crude from village stock to make fuel.' },
+  relay: { name: 'Relay mast', needs: [['scrap', 12], ['wire', 10], ['circuit', 4], ['log', 8], ['gears', 2]], description: 'Raise a relay mast over the receiver. The satellites talk to it on their own passes, so orbital scans round this village come apart from the rest of the world and reach further.' },
   foodworks: { name: 'Food processing house', needs: [['log', 14], ['stone', 10], ['planks', 12], ['nails', 16], ['scrap', 6]], description: 'Build a mill, a bakery, a dairy and a smokehouse on the staked plot about 100 metres south-west of the village. While its crew works, grain, potatoes, milk and meat feed a third more people, so the same fields keep a bigger village.' },
 };
 /**
@@ -56,6 +57,9 @@ export const satelliteUp = (home: TownState | undefined) => progressive(home) &&
  */
 export const ORBIT = { r: 3000, every: 360 };
 /** Game minutes until the next pass can scan (0 = now). */
+/** Relay masts (stage D2): a scan centred within `reach` of a village with one uses its own pass, `every` apart, and reaches `r`. */
+export const RELAY = { reach: 4000, r: 4500 };
+export const hasRelay = (s: TownState | undefined) => progressive(s) && !isStation(s) && projectDone(s, 'relay');
 export const scanWait = (home: TownState | undefined, now: number) => { const t = home?.settlement?.scanAt; return t === undefined ? 0 : Math.max(0, t + ORBIT.every - now); };
 /** Saves predating deposit metadata keep their commissioned extraction sites. */
 export const depositsOf = (s: TownState | undefined): Deposits => s?.settlement?.deposits ?? { ore: 'iron', oil: true };
@@ -69,6 +73,7 @@ export function projectProblem(s: TownState | undefined, k: Project): string {
   if (!progressive(s)) return 'This settlement uses the established village rules.';
   if (projectDone(s, k)) return 'Already built.';
   if (!projectAvailable(s, k)) return k === 'mine' ? 'There is no ore seam here. Import metals from another village.' : 'There is no oil field here. Import crude or fuel from another village.';
+  if (k === 'relay') return isStation(s) ? 'The station itself is this village\'s relay.' : projectDone(s, 'comms') ? '' : 'Restore the satellite receiver first.';
   if (k === 'comms' && isStation(s)) return (s?.farms ?? 0) < 2 ? 'Build two farms first.' : s?.settlement?.car ? '' : 'Get your first vehicle from Kuba the mechanic first: the station lies a few kilometres out.';
   if (k === 'comms') return (s?.farms ?? 0) >= 1 ? '' : 'Build the first farm first.';
   if (k === 'warehouse') return (s?.farms ?? 0) >= 2 && projectDone(s, 'comms') ? '' : 'Restore satellite communications and build two farms first.';

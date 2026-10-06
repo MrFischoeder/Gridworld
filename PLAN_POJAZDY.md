@@ -49,8 +49,16 @@ Dokument opisuje ten etap ogólnie („podstawa późniejszych systemów GPS, na
 - Pogoda z orbity: mapa pokazuje pogodę teraz i za 4 h w miejscu gracza.
 - **MP:** czas ostatniego skanu jest we wspólnym stanie Gridholm (`scanAt`), więc przelot zużywa jeden gracz dla wszystkich. Odkryte miejsca trafiają na mapę skanującego. Nie synchronizowane: wyniki skanu na mapach innych graczy. Protokół bez zmian.
 
-**D2. Maszty przekaźnikowe w osadach (do zrobienia)**
-- Projekt w innych osadach: maszt przekaźnikowy, który częściej daje przelot albo poszerza skan w swojej okolicy. Sieć łączności rośnie razem z siecią osad.
+**D2. Maszty przekaźnikowe w osadach (0.151, zrobione)**
+- Projekt „Relay mast” przy konsoli odbiornika osady (nie w Gridholm: tam stacja sama jest przekaźnikiem), gdy odbiornik działa, a stacja Gridholm odpowiada: 12 złomu, 10 drutu, 4 części elektroniczne, 8 kłód, 2 przekładnie.
+- Skan orbitalny w promieniu 4 km od osady z masztem idzie przez jej własny przelot (co 6 h, osobno od reszty świata) i sięga 4,5 km zamiast 3. Sieć łączności rośnie razem z siecią osad.
+- Wygląd: maszt kratowy z odciągami, talerzem i światłami nad odbiornikiem.
+- **MP:** maszt i czas jego przelotu (`scanAt`) we wspólnym stanie tej osady; protokół bez zmian.
 
-**D3. Planowanie tras (do zrobienia)**
-- Na mapie satelitarnej trasa drogami do wybranej osady (sieć dróg `network` / `edgePath`), prowadzona też na kompasie.
+**D3. Planowanie tras (0.151, zrobione)**
+- R na mapie satelitarnej: trasa drogami od osady najbliższej graczowi do osady najbliższej punktowi nawigacyjnemu (najkrótsza po sieci dróg, `planRoute` w `gen/roads.ts`); ponownie R czyści trasę.
+- Trasa rysuje się przerywaną linią na mapie i minimapie, a pasek kompasu prowadzi znacznikiem „Route” ok. 120 m przed graczem wzdłuż trasy; po dojściu na koniec trasa znika.
+- Wymaga GPS (łącze satelitarne albo tablet).
+- **MP:** trasa jest tylko u gracza, który ją wyznaczył (nie zapisuje się, nie synchronizuje).
+
+**Poprawka przy okazji:** mapa liczyła wszystkie nowe kafelki w jednej klatce; po dużym skanie albo przeglądzie radaru oddalenie mapy potrafiło zawiesić grę. Teraz najbliższe kafelki są najpierw, a nowych powstaje najwyżej kilka na klatkę.

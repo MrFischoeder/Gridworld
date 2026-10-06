@@ -1,6 +1,6 @@
 import { G } from '../game';
 import { addItem, gainXp, saveChar, calcStats } from '../character';
-import { PROJECTS, projectPlan, projectProblem, projectDone, buildProject, tutorialStep, linkRuin, progressive, depositsOf, isStation, stationStage, STATION_STAGES, STATION_TEXT, type Project } from '../gen/settlement';
+import { PROJECTS, projectPlan, projectProblem, projectDone, buildProject, tutorialStep, linkRuin, progressive, depositsOf, isStation, stationStage, STATION_STAGES, STATION_TEXT, satelliteUp, RELAY, type Project } from '../gen/settlement';
 import { poisNear, CHUNK } from '../gen/regions';
 import { discover } from '../save';
 import { ORES } from '../gen/resource-sites';
@@ -40,7 +40,9 @@ export function developmentHTML(vid: number, head: string, msg = '', atComms = f
   }
   if (step.supplies) h += `<div class="say">Wood: ${has('log')}/4 · stone: ${has('stone')}/4</div><button class="opt" data-devsupplies="${vid}" ${has('log') >= 4 && has('stone') >= 4 ? '' : 'disabled'}>Report the stored supplies</button>`;
   if (step.farm) h += '<button class="opt" data-o="farms">Build the next farm</button>';
-  const keys = (atComms ? ['comms'] : step.project ? [step.project] : []) as Project[];
+  // (D2) once the receiver works and the satellites answer, its console can raise a relay mast
+  const relayOpen = atComms && !big && projectDone(s, 'comms') && !projectDone(s, 'relay');
+  const keys = (atComms ? (relayOpen ? ['relay'] : ['comms']) : step.project ? [step.project] : []) as Project[];
   for (const k of keys) {
     if (k === 'comms' && big) {
       const n = stationStage(s), st = STATION_STAGES[Math.min(n, STATION_STAGES.length - 1)];
@@ -50,10 +52,12 @@ export function developmentHTML(vid: number, head: string, msg = '', atComms = f
     const why = projectProblem(s, k);
     if (k === 'comms' && projectDone(s, k)) continue;
     if (k === 'comms' && !atComms) h += `<div class="say">${big ? 'The station' : 'Receiver'}: ${ruin?.name ?? 'search the nearby ruins'}${big && ruin ? ` (${(worldDist(v.x, v.z, ruin.x, ruin.z) / 1000).toFixed(1)} km out)` : ''}. Its console is outside the west wall of the ruins. Follow the tutorial marker; no GPS is needed to find it.${big ? ' Materials are handed over from the village stores at the console.' : ''}</div>`;
+    else if (k === 'relay' && !satelliteUp(c.towns[GRIDHOLM_ID])) h += '<div class="say">No satellite answers yet: Gridholm\'s radar and communications station must be restored first.</div>';
     else if (!why) h += `<button class="opt" data-devbuild="${k}" data-devvid="${vid}">Hand over materials and build</button>`;
     else h += `<div class="say">${why}</div>`;
   }
   if (atComms && projectDone(s, 'comms')) h += `<button class="opt" data-devgps="${vid}">Receive my GPS tablet</button>`;
+  if (atComms && projectDone(s, 'relay')) h += `<div class="say">The relay mast stands: orbital scans within ${RELAY.reach / 1000} km of ${v.name} use its own passes and reach ${RELAY.r / 1000} km.</div>`;
   if (projectDone(s, 'power')) h += '<button class="opt" data-o="fortify">Local industry and defences</button><button class="opt" data-o="works">More processing works and power stations</button>';
   return h + (atComms ? '<button class="opt" data-devclose="1">Close</button>' : '<button class="opt" data-o="back">Back</button>');
 }
@@ -79,7 +83,8 @@ export function developmentClick(t: HTMLElement, vid: number | null, atComms = f
   } else {
     const k = button.dataset.devbuild as Project;
     if (!(k in PROJECTS)) return 'Unknown project.';
-    if (k === 'comms') {
+    if (k === 'relay' && !satelliteUp(c.towns[GRIDHOLM_ID])) return 'No satellite answers yet: restore Gridholm\'s station first.';
+    if (k === 'comms' || k === 'relay') {
       const r = linkRuin(c.world, v, s), spot = r && { x: r.rect.x0 - 3, z: r.z };
       if (!atComms || !spot || worldDist(spot.x, spot.z, G.pos.x, G.pos.z) > 4) return 'Restore this receiver at the marked ruin console.';
     }
@@ -96,9 +101,10 @@ export function developmentClick(t: HTMLElement, vid: number | null, atComms = f
       if (k === 'power') { s.fixed = c.time; s.hurt = 0; }
       if (k === 'refinery') s.settlement!.refinedAt = c.time;
       anchorNew(c.world, v, seed, s, c.time); syncFarmVillage(vid); reloadStruct(vid);
-      if (k === 'comms') reloadStruct(linkRuin(c.world, v, s)!.id);
+      if (k === 'comms' || k === 'relay') reloadStruct(linkRuin(c.world, v, s)!.id);
       settlementReward(vid, k, k === 'comms' ? 'tablet' : undefined);
       msg = PROJECTS[k].name + ' built. The elder has the next objective.';
+      if (k === 'relay') msg = `The relay mast is up and the satellites answer it: orbital scans round ${v.name} now come on their own passes and reach ${RELAY.r / 1000} km.`;
       if (k === 'comms' && isStation(s)) msg = `The dish swings up and locks on: the satellites answer. The map in your glove computer is alive (M), and the station's sweep put ${stationSweep(v.x, v.z)} new places within ${SWEEP / 1000} km on it. Your GPS tablet is ready. The elder has the next objective.`;
     } else msg = result.taken.length ? 'Materials delivered. The remaining requirements are shown below.' : 'Bring the missing materials to the village stores first.';
   }

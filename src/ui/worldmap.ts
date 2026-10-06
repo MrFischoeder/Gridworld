@@ -7,7 +7,9 @@ import { nearX, wrapDx } from '../gen/regions';
 import { G, W } from '../game';
 import { OW, villageHere } from '../world/overworld';
 import { CHUNK, poisNear, villageSeed, GRIDHOLM_ID } from '../gen/regions';
-import { isStation, projectDone, satelliteUp, scanWait, ORBIT } from '../gen/settlement';
+import { isStation, projectDone, satelliteUp, scanWait, ORBIT, RELAY, hasRelay } from '../gen/settlement';
+import { allVillages } from '../gen/regions';
+import { planRoute } from '../gen/roads';
 import { fogsNear } from '../gen/toxic';
 import { weatherAt } from '../gen/weather';
 import { showToast, logLine } from './hud';
@@ -34,12 +36,15 @@ import { $ } from './hud';
 const tiles = new Map<string, HTMLCanvasElement>();
 let tileWorld = -1;
 
-function tile(cx: number, cz: number): HTMLCanvasElement {
+/** New tiles worked out per drawn frame of each map: a scan or a sweep can uncover hundreds at once, and each costs a lattice. */
+const TILE_BUDGET = { n: 6, ms: 6 };
+function tile(cx: number, cz: number, budget?: { n: number; until: number }): HTMLCanvasElement | null {
   const T = OW.terrain!;
   if (tileWorld !== T.world) { tiles.clear(); tileWorld = T.world; }
   const k = cx + ',' + cz;
   let cv = tiles.get(k);
   if (cv) return cv;
+  if (budget) { if (budget.n <= 0 || performance.now() > budget.until) return null; budget.n--; }
   cv = document.createElement('canvas'); cv.width = cv.height = CELLS;
   const ctx = cv.getContext('2d')!, img = ctx.createImageData(CELLS, CELLS), lat = T.lattice(cx, cz), f = T.chunkFeatures(cx, cz);
   // a dead city here: its streets and buildings show on the map
@@ -99,9 +104,15 @@ function drawArea(ctx: CanvasRenderingContext2D, w: number, h: number, ppm: numb
   const X = (x: number) => w / 2 + (x - px) * ppm, Z = (z: number) => h / 2 + (z - pz) * ppm;
   const hw = w / 2 / ppm, hh = h / 2 / ppm;
   const cx0 = Math.floor((px - hw) / CHUNK), cx1 = Math.floor((px + hw) / CHUNK), cz0 = Math.floor((pz - hh) / CHUNK), cz1 = Math.floor((pz + hh) / CHUNK);
-  for (let cx = cx0; cx <= cx1; cx++) for (let cz = cz0; cz <= cz1; cz++) {
-    if (!isDiscovered(d, cx, cz)) continue;
-    ctx.drawImage(tile(cx, cz), X(cx * CHUNK), Z(cz * CHUNK), CHUNK * ppm + 0.5, CHUNK * ppm + 0.5);
+  // the explored tiles, nearest first; the ones not worked out yet come in over the next frames (a dim square meanwhile)
+  const pcx = Math.floor(px / CHUNK), pcz = Math.floor(pz / CHUNK), todo: [number, number][] = [];
+  for (let cx = cx0; cx <= cx1; cx++) for (let cz = cz0; cz <= cz1; cz++) if (isDiscovered(d, cx, cz)) todo.push([cx, cz]);
+  todo.sort((a, b) => Math.hypot(a[0] - pcx, a[1] - pcz) - Math.hypot(b[0] - pcx, b[1] - pcz));
+  const budget = { n: TILE_BUDGET.n, until: performance.now() + TILE_BUDGET.ms };
+  for (const [cx, cz] of todo) {
+    const t = tile(cx, cz, Math.abs(cx - pcx) <= 1 && Math.abs(cz - pcz) <= 1 ? undefined : budget);
+    if (t) ctx.drawImage(t, X(cx * CHUNK), Z(cz * CHUNK), CHUNK * ppm + 0.5, CHUNK * ppm + 0.5);
+    else { ctx.fillStyle = '#06200c'; ctx.fillRect(X(cx * CHUNK), Z(cz * CHUNK), CHUNK * ppm + 0.5, CHUNK * ppm + 0.5); }
   }
   ctx.font = (labels ? 20 : 11) + 'px VT323, monospace'; ctx.textAlign = 'center';
   for (const p of poisNear(OW.terrain!.world, px, pz, Math.max(hw, hh) + 60)) {
@@ -210,6 +221,11 @@ function drawArea(ctx: CanvasRenderingContext2D, w: number, h: number, ppm: numb
     ctx.strokeStyle = ctx.fillStyle = '#ffd060'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(x, y, labels ? 12 : 6, 0, 6.283); ctx.stroke(); ctx.lineWidth = 1;
     ctx.fillText('!', x, y + 4); if (labels) ctx.fillText(m.label, x, y - 16);
   }
+  if (route) { // (D3) the planned route by road: a dashed pale blue line
+    ctx.strokeStyle = WAYPOINT_C; ctx.lineWidth = 2; ctx.setLineDash([6, 4]); ctx.beginPath();
+    route.pts.forEach(([x0, z0], i) => { const x = X(nearX(x0, px)), y = Z(z0); if (i) ctx.lineTo(x, y); else ctx.moveTo(x, y); });
+    ctx.stroke(); ctx.setLineDash([]); ctx.lineWidth = 1;
+  }
   const wp = G.char.waypoint;
   if (wp) { // the GPS Tablet's waypoint: a pale blue cross in a ring, held at the edge of the big map when further
     let x = X(nearX(wp[0], px)), y = Z(wp[1]); const out = x < 24 || y < 40 || x > w - 24 || y > h - 40, r = labels ? 10 : 5;
@@ -265,29 +281,67 @@ let zoom = 0.6;
 /** The glove computer is a GPS once the satellites answer (document 04 stage D); in an old world the GPS Tablet is. */
 export const gpsOn = () => hasItem('tablet') || satelliteUp(G.char.towns[GRIDHOLM_ID]);
 /** The last orbital scan you saw (drawn as a ring on the map for a while). */
-let lastScan: { x: number; z: number; t: number } | null = null;
+let lastScan: { x: number; z: number; t: number; r: number } | null = null;
 const hrs = (m: number) => { const t = Math.ceil(m); return t >= 60 ? `${Math.floor(t / 60)} h${t % 60 ? ' ' + (t % 60) + ' min' : ''}` : `${t} min`; };
 /**
  * Ask the passing satellite to look round your waypoint (or round you, with none): every place within ORBIT.r goes on
  * your map, with the old installations and the toxic fog there. One scan a pass for the whole world.
  */
+/** Where a scan would look now (the waypoint or you), and the relay mast whose pass it would use (null: the world's). */
+function scanPlan() {
+  const c = G.char, [x, z] = c.waypoint ? [nearX(c.waypoint[0], G.pos.x), c.waypoint[1]] : [G.pos.x, G.pos.z];
+  let relay: { id: number; name: string } | null = null, bd = RELAY.reach;
+  for (const v of allVillages(c.world)) { const d = Math.hypot(wrapDx(v.x - x), v.z - z); if (d < bd && hasRelay(c.towns[v.id])) { bd = d; relay = { id: v.id, name: v.name }; } }
+  const at = relay ? c.towns[relay.id] : c.towns[GRIDHOLM_ID];
+  return { x, z, relay, at, r: relay ? RELAY.r : ORBIT.r, wait: scanWait(at, c.time) };
+}
 export function orbitalScan(): string {
   const c = G.char, home = c.towns[GRIDHOLM_ID];
   if (!satelliteUp(home)) return 'No satellite link.';
-  const wait = scanWait(home, c.time);
-  if (wait > 0) return `No satellite overhead: the next pass in ${hrs(wait)}.`;
-  const [x, z] = c.waypoint ? [nearX(c.waypoint[0], G.pos.x), c.waypoint[1]] : [G.pos.x, G.pos.z];
+  const { x, z, relay, at, r: R, wait } = scanPlan();
+  if (wait > 0) return `No satellite overhead${relay ? ` of the ${relay.name} relay` : ''}: the next pass in ${hrs(wait)}.`;
   let n = 0;
   const see = (px: number, pz: number) => { if (discover(c.discovered, Math.floor(px / CHUNK), Math.floor(pz / CHUNK))) n++; };
-  for (const p of poisNear(c.world, x, z, ORBIT.r)) if (Math.hypot(wrapDx(p.x - x), p.z - z) <= ORBIT.r) see(p.x, p.z);
-  for (const s of OW.terrain ? installSitesReady(OW.terrain.world) ?? [] : []) if (Math.hypot(wrapDx(s.x - x), s.z - z) <= ORBIT.r) see(s.x, s.z);
+  for (const p of poisNear(c.world, x, z, R)) if (Math.hypot(wrapDx(p.x - x), p.z - z) <= R) see(p.x, p.z);
+  for (const s of OW.terrain ? installSitesReady(OW.terrain.world) ?? [] : []) if (Math.hypot(wrapDx(s.x - x), s.z - z) <= R) see(s.x, s.z);
   let f = 0;
-  for (const z0 of fogsNear(c.world, x, z, ORBIT.r)) if (!c.fogs[z0.id]) { c.fogs[z0.id] = [Math.round(z0.x), Math.round(z0.z), Math.round(z0.r), z0.name]; f++; }
-  (home!.settlement!).scanAt = c.time; lastScan = { x, z, t: c.time };
+  for (const z0 of fogsNear(c.world, x, z, R)) if (!c.fogs[z0.id]) { c.fogs[z0.id] = [Math.round(z0.x), Math.round(z0.z), Math.round(z0.r), z0.name]; f++; }
+  (at!.settlement!).scanAt = c.time; lastScan = { x, z, t: c.time, r: R };
   saveChar();
-  const msg = `Orbital scan ${c.waypoint ? 'round your waypoint' : 'round you'}: ${n} new place${n === 1 ? '' : 's'} within ${ORBIT.r / 1000} km${f ? ` and ${f} toxic fog zone${f === 1 ? '' : 's'}` : ''} on your map.`;
+  const msg = `Orbital scan ${c.waypoint ? 'round your waypoint' : 'round you'}${relay ? ` through the ${relay.name} relay` : ''}: ${n} new place${n === 1 ? '' : 's'} within ${R / 1000} km${f ? ` and ${f} toxic fog zone${f === 1 ? '' : 's'}` : ''} on your map.`;
   showToast('Orbital scan complete'); logLine(msg);
   return msg;
+}
+/** (D3) The planned route by road: its polyline (world coordinates) and where it leads; runtime only, yours alone. */
+export let route: { pts: [number, number][]; to: string } | null = null;
+/** R on the satellite map: plan a route by road from the village nearest you to the one nearest your waypoint (again: clear it). */
+export function toggleRoute(): string {
+  if (route) { route = null; return 'Route cleared.'; }
+  if (!gpsOn()) return 'No GPS: the glove needs the satellite link.';
+  const wp = G.char.waypoint;
+  if (!wp) return 'Set a waypoint first (right click on the map).';
+  const r = planRoute(G.char.world, G.pos.x, G.pos.z, nearX(wp[0], G.pos.x), wp[1]);
+  if (!r) { showToast('No road leads there'); return 'No road leads there.'; }
+  let len = 0; for (let i = 1; i < r.pts.length; i++) len += Math.hypot(r.pts[i][0] - r.pts[i - 1][0], r.pts[i][1] - r.pts[i - 1][1]);
+  route = { pts: r.pts, to: r.via[r.via.length - 1].name };
+  const msg = `Route by road: ${(len / 1000).toFixed(1)} km through ${r.via.map((v) => v.name).join(' → ')}.`;
+  showToast('Route planned'); logLine(msg);
+  return msg;
+}
+/** The point of the route about `ahead` m past the nearest point to you, for the compass (null: no route, or you have arrived). */
+export function routeAhead(ahead = 120): [number, number] | null {
+  if (!route) return null;
+  const P = route.pts, px = G.pos.x, pz = G.pos.z, end = P[P.length - 1];
+  if (Math.hypot(wrapDx(end[0] - px), end[1] - pz) < 60) { route = null; logLine('You have arrived at the end of your route.'); return null; }
+  let bi = 0, bt = 0, bd = Infinity;
+  for (let i = 1; i < P.length; i++) {
+    const ax = P[i - 1][0], az = P[i - 1][1], ex = P[i][0] - ax, ez = P[i][1] - az, L = ex * ex + ez * ez || 1;
+    const t = Math.max(0, Math.min(1, ((nearX(px, ax) - ax) * ex + (pz - az) * ez) / L)), d = Math.hypot(nearX(px, ax) - ax - ex * t, pz - az - ez * t);
+    if (d < bd) { bd = d; bi = i; bt = t; }
+  }
+  let left = ahead, i = bi, x = P[bi - 1][0] + (P[bi][0] - P[bi - 1][0]) * bt, z = P[bi - 1][1] + (P[bi][1] - P[bi - 1][1]) * bt;
+  while (i < P.length) { const sx = P[i][0] - x, sz = P[i][1] - z, L = Math.hypot(sx, sz); if (L >= left) return [x + sx / L * left, z + sz / L * left]; left -= L; x = P[i][0]; z = P[i][1]; i++; }
+  return end;
 }
 /** The glove computer's satellite map waits for the start village's station in a new world (document 04). */
 export const mapLocked = () => { const s = G.char.towns[GRIDHOLM_ID]; return isStation(s) && !projectDone(s, 'comms'); };
@@ -311,11 +365,12 @@ function drawFullMap() {
   const sat = satelliteUp(G.char.towns[GRIDHOLM_ID]);
   bctx.fillText((sat ? 'SATELLITE MAP' : 'WORLD MAP') + ' — M or Esc to close · wheel / + - to zoom' + (gpsOn() ? ' · right click: set / clear the GPS waypoint' : ''), 16, h - 16);
   if (sat) { // the satellites: orbital scans and the weather they see
-    const wait = scanWait(G.char.towns[GRIDHOLM_ID], G.char.time), now = weatherAt(G.char.world, G.pos.x, G.pos.z, G.char.time), later = weatherAt(G.char.world, G.pos.x, G.pos.z, G.char.time + 240);
-    bctx.fillText(`O: orbital scan ${G.char.waypoint ? 'round the waypoint' : 'round you'} (${ORBIT.r / 1000} km) · ${wait > 0 ? 'next pass in ' + hrs(wait) : 'a satellite is overhead'} · sky: ${now.kind} now, ${later.kind} in 4 h`, 16, h - 42);
+    const sp = scanPlan(), wait = sp.wait, now = weatherAt(G.char.world, G.pos.x, G.pos.z, G.char.time), later = weatherAt(G.char.world, G.pos.x, G.pos.z, G.char.time + 240);
+    bctx.fillText(`O: orbital scan ${G.char.waypoint ? 'round the waypoint' : 'round you'} (${sp.r / 1000} km${sp.relay ? ', ' + sp.relay.name + ' relay' : ''}) · ${wait > 0 ? 'next pass in ' + hrs(wait) : 'a satellite is overhead'} · R: ${route ? 'clear the route' + (route ? ' to ' + route.to : '') : 'route by road to the waypoint'}`, 16, h - 42);
+    bctx.fillText(`Sky where you stand: ${now.kind} now, ${later.kind} in 4 h`, 16, h - 68);
     if (lastScan && G.char.time - lastScan.t < 120) { // the scanned ring, for two game hours
       const sx = w / 2 + (nearX(lastScan.x, G.pos.x) - G.pos.x) * zoom, sy = h / 2 + (lastScan.z - G.pos.z) * zoom;
-      bctx.strokeStyle = '#5cc8ff'; bctx.setLineDash([8, 6]); bctx.beginPath(); bctx.arc(sx, sy, ORBIT.r * zoom, 0, Math.PI * 2); bctx.stroke(); bctx.setLineDash([]);
+      bctx.strokeStyle = '#5cc8ff'; bctx.setLineDash([8, 6]); bctx.beginPath(); bctx.arc(sx, sy, lastScan.r * zoom, 0, Math.PI * 2); bctx.stroke(); bctx.setLineDash([]);
     }
   }
   bctx.textAlign = 'right'; bctx.fillText(villageHere(G.pos.x, G.pos.z)?.name ?? $('hudL').textContent ?? '', w - 16, 30);

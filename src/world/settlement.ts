@@ -156,6 +156,14 @@ export function drawSettlementComms(poi: Poi, T: Terrain): THREE.Group {
     const x = poi.rect.x0 - 3, z = poi.z, y = T.heightAt(x, z), built = projectDone(s, 'comms');
     drawComputer(pb, { x0: x - .7, x1: x + .7, z0: z - .4, z1: z + .4, h: 1, n: [0, 1] }, y);
     if (isStation(s)) { drawStation(pb, grp, T, x, z, stationStage(s)); break; }
+    if (projectDone(s, 'relay')) { // (D2) the relay mast over the receiver: a guyed lattice mast with a dish and lamps
+      const mx = x + 5, mz = z - 4, my = T.heightAt(mx, mz), h = 16, w = 0.8, LIT = 0x9dffb4;
+      for (const [dx, dz] of [[-w, -w], [w, -w], [w, w], [-w, w]]) pb.seg(METAL, [mx + dx, my, mz + dz], [mx + dx * 0.4, my + h, mz + dz * 0.4]);
+      for (let r = 0; r + 2 <= h; r += 2) { const k = 1 - 0.6 * r / h; pb.seg(METAL, [mx - w * k, my + r, mz - w * k], [mx + w * k, my + r + 2, mz + w * k]); }
+      for (const [gx, gz] of [[-7, 0], [7, 0], [0, 7]]) pb.seg(METAL, [mx, my + h * 0.7, mz], [mx + gx, T.heightAt(mx + gx, mz + gz), mz + gz]);
+      const pts: number[][] = []; for (let i = 0; i <= 12; i++) { const a = i / 12 * 6.283; pts.push([mx + Math.cos(a) * 1.6, my + h + 1 + Math.sin(a) * 0.8, mz + Math.sin(a) * 1.4 - 0.6]); }
+      pb.line(LIT, ...pts); pb.box(mx - 0.15, my + h, mz - 0.15, mx + 0.15, my + h + 0.4, mz + 0.15, LIT);
+    }
     pb.seg(METAL, [x - 2, y, z], [x - 2 + (built ? 0 : 2), y + (built ? 7 : 3), z - 1]);
     pb.line(built ? 0x9dffb4 : WOOD, [x - 4, y + 6, z - 1], [x - 2, y + 5, z], [x, y + 6, z - 1]);
     const sign = textSprite(built ? 'SATELLITE LINK ONLINE' : 'COMMUNICATIONS RUIN · RESTORE RECEIVER', built ? '#9dffb4' : '#ffd060', 5);

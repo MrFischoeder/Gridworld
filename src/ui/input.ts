@@ -22,7 +22,7 @@ import { closeDialog } from './dialog';
 import { interact, lockKey } from '../world/interact';
 import { useItem } from '../world/loot';
 import { drawBack, swapWeapon, holster, armed, reload } from '../world/weapons';
-import { toggleMap, zoomMap, orbitalScan } from './worldmap';
+import { toggleMap, zoomMap, orbitalScan, toggleRoute } from './worldmap';
 
 export function lockPointer() {
   try { const r = renderer.domElement.requestPointerLock() as unknown as Promise<void> | undefined; if (r && r.catch) r.catch(() => {}); } catch { /* not allowed right now */ }
@@ -43,7 +43,7 @@ export function initInput(onPause: () => void) {
     if (G.xferOpen) { if (e.code === 'Escape' || e.code === 'KeyE') { closeTransfer(); closeService(); closeBoard(); } return; }
     if (e.code === 'KeyM' && G.playing) { toggleMap(); return; }
     if (e.code === 'KeyT' && G.playing && online()) { e.preventDefault(); openChat(); return; }
-    if (G.mapOpen) { if (e.code === 'KeyO') { orbitalScan(); return; } if (e.code === 'Escape') toggleMap(false); if (e.code === 'Equal' || e.code === 'NumpadAdd') zoomMap(1.25); if (e.code === 'Minus' || e.code === 'NumpadSubtract') zoomMap(0.8); }
+    if (G.mapOpen) { if (e.code === 'KeyO') { orbitalScan(); return; } if (e.code === 'KeyR') { toggleRoute(); return; } if (e.code === 'Escape') toggleMap(false); if (e.code === 'Equal' || e.code === 'NumpadAdd') zoomMap(1.25); if (e.code === 'Minus' || e.code === 'NumpadSubtract') zoomMap(0.8); }
     if (extraKeys.some((f) => f(e))) return;
     if (e.code === 'Escape' && isPlacing()) cancelPlacing();
     if (e.code === 'Escape' && isBridgePlacing()) cancelBridgePlacing();

@@ -176,3 +176,31 @@ describe('the satellites (0.150, document 04 stage D)', () => {
     expect(S.scanWait(s, 1000 + S.ORBIT.every)).toBe(0);
   });
 });
+
+describe('relay masts and routes by road (0.151, document 04 stages D2 and D3)', () => {
+  it('a relay mast goes up over a working receiver, not at the start village\'s station', async () => {
+    const S = await import('../src/gen/settlement');
+    const s = { settlement: { v: 1 } } as TownState;
+    expect(S.projectProblem(s, 'relay')).toMatch(/receiver/);
+    s.settlement!.done = { comms: true };
+    expect(S.projectProblem(s, 'relay')).toBe('');
+    expect(S.buildProject(s, 'relay', () => 99).built).toBe(true);
+    expect(S.hasRelay(s)).toBe(true);
+    const st = { settlement: { v: 1, station: true, done: { comms: true } } } as TownState;
+    expect(S.projectProblem(st, 'relay')).toMatch(/station/);
+    expect(S.hasRelay(st)).toBe(false);
+  });
+  it('plans a continuous route by road from the village nearest you to the one nearest the target', async () => {
+    const { planRoute } = await import('../src/gen/roads');
+    const { allVillages, worldDist } = await import('../src/gen/regions');
+    const w = 12345, vs = allVillages(w).filter((v) => worldDist(v.x, v.z, 0, 0) > 6000 && worldDist(v.x, v.z, 0, 0) < 12000).slice(0, 2);
+    for (const v of vs) {
+      const r = planRoute(w, 30, -60, v.x + 200, v.z);
+      expect(r).not.toBeNull();
+      expect(r!.via[0].id).toBe(allVillages(w).find((x) => x.x === 0 && x.z === 0)?.id ?? r!.via[0].id);
+      expect(r!.via[r!.via.length - 1].id).toBe(v.id);
+      expect(r!.pts[0]).toEqual([30, -60]);
+      for (let i = 1; i < r!.pts.length; i++) expect(Math.hypot(r!.pts[i][0] - r!.pts[i - 1][0], r!.pts[i][1] - r!.pts[i - 1][1])).toBeLessThan(400); // no jumps between legs
+    }
+  }, 120000);
+});
