@@ -3,6 +3,13 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.143.0', date: '2026-10-06', title: 'Motors and pumps', notes: [
+    'Five industrial components: Electric Motors, Generators, Pipes & Valves, Gears & Bearings and Industrial Pumps. They trade on every market.',
+    'A new works, the Electrical Works, winds motors (copper ingots, steel and resin) and generators (copper ingots, steel and machine parts). It wants the plans for Electric Machines, a new technology to be found on an old data carrier. The Machine Shop now also makes pipes and valves, gears and bearings, and assembles pumps.',
+    'Before you can make them, you salvage them: robots now and then drop gears, motors, pipes, generators or a pump, and wrecked ships\' lockers hold stripped-out machinery.',
+    'They are wanted: a Wind Farm needs gears for its gearboxes, a Diesel Generator Bank two generators, a Coal Power Station a generator and a feed pump, rebuilding a village power plant with old electronics a generator, an Automated Site two motors, a Chemical Works pipes and a pump, and a Polymer Plant pipes. Builds already under way keep what was handed over.',
+    'Every material now has a class (raw resource, food & farm crop, material, industrial component, electrical & electronic, advanced component), shown in its tooltip.',
+  ] },
   { v: '0.142.0', date: '2026-10-06', title: 'Fields and the forge', notes: [
     'A new farm crop: Cotton, a fibre for the textile mill (2 bales make a bolt of cloth), sold on the market like flax and wool.',
     'Livestock now give meat as well: cows milk and meat, hens eggs and a little meat. Crates of meat go to the village stores, feed the villagers well and the food shop roasts them.',

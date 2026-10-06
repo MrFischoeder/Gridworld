@@ -130,6 +130,14 @@ export function drawWorks(vm: VillageMap, T: Terrain, id: number): THREE.Group {
         glowAt = [P(3.5, -1)[0], g0 + 4.2, P(3.5, -1)[1]];
         break;
       }
+      case 'electrical': { // a winding hall, a test bed with a big generator, a transformer yard and its insulators
+        box(0, 2, 6, 3.2, g0, g0 + 4.6, BRICK);
+        cylAt(-3, -3.5, 1.1, 1.6, METAL, 0, 1.1); cylAt(-3, -3.5, 0.5, 0.5, HOT, 1.6, 0.5);
+        for (const u of [2.5, 5.5]) { box(u, -3.8, 0.7, 0.6, g0, g0 + 1.6, METAL); const [x, z] = P(u, -3.8); for (const d of [-0.4, 0, 0.4]) pb.seg(METAL, [x + d, g0 + 1.6, z], [x + d, g0 + 2.4, z]); }
+        { const [a, b] = P(2.5, -3.8), [c, d] = P(5.5, -3.8), [e, f] = P(5.5, -0.9); pb.line(METAL, [a, g0 + 2.4, b], [c, g0 + 2.4, d], [e, g0 + 3.6, f]); }
+        glowAt = [P(-3, -3.5)[0], g0 + 1.9, P(-3, -3.5)[1]];
+        break;
+      }
       case 'sawmill': { // an open saw shed with a circular saw, a log deck and stacks of boards
         for (const [u, v] of [[-5, -1], [5, -1], [5, 5], [-5, 5], [0, -1], [0, 5]]) { const [x, z] = P(u, v); pb.box(x - 0.15, g0 - 0.1, z - 0.15, x + 0.15, g0 + 3.2, z + 0.15, WOOD); }
         { const [a, b] = P(-5.3, -1.3), [d, e] = P(5.3, 5.3); pb.gableRoof(Math.min(a, d), Math.min(b, e), Math.max(a, d), Math.max(b, e), g0 + 3.2, 1.2, WOOD); }

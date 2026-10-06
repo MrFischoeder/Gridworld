@@ -11,7 +11,7 @@ export interface PlantLevel { name: string; mult: number; tech: Partial<Record<P
 export const PLANT_LEVELS: PlantLevel[] = [
   { name: 'as built', mult: 1, tech: {}, needs: [], gold: 0, xp: 0 },
   { name: 'Overhauled', mult: 1.5, tech: { wind: 'rotor', solar: 'solar' }, needs: [['scrap', 6], ['wire', 4], ['log', 2]], gold: 60, xp: 80 },
-  { name: 'Rebuilt with old electronics', mult: 2, tech: {}, needs: [['circuit', 4], ['pcore', 1], ['wire', 6]], gold: 120, xp: 150 },
+  { name: 'Rebuilt with old electronics', mult: 2, tech: {}, needs: [['circuit', 4], ['pcore', 1], ['wire', 6], ['generator', 1]], gold: 120, xp: 150 },
   { name: 'Automated', mult: 2.5, tech: {}, needs: [['microchip', 4], ['cable', 4], ['circuit', 2], ['precision', 2]], gold: 200, xp: 250 },
 ];
 export const plantLevel = (s: TownState | undefined) => Math.min(PLANT_LEVELS.length - 1, s?.pup ?? 0);

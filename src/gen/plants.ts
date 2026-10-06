@@ -18,10 +18,10 @@ import { STATIONS, STATION_SLOTS, type StationKind } from './energy';
 import { TECH_BY_ID } from './tech';
 
 export type PlantKind = 'smelter' | 'refinery' | 'glassworks' | 'wiremill' | 'electronics' | 'machineshop' | 'foundry' | 'chemworks'
-  | 'sawmill' | 'brickworks' | 'cementworks' | 'textile' | 'steelworks' | 'polymer' | 'alworks' | 'batteryworks';
+  | 'sawmill' | 'brickworks' | 'cementworks' | 'textile' | 'steelworks' | 'polymer' | 'alworks' | 'batteryworks' | 'electrical';
 /** In the order the elder offers them: the plain works (tier 1, anyone can build) first, then those that want old plans (tier 2). */
 export const PLANT_KINDS: PlantKind[] = ['sawmill', 'brickworks', 'cementworks', 'smelter', 'glassworks', 'wiremill', 'refinery', 'textile',
-  'steelworks', 'chemworks', 'polymer', 'alworks', 'batteryworks', 'electronics', 'machineshop', 'foundry'];
+  'steelworks', 'chemworks', 'polymer', 'alworks', 'batteryworks', 'electronics', 'machineshop', 'foundry', 'electrical'];
 /** What a works takes in: trade goods, and the rare materials of the deposits (gen/deposits.ts), which no market trades. */
 export type Stuff = Good | Rare;
 export interface Recipe { in: [Stuff, number][]; out: [Good, number] }
@@ -68,10 +68,10 @@ export const PLANTS: Record<PlantKind, PlantSpec> = {
     needs: [['bricks', 30], ['cement', 12], ['scrap', 24], ['engine', 1]], fee: 1200, xp: 280 },
   chemworks: { name: 'Chemical Works', blurb: 'makes industrial chemicals from crude, salt and sulfur (rocket propellant is the Old Propellant Plant\'s now)', batch: 60, tech: 'chemistry',
     recipes: [{ in: [['crude', 1], ['salt', 1], ['sulfur', 1]], out: ['chems', 2] }],
-    needs: [['scrap', 20], ['wire', 8], ['circuit', 4], ['cement', 8], ['planks', 12]], fee: 1000, xp: 220 },
+    needs: [['scrap', 20], ['wire', 8], ['circuit', 4], ['cement', 8], ['planks', 12], ['pipes', 4], ['pump', 1]], fee: 1000, xp: 220 },
   polymer: { name: 'Polymer Plant', blurb: 'cooks crude oil with chemicals into plastic resin, twice what a refinery gets', batch: 60, tech: 'chemistry',
     recipes: [{ in: [['crude', 1], ['chems', 1]], out: ['plastic', 2] }],
-    needs: [['scrap', 20], ['wire', 10], ['circuit', 4], ['cement', 8], ['lumber', 10]], fee: 1100, xp: 240 },
+    needs: [['scrap', 20], ['wire', 10], ['circuit', 4], ['cement', 8], ['lumber', 10], ['pipes', 4]], fee: 1100, xp: 240 },
   alworks: { name: 'Aluminium Works', blurb: 'smelts bauxite into aluminium in electrolytic pots: it eats power', batch: 90, tech: 'aluminium',
     recipes: [{ in: [['bauxite', 2], ['coal', 1]], out: ['aluminium', 1] }],
     needs: [['bricks', 24], ['cement', 16], ['scrap', 20], ['cable', 6], ['circuit', 6]], fee: 1600, xp: 320 },
@@ -81,12 +81,17 @@ export const PLANTS: Record<PlantKind, PlantSpec> = {
   electronics: { name: 'Electronics Shop', blurb: 'etches circuit boards from cable, resin and glass', batch: 90, tech: 'circuits',
     recipes: [{ in: [['cable', 1], ['plastic', 1], ['glass', 1]], out: ['boards', 1] }],
     needs: [['circuit', 8], ['wire', 10], ['scrap', 10], ['planks', 16]], fee: 1400, xp: 300 },
-  machineshop: { name: 'Machine Shop', blurb: 'machines steel into parts, and tools', batch: 75, tech: 'forging',
-    recipes: [{ in: [['steel', 2]], out: ['parts', 1] }, { in: [['steel', 1], ['timber', 1]], out: ['tools', 3] }],
+  machineshop: { name: 'Machine Shop', blurb: 'machines steel into parts and tools, pipes and valves, gears and bearings, and assembles pumps', batch: 75, tech: 'forging',
+    // (0.143: pipes, gears and pumps appended, so the old recipes keep their numbers)
+    recipes: [{ in: [['steel', 2]], out: ['parts', 1] }, { in: [['steel', 1], ['timber', 1]], out: ['tools', 3] },
+      { in: [['steel', 1], ['copperbar', 1]], out: ['pipes', 2] }, { in: [['steel', 1]], out: ['gears', 1] }, { in: [['steel', 1], ['parts', 1], ['motor', 1]], out: ['pump', 1] }],
     needs: [['scrap', 20], ['engine', 1], ['lumber', 10], ['nails', 20]], fee: 1100, xp: 240 },
   foundry: { name: 'Alloy Foundry', blurb: 'casts advanced alloy from steel, aluminium and nickel', batch: 120, tech: 'alloys',
     recipes: [{ in: [['steel', 1], ['aluminium', 1], ['nickel', 1]], out: ['alloy', 1] }],
     needs: [['bricks', 20], ['cement', 10], ['scrap', 24], ['pcore', 1], ['lumber', 10]], fee: 1800, xp: 350 },
+  electrical: { name: 'Electrical Works', blurb: 'winds copper on steel into electric motors and generators', batch: 90, tech: 'electricity',
+    recipes: [{ in: [['copperbar', 1], ['steel', 1], ['plastic', 1]], out: ['motor', 1] }, { in: [['copperbar', 2], ['steel', 1], ['parts', 1]], out: ['generator', 1] }],
+    needs: [['bricks', 16], ['lumber', 10], ['scrap', 16], ['cable', 6], ['circuit', 2]], fee: 1300, xp: 280 },
 };
 /** Keep a saved works valid when the recipes change (old saves): an unknown recipe falls back to the first. */
 export function fixPlant(p: PlantState) { if (!PLANTS[p.k]?.recipes[p.rec]) p.rec = 0; }

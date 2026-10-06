@@ -79,3 +79,18 @@ describe('farming document (0.142)', () => {
     expect(foodMade(seed, s, 4, 0)).toBeCloseTo(foodMade(seed, settled({ farms: 1 }), 4), 6);
   });
 });
+
+describe('industrial components (0.143)', () => {
+  it('are made in the works, sold on the market and classed', async () => {
+    const { PLANTS } = await import('../src/gen/plants');
+    const { GOOD_INFO } = await import('../src/gen/market');
+    const { classOf } = await import('../src/data/itemclass');
+    const outs = Object.values(PLANTS).flatMap((p) => p.recipes.map((r) => r.out[0]));
+    for (const k of ['motor', 'generator', 'pipes', 'gears', 'pump'] as const) {
+      expect(outs).toContain(k); expect(GOOD_INFO[k].proc).toBe(true);
+    }
+    expect(PLANTS.machineshop.recipes[0].out[0]).toBe('parts'); // the old recipes keep their numbers
+    expect(classOf('pump')).toBe('industrial'); expect(classOf('generator')).toBe('electrical');
+    expect(classOf('bauxite')).toBe('raw'); expect(classOf('milk')).toBe('food'); expect(classOf('microchip')).toBe('advanced');
+  });
+});

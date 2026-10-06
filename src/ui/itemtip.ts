@@ -1,6 +1,7 @@
 // The item tooltip: hover the mouse over any item slot (or anything carrying data-k) and a panel follows the cursor
 // with everything about the item: its kind, what it does, its numbers (weapon and armour values, food, attachments'
 // effects), weight and bulk, the stack, what the traders ask for it and what it is used for (data/uses.ts).
+import { classOf, CLASS_NAME } from '../data/itemclass';
 import { ITEMS, BULK, WEAR, WEAR_NAME, PACK, PACK_VOL, EXO, HEAL, HANDS_ONLY, HAND_TOOLS, GEAR_PRICE, TOOL_PRICE, SUPPLY_PRICE, PART_PRICE, ATTACH_PRICE, type ItemKey, type ItemType, type ItemDef } from '../data/items';
 import { NOURISH, BLADE } from '../data/survival';
 import { BLASTER, ATTACHMENTS, SLOT_NAME, GUNS, MELEE, type GunStats } from '../data/weapons';
@@ -73,6 +74,7 @@ export function itemTip(k: ItemKey, n = 1, c?: number): string {
   const [kg, l] = BULK[k] ?? [0, 0], stats = statLines(k), uses = usesOf(k), price = priceLine(k);
   let s = `<div class="tiphead">${itemIcon(k)}<div><b>${it.name}</b><div class="tiptype t-${it.type}">${TYPE_NAME[it.type]}</div></div></div>`;
   s += `<div class="tipdesc">${it.desc}</div>`;
+  { const cl = classOf(k); if (cl) s += `<div class="tipline">class: ${CLASS_NAME[cl]}</div>`; }
   if (c !== undefined) s += `<div class="tipline">condition <span class="${c < 35 ? 'bad' : ''}">${Math.round(c)}%</span></div>`;
   if (stats.length) s += `<div class="tipstats">${stats.map((x) => `<div>${x}</div>`).join('')}</div>`;
   s += `<div class="tipline">${kg} kg · ${l} L each${n > 1 ? ` · this stack: ${n} = ${+(kg * n).toFixed(2)} kg, ${+(l * n).toFixed(2)} L` : ''}${it.stack ? ` · stacks to ${it.stack}` : ''}</div>`;

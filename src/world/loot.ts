@@ -183,6 +183,11 @@ function rollChest(): Container {
     if (Math.random() < 0.25) putItems(items, Math.random() < 0.5 ? 'engine' : 'plating', 1);
     if (Math.random() < 0.5) putItems(items, 'ammoE', 10 + Math.floor(Math.random() * 30)); // the crew's cell lockers
     if (Math.random() < 0.15) putItems(items, 'repairkit', 1);
+    // the ship's machinery, stripped out (industrial components: salvage before the works can make them)
+    if (Math.random() < 0.3) putItems(items, 'gears', 1 + Math.floor(Math.random() * 2));
+    if (Math.random() < 0.25) putItems(items, 'motor', 1);
+    if (Math.random() < 0.2) putItems(items, 'pipes', 1 + Math.floor(Math.random() * 2));
+    if (Math.random() < 0.1) putItems(items, Math.random() < 0.6 ? 'generator' : 'pump', 1);
   }
   return { items, gold: (15 + Math.floor(Math.random() * 26)) * depth };
 }

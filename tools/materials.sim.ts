@@ -21,6 +21,7 @@ import { MENU } from '../src/gen/foodshop';
 import { DROPS } from '../src/data/creatures';
 import { ROBOTS } from '../src/data/robots';
 import { TECH_BY_ID } from '../src/gen/tech';
+import { classOf, type ItemClass } from '../src/data/itemclass';
 import { HOUSE_PRICE } from '../src/data/npcs';
 import { FUEL, CHIPS } from '../src/gen/contracts';
 import { OWN, HALL } from '../src/gen/hall';
@@ -244,6 +245,16 @@ it('writes SUROWCE.md', () => {
   P('Te rzeczy można tylko sprzedać (na targu albo kowalowi/Janowi), zjeść albo przewieźć w kontraktach:');
   P('');
   P(idle.map(N).join(', ') + '.');
+  P('');
+  P('## 6. Klasy przedmiotów');
+  P('');
+  P('Hierarchia z dokumentu „Surowce, przemysł, komponenty i technologie” (pkt 9); klasa jest też w podpowiedzi przedmiotu w grze.');
+  P('');
+  const CLASS_PL: Record<ItemClass, string> = { raw: 'RAW · surowce', food: 'FOOD / AGRICULTURE · żywność i uprawy', material: 'MATERIAL · materiały', industrial: 'INDUSTRIAL · komponenty przemysłowe', electrical: 'ELECTRICAL / ELECTRONIC · elektryka i elektronika', advanced: 'ADVANCED · zaawansowane', aerospace: 'AEROSPACE · program kosmiczny' };
+  for (const c of Object.keys(CLASS_PL) as ItemClass[]) {
+    const ks = (Object.keys(ITEMS) as ItemKey[]).filter((k) => classOf(k) === c);
+    P(`- **${CLASS_PL[c]}:** ${ks.length ? ks.map(N).join(', ') : '(jeszcze nic)'}`);
+  }
   P('');
   writeFileSync(new URL('../SUROWCE.md', import.meta.url), out.join('\n'));
   void ([] as Good[]);
