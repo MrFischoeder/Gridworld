@@ -45,6 +45,7 @@ describe('village extraction landmarks', () => {
   });
   it('produces stone and wood everywhere after building, and only the ore named by the local seam', () => {
     const s = developed('copper'), seed = villageSeed(world, home);
+    s.people = { n: 60, t: 0, tg: 60 }; // hands for every yard (gen/workforce.ts)
     settleOwn(world, home, seed, s, 1000);
     for (const k of ['quarry', 'lumber', 'mine'] as const) buildProject(s, k, () => 999);
     anchorNew(world, home, seed, s, 1000);

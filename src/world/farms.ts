@@ -97,7 +97,7 @@ let tick = 0;
 /** A village's population heads for what its farms feed with the power they got over the last day. */
 export function syncFarmVillage(vid: number) {
   const c = G.char, st = c.towns[vid], poi = findPoi(c.world, vid);
-  if (!st || !poi || !farmsOf(st)) return;
+  if (!st || !poi || (!farmsOf(st) && !progressive(st))) return; // a settlement's target also follows its homes and hands
   const seed = villageSeed(c.world, poi), home = vid === GRIDHOLM_ID;
   retarget(st, seed, home, c.time, farmTarget(seed, home, st, farmPower(c.world, poi, seed, st, c.time)));
 }

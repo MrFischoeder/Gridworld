@@ -1,6 +1,7 @@
 // The window of a processing works (E at it; gen/plants.ts, world/works.ts): what it can make (pick one), the hopper
 // (load crates of the inputs from your backpack and the vehicles parked by the village), the batch under way, and
 // the finished crates (collect them: into the trunks first, crates are heavy).
+import { shortHands } from './villagestats';
 import { G, W } from '../game';
 import { ITEMS } from '../data/items';
 import { calcStats, saveChar } from '../character';
@@ -37,6 +38,7 @@ function render(msg = '') {
   const outs = Object.entries(p.out).filter(([, n]) => n).map(([g, n]) => `<div class="shoprow"><div><b>${name(g as Good)}</b><br><span>${n} finished · worth about ${GOOD_INFO[g as Good].base} g a crate</span></div>
       <button class="opt" style="width:auto;color:var(--gold)" data-wkc="${g}">collect ${n}</button></div>`).join('');
   const state = pr !== null ? `Working: batch ${Math.round(pr * 100)}% · next in ${Math.ceil(spec.batch * (1 - pr))} min.`
+    : !on && progress(p, now) !== null && shortHands(open.vid, 'works', open.slot) ? `<span style="color:var(--red,#ff5a3c)">Short of hands:</span> ${shortHands(open.vid, 'works', open.slot)}.`
     : !on && progress(p, now) !== null ? `<span style="color:var(--red,#ff5a3c)">No power:</span> it draws ${DRAW[p.k]} kW and the village has not got it to spare. Build a power station (ask the elder), or keep the ones you have fed.`
     : !rec.in.every(([g, n]) => (p.inp[g] ?? 0) >= n) ? `Idle: it needs ${rec.in.map(([g, n]) => `${n} ${name(g)}`).join(' and ')} for a batch.`
     : `Idle: the output bay is full (${OUT_CAP} crates). Collect them.`;

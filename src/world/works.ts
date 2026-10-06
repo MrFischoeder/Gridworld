@@ -1,6 +1,7 @@
 // The processing works outside a village's fence (gen/plants.ts): drawn by kind, a building site while one is being
 // put up, staked plots where there is room for more; a loading hopper and an output bay by each; a glow and smoke
 // that show while it works. E at a works opens its window (ui/works.ts).
+import { shortHands } from '../ui/villagestats';
 import * as THREE from 'three';
 import { G } from '../game';
 import { PropBatch } from './props';
@@ -251,5 +252,5 @@ export function worksPrompt(w: Works): string {
   const pw = powerOf(w);
   runPlant(p, G.char.time, pw);
   const ready = Object.values(p.out).reduce((a, n) => a + (n ?? 0), 0), on = pw ? pw(G.char.time) : true;
-  return `E — the ${PLANTS[p.k].name} (${!running(p) ? 'idle' : on ? 'working' : 'no power'}${ready ? ` · ${ready} crate${ready > 1 ? 's' : ''} ready` : ''})`;
+  return `E — the ${PLANTS[p.k].name} (${!running(p) ? 'idle' : on ? 'working' : shortHands(w.vid, 'works', w.slot) ? 'short of hands' : 'no power'}${ready ? ` · ${ready} crate${ready > 1 ? 's' : ''} ready` : ''})`;
 }

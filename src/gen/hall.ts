@@ -15,9 +15,10 @@ import type { TownState } from './town';
 import type { Poi } from './regions';
 import { profileOf, type Good } from './market';
 import { production, industryOf, industryProject } from './industry';
-import { farmYield } from './farms';
+import { farmYield, eatenShare, FOOD } from './farms';
+import { fillOf } from './workforce';
 import { sitePower } from './energy';
-import { staffing } from './people';
+import { staffing, peopleAt, workersAt } from './people';
 import { GRIDHOLM_ID } from './regions';
 
 /** The hall: plaza-local rect on the north side (outside the wall, west of the north gate; the door faces the wall), its height, and how much the hold takes (litres). */
@@ -82,11 +83,16 @@ export interface Stock {
   full: boolean;
 }
 export function stockOf(world: number, v: Poi, seed: number, s: TownState | undefined, now: number): Stock {
-  const makes = progressive(s) && industryProject(industryOf(world, v, seed)) ? [] : profileOf(world, v, seed).makes, prod = production(world, v, seed, s, now), m = Math.max(1, makes.length), fy = farmYield(seed, s);
-  const resourcePower = progressive(s) ? .5 + .5 * sitePower(world, v, seed, s, now) : 1;
+  const home = v.id === GRIDHOLM_ID, settled = progressive(s), workers = settled ? workersAt(seed, home, s, now) : 0;
+  const makes = settled && industryProject(industryOf(world, v, seed)) ? [] : profileOf(world, v, seed).makes, prod = production(world, v, seed, s, now), m = Math.max(1, makes.length), fy = farmYield(seed, s, settled ? workers : undefined);
+  if (settled) { // the people eat their share of the food grown; only the rest reaches the stores
+    const eaten = eatenShare(seed, s, workers, peopleAt(seed, home, s, now));
+    for (const k of Object.keys(fy) as ItemKey[]) if (FOOD.value[k]) fy[k] = fy[k]! * (1 - eaten);
+  }
+  const resourcePower = settled ? .5 + .5 * sitePower(world, v, seed, s, now) : 1;
   for (const [k, n] of Object.entries(resourceYield(s))) {
     if (prod > 0 && industryProject(industryOf(world, v, seed)) && makes.includes(k as Good)) continue;
-    fy[k as ItemKey] = (fy[k as ItemKey] ?? 0) + n! * resourcePower * staffing(seed, v.id === GRIDHOLM_ID, s, now);
+    fy[k as ItemKey] = (fy[k as ItemKey] ?? 0) + n! * resourcePower * (settled ? yardFill(s, workers, k as ItemKey) : staffing(seed, home, s, now));
   }
   const own = [...new Set<ItemKey>([...makes, ...(Object.keys(fy) as ItemKey[]), ...(progressive(s) ? Object.keys(s?.own ?? {}) as ItemKey[] : [])])];
   const ownOf = (g: ItemKey) => (own.includes(g) ? ownAt(seed, s, g, makes.indexOf(g as Good), m, now, prod, fy[g] ?? 0) : 0);
@@ -108,6 +114,11 @@ export function stockOf(world: number, v: Poi, seed: number, s: TownState | unde
     full: makes.length > 0 && makes.every((g) => ownOf(g) >= OWN.cap - 0.5),
   };
   return st;
+}
+/** The hands at the yard that yields k (a settlement's quarry, sawmill, mine or oil well). */
+function yardFill(s: TownState | undefined, workers: number, k: ItemKey): number {
+  const yard = k === 'stone' ? 'quarry' : k === 'log' || k === 'timber' || k === 'lumber' ? 'lumber' : k === 'crude' ? 'oil' : k === 'fuel' ? 'refinery' : 'mine';
+  return fillOf(s, workers, yard);
 }
 /** Settle every own good's anchor at `now`: call before the farms or the site change (what they made so far is kept). */
 export function settleOwn(world: number, v: Poi, seed: number, s: TownState, now: number) {
@@ -143,8 +154,8 @@ export function refineStock(world: number, v: Poi, seed: number, s: TownState, n
   const batches = Math.max(0, Math.floor((now - prev) / 120));
   if (!batches) return 0;
   s.settlement!.refinedAt = prev + batches * 120;
-  const st = stockOf(world, v, seed, s, now);
-  const n = Math.min(batches, Math.floor(st.ownOf('fuel') < OWN.cap ? OWN.cap - st.ownOf('fuel') : 0), st.has('crude'));
+  const st = stockOf(world, v, seed, s, now), hands = fillOf(s, workersAt(seed, v.id === GRIDHOLM_ID, s, now), 'refinery');
+  const n = Math.min(Math.floor(batches * hands), Math.floor(st.ownOf('fuel') < OWN.cap ? OWN.cap - st.ownOf('fuel') : 0), st.has('crude'));
   if (!n) return 0;
   const got = st.take('crude', n);
   (s.own ??= {}).fuel = { n: st.ownOf('fuel') + got, t: now };

@@ -2,6 +2,7 @@ import { withTownStock } from './stock';
 import { online } from '../net/client';
 import { settleOwn, anchorNew } from '../gen/hall';
 import { developmentHTML, developmentClick } from './settlement';
+import { statusHTML } from './villagestats';
 import { settlementConsoleClick } from '../world/settlement';
 import { progressive, development, smithAllows } from '../gen/settlement';
 import { gateConsoleClick } from './worldgates';
@@ -91,7 +92,7 @@ function renderTalk(text: string) {
     (townId() !== null ? questOptions(W.talkNpc!.role, townId()!) : []).map((q) => `<button class="opt" data-q="${q.id}" style="color:var(--gold)">${q.label}</button>`).join('') +
     (W.talkNpc!.role === 'elder' && progressive(G.char.towns[townId()!]) ? '<button class="opt" data-o="development">Village development — next tutorial objective</button>' : '') +
     (W.talkNpc!.role === 'elder' && townId() !== null && storesWithElder(townId()!) ? '<button class="opt" data-o="stores">Leave materials with me (the village stores)</button>' : '') +
-    info.opts.filter((o) => (o !== 'house' || houseForSale()) && (o !== 'craft' || CRAFTING_OPEN) && (!progressive(G.char.towns[townId()!]) || W.talkNpc!.role !== 'elder' || ['lore', 'bye'].includes(o) || (development(G.char.towns[townId()!]) >= 5 && o !== 'work'))).map((o) => `<button class="opt" data-o="${o}">${OPT_TEXT[o]}</button>`).join('');
+    info.opts.filter((o) => (o !== 'house' || houseForSale()) && (o !== 'craft' || CRAFTING_OPEN) && (!progressive(G.char.towns[townId()!]) || W.talkNpc!.role !== 'elder' || ['status', 'lore', 'bye'].includes(o) || (development(G.char.towns[townId()!]) >= 5 && o !== 'work'))).map((o) => `<button class="opt" data-o="${o}">${OPT_TEXT[o]}</button>`).join('');
 }
 /** The elder sells the empty house (Gridholm's, for now) until it is yours. */
 const houseForSale = () => { const v = loadedVillage(town()); return !!v?.vm.home && !G.char.houses.includes(v.id); };
@@ -454,6 +455,7 @@ dlgEl.addEventListener('click', async (e) => {
     case 'plantup': panel().classList.remove('wide'); panel().innerHTML = plantUpHTML(town(), dlgHead()); break;
     case 'improve': panel().classList.add('wide'); panel().innerHTML = improveHTML(town(), dlgHead()); break;
     case 'farms': panel().classList.remove('wide'); panel().innerHTML = farmsHTML(town(), dlgHead()); break;
+    case 'status': { const id = townId(); panel().classList.remove('wide'); if (id !== null) panel().innerHTML = statusHTML(id, dlgHead()); break; }
     case 'share': panel().classList.remove('wide'); panel().innerHTML = shareHTML(town(), dlgHead()); break;
     case 'make': panel().classList.remove('wide'); panel().innerHTML = ordersHTML(dlgHead(), loadedVillage(town())?.id ?? null); break;
     case 'oldtech': { const id = townId(), p = id !== null ? findPoi(c.world, id) : null; renderTalk(p ? askLead(p.x, p.z) : 'Hm?'); break; }

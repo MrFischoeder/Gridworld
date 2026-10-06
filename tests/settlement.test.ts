@@ -90,6 +90,7 @@ describe('new settlements and frozen saves', () => {
   });
   it('creates extraction stocks only after construction and converts actual crude into fuel', () => {
     const s = fresh(), v = home(), seed = villageSeed(world, v);
+    s.people = { n: 60, t: 0, tg: 60 }; // hands for every yard (gen/workforce.ts)
     settleOwn(world, v, seed, s, 1000); s.settlement!.done = { mine: true, lumber: true, oil: true, refinery: true, power: true }; s.settlement!.refinedAt = 1000;
     anchorNew(world, v, seed, s, 1000);
     expect(stockOf(world, v, seed, s, 1000).has('crude')).toBe(0);

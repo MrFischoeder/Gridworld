@@ -3,6 +3,12 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.141.0', date: '2026-10-06', title: 'Hands and bread', notes: [
+    'New settlements now keep count of their people the way a village would. Ask the elder "How is the village doing?" (or read the village computer): population, workers at work, free workers, homes, food security and the development level, who works where and what holds the village back.',
+    'Every farm, yard and works needs workers: a farm 4, the power plant 2, the stone quarry 3, the sawmill 4, the mine 4, the oil well 2, the refinery 3, a processing works 3 and a power station 1. Six in ten villagers work, and they go to the farms first, then power, the yards, the refinery, the works and the stations. A farm or a yard short of hands yields less; a works or a station short of its whole crew stands still ("short of hands"). You can see the workers at the quarry, the sawmill, the mine and the oil well.',
+    'The villagers eat what their farms grow (grain, carrots, potatoes, eggs and milk; flax and wool are no food). Only what is left over reaches the village stores. Families settle only while there are free homes and food to spare, and drift away when the food runs short, so more food brings more people, more people bring more hands, and more hands run more works.',
+    'In a settlement that already has more works than hands, some works now stand idle until more families arrive.',
+  ] },
   { v: '0.140.1', date: '2026-10-06', title: 'Built for playing together', notes: [
     'Behind the scenes: from now on every new feature and change is planned and tested for several players in one world from the start (who runs it, what everyone sees, what is saved for all), not added for multiplayer later.',
   ] },

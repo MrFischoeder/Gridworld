@@ -6,7 +6,8 @@ import { progressive, projectDone, localIndustryDone, SETTLEMENT_START, housingC
 import { hash } from '../core/rng';
 import type { ItemKey } from '../data/items';
 import type { TownState } from './town';
-import { peopleAt, setPeople, basePeople } from './people';
+import { peopleAt, setPeople, basePeople, PEOPLE } from './people';
+import { assign } from './workforce';
 
 export const FARM = { max: 3, people: 15, needs: [['log', 8], ['stone', 6]] as [ItemKey, number][], xp: 60, gold: 40, kw: 3 };
 /** Steel ploughs and pumps (the Steel Ploughs plans): an upgraded farm feeds `mult` × as many, but draws more power. */
@@ -27,8 +28,8 @@ export const farmsKw = (s: TownState | undefined) => (farmsOf(s) - upgradedOf(s)
  */
 export function farmTarget(seed: number, home: boolean, s: TownState | undefined, p: number): number {
   const F = farmPeople(seed), plain = farmsOf(s) - upgradedOf(s), up = upgradedOf(s);
-  const n = (progressive(s) ? SETTLEMENT_START : basePeople(seed, home)) + Math.round(F * (plain * (UNPOWERED + (1 - UNPOWERED) * p) + up * (UNPOWERED + (UPGRADE.mult - UNPOWERED) * p)));
-  return progressive(s) ? Math.min(n, housingCapacity(s)) : n;
+  if (progressive(s)) return settleTarget(seed, s);
+  return basePeople(seed, home) + Math.round(F * (plain * (UNPOWERED + (1 - UNPOWERED) * p) + up * (UNPOWERED + (UPGRADE.mult - UNPOWERED) * p)));
 }
 /** What the next upgrade still needs, or null when every farm has it. */
 export function upgradePlan(s: TownState | undefined) {
@@ -95,8 +96,50 @@ export const CROP_KINDS = Object.keys(CROPS) as Crop[];
 /** What farm i grows (farms you have not set: wheat and potatoes by turns, as they were drawn before). */
 export const cropOf = (s: TownState | undefined, i: number): Crop => s?.crops?.[i] ?? (i % 2 === 0 ? 'wheat' : 'potatoes');
 /** Crates a game hour the village's farms put into its hall, by what they yield (the first `upgradedOf` farms have steel ploughs). */
-export function farmYield(seed: number, s: TownState | undefined): Partial<Record<ItemKey, number>> {
+export function farmYield(seed: number, s: TownState | undefined, workers?: number): Partial<Record<ItemKey, number>> {
   const out: Partial<Record<ItemKey, number>> = {}, up = upgradedOf(s), sl = soil(seed);
-  for (let i = 0; i < farmsOf(s); i++) { const c = CROPS[cropOf(s, i)]; out[c.out] = (out[c.out] ?? 0) + c.perDay / 24 * sl * (i < up ? UPGRADE.mult : 1); }
+  // a new settlement's farm yields by the hands it has (gen/workforce.ts); established villages' farms always worked
+  const posts = workers !== undefined && progressive(s) ? assign(s, workers).posts : null;
+  for (let i = 0; i < farmsOf(s); i++) {
+    const c = CROPS[cropOf(s, i)], fill = posts ? (posts.find((q) => q.id === 'farm:' + i)?.fill ?? 0) : 1;
+    out[c.out] = (out[c.out] ?? 0) + c.perDay / 24 * sl * (i < up ? UPGRADE.mult : 1) * fill;
+  }
   return out;
+}
+
+// ---------- food (new-world settlements): the people eat what the farms grow ----------
+/**
+ * `eat` food crates a person a game day (the first `SETTLEMENT_START` live off the wilds), `value` how much food a
+ * crate of each crop is (flax and wool are none), `margin` the spare food a settlement wants before families settle
+ * (they come while the food would still cover them with this to spare), `short` below which people begin to leave.
+ */
+export const FOOD = { eat: 0.26, margin: 1.1, short: 0.95, value: { grain: 1, carrots: 1, potatoes: 1, eggs: 4 / 3, milk: 4 / 3 } as Partial<Record<ItemKey, number>> };
+/** Food (crate value) the farms grow a game hour with `workers` in the village. */
+export function foodMade(seed: number, s: TownState | undefined, workers: number): number {
+  return Object.entries(farmYield(seed, s, workers)).reduce((a, [k, n]) => a + (FOOD.value[k as ItemKey] ?? 0) * (n ?? 0), 0);
+}
+/** Food (crate value) `people` eat a game hour. */
+export const foodNeed = (people: number) => Math.max(0, people - SETTLEMENT_START) * FOOD.eat / 24;
+/** How many people the farms feed with `workers` at work (the wilds feed the first few). */
+export const peopleFed = (seed: number, s: TownState | undefined, workers: number) => SETTLEMENT_START + foodMade(seed, s, workers) * 24 / FOOD.eat;
+/**
+ * The people a settlement grows to: no more than its homes take, and no more than its farms feed with food to spare,
+ * where the farms are worked by the people it would have (more people, more hands, more food): the highest count
+ * that holds up, found by stepping down from the homes.
+ */
+export function settleTarget(seed: number, s: TownState | undefined): number {
+  const cap = housingCapacity(s);
+  let t = cap;
+  for (let k = 0; k < 8; k++) {
+    const fed = peopleFed(seed, s, Math.floor(t * PEOPLE.work));
+    const n = Math.max(SETTLEMENT_START, Math.min(cap, SETTLEMENT_START + Math.floor((fed - SETTLEMENT_START) / FOOD.margin)));
+    if (n >= t) break;
+    t = n;
+  }
+  return t;
+}
+/** The share of the food grown that the people eat (a settlement's stock keeps the rest), for `people` heading for it. */
+export function eatenShare(seed: number, s: TownState | undefined, workers: number, people: number): number {
+  const made = foodMade(seed, s, workers);
+  return made > 0 ? Math.min(1, foodNeed(people) / made) : 0;
 }

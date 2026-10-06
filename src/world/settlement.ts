@@ -16,14 +16,60 @@ import type { Terrain } from '../gen/terrain';
 import { developmentHTML, developmentClick } from '../ui/settlement';
 import { lockPointer } from '../ui/input';
 import { rayLocal, solidAt, type Box } from '../gen/base';
+import { makeFigure, type Figure } from './npc';
+import { poseRig, type Kit } from './rig';
+import { assign, JOBS } from '../gen/workforce';
+import { workersAt } from '../gen/people';
+import { villageSeed } from '../gen/regions';
 
 const METAL = 0xa8c8b8, WOOD = 0xb8b060;
 const siteBoxes = new Map<number, Box[]>();
 const siteRocks = new Map<number, RockShape[]>(), siteMeshes = new Map<number, THREE.Group>();
 const oilMotions = new Map<number, OilMotion>();
 let oilClock = 0;
-export function updateSettlementSites(dt: number) { oilClock += dt; for (const m of oilMotions.values()) animateOil(m, oilClock); }
-export function forgetSettlement(id: number) { siteBoxes.delete(id); siteRocks.delete(id); siteMeshes.delete(id); oilMotions.delete(id); }
+/** The hands at a settlement's yard: as many figures as it has posts, those the village staffs (gen/workforce.ts) at work, the rest out of sight. */
+interface Hand { f: Figure; x: number; z: number; face: number; phase: number }
+interface Crew { id: number; yard: string; T: Terrain; hands: Hand[]; got: number }
+const crews = new Map<number, Crew[]>();
+const KIT: Record<string, Kit> = { quarry: 'pick', mine: 'pick', lumber: 'hammer', oil: 'hammer', refinery: 'hammer' };
+const WORKER = 0xdce8ff;
+/** Where a yard's hands stand: [x offset of the work's middle, radius, first angle] (yard-local; they go round from there). */
+const YARD_RING: Record<string, [number, number, number]> = { quarry: [-4, 12.5, 1.7], mine: [0, 8, 1.6], lumber: [0, 8, 0.4], oil: [0, 4.2, 0.8], refinery: [0, 5.5, 1.2] };
+let crewT = 0;
+const tmpV = new THREE.Vector3();
+export function updateSettlementSites(dt: number) {
+  oilClock += dt; for (const m of oilMotions.values()) animateOil(m, oilClock);
+  if ((crewT -= dt) <= 0) { // who works the yards follows the village's people (every few seconds; the same for every player)
+    crewT = 2;
+    for (const [id, list] of crews) {
+      const poi = findPoi(G.char.world, id), s = G.char.towns[id];
+      if (!poi) continue;
+      const posts = assign(s, workersAt(villageSeed(G.char.world, poi), id === GRIDHOLM_ID, s, G.char.time)).posts;
+      for (const c of list) { c.got = posts.find((p) => p.id === c.yard)?.got ?? 0; c.hands.forEach((h, i) => { h.f.g.visible = i < c.got; }); }
+    }
+  }
+  for (const list of crews.values()) for (const c of list) for (let i = 0; i < c.got; i++) {
+    const h = c.hands[i], f = h.f;
+    if (Math.abs(h.x - G.pos.x) > 160 || Math.abs(h.z - G.pos.z) > 160) continue;
+    h.phase += dt;
+    poseRig(f.rig, { swing: 0, strike: (h.phase * 0.85) % 1 });
+    const o = f.g.parent ? f.g.parent.getWorldPosition(tmpV) : tmpV.set(0, 0, 0); // the village group is localised
+    f.g.position.set(h.x - o.x, c.T.heightAt(h.x, h.z) - o.y, h.z - o.z); f.g.rotation.y = h.face;
+  }
+}
+export function forgetSettlement(id: number) { siteBoxes.delete(id); siteRocks.delete(id); siteMeshes.delete(id); oilMotions.delete(id); crews.delete(id); }
+/** The figures of a built yard, standing round it facing the work. */
+function yardCrew(grp: THREE.Group, T: Terrain, id: number, yard: string, x: number, z: number): Crew {
+  const hands: Hand[] = [];
+  // round the work (the quarry's boulder pile lies 4 m west of the yard's middle), clear of the rocks and the sheds
+  const [cx, r, a0] = YARD_RING[yard] ?? [0, 5, 0], mx = x + cx;
+  for (let i = 0; i < (JOBS[yard as keyof typeof JOBS] ?? 2); i++) {
+    const a = a0 + i * 0.9, hx = mx + Math.cos(a) * r, hz = z + Math.sin(a) * r;
+    const f = makeFigure(WORKER, KIT[yard] ?? 'hammer'); f.g.visible = false; grp.add(f.g);
+    hands.push({ f, x: hx, z: hz, face: Math.atan2(mx - hx, z - hz), phase: i * 0.37 });
+  }
+  return { id, yard, T, hands, got: 0 };
+}
 export function settlementHit(x: number, y: number, z: number, r: number): boolean {
   for (const list of siteBoxes.values()) for (const { b } of list) {
     if (y >= b[4] - .01 || y + 1.7 <= b[1]) continue;
@@ -53,6 +99,7 @@ export function drawSettlementSites(vm: VillageMap, T: Terrain, id: number): THR
     pb.box(x0, y0, z0, x1, y1, z1, color); boxes.push({ b: [x0, y0, z0, x1, y1, z1], slab: false });
   };
   if (!progressive(s)) return grp;
+  const crew: Crew[] = []; crews.set(id, crew); crewT = 0;
   for (const [k, p] of Object.entries(RESOURCE_PLOTS) as [keyof typeof RESOURCE_PLOTS, { x: number; z: number }][]) {
     if (!projectAvailable(s, k)) continue;
     const x = vm.ox + p.x, z = vm.oz + p.z, y = T.heightAt(x, z), built = projectDone(s, k);
@@ -85,6 +132,7 @@ export function drawSettlementSites(vm: VillageMap, T: Terrain, id: number): THR
       box(x - .7, y, z - .7, x + .7, y + 9, z + .7, METAL);
       const oil = RESOURCE_PLOTS.oil; pb.line(METAL, [x + 3, y + .5, z], [vm.ox + oil.x, y + .5, z], [vm.ox + oil.x, y + .5, vm.oz + oil.z]);
     }
+    if (built) crew.push(yardCrew(grp, T, id, k, x, z));
     const label = k === 'mine' && ore ? ORES[ore].name + ' · ' + ORES[ore].symbol : PROJECTS[k].name;
     const sign = textSprite(label.toUpperCase() + (built ? ' · WORKING SITE' : ' · CONSTRUCTION SITE'), k === 'mine' && ore ? '#' + ORES[ore].color.toString(16).padStart(6, '0') : '#ffd060', 5);
     sign.position.set(x, T.heightAt(x, z + 13) + 2.2, z + 13); grp.add(sign);

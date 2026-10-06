@@ -11,7 +11,9 @@ import { projectDone, progressive } from './settlement';
 // village itself takes, and which works that leaves power for (in the order they were built).
 import { hash, type Dir } from '../core/rng';
 import { daylight, sunTilt } from '../core/time';
-import { latitude, type Poi } from './regions';
+import { latitude, GRIDHOLM_ID, type Poi } from './regions';
+import { assign, type Post } from './workforce';
+import { workersAt } from './people';
 import { powerKind, powerCondition, powerSite, lastFix, POWER_DOWN, type TownState } from './town';
 import { industrySite, industryOf, industryProject, siteBuilt, type Industry } from './industry';
 import { raidHurt } from './raids';
@@ -99,8 +101,13 @@ export function baseKw(world: number, v: Poi, seed: number, s: TownState | undef
   const kind = powerKind(seed), c = powerCondition(seed, s, t, raidHurt(world, v, s, lastFix(seed, s), t));
   if (c < POWER_DOWN) return 0;
   const k = kind === 'solar' ? sunAt(v, t) * 1.3 : kind === 'wind' ? 0.4 + windAt(seed, t) * 0.8 : 1;
-  return BASE_KW[kind] * Math.min(1, k) * (0.5 + 0.5 * c / 100) * plantMult(s);
+  return BASE_KW[kind] * Math.min(1, k) * (0.5 + 0.5 * c / 100) * plantMult(s) * crewFill(crew(seed, v, s, t), 'power');
 }
+/** A new settlement's posts at time t (gen/workforce.ts): who works the power plant, the stations and the works. */
+function crew(seed: number, v: Poi, s: TownState | undefined, t: number): Post[] | null {
+  return progressive(s) ? assign(s, workersAt(seed, v.id === GRIDHOLM_ID, s, t)).posts : null;
+}
+const crewFill = (posts: Post[] | null, id: string) => posts?.find((p) => p.id === id)?.fill ?? 1;
 /**
  * What the village's industry site draws (kW): pumps, winches, saws, lamps. Small enough that a village's own plant in
  * good repair runs a small site; a refinery, or a neglected plant, wants a power station. Without power the site
@@ -138,7 +145,8 @@ export interface Balance {
  */
 export function balance(world: number, v: Poi, seed: number, s: TownState | undefined, t: number): Balance {
   const bank = s?.imp?.bank ? bankKw(s, ...renewables(world, v, seed, s, t)) : 0;
-  const made = baseKw(world, v, seed, s, t) + (s?.stations ?? []).reduce((a, st) => a + stationKw(v, seed, st, t), 0) + bank, vkw = villageKw(s);
+  const posts = crew(seed, v, s, t);
+  const made = baseKw(world, v, seed, s, t) + (s?.stations ?? []).reduce((a, st, i) => a + stationKw(v, seed, st, t) * crewFill(posts, 'station:' + i), 0) + bank, vkw = villageKw(s);
   let free = Math.max(0, made - vkw), draw = 0;
   // the farms come first (gen/farms.ts): pumps and lamps before the works
   const farms = farmsKw(s), farmsGot = Math.min(free, farms);
@@ -146,8 +154,8 @@ export function balance(world: number, v: Poi, seed: number, s: TownState | unde
   // then the industry site (a share of its draw is a share of its power)
   const site = siteKw(world, v, seed, s), siteGot = Math.min(free, site);
   free -= siteGot;
-  const powered = (s?.plants ?? []).map((p) => {
-    if (!running(p)) return false;
+  const powered = (s?.plants ?? []).map((p, i) => {
+    if (!running(p) || crewFill(posts, 'works:' + i) < 1) return false; // a works short of hands stands still and draws nothing
     const d = DRAW[p.k];
     draw += d;
     if (free >= d) { free -= d; return true; }

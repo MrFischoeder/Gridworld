@@ -27,6 +27,8 @@ import { $ } from './hud';
 import { depositOf, RARE_NAME } from '../gen/deposits';
 import { trustOf, trustTier, shareLeft, TRUST_TIERS } from '../gen/standing';
 import { peopleAt, targetNow, workersAt, staffing } from '../gen/people';
+import { statsOf, statRows } from './villagestats';
+import { progressive } from '../gen/settlement';
 import { farmsOf, upgradedOf } from '../gen/farms';
 import { TECHS, techSites, CARRIER_NAME, dirWord } from '../gen/tech';
 import { Terrain } from '../gen/terrain';
@@ -57,7 +59,8 @@ function villagePage(poi: Poi, vm: VillageMap): string {
   if (oldReactor(c.world, poi)) { const o = fuelOrder(c.world, poi, c.time); s += row('Old reactor', o ? `orders ${o.n} crates of fuel rods today, ${o.pay} g a crate` : 'no fuel order today'); }
   if (chipBuyer(c.world, poi)) { const o = chipOrder(c.world, poi, c.time); s += row('Workshops', o ? `order ${o.n} crates of microchips today, ${o.pay} g a crate` : 'no chip order today'); }
   if (cellBuyer(c.world, poi)) { const o = cellOrder(c.world, poi, c.time); s += row('Salvagers', o ? `order ${o.n} crates of power cells today, ${o.pay} g a crate` : 'no cell order today'); }
-  { const home = poi.id === GRIDHOLM_ID, n = peopleAt(seed, home, st, now), tg = Math.round(targetNow(seed, home, st));
+  if (progressive(st)) { const v = statsOf(poi.id); if (v) for (const [a, b] of statRows(v)) s += row(a, b); }
+  else { const home = poi.id === GRIDHOLM_ID, n = peopleAt(seed, home, st, now), tg = Math.round(targetNow(seed, home, st));
     s += row('People', `${Math.round(n)} · ${workersAt(seed, home, st, now)} at work · staffing ×${staffing(seed, home, st, now).toFixed(2)}` + (Math.abs(tg - n) >= 1 ? ` · ${n < tg ? 'growing' : 'shrinking'} to ${tg}` : '')); }
   { const k = trustTier(st), tr = TRUST_TIERS[k]; s += row('Your standing', `${tr.name} · trust ${trustOf(st)}` + (tr.crates ? ` · share ${shareLeft(st, now)}/${tr.crates} crates today` : ` · ${TRUST_TIERS[1].min} for a share`)); }
   if (ind === 'farm') s += row('Fields', `${fert > 1.15 ? 'rich' : fert < 0.85 ? 'poor' : 'fair'} (×${fert.toFixed(2)})`);
