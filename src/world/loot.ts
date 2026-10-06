@@ -3,7 +3,7 @@ import { environmentalDamage } from './damage';
 import * as THREE from 'three';
 import { fitFilter } from './toxic';
 import { PropBatch } from './props';
-import { chestBase, chestLid } from './chestmodel';
+import { CHEST_KINDS, chestKind } from './chestmodel';
 import { scene, add, V, circlePts, edgesOf } from './render';
 import { G, W } from '../game';
 import { floorNear, floorAt } from '../core/voxel';
@@ -143,9 +143,10 @@ export function grabPickup(p: Pickup): boolean {
 export function makeChest(c: { x: number; z: number }, i: number): Chest | null {
   const gr = G.grid, f = floorNear(G.space, c.x, c.z, 0, gr.oy + 1, gr.oy + gr.ny - 1); if (!f) return null;
   const g = new THREE.Group(); g.position.set(f[0] + 0.5, f[1], f[2] + 0.5);
-  const base = new PropBatch(); chestBase(base); g.add(base.build());
+  const kind = CHEST_KINDS[chestKind(Math.floor(c.x), Math.floor(c.z), i)];
+  const base = new PropBatch(); kind.base(base); g.add(base.build());
   const lidPivot = new THREE.Group(); lidPivot.position.set(0, 0.5, -0.3); g.add(lidPivot);
-  const lid = new PropBatch(); chestLid(lid); lidPivot.add(lid.build());
+  const lid = new PropBatch(); kind.lid(lid); lidPivot.add(lid.build());
   const beamMat = add(0xffd060);
   const beam = new THREE.Line(new THREE.BufferGeometry().setFromPoints([V(0, 0.6, 0), V(0, 5, 0)]), beamMat);
   g.add(beam); g.rotation.y = (i * 1.7) % 6.28; scene.add(g);

@@ -465,7 +465,7 @@ function loadCampStruct(poi: Poi): Structure {
   for (let i = 0; i < 7; i++) { const a = i / 7 * 6.283; pb.rock(cm.fire.x + Math.cos(a) * 0.9, y - 0.05, cm.fire.z + Math.sin(a) * 0.9, 0.28, 0.25, 4, a, GRID); }
   // the stash: a heavy crate
   const sx = cm.stash.x, sz = cm.stash.z;
-  drawClosedChest(pb, sx, y, sz);
+  drawClosedChest(pb, sx, y, sz, 'locker');
   group.add(pb.build());
   const flames = new THREE.LineSegments(new THREE.BufferGeometry(), addMat(0xffb347));
   flames.geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(10 * 6), 3));

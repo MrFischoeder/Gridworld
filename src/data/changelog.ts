@@ -3,6 +3,10 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.138.0', date: '2026-10-06', title: 'Military cases', notes: [
+    'Chests in ruins, wrecks and caves now come as three military sci-fi cases: an ammunition footlocker (ribbed steel on skids, corner guards, a hazard panel, latches and handles), a sealed tech canister (an octagonal case with thick end rings, lit seams and a readout on its lid) and an armoured strongbox (a wedge-fronted steel case with a keypad, a status lamp and side vents). All open the same way.',
+    'The old wooden treasure chest still turns up, but only now and then. Bandit camps keep their stash in a footlocker.',
+  ] },
   { v: '0.137.0', date: '2026-10-05', title: 'The village stores', notes: [
     'A new settlement has no storehouse at first: bring the logs, stones and other materials to the elder (Leave materials with me). He keeps the village\'s stores until the warehouse is built; its plot outside the north fence is staked out meanwhile.',
     'The warehouse is now a big plank barn: boarded walls on posts with knee braces, a gable roof over wide double doors standing open, a plank floor, timber racks and a painted parking bay. Drive a truck straight in, park in the bay and unload it at the terminal; the camera stays under the roof while you are inside. The older village halls get the same plank look.',
