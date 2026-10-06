@@ -30,8 +30,8 @@ import { nearBridgeSign, built as bridgeBuilt, isBridgePlacing, confirmBridgePla
 import { openBridge } from '../ui/bridge';
 import { nearPierSign, nearPierCrate, pierCrate, isPierPlacing, confirmPierPlacing, pierPlacingHint, pierPlacingOk } from './piers';
 import { openPier } from '../ui/pier';
-import { inBoat, nearBoat, board, stepOff, boatHint } from './boats';
-import { BOATS, type Boat } from '../gen/boats';
+import { inBoat, nearBoat, board, stepOff, boatHint, boatPrompt } from './boats';
+import type { Boat } from '../gen/boats';
 import type { Pier } from '../gen/piers';
 import type { Ford } from '../gen/bridges';
 import { INSTALL_STAGES, installDone } from '../gen/installs';
@@ -163,9 +163,9 @@ export function updateEntities(dt: number, time: number) {
   else if (nearCityVault) { prompt.className = 'portal'; prompt.textContent = 'E — enter ' + nearCityVault.name; }
   else if (nearComms !== null) { prompt.className = ''; prompt.textContent = 'E — restore the satellite receiver'; }
   else if (nearHall !== null) { prompt.className = ''; prompt.textContent = 'E — the village hall\'s terminal (the village\'s stock)'; }
-  else if (nearBt) { prompt.className = ''; prompt.textContent = `E — get into the ${BOATS[nearBt.k].name.toLowerCase()} · F — its hold`; }
-  else if (nearPier) { prompt.className = ''; prompt.textContent = nearPier.done ? 'E — the pier' : 'E — build the pier'; }
-  else if (nearPCrate) { prompt.className = ''; prompt.textContent = 'E — open the crate on the pier'; }
+  else if (nearBt) { prompt.className = ''; prompt.textContent = boatPrompt(nearBt); }
+  else if (nearPier) { prompt.className = ''; prompt.textContent = nearPier.done ? 'E — the dock' : 'E — build the dock'; }
+  else if (nearPCrate) { prompt.className = ''; prompt.textContent = 'E — open the crate on the dock'; }
   else if (nearBrg) { prompt.className = ''; prompt.textContent = bridgeBuilt(nearBrg) ? `E — the bridge over the ${nearBrg.river}` : `E — build a bridge over the ${nearBrg.river}`; }
   else if (nearIns) { prompt.className = ''; prompt.textContent = `E — the control desk (${installDone(nearIns.k, G.char.installs[nearIns.k]) ? 'restored' : `${G.char.installs[nearIns.k]?.stage ?? 0} of ${INSTALL_STAGES[nearIns.k].length} stages restored`})`; }
   else if (nearGd) { prompt.className = ''; prompt.textContent = `E — talk to ${GUIDE.name}`; }
@@ -251,7 +251,7 @@ export function interact() {
   if (nearIns) { openInstall(nearIns); return; }
   if (nearBrg) { openBridge(nearBrg); return; }
   if (nearPier) { openPier(nearPier); return; }
-  if (nearPCrate) { openTransfer({ title: 'Crate', subtitle: 'Your pier', boxLabel: 'Crate', box: pierCrate(nearPCrate) }); return; }
+  if (nearPCrate) { openTransfer({ title: 'Crate', subtitle: 'Your dock', boxLabel: 'Crate', box: pierCrate(nearPCrate) }); return; }
   if (nearGd) { talkGuide(); return; }
   if (nearFogL) { openTransfer({ title: 'Locker', subtitle: `${FOG_SITE[nearFogL.f.site].name}, ${nearFogL.f.name}`, boxLabel: 'Locker', box: fogLocker(nearFogL.f, nearFogL.i) }); return; }
   if (nearData) { takeCarrier(nearData); return; }

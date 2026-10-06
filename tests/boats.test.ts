@@ -36,3 +36,38 @@ describe('sailing', () => {
     expect(trim(Math.PI / 2, 1)).toBeLessThan(trim(Math.PI / 2, 0.4));
   });
 });
+
+import { NEW_BOATS, refitsOf, isShip, launchSpot, hullPoints, halfBeam } from '../src/gen/boats';
+describe('the small boat and the ships', () => {
+  it('builds the rowboat and the two ships new; the rowboat is refitted with a sail or a motor', () => {
+    expect(NEW_BOATS.sort()).toEqual(['row', 'ship', 'steamer'].sort());
+    expect(refitsOf('row').sort()).toEqual(['motor', 'sail']);
+    expect(refitsOf('sail')).toEqual([]);
+    expect(isShip('ship') && isShip('steamer') && !isShip('row')).toBe(true);
+    // the ship only sails, the motor ship only steams: no oars on either
+    expect(BOATS.ship.sails && !BOATS.ship.row && !BOATS.ship.motor).toBe(true);
+    expect(!!BOATS.steamer.motor && !BOATS.steamer.sails).toBe(true);
+  });
+  it('the ships carry far more than the small boats', () => {
+    const small = Math.max(BOATS.row.hold, BOATS.sail.hold, BOATS.motor.hold);
+    expect(BOATS.ship.hold).toBeGreaterThan(small * 2.5);
+    expect(BOATS.steamer.hold).toBeGreaterThan(small * 2.5);
+    expect(BOATS.ship.hold).not.toBe(BOATS.steamer.hold);
+  });
+  it('the hull narrows to the stem and every point under it lies within the hull', () => {
+    for (const k of ['row', 'ship'] as const) {
+      expect(halfBeam(k, 0)).toBeCloseTo(BOATS[k].beam / 2, 6);
+      expect(halfBeam(k, BOATS[k].len / 2)).toBe(0);
+      for (const [u, v] of hullPoints(k)) expect(Math.abs(v)).toBeLessThanOrEqual(BOATS[k].beam / 2 + 1e-9), expect(Math.abs(u)).toBeLessThanOrEqual(BOATS[k].len / 2);
+    }
+  });
+  it('launches alongside a dock where the water is deep enough, beyond its head if need be, else nowhere', () => {
+    const dock = { x: 0, z: 0, dx: 0, dz: 1, len: 30, head: 5, headW: 6, w: 3.2 };
+    const deep = (_x: number, z: number) => (z < 3 ? null : z * 0.15); // the sea floor falls away from the beach
+    const row = launchSpot('row', dock, deep)!, ship = launchSpot('ship', dock, deep)!;
+    expect(row).not.toBeNull(); expect(ship).not.toBeNull();
+    expect(Math.abs(row.x)).toBeGreaterThan(dock.headW / 2); // beside the head, not on it
+    for (const [u, v] of hullPoints('ship')) { const z = ship.z + Math.cos(ship.yaw) * u - Math.sin(ship.yaw) * v; expect(deep(0, z)!).toBeGreaterThanOrEqual(BOATS.ship.draft); }
+    expect(launchSpot('ship', dock, () => 0.8)).toBeNull(); // too shallow everywhere
+  });
+});

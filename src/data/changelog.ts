@@ -3,6 +3,12 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.139.0', date: '2026-10-06', title: 'Ships', notes: [
+    'Piers are now docks (the Pier Kit is the Dock Kit). Every boat and ship is built on a dock\'s slip and launched alongside it; a ship needs deeper water there.',
+    'Two kinds of vessel. The small boat is the rowboat (10 loads in its hold). Brought alongside a dock it can be refitted with a mast and a hide sail (Sailing Skiff) or with an outboard motor (Motor Skiff), 14 loads either way. The old sailboats and motor boats become these skiffs.',
+    'The ship: a 16-metre two-masted Sailing Ship (48 loads; it only sails, so it needs a wind and cannot sail into it) or a 15-metre Motor Ship with a funnel and a wheelhouse (40 loads; it steams on fuel canisters). Both are decked: step across from the dock through the gap in the bulwark amidships, or press E beside the hull to climb up from the water.',
+    'Take the wheel aft with E and steer as with the boats (Space sets or furls the sails, W/S trim the sheets or set the throttle). E again leaves the wheel: the ship holds her course with the sails or the engine as you left them, and you can walk her deck while she goes, carried along with her. F opens the hold anywhere on deck. Watch the shore: she will run aground.',
+  ] },
   { v: '0.138.0', date: '2026-10-06', title: 'Military cases', notes: [
     'Chests in ruins, wrecks and caves now come as three military sci-fi cases: an ammunition footlocker (ribbed steel on skids, corner guards, a hazard panel, latches and handles), a sealed tech canister (an octagonal case with thick end rings, lit seams and a readout on its lid) and an armoured strongbox (a wedge-fronted steel case with a keypad, a status lamp and side vents). All open the same way.',
     'The old wooden treasure chest still turns up, but only now and then. Bandit camps keep their stash in a footlocker.',

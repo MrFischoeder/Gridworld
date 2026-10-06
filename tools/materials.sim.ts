@@ -45,7 +45,8 @@ it('writes SUROWCE.md', () => {
   P('');
   P('Plik jest generowany z danych gry (`tools/materials.sim.ts`), więc nazwy i liczby są takie jak w grze. Nazwy przedmiotów są po angielsku, tak jak na ekranie.');
   P('');
-  P(`**Zasada magazynu:** wszystko, co wioska buduje (mury, zakłady, elektrownie, farmy, ulepszenia, zamówienia u kowala), bierze materiały z **hali magazynowej wioski** (Village Hall, ${HALL.vol} L pojemności), a nie z plecaka. Do hali trafiają: to, co tam złożysz przy terminalu, oraz własne towary wioski (produkcja jej zakładu i plony farm, do ${OWN.cap} skrzyń każdego).`);
+  // (written by hand: the stores' rule and the new settlements' builds)
+  for (const line of ["**Zasada magazynu:** wszystko, co wioska buduje (mury, zakłady, elektrownie, farmy, ulepszenia, zamówienia u kowala), bierze materiały z **zapasów wioski**, a nie z plecaka. W nowej osadzie, zanim stanie magazyn, zapasy przechowuje starszy (800 L; opcja „Leave materials with me”); po budowie magazynu (drewnianej stodoły z bramą dla pojazdów) 24 000 L; starsze zapisy zachowują halę 6000 L. Do zapasów trafiają tylko materiały (drewno, kamień, rudy, metale, materiały budowlane, skrzynie towarów i wyroby zakładów, a także zestawy wieżyczek i części silników): broń, amunicję, apteczki, jedzenie, narzędzia i ubrania trzyma się w skrzyni we własnym domu. Do zapasów trafiają też własne towary wioski (produkcja jej zakładu i plony farm, do 60 skrzyń każdego).", "", "**Nowe osady (od 0.131.0, rozbudowane w 0.132.0):** starszy wydaje jednorazowo siekierę i kilof na początek. Wykorzystaj je do pierwszych dostaw drewna i kamienia. Po pierwszej farmie kowal robi deski (2 Log → 6 Planks) i gwoździe (1 Scrap → 10 Nails) bez dodatkowych planów. Po przywróceniu łączności w pobliskich ruinach każdy gracz otrzymuje tablet GPS; jeśli nie ma miejsca, nagroda czeka w zapasach wioski.", "", "| Budowa nowej osady | Materiały z magazynu |", "| --- | --- |", "| Farma (każda z 3) | 8 Log, 6 Stone |", "| Odbiornik satelitarny w ruinach | 6 Log, 6 Stone, 4 Scrap |", "| Magazyn dla pojazdów | 30 Log, 24 Stone, 24 Planks, 20 Nails |", "| Elektrownia wioski | 12 Scrap, 8 Wire, 2 Circuit |", "| Kamieniołom | 16 Log, 12 Planks, 4 Scrap |", "| Kopalnia lokalnej rudy | 18 Log, 12 Stone, 12 Planks, 6 Scrap |", "| Tartak | 20 Log, 10 Stone, 8 Scrap |", "| Szyb naftowy | 16 Scrap, 8 Wire, 12 Planks |", "| Rafineria | 24 Scrap, 4 Circuit, 12 Wire, 18 Planks |", "", "Kamieniołom i tartak są dostępne przy każdej rozwijanej wiosce, około 105 m od palisady. Kamieniołom daje Stone (0,8/h), tartak Log (0,8/h), Timber (0,5/h) i Lumber (0,3/h), przed wpływem pracowników i prądu. Kopalnia wymaga lokalnego złoża: wydobywa tylko przypisany metal (Fe, Cu, Pb, Ni) albo węgiel (C), 0,6 skrzyni/h, dodatkowo przy żelazie/miedzi 0,3 grudki Iron Ore/Copper Ore na godzinę. Ropa występuje przy części wiosek; szyb daje Crude Oil (0,7/h). Wydobyte wcześniej zapasy zostają dostępne, nawet gdy stary typ kopalni produkował kilka surowców. Paliwo z nowej rafinerii powstaje z jednej skrzyni Crude Oil na jeden Fuel Canister, najwyżej co 2 godziny czasu gry, dopóki jest wsad i miejsce w zapasie. Wydobycie zależy od dostępu do prądu. Wszystkie budowy przyjmują materiały partiami. Zaparkowany wewnątrz dużego magazynu pojazd rozładowuje się przyciskiem terminala; towary, które się nie zmieszczą, zostają w bagażniku."]) P(line);
   P('');
   P('Spis: 1. Surowce · 2. Przetwarzanie · 3. Budowy · 4. Indeks: gdzie użyć każdego materiału · 5. Surowce bez zastosowania');
   P('');
@@ -209,16 +210,19 @@ it('writes SUROWCE.md', () => {
   for (const [k, p] of Object.entries(POWER)) { P(`- **${p.name}:** ${list(p.fix)}`); for (const [i] of p.fix) use(i, `naprawa: ${p.name}`); void k; }
   for (const k of Object.keys(INDUSTRY) as Industry[]) { P(`- **${INDUSTRY[k].site}** (${INDUSTRY_PL[k]}): ${list(INDUSTRY[k].fix)}`); for (const [i] of INDUSTRY[k].fix) use(i, `naprawa: ${INDUSTRY[k].site}`); }
   P('');
-  P('### 3.11 Mosty, przystanie i łodzie (budujesz sam, materiały z plecaka i bagażnika)');
+  P('### 3.11 Mosty, doki, łodzie i statki (budujesz sam, materiały z plecaka i bagażnika)');
   P('');
   const per = (m: Partial<Record<ItemKey, number>>) => (Object.entries(m) as [ItemKey, number][]).map(([k, r]) => `${N(k)} 1 na ${(1 / r).toFixed(1).replace('.0', '')} m`).join(', ');
   P(`- **Most na brodzie drogi** albo w wybranym miejscu (Bridge Kit u kowala): na długość pomostu: ${per(BRIDGE.per)} (np. pomost 40 m: ${(Object.entries(BRIDGE.per) as [ItemKey, number][]).map(([k, r]) => `${Math.ceil(40 * r)} × ${N(k)}`).join(', ')})`);
   for (const k of Object.keys(BRIDGE.per) as ItemKey[]) use(k, 'most');
-  P(`- **Przystań** (Pier Kit u kowala): na długość pomostu: ${per(PIER.per)}, do tego ${list(Object.entries(PIER.fittings) as [ItemKey, number][])} na głowicę`);
-  for (const k of [...Object.keys(PIER.per), ...Object.keys(PIER.fittings)] as ItemKey[]) use(k, 'przystań');
-  for (const k of Object.keys(BOATS) as BoatKind[]) { P(`- **${BOATS[k].name}** (na pochylni gotowej przystani): ${list(BOATS[k].needs)}`); for (const [i] of BOATS[k].needs) use(i, BOATS[k].name); }
-  P(`- Łódź motorowa pali **${N('fuel')}** (${BOATS.motor.motor!.can} L w kanistrze, bak ${BOATS.motor.motor!.tank} L)`);
-  use('fuel', 'paliwo łodzi motorowej');
+  P(`- **Dok** (Dock Kit u kowala): na długość pomostu: ${per(PIER.per)}, do tego ${list(Object.entries(PIER.fittings) as [ItemKey, number][])} na głowicę`);
+  for (const k of [...Object.keys(PIER.per), ...Object.keys(PIER.fittings)] as ItemKey[]) use(k, 'dok');
+  for (const k of Object.keys(BOATS) as BoatKind[]) {
+    const b = BOATS[k], where = b.from ? `przeróbka łodzi wiosłowej przy doku` : `na pochylni gotowego doku`;
+    P(`- **${b.name}** (${where}; ładownia ${b.hold}): ${list(b.needs)}`); for (const [i] of b.needs) use(i, b.name);
+  }
+  P(`- Napęd silnikowy pali **${N('fuel')}** (${BOATS.motor.motor!.can} L w kanistrze; bak: ${BOATS.motor.name} ${BOATS.motor.motor!.tank} L, ${BOATS.steamer.name} ${BOATS.steamer.motor!.tank} L)`);
+  use('fuel', 'paliwo łodzi i statków z silnikiem');
   P('');
   P('### 3.12 Za złoto');
   P('');

@@ -34,7 +34,7 @@ describe('piers', () => {
       expect(pierAt(p!, p!.x + p!.dx * p!.len * 0.7, p!.z + p!.dz * p!.len * 0.7)).toBeCloseTo(SEA.level + PIER.clear, 6);
       expect(pierAt(p!, p!.x - p!.dz * 3, p!.z + p!.dx * 3)).toBeNull();
       // a second one right beside it is refused
-      expect(planPier(W, x, z + 5, 1, 0, ground, water, [p!]).problem).toMatch(/Another pier/);
+      expect(planPier(W, x, z + 5, 1, 0, ground, water, [p!]).problem).toMatch(/Another dock/);
     }
     expect(ok).toBeGreaterThan(2);
   });
