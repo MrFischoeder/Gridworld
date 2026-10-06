@@ -3,6 +3,14 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.152.0', date: '2026-10-06', title: 'Single player, multiplayer', notes: [
+    'The opening film now plays first, as soon as the game opens: a black loading screen covers the loading, so the menu no longer flashes up before the film.',
+    'The menu has two big buttons, Single player and Multiplayer. Multiplayer opens the server panel (× closes it). Single player always means your own world: after playing on someone else\'s server it brings your own save back.',
+    'Once you are on a server the first button reads Play online. When you pause, it reads Resume.',
+    'Deleting servers: a server you created shows a Delete button in the list. Click it twice to confirm. Only the browser that created it can delete it. Anyone playing on it is sent back to the menu, and its world is removed from the machine. The main server cannot be deleted.',
+    'The list also shows who made each server.',
+    'Multiplayer: the protocol is now 10. After a server update, reload the page (Ctrl+F5).',
+  ] },
   { v: '0.151.0', date: '2026-10-06', title: 'Relays and routes', notes: [
     'Relay masts: once a settlement\'s receiver works and Gridholm\'s station answers, its console can raise a relay mast. It takes scrap, wire, electronics, logs and gears.',
     'An orbital scan within 4 km of a village with a relay mast uses that mast\'s own satellite pass, apart from the rest of the world, and reaches 4.5 km instead of 3. The more relays you raise, the more often you can scan.',

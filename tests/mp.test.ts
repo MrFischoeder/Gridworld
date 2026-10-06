@@ -106,6 +106,31 @@ describe('multiplayer server', () => {
     expect(mp!.list()[1].time).toBe(stopped); expect(mp!.list()[1].running).toBe(false);
     b.ws.close(); c.ws.close();
   });
+  it('a server is deleted only by the one who created it (the key from the same browser); its players are sent away', async () => {
+    const removed: string[] = [];
+    mp = createMp(() => {}, { rooms: [{ id: 'main', name: 'Main', world: 11, time: 100 }], removed: (id: string) => { removed.push(id); } }); http = createServer(); mp.attach(http);
+    await new Promise<void>((r) => http!.listen(0, r));
+    const port = (http.address() as { port: number }).port, key = 'k'.repeat(20);
+    const del = async (room: string, k: string) => {
+      const ws = new WebSocket(`ws://127.0.0.1:${port}/mp`); let got: Msg | null = null;
+      ws.on('message', (d) => { got = JSON.parse(String(d)); });
+      await new Promise((r) => ws.on('open', r)); ws.send(JSON.stringify({ t: 'delroom', ver: PROTOCOL, room, key: k }));
+      await new Promise((r) => ws.on('close', r)); return got as Msg | null;
+    };
+    const c = await client(port, { name: 'Cy', create: { name: 'Cy Base', world: 33, key } }), wc = await c.wait('welcome');
+    const id = wc.room.id;
+    expect(mp!.list().find((r) => r.id === id)?.by).toBe('Cy');
+    expect(JSON.stringify(mp!.save())).not.toContain(key); // only its hash is kept
+    expect(mp!.save().find((r) => r.id === id)?.owner).toMatch(/^[0-9a-f]{64}$/);
+    const b = await client(port, { name: 'Bo', room: id }); await b.wait('welcome');
+    expect((await del(id, 'x'.repeat(20)))?.why).toMatch(/created/); // someone else's key
+    expect((await del('main', key))?.why).toMatch(/main/);
+    expect(await del(id, key)).toEqual({ t: 'deleted', room: id });
+    expect((await b.wait('refused')).why).toMatch(/deleted/);
+    expect(mp!.list().map((r) => r.id)).toEqual(['main']); expect(removed).toEqual([id]);
+    expect((await del(id, key))?.why).toMatch(/gone/);
+    c.ws.close();
+  });
   it('items put down lie for everyone in the room; only the first to take one gets it; they are kept with the room', async () => {
     const port = await server({ rooms: [{ id: 'main', name: 'Main', world: 11, time: 100 }] });
     const a = await client(port, { name: 'Ada' }), b = await client(port, { name: 'Bob' });

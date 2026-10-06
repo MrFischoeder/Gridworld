@@ -7,9 +7,10 @@ import { calcStats, saveChar, handsChanged } from '../character';
 import { openChangelog } from './changelog';
 import { playIntro } from './intro';
 import { renderer } from '../world/render';
-import { mpLocked, refreshMp } from './mp';
+import { mpLocked, refreshMp, showMpBox, mpShown, onMpChange, soloWaiting, backToOwnWorld } from './mp';
+import { online } from '../net/client';
 
-const menu = $('menu'), startBtn = $('start'), wipeBtn = $('wipe'), nameIn = $<HTMLInputElement>('heroName'), nameHint = $('nameHint');
+const menu = $('menu'), startBtn = $('start'), mpBtn = $('mpOpen'), wipeBtn = $('wipe'), nameIn = $<HTMLInputElement>('heroName'), nameHint = $('nameHint');
 /** A name as the villagers will say it: trimmed, single spaces, letters, digits and a few marks, at most 20 characters. */
 export const cleanName = (s: string) => s.replace(/[^\p{L}\p{N} '\-.]/gu, '').replace(/\s+/g, ' ').trim().slice(0, 20);
 function showName() { nameIn.value = G.char.name; nameHint.textContent = G.char.name ? '' : 'Name your hero: everyone will call you by it.'; }
@@ -21,8 +22,16 @@ export interface MenuHooks {
   freshStart(): void;
 }
 
+/** Paused mid-game (the first button resumes) rather than at the title. */
+let paused = false;
+/** The first button: Single player at the title, Play online once connected, Resume when paused. */
+function labels() {
+  startBtn.textContent = paused ? 'Resume' : online() ? 'Play online' : 'Single player';
+  mpBtn.classList.toggle('on', mpShown());
+  menu.classList.toggle('mp', mpShown()); // the blurb, keys and seed step aside for the server list
+}
 export function showMenu(resume = true) {
-  G.playing = false; G.firing = false; menu.style.display = 'flex'; if (resume) startBtn.textContent = 'Resume'; showName(); renderSheet(); refreshMp();
+  G.playing = false; G.firing = false; menu.style.display = 'flex'; if (resume) paused = true; showName(); renderSheet(); refreshMp(); labels();
 }
 
 export function initMenu(h: MenuHooks) {
@@ -33,6 +42,7 @@ export function initMenu(h: MenuHooks) {
     const n = cleanName(nameIn.value);
     if (!n) { nameHint.textContent = 'Your hero needs a name first.'; nameIn.focus(); return; }
     if (n !== G.char.name) { G.char.name = n; saveChar(); }
+    if (!paused && !online() && soloWaiting()) { backToOwnWorld(); return; } // single player is your own world: the save that waited while you were online
     const s = parseInt(el.seed.value, 10);
     if (Number.isFinite(s) && s !== G.char.world && !mpLocked()) h.newWorld(s); // (online, the host's world is everyone's)
     if (!G.isTouch) lockPointer();
@@ -45,9 +55,11 @@ export function initMenu(h: MenuHooks) {
       G.playing = true;
     });
   };
+  mpBtn.onclick = () => showMpBox();
+  onMpChange(labels);
   $('replayCinematic').onclick = async () => { const film = await import('./cinematic'); film.playCinematic(() => showMenu(false)); };
   $('changelog').onclick = openChangelog;
-  $('reroll').onclick = () => { if (mpLocked()) { nameHint.textContent = 'Leave the multiplayer game first: online, the host\'s world is everyone\'s.'; return; } h.newWorld((Math.random() * 1e6) | 0); startBtn.textContent = 'Play'; };
+  $('reroll').onclick = () => { if (mpLocked()) { nameHint.textContent = 'Leave the multiplayer game first: online, the host\'s world is everyone\'s.'; return; } h.newWorld((Math.random() * 1e6) | 0); paused = false; labels(); };
   let wipeArmed = false;
   wipeBtn.onclick = () => {
     if (!wipeArmed) { wipeArmed = true; wipeBtn.textContent = 'Click again to delete your character'; return; }

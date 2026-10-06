@@ -98,16 +98,17 @@
   </div>
 </div>
 
-<div id="menu" class="overlay">
+<div id="boot"><b>GRIDWORLD</b><span>loading the world…</span></div>
+<div id="menu" class="overlay" style="display:none">
   <h1>GRIDWORLD <span id="vnum"></span></h1>
   <div id="version"></div>
   <p id="intro">You start in the walled village of Gridholm: talk to the locals and trade in the shops. Roads lead from its gates out into the hills, to old ruins. Stairs beneath each ruin descend into its own dungeon, a grid of labyrinths: stairwells lead to neighbouring sectors and the hatch takes you deeper. Defeat the guardian before each gate to get an Access Key. Loot goes into your backpack, and relics only work once equipped in a module.</p>
   <div id="sheet"></div>
   <label id="nameRow">Your name<input id="heroName" maxlength="20" autocomplete="off" spellcheck="false" placeholder="enter a name"></label>
   <div id="nameHint"></div>
-  <div class="row"><button id="start">Play</button><button id="reroll">Roll a new world</button></div>
-  <div class="row" style="margin-top:10px"><button id="replayCinematic">Opening film</button><button id="changelog">Changelog</button><button id="wipe">New character</button></div>
-  <div id="mpBox" style="display:none"><div class="mpTitle">MULTIPLAYER <span>(up to 8 castaways in one world)</span></div>
+  <div class="row"><button id="start">Single player</button><button id="mpOpen">Multiplayer</button></div>
+  <div class="row small"><button id="reroll">Roll a new world</button><button id="replayCinematic">Opening film</button><button id="changelog">Changelog</button><button id="wipe">New character</button></div>
+  <div id="mpBox" style="display:none"><div class="mpTitle">MULTIPLAYER <span>(up to 8 castaways in one world)</span><button id="mpClose" title="Close the multiplayer panel">×</button></div>
     <label>Server<input id="mpAddr" autocomplete="off" spellcheck="false"></label>
     <div class="row"><button id="mpHost">Host a game</button><button id="mpJoin">Join</button><button id="mpLeave" style="display:none">Leave the game</button><button id="mpBack" style="display:none">Back to my own world</button></div>
     <div id="mpStatus">Host: start the game with start-gry.bat and press Host. Friends on your network open http://YOUR-IP:5173 and press Join.</div>

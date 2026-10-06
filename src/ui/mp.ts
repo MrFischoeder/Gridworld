@@ -12,7 +12,7 @@ import { joinWorld } from '../world/share';
 import { G } from '../game';
 import { $, logLine } from './hud';
 import { saveChar } from '../character';
-import { connect, disconnect, net, online, isHost, sendChat, serverUrl, serverInfo, type ServerInfo, type RoomInfo } from '../net/client';
+import { connect, disconnect, deleteRoom, net, online, isHost, sendChat, serverUrl, serverInfo, type ServerInfo, type RoomInfo } from '../net/client';
 import { clearPeers, peerColor } from '../world/peers';
 import { lockPointer } from './input';
 import { SAVE_KEY } from '../save';
@@ -36,16 +36,42 @@ let ded: ServerInfo | null = null;
 const DEFAULT_SERVER = (import.meta.env.VITE_MP_SERVER as string | undefined) ?? '';
 
 const solo = () => { try { return localStorage.getItem(SOLO_KEY); } catch { return null; } };
+/** This browser's secret for the servers it creates: the server keeps only its hash and deletes a server for it. */
+const KEY_STORE = 'gridWorld.mpKey', MINE_STORE = 'gridWorld.mpRooms';
+function mpKey(): string {
+  try {
+    let k = localStorage.getItem(KEY_STORE);
+    if (!k || k.length < 16) { k = Array.from(crypto.getRandomValues(new Uint8Array(18)), (b) => b.toString(16).padStart(2, '0')).join(''); localStorage.setItem(KEY_STORE, k); }
+    return k;
+  } catch { return ''; }
+}
+/** The servers this browser created (ids), so the list offers to delete them. */
+const myRooms = (): string[] => { try { const v = JSON.parse(localStorage.getItem(MINE_STORE) ?? '[]'); return Array.isArray(v) ? v.filter((x) => typeof x === 'string') : []; } catch { return []; } };
+const setMine = (ids: string[]) => { try { localStorage.setItem(MINE_STORE, JSON.stringify(ids.slice(-30))); } catch { /* storage blocked */ } };
+/** A Delete button asks twice: the id armed by the first click. */
+let armed = '', deleting = '';
+/** A message for the status line that outlasts the next render for a few seconds. */
+let note = '';
+const tell = (t: string) => { note = t; setTimeout(() => { if (note === t) { note = ''; render(); } }, 6000); };
+/** The multiplayer panel is opened from the menu's Multiplayer button (and stays open while online). */
+let shown = false, listener: () => void = () => {};
+export function showMpBox(on = !shown) { shown = on; render(); if (on) look(); }
+export const mpShown = () => shown || online();
+/** The menu relabels its buttons when the connection changes. */
+export const onMpChange = (f: () => void) => { listener = f; };
 /** The rooms of the dedicated server: a row each with a Join button (the one you are in marked). */
 function roomRows(): string {
   if (!ded?.rooms?.length) return '';
-  const here = net.room?.id;
+  const here = net.room?.id, mine = myRooms();
   return ded.rooms.map((r: RoomInfo) => {
     const you = online() && r.id === here, n = you ? net.peers.size + 1 : r.online;
     const state = n ? `<span class="dot">●</span> ${n}/${r.max} playing` : '<span class="dot off">○</span> paused';
     const who = you ? 'you are here' : r.players.length ? r.players.map(esc).join(', ') : 'empty';
     const btn = you ? '' : `<button data-room="${esc(r.id)}"${connecting ? ' disabled' : ''}>${online() ? 'Move here' : 'Join'}</button>`;
-    return `<div class="room${you ? ' here' : ''}"><b>${esc(r.name)}</b><span>${state}</span><span class="who">${who} · world ${r.world}</span>${btn}</div>`;
+    const del = !you && r.id !== 'main' && mine.includes(r.id)
+      ? `<button class="del${armed === r.id ? ' armed' : ''}" data-del="${esc(r.id)}"${deleting ? ' disabled' : ''}>${deleting === r.id ? 'Deleting…' : armed === r.id ? (r.online ? `Delete? ${r.online} playing` : 'Sure? Delete') : 'Delete'}</button>` : '';
+    const by = r.by ? ` · made by ${esc(r.by)}` : '';
+    return `<div class="room${you ? ' here' : ''}${del ? ' mine' : ''}"><b>${esc(r.name)}</b><span>${state}</span><span class="who">${who} · world ${r.world}${by}</span>${btn}${del}</div>`;
   }).join('');
 }
 function render() {
@@ -67,11 +93,14 @@ function render() {
       ...[...net.peers.values()].map((p) => `<span style="color:#${peerColor(p.id).toString(16).padStart(6, '0')}">${esc(p.name)}${p.id === net.host ? ' ★' : ''}</span>`)].join(' · ');
   } else {
     list.textContent = '';
-    if (rooms && !connecting) status.textContent = 'Pick a server and press Join, or create your own. A server pauses while nobody is on it.';
+    if (note) status.textContent = note;
+    else if (rooms && !connecting) status.textContent = 'Pick a server and press Join, or create your own. A server pauses while nobody is on it.';
     else if (ded && !connecting) status.textContent = `${ded.name} · ${ded.online}/${ded.max} online${ded.players.length ? ': ' + ded.players.join(', ') : ''} · press Join the server.`;
   }
+  box.style.display = mpShown() ? '' : 'none';
   badge.style.display = on ? '' : 'none';
   badge.textContent = `● ${net.peers.size + 1} online`;
+  listener();
 }
 const esc = (s: string) => s.replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]!));
 
@@ -86,20 +115,22 @@ function say(text: string, kind: 'chat' | 'info' | 'error') {
   render();
 }
 
-function start(url: string, room?: string, create?: { name: string; world?: number }) {
+function start(url: string, room?: string, create?: { name: string; world?: number; key?: string }) {
   if (!G.char.name) { status.textContent = 'Name your hero first.'; return; }
   if (online()) { disconnect(); clearPeers(); } // moving to another server
   connecting = true; status.textContent = 'Connecting…'; render();
+  if (create) create = { ...create, key: mpKey() };
   connect(url, { name: G.char.name, world: G.char.world, time: G.char.time, room, create }, {
     welcome(world, time, host, dedicated) {
       connecting = false;
+      if (create && net.room && !myRooms().includes(net.room.id)) setMine([...myRooms(), net.room.id]); // yours to delete later
       if (world !== G.char.world) {
         // into the host's world: the hero's own save waits (once) to be restored with "Back to my own world"
         try { if (!solo()) localStorage.setItem(SOLO_KEY, JSON.stringify(G.char)); } catch { /* storage full or blocked */ }
         G.char.time = time;
         hooks?.switchWorld(world);
         if (joinWorld()) hooks?.reloadWorld(); // apply after switching, which resets dungeon progress
-        say(`You have come to the ${dedicated ? 'server' : 'host'}\'s world. Your own save waits for you: "Back to my own world" in the menu.`, 'info');
+        say(`You have come to the ${dedicated ? 'server' : 'host'}\'s world. Your own save waits for you: Single player in the menu takes you back to it.`, 'info');
       } else {
         G.char.time = time;
         if (joinWorld()) hooks?.reloadWorld(); // the same world, but the server's state of it
@@ -112,6 +143,19 @@ function start(url: string, room?: string, create?: { name: string; world?: numb
     closed(why) { connecting = false; clearPeers(); say(why, 'error'); look(); },
   });
 }
+/** Delete a server this browser created: the first click arms the button, the second deletes it. */
+async function remove(id: string) {
+  if (deleting) return;
+  if (armed !== id) { armed = id; render(); setTimeout(() => { if (armed === id) { armed = ''; render(); } }, 5000); return; }
+  armed = ''; deleting = id; render();
+  const name = ded?.rooms?.find((r) => r.id === id)?.name ?? 'The server';
+  const why = await deleteRoom(serverUrl('', location), id, mpKey());
+  deleting = '';
+  if (!why || /gone/.test(why)) { setMine(myRooms().filter((x) => x !== id)); tell(`${name} was deleted.`); }
+  else tell(why);
+  if (ded?.rooms && !why) ded.rooms = ded.rooms.filter((r) => r.id !== id);
+  render(); look();
+}
 /** Ask the page's dedicated server for its rooms (the menu's list). */
 let look = () => {};
 
@@ -122,6 +166,8 @@ export function initMp(h: MpHooks) {
   look = () => { serverInfo().then((i) => { ded = i; render(); }); };
   if (/^https?:$/.test(location.protocol)) { look(); setInterval(() => { if (ded && !G.playing) look(); }, 5000); } // the list stays fresh while the menu is up
   roomsEl.onclick = (e) => {
+    const d = (e.target as HTMLElement).closest('[data-del]') as HTMLElement | null;
+    if (d) { void remove(d.dataset.del!); return; }
     const b = (e.target as HTMLElement).closest('[data-room]') as HTMLElement | null;
     if (b) start(serverUrl('', location), b.dataset.room);
   };
@@ -141,19 +187,24 @@ export function initMp(h: MpHooks) {
     try { start(serverUrl(ded ? '' : addr.value, location)); } catch { status.textContent = 'That is not a server address. Try 192.168.1.20:5173.'; }
   };
   leaveBtn.onclick = () => { disconnect(); clearPeers(); say('You left the game.', 'info'); look(); render(); };
-  backBtn.onclick = () => {
-    const s = solo();
-    if (!s || online()) return;
-    try { localStorage.setItem(SAVE_KEY, s); localStorage.removeItem(SOLO_KEY); } catch { return; }
-    location.reload(); // the cleanest way back: load the own save from scratch
-  };
+  backBtn.onclick = () => backToOwnWorld();
   chatIn.onkeydown = (e) => {
     e.stopPropagation();
     if (e.code === 'Enter') { sendChat(chatIn.value); closeChat(); }
     if (e.code === 'Escape') closeChat();
   };
-  box.style.display = '';
+  $('mpClose').onclick = () => showMpBox(false);
   render();
+}
+/** Is the hero's own save waiting (they joined someone else's world)? */
+export const soloWaiting = () => !!solo();
+/** Restore the hero's own save and reload into the menu. */
+export function backToOwnWorld() {
+  const s = solo();
+  if (!s || online()) return;
+  try { localStorage.setItem(SAVE_KEY, s); localStorage.removeItem(SOLO_KEY); } catch { return; }
+  try { sessionStorage.setItem('gridWorld.noFilm', '1'); } catch { /* storage blocked */ } // straight to the menu, no opening film
+  location.reload(); // the cleanest way back: load the own save from scratch
 }
 /** T while playing online: type a chat line. */
 export function openChat() {

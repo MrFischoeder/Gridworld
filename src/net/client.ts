@@ -3,7 +3,7 @@
 // it with `sendState` (about 10 times a second) and reads `peers`.
 
 /** Must match PROTOCOL in server/mp.mjs. */
-export const PROTOCOL = 9;
+export const PROTOCOL = 10;
 export const SEND_EVERY = 0.1;
 
 /** `away`: in the menu (still in the game: the others see you standing there). */
@@ -133,9 +133,21 @@ function clearGateRequests() {
   gateLinks = []; gateDrafts.clear(); gateTransitHook?.({ t: 'gabort' }); for (const r of gateReplies.values()) { clearTimeout(r.timer); r.finish({ ok: false, why: 'Disconnected from the server.' }); } gateReplies.clear();
 }
 
+/** Delete a room you created on a dedicated server (`key`: the secret sent when creating it). Resolves '' when done,
+ * else why not. */
+export function deleteRoom(url: string, room: string, key: string): Promise<string> {
+  return new Promise((done) => {
+    let ws: WebSocket, why = 'Could not reach the server.';
+    try { ws = new WebSocket(url); } catch { done(why); return; }
+    const timer = setTimeout(() => { ws.close(); }, 8000);
+    ws.onopen = () => ws.send(JSON.stringify({ t: 'delroom', ver: PROTOCOL, room, key }));
+    ws.onmessage = (e) => { try { const m = JSON.parse(String(e.data)); why = m.t === 'deleted' ? '' : m.t === 'refused' ? String(m.why) : why; } catch { /* not ours */ } };
+    ws.onclose = () => { clearTimeout(timer); done(why); };
+  });
+}
 /** Is the page served by a dedicated server (server/main.mjs)? It answers mp/info next to the page. */
 /** A game server ("room") of a dedicated server, as the menu lists it: `running` while someone is in it. */
-export interface RoomInfo { id: string; name: string; world: number; time: number; online: number; max: number; running: boolean; players: string[] }
+export interface RoomInfo { id: string; name: string; world: number; time: number; online: number; max: number; running: boolean; players: string[]; by?: string }
 export interface ServerInfo { dedicated: boolean; name: string; world: number; online: number; max: number; players: string[]; version: string; rooms?: RoomInfo[] }
 export async function serverInfo(): Promise<ServerInfo | null> {
   try {
@@ -163,7 +175,7 @@ export function serverUrl(input: string, here: { protocol: string; host: string;
 let hooks: NetHooks | null = null;
 /** Connect and say hello; the hooks hear the rest. */
 /** `room`: the dedicated server's room to join; `create`: make a new room (its name and world) and join it. */
-export function connect(url: string, me: { name: string; world: number; time: number; room?: string; create?: { name: string; world?: number } }, h: NetHooks) {
+export function connect(url: string, me: { name: string; world: number; time: number; room?: string; create?: { name: string; world?: number; key?: string } }, h: NetHooks) {
   disconnect();
   hooks = h; net.address = url;
   let ws: WebSocket;

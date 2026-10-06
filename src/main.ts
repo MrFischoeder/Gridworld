@@ -231,9 +231,14 @@ function frame(now: number) {
 }
 initItemTips();
 // Load the display models after gameplay modules initialise, avoiding their world import cycles.
+// The opening film plays as soon as the game has loaded (the boot screen covers the loading), then the menu shows.
+// After "Back to my own world" (a reload) the menu comes straight back.
+const noFilm = (() => { try { const f = sessionStorage.getItem('gridWorld.noFilm'); sessionStorage.removeItem('gridWorld.noFilm'); return !!f; } catch { return false; } })();
 void import('./ui/cinematic').then(module => {
-  cinematic = module; module.playCinematic(() => showMenu(false)); last = performance.now(); requestAnimationFrame(frame);
-});
+  cinematic = module; document.getElementById('boot')?.remove();
+  if (noFilm) showMenu(false); else module.playCinematic(() => showMenu(false));
+  last = performance.now(); requestAnimationFrame(frame);
+}, () => { document.getElementById('boot')?.remove(); showMenu(false); last = performance.now(); requestAnimationFrame(frame); });
 
 // Gate travel moves the existing occupants and vehicle, then streams the destination.
 setGateTravel((gate, x, z, heading, car) => {

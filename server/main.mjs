@@ -13,7 +13,7 @@
 // GET /mp/info answers {dedicated, name, version, rooms: [{id, name, world, time, online, max, running, players}], and
 // the first room's world / online / players} for the game's menu and for checks.
 import { createServer } from 'node:http';
-import { readFile, writeFile, mkdir, rename, stat } from 'node:fs/promises';
+import { readFile, writeFile, mkdir, rename, stat, unlink } from 'node:fs/promises';
 import { existsSync, readFileSync } from 'node:fs';
 import { join, resolve, extname, normalize, sep } from 'node:path';
 import { randomInt } from 'node:crypto';
@@ -42,7 +42,7 @@ rooms[0].name = NAME; // (the first server's name follows SERVER_NAME)
 // each room's shared world (villages, bridges, chests...) lives in its own file: it can grow large
 const docFile = (id) => join(DATA, 'world-' + String(id).replace(/[^\w-]/g, '') + '.json');
 for (const r of rooms) { try { const w = JSON.parse(await readFile(docFile(r.id), 'utf8')); r.doc = w.doc; r.seeded = w.seeded; } catch { /* none yet */ } }
-const mp = createMp((m) => log('[mp] ' + m), { rooms });
+const mp = createMp((m) => log('[mp] ' + m), { rooms, removed: (id) => { unlink(docFile(id)).catch(() => {}); persist().catch(() => {}); } }); // a deleted or forgotten server's world goes with it
 const world = rooms[0].world;
 
 async function persist() {
@@ -66,7 +66,7 @@ if (!existsSync(join(DIST, 'index.html'))) log(`warning: no game build in ${DIST
 const http = createServer(async (req, res) => {
   let url = (req.url || '/').split('?')[0];
   if (url.endsWith(MP.path + '/info')) {
-    const s = mp.state(), list = mp.list().map(({ id, name, world, time, online, max, running, players }) => ({ id, name, world, time, online, max, running, players }));
+    const s = mp.state(), list = mp.list().map(({ id, name, world, time, online, max, running, players, by }) => ({ id, name, world, time, online, max, running, players, by }));
     res.writeHead(200, { 'content-type': 'application/json', 'cache-control': 'no-store', 'access-control-allow-origin': '*' });
     res.end(JSON.stringify({ dedicated: true, name: NAME, world, time: Math.round(s.time), online: s.n, max: MP.max, players: s.names, version: VERSION, rooms: list }));
     return;

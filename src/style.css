@@ -407,3 +407,19 @@ body.cinematic > *:not(#view):not(#cinematic){visibility:hidden}
 #cinematic .music{color:#80e8ff}
 #cinematic .veil{position:absolute;inset:0;background:#000}
 #cinematic .skip{position:absolute;right:24px;bottom:12px;pointer-events:auto;font-size:18px;background:#000c;color:#c1ffd4}
+/* the main menu: Single player / Multiplayer, the smaller buttons under them */
+#start,#menu #mpOpen{min-width:9.5em}
+#menu #mpOpen{color:#000;background:var(--g);box-shadow:0 0 18px rgba(61,255,110,.6)}
+#menu #mpOpen.on{background:transparent;color:var(--g);outline:1px solid var(--g);box-shadow:none}
+#menu .row.small{margin-top:10px}#menu .row.small button{font-size:20px;padding:5px 16px}
+#menu #mpClose{float:right;font-size:22px;padding:0 10px;margin:0;background:transparent;color:var(--g);border:1px solid rgba(61,255,110,.5)}
+#mpRooms .room button.del{color:var(--amber);background:transparent;outline:1px solid var(--amber)}
+#mpRooms .room button.del.armed{color:#000;background:var(--amber)}
+/* the boot screen: black until the opening film takes the screen */
+#boot{position:fixed;inset:0;z-index:90;background:#000;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;color:var(--g)}
+#boot b{font-weight:400;font-size:clamp(40px,8vw,84px);letter-spacing:.18em;text-shadow:0 0 12px rgba(61,255,110,.8)}
+#boot span{font-size:22px;opacity:.7;animation:bootBlink 1.2s steps(2) infinite}
+@keyframes bootBlink{50%{opacity:.25}}
+#menu{overflow-y:auto;justify-content:safe center}
+#menu.mp > p,#menu.mp #keys,#menu.mp > label:not(#nameRow){display:none}
+#menu #replayCinematic{background:transparent;color:var(--g);border:1px solid var(--g)}
