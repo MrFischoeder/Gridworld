@@ -48,7 +48,7 @@ export const BASE_KW: Record<ReturnType<typeof powerKind>, number> = { generator
 export const VILLAGE_KW = VILLAGE_BASE_KW;
 /** What each works draws while it works (kW). */
 export const DRAW: Record<PlantState['k'], number> = { smelter: 60, refinery: 50, glassworks: 45, wiremill: 30, electronics: 35, machineshop: 40, foundry: 80, chemworks: 40,
-  sawmill: 15, brickworks: 25, cementworks: 35, textile: 15, steelworks: 70, polymer: 45, alworks: 120, batteryworks: 35, electrical: 50, stoneworks: 15, metallurgy: 140, siliconworks: 110, advelec: 90 };
+  sawmill: 15, brickworks: 25, cementworks: 35, textile: 15, steelworks: 70, polymer: 45, alworks: 120, batteryworks: 35, electrical: 50, stoneworks: 15, metallurgy: 140, siliconworks: 110, advelec: 90, avionworks: 70, lifeworks: 60 };
 
 export interface StationState {
   k: StationKind; on: boolean;

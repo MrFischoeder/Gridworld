@@ -177,6 +177,24 @@ export function drawWorks(vm: VillageMap, T: Terrain, id: number): THREE.Group {
         glowAt = [P(0, -1.1)[0], g0 + 2.7, P(0, -1.1)[1]];
         break;
       }
+      case 'avionworks': { // a low white assembly hall with a band of lit windows, a mast with a star tracker dome, a test rack
+        box(0, 2, 6, 3, g0 - 0.1, g0 + 3.6, STEELC);
+        for (let u = -5.2; u <= 4.6; u += 1.3) { const [a, b] = P(u, -1.02), [d, e] = P(u + 0.8, -1.02); pb.line(GLASS, [a, g0 + 1.8, b], [d, g0 + 1.8, e], [d, g0 + 2.8, e], [a, g0 + 2.8, b], [a, g0 + 1.8, b]); }
+        { const [x, z] = P(4, 3.5); pb.box(x - 0.1, g0 + 3.6, z - 0.1, x + 0.1, g0 + 8, z + 0.1, METAL); cyl(pb, x, g0 + 8, z, 0.7, 0.7, GLASS, 10); }
+        box(-7.5, -2.5, 0.7, 1.2, H(-7.5, -2.5), H(-7.5, -2.5) + 2.2, METAL);
+        { const [x, z] = P(-7.5, -2.5); for (const y of [0.6, 1.2, 1.8]) pb.seg(GLASS, [x - 0.4, H(-7.5, -2.5) + y, z], [x + 0.4, H(-7.5, -2.5) + y, z]); }
+        glowAt = [P(0, -1.1)[0], g0 + 2.3, P(0, -1.1)[1]];
+        break;
+      }
+      case 'lifeworks': { // a hall with round tanks for air and water, a scrubber tower and pipe runs between them
+        box(-1, 2, 5, 3, g0 - 0.1, g0 + 4, STEELC);
+        for (const u of [5.5, 7.2]) cylAt(u, 0, 0.7, 3.2, GLASS, 0, 0.7);
+        for (const u of [5.5, 7.2]) cylAt(u, 3.4, 0.7, 3.2, METAL, 0, 0.7);
+        cylAt(-7, 4, 0.9, 7, METAL, 0, 0.6);
+        { const [a, b] = P(4, 1), [d, e] = P(5.5, 0), [f, g] = P(5.5, 3.4); pb.line(METAL, [a, g0 + 2.6, b], [d, g0 + 2.6, e], [f, g0 + 2.6, g]); }
+        glowAt = [P(5.5, 0)[0], g0 + 3.4, P(5.5, 0)[1]];
+        break;
+      }
       case 'sawmill': { // an open saw shed with a circular saw, a log deck and stacks of boards
         for (const [u, v] of [[-5, -1], [5, -1], [5, 5], [-5, 5], [0, -1], [0, 5]]) { const [x, z] = P(u, v); pb.box(x - 0.15, g0 - 0.1, z - 0.15, x + 0.15, g0 + 3.2, z + 0.15, WOOD); }
         { const [a, b] = P(-5.3, -1.3), [d, e] = P(5.3, 5.3); pb.gableRoof(Math.min(a, d), Math.min(b, e), Math.max(a, d), Math.max(b, e), g0 + 3.2, 1.2, WOOD); }

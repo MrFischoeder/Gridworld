@@ -75,6 +75,10 @@ Plan wdrożenia dokumentu właściciela „GridWorld 03 — Surowce, przemysł, 
 - **Materiały kompozytowe:** Stary Kompleks Stopów robi też arkusze kompozytowe (2 żywica + 2 tkanina + tytan → 2); potrzebne do fabryki lotniczej i kamizelki kompozytowej.
 - **MP:** stan instalacji (także prętów w rdzeniu) we wspólnym `installs`; zasięg sieci liczony z ziarna świata i wspólnego stanu, tak samo u każdego; protokół bez zmian.
 
-### 6. Program kosmiczny
-- Avionics Modules, Life Support, Rocket Propulsion.
-- Etapy Rydwanu według łańcucha „Shuttle” z dokumentu.
+### 6. Program kosmiczny (0.147, zrobione)
+- **Awionika:** zakład Avionics Works (technologia Spacecraft Avionics): komputer + 2 czujniki + jednostka sterująca → moduł awioniki.
+- **Podtrzymanie życia:** zakład Life Support Works (technologia Life Support): pompa + 2 rury + 2 chemia + tytan → system podtrzymania życia.
+- **Napęd rakietowy:** stanowisko prób Starej Fabryki Lotniczej (technologia Rocket Propulsion): 2 stop starożytny + 2 komponenty precyzyjne + ceramika + pompa → silnik rakietowy.
+- **Rydwan według łańcucha z dokumentu** (komponenty lotnicze + awionika + czujniki + podtrzymanie życia + napęd + paliwo rakietowe): kadłub + komponenty lotnicze i kompozyt, silniki + silniki rakietowe, awionika + moduły awioniki, zasilanie + moduły sterowania zasilaniem, nowy etap Life Support przed paliwem. Ukończone etapy zostają ukończone.
+- **Czas kampanii** (symulacja, gracz sam): ok. 262 h, wcześniej ok. 186 h; cel 100 h to sprawa wstrzymanego etapu 8 (balans).
+- **MP:** stan Rydwanu (`shuttle`), wiosek i instalacji jest wspólny; protokół bez zmian.

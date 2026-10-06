@@ -10,19 +10,20 @@
 // finished under the old needs stays finished (`fixShuttle`, `ShuttleState.done`); what was handed over stays.
 import type { Good } from './market';
 /** What the old plants make for the Chariot (gen/installs.ts). */
-export const ANCIENT_GOODS = ['microchip', 'sensor', 'ancalloy', 'ceramics', 'precision', 'powercell'] as const;
+export const ANCIENT_GOODS = ['microchip', 'sensor', 'ancalloy', 'ceramics', 'precision', 'powercell', 'composite', 'aerocomp', 'rocketeng'] as const;
 export type AncientGood = typeof ANCIENT_GOODS[number];
 /** What the Chariot takes: processed goods from the works, and the old plants' goods. */
 export type ChariotGood = Good | AncientGood;
 
-export type StageKey = 'hull' | 'engines' | 'avionics' | 'shield' | 'power' | 'fuel';
+export type StageKey = 'hull' | 'engines' | 'avionics' | 'shield' | 'power' | 'life' | 'fuel';
 export interface Stage { key: StageKey; name: string; blurb: string; needs: [ChariotGood, number][] }
 export const STAGES: Stage[] = [
-  { key: 'hull', name: 'Hull Plating', blurb: 'new plates over the torn skin of the fuselage and wings: steel for the frames, aluminium and ancient alloy for the skin', needs: [['steel', 16], ['aluminium', 10], ['ancalloy', 6]] },
-  { key: 'engines', name: 'Main Engines', blurb: 'the three engines rebuilt: turbopumps and nozzles of ancient alloy, bearings and valves only the precision works can make', needs: [['ancalloy', 6], ['precision', 8], ['cable', 10]] },
-  { key: 'avionics', name: 'Avionics', blurb: 'flight computers, sensors and the cockpit panels: the flight computers want chips no works can etch, the eyes sensor heads no one can grow', needs: [['boards', 8], ['microchip', 6], ['sensor', 4], ['cable', 12]] },
+  { key: 'hull', name: 'Hull Plating', blurb: 'new plates over the torn skin of the fuselage and wings: steel for the frames, aluminium and ancient alloy for the skin, airframe sections and composite from the Old Aerospace Works', needs: [['steel', 16], ['aluminium', 10], ['ancalloy', 6], ['aerocomp', 6], ['composite', 4]] },
+  { key: 'engines', name: 'Main Engines', blurb: 'the three engines rebuilt: rocket engines from the Old Aerospace Works\' test stand, turbopumps and nozzles of ancient alloy, bearings and valves only the precision works can make', needs: [['ancalloy', 6], ['precision', 8], ['cable', 10], ['rocketeng', 3]] },
+  { key: 'avionics', name: 'Avionics', blurb: 'flight computers, sensors and the cockpit panels: avionics racks, chips no works can etch, sensor heads no one can grow', needs: [['boards', 8], ['microchip', 6], ['sensor', 4], ['cable', 12], ['avionics', 3]] },
   { key: 'shield', name: 'Heat Shield', blurb: 'ceramic tiles under the belly and the wing edges, on a frame of ancient alloy', needs: [['ceramics', 16], ['ancalloy', 4]] },
-  { key: 'power', name: 'Power System', blurb: 'racks of power cells in the belly and the chips that run them: the Chariot\'s heart before the engines light', needs: [['powercell', 8], ['microchip', 4], ['cable', 8]] },
+  { key: 'power', name: 'Power System', blurb: 'racks of power cells in the belly, the chips that run them and the modules that steer their current: the Chariot\'s heart before the engines light', needs: [['powercell', 8], ['microchip', 4], ['cable', 8], ['pcm', 2]] },
+  { key: 'life', name: 'Life Support', blurb: 'air scrubbers and water recyclers for the crew cabin, sealed in composite, run by a flight computer: without them nobody survives the climb', needs: [['lifesup', 4], ['composite', 2], ['computer', 1]] },
   { key: 'fuel', name: 'Propellant', blurb: 'the tanks filled for the flight', needs: [['propellant', 30]] },
 ];
 /** What each stage needed before 0.98 (a stage finished under these stays finished). */
@@ -57,6 +58,12 @@ export function fixShuttle(s: ShuttleState): Partial<Record<ChariotGood, number>
       }
     }
     s.v = 2;
+  }
+  // (0.147) the life support stage came last: a Chariot finished under the six stages before it stays finished
+  if ((s.v ?? 1) < 3) {
+    const six: StageKey[] = ['hull', 'engines', 'avionics', 'shield', 'power', 'fuel'];
+    if (six.every((k) => s.done?.includes(k)) && !s.done!.includes('life')) s.done!.push('life');
+    s.v = 3;
   }
   return back;
 }

@@ -27,7 +27,7 @@ function render(msg = '') {
   panel().classList.add('wide');
   panel().innerHTML = `<h2>The ${CHARIOT}</h2><div class="role">Old Hangar, Gridholm · ${done} of ${STAGES.length} stages done</div>` +
     `<div class="say">${msg ? msg + '<br><br>' : ''}` +
-    (done >= STAGES.length ? `<b>The ${CHARIOT} is whole again: hull, engines, avionics, heat shield, power and full tanks. It is ready to fly.</b> (The flight itself is still to come.)`
+    (done >= STAGES.length ? `<b>The ${CHARIOT} is whole again: hull, engines, avionics, heat shield, power, life support and full tanks. It is ready to fly.</b> (The flight itself is still to come.)`
       : `A sky-ship from before the machines woke, and the village means to fly it again. Nothing out in the fields or the ruins will mend it: it wants processed goods from the works, and above all what only the old plants far out on the continent can make: ancient alloy, precision components, microchips, sensors, ceramic tiles, power cells and rocket propellant. Nothing is bought or sold here: whatever it needs that you bring to the hangar, in your backpack or a vehicle parked by it, the crew unload straight onto the Chariot.`) +
     `</div>${stages}<button class="opt" data-shclose="1">Close</button>`;
 }

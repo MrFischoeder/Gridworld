@@ -3,6 +3,15 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.147.0', date: '2026-10-06', title: 'The space program', notes: [
+    'Three aerospace components join the chain: Avionics Modules, Life Support Systems and Rocket Engines.',
+    'The Avionics Works builds avionics racks from a computer system, two sensors and a control unit. It wants the plans for Spacecraft Avionics.',
+    'The Life Support Works builds air scrubbers and water recyclers from a pump, pipes, chemicals and titanium. It wants the plans for Life Support.',
+    'The Old Aerospace Works\' engine test stand builds Rocket Engines from ancient alloy, precision components, ceramics and a pump. Its desk offers the recipe once you hold the plans for Rocket Propulsion.',
+    'The Chariot of the Ancients now follows the whole chain. The hull also wants aerospace components and composite sheets, the main engines three rocket engines, the avionics three avionics modules and the power system two power control modules.',
+    'A new stage, Life Support, comes before the propellant: life support systems, composite and a computer. Two air and water tanks stand by the Chariot once it is in.',
+    'Stages you have already finished stay finished, and a Chariot finished under the old six stages counts as whole. Wrecked ships now and then still hold an intact avionics rack.',
+  ] },
   { v: '0.146.0', date: '2026-10-06', title: 'Airframes and the Ancient grid', notes: [
     'Two more great works of the Ancients stand on the world. Villagers tell of them like the others, and they are restored the same way, in three stages.',
     'The Old Aerospace Works: a hangar-sized assembly hall with a half-built fuselage on its jigs, a long wind tunnel and an engine test stand. Restored with the plans for Aerospace Engineering, it builds Aerospace Components from titanium, aluminium, composite sheets and advanced steel.',

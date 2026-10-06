@@ -61,7 +61,7 @@ function render(msg = '') {
   } else {
     const w = workOf(site.k, st)!, all = installWorks(site.k), recipe = w.inp.map(([i, n]) => `${n} ${short(ITEMS[i].name)}`).join(' and ');
     const inputs = [...new Set(all.flatMap((x) => x.inp.map(([i]) => i)))];
-    const choose = all.length > 1 ? `<div class="say" style="margin:6px 0 0">What it makes${st.out ? ' (empty the bay to switch)' : ''}</div>` + all.map((x, i) => `<button class="opt" style="width:auto;${x === w ? 'color:var(--gold)' : ''}" data-ins="rec" data-insr="${i}" ${x === w || st.out ? 'disabled' : ''}>${x === w ? '▸ ' : ''}${x.inp.map(([q, n]) => `${n} ${short(ITEMS[q].name)}`).join(' + ')} → ${x.n ?? 1} ${ITEMS[x.out].name}</button>`).join('') : '';
+    const choose = all.length > 1 ? `<div class="say" style="margin:6px 0 0">What it makes${st.out ? ' (empty the bay to switch)' : ''}</div>` + all.map((x, i) => { const lock = x.tech && c.tech[x.tech] === undefined; return `<button class="opt" style="width:auto;${x === w ? 'color:var(--gold)' : ''}" data-ins="rec" data-insr="${i}" ${x === w || st.out || lock ? 'disabled' : ''}>${x === w ? '▸ ' : ''}${x.inp.map(([q, n]) => `${n} ${short(ITEMS[q].name)}`).join(' + ')} → ${x.n ?? 1} ${ITEMS[x.out].name}${lock ? ` (wants the plans for ${TECH_BY_ID[x.tech!].name})` : ''}</button>`; }).join('') : '';
     s += `${w.what} ${recipe} make ${(w.n ?? 1) > 1 ? `${w.n} crates` : "one crate"} of ${ITEMS[w.out].name} every ${hours(w.batch)}, while the power hall gives ${INSTALL_DRAW[site.k]} kW.</div>` +
       `<div class="shoprow"><div>${list}</div></div>` + screen(site.k, st) + choose +
       inputs.map((i) => { const h = have(i); return `<button class="opt" data-ins="load" data-insk="${i}" ${h && (st.inp[i] ?? 0) < w.hopper ? '' : 'disabled'}>Load ${short(ITEMS[i].name)} (${st.inp[i] ?? 0}/${w.hopper} in the hopper · you have ${h} with you)</button>`; }).join('') +
@@ -199,7 +199,7 @@ export function installClick(t: HTMLElement): boolean {
     render(n > 0 ? `Loaded ${n} × ${ITEMS.nfuel.name} into the core.` : 'No room in the core, or no rods to load.'); return true;
   }
   if (a === 'rec') {
-    const ok = setInstallRec(site.k, st, +b.dataset.insr!, c.time);
+    const ok = setInstallRec(site.k, st, +b.dataset.insr!, c.time, c.tech);
     if (ok) saveChar();
     render(ok ? `It is set to make ${ITEMS[workOf(site.k, st)!.out].name} now.` : 'Empty the bay first: it holds one kind at a time.'); return true;
   }

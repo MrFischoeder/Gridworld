@@ -28,7 +28,7 @@ describe('processing chains', () => {
     }
   });
   it('the shuttle wants only processed goods and the old plants\' goods, every stage something from them', () => {
-    const made = new Set(Object.values(INSTALL_WORK).map((w) => w!.out as string)); made.add('ceramics');
+    const made = new Set(Object.values(INSTALL_WORK).map((w) => w!.out as string)); made.add('ceramics'); made.add('composite'); made.add('rocketeng'); // (INSTALL_MORE)
     for (const st of STAGES) for (const [g] of st.needs) expect(made.has(g) || GOOD_INFO[g as Good].proc, g).toBe(true);
     for (const st of STAGES) expect(st.needs.some(([g]) => made.has(g)), st.key).toBe(true);
     expect(STAGES.find((x) => x.key === 'avionics')!.needs.map(([g]) => g)).toContain('microchip');
@@ -103,7 +103,7 @@ describe('the shuttle', () => {
     expect(stageRows(s, STAGES.find((x) => x.key === 'shield')!).done).toBe(false); // half done: it now wants ceramics
     expect(giveToStage(s, 'hull', 'steel', 5)).toBe(0);
     expect(stagesDone(s)).toBe(1);
-    expect(STAGES.map((x) => x.key)).toEqual(['hull', 'engines', 'avionics', 'shield', 'power', 'fuel']);
+    expect(STAGES.map((x) => x.key)).toEqual(['hull', 'engines', 'avionics', 'shield', 'power', 'life', 'fuel']);
     const again = JSON.parse(JSON.stringify(s)); fixShuttle(again); expect(again.done).toEqual(['hull']);
   });
 });
@@ -166,13 +166,13 @@ describe('stone and strategic metals (0.144)', () => {
     expect(PLANTS.metallurgy.tech).toBe('metallurgy');
     expect(TECH_BY_ID.metallurgy).toBeDefined();
     expect(PLANTS.metallurgy.recipes.map((r) => r.out[0])).toEqual(['advsteel', 'titanium', 'pgm']);
-    expect(PLANT_KINDS.slice(-4, -2)).toEqual(['stoneworks', 'metallurgy']);
+    expect(PLANT_KINDS.slice(-6, -4)).toEqual(['stoneworks', 'metallurgy']);
   });
 });
 
 describe('electronics (0.145)', () => {
   it('silicon processing and advanced electronics want their plans, and the older recipes keep their numbers', () => {
-    expect(PLANT_KINDS.slice(-2)).toEqual(['siliconworks', 'advelec']);
+    expect(PLANT_KINDS.slice(-4, -2)).toEqual(['siliconworks', 'advelec']);
     expect(PLANTS.siliconworks.tech).toBe('semiconductors');
     expect(PLANTS.advelec.tech).toBe('computing');
     expect(TECH_BY_ID.semiconductors && TECH_BY_ID.computing).toBeTruthy();
@@ -181,5 +181,23 @@ describe('electronics (0.145)', () => {
     expect(PLANTS.electronics.recipes[0].out[0]).toBe('boards');
     expect(PLANTS.electronics.recipes[1].out[0]).toBe('control');
     expect(PLANTS.advelec.recipes.map((r) => r.out[0])).toEqual(['hpe', 'computer', 'pcm']);
+  });
+});
+
+describe('the space program (0.147)', () => {
+  it('avionics and life support works want their plans; the Chariot gets a life support stage', () => {
+    expect(PLANT_KINDS.slice(-2)).toEqual(['avionworks', 'lifeworks']);
+    expect(PLANTS.avionworks.tech).toBe('avionics'); expect(PLANTS.lifeworks.tech).toBe('lifesupport');
+    expect(TECH_BY_ID.avionics && TECH_BY_ID.lifesupport && TECH_BY_ID.rocketry).toBeTruthy();
+    const need = (k: string) => STAGES.find((x) => x.key === k)!.needs.map(([g]) => g);
+    expect(need('hull')).toContain('aerocomp'); expect(need('engines')).toContain('rocketeng'); expect(need('avionics')).toContain('avionics'); expect(need('life')).toContain('lifesup');
+  });
+  it('a Chariot finished under six stages stays finished; an unfinished one gets the new stage', () => {
+    const six = ['hull', 'engines', 'avionics', 'shield', 'power', 'fuel'] as const;
+    const a: ShuttleState = { given: {}, done: [...six], v: 2 }; fixShuttle(a);
+    expect(stagesDone(a)).toBe(STAGES.length);
+    const b: ShuttleState = { given: {}, done: ['hull'], v: 2 }; fixShuttle(b);
+    expect(stagesDone(b)).toBe(1); expect(b.v).toBe(3);
+    expect(giveToStage(b, 'life', 'lifesup', 9)).toBe(4);
   });
 });

@@ -18,16 +18,16 @@ import { STATIONS, STATION_SLOTS, type StationKind } from './energy';
 import { TECH_BY_ID } from './tech';
 
 export type PlantKind = 'smelter' | 'refinery' | 'glassworks' | 'wiremill' | 'electronics' | 'machineshop' | 'foundry' | 'chemworks'
-  | 'sawmill' | 'brickworks' | 'cementworks' | 'textile' | 'steelworks' | 'polymer' | 'alworks' | 'batteryworks' | 'electrical' | 'stoneworks' | 'metallurgy' | 'siliconworks' | 'advelec';
+  | 'sawmill' | 'brickworks' | 'cementworks' | 'textile' | 'steelworks' | 'polymer' | 'alworks' | 'batteryworks' | 'electrical' | 'stoneworks' | 'metallurgy' | 'siliconworks' | 'advelec' | 'avionworks' | 'lifeworks';
 /** In the order the elder offers them: the plain works (tier 1, anyone can build) first, then those that want old plans (tier 2). */
 export const PLANT_KINDS: PlantKind[] = ['sawmill', 'brickworks', 'cementworks', 'smelter', 'glassworks', 'wiremill', 'refinery', 'textile',
-  'steelworks', 'chemworks', 'polymer', 'alworks', 'batteryworks', 'electronics', 'machineshop', 'foundry', 'electrical', 'stoneworks', 'metallurgy', 'siliconworks', 'advelec'];
+  'steelworks', 'chemworks', 'polymer', 'alworks', 'batteryworks', 'electronics', 'machineshop', 'foundry', 'electrical', 'stoneworks', 'metallurgy', 'siliconworks', 'advelec', 'avionworks', 'lifeworks'];
 /** What a works takes in: trade goods, and the rare materials of the deposits (gen/deposits.ts), which no market trades. */
 export type Stuff = Good | Rare | BasicMat;
 /** The plain materials a works may also take (not trade goods): what a crate of them is worth to it. */
-export type BasicMat = 'stone' | 'circuit' | 'microchip';
+export type BasicMat = 'stone' | 'circuit' | 'microchip' | 'sensor';
 /** (circuit = salvaged Electronic Components; microchip = the Old Chip Foundry's, gen/installs.ts) */
-export const BASIC_VALUE: Record<BasicMat, number> = { stone: 5, circuit: 60, microchip: 450 };
+export const BASIC_VALUE: Record<BasicMat, number> = { stone: 5, circuit: 60, microchip: 450, sensor: 500 };
 export interface Recipe { in: [Stuff, number][]; out: [Good, number] }
 export interface PlantSpec {
   name: string; blurb: string;
@@ -111,6 +111,13 @@ export const PLANTS: Record<PlantKind, PlantSpec> = {
   advelec: { name: 'Advanced Electronics Works', blurb: 'builds high-power electronics, computer systems and power control modules in a clean hall', batch: 150, tech: 'computing',
     recipes: [{ in: [['copperbar', 2], ['silicon', 2], ['pipes', 1]], out: ['hpe', 1] }, { in: [['control', 1], ['microchip', 1], ['silicon', 2]], out: ['computer', 1] }, { in: [['hpe', 1], ['control', 1]], out: ['pcm', 1] }],
     needs: [['bricks', 12], ['cement', 8], ['steel', 6], ['cable', 10], ['boards', 4], ['motor', 2]], fee: 2200, xp: 420 },
+  // (0.147) the space program
+  avionworks: { name: 'Avionics Works', blurb: 'assembles flight computers, sensor heads and control units into sealed avionics racks', batch: 240, tech: 'avionics',
+    recipes: [{ in: [['computer', 1], ['sensor', 2], ['control', 1]], out: ['avionics', 1] }],
+    needs: [['bricks', 12], ['cement', 8], ['steel', 8], ['cable', 10], ['computer', 1], ['optics', 2]], fee: 2600, xp: 480 },
+  lifeworks: { name: 'Life Support Works', blurb: 'builds air scrubbers and water recyclers on a pump loop in titanium housings', batch: 180, tech: 'lifesupport',
+    recipes: [{ in: [['pump', 1], ['pipes', 2], ['chems', 2], ['titanium', 1]], out: ['lifesup', 1] }],
+    needs: [['bricks', 14], ['cement', 10], ['steel', 8], ['pipes', 6], ['pump', 1], ['control', 1]], fee: 2000, xp: 400 },
 };
 /** Keep a saved works valid when the recipes change (old saves): an unknown recipe falls back to the first. */
 export function fixPlant(p: PlantState) { if (!PLANTS[p.k]?.recipes[p.rec]) p.rec = 0; }

@@ -146,6 +146,13 @@ describe('great installations', () => {
       expect(gridFor(sites, {}, 'robotics')).toBe(0);
     }
   }, 120000);
+  it('rocket engines at the aerospace works only with the plans for rocket propulsion (0.147)', () => {
+    const s: InstallState = { ...newInstall(), stage: INSTALL_STAGES.aerospace.length, t: 0 };
+    expect(installWorks('aerospace').map((w) => w.out)).toEqual(['aerocomp', 'rocketeng']);
+    expect(setInstallRec('aerospace', s, 1, 0, {})).toBe(false);
+    expect(setInstallRec('aerospace', s, 1, 0, { rocketry: 1 })).toBe(true);
+    expect(workOf('aerospace', s)!.out).toBe('rocketeng');
+  });
   it('the chip foundry needs every input for a batch', () => {
     const w = INSTALL_WORK.chips!, s: InstallState = { ...newInstall(), stage: INSTALL_STAGES.chips.length, pw: { coal: 30 } };
     expect(loadInstall('chips', s, 'glass', 99, 0)).toBe(w.hopper);

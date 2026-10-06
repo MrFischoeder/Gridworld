@@ -192,6 +192,7 @@ function rollChest(): Container {
     if (Math.random() < 0.2) putItems(items, 'control', 1);
     if (Math.random() < 0.15) putItems(items, 'optics', 1);
     if (Math.random() < 0.06) putItems(items, Math.random() < 0.6 ? 'computer' : 'hpe', 1);
+    if (Math.random() < 0.03) putItems(items, 'avionics', 1); // (0.147) a ship's own avionics rack, now and then intact
   }
   return { items, gold: (15 + Math.floor(Math.random() * 26)) * depth };
 }

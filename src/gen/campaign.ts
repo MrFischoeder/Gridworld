@@ -55,7 +55,7 @@ export interface Campaign { chariot: ChariotStep[]; wonders: Wonder[]; blockers:
 /** How much the Chariot's stages need, as a multiple of gen/shuttle.ts STAGES (tools/campaign.sim.ts calibrates it to 80 h). */
 export const CHARIOT_SCALE = 0.7;
 /** Stage weights on top of the scale: light at first (a new player, no truck yet), heavier towards the launch. */
-export const CHARIOT_WEIGHTS = [0.5, 0.8, 1.15, 1.35, 1.45, 1.6];
+export const CHARIOT_WEIGHTS = [0.5, 0.8, 1.15, 1.35, 1.45, 1.5, 1.6];
 /** Where the surprises lie: distance from Gridholm (m) and after which Chariot stage they come. */
 export const SURPRISE = [{ after: 1, dist: [7000, 12000] }, { after: 2, dist: [13000, 20000] }, { after: 4, dist: [21000, 30000] }];
 

@@ -12,7 +12,7 @@ const SETS: [ItemClass, string[]][] = [
   ['industrial', ['parts', 'tools', 'motor', 'pump', 'gears', 'pipes', 'engine', 'plating']],
   ['electrical', ['cable', 'boards', 'circuit', 'batteries', 'generator', 'powercell', 'wire', 'control', 'hpe', 'pcm']],
   ['advanced', ['microchip', 'sensor', 'precision', 'automation', 'pcore', 'ancalloy', 'ceramics', 'alloy', 'optics', 'computer']],
-  ['aerospace', ['aerocomp']],
+  ['aerospace', ['aerocomp', 'avionics', 'lifesup', 'rocketeng']],
   ['material', ['steel', 'copperbar', 'plastic', 'glass', 'iron', 'bricks', 'cement', 'chems', 'aluminium', 'leadbar', 'silicon', 'composite', 'lumber', 'cloth', 'fuel', 'propellant', 'nfuel', 'planks', 'nails', 'rope', 'scrap', 'meds', 'tech']],
   ['raw', ['log', 'stone', 'ironO', 'copperO', 'hide', 'fang', 'plate', 'membrane', 'incisor']],
 ];

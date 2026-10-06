@@ -66,7 +66,7 @@ export function drawHangar(p: Poi, y: number): THREE.Group {
  * tail fin, three engine sockets, a cockpit; drawn by how far the repair has come.
  */
 function drawShuttle(pb: PropBatch, cx: number, y: number, tz: number) {
-  const s = G.char.shuttle, hull = stageDone(s, 'hull'), eng = stageDone(s, 'engines'), av = stageDone(s, 'avionics'), shield = stageDone(s, 'shield'), power = stageDone(s, 'power'), fuel = stageDone(s, 'fuel');
+  const s = G.char.shuttle, hull = stageDone(s, 'hull'), eng = stageDone(s, 'engines'), av = stageDone(s, 'avionics'), shield = stageDone(s, 'shield'), power = stageDone(s, 'power'), life = stageDone(s, 'life'), fuel = stageDone(s, 'fuel');
   const by = y + 5.2; // the fuselage axis
   // sections along the fuselage: [z offset, half width, half height]
   const secs: [number, number, number][] = [[0, 2.1, 2.1], [4, 2.3, 2.3], [14, 2.3, 2.3], [18, 2.2, 2.1], [21, 1.8, 1.7], [23, 1.1, 1.1], [24.3, 0.3, 0.35]];
@@ -124,6 +124,11 @@ function drawShuttle(pb: PropBatch, cx: number, y: number, tz: number) {
     for (let k = 0; k < 4; k++) { const z = tz + 5 + k * 1.6; pb.box(cx - 6, y, z, cx - 4.4, y + 1.5, z + 1.1, ENGINE); for (const fx of [cx - 4.39, cx - 6.01]) for (const h of [0.5, 0.85, 1.2]) pb.seg(GLOW, [fx, y + h, z + 0.15], [fx, y + h, z + 0.95]); }
     pb.line(GLOW, [cx - 4.4, y + 1.5, tz + 8], [cx - 3, y + 2.6, tz + 8], [cx - 2.05, by - 0.6, tz + 8]);
     for (const sd of [-1, 1]) pb.seg(GLOW, [cx + sd * 2.05, by - 0.6, tz + 2], [cx + sd * 2.05, by - 0.6, tz + 19]);
+  }
+  // life support: two air and water tanks on the starboard side with a hose up into the cabin, lit once it is in
+  if (life) {
+    for (let k = 0; k < 2; k++) { const z = tz + 4 + k * 2.2; pb.box(cx + 4.4, y, z, cx + 6, y + 2.6, z + 1.6, HULL); pb.seg(GLOW, [cx + 4.39, y + 2, z + 0.3], [cx + 4.39, y + 2, z + 1.3]); }
+    pb.line(GLOW, [cx + 4.4, y + 2.4, tz + 6], [cx + 3, y + 3.2, tz + 5], [cx + 2.05, by - 0.4, tz + 4]);
   }
   pb.line(fuel ? GLOW : ENGINE, [cx + 12.5, y + 0.2, tz + 10], [cx + 5, y + 0.2, tz + 12], [cx + 1.6, by - 2.1, tz + 12]);
   pb.line(fuel ? GLOW : ENGINE, [cx + 12.5, y + 0.3, tz + 10.4], [cx + 5, y + 0.3, tz + 12.4], [cx + 1.6, by - 2.0, tz + 12.4]);

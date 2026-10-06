@@ -165,7 +165,7 @@ export const INSTALL_STAGES: Record<InstallKind, InstallStage[]> = {
 
 };
 /** What a working installation makes: the crates of each input in `inp` into `n` (1) of `out` every `batch` game minutes (at most `hopper` of each input loaded, `bay` made waiting). */
-export interface InstallWork { inp: [ItemKey, number][]; out: ItemKey; n?: number; batch: number; hopper: number; bay: number; what: string }
+export interface InstallWork { inp: [ItemKey, number][]; out: ItemKey; n?: number; batch: number; hopper: number; bay: number; what: string; tech?: string }
 export const INSTALL_WORK: Partial<Record<InstallKind, InstallWork>> = {
   uranium: { inp: [['uranium', 3], ['chems', 1]], out: 'nfuel', batch: 360, hopper: 30, bay: 10, what: 'The centrifuges hum again.' },
   chips: { inp: [['glass', 2], ['copperbar', 1], ['chems', 1], ['rareearth', 1]], out: 'microchip', batch: 240, hopper: 30, bay: 12, what: 'The etching line glows behind its windows.' },
@@ -179,6 +179,8 @@ export const INSTALL_WORK: Partial<Record<InstallKind, InstallWork>> = {
 };
 /** Further things an installation can make instead (picked at its desk while its bay is empty): the first is INSTALL_WORK[k]. */
 export const INSTALL_MORE: Partial<Record<InstallKind, InstallWork[]>> = {
+  // (0.147) the engine test stand builds rocket engines, once the plans for rocket propulsion are known
+  aerospace: [{ inp: [['ancalloy', 2], ['precision', 2], ['ceramics', 1], ['pump', 1]], out: 'rocketeng', batch: 480, hopper: 20, bay: 4, what: 'An engine is lowered onto the test stand and fired until the ground shakes.', tech: 'rocketry' }],
   alloy: [{ inp: [['clay', 3], ['aluminium', 1], ['chems', 1]], out: 'ceramics', n: 2, batch: 240, hopper: 30, bay: 12, what: 'The kiln line glows and the ceramic tiles come out white.' },
     // (0.146) composite: resin and cloth laid up round titanium mesh and baked
     { inp: [['plastic', 2], ['cloth', 2], ['titanium', 1]], out: 'composite', n: 2, batch: 240, hopper: 30, bay: 12, what: 'The autoclaves hiss and the laid-up composite sheets come out black and stiff.' }],
@@ -187,8 +189,9 @@ export const INSTALL_MORE: Partial<Record<InstallKind, InstallWork[]>> = {
 export const installWorks = (k: InstallKind): InstallWork[] => (INSTALL_WORK[k] ? [INSTALL_WORK[k]!, ...(INSTALL_MORE[k] ?? [])] : []);
 export const workOf = (k: InstallKind, s?: InstallState): InstallWork | undefined => installWorks(k)[s?.rec ?? 0] ?? INSTALL_WORK[k];
 /** Switch what k makes (only while its bay is empty: the bay holds one kind); false when it cannot. */
-export function setInstallRec(k: InstallKind, s: InstallState, i: number, now: number): boolean {
-  if (!installWorks(k)[i] || (s.rec ?? 0) === i) return false;
+export function setInstallRec(k: InstallKind, s: InstallState, i: number, now: number, known: Record<string, number> = {}): boolean {
+  const w = installWorks(k)[i];
+  if (!w || (s.rec ?? 0) === i || (w.tech && known[w.tech] === undefined)) return false;
   runInstall(k, s, now);
   if (s.out > 0) return false;
   s.rec = i; s.t = now;

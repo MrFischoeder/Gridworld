@@ -51,6 +51,9 @@ export const TECHS: Tech[] = [
   { id: 'computing', name: 'Advanced Computing', area: 'electronics', tier: 3, blurb: 'Computer systems, power switching and control: the brains of the great machines.' },
   { id: 'aerospace', name: 'Aerospace Engineering', area: 'transport', tier: 4, blurb: 'Airframes of titanium and composite, built on jigs and proved in the wind tunnel.' },
   { id: 'powergrid', name: 'Ancient Power Grid', area: 'power', tier: 4, blurb: 'How to wake the great core and carry its power along the pylons to the old plants.' },
+  { id: 'avionics', name: 'Spacecraft Avionics', area: 'navigation', tier: 4, blurb: 'Flight computers, star trackers and the control loops that keep a ship on its course.' },
+  { id: 'lifesupport', name: 'Life Support', area: 'chemistry', tier: 3, blurb: 'Scrubbing the air and recycling the water: how a crew lives where nothing lives.' },
+  { id: 'rocketry', name: 'Rocket Propulsion', area: 'transport', tier: 4, blurb: 'Combustion chambers, turbopumps and bells: the engines that lift a ship off a world.' },
 ];
 export const TECH_BY_ID: Record<string, Tech> = Object.fromEntries(TECHS.map((t) => [t.id, t]));
 /** How far from Gridholm (m) each tier's carriers lie. */
