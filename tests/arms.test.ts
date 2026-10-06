@@ -23,7 +23,7 @@ describe('arms, rounds, the GPS tablet and the repair kit', () => {
       expect(o, k).toBeTruthy(); expect(o!.tech).not.toBe(''); expect(ids.has(o!.tech)).toBe(true);
       for (const [i] of o!.needs) expect(ITEMS[i]).toBeTruthy();
     }
-    expect(TECHS.map((t) => t.id).slice(-6)).toEqual(['gunsmith', 'weaving', 'composites', 'exoframe', 'electricity', 'metallurgy']); // appended: the others keep their sites
+    expect(TECHS.map((t) => t.id).slice(-8)).toEqual(['gunsmith', 'weaving', 'composites', 'exoframe', 'electricity', 'metallurgy', 'semiconductors', 'computing']); // appended: the others keep their sites
   });
   it('the repair kit repairs the shared condition pool, including a disabled vehicle', () => {
     const p = freshParts('scout'), max = VEHICLES.scout.hull;

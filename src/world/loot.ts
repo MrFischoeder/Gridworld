@@ -188,6 +188,10 @@ function rollChest(): Container {
     if (Math.random() < 0.25) putItems(items, 'motor', 1);
     if (Math.random() < 0.2) putItems(items, 'pipes', 1 + Math.floor(Math.random() * 2));
     if (Math.random() < 0.1) putItems(items, Math.random() < 0.6 ? 'generator' : 'pump', 1);
+    // the ship's electronics: control boxes, lenses, now and then a whole computer
+    if (Math.random() < 0.2) putItems(items, 'control', 1);
+    if (Math.random() < 0.15) putItems(items, 'optics', 1);
+    if (Math.random() < 0.06) putItems(items, Math.random() < 0.6 ? 'computer' : 'hpe', 1);
   }
   return { items, gold: (15 + Math.floor(Math.random() * 26)) * depth };
 }

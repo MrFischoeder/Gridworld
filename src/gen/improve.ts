@@ -23,10 +23,10 @@ export interface ImproveSpec {
   gold: number; xp: number;
 }
 export const IMPROVE: Record<ImproveKind, ImproveSpec> = {
-  bank: { name: 'Battery Bank', blurb: 'racks of power cells in a shed by the plant: they charge while the sun shines and the wind blows, and give it back at night and in a lull', needs: [['powercell', 4], ['batteries', 6], ['cable', 6], ['bricks', 6]], gold: 250, xp: 250 },
+  bank: { name: 'Battery Bank', blurb: 'racks of power cells in a shed by the plant: they charge while the sun shines and the wind blows, and give it back at night and in a lull', needs: [['powercell', 4], ['batteries', 6], ['cable', 6], ['bricks', 6], ['pcm', 1]], gold: 250, xp: 250 },
   lamps: { name: 'Battery Lamps', blurb: 'the old oil and filament lamps swapped for battery lamps: the village takes less power, and its lamps stay lit when the plant is down', needs: [['batteries', 4], ['glass', 4], ['cable', 4]], gold: 120, xp: 120 },
-  automation: { name: 'Automated Site', blurb: 'automation units bolted to the industry site\'s machines: it makes half as much again and runs whether the village has the hands or not', needs: [['automation', 2], ['precision', 2], ['cable', 6], ['steel', 4], ['motor', 2]], gold: 500, xp: 500 },
-  sights: { name: 'Sensor Sights', blurb: 'sensor heads and a chip on every turret on the wall: they see half as far again and fire faster', needs: [['sensor', 2], ['microchip', 2], ['cable', 4]], gold: 300, xp: 300 },
+  automation: { name: 'Automated Site', blurb: 'automation units bolted to the industry site\'s machines: it makes half as much again and runs whether the village has the hands or not', needs: [['automation', 2], ['precision', 2], ['cable', 6], ['steel', 4], ['motor', 2], ['control', 2]], gold: 500, xp: 500 },
+  sights: { name: 'Sensor Sights', blurb: 'sensor heads and a chip on every turret on the wall: they see half as far again and fire faster', needs: [['sensor', 2], ['microchip', 2], ['cable', 4], ['optics', 2]], gold: 300, xp: 300 },
   armour: { name: 'Armoured Wall', blurb: 'the stone wall faced with plates of aluminium and advanced alloy: raids break on it more often and the gates hold longer', needs: [['aluminium', 8], ['alloy', 6], ['steel', 8], ['cement', 10], ['titanium', 4], ['advsteel', 6]], wall: 2, gold: 400, xp: 400 },
 };
 export const hasImprove = (s: TownState | undefined, k: ImproveKind) => !!s?.imp?.[k];

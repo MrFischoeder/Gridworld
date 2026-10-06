@@ -10,7 +10,7 @@ import { STAGES, giveToStage, stageRows, stagesDone, fixShuttle, type ShuttleSta
 import type { TownState } from '../src/gen/town';
 
 describe('processing chains', () => {
-  const dug = new Set<Stuff>([...Object.values(INDUSTRY).flatMap((i) => [...i.pool, ...(i.extra?.goods ?? [])]), ...RARES.map((r) => r.k), ...Object.values(CROPS).map((c) => c.out as Stuff), 'stone']);
+  const dug = new Set<Stuff>([...Object.values(INDUSTRY).flatMap((i) => [...i.pool, ...(i.extra?.goods ?? [])]), ...RARES.map((r) => r.k), ...Object.values(CROPS).map((c) => c.out as Stuff), 'stone', 'circuit']); // (stone gathered, circuit salvaged)
   const made = new Set<Stuff>([...PLANT_KINDS.flatMap((k) => PLANTS[k].recipes.map((r) => r.out[0])), ...Object.values(INSTALL_WORK).map((w) => w!.out as Stuff)]);
   const value = (g: Stuff) => (g in BASIC_VALUE ? BASIC_VALUE[g as BasicMat] : isRare(g) ? RARE_VALUE[g] : GOOD_INFO[g as Good].base);
   it('every input can be dug, grown or made, and every processed good comes out of some works or old plant', () => {
@@ -166,6 +166,20 @@ describe('stone and strategic metals (0.144)', () => {
     expect(PLANTS.metallurgy.tech).toBe('metallurgy');
     expect(TECH_BY_ID.metallurgy).toBeDefined();
     expect(PLANTS.metallurgy.recipes.map((r) => r.out[0])).toEqual(['advsteel', 'titanium', 'pgm']);
-    expect(PLANT_KINDS.slice(-2)).toEqual(['stoneworks', 'metallurgy']);
+    expect(PLANT_KINDS.slice(-4, -2)).toEqual(['stoneworks', 'metallurgy']);
+  });
+});
+
+describe('electronics (0.145)', () => {
+  it('silicon processing and advanced electronics want their plans, and the older recipes keep their numbers', () => {
+    expect(PLANT_KINDS.slice(-2)).toEqual(['siliconworks', 'advelec']);
+    expect(PLANTS.siliconworks.tech).toBe('semiconductors');
+    expect(PLANTS.advelec.tech).toBe('computing');
+    expect(TECH_BY_ID.semiconductors && TECH_BY_ID.computing).toBeTruthy();
+    expect(PLANTS.glassworks.recipes[0].out[0]).toBe('glass');
+    expect(PLANTS.glassworks.recipes[1].out[0]).toBe('optics');
+    expect(PLANTS.electronics.recipes[0].out[0]).toBe('boards');
+    expect(PLANTS.electronics.recipes[1].out[0]).toBe('control');
+    expect(PLANTS.advelec.recipes.map((r) => r.out[0])).toEqual(['hpe', 'computer', 'pcm']);
   });
 });

@@ -158,6 +158,25 @@ export function drawWorks(vm: VillageMap, T: Terrain, id: number): THREE.Group {
         glowAt = [P(-1, -2.6)[0], g0 + 2.6, P(-1, -2.6)[1]];
         break;
       }
+      case 'siliconworks': { // a furnace hall with three crucible towers through its roof, acid tanks and a stack
+        box(-1, 2, 5.5, 3, g0 - 0.1, g0 + 4.5, BRICK);
+        for (const u of [-4, -1, 2]) { cylAt(u, 2, 0.8, 7.5, METAL, 0, 0.6); cylAt(u, 2, 0.45, 0.3, HOT, 7.5, 0.45); }
+        for (const u of [5.5, 7]) { cylAt(u, -2.5, 0.7, 2.6, GLASS, 0, 0.7); const [x, z] = P(u, -2.5); pb.gableRoof(x - 0.9, z - 0.9, x + 0.9, z + 0.9, H(u, -2.5) + 2.8, 0.4, METAL); }
+        { const [a, b] = P(4.6, 1), [d, e] = P(6.3, -2.5); pb.line(METAL, [a, g0 + 2.2, b], [d, g0 + 2.2, e], [d, g0 + 1.2, e]); }
+        cylAt(-7, 4.5, 0.55, 11, BRICK, 0, 0.4);
+        glowAt = [P(-1, 2)[0], g0 + 8, P(-1, 2)[1]];
+        break;
+      }
+      case 'advelec': { // a white clean hall with a band of lit windows, roof air units, a transformer and a dish
+        box(0, 2, 6.5, 3, g0 - 0.1, g0 + 4.2, STEELC);
+        for (let u = -5.8; u <= 5; u += 1.4) { const [a, b] = P(u, -1.02), [d, e] = P(u + 0.9, -1.02); pb.line(GLASS, [a, g0 + 2.2, b], [d, g0 + 2.2, e], [d, g0 + 3.2, e], [a, g0 + 3.2, b], [a, g0 + 2.2, b]); }
+        for (const u of [-4, 0, 4]) { box(u, 2, 0.9, 0.9, g0 + 4.2, g0 + 5, METAL); const [x, z] = P(u, 2); cyl(pb, x, g0 + 5, z, 0.6, 0.12, METAL, 10); }
+        box(-8, -2, 0.9, 0.9, H(-8, -2), H(-8, -2) + 2, METAL);
+        { const [x, z] = P(-8, -2); for (const d of [-0.5, 0, 0.5]) pb.seg(METAL, [x + d, H(-8, -2) + 2, z], [x + d, H(-8, -2) + 2.8, z]); }
+        { const [x, z] = P(5.5, 4.5); pb.box(x - 0.08, g0 + 4.2, z - 0.08, x + 0.08, g0 + 6.5, z + 0.08, METAL); cyl(pb, x, g0 + 6.5, z, 1.1, 0.25, METAL, 12); }
+        glowAt = [P(0, -1.1)[0], g0 + 2.7, P(0, -1.1)[1]];
+        break;
+      }
       case 'sawmill': { // an open saw shed with a circular saw, a log deck and stacks of boards
         for (const [u, v] of [[-5, -1], [5, -1], [5, 5], [-5, 5], [0, -1], [0, 5]]) { const [x, z] = P(u, v); pb.box(x - 0.15, g0 - 0.1, z - 0.15, x + 0.15, g0 + 3.2, z + 0.15, WOOD); }
         { const [a, b] = P(-5.3, -1.3), [d, e] = P(5.3, 5.3); pb.gableRoof(Math.min(a, d), Math.min(b, e), Math.max(a, d), Math.max(b, e), g0 + 3.2, 1.2, WOOD); }

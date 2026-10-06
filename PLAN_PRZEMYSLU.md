@@ -59,8 +59,15 @@ Plan wdrożenia dokumentu właściciela „GridWorld 03 — Surowce, przemysł, 
 - Zastosowania: opancerzony mur, Powered Exoskeleton (tytan, stal stopowa), Sensor Compass i macierz radaru (platyna).
 - **MP:** złoża liczone z ziarna świata, identyczne u wszystkich; zakłady i przydział we wspólnym stanie wioski; protokół bez zmian.
 
-### 4. Elektronika
-- Purified Silicon (Silicon Processing), Control Units, Optical Components, Computer Systems, High-Power Electronics, Power Control Modules.
+### 4. Elektronika (0.145, zrobione)
+- **Nowe towary** (rynkowe, przetworzone): Purified Silicon, Control Units, Optical Components, High-Power Electronics, Computer Systems, Power Control Modules.
+- **Zakłady:**
+  - Silicon Processing (technologia Semiconductor Industry): 2 szkło + chemia → 2 krzem;
+  - Advanced Electronics Works (technologia Advanced Computing): elektronika dużej mocy (miedź, krzem, rury chłodzące), komputery (jednostka sterująca, mikroprocesor ze starej fabryki układów, krzem), moduły sterowania zasilaniem (elektronika dużej mocy + jednostka sterująca);
+  - Electronics Shop dostaje jednostki sterujące (płytki, salvage, kabel), Glassworks optykę (szkło + aluminium); stare receptury zachowują numery.
+- **Salvage:** roboty, skrzynie we wrakach, szafki w toksycznej mgle.
+- **Zastosowania:** mały reaktor, bank baterii, Automated Site, elektrownia poziomu 3, Sensor Sights, Sensor Compass, macierz radaru, Powered Exoskeleton.
+- **MP:** towary i zakłady we wspólnym stanie wiosek i rynku, łupy przez wspólne zrzuty; protokół bez zmian.
 
 ### 5. Kompleksy
 - Aerospace Components Plant, Ancient Power Complex, materiały kompozytowe.

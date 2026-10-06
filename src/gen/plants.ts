@@ -18,15 +18,16 @@ import { STATIONS, STATION_SLOTS, type StationKind } from './energy';
 import { TECH_BY_ID } from './tech';
 
 export type PlantKind = 'smelter' | 'refinery' | 'glassworks' | 'wiremill' | 'electronics' | 'machineshop' | 'foundry' | 'chemworks'
-  | 'sawmill' | 'brickworks' | 'cementworks' | 'textile' | 'steelworks' | 'polymer' | 'alworks' | 'batteryworks' | 'electrical' | 'stoneworks' | 'metallurgy';
+  | 'sawmill' | 'brickworks' | 'cementworks' | 'textile' | 'steelworks' | 'polymer' | 'alworks' | 'batteryworks' | 'electrical' | 'stoneworks' | 'metallurgy' | 'siliconworks' | 'advelec';
 /** In the order the elder offers them: the plain works (tier 1, anyone can build) first, then those that want old plans (tier 2). */
 export const PLANT_KINDS: PlantKind[] = ['sawmill', 'brickworks', 'cementworks', 'smelter', 'glassworks', 'wiremill', 'refinery', 'textile',
-  'steelworks', 'chemworks', 'polymer', 'alworks', 'batteryworks', 'electronics', 'machineshop', 'foundry', 'electrical', 'stoneworks', 'metallurgy'];
+  'steelworks', 'chemworks', 'polymer', 'alworks', 'batteryworks', 'electronics', 'machineshop', 'foundry', 'electrical', 'stoneworks', 'metallurgy', 'siliconworks', 'advelec'];
 /** What a works takes in: trade goods, and the rare materials of the deposits (gen/deposits.ts), which no market trades. */
 export type Stuff = Good | Rare | BasicMat;
 /** The plain materials a works may also take (not trade goods): what a crate of them is worth to it. */
-export type BasicMat = 'stone';
-export const BASIC_VALUE: Record<BasicMat, number> = { stone: 5 };
+export type BasicMat = 'stone' | 'circuit' | 'microchip';
+/** (circuit = salvaged Electronic Components; microchip = the Old Chip Foundry's, gen/installs.ts) */
+export const BASIC_VALUE: Record<BasicMat, number> = { stone: 5, circuit: 60, microchip: 450 };
 export interface Recipe { in: [Stuff, number][]; out: [Good, number] }
 export interface PlantSpec {
   name: string; blurb: string;
@@ -54,7 +55,8 @@ export const PLANTS: Record<PlantKind, PlantSpec> = {
       { in: [['lead', 2], ['coal', 1]], out: ['leadbar', 1] }],
     needs: [['stone', 20], ['bricks', 12], ['scrap', 12], ['planks', 16], ['log', 8]], fee: 600, xp: 150 },
   glassworks: { name: 'Glassworks', blurb: 'melts quartz sand with coal into glass', batch: 45,
-    recipes: [{ in: [['sand', 2], ['coal', 1]], out: ['glass', 1] }],
+    // (0.145: optical components appended, so glass keeps recipe 0)
+    recipes: [{ in: [['sand', 2], ['coal', 1]], out: ['glass', 1] }, { in: [['glass', 2], ['aluminium', 1]], out: ['optics', 1] }],
     needs: [['stone', 15], ['bricks', 10], ['scrap', 8], ['planks', 12]], fee: 450, xp: 120 },
   wiremill: { name: 'Wire Mill', blurb: 'draws copper ingots into cable', batch: 45,
     recipes: [{ in: [['copperbar', 1]], out: ['cable', 2] }],
@@ -82,7 +84,8 @@ export const PLANTS: Record<PlantKind, PlantSpec> = {
     recipes: [{ in: [['leadbar', 1], ['chems', 1]], out: ['batteries', 1] }],
     needs: [['scrap', 14], ['wire', 8], ['circuit', 6], ['lumber', 10], ['cement', 6]], fee: 1000, xp: 220 },
   electronics: { name: 'Electronics Shop', blurb: 'etches circuit boards from cable, resin and glass', batch: 90, tech: 'circuits',
-    recipes: [{ in: [['cable', 1], ['plastic', 1], ['glass', 1]], out: ['boards', 1] }],
+    // (0.145: control units appended)
+    recipes: [{ in: [['cable', 1], ['plastic', 1], ['glass', 1]], out: ['boards', 1] }, { in: [['boards', 1], ['circuit', 1], ['cable', 1]], out: ['control', 1] }],
     needs: [['circuit', 8], ['wire', 10], ['scrap', 10], ['planks', 16]], fee: 1400, xp: 300 },
   machineshop: { name: 'Machine Shop', blurb: 'machines steel into parts and tools, pipes and valves, gears and bearings, and assembles pumps', batch: 75, tech: 'forging',
     // (0.143: pipes, gears and pumps appended, so the old recipes keep their numbers)
@@ -102,6 +105,12 @@ export const PLANTS: Record<PlantKind, PlantSpec> = {
   metallurgy: { name: 'Advanced Metallurgy', blurb: 'arc furnaces and vacuum retorts: alloy steels, titanium and the platinum metals', batch: 120, tech: 'metallurgy',
     recipes: [{ in: [['steel', 2], ['nickel', 1], ['chromite', 1]], out: ['advsteel', 2] }, { in: [['rutile', 2], ['chems', 1]], out: ['titanium', 1] }, { in: [['pgmore', 2], ['chems', 1]], out: ['pgm', 1] }],
     needs: [['bricks', 24], ['cement', 12], ['steel', 10], ['cable', 8], ['generator', 1], ['pump', 1]], fee: 2000, xp: 400 },
+  siliconworks: { name: 'Silicon Processing', blurb: 'melts glass down with chemicals in sealed furnaces into purified silicon: it eats power', batch: 120, tech: 'semiconductors',
+    recipes: [{ in: [['glass', 2], ['chems', 1]], out: ['silicon', 2] }],
+    needs: [['bricks', 16], ['cement', 10], ['steel', 8], ['cable', 6], ['pipes', 6], ['pump', 1]], fee: 1800, xp: 360 },
+  advelec: { name: 'Advanced Electronics Works', blurb: 'builds high-power electronics, computer systems and power control modules in a clean hall', batch: 150, tech: 'computing',
+    recipes: [{ in: [['copperbar', 2], ['silicon', 2], ['pipes', 1]], out: ['hpe', 1] }, { in: [['control', 1], ['microchip', 1], ['silicon', 2]], out: ['computer', 1] }, { in: [['hpe', 1], ['control', 1]], out: ['pcm', 1] }],
+    needs: [['bricks', 12], ['cement', 8], ['steel', 6], ['cable', 10], ['boards', 4], ['motor', 2]], fee: 2200, xp: 420 },
 };
 /** Keep a saved works valid when the recipes change (old saves): an unknown recipe falls back to the first. */
 export function fixPlant(p: PlantState) { if (!PLANTS[p.k]?.recipes[p.rec]) p.rec = 0; }

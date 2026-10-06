@@ -3,6 +3,14 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.145.0', date: '2026-10-06', title: 'Electronics', notes: [
+    'Six new electronic goods, all traded on the markets: Purified Silicon, Control Units, Optical Components, High-Power Electronics, Computer Systems and Power Control Modules.',
+    'Silicon Processing refines glass with chemicals into purified silicon. It wants the plans for the Semiconductor Industry and a lot of power.',
+    'The Advanced Electronics Works builds high-power electronics (copper, silicon and cooling pipes), computer systems (a control unit, a microchip from the Old Chip Foundry and silicon) and power control modules. It wants the plans for Advanced Computing.',
+    'The Electronics Shop now also assembles control units from circuit boards, salvaged electronic components and cable, and the Glassworks grinds optical components from glass and aluminium. Their old recipes are unchanged.',
+    'Before you make them, you find them: robots now and then carry control units, optics or high-power electronics, wrecked ships hold control boxes and the odd computer, and the lockers in the toxic fog keep silicon, optics and control units.',
+    'Where they go: a Small Reactor needs two power control modules, the Battery Bank one, the Automated Site and an Automated power plant control units (the plant also high-power electronics), Sensor Sights and the Sensor Compass optics, the radar\'s sensor array a computer, and the Powered Exoskeleton a power control module. Builds already under way keep what was handed over.',
+  ] },
   { v: '0.144.0', date: '2026-10-06', title: 'Stone and rare metals', notes: [
     'A new works anyone can build, the Stoneworks, dresses stone into Pallets of Cut Stone (three stones make two pallets). The Stone Wall now wants cut stone, and so does a Coal Power Station\'s boiler house. Builds already under way keep what was handed over.',
     'Three strategic metal ores: Chromite, Rutile Sand (titanium ore) and Platinum Ore. They lie by villages far from Gridholm (chromite from 9 km, platinum from 13, rutile from 12) as a second deposit beside the older rare ones, so no village loses what it had. A village that trusts you digs them for you, sharing the same daily allowance.',

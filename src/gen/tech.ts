@@ -47,6 +47,8 @@ export const TECHS: Tech[] = [
   { id: 'exoframe', name: 'Exoframes', area: 'metal', tier: 3, blurb: 'Struts, sprung joints and harness: a frame along the legs and back that carries the load for the one who wears it.' },
   { id: 'electricity', name: 'Electric Machines', area: 'power', tier: 2, blurb: 'Winding copper on iron: electric motors and generators, the heart of every machine and power station.' },
   { id: 'metallurgy', name: 'Advanced Metallurgy', area: 'metal', tier: 3, blurb: 'Arc furnaces and vacuum retorts: steels alloyed with nickel and chromium, titanium, and the platinum metals.' },
+  { id: 'semiconductors', name: 'Semiconductor Industry', area: 'electronics', tier: 3, blurb: 'Zone furnaces and acid baths: silicon pure enough to switch and compute.' },
+  { id: 'computing', name: 'Advanced Computing', area: 'electronics', tier: 3, blurb: 'Computer systems, power switching and control: the brains of the great machines.' },
 ];
 export const TECH_BY_ID: Record<string, Tech> = Object.fromEntries(TECHS.map((t) => [t.id, t]));
 /** How far from Gridholm (m) each tier's carriers lie. */
