@@ -6,7 +6,7 @@ import { villageStats, type VillageStats } from '../gen/villagestats';
 import { FOOD, CROPS, cropOf } from '../gen/farms';
 import { PROJECTS, type Project } from '../gen/settlement';
 import { PLANTS } from '../gen/plants';
-import { STATIONS } from '../gen/energy';
+import { STATIONS, farmPower } from '../gen/energy';
 import type { Post } from '../gen/workforce';
 import type { ItemKey } from '../data/items';
 import type { TownState } from '../gen/town';
@@ -17,7 +17,8 @@ export function statsOf(vid: number): VillageStats | null {
   const c = G.char, poi = findPoi(c.world, vid);
   if (!poi) return null;
   const st = stockAt(vid), stored = st ? (Object.keys(FOOD.value) as ItemKey[]).reduce((a, k) => a + st.has(k) * FOOD.value[k]!, 0) : 0;
-  return villageStats(villageSeed(c.world, poi), vid === GRIDHOLM_ID, c.towns[vid], c.time, stored);
+  const seed = villageSeed(c.world, poi);
+  return villageStats(seed, vid === GRIDHOLM_ID, c.towns[vid], c.time, stored, farmPower(c.world, poi, seed, c.towns[vid], c.time));
 }
 /** A post's name: Farm 2 (potatoes), Stone quarry, Smelter... */
 export function postName(s: TownState | undefined, p: Post): string {

@@ -59,8 +59,8 @@ export const PLANTS: Record<PlantKind, PlantSpec> = {
   refinery: { name: 'Oil Refinery', blurb: 'cracks crude oil into fuel, or (wastefully) plastic resin', batch: 60,
     recipes: [{ in: [['crude', 1]], out: ['fuel', 1] }, { in: [['crude', 2]], out: ['plastic', 1] }],
     needs: [['scrap', 30], ['wire', 12], ['circuit', 4], ['planks', 16]], fee: 900, xp: 200 },
-  textile: { name: 'Textile Mill', blurb: 'spins and weaves flax fibre and wool into cloth', batch: 60,
-    recipes: [{ in: [['fibre', 2]], out: ['cloth', 1] }, { in: [['wool', 3]], out: ['cloth', 2] }],
+  textile: { name: 'Textile Mill', blurb: 'spins and weaves flax fibre, wool and cotton into cloth', batch: 60,
+    recipes: [{ in: [['fibre', 2]], out: ['cloth', 1] }, { in: [['wool', 3]], out: ['cloth', 2] }, { in: [['cotton', 2]], out: ['cloth', 1] }],
     needs: [['lumber', 14], ['planks', 6], ['nails', 20], ['scrap', 4]], fee: 400, xp: 100 },
   // ---- tier 2: they want the old plans ----
   steelworks: { name: 'Steelworks', blurb: 'blows iron into steel with coal and limestone', batch: 60, tech: 'furnace',

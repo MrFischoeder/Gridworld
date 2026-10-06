@@ -1,14 +1,14 @@
 // Workers (pure, new-world settlements only): every facility of a settlement has its posts (`JOBS`) and the village's
 // workers (a share of its people, gen/people.ts) fill them by a fixed priority: food first (the farms), then power,
-// the extraction yards, the refinery, the processing works in build order and the power stations. A post short of
-// hands works at the share it has (farms, yards, the power plant); a processing works or a station needs its whole
-// crew or stands still. Nothing is saved: the assignment follows from the village's state and its people, so every
+// the food processing house, the extraction yards, the refinery, the processing works in build order and the power
+// stations. A post short of hands works at the share it has (farms, yards, the power plant, the food processing
+// house); a processing works or a station needs its whole crew or stands still. Nothing is saved: the assignment follows from the village's state and its people, so every
 // player in a world works it out the same.
 import { progressive, projectDone, type Project } from './settlement';
 import type { TownState } from './town';
 
 /** Posts per facility. */
-export const JOBS = { farm: 4, power: 2, quarry: 3, lumber: 4, mine: 4, oil: 2, refinery: 3, works: 3, station: 1 };
+export const JOBS = { farm: 4, power: 2, quarry: 3, lumber: 4, mine: 4, oil: 2, refinery: 3, foodworks: 3, works: 3, station: 1 };
 /** Facilities that need their whole crew to run at all (a share of a crew does nothing). */
 const WHOLE = new Set(['works', 'station']);
 export type PostKind = keyof typeof JOBS;
@@ -20,7 +20,7 @@ export interface Post {
   /** How well it works: got / jobs, or 0 / 1 for the facilities that need a whole crew. */
   fill: number;
 }
-const YARDS: Project[] = ['power', 'quarry', 'lumber', 'mine', 'oil', 'refinery'];
+const YARDS: Project[] = ['power', 'foodworks', 'quarry', 'lumber', 'mine', 'oil', 'refinery'];
 
 /** The settlement's posts in the order they are manned. Established villages have none (their old staffing rule applies). */
 export function postsOf(s: TownState | undefined): Omit<Post, 'got' | 'fill'>[] {

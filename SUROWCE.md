@@ -17,8 +17,9 @@ Plik jest generowany z danych gry (`tools/materials.sim.ts`), więc nazwy i licz
 | Tartak | 20 Log, 10 Stone, 8 Scrap |
 | Szyb naftowy | 16 Scrap, 8 Wire, 12 Planks |
 | Rafineria | 24 Scrap, 4 Circuit, 12 Wire, 18 Planks |
+| Przetwórnia żywności (od 0.142) | 14 Log, 10 Stone, 12 Planks, 16 Nails, 6 Scrap |
 
-Kamieniołom i tartak są dostępne przy każdej rozwijanej wiosce, około 105 m od palisady. Kamieniołom daje Stone (0,8/h), tartak Log (0,8/h), Timber (0,5/h) i Lumber (0,3/h), przed wpływem pracowników i prądu. Kopalnia wymaga lokalnego złoża: wydobywa tylko przypisany metal (Fe, Cu, Pb, Ni) albo węgiel (C), 0,6 skrzyni/h, dodatkowo przy żelazie/miedzi 0,3 grudki Iron Ore/Copper Ore na godzinę. Ropa występuje przy części wiosek; szyb daje Crude Oil (0,7/h). Wydobyte wcześniej zapasy zostają dostępne, nawet gdy stary typ kopalni produkował kilka surowców. Paliwo z nowej rafinerii powstaje z jednej skrzyni Crude Oil na jeden Fuel Canister, najwyżej co 2 godziny czasu gry, dopóki jest wsad i miejsce w zapasie. Wydobycie zależy od dostępu do prądu. Wszystkie budowy przyjmują materiały partiami. Zaparkowany wewnątrz dużego magazynu pojazd rozładowuje się przyciskiem terminala; towary, które się nie zmieszczą, zostają w bagażniku.
+Kamieniołom i tartak są dostępne przy każdej rozwijanej wiosce, około 105 m od palisady. Kamieniołom daje Stone (0,8/h), tartak Log (0,8/h), Timber (0,5/h) i Lumber (0,3/h), przed wpływem pracowników i prądu. Kopalnia wymaga lokalnego złoża: wydobywa tylko przypisany metal (Fe, Cu, Pb, Ni) albo węgiel (C), 0,6 skrzyni/h, dodatkowo przy żelazie/miedzi 0,3 grudki Iron Ore/Copper Ore na godzinę. Ropa występuje przy części wiosek; szyb daje Crude Oil (0,7/h). Wydobyte wcześniej zapasy zostają dostępne, nawet gdy stary typ kopalni produkował kilka surowców. Paliwo z nowej rafinerii powstaje z jednej skrzyni Crude Oil na jeden Fuel Canister, najwyżej co 2 godziny czasu gry, dopóki jest wsad i miejsce w zapasie. Wydobycie zależy od dostępu do prądu. Przetwórnia żywności (młyn, piekarnia, mleczarnia, wędzarnia; po elektrowni i dwóch farmach, 3 etaty, 8 kW) sprawia, że zboże, ziemniaki, mleko i mięso żywią o 35% więcej ludzi, dopóki ma obsadę. Każdy obiekt osady potrzebuje robotników (od 0.141): farma 4, elektrownia 2, przetwórnia 3, kamieniołom 3, tartak 4, kopalnia 4, szyb 2, rafineria 3, zakład 3, stacja 1. Zamówienia u kowala (od 0.142) trwają godziny gry (podstawowe 1 h, z planów 2–5 h): materiały schodzą z zapasów przy zamówieniu, gotową rzecz odbiera się u kowala, najwyżej 3 zamówienia naraz. Wszystkie budowy przyjmują materiały partiami. Zaparkowany wewnątrz dużego magazynu pojazd rozładowuje się przyciskiem terminala; towary, które się nie zmieszczą, zostają w bagażniku.
 
 Spis: 1. Surowce · 2. Przetwarzanie · 3. Budowy · 4. Indeks: gdzie użyć każdego materiału · 5. Surowce bez zastosowania
 
@@ -77,6 +78,7 @@ Każda wioska ma jeden rodzaj zakładu i robi 1–2 towary z jego listy; częś�
 | Stack of Lumber | 46 g | wyrób | wioska drwali (czasem, 65%) |
 | Bale of Flax Fibre | 16 g | tak | — |
 | Bale of Wool | 20 g | tak | — |
+| Bale of Cotton | 16 g | tak | — |
 
 ### 1.3 Plony farm (wybierasz uprawę każdej farmy u starszego)
 
@@ -89,6 +91,7 @@ Każda wioska ma jeden rodzaj zakładu i robi 1–2 towary z jego listy; częś�
 | Cows | Churn of Milk | 3 (× żyzność 0,7–1,3; × 1.6 ze stalowymi pługami) |
 | Flax | Bale of Flax Fibre | 4 (× żyzność 0,7–1,3; × 1.6 ze stalowymi pługami) |
 | Sheep | Bale of Wool | 3 (× żyzność 0,7–1,3; × 1.6 ze stalowymi pługami) |
+| Cotton | Bale of Cotton | 4 (× żyzność 0,7–1,3; × 1.6 ze stalowymi pługami) |
 
 ### 1.4 Rzadkie złoża (przy niektórych wioskach, w udziale od starszego: 1–3 skrzynie dziennie zależnie od zaufania)
 
@@ -125,6 +128,7 @@ Każda wioska ma jeden rodzaj zakładu i robi 1–2 towary z jego listy; częś�
 | Oil Refinery | 2 × Barrel of Crude Oil → 1 × Plastic Resin | 60 min gry |
 | Textile Mill | 2 × Bale of Flax Fibre → 1 × Bolt of Cloth | 60 min gry |
 | Textile Mill | 3 × Bale of Wool → 2 × Bolt of Cloth | 60 min gry |
+| Textile Mill | 2 × Bale of Cotton → 1 × Bolt of Cloth | 60 min gry |
 | Steelworks | 1 × Iron Bars, 1 × Crate of Coal, 1 × Crate of Limestone → 1 × Steel Ingots | 60 min gry |
 | Chemical Works | 1 × Barrel of Crude Oil, 1 × Salt Blocks, 1 × Crate of Sulfur → 2 × Industrial Chemicals | 60 min gry |
 | Polymer Plant | 1 × Barrel of Crude Oil, 1 × Industrial Chemicals → 2 × Plastic Resin | 60 min gry |
@@ -219,6 +223,7 @@ Każda wioska ma jeden rodzaj zakładu i robi 1–2 towary z jego listy; częś�
 | Boiled Eggs | Basket of Eggs | 12 | 5 g |
 | Cup of Milk | Churn of Milk | 10 | 4 g |
 | Cheese | Churn of Milk | 5 | 14 g |
+| Roasted Meat | Crate of Meat | 8 | 20 g |
 
 ### 2.5 Paliwo dla elektrowni
 
@@ -393,6 +398,7 @@ Materiały biorą się z hali wioski; złoto płacisz ze swojej sakiewki (opłat
 | Ancient Alloy | 6 L | przetwarzanie: Old Precision Works → Precision Components; kowal → Powered Exoskeleton; odbudowa: Old Precision Works; Rydwan: Hull Plating; Rydwan: Main Engines; Rydwan: Heat Shield |
 | Auto Turret | 16 L | budowa: Auto Turret |
 | Automation Units | 12 L | kowal → Powered Exoskeleton; ulepszenie wioski: Automated Site |
+| Bale of Cotton | 16 L | przetwarzanie: Textile Mill → Bolt of Cloth |
 | Bale of Flax Fibre | 16 L | przetwarzanie: Textile Mill → Bolt of Cloth |
 | Bale of Wool | 18 L | przetwarzanie: Textile Mill → Bolt of Cloth |
 | Barrel of Crude Oil | 14 L | przetwarzanie: Oil Refinery → Fuel Canister; przetwarzanie: Oil Refinery → Plastic Resin; przetwarzanie: Chemical Works → Industrial Chemicals; przetwarzanie: Polymer Plant → Plastic Resin |
@@ -412,6 +418,7 @@ Materiały biorą się z hali wioski; złoto płacisz ze swojej sakiewki (opłat
 | Crate of Lead Ore | 8 L | przetwarzanie: Smelter → Lead Ingots |
 | Crate of Limestone | 10 L | przetwarzanie: Cement Works → Sack of Cement; przetwarzanie: Steelworks → Steel Ingots |
 | Crate of Lithium Brine Salt | 10 L | przetwarzanie: Old Battery Plant → Power Cells |
+| Crate of Meat | 16 L | sklep spożywczy → Roasted Meat |
 | Crate of Nickel Ore | 8 L | przetwarzanie: Alloy Foundry → Advanced Alloy; przetwarzanie: Old Battery Plant → Power Cells; przetwarzanie: Old Alloy Complex → Ancient Alloy |
 | Crate of Rare Earths | 8 L | przetwarzanie: Old Chip Foundry → Microchips; przetwarzanie: Old Optical Works → Sensors |
 | Crate of Sulfur | 10 L | przetwarzanie: Chemical Works → Industrial Chemicals; przetwarzanie: Old Propellant Plant → Rocket Propellant |

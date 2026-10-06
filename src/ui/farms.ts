@@ -6,7 +6,8 @@ import { GRIDHOLM_ID } from '../gen/regions';
 import { FARM, UPGRADE, UNPOWERED, CROPS, CROP_KINDS, cropOf, farmYield, type Crop, farmsOf, upgradedOf, farmPlan, farmProblem, upgradePlan, handOverFarm, handOverUpgrade, farmsKw, soil, farmPeople } from '../gen/farms';
 import { farmPower } from '../gen/energy';
 import { syncFarmVillage } from '../world/farms';
-import { peopleAt, targetNow } from '../gen/people';
+import { peopleAt, targetNow, workersAt } from '../gen/people';
+import { progressive } from '../gen/settlement';
 import { stockHas, stockTake, stockAt } from './stock';
 import { settleOwn, anchorNew } from '../gen/hall';
 import { findPoi } from '../gen/regions';
@@ -29,12 +30,12 @@ export function farmsHTML(town: string, head: string, msg = ''): string {
   s += `<br><span style="opacity:.8">${now} people live here${Math.abs(tg - now) >= 1 ? `, ${tg > now ? 'growing' : 'shrinking'} to ${tg}` : ''}. The soil is ${sl > 1.1 ? 'rich' : sl < 0.9 ? 'poor' : 'fair'}: each farm feeds ${farmPeople(seed)} more${up || c.tech[UPGRADE.tech] !== undefined ? `, ${Math.round(farmPeople(seed) * UPGRADE.mult)} with steel ploughs` : ''}.</span>`;
   if (n) {
     const p = farmPower(c.world, poi, seed, st, c.time), kw = farmsKw(st);
-    s += `<br><span style="opacity:.8">The farms draw ${kw} kW (${FARM.kw} each, ${UPGRADE.kw} with pumps), before any works. Over the last day they got ${Math.round(p * 100)}% of it${p < 0.95 ? `: without power they feed only ${Math.round(UNPOWERED * 100)}% of what they could. A power station would help` : ''}.</span>`;
+    s += `<br><span style="opacity:.8">The farms draw ${kw} kW (${FARM.kw} each, ${UPGRADE.kw} with pumps), before any works. Over the last day they got ${Math.round(p * 100)}% of it${p < 0.95 ? (progressive(st) ? ': the steel ploughs\' pumps need it, without power those farms yield no more than plain ones. A power station would help' : `: without power they feed only ${Math.round(UNPOWERED * 100)}% of what they could. A power station would help`) : ''}.</span>`;
   }
   s += '</div>';
   // what each farm grows, and the choice
   if (n) {
-    const fy = farmYield(seed, st), sk = stockAt(v.id);
+    const fy = progressive(st) ? farmYield(seed, st, workersAt(seed, v.id === GRIDHOLM_ID, st, c.time), farmPower(c.world, findPoi(c.world, v.id)!, seed, st, c.time)) : farmYield(seed, st), sk = stockAt(v.id);
     s += `<div class="say" style="margin:8px 0 0">What the farms grow (the harvest goes into the village hall)</div>`;
     for (let i = 0; i < n; i++) {
       const cr = cropOf(st, i), out = CROPS[cr].out;

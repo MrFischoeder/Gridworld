@@ -6,7 +6,7 @@ import { allVillages, poisNear, GRIDHOLM_ID, worldDist, type Poi } from './regio
 import { villageDeposits, ORES, type Deposits } from './resource-sites';
 export { RESOURCE_PLOTS } from './resource-sites';
 
-export type Project = 'warehouse' | 'power' | 'comms' | 'quarry' | 'mine' | 'lumber' | 'oil' | 'refinery';
+export type Project = 'warehouse' | 'power' | 'comms' | 'quarry' | 'mine' | 'lumber' | 'oil' | 'refinery' | 'foodworks';
 export interface SettlementState {
   v: 1;
   done?: Partial<Record<Project, boolean>>;
@@ -27,6 +27,7 @@ export const PROJECTS: Record<Project, { name: string; needs: [ItemKey, number][
   lumber: { name: 'Sawmill', needs: [['log', 20], ['stone', 10], ['scrap', 8]], description: 'Build the marked timber works. It supplies timber and sawn lumber.' },
   oil: { name: 'Oil well', needs: [['scrap', 16], ['wire', 8], ['planks', 12]], description: 'Build a pump at the natural oil seep. Crude oil collects in village stock.' },
   refinery: { name: 'Oil refinery', needs: [['scrap', 24], ['circuit', 4], ['wire', 12], ['planks', 18]], description: 'Build a refinery beside the oil well. It consumes crude from village stock to make fuel.' },
+  foodworks: { name: 'Food processing house', needs: [['log', 14], ['stone', 10], ['planks', 12], ['nails', 16], ['scrap', 6]], description: 'Build a mill, a bakery, a dairy and a smokehouse on the staked plot about 100 metres south-west of the village. While its crew works, grain, potatoes, milk and meat feed a third more people, so the same fields keep a bigger village.' },
 };
 /** Saves predating deposit metadata keep their commissioned extraction sites. */
 export const depositsOf = (s: TownState | undefined): Deposits => s?.settlement?.deposits ?? { ore: 'iron', oil: true };
@@ -45,6 +46,7 @@ export function projectProblem(s: TownState | undefined, k: Project): string {
   if (k === 'power') return projectDone(s, 'warehouse') ? '' : 'Build the vehicle warehouse first.';
   if (k === 'quarry' || k === 'mine' || k === 'lumber' || k === 'oil') return projectDone(s, 'power') ? '' : 'Build the village power plant first.';
   if (k === 'refinery') return projectDone(s, 'oil') ? '' : 'Build the oil well first.';
+  if (k === 'foodworks') return projectDone(s, 'power') && (s?.farms ?? 0) >= 2 ? '' : 'Build the village power plant and two farms first.';
   return '';
 }
 export function projectPlan(s: TownState | undefined, k: Project) {
@@ -106,6 +108,7 @@ export function tutorialStep(s: TownState | undefined): { title: string; text: s
   if ((s?.farms ?? 0) < 2) return { title: 'Build the second farm', text: 'Extend food production and repair more homes with a second farm.', farm: 2 };
   for (const k of ['warehouse', 'power', 'quarry', 'lumber', 'mine', 'oil', 'refinery'] as Project[]) if (projectAvailable(s, k) && !projectDone(s, k)) return { title: PROJECTS[k].name, text: PROJECTS[k].description, project: k };
   if ((s?.farms ?? 0) < 3) return { title: 'Build the third farm', text: 'Finish the food supply for our growing settlement.', farm: 3 };
+  if (!projectDone(s, 'foodworks')) return { title: PROJECTS.foodworks.name, text: PROJECTS.foodworks.description, project: 'foodworks' };
   return { title: 'A thriving settlement', text: 'Our homes, farms and industry are restored. You can now expand the village with advanced works and improvements.' };
 }
 /** Crates per game hour. Refineries are handled by the runtime so actual crude is consumed. */

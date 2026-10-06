@@ -3,6 +3,13 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.142.0', date: '2026-10-06', title: 'Fields and the forge', notes: [
+    'A new farm crop: Cotton, a fibre for the textile mill (2 bales make a bolt of cloth), sold on the market like flax and wool.',
+    'Livestock now give meat as well: cows milk and meat, hens eggs and a little meat. Crates of meat go to the village stores, feed the villagers well and the food shop roasts them.',
+    'New settlements can build a Food processing house (a mill, a bakery, a dairy and a smokehouse) on a staked plot south-west of the village, once they have their power plant and two farms. While its 3 workers are at it, grain, potatoes, milk and meat feed a third more people, so the same fields keep a bigger village.',
+    'In a new settlement the steel ploughs\' pumps need power: without it those farms yield no more than plain ones.',
+    'Work at the forge now takes time. Order it, and the blacksmith takes the materials from the village stores and sets to work: an hour for the basics, two to five for the work of the old plans. Go about your business and come back to collect it (you are told when it is ready). Up to three pieces of work at once.',
+  ] },
   { v: '0.141.0', date: '2026-10-06', title: 'Hands and bread', notes: [
     'New settlements now keep count of their people the way a village would. Ask the elder "How is the village doing?" (or read the village computer): population, workers at work, free workers, homes, food security and the development level, who works where and what holds the village back.',
     'Every farm, yard and works needs workers: a farm 4, the power plant 2, the stone quarry 3, the sawmill 4, the mine 4, the oil well 2, the refinery 3, a processing works 3 and a power station 1. Six in ten villagers work, and they go to the farms first, then power, the yards, the refinery, the works and the stations. A farm or a yard short of hands yields less; a works or a station short of its whole crew stands still ("short of hands"). You can see the workers at the quarry, the sawmill, the mine and the oil well.',

@@ -104,6 +104,8 @@ export const ITEMS = {
   leadbar: { name: 'Lead Ingots', ab: 'PBI', type: 'good', desc: 'processed good: soft, heavy lead smelted from lead ore. For batteries and shielding', stack: 5 },
   fibre: { name: 'Bale of Flax Fibre', ab: 'FLX', type: 'good', desc: 'trade good: retted and combed flax from a village farm; a textile mill spins and weaves it into cloth', stack: 5 },
   wool: { name: 'Bale of Wool', ab: 'WOL', type: 'good', desc: 'trade good: shorn fleece from a village\'s sheep; a textile mill spins it into cloth', stack: 5 },
+  cotton: { name: 'Bale of Cotton', ab: 'CTN', type: 'good', desc: 'trade good: ginned cotton from a village farm; a textile mill spins and weaves it into cloth', stack: 5 },
+  meat: { name: 'Crate of Meat', ab: 'MEC', type: 'good', desc: 'salted beef and fowl from a village\'s cows and hens, packed in a cool crate', stack: 5 },
   batteries: { name: 'Basic Batteries', ab: 'BAT', type: 'good', desc: 'processed good: lead-acid cells filled at an electronics shop. They keep lamps, radios and machines going', stack: 5 },
   medkit: { name: 'Medkit', ab: '+', type: 'cons', desc: 'restores 50 HP (H key)', stack: 5 },
   key: { name: 'Access Key', ab: 'KEY', type: 'key', desc: 'Opens one locked door. Stand at the door and press E.', stack: 9 },
@@ -202,7 +204,7 @@ export const BULK: Record<ItemKey, [kg: number, litres: number]> = {
   grain: [12, 14], timber: [16, 20], ore: [18, 10], carrots: [10, 14], potatoes: [12, 14], coal: [16, 10], copper: [18, 10], crude: [16, 14], salt: [10, 7], fish: [7, 10], cloth: [5, 9], tools: [14, 14], meds: [4, 7], fuel: [11, 12], tech: [6, 8],
   eggs: [6, 10], milk: [22, 20], microchip: [6, 6], powercell: [14, 8], sensor: [5, 6], ancalloy: [16, 6], ceramics: [12, 10], precision: [10, 6], automation: [24, 12], nfuel: [30, 8], bauxite: [20, 10], sulfur: [14, 10], lithium: [12, 10], rareearth: [22, 8], uranium: [25, 8],
   sand: [20, 12], steel: [20, 8], copperbar: [20, 8], plastic: [12, 14], glass: [14, 12], cable: [10, 10], boards: [5, 8], parts: [15, 12], alloy: [20, 8], propellant: [15, 14],
-  clay: [22, 10], limestone: [22, 10], lead: [24, 8], nickel: [22, 8], lumber: [14, 16], iron: [20, 8], bricks: [24, 12], cement: [25, 16], chems: [18, 16], aluminium: [8, 8], leadbar: [26, 6], batteries: [16, 10], fibre: [10, 16], wool: [8, 18],
+  clay: [22, 10], limestone: [22, 10], lead: [24, 8], nickel: [22, 8], lumber: [14, 16], iron: [20, 8], bricks: [24, 12], cement: [25, 16], chems: [18, 16], aluminium: [8, 8], leadbar: [26, 6], batteries: [16, 10], fibre: [10, 16], wool: [8, 18], cotton: [9, 16], meat: [20, 16],
   wheelL: [12, 22], wheelH: [28, 36], engine: [8, 6], turbo: [6, 5], drivetrain: [9, 6], scanner: [0.4, 0.3], eguard: [5, 4], plating: [7, 5], cannon: [25, 30],
   reflex: [0.3, 0.3], scope: [0.8, 1], barL: [1.2, 1], barR: [1, 0.8], barS: [0.9, 0.8], magX: [0.5, 0.4], magD: [1.2, 1],
 };

@@ -41,7 +41,8 @@ describe('village extraction landmarks', () => {
     expect(buildProject(s, 'oil', () => 999).built).toBe(false); expect(tutorialStep(s)?.project).toBe('quarry');
     for (const k of ['quarry', 'lumber'] as const) expect(buildProject(s, k, () => 999).built).toBe(true);
     expect(localIndustryDone(s)).toBe(true); expect(farmProblem(s)).toBe(''); expect(tutorialStep(s)?.farm).toBe(3);
-    s.farms = 3; expect(tutorialStep(s)?.title).toBe('A thriving settlement');
+    s.farms = 3; expect(tutorialStep(s)?.project).toBe('foodworks');
+    expect(buildProject(s, 'foodworks', () => 999).built).toBe(true); expect(tutorialStep(s)?.title).toBe('A thriving settlement');
   });
   it('produces stone and wood everywhere after building, and only the ore named by the local seam', () => {
     const s = developed('copper'), seed = villageSeed(world, home);

@@ -17,7 +17,7 @@ import { profileOf, type Good } from './market';
 import { production, industryOf, industryProject } from './industry';
 import { farmYield, eatenShare, FOOD } from './farms';
 import { fillOf } from './workforce';
-import { sitePower } from './energy';
+import { sitePower, farmPower } from './energy';
 import { staffing, peopleAt, workersAt } from './people';
 import { GRIDHOLM_ID } from './regions';
 
@@ -83,10 +83,10 @@ export interface Stock {
   full: boolean;
 }
 export function stockOf(world: number, v: Poi, seed: number, s: TownState | undefined, now: number): Stock {
-  const home = v.id === GRIDHOLM_ID, settled = progressive(s), workers = settled ? workersAt(seed, home, s, now) : 0;
-  const makes = settled && industryProject(industryOf(world, v, seed)) ? [] : profileOf(world, v, seed).makes, prod = production(world, v, seed, s, now), m = Math.max(1, makes.length), fy = farmYield(seed, s, settled ? workers : undefined);
+  const home = v.id === GRIDHOLM_ID, settled = progressive(s), workers = settled ? workersAt(seed, home, s, now) : 0, fp = settled ? farmPower(world, v, seed, s, now) : 1;
+  const makes = settled && industryProject(industryOf(world, v, seed)) ? [] : profileOf(world, v, seed).makes, prod = production(world, v, seed, s, now), m = Math.max(1, makes.length), fy = farmYield(seed, s, settled ? workers : undefined, fp);
   if (settled) { // the people eat their share of the food grown; only the rest reaches the stores
-    const eaten = eatenShare(seed, s, workers, peopleAt(seed, home, s, now));
+    const eaten = eatenShare(seed, s, workers, peopleAt(seed, home, s, now), fp);
     for (const k of Object.keys(fy) as ItemKey[]) if (FOOD.value[k]) fy[k] = fy[k]! * (1 - eaten);
   }
   const resourcePower = settled ? .5 + .5 * sitePower(world, v, seed, s, now) : 1;

@@ -21,6 +21,8 @@ export function villageDeposits(world: number, vid: number): Deposits {
 export const RESOURCE_PLOTS = {
   quarry: { x: -105, z: 36 }, lumber: { x: 177, z: 36 }, mine: { x: 36, z: 177 },
   oil: { x: 36, z: -105 }, refinery: { x: 72, z: -116 },
+  // (0.142) south-west, clear of the quarry, the farm corners and the side sites
+  foodworks: { x: -80, z: 140 },
 } as const;
 export type ResourceProject = keyof typeof RESOURCE_PLOTS;
 export const RESOURCE_YARD = { halfX: 18, halfZ: 14 };

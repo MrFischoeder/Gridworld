@@ -108,6 +108,8 @@ export interface Char {
   /** New-world settlement rules; 0 preserves settlements in older saves. */
   settlementRules: 0 | 1;
   settlementRewards?: string[];
+  /** Work ordered from village craftsmen (ui/orders.ts): world, village, order (index in data/orders.ts ORDERS), pieces still to collect, game time ready. Yours alone (not shared). */
+  forge?: { w: number; v: number; i: number; n: number; done: number; told?: 1 }[];
   /** The markets (gen/market.ts): how trades have shifted each village's stocks. On the server this is shared by everyone. */
   market: MarketState;
   /** Prices you have seen, per village id: when, the village's name and place, and [buy, sell] per good. */

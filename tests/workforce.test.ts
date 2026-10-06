@@ -57,3 +57,25 @@ describe('settlement food (gen/farms.ts)', () => {
     expect(v.food.days).toBeCloseTo(6 / v.food.need, 6);
   });
 });
+
+describe('farming document (0.142)', () => {
+  const seed = 77;
+  it('livestock give meat beside their eggs or milk; cotton is a fibre crop', () => {
+    const y = farmYield(seed, settled({ farms: 2, crops: ['cows', 'hens'] }), 8);
+    expect(y.milk).toBeGreaterThan(0); expect(y.eggs).toBeGreaterThan(0); expect(y.meat).toBeGreaterThan(0);
+    expect(farmYield(seed, settled({ farms: 1, crops: ['cotton'] }), 4).cotton).toBeGreaterThan(0);
+    expect(foodMade(seed, settled({ farms: 1, crops: ['cotton'] }), 4)).toBe(0);
+  });
+  it('the food processing house makes the same fields feed more, while its crew works', () => {
+    const base = settled({ farms: 2, settlement: { v: 1, supplies: true, done: { power: true } } });
+    const proc = settled({ farms: 2, settlement: { v: 1, supplies: true, done: { power: true, foodworks: true } } });
+    expect(foodMade(seed, proc, 8 + 2)).toBeCloseTo(foodMade(seed, base, 10), 6); // farms and power manned, no hands for it
+    expect(foodMade(seed, proc, 8 + 2 + JOBS.foodworks)).toBeGreaterThan(foodMade(seed, base, 13) * 1.3);
+    expect(settleTarget(seed, proc)).toBeGreaterThanOrEqual(settleTarget(seed, base));
+  });
+  it('steel ploughs need their pumps powered in a settlement', () => {
+    const s = settled({ farms: 1, fup: 1 });
+    expect(foodMade(seed, s, 4, 1)).toBeGreaterThan(foodMade(seed, s, 4, 0) * 1.5);
+    expect(foodMade(seed, s, 4, 0)).toBeCloseTo(foodMade(seed, settled({ farms: 1 }), 4), 6);
+  });
+});

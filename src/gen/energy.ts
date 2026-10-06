@@ -118,7 +118,7 @@ export const SITE_UNPOWERED = 0.5;
 /** What the site draws now (nothing while a refinery is not built). */
 export function siteKw(world: number, v: Poi, seed: number, s: TownState | undefined): number {
   const k = industryOf(world, v, seed);
-  return (siteBuilt(k, s) && !(progressive(s) && industryProject(k)) ? SITE_KW[k] : 0) + (progressive(s) ? (projectDone(s, 'quarry') ? 6 : 0) + (projectDone(s, 'mine') ? 12 : 0) + (projectDone(s, 'lumber') ? 8 : 0) + (projectDone(s, 'oil') ? 10 : 0) + (projectDone(s, 'refinery') ? 30 : 0) : 0);
+  return (siteBuilt(k, s) && !(progressive(s) && industryProject(k)) ? SITE_KW[k] : 0) + (progressive(s) ? (projectDone(s, 'quarry') ? 6 : 0) + (projectDone(s, 'mine') ? 12 : 0) + (projectDone(s, 'lumber') ? 8 : 0) + (projectDone(s, 'oil') ? 10 : 0) + (projectDone(s, 'refinery') ? 30 : 0) + (projectDone(s, 'foodworks') ? 8 : 0) : 0);
 }
 /** The renewables' rating and their output now (kW): the own plant if solar or wind, the solar and wind farms that are on (for the battery bank). */
 function renewables(world: number, v: Poi, seed: number, s: TownState | undefined, t: number): [number, number] {
@@ -181,10 +181,19 @@ export function sitePower(world: number, v: Poi, seed: number, s: TownState | un
   return p;
 }
 /** The share of their power the farms got over the day before t (12 samples, 2 h apart): solar nights and wind lulls average out. */
+const farmCache = new Map<string, number>();
 export function farmPower(world: number, v: Poi, seed: number, s: TownState | undefined, t: number): number {
   if (!farmsKw(s)) return 1;
-  let a = 0; for (let k = 0; k < 12; k++) a += balance(world, v, seed, s, t - k * 120).farmsPowered;
-  return a / 12;
+  // cached like sitePower: per game hour and per state of the village's power and farms
+  const key = `${world}:${v.id}:${Math.floor(t / 60)}:${s ? JSON.stringify([s.stations, s.fixed, s.hurt, s.pup, s.farms, s.fup, s.built, s.imp, s.settlement?.done, s.plants?.length, s.people]) : ''}`;
+  let p = farmCache.get(key);
+  if (p === undefined) {
+    p = 0; for (let k = 0; k < 12; k++) p += balance(world, v, seed, s, t - k * 120).farmsPowered;
+    p /= 12;
+    if (farmCache.size > 2000) farmCache.clear();
+    farmCache.set(key, p);
+  }
+  return p;
 }
 /** Is works i of the village powered at time t? (For gen/plants.ts runPlant.) */
 export const poweredAt = (world: number, v: Poi, seed: number, s: TownState | undefined, i: number) => (t: number) => balance(world, v, seed, s, t).powered[i] ?? false;

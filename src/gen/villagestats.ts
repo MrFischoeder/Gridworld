@@ -21,17 +21,17 @@ export interface VillageStats {
   /** Why it does not grow (or '' while it does / is full). */
   limit: string;
 }
-/** `stored` = crate value of food in the village's stores (gen/hall.ts stock), for the days of reserve. */
-export function villageStats(seed: number, home: boolean, s: TownState | undefined, now: number, stored = 0): VillageStats {
+/** `stored` = crate value of food in the village's stores (gen/hall.ts stock), for the days of reserve; `power` = what the farms' pumps got (gen/energy.ts farmPower). */
+export function villageStats(seed: number, home: boolean, s: TownState | undefined, now: number, stored = 0, power = 1): VillageStats {
   const settled = progressive(s), people = peopleAt(seed, home, s, now), workers = workersAt(seed, home, s, now);
   const a = assign(s, workers), dev = development(s);
-  const made = settled ? foodMade(seed, s, workers) * 24 : 0, need = settled ? foodNeed(people) * 24 : 0;
+  const made = settled ? foodMade(seed, s, workers, power) * 24 : 0, need = settled ? foodNeed(people) * 24 : 0;
   const ratio = need > 0 ? made / need : made > 0 || people <= SETTLEMENT_START ? Infinity : 0;
   const state: FoodState = ratio < FOOD.short ? 'short' : ratio < FOOD.margin ? 'tight' : 'secure';
   const target = Math.round(targetNow(seed, home, s)), housing = settled ? housingCapacity(s) : Math.round(people);
   let limit = '';
   if (settled) {
-    const fedAll = peopleFed(seed, s, Math.floor(housing * 0.6)), best = settleTarget(seed, s);
+    const fedAll = peopleFed(seed, s, Math.floor(housing * 0.6), power), best = settleTarget(seed, s, power);
     if (best >= housing) limit = Math.round(people) >= housing ? 'Every home is taken: develop the village so more houses are repaired.' : '';
     else if ((s?.farms ?? 0) === 0) limit = 'No farms: only the few who live off the wilds stay.';
     else if (SETTLEMENT_START + (fedAll - SETTLEMENT_START) / FOOD.margin < housing) limit = 'Not enough food for more families: build or improve farms, or grow food crops instead of flax and wool.';
@@ -39,7 +39,7 @@ export function villageStats(seed: number, home: boolean, s: TownState | undefin
   }
   return {
     settled, people, target, housing, workers, assigned: a.used, free: a.free, jobs: a.jobs, posts: a.posts,
-    food: { made, need, fed: settled ? peopleFed(seed, s, workers) : people, ratio, state, days: need > 0 ? stored / need : Infinity },
+    food: { made, need, fed: settled ? peopleFed(seed, s, workers, power) : people, ratio, state, days: need > 0 ? stored / need : Infinity },
     development: dev, devName: DEV_NAMES[Math.max(0, Math.min(6, dev))], limit,
   };
 }

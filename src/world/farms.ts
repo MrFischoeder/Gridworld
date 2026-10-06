@@ -7,7 +7,8 @@ import { reloadStruct } from './overworld';
 import * as THREE from 'three';
 import { G } from '../game';
 import { PropBatch } from './props';
-import { farmsOf, farmPlot, farmTarget, upgradedOf, cropOf } from '../gen/farms';
+import { farmsOf, farmPlot, farmTarget, upgradedOf, cropOf, farmYield } from '../gen/farms';
+import type { ItemKey } from '../data/items';
 import { farmPower } from '../gen/energy';
 import { retarget } from '../gen/people';
 import { findPoi, villageSeed, GRIDHOLM_ID } from '../gen/regions';
@@ -15,7 +16,7 @@ import { OW } from './overworld';
 import type { VillageMap } from '../gen/village';
 import type { Terrain } from '../gen/terrain';
 
-const WOOD = 0xb8b060, SOIL = 0x6f8f76, CROP = 0xd8ff7a, GRAIN = 0xe8d880, METAL = 0xa8c8b8, ANIMAL = 0xe8e0c0, FLAX = 0x7ab8ff;
+const WOOD = 0xb8b060, SOIL = 0x6f8f76, CROP = 0xd8ff7a, GRAIN = 0xe8d880, METAL = 0xa8c8b8, ANIMAL = 0xe8e0c0, FLAX = 0x7ab8ff, BOLL = 0xf4f4ec;
 
 export function drawFarms(vm: VillageMap, T: Terrain, id: number): THREE.Group {
   const n = farmsOf(G.char.towns[id]), up = upgradedOf(G.char.towns[id]), pb = new PropBatch();
@@ -37,6 +38,16 @@ export function drawFarms(vm: VillageMap, T: Terrain, id: number): THREE.Group {
         for (let z = z0 + 1.1; z < z1 - 0.8; z += 0.7) {
           const [px, py, pz] = at(x, z);
           pb.seg(CROP, [px, py, pz], [px - 0.04, py + 1.05, pz]); pb.seg(FLAX, [px - 0.12, py + 1.05, pz], [px + 0.04, py + 1.12, pz]);
+        }
+      }
+    } else if (crop === 'cotton') {
+      // knee-high bushes in rows, white bolls on them
+      for (let x = x0 + 1.2; x < x1 - 1; x += 1.4) {
+        pb.line(SOIL, at(x, z0 + 0.8, 0.03), at(x, (z0 + z1) / 2, 0.03), at(x, z1 - 0.8, 0.03));
+        for (let z = z0 + 1.1; z < z1 - 0.8; z += 1) {
+          const [px, py, pz] = at(x, z);
+          pb.seg(CROP, [px, py, pz], [px, py + 0.7, pz]); pb.seg(CROP, [px, py + 0.35, pz], [px - 0.25, py + 0.6, pz]); pb.seg(CROP, [px, py + 0.4, pz], [px + 0.25, py + 0.65, pz]);
+          for (const [bx, by] of [[-0.25, 0.62], [0.25, 0.67], [0, 0.72]]) { pb.seg(BOLL, [px + bx - 0.07, py + by, pz], [px + bx + 0.07, py + by, pz]); pb.seg(BOLL, [px + bx, py + by - 0.06, pz], [px + bx, py + by + 0.06, pz]); }
         }
       }
     } else if (crop === 'wheat' || crop === 'carrots' || crop === 'potatoes') {
@@ -100,6 +111,9 @@ export function syncFarmVillage(vid: number) {
   if (!st || !poi || (!farmsOf(st) && !progressive(st))) return; // a settlement's target also follows its homes and hands
   const seed = villageSeed(c.world, poi), home = vid === GRIDHOLM_ID;
   retarget(st, seed, home, c.time, farmTarget(seed, home, st, farmPower(c.world, poi, seed, st, c.time)));
+  // a good the farms grow that has no anchor yet (meat from livestock kept before 0.142) starts counting now (only
+  // farm goods: an established village's industry goods start from their hashed fill and must keep it)
+  for (const k of Object.keys(farmYield(seed, st)) as ItemKey[]) if (!st.own?.[k]) (st.own ??= {})[k] = { n: 0, t: c.time };
 }
 /** Every few seconds for the loaded villages (main loop). */
 export function updateFarms(dt: number) {

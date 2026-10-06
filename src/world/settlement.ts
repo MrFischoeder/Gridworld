@@ -22,7 +22,7 @@ import { assign, JOBS } from '../gen/workforce';
 import { workersAt } from '../gen/people';
 import { villageSeed } from '../gen/regions';
 
-const METAL = 0xa8c8b8, WOOD = 0xb8b060;
+const METAL = 0xa8c8b8, WOOD = 0xb8b060, SAIL = 0xe8e0c0;
 const siteBoxes = new Map<number, Box[]>();
 const siteRocks = new Map<number, RockShape[]>(), siteMeshes = new Map<number, THREE.Group>();
 const oilMotions = new Map<number, OilMotion>();
@@ -31,10 +31,10 @@ let oilClock = 0;
 interface Hand { f: Figure; x: number; z: number; face: number; phase: number }
 interface Crew { id: number; yard: string; T: Terrain; hands: Hand[]; got: number }
 const crews = new Map<number, Crew[]>();
-const KIT: Record<string, Kit> = { quarry: 'pick', mine: 'pick', lumber: 'hammer', oil: 'hammer', refinery: 'hammer' };
+const KIT: Record<string, Kit> = { quarry: 'pick', mine: 'pick', lumber: 'hammer', oil: 'hammer', refinery: 'hammer', foodworks: 'carry' };
 const WORKER = 0xdce8ff;
 /** Where a yard's hands stand: [x offset of the work's middle, radius, first angle] (yard-local; they go round from there). */
-const YARD_RING: Record<string, [number, number, number]> = { quarry: [-4, 12.5, 1.7], mine: [0, 8, 1.6], lumber: [0, 8, 0.4], oil: [0, 4.2, 0.8], refinery: [0, 5.5, 1.2] };
+const YARD_RING: Record<string, [number, number, number]> = { quarry: [-4, 12.5, 1.7], mine: [0, 8, 1.6], lumber: [0, 8, 0.4], oil: [0, 4.2, 0.8], refinery: [0, 5.5, 1.2], foodworks: [-1, 8.5, 1.9] };
 let crewT = 0;
 const tmpV = new THREE.Vector3();
 export function updateSettlementSites(dt: number) {
@@ -127,6 +127,15 @@ export function drawSettlementSites(vm: VillageMap, T: Terrain, id: number): THR
     } else if (k === 'oil') {
       for (const dx of [-2, 2]) for (const dz of [-2, 2]) pb.seg(METAL, [x + dx, y, z + dz], [x + dx * .25, y + 8, z + dz * .25]);
       box(x - 3, y + 4, z - .25, x + 3, y + 4.5, z + .25, METAL); pb.seg(METAL, [x + 3, y + 4, z], [x + 3, y + .1, z]);
+    } else if (k === 'foodworks') {
+      // the mill-and-bakery hall with a smokehouse chimney, a windmill tower with its sails, a grain silo, sacks
+      box(x - 7, y, z - 4, x + 5, y + 3.4, z + 4, WOOD); pb.gableRoof(x - 7.6, z - 4.6, x + 5.6, z + 4.6, y + 3.4, 1.8, WOOD);
+      box(x - 6, y, z - 1, x - 5, y + 6.2, z, METAL);
+      box(x + 7, y, z - 2, x + 10, y + 7, z + 1, WOOD); pb.pyramid(x + 6.6, z - 2.4, x + 10.4, z + 1.4, y + 7, 1.6, WOOD);
+      const hub = [x + 8.5, y + 6, z + 1.25];
+      for (let i = 0; i < 4; i++) { const a = i * Math.PI / 2 + 0.4; pb.seg(SAIL, hub, [hub[0] + Math.cos(a) * 4.2, hub[1] + Math.sin(a) * 4.2, hub[2]]); pb.seg(SAIL, [hub[0] + Math.cos(a) * 1.2, hub[1] + Math.sin(a) * 1.2, hub[2]], [hub[0] + Math.cos(a + 0.25) * 4, hub[1] + Math.sin(a + 0.25) * 4, hub[2]]); }
+      box(x - 1, y, z + 6, x + 2, y + 6.5, z + 9, METAL); pb.cone(x + 0.5, y + 6.5, z + 7.5, 2.1, 1.4, METAL);
+      for (let i = 0; i < 4; i++) box(x + 3 + (i % 2) * 0.9, y, z + 5.5 + (i >> 1) * 0.9, x + 3.8 + (i % 2) * 0.9, y + 0.5, z + 6.3 + (i >> 1) * 0.9, 0xd8d0a0);
     } else {
       for (const dx of [-3, 3]) box(x + dx - 1, y, z - 2, x + dx + 1, y + 6, z + 2, METAL);
       box(x - .7, y, z - .7, x + .7, y + 9, z + .7, METAL);

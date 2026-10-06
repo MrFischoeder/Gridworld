@@ -12,6 +12,7 @@ export const MENU: Dish[] = [
   { k: 'eggsB', price: 5, from: ['eggs'], per: 12 },
   { k: 'milkC', price: 4, from: ['milk'], per: 10 },
   { k: 'cheese', price: 14, from: ['milk'], per: 5 },
+  { k: 'meatC', price: 20, from: ['meat'], per: 8 },
 ];
 /** The village's stock as the shop sees it. */
 export interface Larder { has(k: ItemKey): number; take(k: ItemKey, n: number): number }
