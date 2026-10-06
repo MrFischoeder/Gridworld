@@ -14,7 +14,7 @@
 // Protocol (JSON text frames), client → server:
 //   {t:'hello', name, ver, world, time, room?, create?: {name, world}}   first message; `room` picks a dedicated room,
 //                                                                          `create` makes one; hosted: world / time for the host
-//   {t:'state', p:[x,y,z], yaw, pitch, loc, held, mv, away, cars, ride?, gun?, time?}   cars: the player's own vehicles (net/client.ts PeerCar)   ~10 times a second; time from a hosted room's host only
+//   {t:'state', p:[x,y,z], yaw, pitch, loc, held, mv, away, cars, ride?, gun?, boat?, time?}   boat: [boat id, u, v, h, seat] aboard one of the boats   cars: the player's own vehicles (net/client.ts PeerCar)   ~10 times a second; time from a hosted room's host only
 //   {t:'chat', text}
 //   {t:'drop', k, n, c?, p:[x,y,z], loc, auto?}   auto: loot that anyone takes by walking over it (kept `MP.lootTtl` h)
 //   (was) {t:'drop', k, n, c?, p:[x,y,z], loc}   an item put down at your feet (taken out of your own kit first)
@@ -49,9 +49,9 @@ import { GateConnections, GATE_TRANSIT_SECONDS } from '../shared/gates.mjs';
 
 export const MP = { path: '/mp', port: 7777, max: 8, rate: 100, nameMax: 20, chatMax: 200, roomName: 28, rooms: 12, roomTtl: 14, cars: 8, drops: 800, dropTtl: 6, lootTtl: 0.5, payload: 4 * 1024 * 1024 };
 /** What players may pass to each other through 'cast' (everyone else in the room) and 'to' (one player). */
-const RELAY = new Set(['foes', 'bolt', 'fhit', 'kill', 'hurt', 'thit']);
+const RELAY = new Set(['foes', 'bolt', 'fhit', 'kill', 'hurt', 'thit', 'boat', 'row']);
 /** Protocol version: a client with another one is refused (the game shows why). */
-export const PROTOCOL = 8;
+export const PROTOCOL = 9;
 
 const clean = (s, n) => String(s ?? '').replace(/[\u0000-\u001f<>]/g, '').trim().slice(0, n);
 const num = (v) => (typeof v === 'number' && Number.isFinite(v) ? v : 0);
@@ -170,7 +170,7 @@ export function createMp(log = (m) => console.log('[mp] ' + m), opts = {}) {
       } else if (m.t === 'state') {
         if (me.trip) return; // Ignore queued movement and seat changes during an accepted transport.
         const previousCars = me.st?.cars, previousIds = me.st?.carIds;
-        me.st = { p: Array.isArray(m.p) ? m.p.slice(0, 3).map(num) : [0, 0, 0], yaw: num(m.yaw), pitch: num(m.pitch), loc: clean(m.loc, 80), held: clean(m.held, 24), mv: !!m.mv, away: !!m.away, cars: Array.isArray(m.cars) ? m.cars.slice(0, MP.cars).filter(Array.isArray).map((c) => c.slice(0, 11).map(num)) : [], ride: Array.isArray(m.ride) ? m.ride.slice(0, 3).map(num) : undefined, gun: typeof m.gun === 'number' ? num(m.gun) : undefined };
+        me.st = { p: Array.isArray(m.p) ? m.p.slice(0, 3).map(num) : [0, 0, 0], yaw: num(m.yaw), pitch: num(m.pitch), loc: clean(m.loc, 80), held: clean(m.held, 24), mv: !!m.mv, away: !!m.away, cars: Array.isArray(m.cars) ? m.cars.slice(0, MP.cars).filter(Array.isArray).map((c) => c.slice(0, 11).map(num)) : [], ride: Array.isArray(m.ride) ? m.ride.slice(0, 3).map(num) : undefined, gun: typeof m.gun === 'number' ? num(m.gun) : undefined, boat: Array.isArray(m.boat) && m.boat.length === 5 ? [clean(String(m.boat[0]), 80), ...m.boat.slice(1).map(num)] : undefined };
         if (Array.isArray(m.carIds)) me.st.carIds = m.carIds.slice(0, MP.cars).map((id) => clean(id, 100));
         // The owner still simulates the vehicle; the server alone grants its seats.
         const seatOK = (car, seat) => car && (car[10] === undefined || car[10] > 0) && Number.isInteger(seat) && seat >= 0 && seat < 3 && (seat !== 2 || !!car[7]);

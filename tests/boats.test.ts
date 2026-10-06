@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { BOATS, KEEL, floats, boatRows, handOverBoat, type BoatBuild } from '../src/gen/boats';
+import { BOATS, KEEL, floats, boatRows, handOverBoat, oarPower, ROW_PAIR, type BoatBuild } from '../src/gen/boats';
 
 describe('boats', () => {
   it('are built bit by bit on the slip', () => {
@@ -69,5 +69,14 @@ describe('the small boat and the ships', () => {
     expect(Math.abs(row.x)).toBeGreaterThan(dock.headW / 2); // beside the head, not on it
     for (const [u, v] of hullPoints('ship')) { const z = ship.z + Math.cos(ship.yaw) * u - Math.sin(ship.yaw) * v; expect(deep(0, z)!).toBeGreaterThanOrEqual(BOATS.ship.draft); }
     expect(launchSpot('ship', dock, () => 0.8)).toBeNull(); // too shallow everywhere
+  });
+  it('row faster with two at the oars, and nowhere pulling against each other', () => {
+    expect(oarPower(1, 0)).toBe(1);
+    expect(oarPower(0, -1)).toBe(-1);
+    expect(oarPower(1, 1)).toBeCloseTo(ROW_PAIR);
+    expect(oarPower(-1, -1)).toBeCloseTo(-ROW_PAIR);
+    expect(oarPower(1, -1)).toBe(0);
+    expect(oarPower(0.5, 0.5)).toBeGreaterThan(oarPower(0.5, 0));
+    expect(BOATS.row.rowers).toBe(2);
   });
 });

@@ -3,6 +3,14 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.140.0', date: '2026-10-06', title: 'Crews', notes: [
+    'Online, several players can now sail one boat or ship together. Whoever holds the oars, the tiller or the wheel steers for everyone; the others see her move as she does and are carried along on deck.',
+    'The rowboat has a second pair of oars. A second player who climbs in takes the aft oars: when both of you pull the same way she goes about half as fast again; pulling against each other gets you nowhere.',
+    'A ship\'s wheel takes one helmsman: while someone holds it, the others can only walk the deck.',
+    'Ships carry rope ladders on both sides amidships: swim to one and press E to climb up onto the deck.',
+    'Gangplanks: when a ship lies still alongside a dock, a bridge or a shore within about three metres, a plank slides out of the gap in her bulwark on that side, so you walk ashore. It comes in again when she gets under way. A new ship is launched alongside the dock\'s head whenever the water allows, and the dock\'s lamp and crate now stand at the inner end of the head, out of the way of her gangway.',
+    'Servers need updating with the game (multiplayer protocol 9).',
+  ] },
   { v: '0.139.0', date: '2026-10-06', title: 'Ships', notes: [
     'Piers are now docks (the Pier Kit is the Dock Kit). Every boat and ship is built on a dock\'s slip and launched alongside it; a ship needs deeper water there.',
     'Two kinds of vessel. The small boat is the rowboat (10 loads in its hold). Brought alongside a dock it can be refitted with a mast and a hide sail (Sailing Skiff) or with an outboard motor (Motor Skiff), 14 loads either way. The old sailboats and motor boats become these skiffs.',

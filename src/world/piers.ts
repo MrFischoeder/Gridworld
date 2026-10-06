@@ -25,7 +25,9 @@ const live = new Map<string, Live>();
 let scanT = 0;
 const revOf = (p: Pier) => (p.done ? 'done' : 'p' + Math.floor(pierProgress(p) * 20));
 /** On the group's +x side (gen's −v): the sign on the beach and the crate on the head. */
-const SIGN = { s: -1.5, v: PIER.w / 2 + 1.2 }, CRATE = { s: -1.6, v: PIER.headW / 2 - 1.1 };
+const SIGN = { s: -1.5, v: PIER.w / 2 + 1.2 }, CRATE = { s: -3.9, v: PIER.headW / 2 - 1.1 }; // the crate and the lamp stand at the head's inner end, clear of a ship's gangway
+/** How far back from the end of the dock the lamp post stands (m). */
+const LAMP_BACK = 3.9;
 
 function draw(p: Pier): THREE.Group {
   const pb = new PropBatch(), prog = pierProgress(p), done = !!p.done, T = OW.terrain!, P = (v: number, y: number, s: number) => [v, y, s];
@@ -52,7 +54,7 @@ function draw(p: Pier): THREE.Group {
     pb.face(P(-PIER.headW / 2, top, p.len), P(PIER.headW / 2, top, p.len), P(PIER.headW / 2, top - 0.2, p.len), P(-PIER.headW / 2, top - 0.2, p.len));
     // bollards at the head's corners, a lamp and the crate
     for (const s of [headAt + 0.5, p.len - 0.5]) for (const v of [-PIER.headW / 2 + 0.35, PIER.headW / 2 - 0.35]) pb.box(v - 0.14, top, s - 0.14, v + 0.14, top + 0.55, s + 0.14, DARK);
-    const lv = -PIER.headW / 2 + 0.35, ls = p.len - 2.5;
+    const lv = -PIER.headW / 2 + 0.35, ls = p.len - LAMP_BACK; // towards the head's inner end, clear of a ship's gangway
     pb.box(lv - 0.07, top, ls - 0.07, lv + 0.07, top + 3.2, ls + 0.07, DARK);
     pb.box(lv - 0.22, top + 3.2, ls - 0.22, lv + 0.22, top + 3.6, ls + 0.22, GOLD);
     const cs = p.len + CRATE.s, cv = CRATE.v;
@@ -119,7 +121,7 @@ export function pierHit(x: number, y: number, z: number, r: number): boolean {
     const [s, v] = pierLocal(l.p, x, z), top = SEA.level + PIER.clear;
     if (y > top + 0.9 || y + 1.6 < top) continue;
     if (Math.abs(s - (l.p.len + CRATE.s)) < 0.45 + r && Math.abs(-v - CRATE.v) < 0.6 + r) return true;
-    if (Math.abs(s - (l.p.len - 2.5)) < 0.07 + r && Math.abs(-v - (-PIER.headW / 2 + 0.35)) < 0.07 + r) return true;
+    if (Math.abs(s - (l.p.len - LAMP_BACK)) < 0.07 + r && Math.abs(-v - (-PIER.headW / 2 + 0.35)) < 0.07 + r) return true;
   }
   return false;
 }

@@ -20,6 +20,10 @@ export interface BoatSpec {
   hold: number;
   /** Where you sit or stand to steer (m from the middle, + towards the bow) and how high the eye is over the water. */
   seat: number; eye: number;
+  /** A small boat's second seat (u), for another player: rowing too where `rowers` is 2, else along for the ride. */
+  seat2?: number;
+  /** How many can row at once (the rowboat: two, each pair of oars adding way). */
+  rowers?: number;
   /** A mast too tall to pass under a bridge. */
   tall?: boolean;
   /** It sails (the wind drives it with the sail up). */
@@ -38,17 +42,17 @@ export interface BoatSpec {
 }
 export const BOATS: Record<BoatKind, BoatSpec> = {
   row: {
-    name: 'Rowboat', len: 4.2, beam: 1.5, draft: 0.35, speed: 3.6, back: 0.5, turn: 0.9, hold: 10, seat: -0.15, eye: 1.0,
+    name: 'Rowboat', len: 4.2, beam: 1.5, draft: 0.35, speed: 3.6, back: 0.5, turn: 0.9, hold: 10, seat: -0.15, eye: 1.0, seat2: -1.5, rowers: 2,
     needs: [['log', 10], ['nails', 14], ['rope', 4]], xp: 120,
-    blurb: 'the small boat: clinker-built with a pair of oars, slow and tiring on a long pull, but it goes wherever there is water enough, sea, river or lake, and carries ten loads in its bottom. At a dock it can be refitted with a mast and a sail or with an outboard motor',
+    blurb: 'the small boat: clinker-built with two pairs of oars (two can row together, and faster), slow and tiring on a long pull, but it goes wherever there is water enough, sea, river or lake, and carries ten loads in its bottom. At a dock it can be refitted with a mast and a sail or with an outboard motor',
   },
   sail: {
-    name: 'Sailing Skiff', len: 4.6, beam: 1.6, draft: 0.45, speed: 6, back: 0.4, turn: 0.75, hold: 14, seat: -1.5, eye: 1.05, tall: true, sails: true, row: 1.6, from: 'row',
+    name: 'Sailing Skiff', len: 4.6, beam: 1.6, draft: 0.45, speed: 6, back: 0.4, turn: 0.75, hold: 14, seat: -1.5, eye: 1.05, seat2: -0.1, tall: true, sails: true, row: 1.6, from: 'row',
     needs: [['log', 6], ['rope', 10], ['hide', 6], ['nails', 8]], xp: 180,
     blurb: 'the small boat refitted with a mast and a hide sail: quick and tireless with a fair wind, but it cannot sail into the wind (tack across it), the mast will not pass under a bridge, and in a calm there are the oars. Fourteen loads',
   },
   motor: {
-    name: 'Motor Skiff', len: 4.6, beam: 1.6, draft: 0.4, speed: 8, back: 0.35, turn: 0.85, hold: 14, seat: -1.25, eye: 1.15, from: 'row',
+    name: 'Motor Skiff', len: 4.6, beam: 1.6, draft: 0.4, speed: 8, back: 0.35, turn: 0.85, hold: 14, seat: -1.25, eye: 1.15, seat2: 0.3, from: 'row',
     motor: { tank: 30, burn: 0.03, can: 20 },
     needs: [['scrap', 8], ['engine', 2], ['nails', 6], ['rope', 2], ['log', 2]], xp: 160,
     blurb: 'the small boat refitted with a windscreen and an outboard motor rebuilt from engine parts: fast against wind and current alike, as long as you feed it fuel canisters. Fourteen loads',
@@ -148,6 +152,8 @@ export function launchSpot(k: BoatKind, dock: { x: number; z: number; dx: number
   const tries: [number, number][] = [], off = isShip(k) ? 0.25 : 0.7; // a ship lies close alongside, so you step across onto her deck
   for (const side of [1, -1]) {
     tries.push([dock.len - dock.head / 2, side * (dock.headW / 2 + s.beam / 2 + off)]);
+    // her middle (the gangway) by the outer end of the head, the rest of her out in the deeper water past it
+    for (const a of [dock.len - 1.5, dock.len - 0.6]) tries.push([a, side * (dock.headW / 2 + s.beam / 2 + off)]);
     for (let a = dock.len - dock.head - 2; a > dock.len / 3; a -= 2) tries.push([a, side * (dock.w / 2 + s.beam / 2 + off)]);
   }
   for (const a of [dock.len + s.len / 2 + 1.5, dock.len + s.len / 2 + 6]) tries.push([a, 0]);
@@ -156,4 +162,13 @@ export function launchSpot(k: BoatKind, dock: { x: number; z: number; dx: number
     if (ok(x, z)) return { x, z, yaw };
   }
   return null;
+}
+
+/** How much way the oars give (0..): one rower pulling at `a`, two together more than one but less than twice
+ *  (`ROW_PAIR` for two pulling hard); a rower pulling against the other cancels out. */
+export const ROW_PAIR = 1.5;
+export function oarPower(a: number, b: number): number {
+  const sum = a + b;
+  if (!a || !b || Math.sign(a) !== Math.sign(b)) return Math.max(-1, Math.min(1, sum));
+  return Math.sign(sum) * Math.min(ROW_PAIR, Math.abs(sum) * ROW_PAIR / 2);
 }

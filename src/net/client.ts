@@ -3,7 +3,7 @@
 // it with `sendState` (about 10 times a second) and reads `peers`.
 
 /** Must match PROTOCOL in server/mp.mjs. */
-export const PROTOCOL = 8;
+export const PROTOCOL = 9;
 export const SEND_EVERY = 0.1;
 
 /** `away`: in the menu (still in the game: the others see you standing there). */
@@ -15,7 +15,9 @@ export const SEND_EVERY = 0.1;
 export type PeerCar = number[];
 export interface PeerState { p: [number, number, number]; yaw: number; pitch: number; loc: string; held: string; mv: boolean; away?: boolean; cars?: PeerCar[]; carIds?: string[];
   /** Riding in another player's vehicle: [owner id, the vehicle's index in their cars, seat]; `gun` = where they aim its cannon. */
-  ride?: [number, number, number]; gun?: number }
+  ride?: [number, number, number]; gun?: number;
+  /** On one of the boats: [boat id, u along it, v across, height of the feet over its waterline, seat (-1 on a ship's deck)]. */
+  boat?: [string, number, number, number, number] }
 export interface Peer {
   id: number; name: string;
   /** The last two states and when they came: the drawing eases between them. */
@@ -220,7 +222,7 @@ export function connect(url: string, me: { name: string; world: number; time: nu
       case 'drop': net.drops.set(m.d.id, m.d); break;
       case 'gone': net.drops.delete(m.id); break;
       case 'got': net.drops.delete(m.d.id); gotHook?.(m.d); break;
-      case 'foes': case 'bolt': case 'fhit': case 'kill': case 'hurt': case 'thit': relayHook?.(m); break;
+      case 'foes': case 'bolt': case 'fhit': case 'kill': case 'hurt': case 'thit': case 'boat': case 'row': for (const f of relayHooks) f(m); break;
       case 'chat': h.say(`${m.name}: ${m.text}`, 'chat'); break;
       case 'full': why = 'The server is full (8 players).'; break;
       case 'refused': why = m.why; break;
@@ -258,9 +260,10 @@ export function sendTake(id: string): boolean {
   return true;
 }
 /** The shared foes (world/foesync.ts): a message from another player ({t, from, ...}). */
-export type Relay = { t: 'foes' | 'bolt' | 'fhit' | 'kill' | 'hurt' | 'thit'; from: number; [k: string]: unknown };
-let relayHook: ((m: Relay) => void) | null = null;
-export function onRelay(f: (m: Relay) => void) { relayHook = f; }
+export type Relay = { t: 'foes' | 'bolt' | 'fhit' | 'kill' | 'hurt' | 'thit' | 'boat' | 'row'; from: number; [k: string]: unknown };
+const relayHooks: ((m: Relay) => void)[] = [];
+/** Listen to the relayed messages (foes, turrets, boats...); every listener sees every message. */
+export function onRelay(f: (m: Relay) => void) { relayHooks.push(f); }
 /** Pass m to everyone else in the room (to = undefined) or to one player. */
 export function relay(m: { t: Relay['t']; [k: string]: unknown }, to?: number): boolean {
   if (!online() || net.ws?.readyState !== 1) return false;
