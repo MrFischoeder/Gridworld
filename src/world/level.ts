@@ -8,7 +8,9 @@ import { placeCarrier, dropCarrier } from './datacarriers';
 import { landingSite } from '../gen/landing';
 import { Terrain } from '../gen/terrain';
 import { scene, fog, lineMat, add, V, fillMat, GRID } from './render';
-import { dungeonTurrets } from '../gen/mountedturrets';
+import { dungeonTurrets, labyrinthTurrets } from '../gen/mountedturrets';
+import { populate, guardAlive } from './dungeonfoes';
+import { labyrinthDrones } from '../gen/repopulate';
 import { MOUNTED_TURRET } from '../data/mountedturrets';
 import { setRobotEnv, spawnGuards, clearRobots } from './robots';
 import { spawnAuthority } from './remote';
@@ -39,7 +41,7 @@ import { clearBases } from './building';
 import { clearTurrets } from './turrets';
 import { buildCave, leaveCave } from './cavelevel';
 import type { Cave } from '../gen/caves';
-import { makeDrone, placeDrone, makeBoss, setDroneRespawn } from './enemies';
+import { placeDrone, makeBoss, setDroneRespawn } from './enemies';
 import { drawCrown } from './trees';
 import { sky, horizon, buildHorizon, updateSky, darkSky } from './sky';
 import { setStreakSources } from './fx';
@@ -139,14 +141,15 @@ export function loadDungeon(arriveDir: string | null) {
     if (y >= 0 && y <= 2 && g.empty(x, y, z) && g.empty(x, y + 1, z) && g.empty(x, y + 2, z) && !g.empty(x, y - 1, z)) W.spawnCells.push([x, y, z]);
   }
   // A crashed ship retains only a few stray drones alongside its anchored security guns.
-  for (let i = 0; i < (wreck ? 2 : map.rooms + 1 + d.depth); i++) { const t = makeDrone(); placeDrone(t); W.drones.push(t); }
+  // none come back while any of them lives: more of them, at their own spots (world/dungeonfoes.ts)
+  populate(wreck ? 2 : labyrinthDrones(map.rooms, d.depth), wreck ? (map.guards ?? []).length : 0, seed);
   // Ship security and labyrinth defences are anchored guns, separate from roaming enemy robots.
-  loadMountedTurrets(dungeonTurrets(map, G.grid, wreck ? MOUNTED_TURRET.wreck : 3)); G.obstacle = mountedTurretHit;
+  loadMountedTurrets(dungeonTurrets(map, G.grid, wreck ? MOUNTED_TURRET.wreck : labyrinthTurrets(seed))); G.obstacle = mountedTurretHit;
   // ... and its robot crew still patrols the ship (on a server only the first player aboard brings them: shared foes)
   if (wreck) {
     const poi = findPoi(c.world, d.ruinId)!, lv = Math.max(2, dangerAt(c.world, poi.x, poi.z, true));
     setRobotEnv({ ground: () => 0, danger: () => lv, nearRuin: () => false, forbidden: () => false, water: () => null }, { indoor: true });
-    if (spawnAuthority()) spawnGuards(map.guards ?? [], lv);
+    if (spawnAuthority()) spawnGuards(map.guards ?? [], lv, guardAlive);
   }
   onDungeonLoaded(map);
   placeCarrier();

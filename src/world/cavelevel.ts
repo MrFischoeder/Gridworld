@@ -11,7 +11,7 @@ import { VoxelGrid } from '../core/voxel';
 import { generateCave, headroom, floorAtCave, ceilAtCave, type CaveMap } from '../gen/cavegen';
 import { makeChest, setCrystalXp } from './loot';
 import { placeCrystals } from './flora';
-import { makeDrone, placeDrone, setDroneRespawn } from './enemies';
+import { populate } from './dungeonfoes';
 import { setStreakSources } from './fx';
 import { PropBatch } from './props';
 import { el } from '../ui/hud';
@@ -78,7 +78,7 @@ export function buildCave(d: DungeonPos, clear: () => void, setGroup: (g: THREE.
   const c = G.char, info = d.cave!;
   const m = generateCave(hash(c.world, d.ruinId, 0xca11), info.mouths.length >= 2 ? 2 : 1);
   clear(); cave = m;
-  setDroneRespawn(placeDrone); setCrystalXp(() => 6);
+  setCrystalXp(() => 6);
   G.grid = caveGrid(m); G.space = G.grid;
   G.ground = (x, z) => floorAtCave(m, x, z);
   // stalagmites are solid; so are places too low to stand in
@@ -93,8 +93,7 @@ export function buildCave(d: DungeonPos, clear: () => void, setGroup: (g: THREE.
   W.chests = m.chests.map((p, i) => { const ch = makeChest(p, i); if (ch) ch.g.position.y = floorAtCave(m, ch.g.position.x, ch.g.position.z); return ch; }).filter((x) => !!x);
   placeCrystals(m.crystals.map((p) => ({ ...p, y: floorAtCave(m, Math.floor(p.x) + 0.5, Math.floor(p.z) + 0.5) })));
   for (let k = 0; k < m.nz - 1; k += 2) for (let i = 0; i < m.nx - 1; i += 2) if (headroom(m, i + 0.5, k + 0.5) > 3.2) W.spawnCells.push([i, Math.floor(floorAtCave(m, i + 0.5, k + 0.5)), k]);
-  const n = 3 + (hash(d.ruinId, 7) % 4);
-  for (let i = 0; i < n; i++) { const t = makeDrone(); placeDrone(t); W.drones.push(t); }
+  populate(5 + (hash(d.ruinId, 7) % 5), 0, hash(c.world, d.ruinId, 0xca12)); // they stay dead until the cave is clear and a week or two has passed
   setMiniOpen((x, z) => headroom(m, x + 0.5, z + 0.5) > 1.2);
   setMiniMode('voxel'); buildMini();
   el.hudL.textContent = info.name; el.route.style.display = 'none';

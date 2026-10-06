@@ -31,6 +31,8 @@ export interface Robot {
   /** Fixed city post; transmitted to prevent duplicate garrisons on another client. */
   cityPost?: string;
   kind: 'robot'; model: RobotKind; boss?: false;
+  /** A wreck guard's index (gen/repopulate.ts): once destroyed it stays gone. */
+  guard?: number;
   g: THREE.Group; mat: THREE.LineBasicMaterial;
   p: THREE.Vector3; heading: number; speed: number;
   hp: number; maxHp: number; r: number; flash: number; level: number;
@@ -191,14 +193,19 @@ function roomFor(model: RobotKind, x: number, z: number) {
   return true;
 }
 /** Put the guards of a crashed ship in place (world/level.ts). */
-export function spawnGuards(guards: { kind: RobotKind; x: number; z: number }[], level: number) {
-  for (const gd of guards) {
+export function spawnGuards(guards: { kind: RobotKind; x: number; z: number }[], level: number, alive: (i: number) => boolean = () => true) {
+  guards.forEach((gd, i) => {
+    if (!alive(i)) return; // destroyed: it stays gone until the wreck fills up again
     for (let k = 0; k < 9; k++) { // step aside from debris if the spot itself is taken
       const x = gd.x + 0.5 + ((k % 3) - 1) * 1.5, z = gd.z + 0.5 + (Math.floor(k / 3) - 1) * 1.5;
-      if (make(gd.kind, x, z, level, [])) break;
+      const r = make(gd.kind, x, z, level, []);
+      if (r) { r.guard = i; break; }
     }
-  }
+  });
 }
+/** Told when a wreck guard is destroyed (world/dungeonfoes.ts records it). */
+let guardDown: (i: number) => void = () => {};
+export function onGuardDown(f: (i: number) => void) { guardDown = f; }
 
 function make(model: RobotKind, x: number, z: number, level: number, group: Robot[], showcase = false): Robot | null {
   if (!showcase && (!env || env.forbidden(x, z) || (indoor && !roomFor(model, x, z)))) return null;
@@ -476,6 +483,7 @@ interface Scrap { r: Robot; t: number; dir: 1 | -1; land: number; vy: number; y0
 const scraps: Scrap[] = [];
 const SHUDDER = 0.7, COLLAPSE = 0.7, LIE_R = 6, SINK_R = 1.8, DARK = 0x6a4a2a;
 export function wreckRobot(r: Robot) {
+  if (r.guard !== undefined) guardDown(r.guard);
   const i = W.robots.indexOf(r); if (i >= 0) W.robots.splice(i, 1);
   const j = r.group.indexOf(r); if (j >= 0) r.group.splice(j, 1);
   const front = Math.cos(Math.atan2(G.pos.x - r.p.x, G.pos.z - r.p.z) - r.heading) > 0;

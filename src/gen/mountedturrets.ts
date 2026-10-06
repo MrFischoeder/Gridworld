@@ -18,3 +18,5 @@ export function dungeonTurrets(map: DungeonMap, space: Space, max = 3): MountedT
   }
   return out.slice(0, max);
 }
+/** How many anchored guns a labyrinth sector has: one in about half of them (they hit hard), none in the rest. */
+export const labyrinthTurrets = (seed: number) => (hash(seed, 0x7a12) % 2);

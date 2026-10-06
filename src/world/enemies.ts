@@ -2,6 +2,7 @@
 import { hurtPlayer } from './damage';
 import { remoteOf, hitOwner, setCombatHooks, stepRemoteP, withTarget, proxied, otherPlayers, hurtOther, boltOut, type CombatFoe } from './remote';
 import * as THREE from 'three';
+import { hash } from '../core/rng';
 import { onNoise } from './noise';
 import { scene, lineMat, add, V, circlePts, edgesOf } from './render';
 import { G, W } from '../game';
@@ -21,6 +22,8 @@ import { onKill } from './quests';
 export interface Drone {
   boss?: false; g: THREE.Group; inner: THREE.LineSegments; mat: THREE.LineBasicMaterial; p: THREE.Vector3;
   phase: number; hp: number; flash: number; chasing: boolean; r?: number;
+  /** A dungeon drone's index in its sector (gen/repopulate.ts): once killed it stays dead. */
+  idx?: number;
   /** Field scouts carry their own (weaker) stats; dungeon drones use the depth-based defaults. */
   scout?: { speed: number; dps: number; detect: number; lose: number };
 }
@@ -47,6 +50,16 @@ export function placeDrone(t: Drone) {
     const c = cells[(Math.random() * cells.length) | 0];
     const p = V(c[0] + 0.5, c[1] + 1.4, c[2] + 0.5);
     if (p.distanceTo(G.pos) > 12) { t.p.copy(p); t.hp = droneHp(); t.chasing = false; return; }
+  }
+}
+/** A dungeon drone's own spot: a hashed spawn cell (the same every time you come), the next free one if you stand there. */
+export function placeDroneAt(t: Drone, i: number, seed: number) {
+  const cells = W.spawnCells;
+  if (!cells.length) return;
+  const s = hash(seed, i, 0xd70e) % cells.length;
+  for (let n = 0; n < cells.length; n += 7) {
+    const c = cells[(s + n) % cells.length], p = V(c[0] + 0.5, c[1] + 1.4, c[2] + 0.5);
+    if (p.distanceTo(G.pos) > 12 || n + 7 >= cells.length) { t.p.copy(p); t.hp = droneHp(); t.chasing = false; return; }
   }
 }
 /** Rules of the current place: where drones may not fly, and whether the player is out of reach (safe zone). */

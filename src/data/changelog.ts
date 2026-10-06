@@ -3,6 +3,14 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.155.0', date: '2026-10-06', title: 'No more endless respawns below', notes: [
+    'Drones in dungeons and caves, and the robot guards of crashed ships, no longer respawn. A killed one stays dead, so a room you have cleared stays clear when you come back to it.',
+    'Each foe has its own spot and stands there again every time you come back.',
+    'Nothing returns while anything is still alive down there. Once you kill the last foe of a dungeon sector, a cave or a wreck, it stays empty for 7 to 14 game days. Then it fills up again all at once. Farming one place for robot salvage no longer works.',
+    'Labyrinths hold about twice as many drones as before, and caves hold more too. Boss guardians and destroyed turrets stay gone for good, as before.',
+    'Mounted defence turrets are rarer. Only about half of the labyrinth sectors have one, and a sector has at most one. Wrecks keep theirs.',
+    'Multiplayer: what was killed below is part of the shared world, so every player finds the same foes gone and the same places refilled.',
+  ] },
   { v: '0.154.0', date: '2026-10-06', title: 'A new opening film', notes: [
     'The opening film is new and runs 48 seconds over fourteen shots. Your survey ship crosses deep space until a meteor storm tears it apart, flashing white, and it falls in a blaze of plasma. Then come the smoking crash site, Gridholm through its gate and builders raising a house outside the wall. An ancient gate wakes and the stone heads loom at dusk. Machines patrol a dead city, and outlaws fight a guardian drone until it blows apart while ravagers run past. A convoy fires back at a raider, a sailing ship and a motor skiff cross a rolling sea, and lightning strikes over the ranges. Last comes the Chariot of the Ancients, made whole with its engines lit, then the planet turning under the title.',
     'Each shot has a caption in the lower corner. You can still skip with Space, Enter or Esc, and Opening film in the menu plays it again.',
