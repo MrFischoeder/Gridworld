@@ -50,8 +50,7 @@ export function drawIndustry(vm: VillageMap, T: Terrain, id: number): THREE.Grou
     for (const [x, z] of [[x0, z0], [x1, z0], [x1, z1], [x0, z1]]) pb.seg(WOOD, [x, T.heightAt(x, z), z], [x, T.heightAt(x, z) + 1, z]);
     // Natural deposit/clearing instead of a functioning industrial building.
     if (kind === 'mine' || kind === 'salvage') pb.box(cx - 2, T.heightAt(cx, cz), cz - 1, cx + 2, T.heightAt(cx, cz) + .8, cz + 1, ROCK);
-    const sign = textSprite(INDUSTRY[kind].site.toUpperCase() + ' SITE — ASK THE ELDER', '#ffd060', 4);
-    sign.position.set(cx, T.heightAt(cx, cz) + 2, cz); grp.add(pb.build(), sign); return grp;
+    grp.add(pb.build()); return grp; // only the stakes: the elder's tutorial says what goes here
   }
   const [fx, fz] = site.face, rx = -fz, rz = fx, along = site.side === 'S' ? site.w : site.d, out = site.side === 'S' ? site.d : site.w;
   const P = (u: number, v: number): [number, number] => [cx + rx * u + fx * v, cz + rz * u + fz * v];

@@ -3,6 +3,12 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.154.0', date: '2026-10-06', title: 'A new opening film', notes: [
+    'The opening film is new and runs 48 seconds over fourteen shots. Your survey ship crosses deep space until a meteor storm tears it apart, flashing white, and it falls in a blaze of plasma. Then come the smoking crash site, Gridholm through its gate and builders raising a house outside the wall. An ancient gate wakes and the stone heads loom at dusk. Machines patrol a dead city, and outlaws fight a guardian drone until it blows apart while ravagers run past. A convoy fires back at a raider, a sailing ship and a motor skiff cross a rolling sea, and lightning strikes over the ranges. Last comes the Chariot of the Ancients, made whole with its engines lit, then the planet turning under the title.',
+    'Each shot has a caption in the lower corner. You can still skip with Space, Enter or Esc, and Opening film in the menu plays it again.',
+    'The signs that hung in the air over a new settlement\'s empty plots ("... SITE · ASK THE ELDER") are gone. Only the stakes remain, and the elder\'s tutorial says what goes there.',
+    'Labels in the world are no longer cut off when their text is long.',
+  ] },
   { v: '0.153.0', date: '2026-10-06', title: 'Builders at work', notes: [
     'Village builds now take time. Once the last materials are handed over, the villagers start work, and the build stands only when they are done. This covers farms, steel ploughs, walls, turrets and sandbags, the refinery, works and power stations, power plant upgrades, improvements, and the new settlements\' projects. A farm takes 14 game hours, a stone wall 24, works 16. A game hour is a real minute.',
     'Each build has a construction site where it will stand. Stakes and builder\'s lines mark it out, and a scaffold rises as the work goes on. A stack of timber and stone shrinks, and a sign shows how far along it is. Two builders hammer at the scaffold while a third carries from the stack.',

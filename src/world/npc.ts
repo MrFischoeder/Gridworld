@@ -19,10 +19,12 @@ export interface Npc extends Figure {
 }
 
 export function textSprite(text: string, color: string, w = 1.9) {
-  const cv = document.createElement('canvas'); cv.width = 256; cv.height = 48; const c = cv.getContext('2d')!;
-  c.fillStyle = color; c.font = '38px VT323, ui-monospace, monospace'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(text, 128, 26);
+  // the canvas is as wide as the text needs (a long label used to be cut off at both ends), at the same scale
+  const cv = document.createElement('canvas'), font = '38px VT323, ui-monospace, monospace'; let c = cv.getContext('2d')!;
+  c.font = font; cv.width = Math.max(256, Math.ceil(c.measureText(text).width) + 16); cv.height = 48; c = cv.getContext('2d')!;
+  c.fillStyle = color; c.font = font; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(text, cv.width / 2, 26);
   const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(cv), transparent: true, depthWrite: false }));
-  sp.scale.set(w, w * 48 / 256, 1); return sp;
+  sp.scale.set(w * cv.width / 256, w * 48 / 256, 1); return sp;
 }
 
 const headGeo = new THREE.IcosahedronGeometry(0.17, 0), bodyGeo = new THREE.BoxGeometry(0.42, 0.6, 0.24), figureFill = fillMat();

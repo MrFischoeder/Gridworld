@@ -65,8 +65,9 @@ export function drawHangar(p: Poi, y: number): THREE.Group {
  * The shuttle, tail at z = tz, nose towards +z: a lofted fuselage (octagonal sections) on a cradle, delta wings, the
  * tail fin, three engine sockets, a cockpit; drawn by how far the repair has come.
  */
-function drawShuttle(pb: PropBatch, cx: number, y: number, tz: number) {
-  const s = G.char.shuttle, hull = stageDone(s, 'hull'), eng = stageDone(s, 'engines'), av = stageDone(s, 'avionics'), shield = stageDone(s, 'shield'), power = stageDone(s, 'power'), life = stageDone(s, 'life'), fuel = stageDone(s, 'fuel');
+function drawShuttle(pb: PropBatch, cx: number, y: number, tz: number, all = false) {
+  const s = G.char.shuttle, sd = (k: Parameters<typeof stageDone>[1]) => all || stageDone(s, k);
+  const hull = sd('hull'), eng = sd('engines'), av = sd('avionics'), shield = sd('shield'), power = sd('power'), life = sd('life'), fuel = sd('fuel');
   const by = y + 5.2; // the fuselage axis
   // sections along the fuselage: [z offset, half width, half height]
   const secs: [number, number, number][] = [[0, 2.1, 2.1], [4, 2.3, 2.3], [14, 2.3, 2.3], [18, 2.2, 2.1], [21, 1.8, 1.7], [23, 1.1, 1.1], [24.3, 0.3, 0.35]];
@@ -133,3 +134,6 @@ function drawShuttle(pb: PropBatch, cx: number, y: number, tz: number) {
   pb.line(fuel ? GLOW : ENGINE, [cx + 12.5, y + 0.2, tz + 10], [cx + 5, y + 0.2, tz + 12], [cx + 1.6, by - 2.1, tz + 12]);
   pb.line(fuel ? GLOW : ENGINE, [cx + 12.5, y + 0.3, tz + 10.4], [cx + 5, y + 0.3, tz + 12.4], [cx + 1.6, by - 2.0, tz + 12.4]);
 }
+
+/** The Chariot finished, on its own (the opening film): tail at z = 0, nose towards +z. */
+export function showcaseShuttle(): THREE.Group { const pb = new PropBatch(); drawShuttle(pb, 0, 0, 0, true); return pb.build(); }

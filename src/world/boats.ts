@@ -288,6 +288,8 @@ function shipModel(k: BoatKind): Model {
   return { g, oars: [], booms, prop };
 }
 const model = (k: BoatKind) => (isShip(k) ? shipModel(k) : smallModel(k));
+/** A boat's model on its own (the opening film). */
+export const showcaseBoat = (k: BoatKind) => model(k).g;
 
 /** A gangplank on one side of a ship: a planked board with rope rails, one metre long before it is stretched out. */
 function plankModel(l: Live, side: number): Plank {

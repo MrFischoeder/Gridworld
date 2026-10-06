@@ -1,5 +1,4 @@
 import { progressive, projectDone } from '../gen/settlement';
-import { textSprite } from './npc';
 // Every village's power plant (gen/town.ts): a diesel generator, a solar array or wind turbines standing outside
 // the fence, cabled in on poles. It wears down; its status light shows how it runs (pale green, gold when failing,
 // red when down), the turbines stop turning and the village lamps go dark when it is down. E at it mends it with
@@ -50,8 +49,7 @@ export function drawPower(vm: VillageMap, T: Terrain, id: number): THREE.Group {
   if (progressive(G.char.towns[id]) && !projectDone(G.char.towns[id], 'power')) {
     plants.delete(id);
     for (const [x, z] of [[x0, z0], [x1, z0], [x1, z1], [x0, z1]]) pb.seg(WOOD, [x, ground(x, z), z], [x, ground(x, z) + 1.2, z]);
-    const sign = textSprite('POWER PLANT SITE — ASK THE ELDER', '#ffd060', 4);
-    sign.position.set(cx, ground(cx, cz) + 2, cz); grp.add(pb.build(), sign); return grp;
+    grp.add(pb.build()); return grp; // only the stakes: the elder's tutorial says what goes here
   }
   if (kind === 'generator') {
     const g = ground(cx, cz);

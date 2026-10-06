@@ -400,7 +400,10 @@ body.cinematic > *:not(#view):not(#cinematic){visibility:hidden}
 #cinematic{position:fixed;inset:0;z-index:80;color:#c1ffd4;pointer-events:none}
 #cinematic .letterbox{position:absolute;left:0;right:0;height:7%;background:#000}
 #cinematic .top{top:0} #cinematic .bottom{bottom:0}
-#cinematic .shot{position:absolute;left:4%;top:10%;font-size:20px;letter-spacing:.13em;text-transform:uppercase;opacity:.7}
+#cinematic .cap{position:absolute;left:5%;bottom:13%;text-shadow:0 0 14px #000,0 0 22px #2fe06088}
+#cinematic .cap b{display:block;font-weight:normal;font-size:clamp(34px,4.2vw,62px);letter-spacing:.16em;text-transform:uppercase;color:#8bffac}
+#cinematic .cap span{display:block;font-size:clamp(18px,1.9vw,26px);letter-spacing:.06em;color:#c1ffd4;opacity:.9;margin-top:2px}
+#cinematic .flash{position:absolute;inset:0;background:#e8fff0;opacity:0;pointer-events:none}
 #cinematic .credits{position:absolute;left:0;right:0;bottom:14%;text-align:center;text-shadow:0 0 18px #2fe060}
 #cinematic h1{font-size:clamp(48px,6vw,88px);margin:0 0 12px;color:#8bffac;font-weight:normal}
 #cinematic .credits p{font-size:clamp(22px,2.3vw,32px);margin:6px 0;letter-spacing:.08em}
