@@ -18,12 +18,15 @@ import { STATIONS, STATION_SLOTS, type StationKind } from './energy';
 import { TECH_BY_ID } from './tech';
 
 export type PlantKind = 'smelter' | 'refinery' | 'glassworks' | 'wiremill' | 'electronics' | 'machineshop' | 'foundry' | 'chemworks'
-  | 'sawmill' | 'brickworks' | 'cementworks' | 'textile' | 'steelworks' | 'polymer' | 'alworks' | 'batteryworks' | 'electrical';
+  | 'sawmill' | 'brickworks' | 'cementworks' | 'textile' | 'steelworks' | 'polymer' | 'alworks' | 'batteryworks' | 'electrical' | 'stoneworks' | 'metallurgy';
 /** In the order the elder offers them: the plain works (tier 1, anyone can build) first, then those that want old plans (tier 2). */
 export const PLANT_KINDS: PlantKind[] = ['sawmill', 'brickworks', 'cementworks', 'smelter', 'glassworks', 'wiremill', 'refinery', 'textile',
-  'steelworks', 'chemworks', 'polymer', 'alworks', 'batteryworks', 'electronics', 'machineshop', 'foundry', 'electrical'];
+  'steelworks', 'chemworks', 'polymer', 'alworks', 'batteryworks', 'electronics', 'machineshop', 'foundry', 'electrical', 'stoneworks', 'metallurgy'];
 /** What a works takes in: trade goods, and the rare materials of the deposits (gen/deposits.ts), which no market trades. */
-export type Stuff = Good | Rare;
+export type Stuff = Good | Rare | BasicMat;
+/** The plain materials a works may also take (not trade goods): what a crate of them is worth to it. */
+export type BasicMat = 'stone';
+export const BASIC_VALUE: Record<BasicMat, number> = { stone: 5 };
 export interface Recipe { in: [Stuff, number][]; out: [Good, number] }
 export interface PlantSpec {
   name: string; blurb: string;
@@ -92,6 +95,13 @@ export const PLANTS: Record<PlantKind, PlantSpec> = {
   electrical: { name: 'Electrical Works', blurb: 'winds copper on steel into electric motors and generators', batch: 90, tech: 'electricity',
     recipes: [{ in: [['copperbar', 1], ['steel', 1], ['plastic', 1]], out: ['motor', 1] }, { in: [['copperbar', 2], ['steel', 1], ['parts', 1]], out: ['generator', 1] }],
     needs: [['bricks', 16], ['lumber', 10], ['scrap', 16], ['cable', 6], ['circuit', 2]], fee: 1300, xp: 280 },
+  // (0.144) a plain works (no plans), and the works of the strategic metals
+  stoneworks: { name: 'Stoneworks', blurb: 'saws stone into dressed blocks and crushes the rest into aggregate', batch: 40,
+    recipes: [{ in: [['stone', 3]], out: ['cutstone', 2] }],
+    needs: [['log', 12], ['planks', 10], ['scrap', 6], ['nails', 10]], fee: 300, xp: 80 },
+  metallurgy: { name: 'Advanced Metallurgy', blurb: 'arc furnaces and vacuum retorts: alloy steels, titanium and the platinum metals', batch: 120, tech: 'metallurgy',
+    recipes: [{ in: [['steel', 2], ['nickel', 1], ['chromite', 1]], out: ['advsteel', 2] }, { in: [['rutile', 2], ['chems', 1]], out: ['titanium', 1] }, { in: [['pgmore', 2], ['chems', 1]], out: ['pgm', 1] }],
+    needs: [['bricks', 24], ['cement', 12], ['steel', 10], ['cable', 8], ['generator', 1], ['pump', 1]], fee: 2000, xp: 400 },
 };
 /** Keep a saved works valid when the recipes change (old saves): an unknown recipe falls back to the first. */
 export function fixPlant(p: PlantState) { if (!PLANTS[p.k]?.recipes[p.rec]) p.rec = 0; }

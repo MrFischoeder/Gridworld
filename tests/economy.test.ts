@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { PLANTS, PLANT_KINDS, HOPPER, OUT_CAP, runPlant, feed, collect, startPlant, handOverPlant, plantProblem, fixPlant, type PlantState, type PlantKind, type Stuff } from '../src/gen/plants';
+import { PLANTS, PLANT_KINDS, HOPPER, OUT_CAP, runPlant, feed, collect, startPlant, handOverPlant, plantProblem, fixPlant, BASIC_VALUE, type BasicMat, type PlantState, type PlantKind, type Stuff } from '../src/gen/plants';
 import { GOOD_INFO, GOODS, PROCESSED, type Good } from '../src/gen/market';
 import { RARES, RARE_VALUE, isRare } from '../src/gen/deposits';
 import { CROPS } from '../src/gen/farms';
@@ -10,9 +10,9 @@ import { STAGES, giveToStage, stageRows, stagesDone, fixShuttle, type ShuttleSta
 import type { TownState } from '../src/gen/town';
 
 describe('processing chains', () => {
-  const dug = new Set<Stuff>([...Object.values(INDUSTRY).flatMap((i) => [...i.pool, ...(i.extra?.goods ?? [])]), ...RARES.map((r) => r.k), ...Object.values(CROPS).map((c) => c.out as Stuff)]);
+  const dug = new Set<Stuff>([...Object.values(INDUSTRY).flatMap((i) => [...i.pool, ...(i.extra?.goods ?? [])]), ...RARES.map((r) => r.k), ...Object.values(CROPS).map((c) => c.out as Stuff), 'stone']);
   const made = new Set<Stuff>([...PLANT_KINDS.flatMap((k) => PLANTS[k].recipes.map((r) => r.out[0])), ...Object.values(INSTALL_WORK).map((w) => w!.out as Stuff)]);
-  const value = (g: Stuff) => (isRare(g) ? RARE_VALUE[g] : GOOD_INFO[g].base);
+  const value = (g: Stuff) => (g in BASIC_VALUE ? BASIC_VALUE[g as BasicMat] : isRare(g) ? RARE_VALUE[g] : GOOD_INFO[g as Good].base);
   it('every input can be dug, grown or made, and every processed good comes out of some works or old plant', () => {
     for (const k of PLANT_KINDS) for (const r of PLANTS[k].recipes) for (const [g] of r.in) expect(dug.has(g) || made.has(g), `${k}: ${g}`).toBe(true);
     for (const g of PROCESSED) expect(made.has(g), g).toBe(true);
@@ -153,5 +153,19 @@ describe('power', async () => {
     expect(p.out.iron ?? 0).toBe(0);
     runPlant(p, 1200, () => true);
     expect(p.out.iron).toBe(10);
+  });
+});
+
+describe('stone and strategic metals (0.144)', () => {
+  it('the older rares keep their order and the new ones are appended', () => {
+    expect(RARES.map((r) => r.k).slice(-3)).toEqual(['pgmore', 'rutile', 'chromite']);
+  });
+  it('the stoneworks dresses stone and advanced metallurgy wants its plans', () => {
+    expect(PLANTS.stoneworks.recipes[0].in).toEqual([['stone', 3]]);
+    expect(PLANTS.stoneworks.tech).toBeUndefined();
+    expect(PLANTS.metallurgy.tech).toBe('metallurgy');
+    expect(TECH_BY_ID.metallurgy).toBeDefined();
+    expect(PLANTS.metallurgy.recipes.map((r) => r.out[0])).toEqual(['advsteel', 'titanium', 'pgm']);
+    expect(PLANT_KINDS.slice(-2)).toEqual(['stoneworks', 'metallurgy']);
   });
 });

@@ -353,7 +353,7 @@ export function pickInstallLead(sites: InstallSite[], leads: string[], found: (s
 /** How far the restored radar station sees (m). */
 export const RADAR = { r: 12000 };
 /** (Economy stage 6) the radar station's upgrade once restored: sensors and chips in the dish, and it sees `r` m. */
-export const RADAR_UP = { r: 20000, needs: [['sensor', 4], ['microchip', 2], ['cable', 6]] as [ItemKey, number][], gold: 300, xp: 400 };
+export const RADAR_UP = { r: 20000, needs: [['sensor', 4], ['microchip', 2], ['cable', 6], ['pgm', 2]] as [ItemKey, number][], gold: 300, xp: 400 };
 /** How far the radar sees now. */
 export const radarRange = (s: InstallState | undefined) => (s?.up ? RADAR_UP.r : RADAR.r);
 /** The upgrade's rows (given / needed), or null once done or while the station is not restored. */

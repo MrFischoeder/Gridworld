@@ -36,7 +36,7 @@ export interface StationSpec {
 export const STATIONS: Record<StationKind, StationSpec> = {
   solarfarm: { name: 'Solar Farm', blurb: 'rows of panels: power by day, none at night', kw: 70, needs: [['scrap', 12], ['wire', 12], ['circuit', 6], ['planks', 10]], fee: 500, xp: 120 },
   windfarm: { name: 'Wind Farm', blurb: 'three turbines: power as the wind blows', kw: 80, needs: [['scrap', 20], ['wire', 10], ['planks', 20], ['engine', 1], ['gears', 2]], fee: 650, xp: 140 },
-  coalplant: { name: 'Coal Power Station', blurb: 'a boiler and a turbine: steady power while it has coal', kw: 140, fuel: 'coal', burn: 120, needs: [['stone', 10], ['bricks', 20], ['cement', 8], ['scrap', 20], ['planks', 16], ['engine', 1], ['generator', 1], ['pump', 1]], fee: 900, xp: 200 },
+  coalplant: { name: 'Coal Power Station', blurb: 'a boiler and a turbine: steady power while it has coal', kw: 140, fuel: 'coal', burn: 120, needs: [['stone', 10], ['bricks', 20], ['cement', 8], ['scrap', 20], ['planks', 16], ['engine', 1], ['generator', 1], ['pump', 1], ['cutstone', 10]], fee: 900, xp: 200 },
   dieselbank: { name: 'Diesel Generator Bank', blurb: 'four big generators: steady power while it has fuel', kw: 110, fuel: 'fuel', burn: 150, needs: [['scrap', 16], ['engine', 2], ['wire', 6], ['generator', 2]], fee: 800, xp: 180 },
   reactor: { name: 'Small Reactor', blurb: 'a sealed reactor under a concrete dome: a great deal of steady power while its core holds fuel rods', kw: 250, fuel: 'nfuel', burn: 5760, bunker: 4, tech: 'enrichment', needs: [['steel', 12], ['alloy', 6], ['cable', 8], ['circuit', 10], ['pcore', 2], ['cement', 20]], fee: 2000, xp: 500 },
 };
@@ -48,7 +48,7 @@ export const BASE_KW: Record<ReturnType<typeof powerKind>, number> = { generator
 export const VILLAGE_KW = VILLAGE_BASE_KW;
 /** What each works draws while it works (kW). */
 export const DRAW: Record<PlantState['k'], number> = { smelter: 60, refinery: 50, glassworks: 45, wiremill: 30, electronics: 35, machineshop: 40, foundry: 80, chemworks: 40,
-  sawmill: 15, brickworks: 25, cementworks: 35, textile: 15, steelworks: 70, polymer: 45, alworks: 120, batteryworks: 35, electrical: 50 };
+  sawmill: 15, brickworks: 25, cementworks: 35, textile: 15, steelworks: 70, polymer: 45, alworks: 120, batteryworks: 35, electrical: 50, stoneworks: 15, metallurgy: 140 };
 
 export interface StationState {
   k: StationKind; on: boolean;

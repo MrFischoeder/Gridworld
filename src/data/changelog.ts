@@ -3,6 +3,13 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.144.0', date: '2026-10-06', title: 'Stone and rare metals', notes: [
+    'A new works anyone can build, the Stoneworks, dresses stone into Pallets of Cut Stone (three stones make two pallets). The Stone Wall now wants cut stone, and so does a Coal Power Station\'s boiler house. Builds already under way keep what was handed over.',
+    'Three strategic metal ores: Chromite, Rutile Sand (titanium ore) and Platinum Ore. They lie by villages far from Gridholm (chromite from 9 km, platinum from 13, rutile from 12) as a second deposit beside the older rare ones, so no village loses what it had. A village that trusts you digs them for you, sharing the same daily allowance.',
+    'Advanced Metallurgy, a tier 2 works, wants the plans for Advanced Metallurgy from an old data carrier. It makes Advanced Steel (steel, nickel and chromite), Titanium Ingots (rutile and chemicals) and Platinum Group Metals (platinum ore and chemicals). It draws a lot of power and needs a generator and a pump to build.',
+    'The new metals are wanted: the Armoured Wall takes titanium and advanced steel, the Powered Exoskeleton titanium and advanced steel, the Sensor Compass a little platinum, and the radar\'s sensor array platinum for its contacts.',
+    'Steel is still made without coke.',
+  ] },
   { v: '0.143.0', date: '2026-10-06', title: 'Motors and pumps', notes: [
     'Five industrial components: Electric Motors, Generators, Pipes & Valves, Gears & Bearings and Industrial Pumps. They trade on every market.',
     'A new works, the Electrical Works, winds motors (copper ingots, steel and resin) and generators (copper ingots, steel and machine parts). It wants the plans for Electric Machines, a new technology to be found on an old data carrier. The Machine Shop now also makes pipes and valves, gears and bearings, and assembles pumps.',

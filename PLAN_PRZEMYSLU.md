@@ -47,13 +47,17 @@ Plan wdrożenia dokumentu właściciela „GridWorld 03 — Surowce, przemysł, 
 - **Hierarchia przedmiotów (pkt 9):** każdy przedmiot ma klasę RAW / FOOD / MATERIAL / INDUSTRIAL / ELECTRICAL / ADVANCED / AEROSPACE, pokazaną w podpowiedzi przedmiotu i w `SUROWCE.md`.
 - **MP:** towary i zakłady we wspólnym stanie wioski i rynku, łupy przez wspólne zrzuty; protokół bez zmian.
 
-### 2. Kamień i węgiel (do decyzji)
-- Cut Stone / Aggregate (Stoneworks) do dróg i murów.
-- Koks (Coke Oven). Dokument wymaga koksu do stali; wcześniej uzgodniono stal bez koksu. Do decyzji właściciela.
+### 2. Kamień (0.144, zrobione)
+- Zakład Stoneworks (dla każdego, bez planów): 3 kamienie → 2 palety ciosanego kamienia (Cut Stone).
+- Ciosany kamień potrzebny do kamiennego muru (Stone Wall) i elektrowni węglowej.
+- Koks: decyzja właściciela, stal zostaje bez koksu.
+- **MP:** zakład we wspólnym stanie wioski; protokół bez zmian.
 
-### 3. Metale strategiczne
-- Nowe złoża: chrom, tytan, metale z grupy platyny (dopisane na końcu `RARES`, więc stare złoża zostają).
-- Advanced Steel Alloys (stal + nikiel + chrom), Titanium (Advanced Metallurgy).
+### 3. Metale strategiczne (0.144, zrobione)
+- Nowe złoża: chromit (od 9 km), rutyl (od 12 km), ruda platyny (od 13 km). Losowane osobno jako drugie złoże wioski (`metalOf`), więc stare złoża zostają bez zmian. Wydobycie w ramach dziennego przydziału zaufania (ten sam limit co stare złoże).
+- Zakład Advanced Metallurgy (technologia z nośnika danych): stal stopowa (stal + nikiel + chromit), tytan (rutyl + chemia), metale z grupy platyny (ruda platyny + chemia).
+- Zastosowania: opancerzony mur, Powered Exoskeleton (tytan, stal stopowa), Sensor Compass i macierz radaru (platyna).
+- **MP:** złoża liczone z ziarna świata, identyczne u wszystkich; zakłady i przydział we wspólnym stanie wioski; protokół bez zmian.
 
 ### 4. Elektronika
 - Purified Silicon (Silicon Processing), Control Units, Optical Components, Computer Systems, High-Power Electronics, Power Control Modules.

@@ -13,7 +13,7 @@ import { poweredAt } from '../gen/energy';
 import type { VillageMap } from '../gen/village';
 import type { Terrain } from '../gen/terrain';
 
-const WOOD = 0xb8b060, METAL = 0xb8c4cc, BRICK = 0xd09070, GLASS = 0x9dffe0, STEELC = 0x8fb89a, HOT = 0xffb347, FLAG = 0xffd060;
+const WOOD = 0xb8b060, METAL = 0xb8c4cc, BRICK = 0xd09070, GLASS = 0x9dffe0, STEELC = 0x8fb89a, HOT = 0xffb347, FLAG = 0xffd060, STONEC = 0xc8c8b0;
 export interface Works { vid: number; seed: number; slot: number; town: string; x0: number; z0: number; x1: number; z1: number; glow: THREE.Object3D | null }
 const placed = new Map<number, Works[]>();
 
@@ -136,6 +136,26 @@ export function drawWorks(vm: VillageMap, T: Terrain, id: number): THREE.Group {
         for (const u of [2.5, 5.5]) { box(u, -3.8, 0.7, 0.6, g0, g0 + 1.6, METAL); const [x, z] = P(u, -3.8); for (const d of [-0.4, 0, 0.4]) pb.seg(METAL, [x + d, g0 + 1.6, z], [x + d, g0 + 2.4, z]); }
         { const [a, b] = P(2.5, -3.8), [c, d] = P(5.5, -3.8), [e, f] = P(5.5, -0.9); pb.line(METAL, [a, g0 + 2.4, b], [c, g0 + 2.4, d], [e, g0 + 3.6, f]); }
         glowAt = [P(-3, -3.5)[0], g0 + 1.9, P(-3, -3.5)[1]];
+        break;
+      }
+      case 'stoneworks': { // an open saw shed with a frame saw over a block, dressed blocks stacked, a heap of chippings
+        for (const [u, v] of [[-4.5, -1], [4.5, -1], [4.5, 4.5], [-4.5, 4.5]]) { const [x, z] = P(u, v); pb.box(x - 0.15, g0 - 0.1, z - 0.15, x + 0.15, g0 + 3.4, z + 0.15, WOOD); }
+        { const [a, b] = P(-4.8, -1.3), [d, e] = P(4.8, 4.8); pb.gableRoof(Math.min(a, d), Math.min(b, e), Math.max(a, d), Math.max(b, e), g0 + 3.4, 1.0, WOOD); }
+        box(0, 1.8, 1.4, 0.9, g0, g0 + 1.1, STONEC);
+        { const [a, b] = P(-1.6, 1.8), [d, e] = P(1.6, 1.8); for (const y of [1.6, 2.6]) pb.seg(METAL, [a, g0 + y, b], [d, g0 + y, e]); pb.seg(METAL, [a, g0 + 1.1, b], [a, g0 + 2.8, b]); pb.seg(METAL, [d, g0 + 1.1, e], [d, g0 + 2.8, e]); }
+        for (let i = 0; i < 6; i++) { const u = -6.5 + (i % 3) * 1.1, h = H(-6, -3.5) + Math.floor(i / 3) * 0.6; box(u, -3.5, 0.5, 0.5, h, h + 0.55, STONEC); }
+        { const [x, z] = P(6, -3.5), h = H(6, -3.5); pb.rock(x, h - 0.1, z, 1.6, 0.9, 7, 0.4, STONEC); }
+        glowAt = [P(0, 1.8)[0], g0 + 1.6, P(0, 1.8)[1]];
+        break;
+      }
+      case 'metallurgy': { // a tall arc furnace hall, three electrode furnaces under a gantry, retorts and a transformer
+        box(-1, 2.5, 6, 3.4, g0 - 0.1, g0 + 7, STEELC);
+        for (const u of [-4, -1, 2]) { cylAt(u, -2.6, 1.0, 2.2, BRICK, 0, 1.0); cylAt(u, -2.6, 0.55, 0.4, HOT, 2.2, 0.55); const [x, z] = P(u, -2.6); for (const d of [-0.3, 0, 0.3]) pb.seg(METAL, [x + d, g0 + 2.6, z], [x + d, g0 + 5.4, z]); }
+        { const [a, b] = P(-5.5, -2.6), [d, e] = P(3.5, -2.6); pb.line(METAL, [a, g0, b], [a, g0 + 6, b], [d, g0 + 6, e], [d, g0, e]); }
+        for (const u of [5.5, 7]) cylAt(u, 3.5, 0.6, 3.2, METAL, 0, 0.6);
+        box(6.2, -3, 0.9, 0.8, g0, g0 + 1.8, METAL);
+        cylAt(-6.8, 5, 0.6, 12, BRICK, 0, 0.45);
+        glowAt = [P(-1, -2.6)[0], g0 + 2.6, P(-1, -2.6)[1]];
         break;
       }
       case 'sawmill': { // an open saw shed with a circular saw, a log deck and stacks of boards
