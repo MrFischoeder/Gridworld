@@ -161,3 +161,18 @@ describe('the start village\'s radar and communications station (0.149, document
     expect(S.isStation(other)).toBe(false);
   });
 });
+
+describe('the satellites (0.150, document 04 stage D)', () => {
+  it('are up once the start village has its link; one orbital scan a pass for the whole world', async () => {
+    const S = await import('../src/gen/settlement');
+    const s: TownState = { settlement: { v: 1, station: true } } as TownState;
+    expect(S.satelliteUp(s)).toBe(false);
+    s.settlement!.done = { comms: true };
+    expect(S.satelliteUp(s)).toBe(true);
+    expect(S.satelliteUp({} as TownState)).toBe(false); // an old world: the GPS tablet does it
+    expect(S.scanWait(s, 1000)).toBe(0);
+    s.settlement!.scanAt = 1000;
+    expect(S.scanWait(s, 1100)).toBe(S.ORBIT.every - 100);
+    expect(S.scanWait(s, 1000 + S.ORBIT.every)).toBe(0);
+  });
+});

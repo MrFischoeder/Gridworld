@@ -7,7 +7,10 @@ import { nearX, wrapDx } from '../gen/regions';
 import { G, W } from '../game';
 import { OW, villageHere } from '../world/overworld';
 import { CHUNK, poisNear, villageSeed, GRIDHOLM_ID } from '../gen/regions';
-import { isStation, projectDone } from '../gen/settlement';
+import { isStation, projectDone, satelliteUp, scanWait, ORBIT } from '../gen/settlement';
+import { fogsNear } from '../gen/toxic';
+import { weatherAt } from '../gen/weather';
+import { showToast, logLine } from './hud';
 import { wallPolygon, villageSides } from '../gen/village';
 import { STEP, VERTS, CELLS, inRect } from '../gen/terrain';
 import { SEA } from '../gen/seas';
@@ -259,6 +262,33 @@ export function drawWorldMini(ctx: CanvasRenderingContext2D, size: number) {
 // ---------- full-screen world map ----------
 const big = $<HTMLCanvasElement>('worldmap'), bctx = big.getContext('2d')!;
 let zoom = 0.6;
+/** The glove computer is a GPS once the satellites answer (document 04 stage D); in an old world the GPS Tablet is. */
+export const gpsOn = () => hasItem('tablet') || satelliteUp(G.char.towns[GRIDHOLM_ID]);
+/** The last orbital scan you saw (drawn as a ring on the map for a while). */
+let lastScan: { x: number; z: number; t: number } | null = null;
+const hrs = (m: number) => { const t = Math.ceil(m); return t >= 60 ? `${Math.floor(t / 60)} h${t % 60 ? ' ' + (t % 60) + ' min' : ''}` : `${t} min`; };
+/**
+ * Ask the passing satellite to look round your waypoint (or round you, with none): every place within ORBIT.r goes on
+ * your map, with the old installations and the toxic fog there. One scan a pass for the whole world.
+ */
+export function orbitalScan(): string {
+  const c = G.char, home = c.towns[GRIDHOLM_ID];
+  if (!satelliteUp(home)) return 'No satellite link.';
+  const wait = scanWait(home, c.time);
+  if (wait > 0) return `No satellite overhead: the next pass in ${hrs(wait)}.`;
+  const [x, z] = c.waypoint ? [nearX(c.waypoint[0], G.pos.x), c.waypoint[1]] : [G.pos.x, G.pos.z];
+  let n = 0;
+  const see = (px: number, pz: number) => { if (discover(c.discovered, Math.floor(px / CHUNK), Math.floor(pz / CHUNK))) n++; };
+  for (const p of poisNear(c.world, x, z, ORBIT.r)) if (Math.hypot(wrapDx(p.x - x), p.z - z) <= ORBIT.r) see(p.x, p.z);
+  for (const s of OW.terrain ? installSitesReady(OW.terrain.world) ?? [] : []) if (Math.hypot(wrapDx(s.x - x), s.z - z) <= ORBIT.r) see(s.x, s.z);
+  let f = 0;
+  for (const z0 of fogsNear(c.world, x, z, ORBIT.r)) if (!c.fogs[z0.id]) { c.fogs[z0.id] = [Math.round(z0.x), Math.round(z0.z), Math.round(z0.r), z0.name]; f++; }
+  (home!.settlement!).scanAt = c.time; lastScan = { x, z, t: c.time };
+  saveChar();
+  const msg = `Orbital scan ${c.waypoint ? 'round your waypoint' : 'round you'}: ${n} new place${n === 1 ? '' : 's'} within ${ORBIT.r / 1000} km${f ? ` and ${f} toxic fog zone${f === 1 ? '' : 's'}` : ''} on your map.`;
+  showToast('Orbital scan complete'); logLine(msg);
+  return msg;
+}
 /** The glove computer's satellite map waits for the start village's station in a new world (document 04). */
 export const mapLocked = () => { const s = G.char.towns[GRIDHOLM_ID]; return isStation(s) && !projectDone(s, 'comms'); };
 function drawFullMap() {
@@ -278,7 +308,16 @@ function drawFullMap() {
   }
   drawArea(bctx, w, h, zoom, true);
   bctx.fillStyle = '#3dff6e'; bctx.font = '22px VT323, monospace'; bctx.textAlign = 'left';
-  bctx.fillText('WORLD MAP — M or Esc to close · wheel / + - to zoom' + (hasItem('tablet') ? ' · right click: set / clear the GPS waypoint' : ''), 16, h - 16);
+  const sat = satelliteUp(G.char.towns[GRIDHOLM_ID]);
+  bctx.fillText((sat ? 'SATELLITE MAP' : 'WORLD MAP') + ' — M or Esc to close · wheel / + - to zoom' + (gpsOn() ? ' · right click: set / clear the GPS waypoint' : ''), 16, h - 16);
+  if (sat) { // the satellites: orbital scans and the weather they see
+    const wait = scanWait(G.char.towns[GRIDHOLM_ID], G.char.time), now = weatherAt(G.char.world, G.pos.x, G.pos.z, G.char.time), later = weatherAt(G.char.world, G.pos.x, G.pos.z, G.char.time + 240);
+    bctx.fillText(`O: orbital scan ${G.char.waypoint ? 'round the waypoint' : 'round you'} (${ORBIT.r / 1000} km) · ${wait > 0 ? 'next pass in ' + hrs(wait) : 'a satellite is overhead'} · sky: ${now.kind} now, ${later.kind} in 4 h`, 16, h - 42);
+    if (lastScan && G.char.time - lastScan.t < 120) { // the scanned ring, for two game hours
+      const sx = w / 2 + (nearX(lastScan.x, G.pos.x) - G.pos.x) * zoom, sy = h / 2 + (lastScan.z - G.pos.z) * zoom;
+      bctx.strokeStyle = '#5cc8ff'; bctx.setLineDash([8, 6]); bctx.beginPath(); bctx.arc(sx, sy, ORBIT.r * zoom, 0, Math.PI * 2); bctx.stroke(); bctx.setLineDash([]);
+    }
+  }
   bctx.textAlign = 'right'; bctx.fillText(villageHere(G.pos.x, G.pos.z)?.name ?? $('hudL').textContent ?? '', w - 16, 30);
 }
 export function toggleMap(open = !G.mapOpen) {
@@ -291,7 +330,7 @@ big.addEventListener('click', () => toggleMap(false));
 /** The GPS Tablet: a right click on the big map sets a waypoint there (on the old one: clears it). */
 big.addEventListener('contextmenu', (e) => {
   e.preventDefault();
-  if (!hasItem('tablet')) return;
+  if (!gpsOn()) return;
   const x = G.pos.x + (e.clientX - innerWidth / 2) / zoom, z = G.pos.z + (e.clientY - innerHeight / 2) / zoom, wp = G.char.waypoint;
   G.char.waypoint = wp && Math.hypot(nearX(wp[0], x) - x, wp[1] - z) * zoom < 14 ? null : [x, z];
   saveChar();

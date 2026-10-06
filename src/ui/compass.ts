@@ -11,7 +11,7 @@ import { leadMarkers } from '../world/datacarriers';
 import { $ } from './hud';
 import { OW } from '../world/overworld';
 import { installSitesReady, installDone } from '../gen/installs';
-import { WAYPOINT_C } from './worldmap';
+import { WAYPOINT_C, gpsOn } from './worldmap';
 
 const gps = $('gps');
 
@@ -32,7 +32,7 @@ let nearT = 0, near: Mark = null, old: Mark = null, fog: Mark = null;
 /** How far the sensor compass sees old installations and known fog (m). */
 export const SCAN_R = 30000;
 export function updateCompass(dt: number) {
-  const scan = hasItem('scanner'), tab = hasItem('tablet'), on = G.char.loc === 'overworld' && (scan || tab || hasItem('compass')) && G.playing;
+  const scan = hasItem('scanner'), tab = gpsOn(), on = G.char.loc === 'overworld' && (scan || tab || hasItem('compass')) && G.playing;
   cv.style.display = on ? 'block' : 'none';
   gps.style.display = on && tab ? 'block' : 'none';
   if (!on) return;

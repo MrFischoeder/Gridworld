@@ -17,6 +17,8 @@ export interface SettlementState {
   /** (0.149, document 04) The start village's satellite link is the big radar and communications station a few km out
    * (`STATION_STAGES`, `stage` = stages done), restored after the first vehicle (`car`: someone in this world has one). */
   station?: true; stage?: number; car?: boolean;
+  /** (0.150) The last orbital scan anyone in this world asked for (game time; the start village's state). */
+  scanAt?: number;
 }
 export const progressive = (s: TownState | undefined) => s?.settlement?.v === 1;
 export const projectDone = (s: TownState | undefined, k: Project) => !!s?.settlement?.done?.[k];
@@ -45,6 +47,16 @@ export const STATION_STAGES: { title: string; text: string; needs: [ItemKey, num
 export const isStation = (s: TownState | undefined) => !!s?.settlement?.station;
 /** Station stages done (0..3). */
 export const stationStage = (s: TownState | undefined) => (projectDone(s, 'comms') ? STATION_STAGES.length : s?.settlement?.stage ?? 0);
+/** Is the satellite link up in this world (a new world whose start village has its link)? Old worlds use the GPS tablet. */
+export const satelliteUp = (home: TownState | undefined) => progressive(home) && projectDone(home, 'comms');
+/**
+ * Orbital scans (document 04 stage D): with the link up the glove asks a passing satellite to look at the ground round a
+ * point: every place within `r` goes on your map. A satellite passes every `every` game minutes; one scan a pass for
+ * the whole world (`scanAt` in the start village's shared state).
+ */
+export const ORBIT = { r: 3000, every: 360 };
+/** Game minutes until the next pass can scan (0 = now). */
+export const scanWait = (home: TownState | undefined, now: number) => { const t = home?.settlement?.scanAt; return t === undefined ? 0 : Math.max(0, t + ORBIT.every - now); };
 /** Saves predating deposit metadata keep their commissioned extraction sites. */
 export const depositsOf = (s: TownState | undefined): Deposits => s?.settlement?.deposits ?? { ore: 'iron', oil: true };
 export function projectAvailable(s: TownState | undefined, k: Project): boolean {

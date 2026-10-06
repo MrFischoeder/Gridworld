@@ -3,6 +3,12 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.150.0', date: '2026-10-06', title: 'Eyes in orbit', notes: [
+    'With the satellite link up, your glove computer is a GPS, with no tablet needed. It shows coordinates, height and heading on the compass strip, and a right click on the satellite map sets a waypoint.',
+    'Orbital scans: press O on the satellite map and a passing satellite looks at the ground round your waypoint (or round you, with none set). Every place, old works and toxic fog within 3 km goes on your map.',
+    'A satellite passes every 6 game hours, and each pass gives one scan for the whole world. The map shows when the next one is due.',
+    'The satellite map also shows the sky where you stand: the weather now and in 4 hours.',
+  ] },
   { v: '0.149.0', date: '2026-10-06', title: 'The satellite link', notes: [
     'Every castaway wakes with a computer in their glove. Its satellite map (M) shows NO SATELLITE LINK in a new world until a ground station answers again. The minimap works as before.',
     'Gridholm\'s satellite link is now a ruined radar and communications station a few kilometres out. You restore it in three stages: clearing, power and cabling, then the dish and the console. It takes timber, stone, scrap, wire, machine parts, gears, an engine, electronics and power cores from the wrecks and the robots.',

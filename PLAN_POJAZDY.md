@@ -40,5 +40,17 @@ Plan wdrożenia dokumentu właściciela „GridWorld 04 — Eksploracja, mechani
 - **Stare zapisy:** łącze już zbudowane zostaje zbudowane; niezbudowane w Gridholm staje się stacją (oddane materiały na mały odbiornik przepadają).
 - **MP:** etapy, oddane materiały i flaga pojazdu są we wspólnym stanie Gridholm; każdy widzi ten sam etap (przebudowa ruiny przy zmianie, `townLook` uwzględnia etap). Protokół bez zmian.
 
-### D. Nawigacja i infrastruktura planetarna (później)
-- GPS, nawigacja, kolejne systemy oparte na satelitach (dokument mówi o nich jako o podstawie na przyszłość).
+### D. Nawigacja i infrastruktura planetarna (D1 w 0.150 zrobione)
+Dokument opisuje ten etap ogólnie („podstawa późniejszych systemów GPS, nawigacji i infrastruktury planetarnej”), więc rozpisuję go na kroki.
+
+**D1. Rękawica jako GPS, skany orbitalne, pogoda z orbity (0.150, zrobione)**
+- Gdy łącze satelitarne działa, rękawica jest GPS-em: współrzędne, wysokość, kurs, pasek kompasu i punkt nawigacyjny (prawy klik na mapie) bez tabletu. W starych światach robi to nadal tablet.
+- Skan orbitalny: klawisz O na mapie satelitarnej. Satelita patrzy w promieniu 3 km wokół punktu nawigacyjnego (albo wokół gracza): wszystkie miejsca, stare instalacje i strefy toksycznej mgły trafiają na mapę. Satelita przelatuje co 6 h gry; jeden skan na przelot dla całego świata.
+- Pogoda z orbity: mapa pokazuje pogodę teraz i za 4 h w miejscu gracza.
+- **MP:** czas ostatniego skanu jest we wspólnym stanie Gridholm (`scanAt`), więc przelot zużywa jeden gracz dla wszystkich. Odkryte miejsca trafiają na mapę skanującego. Nie synchronizowane: wyniki skanu na mapach innych graczy. Protokół bez zmian.
+
+**D2. Maszty przekaźnikowe w osadach (do zrobienia)**
+- Projekt w innych osadach: maszt przekaźnikowy, który częściej daje przelot albo poszerza skan w swojej okolicy. Sieć łączności rośnie razem z siecią osad.
+
+**D3. Planowanie tras (do zrobienia)**
+- Na mapie satelitarnej trasa drogami do wybranej osady (sieć dróg `network` / `edgePath`), prowadzona też na kompasie.
