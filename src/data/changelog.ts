@@ -3,6 +3,9 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.140.1', date: '2026-10-06', title: 'Built for playing together', notes: [
+    'Behind the scenes: from now on every new feature and change is planned and tested for several players in one world from the start (who runs it, what everyone sees, what is saved for all), not added for multiplayer later.',
+  ] },
   { v: '0.140.0', date: '2026-10-06', title: 'Crews', notes: [
     'Online, several players can now sail one boat or ship together. Whoever holds the oars, the tiller or the wheel steers for everyone; the others see her move as she does and are carried along on deck.',
     'The rowboat has a second pair of oars. A second player who climbs in takes the aft oars: when both of you pull the same way she goes about half as fast again; pulling against each other gets you nowhere.',
