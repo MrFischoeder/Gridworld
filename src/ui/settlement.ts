@@ -1,6 +1,8 @@
 import { G } from '../game';
 import { addItem, gainXp, saveChar, calcStats } from '../character';
-import { PROJECTS, projectPlan, projectProblem, projectDone, buildProject, tutorialStep, commsRuin, progressive, depositsOf, type Project } from '../gen/settlement';
+import { PROJECTS, projectPlan, projectProblem, projectDone, buildProject, tutorialStep, linkRuin, progressive, depositsOf, isStation, stationStage, STATION_STAGES, STATION_TEXT, type Project } from '../gen/settlement';
+import { poisNear, CHUNK } from '../gen/regions';
+import { discover } from '../save';
 import { ORES } from '../gen/resource-sites';
 import { findPoi, villageSeed, worldDist, GRIDHOLM_ID } from '../gen/regions';
 import { settleOwn, anchorNew, hallStands } from '../gen/hall';
@@ -19,10 +21,17 @@ export function settlementReward(vid: number, key: string, item?: ItemKey): bool
   if (item && !addItem(item)) { const h = ((c.towns[vid] ??= {}).hold ??= {}); h[item] = (h[item] ?? 0) + 1; }
   return true;
 }
+/** How far the station's first sweep reaches (m): every place in reach goes on your map. */
+const SWEEP = 5000;
+function stationSweep(x: number, z: number): number {
+  const c = G.char; let n = 0;
+  for (const p of poisNear(c.world, x, z, SWEEP)) if (worldDist(p.x, p.z, x, z) <= SWEEP && discover(c.discovered, Math.floor(p.x / CHUNK), Math.floor(p.z / CHUNK))) n++;
+  return n;
+}
 export function developmentHTML(vid: number, head: string, msg = '', atComms = false): string {
   const c = G.char, s = c.towns[vid], step = tutorialStep(s), v = findPoi(c.world, vid);
   if (!step || !v) return head + '<div class="say">This village keeps its established buildings.</div><button class="opt" data-o="back">Back</button>';
-  const has = stockHas(vid), ruin = commsRuin(c.world, v);
+  const has = stockHas(vid), ruin = linkRuin(c.world, v, s), big = isStation(s);
   let h = head + `<div class="say">${msg ? msg + '<br><br>' : ''}<b>Village tutorial: ${step.title}</b><br>${step.text}<br><br>Bring materials to the village stores${hallStands(s) ? ' at the warehouse terminal' : ': to me, until the warehouse stands'}. Houses are repaired as our food supply and works grow; families arrive gradually.</div>`;
   h += `<button class="opt" data-devkit="${vid}">Receive the elder's starter tools and earned rewards</button>`;
   if (!atComms) {
@@ -33,10 +42,14 @@ export function developmentHTML(vid: number, head: string, msg = '', atComms = f
   if (step.farm) h += '<button class="opt" data-o="farms">Build the next farm</button>';
   const keys = (atComms ? ['comms'] : step.project ? [step.project] : []) as Project[];
   for (const k of keys) {
-    h += `<h3>${PROJECTS[k].name}</h3><div class="say">${PROJECTS[k].description}</div>`;
+    if (k === 'comms' && big) {
+      const n = stationStage(s), st = STATION_STAGES[Math.min(n, STATION_STAGES.length - 1)];
+      h += `<h3>Radar and communications station</h3><div class="say">${STATION_TEXT}<br>${STATION_STAGES.map((x, i) => `<span style="color:${i < n ? 'var(--xp)' : i === n ? 'var(--txt)' : '#6a8a70'}">${i + 1}. ${x.title}${i < n ? ' ✓' : ''}</span>`).join(' · ')}${n < STATION_STAGES.length ? `<br><b>${st.title}.</b> ${st.text}` : ''}</div>`;
+    } else h += `<h3>${PROJECTS[k].name}</h3><div class="say">${PROJECTS[k].description}</div>`;
     h += projectPlan(s, k).map((r) => `<div class="shoprow">${ITEMS[r.k].name}: ${r.given}/${r.n} · in stock: ${has(r.k)}</div>`).join('');
     const why = projectProblem(s, k);
-    if (k === 'comms' && !atComms) h += `<div class="say">Receiver: ${ruin?.name ?? 'search the nearby ruins'}. Its console is outside the west wall of the ruins. Follow the tutorial marker; no GPS is needed to find it.</div>`;
+    if (k === 'comms' && projectDone(s, k)) continue;
+    if (k === 'comms' && !atComms) h += `<div class="say">${big ? 'The station' : 'Receiver'}: ${ruin?.name ?? 'search the nearby ruins'}${big && ruin ? ` (${(worldDist(v.x, v.z, ruin.x, ruin.z) / 1000).toFixed(1)} km out)` : ''}. Its console is outside the west wall of the ruins. Follow the tutorial marker; no GPS is needed to find it.${big ? ' Materials are handed over from the village stores at the console.' : ''}</div>`;
     else if (!why) h += `<button class="opt" data-devbuild="${k}" data-devvid="${vid}">Hand over materials and build</button>`;
     else h += `<div class="say">${why}</div>`;
   }
@@ -67,20 +80,26 @@ export function developmentClick(t: HTMLElement, vid: number | null, atComms = f
     const k = button.dataset.devbuild as Project;
     if (!(k in PROJECTS)) return 'Unknown project.';
     if (k === 'comms') {
-      const r = commsRuin(c.world, v), spot = r && { x: r.rect.x0 - 3, z: r.z };
+      const r = linkRuin(c.world, v, s), spot = r && { x: r.rect.x0 - 3, z: r.z };
       if (!atComms || !spot || worldDist(spot.x, spot.z, G.pos.x, G.pos.z) > 4) return 'Restore this receiver at the marked ruin console.';
     }
     const why = projectProblem(s, k); if (why) return why;
     const seed = villageSeed(c.world, v), has = stockHas(vid);
     settleOwn(c.world, v, seed, s, c.time); setPeople(s, seed, v.id === GRIDHOLM_ID, c.time, peopleAt(seed, v.id === GRIDHOLM_ID, s, c.time));
     const result = buildProject(s, k, has); stockTake(vid, result.taken);
+    if (result.stage && !result.built) { // a stage of the station
+      const n = stationStage(s); settlementReward(vid, 'station-' + n); reloadStruct(linkRuin(c.world, v, s)!.id);
+      msg = `${STATION_STAGES[n - 1].title}: done. Next: ${STATION_STAGES[n].title.toLowerCase()}.`;
+      calcStats(); saveChar(); return msg;
+    }
     if (result.built) {
       if (k === 'power') { s.fixed = c.time; s.hurt = 0; }
       if (k === 'refinery') s.settlement!.refinedAt = c.time;
       anchorNew(c.world, v, seed, s, c.time); syncFarmVillage(vid); reloadStruct(vid);
-      if (k === 'comms') reloadStruct(commsRuin(c.world, v)!.id);
+      if (k === 'comms') reloadStruct(linkRuin(c.world, v, s)!.id);
       settlementReward(vid, k, k === 'comms' ? 'tablet' : undefined);
       msg = PROJECTS[k].name + ' built. The elder has the next objective.';
+      if (k === 'comms' && isStation(s)) msg = `The dish swings up and locks on: the satellites answer. The map in your glove computer is alive (M), and the station's sweep put ${stationSweep(v.x, v.z)} new places within ${SWEEP / 1000} km on it. Your GPS tablet is ready. The elder has the next objective.`;
     } else msg = result.taken.length ? 'Materials delivered. The remaining requirements are shown below.' : 'Bring the missing materials to the village stores first.';
   }
   calcStats(); saveChar(); return msg;

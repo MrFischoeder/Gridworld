@@ -132,3 +132,32 @@ describe('new settlements and frozen saves', () => {
     expect(Object.keys(PROJECTS)).toContain('refinery');
   });
 });
+
+describe('the start village\'s radar and communications station (0.149, document 04)', () => {
+  it('comes after the second farm and the first vehicle, in three stages, a few km out', async () => {
+    const S = await import('../src/gen/settlement');
+    const { GRIDHOLM_ID, findPoi, worldDist } = await import('../src/gen/regions');
+    const c = { settlementRules: 1, world: 12345, towns: {} as Record<string, any> };
+    S.initializeSettlements(c);
+    const s = c.towns[GRIDHOLM_ID];
+    expect(S.isStation(s)).toBe(true);
+    s.settlement.supplies = true; s.farms = 1;
+    expect(S.tutorialStep(s)!.farm).toBe(2);
+    s.farms = 2;
+    expect(S.tutorialStep(s)!.car).toBe(true);
+    expect(S.projectProblem(s, 'comms')).toMatch(/vehicle/);
+    s.settlement.car = true;
+    expect(S.tutorialStep(s)!.project).toBe('comms'); expect(S.projectProblem(s, 'comms')).toBe('');
+    for (let i = 0; i < S.STATION_STAGES.length; i++) {
+      const r = S.buildProject(s, 'comms', () => 999);
+      expect(r.taken).toEqual(S.STATION_STAGES[i].needs);
+      expect(r.built).toBe(i === S.STATION_STAGES.length - 1);
+    }
+    expect(S.projectDone(s, 'comms')).toBe(true); expect(S.tutorialStep(s)!.project).toBe('warehouse');
+    const v = findPoi(12345, GRIDHOLM_ID)!, r = S.linkRuin(12345, v, s);
+    if (r) expect(worldDist(v.x, v.z, r.x, r.z)).toBeGreaterThanOrEqual(S.STATION_RANGE[0]);
+    // the other settlements keep the small receiver
+    const other = Object.entries(c.towns).find(([k]) => +k !== GRIDHOLM_ID)![1];
+    expect(S.isStation(other)).toBe(false);
+  });
+});

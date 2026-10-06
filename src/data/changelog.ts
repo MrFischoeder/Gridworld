@@ -3,6 +3,13 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.149.0', date: '2026-10-06', title: 'The satellite link', notes: [
+    'Every castaway wakes with a computer in their glove. Its satellite map (M) shows NO SATELLITE LINK in a new world until a ground station answers again. The minimap works as before.',
+    'Gridholm\'s satellite link is now a ruined radar and communications station a few kilometres out. You restore it in three stages: clearing, power and cabling, then the dish and the console. It takes timber, stone, scrap, wire, machine parts, gears, an engine, electronics and power cores from the wrecks and the robots.',
+    'The station comes after your first vehicle: after the second farm, Kuba the mechanic opens his yard, and once someone has a vehicle the elder sends you to the station.',
+    'When the dish locks on, the glove map comes alive for everyone in the world. The first sweep puts every place within 5 km on your map, and you receive a GPS tablet.',
+    'Other villages keep their small receivers. A satellite link already built stays built.',
+  ] },
   { v: '0.148.0', date: '2026-10-06', title: 'The mechanic', notes: [
     'Kuba is now the village mechanic. In a new world he opens his yard earlier, once the settlement reaches its second level of development.',
     'His workshop ("Build me something in your workshop.") builds an RTV-1 Scout or an HTV-6 Mastodon from salvage, and makes Vehicle Repair Kits. The salvage is scrap, machine parts, gears, engine parts and electronic components, taken from the village hall when you order.',

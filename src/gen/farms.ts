@@ -51,7 +51,7 @@ export function handOverUpgrade(s: TownState, tech: Record<string, number>, have
 export function farmProblem(s: TownState | undefined): string {
   if (!progressive(s)) return '';
   if (!s?.settlement?.supplies) return 'Report the stored supplies to the elder first.';
-  if (farmsOf(s) === 1 && !projectDone(s, 'comms')) return 'Restore the satellite receiver before building the second farm.';
+  if (farmsOf(s) === 1 && !projectDone(s, 'comms') && !s.settlement.station) return 'Restore the satellite receiver before building the second farm.';
   if (farmsOf(s) === 2 && !localIndustryDone(s)) return 'Develop the warehouse, power and available local industry before building the third farm.';
   return '';
 }

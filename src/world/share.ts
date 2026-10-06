@@ -1,4 +1,4 @@
-import { commsRuin, initializeSettlements } from '../gen/settlement';
+import { linkRuin, initializeSettlements } from '../gen/settlement';
 import { findPoi } from '../gen/regions';
 import { GRIDHOLM_ID } from '../gen/regions';
 // The shared world (multiplayer): on a server everyone plays in one world, so what belongs to the world rather than to
@@ -88,8 +88,8 @@ function put(c: Char, f: Field, k: string, v: unknown) {
 /** The parts of a village that change how it looks (a change rebuilds it). */
 const townLook = (t: unknown) => {
   const s = (t ?? {}) as Record<string, unknown>;
-  const settlement = s.settlement as { v?: number; done?: unknown; deposits?: unknown } | undefined;
-  return JSON.stringify([s.wall, s.works, s.farms, s.crops, s.fup, s.pup, s.imp, s.built, settlement?.v, settlement?.done, settlement?.deposits, s.pbuild, (s.plants as { k: string }[] | undefined)?.map((p) => p.k), (s.stations as { k: string }[] | undefined)?.map((p) => p.k)]);
+  const settlement = s.settlement as { v?: number; done?: unknown; deposits?: unknown; stage?: number } | undefined;
+  return JSON.stringify([s.wall, s.works, s.farms, s.crops, s.fup, s.pup, s.imp, s.built, settlement?.v, settlement?.done, settlement?.deposits, settlement?.stage, s.pbuild, (s.plants as { k: string }[] | undefined)?.map((p) => p.k), (s.stations as { k: string }[] | undefined)?.map((p) => p.k)]);
 };
 function show(f: string, k: string, before: unknown, after: unknown) {
   if (G.char.loc === 'dungeon' && G.char.dungeon && k === dungeonKey()) {
@@ -106,7 +106,7 @@ function show(f: string, k: string, before: unknown, after: unknown) {
   if (!OW.terrain || G.char.loc !== 'overworld') return; // underground, or not loaded: seen when you come back
   if (f === 'towns' && townLook(before) !== townLook(after)) {
     reloadStruct(+k);
-    const v = findPoi(G.char.world, +k), r = v && G.char.towns[k]?.settlement && commsRuin(G.char.world, v);
+    const v = findPoi(G.char.world, +k), r = v && G.char.towns[k]?.settlement && linkRuin(G.char.world, v, G.char.towns[k]);
     if (r) reloadStruct(r.id);
   }
   else if (f === 'shuttle') reloadStruct(HANGAR_ID);

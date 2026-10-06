@@ -7,6 +7,7 @@ import { nearX, wrapDx } from '../gen/regions';
 import { G, W } from '../game';
 import { OW, villageHere } from '../world/overworld';
 import { CHUNK, poisNear, villageSeed, GRIDHOLM_ID } from '../gen/regions';
+import { isStation, projectDone } from '../gen/settlement';
 import { wallPolygon, villageSides } from '../gen/village';
 import { STEP, VERTS, CELLS, inRect } from '../gen/terrain';
 import { SEA } from '../gen/seas';
@@ -258,9 +259,23 @@ export function drawWorldMini(ctx: CanvasRenderingContext2D, size: number) {
 // ---------- full-screen world map ----------
 const big = $<HTMLCanvasElement>('worldmap'), bctx = big.getContext('2d')!;
 let zoom = 0.6;
+/** The glove computer's satellite map waits for the start village's station in a new world (document 04). */
+export const mapLocked = () => { const s = G.char.towns[GRIDHOLM_ID]; return isStation(s) && !projectDone(s, 'comms'); };
 function drawFullMap() {
   const w = innerWidth, h = innerHeight;
   if (big.width !== w || big.height !== h) { big.width = w; big.height = h; }
+  if (mapLocked()) { // the glove's screen: no uplink
+    bctx.fillStyle = '#010d04'; bctx.fillRect(0, 0, w, h);
+    bctx.strokeStyle = '#2fe06055'; for (let y = 0; y < h; y += 4) { bctx.beginPath(); bctx.moveTo(0, y); bctx.lineTo(w, y); bctx.stroke(); }
+    bctx.textAlign = 'center'; bctx.fillStyle = '#3dff6e'; bctx.font = '30px VT323, monospace';
+    bctx.fillText('GLOVE COMPUTER · SATELLITE MAP', w / 2, h / 2 - 60);
+    bctx.fillStyle = (Date.now() >> 9) % 2 ? '#ff6a4a' : '#ffb347'; bctx.font = '44px VT323, monospace'; bctx.fillText('NO SATELLITE LINK', w / 2, h / 2);
+    bctx.fillStyle = '#9dffb4'; bctx.font = '22px VT323, monospace';
+    bctx.fillText('No ground station answers. Restore the radar and communications station near Gridholm', w / 2, h / 2 + 50);
+    bctx.fillText('(ask the elder) and the satellites still circling the planet will feed this map.', w / 2, h / 2 + 78);
+    bctx.fillStyle = '#3dff6e'; bctx.fillText('M or Esc to close · the minimap still shows what your glove sees around you', w / 2, h - 20);
+    return;
+  }
   drawArea(bctx, w, h, zoom, true);
   bctx.fillStyle = '#3dff6e'; bctx.font = '22px VT323, monospace'; bctx.textAlign = 'left';
   bctx.fillText('WORLD MAP — M or Esc to close · wheel / + - to zoom' + (hasItem('tablet') ? ' · right click: set / clear the GPS waypoint' : ''), 16, h - 16);

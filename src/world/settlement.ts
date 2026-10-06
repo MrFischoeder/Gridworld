@@ -1,7 +1,8 @@
 // Physical new-world deposits and the surface receiver console at a real nearby ruin.
 import * as THREE from 'three';
 import { G, W } from '../game';
-import { RESOURCE_PLOTS, PROJECTS, progressive, projectDone, projectAvailable, depositsOf, commsRuin, tutorialStep } from '../gen/settlement';
+import { RESOURCE_PLOTS, PROJECTS, progressive, projectDone, projectAvailable, depositsOf, linkRuin, tutorialStep, isStation, stationStage, STATION_RANGE } from '../gen/settlement';
+import { YARD } from '../gen/vehicles';
 import { ORES } from '../gen/resource-sites';
 import { resourceRockHit, resourceRockFloor } from '../gen/resource-rocks';
 import type { RockShape } from '../gen/rockshape';
@@ -151,9 +152,10 @@ export function drawSettlementSites(vm: VillageMap, T: Terrain, id: number): THR
 export function drawSettlementComms(poi: Poi, T: Terrain): THREE.Group {
   const grp = new THREE.Group(), pb = new PropBatch();
   for (const v of allVillages(T.world)) {
-    const s = G.char.towns[v.id]; if (worldDist(v.x, v.z, poi.x, poi.z) > 2400 || !progressive(s) || commsRuin(T.world, v)?.id !== poi.id) continue;
+    const s = G.char.towns[v.id]; if (worldDist(v.x, v.z, poi.x, poi.z) > (isStation(s) ? STATION_RANGE[1] + 400 : 2400) || !progressive(s) || linkRuin(T.world, v, s)?.id !== poi.id) continue;
     const x = poi.rect.x0 - 3, z = poi.z, y = T.heightAt(x, z), built = projectDone(s, 'comms');
     drawComputer(pb, { x0: x - .7, x1: x + .7, z0: z - .4, z1: z + .4, h: 1, n: [0, 1] }, y);
+    if (isStation(s)) { drawStation(pb, grp, T, x, z, stationStage(s)); break; }
     pb.seg(METAL, [x - 2, y, z], [x - 2 + (built ? 0 : 2), y + (built ? 7 : 3), z - 1]);
     pb.line(built ? 0x9dffb4 : WOOD, [x - 4, y + 6, z - 1], [x - 2, y + 5, z], [x, y + 6, z - 1]);
     const sign = textSprite(built ? 'SATELLITE LINK ONLINE' : 'COMMUNICATIONS RUIN · RESTORE RECEIVER', built ? '#9dffb4' : '#ffd060', 5);
@@ -161,18 +163,50 @@ export function drawSettlementComms(poi: Poi, T: Terrain): THREE.Group {
   }
   grp.add(pb.build()); return grp;
 }
+/**
+ * The start village's radar and communications station beside its ruin's console at (x, z), by the stages done: a
+ * mast lying in the rubble and a buried bunker; cleared (1) a bunker walled up and the mast's stump; powered (2) a
+ * generator shed and cable runs; restored (3) the mast up with the dish on top, its lamps lit.
+ */
+function drawStation(pb: PropBatch, grp: THREE.Group, T: Terrain, x: number, z: number, stage: number) {
+  const H = (dx: number, dz: number) => T.heightAt(x + dx, z + dz), RUST = 0x9aa870, LIT = 0x9dffb4, CONC = 0x7fa08c;
+  const box = (x0: number, z0: number, x1: number, z1: number, h: number, c: number) => { const y = Math.min(H(x0, z0), H(x1, z1)) - 0.2; pb.box(x + x0, y, z + z0, x + x1, y + h, z + z1, c); };
+  // the bunker: rubble heaps until cleared, then walled up with a door
+  if (stage < 1) for (let i = 0; i < 6; i++) box(-12 + i * 1.6, 4 + (i % 2), -11 + i * 1.6, 5.4 + (i % 2), 0.6 + (i % 3) * 0.4, CONC);
+  else { box(-13, 3, -6, 9, 3, CONC); pb.line(METAL, [x - 10, H(-10, 3) , z + 2.98], [x - 10, H(-10, 3) + 2.2, z + 2.98], [x - 8.8, H(-9, 3) + 2.2, z + 2.98], [x - 8.8, H(-9, 3), z + 2.98]); }
+  // the mast: lying in the weeds, a stump once cleared, up with the dish when restored
+  const mx = 6, mz = 6, my = H(mx, mz);
+  if (stage < 1) { for (const o of [-0.6, 0.6]) pb.seg(RUST, [x + mx + o, my + 0.3, z + mz], [x + mx + 16 + o, H(mx + 16, mz) + 0.3, z + mz + 4]); for (let i = 0; i < 16; i += 2) pb.seg(RUST, [x + mx + i - 0.6, my + 0.3, z + mz + i / 4], [x + mx + i + 0.6, my + 0.3, z + mz + i / 4]); }
+  else {
+    const h = stage >= 3 ? 18 : 5, c = stage >= 3 ? METAL : RUST, w = 1.2;
+    for (const [dx, dz] of [[-w, -w], [w, -w], [w, w], [-w, w]]) pb.seg(c, [x + mx + dx, my, z + mz + dz], [x + mx + dx * 0.4, my + h, z + mz + dz * 0.4]);
+    for (let r = 0; r + 3 <= h; r += 3) { const k0 = 1 - 0.6 * r / 18, k1 = 1 - 0.6 * (r + 3) / 18; pb.seg(c, [x + mx - w * k0, my + r, z + mz - w * k0], [x + mx + w * k1, my + r + 3, z + mz + w * k1]); pb.seg(c, [x + mx + w * k0, my + r, z + mz - w * k0], [x + mx - w * k1, my + r + 3, z + mz + w * k1]); }
+    if (stage >= 3) { // the dish, tilted to the sky, and the lamps
+      const dy = my + h + 1, R = 3.2, pts: number[][] = [];
+      for (let i = 0; i <= 16; i++) { const a = i / 16 * 6.283; pts.push([x + mx + Math.cos(a) * R, dy + Math.sin(a) * R * 0.5 + 1, z + mz + Math.sin(a) * R * 0.85 - 1]); }
+      pb.line(LIT, ...pts); for (let i = 0; i < 16; i += 4) pb.seg(METAL, pts[i], [x + mx, dy + 2.5, z + mz - 2.5]);
+      pb.seg(METAL, [x + mx, my + h, z + mz], [x + mx, dy + 1, z + mz - 1]);
+      for (const d of [-1, 1]) pb.box(x + mx + d * 0.5 - 0.15, my + h - 0.3, z + mz - 0.15, x + mx + d * 0.5 + 0.15, my + h, z + mz + 0.15, LIT);
+    }
+  }
+  // the generator shed and the cable runs once powered
+  if (stage >= 2) { box(-4, 8, 0, 12, 2.6, METAL); pb.gableRoof(x - 4.2, z + 7.8, x + 0.2, z + 12.2, H(-2, 10) + 2.4, 0.8, WOOD); pb.line(stage >= 3 ? LIT : METAL, [x, H(0, 10) + 1, z + 10], [x + mx, my + 1, z + mz], [x - 6, H(-6, 3) + 2, z + 3]); }
+  const sign = textSprite(stage >= 3 ? 'RADAR & COMMUNICATIONS STATION · ONLINE' : `RADAR & COMMUNICATIONS STATION · STAGE ${stage + 1}/3`, stage >= 3 ? '#9dffb4' : '#ffd060', 5);
+  sign.position.set(x, H(0, 0) + 2.4, z); grp.add(sign);
+}
 export function nearSettlementComms(): number | null {
   if (G.char.loc !== 'overworld') return null;
   for (const v of allVillages(G.char.world)) {
-    if (!progressive(G.char.towns[v.id]) || worldDist(v.x, v.z, G.pos.x, G.pos.z) > 2400) continue;
-    const r = commsRuin(G.char.world, v);
+    const sv = G.char.towns[v.id];
+    if (!progressive(sv) || worldDist(v.x, v.z, G.pos.x, G.pos.z) > (isStation(sv) ? STATION_RANGE[1] + 400 : 2400)) continue;
+    const r = linkRuin(G.char.world, v, sv);
     if (r && worldDist(r.rect.x0 - 3, r.z + 1.2, G.pos.x, G.pos.z) < 2 && Math.abs(G.pos.y - (OW.terrain?.heightAt(G.pos.x, G.pos.z) ?? 0)) < 2) return v.id;
   }
   return null;
 }
 let consoleTown: number | null = null;
 const root = () => document.getElementById('dlg')!;
-function renderConsole(msg = '') { root().querySelector('.panel')!.innerHTML = '<div data-settlement-console="1">' + developmentHTML(consoleTown!, '<h2>Satellite receiver</h2>', msg, true) + '</div>'; }
+function renderConsole(msg = '') { root().querySelector('.panel')!.innerHTML = '<div data-settlement-console="1">' + developmentHTML(consoleTown!, isStation(G.char.towns[consoleTown!]) ? '<h2>Radar and communications station</h2>' : '<h2>Satellite receiver</h2>', msg, true) + '</div>'; }
 export function openSettlementComms(vid: number) {
   if (!G.playing || G.dlgOpen || G.packOpen || G.xferOpen) return;
   consoleTown = vid; G.dlgOpen = true; G.firing = false; W.talkNpc = null; for (const k in G.keys) G.keys[k] = false;
@@ -187,7 +221,8 @@ export function settlementConsoleClick(t: HTMLElement): boolean {
 export function settlementMarker(): { x: number; z: number; label: string } | null {
   const c = G.char, v = findPoi(c.world, GRIDHOLM_ID), step = tutorialStep(c.towns[GRIDHOLM_ID]);
   if (!v || !step || !(c.guide === 2)) return null;
-  const r = step.project === 'comms' ? commsRuin(c.world, v) : null;
+  if (step.car) return { x: nearX(YARD.dealer.x, G.pos.x), z: YARD.dealer.z, label: step.title }; // Kuba's yard
+  const r = step.project === 'comms' ? linkRuin(c.world, v, c.towns[GRIDHOLM_ID]) : null;
   const p = step.project && step.project in RESOURCE_PLOTS ? RESOURCE_PLOTS[step.project as keyof typeof RESOURCE_PLOTS] : null;
   return { x: nearX(r ? r.rect.x0 - 3 : p ? v.x - 36 + p.x : v.x, G.pos.x), z: r ? r.z : p ? v.z - 36 + p.z : v.z, label: step.title };
 }

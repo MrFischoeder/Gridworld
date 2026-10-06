@@ -9,6 +9,8 @@ import { saveChar, calcStats, addItem } from '../character';
 import { parkNew, yardBay } from '../world/vehicles';
 import { showToast, logLine } from './hud';
 import { stockHas, stockTake } from './stock';
+import { isStation } from '../gen/settlement';
+import { GRIDHOLM_ID } from '../gen/regions';
 
 const nameOf = (j: GarageJob) => (j.car ? vehicleTitle(j.car) : ITEMS[j.out!].name + (j.n > 1 ? ' ×' + j.n : ''));
 const span = (min: number) => { const h = Math.floor(min / 60), m = Math.ceil(min % 60); return h ? `${h} h${m ? ' ' + m + ' min' : ''}` : `${m} min`; };
@@ -75,6 +77,9 @@ let told = 0;
 export function updateGarage(dt: number) {
   if ((told -= dt) > 0) return;
   told = 3;
+  // the start village's tutorial waits for the first vehicle anyone in this world has (shared: the station comes next)
+  const home = G.char.towns[GRIDHOLM_ID];
+  if (isStation(home) && !home!.settlement!.car && G.char.vehicles.length) { home!.settlement!.car = true; saveChar(); }
   for (const j of G.char.garage ?? []) if (j.done <= G.char.time && !j.told) {
     j.told = 1;
     const g = GARAGE[j.i]; showToast(`Your ${nameOf(g)} is ready at the workshop`); logLine(`Kuba has finished your ${nameOf(g)}: collect it at his workshop in the yard.`);

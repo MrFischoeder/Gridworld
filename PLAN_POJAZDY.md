@@ -23,17 +23,22 @@ Plan wdrożenia dokumentu właściciela „GridWorld 04 — Eksploracja, mechani
 - **Później:** te same części z produkcji (Machine Shop: części, przekładnie; silniki z Electrical Works) zgodnie z drzewem technologii.
 - **MP:** zlecenia są osobiste (`char.garage`), jak u kowala. Materiały idą ze wspólnej hali wioski (`towns`). Złożony pojazd należy do zamawiającego; inni widzą go jak każdy pojazd gracza. Protokół bez zmian.
 
-### B. Komputer w rękawicy (do zrobienia)
-- Każdy rozbitek ma rękawicę z komputerem. Mapa satelitarna (M) istnieje od początku jako funkcja urządzenia, ale w nowym świecie pokazuje „NO SATELLITE LINK”, dopóki stacja nie działa.
-- Minimapa: tylko lokalne czujniki rękawicy (najbliższe otoczenie, bez odkrytych kafelków świata). Do decyzji właściciela, czy blokować także minimapę.
-- **MP:** odblokowanie zależy od wspólnego stanu stacji, więc obejmuje wszystkich graczy w świecie naraz.
+### B. Komputer w rękawicy (0.149, zrobione)
+- Mapa satelitarna (M) w nowym świecie pokazuje ekran rękawicy „NO SATELLITE LINK”, dopóki stacja przy Gridholm nie działa.
+- Minimapa działa jak dotąd (decyzja właściciela).
+- **MP:** blokada liczy się ze wspólnego stanu stacji (`towns`), więc mapa odblokowuje się wszystkim graczom w świecie naraz.
 
-### C. Stacja radarowo-komunikacyjna jako duży projekt (do zrobienia)
-- Zrujnowana stacja kilka km od Gridholm (ruina w odległości ok. 2–5 km). Gracz słyszy o niej w osadzie.
-- Odbudowa w kilku etapach: oczyszczenie (drewno, kamień, złom), zasilanie i okablowanie (drut, części elektroniczne, części maszynowe), antena i konsola (rdzenie mocy, części elektroniczne, przekładnie z salvage). Wymusza eksplorację i zbieranie salvage, nie jedno kliknięcie.
-- **Nagroda:** łączność z satelitami, odblokowana mapa w rękawicy, tablet GPS, przegląd okolicy (odkrycie miejsc w promieniu kilku km), podstawa późniejszej nawigacji.
-- **Kolejność w samouczku** zgodnie z dokumentem: żywność i mały magazyn → wzrost populacji → mechanik → części → pierwszy samochód → stacja → mapa. Dziś „Satellite link” jest po pierwszej farmie i blokuje magazyn. Do decyzji właściciela, czy przenieść go za samochód, a w innych osadach zostawić mały odbiornik.
-- **MP:** stan stacji we wspólnym stanie wioski; protokół bez zmian.
+### C. Stacja radarowo-komunikacyjna jako duży projekt (0.149, zrobione)
+- W nowym świecie łącze satelitarne Gridholm to duża stacja w ruinie 2–6 km od wioski (`STATION_RANGE`, `linkRuin`). Inne osady zachowują mały odbiornik w najbliższej ruinie.
+- Trzy etapy (`STATION_STAGES`), materiały z hali wioski oddawane przy konsoli stacji:
+  1. oczyszczenie: 20 kłód, 20 kamieni, 16 złomu;
+  2. zasilanie i okablowanie: 20 złomu, 16 drutu, 6 części elektronicznych, 3 części maszynowe, 1 część silnika;
+  3. antena i konsola: 10 części elektronicznych, 2 rdzenie mocy, 4 przekładnie, 4 części maszynowe, 10 złomu.
+- **Kolejność (decyzja właściciela: stacja za samochodem):** zapasy → farma 1 → farma 2 (mechanik otwiera plac) → pierwszy pojazd (zbudowany u Kuby albo przejęty w terenie; flaga `car` we wspólnym stanie wioski) → stacja → magazyn i dalej jak dotąd. Druga farma nie czeka już na łącze w Gridholm.
+- **Nagroda:** odblokowana mapa w rękawicy, tablet GPS, przegląd okolicy (wszystkie miejsca w promieniu 5 km trafiają na mapę), nagroda za każdy etap.
+- **Wygląd:** maszt leżący w gruzach i zasypany bunkier → bunkier zamurowany, kikut masztu → szopa z generatorem i kable → maszt z anteną i światłami.
+- **Stare zapisy:** łącze już zbudowane zostaje zbudowane; niezbudowane w Gridholm staje się stacją (oddane materiały na mały odbiornik przepadają).
+- **MP:** etapy, oddane materiały i flaga pojazdu są we wspólnym stanie Gridholm; każdy widzi ten sam etap (przebudowa ruiny przy zmianie, `townLook` uwzględnia etap). Protokół bez zmian.
 
 ### D. Nawigacja i infrastruktura planetarna (później)
 - GPS, nawigacja, kolejne systemy oparte na satelitach (dokument mówi o nich jako o podstawie na przyszłość).

@@ -14,6 +14,9 @@ export interface SettlementState {
   supplies?: boolean;
   refinedAt?: number;
   deposits?: Deposits;
+  /** (0.149, document 04) The start village's satellite link is the big radar and communications station a few km out
+   * (`STATION_STAGES`, `stage` = stages done), restored after the first vehicle (`car`: someone in this world has one). */
+  station?: true; stage?: number; car?: boolean;
 }
 export const progressive = (s: TownState | undefined) => s?.settlement?.v === 1;
 export const projectDone = (s: TownState | undefined, k: Project) => !!s?.settlement?.done?.[k];
@@ -29,6 +32,19 @@ export const PROJECTS: Record<Project, { name: string; needs: [ItemKey, number][
   refinery: { name: 'Oil refinery', needs: [['scrap', 24], ['circuit', 4], ['wire', 12], ['planks', 18]], description: 'Build a refinery beside the oil well. It consumes crude from village stock to make fuel.' },
   foodworks: { name: 'Food processing house', needs: [['log', 14], ['stone', 10], ['planks', 12], ['nails', 16], ['scrap', 6]], description: 'Build a mill, a bakery, a dairy and a smokehouse on the staked plot about 100 metres south-west of the village. While its crew works, grain, potatoes, milk and meat feed a third more people, so the same fields keep a bigger village.' },
 };
+/**
+ * The start village's radar and communications station (document 04): a big project in three stages, salvage and
+ * exploration rather than a click. Each stage's materials are handed over bit by bit like any project's.
+ */
+export const STATION_STAGES: { title: string; text: string; needs: [ItemKey, number][] }[] = [
+  { title: 'Clearing the station', text: 'The mast lies across the compound and the bunker is buried in rubble. Timber for props, stone to wall up the bunker, scrap to patch the doors.', needs: [['log', 20], ['stone', 20], ['scrap', 16]] },
+  { title: 'Power and cabling', text: 'The station needs its own power and new cable runs: wire, old electronics for the switchboard, machine parts and an engine to turn the generator.', needs: [['scrap', 20], ['wire', 16], ['circuit', 6], ['parts', 3], ['engine', 1]] },
+  { title: 'The dish and the console', text: 'The mast goes up again with the dish on top, and the console must find the satellites: power cores for the transmitter, electronics, gears for the dish drive, machine parts.', needs: [['circuit', 10], ['pcore', 2], ['gears', 4], ['parts', 4], ['scrap', 10]] },
+];
+/** Is this village's satellite link the big station (the start village of a new world)? */
+export const isStation = (s: TownState | undefined) => !!s?.settlement?.station;
+/** Station stages done (0..3). */
+export const stationStage = (s: TownState | undefined) => (projectDone(s, 'comms') ? STATION_STAGES.length : s?.settlement?.stage ?? 0);
 /** Saves predating deposit metadata keep their commissioned extraction sites. */
 export const depositsOf = (s: TownState | undefined): Deposits => s?.settlement?.deposits ?? { ore: 'iron', oil: true };
 export function projectAvailable(s: TownState | undefined, k: Project): boolean {
@@ -41,6 +57,7 @@ export function projectProblem(s: TownState | undefined, k: Project): string {
   if (!progressive(s)) return 'This settlement uses the established village rules.';
   if (projectDone(s, k)) return 'Already built.';
   if (!projectAvailable(s, k)) return k === 'mine' ? 'There is no ore seam here. Import metals from another village.' : 'There is no oil field here. Import crude or fuel from another village.';
+  if (k === 'comms' && isStation(s)) return (s?.farms ?? 0) < 2 ? 'Build two farms first.' : s?.settlement?.car ? '' : 'Get your first vehicle from Kuba the mechanic first: the station lies a few kilometres out.';
   if (k === 'comms') return (s?.farms ?? 0) >= 1 ? '' : 'Build the first farm first.';
   if (k === 'warehouse') return (s?.farms ?? 0) >= 2 && projectDone(s, 'comms') ? '' : 'Restore satellite communications and build two farms first.';
   if (k === 'power') return projectDone(s, 'warehouse') ? '' : 'Build the vehicle warehouse first.';
@@ -50,7 +67,8 @@ export function projectProblem(s: TownState | undefined, k: Project): string {
   return '';
 }
 export function projectPlan(s: TownState | undefined, k: Project) {
-  return PROJECTS[k].needs.map(([i, n]) => ({ k: i, n, given: Math.min(n, s?.settlement?.given?.[k]?.[i] ?? 0) }));
+  const needs = k === 'comms' && isStation(s) ? STATION_STAGES[Math.min(stationStage(s), STATION_STAGES.length - 1)].needs : PROJECTS[k].needs;
+  return needs.map(([i, n]) => ({ k: i, n, given: Math.min(n, s?.settlement?.given?.[k]?.[i] ?? 0) }));
 }
 /** Partial deliveries; callers remove exactly `taken` from shared stock. Repeated completion is a no-op. */
 export function buildProject(s: TownState, k: Project, have: (i: ItemKey) => number) {
@@ -61,9 +79,13 @@ export function buildProject(s: TownState, k: Project, have: (i: ItemKey) => num
     const n = Math.max(0, Math.min(r.n - r.given, Math.floor(have(r.k))));
     if (n) { g[r.k] = r.given + n; taken.push([r.k, n]); }
   }
-  const built = projectPlan(s, k).every((r) => r.given === r.n);
+  let built = projectPlan(s, k).every((r) => r.given === r.n), stage = false;
+  if (built && k === 'comms' && isStation(s)) { // a stage of the station: the next one, until the last
+    s.settlement!.stage = stationStage(s) + 1; delete s.settlement!.given![k]; stage = true;
+    built = s.settlement!.stage >= STATION_STAGES.length;
+  }
   if (built) { (s.settlement!.done ??= {})[k] = true; delete s.settlement!.given![k]; }
-  return { taken, built };
+  return { taken, built, stage };
 }
 /** Development repairs housing before migrants arrive. Food still limits population separately. */
 export function development(s: TownState | undefined): number {
@@ -84,6 +106,7 @@ export function initializeSettlements(c: { settlementRules: number; world: numbe
   if (c.settlementRules !== 1) return;
   for (const v of allVillages(c.world)) {
     const s = ((c.towns[v.id] ??= {}).settlement ??= { v: 1 });
+    if (v.id === GRIDHOLM_ID && !s.done?.comms && !s.station) { s.station = true; delete s.given?.comms; } // (0.149) the big station
     if (!s.deposits) {
       s.deposits = villageDeposits(c.world, v.id);
       if (s.done?.mine || s.given?.mine) s.deposits.ore = 'iron';
@@ -93,17 +116,30 @@ export function initializeSettlements(c: { settlementRules: number; world: numbe
 }
 /** Reuse a genuine nearby ruin; independent stream leaves existing village/ruin identities untouched. */
 const commsCache = new Map<string, Poi>();
-export function commsRuin(world: number, v: Poi): Poi | null {
-  const key = world + ':' + v.id, old = commsCache.get(key); if (old) return old;
-  const candidates = poisNear(world, v.x, v.z, 2200).filter((p) => p.type === 'ruin');
+/** How far out the start village's station lies (m). */
+export const STATION_RANGE = [2000, 6000];
+/** The ruin of village v's satellite link (the station's for the start village). */
+export const linkRuin = (world: number, v: Poi, s: TownState | undefined) => commsRuin(world, v, isStation(s));
+export function commsRuin(world: number, v: Poi, station = false): Poi | null {
+  const key = world + ':' + v.id + (station ? ':s' : ''), old = commsCache.get(key); if (old) return old;
+  // the start village's station lies a few km out (STATION_RANGE); the other villages' receivers in the nearest ruin
+  const candidates = station ? poisNear(world, v.x, v.z, STATION_RANGE[1]).filter((p) => p.type === 'ruin' && worldDist(v.x, v.z, p.x, p.z) >= STATION_RANGE[0])
+    : poisNear(world, v.x, v.z, 2200).filter((p) => p.type === 'ruin');
+  if (station && !candidates.length) return commsRuin(world, v);
   candidates.sort((a, b) => worldDist(v.x, v.z, a.x, a.z) - worldDist(v.x, v.z, b.x, b.z) || a.id - b.id);
   const p = candidates[0]; if (p) { if (commsCache.size > 4000) commsCache.clear(); commsCache.set(key, p); }
   return p ?? null;
 }
-export function tutorialStep(s: TownState | undefined): { title: string; text: string; project?: Project; farm?: number; supplies?: boolean } | null {
+export const STATION_TEXT = 'A few kilometres out lies a ruined radar and communications station. Restore it and its dish will find the satellites still circling the planet: the map in your glove computer comes alive.';
+export function tutorialStep(s: TownState | undefined): { title: string; text: string; project?: Project; farm?: number; supplies?: boolean; car?: boolean } | null {
   if (!progressive(s)) return null;
   if (!s!.settlement!.supplies) return { title: 'Gather and store supplies', text: 'Collect 4 logs and 4 stones and leave them with the elder: until a warehouse stands, he keeps the village\'s stores. Then report to him. Ask the elder for starter tools, then hold E at trees and rocks.', supplies: true };
   if (!(s?.farms ?? 0)) return { title: 'Build the first farm', text: 'Bring 8 logs and 6 stones to the village stores. Ask the elder to build a farm; it feeds new families even without electricity.', farm: 1 };
+  if (isStation(s) && !projectDone(s, 'comms')) { // the start village: food, the mechanic and a vehicle first, then the station (document 04)
+    if ((s?.farms ?? 0) < 2) return { title: 'Build the second farm', text: 'Extend food production and repair more homes with a second farm. With more hands in the village, Kuba the mechanic opens his yard.', farm: 2 };
+    if (!s?.settlement?.car) return { title: 'Your first vehicle', text: 'Kuba the mechanic has opened his yard outside the north gate. Search the wrecks, the ruins and the robots for scrap, machine parts, gears, engine parts and old electronics, store them in the village hall and have him build you a vehicle. An abandoned one found in the wilds will do too.', car: true };
+    return { title: 'Restore the radar and communications station', text: `${STATION_TEXT} Stage ${stationStage(s) + 1} of ${STATION_STAGES.length}: ${STATION_STAGES[stationStage(s)].title.toLowerCase()}.`, project: 'comms' };
+  }
   if (!projectDone(s, 'comms')) return { title: 'Restore satellite communications', text: PROJECTS.comms.description, project: 'comms' };
   if ((s?.farms ?? 0) < 2) return { title: 'Build the second farm', text: 'Extend food production and repair more homes with a second farm.', farm: 2 };
   for (const k of ['warehouse', 'power', 'quarry', 'lumber', 'mine', 'oil', 'refinery'] as Project[]) if (projectAvailable(s, k) && !projectDone(s, k)) return { title: PROJECTS[k].name, text: PROJECTS[k].description, project: k };
