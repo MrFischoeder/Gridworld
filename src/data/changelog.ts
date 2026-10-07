@@ -3,6 +3,15 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.166.0', date: '2026-10-07', title: 'One step at a time', notes: [
+    'The village elder no longer offers every building job at once. His commissions now open one after another, like a tutorial: first a farm, then the wall and its defences once a farm stands, then works once the wall has risen, then the power plant\'s overhaul once a works runs, and last the village improvements.',
+    'A job you have already started always stays on the list.',
+    'When you greet him, the elder says what the village needs next.',
+    'The elder only offers a share of the village\'s goods once the village trusts you.',
+    '"Do you have any work for me?" only shows while you carry no task.',
+    'Notice boards show two notices at first, and one more for every quest you finish, up to four. Characters who have played a while start with more.',
+    'In the new settlements the elder\'s own development tutorial works as before.',
+  ] },
   { v: '0.165.0', date: '2026-10-07', title: 'Great groves, lumber camps and planks', notes: [
     'Some settlements now have a new natural resource: a great grove. Gridholm always has one, other villages about two in five. It is a stand of giant trees east of the village, some 30 m tall and metres thick. The elder tells you where the village\'s resources lie.',
     'The giants cannot be felled. Once the village has built its Lumber camp in the grove, its crews take logs from the trees every day, forever, into the village stores.',

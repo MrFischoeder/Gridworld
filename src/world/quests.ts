@@ -48,17 +48,21 @@ export function questTown(poi: Poi): QuestTown {
 export const giverOf = (q: Quest) => q.giverName ?? NPC_INFO[q.giver!].name;
 export const townOf = (q: Quest) => q.town ?? GRIDHOLM_ID;
 export const boardName = (q: Quest) => (q.townName ?? 'Gridholm') + "'s board";
+/** Quests finished so far (older characters who have played a while count as having proved themselves). */
+const questsDone = () => G.char.questsDone ?? (G.char.level > 2 ? 2 : 0);
+/** How many notices a board shows you (0.166): two at first, one more for each quest you finish, up to OFFERS. */
+export const noticesShown = () => Math.min(OFFERS, 2 + questsDone());
 /** Fill a board up to OFFERS notices (numbered, so the same world always posts the same notices in order). */
 export function boardOffers(poi?: Poi): Quest[] {
   const T = OW.terrain, town = poi ? questTown(poi) : GRIDHOLM_TOWN, b = boardOf(town.id);
   if (!T) return b.offers;
-  const small = progressive(G.char.towns[town.id]), limit = small ? (development(G.char.towns[town.id]) < 3 ? 2 : 3) : OFFERS;
+  const small = progressive(G.char.towns[town.id]), limit = Math.min(noticesShown(), small ? (development(G.char.towns[town.id]) < 3 ? 2 : 3) : OFFERS);
   while (b.offers.length < limit) {
     const all = [...G.char.quests, ...b.offers], taken = all.map((q) => q.item).filter((k): k is ItemKey => !!k);
     const camps = all.map((q) => q.place?.campId).filter((k): k is number => k !== undefined);
     b.offers.push(small ? basicQuest(G.char.world, b.seq++, town) : generateQuest(T, b.seq++, taken, town, camps));
   }
-  return b.offers;
+  return b.offers.slice(0, limit); // (a board posted fuller before keeps the rest for later)
 }
 /**
  * Every BOARD_HOURS game hours new notices go up on every board: the two oldest offers of each posting come
@@ -97,7 +101,7 @@ export function abandon(id: string): string {
 function reward(q: Quest) {
   q.state = 'done';
   G.char.quests = G.char.quests.filter((x) => x !== q);
-  G.char.gold += q.reward.gold; earnTrust(townOf(q), 'quest');
+  G.char.gold += q.reward.gold; earnTrust(townOf(q), 'quest'); G.char.questsDone = questsDone() + 1;
   logLine(`+${q.reward.gold} gold`); gainXp(q.reward.xp);
   if (q.kind !== 'bounty' && Math.random() < 0.35) giveLoot(RELIC_KEYS[(Math.random() * RELIC_KEYS.length) | 0]);
   showToast('Quest complete'); saveChar();

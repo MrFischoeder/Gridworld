@@ -52,6 +52,8 @@ import { farmsHTML, farmsClick, showFarm } from './farms';
 import { plantUpHTML, plantUpClick, showPlantUp } from './plantup';
 import { improveHTML, improveClick } from './improve';
 import { earnTrust } from '../world/standing';
+import { ELDER_CHAIN, elderTasks, begun, type ElderTask } from '../gen/elderchain';
+import { trustTier } from '../gen/standing';
 import { CRAFTING_OPEN } from '../data/crafting';
 import { pendingTribute, payTribute } from '../world/villageraid';
 import { findPoi } from '../gen/regions';
@@ -78,7 +80,7 @@ export function openDialog(n: Npc) {
   if (!G.playing || G.dlgOpen || G.packOpen || G.xferOpen) return;
   G.dlgOpen = true; W.talkNpc = n; G.firing = false; for (const k in G.keys) G.keys[k] = false;
   const info = NPC_INFO[n.role];
-  renderTalk(n.role === 'villager' ? (n.name + ' nods. "' + here(VILLAGER_LINES[(Math.random() * VILLAGER_LINES.length) | 0]) + '"') : here(info.hello!));
+  renderTalk(n.role === 'villager' ? (n.name + ' nods. "' + here(VILLAGER_LINES[(Math.random() * VILLAGER_LINES.length) | 0]) + '"') : here(info.hello!) + elderNeed());
   dlgEl.style.display = 'flex'; if (document.pointerLockElement) document.exitPointerLock();
 }
 export function closeDialog() { if (!G.dlgOpen) return; G.dlgOpen = false; W.talkNpc = null; dlgEl.style.display = 'none'; if (!G.isTouch) lockPointer(); }
@@ -95,7 +97,31 @@ function renderTalk(text: string) {
     (W.talkNpc!.role === 'elder' && progressive(G.char.towns[townId()!]) ? '<button class="opt" data-o="development">Village development — next tutorial objective</button>' : '') +
     (W.talkNpc!.role === 'elder' && estateHere() ? '<button class="opt" data-o="estate" style="color:var(--gold)">Is there a house free for me?</button>' : '') +
     (W.talkNpc!.role === 'elder' && townId() !== null && storesWithElder(townId()!) ? '<button class="opt" data-o="stores">Leave materials with me (the village stores)</button>' : '') +
-    info.opts.filter((o) => (o !== 'house' || houseForSale()) && (o !== 'craft' || CRAFTING_OPEN) && (!progressive(G.char.towns[townId()!]) || W.talkNpc!.role !== 'elder' || ['status', 'lore', 'house', 'bye'].includes(o) || (development(G.char.towns[townId()!]) >= 5 && o !== 'work'))).map((o) => `<button class="opt" data-o="${o}">${OPT_TEXT[o]}</button>`).join('');
+    info.opts.filter((o) => (o !== 'house' || houseForSale()) && (o !== 'craft' || CRAFTING_OPEN) && shownNow(o) && (!progressive(G.char.towns[townId()!]) || W.talkNpc!.role !== 'elder' || ['status', 'lore', 'house', 'bye'].includes(o) || (development(G.char.towns[townId()!]) >= 5 && o !== 'work'))).map((o) => `<button class="opt" data-o="${o}">${OPT_TEXT[o]}</button>`).join('');
+}
+/**
+ * Whether an option shows now (0.166: no wall of tasks at once). The elder's commissions open one after another
+ * (gen/elderchain.ts); his share of the village's goods once it trusts you; "any work?" only while you carry no task
+ * (it only points at the notice board).
+ */
+const NEED: Record<ElderTask, string> = {
+  farms: 'Our first need is food: help us build a farm.', fortify: 'The farm feeds us. Now the wall: help us raise it, or set up defences.',
+  works: 'We are safer behind the wall. Next, works to process what our land gives.', plantup: 'The works want power: the plant needs an overhaul.',
+  improve: 'With the plant rebuilt, we can think of improvements for the village.' };
+/** The elder names what the village needs next (the newest step of his chain not begun yet). */
+function elderNeed(): string {
+  if (W.talkNpc?.role !== 'elder' || townId() === null) return '';
+  const s = G.char.towns[townId()!];
+  if (progressive(s) && development(s) < 5) return ''; // (the settlement's own tutorial speaks for him)
+  const next = ELDER_CHAIN.filter((k) => elderTasks(s).has(k) && !begun(s, k)).pop();
+  return next ? `<br><br><span style="color:var(--gold)">${NEED[next]}</span>` : '';
+}
+function shownNow(o: OptId): boolean {
+  const s = townId() !== null ? G.char.towns[townId()!] : undefined;
+  if ((ELDER_CHAIN as string[]).includes(o)) return W.talkNpc?.role !== 'elder' || elderTasks(s).has(o as ElderTask);
+  if (o === 'share') return trustTier(s) >= 1;
+  if (o === 'work') return !G.char.quests.length;
+  return true;
 }
 /** The elder sells the houses of the village (gen/homes.ts); while a dead character's house waits for you, that one first. */
 const houseForSale = () => !estateHere();

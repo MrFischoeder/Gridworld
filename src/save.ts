@@ -67,6 +67,8 @@ export interface Char {
   houses: number[];
   /** Which house (gen/homes.ts index) you have in each of those villages; unset = the first (Gridholm's, from before). */
   homeOf?: Record<string, number>;
+  /** Quests finished (0.166): the notice boards post more notices as you prove yourself (world/quests.ts boardOffers). */
+  questsDone?: number;
   /** The shuttle project in the hangar by Gridholm (gen/shuttle.ts): crates handed over per stage. */
   shuttle: ShuttleState;
   level: number; xp: number; gold: number; world: number;
