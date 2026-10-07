@@ -88,6 +88,8 @@ export const RESOURCE_PLOTS = {
   sawmill: { x: -80, z: -80 },
   // (0.175) south-east, the deep mine over a rare deposit (clear of Gridholm's hangar, north-east)
   raremine: { x: 152, z: 140 },
+  // (0.176) west, between the quarry and the sawmill: the village furnace
+  furnace: { x: -105, z: -24 },
 } as const;
 export type ResourceProject = keyof typeof RESOURCE_PLOTS;
 export const RESOURCE_YARD = { halfX: 18, halfZ: 14 };

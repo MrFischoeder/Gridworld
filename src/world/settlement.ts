@@ -1,7 +1,7 @@
 // Physical new-world deposits and the surface receiver console at a real nearby ruin.
 import * as THREE from 'three';
 import { G, W } from '../game';
-import { RESOURCE_PLOTS, PROJECTS, progressive, projectDone, projectAvailable, depositsOf, linkRuin, tutorialStep, sideStep, sawLevel, isStation, stationStage, STATION_RANGE } from '../gen/settlement';
+import { RESOURCE_PLOTS, PROJECTS, progressive, projectDone, projectAvailable, depositsOf, linkRuin, tutorialStep, sideStep, sawLevel, furnaceLevel, isStation, stationStage, STATION_RANGE } from '../gen/settlement';
 import { ORES } from '../gen/resource-sites';
 import { RARE_NAME } from '../gen/deposits';
 import { resourceRockHit, resourceRockFloor } from '../gen/resource-rocks';
@@ -32,7 +32,7 @@ let oilClock = 0;
 interface Hand { f: Figure; x: number; z: number; face: number; phase: number }
 interface Crew { id: number; yard: string; T: Terrain; hands: Hand[]; got: number }
 const crews = new Map<number, Crew[]>();
-const KIT: Record<string, Kit> = { quarry: 'pick', mine: 'pick', lumber: 'hammer', oil: 'hammer', refinery: 'hammer', foodworks: 'carry', sawmill: 'carry', raremine: 'pick' };
+const KIT: Record<string, Kit> = { quarry: 'pick', mine: 'pick', lumber: 'hammer', oil: 'hammer', refinery: 'hammer', foodworks: 'carry', sawmill: 'carry', raremine: 'pick', furnace: 'hammer' };
 const WORKER = 0xdce8ff;
 /** Where a yard's hands stand: [x offset of the work's middle, radius, first angle] (yard-local; they go round from there). */
 const YARD_RING: Record<string, [number, number, number]> = { quarry: [-4, 12.5, 1.7], mine: [0, 8, 1.6], lumber: [0, 8, 0.4], oil: [0, 4.2, 0.8], refinery: [0, 5.5, 1.2], foodworks: [-1, 8.5, 1.9] };
@@ -148,6 +148,20 @@ export function drawSettlementSites(vm: VillageMap, T: Terrain, id: number): THR
       for (let i = 0; i < 3; i++) box(x + 8, y + i * .2, z - 2, x + 11, y + i * .2 + .18, z + 2, 0xd8c890); // planks
       if (lv >= 2) pb.cone(x + 1.5, y + .9, z, .9, .08, METAL); // a circular saw's disc
       if (lv >= 3) { box(x + 2.5, y, z + 1.2, x + 3.8, y + 1.3, z + 2.4, METAL); box(x + 2.8, y + 1.3, z - .9, x + 3.5, y + 3.6, z + .9, METAL); } // the band saw and its motor
+    } else if (k === 'furnace') {
+      // (0.176) a stone shaft furnace with its charging ramp and casting shed; coke ovens (2); the electric arc furnace (3)
+      const lv = furnaceLevel(s), HOTC = 0xffb347, STONE = 0xc8c8b0, BRK = 0xd09070;
+      { const n = 8, r0 = 2.6, r1 = 1.5, h = 8.5, ring = (r: number, yy: number) => Array.from({ length: n + 1 }, (_, i) => { const a = i / n * 6.283; return [x + Math.cos(a) * r, yy, z + Math.sin(a) * r]; });
+        pb.line(STONE, ...ring(r0, y)); pb.line(STONE, ...ring(r0 * .9, y + 4)); pb.line(STONE, ...ring(r1, y + h));
+        for (let i = 0; i < n; i++) { const a = i / n * 6.283; pb.seg(STONE, [x + Math.cos(a) * r0, y, z + Math.sin(a) * r0], [x + Math.cos(a) * r1, y + h, z + Math.sin(a) * r1]); }
+        box(x - 1.2, y, z - 1.2, x + 1.2, y + 6, z + 1.2, STONE); }
+      pb.seg(WOOD, [x + 9, y, z - 1], [x + 1.6, y + 8, z - 1]); pb.seg(WOOD, [x + 9, y, z + 1], [x + 1.6, y + 8, z + 1]); // the charging ramp
+      for (let i = 0; i < 6; i++) { const t = i / 5; pb.seg(WOOD, [x + 9 - t * 7.4, y + t * 8, z - 1], [x + 9 - t * 7.4, y + t * 8, z + 1]); }
+      box(x - 3, y, z - 1, x - 2.4, y + .6, z + 1, HOTC); // the tap hole
+      box(x - 10, y, z - 4, x - 4, y + 3, z + 4, WOOD); pb.gableRoof(x - 10.4, z - 4.4, x - 3.6, z + 4.4, y + 3, 1.2, WOOD); // the casting shed
+      for (let i = 0; i < 4; i++) box(x - 9 + i * 1.2, y, z + 5, x - 8.2 + i * 1.2, y + .3, z + 6.2, METAL); // bars
+      if (lv >= 2) { for (let i = 0; i < 5; i++) box(x - 6 + i * 2.2, y, z - 10, x - 4.2 + i * 2.2, y + 2.6, z - 7, BRK); box(x + 6, y, z - 10, x + 7.6, y + 7, z - 8.4, BRK); } // coke ovens and the quench tower
+      if (lv >= 3) { box(x + 4, y, z + 4, x + 10, y + 4.5, z + 10, METAL); for (const dx of [-1.2, 0, 1.2]) pb.seg(METAL, [x + 7 + dx, y + 4.5, z + 7], [x + 7 + dx, y + 8, z + 7]); box(x + 11, y, z + 5, x + 13, y + 2.5, z + 8, METAL); } // the arc furnace, its electrodes, the transformer
     } else if (k === 'raremine') {
       // (0.175) the deep mine: a steel headframe over the shaft with its sheave wheel, the winding house, the drill rig's derrick, an ore bin
       for (const dx of [-2, 2]) for (const dz of [-2, 2]) pb.seg(METAL, [x + dx, y, z + dz], [x + dx * .35, y + 12, z + dz * .35]);

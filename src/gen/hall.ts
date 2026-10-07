@@ -8,7 +8,7 @@
 //   unvisited village needs no state (it starts from a hashed fill); old saves' industry storehouse carries over.
 // Every build of the village (farms, the power plant, works, walls, the blacksmith's orders) draws on the stock
 // (`stockOf`): the hold first, then its own goods.
-import { progressive, projectDone, resourceYield, sawLevel, SAW } from './settlement';
+import { progressive, projectDone, resourceYield, sawLevel, SAW, furnaceLevel, FURNACE } from './settlement';
 import { hash } from '../core/rng';
 import { ITEMS, BULK, type ItemKey } from '../data/items';
 import type { TownState } from './town';
@@ -160,6 +160,26 @@ export function sawStock(world: number, v: Poi, seed: number, s: TownState, now:
   if (logs <= 0) return 0;
   const got = st.take('log', logs);
   return deposit(s, 'planks', got * per);
+}
+/** (0.176) The settlement's furnace melts ore (then scrap) from the village stock with coal into bars in the hold, a
+ *  melt every `FURNACE.batch` minutes, scaled by its crew and the power it got; coke ovens and the arc give more metal,
+ *  the arc needs no coal. Returns the melts done. */
+export function smeltStock(world: number, v: Poi, seed: number, s: TownState, now: number): number {
+  const lv = furnaceLevel(s);
+  if (!progressive(s) || !lv) return 0;
+  const per = FURNACE.batch[lv], prev = s.settlement!.smeltAt ?? now, batches = Math.max(0, Math.floor((now - prev) / per));
+  if (!batches) { s.settlement!.smeltAt = prev; return 0; }
+  s.settlement!.smeltAt = prev + batches * per;
+  const st = stockOf(world, v, seed, s, now), hands = fillOf(s, workersAt(seed, v.id === GRIDHOLM_ID, s, now), 'furnace'), pw = sitePower(world, v, seed, s, now);
+  const coal = FURNACE.coal[lv], hot = lv >= 2 ? 1 : 0;
+  let melts = Math.min(200, Math.floor(batches * hands * pw)), done = 0;
+  while (melts-- > 0) {
+    const m = FURNACE.melts.find((r) => st.has(r.inp) >= r.n && (!coal || st.has('coal') >= coal + (r.inp === 'coal' ? r.n : 0)) && holdRoom(s, r.out) >= r.got[hot]);
+    if (!m) break;
+    st.take(m.inp, m.n); if (coal) st.take('coal', coal);
+    deposit(s, m.out, m.got[hot]); done++;
+  }
+  return done;
 }
 /** New settlement refineries consume actual stock, including crude produced while the village was unloaded. */
 export function refineStock(world: number, v: Poi, seed: number, s: TownState, now: number): number {

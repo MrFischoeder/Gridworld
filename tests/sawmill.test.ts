@@ -18,9 +18,9 @@ describe('the sawmill (0.170)', () => {
     expect(sawLevel(s)).toBe(1); expect(tutorialStep(s)?.project).toBe('warehouse');
     expect(optionalProjects(s)).toEqual([]); // nothing beside the tutorial before the warehouse
     s.settlement!.done!.warehouse = true;
-    expect(optionalProjects(s)).toEqual(['refinery', 'sawmill2']);
+    expect(optionalProjects(s)).toEqual(['refinery', 'sawmill2', 'furnace']);
     expect(buildProject(s, 'sawmill2', () => 99).built).toBe(true); expect(sawLevel(s)).toBe(2);
-    expect(optionalProjects(s)).toEqual(['refinery', 'sawmill3']);
+    expect(optionalProjects(s)).toEqual(['refinery', 'sawmill3', 'furnace']);
     expect(buildProject(s, 'sawmill3', () => 99).built).toBe(true); expect(sawLevel(s)).toBe(3);
     expect(SAW.perLog).toEqual([0, 6, 7, 8]); expect(HAND_PLANKS).toBe(4);
     expect(postsOf(s).some((p) => p.kind === 'sawmill')).toBe(true);

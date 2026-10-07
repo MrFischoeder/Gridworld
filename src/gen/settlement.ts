@@ -7,7 +7,7 @@ import { villageDeposits, rareDepositsOf, quarryMineral, brine, ORES, YARD_KINDS
 import { startJob, jobOf } from './construction';
 export { RESOURCE_PLOTS } from './resource-sites';
 
-export type Project = 'warehouse' | 'power' | 'comms' | 'quarry' | 'mine' | 'lumber' | 'oil' | 'refinery' | 'foodworks' | 'relay' | 'sawmill' | 'sawmill2' | 'sawmill3' | 'raremine';
+export type Project = 'warehouse' | 'power' | 'comms' | 'quarry' | 'mine' | 'lumber' | 'oil' | 'refinery' | 'foodworks' | 'relay' | 'sawmill' | 'sawmill2' | 'sawmill3' | 'raremine' | 'furnace' | 'furnace2' | 'furnace3';
 export interface SettlementState {
   v: 1;
   done?: Partial<Record<Project, boolean>>;
@@ -16,6 +16,8 @@ export interface SettlementState {
   refinedAt?: number;
   /** (0.170) When the sawmill last settled its batches (game minutes). */
   sawnAt?: number;
+  /** (0.176) When the furnace last settled its batches (game minutes). */
+  smeltAt?: number;
   deposits?: Deposits;
   /** (0.149, document 04) The start village's satellite link is the big radar and communications station a few km out
    * (`STATION_STAGES`, `stage` = stages done), restored after the first vehicle (`car`: someone in this world has one). */
@@ -40,6 +42,9 @@ export const PROJECTS: Record<Project, { name: string; needs: [ItemKey, number][
   sawmill3: { name: 'Sawmill: band saws', needs: [['motor', 2], ['parts', 3], ['steel', 4], ['cable', 4]], description: 'Fit band saws driven by electric motors: 8 planks from a log, the best a sawmill can do. It draws the most power.' },
   relay: { name: 'Relay mast', needs: [['scrap', 12], ['wire', 10], ['circuit', 4], ['planks', 16], ['gears', 2]], description: 'Raise a relay mast over the receiver. The satellites talk to it on their own passes, so orbital scans round this village come apart from the rest of the world and reach further.' },
   raremine: { name: 'Deep mine', needs: [['drillrig', 1], ['steel', 6], ['cable', 6], ['cement', 8], ['planks', 16]], description: 'Sink a deep shaft over the rare deposit south-east of the village. A drill rig from a Heavy Engineering Works bores down to it, a winding house and a headframe bring the ore up into the village stores every day. It needs power and a crew of four.' },
+  furnace: { name: 'Coal furnace', needs: [['stone', 24], ['planks', 16], ['scrap', 12], ['wire', 4]], description: 'Build a stone shaft furnace on the plot west of the village. Fed with coal from the village stores, it smelts the ore there into bars in the stores: iron ore into iron, copper and lead ore into copper and lead bars, and scrap into iron. It needs power for its blowers and a crew of three.' },
+  furnace2: { name: 'Furnace: coke ovens', needs: [['stone', 20], ['bricks', 10], ['scrap', 10], ['planks', 8]], description: 'Build a battery of coke ovens beside the furnace. Coke burns hotter and cleaner than raw coal: every melt gives half as much metal again.' },
+  furnace3: { name: 'Furnace: electric arc', needs: [['steel', 8], ['cable', 10], ['generator', 1], ['parts', 2]], description: 'Fit an electric arc furnace: no coal at all, twice the melts, the best yield, and a heavy draw of power.' },
   foodworks: { name: 'Food processing house', needs: [['planks', 40], ['stone', 10], ['nails', 16], ['scrap', 6]], description: 'Build a mill, a bakery, a dairy and a smokehouse on the staked plot about 100 metres south-west of the village. While its crew works, grain, potatoes, milk and meat feed a third more people, so the same fields keep a bigger village.' },
 };
 /**
@@ -100,6 +105,9 @@ export function projectProblem(s: TownState | undefined, k: Project): string {
   if (k === 'quarry' || k === 'mine' || k === 'lumber' || k === 'oil') return projectDone(s, 'warehouse') ? '' : 'Build the warehouse first.';
   if (k === 'refinery') return projectDone(s, 'warehouse') ? '' : 'Build the warehouse first.';
   if (k === 'raremine') return projectDone(s, 'warehouse') ? '' : 'Build the warehouse first.';
+  if (k === 'furnace') return projectDone(s, 'power') && projectDone(s, 'warehouse') ? '' : 'Build the village power plant and the warehouse first.';
+  if (k === 'furnace2') return projectDone(s, 'furnace') ? '' : 'Build the coal furnace first.';
+  if (k === 'furnace3') return projectDone(s, 'furnace2') ? '' : 'Build the coke ovens first.';
   if (k === 'foodworks') return projectDone(s, 'power') && (s?.farms ?? 0) >= 2 ? '' : 'Build the village power plant and two farms first.';
   return '';
 }
@@ -203,6 +211,16 @@ export function tutorialStep(s: TownState | undefined): { title: string; text: s
 export const sawLevel = (s: TownState | undefined) => (projectDone(s, 'sawmill3') ? 3 : projectDone(s, 'sawmill2') ? 2 : projectDone(s, 'sawmill') ? 1 : 0);
 export const SAW = { perLog: [0, 6, 7, 8], kw: [0, 15, 25, 40], batch: 30, logs: 2 };
 export const HAND_PLANKS = 4;
+/** (0.176, development tree stage 4) The village furnace: its level (0 none, 1 coal, 2 coke ovens, 3 electric arc),
+ *  minutes a melt, coal a melt, power, and what a melt takes and gives (`out[0]` with coal, `out[1]` with coke or the arc). */
+export const furnaceLevel = (s: TownState | undefined) => (projectDone(s, 'furnace3') ? 3 : projectDone(s, 'furnace2') ? 2 : projectDone(s, 'furnace') ? 1 : 0);
+export const FURNACE = {
+  batch: [0, 60, 60, 30], coal: [0, 1, 1, 0], kw: [0, 20, 30, 70],
+  melts: [
+    { inp: 'ore', n: 2, out: 'iron', got: [2, 3] }, { inp: 'copper', n: 4, out: 'copperbar', got: [2, 3] },
+    { inp: 'lead', n: 4, out: 'leadbar', got: [2, 3] }, { inp: 'scrap', n: 12, out: 'iron', got: [2, 3] },
+  ] as { inp: ItemKey; n: number; out: ItemKey; got: [number, number] }[],
+};
 /** (0.175) What a deep mine brings up a game hour, split over the village's rare deposits (6 crates a day), and its power. */
 export const DEEP = { rate: 0.25, kw: 40 };
 /** Builds beside the tutorial that every village may take on (shown by the elder under the step): the refinery, the sawmill's next saws, the deep mine over a rare deposit. */
@@ -210,7 +228,8 @@ export function optionalProjects(s: TownState | undefined): Project[] {
   if (!progressive(s) || !projectDone(s, 'warehouse')) return [];
   const saw = (['sawmill2', 'sawmill3'] as Project[]).find((k) => !projectDone(s, k) && !projectProblem(s, k));
   const deep = projectAvailable(s, 'raremine') && !projectDone(s, 'raremine');
-  return [...(projectDone(s, 'refinery') ? [] : ['refinery' as Project]), ...(saw ? [saw] : []), ...(deep ? ['raremine' as Project] : [])];
+  const fire = (['furnace', 'furnace2', 'furnace3'] as Project[]).find((k) => !projectDone(s, k) && !projectProblem(s, k));
+  return [...(projectDone(s, 'refinery') ? [] : ['refinery' as Project]), ...(saw ? [saw] : []), ...(fire ? [fire] : []), ...(deep ? ['raremine' as Project] : [])];
 }
 /** The side task beside the tutorial: the village's satellite link (the start village's big station), once its power plant stands. */
 export function sideStep(s: TownState | undefined): { title: string; text: string; project: Project } | null {

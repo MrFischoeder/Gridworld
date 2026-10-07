@@ -8,7 +8,7 @@ import { progressive, projectDone, type Project } from './settlement';
 import type { TownState } from './town';
 
 /** Posts per facility. */
-export const JOBS = { farm: 4, power: 2, sawmill: 3, quarry: 3, lumber: 4, mine: 4, oil: 2, refinery: 3, foodworks: 3, raremine: 4, works: 3, station: 1 };
+export const JOBS = { farm: 4, power: 2, sawmill: 3, quarry: 3, lumber: 4, mine: 4, oil: 2, refinery: 3, foodworks: 3, raremine: 4, furnace: 3, works: 3, station: 1 };
 /** Facilities that need their whole crew to run at all (a share of a crew does nothing). */
 const WHOLE = new Set(['works', 'station']);
 export type PostKind = keyof typeof JOBS;
@@ -20,7 +20,7 @@ export interface Post {
   /** How well it works: got / jobs, or 0 / 1 for the facilities that need a whole crew. */
   fill: number;
 }
-const YARDS: Project[] = ['power', 'sawmill', 'foodworks', 'quarry', 'lumber', 'mine', 'oil', 'refinery', 'raremine'];
+const YARDS: Project[] = ['power', 'sawmill', 'foodworks', 'quarry', 'lumber', 'mine', 'oil', 'refinery', 'raremine', 'furnace'];
 
 /** The settlement's posts in the order they are manned. Established villages have none (their old staffing rule applies). */
 export function postsOf(s: TownState | undefined): Omit<Post, 'got' | 'fill'>[] {

@@ -3,6 +3,12 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.176.0', date: '2026-10-07', title: 'The village furnace', notes: [
+    'Once the power plant and the warehouse stand, a new settlement can build a Coal furnace on a plot west of the village. It smelts the village stores into bars on its own: iron ore into iron, copper and lead ore into ingots, and scrap into iron when there is no ore. Each melt takes an hour and burns a crate of coal.',
+    'Coke ovens beside it give half as much metal again from the same ore.',
+    'An electric arc furnace needs no coal at all and melts twice as often, but it draws 70 kW, so it wants a power station.',
+    'It needs a crew of three. Drawn as a stone shaft furnace with its charging ramp and casting shed, then a battery of coke ovens with a quench tower, then the arc furnace with its electrodes and transformer.',
+  ] },
   { v: '0.175.0', date: '2026-10-07', title: 'The deep mine', notes: [
     'A new settlement in a new world that stands over a rare deposit (bauxite, sulfur, lithium, rare earths, uranium, nickel, chromite, rutile or platinum ore) can sink a Deep Mine once its warehouse stands. The elder names the deposit and offers it beside the village\'s own work.',
     'It takes a Drill Rig from the Heavy Engineering Works, steel, cable, cement and planks, and 16 hours of building on its plot south-east of the village.',

@@ -3,7 +3,7 @@
 import { G } from '../game';
 import { ITEMS, type ItemKey } from '../data/items';
 import { findPoi, villageSeed } from '../gen/regions';
-import { stockOf, refineStock, sawStock, type Stock } from '../gen/hall';
+import { stockOf, refineStock, sawStock, smeltStock, type Stock } from '../gen/hall';
 import { online, net, lockTown, unlockTown } from '../net/client';
 import { showToast } from './hud';
 import { initializeSettlements } from '../gen/settlement';
@@ -25,7 +25,7 @@ export async function withTownStock(vid: number, action: () => void): Promise<bo
 /** The stock of village `vid` now (its state created if need be, so taking works). */
 export function stockAt(vid: number): Stock | null {
   const c = G.char, poi = findPoi(c.world, vid);
-  if (poi) { refineStock(c.world, poi, villageSeed(c.world, poi), (c.towns[vid] ??= {}), c.time); sawStock(c.world, poi, villageSeed(c.world, poi), c.towns[vid], c.time); }
+  if (poi) { refineStock(c.world, poi, villageSeed(c.world, poi), (c.towns[vid] ??= {}), c.time); sawStock(c.world, poi, villageSeed(c.world, poi), c.towns[vid], c.time); smeltStock(c.world, poi, villageSeed(c.world, poi), c.towns[vid], c.time); }
   return poi ? stockOf(c.world, poi, villageSeed(c.world, poi), (c.towns[vid] ??= {}), c.time) : null;
 }
 /** How many of k village `vid` has in stock. */
