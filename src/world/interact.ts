@@ -255,7 +255,7 @@ export function interact() {
   if (nearGd) { talkGuide(); return; }
   if (nearFogL) { openTransfer({ title: 'Locker', subtitle: `${FOG_SITE[nearFogL.f.site].name}, ${nearFogL.f.name}`, boxLabel: 'Locker', box: fogLocker(nearFogL.f, nearFogL.i) }); return; }
   if (nearData) { takeCarrier(nearData); return; }
-  if (nearLock2) { openTransfer({ title: 'Locker', subtitle: SHIP_NAME, boxLabel: 'Locker', box: lockerBox() }); return; }
+  if (nearLock2) { openTransfer({ title: G.char.name ? `${G.char.name}'s locker` : 'Locker', subtitle: SHIP_NAME + ' · only you open it', boxLabel: 'Locker', box: lockerBox() }); return; }
   if (nearRec) { openLogbook(); return; }
   if (nearLad) { const m = startClimb(nearLad); if (m) logLine(m); return; }
   if (isPlacing()) { confirmPlacing(); return; }

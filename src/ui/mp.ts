@@ -12,6 +12,7 @@
 // makes one, keeps only the session token the server gave (`gridWorld.mpAuth`, per server), and the server names you
 // by your account. A server you created shows Close server in the list: closing it sends its players away for good.
 import { joinWorld, willSeed } from '../world/share';
+import { presentHero } from './rebirth';
 import { G } from '../game';
 import { $, logLine } from './hud';
 import { saveChar } from '../character';
@@ -24,7 +25,7 @@ import { SAVE_KEY, newChar, loadCharAt, setSaveMirror, type Char } from '../save
 const SOLO_KEY = SAVE_KEY + '.solo';
 export interface MpHooks {
   /** Play this character now (the one you had on this server, or a new castaway): load it where it stands. */
-  useChar(c: Char): void;
+  useChar(c: Char, a?: import('../world/level').Arrival): void;
   /** Redraw the world you are in from the save (after taking the server's state of it). */
   reloadWorld(): void;
 }
@@ -195,7 +196,7 @@ function start(url: string, room?: string, create?: { name: string; world?: numb
         try { if (!solo()) localStorage.setItem(SOLO_KEY, JSON.stringify(G.char)); } catch { /* storage full or blocked */ }
         const back = loadCharAt(key);
         const c = back ?? Object.assign(newChar(), { world, time, name });
-        c.world = world; c.time = time; if (name) c.name = name;
+        c.world = world; c.time = time; // (the character keeps its own name: after a death it is not the account's)
         roomKey = key;
         hooks?.useChar(c);
         joinWorld(); hooks?.reloadWorld(); // the server's state of its world, then draw it
@@ -205,6 +206,7 @@ function start(url: string, room?: string, create?: { name: string; world?: numb
         G.char.time = time;
         if (joinWorld()) hooks?.reloadWorld(); // the same world, but the server's state of it
       }
+      presentHero(); // the server shows you by your character's name (a new one is asked for if the dead own it)
       say(host ? 'You host the game: others can join you now.' : dedicated ? `Joined ${net.room?.name ?? ded?.name ?? 'the server'}.` : 'Joined the game.', 'info');
       saveChar(); look();
     },

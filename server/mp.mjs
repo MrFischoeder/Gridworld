@@ -26,7 +26,10 @@
 //   {t:'delroom', ver, room, token, key?}  instead of a hello: close (delete) a server you created (its players are sent
 //                                          away); `key` = the old per-browser secret of servers made before accounts;
 //                                          answered {t:'deleted', room} or {t:'refused', why}, then closed
-//   {t:'state', p:[x,y,z], yaw, pitch, loc, held, mv, away, cars, ride?, gun?, boat?, vis?, cr?, time?}   vis: how visible they are (sneaking), cr: crouched   boat: [boat id, u, v, h, seat] aboard one of the boats   cars: the player's own vehicles (net/client.ts PeerCar)   ~10 times a second; time from a hosted room's host only
+//   {t:'state', p:[x,y,z], yaw, pitch, loc, held, mv, away, cars, ride?, gun?, boat?, vis?, cr?, pod?, time?}   vis: how visible they are (sneaking), cr: crouched, pod: the cryo-pod their character woke from   boat: [boat id, u, v, h, seat] aboard one of the boats   cars: the player's own vehicles (net/client.ts PeerCar)   ~10 times a second; time from a hosted room's host only
+//   {t:'hero', name}                     the character you play (after the welcome, and a new one after a death): you are
+//                                          shown by its name; a name of the fallen crew (shared `fallen`) or of another
+//                                          player here is refused
 //   {t:'chat', text}
 //   {t:'drop', k, n, c?, p:[x,y,z], loc, auto?}   auto: loot (kept `MP.lootTtl` h); taken like any drop
 //   (was) {t:'drop', k, n, c?, p:[x,y,z], loc}   an item put down at your feet (taken out of your own kit first)
@@ -45,6 +48,7 @@
 //   {t:'full'} / {t:'refused', why}
 //   {t:'join', id, name} / {t:'leave', id, name} / {t:'host', id}
 //   {t:'snap', time, ps:[{id, p, yaw, pitch, loc, held, mv, away, cars}]}  everybody in your room but you
+//   {t:'renamed', id, name} (to all, you too) / {t:'heroBad', why, name} (to you): your character's name taken or refused
 //   {t:'chat', id, name, text}
 //   {t:'drop', d:{id, k, n, c?, p, loc, by, at}}   an item now lies there (also to the one who dropped it)
 //   {t:'got', d} to the one who took it / {t:'gone', id} to everyone else (or to a taker who came too late)
@@ -67,14 +71,14 @@ export const MP = { path: '/mp', port: 7777, max: 8, rate: 100, nameMax: 20, cha
 const AUTH = new Set(['register', 'login', 'logout', 'passwd', 'verify', 'resend', 'forgot', 'reset', 'email', 'profile']);
 const RELAY = new Set(['foes', 'bolt', 'fhit', 'kill', 'hurt', 'thit', 'boat', 'row']);
 /** Protocol version: a client with another one is refused (the game shows why). */
-export const PROTOCOL = 11;
+export const PROTOCOL = 12;
 
 const clean = (s, n) => String(s ?? '').replace(/[\u0000-\u001f<>]/g, '').trim().slice(0, n);
 const num = (v) => (typeof v === 'number' && Number.isFinite(v) ? v : 0);
 const DAY = 86400000;
 /** A creator's secret as the server keeps it (the secret itself is never stored or shown). */
 const ownerOf = (key) => (typeof key === 'string' && key.length >= 16 ? createHash('sha256').update(key).digest('hex') : '');
-const FIELDS = new Set(['towns', 'market', 'installs', 'bridges', 'bridgeSites', 'piers', 'boats', 'shuttle', 'containers', 'opened', 'unlocked', 'killed', 'harvest', 'camps', 'cityGarrisons', 'caravans', 'claims', 'benches', 'board', 'boards']);
+const FIELDS = new Set(['towns', 'market', 'installs', 'bridges', 'bridgeSites', 'piers', 'boats', 'shuttle', 'containers', 'opened', 'unlocked', 'killed', 'harvest', 'camps', 'cityGarrisons', 'caravans', 'claims', 'benches', 'board', 'boards', 'fallen']);
 const safeKey = (k) => typeof k === 'string' && !['__proto__', 'constructor', 'prototype'].includes(k);
 const worldKey = (f, k) => FIELDS.has(f) && safeKey(k) && !(f === 'containers' && k.startsWith('home:'));
 const object = (v) => v && typeof v === 'object' && !Array.isArray(v);
@@ -242,7 +246,7 @@ export function createMp(log = (m) => console.log('[mp] ' + m), opts = {}) {
       } else if (m.t === 'state') {
         if (me.trip) return; // Ignore queued movement and seat changes during an accepted transport.
         const previousCars = me.st?.cars, previousIds = me.st?.carIds;
-        me.st = { p: Array.isArray(m.p) ? m.p.slice(0, 3).map(num) : [0, 0, 0], yaw: num(m.yaw), pitch: num(m.pitch), loc: clean(m.loc, 80), held: clean(m.held, 24), mv: !!m.mv, away: !!m.away, cars: Array.isArray(m.cars) ? m.cars.slice(0, MP.cars).filter(Array.isArray).map((c) => c.slice(0, 11).map(num)) : [], ride: Array.isArray(m.ride) ? m.ride.slice(0, 3).map(num) : undefined, gun: typeof m.gun === 'number' ? num(m.gun) : undefined, boat: Array.isArray(m.boat) && m.boat.length === 5 ? [clean(String(m.boat[0]), 80), ...m.boat.slice(1).map(num)] : undefined, vis: typeof m.vis === 'number' ? Math.max(0, Math.min(2, num(m.vis))) : undefined, cr: m.cr ? true : undefined };
+        me.st = { p: Array.isArray(m.p) ? m.p.slice(0, 3).map(num) : [0, 0, 0], yaw: num(m.yaw), pitch: num(m.pitch), loc: clean(m.loc, 80), held: clean(m.held, 24), mv: !!m.mv, away: !!m.away, cars: Array.isArray(m.cars) ? m.cars.slice(0, MP.cars).filter(Array.isArray).map((c) => c.slice(0, 11).map(num)) : [], ride: Array.isArray(m.ride) ? m.ride.slice(0, 3).map(num) : undefined, gun: typeof m.gun === 'number' ? num(m.gun) : undefined, boat: Array.isArray(m.boat) && m.boat.length === 5 ? [clean(String(m.boat[0]), 80), ...m.boat.slice(1).map(num)] : undefined, vis: typeof m.vis === 'number' ? Math.max(0, Math.min(2, num(m.vis))) : undefined, cr: m.cr ? true : undefined, pod: typeof m.pod === 'number' ? Math.max(0, Math.min(15, num(m.pod) | 0)) : undefined };
         if (Array.isArray(m.carIds)) me.st.carIds = m.carIds.slice(0, MP.cars).map((id) => clean(id, 100));
         // The owner still simulates the vehicle; the server alone grants its seats.
         const seatOK = (car, seat) => car && (car[10] === undefined || car[10] > 0) && Number.isInteger(seat) && seat >= 0 && seat < 3 && (seat !== 2 || !!car[7]);
@@ -327,6 +331,15 @@ export function createMp(log = (m) => console.log('[mp] ' + m), opts = {}) {
         const out = { ...m.m, from: me.id };
         if (m.t === 'cast') all(room, out, me.id);
         else { const p = room.players.get(num(m.to)); if (p) send(p.ws, out); }
+      } else if (m.t === 'hero') {
+        // the character you play now: its name is how the others see you (your account stays yours); the crew who died in
+        // this world (the shared `fallen`) keep their names, and two living players do not share one
+        const name = clean(m.name, MP.nameMax), low = name.toLowerCase();
+        const why = !name ? 'Your character needs a name.' : room.doc.fallen?.[low] ? `${name} died in this world. Pick another name.`
+          : [...room.players.values()].some((p) => p !== me && p.name.toLowerCase() === low) ? `Someone here is already called ${name}.` : '';
+        if (why) send(ws, { t: 'heroBad', why, name });
+        else if (name !== me.name) { me.name = name; all(room, { t: 'renamed', id: me.id, name }); }
+        else send(ws, { t: 'renamed', id: me.id, name });
       } else if (m.t === 'chat') {
         const text = clean(m.text, MP.chatMax);
         if (text) all(room, { t: 'chat', id: me.id, name: me.name, text });

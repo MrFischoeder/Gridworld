@@ -444,8 +444,12 @@ export function exitToRuin() {
  * directly (the console's `home` goes to Gridholm). A bad day ('death') ends where the castaway first woke: out of
  * their cryo-pod in the crashed ship (world/crashpod.ts), the ship's medical systems having patched them up.
  */
+/** Online a death ends the character (ui/rebirth.ts): another crew member wakes instead. */
+let crewDeath: (() => boolean) | null = null;
+export function setCrewDeath(f: () => boolean) { crewDeath = f; }
 export function toVillage(how: 'death' | 'recall', id?: number) {
   const c = G.char;
+  if (how === 'death' && id === undefined && crewDeath?.()) return;
   if (how === 'death' && id === undefined) {
     c.loc = 'overworld'; c.dungeon = null; saveChar();
     loadOverworld({ kind: 'pod' }); G.hp = G.S.maxHp;

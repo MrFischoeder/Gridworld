@@ -16,10 +16,13 @@ import { rng, hash } from '../core/rng';
 import type { Terrain } from '../gen/terrain';
 import { G } from '../game';
 import { putItems } from '../inventory';
+import { textSprite } from './npc';
 import type { Slot } from '../save';
 
 let site: Landing | null = null, grp: THREE.Group | null = null, lamp: THREE.Object3D | null = null, walls: [number, number, number, number][] = [];
 let pods: THREE.Group | null = null, podKey = '';
+/** The name plates on the lockers (whoever looks sees their own name: every castaway has their own locker). */
+let plates: THREE.Group | null = null, plateName: string | null = null;
 let cos = 1, sin = 0, gy = 0;
 interface Puff { o: THREE.LineLoop; t: number; life: number; v: number }
 const puffs: Puff[] = [];
@@ -77,17 +80,37 @@ export function setCrash(t: Terrain) {
   grp.add(handle);
   grp.position.set(site.x, gy, site.z); grp.rotation.y = site.yaw;
   scene.add(grp);
-  podKey = ''; syncPods();
+  podKey = ''; syncPods(); plateName = null; syncPlates();
 }
-/** The pod a castaway wakes from: by their place on the server (alone, the first). */
+/** The pod a castaway wakes from: their character's own (after a death, another), else by their place on the server (alone, the first). */
 export const podOf = (id: number) => (Math.max(1, id) - 1) % PODS.length;
-export const myPod = () => (net.id ? podOf(net.id) : 0);
-/** Which pods stand open: yours and those of the others in the game. */
+export const myPod = () => (G.char.pod !== undefined ? G.char.pod % PODS.length : net.id ? podOf(net.id) : 0);
+const peerPod = (id: number) => { const p = net.peers.get(id)?.st?.pod; return typeof p === 'number' ? p % PODS.length : podOf(id); };
+/** Which pods stand open: yours, those of the others in the game and those of the crew who died here. */
 function openPods(): boolean[] {
   const open = PODS.map(() => false);
   open[myPod()] = true;
-  for (const p of net.peers.values()) open[podOf(p.id)] = true;
+  for (const p of net.peers.values()) open[peerPod(p.id)] = true;
+  for (const f of Object.values(G.char.fallen ?? {})) open[f.pod % PODS.length] = true;
   return open;
+}
+/** The pod the next crew member wakes from after a death: the first still shut after yours (all open: the next one). */
+export function nextPod(): number {
+  const open = openPods(), me = myPod();
+  for (let i = 1; i <= PODS.length; i++) { const k = (me + i) % PODS.length; if (!open[k]) return k; }
+  return (me + 1) % PODS.length;
+}
+/** Every locker shows the name of whoever looks at it (redrawn when the name changes). */
+function syncPlates() {
+  if (!grp || plateName === G.char.name) return;
+  plateName = G.char.name;
+  if (plates) { grp.remove(plates); plates.traverse((o) => { const m = (o as THREE.Sprite).material as THREE.SpriteMaterial | undefined; m?.map?.dispose(); m?.dispose(); }); }
+  plates = new THREE.Group();
+  if (plateName) for (let n = 0; n < 3; n++) {
+    const sp = textSprite(plateName.toUpperCase(), '#ffd060', 0.55);
+    sp.position.set(LOCKER.x - 0.28, 1.85, LOCKER.z - 1.1 + n * 0.75 + 0.35); plates.add(sp);
+  }
+  grp.add(plates);
 }
 /** Redraw the pods when who is in the game changes. */
 export function syncPods() {
@@ -108,7 +131,7 @@ export function syncPods() {
 export function dropCrash() {
   if (grp) { scene.remove(grp); grp.traverse((o) => { const m = o as THREE.Mesh; m.geometry?.dispose(); }); }
   for (const p of puffs) p.o.geometry.dispose();
-  grp = null; lamp = null; pods = null; podKey = ''; puffs.length = 0; site = null;
+  grp = null; lamp = null; pods = null; podKey = ''; plates = null; plateName = null; puffs.length = 0; site = null;
 }
 
 /** Hull, wings and engines as walls (the hatch is open). */
@@ -135,8 +158,10 @@ const localNear = (lx: number, lz: number, d: number) => { if (!site || G.char.l
 export const nearLocker = () => localNear(LOCKER.x + 0.5, LOCKER.z, 1.4);
 export const nearConsole = () => localNear(CONSOLE.x, CONSOLE.z - 0.5, 1.5);
 
-/** The survival kit in the locker, filled once for each castaway (what you leave stays there). Online every character has
- *  their own (the containers are shared); a save from before that already opened the old one keeps it when alone. */
+/** The survival kit in the locker, filled once for each castaway (what you leave stays there). Whichever of the three
+ *  lockers you open, it is your own, with your name on it: online every character has their own (the containers are
+ *  shared, nobody else opens yours), a new crew member after a death a fresh one; a save from before that already
+ *  opened the old one keeps it when alone. */
 export function lockerBox() {
   const c = G.char, own = 'ship:locker:' + c.pid, key = !c.containers[own] && c.containers['ship:locker'] && !net.id ? 'ship:locker' : own;
   if (!c.containers[key]) {
@@ -153,7 +178,7 @@ export function updateCrash(dt: number, time: number) {
   const near = Math.hypot(G.pos.x - site.x, G.pos.z - site.z) < 260;
   grp.visible = G.char.loc === 'overworld';
   if (lamp) lamp.visible = Math.sin(time * 5) > 0;
-  syncPods();
+  syncPods(); syncPlates();
   if (near && (puffT -= dt) <= 0) {
     puffT = 0.35;
     for (const [x, y, z] of [[0.9, 3, -1.5], [1.5, 2.6, -10.6]]) {

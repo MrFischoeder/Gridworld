@@ -3,7 +3,7 @@
 // it with `sendState` (about 10 times a second) and reads `peers`.
 
 /** Must match PROTOCOL in server/mp.mjs. */
-export const PROTOCOL = 11;
+export const PROTOCOL = 12;
 export const SEND_EVERY = 0.1;
 
 /** `away`: in the menu (still in the game: the others see you standing there). */
@@ -19,7 +19,9 @@ export interface PeerState { p: [number, number, number]; yaw: number; pitch: nu
   /** On one of the boats: [boat id, u along it, v across, height of the feet over its waterline, seat (-1 on a ship's deck)]. */
   boat?: [string, number, number, number, number];
   /** Sneaking: how visible they are (world/stealth.ts myVis; the foes their turn is against read it) and whether they crouch. */
-  vis?: number; cr?: boolean }
+  vis?: number; cr?: boolean;
+  /** The cryo-pod their character woke from (world/crashpod.ts). */
+  pod?: number }
 export interface Peer {
   id: number; name: string;
   /** The last two states and when they came: the drawing eases between them. */
@@ -50,6 +52,9 @@ export interface NetDrop { id: string; k: string; n: number; c?: number; p: [num
 let gotHook: ((d: NetDrop) => void) | null = null;
 /** Who receives an item the server handed you (world/drops.ts). */
 export function onGot(f: (d: NetDrop) => void) { gotHook = f; }
+/** The server took (`why` '') or refused your character's name; `mine` = it is about you. */
+let heroHook: ((mine: boolean, name: string, why: string) => void) | null = null;
+export function onHero(f: typeof heroHook) { heroHook = f; }
 /** The shared world (src/world/share.ts): {field: {key: value}}. */
 export type WorldDoc = Record<string, Record<string, unknown>>;
 export interface WorldHooks {
@@ -89,6 +94,8 @@ export const net = {
   id: 0, host: 0,
   /** Your name as the server knows you (a dedicated server: your account's). */
   name: '',
+  /** The name of the character you play here, once the server has taken it (shown to the others). */
+  hero: '',
   /** The last refusal asked you to log in (again). */
   needAuth: false,
   peers: new Map<number, Peer>(),
@@ -215,7 +222,7 @@ export function connect(url: string, me: { name: string; world: number; time: nu
     if (net.ws !== ws) return;
     switch (m.t) {
       case 'welcome':
-        welcomed = true; net.id = m.id; net.name = typeof m.name === 'string' ? m.name : me.name; net.host = m.host; net.dedicated = !!m.dedicated; net.room = m.room ?? null; net.peers.clear();
+        welcomed = true; net.hero = ''; net.id = m.id; net.name = typeof m.name === 'string' ? m.name : me.name; net.host = m.host; net.dedicated = !!m.dedicated; net.room = m.room ?? null; net.peers.clear();
         net.drops = new Map((Array.isArray(m.drops) ? m.drops : []).map((d: NetDrop) => [d.id, d]));
         receiveGates(m);
         for (const p of m.players) if (p.id !== m.id) net.peers.set(p.id, { id: p.id, name: p.name, st: null, prev: null, at: 0, hist: [] });
@@ -232,7 +239,7 @@ export function connect(url: string, me: { name: string; world: number; time: nu
           const p = net.peers.get(s.id);
           if (!p) continue;
           if (p.st && (p.st.loc !== s.loc || Math.hypot(p.st.p[0] - s.p[0], p.st.p[2] - s.p[2]) > 80)) p.hist = [];
-          p.prev = p.st; p.st = { p: s.p, yaw: s.yaw, pitch: s.pitch, loc: s.loc, held: s.held, mv: s.mv, away: !!s.away, cars: Array.isArray(s.cars) ? s.cars : [], carIds: s.carIds, ride: Array.isArray(s.ride) ? s.ride : undefined, gun: typeof s.gun === 'number' ? s.gun : undefined, boat: Array.isArray(s.boat) ? s.boat : undefined, vis: typeof s.vis === 'number' ? s.vis : undefined, cr: !!s.cr }; p.at = now;
+          p.prev = p.st; p.st = { p: s.p, yaw: s.yaw, pitch: s.pitch, loc: s.loc, held: s.held, mv: s.mv, away: !!s.away, cars: Array.isArray(s.cars) ? s.cars : [], carIds: s.carIds, ride: Array.isArray(s.ride) ? s.ride : undefined, gun: typeof s.gun === 'number' ? s.gun : undefined, boat: Array.isArray(s.boat) ? s.boat : undefined, vis: typeof s.vis === 'number' ? s.vis : undefined, cr: !!s.cr, pod: typeof s.pod === 'number' ? s.pod : undefined }; p.at = now;
           p.hist.push({ t: now, s: p.st }); if (p.hist.length > 8) p.hist.shift();
         }
         if (!isHost()) h.clock(m.time);
@@ -261,6 +268,8 @@ export function connect(url: string, me: { name: string; world: number; time: nu
       case 'gone': net.drops.delete(m.id); break;
       case 'got': net.drops.delete(m.d.id); gotHook?.(m.d); break;
       case 'foes': case 'bolt': case 'fhit': case 'kill': case 'hurt': case 'thit': case 'boat': case 'row': for (const f of relayHooks) f(m); break;
+      case 'renamed': { if (m.id === net.id) { net.hero = m.name; } else { const p = net.peers.get(m.id); if (p) { if (p.name !== m.name) h.say(`${p.name} is now ${m.name}.`, 'info'); p.name = m.name; } } heroHook?.(m.id === net.id, m.name, ''); break; }
+      case 'heroBad': heroHook?.(true, m.name, m.why); break;
       case 'chat': h.say(`${m.name}: ${m.text}`, 'chat'); break;
       case 'full': why = 'The server is full (8 players).'; break;
       case 'refused': why = m.why; if (m.auth) net.needAuth = true; break;
@@ -308,6 +317,8 @@ export function relay(m: { t: Relay['t']; [k: string]: unknown }, to?: number): 
   net.ws.send(JSON.stringify(to === undefined ? { t: 'cast', m } : { t: 'to', to, m }));
   return true;
 }
+/** The character you play (after the welcome, and after a death): the server shows you by its name. */
+export function sendHero(name: string) { if (online() && net.ws?.readyState === 1) net.ws.send(JSON.stringify({ t: 'hero', name })); }
 export function sendChat(text: string) {
   const t = text.trim().slice(0, 200);
   if (!t || !online() || net.ws?.readyState !== 1) return false;

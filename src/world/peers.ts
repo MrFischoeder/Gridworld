@@ -8,6 +8,7 @@ import { G } from '../game';
 import { myVis } from './stealth';
 import { scene } from './render';
 import { makeFigure, textSprite, type Figure } from './npc';
+import { myPod } from './crashpod';
 import { poseRig, type Kit } from './rig';
 import { net, sendState, isHost, SEND_EVERY, type PeerState, type PeerCar, peerAt, PEER_DELAY, onSeats } from '../net/client';
 import { convoyModel, seatFigure, myCars, toLocalOf, myCarList, driving, seatRider, unseat, gunSeat, leave } from './vehicles';
@@ -34,7 +35,7 @@ const kitOf = (held: string): Kit => {
   return 'none';
 };
 
-interface Avatar { f: Figure; kit: Kit; away: boolean; label: THREE.Sprite; phase: number; seated: boolean }
+interface Avatar { f: Figure; kit: Kit; away: boolean; name: string; label: THREE.Sprite; phase: number; seated: boolean }
 const avatars = new Map<number, Avatar>();
 function drop(id: number) {
   const a = avatars.get(id);
@@ -44,12 +45,12 @@ function drop(id: number) {
 }
 function avatar(id: number, name: string, kit: Kit, away: boolean): Avatar {
   const old = avatars.get(id);
-  if (old && old.kit === kit && old.away === away) return old;
+  if (old && old.kit === kit && old.away === away && old.name === name) return old;
   if (old) drop(id);
   // a player in the menu stays in the world (the others see them standing there), marked as away
   const c = peerColor(id), f = makeFigure(c, kit), label = textSprite(away ? name + ' (in menu)' : name, '#' + c.toString(16).padStart(6, '0'));
   label.position.y = 2.2; f.g.add(label);
-  const a: Avatar = { f, kit, away, label, phase: Math.random() * 6, seated: false };
+  const a: Avatar = { f, kit, away, name, label, phase: Math.random() * 6, seated: false };
   avatars.set(id, a);
   return a;
 }
@@ -59,7 +60,7 @@ let sendT = 0;
 export function flushPeerState(moving = false) {
   if (!net.id) return;
   sendT = SEND_EVERY;
-  const s: PeerState = { p: [G.pos.x, G.pos.y, G.pos.z], yaw: G.yaw, pitch: G.pitch, loc: myLoc(), held: G.char.hands[0]?.k ?? '', mv: moving && G.playing, away: !G.playing, cars: myCars(), carIds: myCarList().map(v => v.st.id), ride: ride.on ? [ride.on.owner, ride.on.idx, ride.on.seat] : undefined, gun: ride.on ? ride.gun : undefined, boat: myBoatSpot(), vis: Math.round(myVis() * 100) / 100, cr: G.crouch || undefined };
+  const s: PeerState = { p: [G.pos.x, G.pos.y, G.pos.z], yaw: G.yaw, pitch: G.pitch, loc: myLoc(), held: G.char.hands[0]?.k ?? '', mv: moving && G.playing, away: !G.playing, cars: myCars(), carIds: myCarList().map(v => v.st.id), ride: ride.on ? [ride.on.owner, ride.on.idx, ride.on.seat] : undefined, gun: ride.on ? ride.gun : undefined, boat: myBoatSpot(), vis: Math.round(myVis() * 100) / 100, cr: G.crouch || undefined, pod: myPod() };
   sendState(s, isHost() ? G.char.time : undefined);
 }
 /** Every frame: send where you are now and then, and draw the others. */

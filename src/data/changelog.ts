@@ -3,6 +3,15 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.161.0', date: '2026-10-07', title: 'The crew of the Kestrel', notes: [
+    'On a server, death ends your character. Everything they carried falls where they died, and anyone can pick it up. Their name joins the world\'s fallen crew.',
+    'Another member of the survey team then thaws out in the next shut cryo-pod aboard the ship. They start with an empty backpack, no gold, quests or map, and their own fresh locker kit. You name them. The name of the dead, or of another player in the game, is not accepted.',
+    'Your account stays the same. The others see you by your character\'s name, and the chat says so when it changes.',
+    'The three lockers in the ship show your own name. Whichever one you open, it is your locker and nobody else can open it.',
+    'The pods of the dead stay open.',
+    'In single player nothing changes: you still wake in your pod and keep your kit.',
+    'The multiplayer protocol has changed (12): after the server is updated, reload the page (Ctrl+F5).',
+  ] },
   { v: '0.160.0', date: '2026-10-07', title: 'New games and a character per server', notes: [
     'Roll a new world (or a new seed in the menu) now starts a new game. You get an empty backpack, the opening film, a cryo-pod in the wrecked ship and Wiktor waiting outside. Gridholm is undeveloped and there are no quests. Only your hero\'s name is kept. The button asks for a second click first. Your old game is kept as a backup in the browser.',
     'Each server keeps its own character for you. The first time you join a server, you arrive as a new castaway with an empty backpack, waking in your ship. Join it again and you carry on with the same character, where you left it.',

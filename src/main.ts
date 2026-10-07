@@ -9,7 +9,8 @@ import { G, W, uiOpen } from './game';
 import { loadChar, newChar, SAVE_KEY, type Char } from './save';
 import { initItemTips } from './ui/itemtip';
 import { calcStats, saveChar, armoured, handsChanged } from './character';
-import { loadDungeon, loadOverworld, toVillage, saveOverworldPos, enterDungeon } from './world/level';
+import { loadDungeon, loadOverworld, toVillage, saveOverworldPos, enterDungeon, type Arrival } from './world/level';
+import { initRebirth } from './ui/rebirth';
 import { updatePlayer, EYE } from './world/player';
 import { updateClimb, climbing } from './world/ladders';
 import { updateDoors, updateTrans } from './world/doors';
@@ -112,12 +113,12 @@ calcStats(); G.hp = G.S.maxHp; G.ammo = G.gun.mag;
 initInput(() => { toggleMap(false); showMenu(); });
 initTouch();
 /** Play another character from now on (a new game, or your hero on a server): stats, hands, then the place it stands in. */
-function useChar(c: Char) {
+function useChar(c: Char, a?: Arrival) {
   G.char = c; G.crouch = false;
   calcStats(); handsChanged(); G.hp = G.S.maxHp;
   clearLocalDrops(); saveChar();
-  if (c.loc === 'dungeon' && c.dungeon) loadDungeon(null);
-  else { c.loc = 'overworld'; loadOverworld({ kind: c.ow ? 'saved' : 'new' }); } // a new castaway wakes in their cryo-pod
+  if (!a && c.loc === 'dungeon' && c.dungeon) loadDungeon(null);
+  else { c.loc = 'overworld'; c.dungeon = null; loadOverworld(a ?? { kind: c.ow ? 'saved' : 'new' }); } // a new castaway wakes in their cryo-pod
   refreshGunLook(); syncHeld();
 }
 initMenu({
@@ -133,6 +134,7 @@ initMenu({
   freshStart() { loadOverworld({ kind: 'new' }); },
 });
 initMp({ useChar, reloadWorld });
+initRebirth(useChar); // online a death ends the character: another crew member wakes
 
 if (G.char.loc === 'dungeon' && G.char.dungeon) loadDungeon(null); else { G.char.loc = 'overworld'; loadOverworld({ kind: 'saved' }); }
 

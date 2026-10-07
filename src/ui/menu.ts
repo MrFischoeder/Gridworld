@@ -8,7 +8,8 @@ import { openChangelog } from './changelog';
 import { playIntro } from './intro';
 import { renderer } from '../world/render';
 import { mpLocked, refreshMp, showMpBox, mpShown, onMpChange, soloWaiting, backToOwnWorld } from './mp';
-import { online } from '../net/client';
+import { online, sendHero } from '../net/client';
+import { nameProblem } from './rebirth';
 
 const menu = $('menu'), startBtn = $('start'), mpBtn = $('mpOpen'), wipeBtn = $('wipe'), nameIn = $<HTMLInputElement>('heroName'), nameHint = $('nameHint');
 /** A name as the villagers will say it: trimmed, single spaces, letters, digits and a few marks, at most 20 characters. */
@@ -38,12 +39,20 @@ export function showMenu(resume = true) {
 
 export function initMenu(h: MenuHooks) {
   showName();
-  nameIn.onchange = () => { const n = cleanName(nameIn.value); if (n) { G.char.name = n; saveChar(); } showName(); renderSheet(); };
+  nameIn.onchange = () => {
+    const n = cleanName(nameIn.value);
+    if (n && online() && n !== G.char.name) { // online the server checks it too: the dead keep their names, the living theirs
+      const why = nameProblem(n);
+      if (why) { showName(); nameHint.textContent = why; return; }
+      G.char.name = n; saveChar(); sendHero(n);
+    } else if (n) { G.char.name = n; saveChar(); }
+    showName(); renderSheet();
+  };
   nameIn.onkeydown = (e) => { e.stopPropagation(); if (e.key === 'Enter') startBtn.click(); };
   startBtn.onclick = () => {
     const n = cleanName(nameIn.value);
     if (!n) { nameHint.textContent = 'Your hero needs a name first.'; nameIn.focus(); return; }
-    if (n !== G.char.name) { G.char.name = n; saveChar(); }
+    if (n !== G.char.name) { if (online() && nameProblem(n)) { nameHint.textContent = nameProblem(n); return; } G.char.name = n; saveChar(); if (online()) sendHero(n); }
     if (!paused && !online() && soloWaiting()) { backToOwnWorld(); return; } // single player is your own world: the save that waited while you were online
     const s = parseInt(el.seed.value, 10);
     if (Number.isFinite(s) && s !== G.char.world && !mpLocked()) { // another seed is a new game (online, the host's world is everyone's)

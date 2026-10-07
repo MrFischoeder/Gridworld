@@ -334,6 +334,25 @@ describe('multiplayer server', () => {
     expect(set.ch.map((c: unknown[]) => c[0])).toEqual(['claims', 'benches', 'board', 'boards']);
     for (const x of [a, b]) x.ws.close();
   });
+  it('a character name: shown to the others, never one of the fallen crew or another living player\'s', async () => {
+    const port = await server({ rooms: [{ id: 'main', name: 'Main', world: 11, time: 100 }] });
+    const a = await client(port, { name: 'Ada' }), wa = await a.wait('welcome');
+    const b = await client(port, { name: 'Bob' }); await b.wait('welcome');
+    a.send({ t: 'hero', name: 'Ada' });
+    expect((await a.wait('renamed')).name).toBe('Ada');
+    // Bob's character dies: the world remembers the name; the next one may not take it, nor Ada's
+    b.send({ t: 'wset', ch: [['fallen', 'bob', { n: 'Bob', t: 500, pod: 1 }]] }); await b.wait('wset');
+    b.send({ t: 'hero', name: 'BOB' });
+    expect((await b.wait('heroBad')).why).toMatch(/died/);
+    b.send({ t: 'hero', name: 'ada' });
+    expect((await b.wait('heroBad', 2)).why).toMatch(/already/);
+    b.send({ t: 'hero', name: 'Bob 2' });
+    const r = await a.until((m) => m.t === 'renamed' && m.id !== wa.id);
+    expect(r.name).toBe('Bob 2');
+    b.send({ t: 'chat', text: 'hi' });
+    expect((await a.wait('chat')).name).toBe('Bob 2');
+    a.ws.close(); b.ws.close();
+  });
   it('concurrent world writes converge, merge independent properties, and survive hosted reconnects', async () => {
     const port = await server();
     const a = await client(port, { name: 'A', world: 11 }), b = await client(port, { name: 'B', world: 99 });
