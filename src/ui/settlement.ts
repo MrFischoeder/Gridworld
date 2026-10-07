@@ -34,11 +34,13 @@ export function developmentHTML(vid: number, head: string, msg = '', atComms = f
   let h = head + `<div class="say">${msg ? msg + '<br><br>' : ''}<b>Village tutorial: ${step.title}</b><br>${step.text}<br><br>Bring materials to the village stores${hallStands(s) ? ' at the warehouse terminal' : ': to me, until the warehouse stands'}. Houses are repaired as our food supply and works grow; families arrive gradually.</div>`;
   h += `<button class="opt" data-devkit="${vid}">Receive the elder's starter tools and earned rewards</button>`;
   if (!atComms) {
-    const d = depositsOf(s), own = d.kind === 'quarry' ? `a field of great boulders · west: a stone quarry there cuts building stone${d.mineral ? ` and digs ${MINERAL_NAME[d.mineral]}` : ''}`
-      : d.kind === 'lumber' ? 'a great grove of giant trees · east: a lumber camp there gives logs for good'
-      : d.kind === 'mine' && d.ore ? `${ORES[d.ore].name.toLowerCase()} (${ORES[d.ore].symbol}) in a rocky hollow · south: a mine there digs it`
-      : d.kind === 'oil' ? `oil seeping out of the ground · north: an oil well there pumps crude${d.salt ? ', and its brine is boiled into salt' : ''}` : '';
-    h += `<div class="say">${own ? `Our land's own resource, about 100 m beyond the fence: ${own}.<br>` : ''}Every village digs one thing of its own. The rest comes by trade: logs, stone, ore and crude from the villages that dig them. Processing is open to all of us: logs sawn into planks, crude refined into fuel, and later ore smelted into metal. Processed goods sell for far more than raw ones.</div>`;
+    const d = depositsOf(s), kinds = d.kinds ?? (d.kind ? [d.kind] : []);
+    const line = (k: string) => k === 'quarry' ? `a field of great boulders · west: a stone quarry there cuts building stone${d.mineral ? ` and digs ${MINERAL_NAME[d.mineral]}` : ''}`
+      : k === 'lumber' ? 'a great grove of giant trees · east: a lumber camp there gives logs for good'
+      : k === 'mine' && d.ore ? `${ORES[d.ore].name.toLowerCase()} (${ORES[d.ore].symbol}) in a rocky hollow · south: a mine there digs it`
+      : k === 'oil' ? `oil seeping out of the ground · north: an oil well there pumps crude${d.salt ? ', and its brine is boiled into salt' : ''}` : '';
+    const own = kinds.map(line).filter(Boolean);
+    h += `<div class="say">${own.length ? `Our land's own ${own.length > 1 ? 'resources' : 'resource'}, about 100 m beyond the fence: ${own.join(';<br>')}.<br>` : ''}Every village digs two things of its own. The rest comes by trade: logs, stone, ore and crude from the villages that dig them. Processing is open to all of us: logs sawn into planks, crude refined into fuel, and later ore smelted into metal. Processed goods sell for far more than raw ones.</div>`;
   }
   if (step.farm) h += `<button class="opt" data-o="farms">Build the next farm${step.farm <= FIRST_CROPS.length ? ` (${CROPS[FIRST_CROPS[step.farm - 1]].name.toLowerCase()})` : ''}</button>`;
   // (0.167) the side task: the satellite link, once the power plant stands; handed over at its console out there

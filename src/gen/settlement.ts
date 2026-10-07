@@ -69,15 +69,16 @@ export const hasRelay = (s: TownState | undefined) => progressive(s) && !isStati
 export const scanWait = (home: TownState | undefined, now: number) => { const t = home?.settlement?.scanAt; return t === undefined ? 0 : Math.max(0, t + ORBIT.every - now); };
 /** Saves predating deposit metadata keep their commissioned extraction sites. */
 export const depositsOf = (s: TownState | undefined): Deposits => s?.settlement?.deposits ?? { ore: 'iron', oil: true, grove: true };
-/** (0.168) Can project k be built here: the village's one own yard (`Deposits.kind`), a yard already built or begun,
+/** (0.168, 0.171) Can project k be built here: one of the village's own yards (`Deposits.kinds`), a yard already built or begun,
  *  or anything that is not an extraction yard (the refinery is open to every village: it refines crude brought in). */
 export function projectAvailable(s: TownState | undefined, k: Project): boolean {
   if (projectDone(s, k) || !(YARD_KINDS as string[]).includes(k)) return true;
   const d = depositsOf(s);
-  if (d.kind) return d.kind === k || !!s?.settlement?.given?.[k];
+  const own = d.kinds ?? (d.kind ? [d.kind] : undefined);
+  if (own) return own.includes(k as YardKind) || !!s?.settlement?.given?.[k];
   return k === 'mine' ? !!d.ore : k === 'oil' ? d.oil : k === 'lumber' ? d.grove !== false : true; // (no kind: worlds made in tests by hand)
 }
-/** Every extraction yard the village has (its own one) stands. */
+/** Every extraction yard the village has (its own two) stands. */
 export function localIndustryDone(s: TownState | undefined): boolean {
   return YARD_KINDS.every((k) => !projectAvailable(s, k) || projectDone(s, k));
 }
@@ -146,17 +147,20 @@ export function initializeSettlements(c: { settlementRules: number; world: numbe
   for (const v of allVillages(c.world)) {
     const s = ((c.towns[v.id] ??= {}).settlement ??= { v: 1 });
     if (v.id === GRIDHOLM_ID && !s.done?.comms && !s.station) { s.station = true; delete s.given?.comms; } // (0.149) the big station
-    if (s.deposits?.v !== 2) { // (0.168 one own resource, 0.169 the new mix) a yard already built or begun keeps its ground
+    if (s.deposits?.v !== 3) { // (0.168 one own resource, 0.169 the new mix, 0.171 two) a yard already built or begun keeps its ground
       const fresh = villageDeposits(c.world, v.id), had = s.deposits;
       const begun = (k: YardKind) => !!s.done?.[k] || !!(s.given?.[k] && Object.keys(s.given[k]!).length);
       if (!YARD_KINDS.some(begun)) s.deposits = fresh;
       else {
-        const kind: YardKind = YARD_KINDS.find((k) => s.done?.[k]) ?? YARD_KINDS.find(begun)!;
-        const has = (k: YardKind) => kind === k || begun(k);
-        s.deposits = { kind, v: 2, oil: has('oil'), grove: has('lumber'),
-          ...(has('mine') ? { ore: had?.ore ?? (fresh.kind === 'mine' ? fresh.ore : 'iron') } : {}),
-          ...(has('quarry') ? { mineral: fresh.mineral ?? quarryMineral(c.world, v.id) } : {}),
-          ...(has('oil') ? { salt: fresh.salt ?? brine(c.world, v.id) } : {}) };
+        // the first: the one a v 2 save had, else the yard built (or begun); the second: the fresh roll unless it repeats the first
+        const first: YardKind = (had?.v === 2 && had.kind) || YARD_KINDS.find((k) => s.done?.[k]) || YARD_KINDS.find(begun)!;
+        const kinds: YardKind[] = [first, ...YARD_KINDS.filter((k) => k !== first && begun(k))];
+        if (kinds.length < 2) kinds.push(fresh.kinds![0] !== first ? fresh.kinds![0] : fresh.kinds![1]);
+        const has = (k: YardKind) => kinds.includes(k);
+        s.deposits = { kinds, v: 3, oil: has('oil'), grove: has('lumber'),
+          ...(has('mine') ? { ore: had?.ore ?? fresh.ore ?? 'iron' } : {}),
+          ...(has('quarry') ? { mineral: had?.mineral ?? fresh.mineral ?? quarryMineral(c.world, v.id) } : {}),
+          ...(has('oil') ? { salt: had?.salt ?? fresh.salt ?? brine(c.world, v.id) } : {}) };
       }
     }
   }

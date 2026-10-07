@@ -5,12 +5,14 @@ import type { ItemKey } from '../data/items';
 
 export type DepositOre = 'iron' | 'copper' | 'lead' | 'nickel' | 'coal';
 /** `grove`: a great grove of giant trees by the village (0.165): only a lumber camp works it, and it never runs out. */
-export interface Deposits { ore?: DepositOre; oil: boolean; grove?: boolean; kind?: YardKind; mineral?: QuarryMineral; salt?: boolean; v?: 2 }
+/** `kinds` (0.171): the village's own two resources, the first as before 0.171; `kind` is the one of older saves (v 2). */
+export interface Deposits { ore?: DepositOre; oil: boolean; grove?: boolean; kinds?: YardKind[]; kind?: YardKind; mineral?: QuarryMineral; salt?: boolean; v?: 2 | 3 }
 /** (0.169) A quarry digs one mineral besides its stone; an oil field may bring up brine for salt. */
 export type QuarryMineral = 'limestone' | 'clay' | 'sand';
 export const MINERAL_NAME: Record<QuarryMineral, string> = { limestone: 'limestone', clay: 'clay', sand: 'quartz sand' };
-/** (0.168, the owner's rule) Every village digs one thing of its own: stone at a quarry, timber in a great grove, ore in
- *  a mine, or crude at an oil well. Processing (the refinery, sawmills, smelters) is open to every village. */
+/** (0.168, the owner's rule; 0.171 two of them) Every village digs two things of its own, picked at random: stone at a
+ *  quarry, timber in a great grove, ore in a mine, or crude at an oil well. Processing (the refinery, sawmills, smelters)
+ *  is open to every village. */
 export type YardKind = 'quarry' | 'lumber' | 'mine' | 'oil';
 export const YARD_KINDS: YardKind[] = ['quarry', 'lumber', 'mine', 'oil'];
 export const ORES: Record<DepositOre, { name: string; symbol: string; color: number; good: ItemKey; lump?: ItemKey }> = {
@@ -42,19 +44,30 @@ export function yardKind(world: number, vid: number): YardKind {
   const r = hash(world, vid, 0xde9055) % 100;
   return r < 30 ? 'quarry' : r < 55 ? 'lumber' : r < 85 ? 'mine' : 'oil';
 }
+const WEIGHT: Record<YardKind, number> = { quarry: 30, lumber: 25, mine: 30, oil: 15 };
+/** (0.171) The village's second resource: another kind than the first, by the same weights (its own hash stream). */
+export function secondKind(world: number, vid: number, first = yardKind(world, vid)): YardKind {
+  const rest = YARD_KINDS.filter((k) => k !== first), sum = rest.reduce((a, k) => a + WEIGHT[k], 0);
+  let r = hash(world, vid, 0xde905a) % sum;
+  for (const k of rest) { if (r < WEIGHT[k]) return k; r -= WEIGHT[k]; }
+  return rest[0];
+}
+/** Both of the village's own resources (the first is the one it had before 0.171). */
+export const yardKinds = (world: number, vid: number): YardKind[] => { const a = yardKind(world, vid); return [a, secondKind(world, vid, a)]; };
 /** A quarry's mineral and an oil field's brine, by the village's own hash (also for yards kept from older saves). */
 export const quarryMineral = (world: number, vid: number): QuarryMineral => (['limestone', 'clay', 'sand'] as const)[hash(world, vid, 0xde9056) % 3];
 export const brine = (world: number, vid: number) => hash(world, vid, 0xde9057) % 2 === 0;
 export function villageDeposits(world: number, vid: number): Deposits {
-  const kind = yardKind(world, vid), near = nearStart(world).indexOf(vid), forced = near >= 0 ? NEAR_START[near][1] : undefined;
+  const kinds = yardKinds(world, vid), near = nearStart(world).indexOf(vid), forced = near >= 0 ? NEAR_START[near][1] : undefined;
   // a mine: coal 30%, iron 30%, copper 25%, lead 15% (nickel is a rare deposit only)
   const ores: DepositOre[] = ['coal', 'coal', 'coal', 'coal', 'coal', 'coal', 'iron', 'iron', 'iron', 'iron', 'iron', 'iron', 'copper', 'copper', 'copper', 'copper', 'copper', 'lead', 'lead', 'lead'];
+  // the forced basic belongs to the first kind (the second never repeats it)
   return {
-    kind, v: 2,
-    ...(kind === 'mine' ? { ore: (forced as DepositOre) ?? ores[hash(world, vid, 0xde9052) % ores.length] } : {}),
-    ...(kind === 'quarry' ? { mineral: (forced as QuarryMineral) ?? quarryMineral(world, vid) } : {}),
-    ...(kind === 'oil' ? { salt: brine(world, vid) } : {}),
-    oil: kind === 'oil', grove: kind === 'lumber',
+    kinds, v: 3,
+    ...(kinds.includes('mine') ? { ore: (kinds[0] === 'mine' ? forced as DepositOre : undefined) ?? ores[hash(world, vid, 0xde9052) % ores.length] } : {}),
+    ...(kinds.includes('quarry') ? { mineral: (kinds[0] === 'quarry' ? forced as QuarryMineral : undefined) ?? quarryMineral(world, vid) } : {}),
+    ...(kinds.includes('oil') ? { salt: brine(world, vid) } : {}),
+    oil: kinds.includes('oil'), grove: kinds.includes('lumber'),
   };
 }
 /** Centres ~105 m beyond the 72 m village fence. Separate work yards leave room for later buildings. */
@@ -74,8 +87,8 @@ export function depositDepth(x: number, z: number, radius = 8, depth = 1.6): num
   return depth * t * t * (3 - 2 * t);
 }
 
-/** Whether a village has a great grove (0.168: the villages whose own resource is timber). */
-export const groveRoll = (world: number, vid: number) => yardKind(world, vid) === 'lumber';
+/** Whether a village has a great grove (the villages one of whose own resources is timber). */
+export const groveRoll = (world: number, vid: number) => yardKinds(world, vid).includes('lumber');
 /** The giant trees of a village's great grove, round its lumber camp's yard (plaza-local, `RESOURCE_PLOTS.lumber` + u, v):
  *  trunk radius `r`, height `h`. The side towards the village stays open for the track. */
 export interface Giant { u: number; v: number; r: number; h: number; seed: number }

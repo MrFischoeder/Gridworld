@@ -13,19 +13,20 @@ import type { TownState } from '../src/gen/town';
 const world = 12345, villages = allVillages(world), home = villages.find(v => v.id === GRIDHOLM_ID)!;
 const developed = (ore?: 'iron' | 'copper'): TownState => ({ farms: 2, settlement: { v: 1, supplies: true, deposits: { ore, oil: false }, done: { comms: true, warehouse: true, power: true, sawmill: true } } });
 describe('village extraction landmarks', () => {
-  it('gives every settlement exactly one resource of its own, deterministically, and the refinery to all (0.168)', () => {
+  it('gives every settlement exactly two different resources of its own, deterministically, and the refinery to all (0.171)', () => {
     const c = newChar(); c.world = world; initializeSettlements(c);
     const counts: Record<string, number> = { quarry: 0, lumber: 0, mine: 0, oil: 0 }; const types = new Set();
     for (const v of villages) {
       const s = c.towns[v.id], d = s.settlement!.deposits!;
-      expect(d).toEqual(villageDeposits(world, v.id)); counts[d.kind!]++;
+      expect(d).toEqual(villageDeposits(world, v.id)); expect(d.kinds!.length).toBe(2); expect(d.kinds![0]).not.toBe(d.kinds![1]);
+      for (const k of d.kinds!) counts[k]++;
       const yards = (['quarry', 'lumber', 'mine', 'oil'] as const).filter((k) => projectAvailable(s, k));
-      expect(yards).toEqual([d.kind]); expect(projectAvailable(s, 'refinery')).toBe(true);
-      expect(!!d.ore).toBe(d.kind === 'mine'); expect(d.oil).toBe(d.kind === 'oil'); expect(d.grove).toBe(d.kind === 'lumber');
+      expect(yards).toEqual([...d.kinds!].sort((a, b) => ['quarry', 'lumber', 'mine', 'oil'].indexOf(a) - ['quarry', 'lumber', 'mine', 'oil'].indexOf(b))); expect(projectAvailable(s, 'refinery')).toBe(true);
+      expect(!!d.ore).toBe(d.kinds!.includes('mine')); expect(d.oil).toBe(d.kinds!.includes('oil')); expect(d.grove).toBe(d.kinds!.includes('lumber'));
       if (d.ore) types.add(d.ore);
     }
-    for (const k of ['quarry', 'lumber', 'mine', 'oil']) expect(counts[k] / villages.length).toBeGreaterThan(.06);
-    expect(types.size).toBeGreaterThanOrEqual(4); expect(c.towns[GRIDHOLM_ID].settlement!.deposits!.kind).toBe('lumber');
+    for (const k of ['quarry', 'lumber', 'mine', 'oil']) expect(counts[k] / villages.length).toBeGreaterThan(.2);
+    expect(types.size).toBeGreaterThanOrEqual(4); expect(c.towns[GRIDHOLM_ID].settlement!.deposits!.kinds![0]).toBe('lumber');
     expect(new Set(Object.values(ORES).map(o => o.color)).size).toBe(5);
   });
   it('gives the villages nearest Gridholm coal, iron and limestone, quarries a mineral and some oil fields salt (0.169)', () => {
@@ -33,12 +34,19 @@ describe('village extraction landmarks', () => {
     expect(near.map((v) => { const d = villageDeposits(world, v.id); return d.ore ?? d.mineral; })).toEqual(['coal', 'iron', 'limestone']);
     const all = villages.map((v) => villageDeposits(world, v.id));
     expect(all.every((d) => d.ore !== 'nickel')).toBe(true);
-    expect(all.filter((d) => d.kind === 'quarry').every((d) => !!d.mineral)).toBe(true);
-    expect(new Set(all.filter((d) => d.kind === 'quarry').map((d) => d.mineral)).size).toBe(3);
+    expect(all.filter((d) => d.kinds!.includes('quarry')).every((d) => !!d.mineral)).toBe(true);
+    expect(new Set(all.filter((d) => d.kinds!.includes('quarry')).map((d) => d.mineral)).size).toBe(3);
     expect(all.filter((d) => d.ore === 'coal').length).toBeGreaterThan(all.length * .05);
-    const oil = all.filter((d) => d.kind === 'oil'); expect(oil.some((d) => d.salt) && oil.some((d) => !d.salt)).toBe(true);
+    const oil = all.filter((d) => d.kinds!.includes('oil')); expect(oil.some((d) => d.salt) && oil.some((d) => !d.salt)).toBe(true);
     const s = { settlement: { v: 1, deposits: { kind: 'quarry', v: 2, oil: false, grove: false, mineral: 'clay' }, done: { quarry: true } } } as TownState;
     expect(resourceYield(s)).toEqual({ stone: .8, clay: .4 });
+  });
+  it('keeps a v 2 village\'s one resource first and adds a second (0.171)', () => {
+    const v = villages.find((x) => x.id !== GRIDHOLM_ID && villageDeposits(world, x.id).kinds![0] === 'quarry')!;
+    const c = newChar(); c.world = world;
+    c.towns[v.id] = { settlement: { v: 1, done: { quarry: true }, deposits: { kind: 'quarry', v: 2, oil: false, grove: false, mineral: 'sand' } } };
+    initializeSettlements(c); const d = c.towns[v.id].settlement!.deposits!;
+    expect(d.v).toBe(3); expect(d.kinds![0]).toBe('quarry'); expect(d.kinds).toEqual(villageDeposits(world, v.id).kinds); expect(d.mineral).toBe('sand');
   });
   it('keeps extraction yards about 100 m from the fence, separate from each other and room for infrastructure', () => {
     const plots = Object.values(RESOURCE_PLOTS);
@@ -73,7 +81,7 @@ describe('village extraction landmarks', () => {
     const c = newChar(); c.world = world;
     c.towns[target.id] = { own: { copper: { n: 9, t: 1000 }, coal: { n: 7, t: 1000 } }, settlement: { v: 1, done: { mine: true }, given: { oil: { scrap: 5 } } } };
     const loaded = loadChar({ getItem: k => k === SAVE_KEY ? JSON.stringify(c) : null }); initializeSettlements(loaded);
-    const s = loaded.towns[target.id]; expect(s.settlement!.deposits).toEqual({ kind: 'mine', v: 2, ore: 'iron', oil: true, grove: false, salt: brine(world, target.id) }); // the mine built stays, the oil well begun keeps its ground expect(s.settlement!.given!.oil!.scrap).toBe(5);
+    const s = loaded.towns[target.id]; expect(s.settlement!.deposits).toEqual({ kinds: ['mine', 'oil'], v: 3, ore: 'iron', oil: true, grove: false, salt: brine(world, target.id) }); // the mine built stays, the oil well begun keeps its ground expect(s.settlement!.given!.oil!.scrap).toBe(5);
     const stock = stockOf(world, target, villageSeed(world, target), s, 1100); expect(stock.ownOf('copper')).toBe(9); expect(stock.ownOf('coal')).toBe(7);
     const copy = JSON.parse(JSON.stringify(loaded)); initializeSettlements(copy); expect(copy.towns[target.id]).toEqual(s);
   });

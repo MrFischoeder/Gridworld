@@ -3,6 +3,11 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.171.0', date: '2026-10-07', title: 'Two resources a village', notes: [
+    'Every village in a new world now has two resources of its own instead of one, picked at random and never the same twice: a stone quarry, a great grove with a lumber camp, a mine or an oil well.',
+    'The elder names both and the village tutorial asks for both yards. Each still has its own plot beyond the fence.',
+    'In worlds you already play, a village keeps the resource it had and gains a second one. Yards already built or started stay.',
+  ] },
   { v: '0.170.0', date: '2026-10-07', title: 'The sawmill', notes: [
     'Sawing by hand is now slow work: about 15 seconds a log, and a log gives 4 planks. Stay where you are while you saw: walking off stops the work. The prompt shows how far along you are.',
     'In a new world the elder asks for a sawmill right after the power plant. It runs on electricity, needs a crew of three and cuts logs from the village stores into planks in the stores: 6 planks from a log.',
