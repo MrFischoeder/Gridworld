@@ -117,7 +117,7 @@ export function stockOf(world: number, v: Poi, seed: number, s: TownState | unde
 }
 /** The hands at the yard that yields k (a settlement's quarry, sawmill, mine or oil well). */
 function yardFill(s: TownState | undefined, workers: number, k: ItemKey): number {
-  const yard = k === 'stone' ? 'quarry' : k === 'log' || k === 'timber' || k === 'lumber' ? 'lumber' : k === 'crude' ? 'oil' : k === 'fuel' ? 'refinery' : 'mine';
+  const yard = k === 'stone' || k === 'limestone' || k === 'clay' || k === 'sand' ? 'quarry' : k === 'log' || k === 'timber' || k === 'lumber' ? 'lumber' : k === 'crude' || k === 'salt' ? 'oil' : k === 'fuel' ? 'refinery' : 'mine';
   return fillOf(s, workers, yard);
 }
 /** Settle every own good's anchor at `now`: call before the farms or the site change (what they made so far is kept). */

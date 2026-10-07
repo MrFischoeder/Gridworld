@@ -3,6 +3,14 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.169.0', date: '2026-10-07', title: 'The village deposits', notes: [
+    'A new mix of village resources in new worlds: quarries 30%, great groves 25%, mines 30%, oil wells 15%.',
+    'A quarry now digs one mineral besides its stone: limestone, clay or quartz sand, for cement, bricks and glass.',
+    'Half the oil fields also bring up brine, and the oil well boils it into salt.',
+    'Mines dig coal, iron, copper or lead. Coal is now much more common, since almost every furnace and kiln burns it. Nickel is found only as a rare deposit.',
+    'The three villages nearest Gridholm always have a coal mine, an iron mine and a limestone quarry, so the first smelting never waits on luck.',
+    'In worlds you already play, villages that have not started their own yard get the new mix. Yards already built or started stay as they are.',
+  ] },
   { v: '0.168.0', date: '2026-10-07', title: 'One resource a village', notes: [
     'In a new world every village now digs one thing of its own: stone at a quarry, timber in a great grove with a lumber camp, ore at a mine, or crude at an oil well. Gridholm has the great grove.',
     'Everything else comes by trade: logs, stone, ore and crude from the villages that dig them.',

@@ -4,7 +4,7 @@ import { PROJECTS, projectPlan, projectProblem, projectDone, buildProject, tutor
 import { poisNear, CHUNK, wrapDx } from '../gen/regions';
 import { CROPS } from '../gen/farms';
 import { discover } from '../save';
-import { ORES } from '../gen/resource-sites';
+import { ORES, MINERAL_NAME } from '../gen/resource-sites';
 import { findPoi, villageSeed, worldDist, GRIDHOLM_ID } from '../gen/regions';
 import { settleOwn, anchorNew, hallStands } from '../gen/hall';
 import { ITEMS, type ItemKey } from '../data/items';
@@ -34,10 +34,10 @@ export function developmentHTML(vid: number, head: string, msg = '', atComms = f
   let h = head + `<div class="say">${msg ? msg + '<br><br>' : ''}<b>Village tutorial: ${step.title}</b><br>${step.text}<br><br>Bring materials to the village stores${hallStands(s) ? ' at the warehouse terminal' : ': to me, until the warehouse stands'}. Houses are repaired as our food supply and works grow; families arrive gradually.</div>`;
   h += `<button class="opt" data-devkit="${vid}">Receive the elder's starter tools and earned rewards</button>`;
   if (!atComms) {
-    const d = depositsOf(s), own = d.kind === 'quarry' ? 'a field of great boulders · west: a stone quarry there cuts building stone'
+    const d = depositsOf(s), own = d.kind === 'quarry' ? `a field of great boulders · west: a stone quarry there cuts building stone${d.mineral ? ` and digs ${MINERAL_NAME[d.mineral]}` : ''}`
       : d.kind === 'lumber' ? 'a great grove of giant trees · east: a lumber camp there gives logs for good'
       : d.kind === 'mine' && d.ore ? `${ORES[d.ore].name.toLowerCase()} (${ORES[d.ore].symbol}) in a rocky hollow · south: a mine there digs it`
-      : d.kind === 'oil' ? 'oil seeping out of the ground · north: an oil well there pumps crude' : '';
+      : d.kind === 'oil' ? `oil seeping out of the ground · north: an oil well there pumps crude${d.salt ? ', and its brine is boiled into salt' : ''}` : '';
     h += `<div class="say">${own ? `Our land's own resource, about 100 m beyond the fence: ${own}.<br>` : ''}Every village digs one thing of its own. The rest comes by trade: logs, stone, ore and crude from the villages that dig them. Processing is open to all of us: logs sawn into planks, crude refined into fuel, and later ore smelted into metal. Processed goods sell for far more than raw ones.</div>`;
   }
   if (step.farm) h += `<button class="opt" data-o="farms">Build the next farm${step.farm <= FIRST_CROPS.length ? ` (${CROPS[FIRST_CROPS[step.farm - 1]].name.toLowerCase()})` : ''}</button>`;

@@ -3,7 +3,7 @@ import type { TownState } from './town';
 import type { ItemKey } from '../data/items';
 import { hash } from '../core/rng';
 import { allVillages, poisNear, GRIDHOLM_ID, worldDist, type Poi } from './regions';
-import { villageDeposits, ORES, YARD_KINDS, type Deposits, type YardKind } from './resource-sites';
+import { villageDeposits, quarryMineral, brine, ORES, YARD_KINDS, type Deposits, type YardKind } from './resource-sites';
 import { startJob, jobOf } from './construction';
 export { RESOURCE_PLOTS } from './resource-sites';
 
@@ -138,12 +138,18 @@ export function initializeSettlements(c: { settlementRules: number; world: numbe
   for (const v of allVillages(c.world)) {
     const s = ((c.towns[v.id] ??= {}).settlement ??= { v: 1 });
     if (v.id === GRIDHOLM_ID && !s.done?.comms && !s.station) { s.station = true; delete s.given?.comms; } // (0.149) the big station
-    if (!s.deposits?.kind) { // (0.168) one own resource a village; a yard already built or begun keeps it
+    if (s.deposits?.v !== 2) { // (0.168 one own resource, 0.169 the new mix) a yard already built or begun keeps its ground
       const fresh = villageDeposits(c.world, v.id), had = s.deposits;
       const begun = (k: YardKind) => !!s.done?.[k] || !!(s.given?.[k] && Object.keys(s.given[k]!).length);
-      const kind: YardKind = YARD_KINDS.find((k) => s.done?.[k]) ?? YARD_KINDS.find(begun) ?? fresh.kind!;
-      const has = (k: YardKind) => kind === k || begun(k); // (every yard already built or begun keeps its ground)
-      s.deposits = { kind, oil: has('oil'), grove: has('lumber'), ...(has('mine') ? { ore: kind === fresh.kind && fresh.ore ? fresh.ore : had?.ore ?? 'iron' } : {}) };
+      if (!YARD_KINDS.some(begun)) s.deposits = fresh;
+      else {
+        const kind: YardKind = YARD_KINDS.find((k) => s.done?.[k]) ?? YARD_KINDS.find(begun)!;
+        const has = (k: YardKind) => kind === k || begun(k);
+        s.deposits = { kind, v: 2, oil: has('oil'), grove: has('lumber'),
+          ...(has('mine') ? { ore: had?.ore ?? (fresh.kind === 'mine' ? fresh.ore : 'iron') } : {}),
+          ...(has('quarry') ? { mineral: fresh.mineral ?? quarryMineral(c.world, v.id) } : {}),
+          ...(has('oil') ? { salt: fresh.salt ?? brine(c.world, v.id) } : {}) };
+      }
     }
   }
 }
@@ -190,8 +196,9 @@ export const mechanicHere = (s: TownState | undefined) => !progressive(s) || !!s
  *  great grove: logs for good (sawn into planks at a sawmill or by hand). */
 export function resourceYield(s: TownState | undefined): Partial<Record<ItemKey, number>> {
   if (!progressive(s)) return {};
-  const ore = depositsOf(s).ore, vein = ore && ORES[ore];
-  return { ...(projectDone(s, 'quarry') ? { stone: .8 } : {}), ...(projectDone(s, 'mine') && vein ? { [vein.good]: .6, ...(vein.lump ? { [vein.lump]: .3 } : {}) } : {}), ...(projectDone(s, 'lumber') ? { log: 1.2, timber: .4 } : {}), ...(projectDone(s, 'oil') && depositsOf(s).oil ? { crude: .7 } : {}), ...(projectDone(s, 'refinery') ? { fuel: 0 } : {}) };
+  const d = depositsOf(s), ore = d.ore, vein = ore && ORES[ore];
+  // (0.169) a quarry also digs its mineral, an oil field with brine boils salt
+  return { ...(projectDone(s, 'quarry') ? { stone: .8, ...(d.mineral ? { [d.mineral]: .4 } : {}) } : {}), ...(projectDone(s, 'mine') && vein ? { [vein.good]: .6, ...(vein.lump ? { [vein.lump]: .3 } : {}) } : {}), ...(projectDone(s, 'lumber') ? { log: 1.2, timber: .4 } : {}), ...(projectDone(s, 'oil') && d.oil ? { crude: .7, ...(d.salt ? { salt: .25 } : {}) } : {}), ...(projectDone(s, 'refinery') ? { fuel: 0 } : {}) };
 }
 /** Stable labels for the deposit marker geometry. */
 export const depositVariant = (world: number, vid: number) => hash(world, vid, 0x5e77) % 3;
