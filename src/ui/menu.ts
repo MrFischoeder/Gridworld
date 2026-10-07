@@ -16,7 +16,7 @@ export const cleanName = (s: string) => s.replace(/[^\p{L}\p{N} '\-.]/gu, '').re
 function showName() { nameIn.value = G.char.name; nameHint.textContent = G.char.name ? '' : 'Name your hero: everyone will call you by it.'; }
 
 export interface MenuHooks {
-  /** Start a fresh world with the given seed (character is kept). */
+  /** A new game in the world with this seed: a new castaway (only the name is kept), the opening and Wiktor again. */
   newWorld(seed: number): void;
   /** The character was wiped; load the starting place. */
   freshStart(): void;
@@ -24,6 +24,8 @@ export interface MenuHooks {
 
 /** Paused mid-game (the first button resumes) rather than at the title. */
 let paused = false;
+/** A typed seed asks once before it starts a new game. */
+let seedArmed = false;
 /** The first button: Single player at the title, Play online once connected, Resume when paused. */
 function labels() {
   startBtn.textContent = paused ? 'Resume' : online() ? 'Play online' : 'Single player';
@@ -44,7 +46,10 @@ export function initMenu(h: MenuHooks) {
     if (n !== G.char.name) { G.char.name = n; saveChar(); }
     if (!paused && !online() && soloWaiting()) { backToOwnWorld(); return; } // single player is your own world: the save that waited while you were online
     const s = parseInt(el.seed.value, 10);
-    if (Number.isFinite(s) && s !== G.char.world && !mpLocked()) h.newWorld(s); // (online, the host's world is everyone's)
+    if (Number.isFinite(s) && s !== G.char.world && !mpLocked()) { // another seed is a new game (online, the host's world is everyone's)
+      if (!seedArmed) { seedArmed = true; nameHint.textContent = `World ${s} is a new game: your kit, quests and the town start over. Press again to begin.`; return; }
+      seedArmed = false; h.newWorld(s);
+    }
     if (!G.isTouch) lockPointer();
     menu.style.display = 'none';
     if (G.char.intro) { G.playing = true; return; }
@@ -59,7 +64,14 @@ export function initMenu(h: MenuHooks) {
   onMpChange(labels);
   $('replayCinematic').onclick = async () => { const film = await import('./cinematic'); film.playCinematic(() => showMenu(false)); };
   $('changelog').onclick = openChangelog;
-  $('reroll').onclick = () => { if (mpLocked()) { nameHint.textContent = 'Leave the multiplayer game first: online, the host\'s world is everyone\'s.'; return; } h.newWorld((Math.random() * 1e6) | 0); paused = false; labels(); };
+  const reroll = $('reroll'), rerollText = reroll.textContent;
+  let rerollArmed = false;
+  reroll.onclick = () => {
+    if (mpLocked()) { nameHint.textContent = 'Leave the multiplayer game first: online, the host\'s world is everyone\'s.'; return; }
+    if (!rerollArmed) { rerollArmed = true; reroll.textContent = 'Click again: a new game from the start'; return; } // a new map is a new game
+    rerollArmed = false; reroll.textContent = rerollText;
+    h.newWorld((Math.random() * 1e6) | 0); paused = false; labels(); showName(); renderSheet();
+  };
   let wipeArmed = false;
   wipeBtn.onclick = () => {
     if (!wipeArmed) { wipeArmed = true; wipeBtn.textContent = 'Click again to delete your character'; return; }

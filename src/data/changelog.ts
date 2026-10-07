@@ -3,6 +3,14 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.160.0', date: '2026-10-07', title: 'New games and a character per server', notes: [
+    'Roll a new world (or a new seed in the menu) now starts a new game. You get an empty backpack, the opening film, a cryo-pod in the wrecked ship and Wiktor waiting outside. Gridholm is undeveloped and there are no quests. Only your hero\'s name is kept. The button asks for a second click first. Your old game is kept as a backup in the browser.',
+    'Each server keeps its own character for you. The first time you join a server, you arrive as a new castaway with an empty backpack, waking in your ship. Join it again and you carry on with the same character, where you left it.',
+    'Your own single-player save still waits while you play online. Single player in the menu takes you back to it.',
+    'A server you create in your own world, or a LAN game you host, keeps your own character.',
+    'Every castaway now has their own locker in the ship, so a second player no longer finds it emptied.',
+    'Ctrl now works like C: press it once to crouch and once more to stand. You no longer have to hold it.',
+  ] },
   { v: '0.159.0', date: '2026-10-07', title: 'Account emails', notes: [
     'A dedicated server that can send mail now asks for your email address when you create an account. It sends a 6-digit code, and a link if the owner set the game\'s address. You can play once you type the code in the Multiplayer panel or open the link.',
     'You can log in with your name or your email address.',

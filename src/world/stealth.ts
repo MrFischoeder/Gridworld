@@ -31,12 +31,11 @@ export function mindOf(f: object): Mind {
 }
 
 // ---------- you ----------
-let shotT = Infinity, vis = 1, hold = false;
+let shotT = Infinity, vis = 1;
 /** A shot: muzzle flashes give you away for a moment. */
 export function noteShot() { shotT = 0; }
-/** C toggles crouching, Ctrl crouches while held. Not while flying, driving, riding, boating, swimming or climbing. */
+/** C or Ctrl toggles crouching (it stays until pressed again). Not while flying, driving, riding, boating, swimming or climbing. */
 export function toggleCrouch() { G.crouch = !G.crouch; }
-export function holdCrouch(on: boolean) { if (on !== hold) { hold = on; G.crouch = on; } }
 /** How visible you are now (1 = walking upright in daylight). */
 export const myVis = () => vis;
 function work(): number {

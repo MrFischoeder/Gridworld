@@ -201,8 +201,23 @@ export function loadChar(storage: Pick<Storage, 'getItem'> & Partial<Pick<Storag
   return newChar();
 }
 
+/** Online the character also lives under the server's own key (ui/mp.ts), so the same hero comes back to it. */
+let mirror: () => string | null = () => null;
+export function setSaveMirror(f: () => string | null) { mirror = f; }
 export function saveChar(c: Char): void {
-  try { localStorage.setItem(SAVE_KEY, JSON.stringify(c)); } catch { /* storage unavailable */ }
+  try {
+    const j = JSON.stringify(c), m = mirror();
+    localStorage.setItem(SAVE_KEY, j);
+    if (m) localStorage.setItem(m, j);
+  } catch { /* storage unavailable */ }
+}
+/** A character stored under another key (a server's), with every migration of loadChar; null if there is none. */
+export function loadCharAt(key: string): Char | null {
+  let raw: string | null = null;
+  try { raw = localStorage.getItem(key); } catch { return null; }
+  if (!raw) return null;
+  const r = raw;
+  return loadChar({ getItem: (k) => (k === SAVE_KEY ? r : null) });
 }
 
 function safeStorage(): Storage | null { try { return localStorage; } catch { return null; } }

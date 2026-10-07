@@ -182,6 +182,8 @@ function adopt(doc: WorldDoc, keepEdits = false) {
  * Just joined (ui/mp.ts, after keeping a copy of your own save): bring your world to a room nobody has brought one to
  * if you have played its world, else take the room's. True if your save's world changed (redraw it).
  */
+/** Whether joining will seed the room with the world you play (nobody has given it one and it is yours). */
+export const willSeed = () => !!pending && !pending.seeded && pending.canSeed;
 export function joinWorld(): boolean {
   const p = pending; pending = null;
   if (!p) return false;

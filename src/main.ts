@@ -6,9 +6,9 @@ import { VERSION, BUILD } from './version';
 import { nearMegalith } from './world/megaliths';
 import { renderer, scene, camera, fog } from './world/render';
 import { G, W, uiOpen } from './game';
-import { loadChar } from './save';
+import { loadChar, newChar, SAVE_KEY, type Char } from './save';
 import { initItemTips } from './ui/itemtip';
-import { calcStats, saveChar, armoured } from './character';
+import { calcStats, saveChar, armoured, handsChanged } from './character';
 import { loadDungeon, loadOverworld, toVillage, saveOverworldPos, enterDungeon } from './world/level';
 import { updatePlayer, EYE } from './world/player';
 import { updateClimb, climbing } from './world/ladders';
@@ -111,23 +111,28 @@ calcStats(); G.hp = G.S.maxHp; G.ammo = G.gun.mag;
 
 initInput(() => { toggleMap(false); showMenu(); });
 initTouch();
+/** Play another character from now on (a new game, or your hero on a server): stats, hands, then the place it stands in. */
+function useChar(c: Char) {
+  G.char = c; G.crouch = false;
+  calcStats(); handsChanged(); G.hp = G.S.maxHp;
+  clearLocalDrops(); saveChar();
+  if (c.loc === 'dungeon' && c.dungeon) loadDungeon(null);
+  else { c.loc = 'overworld'; loadOverworld({ kind: c.ow ? 'saved' : 'new' }); } // a new castaway wakes in their cryo-pod
+  refreshGunLook(); syncHeld();
+}
 initMenu({
-  newWorld(seed) {
-    const c = G.char;
-    try { localStorage.setItem('gridWorld.world.backup.' + c.world, JSON.stringify(c)); } catch { /* unavailable */ }
-    Object.assign(c, { settlementRules: 1, settlementRewards: [], towns: {}, market: {}, boards: {}, board: { seq: 0, offers: [] }, quests: [], world: seed, loc: 'overworld', ow: null, dungeon: null, discovered: {}, opened: {}, unlocked: {}, killed: {} });
-    saveChar(); loadOverworld({ kind: 'new' });
+  newWorld(seed) { // a new map is a new game: an empty kit, an undeveloped town, no quests, Wiktor waiting at the ship
+    const old = G.char;
+    try {
+      localStorage.setItem('gridWorld.world.backup.' + old.world, JSON.stringify(old));
+      const solo = localStorage.getItem(SAVE_KEY + '.solo'); // your own save that waited while you were online: kept aside too, the new game is now yours
+      if (solo) { localStorage.setItem('gridWorld.world.backup.' + (JSON.parse(solo).world ?? 'solo'), solo); localStorage.removeItem(SAVE_KEY + '.solo'); }
+    } catch { /* unavailable */ }
+    useChar(Object.assign(newChar(), { world: seed, name: old.name }));
   },
   freshStart() { loadOverworld({ kind: 'new' }); },
 });
-initMp({
-  switchWorld(seed) { // into the host's world: as rolling a new world, the character kept
-    const c = G.char;
-    Object.assign(c, { world: seed, loc: 'overworld', ow: null, dungeon: null, discovered: {}, opened: {}, unlocked: {}, killed: {} });
-    clearLocalDrops(); saveChar(); loadOverworld({ kind: 'pod' }); // a castaway arrives in a new world by waking from their cryo-pod in the crashed ship
-  },
-  reloadWorld,
-});
+initMp({ useChar, reloadWorld });
 
 if (G.char.loc === 'dungeon' && G.char.dungeon) loadDungeon(null); else { G.char.loc = 'overworld'; loadOverworld({ kind: 'saved' }); }
 

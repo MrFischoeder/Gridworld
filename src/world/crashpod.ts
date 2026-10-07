@@ -135,9 +135,10 @@ const localNear = (lx: number, lz: number, d: number) => { if (!site || G.char.l
 export const nearLocker = () => localNear(LOCKER.x + 0.5, LOCKER.z, 1.4);
 export const nearConsole = () => localNear(CONSOLE.x, CONSOLE.z - 0.5, 1.5);
 
-/** The survival kit in the locker, filled once (what you leave stays there). */
+/** The survival kit in the locker, filled once for each castaway (what you leave stays there). Online every character has
+ *  their own (the containers are shared); a save from before that already opened the old one keeps it when alone. */
 export function lockerBox() {
-  const c = G.char, key = 'ship:locker';
+  const c = G.char, own = 'ship:locker:' + c.pid, key = !c.containers[own] && c.containers['ship:locker'] && !net.id ? 'ship:locker' : own;
   if (!c.containers[key]) {
     const items: (Slot | null)[] = Array(8).fill(null);
     putItems(items, 'medkit', 2); putItems(items, 'waterF', 2); putItems(items, 'bread', 3); putItems(items, 'firekit', 1); putItems(items, 'compass', 1); putItems(items, 'ammoE', 40); // the ship's own cells: all the rounds you have until you find more

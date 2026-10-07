@@ -11,20 +11,20 @@
 // On a dedicated server every player has an account (a name and a password, server/accounts.mjs): the menu logs in or
 // makes one, keeps only the session token the server gave (`gridWorld.mpAuth`, per server), and the server names you
 // by your account. A server you created shows Close server in the list: closing it sends its players away for good.
-import { joinWorld } from '../world/share';
+import { joinWorld, willSeed } from '../world/share';
 import { G } from '../game';
 import { $, logLine } from './hud';
 import { saveChar } from '../character';
 import { connect, disconnect, deleteRoom, account, accountAsk, logout, changePassword, net, online, isHost, sendChat, serverUrl, serverInfo, type ServerInfo, type RoomInfo } from '../net/client';
 import { clearPeers, peerColor } from '../world/peers';
 import { lockPointer } from './input';
-import { SAVE_KEY } from '../save';
+import { SAVE_KEY, newChar, loadCharAt, setSaveMirror, type Char } from '../save';
 
 /** Where the hero's own save waits while they play in someone else's world. */
 const SOLO_KEY = SAVE_KEY + '.solo';
 export interface MpHooks {
-  /** Move the hero to the host's world (as "Roll a new world", keeping the character). */
-  switchWorld(seed: number): void;
+  /** Play this character now (the one you had on this server, or a new castaway): load it where it stands. */
+  useChar(c: Char): void;
   /** Redraw the world you are in from the save (after taking the server's state of it). */
   reloadWorld(): void;
 }
@@ -44,6 +44,17 @@ let ded: ServerInfo | null = null;
 const DEFAULT_SERVER = (import.meta.env.VITE_MP_SERVER as string | undefined) ?? '';
 
 const solo = () => { try { return localStorage.getItem(SOLO_KEY); } catch { return null; } };
+/**
+ * Every server (and every game on it) keeps its own character for each player: the key is the server's address, the
+ * room, its world and your account (or hero) name. Joining again brings that character back; a server you have not
+ * played on gives you a new castaway with an empty backpack, waking in the ship. While online every save also goes there.
+ */
+let roomKey: string | null = null;
+setSaveMirror(() => roomKey);
+const charKey = (url: string, room: string, world: number, name: string) => 'gridWorld.mpChar.' + JSON.stringify([url.replace(/^wss?:\/\//, ''), room, world, name.toLowerCase()]);
+const stored = (k: string) => { try { return !!localStorage.getItem(k); } catch { return false; } };
+/** The last save to the server's key, then online saves stop going there. */
+function leaveRoomChar() { if (roomKey) { saveChar(); roomKey = null; } }
 /** This browser's secret for the servers it creates: the server keeps only its hash and deletes a server for it. */
 const KEY_STORE = 'gridWorld.mpKey', MINE_STORE = 'gridWorld.mpRooms';
 function mpKey(): string {
@@ -171,19 +182,26 @@ function say(text: string, kind: 'chat' | 'info' | 'error') {
 function start(url: string, room?: string, create?: { name: string; world?: number }) {
   if (accounts() && !auth()) { status.textContent = 'Log in first.'; userIn.focus(); return; }
   if (!accounts() && !G.char.name) { status.textContent = 'Name your hero first.'; return; }
-  if (online()) { disconnect(); clearPeers(); } // moving to another server
+  if (online()) { leaveRoomChar(); disconnect(); clearPeers(); } // moving to another server
   connecting = true; status.textContent = 'Connecting…'; render();
   connect(url, { name: auth()?.name ?? G.char.name, world: G.char.world, time: G.char.time, token: auth()?.token, room, create }, {
     welcome(world, time, host, dedicated) {
       connecting = false;
-      if (world !== G.char.world) {
-        // into the host's world: the hero's own save waits (once) to be restored with "Back to my own world"
+      const name = net.name || G.char.name, key = charKey(url, net.room?.id ?? 'lan', world, name);
+      // your own character stays when you bring your own world to a room that has none yet, or host it on the LAN
+      const keep = !solo() && world === G.char.world && (host || willSeed()) && !stored(key);
+      if (!keep) {
+        // the hero's own save waits (once) to be restored with "Back to my own world"
         try { if (!solo()) localStorage.setItem(SOLO_KEY, JSON.stringify(G.char)); } catch { /* storage full or blocked */ }
-        G.char.time = time;
-        hooks?.switchWorld(world);
-        if (joinWorld()) hooks?.reloadWorld(); // apply after switching, which resets dungeon progress
-        say(`You have come to the ${dedicated ? 'server' : 'host'}\'s world. Your own save waits for you: Single player in the menu takes you back to it.`, 'info');
+        const back = loadCharAt(key);
+        const c = back ?? Object.assign(newChar(), { world, time, name });
+        c.world = world; c.time = time; if (name) c.name = name;
+        roomKey = key;
+        hooks?.useChar(c);
+        joinWorld(); hooks?.reloadWorld(); // the server's state of its world, then draw it
+        say(back ? `Welcome back, ${c.name}: you carry on where you left this world.` : `A new castaway on this ${dedicated ? 'server' : 'game'}: you wake in your ship with nothing but what the crew left you. Your own save waits: Single player in the menu takes you back to it.`, 'info');
       } else {
+        roomKey = key;
         G.char.time = time;
         if (joinWorld()) hooks?.reloadWorld(); // the same world, but the server's state of it
       }
@@ -193,7 +211,7 @@ function start(url: string, room?: string, create?: { name: string; world?: numb
     say,
     clock(time) { if (Math.abs(G.char.time - time) > 3) G.char.time = time; }, // the host's clock is everyone's
     closed(why) {
-      connecting = false; clearPeers();
+      connecting = false; clearPeers(); leaveRoomChar();
       if (net.needAuth) { setAuth(null); tell('Your login has run out: log in again.'); } // the session is gone (expired, or the password changed)
       say(why, 'error'); look();
     },
@@ -277,7 +295,7 @@ async function addEmail() {
 }
 async function signOut() {
   const a = auth();
-  if (online()) { disconnect(); clearPeers(); }
+  if (online()) { leaveRoomChar(); disconnect(); clearPeers(); }
   setAuth(null); pwdForm.style.display = 'none'; profile = null; pending = null;
   if (a) void logout(here(), a.token);
   tell('Logged out.'); render();
@@ -342,7 +360,7 @@ export function initMp(h: MpHooks) {
   joinBtn.onclick = () => {
     try { start(serverUrl(ded ? '' : addr.value, location)); } catch { status.textContent = 'That is not a server address. Try 192.168.1.20:5173.'; }
   };
-  leaveBtn.onclick = () => { disconnect(); clearPeers(); say('You left the game.', 'info'); look(); render(); };
+  leaveBtn.onclick = () => { leaveRoomChar(); disconnect(); clearPeers(); say('You left the game.', 'info'); look(); render(); };
   backBtn.onclick = () => backToOwnWorld();
   chatIn.onkeydown = (e) => {
     e.stopPropagation();
