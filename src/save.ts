@@ -64,6 +64,8 @@ export interface Char {
   fogs: Record<string, [number, number, number, string]>;
   /** Villages where you own a house (bought from the elder; Gridholm's for now). */
   houses: number[];
+  /** Which house (gen/homes.ts index) you have in each of those villages; unset = the first (Gridholm's, from before). */
+  homeOf?: Record<string, number>;
   /** The shuttle project in the hangar by Gridholm (gen/shuttle.ts): crates handed over per stage. */
   shuttle: ShuttleState;
   level: number; xp: number; gold: number; world: number;
@@ -133,7 +135,7 @@ export interface Char {
 
 export interface Fallen { n: string; t: number; pod: number }
 /** A dead character's houses (village ids) and their containers ('home:*'), `from` = whose they were. */
-export interface Estate { from: string; houses: number[]; chests: Record<string, Container> }
+export interface Estate { from: string; houses: number[]; chests: Record<string, Container>; idx?: Record<string, number>; pid?: string }
 export const SAVE_KEY = 'gridWorld.character.v3';
 /** Keys from before the project was renamed from Grid Arena to GridWorld. */
 export const ARENA_V3_KEY = 'gridArena.character.v3', V2_KEY = 'gridArena.character.v2', OLD_KEY = 'gridArena.character.v1';

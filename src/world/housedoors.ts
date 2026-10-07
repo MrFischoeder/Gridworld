@@ -1,13 +1,14 @@
 // The doors of village houses: a real leaf on its hinge that swings open and shut (E), collides while it is not
 // open, and stops shots and eyes while it is shut. Shops, the hall and the tavern stand open by day (06:00-21:00)
 // and are shut at night; the shops and the hall are locked then, the tavern never. Folk's houses are shut and you
-// may open them by day; at night they are locked. The hero's house is locked until you buy it from the elder
-// (`char.houses`). Opening or shutting a door by hand holds until the next dawn or dusk. From inside a building its
+// may open them by day; at night they are locked. The houses the heroes buy (gen/homes.ts) open only for their owner:
+// locked while for sale or someone else's. Opening or shutting a door by hand holds until the next dawn or dusk. From inside a building its
 // door always opens. Runtime only (nothing saved but the houses you own); villagers walk through (they have keys).
 import * as THREE from 'three';
 import { G } from '../game';
 import { HOUSE, type Building, type VillageMap } from '../gen/village';
 import { scene, lineMat, fillMat, add } from './render';
+import { myHome } from '../gen/homes';
 
 type Kind = 'inn' | 'shop' | 'house' | 'mine';
 interface Door {
@@ -25,10 +26,11 @@ function phase(t: number): { key: number; day: boolean } {
   const h = (t / 60) % 24, d = Math.floor(t / 1440);
   return h < DAY[0] ? { key: d * 2 - 1, day: false } : h < DAY[1] ? { key: d * 2, day: true } : { key: d * 2 + 1, day: false };
 }
-export const ownsHouse = (vid: number) => G.char.houses.includes(vid);
+/** Is this house (`Building.hero`) yours? */
+export const ownsHouse = (vid: number, b: Building) => b.hero !== undefined && myHome(G.char, vid) === b.hero;
 
 const EDGE = 0x4dff7e, PLANK = 0x1f9a44;
-function leafModel(kind: Kind, vid: number): THREE.Group {
+function leafModel(kind: Kind, vid: number, b: Building): THREE.Group {
   const g = new THREE.Group(), h = HOUSE.doorH - 0.06, geo = new THREE.BoxGeometry(LEAF, h, 0.06);
   const box = new THREE.Group(); box.position.set(LEAF / 2, h / 2 + 0.03, 0);
   box.add(new THREE.Mesh(geo, fillMat()), new THREE.LineSegments(new THREE.EdgesGeometry(geo), lineMat(EDGE)));
@@ -43,7 +45,7 @@ function leafModel(kind: Kind, vid: number): THREE.Group {
   g.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(pts), lineMat(PLANK)));
   const hy = 1.05, hx = LEAF - 0.14, handle = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(0.04, 0.16, 0.14)), lineMat(0xffd060));
   handle.position.set(hx, hy, 0); g.add(handle);
-  if (kind === 'mine' && !ownsHouse(vid)) { // a red padlock on the hasp until the house is yours
+  if (kind === 'mine' && !ownsHouse(vid, b)) { // a red padlock on the hasp unless the house is yours
     const lock = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(0.14, 0.14, 0.2)), add(0xff5a3c));
     lock.position.set(hx, hy - 0.22, 0); lock.name = 'lock'; g.add(lock);
   }
@@ -56,11 +58,11 @@ export function setDoors(vid: number, vm: VillageMap) {
   const list: Door[] = [];
   for (const b of vm.buildings) {
     if (b.condition !== undefined && b.condition < 2) continue;
-    const kind: Kind = b.mine ? 'mine' : b.role === 'innkeeper' ? 'inn' : b.role === 'house' ? 'house' : 'shop';
+    const kind: Kind = b.hero !== undefined ? 'mine' : b.role === 'innkeeper' ? 'inn' : b.role === 'house' ? 'house' : 'shop';
     const [ox, oz] = b.out, ux = -oz, uz = ox, w = HOUSE.doorW / 2, t = HOUSE.thick;
     // hinged at the jamb on +u, on the inner face of the wall; shut it runs along -u, open it lies back into the room
     const hx = b.door.x + ux * (w - 0.02) - ox * (t / 2 + 0.03), hz = b.door.z + uz * (w - 0.02) - oz * (t / 2 + 0.03);
-    const pivot = leafModel(kind, vid), d: Door = { vid, b, kind, pivot, y0: vm.y, hx, hz, ax: -ux, az: -uz, ix: -ox, iz: -oz, ang: 0 };
+    const pivot = leafModel(kind, vid, b), d: Door = { vid, b, kind, pivot, y0: vm.y, hx, hz, ax: -ux, az: -uz, ix: -ox, iz: -oz, ang: 0 };
     d.ang = wanted(d) ? OPEN : 0;
     pivot.position.set(hx, vm.y, hz); place(d); scene.add(pivot);
     list.push(d);
@@ -69,7 +71,7 @@ export function setDoors(vid: number, vm: VillageMap) {
 }
 export function dropDoors(vid: number) { for (const d of doors.get(vid) ?? []) scene.remove(d.pivot); doors.delete(vid); }
 /** The house became yours: the padlock comes off. */
-export function unlockMine(vid: number) { for (const d of doors.get(vid) ?? []) if (d.kind === 'mine') { const l = d.pivot.getObjectByName('lock'); if (l) d.pivot.remove(l); } }
+export function unlockMine(vid: number) { for (const d of doors.get(vid) ?? []) if (d.kind === 'mine' && ownsHouse(vid, d.b)) { const l = d.pivot.getObjectByName('lock'); if (l) d.pivot.remove(l); } }
 
 /** The leaf's direction from the hinge at its current angle. */
 const dirOf = (d: Door) => ({ x: d.ax * Math.cos(d.ang) + d.ix * Math.sin(d.ang), z: d.az * Math.cos(d.ang) + d.iz * Math.sin(d.ang) });
@@ -80,7 +82,7 @@ const inside = (b: Building) => G.pos.x > b.x && G.pos.x < b.x + b.w && G.pos.z 
 /** Why the door will not open for you now, or ''. */
 function lockedWhy(d: Door): string {
   if (inside(d.b)) return '';
-  if (d.kind === 'mine') return ownsHouse(d.vid) ? '' : 'Locked. The house is for sale: ask the elder';
+  if (d.kind === 'mine') { if (ownsHouse(d.vid, d.b)) return ''; const o = G.char.towns[d.vid]?.homes?.[d.b.hero!]; return o ? `Locked: ${o.n}'s house` : 'Locked. The house is for sale: ask the elder'; }
   const p = phase(G.char.time);
   if (p.day || d.kind === 'inn') return '';
   return d.kind === 'shop' ? `Closed for the night: open again at ${String(DAY[0]).padStart(2, '0')}:00` : 'Locked: the family is asleep';

@@ -3,6 +3,13 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.163.0', date: '2026-10-07', title: 'Houses in every village', notes: [
+    'Every village now has at least six houses for the castaways, not just Gridholm. Ask the elder "Are there houses for sale?" to see which are free, whose the others are and where they stand. A free one costs 750 gold.',
+    'You can own one house in each village. Each house has a bed and its own chest for you. Sleep there, keep your things there, and a Recall Beacon or a bad day out in the wilds wakes you by your own bed.',
+    'On a server everyone sees who owns which house, and the sign over the door shows the owner\'s name. A house belonging to someone else stays locked to you. Two players cannot buy the same house at once.',
+    'In a new settlement you can buy a ruined house too: the village mends it for you.',
+    'If you already owned the house in Gridholm, it stays yours as house 1, with everything in its chest.',
+  ] },
   { v: '0.162.0', date: '2026-10-07', title: 'The house of the dead', notes: [
     'On a server, when your character dies, their house now waits for your next crew member, with everything in its chest.',
     'Go to the village elder and ask "Is there a house free for me?". The elder hands you the dead character\'s key, and the house, the bed and the chest are yours again.',

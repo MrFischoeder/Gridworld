@@ -22,6 +22,7 @@ import { hash, OPP, DIRV, type Dir } from '../core/rng';
 import { VoxelGrid } from '../core/voxel';
 import { meshVoxels, type OutlineStyle } from '../core/meshing';
 import { generateDungeon, MAX_DUNGEON_DEPTH } from '../gen/dungeon';
+import { myHome } from '../gen/homes';
 import { findPoi, allVillages, worldDist, nearX, poisNear, GRIDHOLM_ID, CHUNK, type Poi } from '../gen/regions';
 import { isDiscovered } from '../save';
 import { WALL_TIERS, STONE_TIER, HOUSE, WALK, type VillageMap } from '../gen/village';
@@ -165,16 +166,23 @@ export function wallSign(text: string, color: string, at: { x: number; z: number
   m.position.set(at.x + out[0] * 0.53, y, at.z + out[1] * 0.53); m.rotation.y = Math.atan2(out[0], out[1]); return m;
 }
 /** Roofs, tree crowns, lamps and the well of a village standing at height y0. */
-export function villageDeco(map: VillageMap, y0 = 0) {
+/** The sign over a house's door: yours, a hero's, or for sale (gen/homes.ts). */
+function homeSign(vid: number | undefined, b: VillageMap['buildings'][number]): string {
+  if (b.hero === undefined || vid === undefined) return b.name;
+  if (myHome(G.char, vid) === b.hero) return 'YOUR HOUSE';
+  const o = G.char.towns[vid]?.homes?.[b.hero];
+  return o ? `${o.n.toUpperCase()}'S HOUSE` : b.condition === 0 ? 'RUIN FOR SALE' : 'FOR SALE';
+}
+export function villageDeco(map: VillageMap, y0 = 0, vid?: number) {
   const grp = new THREE.Group();
   const props = new PropBatch();
   for (const b of map.buildings) {
     drawHouse(props, b, y0); drawFurniture(props, b, y0);
-    const name = b.condition === 0 ? 'VACANT RUIN' : b.condition === 1 ? 'HOME REPAIRS' : b.mine && !G.char.houses.includes(GRIDHOLM_ID) ? 'FOR SALE' : b.name;
+    const name = b.condition === 1 ? 'HOME REPAIRS' : b.hero !== undefined ? homeSign(vid, b) : b.condition === 0 ? 'VACANT RUIN' : b.name;
     if (name) grp.add(wallSign(name, b.role === 'innkeeper' ? '#ffb347' : '#ffd060', { x: b.door.x + b.out[0] * 0.15, z: b.door.z + b.out[1] * 0.15 }, b.out, y0 + (b.role === 'house' ? HOUSE.doorH + 0.45 : b.h + 0.35)));
   }
   for (const t of map.trees) drawCrown(props, t.x + 0.5, y0 + 2, t.z + 0.5, 1.8, t.h, hash(t.x, t.z, 0x7e3e));
-  if (map.house) homeDeco(props, map.house, y0);
+  map.buildings.forEach((b) => { if (b.hero !== undefined && b.condition !== 0 && b.condition !== 1) homeDeco(props, map.homes[b.hero], y0, !!b.mine); }); // every house's chest (Gridholm's first house its own bed too)
   drawWell(props, map.well, y0); // the stone well in the middle, like the wild ones
   for (const t of map.towers) if (t.ladder) drawLadder(props, t.ladder, y0, map.tier < STONE_TIER ? STAKE : GRID);
   walkwayDeco(props, map, y0);
@@ -194,8 +202,9 @@ export function villageDeco(map: VillageMap, y0 = 0) {
   return lamps(grp, map, y0);
 }
 /** The hero's bed (a wooden frame with a headboard, a mattress, a pillow and a blanket) and chest, in their house. */
-function homeDeco(pb: PropBatch, h: NonNullable<VillageMap['house']>, y0: number) {
+function homeDeco(pb: PropBatch, h: VillageMap['homes'][number], y0: number, bed: boolean) {
   const WOOD = 0xb8b060, CLOTH = 0x9dffb4, { x0, z0, x1, z1 } = h.bed;
+  if (!bed) { drawClosedChest(pb, h.chest.x, y0, h.chest.z, 'wood'); return; } // the house's own bed is its furniture
   for (const [x, z] of [[x0, z0], [x1 - 0.12, z0], [x1 - 0.12, z1 - 0.12], [x0, z1 - 0.12]]) pb.box(x, y0, z, x + 0.12, y0 + 0.3, z + 0.12, WOOD);
   pb.box(x0, y0 + 0.3, z0, x1, y0 + 0.42, z1, WOOD);
   pb.box(x0, y0, z0 - 0.06, x1, y0 + 1.0, z0 + 0.06, WOOD); // headboard against the wall
@@ -347,8 +356,9 @@ export function loadOverworld(a: Arrival) {
     if (G.ground) G.pos.y = Math.max(G.pos.y, G.ground(G.pos.x, G.pos.z));
   } else {
     const vm = OW.village!;
-    if (a.kind === 'tavern' && a.bed && vm.house) { // by your own bed in Gridholm, facing the door
-      G.pos.set(vm.house.bed.side.x, vm.y, vm.house.bed.side.z); G.yaw = -Math.PI / 2;
+    const mine = a.kind === 'tavern' && a.bed && a.id !== undefined && vm ? myHome(c, a.id) : -1, hb = mine >= 0 ? vm.buildings.find((b) => b.hero === mine) : undefined;
+    if (mine >= 0 && vm.homes[mine] && hb) { // by your own bed, facing the door
+      const s = vm.homes[mine].bed.side; G.pos.set(s.x, vm.y, s.z); G.yaw = Math.atan2(-(hb.door.x - s.x), -(hb.door.z - s.z));
     } else if (a.kind === 'tavern') {
       const t = vm.buildings.find((b) => b.role === 'innkeeper')!;
       G.pos.set(t.door.x + t.out[0] * 2, vm.y, t.door.z + t.out[1] * 2); G.yaw = Math.atan2(t.out[0], t.out[1]);
@@ -463,7 +473,7 @@ export function toVillage(how: 'death' | 'recall', id?: number) {
   const v = id !== undefined ? findPoi(c.world, id) ?? known[0] : known.reduce((a, b) => (worldDist(b.x, b.z, from.x, from.z) < worldDist(a.x, a.z, from.x, from.z) ? b : a));
   c.loc = 'overworld'; c.dungeon = null; saveChar();
   // Gridholm is home once you own the house there: you wake up in your own bed, anywhere else in the tavern
-  const bed = v.id === GRIDHOLM_ID && c.houses.includes(GRIDHOLM_ID);
+  const bed = myHome(c, v.id) >= 0;
   loadOverworld({ kind: 'tavern', id: v.id, bed }); G.hp = G.S.maxHp;
   if (how === 'death') { c.kcal = Math.max(c.kcal, 1500); c.water = Math.max(c.water, 50); } // the innkeeper (or a neighbour) fed you
   showToast(how === 'death' ? (bed ? 'You wake up in your own bed' : 'You wake up in the tavern of ' + v.name) : bed ? 'Home' : v.name);

@@ -28,7 +28,7 @@ import { industryOf, INDUSTRY, buildPlan, handOverBuild, siteCondition } from '.
 import { profileOf } from '../gen/market';
 import { nextRaid, lastRaid, raidSource, raidOutcome } from '../gen/raids';
 import { storeOf } from '../world/industry';
-import { unlockMine } from '../world/housedoors';
+import { myHome, buyProblem } from '../gen/homes';
 import { shuttleClick } from './shuttle';
 import { installClick } from './install';
 import { bridgeClick } from './bridge';
@@ -95,12 +95,19 @@ function renderTalk(text: string) {
     (W.talkNpc!.role === 'elder' && progressive(G.char.towns[townId()!]) ? '<button class="opt" data-o="development">Village development — next tutorial objective</button>' : '') +
     (W.talkNpc!.role === 'elder' && estateHere() ? '<button class="opt" data-o="estate" style="color:var(--gold)">Is there a house free for me?</button>' : '') +
     (W.talkNpc!.role === 'elder' && townId() !== null && storesWithElder(townId()!) ? '<button class="opt" data-o="stores">Leave materials with me (the village stores)</button>' : '') +
-    info.opts.filter((o) => (o !== 'house' || houseForSale()) && (o !== 'craft' || CRAFTING_OPEN) && (!progressive(G.char.towns[townId()!]) || W.talkNpc!.role !== 'elder' || ['status', 'lore', 'bye'].includes(o) || (development(G.char.towns[townId()!]) >= 5 && o !== 'work'))).map((o) => `<button class="opt" data-o="${o}">${OPT_TEXT[o]}</button>`).join('');
+    info.opts.filter((o) => (o !== 'house' || houseForSale()) && (o !== 'craft' || CRAFTING_OPEN) && (!progressive(G.char.towns[townId()!]) || W.talkNpc!.role !== 'elder' || ['status', 'lore', 'house', 'bye'].includes(o) || (development(G.char.towns[townId()!]) >= 5 && o !== 'work'))).map((o) => `<button class="opt" data-o="${o}">${OPT_TEXT[o]}</button>`).join('');
 }
-/** The elder sells the empty house (Gridholm's, for now) until it is yours. */
-const houseForSale = () => { const v = loadedVillage(town()); return !!v?.vm.home && !G.char.houses.includes(v.id) && !estateHere(); };
+/** The elder sells the houses of the village (gen/homes.ts); while a dead character's house waits for you, that one first. */
+const houseForSale = () => !estateHere();
 /** A house here that a dead character of yours left (online: `Char.estate`, ui/rebirth.ts). */
 const estateHere = () => { const id = townId(); return id !== null && !!G.char.estate?.houses.includes(id) && !G.char.houses.includes(id); };
+const elderName = () => W.talkNpc?.name ?? 'The elder';
+/** Where a house stands on the plaza, in words. */
+function houseWhere(vm: VillageMap, b: VillageMap['buildings'][number]): string {
+  const dx = b.x + b.w / 2 - (vm.ox + 36), dz = b.z + b.d / 2 - (vm.oz + 36);
+  const a = (Math.round(Math.atan2(dx, -dz) / (Math.PI / 4)) + 8) % 8;
+  return 'by the ' + ['north', 'north-east', 'east', 'south-east', 'south', 'south-west', 'west', 'north-west'][a] + ' wall';
+}
 function renderEstate(msg = '') {
   const e = G.char.estate, v = loadedVillage(town());
   if (!v || !e || !estateHere()) { renderTalk(msg || 'Hm?'); return; }
@@ -112,22 +119,52 @@ function renderEstate(msg = '') {
 function takeEstate() {
   const c = G.char, e = c.estate, v = loadedVillage(town());
   if (!v || !e || !estateHere()) { renderTalk('Hm?'); return; }
-  c.houses.push(v.id);
-  Object.assign(c.containers, e.chests); // (the house chest is Gridholm's, the only house for now)
-  e.houses = e.houses.filter((h) => h !== v.id); e.chests = {};
+  const i = e.idx?.[v.id] ?? 0, s = (c.towns[v.id] ??= {}), o = s.homes?.[i];
+  e.houses = e.houses.filter((h) => h !== v.id);
+  Object.assign(c.containers, e.chests); e.chests = {}; // the chests keep their house's key
   if (!e.houses.length) delete c.estate;
-  saveChar(); unlockMine(v.id); reloadStruct(v.id);
+  if (o && o.p !== e.pid && o.p !== c.pid) { // (someone else holds it: the village gave it away)
+    saveChar(); renderHouse(`${elderName()} shakes his head. "I am sorry. ${o.n} lives there now. ${e.from}'s things are in your keeping all the same."`); return;
+  }
+  (s.homes ??= {})[i] = { p: c.pid, n: c.name }; c.houses.push(v.id); (c.homeOf ??= {})[v.id] = i;
+  saveChar(); reloadStruct(v.id);
   showToast('The house is yours'); logLine(`You took over ${e.from}'s house in ${town()}.`);
-  renderTalk(`Maciej hands you ${e.from}'s iron key. "Their things are where they left them. Sleep well under that roof, ${here('{name}')}."`);
+  renderTalk(`${elderName()} hands you ${e.from}'s iron key. "Their things are where they left them. Sleep well under that roof, ${here('{name}')}."`);
 }
 function renderHouse(msg = '') {
   const v = loadedVillage(town()), c = G.char;
   if (!v) { renderTalk('Hm?'); return; }
-  const owned = c.houses.includes(v.id);
-  panel().innerHTML = dlgHead() + `<div class="say">${msg || (owned ? 'The house is yours. Mind the roof in the rains.'
-    : `The empty house on our plaza has stood shut since its family went north. A bed, a good chest, a table, a roof that holds. Take it for <b>${HOUSE_PRICE} gold</b> and it is yours, ${here('{name}')}: a place to sleep safe and to keep what you gather. When you fall out there, you will wake in your own bed.`)}<br><br>Your gold: <b>${c.gold}</b></div>` +
-    (owned ? '' : `<button class="opt" data-buyhouse="1" style="color:var(--gold)" ${c.gold < HOUSE_PRICE ? 'disabled' : ''}>Buy the house (${HOUSE_PRICE} gold)</button>`) +
+  const mineI = myHome(c, v.id), homes = c.towns[v.id]?.homes, list = v.vm.buildings.filter((b) => b.hero !== undefined);
+  const rows = list.map((b) => {
+    const i = b.hero!, o = homes?.[i], where = houseWhere(v.vm, b);
+    if (i === mineI) return `<div class="row"><b>House ${i + 1}</b> ${where}: <span style="color:var(--gold)">yours</span></div>`;
+    if (o) return `<div class="row"><b>House ${i + 1}</b> ${where}: ${o.n}'s</div>`;
+    return `<div class="row"><b>House ${i + 1}</b> ${where}: for sale${b.condition === 0 ? ' (a ruin: the village will mend it for you)' : ''} <button class="opt" data-buyhouse="${i}" style="color:var(--gold);display:inline-block;width:auto" ${mineI >= 0 || c.gold < HOUSE_PRICE ? 'disabled' : ''}>Buy (${HOUSE_PRICE} gold)</button></div>`;
+  }).join('');
+  const free = list.filter((b) => !homes?.[b.hero!] && b.hero !== mineI).length;
+  panel().innerHTML = dlgHead() + `<div class="say">${msg || (mineI >= 0 ? `House ${mineI + 1} is yours. Mind the roof in the rains.`
+    : free ? `We keep ${list.length} houses for travellers like you, ${here('{name}')}. A bed, a good chest, a roof that holds. Any free one is yours for <b>${HOUSE_PRICE} gold</b>: a place to sleep safe and to keep what you gather. When you fall out there, you wake in your own bed.`
+    : 'Every house we have is taken, I am afraid. When the village grows, there will be more.')}<br><br>Your gold: <b>${c.gold}</b></div>` +
+    `<div class="say">${rows}</div><div class="say" style="opacity:.7">One house a traveller in each village.</div>` +
     `<button class="opt" data-o="back">${OPT_TEXT.back}</button>`;
+}
+/** Buy house `i` of the village. Online the village is reserved first (ui/stock.ts withTownStock: the server hands
+ *  over its latest state), so two heroes cannot buy one house at once. */
+async function buyHouse(i: number) {
+  const v = loadedVillage(town()), c = G.char;
+  if (!v) { renderHouse(); return; }
+  let why = '';
+  const ok = await withTownStock(v.id, () => {
+    const s = (c.towns[v.id] ??= {});
+    why = buyProblem(c, v.id, s.homes, i, HOUSE_PRICE);
+    if (why) return;
+    c.gold -= HOUSE_PRICE; (s.homes ??= {})[i] = { p: c.pid, n: c.name }; c.houses.push(v.id); (c.homeOf ??= {})[v.id] = i;
+  });
+  if (!ok) return;
+  if (why) { renderHouse(why); return; }
+  saveChar(); reloadStruct(v.id);
+  showToast('The house is yours'); logLine(`You bought house ${i + 1} in ${town()} for ${HOUSE_PRICE} gold.`);
+  renderHouse(`${elderName()} presses an iron key into your hand. "House ${i + 1} is yours now, ${here('{name}')}. Sleep well under your own roof."`);
 }
 const PARTS = Object.keys(PART_PRICE) as ItemKey[];
 function renderVehicleShop(msg?: string) {
@@ -463,15 +500,7 @@ dlgEl.addEventListener('click', async (e) => {
   if (t.closest('[data-pgive]')) { giveWorks(); return; }
   if (t.closest('[data-tribute]')) { const v = loadedVillage(town()); const m = v ? payTribute(v.id) : ''; if (W.talkNpc?.role === 'guard') renderWatch(m); else renderFortify(m); return; }
   if (t.closest('[data-estate]')) { takeEstate(); return; }
-  if (t.closest('[data-buyhouse]')) {
-    const v = loadedVillage(town());
-    if (!v || c.houses.includes(v.id)) { renderHouse(); return; }
-    if (c.gold < HOUSE_PRICE) { renderHouse('That is not enough gold, I am afraid.'); return; }
-    c.gold -= HOUSE_PRICE; c.houses.push(v.id); saveChar(); unlockMine(v.id); reloadStruct(v.id);
-    showToast('The house is yours'); logLine(`You bought the house in ${town()} for ${HOUSE_PRICE} gold.`);
-    renderHouse(`Maciej presses an iron key into your hand. "It is yours now, ${here('{name}')}. Sleep well under your own roof."`);
-    return;
-  }
+  { const bh = t.closest<HTMLElement>('[data-buyhouse]'); if (bh) { void buyHouse(+bh.dataset.buyhouse!); return; } }
   const qb = t.closest<HTMLElement>('[data-q]');
   if (qb) { const id = townId(); renderTalk((id !== null && questTalk(qb.dataset.q!, id)) || 'Hm?'); return; }
   if (!o) return;

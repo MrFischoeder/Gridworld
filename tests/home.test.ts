@@ -2,20 +2,37 @@ import { describe, it, expect } from 'vitest';
 import { generateVillage, HOUSE, furnSolid } from '../src/gen/village';
 import { VoxelGrid } from '../src/core/voxel';
 import { sleepSpan, SLEEP } from '../src/data/survival';
+import { HOMES_MIN, buyProblem, myHome, chestKey } from '../src/gen/homes';
+import { GRIDHOLM_ID } from '../src/gen/regions';
 
 describe("the hero's house", () => {
-  it('stands in Gridholm only, with the bed and the chest inside on open floor', () => {
-    for (const seed of [1, 2, 3, 77, 12345]) {
-      expect(generateVillage(seed, 5, 0, 0, 'Elsewhere', false).house).toBeNull();
-      const vm = generateVillage(seed, 5), h = vm.house!, g = VoxelGrid.surface(vm.ops, vm.rect, 5);
-      const mine = vm.buildings.filter((b) => b.mine);
-      expect(mine.length).toBe(1); expect(mine[0].name).toBe('YOUR HOUSE');
-      const t = HOUSE.thick, inside = (x: number, z: number) => x > mine[0].x + t && x < mine[0].x + mine[0].w - t && z > mine[0].z + t && z < mine[0].z + mine[0].d - t;
-      for (const [x, z] of [[h.bed.x0, h.bed.z0], [h.bed.x1, h.bed.z1], [h.chest.x, h.chest.z], [h.bed.side.x, h.bed.side.z]]) {
-        expect(inside(x, z)).toBe(true);
-        expect(g.empty(Math.floor(x), 5, Math.floor(z))).toBe(true);
-      }
+  it('every village has at least six houses for the heroes, each with a bed and a chest on open floor', () => {
+    for (const seed of [1, 2, 3, 77, 12345, 999, 4242, 31337, 8, 55]) for (const home of [true, false]) {
+      const vm = generateVillage(seed, 5, 0, 0, home ? 'Gridholm' : 'Elsewhere', home), g = VoxelGrid.surface(vm.ops, vm.rect, 5);
+      const houses = vm.buildings.filter((b) => b.role === 'house');
+      expect(houses.length, `${seed} ${home}`).toBeGreaterThanOrEqual(HOMES_MIN);
+      expect(vm.homes.length).toBe(houses.length);
+      expect(vm.buildings.filter((b) => b.mine).length).toBe(home ? 1 : 0);
+      const t = HOUSE.thick;
+      houses.forEach((b, i) => {
+        expect(b.hero).toBe(i);
+        const h = vm.homes[i], inside = (x: number, z: number) => x > b.x + t && x < b.x + b.w - t && z > b.z + t && z < b.z + b.d - t;
+        for (const [x, z] of [[h.bed.x0, h.bed.z0], [h.bed.x1, h.bed.z1], [h.chest.x, h.chest.z], [h.bed.side.x, h.bed.side.z]]) {
+          expect(inside(x, z), `${seed} house ${i}`).toBe(true);
+          expect(g.empty(Math.floor(x), 5, Math.floor(z))).toBe(true);
+        }
+      });
     }
+  });
+  it('one house a hero in each village; the owner keeps it', () => {
+    const c = { houses: [] as number[], homeOf: {} as Record<string, number>, pid: 'a', gold: 1000 };
+    expect(buyProblem(c, 7, {}, 2, 750)).toBe('');
+    expect(buyProblem(c, 7, { 2: { p: 'b', n: 'Bob' } }, 2, 750)).toMatch(/Bob/);
+    expect(buyProblem({ ...c, gold: 10 }, 7, {}, 2, 750)).toMatch(/gold/);
+    c.houses.push(7); c.homeOf[7] = 2;
+    expect(myHome(c, 7)).toBe(2); expect(buyProblem(c, 7, {}, 3, 750)).toMatch(/already/);
+    expect(myHome({ houses: [GRIDHOLM_ID], pid: 'x' }, GRIDHOLM_ID)).toBe(0); // older saves: Gridholm's first house
+    expect(chestKey(GRIDHOLM_ID, 0)).toBe('home:chest'); expect(chestKey(7, 2)).toBe('home:7:2');
   });
   it('has timber houses: thin walls with a doorway, apart from each other, the keepers inside', () => {
     for (const seed of [1, 2, 3, 77, 12345, 999]) for (const home of [true, false]) {
@@ -44,7 +61,7 @@ describe("the hero's house", () => {
         const counter = b.furniture.find((f) => f.k === 'counter' || f.k === 'desk');
         const stop = counter ? Math.abs((b.out[0] ? (b.out[0] > 0 ? counter.x1 : counter.x0) : (b.out[1] > 0 ? counter.z1 : counter.z0)) - (b.out[0] ? b.door.x : b.door.z)) - 0.45 : 2;
         for (let k = 0; k < stop; k += 0.25) expect(hit(b.door.x - b.out[0] * k, b.door.z - b.out[1] * k, 0.35), `${seed} ${b.name} way in at ${k}`).toBe(false);
-        if (b.mine) for (const [x, z] of [[vm.house!.bed.side.x, vm.house!.bed.side.z], [vm.house!.chest.x + 0.9, vm.house!.chest.z]]) expect(hit(x, z, 0.3)).toBe(false);
+        if (b.hero !== undefined) expect(hit(vm.homes[b.hero].bed.side.x, vm.homes[b.hero].bed.side.z, 0.3), `${seed} ${b.hero} bed side`).toBe(false);
       }
     }
   });

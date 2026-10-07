@@ -14,6 +14,7 @@ import { inGateClearing } from '../gen/worldgates';
 import { insideVehicle, hitOccupiedVehicle } from './damage';
 import { setLadders, dropLadders, ladderHit, ladderFloor } from './ladders';
 import { setHouses, dropHouses, houseHit, houseRay, houseSolid } from './houses';
+import { myHome } from '../gen/homes';
 import { drawHangar, hangarOps } from './hangar';
 import { drawWorks, forgetWorks } from './works';
 import { drawStations, forgetStations } from './stations';
@@ -343,11 +344,11 @@ function loadVillageStruct(poi: Poi): Structure {
   const vm = generateVillage(villageSeed(T.world, poi), y, poi.x, poi.z, poi.name, home, wallOf(G.char.towns[poi.id]));
   const st = G.char.towns[poi.id];
   const pop = peopleAt(vm.seed, home, st, G.char.time);
-  settlementVillage(vm, st, pop, G.char.houses.includes(poi.id));
+  settlementVillage(vm, st, pop, (i) => !!st?.homes?.[i] || i === myHome(G.char, poi.id)); // a house a hero bought stands whole
   // the fence of a village that is not walled in stone yet only collides: it is drawn as stakes by villageDeco
   const grid = VoxelGrid.surface(vm.ops, vm.rect, y), shown = vm.tier >= STONE_TIER ? grid : VoxelGrid.surface(vm.shown, vm.rect, y);
   const { group, mesh } = voxelObject(shown, Infinity, OUTLINE);
-  group.add(villageDeco(vm, y), gateSign(vm));
+  group.add(villageDeco(vm, y, poi.id), gateSign(vm));
   group.add(boardDeco(vm, y));
   group.add(mapBoardDeco(vm, y));
   group.add(drawPower(vm, T, poi.id));

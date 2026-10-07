@@ -2,6 +2,7 @@
 import { rng, rangeInt, hash, DIRV, type Dir } from '../core/rng';
 import { translateOps, type Op } from '../core/voxel';
 import { VILLAGE_RECT, type Rect } from './regions';
+import { HOMES_MIN } from './homes';
 
 export type Role = 'innkeeper' | 'elder' | 'blacksmith' | 'merchant' | 'grocer' | 'house';
 export interface P3 { x: number; y: number; z: number }
@@ -13,8 +14,12 @@ export interface Building {
   walls: number[][];
   /** Furniture inside (world x/z, standing on the floor; drawn and collided by world/houses.ts). */
   furniture: Furn[];
-  /** The hero's own house (Gridholm only). */
+  /** Gridholm's first house (its own furniture, the bed and chest of `VillageMap.homes[0]`, from before every house was for sale). */
   mine?: boolean;
+  /** A house the heroes can buy (gen/homes.ts): its index in the village, and its bed and chest (`VillageMap.homes`). */
+  hero?: number;
+  /** (layout only) the bed and chest of a house, plaza coordinates. */
+  bedChest?: HomeFurniture;
   /** 0 ruined, 1 being repaired, 2 restored; absent in established worlds. */
   condition?: 0 | 1 | 2;
 }
@@ -78,8 +83,8 @@ export interface VillageMap {
   /** The notice board on the plaza (world x/z; it faces south, towards the spawn). */
   board: { x: number; z: number };
   buildings: Building[];
-  /** The hero's house furniture (world), in Gridholm only. */
-  house: HomeFurniture | null;
+  /** The beds and chests of the houses for the heroes (world), by house index (`Building.hero`); at least `HOMES_MIN`. */
+  homes: HomeFurniture[];
   trees: { x: number; z: number; h: number }[];
   lamps: { x: number; z: number }[];
   well: { x: number; z: number };
@@ -244,19 +249,21 @@ export function generateVillage(seed: number, y = 0, cx = 0, cz = 0, name = 'Gri
       F('bench', 5.2, 0.3, D - 1.8, 0.65, 0.45); F('bench', 5.2, V - 0.65, D - 1.8, V - 0.3, 0.45); F('shelf', 0.25, 0.9, 0.6, vd - 1, 2.2); F('shelf', 0.25, vd + 1, 0.6, V - 0.9, 2.2);
       F('terminal', 1.0, 0.3, 2.0, 1.5, 0.76); // the village's computer (world/terminal.ts)
     }
-    if (role === 'house') { // a bed by the back wall, a table with two stools, a shelf
-      F('bed', 0.3, 0.4, 1.3, 2.4, 0.5); F('shelf', 0.25, 3.2, 0.55, 4.8, 1.8);
-      F('table', 2.5, V - 2.6, 3.4, V - 1.6, 0.76); F('stool', 1.9, V - 2.35, 2.3, V - 1.95, 0.45); F('stool', 3.6, V - 2.35, 4.0, V - 1.95, 0.45);
+    if (role === 'house') { // a bed by the back wall, a table with two stools, a shelf; the chest in the far corner
+      F('bed', 0.3, 0.4, 1.3, 2.4, 0.5); if (V >= 6) F('shelf', 0.25, 3.2, 0.55, 4.8, 1.8);
+      if (V >= 6) { F('table', 2.5, V - 2.6, 3.4, V - 1.6, 0.76); F('stool', 1.9, V - 2.35, 2.3, V - 1.95, 0.45); F('stool', 3.6, V - 2.35, 4.0, V - 1.95, 0.45); }
+      else F('table', 2.4, 0.3, 3.2, 1.0, 0.76); // a cottage: a small table under the window, clear of the way in
+      const [ax, az] = at(0.3, 0.4), [bx, bz] = at(1.3, 2.4), [sx, sz] = at(1.9, 1.4), [kx, kz] = at(0.75, V - 0.75);
+      b.bedChest = { bed: { x0: Math.min(ax, bx), z0: Math.min(az, bz), x1: Math.max(ax, bx), z1: Math.max(az, bz), side: { x: sx, z: sz } }, chest: { x: kx, z: kz } };
     }
     buildings.push(b); return b;
   };
   const j = () => ri(-1, 1);
-  let house: HomeFurniture | null = null;
   if (!square) ringLayout(); else {
   B('TAVERN', 'innkeeper', 3, 6 + j(), 13, 10, 'E', 3.6);
   B("ELDER'S HALL", 'elder', 3, 24 + j(), 11, 9, 'E', 3.4);
-  const hz = 42 + j(), mine = B(home ? 'YOUR HOUSE' : '', 'house', 4, hz, 8, 7, 'E');
-  // in Gridholm that house is the hero's: a bed along the back wall in the far corner and a chest in the near one
+  const hz = 42 + j(), mine = B('', 'house', 4, hz, 8, 7, 'E');
+  // in Gridholm that house was the hero's before every house was for sale: a bed along the back wall in the far corner and a chest in the near one
   if (home) {
     mine.mine = true;
     const x0 = 4 + HOUSE.thick, z0 = hz + HOUSE.thick, z1 = hz + 7 - HOUSE.thick; // the inside
@@ -266,7 +273,7 @@ export function generateVillage(seed: number, y = 0, cx = 0, cz = 0, name = 'Gri
       { k: 'stool', x0: x0 + 4.65, z0: z0 + 1.4, x1: x0 + 5.05, z1: z0 + 1.8, h: 0.45, n: [0, 1] },
       { k: 'shelf', x0: x0 + 2.3, z0, x1: x0 + 3.8, z1: z0 + 0.3, h: 1.8, n: [0, 1] },
     ];
-    house = { bed: { x0: x0 + 0.25, z0: z0 + 0.1, x1: x0 + 1.45, z1: z0 + 2.3, side: { x: x0 + 2.4, z: z0 + 1.2 } }, chest: { x: x0 + 0.85, z: z1 - 0.5 } };
+    mine.bedChest = { bed: { x0: x0 + 0.25, z0: z0 + 0.1, x1: x0 + 1.45, z1: z0 + 2.3, side: { x: x0 + 2.4, z: z0 + 1.2 } }, chest: { x: x0 + 0.85, z: z1 - 0.5 } };
   }
   B('BLACKSMITH', 'blacksmith', 58, 6 + j(), 11, 9, 'W', 3.4);
   B('GENERAL STORE', 'merchant', 58, 23 + j(), 11, 9, 'W', 3.4);
@@ -280,17 +287,17 @@ export function generateVillage(seed: number, y = 0, cx = 0, cz = 0, name = 'Gri
   function ringLayout() {
     const lanes = gates.map((g) => g.dir === 'N' ? [32, 0, 40, 36] : g.dir === 'S' ? [37, 36, 45, 72] : g.dir === 'W' ? [0, 35, 36, 43] : [36, 33, 72, 41]);
     const angles = Array.from({ length: 36 }, (_, i) => i * 10 + ri(-3, 3)).sort(() => R() - 0.5);
-    const place = (name: string, role: Role, depth: number, width: number, h: number) => {
-      for (const deg of angles) {
+    const place = (name: string, role: Role, depth: number, width: number, h: number, gap = 2, mid = 12, angs = angles) => {
+      for (const deg of angs) {
         const a = deg * Math.PI / 180, dx = Math.cos(a), dz = Math.sin(a), ew = Math.abs(dx) >= Math.abs(dz);
         const side: Dir = ew ? (dx > 0 ? 'W' : 'E') : (dz > 0 ? 'N' : 'S'), w = ew ? depth : width, d = ew ? width : depth;
         for (let r = 42; r >= 14; r--) {
           const x = Math.round(PC + dx * r - w / 2), z = Math.round(PC + dz * r - d / 2);
           if (![[x, z], [x + w, z], [x, z + d], [x + w, z + d]].every(([px, pz]) => insideWall(poly, px, pz, 2.5))) continue;
           const near = Math.hypot(Math.max(x - PC, 0, PC - x - w), Math.max(z - 41, 0, 41 - z - d)); // the middle: well, boards, spawn
-          if (near < 12) break;
+          if (near < mid) break;
           if (lanes.some(([a0, b0, a1, b1]) => x < a1 && x + w > a0 && z < b1 && z + d > b0)) continue;
-          if (buildings.some((o) => x < o.x + o.w + 2 && x + w + 2 > o.x && z < o.z + o.d + 2 && z + d + 2 > o.z)) continue;
+          if (buildings.some((o) => x < o.x + o.w + gap && x + w + gap > o.x && z < o.z + o.d + gap && z + d + gap > o.z)) continue;
           if (towers.some((t) => x < t.x + t.w + 3 && x + w + 3 > t.x && z < t.z + t.d + 3 && z + d + 3 > t.z)) continue; // room to reach the ladders
           return B(name, role, x, z, w, d, side, h);
         }
@@ -299,8 +306,14 @@ export function generateVillage(seed: number, y = 0, cx = 0, cz = 0, name = 'Gri
     };
     place('TAVERN', 'innkeeper', 13, 10, 3.6); place("ELDER'S HALL", 'elder', 11, 9, 3.4);
     place('BLACKSMITH', 'blacksmith', 11, 9, 3.4); place('GENERAL STORE', 'merchant', 11, 9, 3.4); place('FOOD & PROVISIONS', 'grocer', 9, 8, 3.2);
-    for (let i = 0; i < 6; i++) place('', 'house', 6, 8, 3);
+    // the houses: at least HOMES_MIN, smaller ones where the bigger will not fit
+    let n = 0;
+    for (let i = 0; i < 6; i++) if (place('', 'house', 6, 8, 3)) n++;
+    const fine = Array.from({ length: 120 }, (_, i) => i * 3); // every 3 degrees
+    for (let i = 0; i < 12 && n < HOMES_MIN; i++) if (place('', 'house', 5, i < 6 ? 7 : 6, 3, 1.5, 10, fine)) n++; // smaller, closer
+    for (let i = 0; i < 6 && n < HOMES_MIN; i++) if (place('', 'house', 5, 5, 3, 1.2, 8, fine)) n++; // cottages, the last resort
   }
+  buildings.filter((b) => b.role === 'house').forEach((b, i) => { b.hero = i; });
   // well, trees, lamps
   // the well only collides: world/water.ts `drawWell` draws it (the same stone well as out in the wilds)
   const wellOp: Op = { op: 'solid', x: 35, y: 0, z: 36, w: 2, h: 1, d: 2 };
@@ -338,8 +351,8 @@ export function generateVillage(seed: number, y = 0, cx = 0, cz = 0, name = 'Gri
     buildings: buildings.map((b) => ({ ...b, x: b.x + ox, z: b.z + oz, door: P(b.door), home: b.home && P(b.home),
       walls: b.walls.map(([x0, y0, z0, x1, y1, z1]) => [x0 + ox, y0 + y, z0 + oz, x1 + ox, y1 + y, z1 + oz]),
       furniture: b.furniture.map((f) => ({ ...f, x0: f.x0 + ox, z0: f.z0 + oz, x1: f.x1 + ox, z1: f.z1 + oz })) })),
-    house: house && { bed: { x0: house.bed.x0 + ox, z0: house.bed.z0 + oz, x1: house.bed.x1 + ox, z1: house.bed.z1 + oz, side: { x: house.bed.side.x + ox, z: house.bed.side.z + oz } },
-      chest: { x: house.chest.x + ox, z: house.chest.z + oz } },
+    homes: buildings.filter((b) => b.role === 'house').map(({ bedChest: h }) => ({ bed: { x0: h!.bed.x0 + ox, z0: h!.bed.z0 + oz, x1: h!.bed.x1 + ox, z1: h!.bed.z1 + oz, side: { x: h!.bed.side.x + ox, z: h!.bed.side.z + oz } },
+      chest: { x: h!.chest.x + ox, z: h!.chest.z + oz } })),
     trees: trees.map((t) => ({ ...t, x: t.x + ox, z: t.z + oz })), lamps: lamps.map((l) => ({ x: l.x + ox, z: l.z + oz })),
     well: { x: 36 + ox, z: 37 + oz }, walk: walk.map(([x, z]) => [x + ox, z + oz]),
     tier, wallH: WALL_H, fence: stone ? [] : fenceRuns().map((r) => ({ x0: r.x0 + ox, z0: r.z0 + oz, x1: r.x1 + ox, z1: r.z1 + oz })),

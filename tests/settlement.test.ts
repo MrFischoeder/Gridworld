@@ -65,7 +65,7 @@ describe('new settlements and frozen saves', () => {
   it('farms support gradual immigration and matching repairs of vacant homes', () => {
     const s = fresh(), v = home(), seed = villageSeed(world, v), now = 1000;
     const empty = generateVillage(seed, 5, 0, 0, 'Gridholm', true);
-    settlementVillage(empty, s, 8, false);
+    settlementVillage(empty, s, 8, () => false);
     const ruined = empty.buildings.filter((b) => b.role === 'house');
     expect(ruined.length).toBeGreaterThan(0); expect(ruined.every((b) => b.condition === 0 && b.furniture.length === 0)).toBe(true);
     expect(ruined.flatMap((b) => b.walls).every((w) => w[4] <= 6.6)).toBe(true);
@@ -75,10 +75,10 @@ describe('new settlements and frozen saves', () => {
     const late = peopleAt(seed, true, s, now + 100000);
     expect(late).toBeGreaterThan(8); expect(late).toBeLessThanOrEqual(housingCapacity(s));
     const repaired = generateVillage(seed, 5, 0, 0, 'Gridholm', true);
-    settlementVillage(repaired, s, late, false);
+    settlementVillage(repaired, s, late, () => false);
     expect(repaired.buildings.some((b) => b.role === 'house' && !b.mine && b.condition === undefined)).toBe(true);
-    const owned = generateVillage(seed, 5, 0, 0, 'Gridholm', true); settlementVillage(owned, fresh(), 8, true);
-    expect(owned.buildings.find((b) => b.mine)?.condition).toBeUndefined(); expect(owned.house).not.toBeNull();
+    const owned = generateVillage(seed, 5, 0, 0, 'Gridholm', true); settlementVillage(owned, fresh(), 8, (i) => i === 3);
+    expect(owned.buildings.find((b) => b.hero === 3)?.condition).toBeUndefined(); expect(owned.buildings.find((b) => b.hero === 2)?.condition).toBe(0);
   });
   it('limits the starting smith and offers only small delivery or kill quests', () => {
     const s = fresh(); expect(smithAllows(s, 'hatchet')).toBe(true); expect(smithAllows(s, 'rifle')).toBe(false);

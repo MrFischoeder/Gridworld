@@ -17,6 +17,8 @@ export interface TownState {
   jobs?: Record<string, import('./construction').Job>;
   /** The wall's tier (0 = the stake fence every village starts with). */
   wall?: number;
+  /** The houses the heroes bought (gen/homes.ts): house index → owner. Shared on a server. */
+  homes?: Record<string, import('./homes').HomeOwner>;
   /** Materials handed over towards the next tier. */
   given?: Partial<Record<ItemKey, number>>;
   /** Game time the power plant was last mended (undefined: never by you, see `lastFix`). */

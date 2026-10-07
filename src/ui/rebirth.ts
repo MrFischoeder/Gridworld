@@ -83,7 +83,8 @@ export function initRebirth(f: (c: Char, a: Arrival) => void) {
     const homes = Object.fromEntries(Object.entries(old.containers).filter(([k]) => k.startsWith('home:')));
     for (const k of Object.keys(homes)) delete c.containers[k];
     const prev = old.estate, houses = [...new Set([...(prev?.houses ?? []), ...old.houses])];
-    if (houses.length) c.estate = { from: old.houses.length ? name : prev!.from, houses, chests: { ...(prev?.chests ?? {}), ...homes } };
+    // (`idx`: which house in each village; `pid`: the dead owner, as the shared `TownState.homes` still names them)
+    if (houses.length) c.estate = { from: old.houses.length ? name : prev!.from, houses, chests: { ...(prev?.chests ?? {}), ...homes }, idx: { ...(prev?.idx ?? {}), ...Object.fromEntries(old.houses.map((v) => [v, old.homeOf?.[v] ?? 0])) }, pid: old.houses.length ? old.pid : prev!.pid };
     use(c, { kind: 'pod' });
     showToast(`${name} is dead`);
     logLine(`${name} died. Their kit lies where they fell.`);
