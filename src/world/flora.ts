@@ -47,7 +47,7 @@ export function ripe(key: string): boolean {
 function mushroom(pb: PropBatch, base: P, h: number, capR: number, r: number, lean: number, rot: number, sides: number, stem = STEM, cap = CAP) {
   const lx = Math.cos(rot) * lean, lz = Math.sin(rot) * lean;
   const top: P = [base[0] + lx, base[1] + h, base[2] + lz], mid: P = [base[0] + lx * 0.35, base[1] + h * 0.5, base[2] + lz * 0.35];
-  tube(pb, [[base[0], base[1] - 0.1, base[2]], mid, top], [r * 1.5, r * 1.05, r], Math.max(4, sides - 4), stem);
+  tube(pb, [[base[0], base[1] - 0.1, base[2]], mid, top], [r * 1.5, r * 1.05, r], Math.max(5, sides - 4), stem);
   const ring = (y: number, rr: number): P[] => Array.from({ length: sides }, (_, k) => { const a = rot + k / sides * 6.283; return [top[0] + Math.cos(a) * rr, top[1] + y, top[2] + Math.sin(a) * rr]; });
   const rim = ring(-capR * 0.12, capR), shoulder = ring(capR * 0.22, capR * 0.78), crown = ring(capR * 0.4, capR * 0.4), gills = ring(-capR * 0.02, capR * 0.3);
   const apex: P = [top[0], top[1] + capR * 0.48, top[2]];
@@ -101,7 +101,7 @@ function drawPodTree(pb: PropBatch, fruit: PropBatch, p: Plant, lod: number): nu
   for (let b = 0; b < nb; b++) {
     const s = b % 2 ? 1 : -1, u = 1.4 + R() * 1.6, base = at(u, H * (0.55 + u * 0.08)), side = s * (1.6 + R() * 1.2);
     const pts: P[] = [base, at(u + 0.4, base[1] - p.y + 0.6, side * 0.5), at(u + 0.8, base[1] - p.y + 0.3, side), at(u + 1, base[1] - p.y - 0.8, side * 1.15)];
-    tube(pb, pts, [0.14, 0.1, 0.07, 0.05], 4, STEM);
+    tube(pb, pts, [0.14, 0.1, 0.07, 0.05], 5, STEM);
     hangs.push([pts[1][0], pts[1][1] - 0.05, pts[1][2]], [pts[2][0], pts[2][1] - 0.05, pts[2][2]]);
     // a tuft of leaves at the tip
     const tip = pts[3];

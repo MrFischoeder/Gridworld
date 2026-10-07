@@ -66,16 +66,23 @@ export function farmPlan(s: TownState | undefined) {
   return { n: farmsOf(s) + 1, rows, done: rows.every((r) => r.given >= r.n) };
 }
 /** Hand over materials for the next farm; builds it once complete (the population curve is re-anchored first, so it grows from where it is). */
-export function handOverFarm(s: TownState, seed: number, home: boolean, now: number, have: (k: ItemKey) => number, timed = false): { taken: [ItemKey, number][]; built: boolean; started?: boolean } {
+export function handOverFarm(s: TownState, seed: number, home: boolean, now: number, have: (k: ItemKey) => number, timed = false): { taken: [ItemKey, number][]; built: boolean; started?: boolean; wait?: boolean } {
   const plan = farmPlan(s);
-  if (!plan || jobOf(s, 'farm')) return { taken: [], built: false };
+  if (!plan || jobOf(s, 'farm') || s.fwait) return { taken: [], built: false };
   s.fgiven ??= {};
   const taken: [ItemKey, number][] = [];
   for (const r of plan.rows) { const n = Math.min(r.n - r.given, have(r.k)); if (n > 0) { s.fgiven[r.k] = r.given + n; taken.push([r.k, n]); } }
   if (!farmPlan(s)!.done) return { taken, built: false };
-  if (timed) { startJob(s, 'farm', undefined, now); return { taken, built: false, started: true }; }
+  if (timed) { s.fwait = true; return { taken, built: false, wait: true }; } // the hero stakes out its field (gen/fields.ts), then the builders start: placeFarm
   completeFarm(s, seed, home, now);
   return { taken, built: true };
+}
+/** The field of the farm waiting for one is staked out: its spot is saved and the builders start. False if none waits. */
+export function placeFarm(s: TownState, spot: { x: number; z: number; y: number }, now: number): boolean {
+  if (!s.fwait || jobOf(s, 'farm')) return false;
+  (s.fplots ??= {})[farmsOf(s)] = spot; delete s.fwait;
+  startJob(s, 'farm', undefined, now);
+  return true;
 }
 /** The farm stands (the population curve is re-anchored first, so it grows from where it is). */
 export function completeFarm(s: TownState, seed: number, home: boolean, now: number) {

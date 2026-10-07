@@ -6,7 +6,7 @@ import { hash } from '../core/rng';
 import { regionClimate, regionOf, poisNear, CHUNK, WORLD_W, POLAR_Z, nearX, type Poi, type Rect } from './regions';
 import { regionRoads, nearestOnRoad, roadBounds, type Road } from './roads';
 import { lakesIn, lakeBed, shoreR, type Lake, type WaterHere } from './water';
-import { claimFlatten, claimDist, CLEAR_R, type Claim } from './claims';
+import { claimFlatten, claimDist, clearOf, type Claim } from './claims';
 import { regionTrails, trailHeight } from './trails';
 import { seaMask, SEA } from './seas';
 import { naturalHeight } from './heights';
@@ -54,7 +54,7 @@ export class Terrain {
   /** Replace the claims (a flag raised or taken down): heights around them change, so the caches go. */
   setClaims(list: Claim[]) { this.claims = list.map((c) => ({ ...c })); this.feat.clear(); this.lat.clear(); }
   /** The claim whose cleared ground covers (x, z), within `margin` more metres. */
-  claimAt(x: number, z: number, margin = 0): Claim | undefined { return this.claims.find((c) => claimDist(c, x, z) < CLEAR_R + margin); }
+  claimAt(x: number, z: number, margin = 0): Claim | undefined { return this.claims.find((c) => claimDist(c, x, z) < clearOf(c) + margin); }
 
   /** Places and roads that can affect heights inside the rect. */
   featuresIn(r: Rect): Features {
@@ -91,7 +91,7 @@ export class Terrain {
     // mountain trails reach further from the summit their region holds
     const [tx, tz] = regionOf(cx - 1500, cz - 1500), [ux, uz] = regionOf(cx + 1500, cz + 1500);
     for (let rx = tx; rx <= ux; rx++) for (let rz = tz; rz <= uz; rz++) regionTrails(this, rx, rz).forEach(take);
-    const claims = this.claims.filter((c) => claimDist(c, cx, cz) < half * 1.42 + CLEAR_R);
+    const claims = this.claims.filter((c) => claimDist(c, cx, cz) < half * 1.42 + clearOf(c));
     return { pads, roads, megaliths: this.includeMegaliths ? megalithsIn(this.world, r) : [], gates: gatesNear(this.world, cx, cz, half * 1.42 + GATE_CLEAR + GATE_BLEND), lakes: lakesIn(this, r), claims, rivers: riverSegsIn(this.world, r.x0, r.z0, r.x1, r.z1) };
   }
   chunkFeatures(cx: number, cz: number): Features {

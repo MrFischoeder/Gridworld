@@ -12,7 +12,8 @@ import { poseRig } from './rig';
 import { dueJobs, jobKey, jobShare, jobLeft, type Job } from '../gen/construction';
 import { finishJob } from '../gen/jobs';
 import { findPoi, worldDist, nearX, villageSeed } from '../gen/regions';
-import { farmPlot, farmsOf, upgradedOf } from '../gen/farms';
+import { farmsOf, upgradedOf } from '../gen/farms';
+import { farmField } from '../gen/fields';
 import { powerSite, worksOf, WORKS, type TownState } from '../gen/town';
 import { WALL_TIERS } from '../gen/village';
 import { ITEMS } from '../data/items';
@@ -55,7 +56,7 @@ function spotOf(vid: number, s: TownState, j: Job): { x: number; z: number; w: n
   const st = OW.structs.get(vid), vm: VillageMap | undefined = st?.village;
   if (!vm) return null;
   const v = findPoi(c.world, vid)!, seed = vm.seed, P = (p: { x: number; z: number }, w = 10, d = 8) => ({ x: vm.ox + p.x, z: vm.oz + p.z, w, d });
-  const plot = (i: number, w: number) => { const f = farmPlot(seed, i); return P({ x: (f.x0 + f.x1) / 2, z: (f.z0 + f.z1) / 2 }, w, w); };
+  const plot = (i: number, w: number) => { const f = farmField(v, seed, s, i); return { x: nearX((f.x0 + f.x1) / 2, vm.ox), z: (f.z0 + f.z1) / 2, w, d: w }; }; // the staked field, or the old corner
   const gate = () => { const g = vm.gates[0], o = { N: [0, -7], S: [0, 7], E: [7, 0], W: [-7, 0] }[g.dir]; return { x: g.x + o[0], z: g.z + o[1], w: 8, d: 5 }; };
   const ind = industryOf(c.world, v, seed);
   switch (j.k) {

@@ -93,29 +93,29 @@ function twigs(pb: PropBatch, p: P, dir: P, len: number, depth: number, R: () =>
 }
 
 function pine(pb: PropBatch, t: Tree, lod: number) {
-  pb.box(t.x - 0.3, t.y - 0.5, t.z - 0.3, t.x + 0.3, t.y + 2, t.z + 0.3, GRID);
+  tube(pb, [[t.x, t.y - 0.5, t.z], [t.x, t.y + 2.2, t.z]], [0.34, 0.26], lod > 1 ? 5 : 7, GRID); // a round trunk, never a square post
   pb.cone(t.x, t.y + 2, t.z, t.r, t.h, GRID, lod > 1 ? 6 : 8);
 }
 function broad(pb: PropBatch, t: Tree, lod: number, R: () => number) {
   const trunkH = 1.6 + t.h * 0.18;
-  tube(pb, [[t.x, t.y - 0.4, t.z], [t.x + (R() - 0.5) * 0.3, t.y + trunkH + 0.6, t.z + (R() - 0.5) * 0.3]], [0.4, 0.24], lod > 1 ? 3 : 5);
+  tube(pb, [[t.x, t.y - 0.4, t.z], [t.x + (R() - 0.5) * 0.3, t.y + trunkH + 0.6, t.z + (R() - 0.5) * 0.3]], [0.4, 0.24], lod > 1 ? 5 : 7);
   crown(pb, [t.x, t.y + trunkH + t.h * 0.42, t.z], t.r, t.h * 0.85, lod > 1 ? 5 : 6, R);
 }
 function twisted(pb: PropBatch, t: Tree, lod: number, R: () => number) {
-  const lean: P = [Math.cos(t.rot), 0, Math.sin(t.rot)], side: P = [-lean[2], 0, lean[0]], s = lod > 1 ? 4 : 6, H = t.h;
+  const lean: P = [Math.cos(t.rot), 0, Math.sin(t.rot)], side: P = [-lean[2], 0, lean[0]], s = lod > 1 ? 5 : 7, H = t.h;
   const at = (up: number, fw: number, sd: number): P => [t.x + lean[0] * fw + side[0] * sd, t.y + up, t.z + lean[2] * fw + side[2] * sd];
   const trunk = [at(-0.5, 0, 0), at(H * 0.22, 0.9, 0.3), at(H * 0.42, 0.2, -0.4), at(H * 0.55, 1.1, 0.2)];
   tube(pb, trunk, [1.5, 1.1, 0.85, 0.6], s, BARK, t.rot);
   if (lod === 1) for (let i = 0; i < 3; i++) { // roots
     const a = t.rot + 1 + i * 2.1, d: P = [Math.cos(a), 0, Math.sin(a)];
-    tube(pb, [add(at(0.7, 0, 0), d, 0.8), add(at(-0.35, 0, 0), d, 2.8 + R())], [0.5, 0.15], 4);
+    tube(pb, [add(at(0.7, 0, 0), d, 0.8), add(at(-0.35, 0, 0), d, 2.8 + R())], [0.5, 0.15], 5);
   }
   const nb = lod > 1 ? 4 : 5;
   for (let i = 0; i < nb; i++) {
     const a = t.rot + i / nb * 6.283 + (R() - 0.5) * 0.8, el = 0.3 + R() * 0.5, len = H * (0.36 + R() * 0.14);
     const d: P = [Math.cos(a) * Math.cos(el), Math.sin(el), Math.sin(a) * Math.cos(el)], from = trunk[i % 2 ? 2 : 3];
     const mid = add(add(from, d, len * 0.55), [0, len * 0.08, 0]), end = add(add(from, d, len), [0, len * 0.22, 0]);
-    tube(pb, [from, mid, end], [0.55, 0.32, 0.14], lod > 1 ? 3 : 4);
+    tube(pb, [from, mid, end], [0.55, 0.32, 0.14], 5);
     if (lod === 1) { twigs(pb, end, d, 1.6, 3, R); twigs(pb, mid, norm(add(d, [0, 0.8, 0])), 1.2, 2, R); }
   }
   if (lod === 1) for (let i = 0; i < 3; i++) { const a = t.rot + i * 2.3 + 0.5; pb.rock(t.x + Math.cos(a) * 1.6, t.y - 0.2, t.z + Math.sin(a) * 1.6, 0.5 + R() * 0.5, 0.5 + R() * 0.5, 4, a, BARK); }
@@ -124,14 +124,14 @@ function umbrella(pb: PropBatch, t: Tree, lod: number, R: () => number) {
   const lean: P = [Math.cos(t.rot), 0, Math.sin(t.rot)], H = t.h;
   const at = (up: number, fw: number): P => [t.x + lean[0] * fw, t.y + up, t.z + lean[2] * fw];
   const trunk = [at(-0.5, 0), at(H * 0.3, 1.2), at(H * 0.6, 0.4), at(H * 0.86, -0.5)];
-  tube(pb, trunk, [1.25, 0.9, 0.65, 0.45], lod > 1 ? 4 : 6, BARK, t.rot);
+  tube(pb, trunk, [1.25, 0.9, 0.65, 0.45], lod > 1 ? 5 : 7, BARK, t.rot);
   const n = lod > 1 ? 6 : 9, vines = lod > 1 ? 0 : 3;
   canopy(pb, add(trunk[3], [0, 0.4, 0]), 4.6 + R() * 1.2, n + 1, vines + 1, R);
   const nb = 3;
   for (let i = 0; i < nb; i++) {
     const a = t.rot + 1.2 + i * (4 / nb) + (R() - 0.5) * 0.5, d: P = [Math.cos(a), 0.45 + R() * 0.3, Math.sin(a)], from = trunk[1 + (i % 2)];
     const len = 3.2 + R() * 1.6, mid = add(add(from, norm(d), len * 0.5), [0, -0.3, 0]), end = add(from, norm(d), len);
-    tube(pb, [from, mid, end], [0.45, 0.3, 0.2], lod > 1 ? 3 : 4);
+    tube(pb, [from, mid, end], [0.45, 0.3, 0.2], 5);
     canopy(pb, add(end, [0, 0.3, 0]), 2.4 + R() * 1.2, n, vines, R);
   }
 }
@@ -142,7 +142,7 @@ function arch(pb: PropBatch, t: Tree, lod: number, R: () => number) {
     pts.push([t.x + ax[0] * Math.cos(th) * t.r * bulge, t.y - 0.3 + Math.sin(th) * H * 0.82, t.z + ax[2] * Math.cos(th) * t.r * bulge]);
     radii.push(0.95 + 0.9 * Math.abs(Math.cos(th)) ** 2);
   }
-  tube(pb, pts, radii, lod > 1 ? 4 : 6, BARK, t.rot);
+  tube(pb, pts, radii, lod > 1 ? 5 : 7, BARK, t.rot);
   // spikes along the top, leaning outwards; a couple of shards at each foot
   const ns = lod > 1 ? 4 : 7;
   for (let i = 0; i < ns; i++) {
@@ -170,7 +170,9 @@ export function drawTree(pb: PropBatch, t: Tree, lod: number) {
     case 'arch': arch(pb, t, lod, R); break;
   }
 }
-/** A broadleaf crown on its own (village trees stand on voxel trunks). */
+/** A village tree: a round, slightly leaning trunk (its collision is a small voxel post, gen/village.ts) and a broadleaf crown. */
 export function drawCrown(pb: PropBatch, x: number, y: number, z: number, r: number, h: number, seed: number) {
-  crown(pb, [x, y + h * 0.4, z], r, h * 0.85, 6, rng(seed));
+  const R = rng(seed);
+  tube(pb, [[x, y - 2.3, z], [x + (R() - 0.5) * 0.25, y - 0.4, z + (R() - 0.5) * 0.25], [x + (R() - 0.5) * 0.4, y + h * 0.45, z + (R() - 0.5) * 0.4]], [0.36, 0.28, 0.2], 7);
+  crown(pb, [x, y + h * 0.4, z], r, h * 0.85, 7, R);
 }

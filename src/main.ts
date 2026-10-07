@@ -11,6 +11,7 @@ import { initItemTips } from './ui/itemtip';
 import { calcStats, saveChar, armoured, handsChanged } from './character';
 import { loadDungeon, loadOverworld, toVillage, saveOverworldPos, enterDungeon, type Arrival } from './world/level';
 import { initRebirth } from './ui/rebirth';
+import { isFieldPlacing, updateFieldPlacing, confirmFieldPlacing, cancelFieldPlacing } from './world/fields';
 import { updateHomes } from './world/home';
 import { updatePlayer, EYE } from './world/player';
 import { updateClimb, climbing } from './world/ladders';
@@ -181,6 +182,10 @@ function frame(now: number) {
       updatePierPlacing();
       if (G.firing) { G.firing = false; confirmPierPlacing(); }
       if (G.aiming) { G.aiming = false; cancelPierPlacing(); }
+    } else if (isFieldPlacing()) { // a Survey Stake: the mouse picks a new farm's field
+      updateFieldPlacing();
+      if (G.firing) { G.firing = false; void confirmFieldPlacing(); }
+      if (G.aiming) { G.aiming = false; cancelFieldPlacing(); }
     } else if (isBridgePlacing()) { // a Bridge Kit: the mouse picks where the bridge crosses
       updateBridgePlacing();
       if (G.firing) { G.firing = false; confirmBridgePlacing(); }

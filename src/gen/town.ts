@@ -19,6 +19,8 @@ export interface TownState {
   wall?: number;
   /** The houses the heroes bought (gen/homes.ts): house index → owner. Shared on a server. */
   homes?: Record<string, import('./homes').HomeOwner>;
+  /** Where each farm's field stands (gen/fields.ts; farms built before keep their corner of the wall), and whether the next farm's materials are in and it waits for the hero to stake out its field. */
+  fplots?: Record<string, import('./fields').FieldSpot>; fwait?: boolean;
   /** Materials handed over towards the next tier. */
   given?: Partial<Record<ItemKey, number>>;
   /** Game time the power plant was last mended (undefined: never by you, see `lastFix`). */

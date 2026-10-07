@@ -3,6 +3,15 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.164.0', date: '2026-10-07', title: 'You choose where the farms go', notes: [
+    'When all of a new farm\'s materials are in, the elder gives you a Survey Stake. Walk out of the village, use the stake and look where the field should go. A hologram shows the field and how far the ground will be levelled: green means fine, red tells you why not. Click to stake it out.',
+    'The field can go anywhere within 500 m of the village. Its ground is levelled for it, and the villagers come out and build the farm there. You are paid when the builders start.',
+    'Some ground is kept for other work and refused: the stone quarry, the mine, the oil wells, the lumber yard, the refinery and the food processing house, the village\'s industry site, the power plant, the works and power station plots, the hall and the warehouse. So are roads, water, old places, other fields, and slopes too steep to level.',
+    'Lost the stake? The elder gives you another one from the farms panel.',
+    'On a server everyone sees the field, the levelled ground and the builders. If two players stake out the same farm at once, only the first one counts.',
+    'Farms built before keep their place by the wall.',
+    'Trees have round trunks now: no more square posts. Pines, broadleaves, the big trees and their branches all have at least five sides. Villages have far fewer trees on the plaza (4 instead of 12), each with a real trunk.',
+  ] },
   { v: '0.163.0', date: '2026-10-07', title: 'Houses in every village', notes: [
     'Every village now has at least six houses for the castaways, not just Gridholm. Ask the elder "Are there houses for sale?" to see which are free, whose the others are and where they stand. A free one costs 750 gold.',
     'You can own one house in each village. Each house has a bed and its own chest for you. Sleep there, keep your things there, and a Recall Beacon or a bad day out in the wilds wakes you by your own bed.',

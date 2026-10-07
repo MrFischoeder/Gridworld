@@ -30,7 +30,7 @@ class Model {
     this.g.add(o); return o;
   }
   /** A bent tube through pts (tapering by radii), as rings of `sides` joined along its length: teeth, bones, sticks. */
-  tube(c: number, pts: THREE.Vector3[], radii: number[], sides = 4) {
+  tube(c: number, pts: THREE.Vector3[], radii: number[], sides = 5) {
     let prev: THREE.Vector3[] | null = null;
     pts.forEach((p, i) => {
       const t = (pts[Math.min(i + 1, pts.length - 1)].clone().sub(pts[Math.max(i - 1, 0)])).normalize();
@@ -166,14 +166,14 @@ function caps(): THREE.Group {
   const m = new Model();
   for (const [x, z, s] of [[0, 0, 1], [0.12, 0.06, 0.7], [-0.08, 0.1, 0.55]]) {
     m.solid(FOOD_COLOR, new THREE.SphereGeometry(0.07 * s, 7, 3, 0, Math.PI * 2, 0, Math.PI / 2), V(x, 0.08 * s, z), new THREE.Euler(), V(1, 0.7, 1));
-    m.tube(FOOD_COLOR, [V(x, 0, z), V(x, 0.08 * s, z)], [0.018 * s, 0.018 * s], 4);
+    m.tube(FOOD_COLOR, [V(x, 0, z), V(x, 0.08 * s, z)], [0.018 * s, 0.018 * s], 5);
   }
   return m.done();
 }
 function pod(): THREE.Group {
   const m = new Model();
   m.solid(FOOD_COLOR, new THREE.SphereGeometry(0.09, 6, 5), V(0, 0.08, 0), new THREE.Euler(0, 0, 0.2), V(1.9, 0.9, 1));
-  m.tube(FOOD_COLOR, [V(0.16, 0.1, 0), V(0.23, 0.14, 0.02)], [0.012, 0.008], 4); // the stalk
+  m.tube(FOOD_COLOR, [V(0.16, 0.1, 0), V(0.23, 0.14, 0.02)], [0.012, 0.008], 5); // the stalk
   return m.done();
 }
 function crystals(c = FOOD_COLOR): THREE.Group {
@@ -202,7 +202,7 @@ function flask(): THREE.Group {
 }
 function sticks(): THREE.Group {
   const m = new Model();
-  for (let i = 0; i < 4; i++) m.tube(BARK, [V(-0.18, 0.03 + (i % 2) * 0.03, -0.05 + i * 0.03), V(0.18, 0.03 + (i % 2) * 0.03, -0.06 + i * 0.035)], [0.018, 0.015], 4);
+  for (let i = 0; i < 4; i++) m.tube(BARK, [V(-0.18, 0.03 + (i % 2) * 0.03, -0.05 + i * 0.03), V(0.18, 0.03 + (i % 2) * 0.03, -0.06 + i * 0.035)], [0.018, 0.015], 5);
   m.line(0xc8b890, ring(V(0, 0.045, 0), 0.075, 7, 'x'), true); // the cord round the bundle
   return m.done();
 }

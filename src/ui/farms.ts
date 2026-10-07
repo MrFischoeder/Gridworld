@@ -13,7 +13,8 @@ import { settleOwn, anchorNew } from '../gen/hall';
 import { findPoi } from '../gen/regions';
 import { loadedVillage, reloadStruct } from '../world/overworld';
 import { earnTrust } from '../world/standing';
-import { saveChar, calcStats, gainXp } from '../character';
+import { saveChar, calcStats, gainXp, hasItem, addItem } from '../character';
+import { FIELD } from '../gen/fields';
 import { showToast, logLine } from './hud';
 import { buildersLine, jobHTML, building } from './jobs';
 
@@ -45,7 +46,11 @@ export function farmsHTML(town: string, head: string, msg = ''): string {
     }
   }
   if (plan && building(st, 'farm')) s += jobHTML(st, 'farm', undefined, `farm ${plan.n}`);
-  else if (plan) {
+  else if (plan && st?.fwait) { // the materials are in: the hero stakes out the field (world/fields.ts)
+    const has = hasItem('fieldstake');
+    s += `<div class="shoprow"><div><b>Farm ${plan.n}: the materials are in</b><br><span>Now choose its field. Take a Survey Stake out of the village (up to ${FIELD.reach} m), use it and click where the field should go: the ground there is levelled and the builders start. Not on the ground kept for the quarry, the mine, the oil wells, the lumber yard or the other works, nor on roads, water or slopes too steep to level.</span></div></div>`;
+    s += has ? '<div class="say" style="opacity:.8">You have a Survey Stake.</div>' : '<button class="opt" data-farm="stake">Give me a Survey Stake</button>';
+  } else if (plan) {
     s += `<div class="shoprow"><div><b>Farm ${plan.n} of ${FARM.max}</b> <span style="opacity:.7">(${FARM.kw} kW)</span><br><span>${rowsHTML(plan.rows, have)}</span></div></div>`;
     s += `<button class="opt" data-farm="give" ${plan.rows.some((r) => r.given < r.n && have(r.k) > 0) ? '' : 'disabled'}>Build from the village hall's stock (the farm)</button>`;
   } else s += `<div class="say">${farmProblem(st) || `We have cleared all the land we can guard (${FARM.max} farms).`}</div>`;
@@ -67,9 +72,17 @@ export function farmsClick(town: string, t: HTMLElement): { msg: string; built: 
   const poi = v && findPoi(c.world, v.id);
   if (!v || !poi) return { msg: '', built: false };
   const st = (c.towns[v.id] ??= {}), have = stockHas(v.id), upgrade = b.dataset.farm === 'up';
+  if (b.dataset.farm === 'stake') { // another stake for the farm that waits for its field
+    if (!st.fwait) return { msg: 'No farm waits for its field.', built: false };
+    return { msg: hasItem('fieldstake') ? 'You have one already.' : addItem('fieldstake') ? 'The elder hands you a Survey Stake. Walk out and mark the field with it.' : 'No room for the stake in your backpack.', built: false };
+  }
   settleOwn(c.world, poi, v.vm.seed, st, c.time); // the harvest so far is kept at the old yield
-  const { taken, built, started } = upgrade ? handOverUpgrade(st, c.tech, have, c.time) : handOverFarm(st, v.vm.seed, v.id === GRIDHOLM_ID, c.time, have, true);
+  const r = upgrade ? handOverUpgrade(st, c.tech, have, c.time) : handOverFarm(st, v.vm.seed, v.id === GRIDHOLM_ID, c.time, have, true), { taken, built, started } = r;
   stockTake(v.id, taken);
+  if ('wait' in r && r.wait) { // the farm's materials are in: the hero chooses its field
+    const got = hasItem('fieldstake') || addItem('fieldstake'); saveChar();
+    return { msg: `${taken.length ? 'Handed over: ' + taken.map(([k, n]) => `${ITEMS[k].name} ×${n}.`).join(' ') + ' ' : ''}<b>All in.</b> ${got ? 'The elder hands you a Survey Stake: walk out and mark where the new field should go (use the stake, then click).' : 'Make room in your backpack for the Survey Stake and ask again.'}`, built: false };
+  }
   const given = taken.length ? 'Handed over: ' + taken.map(([k, n]) => `${ITEMS[k].name} ×${n}.`).join(' ') : `The village hall has nothing more of what the ${upgrade ? 'ploughs' : 'farm'} still ${upgrade ? 'need' : 'needs'}: bring the materials to the village stores.`;
   if (started) { // the builders take over: they are paid now, the farm stands when they are done (world/jobsites.ts)
     if (upgrade) { c.gold += UPGRADE.gold; gainXp(UPGRADE.xp); } else { c.gold += FARM.gold; gainXp(FARM.xp); }

@@ -18,6 +18,7 @@ import { saveChar, dungeonKey } from '../character';
 import { OW, reloadStruct, rebuildChunkAt } from './overworld';
 import { CHUNK, HANGAR_ID, nearX } from '../gen/regions';
 import type { Char } from '../save';
+import type { TownState } from '../gen/town';
 import { retireOldCrossings } from '../gen/bridges';
 import { boardPeriod } from '../core/time';
 
@@ -90,7 +91,7 @@ function put(c: Char, f: Field, k: string, v: unknown) {
 const townLook = (t: unknown) => {
   const s = (t ?? {}) as Record<string, unknown>;
   const settlement = s.settlement as { v?: number; done?: unknown; deposits?: unknown; stage?: number } | undefined;
-  return JSON.stringify([s.homes, s.wall, s.works, s.farms, s.crops, s.fup, s.pup, s.imp, s.built, settlement?.v, settlement?.done, settlement?.deposits, settlement?.stage, s.pbuild, (s.plants as { k: string }[] | undefined)?.map((p) => p.k), (s.stations as { k: string }[] | undefined)?.map((p) => p.k)]);
+  return JSON.stringify([s.homes, s.fplots, s.fwait, s.wall, s.works, s.farms, s.crops, s.fup, s.pup, s.imp, s.built, settlement?.v, settlement?.done, settlement?.deposits, settlement?.stage, s.pbuild, (s.plants as { k: string }[] | undefined)?.map((p) => p.k), (s.stations as { k: string }[] | undefined)?.map((p) => p.k)]);
 };
 function show(f: string, k: string, before: unknown, after: unknown) {
   if (G.char.loc === 'dungeon' && G.char.dungeon && k === dungeonKey()) {
@@ -105,6 +106,10 @@ function show(f: string, k: string, before: unknown, after: unknown) {
     return;
   }
   if (!OW.terrain || G.char.loc !== 'overworld') return; // underground, or not loaded: seen when you come back
+  if (f === 'towns') { // a field staked out by someone else: the ground there is levelled here too
+    const was = (before as TownState | undefined)?.fplots ?? {}, now = (after as TownState | undefined)?.fplots ?? {};
+    for (const [i, p] of Object.entries(now)) if (p && JSON.stringify(was[i]) !== JSON.stringify(p)) claimsHook(p as unknown as Char['claims'][number]);
+  }
   if (f === 'towns' && townLook(before) !== townLook(after)) {
     reloadStruct(+k);
     const v = findPoi(G.char.world, +k), r = v && G.char.towns[k]?.settlement && linkRuin(G.char.world, v, G.char.towns[k]);

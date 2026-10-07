@@ -7,11 +7,12 @@ import { reloadStruct } from './overworld';
 import * as THREE from 'three';
 import { G } from '../game';
 import { PropBatch } from './props';
-import { farmsOf, farmPlot, farmTarget, upgradedOf, cropOf, farmYield } from '../gen/farms';
+import { farmField } from '../gen/fields';
+import { farmsOf, farmTarget, upgradedOf, cropOf, farmYield } from '../gen/farms';
 import type { ItemKey } from '../data/items';
 import { farmPower } from '../gen/energy';
 import { retarget } from '../gen/people';
-import { findPoi, villageSeed, GRIDHOLM_ID } from '../gen/regions';
+import { findPoi, villageSeed, GRIDHOLM_ID, nearX } from '../gen/regions';
 import { OW } from './overworld';
 import type { VillageMap } from '../gen/village';
 import type { Terrain } from '../gen/terrain';
@@ -21,7 +22,8 @@ const WOOD = 0xb8b060, SOIL = 0x6f8f76, CROP = 0xd8ff7a, GRAIN = 0xe8d880, METAL
 export function drawFarms(vm: VillageMap, T: Terrain, id: number): THREE.Group {
   const n = farmsOf(G.char.towns[id]), up = upgradedOf(G.char.towns[id]), pb = new PropBatch();
   for (let i = 0; i < n; i++) {
-    const p = farmPlot(vm.seed, i), x0 = vm.ox + p.x0, z0 = vm.oz + p.z0, x1 = vm.ox + p.x1, z1 = vm.oz + p.z1;
+    const p = farmField({ x: vm.ox + 36, z: vm.oz + 36 }, vm.seed, G.char.towns[id], i), sx = nearX(p.x0, vm.ox) - p.x0; // (a staked field, or the old corner of the wall)
+    const x0 = p.x0 + sx, z0 = p.z0, x1 = p.x1 + sx, z1 = p.z1;
     const at = (x: number, z: number, dy = 0) => [x, T.heightAt(x, z) + dy, z];
     // the fence: posts every 2 m and two rails, a gap on the side facing the wall
     const edge = (ax: number, az: number, bx: number, bz: number) => {

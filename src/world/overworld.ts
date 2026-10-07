@@ -15,6 +15,7 @@ import { insideVehicle, hitOccupiedVehicle } from './damage';
 import { setLadders, dropLadders, ladderHit, ladderFloor } from './ladders';
 import { setHouses, dropHouses, houseHit, houseRay, houseSolid } from './houses';
 import { myHome } from '../gen/homes';
+import { fieldClaims } from '../gen/fields';
 import { drawHangar, hangarOps } from './hangar';
 import { drawWorks, forgetWorks } from './works';
 import { drawStations, forgetStations } from './stations';
@@ -567,7 +568,7 @@ export function openWorld(x: number, z: number) {
   initializeSettlements(G.char);
   const w = G.char.world;
   if (!OW.terrain || OW.terrain.world !== w) { OW.terrain = new Terrain(w); riversOf(w); } // the rivers are worked out once, while the world loads
-  OW.terrain.setClaims(G.char.claims);
+  OW.terrain.setClaims([...G.char.claims, ...fieldClaims(G.char.towns)]); // bases and the villages' fields are levelled
   const pads = allVillages(w).filter((v) => progressive(G.char.towns[v.id])).flatMap((v) => {
     const ox = v.x - 36, oz = v.z - 36, y = OW.terrain!.padY(v);
     const plots = Object.entries(RESOURCE_PLOTS).filter(([k]) => projectAvailable(G.char.towns[v.id], k as ResourceProject));
@@ -575,7 +576,7 @@ export function openWorld(x: number, z: number) {
     return rects.map(({ rect: r, depression, y }, i) => ({ y, surface: true, depression, poi: { ...v, id: -v.id * 8 - i - 1, rect: { x0: ox + r.x0, x1: ox + r.x1, z0: oz + r.z0, z1: oz + r.z1 }, flat: 3, blend: 12 } }));
   });
   OW.terrain.setSettlementPads(pads);
-  primeInstalls(w, G.char.claims); // the installations' sites are worked out in a worker meanwhile
+  primeInstalls(w, [...G.char.claims, ...fieldClaims(G.char.towns)]); // the installations' sites are worked out in a worker meanwhile
   closeWorld();
   G.water = (px, pz) => (inStructure(px, pz) ? null : OW.terrain!.water(px, pz));
   G.space = space; G.ground = groundAt; G.obstacle = (px, py, pz, r) => settlementHit(px, py, pz, r) || megalithHit(px, py, pz, r) || worldGateHit(px, py, pz, r) || treeHit(px, py, pz, r) || vehicleHit(px, py, pz, r) || caravanHit(px, py, pz, r) || peerCarHit(px, py, pz, r) || ambushHit(px, py, pz, r) || baseHit(px, py, pz, r) || ladderHit(px, py, pz, r) || walkHit(px, py, pz, r) || guardHit(px, py, pz, r) || houseHit(px, py, pz, r) || doorHit(px, py, pz, r) || podHit(px, py, pz, r) || installHit(px, py, pz, r) || cityHit(px, py, pz, r) || hallHit(px, py, pz, r) || bridgeHit(px, py, pz, r) || pierHit(px, py, pz, r) || boatHit(px, py, pz, r) || shipHit(px, py, pz, r) || toxicHit(px, py, pz, r);

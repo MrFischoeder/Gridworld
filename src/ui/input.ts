@@ -4,6 +4,7 @@ import { toggleCrouch } from '../world/stealth';
 import { riding, rideSeat, toggleRideView } from '../world/ride';
 import { isPlacing, cancelPlacing } from '../world/claims';
 import { isBridgePlacing, cancelBridgePlacing } from '../world/bridges';
+import { isFieldPlacing, cancelFieldPlacing } from '../world/fields';
 import { isPierPlacing, cancelPierPlacing } from '../world/piers';
 import { inBoat, openBoatHold, toggleBoatView, toggleSail, refuel } from '../world/boats';
 import { isBuilding, stopBuilding, dismantle } from '../world/building';
@@ -48,6 +49,7 @@ export function initInput(onPause: () => void) {
     if (extraKeys.some((f) => f(e))) return;
     if (e.code === 'Escape' && isPlacing()) cancelPlacing();
     if (e.code === 'Escape' && isBridgePlacing()) cancelBridgePlacing();
+    if (e.code === 'Escape' && isFieldPlacing()) cancelFieldPlacing();
     if (e.code === 'Escape' && isPierPlacing()) cancelPierPlacing();
     if (e.code === 'Escape' && isBuilding()) stopBuilding();
     if (e.code === 'KeyB' && G.playing) { toggleBuildMenu(); return; }

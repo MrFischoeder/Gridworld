@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { handOverFarm, farmsOf } from '../src/gen/farms';
+import { handOverFarm, farmsOf, placeFarm } from '../src/gen/farms';
 import { handOver, handOverWork, wallOf, worksOf, type TownState } from '../src/gen/town';
 import { handOverPlant, startPlant, plantsOf } from '../src/gen/plants';
 import { jobOf, jobShare, dueJobs, jobEnd, hoursOf } from '../src/gen/construction';
@@ -12,7 +12,10 @@ const village = () => allVillages(WORLD).find((v) => v.id !== GRIDHOLM_ID)!;
 describe('construction time', () => {
   it('a farm with every material in starts a job and stands only when its hours are up', () => {
     const v = village(), s: TownState = {}, now = 7 * 60;
-    const r = handOverFarm(s, 4242, false, now, () => 99, true);
+    const w = handOverFarm(s, 4242, false, now, () => 99, true);
+    expect(w.wait).toBe(true); expect(jobOf(s, 'farm')).toBeFalsy(); // the hero stakes out its field first (gen/fields.ts)
+    expect(placeFarm(s, { x: 300, z: 0, y: 5 }, now)).toBe(true);
+    const r = { started: true, built: false };
     expect(r.started).toBe(true); expect(r.built).toBe(false); expect(farmsOf(s)).toBe(0);
     const j = jobOf(s, 'farm')!;
     expect(j.h).toBe(hoursOf('farm')); expect(j.h).toBeGreaterThanOrEqual(10); // a good part of a game day

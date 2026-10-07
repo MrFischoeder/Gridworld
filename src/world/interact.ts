@@ -26,6 +26,7 @@ import { nearInstallDesk } from './installs';
 import { nearFogLocker, fogLocker } from './toxic';
 import { nearGuide, talkGuide, GUIDE } from './guide';
 import { FOG_SITE } from '../gen/toxic';
+import { isFieldPlacing, confirmFieldPlacing, fieldPlacingHint, fieldPlacingOk } from './fields';
 import { nearBridgeSign, built as bridgeBuilt, isBridgePlacing, confirmBridgePlacing, bridgePlacingHint, bridgePlacingOk } from './bridges';
 import { openBridge } from '../ui/bridge';
 import { nearPierSign, nearPierCrate, pierCrate, isPierPlacing, confirmPierPlacing, pierPlacingHint, pierPlacingOk } from './piers';
@@ -211,6 +212,8 @@ export function updateEntities(dt: number, time: number) {
   if (bth !== null) { prompt.className = ''; prompt.textContent = bth; prompt.style.display = G.playing ? 'block' : 'none'; }
   const phint = pierPlacingHint();
   if (phint !== null) { prompt.className = pierPlacingOk() ? '' : 'lock'; prompt.textContent = phint; prompt.style.display = G.playing && phint ? 'block' : 'none'; }
+  const fhint = fieldPlacingHint();
+  if (fhint !== null) { prompt.className = fieldPlacingOk() ? '' : 'lock'; prompt.textContent = fhint; prompt.style.display = G.playing && fhint ? 'block' : 'none'; }
   const bhint = bridgePlacingHint();
   if (bhint !== null) { prompt.className = bridgePlacingOk() ? '' : 'lock'; prompt.textContent = bhint; prompt.style.display = G.playing && bhint ? 'block' : 'none'; }
   const hint = placingHint();
@@ -259,6 +262,7 @@ export function interact() {
   if (nearRec) { openLogbook(); return; }
   if (nearLad) { const m = startClimb(nearLad); if (m) logLine(m); return; }
   if (isPlacing()) { confirmPlacing(); return; }
+  if (isFieldPlacing()) { void confirmFieldPlacing(); return; }
   if (isBridgePlacing()) { confirmBridgePlacing(); return; }
   if (isPierPlacing()) { confirmPierPlacing(); return; }
   if (nearGate) { toggleDoor(nearGate); return; }

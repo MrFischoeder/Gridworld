@@ -316,16 +316,16 @@ export function generateVillage(seed: number, y = 0, cx = 0, cz = 0, name = 'Gri
   buildings.filter((b) => b.role === 'house').forEach((b, i) => { b.hero = i; });
   // well, trees, lamps
   // the well only collides: world/water.ts `drawWell` draws it (the same stone well as out in the wilds)
-  const wellOp: Op = { op: 'solid', x: 35, y: 0, z: 36, w: 2, h: 1, d: 2 };
+  const wellOp: Op = { op: 'solid', x: 35, y: 0, z: 36, w: 2, h: 1, d: 2 }, treeOps = new Set<Op>();
   late.push(wellOp);
   const blocked = (x: number, z: number, m: number) => !insideWall(poly, x + 0.5, z + 0.5, m + 1) || towers.some((t) => x >= t.x - 3 && x < t.x + t.w + 3 && z >= t.z - 3 && z < t.z + t.d + 3) || buildings.some((b) => x >= b.x - m && x < b.x + b.w + m && z >= b.z - m && z < b.z + b.d + m)
     || (Math.abs(x - 41) < 4 && Math.abs(z - 45) < 3) || (Math.abs(x - 31) < 4 && Math.abs(z - 45) < 3)
     || (Math.abs(x - 36) < 5 && z < 10) || (Math.abs(x - 36) < 4 && Math.abs(z - 37) < 4) || (Math.abs(x - 36) < 3 && Math.abs(z - 50) < 3)
     || gates.some((g) => Math.abs(x - Math.min(Math.max(g.x, 1), PW - 2)) < 5 && Math.abs(z - Math.min(Math.max(g.z, 1), PD - 2)) < 5);
-  for (let n = 0; n < 200 && trees.length < 12; n++) {
+  for (let n = 0; n < 200 && trees.length < 4; n++) { // a few shade trees (the plaza is for people)
     const x = ri(2, 69), z = ri(2, 69);
     if (blocked(x, z, 3) || trees.some((t) => Math.abs(t.x - x) + Math.abs(t.z - z) < 5)) continue;
-    trees.push({ x, z, h: ri(4, 6) }); late.push({ op: 'solid', x, y: 0, z, w: 1, h: 2, d: 1 });
+    const trunk: Op = { op: 'solid', x, y: 0, z, w: 1, h: 2, d: 1 }; trees.push({ x, z, h: ri(4, 6) }); late.push(trunk); treeOps.add(trunk); // the voxel only collides: world/trees.ts drawCrown draws a round trunk
   }
   for (const [x, z] of [[24, 20], [48, 20], [24, 48], [48, 48], [30, 8], [42, 8]]) lamps.push({ x, z });
   const all = [...ops, ...late];
@@ -356,7 +356,7 @@ export function generateVillage(seed: number, y = 0, cx = 0, cz = 0, name = 'Gri
     trees: trees.map((t) => ({ ...t, x: t.x + ox, z: t.z + oz })), lamps: lamps.map((l) => ({ x: l.x + ox, z: l.z + oz })),
     well: { x: 36 + ox, z: 37 + oz }, walk: walk.map(([x, z]) => [x + ox, z + oz]),
     tier, wallH: WALL_H, fence: stone ? [] : fenceRuns().map((r) => ({ x0: r.x0 + ox, z0: r.z0 + oz, x1: r.x1 + ox, z1: r.z1 + oz })),
-    shown: translateOps(all.filter((o) => o !== wellOp && (stone || !fenceOps.has(o))), ox, y, oz),
+    shown: translateOps(all.filter((o) => o !== wellOp && !treeOps.has(o) && (stone || !fenceOps.has(o))), ox, y, oz),
     ...wallWalk(ox, oz, buildings, trees, towers),
   };
   }

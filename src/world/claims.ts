@@ -12,6 +12,7 @@ import { logLine } from '../ui/hud';
 import { OW, rebuildChunksNear } from './overworld';
 import { driving } from './vehicles';
 import { nearX } from '../gen/regions';
+import { fieldClaims } from '../gen/fields';
 import { CLAIM, CLEAR_R, claimFlatten, claimProblem, padHeight, claimDist, type Claim } from '../gen/claims';
 import { EYE } from './player';
 import { redraw as redrawBase, syncBases } from './building';
@@ -43,10 +44,12 @@ export function syncFlags() {
 }
 export function clearFlags() { for (const g of drawn.values()) scene.remove(g); drawn.clear(); }
 
-/** Hand the claims to the terrain and rebuild the ground around `at` (a flag raised or taken down there). */
+/** Every levelled pad the terrain takes: the players' claims and the villages' fields (gen/fields.ts). */
+export const allClaims = (): Claim[] => [...G.char.claims, ...fieldClaims(G.char.towns)];
+/** Hand the claims to the terrain and rebuild the ground around `at` (a flag raised or taken down, or a field staked out there). */
 function applyClaims(at?: Claim) {
   const T = OW.terrain; if (!T) return;
-  T.setClaims(G.char.claims);
+  T.setClaims(allClaims());
   if (at) rebuildChunksNear(nearX(at.x, G.pos.x), at.z, CLEAR_R + 2);
   // what stands on the changed ground follows it
   for (const b of G.char.benches) if (claimDist(at ?? b, b.x, b.z) < CLEAR_R) b.y = T.heightAt(nearX(b.x, G.pos.x), b.z);
@@ -63,6 +66,8 @@ export function claimsChanged(at?: { x: number; z: number }) {
   syncBases();
 }
 
+/** A village field was staked out (here, or by another player): the ground there is levelled. */
+export function fieldsChanged(at: { x: number; z: number; y: number }) { applyClaims({ x: at.x, z: at.z, y: at.y }); }
 /** The claim whose land covers (x, z). */
 export const claimHere = (x: number, z: number) => G.char.claims.find((c) => claimDist(c, x, z) < CLAIM.r);
 /** Your flag within reach (for E). */
