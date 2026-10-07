@@ -204,6 +204,7 @@ export function backToOwnWorld() {
   if (!s || online()) return;
   try { localStorage.setItem(SAVE_KEY, s); localStorage.removeItem(SOLO_KEY); } catch { return; }
   try { sessionStorage.setItem('gridWorld.noFilm', '1'); } catch { /* storage blocked */ } // straight to the menu, no opening film
+  G.playing = false; // no 'leave the page?' question (ui/input.ts)
   location.reload(); // the cleanest way back: load the own save from scratch
 }
 /** T while playing online: type a chat line. */

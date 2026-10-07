@@ -112,6 +112,9 @@ const saved = new THREE.Vector3(), savedVel = new THREE.Vector3();
 let proxy = false;
 /** True during a foe's turn against another player: your armour and your vehicle's cab do not count then. */
 export const proxied = () => proxy;
+let peer = 0;
+/** The other player a foe's turn is running against (0: you or another foe). */
+export const targetPeer = () => peer;
 /**
  * Run one foe's turn (`fn`) against the nearest player to (x, z). If that is another player, the foe sees them where
  * you stand for the turn, and the harm it does there goes to them (their armour reckoned there).
@@ -124,10 +127,10 @@ export function withTarget(x: number, z: number, fn: () => void) {
   if (!best) { fn(); return; }
   saved.copy(G.pos); savedVel.copy(G.vel);
   const hp = G.hp, flash = G.dmgFlash;
-  G.pos.set(best.x, best.y, best.z); proxy = true;
+  G.pos.set(best.x, best.y, best.z); proxy = true; peer = best.id;
   try { fn(); } finally {
     const dmg = hp - G.hp;
-    proxy = false;
+    proxy = false; peer = 0;
     G.pos.copy(saved); G.vel.copy(savedVel); G.hp = hp; G.dmgFlash = flash;
     if (dmg > 0) hurtPeer(best.id, dmg, true); // their own armour is reckoned on their side
   }

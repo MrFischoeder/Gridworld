@@ -18,7 +18,9 @@ import { onKill } from './quests';
 import { mayspawn, FOE_HIT } from './threat';
 import { ALPHA, type Quest } from '../gen/quests';
 import { textSprite } from './npc';
-import { targetingFoe, stepRemote, withFoeTarget, nearestPlayer } from './remote';
+import { targetingFoe, proxied, stepRemote, withFoeTarget, nearestPlayer } from './remote';
+import { mindOf, sense, share, spottedBy, targetVis } from './stealth';
+import { STEALTH, LOSE } from '../gen/stealth';
 
 type State = 'roam' | 'hunt' | 'dash' | 'retreat' | 'threat' | 'charge' | 'recover' | 'stalk' | 'dive' | 'climb' | 'investigate';
 
@@ -374,6 +376,26 @@ function bite(dmg: number) {
   hurtPlayer(dmg * FOE_HIT, true, .4);
 }
 const alerted = new WeakSet<Creature[]>();
+const cEye = new THREE.Vector3();
+/** Whether a ground beast has made you out (sight `sight` m before crouching, darkness and the like). */
+function spots(c: Creature, sight: number, dt: number): boolean {
+  cEye.set(c.p.x, c.p.y + 0.3, c.p.z);
+  sense(c, cEye, c.heading, sight, dt, false);
+  if (mindOf(c).aware < STEALTH.spotted) return false;
+  if (!proxied() && !targetingFoe()) spottedBy(c);
+  return true;
+}
+/** A hunting beast keeps track of you by sight (and scent up close); out of sight long enough, it goes to sniff where you were. */
+function track(c: Creature, dt: number, dist: number) {
+  cEye.set(c.p.x, c.p.y + 0.3, c.p.z);
+  const sight = c.kind === 'gnawer' ? 18 : c.kind === 'skitter' ? 28 : 22;
+  if (sense(c, cEye, c.heading, sight, dt, true)) { share(c.pack ?? [c], c); return; }
+  const m = mindOf(c);
+  if (m.lost > LOSE.creature && dist > 8 && m.last) {
+    if (c.kind === 'skitter') { c.state = 'roam'; c.home.set(m.last.x, c.home.y, m.last.z); return; }
+    c.state = 'investigate'; c.noiseAt = m.last.clone(); c.timer = 12;
+  }
+}
 
 function ravager(c: Creature, dt: number, to: THREE.Vector3, dist: number, safe: boolean) {
   const s = CREATURES.ravager, speed = s.speed + Math.min(1.5, c.level * 0.5);
@@ -385,7 +407,8 @@ function ravager(c: Creature, dt: number, to: THREE.Vector3, dist: number, safe:
       const back = c.home.clone().sub(c.p); back.y = 0;
       if (back.length() > 15) c.dir.copy(back);
       walk(c, c.dir.x, c.dir.z, 2, dt);
-      if (!safe && dist < 22 && rayWorld(c.p, to.clone().normalize(), dist) >= dist - 0.3) {
+      if (!safe && spots(c, 22, dt)) {
+        share(c.pack ?? [c], c);
         for (const m of c.pack ?? [c]) { m.state = 'hunt'; m.timer = 3 + Math.random() * 2; }
         if (c.pack && !alerted.has(c.pack)) { alerted.add(c.pack); logLine('Ravagers are hunting you!'); }
       }
@@ -414,7 +437,7 @@ function bramble(c: Creature, dt: number, to: THREE.Vector3, dist: number, safe:
   const s = CREATURES.bramble;
   c.timer -= dt;
   const angry = c.state === 'threat' || c.state === 'charge' || c.state === 'recover';
-  if (!angry && !safe && (dist < 11 || c.hurt)) { c.state = 'threat'; c.timer = 0.9; c.mat.color.setHex(HOSTILE); showToast('A Bramble charges!'); }
+  if (!angry && !safe && (dist < 11 * Math.min(1, targetVis()) + 2 || c.hurt)) { c.state = 'threat'; c.timer = 0.9; c.mat.color.setHex(HOSTILE); showToast('A Bramble charges!'); }
   switch (c.state) {
     case 'roam': // graze: amble a little, then stand
       if (c.timer <= 0) { c.dir.set(Math.random() - 0.5, 0, Math.random() - 0.5); c.timer = 3 + Math.random() * 4; }
@@ -467,7 +490,8 @@ function leechwing(c: Creature, dt: number, to: THREE.Vector3, dist: number, saf
     if (c.p.y < floor) { c.p.y = floor; if (c.dir.y < 0.1) c.dir.y = 0.1; }
     c.heading = Math.atan2(c.dir.x, c.dir.z); c.speed = speed;
   };
-  const seesPlayer = () => !safe && hd < SIGHT && rayWorld(c.p, to.clone().normalize(), dist) >= dist - 1;
+  // from above a crouched figure stands out less, but never as little as on the ground
+  const seesPlayer = () => !safe && hd < SIGHT * Math.max(0.6, Math.min(1.3, targetVis())) && rayWorld(c.p, to.clone().normalize(), dist) >= dist - 1;
   if (c.prey && !W.creatures.includes(c.prey)) c.prey = null; // someone else got it
   const target = c.prey ? c.prey.p : V(G.pos.x, G.pos.y + 1.1, G.pos.z);
   if (safe && !c.prey && (c.state === 'stalk' || c.state === 'dive')) { c.state = 'climb'; c.timer = 2; }
@@ -527,12 +551,13 @@ function leechwing(c: Creature, dt: number, to: THREE.Vector3, dist: number, saf
 }
 
 /** Ground creatures that heard something walk over to have a look; seeing the player there sets them off. */
-function investigate(c: Creature, dt: number, to: THREE.Vector3, dist: number, safe: boolean) {
+function investigate(c: Creature, dt: number, safe: boolean) {
   const n = c.noiseAt ?? c.home, s = CREATURES[c.kind];
   c.timer -= dt;
   walk(c, n.x - c.p.x, n.z - c.p.z, s.speed * 0.7, dt);
   const sight = c.kind === 'gnawer' ? 18 : 24;
-  if (!safe && dist < sight && rayWorld(c.p, to.clone().normalize(), dist) >= dist - 0.3) {
+  if (!safe && spots(c, sight * 1.2, dt)) {
+    share(c.pack ?? [c], c);
     for (const m of c.pack ?? [c]) { m.state = 'hunt'; m.timer = c.kind === 'ravager' ? 2 + Math.random() * 2 : Math.random() * 0.6; }
     return;
   }
@@ -554,7 +579,8 @@ function gnawer(c: Creature, dt: number, to: THREE.Vector3, dist: number, safe: 
       const back = c.home.clone().sub(c.p); back.y = 0;
       if (back.length() > 10) c.dir.copy(back);
       if (c.timer > 0.5) walk(c, c.dir.x, c.dir.z, 3.5, dt); else c.speed = 0; // scurry, stop, sniff
-      if (!safe && dist < 18 && rayWorld(c.p, to.clone().normalize(), dist) >= dist - 0.3) {
+      if (!safe && spots(c, 18, dt)) {
+        share(nest, c);
         for (const m of nest) { m.state = 'hunt'; m.timer = 0.2 + Math.random() * 0.8; }
         if (c.pack && !alerted.has(c.pack)) { alerted.add(c.pack); logLine('Gnawers! A whole nest of them!'); }
       }
@@ -592,7 +618,7 @@ function skitter(c: Creature, dt: number, to: THREE.Vector3, dist: number, safe:
     if (c.p.y < floor) { c.p.y = floor; if (c.dir.y < 0) c.dir.y = 0.2; }
     c.heading = Math.atan2(c.dir.x, c.dir.z); c.speed = speed;
   };
-  const sees = () => !safe && dist < 28 && rayWorld(c.p, to.clone().normalize(), dist) >= dist - 0.5;
+  const sees = () => !safe && spots(c, 28, 0.5);
   if (safe && c.state !== 'roam') { c.state = 'roam'; c.home.set(c.p.x, c.home.y, c.p.z); }
   switch (c.state) {
     case 'roam': {
@@ -715,7 +741,8 @@ export function updateCreatures(dt: number, time: number) {
     if (!c.cityPost && nearestPlayer(c.p.x, c.p.z) > (c.questId ? 240 : c.kind === 'leechwing' ? 220 : 130)) { removeCreature(c); continue; }
     withFoeTarget(c, () => {
       const to = V(G.pos.x, G.pos.y + 1.2, G.pos.z).sub(c.p), dist = to.length(), safe = !targetingFoe() && foeRules.playerSafe();
-      if (c.state === 'investigate' && (c.kind === 'ravager' || c.kind === 'bramble' || c.kind === 'gnawer')) investigate(c, dt, to, dist, safe);
+      if (!safe && (c.kind === 'ravager' || c.kind === 'gnawer' || c.kind === 'skitter') && (c.state === 'hunt' || c.state === 'dash' || c.state === 'retreat')) track(c, dt, dist);
+      if (c.state === 'investigate' && (c.kind === 'ravager' || c.kind === 'bramble' || c.kind === 'gnawer')) investigate(c, dt, safe);
       else if (c.kind === 'skitter') skitter(c, dt, to, dist, safe);
       else if (c.kind === 'lurker') lurker(c, dt, to, dist, safe);
       else if (c.kind === 'silverfin') silverfin(c, dt, to);

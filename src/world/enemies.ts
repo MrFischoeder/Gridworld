@@ -1,4 +1,6 @@
 // Drones, bosses (gate guardians and rare elites) and their projectiles.
+import { mindOf, sense, heard, spottedBy } from './stealth';
+import { STEALTH, LOSE } from '../gen/stealth';
 import { hurtPlayer } from './damage';
 import { remoteOf, hitOwner, setCombatHooks, stepRemoteP, withTarget, proxied, otherPlayers, hurtOther, boltOut, type CombatFoe } from './remote';
 import * as THREE from 'three';
@@ -91,9 +93,16 @@ function droneTurn(t: Drone, dt: number) {
   {
     const head = V(G.pos.x, G.pos.y + 1.2, G.pos.z), safe = foeRules.playerSafe();
     const to = head.clone().sub(t.p), dist = to.length(), sc = t.scout;
+    // a drone looks all round, but makes out a crouched, still or hidden target later; once it has lost you it
+    // flies to where it saw you last and gives up after a few seconds there
+    const m = mindOf(t), seen = !safe && sense(t, t.p, Math.atan2(to.x, to.z), sc ? sc.detect : 16, dt, t.chasing);
     if (safe) t.chasing = false; // the village: pursuers give up at the gate
-    else if (dist < (sc ? sc.detect : 16)) { const dir = to.clone().normalize(); if (rayWorld(t.p, dir, dist) >= dist - 0.01) t.chasing = true; }
-    if (t.chasing && dist > 1.1) droneMove(t, to.normalize().multiplyScalar(Math.min((sc ? sc.speed : 3.4) * dt, dist - 1.1)));
+    else if (!t.chasing && m.aware >= STEALTH.spotted) { t.chasing = true; if (!proxied()) spottedBy(t); }
+    if (t.chasing && !seen && m.lost > LOSE.drone) t.chasing = false;
+    if (t.chasing && !seen && m.lost > 0.5 && m.last) {
+      const l = V(m.last.x, m.last.y + 1.2, m.last.z).sub(t.p), ld = l.length();
+      if (ld > 0.6) droneMove(t, l.normalize().multiplyScalar(Math.min((sc ? sc.speed : 3.4) * 0.8 * dt, ld - 0.5)));
+    } else if (t.chasing && dist > 1.1) droneMove(t, to.normalize().multiplyScalar(Math.min((sc ? sc.speed : 3.4) * dt, dist - 1.1)));
     else if (sc && foeRules.ground) { // idle scouts drift back to hovering height
       const want = foeRules.ground(t.p.x, t.p.z) + 1.8;
       droneMove(t, V(0, Math.max(-dt, Math.min(dt, want - t.p.y)), 0));
@@ -107,7 +116,7 @@ function droneTurn(t: Drone, dt: number) {
 }
 
 // a shot close by sets field drones on the hunt
-onNoise((at, r) => { for (const t of W.drones) if (t.p.distanceTo(at) < (t.scout ? Math.min(r * 0.5, t.scout.lose) : r * 0.3)) t.chasing = true; });
+onNoise((at, r) => { for (const t of W.drones) if (t.p.distanceTo(at) < (t.scout ? Math.min(r * 0.5, t.scout.lose) : r * 0.3)) { heard(t, at, 0.8); t.chasing = true; } });
 
 // ---------- bosses ----------
 const BOSS_NAMES = ['WARDEN', 'GATEKEEPER', 'OVERSEER', 'SENTINEL PRIME'];
@@ -208,7 +217,7 @@ export function damageFoe(t: Foe, dmg: number, credit = true) {
   if (remoteOf(t)) { (t as { flash: number }).flash = 0.12; G.hitFlash = 0.15; hitOwner(t, dmg, !credit); return; } // another player's foe: their game reckons it
   if ('kind' in t) { if (t.kind === 'bandit') hurtBandit(t, dmg, credit); else if (t.kind === 'raider') hurtRaider(t, dmg); else if (t.kind === 'robot') hurtRobot(t, dmg, credit); else hurtCreature(t, dmg, credit); return; }
   if (t.boss) { t.hp -= dmg; t.flash = 0.1; t.engaged = true; G.hitFlash = 0.15; if (t.hp <= 0) killBoss(t); return; }
-  t.hp -= dmg; t.flash = 0.12; t.chasing = true; G.hitFlash = 0.15;
+  t.hp -= dmg; t.flash = 0.12; if (!t.chasing) heard(t, G.pos, 1); t.chasing = true; G.hitFlash = 0.15;
   if (t.hp <= 0) {
     const at = t.g.position.clone(); burst(at, 0xffb347, 26, 1.4);
     const n = 2 + (Math.random() < 0.5 ? 1 : 0); for (let i = 0; i < n; i++) dropCrystal(at);

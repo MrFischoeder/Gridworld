@@ -9,14 +9,15 @@
 // Like the creatures they are not saved. Where they turn up, and how many, is set by the danger level and the
 // shared threat budget (world/threat.ts): near the villages you meet none, further out ever heavier machines.
 import { hurtPlayer } from './damage';
-import { targetingFoe, stepRemote, withFoeTarget, hitCombatFoe, otherPlayers, hurtOther, nearestPlayer } from './remote';
+import { targetingFoe, proxied, stepRemote, withFoeTarget, hitCombatFoe, otherPlayers, hurtOther, nearestPlayer } from './remote';
 import * as THREE from 'three';
 import { scene, V, lineMat, add as addMat } from './render';
 import { G, W } from '../game';
 import { PropBatch, sharedFill } from './props';
 import { ROBOTS, ROBOT_COLOR, BEAM_COLOR, SHELL, type RobotKind } from '../data/robots';
+import { mindOf, sense, heard, share, spottedBy } from './stealth';
+import { STEALTH, LOSE } from '../gen/stealth';
 import { foeRules, makeDrone, type Drone } from './enemies';
-import { rayWorld } from './player';
 import { burst, addFx } from './fx';
 import { dropCrystal, dropPickup } from './loot';
 import { fireBolt, updateBolts } from './bandits';
@@ -288,8 +289,15 @@ export function spawnRobotNear(model: RobotKind, d = 25) {
 }
 
 // ---------- behaviour ----------
-onNoise((at, rad) => { for (const r of W.robots) if (r.state !== 'hunt' && r.p.distanceTo(at) < rad * 0.7) alert(r); });
-function alert(r: Robot) { for (const m of r.group.length ? r.group : [r]) if (m.state !== 'hunt') { m.state = 'hunt'; m.timer = 0; } }
+// a shot heard: the machines come to where it was fired from (they do not see you yet)
+onNoise((at, rad) => { for (const r of W.robots) if (r.p.distanceTo(at) < rad * 0.7) { heard(r, at, r.state === 'hunt' ? 1 : 0.7); if (r.state !== 'hunt') alert(r, at); } });
+/** The squad goes hunting; they share where the target is (`at`, else what this one knows, else here). */
+function alert(r: Robot, at?: THREE.Vector3) {
+  if (at || !mindOf(r).last) heard(r, at ?? G.pos, 1);
+  const group = r.group.length ? r.group : [r];
+  share(group, r);
+  for (const m of group) if (m.state !== 'hunt') { m.state = 'hunt'; m.timer = 0; }
+}
 
 function blocked(r: Robot, x: number, z: number) { return !env || (indoor ? !roomFor(r.model, x, z) : env.forbidden(x, z) || foeRules.blocked(V(x, 0, z))); }
 function walk(r: Robot, dx: number, dz: number, speed: number, dt: number) {
@@ -341,22 +349,40 @@ function updateShells(dt: number, time: number) {
   }
 }
 
+const robotEye = new THREE.Vector3();
 function think(r: Robot, dt: number, time: number) {
   const s = ROBOTS[r.model], to = V(G.pos.x - r.p.x, G.pos.y + 1.1 - r.p.y, G.pos.z - r.p.z), dist = Math.hypot(to.x, to.z), safe = !targetingFoe() && foeRules.playerSafe();
-  const sees = () => rayWorld(r.p, to.clone().normalize(), to.length()) >= to.length() - 0.5;
   r.timer -= dt; r.atkT -= dt;
   if (r.state === 'hunt' && (safe || dist > s.sight * 2.2)) r.state = 'return';
+  // its sensors: a crouched, still or hidden target is made out later, from behind much later
+  const m = mindOf(r), hunting = r.state === 'hunt';
+  robotEye.set(r.p.x, r.p.y + 0.5, r.p.z);
+  const seen = !safe && sense(r, robotEye, r.heading, s.sight * (r.state === 'return' ? 0.6 : 1), dt, hunting);
+  const sees = () => seen;
+  if (!hunting && !safe && m.aware >= STEALTH.spotted) { alert(r); if (!proxied() && !targetingFoe()) spottedBy(r); return; }
   if (r.state === 'patrol') {
+    if (m.aware >= 0.5 && m.last) { // a contact: it turns and walks over to scan it
+      const hx = m.last.x - r.p.x, hz = m.last.z - r.p.z;
+      if (Math.hypot(hx, hz) > 2) walk(r, hx, hz, s.speed * 0.4, dt);
+      face(r, hx, hz, dt, 2);
+      return;
+    }
     if (r.timer <= 0) { r.timer = 3 + Math.random() * 4; r.flank = Math.random() * 6.283; }
     const hx = r.home.x + Math.cos(r.flank) * 10 - r.p.x, hz = r.home.z + Math.sin(r.flank) * 10 - r.p.z;
     if (Math.hypot(hx, hz) > 1.5) { walk(r, hx, hz, s.speed * 0.35, dt); face(r, hx, hz, dt, 2); }
-    if (!safe && dist < s.sight && sees()) alert(r);
     return;
   }
   if (r.state === 'return') {
     const hx = r.home.x - r.p.x, hz = r.home.z - r.p.z;
     if (Math.hypot(hx, hz) > 2) { walk(r, hx, hz, s.speed * 0.6, dt); face(r, hx, hz, dt); } else r.state = 'patrol';
-    if (!safe && dist < s.sight * 0.6 && sees()) alert(r);
+    return;
+  }
+  if (seen) share(r.group.length ? r.group : [r], r);
+  else if (m.lost > 1) { // lost the target: sweep the spot it was last seen at, then go back
+    if (!m.last || m.lost > LOSE.robot) { r.state = 'return'; return; }
+    const hx = m.last.x - r.p.x, hz = m.last.z - r.p.z;
+    if (Math.hypot(hx, hz) > 2.5) { walk(r, hx, hz, s.speed * 0.7, dt); face(r, hx, hz, dt, 2); }
+    else { r.speed = 0; r.heading += dt * 1.6; }
     return;
   }
   // hunting
@@ -460,8 +486,9 @@ export function updateRobots(dt: number, time: number) {
 export function hurtRobot(r: Robot, dmg: number, credit = true) {
   const s = ROBOTS[r.model];
   r.hp -= dmg * s.armour; r.flash = 0.12; G.hitFlash = 0.15;
-  if (r.state !== 'hunt') alert(r);
-  if (r.hp > 0) return;
+  if (r.hp > 0) { alert(r, G.pos); return; }
+  // a silent kill: the rest of the squad close by come to scan the wreck, not you
+  for (const o of r.group) if (o !== r && o.state !== 'hunt' && o.p.distanceTo(r.p) < 30) heard(o, r.p, 0.75);
   const at = r.p.clone();
   burst(at, BEAM_COLOR, 14, 0.9);
   for (let i = 0; i < s.crystals; i++) dropCrystal(at);

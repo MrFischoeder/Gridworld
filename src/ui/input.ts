@@ -1,5 +1,6 @@
 import { gateTravelPending } from '../world/worldgates';
 // Keyboard and mouse. Pointer lock drives mouse look; losing it pauses the game.
+import { toggleCrouch, holdCrouch } from '../world/stealth';
 import { riding, rideSeat, toggleRideView } from '../world/ride';
 import { isPlacing, cancelPlacing } from '../world/claims';
 import { isBridgePlacing, cancelBridgePlacing } from '../world/bridges';
@@ -54,6 +55,8 @@ export function initInput(onPause: () => void) {
     if (e.code === 'Space') e.preventDefault();
     if (!G.playing) return;
     if (e.code === 'KeyE' && !e.repeat) interact();
+    if (e.code === 'KeyC' && !e.repeat && !G.fly && G.playing) toggleCrouch();
+    if ((e.code === 'ControlLeft' || e.code === 'ControlRight') && !G.fly && G.playing) { e.preventDefault(); holdCrouch(true); }
     if (e.code === 'KeyV' && driving.v) toggleCockpit();
     if (e.code === 'KeyV' && riding()) toggleRideView();
     if (e.code === 'KeyV' && inBoat()) toggleBoatView();
@@ -72,7 +75,9 @@ export function initInput(onPause: () => void) {
     if (e.code === 'KeyR' && !refuel()) reload();
     if (e.code === 'F3') { e.preventDefault(); el.perf.style.display = el.perf.style.display === 'block' ? 'none' : 'block'; }
   });
-  addEventListener('keyup', (e) => { G.keys[e.code] = false; });
+  addEventListener('keyup', (e) => { G.keys[e.code] = false; if (e.code === 'ControlLeft' || e.code === 'ControlRight') holdCrouch(false); });
+  // Ctrl crouches, and Ctrl+W would close the tab mid-game: while playing the browser asks first
+  addEventListener('beforeunload', (e) => { if (G.playing) { e.preventDefault(); e.returnValue = ''; } });
   addEventListener('wheel', () => { if (G.playing && !uiOpen() && armed()) swapWeapon(); }, { passive: true });
   renderer.domElement.addEventListener('click', () => { if (G.playing && !uiOpen() && !G.isTouch && !document.pointerLockElement) lockPointer(); });
   document.addEventListener('pointerlockchange', () => {

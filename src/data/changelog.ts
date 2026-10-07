@@ -3,6 +3,18 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.157.0', date: '2026-10-07', title: 'Sneaking', notes: [
+    'Crouch with C (toggle) or by holding Ctrl. Crouched you move at under half speed and cannot sprint, your view drops, and you are about half as easy to see. Space stands you up.',
+    'Foes no longer spot you the moment you enter their line of sight. Bandits, robots, beasts and drones notice you gradually. They see best straight ahead, poorly to the sides and hardly at all behind. Crouching, keeping still, darkness and fog all slow them down. Sprinting and gunfire speed them up.',
+    'Upright and walking, you are heard from 4 m away even from behind. Crouched, you can creep up on a foe from behind.',
+    'A meter under the crosshair shows how visible you are and how much the nearest foes have made out: unseen, something stirs, suspicious or spotted.',
+    'A suspicious bandit turns to look, then walks over to check. A robot scans the contact. Gunshots draw foes to where the shot came from, not straight to you. A suppressed gun is heard only close by.',
+    'Once a foe loses sight of you, it goes to where it last saw you and searches there. Bandits search for about 12 seconds and robots about 14. Beasts follow your trail for a few seconds before they lose it. After that they give up and go back. While any member of a group can see you, the whole group knows where you are.',
+    'Sneak attacks: a blow on a foe that has not noticed you does 3× damage, and a shot does 1.5×. A silent kill does not reveal you. The rest of the group come to look at the body.',
+    'Crouched behind cover, less of you can be hit, and bandits aim lower.',
+    'While you play, the browser asks before closing the tab, so Ctrl+W cannot close the game by accident.',
+    'Multiplayer: each player is as hidden as they are. Foes run by another player\'s game read your visibility and crouch from your state, and the others see you crouch. Players on a boat are drawn in their place on it again.',
+  ] },
   { v: '0.156.0', date: '2026-10-07', title: 'You pick things up yourself', notes: [
     'Nothing goes into your backpack by itself any more. Loot from kills, logs from felled trees, scrap and anything else on the ground stays there until you choose to take it.',
     'To pick something up, press E beside it. The prompt also tells you how many more things lie around you.',

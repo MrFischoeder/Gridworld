@@ -11,7 +11,7 @@ import { initItemTips } from './ui/itemtip';
 import { calcStats, saveChar, armoured } from './character';
 import { loadDungeon, loadOverworld, toVillage, saveOverworldPos, enterDungeon } from './world/level';
 import { updatePlayer, EYE } from './world/player';
-import { updateClimb } from './world/ladders';
+import { updateClimb, climbing } from './world/ladders';
 import { updateDoors, updateTrans } from './world/doors';
 import { updateDrones, updateBosses, updateOrbs, animateFoes, updateBossBar, foeRules, makeDrone, damageFoe } from './world/enemies';
 import { updateLoot } from './world/loot';
@@ -47,6 +47,7 @@ import { sky, horizon, updateSky, shapeHorizon } from './world/sky';
 import { MIN_PER_SEC, fmtClock } from './core/time';
 import { latitude } from './gen/regions';
 import { updateCreatures, spawnCreatureNear } from './world/creatures';
+import { updateStealth } from './world/stealth';
 import { updateBandits, spawnBanditsNear } from './world/bandits';
 import { updateRaiders, spawnRaiderNear, forceAmbush, raiders } from './world/raiders';
 import { updateTracker, boardOffers, accept, syncQuestWorld, refreshBoard } from './world/quests';
@@ -135,6 +136,9 @@ renderer.info.autoReset = false;
 let cinematic: typeof import('./ui/cinematic') | null = null;
 let last = performance.now(), perfT = 0, saveT = 0, clockT = 0;
 addEventListener('visibilitychange', () => { last = performance.now(); });
+/** How far the eye sinks when you crouch (eased). */
+const CROUCH_DROP = 0.6;
+let crouchDrop = 0;
 let benchT = 0; // workbenches in the wilds are synced about once a second
 function frame(now: number) {
   const elapsed = (now - last) / 1000;
@@ -189,6 +193,7 @@ function frame(now: number) {
     updateBossBar(boss);
     if (G.god) G.hp = G.S.maxHp;
     if (G.hp <= 0) { el.warp.style.opacity = '1'; toVillage('death'); }
+    updateStealth(dt, !driving.v && !riding() && !inBoat() && !G.swimming && !climbing() && !G.fly);
     updateLoot(dt, time); spinCarrier(time); updateEntities(dt, time);
     if (outdoors) {
       const name = placeName(G.pos.x, G.pos.z);
@@ -197,7 +202,7 @@ function frame(now: number) {
       if ((saveT -= dt) <= 0) { saveT = 3; saveOverworldPos(); }
     }
   } else { el.prompt.style.display = 'none'; el.bUse.classList.remove('on'); el.bossbar.style.display = 'none'; }
-  if (G.trans) updateTrans(dt, camera); else if (driving.v) vehicleCamera(camera); else if (riding()) rideCamera(camera); else if (inBoat()) boatCamera(camera); else camera.position.set(G.pos.x, G.pos.y + EYE, G.pos.z);
+  if (G.trans) updateTrans(dt, camera); else if (driving.v) vehicleCamera(camera); else if (riding()) rideCamera(camera); else if (inBoat()) boatCamera(camera); else { crouchDrop += ((G.crouch ? CROUCH_DROP : 0) - crouchDrop) * Math.min(1, dt * 10); camera.position.set(G.pos.x, G.pos.y + EYE - crouchDrop, G.pos.z); }
   camera.rotation.set(G.pitch, G.yaw, 0);
   updateWeather(dt, sky.visible);
   if (sky.visible) { sky.position.set(camera.position.x, camera.position.y - 20, camera.position.z); horizon.position.set(camera.position.x, 0, camera.position.z); shapeHorizon(camera.position.x, camera.position.z); updateSky(G.char.time, latitude(G.pos.z)); tintToxic(); updateFarPeaks(camera.position); } else farPeaks.visible = false;

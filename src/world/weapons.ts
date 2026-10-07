@@ -8,7 +8,8 @@ import { addFx, burst } from './fx';
 import { rayMountedTurret, damageMountedTurret } from './mountedturrets';
 import { rayWorld } from './player';
 import { vehicles, rayVehicle, damageVehicle, type Vehicle } from './vehicles';
-import { foes, damageFoe } from './enemies';
+import { foes, damageFoe, type Foe, type Drone } from './enemies';
+import { noteShot, unaware, sneakBonus } from './stealth';
 import { rayBarrier, hurtBarrier, rayRaider, type Raider } from './raiders';
 import { el } from '../ui/hud';
 import { gunOf, meleeOf, type GunLook, type MeleeLook } from '../data/weapons';
@@ -235,7 +236,22 @@ function ray(d: THREE.Vector3, dmg: number) {
   burst(end, hitT || turret ? 0xffb347 : 0x3dff6e, hitT || turret ? 10 : 6, hitT || turret ? 0.7 : 0.35);
   if (car) { damageVehicle(car, dmg); G.hitFlash = .15; }
   if (turret) damageMountedTurret(turret.gun, dmg);
-  if (hitT) damageFoe(hitT, dmg);
+  if (hitT) damageFoe(hitT, dmg * sneak(hitT, false));
+}
+/**
+ * A foe that has not made you out takes a sneak attack: ×3 from a blade, ×1.5 from a gun. Busy = already after you
+ * (a bandit fighting or fleeing, a robot hunting, a beast on the attack, a drone chasing, a boss engaged, any raider).
+ */
+let sneakTold = 0;
+function sneak(t: Foe, melee: boolean): number {
+  const s = (t as { state?: string }).state;
+  const busy = 'kind' in t
+    ? t.kind === 'raider' || (t.kind === 'bandit' ? s === 'fight' || s === 'flee' : t.kind === 'robot' ? s === 'hunt' : !(s === 'roam' || s === 'investigate'))
+    : 'boss' in t && t.boss ? t.engaged : (t as Drone).chasing;
+  if (!unaware(t, busy)) return 1;
+  const k = sneakBonus(melee), now = performance.now();
+  if (now - sneakTold > 600) { sneakTold = now; logLine(`Sneak attack! ×${k}`); }
+  return k;
 }
 function shoot() {
   const d = new THREE.Vector3(); camera.getWorldDirection(d);
@@ -245,7 +261,7 @@ function shoot() {
     const p = n > 1 ? d.clone().addScaledVector(right, (Math.random() - 0.5) * 2 * spread).addScaledVector(up, (Math.random() - 0.5) * 2 * spread).normalize() : d;
     ray(p, G.gun.dmg * G.S.bm);
   }
-  makeNoise(camera.position, G.gun.noise);
+  makeNoise(camera.position, G.gun.noise); noteShot();
 }
 /** A melee swing (a thrust with the spear): hits hard while you have the stamina for it; exhausted it is weak (and slow, see attack()). */
 function slash(tired: boolean) {
@@ -265,7 +281,7 @@ function slash(tired: boolean) {
     const v = t.g.position.clone().sub(o), dist = v.length();
     if (dist > reach + (t.r || 0.5)) continue;
     if (v.normalize().dot(f) < Math.cos(wide)) continue;
-    burst(t.g.position.clone(), 0xc8ffd6, tired ? 6 : 14, tired ? 0.5 : 0.9); damageFoe(t, m.dmg * G.S.mm * (tired ? BLADE.tiredDmg : 1));
+    burst(t.g.position.clone(), 0xc8ffd6, tired ? 6 : 14, tired ? 0.5 : 0.9); damageFoe(t, m.dmg * G.S.mm * (tired ? BLADE.tiredDmg : 1) * sneak(t, true));
   }
 }
 export function attack() {

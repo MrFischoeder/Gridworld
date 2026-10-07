@@ -5,6 +5,7 @@ import { getOff } from './ride';
 import { myBoatSpot, boatPoint } from './boats';
 import * as THREE from 'three';
 import { G } from '../game';
+import { myVis } from './stealth';
 import { scene } from './render';
 import { makeFigure, textSprite, type Figure } from './npc';
 import { poseRig, type Kit } from './rig';
@@ -58,7 +59,7 @@ let sendT = 0;
 export function flushPeerState(moving = false) {
   if (!net.id) return;
   sendT = SEND_EVERY;
-  const s: PeerState = { p: [G.pos.x, G.pos.y, G.pos.z], yaw: G.yaw, pitch: G.pitch, loc: myLoc(), held: G.char.hands[0]?.k ?? '', mv: moving && G.playing, away: !G.playing, cars: myCars(), carIds: myCarList().map(v => v.st.id), ride: ride.on ? [ride.on.owner, ride.on.idx, ride.on.seat] : undefined, gun: ride.on ? ride.gun : undefined, boat: myBoatSpot() };
+  const s: PeerState = { p: [G.pos.x, G.pos.y, G.pos.z], yaw: G.yaw, pitch: G.pitch, loc: myLoc(), held: G.char.hands[0]?.k ?? '', mv: moving && G.playing, away: !G.playing, cars: myCars(), carIds: myCarList().map(v => v.st.id), ride: ride.on ? [ride.on.owner, ride.on.idx, ride.on.seat] : undefined, gun: ride.on ? ride.gun : undefined, boat: myBoatSpot(), vis: Math.round(myVis() * 100) / 100, cr: G.crouch || undefined };
   sendState(s, isHost() ? G.char.time : undefined);
 }
 /** Every frame: send where you are now and then, and draw the others. */
@@ -86,9 +87,11 @@ export function updatePeers(dt: number, moving: boolean) {
     const seated = here === 'o' && (!!e.cars?.some((c) => c[8]) || !!e.ride);
     if (seated !== a.seated) { a.seated = seated; for (const o of a.f.g.children) if (o !== a.label) o.visible = !seated; }
     if (seated) continue;
-    a.phase += dt * (s.mv ? 9 : 0);
-    const sw = s.mv ? Math.sin(a.phase) * 0.5 : 0;
-    a.f.legL.rotation.x = sw; a.f.legR.rotation.x = -sw;
+    a.phase += dt * (s.mv ? (s.cr ? 5 : 9) : 0);
+    const sw = s.mv ? Math.sin(a.phase) * (s.cr ? 0.3 : 0.5) : 0;
+    // crouched: lower, knees bent forward
+    if (s.cr) a.f.g.position.y -= 0.45;
+    a.f.legL.rotation.x = sw + (s.cr ? -1.1 : 0); a.f.legR.rotation.x = -sw + (s.cr ? -1.1 : 0);
     poseRig(a.f.rig, { swing: sw, aim: a.kit === 'rifle' || a.kit === 'pistol' ? Math.max(0, Math.min(1, 0.5 - s.pitch)) : 0 });
   }
 }

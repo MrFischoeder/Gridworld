@@ -2,6 +2,8 @@
 // Unsaved (like drones and creatures) except that a cleared camp stays empty for a while (char.camps).
 import { hurtPlayer } from './damage';
 import { targetingFoe, actingFoe, combatFoes, factionOf, hitCombatFoe, type CombatFoe, stepRemote, withFoeTarget, proxied, otherPlayers, hurtOther, boltOut, spawnAuthority, nearestPlayer } from './remote';
+import { mindOf, sense, heard, share, spottedBy, aimHeight } from './stealth';
+import { STEALTH, LOSE } from '../gen/stealth';
 import { hostile, shotSphere } from '../core/factions';
 import * as THREE from 'three';
 import { onNoise } from './noise';
@@ -10,7 +12,7 @@ import { G, W } from '../game';
 import { makeFigure, textSprite, type Figure } from './npc';
 import { poseRig, muzzleLocal, type Kit } from './rig';
 import { foeRules } from './enemies';
-import { rayWorld, emptyAt } from './player';
+import { emptyAt } from './player';
 import { burst } from './fx';
 import { dropCrystal, dropPickup, rollAmmo, LOOT_GUNS } from './loot';
 import { saveChar, gainXp } from '../character';
@@ -32,7 +34,7 @@ export interface Bandit {
   g: THREE.Group; fig: Figure; mat: THREE.LineBasicMaterial;
   p: THREE.Vector3; heading: number; speed: number; r: number;
   hp: number; maxHp: number; flash: number;
-  state: 'idle' | 'fight' | 'flee' | 'return'; timer: number; fireT: number; burst: number; strafe: number; hitT: number;
+  state: 'idle' | 'fight' | 'flee' | 'return' | 'search'; timer: number; fireT: number; burst: number; strafe: number; hitT: number;
   home: THREE.Vector3; campId?: number; group: Bandit[]; level: number; fled: boolean;
   /** How far they notice the player while waiting (ambushers lie low and wait until you are close). */
   sight: number;
@@ -66,7 +68,7 @@ export function spawnBandit(role: BanditRole, at: THREE.Vector3, level: number, 
   const b: Bandit = {
     kind: 'bandit', role, g, fig, mat, p: at.clone(), heading: Math.random() * 6.28, speed: 0, r: 0.55,
     hp, maxHp: hp, flash: 0, state: 'idle', timer: Math.random() * 3, fireT: 1 + Math.random(), burst: 0, strafe: Math.random() < 0.5 ? 1 : -1, hitT: 0,
-    home: at.clone(), campId, group, level, fled: false, sight: 34, recoil: 0, blow: false,
+    home: at.clone(), campId, group, level, fled: false, sight: 40, recoil: 0, blow: false,
   };
   group.push(b); W.bandits.push(b);
   return b;
@@ -111,11 +113,27 @@ function walk(b: Bandit, dx: number, dz: number, speed: number, dt: number) {
 function face(b: Bandit, dx: number, dz: number, dt: number) {
   let dh = Math.atan2(dx, dz) - b.heading; dh = Math.atan2(Math.sin(dh), Math.cos(dh)); b.heading += dh * Math.min(1, dt * 8);
 }
-export function alert(b: Bandit) {
-  for (const m of b.group) if (m.state === 'idle' || m.state === 'return') { m.state = 'fight'; m.timer = 0; }
+/** The whole group goes for the target: they call out where it is (`at`, else where this one last saw it, else here). */
+export function alert(b: Bandit, at?: THREE.Vector3) {
+  const m0 = mindOf(b);
+  if (at || !m0.last) heard(b, at ?? G.pos, 1);
+  m0.aware = Math.max(m0.aware, 1);
+  share(b.group, b);
+  for (const m of b.group) if (m.state === 'idle' || m.state === 'return' || m.state === 'search') { m.state = 'fight'; m.timer = 0; }
 }
-// gunfire nearby: bandits (who know what a shot sounds like) come for the shooter; ambushers keep lying low
-onNoise((at, r) => { for (const b of W.bandits) if (b.sight > 20 && b.p.distanceTo(at) < r * 0.8) alert(b); });
+/** Something worth a look at `at`: they go there carefully and search (not straight for you). */
+function search(b: Bandit, at: THREE.Vector3, how = 0.6) {
+  heard(b, at, how);
+  if (b.state === 'idle' || b.state === 'return' || b.state === 'search') { b.state = 'search'; b.timer = LOSE.bandit; }
+}
+// gunfire nearby: bandits (who know what a shot sounds like) come to see where it came from; ambushers keep lying low.
+// Already fighting, they now know where you shot from. A suppressed gun is heard only close by.
+onNoise((at, r) => {
+  for (const b of W.bandits) {
+    if (b.sight <= 20 || b.p.distanceTo(at) >= r * 0.8) continue;
+    if (b.state === 'fight' || b.state === 'flee') heard(b, at, 1); else search(b, at, 0.7);
+  }
+});
 function fire(b: Bandit) {
   b.recoil = 1;
   b.fig.g.updateMatrixWorld(true);
@@ -125,7 +143,7 @@ function fire(b: Bandit) {
 /** A bolt from `muzzle` at the player (with spread for distance and the player's speed). */
 export function fireBolt(muzzle: THREE.Vector3, dmg: number, color = BANDIT) {
   // at you: at the driver's seat when you are driving (the whole vehicle absorbs it, updateBolts)
-  const target = driving.v && !proxied() ? seatPoint(driving.v, driving.seat) : V(G.pos.x, G.pos.y + 1.1, G.pos.z), dist = target.distanceTo(muzzle);
+  const target = driving.v && !proxied() ? seatPoint(driving.v, driving.seat) : V(G.pos.x, G.pos.y + aimHeight(), G.pos.z), dist = target.distanceTo(muzzle);
   const spread = 0.035 * dist + Math.hypot(G.vel.x, G.vel.z) * 0.1;
   target.x += (Math.random() - 0.5) * spread; target.y += (Math.random() - 0.5) * spread * 0.5; target.z += (Math.random() - 0.5) * spread;
   const v = target.sub(muzzle).normalize().multiplyScalar(30);
@@ -141,7 +159,7 @@ export function ghostBolt(p: THREE.Vector3, v: THREE.Vector3, color: number) {
   bolts.push({ m, p: p.clone(), v: v.clone(), dmg: 0, life: 3, ghost: true });
 }
 export function updateBolts(dt: number) {
-  const body0 = V(G.pos.x, G.pos.y + 0.3, G.pos.z), body1 = V(G.pos.x, G.pos.y + 1.6, G.pos.z);
+  const body0 = V(G.pos.x, G.pos.y + 0.3, G.pos.z), body1 = V(G.pos.x, G.pos.y + (G.crouch ? 1.05 : 1.6), G.pos.z); // crouched behind cover, less of you to hit
   for (let i = bolts.length - 1; i >= 0; i--) {
     const o = bolts[i]; o.life -= dt;
     const step = o.v.length() * dt, dir = o.v.clone().normalize(), walled = !!G.rayBlock && G.rayBlock(o.p, dir, step) < step; // fast bolts skip thin walls otherwise
@@ -178,20 +196,37 @@ export function updateBolts(dt: number) {
   }
 }
 
+const eye = new THREE.Vector3();
 function think(b: Bandit, dt: number, time: number) {
   const to = V(G.pos.x - b.p.x, G.pos.y + 1.1 - b.p.y, G.pos.z - b.p.z), dist = to.length(), safe = !targetingFoe() && foeRules.playerSafe();
-  const sees = () => rayWorld(b.p, to.clone().normalize(), dist) >= dist - 0.4;
   b.timer -= dt; b.fireT -= dt; b.hitT -= dt;
   if (b.state !== 'return' && (safe || dist > 75)) { b.state = 'return'; }
+  // what it makes of you: crouched, still, in the dark or the fog it takes longer, and from behind much longer
+  const m = mindOf(b), fighting = b.state === 'fight' || b.state === 'flee';
+  eye.set(b.p.x, b.p.y + 0.65, b.p.z);
+  const seen = !safe && sense(b, eye, b.heading, b.sight * (b.state === 'search' ? 1.25 : b.state === 'return' ? 0.75 : 1), dt, fighting);
+  const sees = () => seen;
+  if (!fighting && !safe && m.aware >= STEALTH.spotted) { alert(b); if (!proxied() && !targetingFoe()) spottedBy(b); }
   switch (b.state) {
     case 'idle':
-      b.speed = 0; b.heading += Math.sin(time * 0.4 + b.home.x) * dt * 0.4;
-      if (!safe && dist < b.sight && sees()) alert(b);
+      b.speed = 0;
+      if (m.aware >= STEALTH.suspicious && m.last) { // "huh?": turn to look, and go and see if it does not go away
+        face(b, m.last.x - b.p.x, m.last.z - b.p.z, dt * 0.6);
+        if (m.aware >= 0.6) search(b, m.last, m.aware);
+      } else b.heading += Math.sin(time * 0.4 + b.home.x) * dt * 0.4;
       break;
     case 'return': {
       const h = b.home.clone().sub(b.p); h.y = 0;
       if (h.length() > 1) { walk(b, h.x, h.z, 3, dt); face(b, h.x, h.z, dt); } else b.state = 'idle';
-      if (!safe && dist < 25 && sees()) alert(b);
+      if (m.aware >= 0.6 && m.last && !safe) search(b, m.last, m.aware);
+      break;
+    }
+    case 'search': { // careful steps to where it saw or heard you, then a look round; gives up after a while
+      const l = m.last;
+      if (!l || b.timer <= 0) { b.state = 'return'; break; }
+      const hx = l.x - b.p.x, hz = l.z - b.p.z;
+      if (Math.hypot(hx, hz) > 2) { walk(b, hx, hz, 2.8, dt); face(b, hx, hz, dt); }
+      else { b.speed = 0; b.heading += Math.sin(time * 0.9 + b.home.z) * dt * 1.4; }
       break;
     }
     case 'flee':
@@ -199,6 +234,12 @@ function think(b: Bandit, dt: number, time: number) {
       if (b.timer <= 0) b.state = 'fight';
       break;
     case 'fight': {
+      if (seen) share(b.group, b); // they call out where you are
+      else if (m.lost > 1.5) { // lost you: to where you were last seen, and search there
+        b.state = 'search'; b.timer = LOSE.bandit;
+        break;
+      }
+      if (!seen && m.last) to.set(m.last.x - b.p.x, m.last.y + 1.1 - b.p.y, m.last.z - b.p.z); // where they think you are
       face(b, to.x, to.z, dt);
       if (b.role === 'bruiser') {
         if (dist > 1.5) walk(b, to.x, to.z, 6.2, dt);
@@ -332,7 +373,10 @@ export function hurtBandit(b: Bandit, dmg: number, credit = true) {
   // a raised shield takes half of what comes from the front
   if (b.fig.rig.shield && Math.cos(Math.atan2(G.pos.x - b.p.x, G.pos.z - b.p.z) - b.heading) > 0.5) dmg *= 0.5;
   b.hp -= dmg; b.flash = 0.12; G.hitFlash = 0.15;
-  alert(b);
+  if (b.hp > 0) alert(b, G.pos);
+  else for (const o of b.group) { // a silent kill: those near enough to see it fall come to look, they do not know where you are
+    if (o !== b && o.p.distanceTo(b.p) < 25 && o.state !== 'fight' && o.state !== 'flee') search(o, b.p, 0.75);
+  }
   if (b.hp > 0) {
     if (!b.fled && b.role !== 'leader' && b.hp < b.maxHp * 0.3 && Math.random() < 0.5) { b.fled = true; b.state = 'flee'; b.timer = 3 + Math.random() * 2; }
     return;

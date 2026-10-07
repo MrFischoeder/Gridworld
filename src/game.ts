@@ -66,6 +66,8 @@ export const G = {
   stamina: 100, exhausted: false, effortT: 0,
   /** How hard the body works this frame (1 = at rest; data/survival BURN), set by the player's movement. */
   activity: 1,
+  /** Crouching (C toggles, Ctrl held): slower, lower and harder to see (world/stealth.ts). */
+  crouch: false,
   gun: { ...BLASTER.base } as GunStats, ammo: BLASTER.base.mag, reloadT: 0, aiming: false, touchAim: false,
   hitFlash: 0, dmgFlash: 0,
 };

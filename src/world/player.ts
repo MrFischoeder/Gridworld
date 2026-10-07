@@ -1,4 +1,5 @@
 // Player movement: AABB against voxels, gravity and jumping.
+import { STEALTH } from '../gen/stealth';
 import { environmentalDamage } from './damage';
 import * as THREE from 'three';
 import { stepFloor, stepHit, boxRay } from '../core/steps';
@@ -137,10 +138,10 @@ export function updatePlayer(dt: number): boolean {
   // sprinting and swimming cost stamina; out of breath you can only walk (and swim slowly)
   // a heavy pack slows you down (and burns more); overloaded you cannot run or jump
   const L = load(), over = L.state === 'over';
-  const wantSprint = (keys.ShiftLeft || keys.ShiftRight) && m > 0.1 && !G.swimming && !over;
+  const wantSprint = (keys.ShiftLeft || keys.ShiftRight) && m > 0.1 && !G.swimming && !over && !G.crouch;
   const sprint = wantSprint && drainStamina(STAMINA.sprint * (L.state === 'heavy' ? 1.4 : 1), dt);
   const swimTired = G.swimming && m > 0.1 && !drainStamina(STAMINA.swim, dt);
-  const speed = (sprint ? 9 : 6) * G.S.speed * loadSpeed(L.kg) * (G.swimming ? (swimTired ? 0.25 : 0.45) : wet > 0.45 ? 0.65 : 1);
+  const speed = (sprint ? 9 : 6) * G.S.speed * loadSpeed(L.kg) * (G.swimming ? (swimTired ? 0.25 : 0.45) : wet > 0.45 ? 0.65 : 1) * (G.crouch && !G.swimming ? STEALTH.crouchSpeed : 1);
   G.activity = m < 0.1 || G.trans ? 1 : sprint ? BURN.sprint : G.swimming ? BURN.swim : BURN.walk;
   const fw = V(-Math.sin(G.yaw), 0, -Math.cos(G.yaw)), rt = V(Math.cos(G.yaw), 0, -Math.sin(G.yaw));
   const want = fw.multiplyScalar(f * speed).addScaledVector(rt, s * speed);
@@ -153,7 +154,8 @@ export function updatePlayer(dt: number): boolean {
     const target = w.level - SWIM_DEPTH - 0.05;
     vel.y += ((target - pos.y) * 5 - vel.y) * Math.min(1, dt * 6);
   } else {
-    if ((keys.Space || G.touchJump) && G.onGround && !over && spendStamina(STAMINA.jump)) { vel.y = JUMP * (wet > 0.45 ? 0.6 : 1); G.onGround = false; burn(BURN.jump); }
+    if ((keys.Space || G.touchJump) && G.onGround && !over && G.crouch) G.crouch = false; // Space stands you up
+    else if ((keys.Space || G.touchJump) && G.onGround && !over && spendStamina(STAMINA.jump)) { vel.y = JUMP * (wet > 0.45 ? 0.6 : 1); G.onGround = false; burn(BURN.jump); }
     vel.y -= GRAV * dt;
   }
   const was = G.onGround, yPrev = pos.y;

@@ -17,7 +17,9 @@ export interface PeerState { p: [number, number, number]; yaw: number; pitch: nu
   /** Riding in another player's vehicle: [owner id, the vehicle's index in their cars, seat]; `gun` = where they aim its cannon. */
   ride?: [number, number, number]; gun?: number;
   /** On one of the boats: [boat id, u along it, v across, height of the feet over its waterline, seat (-1 on a ship's deck)]. */
-  boat?: [string, number, number, number, number] }
+  boat?: [string, number, number, number, number];
+  /** Sneaking: how visible they are (world/stealth.ts myVis; the foes their turn is against read it) and whether they crouch. */
+  vis?: number; cr?: boolean }
 export interface Peer {
   id: number; name: string;
   /** The last two states and when they came: the drawing eases between them. */
@@ -206,7 +208,7 @@ export function connect(url: string, me: { name: string; world: number; time: nu
           const p = net.peers.get(s.id);
           if (!p) continue;
           if (p.st && (p.st.loc !== s.loc || Math.hypot(p.st.p[0] - s.p[0], p.st.p[2] - s.p[2]) > 80)) p.hist = [];
-          p.prev = p.st; p.st = { p: s.p, yaw: s.yaw, pitch: s.pitch, loc: s.loc, held: s.held, mv: s.mv, away: !!s.away, cars: Array.isArray(s.cars) ? s.cars : [], carIds: s.carIds, ride: Array.isArray(s.ride) ? s.ride : undefined, gun: typeof s.gun === 'number' ? s.gun : undefined }; p.at = now;
+          p.prev = p.st; p.st = { p: s.p, yaw: s.yaw, pitch: s.pitch, loc: s.loc, held: s.held, mv: s.mv, away: !!s.away, cars: Array.isArray(s.cars) ? s.cars : [], carIds: s.carIds, ride: Array.isArray(s.ride) ? s.ride : undefined, gun: typeof s.gun === 'number' ? s.gun : undefined, boat: Array.isArray(s.boat) ? s.boat : undefined, vis: typeof s.vis === 'number' ? s.vis : undefined, cr: !!s.cr }; p.at = now;
           p.hist.push({ t: now, s: p.st }); if (p.hist.length > 8) p.hist.shift();
         }
         if (!isHost()) h.clock(m.time);
