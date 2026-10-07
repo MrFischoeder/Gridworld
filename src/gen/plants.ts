@@ -44,8 +44,8 @@ export interface PlantSpec {
 export const PLANTS: Record<PlantKind, PlantSpec> = {
   // ---- tier 1: anyone can build them ----
   sawmill: { name: 'Sawmill', blurb: 'saws timber into lumber, and logs into planks for building', batch: 30,
-    // (0.165: logs into planks appended, so lumber keeps recipe 0; a log gives 5 planks here, 3 by hand)
-    recipes: [{ in: [['timber', 1]], out: ['lumber', 1] }, { in: [['log', 2]], out: ['planks', 10] }],
+    // (0.165: logs into planks appended, so lumber keeps recipe 0; 0.170: a log gives 6 planks here, like a settlement's sawmill, 4 by hand)
+    recipes: [{ in: [['timber', 1]], out: ['lumber', 1] }, { in: [['log', 2]], out: ['planks', 12] }],
     needs: [['planks', 32], ['stone', 10], ['scrap', 6]], fee: 350, xp: 90 },
   brickworks: { name: 'Brickworks', blurb: 'fires clay into bricks in a coal kiln', batch: 45,
     recipes: [{ in: [['clay', 2], ['coal', 1]], out: ['bricks', 2] }],

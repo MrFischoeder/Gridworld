@@ -27,6 +27,7 @@ import { nearFogLocker, fogLocker } from './toxic';
 import { nearGuide, talkGuide, GUIDE } from './guide';
 import { FOG_SITE } from '../gen/toxic';
 import { isFieldPlacing, confirmFieldPlacing, fieldPlacingHint, fieldPlacingOk } from './fields';
+import { sawingHint } from './sawing';
 import { nearBridgeSign, built as bridgeBuilt, isBridgePlacing, confirmBridgePlacing, bridgePlacingHint, bridgePlacingOk } from './bridges';
 import { openBridge } from '../ui/bridge';
 import { nearPierSign, nearPierCrate, pierCrate, isPierPlacing, confirmPierPlacing, pierPlacingHint, pierPlacingOk } from './piers';
@@ -212,6 +213,8 @@ export function updateEntities(dt: number, time: number) {
   if (bth !== null) { prompt.className = ''; prompt.textContent = bth; prompt.style.display = G.playing ? 'block' : 'none'; }
   const phint = pierPlacingHint();
   if (phint !== null) { prompt.className = pierPlacingOk() ? '' : 'lock'; prompt.textContent = phint; prompt.style.display = G.playing && phint ? 'block' : 'none'; }
+  const shint = sawingHint();
+  if (shint !== null) { prompt.className = ''; prompt.textContent = shint; prompt.style.display = G.playing ? 'block' : 'none'; }
   const fhint = fieldPlacingHint();
   if (fhint !== null) { prompt.className = fieldPlacingOk() ? '' : 'lock'; prompt.textContent = fhint; prompt.style.display = G.playing && fhint ? 'block' : 'none'; }
   const bhint = bridgePlacingHint();

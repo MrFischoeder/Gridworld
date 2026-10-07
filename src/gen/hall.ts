@@ -8,7 +8,7 @@
 //   unvisited village needs no state (it starts from a hashed fill); old saves' industry storehouse carries over.
 // Every build of the village (farms, the power plant, works, walls, the blacksmith's orders) draws on the stock
 // (`stockOf`): the hold first, then its own goods.
-import { progressive, projectDone, resourceYield } from './settlement';
+import { progressive, projectDone, resourceYield, sawLevel, SAW } from './settlement';
 import { hash } from '../core/rng';
 import { ITEMS, BULK, type ItemKey } from '../data/items';
 import type { TownState } from './town';
@@ -146,6 +146,20 @@ export function cargoVehicleInside(rect: { x0: number; x1: number; z0: number; z
   return at.x - hx > rect.x0 + .15 && at.x + hx < rect.x1 - .15 && at.z - hz > rect.z0 + .15 && at.z + hz < rect.z1 - .15;
 }
 
+/** (0.170) The settlement's sawmill cuts logs from the village stock into planks in the hold, `SAW.logs` a batch of
+ *  `SAW.batch` minutes, scaled by its crew and the power it got. Returns the planks cut. */
+export function sawStock(world: number, v: Poi, seed: number, s: TownState, now: number): number {
+  const lv = sawLevel(s);
+  if (!progressive(s) || !lv) return 0;
+  const prev = s.settlement!.sawnAt ?? now, batches = Math.max(0, Math.floor((now - prev) / SAW.batch));
+  if (!batches) { s.settlement!.sawnAt = prev; return 0; }
+  s.settlement!.sawnAt = prev + batches * SAW.batch;
+  const st = stockOf(world, v, seed, s, now), hands = fillOf(s, workersAt(seed, v.id === GRIDHOLM_ID, s, now), 'sawmill'), pw = sitePower(world, v, seed, s, now);
+  const per = SAW.perLog[lv], logs = Math.min(Math.floor(batches * SAW.logs * hands * pw), st.has('log'), Math.floor(holdRoom(s, 'planks') / per));
+  if (logs <= 0) return 0;
+  const got = st.take('log', logs);
+  return deposit(s, 'planks', got * per);
+}
 /** New settlement refineries consume actual stock, including crude produced while the village was unloaded. */
 export function refineStock(world: number, v: Poi, seed: number, s: TownState, now: number): number {
   if (!progressive(s) || !projectDone(s, 'refinery')) return 0;

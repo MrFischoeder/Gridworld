@@ -71,7 +71,7 @@ function spotOf(vid: number, s: TownState, j: Job): { x: number; z: number; w: n
     case 'project': {
       if (a === 'warehouse') return P({ x: (VEHICLE_HALL.x0 + VEHICLE_HALL.x1) / 2, z: (VEHICLE_HALL.z0 + VEHICLE_HALL.z1) / 2 }, 22, 22);
       if (a === 'power') return P(powerSite(seed), 10, 8);
-      const r = RESOURCE_PLOTS[a as keyof typeof RESOURCE_PLOTS];
+      const r = RESOURCE_PLOTS[(a === 'sawmill2' || a === 'sawmill3' ? 'sawmill' : a) as keyof typeof RESOURCE_PLOTS];
       return r ? P(r, 16, 12) : null;
     }
   }

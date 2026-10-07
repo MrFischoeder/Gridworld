@@ -11,7 +11,7 @@ import { farmProblem } from '../src/gen/farms';
 import type { TownState } from '../src/gen/town';
 
 const world = 12345, villages = allVillages(world), home = villages.find(v => v.id === GRIDHOLM_ID)!;
-const developed = (ore?: 'iron' | 'copper'): TownState => ({ farms: 2, settlement: { v: 1, supplies: true, deposits: { ore, oil: false }, done: { comms: true, warehouse: true, power: true } } });
+const developed = (ore?: 'iron' | 'copper'): TownState => ({ farms: 2, settlement: { v: 1, supplies: true, deposits: { ore, oil: false }, done: { comms: true, warehouse: true, power: true, sawmill: true } } });
 describe('village extraction landmarks', () => {
   it('gives every settlement exactly one resource of its own, deterministically, and the refinery to all (0.168)', () => {
     const c = newChar(); c.world = world; initializeSettlements(c);

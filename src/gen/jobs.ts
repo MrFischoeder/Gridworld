@@ -32,6 +32,7 @@ export function finishJob(world: number, v: Poi, s: TownState, j: Job, now: numb
       ({ built, stage } = completeProject(s, a as Project));
       if (built && a === 'power') { s.fixed = now; s.hurt = 0; }
       if (built && a === 'refinery') s.settlement!.refinedAt = now;
+      if (built && a === 'sawmill') s.settlement!.sawnAt = now;
       break;
     }
   }

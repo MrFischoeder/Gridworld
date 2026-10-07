@@ -1,7 +1,7 @@
 // Physical new-world deposits and the surface receiver console at a real nearby ruin.
 import * as THREE from 'three';
 import { G, W } from '../game';
-import { RESOURCE_PLOTS, PROJECTS, progressive, projectDone, projectAvailable, depositsOf, linkRuin, tutorialStep, sideStep, isStation, stationStage, STATION_RANGE } from '../gen/settlement';
+import { RESOURCE_PLOTS, PROJECTS, progressive, projectDone, projectAvailable, depositsOf, linkRuin, tutorialStep, sideStep, sawLevel, isStation, stationStage, STATION_RANGE } from '../gen/settlement';
 import { ORES } from '../gen/resource-sites';
 import { resourceRockHit, resourceRockFloor } from '../gen/resource-rocks';
 import type { RockShape } from '../gen/rockshape';
@@ -31,7 +31,7 @@ let oilClock = 0;
 interface Hand { f: Figure; x: number; z: number; face: number; phase: number }
 interface Crew { id: number; yard: string; T: Terrain; hands: Hand[]; got: number }
 const crews = new Map<number, Crew[]>();
-const KIT: Record<string, Kit> = { quarry: 'pick', mine: 'pick', lumber: 'hammer', oil: 'hammer', refinery: 'hammer', foodworks: 'carry' };
+const KIT: Record<string, Kit> = { quarry: 'pick', mine: 'pick', lumber: 'hammer', oil: 'hammer', refinery: 'hammer', foodworks: 'carry', sawmill: 'carry' };
 const WORKER = 0xdce8ff;
 /** Where a yard's hands stand: [x offset of the work's middle, radius, first angle] (yard-local; they go round from there). */
 const YARD_RING: Record<string, [number, number, number]> = { quarry: [-4, 12.5, 1.7], mine: [0, 8, 1.6], lumber: [0, 8, 0.4], oil: [0, 4.2, 0.8], refinery: [0, 5.5, 1.2], foodworks: [-1, 8.5, 1.9] };
@@ -136,6 +136,17 @@ export function drawSettlementSites(vm: VillageMap, T: Terrain, id: number): THR
       for (let i = 0; i < 4; i++) { const a = i * Math.PI / 2 + 0.4; pb.seg(SAIL, hub, [hub[0] + Math.cos(a) * 4.2, hub[1] + Math.sin(a) * 4.2, hub[2]]); pb.seg(SAIL, [hub[0] + Math.cos(a) * 1.2, hub[1] + Math.sin(a) * 1.2, hub[2]], [hub[0] + Math.cos(a + 0.25) * 4, hub[1] + Math.sin(a + 0.25) * 4, hub[2]]); }
       box(x - 1, y, z + 6, x + 2, y + 6.5, z + 9, METAL); pb.cone(x + 0.5, y + 6.5, z + 7.5, 2.1, 1.4, METAL);
       for (let i = 0; i < 4; i++) box(x + 3 + (i % 2) * 0.9, y, z + 5.5 + (i >> 1) * 0.9, x + 3.8 + (i % 2) * 0.9, y + 0.5, z + 6.3 + (i >> 1) * 0.9, 0xd8d0a0);
+    } else if (k === 'sawmill') {
+      // (0.170) an open saw shed on posts, the saw bench, a log deck and stacked planks; circular saws (2), band-saw motors (3)
+      const lv = sawLevel(s);
+      for (const dx of [-6, 6]) for (const dz of [-4, 4]) box(x + dx - .15, y, z + dz - .15, x + dx + .15, y + 4.2, z + dz + .15, WOOD);
+      pb.gableRoof(x - 7, z - 5, x + 7, z + 5, y + 4.2, 1.6, WOOD);
+      box(x - 5, y, z - .6, x + 4, y + .9, z + .6, WOOD); // the saw bench
+      box(x - 1.2, y + .9, z - .9, x - .9, y + 2.6, z + .9, METAL); // the frame saw
+      for (let i = 0; i < 4; i++) box(x - 12, y + i * .5, z - 3 + i * .2, x - 8, y + i * .5 + .45, z + 3 - i * .2, WOOD); // the log deck
+      for (let i = 0; i < 3; i++) box(x + 8, y + i * .2, z - 2, x + 11, y + i * .2 + .18, z + 2, 0xd8c890); // planks
+      if (lv >= 2) pb.cone(x + 1.5, y + .9, z, .9, .08, METAL); // a circular saw's disc
+      if (lv >= 3) { box(x + 2.5, y, z + 1.2, x + 3.8, y + 1.3, z + 2.4, METAL); box(x + 2.8, y + 1.3, z - .9, x + 3.5, y + 3.6, z + .9, METAL); } // the band saw and its motor
     } else {
       for (const dx of [-3, 3]) box(x + dx - 1, y, z - 2, x + dx + 1, y + 6, z + 2, METAL);
       box(x - .7, y, z - .7, x + .7, y + 9, z + .7, METAL);

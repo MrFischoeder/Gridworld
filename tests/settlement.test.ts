@@ -59,6 +59,8 @@ describe('new settlements and frozen saves', () => {
     expect(rest.taken).toEqual([['scrap', 9], ['wire', 8], ['circuit', 2]]);
     expect(buildProject(s, 'power', () => 999)).toMatchObject({ taken: [], built: false });
     expect(sideStep(s)?.project).toBe('comms'); expect(projectProblem(s, 'comms')).toBe('');
+    expect(tutorialStep(s)?.project).toBe('sawmill'); // (0.170) the sawmill runs on the power
+    expect(buildProject(s, 'sawmill', () => 999).built).toBe(true);
     expect(tutorialStep(s)?.project).toBe('warehouse');
     expect(projectProblem(s, 'quarry')).toMatch(/warehouse/); expect(mechanicHere(s)).toBe(false);
     for (const k of ['warehouse', 'quarry', 'mine', 'lumber', 'oil', 'refinery'] as const) {
@@ -152,7 +154,7 @@ describe('the start village\'s radar and communications station (0.149, document
     s.farms = 2;
     expect(S.tutorialStep(s)!.project).toBe('power');
     expect(S.projectProblem(s, 'comms')).toMatch(/power/); expect(S.sideStep(s)).toBeNull();
-    s.settlement.done = { power: true };
+    s.settlement.done = { power: true, sawmill: true };
     expect(S.sideStep(s)!.project).toBe('comms'); expect(S.projectProblem(s, 'comms')).toBe('');
     expect(S.tutorialStep(s)!.project).toBe('warehouse');
     for (let i = 0; i < S.STATION_STAGES.length; i++) {

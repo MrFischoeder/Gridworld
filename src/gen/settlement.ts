@@ -7,13 +7,15 @@ import { villageDeposits, quarryMineral, brine, ORES, YARD_KINDS, type Deposits,
 import { startJob, jobOf } from './construction';
 export { RESOURCE_PLOTS } from './resource-sites';
 
-export type Project = 'warehouse' | 'power' | 'comms' | 'quarry' | 'mine' | 'lumber' | 'oil' | 'refinery' | 'foodworks' | 'relay';
+export type Project = 'warehouse' | 'power' | 'comms' | 'quarry' | 'mine' | 'lumber' | 'oil' | 'refinery' | 'foodworks' | 'relay' | 'sawmill' | 'sawmill2' | 'sawmill3';
 export interface SettlementState {
   v: 1;
   done?: Partial<Record<Project, boolean>>;
   given?: Partial<Record<Project, Partial<Record<ItemKey, number>>>>;
   supplies?: boolean;
   refinedAt?: number;
+  /** (0.170) When the sawmill last settled its batches (game minutes). */
+  sawnAt?: number;
   deposits?: Deposits;
   /** (0.149, document 04) The start village's satellite link is the big radar and communications station a few km out
    * (`STATION_STAGES`, `stage` = stages done), restored after the first vehicle (`car`: someone in this world has one). */
@@ -33,6 +35,9 @@ export const PROJECTS: Record<Project, { name: string; needs: [ItemKey, number][
   lumber: { name: 'Lumber camp', needs: [['planks', 24], ['stone', 10], ['scrap', 8]], description: 'Build a woodcutters\' camp in the great grove. The giant trees there are too big to fell, but the crews take timber from them for good: logs every day, and you may cut them yourself once the camp stands. Saw the logs into planks by hand or at a sawmill.' },
   oil: { name: 'Oil well', needs: [['scrap', 16], ['wire', 8], ['planks', 12]], description: 'Build a pump at the natural oil seep. Crude oil collects in village stock.' },
   refinery: { name: 'Oil refinery', needs: [['scrap', 24], ['circuit', 4], ['wire', 12], ['planks', 18]], description: 'Build a refinery north of the village. It turns crude oil from the village stores into fuel: crude from our own well if we have one, or crude you bring from the oil villages. Fuel sells for far more than crude.' },
+  sawmill: { name: 'Sawmill', needs: [['planks', 20], ['stone', 8], ['scrap', 6], ['wire', 4]], description: 'Build a powered sawmill on the staked plot north-west of the village. Its frame saw cuts logs from the village stores into planks: 6 from a log, where a hand saw gets 4. It runs on electricity and needs a crew of three.' },
+  sawmill2: { name: 'Sawmill: circular saws', needs: [['scrap', 12], ['parts', 2], ['wire', 6], ['planks', 10]], description: 'Fit the sawmill with circular saws: 7 planks from a log, and it takes more power.' },
+  sawmill3: { name: 'Sawmill: band saws', needs: [['motor', 2], ['parts', 3], ['steel', 4], ['cable', 4]], description: 'Fit band saws driven by electric motors: 8 planks from a log, the best a sawmill can do. It draws the most power.' },
   relay: { name: 'Relay mast', needs: [['scrap', 12], ['wire', 10], ['circuit', 4], ['planks', 16], ['gears', 2]], description: 'Raise a relay mast over the receiver. The satellites talk to it on their own passes, so orbital scans round this village come apart from the rest of the world and reach further.' },
   foodworks: { name: 'Food processing house', needs: [['planks', 40], ['stone', 10], ['nails', 16], ['scrap', 6]], description: 'Build a mill, a bakery, a dairy and a smokehouse on the staked plot about 100 metres south-west of the village. While its crew works, grain, potatoes, milk and meat feed a third more people, so the same fields keep a bigger village.' },
 };
@@ -85,6 +90,9 @@ export function projectProblem(s: TownState | undefined, k: Project): string {
   // link is a side task once the power plant stands
   if (k === 'comms') return projectDone(s, 'power') ? '' : 'Build the village power plant first.';
   if (k === 'power') return (s?.farms ?? 0) >= 2 ? '' : 'Build two farms first.';
+  if (k === 'sawmill') return projectDone(s, 'power') ? '' : 'Build the village power plant first: the sawmill runs on electricity.';
+  if (k === 'sawmill2') return projectDone(s, 'sawmill') && projectDone(s, 'warehouse') ? '' : 'Build the sawmill and the warehouse first.';
+  if (k === 'sawmill3') return projectDone(s, 'sawmill2') ? '' : 'Fit the circular saws first.';
   if (k === 'warehouse') return projectDone(s, 'power') ? '' : 'Build the village power plant first.';
   if (k === 'quarry' || k === 'mine' || k === 'lumber' || k === 'oil') return projectDone(s, 'warehouse') ? '' : 'Build the warehouse first.';
   if (k === 'refinery') return projectDone(s, 'warehouse') ? '' : 'Build the warehouse first.';
@@ -178,10 +186,20 @@ export function tutorialStep(s: TownState | undefined): { title: string; text: s
   // it (`sideStep`), and Kuba the mechanic turns up once the village digs its own goods (`mechanicHere`)
   if (!(s?.farms ?? 0)) return { title: 'Build the first farm', text: 'Bring 16 planks and 6 stones to the village stores (saw logs into planks with a saw) and ask me to build a farm. Its field will grow wheat: grain for bread. It feeds new families even without electricity.', farm: 1 };
   if ((s?.farms ?? 0) < 2) return { title: 'Build the second farm', text: 'A second farm, and this one keeps hens: eggs, and a little meat. Two kinds of food keep the families healthy.', farm: 2 };
-  for (const k of ['power', 'warehouse', 'quarry', 'lumber', 'mine', 'oil'] as Project[]) if (projectAvailable(s, k) && !projectDone(s, k)) return { title: PROJECTS[k].name, text: k === 'warehouse' ? 'Until now I have kept the village stores in my hall, and it is full to the rafters. ' + PROJECTS[k].description : PROJECTS[k].description, project: k };
+  for (const k of ['power', 'sawmill', 'warehouse', 'quarry', 'lumber', 'mine', 'oil'] as Project[]) if (projectAvailable(s, k) && !projectDone(s, k)) return { title: PROJECTS[k].name, text: k === 'warehouse' ? 'Until now I have kept the village stores in my hall, and it is full to the rafters. ' + PROJECTS[k].description : PROJECTS[k].description, project: k };
   if ((s?.farms ?? 0) < 3) return { title: 'Build the third farm', text: 'Finish the food supply for our growing settlement.', farm: 3 };
   if (!projectDone(s, 'foodworks')) return { title: PROJECTS.foodworks.name, text: PROJECTS.foodworks.description, project: 'foodworks' };
   return { title: 'A thriving settlement', text: 'Our homes, farms and industry are restored. You can now expand the village with advanced works and improvements.' };
+}
+/** (0.170) The sawmill's level (0 = none) and the planks it cuts from a log; a log sawn by hand gives `HAND_PLANKS`. */
+export const sawLevel = (s: TownState | undefined) => (projectDone(s, 'sawmill3') ? 3 : projectDone(s, 'sawmill2') ? 2 : projectDone(s, 'sawmill') ? 1 : 0);
+export const SAW = { perLog: [0, 6, 7, 8], kw: [0, 15, 25, 40], batch: 30, logs: 2 };
+export const HAND_PLANKS = 4;
+/** Builds beside the tutorial that every village may take on (shown by the elder under the step): the refinery, the sawmill's next saws. */
+export function optionalProjects(s: TownState | undefined): Project[] {
+  if (!progressive(s) || !projectDone(s, 'warehouse')) return [];
+  const saw = (['sawmill2', 'sawmill3'] as Project[]).find((k) => !projectDone(s, k) && !projectProblem(s, k));
+  return [...(projectDone(s, 'refinery') ? [] : ['refinery' as Project]), ...(saw ? [saw] : [])];
 }
 /** The side task beside the tutorial: the village's satellite link (the start village's big station), once its power plant stands. */
 export function sideStep(s: TownState | undefined): { title: string; text: string; project: Project } | null {

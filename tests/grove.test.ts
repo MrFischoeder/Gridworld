@@ -32,7 +32,7 @@ describe('great groves and planks', () => {
     expect(resourceYield(s).log).toBeGreaterThan(0);
     expect(PROJECTS.lumber.name).toBe('Lumber camp');
     expect(PLANTS.sawmill.recipes[0].out[0]).toBe('lumber'); // (kept at index 0)
-    expect(PLANTS.sawmill.recipes[1]).toEqual({ in: [['log', 2]], out: ['planks', 10] });
+    expect(PLANTS.sawmill.recipes[1]).toEqual({ in: [['log', 2]], out: ['planks', 12] });
   });
   it('builds want planks, not logs; logs already handed over count as planks', () => {
     for (const p of Object.values(PROJECTS)) expect(p.needs.some(([k]) => k === 'log'), p.name).toBe(false);

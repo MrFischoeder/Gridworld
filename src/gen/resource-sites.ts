@@ -63,6 +63,8 @@ export const RESOURCE_PLOTS = {
   oil: { x: 36, z: -105 }, refinery: { x: 72, z: -116 },
   // (0.142) south-west, clear of the quarry, the farm corners and the side sites
   foodworks: { x: -80, z: 140 },
+  // (0.170) north-west, the powered sawmill
+  sawmill: { x: -80, z: -80 },
 } as const;
 export type ResourceProject = keyof typeof RESOURCE_PLOTS;
 export const RESOURCE_YARD = { halfX: 18, halfZ: 14 };

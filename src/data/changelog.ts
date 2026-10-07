@@ -3,6 +3,12 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.170.0', date: '2026-10-07', title: 'The sawmill', notes: [
+    'Sawing by hand is now slow work: about 15 seconds a log, and a log gives 4 planks. Stay where you are while you saw: walking off stops the work. The prompt shows how far along you are.',
+    'In a new world the elder asks for a sawmill right after the power plant. It runs on electricity, needs a crew of three and cuts logs from the village stores into planks in the stores: 6 planks from a log.',
+    'Once the warehouse stands, the sawmill can be fitted with circular saws (7 planks a log) and then with band saws driven by electric motors (8 planks a log). Each step draws more power. The elder offers them beside the village\'s own work.',
+    'The Sawmill works also give 6 planks a log now (was 5).',
+  ] },
   { v: '0.169.0', date: '2026-10-07', title: 'The village deposits', notes: [
     'A new mix of village resources in new worlds: quarries 30%, great groves 25%, mines 30%, oil wells 15%.',
     'A quarry now digs one mineral besides its stone: limestone, clay or quartz sand, for cement, bricks and glass.',

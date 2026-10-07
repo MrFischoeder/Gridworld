@@ -1,6 +1,6 @@
 import { G } from '../game';
 import { addItem, gainXp, saveChar, calcStats } from '../character';
-import { PROJECTS, projectPlan, projectProblem, projectDone, buildProject, tutorialStep, linkRuin, progressive, depositsOf, isStation, stationStage, STATION_STAGES, STATION_TEXT, satelliteUp, RELAY, sideStep, FIRST_CROPS, type Project } from '../gen/settlement';
+import { PROJECTS, projectPlan, projectProblem, projectDone, buildProject, tutorialStep, linkRuin, progressive, depositsOf, isStation, stationStage, STATION_STAGES, STATION_TEXT, satelliteUp, RELAY, sideStep, FIRST_CROPS, optionalProjects, type Project } from '../gen/settlement';
 import { poisNear, CHUNK, wrapDx } from '../gen/regions';
 import { CROPS } from '../gen/farms';
 import { discover } from '../save';
@@ -51,10 +51,10 @@ export function developmentHTML(vid: number, head: string, msg = '', atComms = f
   // (D2) once the receiver works and the satellites answer, its console can raise a relay mast
   const relayOpen = atComms && !big && projectDone(s, 'comms') && !projectDone(s, 'relay');
   // (0.168) the refinery is open to every village once its warehouse stands, beside the tutorial
-  const extra = !atComms && step.project !== 'refinery' && projectDone(s, 'warehouse') && !projectDone(s, 'refinery') ? ['refinery'] : [];
+  const extra = atComms ? [] : optionalProjects(s).filter((k) => k !== step.project);
   const keys = (atComms ? (relayOpen ? ['relay'] : ['comms']) : [...(step.project ? [step.project] : []), ...extra]) as Project[];
   for (const k of keys) {
-    if (extra.includes(k)) h += '<div class="say" style="color:var(--gold)">Open to you beside our own work:</div>';
+    if (k === extra[0]) h += '<div class="say" style="color:var(--gold)">Open to you beside our own work:</div>';
     if (k === 'comms' && big) {
       const n = stationStage(s), st = STATION_STAGES[Math.min(n, STATION_STAGES.length - 1)];
       h += `<h3>Radar and communications station</h3><div class="say">${STATION_TEXT}<br>${STATION_STAGES.map((x, i) => `<span style="color:${i < n ? 'var(--xp)' : i === n ? 'var(--txt)' : '#6a8a70'}">${i + 1}. ${x.title}${i < n ? ' ✓' : ''}</span>`).join(' · ')}${n < STATION_STAGES.length ? `<br><b>${st.title}.</b> ${st.text}` : ''}</div>`;
