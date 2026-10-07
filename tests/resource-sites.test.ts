@@ -81,7 +81,7 @@ describe('village extraction landmarks', () => {
     const c = newChar(); c.world = world;
     c.towns[target.id] = { own: { copper: { n: 9, t: 1000 }, coal: { n: 7, t: 1000 } }, settlement: { v: 1, done: { mine: true }, given: { oil: { scrap: 5 } } } };
     const loaded = loadChar({ getItem: k => k === SAVE_KEY ? JSON.stringify(c) : null }); initializeSettlements(loaded);
-    const s = loaded.towns[target.id]; expect(s.settlement!.deposits).toEqual({ kinds: ['mine', 'oil'], v: 3, ore: 'iron', oil: true, grove: false, salt: brine(world, target.id) }); // the mine built stays, the oil well begun keeps its ground expect(s.settlement!.given!.oil!.scrap).toBe(5);
+    const s = loaded.towns[target.id]; expect(s.settlement!.deposits).toEqual({ kinds: ['mine', 'oil'], v: 3, ore: 'iron', oil: true, grove: false, salt: brine(world, target.id), rares: villageDeposits(world, target.id).rares }); // the mine built stays, the oil well begun keeps its ground expect(s.settlement!.given!.oil!.scrap).toBe(5);
     const stock = stockOf(world, target, villageSeed(world, target), s, 1100); expect(stock.ownOf('copper')).toBe(9); expect(stock.ownOf('coal')).toBe(7);
     const copy = JSON.parse(JSON.stringify(loaded)); initializeSettlements(copy); expect(copy.towns[target.id]).toEqual(s);
   });
@@ -98,5 +98,23 @@ describe('village extraction landmarks', () => {
     expect(resourceRockFloor(s, 0, 6, 0)).toBeCloseTo(6); expect(resourceRockHit(s, 0, 6, 0, .3)).toBe(false);
     expect(resourceRockHit(s, 0, 3, 0, .3)).toBe(true); expect(resourceRockFloor(s, 30, 8, 0)).toBe(-Infinity);
     for (let x = -3; x <= 3; x += .1) { const h = resourceRockFloor(s, x, Infinity, 0); if (Number.isFinite(h)) expect(resourceRockHit(s, x, h, 0, .3)).toBe(false); }
+  });
+});
+describe('the deep mine (0.175)', () => {
+  it('stands over a rare deposit only, needs a drill rig and brings the rare ore up daily', async () => {
+    const { PROJECTS, projectAvailable, projectProblem, resourceYield, DEEP } = await import('../src/gen/settlement');
+    const withRare = villages.find((v) => villageDeposits(world, v.id).rares!.length);
+    const without = villages.find((v) => v.id !== GRIDHOLM_ID && !villageDeposits(world, v.id).rares!.length)!;
+    expect(withRare).toBeTruthy(); expect(villageDeposits(world, GRIDHOLM_ID).rares).toEqual([]);
+    expect(PROJECTS.raremine.needs.some(([k]) => k === 'drillrig')).toBe(true);
+    const town = (vid: number, done: Record<string, boolean>): TownState => ({ settlement: { v: 1, deposits: villageDeposits(world, vid), done } });
+    expect(projectAvailable(town(without.id, {}), 'raremine')).toBe(false);
+    const s = town(withRare!.id, { power: true });
+    expect(projectAvailable(s, 'raremine')).toBe(true); expect(projectProblem(s, 'raremine')).toMatch(/warehouse/);
+    s.settlement!.done!.warehouse = true; expect(projectProblem(s, 'raremine')).toBe('');
+    s.settlement!.done!.raremine = true;
+    const y = resourceYield(s), rares = villageDeposits(world, withRare!.id).rares!;
+    expect(Object.keys(y).filter((k) => rares.includes(k as never)).length).toBe(rares.length);
+    expect(rares.reduce((a, r) => a + (y[r] ?? 0), 0)).toBeCloseTo(DEEP.rate);
   });
 });

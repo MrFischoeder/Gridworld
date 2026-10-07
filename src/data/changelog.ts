@@ -3,6 +3,12 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.175.0', date: '2026-10-07', title: 'The deep mine', notes: [
+    'A new settlement in a new world that stands over a rare deposit (bauxite, sulfur, lithium, rare earths, uranium, nickel, chromite, rutile or platinum ore) can sink a Deep Mine once its warehouse stands. The elder names the deposit and offers it beside the village\'s own work.',
+    'It takes a Drill Rig from the Heavy Engineering Works, steel, cable, cement and planks, and 16 hours of building on its plot south-east of the village.',
+    'It brings up 6 crates a day into the village stores, shared between the village\'s deposits. It draws 40 kW and needs a crew of four.',
+    'Drawn as a steel headframe over the shaft with its sheave wheel, a winding house, the drill rig and an ore bin. The daily share of rare ore from the elder stays as it was.',
+  ] },
   { v: '0.174.0', date: '2026-10-07', title: 'Heavy machinery', notes: [
     'A new works for the top of the metal ladder: the Heavy Engineering Works. It wants the plans for Heavy Machinery, found on an old data carrier 3 to 8 km from Gridholm, and draws 100 kW.',
     'It builds Drill Rigs (4 steel, 2 gears, an electric motor and 2 pipes): heavy machines for boring into the deep rare deposits, which the next update puts to work.',

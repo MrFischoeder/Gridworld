@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { G, W } from '../game';
 import { RESOURCE_PLOTS, PROJECTS, progressive, projectDone, projectAvailable, depositsOf, linkRuin, tutorialStep, sideStep, sawLevel, isStation, stationStage, STATION_RANGE } from '../gen/settlement';
 import { ORES } from '../gen/resource-sites';
+import { RARE_NAME } from '../gen/deposits';
 import { resourceRockHit, resourceRockFloor } from '../gen/resource-rocks';
 import type { RockShape } from '../gen/rockshape';
 import { naturalResource, oilSeep, animateOil, type OilMotion } from './resource-props';
@@ -31,7 +32,7 @@ let oilClock = 0;
 interface Hand { f: Figure; x: number; z: number; face: number; phase: number }
 interface Crew { id: number; yard: string; T: Terrain; hands: Hand[]; got: number }
 const crews = new Map<number, Crew[]>();
-const KIT: Record<string, Kit> = { quarry: 'pick', mine: 'pick', lumber: 'hammer', oil: 'hammer', refinery: 'hammer', foodworks: 'carry', sawmill: 'carry' };
+const KIT: Record<string, Kit> = { quarry: 'pick', mine: 'pick', lumber: 'hammer', oil: 'hammer', refinery: 'hammer', foodworks: 'carry', sawmill: 'carry', raremine: 'pick' };
 const WORKER = 0xdce8ff;
 /** Where a yard's hands stand: [x offset of the work's middle, radius, first angle] (yard-local; they go round from there). */
 const YARD_RING: Record<string, [number, number, number]> = { quarry: [-4, 12.5, 1.7], mine: [0, 8, 1.6], lumber: [0, 8, 0.4], oil: [0, 4.2, 0.8], refinery: [0, 5.5, 1.2], foodworks: [-1, 8.5, 1.9] };
@@ -147,13 +148,25 @@ export function drawSettlementSites(vm: VillageMap, T: Terrain, id: number): THR
       for (let i = 0; i < 3; i++) box(x + 8, y + i * .2, z - 2, x + 11, y + i * .2 + .18, z + 2, 0xd8c890); // planks
       if (lv >= 2) pb.cone(x + 1.5, y + .9, z, .9, .08, METAL); // a circular saw's disc
       if (lv >= 3) { box(x + 2.5, y, z + 1.2, x + 3.8, y + 1.3, z + 2.4, METAL); box(x + 2.8, y + 1.3, z - .9, x + 3.5, y + 3.6, z + .9, METAL); } // the band saw and its motor
+    } else if (k === 'raremine') {
+      // (0.175) the deep mine: a steel headframe over the shaft with its sheave wheel, the winding house, the drill rig's derrick, an ore bin
+      for (const dx of [-2, 2]) for (const dz of [-2, 2]) pb.seg(METAL, [x + dx, y, z + dz], [x + dx * .35, y + 12, z + dz * .35]);
+      for (const h of [4, 8]) { const k2 = 1 - h / 12 * .65; pb.line(METAL, [x - 2 * k2, y + h, z - 2 * k2], [x + 2 * k2, y + h, z - 2 * k2], [x + 2 * k2, y + h, z + 2 * k2], [x - 2 * k2, y + h, z + 2 * k2], [x - 2 * k2, y + h, z - 2 * k2]); }
+      { const pts: number[][] = []; for (let i = 0; i <= 12; i++) { const a = i / 12 * 6.283; pts.push([x + Math.cos(a) * 1.3, y + 12 + Math.sin(a) * 1.3, z]); } pb.line(METAL, ...pts); }
+      box(x - 1.6, y, z - 1.6, x + 1.6, y + .5, z + 1.6, METAL); // the shaft collar
+      box(x + 6, y, z - 3, x + 12, y + 4, z + 3, WOOD); pb.gableRoof(x + 5.6, z - 3.4, x + 12.4, z + 3.4, y + 4, 1.4, WOOD); // the winding house
+      pb.seg(METAL, [x + 6, y + 3.5, z], [x, y + 12, z]); // the hoist rope over the sheave
+      for (const [dx, dz] of [[-1.1, -1.1], [1.1, -1.1], [1.1, 1.1], [-1.1, 1.1]]) pb.seg(METAL, [x - 9 + dx, y, z + 6 + dz], [x - 9, y + 9, z + 6]); // the drill rig
+      pb.seg(METAL, [x - 9, y + 9, z + 6], [x - 9, y, z + 6]);
+      box(x - 4, y, z - 9, x + 1, y + 2.4, z - 6, METAL); // the ore bin
     } else {
       for (const dx of [-3, 3]) box(x + dx - 1, y, z - 2, x + dx + 1, y + 6, z + 2, METAL);
       box(x - .7, y, z - .7, x + .7, y + 9, z + .7, METAL);
       const oil = RESOURCE_PLOTS.oil; pb.line(METAL, [x + 3, y + .5, z], [vm.ox + oil.x, y + .5, z], [vm.ox + oil.x, y + .5, vm.oz + oil.z]);
     }
     if (built) crew.push(yardCrew(grp, T, id, k, x, z));
-    const label = k === 'mine' && ore ? ORES[ore].name + ' · ' + ORES[ore].symbol : PROJECTS[k].name;
+    const rares = depositsOf(s).rares ?? [];
+    const label = k === 'mine' && ore ? ORES[ore].name + ' · ' + ORES[ore].symbol : k === 'raremine' && rares.length ? 'Deep mine · ' + rares.map((r) => RARE_NAME[r]).join(', ') : PROJECTS[k].name;
     const sign = textSprite(label.toUpperCase() + (built ? ' · WORKING SITE' : ' · CONSTRUCTION SITE'), k === 'mine' && ore ? '#' + ORES[ore].color.toString(16).padStart(6, '0') : '#ffd060', 5);
     sign.position.set(x, T.heightAt(x, z + 13) + 2.2, z + 13); grp.add(sign);
   }

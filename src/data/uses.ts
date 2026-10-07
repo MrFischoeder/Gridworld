@@ -1,5 +1,6 @@
 // Where each item is used, straight from the game's data (the same index as SUROWCE.md, in English): the item
 // tooltip (ui/itemtip.ts) lists it under "Used for". Pure; built once on first use.
+import { PROJECTS, type Project } from '../gen/settlement';
 import { ITEMS, type ItemKey } from './items';
 import { ORDERS } from './orders';
 import { GARAGE } from './garage';
@@ -46,6 +47,7 @@ function build(): Map<ItemKey, Map<UseGroup, string[]>> {
   for (const k of Object.keys(STATIONS) as StationKind[]) for (const [i] of STATIONS[k].needs) use(i, 'Building', STATIONS[k].name);
   for (const [i] of INDUSTRY.refinery.build ?? []) use(i, 'Building', 'Village refinery');
   for (const [i] of FARM.needs) use(i, 'Building', 'Farm');
+  for (const k of Object.keys(PROJECTS) as Project[]) for (const [i] of PROJECTS[k].needs) use(i, 'Building', `New settlements: ${PROJECTS[k].name}`); // (0.175: the deep mine's drill rig among them)
   for (const [i] of UPGRADE.needs) use(i, 'Building', 'Steel ploughs');
   for (const l of PLANT_LEVELS.slice(1)) for (const [i] of l.needs) use(i, 'Building', `Power plant: ${l.name}`);
   for (const k of IMPROVE_KINDS) for (const [i] of IMPROVE[k].needs) use(i, 'Building', `Village improvement: ${IMPROVE[k].name}`);

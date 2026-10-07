@@ -5,6 +5,7 @@ import { poisNear, CHUNK, wrapDx } from '../gen/regions';
 import { CROPS } from '../gen/farms';
 import { discover } from '../save';
 import { ORES, MINERAL_NAME } from '../gen/resource-sites';
+import { RARE_NAME } from '../gen/deposits';
 import { findPoi, villageSeed, worldDist, GRIDHOLM_ID } from '../gen/regions';
 import { settleOwn, anchorNew, hallStands } from '../gen/hall';
 import { ITEMS, type ItemKey } from '../data/items';
@@ -40,7 +41,8 @@ export function developmentHTML(vid: number, head: string, msg = '', atComms = f
       : k === 'mine' && d.ore ? `${ORES[d.ore].name.toLowerCase()} (${ORES[d.ore].symbol}) in a rocky hollow · south: a mine there digs it`
       : k === 'oil' ? `oil seeping out of the ground · north: an oil well there pumps crude${d.salt ? ', and its brine is boiled into salt' : ''}` : '';
     const own = kinds.map(line).filter(Boolean);
-    h += `<div class="say">${own.length ? `Our land's own ${own.length > 1 ? 'resources' : 'resource'}, about 100 m beyond the fence: ${own.join(';<br>')}.<br>` : ''}Every village digs two things of its own. The rest comes by trade: logs, stone, ore and crude from the villages that dig them. Processing is open to all of us: logs sawn into planks, crude refined into fuel, and later ore smelted into metal. Processed goods sell for far more than raw ones.</div>`;
+    if (d.rares?.length) own.push(`deep under the ground ${d.rares.map((r) => RARE_NAME[r]).join(' and ')}, rare in these parts · south-east: a deep mine with a drill rig could bring it up`);
+    h += `<div class="say">${own.length ? `Our land's own ${own.length > 1 ? 'resources' : 'resource'}, about 100 m beyond the fence: ${own.join(';<br>')}.<br>` : ''}Every village digs two things of its own (and a few stand over a rare deposit). The rest comes by trade: logs, stone, ore and crude from the villages that dig them. Processing is open to all of us: logs sawn into planks, crude refined into fuel, and later ore smelted into metal. Processed goods sell for far more than raw ones.</div>`;
   }
   if (step.farm) h += `<button class="opt" data-o="farms">Build the next farm${step.farm <= FIRST_CROPS.length ? ` (${CROPS[FIRST_CROPS[step.farm - 1]].name.toLowerCase()})` : ''}</button>`;
   // (0.167) the side task: the satellite link, once the power plant stands; handed over at its console out there

@@ -17,6 +17,7 @@ import { profileOf, type Good } from './market';
 import { production, industryOf, industryProject } from './industry';
 import { farmYield, eatenShare, FOOD } from './farms';
 import { fillOf } from './workforce';
+import { isRare } from './deposits';
 import { sitePower, farmPower } from './energy';
 import { staffing, peopleAt, workersAt } from './people';
 import { GRIDHOLM_ID } from './regions';
@@ -117,7 +118,7 @@ export function stockOf(world: number, v: Poi, seed: number, s: TownState | unde
 }
 /** The hands at the yard that yields k (a settlement's quarry, sawmill, mine or oil well). */
 function yardFill(s: TownState | undefined, workers: number, k: ItemKey): number {
-  const yard = k === 'stone' || k === 'limestone' || k === 'clay' || k === 'sand' ? 'quarry' : k === 'log' || k === 'timber' || k === 'lumber' ? 'lumber' : k === 'crude' || k === 'salt' ? 'oil' : k === 'fuel' ? 'refinery' : 'mine';
+  const yard = k === 'stone' || k === 'limestone' || k === 'clay' || k === 'sand' ? 'quarry' : k === 'log' || k === 'timber' || k === 'lumber' ? 'lumber' : k === 'crude' || k === 'salt' ? 'oil' : k === 'fuel' ? 'refinery' : isRare(k) ? 'raremine' : 'mine';
   return fillOf(s, workers, yard);
 }
 /** Settle every own good's anchor at `now`: call before the farms or the site change (what they made so far is kept). */

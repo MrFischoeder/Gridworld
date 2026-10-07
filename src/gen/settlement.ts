@@ -3,11 +3,11 @@ import type { TownState } from './town';
 import type { ItemKey } from '../data/items';
 import { hash } from '../core/rng';
 import { allVillages, poisNear, GRIDHOLM_ID, worldDist, type Poi } from './regions';
-import { villageDeposits, quarryMineral, brine, ORES, YARD_KINDS, type Deposits, type YardKind } from './resource-sites';
+import { villageDeposits, rareDepositsOf, quarryMineral, brine, ORES, YARD_KINDS, type Deposits, type YardKind } from './resource-sites';
 import { startJob, jobOf } from './construction';
 export { RESOURCE_PLOTS } from './resource-sites';
 
-export type Project = 'warehouse' | 'power' | 'comms' | 'quarry' | 'mine' | 'lumber' | 'oil' | 'refinery' | 'foodworks' | 'relay' | 'sawmill' | 'sawmill2' | 'sawmill3';
+export type Project = 'warehouse' | 'power' | 'comms' | 'quarry' | 'mine' | 'lumber' | 'oil' | 'refinery' | 'foodworks' | 'relay' | 'sawmill' | 'sawmill2' | 'sawmill3' | 'raremine';
 export interface SettlementState {
   v: 1;
   done?: Partial<Record<Project, boolean>>;
@@ -39,6 +39,7 @@ export const PROJECTS: Record<Project, { name: string; needs: [ItemKey, number][
   sawmill2: { name: 'Sawmill: circular saws', needs: [['scrap', 12], ['parts', 2], ['wire', 6], ['planks', 10]], description: 'Fit the sawmill with circular saws: 7 planks from a log, and it takes more power.' },
   sawmill3: { name: 'Sawmill: band saws', needs: [['motor', 2], ['parts', 3], ['steel', 4], ['cable', 4]], description: 'Fit band saws driven by electric motors: 8 planks from a log, the best a sawmill can do. It draws the most power.' },
   relay: { name: 'Relay mast', needs: [['scrap', 12], ['wire', 10], ['circuit', 4], ['planks', 16], ['gears', 2]], description: 'Raise a relay mast over the receiver. The satellites talk to it on their own passes, so orbital scans round this village come apart from the rest of the world and reach further.' },
+  raremine: { name: 'Deep mine', needs: [['drillrig', 1], ['steel', 6], ['cable', 6], ['cement', 8], ['planks', 16]], description: 'Sink a deep shaft over the rare deposit south-east of the village. A drill rig from a Heavy Engineering Works bores down to it, a winding house and a headframe bring the ore up into the village stores every day. It needs power and a crew of four.' },
   foodworks: { name: 'Food processing house', needs: [['planks', 40], ['stone', 10], ['nails', 16], ['scrap', 6]], description: 'Build a mill, a bakery, a dairy and a smokehouse on the staked plot about 100 metres south-west of the village. While its crew works, grain, potatoes, milk and meat feed a third more people, so the same fields keep a bigger village.' },
 };
 /**
@@ -72,6 +73,7 @@ export const depositsOf = (s: TownState | undefined): Deposits => s?.settlement?
 /** (0.168, 0.171) Can project k be built here: one of the village's own yards (`Deposits.kinds`), a yard already built or begun,
  *  or anything that is not an extraction yard (the refinery is open to every village: it refines crude brought in). */
 export function projectAvailable(s: TownState | undefined, k: Project): boolean {
+  if (k === 'raremine') return projectDone(s, k) || !!depositsOf(s).rares?.length || !!s?.settlement?.given?.[k];
   if (projectDone(s, k) || !(YARD_KINDS as string[]).includes(k)) return true;
   const d = depositsOf(s);
   const own = d.kinds ?? (d.kind ? [d.kind] : undefined);
@@ -85,7 +87,7 @@ export function localIndustryDone(s: TownState | undefined): boolean {
 export function projectProblem(s: TownState | undefined, k: Project): string {
   if (!progressive(s)) return 'This settlement uses the established village rules.';
   if (projectDone(s, k)) return 'Already built.';
-  if (!projectAvailable(s, k)) return k === 'mine' ? 'There is no ore seam here. Import metals from another village.' : k === 'lumber' ? 'There is no great grove here. Cut wild trees, or bring logs from a village that has one.' : 'There is no oil field here. Import crude or fuel from another village.';
+  if (!projectAvailable(s, k)) return k === 'raremine' ? 'There is no rare deposit under this village.' : k === 'mine' ? 'There is no ore seam here. Import metals from another village.' : k === 'lumber' ? 'There is no great grove here. Cut wild trees, or bring logs from a village that has one.' : 'There is no oil field here. Import crude or fuel from another village.';
   if (k === 'relay') return isStation(s) ? 'The station itself is this village\'s relay.' : projectDone(s, 'comms') ? '' : 'Restore the satellite receiver first.';
   // (0.167, the owner's order) farms, then power, then the warehouse, then the village's own extraction; the satellite
   // link is a side task once the power plant stands
@@ -97,6 +99,7 @@ export function projectProblem(s: TownState | undefined, k: Project): string {
   if (k === 'warehouse') return projectDone(s, 'power') ? '' : 'Build the village power plant first.';
   if (k === 'quarry' || k === 'mine' || k === 'lumber' || k === 'oil') return projectDone(s, 'warehouse') ? '' : 'Build the warehouse first.';
   if (k === 'refinery') return projectDone(s, 'warehouse') ? '' : 'Build the warehouse first.';
+  if (k === 'raremine') return projectDone(s, 'warehouse') ? '' : 'Build the warehouse first.';
   if (k === 'foodworks') return projectDone(s, 'power') && (s?.farms ?? 0) >= 2 ? '' : 'Build the village power plant and two farms first.';
   return '';
 }
@@ -160,9 +163,10 @@ export function initializeSettlements(c: { settlementRules: number; world: numbe
         s.deposits = { kinds, v: 3, oil: has('oil'), grove: has('lumber'),
           ...(has('mine') ? { ore: had?.ore ?? fresh.ore ?? 'iron' } : {}),
           ...(has('quarry') ? { mineral: had?.mineral ?? fresh.mineral ?? quarryMineral(c.world, v.id) } : {}),
-          ...(has('oil') ? { salt: had?.salt ?? fresh.salt ?? brine(c.world, v.id) } : {}) };
+          ...(has('oil') ? { salt: had?.salt ?? fresh.salt ?? brine(c.world, v.id) } : {}), rares: fresh.rares };
       }
     }
+    if (s.deposits && !s.deposits.rares) s.deposits.rares = rareDepositsOf(c.world, v.id); // (0.175) the deep deposits
   }
 }
 /** Reuse a genuine nearby ruin; independent stream leaves existing village/ruin identities untouched. */
@@ -199,11 +203,14 @@ export function tutorialStep(s: TownState | undefined): { title: string; text: s
 export const sawLevel = (s: TownState | undefined) => (projectDone(s, 'sawmill3') ? 3 : projectDone(s, 'sawmill2') ? 2 : projectDone(s, 'sawmill') ? 1 : 0);
 export const SAW = { perLog: [0, 6, 7, 8], kw: [0, 15, 25, 40], batch: 30, logs: 2 };
 export const HAND_PLANKS = 4;
-/** Builds beside the tutorial that every village may take on (shown by the elder under the step): the refinery, the sawmill's next saws. */
+/** (0.175) What a deep mine brings up a game hour, split over the village's rare deposits (6 crates a day), and its power. */
+export const DEEP = { rate: 0.25, kw: 40 };
+/** Builds beside the tutorial that every village may take on (shown by the elder under the step): the refinery, the sawmill's next saws, the deep mine over a rare deposit. */
 export function optionalProjects(s: TownState | undefined): Project[] {
   if (!progressive(s) || !projectDone(s, 'warehouse')) return [];
   const saw = (['sawmill2', 'sawmill3'] as Project[]).find((k) => !projectDone(s, k) && !projectProblem(s, k));
-  return [...(projectDone(s, 'refinery') ? [] : ['refinery' as Project]), ...(saw ? [saw] : [])];
+  const deep = projectAvailable(s, 'raremine') && !projectDone(s, 'raremine');
+  return [...(projectDone(s, 'refinery') ? [] : ['refinery' as Project]), ...(saw ? [saw] : []), ...(deep ? ['raremine' as Project] : [])];
 }
 /** The side task beside the tutorial: the village's satellite link (the start village's big station), once its power plant stands. */
 export function sideStep(s: TownState | undefined): { title: string; text: string; project: Project } | null {
@@ -220,7 +227,7 @@ export function resourceYield(s: TownState | undefined): Partial<Record<ItemKey,
   if (!progressive(s)) return {};
   const d = depositsOf(s), ore = d.ore, vein = ore && ORES[ore];
   // (0.169) a quarry also digs its mineral, an oil field with brine boils salt
-  return { ...(projectDone(s, 'quarry') ? { stone: .8, ...(d.mineral ? { [d.mineral]: .4 } : {}) } : {}), ...(projectDone(s, 'mine') && vein ? { [vein.good]: .6, ...(vein.lump ? { [vein.lump]: .3 } : {}) } : {}), ...(projectDone(s, 'lumber') ? { log: 1.2, timber: .4 } : {}), ...(projectDone(s, 'oil') && d.oil ? { crude: .7, ...(d.salt ? { salt: .25 } : {}) } : {}), ...(projectDone(s, 'refinery') ? { fuel: 0 } : {}) };
+  return { ...(projectDone(s, 'quarry') ? { stone: .8, ...(d.mineral ? { [d.mineral]: .4 } : {}) } : {}), ...(projectDone(s, 'mine') && vein ? { [vein.good]: .6, ...(vein.lump ? { [vein.lump]: .3 } : {}) } : {}), ...(projectDone(s, 'lumber') ? { log: 1.2, timber: .4 } : {}), ...(projectDone(s, 'oil') && d.oil ? { crude: .7, ...(d.salt ? { salt: .25 } : {}) } : {}), ...(projectDone(s, 'refinery') ? { fuel: 0 } : {}), ...(projectDone(s, 'raremine') ? Object.fromEntries((d.rares ?? []).map((r) => [r, DEEP.rate / d.rares!.length])) : {}) };
 }
 /** Stable labels for the deposit marker geometry. */
 export const depositVariant = (world: number, vid: number) => hash(world, vid, 0x5e77) % 3;

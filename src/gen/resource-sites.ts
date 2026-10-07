@@ -2,11 +2,13 @@
 import { hash } from '../core/rng';
 import { GRIDHOLM_ID, allVillages, worldDist } from './regions';
 import type { ItemKey } from '../data/items';
+import { depositsOf as rareDeposits, type Rare } from './deposits';
 
 export type DepositOre = 'iron' | 'copper' | 'lead' | 'nickel' | 'coal';
 /** `grove`: a great grove of giant trees by the village (0.165): only a lumber camp works it, and it never runs out. */
 /** `kinds` (0.171): the village's own two resources, the first as before 0.171; `kind` is the one of older saves (v 2). */
-export interface Deposits { ore?: DepositOre; oil: boolean; grove?: boolean; kinds?: YardKind[]; kind?: YardKind; mineral?: QuarryMineral; salt?: boolean; v?: 2 | 3 }
+/** `rares` (0.175): the deep rare deposits under the village (gen/deposits.ts), worked by a deep mine with a drill rig. */
+export interface Deposits { ore?: DepositOre; oil: boolean; grove?: boolean; kinds?: YardKind[]; kind?: YardKind; mineral?: QuarryMineral; salt?: boolean; rares?: Rare[]; v?: 2 | 3 }
 /** (0.169) A quarry digs one mineral besides its stone; an oil field may bring up brine for salt. */
 export type QuarryMineral = 'limestone' | 'clay' | 'sand';
 export const MINERAL_NAME: Record<QuarryMineral, string> = { limestone: 'limestone', clay: 'clay', sand: 'quartz sand' };
@@ -68,7 +70,13 @@ export function villageDeposits(world: number, vid: number): Deposits {
     ...(kinds.includes('quarry') ? { mineral: (kinds[0] === 'quarry' ? forced as QuarryMineral : undefined) ?? quarryMineral(world, vid) } : {}),
     ...(kinds.includes('oil') ? { salt: brine(world, vid) } : {}),
     oil: kinds.includes('oil'), grove: kinds.includes('lumber'),
+    rares: rareDepositsOf(world, vid),
   };
+}
+/** The rare deposits under village vid (none at Gridholm). */
+export function rareDepositsOf(world: number, vid: number): Rare[] {
+  const v = allVillages(world).find((p) => p.id === vid);
+  return v ? rareDeposits(world, v) : [];
 }
 /** Centres ~105 m beyond the 72 m village fence. Separate work yards leave room for later buildings. */
 export const RESOURCE_PLOTS = {
@@ -78,6 +86,8 @@ export const RESOURCE_PLOTS = {
   foodworks: { x: -80, z: 140 },
   // (0.170) north-west, the powered sawmill
   sawmill: { x: -80, z: -80 },
+  // (0.175) south-east, the deep mine over a rare deposit (clear of Gridholm's hangar, north-east)
+  raremine: { x: 152, z: 140 },
 } as const;
 export type ResourceProject = keyof typeof RESOURCE_PLOTS;
 export const RESOURCE_YARD = { halfX: 18, halfZ: 14 };

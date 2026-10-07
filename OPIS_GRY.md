@@ -1,6 +1,6 @@
 # GridWorld: opis gry, cel, plan i historia zmian
 
-Stan na wersję **0.174.0**. Ten dokument opisuje, czym jest GridWorld, jaki jest cel gry, co już w niej jest, czego jeszcze nie ma, dokąd zmierza i jak powstawała, wersja po wersji. Nazwy z gry (przedmioty, miejsca, postacie) są po angielsku, tak jak na ekranie.
+Stan na wersję **0.175.0**. Ten dokument opisuje, czym jest GridWorld, jaki jest cel gry, co już w niej jest, czego jeszcze nie ma, dokąd zmierza i jak powstawała, wersja po wersji. Nazwy z gry (przedmioty, miejsca, postacie) są po angielsku, tak jak na ekranie.
 
 ---
 
@@ -676,3 +676,4 @@ Pełne notatki (po angielsku) są w grze pod przyciskiem **Changelog** w menu g�
 - **0.172.0 Wyrównane place budowy.** Nie tylko pola farm wyrównują grunt: teraz każdy plac budowy wokół wioski (elektrownia, teren przemysłowy, oba place zakładów, oba place elektrowni dodatkowych i hala wioski) leży płasko na wysokości wioski i łagodnie przechodzi w okoliczny teren, więc huty, piece, przetwórnie i elektrownie nie stoją już na zboczu.
 - **0.173.0 Drabina wartości metali.** Pierwszy krok nowej hierarchii metali: ruda < złom < sztabki < stal < półprodukty < zespoły. Smelter przetapia złom (12 sztuk + węgiel → 2 skrzynie żelaza), więc złom jest wart mniej niż sztabka, ale daje żelazo wioskom bez kopalni. Drut ciągnie się ze sztabek żelaza: ciągarnia 12 sztuk ze skrzyni, kowal 8. Dalej: zakłady ciężkie z wiertnicą, kopalnia złóż rzadkich i piece.
 - **0.174.0 Zakłady ciężkie.** Drugi krok hierarchii metali: Heavy Engineering Works (zakład II stopnia, plany Heavy Machinery z nośnika danych 3–8 km od Gridholm, 100 kW) robi wiertnice (4 stal, 2 przekładnie, silnik, 2 rury) dla przyszłej kopalni złóż rzadkich oraz części silnikowe (stal + przekładnie → 6 sztuk), więc warsztat Kuby nie zależy już tylko od wraków. Na placu: wysoka ceglana hala montażowa, suwnica bramowa nad placem i próbna wieża wiertnicza.
+- **0.175.0 Głęboka kopalnia.** Trzeci krok drzewka: nowa osada stojąca nad złożem rzadkim może po magazynie zbudować kopalnię głębinową (wiertnica, stal, kabel, cement, deski; 16 h budowy, plac ok. 105 m na południowy wschód). Wydobywa 6 skrzyń dziennie prosto do zapasów (po równo z każdego złoża wioski), pobiera 40 kW i zatrudnia 4 robotników. Starszy wymienia złoże w opisie wioski i proponuje kopalnię obok zadań głównych.
