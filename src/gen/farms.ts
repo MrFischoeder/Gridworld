@@ -10,7 +10,7 @@ import { peopleAt, setPeople, basePeople, PEOPLE } from './people';
 import { assign } from './workforce';
 import { startJob, jobOf } from './construction';
 
-export const FARM = { max: 3, people: 15, needs: [['log', 8], ['stone', 6]] as [ItemKey, number][], xp: 60, gold: 40, kw: 3 };
+export const FARM = { max: 3, people: 15, needs: [['planks', 16], ['stone', 6]] as [ItemKey, number][], xp: 60, gold: 40, kw: 3 };
 /** Steel ploughs and pumps (the Steel Ploughs plans): an upgraded farm feeds `mult` × as many, but draws more power. */
 export const UPGRADE = { tech: 'plough', needs: [['scrap', 5], ['wire', 4]] as [ItemKey, number][], mult: 1.6, kw: 8, xp: 80, gold: 60 };
 /** What a farm feeds without power (its share of its full yield): irrigation pumps and lamps stop. */

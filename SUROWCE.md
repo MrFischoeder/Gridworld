@@ -120,6 +120,7 @@ Każda wioska ma jeden rodzaj zakładu i robi 1–2 towary z jego listy; częś�
 | Zakład | Przepis | Czas partii |
 |---|---|---|
 | Sawmill | 1 × Timber Bundle → 1 × Stack of Lumber | 30 min gry |
+| Sawmill | 2 × Log → 10 × Planks | 30 min gry |
 | Brickworks | 2 × Crate of Clay, 1 × Crate of Coal → 2 × Pallet of Bricks | 45 min gry |
 | Cement Works | 2 × Crate of Limestone, 1 × Crate of Coal → 2 × Sack of Cement | 45 min gry |
 | Smelter | 2 × Crate of Iron Ore, 1 × Crate of Coal → 2 × Iron Bars | 60 min gry |
@@ -185,9 +186,9 @@ Każda wioska ma jeden rodzaj zakładu i robi 1–2 towary z jego listy; częś�
 | Pickaxe | 1 × Log, 3 × Stone | podstawowe (bez planów) |
 | Fire Kit | 2 × Log | podstawowe (bez planów) |
 | Empty Flask | 1 × Ravager Hide | podstawowe (bez planów) |
-| Hammer | 1 × Log, 2 × Scrap Metal | Forged Tools |
-| Saw | 1 × Log, 2 × Scrap Metal | Forged Tools |
-| Screwdriver | 1 × Scrap Metal, 1 × Log | Forged Tools |
+| Saw | 1 × Log, 2 × Stone | podstawowe (bez planów) |
+| Hammer | 1 × Planks, 2 × Scrap Metal | Forged Tools |
+| Screwdriver | 1 × Scrap Metal, 1 × Planks | Forged Tools |
 | Pliers | 2 × Scrap Metal | Forged Tools |
 | 6 × Planks | 2 × Log | Timber Framing |
 | 10 × Nails | 1 × Scrap Metal | Timber Framing |
@@ -195,8 +196,8 @@ Każda wioska ma jeden rodzaj zakładu i robi 1–2 towary z jego listy; częś�
 | 4 × Wire | 1 × Iron Ore | Blast Furnace |
 | Electronic Components | 2 × Copper Ore, 1 × Scrap Metal | Basic Circuits |
 | Compass | 1 × Scrap Metal, 1 × Electronic Components | Basic Circuits |
-| Light Tire | 2 × Log, 2 × Scrap Metal | Wagon Axles |
-| Hull Plating | 3 × Scrap Metal, 2 × Log | Wagon Axles |
+| Light Tire | 4 × Planks, 2 × Scrap Metal | Wagon Axles |
+| Hull Plating | 3 × Scrap Metal, 4 × Planks | Wagon Axles |
 | Engine Parts | 4 × Scrap Metal, 1 × Electronic Components | Combustion Engines |
 | Gas Mask | 2 × Ravager Hide, 1 × Leechwing Membrane, 2 × Scrap Metal | Filter Masks |
 | 2 × Mask Filter | 2 × Log, 1 × Scrap Metal | Filter Masks |
@@ -212,8 +213,8 @@ Każda wioska ma jeden rodzaj zakładu i robi 1–2 towary z jego listy; częś�
 | Hunting Rifle | 3 × Steel Ingots, 1 × Stack of Lumber, 1 × Glass Panes, 2 × Scrap Metal | Gunsmithing |
 | 40 × Energy Cells | 1 × Basic Batteries, 1 × Electronic Components | Battery Chemistry |
 | Machete | 3 × Scrap Metal, 1 × Ravager Hide | Forged Tools |
-| Spear | 2 × Log, 2 × Scrap Metal | Forged Tools |
-| Sledgehammer | 1 × Log, 5 × Scrap Metal | Forged Tools |
+| Spear | 2 × Planks, 2 × Scrap Metal | Forged Tools |
+| Sledgehammer | 1 × Planks, 5 × Scrap Metal | Forged Tools |
 | GPS Tablet | 3 × Electronic Components, 1 × Glass Panes, 1 × Basic Batteries, 1 × Power Core | Radio Triangulation |
 | Vehicle Repair Kit | 4 × Scrap Metal, 2 × Wire, 1 × Electronic Components, 1 × Rope | Combustion Engines |
 | Hide Cap | 1 × Ravager Hide | podstawowe (bez planów) |
@@ -221,7 +222,7 @@ Każda wioska ma jeden rodzaj zakładu i robi 1–2 towary z jego listy; częś�
 | Hide Gloves | 1 × Ravager Hide | podstawowe (bez planów) |
 | Hide Leggings | 2 × Ravager Hide | podstawowe (bez planów) |
 | Hide Boots | 2 × Ravager Hide | podstawowe (bez planów) |
-| Hide Rucksack | 3 × Ravager Hide, 2 × Rope, 1 × Log | podstawowe (bez planów) |
+| Hide Rucksack | 3 × Ravager Hide, 2 × Rope, 2 × Planks | podstawowe (bez planów) |
 | Woven Hood | 1 × Bolt of Cloth, 1 × Wire | Woven Armour |
 | Woven Jacket | 3 × Bolt of Cloth, 3 × Wire, 1 × Ravager Hide | Woven Armour |
 | Woven Gloves | 1 × Bolt of Cloth, 1 × Wire | Woven Armour |
@@ -273,7 +274,7 @@ Materiały biorą się z hali wioski; złoto płacisz ze swojej sakiewki (opłat
 
 ### 3.1 Mury wioski (starszy: fortify)
 
-- **Timber Palisade** (4 m): 60 × Planks, 16 × Log, 40 × Nails, 10 × Rope · wioska płaci 350 g
+- **Timber Palisade** (4 m): 80 × Planks, 40 × Nails, 10 × Rope · wioska płaci 350 g
 - **Stone Wall** (7 m): 50 × Stone, 12 × Sack of Cement, 30 × Scrap Metal, 20 × Planks, 30 × Nails, 20 × Pallet of Cut Stone · wioska płaci 900 g
 
 ### 3.2 Obrona
@@ -284,10 +285,10 @@ Materiały biorą się z hali wioski; złoto płacisz ze swojej sakiewki (opłat
 
 ### 3.3 Zakłady przetwórcze (2 na wioskę)
 
-- **Sawmill:** 12 × Log, 10 × Stone, 8 × Planks, 6 × Scrap Metal · opłata 350 g
-- **Brickworks:** 30 × Stone, 10 × Planks, 6 × Log, 6 × Scrap Metal · opłata 400 g
+- **Sawmill:** 32 × Planks, 10 × Stone, 6 × Scrap Metal · opłata 350 g
+- **Brickworks:** 30 × Stone, 22 × Planks, 6 × Scrap Metal · opłata 400 g
 - **Cement Works:** 20 × Stone, 10 × Pallet of Bricks, 10 × Scrap Metal, 10 × Planks · opłata 500 g
-- **Smelter:** 20 × Stone, 12 × Pallet of Bricks, 12 × Scrap Metal, 16 × Planks, 8 × Log · opłata 600 g
+- **Smelter:** 20 × Stone, 12 × Pallet of Bricks, 12 × Scrap Metal, 32 × Planks · opłata 600 g
 - **Glassworks:** 15 × Stone, 10 × Pallet of Bricks, 8 × Scrap Metal, 12 × Planks · opłata 450 g
 - **Wire Mill:** 16 × Scrap Metal, 8 × Wire, 12 × Planks, 1 × Engine Parts · opłata 700 g
 - **Oil Refinery:** 30 × Scrap Metal, 12 × Wire, 4 × Electronic Components, 16 × Planks · opłata 900 g
@@ -301,7 +302,7 @@ Materiały biorą się z hali wioski; złoto płacisz ze swojej sakiewki (opłat
 - **Machine Shop:** 20 × Scrap Metal, 1 × Engine Parts, 10 × Stack of Lumber, 20 × Nails · opłata 1100 g
 - **Alloy Foundry:** 20 × Pallet of Bricks, 10 × Sack of Cement, 24 × Scrap Metal, 1 × Power Core, 10 × Stack of Lumber · opłata 1800 g
 - **Electrical Works:** 16 × Pallet of Bricks, 10 × Stack of Lumber, 16 × Scrap Metal, 6 × Copper Cable, 2 × Electronic Components · opłata 1300 g
-- **Stoneworks:** 12 × Log, 10 × Planks, 6 × Scrap Metal, 10 × Nails · opłata 300 g
+- **Stoneworks:** 34 × Planks, 6 × Scrap Metal, 10 × Nails · opłata 300 g
 - **Advanced Metallurgy:** 24 × Pallet of Bricks, 12 × Sack of Cement, 10 × Steel Ingots, 8 × Copper Cable, 1 × Generator, 1 × Industrial Pump · opłata 2000 g
 - **Silicon Processing:** 16 × Pallet of Bricks, 10 × Sack of Cement, 8 × Steel Ingots, 6 × Copper Cable, 6 × Bundle of Pipes & Valves, 1 × Industrial Pump · opłata 1800 g
 - **Advanced Electronics Works:** 12 × Pallet of Bricks, 8 × Sack of Cement, 6 × Steel Ingots, 10 × Copper Cable, 4 × Circuit Boards, 2 × Crate of Electric Motors · opłata 2200 g
@@ -322,12 +323,12 @@ Materiały biorą się z hali wioski; złoto płacisz ze swojej sakiewki (opłat
 
 ### 3.6 Farmy
 
-- **Farma** (do 3): 8 × Log, 6 × Stone · wioska płaci 40 g
+- **Farma** (do 3): 16 × Planks, 6 × Stone · wioska płaci 40 g
 - **Stalowe pługi** (na farmę): 5 × Scrap Metal, 4 × Wire · plany: **Steel Ploughs** · plon × 1.6
 
 ### 3.7 Ulepszenia elektrowni wioski
 
-- **Overhauled** (× 1.5 mocy): 6 × Scrap Metal, 4 × Wire, 2 × Log · plany: wiatraki — Improved Wind Rotor, panele — Solar Cells
+- **Overhauled** (× 1.5 mocy): 6 × Scrap Metal, 4 × Wire, 4 × Planks · plany: wiatraki — Improved Wind Rotor, panele — Solar Cells
 - **Rebuilt with old electronics** (× 2 mocy): 4 × Electronic Components, 1 × Power Core, 6 × Wire, 1 × Generator
 - **Automated** (× 2.5 mocy): 4 × Microchips, 4 × Copper Cable, 2 × Electronic Components, 2 × Precision Components, 2 × Control Units, 1 × High-Power Electronics
 
@@ -347,7 +348,7 @@ Materiały biorą się z hali wioski; złoto płacisz ze swojej sakiewki (opłat
 3. The core: 2 × Power Core, 4 × Advanced Alloy, 6 × Electronic Components · plany: **Uranium Enrichment** · nagroda 500 g
 
 **Old Radar Station**
-1. Clearing the compound: 10 × Log, 8 × Stone, 10 × Scrap Metal · nagroda 150 g
+1. Clearing the compound: 20 × Planks, 8 × Stone, 10 × Scrap Metal · nagroda 150 g
 2. Power and cable: 8 × Copper Cable, 6 × Steel Ingots, 6 × Electronic Components · nagroda 250 g
 3. The dish and the console: 4 × Circuit Boards, 8 × Electronic Components, 4 × Advanced Alloy · plany: **Radio Triangulation** · nagroda 400 g
 
@@ -424,13 +425,13 @@ Materiały biorą się z hali wioski; złoto płacisz ze swojej sakiewki (opłat
 
 ### 3.11 Mosty, doki, łodzie i statki (budujesz sam, materiały z plecaka i bagażnika)
 
-- **Most na brodzie drogi** albo w wybranym miejscu (Bridge Kit u kowala): na długość pomostu: Log 1 na 1.6 m, Stone 1 na 4 m, Nails 1 na 2 m, Rope 1 na 6 m (np. pomost 40 m: 25 × Log, 10 × Stone, 20 × Nails, 7 × Rope)
-- **Dok** (Dock Kit u kowala): na długość pomostu: Log 1 na 1.4 m, Stone 1 na 5 m, Nails 1 na 2 m, Rope 1 na 4 m, do tego 3 × Scrap Metal, 2 × Wire na głowicę
-- **Rowboat** (na pochylni gotowego doku; ładownia 10): 10 × Log, 14 × Nails, 4 × Rope
-- **Sailing Skiff** (przeróbka łodzi wiosłowej przy doku; ładownia 14): 6 × Log, 10 × Rope, 6 × Ravager Hide, 8 × Nails
-- **Motor Skiff** (przeróbka łodzi wiosłowej przy doku; ładownia 14): 8 × Scrap Metal, 2 × Engine Parts, 6 × Nails, 2 × Rope, 2 × Log
-- **Sailing Ship** (na pochylni gotowego doku; ładownia 48): 50 × Log, 60 × Planks, 90 × Nails, 40 × Rope, 20 × Ravager Hide, 10 × Scrap Metal
-- **Motor Ship** (na pochylni gotowego doku; ładownia 40): 40 × Log, 60 × Planks, 80 × Nails, 16 × Rope, 40 × Scrap Metal, 6 × Engine Parts, 12 × Wire
+- **Most na brodzie drogi** albo w wybranym miejscu (Bridge Kit u kowala): na długość pomostu: Planks 1 na 0.8 m, Stone 1 na 4 m, Nails 1 na 2 m, Rope 1 na 6 m (np. pomost 40 m: 50 × Planks, 10 × Stone, 20 × Nails, 7 × Rope)
+- **Dok** (Dock Kit u kowala): na długość pomostu: Planks 1 na 0.7 m, Stone 1 na 5 m, Nails 1 na 2 m, Rope 1 na 4 m, do tego 3 × Scrap Metal, 2 × Wire na głowicę
+- **Rowboat** (na pochylni gotowego doku; ładownia 10): 20 × Planks, 14 × Nails, 4 × Rope
+- **Sailing Skiff** (przeróbka łodzi wiosłowej przy doku; ładownia 14): 12 × Planks, 10 × Rope, 6 × Ravager Hide, 8 × Nails
+- **Motor Skiff** (przeróbka łodzi wiosłowej przy doku; ładownia 14): 8 × Scrap Metal, 2 × Engine Parts, 6 × Nails, 2 × Rope, 4 × Planks
+- **Sailing Ship** (na pochylni gotowego doku; ładownia 48): 160 × Planks, 90 × Nails, 40 × Rope, 20 × Ravager Hide, 10 × Scrap Metal
+- **Motor Ship** (na pochylni gotowego doku; ładownia 40): 140 × Planks, 80 × Nails, 16 × Rope, 40 × Scrap Metal, 6 × Engine Parts, 12 × Wire
 - Napęd silnikowy pali **Fuel Canister** (20 L w kanistrze; bak: Motor Skiff 30 L, Motor Ship 200 L)
 
 ### 3.12 Za złoto
@@ -497,7 +498,7 @@ Materiały biorą się z hali wioski; złoto płacisz ze swojej sakiewki (opłat
 | Lead Ingots | 6 L | przetwarzanie: Battery Works → Basic Batteries; kowal → Pistol Rounds; kowal → Shotgun Shells; kowal → Rifle Rounds |
 | Leechwing Membrane | 1 L | kowal → Gas Mask |
 | Life Support Systems | 30 L | Rydwan: Life Support |
-| Log | 6 L | kowal → Hatchet; kowal → Pickaxe; kowal → Fire Kit; kowal → Hammer; kowal → Saw; kowal → Screwdriver; kowal → Planks; kowal → Scrap Metal; kowal → Light Tire; kowal → Hull Plating; kowal → Mask Filter; kowal → Spear; kowal → Sledgehammer; kowal → Hide Rucksack; budowa: mur Timber Palisade; budowa: Sawmill; budowa: Brickworks; budowa: Smelter; budowa: Stoneworks; budowa: farma; ulepszenie elektrowni: Overhauled; odbudowa: Old Radar Station; most; dok; Rowboat; Sailing Skiff; Motor Skiff; Sailing Ship; Motor Ship |
+| Log | 6 L | przetwarzanie: Sawmill → Planks; kowal → Hatchet; kowal → Pickaxe; kowal → Fire Kit; kowal → Saw; kowal → Planks; kowal → Scrap Metal; kowal → Mask Filter |
 | Machine Parts | 12 L | przetwarzanie: Machine Shop → Industrial Pump; przetwarzanie: Electrical Works → Generator; kowal → Precision Drivetrain; kowal → Salvage Exoframe; mechanik → RTV-1 Scout; mechanik → HTV-6 Mastodon; mechanik → 2 × Vehicle Repair Kit; odbudowa: Old Enrichment Plant; odbudowa: Old Chip Foundry; odbudowa: Old Propellant Plant; odbudowa: Old Battery Plant; odbudowa: Old Optical Works; odbudowa: Old Alloy Complex; odbudowa: Old Precision Works; odbudowa: Old Robotics Plant; odbudowa: Old Aerospace Works; odbudowa: Ancient Power Complex |
 | Microchips | 6 L | przetwarzanie: Advanced Electronics Works → Computer System; przetwarzanie: Old Precision Works → Precision Components; przetwarzanie: Old Robotics Plant → Automation Units; zamówienia na czipy (wioski rzemieślnicze); ulepszenie elektrowni: Automated; ulepszenie wioski: Sensor Sights; odbudowa: Old Precision Works; odbudowa: Old Robotics Plant; ulepszenie: radar (sensor array); Rydwan: Avionics; Rydwan: Power System |
 | Nails | 0.2 L | budowa: mur Timber Palisade; budowa: mur Stone Wall; budowa: Textile Mill; budowa: Machine Shop; budowa: Stoneworks; naprawa: Fields; naprawa: Sawmill; most; dok; Rowboat; Sailing Skiff; Motor Skiff; Sailing Ship; Motor Ship |
@@ -505,7 +506,7 @@ Materiały biorą się z hali wioski; złoto płacisz ze swojej sakiewki (opłat
 | Optical Components | 6 L | kowal → Sensor Compass; budowa: Avionics Works; ulepszenie wioski: Sensor Sights |
 | Pallet of Bricks | 12 L | budowa: Cement Works; budowa: Smelter; budowa: Glassworks; budowa: Steelworks; budowa: Aluminium Works; budowa: Alloy Foundry; budowa: Electrical Works; budowa: Advanced Metallurgy; budowa: Silicon Processing; budowa: Advanced Electronics Works; budowa: Avionics Works; budowa: Life Support Works; budowa: Coal Power Station; ulepszenie wioski: Battery Bank; odbudowa: Old Battery Plant; odbudowa: Old Alloy Complex; odbudowa: Old Robotics Plant; odbudowa: Ancient Power Complex |
 | Pallet of Cut Stone | 24 L | budowa: mur Stone Wall; budowa: Coal Power Station; odbudowa: Old Aerospace Works |
-| Planks | 1.5 L | budowa: mur Timber Palisade; budowa: mur Stone Wall; budowa: Barricades round the works; budowa: Barricades round the power plant; budowa: Sawmill; budowa: Brickworks; budowa: Cement Works; budowa: Smelter; budowa: Glassworks; budowa: Wire Mill; budowa: Oil Refinery; budowa: Textile Mill; budowa: Chemical Works; budowa: Electronics Shop; budowa: Stoneworks; budowa: Solar Farm; budowa: Wind Farm; budowa: Coal Power Station; budowa: rafineria; naprawa: Fields; naprawa: Mine; naprawa: Sawmill; naprawa: Fish Racks; naprawa: Workshops; Sailing Ship; Motor Ship |
+| Planks | 1.5 L | kowal → Hammer; kowal → Screwdriver; kowal → Light Tire; kowal → Hull Plating; kowal → Spear; kowal → Sledgehammer; kowal → Hide Rucksack; budowa: mur Timber Palisade; budowa: mur Stone Wall; budowa: Barricades round the works; budowa: Barricades round the power plant; budowa: Sawmill; budowa: Brickworks; budowa: Cement Works; budowa: Smelter; budowa: Glassworks; budowa: Wire Mill; budowa: Oil Refinery; budowa: Textile Mill; budowa: Chemical Works; budowa: Electronics Shop; budowa: Stoneworks; budowa: Solar Farm; budowa: Wind Farm; budowa: Coal Power Station; budowa: rafineria; budowa: farma; ulepszenie elektrowni: Overhauled; odbudowa: Old Radar Station; naprawa: Fields; naprawa: Mine; naprawa: Sawmill; naprawa: Fish Racks; naprawa: Workshops; most; dok; Rowboat; Sailing Skiff; Motor Skiff; Sailing Ship; Motor Ship |
 | Plastic Resin | 14 L | przetwarzanie: Electronics Shop → Circuit Boards; przetwarzanie: Electrical Works → Crate of Electric Motors; przetwarzanie: Old Alloy Complex → Composite Sheets; kowal → Composite Helmet; kowal → Composite Armour; kowal → Composite Gloves; kowal → Composite Greaves; kowal → Composite Boots; kowal → Composite Cargo Pack |
 | Platinum Group Metals | 3 L | kowal → Sensor Compass; ulepszenie: radar (sensor array) |
 | Power Cells | 8 L | przetwarzanie: Old Robotics Plant → Automation Units; paliwo: siłownie wielkich instalacji; kowal → Powered Exoskeleton; ulepszenie wioski: Battery Bank; odbudowa: Old Robotics Plant; Rydwan: Power System |
@@ -523,11 +524,11 @@ Materiały biorą się z hali wioski; złoto płacisz ze swojej sakiewki (opłat
 | Sack of Potatoes | 14 L | sklep spożywczy → Hearty Stew |
 | Sack of Quartz Sand | 12 L | przetwarzanie: Glassworks → Glass Panes |
 | Salt Blocks | 7 L | przetwarzanie: Chemical Works → Industrial Chemicals |
-| Scrap Metal | 1.5 L | kowal → Hammer; kowal → Saw; kowal → Screwdriver; kowal → Pliers; kowal → Nails; kowal → Electronic Components; kowal → Compass; kowal → Light Tire; kowal → Hull Plating; kowal → Engine Parts; kowal → Gas Mask; kowal → Mask Filter; kowal → Turbocharger; kowal → Sensor Compass; kowal → Pistol Rounds; kowal → Shotgun Shells; kowal → Old Pistol; kowal → Scrap SMG; kowal → Scattergun; kowal → Hunting Rifle; kowal → Machete; kowal → Spear; kowal → Sledgehammer; kowal → Vehicle Repair Kit; mechanik → RTV-1 Scout; mechanik → HTV-6 Mastodon; mechanik → 2 × Vehicle Repair Kit; budowa: mur Stone Wall; budowa: Auto Turret; budowa: Barricades round the works; budowa: Barricades round the power plant; budowa: Sawmill; budowa: Brickworks; budowa: Cement Works; budowa: Smelter; budowa: Glassworks; budowa: Wire Mill; budowa: Oil Refinery; budowa: Textile Mill; budowa: Steelworks; budowa: Chemical Works; budowa: Polymer Plant; budowa: Aluminium Works; budowa: Battery Works; budowa: Electronics Shop; budowa: Machine Shop; budowa: Alloy Foundry; budowa: Electrical Works; budowa: Stoneworks; budowa: Solar Farm; budowa: Wind Farm; budowa: Coal Power Station; budowa: Diesel Generator Bank; budowa: rafineria; budowa: stalowe pługi; ulepszenie elektrowni: Overhauled; odbudowa: Old Radar Station; naprawa: Diesel Generator; naprawa: Wind Turbines; naprawa: Mine; naprawa: Oil Wells; naprawa: Refinery; naprawa: Workshops; naprawa: Salvage Yard; dok; Motor Skiff; Sailing Ship; Motor Ship |
+| Scrap Metal | 1.5 L | kowal → Hammer; kowal → Screwdriver; kowal → Pliers; kowal → Nails; kowal → Electronic Components; kowal → Compass; kowal → Light Tire; kowal → Hull Plating; kowal → Engine Parts; kowal → Gas Mask; kowal → Mask Filter; kowal → Turbocharger; kowal → Sensor Compass; kowal → Pistol Rounds; kowal → Shotgun Shells; kowal → Old Pistol; kowal → Scrap SMG; kowal → Scattergun; kowal → Hunting Rifle; kowal → Machete; kowal → Spear; kowal → Sledgehammer; kowal → Vehicle Repair Kit; mechanik → RTV-1 Scout; mechanik → HTV-6 Mastodon; mechanik → 2 × Vehicle Repair Kit; budowa: mur Stone Wall; budowa: Auto Turret; budowa: Barricades round the works; budowa: Barricades round the power plant; budowa: Sawmill; budowa: Brickworks; budowa: Cement Works; budowa: Smelter; budowa: Glassworks; budowa: Wire Mill; budowa: Oil Refinery; budowa: Textile Mill; budowa: Steelworks; budowa: Chemical Works; budowa: Polymer Plant; budowa: Aluminium Works; budowa: Battery Works; budowa: Electronics Shop; budowa: Machine Shop; budowa: Alloy Foundry; budowa: Electrical Works; budowa: Stoneworks; budowa: Solar Farm; budowa: Wind Farm; budowa: Coal Power Station; budowa: Diesel Generator Bank; budowa: rafineria; budowa: stalowe pługi; ulepszenie elektrowni: Overhauled; odbudowa: Old Radar Station; naprawa: Diesel Generator; naprawa: Wind Turbines; naprawa: Mine; naprawa: Oil Wells; naprawa: Refinery; naprawa: Workshops; naprawa: Salvage Yard; dok; Motor Skiff; Sailing Ship; Motor Ship |
 | Sensors | 6 L | przetwarzanie: Avionics Works → Avionics Modules; przetwarzanie: Old Robotics Plant → Automation Units; kowal → Sensor Compass; ulepszenie wioski: Sensor Sights; odbudowa: Old Robotics Plant; ulepszenie: radar (sensor array); Rydwan: Avionics |
 | Stack of Lumber | 16 L | kowal → Scattergun; kowal → Hunting Rifle; budowa: Textile Mill; budowa: Polymer Plant; budowa: Battery Works; budowa: Machine Shop; budowa: Alloy Foundry; budowa: Electrical Works |
 | Steel Ingots | 8 L | przetwarzanie: Machine Shop → Machine Parts; przetwarzanie: Machine Shop → Crate of Tools; przetwarzanie: Machine Shop → Bundle of Pipes & Valves; przetwarzanie: Machine Shop → Crate of Gears & Bearings; przetwarzanie: Machine Shop → Industrial Pump; przetwarzanie: Alloy Foundry → Advanced Alloy; przetwarzanie: Electrical Works → Crate of Electric Motors; przetwarzanie: Electrical Works → Generator; przetwarzanie: Advanced Metallurgy → Advanced Steel Ingots; przetwarzanie: Old Alloy Complex → Ancient Alloy; przetwarzanie: Old Precision Works → Precision Components; kowal → Rifle Rounds; kowal → Old Pistol; kowal → Scrap SMG; kowal → Scattergun; kowal → Hunting Rifle; kowal → Salvage Exoframe; mechanik → HTV-6 Mastodon; budowa: Advanced Metallurgy; budowa: Silicon Processing; budowa: Advanced Electronics Works; budowa: Avionics Works; budowa: Life Support Works; budowa: Small Reactor; ulepszenie wioski: Automated Site; ulepszenie wioski: Armoured Wall; odbudowa: Old Enrichment Plant; odbudowa: Old Radar Station; odbudowa: Old Chip Foundry; odbudowa: Old Propellant Plant; odbudowa: Old Battery Plant; odbudowa: Old Optical Works; odbudowa: Old Alloy Complex; odbudowa: Old Precision Works; odbudowa: Old Robotics Plant; odbudowa: Old Aerospace Works; odbudowa: Ancient Power Complex; Rydwan: Hull Plating |
-| Stone | 2 L | przetwarzanie: Stoneworks → Pallet of Cut Stone; kowal → Hatchet; kowal → Pickaxe; budowa: mur Stone Wall; budowa: Barricades round the works; budowa: Barricades round the power plant; budowa: Sawmill; budowa: Brickworks; budowa: Cement Works; budowa: Smelter; budowa: Glassworks; budowa: Coal Power Station; budowa: farma; odbudowa: Old Radar Station; most; dok |
+| Stone | 2 L | przetwarzanie: Stoneworks → Pallet of Cut Stone; kowal → Hatchet; kowal → Pickaxe; kowal → Saw; budowa: mur Stone Wall; budowa: Barricades round the works; budowa: Barricades round the power plant; budowa: Sawmill; budowa: Brickworks; budowa: Cement Works; budowa: Smelter; budowa: Glassworks; budowa: Coal Power Station; budowa: farma; odbudowa: Old Radar Station; most; dok |
 | Timber Bundle | 20 L | przetwarzanie: Sawmill → Stack of Lumber; przetwarzanie: Machine Shop → Crate of Tools |
 | Titanium Ingots | 6 L | przetwarzanie: Life Support Works → Life Support Systems; przetwarzanie: Old Alloy Complex → Composite Sheets; przetwarzanie: Old Aerospace Works → Aerospace Components; kowal → Powered Exoskeleton; ulepszenie wioski: Armoured Wall; odbudowa: Old Aerospace Works |
 | Wire | 0.5 L | kowal → Scrap SMG; kowal → Vehicle Repair Kit; kowal → Woven Hood; kowal → Woven Jacket; kowal → Woven Gloves; kowal → Woven Trousers; kowal → Woven Boots; kowal → Salvage Exoframe; budowa: Auto Turret; budowa: Wire Mill; budowa: Oil Refinery; budowa: Chemical Works; budowa: Polymer Plant; budowa: Battery Works; budowa: Electronics Shop; budowa: Solar Farm; budowa: Wind Farm; budowa: Diesel Generator Bank; budowa: rafineria; budowa: stalowe pługi; ulepszenie elektrowni: Overhauled; ulepszenie elektrowni: Rebuilt with old electronics; naprawa: Solar Array; naprawa: Wind Turbines; naprawa: Oil Wells; naprawa: Salvage Yard; dok; Motor Ship |

@@ -1,5 +1,6 @@
 // Character persistence. Only player-made changes are stored, never generated geometry.
 // Versions: v1 (relic counts) -> v2 (backpack, per-dungeon progress) -> v3 (open world).
+import { planksForLogs } from './gen/wood';
 import { fixInstall, type InstallKind, type InstallState } from './gen/installs';
 import { fixPlant } from './gen/plants';
 import { retireOldCrossings, type BridgeState, type Ford } from './gen/bridges';
@@ -203,6 +204,7 @@ export function loadChar(storage: Pick<Storage, 'getItem'> & Partial<Pick<Storag
         if (left > 0) { const hold = ((c.towns[GRIDHOLM_ID] ??= {}).hold ??= {}); hold.ammoE = (hold.ammoE ?? 0) + left; }
       }
       retireOldCrossings(c);
+      planksForLogs(c); // (0.165) logs handed over to builds count on as planks
       return c;
     }
     const v2 = storage?.getItem(V2_KEY);

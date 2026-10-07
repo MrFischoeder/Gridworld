@@ -48,10 +48,10 @@ describe('new settlements and frozen saves', () => {
     s.settlement!.supplies = true;
     expect(handOverFarm(s, world, true, 1000, () => 999).built).toBe(true);
     expect(tutorialStep(s)?.project).toBe('comms');
-    const first = buildProject(s, 'comms', (k) => k === 'log' ? 3 : 0);
-    expect(first.built).toBe(false); expect(first.taken).toEqual([['log', 3]]);
+    const first = buildProject(s, 'comms', (k) => k === 'planks' ? 3 : 0);
+    expect(first.built).toBe(false); expect(first.taken).toEqual([['planks', 3]]);
     const rest = buildProject(s, 'comms', () => 999); expect(rest.built).toBe(true);
-    expect(rest.taken).toEqual([['log', 3], ['stone', 6], ['scrap', 4]]);
+    expect(rest.taken).toEqual([['planks', 9], ['stone', 6], ['scrap', 4]]);
     expect(buildProject(s, 'comms', () => 999)).toMatchObject({ taken: [], built: false });
     expect(projectProblem(s, 'warehouse')).not.toBe('');
     handOverFarm(s, world, true, 1000, () => 999);

@@ -34,6 +34,7 @@ function build(): Map<ItemKey, Map<UseGroup, string[]>> {
     gs.set(g, a); m.set(k, gs);
   };
   for (const o of ORDERS) for (const [i] of o.needs) use(i, 'Blacksmith makes', N(o.out));
+  use('log', 'Other', 'sawn into 3 Planks by hand (a Saw in your kit: the backpack\'s Saw into planks)'); // world/sawing.ts
   for (const g of GARAGE) for (const [i] of g.needs) use(i, 'Other', 'the mechanic: ' + (g.car ? vehicleTitle(g.car) : N(g.out!)));
   for (const k of Object.keys(PLANTS) as PlantKind[]) for (const r of PLANTS[k].recipes) for (const [i] of r.in) use(i, 'Processed into', `${N(r.out[0])} (${PLANTS[k].name})`);
   for (const k of Object.keys(INSTALL_WORK) as InstallKind[]) for (const w of installWorks(k)) for (const [i] of w.inp) use(i, 'Processed into', `${N(w.out)} (${INSTALLS.find((s) => s.k === k)!.name})`);

@@ -44,13 +44,13 @@ describe('bridges', () => {
   });
   it('are built bit by bit from what is handed over', () => {
     const f = fords[0], st: BridgeState = { given: {} }, need = new Map(bridgeNeeds(f));
-    expect(need.get('log')).toBeGreaterThan(10);
-    let r = handOverBridge(f, st, (k) => (k === 'log' ? 5 : 0), 100);
-    expect(r.built).toBe(false); expect(st.given.log).toBe(5);
+    expect(need.get('planks')).toBeGreaterThan(10);
+    let r = handOverBridge(f, st, (k) => (k === 'planks' ? 5 : 0), 100);
+    expect(r.built).toBe(false); expect(st.given.planks).toBe(5);
     expect(bridgeProgress(f, st)).toBeGreaterThan(0); expect(bridgeProgress(f, st)).toBeLessThan(1);
     r = handOverBridge(f, st, () => 999, 200);
     expect(r.built).toBe(true); expect(st.done).toBe(200); expect(bridgeProgress(f, st)).toBe(1);
-    expect(r.taken.find(([k]) => k === 'log')![1]).toBe(need.get('log')! - 5);
+    expect(r.taken.find(([k]) => k === 'planks')![1]).toBe(need.get('planks')! - 5);
     expect(handOverBridge(f, st, () => 999, 300).taken).toEqual([]);
     expect(bridgeRows(f, undefined).every((x) => x.given === 0)).toBe(true);
   });

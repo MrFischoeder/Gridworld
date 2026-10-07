@@ -101,7 +101,7 @@ export function completeWork(s: TownState, k: WorkKind) { (s.works ??= {})[k] = 
 
 /** What it takes to raise the wall to tier i+1 (index = the tier you have), and what the village pays for it. */
 export const FORTIFY: { needs: [ItemKey, number][]; gold: number; xp: number }[] = [
-  { needs: [['planks', 60], ['log', 16], ['nails', 40], ['rope', 10]], gold: 350, xp: 120 },
+  { needs: [['planks', 80], ['nails', 40], ['rope', 10]], gold: 350, xp: 120 },
   { needs: [['stone', 50], ['cement', 12], ['scrap', 30], ['planks', 20], ['nails', 30], ['cutstone', 20]], gold: 900, xp: 300 },
 ];
 export const wallOf = (s: TownState | undefined) => Math.min(WALL_TIERS.length - 1, s?.wall ?? 0);

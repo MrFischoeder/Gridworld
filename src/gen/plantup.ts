@@ -11,7 +11,7 @@ import { startJob, jobOf } from './construction';
 export interface PlantLevel { name: string; mult: number; tech: Partial<Record<PowerKind, string>>; needs: [ItemKey, number][]; gold: number; xp: number }
 export const PLANT_LEVELS: PlantLevel[] = [
   { name: 'as built', mult: 1, tech: {}, needs: [], gold: 0, xp: 0 },
-  { name: 'Overhauled', mult: 1.5, tech: { wind: 'rotor', solar: 'solar' }, needs: [['scrap', 6], ['wire', 4], ['log', 2]], gold: 60, xp: 80 },
+  { name: 'Overhauled', mult: 1.5, tech: { wind: 'rotor', solar: 'solar' }, needs: [['scrap', 6], ['wire', 4], ['planks', 4]], gold: 60, xp: 80 },
   { name: 'Rebuilt with old electronics', mult: 2, tech: {}, needs: [['circuit', 4], ['pcore', 1], ['wire', 6], ['generator', 1]], gold: 120, xp: 150 },
   { name: 'Automated', mult: 2.5, tech: {}, needs: [['microchip', 4], ['cable', 4], ['circuit', 2], ['precision', 2], ['control', 2], ['hpe', 1]], gold: 200, xp: 250 },
 ];

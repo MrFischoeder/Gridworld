@@ -1,6 +1,6 @@
 import { drawSettlementSites, drawSettlementComms, settlementHit, settlementFloor, settlementRay, settlementSolid, forgetSettlement } from './settlement';
 import { settlementVillage } from '../gen/settlement-village';
-import { initializeSettlements, progressive, RESOURCE_PLOTS, projectAvailable, development } from '../gen/settlement';
+import { initializeSettlements, progressive, RESOURCE_PLOTS, projectAvailable, development, depositsOf } from '../gen/settlement';
 import { RESOURCE_YARD, type ResourceProject } from '../gen/resource-sites';
 import { peopleAt } from '../gen/people';
 import { VEHICLE_HALL } from '../gen/hall';
@@ -16,6 +16,8 @@ import { setLadders, dropLadders, ladderHit, ladderFloor } from './ladders';
 import { setHouses, dropHouses, houseHit, houseRay, houseSolid } from './houses';
 import { myHome } from '../gen/homes';
 import { fieldClaims } from '../gen/fields';
+import { groveTrees } from '../gen/resource-sites';
+import { planksForLogs } from '../gen/wood';
 import { drawHangar, hangarOps } from './hangar';
 import { drawWorks, forgetWorks } from './works';
 import { drawStations, forgetStations } from './stations';
@@ -225,7 +227,8 @@ function buildChunk(cx: number, cz: number, lod = 1): Chunk {
   // felled trees and broken rocks (player changes, keyed by their index in the generated list) are left out
   const trees: Tree[] = [], stumps: Tree[] = [], rocks: Rock[] = [];
   // a claimed site is cleared: nothing grows on the levelled ground (the generated lists keep their indices)
-  const cleared = (x: number, z: number) => inMonument(x, z) || !!T.claimAt(x, z, 1) || inGateClearing(T.world, x, z, 2);
+  const giants = groveGiants(T.world, cx * CHUNK + CHUNK / 2, cz * CHUNK + CHUNK / 2, CHUNK); // the great groves' giants stand alone
+  const cleared = (x: number, z: number) => inMonument(x, z) || !!T.claimAt(x, z, 1) || inGateClearing(T.world, x, z, 2) || giants.some((g) => Math.hypot(x - g.x, z - g.z) < g.r + 7);
   chunkTrees(T, cx, cz).forEach((t, i) => { if (t.cols.some(([x, z]) => cleared(x, z))) return; const k = `tree:${wrapC(cx)}:${cz}:${i}`; gatherKey.set(t, k); (ripe(k) ? trees : stumps).push(t); });
   chunkRocks(T, cx, cz).forEach((r, i) => { if (cleared(r.x, r.z)) return; const k = `rock:${wrapC(cx)}:${cz}:${i}`; gatherKey.set(r, k); if (ripe(k)) rocks.push(r); });
   let nodes: PlantNode[] = [];
@@ -563,9 +566,23 @@ export function updateStreaming(budgetMs = 4) {
   }
 }
 
+/** The giants of the great groves (gen/resource-sites.ts) within `r` + 60 m of (x, z), world: only villages of the new
+ *  rules with a grove. Pure of the saved state (the shared towns), so every player sees the same. */
+export function groveGiants(world: number, x: number, z: number, r: number): { x: number; z: number; r: number; h: number; vid: number; i: number; y?: number }[] {
+  const out: { x: number; z: number; r: number; h: number; vid: number; i: number }[] = [];
+  for (const v of poisNear(world, x, z, r + 320)) {
+    if (v.type !== 'village') continue;
+    const s = G.char.towns[v.id];
+    if (!progressive(s) || depositsOf(s).grove === false) continue;
+    const px = v.x - 36 + RESOURCE_PLOTS.lumber.x, pz = v.z - 36 + RESOURCE_PLOTS.lumber.z;
+    if (Math.hypot(px - x, pz - z) > r + 100) continue;
+    groveTrees(world, v.id).forEach((g, i) => out.push({ x: px + g.u, z: pz + g.v, r: g.r, h: g.h, vid: v.id, i }));
+  }
+  return out;
+}
 /** Load (or reload) the open world of the current character's seed, synchronously around (x, z). */
 export function openWorld(x: number, z: number) {
-  initializeSettlements(G.char);
+  initializeSettlements(G.char); planksForLogs(G.char); // (0.165: also after a server's world is taken over)
   const w = G.char.world;
   if (!OW.terrain || OW.terrain.world !== w) { OW.terrain = new Terrain(w); riversOf(w); } // the rivers are worked out once, while the world loads
   OW.terrain.setClaims([...G.char.claims, ...fieldClaims(G.char.towns)]); // bases and the villages' fields are levelled

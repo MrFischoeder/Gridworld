@@ -10,7 +10,7 @@ import { STAGES, giveToStage, stageRows, stagesDone, fixShuttle, type ShuttleSta
 import type { TownState } from '../src/gen/town';
 
 describe('processing chains', () => {
-  const dug = new Set<Stuff>([...Object.values(INDUSTRY).flatMap((i) => [...i.pool, ...(i.extra?.goods ?? [])]), ...RARES.map((r) => r.k), ...Object.values(CROPS).map((c) => c.out as Stuff), 'stone', 'circuit']); // (stone gathered, circuit salvaged)
+  const dug = new Set<Stuff>([...Object.values(INDUSTRY).flatMap((i) => [...i.pool, ...(i.extra?.goods ?? [])]), ...RARES.map((r) => r.k), ...Object.values(CROPS).map((c) => c.out as Stuff), 'stone', 'circuit', 'log']); // (stone gathered, circuit salvaged, logs felled or from a great grove)
   const made = new Set<Stuff>([...PLANT_KINDS.flatMap((k) => PLANTS[k].recipes.map((r) => r.out[0])), ...Object.values(INSTALL_WORK).map((w) => w!.out as Stuff)]);
   const value = (g: Stuff) => (g in BASIC_VALUE ? BASIC_VALUE[g as BasicMat] : isRare(g) ? RARE_VALUE[g] : GOOD_INFO[g as Good].base);
   it('every input can be dug, grown or made, and every processed good comes out of some works or old plant', () => {
@@ -23,7 +23,7 @@ describe('processing chains', () => {
   });
   it('every recipe pays: its output is worth well over its inputs', () => {
     for (const k of PLANT_KINDS) for (const r of PLANTS[k].recipes) {
-      const cost = r.in.reduce((a, [g, n]) => a + value(g) * n, 0), worth = GOOD_INFO[r.out[0]].base * r.out[1];
+      const cost = r.in.reduce((a, [g, n]) => a + value(g) * n, 0), worth = value(r.out[0]) * r.out[1];
       expect(worth / cost, `${k} → ${r.out[0]}`).toBeGreaterThan(1.2);
     }
   });

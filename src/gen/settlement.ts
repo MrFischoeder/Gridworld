@@ -3,7 +3,7 @@ import type { TownState } from './town';
 import type { ItemKey } from '../data/items';
 import { hash } from '../core/rng';
 import { allVillages, poisNear, GRIDHOLM_ID, worldDist, type Poi } from './regions';
-import { villageDeposits, ORES, type Deposits } from './resource-sites';
+import { villageDeposits, groveRoll, ORES, type Deposits } from './resource-sites';
 import { startJob, jobOf } from './construction';
 export { RESOURCE_PLOTS } from './resource-sites';
 
@@ -25,23 +25,23 @@ export const progressive = (s: TownState | undefined) => s?.settlement?.v === 1;
 export const projectDone = (s: TownState | undefined, k: Project) => !!s?.settlement?.done?.[k];
 export const SETTLEMENT_START = 8;
 export const PROJECTS: Record<Project, { name: string; needs: [ItemKey, number][]; description: string }> = {
-  warehouse: { name: 'Vehicle warehouse', needs: [['log', 30], ['stone', 24], ['planks', 24], ['nails', 20]], description: 'Build the plank warehouse outside the north fence. From then on the village stores are kept there: drive in through its wide doors and unload your vehicle at the terminal.' },
+  warehouse: { name: 'Vehicle warehouse', needs: [['planks', 84], ['stone', 24], ['nails', 20]], description: 'Build the plank warehouse outside the north fence. From then on the village stores are kept there: drive in through its wide doors and unload your vehicle at the terminal.' },
   power: { name: 'Village power plant', needs: [['scrap', 12], ['wire', 8], ['circuit', 2]], description: 'Build electricity on the marked site outside the fence. Farms work by hand until then.' },
-  comms: { name: 'Satellite link', needs: [['log', 6], ['stone', 6], ['scrap', 4]], description: 'Restore the receiver in the nearby communications ruin. Use its console to reconnect the satellites and receive a GPS tablet.' },
-  quarry: { name: 'Stone quarry', needs: [['log', 16], ['planks', 12], ['scrap', 4]], description: 'Build stone-cutting works beside the large pile of boulders about 100 metres beyond our fence. Every village has its own quarry; it supplies building stone.' },
-  mine: { name: 'Ore mine', needs: [['log', 18], ['stone', 12], ['planks', 12], ['scrap', 6]], description: 'Build a mine at the coloured rocky hollow. Only villages with a local ore seam can extract that ore.' },
-  lumber: { name: 'Sawmill', needs: [['log', 20], ['stone', 10], ['scrap', 8]], description: 'Build the marked timber works. It supplies timber and sawn lumber.' },
+  comms: { name: 'Satellite link', needs: [['planks', 12], ['stone', 6], ['scrap', 4]], description: 'Restore the receiver in the nearby communications ruin. Use its console to reconnect the satellites and receive a GPS tablet.' },
+  quarry: { name: 'Stone quarry', needs: [['planks', 44], ['scrap', 4]], description: 'Build stone-cutting works beside the large pile of boulders about 100 metres beyond our fence. Every village has its own quarry; it supplies building stone.' },
+  mine: { name: 'Ore mine', needs: [['planks', 48], ['stone', 12], ['scrap', 6]], description: 'Build a mine at the coloured rocky hollow. Only villages with a local ore seam can extract that ore.' },
+  lumber: { name: 'Lumber camp', needs: [['planks', 24], ['stone', 10], ['scrap', 8]], description: 'Build a woodcutters\' camp in the great grove. The giant trees there are too big to fell, but the crews take timber from them for good: logs every day, and you may cut them yourself once the camp stands. Saw the logs into planks by hand or at a sawmill.' },
   oil: { name: 'Oil well', needs: [['scrap', 16], ['wire', 8], ['planks', 12]], description: 'Build a pump at the natural oil seep. Crude oil collects in village stock.' },
   refinery: { name: 'Oil refinery', needs: [['scrap', 24], ['circuit', 4], ['wire', 12], ['planks', 18]], description: 'Build a refinery beside the oil well. It consumes crude from village stock to make fuel.' },
-  relay: { name: 'Relay mast', needs: [['scrap', 12], ['wire', 10], ['circuit', 4], ['log', 8], ['gears', 2]], description: 'Raise a relay mast over the receiver. The satellites talk to it on their own passes, so orbital scans round this village come apart from the rest of the world and reach further.' },
-  foodworks: { name: 'Food processing house', needs: [['log', 14], ['stone', 10], ['planks', 12], ['nails', 16], ['scrap', 6]], description: 'Build a mill, a bakery, a dairy and a smokehouse on the staked plot about 100 metres south-west of the village. While its crew works, grain, potatoes, milk and meat feed a third more people, so the same fields keep a bigger village.' },
+  relay: { name: 'Relay mast', needs: [['scrap', 12], ['wire', 10], ['circuit', 4], ['planks', 16], ['gears', 2]], description: 'Raise a relay mast over the receiver. The satellites talk to it on their own passes, so orbital scans round this village come apart from the rest of the world and reach further.' },
+  foodworks: { name: 'Food processing house', needs: [['planks', 40], ['stone', 10], ['nails', 16], ['scrap', 6]], description: 'Build a mill, a bakery, a dairy and a smokehouse on the staked plot about 100 metres south-west of the village. While its crew works, grain, potatoes, milk and meat feed a third more people, so the same fields keep a bigger village.' },
 };
 /**
  * The start village's radar and communications station (document 04): a big project in three stages, salvage and
  * exploration rather than a click. Each stage's materials are handed over bit by bit like any project's.
  */
 export const STATION_STAGES: { title: string; text: string; needs: [ItemKey, number][] }[] = [
-  { title: 'Clearing the station', text: 'The mast lies across the compound and the bunker is buried in rubble. Timber for props, stone to wall up the bunker, scrap to patch the doors.', needs: [['log', 20], ['stone', 20], ['scrap', 16]] },
+  { title: 'Clearing the station', text: 'The mast lies across the compound and the bunker is buried in rubble. Timber for props, stone to wall up the bunker, scrap to patch the doors.', needs: [['planks', 40], ['stone', 20], ['scrap', 16]] },
   { title: 'Power and cabling', text: 'The station needs its own power and new cable runs: wire, old electronics for the switchboard, machine parts and an engine to turn the generator.', needs: [['scrap', 20], ['wire', 16], ['circuit', 6], ['parts', 3], ['engine', 1]] },
   { title: 'The dish and the console', text: 'The mast goes up again with the dish on top, and the console must find the satellites: power cores for the transmitter, electronics, gears for the dish drive, machine parts.', needs: [['circuit', 10], ['pcore', 2], ['gears', 4], ['parts', 4], ['scrap', 10]] },
 ];
@@ -63,17 +63,17 @@ export const RELAY = { reach: 4000, r: 4500 };
 export const hasRelay = (s: TownState | undefined) => progressive(s) && !isStation(s) && projectDone(s, 'relay');
 export const scanWait = (home: TownState | undefined, now: number) => { const t = home?.settlement?.scanAt; return t === undefined ? 0 : Math.max(0, t + ORBIT.every - now); };
 /** Saves predating deposit metadata keep their commissioned extraction sites. */
-export const depositsOf = (s: TownState | undefined): Deposits => s?.settlement?.deposits ?? { ore: 'iron', oil: true };
+export const depositsOf = (s: TownState | undefined): Deposits => s?.settlement?.deposits ?? { ore: 'iron', oil: true, grove: true };
 export function projectAvailable(s: TownState | undefined, k: Project): boolean {
-  return projectDone(s, k) || (k === 'mine' ? !!depositsOf(s).ore : k === 'oil' || k === 'refinery' ? depositsOf(s).oil : true);
+  return projectDone(s, k) || (k === 'mine' ? !!depositsOf(s).ore : k === 'oil' || k === 'refinery' ? depositsOf(s).oil : k === 'lumber' ? depositsOf(s).grove !== false : true);
 }
 export function localIndustryDone(s: TownState | undefined): boolean {
-  return projectDone(s, 'quarry') && projectDone(s, 'lumber') && (!projectAvailable(s, 'mine') || projectDone(s, 'mine')) && (!projectAvailable(s, 'oil') || projectDone(s, 'refinery'));
+  return projectDone(s, 'quarry') && (!projectAvailable(s, 'lumber') || projectDone(s, 'lumber')) && (!projectAvailable(s, 'mine') || projectDone(s, 'mine')) && (!projectAvailable(s, 'oil') || projectDone(s, 'refinery'));
 }
 export function projectProblem(s: TownState | undefined, k: Project): string {
   if (!progressive(s)) return 'This settlement uses the established village rules.';
   if (projectDone(s, k)) return 'Already built.';
-  if (!projectAvailable(s, k)) return k === 'mine' ? 'There is no ore seam here. Import metals from another village.' : 'There is no oil field here. Import crude or fuel from another village.';
+  if (!projectAvailable(s, k)) return k === 'mine' ? 'There is no ore seam here. Import metals from another village.' : k === 'lumber' ? 'There is no great grove here. Cut wild trees, or bring logs from a village that has one.' : 'There is no oil field here. Import crude or fuel from another village.';
   if (k === 'relay') return isStation(s) ? 'The station itself is this village\'s relay.' : projectDone(s, 'comms') ? '' : 'Restore the satellite receiver first.';
   if (k === 'comms' && isStation(s)) return (s?.farms ?? 0) < 2 ? 'Build two farms first.' : s?.settlement?.car ? '' : 'Get your first vehicle from Kuba the mechanic first: the station lies a few kilometres out.';
   if (k === 'comms') return (s?.farms ?? 0) >= 1 ? '' : 'Build the first farm first.';
@@ -117,7 +117,7 @@ export function development(s: TownState | undefined): number {
   return Math.min(6, (s?.farms ?? 0) + (projectDone(s, 'warehouse') ? 1 : 0) + (projectDone(s, 'power') ? 1 : 0) + (projectDone(s, 'quarry') || projectDone(s, 'mine') || projectDone(s, 'lumber') || s?.built ? 1 : 0));
 }
 export const housingCapacity = (s: TownState | undefined) => SETTLEMENT_START + development(s) * 8;
-export const basicSmith = ['hatchet', 'pickaxe', 'firekit', 'flask'] as ItemKey[];
+export const basicSmith = ['hatchet', 'pickaxe', 'firekit', 'flask', 'saw'] as ItemKey[];
 export function smithAllows(s: TownState | undefined, k: ItemKey): boolean {
   if (!progressive(s)) return true;
   if (basicSmith.includes(k)) return true;
@@ -136,6 +136,7 @@ export function initializeSettlements(c: { settlementRules: number; world: numbe
       if (s.done?.mine || s.given?.mine) s.deposits.ore = 'iron';
       if (s.done?.oil || s.done?.refinery || s.given?.oil || s.given?.refinery) s.deposits.oil = true;
     }
+    if (s.deposits.grove === undefined) s.deposits.grove = groveRoll(c.world, v.id) || !!(s.done?.lumber || s.given?.lumber); // (0.165) the great groves; a camp already begun keeps its grove
   }
 }
 /** Reuse a genuine nearby ruin; independent stream leaves existing village/ruin identities untouched. */
@@ -171,11 +172,12 @@ export function tutorialStep(s: TownState | undefined): { title: string; text: s
   if (!projectDone(s, 'foodworks')) return { title: PROJECTS.foodworks.name, text: PROJECTS.foodworks.description, project: 'foodworks' };
   return { title: 'A thriving settlement', text: 'Our homes, farms and industry are restored. You can now expand the village with advanced works and improvements.' };
 }
-/** Crates per game hour. Refineries are handled by the runtime so actual crude is consumed. */
+/** Crates per game hour. Refineries are handled by the runtime so actual crude is consumed. The lumber camp works the
+ *  great grove: logs for good (sawn into planks at a sawmill or by hand). */
 export function resourceYield(s: TownState | undefined): Partial<Record<ItemKey, number>> {
   if (!progressive(s)) return {};
   const ore = depositsOf(s).ore, vein = ore && ORES[ore];
-  return { ...(projectDone(s, 'quarry') ? { stone: .8 } : {}), ...(projectDone(s, 'mine') && vein ? { [vein.good]: .6, ...(vein.lump ? { [vein.lump]: .3 } : {}) } : {}), ...(projectDone(s, 'lumber') ? { log: .8, timber: .5, lumber: .3 } : {}), ...(projectDone(s, 'oil') && depositsOf(s).oil ? { crude: .7 } : {}), ...(projectDone(s, 'refinery') ? { fuel: 0 } : {}) };
+  return { ...(projectDone(s, 'quarry') ? { stone: .8 } : {}), ...(projectDone(s, 'mine') && vein ? { [vein.good]: .6, ...(vein.lump ? { [vein.lump]: .3 } : {}) } : {}), ...(projectDone(s, 'lumber') ? { log: 1.2, timber: .4 } : {}), ...(projectDone(s, 'oil') && depositsOf(s).oil ? { crude: .7 } : {}), ...(projectDone(s, 'refinery') ? { fuel: 0 } : {}) };
 }
 /** Stable labels for the deposit marker geometry. */
 export const depositVariant = (world: number, vid: number) => hash(world, vid, 0x5e77) % 3;

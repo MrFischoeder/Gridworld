@@ -5,7 +5,7 @@ import { shortHands } from './villagestats';
 import { G, W } from '../game';
 import { ITEMS } from '../data/items';
 import { calcStats, saveChar } from '../character';
-import { PLANTS, HOPPER, OUT_CAP, plantsOf, runPlant, progress, feed, collect, setRecipe, type PlantState, type Stuff } from '../gen/plants';
+import { PLANTS, HOPPER, OUT_CAP, plantsOf, runPlant, progress, feed, collect, setRecipe, type PlantState, type Stuff, BASIC_VALUE, type BasicMat } from '../gen/plants';
 import { findPoi } from '../gen/regions';
 import { GOOD_INFO, type Good } from '../gen/market';
 import { carried, takeFrom, putAway } from './market';
@@ -35,7 +35,7 @@ function render(msg = '') {
       <button class="opt" style="width:auto" data-wkl="${g}" data-n="1" ${have && room ? '' : 'disabled'}>load 1</button>
       <button class="opt" style="width:auto" data-wkl="${g}" data-n="999" ${have > 1 && room > 1 ? '' : 'disabled'}>load all</button></div>`;
   }).join('');
-  const outs = Object.entries(p.out).filter(([, n]) => n).map(([g, n]) => `<div class="shoprow"><div><b>${name(g as Good)}</b><br><span>${n} finished · worth about ${GOOD_INFO[g as Good].base} g a crate</span></div>
+  const outs = Object.entries(p.out).filter(([, n]) => n).map(([g, n]) => `<div class="shoprow"><div><b>${name(g as Good)}</b><br><span>${n} finished · worth about ${GOOD_INFO[g as Good]?.base ?? BASIC_VALUE[g as BasicMat] ?? 0} g a ${GOOD_INFO[g as Good] ? 'crate' : 'piece'}</span></div>
       <button class="opt" style="width:auto;color:var(--gold)" data-wkc="${g}">collect ${n}</button></div>`).join('');
   const state = pr !== null ? `Working: batch ${Math.round(pr * 100)}% · next in ${Math.ceil(spec.batch * (1 - pr))} min.`
     : !on && progress(p, now) !== null && shortHands(open.vid, 'works', open.slot) ? `<span style="color:var(--red,#ff5a3c)">Short of hands:</span> ${shortHands(open.vid, 'works', open.slot)}.`

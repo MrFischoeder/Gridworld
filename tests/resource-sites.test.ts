@@ -18,7 +18,7 @@ describe('village extraction landmarks', () => {
     const counts = { ore: 0, oil: 0 }; const types = new Set();
     for (const v of villages) {
       const s = c.towns[v.id], d = s.settlement!.deposits!;
-      expect(d).toEqual(villageDeposits(world, v.id)); expect(projectAvailable(s, 'quarry')).toBe(true); expect(projectAvailable(s, 'lumber')).toBe(true);
+      expect(d).toEqual(villageDeposits(world, v.id)); expect(projectAvailable(s, 'quarry')).toBe(true); expect(projectAvailable(s, 'lumber')).toBe(d.grove !== false);
       expect(projectAvailable(s, 'mine')).toBe(!!d.ore); expect(projectAvailable(s, 'oil')).toBe(d.oil);
       if (d.ore) { counts.ore++; types.add(d.ore); } if (d.oil) counts.oil++;
     }
@@ -60,7 +60,7 @@ describe('village extraction landmarks', () => {
     const c = newChar(); c.world = world;
     c.towns[target.id] = { own: { copper: { n: 9, t: 1000 }, coal: { n: 7, t: 1000 } }, settlement: { v: 1, done: { mine: true }, given: { oil: { scrap: 5 } } } };
     const loaded = loadChar({ getItem: k => k === SAVE_KEY ? JSON.stringify(c) : null }); initializeSettlements(loaded);
-    const s = loaded.towns[target.id]; expect(s.settlement!.deposits).toEqual({ ore: 'iron', oil: true }); expect(s.settlement!.given!.oil!.scrap).toBe(5);
+    const s = loaded.towns[target.id]; expect(s.settlement!.deposits).toEqual({ ore: 'iron', oil: true, grove: villageDeposits(world, target.id).grove }); expect(s.settlement!.given!.oil!.scrap).toBe(5);
     const stock = stockOf(world, target, villageSeed(world, target), s, 1100); expect(stock.ownOf('copper')).toBe(9); expect(stock.ownOf('coal')).toBe(7);
     const copy = JSON.parse(JSON.stringify(loaded)); initializeSettlements(copy); expect(copy.towns[target.id]).toEqual(s);
   });

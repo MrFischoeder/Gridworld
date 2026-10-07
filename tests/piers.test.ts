@@ -45,7 +45,7 @@ describe('piers', () => {
     const [x, z] = spots[0], p = { ...planPier(W, x, z, 1, 0, ground, water, []).p!, id: 'pier:t', given: {} } as Pier;
     const need = new Map(pierNeeds(p));
     expect(need.get('scrap')).toBe(PIER.fittings.scrap);
-    expect(handOverPier(p, (k) => (k === 'log' ? 2 : 0), 10).built).toBe(false);
+    expect(handOverPier(p, (k) => (k === 'planks' ? 2 : 0), 10).built).toBe(false);
     expect(pierProgress(p)).toBeGreaterThan(0);
     const r = handOverPier(p, () => 999, 20);
     expect(r.built).toBe(true); expect(p.done).toBe(20); expect(pierProgress(p)).toBe(1);

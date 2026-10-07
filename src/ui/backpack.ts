@@ -11,6 +11,7 @@ import { calcStats, saveChar, listOf, stowHeld, handsChanged, packVol } from '..
 import { dropStack, bulkOf } from '../inventory';
 import { logLine, $ } from './hud';
 import { useItem } from '../world/loot';
+import { sawLogs } from '../world/sawing';
 import { refreshGunLook } from '../world/weapons';
 import { lockPointer } from './input';
 import { slotHTML, bindSlots, itemInfo, parseId, loadText } from './slots';
@@ -83,6 +84,7 @@ function renderPack() {
     else if (it.type === 'weapon') acts.push(['hold', 'Take in hands'], ['on', 'Sling on back']);
     else if (it.type === 'cons') acts.push(['use', 'Use']);
     else if (HAND_TOOLS.has(s.k)) acts.push(['hold', 'Take in hands']);
+    if (s.k === 'log' && (w === 'p' || w === 'h')) acts.push(['saw', 'Saw into planks'], ['sawall', 'Saw all']); // (world/sawing.ts: a Saw in your kit)
     if (w === 'p' || w === 'h' || w === 'k') acts.push(['drop', 'Drop']);
   } else sel = null;
   note = '';
@@ -170,6 +172,7 @@ packEl.addEventListener('click', (e) => {
   const id = sel, [w, i] = parseId(id), act = a.dataset.a!;
   if (act === 'off' || act === 'on' || act === 'hold' || act === 'stow') { const m = quick(sel, act); if (m) logLine(m); note = m; sel = null; }
   if (act === 'use' && (w === 'p' || w === 'h')) { const s = listOf(w)[i]; if (s) useItem(s.k); }
+  if (act === 'saw' || act === 'sawall') { const m = sawLogs(act === 'sawall'); logLine(m); note = m; if (!G.char.inv.some((x) => x?.k === 'log') && G.char.hands[0]?.k !== 'log') sel = null; }
   if (side?.act && act === side.act[0] && side.doAct) { note = side.doAct(id); sel = null; if (!G.packOpen) return; }
   if (act === 'drop' && (w === 'p' || w === 'h' || w === 'k')) { const s = listOf(w)[i]; listOf(w)[i] = null; sel = null; if (s) dropAtFeet(s); } // laid at your feet, for you or anyone to pick up
   changed();

@@ -114,7 +114,7 @@ export const INSTALL_STAGES: Record<InstallKind, InstallStage[]> = {
     { title: 'The core', text: 'The cascade controller is dead. Only the old plans for enrichment show how it was built, and it wants power cores and advanced alloy.', needs: [['pcore', 2], ['alloy', 4], ['circuit', 6]], tech: 'enrichment', gold: 500, xp: 600 },
   ],
   radar: [
-    { title: 'Clearing the compound', text: 'The dish lies on its back in the weeds and the bunker door is buried. Timber and stone to shore up the bunker, scrap to brace the tower.', needs: [['log', 10], ['stone', 8], ['scrap', 10]], gold: 150, xp: 200 },
+    { title: 'Clearing the compound', text: 'The dish lies on its back in the weeds and the bunker door is buried. Timber and stone to shore up the bunker, scrap to brace the tower.', needs: [['planks', 20], ['stone', 8], ['scrap', 10]], gold: 150, xp: 200 },
     { title: 'Power and cable', text: 'The generator shed is a ruin and the cable runs are eaten through. Copper cable, steel for the tower and the mast, electronics for the switchgear.', needs: [['cable', 8], ['steel', 6], ['circuit', 6]], gold: 250, xp: 300 },
     { title: 'The dish and the console', text: 'The dish goes back up on its tower. Only the old plans for radio triangulation show how to aim it and read the screens; it wants circuit boards and advanced alloy for the mount.', needs: [['boards', 4], ['circuit', 8], ['alloy', 4]], tech: 'radio', gold: 400, xp: 500 },
   ],

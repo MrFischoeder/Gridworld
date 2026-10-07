@@ -12,7 +12,7 @@ describe('village fortification', () => {
     expect(s.given).toEqual({ planks: 20, nails: 40 });
     r = handOver(s, () => 999); // more than enough: only what is missing is taken
     expect(r.raised).toBe(true);
-    expect(r.taken.find(([k]) => k === 'planks')![1]).toBe(40);
+    expect(r.taken.find(([k]) => k === 'planks')![1]).toBe(FORTIFY[0].needs.find(([k]) => k === 'planks')![1] - 20);
     expect(s.wall).toBe(1); expect(s.given).toEqual({});
     handOver(s, () => 999);
     expect(s.wall).toBe(2);

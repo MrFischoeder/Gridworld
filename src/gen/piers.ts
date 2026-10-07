@@ -23,7 +23,7 @@ export const PIER = {
   /** Other piers keep this far apart; places this far from the pier (m). */
   apart: 45, place: 25,
   /** Materials per metre of deck (rounded up), and the fittings of the head; xp per metre. */
-  per: { log: 1 / 1.4, stone: 1 / 5, nails: 1 / 2, rope: 1 / 4 } as Partial<Record<ItemKey, number>>,
+  per: { planks: 1 / 0.7, stone: 1 / 5, nails: 1 / 2, rope: 1 / 4 } as Partial<Record<ItemKey, number>>,
   fittings: { scrap: 3, wire: 2 } as Partial<Record<ItemKey, number>>,
   xp: 14,
   /** Slots of the crate on the head. */

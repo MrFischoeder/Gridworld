@@ -12,13 +12,17 @@ import { spendStamina, burn } from './survival';
 import { makeNoise } from './noise';
 import { burst } from './fx';
 import { dropPickup } from './loot';
-import { gatherables, gatherKey, rebuildChunkAt, ORE_COLOR } from './overworld';
+import { gatherables, gatherKey, rebuildChunkAt, ORE_COLOR, groveGiants, OW } from './overworld';
+import { findPoi } from '../gen/regions';
+import { projectDone } from '../gen/settlement';
 import { TREE_SPAN, type OreKind } from '../gen/trees';
 import { logLine } from '../ui/hud';
 import { camera } from './render';
 import { TOOL_KEYS, toolModel, isToolModel, type ToolKey } from './toolmodels';
 
-export interface Target { kind: 'tree' | 'rock'; key: string; x: number; y: number; z: number; big: boolean; ore?: OreKind; held: boolean }
+export interface Target { kind: 'tree' | 'rock'; key: string; x: number; y: number; z: number; big: boolean; ore?: OreKind; held: boolean;
+  /** A giant of a village's great grove (gen/resource-sites.ts): never felled; worked only once the village's lumber camp stands. */
+  grove?: { vid: number; camp: boolean; name: string } }
 /** Blows landed so far on trees and rocks that still stand (forgotten when you walk away). */
 const blows = new Map<string, number>();
 const ORE_NAME: Record<OreKind, string> = { iron: 'iron', copper: 'copper' };
@@ -34,6 +38,13 @@ export function gatherTarget(): Target | null {
     const d = Math.hypot(x - p.x, z - p.z) - r;
     if (d < 1.4 && d < bd && Math.abs(t.y - p.y) < 2) { bd = d; best = { kind: 'tree', key: gatherKey.get(t)!, x, y: t.y, z, big: TREE_SPAN[t.kind] > 0, held: axeH }; }
   }
+  if (axe) for (const g of groveGiants(G.char.world, p.x, p.z, 12)) {
+    const d = Math.hypot(g.x - p.x, g.z - p.z) - g.r * 1.1, y = OW.terrain?.heightAt(g.x, g.z) ?? p.y;
+    if (d < 1.6 && d < bd && Math.abs(y - p.y) < 3) {
+      bd = d; const v = findPoi(G.char.world, g.vid);
+      best = { kind: 'tree', key: `grove:${g.vid}:${g.i}`, x: g.x - (g.x - p.x) / (d + g.r * 1.1) * g.r, y: p.y, z: g.z - (g.z - p.z) / (d + g.r * 1.1) * g.r, big: true, held: axeH, grove: { vid: g.vid, camp: projectDone(G.char.towns[g.vid], 'lumber'), name: v?.name ?? 'the village' } };
+    }
+  }
   if (pick) for (const k of rocks) {
     if (k.r < ROCK_MIN_R) continue;
     const d = Math.hypot(k.x - p.x, k.z - p.z) - k.r * 0.8;
@@ -48,8 +59,9 @@ const need = (t: Target) => {
 const bar = (n: number, of: number) => { const k = Math.round(n / of * 10); return '▮'.repeat(k) + '▯'.repeat(10 - k); };
 const toolOf = (t: Target) => (t.kind === 'tree' ? 'hatchet' : 'pickaxe');
 export function gatherPrompt(t: Target) {
+  if (t.grove && !t.grove.camp) return `A giant of ${t.grove.name}'s great grove: far too big for one axe. Only a lumber camp's crews work it (ask the elder of ${t.grove.name}).`;
   if (!t.held) return `E — take the ${t.kind === 'tree' ? 'hatchet' : 'pickaxe'} in your hands (tools work only from your hands)`;
-  const n = blows.get(t.key) ?? 0, what = t.kind === 'tree' ? 'chop the tree' : t.ore ? `mine the ${ORE_NAME[t.ore]} vein` : 'break the rock';
+  const n = blows.get(t.key) ?? 0, what = t.grove ? 'take timber from the giant' : t.kind === 'tree' ? 'chop the tree' : t.ore ? `mine the ${ORE_NAME[t.ore]} vein` : 'break the rock';
   return n || work ? `${work ? (t.kind === 'tree' ? 'Chopping' : 'Mining') : 'Hold E — ' + what} ${bar(n, need(t))} ${n}/${need(t)}` : `Hold E — ${what}`;
 }
 
@@ -82,6 +94,7 @@ function restPose() {
 }
 /** E pressed at a tree or rock: start working it (the blows land while E is held). */
 export function strike(t: Target) {
+  if (t.grove && !t.grove.camp) { logLine(gatherPrompt(t)); return; }
   if (!t.held) { const m = takeInHands(toolOf(t)); if (m) logLine(m); return; }
   if (work?.key === t.key) return;
   work = { key: t.key, t: 0, landed: false };
@@ -111,8 +124,14 @@ function blow(t: Target) {
   makeNoise(at, g.noise);
   const n = (blows.get(t.key) ?? 0) + 1;
   if (n < need(t)) { blows.set(t.key, n); return; }
-  // down it goes: the tree falls, the rock splits; the materials drop around it
   blows.delete(t.key); stop();
+  if (t.grove) { // a giant of the great grove gives its logs and stands as before: it never runs out
+    for (let i = 0; i < GATHER.tree.bigLogs; i++) { const a = Math.random() * 6.283, d = 1 + Math.random() * 1.5; dropPickup(new THREE.Vector3(t.x + Math.cos(a) * d, t.y + 0.6, t.z + Math.sin(a) * d), 'log'); }
+    burst(at, 0xb8b060, 30, 1.2);
+    logLine(`The giant gives ${GATHER.tree.bigLogs} logs and stands as tall as before. Saw them into planks before they are any use for building.`);
+    saveChar(); return;
+  }
+  // down it goes: the tree falls, the rock splits; the materials drop around it
   // a vein weathers out again slower: its harvest time is set ahead by the difference
   G.char.harvest[t.key] = G.char.time + (t.ore ? GATHER.ore.regrow - GATHER.rock.regrow : 0);
   const k = t.kind === 'tree' ? 'log' : 'stone', count = t.kind === 'tree' ? (t.big ? GATHER.tree.bigLogs : GATHER.tree.logs) : (t.big ? GATHER.rock.bigStones : GATHER.rock.stones);
@@ -121,7 +140,7 @@ function blow(t: Target) {
   const lumps = t.ore ? (t.big ? GATHER.ore.bigLumps : GATHER.ore.lumps) : 0;
   for (let i = 0; i < lumps; i++) drop(t.ore === 'iron' ? 'ironO' : 'copperO');
   burst(at, t.kind === 'tree' ? 0xb8b060 : t.ore ? ORE_COLOR[t.ore] : 0xc8c8b0, 30, 1.2);
-  logLine(t.kind === 'tree' ? `Timber! ${count} logs.` : t.ore ? `The vein gives: ${lumps} lumps of ${ORE_NAME[t.ore]} ore and ${count} stones.` : `The rock splits: ${count} stones.`);
+  logLine(t.kind === 'tree' ? `Timber! ${count} logs: saw them into planks to build with.` : t.ore ? `The vein gives: ${lumps} lumps of ${ORE_NAME[t.ore]} ore and ${count} stones.` : `The rock splits: ${count} stones.`);
   rebuildChunkAt(t.x, t.z);
   saveChar();
 }

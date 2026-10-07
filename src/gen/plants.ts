@@ -26,10 +26,11 @@ export const PLANT_KINDS: PlantKind[] = ['sawmill', 'brickworks', 'cementworks',
 /** What a works takes in: trade goods, and the rare materials of the deposits (gen/deposits.ts), which no market trades. */
 export type Stuff = Good | Rare | BasicMat;
 /** The plain materials a works may also take (not trade goods): what a crate of them is worth to it. */
-export type BasicMat = 'stone' | 'circuit' | 'microchip' | 'sensor';
+export type BasicMat = 'stone' | 'circuit' | 'microchip' | 'sensor' | 'log' | 'planks';
 /** (circuit = salvaged Electronic Components; microchip = the Old Chip Foundry's, gen/installs.ts) */
-export const BASIC_VALUE: Record<BasicMat, number> = { stone: 5, circuit: 60, microchip: 450, sensor: 500 };
-export interface Recipe { in: [Stuff, number][]; out: [Good, number] }
+export const BASIC_VALUE: Record<BasicMat, number> = { stone: 5, circuit: 60, microchip: 450, sensor: 500, log: 4, planks: 2 };
+/** `out`: a trade good, or (the Sawmill, 0.165) planks for building. */
+export interface Recipe { in: [Stuff, number][]; out: [Good | 'planks', number] }
 export interface PlantSpec {
   name: string; blurb: string;
   recipes: Recipe[];
@@ -42,19 +43,20 @@ export interface PlantSpec {
 }
 export const PLANTS: Record<PlantKind, PlantSpec> = {
   // ---- tier 1: anyone can build them ----
-  sawmill: { name: 'Sawmill', blurb: 'saws timber into lumber', batch: 30,
-    recipes: [{ in: [['timber', 1]], out: ['lumber', 1] }],
-    needs: [['log', 12], ['stone', 10], ['planks', 8], ['scrap', 6]], fee: 350, xp: 90 },
+  sawmill: { name: 'Sawmill', blurb: 'saws timber into lumber, and logs into planks for building', batch: 30,
+    // (0.165: logs into planks appended, so lumber keeps recipe 0; a log gives 5 planks here, 3 by hand)
+    recipes: [{ in: [['timber', 1]], out: ['lumber', 1] }, { in: [['log', 2]], out: ['planks', 10] }],
+    needs: [['planks', 32], ['stone', 10], ['scrap', 6]], fee: 350, xp: 90 },
   brickworks: { name: 'Brickworks', blurb: 'fires clay into bricks in a coal kiln', batch: 45,
     recipes: [{ in: [['clay', 2], ['coal', 1]], out: ['bricks', 2] }],
-    needs: [['stone', 30], ['planks', 10], ['log', 6], ['scrap', 6]], fee: 400, xp: 100 },
+    needs: [['stone', 30], ['planks', 22], ['scrap', 6]], fee: 400, xp: 100 },
   cementworks: { name: 'Cement Works', blurb: 'burns limestone with coal in a rotary kiln and grinds it into cement', batch: 45,
     recipes: [{ in: [['limestone', 2], ['coal', 1]], out: ['cement', 2] }],
     needs: [['stone', 20], ['bricks', 10], ['scrap', 10], ['planks', 10]], fee: 500, xp: 120 },
   smelter: { name: 'Smelter', blurb: 'melts ore with coal into iron, copper and lead', batch: 60,
     recipes: [{ in: [['ore', 2], ['coal', 1]], out: ['iron', 2] }, { in: [['copper', 2], ['coal', 1]], out: ['copperbar', 1] },
       { in: [['lead', 2], ['coal', 1]], out: ['leadbar', 1] }],
-    needs: [['stone', 20], ['bricks', 12], ['scrap', 12], ['planks', 16], ['log', 8]], fee: 600, xp: 150 },
+    needs: [['stone', 20], ['bricks', 12], ['scrap', 12], ['planks', 32]], fee: 600, xp: 150 },
   glassworks: { name: 'Glassworks', blurb: 'melts quartz sand with coal into glass', batch: 45,
     // (0.145: optical components appended, so glass keeps recipe 0)
     recipes: [{ in: [['sand', 2], ['coal', 1]], out: ['glass', 1] }, { in: [['glass', 2], ['aluminium', 1]], out: ['optics', 1] }],
@@ -102,7 +104,7 @@ export const PLANTS: Record<PlantKind, PlantSpec> = {
   // (0.144) a plain works (no plans), and the works of the strategic metals
   stoneworks: { name: 'Stoneworks', blurb: 'saws stone into dressed blocks and crushes the rest into aggregate', batch: 40,
     recipes: [{ in: [['stone', 3]], out: ['cutstone', 2] }],
-    needs: [['log', 12], ['planks', 10], ['scrap', 6], ['nails', 10]], fee: 300, xp: 80 },
+    needs: [['planks', 34], ['scrap', 6], ['nails', 10]], fee: 300, xp: 80 },
   metallurgy: { name: 'Advanced Metallurgy', blurb: 'arc furnaces and vacuum retorts: alloy steels, titanium and the platinum metals', batch: 120, tech: 'metallurgy',
     recipes: [{ in: [['steel', 2], ['nickel', 1], ['chromite', 1]], out: ['advsteel', 2] }, { in: [['rutile', 2], ['chems', 1]], out: ['titanium', 1] }, { in: [['pgmore', 2], ['chems', 1]], out: ['pgm', 1] }],
     needs: [['bricks', 24], ['cement', 12], ['steel', 10], ['cable', 8], ['generator', 1], ['pump', 1]], fee: 2000, xp: 400 },
@@ -128,7 +130,7 @@ export const PLANT_SLOTS = 2, HOPPER = 40, OUT_CAP = 40;
 export interface PlantState {
   k: PlantKind; rec: number;
   /** Crates in the hopper, finished crates waiting, and the game time up to which the batches are settled. */
-  inp: Partial<Record<Stuff, number>>; out: Partial<Record<Good, number>>; t: number;
+  inp: Partial<Record<Stuff, number>>; out: Partial<Record<Good | 'planks', number>>; t: number;
 }
 /** Plant state lives in the village's TownState. */
 type PlantTown = TownState;

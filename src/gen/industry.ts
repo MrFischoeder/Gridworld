@@ -125,7 +125,7 @@ export function industrySite(seed: number, k: Industry): { x: number; z: number;
 /** The refinery commission: what is still missing (like the wall's in gen/town.ts), or null once built. */
 export function buildPlan(k: Industry, s: TownState | undefined) {
   if (progressive(s) && industryProject(k)) return null;
-  const need = s?.settlement?.v === 1 ? (INDUSTRY[k].build ?? [['log', 16], ['stone', 12], ['scrap', 6]] as [ItemKey, number][]) : INDUSTRY[k].build;
+  const need = s?.settlement?.v === 1 ? (INDUSTRY[k].build ?? [['planks', 32], ['stone', 12], ['scrap', 6]] as [ItemKey, number][]) : INDUSTRY[k].build;
   if (!need || s?.built) return null;
   const rows = need.map(([i, n]) => ({ k: i, n, given: Math.min(n, s?.bgiven?.[i] ?? 0) }));
   return { rows, done: rows.every((r) => r.given >= r.n) };

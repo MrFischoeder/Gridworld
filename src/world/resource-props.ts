@@ -1,13 +1,13 @@
 // Natural extraction landmarks. Scenery is seeded; the oil surface uses one reusable animation buffer.
 import * as THREE from 'three';
 import { hash, rng } from '../core/rng';
-import { ORES, type DepositOre } from '../gen/resource-sites';
+import { ORES, groveTrees, type DepositOre } from '../gen/resource-sites';
 import { resourceRock } from '../gen/resource-rocks';
 import type { RockShape } from '../gen/rockshape';
 import type { Terrain } from '../gen/terrain';
 import { PropBatch } from './props';
 import { sharedLine } from './props';
-import { drawTree } from './trees';
+import { drawGiant } from './trees';
 import type { Box } from '../gen/base';
 
 export interface OilMotion { object: THREE.LineSegments; x: number; y: number; z: number; phase: number }
@@ -33,11 +33,11 @@ export function naturalResource(pb: PropBatch, T: Terrain, vid: number, kind: 'q
     }
     for (let i = 0; i < 5; i++) rock((R() - .5) * 5, (R() - .5) * 5, .35 + R() * .4, .25 + R() * .25, ore ? ORES[ore].color : 0x89988b, true);
   } else {
-    // Timber is standing woodland until a sawmill is commissioned, with an open yard in the middle.
-    for (let i = 0; i < 12; i++) {
-      const a = i / 12 * 6.283, xx = x + Math.cos(a) * (13 + R() * 2), zz = z + Math.sin(a) * (10 + R() * 2), y = T.heightAt(xx, zz), h = 8 + R() * 4;
-      drawTree(pb, { x: xx, y, z: zz, h, r: 2.2, kind: i % 3 === 0 ? 'broad' : 'pine', rot: a, seed: hash(vid, i, T.world), cols: [[xx, zz, .35]] }, 1);
-      boxes.push({ b: [xx - .3, y, zz - .3, xx + .3, y + h * .6, zz + .3], slab: false });
+    // the great grove (gen/resource-sites.ts groveTrees): giant trees round the camp's open yard, never felled
+    for (const g of groveTrees(T.world, vid)) {
+      const xx = x + g.u, zz = z + g.v, y = T.heightAt(xx, zz);
+      drawGiant(pb, xx, y, zz, g.r, g.h, g.seed);
+      boxes.push({ b: [xx - g.r * 0.8, y - 1, zz - g.r * 0.8, xx + g.r * 0.8, y + g.h * 0.5, zz + g.r * 0.8], slab: false });
     }
   }
 }

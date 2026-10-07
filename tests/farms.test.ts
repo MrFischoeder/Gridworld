@@ -6,8 +6,8 @@ import type { TownState } from '../src/gen/town';
 describe('farms', () => {
   it('are built bit by bit and raise the population target without a jump', () => {
     const s: TownState = {}, seed = 4242, now = 5000, b = basePeople(seed, false);
-    expect(handOverFarm(s, seed, false, now, (k) => (k === 'log' ? 8 : 0)).built).toBe(false);
-    expect(farmPlan(s)!.rows.find((r) => r.k === 'log')!.given).toBe(8);
+    expect(handOverFarm(s, seed, false, now, (k) => (k === 'planks' ? 8 : 0)).built).toBe(false);
+    expect(farmPlan(s)!.rows.find((r) => r.k === 'planks')!.given).toBe(8);
     const before = peopleAt(seed, false, s, now);
     expect(handOverFarm(s, seed, false, now, () => 99).built).toBe(true);
     expect(farmsOf(s)).toBe(1);

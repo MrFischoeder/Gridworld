@@ -3,6 +3,18 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.165.0', date: '2026-10-07', title: 'Great groves, lumber camps and planks', notes: [
+    'Some settlements now have a new natural resource: a great grove. Gridholm always has one, other villages about two in five. It is a stand of giant trees east of the village, some 30 m tall and metres thick. The elder tells you where the village\'s resources lie.',
+    'The giants cannot be felled. Once the village has built its Lumber camp in the grove, its crews take logs from the trees every day, forever, into the village stores.',
+    'Once the camp stands, you can work the giants yourself with a hatchet. A giant gives a big load of logs and stands as before. Before the camp is built, the axe will not touch them.',
+    'Without a grove there is no lumber camp: cut wild trees, or bring logs from another village.',
+    'Logs are now raw timber. Felled trees still give logs, but every building wants planks: farms, walls, works, projects, bridges, docks, boats, the old plants\' clearing and the blacksmith\'s wooden parts.',
+    'To saw logs into planks by hand, keep a Saw in your kit, select a Log in the backpack and press "Saw into planks" or "Saw all". Each log gives 3 planks and costs some stamina.',
+    'A village Sawmill does better: 2 logs make 10 planks. This is its second recipe, and it still saws timber into lumber.',
+    'The blacksmith now makes a Saw without any plans (a log and two stones), and the crashed ship\'s locker holds one. Hatchets, pickaxes, fire kits and filters still take logs.',
+    'Logs you had already handed over to a build now count as planks, two for each log, so nothing is lost.',
+    'Fields cannot be staked out in the great grove.',
+  ] },
   { v: '0.164.0', date: '2026-10-07', title: 'You choose where the farms go', notes: [
     'When all of a new farm\'s materials are in, the elder gives you a Survey Stake. Walk out of the village, use the stake and look where the field should go. A hologram shows the field and how far the ground will be levelled: green means fine, red tells you why not. Click to stake it out.',
     'The field can go anywhere within 500 m of the village. Its ground is levelled for it, and the villagers come out and build the farm there. You are paid when the builders start.',

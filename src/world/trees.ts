@@ -176,3 +176,23 @@ export function drawCrown(pb: PropBatch, x: number, y: number, z: number, r: num
   tube(pb, [[x, y - 2.3, z], [x + (R() - 0.5) * 0.25, y - 0.4, z + (R() - 0.5) * 0.25], [x + (R() - 0.5) * 0.4, y + h * 0.45, z + (R() - 0.5) * 0.4]], [0.36, 0.28, 0.2], 7);
   crown(pb, [x, y + h * 0.4, z], r, h * 0.85, 7, R);
 }
+
+/** A giant of a village's great grove (gen/resource-sites.ts): a trunk metres thick, flaring into roots, a few heavy
+ *  limbs and a wide layered crown high up. Too big to fell: a lumber camp's crews (and you, once it stands) take
+ *  timber from it for good. */
+export function drawGiant(pb: PropBatch, x: number, y: number, z: number, r: number, h: number, seed: number) {
+  const R = rng(seed), lean = R() * 6.283, lx = Math.cos(lean) * 0.6, lz = Math.sin(lean) * 0.6;
+  const trunk: P[] = [[x, y - 0.6, z], [x + lx * 0.3, y + h * 0.25, z + lz * 0.3], [x + lx * 0.7, y + h * 0.5, z + lz * 0.7], [x + lx, y + h * 0.72, z + lz]];
+  tube(pb, trunk, [r * 1.35, r, r * 0.8, r * 0.6], 9, BARK, lean);
+  for (let i = 0; i < 5; i++) { // buttress roots
+    const a = lean + i / 5 * 6.283 + (R() - 0.5) * 0.5, d: P = [Math.cos(a), 0, Math.sin(a)];
+    tube(pb, [add([x, y + 1.6, z], d, r * 0.7), add([x, y - 0.3, z], d, r * 2.4 + R())], [r * 0.45, r * 0.12], 5);
+  }
+  for (let i = 0; i < 4; i++) { // heavy limbs
+    const a = lean + i * 1.7 + R(), from = trunk[2 + (i % 2)], d = norm([Math.cos(a), 0.55 + R() * 0.3, Math.sin(a)]), len = h * (0.22 + R() * 0.1);
+    const end = add(from, d, len);
+    tube(pb, [from, add(from, d, len * 0.55), end], [r * 0.4, r * 0.28, r * 0.14], 6);
+    crown(pb, end, 4 + R() * 2, 5 + R() * 2, 7, R);
+  }
+  crown(pb, add(trunk[3], [0, h * 0.12, 0]), 8 + R() * 3, h * 0.42, 9, R);
+}

@@ -21,7 +21,7 @@ export const BRIDGE = {
   /** Two fords of one road on one river closer than this are one site (m). */
   merge: 30,
   /** Materials for every metre of the deck (rounded up for the whole bridge), and xp per metre. */
-  per: { log: 1 / 1.6, stone: 1 / 4, nails: 1 / 2, rope: 1 / 6 } as Partial<Record<ItemKey, number>>,
+  per: { planks: 1 / 0.8, stone: 1 / 4, nails: 1 / 2, rope: 1 / 6 } as Partial<Record<ItemKey, number>>,
   xp: 12,
 };
 

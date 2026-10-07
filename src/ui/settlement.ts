@@ -34,7 +34,7 @@ export function developmentHTML(vid: number, head: string, msg = '', atComms = f
   h += `<button class="opt" data-devkit="${vid}">Receive the elder's starter tools and earned rewards</button>`;
   if (!atComms) {
     const d = depositsOf(s);
-    h += `<div class="say">Local resources · about 100 m beyond the fence:<br>Stone quarry · west. Sawmill woodland · east.<br>${d.ore ? ORES[d.ore].name + ' (' + ORES[d.ore].symbol + ') · south.' : 'No local ore seam: bring metals from other villages.'}<br>${d.oil ? 'Oil seeps · north.' : 'No local oil field: import crude or fuel.'}</div>`;
+    h += `<div class="say">Local resources · about 100 m beyond the fence:<br>Stone quarry · west.<br>${d.grove !== false ? 'A great grove of giant trees · east: a lumber camp there gives logs for good.' : 'No great grove: cut wild trees, or bring logs from another village.'}<br>${d.ore ? ORES[d.ore].name + ' (' + ORES[d.ore].symbol + ') · south.' : 'No local ore seam: bring metals from other villages.'}<br>${d.oil ? 'Oil seeps · north.' : 'No local oil field: import crude or fuel.'}</div>`;
   }
   if (step.supplies) h += `<div class="say">Wood: ${has('log')}/4 · stone: ${has('stone')}/4</div><button class="opt" data-devsupplies="${vid}" ${has('log') >= 4 && has('stone') >= 4 ? '' : 'disabled'}>Report the stored supplies</button>`;
   if (step.farm) h += '<button class="opt" data-o="farms">Build the next farm</button>';
