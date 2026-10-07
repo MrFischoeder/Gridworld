@@ -112,6 +112,11 @@
   <div id="mpBox" style="display:none"><div class="mpTitle">MULTIPLAYER <span>(up to 8 castaways in one world)</span><button id="mpClose" title="Close the multiplayer panel">×</button></div>
     <label>Server<input id="mpAddr" autocomplete="off" spellcheck="false"></label>
     <div class="row"><button id="mpHost">Host a game</button><button id="mpJoin">Join</button><button id="mpLeave" style="display:none">Leave the game</button><button id="mpBack" style="display:none">Back to my own world</button></div>
+    <div id="mpAcct" style="display:none">
+      <div id="mpAcctIn"><input id="mpUser" maxlength="20" placeholder="account name" autocomplete="username" spellcheck="false"><input id="mpPass" type="password" maxlength="100" placeholder="password" autocomplete="current-password"><button id="mpLogin">Log in</button><button id="mpRegister">Create account</button></div>
+      <div id="mpAcctOn"><span id="mpWho"></span><button id="mpPwd">Change password</button><button id="mpLogout">Log out</button></div>
+      <div id="mpPwdForm" style="display:none"><input id="mpOld" type="password" maxlength="100" placeholder="old password" autocomplete="current-password"><input id="mpNewPass" type="password" maxlength="100" placeholder="new password" autocomplete="new-password"><button id="mpPwdSave">Save</button><button id="mpPwdCancel">Cancel</button></div>
+    </div>
     <div id="mpStatus">Host: start the game with start-gry.bat and press Host. Friends on your network open http://YOUR-IP:5173 and press Join.</div>
     <div id="mpRooms"></div>
     <div id="mpNew" style="display:none"><input id="mpNewName" maxlength="28" placeholder="name of a new server" autocomplete="off" spellcheck="false"><label class="mine"><input type="checkbox" id="mpMine"> in my own world</label><button id="mpCreate">Create a server</button></div>

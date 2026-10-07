@@ -432,3 +432,9 @@ body.cinematic > *:not(#view):not(#cinematic){visibility:hidden}
   border:1px solid rgba(47,224,96,.35);pointer-events:none;white-space:nowrap;letter-spacing:.04em}
 #stealth.suspicious{color:#ffd060;border-color:rgba(255,208,96,.6)}
 #stealth.spotted{color:#ff6a4a;border-color:rgba(255,106,74,.7)}
+/* accounts on a dedicated server (ui/mp.ts) */
+#mpAcct{margin:6px 0;padding:6px 8px;border:1px solid rgba(61,255,110,.3)}
+#mpAcct>div{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+#mpAcct input{width:10em;font:19px VT323,monospace}
+#mpAcct button{font-size:19px;padding:3px 12px;margin:0}
+#mpWho{flex:1;font-size:20px;color:#e8fff0}#mpWho b{color:var(--gold);font-weight:normal}

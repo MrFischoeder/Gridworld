@@ -3,19 +3,39 @@ import { describe, it, expect, afterEach, vi } from 'vitest';
 import { createServer, type Server } from 'node:http';
 import { WebSocket } from 'ws';
 import { createMp, PROTOCOL } from '../server/mp.mjs';
+import { createAccounts } from '../server/accounts.mjs';
 import { PROTOCOL as CLIENT_PROTOCOL, serverUrl } from '../src/net/client';
 
 type Msg = { t: string; [k: string]: any };
 let http: Server | null = null, mp: ReturnType<typeof createMp> | null = null;
 afterEach(() => { mp?.close(); http?.close(); vi.restoreAllMocks(); http = mp = null; });
 
+let accountsOn = false;
+const tokens = new Map<string, string>();
 async function server(opts?: { world?: number; time?: number; rooms?: { id: string; name: string; world: number; time: number }[] }) {
   mp = createMp(() => {}, opts); http = createServer(); mp.attach(http);
+  accountsOn = !!mp.dedicated; tokens.clear();
   await new Promise<void>((r) => http!.listen(0, r));
   return (http.address() as { port: number }).port;
 }
-/** A test client: connects, says hello, keeps every message it gets. */
-async function client(port: number, hello: object) {
+/** One request on its own connection (accounts, closing a server): the answer. */
+async function ask(port: number, m: object): Promise<Msg | null> {
+  const ws = new WebSocket(`ws://127.0.0.1:${port}/mp`); let got: Msg | null = null;
+  ws.on('message', (d) => { got = JSON.parse(String(d)); });
+  await new Promise((r) => ws.on('open', r)); ws.send(JSON.stringify({ ver: PROTOCOL, ...m }));
+  await new Promise((r) => ws.on('close', r)); return got;
+}
+/** On a dedicated server a test player first makes an account (or logs in) under its name. */
+async function tokenFor(port: number, name: string) {
+  if (!tokens.has(name)) {
+    const r = (await ask(port, { t: 'register', name, pass: 'secret-' + name }))!;
+    tokens.set(name, r.token ?? (await ask(port, { t: 'login', name, pass: 'secret-' + name }))!.token);
+  }
+  return tokens.get(name)!;
+}
+/** A test client: connects, says hello (logged in on a dedicated server), keeps every message it gets. */
+async function client(port: number, hello: { name?: string; [k: string]: unknown }) {
+  if (accountsOn && hello.name && !('token' in hello)) hello = { ...hello, token: await tokenFor(port, hello.name) };
   const ws = new WebSocket(`ws://127.0.0.1:${port}/mp`), got: Msg[] = [];
   ws.on('message', (d) => got.push(JSON.parse(String(d))));
   await new Promise((r) => ws.on('open', r));
@@ -106,30 +126,76 @@ describe('multiplayer server', () => {
     expect(mp!.list()[1].time).toBe(stopped); expect(mp!.list()[1].running).toBe(false);
     b.ws.close(); c.ws.close();
   });
-  it('a server is deleted only by the one who created it (the key from the same browser); its players are sent away', async () => {
+  it('a server is closed only by the account that created it; its players are sent away', async () => {
     const removed: string[] = [];
-    mp = createMp(() => {}, { rooms: [{ id: 'main', name: 'Main', world: 11, time: 100 }], removed: (id: string) => { removed.push(id); } }); http = createServer(); mp.attach(http);
+    mp = createMp(() => {}, { rooms: [{ id: 'main', name: 'Main', world: 11, time: 100 }, { id: 'old', name: 'Old', world: 5, time: 0, owner: 'f'.repeat(64) }], removed: (id: string) => { removed.push(id); } }); http = createServer(); mp.attach(http);
+    accountsOn = true; tokens.clear();
     await new Promise<void>((r) => http!.listen(0, r));
-    const port = (http.address() as { port: number }).port, key = 'k'.repeat(20);
-    const del = async (room: string, k: string) => {
-      const ws = new WebSocket(`ws://127.0.0.1:${port}/mp`); let got: Msg | null = null;
-      ws.on('message', (d) => { got = JSON.parse(String(d)); });
-      await new Promise((r) => ws.on('open', r)); ws.send(JSON.stringify({ t: 'delroom', ver: PROTOCOL, room, key: k }));
-      await new Promise((r) => ws.on('close', r)); return got as Msg | null;
-    };
-    const c = await client(port, { name: 'Cy', create: { name: 'Cy Base', world: 33, key } }), wc = await c.wait('welcome');
+    const port = (http.address() as { port: number }).port;
+    const c = await client(port, { name: 'Cy', create: { name: 'Cy Base', world: 33 } }), wc = await c.wait('welcome');
     const id = wc.room.id;
     expect(mp!.list().find((r) => r.id === id)?.by).toBe('Cy');
-    expect(JSON.stringify(mp!.save())).not.toContain(key); // only its hash is kept
-    expect(mp!.save().find((r) => r.id === id)?.owner).toMatch(/^[0-9a-f]{64}$/);
+    expect(mp!.save().find((r) => r.id === id)?.owner).toBe('acct:cy');
     const b = await client(port, { name: 'Bo', room: id }); await b.wait('welcome');
-    expect((await del(id, 'x'.repeat(20)))?.why).toMatch(/created/); // someone else's key
-    expect((await del('main', key))?.why).toMatch(/main/);
-    expect(await del(id, key)).toEqual({ t: 'deleted', room: id });
-    expect((await b.wait('refused')).why).toMatch(/deleted/);
-    expect(mp!.list().map((r) => r.id)).toEqual(['main']); expect(removed).toEqual([id]);
-    expect((await del(id, key))?.why).toMatch(/gone/);
+    expect((await ask(port, { t: 'delroom', room: id, token: await tokenFor(port, 'Bo') }))?.why).toMatch(/created/); // someone else's
+    expect((await ask(port, { t: 'delroom', room: id }))?.why).toMatch(/Log in/);
+    expect((await ask(port, { t: 'delroom', room: 'main', token: tokens.get('Cy') }))?.why).toMatch(/main/);
+    expect(await ask(port, { t: 'delroom', room: id, token: tokens.get('Cy') })).toEqual({ t: 'deleted', room: id });
+    expect((await b.wait('refused')).why).toMatch(/closed|deleted/);
+    expect(mp!.list().map((r) => r.id)).toEqual(['main', 'old']); expect(removed).toEqual([id]);
+    expect((await ask(port, { t: 'delroom', room: id, token: tokens.get('Cy') }))?.why).toMatch(/gone/);
+    // a server made before accounts: closed with the old browser secret it was made with
+    expect((await ask(port, { t: 'delroom', room: 'old', token: tokens.get('Cy'), key: 'k'.repeat(20) }))?.why).toMatch(/created/);
     c.ws.close();
+  });
+  it('accounts: a name each (any letter case), a password only as a hash, sessions, one game per account', async () => {
+    const saved: unknown[] = [];
+    const accounts = createAccounts();
+    mp = createMp(() => {}, { rooms: [{ id: 'main', name: 'Main', world: 11, time: 100 }], accounts, accountsChanged: () => { saved.push(1); } }); http = createServer(); mp.attach(http);
+    accountsOn = true; tokens.clear();
+    await new Promise<void>((r) => http!.listen(0, r));
+    const port = (http.address() as { port: number }).port;
+    const reg = (await ask(port, { t: 'register', name: 'Ada', pass: 'hunter22' }))!;
+    expect(reg).toMatchObject({ t: 'auth', name: 'Ada' }); expect(reg.token.length).toBeGreaterThan(30);
+    expect((await ask(port, { t: 'register', name: 'ada', pass: 'whatever1' }))?.why).toMatch(/taken/);
+    expect((await ask(port, { t: 'register', name: 'Bob', pass: '123' }))?.why).toMatch(/at least/);
+    expect((await ask(port, { t: 'register', name: '<x>', pass: 'longenough' }))?.why).toMatch(/letters/);
+    expect(JSON.stringify(accounts.save())).not.toContain('hunter22'); // never the password itself
+    expect(JSON.stringify(accounts.save())).not.toContain(reg.token); // nor the token
+    expect(saved.length).toBeGreaterThan(0);
+    expect((await ask(port, { t: 'login', name: 'Ada', pass: 'wrong-one' }))?.why).toMatch(/Wrong/);
+    const log2 = (await ask(port, { t: 'login', name: 'ADA', pass: 'hunter22' }))!;
+    expect(log2).toMatchObject({ t: 'auth', name: 'Ada' });
+    // no session, no game; the server names you by your account
+    const anon = await client(port, { name: 'Ada', token: 'nope' });
+    expect(await anon.wait('refused')).toMatchObject({ auth: true });
+    const a = await client(port, { name: 'Somebody', token: reg.token }), wa = await a.wait('welcome');
+    expect(wa.name).toBe('Ada');
+    // the same account again: the first window gives way
+    const a2 = await client(port, { name: 'Ada', token: log2.token }); await a2.wait('welcome');
+    expect((await a.wait('refused')).why).toMatch(/somewhere else/);
+    // a new password logs the other sessions out
+    expect(await ask(port, { t: 'passwd', token: log2.token, old: 'bad-guess', pass: 'newpass99' })).toMatchObject({ t: 'refused' });
+    expect(await ask(port, { t: 'passwd', token: log2.token, old: 'hunter22', pass: 'newpass99' })).toEqual({ t: 'ok' });
+    expect(accounts.session(reg.token)).toBeNull(); expect(accounts.session(log2.token)?.name).toBe('Ada');
+    expect((await ask(port, { t: 'login', name: 'Ada', pass: 'newpass99' }))?.t).toBe('auth');
+    await ask(port, { t: 'logout', token: log2.token }); expect(accounts.session(log2.token)).toBeNull();
+    // each account runs at most a few servers
+    const t = (await ask(port, { t: 'login', name: 'Ada', pass: 'newpass99' }))!.token;
+    a2.ws.close();
+    for (let i = 0; i < 3; i++) { const c = await client(port, { name: 'Ada', token: t, create: { name: 'Base ' + i } }); await c.wait('welcome'); c.ws.close(); await new Promise((r) => setTimeout(r, 50)); }
+    const four = await client(port, { name: 'Ada', token: t, create: { name: 'Base 4' } });
+    expect((await four.wait('refused')).why).toMatch(/already run/);
+    // the accounts come back from what was saved
+    const again = createAccounts(JSON.parse(JSON.stringify(accounts.save())));
+    expect(again.session(t)?.name).toBe('Ada'); expect(again.has('ada')).toBe(true);
+  });
+  it('too many wrong passwords from one address lock it out for a while', async () => {
+    const accts = createAccounts();
+    await accts.register('Cy', 'rightpass');
+    for (let i = 0; i < 5; i++) expect((await accts.login('Cy', 'nope' + i, '1.2.3.4')).why).toMatch(/Wrong/);
+    expect((await accts.login('Cy', 'rightpass', '1.2.3.4')).why).toMatch(/Too many/);
+    expect((await accts.login('Cy', 'rightpass', '5.6.7.8')).token).toBeTruthy();
   });
   it('items put down lie for everyone in the room; only the first to take one gets it; they are kept with the room', async () => {
     const port = await server({ rooms: [{ id: 'main', name: 'Main', world: 11, time: 100 }] });
@@ -241,7 +307,7 @@ describe('multiplayer server', () => {
   });
   it('simultaneous dungeon progress preserves both opened objects', async () => {
     const port = await server({ world: 11 });
-    const a = await client(port, { name: 'A' }), b = await client(port, { name: 'B' });
+    const a = await client(port, { name: 'Al' }), b = await client(port, { name: 'Bea' });
     await a.wait('welcome'); await b.wait('welcome');
     a.send({ t: 'wset', ch: [['opened', 'dungeon', [1], []]] });
     b.send({ t: 'wset', ch: [['opened', 'dungeon', [2], []]] });
@@ -278,7 +344,7 @@ describe('multiplayer server', () => {
   });
   it('shared containers have one editor, reject stale writes, and release locks on disconnect', async () => {
     const port = await server({ world: 11 });
-    const a = await client(port, { name: 'A' }), b = await client(port, { name: 'B' });
+    const a = await client(port, { name: 'Al' }), b = await client(port, { name: 'Bea' });
     await a.wait('welcome'); await b.wait('welcome');
     const box = { items: [{ k: 'medkit', n: 1 }], gold: 4 }, empty = { items: [null], gold: 0 };
     a.send({ t: 'wlock', f: 'containers', k: 'chest:1', req: 1, value: box });
@@ -301,7 +367,7 @@ describe('multiplayer server', () => {
     loser.ws.close(); await winner.wait('leave');
     winner.send({ t: 'wlock', f: 'containers', k: 'chest:1', req: 2 });
     expect((await winner.wait('wlock', 2)).ok).toBe(true);
-    const c = await client(port, { name: 'C' });
+    const c = await client(port, { name: 'Cal' });
     expect((await c.wait('welcome')).wdoc.containers['chest:1']).toEqual(empty);
     winner.ws.close(); c.ws.close();
   });
@@ -389,7 +455,7 @@ for (const occupants of [2, 3]) it(`transports a vehicle with ${occupants} playe
   expect((await owner.wait('gtravel', 2)).ok).toBe(true);
   for (let i = 0; i < riders.length; i++) {
     expect(await riders[i].wait('vwarp')).toMatchObject({ carId: 'loaded-mastodon', car: pose, to: 20 });
-    const snap = await riders[i].until(m => m.t === 'snap' && m.ps.some((p: any) => p.id === id && p.cars[0][1] === 600));
+    const snap = await riders[i].until(m => m.t === 'snap' && m.ps.some((p: any) => p.id === id && p.cars[0]?.[1] === 600));
     expect(snap.ps.find((p: any) => p.id === id).cars[0]).toEqual(pose);
     expect(snap.links[0].until).toBe(until);
     expect(riders[i].got.filter(m => m.t === 'seats').at(-1)!.ride).toEqual([id, 0, i + 1]);

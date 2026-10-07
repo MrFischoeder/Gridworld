@@ -3,7 +3,7 @@
 // it with `sendState` (about 10 times a second) and reads `peers`.
 
 /** Must match PROTOCOL in server/mp.mjs. */
-export const PROTOCOL = 10;
+export const PROTOCOL = 11;
 export const SEND_EVERY = 0.1;
 
 /** `away`: in the menu (still in the game: the others see you standing there). */
@@ -87,6 +87,10 @@ export const net = {
   ws: null as WebSocket | null,
   /** Our id on the server, and the host's (0 = not connected). */
   id: 0, host: 0,
+  /** Your name as the server knows you (a dedicated server: your account's). */
+  name: '',
+  /** The last refusal asked you to log in (again). */
+  needAuth: false,
   peers: new Map<number, Peer>(),
   address: '',
   /** A dedicated server (server/main.mjs): the world and the clock are the room's, nobody hosts. */
@@ -135,22 +139,38 @@ function clearGateRequests() {
   gateLinks = []; gateDrafts.clear(); gateTransitHook?.({ t: 'gabort' }); for (const r of gateReplies.values()) { clearTimeout(r.timer); r.finish({ ok: false, why: 'Disconnected from the server.' }); } gateReplies.clear();
 }
 
-/** Delete a room you created on a dedicated server (`key`: the secret sent when creating it). Resolves '' when done,
- * else why not. */
-export function deleteRoom(url: string, room: string, key: string): Promise<string> {
+/** One request on its own connection (no game): the server answers once and closes. Resolves its answer, or
+ * {t: 'refused', why} when it could not be reached. */
+function ask(url: string, m: object): Promise<{ t: string; why?: string; name?: string; token?: string }> {
   return new Promise((done) => {
-    let ws: WebSocket, why = 'Could not reach the server.';
-    try { ws = new WebSocket(url); } catch { done(why); return; }
-    const timer = setTimeout(() => { ws.close(); }, 8000);
-    ws.onopen = () => ws.send(JSON.stringify({ t: 'delroom', ver: PROTOCOL, room, key }));
-    ws.onmessage = (e) => { try { const m = JSON.parse(String(e.data)); why = m.t === 'deleted' ? '' : m.t === 'refused' ? String(m.why) : why; } catch { /* not ours */ } };
-    ws.onclose = () => { clearTimeout(timer); done(why); };
+    let ws: WebSocket, reply: { t: string; why?: string; name?: string; token?: string } = { t: 'refused', why: 'Could not reach the server.' };
+    try { ws = new WebSocket(url); } catch { done(reply); return; }
+    const timer = setTimeout(() => { ws.close(); }, 10000);
+    ws.onopen = () => ws.send(JSON.stringify({ ver: PROTOCOL, ...m }));
+    ws.onmessage = (e) => { try { const r = JSON.parse(String(e.data)); if (r && typeof r.t === 'string') reply = r; } catch { /* not ours */ } };
+    ws.onclose = () => { clearTimeout(timer); done(reply); };
   });
+}
+/** Close (delete) a server you created on a dedicated server: `token` = your account's session (`key` = the old
+ * per-browser secret, for servers made before accounts). Resolves '' when done, else why not. */
+export async function deleteRoom(url: string, room: string, token: string, key?: string): Promise<string> {
+  const r = await ask(url, { t: 'delroom', room, token, key });
+  return r.t === 'deleted' ? '' : r.why ?? 'Could not reach the server.';
+}
+/** A dedicated server's accounts: make one / log in (→ {name, token} or {why}), log out, change the password. */
+export async function account(url: string, how: 'register' | 'login', name: string, pass: string): Promise<{ name?: string; token?: string; why?: string }> {
+  const r = await ask(url, { t: how, name, pass });
+  return r.t === 'auth' && r.token ? { name: r.name, token: r.token } : { why: r.why ?? 'Could not reach the server.' };
+}
+export const logout = (url: string, token: string) => ask(url, { t: 'logout', token });
+export async function changePassword(url: string, token: string, old: string, pass: string): Promise<string> {
+  const r = await ask(url, { t: 'passwd', token, old, pass });
+  return r.t === 'ok' ? '' : r.why ?? 'Could not reach the server.';
 }
 /** Is the page served by a dedicated server (server/main.mjs)? It answers mp/info next to the page. */
 /** A game server ("room") of a dedicated server, as the menu lists it: `running` while someone is in it. */
 export interface RoomInfo { id: string; name: string; world: number; time: number; online: number; max: number; running: boolean; players: string[]; by?: string }
-export interface ServerInfo { dedicated: boolean; name: string; world: number; online: number; max: number; players: string[]; version: string; rooms?: RoomInfo[] }
+export interface ServerInfo { dedicated: boolean; accounts?: boolean; name: string; world: number; online: number; max: number; players: string[]; version: string; rooms?: RoomInfo[] }
 export async function serverInfo(): Promise<ServerInfo | null> {
   try {
     const r = await fetch('mp/info', { cache: 'no-store' });
@@ -177,21 +197,21 @@ export function serverUrl(input: string, here: { protocol: string; host: string;
 let hooks: NetHooks | null = null;
 /** Connect and say hello; the hooks hear the rest. */
 /** `room`: the dedicated server's room to join; `create`: make a new room (its name and world) and join it. */
-export function connect(url: string, me: { name: string; world: number; time: number; room?: string; create?: { name: string; world?: number; key?: string } }, h: NetHooks) {
+export function connect(url: string, me: { name: string; world: number; time: number; token?: string; room?: string; create?: { name: string; world?: number } }, h: NetHooks) {
   disconnect();
   hooks = h; net.address = url;
   let ws: WebSocket;
   try { ws = new WebSocket(url); } catch { h.closed(`Not a server address: ${url}`); return; }
   net.ws = ws;
   let welcomed = false, why = '';
-  ws.onopen = () => ws.send(JSON.stringify({ t: 'hello', ver: PROTOCOL, name: me.name, world: me.world, time: me.time, room: me.room, create: me.create }));
+  ws.onopen = () => { net.needAuth = false; ws.send(JSON.stringify({ t: 'hello', ver: PROTOCOL, name: me.name, world: me.world, time: me.time, token: me.token, room: me.room, create: me.create })); };
   ws.onmessage = (e) => {
     let m: any;
     try { m = JSON.parse(String(e.data)); } catch { return; }
     if (net.ws !== ws) return;
     switch (m.t) {
       case 'welcome':
-        welcomed = true; net.id = m.id; net.host = m.host; net.dedicated = !!m.dedicated; net.room = m.room ?? null; net.peers.clear();
+        welcomed = true; net.id = m.id; net.name = typeof m.name === 'string' ? m.name : me.name; net.host = m.host; net.dedicated = !!m.dedicated; net.room = m.room ?? null; net.peers.clear();
         net.drops = new Map((Array.isArray(m.drops) ? m.drops : []).map((d: NetDrop) => [d.id, d]));
         receiveGates(m);
         for (const p of m.players) if (p.id !== m.id) net.peers.set(p.id, { id: p.id, name: p.name, st: null, prev: null, at: 0, hist: [] });
@@ -239,7 +259,7 @@ export function connect(url: string, me: { name: string; world: number; time: nu
       case 'foes': case 'bolt': case 'fhit': case 'kill': case 'hurt': case 'thit': case 'boat': case 'row': for (const f of relayHooks) f(m); break;
       case 'chat': h.say(`${m.name}: ${m.text}`, 'chat'); break;
       case 'full': why = 'The server is full (8 players).'; break;
-      case 'refused': why = m.why; break;
+      case 'refused': why = m.why; if (m.auth) net.needAuth = true; break;
     }
   };
   ws.onclose = () => {

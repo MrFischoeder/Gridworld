@@ -12,10 +12,15 @@
 // Standalone: `node server/mp.mjs [port]` (default 7777, hosted mode).
 //
 // Protocol (JSON text frames), client → server:
-//   {t:'hello', name, ver, world, time, room?, create?: {name, world, key}}   first message; `room` picks a dedicated room,
-//                                                                          `create` makes one (`key`: the creator's secret, kept
-//                                                                          only as a hash, lets them delete it); hosted: world / time for the host
-//   {t:'delroom', ver, room, key}         instead of a hello: delete a room you created (its players are sent away);
+//   {t:'hello', name, ver, world, time, token?, room?, create?: {name, world}}   first message; `room` picks a dedicated room,
+//                                                                          `create` makes one (owned by your account); a dedicated
+//                                                                          server wants `token` (your account's session) and names
+//                                                                          you by your account; hosted: world / time for the host
+//   {t:'register'|'login', ver, name, pass}   instead of a hello, dedicated only (server/accounts.mjs): a new account / log in;
+//                                          answered {t:'auth', name, token} or {t:'refused', why}, then closed
+//   {t:'logout', ver, token} / {t:'passwd', ver, token, old, pass}   end a session / change the password ({t:'ok'} or refused)
+//   {t:'delroom', ver, room, token, key?}  instead of a hello: close (delete) a server you created (its players are sent
+//                                          away); `key` = the old per-browser secret of servers made before accounts;
 //                                          answered {t:'deleted', room} or {t:'refused', why}, then closed
 //   {t:'state', p:[x,y,z], yaw, pitch, loc, held, mv, away, cars, ride?, gun?, boat?, vis?, cr?, time?}   vis: how visible they are (sneaking), cr: crouched   boat: [boat id, u, v, h, seat] aboard one of the boats   cars: the player's own vehicles (net/client.ts PeerCar)   ~10 times a second; time from a hosted room's host only
 //   {t:'chat', text}
@@ -31,7 +36,8 @@
 //                                          'bolt' (one of mine fired), 'fhit' (I hit your foe), 'kill' (your shot killed
 //                                          mine), 'hurt' (my foe hurt you)
 // server → client:
-//   {t:'welcome', id, host, world, time, players:[{id, name}], dedicated, room:{id, name}}   host 0 on a dedicated server
+//   {t:'welcome', id, name, host, world, time, players:[{id, name}], dedicated, room:{id, name}}   host 0 on a dedicated server; name = yours as the server knows you
+//   {t:'refused', why, auth: true}        a dedicated server wants you to log in (again)
 //   {t:'full'} / {t:'refused', why}
 //   {t:'join', id, name} / {t:'leave', id, name} / {t:'host', id}
 //   {t:'snap', time, ps:[{id, p, yaw, pitch, loc, held, mv, away, cars}]}  everybody in your room but you
@@ -49,12 +55,13 @@ import { WebSocketServer } from 'ws';
 import { pathToFileURL } from 'node:url';
 import { randomInt, createHash } from 'node:crypto';
 import { GateConnections, GATE_TRANSIT_SECONDS } from '../shared/gates.mjs';
+import { createAccounts, ACCOUNT } from './accounts.mjs';
 
 export const MP = { path: '/mp', port: 7777, max: 8, rate: 100, nameMax: 20, chatMax: 200, roomName: 28, rooms: 12, roomTtl: 14, cars: 8, drops: 800, dropTtl: 6, lootTtl: 2, payload: 4 * 1024 * 1024 };
 /** What players may pass to each other through 'cast' (everyone else in the room) and 'to' (one player). */
 const RELAY = new Set(['foes', 'bolt', 'fhit', 'kill', 'hurt', 'thit', 'boat', 'row']);
 /** Protocol version: a client with another one is refused (the game shows why). */
-export const PROTOCOL = 10;
+export const PROTOCOL = 11;
 
 const clean = (s, n) => String(s ?? '').replace(/[\u0000-\u001f<>]/g, '').trim().slice(0, n);
 const num = (v) => (typeof v === 'number' && Number.isFinite(v) ? v : 0);
@@ -74,6 +81,9 @@ const cleanDoc = (doc) => Object.fromEntries(Object.entries(doc).filter(([f, v])
  */
 export function createMp(log = (m) => console.log('[mp] ' + m), opts = {}) {
   const dedicated = Array.isArray(opts.rooms) || typeof opts.world === 'number';
+  /** A dedicated server's player accounts (server/accounts.mjs; server/main.mjs saves them); hosted games have none. */
+  const accts = dedicated ? (opts.accounts ?? createAccounts()) : null;
+  const ownerKey = (acct) => 'acct:' + acct.key;
   const wss = new WebSocketServer({ noServer: true, maxPayload: MP.payload });
   /** @type {Map<string, any>} */
   const rooms = new Map();
@@ -99,16 +109,17 @@ export function createMp(log = (m) => console.log('[mp] ' + m), opts = {}) {
   const send = (ws, m) => { if (ws.readyState === 1) ws.send(JSON.stringify(m)); };
   const all = (room, m, except = 0) => { for (const p of room.players.values()) if (p.id !== except) send(p.ws, m); };
 
-  const pickRoom = (m) => {
+  const pickRoom = (m, acct) => {
     if (!dedicated) return { room: rooms.get('lan') };
     if (m.create && typeof m.create === 'object') {
       const name = clean(m.create.name, MP.roomName);
       if (!name) return { why: 'Give the new server a name.' };
       if ([...rooms.values()].some((r) => r.name.toLowerCase() === name.toLowerCase())) return { why: `There is already a server called ${name}.` };
       if (rooms.size >= MP.rooms) return { why: `This machine already holds ${MP.rooms} servers. Join one of them.` };
+      if (acct && [...rooms.values()].filter((r) => r.owner === ownerKey(acct)).length >= ACCOUNT.perAccount) return { why: `You already run ${ACCOUNT.perAccount} servers. Close one of them first.` };
       const world = Number.isFinite(m.create.world) ? m.create.world | 0 : randomInt(1, 2 ** 31 - 1);
       let id; do id = 'r' + randomInt(100000, 999999); while (rooms.has(id));
-      const room = newRoom({ id, name, world, time: 7 * 60, owner: ownerOf(m.create.key), by: m.name });
+      const room = newRoom({ id, name, world, time: 7 * 60, owner: acct ? ownerKey(acct) : ownerOf(m.create.key), by: acct ? acct.name : m.name });
       log(`server "${name}" created (world ${world})`);
       return { room };
     }
@@ -122,20 +133,39 @@ export function createMp(log = (m) => console.log('[mp] ' + m), opts = {}) {
     const r = rooms.get(typeof m.room === 'string' ? m.room : '');
     if (!r) return 'That server is gone already.';
     if (r.id === 'main') return 'The main server cannot be deleted.';
-    if (!r.owner || ownerOf(m.key) !== r.owner) return 'Only the player who created this server can delete it (from the same browser).';
+    const acct = accts?.session(m.token);
+    if (!r.owner || !(acct && r.owner === ownerKey(acct)) && ownerOf(m.key) !== r.owner) return acct ? 'Only the player who created this server can close it.' : 'Log in to close your server.';
     for (const trip of r.trips.values()) clearTimeout(trip.timer);
-    for (const p of r.players.values()) { send(p.ws, { t: 'refused', why: `The server "${r.name}" was deleted by its creator.` }); p.ws.close(); }
+    for (const p of r.players.values()) { send(p.ws, { t: 'refused', why: `The server "${r.name}" was closed by its creator.` }); p.ws.close(); }
     rooms.delete(r.id); opts.removed?.(r.id);
-    log(`server "${r.name}" deleted by its creator`);
+    log(`server "${r.name}" closed by its creator`);
     return '';
   };
 
-  wss.on('connection', (ws) => {
+  /** The others in any room who are logged in as `key` (one game per account). */
+  const sameAccount = (key) => [...rooms.values()].flatMap((r) => [...r.players.values()]).filter((p) => p.acct === key);
+  /** Account messages (dedicated): answered, then the connection closes. */
+  const authMsg = async (ws, m, ip) => {
+    let reply;
+    if (!accts) reply = { t: 'refused', why: 'This game has no accounts: just join.' };
+    else if (m.ver !== PROTOCOL) reply = { t: 'refused', why: `This server runs another version of the game (protocol ${PROTOCOL}, yours ${m.ver}). Reload the page (Ctrl+F5).` };
+    else if (m.t === 'register' || m.t === 'login') {
+      const r = m.t === 'register' ? await accts.register(m.name, m.pass) : await accts.login(m.name, m.pass, ip);
+      reply = r.why ? { t: 'refused', why: r.why } : { t: 'auth', name: r.name, token: r.token };
+      if (!r.why) log(`${r.name} ${m.t === 'register' ? 'made an account' : 'logged in'}`);
+    } else if (m.t === 'logout') { accts.logout(m.token); reply = { t: 'ok' }; }
+    else { const why = await accts.passwd(m.token, m.old, m.pass, ip); reply = why ? { t: 'refused', why } : { t: 'ok' }; }
+    opts.accountsChanged?.();
+    send(ws, reply); ws.close();
+  };
+  wss.on('connection', (ws, req) => {
     let me = null, room = null;
+    const ip = String(req?.headers?.['x-forwarded-for'] ?? '').split(',')[0].trim() || req?.socket?.remoteAddress || '';
     ws.on('message', (raw) => {
       let m;
       try { m = JSON.parse(String(raw)); } catch { return; }
       if (!m || typeof m.t !== 'string') return;
+      if (!me && (m.t === 'register' || m.t === 'login' || m.t === 'logout' || m.t === 'passwd')) { authMsg(ws, m, ip).catch(() => { send(ws, { t: 'refused', why: 'The server could not do that. Try again.' }); ws.close(); }); return; }
       if (!me && m.t === 'delroom') {
         const why = m.ver !== PROTOCOL ? `This server runs another version of the game (protocol ${PROTOCOL}, yours ${m.ver}). Reload the page (Ctrl+F5).` : deleteRoom(m);
         send(ws, why ? { t: 'refused', why } : { t: 'deleted', room: String(m.room) }); ws.close(); return;
@@ -143,16 +173,22 @@ export function createMp(log = (m) => console.log('[mp] ' + m), opts = {}) {
       if (!me) {
         if (m.t !== 'hello') return;
         if (m.ver !== PROTOCOL) { send(ws, { t: 'refused', why: `This server runs another version of the game (protocol ${PROTOCOL}, yours ${m.ver}). Reload the page (Ctrl+F5).` }); ws.close(); return; }
-        const got = pickRoom(m);
+        // a dedicated server knows you by your account: no session, no game
+        const acct = accts ? accts.session(m.token) : null;
+        if (accts && !acct) { send(ws, { t: 'refused', why: 'Log in to play on this server.', auth: true }); ws.close(); return; }
+        const got = pickRoom(m, acct);
         if (!got.room) { send(ws, { t: 'refused', why: got.why }); ws.close(); return; }
         room = got.room;
-        if (room.players.size >= MP.max) { send(ws, { t: 'full' }); ws.close(); return; }
-        let name = clean(m.name, MP.nameMax) || 'Castaway';
-        if ([...room.players.values()].some((p) => p.name === name)) name = `${name} ${nextId}`;
-        me = { id: nextId++, ws, name, st: null, joined: Date.now() };
+        // the same account in another window or room: that one gives way
+        const twins = acct ? sameAccount(acct.key) : [];
+        if (room.players.size - twins.filter((p) => room.players.get(p.id) === p).length >= MP.max) { send(ws, { t: 'full' }); ws.close(); return; }
+        for (const p of twins) { send(p.ws, { t: 'refused', why: 'You logged in to the game somewhere else.' }); p.ws.close(); }
+        let name = acct ? acct.name : clean(m.name, MP.nameMax) || 'Castaway';
+        if (!acct && [...room.players.values()].some((p) => p.name === name)) name = `${name} ${nextId}`;
+        me = { id: nextId++, ws, name, st: null, joined: Date.now(), acct: acct?.key };
         if (!room.players.size && !dedicated) { room.hostId = me.id; if (room.world === null) { room.world = num(m.world) | 0; room.time0 = num(m.time); } log(`${name} hosts world ${room.world}`); }
         room.players.set(me.id, me); room.last = Date.now(); occupied(room, true);
-        send(ws, { t: 'welcome', id: me.id, host: room.hostId, world: room.world, time: clock(room), dedicated, room: { id: room.id, name: room.name }, drops: [...room.drops.values()], wdoc: room.doc, wseeded: room.seeded, links: room.gates.state(), drafts: room.gates.draftState(), now: Date.now(), players: [...room.players.values()].map((p) => ({ id: p.id, name: p.name })) });
+        send(ws, { t: 'welcome', id: me.id, name: me.name, host: room.hostId, world: room.world, time: clock(room), dedicated, room: { id: room.id, name: room.name }, drops: [...room.drops.values()], wdoc: room.doc, wseeded: room.seeded, links: room.gates.state(), drafts: room.gates.draftState(), now: Date.now(), players: [...room.players.values()].map((p) => ({ id: p.id, name: p.name })) });
         all(room, { t: 'join', id: me.id, name }, me.id);
         log(`${name} joined ${room.name} (${room.players.size}/${MP.max})`);
         return;
@@ -338,7 +374,7 @@ export function createMp(log = (m) => console.log('[mp] ' + m), opts = {}) {
   const dirtyDocs = () => [...rooms.values()].filter((r) => r.dirty).map((r) => { r.dirty = false; return { id: r.id, doc: r.doc, seeded: r.seeded }; });
   const first = () => rooms.values().next().value;
   return {
-    attach, close, dedicated, list, save, dirtyDocs,
+    attach, close, dedicated, list, save, dirtyDocs, accounts: accts,
     get players() { return first().players; },
     state: () => { const r = first(); return { hostId: r.hostId, world: r.world, time: clock(r), n: r.players.size, names: [...r.players.values()].map((p) => p.name) }; },
   };

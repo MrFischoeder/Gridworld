@@ -3,6 +3,16 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.158.0', date: '2026-10-07', title: 'Player accounts', notes: [
+    'On a dedicated server every player now has their own account, with a name and a password. In the Multiplayer panel, enter a name and a password and press Create account the first time, or Log in after that.',
+    'Your account name is yours alone on that server. Letter case does not matter: nobody else can register "ada" if you are "Ada". It is the name the others see in the game, in the chat and on the server list.',
+    'The server never keeps your password, only a salted hash of it. Your browser keeps a login that lasts 60 days while you play, so you do not have to type the password every time. Log out ends that login. Change password logs out your other browsers.',
+    'One account plays in one window at a time. Logging in somewhere else sends the old window back to the menu.',
+    'After 5 wrong passwords from one address, the server refuses login attempts for a minute.',
+    'Any logged-in player can create servers, up to 3 per account. Only their creator sees Close server next to them. It works from any computer you log in on, and the players on it are sent back to the menu.',
+    'LAN games started with start-gry.bat need no account, as before.',
+    'The multiplayer protocol has changed (11): after the server is updated, reload the page (Ctrl+F5).',
+  ] },
   { v: '0.157.0', date: '2026-10-07', title: 'Sneaking', notes: [
     'Crouch with C (toggle) or by holding Ctrl. Crouched you move at under half speed and cannot sprint, your view drops, and you are about half as easy to see. Space stands you up.',
     'Foes no longer spot you the moment you enter their line of sight. Bandits, robots, beasts and drones notice you gradually. They see best straight ahead, poorly to the sides and hardly at all behind. Crouching, keeping still, darkness and fog all slow them down. Sprinting and gunfire speed them up.',

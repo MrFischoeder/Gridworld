@@ -8,7 +8,7 @@
 //
 // Settings (environment): PORT (8517), HOST (0.0.0.0), WORLD_SEED (a number; only read the first time, then the
 // saved one wins unless FORCE_SEED=1), DATA_DIR (server/data: server.json keeps the seed and the clock),
-// SERVER_NAME (the first server's name in the list), DIST (the built game, dist/). Behind a reverse proxy at a sub-path (a portal
+// SERVER_NAME (the first server's name in the list; accounts.json keeps the players' accounts), DIST (the built game, dist/). Behind a reverse proxy at a sub-path (a portal
 // with several apps, e.g. https://example.pl/gridworld/) it works whether the proxy strips the prefix or not.
 // GET /mp/info answers {dedicated, name, version, rooms: [{id, name, world, time, online, max, running, players}], and
 // the first room's world / online / players} for the game's menu and for checks.
@@ -19,6 +19,7 @@ import { join, resolve, extname, normalize, sep } from 'node:path';
 import { randomInt } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { createMp, MP } from './mp.mjs';
+import { createAccounts } from './accounts.mjs';
 
 const here = fileURLToPath(new URL('.', import.meta.url));
 const env = process.env;
@@ -26,7 +27,7 @@ const PORT = Number(env.PORT) || 8517, HOST = env.HOST || '0.0.0.0';
 const DIST = resolve(env.DIST || join(here, '..', 'dist'));
 const DATA = resolve(env.DATA_DIR || join(here, 'data'));
 const NAME = (env.SERVER_NAME || 'GridWorld server').slice(0, 40);
-const SAVE = join(DATA, 'server.json');
+const SAVE = join(DATA, 'server.json'), ACCOUNTS = join(DATA, 'accounts.json');
 const VERSION = (() => { try { return JSON.parse(readFileSync(join(here, '..', 'package.json'), 'utf8')).version; } catch { return '?'; } })();
 const log = (m) => console.log(`${new Date().toISOString()} ${m}`);
 
@@ -42,14 +43,22 @@ rooms[0].name = NAME; // (the first server's name follows SERVER_NAME)
 // each room's shared world (villages, bridges, chests...) lives in its own file: it can grow large
 const docFile = (id) => join(DATA, 'world-' + String(id).replace(/[^\w-]/g, '') + '.json');
 for (const r of rooms) { try { const w = JSON.parse(await readFile(docFile(r.id), 'utf8')); r.doc = w.doc; r.seeded = w.seeded; } catch { /* none yet */ } }
-const mp = createMp((m) => log('[mp] ' + m), { rooms, removed: (id) => { unlink(docFile(id)).catch(() => {}); persist().catch(() => {}); } }); // a deleted or forgotten server's world goes with it
+// the players' accounts (names and password hashes, never the passwords) in their own file, readable only by the server
+let savedAccounts = {};
+try { savedAccounts = JSON.parse(await readFile(ACCOUNTS, 'utf8')); } catch { /* none yet */ }
+const accounts = createAccounts(savedAccounts);
+const mp = createMp((m) => log('[mp] ' + m), { rooms, accounts, accountsChanged: () => { persist().catch(() => {}); }, removed: (id) => { unlink(docFile(id)).catch(() => {}); persist().catch(() => {}); } }); // a deleted or forgotten server's world goes with it
 const world = rooms[0].world;
 
-async function persist() {
+// one save at a time (an account made mid-save waits for the next turn)
+let saving = Promise.resolve();
+function persist() { saving = saving.then(write, write); return saving; }
+async function write() {
   await mkdir(DATA, { recursive: true });
   const tmp = SAVE + '.tmp', list = mp.save();
   await writeFile(tmp, JSON.stringify({ rooms: list, saved: new Date().toISOString() }, null, 1));
   await rename(tmp, SAVE);
+  if (accounts.dirty()) { await writeFile(ACCOUNTS + '.tmp', JSON.stringify(accounts.save()), { mode: 0o600 }); await rename(ACCOUNTS + '.tmp', ACCOUNTS); }
   for (const d of mp.dirtyDocs()) { const f = docFile(d.id); await writeFile(f + '.tmp', JSON.stringify({ doc: d.doc, seeded: d.seeded })); await rename(f + '.tmp', f); }
 }
 await persist();
@@ -68,7 +77,7 @@ const http = createServer(async (req, res) => {
   if (url.endsWith(MP.path + '/info')) {
     const s = mp.state(), list = mp.list().map(({ id, name, world, time, online, max, running, players, by }) => ({ id, name, world, time, online, max, running, players, by }));
     res.writeHead(200, { 'content-type': 'application/json', 'cache-control': 'no-store', 'access-control-allow-origin': '*' });
-    res.end(JSON.stringify({ dedicated: true, name: NAME, world, time: Math.round(s.time), online: s.n, max: MP.max, players: s.names, version: VERSION, rooms: list }));
+    res.end(JSON.stringify({ dedicated: true, accounts: true, name: NAME, world, time: Math.round(s.time), online: s.n, max: MP.max, players: s.names, version: VERSION, rooms: list }));
     return;
   }
   if (req.method !== 'GET' && req.method !== 'HEAD') { res.writeHead(405); res.end(); return; }

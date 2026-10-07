@@ -8,11 +8,14 @@
 // (a name, the hero's own world or a fresh one). Nobody hosts: each room's world and clock are its own; the clock
 // runs while anyone is in the room (also in the menu: you stay in the game, the others see you "in menu"). A build made with VITE_MP_SERVER
 // set (e.g. wss://game.example.com/mp) offers that server in the address field.
+// On a dedicated server every player has an account (a name and a password, server/accounts.mjs): the menu logs in or
+// makes one, keeps only the session token the server gave (`gridWorld.mpAuth`, per server), and the server names you
+// by your account. A server you created shows Close server in the list: closing it sends its players away for good.
 import { joinWorld } from '../world/share';
 import { G } from '../game';
 import { $, logLine } from './hud';
 import { saveChar } from '../character';
-import { connect, disconnect, deleteRoom, net, online, isHost, sendChat, serverUrl, serverInfo, type ServerInfo, type RoomInfo } from '../net/client';
+import { connect, disconnect, deleteRoom, account, logout, changePassword, net, online, isHost, sendChat, serverUrl, serverInfo, type ServerInfo, type RoomInfo } from '../net/client';
 import { clearPeers, peerColor } from '../world/peers';
 import { lockPointer } from './input';
 import { SAVE_KEY } from '../save';
@@ -29,6 +32,8 @@ export interface MpHooks {
 const box = $('mpBox'), addr = $<HTMLInputElement>('mpAddr'), status = $('mpStatus'), list = $('mpList');
 const hostBtn = $<HTMLButtonElement>('mpHost'), joinBtn = $<HTMLButtonElement>('mpJoin'), leaveBtn = $<HTMLButtonElement>('mpLeave'), backBtn = $<HTMLButtonElement>('mpBack');
 const chatLog = $('chatlog'), chatIn = $<HTMLInputElement>('chatIn'), badge = $('mpBadge');
+const acctEl = $('mpAcct'), acctIn = $('mpAcctIn'), acctOn = $('mpAcctOn'), who = $('mpWho'), userIn = $<HTMLInputElement>('mpUser'), passIn = $<HTMLInputElement>('mpPass');
+const pwdForm = $('mpPwdForm'), oldIn = $<HTMLInputElement>('mpOld'), newPassIn = $<HTMLInputElement>('mpNewPass');
 const roomsEl = $('mpRooms'), newEl = $('mpNew'), newName = $<HTMLInputElement>('mpNewName'), mine = $<HTMLInputElement>('mpMine'), createBtn = $<HTMLButtonElement>('mpCreate');
 let hooks: MpHooks | null = null, connecting = false;
 /** The dedicated server this page came from, if any. */
@@ -48,6 +53,23 @@ function mpKey(): string {
 /** The servers this browser created (ids), so the list offers to delete them. */
 const myRooms = (): string[] => { try { const v = JSON.parse(localStorage.getItem(MINE_STORE) ?? '[]'); return Array.isArray(v) ? v.filter((x) => typeof x === 'string') : []; } catch { return []; } };
 const setMine = (ids: string[]) => { try { localStorage.setItem(MINE_STORE, JSON.stringify(ids.slice(-30))); } catch { /* storage blocked */ } };
+/** Your account on the page's dedicated server: the name and the session token it gave (the password is never kept). */
+const AUTH_STORE = 'gridWorld.mpAuth';
+type Auth = { name: string; token: string };
+const here = () => serverUrl('', location);
+function auths(): Record<string, Auth> { try { const v = JSON.parse(localStorage.getItem(AUTH_STORE) ?? '{}'); return v && typeof v === 'object' ? v : {}; } catch { return {}; } }
+const auth = (): Auth | null => { const a = auths()[here()]; return a && typeof a.token === 'string' && typeof a.name === 'string' ? a : null; };
+function setAuth(a: Auth | null) {
+  const all = auths();
+  if (a) all[here()] = a; else delete all[here()];
+  try { localStorage.setItem(AUTH_STORE, JSON.stringify(all)); } catch { /* storage blocked */ }
+}
+/** Does this server want an account, and are you logged in? */
+const accounts = () => !!ded?.accounts;
+const loggedIn = () => !accounts() || !!auth();
+let busy = false;
+/** A server is yours to close: made by your account (or, before accounts, from this browser). */
+const yours = (r: RoomInfo) => r.id !== 'main' && (!!auth() && (r.by ?? '').toLowerCase() === auth()!.name.toLowerCase() || myRooms().includes(r.id));
 /** A Delete button asks twice: the id armed by the first click. */
 let armed = '', deleting = '';
 /** A message for the status line that outlasts the next render for a few seconds. */
@@ -62,14 +84,14 @@ export const onMpChange = (f: () => void) => { listener = f; };
 /** The rooms of the dedicated server: a row each with a Join button (the one you are in marked). */
 function roomRows(): string {
   if (!ded?.rooms?.length) return '';
-  const here = net.room?.id, mine = myRooms();
+  const at = net.room?.id;
   return ded.rooms.map((r: RoomInfo) => {
-    const you = online() && r.id === here, n = you ? net.peers.size + 1 : r.online;
+    const you = online() && r.id === at, n = you ? net.peers.size + 1 : r.online;
     const state = n ? `<span class="dot">●</span> ${n}/${r.max} playing` : '<span class="dot off">○</span> paused';
     const who = you ? 'you are here' : r.players.length ? r.players.map(esc).join(', ') : 'empty';
-    const btn = you ? '' : `<button data-room="${esc(r.id)}"${connecting ? ' disabled' : ''}>${online() ? 'Move here' : 'Join'}</button>`;
-    const del = !you && r.id !== 'main' && mine.includes(r.id)
-      ? `<button class="del${armed === r.id ? ' armed' : ''}" data-del="${esc(r.id)}"${deleting ? ' disabled' : ''}>${deleting === r.id ? 'Deleting…' : armed === r.id ? (r.online ? `Delete? ${r.online} playing` : 'Sure? Delete') : 'Delete'}</button>` : '';
+    const btn = you ? '' : `<button data-room="${esc(r.id)}"${connecting || !loggedIn() ? ' disabled' : ''}>${online() ? 'Move here' : 'Join'}</button>`;
+    const del = !you && yours(r)
+      ? `<button class="del${armed === r.id ? ' armed' : ''}" data-del="${esc(r.id)}"${deleting ? ' disabled' : ''}>${deleting === r.id ? 'Closing…' : armed === r.id ? (r.online ? `Close it? ${r.online} playing` : 'Sure? Close it') : 'Close server'}</button>` : '';
     const by = r.by ? ` · made by ${esc(r.by)}` : '';
     return `<div class="room${you ? ' here' : ''}${del ? ' mine' : ''}"><b>${esc(r.name)}</b><span>${state}</span><span class="who">${who} · world ${r.world}${by}</span>${btn}${del}</div>`;
   }).join('');
@@ -80,7 +102,14 @@ function render() {
   joinBtn.style.display = on || connecting || rooms ? 'none' : '';
   joinBtn.textContent = ded ? 'Join the server' : 'Join';
   roomsEl.innerHTML = roomRows();
-  newEl.style.display = rooms && !connecting ? '' : 'none';
+  newEl.style.display = rooms && !connecting && loggedIn() ? '' : 'none';
+  // the account box (dedicated servers): log in / make one, or who you are with a way out
+  const a = auth();
+  acctEl.style.display = accounts() && !on ? '' : 'none';
+  acctIn.style.display = a ? 'none' : '';
+  acctOn.style.display = a ? '' : 'none';
+  if (a) who.innerHTML = `Logged in as <b>${esc(a.name)}</b>`;
+  for (const b of acctEl.querySelectorAll('button')) (b as HTMLButtonElement).disabled = busy;
   addr.parentElement!.style.display = ded ? 'none' : '';
   leaveBtn.style.display = on ? '' : 'none';
   addr.disabled = on || connecting;
@@ -89,12 +118,13 @@ function render() {
     status.textContent = net.dedicated
       ? `You are on ${net.room?.name ?? ded?.name ?? 'the server'}. It keeps running while you are in the menu · T to chat`
       : `Connected to ${net.address.replace(/^wss?:\/\//, '').replace(/\/mp$/, '')} · ${isHost() ? 'you host the game' : 'in the host\'s world'} · T to chat`;
-    list.innerHTML = [`<span style="color:#${peerColor(net.id).toString(16).padStart(6, '0')}">${esc(G.char.name || 'You')} (you)${isHost() ? ' ★' : ''}</span>`,
+    list.innerHTML = [`<span style="color:#${peerColor(net.id).toString(16).padStart(6, '0')}">${esc(net.name || G.char.name || 'You')} (you)${isHost() ? ' ★' : ''}</span>`,
       ...[...net.peers.values()].map((p) => `<span style="color:#${peerColor(p.id).toString(16).padStart(6, '0')}">${esc(p.name)}${p.id === net.host ? ' ★' : ''}</span>`)].join(' · ');
   } else {
     list.textContent = '';
     if (note) status.textContent = note;
-    else if (rooms && !connecting) status.textContent = 'Pick a server and press Join, or create your own. A server pauses while nobody is on it.';
+    else if (accounts() && !auth() && !connecting) status.textContent = 'Log in, or make an account (a name and a password) to play here. Your name is yours alone on this server.';
+    else if (rooms && !connecting) status.textContent = 'Pick a server and press Join, or create your own (you can close it later). A server pauses while nobody is on it.';
     else if (ded && !connecting) status.textContent = `${ded.name} · ${ded.online}/${ded.max} online${ded.players.length ? ': ' + ded.players.join(', ') : ''} · press Join the server.`;
   }
   box.style.display = mpShown() ? '' : 'none';
@@ -115,15 +145,14 @@ function say(text: string, kind: 'chat' | 'info' | 'error') {
   render();
 }
 
-function start(url: string, room?: string, create?: { name: string; world?: number; key?: string }) {
-  if (!G.char.name) { status.textContent = 'Name your hero first.'; return; }
+function start(url: string, room?: string, create?: { name: string; world?: number }) {
+  if (accounts() && !auth()) { status.textContent = 'Log in first.'; userIn.focus(); return; }
+  if (!accounts() && !G.char.name) { status.textContent = 'Name your hero first.'; return; }
   if (online()) { disconnect(); clearPeers(); } // moving to another server
   connecting = true; status.textContent = 'Connecting…'; render();
-  if (create) create = { ...create, key: mpKey() };
-  connect(url, { name: G.char.name, world: G.char.world, time: G.char.time, room, create }, {
+  connect(url, { name: auth()?.name ?? G.char.name, world: G.char.world, time: G.char.time, token: auth()?.token, room, create }, {
     welcome(world, time, host, dedicated) {
       connecting = false;
-      if (create && net.room && !myRooms().includes(net.room.id)) setMine([...myRooms(), net.room.id]); // yours to delete later
       if (world !== G.char.world) {
         // into the host's world: the hero's own save waits (once) to be restored with "Back to my own world"
         try { if (!solo()) localStorage.setItem(SOLO_KEY, JSON.stringify(G.char)); } catch { /* storage full or blocked */ }
@@ -140,7 +169,11 @@ function start(url: string, room?: string, create?: { name: string; world?: numb
     },
     say,
     clock(time) { if (Math.abs(G.char.time - time) > 3) G.char.time = time; }, // the host's clock is everyone's
-    closed(why) { connecting = false; clearPeers(); say(why, 'error'); look(); },
+    closed(why) {
+      connecting = false; clearPeers();
+      if (net.needAuth) { setAuth(null); tell('Your login has run out: log in again.'); } // the session is gone (expired, or the password changed)
+      say(why, 'error'); look();
+    },
   });
 }
 /** Delete a server this browser created: the first click arms the button, the second deletes it. */
@@ -149,12 +182,41 @@ async function remove(id: string) {
   if (armed !== id) { armed = id; render(); setTimeout(() => { if (armed === id) { armed = ''; render(); } }, 5000); return; }
   armed = ''; deleting = id; render();
   const name = ded?.rooms?.find((r) => r.id === id)?.name ?? 'The server';
-  const why = await deleteRoom(serverUrl('', location), id, mpKey());
+  const why = await deleteRoom(serverUrl('', location), id, auth()?.token ?? '', myRooms().includes(id) ? mpKey() : undefined);
   deleting = '';
-  if (!why || /gone/.test(why)) { setMine(myRooms().filter((x) => x !== id)); tell(`${name} was deleted.`); }
+  if (!why || /gone/.test(why)) { setMine(myRooms().filter((x) => x !== id)); tell(`${name} is closed.`); }
   else tell(why);
   if (ded?.rooms && !why) ded.rooms = ded.rooms.filter((r) => r.id !== id);
   render(); look();
+}
+/** Log in or make an account with what is in the two fields. */
+async function signIn(how: 'login' | 'register') {
+  const name = userIn.value.trim(), pass = passIn.value;
+  if (!name || !pass) { tell('Type your account name and password.'); (name ? passIn : userIn).focus(); render(); return; }
+  busy = true; status.textContent = how === 'login' ? 'Logging in…' : 'Making your account…'; render();
+  const r = await account(here(), how, name, pass);
+  busy = false;
+  if (r.token && r.name) { setAuth({ name: r.name, token: r.token }); passIn.value = ''; tell(how === 'login' ? `Welcome back, ${r.name}.` : `Account ${r.name} made. Remember your password: nobody can read it back.`); }
+  else tell(r.why ?? 'That did not work.');
+  render();
+}
+async function signOut() {
+  const a = auth();
+  if (online()) { disconnect(); clearPeers(); }
+  setAuth(null); pwdForm.style.display = 'none';
+  if (a) void logout(here(), a.token);
+  tell('Logged out.'); render();
+}
+async function savePassword() {
+  const a = auth();
+  if (!a) return;
+  if (!oldIn.value || !newPassIn.value) { tell('Type the old and the new password.'); render(); return; }
+  busy = true; render();
+  const why = await changePassword(here(), a.token, oldIn.value, newPassIn.value);
+  busy = false; oldIn.value = ''; newPassIn.value = '';
+  if (!why) { pwdForm.style.display = 'none'; tell('Password changed. Other browsers logged in as you are logged out.'); }
+  else tell(why);
+  render();
 }
 /** Ask the page's dedicated server for its rooms (the menu's list). */
 let look = () => {};
@@ -171,6 +233,15 @@ export function initMp(h: MpHooks) {
     const b = (e.target as HTMLElement).closest('[data-room]') as HTMLElement | null;
     if (b) start(serverUrl('', location), b.dataset.room);
   };
+  for (const i of [userIn, passIn, oldIn, newPassIn]) i.onkeydown = (e) => { e.stopPropagation(); };
+  passIn.onkeydown = (e) => { e.stopPropagation(); if (e.code === 'Enter') void signIn('login'); };
+  newPassIn.onkeydown = (e) => { e.stopPropagation(); if (e.code === 'Enter') void savePassword(); };
+  $('mpLogin').onclick = () => void signIn('login');
+  $('mpRegister').onclick = () => void signIn('register');
+  $('mpLogout').onclick = () => void signOut();
+  $('mpPwd').onclick = () => { pwdForm.style.display = pwdForm.style.display === 'none' ? '' : 'none'; if (pwdForm.style.display === '') oldIn.focus(); };
+  $('mpPwdCancel').onclick = () => { pwdForm.style.display = 'none'; oldIn.value = ''; newPassIn.value = ''; };
+  $('mpPwdSave').onclick = () => void savePassword();
   newName.onkeydown = (e) => { e.stopPropagation(); if (e.code === 'Enter') createBtn.click(); };
   createBtn.onclick = () => {
     const name = newName.value.trim();
