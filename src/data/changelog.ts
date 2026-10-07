@@ -3,6 +3,15 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.156.0', date: '2026-10-07', title: 'You pick things up yourself', notes: [
+    'Nothing goes into your backpack by itself any more. Loot from kills, logs from felled trees, scrap and anything else on the ground stays there until you choose to take it.',
+    'To pick something up, press E beside it. The prompt also tells you how many more things lie around you.',
+    'Or open the backpack (Tab or I). The panel beside it shows everything lying within 2 m of you. Click an item or drag it into the backpack to take it, or use Pick up all.',
+    'The ground panel always has a free row of slots for putting things down, and it can list up to 48 things, so you can empty your whole backpack in one place.',
+    'Things you put down spread out round your feet instead of landing in one heap.',
+    'XP crystals are still collected as you walk through them.',
+    'Multiplayer: loot lies for everyone to see and goes to whoever takes it first. Loot on a server now stays on the ground for 2 hours (it was 30 minutes).',
+  ] },
   { v: '0.155.0', date: '2026-10-06', title: 'No more endless respawns below', notes: [
     'Drones in dungeons and caves, and the robot guards of crashed ships, no longer respawn. A killed one stays dead, so a room you have cleared stays clear when you come back to it.',
     'Each foe has its own spot and stands there again every time you come back.',

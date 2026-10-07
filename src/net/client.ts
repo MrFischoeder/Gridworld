@@ -43,7 +43,7 @@ export function peerAt(p: Peer, t: number): { a: PeerState; b: PeerState; k: num
   return { a: last, b: last, k: 0 };
 }
 /** An item lying in the room's world (server/mp.mjs): put down by `by`, at p in the place `loc` (see world/peers.ts myLoc). */
-/** `auto`: loot (a kill's drops, logs from a felled tree...) taken by walking over it, as alone. */
+/** `auto`: loot (a kill's drops, logs from a felled tree...) lying only a while (server `MP.lootTtl`); taken like any drop. */
 export interface NetDrop { id: string; k: string; n: number; c?: number; p: [number, number, number]; loc: string; by: string; at: number; auto?: boolean }
 let gotHook: ((d: NetDrop) => void) | null = null;
 /** Who receives an item the server handed you (world/drops.ts). */

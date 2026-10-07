@@ -2,5 +2,5 @@
 // Bump it with every pushed change (and keep package.json's "version" the same): the middle number for a new
 // feature (0.4.0 -> 0.5.0), the last one for a fix (0.5.0 -> 0.5.1). BUILD says what the latest change was.
 // Every change also gets an entry at the top of data/changelog.ts (the Changelog button in the menu).
-export const VERSION = '0.155.0';
-export const BUILD = '2026-10-06 · Dungeon foes stay dead; places fill up again 7–14 days after they are cleared';
+export const VERSION = '0.156.0';
+export const BUILD = '2026-10-07 · No automatic pickup; the ground beside the backpack holds a whole backpack';

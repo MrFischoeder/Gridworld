@@ -1,6 +1,7 @@
 // The ground beside the backpack: whatever lies within reach of you (things you or others put down, loot your
 // backpack had no room for) shows in the side panel of the backpack window (ui/backpack.ts). Drag or click an item
 // into the backpack to pick it up; drag one of yours onto the ground (or press Drop) to put it down at your feet.
+// Nothing is picked up by walking over it: only from here or with E by the thing.
 import { G, W } from '../game';
 import { item, ITEMS } from '../data/items';
 import { listOf } from '../character';
@@ -12,7 +13,7 @@ import { slotHTML, parseId } from './slots';
 import { setGroundSide, refreshPack, packSide, type PackSide } from './backpack';
 
 /** How far around you the ground panel looks (m), and how many things it lists. */
-export const GROUND = { reach: 3, max: 24, min: 12 };
+export const GROUND = { reach: 2, max: 48, min: 24 };
 
 const el = { side: $('packSide'), title: $('sideTitle'), sub: $('sideSub'), label: $('sideLabel'), grid: $('sideGrid'), gold: $('sideGold'), msg: $('sideMsg'), all: $('sideAll') };
 /** The pickups shown, in slot order (f:i). */
@@ -44,7 +45,7 @@ const ground: PackSide = {
     el.title.textContent = 'On the ground';
     el.sub.textContent = `Within ${GROUND.reach} m of you`;
     el.label.textContent = shown.length ? `Lying here (${shown.length})` : 'Nothing lies here';
-    const n = Math.max(GROUND.min, Math.ceil((shown.length + 1) / 6) * 6);
+    const n = Math.max(GROUND.min, Math.ceil((shown.length + 6) / 6) * 6); // always a free row to put things down
     el.grid.innerHTML = Array.from({ length: n }, (_, i) => {
       const p = shown[i];
       return p ? slotHTML('f:' + i, { k: p.k, n: p.n, c: p.c, cls: p.taking ? 'off' : '' }) : slotHTML('f:' + i, { k: null, cls: 'empty-ground', title: 'Drag an item here to put it down' });

@@ -36,7 +36,7 @@ import { repairWithKit, vehicleTitle } from '../data/vehicles';
 export interface Crystal { m: THREE.LineSegments; p: THREE.Vector3; v: THREE.Vector3; age: number }
 /** `rest`: it lies on the ground as what it is (world/pickmodels.ts) instead of floating and spinning as a token. */
 /**
- * `drop`: put down by a player (world/drops.ts): it waits for E instead of being picked up by walking over it; `c` the
+ * `drop`: put down by a player (world/drops.ts): shared through the server (every pickup waits for E or the backpack's ground panel); `c` the
  * condition of a worn part, `by` who put it down, `taking` when you last asked the server for it.
  */
 export interface Pickup { g: THREE.Group; k: ItemKey; p: THREE.Vector3; age: number; warned?: boolean; rest?: boolean; n?: number; drop?: string; c?: number; by?: string; taking?: number; auto?: boolean }
@@ -50,8 +50,7 @@ const crystalMat = add(0x9dffe0);
 // shows it to all and gives it to whoever reaches it first. `quietLoot` drops nothing (another player's kill of your foe:
 // their game drops the loot and the crystals).
 let ground: ((at: THREE.Vector3, k: ItemKey, n: number) => boolean) | null = null, quiet = 0;
-let autoTake: (p: Pickup) => void = () => {};
-export function setGroundHook(f: typeof ground, take: (p: Pickup) => void) { ground = f; autoTake = take; }
+export function setGroundHook(f: typeof ground) { ground = f; }
 export function quietLoot(fn: () => void) { quiet++; try { fn(); } finally { quiet--; } }
 /** True while a kill's rewards belong to another player (see `quietLoot`). */
 export const lootQuiet = () => quiet > 0;
@@ -123,10 +122,7 @@ export function updateLoot(dt: number, time: number) {
     { const np = p.p.clone(); np.y -= dt * 4; if (emptyAt(V(np.x, np.y - 0.45, np.z))) p.p.copy(np); } // settles onto the floor
     if (p.rest) p.g.position.set(p.p.x, restY(p.p), p.p.z);
     else { p.g.position.copy(p.p); p.g.position.y += Math.sin(time * 3 + i) * 0.08; p.g.rotation.y = time * 1.5; }
-    if (p.drop && p.auto && Math.hypot(p.p.x - G.pos.x, p.p.z - G.pos.z) < 1.3 && Math.abs(p.p.y - body.y) < 2.5 && p.age > 0.4) autoTake(p); // the server's loot
-    else if (!p.drop && Math.hypot(p.p.x - G.pos.x, p.p.z - G.pos.z) < 1.3 && Math.abs(p.p.y - body.y) < 2.5 && p.age > 0.4) {
-      if (!grabPickup(p) && !p.warned) { p.warned = true; logLine('No room in your backpack'); }
-    }
+    // nothing goes into the kit by itself: E by it, or the ground panel of the backpack (ui/ground.ts)
   }
 }
 /** Takes a pickup that is not a shared drop (loot, relics, keys) into your kit. False if there is no room. */

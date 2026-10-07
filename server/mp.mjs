@@ -19,7 +19,7 @@
 //                                          answered {t:'deleted', room} or {t:'refused', why}, then closed
 //   {t:'state', p:[x,y,z], yaw, pitch, loc, held, mv, away, cars, ride?, gun?, boat?, time?}   boat: [boat id, u, v, h, seat] aboard one of the boats   cars: the player's own vehicles (net/client.ts PeerCar)   ~10 times a second; time from a hosted room's host only
 //   {t:'chat', text}
-//   {t:'drop', k, n, c?, p:[x,y,z], loc, auto?}   auto: loot that anyone takes by walking over it (kept `MP.lootTtl` h)
+//   {t:'drop', k, n, c?, p:[x,y,z], loc, auto?}   auto: loot (kept `MP.lootTtl` h); taken like any drop
 //   (was) {t:'drop', k, n, c?, p:[x,y,z], loc}   an item put down at your feet (taken out of your own kit first)
 //   {t:'take', id}                       pick a lying item up: only the first to ask gets it
 //   {t:'wset', seq, ch:[[field, key, value|null, baseline], ...]}   changes to the shared world (villages, bridges, chests...: see
@@ -50,7 +50,7 @@ import { pathToFileURL } from 'node:url';
 import { randomInt, createHash } from 'node:crypto';
 import { GateConnections, GATE_TRANSIT_SECONDS } from '../shared/gates.mjs';
 
-export const MP = { path: '/mp', port: 7777, max: 8, rate: 100, nameMax: 20, chatMax: 200, roomName: 28, rooms: 12, roomTtl: 14, cars: 8, drops: 800, dropTtl: 6, lootTtl: 0.5, payload: 4 * 1024 * 1024 };
+export const MP = { path: '/mp', port: 7777, max: 8, rate: 100, nameMax: 20, chatMax: 200, roomName: 28, rooms: 12, roomTtl: 14, cars: 8, drops: 800, dropTtl: 6, lootTtl: 2, payload: 4 * 1024 * 1024 };
 /** What players may pass to each other through 'cast' (everyone else in the room) and 'to' (one player). */
 const RELAY = new Set(['foes', 'bolt', 'fhit', 'kill', 'hurt', 'thit', 'boat', 'row']);
 /** Protocol version: a client with another one is refused (the game shows why). */
@@ -223,7 +223,7 @@ export function createMp(log = (m) => console.log('[mp] ' + m), opts = {}) {
         if (room.drops.size >= MP.drops) { const old = room.drops.keys().next().value; room.drops.delete(old); all(room, { t: 'gone', id: old }); }
         const d = { id: 'd' + (dropSeq++).toString(36) + randomInt(1000, 9999).toString(36), k, n, p: m.p.slice(0, 3).map(num), loc: clean(m.loc, 80), by: me.name, at: Date.now() };
         if (typeof m.c === 'number' && Number.isFinite(m.c)) d.c = m.c;
-        if (m.auto) d.auto = true; // loot (kills, felled trees...): taken by walking over it, lies only `MP.lootTtl` h
+        if (m.auto) d.auto = true; // loot (kills, felled trees...): lies only `MP.lootTtl` h
         room.drops.set(d.id, d);
         all(room, { t: 'drop', d });
       } else if (m.t === 'take') {

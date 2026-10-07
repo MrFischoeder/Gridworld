@@ -4,7 +4,7 @@
 import * as THREE from 'three';
 import { G, W } from '../game';
 import { scene } from './render';
-import { drawPickup, setGroundHook, type Pickup } from './loot';
+import { drawPickup, setGroundHook, grabPickup, type Pickup } from './loot';
 import { net, online, sendDrop, sendTake, onGot, type NetDrop } from '../net/client';
 import { myLoc } from './peers';
 import { nearX } from '../gen/regions';
@@ -22,10 +22,17 @@ const source = () => (online() ? net.drops : local);
 const label = (k: string, n: number) => (ITEMS[k as ItemKey]?.name ?? k) + (n > 1 ? ' ×' + n : '');
 
 /** Lay a stack you have just taken out of your kit at your feet (a little ahead, so you see it fall). */
+let recent: [number, number, number][] = [];
 export function dropAtFeet(s: Slot) {
-  const f = 0.7, x = G.pos.x - Math.sin(G.yaw) * f, z = G.pos.z - Math.cos(G.yaw) * f;
+  // a pile spreads out round the spot in front of you (a golden-angle spiral), so a whole backpack put down stays apart
+  const f = 0.7, cx = G.pos.x - Math.sin(G.yaw) * f, cz = G.pos.z - Math.cos(G.yaw) * f;
+  const now = performance.now(); recent = recent.filter((q) => now - q[2] < 8000); // ours still on their way through the server
+  const n = W.pickups.filter((q) => Math.hypot(q.p.x - cx, q.p.z - cz) < 1.3).length + recent.filter((q) => Math.hypot(q[0] - cx, q[1] - cz) < 1.3).length;
+  const r = Math.min(1.1, 0.32 * Math.sqrt(n)), a = n * 2.39996 + G.yaw;
+  const x = cx + Math.cos(a) * r, z = cz + Math.sin(a) * r;
   const p: [number, number, number] = [x, G.pos.y + 0.6, z], loc = myLoc();
-  if (!sendDrop(s.k, s.n, s.c, p, loc)) {
+  if (sendDrop(s.k, s.n, s.c, p, loc)) recent.push([cx, cz, now]);
+  else {
     const id = 'local:' + ++seq;
     local.set(id, { id, k: s.k, n: s.n, c: s.c, p, loc, by: G.char.name || 'you', at: Date.now() });
   }
@@ -55,21 +62,25 @@ onGot(took);
 // online, loot falls into the shared world: the server lays it down for everyone (in the open world or a dungeon);
 // hooked on the first `syncDrops` (loot.ts and this module import each other)
 let hooked = false;
-const hook = () => setGroundHook((at, k, n) => (G.char.loc === 'overworld' || G.char.loc === 'dungeon') && sendDrop(k, n, undefined, [Math.round(at.x * 100) / 100, Math.round(at.y * 100) / 100, Math.round(at.z * 100) / 100], myLoc(), true),
-  (p) => { if (p.drop) takeDrop(p); });
+const hook = () => setGroundHook((at, k, n) => (G.char.loc === 'overworld' || G.char.loc === 'dungeon') && sendDrop(k, n, undefined, [Math.round(at.x * 100) / 100, Math.round(at.y * 100) / 100, Math.round(at.z * 100) / 100], myLoc(), true));
 
 /** The lying item you stand by (E picks it up). */
 export function nearDrop(): Pickup | null {
   let best: Pickup | null = null, bd = 1.7;
-  for (const p of shown.values()) {
+  for (const p of W.pickups) {
+    if (!ITEMS[p.k]) continue;
     const d = Math.hypot(p.p.x - G.pos.x, p.p.z - G.pos.z);
     if (d < bd && Math.abs(p.p.y - (G.pos.y + 0.9)) < 2.5) { bd = d; best = p; }
   }
   return best;
 }
-export const dropPrompt = (p: Pickup) => `E — pick up ${label(p.k, p.n ?? 1)}${p.by && p.by !== G.char.name ? ` (left by ${p.by})` : ''}`;
+export const dropPrompt = (p: Pickup) => {
+  const more = W.pickups.filter((q) => q !== p && ITEMS[q.k] && Math.hypot(q.p.x - G.pos.x, q.p.z - G.pos.z) < 2).length;
+  return `E — pick up ${label(p.k, p.n ?? 1)}${p.by && p.by !== G.char.name ? ` (left by ${p.by})` : ''}${more ? ` · Tab — ${more} more on the ground` : ''}`;
+};
 export function takeDrop(p: Pickup) {
-  const id = p.drop!;
+  if (!p.drop) { if (!grabPickup(p)) showToast('No room in your backpack'); return; } // loot of your own game
+  const id = p.drop;
   if (id.startsWith('local:')) { const d = local.get(id); if (d) { local.delete(id); took(d); } return; }
   if (p.taking && performance.now() - p.taking < 3000) return; // already asked
   p.taking = performance.now();
