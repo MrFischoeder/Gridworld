@@ -66,6 +66,7 @@ Wants=network-online.target
 User=gridworld
 WorkingDirectory=$DIR
 Environment=PORT=$PORT HOST=$HOST "SERVER_NAME=$SERVER_NAME" ${WORLD_SEED:+WORLD_SEED=$WORLD_SEED}
+EnvironmentFile=-/etc/gridworld.env
 ExecStart=$NODE_DIR/bin/node server/main.mjs
 Restart=always
 RestartSec=3
@@ -74,6 +75,25 @@ MemoryMax=600M
 [Install]
 WantedBy=multi-user.target
 UNIT
+# settings kept outside the game's folder (mail for account emails): written once, edited by the owner, never overwritten
+if [ ! -f /etc/gridworld.env ]; then
+  cat > /etc/gridworld.env <<'ENV'
+# GridWorld settings read at start (systemctl restart gridworld after a change). Lines starting with # are off.
+# Email for accounts (confirming a new player's address, resetting a forgotten password):
+#MAIL_FROM="GridWorld <noreply@your-domain.pl>"
+# either your mail server over SMTP:
+#SMTP_HOST=mail.your-domain.pl
+#SMTP_PORT=587
+#SMTP_USER=noreply@your-domain.pl
+#SMTP_PASS=the-mailbox-password
+# (SMTP_PORT=465 means SSL; for it also SMTP_SECURE=1)
+# or the machine's own sendmail / postfix:
+#MAIL_SENDMAIL=1
+# where players open the game, for the link in the mail:
+#PUBLIC_URL=https://your-domain.pl/gridworld/
+ENV
+  chmod 600 /etc/gridworld.env
+fi
 systemctl daemon-reload
 systemctl enable -q gridworld
 systemctl restart gridworld

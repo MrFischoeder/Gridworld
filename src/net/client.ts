@@ -141,9 +141,10 @@ function clearGateRequests() {
 
 /** One request on its own connection (no game): the server answers once and closes. Resolves its answer, or
  * {t: 'refused', why} when it could not be reached. */
-function ask(url: string, m: object): Promise<{ t: string; why?: string; name?: string; token?: string }> {
+export type Reply = { t: string; why?: string; name?: string; token?: string; wait?: boolean; email?: string; next?: string; mailing?: boolean };
+function ask(url: string, m: object): Promise<Reply> {
   return new Promise((done) => {
-    let ws: WebSocket, reply: { t: string; why?: string; name?: string; token?: string } = { t: 'refused', why: 'Could not reach the server.' };
+    let ws: WebSocket, reply: Reply = { t: 'refused', why: 'Could not reach the server.' };
     try { ws = new WebSocket(url); } catch { done(reply); return; }
     const timer = setTimeout(() => { ws.close(); }, 10000);
     ws.onopen = () => ws.send(JSON.stringify({ ver: PROTOCOL, ...m }));
@@ -158,10 +159,13 @@ export async function deleteRoom(url: string, room: string, token: string, key?:
   return r.t === 'deleted' ? '' : r.why ?? 'Could not reach the server.';
 }
 /** A dedicated server's accounts: make one / log in (→ {name, token} or {why}), log out, change the password. */
-export async function account(url: string, how: 'register' | 'login', name: string, pass: string): Promise<{ name?: string; token?: string; why?: string }> {
-  const r = await ask(url, { t: how, name, pass });
-  return r.t === 'auth' && r.token ? { name: r.name, token: r.token } : { why: r.why ?? 'Could not reach the server.' };
+export async function account(url: string, how: 'register' | 'login', name: string, pass: string, email = ''): Promise<{ name?: string; token?: string; why?: string; wait?: boolean }> {
+  const r = await ask(url, { t: how, name, pass, email });
+  return r.t === 'auth' && r.token ? { name: r.name, token: r.token } : r.t === 'wait' ? { name: r.name, wait: true } : { why: r.why ?? 'Could not reach the server.', wait: r.wait, name: r.name };
 }
+/** The rest of the account's email business (server/accounts.mjs): confirm a code, mail it again, forgotten password,
+ * a new password with its code, add an email, what the account shows. The raw reply. */
+export const accountAsk = (url: string, m: { t: 'verify' | 'resend' | 'forgot' | 'reset' | 'email' | 'profile'; [k: string]: string }) => ask(url, m);
 export const logout = (url: string, token: string) => ask(url, { t: 'logout', token });
 export async function changePassword(url: string, token: string, old: string, pass: string): Promise<string> {
   const r = await ask(url, { t: 'passwd', token, old, pass });
@@ -170,7 +174,7 @@ export async function changePassword(url: string, token: string, old: string, pa
 /** Is the page served by a dedicated server (server/main.mjs)? It answers mp/info next to the page. */
 /** A game server ("room") of a dedicated server, as the menu lists it: `running` while someone is in it. */
 export interface RoomInfo { id: string; name: string; world: number; time: number; online: number; max: number; running: boolean; players: string[]; by?: string }
-export interface ServerInfo { dedicated: boolean; accounts?: boolean; name: string; world: number; online: number; max: number; players: string[]; version: string; rooms?: RoomInfo[] }
+export interface ServerInfo { dedicated: boolean; accounts?: boolean; mail?: boolean; name: string; world: number; online: number; max: number; players: string[]; version: string; rooms?: RoomInfo[] }
 export async function serverInfo(): Promise<ServerInfo | null> {
   try {
     const r = await fetch('mp/info', { cache: 'no-store' });

@@ -18,6 +18,10 @@
 //                                                                          you by your account; hosted: world / time for the host
 //   {t:'register'|'login', ver, name, pass}   instead of a hello, dedicated only (server/accounts.mjs): a new account / log in;
 //                                          answered {t:'auth', name, token} or {t:'refused', why}, then closed
+//                                          (register takes `email`; a server that mails answers {t:'wait', name}: confirm first)
+//   {t:'verify', ver, name, code}           the mailed code (name or email) → {t:'auth', ...}; {t:'resend', ver, name, pass}
+//   {t:'forgot', ver, email} / {t:'reset', ver, email, code, pass}   a code to reset the password, then the new one → auth
+//   {t:'email', ver, token, pass, email}    add / change your email (a code goes there; then verify) · {t:'profile', ver, token}
 //   {t:'logout', ver, token} / {t:'passwd', ver, token, old, pass}   end a session / change the password ({t:'ok'} or refused)
 //   {t:'delroom', ver, room, token, key?}  instead of a hello: close (delete) a server you created (its players are sent
 //                                          away); `key` = the old per-browser secret of servers made before accounts;
@@ -59,6 +63,8 @@ import { createAccounts, ACCOUNT } from './accounts.mjs';
 
 export const MP = { path: '/mp', port: 7777, max: 8, rate: 100, nameMax: 20, chatMax: 200, roomName: 28, rooms: 12, roomTtl: 14, cars: 8, drops: 800, dropTtl: 6, lootTtl: 2, payload: 4 * 1024 * 1024 };
 /** What players may pass to each other through 'cast' (everyone else in the room) and 'to' (one player). */
+/** Account messages (one each, on a connection of their own). */
+const AUTH = new Set(['register', 'login', 'logout', 'passwd', 'verify', 'resend', 'forgot', 'reset', 'email', 'profile']);
 const RELAY = new Set(['foes', 'bolt', 'fhit', 'kill', 'hurt', 'thit', 'boat', 'row']);
 /** Protocol version: a client with another one is refused (the game shows why). */
 export const PROTOCOL = 11;
@@ -149,12 +155,19 @@ export function createMp(log = (m) => console.log('[mp] ' + m), opts = {}) {
     let reply;
     if (!accts) reply = { t: 'refused', why: 'This game has no accounts: just join.' };
     else if (m.ver !== PROTOCOL) reply = { t: 'refused', why: `This server runs another version of the game (protocol ${PROTOCOL}, yours ${m.ver}). Reload the page (Ctrl+F5).` };
-    else if (m.t === 'register' || m.t === 'login') {
-      const r = m.t === 'register' ? await accts.register(m.name, m.pass) : await accts.login(m.name, m.pass, ip);
-      reply = r.why ? { t: 'refused', why: r.why } : { t: 'auth', name: r.name, token: r.token };
-      if (!r.why) log(`${r.name} ${m.t === 'register' ? 'made an account' : 'logged in'}`);
+    else if (m.t === 'register' || m.t === 'login' || m.t === 'verify' || m.t === 'reset') {
+      const r = m.t === 'register' ? await accts.register(m.name, m.pass, m.email) : m.t === 'login' ? await accts.login(m.name, m.pass, ip)
+        : m.t === 'verify' ? accts.verify(m.name, m.code) : await accts.reset(m.email, m.code, m.pass);
+      // a new account waiting for its email to be confirmed: {t:'wait', name}
+      reply = r.why ? { t: 'refused', why: r.why, ...(r.wait ? { wait: true, name: r.name } : {}) } : r.wait ? { t: 'wait', name: r.name } : { t: 'auth', name: r.name, token: r.token };
+      if (!r.why) log(`${r.name} ${{ register: r.wait ? 'made an account (email to confirm)' : 'made an account', login: 'logged in', verify: 'confirmed their email', reset: 'reset their password' }[m.t]}`);
     } else if (m.t === 'logout') { accts.logout(m.token); reply = { t: 'ok' }; }
-    else { const why = await accts.passwd(m.token, m.old, m.pass, ip); reply = why ? { t: 'refused', why } : { t: 'ok' }; }
+    else if (m.t === 'profile') { const p = accts.profile(m.token); reply = p ? { t: 'profile', ...p, mailing: accts.mailing } : { t: 'refused', why: 'Log in again.', auth: true }; }
+    else {
+      const why = m.t === 'passwd' ? await accts.passwd(m.token, m.old, m.pass, ip) : m.t === 'resend' ? await accts.resend(m.name, m.pass, ip)
+        : m.t === 'forgot' ? await accts.forgot(m.email) : await accts.setEmail(m.token, m.pass, m.email, ip);
+      reply = why ? { t: 'refused', why } : { t: 'ok' };
+    }
     opts.accountsChanged?.();
     send(ws, reply); ws.close();
   };
@@ -165,7 +178,7 @@ export function createMp(log = (m) => console.log('[mp] ' + m), opts = {}) {
       let m;
       try { m = JSON.parse(String(raw)); } catch { return; }
       if (!m || typeof m.t !== 'string') return;
-      if (!me && (m.t === 'register' || m.t === 'login' || m.t === 'logout' || m.t === 'passwd')) { authMsg(ws, m, ip).catch(() => { send(ws, { t: 'refused', why: 'The server could not do that. Try again.' }); ws.close(); }); return; }
+      if (!me && AUTH.has(m.t)) { authMsg(ws, m, ip).catch(() => { send(ws, { t: 'refused', why: 'The server could not do that. Try again.' }); ws.close(); }); return; }
       if (!me && m.t === 'delroom') {
         const why = m.ver !== PROTOCOL ? `This server runs another version of the game (protocol ${PROTOCOL}, yours ${m.ver}). Reload the page (Ctrl+F5).` : deleteRoom(m);
         send(ws, why ? { t: 'refused', why } : { t: 'deleted', room: String(m.room) }); ws.close(); return;

@@ -3,6 +3,14 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.159.0', date: '2026-10-07', title: 'Account emails', notes: [
+    'A dedicated server that can send mail now asks for your email address when you create an account. It sends a 6-digit code, and a link if the owner set the game\'s address. You can play once you type the code in the Multiplayer panel or open the link.',
+    'You can log in with your name or your email address.',
+    'Forgot password? sends a code to your email. Enter it with a new password, and every other browser logged in as you is logged out.',
+    'Accounts made before this version keep playing. Add email lets them add an address, which they confirm the same way.',
+    'Codes are valid for 30 minutes and allow 5 tries. A server sends at most one mail a minute to an account, and 8 a day. An account that never confirms its email is removed after a week.',
+    'A server owner switches mail on in /etc/gridworld.env, using an SMTP mailbox or the machine\'s own sendmail (see SERWER.md). Without it, accounts work as before and the email is optional.',
+  ] },
   { v: '0.158.0', date: '2026-10-07', title: 'Player accounts', notes: [
     'On a dedicated server every player now has their own account, with a name and a password. In the Multiplayer panel, enter a name and a password and press Create account the first time, or Log in after that.',
     'Your account name is yours alone on that server. Letter case does not matter: nobody else can register "ada" if you are "Ada". It is the name the others see in the game, in the chat and on the server list.',

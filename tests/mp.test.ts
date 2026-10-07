@@ -3,7 +3,7 @@ import { describe, it, expect, afterEach, vi } from 'vitest';
 import { createServer, type Server } from 'node:http';
 import { WebSocket } from 'ws';
 import { createMp, PROTOCOL } from '../server/mp.mjs';
-import { createAccounts } from '../server/accounts.mjs';
+import { createAccounts, ACCOUNT } from '../server/accounts.mjs';
 import { PROTOCOL as CLIENT_PROTOCOL, serverUrl } from '../src/net/client';
 
 type Msg = { t: string; [k: string]: any };
@@ -189,6 +189,59 @@ describe('multiplayer server', () => {
     // the accounts come back from what was saved
     const again = createAccounts(JSON.parse(JSON.stringify(accounts.save())));
     expect(again.session(t)?.name).toBe('Ada'); expect(again.has('ada')).toBe(true);
+  });
+  it('email: a new account confirms its address with a mailed code; a forgotten password is reset by mail', async () => {
+    const sent: { to: string; text: string }[] = [];
+    const code = () => /\b(\d{6})\b/.exec(sent[sent.length - 1].text)![1];
+    const accounts = createAccounts({}, { mail: async (to: string, _s: string, text: string) => { sent.push({ to, text }); }, publicUrl: 'https://game.example/gw/', title: 'Test' });
+    mp = createMp(() => {}, { rooms: [{ id: 'main', name: 'Main', world: 11, time: 100 }], accounts }); http = createServer(); mp.attach(http);
+    accountsOn = true; tokens.clear();
+    await new Promise<void>((r) => http!.listen(0, r));
+    const port = (http.address() as { port: number }).port;
+    expect((await ask(port, { t: 'register', name: 'Ada', pass: 'hunter22' }))?.why).toMatch(/email/); // needed now
+    expect(await ask(port, { t: 'register', name: 'Ada', pass: 'hunter22', email: 'Ada@Example.com' })).toEqual({ t: 'wait', name: 'Ada' });
+    expect(sent[0].to).toBe('ada@example.com'); expect(sent[0].text).toContain('https://game.example/gw/mp/verify?n=ada&c=');
+    expect(JSON.stringify(accounts.save())).not.toContain(code()); // the code only as a hash
+    expect((await ask(port, { t: 'register', name: 'Eve', pass: 'whatever1', email: 'ada@example.com' }))?.why).toMatch(/already/);
+    const early = (await ask(port, { t: 'login', name: 'ada@example.com', pass: 'hunter22' }))!;
+    expect(early).toMatchObject({ t: 'refused', wait: true, name: 'Ada' });
+    expect((await ask(port, { t: 'resend', name: 'Ada', pass: 'hunter22' }))?.why).toMatch(/Wait a minute/); // spaced out
+    expect((await ask(port, { t: 'verify', name: 'Ada', code: code() === '000000' ? '111111' : '000000' }))?.why).toMatch(/Wrong/);
+    const ok = (await ask(port, { t: 'verify', name: 'ada@example.com', code: code() }))!;
+    expect(ok).toMatchObject({ t: 'auth', name: 'Ada' });
+    expect((await ask(port, { t: 'verify', name: 'Ada', code: code() }))?.why).toBeTruthy(); // used up
+    const a = await client(port, { name: 'Ada', token: ok.token }); expect((await a.wait('welcome')).name).toBe('Ada'); a.ws.close();
+    expect((await ask(port, { t: 'login', name: 'ADA@example.com', pass: 'hunter22' }))?.t).toBe('auth'); // the email logs in too
+    expect(await ask(port, { t: 'profile', token: ok.token })).toMatchObject({ t: 'profile', email: 'ada@example.com', mailing: true });
+    // forgotten password: an unknown address says the same, but nothing is sent
+    const gap = ACCOUNT.mailGapS; (ACCOUNT as { mailGapS: number }).mailGapS = 0; // (mails are spaced a minute apart; not here)
+    const n = sent.length;
+    expect(await ask(port, { t: 'forgot', email: 'nobody@example.com' })).toEqual({ t: 'ok' }); expect(sent.length).toBe(n);
+    expect(await ask(port, { t: 'forgot', email: 'ada@example.com' })).toEqual({ t: 'ok' }); expect(sent.length).toBe(n + 1);
+    expect((await ask(port, { t: 'reset', email: 'ada@example.com', code: code(), pass: '123' }))?.why).toMatch(/at least/);
+    const back = (await ask(port, { t: 'reset', email: 'ada@example.com', code: code(), pass: 'brand-new-1' }))!;
+    expect(back).toMatchObject({ t: 'auth', name: 'Ada' });
+    expect(accounts.session(ok.token)).toBeNull(); // the old sessions are gone
+    expect((await ask(port, { t: 'login', name: 'Ada', pass: 'brand-new-1' }))?.t).toBe('auth');
+    (ACCOUNT as { mailGapS: number }).mailGapS = gap;
+    // a mail that cannot go out: no account is left behind
+    const broken = createAccounts({}, { mail: async () => { throw new Error('down'); } });
+    expect((await broken.register('Bo', 'secret12', 'bo@example.com')).why).toMatch(/could not send/);
+    expect(broken.has('Bo')).toBe(false);
+  });
+  it('email: an account made without one adds it later and confirms it', async () => {
+    const sent: string[] = [];
+    const old = createAccounts();
+    const made = await old.register('Cy', 'secret12');
+    const accounts = createAccounts(JSON.parse(JSON.stringify(old.save())), { mail: async (_t: string, _s: string, text: string) => { sent.push(text); } });
+    expect(accounts.session(made.token!)?.name).toBe('Cy'); // still plays without an email
+    expect(await accounts.setEmail(made.token!, 'wrong-pass', 'cy@example.com')).toMatch(/Wrong/);
+    expect(await accounts.setEmail(made.token!, 'secret12', 'cy@example.com')).toBe('');
+    const code = /\b(\d{6})\b/.exec(sent[0])![1];
+    expect(accounts.profile(made.token!)).toMatchObject({ email: '', next: 'cy@example.com' });
+    expect(accounts.verify('Cy', code).token).toBeTruthy();
+    expect(accounts.profile(made.token!)).toMatchObject({ email: 'cy@example.com', next: '' });
+    expect((await accounts.login('cy@example.com', 'secret12')).token).toBeTruthy();
   });
   it('too many wrong passwords from one address lock it out for a while', async () => {
     const accts = createAccounts();

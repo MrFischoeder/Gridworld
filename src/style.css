@@ -438,3 +438,5 @@ body.cinematic > *:not(#view):not(#cinematic){visibility:hidden}
 #mpAcct input{width:10em;font:19px VT323,monospace}
 #mpAcct button{font-size:19px;padding:3px 12px;margin:0}
 #mpWho{flex:1;font-size:20px;color:#e8fff0}#mpWho b{color:var(--gold);font-weight:normal}
+#mpAcct button.link{background:transparent;color:var(--g);outline:none;border:none;text-decoration:underline;padding:3px 4px}
+#mpEmailNote,#mpCodeNote{font-size:18px;opacity:.85}#mpCode{width:7em!important}#mpWho small{opacity:.7;font-size:17px}

@@ -1,7 +1,7 @@
 {
   "name": "gridworld",
   "private": true,
-  "version": "0.158.0",
+  "version": "0.159.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -14,10 +14,12 @@
     "serve": "node server/main.mjs"
   },
   "dependencies": {
+    "nodemailer": "^7.0.13",
     "three": "^0.186.0",
     "ws": "^8.22.0"
   },
   "devDependencies": {
+    "@types/nodemailer": "^8.0.2",
     "@types/three": "^0.186.0",
     "@types/ws": "^8.18.2",
     "typescript": "^5.9.3",

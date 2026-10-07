@@ -15,7 +15,7 @@ import { joinWorld } from '../world/share';
 import { G } from '../game';
 import { $, logLine } from './hud';
 import { saveChar } from '../character';
-import { connect, disconnect, deleteRoom, account, logout, changePassword, net, online, isHost, sendChat, serverUrl, serverInfo, type ServerInfo, type RoomInfo } from '../net/client';
+import { connect, disconnect, deleteRoom, account, accountAsk, logout, changePassword, net, online, isHost, sendChat, serverUrl, serverInfo, type ServerInfo, type RoomInfo } from '../net/client';
 import { clearPeers, peerColor } from '../world/peers';
 import { lockPointer } from './input';
 import { SAVE_KEY } from '../save';
@@ -34,6 +34,9 @@ const hostBtn = $<HTMLButtonElement>('mpHost'), joinBtn = $<HTMLButtonElement>('
 const chatLog = $('chatlog'), chatIn = $<HTMLInputElement>('chatIn'), badge = $('mpBadge');
 const acctEl = $('mpAcct'), acctIn = $('mpAcctIn'), acctOn = $('mpAcctOn'), who = $('mpWho'), userIn = $<HTMLInputElement>('mpUser'), passIn = $<HTMLInputElement>('mpPass');
 const pwdForm = $('mpPwdForm'), oldIn = $<HTMLInputElement>('mpOld'), newPassIn = $<HTMLInputElement>('mpNewPass');
+const emailRow = $('mpEmailRow'), emailIn = $<HTMLInputElement>('mpEmail'), emailNote = $('mpEmailNote'), forgotBtn = $('mpForgot');
+const codeRow = $('mpCodeRow'), codeNote = $('mpCodeNote'), codeIn = $<HTMLInputElement>('mpCode'), codePass = $<HTMLInputElement>('mpCodePass');
+const addBtn = $('mpAddEmail'), addForm = $('mpAddForm'), newEmailIn = $<HTMLInputElement>('mpNewEmail'), addPass = $<HTMLInputElement>('mpAddPass');
 const roomsEl = $('mpRooms'), newEl = $('mpNew'), newName = $<HTMLInputElement>('mpNewName'), mine = $<HTMLInputElement>('mpMine'), createBtn = $<HTMLButtonElement>('mpCreate');
 let hooks: MpHooks | null = null, connecting = false;
 /** The dedicated server this page came from, if any. */
@@ -67,6 +70,15 @@ function setAuth(a: Auth | null) {
 /** Does this server want an account, and are you logged in? */
 const accounts = () => !!ded?.accounts;
 const loggedIn = () => !accounts() || !!auth();
+/** Does the server mail codes (confirming an email, resetting a password)? */
+const mailing = () => !!ded?.mail;
+/** Making an account: the email field is out. */
+let regMode = false;
+/** A mailed code we wait for: to confirm an address (`id` = the account's name or email) or to set a new password
+ * (`id` = the email). `pass` (memory only, for Send again) = the password typed with it. */
+let pending: { mode: 'verify' | 'reset'; id: string; pass?: string; to?: string } | null = null;
+/** The logged-in account's email, as the server last told (fetched once per login). */
+let profile: { email: string; next: string; for: string } | null = null;
 let busy = false;
 /** A server is yours to close: made by your account (or, before accounts, from this browser). */
 const yours = (r: RoomInfo) => r.id !== 'main' && (!!auth() && (r.by ?? '').toLowerCase() === auth()!.name.toLowerCase() || myRooms().includes(r.id));
@@ -108,7 +120,18 @@ function render() {
   acctEl.style.display = accounts() && !on ? '' : 'none';
   acctIn.style.display = a ? 'none' : '';
   acctOn.style.display = a ? '' : 'none';
-  if (a) who.innerHTML = `Logged in as <b>${esc(a.name)}</b>`;
+  if (a && mailing() && profile?.for !== a.token) { profile = { email: '', next: '', for: a.token }; void accountAsk(here(), { t: 'profile', token: a.token }).then((r) => { if (r.t === 'profile') { profile = { email: r.email ?? '', next: r.next ?? '', for: a.token }; render(); } }); }
+  if (a) who.innerHTML = `Logged in as <b>${esc(a.name)}</b>${profile?.email ? ` <small>· ${esc(profile.email)}</small>` : mailing() ? ' <small>· no email yet</small>' : ''}`;
+  emailRow.style.display = !a && regMode && !pending ? '' : 'none';
+  emailNote.textContent = mailing() ? 'we send a code to confirm it' : 'optional';
+  forgotBtn.style.display = !a && mailing() && !pending ? '' : 'none';
+  acctIn.style.display = a || pending ? 'none' : '';
+  codeRow.style.display = pending ? '' : 'none';
+  codePass.style.display = pending?.mode === 'reset' ? '' : 'none';
+  if (pending) codeNote.textContent = pending.mode === 'reset' ? `Code from the email to ${pending.id}, and your new password:` : `Code sent to ${pending.to ?? 'your email'}:`;
+  addBtn.style.display = a && mailing() && !pending ? '' : 'none';
+  addBtn.textContent = profile?.email ? 'Change email' : 'Add email';
+  if (!a || pending) addForm.style.display = 'none';
   for (const b of acctEl.querySelectorAll('button')) (b as HTMLButtonElement).disabled = busy;
   addr.parentElement!.style.display = ded ? 'none' : '';
   leaveBtn.style.display = on ? '' : 'none';
@@ -123,7 +146,7 @@ function render() {
   } else {
     list.textContent = '';
     if (note) status.textContent = note;
-    else if (accounts() && !auth() && !connecting) status.textContent = 'Log in, or make an account (a name and a password) to play here. Your name is yours alone on this server.';
+    else if (accounts() && !auth() && !connecting) status.textContent = mailing() ? 'Log in with your name or email, or make an account (a name, your email and a password). Your name is yours alone on this server.' : 'Log in, or make an account (a name and a password) to play here. Your name is yours alone on this server.';
     else if (rooms && !connecting) status.textContent = 'Pick a server and press Join, or create your own (you can close it later). A server pauses while nobody is on it.';
     else if (ded && !connecting) status.textContent = `${ded.name} · ${ded.online}/${ded.max} online${ded.players.length ? ': ' + ded.players.join(', ') : ''} · press Join the server.`;
   }
@@ -191,19 +214,71 @@ async function remove(id: string) {
 }
 /** Log in or make an account with what is in the two fields. */
 async function signIn(how: 'login' | 'register') {
-  const name = userIn.value.trim(), pass = passIn.value;
-  if (!name || !pass) { tell('Type your account name and password.'); (name ? passIn : userIn).focus(); render(); return; }
+  const name = userIn.value.trim(), pass = passIn.value, email = emailIn.value.trim();
+  if (!name || !pass) { tell(how === 'login' ? 'Type your name (or email) and password.' : 'Pick a name and a password.'); (name ? passIn : userIn).focus(); render(); return; }
+  if (how === 'register' && name.includes('@')) { tell('Pick a player name for the first field; the email goes in its own field.'); regMode = true; render(); return; }
+  if (how === 'register' && !regMode) { regMode = true; tell(mailing() ? 'Give your email too: we send a code to confirm it.' : 'An email is optional here. Press Create account again.'); render(); emailIn.focus(); return; }
   busy = true; status.textContent = how === 'login' ? 'Logging in…' : 'Making your account…'; render();
-  const r = await account(here(), how, name, pass);
+  const r = await account(here(), how, name, pass, how === 'register' ? email : '');
   busy = false;
-  if (r.token && r.name) { setAuth({ name: r.name, token: r.token }); passIn.value = ''; tell(how === 'login' ? `Welcome back, ${r.name}.` : `Account ${r.name} made. Remember your password: nobody can read it back.`); }
+  if (r.token && r.name) { setAuth({ name: r.name, token: r.token }); passIn.value = ''; regMode = false; tell(how === 'login' ? `Welcome back, ${r.name}.` : `Account ${r.name} made. Remember your password: nobody can read it back.`); }
+  else if (r.wait) { pending = { mode: 'verify', id: r.name ?? name, pass, to: how === 'register' ? email : 'your email' }; regMode = false; tell(how === 'register' ? `Account ${r.name} made. We sent a code to ${email}: type it here to confirm the address.` : r.why ?? 'Confirm your email first.'); setTimeout(() => codeIn.focus(), 0); }
+  else tell(r.why ?? 'That did not work.');
+  render();
+}
+/** The code from the mail: confirm the address, or set the new password. */
+async function confirmCode() {
+  const p = pending;
+  if (!p) return;
+  const code = codeIn.value.trim();
+  if (!/^\d{6}$/.test(code)) { tell('The code has 6 digits.'); render(); return; }
+  if (p.mode === 'reset' && !codePass.value) { tell('Type your new password too.'); render(); return; }
+  busy = true; render();
+  const r = p.mode === 'verify' ? await accountAsk(here(), { t: 'verify', name: p.id, code }) : await accountAsk(here(), { t: 'reset', email: p.id, code, pass: codePass.value });
+  busy = false;
+  if (r.t === 'auth' && r.token && r.name) {
+    setAuth({ name: r.name, token: r.token }); pending = null; codeIn.value = ''; codePass.value = ''; passIn.value = ''; profile = null;
+    tell(p.mode === 'verify' ? `Email confirmed. Welcome, ${r.name}.` : `New password set. Welcome back, ${r.name}. Your other browsers are logged out.`);
+  } else tell(r.why ?? 'That did not work.');
+  render();
+}
+async function sendAgain() {
+  const p = pending;
+  if (!p) return;
+  busy = true; render();
+  const a = auth();
+  const r = p.mode === 'reset' ? await accountAsk(here(), { t: 'forgot', email: p.id })
+    : a ? await accountAsk(here(), { t: 'email', token: a.token, pass: p.pass ?? '', email: p.to ?? '' })
+    : await accountAsk(here(), { t: 'resend', name: p.id, pass: p.pass ?? '' });
+  busy = false;
+  tell(r.t === 'ok' ? 'A new code is on its way.' : r.why ?? 'That did not work.');
+  render();
+}
+async function forgot() {
+  const email = userIn.value.trim();
+  if (!email.includes('@')) { tell('Type the email address of your account in the first field, then press Forgot password.'); userIn.focus(); render(); return; }
+  busy = true; render();
+  const r = await accountAsk(here(), { t: 'forgot', email });
+  busy = false;
+  if (r.t === 'ok') { pending = { mode: 'reset', id: email }; tell(`If ${email} has an account here, a code is on its way. Type it with your new password.`); setTimeout(() => codeIn.focus(), 0); }
+  else tell(r.why ?? 'That did not work.');
+  render();
+}
+async function addEmail() {
+  const a = auth(), email = newEmailIn.value.trim(), pass = addPass.value;
+  if (!a) return;
+  if (!email || !pass) { tell('Type the email and your password.'); render(); return; }
+  busy = true; render();
+  const r = await accountAsk(here(), { t: 'email', token: a.token, pass, email });
+  busy = false;
+  if (r.t === 'ok') { pending = { mode: 'verify', id: a.name, pass, to: email }; addPass.value = ''; newEmailIn.value = ''; addForm.style.display = 'none'; tell(`We sent a code to ${email}. Type it here to confirm the address.`); setTimeout(() => codeIn.focus(), 0); }
   else tell(r.why ?? 'That did not work.');
   render();
 }
 async function signOut() {
   const a = auth();
   if (online()) { disconnect(); clearPeers(); }
-  setAuth(null); pwdForm.style.display = 'none';
+  setAuth(null); pwdForm.style.display = 'none'; profile = null; pending = null;
   if (a) void logout(here(), a.token);
   tell('Logged out.'); render();
 }
@@ -233,7 +308,17 @@ export function initMp(h: MpHooks) {
     const b = (e.target as HTMLElement).closest('[data-room]') as HTMLElement | null;
     if (b) start(serverUrl('', location), b.dataset.room);
   };
-  for (const i of [userIn, passIn, oldIn, newPassIn]) i.onkeydown = (e) => { e.stopPropagation(); };
+  for (const i of [userIn, passIn, oldIn, newPassIn, emailIn, codeIn, codePass, newEmailIn, addPass]) i.onkeydown = (e) => { e.stopPropagation(); };
+  emailIn.onkeydown = (e) => { e.stopPropagation(); if (e.code === 'Enter') void signIn('register'); };
+  codeIn.onkeydown = codePass.onkeydown = (e) => { e.stopPropagation(); if (e.code === 'Enter') void confirmCode(); };
+  addPass.onkeydown = (e) => { e.stopPropagation(); if (e.code === 'Enter') void addEmail(); };
+  $('mpCodeOk').onclick = () => void confirmCode();
+  $('mpCodeAgain').onclick = () => void sendAgain();
+  $('mpCodeCancel').onclick = () => { pending = null; codeIn.value = ''; codePass.value = ''; render(); };
+  forgotBtn.onclick = () => void forgot();
+  addBtn.onclick = () => { addForm.style.display = addForm.style.display === 'none' ? '' : 'none'; if (addForm.style.display === '') newEmailIn.focus(); };
+  $('mpAddCancel').onclick = () => { addForm.style.display = 'none'; addPass.value = ''; };
+  $('mpAddSave').onclick = () => void addEmail();
   passIn.onkeydown = (e) => { e.stopPropagation(); if (e.code === 'Enter') void signIn('login'); };
   newPassIn.onkeydown = (e) => { e.stopPropagation(); if (e.code === 'Enter') void savePassword(); };
   $('mpLogin').onclick = () => void signIn('login');

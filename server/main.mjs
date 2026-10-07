@@ -46,7 +46,19 @@ for (const r of rooms) { try { const w = JSON.parse(await readFile(docFile(r.id)
 // the players' accounts (names and password hashes, never the passwords) in their own file, readable only by the server
 let savedAccounts = {};
 try { savedAccounts = JSON.parse(await readFile(ACCOUNTS, 'utf8')); } catch { /* none yet */ }
-const accounts = createAccounts(savedAccounts);
+// mail (optional): MAIL_FROM plus SMTP_HOST (SMTP_PORT, SMTP_SECURE, SMTP_USER, SMTP_PASS) or MAIL_SENDMAIL=1 (the
+// machine's own sendmail); then new accounts confirm their email with a mailed code and passwords can be reset.
+// PUBLIC_URL (the game's address, e.g. https://example.pl/gridworld/) adds a confirmation link to the mail.
+async function mailer() {
+  if (!env.MAIL_FROM || !(env.SMTP_HOST || env.MAIL_SENDMAIL === '1')) return null;
+  const { createTransport } = (await import('nodemailer')).default;
+  const transport = env.SMTP_HOST
+    ? createTransport({ host: env.SMTP_HOST, port: Number(env.SMTP_PORT) || 587, secure: env.SMTP_SECURE === '1' || Number(env.SMTP_PORT) === 465, auth: env.SMTP_USER ? { user: env.SMTP_USER, pass: env.SMTP_PASS ?? '' } : undefined })
+    : createTransport({ sendmail: true, newline: 'unix', path: env.SENDMAIL_PATH || '/usr/sbin/sendmail' });
+  log(`mail on: from ${env.MAIL_FROM} via ${env.SMTP_HOST ? 'SMTP ' + env.SMTP_HOST : 'sendmail'}`);
+  return (to, subject, text) => transport.sendMail({ from: env.MAIL_FROM, to, subject, text }).catch((e) => { log('mail failed: ' + e.message); throw e; });
+}
+const accounts = createAccounts(savedAccounts, { mail: await mailer(), publicUrl: env.PUBLIC_URL || '', title: NAME });
 const mp = createMp((m) => log('[mp] ' + m), { rooms, accounts, accountsChanged: () => { persist().catch(() => {}); }, removed: (id) => { unlink(docFile(id)).catch(() => {}); persist().catch(() => {}); } }); // a deleted or forgotten server's world goes with it
 const world = rooms[0].world;
 
@@ -74,10 +86,18 @@ if (!existsSync(join(DIST, 'index.html'))) log(`warning: no game build in ${DIST
 
 const http = createServer(async (req, res) => {
   let url = (req.url || '/').split('?')[0];
+  if (url.endsWith(MP.path + '/verify')) { // the link in a confirmation mail
+    const q = new URL(req.url || '/', 'http://x').searchParams, r = accounts.verify(q.get('n') ?? '', q.get('c') ?? '');
+    if (!r.why) persist().catch(() => {});
+    const msg = r.why ? `${r.why} Open the game and type the code from the email, or ask for a new one.` : `Thank you, ${r.name}: your email is confirmed. Go back to the game and log in.`;
+    res.writeHead(r.why ? 400 : 200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' });
+    res.end(`<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>GridWorld</title><body style="background:#000;color:#2fe060;font:20px monospace;padding:40px"><h2>GRIDWORLD</h2><p>${msg.replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]))}</p>`);
+    return;
+  }
   if (url.endsWith(MP.path + '/info')) {
     const s = mp.state(), list = mp.list().map(({ id, name, world, time, online, max, running, players, by }) => ({ id, name, world, time, online, max, running, players, by }));
     res.writeHead(200, { 'content-type': 'application/json', 'cache-control': 'no-store', 'access-control-allow-origin': '*' });
-    res.end(JSON.stringify({ dedicated: true, accounts: true, name: NAME, world, time: Math.round(s.time), online: s.n, max: MP.max, players: s.names, version: VERSION, rooms: list }));
+    res.end(JSON.stringify({ dedicated: true, accounts: true, mail: accounts.mailing, name: NAME, world, time: Math.round(s.time), online: s.n, max: MP.max, players: s.names, version: VERSION, rooms: list }));
     return;
   }
   if (req.method !== 'GET' && req.method !== 'HEAD') { res.writeHead(405); res.end(); return; }
