@@ -49,6 +49,9 @@ export interface Char {
   fallen: Record<string, Fallen>;
   /** The cryo-pod this character woke from (world/crashpod.ts); unset = by their place on the server. */
   pod?: number;
+  /** Online: what a dead character of this same player left behind (ui/rebirth.ts): their houses and what was in them,
+   *  waiting until the elder hands them over (ui/dialog.ts 'estate'). Personal, never shared. */
+  estate?: Estate;
   /** Piers on the sea coast you staked out, with their state (gen/piers.ts). */
   piers: Pier[];
   /** Your boats and where they lie (gen/boats.ts; each hold is `containers[id]`). */
@@ -129,6 +132,8 @@ export interface Char {
 }
 
 export interface Fallen { n: string; t: number; pod: number }
+/** A dead character's houses (village ids) and their containers ('home:*'), `from` = whose they were. */
+export interface Estate { from: string; houses: number[]; chests: Record<string, Container> }
 export const SAVE_KEY = 'gridWorld.character.v3';
 /** Keys from before the project was renamed from Grid Arena to GridWorld. */
 export const ARENA_V3_KEY = 'gridArena.character.v3', V2_KEY = 'gridArena.character.v2', OLD_KEY = 'gridArena.character.v1';

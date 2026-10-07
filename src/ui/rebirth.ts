@@ -3,6 +3,7 @@
 // on) and their cryo-pod stays open. Another member of the survey team thaws out in the next shut pod aboard the
 // Kestrel with an empty backpack, a fresh locker and no map, quests or gold, and needs a new name. Alone nothing of this
 // happens: you wake in your pod as before (world/level.ts toVillage).
+// Their houses go to the next crew member of the same player (`Char.estate`), handed over by the village elder.
 // Multiplayer: each player's game runs their own death; the drops, `fallen` and the server's name check are shared.
 import { G } from '../game';
 import { online, net, sendHero, onHero } from '../net/client';
@@ -78,6 +79,11 @@ export function initRebirth(f: (c: Char, a: Arrival) => void) {
     const c = newChar(), pod = nextPod();
     for (const f of SHARED) (c as unknown as Record<string, unknown>)[f.f] = old[f.f]; // the world stays the world
     Object.assign(c, { world: old.world, time: old.time, name: '', intro: true, guide: 2, pod, settlementRules: old.settlementRules });
+    // their house waits for the next crew member of this same player: the elder hands it over (ui/dialog.ts)
+    const homes = Object.fromEntries(Object.entries(old.containers).filter(([k]) => k.startsWith('home:')));
+    for (const k of Object.keys(homes)) delete c.containers[k];
+    const prev = old.estate, houses = [...new Set([...(prev?.houses ?? []), ...old.houses])];
+    if (houses.length) c.estate = { from: old.houses.length ? name : prev!.from, houses, chests: { ...(prev?.chests ?? {}), ...homes } };
     use(c, { kind: 'pod' });
     showToast(`${name} is dead`);
     logLine(`${name} died. Their kit lies where they fell.`);

@@ -93,11 +93,33 @@ function renderTalk(text: string) {
   panel().innerHTML = dlgHead() + `<div class="say">${text}</div>` +
     (townId() !== null ? questOptions(W.talkNpc!.role, townId()!) : []).map((q) => `<button class="opt" data-q="${q.id}" style="color:var(--gold)">${q.label}</button>`).join('') +
     (W.talkNpc!.role === 'elder' && progressive(G.char.towns[townId()!]) ? '<button class="opt" data-o="development">Village development — next tutorial objective</button>' : '') +
+    (W.talkNpc!.role === 'elder' && estateHere() ? '<button class="opt" data-o="estate" style="color:var(--gold)">Is there a house free for me?</button>' : '') +
     (W.talkNpc!.role === 'elder' && townId() !== null && storesWithElder(townId()!) ? '<button class="opt" data-o="stores">Leave materials with me (the village stores)</button>' : '') +
     info.opts.filter((o) => (o !== 'house' || houseForSale()) && (o !== 'craft' || CRAFTING_OPEN) && (!progressive(G.char.towns[townId()!]) || W.talkNpc!.role !== 'elder' || ['status', 'lore', 'bye'].includes(o) || (development(G.char.towns[townId()!]) >= 5 && o !== 'work'))).map((o) => `<button class="opt" data-o="${o}">${OPT_TEXT[o]}</button>`).join('');
 }
 /** The elder sells the empty house (Gridholm's, for now) until it is yours. */
-const houseForSale = () => { const v = loadedVillage(town()); return !!v?.vm.home && !G.char.houses.includes(v.id); };
+const houseForSale = () => { const v = loadedVillage(town()); return !!v?.vm.home && !G.char.houses.includes(v.id) && !estateHere(); };
+/** A house here that a dead character of yours left (online: `Char.estate`, ui/rebirth.ts). */
+const estateHere = () => { const id = townId(); return id !== null && !!G.char.estate?.houses.includes(id) && !G.char.houses.includes(id); };
+function renderEstate(msg = '') {
+  const e = G.char.estate, v = loadedVillage(town());
+  if (!v || !e || !estateHere()) { renderTalk(msg || 'Hm?'); return; }
+  panel().innerHTML = dlgHead() + `<div class="say">${msg || `There is. The house of ${e.from}, who did not come back. They had no one else here, and you came down in the same ship. Take it, ${here('{name}')}, and keep everything in it.`}</div>` +
+    `<button class="opt" data-estate="1" style="color:var(--gold)">Take ${e.from}'s house</button>` +
+    `<button class="opt" data-o="back">${OPT_TEXT.back}</button>`;
+}
+/** The dead one's house becomes yours with all that was in it. */
+function takeEstate() {
+  const c = G.char, e = c.estate, v = loadedVillage(town());
+  if (!v || !e || !estateHere()) { renderTalk('Hm?'); return; }
+  c.houses.push(v.id);
+  Object.assign(c.containers, e.chests); // (the house chest is Gridholm's, the only house for now)
+  e.houses = e.houses.filter((h) => h !== v.id); e.chests = {};
+  if (!e.houses.length) delete c.estate;
+  saveChar(); unlockMine(v.id); reloadStruct(v.id);
+  showToast('The house is yours'); logLine(`You took over ${e.from}'s house in ${town()}.`);
+  renderTalk(`Maciej hands you ${e.from}'s iron key. "Their things are where they left them. Sleep well under that roof, ${here('{name}')}."`);
+}
 function renderHouse(msg = '') {
   const v = loadedVillage(town()), c = G.char;
   if (!v) { renderTalk('Hm?'); return; }
@@ -440,6 +462,7 @@ dlgEl.addEventListener('click', async (e) => {
   { const w = t.closest<HTMLElement>('[data-pnew]'); if (w) { newWorks(w.dataset.pnew as PlantKind | StationKind); return; } }
   if (t.closest('[data-pgive]')) { giveWorks(); return; }
   if (t.closest('[data-tribute]')) { const v = loadedVillage(town()); const m = v ? payTribute(v.id) : ''; if (W.talkNpc?.role === 'guard') renderWatch(m); else renderFortify(m); return; }
+  if (t.closest('[data-estate]')) { takeEstate(); return; }
   if (t.closest('[data-buyhouse]')) {
     const v = loadedVillage(town());
     if (!v || c.houses.includes(v.id)) { renderHouse(); return; }
@@ -453,7 +476,7 @@ dlgEl.addEventListener('click', async (e) => {
   if (qb) { const id = townId(); renderTalk((id !== null && questTalk(qb.dataset.q!, id)) || 'Hm?'); return; }
   if (!o) return;
   const r = W.talkNpc!.role;
-  switch (o.dataset.o as OptId | 'back' | 'development' | 'stores') {
+  switch (o.dataset.o as OptId | 'back' | 'development' | 'stores' | 'estate') {
     case 'development': { const id = townId(); if (id !== null) panel().innerHTML = developmentHTML(id, dlgHead()); break; }
     case 'stores': { const id = townId(); if (id !== null && storesWithElder(id)) openStoresHere(id, dlgHead(), () => renderTalk('Anything else?')); break; }
     case 'bye': closeDialog(); break;
@@ -492,6 +515,7 @@ dlgEl.addEventListener('click', async (e) => {
     case 'lore': renderTalk(here(loreText())); break;
     case 'fortify': renderFortify(); break;
     case 'house': renderHouse(); break;
+    case 'estate': renderEstate(); break;
     case 'works': renderWorksPanel(); break;
     case 'contracts': openContracts(town()); renderContracts(panel(), dlgHead()); break;
     case 'trade': if (openMarket(town())) renderMarket(panel(), dlgHead()); else renderTalk('Hm?'); break;

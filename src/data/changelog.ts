@@ -3,6 +3,11 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.162.0', date: '2026-10-07', title: 'The house of the dead', notes: [
+    'On a server, when your character dies, their house now waits for your next crew member, with everything in its chest.',
+    'Go to the village elder and ask "Is there a house free for me?". The elder hands you the dead character\'s key, and the house, the bed and the chest are yours again.',
+    'Only your own next character can take it over. Other players never see the offer.',
+  ] },
   { v: '0.161.0', date: '2026-10-07', title: 'The crew of the Kestrel', notes: [
     'On a server, death ends your character. Everything they carried falls where they died, and anyone can pick it up. Their name joins the world\'s fallen crew.',
     'Another member of the survey team then thaws out in the next shut cryo-pod aboard the ship. They start with an empty backpack, no gold, quests or map, and their own fresh locker kit. You name them. The name of the dead, or of another player in the game, is not accepted.',
