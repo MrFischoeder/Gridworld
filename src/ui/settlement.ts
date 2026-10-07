@@ -34,8 +34,11 @@ export function developmentHTML(vid: number, head: string, msg = '', atComms = f
   let h = head + `<div class="say">${msg ? msg + '<br><br>' : ''}<b>Village tutorial: ${step.title}</b><br>${step.text}<br><br>Bring materials to the village stores${hallStands(s) ? ' at the warehouse terminal' : ': to me, until the warehouse stands'}. Houses are repaired as our food supply and works grow; families arrive gradually.</div>`;
   h += `<button class="opt" data-devkit="${vid}">Receive the elder's starter tools and earned rewards</button>`;
   if (!atComms) {
-    const d = depositsOf(s);
-    h += `<div class="say">Local resources · about 100 m beyond the fence:<br>Stone quarry · west.<br>${d.grove !== false ? 'A great grove of giant trees · east: a lumber camp there gives logs for good.' : 'No great grove: cut wild trees, or bring logs from another village.'}<br>${d.ore ? ORES[d.ore].name + ' (' + ORES[d.ore].symbol + ') · south.' : 'No local ore seam: bring metals from other villages.'}<br>${d.oil ? 'Oil seeps · north.' : 'No local oil field: import crude or fuel.'}</div>`;
+    const d = depositsOf(s), own = d.kind === 'quarry' ? 'a field of great boulders · west: a stone quarry there cuts building stone'
+      : d.kind === 'lumber' ? 'a great grove of giant trees · east: a lumber camp there gives logs for good'
+      : d.kind === 'mine' && d.ore ? `${ORES[d.ore].name.toLowerCase()} (${ORES[d.ore].symbol}) in a rocky hollow · south: a mine there digs it`
+      : d.kind === 'oil' ? 'oil seeping out of the ground · north: an oil well there pumps crude' : '';
+    h += `<div class="say">${own ? `Our land's own resource, about 100 m beyond the fence: ${own}.<br>` : ''}Every village digs one thing of its own. The rest comes by trade: logs, stone, ore and crude from the villages that dig them. Processing is open to all of us: logs sawn into planks, crude refined into fuel, and later ore smelted into metal. Processed goods sell for far more than raw ones.</div>`;
   }
   if (step.farm) h += `<button class="opt" data-o="farms">Build the next farm${step.farm <= FIRST_CROPS.length ? ` (${CROPS[FIRST_CROPS[step.farm - 1]].name.toLowerCase()})` : ''}</button>`;
   // (0.167) the side task: the satellite link, once the power plant stands; handed over at its console out there
@@ -47,8 +50,11 @@ export function developmentHTML(vid: number, head: string, msg = '', atComms = f
   }
   // (D2) once the receiver works and the satellites answer, its console can raise a relay mast
   const relayOpen = atComms && !big && projectDone(s, 'comms') && !projectDone(s, 'relay');
-  const keys = (atComms ? (relayOpen ? ['relay'] : ['comms']) : step.project ? [step.project] : []) as Project[];
+  // (0.168) the refinery is open to every village once its warehouse stands, beside the tutorial
+  const extra = !atComms && step.project !== 'refinery' && projectDone(s, 'warehouse') && !projectDone(s, 'refinery') ? ['refinery'] : [];
+  const keys = (atComms ? (relayOpen ? ['relay'] : ['comms']) : [...(step.project ? [step.project] : []), ...extra]) as Project[];
   for (const k of keys) {
+    if (extra.includes(k)) h += '<div class="say" style="color:var(--gold)">Open to you beside our own work:</div>';
     if (k === 'comms' && big) {
       const n = stationStage(s), st = STATION_STAGES[Math.min(n, STATION_STAGES.length - 1)];
       h += `<h3>Radar and communications station</h3><div class="say">${STATION_TEXT}<br>${STATION_STAGES.map((x, i) => `<span style="color:${i < n ? 'var(--xp)' : i === n ? 'var(--txt)' : '#6a8a70'}">${i + 1}. ${x.title}${i < n ? ' ✓' : ''}</span>`).join(' · ')}${n < STATION_STAGES.length ? `<br><b>${st.title}.</b> ${st.text}` : ''}</div>`;

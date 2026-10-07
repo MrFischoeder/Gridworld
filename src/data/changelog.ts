@@ -3,6 +3,13 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.168.0', date: '2026-10-07', title: 'One resource a village', notes: [
+    'In a new world every village now digs one thing of its own: stone at a quarry, timber in a great grove with a lumber camp, ore at a mine, or crude at an oil well. Gridholm has the great grove.',
+    'Everything else comes by trade: logs, stone, ore and crude from the villages that dig them.',
+    'The oil refinery can now be built in every village once its warehouse stands. It turns crude from the village stores into fuel, whether the crude comes from your own well or from an oil village. The elder offers it beside the village\'s own work.',
+    'Processing pays: sawing logs into planks or refining crude into fuel turns cheap raw goods into dearer ones. Smelting ore will follow.',
+    'Villages in worlds you already play keep any yard they have built or started.',
+  ] },
   { v: '0.167.0', date: '2026-10-07', title: 'A new order for the settlement', notes: [
     'In a new world the elder now asks for things in this order: two farms, then the village power plant, then the warehouse, then the village\'s own quarry, lumber camp, mine and oil well.',
     'The first farm grows wheat and the second keeps hens. You can still change what a field grows later.',

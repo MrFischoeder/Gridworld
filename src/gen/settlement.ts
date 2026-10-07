@@ -3,7 +3,7 @@ import type { TownState } from './town';
 import type { ItemKey } from '../data/items';
 import { hash } from '../core/rng';
 import { allVillages, poisNear, GRIDHOLM_ID, worldDist, type Poi } from './regions';
-import { villageDeposits, groveRoll, ORES, type Deposits } from './resource-sites';
+import { villageDeposits, ORES, YARD_KINDS, type Deposits, type YardKind } from './resource-sites';
 import { startJob, jobOf } from './construction';
 export { RESOURCE_PLOTS } from './resource-sites';
 
@@ -32,7 +32,7 @@ export const PROJECTS: Record<Project, { name: string; needs: [ItemKey, number][
   mine: { name: 'Ore mine', needs: [['planks', 48], ['stone', 12], ['scrap', 6]], description: 'Build a mine at the coloured rocky hollow. Only villages with a local ore seam can extract that ore.' },
   lumber: { name: 'Lumber camp', needs: [['planks', 24], ['stone', 10], ['scrap', 8]], description: 'Build a woodcutters\' camp in the great grove. The giant trees there are too big to fell, but the crews take timber from them for good: logs every day, and you may cut them yourself once the camp stands. Saw the logs into planks by hand or at a sawmill.' },
   oil: { name: 'Oil well', needs: [['scrap', 16], ['wire', 8], ['planks', 12]], description: 'Build a pump at the natural oil seep. Crude oil collects in village stock.' },
-  refinery: { name: 'Oil refinery', needs: [['scrap', 24], ['circuit', 4], ['wire', 12], ['planks', 18]], description: 'Build a refinery beside the oil well. It consumes crude from village stock to make fuel.' },
+  refinery: { name: 'Oil refinery', needs: [['scrap', 24], ['circuit', 4], ['wire', 12], ['planks', 18]], description: 'Build a refinery north of the village. It turns crude oil from the village stores into fuel: crude from our own well if we have one, or crude you bring from the oil villages. Fuel sells for far more than crude.' },
   relay: { name: 'Relay mast', needs: [['scrap', 12], ['wire', 10], ['circuit', 4], ['planks', 16], ['gears', 2]], description: 'Raise a relay mast over the receiver. The satellites talk to it on their own passes, so orbital scans round this village come apart from the rest of the world and reach further.' },
   foodworks: { name: 'Food processing house', needs: [['planks', 40], ['stone', 10], ['nails', 16], ['scrap', 6]], description: 'Build a mill, a bakery, a dairy and a smokehouse on the staked plot about 100 metres south-west of the village. While its crew works, grain, potatoes, milk and meat feed a third more people, so the same fields keep a bigger village.' },
 };
@@ -64,11 +64,17 @@ export const hasRelay = (s: TownState | undefined) => progressive(s) && !isStati
 export const scanWait = (home: TownState | undefined, now: number) => { const t = home?.settlement?.scanAt; return t === undefined ? 0 : Math.max(0, t + ORBIT.every - now); };
 /** Saves predating deposit metadata keep their commissioned extraction sites. */
 export const depositsOf = (s: TownState | undefined): Deposits => s?.settlement?.deposits ?? { ore: 'iron', oil: true, grove: true };
+/** (0.168) Can project k be built here: the village's one own yard (`Deposits.kind`), a yard already built or begun,
+ *  or anything that is not an extraction yard (the refinery is open to every village: it refines crude brought in). */
 export function projectAvailable(s: TownState | undefined, k: Project): boolean {
-  return projectDone(s, k) || (k === 'mine' ? !!depositsOf(s).ore : k === 'oil' || k === 'refinery' ? depositsOf(s).oil : k === 'lumber' ? depositsOf(s).grove !== false : true);
+  if (projectDone(s, k) || !(YARD_KINDS as string[]).includes(k)) return true;
+  const d = depositsOf(s);
+  if (d.kind) return d.kind === k || !!s?.settlement?.given?.[k];
+  return k === 'mine' ? !!d.ore : k === 'oil' ? d.oil : k === 'lumber' ? d.grove !== false : true; // (no kind: worlds made in tests by hand)
 }
+/** Every extraction yard the village has (its own one) stands. */
 export function localIndustryDone(s: TownState | undefined): boolean {
-  return projectDone(s, 'quarry') && (!projectAvailable(s, 'lumber') || projectDone(s, 'lumber')) && (!projectAvailable(s, 'mine') || projectDone(s, 'mine')) && (!projectAvailable(s, 'oil') || projectDone(s, 'refinery'));
+  return YARD_KINDS.every((k) => !projectAvailable(s, k) || projectDone(s, k));
 }
 export function projectProblem(s: TownState | undefined, k: Project): string {
   if (!progressive(s)) return 'This settlement uses the established village rules.';
@@ -81,7 +87,7 @@ export function projectProblem(s: TownState | undefined, k: Project): string {
   if (k === 'power') return (s?.farms ?? 0) >= 2 ? '' : 'Build two farms first.';
   if (k === 'warehouse') return projectDone(s, 'power') ? '' : 'Build the village power plant first.';
   if (k === 'quarry' || k === 'mine' || k === 'lumber' || k === 'oil') return projectDone(s, 'warehouse') ? '' : 'Build the warehouse first.';
-  if (k === 'refinery') return projectDone(s, 'oil') ? '' : 'Build the oil well first.';
+  if (k === 'refinery') return projectDone(s, 'warehouse') ? '' : 'Build the warehouse first.';
   if (k === 'foodworks') return projectDone(s, 'power') && (s?.farms ?? 0) >= 2 ? '' : 'Build the village power plant and two farms first.';
   return '';
 }
@@ -132,12 +138,13 @@ export function initializeSettlements(c: { settlementRules: number; world: numbe
   for (const v of allVillages(c.world)) {
     const s = ((c.towns[v.id] ??= {}).settlement ??= { v: 1 });
     if (v.id === GRIDHOLM_ID && !s.done?.comms && !s.station) { s.station = true; delete s.given?.comms; } // (0.149) the big station
-    if (!s.deposits) {
-      s.deposits = villageDeposits(c.world, v.id);
-      if (s.done?.mine || s.given?.mine) s.deposits.ore = 'iron';
-      if (s.done?.oil || s.done?.refinery || s.given?.oil || s.given?.refinery) s.deposits.oil = true;
+    if (!s.deposits?.kind) { // (0.168) one own resource a village; a yard already built or begun keeps it
+      const fresh = villageDeposits(c.world, v.id), had = s.deposits;
+      const begun = (k: YardKind) => !!s.done?.[k] || !!(s.given?.[k] && Object.keys(s.given[k]!).length);
+      const kind: YardKind = YARD_KINDS.find((k) => s.done?.[k]) ?? YARD_KINDS.find(begun) ?? fresh.kind!;
+      const has = (k: YardKind) => kind === k || begun(k); // (every yard already built or begun keeps its ground)
+      s.deposits = { kind, oil: has('oil'), grove: has('lumber'), ...(has('mine') ? { ore: kind === fresh.kind && fresh.ore ? fresh.ore : had?.ore ?? 'iron' } : {}) };
     }
-    if (s.deposits.grove === undefined) s.deposits.grove = groveRoll(c.world, v.id) || !!(s.done?.lumber || s.given?.lumber); // (0.165) the great groves; a camp already begun keeps its grove
   }
 }
 /** Reuse a genuine nearby ruin; independent stream leaves existing village/ruin identities untouched. */
@@ -165,7 +172,7 @@ export function tutorialStep(s: TownState | undefined): { title: string; text: s
   // it (`sideStep`), and Kuba the mechanic turns up once the village digs its own goods (`mechanicHere`)
   if (!(s?.farms ?? 0)) return { title: 'Build the first farm', text: 'Bring 16 planks and 6 stones to the village stores (saw logs into planks with a saw) and ask me to build a farm. Its field will grow wheat: grain for bread. It feeds new families even without electricity.', farm: 1 };
   if ((s?.farms ?? 0) < 2) return { title: 'Build the second farm', text: 'A second farm, and this one keeps hens: eggs, and a little meat. Two kinds of food keep the families healthy.', farm: 2 };
-  for (const k of ['power', 'warehouse', 'quarry', 'lumber', 'mine', 'oil', 'refinery'] as Project[]) if (projectAvailable(s, k) && !projectDone(s, k)) return { title: PROJECTS[k].name, text: k === 'warehouse' ? 'Until now I have kept the village stores in my hall, and it is full to the rafters. ' + PROJECTS[k].description : PROJECTS[k].description, project: k };
+  for (const k of ['power', 'warehouse', 'quarry', 'lumber', 'mine', 'oil'] as Project[]) if (projectAvailable(s, k) && !projectDone(s, k)) return { title: PROJECTS[k].name, text: k === 'warehouse' ? 'Until now I have kept the village stores in my hall, and it is full to the rafters. ' + PROJECTS[k].description : PROJECTS[k].description, project: k };
   if ((s?.farms ?? 0) < 3) return { title: 'Build the third farm', text: 'Finish the food supply for our growing settlement.', farm: 3 };
   if (!projectDone(s, 'foodworks')) return { title: PROJECTS.foodworks.name, text: PROJECTS.foodworks.description, project: 'foodworks' };
   return { title: 'A thriving settlement', text: 'Our homes, farms and industry are restored. You can now expand the village with advanced works and improvements.' };

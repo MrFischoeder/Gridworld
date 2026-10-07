@@ -5,7 +5,17 @@ import type { ItemKey } from '../data/items';
 
 export type DepositOre = 'iron' | 'copper' | 'lead' | 'nickel' | 'coal';
 /** `grove`: a great grove of giant trees by the village (0.165): only a lumber camp works it, and it never runs out. */
-export interface Deposits { ore?: DepositOre; oil: boolean; grove?: boolean }
+export interface Deposits { ore?: DepositOre; oil: boolean; grove?: boolean; kind?: YardKind }
+/** (0.168, the owner's rule) Every village digs one thing of its own: stone at a quarry, timber in a great grove, ore in
+ *  a mine, or crude at an oil well. Processing (the refinery, sawmills, smelters) is open to every village. */
+export type YardKind = 'quarry' | 'lumber' | 'mine' | 'oil';
+export const YARD_KINDS: YardKind[] = ['quarry', 'lumber', 'mine', 'oil'];
+/** The village's own resource (Gridholm: the great grove; the others by hash: quarry 35%, grove 30%, mine 22%, oil 13%). */
+export function yardKind(world: number, vid: number): YardKind {
+  if (vid === GRIDHOLM_ID) return 'lumber';
+  const r = hash(world, vid, 0xde9055) % 100;
+  return r < 35 ? 'quarry' : r < 65 ? 'lumber' : r < 87 ? 'mine' : 'oil';
+}
 export const ORES: Record<DepositOre, { name: string; symbol: string; color: number; good: ItemKey; lump?: ItemKey }> = {
   iron: { name: 'Iron ore', symbol: 'Fe', color: 0xd0703c, good: 'ore', lump: 'ironO' },
   copper: { name: 'Copper ore', symbol: 'Cu', color: 0x38d0b8, good: 'copper', lump: 'copperO' },
@@ -14,9 +24,8 @@ export const ORES: Record<DepositOre, { name: string; symbol: string; color: num
   coal: { name: 'Coal seam', symbol: 'C', color: 0x687e98, good: 'coal' },
 };
 export function villageDeposits(world: number, vid: number): Deposits {
-  const oreRoll = hash(world, vid, 0xde9051) % 100;
-  const kinds: DepositOre[] = ['iron', 'iron', 'iron', 'copper', 'copper', 'copper', 'lead', 'lead', 'nickel', 'coal'];
-  return { ...(vid === GRIDHOLM_ID ? { ore: 'iron' as const } : oreRoll < 35 ? { ore: kinds[hash(world, vid, 0xde9052) % kinds.length] } : {}), oil: hash(world, vid, 0xde9053) % 100 < 22, grove: groveRoll(world, vid) };
+  const kind = yardKind(world, vid), kinds: DepositOre[] = ['iron', 'iron', 'iron', 'copper', 'copper', 'copper', 'lead', 'lead', 'nickel', 'coal'];
+  return { kind, ...(kind === 'mine' ? { ore: kinds[hash(world, vid, 0xde9052) % kinds.length] } : {}), oil: kind === 'oil', grove: kind === 'lumber' };
 }
 /** Centres ~105 m beyond the 72 m village fence. Separate work yards leave room for later buildings. */
 export const RESOURCE_PLOTS = {
@@ -33,8 +42,8 @@ export function depositDepth(x: number, z: number, radius = 8, depth = 1.6): num
   return depth * t * t * (3 - 2 * t);
 }
 
-/** Whether a village has a great grove (Gridholm always; the others 40%, on their own stream). */
-export const groveRoll = (world: number, vid: number) => vid === GRIDHOLM_ID || hash(world, vid, 0xde9054) % 100 < 40;
+/** Whether a village has a great grove (0.168: the villages whose own resource is timber). */
+export const groveRoll = (world: number, vid: number) => yardKind(world, vid) === 'lumber';
 /** The giant trees of a village's great grove, round its lumber camp's yard (plaza-local, `RESOURCE_PLOTS.lumber` + u, v):
  *  trunk radius `r`, height `h`. The side towards the village stays open for the track. */
 export interface Giant { u: number; v: number; r: number; h: number; seed: number }
