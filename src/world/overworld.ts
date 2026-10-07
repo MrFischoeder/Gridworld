@@ -4,6 +4,7 @@ import { initializeSettlements, progressive, RESOURCE_PLOTS, projectAvailable, d
 import { RESOURCE_YARD, type ResourceProject } from '../gen/resource-sites';
 import { peopleAt } from '../gen/people';
 import { VEHICLE_HALL } from '../gen/hall';
+import { sitePads } from '../gen/buildpads';
 import { allVillages } from '../gen/regions';
 import { syncMegaliths, clearMegaliths, megalithHit, megalithRay, megalithName, megalithFloor, nearMegalith } from './megaliths';
 import { syncWorldGates, clearWorldGates, worldGateHit, worldGateRay } from './worldgates';
@@ -586,13 +587,16 @@ export function openWorld(x: number, z: number) {
   const w = G.char.world;
   if (!OW.terrain || OW.terrain.world !== w) { OW.terrain = new Terrain(w); riversOf(w); } // the rivers are worked out once, while the world loads
   OW.terrain.setClaims([...G.char.claims, ...fieldClaims(G.char.towns)]); // bases and the villages' fields are levelled
+  // (0.172) every village's building sites (power plant, industry site, works and station plots, the hall) lie level at
+  // the village's height, so whatever goes up there stands on flat ground
+  const levelled = allVillages(w).flatMap((v) => sitePads(w, v, OW.terrain!.padY(v)));
   const pads = allVillages(w).filter((v) => progressive(G.char.towns[v.id])).flatMap((v) => {
     const ox = v.x - 36, oz = v.z - 36, y = OW.terrain!.padY(v);
     const plots = Object.entries(RESOURCE_PLOTS).filter(([k]) => projectAvailable(G.char.towns[v.id], k as ResourceProject));
     const rects = [{ rect: VEHICLE_HALL, depression: false, y }, ...plots.map(([k, p]) => ({ rect: { x0: p.x - RESOURCE_YARD.halfX, x1: p.x + RESOURCE_YARD.halfX, z0: p.z - RESOURCE_YARD.halfZ, z1: p.z + RESOURCE_YARD.halfZ }, depression: k === 'mine', y: Math.max(4, y) }))];
     return rects.map(({ rect: r, depression, y }, i) => ({ y, surface: true, depression, poi: { ...v, id: -v.id * 8 - i - 1, rect: { x0: ox + r.x0, x1: ox + r.x1, z0: oz + r.z0, z1: oz + r.z1 }, flat: 3, blend: 12 } }));
   });
-  OW.terrain.setSettlementPads(pads);
+  OW.terrain.setSettlementPads([...levelled, ...pads]);
   primeInstalls(w, [...G.char.claims, ...fieldClaims(G.char.towns)]); // the installations' sites are worked out in a worker meanwhile
   closeWorld();
   G.water = (px, pz) => (inStructure(px, pz) ? null : OW.terrain!.water(px, pz));

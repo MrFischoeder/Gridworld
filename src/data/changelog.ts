@@ -3,6 +3,10 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.172.0', date: '2026-10-07', title: 'Level building sites', notes: [
+    'The ground under every building site round a village is now levelled, not only under the farm fields: the power plant, the industry site, both works plots, both power station plots and the village hall stand on flat ground at the village\'s height, easing back into the land around them.',
+    'Smelters, kilns, furnaces, processing works and power stations no longer stand half on a slope.',
+  ] },
   { v: '0.171.0', date: '2026-10-07', title: 'Two resources a village', notes: [
     'Every village in a new world now has two resources of its own instead of one, picked at random and never the same twice: a stone quarry, a great grove with a lumber camp, a mine or an oil well.',
     'The elder names both and the village tutorial asks for both yards. Each still has its own plot beyond the fence.',
