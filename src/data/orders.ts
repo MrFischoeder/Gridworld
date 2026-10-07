@@ -20,7 +20,7 @@ export const ORDERS: Order[] = [
   { tech: 'framing', out: 'planks', n: 6, needs: [['log', 2]] },
   { tech: 'framing', out: 'nails', n: 10, needs: [['scrap', 1]] },
   { tech: 'furnace', out: 'scrap', n: 3, needs: [['ironO', 2], ['log', 1]] },
-  { tech: 'furnace', out: 'wire', n: 4, needs: [['ironO', 1]] },
+  { tech: 'furnace', out: 'wire', n: 8, needs: [['iron', 1]] }, // (0.173) drawn from a crate of iron bars, not from ore
   { tech: 'circuits', out: 'circuit', n: 1, needs: [['copperO', 2], ['scrap', 1]] },
   { tech: 'circuits', out: 'compass', n: 1, needs: [['scrap', 1], ['circuit', 1]] },
   { tech: 'wagons', out: 'wheelL', n: 1, needs: [['planks', 4], ['scrap', 2]] },

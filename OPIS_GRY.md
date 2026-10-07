@@ -1,6 +1,6 @@
 # GridWorld: opis gry, cel, plan i historia zmian
 
-Stan na wersję **0.172.0**. Ten dokument opisuje, czym jest GridWorld, jaki jest cel gry, co już w niej jest, czego jeszcze nie ma, dokąd zmierza i jak powstawała, wersja po wersji. Nazwy z gry (przedmioty, miejsca, postacie) są po angielsku, tak jak na ekranie.
+Stan na wersję **0.173.0**. Ten dokument opisuje, czym jest GridWorld, jaki jest cel gry, co już w niej jest, czego jeszcze nie ma, dokąd zmierza i jak powstawała, wersja po wersji. Nazwy z gry (przedmioty, miejsca, postacie) są po angielsku, tak jak na ekranie.
 
 ---
 
@@ -674,3 +674,4 @@ Pełne notatki (po angielsku) są w grze pod przyciskiem **Changelog** w menu g�
 - **0.170.0 Tartak.** Drugi etap drzewka rozwoju. Ręczne piłowanie jest wolne (około 15 s na pień) i daje 4 deski z pnia; odejście przerywa pracę. W nowym świecie starszy prosi o tartak zaraz po elektrowni: tartak działa na prąd, potrzebuje trzech robotników i sam tnie pnie z zapasów wioski na deski w magazynie, 6 z pnia. Po zbudowaniu magazynu można go ulepszyć: piły tarczowe (7 desek z pnia), potem piły taśmowe z silnikami elektrycznymi (8), każde ulepszenie bierze więcej prądu. Zakład Sawmill też daje teraz 6 desek z pnia.
 - **0.171.0 Dwa zasoby na wioskę.** Każda wioska w nowym świecie ma teraz dwa własne zasoby zamiast jednego, losowane i zawsze różne: kamieniołom, wielki gaj z obozem drwali, kopalnię albo szyb naftowy. Starszy wymienia oba, a samouczek wioski prosi o oba place. W istniejących światach wioska zachowuje swój zasób i dostaje drugi.
 - **0.172.0 Wyrównane place budowy.** Nie tylko pola farm wyrównują grunt: teraz każdy plac budowy wokół wioski (elektrownia, teren przemysłowy, oba place zakładów, oba place elektrowni dodatkowych i hala wioski) leży płasko na wysokości wioski i łagodnie przechodzi w okoliczny teren, więc huty, piece, przetwórnie i elektrownie nie stoją już na zboczu.
+- **0.173.0 Drabina wartości metali.** Pierwszy krok nowej hierarchii metali: ruda < złom < sztabki < stal < półprodukty < zespoły. Smelter przetapia złom (12 sztuk + węgiel → 2 skrzynie żelaza), więc złom jest wart mniej niż sztabka, ale daje żelazo wioskom bez kopalni. Drut ciągnie się ze sztabek żelaza: ciągarnia 12 sztuk ze skrzyni, kowal 8. Dalej: zakłady ciężkie z wiertnicą, kopalnia złóż rzadkich i piece.

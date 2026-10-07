@@ -3,6 +3,11 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.173.0', date: '2026-10-07', title: 'The metal ladder', notes: [
+    'Metals now have a clear order of worth: ore, then scrap, then ingots, then steel, then wire, pipes, gears and parts, then motors and pumps.',
+    'The Smelter can remelt scrap: 12 Scrap Metal and a crate of coal make 2 crates of iron. Scrap is dirty mixed metal, worth a little more than ore but far less than an ingot. A village without an iron mine can still make iron.',
+    'Wire is drawn from iron bars, not from ore. The Wire Mill makes 12 wire from a crate of iron, and the blacksmith (with the Blast Furnace plans) makes 8.',
+  ] },
   { v: '0.172.0', date: '2026-10-07', title: 'Level building sites', notes: [
     'The ground under every building site round a village is now levelled, not only under the farm fields: the power plant, the industry site, both works plots, both power station plots and the village hall stand on flat ground at the village\'s height, easing back into the land around them.',
     'Smelters, kilns, furnaces, processing works and power stations no longer stand half on a slope.',

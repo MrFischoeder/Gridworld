@@ -26,11 +26,15 @@ export const PLANT_KINDS: PlantKind[] = ['sawmill', 'brickworks', 'cementworks',
 /** What a works takes in: trade goods, and the rare materials of the deposits (gen/deposits.ts), which no market trades. */
 export type Stuff = Good | Rare | BasicMat;
 /** The plain materials a works may also take (not trade goods): what a crate of them is worth to it. */
-export type BasicMat = 'stone' | 'circuit' | 'microchip' | 'sensor' | 'log' | 'planks';
-/** (circuit = salvaged Electronic Components; microchip = the Old Chip Foundry's, gen/installs.ts) */
-export const BASIC_VALUE: Record<BasicMat, number> = { stone: 5, circuit: 60, microchip: 450, sensor: 500, log: 4, planks: 2 };
-/** `out`: a trade good, or (the Sawmill, 0.165) planks for building. */
-export interface Recipe { in: [Stuff, number][]; out: [Good | 'planks', number] }
+export type BasicMat = 'stone' | 'circuit' | 'microchip' | 'sensor' | 'log' | 'planks' | 'scrap' | 'wire';
+/** (circuit = salvaged Electronic Components; microchip = the Old Chip Foundry's, gen/installs.ts). The metal ladder
+ *  (0.173): a piece of scrap (5) is worth a little more than a lump of ore (8 lumps make a 36 g crate) but far less than
+ *  an ingot: 12 pieces and coal melt into 2 crates of iron (60 each); a piece of wire (7) is drawn from iron bars. */
+export const BASIC_VALUE: Record<BasicMat, number> = { stone: 5, circuit: 60, microchip: 450, sensor: 500, log: 4, planks: 2, scrap: 5, wire: 7 };
+/** What a works may give out: a trade good, or (the Sawmill, 0.165) planks, or (the Wire Mill, 0.173) wire. */
+export type Made = Good | 'planks' | 'wire';
+/** `out`: what a batch makes and how many. */
+export interface Recipe { in: [Stuff, number][]; out: [Made, number] }
 export interface PlantSpec {
   name: string; blurb: string;
   recipes: Recipe[];
@@ -53,16 +57,18 @@ export const PLANTS: Record<PlantKind, PlantSpec> = {
   cementworks: { name: 'Cement Works', blurb: 'burns limestone with coal in a rotary kiln and grinds it into cement', batch: 45,
     recipes: [{ in: [['limestone', 2], ['coal', 1]], out: ['cement', 2] }],
     needs: [['stone', 20], ['bricks', 10], ['scrap', 10], ['planks', 10]], fee: 500, xp: 120 },
-  smelter: { name: 'Smelter', blurb: 'melts ore with coal into iron, copper and lead', batch: 60,
+  smelter: { name: 'Smelter', blurb: 'melts ore with coal into iron, copper and lead, and remelts scrap into iron', batch: 60,
+    // (0.173: scrap remelted into iron appended: dirty mixed metal, so it takes more of it than ore)
     recipes: [{ in: [['ore', 2], ['coal', 1]], out: ['iron', 2] }, { in: [['copper', 2], ['coal', 1]], out: ['copperbar', 1] },
-      { in: [['lead', 2], ['coal', 1]], out: ['leadbar', 1] }],
+      { in: [['lead', 2], ['coal', 1]], out: ['leadbar', 1] }, { in: [['scrap', 12], ['coal', 1]], out: ['iron', 2] }],
     needs: [['stone', 20], ['bricks', 12], ['scrap', 12], ['planks', 32]], fee: 600, xp: 150 },
   glassworks: { name: 'Glassworks', blurb: 'melts quartz sand with coal into glass', batch: 45,
     // (0.145: optical components appended, so glass keeps recipe 0)
     recipes: [{ in: [['sand', 2], ['coal', 1]], out: ['glass', 1] }, { in: [['glass', 2], ['aluminium', 1]], out: ['optics', 1] }],
     needs: [['stone', 15], ['bricks', 10], ['scrap', 8], ['planks', 12]], fee: 450, xp: 120 },
-  wiremill: { name: 'Wire Mill', blurb: 'draws copper ingots into cable', batch: 45,
-    recipes: [{ in: [['copperbar', 1]], out: ['cable', 2] }],
+  wiremill: { name: 'Wire Mill', blurb: 'draws copper ingots into cable and iron bars into wire', batch: 45,
+    // (0.173: iron wire appended)
+    recipes: [{ in: [['copperbar', 1]], out: ['cable', 2] }, { in: [['iron', 1]], out: ['wire', 12] }],
     needs: [['scrap', 16], ['wire', 8], ['planks', 12], ['engine', 1]], fee: 700, xp: 160 },
   refinery: { name: 'Oil Refinery', blurb: 'cracks crude oil into fuel, or (wastefully) plastic resin', batch: 60,
     recipes: [{ in: [['crude', 1]], out: ['fuel', 1] }, { in: [['crude', 2]], out: ['plastic', 1] }],
@@ -130,7 +136,7 @@ export const PLANT_SLOTS = 2, HOPPER = 40, OUT_CAP = 40;
 export interface PlantState {
   k: PlantKind; rec: number;
   /** Crates in the hopper, finished crates waiting, and the game time up to which the batches are settled. */
-  inp: Partial<Record<Stuff, number>>; out: Partial<Record<Good | 'planks', number>>; t: number;
+  inp: Partial<Record<Stuff, number>>; out: Partial<Record<Made, number>>; t: number;
 }
 /** Plant state lives in the village's TownState. */
 type PlantTown = TownState;

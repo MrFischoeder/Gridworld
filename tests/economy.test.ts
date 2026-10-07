@@ -10,7 +10,7 @@ import { STAGES, giveToStage, stageRows, stagesDone, fixShuttle, type ShuttleSta
 import type { TownState } from '../src/gen/town';
 
 describe('processing chains', () => {
-  const dug = new Set<Stuff>([...Object.values(INDUSTRY).flatMap((i) => [...i.pool, ...(i.extra?.goods ?? [])]), ...RARES.map((r) => r.k), ...Object.values(CROPS).map((c) => c.out as Stuff), 'stone', 'circuit', 'log']); // (stone gathered, circuit salvaged, logs felled or from a great grove)
+  const dug = new Set<Stuff>([...Object.values(INDUSTRY).flatMap((i) => [...i.pool, ...(i.extra?.goods ?? [])]), ...RARES.map((r) => r.k), ...Object.values(CROPS).map((c) => c.out as Stuff), 'stone', 'circuit', 'log', 'scrap']); // (stone gathered, circuit and scrap salvaged, logs felled or from a great grove)
   const made = new Set<Stuff>([...PLANT_KINDS.flatMap((k) => PLANTS[k].recipes.map((r) => r.out[0])), ...Object.values(INSTALL_WORK).map((w) => w!.out as Stuff)]);
   const value = (g: Stuff) => (g in BASIC_VALUE ? BASIC_VALUE[g as BasicMat] : isRare(g) ? RARE_VALUE[g] : GOOD_INFO[g as Good].base);
   it('every input can be dug, grown or made, and every processed good comes out of some works or old plant', () => {
@@ -199,5 +199,18 @@ describe('the space program (0.147)', () => {
     const b: ShuttleState = { given: {}, done: ['hull'], v: 2 }; fixShuttle(b);
     expect(stagesDone(b)).toBe(1); expect(b.v).toBe(3);
     expect(giveToStage(b, 'life', 'lifesup', 9)).toBe(4);
+  });
+});
+describe('the metal ladder (0.173)', () => {
+  const v = (g: Stuff) => (g in BASIC_VALUE ? BASIC_VALUE[g as BasicMat] : GOOD_INFO[g as Good].base);
+  it('ranks ore below scrap below ingots, and makes wire from iron bars', () => {
+    expect(GOOD_INFO.ore.base / 8).toBeLessThan(BASIC_VALUE.scrap); // a lump of ore (8 to a crate) < a piece of scrap
+    const remelt = PLANTS.smelter.recipes.find((r) => r.in.some(([g]) => g === 'scrap'))!;
+    expect(remelt.out).toEqual(['iron', 2]);
+    const per = remelt.in.reduce((a, [g, n]) => a + v(g) * n, 0) / 2; // what the scrap in a crate of iron is worth
+    expect(per).toBeLessThan(GOOD_INFO.iron.base); expect(BASIC_VALUE.scrap * 12 / 2).toBeLessThan(GOOD_INFO.iron.base);
+    const wire = PLANTS.wiremill.recipes.find((r) => r.out[0] === 'wire')!;
+    expect(wire.in).toEqual([['iron', 1]]); expect(PLANTS.wiremill.recipes[0].out[0]).toBe('cable'); // old recipe indexes kept
+    expect(BASIC_VALUE.wire).toBeGreaterThan(BASIC_VALUE.scrap);
   });
 });
