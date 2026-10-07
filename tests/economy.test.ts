@@ -166,13 +166,13 @@ describe('stone and strategic metals (0.144)', () => {
     expect(PLANTS.metallurgy.tech).toBe('metallurgy');
     expect(TECH_BY_ID.metallurgy).toBeDefined();
     expect(PLANTS.metallurgy.recipes.map((r) => r.out[0])).toEqual(['advsteel', 'titanium', 'pgm']);
-    expect(PLANT_KINDS.slice(-6, -4)).toEqual(['stoneworks', 'metallurgy']);
+    expect(PLANT_KINDS.slice(-7, -5)).toEqual(['stoneworks', 'metallurgy']);
   });
 });
 
 describe('electronics (0.145)', () => {
   it('silicon processing and advanced electronics want their plans, and the older recipes keep their numbers', () => {
-    expect(PLANT_KINDS.slice(-4, -2)).toEqual(['siliconworks', 'advelec']);
+    expect(PLANT_KINDS.slice(-5, -3)).toEqual(['siliconworks', 'advelec']);
     expect(PLANTS.siliconworks.tech).toBe('semiconductors');
     expect(PLANTS.advelec.tech).toBe('computing');
     expect(TECH_BY_ID.semiconductors && TECH_BY_ID.computing).toBeTruthy();
@@ -186,7 +186,7 @@ describe('electronics (0.145)', () => {
 
 describe('the space program (0.147)', () => {
   it('avionics and life support works want their plans; the Chariot gets a life support stage', () => {
-    expect(PLANT_KINDS.slice(-2)).toEqual(['avionworks', 'lifeworks']);
+    expect(PLANT_KINDS.slice(-3, -1)).toEqual(['avionworks', 'lifeworks']);
     expect(PLANTS.avionworks.tech).toBe('avionics'); expect(PLANTS.lifeworks.tech).toBe('lifesupport');
     expect(TECH_BY_ID.avionics && TECH_BY_ID.lifesupport && TECH_BY_ID.rocketry).toBeTruthy();
     const need = (k: string) => STAGES.find((x) => x.key === k)!.needs.map(([g]) => g);
@@ -212,5 +212,14 @@ describe('the metal ladder (0.173)', () => {
     const wire = PLANTS.wiremill.recipes.find((r) => r.out[0] === 'wire')!;
     expect(wire.in).toEqual([['iron', 1]]); expect(PLANTS.wiremill.recipes[0].out[0]).toBe('cable'); // old recipe indexes kept
     expect(BASIC_VALUE.wire).toBeGreaterThan(BASIC_VALUE.scrap);
+  });
+});
+describe('heavy machinery (0.174)', () => {
+  it('the heavy works wants its plans and makes drill rigs and engine parts', () => {
+    expect(PLANT_KINDS.at(-1)).toBe('heavyworks'); expect(TECH_BY_ID.heavymach?.tier).toBe(2);
+    expect(PLANTS.heavyworks.tech).toBe('heavymach');
+    expect(plantProblem({}, 'heavyworks', {})).not.toBe(''); expect(plantProblem({}, 'heavyworks', { heavymach: 1 })).toBe('');
+    expect(PLANTS.heavyworks.recipes.map((r) => r.out[0])).toEqual(['drillrig', 'engine']);
+    expect(GOOD_INFO.drillrig.proc).toBe(true); expect(GOOD_INFO.drillrig.base).toBeGreaterThan(GOOD_INFO.pump.base);
   });
 });

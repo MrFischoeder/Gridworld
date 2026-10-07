@@ -9,7 +9,7 @@ export type ItemClass = 'raw' | 'food' | 'material' | 'industrial' | 'electrical
 export const CLASS_NAME: Record<ItemClass, string> = { raw: 'Raw resource', food: 'Food & farm crop', material: 'Material', industrial: 'Industrial component', electrical: 'Electrical & electronic', advanced: 'Advanced component', aerospace: 'Aerospace component' };
 const SETS: [ItemClass, string[]][] = [
   ['food', ['grain', 'carrots', 'potatoes', 'fish', 'eggs', 'milk', 'meat', 'fibre', 'wool', 'cotton']],
-  ['industrial', ['parts', 'tools', 'motor', 'pump', 'gears', 'pipes', 'engine', 'plating']],
+  ['industrial', ['parts', 'tools', 'motor', 'pump', 'gears', 'pipes', 'engine', 'plating', 'drillrig']],
   ['electrical', ['cable', 'boards', 'circuit', 'batteries', 'generator', 'powercell', 'wire', 'control', 'hpe', 'pcm']],
   ['advanced', ['microchip', 'sensor', 'precision', 'automation', 'pcore', 'ancalloy', 'ceramics', 'alloy', 'optics', 'computer']],
   ['aerospace', ['aerocomp', 'avionics', 'lifesup', 'rocketeng']],

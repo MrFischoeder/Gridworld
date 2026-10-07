@@ -3,6 +3,12 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.174.0', date: '2026-10-07', title: 'Heavy machinery', notes: [
+    'A new works for the top of the metal ladder: the Heavy Engineering Works. It wants the plans for Heavy Machinery, found on an old data carrier 3 to 8 km from Gridholm, and draws 100 kW.',
+    'It builds Drill Rigs (4 steel, 2 gears, an electric motor and 2 pipes): heavy machines for boring into the deep rare deposits, which the next update puts to work.',
+    'It also turns a crate of steel and a crate of gears into 6 Engine Parts, so the mechanic\'s vehicles no longer hang on parts salvaged from wrecks.',
+    'Drawn as a tall brick erecting hall with a gantry crane over its yard and a drill derrick on test.',
+  ] },
   { v: '0.173.0', date: '2026-10-07', title: 'The metal ladder', notes: [
     'Metals now have a clear order of worth: ore, then scrap, then ingots, then steel, then wire, pipes, gears and parts, then motors and pumps.',
     'The Smelter can remelt scrap: 12 Scrap Metal and a crate of coal make 2 crates of iron. Scrap is dirty mixed metal, worth a little more than ore but far less than an ingot. A village without an iron mine can still make iron.',

@@ -19,20 +19,20 @@ import { TECH_BY_ID } from './tech';
 import { startJob, jobOf, hoursOf } from './construction';
 
 export type PlantKind = 'smelter' | 'refinery' | 'glassworks' | 'wiremill' | 'electronics' | 'machineshop' | 'foundry' | 'chemworks'
-  | 'sawmill' | 'brickworks' | 'cementworks' | 'textile' | 'steelworks' | 'polymer' | 'alworks' | 'batteryworks' | 'electrical' | 'stoneworks' | 'metallurgy' | 'siliconworks' | 'advelec' | 'avionworks' | 'lifeworks';
+  | 'sawmill' | 'brickworks' | 'cementworks' | 'textile' | 'steelworks' | 'polymer' | 'alworks' | 'batteryworks' | 'electrical' | 'stoneworks' | 'metallurgy' | 'siliconworks' | 'advelec' | 'avionworks' | 'lifeworks' | 'heavyworks';
 /** In the order the elder offers them: the plain works (tier 1, anyone can build) first, then those that want old plans (tier 2). */
 export const PLANT_KINDS: PlantKind[] = ['sawmill', 'brickworks', 'cementworks', 'smelter', 'glassworks', 'wiremill', 'refinery', 'textile',
-  'steelworks', 'chemworks', 'polymer', 'alworks', 'batteryworks', 'electronics', 'machineshop', 'foundry', 'electrical', 'stoneworks', 'metallurgy', 'siliconworks', 'advelec', 'avionworks', 'lifeworks'];
+  'steelworks', 'chemworks', 'polymer', 'alworks', 'batteryworks', 'electronics', 'machineshop', 'foundry', 'electrical', 'stoneworks', 'metallurgy', 'siliconworks', 'advelec', 'avionworks', 'lifeworks', 'heavyworks'];
 /** What a works takes in: trade goods, and the rare materials of the deposits (gen/deposits.ts), which no market trades. */
 export type Stuff = Good | Rare | BasicMat;
 /** The plain materials a works may also take (not trade goods): what a crate of them is worth to it. */
-export type BasicMat = 'stone' | 'circuit' | 'microchip' | 'sensor' | 'log' | 'planks' | 'scrap' | 'wire';
+export type BasicMat = 'stone' | 'circuit' | 'microchip' | 'sensor' | 'log' | 'planks' | 'scrap' | 'wire' | 'engine';
 /** (circuit = salvaged Electronic Components; microchip = the Old Chip Foundry's, gen/installs.ts). The metal ladder
  *  (0.173): a piece of scrap (5) is worth a little more than a lump of ore (8 lumps make a 36 g crate) but far less than
  *  an ingot: 12 pieces and coal melt into 2 crates of iron (60 each); a piece of wire (7) is drawn from iron bars. */
-export const BASIC_VALUE: Record<BasicMat, number> = { stone: 5, circuit: 60, microchip: 450, sensor: 500, log: 4, planks: 2, scrap: 5, wire: 7 };
+export const BASIC_VALUE: Record<BasicMat, number> = { stone: 5, circuit: 60, microchip: 450, sensor: 500, log: 4, planks: 2, scrap: 5, wire: 7, engine: 70 };
 /** What a works may give out: a trade good, or (the Sawmill, 0.165) planks, or (the Wire Mill, 0.173) wire. */
-export type Made = Good | 'planks' | 'wire';
+export type Made = Good | 'planks' | 'wire' | 'engine';
 /** `out`: what a batch makes and how many. */
 export interface Recipe { in: [Stuff, number][]; out: [Made, number] }
 export interface PlantSpec {
@@ -127,6 +127,10 @@ export const PLANTS: Record<PlantKind, PlantSpec> = {
   lifeworks: { name: 'Life Support Works', blurb: 'builds air scrubbers and water recyclers on a pump loop in titanium housings', batch: 180, tech: 'lifesupport',
     recipes: [{ in: [['pump', 1], ['pipes', 2], ['chems', 2], ['titanium', 1]], out: ['lifesup', 1] }],
     needs: [['bricks', 14], ['cement', 10], ['steel', 8], ['pipes', 6], ['pump', 1], ['control', 1]], fee: 2000, xp: 400 },
+  // (0.174, the metal ladder's top step) heavy machinery: drill rigs for the deep rare deposits, engine blocks for vehicles
+  heavyworks: { name: 'Heavy Engineering Works', blurb: 'builds drill rigs and engine blocks under a travelling gantry crane', batch: 240, tech: 'heavymach',
+    recipes: [{ in: [['steel', 4], ['gears', 2], ['motor', 1], ['pipes', 2]], out: ['drillrig', 1] }, { in: [['steel', 1], ['gears', 1]], out: ['engine', 6] }],
+    needs: [['bricks', 20], ['cement', 12], ['steel', 12], ['cable', 8], ['motor', 2], ['gears', 4]], fee: 1800, xp: 380 },
 };
 /** Keep a saved works valid when the recipes change (old saves): an unknown recipe falls back to the first. */
 export function fixPlant(p: PlantState) { if (!PLANTS[p.k]?.recipes[p.rec]) p.rec = 0; }

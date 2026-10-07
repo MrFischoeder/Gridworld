@@ -25,7 +25,8 @@ export type Good = 'grain' | 'carrots' | 'potatoes' | 'timber' | 'coal' | 'ore' 
   | 'motor' | 'generator' | 'pipes' | 'gears' | 'pump'
   | 'cutstone' | 'advsteel' | 'titanium' | 'pgm'
   | 'silicon' | 'control' | 'optics' | 'hpe' | 'computer' | 'pcm'
-  | 'avionics' | 'lifesup';
+  | 'avionics' | 'lifesup'
+  | 'drillrig';
 /** The goods before the economy plan's stage 1 (0.90): what villages want is still picked from these, so old villages keep their wants. */
 const WANT_POOL: Good[] = ['grain', 'carrots', 'potatoes', 'timber', 'coal', 'ore', 'copper', 'salt', 'fish', 'crude', 'sand', 'cloth', 'tools', 'meds', 'fuel', 'tech',
   'steel', 'copperbar', 'plastic', 'glass', 'cable', 'boards', 'parts', 'alloy', 'propellant'];
@@ -37,7 +38,9 @@ export const GOODS: Good[] = [...WANT_POOL, 'clay', 'limestone', 'lead', 'lumber
   // (0.145) electronics
   'silicon', 'control', 'optics', 'hpe', 'computer', 'pcm',
   // (0.147) the space program's components
-  'avionics', 'lifesup'];
+  'avionics', 'lifesup',
+  // (0.174) heavy machinery
+  'drillrig'];
 /**
  * Base price (gold per crate), and whether the good is raw (dug, pumped, grown: made far out) or made (crafted near
  * home). `proc`: processed in a works (gen/plants.ts) from other goods; no village's own industry makes it, and its
@@ -59,7 +62,8 @@ export const GOOD_INFO: Record<Good, { base: number; raw: boolean; proc?: true }
   gears: { base: 175, raw: false, proc: true }, pump: { base: 1300, raw: false, proc: true },
   cutstone: { base: 12, raw: false, proc: true }, advsteel: { base: 320, raw: false, proc: true }, titanium: { base: 520, raw: false, proc: true }, pgm: { base: 740, raw: false, proc: true },
   silicon: { base: 170, raw: false, proc: true }, control: { base: 900, raw: false, proc: true }, optics: { base: 520, raw: false, proc: true }, hpe: { base: 1250, raw: false, proc: true }, computer: { base: 2400, raw: false, proc: true }, pcm: { base: 3000, raw: false, proc: true },
-  avionics: { base: 6000, raw: false, proc: true }, lifesup: { base: 3400, raw: false, proc: true }, // (grown on the farms you build: gen/farms.ts CROPS)
+  avionics: { base: 6000, raw: false, proc: true }, lifesup: { base: 3400, raw: false, proc: true },
+  drillrig: { base: 2500, raw: false, proc: true }, // (0.174) the heavy works' // (grown on the farms you build: gen/farms.ts CROPS)
 };
 /** The processed goods (no village industry makes them; a works does). */
 export const PROCESSED = GOODS.filter((g) => GOOD_INFO[g].proc);

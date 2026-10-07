@@ -54,6 +54,8 @@ export const TECHS: Tech[] = [
   { id: 'avionics', name: 'Spacecraft Avionics', area: 'navigation', tier: 4, blurb: 'Flight computers, star trackers and the control loops that keep a ship on its course.' },
   { id: 'lifesupport', name: 'Life Support', area: 'chemistry', tier: 3, blurb: 'Scrubbing the air and recycling the water: how a crew lives where nothing lives.' },
   { id: 'rocketry', name: 'Rocket Propulsion', area: 'transport', tier: 4, blurb: 'Combustion chambers, turbopumps and bells: the engines that lift a ship off a world.' },
+  // (0.174) appended so every older technology keeps its site
+  { id: 'heavymach', name: 'Heavy Machinery', area: 'metal', tier: 2, blurb: 'Gantry cranes, geared derricks and engine blocks: the machines that dig deep and haul heavy.' },
 ];
 export const TECH_BY_ID: Record<string, Tech> = Object.fromEntries(TECHS.map((t) => [t.id, t]));
 /** How far from Gridholm (m) each tier's carriers lie. */

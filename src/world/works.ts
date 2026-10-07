@@ -138,6 +138,22 @@ export function drawWorks(vm: VillageMap, T: Terrain, id: number): THREE.Group {
         glowAt = [P(-3, -3.5)[0], g0 + 1.9, P(-3, -3.5)[1]];
         break;
       }
+      case 'heavyworks': { // a tall brick erecting hall, a gantry crane over the yard with an engine block on its hook, a drill derrick being tested
+        box(1.5, 2.5, 5.5, 3.5, g0 - 0.1, g0 + 6.5, BRICK);
+        for (const v of [-4.5, 5.6]) for (const u of [-7.6, 7.6]) { const [x, z] = P(u, v); pb.box(x - 0.2, g0, z - 0.2, x + 0.2, g0 + 7.4, z + 0.2, STEELC); }
+        for (const u of [-7.6, 7.6]) { const [a, b] = P(u, -4.5), [d, e] = P(u, 5.6); pb.seg(STEELC, [a, g0 + 7.4, b], [d, g0 + 7.4, e]); }
+        { const [a, b] = P(-7.6, -3.2), [d, e] = P(7.6, -3.2); pb.seg(METAL, [a, g0 + 7.6, b], [d, g0 + 7.6, e]); pb.seg(METAL, [a, g0 + 7.2, b], [d, g0 + 7.2, e]); }
+        { const [x, z] = P(-2.5, -3.2); pb.seg(METAL, [x, g0 + 7.2, z], [x, g0 + 2.4, z]); }
+        box(-2.5, -3.2, 0.9, 0.7, g0 + 1.0, g0 + 2.2, METAL);
+        { // the drill derrick: four legs to a crown block, braces, the drill pipe down the middle
+          const [cx0, cz0] = P(-6, 3), top = g0 + 9.5;
+          for (const [du, dv] of [[-1.3, -1.3], [1.3, -1.3], [1.3, 1.3], [-1.3, 1.3]]) { const [x, z] = P(-6 + du, 3 + dv); pb.seg(STEELC, [x, g0, z], [cx0, top, cz0]); }
+          for (const y of [2.5, 5]) { const k = 1 - (y / 9.5); const pts = [[-1.3, -1.3], [1.3, -1.3], [1.3, 1.3], [-1.3, 1.3], [-1.3, -1.3]].map(([du, dv]) => { const [x, z] = P(-6 + du * k, 3 + dv * k); return [x, g0 + y, z] as [number, number, number]; }); pb.line(STEELC, ...pts); }
+          pb.seg(METAL, [cx0, top, cz0], [cx0, g0 - 0.5, cz0]);
+        }
+        glowAt = [P(-2.5, -3.2)[0], g0 + 1.6, P(-2.5, -3.2)[1]];
+        break;
+      }
       case 'stoneworks': { // an open saw shed with a frame saw over a block, dressed blocks stacked, a heap of chippings
         for (const [u, v] of [[-4.5, -1], [4.5, -1], [4.5, 4.5], [-4.5, 4.5]]) { const [x, z] = P(u, v); pb.box(x - 0.15, g0 - 0.1, z - 0.15, x + 0.15, g0 + 3.4, z + 0.15, WOOD); }
         { const [a, b] = P(-4.8, -1.3), [d, e] = P(4.8, 4.8); pb.gableRoof(Math.min(a, d), Math.min(b, e), Math.max(a, d), Math.max(b, e), g0 + 3.4, 1.0, WOOD); }
