@@ -2,7 +2,7 @@
 // population target rises (gen/people.ts), and with it its workers and its output. Built through the elder with wood
 // and stone from the village hall, no plans needed. Each farm grows the crop you choose for it (`CROPS`): its yield
 // goes into the village hall (gen/hall.ts stockOf), more on rich soil and with steel ploughs.
-import { progressive, projectDone, localIndustryDone, SETTLEMENT_START, housingCapacity } from './settlement';
+import { progressive, localIndustryDone, FIRST_CROPS, SETTLEMENT_START, housingCapacity } from './settlement';
 import { hash } from '../core/rng';
 import type { ItemKey } from '../data/items';
 import type { TownState } from './town';
@@ -53,8 +53,6 @@ export function handOverUpgrade(s: TownState, tech: Record<string, number>, have
 export function completeUpgrade(s: TownState) { s.fup = upgradedOf(s) + 1; s.ugiven = {}; }
 export function farmProblem(s: TownState | undefined): string {
   if (!progressive(s)) return '';
-  if (!s?.settlement?.supplies) return 'Report the stored supplies to the elder first.';
-  if (farmsOf(s) === 1 && !projectDone(s, 'comms') && !s.settlement.station) return 'Restore the satellite receiver before building the second farm.';
   if (farmsOf(s) === 2 && !localIndustryDone(s)) return 'Develop the warehouse, power and available local industry before building the third farm.';
   return '';
 }
@@ -87,7 +85,9 @@ export function placeFarm(s: TownState, spot: { x: number; z: number; y: number 
 /** The farm stands (the population curve is re-anchored first, so it grows from where it is). */
 export function completeFarm(s: TownState, seed: number, home: boolean, now: number) {
   setPeople(s, seed, home, now, peopleAt(seed, home, s, now));
-  s.farms = farmsOf(s) + 1; s.fgiven = {};
+  const i = farmsOf(s);
+  if (progressive(s) && i < FIRST_CROPS.length && !s.crops?.[i]) (s.crops ??= [])[i] = FIRST_CROPS[i]; // (0.167) the tutorial's grain, then hens
+  s.farms = i + 1; s.fgiven = {};
 }
 /** The i-th farm's field in plaza-local metres: outside a corner of the wall, clear of the sites on the sides and the gates. */
 export function farmPlot(seed: number, i: number): { x0: number; z0: number; x1: number; z1: number } {

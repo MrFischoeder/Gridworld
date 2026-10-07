@@ -75,11 +75,12 @@ export function projectProblem(s: TownState | undefined, k: Project): string {
   if (projectDone(s, k)) return 'Already built.';
   if (!projectAvailable(s, k)) return k === 'mine' ? 'There is no ore seam here. Import metals from another village.' : k === 'lumber' ? 'There is no great grove here. Cut wild trees, or bring logs from a village that has one.' : 'There is no oil field here. Import crude or fuel from another village.';
   if (k === 'relay') return isStation(s) ? 'The station itself is this village\'s relay.' : projectDone(s, 'comms') ? '' : 'Restore the satellite receiver first.';
-  if (k === 'comms' && isStation(s)) return (s?.farms ?? 0) < 2 ? 'Build two farms first.' : s?.settlement?.car ? '' : 'Get your first vehicle from Kuba the mechanic first: the station lies a few kilometres out.';
-  if (k === 'comms') return (s?.farms ?? 0) >= 1 ? '' : 'Build the first farm first.';
-  if (k === 'warehouse') return (s?.farms ?? 0) >= 2 && projectDone(s, 'comms') ? '' : 'Restore satellite communications and build two farms first.';
-  if (k === 'power') return projectDone(s, 'warehouse') ? '' : 'Build the vehicle warehouse first.';
-  if (k === 'quarry' || k === 'mine' || k === 'lumber' || k === 'oil') return projectDone(s, 'power') ? '' : 'Build the village power plant first.';
+  // (0.167, the owner's order) farms, then power, then the warehouse, then the village's own extraction; the satellite
+  // link is a side task once the power plant stands
+  if (k === 'comms') return projectDone(s, 'power') ? '' : 'Build the village power plant first.';
+  if (k === 'power') return (s?.farms ?? 0) >= 2 ? '' : 'Build two farms first.';
+  if (k === 'warehouse') return projectDone(s, 'power') ? '' : 'Build the village power plant first.';
+  if (k === 'quarry' || k === 'mine' || k === 'lumber' || k === 'oil') return projectDone(s, 'warehouse') ? '' : 'Build the warehouse first.';
   if (k === 'refinery') return projectDone(s, 'oil') ? '' : 'Build the oil well first.';
   if (k === 'foodworks') return projectDone(s, 'power') && (s?.farms ?? 0) >= 2 ? '' : 'Build the village power plant and two farms first.';
   return '';
@@ -155,23 +156,29 @@ export function commsRuin(world: number, v: Poi, station = false): Poi | null {
   const p = candidates[0]; if (p) { if (commsCache.size > 4000) commsCache.clear(); commsCache.set(key, p); }
   return p ?? null;
 }
-export const STATION_TEXT = 'A few kilometres out lies a ruined radar and communications station. Restore it and its dish will find the satellites still circling the planet: the map in your glove computer comes alive.';
-export function tutorialStep(s: TownState | undefined): { title: string; text: string; project?: Project; farm?: number; supplies?: boolean; car?: boolean } | null {
+export const STATION_TEXT = 'Travellers speak of a ruined radar and communications station a few kilometres out. It might help us map the land: restore it and its dish will find the satellites still circling the planet, and the map in your glove computer comes alive.';
+/** The crops the first farms of a new settlement are sown with (the elder's tutorial): grain, then hens. */
+export const FIRST_CROPS = ['wheat', 'hens'] as const;
+export function tutorialStep(s: TownState | undefined): { title: string; text: string; project?: Project; farm?: number } | null {
   if (!progressive(s)) return null;
-  if (!s!.settlement!.supplies) return { title: 'Gather and store supplies', text: 'Collect 4 logs and 4 stones and leave them with the elder: until a warehouse stands, he keeps the village\'s stores. Then report to him. Ask the elder for starter tools, then hold E at trees and rocks.', supplies: true };
-  if (!(s?.farms ?? 0)) return { title: 'Build the first farm', text: 'Bring 8 logs and 6 stones to the village stores. Ask the elder to build a farm; it feeds new families even without electricity.', farm: 1 };
-  if (isStation(s) && !projectDone(s, 'comms')) { // the start village: food, the mechanic and a vehicle first, then the station (document 04)
-    if ((s?.farms ?? 0) < 2) return { title: 'Build the second farm', text: 'Extend food production and repair more homes with a second farm. With more hands in the village, Kuba the mechanic opens his yard.', farm: 2 };
-    if (!s?.settlement?.car) return { title: 'Your first vehicle', text: 'Kuba the mechanic has opened his yard outside the north gate. Search the wrecks, the ruins and the robots for scrap, machine parts, gears, engine parts and old electronics, store them in the village hall and have him build you a vehicle. An abandoned one found in the wilds will do too.', car: true };
-    return { title: 'Restore the radar and communications station', text: `${STATION_TEXT} Stage ${stationStage(s) + 1} of ${STATION_STAGES.length}: ${STATION_STAGES[stationStage(s)].title.toLowerCase()}.`, project: 'comms' };
-  }
-  if (!projectDone(s, 'comms')) return { title: 'Restore satellite communications', text: PROJECTS.comms.description, project: 'comms' };
-  if ((s?.farms ?? 0) < 2) return { title: 'Build the second farm', text: 'Extend food production and repair more homes with a second farm.', farm: 2 };
-  for (const k of ['warehouse', 'power', 'quarry', 'lumber', 'mine', 'oil', 'refinery'] as Project[]) if (projectAvailable(s, k) && !projectDone(s, k)) return { title: PROJECTS[k].name, text: PROJECTS[k].description, project: k };
+  // (0.167) farms → power → warehouse → extraction → the third farm → food processing; the satellite link runs beside
+  // it (`sideStep`), and Kuba the mechanic turns up once the village digs its own goods (`mechanicHere`)
+  if (!(s?.farms ?? 0)) return { title: 'Build the first farm', text: 'Bring 16 planks and 6 stones to the village stores (saw logs into planks with a saw) and ask me to build a farm. Its field will grow wheat: grain for bread. It feeds new families even without electricity.', farm: 1 };
+  if ((s?.farms ?? 0) < 2) return { title: 'Build the second farm', text: 'A second farm, and this one keeps hens: eggs, and a little meat. Two kinds of food keep the families healthy.', farm: 2 };
+  for (const k of ['power', 'warehouse', 'quarry', 'lumber', 'mine', 'oil', 'refinery'] as Project[]) if (projectAvailable(s, k) && !projectDone(s, k)) return { title: PROJECTS[k].name, text: k === 'warehouse' ? 'Until now I have kept the village stores in my hall, and it is full to the rafters. ' + PROJECTS[k].description : PROJECTS[k].description, project: k };
   if ((s?.farms ?? 0) < 3) return { title: 'Build the third farm', text: 'Finish the food supply for our growing settlement.', farm: 3 };
   if (!projectDone(s, 'foodworks')) return { title: PROJECTS.foodworks.name, text: PROJECTS.foodworks.description, project: 'foodworks' };
   return { title: 'A thriving settlement', text: 'Our homes, farms and industry are restored. You can now expand the village with advanced works and improvements.' };
 }
+/** The side task beside the tutorial: the village's satellite link (the start village's big station), once its power plant stands. */
+export function sideStep(s: TownState | undefined): { title: string; text: string; project: Project } | null {
+  if (!progressive(s) || !projectDone(s, 'power') || projectDone(s, 'comms')) return null;
+  return isStation(s)
+    ? { title: 'Restore the radar station', text: `${STATION_TEXT} Stage ${stationStage(s) + 1} of ${STATION_STAGES.length}: ${STATION_STAGES[stationStage(s)].title.toLowerCase()}.`, project: 'comms' }
+    : { title: 'Restore the satellite receiver', text: PROJECTS.comms.description, project: 'comms' };
+}
+/** Has Kuba the mechanic come to the village (the start village of a new world: once the power plant stands and the village digs its own goods; worlds where someone already has a vehicle keep him)? */
+export const mechanicHere = (s: TownState | undefined) => !progressive(s) || !!s?.settlement?.car || (projectDone(s, 'power') && (['quarry', 'mine', 'oil', 'lumber'] as Project[]).some((k) => projectDone(s, k)));
 /** Crates per game hour. Refineries are handled by the runtime so actual crude is consumed. The lumber camp works the
  *  great grove: logs for good (sawn into planks at a sawmill or by hand). */
 export function resourceYield(s: TownState | undefined): Partial<Record<ItemKey, number>> {

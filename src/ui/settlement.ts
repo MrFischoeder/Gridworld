@@ -1,7 +1,8 @@
 import { G } from '../game';
 import { addItem, gainXp, saveChar, calcStats } from '../character';
-import { PROJECTS, projectPlan, projectProblem, projectDone, buildProject, tutorialStep, linkRuin, progressive, depositsOf, isStation, stationStage, STATION_STAGES, STATION_TEXT, satelliteUp, RELAY, type Project } from '../gen/settlement';
-import { poisNear, CHUNK } from '../gen/regions';
+import { PROJECTS, projectPlan, projectProblem, projectDone, buildProject, tutorialStep, linkRuin, progressive, depositsOf, isStation, stationStage, STATION_STAGES, STATION_TEXT, satelliteUp, RELAY, sideStep, FIRST_CROPS, type Project } from '../gen/settlement';
+import { poisNear, CHUNK, wrapDx } from '../gen/regions';
+import { CROPS } from '../gen/farms';
 import { discover } from '../save';
 import { ORES } from '../gen/resource-sites';
 import { findPoi, villageSeed, worldDist, GRIDHOLM_ID } from '../gen/regions';
@@ -36,8 +37,14 @@ export function developmentHTML(vid: number, head: string, msg = '', atComms = f
     const d = depositsOf(s);
     h += `<div class="say">Local resources · about 100 m beyond the fence:<br>Stone quarry · west.<br>${d.grove !== false ? 'A great grove of giant trees · east: a lumber camp there gives logs for good.' : 'No great grove: cut wild trees, or bring logs from another village.'}<br>${d.ore ? ORES[d.ore].name + ' (' + ORES[d.ore].symbol + ') · south.' : 'No local ore seam: bring metals from other villages.'}<br>${d.oil ? 'Oil seeps · north.' : 'No local oil field: import crude or fuel.'}</div>`;
   }
-  if (step.supplies) h += `<div class="say">Wood: ${has('log')}/4 · stone: ${has('stone')}/4</div><button class="opt" data-devsupplies="${vid}" ${has('log') >= 4 && has('stone') >= 4 ? '' : 'disabled'}>Report the stored supplies</button>`;
-  if (step.farm) h += '<button class="opt" data-o="farms">Build the next farm</button>';
+  if (step.farm) h += `<button class="opt" data-o="farms">Build the next farm${step.farm <= FIRST_CROPS.length ? ` (${CROPS[FIRST_CROPS[step.farm - 1]].name.toLowerCase()})` : ''}</button>`;
+  // (0.167) the side task: the satellite link, once the power plant stands; handed over at its console out there
+  const side = atComms ? null : sideStep(s);
+  if (side && ruin) {
+    const dx = wrapDx(ruin.x - v.x), dz = ruin.z - v.z, km = (Math.hypot(dx, dz) / 1000).toFixed(1);
+    const dir = ['north', 'north-east', 'east', 'south-east', 'south', 'south-west', 'west', 'north-west'][Math.round(((Math.atan2(dx, -dz) * 180 / Math.PI + 360) % 360) / 45) % 8];
+    h += `<h3>Side task: ${side.title}</h3><div class="say">${side.text}<br>It lies about ${km} km ${dir} of here, at ${ruin.name}: its console is outside the west wall of the ruins. The materials are handed over there, from the village stores. You may see to it whenever you like, beside the village's own work.</div>`;
+  }
   // (D2) once the receiver works and the satellites answer, its console can raise a relay mast
   const relayOpen = atComms && !big && projectDone(s, 'comms') && !projectDone(s, 'relay');
   const keys = (atComms ? (relayOpen ? ['relay'] : ['comms']) : step.project ? [step.project] : []) as Project[];

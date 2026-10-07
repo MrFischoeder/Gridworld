@@ -1,6 +1,6 @@
 import { drawSettlementSites, drawSettlementComms, settlementHit, settlementFloor, settlementRay, settlementSolid, forgetSettlement } from './settlement';
 import { settlementVillage } from '../gen/settlement-village';
-import { initializeSettlements, progressive, RESOURCE_PLOTS, projectAvailable, development, depositsOf } from '../gen/settlement';
+import { initializeSettlements, progressive, RESOURCE_PLOTS, projectAvailable, depositsOf, mechanicHere } from '../gen/settlement';
 import { RESOURCE_YARD, type ResourceProject } from '../gen/resource-sites';
 import { peopleAt } from '../gen/people';
 import { VEHICLE_HALL } from '../gen/hall';
@@ -367,8 +367,8 @@ function loadVillageStruct(poi: Poi): Structure {
   scene.add(group);
   const npcs: Npc[] = [];
   vm.buildings.forEach((b, i) => { if (b.role !== 'house' && b.condition !== 0 && b.condition !== 1) npcs.push(makeNpc(b.role, residentName(vm, b.role, i), V(b.home!.x, b.home!.y, b.home!.z), b)); });
-  if (vm.home && (!progressive(st) || development(st) >= 2)) {
-    // the mechanic (once the settlement has its first spare hands) and his yard just outside the north gate
+  if (vm.home && (mechanicHere(st) || !!G.char.garage?.length)) { // (your own order keeps his yard open)
+    // the mechanic (in a new world once the power plant stands and the village digs its own goods: Oskar's cousin) and his yard just outside the north gate
     npcs.push(makeNpc('dealer', NPC_INFO.dealer.name!, V(YARD.dealer.x, y, YARD.dealer.z), null));
     group.add(yardDeco(y));
   }

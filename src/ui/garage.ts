@@ -9,7 +9,7 @@ import { saveChar, calcStats, addItem } from '../character';
 import { parkNew, yardBay } from '../world/vehicles';
 import { showToast, logLine } from './hud';
 import { stockHas, stockTake } from './stock';
-import { isStation } from '../gen/settlement';
+import { isStation, progressive, mechanicHere } from '../gen/settlement';
 import { GRIDHOLM_ID } from '../gen/regions';
 
 const nameOf = (j: GarageJob) => (j.car ? vehicleTitle(j.car) : ITEMS[j.out!].name + (j.n > 1 ? ' ×' + j.n : ''));
@@ -80,6 +80,11 @@ export function updateGarage(dt: number) {
   // the start village's tutorial waits for the first vehicle anyone in this world has (shared: the station comes next)
   const home = G.char.towns[GRIDHOLM_ID];
   if (isStation(home) && !home!.settlement!.car && G.char.vehicles.length) { home!.settlement!.car = true; saveChar(); }
+  // (0.167) the mechanic comes once the start village has power and digs its own goods: Oskar sends word
+  if (progressive(home) && mechanicHere(home) && !G.char.mechTold && G.char.guide === 2) {
+    G.char.mechTold = 1; saveChar();
+    if (!G.char.vehicles.length) { showToast('The blacksmith has news'); logLine(`Oskar the blacksmith sends word: his cousin Kuba the mechanic has come to Gridholm. He builds vehicles in the yard outside the north gate.`); }
+  }
   for (const j of G.char.garage ?? []) if (j.done <= G.char.time && !j.told) {
     j.told = 1;
     const g = GARAGE[j.i]; showToast(`Your ${nameOf(g)} is ready at the workshop`); logLine(`Kuba has finished your ${nameOf(g)}: collect it at his workshop in the yard.`);

@@ -1,8 +1,7 @@
 // Physical new-world deposits and the surface receiver console at a real nearby ruin.
 import * as THREE from 'three';
 import { G, W } from '../game';
-import { RESOURCE_PLOTS, PROJECTS, progressive, projectDone, projectAvailable, depositsOf, linkRuin, tutorialStep, isStation, stationStage, STATION_RANGE } from '../gen/settlement';
-import { YARD } from '../gen/vehicles';
+import { RESOURCE_PLOTS, PROJECTS, progressive, projectDone, projectAvailable, depositsOf, linkRuin, tutorialStep, sideStep, isStation, stationStage, STATION_RANGE } from '../gen/settlement';
 import { ORES } from '../gen/resource-sites';
 import { resourceRockHit, resourceRockFloor } from '../gen/resource-rocks';
 import type { RockShape } from '../gen/rockshape';
@@ -226,10 +225,15 @@ export function settlementConsoleClick(t: HTMLElement): boolean {
   const m = developmentClick(t, consoleTown, true); if (m !== null) { renderConsole(m); return true; }
   return false;
 }
+/** The side task's marker (the start village's radar station, once its power plant stands). */
+export function sideMarker(): { x: number; z: number; label: string } | null {
+  const c = G.char, v = findPoi(c.world, GRIDHOLM_ID), s = c.towns[GRIDHOLM_ID], side = sideStep(s);
+  if (!v || !side || c.guide !== 2) return null;
+  const r = linkRuin(c.world, v, s); return r ? { x: nearX(r.rect.x0 - 3, G.pos.x), z: r.z, label: side.title } : null;
+}
 export function settlementMarker(): { x: number; z: number; label: string } | null {
   const c = G.char, v = findPoi(c.world, GRIDHOLM_ID), step = tutorialStep(c.towns[GRIDHOLM_ID]);
   if (!v || !step || !(c.guide === 2)) return null;
-  if (step.car) return { x: nearX(YARD.dealer.x, G.pos.x), z: YARD.dealer.z, label: step.title }; // Kuba's yard
   const r = step.project === 'comms' ? linkRuin(c.world, v, c.towns[GRIDHOLM_ID]) : null;
   const p = step.project && step.project in RESOURCE_PLOTS ? RESOURCE_PLOTS[step.project as keyof typeof RESOURCE_PLOTS] : null;
   return { x: nearX(r ? r.rect.x0 - 3 : p ? v.x - 36 + p.x : v.x, G.pos.x), z: r ? r.z : p ? v.z - 36 + p.z : v.z, label: step.title };

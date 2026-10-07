@@ -2,5 +2,5 @@
 // Bump it with every pushed change (and keep package.json's "version" the same): the middle number for a new
 // feature (0.4.0 -> 0.5.0), the last one for a fix (0.5.0 -> 0.5.1). BUILD says what the latest change was.
 // Every change also gets an entry at the top of data/changelog.ts (the Changelog button in the menu).
-export const VERSION = '0.166.0';
-export const BUILD = '2026-10-07 · the elder asks one step at a time, fewer notices at first';
+export const VERSION = '0.167.0';
+export const BUILD = '2026-10-07 · new settlement order: farms, power, warehouse, mining; the radar station a side task, the mechanic comes later';

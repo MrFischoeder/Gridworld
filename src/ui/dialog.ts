@@ -4,7 +4,7 @@ import { settleOwn, anchorNew } from '../gen/hall';
 import { developmentHTML, developmentClick } from './settlement';
 import { statusHTML } from './villagestats';
 import { settlementConsoleClick } from '../world/settlement';
-import { progressive, development, smithAllows } from '../gen/settlement';
+import { progressive, development, smithAllows, mechanicHere } from '../gen/settlement';
 import { gateConsoleClick } from './worldgates';
 // Conversations and shops. New options (quests) plug in through OPT_TEXT and the switch below.
 import { villageKw } from '../gen/improve';
@@ -56,7 +56,7 @@ import { ELDER_CHAIN, elderTasks, begun, type ElderTask } from '../gen/elderchai
 import { trustTier } from '../gen/standing';
 import { CRAFTING_OPEN } from '../data/crafting';
 import { pendingTribute, payTribute } from '../world/villageraid';
-import { findPoi } from '../gen/regions';
+import { findPoi, GRIDHOLM_ID } from '../gen/regions';
 import { fmtTime } from '../core/time';
 import { fortifyPlan, handOver, powerKind, powerSite, POWER, POWER_DOWN, POWER_LOW, WORKS, workPlan, handOverWork, worksOf, type WorkKind, type TownState } from '../gen/town';
 import { WALL_TIERS, type VillageMap } from '../gen/village';
@@ -80,7 +80,7 @@ export function openDialog(n: Npc) {
   if (!G.playing || G.dlgOpen || G.packOpen || G.xferOpen) return;
   G.dlgOpen = true; W.talkNpc = n; G.firing = false; for (const k in G.keys) G.keys[k] = false;
   const info = NPC_INFO[n.role];
-  renderTalk(n.role === 'villager' ? (n.name + ' nods. "' + here(VILLAGER_LINES[(Math.random() * VILLAGER_LINES.length) | 0]) + '"') : here(info.hello!) + elderNeed());
+  renderTalk(n.role === 'villager' ? (n.name + ' nods. "' + here(VILLAGER_LINES[(Math.random() * VILLAGER_LINES.length) | 0]) + '"') : here(info.hello!) + elderNeed() + smithNews());
   dlgEl.style.display = 'flex'; if (document.pointerLockElement) document.exitPointerLock();
 }
 export function closeDialog() { if (!G.dlgOpen) return; G.dlgOpen = false; W.talkNpc = null; dlgEl.style.display = 'none'; if (!G.isTouch) lockPointer(); }
@@ -108,6 +108,13 @@ const NEED: Record<ElderTask, string> = {
   farms: 'Our first need is food: help us build a farm.', fortify: 'The farm feeds us. Now the wall: help us raise it, or set up defences.',
   works: 'We are safer behind the wall. Next, works to process what our land gives.', plantup: 'The works want power: the plant needs an overhaul.',
   improve: 'With the plant rebuilt, we can think of improvements for the village.' };
+/** (0.167) In a new world the blacksmith tells of his cousin Kuba, the mechanic, once he has come (until you have a vehicle or have ordered one). */
+function smithNews(): string {
+  if (W.talkNpc?.role !== 'blacksmith' || townId() !== GRIDHOLM_ID) return '';
+  const s = G.char.towns[GRIDHOLM_ID];
+  if (!progressive(s) || !mechanicHere(s) || G.char.vehicles.length || G.char.garage?.length) return '';
+  return `<br><br><span style="color:var(--gold)">"News: my cousin ${NPC_INFO.dealer.name} has come to live with us. He builds vehicles out of salvage, give him the parts and he will put wheels under you. You will find him in the yard outside the north gate."</span>`;
+}
 /** The elder names what the village needs next (the newest step of his chain not begun yet). */
 function elderNeed(): string {
   if (W.talkNpc?.role !== 'elder' || townId() === null) return '';

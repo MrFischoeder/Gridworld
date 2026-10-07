@@ -3,6 +3,15 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.167.0', date: '2026-10-07', title: 'A new order for the settlement', notes: [
+    'In a new world the elder now asks for things in this order: two farms, then the village power plant, then the warehouse, then the village\'s own quarry, lumber camp, mine and oil well.',
+    'The first farm grows wheat and the second keeps hens. You can still change what a field grows later.',
+    'Until the warehouse stands, everything goes to the elder\'s hall: he keeps the village stores.',
+    'Gathering four logs and four stones before the first farm is no longer a separate step.',
+    'The radar and communications station is now a side task. It opens once the power plant stands: the elder tells you where it lies and that it might help map the land. You can work on it whenever you like, beside the village\'s own building.',
+    'Kuba the mechanic comes later. Once the village has power and digs its own goods, Oskar the blacksmith sends word that his cousin has arrived, and Kuba opens his yard outside the north gate. Worlds where someone already has a vehicle keep him.',
+    'The elder\'s first farm now asks for the right materials (planks, not logs).',
+  ] },
   { v: '0.166.0', date: '2026-10-07', title: 'One step at a time', notes: [
     'The village elder no longer offers every building job at once. His commissions now open one after another, like a tutorial: first a farm, then the wall and its defences once a farm stands, then works once the wall has risen, then the power plant\'s overhaul once a works runs, and last the village improvements.',
     'A job you have already started always stays on the list.',

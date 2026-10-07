@@ -1,7 +1,7 @@
-import { progressive, development, tutorialStep } from '../gen/settlement';
+import { progressive, development, tutorialStep, sideStep } from '../gen/settlement';
 import { jobLines } from './jobsites';
 import { count } from '../data/crafting';
-import { settlementMarker } from './settlement';
+import { settlementMarker, sideMarker } from './settlement';
 // Quest progress: kills, quest groups in the open world, quest items in ruins and at wrecks, rewards.
 import { leadLines } from './datacarriers';
 import { earnTrust } from './standing';
@@ -229,9 +229,11 @@ export function updateTracker(dt: number) {
   const raid = raidLine(); if (raid) lines.unshift(raid);
   const step = G.char.guide === 2 ? tutorialStep(G.char.towns[GRIDHOLM_ID]) : null;
   lines.unshift(...jobLines());
+  const side = G.char.guide === 2 ? sideStep(G.char.towns[GRIDHOLM_ID]) : null;
+  if (side) lines.unshift('▸ Side task: ' + side.title);
   if (step && step.title !== 'A thriving settlement') lines.unshift('▸ Elder: ' + step.title);
   const gl = guideLine(); if (gl) lines.unshift(gl);
   trackEl.innerHTML = lines.map((l) => `<div>${l}</div>`).join('');
 }
-export const questMarkers = (): { x: number; z: number; label: string }[] => [...(settlementMarker() ? [settlementMarker()!] : []), ...(guideMarker() ? [guideMarker()!] : []), ...contractMarkers(), ...(
+export const questMarkers = (): { x: number; z: number; label: string }[] => [...(settlementMarker() ? [settlementMarker()!] : []), ...(sideMarker() ? [sideMarker()!] : []), ...(guideMarker() ? [guideMarker()!] : []), ...contractMarkers(), ...(
   G.char.quests.map((q) => ({ t: questTarget(q), q })).filter((m) => m.t).map(({ t, q }) => ({ x: nearX(t!.x, G.pos.x), z: t!.z, label: q.state === 'talk' || q.state === 'ready' || (q.kind === 'fetch' && hasItem(q.item!)) ? q.townName! : q.kind === 'hunt' ? q.pack!.alpha : q.kind === 'camp' ? q.place!.name : ITEMS[q.item!].name })))];

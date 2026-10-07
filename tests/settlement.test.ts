@@ -1,12 +1,12 @@
 import { describe, it, expect } from 'vitest';
 import { newChar, loadChar, SAVE_KEY } from '../src/save';
 import { allVillages, GRIDHOLM_ID, villageSeed } from '../src/gen/regions';
-import { initializeSettlements, PROJECTS, buildProject, projectProblem, projectDone, tutorialStep, progressive, housingCapacity, smithAllows, starterRecipe, commsRuin, RESOURCE_PLOTS } from '../src/gen/settlement';
+import { initializeSettlements, PROJECTS, buildProject, projectProblem, projectDone, tutorialStep, sideStep, mechanicHere, progressive, housingCapacity, smithAllows, starterRecipe, commsRuin, RESOURCE_PLOTS } from '../src/gen/settlement';
 import { siteBuilt, industryOf, production, industrySite } from '../src/gen/industry';
 import { powerCondition, powerSite, type TownState } from '../src/gen/town';
 import { baseKw } from '../src/gen/energy';
 import { hallSpec, VEHICLE_HALL, deposit, holdOf, holdVol, stockOf, settleOwn, anchorNew, refineStock, unloadCargo, cargoVehicleInside } from '../src/gen/hall';
-import { handOverFarm, farmTarget, farmPlot } from '../src/gen/farms';
+import { handOverFarm, farmTarget, farmPlot, cropOf } from '../src/gen/farms';
 import { peopleAt, retarget } from '../src/gen/people';
 import { generateVillage } from '../src/gen/village';
 import { settlementVillage } from '../src/gen/settlement-village';
@@ -42,22 +42,30 @@ describe('new settlements and frozen saves', () => {
   });
   it('partial shared deliveries enforce development order and never charge a completed project twice', () => {
     const s = fresh();
-    expect(tutorialStep(s)?.supplies).toBe(true);
+    // (0.167) farms first (grain, then hens), then power, then the warehouse, then the village's own extraction
+    expect(tutorialStep(s)?.farm).toBe(1);
     expect(buildProject(s, 'warehouse', () => 999)).toMatchObject({ taken: [], built: false });
-    expect(handOverFarm(s, world, true, 1000, () => 999).built).toBe(false);
-    s.settlement!.supplies = true;
+    expect(buildProject(s, 'power', () => 999)).toMatchObject({ taken: [], built: false });
     expect(handOverFarm(s, world, true, 1000, () => 999).built).toBe(true);
-    expect(tutorialStep(s)?.project).toBe('comms');
-    const first = buildProject(s, 'comms', (k) => k === 'planks' ? 3 : 0);
-    expect(first.built).toBe(false); expect(first.taken).toEqual([['planks', 3]]);
-    const rest = buildProject(s, 'comms', () => 999); expect(rest.built).toBe(true);
-    expect(rest.taken).toEqual([['planks', 9], ['stone', 6], ['scrap', 4]]);
-    expect(buildProject(s, 'comms', () => 999)).toMatchObject({ taken: [], built: false });
-    expect(projectProblem(s, 'warehouse')).not.toBe('');
-    handOverFarm(s, world, true, 1000, () => 999);
-    for (const k of ['warehouse', 'power', 'mine', 'lumber', 'oil', 'refinery'] as const) {
+    expect(cropOf(s, 0)).toBe('wheat');
+    expect(tutorialStep(s)?.farm).toBe(2);
+    expect(handOverFarm(s, world, true, 1000, () => 999).built).toBe(true);
+    expect(cropOf(s, 1)).toBe('hens');
+    expect(tutorialStep(s)?.project).toBe('power');
+    expect(projectProblem(s, 'comms')).toMatch(/power plant/); expect(sideStep(s)).toBeNull();
+    const first = buildProject(s, 'power', (k) => k === 'scrap' ? 3 : 0);
+    expect(first.built).toBe(false); expect(first.taken).toEqual([['scrap', 3]]);
+    const rest = buildProject(s, 'power', () => 999); expect(rest.built).toBe(true);
+    expect(rest.taken).toEqual([['scrap', 9], ['wire', 8], ['circuit', 2]]);
+    expect(buildProject(s, 'power', () => 999)).toMatchObject({ taken: [], built: false });
+    expect(sideStep(s)?.project).toBe('comms'); expect(projectProblem(s, 'comms')).toBe('');
+    expect(tutorialStep(s)?.project).toBe('warehouse');
+    expect(projectProblem(s, 'quarry')).toMatch(/warehouse/); expect(mechanicHere(s)).toBe(false);
+    for (const k of ['warehouse', 'quarry', 'mine', 'lumber', 'oil', 'refinery'] as const) {
       expect(projectProblem(s, k)).toBe(''); expect(buildProject(s, k, () => 999).built).toBe(true); expect(projectDone(s, k)).toBe(true);
     }
+    expect(mechanicHere(s)).toBe(true);
+    expect(buildProject(s, 'comms', () => 999).built).toBe(true); expect(sideStep(s)).toBeNull();
     const loaded = loadChar({ getItem: (key) => key === SAVE_KEY ? JSON.stringify({ ...newChar(), world, towns: { [GRIDHOLM_ID]: s } }) : null });
     expect(loaded.towns[GRIDHOLM_ID]).toEqual(s); expect(loaded.settlementRules).toBe(1);
     expect(hallSpec(s)).toEqual(VEHICLE_HALL);
@@ -69,7 +77,7 @@ describe('new settlements and frozen saves', () => {
     const ruined = empty.buildings.filter((b) => b.role === 'house');
     expect(ruined.length).toBeGreaterThan(0); expect(ruined.every((b) => b.condition === 0 && b.furniture.length === 0)).toBe(true);
     expect(ruined.flatMap((b) => b.walls).every((w) => w[4] <= 6.6)).toBe(true);
-    s.settlement!.supplies = true; handOverFarm(s, seed, true, now, () => 999);
+    handOverFarm(s, seed, true, now, () => 999);
     retarget(s, seed, true, now, farmTarget(seed, true, s, 0));
     expect(peopleAt(seed, true, s, now)).toBe(8);
     const late = peopleAt(seed, true, s, now + 100000);
@@ -134,26 +142,25 @@ describe('new settlements and frozen saves', () => {
 });
 
 describe('the start village\'s radar and communications station (0.149, document 04)', () => {
-  it('comes after the second farm and the first vehicle, in three stages, a few km out', async () => {
+  it('is a side task once the power plant stands, in three stages, a few km out', async () => {
     const S = await import('../src/gen/settlement');
     const { GRIDHOLM_ID, findPoi, worldDist } = await import('../src/gen/regions');
     const c = { settlementRules: 1, world: 12345, towns: {} as Record<string, any> };
     S.initializeSettlements(c);
     const s = c.towns[GRIDHOLM_ID];
     expect(S.isStation(s)).toBe(true);
-    s.settlement.supplies = true; s.farms = 1;
-    expect(S.tutorialStep(s)!.farm).toBe(2);
     s.farms = 2;
-    expect(S.tutorialStep(s)!.car).toBe(true);
-    expect(S.projectProblem(s, 'comms')).toMatch(/vehicle/);
-    s.settlement.car = true;
-    expect(S.tutorialStep(s)!.project).toBe('comms'); expect(S.projectProblem(s, 'comms')).toBe('');
+    expect(S.tutorialStep(s)!.project).toBe('power');
+    expect(S.projectProblem(s, 'comms')).toMatch(/power/); expect(S.sideStep(s)).toBeNull();
+    s.settlement.done = { power: true };
+    expect(S.sideStep(s)!.project).toBe('comms'); expect(S.projectProblem(s, 'comms')).toBe('');
+    expect(S.tutorialStep(s)!.project).toBe('warehouse');
     for (let i = 0; i < S.STATION_STAGES.length; i++) {
       const r = S.buildProject(s, 'comms', () => 999);
       expect(r.taken).toEqual(S.STATION_STAGES[i].needs);
       expect(r.built).toBe(i === S.STATION_STAGES.length - 1);
     }
-    expect(S.projectDone(s, 'comms')).toBe(true); expect(S.tutorialStep(s)!.project).toBe('warehouse');
+    expect(S.projectDone(s, 'comms')).toBe(true); expect(S.sideStep(s)).toBeNull(); expect(S.tutorialStep(s)!.project).toBe('warehouse');
     const v = findPoi(12345, GRIDHOLM_ID)!, r = S.linkRuin(12345, v, s);
     if (r) expect(worldDist(v.x, v.z, r.x, r.z)).toBeGreaterThanOrEqual(S.STATION_RANGE[0]);
     // the other settlements keep the small receiver
