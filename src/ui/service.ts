@@ -1,7 +1,7 @@
 // Vehicle service: one condition pool, optional upgrades and roof cannon.
 import { G } from '../game';
 import { item, ITEMS, HANDS_ONLY } from '../data/items';
-import { vehicleTitle, immobile, VEHICLES, ENGINE_UPGRADES } from '../data/vehicles';
+import { vehicleTitle, immobile, VEHICLES, ENGINE_UPGRADES, FUEL, rangeKm, cansToFill } from '../data/vehicles';
 import { saveChar, stowHeld, handsChanged, packVol } from '../character';
 import { putSlot, dropStack, roomFor, bulkOf } from '../inventory';
 import { refreshParts, type Vehicle } from '../world/vehicles';
@@ -25,7 +25,7 @@ function render(msg?: string) {
   h += slotHTML('gun', { k: p.gun ? 'cannon' : null, hint: 'Roof', title: p.gun ? undefined : 'Roof mount: Vehicle Cannon' });
   h += '</div>';
   h += `<div class="svcbar">Condition ${bar(p.hull, spec.hull)} ${Math.ceil(p.hull / spec.hull * 100)}%</div>`;
-  h += `<div class="svcbar">Fuel ${bar(p.fuel, spec.tank)} ${Math.round(p.fuel)}/${spec.tank} L <span style="opacity:.6">(no need to refuel yet)</span></div>`;
+  h += `<div class="svcbar">Fuel ${bar(p.fuel, spec.tank)} ${Math.round(p.fuel)}/${spec.tank} L <span style="opacity:.6">· ~${Math.round(rangeKm(v.st.model, p.fuel))} km${cansToFill(v.st.model, p.fuel) ? ` · ${cansToFill(v.st.model, p.fuel)} canister${cansToFill(v.st.model, p.fuel) > 1 ? 's' : ''} fill it: click a ${ITEMS.fuel.name} (or R by the vehicle)` : ' · full'}</span></div>`;
   el.rows.innerHTML = h;
   el.inv.innerHTML = G.char.inv.map((s, i) => slotHTML('p:' + i, { k: s?.k ?? null, n: s?.n, c: s?.c })).join('');
   const held = G.char.hands[0];
@@ -72,6 +72,7 @@ function apply(from: string, to: string): string {
   const v = cur!, p = v.st.parts, s = slotAt(from), [w, j] = parseId(to), max = VEHICLES[v.st.model].hull;
   if (!s) return '';
   if (w === 'em') return fitUpgrade(j, from);
+  if (s.k === 'fuel') return pour(from);
   if (w === 'hull') {
     const amount = s.k === 'engine' ? .5 : s.k === v.spec.wheelItem ? .2 : s.k === 'plating' || s.k === 'repairkit' ? .4 : 0;
     if (!amount) return 'Use Hull Plating, Engine Parts, a matching tire or a Vehicle Repair Kit.';
@@ -103,12 +104,20 @@ function takeOff(from: string, to = ''): string {
   if (w === 'hull') return 'Repair the whole vehicle using the condition slot.';
   return '';
 }
+/** Pours the Fuel Canister in your slot `from` into the tank. */
+function pour(from: string): string {
+  const v = cur!, p = v.st.parts;
+  if (!cansToFill(v.st.model, p.fuel)) return 'The tank is nearly full.';
+  takeFrom(from); p.fuel = Math.min(v.spec.tank, p.fuel + FUEL.can);
+  return `You pour a canister into the tank: ${Math.round(p.fuel)} of ${v.spec.tank} litres.`;
+}
 /** Click on one of your parts: fit it where it makes the most sense. */
 function autoFit(from: string): string {
   const v = cur!, p = v.st.parts, s = slotAt(from);
   if (!s) return '';
   if (s.k === v.spec.wheelItem || s.k === 'engine' || s.k === 'plating' || s.k === 'repairkit') return apply(from, 'hull');
   if (s.k === 'cannon') return apply(from, 'gun');
+  if (s.k === 'fuel') return pour(from);
   if (ENGINE_UPGRADES.includes(s.k)) { const f = p.mods.indexOf(null); return f < 0 ? 'Both upgrade slots are taken. Take one off first.' : apply(from, 'em:' + f); }
   return `The ${item(s.k).name} is no use on a vehicle.`;
 }

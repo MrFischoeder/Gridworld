@@ -28,7 +28,7 @@ export interface VehicleSpec {
   wheelItem: 'wheelL' | 'wheelH';
   /** Hull points: gunfire, rams and crashes wear them down; at 0 the vehicle is wrecked until patched. */
   hull: number;
-  /** Fuel tank (litres) and consumption (litres per km at full throttle). */
+  /** Fuel tank (litres) and consumption (litres per km at full throttle; cruising takes `FUEL.cruise` of it). */
   tank: number; fuelUse: number;
   /** Deepest water it can drive through (m). */
   wade: number;
@@ -40,14 +40,14 @@ export const VEHICLES: Record<VehicleModel, VehicleSpec> = {
     seats: 3, trunk: 8, length: 4.2, width: 2.1, height: 2.1, wheelR: 0.48, wheelW: 0.38,
     axles: [1.35, -1.3], track: 0.92, maxSpeed: 22, accel: 9, turn: 1.9, enclosed: false, price: 350,
     eye: [0.42, 1.84, -0.12], door: [1.6, 0], rear: [0, -2.9], front: [0, 2.9], mount: [0, 2.12, -0.3], wheelItem: 'wheelL',
-    hull: 120, tank: 60, fuelUse: 9, wade: 0.6,
+    hull: 120, tank: 60, fuelUse: 0.5, wade: 0.6,
   },
   mastodon: {
     designation: 'HTV-6', name: 'Mastodon', role: 'Heavy transport vehicle',
     seats: 3, trunk: 24, length: 9.8, width: 3.6, height: 3.4, wheelR: 0.82, wheelW: 0.6,
     axles: [3.3, -1.6, -3.4], track: 1.45, maxSpeed: 14, accel: 4.5, turn: 1.15, enclosed: true, price: 900,
     eye: [0.7, 2.75, 3.4], door: [2.4, 3.2], rear: [0, -5.6], front: [0, 5.8], mount: [0, 3.26, 3.0], wheelItem: 'wheelH',
-    hull: 320, tank: 220, fuelUse: 28, wade: 1.2,
+    hull: 320, tank: 220, fuelUse: 1.5, wade: 1.2,
   },
 };
 /**
@@ -87,10 +87,17 @@ export const vehicleTitle = (m: VehicleModel) => VEHICLES[m].designation + ' ' +
 export const wheelCount = (m: VehicleModel) => VEHICLES[m].axles.length * 2;
 
 /**
- * Fuel is tracked (every vehicle has a tank and a gauge) but not burnt yet: vehicles drive on an endless supply.
- * Set this to 1 to make them consume `fuelUse` litres per km.
+ * Fuel (0.177): vehicles burn diesel. `fuelUse` litres a km with the pedal down, `cruise` of it rolling without
+ * throttle, and `idle` litres a second while someone sits at the wheel. A Fuel Canister pours `can` litres in.
  */
-export const FUEL_BURN = 0;
+export const FUEL = { cruise: 0.55, idle: 0.002, can: 20 };
+/** Litres burnt over `metres` with throttle `thr` (−1..1) plus `secs` at the wheel. */
+export const fuelBurn = (m: VehicleModel, metres: number, thr: number, secs: number) =>
+  metres / 1000 * VEHICLES[m].fuelUse * (FUEL.cruise + (1 - FUEL.cruise) * Math.min(1, Math.abs(thr))) + secs * FUEL.idle;
+/** How far (km) the fuel in the tank lasts at a steady cruise with the pedal half down. */
+export const rangeKm = (m: VehicleModel, litres: number) => litres / (VEHICLES[m].fuelUse * (FUEL.cruise + (1 - FUEL.cruise) * 0.5));
+/** Canisters it takes to fill the tank (none while it is within half a canister of full). */
+export const cansToFill = (m: VehicleModel, litres: number) => Math.max(0, Math.ceil((VEHICLES[m].tank - litres - FUEL.can * 0.5) / FUEL.can));
 
 /** A single condition pool (`hull`, in points), fuel and optional equipment.
  * Wheels and engine remain in the save format only for older characters; they have no separate damage. */
@@ -117,12 +124,12 @@ export function repairWithKit(m: VehicleModel, p: VehicleParts): string {
   p.hull = Math.min(max, Math.max(0, before) + max * KIT.hull);
   return p.hull > before ? `condition ${Math.round(before / max * 100)} → ${Math.round(p.hull / max * 100)}%` : '';
 }
-/** Only zero condition (or no fuel) prevents driving. */
+/** Only zero condition prevents getting in; an empty tank lets you sit at the wheel, but the engine will not pull. */
 export function immobile(p: VehicleParts): string | null {
   if (p.hull <= 0) return 'Vehicle condition is 0%.';
-  if (p.fuel <= 0) return 'The tank is empty.';
   return null;
 }
+export const outOfFuel = (p: VehicleParts) => p.fuel <= 0;
 /** A usable vehicle retains full driving performance. */
 export function partPerformance(p: VehicleParts): number { return p.hull > 0 ? 1 : 0; }
 const has = (p: VehicleParts, k: ItemKey) => !!p.mods?.includes(k);

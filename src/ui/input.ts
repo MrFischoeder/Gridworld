@@ -16,7 +16,7 @@ import { closeBoard } from './board';
 import { toggleConsole } from './console';
 import { openChat } from './mp';
 import { online } from '../net/client';
-import { driving, toggleCockpit, switchSeat } from '../world/vehicles';
+import { driving, toggleCockpit, switchSeat, refuelVehicle } from '../world/vehicles';
 import { renderer, camera } from '../world/render';
 import { el } from './hud';
 import { togglePack, closePack, packSide } from './backpack';
@@ -74,7 +74,7 @@ export function initInput(onPause: () => void) {
     if (e.code === 'KeyX') holster();
     if (e.code === 'KeyF' && isBuilding()) dismantle();
     if (e.code === 'KeyL') lockKey();
-    if (e.code === 'KeyR' && !refuel()) reload();
+    if (e.code === 'KeyR' && !e.repeat && !refuel() && !refuelVehicle()) reload();
     if (e.code === 'F3') { e.preventDefault(); el.perf.style.display = el.perf.style.display === 'block' ? 'none' : 'block'; }
   });
   addEventListener('keyup', (e) => { G.keys[e.code] = false; });

@@ -18,7 +18,7 @@ import { addItem, calcStats, saveChar, listOf, handsChanged } from '../character
 import { $ } from './hud';
 import { lockPointer } from './input';
 import type { Npc } from '../world/npc';
-import { VEHICLES, vehicleTitle, health, type VehicleModel } from '../data/vehicles';
+import { VEHICLES, vehicleTitle, health, rangeKm, type VehicleModel } from '../data/vehicles';
 import { buyVehicle, vehiclesForSale, sellVehicle } from '../world/vehicles';
 import { questOptions, questTalk } from '../world/quests';
 import { PART_PRICE, PART_BUYBACK, type ItemKey } from '../data/items';
@@ -202,13 +202,13 @@ async function buyHouse(i: number) {
 const PARTS = Object.keys(PART_PRICE) as ItemKey[];
 function renderVehicleShop(msg?: string) {
   const salvage = progressive(G.char.towns[townId()!]); // (a new world: vehicles and engine parts only from salvage, built in the workshop)
-  panel().innerHTML = dlgHead() + `<div class="say">Your gold: <b>${G.char.gold}</b>${msg ? '<br>' + msg : ''}${salvage ? '<br>I have no new vehicles to sell and no engine parts: nobody makes them any more. Bring me salvage and I build you one in the workshop.' : ''}</div>` +
+  panel().innerHTML = dlgHead() + `<div class="say">Your gold: <b>${G.char.gold}</b>${msg ? '<br>' + msg : ''}${salvage ? '<br>I have no new vehicles to sell, no engine parts and no fuel: nobody makes them any more, and fuel comes from a refinery. Bring me salvage and I build you one in the workshop.' : ''}</div>` +
     (salvage ? [] : Object.keys(VEHICLES) as VehicleModel[]).map((m) => {
       const s = VEHICLES[m];
-      return `<div class="shoprow"><div><b>${vehicleTitle(m)}</b><br><span>${s.role} · ${s.seats} seats · trunk ${s.trunk} · ${Math.round(s.maxSpeed * 3.6)} km/h${s.enclosed ? ' · closed cab' : ' · open top'}</span></div>
+      return `<div class="shoprow"><div><b>${vehicleTitle(m)}</b><br><span>${s.role} · ${s.seats} seats · trunk ${s.trunk} · ${Math.round(s.maxSpeed * 3.6)} km/h · tank ${s.tank} L (~${Math.round(rangeKm(m, s.tank))} km)${s.enclosed ? ' · closed cab' : ' · open top'}</span></div>
       <button class="buy" data-v="${m}" ${G.char.gold < s.price ? 'disabled' : ''}>${s.price} g</button></div>`;
     }).join('') +
-    PARTS.filter((k) => !salvage || k !== 'engine').map((k) => `<div class="shoprow"><div>${itemName(k)}<br><span>${ITEMS[k].desc}</span></div>
+    PARTS.filter((k) => !salvage || k !== 'engine' && k !== 'fuel').map((k) => `<div class="shoprow"><div>${itemName(k)}<br><span>${ITEMS[k].desc}</span></div>
       <button class="buy" data-k="${k}" data-p="${PART_PRICE[k]}" ${G.char.gold < PART_PRICE[k]! ? 'disabled' : ''}>${PART_PRICE[k]} g</button></div>`).join('') +
     `<button class="opt" data-o="back">${OPT_TEXT.back}</button>`;
 }

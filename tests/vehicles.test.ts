@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { freshParts, upgradeParts, immobile, partPerformance, resaleValue, health, VEHICLES, wheelCount, type VehicleParts } from '../src/data/vehicles';
+import { freshParts, upgradeParts, immobile, partPerformance, resaleValue, health, VEHICLES, wheelCount, fuelBurn, rangeKm, cansToFill, outOfFuel, FUEL, type VehicleParts } from '../src/data/vehicles';
 import { PART_PRICE, PART_BUYBACK } from '../src/data/items';
 
 describe('vehicle parts', () => {
@@ -36,5 +36,18 @@ describe('vehicle parts', () => {
   });
   it('parts sell back for far less than they cost', () => {
     for (const k of Object.keys(PART_PRICE) as (keyof typeof PART_PRICE)[]) expect(PART_PRICE[k]! * PART_BUYBACK).toBeLessThanOrEqual(PART_PRICE[k]! / 4);
+  });
+  it('fuel: a full tank lasts well over a hundred km, the pedal costs more than cruising, canisters fill the tank', () => {
+    for (const m of ['scout', 'mastodon'] as const) {
+      expect(rangeKm(m, VEHICLES[m].tank)).toBeGreaterThan(120);
+      expect(fuelBurn(m, 1000, 1, 0)).toBeCloseTo(VEHICLES[m].fuelUse);
+      expect(fuelBurn(m, 1000, 0, 0)).toBeLessThan(fuelBurn(m, 1000, 1, 0));
+      expect(fuelBurn(m, 0, 0, 60)).toBeCloseTo(60 * FUEL.idle);
+    }
+    expect(VEHICLES.mastodon.fuelUse).toBeGreaterThan(VEHICLES.scout.fuelUse);
+    expect(cansToFill('scout', VEHICLES.scout.tank)).toBe(0);
+    expect(cansToFill('scout', 0)).toBe(3);
+    const p = freshParts('scout'); p.fuel = 0;
+    expect(outOfFuel(p)).toBe(true); expect(immobile(p)).toBeNull(); // you can still get in and pour a canister
   });
 });

@@ -64,7 +64,7 @@ export const ITEMS = {
   cloth: { name: 'Bolt of Cloth', ab: 'CLT', type: 'good', desc: 'trade good: woven cloth, dyed green', stack: 5 },
   tools: { name: 'Crate of Tools', ab: 'TLS', type: 'good', desc: 'trade good: hammers, saws and files from a village forge', stack: 5 },
   meds: { name: 'Medical Supplies', ab: 'MED', type: 'good', desc: 'trade good: bandages, salves and tinctures', stack: 5 },
-  fuel: { name: 'Fuel Canister', ab: 'FUL', type: 'good', desc: 'trade good: diesel for the village generators', stack: 5 },
+  fuel: { name: 'Fuel Canister', ab: 'FUL', type: 'good', desc: 'twenty litres of diesel: R pours it into your vehicle or motor boat; the village generators burn it too', stack: 5 },
   tech: { name: 'Salvaged Tech', ab: 'TEC', type: 'good', desc: 'trade good: cleaned and tested machine parts from the ruins', stack: 5 },
   eggs: { name: 'Basket of Eggs', ab: 'EGG', type: 'good', desc: 'eggs from a village\'s hens, packed in straw', stack: 5 },
   milk: { name: 'Churn of Milk', ab: 'MLK', type: 'good', desc: 'fresh milk from a village\'s cows, in a sealed churn', stack: 5 },
@@ -269,7 +269,7 @@ export function gearOf(wear: Partial<Record<WearSlot, ItemKey | null>>) {
   return { vol: (p && PACK_VOL[p]) || PACK.vol, comfy: PACK.comfy + (x?.comfy ?? 0), max: PACK.max + (x?.max ?? 0), speed: x?.speed ?? 1, stamina: x?.stamina ?? 1 };
 }
 /** What Kuba charges for vehicle parts. He buys them back for only a fifth of that. */
-export const PART_PRICE: Partial<Record<ItemKey, number>> = { wheelL: 40, wheelH: 90, engine: 70, plating: 60, turbo: 220, eguard: 150, cannon: 400, repairkit: 90 };
+export const PART_PRICE: Partial<Record<ItemKey, number>> = { wheelL: 40, wheelH: 90, engine: 70, plating: 60, turbo: 220, eguard: 150, cannon: 400, repairkit: 90, fuel: 80 };
 export const PART_BUYBACK = 0.2;
 export const HEAL: Partial<Record<ItemKey, number>> = { medkit: 50 };
 /** Weapon attachments and what Oskar the blacksmith charges for them. */

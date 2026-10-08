@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { scene, camera, V, GRID } from './render';
 import { G } from '../game';
 import { PropBatch } from './props';
-import { VEHICLES, SEATS, HULL_BOXES, vehicleTitle, freshParts, upgradeParts, immobile, partPerformance, resaleValue, FUEL_BURN, damageCondition, crashDamage, engineBoost, type VehicleSpec, type VehicleModel } from '../data/vehicles';
+import { VEHICLES, SEATS, HULL_BOXES, vehicleTitle, freshParts, upgradeParts, immobile, partPerformance, resaleValue, fuelBurn, outOfFuel, rangeKm, cansToFill, FUEL, damageCondition, crashDamage, engineBoost, type VehicleSpec, type VehicleModel } from '../data/vehicles';
 import { PART_PRICE, PART_BUYBACK } from '../data/items';
 import { rayWorld } from './player';
 import { foes, damageFoe } from './enemies';
@@ -18,7 +18,7 @@ import { RELIC_KEYS } from '../data/items';
 import { putItems } from '../inventory';
 import { villageDist } from '../gen/regions';
 import type { VehicleState } from '../save';
-import { saveChar } from '../character';
+import { saveChar, takeOne } from '../character';
 import { collides } from './player';
 import { openTransfer } from '../ui/transfer';
 import { openService } from '../ui/service';
@@ -277,9 +277,49 @@ export function refreshParts(v: Vehicle) {
     v.group.remove(v.turret); v.turret.traverse((o) => (o as THREE.Mesh).geometry?.dispose()); v.turret = null;
   }
 }
-/** Driving consumes fuel when enabled, but never condition. */
-function consumeFuel(v: Vehicle, metres: number) {
-  if (FUEL_BURN) v.st.parts.fuel = Math.max(0, v.st.parts.fuel - metres / 1000 * v.spec.fuelUse * FUEL_BURN);
+/** Driving burns fuel (data/vehicles.ts `fuelBurn`); the tank running dry stops the engine's pull. */
+let dryWarnAt = 0;
+function consumeFuel(v: Vehicle, metres: number, thr: number, secs: number) {
+  const p = v.st.parts, had = p.fuel;
+  if (had <= 0) return;
+  p.fuel = Math.max(0, had - fuelBurn(v.st.model, metres, thr, secs));
+  if (had > v.spec.tank * 0.1 && p.fuel <= v.spec.tank * 0.1) logLine(`Fuel low: ${Math.round(p.fuel)} L left, about ${Math.round(rangeKm(v.st.model, p.fuel))} km.`);
+  if (p.fuel <= 0) dryWarn();
+}
+function dryWarn() {
+  if (performance.now() < dryWarnAt) return;
+  dryWarnAt = performance.now() + 5000;
+  showToast('Out of fuel'); logLine('The tank is dry: the engine coughs and dies. R pours in a Fuel Canister from the trunk or your backpack.');
+}
+/** The vehicle you could refuel now: the one you drive, else your own one beside you (within 4 m of its body). */
+function refuelTarget(): Vehicle | null {
+  if (driving.v) return driving.v;
+  let best: Vehicle | null = null, bd = 4;
+  for (const v of vehicles) {
+    if (v.ai || !G.char.vehicles.includes(v.st) || Math.abs(G.pos.y - v.y) > 2.5) continue;
+    const [lx, lz] = toLocal(v, G.pos.x, G.pos.z), d = Math.max(Math.abs(lx) - v.spec.width / 2, Math.abs(lz) - v.spec.length / 2, 0);
+    if (d < bd) { bd = d; best = v; }
+  }
+  return best;
+}
+/** Pours one Fuel Canister into vehicle v: from its trunk first, then your backpack. Returns the message. */
+export function pourCanister(v: Vehicle): string {
+  const p = v.st.parts;
+  if (cansToFill(v.st.model, p.fuel) <= 0) return 'The tank is nearly full.';
+  const t = v.st.trunk.items, i = t.findIndex((x) => x?.k === 'fuel');
+  if (i >= 0) { const x = t[i]!; if (--x.n <= 0) t[i] = null; }
+  else if (!takeOne('fuel')) return 'You have no Fuel Canister, in the trunk or your backpack. Villages trade them.';
+  p.fuel = Math.min(v.spec.tank, p.fuel + FUEL.can);
+  saveChar();
+  return `You pour a canister into the tank: ${Math.round(p.fuel)} of ${v.spec.tank} litres, about ${Math.round(rangeKm(v.st.model, p.fuel))} km.`;
+}
+/** R in or beside your own vehicle: pour a canister in. False when there is no vehicle here (R then reloads). */
+export function refuelVehicle(): boolean {
+  const v = refuelTarget();
+  if (!v) return false;
+  if (!driving.v && cansToFill(v.st.model, v.st.parts.fuel) <= 0) return false; // on foot by a full tank R reloads
+  claim(v); logLine(pourCanister(v));
+  return true;
 }
 
 // ---------- hull ----------
@@ -444,6 +484,7 @@ function claim(v: Vehicle) {
   if (Math.random() < 0.4) putItems(t.items, 'gears', 1 + Math.floor(Math.random() * 2));
   if (Math.random() < 0.3) putItems(t.items, 'parts', 1);
   if (Math.random() < 0.25) putItems(t.items, 'engine', 1);
+  if (Math.random() < 0.35) putItems(t.items, 'fuel', 1); // (0.177) a spare canister
   G.char.vehicles.push(v.st); saveChar();
   showToast('Found: ' + vehicleTitle(v.st.model));
 }
@@ -573,7 +614,9 @@ function hullBlocked(v: Vehicle, x: number, z: number, h: number): boolean {
 export function updateDriving(dt: number) {
   const v = driving.v!, s = v.spec, k = G.keys, stick = G.stick, boost = engineBoost(v.st.parts), perf = partPerformance(v.st.parts), maxSpeed = s.maxSpeed * perf * boost.speed;
   const wheel = driving.seat === 0; // from another seat nobody drives: it rolls to a stop
-  const thr = wheel ? Math.max(-1, Math.min(1, (k.KeyW ? 1 : 0) - (k.KeyS ? 1 : 0) - stick.dy)) : 0;
+  const want = wheel ? Math.max(-1, Math.min(1, (k.KeyW ? 1 : 0) - (k.KeyS ? 1 : 0) - stick.dy)) : 0;
+  const dry = outOfFuel(v.st.parts), thr = dry ? 0 : want; // a dry tank: it only rolls and brakes
+  if (dry && want) dryWarn();
   const steer = wheel ? Math.max(-1, Math.min(1, (k.KeyA ? 1 : 0) - (k.KeyD ? 1 : 0) - stick.dx)) : 0;
   const brake = wheel ? k.Space || G.touchJump : true;
   // throttle, rolling drag, brakes, and gravity along the slope
@@ -596,7 +639,7 @@ export function updateDriving(dt: number) {
     damageVehicle(v, crashDamage(v.st.model, impact));
     if (driving.v !== v) return; // the crash wrecked it
   } else if (climb > 0.8) { v.speed = 0; } else {
-    consumeFuel(v, Math.abs(v.speed) * dt);
+    if (wheel) consumeFuel(v, Math.abs(v.speed) * dt, thr, dt);
     v.st.x = nx; v.st.z = nz; v.st.heading = nh;
     if (!driving.cockpit) G.yaw += dh * 0.9; // the chase camera swings with the vehicle
     else G.yaw += dh;
@@ -610,7 +653,7 @@ export function updateDriving(dt: number) {
   const p = v.st.parts;
   el.veh.innerHTML = `${vehicleTitle(v.st.model)} · ${SEAT_NAMES[driving.seat] ?? 'seat'} · ${Math.round(Math.abs(v.speed) * 3.6)} km/h · ${aboard(v)}/${s.seats} aboard${s.enclosed ? ' · cab closed' : ''}` +
     `<br><span${p.hull < s.hull * 0.25 ? ' class="warn"' : ''}>condition ${Math.ceil(p.hull / s.hull * 100)}%</span>` +
-    ` · fuel ${Math.round(p.fuel / s.tank * 100)}%${v.turret ? ' · cannon' : ''}`;
+    `<span${p.fuel < s.tank * 0.1 ? ' class="warn"' : ''}> · fuel ${Math.ceil(p.fuel)}/${s.tank} L · ~${Math.round(rangeKm(v.st.model, p.fuel))} km</span>${v.turret ? ' · cannon' : ''}`;
 }
 /** Keys 1 / 2 / 3 in your own vehicle: move to the driver's, the passenger's or the gunner's seat if it is free. */
 export function switchSeat(i: number) {

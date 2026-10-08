@@ -115,7 +115,7 @@ Każda wioska ma jeden rodzaj zakładu i robi 1–2 towary z jego listy; częś�
 
 - **Zofia (sklep ogólny):** Nails 3 g, Rope 6 g, Wire 5 g, Code Lock 120 g
 - **Oskar (kowal):** Hammer 20 g, Saw 35 g, Screwdriver 10 g, Pliers 12 g, Welder 200 g, Acetylene Torch 160 g, Shovel 25 g, Auto Turret 350 g, Bridge Kit 80 g, Dock Kit 90 g
-- **Kuba (pojazdy, Gridholm):** Light Tire 40 g, Heavy Tire 90 g, Engine Parts 70 g, Hull Plating 60 g, Turbocharger 220 g, Engine Guard 150 g, Vehicle Cannon 400 g, Vehicle Repair Kit 90 g
+- **Kuba (pojazdy, Gridholm):** Light Tire 40 g, Heavy Tire 90 g, Engine Parts 70 g, Hull Plating 60 g, Turbocharger 220 g, Engine Guard 150 g, Vehicle Cannon 400 g, Vehicle Repair Kit 90 g, Fuel Canister 80 g
 
 ## 2. Przetwarzanie: co z czego
 

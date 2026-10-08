@@ -3,6 +3,12 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.177.0', date: '2026-10-08', title: 'Vehicles burn fuel', notes: [
+    'Vehicles now burn diesel. The Scout uses about 0.5 litres a km with the pedal down and less while cruising, so its 60 litre tank lasts some 150 km. The Mastodon uses about 1.5 litres a km, and its 220 litre tank lasts some 190 km.',
+    'The HUD shows the litres left and the range in km, and warns when the tank is low. When the tank runs dry the engine stops pulling, but you can still roll, brake and stay in your seat.',
+    'R in or beside your own vehicle pours in a Fuel Canister of 20 litres, taking it from the trunk first and then from your backpack. In the service window you can also click a canister to pour it in.',
+    'Kuba sells canisters in the old villages, and markets trade them. In a new world fuel comes only from a refinery. Abandoned vehicles sometimes carry a spare canister in the trunk.',
+  ] },
   { v: '0.176.0', date: '2026-10-07', title: 'The village furnace', notes: [
     'Once the power plant and the warehouse stand, a new settlement can build a Coal furnace on a plot west of the village. It smelts the village stores into bars on its own: iron ore into iron, copper and lead ore into ingots, and scrap into iron when there is no ore. Each melt takes an hour and burns a crate of coal.',
     'Coke ovens beside it give half as much metal again from the same ore.',
