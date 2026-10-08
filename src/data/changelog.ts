@@ -3,6 +3,13 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.180.0', date: '2026-10-08', title: 'Electric drive', notes: [
+    'New plans to find: Electric Drive. With them the blacksmith makes an Electric Drive Kit from 1 electric motor, 4 batteries, 1 control unit and 4 cable.',
+    'Drop the kit on the new Drive slot in vehicle service and the diesel engine comes out. The Scout then carries a 30 kWh battery (about 190 km) and the Mastodon a 100 kWh battery (about 210 km). A kWh costs 3 gold, so a km costs about a third of what diesel does.',
+    'With the Power Cell Chemistry plans the blacksmith also makes a Lithium Battery Pack from 2 power cells, 1 control unit and 2 cable. Fitted to an electric vehicle, it doubles the battery.',
+    'Charging post: a new settlement project after the power plant, east of the village. Park an electric vehicle beside it and the vehicle charges at up to 40 kW, but only from power the village has to spare after its houses, farms, site and works. Every vehicle charging there leaves less for the village to grow on.',
+    'An electric vehicle takes no diesel. The HUD shows its battery and range, and with a flat battery it stops like a dry tank. Taking the kit out in service turns the vehicle back to diesel.',
+  ] },
   { v: '0.179.0', date: '2026-10-08', title: 'The fuel pump', notes: [
     'Once a settlement has its warehouse, the elder offers a new project: a fuel pump. It needs 14 scrap, 6 wire, 10 planks, 2 machine parts and an electronic component, and the builders take 8 hours. Nothing appears on its own, so the pump stands only where you build it.',
     'It stands north-east of the village by the road, beside the refinery\'s plot: a concrete island with two pump columns under a canopy, and a kiosk.',

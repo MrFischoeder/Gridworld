@@ -192,6 +192,8 @@ export const ITEMS = {
   wheelH: { name: 'Heavy Tire', ab: 'HTR', type: 'part', desc: 'repair supplies for the HTV-6 Mastodon: restore 20% vehicle condition in service (E at the front)', stack: 2 },
   engine: { name: 'Engine Parts', ab: 'ENG', type: 'part', desc: 'restores 50% vehicle condition (drop it on STATE in vehicle service)', stack: 5 },
   drivetrain: { name: 'Precision Drivetrain', ab: 'PDT', type: 'part', desc: 'engine upgrade built from precision components: bearings and gears that never bind. +20% top speed, +25% acceleration, and the vehicle takes half as much damage', stack: 1 },
+  evkit: { name: 'Electric Drive Kit', ab: 'EVK', type: 'part', desc: 'an electric motor, a controller and a lead battery: fitted in vehicle service it replaces the diesel engine, and the vehicle charges at a charging post instead of burning fuel', stack: 1 },
+  evpack: { name: 'Lithium Battery Pack', ab: 'LIP', type: 'part', desc: 'lithium power cells in an armoured case: fitted to an electric vehicle in service it doubles its battery', stack: 1 },
   turbo: { name: 'Turbocharger', ab: 'TRB', type: 'part', desc: 'engine upgrade: +15% top speed, +30% acceleration', stack: 1 },
   eguard: { name: 'Engine Guard', ab: 'EGD', type: 'part', desc: 'vehicle upgrade: armour plate that halves vehicle damage', stack: 1 },
   plating: { name: 'Hull Plating', ab: 'HUL', type: 'part', desc: 'armour plates that restore 40% vehicle condition (fit them at the front of the vehicle)', stack: 5 },
@@ -230,7 +232,7 @@ export const BULK: Record<ItemKey, [kg: number, litres: number]> = {
   eggs: [6, 10], milk: [22, 20], microchip: [6, 6], powercell: [14, 8], sensor: [5, 6], ancalloy: [16, 6], ceramics: [12, 10], composite: [8, 12], aerocomp: [30, 30], avionics: [14, 14], lifesup: [40, 30], drillrig: [120, 60], rocketeng: [90, 60], precision: [10, 6], automation: [24, 12], nfuel: [30, 8], bauxite: [20, 10], sulfur: [14, 10], lithium: [12, 10], rareearth: [22, 8], uranium: [25, 8],
   sand: [20, 12], steel: [20, 8], copperbar: [20, 8], plastic: [12, 14], glass: [14, 12], cable: [10, 10], boards: [5, 8], parts: [15, 12], alloy: [20, 8], propellant: [15, 14],
   clay: [22, 10], limestone: [22, 10], lead: [24, 8], nickel: [22, 8], lumber: [14, 16], iron: [20, 8], bricks: [24, 12], cement: [25, 16], chems: [18, 16], aluminium: [8, 8], leadbar: [26, 6], batteries: [16, 10], fibre: [10, 16], wool: [8, 18], cotton: [9, 16], meat: [20, 16], motor: [30, 14], generator: [80, 40], pipes: [24, 20], gears: [26, 10], pump: [60, 30], chromite: [26, 10], rutile: [24, 10], pgmore: [22, 8], cutstone: [40, 24], advsteel: [20, 6], titanium: [12, 6], pgm: [10, 3], silicon: [10, 6], control: [8, 8], optics: [5, 6], hpe: [18, 12], computer: [16, 20], pcm: [24, 18],
-  wheelL: [12, 22], wheelH: [28, 36], engine: [8, 6], turbo: [6, 5], drivetrain: [9, 6], scanner: [0.4, 0.3], eguard: [5, 4], plating: [7, 5], cannon: [25, 30],
+  wheelL: [12, 22], wheelH: [28, 36], engine: [8, 6], evkit: [16, 12], evpack: [10, 8], turbo: [6, 5], drivetrain: [9, 6], scanner: [0.4, 0.3], eguard: [5, 4], plating: [7, 5], cannon: [25, 30],
   reflex: [0.3, 0.3], scope: [0.8, 1], barL: [1.2, 1], barR: [1, 0.8], barS: [0.9, 0.8], magX: [0.5, 0.4], magD: [1.2, 1],
 };
 /** What you wear, one piece per slot: which slot, and the share of every hit it takes off (pieces multiply). */

@@ -56,6 +56,8 @@ export const TECHS: Tech[] = [
   { id: 'rocketry', name: 'Rocket Propulsion', area: 'transport', tier: 4, blurb: 'Combustion chambers, turbopumps and bells: the engines that lift a ship off a world.' },
   // (0.174) appended so every older technology keeps its site
   { id: 'heavymach', name: 'Heavy Machinery', area: 'metal', tier: 2, blurb: 'Gantry cranes, geared derricks and engine blocks: the machines that dig deep and haul heavy.' },
+  // (0.180) appended: electric vehicles
+  { id: 'evdrive', name: 'Electric Drive', area: 'transport', tier: 2, blurb: 'A motor at each axle and a battery under the floor: vehicles that run on the village\'s power instead of diesel.' },
 ];
 export const TECH_BY_ID: Record<string, Tech> = Object.fromEntries(TECHS.map((t) => [t.id, t]));
 /** How far from Gridholm (m) each tier's carriers lie. */

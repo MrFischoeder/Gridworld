@@ -103,6 +103,8 @@ export const cansToFill = (m: VehicleModel, litres: number) => Math.max(0, Math.
  * Wheels and engine remain in the save format only for older characters; they have no separate damage. */
 export interface VehicleParts {
   wheels: number[]; engine: number; gun: boolean; hull: number; fuel: number;
+  /** (0.180) Electric drive: the battery's charge in kWh (present = converted; `fuel` is then unused) and the lithium pack fitted. */
+  ev?: number; evPack?: boolean;
   /** Engine upgrade slots (ENGINE_MODS long): Turbocharger, Engine Guard. */
   mods: (ItemKey | null)[];
 }
@@ -129,7 +131,25 @@ export function immobile(p: VehicleParts): string | null {
   if (p.hull <= 0) return 'Vehicle condition is 0%.';
   return null;
 }
-export const outOfFuel = (p: VehicleParts) => p.fuel <= 0;
+export const outOfFuel = (p: VehicleParts) => (isEV(p) ? p.ev! <= 0 : p.fuel <= 0);
+/**
+ * (0.180, the fuel plan's P4) Electric drive: an Electric Drive Kit fitted in the service window swaps the diesel for
+ * a motor and a lead battery of `cap` kWh, used at `use` kWh a km with the pedal down (cruising and idling as for fuel);
+ * a Lithium Battery Pack multiplies the capacity by `pack`. A charging post fills it from the village's spare power at
+ * `price` gold a kWh. A fresh kit comes with `start` of its charge.
+ */
+export const EV = { scout: { cap: 30, use: 0.2 }, mastodon: { cap: 100, use: 0.6 }, pack: 2, price: 3, idle: 0.0004, start: 0.25 } as const;
+export const isEV = (p: VehicleParts) => p.ev !== undefined;
+export const evCap = (m: VehicleModel, p: VehicleParts) => EV[m].cap * (p.evPack ? EV.pack : 1);
+/** kWh used over `metres` with throttle `thr` plus `secs` at the wheel. */
+export const evBurn = (m: VehicleModel, metres: number, thr: number, secs: number) =>
+  metres / 1000 * EV[m].use * (FUEL.cruise + (1 - FUEL.cruise) * Math.min(1, Math.abs(thr))) + secs * EV.idle;
+/** How far (km) `kwh` lasts at a steady cruise with the pedal half down. */
+export const evRangeKm = (m: VehicleModel, kwh: number) => kwh / (EV[m].use * (FUEL.cruise + (1 - FUEL.cruise) * 0.5));
+/** The vehicle's energy as [now, full, range km, unit]: litres of diesel, or kWh in the battery. */
+export function energyOf(m: VehicleModel, p: VehicleParts): [number, number, number, string] {
+  return isEV(p) ? [p.ev!, evCap(m, p), evRangeKm(m, p.ev!), 'kWh'] : [p.fuel, VEHICLES[m].tank, rangeKm(m, p.fuel), 'L'];
+}
 /** A usable vehicle retains full driving performance. */
 export function partPerformance(p: VehicleParts): number { return p.hull > 0 ? 1 : 0; }
 const has = (p: VehicleParts, k: ItemKey) => !!p.mods?.includes(k);

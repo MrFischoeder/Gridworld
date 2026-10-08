@@ -7,7 +7,7 @@ import { villageDeposits, rareDepositsOf, quarryMineral, brine, ORES, YARD_KINDS
 import { startJob, jobOf } from './construction';
 export { RESOURCE_PLOTS } from './resource-sites';
 
-export type Project = 'warehouse' | 'power' | 'comms' | 'quarry' | 'mine' | 'lumber' | 'oil' | 'refinery' | 'foodworks' | 'relay' | 'sawmill' | 'sawmill2' | 'sawmill3' | 'raremine' | 'furnace' | 'furnace2' | 'furnace3' | 'fuelpump';
+export type Project = 'warehouse' | 'power' | 'comms' | 'quarry' | 'mine' | 'lumber' | 'oil' | 'refinery' | 'foodworks' | 'relay' | 'sawmill' | 'sawmill2' | 'sawmill3' | 'raremine' | 'furnace' | 'furnace2' | 'furnace3' | 'fuelpump' | 'charger';
 export interface SettlementState {
   v: 1;
   done?: Partial<Record<Project, boolean>>;
@@ -45,6 +45,7 @@ export const PROJECTS: Record<Project, { name: string; needs: [ItemKey, number][
   furnace: { name: 'Coal furnace', needs: [['stone', 24], ['planks', 16], ['scrap', 12], ['wire', 4]], description: 'Build a stone shaft furnace on the plot west of the village. Fed with coal from the village stores, it smelts the ore there into bars in the stores: iron ore into iron, copper and lead ore into copper and lead bars, and scrap into iron. It needs power for its blowers and a crew of three.' },
   furnace2: { name: 'Furnace: coke ovens', needs: [['stone', 20], ['bricks', 10], ['scrap', 10], ['planks', 8]], description: 'Build a battery of coke ovens beside the furnace. Coke burns hotter and cleaner than raw coal: every melt gives half as much metal again.' },
   fuelpump: { name: 'Fuel pump', needs: [['scrap', 14], ['wire', 6], ['planks', 10], ['parts', 2], ['circuit', 1]], description: 'Build a fuel pump by the road north-east of the village, beside the refinery\'s plot. It pumps diesel from the village stores straight into your vehicle\'s tank, or a canister for your backpack, at the village\'s price. The village\'s convoys fill up from the same stores.' },
+  charger: { name: 'Charging post', needs: [['cable', 8], ['steel', 4], ['control', 1], ['batteries', 2], ['planks', 6]], description: 'Build a charging post east of the village. An electric vehicle parked beside it charges from whatever power the village has to spare, a few gold a kWh: the more you charge, the more the village\'s plant and stations have to make.' },
   furnace3: { name: 'Furnace: electric arc', needs: [['steel', 8], ['cable', 10], ['generator', 1], ['parts', 2]], description: 'Fit an electric arc furnace: no coal at all, twice the melts, the best yield, and a heavy draw of power.' },
   foodworks: { name: 'Food processing house', needs: [['planks', 40], ['stone', 10], ['nails', 16], ['scrap', 6]], description: 'Build a mill, a bakery, a dairy and a smokehouse on the staked plot about 100 metres south-west of the village. While its crew works, grain, potatoes, milk and meat feed a third more people, so the same fields keep a bigger village.' },
 };
@@ -107,6 +108,7 @@ export function projectProblem(s: TownState | undefined, k: Project): string {
   if (k === 'refinery') return projectDone(s, 'warehouse') ? '' : 'Build the warehouse first.';
   if (k === 'raremine') return projectDone(s, 'warehouse') ? '' : 'Build the warehouse first.';
   if (k === 'furnace') return projectDone(s, 'power') && projectDone(s, 'warehouse') ? '' : 'Build the village power plant and the warehouse first.';
+  if (k === 'charger') return projectDone(s, 'power') ? '' : 'Build the village power plant first: the post charges from it.';
   if (k === 'fuelpump') return projectDone(s, 'warehouse') ? '' : 'Build the warehouse first: the pump draws on the village stores.';
   if (k === 'furnace2') return projectDone(s, 'furnace') ? '' : 'Build the coal furnace first.';
   if (k === 'furnace3') return projectDone(s, 'furnace2') ? '' : 'Build the coke ovens first.';
@@ -231,7 +233,7 @@ export function optionalProjects(s: TownState | undefined): Project[] {
   const saw = (['sawmill2', 'sawmill3'] as Project[]).find((k) => !projectDone(s, k) && !projectProblem(s, k));
   const deep = projectAvailable(s, 'raremine') && !projectDone(s, 'raremine');
   const fire = (['furnace', 'furnace2', 'furnace3'] as Project[]).find((k) => !projectDone(s, k) && !projectProblem(s, k));
-  return [...(projectDone(s, 'refinery') ? [] : ['refinery' as Project]), ...(projectDone(s, 'fuelpump') ? [] : ['fuelpump' as Project]), ...(saw ? [saw] : []), ...(fire ? [fire] : []), ...(deep ? ['raremine' as Project] : [])];
+  return [...(projectDone(s, 'refinery') ? [] : ['refinery' as Project]), ...(projectDone(s, 'fuelpump') ? [] : ['fuelpump' as Project]), ...(projectDone(s, 'charger') || !projectDone(s, 'power') ? [] : ['charger' as Project]), ...(saw ? [saw] : []), ...(fire ? [fire] : []), ...(deep ? ['raremine' as Project] : [])];
 }
 /** The side task beside the tutorial: the village's satellite link (the start village's big station), once its power plant stands. */
 export function sideStep(s: TownState | undefined): { title: string; text: string; project: Project } | null {
@@ -259,3 +261,9 @@ export { GRIDHOLM_ID };
  * pump island a vehicle may stand (m); `pumps` = the two pump columns (plot-local x).
  */
 export const FUEL_PUMP = { reach: 12, use: 2.2, pumps: [-2.2, 2.2] };
+/**
+ * (0.180, the fuel plan's P4) A settlement's charging post, built as a project after the power plant: an electric
+ * vehicle within `reach` of it charges at up to `kw` from the village's spare power (gen/energy.ts `balance().free`).
+ * `posts` = the two charging pillars (plot-local x).
+ */
+export const CHARGER = { kw: 40, reach: 10, near: 2.4, posts: [-2.5, 2.5] };

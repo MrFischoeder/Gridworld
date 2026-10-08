@@ -1,7 +1,7 @@
 // Vehicle service: one condition pool, optional upgrades and roof cannon.
 import { G } from '../game';
 import { item, ITEMS, HANDS_ONLY } from '../data/items';
-import { vehicleTitle, immobile, VEHICLES, ENGINE_UPGRADES, FUEL, rangeKm, cansToFill } from '../data/vehicles';
+import { vehicleTitle, immobile, VEHICLES, ENGINE_UPGRADES, FUEL, rangeKm, cansToFill, isEV, evCap, evRangeKm, EV } from '../data/vehicles';
 import { saveChar, stowHeld, handsChanged, packVol } from '../character';
 import { putSlot, dropStack, roomFor, bulkOf } from '../inventory';
 import { refreshParts, type Vehicle } from '../world/vehicles';
@@ -23,9 +23,12 @@ function render(msg?: string) {
   h += slotHTML('hull', { k: 'plating', text: 'STATE', c: p.hull / spec.hull * 100, fixed: true, cls: 'fixedslot', title: 'One condition pool for the whole vehicle. Drop Hull Plating (+40%), Engine Parts (+50%), a matching tire (+20%) or a Repair Kit (+40%) here.' });
   p.mods.forEach((k, i) => { h += slotHTML('em:' + i, { k, hint: 'Upgrade' }); });
   h += slotHTML('gun', { k: p.gun ? 'cannon' : null, hint: 'Roof', title: p.gun ? undefined : 'Roof mount: Vehicle Cannon' });
+  h += slotHTML('ev', { k: isEV(p) ? 'evkit' : null, hint: 'Drive', title: isEV(p) ? undefined : 'Drive: diesel. Drop an Electric Drive Kit here to make it electric.' }); // (0.180)
+  if (isEV(p)) h += slotHTML('evp', { k: p.evPack ? 'evpack' : null, hint: 'Pack', title: p.evPack ? undefined : 'Battery: lead. A Lithium Battery Pack doubles it.' });
   h += '</div>';
   h += `<div class="svcbar">Condition ${bar(p.hull, spec.hull)} ${Math.ceil(p.hull / spec.hull * 100)}%</div>`;
-  h += `<div class="svcbar">Fuel ${bar(p.fuel, spec.tank)} ${Math.round(p.fuel)}/${spec.tank} L <span style="opacity:.6">· ~${Math.round(rangeKm(v.st.model, p.fuel))} km${cansToFill(v.st.model, p.fuel) ? ` · ${cansToFill(v.st.model, p.fuel)} canister${cansToFill(v.st.model, p.fuel) > 1 ? 's' : ''} fill it: click a ${ITEMS.fuel.name} (or R by the vehicle)` : ' · full'}</span></div>`;
+  if (isEV(p)) { const cap = evCap(v.st.model, p); h += `<div class="svcbar">Battery ${bar(p.ev!, cap)} ${Math.round(p.ev!)}/${cap} kWh <span style="opacity:.6">· ~${Math.round(evRangeKm(v.st.model, p.ev!))} km · charge it at a village charging post</span></div>`; }
+  else h += `<div class="svcbar">Fuel ${bar(p.fuel, spec.tank)} ${Math.round(p.fuel)}/${spec.tank} L <span style="opacity:.6">· ~${Math.round(rangeKm(v.st.model, p.fuel))} km${cansToFill(v.st.model, p.fuel) ? ` · ${cansToFill(v.st.model, p.fuel)} canister${cansToFill(v.st.model, p.fuel) > 1 ? 's' : ''} fill it: click a ${ITEMS.fuel.name} (or R by the vehicle)` : ' · full'}</span></div>`;
   el.rows.innerHTML = h;
   el.inv.innerHTML = G.char.inv.map((s, i) => slotHTML('p:' + i, { k: s?.k ?? null, n: s?.n, c: s?.c })).join('');
   const held = G.char.hands[0];
@@ -73,6 +76,7 @@ function apply(from: string, to: string): string {
   if (!s) return '';
   if (w === 'em') return fitUpgrade(j, from);
   if (s.k === 'fuel') return pour(from);
+  if (s.k === 'evkit' || s.k === 'evpack') return electrify(from);
   if (w === 'hull') {
     const amount = s.k === 'engine' ? .5 : s.k === v.spec.wheelItem ? .2 : s.k === 'plating' || s.k === 'repairkit' ? .4 : 0;
     if (!amount) return 'Use Hull Plating, Engine Parts, a matching tire or a Vehicle Repair Kit.';
@@ -101,12 +105,37 @@ function takeOff(from: string, to = ''): string {
     if (!m) p.gun = false;
     return m || 'You lift the cannon off the roof: it is in your hands.';
   }
+  if (w === 'evp' && p.evPack) {
+    const m = toPack({ k: 'evpack', n: 1 }, to);
+    if (!m) { p.evPack = false; p.ev = Math.min(p.ev!, evCap(cur!.st.model, p)); }
+    return m || 'Lithium pack → backpack (what it held is lost).';
+  }
+  if (w === 'ev' && isEV(p)) {
+    if (p.evPack) return 'Take the lithium pack out first.';
+    const m = toPack({ k: 'evkit', n: 1 }, to);
+    if (!m) { delete p.ev; delete p.evPack; }
+    return m || 'Electric drive → backpack: the vehicle runs on diesel again.';
+  }
   if (w === 'hull') return 'Repair the whole vehicle using the condition slot.';
   return '';
+}
+/** (0.180) Fits the Electric Drive Kit (the diesel is out, a quarter of the battery charged) or the Lithium Battery Pack from your slot `from`. */
+function electrify(from: string): string {
+  const v = cur!, p = v.st.parts, s = slotAt(from)!;
+  if (s.k === 'evkit') {
+    if (isEV(p)) return 'It is electric already.';
+    takeFrom(from); p.ev = evCap(v.st.model, p) * EV.start;
+    return `Electric drive fitted: the diesel engine is out. The battery holds ${evCap(v.st.model, p)} kWh, ${Math.round(p.ev)} charged. Charge it at a village charging post.`;
+  }
+  if (!isEV(p)) return 'Fit the Electric Drive Kit first.';
+  if (p.evPack) return 'A lithium pack is fitted already.';
+  takeFrom(from); p.evPack = true;
+  return `Lithium pack fitted: the battery now holds ${evCap(v.st.model, p)} kWh.`;
 }
 /** Pours the Fuel Canister in your slot `from` into the tank. */
 function pour(from: string): string {
   const v = cur!, p = v.st.parts;
+  if (isEV(p)) return 'It runs on electricity: no diesel goes in.';
   if (!cansToFill(v.st.model, p.fuel)) return 'The tank is nearly full.';
   takeFrom(from); p.fuel = Math.min(v.spec.tank, p.fuel + FUEL.can);
   return `You pour a canister into the tank: ${Math.round(p.fuel)} of ${v.spec.tank} litres.`;
@@ -118,6 +147,7 @@ function autoFit(from: string): string {
   if (s.k === v.spec.wheelItem || s.k === 'engine' || s.k === 'plating' || s.k === 'repairkit') return apply(from, 'hull');
   if (s.k === 'cannon') return apply(from, 'gun');
   if (s.k === 'fuel') return pour(from);
+  if (s.k === 'evkit' || s.k === 'evpack') return electrify(from);
   if (ENGINE_UPGRADES.includes(s.k)) { const f = p.mods.indexOf(null); return f < 0 ? 'Both upgrade slots are taken. Take one off first.' : apply(from, 'em:' + f); }
   return `The ${item(s.k).name} is no use on a vehicle.`;
 }

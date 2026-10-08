@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { scene, camera, V, GRID } from './render';
 import { G } from '../game';
 import { PropBatch } from './props';
-import { VEHICLES, SEATS, HULL_BOXES, vehicleTitle, freshParts, upgradeParts, immobile, partPerformance, resaleValue, fuelBurn, outOfFuel, rangeKm, cansToFill, FUEL, damageCondition, crashDamage, engineBoost, type VehicleSpec, type VehicleModel } from '../data/vehicles';
+import { VEHICLES, SEATS, HULL_BOXES, vehicleTitle, freshParts, upgradeParts, immobile, partPerformance, resaleValue, fuelBurn, outOfFuel, rangeKm, cansToFill, FUEL, isEV, evBurn, evRangeKm, energyOf, damageCondition, crashDamage, engineBoost, type VehicleSpec, type VehicleModel } from '../data/vehicles';
 import { PART_PRICE, PART_BUYBACK } from '../data/items';
 import { rayWorld } from './player';
 import { foes, damageFoe } from './enemies';
@@ -280,7 +280,16 @@ export function refreshParts(v: Vehicle) {
 /** Driving burns fuel (data/vehicles.ts `fuelBurn`); the tank running dry stops the engine's pull. */
 let dryWarnAt = 0;
 function consumeFuel(v: Vehicle, metres: number, thr: number, secs: number) {
-  const p = v.st.parts, had = p.fuel;
+  const p = v.st.parts;
+  if (isEV(p)) { // (0.180) the battery
+    const had = p.ev!, [, cap] = energyOf(v.st.model, p);
+    if (had <= 0) return;
+    p.ev = Math.max(0, had - evBurn(v.st.model, metres, thr, secs));
+    if (had > cap * 0.1 && p.ev <= cap * 0.1) logLine(`Battery low: ${Math.round(p.ev)} kWh left, about ${Math.round(evRangeKm(v.st.model, p.ev))} km.`);
+    if (p.ev <= 0) dryWarn();
+    return;
+  }
+  const had = p.fuel;
   if (had <= 0) return;
   p.fuel = Math.max(0, had - fuelBurn(v.st.model, metres, thr, secs));
   if (had > v.spec.tank * 0.1 && p.fuel <= v.spec.tank * 0.1) logLine(`Fuel low: ${Math.round(p.fuel)} L left, about ${Math.round(rangeKm(v.st.model, p.fuel))} km.`);
@@ -289,6 +298,7 @@ function consumeFuel(v: Vehicle, metres: number, thr: number, secs: number) {
 function dryWarn() {
   if (performance.now() < dryWarnAt) return;
   dryWarnAt = performance.now() + 5000;
+  if (driving.v && isEV(driving.v.st.parts)) { showToast('Battery flat'); logLine('The battery is flat: the motor whines and stops. Tow or push it to a charging post.'); return; }
   showToast('Out of fuel'); logLine('The tank is dry: the engine coughs and dies. R pours in a Fuel Canister from the trunk or your backpack.');
 }
 /** The vehicle you could refuel now: the one you drive, else your own one beside you (within 4 m of its body). */
@@ -305,6 +315,7 @@ function refuelTarget(): Vehicle | null {
 /** Pours one Fuel Canister into vehicle v: from its trunk first, then your backpack. Returns the message. */
 export function pourCanister(v: Vehicle): string {
   const p = v.st.parts;
+  if (isEV(p)) return 'It runs on electricity: charge it at a charging post.';
   if (cansToFill(v.st.model, p.fuel) <= 0) return 'The tank is nearly full.';
   const t = v.st.trunk.items, i = t.findIndex((x) => x?.k === 'fuel');
   if (i >= 0) { const x = t[i]!; if (--x.n <= 0) t[i] = null; }
@@ -317,7 +328,7 @@ export function pourCanister(v: Vehicle): string {
 export function refuelVehicle(): boolean {
   const v = refuelTarget();
   if (!v) return false;
-  if (!driving.v && cansToFill(v.st.model, v.st.parts.fuel) <= 0) return false; // on foot by a full tank R reloads
+  if (!driving.v && (isEV(v.st.parts) || cansToFill(v.st.model, v.st.parts.fuel) <= 0)) return false; // on foot by a full tank (or an electric vehicle) R reloads
   claim(v); logLine(pourCanister(v));
   return true;
 }
@@ -653,7 +664,7 @@ export function updateDriving(dt: number) {
   const p = v.st.parts;
   el.veh.innerHTML = `${vehicleTitle(v.st.model)} · ${SEAT_NAMES[driving.seat] ?? 'seat'} · ${Math.round(Math.abs(v.speed) * 3.6)} km/h · ${aboard(v)}/${s.seats} aboard${s.enclosed ? ' · cab closed' : ''}` +
     `<br><span${p.hull < s.hull * 0.25 ? ' class="warn"' : ''}>condition ${Math.ceil(p.hull / s.hull * 100)}%</span>` +
-    `<span${p.fuel < s.tank * 0.1 ? ' class="warn"' : ''}> · fuel ${Math.ceil(p.fuel)}/${s.tank} L · ~${Math.round(rangeKm(v.st.model, p.fuel))} km</span>${v.turret ? ' · cannon' : ''}`;
+    (([e, full, km, u]) => `<span${e < full * 0.1 ? ' class="warn"' : ''}> · ${u === 'kWh' ? 'battery' : 'fuel'} ${Math.ceil(e)}/${full} ${u} · ~${Math.round(km)} km</span>`)(energyOf(v.st.model, p)) + (v.turret ? ' · cannon' : '');
 }
 /** Keys 1 / 2 / 3 in your own vehicle: move to the driver's, the passenger's or the gunner's seat if it is free. */
 export function switchSeat(i: number) {

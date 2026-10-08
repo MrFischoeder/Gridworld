@@ -45,6 +45,8 @@ export const ORDERS: Order[] = [
   { tech: 'forging', out: 'spear', n: 1, needs: [['planks', 2], ['scrap', 2]] },
   { tech: 'forging', out: 'sledge', n: 1, needs: [['planks', 1], ['scrap', 5]] },
   { tech: 'radio', out: 'tablet', n: 1, needs: [['circuit', 3], ['glass', 1], ['batteries', 1], ['pcore', 1]] },
+  { tech: 'evdrive', out: 'evkit', n: 1, needs: [['motor', 1], ['batteries', 4], ['control', 1], ['cable', 4]] },
+  { tech: 'powercells', out: 'evpack', n: 1, needs: [['powercell', 2], ['control', 1], ['cable', 2]] },
   { tech: 'engines', out: 'repairkit', n: 1, needs: [['scrap', 4], ['wire', 2], ['circuit', 1], ['rope', 1]] },
   // armour in three kinds (hide for anyone, woven and composite with the plans), bigger packs and exoskeletons
   { tech: '', out: 'hideCap', n: 1, needs: [['hide', 1]] },
