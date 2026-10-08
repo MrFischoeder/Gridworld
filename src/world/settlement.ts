@@ -1,7 +1,7 @@
 // Physical new-world deposits and the surface receiver console at a real nearby ruin.
 import * as THREE from 'three';
 import { G, W } from '../game';
-import { RESOURCE_PLOTS, PROJECTS, progressive, projectDone, projectAvailable, depositsOf, linkRuin, tutorialStep, sideStep, sawLevel, furnaceLevel, isStation, stationStage, STATION_RANGE } from '../gen/settlement';
+import { RESOURCE_PLOTS, FUEL_PUMP, PROJECTS, progressive, projectDone, projectAvailable, depositsOf, linkRuin, tutorialStep, sideStep, sawLevel, furnaceLevel, isStation, stationStage, STATION_RANGE } from '../gen/settlement';
 import { ORES } from '../gen/resource-sites';
 import { RARE_NAME } from '../gen/deposits';
 import { resourceRockHit, resourceRockFloor } from '../gen/resource-rocks';
@@ -173,12 +173,27 @@ export function drawSettlementSites(vm: VillageMap, T: Terrain, id: number): THR
       for (const [dx, dz] of [[-1.1, -1.1], [1.1, -1.1], [1.1, 1.1], [-1.1, 1.1]]) pb.seg(METAL, [x - 9 + dx, y, z + 6 + dz], [x - 9, y + 9, z + 6]); // the drill rig
       pb.seg(METAL, [x - 9, y + 9, z + 6], [x - 9, y, z + 6]);
       box(x - 4, y, z - 9, x + 1, y + 2.4, z - 6, METAL); // the ore bin
+    } else if (k === 'fuelpump') {
+      // (0.179) the fuel pump: a concrete island with two pump columns and their hoses under a canopy, the buried tank's
+      // filler and vent, a small kiosk
+      const CONC = 0x9ab0a0, LIT = 0xffd060;
+      box(x - 4.5, y, z - 1.4, x + 4.5, y + .2, z + 1.4, CONC);
+      for (const px of FUEL_PUMP.pumps) {
+        box(x + px - .45, y + .2, z - .35, x + px + .45, y + 1.9, z + .35, METAL);
+        pb.box(x + px - .32, y + 1.25, z - .37, x + px + .32, y + 1.7, z - .36, LIT); pb.box(x + px - .32, y + 1.25, z + .36, x + px + .32, y + 1.7, z + .37, LIT); // the dials
+        pb.line(0x404840, [x + px + .45, y + 1.4, z], [x + px + .8, y + 1.0, z], [x + px + .75, y + .5, z + .1]); // the hose
+      }
+      for (const dx of [-5, 5]) for (const dz of [-3.5, 3.5]) box(x + dx - .15, y, z + dz - .15, x + dx + .15, y + 4.6, z + dz + .15, METAL);
+      pb.box(x - 6, y + 4.6, z - 4.5, x + 6, y + 5.1, z + 4.5, METAL); // the canopy
+      pb.seg(LIT, [x - 6, y + 4.55, z - 4.5], [x + 6, y + 4.55, z - 4.5]); pb.seg(LIT, [x - 6, y + 4.55, z + 4.5], [x + 6, y + 4.55, z + 4.5]);
+      box(x + 8, y, z - 2, x + 11, y + 2.6, z + 2, WOOD); pb.gableRoof(x + 7.7, z - 2.3, x + 11.3, z + 2.3, y + 2.6, .7, WOOD); // the kiosk
+      box(x - 9, y, z - .4, x - 8.6, y + .7, z + .4, METAL); pb.seg(METAL, [x - 8.2, y, z + 1.5], [x - 8.2, y + 3.5, z + 1.5]); // the tank's filler and vent
     } else {
       for (const dx of [-3, 3]) box(x + dx - 1, y, z - 2, x + dx + 1, y + 6, z + 2, METAL);
       box(x - .7, y, z - .7, x + .7, y + 9, z + .7, METAL);
       const oil = RESOURCE_PLOTS.oil; pb.line(METAL, [x + 3, y + .5, z], [vm.ox + oil.x, y + .5, z], [vm.ox + oil.x, y + .5, vm.oz + oil.z]);
     }
-    if (built) crew.push(yardCrew(grp, T, id, k, x, z));
+    if (built && k !== 'fuelpump') crew.push(yardCrew(grp, T, id, k, x, z));
     const rares = depositsOf(s).rares ?? [];
     const label = k === 'mine' && ore ? ORES[ore].name + ' · ' + ORES[ore].symbol : k === 'raremine' && rares.length ? 'Deep mine · ' + rares.map((r) => RARE_NAME[r]).join(', ') : PROJECTS[k].name;
     const sign = textSprite(label.toUpperCase() + (built ? ' · WORKING SITE' : ' · CONSTRUCTION SITE'), k === 'mine' && ore ? '#' + ORES[ore].color.toString(16).padStart(6, '0') : '#ffd060', 5);

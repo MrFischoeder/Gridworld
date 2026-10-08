@@ -13,7 +13,7 @@ export const BUILD_HOURS: Record<JobKind, number> = { farm: 14, plough: 8, wall:
 /** Sub-kinds that take longer or shorter than their kind. */
 const MORE: Record<string, number> = {
   'wall:2': 24, 'work:siteGuard': 6, 'work:plantGuard': 6,
-  'project:warehouse': 14, 'project:power': 12, 'project:comms': 10, 'project:refinery': 16, 'project:relay': 10, 'project:foodworks': 14, 'project:sawmill': 10, 'project:sawmill2': 8, 'project:sawmill3': 8, 'project:raremine': 16, 'project:furnace': 14, 'project:furnace2': 10, 'project:furnace3': 14,
+  'project:warehouse': 14, 'project:power': 12, 'project:comms': 10, 'project:refinery': 16, 'project:relay': 10, 'project:foodworks': 14, 'project:sawmill': 10, 'project:sawmill2': 8, 'project:sawmill3': 8, 'project:raremine': 16, 'project:furnace': 14, 'project:furnace2': 10, 'project:furnace3': 14, 'project:fuelpump': 8,
 };
 export const jobKey = (k: JobKind, a?: string) => (a ? k + ':' + a : k);
 export const hoursOf = (k: JobKind, a?: string) => MORE[jobKey(k, a)] ?? BUILD_HOURS[k];

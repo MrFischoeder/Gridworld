@@ -90,6 +90,8 @@ export const RESOURCE_PLOTS = {
   raremine: { x: 152, z: 140 },
   // (0.176) west, between the quarry and the sawmill: the village furnace
   furnace: { x: -105, z: -24 },
+  // (0.179) north-east by the road, beside the refinery's plot: the fuel pump
+  fuelpump: { x: 108, z: -100 },
 } as const;
 export type ResourceProject = keyof typeof RESOURCE_PLOTS;
 export const RESOURCE_YARD = { halfX: 18, halfZ: 14 };

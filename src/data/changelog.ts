@@ -3,6 +3,11 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.179.0', date: '2026-10-08', title: 'The fuel pump', notes: [
+    'Once a settlement has its warehouse, the elder offers a new project: a fuel pump. It needs 14 scrap, 6 wire, 10 planks, 2 machine parts and an electronic component, and the builders take 8 hours. Nothing appears on its own, so the pump stands only where you build it.',
+    'It stands north-east of the village by the road, beside the refinery\'s plot: a concrete island with two pump columns under a canopy, and a kiosk.',
+    'Drive up, get out and press E at a pump column. The pump shows the fuel in the village stores and its price. Fill up pours canisters into your vehicle until the tank is full, and you can also buy a canister for your backpack. The fuel comes out of the same stores the village\'s convoys fill up from.',
+  ] },
   { v: '0.178.0', date: '2026-10-08', title: 'Convoys burn fuel', notes: [
     'Caravans now fill up before they set out. Each departure takes a Fuel Canister for every 10 km of road, at least one, from the village it leaves. A typical village sends off about two canisters a day, and one refinery fuels several villages.',
     'In the old villages this shows on the market: fuel is a little scarcer and dearer where many convoys leave.',
