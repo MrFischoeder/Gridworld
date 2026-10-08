@@ -59,7 +59,7 @@ function build(): Map<ItemKey, Map<UseGroup, string[]>> {
   for (const k of Object.keys(BRIDGE.per) as ItemKey[]) use(k, 'Building', 'Bridge');
   for (const k of [...Object.keys(PIER.per), ...Object.keys(PIER.fittings)] as ItemKey[]) use(k, 'Building', 'Pier');
   for (const k of Object.keys(BOATS) as BoatKind[]) for (const [i] of BOATS[k].needs) use(i, 'Building', BOATS[k].name);
-  use('fuel', 'Fuel for', 'Motor Boat'); use('fuel', 'Fuel for', 'Scout and Mastodon (20 L a canister)');
+  use('fuel', 'Fuel for', 'Motor Boat'); use('fuel', 'Fuel for', 'Scout and Mastodon (20 L a canister)'); use('fuel', 'Fuel for', 'village convoys (a canister per 10 km of road, from the village stores)');
   for (const h of HALL_SETS) use(h.fuel, 'Fuel for', h.fuel === 'nfuel' ? 'the Old Enrichment Plant\'s own reactor' : 'the power halls of the old plants');
   use('filter', 'Other', 'breathing in toxic fog (in a Gas Mask)');
   for (const g of Object.values(GUNS)) use(g!.ammo, 'Other', `rounds for the ${g!.name}`);

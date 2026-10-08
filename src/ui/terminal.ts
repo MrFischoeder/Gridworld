@@ -32,7 +32,8 @@ import { progressive } from '../gen/settlement';
 import { farmsOf, upgradedOf } from '../gen/farms';
 import { TECHS, techSites, CARRIER_NAME, dirWord } from '../gen/tech';
 import { Terrain } from '../gen/terrain';
-import { holdVol, hallSpec } from '../gen/hall';
+import { holdVol, hallSpec, convoyNeed } from '../gen/hall';
+import { stockAt } from './stock';
 import { installSites, installDone, INSTALL_STAGES, workOf } from '../gen/installs';
 import { oldReactor, fuelOrder, chipBuyer, chipOrder, cellBuyer, cellOrder } from '../gen/contracts';
 import { OW } from '../world/overworld';
@@ -142,6 +143,11 @@ function tradePage(poi: Poi, vm: VillageMap): string {
   const cars = roadsOf(c.world, poi.id).flatMap((e) => departures(c.world, e, now - 600, now + 1440)).filter((x) => x.from === poi.id || x.to === poi.id)
     .map((x) => ({ x, at: x.from === poi.id ? x.t0 : x.t0 + x.T })).filter(({ at }) => at >= now).sort((a, b) => a.at - b.at).slice(0, 8);
   s += cars.length ? cars.map(({ x, at }) => row(fmtTime(at), x.from === poi.id ? `leaves for ${x.toName} with ${x.n} ${name(x.good)}` : `arrives from ${x.fromName} with ${x.n} ${name(x.good)}`)).join('') : `<div class="tdim">No road here, or none due.</div>`;
+  if (progressive(c.towns[poi.id])) { // (0.178) the convoys fill up from the village's stock
+    const st = stockAt(poi.id), need = convoyNeed(c.world, poi.id, now), dry = c.towns[poi.id]?.convoy?.dry ?? [];
+    s += row('Convoy fuel', `about ${need.toFixed(1)} canisters a day · ${st ? Math.floor(st.has('fuel')) : 0} in stock`);
+    if (dry.length) s += `<div class="tdim">${dry.length} convoy${dry.length > 1 ? 's' : ''} stayed home for lack of fuel in the last 3 days, the last at ${fmtTime(dry[dry.length - 1][1])}.</div>`;
+  }
   const la = lastArrival(c.world, poi.id, now);
   if (la) s += `<div class="tdim">Last in: ${la.n} ${name(la.good)} from ${la.fromName}.</div>`;
   s += h(`${vm.name.toUpperCase()} MARKET`);

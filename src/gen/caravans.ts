@@ -16,6 +16,13 @@ export const CARAVAN = { speed: 7, period: [360, 960] as const, skip: 0.25, weig
  * each vehicle rolls (metres, centre to centre).
  */
 export const CONVOY = [{ model: 'scout', back: 0, gun: true }, { model: 'mastodon', back: 8.5, gun: false }, { model: 'scout', back: 17, gun: true }] as const;
+/**
+ * (0.178) A convoy burns diesel: `lpkm` litres a km for its two jeeps and the loaded truck at a cruise, filled up
+ * from its home village in canisters of `can` litres before it sets out (data/vehicles.ts FUEL.can).
+ */
+export const CONVOY_FUEL = { lpkm: 2, can: 20 };
+/** The canisters one departure of caravan c takes from its home village (at least one). */
+export const convoyCans = (c: Caravan) => Math.max(1, Math.ceil(c.T * CARAVAN.speed / 1000 * CONVOY_FUEL.lpkm / CONVOY_FUEL.can));
 export interface Caravan {
   id: string; road: string; k: number;
   /** Village ids and names it travels between (from → to). */
@@ -78,14 +85,14 @@ export function roadsOf(world: number, vid: number): Edge[] {
   if (!r) { r = network(world).filter((e) => e.a.id === vid || e.b.id === vid); byVillage.set(key, r); }
   return r;
 }
-/** How much caravans have shifted village vid's stock of each good by time `now` (decaying with `half` game minutes). */
+/** How much caravans have shifted village vid's stock of each good by time `now` (decaying with `half` game minutes); each departure also takes its fuel. */
 export function caravanShift(world: number, vid: number, now: number, half: number): Partial<Record<Good, number>> {
   const out: Partial<Record<Good, number>> = {}, span = half * 5;
   for (const e of roadsOf(world, vid)) {
     for (const c of departures(world, e, now - span - roadLength(world, e) / CARAVAN.speed, now)) {
-      const add = (at: number, n: number) => { if (at <= now) out[c.good] = (out[c.good] ?? 0) + n * CARAVAN.weight * Math.pow(0.5, (now - at) / half); };
-      if (c.from === vid) add(c.t0, -c.n);
-      if (c.to === vid) add(c.t0 + c.T, c.n);
+      const add = (g: Good, at: number, n: number) => { if (at <= now) out[g] = (out[g] ?? 0) + n * CARAVAN.weight * Math.pow(0.5, (now - at) / half); };
+      if (c.from === vid) { add(c.good, c.t0, -c.n); add('fuel', c.t0, -convoyCans(c)); } // (0.178) it fills up before it leaves
+      if (c.to === vid) add(c.good, c.t0 + c.T, c.n);
     }
   }
   return out;

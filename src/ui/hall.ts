@@ -11,7 +11,7 @@ import { scene } from '../world/render';
 import { ITEMS, type ItemKey } from '../data/items';
 import { calcStats, saveChar } from '../character';
 import { findPoi, villageSeed } from '../gen/regions';
-import { hallSpec, OWN, holdVol, holdRoom, deposit, withdraw, stockOf, refineStock, sawStock, smeltStock } from '../gen/hall';
+import { hallSpec, OWN, holdVol, holdRoom, deposit, withdraw, stockOf, refineStock, sawStock, smeltStock, settleConvoys } from '../gen/hall';
 import { hallRect, floorPickups, refreshHall } from '../world/hall';
 import { stores, takeFrom, putAway } from './market';
 import { $, logLine } from './hud';
@@ -37,7 +37,7 @@ function render(msg = '') {
   if (vid === null) return;
   const c = G.char, poi = findPoi(c.world, vid), st = c.towns[vid];
   if (!poi) return;
-  if (st) { refineStock(c.world, poi, villageSeed(c.world, poi), st, c.time); sawStock(c.world, poi, villageSeed(c.world, poi), st, c.time); smeltStock(c.world, poi, villageSeed(c.world, poi), st, c.time); }
+  if (st) { refineStock(c.world, poi, villageSeed(c.world, poi), st, c.time); sawStock(c.world, poi, villageSeed(c.world, poi), st, c.time); smeltStock(c.world, poi, villageSeed(c.world, poi), st, c.time); settleConvoys(c.world, poi, villageSeed(c.world, poi), st, c.time); }
   const hold = Object.entries(st?.hold ?? {}).filter(([, n]) => n) as [ItemKey, number][];
   const seed = villageSeed(c.world, poi), sk = stockOf(c.world, poi, seed, st, c.time);
   const mine = [...withYou()].sort((a, b) => ITEMS[a[0]].name.localeCompare(ITEMS[b[0]].name));

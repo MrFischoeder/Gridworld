@@ -21,6 +21,7 @@ import { isRare } from './deposits';
 import { sitePower, farmPower } from './energy';
 import { staffing, peopleAt, workersAt } from './people';
 import { GRIDHOLM_ID } from './regions';
+import { roadsOf, departures, convoyCans } from './caravans';
 
 /** The hall: plaza-local rect on the north side (outside the wall, west of the north gate; the door faces the wall), its height, and how much the hold takes (litres). */
 export const HALL = { x0: 2, x1: 14, z0: -19, z1: -11, h: 4.2, door: 1.6, vol: 6000 };
@@ -195,4 +196,37 @@ export function refineStock(world: number, v: Poi, seed: number, s: TownState, n
   const got = st.take('crude', n);
   (s.own ??= {}).fuel = { n: st.ownOf('fuel') + got, t: now };
   return got;
+}
+
+/** How long the convoys that stayed home are remembered (game minutes). */
+export const CONVOY_KEEP = 3 * 1440;
+/**
+ * (0.178) A settlement's convoys fill up before they leave: every departure from village v since the last settling
+ * takes its canisters of fuel (gen/caravans.ts `convoyCans`) from the stock, the hold first; with too little fuel the
+ * convoy stays home (`TownState.convoy.dry`). Settled in order of departure; the first settling starts the count.
+ * Returns the canisters burnt.
+ */
+export function settleConvoys(world: number, v: Poi, seed: number, s: TownState, now: number): number {
+  if (!progressive(s)) return 0;
+  const cv = (s.convoy ??= { t: now, dry: [] });
+  if (now <= cv.t) return 0;
+  const from = cv.t, due = roadsOf(world, v.id).flatMap((e) => departures(world, e, from, now)).filter((c) => c.from === v.id && c.t0 > from && c.t0 <= now).sort((a, b) => a.t0 - b.t0);
+  cv.t = now;
+  cv.dry = cv.dry.filter(([, t]) => t > now - CONVOY_KEEP);
+  if (!due.length) return 0;
+  const st = stockOf(world, v, seed, s, now);
+  let used = 0;
+  for (const c of due) {
+    const n = convoyCans(c);
+    if (st.has('fuel') >= n) { st.take('fuel', n); used += n; } else cv.dry.push([c.id, c.t0]);
+  }
+  return used;
+}
+/** Did caravan `id` stay home from settlement s for lack of fuel? */
+export const stayedHome = (s: TownState | undefined, id: string) => !!s?.convoy?.dry.some(([i]) => i === id);
+/** The fuel a settlement's convoys burn in a day on average (canisters), from its timetable. */
+export function convoyNeed(world: number, vid: number, now: number): number {
+  let n = 0;
+  for (const e of roadsOf(world, vid)) for (const c of departures(world, e, now - 3 * 1440, now)) if (c.from === vid) n += convoyCans(c);
+  return n / 3;
 }

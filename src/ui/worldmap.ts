@@ -1,5 +1,6 @@
 import { cityEntrances } from '../gen/citydungeons';
 import { megalithsNear } from '../gen/megaliths';
+import { dryCaravan } from '../world/convoyfuel';
 import { gatesNear, gateName } from '../gen/worldgates';
 // Surface maps: the minimap (150 m around the player) and the full world map (M), both built from
 // explored chunks only (fog of war). Chunk tiles are rendered once from the deterministic terrain.
@@ -245,7 +246,7 @@ function drawArea(ctx: CanvasRenderingContext2D, w: number, h: number, ppm: numb
       if (Math.min(Math.hypot(wrapDx(e.a.x - px), e.a.z - pz), Math.hypot(wrapDx(e.b.x - px), e.b.z - pz)) > r + 8000) continue;
       if (!pathKnown(world, e) && budget-- <= 0) continue;
       for (const c of onRoad(world, e, G.char.time)) {
-        if (plundered(c.id)) continue;
+        if (plundered(c.id) || dryCaravan(c)) continue;
         const p = caravanPos(world, e, c, G.char.time);
         if (!p) continue;
         const x = X(nearX(p.x, px)), y = Z(p.z);

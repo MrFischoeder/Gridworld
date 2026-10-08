@@ -3,6 +3,12 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.178.0', date: '2026-10-08', title: 'Convoys burn fuel', notes: [
+    'Caravans now fill up before they set out. Each departure takes a Fuel Canister for every 10 km of road, at least one, from the village it leaves. A typical village sends off about two canisters a day, and one refinery fuels several villages.',
+    'In the old villages this shows on the market: fuel is a little scarcer and dearer where many convoys leave.',
+    'In a new world a convoy takes its fuel from the village stores, its warehouse first. With too little fuel it stays home, and it does not appear on the road or on the map. When you are there, the log tells you it stayed home.',
+    'A settlement keeps its convoys running with a refinery, or with fuel you bring to its warehouse. The village computer\'s TRADE tab shows how much fuel the convoys burn in a day, how much is in stock, and how many stayed home lately.',
+  ] },
   { v: '0.177.0', date: '2026-10-08', title: 'Vehicles burn fuel', notes: [
     'Vehicles now burn diesel. The Scout uses about 0.5 litres a km with the pedal down and less while cruising, so its 60 litre tank lasts some 150 km. The Mastodon uses about 1.5 litres a km, and its 220 litre tank lasts some 190 km.',
     'The HUD shows the litres left and the range in km, and warns when the tank is low. When the tank runs dry the engine stops pulling, but you can still roll, brake and stay in your seat.',

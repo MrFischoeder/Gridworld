@@ -55,6 +55,8 @@ export interface TownState {
   pup?: number; pupgiven?: Partial<Record<ItemKey, number>>;
   /** Village improvements built (gen/improve.ts), and materials towards each. */
   imp?: Partial<Record<import('./improve').ImproveKind, boolean>>; igiven?: Partial<Record<import('./improve').ImproveKind, Partial<Record<ItemKey, number>>>>;
+  /** (0.178) Convoys of a settlement (gen/hall.ts `settleConvoys`): departures fuelled up to game time t, and those that stayed home for lack of fuel ([caravan id, departure time]). */
+  convoy?: { t: number; dry: [string, number][] };
   /** The village hall's hold (gen/hall.ts): what you have stored here for the village's builds. */
   hold?: Partial<Record<ItemKey, number>>;
   /** The food shop's cooked portions (gen/foodshop.ts), by dish. */

@@ -1,6 +1,6 @@
 # GridWorld: opis gry, cel, plan i historia zmian
 
-Stan na wersję **0.177.0**. Ten dokument opisuje, czym jest GridWorld, jaki jest cel gry, co już w niej jest, czego jeszcze nie ma, dokąd zmierza i jak powstawała, wersja po wersji. Nazwy z gry (przedmioty, miejsca, postacie) są po angielsku, tak jak na ekranie.
+Stan na wersję **0.178.0**. Ten dokument opisuje, czym jest GridWorld, jaki jest cel gry, co już w niej jest, czego jeszcze nie ma, dokąd zmierza i jak powstawała, wersja po wersji. Nazwy z gry (przedmioty, miejsca, postacie) są po angielsku, tak jak na ekranie.
 
 ---
 
@@ -349,6 +349,7 @@ To serce gry. Gracz nie ma własnej bazy (budowanie w dziczy jest zamknięte). Z
   - Można od nich kupować.
   - Bywają napadane. Uratowana karawana daje nagrodę i zniżkę.
   - Można najmować się jako eskorta.
+  - Palą paliwo: kanister na 10 km drogi z wioski, z której ruszają; osada bez paliwa zatrzymuje konwój w domu.
 - **Rzadkie złoża** daleko od Gridholm: boksyt, siarka, lit, ziemie rzadkie, uran.
 
 ## 10. Wiedza i wielkie instalacje
@@ -413,7 +414,7 @@ Wyniki symulacji posłużyły do decyzji, że gra ma się opierać na prostych, 
 - pełnego trybu wieloosobowego: wszystko w świecie jest już wspólne (wioski, rynki, budowle, działki, tablice ogłoszeń, skrzynie, łupy na ziemi, wszyscy wrogowie z rabusiami, dronami, bossami i wieżyczkami, wspólna jazda pojazdami, czat), ale postać zapisuje się w przeglądarce, nie na serwerze, a spacery mieszkańców wiosek nie są zsynchronizowane; nie ma statków innych graczy;
 - kombinezonu przeciwchemicznego, mgły w lochach i stworzeń mgły;
 - nurkowania;
-- spalania paliwa przez konwoje, dystrybutorów w wioskach i napędu elektrycznego (pojazdy gracza palą już paliwo);
+- dystrybutorów paliwa w wioskach i napędu elektrycznego (pojazdy gracza i konwoje palą już paliwo);
 - budowania własnych baz w dziczy (kod jest, funkcja zamknięta);
 - ręcznego rzemiosła (zamrożone, rzeczy robi się w wioskach);
 - sterowania dotykowego (wstrzymane).
@@ -678,5 +679,6 @@ Pełne notatki (po angielsku) są w grze pod przyciskiem **Changelog** w menu g�
 - **0.173.0 Drabina wartości metali.** Pierwszy krok nowej hierarchii metali: ruda < złom < sztabki < stal < półprodukty < zespoły. Smelter przetapia złom (12 sztuk + węgiel → 2 skrzynie żelaza), więc złom jest wart mniej niż sztabka, ale daje żelazo wioskom bez kopalni. Drut ciągnie się ze sztabek żelaza: ciągarnia 12 sztuk ze skrzyni, kowal 8. Dalej: zakłady ciężkie z wiertnicą, kopalnia złóż rzadkich i piece.
 - **0.174.0 Zakłady ciężkie.** Drugi krok hierarchii metali: Heavy Engineering Works (zakład II stopnia, plany Heavy Machinery z nośnika danych 3–8 km od Gridholm, 100 kW) robi wiertnice (4 stal, 2 przekładnie, silnik, 2 rury) dla przyszłej kopalni złóż rzadkich oraz części silnikowe (stal + przekładnie → 6 sztuk), więc warsztat Kuby nie zależy już tylko od wraków. Na placu: wysoka ceglana hala montażowa, suwnica bramowa nad placem i próbna wieża wiertnicza.
 - **0.175.0 Głęboka kopalnia.** Trzeci krok drzewka: nowa osada stojąca nad złożem rzadkim może po magazynie zbudować kopalnię głębinową (wiertnica, stal, kabel, cement, deski; 16 h budowy, plac ok. 105 m na południowy wschód). Wydobywa 6 skrzyń dziennie prosto do zapasów (po równo z każdego złoża wioski), pobiera 40 kW i zatrudnia 4 robotników. Starszy wymienia złoże w opisie wioski i proponuje kopalnię obok zadań głównych.
+- **0.178.0 Konwoje palą paliwo.** Drugi etap planu paliwowego: każdy wyjazd karawany zabiera z wioski, z której rusza, kanister paliwa na każde 10 km drogi (co najmniej jeden); typowa wioska zużywa ok. 2 kanistry dziennie, rafineria daje 12. W starych wioskach widać to na rynku (paliwo trochę droższe tam, skąd jeździ dużo konwojów). W nowym świecie konwój tankuje z magazynu osady, a gdy paliwa brak, zostaje w domu (nie ma go na drodze ani na mapie, log o tym mówi). Terminal (TRADE) pokazuje zużycie, zapas i konwoje, które nie wyjechały.
 - **0.177.0 Pojazdy palą paliwo.** Pierwszy etap planu paliwowego: Scout pali ok. 0,5 l/km (bak 60 l, ok. 150 km), Mastodon ok. 1,5 l/km (bak 220 l, ok. 190 km), mniej przy jeździe bez gazu. HUD pokazuje litry i zasięg; pusty bak gasi silnik, ale można się toczyć i zostać w aucie. R w aucie lub obok własnego wlewa kanister 20 l (najpierw z bagażnika, potem z plecaka), w oknie serwisu też. Kuba sprzedaje kanistry w starych wioskach; w nowym świecie paliwo daje tylko rafineria. Dalej: konwoje palące paliwo wioski, dystrybutor, napęd elektryczny.
 - **0.176.0 Piec wioski.** Czwarty etap drzewka rozwoju: po elektrowni i magazynie nowa osada buduje piec węglowy (plac ok. 105 m na zachód), który sam przetapia zapasy na sztabki: ruda żelaza → żelazo, ruda miedzi i ołowiu → sztabki, a bez rudy złom → żelazo; partia co godzinę za skrzynię węgla. Koksownia daje o połowę więcej metalu z tego samego wsadu, piec łukowy obywa się bez węgla i pracuje dwa razy szybciej, ale bierze 70 kW. Trzech robotników.

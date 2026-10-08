@@ -3,6 +3,7 @@
 // where they are follows from the game time alone, so they are where they should be whenever you look. Solid to
 // walk into; E at a wagon talks to the caravan master (ui/caravan.ts).
 import * as THREE from 'three';
+import { dryCaravan } from './convoyfuel';
 import { G } from '../game';
 import { scene } from './render';
 import { OW } from './overworld';
@@ -75,7 +76,7 @@ export function updateCaravans(dt: number) {
     for (let i = -2; i <= 2; i++) for (let j = -2; j <= 2; j++) for (const road of regionRoads(world, rx + i, rz + j)) {
       const e = edgeByKey.get(road.id);
       if (!e) continue;
-      for (const c of onRoad(world, e, now)) if (!plundered(c.id)) for (let w = 0; w < c.wagons; w++) {
+      for (const c of onRoad(world, e, now)) if (!plundered(c.id) && !dryCaravan(c)) for (let w = 0; w < c.wagons; w++) {
         const key = c.id + ':' + w;
         if (seen.has(key)) continue;
         seen.add(key);

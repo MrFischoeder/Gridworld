@@ -64,7 +64,7 @@ export const ITEMS = {
   cloth: { name: 'Bolt of Cloth', ab: 'CLT', type: 'good', desc: 'trade good: woven cloth, dyed green', stack: 5 },
   tools: { name: 'Crate of Tools', ab: 'TLS', type: 'good', desc: 'trade good: hammers, saws and files from a village forge', stack: 5 },
   meds: { name: 'Medical Supplies', ab: 'MED', type: 'good', desc: 'trade good: bandages, salves and tinctures', stack: 5 },
-  fuel: { name: 'Fuel Canister', ab: 'FUL', type: 'good', desc: 'twenty litres of diesel: R pours it into your vehicle or motor boat; the village generators burn it too', stack: 5 },
+  fuel: { name: 'Fuel Canister', ab: 'FUL', type: 'good', desc: 'twenty litres of diesel: R pours it into your vehicle or motor boat; the village generators and convoys burn it too', stack: 5 },
   tech: { name: 'Salvaged Tech', ab: 'TEC', type: 'good', desc: 'trade good: cleaned and tested machine parts from the ruins', stack: 5 },
   eggs: { name: 'Basket of Eggs', ab: 'EGG', type: 'good', desc: 'eggs from a village\'s hens, packed in straw', stack: 5 },
   milk: { name: 'Churn of Milk', ab: 'MLK', type: 'good', desc: 'fresh milk from a village\'s cows, in a sealed churn', stack: 5 },

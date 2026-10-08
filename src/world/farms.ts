@@ -1,7 +1,8 @@
-import { refineStock } from '../gen/hall';
+import { refineStock, settleConvoys } from '../gen/hall';
 import { progressive } from '../gen/settlement';
 import { peopleAt } from '../gen/people';
 import { reloadStruct } from './overworld';
+import { logLine } from '../ui/hud';
 // The farms a village has built (gen/farms.ts): fenced fields outside the corners of its wall, crop rows over furrows,
 // or grass with a coop and hens or a byre and cows (gen/farms.ts CROPS), a scarecrow. Drawn with the village (world/overworld.ts loadVillageStruct).
 import * as THREE from 'three';
@@ -126,6 +127,10 @@ export function updateFarms(dt: number) {
     const st = G.char.towns[s.poi.id];
     if (!progressive(st) || !st) continue;
     refineStock(G.char.world, s.poi, s.village.seed, st, G.char.time);
+    const lastDry = st.convoy?.dry.at(-1)?.[0];
+    settleConvoys(G.char.world, s.poi, s.village.seed, st, G.char.time); // (0.178) after the refinery's batches
+    const dry = st.convoy?.dry.at(-1)?.[0];
+    if (dry && dry !== lastDry) logLine(`A convoy from ${s.poi.name} stayed home: there is not enough fuel in the village stores.`);
     const homes = s.village.buildings.filter((b) => b.role === 'house' && !b.mine), occupied = Math.max(0, Math.floor((peopleAt(s.village.seed, s.poi.id === GRIDHOLM_ID, st, G.char.time) - 8) / 6));
     if (homes.some((b, i) => i < occupied && b.condition !== undefined && b.condition < 2)) reloadStruct(s.poi.id);
   }
