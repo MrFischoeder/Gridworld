@@ -10,6 +10,7 @@ import { mountainMask } from './mountains';
 import { seaMask } from './seas';
 import { nearRiver } from './rivers';
 import { inCity } from './cities';
+import { townsWorld } from './worldrules';
 
 /** A road between places, or a mountain trail (gen/trails.ts: `gate` 'trail', its height profile `h` per point, the summit's `name`). */
 export interface Road { id: string; from: number; to: number; gate: string; pts: [number, number][]; half: number; h?: number[]; name?: string }
@@ -33,6 +34,7 @@ export function network(world: number): Edge[] {
   if (out) return out;
   out = [];
   const vs = allVillages(world), seen = new Set<string>();
+  if (townsWorld(world)) { edgeCache.set(world, out = townNetwork(world, vs)); return out; }
   for (const v of vs) {
     const k = v.id === GRIDHOLM_ID ? 3 : 1 + (hash(world, v.id, 0x40ad) % 3); // the start village is a crossroads
     const near = vs.filter((w) => w !== v).map((w) => ({ w, d: Math.hypot(wrapDx(w.x - v.x), w.z - v.z) })).filter((o) => o.d < linkAt(v)).sort((p, q) => p.d - q.d).slice(0, k);
@@ -42,6 +44,33 @@ export function network(world: number): Edge[] {
     }
   }
   edgeCache.set(world, out);
+  return out;
+}
+/** (0.182) Towns world roads: a tree joining every town by the shortest links (so none is cut off), plus each town's
+ *  nearest neighbour or two (by hash) within `TOWN_ROAD.link` for a few loops. Gridholm is joined to its 3 nearest. */
+export const TOWN_ROAD = { link: 24000, wet: 0.06 };
+function townNetwork(world: number, vs: Poi[]): Edge[] {
+  const out: Edge[] = [], seen = new Set<string>();
+  // the straight line's share over the sea (a road cannot cross it): such links cost more, so the tree goes round by
+  // land wherever it can, and a link mostly over the sea is left out (towns over the water are reached by boat)
+  const sea = new Map<string, number>(), wet = (a: Poi, b: Poi) => {
+    const k = Math.min(a.id, b.id) + ':' + Math.max(a.id, b.id); let n = sea.get(k);
+    if (n === undefined) { n = 0; const bx = a.x + wrapDx(b.x - a.x); for (let i = 1; i < 40; i++) if (seaMask(world, a.x + (bx - a.x) * i / 40, a.z + (b.z - a.z) * i / 40) > 0.08) n++; sea.set(k, n /= 39); }
+    return n;
+  };
+  const d = (a: Poi, b: Poi) => Math.hypot(wrapDx(b.x - a.x), b.z - a.z) * (1 + 12 * wet(a, b));
+  const add = (v: Poi, w: Poi) => { if (wet(v, w) > TOWN_ROAD.wet) return; const [a, b] = v.id < w.id ? [v, w] : [w, v], key = a.id + ':' + b.id; if (!seen.has(key)) { seen.add(key); out.push({ a, b, key }); } };
+  // Prim's tree from Gridholm
+  const inTree = [vs[0]], left = vs.slice(1);
+  while (left.length) {
+    let best = Infinity, bi = 0, bv = vs[0];
+    for (let i = 0; i < left.length; i++) for (const t of inTree) { const e = d(t, left[i]); if (e < best) { best = e; bi = i; bv = t; } }
+    add(bv, left[bi]); inTree.push(left[bi]); left.splice(bi, 1);
+  }
+  for (const v of vs) {
+    const k = v.id === GRIDHOLM_ID ? 3 : 1 + (hash(world, v.id, 0x40ad) % 2);
+    for (const { w } of vs.filter((w) => w !== v).map((w) => ({ w, e: d(v, w) })).filter((o) => o.e < TOWN_ROAD.link).sort((p, q) => p.e - q.e).slice(0, k)) add(v, w);
+  }
   return out;
 }
 /** The gate of village v facing (tx, tz) best. */

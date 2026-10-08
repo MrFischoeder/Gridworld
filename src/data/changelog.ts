@@ -3,6 +3,15 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.182.0', date: '2026-10-08', title: 'A new world: towns and deposits in the wilds', notes: [
+    'This is the first stage of the outposts plan. It changes only new worlds. A game or a server you already play keeps its villages and rules.',
+    'A new world has about 20 towns instead of a hundred villages. They are spread over the whole planet, about 15 km apart. Two of them lie 3.5 to 7 km from Gridholm for your first trips. Roads join the towns by land and never cross the sea.',
+    'The towns stand built from the start, each behind a palisade or a stone wall, with a market and shops. They post no delivery contracts. Gridholm is still the village you rebuild.',
+    'What the land gives now lies out in the wilds: stone outcrops, great groves of giant trees, coal seams, iron, copper and lead ore, oil seeps and, further out, the rare deposits. Each has a richness, and a stone outcrop also gives limestone, clay or sand. The nearest basics (stone, a grove, coal, iron and copper) always lie within about 2.5 km of Gridholm.',
+    'A deposit goes on your map when you come near it, when an orbital scan passes over it, or when someone in a town tells you of one (ask for news). Deposits you have only heard of show dashed until you see them. Outposts at the deposits come in the next stage.',
+    'Every spot on the planet has a fertility, from barren to very rich. Flat, low land by the rivers is the richest. The mountains, the coast and the cold lands towards the ice are poor. Press F on the satellite map to see the fertility layer, and the map also tells you the soil where you stand.',
+    'The world seed of a new world is a negative number. A seed you type in the menu keeps its own rules: 0 or more gives an old world, below 0 a new one.',
+  ] },
   { v: '0.181.0', date: '2026-10-08', title: 'Natural ground round the villages', notes: [
     'The land round a village now stays as it came. Nothing is levelled in advance for buildings that do not exist yet, and there are no more sharp edges where you could see under the ground.',
     'No more stakes or CONSTRUCTION SITE signs on plots where nothing is being built. A plot is marked only once its building has begun. The deposits themselves (quarry rocks, an oil seep, an ore seam, a great grove) are still there to find.',

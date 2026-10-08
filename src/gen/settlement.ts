@@ -1,4 +1,5 @@
 // New-world settlement rules. Old saves have no `settlement` flag and keep their established economy.
+import { townsWorld } from './worldrules';
 import type { TownState } from './town';
 import type { ItemKey } from '../data/items';
 import { hash } from '../core/rng';
@@ -157,9 +158,16 @@ export function smithAllows(s: TownState | undefined, k: ItemKey): boolean {
   return projectDone(s, 'power');
 }
 export const starterRecipe = (s: TownState | undefined, k: ItemKey) => progressive(s) && (s?.farms ?? 0) >= 1 && ['planks', 'nails'].includes(k);
+/** (0.182) The wall a new world's town starts with (gen/town.ts WALL_TIERS): a palisade or a stone wall. */
+export const TOWN_WALL = [1, 1, 2];
 export function initializeSettlements(c: { settlementRules: number; world: number; towns: Record<string, TownState> }) {
   if (c.settlementRules !== 1) return;
   for (const v of allVillages(c.world)) {
+    if (townsWorld(c.world) && v.id !== GRIDHOLM_ID) { // (0.182) a new world's towns stand built: a wall from the start
+      const t = (c.towns[v.id] ??= {});
+      t.wall ??= TOWN_WALL[hash(c.world, v.id, 0x70a1) % TOWN_WALL.length];
+      continue;
+    }
     const s = ((c.towns[v.id] ??= {}).settlement ??= { v: 1 });
     if (v.id === GRIDHOLM_ID && !s.done?.comms && !s.station) { s.station = true; delete s.given?.comms; } // (0.149) the big station
     if (s.deposits?.v !== 3) { // (0.168 one own resource, 0.169 the new mix, 0.171 two) a yard already built or begun keeps its ground

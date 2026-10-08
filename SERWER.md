@@ -55,7 +55,7 @@ Na końcu skrypt wypisze adres i przykład wpisu do proxy. Dwie drogi do gry:
 1. **Bezpośrednio:** `http://IP-SERWERA:8517/`, po otwarciu portu TCP 8517 w zasadach zapory IONOS (Sieć → Zasady zapory).
 2. **Przez Twój portal / proxy**, np. pod `https://twoja-domena/gridworld/`: dodaj w nim przekierowanie na `http://127.0.0.1:8517/` z włączonymi WebSocketami (gra rozmawia przez `/gridworld/mp`). Dla nginx skrypt wypisuje gotowy blok `location`. Gra działa zarówno gdy proxy obcina przedrostek `/gridworld`, jak i gdy go zostawia. Jeśli gra ma być dostępna tylko przez portal, dodaj `HOST=127.0.0.1` przed `bash`.
 
-Ustawienia (opcjonalne, przed `bash`): `SERVER_NAME` (nazwa w menu), `WORLD_SEED` (ziarno świata, czytane przy pierwszym starcie; potem obowiązuje zapisane, chyba że `FORCE_SEED=1`), `PORT`, `HOST`, `DIR`.
+Ustawienia (opcjonalne, przed `bash`): `SERVER_NAME` (nazwa w menu), `WORLD_SEED` (ziarno świata, czytane przy pierwszym starcie; liczba ujemna = nowy świat z około 20 miastami i złożami w dziczy, od wersji 0.182 losowane ziarna są ujemne; potem obowiązuje zapisane, chyba że `FORCE_SEED=1`), `PORT`, `HOST`, `DIR`.
 
 Usunięcie gry (nic innego nie znika): `systemctl disable --now gridworld; rm -rf /opt/gridworld /opt/gridworld-node /etc/systemd/system/gridworld.service; userdel gridworld`.
 

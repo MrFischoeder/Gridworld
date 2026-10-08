@@ -67,6 +67,8 @@ import { showToast, logLine } from './hud';
 import { openMarket, renderMarket, marketClick } from './market';
 import { caravanClick } from './caravan';
 import { openContracts, renderContracts, contractsClick } from './contracts';
+import { townsWorld } from '../gen/worldrules';
+import { askLode } from '../world/lodes';
 import { itemName } from './icons';
 /** Kuba pays a fifth of the price for a part, less for a worn one. */
 const partBuyback = (s: Slot) => Math.floor(PART_PRICE[s.k]! * PART_BUYBACK * (s.c ?? 100) / 100);
@@ -129,6 +131,7 @@ function shownNow(o: OptId): boolean {
   if ((ELDER_CHAIN as string[]).includes(o)) return W.talkNpc?.role !== 'elder' || elderTasks(s).has(o as ElderTask);
   if (o === 'share') return trustTier(s) >= 1;
   if (o === 'work') return !G.char.quests.length;
+  if (o === 'contracts') return !townsWorld(G.char.world); // (0.182) the towns post no delivery contracts
   return true;
 }
 /** The elder sells the houses of the village (gen/homes.ts); while a dead character's house waits for you, that one first. */
@@ -566,7 +569,10 @@ dlgEl.addEventListener('click', async (e) => {
       else { c.gold -= 10; G.hp = G.S.maxHp; c.kcal = Math.max(c.kcal, 2100); c.stomach = Math.max(c.stomach, 1); c.water = Math.max(c.water, 70); saveChar(); renderTalk('A bowl of soup, a jug of water, and you sleep like a stone. (HP restored, fed and watered)'); }
       break;
     case 'watch': renderWatch(); break;
-    case 'rumour': renderTalk(RUMOURS[(Math.random() * RUMOURS.length) | 0]); break;
+    case 'rumour': { // (0.182) in a new world the towns know of deposits out in the wilds
+      const id = townId(), p = id !== null && townsWorld(c.world) ? findPoi(c.world, id) : null, l = p ? askLode(p.x, p.z) : null;
+      renderTalk(l ?? RUMOURS[(Math.random() * RUMOURS.length) | 0]); break;
+    }
     case 'plantup': panel().classList.remove('wide'); panel().innerHTML = plantUpHTML(town(), dlgHead()); break;
     case 'improve': panel().classList.add('wide'); panel().innerHTML = improveHTML(town(), dlgHead()); break;
     case 'farms': panel().classList.remove('wide'); panel().innerHTML = farmsHTML(town(), dlgHead()); break;

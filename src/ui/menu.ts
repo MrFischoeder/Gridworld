@@ -1,4 +1,5 @@
 // Title / pause menu: play, roll a new world, wipe the character.
+import { newWorldSeed } from '../gen/worldrules';
 import { G } from '../game';
 import { $, el, renderSheet } from './hud';
 import { lockPointer } from './input';
@@ -79,7 +80,7 @@ export function initMenu(h: MenuHooks) {
     if (mpLocked()) { nameHint.textContent = 'Leave the multiplayer game first: online, the host\'s world is everyone\'s.'; return; }
     if (!rerollArmed) { rerollArmed = true; reroll.textContent = 'Click again: a new game from the start'; return; } // a new map is a new game
     rerollArmed = false; reroll.textContent = rerollText;
-    h.newWorld((Math.random() * 1e6) | 0); paused = false; labels(); showName(); renderSheet();
+    h.newWorld(newWorldSeed()); paused = false; labels(); showName(); renderSheet();
   };
   let wipeArmed = false;
   wipeBtn.onclick = () => {

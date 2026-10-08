@@ -6,7 +6,7 @@
 //
 //   npm run build && npm run serve          (or: node server/main.mjs)
 //
-// Settings (environment): PORT (8517), HOST (0.0.0.0), WORLD_SEED (a number; only read the first time, then the
+// Settings (environment): PORT (8517), HOST (0.0.0.0), WORLD_SEED (a number, below 0 for a new world of towns (0.182); only read the first time, then the
 // saved one wins unless FORCE_SEED=1), DATA_DIR (server/data: server.json keeps the seed and the clock),
 // SERVER_NAME (the first server's name in the list; accounts.json keeps the players' accounts), DIST (the built game, dist/). Behind a reverse proxy at a sub-path (a portal
 // with several apps, e.g. https://example.pl/gridworld/) it works whether the proxy strips the prefix or not.
@@ -37,7 +37,7 @@ let saved = null;
 try { saved = JSON.parse(await readFile(SAVE, 'utf8')); } catch { /* first start */ }
 const seedEnv = Number(env.WORLD_SEED), seedSet = env.WORLD_SEED !== undefined && env.WORLD_SEED !== '' && Number.isFinite(seedEnv);
 let rooms = Array.isArray(saved?.rooms) ? saved.rooms : saved ? [{ id: 'main', name: NAME, world: saved.world | 0, time: Number(saved.time) || 0 }] : [];
-if (!rooms.length || rooms[0].id !== 'main') rooms.unshift({ id: 'main', name: NAME, world: seedSet ? seedEnv | 0 : randomInt(1, 2 ** 31 - 1), time: 7 * 60 }); // a new world starts at 07:00 of day 1
+if (!rooms.length || rooms[0].id !== 'main') rooms.unshift({ id: 'main', name: NAME, world: seedSet ? seedEnv | 0 : -randomInt(1, 1000000), time: 7 * 60 }); // a new world starts at 07:00 of day 1
 if (env.FORCE_SEED === '1' && seedSet && rooms[0].world !== (seedEnv | 0)) rooms[0] = { ...rooms[0], world: seedEnv | 0, time: 7 * 60 };
 rooms[0].name = NAME; // (the first server's name follows SERVER_NAME)
 // each room's shared world (villages, bridges, chests...) lives in its own file: it can grow large

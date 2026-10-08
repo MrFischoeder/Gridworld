@@ -32,6 +32,7 @@ import { setCrash, dropCrash, podHit } from './crashpod';
 import { installHit, dropInstalls, primeInstalls } from './installs';
 import { cityHit, cityRay, dropCities, cityName, cityVaultHint } from './cities';
 import { toxicHit, dropToxic, toxicName } from './toxic';
+import { lodeHit, dropLodes, lodeName } from './lodes';
 import { installAt } from '../gen/installs';
 import { drawFarms } from './farms';
 import { scene, V, GRID, localize } from './render';
@@ -632,7 +633,7 @@ export function openWorld(x: number, z: number) {
   primeInstalls(w, [...G.char.claims, ...fieldClaims(G.char.towns)]); // the installations' sites are worked out in a worker meanwhile
   closeWorld();
   G.water = (px, pz) => (inStructure(px, pz) ? null : OW.terrain!.water(px, pz));
-  G.space = space; G.ground = groundAt; G.obstacle = (px, py, pz, r) => settlementHit(px, py, pz, r) || megalithHit(px, py, pz, r) || worldGateHit(px, py, pz, r) || treeHit(px, py, pz, r) || vehicleHit(px, py, pz, r) || caravanHit(px, py, pz, r) || peerCarHit(px, py, pz, r) || ambushHit(px, py, pz, r) || baseHit(px, py, pz, r) || ladderHit(px, py, pz, r) || walkHit(px, py, pz, r) || guardHit(px, py, pz, r) || houseHit(px, py, pz, r) || doorHit(px, py, pz, r) || podHit(px, py, pz, r) || installHit(px, py, pz, r) || cityHit(px, py, pz, r) || hallHit(px, py, pz, r) || bridgeHit(px, py, pz, r) || pierHit(px, py, pz, r) || boatHit(px, py, pz, r) || shipHit(px, py, pz, r) || toxicHit(px, py, pz, r);
+  G.space = space; G.ground = groundAt; G.obstacle = (px, py, pz, r) => settlementHit(px, py, pz, r) || megalithHit(px, py, pz, r) || worldGateHit(px, py, pz, r) || treeHit(px, py, pz, r) || vehicleHit(px, py, pz, r) || caravanHit(px, py, pz, r) || peerCarHit(px, py, pz, r) || ambushHit(px, py, pz, r) || baseHit(px, py, pz, r) || ladderHit(px, py, pz, r) || walkHit(px, py, pz, r) || guardHit(px, py, pz, r) || houseHit(px, py, pz, r) || doorHit(px, py, pz, r) || podHit(px, py, pz, r) || installHit(px, py, pz, r) || cityHit(px, py, pz, r) || hallHit(px, py, pz, r) || bridgeHit(px, py, pz, r) || pierHit(px, py, pz, r) || boatHit(px, py, pz, r) || shipHit(px, py, pz, r) || toxicHit(px, py, pz, r) || lodeHit(px, py, pz, r);
   G.floor = (x, y, z) => Math.max(settlementFloor(x, y, z), megalithFloor(x, y, z), baseFloor(x, y, z), ladderFloor(x, y, z), walkFloor(x, y, z), bridgeFloor(x, y, z), pierFloor(x, y, z), shipFloor(x, y, z)); G.rayBlock = (o, d, t) => settlementRay(o, d, megalithRay(o, d, worldGateRay(o, d, cityRay(o, d, doorRay(o, d, houseRay(o, d, baseRay(o, d, t))))))); G.solid = (p) => settlementSolid(p) || megalithHit(p.x, p.y, p.z, 0) || worldGateHit(p.x, p.y, p.z, 0) || baseSolid(p) || houseSolid(p);
   foeRules.blocked = (p) => megalithHit(p.x, p.y, p.z, .7) || nearVillage(p.x, p.z) < 2;
   foeRules.playerSafe = () => inVillage(G.pos.x, G.pos.z) && !raidHere(); // no safe place while bandits raid it
@@ -671,7 +672,7 @@ export function openWorld(x: number, z: number) {
 export function closeWorld() {
   clearMegaliths();
   clearWorldGates();
-  dropGarrisons(); clearVehicles(); dropCrash(); dropInstalls(); dropCities(); dropToxic(); clearBridges(); clearPiers();
+  dropGarrisons(); clearVehicles(); dropCrash(); dropInstalls(); dropCities(); dropToxic(); dropLodes(); clearBridges(); clearPiers();
   setCreatureEnv(null); clearCreatures();
   setRobotEnv(null); clearRobots();
   setBanditEnv(null); clearBandits();
@@ -759,6 +760,7 @@ export function placeName(x: number, z: number): string {
   { const mn = megalithName(x, z); if (mn) return mn + ' (megalith)' + tag; }
   { const cn = cityName(x, z); if (cn) return cn + cityVaultHint(x,z) + tag; }
   { const f = toxicName(x, z); if (f) return f + tag; }
+  { const l = lodeName(x, z); if (l) return l + tag; }
   for (const r of OW.terrain!.chunkFeatures(Math.floor(x / CHUNK), Math.floor(z / CHUNK)).roads) {
     if (!r.h) continue;
     const top = r.pts[r.pts.length - 1], foot = r.pts[0];

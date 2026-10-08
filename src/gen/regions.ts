@@ -6,6 +6,7 @@ import { onMountain } from './mountains';
 import { inSea } from './seas';
 import { nearRiver } from './rivers';
 import { inCity, CITY } from './cities';
+import { townsWorld } from './worldrules';
 
 export const REGION = 256, CHUNK = 32;
 
@@ -88,7 +89,8 @@ const outShare = (d: number) => Math.max(0, Math.min(1, (d - SETTLED.near) / (SE
 export const villageChance = (d: number) => SETTLED.chance[0] + (SETTLED.chance[1] - SETTLED.chance[0]) * outShare(d);
 export const villageGap = (d: number) => SETTLED.gap[0] + (SETTLED.gap[1] - SETTLED.gap[0]) * outShare(d);
 const candCache = new Map<string, [number, number] | null>(), cellCache = new Map<string, [number, number] | null>();
-/** The spot a cell would put its village on (region coordinates), before neighbours are weighed, or null. */
+/** The spot a cell would put its village on (region coordinates), before neighbours are weighed, or null. A towns
+ *  world (gen/worldrules.ts) skips the chance roll: every fit cell is a candidate and `townCells` picks among them. */
 function candidate(world: number, gx: number, gz: number): [number, number] | null {
   const k = world + ':' + gx + ':' + gz;
   if (candCache.has(k)) return candCache.get(k)!;
@@ -96,7 +98,7 @@ function candidate(world: number, gx: number, gz: number): [number, number] | nu
   const R = rng(hash(world, gx, gz, 0x7111)), ri = rangeInt(R);
   const roll = R(), rx = R0 + gx * VCELL + ri(2, VCELL - 3), rz = gz * VCELL - (VCELL >> 1) + ri(2, VCELL - 3);
   let out: [number, number] | null = [rx, rz];
-  if (roll > villageChance(Math.hypot(wrapR(rx), rz) * REGION)) out = null;
+  if (!townsWorld(world) && roll > villageChance(Math.hypot(wrapR(rx), rz) * REGION)) out = null;
   else if (polarRegion(rz) || polarRegion(rz + Math.sign(rz))) out = null;
   else if (Math.max(Math.abs(wrapR(rx)), Math.abs(rz)) < 6) out = null; // keep the start region to Gridholm
   else if (onMountain(world, wrapR(rx) * REGION, rz * REGION, 90) || inSea(world, wrapR(rx) * REGION, rz * REGION, 160)) out = null; // no village in the mountains or the sea
@@ -106,6 +108,7 @@ function candidate(world: number, gx: number, gz: number): [number, number] | nu
 }
 /** Where the village of cell (gx, gz) stands (region coordinates), or null. Gridholm's cell holds only Gridholm. */
 function villageOfCell(world: number, gx: number, gz: number): [number, number] | null {
+  if (townsWorld(world)) return townCells(world).get(gx + ':' + gz) ?? null;
   const k = world + ':' + gx + ':' + gz;
   if (cellCache.has(k)) return cellCache.get(k)!;
   if (cellCache.size > 20000) cellCache.clear();
@@ -122,6 +125,41 @@ function villageOfCell(world: number, gx: number, gz: number): [number, number] 
     }
   }
   cellCache.set(k, out);
+  return out;
+}
+/**
+ * (0.182) The towns of a towns world (PLAN_PLACOWEK.md): `n` of them besides Gridholm. The first `near` stand in a
+ * ring `ring` m from Gridholm (the first trips), as far apart as the ring allows; the rest are spread over the planet by
+ * farthest-point sampling (each the fit cell farthest from every town chosen so far, Gridholm included), so they lie
+ * evenly, rare and far apart (~15 km). Cell key 'gx:gz' -> the town's region.
+ */
+export const TOWNS = { n: 20, near: 2, ring: [3500, 7000] };
+const townCache = new Map<number, Map<string, [number, number]>>();
+function townCells(world: number): Map<string, [number, number]> {
+  let out = townCache.get(world);
+  if (out) return out;
+  const all: { k: string; rx: number; rz: number; x: number; z: number; h: number }[] = [];
+  for (let gx = 0; gx < NCELL; gx++) for (let gz = -12; gz <= 12; gz++) {
+    const c = candidate(world, gx, gz);
+    if (c) all.push({ k: gx + ':' + gz, rx: c[0], rz: c[1], x: wrapR(c[0]) * REGION, z: c[1] * REGION, h: hash(world, gx, gz, 0x7113) });
+  }
+  const picked: typeof all = [], near = (o: (typeof all)[0], to: { x: number; z: number }[]) => Math.min(...to.map((p) => worldDist(p.x, p.z, o.x, o.z)));
+  const home = [{ x: 0, z: 0 }];
+  const ring = all.filter((o) => { const d = Math.hypot(o.x, o.z); return d >= TOWNS.ring[0] && d <= TOWNS.ring[1]; }).sort((a, b) => a.h - b.h);
+  for (let i = 0; i < TOWNS.near && ring.length; i++) {
+    // the first by hash, then each the one farthest from those already in the ring
+    const o = i ? ring.reduce((b, c) => (near(c, picked) > near(b, picked) ? c : b)) : ring[0];
+    picked.push(o); ring.splice(ring.indexOf(o), 1);
+  }
+  const rest = all.filter((o) => !picked.includes(o)), dist = rest.map((o) => near(o, [...home, ...picked]));
+  while (picked.length < TOWNS.n && rest.length) {
+    let bi = 0;
+    for (let i = 1; i < rest.length; i++) if (dist[i] > dist[bi] || (dist[i] === dist[bi] && rest[i].h < rest[bi].h)) bi = i;
+    const o = rest[bi]; picked.push(o); rest.splice(bi, 1); dist.splice(bi, 1);
+    for (let i = 0; i < rest.length; i++) dist[i] = Math.min(dist[i], worldDist(o.x, o.z, rest[i].x, rest[i].z));
+  }
+  out = new Map(picked.map((o) => [o.k, [o.rx, o.rz] as [number, number]]));
+  townCache.set(world, out);
   return out;
 }
 /** Is region (rx, rz) (canonical) the site of a village other than Gridholm? */

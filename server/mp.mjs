@@ -127,7 +127,7 @@ export function createMp(log = (m) => console.log('[mp] ' + m), opts = {}) {
       if ([...rooms.values()].some((r) => r.name.toLowerCase() === name.toLowerCase())) return { why: `There is already a server called ${name}.` };
       if (rooms.size >= MP.rooms) return { why: `This machine already holds ${MP.rooms} servers. Join one of them.` };
       if (acct && [...rooms.values()].filter((r) => r.owner === ownerKey(acct)).length >= ACCOUNT.perAccount) return { why: `You already run ${ACCOUNT.perAccount} servers. Close one of them first.` };
-      const world = Number.isFinite(m.create.world) ? m.create.world | 0 : randomInt(1, 2 ** 31 - 1);
+      const world = Number.isFinite(m.create.world) ? m.create.world | 0 : -randomInt(1, 1000000); // (0.182) a negative seed: a new world of towns
       let id; do id = 'r' + randomInt(100000, 999999); while (rooms.has(id));
       const room = newRoom({ id, name, world, time: 7 * 60, owner: acct ? ownerKey(acct) : ownerOf(m.create.key), by: acct ? acct.name : m.name });
       log(`server "${name}" created (world ${world})`);

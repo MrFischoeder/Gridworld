@@ -4,7 +4,7 @@ import { dryCaravan } from '../world/convoyfuel';
 import { gatesNear, gateName } from '../gen/worldgates';
 // Surface maps: the minimap (150 m around the player) and the full world map (M), both built from
 // explored chunks only (fog of war). Chunk tiles are rendered once from the deterministic terrain.
-import { nearX, wrapDx } from '../gen/regions';
+import { nearX, wrapDx, wrapX } from '../gen/regions';
 import { G, W } from '../game';
 import { OW, villageHere } from '../world/overworld';
 import { CHUNK, poisNear, villageSeed, GRIDHOLM_ID } from '../gen/regions';
@@ -19,6 +19,10 @@ import { STEP, VERTS, CELLS, inRect } from '../gen/terrain';
 import { SEA } from '../gen/seas';
 import { discover, isDiscovered } from '../save';
 import { installSitesReady } from '../gen/installs';
+import { LODES, type LodeKind } from '../gen/lodes';
+import { fertility, fertilityColor, fertilityWord } from '../gen/fertility';
+import { townsWorld } from '../gen/worldrules';
+import { scanLodes } from '../world/lodes';
 import { cityAt, citySites, cityLayout, worldToCity, bldsNear, inBld, segDist, CITY } from '../gen/cities';
 import { saveChar, hasItem } from '../character';
 
@@ -77,6 +81,29 @@ function tile(cx: number, cz: number, budget?: { n: number; until: number }): HT
   tiles.set(k, cv);
   return cv;
 }
+/** (0.182) The fertility layer of the big map (F): the land's fertility (gen/fertility.ts) over the explored ground, on
+ *  a 128 m grid, rust (barren) to bright green (rich). Worked out a few hundred cells a frame and kept. */
+export let fertLayer = false;
+export const toggleFertility = () => { fertLayer = !fertLayer; };
+const FCELL = 128, fertCells = new Map<string, number>();
+let fertWorld = NaN;
+function drawFertility(ctx: CanvasRenderingContext2D, X: (x: number) => number, Z: (z: number) => number, px: number, pz: number, hw: number, hh: number, ppm: number) {
+  const world = G.char.world, d = G.char.discovered;
+  if (fertWorld !== world) { fertCells.clear(); fertWorld = world; }
+  const until = performance.now() + 8;
+  ctx.globalAlpha = 0.55;
+  for (let i = Math.floor((px - hw) / FCELL); i <= Math.floor((px + hw) / FCELL); i++) for (let j = Math.floor((pz - hh) / FCELL); j <= Math.floor((pz + hh) / FCELL); j++) {
+    const x = i * FCELL + FCELL / 2, z = j * FCELL + FCELL / 2;
+    if (!isDiscovered(d, Math.floor(x / CHUNK), Math.floor(z / CHUNK))) continue;
+    const k = Math.floor(wrapX(x) / FCELL) + ',' + j;
+    let f = fertCells.get(k);
+    if (f === undefined) { if (performance.now() > until) continue; f = fertility(world, x, z); fertCells.set(k, f); }
+    if (f <= 0) continue;
+    const [r, g, b] = fertilityColor(f);
+    ctx.fillStyle = `rgb(${r},${g},${b})`; ctx.fillRect(X(i * FCELL), Z(j * FCELL), FCELL * ppm + 0.5, FCELL * ppm + 0.5);
+  }
+  ctx.globalAlpha = 1;
+}
 function nearest(pts: [number, number][], x: number, z: number) {
   let best = Infinity;
   for (let i = 0; i + 1 < pts.length; i++) {
@@ -115,6 +142,7 @@ function drawArea(ctx: CanvasRenderingContext2D, w: number, h: number, ppm: numb
     if (t) ctx.drawImage(t, X(cx * CHUNK), Z(cz * CHUNK), CHUNK * ppm + 0.5, CHUNK * ppm + 0.5);
     else { ctx.fillStyle = '#06200c'; ctx.fillRect(X(cx * CHUNK), Z(cz * CHUNK), CHUNK * ppm + 0.5, CHUNK * ppm + 0.5); }
   }
+  if (fertLayer && labels) drawFertility(ctx, X, Z, px, pz, hw, hh, ppm);
   ctx.font = (labels ? 20 : 11) + 'px VT323, monospace'; ctx.textAlign = 'center';
   for (const p of poisNear(OW.terrain!.world, px, pz, Math.max(hw, hh) + 60)) {
     if (!isDiscovered(d, Math.floor(p.x / CHUNK), Math.floor(p.z / CHUNK))) continue;
@@ -209,6 +237,15 @@ function drawArea(ctx: CanvasRenderingContext2D, w: number, h: number, ppm: numb
     for (let k = 0; k <= 6; k++) { const a = k / 6 * 6.283; if (k) ctx.lineTo(x + Math.cos(a) * r, y + Math.sin(a) * r); else ctx.moveTo(x + r, y); }
     ctx.stroke(); ctx.lineWidth = 1;
     if (labels) ctx.fillText(ins.name, x, y - 15);
+  }
+  for (const [x0, z0, k, name, seen] of Object.values(G.char.lodes)) { // (0.182) deposits on your map: a square in the deposit's colour, dashed while only heard of
+    const x = X(nearX(x0, px)), y = Z(z0), r = labels ? 6 : 3.5;
+    if (x < -20 || y < -20 || x > w + 20 || y > h + 20) continue;
+    ctx.strokeStyle = ctx.fillStyle = '#' + (LODES[k as LodeKind]?.c ?? 0xffffff).toString(16).padStart(6, '0'); ctx.lineWidth = 2;
+    if (!seen) ctx.setLineDash([3, 2]);
+    ctx.beginPath(); ctx.rect(x - r, y - r, 2 * r, 2 * r); ctx.stroke(); ctx.setLineDash([]); ctx.lineWidth = 1;
+    if (seen) { ctx.globalAlpha = 0.35; ctx.fill(); ctx.globalAlpha = 1; }
+    if (labels && ppm > 0.05) ctx.fillText(name + (seen ? '' : ' (heard of)'), x, y - 10);
   }
   for (const m of leadMarkers()) { // leads: a violet diamond for a data carrier, a lime one for a great installation (held at the edge of the big map when further)
     let x = X(m.x), y = Z(m.z); const r = labels ? 9 : 5, out = x < 24 || y < 40 || x > w - 24 || y > h - 40;
@@ -306,10 +343,11 @@ export function orbitalScan(): string {
   for (const p of poisNear(c.world, x, z, R)) if (Math.hypot(wrapDx(p.x - x), p.z - z) <= R) see(p.x, p.z);
   for (const s of OW.terrain ? installSitesReady(OW.terrain.world) ?? [] : []) if (Math.hypot(wrapDx(s.x - x), s.z - z) <= R) see(s.x, s.z);
   let f = 0;
+  const lodes = scanLodes(x, z, R);
   for (const z0 of fogsNear(c.world, x, z, R)) if (!c.fogs[z0.id]) { c.fogs[z0.id] = [Math.round(z0.x), Math.round(z0.z), Math.round(z0.r), z0.name]; f++; }
   (at!.settlement!).scanAt = c.time; lastScan = { x, z, t: c.time, r: R };
   saveChar();
-  const msg = `Orbital scan ${c.waypoint ? 'round your waypoint' : 'round you'}${relay ? ` through the ${relay.name} relay` : ''}: ${n} new place${n === 1 ? '' : 's'} within ${R / 1000} km${f ? ` and ${f} toxic fog zone${f === 1 ? '' : 's'}` : ''} on your map.`;
+  const msg = `Orbital scan ${c.waypoint ? 'round your waypoint' : 'round you'}${relay ? ` through the ${relay.name} relay` : ''}: ${n} new place${n === 1 ? '' : 's'} within ${R / 1000} km${f ? ` and ${f} toxic fog zone${f === 1 ? '' : 's'}` : ''}${lodes ? `, ${lodes} deposit${lodes === 1 ? '' : 's'}` : ''} on your map.`;
   showToast('Orbital scan complete'); logLine(msg);
   return msg;
 }
@@ -373,6 +411,10 @@ function drawFullMap() {
       const sx = w / 2 + (nearX(lastScan.x, G.pos.x) - G.pos.x) * zoom, sy = h / 2 + (lastScan.z - G.pos.z) * zoom;
       bctx.strokeStyle = '#5cc8ff'; bctx.setLineDash([8, 6]); bctx.beginPath(); bctx.arc(sx, sy, lastScan.r * zoom, 0, Math.PI * 2); bctx.stroke(); bctx.setLineDash([]);
     }
+  }
+  if (townsWorld(G.char.world)) { // (0.182) the fertility layer
+    const f = fertility(G.char.world, G.pos.x, G.pos.z);
+    bctx.fillText(`F: fertility layer ${fertLayer ? 'on' : 'off'} · the soil where you stand: ${fertilityWord(f)}${f > 0 ? ` (${Math.round(f * 100)}%)` : ''}`, 16, h - (sat ? 94 : 42));
   }
   bctx.textAlign = 'right'; bctx.fillText(villageHere(G.pos.x, G.pos.z)?.name ?? $('hudL').textContent ?? '', w - 16, 30);
 }

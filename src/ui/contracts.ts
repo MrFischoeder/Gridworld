@@ -2,6 +2,7 @@
 // gen/contracts.ts): the offers posted here, your contracts, and handing crates over where they are due. Hauls load
 // their crates into your backpack and the trunks of vehicles parked by the gates, against a deposit. Contracts past
 // their deadline fail (a haul's deposit is lost). Also: the tracker lines and map markers of your contracts.
+import { townsWorld } from '../gen/worldrules';
 import { G } from '../game';
 import { earnTrust } from '../world/standing';
 import { ITEMS } from '../data/items';
@@ -25,6 +26,7 @@ const where = (x: number, z: number) => `${fmtDist(worldDist(G.pos.x, G.pos.z, x
 /** The offers at village v: its fuel and chip orders, then the posted ones. */
 export function localOffers(v: Poi, seed: number): Contract[] {
   const c = G.char, sp = specialOrders(c.world, v, c.time);
+  if (townsWorld(c.world)) return []; // (0.182) the towns of a new world post no delivery contracts
   return [...sp, ...offersAt(c.world, v, seed, c.time)];
 }
 export function describe(c: Contract): string {
@@ -133,7 +135,7 @@ export function dropContract(id: string): string {
 /** A village's notice board: its own delivery work, and orders from the villages round about (within 9 km). */
 export function boardContracts(at?: Poi): Contract[] {
   const c = G.char, home = at ?? findPoi(c.world, GRIDHOLM_ID);
-  if (!home) return [];
+  if (!home || townsWorld(c.world)) return [];
   const fresh = (o: Contract) => !c.taken.includes(o.id) && !c.contracts.some((k) => k.id === o.id);
   const own = localOffers(home, villageSeed(c.world, home)).filter(fresh);
   const round = allVillages(c.world).filter((v) => v.id !== home.id && worldDist(v.x, v.z, home.x, home.z) < CONTRACT.far)

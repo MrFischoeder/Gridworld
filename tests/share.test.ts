@@ -36,7 +36,7 @@ describe('shared world client reconciliation', () => {
   });
   it('does not seed a new server world with the old world after the UI switches seeds', () => {
     state.G.char.harvest.old = 9;
-    const world = state.G.char.world + 1;
+    const world = Math.abs(state.G.char.world) + 1; // an old world: every village a settlement
     state.hooks!.welcome({}, false, world);
     state.G.char.world = world;
     joinWorld();
