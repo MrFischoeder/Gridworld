@@ -20,6 +20,7 @@ import { SEA } from '../gen/seas';
 import { discover, isDiscovered } from '../save';
 import { installSitesReady } from '../gen/installs';
 import { LODES, type LodeKind } from '../gen/lodes';
+import { POWER_SRC } from '../gen/grid';
 import { fertility, fertilityColor, fertilityWord } from '../gen/fertility';
 import { townsWorld } from '../gen/worldrules';
 import { scanLodes } from '../world/lodes';
@@ -246,6 +247,12 @@ function drawArea(ctx: CanvasRenderingContext2D, w: number, h: number, ppm: numb
     ctx.beginPath(); ctx.rect(x - r, y - r, 2 * r, 2 * r); ctx.stroke(); ctx.setLineDash([]); ctx.lineWidth = 1;
     if (seen) { ctx.globalAlpha = 0.35; ctx.fill(); ctx.globalAlpha = 1; }
     if (labels && ppm > 0.05) ctx.fillText(name + (seen ? '' : ' (heard of)'), x, y - 10);
+  }
+  for (const o of Object.values(G.char.outposts)) { // (0.184) the reach of every power source: a dashed pale ring
+    if (!o?.k || !o.done?.power || !o.pk) continue;
+    const x = X(nearX(o.x, px)), y = Z(o.z), rr = POWER_SRC[o.pk].r * ppm;
+    if (x < -rr || y < -rr || x > w + rr || y > h + rr) continue;
+    ctx.strokeStyle = '#9dffe0'; ctx.setLineDash([5, 4]); ctx.beginPath(); ctx.arc(x, y, rr, 0, 6.283); ctx.stroke(); ctx.setLineDash([]);
   }
   for (const o of Object.values(G.char.outposts)) { // (0.183) the outposts (shared): a gold ring round the deposit
     if (!o?.k) continue;

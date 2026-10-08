@@ -3,6 +3,16 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.184.0', date: '2026-10-08', title: 'Power at the outposts', notes: [
+    'Outposts now need electricity. An extraction without power digs at half pace. With all the power it draws it digs at the full rate.',
+    'Build a power source at any outpost. Choose one in the outpost window, then hand over its materials; the builders take 8 hours.',
+    'Diesel generator: 40 kW, reach 350 m. It burns a fuel canister every 3 hours from a bunker of 20.',
+    'Wind turbine: up to 60 kW, as much as the wind gives, reach 500 m.',
+    'Solar panels: up to 45 kW by day, nothing at night, reach 250 m.',
+    'Coal boiler: 90 kW, reach 700 m. It burns a crate of coal every 2 hours. It suits an outpost on a coal seam.',
+    'There are no cables. A source powers every outpost within its reach, and sources whose reach meets form one grid. A grid shares its power out: a quarry crane draws 8 kW, a logging camp 6, a mine head 12, a pumpjack 10 and a deep shaft 25. When a grid makes less than they draw, every outpost on it slows down by the same share.',
+    'The outpost window shows the grid: what it makes now, what the digging draws, how much of it was met over the last day and the pace that gives. Load a generator or boiler there from your backpack or a vehicle parked by it. The satellite map draws each source\'s reach as a dashed ring.',
+  ] },
   { v: '0.183.0', date: '2026-10-08', title: 'Outposts at the deposits', notes: [
     'In a new world you can now work the deposits out in the wilds. Walk onto a deposit and press E to drive a stake in. It becomes an outpost of the crew. Nobody pays for the land.',
     'An outpost needs its extraction, built from materials you bring there: a Quarry crane at a stone outcrop, a Logging camp in a great grove, a Mine head over coal or ore, a Pumpjack over an oil seep, or a Deep shaft over a rare deposit. Hand the materials over bit by bit from your backpack or a vehicle parked by it. When everything is in, the builders take 10 hours.',

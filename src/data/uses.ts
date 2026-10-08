@@ -2,6 +2,7 @@
 // tooltip (ui/itemtip.ts) lists it under "Used for". Pure; built once on first use.
 import { PROJECTS, type Project } from '../gen/settlement';
 import { DIG, STORE } from '../gen/outposts';
+import { POWER_SRC } from '../gen/grid';
 import { ITEMS, type ItemKey } from './items';
 import { ORDERS } from './orders';
 import { GARAGE } from './garage';
@@ -50,6 +51,7 @@ function build(): Map<ItemKey, Map<UseGroup, string[]>> {
   for (const [i] of FARM.needs) use(i, 'Building', 'Farm');
   for (const d of Object.values(DIG)) for (const [i] of d.needs) use(i, 'Building', `Outposts: ${d.name}`); // (0.183)
   for (const [i] of STORE.needs) use(i, 'Building', `Outposts: ${STORE.name}`);
+  for (const q of Object.values(POWER_SRC)) { for (const [i] of q.needs) use(i, 'Building', `Outposts: ${q.name}`); if (q.fuel) use(q.fuel, 'Fuel for', `Outposts: ${q.name}`); } // (0.184)
   for (const k of Object.keys(PROJECTS) as Project[]) for (const [i] of PROJECTS[k].needs) use(i, 'Building', `New settlements: ${PROJECTS[k].name}`); // (0.175: the deep mine's drill rig among them)
   for (const [i] of UPGRADE.needs) use(i, 'Building', 'Steel ploughs');
   for (const l of PLANT_LEVELS.slice(1)) for (const [i] of l.needs) use(i, 'Building', `Power plant: ${l.name}`);

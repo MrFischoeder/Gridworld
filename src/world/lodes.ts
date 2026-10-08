@@ -19,8 +19,10 @@ import { dirWord } from '../gen/tech';
 import type { Terrain } from '../gen/terrain';
 import { lodeById } from '../gen/lodes';
 import { digOf, finishDue, partName, stockNow, outputs, capOf, jobEnd, type OutpostState } from '../gen/outposts';
+import { pwOf, settleAll, POWER_SRC, GRID } from '../gen/grid';
+import { windAt } from '../gen/energy';
 
-interface Live { l: Lode; g: THREE.Group; rings: [number, number, number][]; boxes: [number, number, number, number][]; oil?: OilMotion; sig: string }
+interface Live { l: Lode; g: THREE.Group; rings: [number, number, number][]; boxes: [number, number, number, number][]; oil?: OilMotion; sig: string; rotor?: THREE.Object3D }
 const live = new Map<string, Live>();
 const STONE = [0xb2b2a3, 0x88978f], ROCK = 0x89988b;
 
@@ -72,14 +74,15 @@ export function outpostSpots(l: Lode) {
     post: [Math.cos(a) * (l.r + 3), Math.sin(a) * (l.r + 3)] as [number, number],
     dig: [Math.cos(a + Math.PI) * far, Math.sin(a + Math.PI) * far] as [number, number],
     shed: [Math.cos(a + Math.PI / 2) * (l.r + 7), Math.sin(a + Math.PI / 2) * (l.r + 7)] as [number, number],
+    power: [Math.cos(a - Math.PI / 2) * (l.r + 9), Math.sin(a - Math.PI / 2) * (l.r + 9)] as [number, number],
   };
 }
 /** What the drawing depends on: the outpost's builds and how full its stock is (in fives). */
 function sigOf(l: Lode): string {
   const o = G.char.outposts[l.id];
   if (!o?.k) return '';
-  const st = stockNow(o, l, G.char.time), fill = outputs(l).reduce((a, [g]) => a + Math.floor(st[g] ?? 0), 0);
-  return JSON.stringify([o.done ?? {}, o.job?.p ?? '', o.job ? Math.floor((G.char.time - o.job.t) / (o.job.h * 6)) : 0, Math.floor(fill / 5)]);
+  const st = stockNow(o, l, G.char.time, pwOf(G.char.world, G.char.outposts, l.id, G.char.time)), fill = outputs(l).reduce((a, [g]) => a + Math.floor(st[g] ?? 0), 0);
+  return JSON.stringify([o.done ?? {}, o.job?.p ?? '', o.pk ?? '', o.job ? Math.floor((G.char.time - o.job.t) / (o.job.h * 6)) : 0, Math.floor(fill / 5)]);
 }
 function drawOutpost(pb: PropBatch, H: (x: number, z: number) => number, L: Live, o: OutpostState, R: () => number) {
   const l = L.l, sp = outpostSpots(l), cos = Math.cos(l.yaw), sin = Math.sin(l.yaw);
@@ -145,14 +148,54 @@ function drawOutpost(pb: PropBatch, H: (x: number, z: number) => number, L: Live
       L.boxes.push([x - 3, z - 2, x + 3, z + 2]);
     }
   }
+  // the power source
+  { const [x, z] = sp.power, y = H(x, z);
+    if (o.job?.p === 'power') site(x, z, 3, 3, share);
+    else if (o.done?.power && o.pk) drawPowerSource(pb, H, L, o, x, z, y);
+  }
   // the crates on site, beside the shed or piled by the extraction
   if (o.done?.dig) {
-    const st = stockNow(o, l, G.char.time), n = Math.min(24, Math.floor(outputs(l).reduce((a, [g]) => a + Math.floor(st[g] ?? 0), 0) / (capOf(o) > 10 ? 3 : 1)));
+    const st = stockNow(o, l, G.char.time, pwOf(G.char.world, G.char.outposts, l.id, G.char.time)), n = Math.min(24, Math.floor(outputs(l).reduce((a, [g]) => a + Math.floor(st[g] ?? 0), 0) / (capOf(o) > 10 ? 3 : 1)));
     const [bx, bz] = o.done.store ? [sp.shed[0] + 4, sp.shed[1]] : [sp.dig[0] - 4, sp.dig[1] - 4];
     for (let k = 0; k < n; k++) { const cx = bx + (k % 3) * 0.75, cz = bz + Math.floor(k / 9) * 0.75, cy = H(bx, bz) + Math.floor((k % 9) / 3) * 0.6; pb.box(cx - 0.32, cy, cz - 0.32, cx + 0.32, cy + 0.58, cz + 0.32, LODES[l.k].c); }
     if (n) L.boxes.push([bx - 0.4, bz - 0.4, bx + 1.9, bz + 1.9]);
   }
   void R;
+}
+/** (0.184) A power source at an outpost: a generator box, a wind turbine (its rotor turns with the wind), panels, a coal boiler. */
+function drawPowerSource(pb: PropBatch, H: (x: number, z: number) => number, L: Live, o: OutpostState, x: number, z: number, y: number) {
+  if (o.pk === 'generator') {
+    pb.box(x - 2, y, z - 1.1, x + 2, y + 2.4, z + 1.1, STEEL);
+    for (let k = -1; k <= 1; k++) pb.seg(STEEL, [x + k * 1.2, y + 0.3, z + 1.11], [x + k * 1.2, y + 2.1, z + 1.11]);
+    pb.box(x + 1.2, y + 2.4, z - 0.15, x + 1.5, y + 3.6, z + 0.15, STEEL);
+    for (let k = 0; k < 3; k++) { const dx = x - 3 - k * 0.7, dy = H(dx, z + 1.5); pb.box(dx - 0.3, dy, z + 1.2, dx + 0.3, dy + 0.9, z + 1.8, 0xb8a040); }
+    L.boxes.push([x - 2, z - 1.1, x + 2, z + 1.1]);
+  } else if (o.pk === 'wind') {
+    const h = 18;
+    for (const [sx, sz] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) pb.seg(STEEL, [x + sx * 1.4, y, z + sz * 1.4], [x + sx * 0.3, y + h, z + sz * 0.3]);
+    for (let k = 1; k < 6; k++) { const t = k / 6, r = 1.4 - 1.1 * t, yy = y + h * t; pb.line(STEEL, [x - r, yy, z - r], [x + r, yy, z - r], [x + r, yy, z + r], [x - r, yy, z + r], [x - r, yy, z - r]); pb.seg(STEEL, [x - r, yy, z - r], [x + r, yy + h / 6, z + r]); }
+    pb.box(x - 0.5, y + h, z - 1.2, x + 0.5, y + h + 1, z + 0.6, STEEL);
+    const rp = new PropBatch();
+    for (let b = 0; b < 3; b++) { const a = b / 3 * 6.283, c = Math.cos(a), s = Math.sin(a); rp.face([0, 0, 0], [c * 7 - s * 0.35, s * 7 + c * 0.35, 0], [c * 7, s * 7, 0]); rp.line(STEEL, [0, 0, 0], [c * 7 - s * 0.35, s * 7 + c * 0.35, 0], [c * 7, s * 7, 0], [0, 0, 0]); }
+    const rotor = rp.build(); rotor.position.set(x, y + h + 0.5, z - 1.3); L.g.add(rotor); L.rotor = rotor;
+    for (const [sx, sz] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) L.rings.push([x + sx * 1.3, z + sz * 1.3, 0.25]);
+  } else if (o.pk === 'solar') {
+    for (let row = 0; row < 3; row++) {
+      const zz = z - 3 + row * 3;
+      for (let k = 0; k < 3; k++) {
+        const x0 = x - 4.5 + k * 3, yy = H(x0 + 1.4, zz);
+        const p00 = [x0, yy + 0.5, zz - 0.9], p10 = [x0 + 2.8, yy + 0.5, zz - 0.9], p11 = [x0 + 2.8, yy + 1.5, zz + 0.9], p01 = [x0, yy + 1.5, zz + 0.9];
+        pb.face(p00, p10, p11, p01); pb.line(0x5cc8ff, p00, p10, p11, p01, p00); pb.seg(0x5cc8ff, [x0 + 1.4, yy + 0.5, zz - 0.9], [x0 + 1.4, yy + 1.5, zz + 0.9]); pb.seg(0x5cc8ff, [x0, yy + 1, zz], [x0 + 2.8, yy + 1, zz]);
+        pb.seg(STEEL, [x0 + 0.2, yy, zz], [x0 + 0.2, yy + 1, zz]); pb.seg(STEEL, [x0 + 2.6, yy, zz], [x0 + 2.6, yy + 1, zz]);
+      }
+    }
+    L.boxes.push([x - 4.6, z - 4, x + 4.4, z + 4]);
+  } else if (o.pk === 'coal') {
+    pb.box(x - 3, y - 0.2, z - 2.2, x + 3, y + 4, z + 2.2, 0xc8a080); pb.gableRoof(x - 3.2, z - 2.4, x + 3.2, z + 2.4, y + 4, 1.4, 0xc8a080);
+    for (let k = 0; k < 8; k++) { const a0 = k / 8 * 6.283, a1 = (k + 1) / 8 * 6.283, P = (a: number, yy: number) => [x + 4.5 + Math.cos(a) * 0.7, yy, z + Math.sin(a) * 0.7]; pb.face(P(a0, y), P(a1, y), P(a1, y + 14), P(a0, y + 14)); pb.seg(0xc8a080, P(a0, y + 14), P(a1, y + 14)); if (k % 2 === 0) pb.seg(0xc8a080, P(a0, y), P(a0, y + 14)); }
+    for (let k = 0; k < 5; k++) { const cx = x - 5 + (k % 3) * 0.9, cz = z + 3 + Math.floor(k / 3) * 0.8; pb.rock(cx, H(cx, cz) - 0.1, cz, 0.7, 0.6, 6, k, 0x687e98); }
+    L.boxes.push([x - 3, z - 2.2, x + 3, z + 2.2]); L.rings.push([x + 4.5, z, 0.8]);
+  }
 }
 function drop(L: Live) { scene.remove(L.g); L.g.traverse((o) => (o as THREE.Mesh).geometry?.dispose()); }
 export function dropLodes() { for (const L of live.values()) drop(L); live.clear(); }
@@ -169,7 +212,10 @@ export function updateLodes(dt: number) {
   const T = OW.terrain;
   if (!T || G.char.loc !== 'overworld') { if (live.size) dropLodes(); return; }
   time += dt;
-  for (const L of live.values()) if (L.oil) animateOil(L.oil, time);
+  for (const L of live.values()) {
+    if (L.oil) animateOil(L.oil, time);
+    if (L.rotor) { const o = G.char.outposts[L.l.id]; L.rotor.rotation.z += dt * 2.4 * windAt(hash(G.char.world, L.l.id.length, (o?.x ?? 0) | 0, (o?.z ?? 0) | 0), G.char.time); }
+  }
   if ((tick -= dt) > 0) return;
   tick = 0.5;
   const near = lodesNear(T.world, G.pos.x, G.pos.z, 520);
@@ -183,14 +229,21 @@ export function updateLodes(dt: number) {
   }
 }
 /** (0.183) Builds at the outposts whose time has come stand now (whoever sees it first; the same on every game). */
+let bucket = -1;
 function finishOutposts() {
-  const c = G.char;
+  const c = G.char, byId = (id: string) => lodeById(c.world, id), b = Math.floor(c.time / GRID.step);
+  if (b !== bucket) { if (bucket >= 0 && Object.keys(c.outposts).length) { settleAll(c.world, c.outposts, byId, c.time); saveChar(); } bucket = b; } // the grid's share moves on every two hours: count up to here
   for (const [id, o] of Object.entries(c.outposts)) {
     if (!o?.job || c.time < jobEnd(o)) continue;
     const l = lodeById(c.world, id);
     if (!l) continue;
-    const p = finishDue(o, l, c.time);
-    if (p) { saveChar(); showToast(`${o.name}: ${partName(o.k, p).toLowerCase()} built`); logLine(`The builders finished the ${partName(o.k, p).toLowerCase()} at ${o.name}.${p === 'dig' ? ' It is being worked now.' : ''}`); }
+    if (o.job.p === 'power') settleAll(c.world, c.outposts, byId, jobEnd(o)); // a new source changes the grid: count what was dug before it
+    const p = finishDue(o, l, c.time, pwOf(c.world, c.outposts, id, c.time));
+    if (p) {
+      saveChar(); const what = partName(o.k, p, o.pk).toLowerCase();
+      showToast(`${o.name}: ${what} built`);
+      logLine(`The builders finished the ${what} at ${o.name}.${p === 'dig' ? ' It is being worked now.' : p === 'power' && o.pk ? ` It powers every outpost within ${POWER_SRC[o.pk].r} m.${POWER_SRC[o.pk].fuel ? ' Load its bunker with fuel.' : ''}` : ''}`);
+    }
   }
 }
 /** The deposit whose outpost window E opens: within its ground and a little more. */
