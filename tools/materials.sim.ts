@@ -18,7 +18,9 @@ import { INSTALLS, INSTALL_STAGES, INSTALL_WORK, INSTALL_DRAW, HALL_SETS, RADAR_
 import { STAGES, CHARIOT } from '../src/gen/shuttle';
 import { ORDERS } from '../src/data/orders';
 import { GARAGE } from '../src/data/garage';
-import { vehicleTitle } from '../src/data/vehicles';
+import { vehicleTitle, VEHICLES, FUEL as CAN, rangeKm } from '../src/data/vehicles';
+import { CONVOY_FUEL } from '../src/gen/caravans';
+import { PROJECTS } from '../src/gen/settlement';
 import { MENU } from '../src/gen/foodshop';
 import { DROPS } from '../src/data/creatures';
 import { ROBOTS } from '../src/data/robots';
@@ -54,6 +56,8 @@ it('writes SUROWCE.md', () => {
   P('**Zakłady ciężkie (od 0.174):** Heavy Engineering Works, zakład II stopnia z planami Heavy Machinery (nośnik danych 3–8 km od Gridholm), 100 kW, 3 robotników. Robi Drill Rig (4 Steel + 2 Gears + 1 Electric Motor + 2 Pipes, 4 h, wart ok. 2500) i Engine Parts (1 Steel + 1 Gears → 6 sztuk), więc pojazdy u Kuby nie zależą już tylko od części z wraków. Wiertnicy używa głęboka kopalnia.');
   P('**Głęboka kopalnia (od 0.175):** w nowej osadzie, która stoi nad złożem rzadkim (boksyt, siarka, lit, ziemie rzadkie, uran, nikiel, chromit, rutyl, ruda platyny; 3–30 km od Gridholm), po magazynie można zbudować Deep Mine na placu ok. 105 m na południowy wschód od palisady: 1 Drill Rig, 6 Steel, 6 Cable, 8 Cement, 16 Planks, 16 h budowy. Wydobywa 0,25 skrzyni na godzinę gry (6 dziennie, po równo z każdego złoża wioski) prosto do zapasów, pobiera 40 kW i potrzebuje 4 robotników. Dzienny przydział od starszego (za zaufanie) zostaje obok.');
   P('**Piec wioski (od 0.176):** w nowej osadzie po elektrowni i magazynie: Coal furnace (24 Stone, 16 Planks, 12 Scrap, 4 Wire; plac ok. 105 m na zachód) sam przetapia zapasy wioski na sztabki w magazynie, jedna partia co godzinę gry, 1 Coal na partię: 2 Crate of Iron Ore → 2 Iron, 4 Copper Ore → 2 Copper Ingots, 4 Lead Ore → 2 Lead Bars, a gdy rudy brak, 12 Scrap → 2 Iron. Koksownia (Furnace: coke ovens: 20 Stone, 10 Bricks, 10 Scrap, 8 Planks) daje 3 sztabki zamiast 2 z tego samego wsadu. Piec łukowy (Furnace: electric arc: 8 Steel, 10 Cable, 1 Generator, 2 Parts) nie potrzebuje węgla, robi partię co pół godziny z wydajnością koksowni, ale pobiera 70 kW (prąd 20 / 30 / 70 kW). 3 robotników.');
+  { const need = (n: [ItemKey, number][]) => n.map(([k, q]) => `${q} ${ITEMS[k].name}`).join(', ');
+    P(`**Paliwo (od 0.177):** ${ITEMS.fuel.name} to ${CAN.can} l oleju. Scout pali ${VEHICLES.scout.fuelUse} l/km przy pełnym gazie (bak ${VEHICLES.scout.tank} l, ok. ${Math.round(rangeKm('scout', VEHICLES.scout.tank))} km), Mastodon ${VEHICLES.mastodon.fuelUse} l/km (bak ${VEHICLES.mastodon.tank} l, ok. ${Math.round(rangeKm('mastodon', VEHICLES.mastodon.tank))} km); R wlewa kanister. Konwoje (od 0.178) biorą z wioski, z której ruszają, kanister na każde ${CONVOY_FUEL.can / CONVOY_FUEL.lpkm} km drogi; osada bez paliwa zatrzymuje konwój w domu. Dystrybutor (od 0.179): projekt osady po magazynie, ${PROJECTS.fuelpump.name} (${need(PROJECTS.fuelpump.needs)}), tankuje pojazd z zapasów wioski po jej cenie. Paliwo robi rafineria z ropy (1 Barrel of Crude Oil → 1 kanister co 2 h).`); }
   P('');
   P('Spis: 1. Surowce · 2. Przetwarzanie · 3. Budowy · 4. Indeks: gdzie użyć każdego materiału · 5. Surowce bez zastosowania');
   P('');
