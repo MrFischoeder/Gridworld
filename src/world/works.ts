@@ -59,6 +59,7 @@ export function drawWorks(vm: VillageMap, T: Terrain, id: number): THREE.Group {
     if (!p) {
       // a staked plot (and, if the elder has one going up here, the building site)
       const building = slot === plants.length && st?.pbuild && !isStation(st.pbuild.k);
+      if (!building) continue; // (0.181) nothing marks a plot until a works is going up there
       for (const [u, v] of [[-along / 2 + 1, -out / 2 + 1], [along / 2 - 1, -out / 2 + 1], [along / 2 - 1, out / 2 - 1], [-along / 2 + 1, out / 2 - 1]]) {
         const [x, z] = P(u, v), g = T.heightAt(x, z); pb.box(x - 0.06, g, z - 0.06, x + 0.06, g + 1.1, z + 0.06, WOOD);
         pb.seg(FLAG, [x, g + 1.1, z], [x + 0.3, g + 0.95, z]);

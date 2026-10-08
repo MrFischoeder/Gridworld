@@ -4,6 +4,7 @@ import { progressive, projectDone } from '../gen/settlement';
 // red when down), the turbines stop turning and the village lamps go dark when it is down. E at it mends it with
 // the right parts, and the village pays you for the job.
 import { drawComputer } from './computer';
+import { projectBegun } from '../gen/buildpads';
 import { hasImprove } from '../gen/improve';
 import * as THREE from 'three';
 import { earnTrust } from './standing';
@@ -48,8 +49,8 @@ export function drawPower(vm: VillageMap, T: Terrain, id: number): THREE.Group {
   let lightAt: [number, number, number];
   if (progressive(G.char.towns[id]) && !projectDone(G.char.towns[id], 'power')) {
     plants.delete(id);
-    for (const [x, z] of [[x0, z0], [x1, z0], [x1, z1], [x0, z1]]) pb.seg(WOOD, [x, ground(x, z), z], [x, ground(x, z) + 1.2, z]);
-    grp.add(pb.build()); return grp; // only the stakes: the elder's tutorial says what goes here
+    if (projectBegun(G.char.towns[id], 'power')) for (const [x, z] of [[x0, z0], [x1, z0], [x1, z1], [x0, z1]]) pb.seg(WOOD, [x, ground(x, z), z], [x, ground(x, z) + 1.2, z]);
+    grp.add(pb.build()); return grp; // (0.181) stakes only once its building has begun
   }
   if (kind === 'generator') {
     const g = ground(cx, cz);

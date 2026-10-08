@@ -4,7 +4,7 @@ import { initializeSettlements, progressive, RESOURCE_PLOTS, projectAvailable, d
 import { RESOURCE_YARD, type ResourceProject } from '../gen/resource-sites';
 import { peopleAt } from '../gen/people';
 import { VEHICLE_HALL } from '../gen/hall';
-import { sitePads } from '../gen/buildpads';
+import { sitePads, meanGround, projectBegun, SITE_PAD } from '../gen/buildpads';
 import { allVillages } from '../gen/regions';
 import { syncMegaliths, clearMegaliths, megalithHit, megalithRay, megalithName, megalithFloor, nearMegalith } from './megaliths';
 import { syncWorldGates, clearWorldGates, worldGateHit, worldGateRay } from './worldgates';
@@ -37,12 +37,12 @@ import { drawFarms } from './farms';
 import { scene, V, GRID, localize } from './render';
 import { G, W } from '../game';
 import { VoxelGrid, type Space } from '../core/voxel';
-import { Terrain, inRect, rectDist, STEP, CELLS, VERTS } from '../gen/terrain';
+import { Terrain, inRect, rectDist, STEP, CELLS, VERTS, type Pad } from '../gen/terrain';
 import { riversOf, riverNear } from '../gen/rivers';
 import { bridgeFloor, bridgeHit, bridgeDeck, clearBridges } from './bridges';
 import { pierFloor, pierHit, pierDeck, clearPiers } from './piers';
 import { boatHit, shipFloor, shipHit } from './boats';
-import { CHUNK, poisNear, X_MIN, WORLD_W, POLE_Z, POLAR_Z, villageContaining, villageDist, villageSeed, GRIDHOLM_ID, type Poi, wrapC } from '../gen/regions';
+import { CHUNK, poisNear, X_MIN, WORLD_W, POLE_Z, POLAR_Z, villageContaining, villageDist, villageSeed, GRIDHOLM_ID, type Poi, type Rect, wrapC } from '../gen/regions';
 import { chunkTrees, chunkRocks, type Tree, type Rock, type OreKind } from '../gen/trees';
 import { drawTree } from './trees';
 import { drawTemple } from './temple';
@@ -581,22 +581,54 @@ export function groveGiants(world: number, x: number, z: number, r: number): { x
   }
   return out;
 }
+/**
+ * (0.181, the owner's rule) The ground round the villages: nothing is levelled in advance. A building site, a
+ * settlement's yard or its warehouse gets a gentle pad only once it stands or is going up (`projectBegun`): its own
+ * mean natural height, keeping some of the land's relief (`SITE_PAD.soft`; the warehouse, which vehicles drive into,
+ * is flat), eased back over a wide blend. Called again when a village's look changes (`settlementsChanged`).
+ */
+const padSig = new Map<number, string>();
+function villagePads(w: number): Pad[] {
+  padSig.clear();
+  const all = allVillages(w).map((v) => { const p = padsOf(w, v); padSig.set(v.id, sigOf(p)); return p; });
+  return all.flat();
+}
+const sigOf = (p: Pad[]) => p.map((q) => `${q.poi.rect.x0},${q.poi.rect.z0},${q.poi.rect.x1},${q.poi.rect.z1}`).join(';');
+function padsOf(w: number, v: Poi): Pad[] {
+  const levelled = sitePads(w, v, G.char.towns[v.id]);
+  const pads = [v].filter((v) => progressive(G.char.towns[v.id])).flatMap((v) => {
+    const s = G.char.towns[v.id], ox = v.x - 36, oz = v.z - 36;
+    const plots = Object.entries(RESOURCE_PLOTS).filter(([k]) => projectAvailable(s, k as ResourceProject) && projectBegun(s, k as ResourceProject));
+    const rects = [...(projectBegun(s, 'warehouse') ? [{ rect: VEHICLE_HALL as Rect, depression: false, soft: 0 }] : []), ...plots.map(([k, p]) => ({ rect: { x0: p.x - RESOURCE_YARD.halfX, x1: p.x + RESOURCE_YARD.halfX, z0: p.z - RESOURCE_YARD.halfZ, z1: p.z + RESOURCE_YARD.halfZ }, depression: k === 'mine', soft: SITE_PAD.soft }))];
+    return rects.map(({ rect: r, depression, soft }, i) => {
+      const rect = { x0: ox + r.x0, x1: ox + r.x1, z0: oz + r.z0, z1: oz + r.z1 };
+      return { y: meanGround(w, rect), surface: true, depression, soft, poi: { ...v, id: -v.id * 8 - i - 1, rect, flat: 3, blend: SITE_PAD.blend } };
+    });
+  });
+  return [...levelled, ...pads];
+}
+let padT = 0;
+/**
+ * Once a second (main loop): a village whose building sites in use changed (a project begun or done, a works or
+ * station going up) gets its ground eased under them; the chunks round it and the village are redrawn. The same on
+ * every player's game, from the shared towns.
+ */
+export function syncVillagePads(dt: number) {
+  if ((padT -= dt) > 0 || !OW.terrain || G.char.loc !== 'overworld') return;
+  padT = 1;
+  const w = OW.terrain.world; let changed: Poi[] = [];
+  for (const v of allVillages(w)) { const s = sigOf(padsOf(w, v)); if (padSig.get(v.id) !== s) { padSig.set(v.id, s); changed.push(v); } }
+  if (!changed.length) return;
+  OW.terrain.setSettlementPads(allVillages(w).flatMap((v) => padsOf(w, v)));
+  for (const v of changed) { rebuildChunksNear(v.x, v.z, 420); if (OW.structs.has(v.id)) reloadStruct(v.id); }
+}
 /** Load (or reload) the open world of the current character's seed, synchronously around (x, z). */
 export function openWorld(x: number, z: number) {
   initializeSettlements(G.char); planksForLogs(G.char); // (0.165: also after a server's world is taken over)
   const w = G.char.world;
   if (!OW.terrain || OW.terrain.world !== w) { OW.terrain = new Terrain(w); riversOf(w); } // the rivers are worked out once, while the world loads
   OW.terrain.setClaims([...G.char.claims, ...fieldClaims(G.char.towns)]); // bases and the villages' fields are levelled
-  // (0.172) every village's building sites (power plant, industry site, works and station plots, the hall) lie level at
-  // the village's height, so whatever goes up there stands on flat ground
-  const levelled = allVillages(w).flatMap((v) => sitePads(w, v, OW.terrain!.padY(v)));
-  const pads = allVillages(w).filter((v) => progressive(G.char.towns[v.id])).flatMap((v) => {
-    const ox = v.x - 36, oz = v.z - 36, y = OW.terrain!.padY(v);
-    const plots = Object.entries(RESOURCE_PLOTS).filter(([k]) => projectAvailable(G.char.towns[v.id], k as ResourceProject));
-    const rects = [{ rect: VEHICLE_HALL, depression: false, y }, ...plots.map(([k, p]) => ({ rect: { x0: p.x - RESOURCE_YARD.halfX, x1: p.x + RESOURCE_YARD.halfX, z0: p.z - RESOURCE_YARD.halfZ, z1: p.z + RESOURCE_YARD.halfZ }, depression: k === 'mine', y: Math.max(4, y) }))];
-    return rects.map(({ rect: r, depression, y }, i) => ({ y, surface: true, depression, poi: { ...v, id: -v.id * 8 - i - 1, rect: { x0: ox + r.x0, x1: ox + r.x1, z0: oz + r.z0, z1: oz + r.z1 }, flat: 3, blend: 12 } }));
-  });
-  OW.terrain.setSettlementPads([...levelled, ...pads]);
+  OW.terrain.setSettlementPads(villagePads(w));
   primeInstalls(w, [...G.char.claims, ...fieldClaims(G.char.towns)]); // the installations' sites are worked out in a worker meanwhile
   closeWorld();
   G.water = (px, pz) => (inStructure(px, pz) ? null : OW.terrain!.water(px, pz));

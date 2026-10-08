@@ -20,7 +20,8 @@ const smooth = (t: number) => t * t * (3 - 2 * t);
 export const rectDist = (r: Rect, x: number, z: number) => Math.hypot(Math.max(r.x0 - x, 0, x - r.x1), Math.max(r.z0 - z, 0, z - r.z1));
 export const inRect = (r: Rect, x: number, z: number) => x >= r.x0 && x < r.x1 && z >= r.z0 && z < r.z1;
 
-export interface Pad { poi: Poi; y: number; surface?: boolean; depression?: boolean }
+/** `soft` (surface pads, 0.181): the share of the natural relief kept inside (0 or unset = table-flat). */
+export interface Pad { poi: Poi; y: number; surface?: boolean; depression?: boolean; soft?: number }
 export interface Features { pads: Pad[]; roads: Road[]; lakes: Lake[]; claims: Claim[]; rivers: RiverSeg[]; gates: WorldGate[]; megaliths: Megalith[] }
 
 const ROAD_BLEND = 5;
@@ -143,7 +144,7 @@ export class Terrain {
     for (const p of f.pads) if (p.surface) {
       const d = rectDist(p.poi.rect, x, z);
       if (d >= p.poi.flat + p.poi.blend) continue;
-      const r = p.poi.rect, y = p.y - (p.depression ? depositDepth(x - (r.x0 + r.x1) / 2, z - (r.z0 + r.z1) / 2) : 0);
+      const r = p.poi.rect, y = p.y - (p.depression ? depositDepth(x - (r.x0 + r.x1) / 2, z - (r.z0 + r.z1) / 2) : 0) + (p.soft ? (h - p.y) * p.soft : 0);
       h = d <= p.poi.flat ? y : h + (y - h) * (1 - smooth((d - p.poi.flat) / p.poi.blend));
     }
     return h;

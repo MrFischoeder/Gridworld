@@ -1,5 +1,6 @@
 // Physical new-world deposits and the surface receiver console at a real nearby ruin.
 import * as THREE from 'three';
+import { projectBegun } from '../gen/buildpads';
 import { G, W } from '../game';
 import { RESOURCE_PLOTS, FUEL_PUMP, CHARGER, PROJECTS, progressive, projectDone, projectAvailable, depositsOf, linkRuin, tutorialStep, sideStep, sawLevel, furnaceLevel, isStation, stationStage, STATION_RANGE } from '../gen/settlement';
 import { ORES } from '../gen/resource-sites';
@@ -103,10 +104,11 @@ export function drawSettlementSites(vm: VillageMap, T: Terrain, id: number): THR
   const crew: Crew[] = []; crews.set(id, crew); crewT = 0;
   for (const [k, p] of Object.entries(RESOURCE_PLOTS) as [keyof typeof RESOURCE_PLOTS, { x: number; z: number }][]) {
     if (!projectAvailable(s, k)) continue;
-    const x = vm.ox + p.x, z = vm.oz + p.z, y = T.heightAt(x, z), built = projectDone(s, k);
+    const x = vm.ox + p.x, z = vm.oz + p.z, y = T.heightAt(x, z), built = projectDone(s, k), begun = projectBegun(s, k);
     const ore = depositsOf(s).ore;
     if (k === 'quarry' || k === 'mine' || k === 'lumber') naturalResource(natural, T, id, k, x, z, rocks, boxes, ore);
     if (k === 'oil') { const seep = oilSeep(T, id, x, z); oilMotions.set(id, seep.motion); animateOil(seep.motion, oilClock); grp.add(seep.group); }
+    if (!built && !begun) continue; // (0.181) the land as it came: no stakes or sign until its building has begun (the deposit itself stays)
     if (!built) {
       for (const [dx, dz] of [[-17, -13], [17, -13], [-17, 13], [17, 13]]) { const yy = T.heightAt(x + dx, z + dz); pb.seg(WOOD, [x + dx, yy, z + dz], [x + dx, yy + .8, z + dz]); }
     } else if (k === 'quarry') {

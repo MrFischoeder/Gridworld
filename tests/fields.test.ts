@@ -39,7 +39,7 @@ describe('farm fields', () => {
     const f = farmField(home, seed, s, 0);
     expect((f.x0 + f.x1) / 2).toBe(spot!.x); expect(f.x1 - f.x0).toBe(2 * FIELD.half);
     const t2 = new Terrain(world); t2.setClaims([fieldClaim(spot!)]);
-    for (const [u, v] of [[0, 0], [5, 5], [-5, 4]]) expect(t2.heightAt(spot!.x + u, spot!.z + v)).toBeCloseTo(spot!.y, 3);
+    for (const [u, v] of [[0, 0], [5, 5], [-5, 4]]) { const nat = T.base(spot!.x + u, spot!.z + v); expect(Math.abs(t2.heightAt(spot!.x + u, spot!.z + v) - spot!.y)).toBeLessThanOrEqual(Math.abs(nat - spot!.y) * FIELD.soft + 0.05); } // (0.181) eased, not table-flat
     // the next field may not sit on this one
     expect(fieldProblem(T, home, seed, s, spot!.x + 4, spot!.z, [fieldClaim(spot!)])).toMatch(/field/);
     expect(FARM.max).toBeGreaterThan(1);

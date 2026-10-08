@@ -3,6 +3,11 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.181.0', date: '2026-10-08', title: 'Natural ground round the villages', notes: [
+    'The land round a village now stays as it came. Nothing is levelled in advance for buildings that do not exist yet, and there are no more sharp edges where you could see under the ground.',
+    'No more stakes or CONSTRUCTION SITE signs on plots where nothing is being built. A plot is marked only once its building has begun. The deposits themselves (quarry rocks, an oil seep, an ore seam, a great grove) are still there to find.',
+    'When a building goes up, the ground under it is eased rather than made table-flat. The worst of the slope goes, some of the land\'s shape stays, and the change fades out gently over a wide ring. Farm fields you stake out are eased the same way. The vehicle warehouse is still built on flat ground so vehicles can drive in.',
+  ] },
   { v: '0.180.0', date: '2026-10-08', title: 'Electric drive', notes: [
     'New plans to find: Electric Drive. With them the blacksmith makes an Electric Drive Kit from 1 electric motor, 4 batteries, 1 control unit and 4 cable.',
     'Drop the kit on the new Drive slot in vehicle service and the diesel engine comes out. The Scout then carries a 30 kWh battery (about 190 km) and the Mastodon a 100 kWh battery (about 210 km). A kWh costs 3 gold, so a km costs about a third of what diesel does.',

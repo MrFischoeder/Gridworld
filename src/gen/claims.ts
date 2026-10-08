@@ -8,7 +8,8 @@ import { nearestOnRoad } from './roads';
 import type { Terrain } from './terrain';
 
 /** A levelled pad: a base's claim, or a village field (gen/fields.ts: its own `flat` and `blend`). */
-export interface Claim { x: number; z: number; y: number; flat?: number; blend?: number }
+/** `soft` (0.181): the share of the land's relief kept inside (fields: eased, not table-flat; unset = flat). */
+export interface Claim { x: number; z: number; y: number; flat?: number; blend?: number; soft?: number }
 /** Claimed radius, levelled radius, blend back to the natural ground (m). */
 export const CLAIM = { r: 30, flat: 12, blend: 12 };
 /** Everything within this radius stands on changed ground: trees, rocks and plants there are cleared. */
@@ -20,9 +21,9 @@ const rectD = (r: { x0: number; z0: number; x1: number; z1: number }, x: number,
 const smooth = (t: number) => t * t * (3 - 2 * t);
 /** Ground height h at (x, z) after the claim has levelled it. */
 export function claimFlatten(c: Claim, x: number, z: number, h: number): number {
-  const d = Math.hypot(wrapDx(x - c.x), z - c.z), flat = c.flat ?? CLAIM.flat, blend = c.blend ?? CLAIM.blend;
-  if (d <= flat) return c.y;
-  if (d < flat + blend) return h + (c.y - h) * (1 - smooth((d - flat) / blend));
+  const d = Math.hypot(wrapDx(x - c.x), z - c.z), flat = c.flat ?? CLAIM.flat, blend = c.blend ?? CLAIM.blend, y = c.y + (c.soft ? (h - c.y) * c.soft : 0);
+  if (d <= flat) return y;
+  if (d < flat + blend) return h + (y - h) * (1 - smooth((d - flat) / blend));
   return h;
 }
 /** How far a pad's changed ground reaches (trees, rocks and plants within are cleared). */

@@ -47,7 +47,7 @@ export function drawIndustry(vm: VillageMap, T: Terrain, id: number): THREE.Grou
   const x0 = vm.ox + site.x - site.w / 2, z0 = vm.oz + site.z - site.d / 2, x1 = x0 + site.w, z1 = z0 + site.d, cx = (x0 + x1) / 2, cz = (z0 + z1) / 2;
   if (!built) {
     sites.delete(id);
-    for (const [x, z] of [[x0, z0], [x1, z0], [x1, z1], [x0, z1]]) pb.seg(WOOD, [x, T.heightAt(x, z), z], [x, T.heightAt(x, z) + 1, z]);
+    // (0.181) no stakes until something is built: only the natural deposit/clearing
     // Natural deposit/clearing instead of a functioning industrial building.
     if (kind === 'mine' || kind === 'salvage') pb.box(cx - 2, T.heightAt(cx, cz), cz - 1, cx + 2, T.heightAt(cx, cz) + .8, cz + 1, ROCK);
     grp.add(pb.build()); return grp; // only the stakes: the elder's tutorial says what goes here

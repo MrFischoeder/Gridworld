@@ -23,7 +23,7 @@ import { claimDist, clearOf, type Claim } from './claims';
 import type { Terrain } from './terrain';
 
 /** How far out a field may go (from the village's middle), its half size, the levelled radius and the blend back, the most the ground may be cut or filled. */
-export const FIELD = { reach: 500, half: 6, flat: 9, blend: 10, maxCut: 3.5 };
+export const FIELD = { reach: 500, half: 6, flat: 9, blend: 14, maxCut: 3.5, soft: 0.3 };
 /** Where a farm's field stands (world; x as placed) and the height its ground is levelled to. */
 export interface FieldSpot { x: number; z: number; y: number }
 
@@ -58,7 +58,7 @@ export function fieldPad(t: Pick<Terrain, 'heightAt'>, x: number, z: number): nu
   return Math.round(sum / n * 4) / 4;
 }
 /** The field as a terrain claim (gen/claims.ts): levelled within `flat`, blended back over `blend`. */
-export const fieldClaim = (f: FieldSpot): Claim => ({ x: f.x, z: f.z, y: f.y, flat: FIELD.flat, blend: FIELD.blend });
+export const fieldClaim = (f: FieldSpot): Claim => ({ x: f.x, z: f.z, y: f.y, flat: FIELD.flat, blend: FIELD.blend, soft: FIELD.soft });
 /** Every placed field of every village (the terrain levels them all, on every player's game alike). */
 export function fieldClaims(towns: Record<string, TownState | undefined>): Claim[] {
   const out: Claim[] = [];

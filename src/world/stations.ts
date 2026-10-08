@@ -45,6 +45,7 @@ export function drawStations(vm: VillageMap, T: Terrain, id: number): THREE.Grou
     const w: Station = { vid: id, seed: vm.seed, slot, town: vm.name, x0: Math.min(x0a, x1a), z0: Math.min(z0a, z1a), x1: Math.max(x0a, x1a), z1: Math.max(z0a, z1a), lamp: null, rotors: [] };
     const k: StationKind | undefined = built[slot]?.k;
     if (!k) {
+      if (!(slot === built.length && st?.pbuild && isStation(st.pbuild.k))) continue; // (0.181) nothing marks a plot until a station is going up there
       for (const [u, v] of [[-along / 2 + 1, -out / 2 + 1], [along / 2 - 1, -out / 2 + 1], [along / 2 - 1, out / 2 - 1], [-along / 2 + 1, out / 2 - 1]]) {
         const [x, z] = P(u, v), g = T.heightAt(x, z); pb.box(x - 0.06, g, z - 0.06, x + 0.06, g + 1.1, z + 0.06, WOOD); pb.seg(PANEL, [x, g + 1.1, z], [x + 0.3, g + 0.95, z]);
       }
