@@ -3,6 +3,14 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.183.0', date: '2026-10-08', title: 'Outposts at the deposits', notes: [
+    'In a new world you can now work the deposits out in the wilds. Walk onto a deposit and press E to drive a stake in. It becomes an outpost of the crew. Nobody pays for the land.',
+    'An outpost needs its extraction, built from materials you bring there: a Quarry crane at a stone outcrop, a Logging camp in a great grove, a Mine head over coal or ore, a Pumpjack over an oil seep, or a Deep shaft over a rare deposit. Hand the materials over bit by bit from your backpack or a vehicle parked by it. When everything is in, the builders take 10 hours.',
+    'Once the extraction stands, the deposit is worked at a steady rate: half a crate an hour times its richness (rare deposits about a quarter of that). A stone outcrop also gives its limestone, clay or sand, and an oil seep with brine gives salt.',
+    'Without a shed only 6 crates of each pile up in the open, and then the crew stands idle. A Storage shed (20 planks, 12 nails, 8 stone, 8 hours) keeps up to 60 crates of each.',
+    'Take the crates away at the outpost with Take 1 or Take all. They go into the trunks of your vehicles parked nearby first, then your backpack.',
+    'Outposts show on the map as a gold ring. In multiplayer they belong to the whole crew: anyone can build, deliver and haul, and two players cannot take the same crates. A server must be updated to this version (the multiplayer protocol changed).',
+  ] },
   { v: '0.182.0', date: '2026-10-08', title: 'A new world: towns and deposits in the wilds', notes: [
     'This is the first stage of the outposts plan. It changes only new worlds. A game or a server you already play keeps its villages and rules.',
     'A new world has about 20 towns instead of a hundred villages. They are spread over the whole planet, about 15 km apart. Two of them lie 3.5 to 7 km from Gridholm for your first trips. Roads join the towns by land and never cross the sea.',

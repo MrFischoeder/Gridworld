@@ -71,14 +71,14 @@ export const MP = { path: '/mp', port: 7777, max: 8, rate: 100, nameMax: 20, cha
 const AUTH = new Set(['register', 'login', 'logout', 'passwd', 'verify', 'resend', 'forgot', 'reset', 'email', 'profile']);
 const RELAY = new Set(['foes', 'bolt', 'fhit', 'kill', 'hurt', 'thit', 'boat', 'row']);
 /** Protocol version: a client with another one is refused (the game shows why). */
-export const PROTOCOL = 12;
+export const PROTOCOL = 13;
 
 const clean = (s, n) => String(s ?? '').replace(/[\u0000-\u001f<>]/g, '').trim().slice(0, n);
 const num = (v) => (typeof v === 'number' && Number.isFinite(v) ? v : 0);
 const DAY = 86400000;
 /** A creator's secret as the server keeps it (the secret itself is never stored or shown). */
 const ownerOf = (key) => (typeof key === 'string' && key.length >= 16 ? createHash('sha256').update(key).digest('hex') : '');
-const FIELDS = new Set(['towns', 'market', 'installs', 'bridges', 'bridgeSites', 'piers', 'boats', 'shuttle', 'containers', 'opened', 'unlocked', 'killed', 'harvest', 'camps', 'cityGarrisons', 'caravans', 'claims', 'benches', 'board', 'boards', 'fallen']);
+const FIELDS = new Set(['towns', 'market', 'installs', 'bridges', 'bridgeSites', 'piers', 'boats', 'shuttle', 'containers', 'opened', 'unlocked', 'killed', 'harvest', 'camps', 'cityGarrisons', 'caravans', 'claims', 'benches', 'board', 'boards', 'fallen', 'outposts']);
 const safeKey = (k) => typeof k === 'string' && !['__proto__', 'constructor', 'prototype'].includes(k);
 const worldKey = (f, k) => FIELDS.has(f) && safeKey(k) && !(f === 'containers' && k.startsWith('home:'));
 const object = (v) => v && typeof v === 'object' && !Array.isArray(v);
@@ -304,7 +304,7 @@ export function createMp(log = (m) => console.log('[mp] ' + m), opts = {}) {
         send(ws, { t: 'wset', ch, from: me.id, seq: m.seq });
         const accepted = ch.filter((c) => !c[3]);
         if (accepted.length) all(room, { t: 'wset', ch: accepted, from: me.id, seq: m.seq }, me.id);
-      } else if (m.t === 'wlock' && worldKey(m.f, m.k) && ['containers', 'towns'].includes(m.f)) {
+      } else if (m.t === 'wlock' && worldKey(m.f, m.k) && ['containers', 'towns', 'outposts'].includes(m.f)) {
         const key = m.f + ':' + m.k, holder = room.locks.get(key);
         const ok = !holder || holder === me.id;
         if (ok) {

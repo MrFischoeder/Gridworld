@@ -55,7 +55,7 @@ W modelu danych każda placówka od początku ma **właściciela** (id gracza al
 ## Etapy
 
 1. **O1 – nowy świat (zrobione w 0.182.0):** ok. 20 miast z targiem i sklepami, drogi między nimi, wioska startowa (Gridholm), złoża jako miejsca na mapie (odkrywane wyprawą, skanem, plotkami), mapa żyzności. Stare światy bez zmian.
-2. **O2 – placówka:** palik przy złożu, budowa wydobycia i magazynu, produkcja liczona ze wzoru, wywóz ciężarówką; właściciel w danych (załoga albo gracz).
+2. **O2 – placówka (zrobione w 0.183.0):** palik przy złożu, budowa wydobycia i magazynu, produkcja liczona ze wzoru, wywóz ciężarówką; właściciel w danych (załoga albo gracz).
 3. **O3 – sieć prądu z zasięgiem:** źródła prądu przy placówkach, wspólna sieć w promieniu.
 4. **O4 – ludzie i jedzenie:** baraki i domy, zużycie jedzenia, samoczynny napływ ludzi przy nadwyżce, farmy przy placówkach z żyznością; placówka przeradza się w wioskę.
 5. **O5 – obrona:** płoty, mury, wieżyczki, najazdy bandytów i szkody od zwierząt.

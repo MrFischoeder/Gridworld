@@ -37,6 +37,7 @@ export const SHARED: Field[] = [
   { f: 'harvest', kind: 'map' }, { f: 'camps', kind: 'map' }, { f: 'cityGarrisons', kind: 'map' }, { f: 'caravans', kind: 'map' },
   // the players' land claims with what is built on them, wild workbenches and the notice boards are the world's too
   { f: 'claims', kind: 'list', key: at }, { f: 'benches', kind: 'list', key: at }, { f: 'board', kind: 'one' }, { f: 'boards', kind: 'map' },
+  { f: 'outposts', kind: 'map' }, // (0.183) the outposts at the deposits
   { f: 'fallen', kind: 'map' }, // the crew who died here: their names are not taken again
 ];
 const EMPTY: Partial<Record<keyof Char, () => unknown>> = { shuttle: () => ({ given: {}, v: 2 }), board: () => ({ seq: 0, offers: [], stamp: boardPeriod(G.char.time) }) };
@@ -145,7 +146,7 @@ onWorld({
       if (!f || f.skip?.(k)) continue;
       const before = entries(G.char, f).find(([kk]) => kk === k)?.[1], was = before === undefined ? undefined : JSON.stringify(before);
       const baseline = last.get(fk)?.get(k);
-      const ownReservation = from === net.id && (fk === 'containers' && activeContainers.has(k) || fk === 'towns' && activeTowns.has(k));
+      const ownReservation = from === net.id && (fk === 'containers' && activeContainers.has(k) || fk === 'towns' && activeTowns.has(k) || fk === 'outposts' && activeTowns.has('outposts:' + k));
       const authoritative = rejected || (force && !ownReservation);
       const merge = ['opened', 'unlocked', 'killed'].includes(fk) ? mergeProgress : mergeWorld;
       const rebased = authoritative ? v : merge(v, baseline === undefined ? undefined : JSON.parse(baseline), before);
@@ -214,7 +215,7 @@ export function syncWorld(dt: number) {
     for (const [k, v] of entries(G.char, f)) {
       seen.add(k);
       if (f.f === 'containers' && activeContainers.has(k)) continue; // transfer windows publish through their reservation
-      if (f.f === 'towns' && activeTowns.has(k)) continue; // stock transactions publish atomically on release
+      if (f.f === 'towns' && activeTowns.has(k) || f.f === 'outposts' && activeTowns.has('outposts:' + k)) continue; // stock transactions publish atomically on release
       const j = JSON.stringify(v);
       if (m.get(k) !== j) { const base = m.get(k); ch.push([f.f, k, v, base === undefined ? null : JSON.parse(base)]); }
     }

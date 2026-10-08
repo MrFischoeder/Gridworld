@@ -17,8 +17,10 @@ import { saveChar } from '../character';
 import { showToast, logLine } from '../ui/hud';
 import { dirWord } from '../gen/tech';
 import type { Terrain } from '../gen/terrain';
+import { lodeById } from '../gen/lodes';
+import { digOf, finishDue, partName, stockNow, outputs, capOf, jobEnd, type OutpostState } from '../gen/outposts';
 
-interface Live { l: Lode; g: THREE.Group; rings: [number, number, number][]; oil?: OilMotion }
+interface Live { l: Lode; g: THREE.Group; rings: [number, number, number][]; boxes: [number, number, number, number][]; oil?: OilMotion; sig: string }
 const live = new Map<string, Live>();
 const STONE = [0xb2b2a3, 0x88978f], ROCK = 0x89988b;
 
@@ -27,7 +29,7 @@ export const givesText = (l: Lode) => lodeGives(l).map((k) => ITEMS[k].name.repl
 
 function build(T: Terrain, l: Lode): Live {
   const gx = nearX(l.x, G.pos.x), H = (x: number, z: number) => T.heightAt(gx + x, l.z + z) - l.y;
-  const pb = new PropBatch(), L: Live = { l, g: new THREE.Group(), rings: [] }, R = rng(hash(T.world, l.x | 0, l.z | 0, 0x10a1));
+  const pb = new PropBatch(), L: Live = { l, g: new THREE.Group(), rings: [], boxes: [], sig: sigOf(l) }, R = rng(hash(T.world, l.x | 0, l.z | 0, 0x10a1));
   const rock = (x: number, z: number, r: number, h: number, c: number, vein?: number) => {
     const y = H(x, z) - 0.12, sides = 6 + Math.floor(R() * 3), rot = R() * 6.283;
     pb.rock(x, y, z, r, h, sides, rot, c); if (vein) pb.vein(x, y, z, r, h, sides, rot, vein);
@@ -54,10 +56,103 @@ function build(T: Terrain, l: Lode): Live {
     for (let i = 0; i < 11; i++) { const a = i / 11 * 6.283 + R() * 0.2, d = 6 + R() * 3; rock(Math.cos(a) * d, Math.sin(a) * d, 1.1 + R() * 0.9, 1.2 + R() * 1.6, ROCK, spec.c); }
     for (let i = 0; i < 6; i++) rock((R() - 0.5) * 6, (R() - 0.5) * 6, 0.35 + R() * 0.4, 0.25 + R() * 0.3, spec.c, spec.c);
   }
+  const o = G.char.outposts[l.id];
+  if (o?.k) drawOutpost(pb, H, L, o, R);
   L.g.add(pb.build());
   L.g.position.set(gx, l.y, l.z);
   scene.add(L.g);
   return L;
+}
+// ---------- (0.183) the outpost at a deposit ----------
+const WOOD = 0xc8a060, STEEL = 0xa8c8b8, STAKE = 0xffd060;
+/** Where the outpost's pieces stand, deposit-local: the post (and the E spot), the extraction, the shed. */
+export function outpostSpots(l: Lode) {
+  const a = l.yaw, d = digOf(l.k), far = d === 'quarry' ? l.r * 0.5 + 6 : 0;
+  return {
+    post: [Math.cos(a) * (l.r + 3), Math.sin(a) * (l.r + 3)] as [number, number],
+    dig: [Math.cos(a + Math.PI) * far, Math.sin(a + Math.PI) * far] as [number, number],
+    shed: [Math.cos(a + Math.PI / 2) * (l.r + 7), Math.sin(a + Math.PI / 2) * (l.r + 7)] as [number, number],
+  };
+}
+/** What the drawing depends on: the outpost's builds and how full its stock is (in fives). */
+function sigOf(l: Lode): string {
+  const o = G.char.outposts[l.id];
+  if (!o?.k) return '';
+  const st = stockNow(o, l, G.char.time), fill = outputs(l).reduce((a, [g]) => a + Math.floor(st[g] ?? 0), 0);
+  return JSON.stringify([o.done ?? {}, o.job?.p ?? '', o.job ? Math.floor((G.char.time - o.job.t) / (o.job.h * 6)) : 0, Math.floor(fill / 5)]);
+}
+function drawOutpost(pb: PropBatch, H: (x: number, z: number) => number, L: Live, o: OutpostState, R: () => number) {
+  const l = L.l, sp = outpostSpots(l), cos = Math.cos(l.yaw), sin = Math.sin(l.yaw);
+  // the stakes round the claim and the post with its board
+  for (let i = 0; i < 8; i++) { const a = i / 8 * 6.283, x = Math.cos(a) * (l.r + 2), z = Math.sin(a) * (l.r + 2), y = H(x, z); pb.box(x - 0.06, y, z - 0.06, x + 0.06, y + 1.1, z + 0.06, WOOD); pb.seg(STAKE, [x, y + 1.1, z], [x, y + 0.9, z]); }
+  { const [x, z] = sp.post, y = H(x, z); pb.box(x - 0.08, y, z - 0.08, x + 0.08, y + 2.2, z + 0.08, WOOD); const bx = -sin * 0.7, bz = cos * 0.7; pb.face([x - bx, y + 1.4, z - bz], [x + bx, y + 1.4, z + bz], [x + bx, y + 2.1, z + bz], [x - bx, y + 2.1, z - bz]); pb.line(STAKE, [x - bx, y + 1.4, z - bz], [x + bx, y + 1.4, z + bz], [x + bx, y + 2.1, z + bz], [x - bx, y + 2.1, z - bz], [x - bx, y + 1.4, z - bz]); for (let k = 0; k < 3; k++) pb.seg(STAKE, [x - bx * 0.7, y + 1.55 + k * 0.17, z - bz * 0.7], [x + bx * (0.2 + 0.5 * ((k + 1) % 2)), y + 1.55 + k * 0.17, z + bz * (0.2 + 0.5 * ((k + 1) % 2))]); L.rings.push([x, z, 0.3]); }
+  const site = (cx: number, cz: number, w: number, d: number, share: number) => { // a building site: stakes, lines, a stack, a frame rising
+    const y = H(cx, cz), c = [[cx - w, cz - d], [cx + w, cz - d], [cx + w, cz + d], [cx - w, cz + d]];
+    for (const [x, z] of c) { pb.box(x - 0.06, H(x, z), z - 0.06, x + 0.06, H(x, z) + 1, z + 0.06, STAKE); }
+    for (let i = 0; i < 4; i++) pb.seg(STAKE, [c[i][0], H(c[i][0], c[i][1]) + 0.5, c[i][1]], [c[(i + 1) % 4][0], H(c[(i + 1) % 4][0], c[(i + 1) % 4][1]) + 0.5, c[(i + 1) % 4][1]]);
+    const top = y + 0.5 + 4 * share;
+    for (const [x, z] of c) pb.seg(WOOD, [x, y, z], [x, top, z]);
+    pb.line(WOOD, [c[0][0], top, c[0][1]], [c[1][0], top, c[1][1]], [c[2][0], top, c[2][1]], [c[3][0], top, c[3][1]], [c[0][0], top, c[0][1]]);
+    pb.box(cx + w + 0.6, y, cz - 1, cx + w + 1.8, y + 0.9 * (1 - share) + 0.2, cz + 1, WOOD); // the stack of materials, used up as it rises
+  };
+  const share = o.job ? Math.min(1, (G.char.time - o.job.t) / (o.job.h * 60)) : 0;
+  // the extraction
+  { const [x, z] = sp.dig, y = H(x, z), d = digOf(l.k);
+    if (o.job?.p === 'dig') site(x, z, 2.5, 2.5, share);
+    else if (o.done?.dig) {
+      if (d === 'mine' || d === 'shaft') { // a headframe over the shaft, a winch house, an ore cart
+        const c = d === 'shaft' ? STEEL : WOOD, h = d === 'shaft' ? 12 : 9;
+        for (const [sx, sz] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) pb.seg(c, [x + sx * 1.6, y, z + sz * 1.6], [x + sx * 0.6, y + h, z + sz * 0.6]);
+        for (let k = 1; k < 4; k++) { const t = k / 4, r = 1.6 - t, yy = y + h * t; pb.line(c, [x - r, yy, z - r], [x + r, yy, z - r], [x + r, yy, z + r], [x - r, yy, z + r], [x - r, yy, z - r]); }
+        pb.box(x - 0.7, y + h, z - 0.7, x + 0.7, y + h + 0.3, z + 0.7, c);
+        for (let k = 0; k < 10; k++) { const a0 = k / 10 * 6.283, a1 = (k + 1) / 10 * 6.283; pb.seg(c, [x, y + h + 1 + Math.sin(a0) * 0.9, z + Math.cos(a0) * 0.9], [x, y + h + 1 + Math.sin(a1) * 0.9, z + Math.cos(a1) * 0.9]); }
+        pb.seg(c, [x, y + h + 1, z], [x + 4.5, y + 2, z]);
+        pb.box(x + 3.5, H(x + 4.5, z), z - 1.3, x + 6.5, H(x + 4.5, z) + 2.4, z + 1.3, WOOD); pb.gableRoof(x + 3.5, z - 1.3, x + 6.5, z + 1.3, H(x + 4.5, z) + 2.4, 0.9, WOOD);
+        L.boxes.push([x + 3.5, z - 1.3, x + 6.5, z + 1.3]);
+        pb.box(x - 1.2, y, z + 2.4, x + 0.2, y + 0.8, z + 3.2, LODES[l.k].c);
+        for (const [sx, sz] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) L.rings.push([x + sx * 1.4, z + sz * 1.4, 0.3]);
+      } else if (d === 'pump') { // the nodding pump over the seep, a tank
+        pb.box(x - 2, y, z - 0.6, x + 2, y + 0.5, z + 0.6, STEEL);
+        pb.seg(STEEL, [x - 0.6, y + 0.5, z - 0.5], [x, y + 3, z]); pb.seg(STEEL, [x + 0.6, y + 0.5, z - 0.5], [x, y + 3, z]); pb.seg(STEEL, [x - 0.6, y + 0.5, z + 0.5], [x, y + 3, z]); pb.seg(STEEL, [x + 0.6, y + 0.5, z + 0.5], [x, y + 3, z]);
+        pb.box(x - 2.8, y + 2.9, z - 0.15, x + 2.2, y + 3.2, z + 0.15, STEEL);
+        pb.box(x - 3.4, y + 2.2, z - 0.25, x - 2.7, y + 3.5, z + 0.25, STEEL); pb.seg(STEEL, [x - 3.1, y + 2.2, z], [x - 3.1, y + 0.3, z]);
+        pb.box(x + 1.8, y + 0.5, z - 0.5, x + 2.4, y + 1.6, z + 0.5, STEEL);
+        L.boxes.push([x - 2, z - 0.6, x + 2, z + 0.6]);
+        const tx = x + 6, tz = z + 3, ty = H(tx, tz);
+        for (let k = 0; k < 12; k++) { const a0 = k / 12 * 6.283, a1 = (k + 1) / 12 * 6.283, P = (a: number, yy: number) => [tx + Math.cos(a) * 1.6, yy, tz + Math.sin(a) * 1.6]; pb.face(P(a0, ty), P(a1, ty), P(a1, ty + 3), P(a0, ty + 3)); pb.seg(STEEL, P(a0, ty + 3), P(a1, ty + 3)); pb.seg(STEEL, P(a0, ty), P(a1, ty)); if (k % 3 === 0) pb.seg(STEEL, P(a0, ty), P(a0, ty + 3)); }
+        L.rings.push([tx, tz, 1.6]);
+      } else if (d === 'quarry') { // a timber derrick and a cutting floor with blocks
+        pb.box(x - 0.2, y, z - 0.2, x + 0.2, y + 10, z + 0.2, WOOD);
+        pb.seg(WOOD, [x, y + 1.5, z], [x + 7 * cos, y + 8, z + 7 * sin]); pb.seg(WOOD, [x + 7 * cos, y + 8, z + 7 * sin], [x, y + 10, z]);
+        pb.seg(STAKE, [x + 7 * cos, y + 8, z + 7 * sin], [x + 7 * cos, y + 3, z + 7 * sin]);
+        for (const a of [0.5, 2.6, 4.7]) pb.seg(WOOD, [x, y + 10, z], [x + Math.cos(a) * 6, H(x + Math.cos(a) * 6, z + Math.sin(a) * 6), z + Math.sin(a) * 6]);
+        for (let k = 0; k < 5; k++) { const bx = x - 3 + (k % 3) * 1.8, bz = z + 2 + Math.floor(k / 3) * 1.3, by = H(bx, bz); pb.box(bx - 0.7, by, bz - 0.5, bx + 0.7, by + 0.9, bz + 0.5, 0xc8d0c0); }
+        L.rings.push([x, z, 0.4]); L.boxes.push([x - 3.7, z + 1.5, x + 1.3, z + 4.3]);
+      } else { // logging: trestles with a trunk, a log stack, a skid road
+        for (const dx of [-2.5, 2.5]) { pb.seg(WOOD, [x + dx - 0.6, y, z - 0.5], [x + dx, y + 1.2, z]); pb.seg(WOOD, [x + dx + 0.6, y, z + 0.5], [x + dx, y + 1.2, z]); }
+        pb.box(x - 4, y + 1.1, z - 0.45, x + 4, y + 1.9, z + 0.45, 0x9a7a50);
+        for (let k = 0; k < 6; k++) { const ly = y + 0.45 * Math.floor(k / 3), lz = z + 3 + (k % 3) * 0.9; pb.box(x - 3, ly, lz - 0.4, x + 3, ly + 0.45, lz + 0.4, 0x9a7a50); }
+        L.boxes.push([x - 4, z - 0.6, x + 4, z + 0.6]); L.boxes.push([x - 3, z + 2.5, x + 3, z + 5.3]);
+      }
+    }
+  }
+  // the storage shed
+  { const [x, z] = sp.shed, y = H(x, z);
+    if (o.job?.p === 'store') site(x, z, 3, 2, share);
+    else if (o.done?.store) {
+      pb.box(x - 3, y - 0.2, z - 2, x + 3, y + 2.8, z + 2, WOOD); pb.gableRoof(x - 3.3, z - 2.3, x + 3.3, z + 2.3, y + 2.8, 1.2, WOOD);
+      for (let k = -2; k <= 2; k++) pb.seg(WOOD, [x + k, y, z - 2.01], [x + k, y + 2.8, z - 2.01]);
+      L.boxes.push([x - 3, z - 2, x + 3, z + 2]);
+    }
+  }
+  // the crates on site, beside the shed or piled by the extraction
+  if (o.done?.dig) {
+    const st = stockNow(o, l, G.char.time), n = Math.min(24, Math.floor(outputs(l).reduce((a, [g]) => a + Math.floor(st[g] ?? 0), 0) / (capOf(o) > 10 ? 3 : 1)));
+    const [bx, bz] = o.done.store ? [sp.shed[0] + 4, sp.shed[1]] : [sp.dig[0] - 4, sp.dig[1] - 4];
+    for (let k = 0; k < n; k++) { const cx = bx + (k % 3) * 0.75, cz = bz + Math.floor(k / 9) * 0.75, cy = H(bx, bz) + Math.floor((k % 9) / 3) * 0.6; pb.box(cx - 0.32, cy, cz - 0.32, cx + 0.32, cy + 0.58, cz + 0.32, LODES[l.k].c); }
+    if (n) L.boxes.push([bx - 0.4, bz - 0.4, bx + 1.9, bz + 1.9]);
+  }
+  void R;
 }
 function drop(L: Live) { scene.remove(L.g); L.g.traverse((o) => (o as THREE.Mesh).geometry?.dispose()); }
 export function dropLodes() { for (const L of live.values()) drop(L); live.clear(); }
@@ -79,11 +174,30 @@ export function updateLodes(dt: number) {
   tick = 0.5;
   const near = lodesNear(T.world, G.pos.x, G.pos.z, 520);
   for (const [id, L] of live) if (!near.some((l) => l.id === id) || Math.abs(L.g.position.x - G.pos.x) > 700) { drop(L); live.delete(id); }
+  for (const [id, L] of live) if (L.sig !== sigOf(L.l)) { drop(L); live.delete(id); } // an outpost changed: redraw it
   for (const l of near) if (!live.has(l.id)) live.set(l.id, build(T, l));
+  finishOutposts();
   for (const l of near) if (worldDist(l.x, l.z, G.pos.x, G.pos.z) < l.r + 70 && mark(l, 1)) {
     saveChar(); showToast('Deposit found: ' + LODES[l.k].name);
     logLine(`You found ${l.name}: ${LODES[l.k].blurb}. It gives ${givesText(l)} (richness ${Math.round(l.rich * 100)}%). Marked on your map.`);
   }
+}
+/** (0.183) Builds at the outposts whose time has come stand now (whoever sees it first; the same on every game). */
+function finishOutposts() {
+  const c = G.char;
+  for (const [id, o] of Object.entries(c.outposts)) {
+    if (!o?.job || c.time < jobEnd(o)) continue;
+    const l = lodeById(c.world, id);
+    if (!l) continue;
+    const p = finishDue(o, l, c.time);
+    if (p) { saveChar(); showToast(`${o.name}: ${partName(o.k, p).toLowerCase()} built`); logLine(`The builders finished the ${partName(o.k, p).toLowerCase()} at ${o.name}.${p === 'dig' ? ' It is being worked now.' : ''}`); }
+  }
+}
+/** The deposit whose outpost window E opens: within its ground and a little more. */
+export function nearOutpostLode(): Lode | null {
+  if (G.char.loc !== 'overworld' || G.fly) return null;
+  for (const L of live.values()) if (worldDist(L.l.x, L.l.z, G.pos.x, G.pos.z) < L.l.r + 6) return L.l;
+  return null;
 }
 /** The deposit you stand on, for the HUD's place name. */
 export function lodeName(x: number, z: number): string | null {
@@ -96,6 +210,7 @@ export function lodeHit(px: number, py: number, pz: number, r: number): boolean 
     const x = px - L.g.position.x, z = pz - L.l.z;
     if (Math.abs(x) > 40 || Math.abs(z) > 40 || py > L.l.y + 30) continue;
     for (const [cx, cz, cr] of L.rings) if (Math.hypot(x - cx, z - cz) < cr + r) return true;
+    for (const [x0, z0, x1, z1] of L.boxes) if (x > x0 - r && x < x1 + r && z > z0 - r && z < z1 + r) return true;
   }
   return false;
 }

@@ -247,6 +247,13 @@ function drawArea(ctx: CanvasRenderingContext2D, w: number, h: number, ppm: numb
     if (seen) { ctx.globalAlpha = 0.35; ctx.fill(); ctx.globalAlpha = 1; }
     if (labels && ppm > 0.05) ctx.fillText(name + (seen ? '' : ' (heard of)'), x, y - 10);
   }
+  for (const o of Object.values(G.char.outposts)) { // (0.183) the outposts (shared): a gold ring round the deposit
+    if (!o?.k) continue;
+    const x = X(nearX(o.x, px)), y = Z(o.z), r = labels ? 11 : 6;
+    if (x < -20 || y < -20 || x > w + 20 || y > h + 20) continue;
+    ctx.strokeStyle = ctx.fillStyle = '#ffd060'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(x, y, r, 0, 6.283); ctx.stroke(); ctx.lineWidth = 1;
+    if (labels) ctx.fillText('Outpost' + (o.done?.dig ? '' : ' (building)'), x, y + r + 16);
+  }
   for (const m of leadMarkers()) { // leads: a violet diamond for a data carrier, a lime one for a great installation (held at the edge of the big map when further)
     let x = X(m.x), y = Z(m.z); const r = labels ? 9 : 5, out = x < 24 || y < 40 || x > w - 24 || y > h - 40;
     if (out && !labels) continue;

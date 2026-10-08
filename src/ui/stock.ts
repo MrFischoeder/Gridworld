@@ -22,6 +22,14 @@ export async function withTownStock(vid: number, action: () => void): Promise<bo
   finally { unlockTown(key, G.char.towns[key]); }
 }
 
+/** (0.183) The same reservation for an outpost (gen/outposts.ts, shared `outposts`): nothing changes unless it is held. */
+export async function withOutpost(id: string, action: () => void): Promise<boolean> {
+  if (!online()) { action(); return true; }
+  const connection = net.id, locked = await lockTown(id, G.char.outposts[id], 'outposts');
+  if (!locked || net.id !== connection) { if (locked && net.id === connection) unlockTown(id, undefined, 'outposts'); showToast('Someone else is working at this outpost. Try again shortly.'); return false; }
+  try { action(); return true; }
+  finally { unlockTown(id, G.char.outposts[id], 'outposts'); }
+}
 /** The stock of village `vid` now (its state created if need be, so taking works). */
 export function stockAt(vid: number): Stock | null {
   const c = G.char, poi = findPoi(c.world, vid);

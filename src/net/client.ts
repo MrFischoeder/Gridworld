@@ -3,7 +3,7 @@
 // it with `sendState` (about 10 times a second) and reads `peers`.
 
 /** Must match PROTOCOL in server/mp.mjs. */
-export const PROTOCOL = 12;
+export const PROTOCOL = 13;
 export const SEND_EVERY = 0.1;
 
 /** `away`: in the menu (still in the game: the others see you standing there). */
@@ -331,17 +331,17 @@ let lockSeq = 0;
 const lockReplies = new Map<number, (ok: boolean) => void>();
 function clearLocks() { activeContainers.clear(); activeTowns.clear(); for (const reply of lockReplies.values()) reply(false); lockReplies.clear(); }
 /** Short reservation for an atomic village-stock transaction; the server sends current state before granting it. */
-export function lockTown(k: string, value: unknown): Promise<boolean> {
+export function lockTown(k: string, value: unknown, f: 'towns' | 'outposts' = 'towns'): Promise<boolean> {
   if (!online() || net.ws?.readyState !== 1) return Promise.resolve(false);
-  const req = ++lockSeq;
+  const req = ++lockSeq, mine = f === 'towns' ? k : f + ':' + k; // (0.183) an outpost's lock is kept as 'outposts:<id>'
   return new Promise((resolve) => {
-    lockReplies.set(req, (ok) => { if (ok) activeTowns.add(k); resolve(ok); });
-    net.ws!.send(JSON.stringify({ t: 'wlock', f: 'towns', k, value, req }));
+    lockReplies.set(req, (ok) => { if (ok) activeTowns.add(mine); resolve(ok); });
+    net.ws!.send(JSON.stringify({ t: 'wlock', f, k, value, req }));
   });
 }
-export function unlockTown(k: string, value?: unknown) {
-  activeTowns.delete(k);
-  if (online() && net.ws?.readyState === 1) net.ws.send(JSON.stringify({ t: 'wunlock', f: 'towns', k, value }));
+export function unlockTown(k: string, value?: unknown, f: 'towns' | 'outposts' = 'towns') {
+  activeTowns.delete(f === 'towns' ? k : f + ':' + k);
+  if (online() && net.ws?.readyState === 1) net.ws.send(JSON.stringify({ t: 'wunlock', f, k, value }));
 }
 /** Reserve a shared container before changing the hero's inventory. Released on close or disconnect. */
 export function lockContainer(k: string, value: unknown): Promise<boolean> {

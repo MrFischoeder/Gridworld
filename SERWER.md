@@ -86,3 +86,5 @@ PORT=8517 SERVER_NAME="Mój serwer" npm run serve
 - Postać gracza zapisuje się w jego przeglądarce (dla adresu serwera osobno niż przy grze lokalnej), nie na serwerze.
 - Nie są zsynchronizowane: spacery mieszkańców wiosek (tylko wygląd) i chwilowe zatrzymanie karawany w czasie napadu. Porzucony wrak pojazdu rabusiów można zająć tylko u gracza, w którego grze go pokonano. Protokół multiplayer: 9 (od 0.140: wspólne łodzie i statki; serwer i gra muszą być w tej samej wersji, więc po aktualizacji gry zaktualizuj też serwer).
 - Brak haseł i kont: każdy, kto zna adres, może dołączyć (do 8 graczy naraz na każdym serwerze gry) i założyć nowy serwer gry.
+
+**Wersja 0.183 (protokół 13):** gra i serwer muszą mieć tę samą wersję, bo placówki przy złożach (pole `outposts`) są wspólne dla graczy. Po aktualizacji gry zaktualizuj serwer skryptem `install.sh`.

@@ -175,3 +175,11 @@ export function lodesWithin(world: number, x: number, z: number, r: number): Lod
 export function lodeGives(l: Lode): ItemKey[] {
   return [...LODES[l.k].gives.filter((g) => g !== 'salt' || l.salt), ...(l.mineral ? [MINERAL_OF[l.mineral]] : [])];
 }
+/** (0.183) The deposit an id names ('lode:<rx>:<rz>' or 'lode:s<i>'), or null. */
+export function lodeById(world: number, id: string): Lode | null {
+  const m = /^lode:(?:s(\d+)|(-?\d+):(-?\d+))$/.exec(id);
+  if (!m) return null;
+  if (m[1] !== undefined) return startLodes(world)[+m[1]] ?? null;
+  const l = regionLode(world, +m[2], +m[3]);
+  return l && l.id === id ? l : null;
+}
