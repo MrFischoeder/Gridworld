@@ -22,6 +22,7 @@ import { countOf, digOf, finishDue, partName, stockNow, outputs, capOf, jobEnd, 
 import { pwOf, settleAll, POWER_SRC, GRID } from '../gen/grid';
 import { windAt } from '../gen/energy';
 import { lifeNow, crews } from '../gen/outpostlife';
+import { procOf } from '../gen/outpostproc';
 import { makeFigure, type Figure } from './npc';
 import { poseRig, type Kit } from './rig';
 
@@ -86,6 +87,8 @@ export function outpostSpots(l: Lode) {
     fields: [0.8, -0.8, 0].map((d) => [Math.cos(a + d) * (l.r + 26), Math.sin(a + d) * (l.r + 26)] as [number, number]),
     /** (0.186) The wall's ring (its gate faces the post) and the turret towers inside it. */
     wallR: l.r + 38, gate: a,
+    /** (0.188) The processing works, between the extraction and the power source. */
+    proc: [Math.cos(a - Math.PI / 2 + 0.75) * (l.r + 20), Math.sin(a - Math.PI / 2 + 0.75) * (l.r + 20)] as [number, number],
     turrets: [Math.PI / 2, -Math.PI / 2].map((d) => [Math.cos(a + d) * (l.r + 35), Math.sin(a + d) * (l.r + 35)] as [number, number]),
   };
 }
@@ -177,6 +180,11 @@ function drawOutpost(pb: PropBatch, H: (x: number, z: number) => number, L: Live
     else if (i === nf && o.job?.p === 'field') site(x, z, 2, 2, share);
   });
   if (o.life) drawHands(L, o, sp);
+  // (0.188) the processing works
+  { const [x, z] = sp.proc;
+    if (o.job?.p === 'proc') site(x, z, 3, 3, share);
+    else if (o.done?.proc) drawProc(pb, H, L, o, x, z);
+  }
   // (0.186) the wall and the turret towers, or the building site of the next
   const tier = o.n?.wall ?? 0;
   if (tier) drawWall(pb, H, L, tier, sp.wallR, sp.gate);
@@ -193,6 +201,46 @@ function drawOutpost(pb: PropBatch, H: (x: number, z: number) => number, L: Live
     if (n) L.boxes.push([bx - 0.4, bz - 0.4, bx + 1.9, bz + 1.9]);
   }
   void R;
+}
+/** (0.188) A round tower of `sides` faces from y to y + h (radius r), lines at the ends and every other edge. */
+function cyl(pb: PropBatch, x: number, y: number, z: number, r: number, h: number, c: number, sides = 10) {
+  for (let k = 0; k < sides; k++) {
+    const a0 = k / sides * 6.283, a1 = (k + 1) / sides * 6.283, P = (a: number, yy: number) => [x + Math.cos(a) * r, yy, z + Math.sin(a) * r];
+    pb.face(P(a0, y), P(a1, y), P(a1, y + h), P(a0, y + h)); pb.seg(c, P(a0, y + h), P(a1, y + h)); pb.seg(c, P(a0, y), P(a1, y)); if (k % 2 === 0) pb.seg(c, P(a0, y), P(a0, y + h));
+  }
+}
+/** (0.188) The processing works by its kind: a field refinery, a smelter, a saw shed, a stone saw. */
+function drawProc(pb: PropBatch, H: (x: number, z: number) => number, L: Live, o: OutpostState, x: number, z: number) {
+  const out = procOf(o.k)?.out, y = H(x, z);
+  if (out === 'fuel') { // two columns on a skid, a tank, a flare
+    pb.box(x - 3, y - 0.2, z - 1.5, x + 3, y + 0.4, z + 1.5, STEEL);
+    cyl(pb, x - 1.5, y + 0.4, z, 0.7, 9, STEEL); cyl(pb, x + 0.5, y + 0.4, z, 0.5, 6.5, STEEL);
+    for (let k = 1; k < 4; k++) pb.seg(STEEL, [x - 1.5, y + 0.4 + k * 2.2, z], [x + 0.5, y + 0.4 + k * 1.6, z]);
+    cyl(pb, x + 4.5, H(x + 4.5, z + 2), z + 2, 1.4, 2.6, STEEL);
+    pb.seg(STEEL, [x + 2.5, y, z - 2.5], [x + 2.5, y + 7, z - 2.5]); pb.seg(0xffb347, [x + 2.5, y + 7, z - 2.5], [x + 2.5, y + 7.8, z - 2.5]);
+    L.boxes.push([x - 3, z - 1.5, x + 3, z + 1.5]); L.rings.push([x + 4.5, z + 2, 1.4]);
+  } else if (out === 'iron' || out === 'copperbar' || out === 'leadbar') { // a brick shaft furnace, its stack and a casting shed
+    const BR = 0xc8a080;
+    pb.box(x - 1.6, y - 0.2, z - 1.6, x + 1.6, y + 5, z + 1.6, BR); pb.box(x - 1.1, y + 5, z - 1.1, x + 1.1, y + 6.4, z + 1.1, BR);
+    cyl(pb, x + 2.6, y, z - 1.6, 0.45, 11, BR, 8);
+    pb.box(x - 1.6, y - 0.2, z + 2, x + 3.2, y + 2.6, z + 5, WOOD); pb.gableRoof(x - 1.9, z + 1.7, x + 3.5, z + 5.3, y + 2.6, 1, WOOD);
+    pb.seg(0xffb347, [x - 0.5, y + 1, z + 1.61], [x + 0.5, y + 1, z + 1.61]);
+    for (let k = 0; k < 4; k++) pb.box(x + 3.6 + (k % 2) * 0.7, y, z + 2.2 + Math.floor(k / 2) * 0.5, x + 4.2 + (k % 2) * 0.7, y + 0.25, z + 2.6 + Math.floor(k / 2) * 0.5, LODES[o.k].c);
+    L.boxes.push([x - 1.6, z - 1.6, x + 1.6, z + 1.6]); L.boxes.push([x - 1.6, z + 2, x + 3.2, z + 5]); L.rings.push([x + 2.6, z - 1.6, 0.5]);
+  } else if (out === 'planks') { // an open saw shed, the bench and a stack of planks
+    for (const [sx, sz] of [[-3, -2], [3, -2], [3, 2], [-3, 2]]) pb.box(x + sx - 0.12, H(x + sx, z + sz), z + sz - 0.12, x + sx + 0.12, y + 3, z + sz + 0.12, WOOD);
+    pb.gableRoof(x - 3.3, z - 2.3, x + 3.3, z + 2.3, y + 3, 1.2, WOOD);
+    pb.box(x - 2.4, y, z - 0.4, x + 2.4, y + 0.9, z + 0.4, WOOD); pb.seg(STEEL, [x, y + 0.9, z - 0.4], [x, y + 1.4, z + 0.4]);
+    for (let k = 0; k < 6; k++) pb.box(x - 2, y + k * 0.12, z + 2.8, x + 2, y + 0.11 + k * 0.12, z + 3.5, 0xd8b878);
+    L.boxes.push([x - 2.4, z - 0.4, x + 2.4, z + 0.4]); L.boxes.push([x - 2, z + 2.8, x + 2, z + 3.5]);
+  } else if (out === 'cutstone') { // a wire saw's frame over a block, cut blocks and a heap of crushed stone
+    pb.box(x - 0.15, y, z - 2, x + 0.15, y + 3.5, z - 1.7, STEEL); pb.box(x - 0.15, y, z + 1.7, x + 0.15, y + 3.5, z + 2, STEEL);
+    pb.box(x - 0.2, y + 3.5, z - 2, x + 0.2, y + 3.8, z + 2, STEEL); pb.seg(STAKE, [x, y + 3.5, z], [x, y + 1.2, z]);
+    pb.box(x - 1.2, y, z - 1.2, x + 1.2, y + 1.2, z + 1.2, 0xc8d0c0);
+    for (let k = 0; k < 4; k++) pb.box(x + 2.5 + (k % 2) * 1.3, y + Math.floor(k / 2) * 0.7, z - 1, x + 3.6 + (k % 2) * 1.3, y + 0.65 + Math.floor(k / 2) * 0.7, z + 0.2, 0xc8d0c0);
+    pb.rock(x - 3, H(x - 3, z + 2) - 0.1, z + 2, 1.4, 1, 7, 1, 0xa8b0a0);
+    L.boxes.push([x - 1.2, z - 2, x + 1.2, z + 2]); L.boxes.push([x + 2.5, z - 1, x + 6.2, z + 0.2]);
+  }
 }
 /** (0.186) The outpost's wall on a ring of radius R with an 8 m gate facing angle `gate`: stakes and rails (1), a
  *  palisade of pointed timbers (2), mortared stone with merlons and gate towers (3). Collides as a ring (`Live.wall`). */

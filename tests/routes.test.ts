@@ -24,7 +24,7 @@ describe('stage O6: convoy routes', () => {
     expect(convoyAt(r, 0).at).toBe('parked');
     const parts = freshParts('mastodon');
     expect(truckProblem(parts, 'mastodon')).toBe('');
-    expect(truckProblem({ ...parts, ev: 10 }, 'mastodon')).toMatch(/Electric/);
+    expect(truckProblem({ ...parts, ev: 10 }, 'mastodon')).toBe(''); // (0.188) electric convoys run too
     assignTruck(r, { id: 't1', model: 'mastodon', parts, by: 'Ada' }, 2000);
     expect(convoyAt(r, 2010).at).toBe('outpost');
     expect(convoyAt(r, 2000 + ROUTE.load + legOf(r) / 2).at).toBe('out');

@@ -13,12 +13,12 @@ import { PESTS } from '../gen/outpostlife';
 import { fmtTime } from '../core/time';
 import { hash } from '../core/rng';
 import { tellRaids } from '../world/lodes';
-import { ROUTE, newRoute, legOf, periodOf, tripFuel, robChance, truckProblem, assignTruck, recallTruck, fuelTruck, wrecked, convoyAt, waiting } from '../gen/routes';
+import { ROUTE, newRoute, legOf, periodOf, truckEnergy, robChance, truckProblem, assignTruck, recallTruck, fuelTruck, wrecked, convoyAt, waiting } from '../gen/routes';
 import { allVillages, worldDist as wdist } from '../gen/regions';
 import { VEHICLES, vehicleTitle, type VehicleModel } from '../data/vehicles';
 import { myCarList, takeVehicle, parkVehicle } from '../world/vehicles';
 import { FOOD } from '../gen/farms';
-import { POWER_SRC, POWER_KINDS, DIG_KW, grids, gridState, powerShare, powerFactor, pwOf, fuelLeft, loadFuel, settleAll, type PowerKind } from '../gen/grid';
+import { POWER_SRC, POWER_KINDS, grids, gridState, powerShare, powerFactor, pwOf, fuelLeft, loadFuel, settleAll, demandOf, type PowerKind } from '../gen/grid';
 import { lodeById } from '../gen/lodes';
 import { nearX } from '../gen/regions';
 import { itemName } from './icons';
@@ -27,6 +27,7 @@ import { withOutpost } from './stock';
 import { $, showToast, logLine } from './hud';
 import { lockPointer } from './input';
 import { givesText } from '../world/lodes';
+import { procOf } from '../gen/outpostproc';
 
 const dlgEl = $('dlg'), panel = () => dlgEl.querySelector('.panel') as HTMLElement;
 let lode: Lode | null = null;
@@ -35,7 +36,7 @@ const state = (): OutpostState | undefined => (lode ? G.char.outposts[lode.id] :
 const hrs = (m: number) => (m >= 60 ? `${Math.floor(m / 60)} h ${Math.round(m % 60)} min` : `${Math.round(m)} min`);
 
 function partHTML(o: OutpostState, p: OutpostPart): string {
-  const tier = countOf(o, p), name = partName(o.k, p, o.pk, tier), text = p === 'dig' ? DIG[digOf(o.k)].text : p === 'power' ? (o.pk ? POWER_SRC[o.pk].text : '') : p === 'bunks' ? BUNKS.text : p === 'field' ? FIELD.text : p === 'wall' ? WALL[Math.min(WALL.length - 1, tier)].text : p === 'turret' ? TURRET.text : STORE.text;
+  const tier = countOf(o, p), name = partName(o.k, p, o.pk, tier), text = p === 'dig' ? DIG[digOf(o.k)].text : p === 'power' ? (o.pk ? POWER_SRC[o.pk].text : '') : p === 'bunks' ? BUNKS.text : p === 'field' ? FIELD.text : p === 'wall' ? WALL[Math.min(WALL.length - 1, tier)].text : p === 'turret' ? TURRET.text : p === 'proc' ? procOf(o.k)?.text ?? '' : STORE.text;
   if (p === 'power' && !o.done?.power && !o.job && !Object.values(o.given?.power ?? {}).some((n) => (n ?? 0) > 0)) { // pick (or change) the source while nothing is handed over
     const pick = POWER_KINDS.filter((k) => k !== o.pk).map((k) => { const q = POWER_SRC[k]; return `<button class="opt" data-op="pk:${k}">${o.pk ? 'Build a ' : ''}${q.name}: ${q.kw} kW${k === 'wind' ? ' at full wind' : k === 'solar' ? ' in full sun' : ''}, reach ${q.r} m${q.fuel ? `, burns ${ITEMS[q.fuel].name} (1 every ${q.burn! / 60} h)` : ''}</button>`; }).join('');
     if (!o.pk) return `<div class="say"><b>Power</b>: an extraction works at half pace without power. A power source here powers every outpost within its reach, and sources whose reach meets form one grid.</div>` + pick;
@@ -75,13 +76,14 @@ function routeHTML(id: string, o: OutpostState): string {
     s += mine.map((v) => { const why = truckProblem(v.st.parts, v.st.model) || (v.st.trunk.items.some(Boolean) || v.st.trunk.gold > 0 ? 'Empty its trunk first.' : ''); return why ? `<div class="say" style="opacity:.7">${vehicleTitle(v.st.model)}: ${why}</div>` : `<button class="opt" data-op="truck:${v.st.id}">Hand over your ${vehicleTitle(v.st.model)} (${ROUTE.cap[v.st.model]} crates a trip)</button>`; }).join('');
     return s + `<button class="opt" data-op="unroute">Give up the route</button>`;
   }
-  const need = tripFuel(r, t.model), fuel = t.parts.fuel ?? 0, cv = convoyAt(r, c.time), hull = Math.round((t.parts.hull ?? 0) / VEHICLES[t.model].hull * 100);
-  const where = wrecked(r) ? '<span style="color:#ff6a4a">wrecked on the road: recall it and mend its hull</span>' : cv.at === 'parked' ? '<span style="color:#ff6a4a">standing at the outpost, its tank too low for a trip</span>' : cv.at === 'out' ? `on its way to ${r.vname} (${Math.round(cv.p * 100)}%)` : cv.at === 'back' ? `on its way back (${Math.round(cv.p * 100)}%)` : cv.at === 'village' ? `unloading at ${r.vname}` : 'loading here';
+  const [fuel, need, unit] = truckEnergy(r), ev = unit === 'kWh', cv = convoyAt(r, c.time), hull = Math.round((t.parts.hull ?? 0) / VEHICLES[t.model].hull * 100);
+  const where = wrecked(r) ? '<span style="color:#ff6a4a">wrecked on the road: recall it and mend its hull</span>' : cv.at === 'parked' ? `<span style="color:#ff6a4a">standing at the outpost, its ${unit === 'kWh' ? 'battery' : 'tank'} too low for a trip</span>` : cv.at === 'out' ? `on its way to ${r.vname} (${Math.round(cv.p * 100)}%)` : cv.at === 'back' ? `on its way back (${Math.round(cv.p * 100)}%)` : cv.at === 'village' ? `unloading at ${r.vname}` : 'loading here';
   s += `<br>Truck: a ${vehicleTitle(t.model)} (handed over by ${t.by}), ${ROUTE.cap[t.model]} crates a trip, hull ${hull}%, ${where}.`;
-  s += `<br>Tank: ${Math.round(fuel)} of ${VEHICLES[t.model].tank} L, ${need} L a round trip: ${Math.floor(fuel / need)} more trip${Math.floor(fuel / need) === 1 ? '' : 's'}. With you: ${carried('fuel', at())} canisters.`;
+  s += ev ? `<br>Battery: ${Math.round(fuel)} kWh, ${need} kWh a round trip. ${r.grid ? 'It charges full at the outpost before every trip.' : '<span style="color:#ff6a4a">No grid reaches this outpost: it cannot charge here.</span>'}`
+    : `<br>Tank: ${Math.round(fuel)} of ${VEHICLES[t.model].tank} L, ${need} L a round trip: ${Math.floor(fuel / need)} more trip${Math.floor(fuel / need) === 1 ? '' : 's'}. With you: ${carried('fuel', at())} canisters.`;
   if (r.last) s += `<br>Last trip: ${r.last[1] === 'ok' ? 'delivered' : r.last[1] === 'dry' ? 'missed for want of fuel' : r.last[1] === 'robbed' ? '<span style="color:#ff6a4a">robbed on the way</span>' : '<span style="color:#ff6a4a">wrecked</span>'}.`;
   s += `<br>Food back for the pantry: ${r.food ? 'yes, as much as the pantry has room for' : 'no'}.</div>`;
-  return s + `<button class="opt" data-op="rfuel">Pour fuel canisters into the truck</button><button class="opt" data-op="rfood">${r.food ? 'Stop bringing food back' : 'Bring food back from ' + r.vname}</button><button class="opt" data-op="recall">Recall the truck (it parks here)</button>`;
+  return s + (ev ? '' : `<button class="opt" data-op="rfuel">Pour fuel canisters into the truck</button>`) + `<button class="opt" data-op="rfood">${r.food ? 'Stop bringing food back' : 'Bring food back from ' + r.vname}</button><button class="opt" data-op="recall">Recall the truck (it parks here)</button>`;
 }
 /** (0.186, stage O5) Defence: the wall and turrets, the bandits' strength here, the chance to hold without you, the
  *  next raid, the last one, the animals. */
@@ -130,7 +132,7 @@ function powerHTML(id: string, o: OutpostState): string {
   }
   if (n === undefined) return s + (o.done?.dig ? `<div class="say" style="opacity:.8">No power reaches here: the crew digs at ${Math.round(powerFactor(0) * 100)}% pace.</div>` : '');
   const st = gridState(c.world, c.outposts, g, c.time), share = powerShare(c.world, c.outposts, id, c.time), members = [...g.values()].filter((m) => m === n).length;
-  return s + `<div class="say"><b>Grid</b> (${members} outpost${members === 1 ? '' : 's'}): making ${Math.round(st.supply[n] ?? 0)} kW now, the digging draws ${Math.round(st.demand[n] ?? 0)} kW${o.done?.dig ? ` (this one ${DIG_KW[digOf(o.k)]} kW)` : ''}. Over the last day it met ${Math.round(share * 100)}% of the demand${o.done?.dig ? `: the crew digs at ${Math.round(powerFactor(share) * 100)}% pace` : ''}.</div>`;
+  return s + `<div class="say"><b>Grid</b> (${members} outpost${members === 1 ? '' : 's'}): making ${Math.round(st.supply[n] ?? 0)} kW now, the outposts draw ${Math.round(st.demand[n] ?? 0)} kW${demandOf(o) ? ` (this one ${demandOf(o)} kW)` : ''}. Over the last day it met ${Math.round(share * 100)}% of the demand${o.done?.dig ? `: the crew digs at ${Math.round(powerFactor(share) * 100)}% pace` : ''}.</div>`;
 }
 function render(msg = '') {
   if (!lode) return;
@@ -144,14 +146,21 @@ function render(msg = '') {
     s += `<div class="say">Staked by ${o.by}. It is theirs to work.</div>`;
   } else {
     s += `<div class="say" style="opacity:.85">Outpost staked by ${o.by}. Owner: ${o.o === 'crew' ? 'the whole crew' : o.by}.</div>`;
-    s += partHTML(o, 'dig') + partHTML(o, 'store') + partHTML(o, 'power') + powerHTML(l.id, o) + partHTML(o, 'bunks') + partHTML(o, 'field') + peopleHTML(o) + partHTML(o, 'wall') + partHTML(o, 'turret') + defenceHTML(l.id, o) + routeHTML(l.id, o);
+    s += partHTML(o, 'dig') + partHTML(o, 'store') + (procOf(o.k) ? partHTML(o, 'proc') : '') + partHTML(o, 'power') + powerHTML(l.id, o) + partHTML(o, 'bunks') + partHTML(o, 'field') + peopleHTML(o) + partHTML(o, 'wall') + partHTML(o, 'turret') + defenceHTML(l.id, o) + routeHTML(l.id, o);
     if (o.done?.dig) {
       const pw = pwOf(c.world, c.outposts, l.id, c.time), now = stockNow(o, l, c.time, pw), cap = capOf(o);
       s += `<div class="say"><b>On site</b> (${o.done.store ? 'in the shed' : 'piled in the open'}, up to ${cap} of each):<br>` + outputs(l).map(([g, r]) => {
         const n = Math.floor(now[g] ?? 0);
         return `${itemName(g)} ${n}/${cap} · ${(r * 24 * pw).toFixed(1)} a day${n >= cap ? ' · full: the crew stands idle' : ''} ` +
           (n ? `<button class="opt" style="display:inline-block;width:auto;margin:2px 4px" data-op="take:${g}:1">Take 1</button><button class="opt" style="display:inline-block;width:auto;margin:2px 4px" data-op="take:${g}:${n}">Take all</button>` : '');
-      }).join('<br>') + `</div>`;
+      }).join('<br>');
+      const p = o.done.proc ? procOf(o.k) : null;
+      if (p) { // (0.188) the works' output
+        const n = Math.floor(now[p.out] ?? 0), f = powerFactor(powerShare(c.world, c.outposts, l.id, c.time));
+        s += `<br>${itemName(p.out)} ${n}/${cap} · the ${p.name.toLowerCase()} makes ${p.m} from ${p.n} ${ITEMS[p.inp].name.replace(/^Crate of /, '').toLowerCase()} every ${hrs(p.batch / f)} (${p.kw} kW)${n >= cap ? ' · full: it stands idle' : ''} ` +
+          (n ? `<button class="opt" style="display:inline-block;width:auto;margin:2px 4px" data-op="take:${p.out}:1">Take 1</button><button class="opt" style="display:inline-block;width:auto;margin:2px 4px" data-op="take:${p.out}:${n}">Take all</button>` : '');
+      }
+      s += `</div>`;
     } else s += `<div class="say" style="opacity:.7">Nothing is dug until the ${DIG[digOf(l.k)].name.toLowerCase()} stands.</div>`;
     if (bare(o)) s += `<button class="opt" data-op="drop">Pull up the stake</button>`;
   }

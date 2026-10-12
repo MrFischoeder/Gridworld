@@ -60,7 +60,7 @@ W modelu danych każda placówka od początku ma **właściciela** (id gracza al
 4. **O4 – ludzie i jedzenie (zrobione w 0.185.0):** baraki i domy, zużycie jedzenia, samoczynny napływ ludzi przy nadwyżce, farmy przy placówkach z żyznością; placówka przeradza się w wioskę.
 5. **O5 – obrona (zrobione w 0.186.0):** płoty, mury, wieżyczki, najazdy bandytów i szkody od zwierząt.
 6. **O6 – trasy konwojów** ustawiane przez gracza (zrobione w 0.187.0).
-7. **O7 – przetwórnie na miejscu** (rafineria przy pompie, huta przy kopalni, tartak przy gaju) i konwoje elektryczne (dawne P5).
+7. **O7 – przetwórnie na miejscu (zrobione w 0.188.0)** (rafineria przy pompie, huta przy kopalni, tartak przy gaju) i konwoje elektryczne (dawne P5).
 8. **O8 – tryb rywalizacji:** własne wioski startowe graczy, zajmowanie złóż przez pierwszego, udostępnianie placówek partnerom. Wymaga zmiany `PROTOCOL` i aktualizacji serwera.
 
 ## Multiplayer (zasada właściciela gry dla każdego etapu)

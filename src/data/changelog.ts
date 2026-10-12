@@ -3,6 +3,19 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.188.0', date: '2026-10-12', title: 'Processing at the outposts and electric convoys', notes: [
+    'An outpost that digs can build a processing works beside its extraction:',
+    'A field refinery at an oil seep turns crude into fuel canisters.',
+    'A smelter at an iron, copper or lead ore body turns ore into bars.',
+    'A sawmill at a great grove saws each log into five planks.',
+    'A stone saw at an outcrop turns three crates of stone into two pallets of cut stone.',
+    'Coal seams and rare deposits have no works.',
+    'The works runs in batches from the crates on site, up to the outpost\'s cap. It draws power from the outpost\'s grid and runs slower without enough. Its output can be taken from the outpost window.',
+    'Convoys load the processed goods first, then the raw ones.',
+    'Electric trucks can now take convoy routes. An electric truck charges full at the outpost before every trip while a power grid reaches it, which adds 15 kW to the grid\'s demand. Without a grid it stands still.',
+    'The outpost window\'s grid line now counts everything the outposts draw: the digging, the works and charging trucks.',
+    'Multiplayer: the works and the trucks\' charging are part of the shared outposts and are worked out the same way on every game. The server does not need an update.',
+  ] },
   { v: '0.187.0', date: '2026-10-12', title: 'Convoy routes', notes: [
     'From an outpost\'s window you can set up a convoy route to one of the 4 nearest villages within 25 km.',
     'To run a route, park one of your vehicles by the outpost with its trunk empty and hand it over. A Mastodon carries 30 crates a trip and a Scout carries 8.',

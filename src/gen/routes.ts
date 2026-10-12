@@ -21,7 +21,8 @@ import { FOOD } from './farms';
 import type { Lode } from './lodes';
 import type { TownState } from './town';
 import type { ItemKey } from '../data/items';
-import { VEHICLES, FUEL, type VehicleModel, type VehicleParts } from '../data/vehicles';
+import { VEHICLES, FUEL, EV, evCap, type VehicleModel, type VehicleParts } from '../data/vehicles';
+import { cargoGoods } from './outpostproc';
 
 export const ROUTE = {
   /** Villages further than this from the outpost cannot be served (m); roads wind: the way is this much longer. */
@@ -45,6 +46,8 @@ export interface Route {
   k: number; food?: boolean; sent: Partial<Record<ItemKey, number>>; fed: number;
   /** The last trip's fate, trips robbed. */
   last?: [number, 'ok' | 'dry' | 'robbed' | 'wrecked']; robbed?: number;
+  /** (0.188) The outpost was on a grid at the last settling (an electric truck charges there). */
+  grid?: boolean;
 }
 /** The route's id in the village's counters. */
 export const routeKey = (outpostId: string) => outpostId;
@@ -58,6 +61,17 @@ export const legOf = (r: Route) => Math.ceil(r.km * 1000 / ROUTE.speed);
 export const periodOf = (r: Route) => 2 * (legOf(r) + ROUTE.load);
 /** Litres a round trip burns. */
 export const tripFuel = (r: Route, m: VehicleModel) => Math.round(2 * r.km * VEHICLES[m].fuelUse * (FUEL.cruise + (1 - FUEL.cruise) * 0.5) * 10) / 10;
+/** (0.188, stage O7) kWh a round trip takes from an electric truck's battery. */
+export const tripKwh = (r: Route, m: VehicleModel) => Math.round(2 * r.km * EV[m].use * (FUEL.cruise + (1 - FUEL.cruise) * 0.5) * 10) / 10;
+export const isElectric = (t: RouteTruck | undefined) => t?.parts.ev !== undefined;
+/** The truck's energy now and what a round trip takes, with the unit ('L' diesel, 'kWh' battery). */
+export function truckEnergy(r: Route): [number, number, 'L' | 'kWh'] {
+  const t = r.truck;
+  if (!t) return [0, 0, 'L'];
+  return isElectric(t) ? [t.parts.ev ?? 0, tripKwh(r, t.model), 'kWh'] : [t.parts.fuel ?? 0, tripFuel(r, t.model), 'L'];
+}
+/** Can the convoy leave on its next trip (an electric truck charges at an outpost on a grid)? */
+const ready = (r: Route) => { const [have, need] = truckEnergy(r); return have >= need || (isElectric(r.truck) && !!r.grid); };
 /** The chance a trip is robbed. */
 export function robChance(world: number, o: OutpostState, r: Route): number {
   const mx = (o.x + nearX(r.vx, o.x)) / 2, mz = (o.z + r.vz) / 2, d = dangerAt(world, mx, mz);
@@ -65,7 +79,6 @@ export function robChance(world: number, o: OutpostState, r: Route): number {
 }
 /** Why a truck cannot take the route ('' = it can). */
 export function truckProblem(parts: VehicleParts, model: VehicleModel): string {
-  if (parts.ev !== undefined) return 'Electric convoys come later: this one runs on diesel.';
   if ((parts.hull ?? 1) <= 0) return 'It is a wreck: mend its hull first.';
   if (parts.engine <= 0 || parts.wheels.some((w) => w <= 0)) return 'It cannot drive: mend it first.';
   return VEHICLES[model] ? '' : 'Not a vehicle for hauling.';
@@ -77,7 +90,7 @@ export function recallTruck(r: Route): RouteTruck | undefined { const t = r.truc
 /** Pour up to n canisters into the route's truck; how many went in. */
 export function fuelTruck(r: Route, n: number): number {
   const t = r.truck;
-  if (!t) return 0;
+  if (!t || isElectric(t)) return 0;
   const tank = VEHICLES[t.model].tank, room = Math.floor((tank - (t.parts.fuel ?? 0)) / FUEL.can + 1e-6), m = Math.max(0, Math.min(n, room));
   if (m) t.parts.fuel = Math.min(tank, (t.parts.fuel ?? 0) + m * FUEL.can);
   return m;
@@ -85,7 +98,7 @@ export function fuelTruck(r: Route, n: number): number {
 export const wrecked = (r: Route) => !!r.truck && (r.truck.parts.hull ?? 1) <= 0;
 /** Where the convoy is at `now`: 'out' / 'back' (driving, 0..1 along the way), 'outpost' / 'village' (loading), 'parked'. */
 export function convoyAt(r: Route, now: number): { at: 'out' | 'back' | 'outpost' | 'village' | 'parked'; p: number } {
-  if (!r.truck || r.t0 === undefined || wrecked(r) || (r.truck.parts.fuel ?? 0) < tripFuel(r, r.truck.model)) return { at: 'parked', p: 0 };
+  if (!r.truck || r.t0 === undefined || wrecked(r) || !ready(r)) return { at: 'parked', p: 0 };
   const P = periodOf(r), leg = legOf(r), ph = ((now - r.t0) % P + P) % P;
   if (ph < ROUTE.load) return { at: 'outpost', p: 0 };
   if (ph < ROUTE.load + leg) return { at: 'out', p: (ph - ROUTE.load) / leg };
@@ -93,23 +106,32 @@ export function convoyAt(r: Route, now: number): { at: 'out' | 'back' | 'outpost
   return { at: 'back', p: (ph - 2 * ROUTE.load - leg) / leg };
 }
 /** Settle the trips that reached the village by `now`, in order: load at departure, burn the fuel, roll the road. */
-export function settleRoute(world: number, o: OutpostState, l: Lode | null, now: number, pw = 1): { k: number; what: string }[] {
+export function settleRoute(world: number, o: OutpostState, l: Lode | null, now: number, pw = 1, onGrid = false): { k: number; what: string }[] {
   const r = o.route, out: { k: number; what: string }[] = [];
   if (!r) return out;
+  r.grid = onGrid || undefined;
   const tr = r.truck;
   if (!tr || r.t0 === undefined) return out;
   const P = periodOf(r), leg = legOf(r), last = Math.floor((now - r.t0 - ROUTE.load - leg) / P);
   if (last - r.k > ROUTE.catchup) r.k = last - ROUTE.catchup;
   for (; r.k <= last; r.k++) {
-    const dep = r.t0 + r.k * P + ROUTE.load, need = tripFuel(r, tr.model);
+    const dep = r.t0 + r.k * P + ROUTE.load;
     if ((tr.parts.hull ?? 1) <= 0) { r.last = [r.k, 'wrecked']; break; }
-    if ((tr.parts.fuel ?? 0) < need) { r.last = [r.k, 'dry']; continue; }
-    tr.parts.fuel = Math.round(((tr.parts.fuel ?? 0) - need) * 10) / 10;
+    if (isElectric(tr)) { // (0.188) an electric truck charges full at its outpost when the grid reaches it
+      if (onGrid) tr.parts.ev = evCap(tr.model, tr.parts);
+      const need = tripKwh(r, tr.model);
+      if ((tr.parts.ev ?? 0) < need) { r.last = [r.k, 'dry']; continue; }
+      tr.parts.ev = Math.round(((tr.parts.ev ?? 0) - need) * 10) / 10;
+    } else {
+      const need = tripFuel(r, tr.model);
+      if ((tr.parts.fuel ?? 0) < need) { r.last = [r.k, 'dry']; continue; }
+      tr.parts.fuel = Math.round(((tr.parts.fuel ?? 0) - need) * 10) / 10;
+    }
     let room = ROUTE.cap[tr.model];
     const cargo: [ItemKey, number][] = [];
     if (l && o.stock) {
       settle(o, l, dep, pw);
-      for (const [g] of outputs(l)) { const n = Math.min(room, Math.floor(o.stock.n[g] ?? 0)); if (n) { o.stock.n[g] = (o.stock.n[g] ?? 0) - n; room -= n; cargo.push([g, n]); } }
+      for (const g of cargoGoods(o, outputs(l).map(([g]) => g))) { const n = Math.min(room, Math.floor(o.stock.n[g] ?? 0)); if (n) { o.stock.n[g] = (o.stock.n[g] ?? 0) - n; room -= n; cargo.push([g, n]); } }
     }
     if ((hash(world, o.x | 0, o.z | 0, r.k, 0x0a70) % 1000) / 1000 < robChance(world, o, r)) {
       tr.parts.hull = Math.max(0, Math.round((tr.parts.hull ?? VEHICLES[tr.model].hull) - ROUTE.hurt * VEHICLES[tr.model].hull));

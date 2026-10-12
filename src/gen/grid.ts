@@ -15,6 +15,7 @@ import { digOf, settle, type OutpostState, type DigKind } from './outposts';
 import type { Lode } from './lodes';
 import { crewFactor, settleLife } from './outpostlife';
 import { settleRaids } from './outpostraids';
+import { procKw, runProc } from './outpostproc';
 import { settleRoute, takeFood, routeKey } from './routes';
 import type { TownState } from './town';
 
@@ -60,7 +61,9 @@ export function supplyAt(world: number, id: string, o: OutpostState, t: number):
   if (o.pk === 'solar') return s.kw * daylight(t, sunTilt(latitude(o.z)));
   return fuelLeft(o, t) > 0 ? s.kw : 0;
 }
-export const demandOf = (o: OutpostState) => (o.done?.dig ? DIG_KW[digOf(o.k)] : 0);
+export const demandOf = (o: OutpostState) => (o.done?.dig ? DIG_KW[digOf(o.k)] : 0) + procKw(o) + (o.route?.truck?.parts.ev !== undefined ? CHARGE_KW : 0);
+/** (0.188) What a route's electric truck draws while it charges at its outpost (kW, counted all the time). */
+export const CHARGE_KW = 15;
 const isSource = (o: OutpostState) => !!(o.done?.power && o.pk);
 export const reachOf = (o: OutpostState) => (o.pk ? POWER_SRC[o.pk].r : 0);
 
@@ -113,11 +116,11 @@ export function settleAll(world: number, outposts: Record<string, OutpostState>,
     const l = o.done?.dig ? lodeOf(id) : null, pw = () => powerFactor(powerShare(world, outposts, id, now)) * crewFactor(o);
     for (const r of settleRaids(world, id, o, l, now, l ? pw() : 1)) raided.push({ id, ...r }); // (0.186) the raids whose time is over, in order
     if (o.route) { // (0.187) the convoys: trips that reached the village, then food the village shipped back
-      for (const r of settleRoute(world, o, l, now, l ? pw() : 1)) raided.push({ id, k: r.k, won: false, road: r.what });
+      for (const r of settleRoute(world, o, l, now, l ? pw() : 1, grids(outposts).has(id))) raided.push({ id, k: r.k, won: false, road: r.what });
       const shipped = towns?.[o.route.v]?.ship?.[routeKey(id)];
       if (shipped) takeFood(world, o, shipped, now);
     }
-    if (l) settle(o, l, now, pw());
+    if (l) { settle(o, l, now, pw()); runProc(o, l, now, powerFactor(powerShare(world, outposts, id, now))); } // (0.188) the works on site
     settleLife(world, o, now);
   }
   return raided;
