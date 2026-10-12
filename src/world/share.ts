@@ -38,6 +38,7 @@ export const SHARED: Field[] = [
   // the players' land claims with what is built on them, wild workbenches and the notice boards are the world's too
   { f: 'claims', kind: 'list', key: at }, { f: 'benches', kind: 'list', key: at }, { f: 'board', kind: 'one' }, { f: 'boards', kind: 'map' },
   { f: 'outposts', kind: 'map' }, // (0.183) the outposts at the deposits
+  { f: 'rivals', kind: 'map' }, // (0.189) the rivals' seats: names and home villages
   { f: 'fallen', kind: 'map' }, // the crew who died here: their names are not taken again
 ];
 const EMPTY: Partial<Record<keyof Char, () => unknown>> = { shuttle: () => ({ given: {}, v: 2 }), board: () => ({ seq: 0, offers: [], stamp: boardPeriod(G.char.time) }) };

@@ -7,7 +7,7 @@
 #   curl -fsSL https://raw.githubusercontent.com/MrFischoeder/Gridworld/claude/new-session-lkzluz/deploy/install.sh | sudo bash
 # Again later = update (the world and its clock are kept in /opt/gridworld/server/data).
 # Settings (environment, optional): PORT (8517), HOST (0.0.0.0; 127.0.0.1 if only a proxy on this machine
-# should reach it), SERVER_NAME, WORLD_SEED, BRANCH, DIR.
+# should reach it), SERVER_NAME, WORLD_SEED, GAME_MODE (rivals: the first server a rivals world), BRANCH, DIR.
 set -euo pipefail
 REPO=${REPO:-https://github.com/MrFischoeder/Gridworld.git}
 BRANCH=${BRANCH:-claude/new-session-lkzluz}
@@ -65,7 +65,7 @@ Wants=network-online.target
 [Service]
 User=gridworld
 WorkingDirectory=$DIR
-Environment=PORT=$PORT HOST=$HOST "SERVER_NAME=$SERVER_NAME" ${WORLD_SEED:+WORLD_SEED=$WORLD_SEED}
+Environment=PORT=$PORT HOST=$HOST "SERVER_NAME=$SERVER_NAME" ${WORLD_SEED:+WORLD_SEED=$WORLD_SEED} ${GAME_MODE:+GAME_MODE=$GAME_MODE}
 EnvironmentFile=-/etc/gridworld.env
 ExecStart=$NODE_DIR/bin/node server/main.mjs
 Restart=always

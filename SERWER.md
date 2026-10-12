@@ -55,7 +55,7 @@ Na końcu skrypt wypisze adres i przykład wpisu do proxy. Dwie drogi do gry:
 1. **Bezpośrednio:** `http://IP-SERWERA:8517/`, po otwarciu portu TCP 8517 w zasadach zapory IONOS (Sieć → Zasady zapory).
 2. **Przez Twój portal / proxy**, np. pod `https://twoja-domena/gridworld/`: dodaj w nim przekierowanie na `http://127.0.0.1:8517/` z włączonymi WebSocketami (gra rozmawia przez `/gridworld/mp`). Dla nginx skrypt wypisuje gotowy blok `location`. Gra działa zarówno gdy proxy obcina przedrostek `/gridworld`, jak i gdy go zostawia. Jeśli gra ma być dostępna tylko przez portal, dodaj `HOST=127.0.0.1` przed `bash`.
 
-Ustawienia (opcjonalne, przed `bash`): `SERVER_NAME` (nazwa w menu), `WORLD_SEED` (ziarno świata, czytane przy pierwszym starcie; liczba ujemna = nowy świat z około 20 miastami i złożami w dziczy, od wersji 0.182 losowane ziarna są ujemne; potem obowiązuje zapisane, chyba że `FORCE_SEED=1`), `PORT`, `HOST`, `DIR`.
+Ustawienia (opcjonalne, przed `bash`): `SERVER_NAME` (nazwa w menu), `WORLD_SEED` (ziarno świata, czytane przy pierwszym starcie; liczba ujemna = nowy świat z około 20 miastami i złożami w dziczy, od wersji 0.182 losowane ziarna są ujemne; potem obowiązuje zapisane, chyba że `FORCE_SEED=1`), `GAME_MODE` (`rivals` = pierwszy serwer gry jest w trybie rywalizacji; czytane razem z ziarnem: przy pierwszym starcie albo z `FORCE_SEED=1`), `PORT`, `HOST`, `DIR`.
 
 Usunięcie gry (nic innego nie znika): `systemctl disable --now gridworld; rm -rf /opt/gridworld /opt/gridworld-node /etc/systemd/system/gridworld.service; userdel gridworld`.
 
@@ -88,3 +88,5 @@ PORT=8517 SERVER_NAME="Mój serwer" npm run serve
 - Brak haseł i kont: każdy, kto zna adres, może dołączyć (do 8 graczy naraz na każdym serwerze gry) i założyć nowy serwer gry.
 
 **Wersja 0.183 (protokół 13):** gra i serwer muszą mieć tę samą wersję, bo placówki przy złożach (pole `outposts`) są wspólne dla graczy. Po aktualizacji gry zaktualizuj serwer skryptem `install.sh`.
+
+**Wersja 0.189 (protokół 14):** tryb rywalizacji. Nowy serwer gry można założyć jako świat rywali (pole „rivals” przy „Create a server”; tylko nowy świat miast, czyli ujemne ziarno). Serwer pamięta dla każdego konta jego miejsce (0–7): miejsce 0 zaczyna w Gridholm, pozostałe we własnych wioskach daleko od siebie. Zajęte miejsca zapisują się w `server.json` (pole `slots` przy serwerze gry). Złoże należy do tego, kto je pierwszy zajmie, a właściciel może dopisać partnerów. Pierwszy serwer gry można od razu ustawić w tym trybie zmienną `GAME_MODE=rivals`. Gra i serwer muszą mieć tę samą wersję, więc zaktualizuj serwer skryptem `install.sh`.

@@ -12,6 +12,8 @@
 // makes one, keeps only the session token the server gave (`gridWorld.mpAuth`, per server), and the server names you
 // by your account. A server you created shows Close server in the list: closing it sends its players away for good.
 import { joinWorld, willSeed } from '../world/share';
+import { takeSeat, homeName } from '../world/rivals';
+import { homeOf } from '../gen/rivals';
 import { presentHero } from './rebirth';
 import { G } from '../game';
 import { $, logLine } from './hud';
@@ -38,7 +40,7 @@ const pwdForm = $('mpPwdForm'), oldIn = $<HTMLInputElement>('mpOld'), newPassIn 
 const emailRow = $('mpEmailRow'), emailIn = $<HTMLInputElement>('mpEmail'), emailNote = $('mpEmailNote'), forgotBtn = $('mpForgot');
 const codeRow = $('mpCodeRow'), codeNote = $('mpCodeNote'), codeIn = $<HTMLInputElement>('mpCode'), codePass = $<HTMLInputElement>('mpCodePass');
 const addBtn = $('mpAddEmail'), addForm = $('mpAddForm'), newEmailIn = $<HTMLInputElement>('mpNewEmail'), addPass = $<HTMLInputElement>('mpAddPass');
-const roomsEl = $('mpRooms'), newEl = $('mpNew'), newName = $<HTMLInputElement>('mpNewName'), mine = $<HTMLInputElement>('mpMine'), createBtn = $<HTMLButtonElement>('mpCreate');
+const roomsEl = $('mpRooms'), newEl = $('mpNew'), newName = $<HTMLInputElement>('mpNewName'), mine = $<HTMLInputElement>('mpMine'), rivalsBox = $<HTMLInputElement>('mpRivals'), createBtn = $<HTMLButtonElement>('mpCreate');
 let hooks: MpHooks | null = null, connecting = false;
 /** The dedicated server this page came from, if any. */
 let ded: ServerInfo | null = null;
@@ -116,7 +118,7 @@ function roomRows(): string {
     const btn = you ? '' : `<button data-room="${esc(r.id)}"${connecting || !loggedIn() ? ' disabled' : ''}>${online() ? 'Move here' : 'Join'}</button>`;
     const del = !you && yours(r)
       ? `<button class="del${armed === r.id ? ' armed' : ''}" data-del="${esc(r.id)}"${deleting ? ' disabled' : ''}>${deleting === r.id ? 'Closing…' : armed === r.id ? (r.online ? `Close it? ${r.online} playing` : 'Sure? Close it') : 'Close server'}</button>` : '';
-    const by = r.by ? ` · made by ${esc(r.by)}` : '';
+    const by = (r.by ? ` · made by ${esc(r.by)}` : '') + (r.mode === 'rivals' ? ' · <b style="color:#d0805a">rivals</b>' : '');
     return `<div class="room${you ? ' here' : ''}${del ? ' mine' : ''}"><b>${esc(r.name)}</b><span>${state}</span><span class="who">${who} · world ${r.world}${by}</span>${btn}${del}</div>`;
   }).join('');
 }
@@ -180,7 +182,7 @@ function say(text: string, kind: 'chat' | 'info' | 'error') {
   render();
 }
 
-function start(url: string, room?: string, create?: { name: string; world?: number }) {
+function start(url: string, room?: string, create?: { name: string; world?: number; rivals?: boolean }) {
   if (accounts() && !auth()) { status.textContent = 'Log in first.'; userIn.focus(); return; }
   if (!accounts() && !G.char.name) { status.textContent = 'Name your hero first.'; return; }
   if (online()) { leaveRoomChar(); disconnect(); clearPeers(); } // moving to another server
@@ -199,12 +201,13 @@ function start(url: string, room?: string, create?: { name: string; world?: numb
         c.world = world; c.time = time; // (the character keeps its own name: after a death it is not the account's)
         roomKey = key;
         hooks?.useChar(c);
-        joinWorld(); hooks?.reloadWorld(); // the server's state of its world, then draw it
-        say(back ? `Welcome back, ${c.name}: you carry on where you left this world.` : `A new castaway on this ${dedicated ? 'server' : 'game'}: you wake in your ship with nothing but what the crew left you. Your own save waits: Single player in the menu takes you back to it.`, 'info');
+        joinWorld(); takeSeat(); hooks?.reloadWorld(); // the server's state of its world (and (0.189) a rival's seat), then draw it
+        say(back ? `Welcome back, ${c.name}: you carry on where you left this world.` : `A new castaway on this ${dedicated ? 'server' : 'game'}: ${net.mode === 'rivals' && net.slot > 0 ? `you come to at ${homeName(homeOf(world, net.slot))}, your home in this rivals world, with nothing` : 'you wake in your ship with nothing but what the crew left you'}. Your own save waits: Single player in the menu takes you back to it.`, 'info');
       } else {
         roomKey = key;
         G.char.time = time;
-        if (joinWorld()) hooks?.reloadWorld(); // the same world, but the server's state of it
+        const changed = joinWorld(); // the same world, but the server's state of it
+        if (takeSeat() || changed) hooks?.reloadWorld();
       }
       presentHero(); // the server shows you by your character's name (a new one is asked for if the dead own it)
       say(host ? 'You host the game: others can join you now.' : dedicated ? `Joined ${net.room?.name ?? ded?.name ?? 'the server'}.` : 'Joined the game.', 'info');
@@ -351,7 +354,7 @@ export function initMp(h: MpHooks) {
   createBtn.onclick = () => {
     const name = newName.value.trim();
     if (!name) { status.textContent = 'Give the new server a name first.'; newName.focus(); return; }
-    start(serverUrl('', location), undefined, { name, world: mine.checked ? G.char.world : undefined });
+    start(serverUrl('', location), undefined, { name, world: mine.checked ? G.char.world : undefined, rivals: rivalsBox.checked || undefined });
     newName.value = '';
   };
   addr.onkeydown = (e) => e.stopPropagation();

@@ -3,6 +3,22 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.189.0', date: '2026-10-12', title: 'The rivals mode', notes: [
+    'A new server can be made as a rivals world: tick "rivals" next to Create a server. Co-op stays the default, and single player is always co-op.',
+    'Rivals needs a new world of towns, so a server made in an older world of your own is refused.',
+    'Every player gets a seat in a rivals world, kept with their account. The first seat starts at Gridholm as usual.',
+    'Every other seat starts at a home village of its own: one of the towns, as far from Gridholm and the other homes as the planet allows (at least 8 km out).',
+    'A home becomes a ruined settlement the first time its player comes, and you build it up like Gridholm: farms, power, the warehouse, the yards.',
+    'You wake at your home instead of the crashed ship, and you come back there after a death.',
+    'The elder\'s next step in the quest tracker and on the maps is your own home\'s.',
+    'A deposit belongs to whoever stakes it first. Only the owner and the partners they let in can build at it, take its crates, load its bunkers and pantry, or run its convoy.',
+    'The owner adds or removes partners in the outpost window. Only the owner can pull up the stake.',
+    'On the maps a rival\'s outpost is a rust ring with its owner\'s name.',
+    'Anyone can still fight off a raid on any outpost. There is no PvP with weapons: the rivalry is over the deposits and the time.',
+    'The server list marks rivals servers.',
+    'A dedicated server can make its first server a rivals world with GAME_MODE=rivals. This is read with the seed: on the first start, or with FORCE_SEED=1.',
+    'Multiplayer: the seats are kept by the server, and the roster of seats (names and homes) is shared. This changes the protocol to 14, so the server needs an update.',
+  ] },
   { v: '0.188.0', date: '2026-10-12', title: 'Processing at the outposts and electric convoys', notes: [
     'An outpost that digs can build a processing works beside its extraction:',
     'A field refinery at an oil seep turns crude into fuel canisters.',

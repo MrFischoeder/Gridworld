@@ -8,6 +8,7 @@
 //
 // Settings (environment): PORT (8517), HOST (0.0.0.0), WORLD_SEED (a number, below 0 for a new world of towns (0.182); only read the first time, then the
 // saved one wins unless FORCE_SEED=1), DATA_DIR (server/data: server.json keeps the seed and the clock),
+// GAME_MODE (rivals: the first server is a rivals world, read with its seed: on the first start or with FORCE_SEED=1),
 // SERVER_NAME (the first server's name in the list; accounts.json keeps the players' accounts), DIST (the built game, dist/). Behind a reverse proxy at a sub-path (a portal
 // with several apps, e.g. https://example.pl/gridworld/) it works whether the proxy strips the prefix or not.
 // GET /mp/info answers {dedicated, name, version, rooms: [{id, name, world, time, online, max, running, players}], and
@@ -37,7 +38,8 @@ let saved = null;
 try { saved = JSON.parse(await readFile(SAVE, 'utf8')); } catch { /* first start */ }
 const seedEnv = Number(env.WORLD_SEED), seedSet = env.WORLD_SEED !== undefined && env.WORLD_SEED !== '' && Number.isFinite(seedEnv);
 let rooms = Array.isArray(saved?.rooms) ? saved.rooms : saved ? [{ id: 'main', name: NAME, world: saved.world | 0, time: Number(saved.time) || 0 }] : [];
-if (!rooms.length || rooms[0].id !== 'main') rooms.unshift({ id: 'main', name: NAME, world: seedSet ? seedEnv | 0 : -randomInt(1, 1000000), time: 7 * 60 }); // a new world starts at 07:00 of day 1
+if (!rooms.length || rooms[0].id !== 'main') rooms.unshift({ id: 'main', name: NAME, world: seedSet ? seedEnv | 0 : -randomInt(1, 1000000), time: 7 * 60, mode: env.GAME_MODE === 'rivals' ? 'rivals' : 'coop' }); // a new world starts at 07:00 of day 1
+if (env.FORCE_SEED === '1' && env.GAME_MODE) rooms[0].mode = env.GAME_MODE === 'rivals' ? 'rivals' : 'coop'; // (0.189) the first server's mode, with its seed
 if (env.FORCE_SEED === '1' && seedSet && rooms[0].world !== (seedEnv | 0)) rooms[0] = { ...rooms[0], world: seedEnv | 0, time: 7 * 60 };
 rooms[0].name = NAME; // (the first server's name follows SERVER_NAME)
 // each room's shared world (villages, bridges, chests...) lives in its own file: it can grow large
@@ -95,7 +97,7 @@ const http = createServer(async (req, res) => {
     return;
   }
   if (url.endsWith(MP.path + '/info')) {
-    const s = mp.state(), list = mp.list().map(({ id, name, world, time, online, max, running, players, by }) => ({ id, name, world, time, online, max, running, players, by }));
+    const s = mp.state(), list = mp.list().map(({ id, name, world, time, online, max, running, players, by, mode }) => ({ id, name, world, time, online, max, running, players, by, mode }));
     res.writeHead(200, { 'content-type': 'application/json', 'cache-control': 'no-store', 'access-control-allow-origin': '*' });
     res.end(JSON.stringify({ dedicated: true, accounts: true, mail: accounts.mailing, name: NAME, world, time: Math.round(s.time), online: s.n, max: MP.max, players: s.names, version: VERSION, rooms: list }));
     return;

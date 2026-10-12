@@ -2,6 +2,7 @@
 // Versions: v1 (relic counts) -> v2 (backpack, per-dungeon progress) -> v3 (open world).
 import { newWorldSeed } from './gen/worldrules';
 import type { OutpostState } from './gen/outposts';
+import type { RivalSeat } from './gen/rivals';
 import { planksForLogs } from './gen/wood';
 import { fixInstall, type InstallKind, type InstallState } from './gen/installs';
 import { fixPlant } from './gen/plants';
@@ -69,6 +70,8 @@ export interface Char {
   lodes: Record<string, [number, number, string, string, number]>;
   /** (0.183) Outposts at the deposits (gen/outposts.ts), by lode id. Shared in multiplayer. */
   outposts: Record<string, OutpostState>;
+  /** (0.189) The rivals mode's roster: seat -> {n: the name its player goes by, v: the home village} (gen/rivals.ts). Shared. */
+  rivals: Record<string, RivalSeat>;
   /** Villages where you own a house (bought from the elder; Gridholm's for now). */
   houses: number[];
   /** Which house (gen/homes.ts index) you have in each of those villages; unset = the first (Gridholm's, from before). */
@@ -152,7 +155,7 @@ export const SAVE_KEY = 'gridWorld.character.v3';
 export const ARENA_V3_KEY = 'gridArena.character.v3', V2_KEY = 'gridArena.character.v2', OLD_KEY = 'gridArena.character.v1';
 
 export const newChar = (): Char => ({
-  v: 3, settlementRules: 1, name: '', intro: false, tech: {}, leads: [], installs: {}, bridges: {}, bridgeSites: [], cityGarrisons: {}, fallen: {}, piers: [], boats: [], filter: 0, fogs: {}, lodes: {}, outposts: {}, guide: 0, houses: [], shuttle: { given: {}, v: 2 }, level: 1, xp: 0, gold: 0, world: newWorldSeed(),
+  v: 3, settlementRules: 1, name: '', intro: false, tech: {}, leads: [], installs: {}, bridges: {}, bridgeSites: [], cityGarrisons: {}, fallen: {}, piers: [], boats: [], filter: 0, fogs: {}, lodes: {}, outposts: {}, rivals: {}, guide: 0, houses: [], shuttle: { given: {}, v: 2 }, level: 1, xp: 0, gold: 0, world: newWorldSeed(),
   inv: Array(INV_SIZE).fill(null), mods: Array(MOD_SIZE).fill(null), opened: {}, unlocked: {}, killed: {},
   loc: 'overworld', ow: null, dungeon: null, discovered: {}, containers: {}, vehicles: [], board: { seq: 0, offers: [], stamp: boardPeriod(START_TIME) }, boards: {}, quests: [], camps: {}, time: START_TIME, gunMods: [null, null, null], loaded: { blaster: 20 }, waypoint: null, kcal: KCAL.start, stomach: 0, water: 100, harvest: {}, benches: [], claims: [],
   hands: [{ k: 'blaster', n: 1 }], back: [{ k: 'blade', n: 1 }, null], wear: {}, pid: Math.random().toString(36).slice(2, 10), towns: {}, market: {}, ledger: {}, caravans: {}, escort: null, contracts: [], taken: [],

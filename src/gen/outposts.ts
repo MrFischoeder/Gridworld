@@ -20,8 +20,10 @@ export type OutpostPart = 'dig' | 'store' | 'power' | 'bunks' | 'field' | 'wall'
 export type ManyPart = 'bunks' | 'field' | 'wall' | 'turret';
 export const isMany = (p: OutpostPart): p is ManyPart => p === 'bunks' || p === 'field' || p === 'wall' || p === 'turret';
 export interface OutpostState {
-  /** Owner: 'crew' (co-op: everyone) or a player's pid (the rivals mode, stage O8). */
+  /** Owner: 'crew' (co-op: everyone) or (0.189, the rivals mode) the seat that staked it, 's<slot>' (gen/rivals.ts). */
   o: string;
+  /** (0.189) The seats the owner let in (gen/rivals.ts addPartner). */
+  pp?: string[];
   /** Who drove the stake in, when; the deposit's kind, place and name (for the maps, without the generator). */
   by: string; t: number; k: LodeKind; x: number; z: number; name: string;
   done?: Partial<Record<OutpostPart, true>>;
@@ -93,7 +95,9 @@ export function choosePower(o: OutpostState, pk: PowerKind): boolean {
 /** A new outpost at deposit l. */
 export const newOutpost = (l: Lode, by: string, now: number, owner = 'crew'): OutpostState => ({ o: owner, by, t: now, k: l.k, x: Math.round(l.x), z: Math.round(l.z), name: l.name });
 /** May player `pid` work the outpost (co-op: everyone; the rivals mode: its owner). */
-export const mayUse = (o: OutpostState, pid: string) => o.o === 'crew' || o.o === pid;
+/** May `me` (an owner id: gen/rivals.ts `seatOwner`, or a player id) build at, take from or run outpost `o`? The
+ *  crew's are everyone's; (0.189) a rival's are its owner's and the partners' they let in (`pp`). */
+export const mayUse = (o: OutpostState, me: string) => o.o === 'crew' || o.o === me || !!o.pp?.includes(me);
 /** What the outpost digs an hour, per good. */
 export function outputs(l: Lode): [ItemKey, number][] {
   const base = (isRare(l.k) ? OUTPOST.rare : OUTPOST.rate) * l.rich;

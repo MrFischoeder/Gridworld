@@ -4,6 +4,7 @@ import { riding, getOff } from './ride';
 import { SHIP_NAME } from './lander';
 import * as THREE from 'three';
 import { crashSpawn } from './crashpod';
+import { rivalStart } from './rivals';
 import { placeCarrier, dropCarrier } from './datacarriers';
 import { landingSite } from '../gen/landing';
 import { Terrain } from '../gen/terrain';
@@ -336,6 +337,10 @@ function lamps(grp: THREE.Group, map: VillageMap, y0: number) {
 export type Arrival = { kind: 'saved' } | { kind: 'new' } | { kind: 'pod' } | { kind: 'tavern'; id?: number; bed?: boolean } | { kind: 'ruin'; id: number };
 export function loadOverworld(a: Arrival) {
   const c = G.char;
+  if (a.kind === 'pod' || (!c.intro && (a.kind === 'new' || (a.kind === 'saved' && !c.ow)))) {
+    const h = rivalStart(); // (0.189) a rival of seat 1 and up wakes at their own home
+    if (h !== null) { loadOverworld({ kind: 'tavern', id: h }); return; }
+  }
   clearLevel(); setLocationLook(true);
   setDroneRespawn(removeDrone);
   G.vel.set(0, 0, 0); G.hp = Math.max(G.hp, 1); G.pitch = 0;
@@ -470,7 +475,7 @@ export function toVillage(how: 'death' | 'recall', id?: number) {
     return;
   }
   const from = c.loc === 'dungeon' && c.dungeon ? c.dungeon.cave?.mouths[0] ?? cityEntrance(c.world, c.dungeon.ruinId) ?? findPoi(c.world, c.dungeon.ruinId) ?? { x: 0, z: 0 } : { x: G.pos.x, z: G.pos.z };
-  const known = allVillages(c.world).filter((v) => v.id === GRIDHOLM_ID || isDiscovered(c.discovered, Math.floor(v.x / CHUNK), Math.floor(v.z / CHUNK)));
+  const home = rivalStart() ?? GRIDHOLM_ID, known = allVillages(c.world).filter((v) => v.id === home || isDiscovered(c.discovered, Math.floor(v.x / CHUNK), Math.floor(v.z / CHUNK)));
   const v = id !== undefined ? findPoi(c.world, id) ?? known[0] : known.reduce((a, b) => (worldDist(b.x, b.z, from.x, from.z) < worldDist(a.x, a.z, from.x, from.z) ? b : a));
   c.loc = 'overworld'; c.dungeon = null; saveChar();
   // Gridholm is home once you own the house there: you wake up in your own bed, anywhere else in the tavern

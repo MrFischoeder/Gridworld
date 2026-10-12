@@ -3,7 +3,7 @@
 // it with `sendState` (about 10 times a second) and reads `peers`.
 
 /** Must match PROTOCOL in server/mp.mjs. */
-export const PROTOCOL = 13;
+export const PROTOCOL = 14;
 export const SEND_EVERY = 0.1;
 
 /** `away`: in the menu (still in the game: the others see you standing there). */
@@ -108,6 +108,10 @@ export const net = {
   gateTravelling: false,
   /** Everything lying on the ground in the room's world, by id. */
   drops: new Map<string, NetDrop>(),
+  /** (0.189) The room's mode: co-op (everything the crew's) or rivals (own home villages, deposits to whoever stakes
+   *  first); and your seat in a rivals room (-1 otherwise). */
+  mode: 'coop' as 'coop' | 'rivals',
+  slot: -1,
 };
 export const online = () => net.id > 0;
 export const isHost = () => online() && net.id === net.host;
@@ -180,7 +184,7 @@ export async function changePassword(url: string, token: string, old: string, pa
 }
 /** Is the page served by a dedicated server (server/main.mjs)? It answers mp/info next to the page. */
 /** A game server ("room") of a dedicated server, as the menu lists it: `running` while someone is in it. */
-export interface RoomInfo { id: string; name: string; world: number; time: number; online: number; max: number; running: boolean; players: string[]; by?: string }
+export interface RoomInfo { id: string; name: string; world: number; time: number; online: number; max: number; running: boolean; players: string[]; by?: string; mode?: 'coop' | 'rivals' }
 export interface ServerInfo { dedicated: boolean; accounts?: boolean; mail?: boolean; name: string; world: number; online: number; max: number; players: string[]; version: string; rooms?: RoomInfo[] }
 export async function serverInfo(): Promise<ServerInfo | null> {
   try {
@@ -208,7 +212,7 @@ export function serverUrl(input: string, here: { protocol: string; host: string;
 let hooks: NetHooks | null = null;
 /** Connect and say hello; the hooks hear the rest. */
 /** `room`: the dedicated server's room to join; `create`: make a new room (its name and world) and join it. */
-export function connect(url: string, me: { name: string; world: number; time: number; token?: string; room?: string; create?: { name: string; world?: number } }, h: NetHooks) {
+export function connect(url: string, me: { name: string; world: number; time: number; token?: string; room?: string; create?: { name: string; world?: number; rivals?: boolean } }, h: NetHooks) {
   disconnect();
   hooks = h; net.address = url;
   let ws: WebSocket;
@@ -223,6 +227,7 @@ export function connect(url: string, me: { name: string; world: number; time: nu
     switch (m.t) {
       case 'welcome':
         welcomed = true; net.hero = ''; net.id = m.id; net.name = typeof m.name === 'string' ? m.name : me.name; net.host = m.host; net.dedicated = !!m.dedicated; net.room = m.room ?? null; net.peers.clear();
+        net.mode = m.mode === 'rivals' ? 'rivals' : 'coop'; net.slot = typeof m.slot === 'number' ? m.slot : -1;
         net.drops = new Map((Array.isArray(m.drops) ? m.drops : []).map((d: NetDrop) => [d.id, d]));
         receiveGates(m);
         for (const p of m.players) if (p.id !== m.id) net.peers.set(p.id, { id: p.id, name: p.name, st: null, prev: null, at: 0, hist: [] });
@@ -279,7 +284,7 @@ export function connect(url: string, me: { name: string; world: number; time: nu
     if (net.ws !== ws) return;
     clearLocks();
     clearGateRequests();
-    net.ws = null; net.id = 0; net.host = 0; net.dedicated = false; net.room = null; net.peers.clear(); net.drops.clear();
+    net.ws = null; net.id = 0; net.host = 0; net.dedicated = false; net.room = null; net.mode = 'coop'; net.slot = -1; net.peers.clear(); net.drops.clear();
     h.closed(why || (welcomed ? 'Disconnected from the server.' : `Could not reach a server at ${url}.`));
   };
 }
@@ -287,7 +292,7 @@ export function disconnect() {
   const ws = net.ws;
   clearLocks();
   clearGateRequests();
-  net.ws = null; net.id = 0; net.host = 0; net.dedicated = false; net.room = null; net.peers.clear(); net.drops.clear();
+  net.ws = null; net.id = 0; net.host = 0; net.dedicated = false; net.room = null; net.mode = 'coop'; net.slot = -1; net.peers.clear(); net.drops.clear();
   if (ws) { ws.onclose = null; ws.close(); }
 }
 export function sendState(s: PeerState, time?: number) {

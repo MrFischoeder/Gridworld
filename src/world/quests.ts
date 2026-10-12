@@ -1,4 +1,5 @@
 import { progressive, development, tutorialStep, sideStep } from '../gen/settlement';
+import { myHomeId } from './rivals';
 import { jobLines } from './jobsites';
 import { count } from '../data/crafting';
 import { settlementMarker, sideMarker } from './settlement';
@@ -229,9 +230,9 @@ export function updateTracker(dt: number) {
   lines.push(...leadLines());
   const raid = raidLine(); if (raid) lines.unshift(raid);
   const oraid = outpostRaidLine(); if (oraid) lines.unshift(oraid);
-  const step = G.char.guide === 2 ? tutorialStep(G.char.towns[GRIDHOLM_ID]) : null;
+  const step = G.char.guide === 2 ? tutorialStep(G.char.towns[myHomeId()]) : null;
   lines.unshift(...jobLines());
-  const side = G.char.guide === 2 ? sideStep(G.char.towns[GRIDHOLM_ID]) : null;
+  const side = G.char.guide === 2 ? sideStep(G.char.towns[myHomeId()]) : null;
   if (side) lines.unshift('▸ Side task: ' + side.title);
   if (step && step.title !== 'A thriving settlement') lines.unshift('▸ Elder: ' + step.title);
   const gl = guideLine(); if (gl) lines.unshift(gl);

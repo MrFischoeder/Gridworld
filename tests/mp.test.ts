@@ -561,3 +561,24 @@ it('cancels a departing vehicle when its owner disconnects and releases the wait
   expect((await b.wait('gabort')).trip).toBe(departing.trip); expect((await b.wait('seats', 2)).ride).toBeNull();
   const released = await b.until(m => m.t === 'gates' && !m.links[0]?.inTransit); expect(released.links[0].inTransit).toBeUndefined(); b.ws.close();
 });
+describe('(0.189) rivals rooms', () => {
+  it('a rivals room gives every account a seat for good; co-op rooms none; a positive seed is refused', async () => {
+    const port = await server({ rooms: [{ id: 'main', name: 'Main', world: -11, time: 100 }] });
+    const bad = await client(port, { name: 'Zed', create: { name: 'Old rules', world: 33, rivals: true } });
+    expect((await bad.wait('refused')).why).toMatch(/new world/);
+    const a = await client(port, { name: 'Ada', create: { name: 'Race', world: -77, rivals: true } }), wa = await a.wait('welcome');
+    expect(wa.mode).toBe('rivals'); expect(wa.slot).toBe(0);
+    const b = await client(port, { name: 'Bob', room: wa.room.id }), wb = await b.wait('welcome');
+    expect(wb.slot).toBe(1);
+    expect(mp!.list().find((r) => r.id === wa.room.id)!.mode).toBe('rivals');
+    a.ws.close(); await new Promise((r) => setTimeout(r, 100));
+    const c = await client(port, { name: 'Cy', room: wa.room.id }), wc = await c.wait('welcome');
+    expect(wc.slot).toBe(2); // Ada's seat stays hers while she is away
+    const a2 = await client(port, { name: 'Ada', room: wa.room.id }), wa2 = await a2.wait('welcome');
+    expect(wa2.slot).toBe(0);
+    expect(mp!.save().find((r) => r.id === wa.room.id)!.slots).toEqual({ 'a:ada': 0, 'a:bob': 1, 'a:cy': 2 });
+    const m = await client(port, { name: 'Di' }), wm = await m.wait('welcome');
+    expect(wm.mode).toBe('coop'); expect(wm.slot).toBe(-1);
+    for (const x of [b, c, a2, m]) x.ws.close();
+  });
+});

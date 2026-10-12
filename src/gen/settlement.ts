@@ -163,7 +163,7 @@ export const TOWN_WALL = [1, 1, 2];
 export function initializeSettlements(c: { settlementRules: number; world: number; towns: Record<string, TownState> }) {
   if (c.settlementRules !== 1) return;
   for (const v of allVillages(c.world)) {
-    if (townsWorld(c.world) && v.id !== GRIDHOLM_ID) { // (0.182) a new world's towns stand built: a wall from the start
+    if (townsWorld(c.world) && v.id !== GRIDHOLM_ID && !c.towns[v.id]?.settlement) { // (0.182) a new world's towns stand built: a wall from the start ((0.189) a rival's home is a settlement)
       const t = (c.towns[v.id] ??= {});
       t.wall ??= TOWN_WALL[hash(c.world, v.id, 0x70a1) % TOWN_WALL.length];
       continue;

@@ -1,4 +1,5 @@
 // Developer console, opened with ~ (the backquote key). Cheats for testing.
+import { myHomeId } from '../world/rivals';
 import { installSites } from '../gen/installs';
 import { citySites } from '../gen/cities';
 import { regionFog } from '../gen/toxic';
@@ -13,7 +14,7 @@ import { forceWeather, seen } from '../world/weather';
 import { WEATHER_NAME, type WeatherKind } from '../gen/weather';
 import { saveChar } from '../character';
 import { toVillage } from '../world/level';
-import { GRIDHOLM_ID, regionOf, worldDist, findPoi } from '../gen/regions';
+import { regionOf, worldDist, findPoi } from '../gen/regions';
 import { jobShare } from '../gen/construction';
 import { spawnCreatureNear } from '../world/creatures';
 import { spawnBanditsNear } from '../world/bandits';
@@ -64,8 +65,8 @@ const COMMANDS: Record<string, { help: string; run: (args: string[]) => string }
     },
   },
   home: {
-    help: 'go back to Gridholm (outside the tavern)',
-    run: () => { if (G.trans) return 'Busy travelling, try again in a moment.'; close(); toVillage('recall', GRIDHOLM_ID); return 'Home.'; },
+    help: 'go back home: Gridholm, or your own home in a rivals game (outside the tavern)',
+    run: () => { if (G.trans) return 'Busy travelling, try again in a moment.'; close(); toVillage('recall', myHomeId()); return 'Home.'; },
   },
   time: {
     help: 'time [hour] — show the clock, or skip ahead to that hour (0-23)',

@@ -28,6 +28,8 @@ import { $, showToast, logLine } from './hud';
 import { lockPointer } from './input';
 import { givesText } from '../world/lodes';
 import { procOf } from '../gen/outpostproc';
+import { addPartner, dropPartner } from '../gen/rivals';
+import { rivalsOn, myOwner, ownerName, seats } from '../world/rivals';
 
 const dlgEl = $('dlg'), panel = () => dlgEl.querySelector('.panel') as HTMLElement;
 let lode: Lode | null = null;
@@ -134,6 +136,15 @@ function powerHTML(id: string, o: OutpostState): string {
   const st = gridState(c.world, c.outposts, g, c.time), share = powerShare(c.world, c.outposts, id, c.time), members = [...g.values()].filter((m) => m === n).length;
   return s + `<div class="say"><b>Grid</b> (${members} outpost${members === 1 ? '' : 's'}): making ${Math.round(st.supply[n] ?? 0)} kW now, the outposts draw ${Math.round(st.demand[n] ?? 0)} kW${demandOf(o) ? ` (this one ${demandOf(o)} kW)` : ''}. Over the last day it met ${Math.round(share * 100)}% of the demand${o.done?.dig ? `: the crew digs at ${Math.round(powerFactor(share) * 100)}% pace` : ''}.</div>`;
 }
+/** (0.189, stage O8) A rivals game: the owner lets the other seats in, or shuts them out again. */
+function partnersHTML(o: OutpostState): string {
+  if (!rivalsOn() || o.o !== myOwner()) return '';
+  const btn = (op: string, t: string) => `<button class="opt" style="display:inline-block;width:auto;margin:2px 4px" data-op="${op}">${t}</button>`;
+  const out = seats([o.o, ...(o.pp ?? [])]), inn = o.pp ?? [];
+  if (!out.length && !inn.length) return '<div class="say" style="opacity:.7">No other player has a seat in this world yet. When one comes, you can make them a partner here.</div>';
+  return `<div class="say"><b>Partners</b>: they may build here, take the crates and run the convoy as you do.<br>` +
+    inn.map((p) => btn('pout:' + p, `Shut ${ownerName(p)} out`)).join('') + out.map(([p, v]) => btn('pin:' + p, `Let ${v.n || 'a rival'} in`)).join('') + '</div>';
+}
 function render(msg = '') {
   if (!lode) return;
   const c = G.char, l = lode, spec = LODES[l.k], o = state();
@@ -142,10 +153,10 @@ function render(msg = '') {
   if (!o) {
     s += `<div class="say">${spec.blurb[0].toUpperCase() + spec.blurb.slice(1)}. Nobody works it. Drive a stake in and it is yours to work: build its ${DIG[digOf(l.k)].name.toLowerCase()} and a storage shed from materials you bring here, and it digs ${outputs(l).map(([g, r]) => `${(r * 24).toFixed(1)} ${ITEMS[g].name.replace(/^Crate of /, '').toLowerCase()}`).join(' and ')} a day.</div>` +
       `<button class="opt" data-op="stake" style="color:var(--gold)">Drive in the stake (found an outpost)</button>`;
-  } else if (!mayUse(o, c.pid)) {
-    s += `<div class="say">Staked by ${o.by}. It is theirs to work.</div>`;
+  } else if (!mayUse(o, myOwner())) {
+    s += `<div class="say">Staked by ${o.by}${o.o !== 'crew' && ownerName(o.o) !== o.by ? ` for ${ownerName(o.o)}` : ''}. Only they and the partners they let in work it: ask them to make you a partner.</div>`;
   } else {
-    s += `<div class="say" style="opacity:.85">Outpost staked by ${o.by}. Owner: ${o.o === 'crew' ? 'the whole crew' : o.by}.</div>`;
+    s += `<div class="say" style="opacity:.85">Outpost staked by ${o.by}. Owner: ${ownerName(o.o)}.${o.pp?.length ? ` Partners: ${o.pp.map(ownerName).join(', ')}.` : ''}</div>` + partnersHTML(o);
     s += partHTML(o, 'dig') + partHTML(o, 'store') + (procOf(o.k) ? partHTML(o, 'proc') : '') + partHTML(o, 'power') + powerHTML(l.id, o) + partHTML(o, 'bunks') + partHTML(o, 'field') + peopleHTML(o) + partHTML(o, 'wall') + partHTML(o, 'turret') + defenceHTML(l.id, o) + routeHTML(l.id, o);
     if (o.done?.dig) {
       const pw = pwOf(c.world, c.outposts, l.id, c.time), now = stockNow(o, l, c.time, pw), cap = capOf(o);
@@ -162,7 +173,7 @@ function render(msg = '') {
       }
       s += `</div>`;
     } else s += `<div class="say" style="opacity:.7">Nothing is dug until the ${DIG[digOf(l.k)].name.toLowerCase()} stands.</div>`;
-    if (bare(o)) s += `<button class="opt" data-op="drop">Pull up the stake</button>`;
+    if (bare(o) && (o.o === 'crew' || o.o === myOwner())) s += `<button class="opt" data-op="drop">Pull up the stake</button>`;
   }
   panel().classList.add('wide');
   panel().innerHTML = s + `<button class="opt" data-op="close">Close</button>`;
@@ -186,10 +197,14 @@ export function outpostClick(t: HTMLElement): boolean {
     const o = c.outposts[l.id], byId = (id: string) => lodeById(c.world, id);
     if (a === 'stake') {
       if (o) { msg = `${o.by} has staked it already.`; return; }
-      c.outposts[l.id] = newOutpost(l, c.name || 'You', c.time);
+      c.outposts[l.id] = newOutpost(l, c.name || 'You', c.time, myOwner()); // (0.189) a rival's own, else the crew's
       msg = 'The stake goes in. This is an outpost now: bring the materials and the builders will put up what you choose.';
       logLine(`You staked an outpost at ${l.name}.`); showToast('Outpost staked');
-    } else if (!o || !mayUse(o, c.pid)) { msg = 'Not yours to work.'; return; }
+    } else if (!o || !mayUse(o, myOwner())) { msg = 'Not yours to work.'; return; }
+    else if ((a === 'pin' || a === 'pout') && o.o === myOwner() && o.o !== 'crew') { // (0.189) the owner's partners
+      const who = x;
+      if (a === 'pin' ? addPartner(o, who) : dropPartner(o, who)) { msg = a === 'pin' ? `${ownerName(who)} may work ${o.name} with you now.` : `${ownerName(who)} may no longer work ${o.name}.`; logLine(msg); }
+    }
     else if (a === 'pk') {
       msg = choosePower(o, x as PowerKind) ? `You mark out the ground for a ${POWER_SRC[x as PowerKind].name.toLowerCase()}.` : 'The builders have started on another source already.';
     } else if (a === 'fuel' && o.pk && POWER_SRC[o.pk].fuel) {
@@ -244,7 +259,7 @@ export function outpostClick(t: HTMLElement): boolean {
       const left = putAway(g, n, at(), true);
       if (left) o.stock!.n[g] = (o.stock!.n[g] ?? 0) + left; // what finds no room stays on site
       msg = n - left ? `Loaded ${n - left} × ${ITEMS[g].name}${left ? `; ${left} had no room and stay here` : ''}.` : 'No room in your backpack or the trunks here.';
-    } else if (a === 'drop' && bare(o)) {
+    } else if (a === 'drop' && bare(o) && (o.o === 'crew' || o.o === myOwner())) {
       delete c.outposts[l.id]; msg = 'You pull up the stake. The deposit is free again.';
     }
   }).then((ok) => { if (!ok) return; calcStats(); saveChar(); if (lode === l) render(msg); });

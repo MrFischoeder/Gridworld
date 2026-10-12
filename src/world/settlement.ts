@@ -1,4 +1,5 @@
 // Physical new-world deposits and the surface receiver console at a real nearby ruin.
+import { myHomeId } from './rivals';
 import * as THREE from 'three';
 import { projectBegun } from '../gen/buildpads';
 import { G, W } from '../game';
@@ -294,14 +295,14 @@ export function settlementConsoleClick(t: HTMLElement): boolean {
 }
 /** The side task's marker (the start village's radar station, once its power plant stands). */
 export function sideMarker(): { x: number; z: number; label: string } | null {
-  const c = G.char, v = findPoi(c.world, GRIDHOLM_ID), s = c.towns[GRIDHOLM_ID], side = sideStep(s);
+  const c = G.char, h = myHomeId(), v = findPoi(c.world, h), s = c.towns[h], side = sideStep(s);
   if (!v || !side || c.guide !== 2) return null;
   const r = linkRuin(c.world, v, s); return r ? { x: nearX(r.rect.x0 - 3, G.pos.x), z: r.z, label: side.title } : null;
 }
 export function settlementMarker(): { x: number; z: number; label: string } | null {
-  const c = G.char, v = findPoi(c.world, GRIDHOLM_ID), step = tutorialStep(c.towns[GRIDHOLM_ID]);
+  const c = G.char, h = myHomeId(), v = findPoi(c.world, h), step = tutorialStep(c.towns[h]); // (0.189) a rival's own home
   if (!v || !step || !(c.guide === 2)) return null;
-  const r = step.project === 'comms' ? linkRuin(c.world, v, c.towns[GRIDHOLM_ID]) : null;
+  const r = step.project === 'comms' ? linkRuin(c.world, v, c.towns[h]) : null;
   const p = step.project && step.project in RESOURCE_PLOTS ? RESOURCE_PLOTS[step.project as keyof typeof RESOURCE_PLOTS] : null;
   return { x: nearX(r ? r.rect.x0 - 3 : p ? v.x - 36 + p.x : v.x, G.pos.x), z: r ? r.z : p ? v.z - 36 + p.z : v.z, label: step.title };
 }

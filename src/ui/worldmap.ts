@@ -40,6 +40,8 @@ import { network, pathKnown } from '../gen/roads';
 import { onRoad, caravanPos } from '../gen/caravans';
 import { raiders } from '../world/raiders';
 import { $ } from './hud';
+import { myOwner, ownerName } from '../world/rivals';
+import { mayUse } from '../gen/outposts';
 
 const tiles = new Map<string, HTMLCanvasElement>();
 let tileWorld = -1;
@@ -268,7 +270,9 @@ function drawArea(ctx: CanvasRenderingContext2D, w: number, h: number, ppm: numb
     if (!o?.k) continue;
     const x = X(nearX(o.x, px)), y = Z(o.z), r = labels ? 11 : 6;
     if (x < -20 || y < -20 || x > w + 20 || y > h + 20) continue;
-    ctx.strokeStyle = ctx.fillStyle = '#ffd060'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(x, y, r, 0, 6.283); ctx.stroke(); ctx.lineWidth = 1;
+    const theirs = !mayUse(o, myOwner()); // (0.189) a rival's outpost: rust, with its owner's name
+    ctx.strokeStyle = ctx.fillStyle = theirs ? '#d0805a' : '#ffd060'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(x, y, r, 0, 6.283); ctx.stroke(); ctx.lineWidth = 1;
+    if (theirs && labels) ctx.fillText(`${ownerName(o.o)}'s`, x, y - r - 6);
     if (o.life?.v) { ctx.beginPath(); ctx.arc(x, y, r + 4, 0, 6.283); ctx.stroke(); } // (0.185) a hamlet: a double ring
     if (labels) ctx.fillText(o.life?.v ? `Hamlet · ${Math.floor(o.life.n)} people` : 'Outpost' + (o.done?.dig ? '' : ' (building)') + (o.life && o.life.n >= 1 ? ` · ${Math.floor(o.life.n)} people` : ''), x, y + r + 16);
   }
