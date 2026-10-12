@@ -3,6 +3,18 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.185.0', date: '2026-10-12', title: 'People and food at the outposts', notes: [
+    'Outposts can now have people. Build bunkhouses (8 beds each, up to 3) and fields (up to 3) at any outpost.',
+    'Settlers come on their own while there are free beds and food to spare. That means two days of food in the pantry, or fields that grow enough.',
+    'Bring crates of grain, potatoes, carrots, eggs, milk or meat and load them into the pantry from the outpost window. It holds 30 food, or 90 with a storage shed.',
+    'Each person eats about a quarter of a crate of food a day. When the food runs out, settlers leave.',
+    'Each field is worked by 3 people. It grows 4 crates of food a day on average land, more on fertile ground and less on barren ground (the F layer on the map).',
+    'People work the fields first, then the extraction. A full crew of 6 at the dig makes it 50% faster.',
+    'An outpost with 2 bunkhouses, 2 fields, a power source and 16 people becomes a hamlet, shown with a double ring on the map.',
+    'The outpost window shows the people, beds, pantry, the food grown and eaten, and who works where. You see the settlers at work in the fields and at the dig.',
+    'Small trees and rocks now keep about 40 m further away from deposits, which leaves room for the fields. A few trees near deposits moved.',
+    'Multiplayer: the people and the pantry are part of the shared outposts and are worked out the same way on every game. The server does not need an update.',
+  ] },
   { v: '0.184.0', date: '2026-10-08', title: 'Power at the outposts', notes: [
     'Outposts now need electricity. An extraction without power digs at half pace. With all the power it draws it digs at the full rate.',
     'Build a power source at any outpost. Choose one in the outpost window, then hand over its materials; the builders take 8 hours.',

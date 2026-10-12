@@ -21,8 +21,12 @@ import { lodeById } from '../gen/lodes';
 import { digOf, finishDue, partName, stockNow, outputs, capOf, jobEnd, type OutpostState } from '../gen/outposts';
 import { pwOf, settleAll, POWER_SRC, GRID } from '../gen/grid';
 import { windAt } from '../gen/energy';
+import { lifeNow, crews } from '../gen/outpostlife';
+import { makeFigure, type Figure } from './npc';
+import { poseRig, type Kit } from './rig';
 
-interface Live { l: Lode; g: THREE.Group; rings: [number, number, number][]; boxes: [number, number, number, number][]; oil?: OilMotion; sig: string; rotor?: THREE.Object3D }
+interface Hand { f: Figure; x: number; z: number; face: number; phase: number; work: boolean }
+interface Live { l: Lode; g: THREE.Group; rings: [number, number, number][]; boxes: [number, number, number, number][]; oil?: OilMotion; sig: string; rotor?: THREE.Object3D; hands: Hand[]; H?: (x: number, z: number) => number }
 const live = new Map<string, Live>();
 const STONE = [0xb2b2a3, 0x88978f], ROCK = 0x89988b;
 
@@ -31,7 +35,7 @@ export const givesText = (l: Lode) => lodeGives(l).map((k) => ITEMS[k].name.repl
 
 function build(T: Terrain, l: Lode): Live {
   const gx = nearX(l.x, G.pos.x), H = (x: number, z: number) => T.heightAt(gx + x, l.z + z) - l.y;
-  const pb = new PropBatch(), L: Live = { l, g: new THREE.Group(), rings: [], boxes: [], sig: sigOf(l) }, R = rng(hash(T.world, l.x | 0, l.z | 0, 0x10a1));
+  const pb = new PropBatch(), L: Live = { l, g: new THREE.Group(), rings: [], boxes: [], sig: sigOf(l), hands: [], H }, R = rng(hash(T.world, l.x | 0, l.z | 0, 0x10a1));
   const rock = (x: number, z: number, r: number, h: number, c: number, vein?: number) => {
     const y = H(x, z) - 0.12, sides = 6 + Math.floor(R() * 3), rot = R() * 6.283;
     pb.rock(x, y, z, r, h, sides, rot, c); if (vein) pb.vein(x, y, z, r, h, sides, rot, vein);
@@ -75,6 +79,9 @@ export function outpostSpots(l: Lode) {
     dig: [Math.cos(a + Math.PI) * far, Math.sin(a + Math.PI) * far] as [number, number],
     shed: [Math.cos(a + Math.PI / 2) * (l.r + 7), Math.sin(a + Math.PI / 2) * (l.r + 7)] as [number, number],
     power: [Math.cos(a - Math.PI / 2) * (l.r + 9), Math.sin(a - Math.PI / 2) * (l.r + 9)] as [number, number],
+    /** (0.185) Three bunkhouses beyond the extraction, three fields further out on the post's side. */
+    bunks: [0, 1, 2].map((i) => [Math.cos(a + Math.PI + (i - 1) * 0.5) * (l.r + 12), Math.sin(a + Math.PI + (i - 1) * 0.5) * (l.r + 12)] as [number, number]),
+    fields: [0.8, -0.8, 0].map((d) => [Math.cos(a + d) * (l.r + 26), Math.sin(a + d) * (l.r + 26)] as [number, number]),
   };
 }
 /** What the drawing depends on: the outpost's builds and how full its stock is (in fives). */
@@ -82,7 +89,8 @@ function sigOf(l: Lode): string {
   const o = G.char.outposts[l.id];
   if (!o?.k) return '';
   const st = stockNow(o, l, G.char.time, pwOf(G.char.world, G.char.outposts, l.id, G.char.time)), fill = outputs(l).reduce((a, [g]) => a + Math.floor(st[g] ?? 0), 0);
-  return JSON.stringify([o.done ?? {}, o.job?.p ?? '', o.pk ?? '', o.job ? Math.floor((G.char.time - o.job.t) / (o.job.h * 6)) : 0, Math.floor(fill / 5)]);
+  const folk = o.life ? Math.floor(lifeNow(G.char.world, o, G.char.time).n) : 0;
+  return JSON.stringify([o.done ?? {}, o.n ?? {}, o.job?.p ?? '', o.pk ?? '', o.job ? Math.floor((G.char.time - o.job.t) / (o.job.h * 6)) : 0, Math.floor(fill / 5), folk]);
 }
 function drawOutpost(pb: PropBatch, H: (x: number, z: number) => number, L: Live, o: OutpostState, R: () => number) {
   const l = L.l, sp = outpostSpots(l), cos = Math.cos(l.yaw), sin = Math.sin(l.yaw);
@@ -153,6 +161,17 @@ function drawOutpost(pb: PropBatch, H: (x: number, z: number) => number, L: Live
     if (o.job?.p === 'power') site(x, z, 3, 3, share);
     else if (o.done?.power && o.pk) drawPowerSource(pb, H, L, o, x, z, y);
   }
+  // (0.185) the bunkhouses and the fields, the one going up as a building site
+  const nb = o.n?.bunks ?? 0, nf = o.n?.field ?? 0;
+  sp.bunks.forEach(([x, z], i) => {
+    if (i < nb) drawBunks(pb, H, L, x, z);
+    else if (i === nb && o.job?.p === 'bunks') site(x, z, 4, 2, share);
+  });
+  sp.fields.forEach(([x, z], i) => {
+    if (i < nf) drawField(pb, H, x, z, i);
+    else if (i === nf && o.job?.p === 'field') site(x, z, 2, 2, share);
+  });
+  if (o.life) drawHands(L, o, sp);
   // the crates on site, beside the shed or piled by the extraction
   if (o.done?.dig) {
     const st = stockNow(o, l, G.char.time, pwOf(G.char.world, G.char.outposts, l.id, G.char.time)), n = Math.min(24, Math.floor(outputs(l).reduce((a, [g]) => a + Math.floor(st[g] ?? 0), 0) / (capOf(o) > 10 ? 3 : 1)));
@@ -161,6 +180,46 @@ function drawOutpost(pb: PropBatch, H: (x: number, z: number) => number, L: Live
     if (n) L.boxes.push([bx - 0.4, bz - 0.4, bx + 1.9, bz + 1.9]);
   }
   void R;
+}
+/** (0.185) A plank bunkhouse with a stove pipe, a door on the long side and a bench. */
+function drawBunks(pb: PropBatch, H: (x: number, z: number) => number, L: Live, x: number, z: number) {
+  const y = Math.min(H(x - 4, z), H(x + 4, z), H(x, z));
+  pb.box(x - 4, y - 0.3, z - 2, x + 4, y + 2.6, z + 2, WOOD); pb.gableRoof(x - 4.3, z - 2.3, x + 4.3, z + 2.3, y + 2.6, 1.3, WOOD);
+  for (let k = -3; k <= 3; k++) if (k) pb.seg(WOOD, [x + k, y, z + 2.01], [x + k, y + 2.6, z + 2.01]);
+  pb.line(STAKE, [x - 0.5, y, z + 2.02], [x - 0.5, y + 2, z + 2.02], [x + 0.5, y + 2, z + 2.02], [x + 0.5, y, z + 2.02]);
+  for (const wx of [-2.5, 2.5]) pb.line(STAKE, [x + wx - 0.4, y + 1.2, z + 2.02], [x + wx + 0.4, y + 1.2, z + 2.02], [x + wx + 0.4, y + 1.8, z + 2.02], [x + wx - 0.4, y + 1.8, z + 2.02], [x + wx - 0.4, y + 1.2, z + 2.02]);
+  pb.box(x + 2.6, y + 3, z - 0.9, x + 2.9, y + 4.6, z - 0.6, STEEL);
+  pb.box(x - 3, y, z + 2.6, x - 1.6, y + 0.45, z + 3, WOOD);
+  L.boxes.push([x - 4, z - 2, x + 4, z + 2]);
+}
+/** (0.185) A fenced field, 12 m square: posts and rails, crop rows over the furrows (grain, roots or greens by index). */
+function drawField(pb: PropBatch, H: (x: number, z: number) => number, x: number, z: number, i: number) {
+  const s = 6, CROP = [0xd8c860, 0x6fd24a, 0x9adf5a][i % 3];
+  for (let k = 0; k < 4; k++) {
+    const P = (t: number): [number, number] => k === 0 ? [x - s + t * 2 * s, z - s] : k === 1 ? [x + s, z - s + t * 2 * s] : k === 2 ? [x + s - t * 2 * s, z + s] : [x - s, z + s - t * 2 * s];
+    for (let j = 0; j < 4; j++) {
+      const [ax, az] = P(j / 4), [bx, bz] = P((j + 1) / 4), ay = H(ax, az), by = H(bx, bz);
+      if (!(k === 0 && j === 1)) { pb.seg(WOOD, [ax, ay + 0.9, az], [bx, by + 0.9, bz]); pb.seg(WOOD, [ax, ay + 0.5, az], [bx, by + 0.5, bz]); } // a gap for the gate
+      pb.seg(WOOD, [ax, ay, az], [ax, ay + 1.1, az]);
+    }
+  }
+  for (let r = -5; r <= 5; r++) {
+    const xx = x + r, pts: number[][] = [], top: number[][] = [];
+    for (let t = -5; t <= 5; t += 2.5) { pts.push([xx, H(xx, z + t) + 0.05, z + t]); top.push([xx, H(xx, z + t) + (i % 3 === 0 ? 0.7 : 0.35), z + t]); }
+    pb.line(0x8a7a50, ...pts); pb.line(CROP, ...top);
+  }
+}
+/** (0.185) The settlers: on the fields with hoes, at the extraction with picks, idle ones by the bunkhouse (at most 12 drawn). */
+function drawHands(L: Live, o: OutpostState, sp: ReturnType<typeof outpostSpots>) {
+  const w = crews(o, lifeNow(G.char.world, o, G.char.time).n), put = (x: number, z: number, kit: Kit, work: boolean, face: number, i: number) => {
+    if (L.hands.length >= 12) return;
+    const f = makeFigure(0xdce8ff, kit); L.g.add(f.g);
+    L.hands.push({ f, x, z, face, phase: i * 0.37, work });
+  };
+  for (let i = 0; i < w.farm; i++) { const [fx, fz] = sp.fields[Math.floor(i / 3)], x = fx - 4 + (i % 3) * 4, z = fz + (i % 2 ? 2 : -2); put(x, z, 'hoe', true, (i % 2) * Math.PI, i); }
+  const d = digOf(L.l.k) === 'quarry' || digOf(L.l.k) === 'mine' || digOf(L.l.k) === 'shaft' ? 'pick' : 'hammer';
+  for (let i = 0; i < w.dig; i++) { const a = i / w.dig * 6.283, [dx, dz] = sp.dig, x = dx + Math.cos(a) * 3.2, z = dz + Math.sin(a) * 3.2; put(x, z, d, true, Math.atan2(dx - x, dz - z), i); }
+  for (let i = 0; i < w.idle; i++) { const [bx, bz] = sp.bunks[0], x = bx - 2 + i * 1.3, z = bz + 3.6; put(x, z, 'none', false, 0, i); }
 }
 /** (0.184) A power source at an outpost: a generator box, a wind turbine (its rotor turns with the wind), panels, a coal boiler. */
 function drawPowerSource(pb: PropBatch, H: (x: number, z: number) => number, L: Live, o: OutpostState, x: number, z: number, y: number) {
@@ -214,6 +273,11 @@ export function updateLodes(dt: number) {
   time += dt;
   for (const L of live.values()) {
     if (L.oil) animateOil(L.oil, time);
+    for (const h of L.hands) {
+      h.phase += dt;
+      poseRig(h.f.rig, { swing: 0, strike: h.work ? (h.phase * 0.85) % 1 : 0 });
+      h.f.g.position.set(h.x, L.H!(h.x, h.z), h.z); h.f.g.rotation.y = h.face;
+    }
     if (L.rotor) { const o = G.char.outposts[L.l.id]; L.rotor.rotation.z += dt * 2.4 * windAt(hash(G.char.world, L.l.id.length, (o?.x ?? 0) | 0, (o?.z ?? 0) | 0), G.char.time); }
   }
   if ((tick -= dt) > 0) return;
@@ -237,7 +301,7 @@ function finishOutposts() {
     if (!o?.job || c.time < jobEnd(o)) continue;
     const l = lodeById(c.world, id);
     if (!l) continue;
-    if (o.job.p === 'power') settleAll(c.world, c.outposts, byId, jobEnd(o)); // a new source changes the grid: count what was dug before it
+    settleAll(c.world, c.outposts, byId, jobEnd(o)); // a new source, beds or field change the grid and the people: count up to it first
     const p = finishDue(o, l, c.time, pwOf(c.world, c.outposts, id, c.time));
     if (p) {
       saveChar(); const what = partName(o.k, p, o.pk).toLowerCase();

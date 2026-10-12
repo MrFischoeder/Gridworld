@@ -54,6 +54,8 @@ export const LODE = {
   chance: 0.06, homeChance: 0.1, home: 4000,
   /** Villages keep this far (m), other places this far from the edge, roads and rivers this far. */
   village: 500, place: 30, road: 14, river: 18,
+  /** (0.185) Small trees, rocks and plants keep this far (m) past the radius: room for an outpost's bunkhouses and fields. */
+  clear: 40,
   /** Most height difference across the cleared ground (m); richness range. */
   steep: 6, rich: [0.6, 1.6] as [number, number],
   /** Start deposits: their kinds, and how far from Gridholm (m). */
@@ -160,7 +162,7 @@ export function lodesNear(world: number, x: number, z: number, m = 0): Lode[] {
   return out;
 }
 /** Is (x, z) on a deposit's cleared ground (its radius plus m)? A grove keeps its giants: only small trees give way. */
-export const inLode = (world: number, x: number, z: number, m = 0) => townsWorld(world) && lodesNear(world, x, z, m).length > 0;
+export const inLode = (world: number, x: number, z: number, m = 0) => townsWorld(world) && lodesNear(world, x, z, m + LODE.clear).length > 0;
 /** Every deposit within r of (x, z), nearest first (rumours, the maps). */
 export function lodesWithin(world: number, x: number, z: number, r: number): Lode[] {
   if (!townsWorld(world)) return [];

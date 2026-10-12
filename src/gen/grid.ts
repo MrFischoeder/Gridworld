@@ -13,6 +13,7 @@ import { windAt } from './energy';
 import type { ItemKey } from '../data/items';
 import { digOf, settle, type OutpostState, type DigKind } from './outposts';
 import type { Lode } from './lodes';
+import { crewFactor, settleLife } from './outpostlife';
 
 export type PowerKind = 'generator' | 'wind' | 'solar' | 'coal';
 export interface PowerSpec {
@@ -100,14 +101,16 @@ export function powerShare(world: number, outposts: Record<string, OutpostState>
 }
 /** What the share does to the outpost's digging: `unpowered` with none, full rate with all it needs. */
 export const powerFactor = (share: number) => GRID.unpowered + (1 - GRID.unpowered) * share;
-/** Bring every working outpost's stock forward at its present factor (before the grid changes, and every two hours). */
+/** Bring every working outpost's stock forward at its present factor (before the grid or the people change, and every
+ *  two hours), then its people (0.185, stage O4: gen/outpostlife.ts). */
 export function settleAll(world: number, outposts: Record<string, OutpostState>, lodeOf: (id: string) => Lode | null, now: number) {
   for (const [id, o] of Object.entries(outposts)) {
-    if (!o?.done?.dig) continue;
-    const l = lodeOf(id);
-    if (l) settle(o, l, now, powerFactor(powerShare(world, outposts, id, now)));
+    if (!o?.k) continue;
+    const l = o.done?.dig ? lodeOf(id) : null;
+    if (l) settle(o, l, now, powerFactor(powerShare(world, outposts, id, now)) * crewFactor(o));
+    settleLife(world, o, now);
   }
 }
-/** The factor an outpost digs at now (1 for one that does not dig yet). */
+/** The factor an outpost digs at now: power × its dig crew (1 for one that does not dig yet). */
 export const pwOf = (world: number, outposts: Record<string, OutpostState>, id: string, now: number) =>
-  outposts[id]?.done?.dig ? powerFactor(powerShare(world, outposts, id, now)) : 1;
+  outposts[id]?.done?.dig ? powerFactor(powerShare(world, outposts, id, now)) * crewFactor(outposts[id]) : 1;

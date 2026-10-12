@@ -5,7 +5,10 @@ import { G, W } from '../game';
 import { ITEMS, type ItemKey } from '../data/items';
 import { calcStats, saveChar, gainXp } from '../character';
 import { LODES, type Lode } from '../gen/lodes';
-import { newOutpost, outputs, stockNow, takeCrates, partPlan, partProblem, partName, handOver, jobEnd, capOf, bare, mayUse, choosePower, DIG, digOf, STORE, OUTPOST, type OutpostState, type OutpostPart } from '../gen/outposts';
+import { newOutpost, outputs, stockNow, takeCrates, partPlan, partProblem, partName, handOver, jobEnd, capOf, bare, mayUse, choosePower, DIG, digOf, STORE, OUTPOST, BUNKS, FIELD, countOf, maxOf, isMany, type OutpostState, type OutpostPart } from '../gen/outposts';
+import { LIFE, lifeNow, crews, foodMade, foodEaten, bedsOf, pantryOf, loadFood, crewFactor, isHamlet } from '../gen/outpostlife';
+import { fertility, fertilityWord } from '../gen/fertility';
+import { FOOD } from '../gen/farms';
 import { POWER_SRC, POWER_KINDS, DIG_KW, grids, gridState, powerShare, powerFactor, pwOf, fuelLeft, loadFuel, settleAll, type PowerKind } from '../gen/grid';
 import { lodeById } from '../gen/lodes';
 import { nearX } from '../gen/regions';
@@ -23,7 +26,7 @@ const state = (): OutpostState | undefined => (lode ? G.char.outposts[lode.id] :
 const hrs = (m: number) => (m >= 60 ? `${Math.floor(m / 60)} h ${Math.round(m % 60)} min` : `${Math.round(m)} min`);
 
 function partHTML(o: OutpostState, p: OutpostPart): string {
-  const name = partName(o.k, p, o.pk), text = p === 'dig' ? DIG[digOf(o.k)].text : p === 'power' ? (o.pk ? POWER_SRC[o.pk].text : '') : STORE.text;
+  const name = partName(o.k, p, o.pk), text = p === 'dig' ? DIG[digOf(o.k)].text : p === 'power' ? (o.pk ? POWER_SRC[o.pk].text : '') : p === 'bunks' ? BUNKS.text : p === 'field' ? FIELD.text : STORE.text;
   if (p === 'power' && !o.done?.power && !o.job && !Object.values(o.given?.power ?? {}).some((n) => (n ?? 0) > 0)) { // pick (or change) the source while nothing is handed over
     const pick = POWER_KINDS.filter((k) => k !== o.pk).map((k) => { const q = POWER_SRC[k]; return `<button class="opt" data-op="pk:${k}">${o.pk ? 'Build a ' : ''}${q.name}: ${q.kw} kW${k === 'wind' ? ' at full wind' : k === 'solar' ? ' in full sun' : ''}, reach ${q.r} m${q.fuel ? `, burns ${ITEMS[q.fuel].name} (1 every ${q.burn! / 60} h)` : ''}</button>`; }).join('');
     if (!o.pk) return `<div class="say"><b>Power</b>: an extraction works at half pace without power. A power source here powers every outpost within its reach, and sources whose reach meets form one grid.</div>` + pick;
@@ -32,12 +35,30 @@ function partHTML(o: OutpostState, p: OutpostPart): string {
   return partBody(o, p, name, text);
 }
 function partBody(o: OutpostState, p: OutpostPart, name: string, text: string): string {
-  if (o.done?.[p]) return `<div class="say"><b style="color:var(--xp)">${name} ✓</b></div>`;
-  if (o.job?.p === p) return `<div class="say"><b>${name}</b>: the builders are at it, ${hrs(jobEnd(o) - G.char.time)} left.</div>`;
+  const have = countOf(o, p), many = isMany(p), tally = many ? ` ${have}/${maxOf(p)}` : '';
+  if (have >= maxOf(p)) return `<div class="say"><b style="color:var(--xp)">${name}${many ? `s ${have}/${maxOf(p)}` : ''} ✓</b></div>`;
+  if (o.job?.p === p) return `<div class="say"><b>${name}${tally}</b>: the builders are at ${many && have ? 'another' : 'it'}, ${hrs(jobEnd(o) - G.char.time)} left.</div>`;
   const rows = partPlan(o, p).map((r) => `${itemName(r.k)} ${r.given}/${r.n}${r.given >= r.n ? ' ✓' : ` · with you: ${carried(r.k, at())}`}`).join('<br>');
   const why = partProblem(o, p);
-  return `<div class="say"><b>${name}</b> <span style="opacity:.8">(${OUTPOST.hours[p]} h to build)</span>: ${text}<br>${rows}</div>` +
-    (why ? `<div class="say" style="opacity:.7">${why}</div>` : `<button class="opt" data-op="give:${p}">Hand over materials for the ${name.toLowerCase()}</button>`);
+  return `<div class="say"><b>${name}${tally}</b> <span style="opacity:.8">(${OUTPOST.hours[p]} h to build${many && have ? ' another' : ''})</span>: ${text}<br>${rows}</div>` +
+    (why ? `<div class="say" style="opacity:.7">${why}</div>` : `<button class="opt" data-op="give:${p}">Hand over materials for the ${many && have ? 'next ' : ''}${name.toLowerCase()}</button>`);
+}
+/** (0.185, stage O4) The people: beds, the pantry, the fields' food by the land's fertility, who works where. */
+function peopleHTML(o: OutpostState): string {
+  const c = G.char, L = lifeNow(c.world, o, c.time), f = fertility(c.world, o.x, o.z), n = Math.floor(L.n), beds = bedsOf(o), w = crews(o, L.n);
+  const made = foodMade(o, L.n, f), eat = foodEaten(L.n), net = made - eat;
+  let s = `<div class="say"><b>People</b>${isHamlet(o) ? ' <b style="color:var(--gold)">· a hamlet now</b>' : ''}: ${n} of ${beds} beds${beds ? '' : ' (build a bunkhouse and settlers will come)'}` +
+    (n ? ` · ${w.farm} on the fields, ${w.dig} at the ${o.done?.dig ? DIG[digOf(o.k)].name.toLowerCase() : 'dig'}${w.idle ? `, ${w.idle} idle` : ''}` : '') +
+    `<br>Land: ${fertilityWord(f)} (fertility ${Math.round(f * 100)}%) · ${o.n?.field ?? 0} field${o.n?.field === 1 ? '' : 's'} grow ${made.toFixed(1)} food a day, the people eat ${eat.toFixed(1)}` +
+    `<br>Pantry: ${L.food.toFixed(1)} of ${pantryOf(o)} food${eat > 0 ? ` (${net >= 0 ? 'growing' : `${(L.food / (eat - made)).toFixed(1)} days left`})` : ''}` +
+    (L.fed < 1 ? ` · <span style="color:#ff6a4a">hungry: settlers are leaving</span>` : '') +
+    (w.dig ? `<br>The dig crew of ${w.dig} digs ${Math.round((crewFactor(o) - 1) * 100)}% faster.` : '') + `</div>`;
+  if (beds && n < beds && L.fed >= 1) s += `<div class="say" style="opacity:.8">Settlers come while there are free beds and food to spare: ${LIFE.reserve} days of it in the pantry, or fields that grow it.</div>`;
+  if (!isHamlet(o)) s += `<div class="say" style="opacity:.7">With ${LIFE.hamlet.bunks} bunkhouses, ${LIFE.hamlet.field} fields, power and ${LIFE.hamlet.people} people it becomes a hamlet.</div>`;
+  const foods = (Object.keys(FOOD.value) as ItemKey[]).filter((k) => carried(k, at()) > 0);
+  s += foods.length ? `<div class="say">Food with you: ${foods.map((k) => `${itemName(k)} ×${carried(k, at())}`).join(', ')}</div><button class="opt" data-op="food">Load food into the pantry</button>`
+    : `<div class="say" style="opacity:.7">Bring crates of grain, potatoes, carrots, eggs, milk or meat for the pantry.</div>`;
+  return s;
 }
 /** The grid this outpost is on: its supply and demand now, the share over the day, the fuel here. */
 function powerHTML(id: string, o: OutpostState): string {
@@ -67,7 +88,7 @@ function render(msg = '') {
     s += `<div class="say">Staked by ${o.by}. It is theirs to work.</div>`;
   } else {
     s += `<div class="say" style="opacity:.85">Outpost staked by ${o.by}. Owner: ${o.o === 'crew' ? 'the whole crew' : o.by}.</div>`;
-    s += partHTML(o, 'dig') + partHTML(o, 'store') + partHTML(o, 'power') + powerHTML(l.id, o);
+    s += partHTML(o, 'dig') + partHTML(o, 'store') + partHTML(o, 'power') + powerHTML(l.id, o) + partHTML(o, 'bunks') + partHTML(o, 'field') + peopleHTML(o);
     if (o.done?.dig) {
       const pw = pwOf(c.world, c.outposts, l.id, c.time), now = stockNow(o, l, c.time, pw), cap = capOf(o);
       s += `<div class="say"><b>On site</b> (${o.done.store ? 'in the shed' : 'piled in the open'}, up to ${cap} of each):<br>` + outputs(l).map(([g, r]) => {
@@ -112,6 +133,14 @@ export function outpostClick(t: HTMLElement): boolean {
       const n = loadFuel(o, carried(f, at()), c.time);
       if (n) takeFrom(f, n, at());
       msg = n ? `Loaded ${n} × ${ITEMS[f].name} into the bunker.` : `No ${ITEMS[f].name} with you, or the bunker is full.`;
+    } else if (a === 'food') {
+      settleAll(c.world, c.outposts, byId, c.time); // the people change: count what was dug so far first
+      const got: string[] = [];
+      for (const k of Object.keys(FOOD.value) as ItemKey[]) {
+        const n = loadFood(c.world, o, k, carried(k, at()), c.time);
+        if (n) { takeFrom(k, n, at()); got.push(`${ITEMS[k].name} ×${n}`); }
+      }
+      msg = got.length ? `Into the pantry: ${got.join(', ')}.` : 'No food with you, or the pantry is full.';
     } else if (a === 'give') {
       const p = x as OutpostPart, { taken, started } = handOver(o, p, (k) => carried(k, at()), c.time);
       for (const [k, n] of taken) takeFrom(k, n, at());

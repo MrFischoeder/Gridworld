@@ -259,7 +259,8 @@ function drawArea(ctx: CanvasRenderingContext2D, w: number, h: number, ppm: numb
     const x = X(nearX(o.x, px)), y = Z(o.z), r = labels ? 11 : 6;
     if (x < -20 || y < -20 || x > w + 20 || y > h + 20) continue;
     ctx.strokeStyle = ctx.fillStyle = '#ffd060'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(x, y, r, 0, 6.283); ctx.stroke(); ctx.lineWidth = 1;
-    if (labels) ctx.fillText('Outpost' + (o.done?.dig ? '' : ' (building)'), x, y + r + 16);
+    if (o.life?.v) { ctx.beginPath(); ctx.arc(x, y, r + 4, 0, 6.283); ctx.stroke(); } // (0.185) a hamlet: a double ring
+    if (labels) ctx.fillText(o.life?.v ? `Hamlet · ${Math.floor(o.life.n)} people` : 'Outpost' + (o.done?.dig ? '' : ' (building)') + (o.life && o.life.n >= 1 ? ` · ${Math.floor(o.life.n)} people` : ''), x, y + r + 16);
   }
   for (const m of leadMarkers()) { // leads: a violet diamond for a data carrier, a lime one for a great installation (held at the edge of the big map when further)
     let x = X(m.x), y = Z(m.z); const r = labels ? 9 : 5, out = x < 24 || y < 40 || x > w - 24 || y > h - 40;
