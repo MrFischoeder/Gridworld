@@ -14,6 +14,7 @@ import type { ItemKey } from '../data/items';
 import { digOf, settle, type OutpostState, type DigKind } from './outposts';
 import type { Lode } from './lodes';
 import { crewFactor, settleLife } from './outpostlife';
+import { settleRaids } from './outpostraids';
 
 export type PowerKind = 'generator' | 'wind' | 'solar' | 'coal';
 export interface PowerSpec {
@@ -104,12 +105,15 @@ export const powerFactor = (share: number) => GRID.unpowered + (1 - GRID.unpower
 /** Bring every working outpost's stock forward at its present factor (before the grid or the people change, and every
  *  two hours), then its people (0.185, stage O4: gen/outpostlife.ts). */
 export function settleAll(world: number, outposts: Record<string, OutpostState>, lodeOf: (id: string) => Lode | null, now: number) {
+  const raided: { id: string; k: number; won: boolean }[] = [];
   for (const [id, o] of Object.entries(outposts)) {
     if (!o?.k) continue;
-    const l = o.done?.dig ? lodeOf(id) : null;
-    if (l) settle(o, l, now, powerFactor(powerShare(world, outposts, id, now)) * crewFactor(o));
+    const l = o.done?.dig ? lodeOf(id) : null, pw = () => powerFactor(powerShare(world, outposts, id, now)) * crewFactor(o);
+    for (const r of settleRaids(world, id, o, l, now, l ? pw() : 1)) raided.push({ id, ...r }); // (0.186) the raids whose time is over, in order
+    if (l) settle(o, l, now, pw());
     settleLife(world, o, now);
   }
+  return raided;
 }
 /** The factor an outpost digs at now: power × its dig crew (1 for one that does not dig yet). */
 export const pwOf = (world: number, outposts: Record<string, OutpostState>, id: string, now: number) =>

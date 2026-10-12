@@ -1,7 +1,7 @@
 // Where each item is used, straight from the game's data (the same index as SUROWCE.md, in English): the item
 // tooltip (ui/itemtip.ts) lists it under "Used for". Pure; built once on first use.
 import { PROJECTS, type Project } from '../gen/settlement';
-import { DIG, STORE, BUNKS, FIELD } from '../gen/outposts';
+import { DIG, STORE, BUNKS, FIELD, WALL, TURRET } from '../gen/outposts';
 import { POWER_SRC } from '../gen/grid';
 import { FOOD } from '../gen/farms';
 import { ITEMS, type ItemKey } from './items';
@@ -52,7 +52,7 @@ function build(): Map<ItemKey, Map<UseGroup, string[]>> {
   for (const [i] of FARM.needs) use(i, 'Building', 'Farm');
   for (const d of Object.values(DIG)) for (const [i] of d.needs) use(i, 'Building', `Outposts: ${d.name}`); // (0.183)
   for (const [i] of STORE.needs) use(i, 'Building', `Outposts: ${STORE.name}`);
-  for (const b of [BUNKS, FIELD]) for (const [i] of b.needs) use(i, 'Building', `Outposts: ${b.name}`); // (0.185)
+  for (const b of [BUNKS, FIELD, ...WALL, TURRET]) for (const [i] of b.needs) use(i, 'Building', `Outposts: ${b.name}`); // (0.185)
   for (const k of Object.keys(FOOD.value) as ItemKey[]) use(k, 'Other', 'Outposts: the settlers\' pantry');
   for (const q of Object.values(POWER_SRC)) { for (const [i] of q.needs) use(i, 'Building', `Outposts: ${q.name}`); if (q.fuel) use(q.fuel, 'Fuel for', `Outposts: ${q.name}`); } // (0.184)
   for (const k of Object.keys(PROJECTS) as Project[]) for (const [i] of PROJECTS[k].needs) use(i, 'Building', `New settlements: ${PROJECTS[k].name}`); // (0.175: the deep mine's drill rig among them)

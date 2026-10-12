@@ -59,6 +59,7 @@ import { drawIndustry, forgetIndustry } from './industry';
 import { caravanHit, clearCaravans } from './caravans';
 import { peerCarHit } from './peers';
 import { raidHere, clearVillageRaid } from './villageraid';
+import { clearOutpostRaid } from './outpostraid';
 import { syncQuestWorld } from './quests';
 import { generateRuin } from '../gen/ruins';
 import { generateWreck } from '../gen/wreck';
@@ -684,7 +685,7 @@ export function closeWorld() {
   queue = []; lastChunk = '';
   G.water = null;
   foeRules.blocked = () => false; foeRules.playerSafe = () => false; foeRules.ground = null; foeRules.shielded = () => false; foeRules.shieldHit = () => {};
-  clearVillageRaid();
+  clearVillageRaid(); clearOutpostRaid();
   clearCaravans();
   G.ground = null; G.obstacle = null; G.floor = null; G.rayBlock = null; G.solid = null;
 }

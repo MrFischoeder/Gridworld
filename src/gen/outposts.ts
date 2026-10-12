@@ -13,10 +13,11 @@ import { lodeGives, type Lode, type LodeKind } from './lodes';
 import { isRare } from './deposits';
 import { POWER_SRC, type PowerKind } from './grid';
 
-export type OutpostPart = 'dig' | 'store' | 'power' | 'bunks' | 'field';
-/** (0.185, stage O4) Parts built more than once: bunkhouses and fields (counted in `OutpostState.n`). */
-export type ManyPart = 'bunks' | 'field';
-export const isMany = (p: OutpostPart): p is ManyPart => p === 'bunks' || p === 'field';
+export type OutpostPart = 'dig' | 'store' | 'power' | 'bunks' | 'field' | 'wall' | 'turret';
+/** (0.185, stage O4) Parts built more than once: bunkhouses and fields (counted in `OutpostState.n`); (0.186, stage O5)
+ *  the wall (each build raises it a tier) and turrets. */
+export type ManyPart = 'bunks' | 'field' | 'wall' | 'turret';
+export const isMany = (p: OutpostPart): p is ManyPart => p === 'bunks' || p === 'field' || p === 'wall' || p === 'turret';
 export interface OutpostState {
   /** Owner: 'crew' (co-op: everyone) or a player's pid (the rivals mode, stage O8). */
   o: string;
@@ -33,6 +34,8 @@ export interface OutpostState {
   /** (0.185, stage O4) Bunkhouses and fields built, and the people: settlers, the pantry (food units), on whole two-hour marks. */
   n?: Partial<Record<ManyPart, number>>;
   life?: OutpostLife;
+  /** (0.186, stage O5) The last bandit raid settled, raids fought with a player there (k → outcome), the last outcome. */
+  rk?: number; raids?: Record<number, 'won' | 'lost'>; rlast?: [number, 'won' | 'lost'];
 }
 export interface OutpostLife {
   /** The last two-hour mark settled; people (a fraction while they come and go); food in the pantry; the last step's share fed. */
@@ -52,6 +55,13 @@ export const DIG: Record<DigKind, { name: string; needs: [ItemKey, number][]; te
 /** (0.185) A bunkhouse sleeps `beds`; a field is worked by `crew` (stage O4: gen/outpostlife.ts). */
 export const BUNKS = { name: 'Bunkhouse', needs: [['planks', 30], ['nails', 16], ['stone', 10], ['scrap', 4]] as [ItemKey, number][], text: 'A long plank bunkhouse with a stove: beds for settlers who come to work here.', max: 3 };
 export const FIELD = { name: 'Field', needs: [['planks', 10], ['nails', 8], ['rope', 4], ['scrap', 4]] as [ItemKey, number][], text: 'A fenced plot ploughed and sown: it feeds the people here, as well as the land allows.', max: 3 };
+/** (0.186) The wall round an outpost, a tier a build (stake fence, timber palisade, stone wall), and auto turrets. */
+export const WALL = [
+  { name: 'Stake fence', needs: [['planks', 16], ['nails', 8], ['rope', 6]] as [ItemKey, number][], text: 'A ring of sharpened stakes and rails: it keeps the animals off the fields and slows a raid.' },
+  { name: 'Timber palisade', needs: [['planks', 40], ['nails', 20], ['rope', 6], ['scrap', 6]] as [ItemKey, number][], text: 'A wall of tall timbers with a walk behind: bandits break on it far more often.' },
+  { name: 'Stone wall', needs: [['stone', 60], ['cement', 6], ['planks', 16], ['scrap', 10]] as [ItemKey, number][], text: 'Mortared stone with a gate: most raids give up at it.' },
+];
+export const TURRET = { name: 'Auto turret', needs: [['turretkit', 1], ['wire', 4], ['scrap', 6], ['circuit', 2]] as [ItemKey, number][], text: 'An auto turret on a timber tower: it shoots raiders and beasts that come near, and helps the outpost hold.', max: 2 };
 export const STORE = { name: 'Storage shed', needs: [['planks', 20], ['nails', 12], ['stone', 8]] as [ItemKey, number][], text: 'A plank shed with racks: the crates keep there instead of piling in the open.' };
 export const OUTPOST = {
   /** Crates an hour of the main good at richness 1 (common deposits, rare ones); the second good's share. */
@@ -59,13 +69,17 @@ export const OUTPOST = {
   /** Crates of each good on site: piled in the open, or in the shed. */
   pile: 6, cap: 60,
   /** Game hours to build; xp. */
-  hours: { dig: 10, store: 8, power: 8, bunks: 10, field: 8 } as Record<OutpostPart, number>, xp: { dig: 80, store: 40, power: 60, bunks: 50, field: 40 } as Record<OutpostPart, number>,
+  hours: { dig: 10, store: 8, power: 8, bunks: 10, field: 8, wall: 12, turret: 6 } as Record<OutpostPart, number>, xp: { dig: 80, store: 40, power: 60, bunks: 50, field: 40, wall: 60, turret: 50 } as Record<OutpostPart, number>,
 };
-export const partName = (k: LodeKind, p: OutpostPart, pk?: PowerKind) => (p === 'dig' ? DIG[digOf(k)].name : p === 'power' ? (pk ? POWER_SRC[pk].name : 'Power source') : p === 'bunks' ? BUNKS.name : p === 'field' ? FIELD.name : STORE.name);
-export const partNeeds = (k: LodeKind, p: OutpostPart, pk?: PowerKind): [ItemKey, number][] => (p === 'dig' ? DIG[digOf(k)].needs : p === 'power' ? (pk ? POWER_SRC[pk].needs : []) : p === 'bunks' ? BUNKS.needs : p === 'field' ? FIELD.needs : STORE.needs);
+/** A part's name; for the wall, the tier the next build gives (`tier` = the tier standing now). */
+export const partName = (k: LodeKind, p: OutpostPart, pk?: PowerKind, tier = 0) => (p === 'dig' ? DIG[digOf(k)].name : p === 'power' ? (pk ? POWER_SRC[pk].name : 'Power source') : p === 'bunks' ? BUNKS.name : p === 'field' ? FIELD.name : p === 'wall' ? WALL[Math.min(WALL.length - 1, tier)].name : p === 'turret' ? TURRET.name : STORE.name);
+export const partNeeds = (k: LodeKind, p: OutpostPart, pk?: PowerKind, tier = 0): [ItemKey, number][] => (p === 'dig' ? DIG[digOf(k)].needs : p === 'power' ? (pk ? POWER_SRC[pk].needs : []) : p === 'bunks' ? BUNKS.needs : p === 'field' ? FIELD.needs : p === 'wall' ? WALL[Math.min(WALL.length - 1, tier)].needs : p === 'turret' ? TURRET.needs : STORE.needs);
+/** The wall's tier (0 none, 1 stakes, 2 palisade, 3 stone) and the turrets. */
+export const wallOf = (o: OutpostState) => o.n?.wall ?? 0;
+export const turretsOf = (o: OutpostState) => o.n?.turret ?? 0;
 /** How many of a part stand (0 / 1 for the single ones). */
 export const countOf = (o: OutpostState, p: OutpostPart) => (isMany(p) ? o.n?.[p] ?? 0 : o.done?.[p] ? 1 : 0);
-export const maxOf = (p: OutpostPart) => (p === 'bunks' ? BUNKS.max : p === 'field' ? FIELD.max : 1);
+export const maxOf = (p: OutpostPart) => (p === 'bunks' ? BUNKS.max : p === 'field' ? FIELD.max : p === 'wall' ? WALL.length : p === 'turret' ? TURRET.max : 1);
 /** Choose the power source to build here (only before anything is handed over for it). */
 export function choosePower(o: OutpostState, pk: PowerKind): boolean {
   if (o.done?.power || o.job?.p === 'power' || Object.values(o.given?.power ?? {}).some((n) => (n ?? 0) > 0)) return false;
@@ -103,13 +117,13 @@ export function takeCrates(o: OutpostState, l: Lode, g: ItemKey, n: number, now:
 }
 /** A part's materials with what was handed over. */
 export function partPlan(o: OutpostState, p: OutpostPart) {
-  return partNeeds(o.k, p, o.pk).map(([k, n]) => ({ k, n, given: Math.min(n, o.given?.[p]?.[k] ?? 0) }));
+  return partNeeds(o.k, p, o.pk, countOf(o, p)).map(([k, n]) => ({ k, n, given: Math.min(n, o.given?.[p]?.[k] ?? 0) }));
 }
 /** Why part p cannot be worked on now ('' = it can). */
 export function partProblem(o: OutpostState, p: OutpostPart): string {
-  if (countOf(o, p) >= maxOf(p)) return isMany(p) ? `All ${maxOf(p)} stand.` : 'It stands.';
+  if (countOf(o, p) >= maxOf(p)) return p === 'wall' ? 'The stone wall stands.' : isMany(p) ? `All ${maxOf(p)} stand.` : 'It stands.';
   if (p === 'power' && !o.pk) return 'Choose a power source first.';
-  if (o.job) return o.job.p === p ? 'The builders are at it.' : 'The builders are busy with the ' + partName(o.k, o.job.p, o.pk).toLowerCase() + '.';
+  if (o.job) return o.job.p === p ? 'The builders are at it.' : 'The builders are busy with the ' + partName(o.k, o.job.p, o.pk, countOf(o, o.job.p)).toLowerCase() + '.';
   return '';
 }
 /** Hand over what part p still needs (bit by bit); with everything in, the builders start. */
@@ -138,4 +152,4 @@ export function finishDue(o: OutpostState, l: Lode, now: number, pw = 1): Outpos
   return p;
 }
 /** Nothing built or handed over yet: the stake can be pulled up. */
-export const bare = (o: OutpostState) => !o.done?.dig && !o.done?.store && !o.done?.power && !o.n?.bunks && !o.n?.field && !o.job && !Object.values(o.given ?? {}).some((g) => Object.values(g ?? {}).some((n) => (n ?? 0) > 0));
+export const bare = (o: OutpostState) => !o.done?.dig && !o.done?.store && !o.done?.power && !o.n?.bunks && !o.n?.field && !o.n?.wall && !o.n?.turret && !o.job && !Object.values(o.given ?? {}).some((g) => Object.values(g ?? {}).some((n) => (n ?? 0) > 0));

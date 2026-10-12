@@ -10,6 +10,7 @@
 import type { ItemKey } from '../data/items';
 import { FOOD } from './farms';
 import { fertility } from './fertility';
+import { hash } from '../core/rng';
 import type { OutpostLife, OutpostState } from './outposts';
 
 export const LIFE = {
@@ -29,6 +30,9 @@ export const LIFE = {
   hamlet: { bunks: 2, field: 2, people: 16 },
 };
 
+/** (0.186, stage O5) Animals at an outpost without even a stake fence: the share of the fields they trample, the daily
+ *  chance they get into the pantry and the share they eat then. */
+export const PESTS = { trample: 0.25, pantry: 0.25, eat: 0.2 };
 /** Food units a crate of k is worth to the pantry (0 = not food). */
 export const foodValue = (k: ItemKey) => FOOD.value[k] ?? 0;
 export const bedsOf = (o: OutpostState) => (o.n?.bunks ?? 0) * LIFE.beds;
@@ -43,7 +47,7 @@ export function crews(o: OutpostState, people: number) {
   return { farm, dig, idle: n - farm - dig, farmFill: need ? farm / need : 0, digFill: dig / LIFE.digCrew };
 }
 /** Food units the fields make a day with these people (fertility f). */
-export const foodMade = (o: OutpostState, people: number, f: number) => (o.n?.field ?? 0) * LIFE.field * f * crews(o, people).farmFill;
+export const foodMade = (o: OutpostState, people: number, f: number) => (o.n?.field ?? 0) * LIFE.field * f * crews(o, people).farmFill * (o.n?.wall ? 1 : 1 - PESTS.trample);
 /** Food units the people eat a day. */
 export const foodEaten = (people: number) => Math.floor(people) * LIFE.eat;
 
@@ -58,6 +62,7 @@ export function lifeNow(world: number, o: OutpostState, now: number, fert?: numb
     const made = foodMade(o, L.n, f) * k, eat = foodEaten(L.n) * k, have = L.food + made;
     L.fed = eat > 0 ? Math.min(1, have / eat) : 1;
     L.food = Math.min(cap, Math.max(0, have - eat));
+    if (!o.n?.wall && L.t % 1440 === 0 && L.food > 0 && hash(world, o.x | 0, o.z | 0, L.t / 1440, 0x0a61) % 1000 < PESTS.pantry * 1000) L.food *= 1 - PESTS.eat; // the beasts got into the pantry
     if (L.fed < 1) L.n = Math.max(0, L.n - Math.max(0.5, L.n * LIFE.leave)); // hungry: some go away
     else if (L.n + 1 <= beds) { // welcome: free beds, food to spare
       const more = Math.floor(L.n) + 1, day = more * LIFE.eat;

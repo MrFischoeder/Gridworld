@@ -5,9 +5,13 @@ import { G, W } from '../game';
 import { ITEMS, type ItemKey } from '../data/items';
 import { calcStats, saveChar, gainXp } from '../character';
 import { LODES, type Lode } from '../gen/lodes';
-import { newOutpost, outputs, stockNow, takeCrates, partPlan, partProblem, partName, handOver, jobEnd, capOf, bare, mayUse, choosePower, DIG, digOf, STORE, OUTPOST, BUNKS, FIELD, countOf, maxOf, isMany, type OutpostState, type OutpostPart } from '../gen/outposts';
+import { newOutpost, outputs, stockNow, takeCrates, partPlan, partProblem, partName, handOver, jobEnd, capOf, bare, mayUse, choosePower, DIG, digOf, STORE, OUTPOST, BUNKS, FIELD, WALL, TURRET, wallOf, turretsOf, countOf, maxOf, isMany, type OutpostState, type OutpostPart } from '../gen/outposts';
 import { LIFE, lifeNow, crews, foodMade, foodEaten, bedsOf, pantryOf, loadFood, crewFactor, isHamlet } from '../gen/outpostlife';
 import { fertility, fertilityWord } from '../gen/fertility';
+import { strengthAt, nextRaid, holdChance, worthRobbing } from '../gen/outpostraids';
+import { PESTS } from '../gen/outpostlife';
+import { fmtTime } from '../core/time';
+import { tellRaids } from '../world/lodes';
 import { FOOD } from '../gen/farms';
 import { POWER_SRC, POWER_KINDS, DIG_KW, grids, gridState, powerShare, powerFactor, pwOf, fuelLeft, loadFuel, settleAll, type PowerKind } from '../gen/grid';
 import { lodeById } from '../gen/lodes';
@@ -26,7 +30,7 @@ const state = (): OutpostState | undefined => (lode ? G.char.outposts[lode.id] :
 const hrs = (m: number) => (m >= 60 ? `${Math.floor(m / 60)} h ${Math.round(m % 60)} min` : `${Math.round(m)} min`);
 
 function partHTML(o: OutpostState, p: OutpostPart): string {
-  const name = partName(o.k, p, o.pk), text = p === 'dig' ? DIG[digOf(o.k)].text : p === 'power' ? (o.pk ? POWER_SRC[o.pk].text : '') : p === 'bunks' ? BUNKS.text : p === 'field' ? FIELD.text : STORE.text;
+  const tier = countOf(o, p), name = partName(o.k, p, o.pk, tier), text = p === 'dig' ? DIG[digOf(o.k)].text : p === 'power' ? (o.pk ? POWER_SRC[o.pk].text : '') : p === 'bunks' ? BUNKS.text : p === 'field' ? FIELD.text : p === 'wall' ? WALL[Math.min(WALL.length - 1, tier)].text : p === 'turret' ? TURRET.text : STORE.text;
   if (p === 'power' && !o.done?.power && !o.job && !Object.values(o.given?.power ?? {}).some((n) => (n ?? 0) > 0)) { // pick (or change) the source while nothing is handed over
     const pick = POWER_KINDS.filter((k) => k !== o.pk).map((k) => { const q = POWER_SRC[k]; return `<button class="opt" data-op="pk:${k}">${o.pk ? 'Build a ' : ''}${q.name}: ${q.kw} kW${k === 'wind' ? ' at full wind' : k === 'solar' ? ' in full sun' : ''}, reach ${q.r} m${q.fuel ? `, burns ${ITEMS[q.fuel].name} (1 every ${q.burn! / 60} h)` : ''}</button>`; }).join('');
     if (!o.pk) return `<div class="say"><b>Power</b>: an extraction works at half pace without power. A power source here powers every outpost within its reach, and sources whose reach meets form one grid.</div>` + pick;
@@ -35,13 +39,29 @@ function partHTML(o: OutpostState, p: OutpostPart): string {
   return partBody(o, p, name, text);
 }
 function partBody(o: OutpostState, p: OutpostPart, name: string, text: string): string {
-  const have = countOf(o, p), many = isMany(p), tally = many ? ` ${have}/${maxOf(p)}` : '';
-  if (have >= maxOf(p)) return `<div class="say"><b style="color:var(--xp)">${name}${many ? `s ${have}/${maxOf(p)}` : ''} ✓</b></div>`;
+  const have = countOf(o, p), wall = p === 'wall', many = isMany(p) && !wall, tally = many ? ` ${have}/${maxOf(p)}` : wall && have ? ` (now: ${WALL[have - 1].name.toLowerCase()})` : '';
+  if (have >= maxOf(p)) return `<div class="say"><b style="color:var(--xp)">${wall ? WALL[WALL.length - 1].name : name}${many ? `s ${have}/${maxOf(p)}` : ''} ✓</b></div>`;
   if (o.job?.p === p) return `<div class="say"><b>${name}${tally}</b>: the builders are at ${many && have ? 'another' : 'it'}, ${hrs(jobEnd(o) - G.char.time)} left.</div>`;
   const rows = partPlan(o, p).map((r) => `${itemName(r.k)} ${r.given}/${r.n}${r.given >= r.n ? ' ✓' : ` · with you: ${carried(r.k, at())}`}`).join('<br>');
   const why = partProblem(o, p);
   return `<div class="say"><b>${name}${tally}</b> <span style="opacity:.8">(${OUTPOST.hours[p]} h to build${many && have ? ' another' : ''})</span>: ${text}<br>${rows}</div>` +
     (why ? `<div class="say" style="opacity:.7">${why}</div>` : `<button class="opt" data-op="give:${p}">Hand over materials for the ${many && have ? 'next ' : ''}${name.toLowerCase()}</button>`);
+}
+/** (0.186, stage O5) Defence: the wall and turrets, the bandits' strength here, the chance to hold without you, the
+ *  next raid, the last one, the animals. */
+function defenceHTML(id: string, o: OutpostState): string {
+  const c = G.char, str = strengthAt(c.world, o), tier = wallOf(o);
+  let s = `<div class="say"><b>Defence</b>: ${tier ? WALL[tier - 1].name.toLowerCase() : 'no wall'}, ${turretsOf(o)} turret${turretsOf(o) === 1 ? '' : 's'}.`;
+  if (!str) s += ' This near Gridholm no bandits raid it.';
+  else {
+    const r = nextRaid(c.world, id, o, c.time);
+    s += ` Bandits here are of strength ${str.toFixed(1)}; without you it holds a raid ${Math.round(holdChance(o, str) * 100)}% of the time.`;
+    if (!worthRobbing(o)) s += ' Nothing here is worth robbing yet.';
+    else if (r) s += r.t0 <= c.time ? ` <b style="color:#ff6a4a">A raid is on now!</b>` : ` The next raid comes in about ${hrs(r.t0 - c.time)} (day ${Math.floor(r.t0 / 1440) + 1}, ${fmtTime(r.t0)}); be here to fight it.`;
+  }
+  if (o.rlast) s += `<br>Last raid: ${o.rlast[1] === 'won' ? 'driven off' : '<span style="color:#ff6a4a">lost: the crates, half the pantry and some people went</span>'}.`;
+  if (!tier && (o.n?.field || o.life)) s += `<br><span style="opacity:.8">Without a fence the animals trample ${Math.round(PESTS.trample * 100)}% of the fields and now and then get into the pantry.</span>`;
+  return s + '</div>';
 }
 /** (0.185, stage O4) The people: beds, the pantry, the fields' food by the land's fertility, who works where. */
 function peopleHTML(o: OutpostState): string {
@@ -88,7 +108,7 @@ function render(msg = '') {
     s += `<div class="say">Staked by ${o.by}. It is theirs to work.</div>`;
   } else {
     s += `<div class="say" style="opacity:.85">Outpost staked by ${o.by}. Owner: ${o.o === 'crew' ? 'the whole crew' : o.by}.</div>`;
-    s += partHTML(o, 'dig') + partHTML(o, 'store') + partHTML(o, 'power') + powerHTML(l.id, o) + partHTML(o, 'bunks') + partHTML(o, 'field') + peopleHTML(o);
+    s += partHTML(o, 'dig') + partHTML(o, 'store') + partHTML(o, 'power') + powerHTML(l.id, o) + partHTML(o, 'bunks') + partHTML(o, 'field') + peopleHTML(o) + partHTML(o, 'wall') + partHTML(o, 'turret') + defenceHTML(l.id, o);
     if (o.done?.dig) {
       const pw = pwOf(c.world, c.outposts, l.id, c.time), now = stockNow(o, l, c.time, pw), cap = capOf(o);
       s += `<div class="say"><b>On site</b> (${o.done.store ? 'in the shed' : 'piled in the open'}, up to ${cap} of each):<br>` + outputs(l).map(([g, r]) => {
@@ -129,12 +149,12 @@ export function outpostClick(t: HTMLElement): boolean {
       msg = choosePower(o, x as PowerKind) ? `You mark out the ground for a ${POWER_SRC[x as PowerKind].name.toLowerCase()}.` : 'The builders have started on another source already.';
     } else if (a === 'fuel' && o.pk && POWER_SRC[o.pk].fuel) {
       const f = POWER_SRC[o.pk].fuel!;
-      settleAll(c.world, c.outposts, byId, c.time); // the grid changes: count what was dug so far first
+      tellRaids(settleAll(c.world, c.outposts, byId, c.time)); // the grid changes: count what was dug so far first
       const n = loadFuel(o, carried(f, at()), c.time);
       if (n) takeFrom(f, n, at());
       msg = n ? `Loaded ${n} × ${ITEMS[f].name} into the bunker.` : `No ${ITEMS[f].name} with you, or the bunker is full.`;
     } else if (a === 'food') {
-      settleAll(c.world, c.outposts, byId, c.time); // the people change: count what was dug so far first
+      tellRaids(settleAll(c.world, c.outposts, byId, c.time)); // the people change: count what was dug so far first
       const got: string[] = [];
       for (const k of Object.keys(FOOD.value) as ItemKey[]) {
         const n = loadFood(c.world, o, k, carried(k, at()), c.time);
@@ -145,8 +165,9 @@ export function outpostClick(t: HTMLElement): boolean {
       const p = x as OutpostPart, { taken, started } = handOver(o, p, (k) => carried(k, at()), c.time);
       for (const [k, n] of taken) takeFrom(k, n, at());
       msg = taken.length ? 'Handed over: ' + taken.map(([k, n]) => `${ITEMS[k].name} ×${n}`).join(', ') + '.' : 'You carry nothing it still needs.';
-      if (started) { msg += ` <b>Everything is here: the builders start on the ${partName(o.k, p, o.pk).toLowerCase()} (${OUTPOST.hours[p]} h).</b>`; gainXp(OUTPOST.xp[p]); }
+      if (started) { msg += ` <b>Everything is here: the builders start on the ${partName(o.k, p, o.pk, countOf(o, p)).toLowerCase()} (${OUTPOST.hours[p]} h).</b>`; gainXp(OUTPOST.xp[p]); }
     } else if (a === 'take') {
+      tellRaids(settleAll(c.world, c.outposts, byId, c.time)); // (0.186) a raid over since: count it first
       const g = x as ItemKey, want = Math.max(1, +y || 1), n = takeCrates(o, l, g, want, c.time, pwOf(c.world, c.outposts, l.id, c.time));
       if (!n) { msg = 'Nothing to take.'; return; }
       const left = putAway(g, n, at(), true);

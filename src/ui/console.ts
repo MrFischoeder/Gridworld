@@ -5,6 +5,7 @@ import { regionFog } from '../gen/toxic';
 import { OW } from '../world/overworld';
 import { G } from '../game';
 import { forceRaid } from '../world/villageraid';
+import { forceOutpostRaid } from '../world/outpostraid';
 import { ROBOTS, type RobotKind } from '../data/robots';
 import { spawnRobotNear } from '../world/robots';
 import { fmtClock, DAY } from '../core/time';
@@ -79,6 +80,7 @@ const COMMANDS: Record<string, { help: string; run: (args: string[]) => string }
   },
   eat: { help: 'fill food, water and stamina', run: () => { G.char.kcal = 3000; G.char.stomach = 0; G.char.water = 100; G.stamina = 100; G.exhausted = false; return 'Fed and watered.'; } },
   clear: { help: 'clear this log', run: () => { out.innerHTML = ''; return ''; } },
+  oraid: { help: 'bandits raid the outpost you are at, now (a test raid: its outcome is not recorded)', run: () => { close(); return forceOutpostRaid(); } },
   raid: { help: 'bandits raid the village you are at, now (a test raid: its outcome is not recorded)', run: () => { close(); return forceRaid(); } },
   jobs: {
     help: '[done] the builds under way in every village; done = finish them now',

@@ -3,6 +3,17 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.186.0', date: '2026-10-12', title: 'Defending the outposts', notes: [
+    'Outposts can now be walled. Each build raises the wall a tier: a stake fence, then a timber palisade, then a stone wall. Every wall has a gate facing the outpost\'s post.',
+    'You can build up to 2 auto turrets on timber towers inside the wall. Each needs an Auto Turret kit, wire, scrap and circuits. They shoot raiders and wild beasts in range.',
+    'Bandits now raid outposts worth robbing, ones that dig or have people. Raids come every 3 to 6 days, never in the first days after the stake and never in the safe ring round Gridholm.',
+    'If you are at the outpost, scouts warn you about an hour before. Then two waves come at the wall. Kill them all before they wear the defences down and the crew pays you.',
+    'If you are not there, the raid is decided by the wall, the turrets, the people and the bandits\' strength in that area. The outpost window shows the chance it holds and when the next raid comes.',
+    'A lost raid carries off most of the crates on site and half the pantry, and some of the people leave.',
+    'Without even a stake fence, animals trample a quarter of the fields and now and then get into the pantry.',
+    'Dev console: oraid starts a test raid on the outpost you are at.',
+    'Multiplayer: raids and walls are part of the shared outposts. One game runs a live raid and fires the turrets, and the outcome is saved for everyone. The server does not need an update.',
+  ] },
   { v: '0.185.0', date: '2026-10-12', title: 'People and food at the outposts', notes: [
     'Outposts can now have people. Build bunkhouses (8 beds each, up to 3) and fields (up to 3) at any outpost.',
     'Settlers come on their own while there are free beds and food to spare. That means two days of food in the pantry, or fields that grow enough.',

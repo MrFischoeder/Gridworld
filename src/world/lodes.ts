@@ -18,7 +18,7 @@ import { showToast, logLine } from '../ui/hud';
 import { dirWord } from '../gen/tech';
 import type { Terrain } from '../gen/terrain';
 import { lodeById } from '../gen/lodes';
-import { digOf, finishDue, partName, stockNow, outputs, capOf, jobEnd, type OutpostState } from '../gen/outposts';
+import { countOf, digOf, finishDue, partName, stockNow, outputs, capOf, jobEnd, type OutpostState } from '../gen/outposts';
 import { pwOf, settleAll, POWER_SRC, GRID } from '../gen/grid';
 import { windAt } from '../gen/energy';
 import { lifeNow, crews } from '../gen/outpostlife';
@@ -26,7 +26,9 @@ import { makeFigure, type Figure } from './npc';
 import { poseRig, type Kit } from './rig';
 
 interface Hand { f: Figure; x: number; z: number; face: number; phase: number; work: boolean }
-interface Live { l: Lode; g: THREE.Group; rings: [number, number, number][]; boxes: [number, number, number, number][]; oil?: OilMotion; sig: string; rotor?: THREE.Object3D; hands: Hand[]; H?: (x: number, z: number) => number }
+/** (0.186) A turret's turning head at an outpost (deposit-local base); fired by world/outpostraid.ts. */
+export interface OutGun { head: THREE.Object3D; yaw: number; home: number; cd: number; look: number; target: unknown }
+interface Live { l: Lode; g: THREE.Group; rings: [number, number, number][]; boxes: [number, number, number, number][]; oil?: OilMotion; sig: string; rotor?: THREE.Object3D; hands: Hand[]; H?: (x: number, z: number) => number; wall?: { R: number; gate: number; half: number; th: number }; guns: OutGun[] }
 const live = new Map<string, Live>();
 const STONE = [0xb2b2a3, 0x88978f], ROCK = 0x89988b;
 
@@ -35,7 +37,7 @@ export const givesText = (l: Lode) => lodeGives(l).map((k) => ITEMS[k].name.repl
 
 function build(T: Terrain, l: Lode): Live {
   const gx = nearX(l.x, G.pos.x), H = (x: number, z: number) => T.heightAt(gx + x, l.z + z) - l.y;
-  const pb = new PropBatch(), L: Live = { l, g: new THREE.Group(), rings: [], boxes: [], sig: sigOf(l), hands: [], H }, R = rng(hash(T.world, l.x | 0, l.z | 0, 0x10a1));
+  const pb = new PropBatch(), L: Live = { l, g: new THREE.Group(), rings: [], boxes: [], sig: sigOf(l), hands: [], H, guns: [] }, R = rng(hash(T.world, l.x | 0, l.z | 0, 0x10a1));
   const rock = (x: number, z: number, r: number, h: number, c: number, vein?: number) => {
     const y = H(x, z) - 0.12, sides = 6 + Math.floor(R() * 3), rot = R() * 6.283;
     pb.rock(x, y, z, r, h, sides, rot, c); if (vein) pb.vein(x, y, z, r, h, sides, rot, vein);
@@ -82,6 +84,9 @@ export function outpostSpots(l: Lode) {
     /** (0.185) Three bunkhouses beyond the extraction, three fields further out on the post's side. */
     bunks: [0, 1, 2].map((i) => [Math.cos(a + Math.PI + (i - 1) * 0.5) * (l.r + 12), Math.sin(a + Math.PI + (i - 1) * 0.5) * (l.r + 12)] as [number, number]),
     fields: [0.8, -0.8, 0].map((d) => [Math.cos(a + d) * (l.r + 26), Math.sin(a + d) * (l.r + 26)] as [number, number]),
+    /** (0.186) The wall's ring (its gate faces the post) and the turret towers inside it. */
+    wallR: l.r + 38, gate: a,
+    turrets: [Math.PI / 2, -Math.PI / 2].map((d) => [Math.cos(a + d) * (l.r + 35), Math.sin(a + d) * (l.r + 35)] as [number, number]),
   };
 }
 /** What the drawing depends on: the outpost's builds and how full its stock is (in fives). */
@@ -90,7 +95,7 @@ function sigOf(l: Lode): string {
   if (!o?.k) return '';
   const st = stockNow(o, l, G.char.time, pwOf(G.char.world, G.char.outposts, l.id, G.char.time)), fill = outputs(l).reduce((a, [g]) => a + Math.floor(st[g] ?? 0), 0);
   const folk = o.life ? Math.floor(lifeNow(G.char.world, o, G.char.time).n) : 0;
-  return JSON.stringify([o.done ?? {}, o.n ?? {}, o.job?.p ?? '', o.pk ?? '', o.job ? Math.floor((G.char.time - o.job.t) / (o.job.h * 6)) : 0, Math.floor(fill / 5), folk]);
+  return JSON.stringify([o.done ?? {}, o.n ?? {}, o.rlast?.[0] ?? 0, o.job?.p ?? '', o.pk ?? '', o.job ? Math.floor((G.char.time - o.job.t) / (o.job.h * 6)) : 0, Math.floor(fill / 5), folk]);
 }
 function drawOutpost(pb: PropBatch, H: (x: number, z: number) => number, L: Live, o: OutpostState, R: () => number) {
   const l = L.l, sp = outpostSpots(l), cos = Math.cos(l.yaw), sin = Math.sin(l.yaw);
@@ -172,6 +177,14 @@ function drawOutpost(pb: PropBatch, H: (x: number, z: number) => number, L: Live
     else if (i === nf && o.job?.p === 'field') site(x, z, 2, 2, share);
   });
   if (o.life) drawHands(L, o, sp);
+  // (0.186) the wall and the turret towers, or the building site of the next
+  const tier = o.n?.wall ?? 0;
+  if (tier) drawWall(pb, H, L, tier, sp.wallR, sp.gate);
+  if (o.job?.p === 'wall') { const gx = Math.cos(sp.gate) * (sp.wallR - 5), gz = Math.sin(sp.gate) * (sp.wallR - 5); site(gx, gz, 2.5, 1.5, share); }
+  sp.turrets.forEach(([x, z], i) => {
+    if (i < (o.n?.turret ?? 0)) drawTurret(pb, H, L, x, z, Math.atan2(x, z));
+    else if (i === (o.n?.turret ?? 0) && o.job?.p === 'turret') site(x, z, 1.5, 1.5, share);
+  });
   // the crates on site, beside the shed or piled by the extraction
   if (o.done?.dig) {
     const st = stockNow(o, l, G.char.time, pwOf(G.char.world, G.char.outposts, l.id, G.char.time)), n = Math.min(24, Math.floor(outputs(l).reduce((a, [g]) => a + Math.floor(st[g] ?? 0), 0) / (capOf(o) > 10 ? 3 : 1)));
@@ -180,6 +193,61 @@ function drawOutpost(pb: PropBatch, H: (x: number, z: number) => number, L: Live
     if (n) L.boxes.push([bx - 0.4, bz - 0.4, bx + 1.9, bz + 1.9]);
   }
   void R;
+}
+/** (0.186) The outpost's wall on a ring of radius R with an 8 m gate facing angle `gate`: stakes and rails (1), a
+ *  palisade of pointed timbers (2), mortared stone with merlons and gate towers (3). Collides as a ring (`Live.wall`). */
+const STONE_C = 0xc8d0c0;
+function drawWall(pb: PropBatch, H: (x: number, z: number) => number, L: Live, tier: number, R: number, gate: number) {
+  const half = 4 / R, step = tier === 1 ? 1.6 : tier === 2 ? 1.2 : 2, n = Math.ceil(2 * Math.PI * R / step), th = tier === 3 ? 0.7 : tier === 2 ? 0.35 : 0.2;
+  L.wall = { R, gate, half, th };
+  const P = (i: number, r = R): [number, number] => { const a = gate + half + (i / n) * (2 * Math.PI - 2 * half); return [Math.cos(a) * r, Math.sin(a) * r]; };
+  const h = tier === 1 ? 2.2 : tier === 2 ? 4 : 5;
+  for (let i = 0; i < n; i++) {
+    const [x0, z0] = P(i), [x1, z1] = P(i + 1), y0 = H(x0, z0), y1 = H(x1, z1);
+    if (tier === 1) { // a leaning stake and two rails
+      const ox = x0 / R * 0.5, oz = z0 / R * 0.5;
+      pb.seg(WOOD, [x0, y0, z0], [x0 + ox, y0 + h, z0 + oz]);
+      if (i < n - 1) for (const ry of [0.7, 1.5]) pb.seg(WOOD, [x0, y0 + ry, z0], [x1, y1 + ry, z1]);
+    } else if (tier === 2) { // timbers side by side with pointed tops
+      if (i === n - 1) break;
+      const tp = (i % 2 ? 0.4 : 0);
+      pb.face([x0, y0 - 0.3, z0], [x1, y1 - 0.3, z1], [x1, y1 + h, z1], [x0, y0 + h, z0]);
+      pb.seg(WOOD, [x0, y0, z0], [x0, y0 + h + tp, z0]); pb.seg(WOOD, [x0, y0 + h + tp, z0], [x1, y1 + h + 0.4 - tp, z1]);
+      pb.seg(WOOD, [x0, y0 + 1.2, z0], [x1, y1 + 1.2, z1]);
+    } else { // stone: both faces, the top, courses and merlons
+      if (i === n - 1) break;
+      const [a0, b0] = P(i, R - th), [a1, b1] = P(i + 1, R - th), [c0, d0] = P(i, R + th), [c1, d1] = P(i + 1, R + th);
+      pb.face([c0, y0 - 0.3, d0], [c1, y1 - 0.3, d1], [c1, y1 + h, d1], [c0, y0 + h, d0]);
+      pb.face([a0, y0 - 0.3, b0], [a1, y1 - 0.3, b1], [a1, y1 + h, b1], [a0, y0 + h, b0]);
+      pb.face([a0, y0 + h, b0], [a1, y1 + h, b1], [c1, y1 + h, d1], [c0, y0 + h, d0]);
+      pb.seg(STONE_C, [c0, y0 + h, d0], [c1, y1 + h, d1]); pb.seg(STONE_C, [a0, y0 + h, b0], [a1, y1 + h, b1]);
+      for (const cy of [1.5, 3.2]) pb.seg(STONE_C, [c0, y0 + cy, d0], [c1, y1 + cy, d1]);
+      if (i % 2 === 0) pb.box(Math.min(c0, c1) - 0.01, y0 + h, Math.min(d0, d1) - 0.01, Math.max(c0, c1) + 0.01, y0 + h + 0.8, Math.max(d0, d1) + 0.01, STONE_C);
+    }
+  }
+  // the gate: two posts (towers for stone) and a beam over it
+  const gh = h + (tier === 3 ? 2.5 : 1.2), cg = Math.cos(gate), sg = Math.sin(gate);
+  for (const sd of [-1, 1]) {
+    const a = gate + sd * half, x = Math.cos(a) * R, z = Math.sin(a) * R, y = H(x, z), w = tier === 3 ? 1.6 : 0.25;
+    pb.box(x - w, y - 0.3, z - w, x + w, y + gh, z + w, tier === 3 ? STONE_C : WOOD); L.rings.push([x, z, w + 0.2]);
+  }
+  const ax = Math.cos(gate - half) * R, az = Math.sin(gate - half) * R, bx = Math.cos(gate + half) * R, bz = Math.sin(gate + half) * R, gy = H(R * cg, R * sg);
+  pb.seg(tier === 3 ? STONE_C : STAKE, [ax, gy + gh - 0.3, az], [bx, gy + gh - 0.3, bz]);
+}
+/** (0.186) A timber tower with an auto turret on top; the head is its own object so it can turn. */
+function drawTurret(pb: PropBatch, H: (x: number, z: number) => number, L: Live, x: number, z: number, home: number) {
+  const y = H(x, z), top = y + 3.6;
+  for (const [sx, sz] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) pb.seg(WOOD, [x + sx * 1.2, y, z + sz * 1.2], [x + sx * 0.8, top, z + sz * 0.8]);
+  for (const yy of [y + 1.2, y + 2.4]) { const r = 1.2 - 0.4 * (yy - y) / 3.6; pb.line(WOOD, [x - r, yy, z - r], [x + r, yy, z - r], [x + r, yy, z + r], [x - r, yy, z + r], [x - r, yy, z - r]); }
+  pb.box(x - 1, top, z - 1, x + 1, top + 0.15, z + 1, WOOD);
+  pb.box(x - 0.45, top + 0.15, z - 0.45, x + 0.45, top + 0.45, z + 0.45, 0x7dffc8);
+  const hp = new PropBatch(), ON = 0x7dffc8;
+  hp.box(-0.3, 0, -0.33, 0.3, 0.38, 0.33, ON);
+  for (const sx of [-0.12, 0.12]) hp.box(sx - 0.05, 0.14, -1.1, sx + 0.05, 0.24, -0.33, ON);
+  hp.box(-0.11, 0.38, -0.26, 0.11, 0.5, -0.18, ON);
+  const head = hp.build(); head.position.set(x, top + 0.45, z); head.rotation.y = home; L.g.add(head);
+  L.guns.push({ head, yaw: home, home, cd: 0.5, look: 0, target: null });
+  for (const [sx, sz] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) L.rings.push([x + sx * 1.15, z + sz * 1.15, 0.2]);
 }
 /** (0.185) A plank bunkhouse with a stove pipe, a door on the long side and a bench. */
 function drawBunks(pb: PropBatch, H: (x: number, z: number) => number, L: Live, x: number, z: number) {
@@ -296,18 +364,27 @@ export function updateLodes(dt: number) {
 let bucket = -1;
 function finishOutposts() {
   const c = G.char, byId = (id: string) => lodeById(c.world, id), b = Math.floor(c.time / GRID.step);
-  if (b !== bucket) { if (bucket >= 0 && Object.keys(c.outposts).length) { settleAll(c.world, c.outposts, byId, c.time); saveChar(); } bucket = b; } // the grid's share moves on every two hours: count up to here
+  if (b !== bucket) { if (bucket >= 0 && Object.keys(c.outposts).length) { tellRaids(settleAll(c.world, c.outposts, byId, c.time)); saveChar(); } bucket = b; } // the grid's share moves on every two hours: count up to here
   for (const [id, o] of Object.entries(c.outposts)) {
     if (!o?.job || c.time < jobEnd(o)) continue;
     const l = lodeById(c.world, id);
     if (!l) continue;
-    settleAll(c.world, c.outposts, byId, jobEnd(o)); // a new source, beds or field change the grid and the people: count up to it first
+    tellRaids(settleAll(c.world, c.outposts, byId, jobEnd(o))); // a new source, beds or field change the grid and the people: count up to it first
     const p = finishDue(o, l, c.time, pwOf(c.world, c.outposts, id, c.time));
     if (p) {
-      saveChar(); const what = partName(o.k, p, o.pk).toLowerCase();
+      saveChar(); const what = partName(o.k, p, o.pk, countOf(o, p) - 1).toLowerCase();
       showToast(`${o.name}: ${what} built`);
       logLine(`The builders finished the ${what} at ${o.name}.${p === 'dig' ? ' It is being worked now.' : p === 'power' && o.pk ? ` It powers every outpost within ${POWER_SRC[o.pk].r} m.${POWER_SRC[o.pk].fuel ? ' Load its bunker with fuel.' : ''}` : ''}`);
     }
+  }
+}
+/** (0.186) Say how the raids just settled went (the ones far from you were rolled; yours were fought). */
+export function tellRaids(list: { id: string; k: number; won: boolean }[]) {
+  for (const r of list) {
+    const o = G.char.outposts[r.id];
+    if (!o) continue;
+    if (r.won) logLine(`Bandits came to ${o.name} and were driven off.`);
+    else { showToast(`${o.name} was raided`); logLine(`Bandits raided ${o.name}: they carried off most of the crates and half the pantry, and some of the people left.`); }
   }
 }
 /** The deposit whose outpost window E opens: within its ground and a little more. */
@@ -325,8 +402,12 @@ export function lodeName(x: number, z: number): string | null {
 export function lodeHit(px: number, py: number, pz: number, r: number): boolean {
   for (const L of live.values()) {
     const x = px - L.g.position.x, z = pz - L.l.z;
-    if (Math.abs(x) > 40 || Math.abs(z) > 40 || py > L.l.y + 30) continue;
+    if (Math.abs(x) > L.l.r + 44 || Math.abs(z) > L.l.r + 44 || py > L.l.y + 30) continue;
     for (const [cx, cz, cr] of L.rings) if (Math.hypot(x - cx, z - cz) < cr + r) return true;
+    if (L.wall) { // (0.186) the wall's ring, open at the gate
+      const d = Math.hypot(x, z), w = L.wall;
+      if (Math.abs(d - w.R) < w.th + r && Math.abs(((Math.atan2(z, x) - w.gate + Math.PI * 3) % (Math.PI * 2)) - Math.PI) > w.half) return true;
+    }
     for (const [x0, z0, x1, z1] of L.boxes) if (x > x0 - r && x < x1 + r && z > z0 - r && z < z1 + r) return true;
   }
   return false;
@@ -347,4 +428,15 @@ export function askLode(vx: number, vz: number): string | null {
   logLine(`Heard of: ${l.name} (marked on your map).`);
   const how = ['A trader told me of', 'The hunters speak of', 'My cousin came back from the wilds with news of', 'Folk say there is'][hash(c.world, l.x | 0, 0x10a3) % 4];
   return `${how} ${LODES[l.k].blurb}, about ${km} ${dirWord(wrapDx(l.x - vx), l.z - vz)} of here. ${l.name}, they call the place. It gives ${givesText(l)}. Nobody works it: nobody here has the people for it.`;
+}
+/** (0.186) The turret heads of the outposts drawn now, with their outpost's id (world/outpostraid.ts fires them). */
+export function outpostGuns(): { id: string; gun: OutGun }[] {
+  const out: { id: string; gun: OutGun }[] = [];
+  for (const L of live.values()) for (const gun of L.guns) out.push({ id: L.l.id, gun });
+  return out;
+}
+/** (0.186) Where an outpost's wall stands (world coordinates of its middle on your copy, the ring's radius), or null. */
+export function outpostRing(id: string): { x: number; z: number; y: number; R: number } | null {
+  const L = live.get(id);
+  return L ? { x: L.g.position.x, z: L.l.z, y: L.l.y, R: outpostSpots(L.l).wallR } : null;
 }

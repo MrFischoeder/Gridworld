@@ -9,6 +9,7 @@ import { G, W } from '../game';
 import { escortLine } from './caravans';
 import { guideLine, guideMarker } from './guide';
 import { raidLine } from './villageraid';
+import { outpostRaidLine } from './outpostraid';
 import { contractLines, contractMarkers } from '../ui/contracts';
 import { generateQuest, basicQuest, compass, km, boardPay, GRIDHOLM_TOWN, type Quest, type QuestTown } from '../gen/quests';
 import { ringDanger } from '../gen/danger';
@@ -227,6 +228,7 @@ export function updateTracker(dt: number) {
   lines.push(...contractLines());
   lines.push(...leadLines());
   const raid = raidLine(); if (raid) lines.unshift(raid);
+  const oraid = outpostRaidLine(); if (oraid) lines.unshift(oraid);
   const step = G.char.guide === 2 ? tutorialStep(G.char.towns[GRIDHOLM_ID]) : null;
   lines.unshift(...jobLines());
   const side = G.char.guide === 2 ? sideStep(G.char.towns[GRIDHOLM_ID]) : null;
