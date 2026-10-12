@@ -1,5 +1,6 @@
 // The village's stock (gen/hall.ts stockOf: the hall's hold and its own goods) for the panels: every build of a
 // village draws on it, never on your backpack. Bring things to the village stores (the warehouse terminal, or the elder before a new settlement has a warehouse).
+import { drainRoutes } from '../gen/routes';
 import { G } from '../game';
 import { ITEMS, type ItemKey } from '../data/items';
 import { findPoi, villageSeed } from '../gen/regions';
@@ -34,7 +35,10 @@ export async function withOutpost(id: string, action: () => void): Promise<boole
 export function stockAt(vid: number): Stock | null {
   const c = G.char, poi = findPoi(c.world, vid);
   if (poi) { refineStock(c.world, poi, villageSeed(c.world, poi), (c.towns[vid] ??= {}), c.time); sawStock(c.world, poi, villageSeed(c.world, poi), c.towns[vid], c.time); smeltStock(c.world, poi, villageSeed(c.world, poi), c.towns[vid], c.time); settleConvoys(c.world, poi, villageSeed(c.world, poi), c.towns[vid], c.time); }
-  return poi ? stockOf(c.world, poi, villageSeed(c.world, poi), (c.towns[vid] ??= {}), c.time) : null;
+  if (!poi) return null;
+  const st = stockOf(c.world, poi, villageSeed(c.world, poi), (c.towns[vid] ??= {}), c.time);
+  drainRoutes(c.towns[vid], vid, c.outposts, (k, n) => st.take(k, n)); // (0.187) the outposts' convoys unload, and food goes back
+  return st;
 }
 /** How many of k village `vid` has in stock. */
 export const stockHas = (vid: number) => { const s = stockAt(vid); return (k: ItemKey) => s?.has(k) ?? 0; };

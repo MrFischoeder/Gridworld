@@ -364,12 +364,12 @@ export function updateLodes(dt: number) {
 let bucket = -1;
 function finishOutposts() {
   const c = G.char, byId = (id: string) => lodeById(c.world, id), b = Math.floor(c.time / GRID.step);
-  if (b !== bucket) { if (bucket >= 0 && Object.keys(c.outposts).length) { tellRaids(settleAll(c.world, c.outposts, byId, c.time)); saveChar(); } bucket = b; } // the grid's share moves on every two hours: count up to here
+  if (b !== bucket) { if (bucket >= 0 && Object.keys(c.outposts).length) { tellRaids(settleAll(c.world, c.outposts, byId, c.time, c.towns)); saveChar(); } bucket = b; } // the grid's share moves on every two hours: count up to here
   for (const [id, o] of Object.entries(c.outposts)) {
     if (!o?.job || c.time < jobEnd(o)) continue;
     const l = lodeById(c.world, id);
     if (!l) continue;
-    tellRaids(settleAll(c.world, c.outposts, byId, jobEnd(o))); // a new source, beds or field change the grid and the people: count up to it first
+    tellRaids(settleAll(c.world, c.outposts, byId, jobEnd(o), c.towns)); // a new source, beds or field change the grid and the people: count up to it first
     const p = finishDue(o, l, c.time, pwOf(c.world, c.outposts, id, c.time));
     if (p) {
       saveChar(); const what = partName(o.k, p, o.pk, countOf(o, p) - 1).toLowerCase();
@@ -379,10 +379,15 @@ function finishOutposts() {
   }
 }
 /** (0.186) Say how the raids just settled went (the ones far from you were rolled; yours were fought). */
-export function tellRaids(list: { id: string; k: number; won: boolean }[]) {
+export function tellRaids(list: { id: string; k: number; won: boolean; road?: string }[]) {
   for (const r of list) {
     const o = G.char.outposts[r.id];
     if (!o) continue;
+    if (r.road) { // (0.187) a convoy robbed on its way
+      showToast(r.road === 'wrecked' ? 'A convoy truck was wrecked' : 'A convoy was robbed');
+      logLine(r.road === 'wrecked' ? `Bandits wrecked the convoy truck from ${o.name} on the road to ${o.route?.vname}. The route stands still until the truck is recalled and mended.` : `Bandits robbed the convoy from ${o.name} to ${o.route?.vname}: the cargo is gone and the truck is battered.`);
+      continue;
+    }
     if (r.won) logLine(`Bandits came to ${o.name} and were driven off.`);
     else { showToast(`${o.name} was raided`); logLine(`Bandits raided ${o.name}: they carried off most of the crates and half the pantry, and some of the people left.`); }
   }

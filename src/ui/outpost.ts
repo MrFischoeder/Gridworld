@@ -11,7 +11,12 @@ import { fertility, fertilityWord } from '../gen/fertility';
 import { strengthAt, nextRaid, holdChance, worthRobbing } from '../gen/outpostraids';
 import { PESTS } from '../gen/outpostlife';
 import { fmtTime } from '../core/time';
+import { hash } from '../core/rng';
 import { tellRaids } from '../world/lodes';
+import { ROUTE, newRoute, legOf, periodOf, tripFuel, robChance, truckProblem, assignTruck, recallTruck, fuelTruck, wrecked, convoyAt, waiting } from '../gen/routes';
+import { allVillages, worldDist as wdist } from '../gen/regions';
+import { VEHICLES, vehicleTitle, type VehicleModel } from '../data/vehicles';
+import { myCarList, takeVehicle, parkVehicle } from '../world/vehicles';
 import { FOOD } from '../gen/farms';
 import { POWER_SRC, POWER_KINDS, DIG_KW, grids, gridState, powerShare, powerFactor, pwOf, fuelLeft, loadFuel, settleAll, type PowerKind } from '../gen/grid';
 import { lodeById } from '../gen/lodes';
@@ -46,6 +51,37 @@ function partBody(o: OutpostState, p: OutpostPart, name: string, text: string): 
   const why = partProblem(o, p);
   return `<div class="say"><b>${name}${tally}</b> <span style="opacity:.8">(${OUTPOST.hours[p]} h to build${many && have ? ' another' : ''})</span>: ${text}<br>${rows}</div>` +
     (why ? `<div class="say" style="opacity:.7">${why}</div>` : `<button class="opt" data-op="give:${p}">Hand over materials for the ${many && have ? 'next ' : ''}${name.toLowerCase()}</button>`);
+}
+/** (0.187, stage O6) The convoy route: pick a village, hand over a truck, keep its tank full, bring food back. */
+const nearVillages = (o: OutpostState) => allVillages(G.char.world).map((v) => ({ v, d: wdist(o.x, o.z, v.x, v.z) })).filter((q) => q.d < ROUTE.reach).sort((a, b) => a.d - b.d).slice(0, 4);
+const myTrucks = (o: OutpostState) => myCarList().filter((v) => wdist(v.st.x, v.st.z, o.x, o.z) < 80);
+function routeHTML(id: string, o: OutpostState): string {
+  const c = G.char, r = o.route;
+  if (!r) {
+    const vs = nearVillages(o);
+    return `<div class="say"><b>Convoy route</b>: a truck of yours can haul this outpost's crates to a village's hall on a timetable, and bring food back for the pantry.</div>` +
+      (vs.length ? vs.map(({ v, d }) => `<button class="opt" data-op="route:${v.id}">Set up a route to ${v.name} (${(d * ROUTE.detour / 1000).toFixed(1)} km by road)</button>`).join('') : `<div class="say" style="opacity:.7">No village within ${ROUTE.reach / 1000} km.</div>`);
+  }
+  const P = periodOf(r), t = r.truck, s0 = c.towns[r.v];
+  let s = `<div class="say"><b>Convoy route</b> to ${r.vname}: ${r.km} km by road, ${hrs(legOf(r))} each way, a round trip every ${hrs(P)}. Bandits rob ${Math.round(robChance(c.world, o, r) * 100)}% of the trips${t?.parts.gun ? ' (the roof cannon helps)' : ''}.`;
+  const sent = Object.entries(r.sent).filter(([, n]) => n).map(([g, n]) => `${n} × ${ITEMS[g as ItemKey].name}`).join(', ');
+  if (sent) s += `<br>Delivered so far: ${sent}.`;
+  const wait = waiting(r, s0, id);
+  if (wait) s += ` ${wait} crate${wait === 1 ? '' : 's'} wait at ${r.vname} until its stores are opened.`;
+  if (r.robbed) s += ` Robbed ${r.robbed} time${r.robbed === 1 ? '' : 's'}.`;
+  if (!t) {
+    const mine = myTrucks(o);
+    s += `<br>No truck on it. Park one of your vehicles by the outpost and hand it over (its trunk empty).</div>`;
+    s += mine.map((v) => { const why = truckProblem(v.st.parts, v.st.model) || (v.st.trunk.items.some(Boolean) || v.st.trunk.gold > 0 ? 'Empty its trunk first.' : ''); return why ? `<div class="say" style="opacity:.7">${vehicleTitle(v.st.model)}: ${why}</div>` : `<button class="opt" data-op="truck:${v.st.id}">Hand over your ${vehicleTitle(v.st.model)} (${ROUTE.cap[v.st.model]} crates a trip)</button>`; }).join('');
+    return s + `<button class="opt" data-op="unroute">Give up the route</button>`;
+  }
+  const need = tripFuel(r, t.model), fuel = t.parts.fuel ?? 0, cv = convoyAt(r, c.time), hull = Math.round((t.parts.hull ?? 0) / VEHICLES[t.model].hull * 100);
+  const where = wrecked(r) ? '<span style="color:#ff6a4a">wrecked on the road: recall it and mend its hull</span>' : cv.at === 'parked' ? '<span style="color:#ff6a4a">standing at the outpost, its tank too low for a trip</span>' : cv.at === 'out' ? `on its way to ${r.vname} (${Math.round(cv.p * 100)}%)` : cv.at === 'back' ? `on its way back (${Math.round(cv.p * 100)}%)` : cv.at === 'village' ? `unloading at ${r.vname}` : 'loading here';
+  s += `<br>Truck: a ${vehicleTitle(t.model)} (handed over by ${t.by}), ${ROUTE.cap[t.model]} crates a trip, hull ${hull}%, ${where}.`;
+  s += `<br>Tank: ${Math.round(fuel)} of ${VEHICLES[t.model].tank} L, ${need} L a round trip: ${Math.floor(fuel / need)} more trip${Math.floor(fuel / need) === 1 ? '' : 's'}. With you: ${carried('fuel', at())} canisters.`;
+  if (r.last) s += `<br>Last trip: ${r.last[1] === 'ok' ? 'delivered' : r.last[1] === 'dry' ? 'missed for want of fuel' : r.last[1] === 'robbed' ? '<span style="color:#ff6a4a">robbed on the way</span>' : '<span style="color:#ff6a4a">wrecked</span>'}.`;
+  s += `<br>Food back for the pantry: ${r.food ? 'yes, as much as the pantry has room for' : 'no'}.</div>`;
+  return s + `<button class="opt" data-op="rfuel">Pour fuel canisters into the truck</button><button class="opt" data-op="rfood">${r.food ? 'Stop bringing food back' : 'Bring food back from ' + r.vname}</button><button class="opt" data-op="recall">Recall the truck (it parks here)</button>`;
 }
 /** (0.186, stage O5) Defence: the wall and turrets, the bandits' strength here, the chance to hold without you, the
  *  next raid, the last one, the animals. */
@@ -108,7 +144,7 @@ function render(msg = '') {
     s += `<div class="say">Staked by ${o.by}. It is theirs to work.</div>`;
   } else {
     s += `<div class="say" style="opacity:.85">Outpost staked by ${o.by}. Owner: ${o.o === 'crew' ? 'the whole crew' : o.by}.</div>`;
-    s += partHTML(o, 'dig') + partHTML(o, 'store') + partHTML(o, 'power') + powerHTML(l.id, o) + partHTML(o, 'bunks') + partHTML(o, 'field') + peopleHTML(o) + partHTML(o, 'wall') + partHTML(o, 'turret') + defenceHTML(l.id, o);
+    s += partHTML(o, 'dig') + partHTML(o, 'store') + partHTML(o, 'power') + powerHTML(l.id, o) + partHTML(o, 'bunks') + partHTML(o, 'field') + peopleHTML(o) + partHTML(o, 'wall') + partHTML(o, 'turret') + defenceHTML(l.id, o) + routeHTML(l.id, o);
     if (o.done?.dig) {
       const pw = pwOf(c.world, c.outposts, l.id, c.time), now = stockNow(o, l, c.time, pw), cap = capOf(o);
       s += `<div class="say"><b>On site</b> (${o.done.store ? 'in the shed' : 'piled in the open'}, up to ${cap} of each):<br>` + outputs(l).map(([g, r]) => {
@@ -149,12 +185,38 @@ export function outpostClick(t: HTMLElement): boolean {
       msg = choosePower(o, x as PowerKind) ? `You mark out the ground for a ${POWER_SRC[x as PowerKind].name.toLowerCase()}.` : 'The builders have started on another source already.';
     } else if (a === 'fuel' && o.pk && POWER_SRC[o.pk].fuel) {
       const f = POWER_SRC[o.pk].fuel!;
-      tellRaids(settleAll(c.world, c.outposts, byId, c.time)); // the grid changes: count what was dug so far first
+      tellRaids(settleAll(c.world, c.outposts, byId, c.time, c.towns)); // the grid changes: count what was dug so far first
       const n = loadFuel(o, carried(f, at()), c.time);
       if (n) takeFrom(f, n, at());
       msg = n ? `Loaded ${n} × ${ITEMS[f].name} into the bunker.` : `No ${ITEMS[f].name} with you, or the bunker is full.`;
+    } else if (a === 'route' && !o.route) { // (0.187) the convoy route
+      const v = allVillages(c.world).find((q) => q.id === +x);
+      if (!v || wdist(o.x, o.z, v.x, v.z) > ROUTE.reach) { msg = 'Too far.'; return; }
+      o.route = newRoute(o, v, v.name); msg = `A route to ${v.name} is staked out. Hand over a truck to run it.`;
+    } else if (a === 'unroute' && o.route && !o.route.truck) {
+      delete o.route; msg = 'You give up the route.';
+    } else if (a === 'truck' && o.route && !o.route.truck) {
+      const v = myTrucks(o).find((q) => q.st.id === x);
+      if (!v) { msg = 'Park it by the outpost first.'; return; }
+      const why = truckProblem(v.st.parts, v.st.model) || (v.st.trunk.items.some(Boolean) || v.st.trunk.gold > 0 ? 'Empty its trunk first.' : '');
+      if (why) { msg = why; return; }
+      tellRaids(settleAll(c.world, c.outposts, byId, c.time, c.towns));
+      assignTruck(o.route, { id: v.st.id, model: v.st.model as VehicleModel, parts: structuredClone(v.st.parts), by: c.name || 'You' }, c.time);
+      takeVehicle(v);
+      msg = `The crew takes your ${vehicleTitle(v.st.model)} on the route to ${o.route.vname}. The first convoy leaves in half an hour.`;
+    } else if (a === 'recall' && o.route?.truck) {
+      tellRaids(settleAll(c.world, c.outposts, byId, c.time, c.towns));
+      const t = recallTruck(o.route)!, sp = at()!, ang = (hash(c.world, t.id.length, 0x0a71) % 628) / 100;
+      parkVehicle(t.id, t.model, t.parts, sp.x + Math.cos(ang) * (l.r + 8), sp.z + Math.sin(ang) * (l.r + 8), ang);
+      msg = `Your ${vehicleTitle(t.model)} is back and parked by the outpost${(t.parts.hull ?? 1) <= 0 ? ': a wreck, mend its hull' : ''}.`;
+    } else if (a === 'rfuel' && o.route?.truck) {
+      const n = fuelTruck(o.route, carried('fuel', at()));
+      if (n) takeFrom('fuel', n, at());
+      msg = n ? `Poured ${n} canister${n === 1 ? '' : 's'} into the truck.` : 'No canisters with you, or the tank is full.';
+    } else if (a === 'rfood' && o.route) {
+      o.route.food = !o.route.food; msg = o.route.food ? `The convoy will bring food back from ${o.route.vname} when its stores have it.` : 'No more food on the way back.';
     } else if (a === 'food') {
-      tellRaids(settleAll(c.world, c.outposts, byId, c.time)); // the people change: count what was dug so far first
+      tellRaids(settleAll(c.world, c.outposts, byId, c.time, c.towns)); // the people change: count what was dug so far first
       const got: string[] = [];
       for (const k of Object.keys(FOOD.value) as ItemKey[]) {
         const n = loadFood(c.world, o, k, carried(k, at()), c.time);
@@ -167,7 +229,7 @@ export function outpostClick(t: HTMLElement): boolean {
       msg = taken.length ? 'Handed over: ' + taken.map(([k, n]) => `${ITEMS[k].name} ×${n}`).join(', ') + '.' : 'You carry nothing it still needs.';
       if (started) { msg += ` <b>Everything is here: the builders start on the ${partName(o.k, p, o.pk, countOf(o, p)).toLowerCase()} (${OUTPOST.hours[p]} h).</b>`; gainXp(OUTPOST.xp[p]); }
     } else if (a === 'take') {
-      tellRaids(settleAll(c.world, c.outposts, byId, c.time)); // (0.186) a raid over since: count it first
+      tellRaids(settleAll(c.world, c.outposts, byId, c.time, c.towns)); // (0.186) a raid over since: count it first
       const g = x as ItemKey, want = Math.max(1, +y || 1), n = takeCrates(o, l, g, want, c.time, pwOf(c.world, c.outposts, l.id, c.time));
       if (!n) { msg = 'Nothing to take.'; return; }
       const left = putAway(g, n, at(), true);

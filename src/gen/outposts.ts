@@ -36,6 +36,8 @@ export interface OutpostState {
   life?: OutpostLife;
   /** (0.186, stage O5) The last bandit raid settled, raids fought with a player there (k → outcome), the last outcome. */
   rk?: number; raids?: Record<number, 'won' | 'lost'>; rlast?: [number, 'won' | 'lost'];
+  /** (0.187, stage O6) The convoy route to a village (gen/routes.ts). */
+  route?: import('./routes').Route;
 }
 export interface OutpostLife {
   /** The last two-hour mark settled; people (a fraction while they come and go); food in the pantry; the last step's share fed. */
@@ -152,4 +154,4 @@ export function finishDue(o: OutpostState, l: Lode, now: number, pw = 1): Outpos
   return p;
 }
 /** Nothing built or handed over yet: the stake can be pulled up. */
-export const bare = (o: OutpostState) => !o.done?.dig && !o.done?.store && !o.done?.power && !o.n?.bunks && !o.n?.field && !o.n?.wall && !o.n?.turret && !o.job && !Object.values(o.given ?? {}).some((g) => Object.values(g ?? {}).some((n) => (n ?? 0) > 0));
+export const bare = (o: OutpostState) => !o.done?.dig && !o.done?.store && !o.done?.power && !o.n?.bunks && !o.n?.field && !o.n?.wall && !o.n?.turret && !o.route?.truck && !o.job && !Object.values(o.given ?? {}).some((g) => Object.values(g ?? {}).some((n) => (n ?? 0) > 0));

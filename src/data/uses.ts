@@ -54,6 +54,7 @@ function build(): Map<ItemKey, Map<UseGroup, string[]>> {
   for (const [i] of STORE.needs) use(i, 'Building', `Outposts: ${STORE.name}`);
   for (const b of [BUNKS, FIELD, ...WALL, TURRET]) for (const [i] of b.needs) use(i, 'Building', `Outposts: ${b.name}`); // (0.185)
   for (const k of Object.keys(FOOD.value) as ItemKey[]) use(k, 'Other', 'Outposts: the settlers\' pantry');
+  use('fuel', 'Fuel for', 'Outposts: convoy trucks on a route'); // (0.187)
   for (const q of Object.values(POWER_SRC)) { for (const [i] of q.needs) use(i, 'Building', `Outposts: ${q.name}`); if (q.fuel) use(q.fuel, 'Fuel for', `Outposts: ${q.name}`); } // (0.184)
   for (const k of Object.keys(PROJECTS) as Project[]) for (const [i] of PROJECTS[k].needs) use(i, 'Building', `New settlements: ${PROJECTS[k].name}`); // (0.175: the deep mine's drill rig among them)
   for (const [i] of UPGRADE.needs) use(i, 'Building', 'Steel ploughs');

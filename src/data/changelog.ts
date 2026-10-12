@@ -3,6 +3,17 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.187.0', date: '2026-10-12', title: 'Convoy routes', notes: [
+    'From an outpost\'s window you can set up a convoy route to one of the 4 nearest villages within 25 km.',
+    'To run a route, park one of your vehicles by the outpost with its trunk empty and hand it over. A Mastodon carries 30 crates a trip and a Scout carries 8.',
+    'The convoy runs to a timetable. It loads the crates on site, drives to the village, unloads them into the village hall and comes back. You can see the truck on its way, and its route on the maps.',
+    'Each round trip burns diesel from the truck\'s tank. A dry tank misses its trips until you pour fuel canisters in at the outpost.',
+    'Bandits rob some trips, more where the land is dangerous and fewer if the truck has a roof cannon. A robbed trip loses its cargo and the truck\'s hull takes damage. A wrecked truck stops the route until you recall it and mend it.',
+    'A route can also bring food back from the village for the outpost\'s pantry, as much as the pantry has room for.',
+    'Crates delivered while the village hall is full wait there until there is room.',
+    'Electric trucks cannot take routes yet. Electric convoys come in a later update.',
+    'Multiplayer: routes and their trucks are part of the shared outposts, and deliveries go into the shared village hall. A truck handed over by one player can be recalled by another. The server does not need an update.',
+  ] },
   { v: '0.186.0', date: '2026-10-12', title: 'Defending the outposts', notes: [
     'Outposts can now be walled. Each build raises the wall a tier: a stake fence, then a timber palisade, then a stone wall. Every wall has a gate facing the outpost\'s post.',
     'You can build up to 2 auto turrets on timber towers inside the wall. Each needs an Auto Turret kit, wire, scrap and circuits. They shoot raiders and wild beasts in range.',

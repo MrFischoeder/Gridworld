@@ -1,3 +1,5 @@
+import { truckAt } from '../world/convoyroutes';
+import { wrecked } from '../gen/routes';
 import { cityEntrances } from '../gen/citydungeons';
 import { megalithsNear } from '../gen/megaliths';
 import { dryCaravan } from '../world/convoyfuel';
@@ -253,6 +255,14 @@ function drawArea(ctx: CanvasRenderingContext2D, w: number, h: number, ppm: numb
     const x = X(nearX(o.x, px)), y = Z(o.z), rr = POWER_SRC[o.pk].r * ppm;
     if (x < -rr || y < -rr || x > w + rr || y > h + rr) continue;
     ctx.strokeStyle = '#9dffe0'; ctx.setLineDash([5, 4]); ctx.beginPath(); ctx.arc(x, y, rr, 0, 6.283); ctx.stroke(); ctx.setLineDash([]);
+  }
+  for (const o of Object.values(G.char.outposts)) { // (0.187) convoy routes: a dashed gold line to the village, the truck a dot
+    const r = o?.route;
+    if (!r) continue;
+    const ax = X(nearX(o.x, px)), ay = Z(o.z), bx = X(nearX(r.vx, nearX(o.x, px))), by = Z(r.vz);
+    ctx.strokeStyle = '#ffd060'; ctx.globalAlpha = 0.6; ctx.setLineDash([6, 5]); ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.stroke(); ctx.setLineDash([]); ctx.globalAlpha = 1;
+    const at = truckAt(o, r, G.char.time, px);
+    if (at) { ctx.fillStyle = wrecked(r) ? '#ff6a4a' : '#ffd060'; ctx.fillRect(X(at[0]) - 3, Z(at[1]) - 3, 6, 6); }
   }
   for (const o of Object.values(G.char.outposts)) { // (0.183) the outposts (shared): a gold ring round the deposit
     if (!o?.k) continue;

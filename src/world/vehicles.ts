@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { scene, camera, V, GRID } from './render';
 import { G } from '../game';
 import { PropBatch } from './props';
-import { VEHICLES, SEATS, HULL_BOXES, vehicleTitle, freshParts, upgradeParts, immobile, partPerformance, resaleValue, fuelBurn, outOfFuel, rangeKm, cansToFill, FUEL, isEV, evBurn, evRangeKm, energyOf, damageCondition, crashDamage, engineBoost, type VehicleSpec, type VehicleModel } from '../data/vehicles';
+import { VEHICLES, SEATS, HULL_BOXES, vehicleTitle, freshParts, upgradeParts, immobile, partPerformance, resaleValue, fuelBurn, outOfFuel, rangeKm, cansToFill, FUEL, isEV, evBurn, evRangeKm, energyOf, damageCondition, crashDamage, engineBoost, type VehicleSpec, type VehicleModel, type VehicleParts } from '../data/vehicles';
 import { PART_PRICE, PART_BUYBACK } from '../data/items';
 import { rayWorld } from './player';
 import { foes, damageFoe } from './enemies';
@@ -519,6 +519,17 @@ export function parkNew(model: VehicleModel): boolean {
   const st = stateOf({ id: model + '-' + Date.now().toString(36), model, x: bay.x, z: bay.z, heading: YARD.heading, parts: freshParts(model) });
   G.char.vehicles.push(st); vehicles.push(makeVehicle(st)); saveChar();
   return true;
+}
+/** (0.187) One of your vehicles handed over to a convoy route: out of your list and off the ground. */
+export function takeVehicle(v: Vehicle) {
+  if (driving.v === v) leave(false);
+  G.char.vehicles = G.char.vehicles.filter((s) => s !== v.st);
+  removeVehicle(v); saveChar();
+}
+/** (0.187) A vehicle back from a convoy route, parked at (x, z) and yours (its trunk empty, as it left). */
+export function parkVehicle(id: string, model: VehicleModel, parts: VehicleParts, x: number, z: number, heading: number) {
+  const st = stateOf({ id, model, x, z, heading, parts });
+  G.char.vehicles.push(st); vehicles.push(makeVehicle(st)); saveChar();
 }
 export function clearVehicles() {
   if (driving.v) leave(false);

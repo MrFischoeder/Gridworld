@@ -15,6 +15,9 @@ export interface TownState {
   settlement?: import('./settlement').SettlementState;
   /** Builds under way (gen/construction.ts): key = kind[:sub-kind]. */
   jobs?: Record<string, import('./construction').Job>;
+  /** (0.187, gen/routes.ts) Crates the outposts' convoys delivered that went into the hall, and food units shipped back,
+   *  per route (cumulative; only written under the village's lock). */
+  rcv?: Record<string, Partial<Record<ItemKey, number>>>; ship?: Record<string, number>;
   /** The wall's tier (0 = the stake fence every village starts with). */
   wall?: number;
   /** The houses the heroes bought (gen/homes.ts): house index → owner. Shared on a server. */
