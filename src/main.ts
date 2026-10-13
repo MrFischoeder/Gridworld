@@ -21,7 +21,7 @@ import { updateDoors, updateTrans } from './world/doors';
 import { updateDrones, updateBosses, updateOrbs, animateFoes, updateBossBar, foeRules, makeDrone, damageFoe } from './world/enemies';
 import { updateLoot } from './world/loot';
 import { updateEntities } from './world/interact';
-import { attack, animateVM, refreshWeaponVisibility, vmScene, syncViewmodel, updateGun, refreshGunLook, syncHeld } from './world/weapons';
+import { updateBodySway, attack, animateVM, refreshWeaponVisibility, vmScene, syncViewmodel, updateGun, refreshGunLook, syncHeld } from './world/weapons';
 import { updateFx, updateStreaks } from './world/fx';
 import { updateStreaming, updateFieldEnemies, placeName, OW, groundAt, treeHit, animateCamps, keepOnPlanet, villageHere } from './world/overworld';
 import { collides, setWaterNote } from './world/player';
@@ -224,8 +224,15 @@ function frame(now: number) {
       if ((saveT -= dt) <= 0) { saveT = 3; saveOverworldPos(); }
     }
   } else { el.prompt.style.display = 'none'; el.bUse.classList.remove('on'); el.bossbar.style.display = 'none'; }
-  if (G.trans) updateTrans(dt, camera); else if (driving.v) vehicleCamera(camera); else if (riding()) rideCamera(camera); else if (inBoat()) boatCamera(camera); else { crouchDrop += ((G.crouch ? CROUCH_DROP : 0) - crouchDrop) * Math.min(1, dt * 10); camera.position.set(G.pos.x, G.pos.y + EYE - crouchDrop, G.pos.z); }
-  camera.rotation.set(G.pitch, G.yaw, 0);
+  let sw: ReturnType<typeof updateBodySway> | null = null;
+  if (G.trans) updateTrans(dt, camera); else if (driving.v) vehicleCamera(camera); else if (riding()) rideCamera(camera); else if (inBoat()) boatCamera(camera); else {
+    crouchDrop += ((G.crouch ? CROUCH_DROP : 0) - crouchDrop) * Math.min(1, dt * 10); camera.position.set(G.pos.x, G.pos.y + EYE - crouchDrop, G.pos.z);
+    if (!G.fly && G.playing) { // (0.191) the body rocks with the steps and the breath (core/sway.ts)
+      sw = updateBodySway(dt);
+      camera.position.x += Math.cos(G.yaw) * sw.right; camera.position.z -= Math.sin(G.yaw) * sw.right; camera.position.y += sw.up;
+    }
+  }
+  camera.rotation.set(G.pitch + (sw?.pitch ?? 0), G.yaw + (sw?.yaw ?? 0), sw?.roll ?? 0);
   updateWeather(dt, sky.visible);
   if (sky.visible) { sky.position.set(camera.position.x, camera.position.y - 20, camera.position.z); horizon.position.set(camera.position.x, 0, camera.position.z); shapeHorizon(camera.position.x, camera.position.z); updateSky(G.char.time, latitude(G.pos.z)); tintToxic(); updateFarPeaks(camera.position); } else farPeaks.visible = false;
   // A sanctuary spans hundreds of metres: give it room in clear weather while preserving dense fog.

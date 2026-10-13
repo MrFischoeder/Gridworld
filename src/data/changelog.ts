@@ -3,6 +3,13 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.191.0', date: '2026-10-13', title: 'Walking feels like walking', notes: [
+    'In first person the whole view now moves with your body: every step lifts and drops it a little and the head sways and leans from side to side.',
+    'Running shakes the view much more than walking, and crouching smooths it out.',
+    'Even standing still your hands breathe: the view drifts a touch, more when you are out of breath.',
+    'Aiming (right mouse) steadies you: the sway shrinks to about a third. Shots go where the crosshair is, so firing on the run is harder and a steady aim pays.',
+    'The gun in your hands bobs with your stride and trails a little behind when you turn.',
+  ] },
   { v: '0.190.0', date: '2026-10-13', title: 'Two languages: English and Polish', notes: [
     'The game now speaks Polish too: pick English or Polski under the title in the main menu. The page reloads straight to the menu in the new language, and your game is saved first.',
     'Everything you read in play is translated: dialogue, items and their tooltips, the character sheet, the backpack and every window, the HUD, prompts, the quest tracker, the log, the maps, the village computer, the intro and the opening film.',

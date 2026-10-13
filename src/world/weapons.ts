@@ -4,6 +4,7 @@
 import * as THREE from 'three';
 import { camera, lineMat, add, V } from './render';
 import { G } from '../game';
+import { SWAY, newSway, stepSway, type Sway } from '../core/sway';
 import { addFx, burst } from './fx';
 import { rayMountedTurret, damageMountedTurret } from './mountedturrets';
 import { rayWorld } from './player';
@@ -192,17 +193,32 @@ export function refreshWeaponVisibility() {
   const h = G.char.hands[0]; carryVM.visible = !!h && G.weapon < 0 && !HAND_TOOLS.has(h.k); // (hand tools are drawn by world/gather.ts) tyre.visible = h?.k === 'wheelL' || h?.k === 'wheelH'; bulk.visible = !tyre.visible;
 }
 
-export function animateVM(dt: number, moving: boolean) {
-  const bob = moving ? Math.sin(performance.now() / 110) * 0.012 : 0;
+// (0.191) The body in first person (core/sway.ts): the view rocks with the steps and the breath, the gun trails the
+// view's turns and bobs with the stride; aiming steadies both.
+const body = newSway();
+let lastYaw = 0, lastPitch = 0, lagX = 0, lagY = 0;
+/** This frame's sway of the view on foot (main.ts puts it on the camera). */
+export function updateBodySway(dt: number): Sway {
+  const v = G.vel;
+  return stepSway(body, { speed: Math.hypot(v.x, v.z), ground: G.onGround && !G.swimming, run: G.activity === BURN.sprint, crouch: G.crouch, aim: aimK, winded: 1 - G.stamina / STAMINA.max }, dt);
+}
+export function animateVM(dt: number, _moving: boolean) {
+  // the gun trails the view's turns a little, then catches up
+  let dy = G.yaw - lastYaw; dy -= Math.round(dy / (Math.PI * 2)) * Math.PI * 2;
+  const dp = G.pitch - lastPitch; lastYaw = G.yaw; lastPitch = G.pitch;
+  const back = Math.exp(-dt * SWAY.lagEase), lim = 0.05;
+  lagX = Math.max(-lim, Math.min(lim, (lagX + dy * SWAY.lag) * back));
+  lagY = Math.max(-lim, Math.min(lim, (lagY - dp * SWAY.lag) * back));
+  const still = 1 - aimK * 0.75, bob = body.amp * 0.011 * body.step * still, side = body.amp * 0.014 * body.side * still;
   // aiming brings the gun to the middle; a long scope hides it (the scope overlay takes over); reloading dips it
   const k = aimK, dip = G.reloadT > 0 ? Math.sin(Math.min(1, 1 - G.reloadT / G.gun.reload) * Math.PI) * 0.12 : 0, gv = activeGun();
-  gv.position.set(0.24 * (1 - k), -0.22 + bob * (1 - k) + k * 0.1 - dip, -0.45 + Math.max(0, G.cooldown - 0.08) * 0.4 + k * 0.05);
-  gv.rotation.x = -dip * 3;
+  gv.position.set(0.24 * (1 - k) + side + lagX * still, -0.22 + bob + lagY * still + k * 0.1 - dip, -0.45 + Math.max(0, G.cooldown - 0.08) * 0.4 + k * 0.05);
+  gv.rotation.set(-dip * 3 + lagY * still, lagX * 2 * still, -side * 2.5);
   gv.scale.setScalar(k > 0.5 && G.gun.zoom >= 3 ? 0.0001 : 1);
   if (G.swingT > 0) G.swingT = Math.max(0, G.swingT - dt);
   const sw = G.swingT > 0, s = sw ? 1 - G.swingT / swingDur : 0, e = s < 0.5 ? s * 2 : 1, mv = activeMelee(), spear = curMelee()?.look === 'spear';
-  if (spear) { mv.position.set(0.3, -0.34 + bob, -0.5 - (sw ? Math.sin(s * Math.PI) * 0.7 : 0)); mv.rotation.set(-1.45, 0, -0.1); } // a thrust
-  else { mv.position.set(0.34 - (sw ? e * 0.45 : 0), -0.36 + bob, -0.5); mv.rotation.set(-0.35 - (sw ? e * 0.9 : 0), 0, sw ? -0.9 + e * 2.2 : -0.5); }
+  if (spear) { mv.position.set(0.3 + side + lagX, -0.34 + bob + lagY, -0.5 - (sw ? Math.sin(s * Math.PI) * 0.7 : 0)); mv.rotation.set(-1.45, 0, -0.1); } // a thrust
+  else { mv.position.set(0.34 - (sw ? e * 0.45 : 0) + side + lagX, -0.36 + bob + lagY, -0.5); mv.rotation.set(-0.35 - (sw ? e * 0.9 : 0), 0, sw ? -0.9 + e * 2.2 : -0.5); }
 }
 let swingDur = 0.26;
 
