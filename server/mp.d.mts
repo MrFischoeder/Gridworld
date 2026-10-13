@@ -6,7 +6,7 @@ export declare const PROTOCOL: number;
 export interface DropRow { id: string; k: string; n: number; c?: number; p: number[]; loc: string; by: string; at: number }
 export interface RoomSeed { id: string; name: string; world: number; time: number; owner?: string; by?: string; created?: number; last?: number; drops?: DropRow[]; doc?: Record<string, Record<string, unknown>>; seeded?: boolean; mode?: 'coop' | 'rivals'; slots?: Record<string, number> }
 export interface RoomRow { id: string; name: string; world: number; time: number; online: number; max: number; running: boolean; players: string[]; by: string; mode: 'coop' | 'rivals'; created: number; last: number }
-export declare function createMp(log?: (m: string) => void, opts?: { world?: number; time?: number; name?: string; rooms?: RoomSeed[]; removed?: (id: string) => void; accounts?: Accounts; accountsChanged?: () => void }): {
+export declare function createMp(log?: (m: string) => void, opts?: { world?: number; time?: number; name?: string; rooms?: RoomSeed[]; removed?: (id: string) => void; accounts?: Accounts; accountsChanged?: () => void; admins?: string[] }): {
   attach(server: Server, path?: string): void;
   close(): void;
   players: Map<number, { id: number; name: string }>;

@@ -91,8 +91,21 @@ if [ ! -f /etc/gridworld.env ]; then
 #MAIL_SENDMAIL=1
 # where players open the game, for the link in the mail:
 #PUBLIC_URL=https://your-domain.pl/gridworld/
+# a mail server on this machine whose certificate names another host:
+#SMTP_INSECURE=1
+# accounts (names, comma separated) that may close any player's server:
+#ADMINS=YourName
 ENV
   chmod 600 /etc/gridworld.env
+elif ! grep -q 'ADMINS' /etc/gridworld.env; then
+  # (0.196.0) an older settings file learns of the admins and the mail test, nothing else changes
+  cat >> /etc/gridworld.env <<'ENV'
+# accounts (names, comma separated) that may close any player's server:
+#ADMINS=YourName
+# a mail server on this machine whose certificate names another host:
+#SMTP_INSECURE=1
+# test the mail: sudo /opt/gridworld-node/bin/node /opt/gridworld/server/mailtest.mjs you@example.pl
+ENV
 fi
 systemctl daemon-reload
 systemctl enable -q gridworld

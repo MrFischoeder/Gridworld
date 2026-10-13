@@ -30,6 +30,28 @@ PUBLIC_URL=https://twoja-domena.pl/gridworld/
 
 Port 465 (SSL) wymaga dodatkowo `SMTP_SECURE=1`. Jeśli na tym samym serwerze działa własny serwer poczty (postfix / sendmail), zamiast linii `SMTP_*` wystarczy `MAIL_SENDMAIL=1`. Po restarcie w logu (`journalctl -u gridworld -n 20`) pojawi się linia `mail on: from …`, a w menu gry pole e-mail. Gdy wysyłka się nie uda, log pokazuje `mail failed: …`, a gracz dostaje komunikat, że serwer nie mógł wysłać maila. Żeby maile nie trafiały do spamu, domena powinna mieć ustawione rekordy SPF i DKIM (konfiguruje się je u dostawcy domeny lub poczty).
 
+**Krok po kroku: poczta z własnego VPS-a i administrator (od 0.196.0).** Masz już skrzynkę na swoim serwerze (np. `noreply@twoja-domena.pl`). Potrzebne są cztery rzeczy: adres serwera poczty (SMTP), port, login i hasło tej skrzynki.
+
+1. **Sprawdź dane SMTP.** W panelu poczty (np. IONOS, Plesk, cPanel, Mailcow) w ustawieniach skrzynki jest „serwer poczty wychodzącej (SMTP)”. Najczęściej: host `mail.twoja-domena.pl` (albo `smtp.ionos.pl` przy poczcie IONOS), port `587` (STARTTLS) albo `465` (SSL), login = cały adres e-mail, hasło = hasło skrzynki. Jeśli serwer poczty stoi na tym samym VPS-ie co gra, host może być `127.0.0.1` (wtedy, gdy certyfikat jest wystawiony na inną nazwę, dopisz `SMTP_INSECURE=1`).
+2. **Wpisz je do `/etc/gridworld.env`:** `sudo nano /etc/gridworld.env`, usuń `#` z początku potrzebnych linii i uzupełnij:
+
+```
+MAIL_FROM="GridWorld <noreply@twoja-domena.pl>"
+SMTP_HOST=mail.twoja-domena.pl
+SMTP_PORT=587
+SMTP_USER=noreply@twoja-domena.pl
+SMTP_PASS=haslo-do-skrzynki
+PUBLIC_URL=https://gridworld.twoja-domena.pl/
+ADMINS=TwojaNazwaKonta
+```
+
+   Przy porcie 465 dopisz `SMTP_SECURE=1`. Hasło z cudzysłowami lub spacjami wpisz w cudzysłowie: `SMTP_PASS="moje haslo"`. `ADMINS` to nazwy kont w grze (oddzielone przecinkami), które mogą zamykać każdy serwer graczy. Zapisz (Ctrl+O, Enter, Ctrl+X).
+3. **Sprawdź pocztę, zanim zrestartujesz grę:** `sudo /opt/gridworld-node/bin/node /opt/gridworld/server/mailtest.mjs twoj-prywatny@adres.pl`. Skrypt czyta ten sam plik, łączy się z serwerem poczty, mówi wprost, co jest nie tak (zły host, port, hasło, certyfikat), wypisuje administratorów i wysyła mail testowy. Gdy przyjdzie (zajrzyj też do spamu), przejdź dalej.
+4. **Uruchom grę na nowo:** `sudo systemctl restart gridworld`, potem `journalctl -u gridworld -n 20`: powinna być linia `mail on: from …`.
+5. **Załóż swoje konto** (jeśli go nie masz) w panelu Multiplayer: nazwa taka jak w `ADMINS`, e-mail, hasło; wpisz kod z maila. Przy koncie pojawi się dopisek **· admin**, a na liście serwerów przycisk **Close server** przy każdym serwerze graczy (dwa kliknięcia; gracze na nim wracają do menu, jego świat znika z dysku). Głównego serwera nie da się zamknąć. Konto założone wcześniej bez e-maila dodaje go przyciskiem **Add email**.
+
+Od tej chwili nowi gracze zakładają konto z e-mailem (kod przychodzi na skrzynkę), logują się nazwą albo e-mailem, a zapomniane hasło odzyskują przyciskiem **Forgot password?**. Żeby maile nie lądowały w spamie, domena potrzebuje rekordów SPF i DKIM (u dostawcy poczty zwykle są już ustawione dla jego serwerów).
+
 **Śmierć na serwerze i imiona postaci (od 0.161.0):** na serwerze śmierć kończy postać. Jej ekwipunek zostaje na ziemi tam, gdzie zginęła, a imię trafia na listę poległych świata (pole `fallen` we wspólnym świecie, w `world-<id>.json`). Gracz budzi się jako nowy członek załogi w innej kapsule we wraku i musi podać nowe imię. Serwer odrzuca imiona poległych i imiona innych graczy, którzy są w grze. Pozostali widzą gracza pod imieniem jego postaci, a konto zostaje to samo. Wersja 0.161.0 zmienia protokół (12): po aktualizacji serwera gracze muszą odświeżyć stronę (Ctrl+F5).
 
 **Własne serwery i ich zamykanie (od 0.158.0):** zalogowany gracz zakłada serwer (**Create a server**, najwyżej 3 na konto, 12 na maszynę) i tylko on widzi przy nim przycisk **Close server** (dwa kliknięcia). Serwer jest przypisany do konta, nie do przeglądarki, więc można go zamknąć z każdego komputera po zalogowaniu. Gracze, którzy na nim są, wracają do menu z komunikatem, a jego świat (`world-<id>.json`) znika z dysku. Serwery założone przed 0.158.0 zamyka się jak dawniej, z tej samej przeglądarki. Wersja 0.158.0 zmienia protokół (11): po aktualizacji serwera gracze muszą odświeżyć stronę (Ctrl+F5).

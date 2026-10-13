@@ -96,6 +96,9 @@ export function createMp(log = (m) => console.log('[mp] ' + m), opts = {}) {
   /** A dedicated server's player accounts (server/accounts.mjs; server/main.mjs saves them); hosted games have none. */
   const accts = dedicated ? (opts.accounts ?? createAccounts()) : null;
   const ownerKey = (acct) => 'acct:' + acct.key;
+  /** (0.196.0) Accounts that may close any player's server (ADMINS in server/main.mjs). */
+  const admins = new Set((opts.admins ?? []).map((s) => String(s).toLowerCase()));
+  const isAdmin = (acct) => !!acct && admins.has(acct.key);
   const wss = new WebSocketServer({ noServer: true, maxPayload: MP.payload });
   /** @type {Map<string, any>} */
   const rooms = new Map();
@@ -148,11 +151,12 @@ export function createMp(log = (m) => console.log('[mp] ' + m), opts = {}) {
     if (!r) return 'That server is gone already.';
     if (r.id === 'main') return 'The main server cannot be deleted.';
     const acct = accts?.session(m.token);
-    if (!r.owner || !(acct && r.owner === ownerKey(acct)) && ownerOf(m.key) !== r.owner) return acct ? 'Only the player who created this server can close it.' : 'Log in to close your server.';
+    const admin = isAdmin(acct), own = !!r.owner && (!!acct && r.owner === ownerKey(acct) || ownerOf(m.key) === r.owner);
+    if (!own && !admin) return acct ? 'Only the player who created this server (or an admin) can close it.' : 'Log in to close your server.';
     for (const trip of r.trips.values()) clearTimeout(trip.timer);
-    for (const p of r.players.values()) { send(p.ws, { t: 'refused', why: `The server "${r.name}" was closed by its creator.` }); p.ws.close(); }
+    for (const p of r.players.values()) { send(p.ws, { t: 'refused', why: own ? `The server "${r.name}" was closed by its creator.` : `The server "${r.name}" was closed by an admin.` }); p.ws.close(); }
     rooms.delete(r.id); opts.removed?.(r.id);
-    log(`server "${r.name}" closed by its creator`);
+    log(own ? `server "${r.name}" closed by its creator` : `server "${r.name}" closed by admin ${acct.name}`);
     return '';
   };
 
@@ -170,7 +174,7 @@ export function createMp(log = (m) => console.log('[mp] ' + m), opts = {}) {
       reply = r.why ? { t: 'refused', why: r.why, ...(r.wait ? { wait: true, name: r.name } : {}) } : r.wait ? { t: 'wait', name: r.name } : { t: 'auth', name: r.name, token: r.token };
       if (!r.why) log(`${r.name} ${{ register: r.wait ? 'made an account (email to confirm)' : 'made an account', login: 'logged in', verify: 'confirmed their email', reset: 'reset their password' }[m.t]}`);
     } else if (m.t === 'logout') { accts.logout(m.token); reply = { t: 'ok' }; }
-    else if (m.t === 'profile') { const p = accts.profile(m.token); reply = p ? { t: 'profile', ...p, mailing: accts.mailing } : { t: 'refused', why: 'Log in again.', auth: true }; }
+    else if (m.t === 'profile') { const p = accts.profile(m.token); reply = p ? { t: 'profile', ...p, mailing: accts.mailing, admin: isAdmin(accts.session(m.token)) } : { t: 'refused', why: 'Log in again.', auth: true }; }
     else {
       const why = m.t === 'passwd' ? await accts.passwd(m.token, m.old, m.pass, ip) : m.t === 'resend' ? await accts.resend(m.name, m.pass, ip)
         : m.t === 'forgot' ? await accts.forgot(m.email) : await accts.setEmail(m.token, m.pass, m.email, ip);

@@ -148,6 +148,22 @@ describe('multiplayer server', () => {
     expect((await ask(port, { t: 'delroom', room: 'old', token: tokens.get('Cy'), key: 'k'.repeat(20) }))?.why).toMatch(/created/);
     c.ws.close();
   });
+  it('an admin (ADMINS) closes any player\'s server, and the profile says so', async () => {
+    const removed: string[] = [];
+    mp = createMp(() => {}, { rooms: [{ id: 'main', name: 'Main', world: 11, time: 100 }, { id: 'old', name: 'Old', world: 5, time: 0, owner: 'f'.repeat(64) }], admins: ['Boss'], removed: (id: string) => { removed.push(id); } }); http = createServer(); mp.attach(http);
+    accountsOn = true; tokens.clear();
+    await new Promise<void>((r) => http!.listen(0, r));
+    const port = (http.address() as { port: number }).port;
+    const c = await client(port, { name: 'Cy', create: { name: 'Cy Base', world: 33 } }), id = (await c.wait('welcome')).room.id;
+    const boss = await tokenFor(port, 'Boss');
+    expect((await ask(port, { t: 'profile', token: boss }))?.admin).toBe(true);
+    expect((await ask(port, { t: 'profile', token: tokens.get('Cy') }))?.admin).toBe(false);
+    expect((await ask(port, { t: 'delroom', room: 'main', token: boss }))?.why).toMatch(/main/);
+    expect(await ask(port, { t: 'delroom', room: id, token: boss })).toEqual({ t: 'deleted', room: id });
+    expect((await c.wait('refused')).why).toMatch(/admin/);
+    expect(await ask(port, { t: 'delroom', room: 'old', token: boss })).toEqual({ t: 'deleted', room: 'old' }); // made before accounts too
+    expect(mp!.list().map((r) => r.id)).toEqual(['main']); expect(removed).toEqual([id, 'old']);
+  });
   it('accounts: a name each (any letter case), a password only as a hash, sessions, one game per account', async () => {
     const saved: unknown[] = [];
     const accounts = createAccounts();

@@ -153,7 +153,7 @@ function clearGateRequests() {
 
 /** One request on its own connection (no game): the server answers once and closes. Resolves its answer, or
  * {t: 'refused', why} when it could not be reached. */
-export type Reply = { t: string; why?: string; name?: string; token?: string; wait?: boolean; email?: string; next?: string; mailing?: boolean };
+export type Reply = { t: string; why?: string; name?: string; token?: string; wait?: boolean; email?: string; next?: string; mailing?: boolean; admin?: boolean };
 function ask(url: string, m: object): Promise<Reply> {
   return new Promise((done) => {
     let ws: WebSocket, reply: Reply = { t: 'refused', why: tl('Could not reach the server.') };

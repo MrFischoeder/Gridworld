@@ -3569,4 +3569,5 @@ export const PL: Record<string, string> = {
   "EXIT · {0}": "WYJŚCIE · {0}",
   "Stairs up to the street at {0} Station": "Schody na ulicę przy stacji {0}",
   "✕ NO EXIT": "✕ BRAK WYJŚCIA",
+  " <small>· admin</small>": " <small>· administrator</small>",
 };

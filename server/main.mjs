@@ -21,6 +21,7 @@ import { randomInt } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { createMp, MP } from './mp.mjs';
 import { createAccounts } from './accounts.mjs';
+import { makeMailer, adminsOf } from './mail.mjs';
 
 const here = fileURLToPath(new URL('.', import.meta.url));
 const env = process.env;
@@ -48,20 +49,12 @@ for (const r of rooms) { try { const w = JSON.parse(await readFile(docFile(r.id)
 // the players' accounts (names and password hashes, never the passwords) in their own file, readable only by the server
 let savedAccounts = {};
 try { savedAccounts = JSON.parse(await readFile(ACCOUNTS, 'utf8')); } catch { /* none yet */ }
-// mail (optional): MAIL_FROM plus SMTP_HOST (SMTP_PORT, SMTP_SECURE, SMTP_USER, SMTP_PASS) or MAIL_SENDMAIL=1 (the
-// machine's own sendmail); then new accounts confirm their email with a mailed code and passwords can be reset.
-// PUBLIC_URL (the game's address, e.g. https://example.pl/gridworld/) adds a confirmation link to the mail.
-async function mailer() {
-  if (!env.MAIL_FROM || !(env.SMTP_HOST || env.MAIL_SENDMAIL === '1')) return null;
-  const { createTransport } = (await import('nodemailer')).default;
-  const transport = env.SMTP_HOST
-    ? createTransport({ host: env.SMTP_HOST, port: Number(env.SMTP_PORT) || 587, secure: env.SMTP_SECURE === '1' || Number(env.SMTP_PORT) === 465, auth: env.SMTP_USER ? { user: env.SMTP_USER, pass: env.SMTP_PASS ?? '' } : undefined })
-    : createTransport({ sendmail: true, newline: 'unix', path: env.SENDMAIL_PATH || '/usr/sbin/sendmail' });
-  log(`mail on: from ${env.MAIL_FROM} via ${env.SMTP_HOST ? 'SMTP ' + env.SMTP_HOST : 'sendmail'}`);
-  return (to, subject, text) => transport.sendMail({ from: env.MAIL_FROM, to, subject, text }).catch((e) => { log('mail failed: ' + e.message); throw e; });
-}
-const accounts = createAccounts(savedAccounts, { mail: await mailer(), publicUrl: env.PUBLIC_URL || '', title: NAME });
-const mp = createMp((m) => log('[mp] ' + m), { rooms, accounts, accountsChanged: () => { persist().catch(() => {}); }, removed: (id) => { unlink(docFile(id)).catch(() => {}); persist().catch(() => {}); } }); // a deleted or forgotten server's world goes with it
+// mail (optional, server/mail.mjs): MAIL_FROM plus SMTP_HOST (SMTP_PORT, SMTP_SECURE, SMTP_USER, SMTP_PASS, SMTP_INSECURE) or
+// MAIL_SENDMAIL=1; then new accounts confirm their email with a mailed code and passwords can be reset. PUBLIC_URL (the
+// game's address, e.g. https://example.pl/gridworld/) adds a confirmation link to the mail. ADMINS: account names that
+// may close any player's server.
+const accounts = createAccounts(savedAccounts, { mail: await makeMailer(env, log), publicUrl: env.PUBLIC_URL || '', title: NAME });
+const mp = createMp((m) => log('[mp] ' + m), { rooms, accounts, admins: adminsOf(env), accountsChanged: () => { persist().catch(() => {}); }, removed: (id) => { unlink(docFile(id)).catch(() => {}); persist().catch(() => {}); } }); // a deleted or forgotten server's world goes with it
 const world = rooms[0].world;
 
 // one save at a time (an account made mid-save waits for the next turn)

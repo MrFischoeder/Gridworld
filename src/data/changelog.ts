@@ -3,6 +3,12 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.196.0', date: '2026-10-13', title: 'Server admins', notes: [
+    'The owner of a dedicated server can name admin accounts (ADMINS in /etc/gridworld.env). An admin sees "· admin" next to their name in the Multiplayer panel and a Close server button on every player\'s server in the list; the players on it are sent back to the menu. The main server cannot be closed.',
+    'A mail test for server owners (server/mailtest.mjs): it reads the server\'s settings, logs in to the mail server, says what is wrong if it cannot, and sends a test mail, so account emails can be checked before players need them.',
+    'A mail server on the same machine with a certificate for another name can be used with SMTP_INSECURE=1.',
+    'The server guide (SERWER.md) walks through sending the account emails from your own mailbox, step by step.',
+  ] },
   { v: '0.195.1', date: '2026-10-13', title: 'Fix: black screen after dying online', notes: [
     'After your character died in a multiplayer game the screen stayed black: the fade of the death never lifted, even after joining another server. The new crew member now wakes in the cryo-pod and the view fades back in.',
     'Switching characters (a new world, another server, a new crew member) always clears a leftover fade.',

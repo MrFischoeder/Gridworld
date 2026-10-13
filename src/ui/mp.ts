@@ -93,10 +93,12 @@ let regMode = false;
  * (`id` = the email). `pass` (memory only, for Send again) = the password typed with it. */
 let pending: { mode: 'verify' | 'reset'; id: string; pass?: string; to?: string } | null = null;
 /** The logged-in account's email, as the server last told (fetched once per login). */
-let profile: { email: string; next: string; for: string } | null = null;
+let profile: { email: string; next: string; for: string; admin?: boolean } | null = null;
 let busy = false;
 /** A server is yours to close: made by your account (or, before accounts, from this browser). */
-const yours = (r: RoomInfo) => r.id !== 'main' && (!!auth() && (r.by ?? '').toLowerCase() === auth()!.name.toLowerCase() || myRooms().includes(r.id));
+const yours = (r: RoomInfo) => r.id !== 'main' && (!!auth() && (r.by ?? '').toLowerCase() === auth()!.name.toLowerCase() || myRooms().includes(r.id) || isAdmin());
+/** (0.195.2) An admin of this server (ADMINS on the server) may close any player's server. */
+const isAdmin = () => !!auth() && !!profile?.admin && profile.for === auth()!.token;
 /** A Delete button asks twice: the id armed by the first click. */
 let armed = '', deleting = '';
 /** A message for the status line that outlasts the next render for a few seconds. */
@@ -135,8 +137,8 @@ function render() {
   acctEl.style.display = accounts() && !on ? '' : 'none';
   acctIn.style.display = a ? 'none' : '';
   acctOn.style.display = a ? '' : 'none';
-  if (a && mailing() && profile?.for !== a.token) { profile = { email: '', next: '', for: a.token }; void accountAsk(here(), { t: 'profile', token: a.token }).then((r) => { if (r.t === 'profile') { profile = { email: r.email ?? '', next: r.next ?? '', for: a.token }; render(); } }); }
-  if (a) who.innerHTML = TL`Logged in as <b>${esc(a.name)}</b>${profile?.email ? ` <small>· ${esc(profile.email)}</small>` : mailing() ? tl(' <small>· no email yet</small>') : ''}`;
+  if (a && profile?.for !== a.token) { profile = { email: '', next: '', for: a.token }; void accountAsk(here(), { t: 'profile', token: a.token }).then((r) => { if (r.t === 'profile') { profile = { email: r.email ?? '', next: r.next ?? '', for: a.token, admin: !!r.admin }; render(); } }); }
+  if (a) who.innerHTML = TL`Logged in as <b>${esc(a.name)}</b>${profile?.email ? ` <small>· ${esc(profile.email)}</small>` : mailing() ? tl(' <small>· no email yet</small>') : ''}` + (isAdmin() ? tl(' <small>· admin</small>') : '');
   emailRow.style.display = !a && regMode && !pending ? '' : 'none';
   emailNote.textContent = mailing() ? tl('we send a code to confirm it') : 'optional';
   forgotBtn.style.display = !a && mailing() && !pending ? '' : 'none';
