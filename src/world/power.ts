@@ -156,6 +156,8 @@ export function litLamps(): { x: number; y: number; z: number }[] {
   for (const p of plants.values()) for (const l of p.lamps) if (l.visible && l.parent) { l.getWorldPosition(v); out.push({ x: v.x, y: v.y, z: v.z }); }
   return out;
 }
+/** (0.203) Whether village id's power plant gives power now (its lamps would burn): built, loaded and not down. */
+export function powerUp(id: number): boolean { const p = plants.get(id); return !!p && (cond(p) >= POWER_DOWN || hasImprove(G.char.towns[id], 'lamps')); }
 /** The village lamps a plant feeds (they go dark when it is down). */
 export function setPlantLamps(id: number, lamps: THREE.Object3D[]) { const p = plants.get(id); if (p) p.lamps = lamps; else if (progressive(G.char.towns[id])) for (const l of lamps) l.visible = false; }
 export function forgetPower(id: number) { plants.delete(id); }

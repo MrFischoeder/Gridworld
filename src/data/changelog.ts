@@ -3,6 +3,12 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.203.0', date: '2026-10-13', title: 'Street lamps and headlights', notes: [
+    'You can light up a village yourself: the blacksmith makes an Electric Street Lamp (3 scrap, 4 wire, an electronic component, a plank) and an Oil Street Lamp (3 planks, a scrap, 2 nails). Use the kit in or near a village (within 110 m of its middle) and click where the lamp should stand; every lamp is put up on its own.',
+    'An electric lamp burns by night while the village\'s power plant gives power, draws half a kilowatt and needs no tending. An oil lamp needs no power, but its tank has to be filled (E at the lamp: a flask of Lamp Oil gives 6 hours, a fuel canister 24, up to 40); it burns only from 20:00 to 06:00. E at a lamp also takes it down, and the kit comes back.',
+    'Vehicles have headlights you switch on and off: L at the wheel. Lit, they light the road ahead; left on, a parked vehicle keeps lighting the ground in front of it. The vehicle line on the screen says whether they are on.',
+    'Online, every player sees the same lamps, and the others see your headlights. A dedicated server has to be updated to pass the headlights on; the lamps work on an older one too.',
+  ] },
   { v: '0.202.0', date: '2026-10-13', title: 'A new world starts bare', notes: [
     'In a new world there are no vehicles at all until Kuba the mechanic comes to Gridholm (once its power plant stands and it digs its own goods): no abandoned cars in the wilds, no raiders in cars and no caravan convoys on the roads. Once he is there, they all appear.',
     'A new settlement has no electricity until its power plant is built: no electric lamp posts on the plaza before that (the oil lanterns by the gates and the shops still burn at night).',

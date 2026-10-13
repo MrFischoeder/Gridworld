@@ -13,6 +13,7 @@ import { calcStats, saveChar, armoured, handsChanged } from './character';
 import { loadDungeon, loadOverworld, toVillage, saveOverworldPos, enterDungeon, type Arrival } from './world/level';
 import { initRebirth } from './ui/rebirth';
 import { isFieldPlacing, updateFieldPlacing, confirmFieldPlacing, cancelFieldPlacing } from './world/fields';
+import { isStreetPlacing, updateStreetPlacing, confirmStreetPlacing, cancelStreetPlacing, updateStreetLamps } from './world/streetlamps';
 import { updateSawing } from './world/sawing';
 import { updateHomes } from './world/home';
 import { updatePlayer, EYE } from './world/player';
@@ -47,7 +48,7 @@ import { updateIndustry } from './world/industry';
 import { updateContracts } from './ui/contracts';
 import { regionRoads } from './gen/roads';
 import { generateQuest } from './gen/quests';
-import { poisNear } from './gen/regions';
+import { poisNear, nearX } from './gen/regions';
 import { sky, horizon, updateSky, shapeHorizon } from './world/sky';
 import { updateLight, setDrivingHook, addLights } from './world/light';
 import { LIGHT } from './gen/darkness';
@@ -100,7 +101,7 @@ import { syncWorld, setWorldReload } from './world/share';
 import { syncFoes } from './world/foesync';
 import { updateGarrisons } from './world/citygarrisons';
 import { refreshGateConsole } from './ui/worldgates';
-import { teleportVehicle, vehiclesNear } from './world/vehicles';
+import { teleportVehicle, vehiclesNear, headlightSpot } from './world/vehicles';
 import { setRideWarpArrival } from './world/ride';
 import { setGateTravel, updateWorldGates, gateTravelPending } from './world/worldgates';
 import { gateName } from './gen/worldgates';
@@ -167,6 +168,11 @@ let crouchDrop = 0;
 let benchT = 0; // workbenches in the wilds are synced about once a second
 // (0.199) what lights the dark besides your own light: fires, powered village lamps, the other players' lights
 addLights((out) => {
+  // (0.203) headlights left on: your parked vehicles and the other players' (the one you drive throws its beam itself)
+  if (G.char.loc === 'overworld') {
+    for (const v of vehicles) if (v.st.lights && v !== driving.v && G.char.vehicles.includes(v.st)) { const s = headlightSpot(v.st.x, v.st.z, v.st.heading, v.st.model); out.push({ x: s.x, y: v.y + 1, z: s.z, r: 13, k: 'electric' }); }
+    for (const p of net.peers.values()) if (p.st?.loc === 'o') for (const c of p.st.cars ?? []) if (c[11]) { const s = headlightSpot(nearX(c[1], G.pos.x), c[3], c[4], c[0] ? 'mastodon' : 'scout'); out.push({ x: s.x, y: c[2] + 1, z: s.z, r: 13, k: 'electric' }); }
+  }
   for (const f of [...fireSpots(), ...campFires().map((c) => ({ x: c.x, y: c.y + 0.8, z: c.z }))]) out.push({ ...f, r: LIGHT.fire, k: 'fire' });
   for (const l of litLamps()) out.push({ ...l, r: LIGHT.village });
   for (const p of peerLights()) out.push({ x: p.x, y: p.y, z: p.z, r: LIGHT.peer[p.k as 1 | 2 | 3] ?? 10, k: p.k === 3 ? 'fire' : undefined });
@@ -184,7 +190,7 @@ function frame(now: number) {
   if (outdoors) updateWorldGates(dt);
   refreshGateConsole();
   // the clock runs whenever the game is not paused in the menu
-  if (G.playing && !gateTravelPending()) { G.char.time += dt * MIN_PER_SEC; updateSurvival(dt); updateFlora(dt); updateFires(dt, time); updatePower(dt); updateSettlementSites(dt); updateJobSites(dt); updateHouseDoors(dt); updateWallGuns(dt); updateWorks(dt); updateStations(dt); updateChariot(dt); updateCaravans(dt); updateVillageRaids(dt); updateFallen(dt); updateIndustry(dt); updateFarms(dt); updateInstalls(dt); updateCities(dt); updateToxic(dt); updateGuide(dt); updateBridges(dt); updatePiers(dt); updateContracts(dt); updateForge(dt); updateGarage(dt); updateHomes(dt); updateSawing(dt); updateCharging(dt); syncVillagePads(dt); updateLodes(dt); updateOutpostRaids(dt); updateRouteTrucks(); updateRivals(dt); if ((benchT -= dt) <= 0) { benchT = 1; syncBenches(); syncFlags(); syncBases(); syncTurrets(); } }
+  if (G.playing && !gateTravelPending()) { G.char.time += dt * MIN_PER_SEC; updateSurvival(dt); updateFlora(dt); updateFires(dt, time); updatePower(dt); updateSettlementSites(dt); updateJobSites(dt); updateHouseDoors(dt); updateWallGuns(dt); updateWorks(dt); updateStations(dt); updateChariot(dt); updateCaravans(dt); updateVillageRaids(dt); updateFallen(dt); updateIndustry(dt); updateFarms(dt); updateInstalls(dt); updateCities(dt); updateToxic(dt); updateGuide(dt); updateBridges(dt); updatePiers(dt); updateStreetLamps(dt); updateContracts(dt); updateForge(dt); updateGarage(dt); updateHomes(dt); updateSawing(dt); updateCharging(dt); syncVillagePads(dt); updateLodes(dt); updateOutpostRaids(dt); updateRouteTrucks(); updateRivals(dt); if ((benchT -= dt) <= 0) { benchT = 1; syncBenches(); syncFlags(); syncBases(); syncTurrets(); } }
   updateCompass(dt); // hides itself while paused
   const clock = fmtClock(G.char.time) + (G.char.loc === 'overworld' && seen.kind !== 'clear' ? ' · ' + WEATHER_NAME[seen.kind] : '');
   if (el.clock.textContent !== clock) el.clock.textContent = clock;
@@ -204,6 +210,10 @@ function frame(now: number) {
       updatePierPlacing();
       if (G.firing) { G.firing = false; confirmPierPlacing(); }
       if (G.aiming) { G.aiming = false; cancelPierPlacing(); }
+    } else if (isStreetPlacing()) { // (0.203) a street lamp kit: the mouse picks its spot
+      updateStreetPlacing();
+      if (G.firing) { G.firing = false; void confirmStreetPlacing(); }
+      if (G.aiming) { G.aiming = false; cancelStreetPlacing(); }
     } else if (isFieldPlacing()) { // a Survey Stake: the mouse picks a new farm's field
       updateFieldPlacing();
       if (G.firing) { G.firing = false; void confirmFieldPlacing(); }
@@ -266,7 +276,7 @@ function frame(now: number) {
   updateFx(dt);
   updateHud(dt); updateTracker(dt);
   updateStreaks(dt); drawMini();
-  setDrivingHook(() => !!driving.v); updateLight(dt); // (0.199) the dark and the lights: the light map the shaders read
+  setDrivingHook(() => !!driving.v?.st.lights); updateLight(dt); // (0.199) the dark and the lights: the light map the shaders read
   renderer.info.reset(); // two passes per frame: count both (F3 overlay)
   if (!gateTravelPending()) {
     // The opaque transit canvas owns the screen; spare the GPU hidden world and weapon passes.

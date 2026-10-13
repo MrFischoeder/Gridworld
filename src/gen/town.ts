@@ -14,6 +14,8 @@ import { tl } from '../i18n';
 
 export interface TownState {
   settlement?: import('./settlement').SettlementState;
+  /** (0.203, gen/streetlamps.ts) The street lamps the heroes put up: electric or oil, each where it was placed. */
+  lamps?: import('./streetlamps').StreetLamp[];
   /** Builds under way (gen/construction.ts): key = kind[:sub-kind]. */
   jobs?: Record<string, import('./construction').Job>;
   /** (0.187, gen/routes.ts) Crates the outposts' convoys delivered that went into the hall, and food units shipped back,

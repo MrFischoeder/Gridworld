@@ -30,7 +30,7 @@ export type Progress = Record<string, number[]>;
 export interface DungeonPos { ruinId: number; depth: number; gx: number; gz: number; cave?: { name: string; mouths: { x: number; z: number; face: number }[]; from: number } }
 /** Anything that holds items: a searched chest, a vehicle trunk. */
 export interface Container { items: (Slot | null)[]; gold: number }
-export interface VehicleState { id: string; model: VehicleModel; x: number; z: number; heading: number; trunk: Container; parts: VehicleParts }
+export interface VehicleState { id: string; model: VehicleModel; x: number; z: number; heading: number; trunk: Container; parts: VehicleParts; /** (0.203) its headlights are on */ lights?: boolean }
 export interface Char {
   v: 3;
   /** The hero's name, entered in the menu before the first game (everyone calls you by it). */

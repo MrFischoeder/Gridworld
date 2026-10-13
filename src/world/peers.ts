@@ -172,6 +172,7 @@ function syncCars(here: string, now: number) {
       g.x = q[1] + (c[1] - q[1]) * k; g.y = q[2] + (c[2] - q[2]) * k; g.z = q[3] + (c[3] - q[3]) * k;
       g.h = lerpAng(q[4], c[4], k); g.p = q[5] + (c[5] - q[5]) * k; g.r = q[6] + (c[6] - q[6]) * k;
       g.condition = c[10] ?? 100;
+      const hl = g.g.getObjectByName('headlights'); if (hl) hl.visible = !!c[11]; // (0.203) their headlights
       g.aim = c.length > 9 ? lerpAng(q[9] ?? c[9], c[9], k) : 0;
       g.x = nearX(g.x, G.pos.x);
       g.g.position.set(g.x, g.y - 0.05, g.z);

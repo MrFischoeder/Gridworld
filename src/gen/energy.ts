@@ -23,6 +23,7 @@ import { running, type PlantState } from './plants';
 import { farmsKw } from './farms';
 import { plantMult } from './plantup';
 import { bankKw, villageKw, VILLAGE_BASE_KW } from './improve';
+import { streetKw } from './streetlamps';
 import { tl } from '../i18n';
 
 export type StationKind = 'solarfarm' | 'windfarm' | 'coalplant' | 'dieselbank' | 'reactor';
@@ -148,7 +149,7 @@ export interface Balance {
 export function balance(world: number, v: Poi, seed: number, s: TownState | undefined, t: number): Balance {
   const bank = s?.imp?.bank ? bankKw(s, ...renewables(world, v, seed, s, t)) : 0;
   const posts = crew(seed, v, s, t);
-  const made = baseKw(world, v, seed, s, t) + (s?.stations ?? []).reduce((a, st, i) => a + stationKw(v, seed, st, t) * crewFill(posts, 'station:' + i), 0) + bank, vkw = villageKw(s);
+  const made = baseKw(world, v, seed, s, t) + (s?.stations ?? []).reduce((a, st, i) => a + stationKw(v, seed, st, t) * crewFill(posts, 'station:' + i), 0) + bank, vkw = villageKw(s) + streetKw(s, t); // (0.203) the street lamps by night
   let free = Math.max(0, made - vkw), draw = 0;
   // the farms come first (gen/farms.ts): pumps and lamps before the works
   const farms = farmsKw(s), farmsGot = Math.min(free, farms);

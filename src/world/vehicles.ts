@@ -154,13 +154,41 @@ function mastodonBody(pb: PropBatch) {
 }
 
 /**
+ * (0.203) A vehicle's headlights: two lit lenses on its nose and a faint beam ahead of each, named 'headlights' so
+ * whoever draws the vehicle can switch them (body coordinates, facing +z).
+ */
+export function headlightModel(m: VehicleModel): THREE.Group {
+  const spec = VEHICLES[m], g = new THREE.Group(), z = spec.axles[0] + (m === 'scout' ? 1.0 : 1.6), y = spec.wheelR + (m === 'scout' ? 0.55 : 0.9);
+  const lens = new THREE.MeshBasicMaterial({ color: 0xf6ffe0, fog: false, transparent: true, opacity: 0.95, blending: THREE.AdditiveBlending, depthWrite: false });
+  const beam = new THREE.MeshBasicMaterial({ color: 0xe8ffd0, transparent: true, opacity: 0.07, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
+  for (const sx of [-1, 1]) {
+    const l = new THREE.Mesh(new THREE.CircleGeometry(0.13, 10), lens); l.position.set(sx * (spec.track - 0.25), y, z); g.add(l);
+    const cone = new THREE.ConeGeometry(1.6, 9, 12, 1, true); cone.rotateX(-Math.PI / 2); cone.translate(0, 0, 4.5);
+    const b = new THREE.Mesh(cone, beam); b.position.set(sx * (spec.track - 0.25), y, z + 0.05); g.add(b);
+  }
+  g.name = 'headlights'; g.visible = false;
+  return g;
+}
+/** Where a vehicle's headlights shine (world, ~8 m ahead of its nose) for the light map. */
+export function headlightSpot(x: number, z: number, heading: number, m: VehicleModel): { x: number; z: number } {
+  const d = VEHICLES[m].axles[0] + 8; return { x: x + Math.sin(heading) * d, z: z + Math.cos(heading) * d };
+}
+/** L at the wheel: switch the headlights on or off. */
+export function toggleHeadlights(): string | null {
+  const v = driving.v; if (!v) return null;
+  if (driving.seat !== 0) return tl('Only the driver switches the lights.');
+  v.st.lights = !v.st.lights; refreshLights(v); saveChar();
+  return v.st.lights ? tl('Headlights on.') : tl('Headlights off.');
+}
+export function refreshLights(v: Vehicle) { const h = v.group.getObjectByName('headlights'); if (h) h.visible = !!v.st.lights; }
+/**
  * A vehicle model with nothing to drive (the trucks and jeeps of the caravans, world/caravans.ts): body, wheels and,
  * if asked, the roof cannon (returned as `turret` so it can turn). Origin on the ground, facing +z.
  */
 export function convoyModel(model: VehicleModel, cannon: boolean, crew?: number): { g: THREE.Group; turret: THREE.Group | null; gunner: THREE.Group | null } {
   const spec = VEHICLES[model], g = new THREE.Group(), pb = new PropBatch();
   if (model === 'scout') scoutBody(pb); else mastodonBody(pb);
-  g.add(pb.build());
+  g.add(pb.build(), headlightModel(model));
   for (const z of spec.axles) for (const sx of [-1, 1]) { const w = wheelModel(model).clone(); w.position.set(sx * spec.track, spec.wheelR, z); g.add(w); }
   let turret: THREE.Group | null = null;
   if (cannon) { turret = turretModel(); turret.position.set(...spec.mount); g.add(turret); }
@@ -175,7 +203,7 @@ export function convoyModel(model: VehicleModel, cannon: boolean, crew?: number)
 function makeVehicle(st: VehicleState, claimed = true): Vehicle {
   const spec = VEHICLES[st.model], group = new THREE.Group(), pb = new PropBatch();
   if (st.model === 'scout') scoutBody(pb); else mastodonBody(pb);
-  group.add(pb.build());
+  group.add(pb.build(), headlightModel(st.model));
   const wheels: Vehicle['wheels'] = [];
   spec.axles.forEach((z, ai) => {
     for (const sx of [-1, 1]) {
@@ -189,7 +217,7 @@ function makeVehicle(st: VehicleState, claimed = true): Vehicle {
   upgradeParts(st.model, st.parts);
   scene.add(group);
   const v: Vehicle = { st, spec, group, claimed, wheels, turret: null, riders: SEATS[st.model].map(() => null), speed: 0, spin: 0, steer: 0, y: 0, pitch: 0, roll: 0 };
-  refreshParts(v);
+  refreshParts(v); refreshLights(v);
   pose(v);
   return v;
 }
@@ -675,7 +703,7 @@ export function updateDriving(dt: number) {
   G.vel.set(0, 0, 0);
   if (driving.seat !== 0 && v.riders[driving.seat]?.who !== 'you') { seatRider(v, driving.seat, 'you', YOU); }
   const p = v.st.parts;
-  el.veh.innerHTML = TL`${vehicleTitle(v.st.model)} · ${SEAT_NAMES[driving.seat] ?? tl('seat')} · ${Math.round(Math.abs(v.speed) * 3.6)} km/h · ${aboard(v)}/${s.seats} aboard${s.enclosed ? tl(' · cab closed') : ''}` +
+  el.veh.innerHTML = TL`${vehicleTitle(v.st.model)} · ${SEAT_NAMES[driving.seat] ?? tl('seat')} · ${Math.round(Math.abs(v.speed) * 3.6)} km/h · ${aboard(v)}/${s.seats} aboard${s.enclosed ? tl(' · cab closed') : ''}` + (v.st.lights ? tl(' · lights on (L)') : tl(' · lights off (L)')) +
     `<br><span${p.hull < s.hull * 0.25 ? ' class="warn"' : ''}>${tl('condition')} ${Math.ceil(p.hull / s.hull * 100)}%</span>` +
     (([e, full, km, u]) => `<span${e < full * 0.1 ? ' class="warn"' : ''}> · ${u === 'kWh' ? tl('battery') : tl('fuel')} ${Math.ceil(e)}/${full} ${u} · ~${Math.round(km)} km</span>`)(energyOf(v.st.model, p)) + (v.turret ? tl(' · cannon') : '');
 }
@@ -804,7 +832,7 @@ export function myCars(): number[][] {
   const out: number[][] = [];
   for (const v of myCarList()) {
     const r = (n: number) => Math.round(n * 100) / 100;
-    out.push([v.st.model === 'scout' ? 0 : 1, r(v.st.x), r(v.y), r(v.st.z), r(v.st.heading), r(v.pitch), r(v.roll), v.st.parts.gun ? 1 : 0, v === driving.v ? driving.seat + 1 : 0, r(v.turret?.rotation.y ?? 0), r(v.st.parts.hull / v.spec.hull * 100)]);
+    out.push([v.st.model === 'scout' ? 0 : 1, r(v.st.x), r(v.y), r(v.st.z), r(v.st.heading), r(v.pitch), r(v.roll), v.st.parts.gun ? 1 : 0, v === driving.v ? driving.seat + 1 : 0, r(v.turret?.rotation.y ?? 0), r(v.st.parts.hull / v.spec.hull * 100), v.st.lights ? 1 : 0]); // (0.203) [11] the headlights
   }
   return out;
 }

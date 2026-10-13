@@ -80,6 +80,9 @@ export const ORDERS: Order[] = [
   // (0.201) shields for the other hand
   { tech: '', out: 'woodshield', n: 1, needs: [['planks', 4], ['hide', 1]] },
   { tech: 'forging', out: 'riotshield', n: 1, needs: [['steel', 2], ['plastic', 1]] },
+  // (0.203) street lamps for the villages
+  { tech: '', out: 'elampkit', n: 1, needs: [['scrap', 3], ['wire', 4], ['circuit', 1], ['planks', 1]] },
+  { tech: '', out: 'olampkit', n: 1, needs: [['planks', 3], ['scrap', 1], ['nails', 2]] },
 ];
 /** Technologies that are for the villages themselves (farms, power, works), not for the craftsmen's bench. */
 export const VILLAGE_TECHS = ['fields', 'plough', 'rotor', 'solar', 'chips', 'radio', 'chemistry', 'enrichment', 'propellant', 'rail', 'aluminium', 'batteries', 'alloys', 'powercells', 'sensors', 'ancmetal', 'precision', 'automation', 'electricity', 'metallurgy', 'semiconductors', 'computing', 'aerospace', 'powergrid', 'avionics', 'lifesupport', 'rocketry', 'heavymach'];
