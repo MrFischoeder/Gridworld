@@ -31,7 +31,7 @@ const keyOf = (f: Field, o: Record<string, unknown>) => (f.key ? f.key(o) : Stri
 /** The parts of the save that are the world's. */
 export const SHARED: Field[] = [
   { f: 'towns', kind: 'map' }, { f: 'market', kind: 'map' }, { f: 'installs', kind: 'map' }, { f: 'bridges', kind: 'map' },
-  { f: 'bridgeSites', kind: 'list' }, { f: 'piers', kind: 'list' }, { f: 'boats', kind: 'list' }, { f: 'shuttle', kind: 'one' },
+  { f: 'bridgeSites', kind: 'list' }, { f: 'piers', kind: 'list' }, { f: 'lighthouses', kind: 'list' }, { f: 'boats', kind: 'list' }, { f: 'shuttle', kind: 'one' },
   { f: 'containers', kind: 'map', skip: (k) => k.startsWith('home:') }, // your house chest is yours
   { f: 'opened', kind: 'map' }, { f: 'unlocked', kind: 'map' }, { f: 'killed', kind: 'map' },
   { f: 'harvest', kind: 'map' }, { f: 'camps', kind: 'map' }, { f: 'cityGarrisons', kind: 'map' }, { f: 'caravans', kind: 'map' },

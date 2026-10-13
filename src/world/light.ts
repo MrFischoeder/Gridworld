@@ -12,6 +12,7 @@ import * as THREE from 'three';
 import { G } from '../game';
 import { camera, add } from './render';
 import { DARK, LAMP_SLOTS } from './darkshader';
+import { drawGlows, hideGlows, type Glow } from './glows';
 import { daylight, sunTilt } from '../core/time';
 import { latitude } from '../gen/regions';
 import { LIGHT, surfaceDark, nearestLamps, flickers, type Lamp } from '../gen/darkness';
@@ -39,6 +40,11 @@ export function setPlaceLight(under: boolean, amb = 1, lamps: Lamp[] = []) { pla
 const providers: ((out: Lamp[]) => void)[] = [];
 /** Another module's lights (village lamps, fires, the other players): pushed into `out` (world coordinates) every frame. */
 export function addLights(f: (out: Lamp[]) => void) { providers.push(f); }
+const glowers: ((out: Glow[]) => void)[] = [];
+/** (0.204) Points of light seen from afar that light nothing round them (a lighthouse's flash): world/glows.ts. */
+export function addGlows(f: (out: Glow[]) => void) { glowers.push(f); }
+/** The colour of a light seen from afar, by its kind. */
+const GLOW_C = { electric: 0xe6f4ff, torch: 0xffa850, fire: 0xffa850, oil: 0xffc878 } as Record<string, number>;
 let driving: () => boolean = () => false;
 /** world/vehicles.ts tells whether you sit in a vehicle (its headlights light the way). */
 export function setDrivingHook(f: () => boolean) { driving = f; }
@@ -117,6 +123,13 @@ export function updateLight(dt: number) {
   const all: Lamp[] = [...place.lamps];
   if (dark > 0) { for (const f of providers) f(all); if (!place.under) townLanterns(all); }
   const p = camera.position, near = dark > 0 ? nearestLamps(all, p.x, p.y, p.z) : [];
+  // (0.204) every light shows from afar as a point, though it lights only its small reach
+  const show = place.under ? 1 : Math.max(0, Math.min(1, (dark - 0.2) / 0.4));
+  if (show > 0) {
+    const gl: Glow[] = all.map((l) => ({ x: l.x, y: l.y, z: l.z, c: GLOW_C[l.k ?? ''] ?? 0xfff0c8, s: 0.06, a: 1 }));
+    for (const f of glowers) f(gl);
+    drawGlows(gl, show);
+  } else hideGlows();
   for (let i = 0; i < LAMP_SLOTS; i++) { const l = near[i]; if (l) DARK.uLamps.value[i].set(l.x - p.x, l.y - p.y, l.z - p.z, flickers(l.k) ? l.r * flicker(clock, l.x, l.z) : l.r); else DARK.uLamps.value[i].set(0, 0, 0, 0); }
   // a word when it is too dark to see and you carry nothing to light it (once a place, or once a night)
   sum += dt;

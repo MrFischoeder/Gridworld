@@ -249,7 +249,7 @@ export function connect(url: string, me: { name: string; world: number; time: nu
           const p = net.peers.get(s.id);
           if (!p) continue;
           if (p.st && (p.st.loc !== s.loc || Math.hypot(p.st.p[0] - s.p[0], p.st.p[2] - s.p[2]) > 80)) p.hist = [];
-          p.prev = p.st; p.st = { p: s.p, yaw: s.yaw, pitch: s.pitch, loc: s.loc, held: s.held, mv: s.mv, away: !!s.away, cars: Array.isArray(s.cars) ? s.cars : [], carIds: s.carIds, ride: Array.isArray(s.ride) ? s.ride : undefined, gun: typeof s.gun === 'number' ? s.gun : undefined, boat: Array.isArray(s.boat) ? s.boat : undefined, vis: typeof s.vis === 'number' ? s.vis : undefined, cr: !!s.cr, pod: typeof s.pod === 'number' ? s.pod : undefined }; p.at = now;
+          p.prev = p.st; p.st = { p: s.p, yaw: s.yaw, pitch: s.pitch, loc: s.loc, held: s.held, mv: s.mv, away: !!s.away, cars: Array.isArray(s.cars) ? s.cars : [], carIds: s.carIds, ride: Array.isArray(s.ride) ? s.ride : undefined, gun: typeof s.gun === 'number' ? s.gun : undefined, boat: Array.isArray(s.boat) ? s.boat : undefined, vis: typeof s.vis === 'number' ? s.vis : undefined, cr: !!s.cr, pod: typeof s.pod === 'number' ? s.pod : undefined, lt: typeof s.lt === 'number' ? s.lt : undefined, oh: typeof s.oh === 'string' ? s.oh : undefined }; p.at = now; // (0.204) the light and the other hand were dropped here before
           p.hist.push({ t: now, s: p.st }); if (p.hist.length > 8) p.hist.shift();
         }
         if (!isHost()) h.clock(m.time);

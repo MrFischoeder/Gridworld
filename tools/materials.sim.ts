@@ -38,6 +38,7 @@ import { FUEL, CHIPS } from '../src/gen/contracts';
 import { OWN, HALL } from '../src/gen/hall';
 import { BRIDGE } from '../src/gen/bridges';
 import { PIER } from '../src/gen/piers';
+import { LH } from '../src/gen/lighthouses';
 import { BOATS, type BoatKind } from '../src/gen/boats';
 
 const N = (k: ItemKey) => ITEMS[k]?.name ?? k;
@@ -252,6 +253,8 @@ it('writes SUROWCE.md', () => {
   for (const k of Object.keys(BRIDGE.per) as ItemKey[]) use(k, 'most');
   P(`- **Dok** (Dock Kit u kowala): na długość pomostu: ${per(PIER.per)}, do tego ${list(Object.entries(PIER.fittings) as [ItemKey, number][])} na głowicę`);
   for (const k of [...Object.keys(PIER.per), ...Object.keys(PIER.fittings)] as ItemKey[]) use(k, 'dok');
+  P(`- **Latarnia morska** (Lighthouse Plans u kowala, od 0.204): ${list(LH.needs)}; obracające się, migające światło widać z ${LH.see / 1000} km, nie oświetla okolicy; okres obrotu ${LH.periods.join(' / ')} s do wyboru przy drzwiach`);
+  for (const [k] of LH.needs) use(k, 'latarnia morska');
   for (const k of Object.keys(BOATS) as BoatKind[]) {
     const b = BOATS[k], where = b.from ? `przeróbka łodzi wiosłowej przy doku` : `na pochylni gotowego doku`;
     P(`- **${b.name}** (${where}; ładownia ${b.hold}): ${list(b.needs)}`); for (const [i] of b.needs) use(i, b.name);

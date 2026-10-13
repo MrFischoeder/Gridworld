@@ -29,6 +29,7 @@ import { startPlacing } from './claims';
 import { startBridgePlacing } from './bridges';
 import { startFieldPlacing } from './fields';
 import { startStreetPlacing } from './streetlamps';
+import { startLhPlacing } from './lighthouses';
 import { toggleLight } from './light';
 import { startPierPlacing } from './piers';
 import { BASES_OPEN, BASES_CLOSED_MSG } from '../data/building';
@@ -263,6 +264,7 @@ export function useItem(k: ItemKey): boolean {
   if (k === 'firebrand') { logLine(toggleLight(3)); return false; } // (0.200) light one (or put it out)
   if (k === 'battery') { logLine(G.char.light?.on === 1 ? tl('The flashlight is on: it takes a fresh battery by itself when one runs flat.') : hasItem('flashlight') ? toggleLight(1) : tl('A battery for a flashlight. You have no flashlight.')); return false; }
   if (k === 'lampoil') { logLine(G.char.light?.on === 2 ? tl('The lamp is burning: it takes a fresh flask by itself when it runs dry.') : toggleLight(2)); return false; }
+  if (k === 'lhkit') { if (startLhPlacing()) closePack(); return false; } // (0.204) used up when it is staked out
   if (k === 'elampkit' || k === 'olampkit') { if (startStreetPlacing(k === 'elampkit' ? 'electric' : 'oil')) closePack(); return false; } // (0.203) used up when it stands
   if (k === 'fieldstake') { if (startFieldPlacing()) closePack(); return false; } // used up when the field is staked out
   if (k === 'bridgekit') { if (startBridgePlacing()) closePack(); return false; } // used up when the site is staked out

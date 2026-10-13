@@ -6,6 +6,7 @@ import { statusHTML } from './villagestats';
 import { settlementConsoleClick } from '../world/settlement';
 import { fuelPumpClick } from '../world/fuelpump';
 import { streetLampClick } from '../world/streetlamps';
+import { lighthouseClick } from '../world/lighthouses';
 import { progressive, development, smithAllows, mechanicHere } from '../gen/settlement';
 import { gateConsoleClick } from './worldgates';
 // Conversations and shops. New options (quests) plug in through OPT_TEXT and the switch below.
@@ -489,6 +490,7 @@ dlgEl.addEventListener('click', async (e) => {
   if (settlementConsoleClick(e.target as HTMLElement)) return;
   if (fuelPumpClick(e.target as HTMLElement)) return;
   if (streetLampClick(e.target as HTMLElement)) return;
+  if (lighthouseClick(e.target as HTMLElement)) return;
   const dm = developmentClick(e.target as HTMLElement, townId());
   if (dm !== null) { panel().innerHTML = developmentHTML(townId()!, dlgHead(), dm); return; }
   if (craftClick(e.target as HTMLElement) || buildClick(e.target as HTMLElement)) return;

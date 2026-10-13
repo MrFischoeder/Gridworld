@@ -3,6 +3,13 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.204.0', date: '2026-10-13', title: 'Lights seen from afar and lighthouses', notes: [
+    'Every light lights only a small patch round it, but the light itself is seen from far off in the dark: another player\'s torch, lamp or flashlight, headlights, street lamps, village lamps, lanterns and fires show as bright points up to about 2.5 km away, beyond what you can otherwise see. Hills and walls in between still hide them.',
+    'Lighthouses: the blacksmith makes Lighthouse Plans (2 planks and a scrap). Use them on dry, fairly level ground away from the villages (a coast or a hilltop is best) and click where the tower should stand, then bring 40 stone, 24 planks, 12 scrap, 6 wire, 2 crates of glass and 2 electronic components to its door and hand them over bit by bit.',
+    'A finished lighthouse is a striped tower with a gallery and a lantern room. Its lamp turns, and its two beams flash at you as they sweep past: seen up to 9 km away by night, but it lights nothing round it. At the door you set how fast it turns (a turn every 3 to 30 seconds), so lighthouses can be told apart by their rhythm, and light it or put it out.',
+    'Fixed: other players never saw your carried light or your shield: the game dropped them when it heard from you. Now they do.',
+    'Online, lighthouses are shared and everyone sees the same flash at the same moment. A dedicated server has to be updated for the lighthouses to be shared and kept.',
+  ] },
   { v: '0.203.0', date: '2026-10-13', title: 'Street lamps and headlights', notes: [
     'You can light up a village yourself: the blacksmith makes an Electric Street Lamp (3 scrap, 4 wire, an electronic component, a plank) and an Oil Street Lamp (3 planks, a scrap, 2 nails). Use the kit in or near a village (within 110 m of its middle) and click where the lamp should stand; every lamp is put up on its own.',
     'An electric lamp burns by night while the village\'s power plant gives power, draws half a kilowatt and needs no tending. An oil lamp needs no power, but its tank has to be filled (E at the lamp: a flask of Lamp Oil gives 6 hours, a fuel canister 24, up to 40); it burns only from 20:00 to 06:00. E at a lamp also takes it down, and the kit comes back.',

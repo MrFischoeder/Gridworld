@@ -23,6 +23,7 @@ import { MENU } from '../gen/foodshop';
 import { INDUSTRY, type Industry } from '../gen/industry';
 import { BRIDGE } from '../gen/bridges';
 import { PIER } from '../gen/piers';
+import { LH } from '../gen/lighthouses';
 import { BOATS, type BoatKind } from '../gen/boats';
 import { tl, TL } from '../i18n';
 
@@ -70,6 +71,7 @@ function build(): Map<ItemKey, Map<UseGroup, string[]>> {
   for (const k of Object.keys(INDUSTRY) as Industry[]) for (const [i] of INDUSTRY[k].fix) use(i, tl('Repairs'), INDUSTRY[k].site);
   for (const k of Object.keys(BRIDGE.per) as ItemKey[]) use(k, tl('Building'), tl('Bridge'));
   for (const k of [...Object.keys(PIER.per), ...Object.keys(PIER.fittings)] as ItemKey[]) use(k, tl('Building'), tl('Pier'));
+  for (const [k] of LH.needs) use(k, tl('Building'), tl('Lighthouse')); // (0.204)
   for (const k of Object.keys(BOATS) as BoatKind[]) for (const [i] of BOATS[k].needs) use(i, tl('Building'), BOATS[k].name);
   use('fuel', tl('Fuel for'), tl('Motor Boat')); use('fuel', tl('Fuel for'), tl('Scout and Mastodon (20 L a canister)')); use('fuel', tl('Fuel for'), tl('village convoys (a canister per 10 km of road, from the village stores)'));
   for (const h of HALL_SETS) use(h.fuel, tl('Fuel for'), h.fuel === 'nfuel' ? tl('the Old Enrichment Plant\'s own reactor') : tl('the power halls of the old plants'));
