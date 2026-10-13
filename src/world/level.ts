@@ -493,7 +493,8 @@ let crewDeath: (() => boolean) | null = null;
 export function setCrewDeath(f: () => boolean) { crewDeath = f; }
 export function toVillage(how: 'death' | 'recall', id?: number) {
   const c = G.char;
-  if (how === 'death' && id === undefined && crewDeath?.()) return;
+  // online a death ends the character: the next crew member wakes in a pod (ui/rebirth.ts); the screen fades back in
+  if (how === 'death' && id === undefined && crewDeath?.()) { arriveVia(null); return; }
   if (how === 'death' && id === undefined) {
     c.loc = 'overworld'; c.dungeon = null; saveChar();
     loadOverworld({ kind: 'pod' }); G.hp = G.S.maxHp;

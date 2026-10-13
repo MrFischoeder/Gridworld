@@ -3,6 +3,10 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.195.1', date: '2026-10-13', title: 'Fix: black screen after dying online', notes: [
+    'After your character died in a multiplayer game the screen stayed black: the fade of the death never lifted, even after joining another server. The new crew member now wakes in the cryo-pod and the view fades back in.',
+    'Switching characters (a new world, another server, a new crew member) always clears a leftover fade.',
+  ] },
   { v: '0.195.0', date: '2026-10-13', title: 'The metro under the dead cities', notes: [
     'The underground vaults of the ruined cities are now one metro per city: station halls with rows of pillars, platforms, rails and name boards, joined by tall, narrow tunnels that zigzag between them with hardly any side passages.',
     'Every street entrance leads down into its own station, and every such station has stairs back up to its own street: go down in one part of the city and come up in another.',

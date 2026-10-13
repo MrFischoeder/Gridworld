@@ -126,6 +126,7 @@ initTouch();
 /** Play another character from now on (a new game, or your hero on a server): stats, hands, then the place it stands in. */
 function useChar(c: Char, a?: Arrival) {
   G.char = c; G.crouch = false;
+  G.trans = null; el.warp.style.opacity = '0'; // a switch of character never keeps a death's or a stairway's black fade
   calcStats(); handsChanged(); G.hp = G.S.maxHp;
   clearLocalDrops(); saveChar();
   if (!a && c.loc === 'dungeon' && c.dungeon) loadDungeon(null);
