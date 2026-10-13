@@ -12,6 +12,7 @@ import type { DungeonMap, DecoBox, BossSpec } from './dungeon';
 import { sbox, stairOpsFor, SL, type PortalSpec } from './stairs';
 import { citySites, type CitySite } from './cities';
 import { cityEntrances, cityEntrance, stationName, CITY_VAULTS } from './citydungeons';
+import type { StepBox } from '../core/steps';
 
 export const METRO = {
   /** The squeezed plan: the city's radius becomes this many metres underground. */
@@ -24,6 +25,9 @@ export const METRO = {
   loop: 0.45, blocked: 0.6,
   /** Chance of a dead-end tunnel at a station, of a niche on a long stretch. */
   stub: 0.35, niche: 0.22,
+  /** (0.205) The track lies in a trench `trench` wide; the platforms either side stand `platform` m higher, with a half
+   *  step (`step` m high, `stepLen` long, `stepOut` into the trench) at `stepsAt` metres either side of the middle. */
+  trench: 4, platform: 1, step: 0.5, stepLen: 2, stepOut: 0.6, stepsAt: [-9, 9],
 };
 export interface MetroStation {
   /** Index; `entrance` = the city entrance it comes up at (-1 underground only). */
@@ -39,6 +43,10 @@ export interface MetroInfo {
   blocks: MetroBlock[];
   /** Dead ends: where a tunnel stops in rubble (the end of the piece and its direction). */
   ends: { x: number; z: number; dx: number; dz: number }[];
+  /** (0.205) Half steps from the trench up onto the platforms (walked on through `G.floor`, world/level.ts). */
+  steps: StepBox[];
+  /** (0.205) The platforms' tops as boxes, so a half step leads on up onto them (voxels alone do not step up). */
+  decks: StepBox[];
 }
 
 /** The metro a dungeon id belongs to: any of the city's entrance ids. */
@@ -101,10 +109,20 @@ export function generateMetro(world: number, city: CitySite): DungeonMap {
   const halls: Op[] = [], tunnels: Op[] = [], solids: Op[] = [], late: Op[] = [];
   const boxes: DecoBox[] = stations.map((s) => s.hall), rails: MetroInfo['rails'] = [], blocks: MetroBlock[] = [], ends: MetroInfo['ends'] = [];
   const chests: { x: number; z: number }[] = [], crystals: { x: number; z: number }[] = [], guards: { kind: RobotKind; x: number; z: number }[] = [];
-  const pieces: { x0: number; z0: number; x1: number; z1: number }[] = [];
+  const pieces: { x0: number; z0: number; x1: number; z1: number }[] = [], steps: StepBox[] = [], decks: StepBox[] = [];
+  const th = METRO.trench / 2, pd = hw - th, P = METRO.platform;
   for (const s of stations) {
     halls.push({ op: 'room', x: s.hall.x, y: 0, z: s.hall.z, w: s.hall.w, h: s.hall.h, d: s.hall.d });
     rails.push(s.alongX ? [s.x - hl, s.z, s.x + hl, s.z] : [s.x, s.z - hl, s.x, s.z + hl]);
+    // (0.205) the platforms: a step higher than the track's trench, which runs on into the tunnels at its level
+    for (const v of [-hw, th]) {
+      const b = s.alongX ? { x: s.hall.x, y: 0, z: s.z + v, w: H.len, h: P, d: pd } : { x: s.x + v, y: 0, z: s.hall.z, w: pd, h: P, d: H.len };
+      solids.push({ op: 'solid', ...b }); decks.push(b);
+    }
+    for (const t of METRO.stepsAt) for (const v of [-th, th - METRO.stepOut]) {
+      const u = (s.alongX ? s.x : s.z) + t - METRO.stepLen / 2;
+      steps.push(s.alongX ? { x: u, y: 0, z: s.z + v, w: METRO.stepLen, h: METRO.step, d: METRO.stepOut } : { x: s.x + v, y: 0, z: u, w: METRO.stepOut, h: METRO.step, d: METRO.stepLen });
+    }
     // a row of columns down the middle of each platform
     for (let t = -12; t <= 12; t += 6) for (const side of [-5, 4]) solids.push(s.alongX ? { op: 'solid', x: s.x + t, y: 0, z: s.z + side, w: 1, h: H.h, d: 1 } : { op: 'solid', x: s.x + side, y: 0, z: s.z + t, w: 1, h: H.h, d: 1 });
   }
@@ -181,7 +199,7 @@ export function generateMetro(world: number, city: CitySite): DungeonMap {
       const c = (s.alongX ? s.x : s.z) + off, probe = sbox(dir, m, c, 0, SL + 1, 0, 1, 'x', 2);
       if (all.some((o) => o !== halls[s.k] && hits(probe, o)) || taken.some((o) => hits(probe, o))) continue;
       taken.push(probe); stairOps.push(...stairOpsFor(dir, m, c, true));
-      portals.push({ key: 'V' + s.entrance, dir, m, c, up: true, axis: DIRV[dir][0] ? 'x' : 'z' }); done = true;
+      portals.push({ key: 'V' + s.entrance, dir, m, c, up: true, axis: DIRV[dir][0] ? 'x' : 'z', y0: P }); done = true;
     }
   }
   // ---- who and what is down here ----
@@ -194,10 +212,11 @@ export function generateMetro(world: number, city: CitySite): DungeonMap {
   for (const s of stations) {
     if (s === deep) continue;
     const plat = (sd: number) => (s.alongX ? { x: s.x + Math.round((G() - 0.5) * 20), z: s.z + sd } : { x: s.x + sd, z: s.z + Math.round((G() - 0.5) * 20) });
-    if (s.entrance >= 0) { if (G() < 0.45) guards.push({ kind: pick(['scout', 'guardian']), ...plat(-3) }); }
+    // the robots keep to the trench (they do not climb onto the platforms); the chests stand on a platform
+    if (s.entrance >= 0) { if (G() < 0.45) guards.push({ kind: pick(['scout', 'guardian']), ...plat(-1) }); }
     else {
-      guards.push({ kind: pick(['guardian', 'sentinel', 'assault', 'repair']), ...plat(-3) });
-      if (G() < 0.6) guards.push({ kind: pick(['sentinel', 'assault', 'guardian']), ...plat(2) });
+      guards.push({ kind: pick(['guardian', 'sentinel', 'assault', 'repair']), ...plat(-1) });
+      if (G() < 0.6) guards.push({ kind: pick(['sentinel', 'assault', 'guardian']), ...plat(0) });
       chests.push(plat(G() < 0.5 ? -4 : 3));
     }
   }
@@ -207,9 +226,9 @@ export function generateMetro(world: number, city: CitySite): DungeonMap {
   }
   const s0 = stations.find((s) => s.entrance === 0) ?? stations[0];
   const map: DungeonMap = {
-    seed, spawn: [s0.x + 0.5, 0, s0.z + 0.5], ops: [...halls, ...tunnels, ...niches, ...solids, ...stairOps, ...late],
+    seed, spawn: [s0.x + 0.5, 0, s0.z + 0.5], ops: [...halls, ...solids, ...tunnels, ...niches, ...stairOps.map((o) => ({ ...o, y: o.y + P })), ...late],
     rooms: n + niches.length, chests, crystals, hatch: null, portals, doorCands: [], bosses, gates: [], boxes, style: 'metro', guards,
-    metro: { city: city.i, name: city.name, stations, rails, blocks, ends },
+    metro: { city: city.i, name: city.name, stations, rails, blocks, ends, steps, decks },
   };
   cache.set(key, map);
   return map;

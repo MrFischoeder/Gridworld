@@ -3,6 +3,12 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.205.0', date: '2026-10-13', title: 'The metro\'s track trench', notes: [
+    'In a dead city\'s metro the track now lies in a trench: the platforms on both sides of every station stand a step higher, and the track runs on out of the station into the tunnels at the trench\'s level, so to go into a tunnel you step down into the trench and walk along the rails.',
+    'The rails are solid steel on timber sleepers now, easy to see down in the trench and along the tunnels.',
+    'Half steps at both ends of each platform lead up out of the trench (or jump). The stairs up to the street start from the platform.',
+    'The robots of the metro keep to the trench and the tunnels; the chests stand on the platforms.',
+  ] },
   { v: '0.204.0', date: '2026-10-13', title: 'Lights seen from afar and lighthouses', notes: [
     'Every light lights only a small patch round it, but the light itself is seen from far off in the dark: another player\'s torch, lamp or flashlight, headlights, street lamps, village lamps, lanterns and fires show as bright points up to about 2.5 km away, beyond what you can otherwise see. Hills and walls in between still hide them.',
     'Lighthouses: the blacksmith makes Lighthouse Plans (2 planks and a scrap). Use them on dry, fairly level ground away from the villages (a coast or a hilltop is best) and click where the tower should stand, then bring 40 stone, 24 planks, 12 scrap, 6 wire, 2 crates of glass and 2 electronic components to its door and hand them over bit by bit.',

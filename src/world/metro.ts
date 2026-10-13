@@ -10,7 +10,7 @@ import type { DungeonMap } from '../gen/dungeon';
 import { METRO } from '../gen/metro';
 import { tl } from '../i18n';
 
-const RAIL = 0xa8c8c0, SLEEPER = 0x4a7a5a, EDGE = 0xe0e070, CABLE = 0x3f8f6a, TRAIN = 0x8fd0c0, RUBBLE = 0x6f8f70, SIGN = '#e0e070';
+const RAIL = 0xd8f0e8, SLEEPER = 0x4a7a5a, EDGE = 0xe0e070, CABLE = 0x3f8f6a, TRAIN = 0x8fd0c0, RUBBLE = 0x6f8f70, SIGN = '#e0e070';
 
 export function drawMetro(map: DungeonMap): THREE.Group {
   const m = map.metro!, pb = new PropBatch(), R = rng(map.seed ^ 0x3e7a2), g = new THREE.Group();
@@ -18,8 +18,13 @@ export function drawMetro(map: DungeonMap): THREE.Group {
   for (const [x0, z0, x1, z1] of m.rails) {
     const alongX = z0 === z1, len = Math.abs(x1 - x0) + Math.abs(z1 - z0), sg = Math.sign(x1 - x0 + z1 - z0) || 1;
     const P = (t: number, side: number, y: number) => (alongX ? [x0 + sg * t, y, z0 + side] : [x0 + side, y, z0 + sg * t]);
-    for (const side of [-0.72, 0.72]) pb.seg(RAIL, P(0, side, 0.14), P(len, side, 0.14));
-    for (let t = 0.75; t < len; t += 1.5) pb.seg(SLEEPER, P(t, -1.1, 0.04), P(t, 1.1, 0.04));
+    // (0.205) solid steel rails and timber sleepers, so the track reads clearly down in its trench
+    const B = (t0: number, t1: number, v0: number, v1: number, y0: number, y1: number, c: number) => {
+      const a = P(t0, v0, y0), b = P(t1, v1, y1);
+      pb.box(Math.min(a[0], b[0]), y0, Math.min(a[2], b[2]), Math.max(a[0], b[0]), y1, Math.max(a[2], b[2]), c);
+    };
+    for (let t = 0.75; t < len; t += 1.5) B(t - 0.13, t + 0.13, -1.15, 1.15, 0, 0.1, SLEEPER);
+    for (const side of [-0.72, 0.72]) B(0, len, side - 0.05, side + 0.05, 0.1, 0.24, RAIL);
   }
   // tunnels: cables along both walls
   for (const b of map.boxes) {
@@ -31,19 +36,30 @@ export function drawMetro(map: DungeonMap): THREE.Group {
     }
   }
   // stations: the platforms' edges and the name boards
-  const hl = METRO.hall.len / 2;
+  // (0.205) the platforms stand a step above the track's trench: a yellow safety strip along the top of the edge,
+  // the edge's face lit down to the trench floor, and the half steps up out of it
+  const hl = METRO.hall.len / 2, th = METRO.trench / 2, top = METRO.platform + 0.03;
   for (const s of m.stations) {
-    for (const side of [-2.05, 2.05, -2.35, 2.35]) pb.seg(EDGE, s.alongX ? [s.x - hl, 0.03, s.z + side] : [s.x + side, 0.03, s.z - hl], s.alongX ? [s.x + hl, 0.03, s.z + side] : [s.x + side, 0.03, s.z + hl]);
+    const A = (t: number, v: number, y: number) => (s.alongX ? [s.x + t, y, s.z + v] : [s.x + v, y, s.z + t]);
+    for (const sd of [-1, 1]) {
+      for (const v of [th + 0.2, th + 0.5]) pb.seg(EDGE, A(-hl, top, sd * v), A(hl, top, sd * v));
+      pb.seg(EDGE, A(-hl, METRO.platform - 0.12, sd * (th - 0.02)), A(hl, METRO.platform - 0.12, sd * (th - 0.02)));
+    }
+  }
+  for (const b of m.steps) {
+    pb.box(b.x, b.y, b.z, b.x + b.w, b.y + b.h, b.z + b.d, SLEEPER);
+  }
+  for (const s of m.stations) {
     const tex = signTexture(s.name.toUpperCase(), SIGN, 60), mat = new THREE.MeshBasicMaterial({ map: tex });
     for (const t of [-9, 9]) for (const wall of [0, 1]) {
       const sign = new THREE.Mesh(new THREE.PlaneGeometry(4, 0.75), mat), h = s.hall;
-      if (s.alongX) { sign.position.set(s.x + t, 3.6, wall ? h.z + h.d - 0.06 : h.z + 0.06); sign.rotation.y = wall ? Math.PI : 0; }
-      else { sign.position.set(wall ? h.x + h.w - 0.06 : h.x + 0.06, 3.6, s.z + t); sign.rotation.y = wall ? -Math.PI / 2 : Math.PI / 2; }
+      if (s.alongX) { sign.position.set(s.x + t, 4.4, wall ? h.z + h.d - 0.06 : h.z + 0.06); sign.rotation.y = wall ? Math.PI : 0; }
+      else { sign.position.set(wall ? h.x + h.w - 0.06 : h.x + 0.06, 4.4, s.z + t); sign.rotation.y = wall ? -Math.PI / 2 : Math.PI / 2; }
       g.add(sign);
     }
     if (s.entrance < 0) { // no stairs up here: the way out is caved in
       const tex2 = signTexture(tl('✕ NO EXIT'), '#ff5a3c', 56), sign = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 0.45), new THREE.MeshBasicMaterial({ map: tex2 })), h = s.hall;
-      if (s.alongX) { sign.position.set(s.x, 2.6, h.z + 0.06); } else { sign.position.set(h.x + 0.06, 2.6, s.z); sign.rotation.y = Math.PI / 2; }
+      if (s.alongX) { sign.position.set(s.x, 3.4, h.z + 0.06); } else { sign.position.set(h.x + 0.06, 3.4, s.z); sign.rotation.y = Math.PI / 2; }
       g.add(sign);
     }
   }

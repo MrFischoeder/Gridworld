@@ -16,6 +16,7 @@ import { labyrinthDrones } from '../gen/repopulate';
 import { labyrinthGuards } from '../gen/dungeonguards';
 import { metroCity, metroId, generateMetro } from '../gen/metro';
 import { drawMetro } from './metro';
+import { stepFloor } from '../core/steps';
 import { setPlaceLight, fixtureModel, torchModel, postLantern } from './light';
 import { dungeonLamps, underAmb, villageLanterns } from '../gen/darkness';
 import { MOUNTED_TURRET } from '../data/mountedturrets';
@@ -127,7 +128,7 @@ export function loadDungeon(arriveDir: string | null) {
   const seed = dungeonSeed(c.world, d);
   // Old saves below the depth limit resume at the deepest supported floor; no sector travel is generated.
   const map = wreck ? generateShip(seed) : metro ? generateMetro(c.world, metro) : generateDungeon(seed, { depth: d.depth });
-  clearLevel(); G.map = map;
+  clearLevel(); G.map = map; G.floor = null;
   setLocationLook(false);
   setDroneRespawn(placeDrone); setCrystalXp(() => 5 * depth());
   G.grid = VoxelGrid.fromOps(map.ops); G.space = G.grid;
@@ -139,14 +140,17 @@ export function loadDungeon(arriveDir: string | null) {
   placeCrystals(map.crystals);
   W.hatch = map.hatch ? makeHatch(map.hatch) : null;
   group.add(decorateDungeon(map));
-  if (map.metro) group.add(drawMetro(map));
+  if (map.metro) { // (0.205) the half steps up from the track's trench onto the platforms
+    group.add(drawMetro(map));
+    const floors = [...map.metro.steps, ...map.metro.decks]; G.floor = (x, y, z) => stepFloor(floors, x, y, z);
+  }
   { // (0.199) how dark it is down here, and the lamps that still burn (gen/darkness.ts)
     const lamps = dungeonLamps(map, d.depth);
     setPlaceLight(true, underAmb(wreck ? 'wreck' : metro ? 'metro' : 'labyrinth', d.depth), lamps);
     for (const l of lamps) group.add(l.k === 'torch' ? torchModel(l.x, l.y, l.z, l.n) : fixtureModel(l.x, l.y, l.z, map.style === 'metro' ? 1.4 : 0.6, map.style === 'ship' ? 0xff8a5c : 0xdff2ff));
   }
   for (const p of map.portals) {
-    const pd = tryPlaceDoor(G.space, { axis: p.axis, m: p.m, c: p.c, stair: true }, placed)!;
+    const pd = tryPlaceDoor(G.space, { axis: p.axis, m: p.m, c: p.c, stair: true, y0: p.y0 }, placed)!;
     const o = DIRV[p.dir], tx = d.gx + o[0], tz = d.gz + o[1];
     const name = ruinName(d.ruinId);
     if (metro && p.key[0] === 'V') { // an entrance station's stairs: up to its own street
