@@ -3,6 +3,14 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.200.0', date: '2026-10-13', title: 'Batteries, torches and town lanterns', notes: [
+    'The Flashlight runs on Batteries now, not Energy Cells: one lasts three hours and the flashlight takes a fresh one from your backpack by itself. Zofia sells them (10 g); the blacksmith makes 2 from a scrap and an electronic component, or 12 from a crate of Basic Batteries.',
+    'Torches: a third light to carry. A torch lights all round you, flickering and not as far as an oil lamp, and burns down in 45 minutes; the next one is lit from it by itself. Zofia sells them (4 g), the blacksmith makes 4 from a log and a rope, and the crashed ship\'s locker holds four. L now cycles flashlight, lamp, torch and off.',
+    'Towns light their streets: oil lanterns on posts stand by every gate and by the doors of the shops, the tavern and the hall, and burn every night whether the power plant runs or not.',
+    'Below ground light is rare now: only now and then a torch burns on a room\'s wall or an old electric fixture still works, fewer the deeper you go. A crashed ship keeps a few red emergency lights, the metro a few stations with power, a work lamp here and there and a torch scavengers left behind. Flames flicker.',
+    'Chests may hold batteries and torches.',
+    'Online, the others see your torch. A dedicated server has to be updated for that; on an older one you just do not see other players\' torches.',
+  ] },
   { v: '0.199.0', date: '2026-10-13', title: 'Darkness and light', notes: [
     'Night is dark now. Out in the open the land fades to moonlight beyond the reach of a light, darker still under clouds. Powered village lamps, campfires and the other players\' lights light the ground round them, and a vehicle\'s headlights light the road ahead.',
     'Below ground it gets darker the deeper you go: the first depth of a labyrinth is dim, the third nearly black. Caves and the metro are pitch dark, apart from daylight at a cave\'s mouth, its glowing crystals, and the lamps that still burn in some stations and tunnels. Without a light of your own you will not find your way there.',

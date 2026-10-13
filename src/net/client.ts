@@ -22,7 +22,7 @@ export interface PeerState { p: [number, number, number]; yaw: number; pitch: nu
   vis?: number; cr?: boolean;
   /** The cryo-pod their character woke from (world/crashpod.ts). */
   pod?: number;
-  /** (0.199) The light they carry: 1 flashlight, 2 oil lamp (world/light.ts). */
+  /** (0.199) The light they carry: 1 flashlight, 2 oil lamp, (0.200) 3 torch (world/light.ts). */
   lt?: number }
 export interface Peer {
   id: number; name: string;

@@ -224,7 +224,7 @@ export function peerCarHit(x: number, y: number, z: number, r: number): boolean 
   return false;
 }
 
-/** (0.199) The other players here whose light burns: where, and which light (1 flashlight, 2 oil lamp). */
+/** (0.199) The other players here whose light burns: where, and which light (1 flashlight, 2 oil lamp, 3 torch). */
 export function peerLights(): { x: number; y: number; z: number; k: number }[] {
   const here = myLoc(), out: { x: number; y: number; z: number; k: number }[] = [];
   for (const p of net.peers.values()) { const s = p.st; if (s?.lt && s.loc === here && !s.away) out.push({ x: s.p[0], y: s.p[1] + 1.4, z: s.p[2], k: s.lt }); }

@@ -15,8 +15,8 @@ import { labyrinthDrones } from '../gen/repopulate';
 import { labyrinthGuards } from '../gen/dungeonguards';
 import { metroCity, metroId, generateMetro } from '../gen/metro';
 import { drawMetro } from './metro';
-import { setPlaceLight, lanternModel } from './light';
-import { dungeonLamps, underAmb } from '../gen/darkness';
+import { setPlaceLight, fixtureModel, torchModel, postLantern } from './light';
+import { dungeonLamps, underAmb, villageLanterns } from '../gen/darkness';
 import { MOUNTED_TURRET } from '../data/mountedturrets';
 import { setRobotEnv, spawnGuards, clearRobots } from './robots';
 import { spawnAuthority } from './remote';
@@ -139,7 +139,7 @@ export function loadDungeon(arriveDir: string | null) {
   { // (0.199) how dark it is down here, and the lamps that still burn (gen/darkness.ts)
     const lamps = dungeonLamps(map, d.depth);
     setPlaceLight(true, underAmb(wreck ? 'wreck' : metro ? 'metro' : 'labyrinth', d.depth), lamps);
-    for (const l of lamps) group.add(lanternModel(l.x, l.y, l.z, map.style === 'metro' ? 1.4 : 0.7, map.style === 'ship' ? 0xff8a5c : 0xffd28a));
+    for (const l of lamps) group.add(l.k === 'torch' ? torchModel(l.x, l.y, l.z, l.n) : fixtureModel(l.x, l.y, l.z, map.style === 'metro' ? 1.4 : 0.6, map.style === 'ship' ? 0xff8a5c : 0xdff2ff));
   }
   for (const p of map.portals) {
     const pd = tryPlaceDoor(G.space, { axis: p.axis, m: p.m, c: p.c, stair: true }, placed)!;
@@ -354,6 +354,7 @@ function lamps(grp: THREE.Group, map: VillageMap, y0: number) {
     const lamp = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.OctahedronGeometry(0.25)), add(0xffe8a0)); lamp.position.set(l.x, y0 + 3.45, l.z); lamp.name = 'lamp';
     grp.add(pole, lamp);
   }
+  for (const l of villageLanterns(map)) grp.add(postLantern(l.x, y0, l.z)); // (0.200) oil lanterns by the gates and the shops' doors
   return grp;
 }
 

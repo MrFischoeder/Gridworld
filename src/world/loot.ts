@@ -10,7 +10,7 @@ import { floorNear, floorAt } from '../core/voxel';
 import { emptyAt, EYE } from './player';
 import { burst, addFx } from './fx';
 import { ITEMS, RELIC_KEYS, ATTACH_KEYS, HEAL, BULK, item, type ItemKey } from '../data/items';
-import { addItem, gainXp, saveChar, takeOne, progress, progressHas, dungeonKey, depth as depthNow } from '../character';
+import { addItem, hasItem, gainXp, saveChar, takeOne, progress, progressHas, dungeonKey, depth as depthNow } from '../character';
 import { putItems } from '../inventory';
 import { openTransfer } from '../ui/transfer';
 import type { Container, Slot } from '../save';
@@ -178,6 +178,9 @@ function rollChest(): Container {
   if (Math.random() < 0.07) add(pick(LOOT_GUNS)); else if (Math.random() < 0.07) add(pick(LOOT_MELEE));
   // (0.148) the old machines' leavings: salvage the mechanic builds vehicles from
   if (Math.random() < 0.15) add('parts'); else if (Math.random() < 0.1) add('gears');
+  // (0.200) light for the dark: batteries for a flashlight, torches someone left behind
+  if (Math.random() < 0.25) putItems(items, 'battery', 1 + Math.floor(Math.random() * 3));
+  if (Math.random() < 0.2) putItems(items, 'firebrand', 1 + Math.floor(Math.random() * 3));
   if (G.map?.style === 'ship') { // a freighter's lockers: salvage and ship's stores
     putItems(items, 'scrap', 1 + Math.floor(Math.random() * 3));
     if (Math.random() < 0.6) putItems(items, 'circuit', 1 + Math.floor(Math.random() * 2));
@@ -256,6 +259,8 @@ export function useItem(k: ItemKey): boolean {
   if (k === 'firekit') return lightFire();
   if (k === 'pierkit') { if (startPierPlacing()) closePack(); return false; } // used up when the pier is staked out
   if (k === 'flashlight' || k === 'oillamp') { logLine(toggleLight(k === 'flashlight' ? 1 : 2)); return false; } // (0.199) switch it on or off
+  if (k === 'firebrand') { logLine(toggleLight(3)); return false; } // (0.200) light one (or put it out)
+  if (k === 'battery') { logLine(G.char.light?.on === 1 ? tl('The flashlight is on: it takes a fresh battery by itself when one runs flat.') : hasItem('flashlight') ? toggleLight(1) : tl('A battery for a flashlight. You have no flashlight.')); return false; }
   if (k === 'lampoil') { logLine(G.char.light?.on === 2 ? tl('The lamp is burning: it takes a fresh flask by itself when it runs dry.') : toggleLight(2)); return false; }
   if (k === 'fieldstake') { if (startFieldPlacing()) closePack(); return false; } // used up when the field is staked out
   if (k === 'bridgekit') { if (startBridgePlacing()) closePack(); return false; } // used up when the site is staked out

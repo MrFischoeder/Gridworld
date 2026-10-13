@@ -172,7 +172,9 @@ export const ITEMS = {
   turretkit: { name: tl('Auto Turret'), ab: 'TUR', type: 'part', desc: tl('a turret in a crate: build it on your claim (B, Auto Turret) on the ground, a floor or a roof. It shoots whatever hostile comes in range and sight. E at it switches it on or off'), stack: 1 },
   codelock: { name: tl('Code Lock'), ab: 'LCK', type: 'tool', desc: tl('a keypad lock for a door you built: stand at the door and press L, then choose a 4-digit code. Others need the code to open it'), stack: 3 },
   scanner: { name: tl('Sensor Compass'), ab: 'SCN', type: 'tool', desc: tl('a compass with a sensor head from the Old Optical Works: carry it and the compass strip also points to the nearest old installation within 30 km and the nearest toxic fog you have found'), stack: 1 },
-  flashlight: { name: tl('Flashlight'), ab: 'FLS', type: 'tool', desc: tl('a hand torch with a strong white beam: carry it and press L to light the way ahead in the dark. It burns an Energy Cell every three hours'), stack: 1 },
+  flashlight: { name: tl('Flashlight'), ab: 'FLS', type: 'tool', desc: tl('a hand torch with a strong white beam: carry it and press L to light the way ahead in the dark. It runs a Battery flat every three hours and takes a fresh one by itself'), stack: 1 },
+  battery: { name: tl('Battery'), ab: 'BTY', type: 'cons', desc: tl('a small dry cell for the flashlight: three hours of light. Zofia sells them; a blacksmith makes them from scrap and electronic components, or a dozen from a crate of Basic Batteries'), stack: 20 },
+  firebrand: { name: tl('Torch'), ab: 'TCH', type: 'cons', desc: tl('a stick wrapped in pitch-soaked rags: press L or use it to light it. It lights all round you, flickering and not as far as a lamp, and burns down in three quarters of an hour; the next one is lit from it by itself'), stack: 10 },
   oillamp: { name: tl('Oil Lamp'), ab: 'LMP', type: 'tool', desc: tl('a hooded lantern hung on your belt: press L to light it. It lights all round you, not as far as a flashlight, and burns a flask of Lamp Oil every six hours'), stack: 1 },
   lampoil: { name: tl('Lamp Oil'), ab: 'OIL', type: 'cons', desc: tl('a flask of oil for the oil lamp: six hours of light. The lamp takes a fresh one by itself when it runs dry'), stack: 10 },
   compass: { name: tl('Compass'), ab: 'CMP', type: 'tool', desc: tl('carry it and a compass strip shows your heading at the top of the screen, with the way to the nearest village'), stack: 1 },
@@ -223,7 +225,7 @@ export const INV_SIZE = 12, MOD_SIZE = 3;
 export const BULK: Record<ItemKey, [kg: number, litres: number]> = {
   blaster: [3.5, 9], blade: [1.5, 4], pistol: [1.2, 1.5], smg: [2.8, 5], shotgun: [3.4, 8], rifle: [4, 10], machete: [0.9, 2], spear: [1.8, 6], sledge: [6, 6], ammoE: [0.02, 0.02], ammo9: [0.012, 0.01], ammoS: [0.04, 0.04], ammoR: [0.025, 0.02], tablet: [0.6, 0.5], repairkit: [3, 4], helmet: [1.5, 5], vest: [4, 10], armour: [12, 18], gloves: [0.3, 0.5], trousers: [0.8, 1.5], boots: [1.2, 3], gasmask: [0.7, 2], filter: [0.25, 0.3], hideCap: [0.8, 2], hideCoat: [3, 6], hideGloves: [0.3, 0.5], hideLegs: [1.2, 2], hideBoots: [1, 2.5], wovenHood: [1, 3], wovenJacket: [3.5, 6], wovenGloves: [0.3, 0.5], wovenLegs: [1.5, 2], wovenBoots: [1.1, 2.5], compHelm: [1.3, 4], compVest: [5, 8], compGloves: [0.4, 0.6], compLegs: [2, 3], compBoots: [1.3, 3], rucksack: [1.5, 3], framepack: [2.5, 4], cargopack: [3, 5], exoL: [9, 10], exoH: [14, 12],
   shield: [1.5, 1], lens: [0.3, 0.3], edge: [0.5, 0.5], servo: [2, 2], cell: [1, 0.5],
-  flashlight: [0.4, 0.4], oillamp: [1, 1.5], lampoil: [0.5, 0.5],
+  flashlight: [0.4, 0.4], oillamp: [1, 1.5], lampoil: [0.5, 0.5], battery: [0.06, 0.04], firebrand: [0.5, 1],
   medkit: [0.5, 1], key: [0.05, 0.05], recall: [0.4, 0.3], emp: [0.8, 0.6], flask: [0.3, 0.8], firekit: [1, 1.5],
   bread: [0.4, 1], stew: [0.6, 0.8], eggsB: [0.15, 0.2], milkC: [0.3, 0.3], cheese: [0.25, 0.3], waterF: [1, 0.8], waterM: [1, 0.8],
   fishR: [0.3, 0.4], meatR: [0.5, 0.6], meatC: [0.35, 0.5], cap: [0.15, 0.4], pod: [0.5, 0.8], ncrys: [0.15, 0.2],
@@ -259,7 +261,7 @@ export const HANDS_ONLY = new Set<ItemKey>(['wheelL', 'wheelH', 'cannon', 'bench
 /** Weapons and gear Oskar sells. */
 /** Tools and building supplies: what Oskar (tools) and Zofia (supplies) charge. */
 export const TOOL_PRICE: Partial<Record<ItemKey, number>> = { hammer: 20, saw: 35, screwdriver: 10, pliers: 12, welder: 200, torch: 160, shovel: 25, turretkit: 350, bridgekit: 80, pierkit: 90 };
-export const SUPPLY_PRICE: Partial<Record<ItemKey, number>> = { nails: 3, rope: 6, wire: 5, codelock: 120, oillamp: 45, lampoil: 8, flashlight: 160 };
+export const SUPPLY_PRICE: Partial<Record<ItemKey, number>> = { nails: 3, rope: 6, wire: 5, codelock: 120, oillamp: 45, lampoil: 8, flashlight: 160, battery: 10, firebrand: 4 };
 export const GEAR_PRICE: Partial<Record<ItemKey, number>> = { blaster: 150, blade: 80, pistol: 140, shotgun: 240, machete: 60, spear: 45, sledge: 70, helmet: 60, vest: 120, armour: 260, gloves: 20, trousers: 30, boots: 40 };
 /** The backpack: how much fits (litres), the load you carry easily, and beyond `max` you are overloaded (kg). */
 export const PACK = { vol: 40, comfy: 20, max: 35 };

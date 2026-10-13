@@ -167,9 +167,9 @@ let crouchDrop = 0;
 let benchT = 0; // workbenches in the wilds are synced about once a second
 // (0.199) what lights the dark besides your own light: fires, powered village lamps, the other players' lights
 addLights((out) => {
-  for (const f of [...fireSpots(), ...campFires().map((c) => ({ x: c.x, y: c.y + 0.8, z: c.z }))]) out.push({ ...f, r: LIGHT.fire });
+  for (const f of [...fireSpots(), ...campFires().map((c) => ({ x: c.x, y: c.y + 0.8, z: c.z }))]) out.push({ ...f, r: LIGHT.fire, k: 'fire' });
   for (const l of litLamps()) out.push({ ...l, r: LIGHT.village });
-  for (const p of peerLights()) out.push({ x: p.x, y: p.y, z: p.z, r: LIGHT.peer[p.k as 1 | 2] ?? 10 });
+  for (const p of peerLights()) out.push({ x: p.x, y: p.y, z: p.z, r: LIGHT.peer[p.k as 1 | 2 | 3] ?? 10, k: p.k === 3 ? 'fire' : undefined });
 });
 function frame(now: number) {
   const elapsed = (now - last) / 1000;

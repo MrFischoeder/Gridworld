@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { surfaceDark, underAmb, dungeonLamps, caveLamps, nearestLamps, NIGHT, UNDER, LIGHT } from '../src/gen/darkness';
+import { surfaceDark, underAmb, dungeonLamps, caveLamps, nearestLamps, villageLanterns, NIGHT, UNDER, LIGHT } from '../src/gen/darkness';
+import { generateVillage } from '../src/gen/village';
 import { generateDungeon } from '../src/gen/dungeon';
 import { generateMetro } from '../src/gen/metro';
 import { citySites } from '../src/gen/cities';
@@ -31,7 +32,25 @@ describe('darkness and lamps (0.199)', () => {
       for (const l of l1) { expect(l.r).toBeGreaterThan(5); expect(l.y).toBeGreaterThan(1); }
     }
     expect(a).toBeGreaterThan(c);
-    expect(dungeonLamps(generateShip(hash(9, 1))).length).toBeGreaterThan(0);
+    let ship = 0; for (let i = 1; i < 6; i++) ship += dungeonLamps(generateShip(hash(9, i))).length;
+    expect(ship).toBeGreaterThan(0);
+  });
+  it('(0.200) below ground light is rare: torches on the walls, now and then an electric fixture', () => {
+    let torch = 0, elec = 0, boxes = 0;
+    for (let i = 0; i < 30; i++) {
+      const m = generateDungeon(hash(8, i), { depth: 1 }); boxes += m.boxes.length;
+      for (const l of dungeonLamps(m, 1)) {
+        if (l.k === 'torch') { torch++; expect(l.n).toBeDefined(); } else { expect(l.k).toBe('electric'); elec++; }
+      }
+    }
+    expect(torch).toBeGreaterThan(elec); expect(elec).toBeGreaterThan(0);
+    expect((torch + elec) / boxes).toBeLessThan(0.25);
+    for (const l of dungeonLamps(generateShip(hash(9, 2)))) expect(l.k).toBe('electric');
+  });
+  it('(0.200) a town has oil lanterns by its gates and its shops', () => {
+    const v = generateVillage(1234, 0, 0, 0, 'Testholm', false), ls = villageLanterns(v);
+    expect(ls.length).toBe(v.gates.length * 2 + v.buildings.filter((b) => b.role !== 'house').length);
+    for (const l of ls) expect(Number.isFinite(l.x) && Number.isFinite(l.z)).toBe(true);
   });
   it('some metro stations still have power, some are dark', () => {
     let lit = 0, dark = 0;
