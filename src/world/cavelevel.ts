@@ -8,6 +8,8 @@ import { scene, lineMat, fillMat, GRID } from './render';
 import { G, W } from '../game';
 import { hash } from '../core/rng';
 import { VoxelGrid } from '../core/voxel';
+import { setPlaceLight } from './light';
+import { UNDER, caveLamps } from '../gen/darkness';
 import { generateCave, headroom, floorAtCave, ceilAtCave, type CaveMap } from '../gen/cavegen';
 import { makeChest, setCrystalXp } from './loot';
 import { placeCrystals } from './flora';
@@ -97,6 +99,7 @@ export function buildCave(d: DungeonPos, clear: () => void, setGroup: (g: THREE.
   setMiniOpen((x, z) => headroom(m, x + 0.5, z + 0.5) > 1.2);
   setMiniMode('voxel'); buildMini();
   el.hudL.textContent = info.name; el.route.style.display = 'none';
+  setPlaceLight(true, UNDER.cave, caveLamps(m, (x, z) => floorAtCave(m, x, z))); // (0.199) black as pitch but for the mouths and the crystals' glow
 }
 export function leaveCave() { cave = null; setMiniOpen(null); }
 /** The way out you stand at (its index), or -1. */

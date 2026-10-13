@@ -40,7 +40,7 @@ export function toggleCrouch() { G.crouch = !G.crouch; }
 /** How visible you are now (1 = walking upright in daylight). */
 export const myVis = () => vis;
 function work(): number {
-  const under = G.char.loc !== 'overworld', light = under ? 0 : daylight(G.char.time, sunTilt(latitude(G.pos.z)));
+  const under = G.char.loc !== 'overworld', light = Math.max(under ? 0 : daylight(G.char.time, sunTilt(latitude(G.pos.z))), G.char.light?.on ? 0.85 : 0); // (0.199) a light you carry shows you in the dark
   const speed = Math.hypot(G.vel.x, G.vel.z);
   return visibility({ crouch: G.crouch, speed, sprint: speed > 7.5, light, under, fog: under ? 0 : sky.fog, rain: under ? 0 : sky.rain, shot: shotT });
 }

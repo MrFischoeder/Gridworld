@@ -165,8 +165,8 @@ export const nearConsole = () => localNear(CONSOLE.x, CONSOLE.z - 0.5, 1.5);
 export function lockerBox() {
   const c = G.char, own = 'ship:locker:' + c.pid, key = !c.containers[own] && c.containers['ship:locker'] && !net.id ? 'ship:locker' : own;
   if (!c.containers[key]) {
-    const items: (Slot | null)[] = Array(8).fill(null);
-    putItems(items, 'medkit', 2); putItems(items, 'waterF', 2); putItems(items, 'bread', 3); putItems(items, 'firekit', 1); putItems(items, 'compass', 1); putItems(items, 'saw', 1); putItems(items, 'ammoE', 40); // the ship's own cells: all the rounds you have until you find more
+    const items: (Slot | null)[] = Array(10).fill(null);
+    putItems(items, 'medkit', 2); putItems(items, 'waterF', 2); putItems(items, 'bread', 3); putItems(items, 'firekit', 1); putItems(items, 'compass', 1); putItems(items, 'saw', 1); putItems(items, 'ammoE', 40); putItems(items, 'oillamp', 1); putItems(items, 'lampoil', 2); // the ship's own cells: all the rounds you have until you find more; (0.199) a lamp for the dark
     c.containers[key] = { items, gold: 0 };
   }
   return c.containers[key];

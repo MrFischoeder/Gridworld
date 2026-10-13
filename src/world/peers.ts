@@ -1,6 +1,7 @@
 // The other players (multiplayer stage 1): a figure with a name label for everyone online who is in the same place
 // as you (the open world, or the same dungeon sector), eased between the snapshots the server sends ten times a
 // second, legs walking while they move, holding what they hold. Runtime only: nothing here is saved.
+import { carriedLight } from './light';
 import { getOff } from './ride';
 import { myBoatSpot, boatPoint } from './boats';
 import * as THREE from 'three';
@@ -61,7 +62,7 @@ let sendT = 0;
 export function flushPeerState(moving = false) {
   if (!net.id) return;
   sendT = SEND_EVERY;
-  const s: PeerState = { p: [G.pos.x, G.pos.y, G.pos.z], yaw: G.yaw, pitch: G.pitch, loc: myLoc(), held: G.char.hands[0]?.k ?? '', mv: moving && G.playing, away: !G.playing, cars: myCars(), carIds: myCarList().map(v => v.st.id), ride: ride.on ? [ride.on.owner, ride.on.idx, ride.on.seat] : undefined, gun: ride.on ? ride.gun : undefined, boat: myBoatSpot(), vis: Math.round(myVis() * 100) / 100, cr: G.crouch || undefined, pod: myPod() };
+  const s: PeerState = { p: [G.pos.x, G.pos.y, G.pos.z], yaw: G.yaw, pitch: G.pitch, loc: myLoc(), held: G.char.hands[0]?.k ?? '', mv: moving && G.playing, away: !G.playing, cars: myCars(), carIds: myCarList().map(v => v.st.id), ride: ride.on ? [ride.on.owner, ride.on.idx, ride.on.seat] : undefined, gun: ride.on ? ride.gun : undefined, boat: myBoatSpot(), vis: Math.round(myVis() * 100) / 100, cr: G.crouch || undefined, pod: myPod(), lt: carriedLight() || undefined };
   sendState(s, isHost() ? G.char.time : undefined);
 }
 /** Every frame: send where you are now and then, and draw the others. */
@@ -221,4 +222,11 @@ export function peerCarHit(x: number, y: number, z: number, r: number): boolean 
     if (Math.abs(lx) < s.width / 2 + r && Math.abs(lz) < s.length / 2 + r) return true;
   }
   return false;
+}
+
+/** (0.199) The other players here whose light burns: where, and which light (1 flashlight, 2 oil lamp). */
+export function peerLights(): { x: number; y: number; z: number; k: number }[] {
+  const here = myLoc(), out: { x: number; y: number; z: number; k: number }[] = [];
+  for (const p of net.peers.values()) { const s = p.st; if (s?.lt && s.loc === here && !s.away) out.push({ x: s.p[0], y: s.p[1] + 1.4, z: s.p[2], k: s.lt }); }
+  return out;
 }

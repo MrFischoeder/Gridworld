@@ -55,6 +55,8 @@ function dropFire(f: Fire) {
   scene.remove(f.g); f.g.traverse((o) => (o as THREE.Mesh).geometry?.dispose());
   fires.splice(fires.indexOf(f), 1);
 }
+/** (0.199) The fires burning now (world positions), for the light map. */
+export const fireSpots = () => fires.map((f) => ({ x: f.x, y: f.y + 0.8, z: f.z }));
 export function clearFires() { for (const f of [...fires]) dropFire(f); }
 
 /** Every frame: fires flicker and burn down. */

@@ -15,6 +15,8 @@ import { labyrinthDrones } from '../gen/repopulate';
 import { labyrinthGuards } from '../gen/dungeonguards';
 import { metroCity, metroId, generateMetro } from '../gen/metro';
 import { drawMetro } from './metro';
+import { setPlaceLight, lanternModel } from './light';
+import { dungeonLamps, underAmb } from '../gen/darkness';
 import { MOUNTED_TURRET } from '../data/mountedturrets';
 import { setRobotEnv, spawnGuards, clearRobots } from './robots';
 import { spawnAuthority } from './remote';
@@ -92,6 +94,7 @@ function clearLevel() {
   G.map = null;
 }
 function setLocationLook(outdoors: boolean) {
+  if (outdoors) setPlaceLight(false); // (0.199) the surface: dark by night (a place below sets its own: loadDungeon, buildCave)
   fog.near = outdoors ? 20 : 3; fog.far = outdoors ? 140 : 46; sky.visible = outdoors; horizon.visible = outdoors;
   if (outdoors) { buildHorizon(G.char.world); updateSky(G.char.time); } else darkSky();
   el.route.style.display = outdoors ? 'none' : '';
@@ -133,6 +136,11 @@ export function loadDungeon(arriveDir: string | null) {
   W.hatch = map.hatch ? makeHatch(map.hatch) : null;
   group.add(decorateDungeon(map));
   if (map.metro) group.add(drawMetro(map));
+  { // (0.199) how dark it is down here, and the lamps that still burn (gen/darkness.ts)
+    const lamps = dungeonLamps(map, d.depth);
+    setPlaceLight(true, underAmb(wreck ? 'wreck' : metro ? 'metro' : 'labyrinth', d.depth), lamps);
+    for (const l of lamps) group.add(lanternModel(l.x, l.y, l.z, map.style === 'metro' ? 1.4 : 0.7, map.style === 'ship' ? 0xff8a5c : 0xffd28a));
+  }
   for (const p of map.portals) {
     const pd = tryPlaceDoor(G.space, { axis: p.axis, m: p.m, c: p.c, stair: true }, placed)!;
     const o = DIRV[p.dir], tx = d.gx + o[0], tz = d.gz + o[1];

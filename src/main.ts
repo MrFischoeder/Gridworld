@@ -49,6 +49,12 @@ import { regionRoads } from './gen/roads';
 import { generateQuest } from './gen/quests';
 import { poisNear } from './gen/regions';
 import { sky, horizon, updateSky, shapeHorizon } from './world/sky';
+import { updateLight, setDrivingHook, addLights } from './world/light';
+import { LIGHT } from './gen/darkness';
+import { fireSpots } from './world/cooking';
+import { litLamps } from './world/power';
+import { peerLights } from './world/peers';
+import { campFires } from './world/overworld';
 import { MIN_PER_SEC, fmtClock } from './core/time';
 import { latitude } from './gen/regions';
 import { updateCreatures, spawnCreatureNear } from './world/creatures';
@@ -159,6 +165,12 @@ addEventListener('visibilitychange', () => { last = performance.now(); });
 const CROUCH_DROP = 0.6;
 let crouchDrop = 0;
 let benchT = 0; // workbenches in the wilds are synced about once a second
+// (0.199) what lights the dark besides your own light: fires, powered village lamps, the other players' lights
+addLights((out) => {
+  for (const f of [...fireSpots(), ...campFires().map((c) => ({ x: c.x, y: c.y + 0.8, z: c.z }))]) out.push({ ...f, r: LIGHT.fire });
+  for (const l of litLamps()) out.push({ ...l, r: LIGHT.village });
+  for (const p of peerLights()) out.push({ x: p.x, y: p.y, z: p.z, r: LIGHT.peer[p.k as 1 | 2] ?? 10 });
+});
 function frame(now: number) {
   const elapsed = (now - last) / 1000;
   const dt = Math.min(elapsed, 0.05); last = now;
@@ -254,6 +266,7 @@ function frame(now: number) {
   updateFx(dt);
   updateHud(dt); updateTracker(dt);
   updateStreaks(dt); drawMini();
+  setDrivingHook(() => !!driving.v); updateLight(dt); // (0.199) the dark and the lights: the light map the shaders read
   renderer.info.reset(); // two passes per frame: count both (F3 overlay)
   if (!gateTravelPending()) {
     // The opaque transit canvas owns the screen; spare the GPU hidden world and weapon passes.

@@ -150,6 +150,12 @@ export function drawPower(vm: VillageMap, T: Terrain, id: number): THREE.Group {
   return grp;
 }
 const lerp3 = (a: number[], b: number[], t: number) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
+/** (0.199) The village lamps lit now (world positions), for the light map. */
+export function litLamps(): { x: number; y: number; z: number }[] {
+  const out: { x: number; y: number; z: number }[] = [], v = new THREE.Vector3();
+  for (const p of plants.values()) for (const l of p.lamps) if (l.visible && l.parent) { l.getWorldPosition(v); out.push({ x: v.x, y: v.y, z: v.z }); }
+  return out;
+}
 /** The village lamps a plant feeds (they go dark when it is down). */
 export function setPlantLamps(id: number, lamps: THREE.Object3D[]) { const p = plants.get(id); if (p) p.lamps = lamps; else if (progressive(G.char.towns[id])) for (const l of lamps) l.visible = false; }
 export function forgetPower(id: number) { plants.delete(id); }

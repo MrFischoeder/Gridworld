@@ -3,6 +3,15 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.199.0', date: '2026-10-13', title: 'Darkness and light', notes: [
+    'Night is dark now. Out in the open the land fades to moonlight beyond the reach of a light, darker still under clouds. Powered village lamps, campfires and the other players\' lights light the ground round them, and a vehicle\'s headlights light the road ahead.',
+    'Below ground it gets darker the deeper you go: the first depth of a labyrinth is dim, the third nearly black. Caves and the metro are pitch dark, apart from daylight at a cave\'s mouth, its glowing crystals, and the lamps that still burn in some stations and tunnels. Without a light of your own you will not find your way there.',
+    'Lanterns hang in some labyrinth rooms (fewer the deeper you go) and a crashed ship still has a few red emergency lights.',
+    'Two lights to carry. The Flashlight throws a long beam where you look and burns an Energy Cell every three hours. The Oil Lamp lights all round you, not as far, and burns a flask of Lamp Oil every six hours. Press L to switch between them and off (at a door with a code lock L still opens the lock). A spent cell or flask is replaced from your backpack, and a line under the bars shows what is burning and how long it lasts.',
+    'Zofia sells the Oil Lamp (45 g), Lamp Oil (8 g) and the Flashlight (160 g). The blacksmith makes an Oil Lamp from 2 scrap and a wire, 3 flasks of Lamp Oil from a fuel canister, and a Flashlight from 2 scrap and an electronic component. The crashed ship\'s locker now holds an Oil Lamp and two flasks of oil.',
+    'A light you carry shows you in the dark: sneaking past enemies at night is easier with it off.',
+    'Online, the others see your light. A dedicated server has to be updated for that; the game works on an older one too, you just do not see the other players\' lights.',
+  ] },
   { v: '0.198.0', date: '2026-10-13', title: 'Bigger villages, no squares', notes: [
     'No village is square any more: every one is a hexagon, an octagon or a dodecagon, and Gridholm is an octagon.',
     'Villages are bigger: the wall stands 48 m from the middle instead of 36.5, so the plaza has about three quarters more room and every shop and house fits inside.',

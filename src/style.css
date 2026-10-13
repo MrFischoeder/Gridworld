@@ -448,3 +448,8 @@ body.cinematic > *:not(#view):not(#cinematic){visibility:hidden}
 #mpAcct button.link{background:transparent;color:var(--g);outline:none;border:none;text-decoration:underline;padding:3px 4px}
 #mpEmailNote,#mpCodeNote{font-size:18px;opacity:.85}#mpCode{width:7em!important}#mpWho small{opacity:.7;font-size:17px}
 #langRow{margin:4px 0 6px}#langRow button{font-size:18px;padding:3px 14px;opacity:.6}#langRow button.on{opacity:1;outline:1px solid var(--line, #2fe060)}
+
+/* (0.199) the light you carry (world/light.ts) */
+#lightbar{position:fixed;left:50%;transform:translateX(-50%);top:92px;padding:2px 10px;font-size:18px;color:#ffd28a;border:1px solid #ffd28a;background:rgba(20,14,2,.7);z-index:6;display:none;letter-spacing:1px;pointer-events:none;white-space:nowrap}
+#lightbar.low{color:#ff6a4a;border-color:#ff6a4a}
+#lightbar.off{opacity:.65}

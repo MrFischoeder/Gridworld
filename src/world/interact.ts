@@ -1,3 +1,4 @@
+import { lightKey } from './light';
 import { nearSettlementComms, openSettlementComms } from './settlement';
 import { nearFuelPump, openFuelPump } from './fuelpump';
 import { nearCharger, chargerPrompt } from './charging';
@@ -251,7 +252,7 @@ function atShuttleDesk(): boolean {
   return Math.hypot(G.pos.x - d.x, G.pos.z - (d.z + 1.2)) < 1.6;
 }
 /** L key: the code lock of the door you stand at. */
-export function lockKey() { if (nearGate) lockMenu(nearGate); }
+export function lockKey() { if (nearGate) lockMenu(nearGate); else lightKey(); } // (0.199) away from a lockable door L switches your light
 /** E key / use button. */
 export function interact() {
   if (driving.v) { leave(); return; }

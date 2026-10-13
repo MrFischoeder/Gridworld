@@ -64,6 +64,8 @@ export interface Char {
   guide: number;
   /** Seconds left in the filter screwed into your gas mask (gen/toxic.ts MASK; 0 = none or spent). */
   filter: number;
+  /** (0.199) The light you carry (world/light.ts): on = 0 off / 1 flashlight / 2 oil lamp; minutes left in the cell and the oil burning now. */
+  light?: { on: number; flash: number; oil: number };
   /** The toxic fog zones you have found (id -> [x, z, radius, name]) for the maps. */
   fogs: Record<string, [number, number, number, string]>;
   /** (0.182) Deposits in the wilds on your map (gen/lodes.ts): id -> [x, z, kind, name, 1 seen / 0 only heard of]. Personal, like the map. */

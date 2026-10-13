@@ -21,7 +21,9 @@ export interface PeerState { p: [number, number, number]; yaw: number; pitch: nu
   /** Sneaking: how visible they are (world/stealth.ts myVis; the foes their turn is against read it) and whether they crouch. */
   vis?: number; cr?: boolean;
   /** The cryo-pod their character woke from (world/crashpod.ts). */
-  pod?: number }
+  pod?: number;
+  /** (0.199) The light they carry: 1 flashlight, 2 oil lamp (world/light.ts). */
+  lt?: number }
 export interface Peer {
   id: number; name: string;
   /** The last two states and when they came: the drawing eases between them. */

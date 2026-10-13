@@ -69,6 +69,10 @@ export const ORDERS: Order[] = [
   { tech: 'composites', out: 'cargopack', n: 1, needs: [['plastic', 2], ['alloy', 1], ['cloth', 2]] },
   { tech: 'exoframe', out: 'exoL', n: 1, needs: [['steel', 3], ['parts', 2], ['wire', 4], ['hide', 2]] },
   { tech: 'automation', out: 'exoH', n: 1, needs: [['ancalloy', 2], ['precision', 2], ['powercell', 2], ['automation', 1], ['cable', 4], ['titanium', 2], ['advsteel', 2], ['pcm', 1]] },
+  // (0.199) lights for the dark: appended so the forge's saved orders keep their indexes
+  { tech: '', out: 'oillamp', n: 1, needs: [['scrap', 2], ['wire', 1]] },
+  { tech: '', out: 'lampoil', n: 3, needs: [['fuel', 1]] },
+  { tech: '', out: 'flashlight', n: 1, needs: [['scrap', 2], ['circuit', 1]] },
 ];
 /** Technologies that are for the villages themselves (farms, power, works), not for the craftsmen's bench. */
 export const VILLAGE_TECHS = ['fields', 'plough', 'rotor', 'solar', 'chips', 'radio', 'chemistry', 'enrichment', 'propellant', 'rail', 'aluminium', 'batteries', 'alloys', 'powercells', 'sensors', 'ancmetal', 'precision', 'automation', 'electricity', 'metallurgy', 'semiconductors', 'computing', 'aerospace', 'powergrid', 'avionics', 'lifesupport', 'rocketry', 'heavymach'];

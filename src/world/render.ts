@@ -1,5 +1,6 @@
 // three.js scene, camera and shared material helpers.
 import * as THREE from 'three';
+import './darkshader'; // (0.199) the light map in every fogged material, before any of them compiles
 
 // Match the look of the original (three r128: no colour management, linear output).
 THREE.ColorManagement.enabled = false;

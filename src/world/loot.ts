@@ -28,6 +28,7 @@ import { placeBench } from './benches';
 import { startPlacing } from './claims';
 import { startBridgePlacing } from './bridges';
 import { startFieldPlacing } from './fields';
+import { toggleLight } from './light';
 import { startPierPlacing } from './piers';
 import { BASES_OPEN, BASES_CLOSED_MSG } from '../data/building';
 import { lyingModel } from './pickmodels';
@@ -254,6 +255,8 @@ export function useItem(k: ItemKey): boolean {
   if (k === 'repairkit') return useRepairKit();
   if (k === 'firekit') return lightFire();
   if (k === 'pierkit') { if (startPierPlacing()) closePack(); return false; } // used up when the pier is staked out
+  if (k === 'flashlight' || k === 'oillamp') { logLine(toggleLight(k === 'flashlight' ? 1 : 2)); return false; } // (0.199) switch it on or off
+  if (k === 'lampoil') { logLine(G.char.light?.on === 2 ? tl('The lamp is burning: it takes a fresh flask by itself when it runs dry.') : toggleLight(2)); return false; }
   if (k === 'fieldstake') { if (startFieldPlacing()) closePack(); return false; } // used up when the field is staked out
   if (k === 'bridgekit') { if (startBridgePlacing()) closePack(); return false; } // used up when the site is staked out
   if (k === 'flagpole' && !BASES_OPEN) { logLine(BASES_CLOSED_MSG); return false; }
