@@ -21,7 +21,7 @@ import { updateDoors, updateTrans } from './world/doors';
 import { updateDrones, updateBosses, updateOrbs, animateFoes, updateBossBar, foeRules, makeDrone, damageFoe } from './world/enemies';
 import { updateLoot } from './world/loot';
 import { updateEntities } from './world/interact';
-import { updateBodySway, attack, animateVM, refreshWeaponVisibility, vmScene, syncViewmodel, updateGun, refreshGunLook, syncHeld } from './world/weapons';
+import { updateBodySway, updateRecoil, recoilView, attack, animateVM, refreshWeaponVisibility, vmScene, syncViewmodel, updateGun, refreshGunLook, syncHeld } from './world/weapons';
 import { updateFx, updateStreaks } from './world/fx';
 import { updateStreaming, updateFieldEnemies, placeName, OW, groundAt, treeHit, animateCamps, keepOnPlanet, villageHere } from './world/overworld';
 import { collides, setWaterNote } from './world/player';
@@ -232,7 +232,9 @@ function frame(now: number) {
       camera.position.x += Math.cos(G.yaw) * sw.right; camera.position.z -= Math.sin(G.yaw) * sw.right; camera.position.y += sw.up;
     }
   }
-  camera.rotation.set(G.pitch + (sw?.pitch ?? 0), G.yaw + (sw?.yaw ?? 0), sw?.roll ?? 0);
+  if (sw) updateRecoil(dt);
+  const rc = sw ? recoilView() : null; // (0.192) the shot's punch, on foot only
+  camera.rotation.set(G.pitch + (sw?.pitch ?? 0) + (rc?.up ?? 0), G.yaw + (sw?.yaw ?? 0) + (rc?.side ?? 0), sw?.roll ?? 0);
   updateWeather(dt, sky.visible);
   if (sky.visible) { sky.position.set(camera.position.x, camera.position.y - 20, camera.position.z); horizon.position.set(camera.position.x, 0, camera.position.z); shapeHorizon(camera.position.x, camera.position.z); updateSky(G.char.time, latitude(G.pos.z)); tintToxic(); updateFarPeaks(camera.position); } else farPeaks.visible = false;
   // A sanctuary spans hundreds of metres: give it room in clear weather while preserving dense fog.

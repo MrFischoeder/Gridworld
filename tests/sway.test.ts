@@ -33,3 +33,25 @@ describe('the body in first person', () => {
     expect(peak({ ...base, speed: 6, ground: false }).up).toBe(0);
   });
 });
+
+import { RECOIL, newRecoil, kickRecoil, stepRecoil } from '../src/core/sway';
+describe('recoil', () => {
+  const settle = (r: ReturnType<typeof newRecoil>, secs: number) => { let back = 0; for (let i = 0; i < secs * 60; i++) back += stepRecoil(r, 1 / 60); return back; };
+  it('a shot climbs the aim and most of it comes back, the punch springs back', () => {
+    const r = newRecoil(), k = kickRecoil(r, RECOIL.rifle, 0, false, 0);
+    expect(k.pitch).toBeGreaterThan(0); expect(r.up).toBeGreaterThan(0);
+    const back = settle(r, 2);
+    expect(back).toBeCloseTo(k.pitch * (1 - RECOIL.rifle.keep), 5);
+    expect(r.up).toBeLessThan(1e-6); expect(r.shove).toBeLessThan(1e-4);
+  });
+  it('heavier guns kick harder; aiming and crouching soften it', () => {
+    const hit = (g: string, aim = 0, crouch = false) => kickRecoil(newRecoil(), RECOIL[g], aim, crouch, 0).pitch;
+    expect(hit('shotgun')).toBeGreaterThan(hit('pistol')); expect(hit('pistol')).toBeGreaterThan(hit('blaster'));
+    expect(hit('rifle', 1)).toBeLessThan(hit('rifle')); expect(hit('rifle', 0, true)).toBeLessThan(hit('rifle'));
+  });
+  it('a burst walks upwards', () => {
+    const r = newRecoil(); let pitch = 0;
+    for (let i = 0; i < 20; i++) { pitch += kickRecoil(r, RECOIL.smg, 0, false, 0).pitch; pitch -= settle(r, 0.085); }
+    expect(pitch).toBeGreaterThan(RECOIL.smg.climb * 3);
+  });
+});

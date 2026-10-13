@@ -4,7 +4,7 @@
 import * as THREE from 'three';
 import { camera, lineMat, add, V } from './render';
 import { G } from '../game';
-import { SWAY, newSway, stepSway, type Sway } from '../core/sway';
+import { SWAY, newSway, stepSway, type Sway, RECOIL, newRecoil, kickRecoil, stepRecoil } from '../core/sway';
 import { addFx, burst } from './fx';
 import { rayMountedTurret, damageMountedTurret } from './mountedturrets';
 import { rayWorld } from './player';
@@ -202,6 +202,15 @@ export function updateBodySway(dt: number): Sway {
   const v = G.vel;
   return stepSway(body, { speed: Math.hypot(v.x, v.z), ground: G.onGround && !G.swimming, run: G.activity === BURN.sprint, crouch: G.crouch, aim: aimK, winded: 1 - G.stamina / STAMINA.max }, dt);
 }
+// (0.192) Recoil (core/sway.ts): the shot climbs the aim (G.pitch, mostly coming back), punches the view and shoves the gun.
+const recoil = newRecoil();
+/** The view's recoil punch now (main.ts adds it to the camera). */
+export const recoilView = () => recoil;
+/** Settle the recoil (main loop, before the camera is placed). */
+export function updateRecoil(dt: number) {
+  const back = stepRecoil(recoil, dt);
+  G.pitch = Math.max(-1.5, Math.min(1.5, G.pitch - back));
+}
 export function animateVM(dt: number, _moving: boolean) {
   // the gun trails the view's turns a little, then catches up
   let dy = G.yaw - lastYaw; dy -= Math.round(dy / (Math.PI * 2)) * Math.PI * 2;
@@ -212,8 +221,8 @@ export function animateVM(dt: number, _moving: boolean) {
   const still = 1 - aimK * 0.75, bob = body.amp * 0.011 * body.step * still, side = body.amp * 0.014 * body.side * still;
   // aiming brings the gun to the middle; a long scope hides it (the scope overlay takes over); reloading dips it
   const k = aimK, dip = G.reloadT > 0 ? Math.sin(Math.min(1, 1 - G.reloadT / G.gun.reload) * Math.PI) * 0.12 : 0, gv = activeGun();
-  gv.position.set(0.24 * (1 - k) + side + lagX * still, -0.22 + bob + lagY * still + k * 0.1 - dip, -0.45 + Math.max(0, G.cooldown - 0.08) * 0.4 + k * 0.05);
-  gv.rotation.set(-dip * 3 + lagY * still, lagX * 2 * still, -side * 2.5);
+  gv.position.set(0.24 * (1 - k) + side + lagX * still, -0.22 + bob + lagY * still + k * 0.1 - dip, -0.45 + recoil.shove * recoil.back + k * 0.05);
+  gv.rotation.set(-dip * 3 + lagY * still + recoil.shove * recoil.back * 1.6, lagX * 2 * still, -side * 2.5);
   gv.scale.setScalar(k > 0.5 && G.gun.zoom >= 3 ? 0.0001 : 1);
   if (G.swingT > 0) G.swingT = Math.max(0, G.swingT - dt);
   const sw = G.swingT > 0, s = sw ? 1 - G.swingT / swingDur : 0, e = s < 0.5 ? s * 2 : 1, mv = activeMelee(), spear = curMelee()?.look === 'spear';
@@ -279,6 +288,8 @@ function shoot() {
     ray(p, G.gun.dmg * G.S.bm);
   }
   makeNoise(camera.position, G.gun.noise); noteShot();
+  const kick = kickRecoil(recoil, RECOIL[g.look] ?? RECOIL.blaster, aimK, G.crouch, Math.random() * 2 - 1);
+  G.pitch = Math.min(1.5, G.pitch + kick.pitch); G.yaw += kick.yaw;
 }
 /** A melee swing (a thrust with the spear): hits hard while you have the stamina for it; exhausted it is weak (and slow, see attack()). */
 function slash(tired: boolean) {

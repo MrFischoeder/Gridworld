@@ -3,6 +3,12 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.192.0', date: '2026-10-13', title: 'Recoil', notes: [
+    'Every shot now kicks: the view jumps up and springs back, and the gun shoves back into your shoulder.',
+    'Each shot also lifts your aim a little. Most of it settles back by itself, so a single shot returns close to where you aimed, but a long burst walks upwards and you have to pull down.',
+    'Every gun kicks its own way: the Blaster barely, the SMG lightly but fast, the pistol sharply, the rifle and the Scattergun hard.',
+    'Aiming (right mouse) and crouching soak up part of the kick.',
+  ] },
   { v: '0.191.0', date: '2026-10-13', title: 'Walking feels like walking', notes: [
     'In first person the whole view now moves with your body: every step lifts and drops it a little and the head sways and leans from side to side.',
     'Running shakes the view much more than walking, and crouching smooths it out.',

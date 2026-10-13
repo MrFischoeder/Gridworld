@@ -67,3 +67,46 @@ export function stepSway(s: Sway, i: SwayIn, dt: number): Sway {
   s.yaw = a * W.yaw * lean + b * Math.sin(s.t * r);
   return s;
 }
+
+// (0.192) Recoil: every shot kicks the view up (a punch that springs back), climbs the aim a little (most of it comes
+// back by itself, so a burst walks upwards and a single shot settles), nudges it sideways, and shoves the gun back.
+// Aiming and crouching soak some of it up.
+export interface RecoilSpec {
+  /** The view's punch (rad), the aim's climb (rad) and how much of the climb stays, the sideways nudge (rad), the gun's shove back (m). */
+  kick: number; climb: number; keep: number; side: number; back: number;
+}
+export const RECOIL: Record<string, RecoilSpec> = {
+  blaster: { kick: 0.010, climb: 0.006, keep: 0.25, side: 0.003, back: 0.05 },
+  pistol: { kick: 0.026, climb: 0.016, keep: 0.3, side: 0.008, back: 0.07 },
+  smg: { kick: 0.012, climb: 0.007, keep: 0.35, side: 0.006, back: 0.04 },
+  shotgun: { kick: 0.06, climb: 0.035, keep: 0.3, side: 0.012, back: 0.14 },
+  rifle: { kick: 0.05, climb: 0.03, keep: 0.25, side: 0.008, back: 0.12 },
+};
+export const RECOIL_RULE = {
+  /** Share kept while aiming, and while crouched. */
+  aim: 0.6, crouch: 0.75,
+  /** How fast the punch springs back and the climb comes back (1/s). */
+  punchBack: 14, climbBack: 6,
+};
+export interface Recoil {
+  /** The view's punch now (rad up, rad sideways), the climb still owed back, the gun's shove (0..1 of its back). */
+  up: number; side: number; owed: number; shove: number; back: number;
+}
+export const newRecoil = (): Recoil => ({ up: 0, side: 0, owed: 0, shove: 0, back: 0 });
+
+/** A shot: returns how far the aim itself moves now (pitch up, yaw), the rest is the view's punch. rnd in −1..1. */
+export function kickRecoil(r: Recoil, spec: RecoilSpec, aim: number, crouch: boolean, rnd: number): { pitch: number; yaw: number } {
+  const k = (1 - (1 - RECOIL_RULE.aim) * Math.max(0, Math.min(1, aim))) * (crouch ? RECOIL_RULE.crouch : 1);
+  r.up += spec.kick * k;
+  r.side += spec.side * k * rnd * 0.5;
+  r.owed += spec.climb * k * (1 - spec.keep);
+  r.shove = 1; r.back = spec.back * k;
+  return { pitch: spec.climb * k, yaw: spec.side * k * rnd };
+}
+/** Settle the recoil by dt: returns how much of the climb comes back this frame (to take off the aim's pitch). */
+export function stepRecoil(r: Recoil, dt: number): number {
+  const p = Math.exp(-dt * RECOIL_RULE.punchBack), c = 1 - Math.exp(-dt * RECOIL_RULE.climbBack);
+  r.up *= p; r.side *= p; r.shove *= Math.exp(-dt * RECOIL_RULE.punchBack * 0.8);
+  const back = r.owed * c; r.owed -= back;
+  return back;
+}
