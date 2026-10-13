@@ -1,4 +1,5 @@
 // Vehicles: wireframe bodies, arcade driving over the terrain, seats, and trunks for storing items.
+import { vehiclesOpen } from '../gen/settlement';
 import * as THREE from 'three';
 import { scene, camera, V, GRID } from './render';
 import { G } from '../game';
@@ -471,7 +472,7 @@ const foundCache = new Map<string, Parking | null>();
 /** Show the abandoned vehicles of the regions around (x, z) that nobody has claimed yet; drop far ones. */
 export function syncFound(t: Terrain, x: number, z: number) {
   const [rx, rz] = regionOf(x, z), owned = new Set(G.char.vehicles.map((s) => s.id));
-  for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) {
+  if (vehiclesOpen(G.char)) for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) { // (0.202) none before the mechanic comes
     const key = t.world + ':' + (rx + i) + ':' + (rz + j);
     if (!foundCache.has(key)) foundCache.set(key, regionVehicle(t, rx + i, rz + j));
     const p = foundCache.get(key);

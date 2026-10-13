@@ -265,6 +265,15 @@ export function sideStep(s: TownState | undefined): { title: string; text: strin
 }
 /** Has Kuba the mechanic come to the village (the start village of a new world: once the power plant stands and the village digs its own goods; worlds where someone already has a vehicle keep him)? */
 export const mechanicHere = (s: TownState | undefined) => !progressive(s) || !!s?.settlement?.car || (projectDone(s, 'power') && (['quarry', 'mine', 'oil', 'lumber'] as Project[]).some((k) => projectDone(s, k)));
+/**
+ * (0.202, the owner's rule) In a new world there are no vehicles of any kind (abandoned ones in the wilds, raiders'
+ * cars, the caravans' convoys) until the mechanic has come to the start village; worlds before the rule, or a player
+ * who already owns or ordered a vehicle, keep them. Pure of the shared `towns`, so every player agrees.
+ */
+export const vehiclesOpen = (c: { towns: Record<string, TownState>; vehicles?: unknown[]; garage?: unknown[] }) => {
+  const s = c.towns[GRIDHOLM_ID];
+  return !progressive(s) || mechanicHere(s) || !!c.vehicles?.length || !!c.garage?.length;
+};
 /** Crates per game hour. Refineries are handled by the runtime so actual crude is consumed. The lumber camp works the
  *  great grove: logs for good (sawn into planks at a sawmill or by hand). */
 export function resourceYield(s: TownState | undefined): Partial<Record<ItemKey, number>> {

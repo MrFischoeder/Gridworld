@@ -2,6 +2,7 @@
 // crates showing at the back, rolling along the road one behind the other. They are only drawn near the player;
 // where they are follows from the game time alone, so they are where they should be whenever you look. Solid to
 // walk into; E at a wagon talks to the caravan master (ui/caravan.ts).
+import { vehiclesOpen } from '../gen/settlement';
 import * as THREE from 'three';
 import { dryCaravan } from './convoyfuel';
 import { G } from '../game';
@@ -68,7 +69,7 @@ const lengthOf = (pts: [number, number][]) => { let L = 0; for (let i = 0; i + 1
 /** Once a frame in the open world: find the caravans on the roads nearby (twice a second) and move their wagons. */
 export function updateCaravans(dt: number) {
   const T = OW.terrain;
-  if (!T || G.char.loc !== 'overworld') { clearCaravans(); return; }
+  if (!T || G.char.loc !== 'overworld' || !vehiclesOpen(G.char)) { clearCaravans(); return; } // (0.202) no convoys before the mechanic comes
   const world = T.world, now = G.char.time;
   if (edgeWorld !== world) { edgeByKey.clear(); for (const e of network(world)) edgeByKey.set('road:' + e.key, e); edgeWorld = world; }
   if ((scanT -= dt) <= 0) {

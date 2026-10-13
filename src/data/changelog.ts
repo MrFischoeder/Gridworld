@@ -3,6 +3,12 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.202.0', date: '2026-10-13', title: 'A new world starts bare', notes: [
+    'In a new world there are no vehicles at all until Kuba the mechanic comes to Gridholm (once its power plant stands and it digs its own goods): no abandoned cars in the wilds, no raiders in cars and no caravan convoys on the roads. Once he is there, they all appear.',
+    'A new settlement has no electricity until its power plant is built: no electric lamp posts on the plaza before that (the oil lanterns by the gates and the shops still burn at night).',
+    'As before, the first farm is yours to build: the elder asks for it first.',
+    'Worlds from before this rule, and players who already own or have ordered a vehicle, keep theirs.',
+  ] },
   { v: '0.201.0', date: '2026-10-13', title: 'Two hands and a bigger backpack', notes: [
     'You have two hands now. The main hand holds your weapon or tool; the other hand (a new slot in the backpack window) holds a light or a shield.',
     'Long guns (the Blaster, SMG, scattergun and rifle), the spear, the sledge, the pickaxe, the shovel and the welder need both hands. While you hold one, whatever is in your other hand does nothing: a light goes out and a shield hangs useless. The pistol, the blades, the machete and the hatchet leave the other hand free.',

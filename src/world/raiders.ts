@@ -1,4 +1,5 @@
 // Bandits on wheels (raider vehicles) and roadside ambushes with a roadblock. Unsaved, like other enemies.
+import { vehiclesOpen } from '../gen/settlement';
 import { hurtPlayer } from './damage';
 import * as THREE from 'three';
 import { machineBlast } from './blast';
@@ -71,6 +72,7 @@ function spawnRaidersMaybe(dt: number) {
   if (!env || (raidT -= dt) > 0) return;
   raidT = 20;
   const lv = env.danger(G.pos.x, G.pos.z);
+  if (!vehiclesOpen(G.char)) return; // (0.202) no cars before the mechanic comes
   if (lv < 3 || raiders.length >= (lv > 5 ? 2 : 1) || Math.random() > (driving.v ? 0.5 : 0.25) || !mayspawn(3, lv)) return;
   const back = driving.v ? driving.v.st.heading + Math.PI : G.yaw;   // G.yaw looks along -forward: + sin/cos is behind
   for (let i = 0; i < 8; i++) {

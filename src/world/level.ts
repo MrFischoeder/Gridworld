@@ -1,4 +1,5 @@
 // Loading places (dungeon sectors, the open world) and moving between them.
+import { progressive, projectDone } from '../gen/settlement';
 import { drawClosedChest } from './chestmodel';
 import { riding, getOff } from './ride';
 import { SHIP_NAME } from './lander';
@@ -227,7 +228,7 @@ export function villageDeco(map: VillageMap, y0 = 0, vid?: number) {
   }
   }
   grp.add(props.build());
-  return lamps(grp, map, y0);
+  return lamps(grp, map, y0, vid);
 }
 /** The hero's bed (a wooden frame with a headboard, a mattress, a pillow and a blanket) and chest, in their house. */
 function homeDeco(pb: PropBatch, h: VillageMap['homes'][number], y0: number, bed: boolean) {
@@ -349,8 +350,10 @@ function fenceDeco(pb: PropBatch, map: VillageMap, y0: number) {
     pb.lookout(x0 - 0.3, z0 - 0.3, x1 + 0.3, z1 + 0.3, fy + 0.2, STAKE, 2.5);
   }
 }
-function lamps(grp: THREE.Group, map: VillageMap, y0: number) {
-  for (const l of map.lamps) {
+function lamps(grp: THREE.Group, map: VillageMap, y0: number, vid?: number) {
+  // (0.202) a new settlement has no electricity until its power plant stands: no electric lamp posts before that
+  const s = vid !== undefined ? G.char.towns[vid] : undefined;
+  if (!progressive(s) || projectDone(s, 'power')) for (const l of map.lamps) {
     const pole = new THREE.Line(new THREE.BufferGeometry().setFromPoints([V(l.x, y0, l.z), V(l.x, y0 + 3.2, l.z)]), lineMat(GRID));
     const lamp = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.OctahedronGeometry(0.25)), add(0xffe8a0)); lamp.position.set(l.x, y0 + 3.45, l.z); lamp.name = 'lamp';
     grp.add(pole, lamp);

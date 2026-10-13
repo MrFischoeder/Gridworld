@@ -10,7 +10,7 @@ import { nearX, wrapDx, wrapX } from '../gen/regions';
 import { G, W } from '../game';
 import { OW, villageHere } from '../world/overworld';
 import { CHUNK, poisNear, villageSeed, GRIDHOLM_ID } from '../gen/regions';
-import { isStation, projectDone, satelliteUp, scanWait, ORBIT, RELAY, hasRelay } from '../gen/settlement';
+import { isStation, projectDone, satelliteUp, scanWait, ORBIT, RELAY, hasRelay, vehiclesOpen } from '../gen/settlement';
 import { allVillages } from '../gen/regions';
 import { planRoute } from '../gen/roads';
 import { fogsNear } from '../gen/toxic';
@@ -305,7 +305,7 @@ function drawArea(ctx: CanvasRenderingContext2D, w: number, h: number, ppm: numb
     }
   }
   // on the big map: every caravan on the roads between villages you know (from the timetables), as an arrow
-  if (labels) {
+  if (labels && vehiclesOpen(G.char)) { // (0.202) no convoys before the mechanic comes
     let budget = 2; // new roads worked out per frame, so zooming far out does not stall the game
     const world = OW.terrain!.world, r = Math.max(hw, hh) + 2000, known = (v: { x: number; z: number }) => isDiscovered(d, Math.floor(v.x / CHUNK), Math.floor(v.z / CHUNK));
     for (const e of network(world)) {
