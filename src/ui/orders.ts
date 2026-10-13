@@ -11,11 +11,12 @@ import { showToast, logLine } from './hud';
 import type { Order } from '../data/orders';
 import { stockHas, stockTake } from './stock';
 import { tl, TL } from '../i18n';
+import { roundsInUse } from '../data/weapons';
 
 /** The order list, as dialogue panel HTML (after `head`). */
 export function ordersHTML(head: string, vid: number | null, msg = ''): string {
   const c = G.char, st = vid === null ? undefined : c.towns[vid], has = vid !== null ? stockHas(vid) : () => 0;
-  const allowed = ORDERS.filter((o) => smithAllows(st, o.out));
+  const allowed = ORDERS.filter((o) => smithAllows(st, o.out) && roundsInUse(o.out));
   const known = allowed.filter((o) => knows(o, c.tech) || starterRecipe(st, o.out));
   const lost = allowed.filter((o) => !(knows(o, c.tech) || starterRecipe(st, o.out)));
 

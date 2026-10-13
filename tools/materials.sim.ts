@@ -17,6 +17,7 @@ import { RARES } from '../src/gen/deposits';
 import { INSTALLS, INSTALL_STAGES, INSTALL_WORK, INSTALL_DRAW, HALL_SETS, RADAR_UP, installWorks, type InstallKind } from '../src/gen/installs';
 import { STAGES, CHARIOT } from '../src/gen/shuttle';
 import { ORDERS } from '../src/data/orders';
+import { roundsInUse } from '../src/data/weapons';
 import { GARAGE } from '../src/data/garage';
 import { vehicleTitle, VEHICLES, FUEL as CAN, rangeKm, EV } from '../src/data/vehicles';
 import { CONVOY_FUEL } from '../src/gen/caravans';
@@ -152,6 +153,7 @@ it('writes SUROWCE.md', () => {
   P('| Wyrób | Z czego | Plany |');
   P('|---|---|---|');
   for (const o of ORDERS) {
+    if (!roundsInUse(o.out)) continue; // (0.193) the guns' own rounds are shelved
     P(`| ${o.n > 1 ? o.n + ' × ' : ''}${N(o.out)} | ${list(o.needs)} | ${o.tech ? TECH_BY_ID[o.tech]?.name ?? o.tech : 'podstawowe (bez planów)'} |`);
     for (const [i] of o.needs) use(i, `kowal → ${N(o.out)}`);
   }

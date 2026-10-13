@@ -3,6 +3,11 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.193.0', date: '2026-10-13', title: 'One kind of rounds', notes: [
+    'Every gun now fires Energy Cells: the pistol, the SMG, the Scattergun and the Hunting Rifle load from the same cells as the Blaster.',
+    'Each gun still shoots its own way and its shots look different: the Blaster a green beam, the pistol a blue bolt, the SMG quick violet streaks, the Scattergun a spray of orange pellets, the rifle a bright white line.',
+    'Pistol rounds, shotgun shells and rifle rounds are set aside for later: they no longer turn up in chests, on the fallen or in lockers, and the blacksmith does not make them. Any you already carry stay in your kit.',
+  ] },
   { v: '0.192.0', date: '2026-10-13', title: 'Recoil', notes: [
     'Every shot now kicks: the view jumps up and springs back, and the gun shoves back into your shoulder.',
     'Each shot also lifts your aim a little. Most of it settles back by itself, so a single shot returns close to where you aimed, but a long burst walks upwards and you have to pull down.',

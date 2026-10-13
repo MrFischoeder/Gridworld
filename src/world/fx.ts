@@ -16,7 +16,24 @@ export function burst(at: THREE.Vector3, color: number, n: number, r: number) {
   }
   addFx(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(sp), add(color)), 0.3);
 }
+// (0.193) A shot's bolt: a short streak flying from the muzzle to where the shot ends, sparks when it gets there.
+const bolts: { line: THREE.Line; from: THREE.Vector3; dir: THREE.Vector3; dist: number; len: number; speed: number; t: number; c: number; hit: number }[] = [];
+export function addBolt(from: THREE.Vector3, to: THREE.Vector3, color: number, len: number, speed: number, hitColor: number, hit: number) {
+  const dir = to.clone().sub(from), dist = dir.length(); dir.normalize();
+  const line = new THREE.Line(new THREE.BufferGeometry().setFromPoints([from.clone(), from.clone()]), add(color));
+  scene.add(line); bolts.push({ line, from: from.clone(), dir, dist, len, speed, t: 0, c: hitColor, hit });
+}
 export function updateFx(dt: number) {
+  for (let i = bolts.length - 1; i >= 0; i--) {
+    const b = bolts[i]; b.t += dt;
+    const head = Math.min(b.dist, b.t * b.speed), tail = Math.max(0, head - b.len), pos = b.line.geometry.getAttribute('position') as THREE.BufferAttribute;
+    const h = b.from.clone().addScaledVector(b.dir, head), tl = b.from.clone().addScaledVector(b.dir, tail);
+    pos.setXYZ(0, tl.x, tl.y, tl.z); pos.setXYZ(1, h.x, h.y, h.z); pos.needsUpdate = true; b.line.geometry.computeBoundingSphere();
+    if (head >= b.dist) {
+      if (b.hit > 0) burst(h, b.c, Math.round(4 + 6 * b.hit), 0.35 * b.hit);
+      scene.remove(b.line); b.line.geometry.dispose(); (b.line.material as THREE.Material).dispose(); bolts.splice(i, 1);
+    }
+  }
   for (let i = fx.length - 1; i >= 0; i--) {
     const e = fx[i]; e.life -= dt;
     (e.obj.material as THREE.Material).opacity = Math.max(0, e.life / e.max);

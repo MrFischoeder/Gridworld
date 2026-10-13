@@ -5,7 +5,7 @@ import * as THREE from 'three';
 import { camera, lineMat, add, V } from './render';
 import { G } from '../game';
 import { SWAY, newSway, stepSway, type Sway, RECOIL, newRecoil, kickRecoil, stepRecoil } from '../core/sway';
-import { addFx, burst } from './fx';
+import { addFx, addBolt, burst } from './fx';
 import { rayMountedTurret, damageMountedTurret } from './mountedturrets';
 import { rayWorld } from './player';
 import { vehicles, rayVehicle, damageVehicle, type Vehicle } from './vehicles';
@@ -13,7 +13,7 @@ import { foes, damageFoe, type Foe, type Drone } from './enemies';
 import { noteShot, unaware, sneakBonus } from './stealth';
 import { rayBarrier, hurtBarrier, rayRaider, type Raider } from './raiders';
 import { el } from '../ui/hud';
-import { gunOf, meleeOf, type GunLook, type MeleeLook } from '../data/weapons';
+import { gunOf, meleeOf, SHOT, type GunLook, type MeleeLook } from '../data/weapons';
 import { BLADE, STAMINA, BURN } from '../data/survival';
 import { spendStamina, burn } from './survival';
 import { makeNoise } from './noise';
@@ -258,8 +258,13 @@ function ray(d: THREE.Vector3, dmg: number) {
   if (bar) { tHit = bar.t; hitT = null; turret = null; car = null; hurtBarrier(bar.p, dmg); }
   const end = o.clone().addScaledVector(d, tHit);
   const gun = V(0.24 * (1 - aimK), -0.2 + aimK * 0.1, -0.75); camera.localToWorld(gun);
-  addFx(new THREE.Line(new THREE.BufferGeometry().setFromPoints([gun, end]), add(hitT || turret ? 0xffd27a : 0x9dffb4)), 0.12);
-  burst(end, hitT || turret ? 0xffb347 : 0x3dff6e, hitT || turret ? 10 : 6, hitT || turret ? 0.7 : 0.35);
+  // (0.193) each gun's shots look its own (SHOT): a beam that fades, or a bolt that flies; amber where it hits something
+  const look = SHOT[curGun()?.look ?? 'blaster'], struck = !!(hitT || turret), sparks = struck ? 0xffb347 : 0x3dff6e;
+  if (look.kind === 'beam') {
+    addFx(new THREE.Line(new THREE.BufferGeometry().setFromPoints([gun, end]), add(struck ? 0xffd27a : look.c)), look.life);
+    if (look.core) addFx(new THREE.Line(new THREE.BufferGeometry().setFromPoints([gun.clone().lerp(end, 0.02), end]), add(look.core)), look.life * 0.5);
+    burst(end, sparks, Math.round((struck ? 10 : 6) * look.hit), (struck ? 0.7 : 0.35) * look.hit);
+  } else addBolt(gun, end, struck ? 0xffd27a : look.c, look.len, look.speed, sparks, struck ? look.hit * 1.4 : look.hit * 0.6);
   if (car) { damageVehicle(car, dmg); G.hitFlash = .15; }
   if (turret) damageMountedTurret(turret.gun, dmg);
   if (hitT) damageFoe(hitT, dmg * sneak(hitT, false));

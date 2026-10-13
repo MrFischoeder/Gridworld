@@ -34,6 +34,7 @@ import { lyingModel } from './pickmodels';
 import { vehicles, driving, refreshParts } from './vehicles';
 import { repairWithKit, vehicleTitle } from '../data/vehicles';
 import { tl, TL } from '../i18n';
+import { AMMO_TYPES } from '../data/weapons';
 
 export interface Crystal { m: THREE.LineSegments; p: THREE.Vector3; v: THREE.Vector3; age: number }
 /** `rest`: it lies on the ground as what it is (world/pickmodels.ts) instead of floating and spinning as a token. */
@@ -157,6 +158,7 @@ export const chestContents = (c: Chest): Container | undefined => G.char.contain
 /** A handful of rounds of some kind (loot): energy cells most often, then pistol rounds, shells, rifle rounds. */
 export function rollAmmo(scale = 1): [ItemKey, number] {
   const r = Math.random(), f = (lo: number, hi: number) => Math.max(1, Math.round((lo + Math.random() * (hi - lo)) * scale));
+  if (!AMMO_TYPES) return ['ammoE', f(15, 40)]; // (0.193) every gun fires Energy Cells for now
   return r < 0.4 ? ['ammoE', f(15, 40)] : r < 0.7 ? ['ammo9', f(12, 30)] : r < 0.85 ? ['ammoS', f(5, 12)] : ['ammoR', f(4, 10)];
 }
 /** Guns and melee weapons that turn up as loot (the Blaster and the energy blade are the ship's own). */

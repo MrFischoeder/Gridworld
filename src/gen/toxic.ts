@@ -17,6 +17,7 @@ import { inCity } from './cities';
 import { regionRoads, nearestOnRoad } from './roads';
 import type { ItemKey } from '../data/items';
 import { tl } from '../i18n';
+import { AMMO_TYPES } from '../data/weapons';
 
 export const FOG = {
   /** Islands: no nearer than this to Gridholm (m); the share of the sea's islands (gen/seas.ts) that are poisoned. */
@@ -168,7 +169,7 @@ export function lockerLoot(world: number, f: FogZone, i: number): [ItemKey, numb
   if (f.site === 'lab' && R(12) < 0.5) add('glass', 1 + Math.floor(R(13) * 2));
   if (f.site === 'depot' && R(12) < 0.5) add('steel', 1);
   if (R(14) < 0.6) add('ammoE', 20 + Math.floor(R(15) * 40)); // (new draws on their own keys: the older contents stay)
-  if (R(16) < 0.25) add(R(17) < 0.5 ? 'ammoR' : 'ammoS', 6 + Math.floor(R(18) * 8));
+  if (R(16) < 0.25) add(!AMMO_TYPES ? 'ammoE' : R(17) < 0.5 ? 'ammoR' : 'ammoS', 6 + Math.floor(R(18) * 8)); // (0.193) one kind of rounds for now
   if (f.site === 'lab' && R(19) < 0.4) add(R(20) < 0.5 ? 'optics' : 'silicon', 1 + Math.floor(R(21) * 2)); // (0.145) the old labs' electronics
   if (R(22) < 0.15) add(R(23) < 0.7 ? 'control' : 'computer', 1);
   return out;

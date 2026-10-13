@@ -9,7 +9,7 @@ import { ITEMS, type ItemKey } from './items';
 import { ORDERS } from './orders';
 import { GARAGE } from './garage';
 import { vehicleTitle } from './vehicles';
-import { GUNS } from './weapons';
+import { GUNS, roundsInUse } from './weapons';
 import { PLANTS, type PlantKind } from '../gen/plants';
 import { STATIONS, type StationKind } from '../gen/energy';
 import { FORTIFY, WORKS, POWER, type WorkKind } from '../gen/town';
@@ -39,7 +39,7 @@ function build(): Map<ItemKey, Map<UseGroup, string[]>> {
     if (!a.includes(what)) a.push(what);
     gs.set(g, a); m.set(k, gs);
   };
-  for (const o of ORDERS) for (const [i] of o.needs) use(i, tl('Blacksmith makes'), N(o.out));
+  for (const o of ORDERS) if (roundsInUse(o.out)) for (const [i] of o.needs) use(i, tl('Blacksmith makes'), N(o.out));
   use('log', tl('Other'), tl('sawn into 4 Planks by hand, slowly (a Saw in your kit: the backpack\'s Saw into planks); a village sawmill gets 6 to 8')); // world/sawing.ts
   for (const g of GARAGE) for (const [i] of g.needs) use(i, tl('Other'), tl('the mechanic: ') + (g.car ? vehicleTitle(g.car) : N(g.out!)));
   for (const k of Object.keys(PLANTS) as PlantKind[]) for (const r of PLANTS[k].recipes) for (const [i] of r.in) use(i, tl('Processed into'), `${N(r.out[0])} (${PLANTS[k].name})`);
