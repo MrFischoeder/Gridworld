@@ -5,7 +5,7 @@
 //   a solar array or wind turbines), chosen from the village seed. It wears down with time (and later with raids)
 //   and needs mending with the right parts; below `POWER_DOWN` the lights go out.
 import { hash, rng, type Dir } from '../core/rng';
-import { villageGates, WALL_TIERS } from './village';
+import { villageGates, WALL_TIERS, WALL_LO, WALL_HI } from './village';
 import type { ItemKey } from '../data/items';
 import type { PlantState, PlantKind } from './plants';
 import type { StationState, StationKind } from './energy';
@@ -162,7 +162,7 @@ export function powerCondition(seed: number, s: TownState | undefined, now: numb
   return Math.max(0, Math.min(100, Math.max(PATCHED, 100 - age * POWER[k].wear) - (s?.hurt ?? 0) - raidHurt));
 }
 /**
- * Where the plant stands, in plaza-local metres (the plaza runs 0..72): on a side of the village the seed picks
+ * Where the plant stands, in plaza-local metres (the plaza runs WALL_LO..WALL_HI, -12..84): on a side of the village the seed picks
  * (never the north one, where Gridholm's vehicle yard is), off a corner so the road from any gate stays clear,
  * `off` metres out from the fence. `face` is the outward direction.
  */
@@ -171,7 +171,7 @@ export function powerSite(seed: number): { x: number; z: number; w: number; d: n
   const sides: Dir[] = (['W', 'E', 'S'] as Dir[]).sort((a, b) => (gates.includes(a) ? 1 : 0) - (gates.includes(b) ? 1 : 0));
   const side = R() < 0.7 ? sides[0] : sides[1 + Math.floor(R() * 2)], along = R() < 0.5 ? 14 : 58, off = 17;
   const w = 14, d = 10;
-  if (side === 'W') return { x: -off, z: along, w: d, d: w, side, face: [-1, 0] };
-  if (side === 'E') return { x: 72 + off, z: along, w: d, d: w, side, face: [1, 0] };
-  return { x: along, z: 72 + off, w, d, side, face: [0, 1] };
+  if (side === 'W') return { x: WALL_LO + 1 - off, z: along, w: d, d: w, side, face: [-1, 0] };
+  if (side === 'E') return { x: WALL_HI + off, z: along, w: d, d: w, side, face: [1, 0] };
+  return { x: along, z: WALL_HI + off, w, d, side, face: [0, 1] };
 }

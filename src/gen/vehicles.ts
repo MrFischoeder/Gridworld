@@ -13,9 +13,9 @@ export interface Parking { id: string; model: VehicleModel; x: number; z: number
  * on the origin). Heading Math.PI faces north, down the road. Bought vehicles take the first free bay.
  */
 export const YARD = {
-  dealer: { x: 5.5, z: -41.5 },
-  sign: { x: 5.5, z: -40 },
-  bays: [{ x: 10, z: -47 }, { x: 16, z: -47 }, { x: 22, z: -47 }, { x: -10, z: -47 }, { x: -16, z: -47 }],
+  dealer: { x: 5.5, z: -53.5 },
+  sign: { x: 5.5, z: -52 },
+  bays: [{ x: 10, z: -59 }, { x: 16, z: -59 }, { x: 22, z: -59 }, { x: -10, z: -59 }, { x: -16, z: -59 }],
   heading: Math.PI,
 };
 

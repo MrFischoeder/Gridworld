@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { generateCamp } from '../src/gen/camps';
+import { inPoly, generateCamp } from '../src/gen/camps';
 import type { Poi } from '../src/gen/regions';
 
 const poi = { id: 123, name: 'Test camp', rect: { x0: -10, z0: -10, x1: 10, z1: 10 } } as Poi;
@@ -9,9 +9,13 @@ describe('camp palisade access', () => {
       const c = generateCamp(world, poi, 5);
       expect(generateCamp(world, poi, 5)).toEqual(c);
       const solid = (x: number, z: number) => c.ops.some(o => x >= o.x && x < o.x + o.w && z >= o.z && z < o.z + o.d);
-      for (const z of [-10, 9]) {
-        for (let x = -2; x < 2; x++) expect(solid(x, z)).toBe(false);
-        for (const x of [-9, -3, 2, 8]) expect(solid(x, z)).toBe(true);
+      expect(c.ring.length).toBeGreaterThanOrEqual(6); expect(c.ring.length).toBeLessThanOrEqual(8); // (0.198) a polygon, never a square
+      for (const o of c.palisade) expect(o.x < -2 || o.x >= 2).toBe(true); // the north and south openings
+      for (const s of c.spawns) expect(inPoly(c.ring, 0, 0, s.x, s.z)).toBe(true);
+      { // from the fire you get out only through the openings
+        const box = new Set<string>(), todo: [number, number][] = [[0, 0]];
+        while (todo.length) { const [x, z] = todo.pop()!, k = x + ':' + z; if (box.has(k) || solid(x, z) || (x >= -2 && x < 2 && Math.abs(z) >= 6) || Math.abs(x) > 12 || Math.abs(z) > 12) continue; box.add(k); todo.push([x - 1, z], [x + 1, z], [x, z - 1], [x, z + 1]); }
+        expect([...box].some((k) => k.split(':').map(Number).some((v) => Math.abs(v) >= 11))).toBe(false);
       }
       expect(solid(c.stash.x, c.stash.z)).toBe(false);
       for (const spawn of c.spawns) expect(solid(spawn.x, spawn.z)).toBe(false);

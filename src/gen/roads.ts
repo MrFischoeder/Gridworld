@@ -15,7 +15,7 @@ import { townsWorld } from './worldrules';
 /** A road between places, or a mountain trail (gen/trails.ts: `gate` 'trail', its height profile `h` per point, the summit's `name`). */
 export interface Road { id: string; from: number; to: number; gate: string; pts: [number, number][]; half: number; h?: number[]; name?: string }
 
-const GATE_POINT = { N: [36, -2], S: [41, 74], E: [74, 37], W: [-2, 39] } as const;
+const GATE_POINT = { N: [36, -14], S: [41, 86], E: [86, 37], W: [-14, 39] } as const; // (0.198: just outside the bigger wall)
 /** Where the road of a gate starts (just outside the wall apron), for a village centred at its POI. */
 export function gatePoint(v: Poi, dir: keyof typeof GATE_POINT): [number, number] {
   const p = GATE_POINT[dir];

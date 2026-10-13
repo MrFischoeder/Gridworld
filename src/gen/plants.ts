@@ -8,6 +8,7 @@
 //
 // State (in the village's TownState): the works built (`plants`, each with its hopper, output and clock) and the
 // one being built. The run is pure: `runPlant` settles the batches done by any game time.
+import { WALL_LO, WALL_HI } from './village';
 import { hash, type Dir } from '../core/rng';
 import { powerSite, type TownState } from './town';
 import { industrySite, type Industry } from './industry';
@@ -257,9 +258,9 @@ export function completePlant(s: PlantTown, now: number): PlantKind | StationKin
 export function plantSite(seed: number, k: Industry, i: number): { x: number; z: number; w: number; d: number; side: Dir; face: [number, number] } {
   const p = powerSite(seed), s = industrySite(seed, k), side = (['W', 'E', 'S'] as Dir[]).find((d) => d !== p.side && d !== s.side) ?? 'S';
   const along = (i === 0) !== (hash(seed, 0x9147) % 2 === 0) ? 15 : 57, w = 18, d = 14, off = 11 + d / 2;
-  if (side === 'W') return { x: -off, z: along, w: d, d: w, side, face: [-1, 0] };
-  if (side === 'E') return { x: 72 + off, z: along, w: d, d: w, side, face: [1, 0] };
-  return { x: along, z: 72 + off, w, d, side, face: [0, 1] };
+  if (side === 'W') return { x: WALL_LO + 1 - off, z: along, w: d, d: w, side, face: [-1, 0] };
+  if (side === 'E') return { x: WALL_HI + off, z: along, w: d, d: w, side, face: [1, 0] };
+  return { x: along, z: WALL_HI + off, w, d, side, face: [0, 1] };
 }
 /** Plant state in a village's TownState. */
 export const plantsOf = (s: TownState | undefined): PlantState[] => s?.plants ?? [];

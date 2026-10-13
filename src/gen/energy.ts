@@ -1,3 +1,4 @@
+import { WALL_LO, WALL_HI } from './village';
 import { projectDone, progressive, sawLevel, SAW, DEEP, furnaceLevel, FURNACE } from './settlement';
 // Electricity. Every village has its own small plant (gen/town.ts POWER: a diesel generator, a solar array or wind
 // turbines) and it only just keeps the village's lamps and homes going. The works (gen/plants.ts) draw far more, and
@@ -206,7 +207,7 @@ export const poweredAt = (world: number, v: Poi, seed: number, s: TownState | un
 export function stationSite(seed: number, k: Industry, i: number): { x: number; z: number; w: number; d: number; side: Dir; face: [number, number] } {
   const base = i === 0 ? powerSite(seed) : industrySite(seed, k), side = base.side;
   const was = side === 'S' ? base.x : base.z, along = was < 36 ? 57 : 15, w = 16, d = 12, off = 11 + d / 2;
-  if (side === 'W') return { x: -off, z: along, w: d, d: w, side, face: [-1, 0] };
-  if (side === 'E') return { x: 72 + off, z: along, w: d, d: w, side, face: [1, 0] };
-  return { x: along, z: 72 + off, w, d, side, face: [0, 1] };
+  if (side === 'W') return { x: WALL_LO + 1 - off, z: along, w: d, d: w, side, face: [-1, 0] };
+  if (side === 'E') return { x: WALL_HI + off, z: along, w: d, d: w, side, face: [1, 0] };
+  return { x: along, z: WALL_HI + off, w, d, side, face: [0, 1] };
 }

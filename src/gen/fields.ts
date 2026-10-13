@@ -35,7 +35,7 @@ export function reservedZones(world: number, poi: Poi, seed: number, s: TownStat
   const ox = poi.x + VILLAGE_OFFSET.x, oz = poi.z + VILLAGE_OFFSET.z, out: Zone[] = [];
   const rect = (x0: number, z0: number, x1: number, z1: number, why: string) => out.push({ x0: ox + x0, z0: oz + z0, x1: ox + x1, z1: oz + z1, why });
   const site = (p: { x: number; z: number; w: number; d: number }, why: string) => rect(p.x, p.z, p.x + p.w, p.z + p.d, why);
-  rect(-14, -14, 86, 86, tl('Too close to the village: its walls and clearing')); out[out.length - 1].k = 'village'; // the wall, the gates' lanes and the ring of side plots
+  rect(-26, -26, 98, 98, tl('Too close to the village: its walls and clearing')); out[out.length - 1].k = 'village'; // the wall, the gates' lanes and the ring of side plots
   for (const [k, p] of Object.entries(RESOURCE_PLOTS)) {
     const word = k === 'quarry' ? tl('the stone quarry') : k === 'oil' ? tl('the oil wells') : k === 'mine' ? tl('the mine') : k === 'lumber' ? tl('the lumber camp') : k === 'refinery' ? tl('the refinery') : tl('the food processing house');
     const m = k === 'lumber' ? GROVE_REACH + 4 : 6; // the lumber camp's yard lies in the great grove

@@ -24,10 +24,10 @@ import { staffing, peopleAt, workersAt } from './people';
 import { GRIDHOLM_ID } from './regions';
 import { roadsOf, departures, convoyCans } from './caravans';
 
-/** The hall: plaza-local rect on the north side (outside the wall, west of the north gate; the door faces the wall), its height, and how much the hold takes (litres). */
-export const HALL = { x0: 2, x1: 14, z0: -19, z1: -11, h: 4.2, door: 1.6, vol: 6000 };
+/** The hall: plaza-local rect on the north side (outside the wall, west of the north gate; the door faces the wall), its height, and how much the hold takes (litres). (0.198: 12 m further out with the bigger wall) */
+export const HALL = { x0: 2, x1: 14, z0: -31, z1: -23, h: 4.2, door: 1.6, vol: 6000 };
 /** The terminal inside, against the back wall (plaza-local), and where you stand to use it. */
-export const HALL_TERMINAL = { x: 8, z: -17.9, stand: { x: 8, z: -16.6 } };
+export const HALL_TERMINAL = { x: 8, z: -29.9, stand: { x: 8, z: -28.6 } };
 
 /** A new settlement before its warehouse stands: no building, the elder keeps the village's supplies (`vol` litres; the rect is unused). */
 export const SMALL_HALL = { x0: 5, x1: 11, z0: -17, z1: -12, h: 3, door: 1.6, vol: 800 };

@@ -92,7 +92,7 @@ export function completeFarm(s: TownState, seed: number, home: boolean, now: num
 }
 /** The i-th farm's field in plaza-local metres: outside a corner of the wall, clear of the sites on the sides and the gates. */
 export function farmPlot(seed: number, i: number): { x0: number; z0: number; x1: number; z1: number } {
-  const corners: [number, number][] = [[-10, -10], [82, -10], [82, 82], [-10, 82]], k = (hash(seed, 0xf43) + i) % 4, [cx, cz] = corners[k];
+  const corners: [number, number][] = [[-16, -16], [88, -16], [88, 88], [-16, 88]], k = (hash(seed, 0xf43) + i) % 4, [cx, cz] = corners[k];
   return { x0: cx - 6, z0: cz - 6, x1: cx + 6, z1: cz + 6 };
 }
 

@@ -16,7 +16,7 @@ import { planRoute } from '../gen/roads';
 import { fogsNear } from '../gen/toxic';
 import { weatherAt } from '../gen/weather';
 import { showToast, logLine } from './hud';
-import { wallPolygon, villageSides } from '../gen/village';
+import { wallPolygon, villageSides, VILLAGE_R } from '../gen/village';
 import { STEP, VERTS, CELLS, inRect } from '../gen/terrain';
 import { SEA } from '../gen/seas';
 import { discover, isDiscovered } from '../save';
@@ -158,7 +158,7 @@ function drawArea(ctx: CanvasRenderingContext2D, w: number, h: number, ppm: numb
     if (p.type === 'hangar') { ctx.strokeStyle = ctx.fillStyle = '#9dffe0'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(x - 7, y + 4); ctx.quadraticCurveTo(x, y - 8, x + 7, y + 4); ctx.closePath(); ctx.stroke(); if (labels) ctx.fillText(p.name, x, y - 12); continue; }
     if (p.type === 'village') { // the wall's own shape (gen/village.ts wallPolygon), at least a few pixels across
       ctx.strokeStyle = ctx.fillStyle = '#ffd060'; ctx.lineWidth = 2;
-      const world = OW.terrain!.world, poly = wallPolygon(villageSides(villageSeed(world, p), p.id === GRIDHOLM_ID)), k = Math.max(6, 76 * ppm / 2) / 36.5;
+      const world = OW.terrain!.world, poly = wallPolygon(villageSides(villageSeed(world, p), p.id === GRIDHOLM_ID)), k = Math.max(6, (VILLAGE_R * 2 + 4) * ppm / 2) / VILLAGE_R;
       ctx.beginPath(); poly.forEach(([u, v], i) => (i ? ctx.lineTo : ctx.moveTo).call(ctx, x + (u - 36) * k, y + (v - 36) * k)); ctx.closePath(); ctx.stroke();
     }
     else { ctx.strokeStyle = ctx.fillStyle = '#5cc8ff'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(x - 5, y - 4); ctx.lineTo(x + 5, y - 4); ctx.lineTo(x, y + 5); ctx.closePath(); ctx.stroke(); }

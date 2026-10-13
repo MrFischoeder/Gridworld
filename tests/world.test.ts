@@ -108,7 +108,7 @@ describe('village and roads', () => {
   it('the gate openings are walkable from inside the plaza to outside', () => {
     for (const w of WORLDS.slice(0, 20)) {
       const vm = generateVillage(w, 5), g = VoxelGrid.surface(vm.ops, vm.rect, 5);
-      const ground: Space = { empty: (x, y, z) => (g.covers(x, z) ? g.empty(x, y, z) : y >= 5 && Math.abs(x) < 50 && Math.abs(z) < 50), setCell: () => {} };
+      const ground: Space = { empty: (x, y, z) => (g.covers(x, z) ? g.empty(x, y, z) : y >= 5 && Math.abs(x) < 64 && Math.abs(z) < 64), setCell: () => {} };
       const seen = reachableCells(ground, [Math.floor(vm.spawn[0]), 5, Math.floor(vm.spawn[2])]);
       for (const gate of vm.gates) {
         const o = DIRV[gate.dir], x = Math.floor(gate.x + o[0] * 3), z = Math.floor(gate.z + o[1] * 3);
@@ -123,7 +123,7 @@ describe('village and roads', () => {
     for (const w of WORLDS.slice(0, 10)) {
       const vm = generateVillage(w, 5), g = VoxelGrid.surface(vm.ops, vm.rect, 5), shown = VoxelGrid.surface(vm.shown, vm.rect, 5);
       expect(vm.tier).toBe(0); expect(vm.wallH).toBe(WALL_TIERS[0].h);
-      const [x, z] = [vm.ox + 10, vm.oz - 1]; // on the north wall line, away from the gate
+      const n = vm.gates.find((q) => q.dir === 'N')!, [x, z] = [vm.ox + 27, n.m]; // on the north wall line (every shape's flat north side), away from the gate
       expect(g.empty(x, 5, z)).toBe(false); expect(g.empty(x, 5 + WALL_TIERS[0].h - 1, z)).toBe(false); expect(g.empty(x, 5 + WALL_TIERS[0].h, z)).toBe(true);
       expect(shown.empty(x, 5, z)).toBe(true); // drawn as stakes, not voxels
       expect(vm.fence.length).toBeGreaterThanOrEqual(4 + vm.gates.length);

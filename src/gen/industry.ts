@@ -1,3 +1,4 @@
+import { WALL_LO, WALL_HI } from './village';
 import { progressive, projectDone, type Project } from './settlement';
 // What a village lives on: its industry, worked at a site outside its fence. Farming villages till fields (grain,
 // carrots, potatoes), mining villages dig a mine (coal, iron ore, copper; mostly by the hills), oil villages pump
@@ -119,9 +120,9 @@ export function industrySite(seed: number, k: Industry): { x: number; z: number;
   const p = powerSite(seed), R = rng(hash(seed, 0x1d59)), sides = (['W', 'E', 'S'] as Dir[]).filter((s) => s !== p.side);
   const side = sides[Math.floor(R() * sides.length)], along = R() < 0.5 ? 16 : 56;
   const w = k === 'farm' ? 28 : 18, d = k === 'farm' ? 18 : 14, off = 11 + d / 2; // within the village's tree clearing
-  if (side === 'W') return { x: -off, z: along, w: d, d: w, side, face: [-1, 0] };
-  if (side === 'E') return { x: 72 + off, z: along, w: d, d: w, side, face: [1, 0] };
-  return { x: along, z: 72 + off, w, d, side, face: [0, 1] };
+  if (side === 'W') return { x: WALL_LO + 1 - off, z: along, w: d, d: w, side, face: [-1, 0] };
+  if (side === 'E') return { x: WALL_HI + off, z: along, w: d, d: w, side, face: [1, 0] };
+  return { x: along, z: WALL_HI + off, w, d, side, face: [0, 1] };
 }
 /** The refinery commission: what is still missing (like the wall's in gen/town.ts), or null once built. */
 export function buildPlan(k: Industry, s: TownState | undefined) {

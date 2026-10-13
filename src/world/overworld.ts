@@ -43,7 +43,7 @@ import { riversOf, riverNear } from '../gen/rivers';
 import { bridgeFloor, bridgeHit, bridgeDeck, clearBridges } from './bridges';
 import { pierFloor, pierHit, pierDeck, clearPiers } from './piers';
 import { boatHit, shipFloor, shipHit } from './boats';
-import { CHUNK, poisNear, X_MIN, WORLD_W, POLE_Z, POLAR_Z, villageContaining, villageDist, villageSeed, GRIDHOLM_ID, type Poi, type Rect, wrapC } from '../gen/regions';
+import { CHUNK, poisNear, X_MIN, WORLD_W, POLE_Z, POLAR_Z, villageContaining, villageDist, villageSeed, GRIDHOLM_ID, type Poi, type Rect, wrapC, wrapDx } from '../gen/regions';
 import { chunkTrees, chunkRocks, type Tree, type Rock, type OreKind } from '../gen/trees';
 import { drawTree } from './trees';
 import { drawTemple } from './temple';
@@ -52,7 +52,7 @@ import { chunkPlants, type Plant } from '../gen/flora';
 import { dangerAt } from '../gen/danger';
 import { drawPlants, dropPlants, ripe, type PlantNode } from './flora';
 import { drawWell, syncLakes, clearLakes, seaSheet, riverSheet } from './water';
-import { generateVillage, WALL_TIERS, STONE_TIER, type VillageMap } from '../gen/village';
+import { generateVillage, WALL_TIERS, STONE_TIER, wallPolygon, villageSides, insideWall, type VillageMap } from '../gen/village';
 import { wallOf } from '../gen/town';
 import { drawPower, setPlantLamps, forgetPower } from './power';
 import { drawIndustry, forgetIndustry } from './industry';
@@ -380,7 +380,7 @@ function loadVillageStruct(poi: Poi): Structure {
   const taken = new Set(npcs.map((n) => n.name.replace('Elder ', '')));
   const folk = vm.home ? VILLAGER_NAMES : FOLK.slice(((vm.seed >>> 0) + 3) % 12).filter((n) => !taken.has(n));
   // the captain of the guard walks the inside of the wall, from gate to gate and past the towers
-  const gname = vm.home ? NPC_INFO.guard.name! : folk.pop()!, edge = vm.walk.filter(([x, z]) => Math.min(x - vm.ox, z - vm.oz, vm.ox + 72 - x, vm.oz + 72 - z) < 6);
+  const gname = vm.home ? NPC_INFO.guard.name! : folk.pop()!, poly = wallPolygon(villageSides(vm.seed, vm.home)), edge = vm.walk.filter(([x, z]) => !insideWall(poly, x - vm.ox, z - vm.oz, 6)); // walk cells within 6 m of the wall
   const start = edge.length ? edge[0] : vm.walk[0], guard = makeNpc('guard', gname, V(start[0] + 0.5, y, start[1] + 0.5), null);
   guard.route = edge; npcs.push(guard);
   folk.slice(0, progressive(st) ? Math.max(0, Math.min(folk.length, Math.floor(pop) - npcs.length)) : Math.max(2, (vm.home ? 12 : 8) - recentDead(poi.id))).forEach((nm) => { const c = vm.walk[(Math.random() * vm.walk.length) | 0]; npcs.push(makeNpc('villager', nm, V(c[0] + 0.5, y, c[1] + 0.5), null)); });
@@ -445,8 +445,9 @@ function loadCampStruct(poi: Poi): Structure {
   const grid = VoxelGrid.surface(cm.ops, cm.rect, y);
   const { group, mesh } = voxelObject(VoxelGrid.surface(cm.ops.filter(o => !cm.palisade.includes(o)), cm.rect, y), Infinity, OUTLINE);
   const pb = new PropBatch();
+  const pal = new Set(cm.palisade.map((o) => o.x + ',' + o.z));
   for (const o of cm.palisade) {
-    const alongX = o.z === cm.rect.z0 || o.z === cm.rect.z1 - 1;
+    const alongX = pal.has(o.x - 1 + ',' + o.z) || pal.has(o.x + 1 + ',' + o.z) || !(pal.has(o.x + ',' + (o.z - 1)) || pal.has(o.x + ',' + (o.z + 1))); // the run's direction at this cell
     for (const offset of [.25, .75]) {
       const x = o.x + (alongX ? offset : .5), z = o.z + (alongX ? .5 : offset);
       const h = 3 + (hash(cm.id, o.x * 2 + offset * 4, o.z) % 100) / 500;
@@ -629,6 +630,12 @@ export function syncVillagePads(dt: number) {
 /** Load (or reload) the open world of the current character's seed, synchronously around (x, z). */
 export function openWorld(x: number, z: number) {
   initializeSettlements(G.char); planksForLogs(G.char); // (0.165: also after a server's world is taken over)
+  for (const v of G.char.vehicles) { // (0.198) the villages grew 12 m a side: a vehicle left just outside an old wall (Kuba's old bays) moves out with it
+    const p = villageContaining(G.char.world, v.x, v.z);
+    if (!p) continue;
+    const dx = wrapDx(v.x - p.x), dz = v.z - p.z;
+    if (Math.abs(dz) >= Math.abs(dx)) v.z = p.z + Math.sign(dz || -1) * (Math.abs(dz) + 12); else v.x = p.x + Math.sign(dx) * (Math.abs(dx) + 12);
+  }
   const w = G.char.world;
   if (!OW.terrain || OW.terrain.world !== w) { OW.terrain = new Terrain(w); riversOf(w); } // the rivers are worked out once, while the world loads
   OW.terrain.setClaims([...G.char.claims, ...fieldClaims(G.char.towns)]); // bases and the villages' fields are levelled

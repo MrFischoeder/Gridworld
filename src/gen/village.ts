@@ -106,29 +106,34 @@ export type FurnKind = 'counter' | 'table' | 'bench' | 'stool' | 'shelf' | 'barr
 export interface Furn { k: FurnKind; x0: number; z0: number; x1: number; z1: number; h: number; n: [number, number] }
 /** Pieces you walk round (stools you walk past; they are small). */
 export const furnSolid = (k: FurnKind) => k !== 'stool';
-/** The plaza is 72 x 72 m inside a 7 m wall; the footprint (with a 1 m apron) is VILLAGE_RECT around the origin. */
+/** Plaza coordinates keep their origin 36 m west and north of the village's middle (`VILLAGE_OFFSET`); since 0.198 the
+ *  wall stands `VILLAGE_R` from the middle on its flat sides (it was 36.5, a 72 m square), so the plaza runs from
+ *  `WALL_LO` to `WALL_HI`; the footprint (with an apron) is VILLAGE_RECT round the middle (gen/regions.ts). */
 export const VILLAGE_OFFSET = { x: -36, z: -36 };
+export const VILLAGE_R = 48;
+/** The rows / columns of the flat north and west (`WALL_LO`) and south and east (`WALL_HI`) walls, plaza coordinates. */
+export const WALL_LO = Math.floor(36 - VILLAGE_R), WALL_HI = Math.floor(36 + VILLAGE_R);
 const GATE_H = 4;
 /** Gate openings in local plaza coordinates: [dir, first cell, width]. Each lines up with a gap between buildings. */
 const GATE_SLOTS: Record<Dir, number> = { N: 34, S: 39, E: 35, W: 37 };
 
 /**
- * The shape of a village's wall: a square, a hexagon, an octagon or a dodecagon (Gridholm stays square). All fit the
- * same footprint: the octagon and the dodecagon keep the square's flat sides north, east, south and west (so their
- * gates are where a square village has them) and cut its corners; the hexagon has flat sides only to the north and
- * south, so it only has gates there.
+ * The shape of a village's wall: a hexagon, an octagon or a dodecagon (since 0.198 no village is square; Gridholm is
+ * an octagon). All fit the same footprint: the octagon and the dodecagon have flat sides north, east, south and west
+ * (where the gates are) and cut the corners; the hexagon has flat sides only to the north and south, so it only has
+ * gates there. (`4` is kept in the type for the square code paths, which no village takes any more.)
  */
 export type Sides = 4 | 6 | 8 | 12;
-export const villageSides = (seed: number, home = false): Sides => (home ? 4 : ([4, 6, 8, 12] as const)[hash(seed, 0x5ade) % 4]);
+export const villageSides = (seed: number, home = false): Sides => (home ? 8 : ([6, 8, 12] as const)[hash(seed, 0x5ade) % 3]);
 const PC = 36;
 /** The wall's corners (plaza coordinates, clockwise from the north-west), on its middle line. */
 export function wallPolygon(sides: Sides): [number, number][] {
-  const R = sides === 6 ? 36.5 : 36.5 / Math.cos(Math.PI / sides), out: [number, number][] = [];
+  const R = sides === 6 ? VILLAGE_R : VILLAGE_R / Math.cos(Math.PI / sides), out: [number, number][] = [];
   for (let k = 0; k < sides; k++) { const th = -Math.PI / sides + (2 * Math.PI * k) / sides; out.push([PC + R * Math.sin(th), PC - R * Math.cos(th)]); }
   return out;
 }
 /** Distance from the flat north (south) side to the plaza's middle. */
-const apothem = (sides: Sides) => (sides === 6 ? 36.5 * Math.cos(Math.PI / 6) : 36.5);
+export const apothem = (sides: Sides) => (sides === 6 ? VILLAGE_R * Math.cos(Math.PI / 6) : VILLAGE_R);
 /** Is (x, z) inside the wall polygon, at least `m` metres in from its middle line? */
 export function insideWall(poly: [number, number][], x: number, z: number, m = 0): boolean {
   for (let i = 0; i < poly.length; i++) {
@@ -163,8 +168,9 @@ export function generateVillage(seed: number, y = 0, cx = 0, cz = 0, name = 'Gri
     const s = GATE_SLOTS[dir];
     if (dir === 'N') { ops.push({ op: 'room', x: s, y: 0, z: zN, w: GW, h: GATE_H, d: 1 }); gates.push({ dir, x: s + GW / 2, z: zN - 1, w: GW, a: s, m: zN }); }
     if (dir === 'S') { ops.push({ op: 'room', x: s, y: 0, z: zS, w: GW, h: GATE_H, d: 1 }); gates.push({ dir, x: s + GW / 2, z: zS + 2, w: GW, a: s, m: zS }); }
-    if (dir === 'W') { ops.push({ op: 'room', x: -1, y: 0, z: s, w: 1, h: GATE_H, d: GW }); gates.push({ dir, x: -2, z: s + GW / 2, w: GW, a: s, m: -1 }); }
-    if (dir === 'E') { ops.push({ op: 'room', x: PW, y: 0, z: s, w: 1, h: GATE_H, d: GW }); gates.push({ dir, x: PW + 2, z: s + GW / 2, w: GW, a: s, m: PW }); }
+    const xW = square ? -1 : Math.floor(PC - apothem(sides)), xE = square ? PW : Math.floor(PC + apothem(sides));
+    if (dir === 'W') { ops.push({ op: 'room', x: xW, y: 0, z: s, w: 1, h: GATE_H, d: GW }); gates.push({ dir, x: xW - 1, z: s + GW / 2, w: GW, a: s, m: xW }); }
+    if (dir === 'E') { ops.push({ op: 'room', x: xE, y: 0, z: s, w: 1, h: GATE_H, d: GW }); gates.push({ dir, x: xE + 2, z: s + GW / 2, w: GW, a: s, m: xE }); }
   }
   const fenceOps = new Set(ops);
   // Guard towers: one on every corner of the wall and a pair flanking each gate (a fence has watch platforms on the
@@ -206,6 +212,7 @@ export function generateVillage(seed: number, y = 0, cx = 0, cz = 0, name = 'Gri
   return finish(towers);
 
   function finish(towers: Tower[]): VillageMap {
+  const LO = square ? 0 : WALL_LO, HI = square ? PW : WALL_HI; // the plaza's extent inside the wall
   const buildings: Building[] = [], trees: { x: number; z: number; h: number }[] = [], lamps: { x: number; z: number }[] = [];
   const B = (name: string, role: Role, x: number, z: number, w: number, d: number, side: Dir, h = 3.2) => {
     const cxm = x + (w >> 1), czm = z + (d >> 1), t = HOUSE.thick, dh = HOUSE.doorW / 2;
@@ -286,13 +293,13 @@ export function generateVillage(seed: number, y = 0, cx = 0, cz = 0, name = 'Gri
    * the wall allows, clear of the middle (well, boards) and of the lanes from the gates.
    */
   function ringLayout() {
-    const lanes = gates.map((g) => g.dir === 'N' ? [32, 0, 40, 36] : g.dir === 'S' ? [37, 36, 45, 72] : g.dir === 'W' ? [0, 35, 36, 43] : [36, 33, 72, 41]);
+    const lanes = gates.map((g) => g.dir === 'N' ? [32, LO, 40, 36] : g.dir === 'S' ? [37, 36, 45, HI] : g.dir === 'W' ? [LO, 35, 36, 43] : [36, 33, HI, 41]);
     const angles = Array.from({ length: 36 }, (_, i) => i * 10 + ri(-3, 3)).sort(() => R() - 0.5);
     const place = (name: string, role: Role, depth: number, width: number, h: number, gap = 2, mid = 12, angs = angles) => {
       for (const deg of angs) {
         const a = deg * Math.PI / 180, dx = Math.cos(a), dz = Math.sin(a), ew = Math.abs(dx) >= Math.abs(dz);
         const side: Dir = ew ? (dx > 0 ? 'W' : 'E') : (dz > 0 ? 'N' : 'S'), w = ew ? depth : width, d = ew ? width : depth;
-        for (let r = 42; r >= 14; r--) {
+        for (let r = Math.ceil(VILLAGE_R) + 6; r >= 14; r--) {
           const x = Math.round(PC + dx * r - w / 2), z = Math.round(PC + dz * r - d / 2);
           if (![[x, z], [x + w, z], [x, z + d], [x + w, z + d]].every(([px, pz]) => insideWall(poly, px, pz, 2.5))) continue;
           const near = Math.hypot(Math.max(x - PC, 0, PC - x - w), Math.max(z - 41, 0, 41 - z - d)); // the middle: well, boards, spawn
@@ -313,6 +320,7 @@ export function generateVillage(seed: number, y = 0, cx = 0, cz = 0, name = 'Gri
     const fine = Array.from({ length: 120 }, (_, i) => i * 3); // every 3 degrees
     for (let i = 0; i < 12 && n < HOMES_MIN; i++) if (place('', 'house', 5, i < 6 ? 7 : 6, 3, 1.5, 10, fine)) n++; // smaller, closer
     for (let i = 0; i < 6 && n < HOMES_MIN; i++) if (place('', 'house', 5, 5, 3, 1.2, 8, fine)) n++; // cottages, the last resort
+    if (home) { const first = buildings.find((b) => b.role === 'house'); if (first) first.mine = true; } // Gridholm's first house was the hero's (its chest is 'home:chest')
   }
   buildings.filter((b) => b.role === 'house').forEach((b, i) => { b.hero = i; });
   // well, trees, lamps
@@ -321,10 +329,10 @@ export function generateVillage(seed: number, y = 0, cx = 0, cz = 0, name = 'Gri
   late.push(wellOp);
   const blocked = (x: number, z: number, m: number) => !insideWall(poly, x + 0.5, z + 0.5, m + 1) || towers.some((t) => x >= t.x - 3 && x < t.x + t.w + 3 && z >= t.z - 3 && z < t.z + t.d + 3) || buildings.some((b) => x >= b.x - m && x < b.x + b.w + m && z >= b.z - m && z < b.z + b.d + m)
     || (Math.abs(x - 41) < 4 && Math.abs(z - 45) < 3) || (Math.abs(x - 31) < 4 && Math.abs(z - 45) < 3)
-    || (Math.abs(x - 36) < 5 && z < 10) || (Math.abs(x - 36) < 4 && Math.abs(z - 37) < 4) || (Math.abs(x - 36) < 3 && Math.abs(z - 50) < 3)
-    || gates.some((g) => Math.abs(x - Math.min(Math.max(g.x, 1), PW - 2)) < 5 && Math.abs(z - Math.min(Math.max(g.z, 1), PD - 2)) < 5);
+    || (Math.abs(x - 36) < 5 && z < LO + 10) || (Math.abs(x - 36) < 4 && Math.abs(z - 37) < 4) || (Math.abs(x - 36) < 3 && Math.abs(z - 50) < 3)
+    || gates.some((g) => Math.abs(x - Math.min(Math.max(g.x, LO + 1), HI - 2)) < 5 && Math.abs(z - Math.min(Math.max(g.z, LO + 1), HI - 2)) < 5);
   for (let n = 0; n < 200 && trees.length < 4; n++) { // a few shade trees (the plaza is for people)
-    const x = ri(2, 69), z = ri(2, 69);
+    const x = ri(LO + 2, HI - 3), z = ri(LO + 2, HI - 3);
     if (blocked(x, z, 3) || trees.some((t) => Math.abs(t.x - x) + Math.abs(t.z - z) < 5)) continue;
     const trunk: Op = { op: 'solid', x, y: 0, z, w: 1, h: 2, d: 1 }; trees.push({ x, z, h: ri(4, 6) }); late.push(trunk); treeOps.add(trunk); // the voxel only collides: world/trees.ts drawCrown draws a round trunk
   }
@@ -332,7 +340,7 @@ export function generateVillage(seed: number, y = 0, cx = 0, cz = 0, name = 'Gri
   const all = [...ops, ...late];
   const walk: [number, number][] = [];
   const solidAt = (x: number, z: number) => all.some((o) => o.op === 'solid' && o.y === 0 && x >= o.x && x < o.x + o.w && z >= o.z && z < o.z + o.d);
-  for (let x = 2; x < 70; x++) for (let z = 4; z < 70; z++) {
+  for (let x = LO + 2; x < HI - 2; x++) for (let z = LO + 4; z < HI - 2; z++) {
     if (!insideWall(poly, x + 0.5, z + 0.5, 2)) continue;
     if (buildings.some((b) => x >= b.x - 1 && x < b.x + b.w + 1 && z >= b.z - 1 && z < b.z + b.d + 1)) continue;
     if (!solidAt(x, z)) walk.push([x, z]);

@@ -201,12 +201,13 @@ export function villageDist(world: number, x: number, z: number, r = 120): numbe
 }
 /** Ruins are alien temples on a 60 m square (see gen/ruins.ts). */
 export const RUIN_SIZE = 60;
-export const VILLAGE_RECT: Rect = { x0: -38, z0: -38, x1: 38, z1: 38 };
+/** A village's footprint round its middle: the wall (gen/village.ts `VILLAGE_R` 48 m on its flat sides) and a 2 m apron. */
+export const VILLAGE_RECT: Rect = { x0: -50, z0: -50, x1: 50, z1: 50 };
 /**
  * The old hangar with the shuttle (gen/shuttle.ts), in Gridholm's region north-east of the village, clear of the
  * vehicle yard on the north road: a long arched shed open to the south, 46 x 34 m.
  */
-export const HANGAR: Rect = { x0: 64, z0: -118, x1: 110, z1: -84 };
+export const HANGAR: Rect = { x0: 76, z0: -130, x1: 122, z1: -96 }; // (0.198: 12 m further out, clear of the bigger Gridholm)
 
 function ruinAt(rx: number, rz: number, i: number, x: number, z: number, R: () => number): Poi {
   const x0 = even(x - RUIN_SIZE / 2), z0 = even(z - RUIN_SIZE / 2);

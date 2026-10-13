@@ -3,6 +3,13 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.198.0', date: '2026-10-13', title: 'Bigger villages, no squares', notes: [
+    'No village is square any more: every one is a hexagon, an octagon or a dodecagon, and Gridholm is an octagon.',
+    'Villages are bigger: the wall stands 48 m from the middle instead of 36.5, so the plaza has about three quarters more room and every shop and house fits inside.',
+    'Everything round the wall moved out with it: the village hall, the power plant, the industry site, the works and power station plots, the old farm corners, Kuba\'s yard at Gridholm and the ends of the roads.',
+    'A vehicle you left just outside a village\'s old wall, such as in Kuba\'s old bays, is moved out with the wall when the world loads.',
+    'Bandit camps are no longer square either: their palisades are hexagons, heptagons or octagons, still with openings to the north and south.',
+  ] },
   { v: '0.197.0', date: '2026-10-13', title: 'Build the warehouse where you want it', notes: [
     'A new settlement\'s warehouse no longer has a staked plot and a WAREHOUSE SITE sign waiting outside the north fence. The ground stays as it is until you choose.',
     'Once its materials are in, the elder hands you a Survey Stake. Walk out of the village, use it and click where the warehouse should stand: anywhere outside the wall within 320 m. A hologram shows the barn, its doorway and the apron before the doors.',
