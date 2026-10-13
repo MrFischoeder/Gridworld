@@ -2,7 +2,7 @@
 // zone (lime rings), ancient gate and megalith; zoom in and the ruins, bandit camps and crash
 // sites of the regions in view appear too. Drag to pan, wheel to zoom, click a
 // place (or any spot) to teleport there. Only a testing tool: nothing here is part of the game proper.
-import { cityEntrances, type CityEntrance } from '../gen/citydungeons';
+import { cityEntrances, stationName, type CityEntrance } from '../gen/citydungeons';
 import { G } from '../game';
 import { allVillages, regionInfo, regionOf, X_MIN, WORLD_W, POLE_Z, POLAR_Z, REGION, wrapX, nearX, type Poi } from '../gen/regions';
 import { worldGates, gateName, gatePoint, type WorldGate } from '../gen/worldgates';
@@ -182,7 +182,7 @@ function draw() {
     for (const e of cityEntrances(G.char.world,city)) for (const [sx,sy] of screenCopies(e.x,e.z)) {
       ctx.strokeStyle = ctx.fillStyle = '#5cc8ff'; ctx.lineWidth = 2; ctx.strokeRect(sx-6,sy-6,12,12);
       ctx.beginPath(); ctx.moveTo(sx-4,sy-2); ctx.lineTo(sx,sy+4); ctx.lineTo(sx+4,sy-2); ctx.stroke();
-      if (view.mpp<3) ctx.fillText(tl('Underground ')+(e.n+1),sx,sy-12);
+      if (view.mpp<3) ctx.fillText(TL`M ${stationName(G.char.world, city.i, e.n)}`,sx,sy-12);
       const d = Math.hypot(sx-mouse.x,sy-mouse.y); if (d<vd) { vd=d; hoverVault=e; }
     }
   }

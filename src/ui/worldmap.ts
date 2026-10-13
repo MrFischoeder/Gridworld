@@ -1,6 +1,6 @@
 import { truckAt } from '../world/convoyroutes';
 import { wrecked } from '../gen/routes';
-import { cityEntrances } from '../gen/citydungeons';
+import { cityEntrances, stationName } from '../gen/citydungeons';
 import { megalithsNear } from '../gen/megaliths';
 import { dryCaravan } from '../world/convoyfuel';
 import { gatesNear, gateName } from '../gen/worldgates';
@@ -174,7 +174,7 @@ function drawArea(ctx: CanvasRenderingContext2D, w: number, h: number, ppm: numb
       if (x < -15 || y < -15 || x > w+15 || y > h+15) continue;
       ctx.strokeStyle = ctx.fillStyle = '#5cc8ff'; ctx.lineWidth = 2;
       ctx.strokeRect(x-6,y-6,12,12); ctx.beginPath(); ctx.moveTo(x-4,y-2); ctx.lineTo(x,y+4); ctx.lineTo(x+4,y-2); ctx.stroke();
-      if (labels) ctx.fillText(tl('Underground ')+(e.n+1),x,y-13);
+      if (labels) ctx.fillText(TL`M ${stationName(G.char.world, city.i, e.n)}`,x,y-13);
     }
   }
   for (const g of gatesNear(G.char.world, px, pz, Math.hypot(hw, hh) + 30)) {

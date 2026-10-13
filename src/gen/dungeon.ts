@@ -3,6 +3,7 @@ import { rng, rangeInt, DIRV, type Dir } from '../core/rng';
 import type { Op } from '../core/voxel';
 import type { RobotKind } from '../data/robots';
 import { sbox, stairOpsFor, SL, type PortalSpec } from './stairs';
+import type { MetroInfo } from './metro';
 
 export interface DoorCand { axis: 'x' | 'z'; m: number; c: number; locked?: boolean }
 export interface BossSpec { x: number; z: number; room: { x: number; z: number; w: number; d: number; h: number }; guard: boolean; gate?: number }
@@ -25,9 +26,11 @@ export interface DungeonMap {
   /** Rooms and corridors, for the angled ceilings and struts drawn over the voxels. */
   boxes: DecoBox[];
   /** Temple maze or ship corridors (different decoration and loot). */
-  style: 'temple' | 'ship';
+  style: 'temple' | 'ship' | 'metro';
   /** Robots standing guard where the level loads (crashed ships): kind and floor spot. Unsaved, like drones. */
   guards?: { kind: RobotKind; x: number; z: number }[];
+  /** (0.195) A dead city's metro (gen/metro.ts): stations, track, blockages, for the drawing. */
+  metro?: MetroInfo;
 }
 export const MAX_DUNGEON_DEPTH = 3;
 export interface DungeonOpts {

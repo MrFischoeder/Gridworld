@@ -115,6 +115,13 @@ export function decorateDungeon(map: DungeonMap): THREE.Group {
     }
     return pb.build();
   }
+  if (map.style === 'metro') { // (0.195) tall tunnels with their upper corners cut away and a ring every 3 m; vaulted halls
+    for (const b of map.boxes) {
+      if (b.tunnel) { const alongX = b.w > b.d; chamfer(pb, b, 1.5, alongX ? ['N', 'S'] : ['W', 'E']); ribs(pb, b, 1.5, () => false); }
+      else if (b.h >= 7) vault(pb, b, 3);
+    }
+    return pb.build();
+  }
   // temple mazes: each room rolls its own shape (many keep plain walls)
   for (const b of map.boxes) {
     if (b.h < 5) continue;

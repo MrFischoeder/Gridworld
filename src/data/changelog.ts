@@ -3,6 +3,15 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.195.0', date: '2026-10-13', title: 'The metro under the dead cities', notes: [
+    'The underground vaults of the ruined cities are now one metro per city: station halls with rows of pillars, platforms, rails and name boards, joined by tall, narrow tunnels that zigzag between them with hardly any side passages.',
+    'Every street entrance leads down into its own station, and every such station has stairs back up to its own street: go down in one part of the city and come up in another.',
+    'Some stations lie underground only (NO EXIT): the deepest of them is where the guardian waits.',
+    'Some tunnels are blocked half way by a wrecked train or a fall of rubble, and a few stop short in a dead end. Every station can still be reached another way.',
+    'Now and then a maintenance niche off a tunnel holds a chest.',
+    'The entrances look like metro entrances now: stairs going down between railings under an arch with a METRO board, and a pole with the M beside them. Some METRO signs are traps: the arch has come down and the stairs are full of rubble, there is no way down there.',
+    'Robots stand guard on the platforms and in the tunnels, the heavier ones in the underground stations. The maps name the stations.',
+  ] },
   { v: '0.194.0', date: '2026-10-13', title: 'Machines blow up; robots in the labyrinths', notes: [
     'A destroyed robot no longer just falls over: it stops dead and stops shooting, pulses brighter and faster for about a second, then blows up in a see-through ball of fire before the wreck collapses.',
     'The blast hurts whatever stands close, a little: you (keep your distance), other robots, creatures and bandits. Heavy machines go up in bigger blasts than the light ones.',

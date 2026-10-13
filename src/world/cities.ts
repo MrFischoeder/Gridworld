@@ -5,7 +5,7 @@
 // and slabs with beams hanging, a fallen one a heap of rubble over the stubs of its walls; rubble at the feet of the
 // walls. Streets: kerbs and sidewalks, centre dashes, crossings at the junctions, lamp posts (some bent or down) and
 // wrecked cars. Buildings, heaps and cars collide (`cityHit`), and buildings stop shots and sight (`cityRay`).
-import { cityEntrances, type CityEntrance } from '../gen/citydungeons';
+import { cityEntrances, cityDecoys, stationName, type CityEntrance } from '../gen/citydungeons';
 import { textSprite } from './npc';
 import * as THREE from 'three';
 import { scene } from './render';
@@ -190,31 +190,61 @@ function buildTile(T: Terrain, l: Live, k: number): Tile {
   l.root.add(g);
   return { g };
 }
-/** All vault signs load with their city, independently of the street tile queue. */
-function cityVaultModel(T: Terrain, l: Live): THREE.Group {
-  const pb = new PropBatch(), H = groundOf(T, l), entries = cityEntrances(T.world, l.c), color = 0x5cc8ff;
-  for (const e of entries) {
-    const { u, v } = e, y = H(u, v);
-    // A low hatch with an open lid, rails and a tall beacon: centre and approach stay walkable.
-    pb.box(u - 2, y + .03, v - 2.5, u + 2, y + .12, v + 2.5, color);
-    pb.box(u - 2.1, y, v - 2.7, u - 1.7, y + 3.8, v - 2.3, color);
-    pb.box(u + 1.7, y, v - 2.7, u + 2.1, y + 3.8, v - 2.3, color);
-    pb.box(u - 2.1, y + 3.5, v - 2.7, u + 2.1, y + 3.9, v - 2.3, color);
-    for (const side of [-1, 1]) {
-      pb.seg(color, [u + side * 2, y, v + 2.5], [u + side * 2, y + 1.1, v + 2.5]);
-      pb.seg(color, [u + side * 2, y + 1.1, v + 2.5], [u + side * 2, y + 1.1, v - 2.5]);
-    }
-    // The raised hatch lid is a filled sloping panel; tread lines identify the descent below it.
-    pb.solid8([[u-1.65,y+.15,v+.6],[u+1.65,y+.15,v+.6],[u+1.65,y+2.4,v-2.3],[u-1.65,y+2.4,v-2.3]],
-      [[u-1.65,y+.23,v+.6],[u+1.65,y+.23,v+.6],[u+1.65,y+2.48,v-2.3],[u-1.65,y+2.48,v-2.3]], color);
-    for (let step = 0; step < 6; step++) pb.seg(color, [u-1.6,y+.14,v-.5+step*.5], [u+1.6,y+.14,v-.5+step*.5]);
-    pb.seg(color, [u+2.1,y,v-2.5], [u+2.1,y+9,v-2.5]);
-    pb.line(color, [u+1.2,y+8.7,v-2.5], [u+2.1,y+7.5,v-2.5], [u+3,y+8.7,v-2.5]);
+/** (0.195) The metro entrances load with their city, independently of the street tile queue: a stairwell going down
+ * between railings under an arch with a METRO board, and a pole with the M beside it. The caved-in decoys look the same
+ * from afar, but up close the arch has come down and the stairs are full of rubble. */
+const METRO_C = 0x5cc8ff, DEAD_C = 0x6f8f80, HOLE = 0x010d04;
+function metroEntrance(pb: PropBatch, u: number, v: number, y: number, R: () => number, dead: boolean) {
+  const c = dead ? DEAD_C : METRO_C;
+  // the opening: dark, with the treads running down into it
+  pb.face([u - 1.25, y + .05, v - 2.5], [u + 1.25, y + .05, v - 2.5], [u + 1.25, y + .05, v + 2.5], [u - 1.25, y + .05, v + 2.5]);
+  if (!dead) for (let t = 0; t < 9; t++) pb.seg(c, [u - 1.2, y + .07, v - 2.2 + t * .55], [u + 1.2, y + .07, v - 2.2 + t * .55]);
+  pb.line(HOLE, [u - 1.25, y + .06, v - 2.5], [u + 1.25, y + .06, v - 2.5]);
+  // the parapet round three sides, rails on top (a decoy's lean and break)
+  for (const sd of [-1, 1]) {
+    const tilt = dead && R() < 0.6 ? (R() - 0.3) * 0.7 : 0;
+    pb.solid8([[u + sd * 1.25, y, v - 2.3], [u + sd * 1.45, y, v - 2.3], [u + sd * 1.45, y, v + 2.6], [u + sd * 1.25, y, v + 2.6]],
+      [[u + sd * (1.25 + tilt), y + .9, v - 2.3], [u + sd * (1.45 + tilt), y + .9, v - 2.3], [u + sd * (1.45 + tilt), y + .9, v + 2.6], [u + sd * (1.25 + tilt), y + .9, v + 2.6]], c);
+    if (!dead) for (let t = -2.2; t <= 2.6; t += 1.2) pb.seg(c, [u + sd * 1.35, y + .9, v + t], [u + sd * 1.35, y + 1.25, v + t]);
+    if (!dead) pb.seg(c, [u + sd * 1.35, y + 1.25, v - 2.2], [u + sd * 1.35, y + 1.25, v + 2.6]);
   }
+  pb.box(u - 1.45, y, v + 2.45, u + 1.45, y + .9, v + 2.65, c);
+  // the arch over the way down, the board on it
+  const post = (sd: number, h: number) => pb.box(u + sd * 1.75 - .15, y, v - 2.75, u + sd * 1.75 + .15, y + h, v - 2.45, c);
+  if (!dead) {
+    post(-1, 3.2); post(1, 3.2);
+    const arc: number[][] = []; for (let i = 0; i <= 10; i++) { const a = Math.PI * i / 10; arc.push([u - Math.cos(a) * 1.75, y + 3.2 + Math.sin(a) * 0.9, v - 2.6]); }
+    pb.line(c, ...arc); pb.line(c, ...arc.map((p) => [p[0], p[1] + .25, p[2]]));
+    pb.box(u - 1.3, y + 3.35, v - 2.68, u + 1.3, y + 3.95, v - 2.52, c);
+  } else {
+    post(-1, 3.2); post(1, 0.8 + R() * 0.8); // one post snapped, the arch lying across the stairs
+    pb.solid8([[u - 1.6, y + .1, v - 2.0], [u - 1.4, y + .1, v - 2.0], [u - 1.4, y + .1, v + 0.4], [u - 1.6, y + .1, v + 0.4]],
+      [[u + 1.6, y + 1.4, v - 1.0], [u + 1.8, y + 1.4, v - 1.0], [u + 1.8, y + 1.4, v + 1.4], [u + 1.6, y + 1.4, v + 1.4]], c);
+    for (let i = 0; i < 12; i++) pb.rock(u + (R() - .5) * 2.2, y, v + (R() - .5) * 4.4, .3 + R() * .5, .3 + R() * .6, 5, R() * 6, DEAD_C);
+  }
+  // the pole with the M
+  const ph = dead ? 2.4 : 4.6, lean = dead ? .6 : 0;
+  pb.solid8([[u + 2.2, y, v - 2.7], [u + 2.4, y, v - 2.7], [u + 2.4, y, v - 2.5], [u + 2.2, y, v - 2.5]],
+    [[u + 2.2 + lean, y + ph, v - 2.7], [u + 2.4 + lean, y + ph, v - 2.7], [u + 2.4 + lean, y + ph, v - 2.5], [u + 2.2 + lean, y + ph, v - 2.5]], c);
+  if (!dead) {
+    pb.box(u + 1.85, y + 4.6, v - 2.95, u + 2.75, y + 5.5, v - 2.25, c);
+    pb.line(c, [u + 2.0, y + 4.75, v - 2.96], [u + 2.0, y + 5.35, v - 2.96], [u + 2.3, y + 4.95, v - 2.96], [u + 2.6, y + 5.35, v - 2.96], [u + 2.6, y + 4.75, v - 2.96]);
+  }
+}
+function cityVaultModel(T: Terrain, l: Live): THREE.Group {
+  const pb = new PropBatch(), H = groundOf(T, l), entries = cityEntrances(T.world, l.c), decoys = cityDecoys(T.world, l.c), R = rng(l.c.i * 131 + 7);
+  for (const e of entries) metroEntrance(pb, e.u, e.v, H(e.u, e.v), R, false);
+  for (const d of decoys) metroEntrance(pb, d.u, d.v, H(d.u, d.v), R, true);
   const g = pb.build(); g.name = 'city-vaults'; g.userData.entrances = entries.map(e => e.id);
   for (const e of entries) {
-    const sign = textSprite(tl('VAULT ') + (e.n + 1) + ' [E]', '#5cc8ff', 6);
-    sign.position.set(e.u, H(e.u,e.v)+4.8, e.v-2.5); g.add(sign);
+    const board = textSprite(tl('METRO'), '#5cc8ff', 2.4);
+    board.position.set(e.u, H(e.u, e.v) + 3.65, e.v - 2.8); g.add(board);
+    const sign = textSprite(TL`${stationName(T.world, l.c.i, e.n)} Station [E]`, '#5cc8ff', 5);
+    sign.position.set(e.u, H(e.u, e.v) + 6.2, e.v - 2.5); g.add(sign);
+  }
+  for (const d of decoys) {
+    const board = textSprite(tl('METRO'), '#6f8f80', 2.4);
+    board.position.set(d.u, H(d.u, d.v) + 1.0, d.v - 3.2); board.material.rotation = 0.35; g.add(board);
   }
   return g;
 }
@@ -353,13 +383,20 @@ export function nearCityEntrance(): CityEntrance | null {
   return best;
 }
 
+/** (0.195) A caved-in metro entrance within a few metres (only a word: there is no way down). */
+export function nearCityDecoy(): boolean {
+  const T = OW.terrain;
+  if (!T || G.char.loc !== 'overworld') return false;
+  const city = cityAt(T.world, G.pos.x, G.pos.z);
+  return !!city && cityDecoys(T.world, city).some((d) => Math.hypot(nearX(d.x, G.pos.x) - G.pos.x, d.z - G.pos.z) < 4);
+}
 /** Street signs guide the player to the closest vault; the map reveals all entrances of the current city. */
 export function cityVaultHint(x: number, z: number): string {
   for (const l of live.values()) {
     if (worldDist(x,z,l.c.x,l.c.z)>l.c.r) continue;
     const entries = cityEntrances(G.char.world,l.c);
     const e = entries.reduce((a,b)=>worldDist(x,z,a.x,a.z)<worldDist(x,z,b.x,b.z)?a:b);
-    return TL` · Underground ${e.n+1}: ${Math.round(worldDist(x,z,e.x,e.z))} m · M map`;
+    return TL` · Metro: ${stationName(G.char.world, l.c.i, e.n)} Station ${Math.round(worldDist(x,z,e.x,e.z))} m · M map`;
   }
   return '';
 }
