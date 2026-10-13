@@ -3,6 +3,13 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.194.0', date: '2026-10-13', title: 'Machines blow up; robots in the labyrinths', notes: [
+    'A destroyed robot no longer just falls over: it stops dead and stops shooting, pulses brighter and faster for about a second, then blows up in a see-through ball of fire before the wreck collapses.',
+    'The blast hurts whatever stands close, a little: you (keep your distance), other robots, creatures and bandits. Heavy machines go up in bigger blasts than the light ones.',
+    'The hanging drones, the mounted defence guns and disabled raider vehicles go up in a small blast too.',
+    'The labyrinths under the ruins are guarded by robots now as well as by the hanging drones: scouts and guardian drones on the first level, repair drones and sentinels further down, assault constructs, sentinels and in the biggest halls an artillery walker at the bottom. There are fewer hanging drones to make room for them.',
+    'Destroyed labyrinth robots stay gone until the level fills up again, like the drones.',
+  ] },
   { v: '0.193.0', date: '2026-10-13', title: 'One kind of rounds', notes: [
     'Every gun now fires Energy Cells: the pistol, the SMG, the Scattergun and the Hunting Rifle load from the same cells as the Blaster.',
     'Each gun still shoots its own way and its shots look different: the Blaster a green beam, the pistol a blue bolt, the SMG quick violet streaks, the Scattergun a spray of orange pellets, the rifle a bright white line.',

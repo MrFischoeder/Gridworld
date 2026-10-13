@@ -1,6 +1,8 @@
 // Bandits on wheels (raider vehicles) and roadside ambushes with a roadblock. Unsaved, like other enemies.
 import { hurtPlayer } from './damage';
 import * as THREE from 'three';
+import { machineBlast } from './blast';
+import { BLAST } from '../data/robots';
 import { scene, V } from './render';
 import { G, W } from '../game';
 import { PropBatch } from './props';
@@ -131,6 +133,7 @@ function driveRaider(r: Raider, dt: number) {
 function wreckRaider(r: Raider) {
   const v = r.v;
   burst(r.p, BANDIT, 50, 2.5);
+  machineBlast(r.p.clone().add(V(0, 1, 0)), BLAST.turret, 0xff8a3a, r.p.y, r); // (0.194) the engine goes up
   showToast(tl('Raider vehicle disabled!'));
   bailOut(r);
   // A disabled vehicle, possibly still with its roof gun, and loot in the back.

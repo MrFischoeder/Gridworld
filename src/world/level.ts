@@ -12,6 +12,7 @@ import { scene, fog, lineMat, add, V, fillMat, GRID } from './render';
 import { dungeonTurrets, labyrinthTurrets } from '../gen/mountedturrets';
 import { populate, guardAlive } from './dungeonfoes';
 import { labyrinthDrones } from '../gen/repopulate';
+import { labyrinthGuards } from '../gen/dungeonguards';
 import { MOUNTED_TURRET } from '../data/mountedturrets';
 import { setRobotEnv, spawnGuards, clearRobots } from './robots';
 import { spawnAuthority } from './remote';
@@ -146,14 +147,17 @@ export function loadDungeon(arriveDir: string | null) {
   }
   // A crashed ship retains only a few stray drones alongside its anchored security guns.
   // none come back while any of them lives: more of them, at their own spots (world/dungeonfoes.ts)
-  populate(wreck ? 2 : labyrinthDrones(map.rooms, d.depth), wreck ? (map.guards ?? []).length : 0, seed);
+  // (0.194) labyrinths get robots too, heavier the deeper you go (gen/dungeonguards.ts)
+  const guards = wreck ? (map.guards ?? []) : labyrinthGuards(map, d.depth);
+  populate(wreck ? 2 : labyrinthDrones(map.rooms, d.depth), guards.length, seed);
   // Ship security and labyrinth defences are anchored guns, separate from roaming enemy robots.
   loadMountedTurrets(dungeonTurrets(map, G.grid, wreck ? MOUNTED_TURRET.wreck : labyrinthTurrets(seed))); G.obstacle = mountedTurretHit;
   // ... and its robot crew still patrols the ship (on a server only the first player aboard brings them: shared foes)
-  if (wreck) {
-    const poi = findPoi(c.world, d.ruinId)!, lv = Math.max(2, dangerAt(c.world, poi.x, poi.z, true));
+  {
+    const poi = findPoi(c.world, d.ruinId), dz = poi ? dangerAt(c.world, poi.x, poi.z, true) : 1;
+    const lv = wreck ? Math.max(2, dz) : Math.max(1, dz) + (d.depth - 1) * 0.5;
     setRobotEnv({ ground: () => 0, danger: () => lv, nearRuin: () => false, forbidden: () => false, water: () => null }, { indoor: true });
-    if (spawnAuthority()) spawnGuards(map.guards ?? [], lv, guardAlive);
+    if (guards.length && spawnAuthority()) spawnGuards(guards, lv, guardAlive);
   }
   onDungeonLoaded(map);
   placeCarrier();

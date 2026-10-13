@@ -14,7 +14,8 @@ import * as THREE from 'three';
 import { scene, V, lineMat, add as addMat } from './render';
 import { G, W } from '../game';
 import { PropBatch, sharedFill } from './props';
-import { ROBOTS, ROBOT_COLOR, BEAM_COLOR, SHELL, type RobotKind } from '../data/robots';
+import { ROBOTS, ROBOT_COLOR, BEAM_COLOR, SHELL, BLAST, blastPulse, type RobotKind } from '../data/robots';
+import { machineBlast } from './blast';
 import { mindOf, sense, heard, share, spottedBy } from './stealth';
 import { STEALTH, LOSE } from '../gen/stealth';
 import { foeRules, makeDrone, type Drone } from './enemies';
@@ -506,16 +507,17 @@ export function hurtRobot(r: Robot, dmg: number, credit = true) {
 // A destroyed machine is out of W.robots at once, then: it shudders, throwing sparks, the lights flickering; it gives
 // way (bipeds topple over, walkers' legs splay and the body drops, the repair drone falls out of the air); it hits the
 // ground with a blast that may tear an arm off; it smokes, goes dark, and after a while sinks away.
-interface Scrap { r: Robot; t: number; dir: 1 | -1; land: number; vy: number; y0: number; parts: { o: THREE.Object3D; v: THREE.Vector3; spin: THREE.Vector3; rest: boolean }[]; smokeT: number }
+interface Scrap { r: Robot; t: number; dir: 1 | -1; land: number; vy: number; y0: number; parts: { o: THREE.Object3D; v: THREE.Vector3; spin: THREE.Vector3; rest: boolean }[]; smokeT: number; blown: boolean }
 const scraps: Scrap[] = [];
-const SHUDDER = 0.7, COLLAPSE = 0.7, LIE_R = 6, SINK_R = 1.8, DARK = 0x6a4a2a;
+const SHUDDER = BLAST.pulse, COLLAPSE = 0.7, LIE_R = 6, SINK_R = 1.8, DARK = 0x6a4a2a;
 export function wreckRobot(r: Robot) {
   if (r.guard !== undefined) guardDown(r.guard);
   const i = W.robots.indexOf(r); if (i >= 0) W.robots.splice(i, 1);
   const j = r.group.indexOf(r); if (j >= 0) r.group.splice(j, 1);
   const front = Math.cos(Math.atan2(G.pos.x - r.p.x, G.pos.z - r.p.z) - r.heading) > 0;
-  scraps.push({ r, t: 0, dir: front ? -1 : 1, land: -1, vy: 0, y0: r.p.y, parts: [], smokeT: 0 });
+  scraps.push({ r, t: 0, dir: front ? -1 : 1, land: -1, vy: 0, y0: r.p.y, parts: [], smokeT: 0, blown: false });
 }
+const PULSE_C = new THREE.Color(0xfff2c0), BLAST_C = 0xff8a3a;
 const easeR = (t: number) => t * t * (3 - 2 * t);
 function updateScraps(dt: number) {
   for (let i = scraps.length - 1; i >= 0; i--) {
@@ -523,12 +525,17 @@ function updateScraps(dt: number) {
     w.t += dt;
     const t = w.t, gy = env ? env.ground(r.p.x, r.p.z) : w.y0 - s.lift;
     let jx = 0, jz = 0;
-    if (t < SHUDDER) { // shudder and spark
-      jx = (Math.random() - 0.5) * 0.08; jz = (Math.random() - 0.5) * 0.08;
-      r.g.rotation.z = (Math.random() - 0.5) * 0.08;
-      if (Math.random() < dt * 9) burst(r.p.clone().add(V((Math.random() - 0.5) * s.r, (Math.random() - 0.3) * s.h * 0.4, (Math.random() - 0.5) * s.r)), Math.random() < 0.5 ? 0xffffff : BEAM_COLOR, 6, 0.5);
-      r.mat.color.setHex(Math.random() < 0.5 ? 0xffffff : ROBOT_COLOR);
+    if (t < SHUDDER) { // (0.194) it stops dead and pulses, brighter and faster, then blows up
+      const pl = blastPulse(t), k = t / SHUDDER;
+      jx = (Math.random() - 0.5) * 0.08 * k; jz = (Math.random() - 0.5) * 0.08 * k;
+      r.g.rotation.z = (Math.random() - 0.5) * 0.08 * k;
+      r.g.scale.setScalar(1 + pl * (0.04 + 0.08 * k));
+      if (Math.random() < dt * (4 + 10 * k)) burst(r.p.clone().add(V((Math.random() - 0.5) * s.r, (Math.random() - 0.3) * s.h * 0.4, (Math.random() - 0.5) * s.r)), Math.random() < 0.5 ? 0xffffff : BEAM_COLOR, 6, 0.5);
+      r.mat.color.setHex(ROBOT_COLOR).lerp(PULSE_C, pl);
       r.arms.forEach((a) => { a.rotation.x += (0.6 - a.rotation.x) * dt * 3; });
+    } else if (!w.blown) {
+      w.blown = true; r.g.scale.setScalar(1);
+      machineBlast(r.p.clone(), BLAST.kinds[r.model], BLAST_C, gy, r);
     } else if (w.land < 0) { // giving way
       const k = easeR(Math.min(1, (t - SHUDDER) / COLLAPSE)), low = gy + Math.min(s.lift, 0.2 + s.h * 0.12);
       r.mat.color.setHex(DARK);
@@ -545,7 +552,7 @@ function updateScraps(dt: number) {
         if (k >= 1) w.land = t;
       }
       if (w.land >= 0) { // the crash: a blast, and the heavy ones lose an arm
-        burst(r.p.clone(), ROBOT_COLOR, 26, 1.6); burst(r.p.clone(), 0xffffff, 10, 1);
+        burst(r.p.clone(), ROBOT_COLOR, 14, 1.2);
         if (s.armour < 1 && r.arms.length) {
           const a = r.arms[Math.floor(Math.random() * r.arms.length)];
           r.g.updateMatrixWorld(true); scene.attach(a);

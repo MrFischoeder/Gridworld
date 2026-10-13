@@ -47,12 +47,16 @@ export function loadMountedTurrets(specs: MountedTurretSpec[]) {
     const model = mountedTurretModel(spec); scene.add(model.g); live.push({ spec, ...model, hp: S.hp, charge: 0, cd: 0, shots: 0 });
   }
 }
+/** (0.194) A destroyed gun blows up (world/blast.ts sets this; kept as a hook so this file stays free of the foes). */
+let blastHook: (at: THREE.Vector3, t: object) => void = () => {};
+export function setTurretBlast(f: (at: THREE.Vector3, t: object) => void) { blastHook = f; }
 export function damageMountedTurret(t: Gun, damage: number, tell = true) {
   if (!live.includes(t)) return;
   if (tell) turretHitOut(t.spec.id, damage); // everyone's copy of the gun takes the same hit
   t.hp -= Math.max(0, damage) * (1 - S.armour); G.hitFlash = 0.15; burst(t.g.position, 0xffb347, 8, 0.4);
   if (t.hp > 0) return;
   progress('killed').push(S.progressBase + t.spec.id); saveChar(); drop(t); live.splice(live.indexOf(t), 1); showToast(tl('Defence turret destroyed'));
+  blastHook(t.g.position.clone(), t);
 }
 export function mountedTurretHit(x: number, y: number, z: number, radius: number): boolean {
   return live.some(t => Math.hypot(t.spec.x - x, t.spec.z - z) < S.radius + radius && y < t.spec.y + S.radius && y + H > t.spec.y - S.radius);

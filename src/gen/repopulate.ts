@@ -29,5 +29,5 @@ export function recordKill(killed: number[], id: number, drones: number, guards:
   killed.push(CLEARED + Math.floor(now));
   return true;
 }
-/** How many drones a labyrinth sector holds: more than before, since none come back. */
-export const labyrinthDrones = (rooms: number, depth: number) => 2 * rooms + 2 + depth;
+/** How many drones a labyrinth sector holds (none come back); (0.194) fewer than before, robots stand guard there too (gen/dungeonguards.ts). */
+export const labyrinthDrones = (rooms: number, depth: number) => rooms + 3 + depth;

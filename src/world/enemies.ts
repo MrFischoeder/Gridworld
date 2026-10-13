@@ -4,6 +4,8 @@ import { STEALTH, LOSE } from '../gen/stealth';
 import { hurtPlayer } from './damage';
 import { remoteOf, hitOwner, setCombatHooks, stepRemoteP, withTarget, proxied, otherPlayers, hurtOther, boltOut, type CombatFoe } from './remote';
 import * as THREE from 'three';
+import { machineBlast } from './blast';
+import { BLAST } from '../data/robots';
 import { hash } from '../core/rng';
 import { onNoise } from './noise';
 import { scene, lineMat, add, V, circlePts, edgesOf } from './render';
@@ -226,6 +228,7 @@ export function damageFoe(t: Foe, dmg: number, credit = true) {
     if (Math.random() < 0.35) dropPickup(at.clone().add(V(0.4, 0, 0.3)), 'scrap');
     respawnDrone(t);
     if (!lootQuiet()) onKill('drone');
+    machineBlast(at, BLAST.drone, 0xffb347, at.y - 1, t); // (0.194) it goes up in a small fireball
   }
 }
 /** What happens to a destroyed drone; dungeons recycle it elsewhere in the level. */

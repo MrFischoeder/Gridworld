@@ -43,3 +43,37 @@ export const ROBOTS: Record<RobotKind, RobotSpec> = {
 export const ROBOT_COLOR = 0xffb347, BEAM_COLOR = 0x5cc8ff;
 /** Artillery shells: flight time, blast radius, the shortest range it can shell. */
 export const SHELL = { flight: 1.8, radius: 4, minRange: 16, range: 110, every: 4.5 };
+
+// (0.194) A destroyed machine does not just fall: it stops, pulses brighter and faster for `pulse` seconds, then
+// blows up in a ball of fire (world/blast.ts) that hurts whatever stands close, a little, less towards the edge.
+export interface BlastSpec {
+  /** Radius (m), damage to a player at the middle (HP), damage to another foe at the middle (its hp). */
+  r: number; hurt: number; foe: number;
+}
+export const BLAST = {
+  /** Seconds a wreck pulses before it goes off. */
+  pulse: 1.15,
+  /** At the edge a blast does this share of its damage. */
+  edge: 0.3,
+  kinds: {
+    scout: { r: 3, hurt: 6, foe: 1.5 },
+    guardian: { r: 3.5, hurt: 8, foe: 2 },
+    repair: { r: 3.5, hurt: 7, foe: 2 },
+    sentinel: { r: 5, hurt: 12, foe: 4 },
+    artillery: { r: 5.5, hurt: 14, foe: 5 },
+    assault: { r: 5, hurt: 12, foe: 4 },
+  } as Record<RobotKind, BlastSpec>,
+  /** The hanging dungeon drones and the mounted defence guns. */
+  drone: { r: 2.4, hurt: 4, foe: 1 } as BlastSpec,
+  turret: { r: 3.5, hurt: 8, foe: 2 } as BlastSpec,
+};
+/** The share of a blast's damage at distance d (0 outside it). */
+export function blastShare(d: number, r: number): number {
+  if (!(d < r)) return 0;
+  return 1 - (1 - BLAST.edge) * Math.max(0, d) / r;
+}
+/** The pulse while a wreck winds up: 0..1 brightness at time t of BLAST.pulse, quickening towards the end. */
+export function blastPulse(t: number): number {
+  const k = Math.min(1, Math.max(0, t / BLAST.pulse)), phase = (3 + 9 * k) * t * Math.PI * 2 * 0.5;
+  return 0.5 + 0.5 * Math.sin(phase);
+}

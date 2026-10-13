@@ -23,7 +23,32 @@ export function addBolt(from: THREE.Vector3, to: THREE.Vector3, color: number, l
   const line = new THREE.Line(new THREE.BufferGeometry().setFromPoints([from.clone(), from.clone()]), add(color));
   scene.add(line); bolts.push({ line, from: from.clone(), dir, dist, len, speed, t: 0, c: hitColor, hit });
 }
+// (0.194) A machine's blast: a see-through ball of fire that swells out from the wreck and fades, a wire shell over
+// it and a ring running out along the ground.
+const blasts: { g: THREE.Group; fill: THREE.MeshBasicMaterial; wire: THREE.LineBasicMaterial; ring: THREE.LineLoop; r: number; t: number }[] = [];
+const BLAST_GROW = 0.32, BLAST_FADE = 0.55;
+const ballGeo = new THREE.SphereGeometry(1, 20, 14), shellGeo = new THREE.WireframeGeometry(new THREE.IcosahedronGeometry(1, 2));
+const ringGeo = (() => { const p: THREE.Vector3[] = []; for (let i = 0; i < 40; i++) { const a = i / 40 * 6.2832; p.push(V(Math.cos(a), 0, Math.sin(a))); } return new THREE.BufferGeometry().setFromPoints(p); })();
+export function addBlast(at: THREE.Vector3, r: number, color: number, groundY = at.y) {
+  const g = new THREE.Group(); g.position.copy(at);
+  const fill = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.32, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending });
+  const wire = new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.6, depthWrite: false });
+  g.add(new THREE.Mesh(ballGeo, fill), new THREE.LineSegments(shellGeo, wire));
+  const ring = new THREE.LineLoop(ringGeo, new THREE.LineBasicMaterial({ color, transparent: true, opacity: 0.8, depthWrite: false }));
+  ring.position.set(at.x, groundY + 0.08, at.z);
+  g.scale.setScalar(0.15); scene.add(g, ring);
+  blasts.push({ g, fill, wire, ring, r, t: 0 });
+  burst(at, color, 30, r * 0.9); burst(at, 0xffffff, 12, r * 0.5);
+}
 export function updateFx(dt: number) {
+  for (let i = blasts.length - 1; i >= 0; i--) {
+    const b = blasts[i]; b.t += dt;
+    const grow = Math.min(1, b.t / BLAST_GROW), k = 1 - (1 - grow) * (1 - grow), fade = Math.max(0, (b.t - BLAST_GROW * 0.6) / BLAST_FADE);
+    b.g.scale.setScalar(Math.max(0.15, b.r * k)); b.g.rotation.y += dt * 1.5;
+    b.fill.opacity = 0.32 * (1 - fade); b.wire.opacity = 0.6 * (1 - fade);
+    b.ring.scale.setScalar(b.r * (0.3 + 1.1 * Math.min(1, b.t / (BLAST_GROW + BLAST_FADE)))); (b.ring.material as THREE.LineBasicMaterial).opacity = 0.8 * (1 - fade);
+    if (fade >= 1) { scene.remove(b.g, b.ring); b.fill.dispose(); b.wire.dispose(); (b.ring.material as THREE.Material).dispose(); blasts.splice(i, 1); }
+  }
   for (let i = bolts.length - 1; i >= 0; i--) {
     const b = bolts[i]; b.t += dt;
     const head = Math.min(b.dist, b.t * b.speed), tail = Math.max(0, head - b.len), pos = b.line.geometry.getAttribute('position') as THREE.BufferAttribute;
