@@ -3,6 +3,14 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.201.0', date: '2026-10-13', title: 'Two hands and a bigger backpack', notes: [
+    'You have two hands now. The main hand holds your weapon or tool; the other hand (a new slot in the backpack window) holds a light or a shield.',
+    'Long guns (the Blaster, SMG, scattergun and rifle), the spear, the sledge, the pickaxe, the shovel and the welder need both hands. While you hold one, whatever is in your other hand does nothing: a light goes out and a shield hangs useless. The pistol, the blades, the machete and the hatchet leave the other hand free.',
+    'Lights are held in the other hand: the flashlight, the oil lamp and torches. L takes the light from your backpack into your other hand and lights it; a two-handed weapon goes on your back so you can hold it. A bunch of torches sits in the hand and the next one is lit when one burns down.',
+    'Shields: the Wooden Shield takes 15% off every hit (the blacksmith makes it from 4 planks and a hide, Oskar sells it for 50 g) and the Riot Shield 30% (from 2 steel and a plastic with the Forged Tools plans, or 220 g). You see the shield or the light in your left hand, and a shield comes up when you aim or swing.',
+    'The backpack has 24 slots instead of 12. Its litres still decide what fits.',
+    'Online, the others see the shield on your arm. A dedicated server has to be updated for that; on an older one everything else works.',
+  ] },
   { v: '0.200.0', date: '2026-10-13', title: 'Batteries, torches and town lanterns', notes: [
     'The Flashlight runs on Batteries now, not Energy Cells: one lasts three hours and the flashlight takes a fresh one from your backpack by itself. Zofia sells them (10 g); the blacksmith makes 2 from a scrap and an electronic component, or 12 from a crate of Basic Batteries.',
     'Torches: a third light to carry. A torch lights all round you, flickering and not as far as an oil lamp, and burns down in 45 minutes; the next one is lit from it by itself. Zofia sells them (4 g), the blacksmith makes 4 from a log and a rope, and the crashed ship\'s locker holds four. L now cycles flashlight, lamp, torch and off.',

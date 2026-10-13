@@ -18,7 +18,7 @@ import { BLADE, STAMINA, BURN } from '../data/survival';
 import { spendStamina, burn } from './survival';
 import { makeNoise } from './noise';
 import { item, WEAPON_KIND, HAND_TOOLS, type ItemKey } from '../data/items';
-import { onHandsChanged, stowHeld, saveChar, calcStats } from '../character';
+import { onHandsChanged, stowHeld, saveChar, calcStats, offHeld, offFree } from '../character';
 import { count } from '../data/crafting';
 import { logLine } from '../ui/hud';
 import { tl, TL } from '../i18n';
@@ -99,6 +99,64 @@ const carryMat = lineMat(0xc8ffd6, { fog: false });
 const bulk = part(new THREE.BoxGeometry(0.55, 0.32, 0.4), carryMat); bulk.position.set(0, -0.58, -0.8); bulk.rotation.x = 0.25; carryVM.add(bulk);
 const tyre = part((() => { const g = new THREE.CylinderGeometry(0.34, 0.34, 0.22, 14); g.rotateZ(Math.PI / 2); return g; })(), carryMat); tyre.position.set(0.05, -0.66, -0.95); tyre.rotation.y = 0.35; carryVM.add(tyre);
 carryVM.visible = false; vmRoot.add(carryVM);
+
+// (0.201) The other hand (`Char.off`): a light or a shield held low on the left, beside a one-handed weapon.
+const woodMat = lineMat(0xd8b070, { fog: false }), steelMat = lineMat(0xb8d8c8, { fog: false });
+const glowMat = (c: number) => new THREE.MeshBasicMaterial({ color: c, fog: false, transparent: true, opacity: 0.85, blending: THREE.AdditiveBlending, depthWrite: false });
+const offLooks: Partial<Record<ItemKey, THREE.Group>> = {};
+let flame: THREE.Object3D | null = null, lens: THREE.Mesh | null = null, wick: THREE.Mesh | null = null;
+{
+  const fl = new THREE.Group(); // the flashlight: a tube pointing ahead, a wider head with a lit lens
+  fl.add(part(cyl(0.022, 0.2), vmMat));
+  const head = part(cyl(0.034, 0.06), vmMat); head.position.z = -0.12; fl.add(head);
+  lens = new THREE.Mesh(new THREE.CircleGeometry(0.03, 10), glowMat(0xf4fff0)); lens.position.z = -0.152; lens.rotation.y = Math.PI; fl.add(lens);
+  offLooks.flashlight = fl;
+  const lp = new THREE.Group(); // the oil lamp: a hooded lantern on a bail
+  lp.add(part(new THREE.CylinderGeometry(0.05, 0.06, 0.1, 6), vmMat));
+  const hood = part(new THREE.ConeGeometry(0.07, 0.06, 6), vmMat); hood.position.y = 0.08; lp.add(hood);
+  wick = new THREE.Mesh(new THREE.SphereGeometry(0.022, 6, 4), glowMat(0xffc060)); lp.add(wick);
+  const bail = new THREE.Line(new THREE.BufferGeometry().setFromPoints([V(-0.05, 0.1, 0), V(0, 0.17, 0), V(0.05, 0.1, 0)]), vmMat); lp.add(bail);
+  offLooks.oillamp = lp;
+  const tc = new THREE.Group(); // a torch: a stick, rags at its head, a flame
+  const stick = part(new THREE.CylinderGeometry(0.016, 0.02, 0.4, 6), woodMat); stick.position.y = -0.1; tc.add(stick);
+  const rags = part(new THREE.CylinderGeometry(0.03, 0.026, 0.08, 6), woodMat); rags.position.y = 0.12; tc.add(rags);
+  const f = new THREE.Mesh(new THREE.ConeGeometry(0.04, 0.16, 6), glowMat(0xffa040)); f.position.y = 0.24; tc.add(f); flame = f;
+  offLooks.firebrand = tc;
+  const ws = new THREE.Group(); // a wooden shield: a board of planks, a boss
+  ws.add(part(new THREE.BoxGeometry(0.42, 0.52, 0.03), woodMat));
+  for (const x of [-0.07, 0.07]) ws.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([V(x, -0.26, -0.016), V(x, 0.26, -0.016)]), woodMat));
+  const boss = part(new THREE.CylinderGeometry(0.05, 0.05, 0.03, 8), vmMat); boss.rotation.x = Math.PI / 2; boss.position.z = -0.03; ws.add(boss);
+  offLooks.woodshield = ws;
+  const rs = new THREE.Group(); // a riot shield: tall, a view slot
+  rs.add(part(new THREE.BoxGeometry(0.44, 0.72, 0.025), steelMat));
+  rs.add(new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.PlaneGeometry(0.26, 0.06)), steelMat).translateY(0.2).translateZ(-0.014));
+  offLooks.riotshield = rs;
+  for (const o of Object.values(offLooks)) { o!.visible = false; vmRoot.add(o!); }
+}
+/** Whether the other hand is drawn (world/level.ts: not while driving, boating, swimming or climbing). */
+let offShown = () => true;
+export function setOffRule(f: () => boolean) { offShown = f; }
+/** The other hand in first person: the light swings with the stride, a shield is held up when you aim or swing. */
+function animateOff(dt: number, bob: number, side: number) {
+  const o = offHeld(), on = !!o && offFree() && G.playing && offShown(), cur = on ? offLooks[o!.k] : undefined;
+  for (const g of Object.values(offLooks)) g!.visible = g === cur;
+  if (!cur || !o) return;
+  const shield = o.k === 'woodshield' || o.k === 'riotshield', lit = (G.char.light?.on ?? 0) > 0;
+  offT += dt;
+  if (shield) { // held across the body; raised when you aim, fight or swing
+    const up = Math.max(aimK, G.swingT > 0 || G.firing ? 1 : 0);
+    guardK += (up - guardK) * Math.min(1, dt * 8);
+    cur.position.set(-0.5 + guardK * 0.14 + side, -0.5 + bob + guardK * 0.14, -0.85);
+    cur.rotation.set(0.1, 0.75 - guardK * 0.45, 0.08);
+  } else {
+    cur.position.set(-0.3 + side * 1.2, -0.3 + bob * 1.4 - aimK * 0.08, -0.5);
+    cur.rotation.set(o.k === 'flashlight' ? 0 : -0.15, o.k === 'flashlight' ? 0.12 : 0, o.k === 'firebrand' ? 0.25 : 0);
+  }
+  if (flame) { flame.visible = lit; const k = 0.85 + 0.15 * Math.sin(offT * 17) * Math.sin(offT * 6.3); flame.scale.set(1 / k, k * 1.1, 1 / k); }
+  if (lens) lens.visible = lit;
+  if (wick) wick.visible = lit;
+}
+let offT = 0, guardK = 0;
 /** Keep the held weapon glued to the camera (call after the camera moved, before rendering vmScene). */
 export function syncViewmodel() { vmRoot.position.copy(camera.position); vmRoot.quaternion.copy(camera.quaternion); }
 
@@ -219,6 +277,7 @@ export function animateVM(dt: number, _moving: boolean) {
   lagX = Math.max(-lim, Math.min(lim, (lagX + dy * SWAY.lag) * back));
   lagY = Math.max(-lim, Math.min(lim, (lagY - dp * SWAY.lag) * back));
   const still = 1 - aimK * 0.75, bob = body.amp * 0.011 * body.step * still, side = body.amp * 0.014 * body.side * still;
+  animateOff(dt, bob, side);
   // aiming brings the gun to the middle; a long scope hides it (the scope overlay takes over); reloading dips it
   const k = aimK, dip = G.reloadT > 0 ? Math.sin(Math.min(1, 1 - G.reloadT / G.gun.reload) * Math.PI) * 0.12 : 0, gv = activeGun();
   gv.position.set(0.24 * (1 - k) + side + lagX * still, -0.22 + bob + lagY * still + k * 0.1 - dip, -0.45 + recoil.shove * recoil.back + k * 0.05);

@@ -54,7 +54,7 @@ import { placeDrone, makeBoss, setDroneRespawn } from './enemies';
 import { drawCrown } from './trees';
 import { sky, horizon, buildHorizon, updateSky, darkSky } from './sky';
 import { setStreakSources } from './fx';
-import { setArmedRule, refreshWeaponVisibility } from './weapons';
+import { setArmedRule, setOffRule, refreshWeaponVisibility } from './weapons';
 import { raidHere } from './villageraid';
 import { PropBatch } from './props';
 import { drawLadder, climbing, onClimbChange } from './ladders';
@@ -102,6 +102,7 @@ function setLocationLook(outdoors: boolean) {
 }
 /** Weapons are holstered inside the village walls and drawn everywhere else. */
 setToolRule(() => !driving.v && !riding() && !inBoat() && !G.swimming && !climbing());
+setOffRule(() => !driving.v && !riding() && !inBoat() && !G.swimming && !climbing() && !G.fly);
 setArmedRule(() => !driving.v && !riding() && !inBoat() && !G.swimming && !G.fly && !climbing() && !working() && (G.char.loc === 'dungeon' || !inVillage(G.pos.x, G.pos.z) || raidHere()));
 onClimbChange(refreshWeaponVisibility);
 onWorkChange(refreshWeaponVisibility);

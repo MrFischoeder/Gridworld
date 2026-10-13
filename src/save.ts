@@ -122,6 +122,8 @@ export interface Char {
   claims: { x: number; z: number; y: number; t: number; parts?: Part[] }[];
   /** What you hold in your hands (a weapon, or something too big for the backpack), and the two slots on your back (weapons). */
   hands: (Slot | null)[]; back: (Slot | null)[];
+  /** (0.201) The other hand: a light (flashlight, oil lamp, torches) or a shield, beside a one-handed weapon. */
+  off: (Slot | null)[];
   /** What you wear, per data/items WearSlot. */
   wear: Partial<Record<WearSlot, ItemKey | null>>;
   /** This character's id (code locks remember who has entered their code; multiplayer later). */
@@ -160,7 +162,7 @@ export const newChar = (): Char => ({
   v: 3, settlementRules: 1, name: '', intro: false, tech: {}, leads: [], installs: {}, bridges: {}, bridgeSites: [], cityGarrisons: {}, fallen: {}, piers: [], boats: [], filter: 0, fogs: {}, lodes: {}, outposts: {}, rivals: {}, guide: 0, houses: [], shuttle: { given: {}, v: 2 }, level: 1, xp: 0, gold: 0, world: newWorldSeed(),
   inv: Array(INV_SIZE).fill(null), mods: Array(MOD_SIZE).fill(null), opened: {}, unlocked: {}, killed: {},
   loc: 'overworld', ow: null, dungeon: null, discovered: {}, containers: {}, vehicles: [], board: { seq: 0, offers: [], stamp: boardPeriod(START_TIME) }, boards: {}, quests: [], camps: {}, time: START_TIME, gunMods: [null, null, null], loaded: { blaster: 20 }, waypoint: null, kcal: KCAL.start, stomach: 0, water: 100, harvest: {}, benches: [], claims: [],
-  hands: [{ k: 'blaster', n: 1 }], back: [{ k: 'blade', n: 1 }, null], wear: {}, pid: Math.random().toString(36).slice(2, 10), towns: {}, market: {}, ledger: {}, caravans: {}, escort: null, contracts: [], taken: [],
+  hands: [{ k: 'blaster', n: 1 }], back: [{ k: 'blade', n: 1 }, null], off: [null], wear: {}, pid: Math.random().toString(36).slice(2, 10), towns: {}, market: {}, ledger: {}, caravans: {}, escort: null, contracts: [], taken: [],
 });
 
 interface V2 { level?: number; xp?: number; gold?: number; world?: number; inv?: (Slot | null)[]; mods?: (ItemKey | null)[] }
@@ -218,6 +220,8 @@ export function loadChar(storage: Pick<Storage, 'getItem'> & Partial<Pick<Storag
         const left = putItems(c.inv, 'ammoE', OLD_SAVE_CELLS, PACK.vol);
         if (left > 0) { const hold = ((c.towns[GRIDHOLM_ID] ??= {}).hold ??= {}); hold.ammoE = (hold.ammoE ?? 0) + left; }
       }
+      if (c.inv.length < INV_SIZE) c.inv = [...c.inv, ...Array(INV_SIZE - c.inv.length).fill(null)]; // (0.201) a bigger backpack
+      if (!Array.isArray(c.off) || c.off.length !== 1) c.off = [null];
       retireOldCrossings(c);
       planksForLogs(c); // (0.165) logs handed over to builds count on as planks
       return c;

@@ -15,7 +15,7 @@ import { net, sendState, isHost, SEND_EVERY, type PeerState, type PeerCar, peerA
 import { convoyModel, seatFigure, myCars, toLocalOf, myCarList, driving, seatRider, unseat, gunSeat, leave } from './vehicles';
 import { VEHICLES, SEATS, type VehicleModel } from '../data/vehicles';
 import { nearX } from '../gen/regions';
-import { dungeonKey } from '../character';
+import { dungeonKey, offFree, offHeld } from '../character';
 import { WEAPON_KIND, type ItemKey } from '../data/items';
 import { gunOf } from '../data/weapons';
 import { tl } from '../i18n';
@@ -37,7 +37,7 @@ const kitOf = (held: string): Kit => {
   return 'none';
 };
 
-interface Avatar { f: Figure; kit: Kit; away: boolean; name: string; label: THREE.Sprite; phase: number; seated: boolean }
+interface Avatar { f: Figure; kit: Kit; shield: boolean; away: boolean; name: string; label: THREE.Sprite; phase: number; seated: boolean }
 const avatars = new Map<number, Avatar>();
 function drop(id: number) {
   const a = avatars.get(id);
@@ -45,14 +45,14 @@ function drop(id: number) {
   scene.remove(a.f.g); (a.label.material as THREE.SpriteMaterial).map?.dispose(); a.label.material.dispose();
   avatars.delete(id);
 }
-function avatar(id: number, name: string, kit: Kit, away: boolean): Avatar {
+function avatar(id: number, name: string, kit: Kit, away: boolean, shield = false): Avatar {
   const old = avatars.get(id);
-  if (old && old.kit === kit && old.away === away && old.name === name) return old;
+  if (old && old.kit === kit && old.away === away && old.name === name && old.shield === shield) return old;
   if (old) drop(id);
   // a player in the menu stays in the world (the others see them standing there), marked as away
-  const c = peerColor(id), f = makeFigure(c, kit), label = textSprite(away ? name + tl(' (in menu)') : name, '#' + c.toString(16).padStart(6, '0'));
+  const c = peerColor(id), f = makeFigure(c, kit, shield), label = textSprite(away ? name + tl(' (in menu)') : name, '#' + c.toString(16).padStart(6, '0'));
   label.position.y = 2.2; f.g.add(label);
-  const a: Avatar = { f, kit, away, name, label, phase: Math.random() * 6, seated: false };
+  const a: Avatar = { f, kit, shield, away, name, label, phase: Math.random() * 6, seated: false };
   avatars.set(id, a);
   return a;
 }
@@ -62,7 +62,7 @@ let sendT = 0;
 export function flushPeerState(moving = false) {
   if (!net.id) return;
   sendT = SEND_EVERY;
-  const s: PeerState = { p: [G.pos.x, G.pos.y, G.pos.z], yaw: G.yaw, pitch: G.pitch, loc: myLoc(), held: G.char.hands[0]?.k ?? '', mv: moving && G.playing, away: !G.playing, cars: myCars(), carIds: myCarList().map(v => v.st.id), ride: ride.on ? [ride.on.owner, ride.on.idx, ride.on.seat] : undefined, gun: ride.on ? ride.gun : undefined, boat: myBoatSpot(), vis: Math.round(myVis() * 100) / 100, cr: G.crouch || undefined, pod: myPod(), lt: carriedLight() || undefined };
+  const s: PeerState = { p: [G.pos.x, G.pos.y, G.pos.z], yaw: G.yaw, pitch: G.pitch, loc: myLoc(), held: G.char.hands[0]?.k ?? '', mv: moving && G.playing, away: !G.playing, cars: myCars(), carIds: myCarList().map(v => v.st.id), ride: ride.on ? [ride.on.owner, ride.on.idx, ride.on.seat] : undefined, gun: ride.on ? ride.gun : undefined, boat: myBoatSpot(), vis: Math.round(myVis() * 100) / 100, cr: G.crouch || undefined, pod: myPod(), lt: carriedLight() || undefined, oh: offFree() ? offHeld()?.k : undefined };
   sendState(s, isHost() ? G.char.time : undefined);
 }
 /** Every frame: send where you are now and then, and draw the others. */
@@ -75,7 +75,7 @@ export function updatePeers(dt: number, moving: boolean) {
   for (const p of net.peers.values()) {
     const s = p.st;
     if (!s || s.loc !== here) { drop(p.id); continue; }
-    const a = avatar(p.id, p.name, kitOf(s.held), !!s.away);
+    const a = avatar(p.id, p.name, kitOf(s.held), !!s.away, s.oh === 'woodshield' || s.oh === 'riotshield'); // (0.201) a shield in the other hand
     // drawn a little in the past, between the two snapshots round that moment, so the motion stays smooth when packets
     // come unevenly
     const at = peerAt(p, now - PEER_DELAY)!, k = at.k, q = at.a.loc === here ? at.a : s, e = at.b.loc === here ? at.b : s;

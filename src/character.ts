@@ -1,6 +1,6 @@
 // Character rules: stats from level and equipped relics, inventory, XP.
 import { G } from './game';
-import { ITEMS, item, BULK, WEAR, WEAPON_KIND, HANDS_ONLY, gearOf, type ItemKey } from './data/items';
+import { ITEMS, item, BULK, WEAR, WEAPON_KIND, HANDS_ONLY, OFF_HAND, SHIELD, TWO_HANDED, gearOf, type ItemKey } from './data/items';
 import { roomFor, weightOf, putSlot, putItems } from './inventory';
 import type { Slot } from './save';
 import { saveChar as persist } from './save';
@@ -21,7 +21,8 @@ export function calcStats() {
   G.S = {
     maxHp: 100 + L * 15 + r('shield') * 20, bm: (1 + L * 0.12) * (1 + r('lens') * 0.25), mm: (1 + L * 0.12) * (1 + r('edge') * 0.25),
     range: mel.reach + r('edge') * 0.3, rate: G.gun.interval * Math.pow(0.9, r('cell')), speed: (1 + r('servo') * 0.08) * gearOf(c.wear).speed, stamina: gearOf(c.wear).stamina,
-    def: 1 - Object.values(c.wear).reduce((a, k) => a * (1 - (k ? WEAR[k]?.def ?? 0 : 0)), 1),
+    // worn armour, and a shield in the other hand beside a one-handed weapon
+    def: 1 - Object.values(c.wear).reduce((a, k) => a * (1 - (k ? WEAR[k]?.def ?? 0 : 0)), 1) * (1 - shieldNow()),
   };
   G.hp = Math.min(G.hp, G.S.maxHp);
 }
@@ -36,12 +37,12 @@ export const armoured = (dmg: number) => (proxied() ? dmg : dmg * (1 - G.S.def))
 /** Everything you carry (kg): the backpack, your hands, your back and what you wear. */
 export function carriedKg(): number {
   const c = G.char;
-  return weightOf(c.inv) + weightOf(c.hands) + weightOf(c.back) + Object.values(c.wear).reduce((a, k) => a + (k ? BULK[k][0] : 0), 0);
+  return weightOf(c.inv) + weightOf(c.hands) + weightOf(c.back) + weightOf(c.off ?? []) + Object.values(c.wear).reduce((a, k) => a + (k ? BULK[k][0] : 0), 0);
 }
 
 // ---------- hands and back ----------
 /** The slot lists by slot-id prefix: p = backpack, h = hands (one slot), k = back (two slots, weapons only). */
-export const listOf = (w: string): (Slot | null)[] => (w === 'h' ? G.char.hands : w === 'k' ? G.char.back : G.char.inv);
+export const listOf = (w: string): (Slot | null)[] => (w === 'h' ? G.char.hands : w === 'k' ? G.char.back : w === 'o' ? (G.char.off ??= [null]) : G.char.inv);
 export const held = () => G.char.hands[0];
 /** Called whenever what you hold may have changed (world/weapons.ts shows the right weapon). */
 let handsHook = () => {};
@@ -54,6 +55,46 @@ export function stowHeld(): string {
   if (WEAPON_KIND[s.k] !== undefined) { const f = c.back.indexOf(null); if (f >= 0) { c.back[f] = s; c.hands[0] = null; handsChanged(); return ''; } }
   if (putSlot(c.inv, s, packVol()) === 0) { c.hands[0] = null; handsChanged(); return ''; }
   return TL`Your hands are full (${item(s.k).name}) and there is nowhere to put it.`;
+}
+
+// ---------- (0.201) the other hand ----------
+/** What is in your other hand (a light or a shield). */
+export const offHeld = () => (G.char.off ??= [null])[0];
+/** Whether the main hand's weapon or tool needs both hands. */
+export const bothHands = () => { const h = G.char.hands[0]; return !!h && TWO_HANDED.has(h.k); };
+/** Whether the other hand is free to use what it holds (nothing two-handed in the main hand). */
+export const offFree = () => !!offHeld() && !bothHands();
+/** The share of a hit the shield in your other hand takes (0 without one, or with both hands on a long gun). */
+export const shieldNow = () => { const o = offHeld(); return o && !bothHands() ? SHIELD[o.k] ?? 0 : 0; };
+/** Puts what the other hand holds into the backpack. '' when done. */
+export function stowOff(): string {
+  const c = G.char, s = offHeld();
+  if (!s) return '';
+  if (putSlot(c.inv, s, packVol()) > 0) return TL`No room in the backpack for the ${item(s.k).name}.`;
+  c.off[0] = null; calcStats(); handsChanged(); return '';
+}
+/**
+ * Takes k from the backpack (or your back, hands) into your other hand: a whole stack of torches, one of anything else;
+ * what it held goes into the backpack. With a two-handed weapon in the main hand, that goes onto your back. '' when done.
+ */
+export function takeInOff(k: ItemKey): string {
+  const c = G.char;
+  if (!OFF_HAND.has(k)) return TL`The ${item(k).name} is not held in the other hand.`;
+  if (bothHands()) { const m = stowHeld(); if (m) return m; }
+  if (offHeld()?.k === k) return '';
+  const i = c.inv.findIndex((s) => s?.k === k), fromHands = i < 0 && c.hands[0]?.k === k;
+  if (i < 0 && !fromHands) return TL`You have no ${item(k).name}.`;
+  const L = fromHands ? c.hands : c.inv, j = fromHands ? 0 : i, s = L[j]!;
+  const one = k !== 'firebrand' && s.n > 1, took: Slot = one ? { k, n: 1 } : s;
+  if (one) s.n--; else L[j] = null;
+  const old = offHeld();
+  c.off[0] = took;
+  if (old && putSlot(c.inv, old, packVol()) > 0) { // no room for what it held: undo
+    c.off[0] = old; if (one) s.n++; else L[j] = s;
+    return TL`No room in the backpack for the ${item(old.k).name}.`;
+  }
+  calcStats(); handsChanged(); saveChar();
+  return '';
 }
 
 /** Whether k is in your hands (tools work only from there, not from the backpack). */
@@ -98,15 +139,15 @@ export function addItem(k: ItemKey, n = 1, quiet = false): 'mod' | 'inv' | 'hand
 /** Uses up one k from the backpack or, failing that, from your hands. */
 export function takeOne(k: ItemKey): boolean {
   const c = G.char;
-  for (const L of [c.inv, c.hands]) {
+  for (const L of [c.inv, c.hands, c.off ?? []]) {
     const i = L.findIndex((x) => x && x.k === k); if (i < 0) continue;
     if (--L[i]!.n <= 0) L[i] = null;
-    if (L === c.hands) handsChanged();
+    if (L !== c.inv) handsChanged();
     saveChar(); return true;
   }
   return false;
 }
-export const hasItem = (k: ItemKey) => G.char.inv.some((x) => x && x.k === k) || G.char.hands[0]?.k === k;
+export const hasItem = (k: ItemKey) => G.char.inv.some((x) => x && x.k === k) || G.char.hands[0]?.k === k || G.char.off?.[0]?.k === k;
 
 export const xpNeed = (lvl: number) => 40 + 30 * (lvl - 1);
 export function gainXp(n: number) {

@@ -72,7 +72,7 @@ export function initRebirth(f: (c: Char, a: Arrival) => void) {
     const old = G.char, name = old.name || tl('A castaway');
     // the kit falls where they died
     const kit: Slot[] = [];
-    for (const s of [...old.inv, ...old.hands, ...old.back]) if (s) kit.push(s);
+    for (const s of [...old.inv, ...old.hands, ...old.back, ...(old.off ?? [])]) if (s) kit.push(s);
     for (const k of [...Object.values(old.wear), ...old.mods, ...old.gunMods]) if (k) kit.push({ k, n: 1 });
     for (const s of kit) dropAtFeet(s);
     // the name joins the fallen, the pod stays open

@@ -1,13 +1,13 @@
 // Backpack window: 3 relic modules, the Blaster's attachment slots, your body (what you wear, two weapons on your
-// back, what you hold in your hands) and 12 backpack slots.
+// back, what you hold in your hand and (0.201) your other hand: a light or a shield) and 24 backpack slots.
 // Items are dragged between slots (or selected and handled with the buttons under the grid).
 // Beside it stands a side panel: what lies on the ground around you (ui/ground.ts), or the chest, trunk or locker you
 // opened (ui/transfer.ts). Items move between the two by dragging, a click, or the buttons.
 import { dropAtFeet } from '../world/drops';
 import { G } from '../game';
-import { item, BULK, WEAR, WEAR_SLOTS, WEAR_NAME, gearOf, WEAPON_KIND, HANDS_ONLY, HAND_TOOLS, type ItemKey } from '../data/items';
+import { item, BULK, WEAR, WEAR_SLOTS, WEAR_NAME, gearOf, WEAPON_KIND, HANDS_ONLY, HAND_TOOLS, OFF_HAND, TWO_HANDED, type ItemKey } from '../data/items';
 import { BLASTER, SLOT_NAME, attachSlot } from '../data/weapons';
-import { calcStats, saveChar, listOf, stowHeld, handsChanged, packVol } from '../character';
+import { calcStats, saveChar, listOf, stowHeld, handsChanged, packVol, stowOff, takeInOff, bothHands } from '../character';
 import { dropStack, bulkOf } from '../inventory';
 import { logLine, $ } from './hud';
 import { useItem } from '../world/loot';
@@ -49,7 +49,7 @@ export const packSide = () => side;
 
 /**
  * Item in a slot: m = modules, w = weapon attachments, p = backpack, g = what you wear (WEAR_SLOTS index),
- * k = your back (two weapons), h = your hands.
+ * k = your back (two weapons), h = your hands, o = your other hand.
  */
 function at(id: string): { k: ItemKey; n: number; c?: number } | null {
   const [w, i] = parseId(id), c = G.char;
@@ -64,8 +64,10 @@ function renderPack() {
   gunEl.innerHTML = BLASTER.slots.map((s, i) => slotHTML('w:' + i, { k: c.gunMods[i], hint: SLOT_NAME[s], cls: 'att' }, sel === 'w:' + i)).join('');
   gearEl.innerHTML = WEAR_SLOTS.map((s, i) => slotHTML('g:' + i, { k: c.wear[s] ?? null, hint: WEAR_NAME[s] }, sel === 'g:' + i)).join('') + '<div></div>' +
     c.back.map((s, i) => slotHTML('k:' + i, { k: s?.k ?? null, hint: tl('Back ') + (i + 1), title: s ? undefined : TL`Back ${i + 1}: a weapon slung on your back (key ${i + 1} draws it)` }, sel === 'k:' + i)).join('') +
-    slotHTML('h:0', { k: c.hands[0]?.k ?? null, n: c.hands[0]?.n, c: c.hands[0]?.c, hint: tl('Hands'), cls: 'held', title: c.hands[0] ? undefined : tl('Your hands: the weapon you fight with, or something too big for the backpack') }, sel === 'h:0');
-  defEl.textContent = TL`armour ${Math.round(G.S.def * 100)}% · in hands: ${c.hands[0] ? item(c.hands[0].k).name : tl('nothing')}`;
+    slotHTML('h:0', { k: c.hands[0]?.k ?? null, n: c.hands[0]?.n, c: c.hands[0]?.c, hint: tl('Hands'), cls: 'held', title: c.hands[0] ? undefined : tl('Your hands: the weapon you fight with, or something too big for the backpack') }, sel === 'h:0') +
+    slotHTML('o:0', { k: c.off[0]?.k ?? null, n: c.off[0]?.n, hint: tl('Other hand'), cls: 'held' + (c.off[0] && bothHands() ? ' idle' : ''), title: c.off[0] ? undefined : tl('Your other hand: a light (flashlight, oil lamp, torches) or a shield, beside a one-handed weapon') }, sel === 'o:0');
+  const oh = c.off[0] ? (bothHands() ? TL`${item(c.off[0].k).name} (idle: both hands on the weapon)` : item(c.off[0].k).name) : tl('nothing');
+  defEl.textContent = TL`armour ${Math.round(G.S.def * 100)}% · in hands: ${c.hands[0] ? item(c.hands[0].k).name : tl('nothing')}` + ' · ' + TL`other hand: ${oh}`;
   invEl.innerHTML = c.inv.map((s, i) => slotHTML('p:' + i, { k: s?.k ?? null, n: s?.n, c: s?.c }, sel === 'p:' + i)).join('');
   loadEl.innerHTML = loadText();
   statsEl.textContent = TL`damage ${(g.dmg * G.S.bm).toFixed(2)} · ${(1 / G.S.rate).toFixed(1)} shots/s · range ${g.range} m · magazine ${g.mag} · reload ${g.reload.toFixed(1)} s · zoom ${g.zoom}×`;
@@ -74,11 +76,14 @@ function renderPack() {
   const s = sel && !isSide(sel) ? at(sel) : null;
   if (sel && s) {
     const [w] = parseId(sel), it = item(s.k);
-    html = itemInfo(s.k, s.c) + (w === 'm' ? tl('<br>Equipped in a module') : w === 'w' ? tl('<br>Fitted to the Blaster') : w === 'g' ? tl('<br>Worn') : w === 'k' ? tl('<br>On your back') : w === 'h' ? tl('<br>In your hands') : '');
+    html = itemInfo(s.k, s.c) + (w === 'm' ? tl('<br>Equipped in a module') : w === 'w' ? tl('<br>Fitted to the Blaster') : w === 'g' ? tl('<br>Worn') : w === 'k' ? tl('<br>On your back') : w === 'h' ? tl('<br>In your hands') : w === 'o' ? tl('<br>In your other hand') : '')
+      + (TWO_HANDED.has(s.k) && (WEAPON_KIND[s.k] !== undefined || HAND_TOOLS.has(s.k)) ? tl('<br>Needs both hands') : '');
     if (w === 'm') acts.push(['off', tl('Unequip')]);
     else if (w === 'w' || w === 'g') acts.push(['off', tl('Take off')]);
     else if (w === 'k') acts.push(['hold', tl('Take in hands')], ['off', tl('Into backpack')]);
-    else if (w === 'h') { if (it.type === 'cons') acts.push(['use', tl('Use')]); acts.push(['stow', WEAPON_KIND[s.k] !== undefined ? tl('Sling on back') : tl('Put away')]); }
+    else if (w === 'h') { if (it.type === 'cons') acts.push(['use', tl('Use')]); if (OFF_HAND.has(s.k)) acts.push(['offh', tl('Into other hand')]); acts.push(['stow', WEAPON_KIND[s.k] !== undefined ? tl('Sling on back') : tl('Put away')]); }
+    else if (w === 'o') { if (s.k === 'flashlight' || s.k === 'oillamp' || s.k === 'firebrand') acts.push(['use', tl('Light / put out')]); acts.push(['stowo', tl('Put away')]); }
+    else if (OFF_HAND.has(s.k)) { acts.push(['offh', tl('Take in other hand')]); if (it.type === 'cons' || s.k === 'flashlight' || s.k === 'oillamp') acts.push(['use', tl('Use')]); }
     else if (it.type === 'relic') acts.push(['on', tl('Equip')]);
     else if (it.type === 'attach') acts.push(['on', tl('Fit to Blaster')]);
     else if (it.type === 'wear') acts.push(['on', tl('Wear')]);
@@ -86,10 +91,10 @@ function renderPack() {
     else if (it.type === 'cons') acts.push(['use', tl('Use')]);
     else if (HAND_TOOLS.has(s.k)) acts.push(['hold', tl('Take in hands')]);
     if (s.k === 'log' && (w === 'p' || w === 'h')) acts.push(['saw', tl('Saw into planks')], ['sawall', tl('Saw all')]); // (world/sawing.ts: a Saw in your kit)
-    if (w === 'p' || w === 'h' || w === 'k') acts.push(['drop', tl('Drop')]);
+    if (w === 'p' || w === 'h' || w === 'k' || w === 'o') acts.push(['drop', tl('Drop')]);
   } else sel = null;
   note = '';
-  if (sel && s && side?.act && (parseId(sel)[0] === 'p' || parseId(sel)[0] === 'h' || parseId(sel)[0] === 'k')) acts.unshift(side.act);
+  if (sel && s && side?.act && (parseId(sel)[0] === 'p' || parseId(sel)[0] === 'h' || parseId(sel)[0] === 'k' || parseId(sel)[0] === 'o')) acts.unshift(side.act);
   detailEl.innerHTML = html + (acts.length ? '<div class="acts">' + acts.map(([a, t]) => `<button class="${a === 'drop' ? 'drop' : ''}" data-a="${a}">${t}</button>`).join('') + '</div>' : '');
   side?.render();
 }
@@ -102,6 +107,7 @@ function fits(w: string, idx: number, k: ItemKey): boolean {
   if (w === 'w') return attachSlot(k) === BLASTER.slots[idx];
   if (w === 'g') return WEAR[k]?.slot === WEAR_SLOTS[idx];
   if (w === 'k') return WEAPON_KIND[k] !== undefined;
+  if (w === 'o') return OFF_HAND.has(k);
   return true; // hands hold anything
 }
 function why(w: string, idx: number, k: ItemKey): string {
@@ -110,6 +116,7 @@ function why(w: string, idx: number, k: ItemKey): string {
   if (w === 'w') return TL`That does not fit the ${SLOT_NAME[BLASTER.slots[idx]].toLowerCase()} slot.`;
   if (w === 'g') return WEAR[k] ? TL`That is worn on the ${WEAR_NAME[WEAR[k]!.slot].toLowerCase()}.` : tl('You cannot wear that.');
   if (w === 'k') return tl('Only weapons go on your back.');
+  if (w === 'o') return tl('Only a light or a shield goes in your other hand.');
   return '';
 }
 /** Moves an item between slots, following the rules of each kind of slot. Returns an error message or ''. */
@@ -151,6 +158,8 @@ function quick(id: string, act: string): string {
     return move(id, 'h:0'); // what you held takes its place
   }
   if (act === 'stow') { const m = stowHeld(); return m; }
+  if (act === 'stowo') return stowOff();
+  if (act === 'offh') return takeInOff(a.k);
   if (w !== 'p') return toPack();
   const it = item(a.k);
   if (it.type === 'relic') { const f = c.mods.indexOf(null); return f < 0 ? tl('All modules are full. Unequip one first.') : move(id, 'm:' + f); }
@@ -171,11 +180,11 @@ packEl.addEventListener('click', (e) => {
   const a = (e.target as HTMLElement).closest<HTMLElement>('[data-a]');
   if (!a || !sel) return;
   const id = sel, [w, i] = parseId(id), act = a.dataset.a!;
-  if (act === 'off' || act === 'on' || act === 'hold' || act === 'stow') { const m = quick(sel, act); if (m) logLine(m); note = m; sel = null; }
-  if (act === 'use' && (w === 'p' || w === 'h')) { const s = listOf(w)[i]; if (s) useItem(s.k); }
+  if (act === 'off' || act === 'on' || act === 'hold' || act === 'stow' || act === 'stowo' || act === 'offh') { const m = quick(sel, act); if (m) logLine(m); note = m; sel = null; }
+  if (act === 'use' && (w === 'p' || w === 'h' || w === 'o')) { const s = listOf(w)[i]; if (s) useItem(s.k); }
   if (act === 'saw' || act === 'sawall') { const m = sawLogs(act === 'sawall'); logLine(m); note = m; if (!G.char.inv.some((x) => x?.k === 'log') && G.char.hands[0]?.k !== 'log') sel = null; }
   if (side?.act && act === side.act[0] && side.doAct) { note = side.doAct(id); sel = null; if (!G.packOpen) return; }
-  if (act === 'drop' && (w === 'p' || w === 'h' || w === 'k')) { const s = listOf(w)[i]; listOf(w)[i] = null; sel = null; if (s) dropAtFeet(s); } // laid at your feet, for you or anyone to pick up
+  if (act === 'drop' && (w === 'p' || w === 'h' || w === 'k' || w === 'o')) { const s = listOf(w)[i]; listOf(w)[i] = null; sel = null; if (s) dropAtFeet(s); } // laid at your feet, for you or anyone to pick up
   changed();
 });
 /** Opens the backpack, with `with` (a container) beside it instead of the ground. */
