@@ -5,6 +5,7 @@
 // runs the build mode and hands the collision, floors and rays below to the player and the enemies.
 import { PIECES, BUILD, type PieceKind, type Shape } from '../data/building';
 import { CLAIM } from './claims';
+import { tl } from '../i18n';
 
 /** A code lock on a door: its 4-digit code, whether it is locked, and who has entered the code (player ids). */
 export interface Lock { code: string; on: boolean; auth: string[] }
@@ -60,29 +61,29 @@ export const stairDir = (yaw: number) => { const fu = -Math.sin(yaw), fv = -Math
 /** Why the part cannot go there, or null. Upper storeys need something to stand on. */
 export function partProblem(parts: Part[], p: Part): string | null {
   const s = shapeOf(p), lv = lvOf(p), ends = partEnds(p);
-  if (ends.some(([u, v]) => Math.hypot(u, v) > CLAIM.flat - 0.3)) return 'Build on the levelled ground round your flag.';
-  if (s === 'roof' || s === 'turret' ? lv < (s === 'roof' ? 1 : 0) || lv > BUILD.levels : lv < 0 || lv > BUILD.levels - 1) return s === 'roof' ? 'Floors and roofs go on top of the walls: look up.' : 'That is as high as you can build.';
-  if ((s === 'wall' || s === 'door') && ends.some(([u, v]) => u === 0 && v === 0)) return 'The flagpole is in the way.';
-  if (s !== 'roof' && s !== 'wall' && s !== 'door' && cellsOf(p).some(([x, z]) => (x === 0 || x === -1) && (z === 0 || z === -1))) return 'The flagpole is in the way.';
+  if (ends.some(([u, v]) => Math.hypot(u, v) > CLAIM.flat - 0.3)) return tl('Build on the levelled ground round your flag.');
+  if (s === 'roof' || s === 'turret' ? lv < (s === 'roof' ? 1 : 0) || lv > BUILD.levels : lv < 0 || lv > BUILD.levels - 1) return s === 'roof' ? tl('Floors and roofs go on top of the walls: look up.') : tl('That is as high as you can build.');
+  if ((s === 'wall' || s === 'door') && ends.some(([u, v]) => u === 0 && v === 0)) return tl('The flagpole is in the way.');
+  if (s !== 'roof' && s !== 'wall' && s !== 'door' && cellsOf(p).some(([x, z]) => (x === 0 || x === -1) && (z === 0 || z === -1))) return tl('The flagpole is in the way.');
   const mine = new Set(slotKeys(p));
-  if (parts.some((q) => slotKeys(q).some((k) => mine.has(k)))) return 'Something is already built there.';
+  if (parts.some((q) => slotKeys(q).some((k) => mine.has(k)))) return tl('Something is already built there.');
   const has = (f: (q: Part) => boolean) => parts.some(f);
   const edge = (q: Part, gx: number, gz: number, d: number, l: number) => (shapeOf(q) === 'wall' || shapeOf(q) === 'door') && q.gx === gx && q.gz === gz && q.d === d && lvOf(q) === l;
   const slabAt = (x: number, z: number, l: number) => has((q) => shapeOf(q) === 'roof' && lvOf(q) === l && q.gx === x && q.gz === z);
   const stairsUnder = (x: number, z: number, l: number) => has((q) => shapeOf(q) === 'stairs' && lvOf(q) === l && cellsOf(q).some(([a, b]) => a === x && b === z));
   if (s === 'roof') {
-    if (stairsUnder(p.gx, p.gz, lv - 1)) return 'Leave the stairwell open.';
+    if (stairsUnder(p.gx, p.gz, lv - 1)) return tl('Leave the stairwell open.');
     const walls = [[p.gx, p.gz, 0], [p.gx, p.gz + 1, 0], [p.gx, p.gz, 1], [p.gx + 1, p.gz, 1]].some(([x, z, d]) => has((q) => edge(q, x, z, d, lv - 1)));
     const next = [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([a, b]) => slabAt(p.gx + a, p.gz + b, lv));
-    if (!walls && !next) return 'A floor needs a wall under one of its sides, or a floor next to it.';
+    if (!walls && !next) return tl('A floor needs a wall under one of its sides, or a floor next to it.');
   } else if (s === 'stairs') {
-    if (cellsOf(p).some(([x, z]) => slabAt(x, z, lv + 1))) return 'There is a floor over it: the stairs need headroom.';
-    if (lv > 0 && cellsOf(p).some(([x, z]) => !slabAt(x, z, lv))) return 'Stairs up here need a floor under them.';
+    if (cellsOf(p).some(([x, z]) => slabAt(x, z, lv + 1))) return tl('There is a floor over it: the stairs need headroom.');
+    if (lv > 0 && cellsOf(p).some(([x, z]) => !slabAt(x, z, lv))) return tl('Stairs up here need a floor under them.');
   } else if (s === 'turret') {
-    if (lv > 0 && !slabAt(p.gx, p.gz, lv)) return 'A turret up here needs a floor or a roof under it.';
+    if (lv > 0 && !slabAt(p.gx, p.gz, lv)) return tl('A turret up here needs a floor or a roof under it.');
   } else if (lv > 0) {
     const [a, b] = p.d === 0 ? [[p.gx, p.gz - 1], [p.gx, p.gz]] : [[p.gx - 1, p.gz], [p.gx, p.gz]];
-    if (!has((q) => edge(q, p.gx, p.gz, p.d, lv - 1)) && !slabAt(a[0], a[1], lv) && !slabAt(b[0], b[1], lv)) return 'Up here a wall needs a floor beside it or a wall under it.';
+    if (!has((q) => edge(q, p.gx, p.gz, p.d, lv - 1)) && !slabAt(a[0], a[1], lv) && !slabAt(b[0], b[1], lv)) return tl('Up here a wall needs a floor beside it or a wall under it.');
   }
   return null;
 }

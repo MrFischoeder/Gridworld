@@ -13,34 +13,35 @@ import { gatesNear } from './worldgates';
 import { Terrain } from './terrain';
 import { installSites } from './installs';
 import { regionRoads, nearestOnRoad } from './roads';
+import { tl, TL } from '../i18n';
 
 // Scale geometry and cleared grounds together; survey with the original footprint to preserve reserved sites.
 export const MEGALITH_XZ_SCALE = .75, MEGALITH_Y_SCALE = .7;
 export const MEGALITH_COUNT = 22, MEGALITH_BLEND = 35, MEGALITH_HOME_GAP = 3500;
 export const MEGALITH_DESIGNS = [
-  { name: 'Crown of the First Dawn', radius: 100, height: 42, count: 16, rings: 1, form: 'crown' },
-  { name: 'The Twin Horizons', radius: 120, height: 46, count: 18, rings: 2, form: 'circles' },
-  { name: 'Court of the Sky Bearers', radius: 130, height: 64, count: 12, rings: 1, form: 'horseshoe' },
-  { name: 'The Silent Procession', radius: 140, height: 40, count: 12, rings: 1, form: 'avenue' },
-  { name: 'The Spiral of Ages', radius: 130, height: 48, count: 24, rings: 1, form: 'spiral' },
-  { name: 'Throne of the Four Winds', radius: 110, height: 58, count: 12, rings: 1, form: 'cardinal' },
-  { name: 'Sanctuary of the Three Suns', radius: 145, height: 50, count: 18, rings: 3, form: 'circles' },
-  { name: 'The Broken Halo', radius: 115, height: 52, count: 18, rings: 1, form: 'broken' },
-  { name: 'The Starward Assembly', radius: 135, height: 60, count: 10, rings: 2, form: 'star' },
-  { name: 'The Longest Shadow', radius: 125, height: 68, count: 14, rings: 1, form: 'obelisk' },
-  { name: 'The Gate of Giants', radius: 105, height: 62, count: 12, rings: 1, form: 'gate' },
-  { name: 'The Last Constellation', radius: 150, height: 56, count: 24, rings: 2, form: 'constellation' },
+  { name: tl('Crown of the First Dawn'), radius: 100, height: 42, count: 16, rings: 1, form: 'crown' },
+  { name: tl('The Twin Horizons'), radius: 120, height: 46, count: 18, rings: 2, form: 'circles' },
+  { name: tl('Court of the Sky Bearers'), radius: 130, height: 64, count: 12, rings: 1, form: 'horseshoe' },
+  { name: tl('The Silent Procession'), radius: 140, height: 40, count: 12, rings: 1, form: 'avenue' },
+  { name: tl('The Spiral of Ages'), radius: 130, height: 48, count: 24, rings: 1, form: 'spiral' },
+  { name: tl('Throne of the Four Winds'), radius: 110, height: 58, count: 12, rings: 1, form: 'cardinal' },
+  { name: tl('Sanctuary of the Three Suns'), radius: 145, height: 50, count: 18, rings: 3, form: 'circles' },
+  { name: tl('The Broken Halo'), radius: 115, height: 52, count: 18, rings: 1, form: 'broken' },
+  { name: tl('The Starward Assembly'), radius: 135, height: 60, count: 10, rings: 2, form: 'star' },
+  { name: tl('The Longest Shadow'), radius: 125, height: 68, count: 14, rings: 1, form: 'obelisk' },
+  { name: tl('The Gate of Giants'), radius: 105, height: 62, count: 12, rings: 1, form: 'gate' },
+  { name: tl('The Last Constellation'), radius: 150, height: 56, count: 24, rings: 2, form: 'constellation' },
   // the colossal heads: faceted stone faces with glowing visor eyes, buried to the shoulders among boulders
-  { name: 'Vale of the Watchers', radius: 120, height: 58, count: 6, rings: 1, form: 'heads', layout: 'valley' },
-  { name: 'Council of Stone Faces', radius: 125, height: 56, count: 7, rings: 1, form: 'heads', layout: 'council' },
-  { name: 'The Seaward Gaze', radius: 115, height: 54, count: 7, rings: 1, form: 'heads', layout: 'row' },
-  { name: 'The Sunken Choir', radius: 120, height: 62, count: 6, rings: 1, form: 'heads', layout: 'sunken' },
-  { name: 'The Twin Guardians', radius: 110, height: 66, count: 5, rings: 1, form: 'heads', layout: 'twin' },
-  { name: 'The Leaning Elders', radius: 115, height: 56, count: 5, rings: 1, form: 'heads', layout: 'leaning' },
-  { name: 'The Grand Assembly', radius: 140, height: 58, count: 9, rings: 1, form: 'heads', layout: 'assembly' },
-  { name: 'Eyes of the Old Sky', radius: 110, height: 60, count: 5, rings: 1, form: 'heads', layout: 'outward' },
-  { name: 'The Patriarch', radius: 120, height: 76, count: 5, rings: 1, form: 'heads', layout: 'patriarch' },
-  { name: 'The Long Vigil', radius: 135, height: 60, count: 8, rings: 1, form: 'heads', layout: 'vigil' },
+  { name: tl('Vale of the Watchers'), radius: 120, height: 58, count: 6, rings: 1, form: 'heads', layout: 'valley' },
+  { name: tl('Council of Stone Faces'), radius: 125, height: 56, count: 7, rings: 1, form: 'heads', layout: 'council' },
+  { name: tl('The Seaward Gaze'), radius: 115, height: 54, count: 7, rings: 1, form: 'heads', layout: 'row' },
+  { name: tl('The Sunken Choir'), radius: 120, height: 62, count: 6, rings: 1, form: 'heads', layout: 'sunken' },
+  { name: tl('The Twin Guardians'), radius: 110, height: 66, count: 5, rings: 1, form: 'heads', layout: 'twin' },
+  { name: tl('The Leaning Elders'), radius: 115, height: 56, count: 5, rings: 1, form: 'heads', layout: 'leaning' },
+  { name: tl('The Grand Assembly'), radius: 140, height: 58, count: 9, rings: 1, form: 'heads', layout: 'assembly' },
+  { name: tl('Eyes of the Old Sky'), radius: 110, height: 60, count: 5, rings: 1, form: 'heads', layout: 'outward' },
+  { name: tl('The Patriarch'), radius: 120, height: 76, count: 5, rings: 1, form: 'heads', layout: 'patriarch' },
+  { name: tl('The Long Vigil'), radius: 135, height: 60, count: 8, rings: 1, form: 'heads', layout: 'vigil' },
 ] as const;
 type HeadLayout = 'valley' | 'council' | 'row' | 'sunken' | 'twin' | 'leaning' | 'assembly' | 'outward' | 'patriarch' | 'vigil';
 /**
@@ -86,7 +87,7 @@ export function worldMegaliths(world: number): Megalith[] {
       if (road) continue;
       site = [x, z, Math.round((lo + hi) / 2)]; break;
     }
-    if (!site) throw new Error(`No dry site for megalith ${index} in world ${world}`);
+    if (!site) throw new Error(TL`No dry site for megalith ${index} in world ${world}`);
     out.push({ id: `megalith:${index}`, index, name: design.name, x: site[0], z: site[1], y: site[2], yaw: R() * Math.PI * 2, radius: radius * MEGALITH_XZ_SCALE, height: design.height + (design.form === 'obelisk' ? 10 : 0), seed: hash(world, index, 0x6e6b) });
   }
   out.forEach(m => m.height = Math.max(...megalithStones(m).map(b => b.y + b.h)));

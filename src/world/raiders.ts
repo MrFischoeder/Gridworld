@@ -22,6 +22,7 @@ import { logLine, showToast } from '../ui/hud';
 import { onKill } from './quests';
 import { mayspawn } from './threat';
 import { remoteOf, unmarkRemote, hitOwner, proxied, withTarget, nearestPlayer } from './remote';
+import { tl } from '../i18n';
 
 export interface RaiderEnv { terrain: Terrain; danger(x: number, z: number): number; forbidden(x: number, z: number): boolean }
 let env: RaiderEnv | null = null;
@@ -51,7 +52,7 @@ function spawnRaider(model: VehicleModel, x: number, z: number, heading: number,
   const r: Raider = { kind: 'raider', v, g, p: new THREE.Vector3(), r: Math.max(s.length, s.width) * 0.45, hp, maxHp: hp, level,
     fireT: 2, burst: 0, orbit: Math.random() < 0.5 ? 1 : -1, ramT: 0, plan: 'chase', planT: 0, crewHp };
   raiders.push(r);
-  if (!copy) logLine('Engines behind you...');
+  if (!copy) logLine(tl('Engines behind you...'));
   return r;
 }
 /** A copy of another player's raider (world/foesync.ts). */
@@ -59,7 +60,7 @@ export const spawnRemoteRaider = (model: VehicleModel, x: number, z: number, hea
 /** Your shot finished another player's raider: their game wrecks it and bails its crew out; yours gives the reward. */
 export function remoteRaiderKilled(r: Raider) {
   unmarkRemote(r);
-  burst(r.p, BANDIT, 50, 2.5); showToast('Raider vehicle disabled!');
+  burst(r.p, BANDIT, 50, 2.5); showToast(tl('Raider vehicle disabled!'));
   for (let i = 0; i < 4; i++) dropCrystal(r.p);
   gainXp(30); onKill('bandit');
   dropRaider(r);
@@ -117,7 +118,7 @@ function driveRaider(r: Raider, dt: number) {
   if (!safe && d < v.spec.length * 0.55 + 0.6 && Math.abs(v.speed) > 5 && r.ramT <= 0) {
     r.ramT = 1.5;
     if (drv) {
-      logLine('Rammed!');
+      logLine(tl('Rammed!'));
       damageVehicle(drv, 20 * (1 + r.level * 0.2));
     } else {
       hurtPlayer(16 * (1 + r.level * 0.2), true, .5);
@@ -130,7 +131,7 @@ function driveRaider(r: Raider, dt: number) {
 function wreckRaider(r: Raider) {
   const v = r.v;
   burst(r.p, BANDIT, 50, 2.5);
-  showToast('Raider vehicle disabled!');
+  showToast(tl('Raider vehicle disabled!'));
   bailOut(r);
   // A disabled vehicle, possibly still with its roof gun, and loot in the back.
   const p = v.st.parts;
@@ -249,7 +250,7 @@ export function hurtBarrier(p: Barricade, dmg: number) {
   if (p.hp > 0) return;
   burst(V(p.x, p.y + 0.8, p.z), 0xffb347, 26, 1.6);
   scene.remove(p.g); p.g.traverse((o) => (o as THREE.Mesh).geometry?.dispose());
-  for (const a of ambushes) { const i = a.pieces.indexOf(p); if (i >= 0) { a.pieces.splice(i, 1); if (!a.pieces.length) logLine('The roadblock is down.'); } }
+  for (const a of ambushes) { const i = a.pieces.indexOf(p); if (i >= 0) { a.pieces.splice(i, 1); if (!a.pieces.length) logLine(tl('The roadblock is down.')); } }
 }
 /** Barricades still standing within r of (x, z) (a caravan waits for the road to be clear). */
 export const barriersNear = (x: number, z: number, r: number) => ambushes.flatMap((a) => a.pieces).filter((p) => Math.hypot(p.x - x, p.z - z) < r);
@@ -299,8 +300,8 @@ function tryAmbush(dt: number, force = false) {
 function updateAmbushes() {
   for (let i = ambushes.length - 1; i >= 0; i--) {
     const a = ambushes[i], left = W.bandits.filter((b) => b.ambush === a.id);
-    if (!a.sprung && left.some((b) => b.state === 'fight')) { a.sprung = true; showToast('Ambush!'); }
-    if (a.sprung && !left.length && !a.done) { a.done = true; logLine(a.pieces.length ? 'The ambush is broken. The roadblock still stands: shoot it apart or go round.' : 'The ambush is broken.'); }
+    if (!a.sprung && left.some((b) => b.state === 'fight')) { a.sprung = true; showToast(tl('Ambush!')); }
+    if (a.sprung && !left.length && !a.done) { a.done = true; logLine(a.pieces.length ? tl('The ambush is broken. The roadblock still stands: shoot it apart or go round.') : tl('The ambush is broken.')); }
     // the barricades stay until they are shot apart, or until you are far away
     if (a.copy) { if (!a.pieces.length) ambushes.splice(i, 1); continue; } // copies come and go with their owner's word
     if (!a.pieces.length || nearestPlayer(a.x, a.z) > 230) {

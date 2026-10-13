@@ -1,5 +1,6 @@
 // A continuous flight of light trails hides the world until an accepted gate journey arrives.
 import { G } from '../game';
+import { tl } from '../i18n';
 let canvas: HTMLCanvasElement | null = null, frame = 0, trip: number | null = null, started = 0;
 export const gateTransitActive = () => trip !== null;
 export function startGateTransit(token: number) {
@@ -8,7 +9,7 @@ export function startGateTransit(token: number) {
   G.firing = G.aiming = false; G.vel.set(0, 0, 0);
   for (const key in G.keys) G.keys[key] = false;
   canvas = document.createElement('canvas'); canvas.id = 'gate-transit';
-  canvas.setAttribute('role', 'img'); canvas.setAttribute('aria-label', 'Travelling through the ancient gate');
+  canvas.setAttribute('role', 'img'); canvas.setAttribute('aria-label', tl('Travelling through the ancient gate'));
   document.body.append(canvas);
   const ctx = canvas.getContext('2d')!;
   const draw = (now: number) => {

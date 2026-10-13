@@ -24,6 +24,7 @@ import { openTransfer } from '../ui/transfer';
 import { openService } from '../ui/service';
 import { showToast, logLine, el } from '../ui/hud';
 import { makeFigure, type Figure } from './npc';
+import { tl, TL } from '../i18n';
 
 const BODY = 0x5cff8a, DETAIL = GRID, GLASS = 0x2a9a50;
 /** You, as others see you in a vehicle. */
@@ -285,21 +286,21 @@ function consumeFuel(v: Vehicle, metres: number, thr: number, secs: number) {
     const had = p.ev!, [, cap] = energyOf(v.st.model, p);
     if (had <= 0) return;
     p.ev = Math.max(0, had - evBurn(v.st.model, metres, thr, secs));
-    if (had > cap * 0.1 && p.ev <= cap * 0.1) logLine(`Battery low: ${Math.round(p.ev)} kWh left, about ${Math.round(evRangeKm(v.st.model, p.ev))} km.`);
+    if (had > cap * 0.1 && p.ev <= cap * 0.1) logLine(TL`Battery low: ${Math.round(p.ev)} kWh left, about ${Math.round(evRangeKm(v.st.model, p.ev))} km.`);
     if (p.ev <= 0) dryWarn();
     return;
   }
   const had = p.fuel;
   if (had <= 0) return;
   p.fuel = Math.max(0, had - fuelBurn(v.st.model, metres, thr, secs));
-  if (had > v.spec.tank * 0.1 && p.fuel <= v.spec.tank * 0.1) logLine(`Fuel low: ${Math.round(p.fuel)} L left, about ${Math.round(rangeKm(v.st.model, p.fuel))} km.`);
+  if (had > v.spec.tank * 0.1 && p.fuel <= v.spec.tank * 0.1) logLine(TL`Fuel low: ${Math.round(p.fuel)} L left, about ${Math.round(rangeKm(v.st.model, p.fuel))} km.`);
   if (p.fuel <= 0) dryWarn();
 }
 function dryWarn() {
   if (performance.now() < dryWarnAt) return;
   dryWarnAt = performance.now() + 5000;
-  if (driving.v && isEV(driving.v.st.parts)) { showToast('Battery flat'); logLine('The battery is flat: the motor whines and stops. Tow or push it to a charging post.'); return; }
-  showToast('Out of fuel'); logLine('The tank is dry: the engine coughs and dies. R pours in a Fuel Canister from the trunk or your backpack.');
+  if (driving.v && isEV(driving.v.st.parts)) { showToast(tl('Battery flat')); logLine(tl('The battery is flat: the motor whines and stops. Tow or push it to a charging post.')); return; }
+  showToast(tl('Out of fuel')); logLine(tl('The tank is dry: the engine coughs and dies. R pours in a Fuel Canister from the trunk or your backpack.'));
 }
 /** The vehicle you could refuel now: the one you drive, else your own one beside you (within 4 m of its body). */
 function refuelTarget(): Vehicle | null {
@@ -315,14 +316,14 @@ function refuelTarget(): Vehicle | null {
 /** Pours one Fuel Canister into vehicle v: from its trunk first, then your backpack. Returns the message. */
 export function pourCanister(v: Vehicle): string {
   const p = v.st.parts;
-  if (isEV(p)) return 'It runs on electricity: charge it at a charging post.';
-  if (cansToFill(v.st.model, p.fuel) <= 0) return 'The tank is nearly full.';
+  if (isEV(p)) return tl('It runs on electricity: charge it at a charging post.');
+  if (cansToFill(v.st.model, p.fuel) <= 0) return tl('The tank is nearly full.');
   const t = v.st.trunk.items, i = t.findIndex((x) => x?.k === 'fuel');
   if (i >= 0) { const x = t[i]!; if (--x.n <= 0) t[i] = null; }
-  else if (!takeOne('fuel')) return 'You have no Fuel Canister, in the trunk or your backpack. Villages trade them.';
+  else if (!takeOne('fuel')) return tl('You have no Fuel Canister, in the trunk or your backpack. Villages trade them.');
   p.fuel = Math.min(v.spec.tank, p.fuel + FUEL.can);
   saveChar();
-  return `You pour a canister into the tank: ${Math.round(p.fuel)} of ${v.spec.tank} litres, about ${Math.round(rangeKm(v.st.model, p.fuel))} km.`;
+  return TL`You pour a canister into the tank: ${Math.round(p.fuel)} of ${v.spec.tank} litres, about ${Math.round(rangeKm(v.st.model, p.fuel))} km.`;
 }
 /** R in or beside your own vehicle: pour a canister in. False when there is no vehicle here (R then reloads). */
 export function refuelVehicle(): boolean {
@@ -346,14 +347,14 @@ export function damageVehicle(v: Vehicle, dmg: number): boolean {
   damageCondition(p, dmg);
   if (v === driving.v) {
     G.dmgFlash = Math.max(G.dmgFlash, 0.12);
-    if (p.hull < v.spec.hull * 0.25 && performance.now() > hullWarnAt) { hullWarnAt = performance.now() + 6000; logLine('Vehicle condition critical!'); }
+    if (p.hull < v.spec.hull * 0.25 && performance.now() > hullWarnAt) { hullWarnAt = performance.now() + 6000; logLine(tl('Vehicle condition critical!')); }
   }
   if (p.hull > 0) return false;
   v.speed = 0;
   burst(V(v.st.x, v.y + v.spec.height * 0.6, v.st.z), 0xffb347, 60, v.spec.length * 0.5);
   if (v === driving.v) {
     showToast(vehicleTitle(v.st.model) + ' wrecked!');
-    logLine('Vehicle condition reached 0%. Use a Vehicle Repair Kit or service it at the front.');
+    logLine(tl('Vehicle condition reached 0%. Use a Vehicle Repair Kit or service it at the front.'));
     leave();
     G.dmgFlash = 0.6;
   }
@@ -497,18 +498,18 @@ function claim(v: Vehicle) {
   if (Math.random() < 0.25) putItems(t.items, 'engine', 1);
   if (Math.random() < 0.35) putItems(t.items, 'fuel', 1); // (0.177) a spare canister
   G.char.vehicles.push(v.st); saveChar();
-  showToast('Found: ' + vehicleTitle(v.st.model));
+  showToast(tl('Found: ') + vehicleTitle(v.st.model));
 }
 
 // ---------- the dealer ----------
 /** Buys a vehicle and parks it in the first free bay of the yard. Returns a message for the shop window. */
 export function buyVehicle(model: VehicleModel): string {
   const spec = VEHICLES[model], c = G.char;
-  if (c.gold < spec.price) return 'Not enough gold.';
-  if (!yardBay()) return 'The yard is full. Drive one of your vehicles away first.';
+  if (c.gold < spec.price) return tl('Not enough gold.');
+  if (!yardBay()) return tl('The yard is full. Drive one of your vehicles away first.');
   c.gold -= spec.price;
   parkNew(model);
-  return `Your ${vehicleTitle(model)} is waiting in the yard outside the north gate.`;
+  return TL`Your ${vehicleTitle(model)} is waiting in the yard outside the north gate.`;
 }
 /** The first free bay of Gridholm's yard, or null. */
 export const yardBay = () => YARD.bays.find((b) => !vehicles.some((v) => Math.hypot(v.st.x - b.x, v.st.z - b.z) < 7)) ?? null;
@@ -548,12 +549,12 @@ export function vehicleSpot(): VehicleSpot | null {
     if (v.ai || Math.abs(G.pos.y - v.y) > 2.5) continue;
     for (const side of [-1, 1]) {
       const [x, z] = toWorld(v, side * v.spec.door[0], v.spec.door[1]), d = Math.hypot(x - G.pos.x, z - G.pos.z);
-      if (d < bd) { bd = d; best = { v, kind: 'drive', label: (v.claimed ? 'drive the ' : 'take the abandoned ') + vehicleTitle(v.st.model) + (v.st.parts.hull <= 0 ? ' (wrecked)' : '') }; }
+      if (d < bd) { bd = d; best = { v, kind: 'drive', label: (v.claimed ? tl('drive the ') : tl('take the abandoned ')) + vehicleTitle(v.st.model) + (v.st.parts.hull <= 0 ? tl(' (wrecked)') : '') }; }
     }
     const [x, z] = toWorld(v, v.spec.rear[0], v.spec.rear[1]), d = Math.hypot(x - G.pos.x, z - G.pos.z);
-    if (d < bd) { bd = d; best = { v, kind: 'trunk', label: v.claimed ? 'open the trunk' : 'search the abandoned ' + vehicleTitle(v.st.model) }; }
+    if (d < bd) { bd = d; best = { v, kind: 'trunk', label: v.claimed ? tl('open the trunk') : tl('search the abandoned ') + vehicleTitle(v.st.model) }; }
     const [fx2, fz2] = toWorld(v, v.spec.front[0], v.spec.front[1]), df = Math.hypot(fx2 - G.pos.x, fz2 - G.pos.z);
-    if (df < bd) { bd = df; best = { v, kind: 'service', label: 'service the ' + vehicleTitle(v.st.model) }; }
+    if (df < bd) { bd = df; best = { v, kind: 'service', label: tl('service the ') + vehicleTitle(v.st.model) }; }
   }
   return best;
 }
@@ -562,13 +563,13 @@ export function useVehicle(s: VehicleSpot) {
   if (s.kind === 'service') { openService(s.v); return; }
   if (s.kind === 'trunk') {
     const v = s.v;
-    openTransfer({ title: vehicleTitle(v.st.model), subtitle: v.spec.role + ' · ' + v.spec.seats + ' seats', boxLabel: 'Trunk', box: v.st.trunk });
+    openTransfer({ title: vehicleTitle(v.st.model), subtitle: v.spec.role + ' · ' + v.spec.seats + ' seats', boxLabel: tl('Trunk'), box: v.st.trunk });
     return;
   }
   const why = immobile(s.v.st.parts);
-  if (why) { showToast("It won't move"); logLine(why + ' Service it at the front of the vehicle.'); return; }
+  if (why) { showToast(tl("It won't move")); logLine(why + tl(' Service it at the front of the vehicle.')); return; }
   const seat = s.v.riders[0] ? s.v.riders.findIndex((r) => !r) : 0; // the wheel, unless someone else sits there
-  if (seat < 0) { showToast('No free seat'); return; }
+  if (seat < 0) { showToast(tl('No free seat')); return; }
   driving.v = s.v; s.v.speed = 0; driving.since = performance.now(); driving.seat = seat;
   seatRider(s.v, seat, 'you', YOU); setSeeThrough(s.v, driving.cockpit);
   G.vel.set(0, 0, 0); G.firing = false;
@@ -616,7 +617,7 @@ let deepWarnAt = 0, blockedByWater = false;
 function deepWarn(v: Vehicle) {
   if (performance.now() < deepWarnAt) return;
   deepWarnAt = performance.now() + 4000;
-  showToast('Too deep'); logLine(`The water is too deep for the ${vehicleTitle(v.st.model)} (it can ford ${v.spec.wade} m).`);
+  showToast(tl('Too deep')); logLine(TL`The water is too deep for the ${vehicleTitle(v.st.model)} (it can ford ${v.spec.wade} m).`);
 }
 function hullBlocked(v: Vehicle, x: number, z: number, h: number): boolean {
   blockedByWater = false;
@@ -656,7 +657,7 @@ export function updateDriving(dt: number) {
   if (hullBlocked(v, nx, nz, nh) && blockedByWater) v.speed = 0; // the water is too deep: it just won't go on
   else if (hullBlocked(v, nx, nz, nh)) {
     const impact = Math.abs(v.speed);
-    if (impact > 6) showToast('Crash!');
+    if (impact > 6) showToast(tl('Crash!'));
     v.speed = -v.speed * 0.25;
     damageVehicle(v, crashDamage(v.st.model, impact));
     if (driving.v !== v) return; // the crash wrecked it
@@ -673,18 +674,18 @@ export function updateDriving(dt: number) {
   G.vel.set(0, 0, 0);
   if (driving.seat !== 0 && v.riders[driving.seat]?.who !== 'you') { seatRider(v, driving.seat, 'you', YOU); }
   const p = v.st.parts;
-  el.veh.innerHTML = `${vehicleTitle(v.st.model)} · ${SEAT_NAMES[driving.seat] ?? 'seat'} · ${Math.round(Math.abs(v.speed) * 3.6)} km/h · ${aboard(v)}/${s.seats} aboard${s.enclosed ? ' · cab closed' : ''}` +
-    `<br><span${p.hull < s.hull * 0.25 ? ' class="warn"' : ''}>condition ${Math.ceil(p.hull / s.hull * 100)}%</span>` +
-    (([e, full, km, u]) => `<span${e < full * 0.1 ? ' class="warn"' : ''}> · ${u === 'kWh' ? 'battery' : 'fuel'} ${Math.ceil(e)}/${full} ${u} · ~${Math.round(km)} km</span>`)(energyOf(v.st.model, p)) + (v.turret ? ' · cannon' : '');
+  el.veh.innerHTML = TL`${vehicleTitle(v.st.model)} · ${SEAT_NAMES[driving.seat] ?? tl('seat')} · ${Math.round(Math.abs(v.speed) * 3.6)} km/h · ${aboard(v)}/${s.seats} aboard${s.enclosed ? tl(' · cab closed') : ''}` +
+    `<br><span${p.hull < s.hull * 0.25 ? ' class="warn"' : ''}>${tl('condition')} ${Math.ceil(p.hull / s.hull * 100)}%</span>` +
+    (([e, full, km, u]) => `<span${e < full * 0.1 ? ' class="warn"' : ''}> · ${u === 'kWh' ? tl('battery') : tl('fuel')} ${Math.ceil(e)}/${full} ${u} · ~${Math.round(km)} km</span>`)(energyOf(v.st.model, p)) + (v.turret ? tl(' · cannon') : '');
 }
 /** Keys 1 / 2 / 3 in your own vehicle: move to the driver's, the passenger's or the gunner's seat if it is free. */
 export function switchSeat(i: number) {
   const v = driving.v;
   if (!v || i === driving.seat || i < 0 || i >= SEATS[v.st.model].length) return;
-  if (v.riders[i]) { showToast(`The ${SEAT_NAMES[i]}'s seat is taken`); return; }
-  if (SEATS[v.st.model][i].gun && !v.turret) { showToast('No cannon on the roof'); return; }
+  if (v.riders[i]) { showToast(TL`The ${SEAT_NAMES[i]}'s seat is taken`); return; }
+  if (SEATS[v.st.model][i].gun && !v.turret) { showToast(tl('No cannon on the roof')); return; }
   unseat(v, driving.seat); driving.seat = i; seatRider(v, i, 'you', YOU); setSeeThrough(v, driving.cockpit);
-  showToast(i === 0 ? 'At the wheel' : `In the ${SEAT_NAMES[i]}'s seat`);
+  showToast(i === 0 ? tl('At the wheel') : TL`In the ${SEAT_NAMES[i]}'s seat`);
 }
 /** Chase camera behind and above the vehicle (or the driver's eye in cockpit view, V). */
 export function vehicleCamera(camera: THREE.PerspectiveCamera) {
@@ -723,19 +724,19 @@ export const toggleCockpit = () => { driving.cockpit = !driving.cockpit; if (dri
 export function vehiclesForSale(): { v: Vehicle; price: number; why: string | null }[] {
   return vehicles.filter((v) => v.claimed && Math.hypot(v.st.x - YARD.dealer.x, v.st.z - YARD.dealer.z) < 45).map((v) => ({
     v, price: resaleValue(v.st.model, v.st.parts, PART_PRICE.cannon ?? 0, PART_BUYBACK),
-    why: v === driving.v ? 'You are sitting in it.' : v.st.trunk.items.some(Boolean) || v.st.trunk.gold > 0 ? 'Empty the trunk first.' : null,
+    why: v === driving.v ? tl('You are sitting in it.') : v.st.trunk.items.some(Boolean) || v.st.trunk.gold > 0 ? tl('Empty the trunk first.') : null,
   }));
 }
 export function sellVehicle(id: string): string {
   const offer = vehiclesForSale().find((o) => o.v.st.id === id);
-  if (!offer) return 'Bring it to the yard first.';
+  if (!offer) return tl('Bring it to the yard first.');
   if (offer.why) return offer.why;
   const c = G.char;
   c.gold += offer.price;
   c.vehicles = c.vehicles.filter((s) => s.id !== id);
   dropVehicle(offer.v); vehicles.splice(vehicles.indexOf(offer.v), 1);
   saveChar();
-  return `Sold the ${vehicleTitle(offer.v.st.model)} for ${offer.price} gold.`;
+  return TL`Sold the ${vehicleTitle(offer.v.st.model)} for ${offer.price} gold.`;
 }
 
 // ---------- vehicles driven by bandits ----------

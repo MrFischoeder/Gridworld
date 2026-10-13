@@ -10,6 +10,7 @@ import { bulkOf } from '../inventory';
 import { carriedKg, gear } from '../character';
 import { MIN_PER_SEC } from '../core/time';
 import { $, logLine, showToast } from '../ui/hud';
+import { tl, TL } from '../i18n';
 
 const bar = { st: $('stfill'), food: $('foodfill'), belly: $('bellyfill'), water: $('waterfill'), foodBox: $('foodbar'), waterBox: $('waterbar'), stLbl: $('stlbl'), foodLbl: $('foodlbl') };
 
@@ -36,7 +37,7 @@ export function spendStamina(n: number, force = false): boolean {
   n *= G.S.stamina; // an exoskeleton takes part of the effort
   if (!force && (G.exhausted || G.stamina < n * 0.5)) return false;
   G.stamina = Math.max(0, G.stamina - n); G.effortT = 0;
-  if (G.stamina <= 0 && !G.exhausted) { G.exhausted = true; showToast('Exhausted'); }
+  if (G.stamina <= 0 && !G.exhausted) { G.exhausted = true; showToast(tl('Exhausted')); }
   return true;
 }
 /** Continuous effort (sprinting, swimming): n per second. Returns whether you still can. */
@@ -44,7 +45,7 @@ export function drainStamina(n: number, dt: number): boolean {
   if (G.god) return true;
   if (G.exhausted) return false;
   G.stamina = Math.max(0, G.stamina - n * G.S.stamina * dt); G.effortT = 0;
-  if (G.stamina <= 0) { G.exhausted = true; showToast('Exhausted'); }
+  if (G.stamina <= 0) { G.exhausted = true; showToast(tl('Exhausted')); }
   return true;
 }
 /** A one-off effort that burns calories (a jump, a blade swing). */
@@ -57,7 +58,7 @@ export function nourish(kcal: number, water: number, hp = 0, kg = 0) {
   c.kcal = Math.min(KCAL.max, c.kcal + kcal); c.water = Math.min(100, c.water + water);
   c.stomach = Math.min(STOMACH.cap, c.stomach + kg);
   if (hp) G.hp = Math.min(G.S.maxHp, G.hp + hp);
-  const full = c.stomach >= STOMACH.cap - 0.1 ? ' · your stomach is full' : '';
+  const full = c.stomach >= STOMACH.cap - 0.1 ? tl(' · your stomach is full') : '';
   logLine([kcal && `+${kcal} kcal`, water && `water +${water}`, hp && `+${hp} HP`].filter(Boolean).join(', ') + full);
 }
 
@@ -78,7 +79,7 @@ export function updateSurvival(dt: number) {
   // starving or parched: health drains away
   const empty = (c.water <= 0 ? 1 : 0) + (c.kcal <= 0 ? 1 : 0);
   if (empty) { environmentalDamage(STARVE_DPS * empty * dt); }
-  const low = c.water <= 0 ? 'You are dying of thirst!' : c.kcal <= 0 ? 'You are starving!' : c.water < LOW ? 'You are thirsty.' : c.kcal < KCAL.low ? 'You are hungry.' : '';
+  const low = c.water <= 0 ? tl('You are dying of thirst!') : c.kcal <= 0 ? tl('You are starving!') : c.water < LOW ? tl('You are thirsty.') : c.kcal < KCAL.low ? tl('You are hungry.') : '';
   warnT -= dt;
   if (low && (low !== lastLow || warnT <= 0)) { logLine(low); warnT = empty ? 20 : 60; }
   lastLow = low;
@@ -88,7 +89,7 @@ export function updateSurvival(dt: number) {
   bar.food.style.width = c.kcal / KCAL.max * 100 + '%'; bar.water.style.width = c.water + '%';
   bar.belly.style.width = c.stomach / STOMACH.cap * 100 + '%';
   bar.foodBox.classList.toggle('low', c.kcal < KCAL.low); bar.waterBox.classList.toggle('low', c.water < LOW);
-  bar.foodLbl.textContent = `${Math.round(c.kcal)} kcal${c.stomach >= STOMACH.cap - 0.15 ? ' (full)' : ''} · water`;
-  bar.stLbl.textContent = L.state === 'over' ? 'stamina · OVERLOADED' : L.state === 'heavy' ? 'stamina · heavy load' : 'stamina';
+  bar.foodLbl.textContent = TL`${Math.round(c.kcal)} kcal${c.stomach >= STOMACH.cap - 0.15 ? tl(' (full)') : ''} · water`;
+  bar.stLbl.textContent = L.state === 'over' ? tl('stamina · OVERLOADED') : L.state === 'heavy' ? tl('stamina · heavy load') : 'stamina';
   bar.stLbl.classList.toggle('warn', L.state !== 'ok');
 }

@@ -11,30 +11,31 @@ import { allVillages, poisNear, worldDist, wrapDx, GRIDHOLM_ID, type Poi } from 
 import { ringDanger } from './danger';
 import { STAGES, type AncientGood } from './shuttle';
 import type { Good } from './market';
+import { tl, TL, DIR8 } from '../i18n';
 
 /** What a wonder is, what it gives the region once restored, and the part the Chariot may one day need from it. */
 export interface WonderKind { name: string; perk: string; part: string }
 export const WONDER_KINDS: WonderKind[] = [
-  { name: 'Cold Forge', perk: 'Steel and alloy cost less in the region', part: 'Cryo Coolant Rods' },
-  { name: 'Deep Engine', perk: 'Works in the region need half the power', part: 'Reactor Core' },
-  { name: 'Star Well', perk: 'Every wonder within 15 km shows on the map', part: 'Navigation Core' },
-  { name: 'Signal Tower', perk: 'News of raids and caravans from the whole region', part: 'Uplink Array' },
-  { name: 'Old Reactor', perk: 'Free power for every village of the region', part: 'Fuel Cell Stack' },
-  { name: 'Glass Spire', perk: 'Glass is cheap in the region', part: 'Optical Lattice' },
-  { name: 'Warden Pylon', perk: 'Bandits keep off the region\'s roads', part: 'Shield Emitter' },
-  { name: 'Sky Loom', perk: 'Cloth and cable are cheap in the region', part: 'Heat Weave' },
-  { name: 'Iron Choir', perk: 'Guardian robots of the region fall silent', part: 'Harmonic Dampers' },
-  { name: 'Rain Mill', perk: 'Farms of the region yield half again', part: 'Pressure Valves' },
-  { name: 'Night Lantern', perk: 'The region\'s nights are lit and safe', part: 'Beacon Crystal' },
-  { name: 'Gate of Ash', perk: 'A fast way through the mountains', part: 'Gate Keystone' },
-  { name: 'Echo Dish', perk: 'Hidden caches of the region show on the map', part: 'Echo Receiver' },
-  { name: 'Stone Heart', perk: 'Walls of the region are raised for less', part: 'Gravity Anchor' },
-  { name: 'High Aerial', perk: 'Contracts in the region pay more', part: 'Long-Range Antenna' },
-  { name: 'Sand Clock', perk: 'Storehouses of the region fill faster', part: 'Chrono Regulator' },
-  { name: 'Storm Mast', perk: 'Lightning powers the region\'s works in storms', part: 'Capacitor Bank' },
-  { name: 'Root Engine', perk: 'Timber and food are plentiful in the region', part: 'Bio-Seal Gaskets' },
-  { name: 'Sunward Beacon', perk: 'Solar farms of the region give double', part: 'Solar Mirror Array' },
-  { name: 'Last Lighthouse', perk: 'Your recall beacon reaches the region', part: 'Homing Lens' },
+  { name: tl('Cold Forge'), perk: tl('Steel and alloy cost less in the region'), part: tl('Cryo Coolant Rods') },
+  { name: tl('Deep Engine'), perk: tl('Works in the region need half the power'), part: tl('Reactor Core') },
+  { name: tl('Star Well'), perk: tl('Every wonder within 15 km shows on the map'), part: tl('Navigation Core') },
+  { name: tl('Signal Tower'), perk: tl('News of raids and caravans from the whole region'), part: tl('Uplink Array') },
+  { name: tl('Old Reactor'), perk: tl('Free power for every village of the region'), part: tl('Fuel Cell Stack') },
+  { name: tl('Glass Spire'), perk: tl('Glass is cheap in the region'), part: tl('Optical Lattice') },
+  { name: tl('Warden Pylon'), perk: tl('Bandits keep off the region\'s roads'), part: tl('Shield Emitter') },
+  { name: tl('Sky Loom'), perk: tl('Cloth and cable are cheap in the region'), part: tl('Heat Weave') },
+  { name: tl('Iron Choir'), perk: tl('Guardian robots of the region fall silent'), part: tl('Harmonic Dampers') },
+  { name: tl('Rain Mill'), perk: tl('Farms of the region yield half again'), part: tl('Pressure Valves') },
+  { name: tl('Night Lantern'), perk: tl('The region\'s nights are lit and safe'), part: tl('Beacon Crystal') },
+  { name: tl('Gate of Ash'), perk: tl('A fast way through the mountains'), part: tl('Gate Keystone') },
+  { name: tl('Echo Dish'), perk: tl('Hidden caches of the region show on the map'), part: tl('Echo Receiver') },
+  { name: tl('Stone Heart'), perk: tl('Walls of the region are raised for less'), part: tl('Gravity Anchor') },
+  { name: tl('High Aerial'), perk: tl('Contracts in the region pay more'), part: tl('Long-Range Antenna') },
+  { name: tl('Sand Clock'), perk: tl('Storehouses of the region fill faster'), part: tl('Chrono Regulator') },
+  { name: tl('Storm Mast'), perk: tl('Lightning powers the region\'s works in storms'), part: tl('Capacitor Bank') },
+  { name: tl('Root Engine'), perk: tl('Timber and food are plentiful in the region'), part: tl('Bio-Seal Gaskets') },
+  { name: tl('Sunward Beacon'), perk: tl('Solar farms of the region give double'), part: tl('Solar Mirror Array') },
+  { name: tl('Last Lighthouse'), perk: tl('Your recall beacon reaches the region'), part: tl('Homing Lens') },
 ];
 /** Relics of the Ancients: only found in ruins and wrecks (a new item when this goes into the game). */
 export type Need = Good | 'relic' | AncientGood;
@@ -60,18 +61,18 @@ export const CHARIOT_WEIGHTS = [0.5, 0.8, 1.15, 1.35, 1.45, 1.5, 1.6];
 export const SURPRISE = [{ after: 1, dist: [7000, 12000] }, { after: 2, dist: [13000, 20000] }, { after: 4, dist: [21000, 30000] }];
 
 const TWISTS = [
-  ['Clearing the site', 'The halls are choked with rubble and something has nested in them.'],
-  ['The machine hall', 'The machine hall is flooded; the pumps must be rebuilt first.'],
-  ['The machine hall', 'Guardians still walk the machine hall and the conduits are cut.'],
-  ['The machine hall', 'The old power lines are rotten through; every one must be relaid.'],
-  ['The heart', 'The heart of the machine is cracked. Only relics of the Ancients can mend it.'],
-  ['The heart', 'The core is dark and cold. It wakes only to the relics of its makers.'],
+  [tl('Clearing the site'), tl('The halls are choked with rubble and something has nested in them.')],
+  [tl('The machine hall'), tl('The machine hall is flooded; the pumps must be rebuilt first.')],
+  [tl('The machine hall'), tl('Guardians still walk the machine hall and the conduits are cut.')],
+  [tl('The machine hall'), tl('The old power lines are rotten through; every one must be relaid.')],
+  [tl('The heart'), tl('The heart of the machine is cracked. Only relics of the Ancients can mend it.')],
+  [tl('The heart'), tl('The core is dark and cold. It wakes only to the relics of its makers.')],
 ];
 const PROC: Good[] = ['steel', 'glass', 'cable', 'parts', 'plastic', 'copperbar', 'boards', 'alloy'];
 /** (Economy stage 7) the machine hall's second good may be one of the newer intermediates, the heart wants a good of the old plants. */
 const PROC2: Good[] = ['steel', 'glass', 'cable', 'parts', 'plastic', 'aluminium', 'batteries', 'chems'];
 const ANCIENT: AncientGood[] = ['microchip', 'sensor', 'ancalloy', 'ceramics', 'precision', 'powercell'];
-const DIRS = ['north', 'north-east', 'east', 'south-east', 'south', 'south-west', 'west', 'north-west'];
+const DIRS = DIR8;
 /** Compass word for a point seen from Gridholm (z grows southwards in the world). */
 const dirOf = (x: number, z: number) => DIRS[Math.round(((Math.atan2(wrapDx(x), -z) * 180 / Math.PI + 360) % 360) / 45) % 8];
 
@@ -111,10 +112,10 @@ export function campaign(world: number): Campaign {
     const pick = inBand.length ? inBand[hash(world, k, 0xb1) % inBand.length]
       : wonders.map((_, i) => i).filter((i) => !used.has(i)).sort((a, b) => Math.abs(wonders[a].dist - mid) - Math.abs(wonders[b].dist - mid))[0];
     used.add(pick);
-    const w = wonders[pick], stage = STAGES[s.after - 1]?.name ?? 'the last stage';
+    const w = wonders[pick], stage = STAGES[s.after - 1]?.name ?? tl('the last stage');
     return { after: s.after, wonder: pick,
-      crew: `${stage} is done, but the tests went wrong: without ${w.kind.part} the Chariot will tear itself apart on the way up. Nobody alive can make one. The old records say the ${w.kind.name} could.`,
-      clue: `The ${w.kind.name} stood ${dirOf(w.x, w.z)} of Gridholm, some ${Math.round(w.dist / 1000)} km away, near a place the maps call ${w.near}.` };
+      crew: TL`${stage} is done, but the tests went wrong: without ${w.kind.part} the Chariot will tear itself apart on the way up. Nobody alive can make one. The old records say the ${w.kind.name} could.`,
+      clue: TL`The ${w.kind.name} stood ${dirOf(w.x, w.z)} of Gridholm, some ${Math.round(w.dist / 1000)} km away, near a place the maps call ${w.near}.` };
   });
   const chariot: ChariotStep[] = STAGES.map((st, i) => ({ key: st.key, name: st.name, needs: st.needs.map(([g, n]) => [g, Math.max(1, Math.round(n * CHARIOT_SCALE * CHARIOT_WEIGHTS[i]))] as [Need, number]) }));
   return { chariot, wonders, blockers };

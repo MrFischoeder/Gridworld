@@ -3,8 +3,9 @@
 // the crash site by Gridholm (world/crashpod.ts). Ship-local metres: x to starboard, y up from the deck, z to the nose.
 import { drawComputer } from './computer';
 import { PropBatch } from './props';
+import { tl } from '../i18n';
 
-export const SHIP_NAME = 'SV-9 Kestrel';
+export const SHIP_NAME = tl('SV-9 Kestrel');
 export const HULL_C = 0xa8e8ff, GLASS_C = 0xe8fdff, ENGINE_C = 0x5cc8ff, SCORCH_C = 0x3f5a50, WARN_C = 0xff5a3c;
 
 /** Hull stations: z, half-width, bottom, top. The hatch is on the starboard side between the 4th and 5th. */
@@ -23,7 +24,7 @@ export const LOCKER = { x: -1.7, z: -3.2 }, CONSOLE = { x: 0, z: 3.6 };
 export const PODS: { x: number; z: number }[] = [{ x: 1.72, z: -4.5 }, { x: -1.74, z: -0.55 }, { x: 1.72, z: -3.15 }, { x: -1.74, z: 0.8 }];
 export const POD_C = 0x9dffe0, FROST_C = 0x7fb8c8;
 /** The pilot's name (they did not make it). */
-export const PILOT = 'Commander Ilse Varga';
+export const PILOT = tl('Commander Ilse Varga');
 
 function ring(z: number, w: number, y0: number, y1: number): number[][] {
   const c = 0.35 * Math.min(w, (y1 - y0) / 2);

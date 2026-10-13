@@ -15,11 +15,12 @@ import { PropBatch } from './props';
 import { SIP } from '../data/survival';
 import { nourish } from './survival';
 import { logLine, showToast } from '../ui/hud';
+import { tl, TL } from '../i18n';
 
 /** Line colours of the three kinds of water (toxic glows). */
 export const WATER_LINE: Record<WaterKind, number> = { fresh: 0x2ac8b0, murky: 0x8a9a4a, toxic: 0xb6ff3a, sea: 0x2f8fd8 };
 const WATER_FILL: Record<WaterKind, number> = { fresh: 0x02201c, murky: 0x121604, toxic: 0x142402, sea: 0x020d1c };
-export const WATER_NAME: Record<WaterKind, string> = { fresh: 'clean water', murky: 'murky water', toxic: 'toxic water', sea: 'salt water' };
+export const WATER_NAME: Record<WaterKind, string> = { fresh: tl('clean water'), murky: tl('murky water'), toxic: tl('toxic water'), sea: tl('salt water') };
 
 interface LakeMesh { lake: Lake; group: THREE.Group; a: THREE.LineBasicMaterial; b: THREE.LineBasicMaterial }
 const lakes = new Map<number, LakeMesh>();
@@ -207,7 +208,7 @@ export function waterSource(wells: Well[]): WaterSource | null {
   return null;
 }
 export const sourcePrompt = (s: WaterSource) =>
-  s.kind === 'toxic' ? 'Toxic water: do not drink' : s.kind === 'sea' ? 'Salt water: not fit to drink' : `E — ${hasItem('flask') ? 'fill a flask with' : 'drink'} ${s.where === 'well' ? 'water from the well' : WATER_NAME[s.kind]}`;
+  s.kind === 'toxic' ? tl('Toxic water: do not drink') : s.kind === 'sea' ? tl('Salt water: not fit to drink') : (hasItem('flask') ? TL`E — fill a flask with ${s.where === 'well' ? tl('water from the well') : WATER_NAME[s.kind]}` : s.where === 'well' ? tl('E — drink water from the well') : s.kind === 'fresh' ? tl('E — drink clean water') : tl('E — drink murky water'));
 
 let lastSip = 0;
 /**
@@ -215,17 +216,17 @@ let lastSip = 0;
  * Drinking quenches thirst (data/survival.ts SIP).
  */
 export function useWater(s: WaterSource) {
-  if (s.kind === 'toxic') { showToast('Toxic'); logLine('The water glows faintly. Drinking it would kill you.'); return; }
-  if (s.kind === 'sea') { showToast('Salt water'); logLine('It is sea water: salt enough to make your thirst worse.'); return; }
+  if (s.kind === 'toxic') { showToast(tl('Toxic')); logLine(tl('The water glows faintly. Drinking it would kill you.')); return; }
+  if (s.kind === 'sea') { showToast(tl('Salt water')); logLine(tl('It is sea water: salt enough to make your thirst worse.')); return; }
   if (takeOne('flask')) {
-    if (addItem(s.kind === 'fresh' ? 'waterF' : 'waterM')) logLine(`You fill a flask with ${WATER_NAME[s.kind]}.`);
-    else { addItem('flask'); logLine('No room in your backpack.'); }
+    if (addItem(s.kind === 'fresh' ? 'waterF' : 'waterM')) logLine(TL`You fill a flask with ${WATER_NAME[s.kind]}.`);
+    else { addItem('flask'); logLine(tl('No room in your backpack.')); }
     saveChar(); return;
   }
   if (performance.now() - lastSip < 1200) return;
   lastSip = performance.now();
-  if (G.char.water >= 99) { logLine('You are not thirsty.'); return; }
-  if (s.kind === 'fresh') { logLine('You drink the cool water.'); nourish(0, SIP.fresh); }
-  else if (Math.random() < 0.35) { environmentalDamage(6); G.dmgFlash = 0.35; nourish(0, SIP.murky); logLine('The swamp water turns your stomach. -6 HP'); }
-  else { logLine('It tastes of mud, but it is water.'); nourish(0, SIP.murky); }
+  if (G.char.water >= 99) { logLine(tl('You are not thirsty.')); return; }
+  if (s.kind === 'fresh') { logLine(tl('You drink the cool water.')); nourish(0, SIP.fresh); }
+  else if (Math.random() < 0.35) { environmentalDamage(6); G.dmgFlash = 0.35; nourish(0, SIP.murky); logLine(tl('The swamp water turns your stomach. -6 HP')); }
+  else { logLine(tl('It tastes of mud, but it is water.')); nourish(0, SIP.murky); }
 }

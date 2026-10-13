@@ -3,6 +3,7 @@ import { hash } from '../core/rng';
 import { GRIDHOLM_ID, allVillages, worldDist } from './regions';
 import type { ItemKey } from '../data/items';
 import { depositsOf as rareDeposits, type Rare } from './deposits';
+import { tl } from '../i18n';
 
 export type DepositOre = 'iron' | 'copper' | 'lead' | 'nickel' | 'coal';
 /** `grove`: a great grove of giant trees by the village (0.165): only a lumber camp works it, and it never runs out. */
@@ -11,18 +12,18 @@ export type DepositOre = 'iron' | 'copper' | 'lead' | 'nickel' | 'coal';
 export interface Deposits { ore?: DepositOre; oil: boolean; grove?: boolean; kinds?: YardKind[]; kind?: YardKind; mineral?: QuarryMineral; salt?: boolean; rares?: Rare[]; v?: 2 | 3 }
 /** (0.169) A quarry digs one mineral besides its stone; an oil field may bring up brine for salt. */
 export type QuarryMineral = 'limestone' | 'clay' | 'sand';
-export const MINERAL_NAME: Record<QuarryMineral, string> = { limestone: 'limestone', clay: 'clay', sand: 'quartz sand' };
+export const MINERAL_NAME: Record<QuarryMineral, string> = { limestone: 'limestone', clay: 'clay', sand: tl('quartz sand') };
 /** (0.168, the owner's rule; 0.171 two of them) Every village digs two things of its own, picked at random: stone at a
  *  quarry, timber in a great grove, ore in a mine, or crude at an oil well. Processing (the refinery, sawmills, smelters)
  *  is open to every village. */
 export type YardKind = 'quarry' | 'lumber' | 'mine' | 'oil';
 export const YARD_KINDS: YardKind[] = ['quarry', 'lumber', 'mine', 'oil'];
 export const ORES: Record<DepositOre, { name: string; symbol: string; color: number; good: ItemKey; lump?: ItemKey }> = {
-  iron: { name: 'Iron ore', symbol: 'Fe', color: 0xd0703c, good: 'ore', lump: 'ironO' },
-  copper: { name: 'Copper ore', symbol: 'Cu', color: 0x38d0b8, good: 'copper', lump: 'copperO' },
-  lead: { name: 'Lead ore', symbol: 'Pb', color: 0xa8a9db, good: 'lead' },
-  nickel: { name: 'Nickel ore', symbol: 'Ni', color: 0xa5c852, good: 'nickel' },
-  coal: { name: 'Coal seam', symbol: 'C', color: 0x687e98, good: 'coal' },
+  iron: { name: tl('Iron ore'), symbol: 'Fe', color: 0xd0703c, good: 'ore', lump: 'ironO' },
+  copper: { name: tl('Copper ore'), symbol: 'Cu', color: 0x38d0b8, good: 'copper', lump: 'copperO' },
+  lead: { name: tl('Lead ore'), symbol: 'Pb', color: 0xa8a9db, good: 'lead' },
+  nickel: { name: tl('Nickel ore'), symbol: 'Ni', color: 0xa5c852, good: 'nickel' },
+  coal: { name: tl('Coal seam'), symbol: 'C', color: 0x687e98, good: 'coal' },
 };
 /** (0.169) The villages nearest Gridholm that always get the basics, in order: a coal mine, an iron mine, a limestone
  *  quarry, so the first smelting and building never wait on luck. */

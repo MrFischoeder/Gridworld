@@ -14,6 +14,7 @@ import type { Station } from '../world/stations';
 import { $ } from './hud';
 import { lockPointer } from './input';
 import { itemName } from './icons';
+import { tl, TL } from '../i18n';
 
 const dlgEl = $('dlg'), panel = () => dlgEl.querySelector('.panel') as HTMLElement;
 let open: Station | null = null;
@@ -23,23 +24,23 @@ function render(msg = '') {
   const s = state(), poi = open && findPoi(G.char.world, open.vid);
   if (!s || !open || !poi) return;
   const now = G.char.time, spec = STATIONS[s.k], kw = Math.round(stationKw(poi, open.seed, s, now)), b = balance(G.char.world, poi, open.seed, G.char.towns[open.vid], now);
-  const how = s.k === 'solarfarm' ? 'It follows the sun: full at noon, nothing at night.' : s.k === 'windfarm' ? 'It turns with the wind, which changes from hour to hour.'
-    : s.k === 'reactor' ? `A crate of fuel rods lasts ${spec.burn! / 1440} days while it is on, whether the works need the power or not. The rods come from the Old Enrichment Plant, far out on the continent.`
-    : `It burns a ${fuelWords(s.k)[0]} every ${spec.burn! / 60} hours while it is on, whether the works need the power or not.`;
+  const how = s.k === 'solarfarm' ? tl('It follows the sun: full at noon, nothing at night.') : s.k === 'windfarm' ? tl('It turns with the wind, which changes from hour to hour.')
+    : s.k === 'reactor' ? TL`A crate of fuel rods lasts ${spec.burn! / 1440} days while it is on, whether the works need the power or not. The rods come from the Old Enrichment Plant, far out on the continent.`
+    : TL`It burns a ${fuelWords(s.k)[0]} every ${spec.burn! / 60} hours while it is on, whether the works need the power or not.`;
   const plants = G.char.towns[open.vid]?.plants ?? [];
-  const works = plants.map((p, i) => `${PLANTS[p.k].name}: ${!running(p) ? 'idle' : b.powered[i] ? 'powered' : '<span style="color:var(--red,#ff5a3c)">no power</span>'}`).join(' · ');
+  const works = plants.map((p, i) => `${PLANTS[p.k].name}: ${!running(p) ? tl('idle') : b.powered[i] ? tl('powered') : tl('<span style="color:var(--red,#ff5a3c)">no power</span>')}`).join(' · ');
   let fuel = '';
   if (spec.fuel) {
     const cap = bunkerOf(s.k), left = fuelAt(s, now), have = carried(spec.fuel as Good, poi), room = Math.floor(cap - left);
-    fuel = `<div class="shoprow"><div>${itemName(spec.fuel)}<br><span>${s.k === 'reactor' ? 'in the core' : 'in the bunker'} ${left > 0 && left < 1 ? (Math.round(left * 10) / 10) : Math.floor(left)}/${cap}${left > 0 && s.on ? ` · lasts about ${left * spec.burn! > 2880 ? Math.round(left * spec.burn! / 1440) + ' days' : Math.round(left * spec.burn! / 60) + ' h'}` : ''} · you have ${have}</span></div>
+    fuel = TL`<div class="shoprow"><div>${itemName(spec.fuel)}<br><span>${s.k === 'reactor' ? tl('in the core') : tl('in the bunker')} ${left > 0 && left < 1 ? (Math.round(left * 10) / 10) : Math.floor(left)}/${cap}${left > 0 && s.on ? TL` · lasts about ${left * spec.burn! > 2880 ? Math.round(left * spec.burn! / 1440) + ' days' : Math.round(left * spec.burn! / 60) + ' h'}` : ''} · you have ${have}</span></div>
       <button class="opt" style="width:auto" data-stl="1" ${have && room ? '' : 'disabled'}>load 1</button>
       <button class="opt" style="width:auto" data-stl="999" ${have > 1 && room > 1 ? '' : 'disabled'}>load all</button></div>`;
   }
   panel().classList.add('wide');
   panel().innerHTML = `<h2>${spec.name}</h2><div class="role">${open.town} · ${spec.blurb}</div>` +
-    `<div class="say">${msg ? msg + '<br><br>' : ''}Now: <b>${s.on ? kw + ' kW' : 'switched off'}</b> (rated ${spec.kw} kW). ${how}<br><br>` +
-    `The village makes ${Math.round(b.made)} kW in all and takes ${villageKw(G.char.towns[open.vid])} kW itself; ${Math.round(Math.max(0, b.made - villageKw(G.char.towns[open.vid])))} kW are left for the works.${works ? '<br>' + works : ''}</div>` +
-    fuel + (spec.fuel ? `<button class="opt" data-sts="1">${s.on ? 'Switch it off (save the fuel)' : 'Switch it on'}</button>` : '') + `<button class="opt" data-stclose="1">Close</button>`;
+    TL`<div class="say">${msg ? msg + '<br><br>' : ''}Now: <b>${s.on ? kw + ' kW' : tl('switched off')}</b> (rated ${spec.kw} kW). ${how}<br><br>` +
+    TL`The village makes ${Math.round(b.made)} kW in all and takes ${villageKw(G.char.towns[open.vid])} kW itself; ${Math.round(Math.max(0, b.made - villageKw(G.char.towns[open.vid])))} kW are left for the works.${works ? '<br>' + works : ''}</div>` +
+    fuel + (spec.fuel ? `<button class="opt" data-sts="1">${s.on ? tl('Switch it off (save the fuel)') : tl('Switch it on')}</button>` : '') + TL`<button class="opt" data-stclose="1">Close</button>`;
 }
 /** Open the window of station w; false when there is none (an empty plot, a building site). */
 export function openStation(w: Station): boolean {
@@ -58,13 +59,13 @@ export function stationClick(t: HTMLElement): boolean {
   if (t.closest('[data-stclose]')) { close(); return true; }
   const s = state(), poi = findPoi(G.char.world, open.vid) ?? null, now = G.char.time;
   if (!s) { close(); return true; }
-  if (t.closest('[data-sts]')) { switchStation(s, !s.on, now); saveChar(); render(s.on ? 'Switched on.' : 'Switched off: it burns nothing now, and makes nothing.'); return true; }
+  if (t.closest('[data-sts]')) { switchStation(s, !s.on, now); saveChar(); render(s.on ? tl('Switched on.') : tl('Switched off: it burns nothing now, and makes nothing.')); return true; }
   const l = t.closest<HTMLElement>('[data-stl]');
   if (l && STATIONS[s.k].fuel) {
     const g = STATIONS[s.k].fuel! as Good, n = loadBunker(s, Math.min(+l.dataset.stl!, carried(g, poi)), now);
     if (n) takeFrom(g, n, poi);
     calcStats(); saveChar();
-    render(n ? `Loaded ${n} × ${ITEMS[g].name} into the bunker.` : (s.k === 'reactor' ? 'The core is full.' : 'The bunker is full.'));
+    render(n ? TL`Loaded ${n} × ${ITEMS[g].name} into the bunker.` : (s.k === 'reactor' ? tl('The core is full.') : tl('The bunker is full.')));
     return true;
   }
   return false;

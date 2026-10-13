@@ -8,6 +8,7 @@ import { rayVoxel, emptyAt as spaceEmptyAt, type Vec3Like } from '../core/voxel'
 import { V } from './render';
 import { STAMINA, BURN } from '../data/survival';
 import { drainStamina, spendStamina, load, loadSpeed, burn } from './survival';
+import { tl } from '../i18n';
 
 export const R = 0.3, H = 1.7, EYE = 1.55, EPS = 1e-4, GRAV = 20, JUMP = 7.2;
 /** Log hook for water messages (set by the HUD owner; keeps this module free of UI imports). */
@@ -133,7 +134,7 @@ export function updatePlayer(dt: number): boolean {
   G.swimming = !!w && wet > SWIM_DEPTH;
   if (w && w.kind === 'toxic' && wet > 0.15 && !G.god) {
     environmentalDamage(6 * dt); G.dmgFlash = Math.max(G.dmgFlash, 0.2);
-    if ((toxicWarn -= dt) <= 0) { toxicWarn = 4; onWaterNote('The water burns your skin! Get out!'); }
+    if ((toxicWarn -= dt) <= 0) { toxicWarn = 4; onWaterNote(tl('The water burns your skin! Get out!')); }
   }
   // sprinting and swimming cost stamina; out of breath you can only walk (and swim slowly)
   // a heavy pack slows you down (and burns more); overloaded you cannot run or jump

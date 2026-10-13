@@ -8,6 +8,7 @@
 // Sailing Ship (`ship`, two masts) or the Motor Ship (`steamer`, an engine and a funnel). On a ship's deck you walk
 // about while it sails (`BoatSpec.deck`); you take its wheel to steer it. They differ in their holds.
 import type { ItemKey } from '../data/items';
+import { tl } from '../i18n';
 
 export type BoatKind = 'row' | 'sail' | 'motor' | 'ship' | 'steamer';
 export interface BoatSpec {
@@ -42,31 +43,31 @@ export interface BoatSpec {
 }
 export const BOATS: Record<BoatKind, BoatSpec> = {
   row: {
-    name: 'Rowboat', len: 4.2, beam: 1.5, draft: 0.35, speed: 3.6, back: 0.5, turn: 0.9, hold: 10, seat: -0.15, eye: 1.0, seat2: -1.5, rowers: 2,
+    name: tl('Rowboat'), len: 4.2, beam: 1.5, draft: 0.35, speed: 3.6, back: 0.5, turn: 0.9, hold: 10, seat: -0.15, eye: 1.0, seat2: -1.5, rowers: 2,
     needs: [['planks', 20], ['nails', 14], ['rope', 4]], xp: 120,
-    blurb: 'the small boat: clinker-built with two pairs of oars (two can row together, and faster), slow and tiring on a long pull, but it goes wherever there is water enough, sea, river or lake, and carries ten loads in its bottom. At a dock it can be refitted with a mast and a sail or with an outboard motor',
+    blurb: tl('the small boat: clinker-built with two pairs of oars (two can row together, and faster), slow and tiring on a long pull, but it goes wherever there is water enough, sea, river or lake, and carries ten loads in its bottom. At a dock it can be refitted with a mast and a sail or with an outboard motor'),
   },
   sail: {
-    name: 'Sailing Skiff', len: 4.6, beam: 1.6, draft: 0.45, speed: 6, back: 0.4, turn: 0.75, hold: 14, seat: -1.5, eye: 1.05, seat2: -0.1, tall: true, sails: true, row: 1.6, from: 'row',
+    name: tl('Sailing Skiff'), len: 4.6, beam: 1.6, draft: 0.45, speed: 6, back: 0.4, turn: 0.75, hold: 14, seat: -1.5, eye: 1.05, seat2: -0.1, tall: true, sails: true, row: 1.6, from: 'row',
     needs: [['planks', 12], ['rope', 10], ['hide', 6], ['nails', 8]], xp: 180,
-    blurb: 'the small boat refitted with a mast and a hide sail: quick and tireless with a fair wind, but it cannot sail into the wind (tack across it), the mast will not pass under a bridge, and in a calm there are the oars. Fourteen loads',
+    blurb: tl('the small boat refitted with a mast and a hide sail: quick and tireless with a fair wind, but it cannot sail into the wind (tack across it), the mast will not pass under a bridge, and in a calm there are the oars. Fourteen loads'),
   },
   motor: {
-    name: 'Motor Skiff', len: 4.6, beam: 1.6, draft: 0.4, speed: 8, back: 0.35, turn: 0.85, hold: 14, seat: -1.25, eye: 1.15, seat2: 0.3, from: 'row',
+    name: tl('Motor Skiff'), len: 4.6, beam: 1.6, draft: 0.4, speed: 8, back: 0.35, turn: 0.85, hold: 14, seat: -1.25, eye: 1.15, seat2: 0.3, from: 'row',
     motor: { tank: 30, burn: 0.03, can: 20 },
     needs: [['scrap', 8], ['engine', 2], ['nails', 6], ['rope', 2], ['planks', 4]], xp: 160,
-    blurb: 'the small boat refitted with a windscreen and an outboard motor rebuilt from engine parts: fast against wind and current alike, as long as you feed it fuel canisters. Fourteen loads',
+    blurb: tl('the small boat refitted with a windscreen and an outboard motor rebuilt from engine parts: fast against wind and current alike, as long as you feed it fuel canisters. Fourteen loads'),
   },
   ship: {
-    name: 'Sailing Ship', len: 16, beam: 4.6, draft: 1.3, speed: 8.5, back: 0, turn: 0.28, hold: 48, seat: -4.98, eye: 1.25 + 1.55, tall: true, sails: true, deck: 1.25,
+    name: tl('Sailing Ship'), len: 16, beam: 4.6, draft: 1.3, speed: 8.5, back: 0, turn: 0.28, hold: 48, seat: -4.98, eye: 1.25 + 1.55, tall: true, sails: true, deck: 1.25,
     needs: [['planks', 160], ['nails', 90], ['rope', 40], ['hide', 20], ['scrap', 10]], xp: 900,
-    blurb: 'a two-masted ship with a planked deck, a deckhouse aft and a hatch to a deep hold: forty-eight loads. It only sails (no oars), so it needs a wind, cannot sail into it and its masts will not pass under a bridge; while it sails you can leave the wheel and walk the deck',
+    blurb: tl('a two-masted ship with a planked deck, a deckhouse aft and a hatch to a deep hold: forty-eight loads. It only sails (no oars), so it needs a wind, cannot sail into it and its masts will not pass under a bridge; while it sails you can leave the wheel and walk the deck'),
   },
   steamer: {
-    name: 'Motor Ship', len: 15, beam: 4.4, draft: 1.2, speed: 10, back: 0.35, turn: 0.32, hold: 40, seat: -3.98, eye: 1.25 + 1.55, deck: 1.25,
+    name: tl('Motor Ship'), len: 15, beam: 4.4, draft: 1.2, speed: 10, back: 0.35, turn: 0.32, hold: 40, seat: -3.98, eye: 1.25 + 1.55, deck: 1.25,
     motor: { tank: 200, burn: 0.1, can: 20 },
     needs: [['planks', 140], ['nails', 80], ['rope', 16], ['scrap', 40], ['engine', 6], ['wire', 12]], xp: 900,
-    blurb: 'a decked ship with an engine below, a funnel and a wheelhouse: forty loads in its hold, steady against wind and current as long as its big tank has fuel (canisters, R). It goes under bridges; while it steams you can leave the wheel and walk the deck',
+    blurb: tl('a decked ship with an engine below, a funnel and a wheelhouse: forty loads in its hold, steady against wind and current as long as its big tank has fuel (canisters, R). It goes under bridges; while it steams you can leave the wheel and walk the deck'),
   },
 };
 /** Kinds built new at a dock's slip (the others are refits). */
@@ -132,7 +133,7 @@ export const sailSpeed = (k: BoatKind, wind: number, theta: number, sheet: numbe
 /** How the wind comes, in words. */
 export function pointOfSail(theta: number): string {
   const d = theta * 180 / Math.PI;
-  return d < 30 ? 'from astern' : d < 70 ? 'on the quarter' : d < 110 ? 'on the beam' : d < CLOSE * 180 / Math.PI + 4 ? 'close-hauled' : 'head to wind: no way on';
+  return d < 30 ? tl('from astern') : d < 70 ? tl('on the quarter') : d < 110 ? tl('on the beam') : d < CLOSE * 180 / Math.PI + 4 ? 'close-hauled' : tl('head to wind: no way on');
 }
 
 /** Where a boat launched at a dock lies: beside the head (either side), further along the dock, or straight out beyond

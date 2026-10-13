@@ -12,6 +12,7 @@ import { $ } from './hud';
 import { OW } from '../world/overworld';
 import { installSitesReady, installDone } from '../gen/installs';
 import { WAYPOINT_C, gpsOn, routeAhead } from './worldmap';
+import { tl, TL } from '../i18n';
 
 const gps = $('gps');
 
@@ -39,8 +40,8 @@ export function updateCompass(dt: number) {
   const wp = G.char.waypoint;
   if (tab) {
     const wd = wp && Math.hypot(wrapDx(wp[0] - G.pos.x), wp[1] - G.pos.z);
-    gps.textContent = `GPS ${Math.round(G.pos.x)}, ${Math.round(G.pos.z)} · ${Math.round(G.pos.y)} m · ${Math.round(heading())}°` +
-      (wp ? ` · WP ${fmtDist(wd!)} ${point8(bearingTo(wp[0], wp[1]))}` : ' · no waypoint');
+    gps.textContent = TL`GPS ${Math.round(G.pos.x)}, ${Math.round(G.pos.z)} · ${Math.round(G.pos.y)} m · ${Math.round(heading())}°` +
+      (wp ? ` · WP ${fmtDist(wd!)} ${point8(bearingTo(wp[0], wp[1]))}` : tl(' · no waypoint'));
   }
   if ((nearT -= dt) <= 0) { // the nearest village, looked up now and then
     nearT = 1;
@@ -80,13 +81,13 @@ export function updateCompass(dt: number) {
     ctx.font = '14px VT323, monospace'; ctx.textAlign = sx < 60 ? 'left' : sx > W - 60 ? 'right' : 'center';
     ctx.fillText((edge.startsWith('◀') ? edge : '') + label + (edge.endsWith('▶') ? edge : ''), sx, 43);
   };
-  for (const c of G.char.claims) { const d = Math.hypot(wrapDx(c.x - G.pos.x), c.z - G.pos.z); if (d > 30) mark(c.x, c.z, '#c4ffd2', `Your flag ${fmtDist(d)}`); }
+  for (const c of G.char.claims) { const d = Math.hypot(wrapDx(c.x - G.pos.x), c.z - G.pos.z); if (d > 30) mark(c.x, c.z, '#c4ffd2', TL`Your flag ${fmtDist(d)}`); }
   for (const q of questMarkers()) mark(q.x, q.z, '#ffd060', q.label);
   for (const q of leadMarkers()) mark(q.x, q.z, q.c, q.short);
   const o = old as Mark, f = fog as Mark;
   if (o) mark(o.x, o.z, '#b6ff3a', `${o.name} ${fmtDist(Math.hypot(wrapDx(o.x - G.pos.x), o.z - G.pos.z))}`);
   if (f) mark(f.x, f.z, '#d8ff6a', `${f.name} ${fmtDist(Math.hypot(wrapDx(f.x - G.pos.x), f.z - G.pos.z))}`);
-  { const ra = tab ? routeAhead() : null; if (ra) mark(ra[0], ra[1], WAYPOINT_C, 'Route'); }
-  if (wp && tab) mark(wp[0], wp[1], WAYPOINT_C, `Waypoint ${fmtDist(Math.hypot(wrapDx(wp[0] - G.pos.x), wp[1] - G.pos.z))}`);
+  { const ra = tab ? routeAhead() : null; if (ra) mark(ra[0], ra[1], WAYPOINT_C, tl('Route')); }
+  if (wp && tab) mark(wp[0], wp[1], WAYPOINT_C, TL`Waypoint ${fmtDist(Math.hypot(wrapDx(wp[0] - G.pos.x), wp[1] - G.pos.z))}`);
   if (near) mark(near.x, near.z, '#9dffe0', `${near.name} ${fmtDist(Math.hypot(wrapDx(near.x - G.pos.x), near.z - G.pos.z))}`);
 }

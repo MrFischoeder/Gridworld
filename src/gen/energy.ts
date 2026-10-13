@@ -22,6 +22,7 @@ import { running, type PlantState } from './plants';
 import { farmsKw } from './farms';
 import { plantMult } from './plantup';
 import { bankKw, villageKw, VILLAGE_BASE_KW } from './improve';
+import { tl } from '../i18n';
 
 export type StationKind = 'solarfarm' | 'windfarm' | 'coalplant' | 'dieselbank' | 'reactor';
 export const STATION_KINDS: StationKind[] = ['solarfarm', 'windfarm', 'coalplant', 'dieselbank', 'reactor'];
@@ -34,11 +35,11 @@ export interface StationSpec {
   needs: [ItemKey, number][]; fee: number; xp: number;
 }
 export const STATIONS: Record<StationKind, StationSpec> = {
-  solarfarm: { name: 'Solar Farm', blurb: 'rows of panels: power by day, none at night', kw: 70, needs: [['scrap', 12], ['wire', 12], ['circuit', 6], ['planks', 10]], fee: 500, xp: 120 },
-  windfarm: { name: 'Wind Farm', blurb: 'three turbines: power as the wind blows', kw: 80, needs: [['scrap', 20], ['wire', 10], ['planks', 20], ['engine', 1], ['gears', 2]], fee: 650, xp: 140 },
-  coalplant: { name: 'Coal Power Station', blurb: 'a boiler and a turbine: steady power while it has coal', kw: 140, fuel: 'coal', burn: 120, needs: [['stone', 10], ['bricks', 20], ['cement', 8], ['scrap', 20], ['planks', 16], ['engine', 1], ['generator', 1], ['pump', 1], ['cutstone', 10]], fee: 900, xp: 200 },
-  dieselbank: { name: 'Diesel Generator Bank', blurb: 'four big generators: steady power while it has fuel', kw: 110, fuel: 'fuel', burn: 150, needs: [['scrap', 16], ['engine', 2], ['wire', 6], ['generator', 2]], fee: 800, xp: 180 },
-  reactor: { name: 'Small Reactor', blurb: 'a sealed reactor under a concrete dome: a great deal of steady power while its core holds fuel rods', kw: 250, fuel: 'nfuel', burn: 5760, bunker: 4, tech: 'enrichment', needs: [['steel', 12], ['alloy', 6], ['cable', 8], ['circuit', 10], ['pcore', 2], ['cement', 20], ['pcm', 2]], fee: 2000, xp: 500 },
+  solarfarm: { name: tl('Solar Farm'), blurb: tl('rows of panels: power by day, none at night'), kw: 70, needs: [['scrap', 12], ['wire', 12], ['circuit', 6], ['planks', 10]], fee: 500, xp: 120 },
+  windfarm: { name: tl('Wind Farm'), blurb: tl('three turbines: power as the wind blows'), kw: 80, needs: [['scrap', 20], ['wire', 10], ['planks', 20], ['engine', 1], ['gears', 2]], fee: 650, xp: 140 },
+  coalplant: { name: tl('Coal Power Station'), blurb: tl('a boiler and a turbine: steady power while it has coal'), kw: 140, fuel: 'coal', burn: 120, needs: [['stone', 10], ['bricks', 20], ['cement', 8], ['scrap', 20], ['planks', 16], ['engine', 1], ['generator', 1], ['pump', 1], ['cutstone', 10]], fee: 900, xp: 200 },
+  dieselbank: { name: tl('Diesel Generator Bank'), blurb: tl('four big generators: steady power while it has fuel'), kw: 110, fuel: 'fuel', burn: 150, needs: [['scrap', 16], ['engine', 2], ['wire', 6], ['generator', 2]], fee: 800, xp: 180 },
+  reactor: { name: tl('Small Reactor'), blurb: tl('a sealed reactor under a concrete dome: a great deal of steady power while its core holds fuel rods'), kw: 250, fuel: 'nfuel', burn: 5760, bunker: 4, tech: 'enrichment', needs: [['steel', 12], ['alloy', 6], ['cable', 8], ['circuit', 10], ['pcore', 2], ['cement', 20], ['pcm', 2]], fee: 2000, xp: 500 },
 };
 /** Stations per village; the most crates a bunker holds. */
 export const STATION_SLOTS = 2, BUNKER = 30;
@@ -71,7 +72,7 @@ export const bunkerOf = (k: StationKind) => STATIONS[k].bunker ?? BUNKER;
 /** What a station burns, in words: [one, many, short]. */
 export function fuelWords(k: StationKind): [string, string, string] {
   const f = STATIONS[k].fuel;
-  return f === 'coal' ? ['crate of coal', 'crates of coal', 'coal'] : f === 'nfuel' ? ['crate of fuel rods', 'crates of fuel rods', 'fuel rods'] : ['canister of fuel', 'canisters of fuel', 'fuel'];
+  return f === 'coal' ? [tl('crate of coal'), tl('crates of coal'), 'coal'] : f === 'nfuel' ? [tl('crate of fuel rods'), tl('crates of fuel rods'), tl('fuel rods')] : [tl('canister of fuel'), tl('canisters of fuel'), 'fuel'];
 }
 /** Crates left in a station's bunker at time t. */
 export function fuelAt(st: StationState, t: number): number {

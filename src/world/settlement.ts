@@ -24,6 +24,7 @@ import { poseRig, type Kit } from './rig';
 import { assign, JOBS } from '../gen/workforce';
 import { workersAt } from '../gen/people';
 import { villageSeed } from '../gen/regions';
+import { tl, TL } from '../i18n';
 
 const METAL = 0xa8c8b8, WOOD = 0xb8b060, SAIL = 0xe8e0c0;
 const siteBoxes = new Map<number, Box[]>();
@@ -210,8 +211,8 @@ export function drawSettlementSites(vm: VillageMap, T: Terrain, id: number): THR
     }
     if (built && k !== 'fuelpump' && k !== 'charger') crew.push(yardCrew(grp, T, id, k, x, z));
     const rares = depositsOf(s).rares ?? [];
-    const label = k === 'mine' && ore ? ORES[ore].name + ' · ' + ORES[ore].symbol : k === 'raremine' && rares.length ? 'Deep mine · ' + rares.map((r) => RARE_NAME[r]).join(', ') : PROJECTS[k].name;
-    const sign = textSprite(label.toUpperCase() + (built ? ' · WORKING SITE' : ' · CONSTRUCTION SITE'), k === 'mine' && ore ? '#' + ORES[ore].color.toString(16).padStart(6, '0') : '#ffd060', 5);
+    const label = k === 'mine' && ore ? ORES[ore].name + ' · ' + ORES[ore].symbol : k === 'raremine' && rares.length ? tl('Deep mine · ') + rares.map((r) => RARE_NAME[r]).join(', ') : PROJECTS[k].name;
+    const sign = textSprite(label.toUpperCase() + (built ? tl(' · WORKING SITE') : tl(' · CONSTRUCTION SITE')), k === 'mine' && ore ? '#' + ORES[ore].color.toString(16).padStart(6, '0') : '#ffd060', 5);
     sign.position.set(x, T.heightAt(x, z + 13) + 2.2, z + 13); grp.add(sign);
   }
   const landscape = natural.build(); siteMeshes.set(id, landscape); grp.add(landscape, pb.build()); return grp;
@@ -233,7 +234,7 @@ export function drawSettlementComms(poi: Poi, T: Terrain): THREE.Group {
     }
     pb.seg(METAL, [x - 2, y, z], [x - 2 + (built ? 0 : 2), y + (built ? 7 : 3), z - 1]);
     pb.line(built ? 0x9dffb4 : WOOD, [x - 4, y + 6, z - 1], [x - 2, y + 5, z], [x, y + 6, z - 1]);
-    const sign = textSprite(built ? 'SATELLITE LINK ONLINE' : 'COMMUNICATIONS RUIN · RESTORE RECEIVER', built ? '#9dffb4' : '#ffd060', 5);
+    const sign = textSprite(built ? tl('SATELLITE LINK ONLINE') : tl('COMMUNICATIONS RUIN · RESTORE RECEIVER'), built ? '#9dffb4' : '#ffd060', 5);
     sign.position.set(x, y + 2, z); grp.add(sign); break;
   }
   grp.add(pb.build()); return grp;
@@ -266,7 +267,7 @@ function drawStation(pb: PropBatch, grp: THREE.Group, T: Terrain, x: number, z: 
   }
   // the generator shed and the cable runs once powered
   if (stage >= 2) { box(-4, 8, 0, 12, 2.6, METAL); pb.gableRoof(x - 4.2, z + 7.8, x + 0.2, z + 12.2, H(-2, 10) + 2.4, 0.8, WOOD); pb.line(stage >= 3 ? LIT : METAL, [x, H(0, 10) + 1, z + 10], [x + mx, my + 1, z + mz], [x - 6, H(-6, 3) + 2, z + 3]); }
-  const sign = textSprite(stage >= 3 ? 'RADAR & COMMUNICATIONS STATION · ONLINE' : `RADAR & COMMUNICATIONS STATION · STAGE ${stage + 1}/3`, stage >= 3 ? '#9dffb4' : '#ffd060', 5);
+  const sign = textSprite(stage >= 3 ? tl('RADAR & COMMUNICATIONS STATION · ONLINE') : TL`RADAR & COMMUNICATIONS STATION · STAGE ${stage + 1}/3`, stage >= 3 ? '#9dffb4' : '#ffd060', 5);
   sign.position.set(x, H(0, 0) + 2.4, z); grp.add(sign);
 }
 export function nearSettlementComms(): number | null {
@@ -281,7 +282,7 @@ export function nearSettlementComms(): number | null {
 }
 let consoleTown: number | null = null;
 const root = () => document.getElementById('dlg')!;
-function renderConsole(msg = '') { root().querySelector('.panel')!.innerHTML = '<div data-settlement-console="1">' + developmentHTML(consoleTown!, isStation(G.char.towns[consoleTown!]) ? '<h2>Radar and communications station</h2>' : '<h2>Satellite receiver</h2>', msg, true) + '</div>'; }
+function renderConsole(msg = '') { root().querySelector('.panel')!.innerHTML = '<div data-settlement-console="1">' + developmentHTML(consoleTown!, isStation(G.char.towns[consoleTown!]) ? tl('<h2>Radar and communications station</h2>') : tl('<h2>Satellite receiver</h2>'), msg, true) + '</div>'; }
 export function openSettlementComms(vid: number) {
   if (!G.playing || G.dlgOpen || G.packOpen || G.xferOpen) return;
   consoleTown = vid; G.dlgOpen = true; G.firing = false; W.talkNpc = null; for (const k in G.keys) G.keys[k] = false;

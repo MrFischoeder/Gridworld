@@ -3,6 +3,7 @@
 import { G } from '../game';
 import { $ } from './hud';
 import { lockPointer } from './input';
+import { tl } from '../i18n';
 
 export interface KeypadSpec {
   title: string; sub: string;
@@ -15,12 +16,12 @@ const el = { root: $('keypad'), title: $('kpTitle'), sub: $('kpSub'), show: $('k
 let spec: KeypadSpec | null = null, code = '';
 
 el.keys.innerHTML = [1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => `<button data-k="${n}">${n}</button>`).join('') +
-  '<button data-k="C">C</button><button data-k="0">0</button><button class="ok" data-k="OK">OK</button>';
+  tl('<button data-k="C">C</button><button data-k="0">0</button><button class="ok" data-k="OK">OK</button>');
 const show = () => { el.show.textContent = (code + '____').slice(0, 4); };
 function press(k: string) {
   if (!spec) return;
   if (k === 'C') code = '';
-  else if (k === 'OK') { if (code.length < 4) { el.msg.textContent = 'Four digits.'; return; } const m = spec.enter(code); code = ''; if (m) el.msg.textContent = m; else closeKeypad(); }
+  else if (k === 'OK') { if (code.length < 4) { el.msg.textContent = tl('Four digits.'); return; } const m = spec.enter(code); code = ''; if (m) el.msg.textContent = m; else closeKeypad(); }
   else if (code.length < 4) code += k;
   show();
 }

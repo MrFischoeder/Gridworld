@@ -10,6 +10,7 @@ import { worldDist, poisNear } from './regions';
 import { SEA } from './seas';
 import type { ItemKey } from '../data/items';
 import type { BoatBuild } from './boats';
+import { tl, TL } from '../i18n';
 
 export const PIER = {
   /** How far along the view the sea is looked for; the root's distance back from the waterline (m). */
@@ -69,7 +70,7 @@ export function planPier(world: number, px: number, pz: number, fx: number, fz: 
     if (w?.kind === 'sea') { edge = t; break; }
     if (w && w.depth > 0.3) fresh = true;
   }
-  if (edge < 0) return { p: null, problem: fresh ? 'Docks are for the sea: this is a lake or a river' : 'Look out to sea to build a dock' };
+  if (edge < 0) return { p: null, problem: fresh ? tl('Docks are for the sea: this is a lake or a river') : tl('Look out to sea to build a dock') };
   const t0 = Math.max(0, edge - PIER.back), x = px + dx * t0, z = pz + dz * t0;
   // out until the water is deep enough under the head
   let len = -1;
@@ -79,14 +80,14 @@ export function planPier(world: number, px: number, pz: number, fx: number, fz: 
     if (w && w.kind !== 'sea') break;
   }
   const g0 = ground(x, z), p: Pier = { id: '', x, z, dx, dz, len: len < 0 ? PIER.max : len, g0, given: {} };
-  if (len < 0) return { p, problem: `The water stays too shallow: no ${PIER.depth} m depth within ${PIER.max} m` };
-  if (g0 > SEA.level + PIER.clear + PIER.steep) return { p, problem: 'The shore is too steep here' };
+  if (len < 0) return { p, problem: TL`The water stays too shallow: no ${PIER.depth} m depth within ${PIER.max} m` };
+  if (g0 > SEA.level + PIER.clear + PIER.steep) return { p, problem: tl('The shore is too steep here') };
   const mid = { x: x + dx * len / 2, z: z + dz * len / 2 };
   for (const q of poisNear(world, mid.x, mid.z, len / 2 + 120)) {
     const d = Math.hypot(Math.max(q.rect.x0 - mid.x, 0, mid.x - q.rect.x1), Math.max(q.rect.z0 - mid.z, 0, mid.z - q.rect.z1));
-    if (d < len / 2 + q.flat + q.blend + PIER.place) return { p, problem: `Too close to ${q.type === 'village' ? q.name : 'the ' + q.name}` };
+    if (d < len / 2 + q.flat + q.blend + PIER.place) return { p, problem: TL`Too close to ${q.type === 'village' ? q.name : tl('the ') + q.name}` };
   }
-  if (others.some((o) => worldDist(o.x + o.dx * o.len / 2, o.z + o.dz * o.len / 2, mid.x, mid.z) < PIER.apart + (o.len + len) / 2)) return { p, problem: 'Another dock is too close' };
+  if (others.some((o) => worldDist(o.x + o.dx * o.len / 2, o.z + o.dz * o.len / 2, mid.x, mid.z) < PIER.apart + (o.len + len) / 2)) return { p, problem: tl('Another dock is too close') };
   return { p, problem: null };
 }
 

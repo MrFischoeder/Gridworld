@@ -12,6 +12,7 @@ import { showToast, logLine } from '../ui/hud';
 import { fmtTime } from '../core/time';
 import { SLEEP, STAMINA, DRAIN, sleepSpan, burnPerMin, STOMACH } from '../data/survival';
 import type { Container } from '../save';
+import { tl, TL } from '../i18n';
 
 /** Slots in the home chest (a good deal more than a chest in the wilds). */
 export const HOME_CHEST_SLOTS = 24;
@@ -31,9 +32,9 @@ export function nearHome(): 'chest' | 'bed' | null {
   return d < 1.3 ? 'bed' : null;
 }
 export function homePrompt(what: 'chest' | 'bed'): string {
-  if (what === 'chest') return 'E — open your chest';
+  if (what === 'chest') return tl('E — open your chest');
   const s = sleepSpan(G.char.time);
-  return s.night ? `E — sleep until ${String(SLEEP.wake).padStart(2, '0')}:00` : 'E — take a nap (2 hours)';
+  return s.night ? TL`E — sleep until ${String(SLEEP.wake).padStart(2, '0')}:00` : tl('E — take a nap (2 hours)');
 }
 export function homeChest(key = 'home:chest'): Container {
   const c = G.char.containers;
@@ -43,7 +44,7 @@ export function homeChest(key = 'home:chest'): Container {
 }
 export function useHome(what: 'chest' | 'bed') {
   const h = house();
-  if (what === 'chest') { if (h) openTransfer({ title: 'Your chest', subtitle: `Your house, ${h.name}`, boxLabel: 'Chest', box: homeChest(chestKey(h.vid, h.i)) }); return; }
+  if (what === 'chest') { if (h) openTransfer({ title: tl('Your chest'), subtitle: TL`Your house, ${h.name}`, boxLabel: tl('Chest'), box: homeChest(chestKey(h.vid, h.i)) }); return; }
   sleep();
 }
 /** Lie down: the clock moves on, the body burns and dries out at the sleeping rate, and you wake rested. */
@@ -59,8 +60,8 @@ export function sleep() {
   G.hp = s.night ? max : Math.min(max, G.hp + max * SLEEP.napHeal);
   G.stamina = STAMINA.max; G.exhausted = false;
   saveChar();
-  showToast(s.night ? 'You sleep through the night.' : 'You doze for a while.');
-  logLine(`You wake at ${fmtTime(c.time)}, rested.` + (c.water < 30 ? ' Your mouth is dry.' : '') + (c.kcal < 700 ? ' You wake up hungry.' : ''));
+  showToast(s.night ? tl('You sleep through the night.') : tl('You doze for a while.'));
+  logLine(TL`You wake at ${fmtTime(c.time)}, rested.` + (c.water < 30 ? tl(' Your mouth is dry.') : '') + (c.kcal < 700 ? tl(' You wake up hungry.') : ''));
 }
 
 let checkT = 0;
@@ -80,7 +81,7 @@ export function updateHomes(dt: number) {
     if (o.p === c.pid) { if (o.n !== c.name && c.name) o.n = c.name; continue; }
     c.houses = c.houses.filter((h) => h !== vid); if (c.homeOf) delete c.homeOf[vid];
     c.gold += HOUSE_PRICE; saveChar();
-    showToast(`${o.n} got the house first`); logLine(`${o.n} bought that house before you: the elder gives you back your ${HOUSE_PRICE} gold.`);
+    showToast(TL`${o.n} got the house first`); logLine(TL`${o.n} bought that house before you: the elder gives you back your ${HOUSE_PRICE} gold.`);
     reloadStruct(vid);
   }
 }

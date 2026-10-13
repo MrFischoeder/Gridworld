@@ -25,6 +25,7 @@ import { lifeNow, crews } from '../gen/outpostlife';
 import { procOf } from '../gen/outpostproc';
 import { makeFigure, type Figure } from './npc';
 import { poseRig, type Kit } from './rig';
+import { tl, TL } from '../i18n';
 
 interface Hand { f: Figure; x: number; z: number; face: number; phase: number; work: boolean }
 /** (0.186) A turret's turning head at an outpost (deposit-local base); fired by world/outpostraid.ts. */
@@ -404,8 +405,8 @@ export function updateLodes(dt: number) {
   for (const l of near) if (!live.has(l.id)) live.set(l.id, build(T, l));
   finishOutposts();
   for (const l of near) if (worldDist(l.x, l.z, G.pos.x, G.pos.z) < l.r + 70 && mark(l, 1)) {
-    saveChar(); showToast('Deposit found: ' + LODES[l.k].name);
-    logLine(`You found ${l.name}: ${LODES[l.k].blurb}. It gives ${givesText(l)} (richness ${Math.round(l.rich * 100)}%). Marked on your map.`);
+    saveChar(); showToast(tl('Deposit found: ') + LODES[l.k].name);
+    logLine(TL`You found ${l.name}: ${LODES[l.k].blurb}. It gives ${givesText(l)} (richness ${Math.round(l.rich * 100)}%). Marked on your map.`);
   }
 }
 /** (0.183) Builds at the outposts whose time has come stand now (whoever sees it first; the same on every game). */
@@ -422,7 +423,7 @@ function finishOutposts() {
     if (p) {
       saveChar(); const what = partName(o.k, p, o.pk, countOf(o, p) - 1).toLowerCase();
       showToast(`${o.name}: ${what} built`);
-      logLine(`The builders finished the ${what} at ${o.name}.${p === 'dig' ? ' It is being worked now.' : p === 'power' && o.pk ? ` It powers every outpost within ${POWER_SRC[o.pk].r} m.${POWER_SRC[o.pk].fuel ? ' Load its bunker with fuel.' : ''}` : ''}`);
+      logLine(TL`The builders finished the ${what} at ${o.name}.${p === 'dig' ? tl(' It is being worked now.') : p === 'power' && o.pk ? TL` It powers every outpost within ${POWER_SRC[o.pk].r} m.${POWER_SRC[o.pk].fuel ? tl(' Load its bunker with fuel.') : ''}` : ''}`);
     }
   }
 }
@@ -432,12 +433,12 @@ export function tellRaids(list: { id: string; k: number; won: boolean; road?: st
     const o = G.char.outposts[r.id];
     if (!o) continue;
     if (r.road) { // (0.187) a convoy robbed on its way
-      showToast(r.road === 'wrecked' ? 'A convoy truck was wrecked' : 'A convoy was robbed');
-      logLine(r.road === 'wrecked' ? `Bandits wrecked the convoy truck from ${o.name} on the road to ${o.route?.vname}. The route stands still until the truck is recalled and mended.` : `Bandits robbed the convoy from ${o.name} to ${o.route?.vname}: the cargo is gone and the truck is battered.`);
+      showToast(r.road === 'wrecked' ? tl('A convoy truck was wrecked') : tl('A convoy was robbed'));
+      logLine(r.road === 'wrecked' ? TL`Bandits wrecked the convoy truck from ${o.name} on the road to ${o.route?.vname}. The route stands still until the truck is recalled and mended.` : TL`Bandits robbed the convoy from ${o.name} to ${o.route?.vname}: the cargo is gone and the truck is battered.`);
       continue;
     }
-    if (r.won) logLine(`Bandits came to ${o.name} and were driven off.`);
-    else { showToast(`${o.name} was raided`); logLine(`Bandits raided ${o.name}: they carried off most of the crates and half the pantry, and some of the people left.`); }
+    if (r.won) logLine(TL`Bandits came to ${o.name} and were driven off.`);
+    else { showToast(TL`${o.name} was raided`); logLine(TL`Bandits raided ${o.name}: they carried off most of the crates and half the pantry, and some of the people left.`); }
   }
 }
 /** The deposit whose outpost window E opens: within its ground and a little more. */
@@ -477,10 +478,10 @@ export function askLode(vx: number, vz: number): string | null {
   const c = G.char, l = lodesWithin(c.world, vx, vz, LODE_RUMOUR).find((o) => !c.lodes[o.id]);
   if (!l) return null;
   mark(l, 0); saveChar();
-  const d = worldDist(vx, vz, l.x, l.z), km = d < 1000 ? `${Math.round(d / 100) * 100} metres` : `${(d / 1000).toFixed(1)} km`;
-  logLine(`Heard of: ${l.name} (marked on your map).`);
-  const how = ['A trader told me of', 'The hunters speak of', 'My cousin came back from the wilds with news of', 'Folk say there is'][hash(c.world, l.x | 0, 0x10a3) % 4];
-  return `${how} ${LODES[l.k].blurb}, about ${km} ${dirWord(wrapDx(l.x - vx), l.z - vz)} of here. ${l.name}, they call the place. It gives ${givesText(l)}. Nobody works it: nobody here has the people for it.`;
+  const d = worldDist(vx, vz, l.x, l.z), km = d < 1000 ? `${Math.round(d / 100) * 100} m` : `${(d / 1000).toFixed(1)} km`;
+  logLine(TL`Heard of: ${l.name} (marked on your map).`);
+  const how = [tl('A trader told me of'), tl('The hunters speak of'), tl('My cousin came back from the wilds with news of'), tl('Folk say there is')][hash(c.world, l.x | 0, 0x10a3) % 4];
+  return TL`${how} ${LODES[l.k].blurb}, about ${km} ${dirWord(wrapDx(l.x - vx), l.z - vz)} of here. ${l.name}, they call the place. It gives ${givesText(l)}. Nobody works it: nobody here has the people for it.`;
 }
 /** (0.186) The turret heads of the outposts drawn now, with their outpost's id (world/outpostraid.ts fires them). */
 export function outpostGuns(): { id: string; gun: OutGun }[] {

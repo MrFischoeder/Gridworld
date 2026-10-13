@@ -12,6 +12,7 @@ import { hallSpec, hallTerminal, holdVol, hallStands, VEHICLE_HALL } from '../ge
 import { progressive } from '../gen/settlement';
 import type { VillageMap } from '../gen/village';
 import type { Terrain } from '../gen/terrain';
+import { tl } from '../i18n';
 
 const WOOD = 0xb8b060, PLANK = 0x8a8448, FLOOR = 0x5a5a30, BAY = 0xffd060, CRATE = 0xc8a060;
 interface Hall { id: number; ox: number; oz: number; y0: number; segs: [number, number, number, number][]; crates: THREE.Group | null; grp: THREE.Group; T: Terrain; spec: ReturnType<typeof hallSpec>; terminal: ReturnType<typeof hallTerminal> }
@@ -27,7 +28,7 @@ function drawSite(vm: VillageMap, T: Terrain): THREE.Group {
   });
   grp.add(pb.build());
   const dx = ox + (R.x0 + R.x1) / 2, dz = oz + R.z1 + 1;
-  grp.add(wallSign('WAREHOUSE SITE', '#ffd060', { x: dx, z: dz }, [0, 1], T.heightAt(dx, dz) + 1.4));
+  grp.add(wallSign(tl('WAREHOUSE SITE'), '#ffd060', { x: dx, z: dz }, [0, 1], T.heightAt(dx, dz) + 1.4));
   return grp;
 }
 
@@ -113,7 +114,7 @@ export function drawHall(vm: VillageMap, T: Terrain, id: number): THREE.Group {
     segs.push([tx - 0.7, tz - 0.35, tx + 0.7, tz - 0.35], [tx - 0.7, tz + 0.35, tx + 0.7, tz + 0.35]);
   }
   grp.add(pb.build());
-  grp.add(wallSign(big ? 'WAREHOUSE' : 'VILLAGE HALL', '#ffd060', { x: dx, z: Z1 + 0.1 }, [0, 1], y0 + dh + 0.9));
+  grp.add(wallSign(big ? tl('WAREHOUSE') : tl('VILLAGE HALL'), '#ffd060', { x: dx, z: Z1 + 0.1 }, [0, 1], y0 + dh + 0.9));
   const h: Hall = { id, ox, oz, y0, segs, crates: null, grp, T, spec: HALL, terminal: HALL_TERMINAL };
   halls.set(id, h);
   drawCrates(h);

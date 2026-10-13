@@ -42,6 +42,7 @@ import { raiders } from '../world/raiders';
 import { $ } from './hud';
 import { myOwner, ownerName } from '../world/rivals';
 import { mayUse } from '../gen/outposts';
+import { tl, TL } from '../i18n';
 
 const tiles = new Map<string, HTMLCanvasElement>();
 let tileWorld = -1;
@@ -173,7 +174,7 @@ function drawArea(ctx: CanvasRenderingContext2D, w: number, h: number, ppm: numb
       if (x < -15 || y < -15 || x > w+15 || y > h+15) continue;
       ctx.strokeStyle = ctx.fillStyle = '#5cc8ff'; ctx.lineWidth = 2;
       ctx.strokeRect(x-6,y-6,12,12); ctx.beginPath(); ctx.moveTo(x-4,y-2); ctx.lineTo(x,y+4); ctx.lineTo(x+4,y-2); ctx.stroke();
-      if (labels) ctx.fillText('Underground '+(e.n+1),x,y-13);
+      if (labels) ctx.fillText(tl('Underground ')+(e.n+1),x,y-13);
     }
   }
   for (const g of gatesNear(G.char.world, px, pz, Math.hypot(hw, hh) + 30)) {
@@ -217,14 +218,14 @@ function drawArea(ctx: CanvasRenderingContext2D, w: number, h: number, ppm: numb
     const x = X(nearX(c.x, px)), y = Z(c.z);
     ctx.strokeStyle = ctx.fillStyle = '#c4ffd2'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(x, y, Math.max(4, 30 * ppm), 0, 6.283); ctx.stroke();
     ctx.beginPath(); ctx.moveTo(x, y + 5); ctx.lineTo(x, y - 8); ctx.lineTo(x + 7, y - 5); ctx.lineTo(x, y - 2); ctx.stroke(); ctx.lineWidth = 1;
-    if (labels) ctx.fillText('Your flag', x, y - 12);
+    if (labels) ctx.fillText(tl('Your flag'), x, y - 12);
   }
   for (const [x0, z0, r, name] of Object.values(G.char.fogs)) { // toxic fog you have found: a dashed lime ring
     const x = X(nearX(x0, px)), y = Z(z0), rr = Math.max(5, r * ppm);
     if (x < -rr || y < -rr || x > w + rr || y > h + rr) continue;
     ctx.strokeStyle = ctx.fillStyle = '#b6ff3a'; ctx.lineWidth = 1.5; ctx.setLineDash([4, 3]); ctx.beginPath(); ctx.arc(x, y, rr, 0, 6.283); ctx.stroke(); ctx.setLineDash([]); ctx.lineWidth = 1;
     ctx.globalAlpha = 0.18; ctx.fill(); ctx.globalAlpha = 1;
-    if (labels) ctx.fillText(name + ' (toxic fog)', x, y - rr - 6);
+    if (labels) ctx.fillText(name + tl(' (toxic fog)'), x, y - rr - 6);
   }
   for (const c of citySites(OW.terrain!.world)) { // the dead cities, once you have seen them: an outline and the name
     const x = X(nearX(c.x, px)), y = Z(c.z), rr = Math.max(6, c.r * ppm);
@@ -232,7 +233,7 @@ function drawArea(ctx: CanvasRenderingContext2D, w: number, h: number, ppm: numb
     const seen = Math.hypot(wrapDx(c.x - px), c.z - pz) < c.r + CITY.fade || [0, 0.5, 0.9].some((k) => [0, 1, 2, 3, 4, 5, 6, 7].some((a) => isDiscovered(d, Math.floor((c.x + Math.cos(a * 0.785) * c.r * k) / CHUNK), Math.floor((c.z + Math.sin(a * 0.785) * c.r * k) / CHUNK))));
     if (!seen) continue;
     ctx.strokeStyle = ctx.fillStyle = '#9ad8a8'; ctx.lineWidth = 1.5; ctx.setLineDash([6, 4]); ctx.beginPath(); ctx.arc(x, y, rr, 0, 6.283); ctx.stroke(); ctx.setLineDash([]); ctx.lineWidth = 1;
-    if (labels) ctx.fillText('Ruins of ' + c.name, x, y - rr - 6);
+    if (labels) ctx.fillText(tl('Ruins of ') + c.name, x, y - rr - 6);
   }
   for (const ins of installSitesReady(OW.terrain!.world) ?? []) { // the great installations, once their ground is explored: a lime hexagon
     if (!isDiscovered(d, Math.floor(ins.x / CHUNK), Math.floor(ins.z / CHUNK))) continue;
@@ -250,7 +251,7 @@ function drawArea(ctx: CanvasRenderingContext2D, w: number, h: number, ppm: numb
     if (!seen) ctx.setLineDash([3, 2]);
     ctx.beginPath(); ctx.rect(x - r, y - r, 2 * r, 2 * r); ctx.stroke(); ctx.setLineDash([]); ctx.lineWidth = 1;
     if (seen) { ctx.globalAlpha = 0.35; ctx.fill(); ctx.globalAlpha = 1; }
-    if (labels && ppm > 0.05) ctx.fillText(name + (seen ? '' : ' (heard of)'), x, y - 10);
+    if (labels && ppm > 0.05) ctx.fillText(name + (seen ? '' : tl(' (heard of)')), x, y - 10);
   }
   for (const o of Object.values(G.char.outposts)) { // (0.184) the reach of every power source: a dashed pale ring
     if (!o?.k || !o.done?.power || !o.pk) continue;
@@ -272,9 +273,9 @@ function drawArea(ctx: CanvasRenderingContext2D, w: number, h: number, ppm: numb
     if (x < -20 || y < -20 || x > w + 20 || y > h + 20) continue;
     const theirs = !mayUse(o, myOwner()); // (0.189) a rival's outpost: rust, with its owner's name
     ctx.strokeStyle = ctx.fillStyle = theirs ? '#d0805a' : '#ffd060'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(x, y, r, 0, 6.283); ctx.stroke(); ctx.lineWidth = 1;
-    if (theirs && labels) ctx.fillText(`${ownerName(o.o)}'s`, x, y - r - 6);
+    if (theirs && labels) ctx.fillText(TL`${ownerName(o.o)}'s`, x, y - r - 6);
     if (o.life?.v) { ctx.beginPath(); ctx.arc(x, y, r + 4, 0, 6.283); ctx.stroke(); } // (0.185) a hamlet: a double ring
-    if (labels) ctx.fillText(o.life?.v ? `Hamlet · ${Math.floor(o.life.n)} people` : 'Outpost' + (o.done?.dig ? '' : ' (building)') + (o.life && o.life.n >= 1 ? ` · ${Math.floor(o.life.n)} people` : ''), x, y + r + 16);
+    if (labels) ctx.fillText(o.life?.v ? TL`Hamlet · ${Math.floor(o.life.n)} people` : tl('Outpost') + (o.done?.dig ? '' : ' (building)') + (o.life && o.life.n >= 1 ? ` · ${Math.floor(o.life.n)} people` : ''), x, y + r + 16);
   }
   for (const m of leadMarkers()) { // leads: a violet diamond for a data carrier, a lime one for a great installation (held at the edge of the big map when further)
     let x = X(m.x), y = Z(m.z); const r = labels ? 9 : 5, out = x < 24 || y < 40 || x > w - 24 || y > h - 40;
@@ -300,7 +301,7 @@ function drawArea(ctx: CanvasRenderingContext2D, w: number, h: number, ppm: numb
       if (out) { x = Math.max(24, Math.min(w - 24, x)); y = Math.max(40, Math.min(h - 40, y)); }
       ctx.strokeStyle = ctx.fillStyle = WAYPOINT_C; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(x, y, r, 0, 6.283);
       ctx.moveTo(x - r - 4, y); ctx.lineTo(x + r + 4, y); ctx.moveTo(x, y - r - 4); ctx.lineTo(x, y + r + 4); ctx.stroke(); ctx.lineWidth = 1;
-      if (labels) ctx.fillText(`Waypoint ${(Math.hypot(wrapDx(wp[0] - px), wp[1] - pz) / 1000).toFixed(1)} km`, x, y - r - 8);
+      if (labels) ctx.fillText(TL`Waypoint ${(Math.hypot(wrapDx(wp[0] - px), wp[1] - pz) / 1000).toFixed(1)} km`, x, y - r - 8);
     }
   }
   // on the big map: every caravan on the roads between villages you know (from the timetables), as an arrow
@@ -364,9 +365,9 @@ function scanPlan() {
 }
 export function orbitalScan(): string {
   const c = G.char, home = c.towns[GRIDHOLM_ID];
-  if (!satelliteUp(home)) return 'No satellite link.';
+  if (!satelliteUp(home)) return tl('No satellite link.');
   const { x, z, relay, at, r: R, wait } = scanPlan();
-  if (wait > 0) return `No satellite overhead${relay ? ` of the ${relay.name} relay` : ''}: the next pass in ${hrs(wait)}.`;
+  if (wait > 0) return TL`No satellite overhead${relay ? TL` of the ${relay.name} relay` : ''}: the next pass in ${hrs(wait)}.`;
   let n = 0;
   const see = (px: number, pz: number) => { if (discover(c.discovered, Math.floor(px / CHUNK), Math.floor(pz / CHUNK))) n++; };
   for (const p of poisNear(c.world, x, z, R)) if (Math.hypot(wrapDx(p.x - x), p.z - z) <= R) see(p.x, p.z);
@@ -376,31 +377,31 @@ export function orbitalScan(): string {
   for (const z0 of fogsNear(c.world, x, z, R)) if (!c.fogs[z0.id]) { c.fogs[z0.id] = [Math.round(z0.x), Math.round(z0.z), Math.round(z0.r), z0.name]; f++; }
   (at!.settlement!).scanAt = c.time; lastScan = { x, z, t: c.time, r: R };
   saveChar();
-  const msg = `Orbital scan ${c.waypoint ? 'round your waypoint' : 'round you'}${relay ? ` through the ${relay.name} relay` : ''}: ${n} new place${n === 1 ? '' : 's'} within ${R / 1000} km${f ? ` and ${f} toxic fog zone${f === 1 ? '' : 's'}` : ''}${lodes ? `, ${lodes} deposit${lodes === 1 ? '' : 's'}` : ''} on your map.`;
-  showToast('Orbital scan complete'); logLine(msg);
+  const msg = TL`Orbital scan ${c.waypoint ? tl('round your waypoint') : tl('round you')}${relay ? TL` through the ${relay.name} relay` : ''}: ${n} new place${n === 1 ? '' : 's'} within ${R / 1000} km${f ? TL` and ${f} toxic fog zone${f === 1 ? '' : 's'}` : ''}${lodes ? `, ${lodes} deposit${lodes === 1 ? '' : 's'}` : ''} on your map.`;
+  showToast(tl('Orbital scan complete')); logLine(msg);
   return msg;
 }
 /** (D3) The planned route by road: its polyline (world coordinates) and where it leads; runtime only, yours alone. */
 export let route: { pts: [number, number][]; to: string } | null = null;
 /** R on the satellite map: plan a route by road from the village nearest you to the one nearest your waypoint (again: clear it). */
 export function toggleRoute(): string {
-  if (route) { route = null; return 'Route cleared.'; }
-  if (!gpsOn()) return 'No GPS: the glove needs the satellite link.';
+  if (route) { route = null; return tl('Route cleared.'); }
+  if (!gpsOn()) return tl('No GPS: the glove needs the satellite link.');
   const wp = G.char.waypoint;
-  if (!wp) return 'Set a waypoint first (right click on the map).';
+  if (!wp) return tl('Set a waypoint first (right click on the map).');
   const r = planRoute(G.char.world, G.pos.x, G.pos.z, nearX(wp[0], G.pos.x), wp[1]);
-  if (!r) { showToast('No road leads there'); return 'No road leads there.'; }
+  if (!r) { showToast(tl('No road leads there')); return tl('No road leads there.'); }
   let len = 0; for (let i = 1; i < r.pts.length; i++) len += Math.hypot(r.pts[i][0] - r.pts[i - 1][0], r.pts[i][1] - r.pts[i - 1][1]);
   route = { pts: r.pts, to: r.via[r.via.length - 1].name };
-  const msg = `Route by road: ${(len / 1000).toFixed(1)} km through ${r.via.map((v) => v.name).join(' → ')}.`;
-  showToast('Route planned'); logLine(msg);
+  const msg = TL`Route by road: ${(len / 1000).toFixed(1)} km through ${r.via.map((v) => v.name).join(' → ')}.`;
+  showToast(tl('Route planned')); logLine(msg);
   return msg;
 }
 /** The point of the route about `ahead` m past the nearest point to you, for the compass (null: no route, or you have arrived). */
 export function routeAhead(ahead = 120): [number, number] | null {
   if (!route) return null;
   const P = route.pts, px = G.pos.x, pz = G.pos.z, end = P[P.length - 1];
-  if (Math.hypot(wrapDx(end[0] - px), end[1] - pz) < 60) { route = null; logLine('You have arrived at the end of your route.'); return null; }
+  if (Math.hypot(wrapDx(end[0] - px), end[1] - pz) < 60) { route = null; logLine(tl('You have arrived at the end of your route.')); return null; }
   let bi = 0, bt = 0, bd = Infinity;
   for (let i = 1; i < P.length; i++) {
     const ax = P[i - 1][0], az = P[i - 1][1], ex = P[i][0] - ax, ez = P[i][1] - az, L = ex * ex + ez * ez || 1;
@@ -420,22 +421,22 @@ function drawFullMap() {
     bctx.fillStyle = '#010d04'; bctx.fillRect(0, 0, w, h);
     bctx.strokeStyle = '#2fe06055'; for (let y = 0; y < h; y += 4) { bctx.beginPath(); bctx.moveTo(0, y); bctx.lineTo(w, y); bctx.stroke(); }
     bctx.textAlign = 'center'; bctx.fillStyle = '#3dff6e'; bctx.font = '30px VT323, monospace';
-    bctx.fillText('GLOVE COMPUTER · SATELLITE MAP', w / 2, h / 2 - 60);
-    bctx.fillStyle = (Date.now() >> 9) % 2 ? '#ff6a4a' : '#ffb347'; bctx.font = '44px VT323, monospace'; bctx.fillText('NO SATELLITE LINK', w / 2, h / 2);
+    bctx.fillText(tl('GLOVE COMPUTER · SATELLITE MAP'), w / 2, h / 2 - 60);
+    bctx.fillStyle = (Date.now() >> 9) % 2 ? '#ff6a4a' : '#ffb347'; bctx.font = '44px VT323, monospace'; bctx.fillText(tl('NO SATELLITE LINK'), w / 2, h / 2);
     bctx.fillStyle = '#9dffb4'; bctx.font = '22px VT323, monospace';
-    bctx.fillText('No ground station answers. Restore the radar and communications station near Gridholm', w / 2, h / 2 + 50);
-    bctx.fillText('(ask the elder) and the satellites still circling the planet will feed this map.', w / 2, h / 2 + 78);
-    bctx.fillStyle = '#3dff6e'; bctx.fillText('M or Esc to close · the minimap still shows what your glove sees around you', w / 2, h - 20);
+    bctx.fillText(tl('No ground station answers. Restore the radar and communications station near Gridholm'), w / 2, h / 2 + 50);
+    bctx.fillText(tl('(ask the elder) and the satellites still circling the planet will feed this map.'), w / 2, h / 2 + 78);
+    bctx.fillStyle = '#3dff6e'; bctx.fillText(tl('M or Esc to close · the minimap still shows what your glove sees around you'), w / 2, h - 20);
     return;
   }
   drawArea(bctx, w, h, zoom, true);
   bctx.fillStyle = '#3dff6e'; bctx.font = '22px VT323, monospace'; bctx.textAlign = 'left';
   const sat = satelliteUp(G.char.towns[GRIDHOLM_ID]);
-  bctx.fillText((sat ? 'SATELLITE MAP' : 'WORLD MAP') + ' — M or Esc to close · wheel / + - to zoom' + (gpsOn() ? ' · right click: set / clear the GPS waypoint' : ''), 16, h - 16);
+  bctx.fillText((sat ? tl('SATELLITE MAP') : tl('WORLD MAP')) + tl(' — M or Esc to close · wheel / + - to zoom') + (gpsOn() ? tl(' · right click: set / clear the GPS waypoint') : ''), 16, h - 16);
   if (sat) { // the satellites: orbital scans and the weather they see
     const sp = scanPlan(), wait = sp.wait, now = weatherAt(G.char.world, G.pos.x, G.pos.z, G.char.time), later = weatherAt(G.char.world, G.pos.x, G.pos.z, G.char.time + 240);
-    bctx.fillText(`O: orbital scan ${G.char.waypoint ? 'round the waypoint' : 'round you'} (${sp.r / 1000} km${sp.relay ? ', ' + sp.relay.name + ' relay' : ''}) · ${wait > 0 ? 'next pass in ' + hrs(wait) : 'a satellite is overhead'} · R: ${route ? 'clear the route' + (route ? ' to ' + route.to : '') : 'route by road to the waypoint'}`, 16, h - 42);
-    bctx.fillText(`Sky where you stand: ${now.kind} now, ${later.kind} in 4 h`, 16, h - 68);
+    bctx.fillText(`O: orbital scan ${G.char.waypoint ? tl('round the waypoint') : tl('round you')} (${sp.r / 1000} km${sp.relay ? ', ' + sp.relay.name + ' relay' : ''}) · ${wait > 0 ? tl('next pass in ') + hrs(wait) : tl('a satellite is overhead')} · R: ${route ? tl('clear the route') + (route ? tl(' to ') + route.to : '') : tl('route by road to the waypoint')}`, 16, h - 42);
+    bctx.fillText(TL`Sky where you stand: ${now.kind} now, ${later.kind} in 4 h`, 16, h - 68);
     if (lastScan && G.char.time - lastScan.t < 120) { // the scanned ring, for two game hours
       const sx = w / 2 + (nearX(lastScan.x, G.pos.x) - G.pos.x) * zoom, sy = h / 2 + (lastScan.z - G.pos.z) * zoom;
       bctx.strokeStyle = '#5cc8ff'; bctx.setLineDash([8, 6]); bctx.beginPath(); bctx.arc(sx, sy, lastScan.r * zoom, 0, Math.PI * 2); bctx.stroke(); bctx.setLineDash([]);

@@ -3,6 +3,7 @@
 // village's shared state (`TownState.jobs`), so every player sees the same site with the same builders, and whoever has
 // the game running finishes it when its time is up (gen/jobs.ts; the same change on every game).
 import type { TownState } from './town';
+import { TL } from '../i18n';
 
 export type JobKind = 'farm' | 'plough' | 'wall' | 'work' | 'refinery' | 'improve' | 'plantup' | 'plant' | 'project';
 /** A build under way: what (`k` and its sub-kind `a`), since when (game minutes) and for how many game hours. */
@@ -32,5 +33,5 @@ export function dropJob(s: TownState, j: Job) { if (s.jobs) { delete s.jobs[jobK
 /** "about 6 h" / "about 40 min": how long the builders still need. */
 export function jobLeft(j: Job, now: number): string {
   const m = Math.max(1, Math.ceil(jobEnd(j) - now));
-  return m >= 90 ? `about ${Math.round(m / 60)} h` : `about ${m} min`;
+  return m >= 90 ? TL`about ${Math.round(m / 60)} h` : TL`about ${m} min`;
 }

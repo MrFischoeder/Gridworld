@@ -2,6 +2,7 @@
 import { G } from '../game';
 import { xpNeed } from '../character';
 import { ITEMS, type ItemKey } from '../data/items';
+import { tl, TL } from '../i18n';
 
 export const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
 export const el = {
@@ -19,9 +20,9 @@ export function logLine(t: string) { logLines.push({ t, life: 4 }); }
 
 export function renderSheet() {
   const c = G.char, names = c.mods.filter((k): k is ItemKey => !!k).map((k) => ITEMS[k].name);
-  const d = c.dungeon, where = d ? 'Depth ' + d.depth + ', sector ' + d.gx + ', ' + d.gz + '. ' : el.hudL.textContent + '. ';
-  el.sheet.innerHTML = (c.name ? '<b>' + c.name.replace(/[<>&]/g, '') + '</b> · ' : '') + where + 'Level ' + c.level + ', XP ' + c.xp + '/' + xpNeed(c.level) + ', gold ' + c.gold +
-    '<div style="color:var(--gold);font-size:20px;margin-top:4px">' + (names.length ? 'Modules: ' + names.join(', ') : 'No relics equipped') + '</div>';
+  const d = c.dungeon, where = d ? TL`Depth ${d.depth}, sector ${d.gx}, ${d.gz}.` + ' ' : el.hudL.textContent + '. ';
+  el.sheet.innerHTML = (c.name ? '<b>' + c.name.replace(/[<>&]/g, '') + '</b> · ' : '') + where + TL`Level ${c.level}, XP ${c.xp}/${xpNeed(c.level)}, gold ${c.gold}` +
+    '<div style="color:var(--gold);font-size:20px;margin-top:4px">' + (names.length ? TL`Modules: ${names.join(', ')}` : tl('No relics equipped')) + '</div>';
 }
 
 export function updateHud(dt: number) {
@@ -30,8 +31,8 @@ export function updateHud(dt: number) {
   toastT -= dt; if (toastT <= 0) el.toast.style.opacity = '0';
   el.hpfill.style.width = Math.max(0, G.hp / G.S.maxHp * 100) + '%';
   el.hpfill.style.background = G.hp < G.S.maxHp * 0.35 ? 'var(--amber)' : 'var(--g)';
-  el.xpfill.style.width = (G.char.xp / xpNeed(G.char.level) * 100) + '%'; el.lvl.textContent = 'Level ' + G.char.level;
-  el.hudR.textContent = 'Gold: ' + G.char.gold;
+  el.xpfill.style.width = (G.char.xp / xpNeed(G.char.level) * 100) + '%'; el.lvl.textContent = TL`Level ${G.char.level}`;
+  el.hudR.textContent = TL`Gold: ${G.char.gold}`;
   for (let i = logLines.length - 1; i >= 0; i--) { logLines[i].life -= dt; if (logLines[i].life <= 0) logLines.splice(i, 1); }
   el.log.innerHTML = logLines.slice(-5).map((l) => l.t).join('<br>');
 }

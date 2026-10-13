@@ -11,6 +11,7 @@ import { packBench, type Bench } from '../world/benches';
 import { loadText } from './slots';
 import { $ } from './hud';
 import { lockPointer } from './input';
+import { tl, TL } from '../i18n';
 
 const dlgEl = $('dlg'), panel = () => dlgEl.querySelector('.panel') as HTMLElement;
 let station: Station = 'bench', bench: Bench | null = null;
@@ -26,13 +27,13 @@ function render(msg = '') {
     const needs = r.needs.map(([k, n]) => { const have = count(inv, k); return `<span class="${have >= n ? '' : 'bad'}">${ITEMS[k].name} ${have}/${n}</span>`; }).join(' · ') +
       (r.tools ?? []).map((k) => ` · <span class="${count(inv, k) ? '' : 'bad'}">tool: ${ITEMS[k].name}</span>`).join('');
     const busy = !!job, mine = job?.i === i;
-    return `<div class="shoprow${ok ? '' : ' off'}"><div><b>${it.name}${r.n > 1 ? ' ×' + r.n : ''}</b> <span style="opacity:.6">${craftTime(r)} s</span><br><span>${ok ? needs : 'needs a forge: craft it at a village blacksmith'}</span>${mine ? `<div class="cbar"><div id="cbarFill"></div></div>` : ''}</div>
-      ${mine ? `<button class="buy" data-cstop="1">Stop${job!.left ? ` (${job!.left + 1} left)` : ''}</button>` : `<button class="buy" data-craft="${i}" data-n="1" ${all && !busy ? '' : 'disabled'}>Craft</button><button class="buy" data-craft="${i}" data-n="5" ${all && !busy && !HANDS_ONLY.has(r.out) ? '' : 'disabled'}>×5</button>`}</div>`;
+    return TL`<div class="shoprow${ok ? '' : tl(' off')}"><div><b>${it.name}${r.n > 1 ? ' ×' + r.n : ''}</b> <span style="opacity:.6">${craftTime(r)} s</span><br><span>${ok ? needs : tl('needs a forge: craft it at a village blacksmith')}</span>${mine ? `<div class="cbar"><div id="cbarFill"></div></div>` : ''}</div>
+      ${mine ? TL`<button class="buy" data-cstop="1">Stop${job!.left ? TL` (${job!.left + 1} left)` : ''}</button>` : `<button class="buy" data-craft="${i}" data-n="1" ${all && !busy ? '' : 'disabled'}>Craft</button><button class="buy" data-craft="${i}" data-n="5" ${all && !busy && !HANDS_ONLY.has(r.out) ? '' : 'disabled'}>×5</button>`}</div>`;
   }).join('');
-  const head = bench ? `<h2>Workbench</h2><div class="role">your own, set up in the wilds</div>` : `<h2>${W.talkNpc?.name ?? 'Forge'}'s workbench</h2><div class="role">the forge: everything can be made here</div>`;
-  const foot = bench ? `<button class="opt" data-cpack="1">Pack up the workbench</button><button class="opt" data-cclose="1">Close</button>` : `<button class="opt" data-o="back">Back</button>`;
-  const frozen = CRAFTING_OPEN ? '' : '<br>You cannot make much by hand out here any more. Village blacksmiths make things for you now (from the old plans you find); you can still pack this workbench up.';
-  panel().innerHTML = head + `<div class="say">Backpack: ${loadText()}${msg ? '<br>' + msg : ''}${frozen}</div>` + `<div class="recipes">${rows}</div>` + foot;
+  const head = bench ? TL`<h2>Workbench</h2><div class="role">your own, set up in the wilds</div>` : TL`<h2>${W.talkNpc?.name ?? tl('Forge')}'s workbench</h2><div class="role">the forge: everything can be made here</div>`;
+  const foot = bench ? TL`<button class="opt" data-cpack="1">Pack up the workbench</button><button class="opt" data-cclose="1">Close</button>` : TL`<button class="opt" data-o="back">Back</button>`;
+  const frozen = CRAFTING_OPEN ? '' : tl('<br>You cannot make much by hand out here any more. Village blacksmiths make things for you now (from the old plans you find); you can still pack this workbench up.');
+  panel().innerHTML = head + TL`<div class="say">Backpack: ${loadText()}${msg ? '<br>' + msg : ''}${frozen}</div>` + `<div class="recipes">${rows}</div>` + foot;
 }
 
 /** From the blacksmith's options: the forge's workbench. */
@@ -53,11 +54,11 @@ export function craftClick(t: HTMLElement): boolean {
   if (c) {
     if (job) return true;
     const i = +c.dataset.craft!, r = RECIPES[i];
-    if (!hasAll(G.char.inv, r)) { render('You are missing something.'); return true; }
+    if (!hasAll(G.char.inv, r)) { render(tl('You are missing something.')); return true; }
     startJob(i, r, Math.max(1, +(c.dataset.n ?? 1)) - 1);
     return true;
   }
-  if (t.closest('[data-cstop]')) { stopJob(); render('You put the work down.'); return true; }
+  if (t.closest('[data-cstop]')) { stopJob(); render(tl('You put the work down.')); return true; }
   if (t.closest('[data-cclose]')) { close(); return true; }
   if (t.closest('[data-cpack]') && bench) { if (job) return true; const m = packBench(bench); if (m) render(m); else close(); return true; }
   return false;
@@ -65,7 +66,7 @@ export function craftClick(t: HTMLElement): boolean {
 /** Work on recipe i: the bar fills over its time, then the batch is made (and the next one starts, if more were asked). */
 function startJob(i: number, r: Recipe, left: number) {
   job = { i, t0: performance.now(), ms: craftTime(r) * 1000, left };
-  render(`Working on the ${ITEMS[r.out].name}...`);
+  render(TL`Working on the ${ITEMS[r.out].name}...`);
   cancelAnimationFrame(raf);
   const tick = () => {
     if (!job) return;
@@ -86,6 +87,6 @@ function finish(r: Recipe): string {
   if (HANDS_ONLY.has(r.out) && G.char.hands[0] && WEAPON_KIND[G.char.hands[0].k] !== undefined) stowHeld(); // it comes out into your hands
   const why = craft(G.char.inv, r, packVol(), G.char.hands);
   if (!why) { calcStats(); handsChanged(); saveChar(); }
-  return why === 'missing' ? 'You are missing something.' : why === 'room' ? 'No room in your backpack for it.' : why === 'hands' ? `The ${ITEMS[r.out].name} is carried in your hands: free them first.`
-    : `Made: ${ITEMS[r.out].name}${r.n > 1 ? ' ×' + r.n : ''}${HANDS_ONLY.has(r.out) ? ' (in your hands)' : ''}.`;
+  return why === 'missing' ? tl('You are missing something.') : why === 'room' ? tl('No room in your backpack for it.') : why === 'hands' ? TL`The ${ITEMS[r.out].name} is carried in your hands: free them first.`
+    : TL`Made: ${ITEMS[r.out].name}${r.n > 1 ? ' ×' + r.n : ''}${HANDS_ONLY.has(r.out) ? tl(' (in your hands)') : ''}.`;
 }

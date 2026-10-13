@@ -17,6 +17,7 @@ import { nearX } from '../gen/regions';
 import { dungeonKey } from '../character';
 import { WEAPON_KIND, type ItemKey } from '../data/items';
 import { gunOf } from '../data/weapons';
+import { tl } from '../i18n';
 
 /** Each player's colour, by id (castaways' suits: none of them amber, red or gold, which mean danger or loot). */
 const COLORS = [0x7dd3ff, 0xd8a8ff, 0xffffff, 0x9dffe0, 0xff9ad8, 0xa8c8ff, 0xc8ff9d, 0xffc8a8];
@@ -48,7 +49,7 @@ function avatar(id: number, name: string, kit: Kit, away: boolean): Avatar {
   if (old && old.kit === kit && old.away === away && old.name === name) return old;
   if (old) drop(id);
   // a player in the menu stays in the world (the others see them standing there), marked as away
-  const c = peerColor(id), f = makeFigure(c, kit), label = textSprite(away ? name + ' (in menu)' : name, '#' + c.toString(16).padStart(6, '0'));
+  const c = peerColor(id), f = makeFigure(c, kit), label = textSprite(away ? name + tl(' (in menu)') : name, '#' + c.toString(16).padStart(6, '0'));
   label.position.y = 2.2; f.g.add(label);
   const a: Avatar = { f, kit, away, name, label, phase: Math.random() * 6, seated: false };
   avatars.set(id, a);

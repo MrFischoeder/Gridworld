@@ -17,6 +17,7 @@ import type { ItemKey } from '../data/items';
 import { STATIONS, STATION_SLOTS, type StationKind } from './energy';
 import { TECH_BY_ID } from './tech';
 import { startJob, jobOf, hoursOf } from './construction';
+import { tl, TL } from '../i18n';
 
 export type PlantKind = 'smelter' | 'refinery' | 'glassworks' | 'wiremill' | 'electronics' | 'machineshop' | 'foundry' | 'chemworks'
   | 'sawmill' | 'brickworks' | 'cementworks' | 'textile' | 'steelworks' | 'polymer' | 'alworks' | 'batteryworks' | 'electrical' | 'stoneworks' | 'metallurgy' | 'siliconworks' | 'advelec' | 'avionworks' | 'lifeworks' | 'heavyworks';
@@ -47,88 +48,88 @@ export interface PlantSpec {
 }
 export const PLANTS: Record<PlantKind, PlantSpec> = {
   // ---- tier 1: anyone can build them ----
-  sawmill: { name: 'Sawmill', blurb: 'saws timber into lumber, and logs into planks for building', batch: 30,
+  sawmill: { name: tl('Sawmill'), blurb: tl('saws timber into lumber, and logs into planks for building'), batch: 30,
     // (0.165: logs into planks appended, so lumber keeps recipe 0; 0.170: a log gives 6 planks here, like a settlement's sawmill, 4 by hand)
     recipes: [{ in: [['timber', 1]], out: ['lumber', 1] }, { in: [['log', 2]], out: ['planks', 12] }],
     needs: [['planks', 32], ['stone', 10], ['scrap', 6]], fee: 350, xp: 90 },
-  brickworks: { name: 'Brickworks', blurb: 'fires clay into bricks in a coal kiln', batch: 45,
+  brickworks: { name: tl('Brickworks'), blurb: tl('fires clay into bricks in a coal kiln'), batch: 45,
     recipes: [{ in: [['clay', 2], ['coal', 1]], out: ['bricks', 2] }],
     needs: [['stone', 30], ['planks', 22], ['scrap', 6]], fee: 400, xp: 100 },
-  cementworks: { name: 'Cement Works', blurb: 'burns limestone with coal in a rotary kiln and grinds it into cement', batch: 45,
+  cementworks: { name: tl('Cement Works'), blurb: tl('burns limestone with coal in a rotary kiln and grinds it into cement'), batch: 45,
     recipes: [{ in: [['limestone', 2], ['coal', 1]], out: ['cement', 2] }],
     needs: [['stone', 20], ['bricks', 10], ['scrap', 10], ['planks', 10]], fee: 500, xp: 120 },
-  smelter: { name: 'Smelter', blurb: 'melts ore with coal into iron, copper and lead, and remelts scrap into iron', batch: 60,
+  smelter: { name: tl('Smelter'), blurb: tl('melts ore with coal into iron, copper and lead, and remelts scrap into iron'), batch: 60,
     // (0.173: scrap remelted into iron appended: dirty mixed metal, so it takes more of it than ore)
     recipes: [{ in: [['ore', 2], ['coal', 1]], out: ['iron', 2] }, { in: [['copper', 2], ['coal', 1]], out: ['copperbar', 1] },
       { in: [['lead', 2], ['coal', 1]], out: ['leadbar', 1] }, { in: [['scrap', 12], ['coal', 1]], out: ['iron', 2] }],
     needs: [['stone', 20], ['bricks', 12], ['scrap', 12], ['planks', 32]], fee: 600, xp: 150 },
-  glassworks: { name: 'Glassworks', blurb: 'melts quartz sand with coal into glass', batch: 45,
+  glassworks: { name: tl('Glassworks'), blurb: tl('melts quartz sand with coal into glass'), batch: 45,
     // (0.145: optical components appended, so glass keeps recipe 0)
     recipes: [{ in: [['sand', 2], ['coal', 1]], out: ['glass', 1] }, { in: [['glass', 2], ['aluminium', 1]], out: ['optics', 1] }],
     needs: [['stone', 15], ['bricks', 10], ['scrap', 8], ['planks', 12]], fee: 450, xp: 120 },
-  wiremill: { name: 'Wire Mill', blurb: 'draws copper ingots into cable and iron bars into wire', batch: 45,
+  wiremill: { name: tl('Wire Mill'), blurb: tl('draws copper ingots into cable and iron bars into wire'), batch: 45,
     // (0.173: iron wire appended)
     recipes: [{ in: [['copperbar', 1]], out: ['cable', 2] }, { in: [['iron', 1]], out: ['wire', 12] }],
     needs: [['scrap', 16], ['wire', 8], ['planks', 12], ['engine', 1]], fee: 700, xp: 160 },
-  refinery: { name: 'Oil Refinery', blurb: 'cracks crude oil into fuel, or (wastefully) plastic resin', batch: 60,
+  refinery: { name: tl('Oil Refinery'), blurb: tl('cracks crude oil into fuel, or (wastefully) plastic resin'), batch: 60,
     recipes: [{ in: [['crude', 1]], out: ['fuel', 1] }, { in: [['crude', 2]], out: ['plastic', 1] }],
     needs: [['scrap', 30], ['wire', 12], ['circuit', 4], ['planks', 16]], fee: 900, xp: 200 },
-  textile: { name: 'Textile Mill', blurb: 'spins and weaves flax fibre, wool and cotton into cloth', batch: 60,
+  textile: { name: tl('Textile Mill'), blurb: tl('spins and weaves flax fibre, wool and cotton into cloth'), batch: 60,
     recipes: [{ in: [['fibre', 2]], out: ['cloth', 1] }, { in: [['wool', 3]], out: ['cloth', 2] }, { in: [['cotton', 2]], out: ['cloth', 1] }],
     needs: [['lumber', 14], ['planks', 6], ['nails', 20], ['scrap', 4]], fee: 400, xp: 100 },
   // ---- tier 2: they want the old plans ----
-  steelworks: { name: 'Steelworks', blurb: 'blows iron into steel with coal and limestone', batch: 60, tech: 'furnace',
+  steelworks: { name: tl('Steelworks'), blurb: tl('blows iron into steel with coal and limestone'), batch: 60, tech: 'furnace',
     recipes: [{ in: [['iron', 1], ['coal', 1], ['limestone', 1]], out: ['steel', 1] }],
     needs: [['bricks', 30], ['cement', 12], ['scrap', 24], ['engine', 1]], fee: 1200, xp: 280 },
-  chemworks: { name: 'Chemical Works', blurb: 'makes industrial chemicals from crude, salt and sulfur (rocket propellant is the Old Propellant Plant\'s now)', batch: 60, tech: 'chemistry',
+  chemworks: { name: tl('Chemical Works'), blurb: tl('makes industrial chemicals from crude, salt and sulfur (rocket propellant is the Old Propellant Plant\'s now)'), batch: 60, tech: 'chemistry',
     recipes: [{ in: [['crude', 1], ['salt', 1], ['sulfur', 1]], out: ['chems', 2] }],
     needs: [['scrap', 20], ['wire', 8], ['circuit', 4], ['cement', 8], ['planks', 12], ['pipes', 4], ['pump', 1]], fee: 1000, xp: 220 },
-  polymer: { name: 'Polymer Plant', blurb: 'cooks crude oil with chemicals into plastic resin, twice what a refinery gets', batch: 60, tech: 'chemistry',
+  polymer: { name: tl('Polymer Plant'), blurb: tl('cooks crude oil with chemicals into plastic resin, twice what a refinery gets'), batch: 60, tech: 'chemistry',
     recipes: [{ in: [['crude', 1], ['chems', 1]], out: ['plastic', 2] }],
     needs: [['scrap', 20], ['wire', 10], ['circuit', 4], ['cement', 8], ['lumber', 10], ['pipes', 4]], fee: 1100, xp: 240 },
-  alworks: { name: 'Aluminium Works', blurb: 'smelts bauxite into aluminium in electrolytic pots: it eats power', batch: 90, tech: 'aluminium',
+  alworks: { name: tl('Aluminium Works'), blurb: tl('smelts bauxite into aluminium in electrolytic pots: it eats power'), batch: 90, tech: 'aluminium',
     recipes: [{ in: [['bauxite', 2], ['coal', 1]], out: ['aluminium', 1] }],
     needs: [['bricks', 24], ['cement', 16], ['scrap', 20], ['cable', 6], ['circuit', 6]], fee: 1600, xp: 320 },
-  batteryworks: { name: 'Battery Works', blurb: 'casts lead plates and fills them with acid: basic batteries', batch: 75, tech: 'batteries',
+  batteryworks: { name: tl('Battery Works'), blurb: tl('casts lead plates and fills them with acid: basic batteries'), batch: 75, tech: 'batteries',
     recipes: [{ in: [['leadbar', 1], ['chems', 1]], out: ['batteries', 1] }],
     needs: [['scrap', 14], ['wire', 8], ['circuit', 6], ['lumber', 10], ['cement', 6]], fee: 1000, xp: 220 },
-  electronics: { name: 'Electronics Shop', blurb: 'etches circuit boards from cable, resin and glass', batch: 90, tech: 'circuits',
+  electronics: { name: tl('Electronics Shop'), blurb: tl('etches circuit boards from cable, resin and glass'), batch: 90, tech: 'circuits',
     // (0.145: control units appended)
     recipes: [{ in: [['cable', 1], ['plastic', 1], ['glass', 1]], out: ['boards', 1] }, { in: [['boards', 1], ['circuit', 1], ['cable', 1]], out: ['control', 1] }],
     needs: [['circuit', 8], ['wire', 10], ['scrap', 10], ['planks', 16]], fee: 1400, xp: 300 },
-  machineshop: { name: 'Machine Shop', blurb: 'machines steel into parts and tools, pipes and valves, gears and bearings, and assembles pumps', batch: 75, tech: 'forging',
+  machineshop: { name: tl('Machine Shop'), blurb: tl('machines steel into parts and tools, pipes and valves, gears and bearings, and assembles pumps'), batch: 75, tech: 'forging',
     // (0.143: pipes, gears and pumps appended, so the old recipes keep their numbers)
     recipes: [{ in: [['steel', 2]], out: ['parts', 1] }, { in: [['steel', 1], ['timber', 1]], out: ['tools', 3] },
       { in: [['steel', 1], ['copperbar', 1]], out: ['pipes', 2] }, { in: [['steel', 1]], out: ['gears', 1] }, { in: [['steel', 1], ['parts', 1], ['motor', 1]], out: ['pump', 1] }],
     needs: [['scrap', 20], ['engine', 1], ['lumber', 10], ['nails', 20]], fee: 1100, xp: 240 },
-  foundry: { name: 'Alloy Foundry', blurb: 'casts advanced alloy from steel, aluminium and nickel', batch: 120, tech: 'alloys',
+  foundry: { name: tl('Alloy Foundry'), blurb: tl('casts advanced alloy from steel, aluminium and nickel'), batch: 120, tech: 'alloys',
     recipes: [{ in: [['steel', 1], ['aluminium', 1], ['nickel', 1]], out: ['alloy', 1] }],
     needs: [['bricks', 20], ['cement', 10], ['scrap', 24], ['pcore', 1], ['lumber', 10]], fee: 1800, xp: 350 },
-  electrical: { name: 'Electrical Works', blurb: 'winds copper on steel into electric motors and generators', batch: 90, tech: 'electricity',
+  electrical: { name: tl('Electrical Works'), blurb: tl('winds copper on steel into electric motors and generators'), batch: 90, tech: 'electricity',
     recipes: [{ in: [['copperbar', 1], ['steel', 1], ['plastic', 1]], out: ['motor', 1] }, { in: [['copperbar', 2], ['steel', 1], ['parts', 1]], out: ['generator', 1] }],
     needs: [['bricks', 16], ['lumber', 10], ['scrap', 16], ['cable', 6], ['circuit', 2]], fee: 1300, xp: 280 },
   // (0.144) a plain works (no plans), and the works of the strategic metals
-  stoneworks: { name: 'Stoneworks', blurb: 'saws stone into dressed blocks and crushes the rest into aggregate', batch: 40,
+  stoneworks: { name: tl('Stoneworks'), blurb: tl('saws stone into dressed blocks and crushes the rest into aggregate'), batch: 40,
     recipes: [{ in: [['stone', 3]], out: ['cutstone', 2] }],
     needs: [['planks', 34], ['scrap', 6], ['nails', 10]], fee: 300, xp: 80 },
-  metallurgy: { name: 'Advanced Metallurgy', blurb: 'arc furnaces and vacuum retorts: alloy steels, titanium and the platinum metals', batch: 120, tech: 'metallurgy',
+  metallurgy: { name: tl('Advanced Metallurgy'), blurb: tl('arc furnaces and vacuum retorts: alloy steels, titanium and the platinum metals'), batch: 120, tech: 'metallurgy',
     recipes: [{ in: [['steel', 2], ['nickel', 1], ['chromite', 1]], out: ['advsteel', 2] }, { in: [['rutile', 2], ['chems', 1]], out: ['titanium', 1] }, { in: [['pgmore', 2], ['chems', 1]], out: ['pgm', 1] }],
     needs: [['bricks', 24], ['cement', 12], ['steel', 10], ['cable', 8], ['generator', 1], ['pump', 1]], fee: 2000, xp: 400 },
-  siliconworks: { name: 'Silicon Processing', blurb: 'melts glass down with chemicals in sealed furnaces into purified silicon: it eats power', batch: 120, tech: 'semiconductors',
+  siliconworks: { name: tl('Silicon Processing'), blurb: tl('melts glass down with chemicals in sealed furnaces into purified silicon: it eats power'), batch: 120, tech: 'semiconductors',
     recipes: [{ in: [['glass', 2], ['chems', 1]], out: ['silicon', 2] }],
     needs: [['bricks', 16], ['cement', 10], ['steel', 8], ['cable', 6], ['pipes', 6], ['pump', 1]], fee: 1800, xp: 360 },
-  advelec: { name: 'Advanced Electronics Works', blurb: 'builds high-power electronics, computer systems and power control modules in a clean hall', batch: 150, tech: 'computing',
+  advelec: { name: tl('Advanced Electronics Works'), blurb: tl('builds high-power electronics, computer systems and power control modules in a clean hall'), batch: 150, tech: 'computing',
     recipes: [{ in: [['copperbar', 2], ['silicon', 2], ['pipes', 1]], out: ['hpe', 1] }, { in: [['control', 1], ['microchip', 1], ['silicon', 2]], out: ['computer', 1] }, { in: [['hpe', 1], ['control', 1]], out: ['pcm', 1] }],
     needs: [['bricks', 12], ['cement', 8], ['steel', 6], ['cable', 10], ['boards', 4], ['motor', 2]], fee: 2200, xp: 420 },
   // (0.147) the space program
-  avionworks: { name: 'Avionics Works', blurb: 'assembles flight computers, sensor heads and control units into sealed avionics racks', batch: 240, tech: 'avionics',
+  avionworks: { name: tl('Avionics Works'), blurb: tl('assembles flight computers, sensor heads and control units into sealed avionics racks'), batch: 240, tech: 'avionics',
     recipes: [{ in: [['computer', 1], ['sensor', 2], ['control', 1]], out: ['avionics', 1] }],
     needs: [['bricks', 12], ['cement', 8], ['steel', 8], ['cable', 10], ['computer', 1], ['optics', 2]], fee: 2600, xp: 480 },
-  lifeworks: { name: 'Life Support Works', blurb: 'builds air scrubbers and water recyclers on a pump loop in titanium housings', batch: 180, tech: 'lifesupport',
+  lifeworks: { name: tl('Life Support Works'), blurb: tl('builds air scrubbers and water recyclers on a pump loop in titanium housings'), batch: 180, tech: 'lifesupport',
     recipes: [{ in: [['pump', 1], ['pipes', 2], ['chems', 2], ['titanium', 1]], out: ['lifesup', 1] }],
     needs: [['bricks', 14], ['cement', 10], ['steel', 8], ['pipes', 6], ['pump', 1], ['control', 1]], fee: 2000, xp: 400 },
   // (0.174, the metal ladder's top step) heavy machinery: drill rigs for the deep rare deposits, engine blocks for vehicles
-  heavyworks: { name: 'Heavy Engineering Works', blurb: 'builds drill rigs and engine blocks under a travelling gantry crane', batch: 240, tech: 'heavymach',
+  heavyworks: { name: tl('Heavy Engineering Works'), blurb: tl('builds drill rigs and engine blocks under a travelling gantry crane'), batch: 240, tech: 'heavymach',
     recipes: [{ in: [['steel', 4], ['gears', 2], ['motor', 1], ['pipes', 2]], out: ['drillrig', 1] }, { in: [['steel', 1], ['gears', 1]], out: ['engine', 6] }],
     needs: [['bricks', 20], ['cement', 12], ['steel', 12], ['cable', 8], ['motor', 2], ['gears', 4]], fee: 1800, xp: 380 },
 };
@@ -200,19 +201,19 @@ export function plantPlan(s: PlantTown | undefined) {
 }
 /** Why works k cannot be started here, or ''. */
 export function plantProblem(s: PlantTown | undefined, k: PlantKind | StationKind, known?: Record<string, number>): string {
-  if (s?.settlement?.v === 1 && !s.settlement.done?.power) return 'Build the village power plant through the elder first.';
-  if (s?.pbuild) return 'Something is being built here already: finish it first.';
+  if (s?.settlement?.v === 1 && !s.settlement.done?.power) return tl('Build the village power plant through the elder first.');
+  if (s?.pbuild) return tl('Something is being built here already: finish it first.');
   if (isStation(k)) {
     const tech = STATIONS[k].tech;
-    if (known && tech && known[tech] === undefined) return `Nobody here knows how to build a ${STATIONS[k].name}: it wants the old plans for ${TECH_BY_ID[tech].name}.`;
-    if ((s?.stations?.length ?? 0) >= STATION_SLOTS) return `There is room for ${STATION_SLOTS} power stations here, and both are built.`;
-    if (s?.stations?.some((p) => p.k === k)) return 'The village has one of those already.';
+    if (known && tech && known[tech] === undefined) return TL`Nobody here knows how to build a ${STATIONS[k].name}: it wants the old plans for ${TECH_BY_ID[tech].name}.`;
+    if ((s?.stations?.length ?? 0) >= STATION_SLOTS) return TL`There is room for ${STATION_SLOTS} power stations here, and both are built.`;
+    if (s?.stations?.some((p) => p.k === k)) return tl('The village has one of those already.');
     return '';
   }
   const tech = PLANTS[k].tech;
-  if (known && tech && known[tech] === undefined) return `Nobody here knows how to build a ${PLANTS[k].name}: it wants the old plans for ${TECH_BY_ID[tech].name}.`;
-  if ((s?.plants?.length ?? 0) >= PLANT_SLOTS) return `There is room for ${PLANT_SLOTS} works here, and both are built.`;
-  if (s?.plants?.some((p) => p.k === k)) return 'The village has one of those already.';
+  if (known && tech && known[tech] === undefined) return TL`Nobody here knows how to build a ${PLANTS[k].name}: it wants the old plans for ${TECH_BY_ID[tech].name}.`;
+  if ((s?.plants?.length ?? 0) >= PLANT_SLOTS) return TL`There is room for ${PLANT_SLOTS} works here, and both are built.`;
+  if (s?.plants?.some((p) => p.k === k)) return tl('The village has one of those already.');
   return '';
 }
 /** Works or power station: the spec (name, needs, fee, xp) of either. */

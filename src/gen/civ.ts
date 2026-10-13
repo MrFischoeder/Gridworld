@@ -12,6 +12,7 @@
 //   ruins and wrecks, which only players fetch: villages carry the everyday economy, players unlock the peaks.
 import { hash } from '../core/rng';
 import { newLife, stepLife, lifeInfo, type LifeState, type LifePlace, type LifeMarket } from './growth';
+import { tl } from '../i18n';
 
 export type Mat =
   | 'timber' | 'ore' | 'copper' | 'coal' | 'crude' | 'sand' | 'salt' | 'bauxite' | 'sulfur' | 'lithium' | 'rareearth' | 'uranium'
@@ -20,16 +21,16 @@ export type Mat =
   | 'relic';
 export type MatKind = 'raw' | 'rare' | 'made' | 'proc' | 'exotic';
 export const MAT: Record<Mat, { base: number; kind: MatKind; name: string }> = {
-  timber: { base: 24, kind: 'raw', name: 'Timber' }, ore: { base: 36, kind: 'raw', name: 'Iron Ore' }, copper: { base: 48, kind: 'raw', name: 'Copper Ore' },
-  coal: { base: 22, kind: 'raw', name: 'Coal' }, crude: { base: 40, kind: 'raw', name: 'Crude Oil' }, sand: { base: 18, kind: 'raw', name: 'Sand' }, salt: { base: 30, kind: 'raw', name: 'Salt' },
-  bauxite: { base: 45, kind: 'rare', name: 'Bauxite' }, sulfur: { base: 40, kind: 'rare', name: 'Sulfur' }, lithium: { base: 90, kind: 'rare', name: 'Lithium' },
-  rareearth: { base: 120, kind: 'rare', name: 'Rare Earths' }, uranium: { base: 200, kind: 'rare', name: 'Uranium' },
-  tools: { base: 68, kind: 'made', name: 'Tools' }, cloth: { base: 44, kind: 'made', name: 'Cloth' }, meds: { base: 85, kind: 'made', name: 'Medicine' }, fuel: { base: 72, kind: 'made', name: 'Fuel' },
-  steel: { base: 140, kind: 'proc', name: 'Steel' }, copperbar: { base: 175, kind: 'proc', name: 'Copper Bars' }, plastic: { base: 120, kind: 'proc', name: 'Plastic' },
-  glass: { base: 90, kind: 'proc', name: 'Glass' }, cable: { base: 120, kind: 'proc', name: 'Cable' }, boards: { base: 480, kind: 'proc', name: 'Circuit Boards' },
-  parts: { base: 400, kind: 'proc', name: 'Machine Parts' }, alloy: { base: 680, kind: 'proc', name: 'Hull Alloy' }, propellant: { base: 170, kind: 'proc', name: 'Propellant' },
-  aluminium: { base: 260, kind: 'proc', name: 'Aluminium' }, batteries: { base: 520, kind: 'proc', name: 'Batteries' },
-  relic: { base: 900, kind: 'exotic', name: 'Relic of the Ancients' },
+  timber: { base: 24, kind: 'raw', name: tl('Timber') }, ore: { base: 36, kind: 'raw', name: tl('Iron Ore') }, copper: { base: 48, kind: 'raw', name: tl('Copper Ore') },
+  coal: { base: 22, kind: 'raw', name: tl('Coal') }, crude: { base: 40, kind: 'raw', name: tl('Crude Oil') }, sand: { base: 18, kind: 'raw', name: tl('Sand') }, salt: { base: 30, kind: 'raw', name: tl('Salt') },
+  bauxite: { base: 45, kind: 'rare', name: tl('Bauxite') }, sulfur: { base: 40, kind: 'rare', name: tl('Sulfur') }, lithium: { base: 90, kind: 'rare', name: tl('Lithium') },
+  rareearth: { base: 120, kind: 'rare', name: tl('Rare Earths') }, uranium: { base: 200, kind: 'rare', name: tl('Uranium') },
+  tools: { base: 68, kind: 'made', name: tl('Tools') }, cloth: { base: 44, kind: 'made', name: tl('Cloth') }, meds: { base: 85, kind: 'made', name: tl('Medicine') }, fuel: { base: 72, kind: 'made', name: tl('Fuel') },
+  steel: { base: 140, kind: 'proc', name: tl('Steel') }, copperbar: { base: 175, kind: 'proc', name: tl('Copper Bars') }, plastic: { base: 120, kind: 'proc', name: tl('Plastic') },
+  glass: { base: 90, kind: 'proc', name: tl('Glass') }, cable: { base: 120, kind: 'proc', name: tl('Cable') }, boards: { base: 480, kind: 'proc', name: tl('Circuit Boards') },
+  parts: { base: 400, kind: 'proc', name: tl('Machine Parts') }, alloy: { base: 680, kind: 'proc', name: tl('Hull Alloy') }, propellant: { base: 170, kind: 'proc', name: tl('Propellant') },
+  aluminium: { base: 260, kind: 'proc', name: tl('Aluminium') }, batteries: { base: 520, kind: 'proc', name: tl('Batteries') },
+  relic: { base: 900, kind: 'exotic', name: tl('Relic of the Ancients') },
 };
 export const MATS = Object.keys(MAT) as Mat[];
 type Bag = Partial<Record<Mat, number>>;
@@ -46,12 +47,12 @@ export const RECIPES: { out: Mat; n: number; in: Bag }[] = [
 ];
 /** Development tiers: the housing a village may reach, what it takes to rise to the next, what it consumes per 100 people a day. */
 export const TIERS: { name: string; cap: number; rise: Bag; use: Bag; plants: number }[] = [
-  { name: 'Settlement', cap: 160, rise: { steel: 8, glass: 8, tools: 8, timber: 20 }, use: { timber: 1, tools: 0.2, cloth: 0.4 }, plants: 2 },
-  { name: 'Town', cap: 380, rise: { steel: 20, parts: 8, cable: 16, glass: 16, aluminium: 10, boards: 4 },
+  { name: tl('Settlement'), cap: 160, rise: { steel: 8, glass: 8, tools: 8, timber: 20 }, use: { timber: 1, tools: 0.2, cloth: 0.4 }, plants: 2 },
+  { name: tl('Town'), cap: 380, rise: { steel: 20, parts: 8, cable: 16, glass: 16, aluminium: 10, boards: 4 },
     use: { timber: 1, tools: 0.25, cloth: 0.5, glass: 0.3, fuel: 0.6, meds: 0.2, parts: 0.08 }, plants: 3 },
-  { name: 'City', cap: 800, rise: { alloy: 10, batteries: 8, boards: 12, aluminium: 20, uranium: 6, relic: 3 },
+  { name: tl('City'), cap: 800, rise: { alloy: 10, batteries: 8, boards: 12, aluminium: 20, uranium: 6, relic: 3 },
     use: { timber: 1, tools: 0.25, cloth: 0.6, glass: 0.4, fuel: 0.8, meds: 0.3, parts: 0.15, boards: 0.1, plastic: 0.3, cable: 0.3, batteries: 0.08, aluminium: 0.15 }, plants: 4 },
-  { name: 'Metropolis', cap: 1600, rise: {},
+  { name: tl('Metropolis'), cap: 1600, rise: {},
     use: { timber: 1, tools: 0.3, cloth: 0.7, glass: 0.5, fuel: 1, meds: 0.4, parts: 0.25, boards: 0.2, plastic: 0.4, cable: 0.4, batteries: 0.15, aluminium: 0.25, alloy: 0.08, uranium: 0.06 }, plants: 5 },
 ];
 /** Batches a works runs a day, what it costs to build and keep, parts it wears out. */
@@ -59,9 +60,9 @@ export const WORKS = { batches: 5, cost: 260, upkeep: 3, wear: { parts: 0.05, ca
 /** Units a village's extraction (its life works) digs per works per day with every job filled. */
 export const DIG = 7;
 
-export const PROJECT_NAMES = ['Sunward Beacon', 'Deep Engine', 'Glass Spire', 'Star Well', 'Iron Choir', 'Warden Pylon', 'Sky Loom', 'Old Reactor',
-  'Signal Tower', 'Stone Heart', 'Rain Mill', 'Night Lantern', 'Gate of Ash', 'Echo Dish', 'Cold Forge', 'High Aerial', 'Sand Clock', 'Storm Mast',
-  'Root Engine', 'Last Lighthouse'];
+export const PROJECT_NAMES = [tl('Sunward Beacon'), tl('Deep Engine'), tl('Glass Spire'), tl('Star Well'), tl('Iron Choir'), tl('Warden Pylon'), tl('Sky Loom'), tl('Old Reactor'),
+  tl('Signal Tower'), tl('Stone Heart'), tl('Rain Mill'), tl('Night Lantern'), tl('Gate of Ash'), tl('Echo Dish'), tl('Cold Forge'), tl('High Aerial'), tl('Sand Clock'), tl('Storm Mast'),
+  tl('Root Engine'), tl('Last Lighthouse')];
 export interface Project {
   name: string; anchor: number; danger: number;
   /** Village indices whose region it is (each village belongs to its nearest project). */
@@ -147,7 +148,7 @@ export function newCiv(seeds: CivSeed[], players = 0, nProjects = 20): CivWorld 
     projects.forEach((p, k) => { const d = dist(v, villages[p.anchor]); if (d < bd) { bd = d; bk = k; } });
     v.project = bk; projects[bk].members.push(i);
   });
-  const chariot: Project = { name: 'Chariot of the Ancients', anchor: Math.max(0, home), danger: 0, members: [], stages: CHARIOT_STAGES, stage: 0, given: {}, doneAt: [], playersOnly: true };
+  const chariot: Project = { name: tl('Chariot of the Ancients'), anchor: Math.max(0, home), danger: 0, members: [], stages: CHARIOT_STAGES, stage: 0, given: {}, doneAt: [], playersOnly: true };
   const stock = zeroMats(), price = zeroMats();
   for (const m of MATS) { stock[m] = MAT[m].kind === 'exotic' ? 0 : MAT[m].kind === 'proc' ? 10 : 30; price[m] = MAT[m].base; }
   return { day: 0, villages, projects, chariot, pool: { stock, price }, made: zeroMats(), used: {}, invested: 0, players: { n: players, purse: 0, relics: 0, delivered: 0 } };

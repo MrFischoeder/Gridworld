@@ -5,6 +5,7 @@
 // for older saves). A house's chest is the hero's own container ('home:chest' for Gridholm's first house, as before,
 // 'home:<village id>:<index>' for the others), never shared.
 import { GRIDHOLM_ID } from './regions';
+import { tl, TL } from '../i18n';
 
 /** Houses for sale in every village (the generator lays out at least this many). */
 export const HOMES_MIN = 6;
@@ -19,9 +20,9 @@ export const chestKey = (vid: number, i: number) => (vid === GRIDHOLM_ID && i ==
 export const ownerOf = (homes: Record<string, HomeOwner> | undefined, i: number) => homes?.[i];
 /** Why the hero cannot buy house `i` here ('' = they can). */
 export function buyProblem(c: HomeHolder & { gold: number }, vid: number, homes: Record<string, HomeOwner> | undefined, i: number, price: number): string {
-  if (myHome(c, vid) >= 0) return 'You already have a house here.';
+  if (myHome(c, vid) >= 0) return tl('You already have a house here.');
   const o = homes?.[i];
-  if (o) return o.p === c.pid ? '' : `That house is ${o.n}'s.`;
-  if (c.gold < price) return 'That is not enough gold, I am afraid.';
+  if (o) return o.p === c.pid ? '' : TL`That house is ${o.n}'s.`;
+  if (c.gold < price) return tl('That is not enough gold, I am afraid.');
   return '';
 }

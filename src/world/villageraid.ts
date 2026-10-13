@@ -32,6 +32,7 @@ import { siteCentre } from './industry';
 import { fmtTime } from '../core/time';
 import { worldDist, nearX, findPoi, villageSeed, GRIDHOLM_ID } from '../gen/regions';
 import type { VillageMap } from '../gen/village';
+import { tl, TL } from '../i18n';
 
 /** Waves per raid, the defences' drain per bandit at a gate (per second, by wall tier), damage to the plant. */
 export const VRAID = { waves: 3, drain: [0.7, 0.42, 0.25], plant: 0.25, plantMax: 45, reach: 450, near: 9 };
@@ -68,8 +69,8 @@ function spawnWave(L: LiveRaid) {
     L.bandits.push(b);
   }
   L.wave++; L.nextT = 70;
-  showToast(L.wave === 1 ? `Raid on ${L.name}!` : `Wave ${L.wave} of ${VRAID.waves}`);
-  logLine(L.wave === 1 ? `Bandits from ${L.r.camp.name} fall on ${L.name}. Hold the gates and guard the power plant.` : 'More bandits are coming!');
+  showToast(L.wave === 1 ? TL`Raid on ${L.name}!` : TL`Wave ${L.wave} of ${VRAID.waves}`);
+  logLine(L.wave === 1 ? TL`Bandits from ${L.r.camp.name} fall on ${L.name}. Hold the gates and guard the power plant.` : tl('More bandits are coming!'));
 }
 function finish(L: LiveRaid, won: boolean) {
   const c = G.char, st = (c.towns[L.vid] ??= {});
@@ -78,13 +79,13 @@ function finish(L: LiveRaid, won: boolean) {
   if (won) {
     const gold = 60 + Math.round(L.r.strength * 25);
     c.gold += gold; if (L.r.k > 0) earnTrust(L.vid, 'raid'); calcStats(); gainXp(40 + L.r.strength * 10);
-    showToast('Raid repelled'); logLine(`${L.name} holds! The villagers pay you ${gold} gold.`);
+    showToast(tl('Raid repelled')); logLine(TL`${L.name} holds! The villagers pay you ${gold} gold.`);
   } else {
     if (L.r.k > 0) lose(L.vid, 0, PEOPLE.overrun);
-    showToast(`${L.name} is overrun`); logLine(`The bandits break through at ${L.name}, loot what they can and wreck the power plant.`);
+    showToast(TL`${L.name} is overrun`); logLine(TL`The bandits break through at ${L.name}, loot what they can and wreck the power plant.`);
     if ((st.wall ?? 0) > 0 && L.r.k > 0) { // they pull down what they can of the wall
       st.wall = (st.wall ?? 0) - 1; st.given = {};
-      logLine(`They tear down part of the wall on their way out: ${L.name} is back behind a weaker one. The elder will want it raised again.`);
+      logLine(TL`They tear down part of the wall on their way out: ${L.name} is back behind a weaker one. The elder will want it raised again.`);
       saveChar(); live = null; reloadStruct(L.vid); return;
     }
   }
@@ -99,7 +100,7 @@ export function updateVillageRaids(dt: number) {
     liveTick(0.5);
     if (live && worldDist(G.pos.x, G.pos.z, live.vm.ox + 36, live.vm.oz + 36) > VRAID.reach + 250) { // you left: settled without you
       for (const b of live.bandits) if (b.g.parent) removeBandit(b);
-      logLine(`You leave ${live.name} to its fate.`); live = null;
+      logLine(TL`You leave ${live.name} to its fate.`); live = null;
     }
     return;
   }
@@ -110,8 +111,8 @@ export function updateVillageRaids(dt: number) {
       const key = v.id + ':' + r.k;
       if (now < r.t0) {
         if (!warned.has(key)) {
-          warned.add(key); showToast('Bandits are coming!');
-          logLine(`A rider from ${r.camp.name} at ${v.vm.name}'s gate: "Pay us ${demandOf(v.id, v.vm.seed, r)} gold by ${fmtTime(r.t0)}, or we burn you out." Pay at the elder or the captain of the guard, or get ready to fight.`);
+          warned.add(key); showToast(tl('Bandits are coming!'));
+          logLine(TL`A rider from ${r.camp.name} at ${v.vm.name}'s gate: "Pay us ${demandOf(v.id, v.vm.seed, r)} gold by ${fmtTime(r.t0)}, or we burn you out." Pay at the elder or the captain of the guard, or get ready to fight.`);
         }
         continue;
       }
@@ -146,13 +147,13 @@ function liveTick(dt: number) {
 }
 /** Console / testing: bandits from the nearest camp fall on the village you are at, now. */
 export function forceRaid(): string {
-  if (live) return 'A raid is already on.';
+  if (live) return tl('A raid is already on.');
   const v = loadedVillages().filter((q) => worldDist(G.pos.x, G.pos.z, q.poi.x, q.poi.z) < VRAID.reach).sort((a, b) => worldDist(G.pos.x, G.pos.z, a.poi.x, a.poi.z) - worldDist(G.pos.x, G.pos.z, b.poi.x, b.poi.z))[0];
-  if (!v || !OW.terrain) return 'Stand in or by a village.';
-  const camp = raidSource(G.char.world, v.poi) ?? { ...v.poi, name: 'the hills', x: v.poi.x + 1500, z: v.poi.z };
+  if (!v || !OW.terrain) return tl('Stand in or by a village.');
+  const camp = raidSource(G.char.world, v.poi) ?? { ...v.poi, name: tl('the hills'), x: v.poi.x + 1500, z: v.poi.z };
   live = { shootT: 2, killT: 25, plantHurt: 0, r: { village: v.id, k: 0, t0: G.char.time, camp, strength: 2 }, vid: v.id, vm: v.vm, name: v.vm.name, wave: 0, nextT: 0, bandits: [], defence: 100, targets: targetsOf(v.vm, v.id) };
   spawnWave(live);
-  return `Raid on ${v.vm.name}!`;
+  return TL`Raid on ${v.vm.name}!`;
 }
 // ---------- the bandits' terms ----------
 const demandOf = (vid: number, seed: number, r: Raid) => tribute(r, storeWealth(vid, seed), G.char.towns[vid]?.wall ?? 0);
@@ -166,11 +167,11 @@ export function pendingTribute(vid: number): { r: Raid; amount: number; camp: st
 /** Pay the bandits off: they will not come this time. */
 export function payTribute(vid: number): string {
   const p = pendingTribute(vid), c = G.char;
-  if (!p) return 'There is nobody to pay.';
-  if (c.gold < p.amount) return `You do not have ${p.amount} gold.`;
+  if (!p) return tl('There is nobody to pay.');
+  if (c.gold < p.amount) return TL`You do not have ${p.amount} gold.`;
   c.gold -= p.amount; ((c.towns[vid] ??= {}).raids ??= {})[p.r.k] = 'paid'; calcStats(); saveChar();
-  showToast('Tribute paid'); logLine(`The rider counts the gold and rides back to ${p.camp}. They will leave the village be, this time.`);
-  return `You pay the ${p.amount} gold. The rider rides off to ${p.camp}.`;
+  showToast(tl('Tribute paid')); logLine(TL`The rider counts the gold and rides back to ${p.camp}. They will leave the village be, this time.`);
+  return TL`You pay the ${p.amount} gold. The rider rides off to ${p.camp}.`;
 }
 /** Their gunners shoot at the wall and at villagers in the open; now and then one falls. */
 function shelling(L: LiveRaid, alive: Bandit[], dt: number) {
@@ -200,7 +201,7 @@ function killVillager(n: Npc, vid: number) {
   const i = W.npcs.indexOf(n); if (i >= 0) W.npcs.splice(i, 1);
   ((G.char.towns[vid] ??= {}).dead ??= []).push(G.char.time); lose(vid, 1, 0); saveChar();
   falling.push({ n, t: 0, dir: Math.random() < 0.5 ? 1 : -1 });
-  logLine(`${n.name} is shot down by the bandits!`);
+  logLine(TL`${n.name} is shot down by the bandits!`);
 }
 /** Villagers shot in a raid fall and lie still (every frame). */
 export function updateFallen(dt: number) {
@@ -225,12 +226,12 @@ export function raidLine(): string {
     for (const v of loadedVillages()) {
       if (worldDist(G.pos.x, G.pos.z, v.poi.x, v.poi.z) > VRAID.reach) continue;
       const p = pendingTribute(v.id);
-      if (p) return `▸ ${p.camp} demands ${p.amount} gold from ${v.vm.name} by ${fmtTime(p.r.t0)} · pay at the elder or the guard, or fight`;
+      if (p) return TL`▸ ${p.camp} demands ${p.amount} gold from ${v.vm.name} by ${fmtTime(p.r.t0)} · pay at the elder or the guard, or fight`;
     }
     return '';
   }
   const alive = live.bandits.filter((b) => b.hp > 0 && b.g.parent).length;
-  return `▸ Defend ${live.name}: wave ${live.wave}/${VRAID.waves}, ${alive} bandit${alive === 1 ? '' : 's'} left · defences ${Math.max(0, Math.round(live.defence))}%`;
+  return TL`▸ Defend ${live.name}: wave ${live.wave}/${VRAID.waves}, ${alive} bandit${alive === 1 ? '' : 's'} left · defences ${Math.max(0, Math.round(live.defence))}%`;
 }
 /** Where the raiders are (for the maps). */
 export const raidTargets = () => (live ? live.targets : []);

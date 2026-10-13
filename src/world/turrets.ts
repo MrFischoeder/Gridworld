@@ -16,6 +16,7 @@ import { BUILD, TURRET } from '../data/building';
 import { shapeOf, lvOf, floorH, type Part } from '../gen/base';
 import { nearX, wrapDx } from '../gen/regions';
 import type { Char } from '../save';
+import { tl } from '../i18n';
 
 type Claim = Char['claims'][number];
 interface Turret { c: Claim; p: Part; g: THREE.Group; head: THREE.Group; yaw: number; cd: number; look: number; target: Foe | null; muzzle: THREE.Vector3 }
@@ -118,5 +119,5 @@ export function toggleTurret(d: { c: Claim; p: Part }) {
   d.p.off = !d.p.off; saveChar();
   const t = live.get(d.p); if (t) drop(t);
   syncTurrets();
-  logLine(d.p.off ? 'Turret switched off.' : 'Turret on: it will fire at anything hostile it sees.');
+  logLine(d.p.off ? tl('Turret switched off.') : tl('Turret on: it will fire at anything hostile it sees.'));
 }

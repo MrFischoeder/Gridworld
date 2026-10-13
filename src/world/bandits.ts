@@ -22,6 +22,7 @@ import { driving, vehicles, damageVehicle, rayVehicle, seatPoint } from './vehic
 import type { SpawnEnv } from './creatures';
 import { mayspawn, BANDIT_COST } from './threat';
 import type { BanditRole, CampMap } from '../gen/camps';
+import { tl } from '../i18n';
 
 export const BANDIT = 0xffb347, BOSS_COLOR = 0xff6a4a;
 /** How long a cleared camp stays empty (real time). */
@@ -61,7 +62,7 @@ export function spawnBandit(role: BanditRole, at: THREE.Vector3, level: number, 
   g.add(fig.g); fig.g.position.y = -0.9;
   if (role === 'leader') {
     fig.g.scale.setScalar(1.15);
-    const tag = textSprite('Bandit Boss', '#ff6a4a', 2.2); tag.position.y = 1.55; g.add(tag);
+    const tag = textSprite(tl('Bandit Boss'), '#ff6a4a', 2.2); tag.position.y = 1.55; g.add(tag);
   }
   scene.add(g);
   const hp = Math.round((role === 'leader' ? 16 : role === 'bruiser' ? 6 : 4) * (1 + level * 0.35));
@@ -398,7 +399,7 @@ export function hurtBandit(b: Bandit, dmg: number, credit = true) {
   if (credit) onKill('bandit');
   if (camp !== undefined && !campAlive(camp)) {
     G.char.camps[camp] = Date.now(); saveChar();
-    showToast('Camp cleared'); onCampCleared(camp);
+    showToast(tl('Camp cleared')); onCampCleared(camp);
   }
 }
 export function removeBandit(b: Bandit) {

@@ -8,56 +8,57 @@ import { hash } from '../core/rng';
 import { poisNear, regionOf, worldDist, wrapDx, type Poi } from './regions';
 import { regionCaves } from './caves';
 import type { Terrain } from './terrain';
+import { tl, TL, DIR8 } from '../i18n';
 
 export type Carrier = 'floppy' | 'disk' | 'crystal';
-export const CARRIER_NAME: Record<Carrier, string> = { floppy: 'Floppy Disk', disk: 'Data Disk', crystal: 'Memory Crystal' };
+export const CARRIER_NAME: Record<Carrier, string> = { floppy: tl('Floppy Disk'), disk: tl('Data Disk'), crystal: tl('Memory Crystal') };
 export type TechArea = 'farming' | 'building' | 'power' | 'metal' | 'electronics' | 'transport' | 'navigation' | 'chemistry' | 'nuclear';
 export interface Tech { id: string; name: string; area: TechArea; tier: 1 | 2 | 3 | 4; blurb: string }
 
 export const TECHS: Tech[] = [
-  { id: 'fields', name: 'Irrigated Fields', area: 'farming', tier: 1, blurb: 'Channels, sluices and crop rotation: more food from the same land.' },
-  { id: 'framing', name: 'Timber Framing', area: 'building', tier: 1, blurb: 'Joined frames of sawn timber: bigger barns, granaries and workshops.' },
-  { id: 'rotor', name: 'Improved Wind Rotor', area: 'power', tier: 1, blurb: 'A better blade shape and a geared hub: more power from a village wind wheel.' },
-  { id: 'forging', name: 'Forged Tools', area: 'metal', tier: 1, blurb: 'Hardening and tempering steel: tools that last.' },
-  { id: 'plough', name: 'Steel Ploughs', area: 'farming', tier: 2, blurb: 'Steel-shod ploughs and harrows: farms worked with metal yield far more.' },
-  { id: 'solar', name: 'Solar Cells', area: 'power', tier: 2, blurb: 'Glass and silicon panels that turn daylight into current.' },
-  { id: 'furnace', name: 'Blast Furnace', area: 'metal', tier: 2, blurb: 'Ore, coke and hot air: iron in quantity, then steel.' },
-  { id: 'circuits', name: 'Basic Circuits', area: 'electronics', tier: 2, blurb: 'Printed boards and simple components, soldered by hand.' },
-  { id: 'wagons', name: 'Wagon Axles', area: 'transport', tier: 2, blurb: 'Iron axles and sprung wagons for draught animals: regular haulage between villages.' },
-  { id: 'chips', name: 'Integrated Circuits', area: 'electronics', tier: 3, blurb: 'Etching whole circuits into crystal wafers. The heart of a chip foundry.' },
-  { id: 'radio', name: 'Radio Triangulation', area: 'navigation', tier: 3, blurb: 'Beacons, dishes and timing: finding one\'s place anywhere on the planet.' },
-  { id: 'engines', name: 'Combustion Engines', area: 'transport', tier: 3, blurb: 'Fuel, pistons and gears: motor lorries on the roads.' },
-  { id: 'chemistry', name: 'Industrial Chemistry', area: 'chemistry', tier: 3, blurb: 'Reactors, columns and catalysts: making what the land does not give.' },
-  { id: 'enrichment', name: 'Uranium Enrichment', area: 'nuclear', tier: 4, blurb: 'Separating the fuel of the old reactors from raw ore.' },
-  { id: 'propellant', name: 'Rocket Propellant Synthesis', area: 'chemistry', tier: 4, blurb: 'The full chain from feedstock to fuel that can lift a ship off the planet.' },
-  { id: 'rail', name: 'Rail Lines', area: 'transport', tier: 4, blurb: 'Tracks, points and locomotives: freight running on its own across the land.' },
+  { id: 'fields', name: tl('Irrigated Fields'), area: 'farming', tier: 1, blurb: tl('Channels, sluices and crop rotation: more food from the same land.') },
+  { id: 'framing', name: tl('Timber Framing'), area: 'building', tier: 1, blurb: tl('Joined frames of sawn timber: bigger barns, granaries and workshops.') },
+  { id: 'rotor', name: tl('Improved Wind Rotor'), area: 'power', tier: 1, blurb: tl('A better blade shape and a geared hub: more power from a village wind wheel.') },
+  { id: 'forging', name: tl('Forged Tools'), area: 'metal', tier: 1, blurb: tl('Hardening and tempering steel: tools that last.') },
+  { id: 'plough', name: tl('Steel Ploughs'), area: 'farming', tier: 2, blurb: tl('Steel-shod ploughs and harrows: farms worked with metal yield far more.') },
+  { id: 'solar', name: tl('Solar Cells'), area: 'power', tier: 2, blurb: tl('Glass and silicon panels that turn daylight into current.') },
+  { id: 'furnace', name: tl('Blast Furnace'), area: 'metal', tier: 2, blurb: tl('Ore, coke and hot air: iron in quantity, then steel.') },
+  { id: 'circuits', name: tl('Basic Circuits'), area: 'electronics', tier: 2, blurb: tl('Printed boards and simple components, soldered by hand.') },
+  { id: 'wagons', name: tl('Wagon Axles'), area: 'transport', tier: 2, blurb: tl('Iron axles and sprung wagons for draught animals: regular haulage between villages.') },
+  { id: 'chips', name: tl('Integrated Circuits'), area: 'electronics', tier: 3, blurb: tl('Etching whole circuits into crystal wafers. The heart of a chip foundry.') },
+  { id: 'radio', name: tl('Radio Triangulation'), area: 'navigation', tier: 3, blurb: tl('Beacons, dishes and timing: finding one\'s place anywhere on the planet.') },
+  { id: 'engines', name: tl('Combustion Engines'), area: 'transport', tier: 3, blurb: tl('Fuel, pistons and gears: motor lorries on the roads.') },
+  { id: 'chemistry', name: tl('Industrial Chemistry'), area: 'chemistry', tier: 3, blurb: tl('Reactors, columns and catalysts: making what the land does not give.') },
+  { id: 'enrichment', name: tl('Uranium Enrichment'), area: 'nuclear', tier: 4, blurb: tl('Separating the fuel of the old reactors from raw ore.') },
+  { id: 'propellant', name: tl('Rocket Propellant Synthesis'), area: 'chemistry', tier: 4, blurb: tl('The full chain from feedstock to fuel that can lift a ship off the planet.') },
+  { id: 'rail', name: tl('Rail Lines'), area: 'transport', tier: 4, blurb: tl('Tracks, points and locomotives: freight running on its own across the land.') },
   // (new technologies go last: each one's site is hashed from its place in this list)
-  { id: 'filters', name: 'Filter Masks', area: 'chemistry', tier: 2, blurb: 'Rubber face masks and charcoal filter canisters: breathing in the poisoned fog of the old world.' },
-  { id: 'aluminium', name: 'Aluminium Processing', area: 'metal', tier: 2, blurb: 'Dissolving bauxite and smelting it with a great deal of current: the light metal of the old world.' },
-  { id: 'batteries', name: 'Battery Chemistry', area: 'chemistry', tier: 2, blurb: 'Lead plates in acid, sealed in cells: current you can carry.' },
-  { id: 'alloys', name: 'Alloy Metallurgy', area: 'metal', tier: 3, blurb: 'Steel, aluminium and nickel melted together in exact measure: plates that hold against heat and strain.' },
-  { id: 'powercells', name: 'Power Cell Chemistry', area: 'chemistry', tier: 3, blurb: 'Lithium, nickel and an electrolyte nobody remembers: cells that hold a day\'s power in a crate.' },
-  { id: 'sensors', name: 'Advanced Sensors', area: 'electronics', tier: 3, blurb: 'Crystals grown in a furnace and ground into lenses: eyes that see heat, distance and the shape of metal.' },
-  { id: 'ancmetal', name: 'Ancient Metallurgy', area: 'metal', tier: 4, blurb: 'The alloy the Ancients built their ships of: lighter than steel, harder than anything since.' },
-  { id: 'precision', name: 'Precision Manufacturing', area: 'metal', tier: 4, blurb: 'The master machines that cut to a hair and made every other machine: bearings, gears and spindles that never wear.' },
-  { id: 'automation', name: 'Automation', area: 'electronics', tier: 4, blurb: 'How the Ancients taught arms of steel to work alone: drives, sensors and a small mind in one sealed case.' },
-  { id: 'gunsmith', name: 'Gunsmithing', area: 'metal', tier: 2, blurb: 'Barrels, springs and the loading of cartridges: how the Ancients\' simple firearms and their rounds were made by hand.' },
-  { id: 'weaving', name: 'Woven Armour', area: 'building', tier: 2, blurb: 'Cloth quilted in many layers round steel wire, and light frames of aluminium: armour you can march in, packs that carry more.' },
-  { id: 'composites', name: 'Composite Armour', area: 'chemistry', tier: 3, blurb: 'Plastic, cloth and alloy laid up in layers and cured: shells lighter than steel that stop what steel stops.' },
-  { id: 'exoframe', name: 'Exoframes', area: 'metal', tier: 3, blurb: 'Struts, sprung joints and harness: a frame along the legs and back that carries the load for the one who wears it.' },
-  { id: 'electricity', name: 'Electric Machines', area: 'power', tier: 2, blurb: 'Winding copper on iron: electric motors and generators, the heart of every machine and power station.' },
-  { id: 'metallurgy', name: 'Advanced Metallurgy', area: 'metal', tier: 3, blurb: 'Arc furnaces and vacuum retorts: steels alloyed with nickel and chromium, titanium, and the platinum metals.' },
-  { id: 'semiconductors', name: 'Semiconductor Industry', area: 'electronics', tier: 3, blurb: 'Zone furnaces and acid baths: silicon pure enough to switch and compute.' },
-  { id: 'computing', name: 'Advanced Computing', area: 'electronics', tier: 3, blurb: 'Computer systems, power switching and control: the brains of the great machines.' },
-  { id: 'aerospace', name: 'Aerospace Engineering', area: 'transport', tier: 4, blurb: 'Airframes of titanium and composite, built on jigs and proved in the wind tunnel.' },
-  { id: 'powergrid', name: 'Ancient Power Grid', area: 'power', tier: 4, blurb: 'How to wake the great core and carry its power along the pylons to the old plants.' },
-  { id: 'avionics', name: 'Spacecraft Avionics', area: 'navigation', tier: 4, blurb: 'Flight computers, star trackers and the control loops that keep a ship on its course.' },
-  { id: 'lifesupport', name: 'Life Support', area: 'chemistry', tier: 3, blurb: 'Scrubbing the air and recycling the water: how a crew lives where nothing lives.' },
-  { id: 'rocketry', name: 'Rocket Propulsion', area: 'transport', tier: 4, blurb: 'Combustion chambers, turbopumps and bells: the engines that lift a ship off a world.' },
+  { id: 'filters', name: tl('Filter Masks'), area: 'chemistry', tier: 2, blurb: tl('Rubber face masks and charcoal filter canisters: breathing in the poisoned fog of the old world.') },
+  { id: 'aluminium', name: tl('Aluminium Processing'), area: 'metal', tier: 2, blurb: tl('Dissolving bauxite and smelting it with a great deal of current: the light metal of the old world.') },
+  { id: 'batteries', name: tl('Battery Chemistry'), area: 'chemistry', tier: 2, blurb: tl('Lead plates in acid, sealed in cells: current you can carry.') },
+  { id: 'alloys', name: tl('Alloy Metallurgy'), area: 'metal', tier: 3, blurb: tl('Steel, aluminium and nickel melted together in exact measure: plates that hold against heat and strain.') },
+  { id: 'powercells', name: tl('Power Cell Chemistry'), area: 'chemistry', tier: 3, blurb: tl('Lithium, nickel and an electrolyte nobody remembers: cells that hold a day\'s power in a crate.') },
+  { id: 'sensors', name: tl('Advanced Sensors'), area: 'electronics', tier: 3, blurb: tl('Crystals grown in a furnace and ground into lenses: eyes that see heat, distance and the shape of metal.') },
+  { id: 'ancmetal', name: tl('Ancient Metallurgy'), area: 'metal', tier: 4, blurb: tl('The alloy the Ancients built their ships of: lighter than steel, harder than anything since.') },
+  { id: 'precision', name: tl('Precision Manufacturing'), area: 'metal', tier: 4, blurb: tl('The master machines that cut to a hair and made every other machine: bearings, gears and spindles that never wear.') },
+  { id: 'automation', name: tl('Automation'), area: 'electronics', tier: 4, blurb: tl('How the Ancients taught arms of steel to work alone: drives, sensors and a small mind in one sealed case.') },
+  { id: 'gunsmith', name: tl('Gunsmithing'), area: 'metal', tier: 2, blurb: tl('Barrels, springs and the loading of cartridges: how the Ancients\' simple firearms and their rounds were made by hand.') },
+  { id: 'weaving', name: tl('Woven Armour'), area: 'building', tier: 2, blurb: tl('Cloth quilted in many layers round steel wire, and light frames of aluminium: armour you can march in, packs that carry more.') },
+  { id: 'composites', name: tl('Composite Armour'), area: 'chemistry', tier: 3, blurb: tl('Plastic, cloth and alloy laid up in layers and cured: shells lighter than steel that stop what steel stops.') },
+  { id: 'exoframe', name: tl('Exoframes'), area: 'metal', tier: 3, blurb: tl('Struts, sprung joints and harness: a frame along the legs and back that carries the load for the one who wears it.') },
+  { id: 'electricity', name: tl('Electric Machines'), area: 'power', tier: 2, blurb: tl('Winding copper on iron: electric motors and generators, the heart of every machine and power station.') },
+  { id: 'metallurgy', name: tl('Advanced Metallurgy'), area: 'metal', tier: 3, blurb: tl('Arc furnaces and vacuum retorts: steels alloyed with nickel and chromium, titanium, and the platinum metals.') },
+  { id: 'semiconductors', name: tl('Semiconductor Industry'), area: 'electronics', tier: 3, blurb: tl('Zone furnaces and acid baths: silicon pure enough to switch and compute.') },
+  { id: 'computing', name: tl('Advanced Computing'), area: 'electronics', tier: 3, blurb: tl('Computer systems, power switching and control: the brains of the great machines.') },
+  { id: 'aerospace', name: tl('Aerospace Engineering'), area: 'transport', tier: 4, blurb: tl('Airframes of titanium and composite, built on jigs and proved in the wind tunnel.') },
+  { id: 'powergrid', name: tl('Ancient Power Grid'), area: 'power', tier: 4, blurb: tl('How to wake the great core and carry its power along the pylons to the old plants.') },
+  { id: 'avionics', name: 'Spacecraft Avionics', area: 'navigation', tier: 4, blurb: tl('Flight computers, star trackers and the control loops that keep a ship on its course.') },
+  { id: 'lifesupport', name: tl('Life Support'), area: 'chemistry', tier: 3, blurb: tl('Scrubbing the air and recycling the water: how a crew lives where nothing lives.') },
+  { id: 'rocketry', name: tl('Rocket Propulsion'), area: 'transport', tier: 4, blurb: tl('Combustion chambers, turbopumps and bells: the engines that lift a ship off a world.') },
   // (0.174) appended so every older technology keeps its site
-  { id: 'heavymach', name: 'Heavy Machinery', area: 'metal', tier: 2, blurb: 'Gantry cranes, geared derricks and engine blocks: the machines that dig deep and haul heavy.' },
+  { id: 'heavymach', name: tl('Heavy Machinery'), area: 'metal', tier: 2, blurb: tl('Gantry cranes, geared derricks and engine blocks: the machines that dig deep and haul heavy.') },
   // (0.180) appended: electric vehicles
-  { id: 'evdrive', name: 'Electric Drive', area: 'transport', tier: 2, blurb: 'A motor at each axle and a battery under the floor: vehicles that run on the village\'s power instead of diesel.' },
+  { id: 'evdrive', name: tl('Electric Drive'), area: 'transport', tier: 2, blurb: tl('A motor at each axle and a battery under the floor: vehicles that run on the village\'s power instead of diesel.') },
 ];
 export const TECH_BY_ID: Record<string, Tech> = Object.fromEntries(TECHS.map((t) => [t.id, t]));
 /** How far from Gridholm (m) each tier's carriers lie. */
@@ -114,30 +115,30 @@ export const carrierChest = (world: number, place: number, chests: number) => (c
 export const MAX_LEADS = 2;
 /** Villagers only know of places within this range of their village (m). */
 export const LEAD_RANGE = 12000;
-const DIRS = ['north', 'north-east', 'east', 'south-east', 'south', 'south-west', 'west', 'north-west'];
+const DIRS = DIR8;
 /** Compass word for (dx, dz) (z grows southwards). */
 export const dirWord = (dx: number, dz: number) => DIRS[Math.round(((Math.atan2(dx, -dz) * 180 / Math.PI + 360) % 360) / 45) % 8];
-const distWord = (m: number) => (m < 950 ? `some ${Math.max(1, Math.round(m / 100)) * 100} m` : `about ${m < 9500 ? (m / 1000).toFixed(1).replace(/\.0$/, '') : Math.round(m / 1000)} km`);
-const LOOKS: Record<Carrier, string> = { floppy: 'a flat plastic square with a metal shutter', disk: 'a shining disk in a case', crystal: 'a long crystal that hums when you come near' };
+const distWord = (m: number) => (m < 950 ? TL`some ${Math.max(1, Math.round(m / 100)) * 100} m` : TL`about ${m < 9500 ? (m / 1000).toFixed(1).replace(/\.0$/, '') : Math.round(m / 1000)} km`);
+const LOOKS: Record<Carrier, string> = { floppy: tl('a flat plastic square with a metal shutter'), disk: tl('a shining disk in a case'), crystal: tl('a long crystal that hums when you come near') };
 const SAY: Record<TechSite['kind'], string[]> = {
   ruin: [
-    'A shepherd sheltered from a storm in {place}, {dist} {dir} of here. He swears something in the first vault glows violet, like a lamp that never goes out. {looks}, he said.',
-    'My cousin dug round {place}, {dist} {dir} of here. Down in the first vault there is a little stand with {looks} on it, under a violet light. He was too scared to touch it.',
+    tl('A shepherd sheltered from a storm in {place}, {dist} {dir} of here. He swears something in the first vault glows violet, like a lamp that never goes out. {looks}, he said.'),
+    tl('My cousin dug round {place}, {dist} {dir} of here. Down in the first vault there is a little stand with {looks} on it, under a violet light. He was too scared to touch it.'),
   ],
   wreck: [
-    'Scavengers stripped most of {place}, {dist} {dir} of here, but nobody dared take the thing on the little stand inside: {looks}, lit violet.',
-    'A trader told me that inside {place}, {dist} {dir} of here, there is {looks} glowing in the dark. The robots guard it, or so he said.',
+    tl('Scavengers stripped most of {place}, {dist} {dir} of here, but nobody dared take the thing on the little stand inside: {looks}, lit violet.'),
+    tl('A trader told me that inside {place}, {dist} {dir} of here, there is {looks} glowing in the dark. The robots guard it, or so he said.'),
   ],
   cave: [
-    'Hunters who went into {place}, {dist} {dir} of here, came back talking of {looks} on a stone deep inside, lit violet.',
-    'Deep in {place}, {dist} {dir} of here, there is a violet light. Old Tomasz saw {looks} there and ran.',
+    tl('Hunters who went into {place}, {dist} {dir} of here, came back talking of {looks} on a stone deep inside, lit violet.'),
+    tl('Deep in {place}, {dist} {dir} of here, there is a violet light. Old Tomasz saw {looks} there and ran.'),
   ],
 };
 /** What a villager at (vx, vz) says of a site. */
 export function leadText(s: TechSite, vx: number, vz: number, world: number): string {
   const dx = wrapDx(s.x - vx), dz = s.z - vz, lines = SAY[s.kind], line = lines[hash(world, s.place, 0x1ead) % lines.length];
   const looks = LOOKS[s.carrier];
-  const place = /^(Ruins|Wreck) /.test(s.name) ? 'the ' + s.name : s.name;
+  const place = /^(Ruins|Wreck) /.test(s.name) ? tl('the ') + s.name : s.name;
   return line.replace('{place}', place).replace('{dist}', distWord(Math.hypot(dx, dz))).replace('{dir}', dirWord(dx, dz))
     .replace(/(^|\. |)\{looks\}/, (_, pre: string) => pre + (pre || line.startsWith('{looks}') ? looks[0].toUpperCase() + looks.slice(1) : looks));
 }

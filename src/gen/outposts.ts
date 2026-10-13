@@ -13,6 +13,7 @@ import { lodeGives, type Lode, type LodeKind } from './lodes';
 import { isRare } from './deposits';
 import { POWER_SRC, type PowerKind } from './grid';
 import { PROC } from './outpostproc';
+import { tl, TL } from '../i18n';
 
 export type OutpostPart = 'dig' | 'store' | 'power' | 'bunks' | 'field' | 'wall' | 'turret' | 'proc';
 /** (0.185, stage O4) Parts built more than once: bunkhouses and fields (counted in `OutpostState.n`); (0.186, stage O5)
@@ -53,23 +54,23 @@ export interface OutpostLife {
 export type DigKind = 'quarry' | 'logging' | 'mine' | 'pump' | 'shaft';
 export const digOf = (k: LodeKind): DigKind => (k === 'stone' ? 'quarry' : k === 'grove' ? 'logging' : k === 'oil' ? 'pump' : isRare(k) ? 'shaft' : 'mine');
 export const DIG: Record<DigKind, { name: string; needs: [ItemKey, number][]; text: string }> = {
-  quarry: { name: 'Quarry crane', needs: [['planks', 16], ['nails', 10], ['rope', 6], ['scrap', 6]], text: 'A timber derrick and a cutting floor: the crew splits the face into blocks.' },
-  logging: { name: 'Logging camp', needs: [['planks', 12], ['nails', 8], ['rope', 4], ['scrap', 8]], text: 'A saw pit and a skid road: the giants are felled limb by limb and the trunks cut to length.' },
-  mine: { name: 'Mine head', needs: [['planks', 24], ['nails', 12], ['rope', 6], ['scrap', 10]], text: 'A headframe over a shaft, a winch and an ore cart.' },
-  pump: { name: 'Pumpjack', needs: [['scrap', 20], ['pipes', 4], ['parts', 2], ['planks', 8]], text: 'An old nodding pump over the seep, a tank and a drum filler.' },
-  shaft: { name: 'Deep shaft', needs: [['steel', 4], ['cable', 4], ['parts', 2], ['planks', 20], ['nails', 10]], text: 'A steel headframe and a cage down to the rare ore.' },
+  quarry: { name: tl('Quarry crane'), needs: [['planks', 16], ['nails', 10], ['rope', 6], ['scrap', 6]], text: tl('A timber derrick and a cutting floor: the crew splits the face into blocks.') },
+  logging: { name: tl('Logging camp'), needs: [['planks', 12], ['nails', 8], ['rope', 4], ['scrap', 8]], text: tl('A saw pit and a skid road: the giants are felled limb by limb and the trunks cut to length.') },
+  mine: { name: tl('Mine head'), needs: [['planks', 24], ['nails', 12], ['rope', 6], ['scrap', 10]], text: tl('A headframe over a shaft, a winch and an ore cart.') },
+  pump: { name: tl('Pumpjack'), needs: [['scrap', 20], ['pipes', 4], ['parts', 2], ['planks', 8]], text: tl('An old nodding pump over the seep, a tank and a drum filler.') },
+  shaft: { name: tl('Deep shaft'), needs: [['steel', 4], ['cable', 4], ['parts', 2], ['planks', 20], ['nails', 10]], text: tl('A steel headframe and a cage down to the rare ore.') },
 };
 /** (0.185) A bunkhouse sleeps `beds`; a field is worked by `crew` (stage O4: gen/outpostlife.ts). */
-export const BUNKS = { name: 'Bunkhouse', needs: [['planks', 30], ['nails', 16], ['stone', 10], ['scrap', 4]] as [ItemKey, number][], text: 'A long plank bunkhouse with a stove: beds for settlers who come to work here.', max: 3 };
-export const FIELD = { name: 'Field', needs: [['planks', 10], ['nails', 8], ['rope', 4], ['scrap', 4]] as [ItemKey, number][], text: 'A fenced plot ploughed and sown: it feeds the people here, as well as the land allows.', max: 3 };
+export const BUNKS = { name: tl('Bunkhouse'), needs: [['planks', 30], ['nails', 16], ['stone', 10], ['scrap', 4]] as [ItemKey, number][], text: tl('A long plank bunkhouse with a stove: beds for settlers who come to work here.'), max: 3 };
+export const FIELD = { name: tl('Field'), needs: [['planks', 10], ['nails', 8], ['rope', 4], ['scrap', 4]] as [ItemKey, number][], text: tl('A fenced plot ploughed and sown: it feeds the people here, as well as the land allows.'), max: 3 };
 /** (0.186) The wall round an outpost, a tier a build (stake fence, timber palisade, stone wall), and auto turrets. */
 export const WALL = [
-  { name: 'Stake fence', needs: [['planks', 16], ['nails', 8], ['rope', 6]] as [ItemKey, number][], text: 'A ring of sharpened stakes and rails: it keeps the animals off the fields and slows a raid.' },
-  { name: 'Timber palisade', needs: [['planks', 40], ['nails', 20], ['rope', 6], ['scrap', 6]] as [ItemKey, number][], text: 'A wall of tall timbers with a walk behind: bandits break on it far more often.' },
-  { name: 'Stone wall', needs: [['stone', 60], ['cement', 6], ['planks', 16], ['scrap', 10]] as [ItemKey, number][], text: 'Mortared stone with a gate: most raids give up at it.' },
+  { name: tl('Stake fence'), needs: [['planks', 16], ['nails', 8], ['rope', 6]] as [ItemKey, number][], text: tl('A ring of sharpened stakes and rails: it keeps the animals off the fields and slows a raid.') },
+  { name: tl('Timber palisade'), needs: [['planks', 40], ['nails', 20], ['rope', 6], ['scrap', 6]] as [ItemKey, number][], text: tl('A wall of tall timbers with a walk behind: bandits break on it far more often.') },
+  { name: tl('Stone wall'), needs: [['stone', 60], ['cement', 6], ['planks', 16], ['scrap', 10]] as [ItemKey, number][], text: tl('Mortared stone with a gate: most raids give up at it.') },
 ];
-export const TURRET = { name: 'Auto turret', needs: [['turretkit', 1], ['wire', 4], ['scrap', 6], ['circuit', 2]] as [ItemKey, number][], text: 'An auto turret on a timber tower: it shoots raiders and beasts that come near, and helps the outpost hold.', max: 2 };
-export const STORE = { name: 'Storage shed', needs: [['planks', 20], ['nails', 12], ['stone', 8]] as [ItemKey, number][], text: 'A plank shed with racks: the crates keep there instead of piling in the open.' };
+export const TURRET = { name: tl('Auto turret'), needs: [['turretkit', 1], ['wire', 4], ['scrap', 6], ['circuit', 2]] as [ItemKey, number][], text: tl('An auto turret on a timber tower: it shoots raiders and beasts that come near, and helps the outpost hold.'), max: 2 };
+export const STORE = { name: tl('Storage shed'), needs: [['planks', 20], ['nails', 12], ['stone', 8]] as [ItemKey, number][], text: tl('A plank shed with racks: the crates keep there instead of piling in the open.') };
 export const OUTPOST = {
   /** Crates an hour of the main good at richness 1 (common deposits, rare ones); the second good's share. */
   rate: 0.5, rare: 0.12, second: 0.4,
@@ -79,7 +80,7 @@ export const OUTPOST = {
   hours: { dig: 10, store: 8, power: 8, bunks: 10, field: 8, wall: 12, turret: 6, proc: 10 } as Record<OutpostPart, number>, xp: { dig: 80, store: 40, power: 60, bunks: 50, field: 40, wall: 60, turret: 50, proc: 70 } as Record<OutpostPart, number>,
 };
 /** A part's name; for the wall, the tier the next build gives (`tier` = the tier standing now). */
-export const partName = (k: LodeKind, p: OutpostPart, pk?: PowerKind, tier = 0) => (p === 'dig' ? DIG[digOf(k)].name : p === 'power' ? (pk ? POWER_SRC[pk].name : 'Power source') : p === 'bunks' ? BUNKS.name : p === 'field' ? FIELD.name : p === 'wall' ? WALL[Math.min(WALL.length - 1, tier)].name : p === 'turret' ? TURRET.name : p === 'proc' ? PROC[k]?.name ?? 'Works' : STORE.name);
+export const partName = (k: LodeKind, p: OutpostPart, pk?: PowerKind, tier = 0) => (p === 'dig' ? DIG[digOf(k)].name : p === 'power' ? (pk ? POWER_SRC[pk].name : tl('Power source')) : p === 'bunks' ? BUNKS.name : p === 'field' ? FIELD.name : p === 'wall' ? WALL[Math.min(WALL.length - 1, tier)].name : p === 'turret' ? TURRET.name : p === 'proc' ? PROC[k]?.name ?? tl('Works') : STORE.name);
 export const partNeeds = (k: LodeKind, p: OutpostPart, pk?: PowerKind, tier = 0): [ItemKey, number][] => (p === 'dig' ? DIG[digOf(k)].needs : p === 'power' ? (pk ? POWER_SRC[pk].needs : []) : p === 'bunks' ? BUNKS.needs : p === 'field' ? FIELD.needs : p === 'wall' ? WALL[Math.min(WALL.length - 1, tier)].needs : p === 'turret' ? TURRET.needs : p === 'proc' ? PROC[k]?.needs ?? [] : STORE.needs);
 /** The wall's tier (0 none, 1 stakes, 2 palisade, 3 stone) and the turrets. */
 export const wallOf = (o: OutpostState) => o.n?.wall ?? 0;
@@ -130,11 +131,11 @@ export function partPlan(o: OutpostState, p: OutpostPart) {
 }
 /** Why part p cannot be worked on now ('' = it can). */
 export function partProblem(o: OutpostState, p: OutpostPart): string {
-  if (countOf(o, p) >= maxOf(p)) return p === 'wall' ? 'The stone wall stands.' : isMany(p) ? `All ${maxOf(p)} stand.` : 'It stands.';
-  if (p === 'power' && !o.pk) return 'Choose a power source first.';
-  if (p === 'proc' && !PROC[o.k]) return 'Nothing here to process.';
-  if (p === 'proc' && !o.done?.dig) return 'The extraction must stand first.';
-  if (o.job) return o.job.p === p ? 'The builders are at it.' : 'The builders are busy with the ' + partName(o.k, o.job.p, o.pk, countOf(o, o.job.p)).toLowerCase() + '.';
+  if (countOf(o, p) >= maxOf(p)) return p === 'wall' ? tl('The stone wall stands.') : isMany(p) ? TL`All ${maxOf(p)} stand.` : tl('It stands.');
+  if (p === 'power' && !o.pk) return tl('Choose a power source first.');
+  if (p === 'proc' && !PROC[o.k]) return tl('Nothing here to process.');
+  if (p === 'proc' && !o.done?.dig) return tl('The extraction must stand first.');
+  if (o.job) return o.job.p === p ? tl('The builders are at it.') : tl('The builders are busy with the ') + partName(o.k, o.job.p, o.pk, countOf(o, o.job.p)).toLowerCase() + '.';
   return '';
 }
 /** Hand over what part p still needs (bit by bit); with everything in, the builders start. */

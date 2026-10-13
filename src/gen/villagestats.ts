@@ -6,9 +6,10 @@ import { peopleAt, targetNow, workersAt } from './people';
 import { assign, type Post } from './workforce';
 import { foodMade, foodNeed, peopleFed, settleTarget, FOOD } from './farms';
 import type { TownState } from './town';
+import { tl } from '../i18n';
 
 /** What each development level is called (gen/settlement.ts `development`, 0–6). */
-export const DEV_NAMES = ['Ruined camp', 'Farmstead', 'Hamlet', 'Village', 'Working village', 'Busy village', 'Thriving settlement'];
+export const DEV_NAMES = [tl('Ruined camp'), tl('Farmstead'), tl('Hamlet'), tl('Village'), tl('Working village'), tl('Busy village'), tl('Thriving settlement')];
 export type FoodState = 'short' | 'tight' | 'secure';
 export interface VillageStats {
   /** Settled under the new rules (the rest keep their old, fixed population rules). */
@@ -32,10 +33,10 @@ export function villageStats(seed: number, home: boolean, s: TownState | undefin
   let limit = '';
   if (settled) {
     const fedAll = peopleFed(seed, s, Math.floor(housing * 0.6), power), best = settleTarget(seed, s, power);
-    if (best >= housing) limit = Math.round(people) >= housing ? 'Every home is taken: develop the village so more houses are repaired.' : '';
-    else if ((s?.farms ?? 0) === 0) limit = 'No farms: only the few who live off the wilds stay.';
-    else if (SETTLEMENT_START + (fedAll - SETTLEMENT_START) / FOOD.margin < housing) limit = 'Not enough food for more families: build or improve farms, or grow food crops instead of flax and wool.';
-    else limit = 'Too few hands to work the farms for more people.';
+    if (best >= housing) limit = Math.round(people) >= housing ? tl('Every home is taken: develop the village so more houses are repaired.') : '';
+    else if ((s?.farms ?? 0) === 0) limit = tl('No farms: only the few who live off the wilds stay.');
+    else if (SETTLEMENT_START + (fedAll - SETTLEMENT_START) / FOOD.margin < housing) limit = tl('Not enough food for more families: build or improve farms, or grow food crops instead of flax and wool.');
+    else limit = tl('Too few hands to work the farms for more people.');
   }
   return {
     settled, people, target, housing, workers, assigned: a.used, free: a.free, jobs: a.jobs, posts: a.posts,

@@ -14,6 +14,7 @@ import { rayWorld } from './player';
 import { proxied, targetingFoe, targetPeer } from './remote';
 import { net } from '../net/client';
 import { showToast } from '../ui/hud';
+import { tl } from '../i18n';
 
 export interface Mind {
   /** 0 nothing there .. 1 spotted. */
@@ -99,7 +100,7 @@ let toldAt = -1e9;
 /** A foe has just made you out (in your own game, against you): say so, now and then. */
 export function spottedBy(_f: object) {
   const now = performance.now();
-  if (now - toldAt > 8000) { toldAt = now; showToast('Spotted!'); }
+  if (now - toldAt > 8000) { toldAt = now; showToast(tl('Spotted!')); }
 }
 /** Whether a foe has not made you out: a blow or shot on it then is a sneak attack. */
 export const unaware = (f: object, engaged: boolean) => !engaged && mindOf(f).aware < STEALTH.spotted;
@@ -117,7 +118,7 @@ export function updateStealth(dt: number, free: boolean) {
   if (!box) return;
   const state = spotted ? 'spotted' : peak >= STEALTH.suspicious ? 'suspicious' : peak > 0.02 ? 'noticed' : 'hidden';
   const show = G.playing && (G.crouch || state !== 'hidden');
-  const text = !show ? '' : `${G.crouch ? 'CROUCHED · ' : ''}seen ${Math.round(vis * 100)}% · ${state === 'spotted' ? '! SPOTTED' : state === 'suspicious' ? '? SUSPICIOUS' : state === 'noticed' ? '… something stirs' : 'unseen'}`;
+  const text = !show ? '' : `${G.crouch ? tl('CROUCHED · ') : ''}seen ${Math.round(vis * 100)}% · ${state === 'spotted' ? tl('! SPOTTED') : state === 'suspicious' ? tl('? SUSPICIOUS') : state === 'noticed' ? tl('… something stirs') : tl('unseen')}`;
   if (text !== shown) { shown = text; box.textContent = text; box.className = state; box.style.display = text ? 'block' : 'none'; }
   const bar = Math.round(Math.min(1, peak) * 100);
   box.style.setProperty('--aware', bar + '%');

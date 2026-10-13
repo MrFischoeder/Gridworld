@@ -18,6 +18,7 @@ import { withTownStock } from '../ui/stock';
 import { allClaims, fieldsChanged } from './claims';
 import { earnTrust } from './standing';
 import { logLine, showToast } from '../ui/hud';
+import { tl, TL } from '../i18n';
 
 let placing = false, preview: THREE.Group | null = null, problem: string | null = null, at: { x: number; z: number; y: number } | null = null, vid = -1;
 let last = { x: NaN, z: NaN, t: 0 };
@@ -34,21 +35,21 @@ function waiting(): number {
 export const isFieldPlacing = () => placing;
 /** Use a Survey Stake: start choosing the field. */
 export function startFieldPlacing(): boolean {
-  if (G.char.loc !== 'overworld' || !OW.terrain) { logLine('A field is staked out in the open, near its village.'); return false; }
-  if (driving.v) { logLine('Get out of the vehicle first.'); return false; }
+  if (G.char.loc !== 'overworld' || !OW.terrain) { logLine(tl('A field is staked out in the open, near its village.')); return false; }
+  if (driving.v) { logLine(tl('Get out of the vehicle first.')); return false; }
   vid = waiting();
-  if (vid < 0) { logLine('No farm waits for its field near here. The elder gives a stake once a new farm\'s materials are in.'); return false; }
+  if (vid < 0) { logLine(tl('No farm waits for its field near here. The elder gives a stake once a new farm\'s materials are in.')); return false; }
   placing = true; at = null; problem = null; last = { x: NaN, z: NaN, t: 0 };
-  logLine(`Look where the new field of ${findPoi(G.char.world, vid)?.name ?? 'the village'} should go (within ${FIELD.reach} m): click to stake it out, right mouse button or Esc to cancel.`);
+  logLine(TL`Look where the new field of ${findPoi(G.char.world, vid)?.name ?? tl('the village')} should go (within ${FIELD.reach} m): click to stake it out, right mouse button or Esc to cancel.`);
   return true;
 }
 export function cancelFieldPlacing(quiet = false) {
   if (!placing) return;
   placing = false; at = null;
   if (preview) { scene.remove(preview); preview.traverse((o) => (o as THREE.Line).geometry?.dispose()); preview = null; }
-  if (!quiet) logLine('You put the Survey Stake away.');
+  if (!quiet) logLine(tl('You put the Survey Stake away.'));
 }
-export const fieldPlacingHint = () => (!placing ? null : problem ?? 'Click — stake out the field here · right mouse / Esc — cancel');
+export const fieldPlacingHint = () => (!placing ? null : problem ?? tl('Click — stake out the field here · right mouse / Esc — cancel'));
 export const fieldPlacingOk = () => !!at && !problem;
 
 /** The ground point you look at (up to 60 m away). */
@@ -67,7 +68,7 @@ export function updateFieldPlacing() {
   if ((x === last.x && z === last.z) || now - last.t < 100) return;
   last = { x, z, t: now };
   const poi = findPoi(G.char.world, vid);
-  if (!poi || !G.char.towns[vid]?.fwait) { cancelFieldPlacing(true); logLine('That farm\'s field has been staked out already.'); return; }
+  if (!poi || !G.char.towns[vid]?.fwait) { cancelFieldPlacing(true); logLine(tl('That farm\'s field has been staked out already.')); return; }
   problem = fieldProblem(T, poi, villageSeed(G.char.world, poi), G.char.towns[vid], x, z, allClaims()) || null;
   const y = fieldPad(T, x, z); at = { x, z, y };
   if (!preview) { preview = new THREE.Group(); preview.renderOrder = 10; scene.add(preview); }
@@ -88,15 +89,15 @@ export function updateFieldPlacing() {
 /** Stake out the field where the hologram stands: the builders start there. */
 export async function confirmFieldPlacing() {
   if (!placing) return;
-  if (!at || problem) { logLine(problem ?? 'Look at the ground where the field should go.'); return; }
+  if (!at || problem) { logLine(problem ?? tl('Look at the ground where the field should go.')); return; }
   const spot = at, id = vid, c = G.char;
   let ok = false;
   await withTownStock(id, () => { const s = (c.towns[id] ??= {}); ok = placeFarm(s, spot, c.time); });
-  if (!ok) { cancelFieldPlacing(true); logLine('Someone else has staked out that farm\'s field already.'); return; }
+  if (!ok) { cancelFieldPlacing(true); logLine(tl('Someone else has staked out that farm\'s field already.')); return; }
   takeOne('fieldstake');
   c.gold += FARM.gold; gainXp(FARM.xp); earnTrust(id, 'farm'); calcStats(); saveChar(); // the builders take over: you are paid now
   cancelFieldPlacing(true);
   fieldsChanged(spot); reloadStruct(id);
-  showToast('Field staked out');
-  logLine(`The villagers come out with their tools: the ground is levelled and the new farm goes up there. They pay you ${FARM.gold} gold.`);
+  showToast(tl('Field staked out'));
+  logLine(TL`The villagers come out with their tools: the ground is levelled and the new farm goes up there. They pay you ${FARM.gold} gold.`);
 }

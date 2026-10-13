@@ -1,3 +1,4 @@
+import './ui/htmllang'; // (0.190) the page's static texts in the player's language, before anything else
 // Entry point: load the character, build the first place, run the frame loop.
 import { setVehicleProtection } from './world/damage';
 import { relay, net } from './net/client';
@@ -104,6 +105,7 @@ import { updateOutpostRaids } from './world/outpostraid';
 import { updateRouteTrucks } from './world/convoyroutes';
 import { updateRivals } from './world/rivals';
 import { syncVillagePads } from './world/overworld';
+import { tl, TL } from './i18n';
 /** Redraw the open world from the save where you stand (after taking the server's shared world). */
 function reloadWorld() { if (G.char.loc !== 'overworld') return; saveOverworldPos(); loadOverworld({ kind: 'saved' }); }
 setWorldReload(reloadWorld);
@@ -115,7 +117,7 @@ setVehicleProtection(() => !!driving.v || riding(), damage => {
 G.char = loadChar();
 document.getElementById('vnum')!.textContent = 'v' + VERSION;
 document.getElementById('version')!.textContent = BUILD;
-document.title = 'GridWorld v' + VERSION;
+document.title = tl('GridWorld v') + VERSION;
 setWaterNote(logLine);
 calcStats(); G.hp = G.S.maxHp; G.ammo = G.gun.mag;
 
@@ -175,7 +177,7 @@ function frame(now: number) {
   if (el.clock.textContent !== clock) el.clock.textContent = clock;
   if ((clockT -= dt) <= 0) {
     clockT = 1;
-    { const up = refreshBoard(); if (up.length) { saveChar(); const v = outdoors ? villageHere(G.pos.x, G.pos.z) : undefined; if (v && up.includes(v.id)) logLine('New notices are up on the board.'); } }
+    { const up = refreshBoard(); if (up.length) { saveChar(); const v = outdoors ? villageHere(G.pos.x, G.pos.z) : undefined; if (v && up.includes(v.id)) logLine(tl('New notices are up on the board.')); } }
   }
   if (live) {
     if (driving.v) updateDriving(dt); else if (riding()) updateRide(dt); else if (!(outdoors && updateBoats(dt)) && !updateClimb(dt)) moving = updatePlayer(dt);
@@ -251,7 +253,7 @@ function frame(now: number) {
   }
   if ((perfT -= dt) <= 0 && el.perf.style.display === 'block') {
     perfT = 0.5; const r = renderer.info.render;
-    el.perf.textContent = `${Math.round(1 / Math.max(dt, 1e-3))} fps\nlines ${r.lines}\ntriangles ${r.triangles}\ncalls ${r.calls}\nfoes ${W.drones.length}`;
+    el.perf.textContent = TL`${Math.round(1 / Math.max(dt, 1e-3))} fps\nlines ${r.lines}\ntriangles ${r.triangles}\ncalls ${r.calls}\nfoes ${W.drones.length}`;
   }
   requestAnimationFrame(frame);
 }
@@ -273,7 +275,7 @@ setGateTravel((gate, x, z, heading, car) => {
     teleportVehicle(car, x, z, heading); G.yaw += delta;
   } else { G.pos.set(x, gate.y, z); G.vel.set(0, 0, 0); G.yaw = heading + Math.PI; }
   vehiclesNear(x); updateStreaming(12); saveOverworldPos();
-  showToast('Arrived at ' + gateName(gate) + '. The connection stays open until its timer ends.');
+  showToast(tl('Arrived at ') + gateName(gate) + tl('. The connection stays open until its timer ends.'));
 });
 setRideWarpArrival(() => { vehiclesNear(G.pos.x); updateStreaming(12); saveOverworldPos(); });
 

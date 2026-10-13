@@ -20,6 +20,7 @@ import { redrawInstalls } from '../world/installs';
 import { carried, takeFrom, putAway } from './market';
 import { $, showToast, logLine } from './hud';
 import { lockPointer } from './input';
+import { tl, TL } from '../i18n';
 
 const dlgEl = $('dlg'), panel = () => dlgEl.querySelector('.panel') as HTMLElement;
 let site: InstallSite | null = null;
@@ -36,48 +37,48 @@ function render(msg = '') {
   const c = G.char, st = stateOf(site), stages = INSTALL_STAGES[site.k];
   runInstall(site.k, st, c.time, gridOf(site.k));
   const list = stages.map((x, i) => `<span style="color:${i < st.stage ? 'var(--xp)' : i === st.stage ? 'var(--txt)' : '#6a8a70'}">${i + 1}. ${x.title}${i < st.stage ? ' ✓' : ''}</span>`).join(' · ');
-  let s = `<h2>${site.name}</h2><div class="role">Control desk · ${Math.min(st.stage, stages.length)} of ${stages.length} stages restored</div>` +
+  let s = TL`<h2>${site.name}</h2><div class="role">Control desk · ${Math.min(st.stage, stages.length)} of ${stages.length} stages restored</div>` +
     `<div class="say">${msg ? msg + '<br><br>' : ''}`;
   const plan = installPlan(site.k, st, c.tech);
   if (plan) {
     s += `<b>${plan.st.title}.</b> ${plan.st.text}</div><div class="shoprow"><div>${list}<br><span>`;
-    if (!plan.plans) s += `Nobody knows how this was built. The plans for ${TECH_BY_ID[plan.st.tech!].name} must lie somewhere out there, on an old data carrier.`;
-    else s += plan.rows.map((r) => { const h = have(r.k); return `<span style="color:${r.given >= r.n ? 'var(--xp)' : h ? 'var(--txt)' : '#ff9a7a'}">${ITEMS[r.k].name} ${r.given}/${r.n}${r.given < r.n && h ? ` (you have ${h} with you)` : ''}</span>`; }).join(' · ');
-    s += `</span><br><span style="opacity:.7">On completion: ${plan.st.gold} gold, ${plan.st.xp} xp.</span></div></div>`;
-    if (plan.plans) s += `<button class="opt" data-ins="give" ${plan.rows.some((r) => r.given < r.n && have(r.k) > 0) ? '' : 'disabled'}>Hand over what I carry</button>`;
+    if (!plan.plans) s += TL`Nobody knows how this was built. The plans for ${TECH_BY_ID[plan.st.tech!].name} must lie somewhere out there, on an old data carrier.`;
+    else s += plan.rows.map((r) => { const h = have(r.k); return `<span style="color:${r.given >= r.n ? 'var(--xp)' : h ? 'var(--txt)' : '#ff9a7a'}">${ITEMS[r.k].name} ${r.given}/${r.n}${r.given < r.n && h ? TL` (you have ${h} with you)` : ''}</span>`; }).join(' · ');
+    s += TL`</span><br><span style="opacity:.7">On completion: ${plan.st.gold} gold, ${plan.st.xp} xp.</span></div></div>`;
+    if (plan.plans) s += TL`<button class="opt" data-ins="give" ${plan.rows.some((r) => r.given < r.n && have(r.k) > 0) ? '' : 'disabled'}>Hand over what I carry</button>`;
   } else if (site.k === 'powerplex') {
     s += plex(st) + `<div class="shoprow"><div>${list}</div></div>`;
     const hv = have('nfuel'), left = plexLeft(st, c.time);
-    s += `<button class="opt" data-ins="rods" ${hv && left < POWERPLEX.bunker - 1 + 1e-9 ? '' : 'disabled'}>Load fuel rods into the core (${left.toFixed(1)}/${POWERPLEX.bunker} · you have ${hv} with you)</button>`;
+    s += TL`<button class="opt" data-ins="rods" ${hv && left < POWERPLEX.bunker - 1 + 1e-9 ? '' : 'disabled'}>Load fuel rods into the core (${left.toFixed(1)}/${POWERPLEX.bunker} · you have ${hv} with you)</button>`;
   } else if (!INSTALL_WORK[site.k]) {
-    s += `The dish turns on its tower and the screens in the bunker glow: every village, ruin, wreck and camp within ${radarRange(st) / 1000} km shows up, and whatever else is out there.</div>` +
-      `<div class="shoprow"><div>${list}</div></div><button class="opt" data-ins="sweep">Sweep again and copy it onto my map</button>`;
+    s += TL`The dish turns on its tower and the screens in the bunker glow: every village, ruin, wreck and camp within ${radarRange(st) / 1000} km shows up, and whatever else is out there.</div>` +
+      TL`<div class="shoprow"><div>${list}</div></div><button class="opt" data-ins="sweep">Sweep again and copy it onto my map</button>`;
     const up = radarUpPlan(st);
     if (up) {
-      s += `<div class="shoprow"><div><b>Sensor array</b> <span style="opacity:.7">(sees ${RADAR_UP.r / 1000} km · ${RADAR_UP.gold} gold, ${RADAR_UP.xp} xp)</span><br><span style="opacity:.8">Sensor heads and chips in the dish's feed: it would hear twice as far.</span><br><span>` +
-        up.rows.map((r) => { const h = have(r.k); return `<span style="color:${r.given >= r.n ? 'var(--xp)' : h ? 'var(--txt)' : '#ff9a7a'}">${ITEMS[r.k].name} ${r.given}/${r.n}${r.given < r.n && h ? ` (you have ${h})` : ''}</span>`; }).join(' · ') +
-        `</span></div><button class="opt" style="width:auto" data-ins="up" ${up.rows.some((r) => r.given < r.n && have(r.k) > 0) ? '' : 'disabled'}>hand over</button></div>`;
+      s += TL`<div class="shoprow"><div><b>Sensor array</b> <span style="opacity:.7">(sees ${RADAR_UP.r / 1000} km · ${RADAR_UP.gold} gold, ${RADAR_UP.xp} xp)</span><br><span style="opacity:.8">Sensor heads and chips in the dish's feed: it would hear twice as far.</span><br><span>` +
+        up.rows.map((r) => { const h = have(r.k); return `<span style="color:${r.given >= r.n ? 'var(--xp)' : h ? 'var(--txt)' : '#ff9a7a'}">${ITEMS[r.k].name} ${r.given}/${r.n}${r.given < r.n && h ? TL` (you have ${h})` : ''}</span>`; }).join(' · ') +
+        TL`</span></div><button class="opt" style="width:auto" data-ins="up" ${up.rows.some((r) => r.given < r.n && have(r.k) > 0) ? '' : 'disabled'}>hand over</button></div>`;
     }
   } else {
-    const w = workOf(site.k, st)!, all = installWorks(site.k), recipe = w.inp.map(([i, n]) => `${n} ${short(ITEMS[i].name)}`).join(' and ');
+    const w = workOf(site.k, st)!, all = installWorks(site.k), recipe = w.inp.map(([i, n]) => `${n} ${short(ITEMS[i].name)}`).join(tl(' and '));
     const inputs = [...new Set(all.flatMap((x) => x.inp.map(([i]) => i)))];
-    const choose = all.length > 1 ? `<div class="say" style="margin:6px 0 0">What it makes${st.out ? ' (empty the bay to switch)' : ''}</div>` + all.map((x, i) => { const lock = x.tech && c.tech[x.tech] === undefined; return `<button class="opt" style="width:auto;${x === w ? 'color:var(--gold)' : ''}" data-ins="rec" data-insr="${i}" ${x === w || st.out || lock ? 'disabled' : ''}>${x === w ? '▸ ' : ''}${x.inp.map(([q, n]) => `${n} ${short(ITEMS[q].name)}`).join(' + ')} → ${x.n ?? 1} ${ITEMS[x.out].name}${lock ? ` (wants the plans for ${TECH_BY_ID[x.tech!].name})` : ''}</button>`; }).join('') : '';
-    s += `${w.what} ${recipe} make ${(w.n ?? 1) > 1 ? `${w.n} crates` : "one crate"} of ${ITEMS[w.out].name} every ${hours(w.batch)}, while the power hall gives ${INSTALL_DRAW[site.k]} kW.</div>` +
+    const choose = all.length > 1 ? TL`<div class="say" style="margin:6px 0 0">What it makes${st.out ? tl(' (empty the bay to switch)') : ''}</div>` + all.map((x, i) => { const lock = x.tech && c.tech[x.tech] === undefined; return `<button class="opt" style="width:auto;${x === w ? 'color:var(--gold)' : ''}" data-ins="rec" data-insr="${i}" ${x === w || st.out || lock ? 'disabled' : ''}>${x === w ? '▸ ' : ''}${x.inp.map(([q, n]) => `${n} ${short(ITEMS[q].name)}`).join(' + ')} → ${x.n ?? 1} ${ITEMS[x.out].name}${lock ? TL` (wants the plans for ${TECH_BY_ID[x.tech!].name})` : ''}</button>`; }).join('') : '';
+    s += TL`${w.what} ${recipe} make ${(w.n ?? 1) > 1 ? `${w.n} crates` : tl("one crate")} of ${ITEMS[w.out].name} every ${hours(w.batch)}, while the power hall gives ${INSTALL_DRAW[site.k]} kW.</div>` +
       `<div class="shoprow"><div>${list}</div></div>` + screen(site.k, st) + choose +
-      inputs.map((i) => { const h = have(i); return `<button class="opt" data-ins="load" data-insk="${i}" ${h && (st.inp[i] ?? 0) < w.hopper ? '' : 'disabled'}>Load ${short(ITEMS[i].name)} (${st.inp[i] ?? 0}/${w.hopper} in the hopper · you have ${h} with you)</button>`; }).join('') +
-      `<button class="opt" data-ins="take" ${st.out ? '' : 'disabled'}>Collect the ${ITEMS[w.out].name} (${st.out})</button>`;
+      inputs.map((i) => { const h = have(i); return TL`<button class="opt" data-ins="load" data-insk="${i}" ${h && (st.inp[i] ?? 0) < w.hopper ? '' : 'disabled'}>Load ${short(ITEMS[i].name)} (${st.inp[i] ?? 0}/${w.hopper} in the hopper · you have ${h} with you)</button>`; }).join('') +
+      TL`<button class="opt" data-ins="take" ${st.out ? '' : 'disabled'}>Collect the ${ITEMS[w.out].name} (${st.out})</button>`;
   }
   panel().classList.add('wide');
-  panel().innerHTML = s + hall(site.k, st) + buyers() + `<button class="opt" data-ins="close">Close</button>`;
+  panel().innerHTML = s + hall(site.k, st) + buyers() + TL`<button class="opt" data-ins="close">Close</button>`;
 }
 /** The complex's control room: the core's rods, how long they last, and the old plants on its lines. */
 function plex(st: InstallState): string {
   const c = G.char, left = plexLeft(st, c.time), until = plexUntil(st), me = sitesNow().find((x) => x.k === 'powerplex');
-  let s = `The core hums under its dome. While it holds fuel rods (a crate every ${hours(POWERPLEX.burn)}, ${POWERPLEX.bunker} at most) the pylons carry ${POWERPLEX.kw} kW to every old plant within ${POWERPLEX.reach / 1000} km whose power hall stands: their batches then burn none of their own fuel.</div>`;
-  s += `<div class="say">${left > 0 ? `Rods in the core: <b>${left.toFixed(1)}</b>, enough for ${hours(until - c.time)}.` : '<b>The core is cold:</b> load fuel rods from the Old Enrichment Plant.'}</div>`;
+  let s = TL`The core hums under its dome. While it holds fuel rods (a crate every ${hours(POWERPLEX.burn)}, ${POWERPLEX.bunker} at most) the pylons carry ${POWERPLEX.kw} kW to every old plant within ${POWERPLEX.reach / 1000} km whose power hall stands: their batches then burn none of their own fuel.</div>`;
+  s += `<div class="say">${left > 0 ? TL`Rods in the core: <b>${left.toFixed(1)}</b>, enough for ${hours(until - c.time)}.` : tl('<b>The core is cold:</b> load fuel rods from the Old Enrichment Plant.')}</div>`;
   if (me) {
     const near = sitesNow().filter((x) => x.k !== 'powerplex' && INSTALL_WORK[x.k] && worldDist(x.x, x.z, me.x, me.z) <= POWERPLEX.reach);
-    s += `<div class="say">On its lines: ${near.length ? near.map((x) => `<b>${x.name}</b> (${(worldDist(x.x, x.z, me.x, me.z) / 1000).toFixed(1)} km ${dirWord(wrapDx(x.x - me.x), x.z - me.z)}${hallReady(x.k, c.installs[x.k]) ? '' : ', its power hall still a shell'})`).join(', ') : 'none of the old plants: the others lie beyond its reach'}. ${INSTALLS.length} old works stand on this world.</div>`;
+    s += TL`<div class="say">On its lines: ${near.length ? near.map((x) => `<b>${x.name}</b> (${(worldDist(x.x, x.z, me.x, me.z) / 1000).toFixed(1)} km ${dirWord(wrapDx(x.x - me.x), x.z - me.z)}${hallReady(x.k, c.installs[x.k]) ? '' : tl(', its power hall still a shell')})`).join(', ') : tl('none of the old plants: the others lie beyond its reach')}. ${INSTALLS.length} old works stand on this world.</div>`;
   }
   return s;
 }
@@ -86,30 +87,30 @@ const short = (n: string) => n.replace(/^(Crate|Sack|Barrel|Bale) of /, '').toLo
 function screen(k: InstallKind, st: InstallState): string {
   const g = gridOf(k), w = workOf(k, st)!, c = G.char, draw = INSTALL_DRAW[k] ?? 0, kw = hallKw(k, st, g, c.time), run = canRun(k, st, g), pick = hallPick(k, st, g);
   const pad = (a: string, n = 22) => (a + ':').toUpperCase().padEnd(n);
-  let t = `${site!.name.toUpperCase()}\n${pad('Power')}${kw}/${draw} kW${pick ? ' · ' + pick.map((h) => h.name.toLowerCase()).join(' + ') : ''}\n`;
-  for (const [i] of w.inp) t += `${pad(short(ITEMS[i].name))}${st.inp[i] ?? 0} crates\n`;
-  t += `${pad('Production')}${ITEMS[w.out].name.toUpperCase()} · ${st.out}/${w.bay} in the bay\n`;
+  let t = TL`${site!.name.toUpperCase()}\n${pad(tl('Power'))}${kw}/${draw} kW${pick ? ' · ' + pick.map((h) => h.name.toLowerCase()).join(' + ') : ''}\n`;
+  for (const [i] of w.inp) t += TL`${pad(short(ITEMS[i].name))}${st.inp[i] ?? 0} crates\n`;
+  t += TL`${pad(tl('Production'))}${ITEMS[w.out].name.toUpperCase()} · ${st.out}/${w.bay} in the bay\n`;
   const left = Math.max(0, w.batch - (c.time - st.t));
-  t += `${pad('Next batch')}${run ? `${String(Math.floor(left / 60)).padStart(2, '0')}:${String(Math.floor(left % 60)).padStart(2, '0')}` : st.out >= w.bay ? 'STOPPED · THE BAY IS FULL' : batchesIn(k, st) < 1 ? 'WAITING FOR ' + w.inp.filter(([i, n]) => (st.inp[i] ?? 0) < n).map(([i]) => short(ITEMS[i].name).toUpperCase()).join(', ') : 'NO POWER'}`;
+  t += `${pad(tl('Next batch'))}${run ? `${String(Math.floor(left / 60)).padStart(2, '0')}:${String(Math.floor(left % 60)).padStart(2, '0')}` : st.out >= w.bay ? tl('STOPPED · THE BAY IS FULL') : batchesIn(k, st) < 1 ? tl('WAITING FOR ') + w.inp.filter(([i, n]) => (st.inp[i] ?? 0) < n).map(([i]) => short(ITEMS[i].name).toUpperCase()).join(', ') : tl('NO POWER')}`;
   return `<pre style="font-family:monospace;white-space:pre-wrap;color:var(--xp);background:#010d04;border:1px solid #2fe06055;padding:8px 10px;margin:6px 0">${t}</pre>`;
 }
 /** The power hall: its generator sets and their bunkers (once the second stage has brought it back). */
 function hall(k: InstallKind, st: InstallState): string {
   if (!INSTALL_DRAW[k]) return '';
-  if (!hallReady(k, st)) return `<div class="say" style="opacity:.8">The power hall by the gate is a burnt-out shell. It comes back with the ${INSTALL_STAGES[k][HALL_STAGE - 1].title.toLowerCase()} stage.</div>`;
+  if (!hallReady(k, st)) return TL`<div class="say" style="opacity:.8">The power hall by the gate is a burnt-out shell. It comes back with the ${INSTALL_STAGES[k][HALL_STAGE - 1].title.toLowerCase()} stage.</div>`;
   const rows = hallSets(k).map((h) => {
     const n = st.pw?.[h.fuel] ?? 0, hv = have(h.fuel), per = workOf(k, st)!.batch / h.burn;
-    return `<div class="shoprow"><div><b>${h.name}</b> · ${h.kw} kW<br><span>${itemName(h.fuel)} in the bunker ${n > 0 && n < 1 ? n.toFixed(2) : Math.floor(n * 10) / 10}/${h.bunker} · ${per < 1 ? `${Math.round(1 / per)} batches a crate` : `${per.toFixed(1)} crates a batch`} · you have ${hv}</span></div>` +
+    return TL`<div class="shoprow"><div><b>${h.name}</b> · ${h.kw} kW<br><span>${itemName(h.fuel)} in the bunker ${n > 0 && n < 1 ? n.toFixed(2) : Math.floor(n * 10) / 10}/${h.bunker} · ${per < 1 ? TL`${Math.round(1 / per)} batches a crate` : TL`${per.toFixed(1)} crates a batch`} · you have ${hv}</span></div>` +
       `<button class="opt" style="width:auto" data-ins="fuel" data-insk="${h.fuel}" ${hv && n < h.bunker - 1 + 1e-9 ? '' : 'disabled'}>load</button></div>`;
   }).join('');
-  const g = gridOf(k), grid = g > G.char.time ? `<div class="say" style="margin:8px 0 0;color:var(--xp)">The Ancient Power Complex feeds this plant along its pylons for ${hours(g - G.char.time)} more: its batches burn no fuel of their own.</div>` : '';
-  return grid + `<div class="say" style="margin:8px 0 0"><b>The power hall.</b> A batch needs ${INSTALL_DRAW[k]} kW: ${k === 'uranium' ? 'two sets together, or the plant\'s own reactor on its own rods' : 'one set if it is strong enough, else two together'}. The sets burn only while a batch is under way.</div>` + rows;
+  const g = gridOf(k), grid = g > G.char.time ? TL`<div class="say" style="margin:8px 0 0;color:var(--xp)">The Ancient Power Complex feeds this plant along its pylons for ${hours(g - G.char.time)} more: its batches burn no fuel of their own.</div>` : '';
+  return grid + TL`<div class="say" style="margin:8px 0 0"><b>The power hall.</b> A batch needs ${INSTALL_DRAW[k]} kW: ${k === 'uranium' ? tl('two sets together, or the plant\'s own reactor on its own rods') : tl('one set if it is strong enough, else two together')}. The sets burn only while a batch is under way.</div>` + rows;
 }
 /** The buyers of what this installation makes nearest to it, and whether they order today (its radio log). */
 const BUYERS: Partial<Record<InstallKind, { list: (world: number) => Poi[]; order: (world: number, v: Poi, now: number) => Contract | null; who: string }>> = {
-  uranium: { list: reactorVillages, order: fuelOrder, who: 'the old reactors that burn these rods' },
-  chips: { list: chipVillages, order: chipOrder, who: 'the workshops that build with these chips' },
-  battery: { list: cellVillages, order: cellOrder, who: 'the salvagers who keep the old machines going on these cells' },
+  uranium: { list: reactorVillages, order: fuelOrder, who: tl('the old reactors that burn these rods') },
+  chips: { list: chipVillages, order: chipOrder, who: tl('the workshops that build with these chips') },
+  battery: { list: cellVillages, order: cellOrder, who: tl('the salvagers who keep the old machines going on these cells') },
 };
 function buyers(): string {
   if (!site) return '';
@@ -117,10 +118,10 @@ function buyers(): string {
   if (!b) return '';
   const list = b.list(c.world).map((v) => ({ v, d: worldDist(v.x, v.z, s0.x, s0.z) })).sort((a, q) => a.d - q.d).slice(0, 3);
   if (!list.length) return '';
-  return `<div class="say" style="opacity:.85">The radio log still lists ${b.who}: ` + list.map(({ v, d }) => {
+  return TL`<div class="say" style="opacity:.85">The radio log still lists ${b.who}: ` + list.map(({ v, d }) => {
     const o = b.order(c.world, v, c.time);
-    return `<b>${v.name}</b> (${(d / 1000).toFixed(1)} km ${dirWord(wrapDx(v.x - s0.x), v.z - s0.z)} of here${o ? `, orders ${o.n} today at ${o.pay} g a crate` : ', no order today'})`;
-  }).join(', ') + '. Their orders are posted at their stores and on the notice boards round about.</div>';
+    return TL`<b>${v.name}</b> (${(d / 1000).toFixed(1)} km ${dirWord(wrapDx(v.x - s0.x), v.z - s0.z)} of here${o ? TL`, orders ${o.n} today at ${o.pay} g a crate` : tl(', no order today')})`;
+  }).join(', ') + tl('. Their orders are posted at their stores and on the notice boards round about.</div>');
 }
 export function openInstall(s: InstallSite) {
   if (!G.playing || G.dlgOpen || G.packOpen || G.xferOpen) return;
@@ -130,17 +131,17 @@ export function openInstall(s: InstallSite) {
 }
 /** What the crew say when an installation comes back to life. */
 const FINISH: Record<InstallKind, string> = {
-  uranium: 'The last controller clicks into place and the centrifuges spin up.',
-  chips: 'The etchers wake one by one and the clean room fills with a violet glow.',
-  radar: 'The dish swings up on its tower, the screens flicker, and the land for miles round fills with blips.',
-  propellant: 'Steam rises from the columns, the flare lights, and the first batch runs into the mixing house.',
-  battery: 'The formation lines crackle into life and the first racks of cells begin to charge.',
-  optical: 'The crystal tower lights from within and the first sensor heads come off the grinders.',
-  alloy: 'The electrodes drop into the furnaces with a thunderclap and the casting hall glares white.',
-  precision: 'The master machines true themselves spindle by spindle, and the lamps on the test tower blink green.',
-  robotics: 'The great arms lift from their sleep, the lines start to roll, and in the arena the walker takes its step.',
-  aerospace: 'The jigs close round the first new frame, the tunnel fan winds up to a howl, and the test stand roars.',
-  powerplex: 'Deep under the dome the core wakes with a sound like a held breath, and the pylons begin to sing.',
+  uranium: tl('The last controller clicks into place and the centrifuges spin up.'),
+  chips: tl('The etchers wake one by one and the clean room fills with a violet glow.'),
+  radar: tl('The dish swings up on its tower, the screens flicker, and the land for miles round fills with blips.'),
+  propellant: tl('Steam rises from the columns, the flare lights, and the first batch runs into the mixing house.'),
+  battery: tl('The formation lines crackle into life and the first racks of cells begin to charge.'),
+  optical: tl('The crystal tower lights from within and the first sensor heads come off the grinders.'),
+  alloy: tl('The electrodes drop into the furnaces with a thunderclap and the casting hall glares white.'),
+  precision: tl('The master machines true themselves spindle by spindle, and the lamps on the test tower blink green.'),
+  robotics: tl('The great arms lift from their sleep, the lines start to roll, and in the arena the walker takes its step.'),
+  aerospace: tl('The jigs close round the first new frame, the tunnel fan winds up to a howl, and the test stand roars.'),
+  powerplex: tl('Deep under the dome the core wakes with a sound like a held breath, and the pylons begin to sing.'),
 };
 /** The radar station's sweep: every place within its reach goes on your map. */
 function sweep(s: InstallSite): string {
@@ -148,9 +149,9 @@ function sweep(s: InstallSite): string {
   let n = 0;
   for (const p of [...places, ...sites]) if (discover(c.discovered, Math.floor(p.x / CHUNK), Math.floor(p.z / CHUNK))) n++;
   const v = places.filter((p) => p.type === 'village').length;
-  if (n) { saveChar(); logLine(`The radar copies ${n} new place${n === 1 ? '' : 's'} onto your map (M).`); }
+  if (n) { saveChar(); logLine(TL`The radar copies ${n} new place${n === 1 ? '' : 's'} onto your map (M).`); }
   const all = places.length + sites.length;
-  return n ? `The sweep shows ${all} places within ${R / 1000} km (${v} villages${sites.length ? `, ${sites.map((o) => 'the ' + o.name).join(' and ')}` : ''}): ${Math.min(n, all)} of them are new on your map.` : `The sweep shows ${all} places within ${R / 1000} km; you already have them all on your map.`;
+  return n ? TL`The sweep shows ${all} places within ${R / 1000} km (${v} villages${sites.length ? `, ${sites.map((o) => tl('the ') + o.name).join(tl(' and '))}` : ''}): ${Math.min(n, all)} of them are new on your map.` : TL`The sweep shows ${all} places within ${R / 1000} km; you already have them all on your map.`;
 }
 function close() { site = null; G.dlgOpen = false; dlgEl.style.display = 'none'; if (!G.isTouch) lockPointer(); }
 /** Clicks in the restoration window; true when handled. */
@@ -163,13 +164,13 @@ export function installClick(t: HTMLElement): boolean {
   if (a === 'give') {
     const before = st.stage, { taken, built } = handOverInstall(site.k, st, c.tech, have, c.time);
     for (const [k, n] of taken) takeFrom(k as Good, n, at());
-    let msg = taken.length ? 'Handed over: ' + taken.map(([k, n]) => `${ITEMS[k].name} ×${n}.`).join(' ') : 'You carry nothing this stage still needs.';
+    let msg = taken.length ? tl('Handed over: ') + taken.map(([k, n]) => `${ITEMS[k].name} ×${n}.`).join(' ') : tl('You carry nothing this stage still needs.');
     if (built) {
       const done = INSTALL_STAGES[site.k][before];
       c.gold += done.gold; gainXp(done.xp);
       showToast(`${site.name}: ${done.title.toLowerCase()} done`);
       const fin = installDone(site.k, st);
-      logLine(fin ? `${FINISH[site.k]} The ${site.name} is working again. You earn ${done.gold} gold.` : `${done.title}: done. You earn ${done.gold} gold.`);
+      logLine(fin ? TL`${FINISH[site.k]} The ${site.name} is working again. You earn ${done.gold} gold.` : TL`${done.title}: done. You earn ${done.gold} gold.`);
       msg += ` <b>${done.title}: done.</b>`;
       if (fin && !INSTALL_WORK[site.k]) msg += ' ' + sweep(site);
       redrawInstalls();
@@ -180,33 +181,33 @@ export function installClick(t: HTMLElement): boolean {
   if (a === 'up') {
     const { taken, built } = handOverRadarUp(st, have);
     for (const [k, n] of taken) takeFrom(k as Good, n, at());
-    let msg = taken.length ? 'Handed over: ' + taken.map(([k, n]) => `${ITEMS[k].name} ×${n}.`).join(' ') : 'You carry nothing the sensor array still needs.';
+    let msg = taken.length ? tl('Handed over: ') + taken.map(([k, n]) => `${ITEMS[k].name} ×${n}.`).join(' ') : tl('You carry nothing the sensor array still needs.');
     if (built) {
       c.gold += RADAR_UP.gold; gainXp(RADAR_UP.xp);
-      showToast(`${site.name}: the sensor array hears ${RADAR_UP.r / 1000} km`);
-      msg += ' <b>The sensor array is in.</b> ' + sweep(site);
+      showToast(TL`${site.name}: the sensor array hears ${RADAR_UP.r / 1000} km`);
+      msg += tl(' <b>The sensor array is in.</b> ') + sweep(site);
     }
     calcStats(); saveChar(); render(msg); return true;
   }
   if (a === 'fuel') {
     const i = b.dataset.insk as ItemKey, n = fuelHall(site.k, st, i, have(i), c.time, gridOf(site.k));
     if (n > 0) { takeFrom(i, n, at()); calcStats(); saveChar(); }
-    render(n > 0 ? `Loaded ${n} × ${ITEMS[i].name} into the power hall.` : 'No room in that bunker, or nothing to load.'); return true;
+    render(n > 0 ? TL`Loaded ${n} × ${ITEMS[i].name} into the power hall.` : tl('No room in that bunker, or nothing to load.')); return true;
   }
   if (a === 'rods') {
     const n = fuelPlex(st, have('nfuel'), c.time);
     if (n > 0) { takeFrom('nfuel', n, at()); calcStats(); saveChar(); }
-    render(n > 0 ? `Loaded ${n} × ${ITEMS.nfuel.name} into the core.` : 'No room in the core, or no rods to load.'); return true;
+    render(n > 0 ? TL`Loaded ${n} × ${ITEMS.nfuel.name} into the core.` : tl('No room in the core, or no rods to load.')); return true;
   }
   if (a === 'rec') {
     const ok = setInstallRec(site.k, st, +b.dataset.insr!, c.time, c.tech);
     if (ok) saveChar();
-    render(ok ? `It is set to make ${ITEMS[workOf(site.k, st)!.out].name} now.` : 'Empty the bay first: it holds one kind at a time.'); return true;
+    render(ok ? TL`It is set to make ${ITEMS[workOf(site.k, st)!.out].name} now.` : tl('Empty the bay first: it holds one kind at a time.')); return true;
   }
   if (a === 'load') {
     const i = b.dataset.insk as ItemKey, n = loadInstall(site.k, st, i, have(i), c.time, gridOf(site.k));
     if (n > 0) { takeFrom(i, n, at()); calcStats(); saveChar(); }
-    render(n > 0 ? `Loaded ${n} × ${ITEMS[i].name}.` : 'Nothing to load.'); return true;
+    render(n > 0 ? TL`Loaded ${n} × ${ITEMS[i].name}.` : tl('Nothing to load.')); return true;
   }
   if (a === 'take') {
     const g = gridOf(site.k);
@@ -216,7 +217,7 @@ export function installClick(t: HTMLElement): boolean {
     const left = putAway(w.out, st.out, at(), true), got = st.out - left;
     if (got > 0 && !was) st.t = c.time; // the bay had stopped it: it starts again now
     st.out = left; calcStats(); saveChar();
-    render(got ? `Collected ${got} crates of ${ITEMS[w.out].name}${left ? ` (no room for ${left})` : ''}.` : 'No room for them.'); return true;
+    render(got ? TL`Collected ${got} crates of ${ITEMS[w.out].name}${left ? TL` (no room for ${left})` : ''}.` : tl('No room for them.')); return true;
   }
   return false;
 }

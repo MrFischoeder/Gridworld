@@ -5,6 +5,7 @@
 import { hash } from '../core/rng';
 import { worldDist, GRIDHOLM_ID, type Poi } from './regions';
 import type { ItemKey } from '../data/items';
+import { tl } from '../i18n';
 
 export type Rare = 'bauxite' | 'sulfur' | 'lithium' | 'rareearth' | 'uranium' | 'nickel' | 'chromite' | 'rutile' | 'pgmore';
 /**
@@ -55,7 +56,7 @@ export function metalOf(world: number, v: Poi): Rare | null {
 }
 /** Both deposits of a village (the older rare first). */
 export const depositsOf = (world: number, v: Poi): Rare[] => [depositOf(world, v), metalOf(world, v)].filter((r): r is Rare => !!r);
-export const RARE_NAME: Record<Rare, string> = { bauxite: 'bauxite', sulfur: 'sulfur', lithium: 'lithium brine', rareearth: 'rare earths', uranium: 'uranium', nickel: 'nickel ore', chromite: 'chromite', rutile: 'rutile (titanium ore)', pgmore: 'platinum ore' };
+export const RARE_NAME: Record<Rare, string> = { bauxite: 'bauxite', sulfur: 'sulfur', lithium: tl('lithium brine'), rareearth: tl('rare earths'), uranium: 'uranium', nickel: tl('nickel ore'), chromite: 'chromite', rutile: tl('rutile (titanium ore)'), pgmore: tl('platinum ore') };
 /** Crates of the deposit's material a village can spare a day, by the trust tier (none to a stranger). */
 export const RARE_SHARE = [0, 1, 2, 3];
 export const rareItem = (r: Rare) => r as ItemKey;

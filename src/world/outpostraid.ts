@@ -26,6 +26,7 @@ import { wallOf, type OutpostState } from '../gen/outposts';
 import { worldDist, nearX } from '../gen/regions';
 import { hash } from '../core/rng';
 import { outpostGuns, outpostRing } from './lodes';
+import { tl, TL } from '../i18n';
 
 /** Waves, the defences' drain per bandit at the wall (per second, by wall tier), how near counts as at it, reach. */
 export const ORAID = { waves: 2, drain: [1.0, 0.7, 0.45, 0.28], near: 9, reach: 450, leave: 700 };
@@ -56,8 +57,8 @@ function spawnWave(L: Live) {
     L.bandits.push(b);
   }
   L.wave++; L.nextT = 60;
-  showToast(L.wave === 1 ? `Raid on ${L.name}!` : `Wave ${L.wave} of ${ORAID.waves}`);
-  logLine(L.wave === 1 ? `Bandits fall on ${L.name}. Keep them off the wall.` : 'More bandits are coming!');
+  showToast(L.wave === 1 ? TL`Raid on ${L.name}!` : TL`Wave ${L.wave} of ${ORAID.waves}`);
+  logLine(L.wave === 1 ? TL`Bandits fall on ${L.name}. Keep them off the wall.` : tl('More bandits are coming!'));
 }
 function finish(L: Live, won: boolean) {
   const id = L.id, k = L.r.k, str = L.r.strength;
@@ -67,8 +68,8 @@ function finish(L: Live, won: boolean) {
   if (won) {
     const gold = 40 + Math.round(str * 20);
     G.char.gold += gold; calcStats(); gainXp(30 + str * 10);
-    showToast('Raid repelled'); logLine(`${L.name} holds! The crew pays you ${gold} gold.`);
-  } else { showToast(`${L.name} is overrun`); logLine(`The bandits break in at ${L.name}. When the raid is over they will have carried off most of the crates and half the pantry.`); }
+    showToast(tl('Raid repelled')); logLine(TL`${L.name} holds! The crew pays you ${gold} gold.`);
+  } else { showToast(TL`${L.name} is overrun`); logLine(TL`The bandits break in at ${L.name}. When the raid is over they will have carried off most of the crates and half the pantry.`); }
 }
 /** Twice a second: warn of raids on outposts near you, start them, run the waves and the defences. */
 export function updateOutpostRaids(dt: number) {
@@ -80,7 +81,7 @@ export function updateOutpostRaids(dt: number) {
     const L = live, o = c.outposts[L.id];
     if (!o || worldDist(G.pos.x, G.pos.z, o.x, o.z) > ORAID.leave) { // you left: rolled without you
       for (const b of L.bandits) if (b.g.parent) removeBandit(b);
-      logLine(`You leave ${L.name} to its fate.`); live = null; return;
+      logLine(TL`You leave ${L.name} to its fate.`); live = null; return;
     }
     tickLive(L, o, 0.5);
     return;
@@ -91,7 +92,7 @@ export function updateOutpostRaids(dt: number) {
     if (!r || (o.rk ?? 0) >= r.k || o.raids?.[r.k] || now < r.t0 - OUTRAID.warn) continue;
     const key = id + ':' + r.k;
     if (now < r.t0) {
-      if (!warned.has(key)) { warned.add(key); showToast('Bandits are coming!'); logLine(`Scouts at ${o.name}: bandits are coming, about an hour out. Get ready to hold them off.`); }
+      if (!warned.has(key)) { warned.add(key); showToast(tl('Bandits are coming!')); logLine(TL`Scouts at ${o.name}: bandits are coming, about an hour out. Get ready to hold them off.`); }
       continue;
     }
     if (!spawnAuthority()) return; // another player here runs the raid (you fight their bandits)
@@ -112,16 +113,16 @@ function tickLive(L: Live, o: OutpostState, dt: number) {
 }
 /** Console / testing: bandits fall on the outpost you are at, now (k 0: its outcome is not recorded). */
 export function forceOutpostRaid(): string {
-  if (live) return 'A raid is already on.';
+  if (live) return tl('A raid is already on.');
   const e = Object.entries(G.char.outposts).filter(([, o]) => o?.k && worldDist(G.pos.x, G.pos.z, o.x, o.z) < ORAID.reach).sort(([, a], [, b]) => worldDist(G.pos.x, G.pos.z, a.x, a.z) - worldDist(G.pos.x, G.pos.z, b.x, b.z))[0];
-  if (!e || !OW.terrain) return 'Stand at an outpost.';
+  if (!e || !OW.terrain) return tl('Stand at an outpost.');
   live = { id: e[0], r: { k: 0, t0: G.char.time, strength: 2 }, name: e[1].name, wave: 0, nextT: 0, bandits: [], defence: 100 };
   spawnWave(live);
-  return `Raid on ${e[1].name}!`;
+  return TL`Raid on ${e[1].name}!`;
 }
 /** The tracker's line while a raid is on. */
 export function outpostRaidLine(): string {
-  return live ? `Raid on ${live.name}: wave ${live.wave}/${ORAID.waves}, defences ${Math.max(0, Math.round(live.defence))}%` : '';
+  return live ? TL`Raid on ${live.name}: wave ${live.wave}/${ORAID.waves}, defences ${Math.max(0, Math.round(live.defence))}%` : '';
 }
 export function clearOutpostRaid() { if (live) for (const b of live.bandits) if (b.g.parent) removeBandit(b); live = null; }
 

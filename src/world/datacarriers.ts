@@ -14,6 +14,7 @@ import { installSites, installSitesReady, pickInstallLead, installLeadText, inst
 import { isDiscovered } from '../save';
 import { saveChar } from '../character';
 import { logLine, showToast } from '../ui/hud';
+import { tl, TL } from '../i18n';
 
 export const DATA_C = 0xc49cff;
 let grp: THREE.Group | null = null, item: THREE.Group | null = null, site: TechSite | null = null, top = V(0, 0, 0);
@@ -76,14 +77,14 @@ export function nearCarrier(): TechSite | null {
   if (!site || !item || G.char.loc !== 'dungeon') return null;
   return Math.hypot(G.pos.x - top.x, G.pos.z - top.z) < 1.7 && Math.abs(G.pos.y - top.y) < 1.5 ? site : null;
 }
-export const carrierPrompt = (s: TechSite) => `E — take the ${CARRIER_NAME[s.carrier]}`;
+export const carrierPrompt = (s: TechSite) => TL`E — take the ${CARRIER_NAME[s.carrier]}`;
 /** Take the carrier: the technology is yours. */
 export function takeCarrier(s: TechSite) {
   const t = TECH_BY_ID[s.tech];
   G.char.tech[s.tech] = Math.round(G.char.time); saveChar();
   if (item && grp) { grp.remove(item); const b = grp.getObjectByName('beam'); if (b) grp.remove(b); item = null; }
-  showToast('Data recovered: ' + t.name);
-  logLine(`The ${CARRIER_NAME[s.carrier].toLowerCase()} still reads: plans for ${t.name}. ${t.blurb} Any village computer can read it (ARCHIVE).`);
+  showToast(tl('Data recovered: ') + t.name);
+  logLine(TL`The ${CARRIER_NAME[s.carrier].toLowerCase()} still reads: plans for ${t.name}. ${t.blurb} Any village computer can read it (ARCHIVE).`);
 }
 /** The carrier turns slowly over its pedestal. */
 export function spinCarrier(time: number) {
@@ -98,11 +99,11 @@ export function askLead(vx: number, vz: number): string {
   const c = G.char;
   // a great installation nearby that you have neither heard of nor found comes first (there are only a few)
   const ins = pickInstallLead(installSites(terrain()), c.leads, installFound, vx, vz);
-  if (ins) { c.leads.push(installLeadId(ins.k)); saveChar(); logLine(`New lead: the ${ins.name} (marked on your map).`); return installLeadText(ins, vx, vz, c.world); }
+  if (ins) { c.leads.push(installLeadId(ins.k)); saveChar(); logLine(TL`New lead: the ${ins.name} (marked on your map).`); return installLeadText(ins, vx, vz, c.world); }
   const got = pickLead(techSites(terrain()), c.tech, c.leads, vx, vz);
-  if (!got) return 'Old machines? Nobody round here has seen anything like that for years. Ask in the villages further out.';
-  if (got.fresh) { c.leads.push(got.site.tech); saveChar(); logLine(`New lead: a ${CARRIER_NAME[got.site.carrier].toLowerCase()} in ${got.site.name} (marked on your map).`); }
-  return (got.fresh ? '' : 'Did you not go and look yet? ') + leadText(got.site, vx, vz, c.world);
+  if (!got) return tl('Old machines? Nobody round here has seen anything like that for years. Ask in the villages further out.');
+  if (got.fresh) { c.leads.push(got.site.tech); saveChar(); logLine(TL`New lead: a ${CARRIER_NAME[got.site.carrier].toLowerCase()} in ${got.site.name} (marked on your map).`); }
+  return (got.fresh ? '' : tl('Did you not go and look yet? ')) + leadText(got.site, vx, vz, c.world);
 }
 /** The leads not yet followed up (heard of, carrier not taken). */
 export const openLeads = (): TechSite[] => { const c = G.char; return c.leads.length ? techSites(terrain()).filter((s) => c.leads.includes(s.tech) && c.tech[s.tech] === undefined) : []; };
@@ -117,12 +118,12 @@ export const leadMarkers = () => [
 ];
 /** Quest tracker lines for the open leads. */
 export function leadLines(): string[] {
-  const far = (x: number, z: number) => { const dx = wrapDx(x - G.pos.x), dz = z - G.pos.z, d = worldDist(x, z, G.pos.x, G.pos.z); return d < 40 ? ' · right here' : ` · ${d < 1000 ? Math.round(d / 10) * 10 + ' m' : (d / 1000).toFixed(1) + ' km'} ${dirWord(dx, dz)}`; };
-  const ins = openInstallLeads().map((s) => `<span style="color:#b6ff3a">Lead:</span> the ${s.name}` + (G.char.loc === 'overworld' ? far(s.x, s.z) : ''));
+  const far = (x: number, z: number) => { const dx = wrapDx(x - G.pos.x), dz = z - G.pos.z, d = worldDist(x, z, G.pos.x, G.pos.z); return d < 40 ? tl(' · right here') : ` · ${d < 1000 ? Math.round(d / 10) * 10 + ' m' : (d / 1000).toFixed(1) + ' km'} ${dirWord(dx, dz)}`; };
+  const ins = openInstallLeads().map((s) => TL`<span style="color:#b6ff3a">Lead:</span> the ${s.name}` + (G.char.loc === 'overworld' ? far(s.x, s.z) : ''));
   return [...ins, ...openLeads().map((s) => {
-    let t = `<span style="color:#c49cff">Lead:</span> a ${CARRIER_NAME[s.carrier].toLowerCase()} in ${s.name}`;
-    if (G.char.loc === 'overworld') { const dx = wrapDx(s.x - G.pos.x), dz = s.z - G.pos.z, d = worldDist(s.x, s.z, G.pos.x, G.pos.z); t += d < 40 ? ' · right here' : ` · ${d < 1000 ? Math.round(d / 10) * 10 + ' m' : (d / 1000).toFixed(1) + ' km'} ${dirWord(dx, dz)}`; }
-    else if (G.char.dungeon?.ruinId === s.place) t += ' · in here';
+    let t = TL`<span style="color:#c49cff">Lead:</span> a ${CARRIER_NAME[s.carrier].toLowerCase()} in ${s.name}`;
+    if (G.char.loc === 'overworld') { const dx = wrapDx(s.x - G.pos.x), dz = s.z - G.pos.z, d = worldDist(s.x, s.z, G.pos.x, G.pos.z); t += d < 40 ? tl(' · right here') : ` · ${d < 1000 ? Math.round(d / 10) * 10 + ' m' : (d / 1000).toFixed(1) + ' km'} ${dirWord(dx, dz)}`; }
+    else if (G.char.dungeon?.ruinId === s.place) t += tl(' · in here');
     return t;
   })];
 }

@@ -1,9 +1,10 @@
 // Guns and their attachments. Pure data: world/weapons.ts fires them, the backpack fits attachments into the slots.
 import type { ItemKey } from './items';
+import { tl } from '../i18n';
 
 export type AttachSlot = 'optic' | 'barrel' | 'mag';
 export const ATTACH_SLOTS: AttachSlot[] = ['optic', 'barrel', 'mag'];
-export const SLOT_NAME: Record<AttachSlot, string> = { optic: 'Optic', barrel: 'Barrel', mag: 'Magazine' };
+export const SLOT_NAME: Record<AttachSlot, string> = { optic: tl('Optic'), barrel: tl('Barrel'), mag: tl('Magazine') };
 
 export interface GunStats {
   /** Damage per hit (before level and relic bonuses). */
@@ -27,14 +28,14 @@ export type GunLook = 'blaster' | 'pistol' | 'shotgun' | 'rifle' | 'smg';
  */
 export interface GunSpec { name: string; base: GunStats; slots: AttachSlot[]; ammo: ItemKey; look: GunLook; pellets?: number; spread?: number }
 /** The starting gun: an energy rifle that fires Energy Cells. */
-export const BLASTER: GunSpec = { name: 'Blaster', base: { dmg: 1, interval: 0.16, range: 70, mag: 20, reload: 1.5, zoom: 1.2, noise: 55 }, slots: ATTACH_SLOTS, ammo: 'ammoE', look: 'blaster' };
+export const BLASTER: GunSpec = { name: tl('Blaster'), base: { dmg: 1, interval: 0.16, range: 70, mag: 20, reload: 1.5, zoom: 1.2, noise: 55 }, slots: ATTACH_SLOTS, ammo: 'ammoE', look: 'blaster' };
 /** Every gun, by its item. */
 export const GUNS: Partial<Record<ItemKey, GunSpec>> = {
   blaster: BLASTER,
-  pistol: { name: 'Old Pistol', base: { dmg: 1.6, interval: 0.3, range: 45, mag: 12, reload: 1.2, zoom: 1.15, noise: 45 }, slots: [], ammo: 'ammo9', look: 'pistol' },
-  smg: { name: 'Scrap SMG', base: { dmg: 0.75, interval: 0.085, range: 45, mag: 30, reload: 1.7, zoom: 1.15, noise: 50 }, slots: [], ammo: 'ammo9', look: 'smg' },
-  shotgun: { name: 'Scattergun', base: { dmg: 0.9, interval: 0.8, range: 26, mag: 6, reload: 2.6, zoom: 1.1, noise: 70 }, slots: [], ammo: 'ammoS', look: 'shotgun', pellets: 7, spread: 0.07 },
-  rifle: { name: 'Hunting Rifle', base: { dmg: 4.5, interval: 1.0, range: 150, mag: 5, reload: 2.4, zoom: 3, noise: 95 }, slots: [], ammo: 'ammoR', look: 'rifle' },
+  pistol: { name: tl('Old Pistol'), base: { dmg: 1.6, interval: 0.3, range: 45, mag: 12, reload: 1.2, zoom: 1.15, noise: 45 }, slots: [], ammo: 'ammo9', look: 'pistol' },
+  smg: { name: tl('Scrap SMG'), base: { dmg: 0.75, interval: 0.085, range: 45, mag: 30, reload: 1.7, zoom: 1.15, noise: 50 }, slots: [], ammo: 'ammo9', look: 'smg' },
+  shotgun: { name: tl('Scattergun'), base: { dmg: 0.9, interval: 0.8, range: 26, mag: 6, reload: 2.6, zoom: 1.1, noise: 70 }, slots: [], ammo: 'ammoS', look: 'shotgun', pellets: 7, spread: 0.07 },
+  rifle: { name: tl('Hunting Rifle'), base: { dmg: 4.5, interval: 1.0, range: 150, mag: 5, reload: 2.4, zoom: 3, noise: 95 }, slots: [], ammo: 'ammoR', look: 'rifle' },
 };
 export const gunOf = (k: ItemKey | null | undefined): GunSpec | null => (k && GUNS[k]) || null;
 
@@ -43,10 +44,10 @@ export type MeleeLook = 'blade' | 'machete' | 'spear' | 'sledge';
 /** A melee weapon: damage per swing, seconds between swings, reach (m), the stamina a swing costs (× the blade's), how it looks. */
 export interface MeleeSpec { name: string; dmg: number; rate: number; reach: number; stamina: number; look: MeleeLook }
 export const MELEE: Partial<Record<ItemKey, MeleeSpec>> = {
-  blade: { name: 'Energy Blade', dmg: 5, rate: 0.42, reach: 2.6, stamina: 1, look: 'blade' },
-  machete: { name: 'Machete', dmg: 3.5, rate: 0.34, reach: 2.3, stamina: 0.7, look: 'machete' },
-  spear: { name: 'Spear', dmg: 4, rate: 0.6, reach: 3.6, stamina: 0.9, look: 'spear' },
-  sledge: { name: 'Sledgehammer', dmg: 10, rate: 1.05, reach: 2.5, stamina: 1.8, look: 'sledge' },
+  blade: { name: tl('Energy Blade'), dmg: 5, rate: 0.42, reach: 2.6, stamina: 1, look: 'blade' },
+  machete: { name: tl('Machete'), dmg: 3.5, rate: 0.34, reach: 2.3, stamina: 0.7, look: 'machete' },
+  spear: { name: tl('Spear'), dmg: 4, rate: 0.6, reach: 3.6, stamina: 0.9, look: 'spear' },
+  sledge: { name: tl('Sledgehammer'), dmg: 10, rate: 1.05, reach: 2.5, stamina: 1.8, look: 'sledge' },
 };
 export const meleeOf = (k: ItemKey | null | undefined): MeleeSpec | null => (k && MELEE[k]) || null;
 /** The kinds of rounds, and the guns that fire them. */

@@ -14,6 +14,7 @@ import { savedBy, takeEscort, plundered } from '../world/caravans';
 import { danger } from '../world/overworld';
 import { $ } from './hud';
 import { lockPointer } from './input';
+import { tl, TL } from '../i18n';
 
 const dlgEl = $('dlg'), panel = () => dlgEl.querySelector('.panel') as HTMLElement;
 let open: Caravan | null = null;
@@ -30,20 +31,20 @@ function render(msg = '') {
   const c = open!, p = price(c), n = left(c), name = ITEMS[c.good].name, eta = c.t0 + c.T;
   panel().classList.remove('wide');
   panel().innerHTML = `<h2>Caravan</h2><div class="role">${c.fromName} → ${c.toName}</div>` +
-    `<div class="say">${msg ? msg + '<br><br>' : ''}"We carry ${name} from ${c.fromName} to ${c.toName}: ${n} crate${n === 1 ? '' : 's'} left on ${c.wagons > 1 ? 'the wagons' : 'the wagon'}. We should roll in about ${fmtTime(eta)}${eta - G.char.time > 1440 ? ' tomorrow' : ''}. If you want some here and now, ${p} gold a crate. Saves you the walk."</div>` +
-    `<div class="shoprow"><div><b>${name}</b><br><span>${n} left · your gold ${G.char.gold}</span></div>
+    TL`<div class="say">${msg ? msg + '<br><br>' : ''}"We carry ${name} from ${c.fromName} to ${c.toName}: ${n} crate${n === 1 ? '' : 's'} left on ${c.wagons > 1 ? tl('the wagons') : tl('the wagon')}. We should roll in about ${fmtTime(eta)}${eta - G.char.time > 1440 ? tl(' tomorrow') : ''}. If you want some here and now, ${p} gold a crate. Saves you the walk."</div>` +
+    TL`<div class="shoprow"><div><b>${name}</b><br><span>${n} left · your gold ${G.char.gold}</span></div>
       <button class="opt" style="width:auto" data-cvb="1" ${n < 1 || G.char.gold < p ? 'disabled' : ''}>buy 1 (${p} g)</button>
       <button class="opt" style="width:auto" data-cvb="5" ${n < 5 || G.char.gold < p * 5 ? 'disabled' : ''}>buy 5</button></div>` +
-    escortRow(c) + `<button class="opt" data-cvclose="1">Safe travels.</button>`;
+    escortRow(c) + TL`<button class="opt" data-cvclose="1">Safe travels.</button>`;
 }
 /** The escort offer: only while the caravan is still early on its road. */
 function escortRow(c: Caravan): string {
   const esc = G.char.escort;
-  if (esc?.id === c.id) return `<div class="say" style="opacity:.85">You are guarding this caravan to ${c.toName}: ${esc.pay} gold on arrival. Stay close.</div>`;
+  if (esc?.id === c.id) return TL`<div class="say" style="opacity:.85">You are guarding this caravan to ${c.toName}: ${esc.pay} gold on arrival. Stay close.</div>`;
   const done = (G.char.time - c.t0) * CARAVAN.speed / (c.T * CARAVAN.speed);
   if (esc || done > 0.35) return '';
   const pay = escortPay(c, danger(G.pos.x, G.pos.z));
-  return `<button class="opt" data-cvesc="1" style="color:var(--gold)">"Bandits on this road. Ride with us to ${c.toName}? ${pay} gold if we all get there."</button>`;
+  return TL`<button class="opt" data-cvesc="1" style="color:var(--gold)">"Bandits on this road. Ride with us to ${c.toName}? ${pay} gold if we all get there."</button>`;
 }
 export function openCaravan(c: Caravan) {
   if (!G.playing || G.dlgOpen || G.packOpen || G.xferOpen) return;
@@ -71,6 +72,6 @@ export function caravanClick(t: HTMLElement): boolean {
   // forget old caravans (keep the save small)
   const ids = Object.keys(ch.caravans); if (ids.length > 40) for (const id of ids.slice(0, ids.length - 40)) delete ch.caravans[id];
   calcStats(); saveChar();
-  render(got ? (savedBy(c.id) ? 'For you, a friend\'s price. ' : '') + `The drover hands down ${got} crate${got > 1 ? 's' : ''} of ${ITEMS[c.good].name}. (-${got * p} gold)` : 'No room for a crate in your backpack or a vehicle beside you.');
+  render(got ? (savedBy(c.id) ? tl('For you, a friend\'s price. ') : '') + TL`The drover hands down ${got} crate${got > 1 ? 's' : ''} of ${ITEMS[c.good].name}. (-${got * p} gold)` : tl('No room for a crate in your backpack or a vehicle beside you.'));
   return true;
 }

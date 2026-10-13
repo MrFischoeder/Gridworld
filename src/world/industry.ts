@@ -24,6 +24,7 @@ import { poseRig, type Kit } from './rig';
 import { findPoi } from '../gen/regions';
 import type { VillageMap } from '../gen/village';
 import type { Terrain } from '../gen/terrain';
+import { tl, TL } from '../i18n';
 
 const WORKER = 0xdce8ff, WOOD = 0xb8b060, METAL = 0xa8c8b8, SOIL = 0x6f8f76, CROP = 0xd8ff7a, GRAIN = 0xe8d880, ROCK = 0x8fb89a, FLAME = 0xffb347, PIPE = 0xc8e0ff;
 interface Worker { f: Figure; x: number; z: number; to: [number, number] | null; spot: [number, number]; wait: number; phase: number; face: number; carry: boolean; load: boolean }
@@ -190,7 +191,7 @@ export function drawIndustry(vm: VillageMap, T: Terrain, id: number): THREE.Grou
   const [sgx, sgy, sgz] = at(0, -out / 2 - 1.5);
   pb.box(sgx - 0.08, sgy, sgz - 0.08, sgx + 0.08, sgy + 2.6, sgz + 0.08, WOOD);
   grp.add(pb.build());
-  const label = INDUSTRY[kind].site.toUpperCase() + (kind === 'refinery' && !built ? ' (PLANNED)' : ''), sign = textSprite(label, '#ffd060', 3.2);
+  const label = INDUSTRY[kind].site.toUpperCase() + (kind === 'refinery' && !built ? tl(' (PLANNED)') : ''), sign = textSprite(label, '#ffd060', 3.2);
   sign.position.set(sgx, sgy + 3, sgz); grp.add(sign);
   const spots = W.map(([u, v]) => P(u, v));
   const tools: Kit = kind === 'farm' ? 'hoe' : kind === 'mine' || kind === 'salvage' ? 'pick' : 'hammer';
@@ -231,9 +232,9 @@ const prodOf = (s: Site) => { const poi = findPoi(G.char.world, s.id); return po
 /** The village's own goods now (gen/hall.ts): crates of them in its hall, the most they reach, full (the site stands still). */
 export function storeOf(id: number, seed: number) {
   const poi = findPoi(G.char.world, id);
-  if (!poi) return { n: 0, cap: OWN.cap, full: false, prod: 1, name: 'village hall' };
+  if (!poi) return { n: 0, cap: OWN.cap, full: false, prod: 1, name: tl('village hall') };
   const st = stockOf(G.char.world, poi, seed, G.char.towns[id], G.char.time), n = st.makes.reduce((a, g) => a + st.ownOf(g), 0);
-  return { n, cap: OWN.cap * Math.max(1, st.makes.length), full: st.full, prod: st.prod, name: 'village hall' };
+  return { n, cap: OWN.cap * Math.max(1, st.makes.length), full: st.full, prod: st.prod, name: tl('village hall') };
 }
 /** What the village's own goods are worth (for the bandits' demands): crates at the price of what the village makes. */
 export function storeWealth(id: number, seed: number): number {
@@ -273,26 +274,26 @@ const need = (k: Industry) => INDUSTRY[k].fix.map(([i, n]) => `${n} ${ITEMS[i].n
 const hasAll = (k: Industry) => INDUSTRY[k].fix.every(([i, n]) => count(G.char.inv, i) >= n);
 export function sitePrompt(s: Site): string {
   const spec = INDUSTRY[s.kind];
-  if (!siteBuilt(s.kind, G.char.towns[s.id])) return `${s.town}'s ${spec.site} is still to be built: ask the elder about it`;
+  if (!siteBuilt(s.kind, G.char.towns[s.id])) return TL`${s.town}'s ${spec.site} is still to be built: ask the elder about it`;
   const poi = findPoi(G.char.world, s.id), c = poi ? Math.round(siteCondition(G.char.world, poi, G.char.towns[s.id], G.char.time)) : 100;
-  const st = storeOf(s.id, s.seed), store = `${Math.floor(st.n)}/${st.cap} crates in the village hall`;
-  if (c >= 90 && st.full) return `${s.town}'s ${spec.site}: stopped, the village hall has all it can take of its goods (${store}) · buy or share some`;
-  if (c >= 90) return `${s.town}'s ${spec.site}: working (${c}%) · ${store}`;
-  return hasAll(s.kind) ? `E — mend the ${spec.site} (${c}%): uses ${need(s.kind)}` : `The ${spec.site} is damaged (${c}%): bring ${need(s.kind)} to mend it`;
+  const st = storeOf(s.id, s.seed), store = TL`${Math.floor(st.n)}/${st.cap} crates in the village hall`;
+  if (c >= 90 && st.full) return TL`${s.town}'s ${spec.site}: stopped, the village hall has all it can take of its goods (${store}) · buy or share some`;
+  if (c >= 90) return TL`${s.town}'s ${spec.site}: working (${c}%) · ${store}`;
+  return hasAll(s.kind) ? TL`E — mend the ${spec.site} (${c}%): uses ${need(s.kind)}` : TL`The ${spec.site} is damaged (${c}%): bring ${need(s.kind)} to mend it`;
 }
 /** Mend the site with the parts from your backpack; the village pays you. */
 export function repairSite(s: Site) {
   const poi = findPoi(G.char.world, s.id);
   if (!poi || !siteBuilt(s.kind, G.char.towns[s.id])) return;
   const c = siteCondition(G.char.world, poi, G.char.towns[s.id], G.char.time), spec = INDUSTRY[s.kind];
-  if (c >= 90) { logLine(`The ${spec.site} works well.`); return; }
-  if (!hasAll(s.kind)) { logLine(`To mend the ${spec.site} you need ${need(s.kind)}.`); return; }
+  if (c >= 90) { logLine(TL`The ${spec.site} works well.`); return; }
+  if (!hasAll(s.kind)) { logLine(TL`To mend the ${spec.site} you need ${need(s.kind)}.`); return; }
   for (const [k, n] of spec.fix) take(k, n);
   const st = (G.char.towns[s.id] ??= {});
   st.siteFixed = G.char.time; st.siteHurt = 0;
   const pay = Math.round(40 + (100 - c) * 0.8);
   G.char.gold += pay; earnTrust(s.id, 'site'); calcStats(); gainXp(25); saveChar(); prodT = 0;
-  showToast(`${spec.site} mended`); logLine(`${s.town}'s ${spec.site} is back at work. The villagers pay you ${pay} gold.`);
+  showToast(`${spec.site} mended`); logLine(TL`${s.town}'s ${spec.site} is back at work. The villagers pay you ${pay} gold.`);
 }
 function take(k: ItemKey, n: number) {
   const inv = G.char.inv;

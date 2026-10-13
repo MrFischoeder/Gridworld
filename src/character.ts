@@ -7,6 +7,7 @@ import { saveChar as persist } from './save';
 import { showToast, logLine } from './ui/hud';
 import { BLASTER, gunStats, gunOf, meleeOf } from './data/weapons';
 import { proxied } from './world/remote';
+import { tl, TL } from './i18n';
 
 export const saveChar = () => persist(G.char);
 
@@ -52,7 +53,7 @@ export function stowHeld(): string {
   if (!s) return '';
   if (WEAPON_KIND[s.k] !== undefined) { const f = c.back.indexOf(null); if (f >= 0) { c.back[f] = s; c.hands[0] = null; handsChanged(); return ''; } }
   if (putSlot(c.inv, s, packVol()) === 0) { c.hands[0] = null; handsChanged(); return ''; }
-  return `Your hands are full (${item(s.k).name}) and there is nowhere to put it.`;
+  return TL`Your hands are full (${item(s.k).name}) and there is nowhere to put it.`;
 }
 
 /** Whether k is in your hands (tools work only from there, not from the backpack). */
@@ -62,7 +63,7 @@ export function takeInHands(k: ItemKey): string {
   const c = G.char;
   if (c.hands[0]?.k === k) return '';
   const i = c.inv.findIndex((s) => s?.k === k);
-  if (i < 0) return `You have no ${item(k).name}.`;
+  if (i < 0) return TL`You have no ${item(k).name}.`;
   const m = stowHeld();
   if (m) return m;
   const s = c.inv[i]!;
@@ -113,15 +114,15 @@ export function gainXp(n: number) {
   c.xp += n;
   while (c.xp >= xpNeed(c.level)) {
     c.xp -= xpNeed(c.level); c.level++; calcStats(); G.hp = G.S.maxHp;
-    showToast('Level ' + c.level); logLine('+15 max HP, +12% damage');
+    showToast(tl('Level ') + c.level); logLine(tl('+15 max HP, +12% damage'));
   }
   saveChar();
 }
 
 export function giveLoot(k: ItemKey, n = 1) {
   const where = addItem(k, n);
-  if (!where) { logLine('Backpack full: ' + ITEMS[k].name + ' lost'); return; }
-  logLine(ITEMS[k].name + (where === 'mod' ? ' (equipped)' : where === 'hands' ? ' (in your hands)' : where === 'back' ? ' (on your back)' : ' → backpack')); if (item(k).type === 'relic') showToast(ITEMS[k].name);
+  if (!where) { logLine(tl('Backpack full: ') + ITEMS[k].name + ' lost'); return; }
+  logLine(ITEMS[k].name + (where === 'mod' ? ' (equipped)' : where === 'hands' ? tl(' (in your hands)') : where === 'back' ? tl(' (on your back)') : ' → backpack')); if (item(k).type === 'relic') showToast(ITEMS[k].name);
   saveChar();
 }
 

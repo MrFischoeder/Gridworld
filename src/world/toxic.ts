@@ -18,6 +18,7 @@ import { showToxic } from '../ui/toxic';
 import { tintSky } from './sky';
 import type { Slot } from '../save';
 import type { Terrain } from '../gen/terrain';
+import { tl, TL } from '../i18n';
 
 const CONC = 0x7fa08c, RUST = 0x9aa870, METAL = 0xa8c8b8, GLOW = 0xb6ff3a;
 /** A locker in the site's frame, and which way its door faces. */
@@ -159,12 +160,12 @@ export const toxicHere = () => (G.char.loc === 'overworld' ? here : 0);
 /** Screws a fresh filter into the mask (a Mask Filter from the backpack). */
 export function fitFilter(auto: '' | 'first' | 'spent' = ''): boolean {
   const c = G.char;
-  if (!masked()) { if (!auto) logLine('Wear the Gas Mask first (the face slot of your backpack), then screw a filter into it.'); return false; }
+  if (!masked()) { if (!auto) logLine(tl('Wear the Gas Mask first (the face slot of your backpack), then screw a filter into it.')); return false; }
   if (!takeOne('filter')) return false;
   const was = c.filter; c.filter = MASK.filter; saveChar();
-  if (auto === 'spent') { showToast('Fresh filter'); logLine('Your filter is spent: you screw in a fresh one from your backpack.'); }
-  else if (auto) logLine('You screw a filter from your backpack into the mask before breathing in.');
-  else logLine(was > 0 ? `You swap the filter (the old one had ${Math.round(was / MASK.filter * 100)}% left) for a fresh one.` : 'You screw a fresh filter into your mask.');
+  if (auto === 'spent') { showToast(tl('Fresh filter')); logLine(tl('Your filter is spent: you screw in a fresh one from your backpack.')); }
+  else if (auto) logLine(tl('You screw a filter from your backpack into the mask before breathing in.'));
+  else logLine(was > 0 ? TL`You swap the filter (the old one had ${Math.round(was / MASK.filter * 100)}% left) for a fresh one.` : tl('You screw a fresh filter into your mask.'));
   return true;
 }
 
@@ -180,7 +181,7 @@ export function updateToxic(dt: number) {
     // found: on the maps from now on
     for (const f of near) if (!G.char.fogs[f.id] && worldDist(f.x, f.z, G.pos.x, G.pos.z) < f.r + 60) {
       G.char.fogs[f.id] = [Math.round(f.x), Math.round(f.z), Math.round(f.r), f.name]; saveChar();
-      logLine(`A heavy green fog lies over ${f.name}. Without a gas mask it will burn your lungs.`);
+      logLine(TL`A heavy green fog lies over ${f.name}. Without a gas mask it will burn your lungs.`);
     }
   }
   for (const L of live.values()) for (const s of L.puffs) { // the banks drift round slowly and breathe
@@ -196,10 +197,10 @@ export function updateToxic(dt: number) {
     if (masked() && c.filter <= 0) fitFilter('first');
     if (masked() && c.filter > 0) {
       c.filter = Math.max(0, c.filter - filterWear(here) * dt);
-      if (c.filter <= 0 && !fitFilter('spent')) { showToast('Filter spent!'); logLine('Your filter is spent and you have no spare: get out of the fog!'); }
+      if (c.filter <= 0 && !fitFilter('spent')) { showToast(tl('Filter spent!')); logLine(tl('Your filter is spent and you have no spare: get out of the fog!')); }
     } else if (!G.god) {
       environmentalDamage(fogHarm(here) * dt); G.dmgFlash = Math.max(G.dmgFlash, 0.15 + 0.2 * here);
-      if ((warnT -= dt) <= 0) { warnT = 5; logLine(masked() ? 'The fog seeps through your empty mask: you need a filter!' : 'The green fog burns your throat and eyes! You need a gas mask.'); }
+      if ((warnT -= dt) <= 0) { warnT = 5; logLine(masked() ? tl('The fog seeps through your empty mask: you need a filter!') : tl('The green fog burns your throat and eyes! You need a gas mask.')); }
     }
   }
   showToxic(here > 0.01 || seen > 0.05 ? { d: here, masked: masked(), filter: c.filter / MASK.filter, spares: c.inv.reduce((a, s) => a + (s && s.k === 'filter' ? s.n : 0), 0) } : null);
@@ -217,7 +218,7 @@ export function tintToxic() {
 export function toxicName(x: number, z: number): string | null {
   if (!zoneHere || here <= 0) return null;
   const f = zoneHere;
-  return (worldDist(f.x, f.z, x, z) < FOG.site + 12 ? FOG_SITE[f.site].name + ', ' : '') + f.name + ' · toxic fog';
+  return (worldDist(f.x, f.z, x, z) < FOG.site + 12 ? FOG_SITE[f.site].name + ', ' : '') + f.name + tl(' · toxic fog');
 }
 
 // ---------- the site: collisions and lockers ----------

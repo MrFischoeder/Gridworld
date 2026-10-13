@@ -18,10 +18,11 @@ import { showToast, logLine } from './hud';
 import { count } from '../data/crafting';
 import { putItems } from '../inventory';
 import { stockOf } from '../gen/hall';
+import { tl, TL } from '../i18n';
 
 let town = '';
 const left = (c: Contract) => c.n - c.done;
-export const dueText = (t: number) => { const h = Math.floor((t - G.char.time) / 60); return h < 0 ? 'overdue' : h < 24 ? `${h} h left (by ${fmtTime(t)})` : `${Math.floor(h / 24)} d ${h % 24} h left`; };
+export const dueText = (t: number) => { const h = Math.floor((t - G.char.time) / 60); return h < 0 ? 'overdue' : h < 24 ? TL`${h} h left (by ${fmtTime(t)})` : TL`${Math.floor(h / 24)} d ${h % 24} h left`; };
 const where = (x: number, z: number) => `${fmtDist(worldDist(G.pos.x, G.pos.z, x, z))} ${point8(bearingTo(x, z))}`;
 /** The offers at village v: its fuel and chip orders, then the posted ones. */
 export function localOffers(v: Poi, seed: number): Contract[] {
@@ -32,32 +33,32 @@ export function localOffers(v: Poi, seed: number): Contract[] {
 export function describe(c: Contract): string {
   const g = ITEMS[c.good].name;
   return c.good === 'powercell'
-    ? `<b>Cell order:</b> ${c.n} × ${g} for the salvagers of ${c.toName}${worldDist(G.pos.x, G.pos.z, c.tx, c.tz) > 400 ? ` (${where(c.tx, c.tz)})` : ''} · ${c.pay} g a crate`
+    ? TL`<b>Cell order:</b> ${c.n} × ${g} for the salvagers of ${c.toName}${worldDist(G.pos.x, G.pos.z, c.tx, c.tz) > 400 ? ` (${where(c.tx, c.tz)})` : ''} · ${c.pay} g a crate`
     : c.good === 'microchip'
-    ? `<b>Chip order:</b> ${c.n} × ${g} for the workshops of ${c.toName}${worldDist(G.pos.x, G.pos.z, c.tx, c.tz) > 400 ? ` (${where(c.tx, c.tz)})` : ''} · ${c.pay} g a crate`
+    ? TL`<b>Chip order:</b> ${c.n} × ${g} for the workshops of ${c.toName}${worldDist(G.pos.x, G.pos.z, c.tx, c.tz) > 400 ? ` (${where(c.tx, c.tz)})` : ''} · ${c.pay} g a crate`
     : c.good === 'nfuel'
-    ? `<b>Fuel order:</b> ${c.n} × ${g} for the old reactor of ${c.toName}${worldDist(G.pos.x, G.pos.z, c.tx, c.tz) > 400 ? ` (${where(c.tx, c.tz)})` : ''} · ${c.pay} g a crate`
+    ? TL`<b>Fuel order:</b> ${c.n} × ${g} for the old reactor of ${c.toName}${worldDist(G.pos.x, G.pos.z, c.tx, c.tz) > 400 ? ` (${where(c.tx, c.tz)})` : ''} · ${c.pay} g a crate`
     : c.kind === 'supply'
-    ? `<b>Order:</b> ${c.n} × ${g} for ${c.toName} · ${c.pay} g a crate`
-    : `<b>Haul:</b> ${c.n} × ${g} from ${c.fromName} to ${c.toName} (${where(c.tx, c.tz)}) · ${c.pay} g a crate · deposit ${c.deposit} g, returned on delivery`;
+    ? TL`<b>Order:</b> ${c.n} × ${g} for ${c.toName} · ${c.pay} g a crate`
+    : TL`<b>Haul:</b> ${c.n} × ${g} from ${c.fromName} to ${c.toName} (${where(c.tx, c.tz)}) · ${c.pay} g a crate · deposit ${c.deposit} g, returned on delivery`;
 }
 export function renderContracts(panel: HTMLElement, head: string, msg = '') {
   const v = loadedVillage(town), c = G.char, poi = v && findPoi(c.world, v.id);
   if (!v || !poi) return;
   const mine = c.contracts.map((k) => {
     const here = k.to === v.id, have = carried(k.good, poi), can = here ? Math.min(have, left(k)) : 0;
-    return `<div class="shoprow"><div>${describe(k)}<br><span>${k.done}/${k.n} delivered · ${dueText(k.due)}${here ? ` · you have ${have} here` : ` · take them to ${k.toName}, ${where(k.tx, k.tz)}`}</span></div>
-      ${here ? `<button class="opt" style="width:auto" data-ctd="${k.id}" ${can ? '' : 'disabled'}>Hand over ${can || ''}</button>` : ''}</div>`;
+    return `<div class="shoprow"><div>${describe(k)}<br><span>${k.done}/${k.n} delivered · ${dueText(k.due)}${here ? TL` · you have ${have} here` : TL` · take them to ${k.toName}, ${where(k.tx, k.tz)}`}</span></div>
+      ${here ? TL`<button class="opt" style="width:auto" data-ctd="${k.id}" ${can ? '' : 'disabled'}>Hand over ${can || ''}</button>` : ''}</div>`;
   }).join('');
   const offers = localOffers(poi, v.vm.seed).filter((o) => !c.taken.includes(o.id) && !c.contracts.some((k) => k.id === o.id));
   const full = c.contracts.length >= CONTRACT.maxActive;
-  const rows = offers.map((o) => `<div class="shoprow"><div>${describe(o)}<br><span>deliver ${dueText(o.due)}</span></div>
+  const rows = offers.map((o) => TL`<div class="shoprow"><div>${describe(o)}<br><span>deliver ${dueText(o.due)}</span></div>
     <button class="opt" style="width:auto;color:var(--gold)" data-cta="${o.id}" ${full || (o.kind === 'haul' && c.gold < o.deposit) ? 'disabled' : ''}>Take it</button></div>`).join('');
   panel.classList.add('wide');
-  panel.innerHTML = head + `<div class="say">${msg ? msg + '<br><br>' : ''}Gold: <b>${c.gold}</b>. Deliveries between the villages, paid on delivery. New notices every 12 hours.${full ? ` You already hold ${CONTRACT.maxActive} contracts.` : ''}</div>` +
-    (mine ? `<div class="say" style="margin-bottom:0">Your contracts</div>${mine}` : '') +
-    `<div class="say" style="margin:10px 0 0">Posted here</div>` + (rows || '<div class="say" style="opacity:.7">Nothing posted just now. Come back later.</div>') +
-    `<button class="opt" data-o="back">Back</button>`;
+  panel.innerHTML = head + TL`<div class="say">${msg ? msg + '<br><br>' : ''}Gold: <b>${c.gold}</b>. Deliveries between the villages, paid on delivery. New notices every 12 hours.${full ? TL` You already hold ${CONTRACT.maxActive} contracts.` : ''}</div>` +
+    (mine ? TL`<div class="say" style="margin-bottom:0">Your contracts</div>${mine}` : '') +
+    TL`<div class="say" style="margin:10px 0 0">Posted here</div>` + (rows || tl('<div class="say" style="opacity:.7">Nothing posted just now. Come back later.</div>')) +
+    TL`<button class="opt" data-o="back">Back</button>`;
 }
 export function openContracts(t: string) { town = t; }
 /** Clicks in the contracts window; returns a message, or null when not ours. */
@@ -68,17 +69,17 @@ export function contractsClick(t: HTMLElement): string | null {
   if (!v || !poi) return '';
   if (a) {
     const o = localOffers(poi, v.vm.seed).find((x) => x.id === a.dataset.cta);
-    return o ? acceptOffer(o) : 'That notice is gone.';
+    return o ? acceptOffer(o) : tl('That notice is gone.');
   }
   const k = c.contracts.find((x) => x.id === d!.dataset.ctd);
   if (!k || k.to !== v.id) return '';
   const n = Math.min(left(k), carried(k.good, poi));
-  if (!n) return 'You have none of those crates with you.';
+  if (!n) return tl('You have none of those crates with you.');
   takeFrom(k.good, n, poi);
   const pay = payFor(k, n);
   k.done += n; c.gold += pay; if (!offMarket(k.good)) trade(c.market, v.id, k.good, n, c.time);
-  let m = `Handed over ${n} × ${ITEMS[k.good].name}: +${pay} gold.`;
-  if (k.done >= k.n) { c.contracts.splice(c.contracts.indexOf(k), 1); gainXp(20 + k.n * 3); earnTrust(v.id, 'contract'); showToast('Contract fulfilled'); m += ' The contract is done.'; }
+  let m = TL`Handed over ${n} × ${ITEMS[k.good].name}: +${pay} gold.`;
+  if (k.done >= k.n) { c.contracts.splice(c.contracts.indexOf(k), 1); gainXp(20 + k.n * 3); earnTrust(v.id, 'contract'); showToast(tl('Contract fulfilled')); m += tl(' The contract is done.'); }
   calcStats(); saveChar();
   return m;
 }
@@ -97,40 +98,40 @@ export function updateContracts(dt: number) {
   const c = G.char;
   for (const k of [...c.contracts]) if (c.time > k.due) {
     c.contracts.splice(c.contracts.indexOf(k), 1); saveChar();
-    showToast('Contract failed');
-    logLine(k.kind === 'haul' ? `Too late: ${k.toName} no longer wants your ${ITEMS[k.good].name}, and ${k.fromName} keeps your deposit.` : `Too late: ${k.toName} found the ${ITEMS[k.good].name} elsewhere.`);
+    showToast(tl('Contract failed'));
+    logLine(k.kind === 'haul' ? TL`Too late: ${k.toName} no longer wants your ${ITEMS[k.good].name}, and ${k.fromName} keeps your deposit.` : TL`Too late: ${k.toName} found the ${ITEMS[k.good].name} elsewhere.`);
   }
 }
 /** Tracker lines. */
-export const contractLines = () => G.char.contracts.map((k) => `▸ ${k.kind === 'supply' ? 'Supply' : 'Haul'} ${left(k)} × ${ITEMS[k.good].name} to ${k.toName} · ${dueText(k.due)}` + (G.char.loc === 'overworld' ? ` · ${where(k.tx, k.tz)}` : ''));
+export const contractLines = () => G.char.contracts.map((k) => TL`▸ ${k.kind === 'supply' ? tl('Supply') : tl('Haul')} ${left(k)} × ${ITEMS[k.good].name} to ${k.toName} · ${dueText(k.due)}` + (G.char.loc === 'overworld' ? ` · ${where(k.tx, k.tz)}` : ''));
 /** Map and compass markers. */
 export const contractMarkers = () => G.char.contracts.map((k) => ({ x: nearX(k.tx, G.pos.x), z: k.tz, label: `${ITEMS[k.good].name} → ${k.toName}` }));
 
 /** Take offer o (at its village's store, or on a notice board). A haul loads its crates where it starts. */
 export function acceptOffer(o: Contract): string {
   const c = G.char, home = findPoi(c.world, o.from);
-  if (!home) return 'That notice is gone.';
-  if (c.contracts.length >= CONTRACT.maxActive) return `You already hold ${CONTRACT.maxActive} contracts.`;
-  if (c.contracts.some((k) => k.id === o.id) || c.taken.includes(o.id)) return 'You have taken that one.';
+  if (!home) return tl('That notice is gone.');
+  if (c.contracts.length >= CONTRACT.maxActive) return TL`You already hold ${CONTRACT.maxActive} contracts.`;
+  if (c.contracts.some((k) => k.id === o.id) || c.taken.includes(o.id)) return tl('You have taken that one.');
   if (o.kind === 'haul') {
-    if (worldDist(G.pos.x, G.pos.z, home.x, home.z) > 400) return `The crates wait at ${o.fromName}: take this one there.`;
-    if (c.gold < o.deposit) return 'You cannot pay the deposit.';
+    if (worldDist(G.pos.x, G.pos.z, home.x, home.z) > 400) return TL`The crates wait at ${o.fromName}: take this one there.`;
+    if (c.gold < o.deposit) return tl('You cannot pay the deposit.');
     const room = stores(home).reduce((s, st) => s + Math.max(0, roomOf(st.slots, o.good, st.cap)), 0);
-    if (room < o.n) return `No room for ${o.n} crates: you can take ${room}. Park a vehicle by the gates and come back.`;
+    if (room < o.n) return TL`No room for ${o.n} crates: you can take ${room}. Park a vehicle by the gates and come back.`;
     putAway(o.good, o.n, home, true); c.gold -= o.deposit; trade(c.market, home.id, o.good as Good, -o.n, c.time); // into the trunks first: crates are heavy
     stockOf(c.world, home, villageSeed(c.world, home), (c.towns[home.id] ??= {}), c.time).takeOwn(o.good as Good, o.n); // out of its village hall
   }
   const k = { ...o };
   c.contracts.push(k); c.taken.push(o.id); if (c.taken.length > 60) c.taken.splice(0, c.taken.length - 60);
   calcStats(); saveChar();
-  return o.kind === 'haul' ? `The crates are loaded. Take them to ${o.toName}, ${where(o.tx, o.tz)}.` : `Bring ${o.n} × ${ITEMS[o.good].name} to ${o.toName}: ${dueText(o.due)}.`;
+  return o.kind === 'haul' ? TL`The crates are loaded. Take them to ${o.toName}, ${where(o.tx, o.tz)}.` : TL`Bring ${o.n} × ${ITEMS[o.good].name} to ${o.toName}: ${dueText(o.due)}.`;
 }
 /** Drop a contract (a haul's deposit is lost; the crates stay yours). */
 export function dropContract(id: string): string {
   const c = G.char, k = c.contracts.find((x) => x.id === id);
   if (!k) return '';
   c.contracts.splice(c.contracts.indexOf(k), 1); saveChar();
-  return k.kind === 'haul' ? `Contract dropped. ${k.fromName} keeps your deposit.` : 'Contract dropped.';
+  return k.kind === 'haul' ? TL`Contract dropped. ${k.fromName} keeps your deposit.` : tl('Contract dropped.');
 }
 /** A village's notice board: its own delivery work, and orders from the villages round about (within 9 km). */
 export function boardContracts(at?: Poi): Contract[] {

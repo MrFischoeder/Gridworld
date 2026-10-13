@@ -25,6 +25,7 @@ import { showToast, logLine } from '../ui/hud';
 import { findPoi, worldDist } from '../gen/regions';
 import { bridgeDeck } from './bridges';
 import type { Terrain } from '../gen/terrain';
+import { tl, TL } from '../i18n';
 /** Where the wagons roll: the ground, or a bridge's deck over a river. */
 const surface = (T: Terrain, x: number, z: number) => Math.max(T.heightAt(x, z), bridgeDeck(x, z) ?? -Infinity);
 
@@ -152,8 +153,8 @@ function startRaid(c: Caravan, l: Live, lv: number) {
   const fx = Math.sin(lead.yaw), fz = Math.cos(lead.yaw);
   placeRoadblock(OW.terrain, lead.x + fx * 16, lead.z + fz * 16, new THREE.Vector3(fx, 0, fz));
   l.raids++; l.raidNear = true;
-  showToast('Bandits on the road!');
-  logLine(`Bandits fall on the caravan to ${c.toName}. Drive them off before they strip the wagons.`);
+  showToast(tl('Bandits on the road!'));
+  logLine(TL`Bandits fall on the caravan to ${c.toName}. Drive them off before they strip the wagons.`);
 }
 /** Twice a second: roll raids on caravans that come near, drain wagons under attack, settle finished raids. */
 function raids(dt: number) {
@@ -182,8 +183,8 @@ function raids(dt: number) {
     const c = lead?.c;
     if (l.hp <= 0 && c) { // they strip the wagons and the drovers flee
       G.char.caravans['lost:' + id] = 1; l.raid = []; saveChar();
-      showToast('The caravan is lost'); logLine(`The bandits have stripped the caravan to ${c.toName}. The drovers scatter.`);
-      if (G.char.escort?.id === id) failEscort('The caravan you were guarding was plundered.');
+      showToast(tl('The caravan is lost')); logLine(TL`The bandits have stripped the caravan to ${c.toName}. The drovers scatter.`);
+      if (G.char.escort?.id === id) failEscort(tl('The caravan you were guarding was plundered.'));
       continue;
     }
     const blocked = lead ? barriersNear(lead.x + Math.sin(lead.yaw) * 8, lead.z + Math.cos(lead.yaw) * 8, 9).length > 0 : false;
@@ -194,7 +195,7 @@ function raids(dt: number) {
       if (won && c) {
         const gold = 20 * killed;
         G.char.gold += gold; G.char.caravans['saved:' + id] = 1; calcStats(); gainXp(15 * killed); saveChar();
-        showToast('Caravan saved'); logLine(`The drovers of the caravan to ${c.toName} thank you: ${gold} gold, and their goods are yours cheaper.`);
+        showToast(tl('Caravan saved')); logLine(TL`The drovers of the caravan to ${c.toName} thank you: ${gold} gold, and their goods are yours cheaper.`);
       }
     }
   }
@@ -204,39 +205,39 @@ const W_has = (b: Bandit) => b.hp > 0 && !!b.g.parent;
 // ---------- escort ----------
 /** Take on guarding caravan c to its destination (from the drover's panel). */
 export function takeEscort(c: Caravan): string {
-  if (G.char.escort) return 'You are already guarding a caravan.';
+  if (G.char.escort) return tl('You are already guarding a caravan.');
   const lead = leadOf(c.id), lv = lead ? danger(lead.x, lead.z) : 1;
   G.char.escort = { id: c.id, road: c.road, k: c.k, to: c.to, toName: c.toName, pay: escortPay(c, lv), away: 0, raids: 0, second: Math.random() < 0.5 };
   saveChar();
-  return `You fall in beside the wagons. ${G.char.escort.pay} gold when they reach ${c.toName}.`;
+  return TL`You fall in beside the wagons. ${G.char.escort.pay} gold when they reach ${c.toName}.`;
 }
-export function failEscort(why: string) { if (!G.char.escort) return; G.char.escort = null; saveChar(); showToast('Escort failed'); logLine(why); }
+export function failEscort(why: string) { if (!G.char.escort) return; G.char.escort = null; saveChar(); showToast(tl('Escort failed')); logLine(why); }
 function escortTick(dt: number) {
   const esc = G.char.escort;
   if (!esc || !OW.terrain) return;
   const world = OW.terrain.world, e = edgeByKey.get(esc.road), c = e && caravanOf(world, e, esc.k);
   if (!c) { G.char.escort = null; return; }
   const l = live.get(c.id), now = G.char.time, arrive = c.t0 + c.T + (l?.delay ?? 0);
-  if (plundered(c.id)) { failEscort('The caravan you were guarding was plundered.'); return; }
+  if (plundered(c.id)) { failEscort(tl('The caravan you were guarding was plundered.')); return; }
   if (now >= arrive) {
     const dest = findPoi(world, esc.to), d = dest ? worldDist(G.pos.x, G.pos.z, dest.x, dest.z) : 0;
     if (d < 400) {
       G.char.gold += esc.pay; calcStats(); gainXp(30 + esc.pay / 4); G.char.escort = null; saveChar();
-      showToast('Caravan delivered'); logLine(`The caravan rolls into ${esc.toName}. The drovers pay you ${esc.pay} gold.`);
-    } else failEscort(`The caravan reached ${esc.toName} without you. No pay.`);
+      showToast(tl('Caravan delivered')); logLine(TL`The caravan rolls into ${esc.toName}. The drovers pay you ${esc.pay} gold.`);
+    } else failEscort(TL`The caravan reached ${esc.toName} without you. No pay.`);
     return;
   }
   const lead = leadOf(c.id);
   const far = !lead || Math.hypot(lead.x - G.pos.x, lead.z - G.pos.z) > 350;
   esc.away = far ? esc.away + dt : Math.max(0, esc.away - dt * 2);
-  if (esc.away > 60) failEscort('You left the caravan behind. The drovers will not pay a guard who wanders off.');
+  if (esc.away > 60) failEscort(tl('You left the caravan behind. The drovers will not pay a guard who wanders off.'));
 }
 /** The escort job as a line for the quest tracker. */
 export function escortLine(): string {
   const esc = G.char.escort;
   if (!esc) return '';
   const lead = leadOf(esc.id), d = lead ? Math.hypot(lead.x - G.pos.x, lead.z - G.pos.z) : Infinity;
-  return `▸ Escort the caravan to ${esc.toName} (${esc.pay} g)` + (d === Infinity ? ' · find the wagons on the road' : d > 250 ? ` · the wagons are ${Math.round(d)} m away!` : ' · stay with the wagons');
+  return TL`▸ Escort the caravan to ${esc.toName} (${esc.pay} g)` + (d === Infinity ? tl(' · find the wagons on the road') : d > 250 ? TL` · the wagons are ${Math.round(d)} m away!` : tl(' · stay with the wagons'));
 }
 /** Wagons near you for the maps: position, heading, and whether it is your escort or under attack. */
 export const mapWagons = () => [...wagons.values()].filter((w) => w.g.visible).map((w) => ({ x: w.x, z: w.z, yaw: w.yaw, mine: G.char.escort?.id === w.c.id, raided: !!live.get(w.c.id)?.raid.length }));

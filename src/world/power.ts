@@ -22,6 +22,7 @@ import { raidHurt } from '../gen/raids';
 import { findPoi } from '../gen/regions';
 import type { VillageMap } from '../gen/village';
 import type { Terrain } from '../gen/terrain';
+import { tl, TL } from '../i18n';
 
 const WOOD = 0xb8b060, METAL = 0xa8c8b8, PANEL = 0x9dffb4, CABLE = 0x6f8f76;
 const LIGHT = { ok: 0x9dffb4, low: 0xffd060, down: 0xff5a3c };
@@ -184,22 +185,22 @@ const needText = (k: PowerKind) => POWER[k].fix.map(([i, n]) => `${n} ${ITEMS[i]
 const hasAll = (k: PowerKind) => POWER[k].fix.every(([i, n]) => count(G.char.inv, i) >= n);
 export function powerPrompt(p: Plant): string {
   const c = Math.round(cond(p));
-  if (c >= 90) return `${p.town}'s ${p.name}: running well (${c}%)`;
-  const state = c < POWER_DOWN ? 'DOWN' : c < POWER_LOW ? 'failing' : 'worn';
-  return hasAll(p.kind) ? `E — mend the ${p.name} (${state}, ${c}%): uses ${needText(p.kind)}` : `${p.name} ${state} (${c}%) — to mend it bring ${needText(p.kind)}`;
+  if (c >= 90) return TL`${p.town}'s ${p.name}: running well (${c}%)`;
+  const state = c < POWER_DOWN ? tl('DOWN') : c < POWER_LOW ? 'failing' : 'worn';
+  return hasAll(p.kind) ? TL`E — mend the ${p.name} (${state}, ${c}%): uses ${needText(p.kind)}` : TL`${p.name} ${state} (${c}%) — to mend it bring ${needText(p.kind)}`;
 }
 /** Mend the plant with the parts from your backpack; the village pays you. */
 export function repairPower(p: Plant) {
   const c = cond(p);
-  if (c >= 90) { logLine(`The ${p.name} runs fine.`); return; }
-  if (!hasAll(p.kind)) { logLine(`To mend the ${p.name} you need ${needText(p.kind)}.`); return; }
+  if (c >= 90) { logLine(TL`The ${p.name} runs fine.`); return; }
+  if (!hasAll(p.kind)) { logLine(TL`To mend the ${p.name} you need ${needText(p.kind)}.`); return; }
   for (const [k, n] of POWER[p.kind].fix) take(k, n);
   const t = (G.char.towns[p.id] ??= {});
   t.fixed = G.char.time; t.hurt = 0;
   const pay = Math.round(POWER[p.kind].pay * (c < POWER_DOWN ? 1.5 : 1));
   G.char.gold += pay; earnTrust(p.id, 'power'); calcStats(); gainXp(c < POWER_DOWN ? 40 : 25); saveChar();
   showToast(`${p.name} mended`);
-  logLine(`${p.town} has power ${c < POWER_DOWN ? 'again' : 'to spare'}. The villagers pay you ${pay} gold.`);
+  logLine(TL`${p.town} has power ${c < POWER_DOWN ? tl('again') : tl('to spare')}. The villagers pay you ${pay} gold.`);
 }
 function take(k: ItemKey, n: number) {
   const inv = G.char.inv;

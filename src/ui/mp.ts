@@ -22,6 +22,7 @@ import { connect, disconnect, deleteRoom, account, accountAsk, logout, changePas
 import { clearPeers, peerColor } from '../world/peers';
 import { lockPointer } from './input';
 import { SAVE_KEY, newChar, loadCharAt, setSaveMirror, type Char } from '../save';
+import { tl, TL } from '../i18n';
 
 /** Where the hero's own save waits while they play in someone else's world. */
 const SOLO_KEY = SAVE_KEY + '.solo';
@@ -114,19 +115,19 @@ function roomRows(): string {
   return ded.rooms.map((r: RoomInfo) => {
     const you = online() && r.id === at, n = you ? net.peers.size + 1 : r.online;
     const state = n ? `<span class="dot">●</span> ${n}/${r.max} playing` : '<span class="dot off">○</span> paused';
-    const who = you ? 'you are here' : r.players.length ? r.players.map(esc).join(', ') : 'empty';
-    const btn = you ? '' : `<button data-room="${esc(r.id)}"${connecting || !loggedIn() ? ' disabled' : ''}>${online() ? 'Move here' : 'Join'}</button>`;
+    const who = you ? tl('you are here') : r.players.length ? r.players.map(esc).join(', ') : 'empty';
+    const btn = you ? '' : `<button data-room="${esc(r.id)}"${connecting || !loggedIn() ? ' disabled' : ''}>${online() ? tl('Move here') : tl('Join')}</button>`;
     const del = !you && yours(r)
-      ? `<button class="del${armed === r.id ? ' armed' : ''}" data-del="${esc(r.id)}"${deleting ? ' disabled' : ''}>${deleting === r.id ? 'Closing…' : armed === r.id ? (r.online ? `Close it? ${r.online} playing` : 'Sure? Close it') : 'Close server'}</button>` : '';
-    const by = (r.by ? ` · made by ${esc(r.by)}` : '') + (r.mode === 'rivals' ? ' · <b style="color:#d0805a">rivals</b>' : '');
-    return `<div class="room${you ? ' here' : ''}${del ? ' mine' : ''}"><b>${esc(r.name)}</b><span>${state}</span><span class="who">${who} · world ${r.world}${by}</span>${btn}${del}</div>`;
+      ? `<button class="del${armed === r.id ? ' armed' : ''}" data-del="${esc(r.id)}"${deleting ? ' disabled' : ''}>${deleting === r.id ? tl('Closing…') : armed === r.id ? (r.online ? TL`Close it? ${r.online} playing` : tl('Sure? Close it')) : tl('Close server')}</button>` : '';
+    const by = (r.by ? TL` · made by ${esc(r.by)}` : '') + (r.mode === 'rivals' ? ' · <b style="color:#d0805a">rivals</b>' : '');
+    return `<div class="room${you ? tl(' here') : ''}${del ? ' mine' : ''}"><b>${esc(r.name)}</b><span>${state}</span><span class="who">${who} · world ${r.world}${by}</span>${btn}${del}</div>`;
   }).join('');
 }
 function render() {
   const on = online(), rooms = !!ded?.rooms?.length;
   hostBtn.style.display = on || connecting || ded ? 'none' : '';
   joinBtn.style.display = on || connecting || rooms ? 'none' : '';
-  joinBtn.textContent = ded ? 'Join the server' : 'Join';
+  joinBtn.textContent = ded ? tl('Join the server') : tl('Join');
   roomsEl.innerHTML = roomRows();
   newEl.style.display = rooms && !connecting && loggedIn() ? '' : 'none';
   // the account box (dedicated servers): log in / make one, or who you are with a way out
@@ -135,16 +136,16 @@ function render() {
   acctIn.style.display = a ? 'none' : '';
   acctOn.style.display = a ? '' : 'none';
   if (a && mailing() && profile?.for !== a.token) { profile = { email: '', next: '', for: a.token }; void accountAsk(here(), { t: 'profile', token: a.token }).then((r) => { if (r.t === 'profile') { profile = { email: r.email ?? '', next: r.next ?? '', for: a.token }; render(); } }); }
-  if (a) who.innerHTML = `Logged in as <b>${esc(a.name)}</b>${profile?.email ? ` <small>· ${esc(profile.email)}</small>` : mailing() ? ' <small>· no email yet</small>' : ''}`;
+  if (a) who.innerHTML = TL`Logged in as <b>${esc(a.name)}</b>${profile?.email ? ` <small>· ${esc(profile.email)}</small>` : mailing() ? tl(' <small>· no email yet</small>') : ''}`;
   emailRow.style.display = !a && regMode && !pending ? '' : 'none';
-  emailNote.textContent = mailing() ? 'we send a code to confirm it' : 'optional';
+  emailNote.textContent = mailing() ? tl('we send a code to confirm it') : 'optional';
   forgotBtn.style.display = !a && mailing() && !pending ? '' : 'none';
   acctIn.style.display = a || pending ? 'none' : '';
   codeRow.style.display = pending ? '' : 'none';
   codePass.style.display = pending?.mode === 'reset' ? '' : 'none';
-  if (pending) codeNote.textContent = pending.mode === 'reset' ? `Code from the email to ${pending.id}, and your new password:` : `Code sent to ${pending.to ?? 'your email'}:`;
+  if (pending) codeNote.textContent = pending.mode === 'reset' ? TL`Code from the email to ${pending.id}, and your new password:` : TL`Code sent to ${pending.to ?? tl('your email')}:`;
   addBtn.style.display = a && mailing() && !pending ? '' : 'none';
-  addBtn.textContent = profile?.email ? 'Change email' : 'Add email';
+  addBtn.textContent = profile?.email ? tl('Change email') : tl('Add email');
   if (!a || pending) addForm.style.display = 'none';
   for (const b of acctEl.querySelectorAll('button')) (b as HTMLButtonElement).disabled = busy;
   addr.parentElement!.style.display = ded ? 'none' : '';
@@ -153,16 +154,16 @@ function render() {
   backBtn.style.display = !on && solo() ? '' : 'none';
   if (on) {
     status.textContent = net.dedicated
-      ? `You are on ${net.room?.name ?? ded?.name ?? 'the server'}. It keeps running while you are in the menu · T to chat`
-      : `Connected to ${net.address.replace(/^wss?:\/\//, '').replace(/\/mp$/, '')} · ${isHost() ? 'you host the game' : 'in the host\'s world'} · T to chat`;
-    list.innerHTML = [`<span style="color:#${peerColor(net.id).toString(16).padStart(6, '0')}">${esc(net.name || G.char.name || 'You')} (you)${isHost() ? ' ★' : ''}</span>`,
+      ? TL`You are on ${net.room?.name ?? ded?.name ?? tl('the server')}. It keeps running while you are in the menu · T to chat`
+      : TL`Connected to ${net.address.replace(/^wss?:\/\//, '').replace(/\/mp$/, '')} · ${isHost() ? tl('you host the game') : tl('in the host\'s world')} · T to chat`;
+    list.innerHTML = [`<span style="color:#${peerColor(net.id).toString(16).padStart(6, '0')}">${esc(net.name || G.char.name || tl('You'))} (you)${isHost() ? ' ★' : ''}</span>`,
       ...[...net.peers.values()].map((p) => `<span style="color:#${peerColor(p.id).toString(16).padStart(6, '0')}">${esc(p.name)}${p.id === net.host ? ' ★' : ''}</span>`)].join(' · ');
   } else {
     list.textContent = '';
     if (note) status.textContent = note;
-    else if (accounts() && !auth() && !connecting) status.textContent = mailing() ? 'Log in with your name or email, or make an account (a name, your email and a password). Your name is yours alone on this server.' : 'Log in, or make an account (a name and a password) to play here. Your name is yours alone on this server.';
-    else if (rooms && !connecting) status.textContent = 'Pick a server and press Join, or create your own (you can close it later). A server pauses while nobody is on it.';
-    else if (ded && !connecting) status.textContent = `${ded.name} · ${ded.online}/${ded.max} online${ded.players.length ? ': ' + ded.players.join(', ') : ''} · press Join the server.`;
+    else if (accounts() && !auth() && !connecting) status.textContent = mailing() ? tl('Log in with your name or email, or make an account (a name, your email and a password). Your name is yours alone on this server.') : tl('Log in, or make an account (a name and a password) to play here. Your name is yours alone on this server.');
+    else if (rooms && !connecting) status.textContent = tl('Pick a server and press Join, or create your own (you can close it later). A server pauses while nobody is on it.');
+    else if (ded && !connecting) status.textContent = TL`${ded.name} · ${ded.online}/${ded.max} online${ded.players.length ? ': ' + ded.players.join(', ') : ''} · press Join the server.`;
   }
   box.style.display = mpShown() ? '' : 'none';
   badge.style.display = on ? '' : 'none';
@@ -183,10 +184,10 @@ function say(text: string, kind: 'chat' | 'info' | 'error') {
 }
 
 function start(url: string, room?: string, create?: { name: string; world?: number; rivals?: boolean }) {
-  if (accounts() && !auth()) { status.textContent = 'Log in first.'; userIn.focus(); return; }
-  if (!accounts() && !G.char.name) { status.textContent = 'Name your hero first.'; return; }
+  if (accounts() && !auth()) { status.textContent = tl('Log in first.'); userIn.focus(); return; }
+  if (!accounts() && !G.char.name) { status.textContent = tl('Name your hero first.'); return; }
   if (online()) { leaveRoomChar(); disconnect(); clearPeers(); } // moving to another server
-  connecting = true; status.textContent = 'Connecting…'; render();
+  connecting = true; status.textContent = tl('Connecting…'); render();
   connect(url, { name: auth()?.name ?? G.char.name, world: G.char.world, time: G.char.time, token: auth()?.token, room, create }, {
     welcome(world, time, host, dedicated) {
       connecting = false;
@@ -202,7 +203,7 @@ function start(url: string, room?: string, create?: { name: string; world?: numb
         roomKey = key;
         hooks?.useChar(c);
         joinWorld(); takeSeat(); hooks?.reloadWorld(); // the server's state of its world (and (0.189) a rival's seat), then draw it
-        say(back ? `Welcome back, ${c.name}: you carry on where you left this world.` : `A new castaway on this ${dedicated ? 'server' : 'game'}: ${net.mode === 'rivals' && net.slot > 0 ? `you come to at ${homeName(homeOf(world, net.slot))}, your home in this rivals world, with nothing` : 'you wake in your ship with nothing but what the crew left you'}. Your own save waits: Single player in the menu takes you back to it.`, 'info');
+        say(back ? TL`Welcome back, ${c.name}: you carry on where you left this world.` : TL`A new castaway on this ${dedicated ? tl('server') : tl('game')}: ${net.mode === 'rivals' && net.slot > 0 ? TL`you come to at ${homeName(homeOf(world, net.slot))}, your home in this rivals world, with nothing` : tl('you wake in your ship with nothing but what the crew left you')}. Your own save waits: Single player in the menu takes you back to it.`, 'info');
       } else {
         roomKey = key;
         G.char.time = time;
@@ -210,14 +211,14 @@ function start(url: string, room?: string, create?: { name: string; world?: numb
         if (takeSeat() || changed) hooks?.reloadWorld();
       }
       presentHero(); // the server shows you by your character's name (a new one is asked for if the dead own it)
-      say(host ? 'You host the game: others can join you now.' : dedicated ? `Joined ${net.room?.name ?? ded?.name ?? 'the server'}.` : 'Joined the game.', 'info');
+      say(host ? tl('You host the game: others can join you now.') : dedicated ? TL`Joined ${net.room?.name ?? ded?.name ?? tl('the server')}.` : tl('Joined the game.'), 'info');
       saveChar(); look();
     },
     say,
     clock(time) { if (Math.abs(G.char.time - time) > 3) G.char.time = time; }, // the host's clock is everyone's
     closed(why) {
       connecting = false; clearPeers(); leaveRoomChar();
-      if (net.needAuth) { setAuth(null); tell('Your login has run out: log in again.'); } // the session is gone (expired, or the password changed)
+      if (net.needAuth) { setAuth(null); tell(tl('Your login has run out: log in again.')); } // the session is gone (expired, or the password changed)
       say(why, 'error'); look();
     },
   });
@@ -227,10 +228,10 @@ async function remove(id: string) {
   if (deleting) return;
   if (armed !== id) { armed = id; render(); setTimeout(() => { if (armed === id) { armed = ''; render(); } }, 5000); return; }
   armed = ''; deleting = id; render();
-  const name = ded?.rooms?.find((r) => r.id === id)?.name ?? 'The server';
+  const name = ded?.rooms?.find((r) => r.id === id)?.name ?? tl('The server');
   const why = await deleteRoom(serverUrl('', location), id, auth()?.token ?? '', myRooms().includes(id) ? mpKey() : undefined);
   deleting = '';
-  if (!why || /gone/.test(why)) { setMine(myRooms().filter((x) => x !== id)); tell(`${name} is closed.`); }
+  if (!why || /gone/.test(why)) { setMine(myRooms().filter((x) => x !== id)); tell(TL`${name} is closed.`); }
   else tell(why);
   if (ded?.rooms && !why) ded.rooms = ded.rooms.filter((r) => r.id !== id);
   render(); look();
@@ -238,15 +239,15 @@ async function remove(id: string) {
 /** Log in or make an account with what is in the two fields. */
 async function signIn(how: 'login' | 'register') {
   const name = userIn.value.trim(), pass = passIn.value, email = emailIn.value.trim();
-  if (!name || !pass) { tell(how === 'login' ? 'Type your name (or email) and password.' : 'Pick a name and a password.'); (name ? passIn : userIn).focus(); render(); return; }
-  if (how === 'register' && name.includes('@')) { tell('Pick a player name for the first field; the email goes in its own field.'); regMode = true; render(); return; }
-  if (how === 'register' && !regMode) { regMode = true; tell(mailing() ? 'Give your email too: we send a code to confirm it.' : 'An email is optional here. Press Create account again.'); render(); emailIn.focus(); return; }
-  busy = true; status.textContent = how === 'login' ? 'Logging in…' : 'Making your account…'; render();
+  if (!name || !pass) { tell(how === 'login' ? tl('Type your name (or email) and password.') : tl('Pick a name and a password.')); (name ? passIn : userIn).focus(); render(); return; }
+  if (how === 'register' && name.includes('@')) { tell(tl('Pick a player name for the first field; the email goes in its own field.')); regMode = true; render(); return; }
+  if (how === 'register' && !regMode) { regMode = true; tell(mailing() ? tl('Give your email too: we send a code to confirm it.') : tl('An email is optional here. Press Create account again.')); render(); emailIn.focus(); return; }
+  busy = true; status.textContent = how === 'login' ? tl('Logging in…') : tl('Making your account…'); render();
   const r = await account(here(), how, name, pass, how === 'register' ? email : '');
   busy = false;
-  if (r.token && r.name) { setAuth({ name: r.name, token: r.token }); passIn.value = ''; regMode = false; tell(how === 'login' ? `Welcome back, ${r.name}.` : `Account ${r.name} made. Remember your password: nobody can read it back.`); }
-  else if (r.wait) { pending = { mode: 'verify', id: r.name ?? name, pass, to: how === 'register' ? email : 'your email' }; regMode = false; tell(how === 'register' ? `Account ${r.name} made. We sent a code to ${email}: type it here to confirm the address.` : r.why ?? 'Confirm your email first.'); setTimeout(() => codeIn.focus(), 0); }
-  else tell(r.why ?? 'That did not work.');
+  if (r.token && r.name) { setAuth({ name: r.name, token: r.token }); passIn.value = ''; regMode = false; tell(how === 'login' ? TL`Welcome back, ${r.name}.` : TL`Account ${r.name} made. Remember your password: nobody can read it back.`); }
+  else if (r.wait) { pending = { mode: 'verify', id: r.name ?? name, pass, to: how === 'register' ? email : tl('your email') }; regMode = false; tell(how === 'register' ? TL`Account ${r.name} made. We sent a code to ${email}: type it here to confirm the address.` : r.why ?? tl('Confirm your email first.')); setTimeout(() => codeIn.focus(), 0); }
+  else tell(r.why ?? tl('That did not work.'));
   render();
 }
 /** The code from the mail: confirm the address, or set the new password. */
@@ -254,15 +255,15 @@ async function confirmCode() {
   const p = pending;
   if (!p) return;
   const code = codeIn.value.trim();
-  if (!/^\d{6}$/.test(code)) { tell('The code has 6 digits.'); render(); return; }
-  if (p.mode === 'reset' && !codePass.value) { tell('Type your new password too.'); render(); return; }
+  if (!/^\d{6}$/.test(code)) { tell(tl('The code has 6 digits.')); render(); return; }
+  if (p.mode === 'reset' && !codePass.value) { tell(tl('Type your new password too.')); render(); return; }
   busy = true; render();
   const r = p.mode === 'verify' ? await accountAsk(here(), { t: 'verify', name: p.id, code }) : await accountAsk(here(), { t: 'reset', email: p.id, code, pass: codePass.value });
   busy = false;
   if (r.t === 'auth' && r.token && r.name) {
     setAuth({ name: r.name, token: r.token }); pending = null; codeIn.value = ''; codePass.value = ''; passIn.value = ''; profile = null;
-    tell(p.mode === 'verify' ? `Email confirmed. Welcome, ${r.name}.` : `New password set. Welcome back, ${r.name}. Your other browsers are logged out.`);
-  } else tell(r.why ?? 'That did not work.');
+    tell(p.mode === 'verify' ? TL`Email confirmed. Welcome, ${r.name}.` : TL`New password set. Welcome back, ${r.name}. Your other browsers are logged out.`);
+  } else tell(r.why ?? tl('That did not work.'));
   render();
 }
 async function sendAgain() {
@@ -274,28 +275,28 @@ async function sendAgain() {
     : a ? await accountAsk(here(), { t: 'email', token: a.token, pass: p.pass ?? '', email: p.to ?? '' })
     : await accountAsk(here(), { t: 'resend', name: p.id, pass: p.pass ?? '' });
   busy = false;
-  tell(r.t === 'ok' ? 'A new code is on its way.' : r.why ?? 'That did not work.');
+  tell(r.t === 'ok' ? tl('A new code is on its way.') : r.why ?? tl('That did not work.'));
   render();
 }
 async function forgot() {
   const email = userIn.value.trim();
-  if (!email.includes('@')) { tell('Type the email address of your account in the first field, then press Forgot password.'); userIn.focus(); render(); return; }
+  if (!email.includes('@')) { tell(tl('Type the email address of your account in the first field, then press Forgot password.')); userIn.focus(); render(); return; }
   busy = true; render();
   const r = await accountAsk(here(), { t: 'forgot', email });
   busy = false;
-  if (r.t === 'ok') { pending = { mode: 'reset', id: email }; tell(`If ${email} has an account here, a code is on its way. Type it with your new password.`); setTimeout(() => codeIn.focus(), 0); }
-  else tell(r.why ?? 'That did not work.');
+  if (r.t === 'ok') { pending = { mode: 'reset', id: email }; tell(TL`If ${email} has an account here, a code is on its way. Type it with your new password.`); setTimeout(() => codeIn.focus(), 0); }
+  else tell(r.why ?? tl('That did not work.'));
   render();
 }
 async function addEmail() {
   const a = auth(), email = newEmailIn.value.trim(), pass = addPass.value;
   if (!a) return;
-  if (!email || !pass) { tell('Type the email and your password.'); render(); return; }
+  if (!email || !pass) { tell(tl('Type the email and your password.')); render(); return; }
   busy = true; render();
   const r = await accountAsk(here(), { t: 'email', token: a.token, pass, email });
   busy = false;
-  if (r.t === 'ok') { pending = { mode: 'verify', id: a.name, pass, to: email }; addPass.value = ''; newEmailIn.value = ''; addForm.style.display = 'none'; tell(`We sent a code to ${email}. Type it here to confirm the address.`); setTimeout(() => codeIn.focus(), 0); }
-  else tell(r.why ?? 'That did not work.');
+  if (r.t === 'ok') { pending = { mode: 'verify', id: a.name, pass, to: email }; addPass.value = ''; newEmailIn.value = ''; addForm.style.display = 'none'; tell(TL`We sent a code to ${email}. Type it here to confirm the address.`); setTimeout(() => codeIn.focus(), 0); }
+  else tell(r.why ?? tl('That did not work.'));
   render();
 }
 async function signOut() {
@@ -303,16 +304,16 @@ async function signOut() {
   if (online()) { leaveRoomChar(); disconnect(); clearPeers(); }
   setAuth(null); pwdForm.style.display = 'none'; profile = null; pending = null;
   if (a) void logout(here(), a.token);
-  tell('Logged out.'); render();
+  tell(tl('Logged out.')); render();
 }
 async function savePassword() {
   const a = auth();
   if (!a) return;
-  if (!oldIn.value || !newPassIn.value) { tell('Type the old and the new password.'); render(); return; }
+  if (!oldIn.value || !newPassIn.value) { tell(tl('Type the old and the new password.')); render(); return; }
   busy = true; render();
   const why = await changePassword(here(), a.token, oldIn.value, newPassIn.value);
   busy = false; oldIn.value = ''; newPassIn.value = '';
-  if (!why) { pwdForm.style.display = 'none'; tell('Password changed. Other browsers logged in as you are logged out.'); }
+  if (!why) { pwdForm.style.display = 'none'; tell(tl('Password changed. Other browsers logged in as you are logged out.')); }
   else tell(why);
   render();
 }
@@ -353,19 +354,19 @@ export function initMp(h: MpHooks) {
   newName.onkeydown = (e) => { e.stopPropagation(); if (e.code === 'Enter') createBtn.click(); };
   createBtn.onclick = () => {
     const name = newName.value.trim();
-    if (!name) { status.textContent = 'Give the new server a name first.'; newName.focus(); return; }
+    if (!name) { status.textContent = tl('Give the new server a name first.'); newName.focus(); return; }
     start(serverUrl('', location), undefined, { name, world: mine.checked ? G.char.world : undefined, rivals: rivalsBox.checked || undefined });
     newName.value = '';
   };
   addr.onkeydown = (e) => e.stopPropagation();
   hostBtn.onclick = () => {
-    if (!/^https?:$/.test(location.protocol) || !location.host) { status.textContent = 'To host, start the game with start-gry.bat (it runs the server).'; return; }
+    if (!/^https?:$/.test(location.protocol) || !location.host) { status.textContent = tl('To host, start the game with start-gry.bat (it runs the server).'); return; }
     start(serverUrl('', location));
   };
   joinBtn.onclick = () => {
-    try { start(serverUrl(ded ? '' : addr.value, location)); } catch { status.textContent = 'That is not a server address. Try 192.168.1.20:5173.'; }
+    try { start(serverUrl(ded ? '' : addr.value, location)); } catch { status.textContent = tl('That is not a server address. Try 192.168.1.20:5173.'); }
   };
-  leaveBtn.onclick = () => { leaveRoomChar(); disconnect(); clearPeers(); say('You left the game.', 'info'); look(); render(); };
+  leaveBtn.onclick = () => { leaveRoomChar(); disconnect(); clearPeers(); say(tl('You left the game.'), 'info'); look(); render(); };
   backBtn.onclick = () => backToOwnWorld();
   chatIn.onkeydown = (e) => {
     e.stopPropagation();

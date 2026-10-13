@@ -91,6 +91,7 @@ import { baseHit, baseFloor, baseRay, baseSolid } from './building';
 import { chunkCaves, type Cave } from '../gen/caves';
 import { drawCave, caveHit } from './caves';
 import { trailMarks, drawTrailMark } from './trails';
+import { tl, TL } from '../i18n';
 /** Ore veins in rocks: rust for iron, verdigris for copper. */
 export const ORE_COLOR: Record<OreKind, number> = { iron: 0xd0703c, copper: 0x38d0b8 };
 
@@ -305,7 +306,7 @@ function boardDeco(vm: VillageMap, y: number) {
     for (let r = 0.15; r < h - 0.1; r += 0.15) pb.line(0x9dffb4, [x0 + 0.06, y0 + h - r, zf], [x0 + w - 0.08, y0 + h - r, zf]);
   }
   g.add(pb.build());
-  g.add(wallSign('NOTICE BOARD', '#ffd060', { x, z: z + 0.1 }, [0, 1], y + 3.4));
+  g.add(wallSign(tl('NOTICE BOARD'), '#ffd060', { x, z: z + 0.1 }, [0, 1], y + 3.4));
   return g;
 }
 /** The map board (every village): a slanted table on two legs with the land drawn on it, under a little roof. */
@@ -324,7 +325,7 @@ function mapBoardDeco(vm: VillageMap, y: number) {
   pb.solid8([[x - 1.5, y + 2.9, z - 0.55], [x + 1.5, y + 2.9, z - 0.55], [x + 1.5, y + 2.9, z + 0.45], [x - 1.5, y + 2.9, z + 0.45]],
     [[x - 1.5, y + 3.2, z - 0.05], [x + 1.5, y + 3.2, z - 0.05], [x + 1.5, y + 3.2, z - 0.03], [x - 1.5, y + 3.2, z - 0.03]], GRID);
   g.add(pb.build());
-  g.add(wallSign('MAP', '#9dffe0', { x, z: z + 0.5 }, [0, 1], y + 3.5));
+  g.add(wallSign(tl('MAP'), '#9dffe0', { x, z: z + 0.5 }, [0, 1], y + 3.5));
   return g;
 }
 /** Sign post and painted parking bays of the vehicle yard. */
@@ -337,7 +338,7 @@ function yardDeco(y: number) {
     pb.line(0x9dffb4, [b.x - hw, yy, b.z + hl], [b.x + hw, yy, b.z + hl]);
   }
   g.add(pb.build());
-  g.add(wallSign('VEHICLES', '#ffd060', { x: YARD.sign.x, z: YARD.sign.z }, [0, -1], y + 3.5));
+  g.add(wallSign(tl('VEHICLES'), '#ffd060', { x: YARD.sign.x, z: YARD.sign.z }, [0, -1], y + 3.5));
   return g;
 }
 /** Residents of the other villages: everyone has their own name (Gridholm keeps its familiar faces). */
@@ -345,7 +346,7 @@ const FOLK = ['Aldo', 'Bera', 'Casimir', 'Dara', 'Emil', 'Frida', 'Goran', 'Hela
 function residentName(vm: VillageMap, role: NpcRole, i: number): string {
   if (vm.home) return NPC_INFO[role].name!;
   const n = FOLK[((vm.seed >>> 0) + i * 7) % FOLK.length];
-  return role === 'elder' ? 'Elder ' + n : n;
+  return role === 'elder' ? tl('Elder ') + n : n;
 }
 function loadVillageStruct(poi: Poi): Structure {
   const T = OW.terrain!, y = T.padY(poi), home = poi.id === GRIDHOLM_ID;
@@ -395,19 +396,19 @@ function loadRuinStruct(poi: Poi): Structure {
   const grid = VoxelGrid.surface(rm.ops, rm.rect, y);
   const { group, mesh } = voxelObject(grid, Infinity, OUTLINE);
   // fragments of the old paving
-  const tl: number[] = [];
+  const tlv: number[] = [];
   for (const t of rm.tiles) {
     const a = 0.12, b = 0.88, yy = y + 0.03;
-    tl.push(t.x + a, yy, t.z + a, t.x + b, yy, t.z + a, t.x + b, yy, t.z + a, t.x + b, yy, t.z + b, t.x + b, yy, t.z + b, t.x + a, yy, t.z + b, t.x + a, yy, t.z + b, t.x + a, yy, t.z + a);
+    tlv.push(t.x + a, yy, t.z + a, t.x + b, yy, t.z + a, t.x + b, yy, t.z + a, t.x + b, yy, t.z + b, t.x + b, yy, t.z + b, t.x + a, yy, t.z + b, t.x + a, yy, t.z + b, t.x + a, yy, t.z + a);
   }
-  const tg = new THREE.BufferGeometry(); tg.setAttribute('position', new THREE.Float32BufferAttribute(tl, 3));
+  const tg = new THREE.BufferGeometry(); tg.setAttribute('position', new THREE.Float32BufferAttribute(tlv, 3));
   group.add(new THREE.LineSegments(tg, sharedLine(TILE_COLOR)));
   const tpl = drawTemple(rm.temple, poi.id); group.add(tpl.g, drawSettlementComms(poi, T));
   scene.add(group);
   const s: Structure = { poi, grid, group, edges: mesh, doors: [], stairs: [], npcs: [], blocks: tpl.blocks };
   OW.structs.set(poi.id, s); // the door below is placed through the shared space
   const p = rm.portal, placed = tryPlaceDoor(space, { axis: p.axis, m: p.m, c: p.c, stair: true, y0: y }, [])!;
-  const st = makeStair(p, placed, 0, '▼ ' + poi.name.toUpperCase(), 'Stairs down into the ' + poi.name, () => enterRuin(poi.id));
+  const st = makeStair(p, placed, 0, '▼ ' + poi.name.toUpperCase(), tl('Stairs down into the ') + poi.name, () => enterRuin(poi.id));
   st.ruinId = poi.id;
   s.doors.push(st.door); s.stairs.push(st);
   W.portals.push(st);
@@ -423,7 +424,7 @@ function loadWreckStruct(poi: Poi): Structure {
   const s: Structure = { poi, grid, group, edges: mesh, doors: [], stairs: [], npcs: [] };
   OW.structs.set(poi.id, s);
   const p = wm.portal, placed = tryPlaceDoor(space, { axis: p.axis, m: p.m, c: p.c, stair: true, y0: y }, [])!;
-  const st = makeStair(p, placed, 0, '▼ ' + poi.name.toUpperCase(), 'Hatch into the ' + poi.name, () => enterRuin(poi.id));
+  const st = makeStair(p, placed, 0, '▼ ' + poi.name.toUpperCase(), tl('Hatch into the ') + poi.name, () => enterRuin(poi.id));
   st.ruinId = poi.id;
   s.doors.push(st.door); s.stairs.push(st);
   W.portals.push(st);
@@ -705,7 +706,7 @@ export function keepOnPlanet(dt: number) {
   if (Math.abs(G.pos.z) > lim) {
     G.pos.z = Math.sign(G.pos.z) * lim; G.vel.z = 0;
     if (driving.v) { driving.v.st.z = G.pos.z; driving.v.speed = 0; }
-    if (wallWarnT <= 0) { wallWarnT = 5; logLine('The ice wall of the pole rises sheer before you. There is no way on.'); }
+    if (wallWarnT <= 0) { wallWarnT = 5; logLine(tl('The ice wall of the pole rises sheer before you. There is no way on.')); }
   }
   const x = G.pos.x;
   if (x >= X_MIN && x < X_MIN + WORLD_W) return;
@@ -728,7 +729,7 @@ export function keepOnPlanet(dt: number) {
   updateStructs(G.pos.x, G.pos.z);
   syncWorldGates(OW.terrain!, G.pos.x, G.pos.z);
   syncMegaliths(OW.terrain!.world, G.pos.x, G.pos.z);
-  showToast('You have gone round the world');
+  showToast(tl('You have gone round the world'));
 }
 
 // ---------- field enemies ----------
@@ -752,10 +753,10 @@ export function removeDrone(t: Drone) { scene.remove(t.g); const i = W.drones.in
 export function placeName(x: number, z: number): string {
   const v = villageHere(x, z);
   if (v) return v.name + ' (village)';
-  if (Math.abs(z) > POLE_Z - 400) return z < 0 ? 'North Pole ice wall' : 'South Pole ice wall';
-  if (Math.abs(z) > POLAR_Z) return z < 0 ? 'Northern ice cap' : 'Southern ice cap';
-  const lv = Math.round(danger(x, z)), tag = lv ? ` · danger ${lv}` : ' · calm';
-  if (G.char.claims.some((c) => claimDist(c, x, z) < CLAIM.r)) return 'Your claim' + tag;
+  if (Math.abs(z) > POLE_Z - 400) return z < 0 ? tl('North Pole ice wall') : tl('South Pole ice wall');
+  if (Math.abs(z) > POLAR_Z) return z < 0 ? tl('Northern ice cap') : tl('Southern ice cap');
+  const lv = Math.round(danger(x, z)), tag = lv ? TL` · danger ${lv}` : tl(' · calm');
+  if (G.char.claims.some((c) => claimDist(c, x, z) < CLAIM.r)) return tl('Your claim') + tag;
   { const segs = OW.terrain!.chunkFeatures(Math.floor(x / CHUNK), Math.floor(z / CHUNK)).rivers, r = riverNear(segs, x, z); if (r && r.d < r.half + 25) return riversOf(OW.terrain!.world).list[r.seg.r].name + tag; }
   for (const cv of loadedCaves()) if (Math.hypot(cv.x - x, cv.z - z) < 30) return cv.name + tag;
   { const ins = installAt(OW.terrain!, x, z, 25); if (ins) return ins.name + tag; }
@@ -766,11 +767,11 @@ export function placeName(x: number, z: number): string {
   for (const r of OW.terrain!.chunkFeatures(Math.floor(x / CHUNK), Math.floor(z / CHUNK)).roads) {
     if (!r.h) continue;
     const top = r.pts[r.pts.length - 1], foot = r.pts[0];
-    if (Math.hypot(top[0] - x, top[1] - z) < 25) return `${r.name}, summit ${Math.round(r.h[r.h.length - 1])} m` + tag;
-    if (Math.hypot(foot[0] - x, foot[1] - z) < 20) return `Trail to ${r.name}` + tag;
+    if (Math.hypot(top[0] - x, top[1] - z) < 25) return TL`${r.name}, summit ${Math.round(r.h[r.h.length - 1])} m` + tag;
+    if (Math.hypot(foot[0] - x, foot[1] - z) < 20) return TL`Trail to ${r.name}` + tag;
   }
   for (const s of OW.structs.values()) if (s.poi.type !== 'village' && rectDist(s.poi.rect, x, z) < 10) return s.poi.name + tag;
-  return 'Wilds' + tag;
+  return tl('Wilds') + tag;
 }
 
 /** Cave mouths in the loaded chunks. */

@@ -18,6 +18,7 @@ import { startJob, jobOf } from './construction';
 import { sitePower, SITE_UNPOWERED } from './energy';
 import type { Good } from './market';
 import type { ItemKey } from '../data/items';
+import { tl } from '../i18n';
 
 export type Industry = 'farm' | 'mine' | 'oil' | 'refinery' | 'lumber' | 'fishery' | 'workshop' | 'salvage';
 export interface IndustrySpec {
@@ -30,14 +31,14 @@ export interface IndustrySpec {
   fix: [ItemKey, number][]; build?: [ItemKey, number][];
 }
 export const INDUSTRY: Record<Industry, IndustrySpec> = {
-  farm: { name: 'Farming village', site: 'Fields', pool: ['grain', 'carrots', 'potatoes'], wants: ['tools'], extra: { goods: ['clay'], chance: 25 }, fix: [['planks', 6], ['nails', 10]] },
-  mine: { name: 'Mining village', site: 'Mine', pool: ['coal', 'ore', 'copper', 'sand'], wants: ['grain'], extra: { goods: ['limestone', 'lead'], chance: 60 }, fix: [['planks', 8], ['scrap', 4]] },
-  oil: { name: 'Oil village', site: 'Oil Wells', pool: ['crude'], wants: ['tools'], fix: [['scrap', 6], ['wire', 4]] },
-  refinery: { name: 'Refinery town', site: 'Refinery', pool: ['fuel'], wants: ['crude'], fix: [['scrap', 8], ['circuit', 2]], build: [['scrap', 40], ['circuit', 10], ['wire', 20], ['planks', 30]] },
-  lumber: { name: 'Timber village', site: 'Sawmill', pool: ['timber'], wants: ['tools'], extra: { goods: ['lumber'], chance: 65 }, fix: [['planks', 4], ['nails', 10]] },
-  fishery: { name: 'Fishing village', site: 'Fish Racks', pool: ['fish', 'salt', 'sand'], wants: ['grain'], extra: { goods: ['clay'], chance: 40 }, fix: [['planks', 4], ['rope', 3]] },
-  workshop: { name: 'Craft village', site: 'Workshops', pool: ['tools', 'cloth'], wants: ['ore'], fix: [['planks', 4], ['scrap', 3]] },
-  salvage: { name: 'Salvage village', site: 'Salvage Yard', pool: ['tech', 'meds'], wants: ['copper'], fix: [['scrap', 5], ['wire', 3]] },
+  farm: { name: tl('Farming village'), site: tl('Fields'), pool: ['grain', 'carrots', 'potatoes'], wants: ['tools'], extra: { goods: ['clay'], chance: 25 }, fix: [['planks', 6], ['nails', 10]] },
+  mine: { name: tl('Mining village'), site: tl('Mine'), pool: ['coal', 'ore', 'copper', 'sand'], wants: ['grain'], extra: { goods: ['limestone', 'lead'], chance: 60 }, fix: [['planks', 8], ['scrap', 4]] },
+  oil: { name: tl('Oil village'), site: tl('Oil Wells'), pool: ['crude'], wants: ['tools'], fix: [['scrap', 6], ['wire', 4]] },
+  refinery: { name: tl('Refinery town'), site: tl('Refinery'), pool: ['fuel'], wants: ['crude'], fix: [['scrap', 8], ['circuit', 2]], build: [['scrap', 40], ['circuit', 10], ['wire', 20], ['planks', 30]] },
+  lumber: { name: tl('Timber village'), site: tl('Sawmill'), pool: ['timber'], wants: ['tools'], extra: { goods: ['lumber'], chance: 65 }, fix: [['planks', 4], ['nails', 10]] },
+  fishery: { name: tl('Fishing village'), site: tl('Fish Racks'), pool: ['fish', 'salt', 'sand'], wants: ['grain'], extra: { goods: ['clay'], chance: 40 }, fix: [['planks', 4], ['rope', 3]] },
+  workshop: { name: tl('Craft village'), site: tl('Workshops'), pool: ['tools', 'cloth'], wants: ['ore'], fix: [['planks', 4], ['scrap', 3]] },
+  salvage: { name: tl('Salvage village'), site: tl('Salvage Yard'), pool: ['tech', 'meds'], wants: ['copper'], fix: [['scrap', 5], ['wire', 3]] },
 };
 /** How a site suffers: a lost raid takes `raid`, and damage heals by itself over `heal` game minutes. */
 export const SITE = { raid: 40, heal: 4 * 1440, floor: 10 };

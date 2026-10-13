@@ -14,6 +14,7 @@ import { isStation, specOf } from '../gen/plants';
 import { STATIONS, fuelWords, STATION_SLOTS, stationSite, stationKw, fuelAt, windAt, type StationKind } from '../gen/energy';
 import type { VillageMap } from '../gen/village';
 import type { Terrain } from '../gen/terrain';
+import { tl, TL } from '../i18n';
 
 const METAL = 0xb8c4cc, PANEL = 0x5cc8ff, WOOD = 0xb8b060, CONC = 0x8fb89a, HOT = 0xffb347, WHITE = 0xe8fff0;
 export interface Station { vid: number; seed: number; slot: number; town: string; x0: number; z0: number; x1: number; z1: number; lamp: THREE.Object3D | null; rotors: THREE.Object3D[] }
@@ -141,7 +142,7 @@ export function nearStation(): Station | null {
 }
 export function stationPrompt(w: Station): string {
   const st = G.char.towns[w.vid], s = st?.stations?.[w.slot];
-  if (!s) return st?.pbuild && isStation(st.pbuild.k) && w.slot === (st.stations?.length ?? 0) ? `${/^[AEIOU]/.test(specOf(st.pbuild.k).name) ? 'An' : 'A'} ${specOf(st.pbuild.k).name} is going up here: the elder keeps count of the materials` : 'An empty plot for a power station: ask the elder';
+  if (!s) return st?.pbuild && isStation(st.pbuild.k) && w.slot === (st.stations?.length ?? 0) ? TL`${/^[AEIOU]/.test(specOf(st.pbuild.k).name) ? tl('An') : 'A'} ${specOf(st.pbuild.k).name} is going up here: the elder keeps count of the materials` : tl('An empty plot for a power station: ask the elder');
   const poi = findPoi(G.char.world, w.vid), kw = poi ? Math.round(stationKw(poi, w.seed, s, G.char.time)) : 0, spec = STATIONS[s.k];
-  return `E — the ${spec.name} (${s.on ? `${kw} kW` : 'switched off'}${spec.fuel ? ` · ${Math.ceil(fuelAt(s, G.char.time) * 10) / 10} ${fuelWords(s.k)[1]} left` : ''})`;
+  return TL`E — the ${spec.name} (${s.on ? `${kw} kW` : tl('switched off')}${spec.fuel ? TL` · ${Math.ceil(fuelAt(s, G.char.time) * 10) / 10} ${fuelWords(s.k)[1]} left` : ''})`;
 }

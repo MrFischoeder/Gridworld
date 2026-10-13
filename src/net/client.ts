@@ -117,6 +117,7 @@ export const online = () => net.id > 0;
 export const isHost = () => online() && net.id === net.host;
 
 import type { GateLink } from '../../shared/gates.mjs';
+import { tl, TL } from '../i18n';
 export interface VehicleWarp { owner: number; index: number; carId: string; car: PeerCar; to: number; trip: number }
 export interface GateDecision { ok: boolean; why?: string; to?: number }
 let gateDrafts = new Map<number, number[]>();
@@ -136,10 +137,10 @@ function receiveGates(m: { links?: GateLink[]; drafts?: { gate: number; symbols:
   if (m.drafts) gateDrafts = new Map(m.drafts.map(d => [d.gate, d.symbols]));
 }
 function gateRequest(m: object): Promise<GateDecision> {
-  if (!online() || net.ws?.readyState !== 1) return Promise.resolve({ ok: false, why: 'Disconnected from the server.' });
+  if (!online() || net.ws?.readyState !== 1) return Promise.resolve({ ok: false, why: tl('Disconnected from the server.') });
   const req = ++gateReq;
   return new Promise(resolve => {
-    const timer = setTimeout(() => { gateReplies.delete(req); resolve({ ok: false, why: 'The gate request timed out. Try again.' }); }, 15000);
+    const timer = setTimeout(() => { gateReplies.delete(req); resolve({ ok: false, why: tl('The gate request timed out. Try again.') }); }, 15000);
     gateReplies.set(req, { finish: resolve, timer }); net.ws!.send(JSON.stringify({ ...m, req }));
   });
 }
@@ -147,7 +148,7 @@ export const requestGateDial = (gate: number, symbols: readonly number[]) => gat
 export const requestGateTravel = (gate: number, car?: { index: number; id: string; pose: PeerCar }) => gateRequest({ t: 'gtravel', gate, car });
 function clearGateRequests() {
   net.gateTravelling = false;
-  gateLinks = []; gateDrafts.clear(); gateTransitHook?.({ t: 'gabort' }); for (const r of gateReplies.values()) { clearTimeout(r.timer); r.finish({ ok: false, why: 'Disconnected from the server.' }); } gateReplies.clear();
+  gateLinks = []; gateDrafts.clear(); gateTransitHook?.({ t: 'gabort' }); for (const r of gateReplies.values()) { clearTimeout(r.timer); r.finish({ ok: false, why: tl('Disconnected from the server.') }); } gateReplies.clear();
 }
 
 /** One request on its own connection (no game): the server answers once and closes. Resolves its answer, or
@@ -155,7 +156,7 @@ function clearGateRequests() {
 export type Reply = { t: string; why?: string; name?: string; token?: string; wait?: boolean; email?: string; next?: string; mailing?: boolean };
 function ask(url: string, m: object): Promise<Reply> {
   return new Promise((done) => {
-    let ws: WebSocket, reply: Reply = { t: 'refused', why: 'Could not reach the server.' };
+    let ws: WebSocket, reply: Reply = { t: 'refused', why: tl('Could not reach the server.') };
     try { ws = new WebSocket(url); } catch { done(reply); return; }
     const timer = setTimeout(() => { ws.close(); }, 10000);
     ws.onopen = () => ws.send(JSON.stringify({ ver: PROTOCOL, ...m }));
@@ -167,12 +168,12 @@ function ask(url: string, m: object): Promise<Reply> {
  * per-browser secret, for servers made before accounts). Resolves '' when done, else why not. */
 export async function deleteRoom(url: string, room: string, token: string, key?: string): Promise<string> {
   const r = await ask(url, { t: 'delroom', room, token, key });
-  return r.t === 'deleted' ? '' : r.why ?? 'Could not reach the server.';
+  return r.t === 'deleted' ? '' : r.why ?? tl('Could not reach the server.');
 }
 /** A dedicated server's accounts: make one / log in (→ {name, token} or {why}), log out, change the password. */
 export async function account(url: string, how: 'register' | 'login', name: string, pass: string, email = ''): Promise<{ name?: string; token?: string; why?: string; wait?: boolean }> {
   const r = await ask(url, { t: how, name, pass, email });
-  return r.t === 'auth' && r.token ? { name: r.name, token: r.token } : r.t === 'wait' ? { name: r.name, wait: true } : { why: r.why ?? 'Could not reach the server.', wait: r.wait, name: r.name };
+  return r.t === 'auth' && r.token ? { name: r.name, token: r.token } : r.t === 'wait' ? { name: r.name, wait: true } : { why: r.why ?? tl('Could not reach the server.'), wait: r.wait, name: r.name };
 }
 /** The rest of the account's email business (server/accounts.mjs): confirm a code, mail it again, forgotten password,
  * a new password with its code, add an email, what the account shows. The raw reply. */
@@ -180,7 +181,7 @@ export const accountAsk = (url: string, m: { t: 'verify' | 'resend' | 'forgot' |
 export const logout = (url: string, token: string) => ask(url, { t: 'logout', token });
 export async function changePassword(url: string, token: string, old: string, pass: string): Promise<string> {
   const r = await ask(url, { t: 'passwd', token, old, pass });
-  return r.t === 'ok' ? '' : r.why ?? 'Could not reach the server.';
+  return r.t === 'ok' ? '' : r.why ?? tl('Could not reach the server.');
 }
 /** Is the page served by a dedicated server (server/main.mjs)? It answers mp/info next to the page. */
 /** A game server ("room") of a dedicated server, as the menu lists it: `running` while someone is in it. */
@@ -216,7 +217,7 @@ export function connect(url: string, me: { name: string; world: number; time: nu
   disconnect();
   hooks = h; net.address = url;
   let ws: WebSocket;
-  try { ws = new WebSocket(url); } catch { h.closed(`Not a server address: ${url}`); return; }
+  try { ws = new WebSocket(url); } catch { h.closed(TL`Not a server address: ${url}`); return; }
   net.ws = ws;
   let welcomed = false, why = '';
   ws.onopen = () => { net.needAuth = false; ws.send(JSON.stringify({ t: 'hello', ver: PROTOCOL, name: me.name, world: me.world, time: me.time, token: me.token, room: me.room, create: me.create })); };
@@ -234,9 +235,9 @@ export function connect(url: string, me: { name: string; world: number; time: nu
         worldHooks?.welcome(m.wdoc ?? {}, !!m.wseeded, m.world);
         h.welcome(m.world, m.time, m.id === m.host, net.dedicated);
         break;
-      case 'join': net.peers.set(m.id, { id: m.id, name: m.name, st: null, prev: null, at: 0, hist: [] }); h.say(`${m.name} joined the game.`, 'info'); break;
-      case 'leave': net.peers.delete(m.id); h.say(`${m.name} left the game.`, 'info'); break;
-      case 'host': net.host = m.id; h.say(m.id === net.id ? 'The host left: you host the game now.' : `${net.peers.get(m.id)?.name ?? 'Someone'} hosts the game now.`, 'info'); break;
+      case 'join': net.peers.set(m.id, { id: m.id, name: m.name, st: null, prev: null, at: 0, hist: [] }); h.say(TL`${m.name} joined the game.`, 'info'); break;
+      case 'leave': net.peers.delete(m.id); h.say(TL`${m.name} left the game.`, 'info'); break;
+      case 'host': net.host = m.id; h.say(m.id === net.id ? tl('The host left: you host the game now.') : TL`${net.peers.get(m.id)?.name ?? tl('Someone')} hosts the game now.`, 'info'); break;
       case 'snap': {
         const now = performance.now();
         receiveGates(m);
@@ -273,10 +274,10 @@ export function connect(url: string, me: { name: string; world: number; time: nu
       case 'gone': net.drops.delete(m.id); break;
       case 'got': net.drops.delete(m.d.id); gotHook?.(m.d); break;
       case 'foes': case 'bolt': case 'fhit': case 'kill': case 'hurt': case 'thit': case 'boat': case 'row': for (const f of relayHooks) f(m); break;
-      case 'renamed': { if (m.id === net.id) { net.hero = m.name; } else { const p = net.peers.get(m.id); if (p) { if (p.name !== m.name) h.say(`${p.name} is now ${m.name}.`, 'info'); p.name = m.name; } } heroHook?.(m.id === net.id, m.name, ''); break; }
+      case 'renamed': { if (m.id === net.id) { net.hero = m.name; } else { const p = net.peers.get(m.id); if (p) { if (p.name !== m.name) h.say(TL`${p.name} is now ${m.name}.`, 'info'); p.name = m.name; } } heroHook?.(m.id === net.id, m.name, ''); break; }
       case 'heroBad': heroHook?.(true, m.name, m.why); break;
       case 'chat': h.say(`${m.name}: ${m.text}`, 'chat'); break;
-      case 'full': why = 'The server is full (8 players).'; break;
+      case 'full': why = tl('The server is full (8 players).'); break;
       case 'refused': why = m.why; if (m.auth) net.needAuth = true; break;
     }
   };
@@ -285,7 +286,7 @@ export function connect(url: string, me: { name: string; world: number; time: nu
     clearLocks();
     clearGateRequests();
     net.ws = null; net.id = 0; net.host = 0; net.dedicated = false; net.room = null; net.mode = 'coop'; net.slot = -1; net.peers.clear(); net.drops.clear();
-    h.closed(why || (welcomed ? 'Disconnected from the server.' : `Could not reach a server at ${url}.`));
+    h.closed(why || (welcomed ? tl('Disconnected from the server.') : TL`Could not reach a server at ${url}.`));
   };
 }
 export function disconnect() {
@@ -328,7 +329,7 @@ export function sendChat(text: string) {
   const t = text.trim().slice(0, 200);
   if (!t || !online() || net.ws?.readyState !== 1) return false;
   net.ws.send(JSON.stringify({ t: 'chat', text: t }));
-  hooks?.say(`You: ${t}`, 'chat');
+  hooks?.say(TL`You: ${t}`, 'chat');
   return true;
 }
 

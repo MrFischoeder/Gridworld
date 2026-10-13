@@ -14,6 +14,7 @@ import { addItem, saveChar } from '../character';
 import { itemName } from '../ui/icons';
 import { lockPointer } from '../ui/input';
 import { logLine, showToast } from '../ui/hud';
+import { tl, TL } from '../i18n';
 
 /** The pump island's middle (world) of village v. */
 function pumpAt(v: Poi) { const p = RESOURCE_PLOTS.fuelpump; return { x: v.x - 36 + p.x, z: v.z - 36 + p.z }; }
@@ -40,16 +41,16 @@ const root = () => document.getElementById('dlg')!;
 function render(msg = '') {
   const v = findPoi(G.char.world, open!)!, st = stockAt(v.id), have = st ? Math.floor(st.has('fuel')) : 0, price = priceOf(v);
   const cars = carsHere(v);
-  let h = `<div data-fpump="1"><h2>Fuel pump</h2><div class="role">${v.name}</div>`;
-  h += `<div class="say">${itemName('fuel')} in the village stores: <b>${have}</b> · <b>${price} g</b> a canister (${FUEL.can} L) · your gold: <b>${G.char.gold}</b>${msg ? '<br>' + msg : ''}</div>`;
-  if (!cars.length) h += `<div class="say" style="opacity:.7">Drive your vehicle up to the pump island to fill its tank.</div>`;
+  let h = TL`<div data-fpump="1"><h2>Fuel pump</h2><div class="role">${v.name}</div>`;
+  h += TL`<div class="say">${itemName('fuel')} in the village stores: <b>${have}</b> · <b>${price} g</b> a canister (${FUEL.can} L) · your gold: <b>${G.char.gold}</b>${msg ? '<br>' + msg : ''}</div>`;
+  if (!cars.length) h += TL`<div class="say" style="opacity:.7">Drive your vehicle up to the pump island to fill its tank.</div>`;
   cars.forEach((c, i) => {
     const p = c.st.parts, s = VEHICLES[c.st.model], need = cansToFill(c.st.model, p.fuel);
-    h += `<div class="shoprow"><div><b>${vehicleTitle(c.st.model)}</b><br><span>${Math.round(p.fuel)}/${s.tank} L · ~${Math.round(rangeKm(c.st.model, p.fuel))} km${need ? ` · ${need} canister${need > 1 ? 's' : ''} to fill` : ' · full'}</span></div>` +
-      `<button class="buy" data-fpfill="${i}" ${need && have && G.char.gold >= price ? '' : 'disabled'}>Fill up</button></div>`;
+    h += TL`<div class="shoprow"><div><b>${vehicleTitle(c.st.model)}</b><br><span>${Math.round(p.fuel)}/${s.tank} L · ~${Math.round(rangeKm(c.st.model, p.fuel))} km${need ? TL` · ${need} canister${need > 1 ? 's' : ''} to fill` : tl(' · full')}</span></div>` +
+      TL`<button class="buy" data-fpfill="${i}" ${need && have && G.char.gold >= price ? '' : 'disabled'}>Fill up</button></div>`;
   });
-  h += `<div class="shoprow"><div>${itemName('fuel')}<br><span>a canister for your backpack</span></div><button class="buy" data-fpcan="1" ${have && G.char.gold >= price ? '' : 'disabled'}>${price} g</button></div>`;
-  h += `<button class="opt" data-fpclose="1">Close</button></div>`;
+  h += TL`<div class="shoprow"><div>${itemName('fuel')}<br><span>a canister for your backpack</span></div><button class="buy" data-fpcan="1" ${have && G.char.gold >= price ? '' : 'disabled'}>${price} g</button></div>`;
+  h += TL`<button class="opt" data-fpclose="1">Close</button></div>`;
   root().querySelector('.panel')!.innerHTML = h;
 }
 export function openFuelPump(vid: number) {
@@ -72,10 +73,10 @@ export function fuelPumpClick(t: HTMLElement): boolean {
     if (car) {
       const p = car.st.parts; let n = 0;
       while (cansToFill(car.st.model, p.fuel) > 0 && st.has('fuel') >= 1 && G.char.gold >= price) { st.take('fuel', 1); G.char.gold -= price; p.fuel = Math.min(car.spec.tank, p.fuel + FUEL.can); n++; }
-      msg = n ? `${n} canister${n > 1 ? 's' : ''} into the ${vehicleTitle(car.st.model)}: ${Math.round(p.fuel)}/${car.spec.tank} L, ${n * price} gold.` : 'Nothing poured.';
+      msg = n ? TL`${n} canister${n > 1 ? 's' : ''} into the ${vehicleTitle(car.st.model)}: ${Math.round(p.fuel)}/${car.spec.tank} L, ${n * price} gold.` : tl('Nothing poured.');
     } else if (st.has('fuel') >= 1 && G.char.gold >= price) {
-      if (!addItem('fuel', 1, true)) { msg = 'No room in your backpack.'; return; }
-      st.take('fuel', 1); G.char.gold -= price; msg = `A canister of diesel, ${price} gold.`;
+      if (!addItem('fuel', 1, true)) { msg = tl('No room in your backpack.'); return; }
+      st.take('fuel', 1); G.char.gold -= price; msg = TL`A canister of diesel, ${price} gold.`;
     }
   }).then((ok) => { if (!ok) return; saveChar(); if (msg) logLine(msg); if (open !== null) render(msg); else showToast(msg); });
   return true;

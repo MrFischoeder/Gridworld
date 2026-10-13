@@ -17,6 +17,7 @@ import { ITEMS } from '../data/items';
 import { putItems } from '../inventory';
 import { saveChar, dungeonKey, packVol } from '../character';
 import { logLine } from '../ui/hud';
+import { tl } from '../i18n';
 
 const FOOD = FOOD_COLOR, STEM = GRID, CAP = 0x3dff6e;
 
@@ -182,16 +183,16 @@ export function nearPlant(): PlantNode | null {
   }
   return best;
 }
-export const plantPrompt = (n: PlantNode) => (n.kind === 'shroom' ? 'E — pick Nutrient Caps' : n.kind === 'pod' ? 'E — pick the Fruit Pods' : 'E — break off Nutrient Crystals');
+export const plantPrompt = (n: PlantNode) => (n.kind === 'shroom' ? tl('E — pick Nutrient Caps') : n.kind === 'pod' ? tl('E — pick the Fruit Pods') : tl('E — break off Nutrient Crystals'));
 
 export function harvest(n: PlantNode) {
   const f = FORAGE[n.kind], k = f.item;
   const want = n.kind === 'pod' ? n.n : f.min + Math.floor(Math.random() * (f.max - f.min + 1));
   const left = putItems(G.char.inv, k, want, packVol()), got = want - left;
-  if (!got) { logLine('Your backpack is full.'); return; }
+  if (!got) { logLine(tl('Your backpack is full.')); return; }
   G.char.harvest[n.key] = G.char.time;
   n.fruit.visible = false;
   burst(new THREE.Vector3(n.x, n.y + 0.6, n.z), FOOD, 14, 0.8);
-  logLine(`${ITEMS[k].name} ×${got} → backpack` + (left ? ' (no room for the rest)' : ''));
+  logLine(`${ITEMS[k].name} ×${got} → backpack` + (left ? tl(' (no room for the rest)') : ''));
   saveChar();
 }

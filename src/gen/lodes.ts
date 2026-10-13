@@ -20,6 +20,7 @@ import { inFogSite } from './toxic';
 import { RARES, RARE_NAME, type Rare } from './deposits';
 import { townsWorld } from './worldrules';
 import type { ItemKey } from '../data/items';
+import { tl, TL } from '../i18n';
 
 export type LodeKind = 'stone' | 'grove' | 'coal' | 'iron' | 'copper' | 'lead' | 'oil' | Rare;
 export type LodeMineral = 'limestone' | 'clay' | 'sand';
@@ -38,14 +39,14 @@ const RARE_C: Record<Rare, number> = { bauxite: 0xd08a5a, sulfur: 0xe8e040, lith
 const RARE_GOOD: Record<Rare, ItemKey> = { bauxite: 'bauxite', sulfur: 'sulfur', lithium: 'lithium', rareearth: 'rareearth', uranium: 'uranium', nickel: 'nickel', chromite: 'chromite', rutile: 'rutile', pgmore: 'pgmore' };
 const cap = (s: string) => s[0].toUpperCase() + s.slice(1);
 export const LODES: Record<LodeKind, LodeSpec> = {
-  stone: { name: 'Stone Outcrop', gives: ['stone'], w: 20, from: 0, r: 16, c: 0xc8d0c0, blurb: 'a face of good building stone breaking out of the hillside' },
-  grove: { name: 'Great Grove', gives: ['log'], w: 14, from: 0, r: 26, c: 0x6fd24a, blurb: 'a stand of giant old trees, timber for a lifetime' },
-  coal: { name: 'Coal Seam', gives: ['coal'], w: 12, from: 0, r: 14, c: 0x687e98, blurb: 'a black seam of coal showing at the surface' },
-  iron: { name: 'Iron Ore Body', gives: ['ore'], w: 12, from: 0, r: 14, c: 0xd0703c, blurb: 'rust-red rock heavy with iron' },
-  copper: { name: 'Copper Ore Body', gives: ['copper'], w: 9, from: 1500, r: 14, c: 0x38d0b8, blurb: 'green-stained rock, rich in copper' },
-  lead: { name: 'Lead Ore Body', gives: ['lead'], w: 6, from: 3000, r: 14, c: 0xa8a9db, blurb: 'grey lead ore in a broken ridge' },
-  oil: { name: 'Oil Seep', gives: ['crude', 'salt'], w: 8, from: 2500, r: 12, c: 0x8a6a3a, blurb: 'crude oil welling up into black pools' },
-  ...(Object.fromEntries(RARES.map((r) => [r.k, { name: cap(RARE_NAME[r.k].replace(/ \(.*\)/, '')) + ' Deposit', gives: [RARE_GOOD[r.k]], w: 1.6, from: r.from, r: 14, c: RARE_C[r.k], blurb: 'a deposit of ' + RARE_NAME[r.k] + ', worth a long journey' }])) as Record<Rare, LodeSpec>),
+  stone: { name: tl('Stone Outcrop'), gives: ['stone'], w: 20, from: 0, r: 16, c: 0xc8d0c0, blurb: tl('a face of good building stone breaking out of the hillside') },
+  grove: { name: tl('Great Grove'), gives: ['log'], w: 14, from: 0, r: 26, c: 0x6fd24a, blurb: tl('a stand of giant old trees, timber for a lifetime') },
+  coal: { name: tl('Coal Seam'), gives: ['coal'], w: 12, from: 0, r: 14, c: 0x687e98, blurb: tl('a black seam of coal showing at the surface') },
+  iron: { name: tl('Iron Ore Body'), gives: ['ore'], w: 12, from: 0, r: 14, c: 0xd0703c, blurb: tl('rust-red rock heavy with iron') },
+  copper: { name: tl('Copper Ore Body'), gives: ['copper'], w: 9, from: 1500, r: 14, c: 0x38d0b8, blurb: tl('green-stained rock, rich in copper') },
+  lead: { name: tl('Lead Ore Body'), gives: ['lead'], w: 6, from: 3000, r: 14, c: 0xa8a9db, blurb: tl('grey lead ore in a broken ridge') },
+  oil: { name: tl('Oil Seep'), gives: ['crude', 'salt'], w: 8, from: 2500, r: 12, c: 0x8a6a3a, blurb: tl('crude oil welling up into black pools') },
+  ...(Object.fromEntries(RARES.map((r) => [r.k, { name: TL`${cap(RARE_NAME[r.k].replace(/ \(.*\)/, ''))} Deposit`, gives: [RARE_GOOD[r.k]], w: 1.6, from: r.from, r: 14, c: RARE_C[r.k], blurb: tl('a deposit of ') + RARE_NAME[r.k] + tl(', worth a long journey') }])) as Record<Rare, LodeSpec>),
 };
 const KINDS = Object.keys(LODES) as LodeKind[];
 export const MINERAL_OF: Record<LodeMineral, ItemKey> = { limestone: 'limestone', clay: 'clay', sand: 'sand' };
@@ -104,7 +105,7 @@ function make(world: number, id: string, k: LodeKind, x: number, z: number, salt
     rich: Math.round((a + (b - a) * u01(world, salt, 0x10d2)) * 100) / 100,
     ...(k === 'stone' ? { mineral: (['limestone', 'clay', 'sand'] as const)[hash(world, salt, 0x10d3) % 3] } : {}),
     ...(k === 'oil' ? { salt: hash(world, salt, 0x10d4) % 2 === 0 } : {}),
-    name: s.name + ' at ' + NAMES_A[hash(world, salt, 0x10d5) % NAMES_A.length] + ' ' + NAMES_B[hash(world, salt, 0x10d6) % NAMES_B.length],
+    name: TL`${s.name} at ${NAMES_A[hash(world, salt, 0x10d5) % NAMES_A.length] + ' ' + NAMES_B[hash(world, salt, 0x10d6) % NAMES_B.length]}`,
   };
 }
 const startCache = new Map<number, Lode[]>();

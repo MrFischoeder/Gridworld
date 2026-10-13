@@ -15,6 +15,7 @@ import { regionFords, deckY, deckAt, bridgeLocal, bridgeProgress, planBridge, br
 import { driving } from './vehicles';
 import { takeOne, saveChar } from '../character';
 import { logLine, showToast } from '../ui/hud';
+import { tl, TL } from '../i18n';
 
 const WOOD = 0x2fe060, DARK = 0x1f9a44, STAKE = 0xffd060;
 /** Fords are drawn within this distance (m) and dropped past `DROP`. */
@@ -82,7 +83,7 @@ function draw(f: Ford): THREE.Group {
     const v = hw + 1.4, y = groundAt(v, s);
     pb.box(v - 0.07, y - 0.1, s - 0.07, v + 0.07, y + 2.1, s + 0.07, DARK);
     pb.box(v - 0.06, y + 1.4, s - 0.8, v + 0.06, y + 2.1, s + 0.8, DARK);
-    const label = textSprite(done ? f.river.toUpperCase() : 'BRIDGE SITE · ' + f.river.toUpperCase(), done ? '#2ac8b0' : '#ffd060', 3.2);
+    const label = textSprite(done ? f.river.toUpperCase() : tl('BRIDGE SITE · ') + f.river.toUpperCase(), done ? '#2ac8b0' : '#ffd060', 3.2);
     label.position.set(v, y + 2.55, s); g.add(label);
   }
   g.add(pb.build());
@@ -157,30 +158,30 @@ let placing = false, preview: THREE.Group | null = null, plan: Ford | null = nul
 export const isBridgePlacing = () => placing;
 /** Use a Bridge Kit: start choosing where the bridge crosses. */
 export function startBridgePlacing(): boolean {
-  if (G.char.loc !== 'overworld' || !OW.terrain) { logLine('Bridges are built outdoors, over rivers.'); return false; }
-  if (driving.v) { logLine('Get out of the vehicle first.'); return false; }
+  if (G.char.loc !== 'overworld' || !OW.terrain) { logLine(tl('Bridges are built outdoors, over rivers.')); return false; }
+  if (driving.v) { logLine(tl('Get out of the vehicle first.')); return false; }
   placing = true; plan = null; problem = null; last = { x: NaN, z: NaN, t: 0 };
-  logLine('Look at the river where the bridge should cross: click to stake out the site, right mouse button or Esc to cancel.');
+  logLine(tl('Look at the river where the bridge should cross: click to stake out the site, right mouse button or Esc to cancel.'));
   return true;
 }
 export function cancelBridgePlacing(quiet = false) {
   if (!placing) return;
   placing = false; plan = null;
   if (preview) { scene.remove(preview); preview.traverse((o) => (o as THREE.Line).geometry?.dispose()); preview = null; }
-  if (!quiet) logLine('You put the Bridge Kit away.');
+  if (!quiet) logLine(tl('You put the Bridge Kit away.'));
 }
-export const bridgePlacingHint = () => (!placing ? null : problem ?? 'Click — stake out a bridge here · right mouse / Esc — cancel');
+export const bridgePlacingHint = () => (!placing ? null : problem ?? tl('Click — stake out a bridge here · right mouse / Esc — cancel'));
 export const bridgePlacingOk = () => !!plan && !problem;
 /** Stake out the site where the hologram stands. */
 export function confirmBridgePlacing() {
   if (!placing) return;
-  if (!plan || problem) { logLine(problem ?? 'Look at a river to bridge it'); return; }
+  if (!plan || problem) { logLine(problem ?? tl('Look at a river to bridge it')); return; }
   if (!takeOne('bridgekit')) { cancelBridgePlacing(true); return; }
   const f: Ford = { ...plan, id: `bridge:own:${G.char.pid}:${Math.round(G.char.time)}:${G.char.bridgeSites.length}` };
   G.char.bridgeSites.push(f); G.char.bridges[f.id] = { given: {} }; saveChar();
   cancelBridgePlacing(true); scanT = 0;
-  showToast('Bridge site staked out');
-  logLine(`The site is staked out over the ${f.river}: ${Math.round(2 * f.end)} m of deck. Bring the materials to its sign.`);
+  showToast(tl('Bridge site staked out'));
+  logLine(TL`The site is staked out over the ${f.river}: ${Math.round(2 * f.end)} m of deck. Bring the materials to its sign.`);
 }
 /** The ground point the player looks at (up to 70 m away). */
 function aim(): [number, number] {

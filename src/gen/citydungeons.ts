@@ -2,6 +2,7 @@
 import { hash } from '../core/rng';
 import { CITY, citySites, cityLayout, cityToWorld, bldsNear, carsNear, inBld, type CitySite } from './cities';
 import type { DungeonPos } from '../save';
+import { TL } from '../i18n';
 
 export const CITY_VAULTS = 6;
 const LEGACY_VAULTS = 4, EXTRA_BASE = CITY.n * LEGACY_VAULTS;
@@ -30,7 +31,7 @@ export function cityEntrances(world: number, city: CitySite): CityEntrance[] {
     out.push({ id: vaultId(city.i, n), city: city.i, n, name: city.name + ' — Vault ' + (n + 1), u: p.u, v: p.v, x, z });
     if (out.length === target) break;
   }
-  if (out.length < target) throw new Error(`Not enough clear city vault sites in world ${world}, city ${city.i}`);
+  if (out.length < target) throw new Error(TL`Not enough clear city vault sites in world ${world}, city ${city.i}`);
   cache.set(key, out);
   return out;
 }

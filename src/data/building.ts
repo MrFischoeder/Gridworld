@@ -1,6 +1,7 @@
 // Building parts for a base on a claim (gen/claims.ts): what each one is made of, which tools it takes (they stay in
 // the backpack), and which tool takes it down again. Pure data; gen/base.ts places them, world/building.ts draws them.
 import type { ItemKey } from './items';
+import { tl } from '../i18n';
 
 /**
  * Player bases on claims are closed for now: the game is turning towards helping the villages (fortifying them,
@@ -10,7 +11,7 @@ import type { ItemKey } from './items';
 export const BASES_OPEN = false;
 /** Items that only serve player bases: kept out of the shops while BASES_OPEN is false. */
 export const BASE_ITEMS: ItemKey[] = ['flagpole', 'codelock']; // the turret kit is sold: villages mount turrets on their walls
-export const BASES_CLOSED_MSG = 'Building outside the villages is closed for now.';
+export const BASES_CLOSED_MSG = tl('Building outside the villages is closed for now.');
 
 export type PieceKind = 'wallW' | 'doorW' | 'roofW' | 'stairsW' | 'wallM' | 'doorM' | 'roofM' | 'stairsM' | 'turret';
 /** 'roof' is a floor slab: the roof of the storey below and the floor of the one above. */
@@ -23,14 +24,14 @@ export interface PieceSpec {
   refund?: [ItemKey, number][];
 }
 export const PIECES: Record<PieceKind, PieceSpec> = {
-  wallW: { name: 'Wooden Wall', shape: 'wall', mat: 'wood', needs: [['planks', 4], ['nails', 2]], tools: ['hammer', 'saw'], cut: 'hammer' },
-  doorW: { name: 'Wooden Door', shape: 'door', mat: 'wood', needs: [['planks', 3], ['nails', 2], ['wire', 1]], tools: ['hammer', 'saw', 'screwdriver'], cut: 'hammer' },
-  roofW: { name: 'Wooden Floor / Roof', shape: 'roof', mat: 'wood', needs: [['planks', 4], ['nails', 2], ['rope', 1]], tools: ['hammer', 'saw'], cut: 'hammer' },
-  stairsW: { name: 'Wooden Stairs', shape: 'stairs', mat: 'wood', needs: [['planks', 6], ['nails', 3]], tools: ['hammer', 'saw'], cut: 'hammer' },
+  wallW: { name: tl('Wooden Wall'), shape: 'wall', mat: 'wood', needs: [['planks', 4], ['nails', 2]], tools: ['hammer', 'saw'], cut: 'hammer' },
+  doorW: { name: tl('Wooden Door'), shape: 'door', mat: 'wood', needs: [['planks', 3], ['nails', 2], ['wire', 1]], tools: ['hammer', 'saw', 'screwdriver'], cut: 'hammer' },
+  roofW: { name: tl('Wooden Floor / Roof'), shape: 'roof', mat: 'wood', needs: [['planks', 4], ['nails', 2], ['rope', 1]], tools: ['hammer', 'saw'], cut: 'hammer' },
+  stairsW: { name: tl('Wooden Stairs'), shape: 'stairs', mat: 'wood', needs: [['planks', 6], ['nails', 3]], tools: ['hammer', 'saw'], cut: 'hammer' },
   wallM: { name: 'Metal Wall', shape: 'wall', mat: 'metal', needs: [['scrap', 4], ['wire', 1]], tools: ['welder', 'pliers'], cut: 'torch' },
   doorM: { name: 'Metal Door', shape: 'door', mat: 'metal', needs: [['scrap', 3], ['wire', 2]], tools: ['welder', 'pliers', 'screwdriver'], cut: 'torch' },
   roofM: { name: 'Metal Floor / Roof', shape: 'roof', mat: 'metal', needs: [['scrap', 3], ['wire', 1]], tools: ['welder'], cut: 'torch' },
-  turret: { name: 'Auto Turret', shape: 'turret', mat: 'metal', needs: [['turretkit', 1], ['wire', 2]], tools: ['screwdriver', 'pliers'], cut: 'screwdriver', refund: [['turretkit', 1], ['wire', 1]] },
+  turret: { name: tl('Auto Turret'), shape: 'turret', mat: 'metal', needs: [['turretkit', 1], ['wire', 2]], tools: ['screwdriver', 'pliers'], cut: 'screwdriver', refund: [['turretkit', 1], ['wire', 1]] },
   stairsM: { name: 'Metal Stairs', shape: 'stairs', mat: 'metal', needs: [['scrap', 5], ['wire', 1]], tools: ['welder', 'pliers'], cut: 'torch' },
 };
 export const PIECE_KINDS = Object.keys(PIECES) as PieceKind[];

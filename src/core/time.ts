@@ -1,6 +1,7 @@
 // Game clock. Time is counted in game minutes since the world began; one real second is one game minute,
 // so a full day takes 24 real minutes. Pure (no three.js): the sky, the board and later the server read it.
 
+import { tl } from '../i18n';
 export const DAY = 1440;
 /** Game minutes that pass in one real second. */
 export const MIN_PER_SEC = 1;
@@ -14,7 +15,7 @@ export function clockOf(t: number): Clock {
 }
 const pad = (n: number) => (n < 10 ? '0' : '') + n;
 export const fmtTime = (t: number) => { const c = clockOf(t); return pad(c.h) + ':' + pad(c.m); };
-export const fmtClock = (t: number) => 'Day ' + clockOf(t).day + ', ' + fmtTime(t);
+export const fmtClock = (t: number) => tl('Day ') + clockOf(t).day + ', ' + fmtTime(t);
 
 /** Angle of the sun around the sky: 0 at 06:00 (rising in the east), PI/2 at noon, PI at 18:00 (setting in the west). */
 export const sunAngle = (t: number) => ((t % DAY + DAY) % DAY - 360) / DAY * Math.PI * 2;

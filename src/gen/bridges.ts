@@ -10,6 +10,7 @@ import { SEA } from './seas';
 import { regionRoads, type Road } from './roads';
 import { riverSegsIn, riverNear, riversOf } from './rivers';
 import type { ItemKey } from '../data/items';
+import { tl, TL } from '../i18n';
 
 export const BRIDGE = {
   /** Deck width (m): the road's width and a little more. */
@@ -145,19 +146,19 @@ export function planBridge(world: number, x: number, z: number, px: number, pz: 
 }
 /** Why a planned bridge cannot go there (null: it can). `others` = bridges and bridge sites already there. */
 export function bridgeProblem(world: number, f: Ford | null, others: Ford[]): string | null {
-  if (!f) return 'Look at a river to bridge it';
-  if (f.half > PLACE.maxHalf) return `The ${f.river} is too wide to bridge here`;
-  if (f.level <= SEA.level + 0.05) return 'Too close to the sea: the river runs out into it here';
+  if (!f) return tl('Look at a river to bridge it');
+  if (f.half > PLACE.maxHalf) return TL`The ${f.river} is too wide to bridge here`;
+  if (f.level <= SEA.level + 0.05) return tl('Too close to the sea: the river runs out into it here');
   const run = f.end - f.half - BRIDGE.flat, top = f.level + BRIDGE.clear;
-  if (Math.abs(f.g0 - top) / run > PLACE.ramp || Math.abs(f.g1 - top) / run > PLACE.ramp) return 'The banks are too steep here';
+  if (Math.abs(f.g0 - top) / run > PLACE.ramp || Math.abs(f.g1 - top) / run > PLACE.ramp) return tl('The banks are too steep here');
   // another river close by (where two meet the water is wider and wilder)
   const segs = riverSegsIn(world, f.x - f.end, f.z - f.end, f.x + f.end, f.z + f.end), mine = riverNear(segs, f.x, f.z)?.seg.r;
-  if (segs.some((sg) => sg.r !== mine && riverNear([sg], f.x, f.z)!.d < f.end + 10)) return 'Too close to where two rivers meet';
+  if (segs.some((sg) => sg.r !== mine && riverNear([sg], f.x, f.z)!.d < f.end + 10)) return tl('Too close to where two rivers meet');
   for (const p of poisNear(world, f.x, f.z, f.end + 150)) {
     const d = Math.hypot(Math.max(p.rect.x0 - f.x, 0, f.x - p.rect.x1), Math.max(p.rect.z0 - f.z, 0, f.z - p.rect.z1));
-    if (d < (p.type === 'village' ? PLACE.village : f.end + p.flat + p.blend + 6)) return `Too close to ${p.type === 'village' ? p.name : 'the ' + p.name}`;
+    if (d < (p.type === 'village' ? PLACE.village : f.end + p.flat + p.blend + 6)) return TL`Too close to ${p.type === 'village' ? p.name : tl('the ') + p.name}`;
   }
-  if (others.some((o) => worldDist(o.x, o.z, f.x, f.z) < PLACE.apart)) return 'Another bridge or bridge site is too close';
+  if (others.some((o) => worldDist(o.x, o.z, f.x, f.z) < PLACE.apart)) return tl('Another bridge or bridge site is too close');
   return null;
 }
 /** The fords round (x, z) (their sites count as bridges for spacing). */

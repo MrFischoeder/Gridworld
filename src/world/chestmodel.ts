@@ -4,6 +4,7 @@
 // keypad); the old wooden treasure chest turns up only now and then (`chestKind`).
 import { PropBatch } from './props';
 import { hash } from '../core/rng';
+import { tl } from '../i18n';
 const WOOD = 0xc8a060, IRON = 0xffd060;
 export function chestBase(pb: PropBatch) {
   // Hollow body: its interior stays visible when the lid opens.
@@ -165,10 +166,10 @@ function vaultLid(pb: PropBatch) {
 
 export type ChestKind = 'wood' | 'locker' | 'canister' | 'vault';
 export const CHEST_KINDS: Record<ChestKind, { name: string; base: (pb: PropBatch) => void; lid: (pb: PropBatch) => void }> = {
-  wood: { name: 'Old chest', base: chestBase, lid: chestLid },
-  locker: { name: 'Ammunition footlocker', base: lockerBase, lid: lockerLid },
-  canister: { name: 'Sealed canister', base: canisterBase, lid: canisterLid },
-  vault: { name: 'Armoured strongbox', base: vaultBase, lid: vaultLid },
+  wood: { name: tl('Old chest'), base: chestBase, lid: chestLid },
+  locker: { name: tl('Ammunition footlocker'), base: lockerBase, lid: lockerLid },
+  canister: { name: tl('Sealed canister'), base: canisterBase, lid: canisterLid },
+  vault: { name: tl('Armoured strongbox'), base: vaultBase, lid: vaultLid },
 };
 /** Which case a chest is: the three military designs in turn by hash, the wooden chest about one time in fourteen. */
 export function chestKind(...seed: number[]): ChestKind {

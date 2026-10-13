@@ -15,6 +15,7 @@ import { sawLogs } from '../world/sawing';
 import { refreshGunLook } from '../world/weapons';
 import { lockPointer } from './input';
 import { slotHTML, bindSlots, itemInfo, parseId, loadText } from './slots';
+import { tl, TL } from '../i18n';
 
 let sel: string | null = null;
 const loadEl = $('packLoad');
@@ -59,33 +60,33 @@ function at(id: string): { k: ItemKey; n: number; c?: number } | null {
 }
 function renderPack() {
   const c = G.char, g = G.gun;
-  modsEl.innerHTML = c.mods.map((k, i) => slotHTML('m:' + i, { k, hint: 'Relic' }, sel === 'm:' + i)).join('');
+  modsEl.innerHTML = c.mods.map((k, i) => slotHTML('m:' + i, { k, hint: tl('Relic') }, sel === 'm:' + i)).join('');
   gunEl.innerHTML = BLASTER.slots.map((s, i) => slotHTML('w:' + i, { k: c.gunMods[i], hint: SLOT_NAME[s], cls: 'att' }, sel === 'w:' + i)).join('');
   gearEl.innerHTML = WEAR_SLOTS.map((s, i) => slotHTML('g:' + i, { k: c.wear[s] ?? null, hint: WEAR_NAME[s] }, sel === 'g:' + i)).join('') + '<div></div>' +
-    c.back.map((s, i) => slotHTML('k:' + i, { k: s?.k ?? null, hint: 'Back ' + (i + 1), title: s ? undefined : `Back ${i + 1}: a weapon slung on your back (key ${i + 1} draws it)` }, sel === 'k:' + i)).join('') +
-    slotHTML('h:0', { k: c.hands[0]?.k ?? null, n: c.hands[0]?.n, c: c.hands[0]?.c, hint: 'Hands', cls: 'held', title: c.hands[0] ? undefined : 'Your hands: the weapon you fight with, or something too big for the backpack' }, sel === 'h:0');
-  defEl.textContent = `armour ${Math.round(G.S.def * 100)}% · in hands: ${c.hands[0] ? item(c.hands[0].k).name : 'nothing'}`;
+    c.back.map((s, i) => slotHTML('k:' + i, { k: s?.k ?? null, hint: tl('Back ') + (i + 1), title: s ? undefined : TL`Back ${i + 1}: a weapon slung on your back (key ${i + 1} draws it)` }, sel === 'k:' + i)).join('') +
+    slotHTML('h:0', { k: c.hands[0]?.k ?? null, n: c.hands[0]?.n, c: c.hands[0]?.c, hint: tl('Hands'), cls: 'held', title: c.hands[0] ? undefined : tl('Your hands: the weapon you fight with, or something too big for the backpack') }, sel === 'h:0');
+  defEl.textContent = TL`armour ${Math.round(G.S.def * 100)}% · in hands: ${c.hands[0] ? item(c.hands[0].k).name : tl('nothing')}`;
   invEl.innerHTML = c.inv.map((s, i) => slotHTML('p:' + i, { k: s?.k ?? null, n: s?.n, c: s?.c }, sel === 'p:' + i)).join('');
   loadEl.innerHTML = loadText();
-  statsEl.textContent = `damage ${(g.dmg * G.S.bm).toFixed(2)} · ${(1 / G.S.rate).toFixed(1)} shots/s · range ${g.range} m · magazine ${g.mag} · reload ${g.reload.toFixed(1)} s · zoom ${g.zoom}×`;
-  let html = note || 'Drag items between slots. Weapons go in your hands or on your back, armour and clothes on your body, relics in the modules, attachments in the Blaster slots. Wheels and other big things only fit in your hands.';
+  statsEl.textContent = TL`damage ${(g.dmg * G.S.bm).toFixed(2)} · ${(1 / G.S.rate).toFixed(1)} shots/s · range ${g.range} m · magazine ${g.mag} · reload ${g.reload.toFixed(1)} s · zoom ${g.zoom}×`;
+  let html = note || tl('Drag items between slots. Weapons go in your hands or on your back, armour and clothes on your body, relics in the modules, attachments in the Blaster slots. Wheels and other big things only fit in your hands.');
   const acts: [string, string][] = [];
   const s = sel && !isSide(sel) ? at(sel) : null;
   if (sel && s) {
     const [w] = parseId(sel), it = item(s.k);
-    html = itemInfo(s.k, s.c) + (w === 'm' ? '<br>Equipped in a module' : w === 'w' ? '<br>Fitted to the Blaster' : w === 'g' ? '<br>Worn' : w === 'k' ? '<br>On your back' : w === 'h' ? '<br>In your hands' : '');
-    if (w === 'm') acts.push(['off', 'Unequip']);
-    else if (w === 'w' || w === 'g') acts.push(['off', 'Take off']);
-    else if (w === 'k') acts.push(['hold', 'Take in hands'], ['off', 'Into backpack']);
-    else if (w === 'h') { if (it.type === 'cons') acts.push(['use', 'Use']); acts.push(['stow', WEAPON_KIND[s.k] !== undefined ? 'Sling on back' : 'Put away']); }
-    else if (it.type === 'relic') acts.push(['on', 'Equip']);
-    else if (it.type === 'attach') acts.push(['on', 'Fit to Blaster']);
-    else if (it.type === 'wear') acts.push(['on', 'Wear']);
-    else if (it.type === 'weapon') acts.push(['hold', 'Take in hands'], ['on', 'Sling on back']);
-    else if (it.type === 'cons') acts.push(['use', 'Use']);
-    else if (HAND_TOOLS.has(s.k)) acts.push(['hold', 'Take in hands']);
-    if (s.k === 'log' && (w === 'p' || w === 'h')) acts.push(['saw', 'Saw into planks'], ['sawall', 'Saw all']); // (world/sawing.ts: a Saw in your kit)
-    if (w === 'p' || w === 'h' || w === 'k') acts.push(['drop', 'Drop']);
+    html = itemInfo(s.k, s.c) + (w === 'm' ? tl('<br>Equipped in a module') : w === 'w' ? tl('<br>Fitted to the Blaster') : w === 'g' ? tl('<br>Worn') : w === 'k' ? tl('<br>On your back') : w === 'h' ? tl('<br>In your hands') : '');
+    if (w === 'm') acts.push(['off', tl('Unequip')]);
+    else if (w === 'w' || w === 'g') acts.push(['off', tl('Take off')]);
+    else if (w === 'k') acts.push(['hold', tl('Take in hands')], ['off', tl('Into backpack')]);
+    else if (w === 'h') { if (it.type === 'cons') acts.push(['use', tl('Use')]); acts.push(['stow', WEAPON_KIND[s.k] !== undefined ? tl('Sling on back') : tl('Put away')]); }
+    else if (it.type === 'relic') acts.push(['on', tl('Equip')]);
+    else if (it.type === 'attach') acts.push(['on', tl('Fit to Blaster')]);
+    else if (it.type === 'wear') acts.push(['on', tl('Wear')]);
+    else if (it.type === 'weapon') acts.push(['hold', tl('Take in hands')], ['on', tl('Sling on back')]);
+    else if (it.type === 'cons') acts.push(['use', tl('Use')]);
+    else if (HAND_TOOLS.has(s.k)) acts.push(['hold', tl('Take in hands')]);
+    if (s.k === 'log' && (w === 'p' || w === 'h')) acts.push(['saw', tl('Saw into planks')], ['sawall', tl('Saw all')]); // (world/sawing.ts: a Saw in your kit)
+    if (w === 'p' || w === 'h' || w === 'k') acts.push(['drop', tl('Drop')]);
   } else sel = null;
   note = '';
   if (sel && s && side?.act && (parseId(sel)[0] === 'p' || parseId(sel)[0] === 'h' || parseId(sel)[0] === 'k')) acts.unshift(side.act);
@@ -104,11 +105,11 @@ function fits(w: string, idx: number, k: ItemKey): boolean {
   return true; // hands hold anything
 }
 function why(w: string, idx: number, k: ItemKey): string {
-  if (w === 'p') return `The ${item(k).name} is too big for the backpack: carry it in your hands.`;
-  if (w === 'm') return 'Only relics go in the modules.';
-  if (w === 'w') return `That does not fit the ${SLOT_NAME[BLASTER.slots[idx]].toLowerCase()} slot.`;
-  if (w === 'g') return WEAR[k] ? `That is worn on the ${WEAR_NAME[WEAR[k]!.slot].toLowerCase()}.` : 'You cannot wear that.';
-  if (w === 'k') return 'Only weapons go on your back.';
+  if (w === 'p') return TL`The ${item(k).name} is too big for the backpack: carry it in your hands.`;
+  if (w === 'm') return tl('Only relics go in the modules.');
+  if (w === 'w') return TL`That does not fit the ${SLOT_NAME[BLASTER.slots[idx]].toLowerCase()} slot.`;
+  if (w === 'g') return WEAR[k] ? TL`That is worn on the ${WEAR_NAME[WEAR[k]!.slot].toLowerCase()}.` : tl('You cannot wear that.');
+  if (w === 'k') return tl('Only weapons go on your back.');
   return '';
 }
 /** Moves an item between slots, following the rules of each kind of slot. Returns an error message or ''. */
@@ -116,7 +117,7 @@ function move(from: string, to: string): string {
   const c = G.char, [fw, i] = parseId(from), [tw, j] = parseId(to), a = at(from), b = at(to);
   if (!a) return '';
   if (!fits(tw, j, a.k)) return why(tw, j, a.k);
-  if (b && !fits(fw, i, b.k)) return b && fw === 'p' ? why(fw, i, b.k) : 'Swap it with an empty slot or a matching item instead.';
+  if (b && !fits(fw, i, b.k)) return b && fw === 'p' ? why(fw, i, b.k) : tl('Swap it with an empty slot or a matching item instead.');
   if (fw === 'p' && tw === 'p') { dropStack(c.inv, i, c.inv, j); return ''; }
   const vol = (x: { k: ItemKey; n: number } | null) => (x ? BULK[x.k][1] * x.n : 0);
   // the backpack's litres after the move: a pack going on or coming off changes them
@@ -124,7 +125,7 @@ function move(from: string, to: string): string {
   if (tw === 'g' && j === packIdx) wearAfter.pack = a.k;
   if (fw === 'g' && i === packIdx) wearAfter.pack = b?.k ?? null;
   const room = gearOf(wearAfter).vol, after = bulkOf(c.inv) + (tw === 'p' ? vol(a) - vol(b) : 0) + (fw === 'p' ? vol(b) - vol(a) : 0);
-  if (after > room + 1e-6) return room < packVol() ? `Empty the backpack down to ${room} L first: without that pack it holds no more.` : 'No room for it in your backpack.';
+  if (after > room + 1e-6) return room < packVol() ? TL`Empty the backpack down to ${room} L first: without that pack it holds no more.` : tl('No room for it in your backpack.');
   const single = (w: string) => w === 'm' || w === 'w' || w === 'g' || w === 'k';
   const put = (w: string, idx: number, x: { k: ItemKey; n: number; c?: number } | null) => {
     if (w === 'm') c.mods[idx] = x?.k ?? null; else if (w === 'w') c.gunMods[idx] = x?.k ?? null;
@@ -132,7 +133,7 @@ function move(from: string, to: string): string {
     else listOf(w)[idx] = x ? { k: x.k, n: x.n, ...(x.c !== undefined ? { c: x.c } : {}) } : null;
   };
   if (single(tw) && a.n > 1) { // taking one item off a stack: the target must be free
-    if (b) return 'Take a single item or use an empty slot.';
+    if (b) return tl('Take a single item or use an empty slot.');
     a.n--; put(tw, j, { k: a.k, n: 1 }); return '';
   }
   put(tw, j, a); put(fw, i, b);
@@ -142,20 +143,20 @@ function move(from: string, to: string): string {
 function quick(id: string, act: string): string {
   const c = G.char, [w] = parseId(id), a = at(id);
   if (!a) return '';
-  const toPack = () => { const f = c.inv.indexOf(null); return f < 0 ? 'Your backpack is full.' : move(id, 'p:' + f); };
+  const toPack = () => { const f = c.inv.indexOf(null); return f < 0 ? tl('Your backpack is full.') : move(id, 'p:' + f); };
   if (act === 'hold') {
     const h = c.hands[0];
-    if (h && WEAPON_KIND[h.k] === undefined && !HAND_TOOLS.has(h.k)) return `Your hands are full: ${item(h.k).name}. Put it away first.`;
+    if (h && WEAPON_KIND[h.k] === undefined && !HAND_TOOLS.has(h.k)) return TL`Your hands are full: ${item(h.k).name}. Put it away first.`;
     if (h && HAND_TOOLS.has(h.k) && w !== 'p') { const m = stowHeld(); if (m) return m; } // the tool goes into the backpack
     return move(id, 'h:0'); // what you held takes its place
   }
   if (act === 'stow') { const m = stowHeld(); return m; }
   if (w !== 'p') return toPack();
   const it = item(a.k);
-  if (it.type === 'relic') { const f = c.mods.indexOf(null); return f < 0 ? 'All modules are full. Unequip one first.' : move(id, 'm:' + f); }
+  if (it.type === 'relic') { const f = c.mods.indexOf(null); return f < 0 ? tl('All modules are full. Unequip one first.') : move(id, 'm:' + f); }
   if (it.type === 'attach') return move(id, 'w:' + BLASTER.slots.indexOf(attachSlot(a.k)!));
   if (it.type === 'wear') return move(id, 'g:' + WEAR_SLOTS.indexOf(WEAR[a.k]!.slot));
-  if (it.type === 'weapon') { const f = c.back.indexOf(null); return f < 0 ? 'Both back slots are taken.' : move(id, 'k:' + f); }
+  if (it.type === 'weapon') { const f = c.back.indexOf(null); return f < 0 ? tl('Both back slots are taken.') : move(id, 'k:' + f); }
   return '';
 }
 

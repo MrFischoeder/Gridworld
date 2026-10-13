@@ -12,6 +12,7 @@ import { PLANTS, PLANT_SLOTS, plantSite, plantsOf, running, runPlant, isStation,
 import { poweredAt } from '../gen/energy';
 import type { VillageMap } from '../gen/village';
 import type { Terrain } from '../gen/terrain';
+import { tl, TL } from '../i18n';
 
 const WOOD = 0xb8b060, METAL = 0xb8c4cc, BRICK = 0xd09070, GLASS = 0x9dffe0, STEELC = 0x8fb89a, HOT = 0xffb347, FLAG = 0xffd060, STONEC = 0xc8c8b0;
 export interface Works { vid: number; seed: number; slot: number; town: string; x0: number; z0: number; x1: number; z1: number; glow: THREE.Object3D | null }
@@ -330,9 +331,9 @@ export function nearWorks(): Works | null {
 }
 export function worksPrompt(w: Works): string {
   const st = G.char.towns[w.vid], p = plantsOf(st)[w.slot];
-  if (!p) return st?.pbuild && !isStation(st.pbuild.k) && w.slot === plantsOf(st).length ? `${/^[AEIOU]/.test(specOf(st.pbuild.k).name) ? 'An' : 'A'} ${specOf(st.pbuild.k).name} is going up here: the elder keeps count of the materials` : 'An empty plot for a works: ask the elder';
+  if (!p) return st?.pbuild && !isStation(st.pbuild.k) && w.slot === plantsOf(st).length ? TL`${/^[AEIOU]/.test(specOf(st.pbuild.k).name) ? tl('An') : 'A'} ${specOf(st.pbuild.k).name} is going up here: the elder keeps count of the materials` : tl('An empty plot for a works: ask the elder');
   const pw = powerOf(w);
   runPlant(p, G.char.time, pw);
   const ready = Object.values(p.out).reduce((a, n) => a + (n ?? 0), 0), on = pw ? pw(G.char.time) : true;
-  return `E — the ${PLANTS[p.k].name} (${!running(p) ? 'idle' : on ? 'working' : shortHands(w.vid, 'works', w.slot) ? 'short of hands' : 'no power'}${ready ? ` · ${ready} crate${ready > 1 ? 's' : ''} ready` : ''})`;
+  return TL`E — the ${PLANTS[p.k].name} (${!running(p) ? tl('idle') : on ? tl('working') : shortHands(w.vid, 'works', w.slot) ? tl('short of hands') : tl('no power')}${ready ? TL` · ${ready} crate${ready > 1 ? 's' : ''} ready` : ''})`;
 }

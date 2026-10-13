@@ -2,6 +2,7 @@
 import { G, W } from '../game';
 import { el } from './hud';
 import { drawWorldMini } from './worldmap';
+import { tl } from '../i18n';
 
 const mini = document.getElementById('mini') as HTMLCanvasElement, mctx = mini.getContext('2d')!;
 const MS = 3, MV = 150; mini.width = mini.height = MV;
@@ -71,5 +72,5 @@ export function drawMini() {
   if (hatch && seen(hatch.g.position.x, hatch.g.position.z)) { const [x, y] = P(hatch.g.position.x, hatch.g.position.z); mctx.strokeStyle = '#e8fff0'; mctx.strokeRect(x - 3.5, y - 3.5, 7, 7); }
   drawPlayerArrow(mctx, MV / 2, MV / 2);
   // progress towards the hatch
-  if (hatch && G.map) { const s0 = G.map.spawn[2], s1 = hatch.g.position.z; el.route.textContent = 'Route ' + Math.round(Math.max(0, Math.min(1, (pos.z - s0) / (s1 - s0))) * 100) + '%'; }
+  if (hatch && G.map) { const s0 = G.map.spawn[2], s1 = hatch.g.position.z; el.route.textContent = tl('Route ') + Math.round(Math.max(0, Math.min(1, (pos.z - s0) / (s1 - s0))) * 100) + '%'; }
 }

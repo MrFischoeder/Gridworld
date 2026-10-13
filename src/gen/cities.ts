@@ -17,6 +17,7 @@ import { mountainMask } from './mountains';
 import { continents } from './continents';
 import { seaMask } from './seas';
 import { naturalHeight } from './heights';
+import { TL } from '../i18n';
 
 export type CityPattern = 'grid' | 'warped' | 'radial' | 'diagonal';
 export const CITY = {
@@ -75,7 +76,7 @@ export function citySites(world: number): CitySite[] {
       if (out.some((o) => worldDist(o.x, o.z, x, z) < o.r + r + CITY.apart)) continue;
       if (misfit(world, x, z, r)) continue;
       const R = rng(hash(world, i, k, 0xc174));
-      out.push({ i, id: 'city:' + i, name: ruinName(R) + ' ' + ['Metropolis', 'City', 'Sprawl', 'Megacity'][Math.floor(R() * 4)], x, z, r, yaw: R() * Math.PI, pattern: PATTERNS[(hash(world, i, 0xc175) + i) % PATTERNS.length], y: naturalHeight(world, x, z) });
+      out.push({ i, id: 'city:' + i, name: ((n: string, k: number) => [TL`${n} Metropolis`, TL`${n} City`, TL`${n} Sprawl`, TL`${n} Megacity`][k])(ruinName(R), Math.floor(R() * 4)), x, z, r, yaw: R() * Math.PI, pattern: PATTERNS[(hash(world, i, 0xc175) + i) % PATTERNS.length], y: naturalHeight(world, x, z) });
       break;
     }
   }

@@ -68,8 +68,8 @@ export function updateStreaks(dt: number) {
     if (s.t! > s.len! + 2.5) { newStreak(s); return; }
     const head = Math.min(Math.max(s.t!, 0), s.len!), tail = Math.min(Math.max(s.t! - 2.5, 0), s.len!);
     const P = (d: number) => { const p = s.from!.slice(); p[s.a!] += d * s.dir!; return p; };
-    const h = P(head), tl = P(tail);
-    sPos.set([h[0], h[1], h[2], tl[0], tl[1], tl[2]], o);
+    const h = P(head), tq = P(tail);
+    sPos.set([h[0], h[1], h[2], tq[0], tq[1], tq[2]], o);
     sCol.set([0.6, 1, 0.7, 0, 0.15, 0.05], o);
   });
   sGeo.attributes.position.needsUpdate = true; sGeo.attributes.color.needsUpdate = true;

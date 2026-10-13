@@ -23,6 +23,7 @@ import type { TownState } from './town';
 import type { ItemKey } from '../data/items';
 import { VEHICLES, FUEL, EV, evCap, type VehicleModel, type VehicleParts } from '../data/vehicles';
 import { cargoGoods } from './outpostproc';
+import { tl } from '../i18n';
 
 export const ROUTE = {
   /** Villages further than this from the outpost cannot be served (m); roads wind: the way is this much longer. */
@@ -79,9 +80,9 @@ export function robChance(world: number, o: OutpostState, r: Route): number {
 }
 /** Why a truck cannot take the route ('' = it can). */
 export function truckProblem(parts: VehicleParts, model: VehicleModel): string {
-  if ((parts.hull ?? 1) <= 0) return 'It is a wreck: mend its hull first.';
-  if (parts.engine <= 0 || parts.wheels.some((w) => w <= 0)) return 'It cannot drive: mend it first.';
-  return VEHICLES[model] ? '' : 'Not a vehicle for hauling.';
+  if ((parts.hull ?? 1) <= 0) return tl('It is a wreck: mend its hull first.');
+  if (parts.engine <= 0 || parts.wheels.some((w) => w <= 0)) return tl('It cannot drive: mend it first.');
+  return VEHICLES[model] ? '' : tl('Not a vehicle for hauling.');
 }
 /** Hand a truck over to the route; its timetable starts now. */
 export function assignTruck(r: Route, truck: RouteTruck, now: number) { r.truck = truck; r.t0 = now; r.k = 0; delete r.last; }

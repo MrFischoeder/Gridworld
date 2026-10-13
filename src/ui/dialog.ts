@@ -71,6 +71,7 @@ import { openContracts, renderContracts, contractsClick } from './contracts';
 import { townsWorld } from '../gen/worldrules';
 import { askLode } from '../world/lodes';
 import { itemName } from './icons';
+import { tl, TL, DIR8 } from '../i18n';
 /** Kuba pays a fifth of the price for a part, less for a worn one. */
 const partBuyback = (s: Slot) => Math.floor(PART_PRICE[s.k]! * PART_BUYBACK * (s.c ?? 100) / 100);
 
@@ -98,9 +99,9 @@ function renderTalk(text: string) {
   panel().classList.remove('wide');
   panel().innerHTML = dlgHead() + `<div class="say">${text}</div>` +
     (townId() !== null ? questOptions(W.talkNpc!.role, townId()!) : []).map((q) => `<button class="opt" data-q="${q.id}" style="color:var(--gold)">${q.label}</button>`).join('') +
-    (W.talkNpc!.role === 'elder' && progressive(G.char.towns[townId()!]) ? '<button class="opt" data-o="development">Village development — next tutorial objective</button>' : '') +
-    (W.talkNpc!.role === 'elder' && estateHere() ? '<button class="opt" data-o="estate" style="color:var(--gold)">Is there a house free for me?</button>' : '') +
-    (W.talkNpc!.role === 'elder' && townId() !== null && storesWithElder(townId()!) ? '<button class="opt" data-o="stores">Leave materials with me (the village stores)</button>' : '') +
+    (W.talkNpc!.role === 'elder' && progressive(G.char.towns[townId()!]) ? tl('<button class="opt" data-o="development">Village development — next tutorial objective</button>') : '') +
+    (W.talkNpc!.role === 'elder' && estateHere() ? tl('<button class="opt" data-o="estate" style="color:var(--gold)">Is there a house free for me?</button>') : '') +
+    (W.talkNpc!.role === 'elder' && townId() !== null && storesWithElder(townId()!) ? tl('<button class="opt" data-o="stores">Leave materials with me (the village stores)</button>') : '') +
     info.opts.filter((o) => (o !== 'house' || houseForSale()) && (o !== 'craft' || CRAFTING_OPEN) && shownNow(o) && (!progressive(G.char.towns[townId()!]) || W.talkNpc!.role !== 'elder' || ['status', 'lore', 'house', 'bye'].includes(o) || (development(G.char.towns[townId()!]) >= 5 && o !== 'work'))).map((o) => `<button class="opt" data-o="${o}">${OPT_TEXT[o]}</button>`).join('');
 }
 /**
@@ -109,15 +110,15 @@ function renderTalk(text: string) {
  * (it only points at the notice board).
  */
 const NEED: Record<ElderTask, string> = {
-  farms: 'Our first need is food: help us build a farm.', fortify: 'The farm feeds us. Now the wall: help us raise it, or set up defences.',
-  works: 'We are safer behind the wall. Next, works to process what our land gives.', plantup: 'The works want power: the plant needs an overhaul.',
-  improve: 'With the plant rebuilt, we can think of improvements for the village.' };
+  farms: tl('Our first need is food: help us build a farm.'), fortify: tl('The farm feeds us. Now the wall: help us raise it, or set up defences.'),
+  works: tl('We are safer behind the wall. Next, works to process what our land gives.'), plantup: tl('The works want power: the plant needs an overhaul.'),
+  improve: tl('With the plant rebuilt, we can think of improvements for the village.') };
 /** (0.167) In a new world the blacksmith tells of his cousin Kuba, the mechanic, once he has come (until you have a vehicle or have ordered one). */
 function smithNews(): string {
   if (W.talkNpc?.role !== 'blacksmith' || townId() !== GRIDHOLM_ID) return '';
   const s = G.char.towns[GRIDHOLM_ID];
   if (!progressive(s) || !mechanicHere(s) || G.char.vehicles.length || G.char.garage?.length) return '';
-  return `<br><br><span style="color:var(--gold)">"News: my cousin ${NPC_INFO.dealer.name} has come to live with us. He builds vehicles out of salvage, give him the parts and he will put wheels under you. You will find him in the yard outside the north gate."</span>`;
+  return TL`<br><br><span style="color:var(--gold)">"News: my cousin ${NPC_INFO.dealer.name} has come to live with us. He builds vehicles out of salvage, give him the parts and he will put wheels under you. You will find him in the yard outside the north gate."</span>`;
 }
 /** The elder names what the village needs next (the newest step of his chain not begun yet). */
 function elderNeed(): string {
@@ -139,18 +140,18 @@ function shownNow(o: OptId): boolean {
 const houseForSale = () => !estateHere();
 /** A house here that a dead character of yours left (online: `Char.estate`, ui/rebirth.ts). */
 const estateHere = () => { const id = townId(); return id !== null && !!G.char.estate?.houses.includes(id) && !G.char.houses.includes(id); };
-const elderName = () => W.talkNpc?.name ?? 'The elder';
+const elderName = () => W.talkNpc?.name ?? tl('The elder');
 /** Where a house stands on the plaza, in words. */
 function houseWhere(vm: VillageMap, b: VillageMap['buildings'][number]): string {
   const dx = b.x + b.w / 2 - (vm.ox + 36), dz = b.z + b.d / 2 - (vm.oz + 36);
   const a = (Math.round(Math.atan2(dx, -dz) / (Math.PI / 4)) + 8) % 8;
-  return 'by the ' + ['north', 'north-east', 'east', 'south-east', 'south', 'south-west', 'west', 'north-west'][a] + ' wall';
+  return TL`by the ${DIR8[a]} wall`;
 }
 function renderEstate(msg = '') {
   const e = G.char.estate, v = loadedVillage(town());
   if (!v || !e || !estateHere()) { renderTalk(msg || 'Hm?'); return; }
-  panel().innerHTML = dlgHead() + `<div class="say">${msg || `There is. The house of ${e.from}, who did not come back. They had no one else here, and you came down in the same ship. Take it, ${here('{name}')}, and keep everything in it.`}</div>` +
-    `<button class="opt" data-estate="1" style="color:var(--gold)">Take ${e.from}'s house</button>` +
+  panel().innerHTML = dlgHead() + `<div class="say">${msg || TL`There is. The house of ${e.from}, who did not come back. They had no one else here, and you came down in the same ship. Take it, ${here('{name}')}, and keep everything in it.`}</div>` +
+    TL`<button class="opt" data-estate="1" style="color:var(--gold)">Take ${e.from}'s house</button>` +
     `<button class="opt" data-o="back">${OPT_TEXT.back}</button>`;
 }
 /** The dead one's house becomes yours with all that was in it. */
@@ -162,12 +163,12 @@ function takeEstate() {
   Object.assign(c.containers, e.chests); e.chests = {}; // the chests keep their house's key
   if (!e.houses.length) delete c.estate;
   if (o && o.p !== e.pid && o.p !== c.pid) { // (someone else holds it: the village gave it away)
-    saveChar(); renderHouse(`${elderName()} shakes his head. "I am sorry. ${o.n} lives there now. ${e.from}'s things are in your keeping all the same."`); return;
+    saveChar(); renderHouse(TL`${elderName()} shakes his head. "I am sorry. ${o.n} lives there now. ${e.from}'s things are in your keeping all the same."`); return;
   }
   (s.homes ??= {})[i] = { p: c.pid, n: c.name }; c.houses.push(v.id); (c.homeOf ??= {})[v.id] = i;
   saveChar(); reloadStruct(v.id);
-  showToast('The house is yours'); logLine(`You took over ${e.from}'s house in ${town()}.`);
-  renderTalk(`${elderName()} hands you ${e.from}'s iron key. "Their things are where they left them. Sleep well under that roof, ${here('{name}')}."`);
+  showToast(tl('The house is yours')); logLine(TL`You took over ${e.from}'s house in ${town()}.`);
+  renderTalk(TL`${elderName()} hands you ${e.from}'s iron key. "Their things are where they left them. Sleep well under that roof, ${here('{name}')}."`);
 }
 function renderHouse(msg = '') {
   const v = loadedVillage(town()), c = G.char;
@@ -175,15 +176,15 @@ function renderHouse(msg = '') {
   const mineI = myHome(c, v.id), homes = c.towns[v.id]?.homes, list = v.vm.buildings.filter((b) => b.hero !== undefined);
   const rows = list.map((b) => {
     const i = b.hero!, o = homes?.[i], where = houseWhere(v.vm, b);
-    if (i === mineI) return `<div class="row"><b>House ${i + 1}</b> ${where}: <span style="color:var(--gold)">yours</span></div>`;
-    if (o) return `<div class="row"><b>House ${i + 1}</b> ${where}: ${o.n}'s</div>`;
-    return `<div class="row"><b>House ${i + 1}</b> ${where}: for sale${b.condition === 0 ? ' (a ruin: the village will mend it for you)' : ''} <button class="opt" data-buyhouse="${i}" style="color:var(--gold);display:inline-block;width:auto" ${mineI >= 0 || c.gold < HOUSE_PRICE ? 'disabled' : ''}>Buy (${HOUSE_PRICE} gold)</button></div>`;
+    if (i === mineI) return TL`<div class="row"><b>House ${i + 1}</b> ${where}: <span style="color:var(--gold)">yours</span></div>`;
+    if (o) return TL`<div class="row"><b>House ${i + 1}</b> ${where}: ${o.n}'s</div>`;
+    return TL`<div class="row"><b>House ${i + 1}</b> ${where}: for sale${b.condition === 0 ? tl(' (a ruin: the village will mend it for you)') : ''} <button class="opt" data-buyhouse="${i}" style="color:var(--gold);display:inline-block;width:auto" ${mineI >= 0 || c.gold < HOUSE_PRICE ? 'disabled' : ''}>Buy (${HOUSE_PRICE} gold)</button></div>`;
   }).join('');
   const free = list.filter((b) => !homes?.[b.hero!] && b.hero !== mineI).length;
-  panel().innerHTML = dlgHead() + `<div class="say">${msg || (mineI >= 0 ? `House ${mineI + 1} is yours. Mind the roof in the rains.`
-    : free ? `We keep ${list.length} houses for travellers like you, ${here('{name}')}. A bed, a good chest, a roof that holds. Any free one is yours for <b>${HOUSE_PRICE} gold</b>: a place to sleep safe and to keep what you gather. When you fall out there, you wake in your own bed.`
-    : 'Every house we have is taken, I am afraid. When the village grows, there will be more.')}<br><br>Your gold: <b>${c.gold}</b></div>` +
-    `<div class="say">${rows}</div><div class="say" style="opacity:.7">One house a traveller in each village.</div>` +
+  panel().innerHTML = dlgHead() + TL`<div class="say">${msg || (mineI >= 0 ? TL`House ${mineI + 1} is yours. Mind the roof in the rains.`
+    : free ? TL`We keep ${list.length} houses for travellers like you, ${here('{name}')}. A bed, a good chest, a roof that holds. Any free one is yours for <b>${HOUSE_PRICE} gold</b>: a place to sleep safe and to keep what you gather. When you fall out there, you wake in your own bed.`
+    : tl('Every house we have is taken, I am afraid. When the village grows, there will be more.'))}<br><br>Your gold: <b>${c.gold}</b></div>` +
+    TL`<div class="say">${rows}</div><div class="say" style="opacity:.7">One house a traveller in each village.</div>` +
     `<button class="opt" data-o="back">${OPT_TEXT.back}</button>`;
 }
 /** Buy house `i` of the village. Online the village is reserved first (ui/stock.ts withTownStock: the server hands
@@ -201,16 +202,16 @@ async function buyHouse(i: number) {
   if (!ok) return;
   if (why) { renderHouse(why); return; }
   saveChar(); reloadStruct(v.id);
-  showToast('The house is yours'); logLine(`You bought house ${i + 1} in ${town()} for ${HOUSE_PRICE} gold.`);
-  renderHouse(`${elderName()} presses an iron key into your hand. "House ${i + 1} is yours now, ${here('{name}')}. Sleep well under your own roof."`);
+  showToast(tl('The house is yours')); logLine(TL`You bought house ${i + 1} in ${town()} for ${HOUSE_PRICE} gold.`);
+  renderHouse(TL`${elderName()} presses an iron key into your hand. "House ${i + 1} is yours now, ${here('{name}')}. Sleep well under your own roof."`);
 }
 const PARTS = Object.keys(PART_PRICE) as ItemKey[];
 function renderVehicleShop(msg?: string) {
   const salvage = progressive(G.char.towns[townId()!]); // (a new world: vehicles and engine parts only from salvage, built in the workshop)
-  panel().innerHTML = dlgHead() + `<div class="say">Your gold: <b>${G.char.gold}</b>${msg ? '<br>' + msg : ''}${salvage ? '<br>I have no new vehicles to sell, no engine parts and no fuel: nobody makes them any more, and fuel comes from a refinery. Bring me salvage and I build you one in the workshop.' : ''}</div>` +
+  panel().innerHTML = dlgHead() + TL`<div class="say">Your gold: <b>${G.char.gold}</b>${msg ? '<br>' + msg : ''}${salvage ? tl('<br>I have no new vehicles to sell, no engine parts and no fuel: nobody makes them any more, and fuel comes from a refinery. Bring me salvage and I build you one in the workshop.') : ''}</div>` +
     (salvage ? [] : Object.keys(VEHICLES) as VehicleModel[]).map((m) => {
       const s = VEHICLES[m];
-      return `<div class="shoprow"><div><b>${vehicleTitle(m)}</b><br><span>${s.role} · ${s.seats} seats · trunk ${s.trunk} · ${Math.round(s.maxSpeed * 3.6)} km/h · tank ${s.tank} L (~${Math.round(rangeKm(m, s.tank))} km)${s.enclosed ? ' · closed cab' : ' · open top'}</span></div>
+      return TL`<div class="shoprow"><div><b>${vehicleTitle(m)}</b><br><span>${s.role} · ${s.seats} seats · trunk ${s.trunk} · ${Math.round(s.maxSpeed * 3.6)} km/h · tank ${s.tank} L (~${Math.round(rangeKm(m, s.tank))} km)${s.enclosed ? tl(' · closed cab') : tl(' · open top')}</span></div>
       <button class="buy" data-v="${m}" ${G.char.gold < s.price ? 'disabled' : ''}>${s.price} g</button></div>`;
     }).join('') +
     PARTS.filter((k) => !salvage || k !== 'engine' && k !== 'fuel').map((k) => `<div class="shoprow"><div>${itemName(k)}<br><span>${ITEMS[k].desc}</span></div>
@@ -220,21 +221,21 @@ function renderVehicleShop(msg?: string) {
 /** Jan and Oskar buy what you bring from the wilds (data/npcs BUYS). */
 function renderTrade(msg?: string) {
   const buys = BUYS[W.talkNpc!.role] ?? {}, rows = G.char.inv.map((s, i) => ({ s, i })).filter(({ s }) => s && buys[s.k]);
-  panel().innerHTML = dlgHead() + `<div class="say">Your gold: <b>${G.char.gold}</b>${msg ? '<br>' + msg : ''}</div>` +
-    (rows.length ? rows.map(({ s, i }) => `<div class="shoprow"><div><b>${ITEMS[s!.k].name} ×${s!.n}</b><br><span>${buys[s!.k]} g each</span></div>
+  panel().innerHTML = dlgHead() + TL`<div class="say">Your gold: <b>${G.char.gold}</b>${msg ? '<br>' + msg : ''}</div>` +
+    (rows.length ? rows.map(({ s, i }) => TL`<div class="shoprow"><div><b>${ITEMS[s!.k].name} ×${s!.n}</b><br><span>${buys[s!.k]} g each</span></div>
       <button class="buy" data-trade="${i}">+${buys[s!.k]} g</button><button class="buy" data-tradeall="${i}">all +${buys[s!.k]! * s!.n} g</button></div>`).join('')
-      : `<div class="say" style="opacity:.7">You have nothing I would buy. I pay for ${Object.keys(buys).map((k) => ITEMS[k as ItemKey].name).join(', ')}.</div>`) +
+      : TL`<div class="say" style="opacity:.7">You have nothing I would buy. I pay for ${Object.keys(buys).map((k) => ITEMS[k as ItemKey].name).join(', ')}.</div>`) +
     `<button class="opt" data-o="back">${OPT_TEXT.back}</button>`;
 }
 /** Kuba buys vehicles back at half price (less for wrecks) and parts for a fifth of what he charges. */
 function renderSell(msg?: string) {
   if (W.talkNpc!.role !== 'dealer') { renderTrade(msg); return; }
   const offers = vehiclesForSale(), parts = [...G.char.hands.map((s, i) => ({ s, i: 'h:' + i })), ...G.char.inv.map((s, i) => ({ s, i: 'p:' + i }))].filter(({ s }) => s && PART_PRICE[s.k]);
-  panel().innerHTML = dlgHead() + `<div class="say">Your gold: <b>${G.char.gold}</b>${msg ? '<br>' + msg : ''}</div>` +
-    (offers.length ? offers.map((o) => `<div class="shoprow"><div><b>${vehicleTitle(o.v.st.model)}</b><br><span>${o.why ?? 'parked in the yard · condition ' + Math.round(health(o.v.st.model, o.v.st.parts) * 100) + '%'}</span></div>
+  panel().innerHTML = dlgHead() + TL`<div class="say">Your gold: <b>${G.char.gold}</b>${msg ? '<br>' + msg : ''}</div>` +
+    (offers.length ? offers.map((o) => `<div class="shoprow"><div><b>${vehicleTitle(o.v.st.model)}</b><br><span>${o.why ?? tl('parked in the yard · condition ') + Math.round(health(o.v.st.model, o.v.st.parts) * 100) + '%'}</span></div>
       <button class="buy" data-sellv="${o.v.st.id}" ${o.why ? 'disabled' : ''}>+${o.price} g</button></div>`).join('')
-      : '<div class="say" style="opacity:.7">Park a vehicle in my yard and I will make you an offer.</div>') +
-    parts.map(({ s, i }) => `<div class="shoprow"><div><b>${ITEMS[s!.k].name}${s!.n > 1 ? ' ×' + s!.n : ''}</b><br><span>used part${s!.c !== undefined ? ', ' + Math.round(s!.c) + '% worn in' : ''}</span></div>
+      : tl('<div class="say" style="opacity:.7">Park a vehicle in my yard and I will make you an offer.</div>')) +
+    parts.map(({ s, i }) => TL`<div class="shoprow"><div><b>${ITEMS[s!.k].name}${s!.n > 1 ? ' ×' + s!.n : ''}</b><br><span>used part${s!.c !== undefined ? ', ' + Math.round(s!.c) + tl('% worn in') : ''}</span></div>
       <button class="buy" data-sells="${i}">+${partBuyback(s!)} g</button></div>`).join('') +
     `<button class="opt" data-o="back">${OPT_TEXT.back}</button>`;
 }
@@ -242,7 +243,7 @@ function renderShop(msg?: string) {
   if (W.talkNpc!.role === 'dealer') { renderVehicleShop(msg); return; }
   if (W.talkNpc!.role === 'grocer') { panel().innerHTML = foodHTML(dlgHead(), loadedVillage(town())?.id ?? null, msg); return; }
   const stock = stockFor(W.talkNpc!.role, G.char.world).filter(([k]) => W.talkNpc!.role !== 'blacksmith' || smithAllows(G.char.towns[townId()!], k));
-  panel().innerHTML = dlgHead() + `<div class="say">Your gold: <b>${G.char.gold}</b>${msg ? '<br>' + msg : ''}</div>` +
+  panel().innerHTML = dlgHead() + TL`<div class="say">Your gold: <b>${G.char.gold}</b>${msg ? '<br>' + msg : ''}</div>` +
     stock.map(([k, p]) => `<div class="shoprow"><div>${itemName(k)}<br><span>${ITEMS[k].desc}</span></div>
       <button class="buy" data-k="${k}" data-p="${p}" ${G.char.gold < p ? 'disabled' : ''}>${p} g</button></div>`).join('') +
     `<button class="opt" data-o="back">${OPT_TEXT.back}</button>`;
@@ -251,17 +252,17 @@ const SIDE_NAME = { W: 'west', E: 'east', S: 'south', N: 'north' } as const;
 /** Where the village's raiders come from, how the last raid went and when the scouts expect the next. */
 function raidNews(id: number): string {
   const c = G.char, poi = findPoi(c.world, id), st = c.towns[id], nr = poi && nextRaid(c.world, poi, c.time), lr = poi && lastRaid(c.world, poi, c.time);
-  return !poi || !raidSource(c.world, poi) ? 'No bandit camp is near enough to trouble us, thank the stars.'
-    : `Bandits from ${raidSource(c.world, poi)!.name} raid us every few days.` + (lr ? ` The last time ${({ won: 'we beat them off', lost: 'they broke through', paid: 'we paid them off' } as const)[raidOutcome(c.world, lr, st)]}.` : '') + (nr && !st?.raids?.[nr.k] && nr.t0 - c.time < 1440 ? ` Our scouts expect them again about ${fmtTime(nr.t0)}.` : '') + ' A stronger wall holds them better.';
+  return !poi || !raidSource(c.world, poi) ? tl('No bandit camp is near enough to trouble us, thank the stars.')
+    : TL`Bandits from ${raidSource(c.world, poi)!.name} raid us every few days.` + (lr ? TL` The last time ${({ won: tl('we beat them off'), lost: tl('they broke through'), paid: tl('we paid them off') } as const)[raidOutcome(c.world, lr, st)]}.` : '') + (nr && !st?.raids?.[nr.k] && nr.t0 - c.time < 1440 ? TL` Our scouts expect them again about ${fmtTime(nr.t0)}.` : '') + tl(' A stronger wall holds them better.');
 }
 /** The captain of the guard's report: the wall, the raiders, the towers. */
 function renderWatch(msg = '') {
   const v = loadedVillage(town());
   if (!v) { renderTalk('Hm?'); return; }
   const plan = fortifyPlan(G.char.towns[v.id]), wall = WALL_TIERS[plan ? plan.from : WALL_TIERS.length - 1], pt = pendingTribute(v.id);
-  renderTalk((msg ? msg + '<br><br>' : '') + `We sit behind a <b>${wall.name}</b>. ${raidNews(v.id)}${tributeNote(v.id)} When they come, meet them at the gates, or climb a tower: from up there you see them long before they see you.` +
-    (plan ? ` The Elder is raising money and materials for a ${WALL_TIERS[plan.to].name.toLowerCase()}; help him and my job gets easier.` : '') +
-    (pt ? `<br><br><button class="opt" data-tribute="pay" ${G.char.gold < pt.amount ? 'disabled' : ''} style="color:var(--gold)">Pay the bandits their ${pt.amount} gold</button>` : ''));
+  renderTalk((msg ? msg + '<br><br>' : '') + TL`We sit behind a <b>${wall.name}</b>. ${raidNews(v.id)}${tributeNote(v.id)} When they come, meet them at the gates, or climb a tower: from up there you see them long before they see you.` +
+    (plan ? TL` The Elder is raising money and materials for a ${WALL_TIERS[plan.to].name.toLowerCase()}; help him and my job gets easier.` : '') +
+    (pt ? TL`<br><br><button class="opt" data-tribute="pay" ${G.char.gold < pt.amount ? 'disabled' : ''} style="color:var(--gold)">Pay the bandits their ${pt.amount} gold</button>` : ''));
 }
 /** The elder's commissions: raise the fence to the next tier (materials handed over bit by bit), the power plant, the raids, the village's industry (and building its refinery). */
 function renderFortify(msg?: string) {
@@ -269,31 +270,31 @@ function renderFortify(msg?: string) {
   if (!v) { renderTalk('Hm?'); return; }
   const st = c.towns[v.id], plan = fortifyPlan(st), wall = WALL_TIERS[plan ? plan.from : WALL_TIERS.length - 1];
   const k = powerKind(v.vm.seed), pc = Math.round(plantCondition(v.id, v.vm.seed)), side = SIDE_NAME[powerSite(v.vm.seed).side];
-  const power = `Our power comes from the <b>${POWER[k].name}</b> outside the ${side} fence: ${pc < POWER_DOWN ? '<span style="color:var(--red,#ff5a3c)">it is down</span>' : pc < POWER_LOW ? 'it is failing' : 'it runs'} (${pc}%). ` +
-    (pc < 90 ? `Mend it with ${POWER[k].fix.map(([i, n]) => `${n} ${ITEMS[i].name}`).join(', ')} and we will pay you.` : 'Keep an eye on it for us.');
+  const power = TL`Our power comes from the <b>${POWER[k].name}</b> outside the ${side} fence: ${pc < POWER_DOWN ? tl('<span style="color:var(--red,#ff5a3c)">it is down</span>') : pc < POWER_LOW ? tl('it is failing') : tl('it runs')} (${pc}%). ` +
+    (pc < 90 ? TL`Mend it with ${POWER[k].fix.map(([i, n]) => `${n} ${ITEMS[i].name}`).join(', ')} and we will pay you.` : tl('Keep an eye on it for us.'));
   const poi = findPoi(c.world, v.id), raids = raidNews(v.id) + tributeNote(v.id);
   // the village's own goods in the hall
   const so = storeOf(v.id, v.vm.seed), pt = pendingTribute(v.id);
-  const store = `Our own goods in the village hall: <b>${Math.floor(so.n)} of ${so.cap}</b> crates` + (so.full ? '. <span style="color:var(--red,#ff5a3c)">That is all it takes of them, so the work has stopped</span>: buy some at the market, or take your share.' : '.');
+  const store = TL`Our own goods in the village hall: <b>${Math.floor(so.n)} of ${so.cap}</b> crates` + (so.full ? tl('. <span style="color:var(--red,#ff5a3c)">That is all it takes of them, so the work has stopped</span>: buy some at the market, or take your share.') : '.');
   // the village's industry, and (refinery towns) the commission to build the refinery
   const ind = poi ? industryOf(c.world, poi, v.vm.seed) : 'farm', spec = INDUSTRY[ind], bp = buildPlan(ind, st), sc = poi ? Math.round(siteCondition(c.world, poi, st, c.time)) : 100;
-  const trade = poi ? profileOf(c.world, poi, v.vm.seed).makes.map((g) => ITEMS[g].name).join(' and ') : '';
-  const work = bp && progressive(st) ? `This marked site has no functioning ${spec.site.toLowerCase()} yet. Store the materials to build it.` : bp ? `Oil comes up not far from here, and we mean to put up a <b>refinery</b> that turns crude into fuel. Help us build it and the village will pay you <b>${REFINERY_PAY} gold</b>.`
-    : `We are a ${spec.name.toLowerCase()}: our ${spec.site.toLowerCase()} ${spec.site.endsWith('s') ? 'give' : 'gives'} us ${trade}` + (sc < 90 ? `, but the raids have damaged ${spec.site.endsWith('s') ? 'them' : 'it'} (${sc}%): mend ${spec.site.endsWith('s') ? 'them' : 'it'} with ${spec.fix.map(([i, n]) => `${n} ${ITEMS[i].name}`).join(', ')} and we will pay you.` : '.');
-  const brows = building(st, 'refinery') ? jobHTML(st, 'refinery', undefined, 'the ' + spec.site.toLowerCase()) : bp ? bp.rows.map((r) => `<div class="shoprow"><div>${itemName(r.k)}<br><span>${r.given} / ${r.n} for the ${spec.site.toLowerCase()}${hallNote(hh(r.k), r.given, r.n)}</span></div></div>`).join('') : '';
+  const trade = poi ? profileOf(c.world, poi, v.vm.seed).makes.map((g) => ITEMS[g].name).join(tl(' and ')) : '';
+  const work = bp && progressive(st) ? TL`This marked site has no functioning ${spec.site.toLowerCase()} yet. Store the materials to build it.` : bp ? TL`Oil comes up not far from here, and we mean to put up a <b>refinery</b> that turns crude into fuel. Help us build it and the village will pay you <b>${REFINERY_PAY} gold</b>.`
+    : TL`We are a ${spec.name.toLowerCase()}: our ${spec.site.toLowerCase()} ${spec.site.endsWith('s') ? tl('give') : tl('gives')} us ${trade}` + (sc < 90 ? TL`, but the raids have damaged ${spec.site.endsWith('s') ? tl('them') : tl('it')} (${sc}%): mend ${spec.site.endsWith('s') ? tl('them') : tl('it')} with ${spec.fix.map(([i, n]) => `${n} ${ITEMS[i].name}`).join(', ')} and we will pay you.` : '.');
+  const brows = building(st, 'refinery') ? jobHTML(st, 'refinery', undefined, tl('the ') + spec.site.toLowerCase()) : bp ? bp.rows.map((r) => TL`<div class="shoprow"><div>${itemName(r.k)}<br><span>${r.given} / ${r.n} for the ${spec.site.toLowerCase()}${hallNote(hh(r.k), r.given, r.n)}</span></div></div>`).join('') : '';
   const canBuild = !!bp && !building(st, 'refinery') && bp.rows.some((r) => r.given < r.n && hh(r.k) > 0);
   const walling = plan && building(st, 'wall');
-  const rows = walling ? jobHTML(st, 'wall', String(plan!.to), 'the ' + WALL_TIERS[plan!.to].name.toLowerCase()) : plan ? plan.rows.map((r) => {
+  const rows = walling ? jobHTML(st, 'wall', String(plan!.to), tl('the ') + WALL_TIERS[plan!.to].name.toLowerCase()) : plan ? plan.rows.map((r) => {
     const have = hh(r.k), left = r.n - r.given;
-    return `<div class="shoprow"><div>${itemName(r.k)}<br><span>${r.given} / ${r.n} handed over${left > 0 ? ` · in the village hall: ${have}` : ' · done'}</span></div></div>`;
+    return TL`<div class="shoprow"><div>${itemName(r.k)}<br><span>${r.given} / ${r.n} handed over${left > 0 ? TL` · in the village hall: ${have}` : tl(' · done')}</span></div></div>`;
   }).join('') : '';
   const canGive = !!plan && plan.rows.some((r) => r.given < r.n && hh(r.k) > 0);
   panel().innerHTML = dlgHead() + `<div class="say">${msg ? msg + '<br><br>' : ''}` +
-    (plan ? `Our wall is a <b>${wall.name}</b>. Help us raise a <b>${WALL_TIERS[plan.to].name}</b> (${WALL_TIERS[plan.to].h} m) and the village will pay you <b>${plan.gold} gold</b>. We build from what is in the village hall.`
-      : `Our wall is a <b>${wall.name}</b>, as strong as we can make it. Thank you.`) + `<br><br>${power}<br><br>${raids}<br><br>${work}<br><br>${store}<br><br>${defenceText(v.id, v.vm, st)}</div>` +
-    (pt ? `<button class="opt" data-tribute="pay" ${c.gold < pt.amount ? 'disabled' : ''} style="color:var(--gold)">Pay the bandits their ${pt.amount} gold</button>` : '') + rows +
-    (plan && !walling ? `<button class="opt" data-fort="give" ${canGive ? '' : 'disabled'}>Build from the village hall's stock (the wall)</button>` : '') + brows +
-    (bp && !building(st, 'refinery') ? `<button class="opt" data-rbuild="give" ${canBuild ? '' : 'disabled'}>Build from the village hall's stock (the ${spec.site.toLowerCase()})</button>` : '') +
+    (plan ? TL`Our wall is a <b>${wall.name}</b>. Help us raise a <b>${WALL_TIERS[plan.to].name}</b> (${WALL_TIERS[plan.to].h} m) and the village will pay you <b>${plan.gold} gold</b>. We build from what is in the village hall.`
+      : TL`Our wall is a <b>${wall.name}</b>, as strong as we can make it. Thank you.`) + `<br><br>${power}<br><br>${raids}<br><br>${work}<br><br>${store}<br><br>${defenceText(v.id, v.vm, st)}</div>` +
+    (pt ? TL`<button class="opt" data-tribute="pay" ${c.gold < pt.amount ? 'disabled' : ''} style="color:var(--gold)">Pay the bandits their ${pt.amount} gold</button>` : '') + rows +
+    (plan && !walling ? TL`<button class="opt" data-fort="give" ${canGive ? '' : 'disabled'}>Build from the village hall's stock (the wall)</button>` : '') + brows +
+    (bp && !building(st, 'refinery') ? TL`<button class="opt" data-rbuild="give" ${canBuild ? '' : 'disabled'}>Build from the village hall's stock (the ${spec.site.toLowerCase()})</button>` : '') +
     defenceRows(v.vm, st) +
     `<button class="opt" data-o="back">${OPT_TEXT.back}</button>`;
 }
@@ -303,35 +304,35 @@ function powerText(vid: number, vm: VillageMap, st: TownState | undefined): stri
   const c = G.char, poi = findPoi(c.world, vid);
   if (!poi) return '';
   const b = balance(c.world, poi, vm.seed, st, c.time), stations = st?.stations ?? [];
-  const works = plantsOf(st).map((p, i) => `the ${PLANTS[p.k].name} ${DRAW[p.k]} kW${!running(p) ? ' (idle)' : b.powered[i] ? ' (powered)' : ' <span style="color:var(--red,#ff5a3c)">(no power)</span>'}`);
-  return `<b>Power.</b> We make <b>${Math.round(b.made)} kW</b> now` + (stations.length ? ` (our ${POWER[powerKind(vm.seed)].name.toLowerCase()} and ${stations.map((x) => `the ${STATIONS[x.k].name}${STATIONS[x.k].fuel && fuelAt(x, c.time) <= 0 ? ' (out of ' + ITEMS[STATIONS[x.k].fuel!].name.toLowerCase() + ')' : ''}`).join(' and ')})` : ` from our ${POWER[powerKind(vm.seed)].name.toLowerCase()}`) +
-    `; the village itself takes ${villageKw(st)} kW` + (b.farms ? `, the farms ${b.farms} kW` : '') +
-    (b.site ? `, our ${INDUSTRY[industryOf(c.world, poi, vm.seed)].site.toLowerCase()} ${b.site} kW${b.sitePowered < 1 ? ` <span style="color:var(--red,#ff5a3c)">(${Math.round(b.sitePowered * 100)}% powered: it makes less)</span>` : ''}` : '') +
-    `, which leaves <b>${Math.round(b.free + b.powered.reduce((a, on, i) => a + (on ? DRAW[plantsOf(st)[i].k] : 0), 0))} kW</b> for works.` + (works.length ? ` They draw: ${works.join(', ')}.` : '') +
-    ` Every works needs power to run: build power stations first.`;
+  const works = plantsOf(st).map((p, i) => TL`the ${PLANTS[p.k].name} ${DRAW[p.k]} kW${!running(p) ? tl(' (idle)') : b.powered[i] ? tl(' (powered)') : tl(' <span style="color:var(--red,#ff5a3c)">(no power)</span>')}`);
+  return TL`<b>Power.</b> We make <b>${Math.round(b.made)} kW</b> now` + (stations.length ? TL` (our ${POWER[powerKind(vm.seed)].name.toLowerCase()} and ${stations.map((x) => TL`the ${STATIONS[x.k].name}${STATIONS[x.k].fuel && fuelAt(x, c.time) <= 0 ? tl(' (out of ') + ITEMS[STATIONS[x.k].fuel!].name.toLowerCase() + ')' : ''}`).join(tl(' and '))})` : TL` from our ${POWER[powerKind(vm.seed)].name.toLowerCase()}`) +
+    TL`; the village itself takes ${villageKw(st)} kW` + (b.farms ? TL`, the farms ${b.farms} kW` : '') +
+    (b.site ? TL`, our ${INDUSTRY[industryOf(c.world, poi, vm.seed)].site.toLowerCase()} ${b.site} kW${b.sitePowered < 1 ? TL` <span style="color:var(--red,#ff5a3c)">(${Math.round(b.sitePowered * 100)}% powered: it makes less)</span>` : ''}` : '') +
+    TL`, which leaves <b>${Math.round(b.free + b.powered.reduce((a, on, i) => a + (on ? DRAW[plantsOf(st)[i].k] : 0), 0))} kW</b> for works.` + (works.length ? TL` They draw: ${works.join(', ')}.` : '') +
+    TL` Every works needs power to run: build power stations first.`;
 }
 function worksText(st: TownState | undefined): string {
   const built = plantsOf(st), plan = plantPlan(st), free = PLANT_SLOTS - built.length - (plan && !isStation(plan.k) ? 1 : 0), sfree = STATION_SLOTS - (st?.stations?.length ?? 0) - (plan && isStation(plan.k) ? 1 : 0);
-  return `<b>Works.</b> Whatever our land gives, any village can process goods, and processed goods fetch the real money. ` +
-    (built.length ? `Outside our fence ${built.length > 1 ? 'stand' : 'stands'} ${built.map((p) => `the <b>${PLANTS[p.k].name}</b>`).join(' and ')}: ${built.length > 1 ? 'they are' : 'it is'} yours to run. ` : '') +
-    (plan ? `The <b>${specOf(plan.k).name}</b> is going up: bring the materials, and the fee of <b>${plan.fee} gold</b> pays the builders when it is done. `
-      : `There is room for ${free} more works and ${sfree} more power station${sfree === 1 ? '' : 's'}: choose what we should build, you bring the materials and pay the builders.`);
+  return TL`<b>Works.</b> Whatever our land gives, any village can process goods, and processed goods fetch the real money. ` +
+    (built.length ? TL`Outside our fence ${built.length > 1 ? tl('stand') : tl('stands')} ${built.map((p) => TL`the <b>${PLANTS[p.k].name}</b>`).join(tl(' and '))}: ${built.length > 1 ? tl('they are') : tl('it is')} yours to run. ` : '') +
+    (plan ? TL`The <b>${specOf(plan.k).name}</b> is going up: bring the materials, and the fee of <b>${plan.fee} gold</b> pays the builders when it is done. `
+      : TL`There is room for ${free} more works and ${sfree} more power station${sfree === 1 ? '' : 's'}: choose what we should build, you bring the materials and pay the builders.`);
 }
 function worksRows(st: TownState | undefined): string {
   const c = G.char, plan = plantPlan(st);
   if (plan) {
     const name = specOf(plan.k).name;
-    if (building(st, 'plant', plan.k)) return jobHTML(st, 'plant', plan.k, 'the ' + name);
-    const rows = plan.rows.map((r) => `<div class="shoprow"><div>${itemName(r.k)}<br><span>${r.given} / ${r.n} for the ${name.toLowerCase()}${hallNote(hh(r.k), r.given, r.n)}</span></div></div>`).join('');
+    if (building(st, 'plant', plan.k)) return jobHTML(st, 'plant', plan.k, tl('the ') + name);
+    const rows = plan.rows.map((r) => TL`<div class="shoprow"><div>${itemName(r.k)}<br><span>${r.given} / ${r.n} for the ${name.toLowerCase()}${hallNote(hh(r.k), r.given, r.n)}</span></div></div>`).join('');
     const can = plan.rows.some((r) => r.given < r.n && hh(r.k) > 0) || (plan.done && c.gold >= plan.fee);
-    return rows + `<button class="opt" data-pgive="1" ${can ? '' : 'disabled'}>${plan.done ? `Pay the builders ${plan.fee} gold` : `Build from the village hall's stock (${name.toLowerCase()})`}</button>`;
+    return rows + `<button class="opt" data-pgive="1" ${can ? '' : 'disabled'}>${plan.done ? TL`Pay the builders ${plan.fee} gold` : TL`Build from the village hall's stock (${name.toLowerCase()})`}</button>`;
   }
-  const btn = (k: PlantKind | StationKind) => { const sp = specOf(k), no = plantProblem(st, k, c.tech); if (no) return `<button class="opt" disabled>${sp.name}, ${isStation(k) ? STATIONS[k].kw + ' kW' : `draws ${DRAW[k]} kW`}: ${no}</button>`; return `<button class="opt" data-pnew="${k}">Build ${aN(sp.name)} ${sp.name}: ${sp.blurb}${isStation(k) ? `, ${STATIONS[k].kw} kW` : `, draws ${DRAW[k]} kW`} (${sp.needs.map(([i, n]) => `${n} ${ITEMS[i].name}`).join(', ')}; ${sp.fee} gold)</button>`; };
+  const btn = (k: PlantKind | StationKind) => { const sp = specOf(k), no = plantProblem(st, k, c.tech); if (no) return `<button class="opt" disabled>${sp.name}, ${isStation(k) ? STATIONS[k].kw + ' kW' : TL`draws ${DRAW[k]} kW`}: ${no}</button>`; return TL`<button class="opt" data-pnew="${k}">Build ${aN(sp.name)} ${sp.name}: ${sp.blurb}${isStation(k) ? `, ${STATIONS[k].kw} kW` : TL`, draws ${DRAW[k]} kW`} (${sp.needs.map(([i, n]) => `${n} ${ITEMS[i].name}`).join(', ')}; ${sp.fee} gold)</button>`; };
   const st1 = STATION_KINDS.filter((k) => !plantProblem(st, k)), pl = PLANT_KINDS.filter((k) => !plantProblem(st, k));
   const plain = pl.filter((k) => !PLANTS[k].tech), plans = pl.filter((k) => PLANTS[k].tech);
-  return (st1.length ? `<div class="say" style="margin:8px 0 0">Power stations</div>${st1.map(btn).join('')}` : '') +
-    (plain.length ? `<div class="say" style="margin:8px 0 0">Works anyone can build</div>${plain.map(btn).join('')}` : '') +
-    (plans.length ? `<div class="say" style="margin:8px 0 0">Works that want the old plans</div>${plans.map(btn).join('')}` : '');
+  return (st1.length ? TL`<div class="say" style="margin:8px 0 0">Power stations</div>${st1.map(btn).join('')}` : '') +
+    (plain.length ? TL`<div class="say" style="margin:8px 0 0">Works anyone can build</div>${plain.map(btn).join('')}` : '') +
+    (plans.length ? TL`<div class="say" style="margin:8px 0 0">Works that want the old plans</div>${plans.map(btn).join('')}` : '');
 }
 /** The elder on power and works: what the land gives, the power balance, what stands, what can be built. */
 function renderWorksPanel(msg = '') {
@@ -339,7 +340,7 @@ function renderWorksPanel(msg = '') {
   if (!W.talkNpc) return; // the talk is over (a stale click)
   if (!v || !poi) { renderTalk('Hm?'); return; }
   const st = c.towns[v.id], p = profileOf(c.world, poi, v.vm.seed), fert = fertility(c.world, poi, v.vm.seed);
-  const land = `Our land gives us ${p.makes.map((g) => ITEMS[g].name).join(' and ')}` + (fert > 1.15 ? ', and our fields are rich: we grow more than we eat' : fert < 0.85 ? ', though our fields are poor' : '') + '.';
+  const land = TL`Our land gives us ${p.makes.map((g) => ITEMS[g].name).join(tl(' and '))}` + (fert > 1.15 ? tl(', and our fields are rich: we grow more than we eat') : fert < 0.85 ? tl(', though our fields are poor') : '') + '.';
   panel().classList.add('wide');
   panel().innerHTML = dlgHead() + `<div class="say">${msg ? msg + '<br><br>' : ''}${land}<br><br>${powerText(v.id, v.vm, st)}<br><br>${worksText(st)}</div>` + worksRows(st) + `<button class="opt" data-o="back">${OPT_TEXT.back}</button>`;
 }
@@ -350,7 +351,7 @@ function newWorks(k: PlantKind | StationKind) {
   if (why) { renderWorksPanel(why); return; }
   saveChar(); reloadStruct(v.id);
   const sp = specOf(k);
-  renderWorksPanel(`We will build ${aN(sp.name)} ${sp.name} on the plot outside the fence. The builders take the materials from the village hall and want ${sp.fee} gold when it stands.`);
+  renderWorksPanel(TL`We will build ${aN(sp.name)} ${sp.name} on the plot outside the fence. The builders take the materials from the village hall and want ${sp.fee} gold when it stands.`);
 }
 function giveWorks() {
   const v = loadedVillage(town()), c = G.char;
@@ -361,23 +362,23 @@ function giveWorks() {
   stockTake(v.id, taken);
   if (started) {
     gainXp(plan.xp); earnTrust(v.id, 'works'); calcStats(); saveChar();
-    renderWorksPanel(`All the materials are in and the builders have their ${plan.fee} gold. They get to work on the ${specOf(plan.k).name} now: ${buildersLine(st, 'plant', plan.k)}`);
+    renderWorksPanel(TL`All the materials are in and the builders have their ${plan.fee} gold. They get to work on the ${specOf(plan.k).name} now: ${buildersLine(st, 'plant', plan.k)}`);
     return;
   }
   if (!built) {
     saveChar();
     const after = plantPlan(st)!;
-    renderWorksPanel((taken.length ? 'Handed over: ' + taken.map(([i, n]) => `${ITEMS[i].name} ×${n}`).join(', ') + '. ' : '') +
-      (after.done ? `All the materials are in. The builders want their ${after.fee} gold${c.gold < after.fee ? ', and you do not have it yet' : ''}.` : taken.length ? '' : 'The village hall has nothing more of what it needs: bring the materials to the village stores.'));
+    renderWorksPanel((taken.length ? tl('Handed over: ') + taken.map(([i, n]) => `${ITEMS[i].name} ×${n}`).join(', ') + '. ' : '') +
+      (after.done ? TL`All the materials are in. The builders want their ${after.fee} gold${c.gold < after.fee ? tl(', and you do not have it yet') : ''}.` : taken.length ? '' : tl('The village hall has nothing more of what it needs: bring the materials to the village stores.')));
     return;
   }
   gainXp(plan.xp); earnTrust(v.id, 'works'); calcStats(); saveChar();
   closeDialog(); reloadStruct(v.id);
   const name = specOf(built).name;
-  showToast(`${v.vm.name}: the ${name} stands`);
+  showToast(TL`${v.vm.name}: the ${name} stands`);
   logLine(isStation(built)
-    ? `The ${name} at ${v.vm.name} is finished: ${STATIONS[built].kw} kW for the works${STATIONS[built].fuel ? `, as long as you keep its ${built === 'reactor' ? 'core' : 'bunker'} fed with ${fuelWords(built)[2]}` : ''}.`
-    : `The ${name} at ${v.vm.name} is finished and yours to run: load its hopper with ${[...new Set(PLANTS[built].recipes.flatMap((r) => r.in.map(([g]) => ITEMS[g].name)))].join(', ')} and collect what it makes. It draws ${DRAW[built]} kW.`);
+    ? TL`The ${name} at ${v.vm.name} is finished: ${STATIONS[built].kw} kW for the works${STATIONS[built].fuel ? TL`, as long as you keep its ${built === 'reactor' ? tl('core') : tl('bunker')} fed with ${fuelWords(built)[2]}` : ''}.`
+    : TL`The ${name} at ${v.vm.name} is finished and yours to run: load its hopper with ${[...new Set(PLANTS[built].recipes.flatMap((r) => r.in.map(([g]) => ITEMS[g].name)))].join(', ')} and collect what it makes. It draws ${DRAW[built]} kW.`);
 }
 // ---------- defence works: turrets on the wall, barricades round the works and the plant ----------
 const WORK_KINDS: WorkKind[] = ['turret', 'siteGuard', 'plantGuard'];
@@ -385,19 +386,19 @@ const workLimit = (k: WorkKind, vm: VillageMap) => (k === 'turret' ? vm.mounts.l
 function defenceText(vid: number, vm: VillageMap, st: TownState | undefined): string {
   const c = G.char, poi = findPoi(c.world, vid), site = poi ? INDUSTRY[industryOf(c.world, poi, vm.seed)].site.toLowerCase() : 'works';
   const guns = worksOf(st, 'turret'), sg = worksOf(st, 'siteGuard'), pg = worksOf(st, 'plantGuard');
-  const t = !vm.mounts.length ? 'Auto turrets need a wall to stand on: a palisade at least.'
-    : guns >= vm.mounts.length ? `All ${guns} turrets are on the wall.`
-    : `${guns ? `${guns} auto turret${guns > 1 ? 's' : ''} guard${guns > 1 ? '' : 's'} our wall.` : 'No turrets guard our wall yet.'} Bring a <b>Turret Kit</b> and the parts, and we mount another (room for ${vm.mounts.length}): <b>${WORKS.turret.gold} gold</b> each.`;
-  return `<b>Defences.</b> ${t} ${sg ? `Barricades ring the ${site}.` : `Sandbags round the ${site} would keep the bandits from wrecking it (<b>${WORKS.siteGuard.gold} gold</b>).`} ${pg ? 'Barricades ring the power plant.' : `The power plant could use them too (<b>${WORKS.plantGuard.gold} gold</b>).`}`;
+  const t = !vm.mounts.length ? tl('Auto turrets need a wall to stand on: a palisade at least.')
+    : guns >= vm.mounts.length ? TL`All ${guns} turrets are on the wall.`
+    : TL`${guns ? TL`${guns} auto turret${guns > 1 ? 's' : ''} guard${guns > 1 ? '' : 's'} our wall.` : tl('No turrets guard our wall yet.')} Bring a <b>Turret Kit</b> and the parts, and we mount another (room for ${vm.mounts.length}): <b>${WORKS.turret.gold} gold</b> each.`;
+  return TL`<b>Defences.</b> ${t} ${sg ? TL`Barricades ring the ${site}.` : TL`Sandbags round the ${site} would keep the bandits from wrecking it (<b>${WORKS.siteGuard.gold} gold</b>).`} ${pg ? tl('Barricades ring the power plant.') : TL`The power plant could use them too (<b>${WORKS.plantGuard.gold} gold</b>).`}`;
 }
 function defenceRows(vm: VillageMap, st: TownState | undefined): string {
   return WORK_KINDS.map((k) => {
     const plan = workPlan(st, k, workLimit(k, vm));
     if (!plan) return '';
     if (building(st, 'work', k)) return jobHTML(st, 'work', k, WORKS[k].name.toLowerCase());
-    const rows = plan.rows.map((r) => `<div class="shoprow"><div>${itemName(r.k)}<br><span>${r.given} / ${r.n} for the ${WORKS[k].name.toLowerCase()}${hallNote(hh(r.k), r.given, r.n)}</span></div></div>`).join('');
+    const rows = plan.rows.map((r) => TL`<div class="shoprow"><div>${itemName(r.k)}<br><span>${r.given} / ${r.n} for the ${WORKS[k].name.toLowerCase()}${hallNote(hh(r.k), r.given, r.n)}</span></div></div>`).join('');
     const can = plan.rows.some((r) => r.given < r.n && hh(r.k) > 0);
-    return rows + `<button class="opt" data-work="${k}" ${can ? '' : 'disabled'}>Build from the village hall's stock (${WORKS[k].name.toLowerCase()})</button>`;
+    return rows + TL`<button class="opt" data-work="${k}" ${can ? '' : 'disabled'}>Build from the village hall's stock (${WORKS[k].name.toLowerCase()})</button>`;
   }).join('');
 }
 function giveWork(k: WorkKind) {
@@ -409,15 +410,15 @@ function giveWork(k: WorkKind) {
   stockTake(v.id, taken);
   if (started) {
     c.gold += plan.gold; earnTrust(v.id, 'work'); gainXp(plan.xp); calcStats(); saveChar();
-    renderFortify(`All the materials are in. The villagers get to work on the ${WORKS[k].name.toLowerCase()}: ${buildersLine(st, 'work', k)} They pay you ${plan.gold} gold.`);
+    renderFortify(TL`All the materials are in. The villagers get to work on the ${WORKS[k].name.toLowerCase()}: ${buildersLine(st, 'work', k)} They pay you ${plan.gold} gold.`);
     return;
   }
-  if (!done) { saveChar(); renderFortify(taken.length ? 'Handed over: ' + taken.map(([i, n]) => `${ITEMS[i].name} ×${n}`).join(', ') + '.' : 'The village hall has nothing more of what that work needs: bring the materials to the village stores.'); return; }
+  if (!done) { saveChar(); renderFortify(taken.length ? tl('Handed over: ') + taken.map(([i, n]) => `${ITEMS[i].name} ×${n}`).join(', ') + '.' : tl('The village hall has nothing more of what that work needs: bring the materials to the village stores.')); return; }
   c.gold += plan.gold; earnTrust(v.id, 'work'); gainXp(plan.xp); calcStats(); saveChar();
   closeDialog(); reloadStruct(v.id);
-  showToast(k === 'turret' ? `${v.vm.name}: a turret on the wall` : `${v.vm.name}: ${WORKS[k].name.toLowerCase()}`);
-  logLine(k === 'turret' ? `The villagers haul the turret up and bolt it to the wall. It sweeps the ground outside. They pay you ${plan.gold} gold.`
-    : `The villagers fill the sandbags and stack them round: ${WORKS[k].name.toLowerCase()} stand. They pay you ${plan.gold} gold.`);
+  showToast(k === 'turret' ? TL`${v.vm.name}: a turret on the wall` : `${v.vm.name}: ${WORKS[k].name.toLowerCase()}`);
+  logLine(k === 'turret' ? TL`The villagers haul the turret up and bolt it to the wall. It sweeps the ground outside. They pay you ${plan.gold} gold.`
+    : TL`The villagers fill the sandbags and stack them round: ${WORKS[k].name.toLowerCase()} stand. They pay you ${plan.gold} gold.`);
 }
 const REFINERY_PAY = 1200;
 /** How many of k the village you talk to has in its hall's stock. */
@@ -425,7 +426,7 @@ const hh = (k: ItemKey) => { const v = loadedVillage(town()); return v ? stockHa
 /** The bandits' current demand, as the elder or the guard tells it. */
 function tributeNote(vid: number): string {
   const p = pendingTribute(vid);
-  return p ? ` <b>Their rider is here: ${p.camp} wants ${p.amount} gold by ${fmtTime(p.r.t0)}, or they attack.</b> Pay them, or help us fight.` : '';
+  return p ? TL` <b>Their rider is here: ${p.camp} wants ${p.amount} gold by ${fmtTime(p.r.t0)}, or they attack.</b> Pay them, or help us fight.` : '';
 }
 function giveRefinery() {
   const v = loadedVillage(town()), c = G.char, poi = v && findPoi(c.world, v.id);
@@ -436,15 +437,15 @@ function giveRefinery() {
   stockTake(v.id, taken);
   if (started) {
     c.gold += REFINERY_PAY; earnTrust(v.id, 'refinery'); gainXp(300); calcStats(); saveChar();
-    renderFortify(`All the materials are in. The builders start on the ${INDUSTRY[k].site.toLowerCase()}: ${buildersLine(st, 'refinery')} The village pays you ${REFINERY_PAY} gold.`);
+    renderFortify(TL`All the materials are in. The builders start on the ${INDUSTRY[k].site.toLowerCase()}: ${buildersLine(st, 'refinery')} The village pays you ${REFINERY_PAY} gold.`);
     return;
   }
-  if (!built) { saveChar(); renderFortify(taken.length ? 'Handed over: ' + taken.map(([i, n]) => `${ITEMS[i].name} ×${n}`).join(', ') + '.' : 'The village hall has no more of the required materials: bring them to the village stores.'); return; }
+  if (!built) { saveChar(); renderFortify(taken.length ? tl('Handed over: ') + taken.map(([i, n]) => `${ITEMS[i].name} ×${n}`).join(', ') + '.' : tl('The village hall has no more of the required materials: bring them to the village stores.')); return; }
   anchorNew(c.world, poi, v.vm.seed, st, c.time);
   c.gold += REFINERY_PAY; earnTrust(v.id, 'refinery'); gainXp(300); calcStats(); saveChar();
   closeDialog(); reloadStruct(v.id);
-  showToast(`${v.vm.name} has a ${INDUSTRY[k].site.toLowerCase()}`);
-  logLine(`${v.vm.name}'s ${INDUSTRY[k].site.toLowerCase()} is built. They pay you ${REFINERY_PAY} gold.`);
+  showToast(TL`${v.vm.name} has a ${INDUSTRY[k].site.toLowerCase()}`);
+  logLine(TL`${v.vm.name}'s ${INDUSTRY[k].site.toLowerCase()} is built. They pay you ${REFINERY_PAY} gold.`);
 }
 function giveFortify() {
   const v = loadedVillage(town()), c = G.char;
@@ -454,15 +455,15 @@ function giveFortify() {
   stockTake(v.id, taken);
   if (started) {
     c.gold += plan.gold; earnTrust(v.id, 'wall'); gainXp(plan.xp); calcStats(); saveChar();
-    renderFortify(`All the materials are in. The villagers start raising the ${WALL_TIERS[plan.to].name.toLowerCase()}: ${buildersLine(st, 'wall', String(plan.to))} They pay you ${plan.gold} gold.`);
+    renderFortify(TL`All the materials are in. The villagers start raising the ${WALL_TIERS[plan.to].name.toLowerCase()}: ${buildersLine(st, 'wall', String(plan.to))} They pay you ${plan.gold} gold.`);
     return;
   }
-  if (!raised) { saveChar(); renderFortify(taken.length ? 'Handed over: ' + taken.map(([k, n]) => `${ITEMS[k].name} ×${n}`).join(', ') + '.' : 'The village hall has nothing more of what the wall needs: bring the materials to the village stores.'); return; }
+  if (!raised) { saveChar(); renderFortify(taken.length ? tl('Handed over: ') + taken.map(([k, n]) => `${ITEMS[k].name} ×${n}`).join(', ') + '.' : tl('The village hall has nothing more of what the wall needs: bring the materials to the village stores.')); return; }
   c.gold += plan.gold; earnTrust(v.id, 'wall'); gainXp(plan.xp); calcStats(); saveChar();
   closeDialog();
   reloadStruct(v.id);
-  showToast(`${v.vm.name} raises a ${WALL_TIERS[plan.to].name}`);
-  logLine(`The villagers work through the night and the new wall stands. They pay you ${plan.gold} gold.`);
+  showToast(TL`${v.vm.name} raises a ${WALL_TIERS[plan.to].name}`);
+  logLine(TL`The villagers work through the night and the new wall stands. They pay you ${plan.gold} gold.`);
 }
 let economicPending = false, economicDispatch = false;
 dlgEl.addEventListener('click', async (e) => {
@@ -513,7 +514,7 @@ dlgEl.addEventListener('click', async (e) => {
   if (b && b.dataset.sellv) { renderSell(sellVehicle(b.dataset.sellv)); return; }
   if (b && b.dataset.sells) {
     const [w, i] = b.dataset.sells.split(':'), L = listOf(w), s = L[+i];
-    if (s && PART_PRICE[s.k]) { c.gold += partBuyback(s); if (--s.n <= 0) L[+i] = null; handsChanged(); saveChar(); renderSell('Sold: ' + ITEMS[s.k].name + '.'); }
+    if (s && PART_PRICE[s.k]) { c.gold += partBuyback(s); if (--s.n <= 0) L[+i] = null; handsChanged(); saveChar(); renderSell(tl('Sold: ') + ITEMS[s.k].name + '.'); }
     return;
   }
   if (b && (b.dataset.trade || b.dataset.tradeall)) {
@@ -521,16 +522,16 @@ dlgEl.addEventListener('click', async (e) => {
     if (s && price) {
       const n = b.dataset.tradeall ? s.n : 1;
       c.gold += price * n; s.n -= n; if (s.n <= 0) c.inv[i] = null; saveChar();
-      renderTrade(`Sold: ${ITEMS[s.k].name}${n > 1 ? ' ×' + n : ''}.`);
+      renderTrade(TL`Sold: ${ITEMS[s.k].name}${n > 1 ? ' ×' + n : ''}.`);
     }
     return;
   }
   if (b) {
     const k = b.dataset.k as keyof typeof ITEMS, p = +b.dataset.p!;
-    if (W.talkNpc!.role === 'blacksmith' && !smithAllows(c.towns[townId()!], k)) return renderShop('The forge needs more village development.');
-    if (c.gold < p) return renderShop('Not enough gold.');
-    if (!addItem(k)) return renderShop(HANDS_ONLY.has(k) ? 'You carry that in your hands, and they are full: put what you hold away first.' : 'No room in your backpack (slots or bulk).');
-    c.gold -= p; calcStats(); saveChar(); return renderShop('Bought: ' + ITEMS[k].name + '.');
+    if (W.talkNpc!.role === 'blacksmith' && !smithAllows(c.towns[townId()!], k)) return renderShop(tl('The forge needs more village development.'));
+    if (c.gold < p) return renderShop(tl('Not enough gold.'));
+    if (!addItem(k)) return renderShop(HANDS_ONLY.has(k) ? tl('You carry that in your hands, and they are full: put what you hold away first.') : tl('No room in your backpack (slots or bulk).'));
+    c.gold -= p; calcStats(); saveChar(); return renderShop(tl('Bought: ') + ITEMS[k].name + '.');
   }
   if (t.closest('[data-fort]')) { giveFortify(); return; }
   if (t.closest('[data-rbuild]')) { giveRefinery(); return; }
@@ -546,28 +547,28 @@ dlgEl.addEventListener('click', async (e) => {
   const r = W.talkNpc!.role;
   switch (o.dataset.o as OptId | 'back' | 'development' | 'stores' | 'estate') {
     case 'development': { const id = townId(); if (id !== null) panel().innerHTML = developmentHTML(id, dlgHead()); break; }
-    case 'stores': { const id = townId(); if (id !== null && storesWithElder(id)) openStoresHere(id, dlgHead(), () => renderTalk('Anything else?')); break; }
+    case 'stores': { const id = townId(); if (id !== null && storesWithElder(id)) openStoresHere(id, dlgHead(), () => renderTalk(tl('Anything else?'))); break; }
     case 'bye': closeDialog(); break;
-    case 'back': renderTalk('Anything else?'); break;
+    case 'back': renderTalk(tl('Anything else?')); break;
     case 'shop': renderShop(); break;
     case 'sell': renderSell(); break;
     case 'craft': showForge(); break;
     case 'cook': {
       let n = 0; for (const s of c.inv) if (s?.k === 'meatR') n += s.n;
-      if (!n) { renderTalk('Raw meat, friend. Bring me some from a Bramble and I will roast it.'); break; }
+      if (!n) { renderTalk(tl('Raw meat, friend. Bring me some from a Bramble and I will roast it.')); break; }
       n = Math.min(n, Math.floor(c.gold / COOK_PRICE));
-      if (!n) { renderTalk(`${COOK_PRICE} gold a piece, and you have not got it.`); break; }
+      if (!n) { renderTalk(TL`${COOK_PRICE} gold a piece, and you have not got it.`); break; }
       let left = n;
       for (let i = 0; i < c.inv.length && left; i++) { const s = c.inv[i]; if (s?.k === 'meatR') { const m = Math.min(left, s.n); s.n -= m; left -= m; if (s.n <= 0) c.inv[i] = null; } }
       const lost = putItems(c.inv, 'meatC', n); // the raw pieces made room, so this fits
       c.gold -= COOK_PRICE * (n - lost); if (lost) putItems(c.inv, 'meatR', lost);
-      saveChar(); renderTalk(`Jan takes your meat to the kitchen and comes back with it sizzling. (Roasted Meat ×${n - lost}, -${COOK_PRICE * (n - lost)} gold)`);
+      saveChar(); renderTalk(TL`Jan takes your meat to the kitchen and comes back with it sizzling. (Roasted Meat ×${n - lost}, -${COOK_PRICE * (n - lost)} gold)`);
       break;
     }
     case 'rest':
-      if (G.hp >= G.S.maxHp && c.kcal >= 2100 && c.water >= 70) renderTalk('You look well rested already. Save your coin.');
-      else if (c.gold < 10) renderTalk('Ten gold for a bed, love. Come back when you have it.');
-      else { c.gold -= 10; G.hp = G.S.maxHp; c.kcal = Math.max(c.kcal, 2100); c.stomach = Math.max(c.stomach, 1); c.water = Math.max(c.water, 70); saveChar(); renderTalk('A bowl of soup, a jug of water, and you sleep like a stone. (HP restored, fed and watered)'); }
+      if (G.hp >= G.S.maxHp && c.kcal >= 2100 && c.water >= 70) renderTalk(tl('You look well rested already. Save your coin.'));
+      else if (c.gold < 10) renderTalk(tl('Ten gold for a bed, love. Come back when you have it.'));
+      else { c.gold -= 10; G.hp = G.S.maxHp; c.kcal = Math.max(c.kcal, 2100); c.stomach = Math.max(c.stomach, 1); c.water = Math.max(c.water, 70); saveChar(); renderTalk(tl('A bowl of soup, a jug of water, and you sleep like a stone. (HP restored, fed and watered)')); }
       break;
     case 'watch': renderWatch(); break;
     case 'rumour': { // (0.182) in a new world the towns know of deposits out in the wilds
@@ -591,8 +592,8 @@ dlgEl.addEventListener('click', async (e) => {
     case 'contracts': openContracts(town()); renderContracts(panel(), dlgHead()); break;
     case 'trade': if (openMarket(town())) renderMarket(panel(), dlgHead()); else renderTalk('Hm?'); break;
     case 'work':
-      renderTalk(r === 'elder' ? 'Read the notice board on the plaza. Folk post their troubles there, and when my name is on a notice, come and see me.'
-        : 'Have a look at the notice board on the plaza. If I need something, you will find it there.');
+      renderTalk(r === 'elder' ? tl('Read the notice board on the plaza. Folk post their troubles there, and when my name is on a notice, come and see me.')
+        : tl('Have a look at the notice board on the plaza. If I need something, you will find it there.'));
       break;
   }
 });

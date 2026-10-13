@@ -12,6 +12,7 @@ import { isEV, evCap, EV, vehicleTitle } from '../data/vehicles';
 import { vehicles, type Vehicle } from './vehicles';
 import { saveChar } from '../character';
 import { logLine, showToast } from '../ui/hud';
+import { tl, TL } from '../i18n';
 
 const postAt = (v: Poi) => { const p = RESOURCE_PLOTS.charger; return { x: v.x - 36 + p.x, z: v.z - 36 + p.z }; };
 const hasPost = (v: Poi) => progressive(G.char.towns[v.id]) && projectDone(G.char.towns[v.id], 'charger');
@@ -35,8 +36,8 @@ export function updateCharging(dt: number) {
       if (room <= 1e-3 || left <= 0.5 || G.char.gold < 1) continue;
       const kwh = Math.min(room, left * secs / 60); // a real second is a game minute
       parts.ev! += kwh; owe += kwh * EV.price; charging.set(c, left); left = 0;
-      if (!was.has(c)) logLine(`Charging the ${vehicleTitle(c.st.model)} at ${v.name}'s post: ${Math.round(charging.get(c)!)} kW from the village's spare power.`);
-      if (parts.ev! >= cap - 1e-3) { showToast('Fully charged'); logLine(`The ${vehicleTitle(c.st.model)} is fully charged: ${Math.round(cap)} kWh.`); }
+      if (!was.has(c)) logLine(TL`Charging the ${vehicleTitle(c.st.model)} at ${v.name}'s post: ${Math.round(charging.get(c)!)} kW from the village's spare power.`);
+      if (parts.ev! >= cap - 1e-3) { showToast(tl('Fully charged')); logLine(TL`The ${vehicleTitle(c.st.model)} is fully charged: ${Math.round(cap)} kWh.`); }
     }
   }
   const pay = Math.floor(owe); if (pay > 0) { G.char.gold = Math.max(0, G.char.gold - pay); owe -= pay; }
@@ -57,6 +58,6 @@ export function nearCharger(): number | null {
 export function chargerPrompt(vid: number): string {
   const v = findPoi(G.char.world, vid)!, spare = Math.round(balance(G.char.world, v, villageSeed(G.char.world, v), G.char.towns[vid], G.char.time).free);
   const at = [...charging.entries()].find(([c]) => Math.hypot(c.st.x - nearX(postAt(v).x, c.st.x), c.st.z - postAt(v).z) < CHARGER.reach);
-  return at ? `Charging post · ${vehicleTitle(at[0].st.model)} ${Math.round(at[0].st.parts.ev!)}/${evCap(at[0].st.model, at[0].st.parts)} kWh at ${Math.round(at[1])} kW · ${EV.price} g a kWh`
-    : `Charging post · ${spare} kW spare in ${v.name} · park an electric vehicle beside it (${EV.price} g a kWh)`;
+  return at ? TL`Charging post · ${vehicleTitle(at[0].st.model)} ${Math.round(at[0].st.parts.ev!)}/${evCap(at[0].st.model, at[0].st.parts)} kWh at ${Math.round(at[1])} kW · ${EV.price} g a kWh`
+    : TL`Charging post · ${spare} kW spare in ${v.name} · park an electric vehicle beside it (${EV.price} g a kWh)`;
 }

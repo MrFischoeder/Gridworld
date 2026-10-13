@@ -14,11 +14,12 @@ import { OW } from '../world/overworld';
 import { bearingTo, point8, fmtDist } from './compass';
 import { $, logLine } from './hud';
 import { lockPointer } from './input';
+import { tl, TL } from '../i18n';
 
 const root = $('areamap'), cv = $<HTMLCanvasElement>('areamapCv'), list = $('areamapList'), title = $('areamapTitle'), ctx = cv.getContext('2d')!;
 const RANGE = 900, SIZE = 640, LABELS = 14;
 const COLOR: Record<string, string> = { village: '#ffd060', ruin: '#5cc8ff', camp: '#ff6a4a', wreck: '#7dffc8', hangar: '#9dffe0' };
-const KIND: Record<string, string> = { village: 'village', ruin: 'ruins', camp: 'bandit camp', wreck: 'crash site', hangar: 'the Chariot' };
+const KIND: Record<string, string> = { village: 'village', ruin: 'ruins', camp: tl('bandit camp'), wreck: tl('crash site'), hangar: tl('the Chariot') };
 let open = false;
 
 function symbol(p: Poi, x: number, y: number) {
@@ -36,7 +37,7 @@ export function openAreaMap(centre: { x: number; z: number; name: string }) {
   if (!T || open) return;
   open = true; G.playing = false; G.firing = false; for (const k in G.keys) G.keys[k] = false;
   if (document.pointerLockElement) document.exitPointerLock();
-  title.textContent = `${centre.name.toUpperCase()} · THE SURROUNDINGS`;
+  title.textContent = TL`${centre.name.toUpperCase()} · THE SURROUNDINGS`;
   cv.width = cv.height = SIZE;
   const k = SIZE / (2 * RANGE), X = (x: number) => SIZE / 2 + wrapDx(x - centre.x) * k, Y = (z: number) => SIZE / 2 + (z - centre.z) * k;
   ctx.fillStyle = '#000'; ctx.fillRect(0, 0, SIZE, SIZE);
@@ -89,7 +90,7 @@ export function openAreaMap(centre: { x: number; z: number; name: string }) {
   // you are here, north, scale
   const yx = X(G.pos.x), yy = Y(G.pos.z);
   ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(yx, yy, 6, 0, 6.283); ctx.stroke();
-  ctx.fillStyle = '#fff'; ctx.fillText('YOU ARE HERE', yx, yy + 20);
+  ctx.fillStyle = '#fff'; ctx.fillText(tl('YOU ARE HERE'), yx, yy + 20);
   ctx.fillStyle = '#ff6a4a'; ctx.font = '22px VT323, monospace'; ctx.fillText('N', SIZE - 26, 30);
   ctx.beginPath(); ctx.moveTo(SIZE - 26, 36); ctx.lineTo(SIZE - 32, 50); ctx.lineTo(SIZE - 20, 50); ctx.closePath(); ctx.fill();
   ctx.strokeStyle = '#3dff6e'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(20, SIZE - 20); ctx.lineTo(20 + 500 * k, SIZE - 20); ctx.moveTo(20, SIZE - 25); ctx.lineTo(20, SIZE - 15); ctx.moveTo(20 + 500 * k, SIZE - 25); ctx.lineTo(20 + 500 * k, SIZE - 15); ctx.stroke();
@@ -97,13 +98,13 @@ export function openAreaMap(centre: { x: number; z: number; name: string }) {
   // the list: nearest first, with the way to go from where you stand
   const rows = places.filter((p) => !(p.type === 'village' && Math.hypot(wrapDx(p.x - centre.x), p.z - centre.z) < 1))
     .map((p) => ({ p, d: Math.hypot(wrapDx(p.x - G.pos.x), p.z - G.pos.z) })).sort((a, b) => a.d - b.d);
-  const way = others.map((v) => `<div class="way">Village: <span style="color:${COLOR.village}">${v.name}</span><br><span class="dir">${fmtDist(Math.hypot(wrapDx(v.x - G.pos.x), v.z - G.pos.z))} ${point8(bearingTo(v.x, v.z))}</span></div>`).join('');
+  const way = others.map((v) => TL`<div class="way">Village: <span style="color:${COLOR.village}">${v.name}</span><br><span class="dir">${fmtDist(Math.hypot(wrapDx(v.x - G.pos.x), v.z - G.pos.z))} ${point8(bearingTo(v.x, v.z))}</span></div>`).join('');
   list.innerHTML = way + (rows.length ? rows.map(({ p, d }) => `<div><span style="color:${COLOR[p.type]}">${p.name}</span> <span class="k">${KIND[p.type]}</span><br><span class="dir">${fmtDist(d)} ${point8(bearingTo(p.x, p.z))}</span></div>`).join('')
-    : '<div>Nothing else of note nearby.</div>');
+    : tl('<div>Nothing else of note nearby.</div>'));
   // what you read here, you remember: the places go on your own map
   let n2 = 0;
   for (const p of places) if (discover(G.char.discovered, Math.floor(p.x / CHUNK), Math.floor(p.z / CHUNK))) n2++;
-  if (n2) { saveChar(); logLine(`${n2} place${n2 === 1 ? '' : 's'} marked on your map (M).`); }
+  if (n2) { saveChar(); logLine(TL`${n2} place${n2 === 1 ? '' : 's'} marked on your map (M).`); }
   root.style.display = 'flex';
 }
 export function closeAreaMap() {

@@ -10,6 +10,7 @@ import type { ItemKey } from '../data/items';
 import type { PlantState, PlantKind } from './plants';
 import type { StationState, StationKind } from './energy';
 import { startJob, jobOf } from './construction';
+import { tl } from '../i18n';
 
 export interface TownState {
   settlement?: import('./settlement').SettlementState;
@@ -76,9 +77,9 @@ export interface TownState {
  */
 export type WorkKind = 'turret' | 'siteGuard' | 'plantGuard';
 export const WORKS: Record<WorkKind, { name: string; needs: [ItemKey, number][]; gold: number; xp: number; max: number }> = {
-  turret: { name: 'Auto Turret', needs: [['turretkit', 1], ['circuit', 2], ['wire', 4], ['scrap', 4]], gold: 150, xp: 60, max: 6 },
-  siteGuard: { name: 'Barricades round the works', needs: [['planks', 24], ['stone', 20], ['scrap', 8], ['rope', 6]], gold: 220, xp: 90, max: 1 },
-  plantGuard: { name: 'Barricades round the power plant', needs: [['planks', 16], ['stone', 16], ['scrap', 6], ['rope', 4]], gold: 180, xp: 70, max: 1 },
+  turret: { name: tl('Auto Turret'), needs: [['turretkit', 1], ['circuit', 2], ['wire', 4], ['scrap', 4]], gold: 150, xp: 60, max: 6 },
+  siteGuard: { name: tl('Barricades round the works'), needs: [['planks', 24], ['stone', 20], ['scrap', 8], ['rope', 6]], gold: 220, xp: 90, max: 1 },
+  plantGuard: { name: tl('Barricades round the power plant'), needs: [['planks', 16], ['stone', 16], ['scrap', 6], ['rope', 4]], gold: 180, xp: 70, max: 1 },
 };
 /** How much less harm bandits do at a barricaded site or plant (live raids), and to it in a lost raid. */
 export const GUARDED = { live: 0.35, lost: 0.5 };
@@ -139,9 +140,9 @@ export function completeWall(s: TownState) { s.wall = wallOf(s) + 1; s.given = {
 // ---------- power ----------
 export type PowerKind = 'generator' | 'solar' | 'wind';
 export const POWER: Record<PowerKind, { name: string; fix: [ItemKey, number][]; wear: number; pay: number }> = {
-  generator: { name: 'Diesel Generator', fix: [['engine', 1], ['scrap', 2]], wear: 20, pay: 60 },
-  solar: { name: 'Solar Array', fix: [['circuit', 2], ['wire', 2]], wear: 11, pay: 50 },
-  wind: { name: 'Wind Turbines', fix: [['scrap', 3], ['wire', 2], ['rope', 1]], wear: 15, pay: 55 },
+  generator: { name: tl('Diesel Generator'), fix: [['engine', 1], ['scrap', 2]], wear: 20, pay: 60 },
+  solar: { name: tl('Solar Array'), fix: [['circuit', 2], ['wire', 2]], wear: 11, pay: 50 },
+  wind: { name: tl('Wind Turbines'), fix: [['scrap', 3], ['wire', 2], ['rope', 1]], wear: 15, pay: 55 },
 };
 /** Below this condition (percent) the power is out; below POWER_LOW it is failing (a job for you). */
 export const POWER_DOWN = 25, POWER_LOW = 60;

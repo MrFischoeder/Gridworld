@@ -8,6 +8,7 @@ import { G } from '../game';
 import { camera, lineMat } from './render';
 import type { Ladder } from '../gen/village';
 import type { PropBatch } from './props';
+import { tl } from '../i18n';
 
 interface Placed extends Ladder { y0: number }
 const ladders = new Map<number, Placed[]>();
@@ -45,7 +46,7 @@ export function nearLadder(): { l: Placed; up: boolean } | null {
   }
   return null;
 }
-export const ladderPrompt = (n: { up: boolean }) => (n.up ? 'E — climb the ladder' : 'E — climb down the ladder');
+export const ladderPrompt = (n: { up: boolean }) => (n.up ? tl('E — climb the ladder') : tl('E — climb down the ladder'));
 
 // ---------- decks: a floor on stilts, and a rail round every top ----------
 const inside = (r: Ladder['deck'], x: number, z: number, m = 0) => x > r.x0 + m && x < r.x1 - m && z > r.z0 + m && z < r.z1 - m;
@@ -89,7 +90,7 @@ export function onClimbChange(f: () => void) { onChange = f; }
 
 export function startClimb(n: { l: Placed; up: boolean }): string {
   const h = G.char.hands[0];
-  if (h && !['blaster', 'blade'].includes(h.k)) return 'Your hands are full. Put it down first.';
+  if (h && !['blaster', 'blade'].includes(h.k)) return tl('Your hands are full. Put it down first.');
   const p = G.pos;
   climb = { l: n.l, y: n.up ? n.l.y0 : n.l.y0 + n.l.top, dir: n.up ? 1 : -1, stage: 'on', t: 0, from: { x: p.x, y: p.y, z: p.z }, phase: 0 };
   G.vel.set(0, 0, 0); G.onGround = false; hands.visible = true; onChange();

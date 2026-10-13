@@ -33,6 +33,7 @@ import { BASES_OPEN, BASES_CLOSED_MSG } from '../data/building';
 import { lyingModel } from './pickmodels';
 import { vehicles, driving, refreshParts } from './vehicles';
 import { repairWithKit, vehicleTitle } from '../data/vehicles';
+import { tl, TL } from '../i18n';
 
 export interface Crystal { m: THREE.LineSegments; p: THREE.Vector3; v: THREE.Vector3; age: number }
 /** `rest`: it lies on the ground as what it is (world/pickmodels.ts) instead of floating and spinning as a token. */
@@ -131,7 +132,7 @@ export function grabPickup(p: Pickup): boolean {
   const where = addItem(p.k, p.n ?? 1), i = W.pickups.indexOf(p);
   if (!where) return false;
   scene.remove(p.g); if (i >= 0) W.pickups.splice(i, 1);
-  logLine(ITEMS[p.k].name + ((p.n ?? 1) > 1 ? ' ×' + p.n : '') + (where === 'hands' ? ' (in your hands)' : where === 'back' ? ' (on your back)' : ' → backpack')); saveChar();
+  logLine(ITEMS[p.k].name + ((p.n ?? 1) > 1 ? ' ×' + p.n : '') + (where === 'hands' ? tl(' (in your hands)') : where === 'back' ? tl(' (on your back)') : ' → backpack')); saveChar();
   if (item(p.k).type === 'quest') onPickup(p.k);
   return true;
 }
@@ -205,7 +206,7 @@ export function openChest(c: Chest) {
   }
   // a chest opened before chests kept their contents is empty, but it still holds whatever you put in
   const box = chestContents(c) ?? (G.char.containers[chestKey(c)] = { items: Array(8).fill(null), gold: 0 });
-  openTransfer({ title: 'Chest', subtitle: 'Depth ' + depthNow(), boxLabel: 'Inside', box });
+  openTransfer({ title: tl('Chest'), subtitle: tl('Depth ') + depthNow(), boxLabel: tl('Inside'), box });
 }
 export function makeHatch(h: { x: number; z: number }): Hatch | null {
   const gr = G.grid, f = floorAt(G.space, h.x, h.z, gr.oy + 1, gr.oy + gr.ny - 1); if (!f) return null;
@@ -223,8 +224,8 @@ export function makeHatch(h: { x: number; z: number }): Hatch | null {
 export function useItem(k: ItemKey): boolean {
   const heal = HEAL[k];
   if (heal) {
-    if (G.hp >= G.S.maxHp) { logLine('HP already full'); return false; }
-    if (!takeOne(k)) { logLine('None left: ' + ITEMS[k].name); return false; }
+    if (G.hp >= G.S.maxHp) { logLine(tl('HP already full')); return false; }
+    if (!takeOne(k)) { logLine(tl('None left: ') + ITEMS[k].name); return false; }
     G.hp = Math.min(G.S.maxHp, G.hp + heal); logLine('+' + heal + ' HP');
     return true;
   }
@@ -234,17 +235,17 @@ export function useItem(k: ItemKey): boolean {
     const kcal = food.kcal ?? 0, kg = kcal ? BULK[k][0] : 0; // food fills the stomach by its weight; drinks do not
     if (kcal) {
       const no = cantEat(kg, c.kcal, c.stomach);
-      if (no === 'sated') { logLine('You are not hungry.'); return false; }
-      if (no === 'full') { logLine(`Your stomach is full. Wait until you have digested a little (${(STOMACH.cap - c.stomach).toFixed(1)} of ${STOMACH.cap} kg free, this weighs ${kg} kg).`); return false; }
+      if (no === 'sated') { logLine(tl('You are not hungry.')); return false; }
+      if (no === 'full') { logLine(TL`Your stomach is full. Wait until you have digested a little (${(STOMACH.cap - c.stomach).toFixed(1)} of ${STOMACH.cap} kg free, this weighs ${kg} kg).`); return false; }
     }
-    if ((food.water ?? 0) > 0 && !kcal && c.water >= 99) { logLine('You are not thirsty.'); return false; }
-    if (!takeOne(k)) { logLine('None left: ' + ITEMS[k].name); return false; }
+    if ((food.water ?? 0) > 0 && !kcal && c.water >= 99) { logLine(tl('You are not thirsty.')); return false; }
+    if (!takeOne(k)) { logLine(tl('None left: ') + ITEMS[k].name); return false; }
     nourish(kcal, food.water ?? 0, food.hp ?? 0, kg);
     if (k === 'waterF' || k === 'waterM') {
       addItem('flask'); // the flask is kept
-      if (k === 'waterM' && Math.random() < 0.35) { environmentalDamage(8); G.dmgFlash = 0.4; logLine('The murky water turns your stomach. -8 HP'); }
+      if (k === 'waterM' && Math.random() < 0.35) { environmentalDamage(8); G.dmgFlash = 0.4; logLine(tl('The murky water turns your stomach. -8 HP')); }
     }
-    if (k === 'meatR' && Math.random() < RAW_SICK.chance) { environmentalDamage(RAW_SICK.hp); G.dmgFlash = 0.4; logLine(`The raw meat makes you sick. -${RAW_SICK.hp} HP`); }
+    if (k === 'meatR' && Math.random() < RAW_SICK.chance) { environmentalDamage(RAW_SICK.hp); G.dmgFlash = 0.4; logLine(TL`The raw meat makes you sick. -${RAW_SICK.hp} HP`); }
     return true;
   }
   if (k === 'filter') return fitFilter('');
@@ -255,19 +256,19 @@ export function useItem(k: ItemKey): boolean {
   if (k === 'bridgekit') { if (startBridgePlacing()) closePack(); return false; } // used up when the site is staked out
   if (k === 'flagpole' && !BASES_OPEN) { logLine(BASES_CLOSED_MSG); return false; }
   if (k === 'flagpole') { if (startPlacing()) { closePack(); } return false; } // the flag is used up once raised
-  if (k === 'benchkit' && !BASES_OPEN) { logLine('Setting up a workbench in the wilds is closed for now: use a village blacksmith\'s forge.'); return false; }
+  if (k === 'benchkit' && !BASES_OPEN) { logLine(tl('Setting up a workbench in the wilds is closed for now: use a village blacksmith\'s forge.')); return false; }
   if (k === 'benchkit') { if (placeBench()) { closePack(); return true; } return false; }
-  if (k === 'flask') { logLine('It is empty. Fill it at a well or a lake (E at the water).'); return false; }
+  if (k === 'flask') { logLine(tl('It is empty. Fill it at a well or a lake (E at the water).')); return false; }
   if (k === 'recall') {
-    if (!canRecall()) { logLine('You are already in the village'); return false; }
+    if (!canRecall()) { logLine(tl('You are already in the village')); return false; }
     if (G.trans || !takeOne(k)) return false;
     closePack();
     const here = V(G.pos.x, G.pos.y + EYE, G.pos.z);
     G.trans = { phase: 'out', t: 0, dur: 1.2, st: {}, pts: [here, here.clone().add(V(0, 0.8, 0))], yaw0: G.yaw, yaw1: G.yaw, p0: G.pitch, p1: G.pitch + 0.8, go: () => toVillage('recall') };
-    logLine('The beacon hums...'); return true;
+    logLine(tl('The beacon hums...')); return true;
   }
   if (k === 'emp') {
-    if (!takeOne(k)) { logLine('No EMP charges'); return false; }
+    if (!takeOne(k)) { logLine(tl('No EMP charges')); return false; }
     const c = V(G.pos.x, G.pos.y + 1, G.pos.z);
     for (let i = 0; i < 3; i++) {
       const ring = new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(circlePts(2 + i * 2, 40)), add(0x5cc8ff));
@@ -275,7 +276,7 @@ export function useItem(k: ItemKey): boolean {
     }
     let n = 0; for (const t of foes()) if (t.p.distanceTo(c) < 6 + (t.boss ? 1 : 0)) { damageFoe(t, (t.boss ? 6 : 3) * G.S.bm); n++; }
     makeNoise(c, 35);
-    logLine('EMP hit drones: ' + n); return true;
+    logLine(tl('EMP hit drones: ') + n); return true;
   }
   return false;
 }
@@ -297,7 +298,7 @@ export function openStash(id: number, name: string) {
     c.containers[key] = { items, gold: 40 + Math.floor(Math.random() * 90) };
     saveChar();
   }
-  openTransfer({ title: 'Bandit stash', subtitle: name, boxLabel: 'Inside', box: c.containers[key] });
+  openTransfer({ title: tl('Bandit stash'), subtitle: name, boxLabel: tl('Inside'), box: c.containers[key] });
 }
 
 /** The Vehicle Repair Kit on the vehicle you drive or the nearest of yours within 7 m. */
@@ -308,13 +309,13 @@ function useRepairKit(): boolean {
     const d = (u.st.x - G.pos.x) ** 2 + (u.st.z - G.pos.z) ** 2;
     if (d < best) { best = d; v = u; }
   }
-  if (!v) { logLine('Stand by one of your vehicles to use the repair kit.'); return false; }
+  if (!v) { logLine(tl('Stand by one of your vehicles to use the repair kit.')); return false; }
   const name = vehicleTitle(v.st.model);
   const probe = structuredClone(v.st.parts);
-  if (!repairWithKit(v.st.model, probe)) { logLine(`The ${name} needs no patching.`); return false; }
+  if (!repairWithKit(v.st.model, probe)) { logLine(TL`The ${name} needs no patching.`); return false; }
   if (!takeOne('repairkit')) return false;
   const did = repairWithKit(v.st.model, v.st.parts);
   refreshParts(v); saveChar();
-  logLine(`Patched up the ${name}: ${did}.`);
+  logLine(TL`Patched up the ${name}: ${did}.`);
   return true;
 }

@@ -7,6 +7,7 @@ import { G } from '../game';
 import { PropBatch } from '../world/props';
 import { drawLander, HULL_C, ENGINE_C, SHIP_NAME, PILOT } from '../world/lander';
 import { GRID, fillMat, lineMat, add } from '../world/render';
+import { tl, TL } from '../i18n';
 
 const LEN = 24.5;
 /** When each part begins (s). */
@@ -75,7 +76,7 @@ function starSpot() { const a = Math.random() * 6.283, r = 6 + Math.random() * 9
 
 function dom() {
   root = document.createElement('div'); root.id = 'intro';
-  root.innerHTML = '<div class="flash"></div><div class="alt"></div><div class="cap"></div><div class="sub"></div><div class="hint">Space / click — skip</div>';
+  root.innerHTML = tl('<div class="flash"></div><div class="alt"></div><div class="cap"></div><div class="sub"></div><div class="hint">Space / click — skip</div>');
   document.body.appendChild(root);
   [flash, alt, cap, sub, hint] = ['.flash', '.alt', '.cap', '.sub', '.hint'].map((s) => root.querySelector(s) as HTMLDivElement);
   root.addEventListener('pointerdown', () => skip());
@@ -203,19 +204,19 @@ export function renderIntro(renderer: THREE.WebGLRenderer, dt: number): boolean 
       plasmaPos.set([Math.cos(a) * r, y, Math.sin(a) * r, Math.cos(a) * r * 1.15, y + 4 + Math.random() * 9, Math.sin(a) * r * 1.15], i);
     }
     plasma.geometry.attributes.position.needsUpdate = true;
-    alt.textContent = `ALT ${Math.max(0, Math.round((1 - k) * 12400)).toLocaleString('en')} m`;
+    alt.textContent = TL`ALT ${Math.max(0, Math.round((1 - k) * 12400)).toLocaleString('en')} m`;
   } else alt.textContent = '';
   if (shake) cam.position.add(V.set((Math.random() - 0.5) * shake, (Math.random() - 0.5) * shake, (Math.random() - 0.5) * shake));
   // ---- captions and the flashes
-  const who = (G.char.name || 'Pilot').toUpperCase();
-  if (t < 2.3) say(`${SHIP_NAME.toUpperCase()} · DEEP SURVEY`, 0.4, 'Day 214 · the outer belt of an uncharted system');
-  else if (t < T.alert) say('CREW IN CRYO-SLEEP', 2.3, `${who} and the survey team · ${PILOT} at the controls`);
-  else if (t < T.hit) say('PROXIMITY ALERT', T.alert, 'Meteor stream, not on any chart · evasive manoeuvres', Math.floor(t * 3) % 2 === 0);
-  else if (t < T.fall + 1.5) say('HULL BREACH', T.hit, 'Starboard wing lost · main drive offline', true);
-  else if (t < T.entry) say('CAPTURED BY GRAVITY', T.fall + 1.5, 'Uncharted planet · no control of the descent', true);
-  else if (t < T.crash) say('ATMOSPHERIC ENTRY', T.entry, 'Brace · brace · brace', Math.floor(t * 4) % 2 === 0);
-  else if (t < T.wake) say('SYSTEMS OFFLINE', T.crash + 0.8, '');
-  else say(`${who}. WAKE UP.`, T.wake, 'Cryo-pod opening. The pilot did not make it. You did.');
+  const who = (G.char.name || tl('Pilot')).toUpperCase();
+  if (t < 2.3) say(TL`${SHIP_NAME.toUpperCase()} · DEEP SURVEY`, 0.4, tl('Day 214 · the outer belt of an uncharted system'));
+  else if (t < T.alert) say(tl('CREW IN CRYO-SLEEP'), 2.3, TL`${who} and the survey team · ${PILOT} at the controls`);
+  else if (t < T.hit) say(tl('PROXIMITY ALERT'), T.alert, tl('Meteor stream, not on any chart · evasive manoeuvres'), Math.floor(t * 3) % 2 === 0);
+  else if (t < T.fall + 1.5) say(tl('HULL BREACH'), T.hit, tl('Starboard wing lost · main drive offline'), true);
+  else if (t < T.entry) say(tl('CAPTURED BY GRAVITY'), T.fall + 1.5, tl('Uncharted planet · no control of the descent'), true);
+  else if (t < T.crash) say(tl('ATMOSPHERIC ENTRY'), T.entry, tl('Brace · brace · brace'), Math.floor(t * 4) % 2 === 0);
+  else if (t < T.wake) say(tl('SYSTEMS OFFLINE'), T.crash + 0.8, '');
+  else say(TL`${who}. WAKE UP.`, T.wake, tl('Cryo-pod opening. The pilot did not make it. You did.'));
   let fl = 0;
   if (t >= T.hit && t < T.hit + 0.6) fl = 1 - (t - T.hit) / 0.6;
   if (t >= T.crash) fl = t < T.crash + 0.25 ? 1 : 0;

@@ -9,6 +9,7 @@ import { logLine } from '../ui/hud';
 import { OW, groundAt } from './overworld';
 import { nearX } from '../gen/regions';
 import type { Char } from '../save';
+import { tl, TL } from '../i18n';
 
 export type Bench = Char['benches'][number];
 const MAX_BENCHES = 3, WOOD = 0xb8b060;
@@ -40,13 +41,13 @@ export function clearBenches() { for (const g of drawn.values()) scene.remove(g)
 
 /** Use a Workbench Kit: set the bench up a step ahead of you. */
 export function placeBench(): boolean {
-  if (G.char.loc !== 'overworld' || !OW.terrain) { logLine('Set it up outdoors.'); return false; }
-  if (G.char.benches.length >= MAX_BENCHES) { logLine(`You already have ${MAX_BENCHES} workbenches out there. Pack one up first.`); return false; }
+  if (G.char.loc !== 'overworld' || !OW.terrain) { logLine(tl('Set it up outdoors.')); return false; }
+  if (G.char.benches.length >= MAX_BENCHES) { logLine(TL`You already have ${MAX_BENCHES} workbenches out there. Pack one up first.`); return false; }
   const x = G.pos.x - Math.sin(G.yaw) * 1.8, z = G.pos.z - Math.cos(G.yaw) * 1.8, y = groundAt(x, z);
-  if (!isFinite(y) || Math.abs(y - G.pos.y) > 1.2 || OW.terrain.water(x, z)) { logLine('No level spot for the bench here.'); return false; }
+  if (!isFinite(y) || Math.abs(y - G.pos.y) > 1.2 || OW.terrain.water(x, z)) { logLine(tl('No level spot for the bench here.')); return false; }
   if (!takeOne('benchkit')) return false;
   G.char.benches.push({ x, y, z, yaw: -G.yaw }); saveChar(); syncBenches();
-  logLine('You unfold the workbench. E at it to craft.');
+  logLine(tl('You unfold the workbench. E at it to craft.'));
   return true;
 }
 /** A bench within reach. */
@@ -57,7 +58,7 @@ export function nearBench(): Bench | null {
 }
 /** Fold the bench back into a kit. Returns an error message or ''. */
 export function packBench(b: Bench): string {
-  if (!addItem('benchkit')) return 'No room in your backpack for the kit (20 L).';
+  if (!addItem('benchkit')) return tl('No room in your backpack for the kit (20 L).');
   G.char.benches.splice(G.char.benches.indexOf(b), 1); saveChar(); syncBenches();
   return '';
 }

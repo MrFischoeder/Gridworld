@@ -18,6 +18,7 @@ import { DIRV } from '../core/rng';
 import { NPC_INFO } from '../data/npcs';
 import { saveChar } from '../character';
 import { say } from '../ui/speech';
+import { tl, TL } from '../i18n';
 
 export const GUIDE = {
   name: 'Wiktor',
@@ -27,26 +28,26 @@ export const GUIDE = {
   speed: 3.3,
 };
 const LINES = {
-  call: ['Hello? Is anyone in there? Come out, I am a friend!', 'Hey! Anyone alive in there? Come out, I won\'t hurt you!', 'Hello-o? Stranger? Come out, it is safe. I am a friend!'],
-  greet: 'Easy, easy! Don\'t shoot, I\'m a friend. My name is Wiktor, a scout from Gridholm, the village over the hill. We saw your ship fall out of the sky like a burning star.',
-  advice: 'Before we go: look through your ship once more and take everything you can carry, the locker too. Nobody comes back out here in a hurry. Talk to me when you are ready, and I will take you to the village.',
-  go: 'Good. Stay close and follow me: Gridholm is not far.',
-  shot: ['Don\'t shoot! I\'m a friend!', 'Hey! Put that thing away, I\'m on your side!', 'Careful with that! I mean you no harm!'],
-  wait: ['This way, stranger! Stay close.', 'Over here! Keep up, the wilds are no place to wander alone.', 'Come on, it is not much further.'],
+  call: [tl('Hello? Is anyone in there? Come out, I am a friend!'), tl('Hey! Anyone alive in there? Come out, I won\'t hurt you!'), tl('Hello-o? Stranger? Come out, it is safe. I am a friend!')],
+  greet: tl('Easy, easy! Don\'t shoot, I\'m a friend. My name is Wiktor, a scout from Gridholm, the village over the hill. We saw your ship fall out of the sky like a burning star.'),
+  advice: tl('Before we go: look through your ship once more and take everything you can carry, the locker too. Nobody comes back out here in a hurry. Talk to me when you are ready, and I will take you to the village.'),
+  go: tl('Good. Stay close and follow me: Gridholm is not far.'),
+  shot: [tl('Don\'t shoot! I\'m a friend!'), tl('Hey! Put that thing away, I\'m on your side!'), tl('Careful with that! I mean you no harm!')],
+  wait: [tl('This way, stranger! Stay close.'), tl('Over here! Keep up, the wilds are no place to wander alone.'), tl('Come on, it is not much further.')],
   road: [
-    'The land round here is quiet, but further out the old machines still walk. And the bandits are worse.',
-    'Your ship came down in a storm of fire. Nobody in Gridholm has ever seen anything like it.',
-    'There, you can see our walls. Gridholm: the oldest village on this side of the hills.',
+    tl('The land round here is quiet, but further out the old machines still walk. And the bandits are worse.'),
+    tl('Your ship came down in a storm of fire. Nobody in Gridholm has ever seen anything like it.'),
+    tl('There, you can see our walls. Gridholm: the oldest village on this side of the hills.'),
   ],
   /** Passing a place on the way ({side}: 'on your left' ...; {Side} capitalised). */
   sights: {
-    ruin: 'See those stones {side}? An old ruin of the machine folk. Nobody from the village goes there: the old machines still guard it. They say there are treasures below, but not today, stranger. Keep walking, we must reach the village.',
-    wreck: '{Side} lies another ship that fell from the sky, long before yours. Robots still guard it. One day you may look inside, but not now: keep up.',
-    camp: 'Quiet now. {Side} is a bandit camp. We do not stop here: keep walking and keep your head down.',
-    hangar: 'That great hall {side} is where the old ones keep the Chariot of the Ancients. The Elder will tell you about it. Come, the gate is close.',
-    lake: 'The lake {side} is clean water: drink when you are thirsty, or fill a flask. Later, though. Let us keep going.',
+    ruin: tl('See those stones {side}? An old ruin of the machine folk. Nobody from the village goes there: the old machines still guard it. They say there are treasures below, but not today, stranger. Keep walking, we must reach the village.'),
+    wreck: tl('{Side} lies another ship that fell from the sky, long before yours. Robots still guard it. One day you may look inside, but not now: keep up.'),
+    camp: tl('Quiet now. {Side} is a bandit camp. We do not stop here: keep walking and keep your head down.'),
+    hangar: tl('That great hall {side} is where the old ones keep the Chariot of the Ancients. The Elder will tell you about it. Come, the gate is close.'),
+    lake: tl('The lake {side} is clean water: drink when you are thirsty, or fill a flask. Later, though. Let us keep going.'),
   } as Record<string, string>,
-  arrive: 'Here we are: Gridholm. Go and see Elder Maciej in the hall, he will want to meet you. Marta at the tavern will feed you, and Oskar the smith can mend what your fall broke. Welcome, stranger.',
+  arrive: tl('Here we are: Gridholm. Go and see Elder Maciej in the hall, he will want to meet you. Marta at the tavern will feed you, and Oskar the smith can mend what your fall broke. Welcome, stranger.'),
 };
 
 interface Guide {
@@ -84,8 +85,8 @@ function speak(text: string, secs: number, now = false) {
 /** 'on your left' / 'on your right' / 'ahead of us' for a place at (x, z), from his heading. */
 function sideOf(g: Guide, x: number, z: number): string {
   const dx = x - g.p.x, dz = z - g.p.z, d = Math.hypot(dx, dz) || 1, hx = Math.sin(g.face), hz = Math.cos(g.face);
-  if ((dx * hx + dz * hz) / d > 0.8) return 'ahead of us';
-  return dx * -hz + dz * hx > 0 ? 'on your right' : 'on your left';
+  if ((dx * hx + dz * hz) / d > 0.8) return tl('ahead of us');
+  return dx * -hz + dz * hx > 0 ? tl('on your right') : tl('on your left');
 }
 /** A place worth a word near him that he has not spoken of yet. */
 function sight(g: Guide): { key: string; kind: string; x: number; z: number } | null {
@@ -179,11 +180,11 @@ export function talkGuide() {
   const c = G.char;
   if (c.guide === 0 && !gd.talked) { gd.talked = true; speak(LINES.greet, 8, true); speak(LINES.advice, 11); }
   else if (c.guide === 0) { c.guide = 1; saveChar(); speak(LINES.go, 5, true); gd.waitT = 6; }
-  else speak('Follow me, stranger. Gridholm is just ahead: I will show you the way.', 4, true);
+  else speak(tl('Follow me, stranger. Gridholm is just ahead: I will show you the way.'), 4, true);
 }
 /** The tracker line and the map marker while he leads. */
 export function guideLine(): string {
   if (!gd || G.char.guide >= 2 || gd.leave >= 0) return '';
-  return G.char.guide === 0 ? (gd.talked ? `▸ Take what you need from the ship, then talk to ${GUIDE.name}` : `▸ Someone is calling outside your ship`) : `▸ Follow ${GUIDE.name} to Gridholm`;
+  return G.char.guide === 0 ? (gd.talked ? TL`▸ Take what you need from the ship, then talk to ${GUIDE.name}` : TL`▸ Someone is calling outside your ship`) : TL`▸ Follow ${GUIDE.name} to Gridholm`;
 }
 export const guideMarker = (): { x: number; z: number; label: string } | null => (gd && G.char.guide < 2 && gd.leave < 0 ? { x: nearX(gd.p.x, G.pos.x), z: gd.p.z, label: GUIDE.name } : null);

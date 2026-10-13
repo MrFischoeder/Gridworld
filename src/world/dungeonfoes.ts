@@ -8,6 +8,7 @@ import { onGuardDown } from './robots';
 import { progress, dungeonKey, saveChar } from '../character';
 import { DRONE, GUARD, refill, recordKill } from '../gen/repopulate';
 import { logLine } from '../ui/hud';
+import { tl } from '../i18n';
 
 let drones = 0, guards = 0;
 /** Fill the place on arrival: `n` drones (minus the dead ones), `g` guards to come (their spawner asks `guardAlive`). */
@@ -25,7 +26,7 @@ function down(t: Drone) {
 }
 function record(id: number) {
   if (G.char.loc !== 'dungeon' || !G.char.dungeon) return;
-  if (recordKill(progress('killed'), id, drones, guards, G.char.time)) logLine('Nothing stirs here any more. It will be a week or two before anything moves in again.');
+  if (recordKill(progress('killed'), id, drones, guards, G.char.time)) logLine(tl('Nothing stirs here any more. It will be a week or two before anything moves in again.'));
   saveChar();
 }
 onGuardDown((i) => record(GUARD + i));

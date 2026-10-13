@@ -8,6 +8,7 @@ import { CREATURES, type CreatureKind } from '../data/creatures';
 import { NPC_INFO, type NpcRole } from '../data/npcs';
 import { ITEMS, type ItemKey } from '../data/items';
 import { VEHICLES } from '../data/vehicles';
+import { tl, TL, lang, DIR8 } from '../i18n';
 
 export type QuestKind = 'bounty' | 'hunt' | 'fetch' | 'camp' | 'resource';
 export type QuestState = 'offer' | 'talk' | 'active' | 'ready' | 'done';
@@ -33,35 +34,39 @@ export const GRIDHOLM_TOWN: QuestTown = { id: GRIDHOLM_ID, name: 'Gridholm', x: 
 export const boardPay = (danger: number) => 1 + danger / 3;
 const money = (v: number, T: QuestTown) => Math.round(v * T.pay / 5) * 5;
 
-const DIRS = ['north', 'north-east', 'east', 'south-east', 'south', 'south-west', 'west', 'north-west'];
+const DIRS = DIR8;
 /** Compass word for a direction from (0,0) to (x,z); -z is north. */
 export function compass(dx: number, dz: number): string {
   const a = Math.atan2(dx, -dz), i = ((Math.round(a / (Math.PI / 4)) % 8) + 8) % 8;
   return DIRS[i];
 }
 export const km = (d: number) => (d < 950 ? `${Math.round(d / 50) * 50} m` : `${(d / 1000).toFixed(1)} km`);
-const WORDS = ['', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight'];
-const plural = (kind: CreatureKind | 'drone' | 'bandit', n: number) => (kind === 'drone' || kind === 'bandit' ? kind + (n === 1 ? '' : 's') : CREATURES[kind].name + (n === 1 ? '' : 's'));
+const WORDS = lang === 'pl' ? [] : ['', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight']; // (Polish: the digits)
+/** A creature's name for n of them (English adds an s; (0.190) the Polish texts are worded with the name as it is). */
+const plural = (kind: CreatureKind | 'drone' | 'bandit', n: number) => {
+  const one = kind === 'drone' ? tl('drone') : kind === 'bandit' ? tl('bandit') : CREATURES[kind].name;
+  return lang === 'pl' ? one : one + (n === 1 ? '' : 's');
+};
 
 /** Describes the land at a point, and which creatures live in that kind of place. */
 export function describeSpot(t: Terrain, x: number, z: number): { where: string; kind: CreatureKind } {
   const ruin = poisNear(t.world, x, z, 120).find((p) => p.type === 'ruin' && rectDist(p.rect, x, z) < 60);
-  if (ruin) return { where: 'near the ' + ruin.name, kind: 'leechwing' };
+  if (ruin) return { where: tl('near the ') + ruin.name, kind: 'leechwing' };
   const h = t.heightAt(x, z);
-  if (h < 8) return { where: 'in a valley', kind: 'bramble' };
-  if (h > 17) return { where: 'on the hills', kind: 'leechwing' };
-  if (t.forest(x, z) > 0.45) return { where: 'in the forest', kind: 'ravager' };
-  return { where: 'in the open fields', kind: 'ravager' };
+  if (h < 8) return { where: tl('in a valley'), kind: 'bramble' };
+  if (h > 17) return { where: tl('on the hills'), kind: 'leechwing' };
+  if (t.forest(x, z) > 0.45) return { where: tl('in the forest'), kind: 'ravager' };
+  return { where: tl('in the open fields'), kind: 'ravager' };
 }
-export const ALPHA: Record<CreatureKind, string> = { ravager: 'Pack Alpha', bramble: 'Old Bull', leechwing: 'Matriarch', gnawer: 'Rat King', skitter: 'Flock Leader', lurker: 'Old Lurker', silverfin: 'Silver King' };
-const GROUP: Record<CreatureKind, string> = { ravager: 'a pack of', bramble: 'a herd of', leechwing: 'a swarm of', gnawer: 'a nest of', skitter: 'a flock of', lurker: 'a pod of', silverfin: 'a shoal of' };
+export const ALPHA: Record<CreatureKind, string> = { ravager: tl('Pack Alpha'), bramble: tl('Old Bull'), leechwing: tl('Matriarch'), gnawer: tl('Rat King'), skitter: tl('Flock Leader'), lurker: tl('Old Lurker'), silverfin: tl('Silver King') };
+const GROUP: Record<CreatureKind, string> = { ravager: tl('a pack of'), bramble: tl('a herd of'), leechwing: tl('a swarm of'), gnawer: tl('a nest of'), skitter: tl('a flock of'), lurker: tl('a pod of'), silverfin: tl('a shoal of') };
 
 /** Fetch errands: who wants what, and from which kind of place. */
 const ERRANDS: { giver: NpcRole; item: ItemKey; place: 'ruin' | 'wreck'; where: string }[] = [
-  { giver: 'elder', item: 'book', place: 'ruin', where: "Elder's Hall" },
+  { giver: 'elder', item: 'book', place: 'ruin', where: tl("Elder's Hall") },
   { giver: 'blacksmith', item: 'gearbox', place: 'ruin', where: 'forge' },
-  { giver: 'merchant', item: 'datacore', place: 'ruin', where: 'General Store' },
-  { giver: 'dealer', item: 'logbook', place: 'wreck', where: 'vehicle yard' },
+  { giver: 'merchant', item: 'datacore', place: 'ruin', where: tl('General Store') },
+  { giver: 'dealer', item: 'logbook', place: 'wreck', where: tl('vehicle yard') },
 ];
 
 function bounty(id: string, R: () => number, T: QuestTown): Quest {
@@ -70,8 +75,8 @@ function bounty(id: string, R: () => number, T: QuestTown): Quest {
   const each = target === 'bramble' ? 45 : target === 'leechwing' ? 30 : target === 'drone' ? 12 : target === 'bandit' ? 28 : 18;
   return {
     id, kind: 'bounty', state: 'offer', target, count, progress: 0,
-    title: `Bounty: ${count} ${plural(target, count)}`,
-    text: `${T.home ? 'The village' : T.name} pays for every ${plural(target, 1)} put down. Kill ${WORDS[count] ?? count} ${plural(target, count)} anywhere and come back to this board for the reward.`,
+    title: TL`Bounty: ${count} ${plural(target, count)}`,
+    text: TL`${T.home ? tl('The village') : T.name} pays for every ${plural(target, 1)} put down. Kill ${WORDS[count] ?? count} ${plural(target, count)} anywhere and come back to this board for the reward.`,
     reward: { gold: T.home ? count * each : money(count * each, T), xp: count * each / 2 },
   };
 }
@@ -86,8 +91,8 @@ function hunt(t: Terrain, id: string, R: () => number, T: QuestTown): Quest | nu
     const alpha = ALPHA[kind], dir = compass(x - T.x, z - T.z);
     return {
       id, kind: 'hunt', state: 'offer', at: { x, z, where }, pack: { kind, count, alpha }, killed: 0, alphaDead: false,
-      title: `Hunt: ${alpha} ${where}`,
-      text: `About ${km(d)} ${dir} of ${T.name}, ${where}, ${GROUP[kind]} ${WORDS[count] ?? count} ${plural(kind, count)} led by ${/^[AEIOU]/.test(alpha) ? 'an' : 'a'} ${alpha} is troubling travellers. Kill them all, the ${alpha} included, then report back here.`,
+      title: TL`Hunt: ${alpha} ${where}`,
+      text: TL`About ${km(d)} ${dir} of ${T.name}, ${where}, ${GROUP[kind]} ${WORDS[count] ?? count} ${plural(kind, count)} led by ${/^[AEIOU]/.test(alpha) ? 'an' : 'a'} ${alpha} is troubling travellers. Kill them all, the ${alpha} included, then report back here.`,
       reward: { gold: T.home ? 90 + count * 40 + Math.round(d / 10) : money(90 + count * 40 + d / 10, T), xp: 60 + count * 25 },
     };
   }
@@ -113,12 +118,12 @@ function fetch(t: Terrain, id: string, R: () => number, T: QuestTown): Quest | n
   }
   const d = worldDist(place.x, place.z, T.x, T.z), dir = compass(wrapDx(place.x - T.x), place.z - T.z);
   const briefing = place.type === 'ruin'
-    ? `Listen well. In the ${place.name}, about ${km(d)} ${dir} of here, the old ones left ${e.item === 'book' ? 'an' : 'a'} ${item}. Take the stairs down; it lies where the first guardian keeps watch. Bring it to me.`
-    : `There is an ${place.name} about ${km(d)} ${dir} of here, ${describeSpot(t, place.x, place.z).where}. Its driver never came back, but his ${item.toLowerCase()} should still be by the wreck, whoever went through the trunk since. Bring it to me.`;
+    ? TL`Listen well. In the ${place.name}, about ${km(d)} ${dir} of here, the old ones left ${e.item === 'book' ? 'an' : 'a'} ${item}. Take the stairs down; it lies where the first guardian keeps watch. Bring it to me.`
+    : TL`There is an ${place.name} about ${km(d)} ${dir} of here, ${describeSpot(t, place.x, place.z).where}. Its driver never came back, but his ${item.toLowerCase()} should still be by the wreck, whoever went through the trunk since. Bring it to me.`;
   return {
     id, kind: 'fetch', state: 'offer', giver: e.giver, item: e.item, place, briefing,
-    title: `${who} needs an errand run`,
-    text: `${who} (${info.title.toLowerCase()}) is looking for someone reliable. Ask at the ${e.where}.`,
+    title: TL`${who} needs an errand run`,
+    text: TL`${who} (${info.title.toLowerCase()}) is looking for someone reliable. Ask at the ${e.where}.`,
     reward: { gold: T.home ? 150 + Math.round(d / 5) : money(150 + d / 5, T), xp: 120 },
     ...(T.home ? {} : { giverName: who }),
   };
@@ -131,8 +136,8 @@ function camp(t: Terrain, id: string, R: () => number, T: QuestTown): Quest | nu
   const c = camps[Math.floor(R() * camps.length)], d = worldDist(c.x, c.z, T.x, T.z), dir = compass(wrapDx(c.x - T.x), c.z - T.z), { where } = describeSpot(t, c.x, c.z);
   return {
     id, kind: 'camp', state: 'offer', place: { type: 'camp', campId: c.id, x: c.x, z: c.z, name: c.name },
-    title: `Clear the ${c.name}`,
-    text: `Bandits have dug in at the ${c.name}, about ${km(d)} ${dir} of ${T.name}, ${where}. They rob every cart on the road. Clear the camp, their boss included, then report back here.`,
+    title: TL`Clear the ${c.name}`,
+    text: TL`Bandits have dug in at the ${c.name}, about ${km(d)} ${dir} of ${T.name}, ${where}. They rob every cart on the road. Clear the camp, their boss included, then report back here.`,
     reward: { gold: T.home ? 220 + Math.round(d / 4) : money(220 + d / 4, T), xp: 180 },
   };
 }
@@ -154,8 +159,8 @@ export function basicQuest(world: number, seq: number, town: QuestTown): Quest {
   const h = hash(world, town.id, seq + 0x5e78), base = { id: `basic:${town.id}:${seq}`, state: 'offer' as const, town: town.id, townName: town.name, reward: { gold: 25, xp: 15 } };
   if (seq % 2 === 0) {
     const item = h % 2 ? 'log' : 'stone', count = h % 2 ? 2 : 3;
-    return { ...base, kind: 'resource', item, count, title: `Supplies: ${count} ${ITEMS[item].name}`, text: `Bring ${count} ${ITEMS[item].name} in your backpack to this board. These small jobs support the elder's main village tutorial.` };
+    return { ...base, kind: 'resource', item, count, title: TL`Supplies: ${count} ${ITEMS[item].name}`, text: TL`Bring ${count} ${ITEMS[item].name} in your backpack to this board. These small jobs support the elder's main village tutorial.` };
   }
   const target = (['ravager', 'bramble', 'bandit'] as const)[h % 3];
-  return { ...base, kind: 'bounty', target, count: 2, progress: 0, title: `Bounty: 2 ${plural(target, 2)}`, text: `Kill two ${plural(target, 2)} and claim the reward here. The elder has our main development objectives.` };
+  return { ...base, kind: 'bounty', target, count: 2, progress: 0, title: `Bounty: 2 ${plural(target, 2)}`, text: TL`Kill two ${plural(target, 2)} and claim the reward here. The elder has our main development objectives.` };
 }

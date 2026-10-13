@@ -3,6 +3,7 @@ import { rng, rangeInt, hash, DIRV, type Dir } from '../core/rng';
 import { translateOps, type Op } from '../core/voxel';
 import { VILLAGE_RECT, type Rect } from './regions';
 import { HOMES_MIN } from './homes';
+import { tl } from '../i18n';
 
 export type Role = 'innkeeper' | 'elder' | 'blacksmith' | 'merchant' | 'grocer' | 'house';
 export interface P3 { x: number; y: number; z: number }
@@ -56,9 +57,9 @@ export interface FenceRun { x0: number; z0: number; x1: number; z1: number }
  * with towers and battlements). `h` is the height of the wall (m), `gate` the top of the gate frame.
  */
 export const WALL_TIERS = [
-  { name: 'Stake Fence', h: 2, gate: 3.6, tower: 4.5, walk: 0 },
-  { name: 'Timber Palisade', h: 4, gate: 5, tower: 6.5, walk: 3.3 },
-  { name: 'Stone Wall', h: 7, gate: 4, tower: 10, walk: 5.6 },
+  { name: tl('Stake Fence'), h: 2, gate: 3.6, tower: 4.5, walk: 0 },
+  { name: tl('Timber Palisade'), h: 4, gate: 5, tower: 6.5, walk: 3.3 },
+  { name: tl('Stone Wall'), h: 7, gate: 4, tower: 10, walk: 5.6 },
 ] as const;
 /** The first tier built of stone (voxel walls drawn as they are); below it the wall is a fence drawn by world/level.ts. */
 export const STONE_TIER = 2;
@@ -260,8 +261,8 @@ export function generateVillage(seed: number, y = 0, cx = 0, cz = 0, name = 'Gri
   };
   const j = () => ri(-1, 1);
   if (!square) ringLayout(); else {
-  B('TAVERN', 'innkeeper', 3, 6 + j(), 13, 10, 'E', 3.6);
-  B("ELDER'S HALL", 'elder', 3, 24 + j(), 11, 9, 'E', 3.4);
+  B(tl('TAVERN'), 'innkeeper', 3, 6 + j(), 13, 10, 'E', 3.6);
+  B(tl("ELDER'S HALL"), 'elder', 3, 24 + j(), 11, 9, 'E', 3.4);
   const hz = 42 + j(), mine = B('', 'house', 4, hz, 8, 7, 'E');
   // in Gridholm that house was the hero's before every house was for sale: a bed along the back wall in the far corner and a chest in the near one
   if (home) {
@@ -275,9 +276,9 @@ export function generateVillage(seed: number, y = 0, cx = 0, cz = 0, name = 'Gri
     ];
     mine.bedChest = { bed: { x0: x0 + 0.25, z0: z0 + 0.1, x1: x0 + 1.45, z1: z0 + 2.3, side: { x: x0 + 2.4, z: z0 + 1.2 } }, chest: { x: x0 + 0.85, z: z1 - 0.5 } };
   }
-  B('BLACKSMITH', 'blacksmith', 58, 6 + j(), 11, 9, 'W', 3.4);
-  B('GENERAL STORE', 'merchant', 58, 23 + j(), 11, 9, 'W', 3.4);
-  B('FOOD & PROVISIONS', 'grocer', 60, 40 + j(), 9, 8, 'W');
+  B(tl('BLACKSMITH'), 'blacksmith', 58, 6 + j(), 11, 9, 'W', 3.4);
+  B(tl('GENERAL STORE'), 'merchant', 58, 23 + j(), 11, 9, 'W', 3.4);
+  B(tl('FOOD & PROVISIONS'), 'grocer', 60, 40 + j(), 9, 8, 'W');
   for (const hx of [4, 15, 26, 47, 58]) B('', 'house', hx + j(), 61 + j(), 8, 6, 'N', 3);
   }
   /**
@@ -304,8 +305,8 @@ export function generateVillage(seed: number, y = 0, cx = 0, cz = 0, name = 'Gri
       }
       return null;
     };
-    place('TAVERN', 'innkeeper', 13, 10, 3.6); place("ELDER'S HALL", 'elder', 11, 9, 3.4);
-    place('BLACKSMITH', 'blacksmith', 11, 9, 3.4); place('GENERAL STORE', 'merchant', 11, 9, 3.4); place('FOOD & PROVISIONS', 'grocer', 9, 8, 3.2);
+    place(tl('TAVERN'), 'innkeeper', 13, 10, 3.6); place(tl("ELDER'S HALL"), 'elder', 11, 9, 3.4);
+    place(tl('BLACKSMITH'), 'blacksmith', 11, 9, 3.4); place(tl('GENERAL STORE'), 'merchant', 11, 9, 3.4); place(tl('FOOD & PROVISIONS'), 'grocer', 9, 8, 3.2);
     // the houses: at least HOMES_MIN, smaller ones where the bigger will not fit
     let n = 0;
     for (let i = 0; i < 6; i++) if (place('', 'house', 6, 8, 3)) n++;

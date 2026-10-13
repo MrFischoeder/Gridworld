@@ -29,6 +29,7 @@ import { syncFarmVillage } from './farms';
 import { settlementReward, stationSweep } from '../ui/settlement';
 import { saveChar, calcStats } from '../character';
 import { showToast, logLine } from '../ui/hud';
+import { tl, TL } from '../i18n';
 
 const STAKE = 0xffd060, WOOD = 0xb8b060, PLANK = 0xd8c890, WORKER = 0xdce8ff;
 /** What a job builds, for the sign and the news. */
@@ -36,12 +37,12 @@ export function jobName(s: TownState | undefined, j: Job): string {
   const a = j.a ?? '';
   switch (j.k) {
     case 'farm': return `farm ${farmsOf(s) + 1}`;
-    case 'plough': return 'steel ploughs';
+    case 'plough': return tl('steel ploughs');
     case 'wall': return WALL_TIERS[+a]?.name.toLowerCase() ?? 'wall';
     case 'work': return WORKS[a as keyof typeof WORKS]?.name.toLowerCase() ?? 'defences';
     case 'refinery': return 'refinery';
     case 'improve': return IMPROVE[a as ImproveKind]?.name.toLowerCase() ?? 'improvement';
-    case 'plantup': return `power plant, ${PLANT_LEVELS[+a]?.name.toLowerCase() ?? 'upgrade'}`;
+    case 'plantup': return TL`power plant, ${PLANT_LEVELS[+a]?.name.toLowerCase() ?? tl('upgrade')}`;
     case 'plant': return s?.pbuild ? specOf(s.pbuild.k).name : 'works';
     case 'project': return a === 'comms' && isStationVillage(s) ? STATION_STAGES[Math.min(stationStage(s), STATION_STAGES.length - 1)].title.toLowerCase() : PROJECTS[a as Project]?.name.toLowerCase() ?? 'project';
   }
@@ -104,7 +105,7 @@ function drawSite(name: string, sp: { x: number; z: number; w: number; d: number
   for (let i = 0; i < Math.ceil(5 * left); i++) pb.box(px - 1.2, py + i * 0.22, pz - 0.6 + (i % 2) * 0.1, px + 1.2, py + i * 0.22 + 0.2, pz + 0.6 + (i % 2) * 0.1, PLANK);
   for (let i = 0; i < Math.ceil(3 * left); i++) pb.box(px - 0.4 + i * 0.5, py, pz + 1, px + i * 0.5, py + 0.4, pz + 1.4, 0xb2b2a3);
   g.add(pb.build());
-  const sign = label(['UNDER CONSTRUCTION', `${name.toUpperCase()} · ${Math.floor(share * 100)}%`]);
+  const sign = label([tl('UNDER CONSTRUCTION'), `${name.toUpperCase()} · ${Math.floor(share * 100)}%`]);
   sign.position.set(0, Math.max(h(0, 0), 0) + top + 2.4, 0); g.add(sign);
   // the builders: two hammering at the scaffold, one carrying from the stack to it
   const hands: Hand[] = [];
@@ -177,7 +178,7 @@ export function dropJobSites() { for (const s of sites.values()) dropSite(s); si
 export function jobLines(): string[] {
   const c = G.char, out: string[] = [];
   for (const [id, s] of Object.entries(c.towns)) for (const j of Object.values(s?.jobs ?? {})) {
-    out.push(`▸ Building at ${findPoi(c.world, +id)?.name ?? 'a village'}: ${jobName(s, j)} · ${Math.floor(jobShare(j, c.time) * 100)}% (${jobLeft(j, c.time)} left)`);
+    out.push(TL`▸ Building at ${findPoi(c.world, +id)?.name ?? tl('a village')}: ${jobName(s, j)} · ${Math.floor(jobShare(j, c.time) * 100)}% (${jobLeft(j, c.time)} left)`);
   }
   return out;
 }
@@ -195,19 +196,19 @@ function finishDue() {
       if (j.k === 'farm' || j.k === 'plough' || j.k === 'project') syncFarmVillage(v.id);
       reloadStruct(v.id);
       const what = name.charAt(0).toUpperCase() + name.slice(1);
-      let line = `${v.name}: the builders are done. ${what} is built.`;
+      let line = TL`${v.name}: the builders are done. ${what} is built.`;
       if (j.k === 'project') {
         if (a === 'comms' || a === 'relay') { const ruin = linkRuin(c.world, v, s); if (ruin) reloadStruct(ruin.id); }
         if (r.stage && !r.built) settlementReward(v.id, 'station-' + stationStage(s));
         if (r.built) {
           settlementReward(v.id, a, a === 'comms' ? 'tablet' : undefined);
-          if (a === 'comms' && isStationVillage(s)) line += ` The satellites answer: the map in your glove computer is alive (M), and the station's sweep put ${stationSweep(v.x, v.z)} new places on it. Your GPS tablet waits for you.`;
-          else line += ' The elder has the next objective.';
+          if (a === 'comms' && isStationVillage(s)) line += TL` The satellites answer: the map in your glove computer is alive (M), and the station's sweep put ${stationSweep(v.x, v.z)} new places on it. Your GPS tablet waits for you.`;
+          else line += tl(' The elder has the next objective.');
         }
       }
-      if (plant) line += isStation(plant) ? ` It gives ${STATIONS[plant].kw} kW.` : ` Load its hopper with ${[...new Set(PLANTS[plant].recipes.flatMap((x) => x.in.map(([g]) => ITEMS[g].name)))].join(', ')}; it draws ${DRAW[plant]} kW.`;
-      if (j.k === 'refinery') line = `${v.name}'s ${INDUSTRY[industryOf(c.world, v, villageSeed(c.world, v))].site.toLowerCase()} is built.`;
-      showToast(`${v.name}: ${what} is built`); logLine(line);
+      if (plant) line += isStation(plant) ? TL` It gives ${STATIONS[plant].kw} kW.` : TL` Load its hopper with ${[...new Set(PLANTS[plant].recipes.flatMap((x) => x.in.map(([g]) => ITEMS[g].name)))].join(', ')}; it draws ${DRAW[plant]} kW.`;
+      if (j.k === 'refinery') line = TL`${v.name}'s ${INDUSTRY[industryOf(c.world, v, villageSeed(c.world, v))].site.toLowerCase()} is built.`;
+      showToast(TL`${v.name}: ${what} is built`); logLine(line);
     }
     calcStats(); saveChar();
   }

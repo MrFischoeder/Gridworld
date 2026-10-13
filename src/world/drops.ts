@@ -12,6 +12,7 @@ import { addItem, saveChar, handsChanged, packRoom } from '../character';
 import { ITEMS, HANDS_ONLY, type ItemKey } from '../data/items';
 import { logLine, showToast } from '../ui/hud';
 import type { Slot } from '../save';
+import { tl, TL } from '../i18n';
 
 /** Put down while playing alone (runtime only), in the same shape as the server's. */
 const local = new Map<string, NetDrop>();
@@ -36,7 +37,7 @@ export function dropAtFeet(s: Slot) {
     const id = 'local:' + ++seq;
     local.set(id, { id, k: s.k, n: s.n, c: s.c, p, loc, by: G.char.name || 'you', at: Date.now() });
   }
-  logLine(`You put down ${label(s.k, s.n)}.`);
+  logLine(TL`You put down ${label(s.k, s.n)}.`);
   syncDrops(true);
 }
 
@@ -51,9 +52,9 @@ function give(d: NetDrop): boolean {
   c.inv[i] = { k, n: d.n, c: d.c }; return true;
 }
 function took(d: NetDrop) {
-  if (give(d)) { saveChar(); logLine(`Picked up ${label(d.k, d.n)}${d.by && d.by !== G.char.name && !d.auto ? ` (left by ${d.by})` : ''}.`); }
+  if (give(d)) { saveChar(); logLine(TL`Picked up ${label(d.k, d.n)}${d.by && d.by !== G.char.name && !d.auto ? TL` (left by ${d.by})` : ''}.`); }
   else { // no room after all: it goes back down where it was
-    showToast('No room for it'); logLine(`No room for ${label(d.k, d.n)}: it stays on the ground.`);
+    showToast(tl('No room for it')); logLine(TL`No room for ${label(d.k, d.n)}: it stays on the ground.`);
     if (!sendDrop(d.k, d.n, d.c, d.p, d.loc)) local.set(d.id, d); // (now only for E, so it is not taken again at once)
   }
   syncDrops(true);
@@ -76,10 +77,10 @@ export function nearDrop(): Pickup | null {
 }
 export const dropPrompt = (p: Pickup) => {
   const more = W.pickups.filter((q) => q !== p && ITEMS[q.k] && Math.hypot(q.p.x - G.pos.x, q.p.z - G.pos.z) < 2).length;
-  return `E — pick up ${label(p.k, p.n ?? 1)}${p.by && p.by !== G.char.name ? ` (left by ${p.by})` : ''}${more ? ` · Tab — ${more} more on the ground` : ''}`;
+  return TL`E — pick up ${label(p.k, p.n ?? 1)}${p.by && p.by !== G.char.name ? TL` (left by ${p.by})` : ''}${more ? TL` · Tab — ${more} more on the ground` : ''}`;
 };
 export function takeDrop(p: Pickup) {
-  if (!p.drop) { if (!grabPickup(p)) showToast('No room in your backpack'); return; } // loot of your own game
+  if (!p.drop) { if (!grabPickup(p)) showToast(tl('No room in your backpack')); return; } // loot of your own game
   const id = p.drop;
   if (id.startsWith('local:')) { const d = local.get(id); if (d) { local.delete(id); took(d); } return; }
   if (p.taking && performance.now() - p.taking < 3000) return; // already asked

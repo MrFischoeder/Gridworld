@@ -20,6 +20,7 @@ import { hurtRobot, type Robot } from './robots';
 import { hurtBandit, type Bandit } from './bandits';
 import { hurtRaider, raiders, type Raider } from './raiders';
 import { onKill } from './quests';
+import { tl } from '../i18n';
 
 export interface Drone {
   boss?: false; g: THREE.Group; inner: THREE.LineSegments; mat: THREE.LineBasicMaterial; p: THREE.Vector3;
@@ -119,7 +120,7 @@ function droneTurn(t: Drone, dt: number) {
 onNoise((at, r) => { for (const t of W.drones) if (t.p.distanceTo(at) < (t.scout ? Math.min(r * 0.5, t.scout.lose) : r * 0.3)) { heard(t, at, 0.8); t.chasing = true; } });
 
 // ---------- bosses ----------
-const BOSS_NAMES = ['WARDEN', 'GATEKEEPER', 'OVERSEER', 'SENTINEL PRIME'];
+const BOSS_NAMES = [tl('WARDEN'), tl('GATEKEEPER'), tl('OVERSEER'), tl('SENTINEL PRIME')];
 export function makeBoss(b: BossSpec, i: number): Boss | null {
   if (progressHas('killed', i)) return null;
   const f = floorAt(G.space, b.x, b.z, G.grid.oy + 1, G.grid.oy + G.grid.ny - 1); if (!f) return null;
@@ -135,7 +136,7 @@ export function makeBoss(b: BossSpec, i: number): Boss | null {
   return {
     boss: true, idx: i, g, core, cage, eye, shards, mat, home: V(f[0] + 0.5, f[1] + 2.4, f[2] + 0.5), p: V(f[0] + 0.5, f[1] + 2.4, f[2] + 0.5),
     room: b.room, guard: b.guard, r: 1.3, hp: hp0, maxHp: hp0, flash: 0, engaged: false, fireT: 1.5,
-    name: b.guard ? BOSS_NAMES[i % BOSS_NAMES.length] : 'ELITE ' + BOSS_NAMES[(i + 1) % BOSS_NAMES.length],
+    name: b.guard ? BOSS_NAMES[i % BOSS_NAMES.length] : tl('ELITE ') + BOSS_NAMES[(i + 1) % BOSS_NAMES.length],
   };
 }
 const inRoom = (b: Boss, x: number, z: number, m = 0) => x >= b.room.x - m && x <= b.room.x + b.room.w + m && z >= b.room.z - m && z <= b.room.z + b.room.d + m;

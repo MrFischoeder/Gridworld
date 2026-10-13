@@ -12,6 +12,7 @@ import { GRIDHOLM_ID, findPoi } from '../gen/regions';
 import { seatOwner, seatOf, homeOf, makeHome, type RivalSeat } from '../gen/rivals';
 import { saveChar } from '../character';
 import { logLine } from '../ui/hud';
+import { tl, TL } from '../i18n';
 
 /** Is this a rivals game (online, on a rivals server, in a new world of towns)? */
 export const rivalsOn = () => online() && net.mode === 'rivals' && net.slot >= 0 && townsWorld(G.char.world);
@@ -24,10 +25,10 @@ export const seats = (except: string[] = []): [string, RivalSeat][] =>
   Object.entries(G.char.rivals ?? {}).map(([k, v]) => [seatOwner(+k), v] as [string, RivalSeat]).filter(([o]) => !except.includes(o)).sort((a, b) => seatOf(a[0]) - seatOf(b[0]));
 /** How an owner id is shown: you, the crew, or the name its seat goes by. */
 export function ownerName(owner: string): string {
-  if (owner === 'crew') return 'the whole crew';
+  if (owner === 'crew') return tl('the whole crew');
   if (rivalsOn() && owner === myOwner()) return 'you';
   const s = G.char.rivals?.[String(seatOf(owner))];
-  return s?.n || 'a rival';
+  return s?.n || tl('a rival');
 }
 /** A rival's home village's name (for the roster lines). */
 export const homeName = (vid: number) => findPoi(G.char.world, vid)?.name ?? 'Gridholm';
@@ -43,7 +44,7 @@ export function takeSeat(): boolean {
   if (!was || was.n !== n || was.v !== v) c.rivals[key] = { n, v };
   const fresh = makeHome(c, net.slot);
   if (net.slot > 0 && c.guide < 2) c.guide = 2;
-  if (fresh) logLine(`This is a rivals world. Your home is ${homeName(v)}: ruins for you to raise, far from the others' homes. Deposits go to whoever stakes them first.`);
+  if (fresh) logLine(TL`This is a rivals world. Your home is ${homeName(v)}: ruins for you to raise, far from the others' homes. Deposits go to whoever stakes them first.`);
   saveChar();
   return fresh;
 }

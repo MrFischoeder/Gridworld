@@ -20,6 +20,7 @@ import { item, WEAPON_KIND, HAND_TOOLS, type ItemKey } from '../data/items';
 import { onHandsChanged, stowHeld, saveChar, calcStats } from '../character';
 import { count } from '../data/crafting';
 import { logLine } from '../ui/hud';
+import { tl, TL } from '../i18n';
 
 /** Weapons are holstered in safe places (the village). */
 export let armed = () => true;
@@ -118,7 +119,7 @@ function takeRounds(k: ItemKey, n: number): number {
 function hudWeapon() {
   const h = G.char.hands[0], g = curGun(), m = curMelee();
   const t = m ? m.name : g ? (G.reloadT > 0 ? g.name + ' · reloading' : `${g.name} ${G.ammo}/${G.gun.mag} · ${reserve()}`)
-    : h ? 'Hands: ' + item(h.k).name : 'Hands empty';
+    : h ? tl('Hands: ') + item(h.k).name : tl('Hands empty');
   if (el.wname.textContent !== t) el.wname.textContent = t;
 }
 let heldKey: ItemKey | null = null, heldFor: object | null = null;
@@ -138,8 +139,8 @@ onHandsChanged(syncHeld);
 /** Keys 1 / 2: take the weapon on that side of your back into your hands (what you held goes onto your back). */
 export function drawBack(i: number) {
   const c = G.char, b = c.back[i], h = c.hands[0];
-  if (!b) { logLine(`Nothing on your back (slot ${i + 1}).`); return; }
-  if (h && WEAPON_KIND[h.k] === undefined) { logLine(`Your hands are full: ${item(h.k).name}. Put it away first (a trunk, a chest or a vehicle; the backpack window can drop it).`); return; }
+  if (!b) { logLine(TL`Nothing on your back (slot ${i + 1}).`); return; }
+  if (h && WEAPON_KIND[h.k] === undefined) { logLine(TL`Your hands are full: ${item(h.k).name}. Put it away first (a trunk, a chest or a vehicle; the backpack window can drop it).`); return; }
   c.hands[0] = b; c.back[i] = h; saveChar(); syncHeld();
 }
 /** Q / mouse wheel: swap the weapon in your hands for the (first) one on your back. */
@@ -151,7 +152,7 @@ export function swapWeapon() {
 export function holster() {
   const h = G.char.hands[0];
   if (!h) return;
-  if (WEAPON_KIND[h.k] === undefined) { logLine(`You carry the ${item(h.k).name} in your hands.`); return; }
+  if (WEAPON_KIND[h.k] === undefined) { logLine(TL`You carry the ${item(h.k).name} in your hands.`); return; }
   const m = stowHeld(); if (m) logLine(m); else saveChar();
   syncHeld();
 }
@@ -162,7 +163,7 @@ export function reload() {
   if (G.weapon !== 0 || !g || G.reloadT > 0 || G.ammo >= G.gun.mag || !armed()) return;
   if (reserve() <= 0) {
     const now = performance.now() / 1000;
-    if (now - dryAt > 3) { dryAt = now; logLine(`No ${item(g.ammo).name} left for the ${g.name}. Search chests, stashes and the fallen, or have a blacksmith make more.`); }
+    if (now - dryAt > 3) { dryAt = now; logLine(TL`No ${item(g.ammo).name} left for the ${g.name}. Search chests, stashes and the fallen, or have a blacksmith make more.`); }
     return;
   }
   G.reloadT = G.gun.reload; hudWeapon();
@@ -250,7 +251,7 @@ function sneak(t: Foe, melee: boolean): number {
     : 'boss' in t && t.boss ? t.engaged : (t as Drone).chasing;
   if (!unaware(t, busy)) return 1;
   const k = sneakBonus(melee), now = performance.now();
-  if (now - sneakTold > 600) { sneakTold = now; logLine(`Sneak attack! ×${k}`); }
+  if (now - sneakTold > 600) { sneakTold = now; logLine(TL`Sneak attack! ×${k}`); }
   return k;
 }
 function shoot() {

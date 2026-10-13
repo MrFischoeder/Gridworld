@@ -11,6 +11,7 @@ import { putItems } from '../inventory';
 import { logLine, showToast } from '../ui/hud';
 import { OW, groundAt, campFires } from './overworld';
 import { makeNoise } from './noise';
+import { tl, TL } from '../i18n';
 
 interface Fire { x: number; y: number; z: number; t: number; g: THREE.Group; flames: THREE.LineSegments }
 const fires: Fire[] = [];
@@ -34,10 +35,10 @@ export function flicker(f: THREE.LineSegments, time: number, scale = 1) {
 
 /** Use a Fire Kit: a small fire of sticks and stones a step ahead of you. */
 export function lightFire(): boolean {
-  if (G.char.loc !== 'overworld' || !OW.terrain) { logLine('You need open sky to light a fire.'); return false; }
-  if (OW.terrain.water(G.pos.x, G.pos.z)) { logLine('Not in the water.'); return false; }
+  if (G.char.loc !== 'overworld' || !OW.terrain) { logLine(tl('You need open sky to light a fire.')); return false; }
+  if (OW.terrain.water(G.pos.x, G.pos.z)) { logLine(tl('Not in the water.')); return false; }
   const x = G.pos.x - Math.sin(G.yaw) * 1.4, z = G.pos.z - Math.cos(G.yaw) * 1.4, y = groundAt(x, z);
-  if (!isFinite(y) || Math.abs(y - G.pos.y) > 1.2 || OW.terrain.water(x, z)) { logLine('No good spot for a fire here.'); return false; }
+  if (!isFinite(y) || Math.abs(y - G.pos.y) > 1.2 || OW.terrain.water(x, z)) { logLine(tl('No good spot for a fire here.')); return false; }
   if (!takeOne('firekit')) return false;
   const pb = new PropBatch();
   for (let i = 0; i < 6; i++) { const a = i / 6 * 6.283; pb.rock(x + Math.cos(a) * 0.6, y - 0.05, z + Math.sin(a) * 0.6, 0.2, 0.18, 4, a, GRID); }
@@ -47,7 +48,7 @@ export function lightFire(): boolean {
   if (fires.length >= 3) dropFire(fires[0]);
   fires.push({ x, y, z, t: FIRE_LIFE, g, flames });
   makeNoise(V(x, y, z), 8);
-  logLine('You light a campfire. E at the fire roasts your raw meat.');
+  logLine(tl('You light a campfire. E at the fire roasts your raw meat.'));
   return true;
 }
 function dropFire(f: Fire) {
@@ -77,11 +78,11 @@ export function cookAll(): number {
   const inv = G.char.inv;
   let n = 0;
   for (let i = 0; i < inv.length; i++) if (inv[i]?.k === 'meatR') { n += inv[i]!.n; inv[i] = null; }
-  if (!n) { logLine('You have no raw meat to roast.'); return 0; }
+  if (!n) { logLine(tl('You have no raw meat to roast.')); return 0; }
   const left = putItems(inv, 'meatC', n); // raw stacks freed their slots, so this always fits
   if (left) putItems(inv, 'meatR', left);
   saveChar();
-  showToast('Roasted ×' + (n - left));
-  logLine(`You roast ${n - left} piece${n - left === 1 ? '' : 's'} of meat over the fire.`);
+  showToast(tl('Roasted ×') + (n - left));
+  logLine(TL`You roast ${n - left} piece${n - left === 1 ? '' : 's'} of meat over the fire.`);
   return n - left;
 }

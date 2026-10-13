@@ -6,6 +6,7 @@
 import { wrapDx, POLAR_Z, villageDist, poisNear } from './regions';
 import { nearestOnRoad } from './roads';
 import type { Terrain } from './terrain';
+import { tl } from '../i18n';
 
 /** A levelled pad: a base's claim, or a village field (gen/fields.ts: its own `flat` and `blend`). */
 /** `soft` (0.181): the share of the land's relief kept inside (fields: eased, not table-flat; unset = flat). */
@@ -42,21 +43,21 @@ export function padHeight(t: Terrain, x: number, z: number): number {
 
 /** Why a flag cannot be raised at (x, z), or null when it can. `others` are the claims already standing. */
 export function claimProblem(t: Terrain, x: number, z: number, others: Claim[]): string | null {
-  if (Math.abs(z) > POLAR_Z - 500) return 'The ice is no place for a base.';
-  if (villageDist(t.world, x, z) < 150) return 'Too close to a village.';
-  for (const c of others) if (claimDist(c, x, z) < 2 * CLAIM.r) return 'Too close to your other claim.';
+  if (Math.abs(z) > POLAR_Z - 500) return tl('The ice is no place for a base.');
+  if (villageDist(t.world, x, z) < 150) return tl('Too close to a village.');
+  for (const c of others) if (claimDist(c, x, z) < 2 * CLAIM.r) return tl('Too close to your other claim.');
   const reach = CLEAR_R + 4, f = t.featuresIn({ x0: x - reach, z0: z - reach, x1: x + reach, z1: z + reach });
-  if (f.megaliths.length) return 'Too close to an ancient megalith.';
-  if (f.gates.length) return 'Too close to an ancient gate.';
+  if (f.megaliths.length) return tl('Too close to an ancient megalith.');
+  if (f.gates.length) return tl('Too close to an ancient gate.');
   const place = poisNear(t.world, x, z, CLEAR_R + 120).find((p) => rectD(p.rect, x, z) < CLEAR_R + p.flat + p.blend);
-  if (place) return 'Too close to ' + place.name + '.';
-  if (f.roads.some((r) => nearestOnRoad(r, x, z)[0] < CLEAR_R + r.half + 6)) return 'Too close to a road.';
+  if (place) return tl('Too close to ') + place.name + '.';
+  if (f.roads.some((r) => nearestOnRoad(r, x, z)[0] < CLEAR_R + r.half + 6)) return tl('Too close to a road.');
   for (let u = -reach; u <= reach; u += 4) for (let v = -reach; v <= reach; v += 4) {
-    if (Math.hypot(u, v) <= reach && t.water(x + u, z + v)) return 'Too close to the water.';
+    if (Math.hypot(u, v) <= reach && t.water(x + u, z + v)) return tl('Too close to the water.');
   }
   const y = padHeight(t, x, z);
   for (let a = 0; a < 6.28; a += 0.5) for (const d of [0, CLAIM.flat * 0.5, CLAIM.flat]) {
-    if (Math.abs(t.heightAt(x + Math.cos(a) * d, z + Math.sin(a) * d) - y) > MAX_CUT) return 'The ground here is too steep to level.';
+    if (Math.abs(t.heightAt(x + Math.cos(a) * d, z + Math.sin(a) * d) - y) > MAX_CUT) return tl('The ground here is too steep to level.');
   }
   return null;
 }

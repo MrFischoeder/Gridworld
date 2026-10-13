@@ -4,9 +4,10 @@
 import { ITEMS, type ItemKey } from './items';
 import { GOOD_INFO, type Good } from '../gen/market';
 import { isRare } from '../gen/deposits';
+import { tl } from '../i18n';
 
 export type ItemClass = 'raw' | 'food' | 'material' | 'industrial' | 'electrical' | 'advanced' | 'aerospace';
-export const CLASS_NAME: Record<ItemClass, string> = { raw: 'Raw resource', food: 'Food & farm crop', material: 'Material', industrial: 'Industrial component', electrical: 'Electrical & electronic', advanced: 'Advanced component', aerospace: 'Aerospace component' };
+export const CLASS_NAME: Record<ItemClass, string> = { raw: tl('Raw resource'), food: tl('Food & farm crop'), material: tl('Material'), industrial: tl('Industrial component'), electrical: tl('Electrical & electronic'), advanced: tl('Advanced component'), aerospace: tl('Aerospace component') };
 const SETS: [ItemClass, string[]][] = [
   ['food', ['grain', 'carrots', 'potatoes', 'fish', 'eggs', 'milk', 'meat', 'fibre', 'wool', 'cotton']],
   ['industrial', ['parts', 'tools', 'motor', 'pump', 'gears', 'pipes', 'engine', 'plating', 'drillrig']],

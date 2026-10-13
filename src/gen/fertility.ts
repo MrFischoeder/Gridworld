@@ -10,6 +10,7 @@ import { naturalHeight } from './heights';
 import { mountainMask } from './mountains';
 import { seaMask } from './seas';
 import { nearRiver } from './rivers';
+import { tl } from '../i18n';
 
 export const FERTILITY = { min: 0.4, max: 1.8, scale: 2600, river: [180, 600] as [number, number], coast: 450, cold: 16000 };
 const wrap = (s: number): [number, number] => { const n = Math.round(WORLD_W / s); return [WORLD_W / n, n]; };
@@ -30,7 +31,7 @@ export function fertility(world: number, x: number, z: number): number {
   return Math.round((FERTILITY.min + (FERTILITY.max - FERTILITY.min) * clamp(v)) * 100) / 100;
 }
 /** In words, for the map and the hint at a spot. */
-export const fertilityWord = (f: number) => (f <= 0 ? 'no soil' : f < 0.7 ? 'barren' : f < 1 ? 'poor' : f < 1.3 ? 'fair' : f < 1.55 ? 'rich' : 'very rich');
+export const fertilityWord = (f: number) => (f <= 0 ? tl('no soil') : f < 0.7 ? 'barren' : f < 1 ? 'poor' : f < 1.3 ? 'fair' : f < 1.55 ? 'rich' : tl('very rich'));
 /** Map colour of a fertility (rust for barren .. bright green for rich). */
 export function fertilityColor(f: number): [number, number, number] {
   const t = clamp((f - FERTILITY.min) / (FERTILITY.max - FERTILITY.min));

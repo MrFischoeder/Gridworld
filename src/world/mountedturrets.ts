@@ -9,6 +9,7 @@ import { progress, progressHas, saveChar } from '../character';
 import { MOUNTED_TURRET as S, type MountedTurretSpec } from '../data/mountedturrets';
 import { showToast } from '../ui/hud';
 import { withTarget, spawnAuthority, boltOut, turretHitOut } from './remote';
+import { tl } from '../i18n';
 interface Gun { spec: MountedTurretSpec; g: THREE.Group; head: THREE.Group; sensor: THREE.Mesh; hp: number; charge: number; cd: number; shots: number }
 const live: Gun[] = [];
 /** Same model works on any mounting plane; the head aims independently from its base. */
@@ -51,7 +52,7 @@ export function damageMountedTurret(t: Gun, damage: number, tell = true) {
   if (tell) turretHitOut(t.spec.id, damage); // everyone's copy of the gun takes the same hit
   t.hp -= Math.max(0, damage) * (1 - S.armour); G.hitFlash = 0.15; burst(t.g.position, 0xffb347, 8, 0.4);
   if (t.hp > 0) return;
-  progress('killed').push(S.progressBase + t.spec.id); saveChar(); drop(t); live.splice(live.indexOf(t), 1); showToast('Defence turret destroyed');
+  progress('killed').push(S.progressBase + t.spec.id); saveChar(); drop(t); live.splice(live.indexOf(t), 1); showToast(tl('Defence turret destroyed'));
 }
 export function mountedTurretHit(x: number, y: number, z: number, radius: number): boolean {
   return live.some(t => Math.hypot(t.spec.x - x, t.spec.z - z) < S.radius + radius && y < t.spec.y + S.radius && y + H > t.spec.y - S.radius);

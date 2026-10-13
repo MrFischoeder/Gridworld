@@ -12,6 +12,7 @@ import { nearRiver } from './rivers';
 import { lakesIn } from './water';
 import type { Road } from './roads';
 import type { Terrain } from './terrain';
+import { tl } from '../i18n';
 
 export interface Summit { id: number; name: string; x: number; z: number; y: number }
 /** The steepest a trail may climb (rise per metre), and how wide it is. */
@@ -46,7 +47,7 @@ export function regionSummit(t: Terrain, rx: number, rz: number): Summit | null 
     // each peak belongs to the region it stands in (neighbours climbing to the same top drop it)
     if (bh >= MIN_PEAK && Math.abs(bx - cx) < H && Math.abs(bz - cz) < H) {
       const R = rng(hash(t.world, rx, rz, 0x5a11));
-      out = { id: hash(t.world, rx, rz, 0x5a12), name: 'Mount ' + ruinName(R), x: bx, z: bz, y: bh };
+      out = { id: hash(t.world, rx, rz, 0x5a12), name: tl('Mount ') + ruinName(R), x: bx, z: bz, y: bh };
     }
   }
   summitCache.set(key, out);

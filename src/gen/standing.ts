@@ -3,6 +3,7 @@
 // share is a number of crates a game day by the trust tier, taken out of the storehouse, so it is still bounded by
 // what the village actually makes.
 import type { TownState } from './town';
+import { tl } from '../i18n';
 
 /** Trust points for each kind of help. */
 export const TRUST = {
@@ -23,10 +24,10 @@ export const TRUST = {
 export type TrustWhy = keyof typeof TRUST;
 /** The tiers: name, the trust they need, crates of the village's own goods a game day. */
 export const TRUST_TIERS = [
-  { name: 'Stranger', min: 0, crates: 0 },
-  { name: 'Known', min: 25, crates: 2 },
-  { name: 'Friend', min: 60, crates: 4 },
-  { name: 'Honoured', min: 100, crates: 8 },
+  { name: tl('Stranger'), min: 0, crates: 0 },
+  { name: tl('Known'), min: 25, crates: 2 },
+  { name: tl('Friend'), min: 60, crates: 4 },
+  { name: tl('Honoured'), min: 100, crates: 8 },
 ];
 const DAY = 1440;
 

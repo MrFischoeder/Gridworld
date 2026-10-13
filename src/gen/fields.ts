@@ -21,6 +21,7 @@ import { nearestOnRoad } from './roads';
 import { farmPlot, farmsOf } from './farms';
 import { claimDist, clearOf, type Claim } from './claims';
 import type { Terrain } from './terrain';
+import { tl, TL } from '../i18n';
 
 /** How far out a field may go (from the village's middle), its half size, the levelled radius and the blend back, the most the ground may be cut or filled. */
 export const FIELD = { reach: 500, half: 6, flat: 9, blend: 14, maxCut: 3.5, soft: 0.3 };
@@ -33,20 +34,20 @@ export function reservedZones(world: number, poi: Poi, seed: number, s: TownStat
   const ox = poi.x + VILLAGE_OFFSET.x, oz = poi.z + VILLAGE_OFFSET.z, out: Zone[] = [];
   const rect = (x0: number, z0: number, x1: number, z1: number, why: string) => out.push({ x0: ox + x0, z0: oz + z0, x1: ox + x1, z1: oz + z1, why });
   const site = (p: { x: number; z: number; w: number; d: number }, why: string) => rect(p.x, p.z, p.x + p.w, p.z + p.d, why);
-  rect(-14, -14, 86, 86, 'Too close to the village: its walls and clearing'); // the wall, the gates' lanes and the ring of side plots
+  rect(-14, -14, 86, 86, tl('Too close to the village: its walls and clearing')); // the wall, the gates' lanes and the ring of side plots
   for (const [k, p] of Object.entries(RESOURCE_PLOTS)) {
-    const word = k === 'quarry' ? 'the stone quarry' : k === 'oil' ? 'the oil wells' : k === 'mine' ? 'the mine' : k === 'lumber' ? 'the lumber camp' : k === 'refinery' ? 'the refinery' : 'the food processing house';
+    const word = k === 'quarry' ? tl('the stone quarry') : k === 'oil' ? tl('the oil wells') : k === 'mine' ? tl('the mine') : k === 'lumber' ? tl('the lumber camp') : k === 'refinery' ? tl('the refinery') : tl('the food processing house');
     const m = k === 'lumber' ? GROVE_REACH + 4 : 6; // the lumber camp's yard lies in the great grove
-    rect(p.x - RESOURCE_YARD.halfX - m, p.z - RESOURCE_YARD.halfZ - m, p.x + RESOURCE_YARD.halfX + m, p.z + RESOURCE_YARD.halfZ + m, k === 'lumber' ? 'That is the great grove: its ground is kept for the lumber camp' : `That ground is kept for ${word}`);
+    rect(p.x - RESOURCE_YARD.halfX - m, p.z - RESOURCE_YARD.halfZ - m, p.x + RESOURCE_YARD.halfX + m, p.z + RESOURCE_YARD.halfZ + m, k === 'lumber' ? tl('That is the great grove: its ground is kept for the lumber camp') : TL`That ground is kept for ${word}`);
   }
   const ind = industryOf(world, poi, seed);
-  site(industrySite(seed, ind), 'That ground is kept for the village\'s industry');
-  site(powerSite(seed), 'That ground is kept for the power plant');
-  for (const i of [0, 1]) { site(plantSite(seed, ind, i), 'That ground is kept for the works'); site(stationSite(seed, ind, i), 'That ground is kept for a power station'); }
-  rect(HALL.x0, HALL.z0, HALL.x1, HALL.z1, 'That ground is kept for the village hall');
-  rect(VEHICLE_HALL.x0, VEHICLE_HALL.z0, VEHICLE_HALL.x1, VEHICLE_HALL.z1, 'That ground is kept for the warehouse');
-  if (poi.id === GRIDHOLM_ID) { const xs = [YARD.dealer.x, ...YARD.bays.map((b) => b.x)], zs = [YARD.dealer.z, ...YARD.bays.map((b) => b.z)]; rect(Math.min(...xs) - 6, Math.min(...zs) - 6, Math.max(...xs) + 6, Math.max(...zs) + 6, 'That ground is the vehicle yard'); }
-  for (let i = 0; i < farmsOf(s); i++) if (!s?.fplots?.[i]) { const p = farmPlot(seed, i); rect(p.x0, p.z0, p.x1, p.z1, 'Another farm stands there'); } // the old corner fields
+  site(industrySite(seed, ind), tl('That ground is kept for the village\'s industry'));
+  site(powerSite(seed), tl('That ground is kept for the power plant'));
+  for (const i of [0, 1]) { site(plantSite(seed, ind, i), tl('That ground is kept for the works')); site(stationSite(seed, ind, i), tl('That ground is kept for a power station')); }
+  rect(HALL.x0, HALL.z0, HALL.x1, HALL.z1, tl('That ground is kept for the village hall'));
+  rect(VEHICLE_HALL.x0, VEHICLE_HALL.z0, VEHICLE_HALL.x1, VEHICLE_HALL.z1, tl('That ground is kept for the warehouse'));
+  if (poi.id === GRIDHOLM_ID) { const xs = [YARD.dealer.x, ...YARD.bays.map((b) => b.x)], zs = [YARD.dealer.z, ...YARD.bays.map((b) => b.z)]; rect(Math.min(...xs) - 6, Math.min(...zs) - 6, Math.max(...xs) + 6, Math.max(...zs) + 6, tl('That ground is the vehicle yard')); }
+  for (let i = 0; i < farmsOf(s); i++) if (!s?.fplots?.[i]) { const p = farmPlot(seed, i); rect(p.x0, p.z0, p.x1, p.z1, tl('Another farm stands there')); } // the old corner fields
   return out;
 }
 const rectGap = (z: { x0: number; z0: number; x1: number; z1: number }, x: number, zz: number) => Math.hypot(Math.max(z.x0 - x, 0, x - z.x1), Math.max(z.z0 - zz, 0, zz - z.z1));
@@ -71,18 +72,18 @@ export function fieldClaims(towns: Record<string, TownState | undefined>): Claim
  * bases and every placed field); `t` gives the natural ground (heights before this field) and what lies there.
  */
 export function fieldProblem(t: Terrain, poi: Poi, seed: number, s: TownState | undefined, x: number, z: number, claims: Claim[]): string {
-  if (worldDist(poi.x, poi.z, x, z) > FIELD.reach) return `Too far from ${poi.name}: a field goes within ${FIELD.reach} m of the village.`;
+  if (worldDist(poi.x, poi.z, x, z) > FIELD.reach) return TL`Too far from ${poi.name}: a field goes within ${FIELD.reach} m of the village.`;
   const r = FIELD.half;
   for (const zn of reservedZones(t.world, poi, seed, s)) if (rectGap(zn, x, z) < r + 2) return zn.why + '.';
-  for (const c of claims) if (claimDist(c, x, z) < clearOf(c) + r) return 'Too close to another field or a base: their ground is levelled already.';
-  for (const p of poisNear(t.world, x, z, 200)) if (p.type !== 'village' && rectGap(p.rect, wrapDx(x - p.x) + p.x, z) < r + p.flat + p.blend + 6) return 'Too close to ' + p.name + '.';
-  for (const p of poisNear(t.world, x, z, 200)) if (p.type === 'village' && p.id !== poi.id && rectGap(p.rect, wrapDx(x - p.x) + p.x, z) < 120) return 'That is the land of ' + p.name + '.';
+  for (const c of claims) if (claimDist(c, x, z) < clearOf(c) + r) return tl('Too close to another field or a base: their ground is levelled already.');
+  for (const p of poisNear(t.world, x, z, 200)) if (p.type !== 'village' && rectGap(p.rect, wrapDx(x - p.x) + p.x, z) < r + p.flat + p.blend + 6) return tl('Too close to ') + p.name + '.';
+  for (const p of poisNear(t.world, x, z, 200)) if (p.type === 'village' && p.id !== poi.id && rectGap(p.rect, wrapDx(x - p.x) + p.x, z) < 120) return tl('That is the land of ') + p.name + '.';
   const reach = FIELD.flat + FIELD.blend, f = t.featuresIn({ x0: x - reach, z0: z - reach, x1: x + reach, z1: z + reach });
-  for (const road of f.roads) if (nearestOnRoad(road, x, z)[0] < road.half + r + 4) return road.h ? 'A trail runs there.' : 'A road runs there: keep the field off it.';
-  if (f.megaliths.length || f.gates.length) return 'The old stones there are not to be ploughed.';
-  for (let u = -r - 2; u <= r + 2; u += 2) for (let v = -r - 2; v <= r + 2; v += 2) if (t.water(x + u, z + v)) return 'There is water there.';
+  for (const road of f.roads) if (nearestOnRoad(road, x, z)[0] < road.half + r + 4) return road.h ? tl('A trail runs there.') : tl('A road runs there: keep the field off it.');
+  if (f.megaliths.length || f.gates.length) return tl('The old stones there are not to be ploughed.');
+  for (let u = -r - 2; u <= r + 2; u += 2) for (let v = -r - 2; v <= r + 2; v += 2) if (t.water(x + u, z + v)) return tl('There is water there.');
   const y = fieldPad(t, x, z);
-  for (let u = -r; u <= r; u += 2) for (let v = -r; v <= r; v += 2) if (Math.abs(t.heightAt(x + u, z + v) - y) > FIELD.maxCut) return 'Too steep: the ground there cannot be levelled for a field.';
+  for (let u = -r; u <= r; u += 2) for (let v = -r; v <= r; v += 2) if (Math.abs(t.heightAt(x + u, z + v) - y) > FIELD.maxCut) return tl('Too steep: the ground there cannot be levelled for a field.');
   return '';
 }
 

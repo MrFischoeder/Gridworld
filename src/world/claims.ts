@@ -18,6 +18,7 @@ import { EYE } from './player';
 import { redraw as redrawBase, syncBases } from './building';
 import { onClaimsChanged } from './share';
 import type { Char } from '../save';
+import { tl, TL } from '../i18n';
 
 export type SavedClaim = Char['claims'][number];
 const POLE_H = 8, OK = 0xe8fff0, BAD = 0xff5a3c, CLOTH = 0x3dff6e, POLE = 0xc4ffd2;
@@ -77,8 +78,8 @@ export function nearFlag(): SavedClaim | null {
 }
 /** Take the flag down: the land goes back to how it was. Returns an error message or ''. */
 export function takeDownFlag(c: SavedClaim): string {
-  if (c.parts?.length) return 'Take your building down first (B, pick any part, then F at each part).';
-  if (!addItem('flagpole')) return 'No room in your backpack for the Flagpole (14 L).';
+  if (c.parts?.length) return tl('Take your building down first (B, pick any part, then F at each part).');
+  if (!addItem('flagpole')) return tl('No room in your backpack for the Flagpole (14 L).');
   G.char.claims.splice(G.char.claims.indexOf(c), 1); saveChar();
   applyClaims(c);
   return '';
@@ -92,17 +93,17 @@ const matDim = new THREE.LineBasicMaterial({ color: OK, transparent: true, opaci
 export const isPlacing = () => placing;
 /** Use a Flagpole: start choosing the spot. */
 export function startPlacing(): boolean {
-  if (G.char.loc !== 'overworld' || !OW.terrain) { logLine('Raise the flag outdoors.'); return false; }
-  if (driving.v) { logLine('Get out of the vehicle first.'); return false; }
+  if (G.char.loc !== 'overworld' || !OW.terrain) { logLine(tl('Raise the flag outdoors.')); return false; }
+  if (driving.v) { logLine(tl('Get out of the vehicle first.')); return false; }
   placing = true; last = { x: NaN, z: NaN, t: 0 };
-  logLine('Look at the spot for your flag: click to raise it, right mouse button or Esc to cancel.');
+  logLine(tl('Look at the spot for your flag: click to raise it, right mouse button or Esc to cancel.'));
   return true;
 }
 export function cancelPlacing(quiet = false) {
   if (!placing) return;
   placing = false; spot = null;
   if (preview) { scene.remove(preview); preview.traverse((o) => (o as THREE.Line).geometry?.dispose()); preview = null; }
-  if (!quiet) logLine('You put the Flagpole away.');
+  if (!quiet) logLine(tl('You put the Flagpole away.'));
 }
 /** Raise the flag at the chosen spot. */
 export function confirmPlacing() {
@@ -113,10 +114,10 @@ export function confirmPlacing() {
   G.char.claims.push(c); saveChar();
   cancelPlacing(true);
   applyClaims(c);
-  logLine(`The flag is up: the land ${CLAIM.r} m around it is yours, and the ground is levelled for building.`);
+  logLine(TL`The flag is up: the land ${CLAIM.r} m around it is yours, and the ground is levelled for building.`);
 }
 /** The hint shown while placing (null when not placing). */
-export const placingHint = () => (!placing ? null : !spot ? '' : spot.problem ? spot.problem : 'Click — raise the flag here · right mouse / Esc — cancel');
+export const placingHint = () => (!placing ? null : !spot ? '' : spot.problem ? spot.problem : tl('Click — raise the flag here · right mouse / Esc — cancel'));
 export const placingOk = () => !!spot && !spot.problem;
 
 /** Where the player looks: the first point of the ground along the view, or a spot ahead. */

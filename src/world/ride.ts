@@ -12,6 +12,7 @@ import { VEHICLES, SEATS, vehicleTitle } from '../data/vehicles';
 import { SEAT_NAMES, shootCannon } from './vehicles';
 import { showToast, logLine, el } from '../ui/hud';
 import { collides } from './player';
+import { tl, TL } from '../i18n';
 
 export const riding = () => !!ride.on;
 let warpArrival = () => {};
@@ -28,10 +29,10 @@ onVehicleWarp(m => {
     // Keep the passenger or gunner's seat. Do not call getOff or reload the whole world.
     G.pos.set(c[1], c[2], c[3]); G.vel.set(0, 0, 0); warpArrival();
     finishGateTransit(m.trip); net.gateTravelling = false;
-    showToast('Your vehicle travelled through the ancient gate.');
+    showToast(tl('Your vehicle travelled through the ancient gate.'));
   }
 });
-const ownerName = (g: Ghost) => net.peers.get(g.owner)?.name ?? 'Someone';
+const ownerName = (g: Ghost) => net.peers.get(g.owner)?.name ?? tl('Someone');
 const title = (g: Ghost) => vehicleTitle(g.m);
 const toWorld = (g: Ghost, lx: number, lz: number): [number, number] => {
   const c = Math.cos(g.h), s = Math.sin(g.h);
@@ -63,16 +64,16 @@ export function rideSpot(): RideSpot | null {
   }
   return best;
 }
-export const ridePrompt = (s: RideSpot) => (s.seat < 0 ? `${ownerName(s.g)}'s ${title(s.g)} is full` : `E — ride in ${ownerName(s.g)}'s ${title(s.g)} (the ${SEAT_NAMES[s.seat]}'s seat)`);
+export const ridePrompt = (s: RideSpot) => (s.seat < 0 ? TL`${ownerName(s.g)}'s ${title(s.g)} is full` : TL`E — ride in ${ownerName(s.g)}'s ${title(s.g)} (the ${SEAT_NAMES[s.seat]}'s seat)`);
 
 let cool = 0;
 export function board(s: RideSpot) {
-  if (s.seat < 0) { showToast('No free seat'); return; }
+  if (s.seat < 0) { showToast(tl('No free seat')); return; }
   ride.on = { owner: s.g.owner, idx: s.g.idx, seat: s.seat }; ride.gun = 0;
   G.vel.set(0, 0, 0); G.firing = false;
   G.yaw = s.g.h + Math.PI; G.pitch = -0.12;
-  showToast(`${ownerName(s.g)}'s ${title(s.g)}`);
-  logLine(`You climb into ${ownerName(s.g)}'s ${title(s.g)}: the ${SEAT_NAMES[s.seat]}'s seat. 1 / 2 / 3 change seats, E gets you out.`);
+  showToast(TL`${ownerName(s.g)}'s ${title(s.g)}`);
+  logLine(TL`You climb into ${ownerName(s.g)}'s ${title(s.g)}: the ${SEAT_NAMES[s.seat]}'s seat. 1 / 2 / 3 change seats, E gets you out.`);
 }
 /** Out beside the vehicle (the door's side, else the other side or behind it). */
 export function getOff(quiet = false) {
@@ -86,28 +87,28 @@ export function getOff(quiet = false) {
     if (!collides(G.pos)) break;
   }
   G.vel.set(0, 0, 0); G.yaw = g.h + Math.PI; G.pitch = 0;
-  if (!quiet) showToast('Out');
+  if (!quiet) showToast(tl('Out'));
 }
 /** Keys 1 / 2 / 3 while riding along. */
 export function rideSeat(i: number) {
   const on = ride.on, g = on ? ghostOf(on.owner, on.idx) : null;
   if (!on || !g || i === on.seat || i < 0 || i >= SEATS[g.m].length) return;
-  if (i === 0) { showToast(`Only ${ownerName(g)} can drive it`); return; }
-  if (g.occ[i] && g.occ[i] !== 'me') { showToast(`The ${SEAT_NAMES[i]}'s seat is taken`); return; }
-  if (SEATS[g.m][i].gun && !g.turret) { showToast('No cannon on the roof'); return; }
-  on.seat = i; showToast(`In the ${SEAT_NAMES[i]}'s seat`);
+  if (i === 0) { showToast(TL`Only ${ownerName(g)} can drive it`); return; }
+  if (g.occ[i] && g.occ[i] !== 'me') { showToast(TL`The ${SEAT_NAMES[i]}'s seat is taken`); return; }
+  if (SEATS[g.m][i].gun && !g.turret) { showToast(tl('No cannon on the roof')); return; }
+  on.seat = i; showToast(TL`In the ${SEAT_NAMES[i]}'s seat`);
 }
 export const toggleRideView = () => { ride.cockpit = !ride.cockpit; };
 
 /** Every frame while riding (instead of walking): sit where the vehicle is, work the cannon from the gunner's seat. */
 export function updateRide(dt: number) {
   const on = ride.on!, g = ghostOf(on.owner, on.idx);
-  if (!g) { ride.on = null; el.veh.innerHTML = ''; showToast('The vehicle is gone'); logLine('The vehicle you rode in is gone (its owner left or went elsewhere).'); return; }
-  if (g.condition <= 0) { getOff(true); showToast('Vehicle disabled: condition 0%'); return; }
+  if (!g) { ride.on = null; el.veh.innerHTML = ''; showToast(tl('The vehicle is gone')); logLine(tl('The vehicle you rode in is gone (its owner left or went elsewhere).')); return; }
+  if (g.condition <= 0) { getOff(true); showToast(tl('Vehicle disabled: condition 0%')); return; }
   if (g.bumped.has('me')) { // someone else got to that seat first
     const s = freeSeat(g, on.seat);
-    if (s < 0) { getOff(true); showToast('No seat left for you'); return; }
-    on.seat = s; showToast(`Moved to the ${SEAT_NAMES[s]}'s seat`);
+    if (s < 0) { getOff(true); showToast(tl('No seat left for you')); return; }
+    on.seat = s; showToast(TL`Moved to the ${SEAT_NAMES[s]}'s seat`);
   }
   G.pos.set(g.x, g.y, g.z); G.vel.set(0, 0, 0);
   const gunner = !!SEATS[g.m][on.seat]?.gun;
@@ -117,8 +118,8 @@ export function updateRide(dt: number) {
     cool -= dt;
     if (G.firing && cool <= 0) { cool = 0.55; g.g.updateMatrixWorld(true); shootCannon(g.turret); }
   }
-  el.veh.innerHTML = `${ownerName(g)}'s ${title(g)} · the ${SEAT_NAMES[on.seat]}'s seat${gunner ? ' · you work the cannon' : ''}` +
-    `<br>condition ${Math.ceil(g.condition)}% · 1 / 2 / 3 change seats · V view · E get out`;
+  el.veh.innerHTML = TL`${ownerName(g)}'s ${title(g)} · the ${SEAT_NAMES[on.seat]}'s seat${gunner ? tl(' · you work the cannon') : ''}` +
+    TL`<br>condition ${Math.ceil(g.condition)}% · 1 / 2 / 3 change seats · V view · E get out`;
 }
 const tmp = new THREE.Vector3();
 /** Behind and above the vehicle, or the seat's own view (V). */

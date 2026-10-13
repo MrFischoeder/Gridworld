@@ -21,6 +21,7 @@ import { textSprite } from './npc';
 import { targetingFoe, proxied, stepRemote, withFoeTarget, nearestPlayer } from './remote';
 import { mindOf, sense, share, spottedBy, targetVis } from './stealth';
 import { STEALTH, LOSE } from '../gen/stealth';
+import { tl } from '../i18n';
 
 type State = 'roam' | 'hunt' | 'dash' | 'retreat' | 'threat' | 'charge' | 'recover' | 'stalk' | 'dive' | 'climb' | 'investigate';
 
@@ -410,7 +411,7 @@ function ravager(c: Creature, dt: number, to: THREE.Vector3, dist: number, safe:
       if (!safe && spots(c, 22, dt)) {
         share(c.pack ?? [c], c);
         for (const m of c.pack ?? [c]) { m.state = 'hunt'; m.timer = 3 + Math.random() * 2; }
-        if (c.pack && !alerted.has(c.pack)) { alerted.add(c.pack); logLine('Ravagers are hunting you!'); }
+        if (c.pack && !alerted.has(c.pack)) { alerted.add(c.pack); logLine(tl('Ravagers are hunting you!')); }
       }
       break;
     }
@@ -437,7 +438,7 @@ function bramble(c: Creature, dt: number, to: THREE.Vector3, dist: number, safe:
   const s = CREATURES.bramble;
   c.timer -= dt;
   const angry = c.state === 'threat' || c.state === 'charge' || c.state === 'recover';
-  if (!angry && !safe && (dist < 11 * Math.min(1, targetVis()) + 2 || c.hurt)) { c.state = 'threat'; c.timer = 0.9; c.mat.color.setHex(HOSTILE); showToast('A Bramble charges!'); }
+  if (!angry && !safe && (dist < 11 * Math.min(1, targetVis()) + 2 || c.hurt)) { c.state = 'threat'; c.timer = 0.9; c.mat.color.setHex(HOSTILE); showToast(tl('A Bramble charges!')); }
   switch (c.state) {
     case 'roam': // graze: amble a little, then stand
       if (c.timer <= 0) { c.dir.set(Math.random() - 0.5, 0, Math.random() - 0.5); c.timer = 3 + Math.random() * 4; }
@@ -500,7 +501,7 @@ function leechwing(c: Creature, dt: number, to: THREE.Vector3, dist: number, saf
     c.timer = 0.6;
     if (seesPlayer()) {
       c.prey = null; c.state = 'stalk'; c.timer = 6 + Math.random() * 4; c.orbit = Math.atan2(c.p.x - G.pos.x, c.p.z - G.pos.z);
-      if (!c.spotted) { c.spotted = true; logLine('A Leechwing has spotted you from above.'); }
+      if (!c.spotted) { c.spotted = true; logLine(tl('A Leechwing has spotted you from above.')); }
       return;
     }
     const prey = W.creatures.find((o) => o.kind === 'gnawer' && o.p.distanceTo(c.p) < SIGHT * 0.8);
@@ -582,7 +583,7 @@ function gnawer(c: Creature, dt: number, to: THREE.Vector3, dist: number, safe: 
       if (!safe && spots(c, 18, dt)) {
         share(nest, c);
         for (const m of nest) { m.state = 'hunt'; m.timer = 0.2 + Math.random() * 0.8; }
-        if (c.pack && !alerted.has(c.pack)) { alerted.add(c.pack); logLine('Gnawers! A whole nest of them!'); }
+        if (c.pack && !alerted.has(c.pack)) { alerted.add(c.pack); logLine(tl('Gnawers! A whole nest of them!')); }
       }
       break;
     }
@@ -686,7 +687,7 @@ function lurker(c: Creature, dt: number, to: THREE.Vector3, _dist: number, safe:
       const back = c.home.clone().sub(c.p); back.y = 0;
       if (back.length() > 40) c.dir.copy(back);
       swim(c, c.dir.x, c.dir.z, 2.5, dt, LURK_DEPTH, 1.6);
-      if (flat < 45 && !safe) { c.state = 'stalk'; c.timer = prey ? 3 + Math.random() * 3 : 8; if (prey) logLine('A fin cuts the water near you!'); }
+      if (flat < 45 && !safe) { c.state = 'stalk'; c.timer = prey ? 3 + Math.random() * 3 : 8; if (prey) logLine(tl('A fin cuts the water near you!')); }
       break;
     }
     case 'stalk': { // circle the swimmer (or the boat), closing in

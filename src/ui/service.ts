@@ -9,6 +9,7 @@ import type { Slot } from '../save';
 import { $ } from './hud';
 import { lockPointer } from './input';
 import { slotHTML, bindSlots, itemInfo, parseId } from './slots';
+import { tl, TL } from '../i18n';
 
 const el = { root: $('svc'), title: $('svcTitle'), sub: $('svcSub'), rows: $('svcRows'), inv: $('svcInv'), body: $('svcBody'), detail: $('svcDetail'), msg: $('svcMsg'), close: $('svcClose') };
 let cur: Vehicle | null = null;
@@ -18,21 +19,21 @@ const bar = (c: number, max: number) => `<span class="bar"><i style="width:${Mat
 function render(msg?: string) {
   const v = cur!, p = v.st.parts, why = immobile(p), spec = VEHICLES[v.st.model];
   el.title.textContent = vehicleTitle(v.st.model);
-  el.sub.textContent = v.spec.role + ' · ' + (why ? "won't move: " + why.toLowerCase() : 'ready to drive');
-  let h = '<h3>Vehicle condition and equipment</h3><div class="svcgrid">';
-  h += slotHTML('hull', { k: 'plating', text: 'STATE', c: p.hull / spec.hull * 100, fixed: true, cls: 'fixedslot', title: 'One condition pool for the whole vehicle. Drop Hull Plating (+40%), Engine Parts (+50%), a matching tire (+20%) or a Repair Kit (+40%) here.' });
-  p.mods.forEach((k, i) => { h += slotHTML('em:' + i, { k, hint: 'Upgrade' }); });
-  h += slotHTML('gun', { k: p.gun ? 'cannon' : null, hint: 'Roof', title: p.gun ? undefined : 'Roof mount: Vehicle Cannon' });
-  h += slotHTML('ev', { k: isEV(p) ? 'evkit' : null, hint: 'Drive', title: isEV(p) ? undefined : 'Drive: diesel. Drop an Electric Drive Kit here to make it electric.' }); // (0.180)
-  if (isEV(p)) h += slotHTML('evp', { k: p.evPack ? 'evpack' : null, hint: 'Pack', title: p.evPack ? undefined : 'Battery: lead. A Lithium Battery Pack doubles it.' });
+  el.sub.textContent = v.spec.role + ' · ' + (why ? tl("won't move: ") + why.toLowerCase() : tl('ready to drive'));
+  let h = tl('<h3>Vehicle condition and equipment</h3><div class="svcgrid">');
+  h += slotHTML('hull', { k: 'plating', text: tl('STATE'), c: p.hull / spec.hull * 100, fixed: true, cls: 'fixedslot', title: tl('One condition pool for the whole vehicle. Drop Hull Plating (+40%), Engine Parts (+50%), a matching tire (+20%) or a Repair Kit (+40%) here.') });
+  p.mods.forEach((k, i) => { h += slotHTML('em:' + i, { k, hint: tl('Upgrade') }); });
+  h += slotHTML('gun', { k: p.gun ? 'cannon' : null, hint: tl('Roof'), title: p.gun ? undefined : tl('Roof mount: Vehicle Cannon') });
+  h += slotHTML('ev', { k: isEV(p) ? 'evkit' : null, hint: tl('Drive'), title: isEV(p) ? undefined : tl('Drive: diesel. Drop an Electric Drive Kit here to make it electric.') }); // (0.180)
+  if (isEV(p)) h += slotHTML('evp', { k: p.evPack ? 'evpack' : null, hint: tl('Pack'), title: p.evPack ? undefined : tl('Battery: lead. A Lithium Battery Pack doubles it.') });
   h += '</div>';
-  h += `<div class="svcbar">Condition ${bar(p.hull, spec.hull)} ${Math.ceil(p.hull / spec.hull * 100)}%</div>`;
-  if (isEV(p)) { const cap = evCap(v.st.model, p); h += `<div class="svcbar">Battery ${bar(p.ev!, cap)} ${Math.round(p.ev!)}/${cap} kWh <span style="opacity:.6">· ~${Math.round(evRangeKm(v.st.model, p.ev!))} km · charge it at a village charging post</span></div>`; }
-  else h += `<div class="svcbar">Fuel ${bar(p.fuel, spec.tank)} ${Math.round(p.fuel)}/${spec.tank} L <span style="opacity:.6">· ~${Math.round(rangeKm(v.st.model, p.fuel))} km${cansToFill(v.st.model, p.fuel) ? ` · ${cansToFill(v.st.model, p.fuel)} canister${cansToFill(v.st.model, p.fuel) > 1 ? 's' : ''} fill it: click a ${ITEMS.fuel.name} (or R by the vehicle)` : ' · full'}</span></div>`;
+  h += TL`<div class="svcbar">Condition ${bar(p.hull, spec.hull)} ${Math.ceil(p.hull / spec.hull * 100)}%</div>`;
+  if (isEV(p)) { const cap = evCap(v.st.model, p); h += TL`<div class="svcbar">Battery ${bar(p.ev!, cap)} ${Math.round(p.ev!)}/${cap} kWh <span style="opacity:.6">· ~${Math.round(evRangeKm(v.st.model, p.ev!))} km · charge it at a village charging post</span></div>`; }
+  else h += TL`<div class="svcbar">Fuel ${bar(p.fuel, spec.tank)} ${Math.round(p.fuel)}/${spec.tank} L <span style="opacity:.6">· ~${Math.round(rangeKm(v.st.model, p.fuel))} km${cansToFill(v.st.model, p.fuel) ? TL` · ${cansToFill(v.st.model, p.fuel)} canister${cansToFill(v.st.model, p.fuel) > 1 ? 's' : ''} fill it: click a ${ITEMS.fuel.name} (or R by the vehicle)` : tl(' · full')}</span></div>`;
   el.rows.innerHTML = h;
   el.inv.innerHTML = G.char.inv.map((s, i) => slotHTML('p:' + i, { k: s?.k ?? null, n: s?.n, c: s?.c })).join('');
   const held = G.char.hands[0];
-  el.body.innerHTML = slotHTML('h:0', { k: held?.k ?? null, n: held?.n, c: held?.c, hint: 'Hands', cls: 'held' });
+  el.body.innerHTML = slotHTML('h:0', { k: held?.k ?? null, n: held?.n, c: held?.c, hint: tl('Hands'), cls: 'held' });
   if (msg !== undefined) el.msg.textContent = msg;
 }
 
@@ -56,16 +57,16 @@ function toPack(s: Slot, to = ''): string {
     if (G.char.hands[0]) { const m = stowHeld(); if (m) return m; }
     G.char.hands[0] = s; return '';
   }
-  if (roomFor(G.char.inv, s.k, packVol()) < s.n) return `The ${item(s.k).name.toLowerCase()} is too bulky for your backpack (${Math.floor(packVol() - bulkOf(G.char.inv))} of ${packVol()} L free).`;
+  if (roomFor(G.char.inv, s.k, packVol()) < s.n) return TL`The ${item(s.k).name.toLowerCase()} is too bulky for your backpack (${Math.floor(packVol() - bulkOf(G.char.inv))} of ${packVol()} L free).`;
   const [L, j] = to ? listOf(to) : [G.char.inv, -1];
   if (L === G.char.inv && j >= 0 && !L[j]) { L[j] = s; return ''; }
-  if (putSlot(G.char.inv, s) > 0) return `No room in your backpack: the ${item(s.k).name.toLowerCase()} was left behind.`;
+  if (putSlot(G.char.inv, s) > 0) return TL`No room in your backpack: the ${item(s.k).name.toLowerCase()} was left behind.`;
   return '';
 }
 function fitUpgrade(slot: number, from: string): string {
   const p = cur!.st.parts, s = slotAt(from);
-  if (!s || !ENGINE_UPGRADES.includes(s.k)) return s ? 'Only engine upgrades go there.' : '';
-  if (p.mods.includes(s.k) && p.mods[slot] !== s.k) return `A ${item(s.k).name} is already fitted.`;
+  if (!s || !ENGINE_UPGRADES.includes(s.k)) return s ? tl('Only engine upgrades go there.') : '';
+  if (p.mods.includes(s.k) && p.mods[slot] !== s.k) return TL`A ${item(s.k).name} is already fitted.`;
   const old = p.mods[slot];
   p.mods[slot] = takeFrom(from)!.k;
   return item(p.mods[slot]!).name + ' fitted.' + (old ? ' ' + (toPack({ k: old, n: 1 }, slotAt(from) ? '' : from) || item(old).name + ' → backpack.') : '');
@@ -79,15 +80,15 @@ function apply(from: string, to: string): string {
   if (s.k === 'evkit' || s.k === 'evpack') return electrify(from);
   if (w === 'hull') {
     const amount = s.k === 'engine' ? .5 : s.k === v.spec.wheelItem ? .2 : s.k === 'plating' || s.k === 'repairkit' ? .4 : 0;
-    if (!amount) return 'Use Hull Plating, Engine Parts, a matching tire or a Vehicle Repair Kit.';
-    if (p.hull >= max) return 'Vehicle condition is 100%.';
+    if (!amount) return tl('Use Hull Plating, Engine Parts, a matching tire or a Vehicle Repair Kit.');
+    if (p.hull >= max) return tl('Vehicle condition is 100%.');
     takeFrom(from); p.hull = Math.min(max, Math.max(0, p.hull) + max * amount);
-    return `Vehicle repaired: condition ${Math.ceil(p.hull / max * 100)}%.`;
+    return TL`Vehicle repaired: condition ${Math.ceil(p.hull / max * 100)}%.`;
   }
   if (w === 'gun') {
-    if (s.k !== 'cannon') return 'Only a Vehicle Cannon fits the roof mount.';
-    if (p.gun) return 'A cannon is already mounted.';
-    takeFrom(from); p.gun = true; return 'Cannon fitted on the roof. Fire it with the attack button while driving.';
+    if (s.k !== 'cannon') return tl('Only a Vehicle Cannon fits the roof mount.');
+    if (p.gun) return tl('A cannon is already mounted.');
+    takeFrom(from); p.gun = true; return tl('Cannon fitted on the roof. Fire it with the attack button while driving.');
   }
   return '';
 }
@@ -103,42 +104,42 @@ function takeOff(from: string, to = ''): string {
   if (w === 'gun' && p.gun) {
     const m = toPack({ k: 'cannon', n: 1 });
     if (!m) p.gun = false;
-    return m || 'You lift the cannon off the roof: it is in your hands.';
+    return m || tl('You lift the cannon off the roof: it is in your hands.');
   }
   if (w === 'evp' && p.evPack) {
     const m = toPack({ k: 'evpack', n: 1 }, to);
     if (!m) { p.evPack = false; p.ev = Math.min(p.ev!, evCap(cur!.st.model, p)); }
-    return m || 'Lithium pack → backpack (what it held is lost).';
+    return m || tl('Lithium pack → backpack (what it held is lost).');
   }
   if (w === 'ev' && isEV(p)) {
-    if (p.evPack) return 'Take the lithium pack out first.';
+    if (p.evPack) return tl('Take the lithium pack out first.');
     const m = toPack({ k: 'evkit', n: 1 }, to);
     if (!m) { delete p.ev; delete p.evPack; }
-    return m || 'Electric drive → backpack: the vehicle runs on diesel again.';
+    return m || tl('Electric drive → backpack: the vehicle runs on diesel again.');
   }
-  if (w === 'hull') return 'Repair the whole vehicle using the condition slot.';
+  if (w === 'hull') return tl('Repair the whole vehicle using the condition slot.');
   return '';
 }
 /** (0.180) Fits the Electric Drive Kit (the diesel is out, a quarter of the battery charged) or the Lithium Battery Pack from your slot `from`. */
 function electrify(from: string): string {
   const v = cur!, p = v.st.parts, s = slotAt(from)!;
   if (s.k === 'evkit') {
-    if (isEV(p)) return 'It is electric already.';
+    if (isEV(p)) return tl('It is electric already.');
     takeFrom(from); p.ev = evCap(v.st.model, p) * EV.start;
-    return `Electric drive fitted: the diesel engine is out. The battery holds ${evCap(v.st.model, p)} kWh, ${Math.round(p.ev)} charged. Charge it at a village charging post.`;
+    return TL`Electric drive fitted: the diesel engine is out. The battery holds ${evCap(v.st.model, p)} kWh, ${Math.round(p.ev)} charged. Charge it at a village charging post.`;
   }
-  if (!isEV(p)) return 'Fit the Electric Drive Kit first.';
-  if (p.evPack) return 'A lithium pack is fitted already.';
+  if (!isEV(p)) return tl('Fit the Electric Drive Kit first.');
+  if (p.evPack) return tl('A lithium pack is fitted already.');
   takeFrom(from); p.evPack = true;
-  return `Lithium pack fitted: the battery now holds ${evCap(v.st.model, p)} kWh.`;
+  return TL`Lithium pack fitted: the battery now holds ${evCap(v.st.model, p)} kWh.`;
 }
 /** Pours the Fuel Canister in your slot `from` into the tank. */
 function pour(from: string): string {
   const v = cur!, p = v.st.parts;
-  if (isEV(p)) return 'It runs on electricity: no diesel goes in.';
-  if (!cansToFill(v.st.model, p.fuel)) return 'The tank is nearly full.';
+  if (isEV(p)) return tl('It runs on electricity: no diesel goes in.');
+  if (!cansToFill(v.st.model, p.fuel)) return tl('The tank is nearly full.');
   takeFrom(from); p.fuel = Math.min(v.spec.tank, p.fuel + FUEL.can);
-  return `You pour a canister into the tank: ${Math.round(p.fuel)} of ${v.spec.tank} litres.`;
+  return TL`You pour a canister into the tank: ${Math.round(p.fuel)} of ${v.spec.tank} litres.`;
 }
 /** Click on one of your parts: fit it where it makes the most sense. */
 function autoFit(from: string): string {
@@ -148,8 +149,8 @@ function autoFit(from: string): string {
   if (s.k === 'cannon') return apply(from, 'gun');
   if (s.k === 'fuel') return pour(from);
   if (s.k === 'evkit' || s.k === 'evpack') return electrify(from);
-  if (ENGINE_UPGRADES.includes(s.k)) { const f = p.mods.indexOf(null); return f < 0 ? 'Both upgrade slots are taken. Take one off first.' : apply(from, 'em:' + f); }
-  return `The ${item(s.k).name} is no use on a vehicle.`;
+  if (ENGINE_UPGRADES.includes(s.k)) { const f = p.mods.indexOf(null); return f < 0 ? tl('Both upgrade slots are taken. Take one off first.') : apply(from, 'em:' + f); }
+  return TL`The ${item(s.k).name} is no use on a vehicle.`;
 }
 
 const done = (msg: string) => { refreshParts(cur!); handsChanged(); saveChar(); render(msg); };
@@ -159,13 +160,13 @@ bindSlots(el.root, {
     const [fw, i] = parseId(from), [tw, j] = parseId(to);
     if (mine(from) && mine(to)) {
       const [A] = listOf(from), [B] = listOf(to), s = A[i], d = B[j];
-      if (B === G.char.inv && s && HANDS_ONLY.has(s.k) || A === G.char.inv && d && HANDS_ONLY.has(d.k)) { done('That is too big for the backpack.'); return; }
+      if (B === G.char.inv && s && HANDS_ONLY.has(s.k) || A === G.char.inv && d && HANDS_ONLY.has(d.k)) { done(tl('That is too big for the backpack.')); return; }
       dropStack(A, i, B, j, B === G.char.inv ? packVol() : undefined, A === G.char.inv ? packVol() : undefined); done(''); return;
     }
     if (mine(from)) { done(apply(from, to)); return; }
     if (mine(to)) { done(takeOff(from, to)); return; }
     if (fw === 'em' && tw === 'em') { const m = cur.st.parts.mods; [m[i], m[j]] = [m[j], m[i]]; done(''); return; }
-    done('That does not go there.');
+    done(tl('That does not go there.'));
   },
   click(id) {
     if (!cur) return;
@@ -183,7 +184,7 @@ export function openService(v: Vehicle) {
   if (!G.playing || G.xferOpen || G.packOpen || G.dlgOpen) return;
   cur = v; G.xferOpen = true; G.firing = false; for (const k in G.keys) G.keys[k] = false;
   el.detail.innerHTML = '';
-  render(`Repair one shared vehicle condition. Drag repair supplies onto STATE; click equipment to fit it or take it off. Kuba sells ${ITEMS[v.spec.wheelItem].name}s, ${ITEMS.engine.name}, ${ITEMS.plating.name}, upgrades and cannons.`);
+  render(TL`Repair one shared vehicle condition. Drag repair supplies onto STATE; click equipment to fit it or take it off. Kuba sells ${ITEMS[v.spec.wheelItem].name}s, ${ITEMS.engine.name}, ${ITEMS.plating.name}, upgrades and cannons.`);
   el.root.style.display = 'flex';
   if (document.pointerLockElement) document.exitPointerLock();
 }

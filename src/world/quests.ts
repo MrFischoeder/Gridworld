@@ -27,6 +27,7 @@ import { OW } from './overworld';
 import { spawnQuestGroup } from './creatures';
 import { logLine, showToast, $ } from '../ui/hud';
 import type { DungeonMap } from '../gen/dungeon';
+import { tl, TL } from '../i18n';
 
 export const MAX_ACTIVE = 3, OFFERS = 4;
 
@@ -49,7 +50,7 @@ export function questTown(poi: Poi): QuestTown {
 /** Who to talk to about a quest, and where its reward is claimed. */
 export const giverOf = (q: Quest) => q.giverName ?? NPC_INFO[q.giver!].name;
 export const townOf = (q: Quest) => q.town ?? GRIDHOLM_ID;
-export const boardName = (q: Quest) => (q.townName ?? 'Gridholm') + "'s board";
+export const boardName = (q: Quest) => TL`${q.townName ?? 'Gridholm'}'s board`;
 /** Quests finished so far (older characters who have played a while count as having proved themselves). */
 const questsDone = () => G.char.questsDone ?? (G.char.level > 2 ? 2 : 0);
 /** How many notices a board shows you (0.166): two at first, one more for each quest you finish, up to OFFERS. */
@@ -86,19 +87,19 @@ export function refreshBoard(): number[] {
 export function accept(id: string, poi?: Poi): string {
   const b = boardOf(poi?.id ?? GRIDHOLM_ID), i = b.offers.findIndex((q) => q.id === id);
   if (i < 0) return '';
-  if (G.char.quests.length >= MAX_ACTIVE) return `You already carry ${MAX_ACTIVE} tasks. Finish or drop one first.`;
+  if (G.char.quests.length >= MAX_ACTIVE) return TL`You already carry ${MAX_ACTIVE} tasks. Finish or drop one first.`;
   const q = b.offers.splice(i, 1)[0];
   q.state = q.kind === 'fetch' ? 'talk' : 'active';
   if (q.kind === 'camp') delete G.char.camps[q.place!.campId!]; // word is, they are back
   G.char.quests.push(q); boardOffers(poi); saveChar();
-  return q.kind === 'fetch' ? `Taken. Talk to ${giverOf(q)}.` : 'Taken: ' + q.title + '.';
+  return q.kind === 'fetch' ? TL`Taken. Talk to ${giverOf(q)}.` : tl('Taken: ') + q.title + '.';
 }
 export function abandon(id: string): string {
   const q = G.char.quests.find((x) => x.id === id);
   if (!q) return '';
   G.char.quests = G.char.quests.filter((x) => x !== q);
   for (const c of [...W.creatures]) if (c.questId === id) c.questId = undefined;
-  saveChar(); return 'Dropped: ' + q.title + '.';
+  saveChar(); return tl('Dropped: ') + q.title + '.';
 }
 function reward(q: Quest) {
   q.state = 'done';
@@ -106,18 +107,18 @@ function reward(q: Quest) {
   G.char.gold += q.reward.gold; earnTrust(townOf(q), 'quest'); G.char.questsDone = questsDone() + 1;
   logLine(`+${q.reward.gold} gold`); gainXp(q.reward.xp);
   if (q.kind !== 'bounty' && Math.random() < 0.35) giveLoot(RELIC_KEYS[(Math.random() * RELIC_KEYS.length) | 0]);
-  showToast('Quest complete'); saveChar();
+  showToast(tl('Quest complete')); saveChar();
 }
 /** Board-given quests are claimed at the board that posted them. */
 export function claim(id: string, poi?: Poi): string {
   const q = G.char.quests.find((x) => x.id === id && (x.state === 'ready' || x.kind === 'resource' && x.state === 'active') && x.kind !== 'fetch');
-  if (q && townOf(q) !== (poi?.id ?? GRIDHOLM_ID)) return `Claim that one at ${boardName(q)}.`;
+  if (q && townOf(q) !== (poi?.id ?? GRIDHOLM_ID)) return TL`Claim that one at ${boardName(q)}.`;
   if (!q) return '';
   if (q.kind === 'resource') {
-    if (count(G.char.inv, q.item!) < q.count!) return `Bring ${q.count} ${ITEMS[q.item!].name} in your backpack.`;
+    if (count(G.char.inv, q.item!) < q.count!) return TL`Bring ${q.count} ${ITEMS[q.item!].name} in your backpack.`;
     for (let i = 0; i < q.count!; i++) takeOne(q.item!);
   }
-  reward(q); return `Reward: ${q.reward.gold} gold and ${q.reward.xp} XP.`;
+  reward(q); return TL`Reward: ${q.reward.gold} gold and ${q.reward.xp} XP.`;
 }
 
 // ---------- talking to residents ----------
@@ -127,8 +128,8 @@ export function questOptions(role: NpcRole, town: number): QuestTalk[] {
   const out: QuestTalk[] = [];
   for (const q of G.char.quests) {
     if (q.giver !== role || townOf(q) !== town) continue;
-    if (q.state === 'talk') out.push({ id: q.id, label: 'About your notice on the board...' });
-    if (q.state === 'ready' || (q.state === 'active' && hasItem(q.item!))) out.push({ id: q.id, label: `Here is the ${ITEMS[q.item!].name}.` });
+    if (q.state === 'talk') out.push({ id: q.id, label: tl('About your notice on the board...') });
+    if (q.state === 'ready' || (q.state === 'active' && hasItem(q.item!))) out.push({ id: q.id, label: TL`Here is the ${ITEMS[q.item!].name}.` });
   }
   return out;
 }
@@ -136,7 +137,7 @@ export function questTalk(id: string, town: number): string {
   const q = G.char.quests.find((x) => x.id === id && townOf(x) === town);
   if (!q) return '';
   if (q.state === 'talk') { q.state = 'active'; saveChar(); return q.briefing!; }
-  if (q.item && takeOne(q.item)) { reward(q); return `Wonderful, the ${ITEMS[q.item].name}! Here, you earned this: ${q.reward.gold} gold.`; }
+  if (q.item && takeOne(q.item)) { reward(q); return TL`Wonderful, the ${ITEMS[q.item].name}! Here, you earned this: ${q.reward.gold} gold.`; }
   return '';
 }
 
@@ -147,13 +148,13 @@ export function onKill(kind: CreatureKind | 'drone' | 'bandit', questId?: string
     if (q.state !== 'active') continue;
     if (q.kind === 'bounty' && q.target === kind) {
       q.progress = (q.progress ?? 0) + 1; changed = true;
-      if (q.progress >= q.count!) { q.state = 'ready'; showToast('Bounty done'); logLine(`Claim it at ${boardName(q)}.`); }
+      if (q.progress >= q.count!) { q.state = 'ready'; showToast(tl('Bounty done')); logLine(TL`Claim it at ${boardName(q)}.`); }
     }
     if (q.kind === 'hunt' && q.id === questId) {
       if (alpha) q.alphaDead = true; else q.killed = (q.killed ?? 0) + 1;
       changed = true;
       if (alpha) showToast(q.pack!.alpha + ' slain');
-      if (q.alphaDead && q.killed! >= q.pack!.count) { q.state = 'ready'; showToast('Hunt complete'); logLine(`Report back at ${boardName(q)}.`); }
+      if (q.alphaDead && q.killed! >= q.pack!.count) { q.state = 'ready'; showToast(tl('Hunt complete')); logLine(TL`Report back at ${boardName(q)}.`); }
     }
   }
   if (changed) saveChar();
@@ -161,13 +162,13 @@ export function onKill(kind: CreatureKind | 'drone' | 'bandit', questId?: string
 /** A bandit camp was wiped out. */
 export function onCampCleared(campId: number) {
   for (const q of G.char.quests) if (q.kind === 'camp' && q.state === 'active' && q.place?.campId === campId) {
-    q.state = 'ready'; showToast('Camp cleared'); logLine(`Report back at ${boardName(q)}.`); saveChar();
+    q.state = 'ready'; showToast(tl('Camp cleared')); logLine(TL`Report back at ${boardName(q)}.`); saveChar();
   }
 }
 /** A quest item was picked up. */
 export function onPickup(k: ItemKey) {
   for (const q of G.char.quests) if (q.kind === 'fetch' && q.item === k && q.state === 'active') {
-    q.state = 'ready'; showToast(ITEMS[k].name + ' found'); logLine(`Bring it to ${giverOf(q)}${q.townName ? ' in ' + q.townName : ''}.`); saveChar();
+    q.state = 'ready'; showToast(ITEMS[k].name + ' found'); logLine(TL`Bring it to ${giverOf(q)}${q.townName ? tl(' in ') + q.townName : ''}.`); saveChar();
   }
 }
 const questPickupHere = (k: ItemKey) => W.pickups.some((p) => p.k === k);
@@ -213,16 +214,16 @@ export function updateTracker(dt: number) {
   trackT = 0.4;
   const lines = G.char.quests.map((q) => {
     let s = '▸ ' + q.title;
-    const at = q.townName ? ' in ' + q.townName : '';
-    if (q.state === 'talk') s += ` — talk to ${giverOf(q)}${at}`;
-    else if (q.state === 'ready') s += q.kind === 'fetch' ? ` — bring it to ${giverOf(q)}${at}` : ` — claim at ${boardName(q)}`;
-    else if (q.kind === 'resource') s += ` — bring ${q.count} ${ITEMS[q.item!].name} to ${boardName(q)}`;
+    const at = q.townName ? tl(' in ') + q.townName : '';
+    if (q.state === 'talk') s += TL` — talk to ${giverOf(q)}${at}`;
+    else if (q.state === 'ready') s += q.kind === 'fetch' ? TL` — bring it to ${giverOf(q)}${at}` : TL` — claim at ${boardName(q)}`;
+    else if (q.kind === 'resource') s += TL` — bring ${q.count} ${ITEMS[q.item!].name} to ${boardName(q)}`;
     else if (q.kind === 'bounty') s += ` — ${q.progress ?? 0}/${q.count}`;
     else if (q.kind === 'hunt') s += ` — ${q.killed ?? 0}/${q.pack!.count}${q.alphaDead ? '' : ', ' + q.pack!.alpha + ' alive'}`;
-    else if (q.kind === 'camp') s += ' — clear it';
+    else if (q.kind === 'camp') s += tl(' — clear it');
     const t = questTarget(q);
-    if (t && G.char.loc === 'overworld') { const dx = wrapDx(t.x - G.pos.x), d = Math.hypot(dx, t.z - G.pos.z); s += d < 25 ? ' · right here' : ` · ${km(d)} ${compass(dx, t.z - G.pos.z)}`; }
-    else if (t && q.place?.type === 'ruin') s += ' · in the dungeon below';
+    if (t && G.char.loc === 'overworld') { const dx = wrapDx(t.x - G.pos.x), d = Math.hypot(dx, t.z - G.pos.z); s += d < 25 ? tl(' · right here') : ` · ${km(d)} ${compass(dx, t.z - G.pos.z)}`; }
+    else if (t && q.place?.type === 'ruin') s += tl(' · in the dungeon below');
     return s;
   });
   const esc = escortLine(); if (esc) lines.push(esc);
@@ -233,8 +234,8 @@ export function updateTracker(dt: number) {
   const step = G.char.guide === 2 ? tutorialStep(G.char.towns[myHomeId()]) : null;
   lines.unshift(...jobLines());
   const side = G.char.guide === 2 ? sideStep(G.char.towns[myHomeId()]) : null;
-  if (side) lines.unshift('▸ Side task: ' + side.title);
-  if (step && step.title !== 'A thriving settlement') lines.unshift('▸ Elder: ' + step.title);
+  if (side) lines.unshift(tl('▸ Side task: ') + side.title);
+  if (step && step.title !== tl('A thriving settlement')) lines.unshift('▸ Elder: ' + step.title);
   const gl = guideLine(); if (gl) lines.unshift(gl);
   trackEl.innerHTML = lines.map((l) => `<div>${l}</div>`).join('');
 }

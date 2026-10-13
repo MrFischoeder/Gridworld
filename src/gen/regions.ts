@@ -7,6 +7,7 @@ import { inSea } from './seas';
 import { nearRiver } from './rivers';
 import { inCity, CITY } from './cities';
 import { townsWorld } from './worldrules';
+import { tl, TL } from '../i18n';
 
 export const REGION = 256, CHUNK = 32;
 
@@ -210,29 +211,29 @@ export const HANGAR: Rect = { x0: 64, z0: -118, x1: 110, z1: -84 };
 function ruinAt(rx: number, rz: number, i: number, x: number, z: number, R: () => number): Poi {
   const x0 = even(x - RUIN_SIZE / 2), z0 = even(z - RUIN_SIZE / 2);
   return {
-    type: 'ruin', id: packId(rx, rz, i), name: 'Ruins of ' + ruinName(R),
+    type: 'ruin', id: packId(rx, rz, i), name: tl('Ruins of ') + ruinName(R),
     x: x0 + RUIN_SIZE / 2, z: z0 + RUIN_SIZE / 2, rect: { x0, z0, x1: x0 + RUIN_SIZE, z1: z0 + RUIN_SIZE }, flat: 4, blend: 26,
   };
 }
 
 export const CAMP_SIZE = 20;
-const CAMP_NAMES = ['Rustjaw', 'Ashpit', 'Blackfang', 'Coilbreak', 'Gallows', 'Scrapper', 'Redline', 'Hollow Tooth'];
+const CAMP_NAMES = ['Rustjaw', 'Ashpit', 'Blackfang', 'Coilbreak', 'Gallows', 'Scrapper', 'Redline', tl('Hollow Tooth')];
 function campAt(rx: number, rz: number, x: number, z: number, R: () => number): Poi {
   const x0 = even(x - CAMP_SIZE / 2), z0 = even(z - CAMP_SIZE / 2);
   return {
-    type: 'camp', id: packId(rx, rz, 2), name: CAMP_NAMES[Math.floor(R() * CAMP_NAMES.length)] + ' Camp',
+    type: 'camp', id: packId(rx, rz, 2), name: TL`${CAMP_NAMES[Math.floor(R() * CAMP_NAMES.length)]} Camp`,
     x: x0 + CAMP_SIZE / 2, z: z0 + CAMP_SIZE / 2, rect: { x0, z0, x1: x0 + CAMP_SIZE, z1: z0 + CAMP_SIZE }, flat: 4, blend: 18, // flat margin even: the terrain lattice is 2 m
   };
 }
 
 /** Crash sites: a wrecked freighter half buried in the ground, lying along x or z (see gen/wreck.ts). */
 export const WRECK_LEN = 52, WRECK_WID = 24;
-const SHIP_NAMES = ['Kestrel', 'Halcyon', 'Meridian', 'Vagrant Star', 'Iron Tern', 'Covenant', 'Longreach', 'Pale Heron', 'Ardent', 'Sable Wake', 'Tessaract', 'Orison'];
+const SHIP_NAMES = ['Kestrel', 'Halcyon', 'Meridian', tl('Vagrant Star'), tl('Iron Tern'), 'Covenant', 'Longreach', tl('Pale Heron'), 'Ardent', tl('Sable Wake'), 'Tessaract', 'Orison'];
 function wreckAt(rx: number, rz: number, x: number, z: number, R: () => number): Poi {
   const alongX = R() < 0.5, w = alongX ? WRECK_LEN : WRECK_WID, d = alongX ? WRECK_WID : WRECK_LEN;
   const x0 = even(x - w / 2), z0 = even(z - d / 2);
   return {
-    type: 'wreck', id: packId(rx, rz, 3), name: 'Wreck of the ' + SHIP_NAMES[Math.floor(R() * SHIP_NAMES.length)],
+    type: 'wreck', id: packId(rx, rz, 3), name: tl('Wreck of the ') + SHIP_NAMES[Math.floor(R() * SHIP_NAMES.length)],
     x: x0 + w / 2, z: z0 + d / 2, rect: { x0, z0, x1: x0 + w, z1: z0 + d }, flat: 4, blend: 24,
   };
 }
@@ -265,7 +266,7 @@ function baseInfo(world: number, rx: number, rz: number): RegionInfo {
   if (polarRegion(rz)) { /* nothing lives on the ice */ }
   else if (rx === 0 && rz === 0) {
     pois.push({ type: 'village', id: packId(0, 0, 0), name: 'Gridholm', x: 0, z: 0, rect: { ...VILLAGE_RECT }, flat: 8, blend: 34 });
-    pois.push({ type: 'hangar', id: HANGAR_ID, name: 'Old Hangar', x: (HANGAR.x0 + HANGAR.x1) / 2, z: (HANGAR.z0 + HANGAR.z1) / 2, rect: { ...HANGAR }, flat: 4, blend: 26 });
+    pois.push({ type: 'hangar', id: HANGAR_ID, name: tl('Old Hangar'), x: (HANGAR.x0 + HANGAR.x1) / 2, z: (HANGAR.z0 + HANGAR.z1) / 2, rect: { ...HANGAR }, flat: 4, blend: 26 });
   } else if (isVillageRegion(world, rx, rz)) {
     const Rv = rng(hash(world, rx, rz, 0x7a3e));
     pois.push(villageAt(rx, rz, V_A[Math.floor(Rv() * V_A.length)] + V_B[Math.floor(Rv() * V_B.length)]));

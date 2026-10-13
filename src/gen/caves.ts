@@ -8,6 +8,7 @@ import { mountainMask } from './mountains';
 import { inSea } from './seas';
 import { nearRiver } from './rivers';
 import type { Terrain } from './terrain';
+import { TL } from '../i18n';
 
 export interface Cave {
   id: number; name: string;
@@ -44,7 +45,7 @@ function rawCaves(t: Terrain, rx: number, rz: number): Cave[] {
       const front = (y - h(x - ux * 8, z - uz * 8)) / 8, behind = h(x + ux * 9, z + uz * 9) - y;
       if (front > 0.55 || front < -0.2 || behind < 6) continue;
       const id = hash(t.world, rx, rz, 0xca7e);
-      out.push({ id, name: ruinName(R) + ' Cave', sys: id, other: null, mouth: 0, x, z, y, face: Math.atan2(-uz, -ux), w: 3.6 + R() * 1.4, h: 3 + R() });
+      out.push({ id, name: TL`${ruinName(R)} Cave`, sys: id, other: null, mouth: 0, x, z, y, face: Math.atan2(-uz, -ux), w: 3.6 + R() * 1.4, h: 3 + R() });
       break;
     }
   }

@@ -11,6 +11,7 @@ import { EYE } from './player';
 import { burst } from './fx';
 import { takeOne, saveChar, progress, progressHas } from '../character';
 import { showToast, logLine, el } from '../ui/hud';
+import { tl } from '../i18n';
 
 export interface Door {
   g: THREE.Group; left: THREE.Group; right: THREE.Group; cx: number; cz: number; y0: number; axis: 'x' | 'z';
@@ -72,10 +73,10 @@ export function updateDoors(dt: number) {
   }
 }
 export function unlockDoor(d: Door) {
-  if (!takeOne('key')) { logLine('Locked. You need an Access Key'); return; }
+  if (!takeOne('key')) { logLine(tl('Locked. You need an Access Key')); return; }
   d.locked = false; d.panelMat.color.setHex(0x6dffa0); d.frameMat.color.setHex(0xb07a20); d.lock.visible = false;
   progress('unlocked').push(d.idx); saveChar();
-  burst(V(d.cx, d.y0 + 1.5, d.cz), 0xff7a5c, 24, 1.2); showToast('Door unlocked');
+  burst(V(d.cx, d.y0 + 1.5, d.cz), 0xff7a5c, 24, 1.2); showToast(tl('Door unlocked'));
 }
 
 // ---------- stairwells ----------

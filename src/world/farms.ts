@@ -17,6 +17,7 @@ import { findPoi, villageSeed, GRIDHOLM_ID, nearX } from '../gen/regions';
 import { OW } from './overworld';
 import type { VillageMap } from '../gen/village';
 import type { Terrain } from '../gen/terrain';
+import { TL } from '../i18n';
 
 const WOOD = 0xb8b060, SOIL = 0x6f8f76, CROP = 0xd8ff7a, GRAIN = 0xe8d880, METAL = 0xa8c8b8, ANIMAL = 0xe8e0c0, FLAX = 0x7ab8ff, BOLL = 0xf4f4ec;
 
@@ -130,7 +131,7 @@ export function updateFarms(dt: number) {
     const lastDry = st.convoy?.dry.at(-1)?.[0];
     settleConvoys(G.char.world, s.poi, s.village.seed, st, G.char.time); // (0.178) after the refinery's batches
     const dry = st.convoy?.dry.at(-1)?.[0];
-    if (dry && dry !== lastDry) logLine(`A convoy from ${s.poi.name} stayed home: there is not enough fuel in the village stores.`);
+    if (dry && dry !== lastDry) logLine(TL`A convoy from ${s.poi.name} stayed home: there is not enough fuel in the village stores.`);
     const homes = s.village.buildings.filter((b) => b.role === 'house' && !b.mine), occupied = Math.max(0, Math.floor((peopleAt(s.village.seed, s.poi.id === GRIDHOLM_ID, st, G.char.time) - 8) / 6));
     if (homes.some((b, i) => i < occupied && b.condition !== undefined && b.condition < 2)) reloadStruct(s.poi.id);
   }

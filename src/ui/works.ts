@@ -13,6 +13,7 @@ import { powerOf, type Works } from '../world/works';
 import { DRAW } from '../gen/energy';
 import { $ } from './hud';
 import { lockPointer } from './input';
+import { tl, TL } from '../i18n';
 
 const dlgEl = $('dlg'), panel = () => dlgEl.querySelector('.panel') as HTMLElement;
 let open: Works | null = null;
@@ -31,23 +32,23 @@ function render(msg = '') {
   const inputs = [...new Set(spec.recipes.flatMap((r) => r.in.map(([g]) => g)))];
   const rows = inputs.map((g) => {
     const inn = p.inp[g] ?? 0, have = carried(g, at), room = HOPPER - inn;
-    return `<div class="shoprow"><div><b>${name(g)}</b><br><span>in the hopper ${inn}/${HOPPER} · you have ${have}</span></div>
+    return TL`<div class="shoprow"><div><b>${name(g)}</b><br><span>in the hopper ${inn}/${HOPPER} · you have ${have}</span></div>
       <button class="opt" style="width:auto" data-wkl="${g}" data-n="1" ${have && room ? '' : 'disabled'}>load 1</button>
       <button class="opt" style="width:auto" data-wkl="${g}" data-n="999" ${have > 1 && room > 1 ? '' : 'disabled'}>load all</button></div>`;
   }).join('');
-  const outs = Object.entries(p.out).filter(([, n]) => n).map(([g, n]) => `<div class="shoprow"><div><b>${name(g as Good)}</b><br><span>${n} finished · worth about ${GOOD_INFO[g as Good]?.base ?? BASIC_VALUE[g as BasicMat] ?? 0} g a ${GOOD_INFO[g as Good] ? 'crate' : 'piece'}</span></div>
+  const outs = Object.entries(p.out).filter(([, n]) => n).map(([g, n]) => TL`<div class="shoprow"><div><b>${name(g as Good)}</b><br><span>${n} finished · worth about ${GOOD_INFO[g as Good]?.base ?? BASIC_VALUE[g as BasicMat] ?? 0} g a ${GOOD_INFO[g as Good] ? tl('crate') : tl('piece')}</span></div>
       <button class="opt" style="width:auto;color:var(--gold)" data-wkc="${g}">collect ${n}</button></div>`).join('');
-  const state = pr !== null ? `Working: batch ${Math.round(pr * 100)}% · next in ${Math.ceil(spec.batch * (1 - pr))} min.`
-    : !on && progress(p, now) !== null && shortHands(open.vid, 'works', open.slot) ? `<span style="color:var(--red,#ff5a3c)">Short of hands:</span> ${shortHands(open.vid, 'works', open.slot)}.`
-    : !on && progress(p, now) !== null ? `<span style="color:var(--red,#ff5a3c)">No power:</span> it draws ${DRAW[p.k]} kW and the village has not got it to spare. Build a power station (ask the elder), or keep the ones you have fed.`
-    : !rec.in.every(([g, n]) => (p.inp[g] ?? 0) >= n) ? `Idle: it needs ${rec.in.map(([g, n]) => `${n} ${name(g)}`).join(' and ')} for a batch.`
-    : `Idle: the output bay is full (${OUT_CAP} crates). Collect them.`;
+  const state = pr !== null ? TL`Working: batch ${Math.round(pr * 100)}% · next in ${Math.ceil(spec.batch * (1 - pr))} min.`
+    : !on && progress(p, now) !== null && shortHands(open.vid, 'works', open.slot) ? TL`<span style="color:var(--red,#ff5a3c)">Short of hands:</span> ${shortHands(open.vid, 'works', open.slot)}.`
+    : !on && progress(p, now) !== null ? TL`<span style="color:var(--red,#ff5a3c)">No power:</span> it draws ${DRAW[p.k]} kW and the village has not got it to spare. Build a power station (ask the elder), or keep the ones you have fed.`
+    : !rec.in.every(([g, n]) => (p.inp[g] ?? 0) >= n) ? TL`Idle: it needs ${rec.in.map(([g, n]) => `${n} ${name(g)}`).join(tl(' and '))} for a batch.`
+    : TL`Idle: the output bay is full (${OUT_CAP} crates). Collect them.`;
   panel().classList.add('wide');
   panel().innerHTML = `<h2>${spec.name}</h2><div class="role">${open.town} · ${spec.blurb}</div>` +
-    `<div class="say">${msg ? msg + '<br><br>' : ''}Makes <b>${recTxt(p.rec)}</b>, a batch every ${spec.batch} minutes while the hopper holds the inputs and it has power (${DRAW[p.k]} kW). ${state}<br><span style="opacity:.8">Crates come from your backpack and your vehicles parked by the village.</span></div>` +
-    (recipes ? `<div class="say" style="margin:6px 0 0">What it makes</div>${recipes}` : '') +
-    `<div class="say" style="margin:10px 0 0">Hopper</div>${rows}` + (outs ? `<div class="say" style="margin:10px 0 0">Finished</div>${outs}` : '') +
-    `<button class="opt" data-wkclose="1">Close</button>`;
+    TL`<div class="say">${msg ? msg + '<br><br>' : ''}Makes <b>${recTxt(p.rec)}</b>, a batch every ${spec.batch} minutes while the hopper holds the inputs and it has power (${DRAW[p.k]} kW). ${state}<br><span style="opacity:.8">Crates come from your backpack and your vehicles parked by the village.</span></div>` +
+    (recipes ? TL`<div class="say" style="margin:6px 0 0">What it makes</div>${recipes}` : '') +
+    TL`<div class="say" style="margin:10px 0 0">Hopper</div>${rows}` + (outs ? TL`<div class="say" style="margin:10px 0 0">Finished</div>${outs}` : '') +
+    TL`<button class="opt" data-wkclose="1">Close</button>`;
 }
 /** Open the window of works w; false when there is none (an empty plot, a building site). */
 export function openWorks(w: Works): boolean {
@@ -68,19 +69,19 @@ export function worksClick(t: HTMLElement): boolean {
   if (!p) { close(); return true; }
   const r = t.closest<HTMLElement>('[data-wkr]'), l = t.closest<HTMLElement>('[data-wkl]'), c = t.closest<HTMLElement>('[data-wkc]');
   const pw = powerOf(open);
-  if (r) { setRecipe(p, +r.dataset.wkr!, now, pw); saveChar(); render('It is set to make something else now.'); return true; }
+  if (r) { setRecipe(p, +r.dataset.wkr!, now, pw); saveChar(); render(tl('It is set to make something else now.')); return true; }
   if (l) {
     const g = l.dataset.wkl as Stuff, n = feed(p, g, Math.min(+l.dataset.n!, carried(g, at)), now, pw);
     if (n) takeFrom(g, n, at);
     calcStats(); saveChar();
-    render(n ? `Loaded ${n} × ${ITEMS[g].name} into the hopper.` : 'The hopper has no room for more of that.');
+    render(n ? TL`Loaded ${n} × ${ITEMS[g].name} into the hopper.` : tl('The hopper has no room for more of that.'));
     return true;
   }
   if (c) {
     const g = c.dataset.wkc as Good, n = collect(p, g, 999, now, pw), lost = putAway(g, n, at, true);
     if (lost) (p.out[g] = (p.out[g] ?? 0) + lost); // what did not fit stays in the bay
     calcStats(); saveChar();
-    render(n - lost ? `Collected ${n - lost} × ${ITEMS[g].name}${lost ? ` (${lost} left in the bay: no room)` : ''}.` : 'No room for a crate in your backpack or a vehicle parked by the village.');
+    render(n - lost ? TL`Collected ${n - lost} × ${ITEMS[g].name}${lost ? TL` (${lost} left in the bay: no room)` : ''}.` : tl('No room for a crate in your backpack or a vehicle parked by the village.'));
     return true;
   }
   return false;

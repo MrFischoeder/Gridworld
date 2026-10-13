@@ -8,6 +8,7 @@
 // storms tearing roofs off, rain slowing the roads, clouds dimming solar farms.
 import { hash } from '../core/rng';
 import { POLAR_Z } from './regions';
+import { tl } from '../i18n';
 
 export type WeatherKind = 'clear' | 'overcast' | 'rain' | 'fog' | 'storm';
 export interface Weather {
@@ -54,4 +55,4 @@ export function weatherAt(world: number, x: number, z: number, t: number): Weath
   const windDir = (hash(world, Math.floor(t / (WEATHER.slot * 3)), 0x3ea9) % 6283) / 1000;
   return { kind, ...acc, windDir };
 }
-export const WEATHER_NAME: Record<WeatherKind, string> = { clear: 'Clear', overcast: 'Overcast', rain: 'Rain', fog: 'Fog', storm: 'Thunderstorm' };
+export const WEATHER_NAME: Record<WeatherKind, string> = { clear: tl('Clear'), overcast: tl('Overcast'), rain: tl('Rain'), fog: tl('Fog'), storm: tl('Thunderstorm') };

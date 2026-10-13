@@ -42,6 +42,7 @@ import { logLine, showToast } from '../ui/hud';
 import { openTransfer } from '../ui/transfer';
 import { EYE } from './player';
 import type { Container } from '../save';
+import { tl, TL } from '../i18n';
 
 const HULL = 0x2fe060, DARK = 0x1f9a44, SAIL = 0xc4ffd2, GOLD = 0xffd060, WOOD = 0xb8b060;
 /** Boats are drawn within this distance (m). */
@@ -430,7 +431,7 @@ function step(l: Live, dt: number, manned: boolean, watched: boolean) {
     if (manned) c.throttle += (fwd - c.throttle) * Math.min(1, dt * (isShip(b.k) ? 0.8 : 2));
     if (fuel <= 0) c.throttle = 0;
     b.fuel = Math.max(0, fuel - Math.abs(c.throttle) * m.burn * dt);
-    if (fuel > 0 && b.fuel === 0 && (manned || watched)) showToast('Out of fuel: R to fill up from a canister');
+    if (fuel > 0 && b.fuel === 0 && (manned || watched)) showToast(tl('Out of fuel: R to fill up from a canister'));
     want = c.throttle > 0 ? c.throttle * s.speed : c.throttle * s.speed * s.back;
     steer = turn * s.turn * (0.35 + 0.65 * Math.min(1, Math.abs(c.speed) / 3));
     if (l.prop) { if (isShip(b.k)) l.prop.rotation.z += c.throttle * dt * 12; else l.prop.rotation.y = -turn * 0.5; }
@@ -458,7 +459,7 @@ function step(l: Live, dt: number, manned: boolean, watched: boolean) {
   else if (clearAt(l, l.x, l.z, ny)) { l.yaw = ny; if (manned) G.yaw += dyaw; c.speed *= 0.3; c.aground += dt; }
   else { c.speed = 0; c.aground += dt; }
   l.turn = dyaw / Math.max(dt, 1e-3);
-  if (c.aground > 0.4 && c.aground - dt <= 0.4 && (manned || watched)) showToast(s.tall && bridgeAhead(l) ? 'The mast will not pass under the bridge' : 'Aground: back off or turn');
+  if (c.aground > 0.4 && c.aground - dt <= 0.4 && (manned || watched)) showToast(s.tall && bridgeAhead(l) ? tl('The mast will not pass under the bridge') : tl('Aground: back off or turn'));
   b.x = l.x; b.z = l.z; b.yaw = l.yaw;
   rowOars(l, dt, turn); swingBooms(l, dt);
   place(l);
@@ -540,7 +541,7 @@ export function updateBoats(dt: number): boolean {
   if (!T) { if (aboard) stepOff(true); return false; }
   if (aboard && Math.abs(G.pos.x - aboard.x) > WORLD_W / 2) aboard.x += Math.round((G.pos.x - aboard.x) / WORLD_W) * WORLD_W; // the planet's seam
   // the second seat of a small boat takes the oars when nobody else holds them
-  if (aboard && seat === 1 && !fresh(aboard)?.helm) { seat = 0; logLine('You move to the forward thwart and take the boat.'); }
+  if (aboard && seat === 1 && !fresh(aboard)?.helm) { seat = 0; logLine(tl('You move to the forward thwart and take the boat.')); }
   const deck = shipUnder(), was = deck ? { x: deck.g.position.x, y: deck.g.position.y, z: deck.g.position.z, yaw: deck.yaw } : null;
   bob = Math.sin(performance.now() / 700) * 0.04;
   const look = (plankT -= dt) <= 0; if (look) plankT = 0.4;
@@ -591,36 +592,36 @@ export function boatCamera(camera: THREE.PerspectiveCamera) {
 }
 export function toggleBoatView() { if (aboard) third = !third; }
 /** The wind as the boat feels it, in words. */
-function windWords(l: Live) { const th = windAngle(l.yaw, l.c.wind.dir); return `wind ${windSpeed(l.c.wind.w).toFixed(0)} m/s ${pointOfSail(th)}`; }
+function windWords(l: Live) { const th = windAngle(l.yaw, l.c.wind.dir); return TL`wind ${windSpeed(l.c.wind.w).toFixed(0)} m/s ${pointOfSail(th)}`; }
 /** HUD line while aboard, or standing on a ship's deck away from its wheel. */
 export function boatHint(): string | null {
   const deck = shipUnder();
   if (!aboard && deck) {
     if (nearHelm(deck)) return null; // the prompt offers the wheel
-    const s = BOATS[deck.k], c = deck.c, how = s.motor ? (c.throttle ? `engine at ${Math.round(Math.abs(c.throttle) * 100)}%` : 'engine idle') : c.sailUp ? 'under sail' : 'sails furled';
-    const helm = fresh(deck)?.helm ? ' · someone has the wheel' : '';
-    return `On the deck of the ${s.name.toLowerCase()} · ${Math.abs(c.speed).toFixed(1)} m/s · ${how}${helm} · E at the wheel (aft) to steer · F the hold`;
+    const s = BOATS[deck.k], c = deck.c, how = s.motor ? (c.throttle ? TL`engine at ${Math.round(Math.abs(c.throttle) * 100)}%` : tl('engine idle')) : c.sailUp ? tl('under sail') : tl('sails furled');
+    const helm = fresh(deck)?.helm ? tl(' · someone has the wheel') : '';
+    return TL`On the deck of the ${s.name.toLowerCase()} · ${Math.abs(c.speed).toFixed(1)} m/s · ${how}${helm} · E at the wheel (aft) to steer · F the hold`;
   }
   if (!aboard) return null;
   const l = aboard, b = l.b, s = BOATS[b.k], c = l.c, ship = isShip(b.k), head = `${s.name} · ${Math.abs(c.speed).toFixed(1)} m/s`;
-  if (seat === 1) return (s.rowers ?? 1) >= 2 && !c.sailUp ? `${head} · the second oars: W/S row (together you go faster) · A/D help turn · E step out · V view` : `${head} · along for the ride · E step out · F the hold · V view`;
-  const tail = ship ? ' · E leave the wheel (she holds her course) · F the hold · V view' : ' · E step out · F the hold · V view';
-  if (s.motor) return `${head} · fuel ${Math.ceil(b.fuel ?? 0)}/${s.motor.tank} L · W/S throttle · A/D steer · R refuel${tail}`;
+  if (seat === 1) return (s.rowers ?? 1) >= 2 && !c.sailUp ? TL`${head} · the second oars: W/S row (together you go faster) · A/D help turn · E step out · V view` : TL`${head} · along for the ride · E step out · F the hold · V view`;
+  const tail = ship ? tl(' · E leave the wheel (she holds her course) · F the hold · V view') : tl(' · E step out · F the hold · V view');
+  if (s.motor) return TL`${head} · fuel ${Math.ceil(b.fuel ?? 0)}/${s.motor.tank} L · W/S throttle · A/D steer · R refuel${tail}`;
   if (s.sails) {
     const th = windAngle(l.yaw, c.wind.dir), ws = windWords(l);
-    if (!c.sailUp) return ship ? `${head} · ${ws} · sails furled: she only drifts · A/D rudder · Space set the sails${tail}` : `${head} · ${ws} · sail down: W/S row · A/D turn · Space raise the sail${tail}`;
-    const t = trim(th, c.sheet), best = bestSheet(th), tip = t > 0.8 ? 'trim good' : c.sheet < best ? 'let the sheets out (W)' : 'haul the sheets in (S)';
-    return `${head} · ${ws} · ${tip} · A/D rudder · Space ${ship ? 'furl the sails' : 'lower the sail'}${tail}`;
+    if (!c.sailUp) return ship ? TL`${head} · ${ws} · sails furled: she only drifts · A/D rudder · Space set the sails${tail}` : TL`${head} · ${ws} · sail down: W/S row · A/D turn · Space raise the sail${tail}`;
+    const t = trim(th, c.sheet), best = bestSheet(th), tip = t > 0.8 ? tl('trim good') : c.sheet < best ? tl('let the sheets out (W)') : tl('haul the sheets in (S)');
+    return TL`${head} · ${ws} · ${tip} · A/D rudder · Space ${ship ? tl('furl the sails') : tl('lower the sail')}${tail}`;
   }
-  const two = l.oar2 && performance.now() - l.oar2.at < 600 ? ' · two rowing' : (s.rowers ?? 1) >= 2 ? ' · a second player can take the aft oars' : '';
-  return `${head} · W/S row · A/D turn${two}${tail}`;
+  const two = l.oar2 && performance.now() - l.oar2.at < 600 ? tl(' · two rowing') : (s.rowers ?? 1) >= 2 ? tl(' · a second player can take the aft oars') : '';
+  return TL`${head} · W/S row · A/D turn${two}${tail}`;
 }
 /** Space at the helm of a sailing boat: raise or lower the sail (set or furl a ship's sails). */
 export function toggleSail(): boolean {
   if (!aboard || seat !== 0 || !BOATS[aboard.k].sails) return false;
   const c = aboard.c, ship = isShip(aboard.k);
   c.sailUp = !c.sailUp;
-  logLine(c.sailUp ? (ship ? 'The sails are set.' : 'You haul the sail up.') : (ship ? 'The sails are furled: she drifts.' : 'You let the sail down and ship the oars.'));
+  logLine(c.sailUp ? (ship ? tl('The sails are set.') : tl('You haul the sail up.')) : (ship ? tl('The sails are furled: she drifts.') : tl('You let the sail down and ship the oars.')));
   return true;
 }
 /** R aboard (or beside, or on the deck of) a motor boat or ship: pour a fuel canister from the hold or the backpack into its tank. */
@@ -628,12 +629,12 @@ export function refuel(): boolean {
   const b = aboard?.b ?? shipUnder()?.b ?? nearBoat();
   if (!b || !BOATS[b.k].motor) return false;
   const m = BOATS[b.k].motor!, have = b.fuel ?? 0;
-  if (have > m.tank - m.can * 0.5) { logLine('The tank is nearly full.'); return true; }
+  if (have > m.tank - m.can * 0.5) { logLine(tl('The tank is nearly full.')); return true; }
   const hold = boatHold(b), i = hold.items.findIndex((x) => x?.k === 'fuel');
   if (i >= 0) { const x = hold.items[i]!; x.n--; if (x.n <= 0) hold.items[i] = null; }
-  else if (!takeOne('fuel')) { logLine('You have no Fuel Canister, in the hold or your backpack. Villages trade them.'); return true; }
+  else if (!takeOne('fuel')) { logLine(tl('You have no Fuel Canister, in the hold or your backpack. Villages trade them.')); return true; }
   b.fuel = Math.min(m.tank, have + m.can);
-  logLine(`You pour a canister into the tank: ${Math.round(b.fuel)} of ${m.tank} litres.`);
+  logLine(TL`You pour a canister into the tank: ${Math.round(b.fuel)} of ${m.tank} litres.`);
   saveChar(); return true;
 }
 /** Is there a bridge just ahead of the boat (why a tall one stopped)? */
@@ -672,10 +673,10 @@ export function boatPrompt(b: Boat): string {
   const s = BOATS[b.k], n = s.name.toLowerCase(), l = live.get(b.id);
   if (!isShip(b.k)) {
     const h = l && fresh(l);
-    return h?.helm ? (s.seat2 !== undefined && !h.seat2 ? `E — take the ${(s.rowers ?? 1) >= 2 ? 'aft oars' : 'second seat'} of the ${n}` : `The ${n} is full`) : `E — get into the ${n} · F — its hold`;
+    return h?.helm ? (s.seat2 !== undefined && !h.seat2 ? TL`E — take the ${(s.rowers ?? 1) >= 2 ? tl('aft oars') : tl('second seat')} of the ${n}` : TL`The ${n} is full`) : TL`E — get into the ${n} · F — its hold`;
   }
-  if (shipUnder()?.b === b) return l && fresh(l)?.helm ? `Someone else has the wheel of the ${n}` : `E — take the wheel of the ${n} · F — the hold`;
-  return `E — climb the ladder up the side of the ${n}`;
+  if (shipUnder()?.b === b) return l && fresh(l)?.helm ? TL`Someone else has the wheel of the ${n}` : TL`E — take the wheel of the ${n} · F — the hold`;
+  return TL`E — climb the ladder up the side of the ${n}`;
 }
 /** Get in (a small boat: the oars, or the second seat if someone has them), take the wheel (on a ship's deck), or climb a
  *  ship's ladder up onto her deck. */
@@ -688,22 +689,22 @@ export function board(b: Boat) {
     if (!side) return;
     const [x, z] = world(l, LADDER_U, side * (halfBeam(l.k, LADDER_U) - 0.6));
     G.pos.set(x, l.g.position.y + s.deck!, z); G.vel.set(0, 0, 0); G.swimming = false;
-    logLine(`You climb the rope ladder onto the deck of the ${s.name.toLowerCase()}. The wheel is aft.`);
+    logLine(TL`You climb the rope ladder onto the deck of the ${s.name.toLowerCase()}. The wheel is aft.`);
     return;
   }
   if (h?.helm && h.helm !== me()) {
-    if (isShip(b.k)) { showToast('Someone else has the wheel'); return; }
-    if (s.seat2 === undefined || (h.seat2 && h.seat2 !== me())) { showToast(`The ${s.name.toLowerCase()} is full`); return; }
+    if (isShip(b.k)) { showToast(tl('Someone else has the wheel')); return; }
+    if (s.seat2 === undefined || (h.seat2 && h.seat2 !== me())) { showToast(TL`The ${s.name.toLowerCase()} is full`); return; }
     aboard = l; seat = 1; third = false; G.yaw = l.yaw + Math.PI;
-    logLine((s.rowers ?? 1) >= 2 ? `You take the aft oars of the ${s.name.toLowerCase()}: row together and she goes faster.` : `You sit in the ${s.name.toLowerCase()}, along for the ride.`);
+    logLine((s.rowers ?? 1) >= 2 ? TL`You take the aft oars of the ${s.name.toLowerCase()}: row together and she goes faster.` : TL`You sit in the ${s.name.toLowerCase()}, along for the ride.`);
     return;
   }
   aboard = l; seat = 0; third = false;
   if (!isShip(b.k)) { l.c.speed = 0; l.c.sailUp = false; l.c.sheet = 0.5; l.c.throttle = 0; }
   l.c.aground = 0; l.c.windT = 0; G.yaw = l.yaw + Math.PI; // looking forward: the camera looks down −z of its yaw
-  logLine(b.k === 'row' ? 'You climb into the rowboat and take up the oars.' : b.k === 'sail' ? 'You step into the sailing skiff and take the tiller. Space raises the sail.'
-    : b.k === 'motor' ? `You take the helm of the motor skiff: ${Math.ceil(b.fuel ?? 0)} litres in the tank.`
-    : s.motor ? `You take the wheel of the motor ship: ${Math.ceil(b.fuel ?? 0)} of ${s.motor.tank} litres. W/S the throttle.` : 'You take the wheel of the sailing ship. Space sets the sails.');
+  logLine(b.k === 'row' ? tl('You climb into the rowboat and take up the oars.') : b.k === 'sail' ? tl('You step into the sailing skiff and take the tiller. Space raises the sail.')
+    : b.k === 'motor' ? TL`You take the helm of the motor skiff: ${Math.ceil(b.fuel ?? 0)} litres in the tank.`
+    : s.motor ? TL`You take the wheel of the motor ship: ${Math.ceil(b.fuel ?? 0)} of ${s.motor.tank} litres. W/S the throttle.` : tl('You take the wheel of the sailing ship. Space sets the sails.'));
 }
 /** E at the oars or the wheel: step out of a small boat (onto a dock, a bridge's deck, a gangplank or dry ground beside it;
  *  with none, a second E drops you into the water), or leave a ship's wheel and stand on her deck. */
@@ -713,7 +714,7 @@ export function stepOff(quiet = false) {
   const b = l.b, T = OW.terrain, s = BOATS[b.k], mine = seat === 0;
   if (isShip(b.k)) {
     aboard = null; seat = 0; third = false; G.vel.set(0, 0, 0);
-    if (!quiet) logLine(l.c.sailUp || l.c.throttle ? 'You leave the wheel: she holds her course. Mind the shore.' : 'You leave the wheel.');
+    if (!quiet) logLine(l.c.sailUp || l.c.throttle ? tl('You leave the wheel: she holds her course. Mind the shore.') : tl('You leave the wheel.'));
     saveChar(); return;
   }
   if (!quiet && T) {
@@ -724,10 +725,10 @@ export function stepOff(quiet = false) {
       if (deck !== null) { spot = [x, deck, z]; break; }
       if (!w || w.depth < 0.35) { spot = [x, T.heightAt(x, z), z]; break; }
     }
-    if (!spot && jumpT <= 0) { jumpT = 3; logLine('Nowhere dry to step out here: row to a bank, a beach or a dock. Press E again to go over the side.'); return; }
+    if (!spot && jumpT <= 0) { jumpT = 3; logLine(tl('Nowhere dry to step out here: row to a bank, a beach or a dock. Press E again to go over the side.')); return; }
     if (spot) G.pos.set(spot[0], spot[1] + 0.02, spot[2]);
     else G.pos.set(nearX(l.x, G.pos.x) + fz * (s.beam / 2 + 1), l.g.position.y - 1, l.z - fx * (s.beam / 2 + 1));
-    logLine(spot ? 'You step out of the boat.' : 'You slip over the side into the water.');
+    logLine(spot ? tl('You step out of the boat.') : tl('You slip over the side into the water.'));
   }
   aboard = null; seat = 0; third = false;
   if (mine) { l.c.speed = 0; l.c.throttle = 0; l.c.sailUp = false; if (l.prop) l.prop.rotation.y = 0; l.ro = [0, 0]; l.oars.forEach((o) => o.rotation.set(0, 0, 0)); }
@@ -744,7 +745,7 @@ export function boatHold(b: Boat): Container {
 export function openBoatHold(): boolean {
   const b = aboard?.b ?? shipUnder()?.b ?? nearBoat();
   if (!b) return false;
-  openTransfer({ title: BOATS[b.k].name, subtitle: 'The hold', boxLabel: 'Hold', box: boatHold(b) });
+  openTransfer({ title: BOATS[b.k].name, subtitle: tl('The hold'), boxLabel: tl('Hold'), box: boatHold(b) });
   return true;
 }
 /** The hulls you are not in are solid to someone wading or swimming beside them (a ship's deck is `shipHit`'s). */

@@ -8,13 +8,14 @@ import { stockOf, refineStock, sawStock, smeltStock, settleConvoys, type Stock }
 import { online, net, lockTown, unlockTown } from '../net/client';
 import { showToast } from './hud';
 import { initializeSettlements } from '../gen/settlement';
+import { tl, TL } from '../i18n';
 
 /** No inventory is changed until the shared stock is reserved and refreshed from the server. */
 export async function withTownStock(vid: number, action: () => void): Promise<boolean> {
   if (!online()) { action(); return true; }
   const key = String(vid), connection = net.id;
   const locked = await lockTown(key, G.char.towns[key] ?? {});
-  if (!locked || net.id !== connection) { if (locked && net.id === connection) unlockTown(key); showToast('The village stock is in use. Try again shortly.'); return false; }
+  if (!locked || net.id !== connection) { if (locked && net.id === connection) unlockTown(key); showToast(tl('The village stock is in use. Try again shortly.')); return false; }
   try {
     // A persisted 0.131 room may return a town before its deposit metadata was migrated locally.
     initializeSettlements(G.char);
@@ -27,7 +28,7 @@ export async function withTownStock(vid: number, action: () => void): Promise<bo
 export async function withOutpost(id: string, action: () => void): Promise<boolean> {
   if (!online()) { action(); return true; }
   const connection = net.id, locked = await lockTown(id, G.char.outposts[id], 'outposts');
-  if (!locked || net.id !== connection) { if (locked && net.id === connection) unlockTown(id, undefined, 'outposts'); showToast('Someone else is working at this outpost. Try again shortly.'); return false; }
+  if (!locked || net.id !== connection) { if (locked && net.id === connection) unlockTown(id, undefined, 'outposts'); showToast(tl('Someone else is working at this outpost. Try again shortly.')); return false; }
   try { action(); return true; }
   finally { unlockTown(id, G.char.outposts[id], 'outposts'); }
 }
@@ -45,11 +46,11 @@ export const stockHas = (vid: number) => { const s = stockAt(vid); return (k: It
 /** Take what a build used out of the stock. */
 export function stockTake(vid: number, taken: [ItemKey, number][]) { const s = stockAt(vid); if (s) for (const [k, n] of taken) s.take(k, n); }
 /** "in the hall: n" for a row still short, or "done". */
-export const hallNote = (have: number, given: number, n: number) => (given >= n ? ' · done' : ` · in the village hall: ${have}`);
+export const hallNote = (have: number, given: number, n: number) => (given >= n ? ' · done' : TL` · in the village hall: ${have}`);
 /** What a build still lacks in the stock, in words (empty: nothing). */
 export function lacking(rows: { k: ItemKey; n: number; given: number }[], has: (k: ItemKey) => number): string {
   const miss = rows.filter((r) => r.given + has(r.k) < r.n).map((r) => `${r.n - r.given - has(r.k)} ${ITEMS[r.k].name}`);
-  return miss.length ? `The village hall still lacks ${miss.join(', ')}: bring them to the village stores (the warehouse terminal outside the north gate, or the elder while there is no warehouse).` : '';
+  return miss.length ? TL`The village hall still lacks ${miss.join(', ')}: bring them to the village stores (the warehouse terminal outside the north gate, or the elder while there is no warehouse).` : '';
 }
 /** The button every build panel shows. */
-export const buildButton = (attr: string, what: string, can: boolean) => `<button class="opt" ${attr} ${can ? '' : 'disabled'}>Build from the village hall's stock (${what})</button>`;
+export const buildButton = (attr: string, what: string, can: boolean) => TL`<button class="opt" ${attr} ${can ? '' : 'disabled'}>Build from the village hall's stock (${what})</button>`;

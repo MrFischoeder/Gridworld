@@ -16,6 +16,7 @@ import { rng } from '../core/rng';
 import { citySites, cityAt, cityLayout, worldToCity, bldsNear, carsNear, inBld, bldTop, corners, CITY, type CityLayout, type CitySite, type Bld, type Street, type Car } from '../gen/cities';
 import { nearX, worldDist } from '../gen/regions';
 import type { Terrain } from '../gen/terrain';
+import { tl, TL } from '../i18n';
 
 const EDGE = 0x36e468, DIM = 0x1c8a42, FRAME = 0x52d27a, RUBBLE = 0x4c9a62, KERB = 0x2c8048, PAINT = 0x8fe0a0, CAR = 0x5fb07a, LAMP = 0x3fa060;
 const FH = CITY.floor, TILE = 96, TILE_IN = 250, TILE_OUT = 330, CITY_IN = 360, CITY_OUT = 480;
@@ -212,7 +213,7 @@ function cityVaultModel(T: Terrain, l: Live): THREE.Group {
   }
   const g = pb.build(); g.name = 'city-vaults'; g.userData.entrances = entries.map(e => e.id);
   for (const e of entries) {
-    const sign = textSprite('VAULT ' + (e.n + 1) + ' [E]', '#5cc8ff', 6);
+    const sign = textSprite(tl('VAULT ') + (e.n + 1) + ' [E]', '#5cc8ff', 6);
     sign.position.set(e.u, H(e.u,e.v)+4.8, e.v-2.5); g.add(sign);
   }
   return g;
@@ -333,7 +334,7 @@ export function cityRay(o: { x: number; y: number; z: number }, d: { x: number; 
 export function cityName(x: number, z: number): string | null {
   const T = OW.terrain;
   if (!T) return null;
-  for (const c of citySites(T.world)) if (worldDist(c.x, c.z, x, z) < c.r + 20) return 'Ruins of ' + c.name;
+  for (const c of citySites(T.world)) if (worldDist(c.x, c.z, x, z) < c.r + 20) return tl('Ruins of ') + c.name;
   return null;
 }
 
@@ -358,7 +359,7 @@ export function cityVaultHint(x: number, z: number): string {
     if (worldDist(x,z,l.c.x,l.c.z)>l.c.r) continue;
     const entries = cityEntrances(G.char.world,l.c);
     const e = entries.reduce((a,b)=>worldDist(x,z,a.x,a.z)<worldDist(x,z,b.x,b.z)?a:b);
-    return ` · Underground ${e.n+1}: ${Math.round(worldDist(x,z,e.x,e.z))} m · M map`;
+    return TL` · Underground ${e.n+1}: ${Math.round(worldDist(x,z,e.x,e.z))} m · M map`;
   }
   return '';
 }

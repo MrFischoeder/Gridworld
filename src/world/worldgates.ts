@@ -14,6 +14,7 @@ import type { Terrain } from '../gen/terrain';
 import { scene, disposeTree } from './render';
 import { startGateTransit, finishGateTransit, gateTransitActive } from '../ui/gatetransit';
 import { gateModel, gateEnergy, gateSignals } from './gatemodel';
+import { tl, TL } from '../i18n';
 
 interface LoadedGate { site: WorldGate; group: THREE.Group; energy: THREE.Mesh; signal: THREE.Group | null; signalKey: string; rocks: (ReturnType<typeof gateRocks>[number] & { y: number })[]; previous: [number, number, number] }
 const loaded = new Map<number, LoadedGate>();
@@ -22,7 +23,7 @@ export function setGateTravel(fn: typeof travel) { travel = fn; }
 let single = new GateConnections(() => Date.now()), connectionKey = '', pendingTravel = false;
 export const gateTravelPending = () => pendingTravel || gateTransitActive();
 function connections(): GateLink[] {
-  const key = `${G.char.world}:${online() ? `${net.room?.id}:${net.id}` : 'solo'}`;
+  const key = `${G.char.world}:${online() ? `${net.room?.id}:${net.id}` : tl('solo')}`;
   if (key !== connectionKey) { connectionKey = key; single = new GateConnections(() => Date.now()); }
   return online() ? liveGateLinks() : single.state();
 }
@@ -74,15 +75,15 @@ export const nearGatePanel = () => nearDevice(GATE_PANEL);
 export const nearGateTablet = () => nearDevice(GATE_TABLET);
 export async function dialWorldGate(source: WorldGate, symbols: readonly number[]): Promise<string> {
   const g = loaded.get(source.id), near = nearGatePanel();
-  if (!g || near?.id !== source.id || driving.v || riding()) return 'Stand beside this gate\'s console on foot.';
-  if (gateConnection(source.id)) return `Terminal locked for ${gateSecondsLeft(source.id)} seconds.`;
+  if (!g || near?.id !== source.id || driving.v || riding()) return tl('Stand beside this gate\'s console on foot.');
+  if (gateConnection(source.id)) return TL`Terminal locked for ${gateSecondsLeft(source.id)} seconds.`;
   // Resolve the remote terrain before starting the admission clock, never during a late crossing.
   worldGates(G.char.world);
   connections();
   if (online()) flushPeerState();
   const result = online() ? await requestGateDial(source.id, symbols) : single.open(G.char.world, source.id, symbols);
-  if (!result.ok) return result.why ?? 'No connection.';
-  return `Connection open for ${GATE_SECONDS} seconds. Both terminals are locked. Walk or drive through the ring.`;
+  if (!result.ok) return result.why ?? tl('No connection.');
+  return TL`Connection open for ${GATE_SECONDS} seconds. Both terminals are locked. Walk or drive through the ring.`;
 }
 
 /** Avoid an occupied exit while leaving enough room for the whole truck behind the portal plane. */
@@ -106,7 +107,7 @@ function landing(to: WorldGate, car: Vehicle | null, side: number): [number, num
 }
 function beginTravel(g: LoadedGate, to: WorldGate, side: number) {
   const car = driving.v, point = landing(to, car, side);
-  if (!point) { if (car) car.speed = 0; showToast('The destination exit is occupied. Wait for it to clear.'); return; }
+  if (!point) { if (car) car.speed = 0; showToast(tl('The destination exit is occupied. Wait for it to clear.')); return; }
   const [x, z] = point, heading = to.yaw + (side < 0 ? Math.PI : 0), world = G.char.world;
   if (!online()) {
     const connection = single, accepted = connection.begin(g.site.id);
@@ -123,7 +124,7 @@ function beginTravel(g: LoadedGate, to: WorldGate, side: number) {
   flushPeerState(); pendingTravel = net.gateTravelling = true;
   void requestGateTravel(g.site.id, car && pose ? { index, id: car.st.id, pose } : undefined).then(result => {
     if (result.ok && result.to === to.id && G.char.world === world && G.char.loc === 'overworld' && driving.v === car) travel(to, x, z, heading, car);
-    else { if (car) car.speed = 0; showToast(result.why ?? 'The connection closed.'); }
+    else { if (car) car.speed = 0; showToast(result.why ?? tl('The connection closed.')); }
   }).finally(() => { finishGateTransit(); pendingTravel = net.gateTravelling = false; });
 }
 export function updateWorldGates(dt: number, canTravel = false) {

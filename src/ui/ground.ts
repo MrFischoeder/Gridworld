@@ -11,6 +11,7 @@ import { dropAtFeet, takeDrop } from '../world/drops';
 import { $ } from './hud';
 import { slotHTML, parseId } from './slots';
 import { setGroundSide, refreshPack, packSide, type PackSide } from './backpack';
+import { tl, TL } from '../i18n';
 
 /** How far around you the ground panel looks (m), and how many things it lists. */
 export const GROUND = { reach: 2, max: 48, min: 24 };
@@ -33,8 +34,8 @@ const sigOf = (ps: Pickup[]) => ps.map((p) => `${p.drop ?? p.k}:${p.n ?? 1}:${p.
 /** Picks a lying thing up: a shared drop asks the server (it arrives a moment later), loot comes at once. */
 function take(p: Pickup): string {
   const name = item(p.k).name + ((p.n ?? 1) > 1 ? ' ×' + p.n : '');
-  if (p.drop) { takeDrop(p); return `Picking up ${name}…`; }
-  return grabPickup(p) ? `Picked up ${name}.` : 'No room for it in your backpack.';
+  if (p.drop) { takeDrop(p); return TL`Picking up ${name}…`; }
+  return grabPickup(p) ? TL`Picked up ${name}.` : tl('No room for it in your backpack.');
 }
 
 const ground: PackSide = {
@@ -42,29 +43,29 @@ const ground: PackSide = {
   render() {
     shown = groundNear(); sig = sigOf(shown);
     el.side.classList.add('ground');
-    el.title.textContent = 'On the ground';
-    el.sub.textContent = `Within ${GROUND.reach} m of you`;
-    el.label.textContent = shown.length ? `Lying here (${shown.length})` : 'Nothing lies here';
+    el.title.textContent = tl('On the ground');
+    el.sub.textContent = TL`Within ${GROUND.reach} m of you`;
+    el.label.textContent = shown.length ? TL`Lying here (${shown.length})` : tl('Nothing lies here');
     const n = Math.max(GROUND.min, Math.ceil((shown.length + 6) / 6) * 6); // always a free row to put things down
     el.grid.innerHTML = Array.from({ length: n }, (_, i) => {
       const p = shown[i];
-      return p ? slotHTML('f:' + i, { k: p.k, n: p.n, c: p.c, cls: p.taking ? 'off' : '' }) : slotHTML('f:' + i, { k: null, cls: 'empty-ground', title: 'Drag an item here to put it down' });
+      return p ? slotHTML('f:' + i, { k: p.k, n: p.n, c: p.c, cls: p.taking ? 'off' : '' }) : slotHTML('f:' + i, { k: null, cls: 'empty-ground', title: tl('Drag an item here to put it down') });
     }).join('');
     el.gold.innerHTML = '';
-    el.all.textContent = 'Pick up all';
+    el.all.textContent = tl('Pick up all');
     el.all.style.display = shown.length ? '' : 'none';
-    el.msg.textContent = msg || (shown.length ? 'Click an item or drag it into your backpack to pick it up. Drag yours here to put them down.' : 'Drag an item here (or select it and press Drop) to put it down at your feet.');
+    el.msg.textContent = msg || (shown.length ? tl('Click an item or drag it into your backpack to pick it up. Drag yours here to put them down.') : tl('Drag an item here (or select it and press Drop) to put it down at your feet.'));
     msg = '';
   },
   drop(from, to) {
     const [fw, i] = parseId(from), [tw] = parseId(to);
     if (fw === 'f' && tw === 'f') return '';
     if (fw === 'f') { const p = shown[i]; return p && W.pickups.includes(p) ? take(p) : ''; } // into the kit: it finds its own place
-    if (fw !== 'p' && fw !== 'k' && fw !== 'h') return 'Take it off into your backpack first.';
+    if (fw !== 'p' && fw !== 'k' && fw !== 'h') return tl('Take it off into your backpack first.');
     const L = listOf(fw), s = L[i];
     if (!s) return '';
     L[i] = null; dropAtFeet(s);
-    return `You put down ${item(s.k).name}${s.n > 1 ? ' ×' + s.n : ''}.`;
+    return TL`You put down ${item(s.k).name}${s.n > 1 ? ' ×' + s.n : ''}.`;
   },
   click(id) {
     const [, i] = parseId(id), p = shown[i];
@@ -78,7 +79,7 @@ el.all.addEventListener('click', () => {
   if (packSide() !== ground) return;
   let left = 0;
   for (const p of groundNear()) { if (p.drop) takeDrop(p); else if (!grabPickup(p)) left++; }
-  msg = left ? 'No room for the rest: it stays on the ground.' : 'Picked everything up.';
+  msg = left ? tl('No room for the rest: it stays on the ground.') : tl('Picked everything up.');
   refreshPack();
 });
 

@@ -6,6 +6,7 @@ import { hash } from '../core/rng';
 import { allVillages, poisNear, GRIDHOLM_ID, worldDist, type Poi } from './regions';
 import { villageDeposits, rareDepositsOf, quarryMineral, brine, ORES, YARD_KINDS, type Deposits, type YardKind } from './resource-sites';
 import { startJob, jobOf } from './construction';
+import { tl, TL } from '../i18n';
 export { RESOURCE_PLOTS } from './resource-sites';
 
 export type Project = 'warehouse' | 'power' | 'comms' | 'quarry' | 'mine' | 'lumber' | 'oil' | 'refinery' | 'foodworks' | 'relay' | 'sawmill' | 'sawmill2' | 'sawmill3' | 'raremine' | 'furnace' | 'furnace2' | 'furnace3' | 'fuelpump' | 'charger';
@@ -30,34 +31,34 @@ export const progressive = (s: TownState | undefined) => s?.settlement?.v === 1;
 export const projectDone = (s: TownState | undefined, k: Project) => !!s?.settlement?.done?.[k];
 export const SETTLEMENT_START = 8;
 export const PROJECTS: Record<Project, { name: string; needs: [ItemKey, number][]; description: string }> = {
-  warehouse: { name: 'Vehicle warehouse', needs: [['planks', 84], ['stone', 24], ['nails', 20]], description: 'Build the plank warehouse outside the north fence. From then on the village stores are kept there: drive in through its wide doors and unload your vehicle at the terminal.' },
-  power: { name: 'Village power plant', needs: [['scrap', 12], ['wire', 8], ['circuit', 2]], description: 'Build electricity on the marked site outside the fence. Farms work by hand until then.' },
-  comms: { name: 'Satellite link', needs: [['planks', 12], ['stone', 6], ['scrap', 4]], description: 'Restore the receiver in the nearby communications ruin. Use its console to reconnect the satellites and receive a GPS tablet.' },
-  quarry: { name: 'Stone quarry', needs: [['planks', 44], ['scrap', 4]], description: 'Build stone-cutting works beside the large pile of boulders about 100 metres beyond our fence. Every village has its own quarry; it supplies building stone.' },
-  mine: { name: 'Ore mine', needs: [['planks', 48], ['stone', 12], ['scrap', 6]], description: 'Build a mine at the coloured rocky hollow. Only villages with a local ore seam can extract that ore.' },
-  lumber: { name: 'Lumber camp', needs: [['planks', 24], ['stone', 10], ['scrap', 8]], description: 'Build a woodcutters\' camp in the great grove. The giant trees there are too big to fell, but the crews take timber from them for good: logs every day, and you may cut them yourself once the camp stands. Saw the logs into planks by hand or at a sawmill.' },
-  oil: { name: 'Oil well', needs: [['scrap', 16], ['wire', 8], ['planks', 12]], description: 'Build a pump at the natural oil seep. Crude oil collects in village stock.' },
-  refinery: { name: 'Oil refinery', needs: [['scrap', 24], ['circuit', 4], ['wire', 12], ['planks', 18]], description: 'Build a refinery north of the village. It turns crude oil from the village stores into fuel: crude from our own well if we have one, or crude you bring from the oil villages. Fuel sells for far more than crude.' },
-  sawmill: { name: 'Sawmill', needs: [['planks', 20], ['stone', 8], ['scrap', 6], ['wire', 4]], description: 'Build a powered sawmill on the staked plot north-west of the village. Its frame saw cuts logs from the village stores into planks: 6 from a log, where a hand saw gets 4. It runs on electricity and needs a crew of three.' },
-  sawmill2: { name: 'Sawmill: circular saws', needs: [['scrap', 12], ['parts', 2], ['wire', 6], ['planks', 10]], description: 'Fit the sawmill with circular saws: 7 planks from a log, and it takes more power.' },
-  sawmill3: { name: 'Sawmill: band saws', needs: [['motor', 2], ['parts', 3], ['steel', 4], ['cable', 4]], description: 'Fit band saws driven by electric motors: 8 planks from a log, the best a sawmill can do. It draws the most power.' },
-  relay: { name: 'Relay mast', needs: [['scrap', 12], ['wire', 10], ['circuit', 4], ['planks', 16], ['gears', 2]], description: 'Raise a relay mast over the receiver. The satellites talk to it on their own passes, so orbital scans round this village come apart from the rest of the world and reach further.' },
-  raremine: { name: 'Deep mine', needs: [['drillrig', 1], ['steel', 6], ['cable', 6], ['cement', 8], ['planks', 16]], description: 'Sink a deep shaft over the rare deposit south-east of the village. A drill rig from a Heavy Engineering Works bores down to it, a winding house and a headframe bring the ore up into the village stores every day. It needs power and a crew of four.' },
-  furnace: { name: 'Coal furnace', needs: [['stone', 24], ['planks', 16], ['scrap', 12], ['wire', 4]], description: 'Build a stone shaft furnace on the plot west of the village. Fed with coal from the village stores, it smelts the ore there into bars in the stores: iron ore into iron, copper and lead ore into copper and lead bars, and scrap into iron. It needs power for its blowers and a crew of three.' },
-  furnace2: { name: 'Furnace: coke ovens', needs: [['stone', 20], ['bricks', 10], ['scrap', 10], ['planks', 8]], description: 'Build a battery of coke ovens beside the furnace. Coke burns hotter and cleaner than raw coal: every melt gives half as much metal again.' },
-  fuelpump: { name: 'Fuel pump', needs: [['scrap', 14], ['wire', 6], ['planks', 10], ['parts', 2], ['circuit', 1]], description: 'Build a fuel pump by the road north-east of the village, beside the refinery\'s plot. It pumps diesel from the village stores straight into your vehicle\'s tank, or a canister for your backpack, at the village\'s price. The village\'s convoys fill up from the same stores.' },
-  charger: { name: 'Charging post', needs: [['cable', 8], ['steel', 4], ['control', 1], ['batteries', 2], ['planks', 6]], description: 'Build a charging post east of the village. An electric vehicle parked beside it charges from whatever power the village has to spare, a few gold a kWh: the more you charge, the more the village\'s plant and stations have to make.' },
-  furnace3: { name: 'Furnace: electric arc', needs: [['steel', 8], ['cable', 10], ['generator', 1], ['parts', 2]], description: 'Fit an electric arc furnace: no coal at all, twice the melts, the best yield, and a heavy draw of power.' },
-  foodworks: { name: 'Food processing house', needs: [['planks', 40], ['stone', 10], ['nails', 16], ['scrap', 6]], description: 'Build a mill, a bakery, a dairy and a smokehouse on the staked plot about 100 metres south-west of the village. While its crew works, grain, potatoes, milk and meat feed a third more people, so the same fields keep a bigger village.' },
+  warehouse: { name: tl('Vehicle warehouse'), needs: [['planks', 84], ['stone', 24], ['nails', 20]], description: tl('Build the plank warehouse outside the north fence. From then on the village stores are kept there: drive in through its wide doors and unload your vehicle at the terminal.') },
+  power: { name: tl('Village power plant'), needs: [['scrap', 12], ['wire', 8], ['circuit', 2]], description: tl('Build electricity on the marked site outside the fence. Farms work by hand until then.') },
+  comms: { name: tl('Satellite link'), needs: [['planks', 12], ['stone', 6], ['scrap', 4]], description: tl('Restore the receiver in the nearby communications ruin. Use its console to reconnect the satellites and receive a GPS tablet.') },
+  quarry: { name: tl('Stone quarry'), needs: [['planks', 44], ['scrap', 4]], description: tl('Build stone-cutting works beside the large pile of boulders about 100 metres beyond our fence. Every village has its own quarry; it supplies building stone.') },
+  mine: { name: tl('Ore mine'), needs: [['planks', 48], ['stone', 12], ['scrap', 6]], description: tl('Build a mine at the coloured rocky hollow. Only villages with a local ore seam can extract that ore.') },
+  lumber: { name: tl('Lumber camp'), needs: [['planks', 24], ['stone', 10], ['scrap', 8]], description: tl('Build a woodcutters\' camp in the great grove. The giant trees there are too big to fell, but the crews take timber from them for good: logs every day, and you may cut them yourself once the camp stands. Saw the logs into planks by hand or at a sawmill.') },
+  oil: { name: tl('Oil well'), needs: [['scrap', 16], ['wire', 8], ['planks', 12]], description: tl('Build a pump at the natural oil seep. Crude oil collects in village stock.') },
+  refinery: { name: tl('Oil refinery'), needs: [['scrap', 24], ['circuit', 4], ['wire', 12], ['planks', 18]], description: tl('Build a refinery north of the village. It turns crude oil from the village stores into fuel: crude from our own well if we have one, or crude you bring from the oil villages. Fuel sells for far more than crude.') },
+  sawmill: { name: tl('Sawmill'), needs: [['planks', 20], ['stone', 8], ['scrap', 6], ['wire', 4]], description: tl('Build a powered sawmill on the staked plot north-west of the village. Its frame saw cuts logs from the village stores into planks: 6 from a log, where a hand saw gets 4. It runs on electricity and needs a crew of three.') },
+  sawmill2: { name: tl('Sawmill: circular saws'), needs: [['scrap', 12], ['parts', 2], ['wire', 6], ['planks', 10]], description: tl('Fit the sawmill with circular saws: 7 planks from a log, and it takes more power.') },
+  sawmill3: { name: tl('Sawmill: band saws'), needs: [['motor', 2], ['parts', 3], ['steel', 4], ['cable', 4]], description: tl('Fit band saws driven by electric motors: 8 planks from a log, the best a sawmill can do. It draws the most power.') },
+  relay: { name: tl('Relay mast'), needs: [['scrap', 12], ['wire', 10], ['circuit', 4], ['planks', 16], ['gears', 2]], description: tl('Raise a relay mast over the receiver. The satellites talk to it on their own passes, so orbital scans round this village come apart from the rest of the world and reach further.') },
+  raremine: { name: tl('Deep mine'), needs: [['drillrig', 1], ['steel', 6], ['cable', 6], ['cement', 8], ['planks', 16]], description: tl('Sink a deep shaft over the rare deposit south-east of the village. A drill rig from a Heavy Engineering Works bores down to it, a winding house and a headframe bring the ore up into the village stores every day. It needs power and a crew of four.') },
+  furnace: { name: tl('Coal furnace'), needs: [['stone', 24], ['planks', 16], ['scrap', 12], ['wire', 4]], description: tl('Build a stone shaft furnace on the plot west of the village. Fed with coal from the village stores, it smelts the ore there into bars in the stores: iron ore into iron, copper and lead ore into copper and lead bars, and scrap into iron. It needs power for its blowers and a crew of three.') },
+  furnace2: { name: tl('Furnace: coke ovens'), needs: [['stone', 20], ['bricks', 10], ['scrap', 10], ['planks', 8]], description: tl('Build a battery of coke ovens beside the furnace. Coke burns hotter and cleaner than raw coal: every melt gives half as much metal again.') },
+  fuelpump: { name: tl('Fuel pump'), needs: [['scrap', 14], ['wire', 6], ['planks', 10], ['parts', 2], ['circuit', 1]], description: tl('Build a fuel pump by the road north-east of the village, beside the refinery\'s plot. It pumps diesel from the village stores straight into your vehicle\'s tank, or a canister for your backpack, at the village\'s price. The village\'s convoys fill up from the same stores.') },
+  charger: { name: tl('Charging post'), needs: [['cable', 8], ['steel', 4], ['control', 1], ['batteries', 2], ['planks', 6]], description: tl('Build a charging post east of the village. An electric vehicle parked beside it charges from whatever power the village has to spare, a few gold a kWh: the more you charge, the more the village\'s plant and stations have to make.') },
+  furnace3: { name: tl('Furnace: electric arc'), needs: [['steel', 8], ['cable', 10], ['generator', 1], ['parts', 2]], description: tl('Fit an electric arc furnace: no coal at all, twice the melts, the best yield, and a heavy draw of power.') },
+  foodworks: { name: tl('Food processing house'), needs: [['planks', 40], ['stone', 10], ['nails', 16], ['scrap', 6]], description: tl('Build a mill, a bakery, a dairy and a smokehouse on the staked plot about 100 metres south-west of the village. While its crew works, grain, potatoes, milk and meat feed a third more people, so the same fields keep a bigger village.') },
 };
 /**
  * The start village's radar and communications station (document 04): a big project in three stages, salvage and
  * exploration rather than a click. Each stage's materials are handed over bit by bit like any project's.
  */
 export const STATION_STAGES: { title: string; text: string; needs: [ItemKey, number][] }[] = [
-  { title: 'Clearing the station', text: 'The mast lies across the compound and the bunker is buried in rubble. Timber for props, stone to wall up the bunker, scrap to patch the doors.', needs: [['planks', 40], ['stone', 20], ['scrap', 16]] },
-  { title: 'Power and cabling', text: 'The station needs its own power and new cable runs: wire, old electronics for the switchboard, machine parts and an engine to turn the generator.', needs: [['scrap', 20], ['wire', 16], ['circuit', 6], ['parts', 3], ['engine', 1]] },
-  { title: 'The dish and the console', text: 'The mast goes up again with the dish on top, and the console must find the satellites: power cores for the transmitter, electronics, gears for the dish drive, machine parts.', needs: [['circuit', 10], ['pcore', 2], ['gears', 4], ['parts', 4], ['scrap', 10]] },
+  { title: tl('Clearing the station'), text: tl('The mast lies across the compound and the bunker is buried in rubble. Timber for props, stone to wall up the bunker, scrap to patch the doors.'), needs: [['planks', 40], ['stone', 20], ['scrap', 16]] },
+  { title: tl('Power and cabling'), text: tl('The station needs its own power and new cable runs: wire, old electronics for the switchboard, machine parts and an engine to turn the generator.'), needs: [['scrap', 20], ['wire', 16], ['circuit', 6], ['parts', 3], ['engine', 1]] },
+  { title: tl('The dish and the console'), text: tl('The mast goes up again with the dish on top, and the console must find the satellites: power cores for the transmitter, electronics, gears for the dish drive, machine parts.'), needs: [['circuit', 10], ['pcore', 2], ['gears', 4], ['parts', 4], ['scrap', 10]] },
 ];
 /** Is this village's satellite link the big station (the start village of a new world)? */
 export const isStation = (s: TownState | undefined) => !!s?.settlement?.station;
@@ -93,27 +94,27 @@ export function localIndustryDone(s: TownState | undefined): boolean {
   return YARD_KINDS.every((k) => !projectAvailable(s, k) || projectDone(s, k));
 }
 export function projectProblem(s: TownState | undefined, k: Project): string {
-  if (!progressive(s)) return 'This settlement uses the established village rules.';
-  if (projectDone(s, k)) return 'Already built.';
-  if (!projectAvailable(s, k)) return k === 'raremine' ? 'There is no rare deposit under this village.' : k === 'mine' ? 'There is no ore seam here. Import metals from another village.' : k === 'lumber' ? 'There is no great grove here. Cut wild trees, or bring logs from a village that has one.' : 'There is no oil field here. Import crude or fuel from another village.';
-  if (k === 'relay') return isStation(s) ? 'The station itself is this village\'s relay.' : projectDone(s, 'comms') ? '' : 'Restore the satellite receiver first.';
+  if (!progressive(s)) return tl('This settlement uses the established village rules.');
+  if (projectDone(s, k)) return tl('Already built.');
+  if (!projectAvailable(s, k)) return k === 'raremine' ? tl('There is no rare deposit under this village.') : k === 'mine' ? tl('There is no ore seam here. Import metals from another village.') : k === 'lumber' ? tl('There is no great grove here. Cut wild trees, or bring logs from a village that has one.') : tl('There is no oil field here. Import crude or fuel from another village.');
+  if (k === 'relay') return isStation(s) ? tl('The station itself is this village\'s relay.') : projectDone(s, 'comms') ? '' : tl('Restore the satellite receiver first.');
   // (0.167, the owner's order) farms, then power, then the warehouse, then the village's own extraction; the satellite
   // link is a side task once the power plant stands
-  if (k === 'comms') return projectDone(s, 'power') ? '' : 'Build the village power plant first.';
-  if (k === 'power') return (s?.farms ?? 0) >= 2 ? '' : 'Build two farms first.';
-  if (k === 'sawmill') return projectDone(s, 'power') ? '' : 'Build the village power plant first: the sawmill runs on electricity.';
-  if (k === 'sawmill2') return projectDone(s, 'sawmill') && projectDone(s, 'warehouse') ? '' : 'Build the sawmill and the warehouse first.';
-  if (k === 'sawmill3') return projectDone(s, 'sawmill2') ? '' : 'Fit the circular saws first.';
-  if (k === 'warehouse') return projectDone(s, 'power') ? '' : 'Build the village power plant first.';
-  if (k === 'quarry' || k === 'mine' || k === 'lumber' || k === 'oil') return projectDone(s, 'warehouse') ? '' : 'Build the warehouse first.';
-  if (k === 'refinery') return projectDone(s, 'warehouse') ? '' : 'Build the warehouse first.';
-  if (k === 'raremine') return projectDone(s, 'warehouse') ? '' : 'Build the warehouse first.';
-  if (k === 'furnace') return projectDone(s, 'power') && projectDone(s, 'warehouse') ? '' : 'Build the village power plant and the warehouse first.';
-  if (k === 'charger') return projectDone(s, 'power') ? '' : 'Build the village power plant first: the post charges from it.';
-  if (k === 'fuelpump') return projectDone(s, 'warehouse') ? '' : 'Build the warehouse first: the pump draws on the village stores.';
-  if (k === 'furnace2') return projectDone(s, 'furnace') ? '' : 'Build the coal furnace first.';
-  if (k === 'furnace3') return projectDone(s, 'furnace2') ? '' : 'Build the coke ovens first.';
-  if (k === 'foodworks') return projectDone(s, 'power') && (s?.farms ?? 0) >= 2 ? '' : 'Build the village power plant and two farms first.';
+  if (k === 'comms') return projectDone(s, 'power') ? '' : tl('Build the village power plant first.');
+  if (k === 'power') return (s?.farms ?? 0) >= 2 ? '' : tl('Build two farms first.');
+  if (k === 'sawmill') return projectDone(s, 'power') ? '' : tl('Build the village power plant first: the sawmill runs on electricity.');
+  if (k === 'sawmill2') return projectDone(s, 'sawmill') && projectDone(s, 'warehouse') ? '' : tl('Build the sawmill and the warehouse first.');
+  if (k === 'sawmill3') return projectDone(s, 'sawmill2') ? '' : tl('Fit the circular saws first.');
+  if (k === 'warehouse') return projectDone(s, 'power') ? '' : tl('Build the village power plant first.');
+  if (k === 'quarry' || k === 'mine' || k === 'lumber' || k === 'oil') return projectDone(s, 'warehouse') ? '' : tl('Build the warehouse first.');
+  if (k === 'refinery') return projectDone(s, 'warehouse') ? '' : tl('Build the warehouse first.');
+  if (k === 'raremine') return projectDone(s, 'warehouse') ? '' : tl('Build the warehouse first.');
+  if (k === 'furnace') return projectDone(s, 'power') && projectDone(s, 'warehouse') ? '' : tl('Build the village power plant and the warehouse first.');
+  if (k === 'charger') return projectDone(s, 'power') ? '' : tl('Build the village power plant first: the post charges from it.');
+  if (k === 'fuelpump') return projectDone(s, 'warehouse') ? '' : tl('Build the warehouse first: the pump draws on the village stores.');
+  if (k === 'furnace2') return projectDone(s, 'furnace') ? '' : tl('Build the coal furnace first.');
+  if (k === 'furnace3') return projectDone(s, 'furnace2') ? '' : tl('Build the coke ovens first.');
+  if (k === 'foodworks') return projectDone(s, 'power') && (s?.farms ?? 0) >= 2 ? '' : tl('Build the village power plant and two farms first.');
   return '';
 }
 export function projectPlan(s: TownState | undefined, k: Project) {
@@ -205,19 +206,19 @@ export function commsRuin(world: number, v: Poi, station = false): Poi | null {
   const p = candidates[0]; if (p) { if (commsCache.size > 4000) commsCache.clear(); commsCache.set(key, p); }
   return p ?? null;
 }
-export const STATION_TEXT = 'Travellers speak of a ruined radar and communications station a few kilometres out. It might help us map the land: restore it and its dish will find the satellites still circling the planet, and the map in your glove computer comes alive.';
+export const STATION_TEXT = tl('Travellers speak of a ruined radar and communications station a few kilometres out. It might help us map the land: restore it and its dish will find the satellites still circling the planet, and the map in your glove computer comes alive.');
 /** The crops the first farms of a new settlement are sown with (the elder's tutorial): grain, then hens. */
 export const FIRST_CROPS = ['wheat', 'hens'] as const;
 export function tutorialStep(s: TownState | undefined): { title: string; text: string; project?: Project; farm?: number } | null {
   if (!progressive(s)) return null;
   // (0.167) farms → power → warehouse → extraction → the third farm → food processing; the satellite link runs beside
   // it (`sideStep`), and Kuba the mechanic turns up once the village digs its own goods (`mechanicHere`)
-  if (!(s?.farms ?? 0)) return { title: 'Build the first farm', text: 'Bring 16 planks and 6 stones to the village stores (saw logs into planks with a saw) and ask me to build a farm. Its field will grow wheat: grain for bread. It feeds new families even without electricity.', farm: 1 };
-  if ((s?.farms ?? 0) < 2) return { title: 'Build the second farm', text: 'A second farm, and this one keeps hens: eggs, and a little meat. Two kinds of food keep the families healthy.', farm: 2 };
-  for (const k of ['power', 'sawmill', 'warehouse', 'quarry', 'lumber', 'mine', 'oil'] as Project[]) if (projectAvailable(s, k) && !projectDone(s, k)) return { title: PROJECTS[k].name, text: k === 'warehouse' ? 'Until now I have kept the village stores in my hall, and it is full to the rafters. ' + PROJECTS[k].description : PROJECTS[k].description, project: k };
-  if ((s?.farms ?? 0) < 3) return { title: 'Build the third farm', text: 'Finish the food supply for our growing settlement.', farm: 3 };
+  if (!(s?.farms ?? 0)) return { title: tl('Build the first farm'), text: tl('Bring 16 planks and 6 stones to the village stores (saw logs into planks with a saw) and ask me to build a farm. Its field will grow wheat: grain for bread. It feeds new families even without electricity.'), farm: 1 };
+  if ((s?.farms ?? 0) < 2) return { title: tl('Build the second farm'), text: tl('A second farm, and this one keeps hens: eggs, and a little meat. Two kinds of food keep the families healthy.'), farm: 2 };
+  for (const k of ['power', 'sawmill', 'warehouse', 'quarry', 'lumber', 'mine', 'oil'] as Project[]) if (projectAvailable(s, k) && !projectDone(s, k)) return { title: PROJECTS[k].name, text: k === 'warehouse' ? tl('Until now I have kept the village stores in my hall, and it is full to the rafters. ') + PROJECTS[k].description : PROJECTS[k].description, project: k };
+  if ((s?.farms ?? 0) < 3) return { title: tl('Build the third farm'), text: tl('Finish the food supply for our growing settlement.'), farm: 3 };
   if (!projectDone(s, 'foodworks')) return { title: PROJECTS.foodworks.name, text: PROJECTS.foodworks.description, project: 'foodworks' };
-  return { title: 'A thriving settlement', text: 'Our homes, farms and industry are restored. You can now expand the village with advanced works and improvements.' };
+  return { title: tl('A thriving settlement'), text: tl('Our homes, farms and industry are restored. You can now expand the village with advanced works and improvements.') };
 }
 /** (0.170) The sawmill's level (0 = none) and the planks it cuts from a log; a log sawn by hand gives `HAND_PLANKS`. */
 export const sawLevel = (s: TownState | undefined) => (projectDone(s, 'sawmill3') ? 3 : projectDone(s, 'sawmill2') ? 2 : projectDone(s, 'sawmill') ? 1 : 0);
@@ -247,8 +248,8 @@ export function optionalProjects(s: TownState | undefined): Project[] {
 export function sideStep(s: TownState | undefined): { title: string; text: string; project: Project } | null {
   if (!progressive(s) || !projectDone(s, 'power') || projectDone(s, 'comms')) return null;
   return isStation(s)
-    ? { title: 'Restore the radar station', text: `${STATION_TEXT} Stage ${stationStage(s) + 1} of ${STATION_STAGES.length}: ${STATION_STAGES[stationStage(s)].title.toLowerCase()}.`, project: 'comms' }
-    : { title: 'Restore the satellite receiver', text: PROJECTS.comms.description, project: 'comms' };
+    ? { title: tl('Restore the radar station'), text: TL`${STATION_TEXT} Stage ${stationStage(s) + 1} of ${STATION_STAGES.length}: ${STATION_STAGES[stationStage(s)].title.toLowerCase()}.`, project: 'comms' }
+    : { title: tl('Restore the satellite receiver'), text: PROJECTS.comms.description, project: 'comms' };
 }
 /** Has Kuba the mechanic come to the village (the start village of a new world: once the power plant stands and the village digs its own goods; worlds where someone already has a vehicle keep him)? */
 export const mechanicHere = (s: TownState | undefined) => !progressive(s) || !!s?.settlement?.car || (projectDone(s, 'power') && (['quarry', 'mine', 'oil', 'lumber'] as Project[]).some((k) => projectDone(s, k)));

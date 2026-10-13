@@ -83,6 +83,7 @@ import { driving, vehicleSpot, useVehicle, leave, type VehicleSpot } from './veh
 import { nearDrop, dropPrompt, takeDrop } from './drops';
 import { riding, rideSpot, ridePrompt, board as boardRide, getOff, type RideSpot } from './ride';
 import type { Pickup } from './loot';
+import { tl, TL } from '../i18n';
 
 /** Hook for places with people (the village). */
 export let npcsActive = () => G.char.loc === 'overworld' && W.npcs.length > 0;
@@ -105,15 +106,15 @@ export function updateEntities(dt: number, time: number) {
     if (npcsActive()) updateNpcs(dt, time);
     W.nearNpc = null; W.nearChest = null; W.nearPortal = null; W.nearLock = null; nearVehicle = null;
     // controls hint for the first few seconds behind the wheel, then out of the way
-    el.prompt.className = ''; el.prompt.textContent = 'E — get out · V — view · space — brake';
+    el.prompt.className = ''; el.prompt.textContent = tl('E — get out · V — view · space — brake');
     el.prompt.style.display = G.playing && !G.isTouch && performance.now() - driving.since < 4000 ? 'block' : 'none';
-    el.bUse.textContent = 'EXIT'; el.bUse.classList.toggle('on', G.playing);
+    el.bUse.textContent = tl('EXIT'); el.bUse.classList.toggle('on', G.playing);
     return;
   }
   if (riding()) { // along for the ride in another player's vehicle: the HUD line says the keys
     if (npcsActive()) updateNpcs(dt, time);
     W.nearNpc = null; W.nearChest = null; W.nearPortal = null; W.nearLock = null; nearVehicle = null; nearRide = null; nearDp = null;
-    el.prompt.style.display = 'none'; el.bUse.textContent = 'EXIT'; el.bUse.classList.toggle('on', G.playing);
+    el.prompt.style.display = 'none'; el.bUse.textContent = tl('EXIT'); el.bUse.classList.toggle('on', G.playing);
     return;
   }
   nearHatch = !!W.hatch && Math.hypot(W.hatch.g.position.x - pos.x, W.hatch.g.position.z - pos.z) < 1.6 && Math.abs(W.hatch.g.position.y - pos.y) < 0.5;
@@ -162,58 +163,58 @@ export function updateEntities(dt: number, time: number) {
   nearGather = busy || nearFood || nearWork || nearClaim || nearCook ? null : gatherTarget();
   updateGather(dt, nearGather);
   nearWater = G.char.loc === 'overworld' && !nearFood && !nearCook && !nearWork && !nearClaim && !nearGather && !nearNpc && !nearChest && !nearBoard && !nearStash && !nearVehicle && !nearMine && !nearPow && !nearCar && !nearWork2 ? waterSource(loadedWells()) : null;
-  if (climbing()) { prompt.className = ''; prompt.textContent = 'W / S — up or down · Space — let go'; }
+  if (climbing()) { prompt.className = ''; prompt.textContent = tl('W / S — up or down · Space — let go'); }
   else if (nearDp) { prompt.className = ''; prompt.textContent = dropPrompt(nearDp); }
   else if (nearRide) { prompt.className = nearRide.seat < 0 ? 'lock' : ''; prompt.textContent = ridePrompt(nearRide); }
-  else if (nearAncientTablet) { prompt.className = 'portal'; prompt.textContent = 'E — read the ancient address tablet'; }
-  else if (nearAncient) { prompt.className = 'portal'; prompt.textContent = 'E — dial the ancient gate'; }
-  else if (nearHatch) { prompt.className = 'portal'; prompt.textContent = 'E — descend one level'; }
-  else if (nearCityVault) { prompt.className = 'portal'; prompt.textContent = 'E — enter ' + nearCityVault.name; }
-  else if (nearComms !== null) { prompt.className = ''; prompt.textContent = 'E — restore the satellite receiver'; }
-  else if (nearPump !== null) { prompt.className = ''; prompt.textContent = 'E — the fuel pump (fill your vehicle from the village stores)'; }
+  else if (nearAncientTablet) { prompt.className = 'portal'; prompt.textContent = tl('E — read the ancient address tablet'); }
+  else if (nearAncient) { prompt.className = 'portal'; prompt.textContent = tl('E — dial the ancient gate'); }
+  else if (nearHatch) { prompt.className = 'portal'; prompt.textContent = tl('E — descend one level'); }
+  else if (nearCityVault) { prompt.className = 'portal'; prompt.textContent = tl('E — enter ') + nearCityVault.name; }
+  else if (nearComms !== null) { prompt.className = ''; prompt.textContent = tl('E — restore the satellite receiver'); }
+  else if (nearPump !== null) { prompt.className = ''; prompt.textContent = tl('E — the fuel pump (fill your vehicle from the village stores)'); }
   else if (nearChg !== null) { prompt.className = ''; prompt.textContent = chargerPrompt(nearChg); }
-  else if (nearHall !== null) { prompt.className = ''; prompt.textContent = 'E — the village hall\'s terminal (the village\'s stock)'; }
+  else if (nearHall !== null) { prompt.className = ''; prompt.textContent = tl('E — the village hall\'s terminal (the village\'s stock)'); }
   else if (nearBt) { prompt.className = ''; prompt.textContent = boatPrompt(nearBt); }
-  else if (nearPier) { prompt.className = ''; prompt.textContent = nearPier.done ? 'E — the dock' : 'E — build the dock'; }
-  else if (nearPCrate) { prompt.className = ''; prompt.textContent = 'E — open the crate on the dock'; }
-  else if (nearBrg) { prompt.className = ''; prompt.textContent = bridgeBuilt(nearBrg) ? `E — the bridge over the ${nearBrg.river}` : `E — build a bridge over the ${nearBrg.river}`; }
-  else if (nearLd) { prompt.className = ''; const o = G.char.outposts[nearLd.id]; prompt.textContent = !o?.k ? `E — ${nearLd.name}: stake an outpost` : `E — outpost at ${nearLd.name}` + (o.job ? ` (building the ${partName(o.k, o.job.p, o.pk).toLowerCase()}, ${Math.max(0, Math.ceil((jobEnd(o) - G.char.time) / 60))} h left)` : o.done?.dig ? ' (working)' : ' (nothing built yet)'); }
-  else if (nearIns) { prompt.className = ''; prompt.textContent = `E — the control desk (${installDone(nearIns.k, G.char.installs[nearIns.k]) ? 'restored' : `${G.char.installs[nearIns.k]?.stage ?? 0} of ${INSTALL_STAGES[nearIns.k].length} stages restored`})`; }
-  else if (nearGd) { prompt.className = ''; prompt.textContent = `E — talk to ${GUIDE.name}`; }
-  else if (nearFogL) { prompt.className = ''; prompt.textContent = G.char.containers[`${nearFogL.f.id}:${nearFogL.i}`] ? 'E — search the locker' : 'E — force the sealed locker open'; }
+  else if (nearPier) { prompt.className = ''; prompt.textContent = nearPier.done ? tl('E — the dock') : tl('E — build the dock'); }
+  else if (nearPCrate) { prompt.className = ''; prompt.textContent = tl('E — open the crate on the dock'); }
+  else if (nearBrg) { prompt.className = ''; prompt.textContent = bridgeBuilt(nearBrg) ? TL`E — the bridge over the ${nearBrg.river}` : TL`E — build a bridge over the ${nearBrg.river}`; }
+  else if (nearLd) { prompt.className = ''; const o = G.char.outposts[nearLd.id]; prompt.textContent = !o?.k ? TL`E — ${nearLd.name}: stake an outpost` : TL`E — outpost at ${nearLd.name}` + (o.job ? TL` (building the ${partName(o.k, o.job.p, o.pk).toLowerCase()}, ${Math.max(0, Math.ceil((jobEnd(o) - G.char.time) / 60))} h left)` : o.done?.dig ? ' (working)' : tl(' (nothing built yet)')); }
+  else if (nearIns) { prompt.className = ''; prompt.textContent = TL`E — the control desk (${installDone(nearIns.k, G.char.installs[nearIns.k]) ? tl('restored') : TL`${G.char.installs[nearIns.k]?.stage ?? 0} of ${INSTALL_STAGES[nearIns.k].length} stages restored`})`; }
+  else if (nearGd) { prompt.className = ''; prompt.textContent = TL`E — talk to ${GUIDE.name}`; }
+  else if (nearFogL) { prompt.className = ''; prompt.textContent = G.char.containers[`${nearFogL.f.id}:${nearFogL.i}`] ? tl('E — search the locker') : tl('E — force the sealed locker open'); }
   else if (nearData) { prompt.className = ''; prompt.textContent = carrierPrompt(nearData); }
-  else if (nearLock2) { prompt.className = ''; prompt.textContent = 'E — search the ship\'s locker'; }
-  else if (nearRec) { prompt.className = ''; prompt.textContent = 'E — read the flight recorder'; }
+  else if (nearLock2) { prompt.className = ''; prompt.textContent = tl('E — search the ship\'s locker'); }
+  else if (nearRec) { prompt.className = ''; prompt.textContent = tl('E — read the flight recorder'); }
   else if (nearLad) { prompt.className = ''; prompt.textContent = ladderPrompt(nearLad); }
   else if (nearGate) { prompt.className = ''; prompt.textContent = doorPrompt(nearGate); }
-  else if (nearDesk) { prompt.className = ''; prompt.textContent = `E — the ${CHARIOT} (${stagesDone(G.char.shuttle)} of ${STAGES.length} stages done)`; }
-  else if (nearTerm) { prompt.className = ''; prompt.textContent = 'E — use the village computer'; }
+  else if (nearDesk) { prompt.className = ''; prompt.textContent = TL`E — the ${CHARIOT} (${stagesDone(G.char.shuttle)} of ${STAGES.length} stages done)`; }
+  else if (nearTerm) { prompt.className = ''; prompt.textContent = tl('E — use the village computer'); }
   else if (nearSt) { const t = stationPrompt(nearSt); prompt.className = t.startsWith('E') ? '' : 'lock'; prompt.textContent = t; }
   else if (nearWk) { const t = worksPrompt(nearWk); prompt.className = t.startsWith('E') ? '' : 'lock'; prompt.textContent = t; }
   else if (nearHD) { const t = houseDoorPrompt(nearHD); prompt.className = t.locked ? 'lock' : ''; prompt.textContent = t.text; }
-  else if (nearCave) { prompt.className = 'portal'; prompt.textContent = 'E — enter ' + nearCave.name + (nearCave.other ? ' (it runs through the mountain)' : ''); }
-  else if (caveOut >= 0) { const info = G.char.dungeon!.cave!; prompt.className = 'portal'; prompt.textContent = 'E — leave the cave' + (info.mouths.length > 1 && caveOut !== info.from ? ' (the far side of the mountain)' : ''); }
-  else if (nearGun) { prompt.className = ''; prompt.textContent = nearGun.p.off ? 'E — switch the turret on' : 'E — switch the turret off'; }
+  else if (nearCave) { prompt.className = 'portal'; prompt.textContent = tl('E — enter ') + nearCave.name + (nearCave.other ? tl(' (it runs through the mountain)') : ''); }
+  else if (caveOut >= 0) { const info = G.char.dungeon!.cave!; prompt.className = 'portal'; prompt.textContent = tl('E — leave the cave') + (info.mouths.length > 1 && caveOut !== info.from ? tl(' (the far side of the mountain)') : ''); }
+  else if (nearGun) { prompt.className = ''; prompt.textContent = nearGun.p.off ? tl('E — switch the turret on') : tl('E — switch the turret off'); }
   else if (nearMine) { prompt.className = ''; prompt.textContent = homePrompt(nearMine); }
   else if (nearWork2) { const t = sitePrompt(nearWork2); prompt.className = t.startsWith('E') ? '' : 'lock'; prompt.textContent = t; }
-  else if (nearCar) { prompt.className = ''; prompt.textContent = `E — talk to the caravan (${nearCar.fromName} → ${nearCar.toName}, ${ITEMS[nearCar.good].name})`; }
+  else if (nearCar) { prompt.className = ''; prompt.textContent = TL`E — talk to the caravan (${nearCar.fromName} → ${nearCar.toName}, ${ITEMS[nearCar.good].name})`; }
   else if (nearPow) { const t = powerPrompt(nearPow); prompt.className = t.startsWith('E') ? '' : 'lock'; prompt.textContent = t; }
-  else if (nearNpc) { prompt.className = ''; prompt.textContent = G.isTouch ? nearNpc.name : 'E — talk to ' + nearNpc.name; }
+  else if (nearNpc) { prompt.className = ''; prompt.textContent = G.isTouch ? nearNpc.name : tl('E — talk to ') + nearNpc.name; }
   else if (nearLock) {
     prompt.className = 'lock';
-    prompt.textContent = hasItem('key') ? (G.isTouch ? 'Locked door' : 'E — unlock with an Access Key') : 'Locked. Requires an Access Key';
+    prompt.textContent = hasItem('key') ? (G.isTouch ? tl('Locked door') : tl('E — unlock with an Access Key')) : tl('Locked. Requires an Access Key');
   }
-  else if (nearChest) { prompt.className = ''; prompt.textContent = G.isTouch ? 'Chest' : nearChest.open ? 'E — search the chest' : 'E — open chest'; }
-  else if (nearBoard) { prompt.className = ''; prompt.textContent = G.isTouch ? '' : 'E — read the notice board'; }
-  else if (nearMap) { prompt.className = ''; prompt.textContent = 'E — study the map of the surroundings'; }
-  else if (nearStash) { prompt.className = ''; prompt.textContent = G.isTouch ? '' : 'E — search the bandit stash'; }
+  else if (nearChest) { prompt.className = ''; prompt.textContent = G.isTouch ? tl('Chest') : nearChest.open ? tl('E — search the chest') : tl('E — open chest'); }
+  else if (nearBoard) { prompt.className = ''; prompt.textContent = G.isTouch ? '' : tl('E — read the notice board'); }
+  else if (nearMap) { prompt.className = ''; prompt.textContent = tl('E — study the map of the surroundings'); }
+  else if (nearStash) { prompt.className = ''; prompt.textContent = G.isTouch ? '' : tl('E — search the bandit stash'); }
   else if (nearVehicle) { prompt.className = ''; prompt.textContent = G.isTouch ? '' : 'E — ' + nearVehicle.label; }
   else if (nearPortal) { prompt.className = 'portal'; prompt.textContent = nearPortal.label; }
   else if (nearFood) { prompt.className = ''; prompt.textContent = plantPrompt(nearFood); }
-  else if (nearWork) { prompt.className = ''; prompt.textContent = 'E — use the workbench'; }
-  else if (nearClaim) { prompt.className = ''; prompt.textContent = 'E — take down your flag (the land goes back to how it was)'; }
+  else if (nearWork) { prompt.className = ''; prompt.textContent = tl('E — use the workbench'); }
+  else if (nearClaim) { prompt.className = ''; prompt.textContent = tl('E — take down your flag (the land goes back to how it was)'); }
   else if (nearGather) { prompt.className = ''; prompt.textContent = gatherPrompt(nearGather); }
-  else if (nearCook) { prompt.className = ''; prompt.textContent = fireHasWork() ? 'E — roast your raw meat' : 'A campfire: bring raw meat to roast'; }
+  else if (nearCook) { prompt.className = ''; prompt.textContent = fireHasWork() ? tl('E — roast your raw meat') : tl('A campfire: bring raw meat to roast'); }
   else if (nearWater) { prompt.className = nearWater.kind === 'toxic' || nearWater.kind === 'sea' ? 'lock' : ''; prompt.textContent = sourcePrompt(nearWater); }
   prompt.style.display = (nearLd || nearAncientTablet || nearAncient || climbing() || nearDp || nearRide || nearGd || nearFogL || nearBt || (nearHall !== null || nearComms !== null) || nearIns || nearBrg || nearPier || nearPCrate || nearData || nearLock2 || nearRec || nearLad || nearMine || nearPow || nearCar || nearWork2 || nearGate || nearHD || nearDesk || nearWk || nearSt || nearTerm || nearTerm || nearGun || nearHatch || nearCityVault || nearCave || caveOut >= 0 || nearNpc || nearLock || nearChest || nearBoard || nearMap || nearStash || nearVehicle || nearPortal || nearFood || nearWork || nearClaim || nearGather || nearCook || nearWater) && G.playing && prompt.textContent ? 'block' : 'none';
   const bh = buildHint();
@@ -231,7 +232,7 @@ export function updateEntities(dt: number, time: number) {
   const hint = placingHint();
   if (hint !== null) { prompt.className = placingOk() ? '' : 'lock'; prompt.textContent = hint; prompt.style.display = G.playing && hint ? 'block' : 'none'; }
   const canUse = nearHatch || nearCityVault || nearNpc || nearChest || nearBoard || nearStash || nearVehicle || (nearLock && hasItem('key'));
-  el.bUse.textContent = nearHatch ? 'DESCEND' : nearCityVault ? 'ENTER' : nearNpc ? 'TALK' : nearLock ? 'UNLOCK' : nearChest ? 'OPEN' : nearBoard ? 'READ' : nearStash ? 'OPEN' : nearVehicle ? (nearVehicle.kind === 'drive' ? 'DRIVE' : 'TRUNK') : 'OPEN';
+  el.bUse.textContent = nearHatch ? tl('DESCEND') : nearCityVault ? tl('ENTER') : nearNpc ? tl('TALK') : nearLock ? tl('UNLOCK') : nearChest ? tl('OPEN') : nearBoard ? tl('READ') : nearStash ? tl('OPEN') : nearVehicle ? (nearVehicle.kind === 'drive' ? tl('DRIVE') : tl('TRUNK')) : tl('OPEN');
   el.bUse.classList.toggle('on', !!canUse && G.playing);
   const hatch = W.hatch;
   if (hatch) {
@@ -268,11 +269,11 @@ export function interact() {
   if (nearIns) { openInstall(nearIns); return; }
   if (nearBrg) { openBridge(nearBrg); return; }
   if (nearPier) { openPier(nearPier); return; }
-  if (nearPCrate) { openTransfer({ title: 'Crate', subtitle: 'Your dock', boxLabel: 'Crate', box: pierCrate(nearPCrate) }); return; }
+  if (nearPCrate) { openTransfer({ title: tl('Crate'), subtitle: tl('Your dock'), boxLabel: tl('Crate'), box: pierCrate(nearPCrate) }); return; }
   if (nearGd) { talkGuide(); return; }
-  if (nearFogL) { openTransfer({ title: 'Locker', subtitle: `${FOG_SITE[nearFogL.f.site].name}, ${nearFogL.f.name}`, boxLabel: 'Locker', box: fogLocker(nearFogL.f, nearFogL.i) }); return; }
+  if (nearFogL) { openTransfer({ title: tl('Locker'), subtitle: `${FOG_SITE[nearFogL.f.site].name}, ${nearFogL.f.name}`, boxLabel: tl('Locker'), box: fogLocker(nearFogL.f, nearFogL.i) }); return; }
   if (nearData) { takeCarrier(nearData); return; }
-  if (nearLock2) { openTransfer({ title: G.char.name ? `${G.char.name}'s locker` : 'Locker', subtitle: SHIP_NAME + ' · only you open it', boxLabel: 'Locker', box: lockerBox() }); return; }
+  if (nearLock2) { openTransfer({ title: G.char.name ? TL`${G.char.name}'s locker` : tl('Locker'), subtitle: SHIP_NAME + tl(' · only you open it'), boxLabel: tl('Locker'), box: lockerBox() }); return; }
   if (nearRec) { openLogbook(); return; }
   if (nearLad) { const m = startClimb(nearLad); if (m) logLine(m); return; }
   if (isPlacing()) { confirmPlacing(); return; }
@@ -301,7 +302,7 @@ export function interact() {
   else if (nearVehicle) useVehicle(nearVehicle);
   else if (nearFood) harvest(nearFood);
   else if (nearWork) openBench(nearWork);
-  else if (nearClaim) { const err = takeDownFlag(nearClaim); logLine(err || 'You take the flag down. The land is no longer yours.'); }
+  else if (nearClaim) { const err = takeDownFlag(nearClaim); logLine(err || tl('You take the flag down. The land is no longer yours.')); }
   else if (nearGather) strike(nearGather);
   else if (nearCook) cookAll();
   else if (nearWater) useWater(nearWater);

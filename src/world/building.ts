@@ -23,6 +23,7 @@ import { logLine } from '../ui/hud';
 import { openKeypad } from '../ui/keypad';
 import { syncTurrets } from './turrets';
 import type { Char } from '../save';
+import { tl, TL } from '../i18n';
 
 type Claim = Char['claims'][number];
 const WOOD = 0xb8b060, METAL = 0xa8c8b8, LOCK = 0xff5a3c, C = BUILD.cell, H = BUILD.wallH, T = BUILD.thick;
@@ -161,7 +162,7 @@ export function nearDoor(): { c: Claim; p: Part } | null {
 const authed = (p: Part) => !p.lock || !p.lock.on || p.lock.auth.includes(G.char.pid);
 function swing(d: { c: Claim; p: Part }) {
   d.p.open = !d.p.open;
-  if (!d.p.open && baseHit(G.pos.x, G.pos.y, G.pos.z, 0.3)) { d.p.open = true; logLine('You are standing in the doorway.'); return; }
+  if (!d.p.open && baseHit(G.pos.x, G.pos.y, G.pos.z, 0.3)) { d.p.open = true; logLine(tl('You are standing in the doorway.')); return; }
   saveChar(); redraw(d.c);
 }
 /** E at a door: open or shut it; a locked one asks for its code first. */
@@ -169,43 +170,43 @@ export function toggleDoor(d: { c: Claim; p: Part }) {
   const lock = d.p.lock;
   if (d.p.open || authed(d.p)) { swing(d); return; }
   openKeypad({
-    title: 'Code lock', sub: 'Locked. Enter the code.',
+    title: tl('Code lock'), sub: tl('Locked. Enter the code.'),
     enter(code) {
-      if (!lock || code !== lock.code) return 'Wrong code.';
-      lock.auth.push(G.char.pid); swing(d); logLine('The lock clicks open.'); return '';
+      if (!lock || code !== lock.code) return tl('Wrong code.');
+      lock.auth.push(G.char.pid); swing(d); logLine(tl('The lock clicks open.')); return '';
     },
   });
 }
 /** The prompt for a door: what E and L do there. */
 export function doorPrompt(d: { c: Claim; p: Part }): string {
-  const lock = d.p.lock, e = d.p.open ? 'E — shut the door' : lock?.on && !authed(d.p) ? 'E — enter the code' : 'E — open the door';
-  if (lock) return e + (authed(d.p) ? ' · L — code lock' : '');
-  return e + (count(G.char.inv, 'codelock') ? ' · L — fit your Code Lock' : '');
+  const lock = d.p.lock, e = d.p.open ? tl('E — shut the door') : lock?.on && !authed(d.p) ? tl('E — enter the code') : tl('E — open the door');
+  if (lock) return e + (authed(d.p) ? tl(' · L — code lock') : '');
+  return e + (count(G.char.inv, 'codelock') ? tl(' · L — fit your Code Lock') : '');
 }
 /** L at a door: fit a code lock (set its code), or change the code, lock or unlock it, take it off. */
 export function lockMenu(d: { c: Claim; p: Part }) {
   const lock = d.p.lock, done = (m: string) => { saveChar(); redraw(d.c); logLine(m); return ''; };
   if (!lock) {
-    if (!count(G.char.inv, 'codelock')) { logLine('You need a Code Lock (Zofia sells them).'); return; }
+    if (!count(G.char.inv, 'codelock')) { logLine(tl('You need a Code Lock (Zofia sells them).')); return; }
     openKeypad({
-      title: 'Fit the code lock', sub: 'Choose a 4-digit code.',
+      title: tl('Fit the code lock'), sub: tl('Choose a 4-digit code.'),
       enter(code) {
-        if (!validCode(code)) return 'Four digits.';
-        if (!takeOne('codelock')) return 'You have no Code Lock.';
+        if (!validCode(code)) return tl('Four digits.');
+        if (!takeOne('codelock')) return tl('You have no Code Lock.');
         d.p.lock = { code, on: true, auth: [G.char.pid] }; d.p.open = false;
         if (baseHit(G.pos.x, G.pos.y, G.pos.z, 0.3)) d.p.open = true;
-        return done(`Code lock fitted, code ${code}. The door is locked; you can open it, others need the code.`);
+        return done(TL`Code lock fitted, code ${code}. The door is locked; you can open it, others need the code.`);
       },
     });
     return;
   }
   if (!authed(d.p)) { logLine('Enter the code first (E).'); return; }
   openKeypad({
-    title: 'Code lock', sub: `Code ${lock.code} · ${lock.on ? 'locked' : 'unlocked'}. Type a new code to change it.`,
-    enter(code) { lock.code = code; lock.auth = [G.char.pid]; return done(`New code: ${code}. Everyone else has to enter it again.`); },
+    title: tl('Code lock'), sub: TL`Code ${lock.code} · ${lock.on ? tl('locked') : tl('unlocked')}. Type a new code to change it.`,
+    enter(code) { lock.code = code; lock.auth = [G.char.pid]; return done(TL`New code: ${code}. Everyone else has to enter it again.`); },
     acts: [
-      [lock.on ? 'Leave it unlocked' : 'Lock it', () => { lock.on = !lock.on; return done(lock.on ? 'Locked.' : 'Unlocked: anyone can open the door.'); }],
-      ['Take the lock off', () => { if (!addItem('codelock')) return 'No room in your backpack.'; delete d.p.lock; return done('You take the code lock off.'); }],
+      [lock.on ? tl('Leave it unlocked') : tl('Lock it'), () => { lock.on = !lock.on; return done(lock.on ? tl('Locked.') : tl('Unlocked: anyone can open the door.')); }],
+      [tl('Take the lock off'), () => { if (!addItem('codelock')) return tl('No room in your backpack.'); delete d.p.lock; return done(tl('You take the code lock off.')); }],
     ],
   });
 }
@@ -224,11 +225,11 @@ export const isBuilding = () => kind !== null;
 export function lacks(k: PieceKind): string | null {
   const s = PIECES[k], inv = G.char.inv;
   const miss = [...s.needs.filter(([m, n]) => count(inv, m) < n).map(([m, n]) => `${ITEMS[m].name} ${count(inv, m)}/${n}`),
-    ...s.tools.filter((t, i) => (i === 0 ? !inHands(t) : !count(inv, t) && !inHands(t))).map((t, i) => (i === 0 ? `the ${ITEMS[t].name} in your hands` : 'tool: ' + ITEMS[t].name))];
-  return miss.length ? 'Needs ' + miss.join(', ') : null;
+    ...s.tools.filter((t, i) => (i === 0 ? !inHands(t) : !count(inv, t) && !inHands(t))).map((t, i) => (i === 0 ? TL`the ${ITEMS[t].name} in your hands` : 'tool: ' + ITEMS[t].name))];
+  return miss.length ? tl('Needs ') + miss.join(', ') : null;
 }
 export function startBuilding(k: PieceKind): boolean {
-  if (G.char.loc !== 'overworld' || !claimUnder()) { logLine('You can only build on your own claim: raise a Flagpole first.'); return false; }
+  if (G.char.loc !== 'overworld' || !claimUnder()) { logLine(tl('You can only build on your own claim: raise a Flagpole first.')); return false; }
   kind = k; lastKey = ''; target = null;
   return true;
 }
@@ -236,7 +237,7 @@ export function stopBuilding(quiet = false) {
   if (kind === null) return;
   kind = null; target = null; aimed = null;
   if (ghost) { scene.remove(ghost); ghost.traverse((o) => (o as THREE.Line).geometry?.dispose()); ghost = null; }
-  if (!quiet) logLine('You put your tools away.');
+  if (!quiet) logLine(tl('You put your tools away.'));
 }
 
 /** Where you look, claim-local, on the storey you stand on: under the ceiling when you look up, else on the floor. */
@@ -252,7 +253,7 @@ function aim(c: Claim, lv: number): { u: number; v: number; high: boolean } {
 export function updateBuilding() {
   if (kind === null) return;
   const c = claimUnder();
-  if (G.char.loc !== 'overworld' || !c) { stopBuilding(true); logLine('You left your claim.'); return; }
+  if (G.char.loc !== 'overworld' || !c) { stopBuilding(true); logLine(tl('You left your claim.')); return; }
   const lv = storeyAt(c), a = aim(c, lv), shape = PIECES[kind].shape;
   const p: Part = { k: kind, ...snap(shape, a.u, a.v), lv: shape === 'roof' ? (a.high ? lv + 1 : lv) : lv };
   if (shape === 'stairs') p.d = stairDir(G.yaw);
@@ -269,7 +270,7 @@ export function updateBuilding() {
     if (d < best) { best = d; aimed = { c, p: q }; }
   }
   let problem = partProblem(c.parts ?? [], p) ?? lacks(kind);
-  if (!problem && (shape === 'wall' || shape === 'door') && baseHitLocal([p], wrapDx(G.pos.x - c.x), G.pos.y - c.y, G.pos.z - c.z, 0.35)) problem = 'You are standing there.';
+  if (!problem && (shape === 'wall' || shape === 'door') && baseHitLocal([p], wrapDx(G.pos.x - c.x), G.pos.y - c.y, G.pos.z - c.z, 0.35)) problem = tl('You are standing there.');
   target = { c, p, problem };
   const key = `${p.gx}:${p.gz}:${p.d}:${p.lv}:${problem ?? ''}:${aimed ? aimed.p.gx + ',' + aimed.p.gz + ',' + aimed.p.d : ''}`;
   if (key === lastKey) return;
@@ -305,30 +306,30 @@ export function placePart() {
   takeAll(G.char.inv, PIECES[kind].needs);
   (target.c.parts ??= []).push(target.p);
   saveChar(); redraw(target.c); lastKey = ''; syncTurrets();
-  logLine(`${PIECES[kind].name} built.` + (lacks(kind) ? ' ' + lacks(kind) + ' for another.' : ''));
+  logLine(`${PIECES[kind].name} built.` + (lacks(kind) ? ' ' + lacks(kind) + tl(' for another.') : ''));
 }
 /** F: take down the part you look at. */
 export function dismantle() {
   if (!kind) return;
-  if (!aimed) { logLine('Look at the part you want to take down.'); return; }
+  if (!aimed) { logLine(tl('Look at the part you want to take down.')); return; }
   const s = PIECES[aimed.p.k], parts = aimed.c.parts!;
-  if (!inHands(s.cut)) { logLine(`Hold a ${ITEMS[s.cut].name} in your hands to take ${s.mat === 'wood' ? 'wooden' : 'metal'} parts down.`); return; }
-  if (aimed.p.lock && !authed(aimed.p)) { logLine('It is locked: you cannot take it down without the code.'); return; }
+  if (!inHands(s.cut)) { logLine(TL`Hold a ${ITEMS[s.cut].name} in your hands to take ${s.mat === 'wood' ? tl('wooden') : tl('metal')} parts down.`); return; }
+  if (aimed.p.lock && !authed(aimed.p)) { logLine(tl('It is locked: you cannot take it down without the code.')); return; }
   const lv = lvOf(aimed.p);
-  if (parts.some((q) => q !== aimed!.p && lvOf(q) > lv && partProblem(parts.filter((o) => o !== aimed!.p && o !== q), q))) { logLine('Something above rests on it: take that down first.'); return; }
+  if (parts.some((q) => q !== aimed!.p && lvOf(q) > lv && partProblem(parts.filter((o) => o !== aimed!.p && o !== q), q))) { logLine(tl('Something above rests on it: take that down first.')); return; }
   parts.splice(parts.indexOf(aimed.p), 1);
   let lost = 0;
   for (const [m, n] of refund(aimed.p.k)) lost += putItems(G.char.inv, m, n, packVol());
   if (aimed.p.lock && !addItem('codelock')) lost++;
   saveChar(); redraw(aimed.c); lastKey = ''; syncTurrets();
-  logLine(`${s.name} taken down.` + (lost ? ' Your backpack is full: some of the materials were left behind.' : ' Half the materials go back into your backpack.'));
+  logLine(TL`${s.name} taken down.` + (lost ? tl(' Your backpack is full: some of the materials were left behind.') : tl(' Half the materials go back into your backpack.')));
   aimed = null;
 }
 /** The hint shown while building (null when not building). */
 export function buildHint(): string | null {
   if (!kind) return null;
   if (!target) return '';
-  const lv = target.p.lv ?? 0, t = target.problem ?? `Click — build ${PIECES[kind].name}${lv > 0 ? ` (storey ${lv})` : ''}`;
-  return t + (aimed ? ` · F — take down ${PIECES[aimed.p.k].name}` : '') + ' · B — parts · right mouse — stop';
+  const lv = target.p.lv ?? 0, t = target.problem ?? TL`Click — build ${PIECES[kind].name}${lv > 0 ? ` (storey ${lv})` : ''}`;
+  return t + (aimed ? TL` · F — take down ${PIECES[aimed.p.k].name}` : '') + tl(' · B — parts · right mouse — stop');
 }
 export const buildOk = () => !!target && !target.problem;

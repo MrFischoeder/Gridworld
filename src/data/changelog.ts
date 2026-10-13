@@ -3,6 +3,13 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.190.0', date: '2026-10-13', title: 'Two languages: English and Polish', notes: [
+    'The game now speaks Polish too: pick English or Polski under the title in the main menu. The page reloads straight to the menu in the new language, and your game is saved first.',
+    'Everything you read in play is translated: dialogue, items and their tooltips, the character sheet, the backpack and every window, the HUD, prompts, the quest tracker, the log, the maps, the village computer, the intro and the opening film.',
+    'The choice is yours alone: online, every player plays in their own language.',
+    'Names that the game writes into a shared world (outposts, deposits, notices on a shared board) stay in the language of the player whose game made them.',
+    'The changelog stays in English.',
+  ] },
   { v: '0.189.0', date: '2026-10-12', title: 'The rivals mode', notes: [
     'A new server can be made as a rivals world: tick "rivals" next to Create a server. Co-op stays the default, and single player is always co-op.',
     'Rivals needs a new world of towns, so a server made in an older world of your own is refused.',

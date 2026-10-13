@@ -13,6 +13,7 @@
 import type { ItemKey } from '../data/items';
 import type { TownState } from './town';
 import { startJob, jobOf } from './construction';
+import { tl } from '../i18n';
 
 export type ImproveKind = 'bank' | 'lamps' | 'automation' | 'sights' | 'armour';
 export const IMPROVE_KINDS: ImproveKind[] = ['bank', 'lamps', 'automation', 'sights', 'armour'];
@@ -24,11 +25,11 @@ export interface ImproveSpec {
   gold: number; xp: number;
 }
 export const IMPROVE: Record<ImproveKind, ImproveSpec> = {
-  bank: { name: 'Battery Bank', blurb: 'racks of power cells in a shed by the plant: they charge while the sun shines and the wind blows, and give it back at night and in a lull', needs: [['powercell', 4], ['batteries', 6], ['cable', 6], ['bricks', 6], ['pcm', 1]], gold: 250, xp: 250 },
-  lamps: { name: 'Battery Lamps', blurb: 'the old oil and filament lamps swapped for battery lamps: the village takes less power, and its lamps stay lit when the plant is down', needs: [['batteries', 4], ['glass', 4], ['cable', 4]], gold: 120, xp: 120 },
-  automation: { name: 'Automated Site', blurb: 'automation units bolted to the industry site\'s machines: it makes half as much again and runs whether the village has the hands or not', needs: [['automation', 2], ['precision', 2], ['cable', 6], ['steel', 4], ['motor', 2], ['control', 2]], gold: 500, xp: 500 },
-  sights: { name: 'Sensor Sights', blurb: 'sensor heads and a chip on every turret on the wall: they see half as far again and fire faster', needs: [['sensor', 2], ['microchip', 2], ['cable', 4], ['optics', 2]], gold: 300, xp: 300 },
-  armour: { name: 'Armoured Wall', blurb: 'the stone wall faced with plates of aluminium and advanced alloy: raids break on it more often and the gates hold longer', needs: [['aluminium', 8], ['alloy', 6], ['steel', 8], ['cement', 10], ['titanium', 4], ['advsteel', 6]], wall: 2, gold: 400, xp: 400 },
+  bank: { name: tl('Battery Bank'), blurb: tl('racks of power cells in a shed by the plant: they charge while the sun shines and the wind blows, and give it back at night and in a lull'), needs: [['powercell', 4], ['batteries', 6], ['cable', 6], ['bricks', 6], ['pcm', 1]], gold: 250, xp: 250 },
+  lamps: { name: tl('Battery Lamps'), blurb: tl('the old oil and filament lamps swapped for battery lamps: the village takes less power, and its lamps stay lit when the plant is down'), needs: [['batteries', 4], ['glass', 4], ['cable', 4]], gold: 120, xp: 120 },
+  automation: { name: tl('Automated Site'), blurb: tl('automation units bolted to the industry site\'s machines: it makes half as much again and runs whether the village has the hands or not'), needs: [['automation', 2], ['precision', 2], ['cable', 6], ['steel', 4], ['motor', 2], ['control', 2]], gold: 500, xp: 500 },
+  sights: { name: tl('Sensor Sights'), blurb: tl('sensor heads and a chip on every turret on the wall: they see half as far again and fire faster'), needs: [['sensor', 2], ['microchip', 2], ['cable', 4], ['optics', 2]], gold: 300, xp: 300 },
+  armour: { name: tl('Armoured Wall'), blurb: tl('the stone wall faced with plates of aluminium and advanced alloy: raids break on it more often and the gates hold longer'), needs: [['aluminium', 8], ['alloy', 6], ['steel', 8], ['cement', 10], ['titanium', 4], ['advsteel', 6]], wall: 2, gold: 400, xp: 400 },
 };
 export const hasImprove = (s: TownState | undefined, k: ImproveKind) => !!s?.imp?.[k];
 
@@ -36,7 +37,7 @@ export const hasImprove = (s: TownState | undefined, k: ImproveKind) => !!s?.imp
 export function improvePlan(k: ImproveKind, s: TownState | undefined) {
   if (hasImprove(s, k)) return null;
   const spec = IMPROVE[k], rows = spec.needs.map(([i, n]) => ({ k: i, n, given: Math.min(n, s?.igiven?.[k]?.[i] ?? 0) }));
-  const problem = spec.wall !== undefined && (s?.wall ?? 0) < spec.wall ? 'It goes on a stone wall: the village needs one first.' : '';
+  const problem = spec.wall !== undefined && (s?.wall ?? 0) < spec.wall ? tl('It goes on a stone wall: the village needs one first.') : '';
   return { spec, rows, problem, done: rows.every((r) => r.given >= r.n) };
 }
 /** Hand over materials for k (bit by bit); builds it once complete. */

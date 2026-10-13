@@ -7,6 +7,7 @@ import { bulkOf } from '../inventory';
 import { carriedKg, packVol, gear } from '../character';
 import { itemIcon } from './icons';
 import { shortName } from './itemtip';
+import { tl, TL } from '../i18n';
 
 export interface SlotView {
   k: ItemKey | null; n?: number;
@@ -29,7 +30,7 @@ export function slotHTML(id: string, v: SlotView, selected = false): string {
   const it = v.k ? item(v.k) : null, cls = ['slot', it?.type ?? '', v.cls ?? '', selected ? 'sel' : '', v.k && !v.fixed ? 'drag' : ''].filter(Boolean).join(' ');
   const cnt = (v.n ?? 0) > 1 ? `<span class="n">${v.n}</span>` : '';
   const bar = v.c !== undefined ? `<i class="cond${v.c < 35 ? ' low' : ''}" style="width:${Math.max(0, Math.min(100, v.c))}%"></i>` : '';
-  const title = v.title ?? (it ? `${it.name}: ${it.desc}${v.c !== undefined ? ` (${Math.round(v.c)}%)` : ''}` : v.hint ?? 'Empty slot');
+  const title = v.title ?? (it ? `${it.name}: ${it.desc}${v.c !== undefined ? ` (${Math.round(v.c)}%)` : ''}` : v.hint ?? tl('Empty slot'));
   // an item: its icon and short name (the full sheet comes up on hover, ui/itemtip.ts); else the hint
   const face = v.text ?? (it && v.k ? `${itemIcon(v.k) || `<span class="ab">${it.ab}</span>`}<span class="nm">${shortName(v.k)}</span>` : v.hint ? `<span class="hint">${v.hint}</span>` : '');
   const data = v.k ? ` data-k="${v.k}"${v.n && v.n > 1 ? ` data-n="${v.n}"` : ''}${v.c !== undefined ? ` data-c="${Math.round(v.c)}"` : ''}` : ` title="${esc(title)}"`;
@@ -41,13 +42,13 @@ export function slotHTML(id: string, v: SlotView, selected = false): string {
 export function loadText(): string {
   const inv = G.char.inv, kg = carriedKg(), l = bulkOf(inv), g = gear();
   const cls = kg > g.max ? 'bad' : kg > g.comfy ? 'warn' : '';
-  return `<span class="${cls}">${kg.toFixed(1)} kg${kg > g.max ? ' OVERLOADED' : kg > g.comfy ? ' heavy' : ''}</span> (easy up to ${g.comfy}, max ${g.max}) · <span class="${l >= packVol() - 0.5 ? 'bad' : ''}">${l.toFixed(1)} / ${packVol()} L</span>`;
+  return TL`<span class="${cls}">${kg.toFixed(1)} kg${kg > g.max ? tl(' OVERLOADED') : kg > g.comfy ? tl(' heavy') : ''}</span> (easy up to ${g.comfy}, max ${g.max}) · <span class="${l >= packVol() - 0.5 ? 'bad' : ''}">${l.toFixed(1)} / ${packVol()} L</span>`;
 }
 export function itemInfo(k: ItemKey, c?: number): string {
   const it = item(k);
   const [kg, l] = BULK[k], food = NOURISH[k];
   return `<b>${it.name}</b>${c !== undefined ? ` <span class="${c < 35 ? 'bad' : ''}">${Math.round(c)}%</span>` : ''}<br>${it.desc}` +
-    `<br><span class="sub">${kg} kg · ${l} L${food?.kcal ? ` · ${food.kcal} kcal (${Math.round(food.kcal / kg)} kcal/kg)` : ''}</span>`;
+    TL`<br><span class="sub">${kg} kg · ${l} L${food?.kcal ? TL` · ${food.kcal} kcal (${Math.round(food.kcal / kg)} kcal/kg)` : ''}</span>`;
 }
 
 export interface SlotHandlers {

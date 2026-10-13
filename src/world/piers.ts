@@ -17,6 +17,7 @@ import { driving } from './vehicles';
 import { takeOne, saveChar } from '../character';
 import { logLine, showToast } from '../ui/hud';
 import type { Container } from '../save';
+import { tl, TL } from '../i18n';
 
 const WOOD = 0x2fe060, DARK = 0x1f9a44, STAKE = 0xffd060, GOLD = 0xffd060;
 const NEAR = 420, DROP = 520;
@@ -75,7 +76,7 @@ function draw(p: Pier): THREE.Group {
   const g = new THREE.Group(), y = groundAt(SIGN.v, SIGN.s);
   pb.box(SIGN.v - 0.07, y - 0.1, SIGN.s - 0.07, SIGN.v + 0.07, y + 2.1, SIGN.s + 0.07, DARK);
   pb.box(SIGN.v - 0.06, y + 1.4, SIGN.s - 0.8, SIGN.v + 0.06, y + 2.1, SIGN.s + 0.8, DARK);
-  const label = textSprite(done ? 'DOCK' : 'DOCK SITE', done ? '#2ac8b0' : '#ffd060', 2.2);
+  const label = textSprite(done ? tl('DOCK') : tl('DOCK SITE'), done ? '#2ac8b0' : '#ffd060', 2.2);
   label.position.set(SIGN.v, y + 2.55, SIGN.s); g.add(label);
   g.add(pb.build());
   g.position.set(p.x, 0, p.z); g.rotation.y = Math.atan2(p.dx, p.dz); // local z = out to sea, local x = gen's −v
@@ -157,29 +158,29 @@ const matB = new THREE.LineBasicMaterial({ color: OK, transparent: true, opacity
 let placing = false, preview: THREE.Group | null = null, plan: Pier | null = null, problem: string | null = null, lastT = 0, lastYaw = NaN, lastX = NaN;
 export const isPierPlacing = () => placing;
 export function startPierPlacing(): boolean {
-  if (G.char.loc !== 'overworld' || !OW.terrain) { logLine('Docks are built outdoors, on the sea coast.'); return false; }
-  if (driving.v) { logLine('Get out of the vehicle first.'); return false; }
+  if (G.char.loc !== 'overworld' || !OW.terrain) { logLine(tl('Docks are built outdoors, on the sea coast.')); return false; }
+  if (driving.v) { logLine(tl('Get out of the vehicle first.')); return false; }
   placing = true; plan = null; problem = null; lastT = 0; lastYaw = NaN;
-  logLine('Stand on the beach and look out to sea: click to stake out the dock, right mouse button or Esc to cancel.');
+  logLine(tl('Stand on the beach and look out to sea: click to stake out the dock, right mouse button or Esc to cancel.'));
   return true;
 }
 export function cancelPierPlacing(quiet = false) {
   if (!placing) return;
   placing = false; plan = null;
   if (preview) { scene.remove(preview); preview.traverse((o) => (o as THREE.Line).geometry?.dispose()); preview = null; }
-  if (!quiet) logLine('You put the Dock Kit away.');
+  if (!quiet) logLine(tl('You put the Dock Kit away.'));
 }
-export const pierPlacingHint = () => (!placing ? null : problem ?? 'Click — stake out a dock here · right mouse / Esc — cancel');
+export const pierPlacingHint = () => (!placing ? null : problem ?? tl('Click — stake out a dock here · right mouse / Esc — cancel'));
 export const pierPlacingOk = () => !!plan && !problem;
 export function confirmPierPlacing() {
   if (!placing) return;
-  if (!plan || problem) { logLine(problem ?? 'Look out to sea to build a dock'); return; }
+  if (!plan || problem) { logLine(problem ?? tl('Look out to sea to build a dock')); return; }
   if (!takeOne('pierkit')) { cancelPierPlacing(true); return; }
   const p: Pier = { ...plan, id: `pier:${G.char.pid}:${Math.round(G.char.time)}:${G.char.piers.length}`, given: {} };
   G.char.piers.push(p); saveChar();
   cancelPierPlacing(true); scanT = 0;
-  showToast('Dock staked out');
-  logLine(`The dock is staked out: ${Math.round(p.len)} m out to ${PIER.depth} m of water. Bring the materials to its sign on the beach.`);
+  showToast(tl('Dock staked out'));
+  logLine(TL`The dock is staked out: ${Math.round(p.len)} m out to ${PIER.depth} m of water. Bring the materials to its sign on the beach.`);
 }
 /** Every frame while staking out: plan from where you stand and look, redraw the hologram when that changed. */
 export function updatePierPlacing() {

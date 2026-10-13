@@ -20,6 +20,7 @@ import { seaMask, SEA } from './seas';
 import { mountainMask } from './mountains';
 import { naturalHeight } from './heights';
 import { citySites } from './cities';
+import { TL } from '../i18n';
 
 export const RIVER = {
   /** Grid cell of the drainage map (m). */
@@ -231,7 +232,7 @@ export function riversOf(world: number): Rivers {
     for (let i = lv.length - 1 - tail; i < lv.length; i++) { const w = (i - (lv.length - 1 - tail)) / tail; lv[i] = Math.max(endLv, lv[i] + (endLv - lv[i]) * w); }
     for (let i = 1; i < lv.length; i++) lv[i] = Math.min(lv[i], lv[i - 1]);
     const R = rng(seed);
-    list.push({ id, name: ruinName(R) + ' River', x: p.map((q) => q[0]), z: p.map((q) => q[1]), lv, half, depth, into });
+    list.push({ id, name: TL`${ruinName(R)} River`, x: p.map((q) => q[0]), z: p.map((q) => q[1]), lv, half, depth, into });
   }
   // buckets by region (canonical column) holding every stretch whose valley reaches in
   const buckets = new Map<number, RiverSeg[]>();

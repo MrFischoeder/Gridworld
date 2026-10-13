@@ -16,6 +16,7 @@ import { nearRiver } from './rivers';
 import { inCity } from './cities';
 import { regionRoads, nearestOnRoad } from './roads';
 import type { ItemKey } from '../data/items';
+import { tl } from '../i18n';
 
 export const FOG = {
   /** Islands: no nearer than this to Gridholm (m); the share of the sea's islands (gen/seas.ts) that are poisoned. */
@@ -34,9 +35,9 @@ export const FOG = {
 
 export type FogSiteKind = 'depot' | 'lab' | 'probe';
 export const FOG_SITE: Record<FogSiteKind, { name: string; lockers: number; blurb: string }> = {
-  depot: { name: 'Old Army Depot', lockers: 4, blurb: 'a walled depot of the old army: a bunker, a row of sheds and rusted drums leaking the fog' },
-  lab: { name: 'Old Research Lab', lockers: 3, blurb: 'a sealed research block with its tanks cracked open: whatever they held still seeps out' },
-  probe: { name: 'Crashed Probe', lockers: 3, blurb: 'a probe of the old world that came down burning, its tanks split: the ground round it still steams' },
+  depot: { name: tl('Old Army Depot'), lockers: 4, blurb: tl('a walled depot of the old army: a bunker, a row of sheds and rusted drums leaking the fog') },
+  lab: { name: tl('Old Research Lab'), lockers: 3, blurb: tl('a sealed research block with its tanks cracked open: whatever they held still seeps out') },
+  probe: { name: tl('Crashed Probe'), lockers: 3, blurb: tl('a probe of the old world that came down burning, its tanks split: the ground round it still steams') },
 };
 export interface FogZone {
   /** 'fog:<rx>:<rz>' (canonical region). */
@@ -52,8 +53,8 @@ const rectDist = (r: Rect, x: number, z: number) => Math.hypot(Math.max(r.x0 - x
 const smooth = (t: number) => (t <= 0 ? 0 : t >= 1 ? 1 : t * t * (3 - 2 * t));
 const u01 = (world: number, rx: number, rz: number, k: number) => (hash(world, rx, rz, k) % 10000) / 10000;
 
-const ISLE_NAMES = ['Blight Isle', 'Choke Island', 'the Green Shroud', 'Ashen Isle', 'the Sick Island', 'Fume Island', 'the Drowned Vats', 'Hollow Isle'];
-const LAND_NAMES = ['the Green Blight', 'Choke Hollow', 'the Poisoned Fields', 'the Fume Flats', 'the Sick Mile', 'the Dead Pastures', 'the Shroud', 'Gasser\'s Waste'];
+const ISLE_NAMES = [tl('Blight Isle'), tl('Choke Island'), tl('the Green Shroud'), tl('Ashen Isle'), tl('the Sick Island'), tl('Fume Island'), tl('the Drowned Vats'), tl('Hollow Isle')];
+const LAND_NAMES = [tl('the Green Blight'), tl('Choke Hollow'), tl('the Poisoned Fields'), tl('the Fume Flats'), tl('the Sick Mile'), tl('the Dead Pastures'), tl('the Shroud'), tl('Gasser\'s Waste')];
 
 /** A poisoned island (gen/seas.ts ISLE) whose middle lies in canonical region (rx, rz), or null. */
 function isleIn(world: number, rx: number, rz: number): FogZone | null {

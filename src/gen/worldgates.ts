@@ -11,12 +11,13 @@ import { mountainMask } from './mountains';
 import { nearRiver } from './rivers';
 import { inCity } from './cities';
 import { lakesIn, LAKE_REACH } from './water';
+import { TL } from '../i18n';
 
 export const GATE_CLEAR = 24, GATE_BLEND = 10;
 export const GATE_PANEL = [14, 4] as const, GATE_TABLET = [-14, 4] as const;
 export interface WorldGate { id: number; x: number; z: number; y: number; yaw: number; address: GateAddress; seed: number }
 const cache = new Map<number, WorldGate[]>();
-export const gateName = (g: Pick<WorldGate, 'id'>) => `Ancient Gate ${String(g.id + 1).padStart(2, '0')}`;
+export const gateName = (g: Pick<WorldGate, 'id'>) => TL`Ancient Gate ${String(g.id + 1).padStart(2, '0')}`;
 
 function gateNetwork(world: number, count: number): WorldGate[] {
   const got = cache.get(world); if (got && got.length >= count) return got;
@@ -43,7 +44,7 @@ function gateNetwork(world: number, count: number): WorldGate[] {
       if (lakesIn(base, rect).some(l => Math.hypot(l.x - x, l.z - z) < l.r * LAKE_REACH * 1.3 + 30)) continue;
       site = [x, z, Math.round(base.base(x, z))]; break;
     }
-    if (!site) throw new Error(`No dry site for ancient gate ${id} in world ${world}`);
+    if (!site) throw new Error(TL`No dry site for ancient gate ${id} in world ${world}`);
     out.push({ id, x: site[0], z: site[1], y: site[2], yaw: Q() * Math.PI * 2,
       address: addresses[id], seed: hash(world, id, 0x6a80) });
   }

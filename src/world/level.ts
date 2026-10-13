@@ -61,6 +61,7 @@ import { saveChar, depth } from '../character';
 import { showToast, logLine, el, renderSheet } from '../ui/hud';
 import { buildMini, setMiniMode } from '../ui/minimap';
 import { drawWell } from './water';
+import { tl, TL } from '../i18n';
 
 let worldGroup: THREE.Group | null = null;
 
@@ -99,7 +100,7 @@ onClimbChange(refreshWeaponVisibility);
 onWorkChange(refreshWeaponVisibility);
 
 // ---------- dungeon ----------
-const ruinName = (id: number) => cityEntrance(G.char.world, id)?.name ?? findPoi(G.char.world, id)?.name ?? 'Ruins';
+const ruinName = (id: number) => cityEntrance(G.char.world, id)?.name ?? findPoi(G.char.world, id)?.name ?? tl('Ruins');
 export function loadDungeon(arriveDir: string | null) {
   const c = G.char, d = c.dungeon!;
   if (d.cave) { // a cave system: its own kind of place
@@ -129,9 +130,9 @@ export function loadDungeon(arriveDir: string | null) {
     const o = DIRV[p.dir], tx = d.gx + o[0], tz = d.gz + o[1];
     const name = ruinName(d.ruinId);
     W.portals.push(p.key === 'V'
-      ? makeStair(p, pd, placed.length - 1, '▲ ' + (d.depth > 1 && !wreck ? 'DEPTH ' + (d.depth - 1) : name.toUpperCase()), d.depth > 1 && !wreck ? 'Stairs up to depth ' + (d.depth - 1) : 'Stairs up to the ' + name, () => { if (d.depth > 1 && !wreck) ascend(); else exitToRuin(); })
-      : p.key === 'D' ? makeStair(p, pd, placed.length - 1, '▼ DEPTH ' + (d.depth + 1), 'Stairs down to depth ' + (d.depth + 1), descend)
-      : makeStair(p, pd, placed.length - 1, (p.up ? '▲ ' : '▼ ') + 'SECTOR ' + tx + ', ' + tz, 'Stairs ' + (p.up ? 'up' : 'down') + ' to sector ' + tx + ', ' + tz, () => travel(p.dir)));
+      ? makeStair(p, pd, placed.length - 1, '▲ ' + (d.depth > 1 && !wreck ? tl('DEPTH ') + (d.depth - 1) : name.toUpperCase()), d.depth > 1 && !wreck ? tl('Stairs up to depth ') + (d.depth - 1) : tl('Stairs up to the ') + name, () => { if (d.depth > 1 && !wreck) ascend(); else exitToRuin(); })
+      : p.key === 'D' ? makeStair(p, pd, placed.length - 1, '▼ ' + tl('DEPTH ') + (d.depth + 1), tl('Stairs down to depth ') + (d.depth + 1), descend)
+      : makeStair(p, pd, placed.length - 1, (p.up ? '▲ ' : '▼ ') + tl('SECTOR ') + tx + ', ' + tz, (p.up ? TL`Stairs up to sector ${tx}, ${tz}` : TL`Stairs down to sector ${tx}, ${tz}`), () => travel(p.dir)));
   }
   W.bosses = map.bosses.map(makeBoss).filter((x) => !!x);
   if (arriveDir) {
@@ -157,7 +158,7 @@ export function loadDungeon(arriveDir: string | null) {
   onDungeonLoaded(map);
   placeCarrier();
   setMiniMode('voxel'); buildMini();
-  el.hudL.textContent = wreck ? ruinName(d.ruinId) : 'Depth ' + d.depth + ', sector ' + d.gx + ', ' + d.gz;
+  el.hudL.textContent = wreck ? ruinName(d.ruinId) : tl('Depth ') + d.depth + ', sector ' + d.gx + ', ' + d.gz;
   if (wreck) el.route.style.display = 'none'; // no way further down from a wreck
   el.seed.value = String(c.world); renderSheet(); saveChar();
 }
@@ -171,16 +172,16 @@ export function wallSign(text: string, color: string, at: { x: number; z: number
 /** The sign over a house's door: yours, a hero's, or for sale (gen/homes.ts). */
 function homeSign(vid: number | undefined, b: VillageMap['buildings'][number]): string {
   if (b.hero === undefined || vid === undefined) return b.name;
-  if (myHome(G.char, vid) === b.hero) return 'YOUR HOUSE';
+  if (myHome(G.char, vid) === b.hero) return tl('YOUR HOUSE');
   const o = G.char.towns[vid]?.homes?.[b.hero];
-  return o ? `${o.n.toUpperCase()}'S HOUSE` : b.condition === 0 ? 'RUIN FOR SALE' : 'FOR SALE';
+  return o ? TL`${o.n.toUpperCase()}'S HOUSE` : b.condition === 0 ? tl('RUIN FOR SALE') : tl('FOR SALE');
 }
 export function villageDeco(map: VillageMap, y0 = 0, vid?: number) {
   const grp = new THREE.Group();
   const props = new PropBatch();
   for (const b of map.buildings) {
     drawHouse(props, b, y0); drawFurniture(props, b, y0);
-    const name = b.condition === 1 ? 'HOME REPAIRS' : b.hero !== undefined ? homeSign(vid, b) : b.condition === 0 ? 'VACANT RUIN' : b.name;
+    const name = b.condition === 1 ? tl('HOME REPAIRS') : b.hero !== undefined ? homeSign(vid, b) : b.condition === 0 ? tl('VACANT RUIN') : b.name;
     if (name) grp.add(wallSign(name, b.role === 'innkeeper' ? '#ffb347' : '#ffd060', { x: b.door.x + b.out[0] * 0.15, z: b.door.z + b.out[1] * 0.15 }, b.out, y0 + (b.role === 'house' ? HOUSE.doorH + 0.45 : b.h + 0.35)));
   }
   for (const t of map.trees) drawCrown(props, t.x + 0.5, y0 + 2, t.z + 0.5, 1.8, t.h, hash(t.x, t.z, 0x7e3e));
@@ -383,7 +384,7 @@ export function loadOverworld(a: Arrival) {
  */
 export function teleportTo(x: number, z: number, poi?: Poi): string {
   const c = G.char;
-  if (G.trans) return 'Busy travelling, try again in a moment.';
+  if (G.trans) return tl('Busy travelling, try again in a moment.');
   if (driving.v) leave();
   if (riding()) getOff(true);
   c.loc = 'overworld'; c.dungeon = null;
@@ -396,7 +397,7 @@ export function teleportTo(x: number, z: number, poi?: Poi): string {
     loadOverworld({ kind: 'saved' });
   }
   saveChar();
-  return 'Teleported to ' + (poi ? poi.name : `${Math.round(x)}, ${Math.round(z)}`) + '.';
+  return tl('Teleported to ') + (poi ? poi.name : `${Math.round(x)}, ${Math.round(z)}`) + '.';
 }
 export function saveOverworldPos() {
   if (G.char.loc !== 'overworld') return;
@@ -408,25 +409,25 @@ export function saveOverworldPos() {
 export function descend() {
   const d = G.char.dungeon;
   if (!d || d.cave || (!W.hatch && !W.portals.some(p => p.key === 'D')) || d.depth >= MAX_DUNGEON_DEPTH) return;
-  d.depth++; saveChar(); loadDungeon('V'); showToast('Depth ' + depth()); arriveVia(W.arrivalStair);
+  d.depth++; saveChar(); loadDungeon('V'); showToast(tl('Depth ') + depth()); arriveVia(W.arrivalStair);
 }
 export function ascend() {
   const d = G.char.dungeon;
   if (!d || d.cave) return;
   if (d.depth <= 1) { exitToRuin(); return; }
-  d.depth--; saveChar(); loadDungeon('D'); showToast('Depth ' + depth()); arriveVia(W.arrivalStair);
+  d.depth--; saveChar(); loadDungeon('D'); showToast(tl('Depth ') + depth()); arriveVia(W.arrivalStair);
 }
 export function travel(dir: Dir) {
   const d = G.char.dungeon!;
   d.gx += DIRV[dir][0]; d.gz += DIRV[dir][1]; saveChar();
-  loadDungeon(OPP[dir]); showToast('Sector ' + d.gx + ', ' + d.gz); arriveVia(W.arrivalStair);
+  loadDungeon(OPP[dir]); showToast(tl('Sector ') + d.gx + ', ' + d.gz); arriveVia(W.arrivalStair);
 }
 /** Into a cave system by one of its mouths (world/caves.ts): the mouths are remembered, so either can be the way out. */
 export function enterCave(cv: Cave) {
   const c = G.char, self = { x: cv.x, z: cv.z, face: cv.face };
   const mouths = cv.other ? (cv.mouth === 0 ? [self, cv.other] : [cv.other, self]) : [self];
   c.loc = 'dungeon'; c.dungeon = { ruinId: cv.sys, depth: 1, gx: 0, gz: 0, cave: { name: cv.name, mouths, from: cv.other ? cv.mouth : 0 } }; saveChar();
-  loadDungeon(null); showToast(cv.name); logLine(cv.other ? 'The cave runs deep into the mountain. They say it comes out on the far side.' : 'Your steps echo in the dark.');
+  loadDungeon(null); showToast(cv.name); logLine(cv.other ? tl('The cave runs deep into the mountain. They say it comes out on the far side.') : tl('Your steps echo in the dark.'));
 }
 /** Out of a cave system by way out i: in front of that mouth, facing out. */
 export function exitCave(i: number) {
@@ -435,7 +436,7 @@ export function exitCave(i: number) {
   const fx = Math.cos(m.face), fz = Math.sin(m.face);
   c.ow = { x: m.x + fx * 3.5, y: -1e4, z: m.z + fz * 3.5, yaw: Math.atan2(-fx, -fz) }; saveChar();
   loadOverworld({ kind: 'saved' }); showToast(info.name);
-  if (info.mouths.length > 1 && i !== info.from) logLine('You come out on the far side of the mountain.');
+  if (info.mouths.length > 1 && i !== info.from) logLine(tl('You come out on the far side of the mountain.'));
 }
 export function enterDungeon(ruinId: number) {
   saveOverworldPos();
@@ -470,7 +471,7 @@ export function toVillage(how: 'death' | 'recall', id?: number) {
     c.loc = 'overworld'; c.dungeon = null; saveChar();
     loadOverworld({ kind: 'pod' }); G.hp = G.S.maxHp;
     c.kcal = Math.max(c.kcal, 1500); c.water = Math.max(c.water, 50); // the pod's drip kept you going
-    showToast('You wake up in your cryo-pod aboard the ' + SHIP_NAME);
+    showToast(tl('You wake up in your cryo-pod aboard the ') + SHIP_NAME);
     arriveVia(null);
     return;
   }
@@ -482,7 +483,7 @@ export function toVillage(how: 'death' | 'recall', id?: number) {
   const bed = myHome(c, v.id) >= 0;
   loadOverworld({ kind: 'tavern', id: v.id, bed }); G.hp = G.S.maxHp;
   if (how === 'death') { c.kcal = Math.max(c.kcal, 1500); c.water = Math.max(c.water, 50); } // the innkeeper (or a neighbour) fed you
-  showToast(how === 'death' ? (bed ? 'You wake up in your own bed' : 'You wake up in the tavern of ' + v.name) : bed ? 'Home' : v.name);
+  showToast(how === 'death' ? (bed ? tl('You wake up in your own bed') : tl('You wake up in the tavern of ') + v.name) : bed ? tl('Home') : v.name);
   arriveVia(null);
 }
 export const canRecall = () => G.char.loc === 'dungeon' || !inVillage(G.pos.x, G.pos.z);

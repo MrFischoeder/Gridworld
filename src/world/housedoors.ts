@@ -9,6 +9,7 @@ import { G } from '../game';
 import { HOUSE, type Building, type VillageMap } from '../gen/village';
 import { scene, lineMat, fillMat, add } from './render';
 import { myHome } from '../gen/homes';
+import { tl, TL } from '../i18n';
 
 type Kind = 'inn' | 'shop' | 'house' | 'mine';
 interface Door {
@@ -82,10 +83,10 @@ const inside = (b: Building) => G.pos.x > b.x && G.pos.x < b.x + b.w && G.pos.z 
 /** Why the door will not open for you now, or ''. */
 function lockedWhy(d: Door): string {
   if (inside(d.b)) return '';
-  if (d.kind === 'mine') { if (ownsHouse(d.vid, d.b)) return ''; const o = G.char.towns[d.vid]?.homes?.[d.b.hero!]; return o ? `Locked: ${o.n}'s house` : 'Locked. The house is for sale: ask the elder'; }
+  if (d.kind === 'mine') { if (ownsHouse(d.vid, d.b)) return ''; const o = G.char.towns[d.vid]?.homes?.[d.b.hero!]; return o ? TL`Locked: ${o.n}'s house` : tl('Locked. The house is for sale: ask the elder'); }
   const p = phase(G.char.time);
   if (p.day || d.kind === 'inn') return '';
-  return d.kind === 'shop' ? `Closed for the night: open again at ${String(DAY[0]).padStart(2, '0')}:00` : 'Locked: the family is asleep';
+  return d.kind === 'shop' ? TL`Closed for the night: open again at ${String(DAY[0]).padStart(2, '0')}:00` : tl('Locked: the family is asleep');
 }
 /** Whether the door should stand open now (the hour, or what you did with it this half of the day). */
 function wanted(d: Door): boolean {
@@ -149,9 +150,9 @@ export function nearHouseDoor(): Door | null {
 }
 const isOpen = (d: Door) => wanted(d);
 export function houseDoorPrompt(d: Door): { text: string; locked: boolean } {
-  if (isOpen(d)) return { text: 'E — close the door', locked: false };
+  if (isOpen(d)) return { text: tl('E — close the door'), locked: false };
   const why = lockedWhy(d);
-  return why ? { text: why, locked: true } : { text: d.kind === 'mine' ? 'E — open the door of your house' : 'E — open the door', locked: false };
+  return why ? { text: why, locked: true } : { text: d.kind === 'mine' ? tl('E — open the door of your house') : tl('E — open the door'), locked: false };
 }
 /** E at a door: open or shut it (if it is not locked); holds until the next dawn or dusk. */
 export function toggleHouseDoor(d: Door): string {

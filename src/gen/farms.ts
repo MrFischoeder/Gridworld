@@ -9,6 +9,7 @@ import type { TownState } from './town';
 import { peopleAt, setPeople, basePeople, PEOPLE } from './people';
 import { assign } from './workforce';
 import { startJob, jobOf } from './construction';
+import { tl } from '../i18n';
 
 export const FARM = { max: 3, people: 15, needs: [['planks', 16], ['stone', 6]] as [ItemKey, number][], xp: 60, gold: 40, kw: 3 };
 /** Steel ploughs and pumps (the Steel Ploughs plans): an upgraded farm feeds `mult` × as many, but draws more power. */
@@ -53,7 +54,7 @@ export function handOverUpgrade(s: TownState, tech: Record<string, number>, have
 export function completeUpgrade(s: TownState) { s.fup = upgradedOf(s) + 1; s.ugiven = {}; }
 export function farmProblem(s: TownState | undefined): string {
   if (!progressive(s)) return '';
-  if (farmsOf(s) === 2 && !localIndustryDone(s)) return 'Develop the warehouse, power and available local industry before building the third farm.';
+  if (farmsOf(s) === 2 && !localIndustryDone(s)) return tl('Develop the warehouse, power and available local industry before building the third farm.');
   return '';
 }
 /** What the next farm still needs, or null when the village has all it can take. */
@@ -99,14 +100,14 @@ export function farmPlot(seed: number, i: number): { x0: number; z0: number; x1:
 export type Crop = 'wheat' | 'carrots' | 'potatoes' | 'hens' | 'cows' | 'flax' | 'sheep' | 'cotton';
 /** The crops a farm can grow: what goes into the village hall and how many crates a game day on fair soil. */
 export const CROPS: Record<Crop, { name: string; out: ItemKey; perDay: number; blurb: string; also?: [ItemKey, number] }> = {
-  wheat: { name: 'Wheat', out: 'grain', perDay: 4, blurb: 'grain for bread' },
-  carrots: { name: 'Carrots', out: 'carrots', perDay: 4, blurb: 'rows of carrots' },
-  potatoes: { name: 'Potatoes', out: 'potatoes', perDay: 5, blurb: 'potatoes, the most food a field gives' },
-  hens: { name: 'Hens', out: 'eggs', perDay: 3, blurb: 'a coop and a run: eggs, and a little meat', also: ['meat', 0.5] },
-  cows: { name: 'Cows', out: 'milk', perDay: 3, blurb: 'a byre and a pasture: milk and meat', also: ['meat', 1] },
-  flax: { name: 'Flax', out: 'fibre', perDay: 4, blurb: 'tall blue-flowered flax: fibre for a textile mill' },
-  sheep: { name: 'Sheep', out: 'wool', perDay: 3, blurb: 'a fold and a pasture: wool for a textile mill' },
-  cotton: { name: 'Cotton', out: 'cotton', perDay: 4, blurb: 'bushes of white cotton bolls: fibre for a textile mill' },
+  wheat: { name: tl('Wheat'), out: 'grain', perDay: 4, blurb: tl('grain for bread') },
+  carrots: { name: tl('Carrots'), out: 'carrots', perDay: 4, blurb: tl('rows of carrots') },
+  potatoes: { name: tl('Potatoes'), out: 'potatoes', perDay: 5, blurb: tl('potatoes, the most food a field gives') },
+  hens: { name: tl('Hens'), out: 'eggs', perDay: 3, blurb: tl('a coop and a run: eggs, and a little meat'), also: ['meat', 0.5] },
+  cows: { name: tl('Cows'), out: 'milk', perDay: 3, blurb: tl('a byre and a pasture: milk and meat'), also: ['meat', 1] },
+  flax: { name: tl('Flax'), out: 'fibre', perDay: 4, blurb: tl('tall blue-flowered flax: fibre for a textile mill') },
+  sheep: { name: tl('Sheep'), out: 'wool', perDay: 3, blurb: tl('a fold and a pasture: wool for a textile mill') },
+  cotton: { name: tl('Cotton'), out: 'cotton', perDay: 4, blurb: tl('bushes of white cotton bolls: fibre for a textile mill') },
 };
 export const CROP_KINDS = Object.keys(CROPS) as Crop[];
 /** What farm i grows (farms you have not set: wheat and potatoes by turns, as they were drawn before). */

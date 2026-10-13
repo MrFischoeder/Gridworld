@@ -8,6 +8,7 @@
 // time to tune the numbers first. On the multiplayer server `stepLife` is the per-village tick (hourly), and a
 // village far from any player can be caught up in one go (`runLife`).
 import { hash } from '../core/rng';
+import { tl } from '../i18n';
 
 export type LifeBuilding = 'house' | 'farm' | 'works' | 'granary' | 'barracks' | 'market';
 /** What the governor leans towards (the elder's focus; players will set it). */
@@ -59,12 +60,12 @@ export interface BuildSpec {
   gold?: number;
 }
 export const LIFE_BUILD: Record<LifeBuilding, BuildSpec> = {
-  house: { name: 'House', cost: 90, days: 1, upkeep: 0.4, housing: 10 },
-  farm: { name: 'Farm', cost: 140, days: 2, upkeep: 1, jobs: 6, food: 26 },
-  works: { name: 'Works', cost: 220, days: 3, upkeep: 2, jobs: 8, gold: 40 },
-  granary: { name: 'Granary', cost: 120, days: 1.5, upkeep: 0.5, store: 260 },
-  barracks: { name: 'Barracks', cost: 180, days: 2, upkeep: 1, guards: 6 },
-  market: { name: 'Market Hall', cost: 200, days: 2, upkeep: 1, jobs: 3 },
+  house: { name: tl('House'), cost: 90, days: 1, upkeep: 0.4, housing: 10 },
+  farm: { name: tl('Farm'), cost: 140, days: 2, upkeep: 1, jobs: 6, food: 26 },
+  works: { name: tl('Works'), cost: 220, days: 3, upkeep: 2, jobs: 8, gold: 40 },
+  granary: { name: tl('Granary'), cost: 120, days: 1.5, upkeep: 0.5, store: 260 },
+  barracks: { name: tl('Barracks'), cost: 180, days: 2, upkeep: 1, guards: 6 },
+  market: { name: tl('Market Hall'), cost: 200, days: 2, upkeep: 1, jobs: 3 },
 };
 /** Each further works earns this share of the one before (the markets for one village's goods fill up). */
 export const WORKS_FALL = 0.88;

@@ -26,6 +26,7 @@ import { showcaseBoat } from '../world/boats';
 import { showcaseShuttle } from '../world/hangar';
 import { GRID, fillMat, lineMat, add } from '../world/render';
 import { G } from '../game';
+import { tl } from '../i18n';
 
 let frozen = false;
 let running = false, time = 0, done: (() => void) | null = null;
@@ -195,7 +196,7 @@ function build() {
   }
   // 5 · an ancient gate waking in the ruins
   {
-    const g = ground(R), ruin = generateRuin(12345, { type: 'ruin', id: 45, name: 'Ancient ruins', x: 0, z: 0, rect: { x0: -22, z0: -22, x1: 22, z1: 22 }, flat: 4, blend: 8 }, 0);
+    const g = ground(R), ruin = generateRuin(12345, { type: 'ruin', id: 45, name: tl('Ancient ruins'), x: 0, z: 0, rect: { x0: -22, z0: -22, x1: 22, z1: 22 }, flat: 4, blend: 8 }, 0);
     g.add(drawTemple(ruin.temple, 12345).g);
     const portal = new THREE.Group(); portal.add(gateModel({ id: 0, x: 0, y: 0, z: 0, yaw: 0, seed: 45, address: [0, 2, 4] }, () => 0), gateSignals([0, 2, 4]));
     const energy = gateEnergy(); energy.visible = false; portal.add(energy); portal.position.set(30, 0, 15); g.add(portal);
@@ -370,7 +371,7 @@ export function playCinematic(end: () => void) {
   if (running) return;
   if (!world) build();
   root = document.createElement('div'); root.id = 'cinematic';
-  root.innerHTML = '<div class="letterbox top"></div><div class="letterbox bottom"></div><div class="cap"><b></b><span></span></div><div class="credits"><h1>GRIDWORLD</h1><p class="design">Designed by Luki</p><p class="music">Music by Iskra</p></div><div class="flash"></div><div class="veil"></div><button type="button" class="skip">Skip · Space / Esc</button>';
+  root.innerHTML = tl('<div class="letterbox top"></div><div class="letterbox bottom"></div><div class="cap"><b></b><span></span></div><div class="credits"><h1>GRIDWORLD</h1><p class="design">Designed by Luki</p><p class="music">Music by Iskra</p></div><div class="flash"></div><div class="veil"></div><button type="button" class="skip">Skip · Space / Esc</button>');
   document.body.append(root);
   cap = root.querySelector('.cap')!; capName = cap.querySelector('b')!; capLine = cap.querySelector('span')!;
   title = root.querySelector('h1')!; design = root.querySelector('.design')!; music = root.querySelector('.music')!; veil = root.querySelector('.veil')!; flash = root.querySelector('.flash')!;

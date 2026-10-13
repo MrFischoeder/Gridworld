@@ -17,6 +17,7 @@ import { stores, takeFrom, putAway } from './market';
 import { $, logLine } from './hud';
 import { lockPointer } from './input';
 import { itemName } from './icons';
+import { tl, TL } from '../i18n';
 
 const dlgEl = $('dlg'), panel = () => dlgEl.querySelector('.panel') as HTMLElement;
 let vid: number | null = null;
@@ -42,23 +43,23 @@ function render(msg = '') {
   const seed = villageSeed(c.world, poi), sk = stockOf(c.world, poi, seed, st, c.time);
   const mine = [...withYou()].sort((a, b) => ITEMS[a[0]].name.localeCompare(ITEMS[b[0]].name));
   const elder = elderHead !== null, big = hallSpec(st).h >= 6, other = personal();
-  let s = (elder ? elderHead + `<div class="role">The village's stores, kept by the elder · ${Math.round(holdVol(st))} / ${hallSpec(st).vol} L</div>`
-    : `<h2>${poi.name} · ${big ? 'Warehouse' : 'Village Hall'}</h2><div class="role">The village's stock · hold ${Math.round(holdVol(st))} / ${hallSpec(st).vol} L</div>`) +
-    `<div class="say">${msg ? msg + '<br><br>' : ''}${elder ? 'Until we raise a warehouse, bring what the village needs to me: I keep it in my house and the outbuildings. ' : ''}Whatever is stored here belongs to the village: its builds will draw on it. You can take it back out whenever you like.` +
-    `<br><span style="opacity:.75">Only materials are kept here: wood, stone, ore and metals, parts, crates of goods and what the works make of them. Weapons, ammunition, medkits, food, tools and clothes are yours to keep: leave them in a chest in your own house.${other.length ? ` (Not taken: ${other.slice(0, 6).map((k) => ITEMS[k].name).join(', ')}${other.length > 6 ? '…' : ''}.)` : ''}</span></div>`;
-  s += `<div class="say" style="margin:8px 0 0">In the hold</div>` + (hold.length ? hold.sort((a, b) => ITEMS[a[0]].name.localeCompare(ITEMS[b[0]].name)).map(([k, n]) =>
-    `<div class="shoprow"><div>${itemName(k)} ×${n}</div><button class="opt" style="width:auto" data-hout="${k}" data-hn="1">Take 1</button><button class="opt" style="width:auto" data-hout="${k}" data-hn="999">Take all</button></div>`).join('')
-    : '<div class="say" style="opacity:.7">Empty.</div>');
-  s += `<div class="say" style="margin:8px 0 0">The village's own goods (what its site makes and its farms grow; up to ${OWN.cap} crates of each, then that work stops)</div>` +
-    (sk.own.map((g) => `<div class="shoprow"><div>${itemName(g)} ×${Math.floor(sk.ownOf(g))}</div></div>`).join('') || '<div class="say" style="opacity:.7">None.</div>') +
-    `<div class="say" style="opacity:.8">The village's builds use these too. You buy them at the market, or the elder shares them with friends of the village.</div>`;
-  s += `<div class="say" style="margin:8px 0 0">With you here (backpack, vehicles ${elder ? 'nearby' : 'by the hall, the floor'})</div>` + (mine.length ? mine.map(([k, e]) => {
+  let s = (elder ? elderHead + TL`<div class="role">The village's stores, kept by the elder · ${Math.round(holdVol(st))} / ${hallSpec(st).vol} L</div>`
+    : TL`<h2>${poi.name} · ${big ? tl('Warehouse') : tl('Village Hall')}</h2><div class="role">The village's stock · hold ${Math.round(holdVol(st))} / ${hallSpec(st).vol} L</div>`) +
+    TL`<div class="say">${msg ? msg + '<br><br>' : ''}${elder ? tl('Until we raise a warehouse, bring what the village needs to me: I keep it in my house and the outbuildings. ') : ''}Whatever is stored here belongs to the village: its builds will draw on it. You can take it back out whenever you like.` +
+    TL`<br><span style="opacity:.75">Only materials are kept here: wood, stone, ore and metals, parts, crates of goods and what the works make of them. Weapons, ammunition, medkits, food, tools and clothes are yours to keep: leave them in a chest in your own house.${other.length ? TL` (Not taken: ${other.slice(0, 6).map((k) => ITEMS[k].name).join(', ')}${other.length > 6 ? '…' : ''}.)` : ''}</span></div>`;
+  s += TL`<div class="say" style="margin:8px 0 0">In the hold</div>` + (hold.length ? hold.sort((a, b) => ITEMS[a[0]].name.localeCompare(ITEMS[b[0]].name)).map(([k, n]) =>
+    TL`<div class="shoprow"><div>${itemName(k)} ×${n}</div><button class="opt" style="width:auto" data-hout="${k}" data-hn="1">Take 1</button><button class="opt" style="width:auto" data-hout="${k}" data-hn="999">Take all</button></div>`).join('')
+    : tl('<div class="say" style="opacity:.7">Empty.</div>'));
+  s += TL`<div class="say" style="margin:8px 0 0">The village's own goods (what its site makes and its farms grow; up to ${OWN.cap} crates of each, then that work stops)</div>` +
+    (sk.own.map((g) => `<div class="shoprow"><div>${itemName(g)} ×${Math.floor(sk.ownOf(g))}</div></div>`).join('') || tl('<div class="say" style="opacity:.7">None.</div>')) +
+    TL`<div class="say" style="opacity:.8">The village's builds use these too. You buy them at the market, or the elder shares them with friends of the village.</div>`;
+  s += TL`<div class="say" style="margin:8px 0 0">With you here (backpack, vehicles ${elder ? tl('nearby') : tl('by the hall, the floor')})</div>` + (mine.length ? mine.map(([k, e]) => {
     const room = holdRoom(st, k), n = e.carried + e.floor;
-    return `<div class="shoprow"><div>${itemName(k)} ×${n}${e.floor ? ` <span style="opacity:.7">(${e.floor} on the floor)</span>` : ''}</div><button class="opt" style="width:auto" data-hin="${k}" data-hn="1" ${room ? '' : 'disabled'}>Store 1</button><button class="opt" style="width:auto" data-hin="${k}" data-hn="999" ${room ? '' : 'disabled'}>Store all</button></div>`;
-  }).join('') + `<button class="opt" data-hall="1">Store everything I have here</button>` : '<div class="say" style="opacity:.7">Nothing the village could use.</div>');
-  if (!elder && big) s += '<button class="opt" data-hvehicle="1">Unload vehicles parked inside this warehouse</button><div class="say">Drive in through the wide doors, park fully inside, leave the cab and use this terminal. The materials in the trunk move straight into the hold; anything else stays in the trunk.</div>';
+    return TL`<div class="shoprow"><div>${itemName(k)} ×${n}${e.floor ? TL` <span style="opacity:.7">(${e.floor} on the floor)</span>` : ''}</div><button class="opt" style="width:auto" data-hin="${k}" data-hn="1" ${room ? '' : 'disabled'}>Store 1</button><button class="opt" style="width:auto" data-hin="${k}" data-hn="999" ${room ? '' : 'disabled'}>Store all</button></div>`;
+  }).join('') + TL`<button class="opt" data-hall="1">Store everything I have here</button>` : tl('<div class="say" style="opacity:.7">Nothing the village could use.</div>'));
+  if (!elder && big) s += tl('<button class="opt" data-hvehicle="1">Unload vehicles parked inside this warehouse</button><div class="say">Drive in through the wide doors, park fully inside, leave the cab and use this terminal. The materials in the trunk move straight into the hold; anything else stays in the trunk.</div>');
   panel().classList.add('wide');
-  panel().innerHTML = `<div data-stock-town="${vid}">` + s + (elder ? '<button class="opt" data-hback="1">Back</button>' : '<button class="opt" data-hclose="1">Close</button>') + `</div>`;
+  panel().innerHTML = `<div data-stock-town="${vid}">` + s + (elder ? tl('<button class="opt" data-hback="1">Back</button>') : tl('<button class="opt" data-hclose="1">Close</button>')) + `</div>`;
 }
 /** Store up to n of k: the floor first, then the backpack and the trunks. Returns how many went in. */
 function store(k: ItemKey, n: number): number {
@@ -92,7 +93,7 @@ export function hallClick(t: HTMLElement): boolean {
   if (t.closest('[data-hvehicle]')) {
     const r = hallRect(vid), st = (G.char.towns[vid] ??= {}); let n = 0;
     if (r && hallSpec(st).h >= 6) for (const v of vehicles) if (v.claimed && !v.ai && cargoVehicleInside(r, v.st, v.spec)) n += unloadCargo(st, v.st.trunk.items);
-    calcStats(); saveChar(); refreshHall(vid); render(n ? `Unloaded ${n} items directly from vehicle trunks.` : 'Park your vehicle fully inside, or make room in the hold.'); return true;
+    calcStats(); saveChar(); refreshHall(vid); render(n ? TL`Unloaded ${n} items directly from vehicle trunks.` : tl('Park your vehicle fully inside, or make room in the hold.')); return true;
   }
   const out = t.closest<HTMLElement>('[data-hout]'), inn = t.closest<HTMLElement>('[data-hin]'), all = t.closest('[data-hall]');
   if (!out && !inn && !all) return false;
@@ -101,16 +102,16 @@ export function hallClick(t: HTMLElement): boolean {
   if (out) {
     const k = out.dataset.hout as ItemKey, n = withdraw(st, k, +out.dataset.hn!), left = putAway(k, n, at(), false);
     if (left) deposit(st, k, left);
-    msg = n - left ? `Took ${n - left} × ${ITEMS[k].name}.` : 'No room in your backpack or vehicles.';
-    if (left && n - left) msg += ` ${left} stay in the hold (no room).`;
+    msg = n - left ? TL`Took ${n - left} × ${ITEMS[k].name}.` : tl('No room in your backpack or vehicles.');
+    if (left && n - left) msg += TL` ${left} stay in the hold (no room).`;
   } else if (inn) {
     const k = inn.dataset.hin as ItemKey, e = withYou().get(k), n = store(k, Math.min(+inn.dataset.hn!, (e?.carried ?? 0) + (e?.floor ?? 0)));
-    msg = n ? `Stored ${n} × ${ITEMS[k].name}.` : 'The hold is full.';
+    msg = n ? TL`Stored ${n} × ${ITEMS[k].name}.` : tl('The hold is full.');
   } else {
     const got: string[] = [];
     for (const [k, e] of withYou()) { const n = store(k, e.carried + e.floor); if (n) got.push(`${ITEMS[k].name} ×${n}`); }
-    msg = got.length ? `Stored ${got.join(', ')}.` : withYou().size ? 'The hold is full.' : 'Nothing here the stores take.';
-    if (got.length) logLine(`Into the village stores: ${got.join(', ')}.`);
+    msg = got.length ? TL`Stored ${got.join(', ')}.` : withYou().size ? tl('The hold is full.') : tl('Nothing here the stores take.');
+    if (got.length) logLine(TL`Into the village stores: ${got.join(', ')}.`);
   }
   calcStats(); saveChar(); refreshHall(vid); render(msg);
   return true;
