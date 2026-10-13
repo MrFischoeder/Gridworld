@@ -70,7 +70,7 @@ describe('new settlements and frozen saves', () => {
     expect(buildProject(s, 'comms', () => 999).built).toBe(true); expect(sideStep(s)).toBeNull();
     const loaded = loadChar({ getItem: (key) => key === SAVE_KEY ? JSON.stringify({ ...newChar(), world, towns: { [GRIDHOLM_ID]: s } }) : null });
     expect(loaded.towns[GRIDHOLM_ID]).toEqual(s); expect(loaded.settlementRules).toBe(1);
-    expect(hallSpec(s)).toEqual(VEHICLE_HALL);
+    expect(hallSpec(s)).toMatchObject(VEHICLE_HALL); expect(hallSpec(s).d).toBe(0); // built before 0.197's staking: the old plot
   });
   it('farms support gradual immigration and matching repairs of vacant homes', () => {
     const s = fresh(), v = home(), seed = villageSeed(world, v), now = 1000;

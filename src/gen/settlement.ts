@@ -26,12 +26,15 @@ export interface SettlementState {
   station?: true; stage?: number; car?: boolean;
   /** (0.150) The last orbital scan anyone in this world asked for (game time; the start village's state). */
   scanAt?: number;
+  /** (0.197) Where the hero staked out the warehouse (plaza-local middle, `d` the side its doors face: gen/hall.ts
+   *  `HallSpot`), and `whWait` = its materials are in and it waits for that. */
+  wh?: { x: number; z: number; d: number }; whWait?: true;
 }
 export const progressive = (s: TownState | undefined) => s?.settlement?.v === 1;
 export const projectDone = (s: TownState | undefined, k: Project) => !!s?.settlement?.done?.[k];
 export const SETTLEMENT_START = 8;
 export const PROJECTS: Record<Project, { name: string; needs: [ItemKey, number][]; description: string }> = {
-  warehouse: { name: tl('Vehicle warehouse'), needs: [['planks', 84], ['stone', 24], ['nails', 20]], description: tl('Build the plank warehouse outside the north fence. From then on the village stores are kept there: drive in through its wide doors and unload your vehicle at the terminal.') },
+  warehouse: { name: tl('Vehicle warehouse'), needs: [['planks', 84], ['stone', 24], ['nails', 20]], description: tl('Build the plank warehouse outside the wall, wherever you stake it out, with room before its doors for the vehicles and the convoys. From then on the village stores are kept there: drive in through its wide doors and unload your vehicle at the terminal.') },
   power: { name: tl('Village power plant'), needs: [['scrap', 12], ['wire', 8], ['circuit', 2]], description: tl('Build electricity on the marked site outside the fence. Farms work by hand until then.') },
   comms: { name: tl('Satellite link'), needs: [['planks', 12], ['stone', 6], ['scrap', 4]], description: tl('Restore the receiver in the nearby communications ruin. Use its console to reconnect the satellites and receive a GPS tablet.') },
   quarry: { name: tl('Stone quarry'), needs: [['planks', 44], ['scrap', 4]], description: tl('Build stone-cutting works beside the large pile of boulders about 100 metres beyond our fence. Every village has its own quarry; it supplies building stone.') },
@@ -124,24 +127,33 @@ export function projectPlan(s: TownState | undefined, k: Project) {
 /** Partial deliveries; callers remove exactly `taken` from shared stock. Repeated completion is a no-op. */
 export function buildProject(s: TownState, k: Project, have: (i: ItemKey) => number, at?: number) {
   const taken: [ItemKey, number][] = [];
-  if (projectProblem(s, k) || jobOf(s, 'project', k)) return { taken, built: false, stage: false, started: false };
+  if (projectProblem(s, k) || jobOf(s, 'project', k) || (k === 'warehouse' && s.settlement?.whWait)) return { taken, built: false, stage: false, started: false };
   const g = ((s.settlement!.given ??= {})[k] ??= {});
   for (const r of projectPlan(s, k)) {
     const n = Math.max(0, Math.min(r.n - r.given, Math.floor(have(r.k))));
     if (n) { g[r.k] = r.given + n; taken.push([r.k, n]); }
   }
   if (!projectPlan(s, k).every((r) => r.given === r.n)) return { taken, built: false, stage: false, started: false };
+  if (at !== undefined && k === 'warehouse' && !s.settlement!.wh) { s.settlement!.whWait = true; return { taken, built: false, stage: false, started: false, wait: true }; } // (0.197) the hero stakes out where it goes (world/fields.ts), then the builders start: placeWarehouse
   if (at !== undefined) { startJob(s, 'project', k, at); return { taken, built: false, stage: false, started: true }; } // the builders take their time
   return { taken, ...completeProject(s, k) };
+}
+/** (0.197) The warehouse waiting for its spot is staked out there: saved, and the builders start. False if none waits. */
+export function placeWarehouse(s: TownState, spot: { x: number; z: number; d: number }, now: number): boolean {
+  const st = s.settlement;
+  if (!st?.whWait || jobOf(s, 'project', 'warehouse') || st.done?.warehouse) return false;
+  st.wh = { x: spot.x, z: spot.z, d: spot.d }; delete st.whWait;
+  startJob(s, 'project', 'warehouse', now);
+  return true;
 }
 /** Project k (or the station's current stage) stands: its builders are done. */
 export function completeProject(s: TownState, k: Project): { built: boolean; stage: boolean } {
   let built = true, stage = false;
   if (k === 'comms' && isStation(s)) { // a stage of the station: the next one, until the last
-    s.settlement!.stage = stationStage(s) + 1; delete s.settlement!.given![k]; stage = true;
+    s.settlement!.stage = stationStage(s) + 1; delete s.settlement!.given?.[k]; stage = true;
     built = s.settlement!.stage >= STATION_STAGES.length;
   }
-  if (built) { (s.settlement!.done ??= {})[k] = true; delete s.settlement!.given![k]; }
+  if (built) { (s.settlement!.done ??= {})[k] = true; delete s.settlement!.given?.[k]; }
   return { built, stage };
 }
 /** Development repairs housing before migrants arrive. Food still limits population separately. */

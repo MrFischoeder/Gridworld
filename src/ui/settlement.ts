@@ -1,5 +1,5 @@
 import { G } from '../game';
-import { addItem, gainXp, saveChar, calcStats } from '../character';
+import { addItem, hasItem, gainXp, saveChar, calcStats } from '../character';
 import { PROJECTS, projectPlan, projectProblem, projectDone, buildProject, tutorialStep, linkRuin, progressive, depositsOf, isStation, stationStage, STATION_STAGES, STATION_TEXT, satelliteUp, RELAY, sideStep, FIRST_CROPS, optionalProjects, type Project } from '../gen/settlement';
 import { poisNear, CHUNK, wrapDx } from '../gen/regions';
 import { CROPS } from '../gen/farms';
@@ -7,7 +7,7 @@ import { discover } from '../save';
 import { ORES, MINERAL_NAME } from '../gen/resource-sites';
 import { RARE_NAME } from '../gen/deposits';
 import { findPoi, villageSeed, worldDist, GRIDHOLM_ID } from '../gen/regions';
-import { settleOwn, anchorNew, hallStands } from '../gen/hall';
+import { settleOwn, anchorNew, hallStands, WAREHOUSE } from '../gen/hall';
 import { ITEMS, type ItemKey } from '../data/items';
 import { stockHas, stockTake } from './stock';
 import { buildersLine, jobHTML, building } from './jobs';
@@ -64,6 +64,11 @@ export function developmentHTML(vid: number, head: string, msg = '', atComms = f
       const n = stationStage(s), st = STATION_STAGES[Math.min(n, STATION_STAGES.length - 1)];
       h += TL`<h3>Radar and communications station</h3><div class="say">${STATION_TEXT}<br>${STATION_STAGES.map((x, i) => `<span style="color:${i < n ? 'var(--xp)' : i === n ? 'var(--txt)' : '#6a8a70'}">${i + 1}. ${x.title}${i < n ? ' ✓' : ''}</span>`).join(' · ')}${n < STATION_STAGES.length ? `<br><b>${st.title}.</b> ${st.text}` : ''}</div>`;
     } else h += `<h3>${PROJECTS[k].name}</h3><div class="say">${PROJECTS[k].description}</div>`;
+    if (k === 'warehouse' && s.settlement?.whWait) { // (0.197) the materials are in: the hero stakes out where it stands (world/fields.ts)
+      h += TL`<div class="shoprow"><div><b>The materials are in.</b><br><span>Now choose where the warehouse stands. Take a Survey Stake outside the wall (up to ${WAREHOUSE.reach} m from the village), use it and click: its wide doors face you, so stand where the vehicles and the convoys will drive up to it. Not on roads, water, the ground kept for the yards and works, or slopes too steep to level.</span></div></div>`;
+      h += hasItem('fieldstake') ? tl('<div class="say" style="opacity:.8">You have a Survey Stake.</div>') : TL`<button class="opt" data-devstake="${vid}">Give me a Survey Stake</button>`;
+      continue;
+    }
     if (building(s, 'project', k)) { h += jobHTML(s, 'project', k, k === 'comms' && big ? STATION_STAGES[Math.min(stationStage(s), STATION_STAGES.length - 1)].title.toLowerCase() : PROJECTS[k].name.toLowerCase()); continue; }
     h += projectPlan(s, k).map((r) => TL`<div class="shoprow">${ITEMS[r.k].name}: ${r.given}/${r.n} · in stock: ${has(r.k)}</div>`).join('');
     const why = projectProblem(s, k);
@@ -80,7 +85,7 @@ export function developmentHTML(vid: number, head: string, msg = '', atComms = f
 }
 /** Returns a message when a development action was handled. The caller redraws its own panel. */
 export function developmentClick(t: HTMLElement, vid: number | null, atComms = false): string | null {
-  const button = t.closest<HTMLElement>('[data-devkit], [data-devsupplies], [data-devbuild], [data-devgps]');
+  const button = t.closest<HTMLElement>('[data-devkit], [data-devsupplies], [data-devbuild], [data-devgps], [data-devstake]');
   if (!button || vid === null) return null;
   const c = G.char, s = c.towns[vid], v = findPoi(c.world, vid);
   if (!progressive(s) || !s || !v) return tl('This settlement uses the established rules.');
@@ -94,6 +99,9 @@ export function developmentClick(t: HTMLElement, vid: number | null, atComms = f
     const has = stockHas(vid);
     if (has('log') < 4 || has('stone') < 4) return tl('Store four logs and four stones first.');
     s.settlement!.supplies = true; settlementReward(vid, 'supplies'); msg = tl('Good. Keep these materials in stock and collect enough for the first farm.');
+  } else if (button.dataset.devstake) {
+    if (!s.settlement?.whWait) return tl('The warehouse does not wait for its ground.');
+    msg = hasItem('fieldstake') ? tl('You have one already.') : addItem('fieldstake') ? tl('The elder hands you a Survey Stake. Walk out and mark where the warehouse should stand.') : tl('No room for the stake in your backpack.');
   } else if (button.dataset.devgps) {
     if (!atComms || !projectDone(s, 'comms')) return tl('The receiver has not been restored.');
     msg = settlementReward(vid, 'comms', 'tablet') ? tl('Satellite link online. Your GPS tablet is ready (or in the village stores if your pack was full).') : tl('You already received your GPS tablet.');
@@ -110,7 +118,10 @@ export function developmentClick(t: HTMLElement, vid: number | null, atComms = f
     settleOwn(c.world, v, seed, s, c.time);
     const result = buildProject(s, k, has, c.time); stockTake(vid, result.taken);
     anchorNew(c.world, v, seed, s, c.time);
-    if (result.started) {
+    if ('wait' in result && result.wait) { // (0.197) all in: the hero chooses where it stands
+      const got = hasItem('fieldstake') || addItem('fieldstake');
+      msg = got ? tl('All the materials are in. The elder hands you a Survey Stake: walk out of the village, use it and click where the warehouse should stand. Its doors will face you.') : tl('All the materials are in. Make room in your backpack for the Survey Stake and ask again.');
+    } else if (result.started) {
       const what = k === 'comms' && isStation(s) ? STATION_STAGES[stationStage(s)].title.toLowerCase() : PROJECTS[k].name.toLowerCase();
       msg = TL`All the materials are in. The builders start on the ${what}: ${buildersLine(s, 'project', k)}`;
     } else msg = result.taken.length ? tl('Materials delivered. The remaining requirements are shown below.') : tl('Bring the missing materials to the village stores first.');

@@ -50,7 +50,7 @@ export const hallNote = (have: number, given: number, n: number) => (given >= n 
 /** What a build still lacks in the stock, in words (empty: nothing). */
 export function lacking(rows: { k: ItemKey; n: number; given: number }[], has: (k: ItemKey) => number): string {
   const miss = rows.filter((r) => r.given + has(r.k) < r.n).map((r) => `${r.n - r.given - has(r.k)} ${ITEMS[r.k].name}`);
-  return miss.length ? TL`The village hall still lacks ${miss.join(', ')}: bring them to the village stores (the warehouse terminal outside the north gate, or the elder while there is no warehouse).` : '';
+  return miss.length ? TL`The village hall still lacks ${miss.join(', ')}: bring them to the village stores (the warehouse terminal, or the elder while there is no warehouse).` : '';
 }
 /** The button every build panel shows. */
 export const buildButton = (attr: string, what: string, can: boolean) => TL`<button class="opt" ${attr} ${can ? '' : 'disabled'}>Build from the village hall's stock (${what})</button>`;

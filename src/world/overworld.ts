@@ -3,7 +3,7 @@ import { settlementVillage } from '../gen/settlement-village';
 import { initializeSettlements, progressive, RESOURCE_PLOTS, projectAvailable, depositsOf, mechanicHere } from '../gen/settlement';
 import { RESOURCE_YARD, type ResourceProject } from '../gen/resource-sites';
 import { peopleAt } from '../gen/people';
-import { VEHICLE_HALL } from '../gen/hall';
+import { warehouseSpot, warehouseAt } from '../gen/hall';
 import { sitePads, meanGround, projectBegun, SITE_PAD } from '../gen/buildpads';
 import { allVillages } from '../gen/regions';
 import { syncMegaliths, clearMegaliths, megalithHit, megalithRay, megalithName, megalithFloor, nearMegalith } from './megaliths';
@@ -603,7 +603,7 @@ function padsOf(w: number, v: Poi): Pad[] {
   const pads = [v].filter((v) => progressive(G.char.towns[v.id])).flatMap((v) => {
     const s = G.char.towns[v.id], ox = v.x - 36, oz = v.z - 36;
     const plots = Object.entries(RESOURCE_PLOTS).filter(([k]) => projectAvailable(s, k as ResourceProject) && projectBegun(s, k as ResourceProject));
-    const rects = [...(projectBegun(s, 'warehouse') ? [{ rect: VEHICLE_HALL as Rect, depression: false, soft: 0 }] : []), ...plots.map(([k, p]) => ({ rect: { x0: p.x - RESOURCE_YARD.halfX, x1: p.x + RESOURCE_YARD.halfX, z0: p.z - RESOURCE_YARD.halfZ, z1: p.z + RESOURCE_YARD.halfZ }, depression: k === 'mine', soft: SITE_PAD.soft }))];
+    const wh = warehouseSpot(s), rects = [...(wh ? [{ rect: warehouseAt(wh) as Rect, depression: false, soft: 0 }] : []), ...plots.map(([k, p]) => ({ rect: { x0: p.x - RESOURCE_YARD.halfX, x1: p.x + RESOURCE_YARD.halfX, z0: p.z - RESOURCE_YARD.halfZ, z1: p.z + RESOURCE_YARD.halfZ }, depression: k === 'mine', soft: SITE_PAD.soft }))];
     return rects.map(({ rect: r, depression, soft }, i) => {
       const rect = { x0: ox + r.x0, x1: ox + r.x1, z0: oz + r.z0, z1: oz + r.z1 };
       return { y: meanGround(w, rect), surface: true, depression, soft, poi: { ...v, id: -v.id * 8 - i - 1, rect, flat: 3, blend: SITE_PAD.blend } };

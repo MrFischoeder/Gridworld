@@ -10,6 +10,7 @@
 // (`stockOf`): the hold first, then its own goods.
 import { progressive, projectDone, resourceYield, sawLevel, SAW, furnaceLevel, FURNACE } from './settlement';
 import { hash } from '../core/rng';
+import { jobOf } from './construction';
 import { ITEMS, BULK, type ItemKey } from '../data/items';
 import type { TownState } from './town';
 import type { Poi } from './regions';
@@ -30,8 +31,41 @@ export const HALL_TERMINAL = { x: 8, z: -17.9, stand: { x: 8, z: -16.6 } };
 
 /** A new settlement before its warehouse stands: no building, the elder keeps the village's supplies (`vol` litres; the rect is unused). */
 export const SMALL_HALL = { x0: 5, x1: 11, z0: -17, z1: -12, h: 3, door: 1.6, vol: 800 };
-/** The settlement's warehouse: a plank barn with a wide doorway, so a vehicle drives in and parks by the terminal. */
+/** The settlement's warehouse: a plank barn with a wide doorway, so a vehicle drives in and parks by the terminal (a
+ *  square 24 m barn; the rect is where it stood before 0.197, north of the village, doors facing south). */
 export const VEHICLE_HALL = { x0: 2, x1: 26, z0: -53, z1: -29, h: 6, door: 8, vol: 24000 };
+/** (0.197) Where a settlement's warehouse stands: its middle (plaza-local, like `VEHICLE_HALL`) and the side its doors
+ *  face (`d`: 0 south (+z), 1 east (+x), 2 north (−z), 3 west (−x)). */
+export interface HallSpot { x: number; z: number; d: number }
+/** The warehouse is staked out by the hero (world/fields.ts): its middle within `reach` m of the village's middle, a
+ *  clear `apron` (m deep, `wide` across) before its doors for the vehicles and the convoys, the ground cut or filled
+ *  at most `maxCut` m. */
+export const WAREHOUSE = { reach: 320, apron: 14, wide: 14, maxCut: 4.5 };
+const OLD_SPOT: HallSpot = { x: (VEHICLE_HALL.x0 + VEHICLE_HALL.x1) / 2, z: (VEHICLE_HALL.z0 + VEHICLE_HALL.z1) / 2, d: 0 };
+/** The warehouse's spot: where it was staked out, or the old plot north of the village for one built or going up
+ *  before 0.197; null while nobody has chosen it. */
+export function warehouseSpot(s: TownState | undefined): HallSpot | null {
+  const w = s?.settlement?.wh;
+  if (w) return w;
+  return projectDone(s, 'warehouse') || jobOf(s, 'project', 'warehouse') ? OLD_SPOT : null;
+}
+/** The warehouse at a spot: its plaza-local rect (a square, so a quarter turn keeps it) and door side. */
+export function warehouseAt(p: HallSpot) {
+  const hw = (VEHICLE_HALL.x1 - VEHICLE_HALL.x0) / 2, hd = (VEHICLE_HALL.z1 - VEHICLE_HALL.z0) / 2;
+  return { ...VEHICLE_HALL, x0: p.x - hw, x1: p.x + hw, z0: p.z - hd, z1: p.z + hd, d: p.d };
+}
+/** The door side's outward direction (plaza / world axes). */
+export const doorDir = (d: number): [number, number] => [[0, 1], [1, 0], [0, -1], [-1, 0]][((d % 4) + 4) % 4] as [number, number];
+/** A point of the hall's own frame (a across, b from the back wall to the doors) in plaza coordinates. */
+export function hallPoint(h: { x0: number; x1: number; z0: number; z1: number; d?: number }, a: number, b: number): [number, number] {
+  const cx = (h.x0 + h.x1) / 2, cz = (h.z0 + h.z1) / 2, th = (h.d ?? 0) * Math.PI / 2, c = Math.cos(th), sn = Math.sin(th);
+  return [cx + a * c + b * sn, cz - a * sn + b * c];
+}
+/** The ground in front of the doors that must stay clear (plaza-local rect). */
+export function apronOf(h: { x0: number; x1: number; z0: number; z1: number; d?: number }) {
+  const hd = (h.z1 - h.z0) / 2, w = WAREHOUSE.wide / 2, [p, q] = [hallPoint(h, -w, hd), hallPoint(h, w, hd + WAREHOUSE.apron)];
+  return { x0: Math.min(p[0], q[0]), x1: Math.max(p[0], q[0]), z0: Math.min(p[1], q[1]), z1: Math.max(p[1], q[1]) };
+}
 /** Whether the village has a store building: established villages always, a new settlement once its warehouse is built (before that the elder keeps the stores). */
 export const hallStands = (s: TownState | undefined) => !progressive(s) || projectDone(s, 'warehouse');
 /** Items exempt from the materials rule: parts the village's builds use (defence turrets, the works' machinery). */
@@ -39,9 +73,13 @@ const BUILD_PARTS = new Set<ItemKey>(['turretkit', 'engine']);
 /** What the village stores take: materials, raw and processed goods (and the parts its builds use); never personal things
  *  (weapons, ammunition, medkits and food, tools, clothes, relics, keys): those belong in your own house's chest. */
 export const storable = (k: ItemKey) => { const t = ITEMS[k]?.type; return t === 'mat' || t === 'good' || BUILD_PARTS.has(k); };
-export function hallSpec(s: TownState | undefined) { return progressive(s) ? (projectDone(s, 'warehouse') ? VEHICLE_HALL : SMALL_HALL) : HALL; }
+export function hallSpec(s: TownState | undefined): typeof HALL & { d: number } {
+  return progressive(s) ? (projectDone(s, 'warehouse') ? warehouseAt(warehouseSpot(s) ?? OLD_SPOT) : { ...SMALL_HALL, d: 0 }) : { ...HALL, d: 0 };
+}
+/** The terminal against the back wall, and where you stand to use it (plaza-local; the hall turned by its door side). */
 export function hallTerminal(s: TownState | undefined) {
-  const h = hallSpec(s); return { x: (h.x0 + h.x1) / 2, z: h.z0 + 1.1, stand: { x: (h.x0 + h.x1) / 2, z: h.z0 + 2.4 } };
+  const h = hallSpec(s), hd = (h.z1 - h.z0) / 2, [x, z] = hallPoint(h, 0, -hd + 1.1), [sx, sz] = hallPoint(h, 0, -hd + 2.4);
+  return { x, z, stand: { x: sx, z: sz } };
 }
 const vol = (k: ItemKey) => BULK[k]?.[1] ?? 1;
 /** Litres in the hold. */

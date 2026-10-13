@@ -3,6 +3,12 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.197.0', date: '2026-10-13', title: 'Build the warehouse where you want it', notes: [
+    'A new settlement\'s warehouse no longer has a staked plot and a WAREHOUSE SITE sign waiting outside the north fence. The ground stays as it is until you choose.',
+    'Once its materials are in, the elder hands you a Survey Stake. Walk out of the village, use it and click where the warehouse should stand: anywhere outside the wall within 320 m. A hologram shows the barn, its doorway and the apron before the doors.',
+    'The wide doors face you, so stand where the vehicles and the convoys will come from. The place is refused on roads, water, steep ground, the ground kept for the yards and works, or where the doors would open onto the wall or onto anything in the way.',
+    'The builders level the ground there and put the warehouse up, turned that way. Warehouses built or going up before keep their old place.',
+  ] },
   { v: '0.196.0', date: '2026-10-13', title: 'Server admins', notes: [
     'The owner of a dedicated server can name admin accounts (ADMINS in /etc/gridworld.env). An admin sees "· admin" next to their name in the Multiplayer panel and a Close server button on every player\'s server in the list; the players on it are sent back to the menu. The main server cannot be closed.',
     'A mail test for server owners (server/mailtest.mjs): it reads the server\'s settings, logs in to the mail server, says what is wrong if it cannot, and sends a test mail, so account emails can be checked before players need them.',

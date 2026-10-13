@@ -23,7 +23,7 @@ import { stationSite, STATIONS, DRAW } from '../gen/energy';
 import { IMPROVE, type ImproveKind } from '../gen/improve';
 import { PLANT_LEVELS } from '../gen/plantup';
 import { PROJECTS, RESOURCE_PLOTS, linkRuin, isStation as isStationVillage, stationStage, STATION_STAGES, type Project } from '../gen/settlement';
-import { VEHICLE_HALL } from '../gen/hall';
+import { warehouseSpot } from '../gen/hall';
 import type { VillageMap } from '../gen/village';
 import { syncFarmVillage } from './farms';
 import { settlementReward, stationSweep } from '../ui/settlement';
@@ -70,7 +70,7 @@ function spotOf(vid: number, s: TownState, j: Job): { x: number; z: number; w: n
     case 'plantup': return P(powerSite(seed), 8, 6);
     case 'plant': { const k = s.pbuild?.k; if (!k) return null; const p = isStation(k) ? stationSite(seed, ind, s.stations?.length ?? 0) : plantSite(seed, ind, s.plants?.length ?? 0); return P(p, 14, 12); }
     case 'project': {
-      if (a === 'warehouse') return P({ x: (VEHICLE_HALL.x0 + VEHICLE_HALL.x1) / 2, z: (VEHICLE_HALL.z0 + VEHICLE_HALL.z1) / 2 }, 22, 22);
+      if (a === 'warehouse') { const w = warehouseSpot(s); return w ? P(w, 22, 22) : null; }
       if (a === 'power') return P(powerSite(seed), 10, 8);
       const r = RESOURCE_PLOTS[(a === 'sawmill2' || a === 'sawmill3' ? 'sawmill' : a === 'furnace2' || a === 'furnace3' ? 'furnace' : a) as keyof typeof RESOURCE_PLOTS];
       return r ? P(r, 16, 12) : null;
