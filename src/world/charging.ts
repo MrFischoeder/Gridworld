@@ -13,6 +13,7 @@ import { vehicles, type Vehicle } from './vehicles';
 import { saveChar } from '../character';
 import { logLine, showToast } from '../ui/hud';
 import { tl, TL } from '../i18n';
+import { serviceWhy } from '../ui/villagestats';
 
 const postAt = (v: Poi) => { const p = RESOURCE_PLOTS.charger; return { x: v.x - 36 + p.x, z: v.z - 36 + p.z }; };
 const hasPost = (v: Poi) => progressive(G.char.towns[v.id]) && projectDone(G.char.towns[v.id], 'charger');
@@ -29,7 +30,7 @@ export function updateCharging(dt: number) {
   for (const v of allVillages(G.char.world)) {
     if (worldDist(v.x, v.z, G.pos.x, G.pos.z) > 900 || !hasPost(v)) continue;
     const p = postAt(v), cars = vehicles.filter((c) => !c.ai && isEV(c.st.parts) && G.char.vehicles.includes(c.st) && Math.hypot(c.st.x - nearX(p.x, c.st.x), c.st.z - p.z) < CHARGER.reach);
-    if (!cars.length) continue;
+    if (!cars.length || serviceWhy(v.id, 'charger')) continue; // (0.215) nobody at the post: no charging
     let left = Math.min(CHARGER.kw, balance(G.char.world, v, villageSeed(G.char.world, v), G.char.towns[v.id], G.char.time).free);
     for (const c of cars) {
       const parts = c.st.parts, cap = evCap(c.st.model, parts), room = cap - parts.ev!;
@@ -56,6 +57,7 @@ export function nearCharger(): number | null {
 }
 /** The prompt at a charging pillar: the village's spare power and what is charging. */
 export function chargerPrompt(vid: number): string {
+  const why = serviceWhy(vid, 'charger'); if (why) return why;
   const v = findPoi(G.char.world, vid)!, spare = Math.round(balance(G.char.world, v, villageSeed(G.char.world, v), G.char.towns[vid], G.char.time).free);
   const at = [...charging.entries()].find(([c]) => Math.hypot(c.st.x - nearX(postAt(v).x, c.st.x), c.st.z - postAt(v).z) < CHARGER.reach);
   return at ? TL`Charging post · ${vehicleTitle(at[0].st.model)} ${Math.round(at[0].st.parts.ev!)}/${evCap(at[0].st.model, at[0].st.parts)} kWh at ${Math.round(at[1])} kW · ${EV.price} g a kWh`

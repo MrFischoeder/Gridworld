@@ -18,6 +18,7 @@ import { $, logLine } from './hud';
 import { lockPointer } from './input';
 import { itemName } from './icons';
 import { tl, TL } from '../i18n';
+import { serviceWhy } from './villagestats';
 
 const dlgEl = $('dlg'), panel = () => dlgEl.querySelector('.panel') as HTMLElement;
 let vid: number | null = null;
@@ -57,7 +58,9 @@ function render(msg = '') {
     const room = holdRoom(st, k), n = e.carried + e.floor;
     return TL`<div class="shoprow"><div>${itemName(k)} ×${n}${e.floor ? TL` <span style="opacity:.7">(${e.floor} on the floor)</span>` : ''}</div><button class="opt" style="width:auto" data-hin="${k}" data-hn="1" ${room ? '' : 'disabled'}>Store 1</button><button class="opt" style="width:auto" data-hin="${k}" data-hn="999" ${room ? '' : 'disabled'}>Store all</button></div>`;
   }).join('') + TL`<button class="opt" data-hall="1">Store everything I have here</button>` : tl('<div class="say" style="opacity:.7">Nothing the village could use.</div>'));
-  if (!elder && big) s += tl('<button class="opt" data-hvehicle="1">Unload vehicles parked inside this warehouse</button><div class="say">Drive in through the wide doors, park fully inside, leave the cab and use this terminal. The materials in the trunk move straight into the hold; anything else stays in the trunk.</div>');
+  const off = !elder && big ? serviceWhy(vid!, 'warehouse') : ''; // (0.215) no storekeepers or no power
+  if (off) s += `<div class="say" style="color:var(--warn,#ff5a3c)">${off} ${tl('Store your goods by hand meanwhile.')}</div>`;
+  else if (!elder && big) s += tl('<button class="opt" data-hvehicle="1">Unload vehicles parked inside this warehouse</button><div class="say">Drive in through the wide doors, park fully inside, leave the cab and use this terminal. The materials in the trunk move straight into the hold; anything else stays in the trunk.</div>');
   panel().classList.add('wide');
   panel().innerHTML = `<div data-stock-town="${vid}">` + s + (elder ? tl('<button class="opt" data-hback="1">Back</button>') : tl('<button class="opt" data-hclose="1">Close</button>')) + `</div>`;
 }
@@ -91,6 +94,8 @@ export function hallClick(t: HTMLElement): boolean {
   if (t.closest('[data-hclose]')) { close(); return true; }
   if (t.closest('[data-hback]')) { vid = null; elderHead = null; const b = backToTalk; backToTalk = null; b?.(); return true; }
   if (t.closest('[data-hvehicle]')) {
+    const why = serviceWhy(vid, 'warehouse'); // (0.215) no storekeepers or no power: carry the goods in by hand
+    if (why) { render(why + ' ' + tl('Store your goods by hand meanwhile.')); return true; }
     const r = hallRect(vid), st = (G.char.towns[vid] ??= {}); let n = 0;
     if (r && hallSpec(st).h >= 6) for (const v of vehicles) if (v.claimed && !v.ai && cargoVehicleInside(r, v.st, v.spec)) n += unloadCargo(st, v.st.trunk.items);
     calcStats(); saveChar(); refreshHall(vid); render(n ? TL`Unloaded ${n} items directly from vehicle trunks.` : tl('Park your vehicle fully inside, or make room in the hold.')); return true;

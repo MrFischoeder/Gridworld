@@ -35,10 +35,10 @@ let oilClock = 0;
 interface Hand { f: Figure; x: number; z: number; face: number; phase: number }
 interface Crew { id: number; yard: string; T: Terrain; hands: Hand[]; got: number }
 const crews = new Map<number, Crew[]>();
-const KIT: Record<string, Kit> = { quarry: 'pick', mine: 'pick', lumber: 'hammer', oil: 'hammer', refinery: 'hammer', foodworks: 'carry', sawmill: 'carry', raremine: 'pick', furnace: 'hammer' };
+const KIT: Record<string, Kit> = { quarry: 'pick', mine: 'pick', lumber: 'hammer', oil: 'hammer', refinery: 'hammer', foodworks: 'carry', sawmill: 'carry', raremine: 'pick', furnace: 'hammer', depot: 'hammer', fuelpump: 'none', charger: 'none' };
 const WORKER = 0xdce8ff;
 /** Where a yard's hands stand: [x offset of the work's middle, radius, first angle] (yard-local; they go round from there). */
-const YARD_RING: Record<string, [number, number, number]> = { quarry: [-4, 12.5, 1.7], mine: [0, 8, 1.6], lumber: [0, 8, 0.4], oil: [0, 4.2, 0.8], refinery: [0, 5.5, 1.2], foodworks: [-1, 8.5, 1.9] };
+const YARD_RING: Record<string, [number, number, number]> = { quarry: [-4, 12.5, 1.7], mine: [0, 8, 1.6], lumber: [0, 8, 0.4], oil: [0, 4.2, 0.8], refinery: [0, 5.5, 1.2], foodworks: [-1, 8.5, 1.9], depot: [10, 3, 0.4], fuelpump: [9.5, 3.4, 1.57], charger: [0, 2.2, 1.57] }; // (0.215) the services' crews
 let crewT = 0;
 const tmpV = new THREE.Vector3();
 export function updateSettlementSites(dt: number) {
@@ -231,7 +231,7 @@ export function drawSettlementSites(vm: VillageMap, T: Terrain, id: number): THR
       box(x - .7, y, z - .7, x + .7, y + 9, z + .7, METAL);
       const oil = RESOURCE_PLOTS.oil; pb.line(METAL, [x + 3, y + .5, z], [vm.ox + oil.x, y + .5, z], [vm.ox + oil.x, y + .5, vm.oz + oil.z]);
     }
-    if (built && k !== 'fuelpump' && k !== 'charger' && k !== 'depot') crew.push(yardCrew(grp, T, id, k, x, z));
+    if (built) crew.push(yardCrew(grp, T, id, k, x, z));
     const rares = depositsOf(s).rares ?? [];
     const label = k === 'mine' && ore ? ORES[ore].name + ' · ' + ORES[ore].symbol : k === 'raremine' && rares.length ? tl('Deep mine · ') + rares.map((r) => RARE_NAME[r]).join(', ') : PROJECTS[k].name;
     const sign = textSprite(label.toUpperCase() + (built ? tl(' · WORKING SITE') : tl(' · CONSTRUCTION SITE')), k === 'mine' && ore ? '#' + ORES[ore].color.toString(16).padStart(6, '0') : '#ffd060', 5);

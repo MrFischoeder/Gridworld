@@ -130,8 +130,8 @@ export function updateFarms(dt: number) {
     refineStock(G.char.world, s.poi, s.village.seed, st, G.char.time);
     const lastDry = st.convoy?.dry.at(-1)?.[0];
     settleConvoys(G.char.world, s.poi, s.village.seed, st, G.char.time); // (0.178) after the refinery's batches
-    const dry = st.convoy?.dry.at(-1)?.[0];
-    if (dry && dry !== lastDry) logLine(TL`A convoy from ${s.poi.name} stayed home: there is not enough fuel in the village stores.`);
+    const last = st.convoy?.dry.at(-1), dry = last?.[0];
+    if (dry && dry !== lastDry) logLine(last![2] === 'depot' ? TL`A convoy from ${s.poi.name} stayed home: the convoy depot has no crew or no power.` : TL`A convoy from ${s.poi.name} stayed home: there is not enough fuel in the village stores.`);
     const homes = s.village.buildings.filter((b) => b.role === 'house' && !b.mine), occupied = Math.max(0, Math.floor((peopleAt(s.village.seed, s.poi.id === GRIDHOLM_ID, st, G.char.time) - 8) / 6));
     if (homes.some((b, i) => i < occupied && b.condition !== undefined && b.condition < 2)) reloadStruct(s.poi.id);
   }

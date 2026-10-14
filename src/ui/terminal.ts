@@ -147,7 +147,9 @@ function tradePage(poi: Poi, vm: VillageMap): string {
   if (progressive(c.towns[poi.id])) { // (0.178) the convoys fill up from the village's stock
     const st = stockAt(poi.id), need = convoyNeed(c.world, poi.id, now), dry = c.towns[poi.id]?.convoy?.dry ?? [];
     s += row(tl('Convoy fuel'), TL`about ${need.toFixed(1)} canisters a day · ${st ? Math.floor(st.has('fuel')) : 0} in stock`);
-    if (dry.length) s += TL`<div class="tdim">${dry.length} convoy${dry.length > 1 ? 's' : ''} stayed home for lack of fuel in the last 3 days, the last at ${fmtTime(dry[dry.length - 1][1])}.</div>`;
+    const noFuel = dry.filter((d) => d[2] !== 'depot'), noDepot = dry.length - noFuel.length;
+    if (noFuel.length) s += TL`<div class="tdim">${noFuel.length} convoy${noFuel.length > 1 ? 's' : ''} stayed home for lack of fuel in the last 3 days, the last at ${fmtTime(noFuel[noFuel.length - 1][1])}.</div>`;
+    if (noDepot) s += TL`<div class="tdim">${noDepot} convoy${noDepot > 1 ? 's' : ''} stayed home in the last 3 days: the convoy depot had no crew or no power.</div>`;
   }
   const la = lastArrival(c.world, poi.id, now);
   if (la) s += TL`<div class="tdim">Last in: ${la.n} ${name(la.good)} from ${la.fromName}.</div>`;

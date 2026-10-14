@@ -5,7 +5,7 @@ import { roadsOf, departures, convoyCans, caravanShift, CARAVAN, CONVOY_FUEL } f
 import type { TownState } from '../src/gen/town';
 
 const world = 12345, home = allVillages(world).find((v) => v.id === GRIDHOLM_ID)!, seed = villageSeed(world, home);
-const town = (): TownState => ({ farms: 2, people: { n: 60, t: 0, tg: 60 }, settlement: { v: 1, deposits: { kind: 'lumber', v: 2, oil: false, grove: true }, done: { power: true, warehouse: true } } } as TownState);
+const town = (): TownState => ({ farms: 2, people: { n: 60, t: 0, tg: 60 }, settlement: { v: 1, deposits: { kind: 'lumber', v: 2, oil: false, grove: true }, done: { power: true, warehouse: true, depot: true } } } as TownState);
 const leaving = (t1: number, t2: number) => roadsOf(world, home.id).flatMap((e) => departures(world, e, t1, t2)).filter((c) => c.from === home.id && c.t0 > t1 && c.t0 <= t2);
 
 describe('convoys burn fuel (0.178)', () => {

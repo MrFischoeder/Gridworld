@@ -121,7 +121,7 @@ export const SITE_UNPOWERED = 0.5;
 /** What the site draws now (nothing while a refinery is not built). */
 export function siteKw(world: number, v: Poi, seed: number, s: TownState | undefined): number {
   const k = industryOf(world, v, seed);
-  return (siteBuilt(k, s) && !(progressive(s) && industryProject(k)) ? SITE_KW[k] : 0) + (progressive(s) ? (projectDone(s, 'quarry') ? 6 : 0) + (projectDone(s, 'mine') ? 12 : 0) + (projectDone(s, 'lumber') ? 8 : 0) + (projectDone(s, 'oil') ? 10 : 0) + (projectDone(s, 'refinery') ? 30 : 0) + (projectDone(s, 'foodworks') ? 8 : 0) + (projectDone(s, 'raremine') ? DEEP.kw : 0) + FURNACE.kw[furnaceLevel(s)] + SAW.kw[sawLevel(s)] : 0);
+  return (siteBuilt(k, s) && !(progressive(s) && industryProject(k)) ? SITE_KW[k] : 0) + (progressive(s) ? (projectDone(s, 'quarry') ? 6 : 0) + (projectDone(s, 'mine') ? 12 : 0) + (projectDone(s, 'lumber') ? 8 : 0) + (projectDone(s, 'oil') ? 10 : 0) + (projectDone(s, 'refinery') ? 30 : 0) + (projectDone(s, 'foodworks') ? 8 : 0) + (projectDone(s, 'raremine') ? DEEP.kw : 0) + FURNACE.kw[furnaceLevel(s)] + SAW.kw[sawLevel(s)] + (Object.keys(SERVICE_KW) as Service[]).reduce((a, k) => a + (projectDone(s, k) ? SERVICE_KW[k] : 0), 0) : 0);
 }
 /** The renewables' rating and their output now (kW): the own plant if solar or wind, the solar and wind farms that are on (for the battery bank). */
 function renewables(world: number, v: Poi, seed: number, s: TownState | undefined, t: number): [number, number] {
@@ -211,4 +211,22 @@ export function stationSite(seed: number, k: Industry, i: number): { x: number; 
   if (side === 'W') return { x: WALL_LO + 1 - off, z: along, w: d, d: w, side, face: [-1, 0] };
   if (side === 'E') return { x: WALL_HI + off, z: along, w: d, d: w, side, face: [1, 0] };
   return { x: along, z: WALL_HI + off, w, d, side, face: [0, 1] };
+}
+
+/**
+ * (0.215, the owner's rule: everything needs power and people) A settlement's services: the warehouse (its lights and
+ * storekeepers), the fuel pump, the charging post and the convoy depot. Each draws from the site's power (`SERVICE_KW`,
+ * in `siteKw`) and has its crew (gen/workforce.ts `JOBS`, a whole crew or none). A service works only with its whole
+ * crew and at least `SERVICE_POWER` (a quarter) of the site's power over the day (`sitePower`, so a solar night does not stop it).
+ * Established villages and services not built: always on.
+ */
+export type Service = 'warehouse' | 'fuelpump' | 'charger' | 'depot';
+export const SERVICE_KW: Record<Service, number> = { warehouse: 3, fuelpump: 2, charger: 0, depot: 6 };
+export const SERVICE_POWER = 0.25;
+export interface ServiceState { hands: number; power: number; why: '' | 'hands' | 'power' }
+export function serviceOf(world: number, v: Poi, seed: number, s: TownState | undefined, k: Service, t: number): ServiceState {
+  if (!progressive(s) || !projectDone(s, k)) return { hands: 1, power: 1, why: '' };
+  const p = assign(s, workersAt(seed, v.id === GRIDHOLM_ID, s, t)).posts.find((q) => q.id === k);
+  const hands = p?.fill ?? 1, power = SERVICE_KW[k] ? sitePower(world, v, seed, s, t) : 1;
+  return { hands, power, why: hands < 1 ? 'hands' : power < SERVICE_POWER ? 'power' : '' };
 }

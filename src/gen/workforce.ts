@@ -8,9 +8,11 @@ import { progressive, projectDone, type Project } from './settlement';
 import type { TownState } from './town';
 
 /** Posts per facility. */
-export const JOBS = { farm: 4, power: 2, sawmill: 3, quarry: 3, lumber: 4, mine: 4, oil: 2, refinery: 3, foodworks: 3, raremine: 4, furnace: 3, works: 3, station: 1 };
+export const JOBS = { farm: 4, power: 2, sawmill: 3, quarry: 3, lumber: 4, mine: 4, oil: 2, refinery: 3, foodworks: 3, raremine: 4, furnace: 3, works: 3, station: 1, warehouse: 2, fuelpump: 1, charger: 1, depot: 4 };
 /** Facilities that need their whole crew to run at all (a share of a crew does nothing). */
-const WHOLE = new Set(['works', 'station']);
+const WHOLE = new Set(['works', 'station', 'warehouse', 'fuelpump', 'charger', 'depot']);
+/** (0.215, the owner's rule: everything needs power and people) The settlement's services: storekeepers, a pump attendant, a charging hand, the depot's drivers and mechanic. Manned after the works and stations, except the warehouse (after the power plant). */
+const SERVICES: Project[] = ['fuelpump', 'charger', 'depot'];
 export type PostKind = keyof typeof JOBS;
 export interface Post {
   /** 'farm:i', 'power', 'quarry', ..., 'works:i' (index in `TownState.plants`), 'station:i'. */
@@ -20,7 +22,7 @@ export interface Post {
   /** How well it works: got / jobs, or 0 / 1 for the facilities that need a whole crew. */
   fill: number;
 }
-const YARDS: Project[] = ['power', 'sawmill', 'foodworks', 'quarry', 'lumber', 'mine', 'oil', 'refinery', 'raremine', 'furnace'];
+const YARDS: Project[] = ['power', 'warehouse', 'sawmill', 'foodworks', 'quarry', 'lumber', 'mine', 'oil', 'refinery', 'raremine', 'furnace'];
 
 /** The settlement's posts in the order they are manned. Established villages have none (their old staffing rule applies). */
 export function postsOf(s: TownState | undefined): Omit<Post, 'got' | 'fill'>[] {
@@ -30,6 +32,7 @@ export function postsOf(s: TownState | undefined): Omit<Post, 'got' | 'fill'>[] 
   for (const k of YARDS) if (projectDone(s, k)) out.push({ id: k, kind: k as PostKind, i: 0, jobs: JOBS[k as PostKind] });
   (s?.plants ?? []).forEach((_, i) => out.push({ id: 'works:' + i, kind: 'works', i, jobs: JOBS.works }));
   (s?.stations ?? []).forEach((_, i) => out.push({ id: 'station:' + i, kind: 'station', i, jobs: JOBS.station }));
+  for (const k of SERVICES) if (projectDone(s, k)) out.push({ id: k, kind: k as PostKind, i: 0, jobs: JOBS[k as PostKind] });
   return out;
 }
 /** Hands everyone `workers` to the posts in order. */

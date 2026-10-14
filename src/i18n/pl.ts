@@ -3922,4 +3922,9 @@ export const PL: Record<string, string> = {
   "Convoy depot": "Baza konwojów",
   "Build a convoy depot by the north road: a yard for the trucks and their gun jeeps, a repair shed and a dispatcher's hut. Until it stands no convoys run anywhere; from then on caravans travel the roads between the villages, carrying their goods and moving the prices. Our own convoys fill up with fuel from the village stores before they leave: without fuel they stay home.": "Zbuduj bazę konwojów przy północnej drodze: plac dla ciężarówek i ich uzbrojonych łazików, szopę naprawczą i budkę dyspozytora. Dopóki jej nie ma, nigdzie nie jeżdżą żadne konwoje; od jej otwarcia karawany ruszają drogami między wioskami, wiozą towary i poruszają ceny. Nasze własne konwoje tankują przed wyjazdem paliwo z zapasów wioski: bez paliwa zostają w domu.",
   "Wait for the mechanic: he will fit out the trucks.": "Poczekaj na mechanika: to on przygotuje ciężarówki.",
+  "Store your goods by hand meanwhile.": "Do tego czasu składaj towary ręcznie.",
+  "<div class=\"tdim\">{0} convoy{1} stayed home in the last 3 days: the convoy depot had no crew or no power.</div>": "<div class=\"tdim\">Konwoje, które zostały w domu w ostatnich 3 dniach, bo baza konwojów nie miała obsady albo prądu: {0}.</div>",
+  "{0} has no crew: it needs {1} workers and the village has {2} free. More people come with more food and homes.": "{0}: brak obsady. Potrzeba {1} pracowników, a wioska ma wolnych {2}. Więcej ludzi przyjdzie, gdy będzie więcej jedzenia i domów.",
+  "{0} has no power: the village gave its works only {1}% of what they need over the last day (at least {2}%). Build more power.": "{0}: brak prądu. Przez ostatnią dobę wioska dała zakładom tylko {1}% potrzebnej mocy (trzeba co najmniej {2}%). Zbuduj więcej źródeł prądu.",
+  "A convoy from {0} stayed home: the convoy depot has no crew or no power.": "Konwój z {0} został w domu: baza konwojów nie ma obsady albo prądu.",
 };

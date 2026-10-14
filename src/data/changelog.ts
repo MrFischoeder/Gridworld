@@ -3,6 +3,12 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.215.0', date: '2026-10-14', title: 'Every building needs power and people', notes: [
+    'A settlement\'s warehouse, fuel pump, charging post and convoy depot now have a crew: 2 storekeepers, a pump attendant, a hand at the charging post, and the depot\'s 4 drivers and mechanic. Each needs its whole crew, taken from the village\'s free workers.',
+    'They also draw power from the village like its works: the warehouse 3 kW, the pump 2 kW, the depot 6 kW. Over the last day the village must give its works at least a quarter of the power they need, so a solar plant\'s nights do not stop them.',
+    'Without a crew or power: the pump does not pour, the charging post does not charge, the warehouse terminal does not unload vehicles (store your goods by hand meanwhile), and the village\'s convoys stay home. A village whose convoys should run needs its own manned depot.',
+    'The elder\'s "How is the village doing?" lists every post and says what stands still and why; the village computer counts the convoys that stayed home for lack of a crew. Workers stand at the depot and the pump.',
+  ] },
   { v: '0.214.0', date: '2026-10-14', title: 'Convoys are built up, not given', notes: [
     'In a new world no convoys run at the start: no caravans on the roads, no deliveries moving the prices, no convoys asking the village for fuel.',
     'Once the mechanic has come and the warehouse stands, the elder offers a new build beside the main work: the Convoy depot (planks, stone, scrap, wire, machine parts; 12 hours) by the north road, with a truck and two gun jeeps in its yard, a repair shed and a dispatcher\'s hut.',

@@ -6,7 +6,8 @@ import { villageStats, type VillageStats } from '../gen/villagestats';
 import { FOOD, CROPS, cropOf } from '../gen/farms';
 import { PROJECTS, type Project } from '../gen/settlement';
 import { PLANTS } from '../gen/plants';
-import { STATIONS, farmPower } from '../gen/energy';
+import { STATIONS, farmPower, serviceOf, SERVICE_POWER, type Service } from '../gen/energy';
+import { JOBS } from '../gen/workforce';
 import type { Post } from '../gen/workforce';
 import type { ItemKey } from '../data/items';
 import type { TownState } from '../gen/town';
@@ -20,6 +21,15 @@ export function statsOf(vid: number): VillageStats | null {
   const st = stockAt(vid), stored = st ? (Object.keys(FOOD.value) as ItemKey[]).reduce((a, k) => a + st.has(k) * FOOD.value[k]!, 0) : 0;
   const seed = villageSeed(c.world, poi);
   return villageStats(seed, vid === GRIDHOLM_ID, c.towns[vid], c.time, stored, farmPower(c.world, poi, seed, c.towns[vid], c.time));
+}
+/** (0.215) Why service k of village vid stands still now ('' = it works): no crew, or too little power. */
+export function serviceWhy(vid: number, k: Service): string {
+  const c = G.char, poi = findPoi(c.world, vid);
+  if (!poi) return '';
+  const st = serviceOf(c.world, poi, villageSeed(c.world, poi), c.towns[vid], k, c.time);
+  if (st.why === 'hands') return TL`${PROJECTS[k].name} has no crew: it needs ${JOBS[k]} workers and the village has ${statsOf(vid)?.free ?? 0} free. More people come with more food and homes.`;
+  if (st.why === 'power') return TL`${PROJECTS[k].name} has no power: the village gave its works only ${Math.round(st.power * 100)}% of what they need over the last day (at least ${Math.round(SERVICE_POWER * 100)}%). Build more power.`;
+  return '';
 }
 /** A post's name: Farm 2 (potatoes), Stone quarry, Smelter... */
 export function postName(s: TownState | undefined, p: Post): string {
@@ -53,6 +63,7 @@ export function statusHTML(vid: number, head: string): string {
     if (v.posts.length) {
       h += tl('<h3>Who works where</h3>') + v.posts.map((p) => `<div class="shoprow">${postName(s, p)}: ${p.got}/${p.jobs}${p.fill < 1 ? (p.got === 0 ? tl(' · <span style="color:var(--warn,#ff5a3c)">no hands, it stands still</span>') : tl(' · short of hands, works at ') + Math.round(p.fill * 100) + '%') : ''}</div>`).join('');
     } else h += tl('<div class="say">Nobody works a farm or a works yet: we live off the wilds.</div>');
+    for (const k of ['warehouse', 'fuelpump', 'charger', 'depot'] as Service[]) { const w = serviceWhy(vid, k); if (w) h += `<div class="say" style="color:var(--warn,#ff5a3c)">${w}</div>`; } // (0.215)
     if (v.limit) h += `<div class="say">${v.limit}</div>`;
     h += tl('<div class="say">More food brings more families, more families bring more hands, and more hands work more farms and works. Families come gradually, over days, while there are homes and food to spare.</div>');
   }

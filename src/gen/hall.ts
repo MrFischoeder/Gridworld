@@ -19,7 +19,7 @@ import { production, industryOf, industryProject } from './industry';
 import { farmYield, eatenShare, FOOD } from './farms';
 import { fillOf } from './workforce';
 import { isRare } from './deposits';
-import { sitePower, farmPower } from './energy';
+import { sitePower, farmPower, serviceOf } from './energy';
 import { staffing, peopleAt, workersAt } from './people';
 import { GRIDHOLM_ID } from './regions';
 import { roadsOf, departures, convoyCans } from './caravans';
@@ -255,6 +255,8 @@ export function settleConvoys(world: number, v: Poi, seed: number, s: TownState,
   const st = stockOf(world, v, seed, s, now);
   let used = 0;
   for (const c of due) {
+    // (0.215) a settlement's own convoys leave only from its convoy depot, manned and powered
+    if (!projectDone(s, 'depot') || serviceOf(world, v, seed, s, 'depot', c.t0).why) { cv.dry.push([c.id, c.t0, 'depot']); continue; }
     const n = convoyCans(c);
     if (st.has('fuel') >= n) { st.take('fuel', n); used += n; } else cv.dry.push([c.id, c.t0]);
   }

@@ -15,6 +15,7 @@ import { itemName } from '../ui/icons';
 import { lockPointer } from '../ui/input';
 import { logLine, showToast } from '../ui/hud';
 import { tl, TL } from '../i18n';
+import { serviceWhy } from '../ui/villagestats';
 
 /** The pump island's middle (world) of village v. */
 function pumpAt(v: Poi) { const p = RESOURCE_PLOTS.fuelpump; return { x: v.x - 36 + p.x, z: v.z - 36 + p.z }; }
@@ -40,8 +41,9 @@ let open: number | null = null;
 const root = () => document.getElementById('dlg')!;
 function render(msg = '') {
   const v = findPoi(G.char.world, open!)!, st = stockAt(v.id), have = st ? Math.floor(st.has('fuel')) : 0, price = priceOf(v);
-  const cars = carsHere(v);
+  const cars = carsHere(v), why = serviceWhy(v.id, 'fuelpump'); // (0.215) no attendant or no power: the pump stands still
   let h = TL`<div data-fpump="1"><h2>Fuel pump</h2><div class="role">${v.name}</div>`;
+  if (why) { h += `<div class="say" style="color:var(--warn,#ff5a3c)">${why}</div>` + TL`<button class="opt" data-fpclose="1">Close</button></div>`; root().querySelector('.panel')!.innerHTML = h; return; }
   h += TL`<div class="say">${itemName('fuel')} in the village stores: <b>${have}</b> · <b>${price} g</b> a canister (${FUEL.can} L) · your gold: <b>${G.char.gold}</b>${msg ? '<br>' + msg : ''}</div>`;
   if (!cars.length) h += TL`<div class="say" style="opacity:.7">Drive your vehicle up to the pump island to fill its tank.</div>`;
   cars.forEach((c, i) => {
@@ -65,6 +67,7 @@ export function fuelPumpClick(t: HTMLElement): boolean {
   if (t.closest('[data-fpclose]')) { close(); return true; }
   const v = findPoi(G.char.world, open)!, fill = t.closest('[data-fpfill]') as HTMLElement | null, can = t.closest('[data-fpcan]');
   if (!fill && !can) return true;
+  if (serviceWhy(open, 'fuelpump')) { render(); return true; }
   const car = fill ? carsHere(v)[+fill.dataset.fpfill!] : null;
   let msg = '';
   void withTownStock(v.id, () => {

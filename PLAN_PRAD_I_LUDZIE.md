@@ -21,7 +21,7 @@ Ustalenie z właścicielem gry (14 października 2026, po wersji 0.214.0). Zasad
 
 ## Etapy
 
-- **Z1. Wspólny model „prąd + ludzie” w osadzie.** Każdy budynek osady dostaje pobór prądu i obsadę w tych samych tabelach, które już mają zakłady (`JOBS`, `siteKw`):
+- **Z1. Wspólny model „prąd + ludzie” w osadzie.** *(Zrobione w 0.215.0: obsady 2/1/1/4, pobór 3/2/0/6 kW, próg mocy to 25% średniej z doby, żeby noce przy panelach słonecznych nie zatrzymywały wszystkiego; magazyn bez obsady przyjmuje towary tylko ręcznie.)* Każdy budynek osady dostaje pobór prądu i obsadę w tych samych tabelach, które już mają zakłady (`JOBS`, `siteKw`):
   - dystrybutor: 2 kW i 1 osoba;
   - stacja ładowania: 1 osoba;
   - baza konwojów: 6 kW i 4 osoby (kierowcy i mechanik); bez obsady konwoje osady nie wyjeżdżają;
