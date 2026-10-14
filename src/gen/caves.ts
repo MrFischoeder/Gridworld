@@ -3,6 +3,7 @@
 // often belong to one cave system that runs through the mountain: both carry its name, and going in at one you can
 // come out at the other. The inside is gen/cavegen.ts. Pure and deterministic, per region; drawn by world/caves.ts.
 import { rng, hash } from '../core/rng';
+import { customWorld, placesIn } from './customworld';
 import { REGION, CHUNK, wrapR, ruinName } from './regions';
 import { mountainMask } from './mountains';
 import { inSea } from './seas';
@@ -31,8 +32,15 @@ function rawCaves(t: Terrain, rx: number, rz: number): Cave[] {
   if (out) return out;
   if (cache.size > 4096) cache.clear();
   out = [];
-  const R = rng(hash(t.world, rx, rz, 0xcae5)), cx = rx * REGION, cz = rz * REGION;
-  if (mountainMask(t.world, cx, cz) + mountainMask(t.world, cx + 90, cz) + mountainMask(t.world, cx, cz + 90) > 0.2 && R() < 0.45) {
+  const R = rng(hash(t.world, rx, rz, 0xcae5)), cx = rx * REGION, cz = rz * REGION, cw = customWorld(t.world);
+  if (cw) { // (0.208) a drawn world: a cave where one was drawn, opening downhill
+    const p = placesIn(cw, rx, rz).find((q) => q.k === 'cave');
+    if (p) {
+      const h = (px: number, pz: number) => t.base(px, pz), gx = h(p.x + 4, p.z) - h(p.x - 4, p.z), gz = h(p.x, p.z + 4) - h(p.x, p.z - 4);
+      const id = hash(t.world, rx, rz, 0xca7e);
+      out.push({ id, name: p.name ?? TL`${ruinName(R)} Cave`, sys: id, other: null, mouth: 0, x: p.x, z: p.z, y: h(p.x, p.z), face: Math.hypot(gx, gz) > 0.01 ? Math.atan2(-gz, -gx) : 0, w: 3.6 + R() * 1.4, h: 3 + R() });
+    }
+  } else if (mountainMask(t.world, cx, cz) + mountainMask(t.world, cx + 90, cz) + mountainMask(t.world, cx, cz + 90) > 0.2 && R() < 0.45) {
     for (let tries = 0; tries < 30; tries++) {
       const x = cx + (R() - 0.5) * 220, z = cz + (R() - 0.5) * 220, m = mountainMask(t.world, x, z);
       if (m < 0.25 || m > 0.9 || inSea(t.world, x, z, 30) || nearRiver(t.world, x, z, 40)) continue;

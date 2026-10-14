@@ -21,6 +21,7 @@ import { mountainMask } from './mountains';
 import { naturalHeight } from './heights';
 import { citySites } from './cities';
 import { TL } from '../i18n';
+import { customWorld, type CustomWorld } from './customworld';
 
 export const RIVER = {
   /** Grid cell of the drainage map (m). */
@@ -159,6 +160,26 @@ function meander(p: P[], seed: number): P[] {
   return out;
 }
 
+/** The water level along a river's points (head first): mostly the lowest ground met so far, a little of a straight
+ *  fall, smoothed, joined to `endLv` (the sea, or the river it flows into) over the last stretch; never rising. */
+function levelsOf(world: number, p: P[], endLv: number): number[] {
+  const s = [0]; for (let i = 1; i < p.length; i++) s.push(s[i - 1] + Math.hypot(p[i][0] - p[i - 1][0], p[i][1] - p[i - 1][1]));
+  const S = s[s.length - 1] || 1, run: number[] = [];
+  // the ground every third point (the rest in between: the level is smoothed anyway)
+  const gnd: number[] = new Array(p.length);
+  for (let i = 0; i < p.length; i += 3) gnd[i] = naturalHeight(world, p[i][0], p[i][1]);
+  gnd[p.length - 1] ??= naturalHeight(world, p[p.length - 1][0], p[p.length - 1][1]);
+  for (let i = 0; i < p.length; i++) if (gnd[i] === undefined) { const a = i - (i % 3), b = Math.min(a + 3, p.length - 1), w = (i - a) / (b - a); gnd[i] = gnd[a] + (gnd[b] - gnd[a]) * w; }
+  for (let i = 0; i < p.length; i++) run.push(Math.min(i ? run[i - 1] - 0.0005 * (s[i] - s[i - 1]) : Infinity, gnd[i] - 0.8));
+  let lv = run.map((m, i) => Math.max(endLv, 0.8 * m + 0.2 * (run[0] + (endLv - run[0]) * s[i] / S)));
+  for (let pass = 0; pass < 2; pass++) lv = lv.map((_, i) => { let a = 0, c = 0; for (let j = Math.max(0, i - 3); j <= Math.min(lv.length - 1, i + 3); j++) { a += lv[j]; c++; } return a / c; });
+  // join the parent (or the sea) at its level over the last stretch
+  const tail = Math.min(10, lv.length - 1);
+  for (let i = lv.length - 1 - tail; i < lv.length; i++) { const w = (i - (lv.length - 1 - tail)) / tail; lv[i] = Math.max(endLv, lv[i] + (endLv - lv[i]) * w); }
+  for (let i = 1; i < lv.length; i++) lv[i] = Math.min(lv[i], lv[i - 1]);
+  return lv;
+}
+
 interface Rivers { list: River[]; buckets: Map<number, RiverSeg[]> }
 const cache = new Map<number, Rivers>();
 const bkey = (rx: number, rz: number) => (rx + 32768) * 65536 + (rz + 32768);
@@ -169,6 +190,8 @@ const bcol = (x: number) => Math.floor((wrapX(x) - X_MIN) / REGION);
 export function riversOf(world: number): Rivers {
   let rv = cache.get(world);
   if (rv) return rv;
+  const cw = customWorld(world);
+  if (cw) { rv = { list: [], buckets: new Map() }; cache.set(world, rv); rv = bucketed(customRivers(world, cw)); cache.set(world, rv); return rv; }
   const g = drainage(world), A = RIVER.acc, n = g.nc * g.nr;
   const isRiver = (k: number) => k >= 0 && g.land[k] === 1 && !g.closed[k] && g.acc[k] >= A;
   // upstream arms of every river cell
@@ -216,25 +239,37 @@ export function riversOf(world: number): Rivers {
     }
     const half = p.map((q) => Math.min(RIVER.maxHalf, 2 + 2.2 * Math.sqrt(q[2] / A)));
     const depth = p.map((q) => Math.min(RIVER.maxDepth, 1 + 0.6 * Math.sqrt(q[2] / A)));
-    // the level: mostly the lowest ground met so far, a little of a straight fall, smoothed; never rising
-    const s = [0]; for (let i = 1; i < p.length; i++) s.push(s[i - 1] + Math.hypot(p[i][0] - p[i - 1][0], p[i][1] - p[i - 1][1]));
-    const S = s[s.length - 1] || 1, run: number[] = [];
-    // the ground every third point (the rest in between: the level is smoothed anyway)
-    const gnd: number[] = new Array(p.length);
-    for (let i = 0; i < p.length; i += 3) gnd[i] = naturalHeight(world, p[i][0], p[i][1]);
-    gnd[p.length - 1] ??= naturalHeight(world, p[p.length - 1][0], p[p.length - 1][1]);
-    for (let i = 0; i < p.length; i++) if (gnd[i] === undefined) { const a = i - (i % 3), b = Math.min(a + 3, p.length - 1), w = (i - a) / (b - a); gnd[i] = gnd[a] + (gnd[b] - gnd[a]) * w; }
-    for (let i = 0; i < p.length; i++) run.push(Math.min(i ? run[i - 1] - 0.0005 * (s[i] - s[i - 1]) : Infinity, gnd[i] - 0.8));
-    let lv = run.map((m, i) => Math.max(endLv, 0.8 * m + 0.2 * (run[0] + (endLv - run[0]) * s[i] / S)));
-    for (let pass = 0; pass < 2; pass++) lv = lv.map((_, i) => { let a = 0, c = 0; for (let j = Math.max(0, i - 3); j <= Math.min(lv.length - 1, i + 3); j++) { a += lv[j]; c++; } return a / c; });
-    // join the parent (or the sea) at its level over the last stretch
-    const tail = Math.min(10, lv.length - 1);
-    for (let i = lv.length - 1 - tail; i < lv.length; i++) { const w = (i - (lv.length - 1 - tail)) / tail; lv[i] = Math.max(endLv, lv[i] + (endLv - lv[i]) * w); }
-    for (let i = 1; i < lv.length; i++) lv[i] = Math.min(lv[i], lv[i - 1]);
+    const lv = levelsOf(world, p, endLv);
     const R = rng(seed);
     list.push({ id, name: TL`${ruinName(R)} River`, x: p.map((q) => q[0]), z: p.map((q) => q[1]), lv, half, depth, into });
   }
-  // buckets by region (canonical column) holding every stretch whose valley reaches in
+  rv = bucketed(list);
+  cache.set(world, rv);
+  return rv;
+}
+/** (0.208) A drawn world's rivers: the owner's lines, rounded and given meanders, as wide as drawn; each flows into
+ *  the sea or, when it ends on another river, into that one (drawn earlier in the file). */
+function customRivers(world: number, cw: CustomWorld): River[] {
+  const list: River[] = [];
+  cw.rivers.forEach((r, k) => {
+    const pts: P[] = r.x.map((x, i) => [x, r.z[i], 0]);
+    const seed = hash(world, 0x21e7, k);
+    let p = meander(chaikin(pts, 3), seed), endLv = SEA.level, into = -1;
+    const [ex, ez] = [p[p.length - 1][0], p[p.length - 1][1]];
+    for (const o of list) {
+      let bi = -1, bd = Infinity;
+      for (let i = 0; i < o.x.length; i++) { const d = Math.hypot(wrapDx(o.x[i] - ex), o.z[i] - ez); if (d < bd) { bd = d; bi = i; } }
+      if (bi >= 0 && bd < o.half[bi] + 60) { into = o.id; endLv = o.lv[bi]; p = p.filter((q, i) => i === 0 || Math.hypot(q[0] - o.x[bi], q[1] - o.z[bi]) > o.half[bi] + 4 || i === p.length - 1); p[p.length - 1] = [ex + wrapDx(o.x[bi] - ex), o.z[bi], 0]; break; }
+    }
+    if (into < 0 && seaMask(world, ex, ez) <= 0.3) endLv = Math.max(SEA.level, naturalHeight(world, ex, ez) - 0.8); // ends inland: a pool at its foot
+    const hw = Math.max(1.5, Math.min(RIVER.maxHalf, r.w / 2));
+    const lv = levelsOf(world, p, endLv);
+    list.push({ id: list.length, name: r.name ?? TL`${ruinName(rng(seed))} River`, x: p.map((q) => q[0]), z: p.map((q) => q[1]), lv, half: p.map(() => hw), depth: p.map(() => Math.min(RIVER.maxDepth, 1 + hw * 0.18)), into });
+  });
+  return list;
+}
+/** Buckets by region (canonical column) holding every stretch whose valley reaches in. */
+function bucketed(list: River[]): Rivers {
   const buckets = new Map<number, RiverSeg[]>();
   for (const r of list) for (let i = 0; i + 1 < r.x.length; i++) {
     const seg: RiverSeg = { r: r.id, i, ax: r.x[i], az: r.z[i], bx: r.x[i + 1], bz: r.z[i + 1], la: r.lv[i], lb: r.lv[i + 1], ha: r.half[i], hb: r.half[i + 1], da: r.depth[i], db: r.depth[i + 1] };
@@ -246,16 +281,14 @@ export function riversOf(world: number): Rivers {
       let l = buckets.get(k); if (!l) buckets.set(k, l = []); l.push(seg);
     }
   }
-  rv = { list, buckets };
-  cache.set(world, rv);
-  return rv;
+  return { list, buckets };
 }
 
 /** River stretches whose valley may reach the rect, moved to the copy of the planet the rect lies in. */
 export function riverSegsIn(world: number, x0: number, z0: number, x1: number, z1: number): RiverSeg[] {
   // round Gridholm there are none (see nearRiver)
   const far = Math.hypot(Math.max(Math.abs(wrapDx(x0)), Math.abs(wrapDx(x1))), Math.max(Math.abs(z0), Math.abs(z1)));
-  if (far + RIVER.maxHalf + RIVER.valley + 8 < RIVER.clear - RIVER.cell) return [];
+  if (!customWorld(world) && far + RIVER.maxHalf + RIVER.valley + 8 < RIVER.clear - RIVER.cell) return [];
   const { buckets } = riversOf(world), out: RiverSeg[] = [], seen = new Set<RiverSeg>();
   for (let cx = Math.floor((x0 + REGION / 2) / REGION); cx <= Math.floor((x1 + REGION / 2) / REGION); cx++)
     for (let cz = Math.floor((z0 + REGION / 2) / REGION); cz <= Math.floor((z1 + REGION / 2) / REGION); cz++) {
@@ -290,7 +323,7 @@ function segHere(s: RiverSeg, x: number, z: number, than = Infinity): RiverHere 
 /** Is (x, z) within `margin` of a river's water (for keeping places, lakes and roads off rivers)? */
 export function nearRiver(world: number, x: number, z: number, margin = 0): boolean {
   // no river comes this close to Gridholm (the drainage map closes the land round it): no need to work them out
-  if (Math.hypot(wrapDx(x), z) + margin + RIVER.maxHalf < RIVER.clear - RIVER.cell) return false;
+  if (Math.hypot(wrapDx(x), z) + margin + RIVER.maxHalf < RIVER.clear - RIVER.cell && !customWorld(world)) return false; // (a drawn world's may)
   const { buckets } = riversOf(world), m = margin + RIVER.maxHalf;
   for (let cx = Math.floor((x - m + REGION / 2) / REGION); cx <= Math.floor((x + m + REGION / 2) / REGION); cx++)
     for (let cz = Math.floor((z - m + REGION / 2) / REGION); cz <= Math.floor((z + m + REGION / 2) / REGION); cz++) {

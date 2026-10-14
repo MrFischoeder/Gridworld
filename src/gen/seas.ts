@@ -3,6 +3,7 @@
 import { fbm } from '../core/noise';
 import { continents, continentDistance } from './continents';
 import { hash } from '../core/rng';
+import { customWorld, customSeaMask } from './customworld';
 import { WORLD_W, X_MIN, POLAR_Z, wrapDx, wrapX } from './regions';
 
 export const SEA = {
@@ -26,6 +27,8 @@ const smooth = (t: number) => (t <= 0 ? 0 : t >= 1 ? 1 : t * t * (3 - 2 * t));
 /** Normalised mainland edge; retained as an exported threshold for map/debug callers. */
 export const seaThreshold = (_world: number): number => 1;
 export function seaMask(world: number, x: number, z: number): number {
+  const cw = customWorld(world);
+  if (cw) return customSeaMask(cw, x, z); // (0.208) a drawn world: the sea where it was drawn low
   if (Math.hypot(wrapDx(x), z) < SEA.clear) return 0;
   let distance = Infinity;
   for (const c of continents(world)) distance = Math.min(distance, continentDistance(c, x, z));
@@ -75,6 +78,7 @@ export function isleOf(world: number, i: number, j: number): Isle | null {
   if (s !== undefined) return s;
   if (isles.size > 50000) isles.clear();
   s = null;
+  if (customWorld(world)) { isles.set(key, s); return s; } // (0.208) a drawn world's islands are drawn
   const [c] = IG(), u = (k: number) => (hash(world, i, j, k) % 10000) / 10000;
   if (u(0x151e) < ISLE.chance) {
     const x = X_MIN + (i + 0.5 + (u(0x1511) - 0.5) * 0.5) * c, z = (j + 0.5 + (u(0x1512) - 0.5) * 0.5) * c;

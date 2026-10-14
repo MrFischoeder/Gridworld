@@ -10,8 +10,10 @@
 // city's frame), with a number of floors and a state (standing with a broken crown, gutted to the frame, or fallen
 // into a heap); wrecked cars lie in the streets.
 // Dependencies: only the natural land (heights, sea, mountains) and the planet's numbers, so gen/regions.ts can ask
-// `inCity` while placing villages and temples without an import loop at evaluation time.
+// `inCity` while placing villages and temples without an
+// import loop at evaluation time.
 import { hash, rng } from '../core/rng';
+import { customWorld, placesOf } from './customworld';
 import { POLAR_Z, worldDist, wrapDx, wrapX, ruinName } from './regions';
 import { mountainMask } from './mountains';
 import { continents } from './continents';
@@ -62,6 +64,15 @@ export function citySites(world: number): CitySite[] {
   const hit = cache.get(world); if (hit) return hit;
   const out: CitySite[] = [];
   cache.set(world, out); // (set first: a nested call while searching sees no cities rather than recursing)
+  const cw = customWorld(world);
+  if (cw) { // (0.208) a drawn world: its cities where they were drawn, as big as drawn
+    placesOf(cw, 'city').forEach((p, i) => {
+      const R = rng(hash(world, i, 0xc174)), r = Math.max(200, Math.min(1200, p.r ?? 600));
+      const name = p.name ?? ((n: string, k: number) => [TL`${n} Metropolis`, TL`${n} City`, TL`${n} Sprawl`, TL`${n} Megacity`][k])(ruinName(R), Math.floor(R() * 4));
+      out.push({ i, id: 'city:' + i, name, x: p.x, z: p.z, r, yaw: R() * Math.PI, pattern: PATTERNS[(hash(world, i, 0xc175) + i) % PATTERNS.length], y: naturalHeight(world, p.x, p.z) });
+    });
+    return out;
+  }
   const land = continents(world);
   for (let i = 0; i < CITY.n; i++) {
     const continent = land[Math.floor(i * land.length / CITY.n)];
@@ -84,7 +95,7 @@ export function citySites(world: number): CitySite[] {
 }
 /** The city whose ground (its radius plus m) holds (x, z), if any. */
 export function cityAt(world: number, x: number, z: number, m = 0): CitySite | null {
-  if (Math.hypot(wrapDx(x), z) < CITY.near[0] - CITY.r[1] - m - 50) return null; // none near home: a cheap early out
+  if (Math.hypot(wrapDx(x), z) < CITY.near[0] - CITY.r[1] - m - 50 && !customWorld(world)) return null; // none near home: a cheap early out
   for (const c of citySites(world)) if (worldDist(c.x, c.z, x, z) < c.r + m) return c;
   return null;
 }

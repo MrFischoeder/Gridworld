@@ -5,6 +5,7 @@
 import { fbm } from '../core/noise';
 import { hash } from '../core/rng';
 import { WORLD_W, wrapDx } from './regions';
+import { customWorld, customMountainMask } from './customworld';
 
 /** Noise scale adjusted so a whole number of lattice cells fits round the planet (as in gen/terrain.ts). */
 const wrap = (s: number): [number, number] => { const n = Math.round(WORLD_W / s); return [WORLD_W / n, n]; };
@@ -20,6 +21,8 @@ const smooth = (t: number) => (t <= 0 ? 0 : t >= 1 ? 1 : t * t * (3 - 2 * t));
 
 /** Where the massifs are: 0 (none) .. 1 (the heart of one). About a fifth of the land is mountain. */
 export function mountainMask(world: number, x: number, z: number): number {
+  const cw = customWorld(world);
+  if (cw) return customMountainMask(cw, x, z); // (0.208) a drawn world: what was drawn high
   const [s, p] = S().mask, d = Math.hypot(wrapDx(x), z);
   if (d < MOUNTAIN_CLEAR) return 0;
   const n = fbm(hash(world, 0x3e11), x / s, z / s, 3, p);

@@ -1,6 +1,7 @@
 // World overview map: the world is split into 256 m regions. Each region decides its own
 // features from hash(world, rx, rz): points of interest (villages, ruins), forest density, terrain roughness.
 // New kinds of places are added as new PoiType values plus a placement rule here.
+import { customWorld, placesIn, placesOf } from './customworld';
 import { hash, rng, rangeInt, DIRV, type Dir } from '../core/rng';
 import { onMountain } from './mountains';
 import { inSea } from './seas';
@@ -180,7 +181,11 @@ export function allVillages(world: number): Poi[] {
   let v = villageCache.get(world);
   if (!v) {
     v = [];
-    for (let gx = 0; gx < NCELL; gx++) for (let gz = -12; gz <= 12; gz++) {
+    const cw = customWorld(world);
+    if (cw) { // (0.208) a drawn world: its villages, one a region
+      const seen = new Set<string>();
+      for (const p of placesOf(cw, 'village')) if (!seen.has(p.rx + ':' + p.rz)) { seen.add(p.rx + ':' + p.rz); v.push(...baseInfo(world, p.rx, p.rz).pois.filter((q) => q.type === 'village')); }
+    } else for (let gx = 0; gx < NCELL; gx++) for (let gz = -12; gz <= 12; gz++) {
       const c = villageOfCell(world, gx, gz);
       if (c) v.push(...baseInfo(world, c[0], c[1]).pois.filter((p) => p.type === 'village'));
     }
@@ -263,11 +268,23 @@ function baseInfo(world: number, rx: number, rz: number): RegionInfo {
   const R = rng(hash(world, rx, rz, 0x7e61)), ri = rangeInt(R);
   const [forest, rough] = [R(), R()]; // the same as regionClimate
   const pois: Poi[] = [];
-  const cx = rx * REGION, cz = rz * REGION;
+  const cx = rx * REGION, cz = rz * REGION, cw = customWorld(world);
   if (polarRegion(rz)) { /* nothing lives on the ice */ }
   else if (rx === 0 && rz === 0) {
     pois.push({ type: 'village', id: packId(0, 0, 0), name: 'Gridholm', x: 0, z: 0, rect: { ...VILLAGE_RECT }, flat: 8, blend: 34 });
     pois.push({ type: 'hangar', id: HANGAR_ID, name: tl('Old Hangar'), x: (HANGAR.x0 + HANGAR.x1) / 2, z: (HANGAR.z0 + HANGAR.z1) / 2, rect: { ...HANGAR }, flat: 4, blend: 26 });
+  } else if (cw) {
+    // (0.208) a drawn world: what the owner put here (a village at the region's middle, kept 2 regions clear of
+    // Gridholm; one ruin, kept within 64 m of the middle like the rolled ones)
+    const here = placesIn(cw, rx, rz), vil = here.find((p) => p.k === 'village'), ruin = here.find((p) => p.k === 'ruin');
+    if (vil && Math.max(Math.abs(rx), Math.abs(rz)) >= 2) {
+      const Rv = rng(hash(world, rx, rz, 0x7a3e));
+      pois.push(villageAt(rx, rz, vil.name ?? V_A[Math.floor(Rv() * V_A.length)] + V_B[Math.floor(Rv() * V_B.length)]));
+    } else if (ruin) {
+      const p = ruinAt(rx, rz, 1, cx + clamp64(ruin.x - cx), cz + clamp64(ruin.z - cz), R);
+      if (ruin.name) p.name = ruin.name;
+      pois.push(p);
+    }
   } else if (isVillageRegion(world, rx, rz)) {
     const Rv = rng(hash(world, rx, rz, 0x7a3e));
     pois.push(villageAt(rx, rz, V_A[Math.floor(Rv() * V_A.length)] + V_B[Math.floor(Rv() * V_B.length)]));
@@ -291,6 +308,17 @@ function baseInfo(world: number, rx: number, rz: number): RegionInfo {
   return r;
 }
 
+const clamp64 = (d: number) => Math.max(-64, Math.min(64, d));
+/** (0.208) A drawn world's camp and wreck in a region (where the owner put them), else none. */
+function customPlaces(world: number, rx: number, rz: number, base: Poi[]): Poi[] {
+  const cw = customWorld(world)!, out: Poi[] = [], here = placesIn(cw, rx, rz);
+  if (rx === 0 && rz === 0) return out;
+  const camp = here.find((p) => p.k === 'camp'), wreck = here.find((p) => p.k === 'wreck'), cx = rx * REGION, cz = rz * REGION;
+  const clear = (x: number, z: number, d: number) => ![...base, ...out].some((p) => worldDist(p.x, p.z, x, z) < d);
+  if (camp && clear(camp.x, camp.z, 90)) { const p = campAt(rx, rz, cx + clamp64(camp.x - cx), cz + clamp64(camp.z - cz), rng(hash(world, rx, rz, 0xca4b))); if (camp.name) p.name = camp.name; out.push(p); }
+  if (wreck && clear(wreck.x, wreck.z, 70)) { const p = wreckAt(rx, rz, cx + clamp64(wreck.x - cx), cz + clamp64(wreck.z - cz), rng(hash(world, rx, rz, 0x3ec7))); if (wreck.name) p.name = wreck.name; out.push(p); }
+  return out;
+}
 /** Everything in a region: its village and ruins, plus maybe a bandit camp. */
 export function regionInfo(world: number, rx: number, rz: number): RegionInfo {
   const c = wrapR(rx);
@@ -300,6 +328,7 @@ export function regionInfo(world: number, rx: number, rz: number): RegionInfo {
   if (r) return r;
   if (cache.size > 40000) cache.clear();
   const base = baseInfo(world, rx, rz), pois = [...base.pois];
+  if (customWorld(world)) { r = { ...base, pois: [...pois, ...customPlaces(world, rx, rz, pois)] }; cache.set(key, r); return r; }
   // Bandit camps: not in the start region nor within ~480 m of a village, near the middle of their region (so camps
   // never crowd each other), and clear of every ruin around so their flat ground does not overlap.
   const Rc = rng(hash(world, rx, rz, 0xca4b)), cx = rx * REGION, cz = rz * REGION;

@@ -1,6 +1,7 @@
 // Reserved ancient landmarks: twelve stone sanctuaries, then ten valleys of colossal stone heads (appended, so the
 // first twelve keep their sites). Stable ids are future quest anchors; no activation state is generated or saved.
 import { hash, rng } from '../core/rng';
+import { customWorld, placesOf } from './customworld';
 import { continents } from './continents';
 import { wrapX, wrapDx, nearX, worldDist, poisNear, regionOf, type Rect } from './regions';
 import { seaMask } from './seas';
@@ -60,6 +61,15 @@ export interface MegalithStone { x: number; z: number; y: number; w: number; d: 
 const cache = new Map<number, Megalith[]>();
 export function worldMegaliths(world: number): Megalith[] {
   const found = cache.get(world); if (found) return found;
+  const cw = customWorld(world);
+  if (cw) { // (0.208) a drawn world: its megaliths where they were drawn, the designs in turn
+    const out = placesOf(cw, 'megalith').slice(0, MEGALITH_COUNT).map((p, index): Megalith => {
+      const design = MEGALITH_DESIGNS[index], R = rng(hash(world, index, 0x6e6a));
+      return { id: `megalith:${index}`, index, name: p.name ?? design.name, x: p.x, z: p.z, y: Math.round(naturalHeight(world, p.x, p.z)), yaw: R() * Math.PI * 2, radius: (design.radius + 15) * MEGALITH_XZ_SCALE, height: design.height + (design.form === 'obelisk' ? 10 : 0), seed: hash(world, index, 0x6e6b) };
+    });
+    out.forEach(m => m.height = Math.max(...megalithStones(m).map(b => b.y + b.h)));
+    cache.set(world, out); return out;
+  }
   const factories = installSites(new Terrain(world, false));
   const out: Megalith[] = [], cs = continents(world), base = { world, base: (x: number, z: number) => naturalHeight(world, x, z) };
   for (let index = 0; index < MEGALITH_COUNT; index++) {
@@ -95,7 +105,7 @@ export function worldMegaliths(world: number): Megalith[] {
 }
 /** Early distance rejection keeps normal starting-world streaming independent of the remote landmark survey. */
 export function megalithsNear(world: number, x: number, z: number, radius: number): Megalith[] {
-  if (Math.hypot(wrapDx(x), z) + radius < MEGALITH_HOME_GAP) return [];
+  if (Math.hypot(wrapDx(x), z) + radius < MEGALITH_HOME_GAP && !customWorld(world)) return [];
   return worldMegaliths(world).filter(m => worldDist(m.x, m.z, x, z) <= radius + m.radius).map(m => ({ ...m, x: nearX(m.x, x) }));
 }
 export function megalithsIn(world: number, rect: Rect): Megalith[] {

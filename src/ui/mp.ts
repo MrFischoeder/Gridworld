@@ -175,6 +175,8 @@ function render() {
 const esc = (s: string) => s.replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]!));
 
 /** A line in the chat box (fades after a while) and in the log. */
+/** (0.208) Worlds drawn in the map editor live in one browser: not shared online until stage E5 of PLAN_EDYTORA.md. */
+const EDITOR_SOLO = tl('A world drawn in the map editor is single player for now: the others have no copy of it. Roll or pick another world to host.');
 function say(text: string, kind: 'chat' | 'info' | 'error') {
   const d = document.createElement('div');
   d.className = 'chat ' + kind; d.textContent = text;
@@ -357,12 +359,14 @@ export function initMp(h: MpHooks) {
   createBtn.onclick = () => {
     const name = newName.value.trim();
     if (!name) { status.textContent = tl('Give the new server a name first.'); newName.focus(); return; }
+    if (mine.checked && G.char.cw) { status.textContent = EDITOR_SOLO; return; } // (0.208) the others have no copy of its file
     start(serverUrl('', location), undefined, { name, world: mine.checked ? G.char.world : undefined, rivals: rivalsBox.checked || undefined });
     newName.value = '';
   };
   addr.onkeydown = (e) => e.stopPropagation();
   hostBtn.onclick = () => {
     if (!/^https?:$/.test(location.protocol) || !location.host) { status.textContent = tl('To host, start the game with start-gry.bat (it runs the server).'); return; }
+    if (G.char.cw) { status.textContent = EDITOR_SOLO; return; }
     start(serverUrl('', location));
   };
   joinBtn.onclick = () => {

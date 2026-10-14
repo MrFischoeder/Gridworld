@@ -6,9 +6,13 @@ import { worldMegaliths } from '../gen/megaliths';
 import { Terrain } from '../gen/terrain';
 import { installSites } from '../gen/installs';
 import type { Claim } from '../gen/claims';
+import { setCustomWorld } from '../gen/customworld';
+import type { WorldFile } from '../gen/mapfile';
 
-self.onmessage = (e: MessageEvent<{ world: number; claims: Claim[] }>) => {
-  const { world, claims } = e.data, t = new Terrain(world);
+self.onmessage = (e: MessageEvent<{ world: number; claims: Claim[]; custom?: WorldFile }>) => {
+  const { world, claims, custom } = e.data;
+  if (custom) setCustomWorld(world, custom); // (0.208) a world drawn in the editor
+  const t = new Terrain(world);
   t.setClaims(claims);
   const sites = installSites(t);
   (self as unknown as Worker).postMessage({ world, sites });

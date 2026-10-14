@@ -2,7 +2,8 @@
 // land out of the sea, sink it, pile up mountains, level and smooth; continents and islands are whatever you paint.
 // Rivers are drawn as lines, deposits and places (the start, villages, ruins, camps, wrecks, dead cities, the old
 // plants, megaliths, caves) are set as markers. A new world can start from the sea, from random continents or from a
-// real seed's land. The game does not play these yet (stage E2 of PLAN_EDYTORA.md).
+// real seed's land. (0.208) The game plays them (stage E2 of PLAN_EDYTORA.md, gen/customworld.ts): 'Test in the game'
+// offers it in the game's menu; the start marker is Gridholm.
 import { tl, TL } from '../i18n';
 import { fbm } from '../core/noise';
 import { hash } from '../core/rng';
@@ -14,7 +15,7 @@ import { newWorld, PLACE_KINDS, WORLD_LIMITS, type WorldFile, type PlaceKind, ty
 import { View, History, h, numField, textField, selectField, colour, type Tab } from './common';
 
 export const PLACE_NAME: Record<PlaceKind, string> = {
-  start: tl('Start (the crash site)'), village: tl('Village'), ruin: tl('Ruins'), camp: tl('Bandit camp'), wreck: tl('Crashed ship'),
+  start: tl('Start (Gridholm)'), village: tl('Village'), ruin: tl('Ruins'), camp: tl('Bandit camp'), wreck: tl('Crashed ship'),
   city: tl('Dead city'), install: tl('Old plant'), megalith: tl('Megaliths'), cave: tl('Cave'),
 };
 const PLACE_C: Record<PlaceKind, string> = { start: '#5cc8ff', village: '#d0ffd8', ruin: '#9dffe0', camp: '#ffb347', wreck: '#8fd0c0', city: '#c8c8b0', install: '#b6ff3a', megalith: '#e0e070', cave: '#a0a080' };
@@ -107,6 +108,7 @@ export class WorldTab implements Tab<WorldFile> {
       numField(tl('Cell (m)'), f.cell, (v) => this.edit(() => { f.cell = v; }), 50, 100, 2000),
       h('div', { class: 'hint' }, TL`${(f.w * f.cell / 1000).toFixed(0)} × ${(f.h * f.cell / 1000).toFixed(0)} km · land ${Math.round(land / f.land.length * 100)}% · highest ${Math.round(top)} m`),
       h('div', { class: 'hint' }, TL`${f.rivers.length} rivers, ${f.lodes.length} deposits, ${f.places.length} places.`),
+      ...this.warnings().map((w) => h('div', { class: 'hint warn' }, w)),
       h('h3', {}, tl('Selected')), ...props,
       h('h3', {}, tl('Legend')),
       h('div', { class: 'legend' }, ...PLACE_KINDS.map((k) => h('div', {}, h('i', { style: `background:${PLACE_C[k]}` }), PLACE_NAME[k]))),
@@ -155,6 +157,16 @@ export class WorldTab implements Tab<WorldFile> {
     step();
   }
 
+  /** (0.208) What will play oddly in the game: no start, a start or a village in the sea. */
+  private warnings(): string[] {
+    const f = this.file, out: string[] = [], start = f.places.find((p) => p.k === 'start');
+    const wet = (x: number, z: number) => { const k = this.at(x / f.cell, z / f.cell); return k < 0 || f.land[k] < 1; };
+    if (!start) out.push(tl('No start: Gridholm will stand in the middle of the map.'));
+    else if (wet(start.x, start.z)) out.push(tl('The start is in the sea: Gridholm needs dry land.'));
+    const n = f.places.filter((p) => p.k === 'village' && wet(p.x, p.z)).length;
+    if (n) out.push(TL`${n} villages stand in the sea.`);
+    return out;
+  }
   private at(x: number, z: number) { const i = Math.floor(x), j = Math.floor(z); return i >= 0 && j >= 0 && i < this.file.w && j < this.file.h ? j * this.file.w + i : -1; }
   private stroke(x: number, z: number) {
     const f = this.file, b = (this.tool as { b: Brush }).b, r = this.radius, s = this.strength;

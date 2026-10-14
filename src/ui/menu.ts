@@ -11,6 +11,8 @@ import { renderer } from '../world/render';
 import { mpLocked, refreshMp, showMpBox, mpShown, onMpChange, soloWaiting, backToOwnWorld } from './mp';
 import { online, sendHero } from '../net/client';
 import { nameProblem } from './rebirth';
+import { customWorlds, worldAsked } from '../world/custommaps';
+import { customSeed } from '../gen/customworld';
 import { tl, TL, lang, LANGS, LANG_NAME, saveLang, type Lang } from '../i18n';
 
 const menu = $('menu'), startBtn = $('start'), mpBtn = $('mpOpen'), wipeBtn = $('wipe'), nameIn = $<HTMLInputElement>('heroName'), nameHint = $('nameHint');
@@ -20,7 +22,7 @@ function showName() { nameIn.value = G.char.name; nameHint.textContent = G.char.
 
 export interface MenuHooks {
   /** A new game in the world with this seed: a new castaway (only the name is kept), the opening and Wiktor again. */
-  newWorld(seed: number): void;
+  newWorld(seed: number, cw?: string): void;
   /** The character was wiped; load the starting place. */
   freshStart(): void;
 }
@@ -36,7 +38,18 @@ function labels() {
   menu.classList.toggle('mp', mpShown()); // the blurb, keys and seed step aside for the server list
 }
 export function showMenu(resume = true) {
-  G.playing = false; G.firing = false; menu.style.display = 'flex'; if (resume) paused = true; showName(); renderSheet(); refreshMp(); labels();
+  G.playing = false; G.firing = false; menu.style.display = 'flex'; if (resume) paused = true; showName(); renderSheet(); refreshMp(); labels(); listWorlds();
+}
+/** (0.208) The worlds drawn in the map editor of this browser: pick one and play a new game on it. */
+const cwRow = $('cwRow'), cwPick = $<HTMLSelectElement>('cwPick'), cwPlay = $('cwPlay');
+let cwAsked = worldAsked;
+function listWorlds() {
+  const names = Object.keys(customWorlds()).sort(), was = cwAsked || cwPick.value || G.char.cw;
+  cwRow.style.display = names.length ? '' : 'none';
+  cwPick.replaceChildren(...names.map((n) => { const o = document.createElement('option'); o.value = n; o.textContent = n + (n === G.char.cw ? tl(' (playing)') : ''); return o; }));
+  if (was && names.includes(was)) cwPick.value = was;
+  if (cwAsked && names.includes(cwAsked)) nameHint.textContent = TL`The editor sent you ${cwAsked}: press Play on an editor world to start a new game on it.`;
+  cwAsked = null;
 }
 
 export function initMenu(h: MenuHooks) {
@@ -76,6 +89,15 @@ export function initMenu(h: MenuHooks) {
   $('replayCinematic').onclick = async () => { const film = await import('./cinematic'); film.playCinematic(() => showMenu(false)); };
   $('changelog').onclick = openChangelog;
   $('mapEditor').onclick = () => window.open('editor.html', '_blank'); // (0.207) the map editor, in its own tab
+  let cwArmed = '';
+  cwPlay.onclick = () => {
+    const n = cwPick.value;
+    if (!n) return;
+    if (mpLocked()) { nameHint.textContent = tl('Leave the multiplayer game first: online, the host\'s world is everyone\'s.'); return; }
+    if (cwArmed !== n) { cwArmed = n; nameHint.textContent = TL`${n} is a new game: your kit, quests and the town start over. Press again to begin.`; return; }
+    cwArmed = ''; nameHint.textContent = '';
+    h.newWorld(customSeed(n), n); paused = false; labels(); showName(); renderSheet(); listWorlds();
+  };
   const reroll = $('reroll'), rerollText = reroll.textContent;
   let rerollArmed = false;
   reroll.onclick = () => {

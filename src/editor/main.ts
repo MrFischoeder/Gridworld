@@ -55,12 +55,14 @@ app.append(
 );
 testBtn.onclick = () => {
   if (!save()) return;
-  window.open('index.html?test=' + encodeURIComponent(tabs.dungeon.file.name), '_blank');
+  // a dungeon is tried at once; a world is offered in the game's menu (a new game on it: (0.208) stage E2)
+  if (kind === 'world') window.open('index.html?world=' + encodeURIComponent(tabs.world.file.name), '_blank');
+  else window.open('index.html?test=' + encodeURIComponent(tabs.dungeon.file.name), '_blank');
 };
 
 function buildTabs() {
   tabsEl.replaceChildren(...(Object.keys(tabs) as MapKind[]).map((k) => h('button', { class: k === kind ? 'on' : '', onclick: () => switchTo(k) }, TAB_NAME[k])));
-  testBtn.style.display = kind === 'dungeon' ? '' : 'none';
+  testBtn.style.display = kind === 'village' ? 'none' : '';
   nameIn.value = cur().file.name;
   const list = names(kind);
   openSel.replaceChildren(h('option', { value: '' }, TL`Open… (${list.length})`), ...list.map((n) => h('option', { value: n }, n)));

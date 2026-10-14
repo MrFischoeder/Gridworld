@@ -11,7 +11,7 @@ import { loadChar, newChar, SAVE_KEY, type Char } from './save';
 import { initItemTips } from './ui/itemtip';
 import { calcStats, saveChar, armoured, handsChanged } from './character';
 import { loadDungeon, loadOverworld, toVillage, saveOverworldPos, enterDungeon, enterCustom, type Arrival } from './world/level';
-import { takeTest, testWaiting } from './world/custommaps';
+import { takeTest, testWaiting, syncCustomWorld, worldAsked } from './world/custommaps';
 import { initRebirth } from './ui/rebirth';
 import { isFieldPlacing, updateFieldPlacing, confirmFieldPlacing, cancelFieldPlacing } from './world/fields';
 import { isLhPlacing, updateLhPlacing, confirmLhPlacing, cancelLhPlacing, updateLighthouses } from './world/lighthouses';
@@ -124,6 +124,7 @@ setVehicleProtection(() => !!driving.v || riding(), damage => {
   else if (ride.on) relay({ t: 'hurt', dmg: damage, loc: 'o', car: net.peers.get(ride.on.owner)?.st?.carIds?.[ride.on.idx], carIndex: ride.on.idx }, ride.on.owner);
 }, armoured);
 G.char = loadChar();
+const cwMissing = !syncCustomWorld(G.char); // (0.208) a world drawn in the editor: its file, before anything is generated
 document.getElementById('vnum')!.textContent = 'v' + VERSION;
 document.getElementById('version')!.textContent = BUILD;
 document.title = tl('GridWorld v') + VERSION;
@@ -135,6 +136,7 @@ initTouch();
 /** Play another character from now on (a new game, or your hero on a server): stats, hands, then the place it stands in. */
 function useChar(c: Char, a?: Arrival) {
   G.char = c; G.crouch = false;
+  if (!syncCustomWorld(c)) setTimeout(() => showToast(TL`The editor world ${c.cw ?? ''} is not in this browser: its land comes from the seed alone.`));
   G.trans = null; el.warp.style.opacity = '0'; // a switch of character never keeps a death's or a stairway's black fade
   calcStats(); handsChanged(); G.hp = G.S.maxHp;
   clearLocalDrops(); saveChar();
@@ -143,18 +145,19 @@ function useChar(c: Char, a?: Arrival) {
   refreshGunLook(); syncHeld();
 }
 initMenu({
-  newWorld(seed) { // a new map is a new game: an empty kit, an undeveloped town, no quests, Wiktor waiting at the ship
+  newWorld(seed, cw) { // a new map is a new game: an empty kit, an undeveloped town, no quests, Wiktor waiting at the ship
     const old = G.char;
     try {
       localStorage.setItem('gridWorld.world.backup.' + old.world, JSON.stringify(old));
       const solo = localStorage.getItem(SAVE_KEY + '.solo'); // your own save that waited while you were online: kept aside too, the new game is now yours
       if (solo) { localStorage.setItem('gridWorld.world.backup.' + (JSON.parse(solo).world ?? 'solo'), solo); localStorage.removeItem(SAVE_KEY + '.solo'); }
     } catch { /* unavailable */ }
-    useChar(Object.assign(newChar(), { world: seed, name: old.name }));
+    useChar(Object.assign(newChar(), { world: seed, name: old.name }, cw ? { cw } : {})); // (0.208) cw: a world drawn in the editor
   },
   freshStart() { loadOverworld({ kind: 'new' }); },
 });
 initMp({ useChar, reloadWorld });
+if (cwMissing) setTimeout(() => showToast(TL`The editor world ${G.char.cw ?? ''} is not in this browser: its land comes from the seed alone.`), 1500);
 initRebirth(useChar); // online a death ends the character: another crew member wakes
 
 if (G.char.loc === 'dungeon' && G.char.dungeon) loadDungeon(null); else { G.char.loc = 'overworld'; loadOverworld({ kind: 'saved' }); }
@@ -303,7 +306,7 @@ initItemTips();
 const noFilm = (() => { try { const f = sessionStorage.getItem('gridWorld.noFilm'); sessionStorage.removeItem('gridWorld.noFilm'); return !!f; } catch { return false; } })();
 void import('./ui/cinematic').then(module => {
   cinematic = module; document.getElementById('boot')?.remove();
-  if (noFilm || testWaiting()) showMenu(false); else module.playCinematic(() => showMenu(false));
+  if (noFilm || testWaiting() || worldAsked) showMenu(false); else module.playCinematic(() => showMenu(false));
   last = performance.now(); requestAnimationFrame(frame);
 }, () => { document.getElementById('boot')?.remove(); showMenu(false); last = performance.now(); requestAnimationFrame(frame); });
 

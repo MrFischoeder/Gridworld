@@ -6,7 +6,8 @@ import { fbm } from '../core/noise';
 import { hash } from '../core/rng';
 import { regionClimate, REGION, WORLD_W, POLAR_Z, POLE_Z } from './regions';
 import { mountainMask, mountainLift } from './mountains';
-import { seaMask, seaSink, isleHeight } from './seas';
+import { seaMask, seaSink, isleHeight, SEA } from './seas';
+import { customWorld, fileHeight, customMountainMask } from './customworld';
 
 const smooth = (t: number) => t * t * (3 - 2 * t);
 /**
@@ -31,17 +32,30 @@ function rough(world: number, x: number, z: number): number {
 }
 /** Height of the natural land at (x, z). */
 export function naturalHeight(world: number, x: number, z: number): number {
-  const { S170, P170, S48, P48, S60, P60 } = sc(), [s1, s2] = seedsOf(world), amp = 0.55 + 0.8 * rough(world, x, z);
+  const { S170, P170, S48, P48 } = sc(), [s1, s2] = seedsOf(world), amp = 0.55 + 0.8 * rough(world, x, z);
   const raw = 12.5 + amp * (46 * (fbm(s1, x / S170, z / 170, 4, P170) - 0.5) + 8 * (fbm(s2, x / S48, z / 48, 3, P48) - 0.5));
   let h = 12.5 + 12.5 * Math.tanh((raw - 12.5) / 12.5);
+  const cw = customWorld(world);
+  if (cw) {
+    // (0.208) a world drawn in the editor: its heights, the seed's hills laid lightly over the land (none on the coast)
+    // and its ridges over what was drawn high
+    const f = fileHeight(cw, x, z), m = customMountainMask(cw, x, z);
+    h = SEA.level + f;
+    if (f > 1) h = Math.max(SEA.level + 0.4, h + (raw - 12.5) * 0.4 * smooth(Math.min(1, (f - 1) / 10)) * (1 - m) + 0.3 * mountainLift(world, x, z, m));
+    return ice(x, z, h, s2);
+  }
   h += mountainLift(world, x, z, mountainMask(world, x, z));
   const m = seaMask(world, x, z);
   h = seaSink(h, m); // the seas: the land goes down under the water
   if (m > 0.3) h = Math.max(h, isleHeight(world, x, z)); // islands out in the open sea
-  const az = Math.abs(z);
+  return ice(x, z, h, s2);
+}
+/** Towards the poles the ice sheet, then the ice wall. */
+function ice(x: number, z: number, h: number, s2: number): number {
+  const { S60, P60 } = sc(), az = Math.abs(z);
   if (az > POLAR_Z) {
-    const ice = ICE_Y + 3 * (fbm(s2 + 5, x / S60, z / 60, 2, P60) - 0.5);
-    h += (ice - h) * smooth(Math.min(1, (az - POLAR_Z) / 2500));
+    const sheet = ICE_Y + 3 * (fbm(s2 + 5, x / S60, z / 60, 2, P60) - 0.5);
+    h += (sheet - h) * smooth(Math.min(1, (az - POLAR_Z) / 2500));
     if (az > POLE_Z - 120) h += WALL_H * smooth(Math.min(1, (az - (POLE_Z - 120)) / 70)); // a sheer cliff of ice
   }
   return h;

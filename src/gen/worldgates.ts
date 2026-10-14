@@ -4,6 +4,7 @@ export { GATE_COUNT, GATE_SECONDS };
 import { hash, rng } from '../core/rng';
 import { type GateAddress } from '../data/gates';
 import { continents } from './continents';
+import { customWorld } from './customworld';
 import { nearX, wrapX, wrapDx, worldDist, poisNear } from './regions';
 import { naturalHeight } from './heights';
 import { seaMask } from './seas';
@@ -24,13 +25,17 @@ function gateNetwork(world: number, count: number): WorldGate[] {
   const cs = continents(world), out: WorldGate[] = got ? [...got] : [];
   const addresses = gateAddresses(world);
   const base = { world, base: (x: number, z: number) => naturalHeight(world, x, z) };
+  const cw = customWorld(world);
   for (let id = out.length; id < count; id++) {
     const Q = rng(hash(world, id, 0x6a7f)), c = cs[id % cs.length];
-    let site: [number, number, number] | null = null;
+    let site: [number, number, number] | null = null, dryLand: [number, number, number] | null = null;
     for (let attempt = 0; attempt < 1600; attempt++) {
       const a = Q() * Math.PI * 2, r = id === 0 ? 450 + Q() * 650 : Math.sqrt(.04 + Q() * .67);
-      const x = wrapX(Math.round(id === 0 ? Math.cos(a) * r : c.x + Math.cos(a) * c.rx * r));
-      const z = Math.round(id === 0 ? Math.sin(a) * r : c.z + Math.sin(a) * c.rz * r);
+      // (0.208) a drawn world: anywhere on the drawn grid (its land, by the checks below)
+      const u = cw ? Q() : 0, v = cw ? Q() : 0, fw = cw ? cw.f.w * cw.f.cell : 0, fh = cw ? cw.f.h * cw.f.cell : 0;
+      const x = wrapX(Math.round(id === 0 ? Math.cos(a) * r : cw ? u * fw - cw.sx : c.x + Math.cos(a) * c.rx * r));
+      const z = Math.round(id === 0 ? Math.sin(a) * r : cw ? v * fh - cw.sz : c.z + Math.sin(a) * c.rz * r);
+      if (cw && !dryLand && seaMask(world, x, z) <= 0) dryLand = [x, z, Math.round(base.base(x, z))];
       let lo = Infinity, hi = -Infinity, dry = true;
       for (const dx of [-20, 0, 20]) for (const dz of [-20, 0, 20]) {
         const h = base.base(x + dx, z + dz); lo = Math.min(lo, h); hi = Math.max(hi, h);
@@ -44,6 +49,7 @@ function gateNetwork(world: number, count: number): WorldGate[] {
       if (lakesIn(base, rect).some(l => Math.hypot(l.x - x, l.z - z) < l.r * LAKE_REACH * 1.3 + 30)) continue;
       site = [x, z, Math.round(base.base(x, z))]; break;
     }
+    if (!site && cw) site = dryLand ?? [id * 60, 900, Math.round(base.base(id * 60, 900))]; // a drawn world with little room: the first dry spot met (or anywhere)
     if (!site) throw new Error(TL`No dry site for ancient gate ${id} in world ${world}`);
     out.push({ id, x: site[0], z: site[1], y: site[2], yaw: Q() * Math.PI * 2,
       address: addresses[id], seed: hash(world, id, 0x6a80) });
@@ -56,7 +62,7 @@ export function gatesNear(world: number, x: number, z: number, r: number): World
   // to survey the whole planet (including its rivers) just to build a local terrain chunk.
   const cs = continents(world), remoteMinimum = Math.min(...cs.map((c, i) => i ?
     Math.hypot(wrapDx(c.x), c.z) - Math.max(c.rx, c.rz) * Math.sqrt(.71) : Math.min(c.rx, c.rz) * .2)) - 2;
-  const localOnly = Math.hypot(wrapDx(x), z) + r < remoteMinimum;
+  const localOnly = Math.hypot(wrapDx(x), z) + r < remoteMinimum && !customWorld(world);
   const list = gateNetwork(world, localOnly ? 1 : GATE_COUNT);
   return (localOnly ? list.slice(0, 1) : list).filter(g => worldDist(g.x, g.z, x, z) < r).map(g => ({ ...g, x: nearX(g.x, x) }));
 }

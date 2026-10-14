@@ -7,6 +7,7 @@
 // (rubble, toppled centrifuges and fallen trusses gone, the fence mended), the hall rebuilt (walls whole, trusses and a
 // roof, every centrifuge standing), restored (the centrifuges glow). The control desk inside the gate opens the
 // restoration window (`nearInstallDesk`, ui/install.ts).
+import { customWorld } from '../gen/customworld';
 import { seedMegalithSites, type Megalith } from '../gen/megaliths';
 import * as THREE from 'three';
 import { scene } from './render';
@@ -775,7 +776,7 @@ export function updateInstalls(dt: number) {
   const T = OW.terrain;
   if (!T || G.char.loc !== 'overworld') { dropInstalls(); return; }
   // (wait for the worker's answer near home; far out, where a plant may stand, work it out here if need be)
-  const sites = installSitesReady(T.world) ?? (Math.hypot(G.pos.x, G.pos.z) > 8500 ? installSites(T) : null);
+  const sites = installSitesReady(T.world) ?? (Math.hypot(G.pos.x, G.pos.z) > 8500 || customWorld(T.world) ? installSites(T) : null);
   for (const s of sites ?? []) {
     const key = s.k + ':' + T.world, d = worldDist(s.x, s.z, G.pos.x, G.pos.z), have = live.get(key), stage = G.char.installs[s.k]?.stage ?? 0;
     if (have && (d > 1100 || have.stage !== stage)) { scene.remove(have.g); have.g.traverse((o) => (o as THREE.Mesh).geometry?.dispose()); live.delete(key); }
@@ -799,7 +800,7 @@ export function primeInstalls(world: number, claims: unknown[]) {
       if (e.data.megaliths) { seedMegalithSites(e.data.world, e.data.megaliths); w.terminate(); }
     };
     w.onerror = () => { w.terminate(); primed = NaN; };
-    w.postMessage({ world, claims: JSON.parse(JSON.stringify(claims)) });
+    w.postMessage({ world, claims: JSON.parse(JSON.stringify(claims)), custom: customWorld(world)?.f }); // (0.208) a drawn world's file goes along
   } catch { primed = NaN; /* no workers here: worked out when first needed */ }
 }
 /** Redraw at once (after a stage is finished). */

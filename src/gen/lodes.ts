@@ -19,6 +19,7 @@ import { regionLakes } from './water';
 import { inFogSite } from './toxic';
 import { RARES, RARE_NAME, type Rare } from './deposits';
 import { townsWorld } from './worldrules';
+import { customWorld } from './customworld';
 import type { ItemKey } from '../data/items';
 import { tl, TL } from '../i18n';
 
@@ -114,7 +115,7 @@ export function startLodes(world: number): Lode[] {
   let out = startCache.get(world);
   if (out) return out;
   out = [];
-  if (townsWorld(world)) for (const [i, k] of LODE.start.entries()) {
+  if (townsWorld(world) && !customWorld(world)) for (const [i, k] of LODE.start.entries()) { // (a drawn world has only its own)
     for (let t = 0; t < 60; t++) {
       const a = u01(world, i, t, 0x10e1) * Math.PI * 2, d = LODE.ring[0] + (LODE.ring[1] - LODE.ring[0]) * u01(world, i, t, 0x10e2);
       const x = Math.cos(a) * d, z = Math.sin(a) * d;
@@ -135,7 +136,9 @@ export function regionLode(world: number, rx: number, rz: number): Lode | null {
   let l = cache.get(key);
   if (l !== undefined) return l;
   if (cache.size > 20000) cache.clear();
-  l = startLodes(world).find((o) => { const [qx, qz] = regionOf(o.x, o.z); return qx === rx && qz === rz; }) ?? rollLode(world, rx, rz);
+  const cw = customWorld(world), drawn = cw?.lodeByRegion.get(rx + ':' + rz);
+  if (cw) l = drawn && LODES[drawn.k] ? { ...make(world, `lode:${rx}:${rz}`, drawn.k, drawn.x, drawn.z, hash(rx, rz, 0x10f5)), rich: drawn.rich } : null; // (0.208) a drawn world: its own deposits
+  else l = startLodes(world).find((o) => { const [qx, qz] = regionOf(o.x, o.z); return qx === rx && qz === rz; }) ?? rollLode(world, rx, rz);
   cache.set(key, l);
   return l;
 }

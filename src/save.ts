@@ -38,6 +38,8 @@ export interface Char {
   name: string;
   /** Seen the opening (ui/intro.ts: the ship, the meteor storm, the fall). False for a new character: it starts at the crash site. */
   intro: boolean;
+  /** (0.208) Played on a world drawn in the map editor: its file's name (world/custommaps.ts registers it for `world`). */
+  cw?: string;
   /** Technologies recovered from old data carriers (gen/tech.ts): tech id -> game time found. */
   tech: Record<string, number>;
   /** Leads to data carriers the villagers told you of (tech ids), shown on the maps and the compass until recovered. */

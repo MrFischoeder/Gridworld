@@ -4,6 +4,7 @@
 // lies in its own distance band from Gridholm on dry, fairly level ground away from villages, places, roads, lakes and
 // the mountains. The ground round it is bare: trees, rocks and plants inside `inInstall` are not generated.
 import { hash } from '../core/rng';
+import { customWorld, placesOf } from './customworld';
 import { CHUNK, POLAR_Z, worldDist, wrapX, wrapDx, poisNear, type Poi } from './regions';
 import { nearestOnRoad } from './roads';
 import { mountainMask } from './mountains';
@@ -65,6 +66,14 @@ export function installSites(t: Terrain): InstallSite[] {
   if (t.includeMegaliths) t = new Terrain(t.world, false);
   const out: InstallSite[] = [];
   cache.set(t.world, out); // (filled below; set first so a nested call during the search sees no sites rather than recursing)
+  const cw = customWorld(t.world);
+  if (cw) { // (0.208) a drawn world: its old plants where they were drawn (the kinds not drawn stand nowhere)
+    placesOf(cw, 'install').forEach((p, n) => {
+      const spec = INSTALLS.find((o) => o.k === p.install);
+      if (spec && !out.some((o) => o.k === spec.k)) out.push({ k: spec.k, name: p.name ?? spec.name, x: p.x, z: p.z, y: t.heightAt(p.x, p.z), yaw: (hash(t.world, n, 0x1e59) % 4) * Math.PI / 2, r: spec.r * INSTALL_SCALE });
+    });
+    return out;
+  }
   const land = continents(t.world);
   searching = true;
   try {
@@ -97,11 +106,11 @@ export function seedInstallSites(world: number, sites: InstallSite[]) { if (!cac
 const NEAREST = 9500;
 /** Is (x, z) on the bare ground of an installation (within its radius plus m)? */
 export function inInstall(t: Terrain, x: number, z: number, m = 0): boolean {
-  if (Math.hypot(wrapDx(x), z) < NEAREST) return false; // all of them lie far out: a cheap early out near home
+  if (Math.hypot(wrapDx(x), z) < NEAREST && !customWorld(t.world)) return false; // all of them lie far out: a cheap early out near home
   for (const s of installSites(t)) if (worldDist(s.x, s.z, x, z) < s.r + m) return true;
   return false;
 }
-export const installAt = (t: Terrain, x: number, z: number, m = 0) => (Math.hypot(wrapDx(x), z) < NEAREST ? null : installSites(t).find((s) => worldDist(s.x, s.z, x, z) < s.r + m) ?? null);
+export const installAt = (t: Terrain, x: number, z: number, m = 0) => (Math.hypot(wrapDx(x), z) < NEAREST && !customWorld(t.world) ? null : installSites(t).find((s) => worldDist(s.x, s.z, x, z) < s.r + m) ?? null);
 
 // ---------- restoring an installation, and what it makes ----------
 /** A stage of the restoration: what it is called, what the crew say, what it needs (and the plans, if any). */

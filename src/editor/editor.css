@@ -38,3 +38,4 @@ h3 { color: var(--g); font-size: 12px; margin: 10px 0 4px; text-transform: upper
 .probs .ok { color: var(--g); }
 .legend div { display: flex; align-items: center; gap: 6px; margin: 2px 0; }
 .legend i { width: 10px; height: 10px; display: inline-block; }
+.hint.warn { color: var(--gold); }

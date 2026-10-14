@@ -432,7 +432,8 @@ body.cinematic > *:not(#view):not(#cinematic){visibility:hidden}
 #boot span{font-size:22px;opacity:.7;animation:bootBlink 1.2s steps(2) infinite}
 @keyframes bootBlink{50%{opacity:.25}}
 #menu{overflow-y:auto;justify-content:safe center}
-#menu.mp > p,#menu.mp #keys,#menu.mp > label:not(#nameRow){display:none}
+#menu.mp > p,#menu.mp #keys,#menu.mp > label:not(#nameRow),#menu.mp #cwRow{display:none !important}
+#cwPick{font:inherit;font-size:20px;background:#000;color:var(--g);border:1px solid var(--g2);padding:4px 8px;max-width:14em}
 #menu #replayCinematic{background:transparent;color:var(--g);border:1px solid var(--g)}
 /* sneaking (world/stealth.ts): your visibility and how much the foes round you have made out */
 #stealth{display:none;position:fixed;left:50%;top:64%;transform:translateX(-50%);padding:3px 10px 6px;font-size:17px;color:#9dffb4;

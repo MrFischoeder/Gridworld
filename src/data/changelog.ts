@@ -3,6 +3,14 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.208.0', date: '2026-10-14', title: 'Playing on your own worlds', notes: [
+    'Worlds drawn in the map editor can now be played. Pick one under the world seed in the main menu and press Play on an editor world: a new game starts on it.',
+    'The land, the seas and the mountains are the ones you painted, the rivers run where you drew them, and the villages, ruins, camps, wrecks, dead cities, old plants, megaliths, caves and deposits stand where you put them. The start marker is Gridholm; beyond the edge of the map lies deep sea.',
+    'The world\'s seed still makes everything else: forests, rocks, lakes, the weather, the ancient gates, what lies inside the ruins and wrecks, and the people.',
+    'A drawn world follows the rules of the new worlds of towns: Gridholm starts as a settlement you build up, and the deposits lie out in the wilds.',
+    'In the editor, Test in the game on the world tab saves the world and opens the game with it chosen in the menu. The editor warns when the map has no start, or when the start or a village is in the sea.',
+    'A drawn world lives in your browser, so it is single player for now: you cannot host it or make a server on it. Joining someone else\'s server works as before.',
+  ] },
   { v: '0.207.0', date: '2026-10-14', title: 'The map editor', notes: [
     'A map editor: the Map editor button in the main menu opens it in its own tab. It has three parts: a dungeon, a world and a village.',
     'Dungeons: lay out an underground level from above on a 1 m grid in one of three styles, each with its own kit: an ancient ruin (rooms, great halls, corridors, solid blocks), a crashed ship (bays, the engine room, ship corridors) or a metro (station halls with their platforms over the track, metro tunnels with rails, wrecked trains, falls of rubble). Then set the start, the exit stairs, chests, crystals, a boss, robot guards of any kind and doors, and the danger and the stray drones. A 3D view shows what the game will build, and the editor tells you what is wrong (no way out, a chest you cannot walk to).',
