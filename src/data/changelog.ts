@@ -3,6 +3,11 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.211.1', date: '2026-10-14', title: 'Solid rocks and walls', notes: [
+    'Rocks are solid to their real faces: you can no longer walk into a boulder. A stone no higher than a step is stepped onto, a taller one can be jumped onto and stood on.',
+    'Creatures, machines and bandits no longer pass through trees, rocks, the ruins of the dead cities, houses, halls, camp palisades, village fences and other walls; they walk round a trunk or a corner instead of standing stuck against it.',
+    'A foe that ends up inside something (spawned or shoved there) walks out of it rather than hiding in the wall.',
+  ] },
   { v: '0.211.0', date: '2026-10-14', title: 'Your own maps online', notes: [
     'A world drawn in the map editor can now be played together. Host a LAN game, or create a server "in my own world", while you play on it: the world goes to the server with the village layouts and the dungeons it names.',
     'The server keeps those files with the game and hands them to everyone who joins, so every player walks the same land, the same villages and the same levels under the ruins, even without a copy of the files of their own. Players in the same editor level meet there.',

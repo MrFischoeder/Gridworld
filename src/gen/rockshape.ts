@@ -23,3 +23,29 @@ export function rockFacePoint(shape: RockShape, band: 0 | 1, face: number, s: nu
   const length = Math.hypot(...normal), direction = normal[0] * point[0] + normal[2] * point[2] < 0 ? -1 : 1;
   return { point, normal: normal.map(n => n * direction / length) as RockPoint };
 }
+
+/** (0.211.1) How far a ring reaches from the rock's middle along the direction (cos a, sin a): the farthest crossing
+ *  of that ray with the ring's edges (the middle always lies inside, the rings lean only a little). */
+export function ringReach(ring: RockPoint[], a: number): number {
+  const ux = Math.cos(a), uz = Math.sin(a);
+  let best = 0;
+  for (let i = 0; i < ring.length; i++) {
+    const p = ring[i], q = ring[(i + 1) % ring.length], ex = q[0] - p[0], ez = q[2] - p[2];
+    const den = ux * ez - uz * ex;
+    if (Math.abs(den) < 1e-9) continue;
+    const t = (p[0] * ez - p[2] * ex) / den, s = (p[0] * uz - p[2] * ux) / den;
+    if (t > 0 && s >= -1e-6 && s <= 1 + 1e-6 && t > best) best = t;
+  }
+  return best;
+}
+/** (0.211.1) The top of the stone over a point (dx, dz) from its middle, metres above its base, or -Infinity off it:
+ *  the flat crown inside the top ring, the upper faces down to the shoulder ring, the lower ones down to the foot. */
+export function rockSurface(shape: RockShape, dx: number, dz: number): number {
+  const d = Math.hypot(dx, dz), a = Math.atan2(dz, dx);
+  const r0 = ringReach(shape[0], a), r1 = ringReach(shape[1], a), r2 = Math.min(ringReach(shape[2], a), r1);
+  const foot = Math.max(r0, r1), y1 = shape[1][0][1], h = shape[2][0][1];
+  if (d >= foot) return -Infinity;
+  if (d <= r2) return h;
+  if (d <= r1) return r1 > r2 ? h + (y1 - h) * (d - r2) / (r1 - r2) : y1;
+  return foot > r1 ? y1 * (foot - d) / (foot - r1) : y1;
+}

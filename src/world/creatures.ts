@@ -9,6 +9,7 @@ import { scene, V, lineMat } from './render';
 import { G, W } from '../game';
 import { PropBatch, sharedFill } from './props';
 import { CREATURES, HOSTILE, CALM, DROPS, FLYERS, SWIMMERS, type CreatureKind } from '../data/creatures';
+import { footStep } from '../core/footstep';
 import { foeRules } from './enemies';
 import { rayWorld } from './player';
 import { burst } from './fx';
@@ -356,18 +357,21 @@ function spawnSea(x: number, z: number, level: number, lv: number) {
 function blockedAt(c: Creature, x: number, z: number): boolean {
   if (!env) return true;
   if (foeRules.blocked(V(x, c.p.y, z)) || env.forbidden(x, z)) return true;
-  return !G.space.empty(Math.floor(x), Math.floor(env.ground(x, z) + 0.5), Math.floor(z));
+  const gy = env.ground(x, z);
+  return !G.space.empty(Math.floor(x), Math.floor(gy + 0.5), Math.floor(z)) || foeRules.body(x, gy, z, bodyR(c));
 }
+/** How wide a creature is to walls and trunks (less than its reach, so packs still squeeze between trees). */
+const bodyR = (c: Creature) => Math.min(0.8, CREATURES[c.kind].r * 0.6);
+const inside = (c: Creature) => !!env && foeRules.body(c.p.x, env.ground(c.p.x, c.p.z), c.p.z, bodyR(c));
 /** Walk over the ground towards a direction; slides along obstacles. */
 function walk(c: Creature, dx: number, dz: number, speed: number, dt: number) {
   const L = Math.hypot(dx, dz);
   c.speed = 0;
   if (L < 1e-3 || !env) return;
   const sx = dx / L * speed * dt, sz = dz / L * speed * dt;
-  if (!blockedAt(c, c.p.x + sx, c.p.z + sz)) { c.p.x += sx; c.p.z += sz; }
-  else if (!blockedAt(c, c.p.x + sx, c.p.z)) c.p.x += sx;
-  else if (!blockedAt(c, c.p.x, c.p.z + sz)) c.p.z += sz;
-  else return;
+  const to = footStep(c.p.x, c.p.z, sx, sz, (x, z) => blockedAt(c, x, z), inside(c), (x, z) => env!.forbidden(x, z));
+  if (!to) return;
+  c.p.x = to[0]; c.p.z = to[1];
   c.speed = speed;
   let dh = Math.atan2(dx, dz) - c.heading; dh = Math.atan2(Math.sin(dh), Math.cos(dh));
   c.heading += dh * Math.min(1, dt * 8);

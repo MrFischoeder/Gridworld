@@ -77,6 +77,9 @@ export const foeRules = {
   shieldHit: (_dmg: number) => {},
   /** Hover height above the ground for field drones. */
   ground: null as ((x: number, z: number) => number) | null,
+  /** (0.211.1) A foe's body (feet at y, r wide) runs into something solid here: trees, rocks, buildings, ruins, walls,
+   *  fences and every voxel structure. Only the open world sets it. */
+  body: (_x: number, _y: number, _z: number, _r: number) => false,
 };
 function droneMove(t: Drone, d: THREE.Vector3) {
   for (const ax of ['x', 'y', 'z'] as const) {

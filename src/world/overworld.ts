@@ -48,6 +48,7 @@ import { boatHit, shipFloor, shipHit } from './boats';
 import { CHUNK, poisNear, X_MIN, WORLD_W, POLE_Z, POLAR_Z, villageContaining, villageDist, villageSeed, GRIDHOLM_ID, type Poi, type Rect, wrapC, wrapDx } from '../gen/regions';
 import { chunkTrees, chunkRocks, type Tree, type Rock, type OreKind } from '../gen/trees';
 import { drawTree } from './trees';
+import { rockShape, rockSurface, type RockShape } from '../gen/rockshape';
 import { drawTemple } from './temple';
 import { chunkWells, type Well } from '../gen/water';
 import { chunkPlants, type Plant } from '../gen/flora';
@@ -157,16 +158,61 @@ export function groundAt(x: number, z: number): number {
   for (const s of OW.structs.values()) if (s.grid.covers(fx, fz)) return -Infinity;
   return OW.terrain!.heightAt(x, z);
 }
+/** (0.211.1) Rocks are solid to their real faces (gen/rockshape.ts `rockSurface`): a body of radius r standing at
+ *  (x, z) meets the highest part of the stone under its circle. Stones no taller than a step are stepped onto
+ *  (`rockFloor`); taller ones are walls up their steep faces and a floor once you are on top (a jump lands there). */
+const ROCK_STEP = 0.6, ROCK_TOL = 0.1, BODY_R = 0.3;
+const rockShapes = new WeakMap<Rock, RockShape>();
+function rockTop(k: Rock, x: number, z: number, r: number): number {
+  let dx = x - k.x, dz = z - k.z;
+  const d = Math.hypot(dx, dz);
+  if (d >= k.r + r) return -Infinity;
+  const f = d > r ? (d - r) / d : 0; dx *= f; dz *= f;
+  let s = rockShapes.get(k); if (!s) rockShapes.set(k, s = rockShape(k.r, k.h, k.sides, k.rot));
+  return k.y + rockSurface(s, dx, dz);
+}
+/** A body (feet at y, `r` wide) runs into the stone: some of it under the body's circle stands above the feet. */
+function rockBlocks(k: Rock, x: number, y: number, z: number, r: number): boolean {
+  if (k.h <= ROCK_STEP || y > k.y + k.h || y + 1.7 < k.y) return false;
+  return y < rockTop(k, x, z, r) - ROCK_TOL;
+}
+/** The top of the stones under the player you can stand on from height y (-Infinity when none). */
+export function rockFloor(x: number, y: number, z: number): number {
+  const cx = Math.floor(x / CHUNK), cz = Math.floor(z / CHUNK);
+  let best = -Infinity;
+  for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) {
+    const c = OW.chunks.get(ckey(cx + i, cz + j)); if (!c) continue;
+    for (const k of c.rocks) {
+      const t = rockTop(k, x, z, BODY_R);
+      if (t > best && t <= y + (k.h <= ROCK_STEP ? ROCK_STEP : ROCK_TOL)) best = t;
+    }
+  }
+  return best;
+}
 /** Tree trunks (an arch has one per leg): vertical cylinders, solid up to a bit above their base. */
 export function treeHit(x: number, y: number, z: number, r: number): boolean {
   const cx = Math.floor(x / CHUNK), cz = Math.floor(z / CHUNK);
   for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) {
     const c = OW.chunks.get(ckey(cx + i, cz + j)); if (!c) continue;
     for (const t of c.trees) if (y < t.y + 2 + t.h * 0.3) for (const [tx, tz, tr] of t.cols) if (Math.hypot(tx - x, tz - z) < tr + r) return true;
-    for (const k of c.rocks) if (k.h > 0.7 && Math.hypot(k.x - x, k.z - z) < k.r * 0.55 + r && y < k.y + k.h * 0.8) return true;
+    for (const k of c.rocks) if (rockBlocks(k, x, y, z, r)) return true;
     for (const p of c.plants) if (y < p.y + 2) for (const [px, pz, pr] of p.cols) if (Math.hypot(px - x, pz - z) < pr + r) return true;
     for (const w of c.wells) if (Math.hypot(w.x - x, w.z - z) < 1.05 + r && y < OW.terrain!.heightAt(w.x, w.z) + 0.9) return true;
     for (const cv of c.caves) if (caveHit(cv, x, y, z, r, cv.y)) return true;
+  }
+  return false;
+}
+/** (0.211.1) What a walking foe (feet at y, r wide) may not pass: the same solid things as the player (trees, rocks,
+ *  city ruins, houses, halls, the settlements' yards, wall-walks, ladders, sandbags, the old plants, lighthouses,
+ *  outposts, the crash ship, bases, megaliths, gates, doors, fog sites) and every voxel structure (camp palisades,
+ *  village fences, ruins), sampled round its circle at the knee and the chest. Vehicles, boats and caravans are left
+ *  out: foes must still reach whoever is in them. */
+export function foeBody(x: number, y: number, z: number, r: number): boolean {
+  if (treeHit(x, y, z, r) || cityHit(x, y + 0.5, z, r) || houseHit(x, y, z, r) || hallHit(x, y, z, r) || settlementHit(x, y, z, r) || walkHit(x, y, z, r) || ladderHit(x, y, z, r) || guardHit(x, y, z, r) || installHit(x, y, z, r) || lighthouseHit(x, y, z, r) || lodeHit(x, y, z, r) || podHit(x, y, z, r) || baseHit(x, y, z, r) || megalithHit(x, y, z, r) || worldGateHit(x, y, z, r) || doorHit(x, y, z, r) || toxicHit(x, y, z, r)) return true;
+  const k = r * 0.75, y0 = Math.floor(y + 0.3), y1 = Math.floor(y + 1.2);
+  for (const [dx, dz] of [[0, 0], [r, 0], [-r, 0], [0, r], [0, -r], [k, k], [-k, k], [k, -k], [-k, -k]]) {
+    const fx = Math.floor(x + dx), fz = Math.floor(z + dz);
+    if (!space.empty(fx, y0, fz) || !space.empty(fx, y1, fz)) return true;
   }
   return false;
 }
@@ -646,8 +692,9 @@ export function openWorld(x: number, z: number) {
   closeWorld();
   G.water = (px, pz) => (inStructure(px, pz) ? null : OW.terrain!.water(px, pz));
   G.space = space; G.ground = groundAt; G.obstacle = (px, py, pz, r) => settlementHit(px, py, pz, r) || megalithHit(px, py, pz, r) || worldGateHit(px, py, pz, r) || treeHit(px, py, pz, r) || vehicleHit(px, py, pz, r) || caravanHit(px, py, pz, r) || peerCarHit(px, py, pz, r) || ambushHit(px, py, pz, r) || baseHit(px, py, pz, r) || ladderHit(px, py, pz, r) || walkHit(px, py, pz, r) || guardHit(px, py, pz, r) || houseHit(px, py, pz, r) || doorHit(px, py, pz, r) || podHit(px, py, pz, r) || installHit(px, py, pz, r) || cityHit(px, py, pz, r) || hallHit(px, py, pz, r) || bridgeHit(px, py, pz, r) || pierHit(px, py, pz, r) || lighthouseHit(px, py, pz, r) || boatHit(px, py, pz, r) || shipHit(px, py, pz, r) || toxicHit(px, py, pz, r) || lodeHit(px, py, pz, r);
-  G.floor = (x, y, z) => Math.max(settlementFloor(x, y, z), megalithFloor(x, y, z), baseFloor(x, y, z), ladderFloor(x, y, z), walkFloor(x, y, z), bridgeFloor(x, y, z), pierFloor(x, y, z), shipFloor(x, y, z)); G.rayBlock = (o, d, t) => settlementRay(o, d, megalithRay(o, d, worldGateRay(o, d, cityRay(o, d, doorRay(o, d, houseRay(o, d, baseRay(o, d, t))))))); G.solid = (p) => settlementSolid(p) || megalithHit(p.x, p.y, p.z, 0) || worldGateHit(p.x, p.y, p.z, 0) || baseSolid(p) || houseSolid(p);
+  G.floor = (x, y, z) => Math.max(rockFloor(x, y, z), settlementFloor(x, y, z), megalithFloor(x, y, z), baseFloor(x, y, z), ladderFloor(x, y, z), walkFloor(x, y, z), bridgeFloor(x, y, z), pierFloor(x, y, z), shipFloor(x, y, z)); G.rayBlock = (o, d, t) => settlementRay(o, d, megalithRay(o, d, worldGateRay(o, d, cityRay(o, d, doorRay(o, d, houseRay(o, d, baseRay(o, d, t))))))); G.solid = (p) => settlementSolid(p) || megalithHit(p.x, p.y, p.z, 0) || worldGateHit(p.x, p.y, p.z, 0) || baseSolid(p) || houseSolid(p);
   foeRules.blocked = (p) => megalithHit(p.x, p.y, p.z, .7) || nearVillage(p.x, p.z) < 2;
+  foeRules.body = foeBody;
   foeRules.playerSafe = () => inVillage(G.pos.x, G.pos.z) && !raidHere(); // no safe place while bandits raid it
   foeRules.ground = (px, pz) => OW.terrain!.heightAt(px, pz);
   foeRules.shielded = () => insideVehicle(); // a foe's turn against another player: your cab is not theirs
@@ -695,7 +742,7 @@ export function closeWorld() {
   clearLakes();
   queue = []; lastChunk = '';
   G.water = null;
-  foeRules.blocked = () => false; foeRules.playerSafe = () => false; foeRules.ground = null; foeRules.shielded = () => false; foeRules.shieldHit = () => {};
+  foeRules.blocked = () => false; foeRules.body = () => false; foeRules.playerSafe = () => false; foeRules.ground = null; foeRules.shielded = () => false; foeRules.shieldHit = () => {};
   clearVillageRaid(); clearOutpostRaid(); clearRouteTrucks();
   clearCaravans();
   G.ground = null; G.obstacle = null; G.floor = null; G.rayBlock = null; G.solid = null;

@@ -18,6 +18,7 @@ import { ROBOTS, ROBOT_COLOR, BEAM_COLOR, SHELL, BLAST, blastPulse, type RobotKi
 import { machineBlast } from './blast';
 import { mindOf, sense, heard, share, spottedBy } from './stealth';
 import { STEALTH, LOSE } from '../gen/stealth';
+import { footStep } from '../core/footstep';
 import { foeRules, makeDrone, type Drone } from './enemies';
 import { burst, addFx } from './fx';
 import { dropCrystal, dropPickup } from './loot';
@@ -300,12 +301,23 @@ function alert(r: Robot, at?: THREE.Vector3) {
   for (const m of group) if (m.state !== 'hunt') { m.state = 'hunt'; m.timer = 0; }
 }
 
-function blocked(r: Robot, x: number, z: number) { return !env || (indoor ? !roomFor(r.model, x, z) : env.forbidden(x, z) || foeRules.blocked(V(x, 0, z))); }
+/** (0.211.1) How wide a machine is to walls, trunks and stones (its legs spread wider than its body). */
+const bodyR = (r: Robot) => Math.min(1, ROBOTS[r.model].r * 0.55);
+function blocked(r: Robot, x: number, z: number) {
+  if (!env) return true;
+  if (indoor) return !roomFor(r.model, x, z);
+  if (env.forbidden(x, z)) return true;
+  const gy = env.ground(x, z);
+  return foeRules.blocked(V(x, gy, z)) || foeRules.body(x, gy, z, bodyR(r));
+}
 function walk(r: Robot, dx: number, dz: number, speed: number, dt: number) {
   const L = Math.hypot(dx, dz); r.speed = 0;
   if (L < 1e-3 || !env) return;
   const sx = dx / L * speed * dt, sz = dz / L * speed * dt;
-  if (!blocked(r, r.p.x + sx, r.p.z + sz)) { r.p.x += sx; r.p.z += sz; } else if (!blocked(r, r.p.x + sx, r.p.z)) r.p.x += sx; else if (!blocked(r, r.p.x, r.p.z + sz)) r.p.z += sz; else return;
+  const stuck = !indoor && foeRules.body(r.p.x, env.ground(r.p.x, r.p.z), r.p.z, bodyR(r));
+  const to = footStep(r.p.x, r.p.z, sx, sz, (x, z) => blocked(r, x, z), stuck, (x, z) => env!.forbidden(x, z));
+  if (!to) return;
+  r.p.x = to[0]; r.p.z = to[1];
   r.speed = speed;
 }
 function face(r: Robot, dx: number, dz: number, dt: number, rate = 5) {

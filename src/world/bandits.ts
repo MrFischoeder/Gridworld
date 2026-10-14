@@ -11,6 +11,7 @@ import { scene, V, add as addMat } from './render';
 import { G, W } from '../game';
 import { makeFigure, textSprite, type Figure } from './npc';
 import { poseRig, muzzleLocal, type Kit } from './rig';
+import { footStep } from '../core/footstep';
 import { foeRules } from './enemies';
 import { emptyAt } from './player';
 import { burst } from './fx';
@@ -90,16 +91,22 @@ function blocked(b: Bandit, x: number, z: number) {
   if (!env || foeRules.blocked(V(x, b.p.y, z))) return true;
   const gy = env.ground(x, z);
   const ground = Number.isFinite(gy) ? gy : b.p.y - 0.9;
-  return !G.space.empty(Math.floor(x), Math.floor(ground + 0.3), Math.floor(z)) || !G.space.empty(Math.floor(x), Math.floor(ground + 1.2), Math.floor(z));
+  return !G.space.empty(Math.floor(x), Math.floor(ground + 0.3), Math.floor(z)) || !G.space.empty(Math.floor(x), Math.floor(ground + 1.2), Math.floor(z)) || foeRules.body(x, ground, z, BODY_R);
+}
+/** (0.211.1) A bandit's width to walls, trunks and stones. */
+const BODY_R = 0.4;
+function stuckIn(b: Bandit) {
+  if (!env) return false;
+  const gy = env.ground(b.p.x, b.p.z);
+  return foeRules.body(b.p.x, Number.isFinite(gy) ? gy : b.p.y - 0.9, b.p.z, BODY_R);
 }
 function walk(b: Bandit, dx: number, dz: number, speed: number, dt: number) {
   const L = Math.hypot(dx, dz);
   b.speed = 0;
   if (L < 1e-3 || !env) return;
   const sx = dx / L * speed * dt, sz = dz / L * speed * dt;
-  if (!blocked(b, b.p.x + sx, b.p.z + sz)) { b.p.x += sx; b.p.z += sz; }
-  else if (!blocked(b, b.p.x + sx, b.p.z)) b.p.x += sx;
-  else if (!blocked(b, b.p.x, b.p.z + sz)) b.p.z += sz;
+  const to = footStep(b.p.x, b.p.z, sx, sz, (x, z) => blocked(b, x, z), stuckIn(b));
+  if (to) { b.p.x = to[0]; b.p.z = to[1]; }
   else {
     // blocked straight ahead: slide sideways along the obstacle (round a fence, a wall, a rock)
     const px = -sz * b.strafe, pz = sx * b.strafe;
