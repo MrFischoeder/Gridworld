@@ -95,6 +95,8 @@ export const RESOURCE_PLOTS = {
   fuelpump: { x: 108, z: -100 },
   // (0.180) east-north-east, clear of Gridholm's hangar: the charging post
   charger: { x: 176, z: -60 },
+  // (0.214) north-west beyond Kuba's yard, by the north road: the convoy depot
+  depot: { x: -20, z: -120 },
 } as const;
 export type ResourceProject = keyof typeof RESOURCE_PLOTS;
 export const RESOURCE_YARD = { halfX: 18, halfZ: 14 };

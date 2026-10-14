@@ -3,6 +3,12 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.214.0', date: '2026-10-14', title: 'Convoys are built up, not given', notes: [
+    'In a new world no convoys run at the start: no caravans on the roads, no deliveries moving the prices, no convoys asking the village for fuel.',
+    'Once the mechanic has come and the warehouse stands, the elder offers a new build beside the main work: the Convoy depot (planks, stone, scrap, wire, machine parts; 12 hours) by the north road, with a truck and two gun jeeps in its yard, a repair shed and a dispatcher\'s hut.',
+    'When the depot is finished, caravans start travelling the roads between the villages, from that moment on: you can meet them, escort them, buy from them, and they move the markets. Your village\'s own convoys fill up with fuel from its stores.',
+    'Worlds from before the settlement rules keep their convoys as they were.',
+  ] },
   { v: '0.213.0', date: '2026-10-14', title: 'More sound, heard by the others', notes: [
     'Sound wakes more reliably: it is ready as the page loads and starts with any click, key or touch, and tries again by itself while you play. The Sound panel says whether it is on and how many sounds have played; the console command `sound` shows the same and plays any sound by name.',
     'New sounds: vehicle engines (yours, raiders\' and the other players\', their pitch rising with speed), the roof cannon, doors, chests, eating and drinking, thunder after the lightning, gold coming in, levelling up, chopping trees and breaking rocks, splashing into water, button clicks, creatures and bandits dying, and builders hammering at a building site.',

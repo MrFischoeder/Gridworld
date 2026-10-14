@@ -189,6 +189,28 @@ export function drawSettlementSites(vm: VillageMap, T: Terrain, id: number): THR
       box(x + 8, y, z - 1.5, x + 10.5, y + 2, z + 1.5, METAL); pb.box(x + 8.6, y + 2, z - .8, x + 9.9, y + 2.5, z + .8, METAL); // the transformer
       pb.line(LIT, [x + 8, y + .15, z], [x + 5, y + .15, z]);
       for (const dz of [-1.5, 1.5]) pb.seg(METAL, [x + 9.2, y + 2.5, z + dz * .5], [x + 9.2, y + 3.6, z + dz * .5]); // its bushings
+    } else if (k === 'depot') {
+      // (0.214) the convoy depot: a gravel yard with a truck and two gun jeeps parked, an open repair shed, the
+      // dispatcher's hut with a lit window, a barrier at the road and a mast with a lamp
+      const GRAV = 0x9ab0a0, LIT = 0xffd060;
+      pb.line(GRAV, [x - 16, y + .05, z - 12], [x + 16, y + .05, z - 12], [x + 16, y + .05, z + 12], [x - 16, y + .05, z + 12], [x - 16, y + .05, z - 12]);
+      for (let i = -12; i <= 12; i += 6) pb.seg(GRAV, [x - 16, y + .05, z + i], [x - 13, y + .05, z + i]);
+      const truck = (tx: number, tz: number, long: boolean) => {
+        const L = long ? 3.6 : 1.8;
+        box(tx - 1.1, y + .5, tz - L, tx + 1.1, y + 1.7, tz - L + 1.6, METAL); // the cab
+        if (long) box(tx - 1.2, y + .7, tz - L + 1.8, tx + 1.2, y + 2.6, tz + L, WOOD); // the cargo box
+        else { box(tx - 1, y + .5, tz - L + 1.6, tx + 1, y + 1.1, tz + L, METAL); pb.seg(METAL, [tx, y + 1.1, tz], [tx, y + 1.9, tz]); pb.seg(METAL, [tx, y + 1.9, tz], [tx, y + 1.9, tz - 1.4]); } // the bed and its gun
+        for (const wz of long ? [-L + .8, 0, L - .8] : [-L + .7, L - .7]) for (const wx of [-1.15, 1.15]) pb.box(tx + wx - .2, y, tz + wz - .45, tx + wx + .2, y + .9, tz + wz + .45, 0x404840);
+      };
+      truck(x - 8, z - 2, true); truck(x - 3, z - 2, false); truck(x + 1.5, z - 2, false);
+      for (const dx of [6, 14]) for (const dz of [-6, 6]) box(x + dx - .15, y, z + dz - .15, x + dx + .15, y + 4.4, z + dz + .15, WOOD); // the repair shed
+      pb.gableRoof(x + 5.4, z - 6.6, x + 14.6, z + 6.6, y + 4.4, 1.6, METAL);
+      box(x + 9, y, z - 1, x + 11, y + 1.2, z + 1, METAL); // a workbench and a hoist
+      pb.seg(METAL, [x + 10, y + 4.4, z], [x + 10, y + 2.2, z]);
+      box(x - 14, y, z + 6, x - 10, y + 2.6, z + 10, WOOD); pb.gableRoof(x - 14.3, z + 5.7, x - 9.7, z + 10.3, y + 2.6, .8, WOOD); // the dispatcher's hut
+      pb.box(x - 13, y + 1.2, z + 5.98, x - 11.5, y + 2, z + 5.99, LIT);
+      pb.seg(METAL, [x - 2, y, z - 12], [x - 2, y + 1.1, z - 12]); pb.seg(LIT, [x - 2, y + 1.1, z - 12], [x + 4, y + 1.1, z - 12]); // the barrier
+      pb.seg(METAL, [x + 15, y, z + 11], [x + 15, y + 7, z + 11]); pb.box(x + 14.7, y + 7, z + 10.7, x + 15.3, y + 7.4, z + 11.3, LIT); // the lamp mast
     } else if (k === 'fuelpump') {
       // (0.179) the fuel pump: a concrete island with two pump columns and their hoses under a canopy, the buried tank's
       // filler and vent, a small kiosk
@@ -209,7 +231,7 @@ export function drawSettlementSites(vm: VillageMap, T: Terrain, id: number): THR
       box(x - .7, y, z - .7, x + .7, y + 9, z + .7, METAL);
       const oil = RESOURCE_PLOTS.oil; pb.line(METAL, [x + 3, y + .5, z], [vm.ox + oil.x, y + .5, z], [vm.ox + oil.x, y + .5, vm.oz + oil.z]);
     }
-    if (built && k !== 'fuelpump' && k !== 'charger') crew.push(yardCrew(grp, T, id, k, x, z));
+    if (built && k !== 'fuelpump' && k !== 'charger' && k !== 'depot') crew.push(yardCrew(grp, T, id, k, x, z));
     const rares = depositsOf(s).rares ?? [];
     const label = k === 'mine' && ore ? ORES[ore].name + ' · ' + ORES[ore].symbol : k === 'raremine' && rares.length ? tl('Deep mine · ') + rares.map((r) => RARE_NAME[r]).join(', ') : PROJECTS[k].name;
     const sign = textSprite(label.toUpperCase() + (built ? tl(' · WORKING SITE') : tl(' · CONSTRUCTION SITE')), k === 'mine' && ore ? '#' + ORES[ore].color.toString(16).padStart(6, '0') : '#ffd060', 5);

@@ -87,6 +87,7 @@ import { introOn, renderIntro } from './ui/intro';
 import { updateCrash } from './world/crashpod';
 import { spinCarrier } from './world/datacarriers';
 import { updateFarms } from './world/farms';
+import { syncConvoyStart } from './world/convoyfuel';
 import { updateInstalls } from './world/installs';
 import { updateCities } from './world/cities';
 import { updateToxic, tintToxic, toxicHere } from './world/toxic';
@@ -197,7 +198,7 @@ function frame(now: number) {
   if (outdoors) updateWorldGates(dt);
   refreshGateConsole();
   // the clock runs whenever the game is not paused in the menu
-  if (G.playing && !gateTravelPending()) { G.char.time += dt * MIN_PER_SEC; updateSurvival(dt); updateFlora(dt); updateFires(dt, time); updatePower(dt); updateSettlementSites(dt); updateJobSites(dt); updateHouseDoors(dt); updateWallGuns(dt); updateWorks(dt); updateStations(dt); updateChariot(dt); updateCaravans(dt); updateVillageRaids(dt); updateFallen(dt); updateIndustry(dt); updateFarms(dt); updateInstalls(dt); updateCities(dt); updateToxic(dt); updateGuide(dt); updateBridges(dt); updatePiers(dt); updateStreetLamps(dt); updateLighthouses(dt); updateContracts(dt); updateForge(dt); updateGarage(dt); updateHomes(dt); updateSawing(dt); updateCharging(dt); syncVillagePads(dt); updateLodes(dt); updateOutpostRaids(dt); updateRouteTrucks(); updateRivals(dt); if (testWaiting() && !G.trans && !G.intro) { const n = takeTest(); if (n) setTimeout(() => { if (!enterCustom(n)) showToast(TL`No editor map called ${n} in this browser.`); }); } /* after this frame (its place name) */ if ((benchT -= dt) <= 0) { benchT = 1; syncBenches(); syncFlags(); syncBases(); syncTurrets(); } }
+  if (G.playing && !gateTravelPending()) { G.char.time += dt * MIN_PER_SEC; updateSurvival(dt); updateFlora(dt); updateFires(dt, time); updatePower(dt); updateSettlementSites(dt); updateJobSites(dt); updateHouseDoors(dt); updateWallGuns(dt); updateWorks(dt); updateStations(dt); updateChariot(dt); syncConvoyStart(dt); updateCaravans(dt); updateVillageRaids(dt); updateFallen(dt); updateIndustry(dt); updateFarms(dt); updateInstalls(dt); updateCities(dt); updateToxic(dt); updateGuide(dt); updateBridges(dt); updatePiers(dt); updateStreetLamps(dt); updateLighthouses(dt); updateContracts(dt); updateForge(dt); updateGarage(dt); updateHomes(dt); updateSawing(dt); updateCharging(dt); syncVillagePads(dt); updateLodes(dt); updateOutpostRaids(dt); updateRouteTrucks(); updateRivals(dt); if (testWaiting() && !G.trans && !G.intro) { const n = takeTest(); if (n) setTimeout(() => { if (!enterCustom(n)) showToast(TL`No editor map called ${n} in this browser.`); }); } /* after this frame (its place name) */ if ((benchT -= dt) <= 0) { benchT = 1; syncBenches(); syncFlags(); syncBases(); syncTurrets(); } }
   updateCompass(dt); // hides itself while paused
   const clock = fmtClock(G.char.time) + (G.char.loc === 'overworld' && seen.kind !== 'clear' ? ' · ' + WEATHER_NAME[seen.kind] : '');
   if (el.clock.textContent !== clock) el.clock.textContent = clock;

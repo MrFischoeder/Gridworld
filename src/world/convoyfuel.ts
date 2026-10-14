@@ -4,9 +4,9 @@
 // on every game, so everyone sees the same caravans stay home.
 import { G } from '../game';
 import { findPoi, villageSeed } from '../gen/regions';
-import { progressive } from '../gen/settlement';
+import { progressive, convoyStartOf } from '../gen/settlement';
 import { settleConvoys, stayedHome } from '../gen/hall';
-import type { Caravan } from '../gen/caravans';
+import { setConvoyStart, type Caravan } from '../gen/caravans';
 
 /** Did caravan c stay home for lack of fuel? (Departures still to come are not known yet: false.) */
 export function dryCaravan(c: Caravan): boolean {
@@ -17,4 +17,12 @@ export function dryCaravan(c: Caravan): boolean {
     if (v) settleConvoys(G.char.world, v, villageSeed(G.char.world, v), s!, now);
   }
   return stayedHome(s, c.id);
+}
+
+let startT = 0;
+/** (0.214) Tell the timetables when convoys began in this world (the first convoy depot; gen/settlement.ts
+ *  `convoyStartOf`): from the main loop twice a second, and at once (`now`) when a world opens. */
+export function syncConvoyStart(dt: number, now = false) {
+  if (!now && (startT -= dt) > 0) return;
+  startT = 0.5; setConvoyStart(G.char.world, convoyStartOf(G.char.towns));
 }

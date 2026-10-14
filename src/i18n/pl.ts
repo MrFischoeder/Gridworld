@@ -3919,4 +3919,7 @@ export const PL: Record<string, string> = {
   "Sound is on ({0} Hz); {1} sounds played so far.": "Dźwięk działa ({0} Hz); odtworzono już {1} dźwięków.",
   "This browser has no Web Audio: no sound.": "Ta przeglądarka nie ma Web Audio: nie będzie dźwięku.",
   "Sound is asleep: click anywhere on the page to wake it.": "Dźwięk śpi: kliknij gdziekolwiek na stronie, żeby go obudzić.",
+  "Convoy depot": "Baza konwojów",
+  "Build a convoy depot by the north road: a yard for the trucks and their gun jeeps, a repair shed and a dispatcher's hut. Until it stands no convoys run anywhere; from then on caravans travel the roads between the villages, carrying their goods and moving the prices. Our own convoys fill up with fuel from the village stores before they leave: without fuel they stay home.": "Zbuduj bazę konwojów przy północnej drodze: plac dla ciężarówek i ich uzbrojonych łazików, szopę naprawczą i budkę dyspozytora. Dopóki jej nie ma, nigdzie nie jeżdżą żadne konwoje; od jej otwarcia karawany ruszają drogami między wioskami, wiozą towary i poruszają ceny. Nasze własne konwoje tankują przed wyjazdem paliwo z zapasów wioski: bez paliwa zostają w domu.",
+  "Wait for the mechanic: he will fit out the trucks.": "Poczekaj na mechanika: to on przygotuje ciężarówki.",
 };

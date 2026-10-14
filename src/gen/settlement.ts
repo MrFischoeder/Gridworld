@@ -9,7 +9,7 @@ import { startJob, jobOf } from './construction';
 import { tl, TL } from '../i18n';
 export { RESOURCE_PLOTS } from './resource-sites';
 
-export type Project = 'warehouse' | 'power' | 'comms' | 'quarry' | 'mine' | 'lumber' | 'oil' | 'refinery' | 'foodworks' | 'relay' | 'sawmill' | 'sawmill2' | 'sawmill3' | 'raremine' | 'furnace' | 'furnace2' | 'furnace3' | 'fuelpump' | 'charger';
+export type Project = 'warehouse' | 'power' | 'comms' | 'quarry' | 'mine' | 'lumber' | 'oil' | 'refinery' | 'foodworks' | 'relay' | 'sawmill' | 'sawmill2' | 'sawmill3' | 'raremine' | 'furnace' | 'furnace2' | 'furnace3' | 'fuelpump' | 'charger' | 'depot';
 export interface SettlementState {
   v: 1;
   done?: Partial<Record<Project, boolean>>;
@@ -20,6 +20,8 @@ export interface SettlementState {
   sawnAt?: number;
   /** (0.176) When the furnace last settled its batches (game minutes). */
   smeltAt?: number;
+  /** (0.214) When the convoy depot was finished (game minutes): the convoys on the roads run from then on. */
+  depotAt?: number;
   deposits?: Deposits;
   /** (0.149, document 04) The start village's satellite link is the big radar and communications station a few km out
    * (`STATION_STAGES`, `stage` = stages done), restored after the first vehicle (`car`: someone in this world has one). */
@@ -51,6 +53,7 @@ export const PROJECTS: Record<Project, { name: string; needs: [ItemKey, number][
   furnace2: { name: tl('Furnace: coke ovens'), needs: [['stone', 20], ['bricks', 10], ['scrap', 10], ['planks', 8]], description: tl('Build a battery of coke ovens beside the furnace. Coke burns hotter and cleaner than raw coal: every melt gives half as much metal again.') },
   fuelpump: { name: tl('Fuel pump'), needs: [['scrap', 14], ['wire', 6], ['planks', 10], ['parts', 2], ['circuit', 1]], description: tl('Build a fuel pump by the road north-east of the village, beside the refinery\'s plot. It pumps diesel from the village stores straight into your vehicle\'s tank, or a canister for your backpack, at the village\'s price. The village\'s convoys fill up from the same stores.') },
   charger: { name: tl('Charging post'), needs: [['cable', 8], ['steel', 4], ['control', 1], ['batteries', 2], ['planks', 6]], description: tl('Build a charging post east of the village. An electric vehicle parked beside it charges from whatever power the village has to spare, a few gold a kWh: the more you charge, the more the village\'s plant and stations have to make.') },
+  depot: { name: tl('Convoy depot'), needs: [['planks', 40], ['stone', 12], ['scrap', 16], ['wire', 6], ['parts', 2]], description: tl('Build a convoy depot by the north road: a yard for the trucks and their gun jeeps, a repair shed and a dispatcher\'s hut. Until it stands no convoys run anywhere; from then on caravans travel the roads between the villages, carrying their goods and moving the prices. Our own convoys fill up with fuel from the village stores before they leave: without fuel they stay home.') },
   furnace3: { name: tl('Furnace: electric arc'), needs: [['steel', 8], ['cable', 10], ['generator', 1], ['parts', 2]], description: tl('Fit an electric arc furnace: no coal at all, twice the melts, the best yield, and a heavy draw of power.') },
   foodworks: { name: tl('Food processing house'), needs: [['planks', 40], ['stone', 10], ['nails', 16], ['scrap', 6]], description: tl('Build a mill, a bakery, a dairy and a smokehouse on the staked plot about 100 metres south-west of the village. While its crew works, grain, potatoes, milk and meat feed a third more people, so the same fields keep a bigger village.') },
 };
@@ -114,6 +117,7 @@ export function projectProblem(s: TownState | undefined, k: Project): string {
   if (k === 'raremine') return projectDone(s, 'warehouse') ? '' : tl('Build the warehouse first.');
   if (k === 'furnace') return projectDone(s, 'power') && projectDone(s, 'warehouse') ? '' : tl('Build the village power plant and the warehouse first.');
   if (k === 'charger') return projectDone(s, 'power') ? '' : tl('Build the village power plant first: the post charges from it.');
+  if (k === 'depot') return !mechanicHere(s) ? tl('Wait for the mechanic: he will fit out the trucks.') : projectDone(s, 'warehouse') ? '' : tl('Build the warehouse first.');
   if (k === 'fuelpump') return projectDone(s, 'warehouse') ? '' : tl('Build the warehouse first: the pump draws on the village stores.');
   if (k === 'furnace2') return projectDone(s, 'furnace') ? '' : tl('Build the coal furnace first.');
   if (k === 'furnace3') return projectDone(s, 'furnace2') ? '' : tl('Build the coke ovens first.');
@@ -254,7 +258,7 @@ export function optionalProjects(s: TownState | undefined): Project[] {
   const saw = (['sawmill2', 'sawmill3'] as Project[]).find((k) => !projectDone(s, k) && !projectProblem(s, k));
   const deep = projectAvailable(s, 'raremine') && !projectDone(s, 'raremine');
   const fire = (['furnace', 'furnace2', 'furnace3'] as Project[]).find((k) => !projectDone(s, k) && !projectProblem(s, k));
-  return [...(projectDone(s, 'refinery') ? [] : ['refinery' as Project]), ...(projectDone(s, 'fuelpump') ? [] : ['fuelpump' as Project]), ...(projectDone(s, 'charger') || !projectDone(s, 'power') ? [] : ['charger' as Project]), ...(saw ? [saw] : []), ...(fire ? [fire] : []), ...(deep ? ['raremine' as Project] : [])];
+  return [...(projectDone(s, 'refinery') ? [] : ['refinery' as Project]), ...(projectDone(s, 'fuelpump') ? [] : ['fuelpump' as Project]), ...(projectDone(s, 'charger') || !projectDone(s, 'power') ? [] : ['charger' as Project]), ...(projectDone(s, 'depot') || !mechanicHere(s) ? [] : ['depot' as Project]), ...(saw ? [saw] : []), ...(fire ? [fire] : []), ...(deep ? ['raremine' as Project] : [])];
 }
 /** The side task beside the tutorial: the village's satellite link (the start village's big station), once its power plant stands. */
 export function sideStep(s: TownState | undefined): { title: string; text: string; project: Project } | null {
@@ -270,6 +274,17 @@ export const mechanicHere = (s: TownState | undefined) => !progressive(s) || !!s
  * cars, the caravans' convoys) until the mechanic has come to the start village; worlds before the rule, or a player
  * who already owns or ordered a vehicle, keep them. Pure of the shared `towns`, so every player agrees.
  */
+/**
+ * (0.214, the owner's rule) When convoys began in this world (gen/caravans.ts `setConvoyStart`): worlds before the
+ * rule (an established start village) always had them (-Infinity); otherwise the first convoy depot any settlement
+ * finished, or Infinity while none stands. Pure of the shared `towns`, so every player agrees.
+ */
+export function convoyStartOf(towns: Record<string, TownState>): number {
+  if (!progressive(towns[GRIDHOLM_ID])) return -Infinity;
+  let t = Infinity;
+  for (const s of Object.values(towns)) if (progressive(s) && projectDone(s, 'depot')) t = Math.min(t, s.settlement!.depotAt ?? 0);
+  return t;
+}
 export const vehiclesOpen = (c: { towns: Record<string, TownState>; vehicles?: unknown[]; garage?: unknown[] }) => {
   const s = c.towns[GRIDHOLM_ID];
   return !progressive(s) || mechanicHere(s) || !!c.vehicles?.length || !!c.garage?.length;

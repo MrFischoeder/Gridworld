@@ -35,6 +35,15 @@ export interface Caravan {
   /** Travels the road's points backwards (from its `to` end). */
   back: boolean;
 }
+/**
+ * (0.214, the owner's rule) Convoys are something the players develop: none run until a settlement has built its
+ * convoy depot (gen/settlement.ts 'depot', after the mechanic has come). The game registers the time trade began per
+ * world (`setConvoyStart`, from the shared `towns` via `convoyStartOf`, so every player agrees); a departure before it
+ * never happened. Unset = -Infinity (worlds before the rule, tests): the timetables run from the start as before.
+ */
+const starts = new Map<number, number>();
+export function setConvoyStart(world: number, t: number) { starts.set(world, t); }
+export const convoyStart = (world: number) => starts.get(world) ?? -Infinity;
 const lenCache = new Map<string, number>();
 function roadLength(world: number, e: Edge): number {
   const key = world + ':' + e.key;
@@ -54,19 +63,22 @@ export function caravanOf(world: number, e: Edge, k: number): Caravan | null {
   if ((h % 1000) / 1000 < CARAVAN.skip) return null;
   const L = roadLength(world, e);
   if (L <= 0) return null;
+  const t0 = k * periodOf(world, e) + offsetOf(world, e);
+  if (t0 < convoyStart(world)) return null; // (0.214) trade had not begun yet
   const back = (k & 1) === 1, [o, d] = back ? [e.b, e.a] : [e.a, e.b];
   const po = profileOf(world, o, villageSeed(world, o)), pd = profileOf(world, d, villageSeed(world, d));
   const good = po.makes.find((g) => pd.wants.includes(g)) ?? po.makes[((h >> 10) & 1) % po.makes.length];
   const wagons = CONVOY.length;
   return {
     id: e.key + ':' + k, road: 'road:' + e.key, k, from: o.id, to: d.id, fromName: o.name, toName: d.name,
-    t0: k * periodOf(world, e) + offsetOf(world, e), T: L / CARAVAN.speed, good, n: 12 + ((h >> 16) % 19), wagons, back,
+    t0, T: L / CARAVAN.speed, good, n: 12 + ((h >> 16) % 19), wagons, back,
   };
 }
 /** Departures on road e with t0 in [t1, t2]. */
 export function departures(world: number, e: Edge, t1: number, t2: number): Caravan[] {
-  const P = periodOf(world, e), off = offsetOf(world, e), out: Caravan[] = [];
-  for (let k = Math.max(0, Math.ceil((t1 - off) / P)); k * P + off <= t2; k++) { const c = caravanOf(world, e, k); if (c) out.push(c); }
+  const P = periodOf(world, e), off = offsetOf(world, e), out: Caravan[] = [], start = convoyStart(world);
+  if (start > t2) return out;
+  for (let k = Math.max(0, Math.ceil((Math.max(t1, start) - off) / P)); k * P + off <= t2; k++) { const c = caravanOf(world, e, k); if (c) out.push(c); }
   return out;
 }
 /** The caravans on road e at game time t. */

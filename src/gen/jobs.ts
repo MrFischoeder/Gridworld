@@ -34,6 +34,7 @@ export function finishJob(world: number, v: Poi, s: TownState, j: Job, now: numb
       if (built && a === 'refinery') s.settlement!.refinedAt = now;
       if (built && a === 'sawmill') s.settlement!.sawnAt = now;
       if (built && a === 'furnace') s.settlement!.smeltAt = now;
+      if (built && a === 'depot') s.settlement!.depotAt = now; // (0.214) the convoys start from here
       break;
     }
   }

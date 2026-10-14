@@ -13,7 +13,7 @@ import { worldDist, type Poi } from './regions';
 import { mountainMask } from './mountains';
 import { powerKind } from './town';
 import type { ItemKey } from '../data/items';
-import { caravanShift } from './caravans';
+import { caravanShift, convoyStart } from './caravans';
 import { industryOf, industryProject, siteBuilt, INDUSTRY } from './industry';
 import { progressive, resourceYield, projectDone } from './settlement';
 import type { TownState } from './town';
@@ -139,7 +139,7 @@ export interface Quote { good: Good; role: 'make' | 'want' | 'none'; stock: numb
 const carCache = new Map<string, Partial<Record<Good, number>>>();
 /** The stock shift caravans (gen/caravans.ts) leave at village v, cached per game minute. */
 function caravanShiftAt(world: number, vid: number, now: number) {
-  const k = world + ':' + vid + ':' + Math.floor(now);
+  const k = world + ':' + vid + ':' + Math.floor(now) + ':' + convoyStart(world); // (0.214) trade beginning changes it
   let s = carCache.get(k);
   if (!s) { if (carCache.size > 500) carCache.clear(); s = caravanShift(world, vid, now, MARKET.half); carCache.set(k, s); }
   return s;
