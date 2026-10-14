@@ -1,6 +1,7 @@
 // Bandits: human enemies with guns and blades. They live in camps and patrol the wilds.
 // Unsaved (like drones and creatures) except that a cleared camp stays empty for a while (char.camps).
 import { hurtPlayer } from './damage';
+import { play } from './sound';
 import { targetingFoe, actingFoe, combatFoes, factionOf, hitCombatFoe, type CombatFoe, stepRemote, withFoeTarget, proxied, otherPlayers, hurtOther, boltOut, spawnAuthority, nearestPlayer } from './remote';
 import { mindOf, sense, heard, share, spottedBy, aimHeight } from './stealth';
 import { STEALTH, LOSE } from '../gen/stealth';
@@ -167,6 +168,7 @@ export function fireBolt(muzzle: THREE.Vector3, dmg: number, color = BANDIT) {
   const m = new THREE.Line(new THREE.BufferGeometry().setFromPoints([V(0, 0, 0), v.clone().normalize().multiplyScalar(-0.9)]), addMat(color));
   m.position.copy(muzzle); scene.add(m);
   bolts.push({ m, p: muzzle.clone(), v, dmg, life: 3, source: actingFoe() ?? undefined });
+  play(color === 0xff9a3a ? 'robot_shot' : 'enemy_shot', { at: muzzle, vol: 0.8, far: 110 });
   boltOut(muzzle, v, color);
 }
 /** Another player's foe fired: the bolt is drawn here, but its harm is reckoned in the owner's game (world/foesync.ts). */
@@ -174,6 +176,7 @@ export function ghostBolt(p: THREE.Vector3, v: THREE.Vector3, color: number) {
   const m = new THREE.Line(new THREE.BufferGeometry().setFromPoints([V(0, 0, 0), v.clone().normalize().multiplyScalar(-0.9)]), addMat(color));
   m.position.copy(p); scene.add(m);
   bolts.push({ m, p: p.clone(), v: v.clone(), dmg: 0, life: 3, ghost: true });
+  play(color === 0xff9a3a || color === 0xff6a4a || color === 0xff5a3c ? 'robot_shot' : 'enemy_shot', { at: p, vol: 0.8, far: 110 });
 }
 export function updateBolts(dt: number) {
   const body0 = V(G.pos.x, G.pos.y + 0.3, G.pos.z), body1 = V(G.pos.x, G.pos.y + (G.crouch ? 1.05 : 1.6), G.pos.z); // crouched behind cover, less of you to hit

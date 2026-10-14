@@ -3,6 +3,13 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.212.0', date: '2026-10-14', title: 'Sound', notes: [
+    'The game has sound: simple 8-bit effects for every gun, reloading, an empty magazine, blade swings and hits, your footsteps (on the ground, on hard floors and in water), jumps and landings, and being hurt.',
+    'Machines clank as they walk and whine with their servos, robots, bandits and turrets are heard when they fire, explosions boom, creatures growl, snort, squeak and screech, and the other players\' steps are heard too. Sounds come from where they happen: fainter further off, left or right.',
+    'A Sound panel in the menu: master, effects and music volume, mute and a test sound. Your settings are kept in this browser.',
+    'Every sound is a file in the sfx folder (sfx/sounds.json lists them), so it can be swapped for a better one. Music is ready for your own tracks: list them in music/music.json by mood (menu, world, night, underground, fight).',
+    'The server serves sound files with their proper types: update it when you can (the game works with an older one too).',
+  ] },
   { v: '0.211.2', date: '2026-10-14', title: 'Bandits use their gates', notes: [
     'A camp\'s bandits now leave and come back through the gates in its palisade, and walk round the outside of it, instead of standing pressed against the stakes when you are on the other side.',
   ] },

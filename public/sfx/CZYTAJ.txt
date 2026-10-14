@@ -1,0 +1,27 @@
+DŹWIĘKI GRY (efekty)
+====================
+
+W tym folderze leżą efekty dźwiękowe gry: proste 8-bitowe dźwięki zrobione syntezatorem
+(src/audio/synth.ts, przepis każdego dźwięku). Możesz je podmienić na własne.
+
+Jak podmienić dźwięk:
+1. Wrzuć swój plik (WAV, MP3 albo OGG) do tego folderu, np. strzal_mojego_blastera.wav.
+2. Otwórz sounds.json i przy nazwie dźwięku wpisz swój plik, np.:
+     "shot_blaster": { "files": ["strzal_mojego_blastera.wav"], "vol": 1 }
+   Kilka plików w liście = gra losowo jeden z nich (dobre na kroki).
+   "vol" to głośność tego dźwięku (1 = normalnie, 0.5 = połowa).
+3. Odśwież grę (Ctrl+F5).
+
+Jeśli pliku nie ma albo się nie wczyta, gra sama zagra wbudowany dźwięk 8-bitowy.
+Polecenie, które od nowa tworzy wbudowane pliki WAV (sounds.json zostaje nietknięty):
+     npx vitest run --config tools/sim.config.ts tools/sfx.sim.ts
+
+Nazwy dźwięków:
+  shot_blaster, shot_pistol, shot_smg, shot_shotgun, shot_rifle  - strzały gracza
+  dry (pusty magazynek), reload (przeładowanie), swing (zamach bronią białą), hit (trafienie)
+  hurt (gracz dostaje), jump (skok), land (lądowanie)
+  step_ground (kroki po ziemi), step_hard (po podłodze, kamieniu, w lochach), step_water (w wodzie)
+  robot_step (kroki maszyn), robot_servo (szum siłowników), robot_shot (strzał maszyny)
+  enemy_shot (strzał bandyty i działka), explosion (wybuch)
+  growl_ravager, snort_bramble, squeak_gnawer, screech_leechwing, chirp_skitter - głosy zwierząt
+  pickup (podniesienie przedmiotu)

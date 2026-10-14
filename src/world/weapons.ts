@@ -2,6 +2,7 @@
 // hunting rifle; magazines and reloads out of the backpack's rounds, aiming zoom) and melee swings (MELEE: the energy
 // blade, machete, spear, sledgehammer). Each has its own model in your hands.
 import * as THREE from 'three';
+import { play } from './sound';
 import { camera, lineMat, add, V } from './render';
 import { G } from '../game';
 import { SWAY, newSway, stepSway, type Sway, RECOIL, newRecoil, kickRecoil, stepRecoil } from '../core/sway';
@@ -222,10 +223,11 @@ export function reload() {
   if (G.weapon !== 0 || !g || G.reloadT > 0 || G.ammo >= G.gun.mag || !armed()) return;
   if (reserve() <= 0) {
     const now = performance.now() / 1000;
+    play('dry', { vol: 0.6 });
     if (now - dryAt > 3) { dryAt = now; logLine(TL`No ${item(g.ammo).name} left for the ${g.name}. Search chests, stashes and the fallen, or have a blacksmith make more.`); }
     return;
   }
-  G.reloadT = G.gun.reload; hudWeapon();
+  G.reloadT = G.gun.reload; hudWeapon(); play('reload', { vol: 0.6 });
 }
 /** Reload timer, and the aiming zoom (right mouse button / AIM on touch): the camera narrows its field of view. */
 export function updateGun(dt: number, onFoot: boolean) {
@@ -326,7 +328,7 @@ function ray(d: THREE.Vector3, dmg: number) {
   } else addBolt(gun, end, struck ? 0xffd27a : look.c, look.len, look.speed, sparks, struck ? look.hit * 1.4 : look.hit * 0.6);
   if (car) { damageVehicle(car, dmg); G.hitFlash = .15; }
   if (turret) damageMountedTurret(turret.gun, dmg);
-  if (hitT) damageFoe(hitT, dmg * sneak(hitT, false));
+  if (hitT) { damageFoe(hitT, dmg * sneak(hitT, false)); play('hit', { at: hitT.g.position, vol: 0.5, far: 80 }); }
 }
 /**
  * A foe that has not made you out takes a sneak attack: ×3 from a blade, ×1.5 from a gun. Busy = already after you
@@ -352,6 +354,7 @@ function shoot() {
     ray(p, G.gun.dmg * G.S.bm);
   }
   makeNoise(camera.position, G.gun.noise); noteShot();
+  play(g.look === 'smg' ? 'shot_smg' : `shot_${g.look}`, { vol: G.gun.noise < 30 ? 0.45 : 0.85, jitter: 0.03 }); // (0.212) a suppressor quietens it
   const kick = kickRecoil(recoil, RECOIL[g.look] ?? RECOIL.blaster, aimK, G.crouch, Math.random() * 2 - 1);
   G.pitch = Math.min(1.5, G.pitch + kick.pitch); G.yaw += kick.yaw;
 }
@@ -359,6 +362,7 @@ function shoot() {
 function slash(tired: boolean) {
   const m = curMelee()!;
   swingDur = G.swingT = tired ? Math.max(0.45, m.rate * 1.1) : Math.min(0.5, m.rate * 0.62);
+  play('swing', { vol: tired ? 0.4 : 0.7, rate: m.look === 'sledge' ? 0.7 : m.look === 'blade' ? 1.2 : 1 });
   const o = camera.position.clone(), f = new THREE.Vector3(); camera.getWorldDirection(f);
   const right = new THREE.Vector3().crossVectors(f, camera.up).normalize(), up = new THREE.Vector3().crossVectors(right, f);
   const pts: THREE.Vector3[] = [], reach = G.S.range, wide = m.look === 'spear' ? 0.25 : 0.7;

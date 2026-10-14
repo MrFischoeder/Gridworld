@@ -1,5 +1,6 @@
 // Drones, bosses (gate guardians and rare elites) and their projectiles.
 import { mindOf, sense, heard, spottedBy } from './stealth';
+import { play } from './sound';
 import { STEALTH, LOSE } from '../gen/stealth';
 import { hurtPlayer } from './damage';
 import { remoteOf, hitOwner, setCombatHooks, stepRemoteP, withTarget, proxied, otherPlayers, hurtOther, boltOut, type CombatFoe } from './remote';
@@ -148,6 +149,7 @@ const inRoom = (b: Boss, x: number, z: number, m = 0) => x >= b.room.x - m && x 
 function fireOrb(from: THREE.Vector3, dir: THREE.Vector3, dmg: number) {
   const m = edgesOf(new THREE.OctahedronGeometry(0.22), add(0xff6a4a));
   scene.add(m); W.orbs.push({ m, p: from.clone(), v: dir.clone().multiplyScalar(9), dmg, life: 6 });
+  play('robot_shot', { at: from, vol: 0.9, rate: 0.7, far: 80 });
   boltOut(from, dir.clone().multiplyScalar(9), 0xff6a4a); // the other players see it fly (their game draws it harmless)
 }
 export function updateBosses(dt: number, time: number): Boss | null {

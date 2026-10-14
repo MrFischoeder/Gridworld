@@ -1,0 +1,165 @@
+{
+  "shot_blaster": {
+    "files": [
+      "shot_blaster.wav"
+    ],
+    "vol": 1
+  },
+  "shot_pistol": {
+    "files": [
+      "shot_pistol.wav"
+    ],
+    "vol": 1
+  },
+  "shot_smg": {
+    "files": [
+      "shot_smg_1.wav",
+      "shot_smg_2.wav"
+    ],
+    "vol": 1
+  },
+  "shot_shotgun": {
+    "files": [
+      "shot_shotgun.wav"
+    ],
+    "vol": 1
+  },
+  "shot_rifle": {
+    "files": [
+      "shot_rifle.wav"
+    ],
+    "vol": 1
+  },
+  "dry": {
+    "files": [
+      "dry.wav"
+    ],
+    "vol": 1
+  },
+  "reload": {
+    "files": [
+      "reload.wav"
+    ],
+    "vol": 1
+  },
+  "swing": {
+    "files": [
+      "swing.wav"
+    ],
+    "vol": 1
+  },
+  "hit": {
+    "files": [
+      "hit.wav"
+    ],
+    "vol": 1
+  },
+  "hurt": {
+    "files": [
+      "hurt.wav"
+    ],
+    "vol": 1
+  },
+  "step_ground": {
+    "files": [
+      "step_ground_1.wav",
+      "step_ground_2.wav",
+      "step_ground_3.wav"
+    ],
+    "vol": 1
+  },
+  "step_hard": {
+    "files": [
+      "step_hard_1.wav",
+      "step_hard_2.wav",
+      "step_hard_3.wav"
+    ],
+    "vol": 1
+  },
+  "step_water": {
+    "files": [
+      "step_water_1.wav",
+      "step_water_2.wav"
+    ],
+    "vol": 1
+  },
+  "jump": {
+    "files": [
+      "jump.wav"
+    ],
+    "vol": 1
+  },
+  "land": {
+    "files": [
+      "land.wav"
+    ],
+    "vol": 1
+  },
+  "robot_step": {
+    "files": [
+      "robot_step_1.wav",
+      "robot_step_2.wav"
+    ],
+    "vol": 1
+  },
+  "robot_servo": {
+    "files": [
+      "robot_servo.wav"
+    ],
+    "vol": 1
+  },
+  "robot_shot": {
+    "files": [
+      "robot_shot.wav"
+    ],
+    "vol": 1
+  },
+  "enemy_shot": {
+    "files": [
+      "enemy_shot.wav"
+    ],
+    "vol": 1
+  },
+  "explosion": {
+    "files": [
+      "explosion.wav"
+    ],
+    "vol": 1
+  },
+  "growl_ravager": {
+    "files": [
+      "growl_ravager.wav"
+    ],
+    "vol": 1
+  },
+  "snort_bramble": {
+    "files": [
+      "snort_bramble.wav"
+    ],
+    "vol": 1
+  },
+  "squeak_gnawer": {
+    "files": [
+      "squeak_gnawer.wav"
+    ],
+    "vol": 1
+  },
+  "screech_leechwing": {
+    "files": [
+      "screech_leechwing.wav"
+    ],
+    "vol": 1
+  },
+  "chirp_skitter": {
+    "files": [
+      "chirp_skitter.wav"
+    ],
+    "vol": 1
+  },
+  "pickup": {
+    "files": [
+      "pickup.wav"
+    ],
+    "vol": 1
+  }
+}

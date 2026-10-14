@@ -1,5 +1,6 @@
 // Ancient mounted defences. Model/mount data are reusable; player construction is a future feature.
 import { hurtPlayer } from './damage';
+import { play } from './sound';
 import * as THREE from 'three';
 import { G } from '../game';
 import { scene, lineMat, fillMat, add } from './render';
@@ -107,7 +108,7 @@ function gunTurn(t: Gun, dt: number) {
     const miss = muzzle.clone().addScaledVector(shot, along).distanceTo(target);
     const end = muzzle.clone().addScaledVector(shot, Math.min(S.range, rayWorld(muzzle, shot, S.range)));
     addFx(new THREE.Line(new THREE.BufferGeometry().setFromPoints([muzzle, miss < 0.45 ? target : end]), add(0xff5a3c)), 0.12);
-    burst(muzzle, 0xffee88, 4, 0.2); boltOut(muzzle, shot.clone().multiplyScalar(60), 0xff5a3c);
+    burst(muzzle, 0xffee88, 4, 0.2); play('enemy_shot', { at: muzzle, vol: 0.7, rate: 1.3, far: 90 }); boltOut(muzzle, shot.clone().multiplyScalar(60), 0xff5a3c);
     if (miss < 0.45) hurtPlayer(S.damage, true, .3);
   }
 }

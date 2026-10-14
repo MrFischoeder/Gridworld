@@ -1,5 +1,6 @@
 // Short-lived effects: sparks, beams, and light streaks running along the grid lines.
 import * as THREE from 'three';
+import { play } from './sound';
 import { scene, add, V } from './render';
 import { edgeKey, type Edge } from '../core/meshing';
 import { G } from '../game';
@@ -30,6 +31,7 @@ const BLAST_GROW = 0.32, BLAST_FADE = 0.55;
 const ballGeo = new THREE.SphereGeometry(1, 20, 14), shellGeo = new THREE.WireframeGeometry(new THREE.IcosahedronGeometry(1, 2));
 const ringGeo = (() => { const p: THREE.Vector3[] = []; for (let i = 0; i < 40; i++) { const a = i / 40 * 6.2832; p.push(V(Math.cos(a), 0, Math.sin(a))); } return new THREE.BufferGeometry().setFromPoints(p); })();
 export function addBlast(at: THREE.Vector3, r: number, color: number, groundY = at.y) {
+  play('explosion', { at, vol: Math.min(1, 0.5 + r / 8), rate: r > 4 ? 0.8 : 1, far: 160 });
   const g = new THREE.Group(); g.position.copy(at);
   const fill = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.32, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending });
   const wire = new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.6, depthWrite: false });

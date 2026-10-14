@@ -2,6 +2,7 @@
 // picks it up again. Online the server keeps them (server/mp.mjs): everyone in the same place sees them, and only the
 // first to ask gets an item, so nothing is doubled. Alone they lie there until you leave the game (not saved).
 import * as THREE from 'three';
+import { play } from './sound';
 import { G, W } from '../game';
 import { scene } from './render';
 import { drawPickup, setGroundHook, grabPickup, type Pickup } from './loot';
@@ -82,6 +83,7 @@ export const dropPrompt = (p: Pickup) => {
 export function takeDrop(p: Pickup) {
   if (!p.drop) { if (!grabPickup(p)) showToast(tl('No room in your backpack')); return; } // loot of your own game
   const id = p.drop;
+  play('pickup', { vol: 0.5 });
   if (id.startsWith('local:')) { const d = local.get(id); if (d) { local.delete(id); took(d); } return; }
   if (p.taking && performance.now() - p.taking < 3000) return; // already asked
   p.taking = performance.now();

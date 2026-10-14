@@ -1,0 +1,22 @@
+MUZYKA GRY
+==========
+
+Wrzuć tu swoje utwory (MP3 albo OGG) i wpisz je do music.json, w listy według nastroju:
+  "menu"        - w menu głównym
+  "world"       - na powierzchni w dzień (też zapas, gdy inna lista jest pusta)
+  "night"       - w nocy (20:00-6:00)
+  "underground" - w lochach, jaskiniach, metrze
+  "fight"       - gdy w pobliżu (30 m) są przeciwnicy
+
+Przykład:
+  {
+    "menu": ["menu.mp3"],
+    "world": ["dzien1.mp3", "dzien2.mp3"],
+    "night": ["noc.mp3"],
+    "underground": ["loch.ogg"],
+    "fight": ["walka.mp3"]
+  }
+
+Gra wybiera losowy utwór z listy, a przy zmianie nastroju płynnie przechodzi do innego.
+Jeden utwór w liście gra w pętli. Pusta lista = muzyka z listy "world"; wszystkie puste = cisza.
+Głośność muzyki ustawisz w menu: przycisk Dźwięk.

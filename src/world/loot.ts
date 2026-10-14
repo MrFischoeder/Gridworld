@@ -1,5 +1,6 @@
 // XP crystals, pickups, chests, the hatch, and item use.
 import { environmentalDamage } from './damage';
+import { play } from './sound';
 import * as THREE from 'three';
 import { fitFilter } from './toxic';
 import { PropBatch } from './props';
@@ -133,6 +134,7 @@ export function updateLoot(dt: number, time: number) {
 }
 /** Takes a pickup that is not a shared drop (loot, relics, keys) into your kit. False if there is no room. */
 export function grabPickup(p: Pickup): boolean {
+  play('pickup', { vol: 0.5 });
   const where = addItem(p.k, p.n ?? 1), i = W.pickups.indexOf(p);
   if (!where) return false;
   scene.remove(p.g); if (i >= 0) W.pickups.splice(i, 1);

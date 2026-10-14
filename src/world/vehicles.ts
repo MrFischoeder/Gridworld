@@ -1,5 +1,6 @@
 // Vehicles: wireframe bodies, arcade driving over the terrain, seats, and trunks for storing items.
 import { vehiclesOpen } from '../gen/settlement';
+import { play } from './sound';
 import * as THREE from 'three';
 import { scene, camera, V, GRID } from './render';
 import { G } from '../game';
@@ -416,6 +417,7 @@ export function fireCannon(dt: number) {
 /** Fire a roof cannon along the camera (yours, or another player's you stand at: world/ride.ts). */
 export function shootCannon(turret: THREE.Object3D) {
   const muzzle = V(0, 0.18, 1.3); turret.localToWorld(muzzle);
+  play('shot_shotgun', { at: muzzle, vol: 0.9, rate: 0.65, far: 150 });
   const d = new THREE.Vector3(); camera.getWorldDirection(d);
   let tHit = rayWorld(muzzle, d, 90), hit = null;
   for (const t of foes()) {

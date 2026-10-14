@@ -24,6 +24,8 @@ import { updateDoors, updateTrans } from './world/doors';
 import { updateDrones, updateBosses, updateOrbs, animateFoes, updateBossBar, foeRules, makeDrone, damageFoe } from './world/enemies';
 import { updateLoot } from './world/loot';
 import { updateEntities } from './world/interact';
+import './ui/sound';
+import { initSound, setLocHook, updateMySteps, updateFoeSounds, updateSoundFrame } from './world/sound';
 import { updateBodySway, updateRecoil, recoilView, attack, animateVM, refreshWeaponVisibility, vmScene, syncViewmodel, updateGun, refreshGunLook, syncHeld } from './world/weapons';
 import { updateFx, updateStreaks } from './world/fx';
 import { updateStreaming, updateFieldEnemies, placeName, OW, groundAt, treeHit, animateCamps, keepOnPlanet, villageHere } from './world/overworld';
@@ -93,7 +95,7 @@ import { updateBridges, isBridgePlacing, updateBridgePlacing, confirmBridgePlaci
 import { updatePiers, isPierPlacing, updatePierPlacing, confirmPierPlacing, cancelPierPlacing } from './world/piers';
 import { updateBoats, inBoat, boatCamera } from './world/boats';
 import { initMp } from './ui/mp';
-import { updatePeers, ride, ghostOf } from './world/peers';
+import { updatePeers, ride, ghostOf, myLoc } from './world/peers';
 import { riding, updateRide, rideCamera } from './world/ride';
 import { SEATS } from './data/vehicles';
 /** Riding at another player's cannon (the crosshair stays for aiming it). */
@@ -243,6 +245,7 @@ function frame(now: number) {
     updateRobots(dt, time); // the open world's robots, or a crashed ship's guards
     if (outdoors) { updateGarrisons(dt); updateFieldEnemies(dt); updateCreatures(dt, time); updateBandits(dt, time); updateRaiders(dt); animateCamps(time); smokeWrecks(dt); updateCrash(dt, time); animateWater(time); }
     updateDrones(dt);
+    updateFoeSounds(dt);
     const boss = updateBosses(dt, time); updateOrbs(dt);
     updateBossBar(boss);
     if (G.god) G.hp = G.S.maxHp;
@@ -261,12 +264,14 @@ function frame(now: number) {
     crouchDrop += ((G.crouch ? CROUCH_DROP : 0) - crouchDrop) * Math.min(1, dt * 10); camera.position.set(G.pos.x, G.pos.y + EYE - crouchDrop, G.pos.z);
     if (!G.fly && G.playing) { // (0.191) the body rocks with the steps and the breath (core/sway.ts)
       sw = updateBodySway(dt);
+      if (!driving.v && !riding() && !inBoat() && !climbing()) updateMySteps(dt); // (0.212)
       camera.position.x += Math.cos(G.yaw) * sw.right; camera.position.z -= Math.sin(G.yaw) * sw.right; camera.position.y += sw.up;
     }
   }
   if (sw) updateRecoil(dt);
   const rc = sw ? recoilView() : null; // (0.192) the shot's punch, on foot only
   camera.rotation.set(G.pitch + (sw?.pitch ?? 0) + (rc?.up ?? 0), G.yaw + (sw?.yaw ?? 0) + (rc?.side ?? 0), sw?.roll ?? 0);
+  updateSoundFrame(dt);
   updateWeather(dt, sky.visible);
   if (sky.visible) { sky.position.set(camera.position.x, camera.position.y - 20, camera.position.z); horizon.position.set(camera.position.x, 0, camera.position.z); shapeHorizon(camera.position.x, camera.position.z); updateSky(G.char.time, latitude(G.pos.z)); tintToxic(); updateFarPeaks(camera.position); } else farPeaks.visible = false;
   // A sanctuary spans hundreds of metres: give it room in clear weather while preserving dense fog.
@@ -300,6 +305,7 @@ function frame(now: number) {
   requestAnimationFrame(frame);
 }
 initItemTips();
+initSound(); setLocHook(myLoc); // (0.212) sound wakes on the first key or click
 // Load the display models after gameplay modules initialise, avoiding their world import cycles.
 // The opening film plays as soon as the game has loaded (the boot screen covers the loading), then the menu shows.
 // After "Back to my own world" (a reload) the menu comes straight back.
