@@ -22,7 +22,8 @@ import { spawnRaiderNear, forceAmbush } from '../world/raiders';
 import { CREATURES, type CreatureKind } from '../data/creatures';
 import { $, logLine } from './hud';
 import { openDevMap, planetSize } from './devmap';
-import { teleportTo } from '../world/level';
+import { teleportTo, enterCustom } from '../world/level';
+import { customDungeons } from '../world/custommaps';
 import { lockPointer } from './input';
 import { refreshWeaponVisibility } from '../world/weapons';
 
@@ -102,6 +103,14 @@ const COMMANDS: Record<string, { help: string; run: (args: string[]) => string }
   sites: {
     help: 'the great installations: where they are (tp to them)',
     run: () => { const T = OW.terrain; if (!T) return 'Only on the surface.'; return installSites(T).map((s) => `${s.name}: tp ${Math.round(s.x)} ${Math.round(s.z - s.r - 12)}  (${(Math.hypot(s.x, s.z) / 1000).toFixed(1)} km out)`).join('\n'); },
+  },
+  custom: {
+    help: '[name] the map editor\'s dungeons: list them, or go down into one',
+    run: (a) => {
+      const all = Object.keys(customDungeons()), name = a.join(' ');
+      if (!name) return all.length ? 'Editor maps: ' + all.join(', ') : 'No maps in the editor yet (editor.html).';
+      return enterCustom(name) ? '' : `No editor map "${name}". Maps: ${all.join(', ') || 'none'}`;
+    },
   },
   cities: {
     help: 'the dead cities: where they are (tp to their edge)',

@@ -57,6 +57,27 @@ export function metroCity(world: number, id: number): CitySite | null {
 /** The id the metro is saved under: its first entrance's. */
 export const metroId = (world: number, city: CitySite) => cityEntrances(world, city)[0].id;
 
+/** (0.207) A station hall centred at (x, z) with its track along x or z: the hall, the platforms either side of the
+ *  track's trench (with their tops as floors), the half steps, the columns and the track's centreline. Shared by
+ *  `generateMetro` and the map editor's station piece (gen/mapfile.ts). */
+export function stationParts(x: number, z: number, alongX: boolean) {
+  const H = METRO.hall, hl = H.len / 2, hw = H.wid / 2, th = METRO.trench / 2, pd = hw - th, P = METRO.platform;
+  const hall: Op = alongX ? { op: 'room', x: x - hl, y: 0, z: z - hw, w: H.len, h: H.h, d: H.wid } : { op: 'room', x: x - hw, y: 0, z: z - hl, w: H.wid, h: H.h, d: H.len };
+  const solids: Op[] = [], decks: StepBox[] = [], steps: StepBox[] = [];
+  for (const v of [-hw, th]) {
+    const b = alongX ? { x: x - hl, y: 0, z: z + v, w: H.len, h: P, d: pd } : { x: x + v, y: 0, z: z - hl, w: pd, h: P, d: H.len };
+    solids.push({ op: 'solid', ...b }); decks.push(b);
+  }
+  for (const t of METRO.stepsAt) for (const v of [-th, th - METRO.stepOut]) {
+    const u = (alongX ? x : z) + t - METRO.stepLen / 2;
+    steps.push(alongX ? { x: u, y: 0, z: z + v, w: METRO.stepLen, h: METRO.step, d: METRO.stepOut } : { x: x + v, y: 0, z: u, w: METRO.stepOut, h: METRO.step, d: METRO.stepLen });
+  }
+  // a row of columns down the middle of each platform
+  for (let t = -12; t <= 12; t += 6) for (const side of [-5, 4]) solids.push(alongX ? { op: 'solid', x: x + t, y: 0, z: z + side, w: 1, h: H.h, d: 1 } : { op: 'solid', x: x + side, y: 0, z: z + t, w: 1, h: H.h, d: 1 });
+  const rail: [number, number, number, number] = alongX ? [x - hl, z, x + hl, z] : [x, z - hl, x, z + hl];
+  return { hall, solids, decks, steps, rail };
+}
+
 const cache = new Map<string, DungeonMap>();
 export function generateMetro(world: number, city: CitySite): DungeonMap {
   const key = world + ':' + city.i, found = cache.get(key);
@@ -110,21 +131,10 @@ export function generateMetro(world: number, city: CitySite): DungeonMap {
   const boxes: DecoBox[] = stations.map((s) => s.hall), rails: MetroInfo['rails'] = [], blocks: MetroBlock[] = [], ends: MetroInfo['ends'] = [];
   const chests: { x: number; z: number }[] = [], crystals: { x: number; z: number }[] = [], guards: { kind: RobotKind; x: number; z: number }[] = [];
   const pieces: { x0: number; z0: number; x1: number; z1: number }[] = [], steps: StepBox[] = [], decks: StepBox[] = [];
-  const th = METRO.trench / 2, pd = hw - th, P = METRO.platform;
+  const P = METRO.platform;
   for (const s of stations) {
-    halls.push({ op: 'room', x: s.hall.x, y: 0, z: s.hall.z, w: s.hall.w, h: s.hall.h, d: s.hall.d });
-    rails.push(s.alongX ? [s.x - hl, s.z, s.x + hl, s.z] : [s.x, s.z - hl, s.x, s.z + hl]);
-    // (0.205) the platforms: a step higher than the track's trench, which runs on into the tunnels at its level
-    for (const v of [-hw, th]) {
-      const b = s.alongX ? { x: s.hall.x, y: 0, z: s.z + v, w: H.len, h: P, d: pd } : { x: s.x + v, y: 0, z: s.hall.z, w: pd, h: P, d: H.len };
-      solids.push({ op: 'solid', ...b }); decks.push(b);
-    }
-    for (const t of METRO.stepsAt) for (const v of [-th, th - METRO.stepOut]) {
-      const u = (s.alongX ? s.x : s.z) + t - METRO.stepLen / 2;
-      steps.push(s.alongX ? { x: u, y: 0, z: s.z + v, w: METRO.stepLen, h: METRO.step, d: METRO.stepOut } : { x: s.x + v, y: 0, z: u, w: METRO.stepOut, h: METRO.step, d: METRO.stepLen });
-    }
-    // a row of columns down the middle of each platform
-    for (let t = -12; t <= 12; t += 6) for (const side of [-5, 4]) solids.push(s.alongX ? { op: 'solid', x: s.x + t, y: 0, z: s.z + side, w: 1, h: H.h, d: 1 } : { op: 'solid', x: s.x + side, y: 0, z: s.z + t, w: 1, h: H.h, d: 1 });
+    const sp = stationParts(s.x, s.z, s.alongX);
+    halls.push(sp.hall); rails.push(sp.rail); solids.push(...sp.solids); decks.push(...sp.decks); steps.push(...sp.steps);
   }
   /** One axis-aligned stretch of tunnel (its centreline from (x0, z0) to (x1, z1)). */
   const piece = (x0: number, z0: number, x1: number, z1: number) => {

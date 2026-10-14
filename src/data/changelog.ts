@@ -3,6 +3,14 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.207.0', date: '2026-10-14', title: 'The map editor', notes: [
+    'A map editor: the Map editor button in the main menu opens it in its own tab. It has three parts: a dungeon, a world and a village.',
+    'Dungeons: lay out an underground level from above on a 1 m grid in one of three styles, each with its own kit: an ancient ruin (rooms, great halls, corridors, solid blocks), a crashed ship (bays, the engine room, ship corridors) or a metro (station halls with their platforms over the track, metro tunnels with rails, wrecked trains, falls of rubble). Then set the start, the exit stairs, chests, crystals, a boss, robot guards of any kind and doors, and the danger and the stray drones. A 3D view shows what the game will build, and the editor tells you what is wrong (no way out, a chest you cannot walk to).',
+    'Test in the game opens the game and takes you straight down into the dungeon; its stairs bring you back up. In the game\'s console, custom lists the editor\'s dungeons and custom <name> goes down into one.',
+    'Worlds: paint a planet\'s land with brushes (raise, lower, mountains, flatten, smooth, sea, lowland), starting from open sea, random continents or a real seed\'s land, change its size, draw rivers and set deposits and places (the start, villages, ruins, camps, wrecks, dead cities, the old plants, megaliths, caves). Villages: choose the wall\'s shape and kind and set out any building the game has (houses and shops, the power plant, the settlement\'s projects, the works, the power stations, fields, defences, street lamps, a lighthouse).',
+    'Every map is kept in this browser and can be exported and imported as a JSON file. The game plays the dungeons now; playing on your own worlds and villages comes next.',
+    'Online the editor\'s maps are yours alone for now: another player does not have your map.',
+  ] },
   { v: '0.206.0', date: '2026-10-14', title: 'Mountainous islands', notes: [
     'The small islands out in the ocean are mountains now: each rises to a peak of roughly 40 to 100 m (the smaller the island, the higher for its size), a little off its middle, with ridges and gullies on its flanks, steep slopes and cliffs down to the sea behind a narrow beach.',
     'A level shelf stays round each island\'s middle, where the old sites on the poisoned islands stand.',

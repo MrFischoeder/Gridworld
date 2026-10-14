@@ -1,0 +1,40 @@
+/* (0.207) The map editor's look: the game's green grid on black, a terminal's type. */
+:root { --g: #2fe060; --dim: #16391d; --bg: #000; --panel: #020c05; --text: #c8f0d0; --gold: #ffd060; --warn: #ff5a3c; }
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text); font: 13px/1.35 "DejaVu Sans Mono", Consolas, monospace; overflow: hidden; }
+#app { display: flex; flex-direction: column; height: 100%; }
+#bar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 6px 8px; border-bottom: 1px solid var(--dim); background: var(--panel); }
+.brand { color: var(--g); letter-spacing: 1px; margin-right: 8px; }
+#tabs { display: flex; gap: 2px; }
+.sep { flex: 1; }
+#note { margin-left: 6px; }
+#note.warn { color: var(--gold); } #note.ok { color: var(--g); }
+button { background: #031a0a; color: var(--text); border: 1px solid var(--dim); padding: 4px 8px; font: inherit; cursor: pointer; }
+button:hover { border-color: var(--g); }
+button.on { background: #0d3a18; border-color: var(--g); color: #eaffef; }
+#test { border-color: #5cc8ff; color: #bfe9ff; }
+input, select { background: #010802; color: var(--text); border: 1px solid var(--dim); padding: 3px 5px; font: inherit; }
+#fname { width: 14em; }
+#body { flex: 1; display: flex; min-height: 0; }
+#tools, #side { width: 250px; overflow-y: auto; padding: 6px 8px; background: var(--panel); }
+#tools { border-right: 1px solid var(--dim); } #side { width: 300px; border-left: 1px solid var(--dim); }
+#stage { flex: 1; position: relative; min-width: 0; }
+#plan { position: absolute; inset: 0; display: block; cursor: crosshair; }
+#foot { padding: 3px 8px; border-top: 1px solid var(--dim); color: #8fbf98; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+h3 { color: var(--g); font-size: 12px; margin: 10px 0 4px; text-transform: uppercase; letter-spacing: 1px; }
+.row { display: flex; gap: 3px; flex-wrap: wrap; }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 3px; }
+.grid1 { display: grid; gap: 2px; margin: 2px 0 6px 8px; }
+.grid2 button, .grid1 button { text-align: left; }
+.grouphead { width: 100%; text-align: left; margin-top: 2px; }
+.field { display: flex; justify-content: space-between; align-items: center; gap: 6px; margin: 3px 0; }
+.field span { color: #8fbf98; }
+.field input, .field select { width: 9.5em; }
+.hint { color: #7fa889; font-size: 12px; margin: 6px 0; }
+.what { color: var(--gold); margin: 4px 0; }
+.props button { margin-top: 6px; }
+.preview { width: 100%; height: 220px; display: block; border: 1px solid var(--dim); cursor: grab; }
+.probs .prob { color: var(--warn); cursor: pointer; margin: 2px 0; }
+.probs .ok { color: var(--g); }
+.legend div { display: flex; align-items: center; gap: 6px; margin: 2px 0; }
+.legend i { width: 10px; height: 10px; display: inline-block; }

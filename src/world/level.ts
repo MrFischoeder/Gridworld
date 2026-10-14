@@ -17,6 +17,8 @@ import { labyrinthGuards } from '../gen/dungeonguards';
 import { metroCity, metroId, generateMetro } from '../gen/metro';
 import { drawMetro } from './metro';
 import { stepFloor } from '../core/steps';
+import { expandDungeon } from '../gen/mapfile';
+import { customDungeon, customId } from './custommaps';
 import { setPlaceLight, fixtureModel, torchModel, postLantern } from './light';
 import { dungeonLamps, underAmb, villageLanterns } from '../gen/darkness';
 import { MOUNTED_TURRET } from '../data/mountedturrets';
@@ -120,14 +122,17 @@ export function loadDungeon(arriveDir: string | null) {
     placeCarrier();
     saveChar(); return;
   }
-  const wreck = findPoi(c.world, d.ruinId)?.type === 'wreck';
+  // (0.207) a hand-made level from the map editor; gone from this browser → back up to the surface
+  const custom = d.custom ? customDungeon(d.custom) : undefined;
+  if (d.custom && !custom) { const n = d.custom; c.loc = 'overworld'; c.dungeon = null; saveChar(); loadOverworld({ kind: 'saved' }); showToast(TL`The map ${n} is not in the editor any more.`); return; }
+  const wreck = !custom && findPoi(c.world, d.ruinId)?.type === 'wreck';
   // (0.195) a dead city's vaults are one metro now: saved under its first entrance, one level (gen/metro.ts)
-  const metro = wreck ? null : metroCity(c.world, d.ruinId);
+  const metro = wreck || custom ? null : metroCity(c.world, d.ruinId);
   if (metro) { d.ruinId = metroId(c.world, metro); d.depth = 1; d.gx = 0; d.gz = 0; }
   if (!wreck) d.depth = Math.max(1, Math.min(MAX_DUNGEON_DEPTH, d.depth));
   const seed = dungeonSeed(c.world, d);
   // Old saves below the depth limit resume at the deepest supported floor; no sector travel is generated.
-  const map = wreck ? generateShip(seed) : metro ? generateMetro(c.world, metro) : generateDungeon(seed, { depth: d.depth });
+  const map = custom ? expandDungeon(custom) : wreck ? generateShip(seed) : metro ? generateMetro(c.world, metro) : generateDungeon(seed, { depth: d.depth });
   clearLevel(); G.map = map; G.floor = null;
   setLocationLook(false);
   setDroneRespawn(placeDrone); setCrystalXp(() => 5 * depth());
@@ -146,13 +151,17 @@ export function loadDungeon(arriveDir: string | null) {
   }
   { // (0.199) how dark it is down here, and the lamps that still burn (gen/darkness.ts)
     const lamps = dungeonLamps(map, d.depth);
-    setPlaceLight(true, underAmb(wreck ? 'wreck' : metro ? 'metro' : 'labyrinth', d.depth), lamps);
+    setPlaceLight(true, underAmb(wreck || map.style === 'ship' ? 'wreck' : map.style === 'metro' ? 'metro' : 'labyrinth', d.depth), lamps);
     for (const l of lamps) group.add(l.k === 'torch' ? torchModel(l.x, l.y, l.z, l.n) : fixtureModel(l.x, l.y, l.z, map.style === 'metro' ? 1.4 : 0.6, map.style === 'ship' ? 0xff8a5c : 0xdff2ff));
   }
   for (const p of map.portals) {
     const pd = tryPlaceDoor(G.space, { axis: p.axis, m: p.m, c: p.c, stair: true, y0: p.y0 }, placed)!;
     const o = DIRV[p.dir], tx = d.gx + o[0], tz = d.gz + o[1];
     const name = ruinName(d.ruinId);
+    if (custom && p.key[0] === 'V') { // the editor's stairs out: back where you came from
+      W.portals.push(makeStair(p, pd, placed.length - 1, '▲ ' + tl('EXIT'), tl('Stairs back up to the surface'), exitCustom));
+      continue;
+    }
     if (metro && p.key[0] === 'V') { // an entrance station's stairs: up to its own street
       const n = Number(p.key.slice(1)), st = map.metro!.stations.find((s) => s.entrance === n)!;
       W.portals.push(makeStair(p, pd, placed.length - 1, '▲ ' + TL`EXIT · ${st.name.toUpperCase()}`, TL`Stairs up to the street at ${st.name} Station`, () => exitMetro(metro, n)));
@@ -176,22 +185,22 @@ export function loadDungeon(arriveDir: string | null) {
   // A crashed ship retains only a few stray drones alongside its anchored security guns.
   // none come back while any of them lives: more of them, at their own spots (world/dungeonfoes.ts)
   // (0.194) labyrinths get robots too, heavier the deeper you go (gen/dungeonguards.ts)
-  const guards = wreck || metro ? (map.guards ?? []) : labyrinthGuards(map, d.depth);
-  populate(wreck ? 2 : labyrinthDrones(map.rooms, d.depth), guards.length, seed);
+  const guards = wreck || metro || custom ? (map.guards ?? []) : labyrinthGuards(map, d.depth);
+  populate(custom ? custom.drones : wreck ? 2 : labyrinthDrones(map.rooms, d.depth), guards.length, seed);
   // Ship security and labyrinth defences are anchored guns, separate from roaming enemy robots.
-  loadMountedTurrets(dungeonTurrets(map, G.grid, wreck ? MOUNTED_TURRET.wreck : labyrinthTurrets(seed))); G.obstacle = mountedTurretHit;
+  loadMountedTurrets(dungeonTurrets(map, G.grid, custom ? 0 : wreck ? MOUNTED_TURRET.wreck : labyrinthTurrets(seed))); G.obstacle = mountedTurretHit;
   // ... and its robot crew still patrols the ship (on a server only the first player aboard brings them: shared foes)
   {
     const poi = metro ?? findPoi(c.world, d.ruinId), dz = poi ? dangerAt(c.world, poi.x, poi.z, true) : 1;
-    const lv = wreck || metro ? Math.max(2, dz) : Math.max(1, dz) + (d.depth - 1) * 0.5;
+    const lv = custom ? Math.max(1, Math.min(8, custom.danger)) : wreck || metro ? Math.max(2, dz) : Math.max(1, dz) + (d.depth - 1) * 0.5;
     setRobotEnv({ ground: () => 0, danger: () => lv, nearRuin: () => false, forbidden: () => false, water: () => null }, { indoor: true });
     if (guards.length && spawnAuthority()) spawnGuards(guards, lv, guardAlive);
   }
   onDungeonLoaded(map);
   placeCarrier();
   setMiniMode('voxel'); buildMini();
-  el.hudL.textContent = wreck || metro ? ruinName(d.ruinId) : tl('Depth ') + d.depth + ', sector ' + d.gx + ', ' + d.gz;
-  if (wreck || metro) el.route.style.display = 'none'; // no way further down from a wreck
+  el.hudL.textContent = custom ? TL`${custom.name} · editor map` : wreck || metro ? ruinName(d.ruinId) : tl('Depth ') + d.depth + ', sector ' + d.gx + ', ' + d.gz;
+  if (wreck || metro || custom) el.route.style.display = 'none'; // no way further down from a wreck
   el.seed.value = String(c.world); renderSheet(); saveChar();
 }
 
@@ -484,6 +493,21 @@ export function enterDungeon(ruinId: number) {
   loadDungeon('V'); showToast(ruinName(ruinId)); logLine('Depth 1'); arriveVia(W.arrivalStair);
 }
 setEnterRuin(enterDungeon);
+/** (0.207) Down into a hand-made level from the map editor (world/custommaps.ts); its stairs bring you back here. */
+export function enterCustom(name: string): boolean {
+  if (!customDungeon(name)) return false;
+  const c = G.char;
+  if (c.loc === 'overworld') saveOverworldPos();
+  c.loc = 'dungeon'; c.dungeon = { ruinId: customId(name), depth: 1, gx: 0, gz: 0, custom: name }; saveChar();
+  // in at its start marker if it has one, else at its first stairs
+  loadDungeon(customDungeon(name)!.marks.some((m) => m.k === 'spawn') ? null : 'V0'); showToast(name); arriveVia(W.arrivalStair);
+  return true;
+}
+function exitCustom() {
+  const c = G.char;
+  c.loc = 'overworld'; c.dungeon = null; saveChar();
+  loadOverworld({ kind: 'saved' }); arriveVia(null);
+}
 /** (0.195) Up a metro station's stairs onto its own street (gen/metro.ts): in at one end of the city, out at another. */
 function exitMetro(city: CitySite, n: number) {
   const c = G.char, e = cityEntrances(c.world, city)[n];

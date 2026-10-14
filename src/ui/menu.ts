@@ -75,6 +75,7 @@ export function initMenu(h: MenuHooks) {
   onMpChange(labels);
   $('replayCinematic').onclick = async () => { const film = await import('./cinematic'); film.playCinematic(() => showMenu(false)); };
   $('changelog').onclick = openChangelog;
+  $('mapEditor').onclick = () => window.open('editor.html', '_blank'); // (0.207) the map editor, in its own tab
   const reroll = $('reroll'), rerollText = reroll.textContent;
   let rerollArmed = false;
   reroll.onclick = () => {
