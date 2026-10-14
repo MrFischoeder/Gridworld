@@ -3,7 +3,7 @@
 // it with `sendState` (about 10 times a second) and reads `peers`.
 
 /** Must match PROTOCOL in server/mp.mjs. */
-export const PROTOCOL = 14;
+export const PROTOCOL = 15;
 export const SEND_EVERY = 0.1;
 
 /** `away`: in the menu (still in the game: the others see you standing there). */
@@ -189,7 +189,7 @@ export async function changePassword(url: string, token: string, old: string, pa
 }
 /** Is the page served by a dedicated server (server/main.mjs)? It answers mp/info next to the page. */
 /** A game server ("room") of a dedicated server, as the menu lists it: `running` while someone is in it. */
-export interface RoomInfo { id: string; name: string; world: number; time: number; online: number; max: number; running: boolean; players: string[]; by?: string; mode?: 'coop' | 'rivals' }
+export interface RoomInfo { id: string; name: string; world: number; time: number; online: number; max: number; running: boolean; players: string[]; by?: string; mode?: 'coop' | 'rivals'; /** (0.211) the map editor's world it plays on */ map?: string }
 export interface ServerInfo { dedicated: boolean; accounts?: boolean; mail?: boolean; name: string; world: number; online: number; max: number; players: string[]; version: string; rooms?: RoomInfo[] }
 export async function serverInfo(): Promise<ServerInfo | null> {
   try {
@@ -215,16 +215,21 @@ export function serverUrl(input: string, here: { protocol: string; host: string;
 }
 
 let hooks: NetHooks | null = null;
+/** (15) The map editor's files a room plays on ({world, villages, dungeons}: plain JSON, read by world/custommaps.ts). */
+export interface RoomMaps { world: unknown; villages: Record<string, unknown>; dungeons: Record<string, unknown> }
+let mapsHook: ((world: number, maps: RoomMaps | null) => void) | null = null;
+/** Hear the room's maps in every welcome (null: the room plays on a seed's own land). */
+export function onRoomMaps(f: (world: number, maps: RoomMaps | null) => void) { mapsHook = f; }
 /** Connect and say hello; the hooks hear the rest. */
 /** `room`: the dedicated server's room to join; `create`: make a new room (its name and world) and join it. */
-export function connect(url: string, me: { name: string; world: number; time: number; token?: string; room?: string; create?: { name: string; world?: number; rivals?: boolean } }, h: NetHooks) {
+export function connect(url: string, me: { name: string; world: number; time: number; token?: string; room?: string; create?: { name: string; world?: number; rivals?: boolean; maps?: RoomMaps }; maps?: RoomMaps }, h: NetHooks) {
   disconnect();
   hooks = h; net.address = url;
   let ws: WebSocket;
   try { ws = new WebSocket(url); } catch { h.closed(TL`Not a server address: ${url}`); return; }
   net.ws = ws;
   let welcomed = false, why = '';
-  ws.onopen = () => { net.needAuth = false; ws.send(JSON.stringify({ t: 'hello', ver: PROTOCOL, name: me.name, world: me.world, time: me.time, token: me.token, room: me.room, create: me.create })); };
+  ws.onopen = () => { net.needAuth = false; ws.send(JSON.stringify({ t: 'hello', ver: PROTOCOL, name: me.name, world: me.world, time: me.time, token: me.token, room: me.room, create: me.create, maps: me.maps })); };
   ws.onmessage = (e) => {
     let m: any;
     try { m = JSON.parse(String(e.data)); } catch { return; }
@@ -236,6 +241,7 @@ export function connect(url: string, me: { name: string; world: number; time: nu
         net.drops = new Map((Array.isArray(m.drops) ? m.drops : []).map((d: NetDrop) => [d.id, d]));
         receiveGates(m);
         for (const p of m.players) if (p.id !== m.id) net.peers.set(p.id, { id: p.id, name: p.name, st: null, prev: null, at: 0, hist: [] });
+        mapsHook?.(m.world, m.maps && typeof m.maps === 'object' ? m.maps : null); // (15) the editor's files first: they shape the world
         worldHooks?.welcome(m.wdoc ?? {}, !!m.wseeded, m.world);
         h.welcome(m.world, m.time, m.id === m.host, net.dedicated);
         break;

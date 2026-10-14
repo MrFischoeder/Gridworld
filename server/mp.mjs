@@ -12,7 +12,7 @@
 // Standalone: `node server/mp.mjs [port]` (default 7777, hosted mode).
 //
 // Protocol (JSON text frames), client → server:
-//   {t:'hello', name, ver, world, time, token?, room?, create?: {name, world, rivals?}}   first message; `room` picks a dedicated room,
+//   {t:'hello', name, ver, world, time, token?, room?, create?: {name, world, rivals?, maps?}, maps?}   first message; `room` picks a dedicated room,
 //                                                                          `create` makes one (owned by your account); a dedicated
 //                                                                          server wants `token` (your account's session) and names
 //                                                                          you by your account; hosted: world / time for the host
@@ -46,6 +46,7 @@
 //   {t:'welcome', id, name, host, world, time, players:[{id, name}], dedicated, room:{id, name}, mode, slot}   host 0 on a dedicated server; name = yours as the server knows you
 //                                          (14) mode 'coop' | 'rivals'; slot = your seat in a rivals room (kept per account: your
 //                                          home village and what you stake), -1 in co-op
+//                                          (15) maps: the map editor's files the room plays on ({world, villages, dungeons}), or null
 //   {t:'refused', why, auth: true}        a dedicated server wants you to log in (again)
 //   {t:'full'} / {t:'refused', why}
 //   {t:'join', id, name} / {t:'leave', id, name} / {t:'host', id}
@@ -67,13 +68,13 @@ import { randomInt, createHash } from 'node:crypto';
 import { GateConnections, GATE_TRANSIT_SECONDS } from '../shared/gates.mjs';
 import { createAccounts, ACCOUNT } from './accounts.mjs';
 
-export const MP = { path: '/mp', port: 7777, max: 8, rate: 100, nameMax: 20, chatMax: 200, roomName: 28, rooms: 12, roomTtl: 14, cars: 8, drops: 800, dropTtl: 6, lootTtl: 2, payload: 4 * 1024 * 1024 };
+export const MP = { path: '/mp', port: 7777, max: 8, rate: 100, nameMax: 20, chatMax: 200, roomName: 28, rooms: 12, roomTtl: 14, cars: 8, drops: 800, dropTtl: 6, lootTtl: 2, payload: 4 * 1024 * 1024, maps: 2 * 1024 * 1024 };
 /** What players may pass to each other through 'cast' (everyone else in the room) and 'to' (one player). */
 /** Account messages (one each, on a connection of their own). */
 const AUTH = new Set(['register', 'login', 'logout', 'passwd', 'verify', 'resend', 'forgot', 'reset', 'email', 'profile']);
 const RELAY = new Set(['foes', 'bolt', 'fhit', 'kill', 'hurt', 'thit', 'boat', 'row']);
 /** Protocol version: a client with another one is refused (the game shows why). */
-export const PROTOCOL = 14;
+export const PROTOCOL = 15;
 
 const clean = (s, n) => String(s ?? '').replace(/[\u0000-\u001f<>]/g, '').trim().slice(0, n);
 const num = (v) => (typeof v === 'number' && Number.isFinite(v) ? v : 0);
@@ -81,6 +82,14 @@ const DAY = 86400000;
 /** A creator's secret as the server keeps it (the secret itself is never stored or shown). */
 const ownerOf = (key) => (typeof key === 'string' && key.length >= 16 ? createHash('sha256').update(key).digest('hex') : '');
 const FIELDS = new Set(['towns', 'market', 'installs', 'bridges', 'bridgeSites', 'piers', 'lighthouses', 'boats', 'shuttle', 'containers', 'opened', 'unlocked', 'killed', 'harvest', 'camps', 'cityGarrisons', 'caravans', 'claims', 'benches', 'board', 'boards', 'fallen', 'outposts', 'rivals']);
+/** (15) The map editor's files a room plays on (the world, the village layouts and the dungeons it names): kept with
+ *  the room and sent to everyone in the welcome. Only their shape is checked here; each game reads them itself. */
+const cleanMaps = (m) => {
+  if (!m || typeof m !== 'object' || !m.world || typeof m.world !== 'object') return null;
+  const part = (o) => (o && typeof o === 'object' && !Array.isArray(o) ? Object.fromEntries(Object.entries(o).filter(([k, v]) => typeof k === 'string' && k.length <= 60 && v && typeof v === 'object')) : {});
+  const out = { world: m.world, villages: part(m.villages), dungeons: part(m.dungeons) };
+  return JSON.stringify(out).length <= MP.maps ? out : null;
+};
 const safeKey = (k) => typeof k === 'string' && !['__proto__', 'constructor', 'prototype'].includes(k);
 const worldKey = (f, k) => FIELDS.has(f) && safeKey(k) && !(f === 'containers' && k.startsWith('home:'));
 const object = (v) => v && typeof v === 'object' && !Array.isArray(v);
@@ -104,7 +113,7 @@ export function createMp(log = (m) => console.log('[mp] ' + m), opts = {}) {
   const rooms = new Map();
   let nextId = 1, dropSeq = 1;
   const newRoom = (r) => {
-    const room = { id: r.id, name: clean(r.name, MP.roomName) || 'GridWorld', world: r.world == null ? null : r.world | 0, time0: num(r.time), run: 0, since: 0, players: new Map(), hostId: 0, owner: typeof r.owner === 'string' ? r.owner : '', by: clean(r.by, MP.nameMax), created: r.created ?? Date.now(), last: r.last ?? Date.now(), drops: new Map((Array.isArray(r.drops) ? r.drops : []).map((d) => [d.id, d])), mode: r.mode === 'rivals' && (r.world ?? 0) < 0 ? 'rivals' : 'coop', slots: object(r.slots) ? Object.fromEntries(Object.entries(r.slots).filter(([k, v]) => safeKey(k) && Number.isInteger(v) && v >= 0 && v < MP.max)) : {}, doc: object(r.doc) ? cleanDoc(r.doc) : {}, locks: new Map(), seeded: !!r.seeded, dirty: false };
+    const room = { id: r.id, name: clean(r.name, MP.roomName) || 'GridWorld', world: r.world == null ? null : r.world | 0, time0: num(r.time), run: 0, since: 0, players: new Map(), hostId: 0, owner: typeof r.owner === 'string' ? r.owner : '', by: clean(r.by, MP.nameMax), created: r.created ?? Date.now(), last: r.last ?? Date.now(), drops: new Map((Array.isArray(r.drops) ? r.drops : []).map((d) => [d.id, d])), mode: r.mode === 'rivals' && (r.world ?? 0) < 0 ? 'rivals' : 'coop', slots: object(r.slots) ? Object.fromEntries(Object.entries(r.slots).filter(([k, v]) => safeKey(k) && Number.isInteger(v) && v >= 0 && v < MP.max)) : {}, doc: object(r.doc) ? cleanDoc(r.doc) : {}, locks: new Map(), seeded: !!r.seeded, dirty: false, maps: cleanMaps(r.maps) };
     room.gates = new GateConnections(); room.trips = new Map();
     rooms.set(room.id, room);
     return room;
@@ -136,7 +145,7 @@ export function createMp(log = (m) => console.log('[mp] ' + m), opts = {}) {
       // (0.189) rivals: every player starts at a home village of their own; only a new world of towns has them
       if (m.create.rivals && world >= 0) return { why: 'Rivals needs a new world of towns: leave "in my own world" off, or bring a new world.' };
       let id; do id = 'r' + randomInt(100000, 999999); while (rooms.has(id));
-      const room = newRoom({ id, name, world, time: 7 * 60, owner: acct ? ownerKey(acct) : ownerOf(m.create.key), by: acct ? acct.name : m.name, mode: m.create.rivals ? 'rivals' : 'coop' });
+      const room = newRoom({ id, name, world, time: 7 * 60, owner: acct ? ownerKey(acct) : ownerOf(m.create.key), by: acct ? acct.name : m.name, mode: m.create.rivals ? 'rivals' : 'coop', maps: Number.isFinite(m.create.world) ? m.create.maps : null }); // (15) a world from the map editor comes with its files
       log(`server "${name}" created (world ${world}${room.mode === 'rivals' ? ', rivals' : ''})`);
       return { room };
     }
@@ -220,9 +229,9 @@ export function createMp(log = (m) => console.log('[mp] ' + m), opts = {}) {
           if (room.slots[key] !== slot) { room.slots[key] = slot; room.dirty = true; }
         }
         me = { id: nextId++, ws, name, st: null, joined: Date.now(), acct: acct?.key, slot };
-        if (!room.players.size && !dedicated) { room.hostId = me.id; if (room.world === null) { room.world = num(m.world) | 0; room.time0 = num(m.time); } log(`${name} hosts world ${room.world}`); }
+        if (!room.players.size && !dedicated) { room.hostId = me.id; if (room.world === null) { room.world = num(m.world) | 0; room.time0 = num(m.time); room.maps = cleanMaps(m.maps); } log(`${name} hosts world ${room.world}`); }
         room.players.set(me.id, me); room.last = Date.now(); occupied(room, true);
-        send(ws, { t: 'welcome', id: me.id, name: me.name, host: room.hostId, world: room.world, time: clock(room), dedicated, room: { id: room.id, name: room.name }, mode: room.mode, slot: me.slot, drops: [...room.drops.values()], wdoc: room.doc, wseeded: room.seeded, links: room.gates.state(), drafts: room.gates.draftState(), now: Date.now(), players: [...room.players.values()].map((p) => ({ id: p.id, name: p.name })) });
+        send(ws, { t: 'welcome', id: me.id, name: me.name, host: room.hostId, world: room.world, time: clock(room), dedicated, room: { id: room.id, name: room.name }, mode: room.mode, slot: me.slot, maps: room.maps, drops: [...room.drops.values()], wdoc: room.doc, wseeded: room.seeded, links: room.gates.state(), drafts: room.gates.draftState(), now: Date.now(), players: [...room.players.values()].map((p) => ({ id: p.id, name: p.name })) });
         all(room, { t: 'join', id: me.id, name }, me.id);
         log(`${name} joined ${room.name} (${room.players.size}/${MP.max})`);
         return;
@@ -410,9 +419,9 @@ export function createMp(log = (m) => console.log('[mp] ' + m), opts = {}) {
   };
   const close = () => { clearInterval(timer); clearInterval(sweep); for (const r of rooms.values()) { for (const trip of r.trips.values()) clearTimeout(trip.timer); for (const p of r.players.values()) p.ws.terminate(); } wss.close(); };
   /** The rooms as the menu lists them, and as server/main.mjs saves them. */
-  const list = () => [...rooms.values()].map((r) => ({ id: r.id, name: r.name, world: r.world, time: Math.round(clock(r)), online: r.players.size, max: MP.max, running: r.players.size > 0, players: [...r.players.values()].map((p) => p.name), by: r.by, mode: r.mode, created: r.created, last: r.last }));
+  const list = () => [...rooms.values()].map((r) => ({ id: r.id, name: r.name, world: r.world, time: Math.round(clock(r)), online: r.players.size, max: MP.max, running: r.players.size > 0, players: [...r.players.values()].map((p) => p.name), by: r.by, mode: r.mode, map: r.maps?.world?.name ?? undefined, created: r.created, last: r.last }));
   /** What server/main.mjs saves: the rooms with their clocks and the items lying in their worlds. */
-  const save = () => list().map(({ id, name, world, time, by, mode, created, last }) => ({ id, name, world, time, owner: rooms.get(id).owner, by, mode, slots: rooms.get(id).slots, created, last, drops: [...rooms.get(id).drops.values()] }));
+  const save = () => list().map(({ id, name, world, time, by, mode, created, last }) => ({ id, name, world, time, owner: rooms.get(id).owner, by, mode, slots: rooms.get(id).slots, maps: rooms.get(id).maps, created, last, drops: [...rooms.get(id).drops.values()] }));
   /** The rooms' shared worlds that changed since the last call (server/main.mjs writes each to its own file). */
   const dirtyDocs = () => [...rooms.values()].filter((r) => r.dirty).map((r) => { r.dirty = false; return { id: r.id, doc: r.doc, seeded: r.seeded }; });
   const first = () => rooms.values().next().value;

@@ -3,6 +3,12 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.211.0', date: '2026-10-14', title: 'Your own maps online', notes: [
+    'A world drawn in the map editor can now be played together. Host a LAN game, or create a server "in my own world", while you play on it: the world goes to the server with the village layouts and the dungeons it names.',
+    'The server keeps those files with the game and hands them to everyone who joins, so every player walks the same land, the same villages and the same levels under the ruins, even without a copy of the files of their own. Players in the same editor level meet there.',
+    'The server list marks a game on a world from the editor.',
+    'The server has to be updated together with the game (protocol 15): reload the page (Ctrl+F5) after the update.',
+  ] },
   { v: '0.210.0', date: '2026-10-14', title: 'Your own dungeons in your own worlds', notes: [
     'In the world editor, a ruin, a crashed ship or a dead city can now be given a dungeon drawn in the dungeon editor. In the game its stairs, its hatch or the city\'s metro entrances lead down into your level instead of the generated one.',
     'The level\'s stairs bring you back out at the place you went in by. Its chests and robots are kept for that place, apart from the same level used anywhere else.',

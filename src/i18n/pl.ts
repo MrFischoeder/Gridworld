@@ -3899,9 +3899,9 @@ export const PL: Record<string, string> = {
   " (playing)": " (grasz)",
   "The editor sent you {0}: press Play on an editor world to start a new game on it.": "Edytor przysłał świat {0}: naciśnij „Graj na świecie z edytora”, aby zacząć na nim nową grę.",
   "{0} is a new game: your kit, quests and the town start over. Press again to begin.": "{0} to nowa gra: ekwipunek, zadania i miasto zaczynają się od nowa. Naciśnij jeszcze raz, aby zacząć.",
-  "A world drawn in the map editor is single player for now: the others have no copy of it. Roll or pick another world to host.": "Świat narysowany w edytorze map jest na razie tylko dla jednego gracza: inni nie mają jego kopii. Wylosuj albo wybierz inny świat, aby hostować.",
   "Worlds drawn in the map editor of this browser": "Światy narysowane w edytorze map w tej przeglądarce",
   "Play on an editor world": "Graj na świecie z edytora",
   "In the game a world's village named with this layout gets its wall, the village buildings, the well, the boards and the fields. The other pieces are kept for later.": "W grze wioska świata, która wskazuje ten układ, dostaje z niego mur, budynki wioski, studnię, tablice i pola. Pozostałe elementy czekają na później.",
   "{0} places name a village layout or a dungeon that is not saved here.": "Miejsc wskazujących układ wioski albo loch, którego tu nie zapisano: {0}.",
+  " · editor world {0}": " · świat z edytora {0}",
 };

@@ -38,6 +38,8 @@ export interface CustomWorld {
   byRegion: Map<string, GamePlace[]>; lodeByRegion: Map<string, GameLode>;
   /** (0.209) The village seeds whose layout came from the editor (gen/village.ts `setVillageLayout`). */
   laid: number[];
+  /** The village layouts it was given (sent along to a room's players and to the install worker). */
+  villages: Record<string, VillageFile>;
 }
 const reg = new Map<number, CustomWorld>();
 const rkey = (rx: number, rz: number) => rx + ':' + rz;
@@ -74,7 +76,7 @@ export function setCustomWorld(world: number, f: WorldFile | null, villages: Rec
   const laid: number[] = [], lay = (sd: number, name?: string) => { const v = name ? villages[name] : undefined; if (v) { setVillageLayout(sd, v); laid.push(sd); } };
   lay(world, start?.layout);
   for (const p of places) if (p.k === 'village' && p.layout) lay(villageSeed(world, { id: packId(p.rx, p.rz, 0) } as Poi), p.layout);
-  reg.set(world, { world, f, sx, sz, places, lodes, rivers, byRegion, lodeByRegion, laid });
+  reg.set(world, { world, f, sx, sz, places, lodes, rivers, byRegion, lodeByRegion, laid, villages });
 }
 /** (0.210, stage E4) The editor's dungeon under a place of a drawn world, or undefined (the place's own level): a
  *  ruin's (packId(rx, rz, 1)) or a wreck's (packId(rx, rz, 3)) by its id, the first of its kind drawn in its region

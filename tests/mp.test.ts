@@ -597,4 +597,28 @@ describe('(0.189) rivals rooms', () => {
     expect(wm.mode).toBe('coop'); expect(wm.slot).toBe(-1);
     for (const x of [b, c, a2, m]) x.ws.close();
   });
+  it('(15) a room on a world from the map editor keeps its files and hands them to every player', async () => {
+    const maps = { world: { kind: 'world', name: 'Isle', format: 1, cell: 500, w: 40, h: 20, land: new Array(800).fill(5), rivers: [], lodes: [], places: [] }, villages: { Mine: { kind: 'village', name: 'Mine', format: 1, sides: 8, wall: 1, items: [] } }, dungeons: { Krypta: { kind: 'dungeon', name: 'Krypta', format: 1, style: 'temple', danger: 2, drones: 1, pieces: [], marks: [] } } };
+    // a LAN host's drawn world: the next player gets it in the welcome
+    let port = await server();
+    const a = await client(port, { name: 'Ada', world: -1500000000, time: 0, maps });
+    expect((await a.wait('welcome')).maps.world.name).toBe('Isle');
+    const b = await client(port, { name: 'Bo', world: 7, time: 0, maps: { world: { name: 'Other' } } });
+    const wb = await b.wait('welcome');
+    expect(wb.world).toBe(-1500000000); expect(wb.maps.world.name).toBe('Isle'); expect(Object.keys(wb.maps.dungeons)).toEqual(['Krypta']);
+    a.ws.close(); b.ws.close(); mp!.close(); http!.close();
+    // a dedicated server: a room made in my own drawn world keeps the files (listed and saved); one made without them has none
+    port = await server({ world: 1, time: 0 });
+    const c = await client(port, { name: 'Cy', create: { name: 'Isle Base', world: -1500000000, maps } });
+    const wc = await c.wait('welcome');
+    expect(wc.maps.villages.Mine.wall).toBe(1);
+    const d = await client(port, { name: 'Di', room: wc.room.id });
+    expect((await d.wait('welcome')).maps.world.name).toBe('Isle');
+    expect(mp!.list().find((r) => r.id === wc.room.id)?.map).toBe('Isle');
+    expect(mp!.save().find((r) => r.id === wc.room.id)?.maps?.world.name).toBe('Isle');
+    const e = await client(port, { name: 'Ed', create: { name: 'Plain', maps } }); // no world of mine: no files
+    expect((await e.wait('welcome')).maps).toBeNull();
+    const f = await client(port, { name: 'Fi', create: { name: 'Huge', world: -1500000001, maps: { ...maps, world: { ...maps.world, land: new Array(300000).fill(123.456) } } } });
+    expect((await f.wait('welcome')).maps).toBeNull(); // too big to keep
+  });
 });

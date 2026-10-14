@@ -18,7 +18,8 @@ import { presentHero } from './rebirth';
 import { G } from '../game';
 import { $, logLine } from './hud';
 import { saveChar } from '../character';
-import { connect, disconnect, deleteRoom, account, accountAsk, logout, changePassword, net, online, isHost, sendChat, serverUrl, serverInfo, type ServerInfo, type RoomInfo } from '../net/client';
+import { connect, disconnect, deleteRoom, account, accountAsk, logout, changePassword, net, online, isHost, sendChat, serverUrl, serverInfo, type ServerInfo, type RoomInfo, type RoomMaps } from '../net/client';
+import { mapsFor } from '../world/custommaps';
 import { clearPeers, peerColor } from '../world/peers';
 import { lockPointer } from './input';
 import { SAVE_KEY, newChar, loadCharAt, setSaveMirror, type Char } from '../save';
@@ -121,7 +122,7 @@ function roomRows(): string {
     const btn = you ? '' : `<button data-room="${esc(r.id)}"${connecting || !loggedIn() ? ' disabled' : ''}>${online() ? tl('Move here') : tl('Join')}</button>`;
     const del = !you && yours(r)
       ? `<button class="del${armed === r.id ? ' armed' : ''}" data-del="${esc(r.id)}"${deleting ? ' disabled' : ''}>${deleting === r.id ? tl('Closing…') : armed === r.id ? (r.online ? TL`Close it? ${r.online} playing` : tl('Sure? Close it')) : tl('Close server')}</button>` : '';
-    const by = (r.by ? TL` · made by ${esc(r.by)}` : '') + (r.mode === 'rivals' ? ' · <b style="color:#d0805a">rivals</b>' : '');
+    const by = (r.by ? TL` · made by ${esc(r.by)}` : '') + (r.mode === 'rivals' ? ' · <b style="color:#d0805a">rivals</b>' : '') + (r.map ? TL` · editor world ${esc(r.map)}` : '');
     return `<div class="room${you ? tl(' here') : ''}${del ? ' mine' : ''}"><b>${esc(r.name)}</b><span>${state}</span><span class="who">${who} · world ${r.world}${by}</span>${btn}${del}</div>`;
   }).join('');
 }
@@ -175,8 +176,6 @@ function render() {
 const esc = (s: string) => s.replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]!));
 
 /** A line in the chat box (fades after a while) and in the log. */
-/** (0.208) Worlds drawn in the map editor live in one browser: not shared online until stage E5 of PLAN_EDYTORA.md. */
-const EDITOR_SOLO = tl('A world drawn in the map editor is single player for now: the others have no copy of it. Roll or pick another world to host.');
 function say(text: string, kind: 'chat' | 'info' | 'error') {
   const d = document.createElement('div');
   d.className = 'chat ' + kind; d.textContent = text;
@@ -187,12 +186,12 @@ function say(text: string, kind: 'chat' | 'info' | 'error') {
   render();
 }
 
-function start(url: string, room?: string, create?: { name: string; world?: number; rivals?: boolean }) {
+function start(url: string, room?: string, create?: { name: string; world?: number; rivals?: boolean; maps?: RoomMaps }) {
   if (accounts() && !auth()) { status.textContent = tl('Log in first.'); userIn.focus(); return; }
   if (!accounts() && !G.char.name) { status.textContent = tl('Name your hero first.'); return; }
   if (online()) { leaveRoomChar(); disconnect(); clearPeers(); } // moving to another server
   connecting = true; status.textContent = tl('Connecting…'); render();
-  connect(url, { name: auth()?.name ?? G.char.name, world: G.char.world, time: G.char.time, token: auth()?.token, room, create }, {
+  connect(url, { name: auth()?.name ?? G.char.name, world: G.char.world, time: G.char.time, token: auth()?.token, room, create, maps: mapsFor(G.char) }, { // (0.211) a LAN host's drawn world goes with its files
     welcome(world, time, host, dedicated) {
       connecting = false;
       const name = net.name || G.char.name, key = charKey(url, net.room?.id ?? 'lan', world, name);
@@ -359,14 +358,12 @@ export function initMp(h: MpHooks) {
   createBtn.onclick = () => {
     const name = newName.value.trim();
     if (!name) { status.textContent = tl('Give the new server a name first.'); newName.focus(); return; }
-    if (mine.checked && G.char.cw) { status.textContent = EDITOR_SOLO; return; } // (0.208) the others have no copy of its file
-    start(serverUrl('', location), undefined, { name, world: mine.checked ? G.char.world : undefined, rivals: rivalsBox.checked || undefined });
+    start(serverUrl('', location), undefined, { name, world: mine.checked ? G.char.world : undefined, rivals: rivalsBox.checked || undefined, maps: mine.checked ? mapsFor(G.char) : undefined }); // (0.211) a drawn world goes with its files
     newName.value = '';
   };
   addr.onkeydown = (e) => e.stopPropagation();
   hostBtn.onclick = () => {
     if (!/^https?:$/.test(location.protocol) || !location.host) { status.textContent = tl('To host, start the game with start-gry.bat (it runs the server).'); return; }
-    if (G.char.cw) { status.textContent = EDITOR_SOLO; return; }
     start(serverUrl('', location));
   };
   joinBtn.onclick = () => {
