@@ -3,6 +3,9 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.211.2', date: '2026-10-14', title: 'Bandits use their gates', notes: [
+    'A camp\'s bandits now leave and come back through the gates in its palisade, and walk round the outside of it, instead of standing pressed against the stakes when you are on the other side.',
+  ] },
   { v: '0.211.1', date: '2026-10-14', title: 'Solid rocks and walls', notes: [
     'Rocks are solid to their real faces: you can no longer walk into a boulder. A stone no higher than a step is stepped onto, a taller one can be jumped onto and stood on.',
     'Creatures, machines and bandits no longer pass through trees, rocks, the ruins of the dead cities, houses, halls, camp palisades, village fences and other walls; they walk round a trunk or a corner instead of standing stuck against it.',

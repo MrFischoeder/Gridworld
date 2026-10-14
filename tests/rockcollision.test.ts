@@ -33,3 +33,35 @@ describe('0.211.1: foes walk round what blocks them', () => {
   });
   it('stands still when boxed in', () => { expect(footStep(0, 0, 0.5, 0, () => true)).toBeNull(); });
 });
+
+describe('0.211.2: camp folk use the gates', async () => {
+  const { generateCamp, campGates, campWay, inPoly } = await import('../src/gen/camps');
+  const camps = [70, 71, 72, 73, 74, 75, 76, 77].map((id) => generateCamp(4242, { id, type: 'camp', name: 'Test', x: 0, z: 0, rect: { x0: -10, z0: -10, x1: 10, z1: 10 } } as never, 5));
+  const walk = (c: (typeof camps)[0], x: number, z: number, tx: number, tz: number) => {
+    const sx0 = x, sz0 = z;
+    const solid = new Set(c.palisade.map((o) => o.x + ',' + o.z));
+    for (let i = 0; i < 800; i++) {
+      const w = campWay(c, x, z, tx, tz) ?? [tx, tz], dx = w[0] - x, dz = w[1] - z, L = Math.hypot(dx, dz);
+      if (L < 0.2) break;
+      x += dx / L * 0.2; z += dz / L * 0.2;
+      if (solid.has(Math.floor(x) + ',' + Math.floor(z))) throw new Error('sides ' + c.ring.length + ' from ' + [sx0, sz0] + ' to ' + [tx, tz] + ' hit at ' + x.toFixed(2) + ',' + z.toFixed(2) + ' aim ' + JSON.stringify(w) + ' gates ' + JSON.stringify(campGates(c)));
+    }
+    return Math.hypot(tx - x, tz - z);
+  };
+  it('has 6 to 8 sides and two openings in the palisade', () => {
+    expect(new Set(camps.map((c) => c.ring.length)).size).toBeGreaterThan(1);
+    for (const c of camps) {
+      const solid = new Set(c.palisade.map((o) => o.x + ',' + o.z)), g = campGates(c);
+      expect(g.length).toBe(2);
+      for (const [x, z] of g) expect(solid.has(Math.floor(x) + ',' + Math.floor(z))).toBe(false);
+    }
+  });
+  it('leads out through a gate, in through a gate and round the outside, never through the palisade', () => {
+    for (const c of camps) {
+      for (const [tx, tz] of [[30, 2], [-25, -20], [5, 30], [-30, 0], [2, -20]]) expect(walk(c, 3, 1, tx, tz)).toBeLessThan(0.5);
+      for (const [sx, sz] of [[25, -3], [-20, 0], [12, 12], [0, 25], [-14, -14], [20, 1]]) expect(walk(c, sx, sz, 1, 2)).toBeLessThan(0.5);
+      for (const [sx, sz, tx, tz] of [[0, 14, 2, -20], [16, 0, -16, 1], [12, 12, -12, -12], [-15, 3, 15, -4]]) expect(walk(c, sx, sz, tx, tz)).toBeLessThan(0.5);
+      expect(inPoly(c.ring, 0, 0, 3, 1)).toBe(true);
+    }
+  });
+});

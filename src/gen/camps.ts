@@ -106,3 +106,47 @@ export function ringCells(poly: [number, number][]): [number, number][] {
   }
   return [...cells.values()].sort((a, b) => a[1] - b[1] || a[0] - b[0]);
 }
+
+/** (0.211.2) The camp's two openings (`generateCamp` leaves the palisade's cells with x in [cx − 2, cx + 2) out):
+ *  where the line x = cx crosses the ring, north and south. */
+export function campGates(c: Pick<CampMap, 'ring' | 'rect'>): [number, number][] {
+  const cx = (c.rect.x0 + c.rect.x1) / 2, cz = (c.rect.z0 + c.rect.z1) / 2, out: [number, number][] = [];
+  for (const s of [-1, 1]) { let d = 0; while (d < 60 && inPoly(c.ring, cx, cz, cx, cz + s * (d + 0.25))) d += 0.25; out.push([cx, cz + s * d]); }
+  return out;
+}
+/** (0.211.2) Where someone at (x, z) heading for (tx, tz) should walk to when the palisade stands between them (one
+ *  inside the ring, the other outside): the nearer opening's point on their own side (2 m from the wall), and while in
+ *  a gateway (within 0.9 m of its middle and 2.3 m of the wall) on through it to 3.2 m on the target's side; both outside
+ *  with the camp between them: round its corners; null when no wall is in the way. */
+export function campWay(c: Pick<CampMap, 'ring' | 'rect'>, x: number, z: number, tx: number, tz: number): [number, number] | null {
+  const cx = (c.rect.x0 + c.rect.x1) / 2, cz = (c.rect.z0 + c.rect.z1) / 2;
+  const inA = inPoly(c.ring, cx, cz, x, z), inB = inPoly(c.ring, cx, cz, tx, tz), gates = campGates(c);
+  const pass = inA !== inB && gates.find(([gx, gz]) => Math.abs(x - gx) < 0.9 && Math.abs(z - gz) < 2.3); // in a gateway: on through it
+  if (pass) { const s = Math.sign(pass[1] - cz) || 1; return inB ? [pass[0], pass[1] - 3.2 * s] : [pass[0], pass[1] + 3.2 * s]; }
+  if (inA === inB) { if (inA) return null; const r = round(c, cx, cz, x, z, [tx, tz]); return r[0] === tx && r[1] === tz ? null : r; } // both outside: round the wall
+  let best: [number, number] | null = null, bd = Infinity;
+  for (const g of gates) { const d = Math.hypot(g[0] - x, g[1] - z) + Math.hypot(tx - g[0], tz - g[1]); if (d < bd) { bd = d; best = g; } }
+  const [gx, gz] = best!, s = Math.sign(gz - cz) || 1;
+  return inA ? [gx, gz - 2 * s] : round(c, cx, cz, x, z, [gx, gz + 2 * s]);
+}
+/** From outside the ring to `goal` (outside too), going round the palisade: straight when the way does not cut
+ *  through it, else the next of its corners (pushed 3 m out) the shorter way round, stepping
+ *  away from the camp first while the way to that corner still hugs the palisade. */
+function round(c: Pick<CampMap, 'ring'>, cx: number, cz: number, x: number, z: number, goal: [number, number]): [number, number] {
+  const ex = goal[0] - x, ez = goal[1] - z, t = Math.max(0, Math.min(1, ((cx - x) * ex + (cz - z) * ez) / (ex * ex + ez * ez || 1)));
+  const reach = Math.max(...c.ring.map(([px, pz]) => Math.hypot(px - cx, pz - cz))) + 1;
+  if (Math.hypot(x + ex * t - cx, z + ez * t - cz) > reach) return goal; // the line misses the camp
+  const cuts = (bx: number, bz: number, m: number) => { const k = Math.ceil(Math.hypot(bx - x, bz - z) / 0.3); for (let i = 1; i < k; i++) if (inPoly(c.ring, cx, cz, x + (bx - x) * i / k, z + (bz - z) * i / k, m)) return true; return false; };
+  if (!cuts(goal[0], goal[1], -1.6)) return goal;
+  const wrap = (a: number) => Math.atan2(Math.sin(a), Math.cos(a)), ta = Math.atan2(z - cz, x - cx);
+  const dir = Math.sign(wrap(Math.atan2(goal[1] - cz, goal[0] - cx) - ta)) || 1;
+  let best: [number, number] = goal, bd = Infinity;
+  for (const [px, pz] of c.ring) {
+    const d = Math.hypot(px - cx, pz - cz), q: [number, number] = [px + (px - cx) / d * 3, pz + (pz - cz) / d * 3];
+    const a = wrap(Math.atan2(q[1] - cz, q[0] - cx) - ta) * dir;
+    if (a > 0.05 && a < bd) { bd = a; best = q; }
+  }
+  if (!cuts(best[0], best[1], -1.4)) return best;
+  const r = Math.hypot(x - cx, z - cz) || 1; // hard by the wall (out of a gate, say): away from the camp first
+  return [x + (x - cx) / r * 1.5, z + (z - cz) / r * 1.5];
+}

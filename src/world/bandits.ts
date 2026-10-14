@@ -22,7 +22,7 @@ import { onKill, onCampCleared } from './quests';
 import { driving, vehicles, damageVehicle, rayVehicle, seatPoint } from './vehicles';
 import type { SpawnEnv } from './creatures';
 import { mayspawn, BANDIT_COST } from './threat';
-import type { BanditRole, CampMap } from '../gen/camps';
+import { campWay, type BanditRole, type CampMap } from '../gen/camps';
 import { tl } from '../i18n';
 
 export const BANDIT = 0xffb347, BOSS_COLOR = 0xff6a4a;
@@ -78,7 +78,10 @@ export function spawnBandit(role: BanditRole, at: THREE.Vector3, level: number, 
 
 // ---------- camps ----------
 const campClearedRecently = (id: number) => { const t = G.char.camps[id]; return !!t && Date.now() - t < CAMP_RESPAWN_MS; };
+/** (0.211.2) The camps' maps, for finding the way out through a gate (`campWay`). */
+const campMaps = new Map<number, CampMap>();
 export function spawnCamp(c: CampMap) {
+  campMaps.set(c.id, c);
   if (!env || campClearedRecently(c.id) || W.bandits.some((b) => b.campId === c.id) || !spawnAuthority()) return; // another player here holds the camp's bandits
   const lv = env.danger(c.fire.x, c.fire.z), group: Bandit[] = [];
   for (const s of c.spawns) spawnBandit(s.role, V(s.x, c.y + 0.9, s.z), lv, group, c.id);
@@ -101,9 +104,15 @@ function stuckIn(b: Bandit) {
   return foeRules.body(b.p.x, Number.isFinite(gy) ? gy : b.p.y - 0.9, b.p.z, BODY_R);
 }
 function walk(b: Bandit, dx: number, dz: number, speed: number, dt: number) {
-  const L = Math.hypot(dx, dz);
+  let L = Math.hypot(dx, dz);
   b.speed = 0;
   if (L < 1e-3 || !env) return;
+  // (0.211.2) a camp's own folk go out and in through its gates, not into the palisade
+  const cm = b.campId !== undefined ? campMaps.get(b.campId) : undefined;
+  if (cm) {
+    const k = Math.max(1, 3 / L), w = campWay(cm, b.p.x, b.p.z, b.p.x + dx * k, b.p.z + dz * k);
+    if (w) { dx = w[0] - b.p.x; dz = w[1] - b.p.z; L = Math.hypot(dx, dz); if (L < 1e-3) return; }
+  }
   const sx = dx / L * speed * dt, sz = dz / L * speed * dt;
   const to = footStep(b.p.x, b.p.z, sx, sz, (x, z) => blocked(b, x, z), stuckIn(b));
   if (to) { b.p.x = to[0]; b.p.z = to[1]; }
