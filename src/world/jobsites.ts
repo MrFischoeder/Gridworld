@@ -2,6 +2,7 @@
 // that rises as the work goes on, a stack of timber that shrinks, a sign with how far along it is) and the builders at
 // work on it (two hammering, one carrying from the stack). When a job's time is up any game that sees it finishes it
 // (gen/jobs.ts): the state change is the same on every game, so in multiplayer it does not matter who does.
+import { play } from './sound';
 import * as THREE from 'three';
 import { G } from '../game';
 import { OW, reloadStruct } from './overworld';
@@ -127,6 +128,7 @@ function label(lines: string[]): THREE.Sprite {
   sp.scale.set(w, w * cv.height / cv.width, 1); return sp;
 }
 let syncT = 0, finishT = 0;
+const knock = new THREE.Vector3();
 /** Main loop: finish the jobs whose time is up (any village), draw the sites near you and move their builders. */
 export function updateJobSites(dt: number) {
   if ((finishT -= dt) <= 0) { finishT = 1; finishDue(); }
@@ -141,6 +143,7 @@ export function updateJobSites(dt: number) {
       f.g.position.set(x, T ? T.heightAt(s.g.position.x + x, s.g.position.z + z) - s.y : 0, z); f.g.rotation.y = Math.atan2(bx - ax, bz - az) + (cyc < 0.5 ? 0 : Math.PI);
     } else {
       poseRig(f.rig, { swing: 0, strike: (hd.phase * 0.85) % 1 });
+      if (((hd.phase - dt) * 0.85) % 1 < 0.5 && (hd.phase * 0.85) % 1 >= 0.5) play('hammer', { at: f.g.getWorldPosition(knock), vol: 0.5, far: 45, jitter: 0.1 }); // the blow lands
       f.g.position.set(hd.x, T ? T.heightAt(s.g.position.x + hd.x, s.g.position.z + hd.z) - s.y : 0, hd.z); f.g.rotation.y = hd.face;
     }
   }

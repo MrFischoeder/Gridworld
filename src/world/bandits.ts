@@ -338,6 +338,7 @@ const FALL = 0.85, LIE = 6, SINK = 1.6;
 const groundUnder = (x: number, z: number, fallback: number) => { const g = G.ground ? G.ground(x, z) : -Infinity; return Number.isFinite(g) && g > fallback - 3 ? Math.max(g, fallback - 0.2) : fallback; };
 /** Take `b` out of the fight and let him fall (away from `from`, when given). */
 export function fallBandit(b: Bandit, from?: THREE.Vector3) {
+  play('die_bandit', { at: b.p, vol: 0.8, far: 50, jitter: 0.12 });
   const i = W.bandits.indexOf(b); if (i >= 0) W.bandits.splice(i, 1);
   const j = b.group.indexOf(b); if (j >= 0) b.group.splice(j, 1);
   // falls backwards if the blow came from in front of him, else forwards

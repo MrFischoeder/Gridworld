@@ -1,4 +1,6 @@
 // Developer console, opened with ~ (the backquote key). Cheats for testing.
+import { play, soundInfo, volumes } from '../world/sound';
+import { SFX_NAMES, type SfxName } from '../audio/synth';
 import { myHomeId } from '../world/rivals';
 import { installSites } from '../gen/installs';
 import { citySites } from '../gen/cities';
@@ -37,6 +39,10 @@ function print(text: string, err = false) {
 }
 
 const COMMANDS: Record<string, { help: string; run: (args: string[]) => string }> = {
+  sound: {
+    help: '[name] the sound system\'s state, or play a sound (e.g. sound shot_rifle)',
+    run: (a) => { if (a[0]) { if (!(SFX_NAMES as string[]).includes(a[0])) return 'sounds: ' + SFX_NAMES.join(' '); play(a[0] as SfxName); } return JSON.stringify(soundInfo()) + ' ' + JSON.stringify(volumes); },
+  },
   weather: {
     help: '[clear|overcast|rain|fog|storm|auto] force the weather',
     run: (a) => {

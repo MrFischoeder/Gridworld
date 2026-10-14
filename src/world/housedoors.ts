@@ -4,6 +4,7 @@
 // may open them by day; at night they are locked. The houses the heroes buy (gen/homes.ts) open only for their owner:
 // locked while for sale or someone else's. Opening or shutting a door by hand holds until the next dawn or dusk. From inside a building its
 // door always opens. Runtime only (nothing saved but the houses you own); villagers walk through (they have keys).
+import { play } from './sound';
 import * as THREE from 'three';
 import { G } from '../game';
 import { HOUSE, type Building, type VillageMap } from '../gen/village';
@@ -159,5 +160,6 @@ export function toggleHouseDoor(d: Door): string {
   const open = isOpen(d);
   if (!open) { const why = lockedWhy(d); if (why) return why + '.'; }
   d.manual = { open: !open, key: phase(G.char.time).key };
+  play('door', { vol: 0.6, rate: open ? 1.15 : 1, share: 25 });
   return '';
 }

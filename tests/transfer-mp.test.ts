@@ -18,6 +18,7 @@ vi.mock('../src/ui/hud', () => ({
 }));
 vi.mock('../src/character', () => ({ calcStats: vi.fn(), saveChar: vi.fn(), stowHeld: vi.fn(), handsChanged: vi.fn(), packVol: () => 1000 }));
 vi.mock('../src/ui/input', () => ({ lockPointer: vi.fn() }));
+vi.mock('../src/world/sound', () => ({ play: vi.fn() }));
 // the container opens beside the backpack (ui/backpack.ts)
 const pack = vi.hoisted(() => ({ side: null as any }));
 vi.mock('../src/ui/backpack', () => ({

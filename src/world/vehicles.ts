@@ -1,6 +1,6 @@
 // Vehicles: wireframe bodies, arcade driving over the terrain, seats, and trunks for storing items.
 import { vehiclesOpen } from '../gen/settlement';
-import { play } from './sound';
+import { play, hum } from './sound';
 import * as THREE from 'three';
 import { scene, camera, V, GRID } from './render';
 import { G } from '../game';
@@ -417,7 +417,7 @@ export function fireCannon(dt: number) {
 /** Fire a roof cannon along the camera (yours, or another player's you stand at: world/ride.ts). */
 export function shootCannon(turret: THREE.Object3D) {
   const muzzle = V(0, 0.18, 1.3); turret.localToWorld(muzzle);
-  play('shot_shotgun', { at: muzzle, vol: 0.9, rate: 0.65, far: 150 });
+  play('cannon', { at: muzzle, vol: 0.9, far: 150, share: 160 });
   const d = new THREE.Vector3(); camera.getWorldDirection(d);
   let tHit = rayWorld(muzzle, d, 90), hit = null;
   for (const t of foes()) {
@@ -671,6 +671,7 @@ export function updateDriving(dt: number) {
   const want = wheel ? Math.max(-1, Math.min(1, (k.KeyW ? 1 : 0) - (k.KeyS ? 1 : 0) - stick.dy)) : 0;
   const dry = outOfFuel(v.st.parts), thr = dry ? 0 : want; // a dry tank: it only rolls and brakes
   if (dry && want) dryWarn();
+  if (!dry) hum('mine', 'engine', 0.32 + Math.abs(thr) * 0.12, (v.st.model === 'mastodon' ? 0.75 : 0.95) + Math.min(1.3, Math.abs(v.speed) / 18) + Math.abs(thr) * 0.1); // (0.212.1) your engine
   const steer = wheel ? Math.max(-1, Math.min(1, (k.KeyA ? 1 : 0) - (k.KeyD ? 1 : 0) - stick.dx)) : 0;
   const brake = wheel ? k.Space || G.touchJump : true;
   // throttle, rolling drag, brakes, and gravity along the slope

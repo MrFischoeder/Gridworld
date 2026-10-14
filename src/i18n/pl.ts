@@ -3916,4 +3916,7 @@ export const PL: Record<string, string> = {
   "{0} sound effects (8-bit), files in the sfx folder; the list sfx/sounds.json says which file each sound plays.": "Efektów dźwiękowych (8-bitowych): {0}, pliki w folderze sfx; lista sfx/sounds.json mówi, który plik gra każdy dźwięk.",
   "Music: {0} tracks listed in music/music.json.": "Muzyka: utworów w music/music.json: {0}.",
   "No music yet: put your tracks (mp3 or ogg) in the music folder and list them in music/music.json (menu, world, night, underground, fight).": "Na razie bez muzyki: wrzuć swoje utwory (mp3 albo ogg) do folderu music i wpisz je do music/music.json (menu, world, night, underground, fight).",
+  "Sound is on ({0} Hz); {1} sounds played so far.": "Dźwięk działa ({0} Hz); odtworzono już {1} dźwięków.",
+  "This browser has no Web Audio: no sound.": "Ta przeglądarka nie ma Web Audio: nie będzie dźwięku.",
+  "Sound is asleep: click anywhere on the page to wake it.": "Dźwięk śpi: kliknij gdziekolwiek na stronie, żeby go obudzić.",
 };

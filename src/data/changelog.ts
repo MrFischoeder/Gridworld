@@ -3,6 +3,12 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.213.0', date: '2026-10-14', title: 'More sound, heard by the others', notes: [
+    'Sound wakes more reliably: it is ready as the page loads and starts with any click, key or touch, and tries again by itself while you play. The Sound panel says whether it is on and how many sounds have played; the console command `sound` shows the same and plays any sound by name.',
+    'New sounds: vehicle engines (yours, raiders\' and the other players\', their pitch rising with speed), the roof cannon, doors, chests, eating and drinking, thunder after the lightning, gold coming in, levelling up, chopping trees and breaking rocks, splashing into water, button clicks, creatures and bandits dying, and builders hammering at a building site.',
+    'Online the others now hear your shots, blade swings, reloads, the cannon, jumps, landings, splashes, chopping and doors, from where you stand; your steps and your engine were already heard from your movement.',
+    'The server passes the new sound messages on: update it (an older server simply leaves the others without your shots).',
+  ] },
   { v: '0.212.0', date: '2026-10-14', title: 'Sound', notes: [
     'The game has sound: simple 8-bit effects for every gun, reloading, an empty magazine, blade swings and hits, your footsteps (on the ground, on hard floors and in water), jumps and landings, and being hurt.',
     'Machines clank as they walk and whine with their servos, robots, bandits and turrets are heard when they fire, explosions boom, creatures growl, snort, squeak and screech, and the other players\' steps are heard too. Sounds come from where they happen: fainter further off, left or right.',

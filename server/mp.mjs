@@ -72,7 +72,7 @@ export const MP = { path: '/mp', port: 7777, max: 8, rate: 100, nameMax: 20, cha
 /** What players may pass to each other through 'cast' (everyone else in the room) and 'to' (one player). */
 /** Account messages (one each, on a connection of their own). */
 const AUTH = new Set(['register', 'login', 'logout', 'passwd', 'verify', 'resend', 'forgot', 'reset', 'email', 'profile']);
-const RELAY = new Set(['foes', 'bolt', 'fhit', 'kill', 'hurt', 'thit', 'boat', 'row']);
+const RELAY = new Set(['foes', 'bolt', 'fhit', 'kill', 'hurt', 'thit', 'boat', 'row', 'snd']);
 /** Protocol version: a client with another one is refused (the game shows why). */
 export const PROTOCOL = 15;
 

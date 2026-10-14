@@ -1,6 +1,7 @@
 // Wild creatures of the open world: Ravager packs, territorial Brambles and diving Leechwings, Gnawer nests,
 // Skitterwing flocks fluttering low in the near wilds, and in the sea Sea Lurkers and shoals of Silverfin.
 // Spawns and movement use Math.random (unsaved, like drones); models are built from PropBatch.
+import { play } from './sound';
 import { hurtPlayer } from './damage';
 import * as THREE from 'three';
 import { nearX } from '../gen/regions';
@@ -822,6 +823,7 @@ interface Dead { c: Creature; t: number; side: 1 | -1; land: number; vy: number;
 const dead: Dead[] = [];
 const LIE_C = 5, SINK_C = 1.5, DRAINED = 0x8a6a3a;
 export function fallCreature(c: Creature) {
+  play('die_creature', { at: c.p, vol: 0.8, far: 60, rate: c.kind === 'bramble' ? 0.6 : c.kind === 'gnawer' || c.kind === 'skitter' ? 1.8 : c.kind === 'silverfin' ? 2.2 : 1 });
   const i = W.creatures.indexOf(c); if (i >= 0) W.creatures.splice(i, 1);
   if (c.pack) { const j = c.pack.indexOf(c); if (j >= 0) c.pack.splice(j, 1); }
   const away = V(c.p.x - G.pos.x, 0, c.p.z - G.pos.z).normalize();

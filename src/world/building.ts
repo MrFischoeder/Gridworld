@@ -6,6 +6,7 @@
 // part you look at with its tool in your hands (hammer for wood, torch for metal;
 // half the materials come back), E opens and shuts doors, L sets a door's code lock. The rules are pure, in
 // gen/base.ts; the parts are saved with the claim.
+import { play } from './sound';
 import * as THREE from 'three';
 import { scene } from './render';
 import { G } from '../game';
@@ -163,6 +164,7 @@ const authed = (p: Part) => !p.lock || !p.lock.on || p.lock.auth.includes(G.char
 function swing(d: { c: Claim; p: Part }) {
   d.p.open = !d.p.open;
   if (!d.p.open && baseHit(G.pos.x, G.pos.y, G.pos.z, 0.3)) { d.p.open = true; logLine(tl('You are standing in the doorway.')); return; }
+  play('door', { vol: 0.6, rate: d.p.open ? 1 : 1.15, share: 25 });
   saveChar(); redraw(d.c);
 }
 /** E at a door: open or shut it; a locked one asks for its code first. */

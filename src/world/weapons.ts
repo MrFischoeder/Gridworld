@@ -223,11 +223,11 @@ export function reload() {
   if (G.weapon !== 0 || !g || G.reloadT > 0 || G.ammo >= G.gun.mag || !armed()) return;
   if (reserve() <= 0) {
     const now = performance.now() / 1000;
-    play('dry', { vol: 0.6 });
+    play('dry', { vol: 0.6, share: 8 });
     if (now - dryAt > 3) { dryAt = now; logLine(TL`No ${item(g.ammo).name} left for the ${g.name}. Search chests, stashes and the fallen, or have a blacksmith make more.`); }
     return;
   }
-  G.reloadT = G.gun.reload; hudWeapon(); play('reload', { vol: 0.6 });
+  G.reloadT = G.gun.reload; hudWeapon(); play('reload', { vol: 0.6, share: 15 });
 }
 /** Reload timer, and the aiming zoom (right mouse button / AIM on touch): the camera narrows its field of view. */
 export function updateGun(dt: number, onFoot: boolean) {
@@ -354,7 +354,7 @@ function shoot() {
     ray(p, G.gun.dmg * G.S.bm);
   }
   makeNoise(camera.position, G.gun.noise); noteShot();
-  play(g.look === 'smg' ? 'shot_smg' : `shot_${g.look}`, { vol: G.gun.noise < 30 ? 0.45 : 0.85, jitter: 0.03 }); // (0.212) a suppressor quietens it
+  play(g.look === 'smg' ? 'shot_smg' : `shot_${g.look}`, { vol: G.gun.noise < 30 ? 0.45 : 0.85, jitter: 0.03, share: G.gun.noise < 30 ? 30 : 130 }); // (0.212) a suppressor quietens it
   const kick = kickRecoil(recoil, RECOIL[g.look] ?? RECOIL.blaster, aimK, G.crouch, Math.random() * 2 - 1);
   G.pitch = Math.min(1.5, G.pitch + kick.pitch); G.yaw += kick.yaw;
 }
@@ -362,7 +362,7 @@ function shoot() {
 function slash(tired: boolean) {
   const m = curMelee()!;
   swingDur = G.swingT = tired ? Math.max(0.45, m.rate * 1.1) : Math.min(0.5, m.rate * 0.62);
-  play('swing', { vol: tired ? 0.4 : 0.7, rate: m.look === 'sledge' ? 0.7 : m.look === 'blade' ? 1.2 : 1 });
+  play('swing', { vol: tired ? 0.4 : 0.7, rate: m.look === 'sledge' ? 0.7 : m.look === 'blade' ? 1.2 : 1, share: 20 });
   const o = camera.position.clone(), f = new THREE.Vector3(); camera.getWorldDirection(f);
   const right = new THREE.Vector3().crossVectors(f, camera.up).normalize(), up = new THREE.Vector3().crossVectors(right, f);
   const pts: THREE.Vector3[] = [], reach = G.S.range, wide = m.look === 'spear' ? 0.25 : 0.7;

@@ -42,13 +42,30 @@ export const SFX = {
   squeak_gnawer: { voices: [{ w: 'square', f: [2200, 3100], d: 0.08, duty: 0.25, v: 0.4 }, { w: 'square', f: [2700, 2000], t: 0.1, d: 0.07, duty: 0.25, v: 0.35 }] },
   screech_leechwing: { voices: [{ w: 'saw', f: [1650, 880], d: 0.5, a: 0.03, v: 0.45, vib: [25, 0.08] }, { w: 'noise', f: [5200, 4000], d: 0.3, v: 0.18 }] },
   chirp_skitter: { voices: [{ w: 'square', f: [3000, 4100], d: 0.04, v: 0.3 }, { w: 'square', f: [3200, 4300], t: 0.07, d: 0.04, v: 0.3 }, { w: 'square', f: [2900, 3900], t: 0.14, d: 0.04, v: 0.25 }] },
+  // (0.212.1) the world round you
+  engine: { voices: [{ w: 'saw', f: [55, 55], d: 0.4, a: 0.001, curve: 0, v: 0.6 }, { w: 'square', f: [110, 110], d: 0.4, a: 0.001, curve: 0, duty: 0.25, v: 0.3 }, { w: 'noise', f: [700, 700], d: 0.4, a: 0.001, curve: 0, v: 0.15 }] },
+  cannon: { voices: [{ w: 'noise', f: [4000, 300], d: 0.6, v: 1, curve: 1.3 }, { w: 'square', f: [110, 30], d: 0.35, v: 0.8 }] },
+  door: { voices: [{ w: 'saw', f: [320, 190], d: 0.38, a: 0.03, v: 0.4, vib: [18, 0.1] }, { w: 'noise', f: [1500, 500], t: 0.36, d: 0.08, v: 0.55, curve: 2.5 }, { w: 'tri', f: [120, 70], t: 0.36, d: 0.08, v: 0.5 }] },
+  chest: { voices: [{ w: 'noise', f: [4500, 3500], d: 0.03, v: 0.5 }, { w: 'square', f: [380, 640], t: 0.04, d: 0.16, duty: 0.25, v: 0.35 }, { w: 'tri', f: [180, 120], t: 0.2, d: 0.08, v: 0.4 }] },
+  eat: { voices: [{ w: 'noise', f: [2600, 1400], d: 0.06, v: 0.6, curve: 2 }, { w: 'noise', f: [2400, 1200], t: 0.16, d: 0.06, v: 0.55, curve: 2 }, { w: 'noise', f: [2800, 1300], t: 0.32, d: 0.07, v: 0.5, curve: 2 }] },
+  drink: { voices: [{ w: 'tri', f: [380, 820], d: 0.08, v: 0.5 }, { w: 'tri', f: [420, 900], t: 0.13, d: 0.08, v: 0.5 }, { w: 'tri', f: [360, 780], t: 0.26, d: 0.09, v: 0.45 }] },
+  thunder: { voices: [{ w: 'noise', f: [1600, 60], d: 2.4, a: 0.03, v: 1, curve: 1.1 }, { w: 'noise', f: [300, 80], t: 0.25, d: 1.8, a: 0.2, v: 0.7, curve: 1.3 }, { w: 'square', f: [55, 30], d: 1.2, v: 0.3 }] },
+  coin: { voices: [{ w: 'square', f: [988, 988], d: 0.07, duty: 0.5, v: 0.35 }, { w: 'square', f: [1319, 1319], t: 0.07, d: 0.25, duty: 0.5, v: 0.35 }] },
+  levelup: { voices: [523, 659, 784, 1047].map((f, i) => ({ w: 'square' as const, f: [f, f] as [number, number], t: i * 0.09, d: i === 3 ? 0.35 : 0.09, duty: 0.5, v: 0.35 })) },
+  chop: { voices: [{ w: 'noise', f: [2600, 900], d: 0.09, v: 0.7, curve: 2 }, { w: 'square', f: [190, 85], d: 0.1, v: 0.6 }] },
+  mine: { voices: [{ w: 'square', f: [1750, 1600], d: 0.08, duty: 0.25, v: 0.45 }, { w: 'noise', f: [6000, 2500], d: 0.07, v: 0.6, curve: 2.5 }, { w: 'tri', f: [2600, 2500], t: 0.02, d: 0.2, v: 0.2 }] },
+  splash: { voices: [{ w: 'noise', f: [3200, 600], d: 0.5, a: 0.01, v: 0.8, curve: 1.6 }, { w: 'tri', f: [240, 90], d: 0.15, v: 0.4 }] },
+  click: { voices: [{ w: 'square', f: [1100, 1100], d: 0.025, duty: 0.5, v: 0.4 }] },
+  die_creature: { voices: [{ w: 'saw', f: [460, 70], d: 0.55, a: 0.02, v: 0.55, vib: [22, 0.1] }, { w: 'noise', f: [900, 250], t: 0.4, d: 0.15, v: 0.4 }] },
+  die_bandit: { voices: [{ w: 'square', f: [330, 120], d: 0.35, duty: 0.5, v: 0.5, vib: [14, 0.08] }, { w: 'noise', f: [1100, 300], t: 0.3, d: 0.15, v: 0.5, curve: 2 }] },
+  hammer: { voices: [{ w: 'square', f: [700, 620], d: 0.05, v: 0.5 }, { w: 'noise', f: [4000, 2000], d: 0.04, v: 0.5, curve: 3 }] },
   // things picked up
   pickup: { voices: [{ w: 'square', f: [660, 660], d: 0.06, duty: 0.5, v: 0.35 }, { w: 'square', f: [880, 880], t: 0.06, d: 0.06, duty: 0.5, v: 0.35 }, { w: 'square', f: [1320, 1320], t: 0.12, d: 0.1, duty: 0.5, v: 0.35 }] },
 } satisfies Record<string, Sfx>;
 export type SfxName = keyof typeof SFX;
 export const SFX_NAMES = Object.keys(SFX) as SfxName[];
 /** Sounds rendered in more than one take (a footstep never twice the same). */
-export const VARIANTS: Partial<Record<SfxName, number>> = { step_ground: 3, step_hard: 3, step_water: 2, robot_step: 2, shot_smg: 2 };
+export const VARIANTS: Partial<Record<SfxName, number>> = { step_ground: 3, step_hard: 3, step_water: 2, robot_step: 2, shot_smg: 2, chop: 2, mine: 2 };
 /** The files of a sound: name.wav, or name_1.wav, name_2.wav... */
 export const sfxFiles = (n: SfxName) => { const k = VARIANTS[n] ?? 1; return k === 1 ? [n + '.wav'] : Array.from({ length: k }, (_, i) => `${n}_${i + 1}.wav`); };
 

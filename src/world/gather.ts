@@ -4,6 +4,7 @@
 // are kept while you stay. Some rocks carry a vein of ore (gen/trees.ts `oreOf`: iron or copper, mostly in the
 // mountains), which takes longer and gives ore lumps besides the stones. Felled trees and broken rocks are player
 // changes (char.harvest, like picked plants) and come back after a few game days (data/crafting GATHER; a vein later).
+import { play } from './sound';
 import * as THREE from 'three';
 import { G } from '../game';
 import { GATHER, ROCK_MIN_R } from '../data/crafting';
@@ -123,6 +124,7 @@ function blow(t: Target) {
   const at = new THREE.Vector3(t.x, t.y + (t.kind === 'tree' ? 1.1 : 0.5), t.z);
   burst(at, t.kind === 'tree' ? 0xb8b060 : t.ore ? ORE_COLOR[t.ore] : 0xc8c8b0, 8, 0.5);
   makeNoise(at, g.noise);
+  play(t.kind === 'tree' ? 'chop' : 'mine', { at, vol: 0.8, far: 60, share: 50 });
   const n = (blows.get(t.key) ?? 0) + 1;
   if (n < need(t)) { blows.set(t.key, n); return; }
   blows.delete(t.key); stop();

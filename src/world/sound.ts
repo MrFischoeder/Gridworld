@@ -4,11 +4,11 @@
 // public/music/music.json (lists of files by mood, empty at first). Volumes (master, effects, music) are the player's
 // own (localStorage 'gridWorld.audio'), set in the menu's Sound panel (ui/sound.ts).
 // Multiplayer: every game plays what it sees itself (its player, the foes it runs or copies, the other players' steps);
-// nothing is sent.
+// (0.212.1) a player's own loud sounds (shots, blade swings, reloads, the cannon, jumps, landings, splashes, chopping)
+// are also relayed ({t:'snd', loc, l}) so the others in the same place hear them where that player stands.
 import * as THREE from 'three';
-import { camera } from './render';
 import { G, W } from '../game';
-import { net } from '../net/client';
+import { net, relay, onRelay, type Relay } from '../net/client';
 import { SFX_NAMES, SFX_RATE, render, sfxFiles, MUSIC_MOODS, type SfxName, type SoundList, type MusicList } from '../audio/synth';
 import { FLYERS, SWIMMERS, type CreatureKind } from '../data/creatures';
 
@@ -37,11 +37,18 @@ function audio(): AudioContext | null {
   void loadSounds();
   return ctx;
 }
-/** Browsers start sound only after the player touches the page: the first key or click wakes it. */
+/** Browsers start sound only after the player touches the page. (0.212.1) The context is made at once (so the sounds
+ *  are ready) and woken by every click, key or touch while it sleeps, and tried again every second while playing
+ *  (a page that has been touched once may resume it then); a click on any button clicks. */
 export function initSound() {
-  const wake = () => { const c = audio(); if (c && c.state === 'suspended') void c.resume(); };
-  for (const ev of ['pointerdown', 'keydown']) addEventListener(ev, wake, { capture: true });
+  audio();
+  const wake = () => { const c = audio(); if (c && c.state !== 'running') void c.resume().catch(() => { /* not yet */ }); };
+  for (const ev of ['pointerdown', 'mousedown', 'keydown', 'touchend', 'click']) addEventListener(ev, wake, { capture: true });
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) wake(); });
+  addEventListener('click', (e) => { const b = (e.target as HTMLElement | null)?.closest?.('button'); if (b && !(b as HTMLButtonElement).disabled) play('click', { vol: 0.35 }); }, { capture: true });
 }
+/** How many sounds have started since the page loaded (the Sound panel and the console's `sound` show it). */
+export let played = 0;
 export function applyVolumes() {
   if (!ctx) return;
   master.gain.value = volumes.mute ? 0 : volumes.master;
@@ -73,10 +80,16 @@ async function loadSounds() {
   void loadMusic();
 }
 
-export interface PlayOpts { at?: { x: number; y: number; z: number }; vol?: number; rate?: number; /** random pitch spread */ jitter?: number; /** metres it carries */ far?: number }
+export interface PlayOpts { at?: { x: number; y: number; z: number }; vol?: number; rate?: number; /** random pitch spread */ jitter?: number; /** metres it carries */ far?: number;
+  /** (0.212.1) online: the others in this place hear it too, carrying `share` metres (at `at`, else where you stand) */ share?: number }
 const right = new THREE.Vector3(), fwd = new THREE.Vector3();
+/** Where you hear from: the game's camera, given by main.ts (so this module stays free of the renderer and anything
+ *  may import it, the tests' windows included). */
+let camera: THREE.Camera = new THREE.PerspectiveCamera();
+export function setSoundCamera(c: THREE.Camera) { camera = c; }
 /** Play a sound, at a point in the world (fainter with distance, panned left / right) or as your own (`at` unset). */
 export function play(name: SfxName, o: PlayOpts = {}) {
+  if (o.share && net.peers.size) { const at = o.at ?? G.pos; outbox.push([name, +at.x.toFixed(1), +at.y.toFixed(1), +at.z.toFixed(1), +(o.vol ?? 1).toFixed(2), +(o.rate ?? 1).toFixed(2), o.share]); }
   const c = ctx;
   if (!c || volumes.mute || live >= MAX_VOICES) return;
   if (c.state !== 'running') { if (c.state === 'suspended') void c.resume(); return; } // put to sleep by the browser: wake it
@@ -96,22 +109,80 @@ export function play(name: SfxName, o: PlayOpts = {}) {
   let tail: AudioNode = g;
   if (pan && c.createStereoPanner) { const p = c.createStereoPanner(); p.pan.value = pan; g.connect(p); tail = p; }
   src.connect(g); tail.connect(sfxBus);
-  live++; src.onended = () => { live--; src.disconnect(); };
+  live++; played++; src.onended = () => { live--; src.disconnect(); };
   src.start();
+}
+
+// ---------- the others hear you: your loud sounds are relayed ----------
+type Heard = [SfxName, number, number, number, number, number, number]; // name, x, y, z, vol, rate, far
+const outbox: Heard[] = [];
+let sendT = 0;
+function flushShared(dt: number) {
+  if ((sendT -= dt) > 0 || !outbox.length) return;
+  sendT = 0.05;
+  relay({ t: 'snd', loc: myLoc(), l: outbox.splice(0, 24) });
+  outbox.length = 0;
+}
+onRelay((m: Relay) => {
+  if (m.t !== 'snd' || m.loc !== myLoc() || !Array.isArray(m.l)) return;
+  for (const h of (m.l as Heard[]).slice(0, 24)) {
+    if (!Array.isArray(h) || !(h[0] in SFX_SET)) continue;
+    const [n, x, y, z, vol, rate, far] = h;
+    if (![x, y, z, vol, rate, far].every(Number.isFinite)) continue;
+    play(n, { at: { x, y, z }, vol: Math.min(1.2, vol), rate: Math.max(0.3, Math.min(3, rate)), far: Math.min(250, far) });
+  }
+});
+const SFX_SET: Record<string, true> = Object.fromEntries(SFX_NAMES.map((n) => [n, true]));
+
+// ---------- loops (an engine): one per key, its volume and pitch set every frame ----------
+interface Loop { src: AudioBufferSourceNode; g: GainNode; used: boolean }
+const loops = new Map<string, Loop>();
+/** Keep a looping sound going while called every frame (vol 0 or no call for a frame = it stops). */
+export function hum(key: string, name: SfxName, vol: number, rate: number, at?: { x: number; y: number; z: number }, far = 60) {
+  const c = ctx; if (!c || c.state !== 'running') return;
+  if (at) { const d = Math.hypot(at.x - camera.position.x, at.y - camera.position.y, at.z - camera.position.z); vol *= d > far ? 0 : Math.pow(1 - d / far, 1.6); }
+  let l = loops.get(key);
+  if (!l) {
+    const b = buffers.get(name)?.[0]; if (!b || vol < 0.01) return;
+    const src = c.createBufferSource(); src.buffer = b; src.loop = true; src.loopEnd = Math.max(0.05, b.duration - 2 / b.sampleRate);
+    const g = c.createGain(); g.gain.value = 0; src.connect(g); g.connect(sfxBus); src.start();
+    l = { src, g, used: true }; loops.set(key, l);
+  }
+  l.used = true;
+  l.g.gain.setTargetAtTime(volumes.mute ? 0 : vol, c.currentTime, 0.05);
+  l.src.playbackRate.setTargetAtTime(rate, c.currentTime, 0.08);
+}
+const carSpeed = new Map<string, { x: number; z: number; v: number }>();
+/** An engine's hum where a vehicle is (raiders, the other players' cars): its pitch follows how fast it goes. */
+export function engineAt(key: string, at: { x: number; y: number; z: number }, dt: number, heavy = false, vol = 0.5) {
+  let c = carSpeed.get(key);
+  if (!c) { c = { x: at.x, z: at.z, v: 0 }; carSpeed.set(key, c); }
+  const d = Math.hypot(at.x - c.x, at.z - c.z); c.x = at.x; c.z = at.z;
+  if (dt > 0 && d < 10) c.v += (d / dt - c.v) * Math.min(1, dt * 4);
+  hum(key, 'engine', vol * (0.6 + Math.min(1, c.v / 15) * 0.4), (heavy ? 0.75 : 0.95) + Math.min(1.3, c.v / 18), at, 70);
+}
+function endLoops() {
+  for (const [k, l] of loops) {
+    if (l.used) { l.used = false; continue; }
+    l.src.stop(); l.src.disconnect(); l.g.disconnect(); loops.delete(k); carSpeed.delete(k);
+  }
 }
 
 // ---------- footsteps: yours, the other players', and the foes' ----------
 /** Metres a step: yours by gait, foes by size. */
 const STRIDE = { walk: 1.55, run: 2.1, crouch: 1.0 };
-let stepGone = 0, wasGround = true, fallV = 0, lastX = NaN, lastZ = NaN;
+let stepGone = 0, wasGround = true, wasWet = false, fallV = 0, lastX = NaN, lastZ = NaN;
 /** Your steps, jumps and landings (called on foot, after the move): by the ground really covered, so pushing
  *  against a wall makes no steps. */
 export function updateMySteps(dt: number) {
   const moved = Math.hypot(G.pos.x - lastX, G.pos.z - lastZ); lastX = G.pos.x; lastZ = G.pos.z;
   if (!ctx || !G.playing || !(moved < 3)) return; // (a teleport or the first frame)
   const speed = dt > 0 ? moved / dt : 0;
-  if (!G.onGround) { fallV = Math.min(fallV, G.vel.y); if (wasGround && G.vel.y > 2) play('jump', { vol: 0.5 }); wasGround = false; return; }
-  if (!wasGround) { if (fallV < -4) play('land', { vol: Math.min(1, -fallV / 10) }); stepGone = 0; }
+  const deep = (G.water?.(G.pos.x, G.pos.z)?.depth ?? 0) > 0.5;
+  if (deep && !wasWet && G.pos.y < (G.water?.(G.pos.x, G.pos.z)?.level ?? -1e9) + 1.8) play('splash', { vol: Math.min(1, 0.4 + Math.abs(G.vel.y) / 10), share: 40 });
+  wasWet = deep;
+  if (!G.onGround) { fallV = Math.min(fallV, G.vel.y); if (wasGround && G.vel.y > 2) play('jump', { vol: 0.5, share: 20 }); wasGround = false; return; }
+  if (!wasGround) { if (fallV < -4) play('land', { vol: Math.min(1, -fallV / 10), share: 25 }); stepGone = 0; }
   wasGround = true; fallV = 0;
   if (speed < 0.4) { stepGone = Math.min(stepGone, 0.5); return; }
   stepGone += speed * dt;
@@ -168,12 +239,16 @@ export function updateFoeSounds(dt: number) {
     if (v && (t.voice -= dt * (d / dt > 3 ? 2.5 : 1)) <= 0) { t.voice = 5 + Math.random() * 10; play(v, { at: c.p, vol: 0.8, far: c.kind === 'leechwing' ? 90 : 55, jitter: 0.08 }); }
   }
   const here = net.peers.size ? myLoc() : '';
+  for (const [id, p] of net.peers) { // their vehicles with someone aboard hum
+    const s = p.st; if (!s || s.loc !== 'o' || here !== 'o') continue;
+    (s.cars ?? []).forEach((car, i) => { if (car[8] > 0 && near(car[1], car[3], 80)) engineAt(`pc:${id}:${i}`, { x: car[1], y: car[2], z: car[3] }, dt, car[0] === 1, 0.45); });
+  }
   for (const [id, p] of net.peers) {
     const s = p.st; if (!s || s.away || s.loc !== here || s.boat || s.ride) { peerTracks.delete(id); continue; }
     const x = s.p[0], z = s.p[2]; let t = peerTracks.get(id);
     if (!t) { peerTracks.set(id, { x, z, gone: 0, voice: 0, steps: 0 }); continue; }
     const d = Math.hypot(x - t.x, z - t.z); t.x = x; t.z = z;
-    if (d > 4 || !near(x, z, 40)) continue;
+    if (d > Math.max(4, 12 * dt) || !near(x, z, 40)) continue;
     if ((t.gone += d) >= (s.cr ? STRIDE.crouch : STRIDE.walk)) { t.gone = 0; play(surface(x, s.p[1], z), { at: { x, y: s.p[1], z }, vol: s.cr ? 0.2 : 0.45, far: 30, jitter: 0.08 }); }
   }
 }
@@ -212,15 +287,23 @@ export function updateMusic(mood: Mood, dt: number) {
   now = a;
 }
 /** A list of what is loaded, for the Sound panel. */
-export const soundInfo = () => ({ sounds: SFX_NAMES.length, music: musicList ? MUSIC_MOODS.reduce((n, m) => n + (musicList![m]?.length ?? 0), 0) : 0, on: !!ctx && ctx.state === 'running', state: ctx?.state ?? 'none' });
+export const soundInfo = () => ({ sounds: SFX_NAMES.length, music: musicList ? MUSIC_MOODS.reduce((n, m) => n + (musicList![m]?.length ?? 0), 0) : 0, on: !!ctx && ctx.state === 'running', state: ctx?.state ?? 'none', played, rate: ctx?.sampleRate ?? 0 });
 
-let lastHp = -1, hurtT = 0;
+let lastHp = -1, hurtT = 0, lastGold = -1, lastLv = -1, retryT = 0;
 /** Once a frame: the sound of being hit, and the music by mood (the menu, a fight near you, below ground, night). */
 export function updateSoundFrame(dt: number) {
   hurtT -= dt;
   if (G.playing && lastHp >= 0 && G.hp < lastHp - 0.5 && hurtT <= 0) { hurtT = 0.3; play('hurt', { vol: Math.min(1, 0.4 + (lastHp - G.hp) / 25) }); }
   lastHp = G.hp;
+  if (G.playing) {
+    const gold = G.char.gold, lv = G.char.level;
+    if (lastGold >= 0 && gold > lastGold) play('coin', { vol: 0.5 });
+    if (lastLv >= 0 && lv > lastLv) play('levelup', { vol: 0.6 });
+    lastGold = gold; lastLv = lv;
+  }
+  flushShared(dt); endLoops();
   if (!ctx) return;
+  if (ctx.state !== 'running' && (retryT -= dt) <= 0) { retryT = 1; void ctx.resume().catch(() => { /* waits for a click */ }); }
   const hour = Math.floor((G.char.time % 1440) / 60), x = G.pos.x, z = G.pos.z;
   const foeNear = (l: { p: { x: number; z: number } }[]) => l.some((f) => Math.abs(f.p.x - x) < 30 && Math.abs(f.p.z - z) < 30);
   const mood: Mood = !G.playing ? 'menu' : foeNear(W.robots) || foeNear(W.bandits) || foeNear(W.creatures.filter((c) => c.kind !== 'silverfin')) ? 'fight'

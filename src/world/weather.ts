@@ -2,6 +2,7 @@
 // of cloud drifting overhead; fog closing in; in a thunderstorm, forked lightning out in the land with a flash that
 // lights the whole sky and a tremor of thunder. The sky and the fog take the rest (world/sky.ts reads `seen`).
 // Only on the surface. Everything here is looks for now; gen/weather.ts `weatherAt` is where effects will hook in.
+import { play } from './sound';
 import * as THREE from 'three';
 import { G } from '../game';
 import { scene, camera } from './render';
@@ -49,6 +50,7 @@ let nextBolt = 6, shake = 0;
 export function strike() {
   // somewhere out in the land, 60-170 m off, mostly where you can see it
   const a = camera.rotation.y + Math.PI + (Math.random() - 0.5) * 2.4, d = 60 + Math.random() * 110;
+  setTimeout(() => play('thunder', { vol: Math.min(1, 1.2 - d / 250), rate: 0.85 + Math.random() * 0.3 }), d / 340 * 1000); // sound lags the flash
   const gx = camera.position.x + Math.sin(a) * d, gz = camera.position.z + Math.cos(a) * d, gy = G.ground ? G.ground(gx, gz) : camera.position.y - 2;
   const top = camera.position.y + 70, pts: THREE.Vector3[] = [];
   const fork = (x: number, y: number, z: number, y1: number, spread: number, depth: number) => {

@@ -25,7 +25,7 @@ import { updateDrones, updateBosses, updateOrbs, animateFoes, updateBossBar, foe
 import { updateLoot } from './world/loot';
 import { updateEntities } from './world/interact';
 import './ui/sound';
-import { initSound, setLocHook, updateMySteps, updateFoeSounds, updateSoundFrame } from './world/sound';
+import { initSound, setSoundCamera, setLocHook, updateMySteps, updateFoeSounds, updateSoundFrame } from './world/sound';
 import { updateBodySway, updateRecoil, recoilView, attack, animateVM, refreshWeaponVisibility, vmScene, syncViewmodel, updateGun, refreshGunLook, syncHeld } from './world/weapons';
 import { updateFx, updateStreaks } from './world/fx';
 import { updateStreaming, updateFieldEnemies, placeName, OW, groundAt, treeHit, animateCamps, keepOnPlanet, villageHere } from './world/overworld';
@@ -305,7 +305,7 @@ function frame(now: number) {
   requestAnimationFrame(frame);
 }
 initItemTips();
-initSound(); setLocHook(myLoc); // (0.212) sound wakes on the first key or click
+initSound(); setSoundCamera(camera); setLocHook(myLoc); // (0.212) sound wakes on the first key or click
 // Load the display models after gameplay modules initialise, avoiding their world import cycles.
 // The opening film plays as soon as the game has loaded (the boot screen covers the loading), then the menu shows.
 // After "Back to my own world" (a reload) the menu comes straight back.

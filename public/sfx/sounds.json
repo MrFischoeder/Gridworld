@@ -156,6 +156,104 @@
     ],
     "vol": 1
   },
+  "engine": {
+    "files": [
+      "engine.wav"
+    ],
+    "vol": 1
+  },
+  "cannon": {
+    "files": [
+      "cannon.wav"
+    ],
+    "vol": 1
+  },
+  "door": {
+    "files": [
+      "door.wav"
+    ],
+    "vol": 1
+  },
+  "chest": {
+    "files": [
+      "chest.wav"
+    ],
+    "vol": 1
+  },
+  "eat": {
+    "files": [
+      "eat.wav"
+    ],
+    "vol": 1
+  },
+  "drink": {
+    "files": [
+      "drink.wav"
+    ],
+    "vol": 1
+  },
+  "thunder": {
+    "files": [
+      "thunder.wav"
+    ],
+    "vol": 1
+  },
+  "coin": {
+    "files": [
+      "coin.wav"
+    ],
+    "vol": 1
+  },
+  "levelup": {
+    "files": [
+      "levelup.wav"
+    ],
+    "vol": 1
+  },
+  "chop": {
+    "files": [
+      "chop_1.wav",
+      "chop_2.wav"
+    ],
+    "vol": 1
+  },
+  "mine": {
+    "files": [
+      "mine_1.wav",
+      "mine_2.wav"
+    ],
+    "vol": 1
+  },
+  "splash": {
+    "files": [
+      "splash.wav"
+    ],
+    "vol": 1
+  },
+  "click": {
+    "files": [
+      "click.wav"
+    ],
+    "vol": 1
+  },
+  "die_creature": {
+    "files": [
+      "die_creature.wav"
+    ],
+    "vol": 1
+  },
+  "die_bandit": {
+    "files": [
+      "die_bandit.wav"
+    ],
+    "vol": 1
+  },
+  "hammer": {
+    "files": [
+      "hammer.wav"
+    ],
+    "vol": 1
+  },
   "pickup": {
     "files": [
       "pickup.wav"

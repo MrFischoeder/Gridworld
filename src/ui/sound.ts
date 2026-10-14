@@ -14,7 +14,7 @@ function show() {
   }
   $<HTMLInputElement>('volMute').checked = volumes.mute;
   const i = soundInfo();
-  $('sndInfo').innerHTML = (i.on ? '' : tl('Sound starts with your first click or key press.') + '<br>')
+  $('sndInfo').innerHTML = (i.on ? TL`Sound is on (${i.rate} Hz); ${i.played} sounds played so far.` : i.state === 'none' ? tl('This browser has no Web Audio: no sound.') : tl('Sound is asleep: click anywhere on the page to wake it.')) + '<br>'
     + TL`${i.sounds} sound effects (8-bit), files in the sfx folder; the list sfx/sounds.json says which file each sound plays.` + '<br>'
     + (i.music ? TL`Music: ${i.music} tracks listed in music/music.json.` : tl('No music yet: put your tracks (mp3 or ogg) in the music folder and list them in music/music.json (menu, world, night, underground, fight).'));
 }

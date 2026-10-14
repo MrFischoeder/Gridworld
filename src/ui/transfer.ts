@@ -1,6 +1,7 @@
 // Containers (chests, bandit stashes, vehicle trunks, lockers): opened beside the backpack (ui/backpack.ts), and
 // items move freely between them. Drag an item onto any slot (stacks merge, other items swap places), click one in
 // the container to take it, or select one of yours and Store it. Whatever you leave stays inside.
+import { play } from '../world/sound';
 import { online, lockContainer, unlockContainer, saveContainer, activeContainers, net } from '../net/client';
 import { G } from '../game';
 import { item, HANDS_ONLY, WEAPON_KIND } from '../data/items';
@@ -116,7 +117,7 @@ export async function openTransfer(s: TransferSpec) {
   }
   spec = s;
   el.msg.textContent = tl('Drag items between the two, click one in here to take it, or select one of yours and Store it. Whatever you leave stays here.');
-  openPack(box);
+  openPack(box); play('chest', { vol: 0.55 });
   if (!G.packOpen) box.close();
 }
 /** Shuts the container (and the backpack beside it). */

@@ -1,4 +1,5 @@
 // Bandits on wheels (raider vehicles) and roadside ambushes with a roadblock. Unsaved, like other enemies.
+import { engineAt } from './sound';
 import { vehiclesOpen } from '../gen/settlement';
 import { hurtPlayer } from './damage';
 import * as THREE from 'three';
@@ -321,6 +322,7 @@ export function updateRaiders(dt: number) {
   if (!env) return;
   spawnRaidersMaybe(dt); tryAmbush(dt); updateAmbushes();
   for (const r of [...raiders]) {
+    if (G.playing) engineAt('raider:' + raiders.indexOf(r), r.p, dt, r.v.st.model === 'mastodon', 0.6);
     const rm = remoteOf(r);
     if (rm) { // another player's raider: it drives where its owner says
       const v = r.v, k = Math.min(1, dt * 7), far = Math.hypot(rm.x - v.st.x, rm.z - v.st.z) > 30;
