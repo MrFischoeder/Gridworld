@@ -90,7 +90,7 @@ export class WorldTab implements Tab<WorldFile> {
       const p = f.places[s.pl];
       props.push(h('div', { class: 'what' }, PLACE_NAME[p.k]), textField(tl('Name'), p.name ?? '', (v) => this.edit(() => { p.name = v || undefined; })));
       if (p.k === 'city') props.push(numField(tl('Radius (m)'), p.r ?? 600, (v) => this.edit(() => { p.r = v; }), 50, 200, 2000));
-      if (p.k === 'village') props.push(selectField(tl('Layout'), p.layout ?? '', [['', tl('(generated)')], ...this.layouts().map((n): [string, string] => [n, n])], (v) => this.edit(() => { p.layout = v || undefined; })));
+      if (p.k === 'village' || p.k === 'start') props.push(selectField(tl('Layout'), p.layout ?? '', [['', tl('(generated)')], ...this.layouts().map((n): [string, string] => [n, n])], (v) => this.edit(() => { p.layout = v || undefined; })));
       if (p.k === 'install') props.push(selectField(tl('Plant'), p.install ?? INSTALLS[0].k, INSTALLS.map((i): [string, string] => [i.k, i.name]), (v) => this.edit(() => { p.install = v; })));
       props.push(h('button', { onclick: () => this.removeSel() }, tl('Remove')));
     } else if (s && 'lo' in s && f.lodes[s.lo]) {

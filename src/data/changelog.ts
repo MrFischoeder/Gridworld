@@ -3,6 +3,14 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.209.0', date: '2026-10-14', title: 'Your own village layouts', notes: [
+    'A village drawn in the map editor is now built in the game. In the world editor, give a village (or the start, Gridholm) a layout, and the game raises it as you drew it.',
+    'From the layout: the shape of the wall (hexagon, octagon or dodecagon) and with it the gates and the roads, the tavern, the elder\'s hall, the blacksmith, the store, the food shop and the houses (where you put them, as big as you drew them, the door on the side you turned it to, your own names on the signs), the well, the notice board and the map board, and the fields.',
+    'Anything you left out the game adds itself: a missing shop, and houses up to the six the heroes need. A building set outside the wall or on top of another is left out.',
+    'A town of a drawn world takes the kind of wall you chose and stands with your fields already worked, growing the crops you picked (up to three). Gridholm keeps its own rules: its people build the wall and the farms themselves.',
+    'The power plant, the settlement\'s projects, the works, the power stations, the defences and the lamps of a layout are kept for later.',
+    'Like the drawn worlds, the layouts live in your browser, so they are single player for now.',
+  ] },
   { v: '0.208.0', date: '2026-10-14', title: 'Playing on your own worlds', notes: [
     'Worlds drawn in the map editor can now be played. Pick one under the world seed in the main menu and press Play on an editor world: a new game starts on it.',
     'The land, the seas and the mountains are the ones you painted, the rivers run where you drew them, and the villages, ruins, camps, wrecks, dead cities, old plants, megaliths, caves and deposits stand where you put them. The start marker is Gridholm; beyond the edge of the map lies deep sea.',

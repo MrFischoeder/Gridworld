@@ -8,6 +8,7 @@
 // roof, every centrifuge standing), restored (the centrifuges glow). The control desk inside the gate opens the
 // restoration window (`nearInstallDesk`, ui/install.ts).
 import { customWorld } from '../gen/customworld';
+import { customVillages } from './custommaps';
 import { seedMegalithSites, type Megalith } from '../gen/megaliths';
 import * as THREE from 'three';
 import { scene } from './render';
@@ -800,7 +801,7 @@ export function primeInstalls(world: number, claims: unknown[]) {
       if (e.data.megaliths) { seedMegalithSites(e.data.world, e.data.megaliths); w.terminate(); }
     };
     w.onerror = () => { w.terminate(); primed = NaN; };
-    w.postMessage({ world, claims: JSON.parse(JSON.stringify(claims)), custom: customWorld(world)?.f }); // (0.208) a drawn world's file goes along
+    w.postMessage({ world, claims: JSON.parse(JSON.stringify(claims)), custom: customWorld(world)?.f, villages: customVillages() }); // (0.208) a drawn world's file goes along (0.209 and its village layouts)
   } catch { primed = NaN; /* no workers here: worked out when first needed */ }
 }
 /** Redraw at once (after a stage is finished). */

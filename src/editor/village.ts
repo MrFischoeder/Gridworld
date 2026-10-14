@@ -2,7 +2,8 @@
 // on a plan in metres from the village's middle. The library is the game's own lists: the village's houses and shops,
 // the settlement's projects (yards, sawmill, furnace, warehouse...), the works, the power stations, the fields, the
 // defences and the lights. Kept as a file (gen/mapfile.ts VillageFile); a world's village can name it as its layout.
-// The game builds villages from these later (stage E3 of PLAN_EDYTORA.md).
+// (0.209) The game builds a world's village from its layout (stage E3 of PLAN_EDYTORA.md, gen/village.ts VillageLayout):
+// the wall's shape and kind, the village buildings, the well and the boards, the fields.
 import { tl, TL } from '../i18n';
 import { PLANTS, PLANT_KINDS } from '../gen/plants';
 import { STATIONS, type StationKind } from '../gen/energy';
@@ -80,6 +81,7 @@ export class VillageTab implements Tab<VillageFile> {
       selectField(tl('Shape'), String(f.sides) as '6' | '8' | '12', [['6', tl('Hexagon')], ['8', tl('Octagon')], ['12', tl('Dodecagon')]], (v) => this.edit(() => { f.sides = Number(v) as 6 | 8 | 12; })),
       selectField(tl('Kind'), String(f.wall), WALL_TIERS.map((w, i): [string, string] => [String(i), w.name]), (v) => this.edit(() => { f.wall = Number(v); })),
       h('div', { class: 'hint' }, TL`${f.items.length} buildings.`),
+      h('div', { class: 'hint' }, tl('In the game a world\'s village named with this layout gets its wall, the village buildings, the well, the boards and the fields. The other pieces are kept for later.')),
       h('h3', {}, tl('Selected')), ...props,
     );
   }

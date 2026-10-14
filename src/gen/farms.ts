@@ -4,6 +4,7 @@
 // goes into the village hall (gen/hall.ts stockOf), more on rich soil and with steel ploughs.
 import { progressive, localIndustryDone, FIRST_CROPS, SETTLEMENT_START, housingCapacity } from './settlement';
 import { hash } from '../core/rng';
+import { layoutFields } from './village';
 import type { ItemKey } from '../data/items';
 import type { TownState } from './town';
 import { peopleAt, setPeople, basePeople, PEOPLE } from './people';
@@ -92,6 +93,8 @@ export function completeFarm(s: TownState, seed: number, home: boolean, now: num
 }
 /** The i-th farm's field in plaza-local metres: outside a corner of the wall, clear of the sites on the sides and the gates. */
 export function farmPlot(seed: number, i: number): { x0: number; z0: number; x1: number; z1: number } {
+  const f = layoutFields(seed)[i]; // (0.209) a laid-out village: where the editor drew its field (6..12 m from the middle each way)
+  if (f) { const hw = Math.max(6, Math.min(12, f.w / 2)), hd = Math.max(6, Math.min(12, f.d / 2)); return { x0: f.x - hw, z0: f.z - hd, x1: f.x + hw, z1: f.z + hd }; }
   const corners: [number, number][] = [[-16, -16], [88, -16], [88, 88], [-16, 88]], k = (hash(seed, 0xf43) + i) % 4, [cx, cz] = corners[k];
   return { x0: cx - 6, z0: cz - 6, x1: cx + 6, z1: cz + 6 };
 }

@@ -1,3 +1,4 @@
+import { applyLayouts } from '../gen/layouts';
 import { drawSettlementSites, drawSettlementComms, settlementHit, settlementFloor, settlementRay, settlementSolid, forgetSettlement } from './settlement';
 import { settlementVillage } from '../gen/settlement-village';
 import { initializeSettlements, progressive, RESOURCE_PLOTS, projectAvailable, depositsOf, mechanicHere } from '../gen/settlement';
@@ -630,7 +631,7 @@ export function syncVillagePads(dt: number) {
 }
 /** Load (or reload) the open world of the current character's seed, synchronously around (x, z). */
 export function openWorld(x: number, z: number) {
-  initializeSettlements(G.char); planksForLogs(G.char); // (0.165: also after a server's world is taken over)
+  initializeSettlements(G.char); applyLayouts(G.char); planksForLogs(G.char); // (0.165: also after a server's world is taken over; 0.209 the editor's village layouts)
   for (const v of G.char.vehicles) { // (0.198) the villages grew 12 m a side: a vehicle left just outside an old wall (Kuba's old bays) moves out with it
     const p = villageContaining(G.char.world, v.x, v.z);
     if (!p) continue;

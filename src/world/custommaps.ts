@@ -3,7 +3,7 @@
 // editor's 'Test in the game' opens the game with ?test=<name>, which goes down as soon as you are playing.
 // (0.208) Worlds drawn in the editor too: `syncCustomWorld` registers the character's world file (gen/customworld.ts)
 // before the world is opened, so the generators take its land, rivers and places.
-import { storedMaps, type DungeonFile, type WorldFile } from '../gen/mapfile';
+import { storedMaps, type DungeonFile, type WorldFile, type VillageFile } from '../gen/mapfile';
 import { hash } from '../core/rng';
 import { setCustomWorld, customWorld } from '../gen/customworld';
 import type { Char } from '../save';
@@ -26,6 +26,10 @@ export const testWaiting = () => pending !== null;
 export function customWorlds(): Record<string, WorldFile> {
   return storedMaps('world', store()) as Record<string, WorldFile>;
 }
+/** Every village layout the editor has kept here (name → file). */
+export function customVillages(): Record<string, VillageFile> {
+  return storedMaps('village', store()) as Record<string, VillageFile>;
+}
 /** Register the drawn world the character plays on (if any). False when its file is not in this browser (the land
  *  then comes from the seed alone). */
 export function syncCustomWorld(c: Char): boolean {
@@ -33,7 +37,7 @@ export function syncCustomWorld(c: Char): boolean {
   if (customWorld(c.world)) return true; // (once a page: the generators' caches keep what they worked out)
   const f = customWorlds()[c.cw];
   if (!f) return false;
-  setCustomWorld(c.world, f);
+  setCustomWorld(c.world, f, customVillages()); // (0.209) with the village layouts it names
   return true;
 }
 /** The world the editor's 'Test in the game' asked for (?world=<name>), offered in the menu. */

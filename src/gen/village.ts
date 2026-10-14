@@ -124,7 +124,23 @@ const GATE_SLOTS: Record<Dir, number> = { N: 34, S: 39, E: 35, W: 37 };
  * gates there. (`4` is kept in the type for the square code paths, which no village takes any more.)
  */
 export type Sides = 4 | 6 | 8 | 12;
-export const villageSides = (seed: number, home = false): Sides => (home ? 8 : ([6, 8, 12] as const)[hash(seed, 0x5ade) % 3]);
+/**
+ * (0.209) A village laid out by hand in the map editor (gen/mapfile.ts VillageFile: metres from the village's middle,
+ * `rot` in degrees, 0 = the door on the +z side). Registered by the village's seed (`setVillageLayout`, from
+ * gen/customworld.ts), so the wall's shape, the gates, the roads, the maps and the buildings all agree.
+ */
+export interface VillageLayout { sides: 6 | 8 | 12; wall: number; items: { k: string; x: number; z: number; w: number; d: number; rot: number; label?: string }[] }
+const LAYOUTS = new Map<number, VillageLayout>();
+export function setVillageLayout(seed: number, l: VillageLayout | null) { if (l) LAYOUTS.set(seed, l); else LAYOUTS.delete(seed); }
+export const villageLayout = (seed: number): VillageLayout | undefined => (LAYOUTS.size ? LAYOUTS.get(seed) : undefined);
+/** The drawn fields of a laid-out village (in order): plaza-local middle, size and crop key. */
+export function layoutFields(seed: number): { x: number; z: number; w: number; d: number; crop: string }[] {
+  return (villageLayout(seed)?.items ?? []).filter((i) => i.k.startsWith('farm:')).map((i) => {
+    const q = ((Math.round(i.rot / 90) % 4) + 4) % 4;
+    return { x: PC + i.x, z: PC + i.z, w: q % 2 ? i.d : i.w, d: q % 2 ? i.w : i.d, crop: i.k.slice(5) };
+  });
+}
+export const villageSides = (seed: number, home = false): Sides => villageLayout(seed)?.sides ?? (home ? 8 : ([6, 8, 12] as const)[hash(seed, 0x5ade) % 3]);
 const PC = 36;
 /** The wall's corners (plaza coordinates, clockwise from the north-west), on its middle line. */
 export function wallPolygon(sides: Sides): [number, number][] {
@@ -213,6 +229,12 @@ export function generateVillage(seed: number, y = 0, cx = 0, cz = 0, name = 'Gri
 
   function finish(towers: Tower[]): VillageMap {
   const LO = square ? 0 : WALL_LO, HI = square ? PW : WALL_HI; // the plaza's extent inside the wall
+  // (0.209) a laid-out village: the well and the two boards where the editor put them
+  const lay = villageLayout(seed), spot = (k: string, d: [number, number]): [number, number] => {
+    const it = lay?.items.find((i) => i.k === k);
+    return it && insideWall(poly, PC + it.x, PC + it.z, 2) ? [Math.round(PC + it.x), Math.round(PC + it.z)] : d;
+  };
+  const [wellX, wellZ] = spot('b:well', [36, 37]), [boardX, boardZ] = spot('b:board', [41, 45]), [mapX, mapZ] = spot('b:map', [31, 45]);
   const buildings: Building[] = [], trees: { x: number; z: number; h: number }[] = [], lamps: { x: number; z: number }[] = [];
   const B = (name: string, role: Role, x: number, z: number, w: number, d: number, side: Dir, h = 3.2) => {
     const cxm = x + (w >> 1), czm = z + (d >> 1), t = HOUSE.thick, dh = HOUSE.doorW / 2;
@@ -267,6 +289,7 @@ export function generateVillage(seed: number, y = 0, cx = 0, cz = 0, name = 'Gri
     buildings.push(b); return b;
   };
   const j = () => ri(-1, 1);
+  if (lay) placeLayout();
   if (!square) ringLayout(); else {
   B(tl('TAVERN'), 'innkeeper', 3, 6 + j(), 13, 10, 'E', 3.6);
   B(tl("ELDER'S HALL"), 'elder', 3, 24 + j(), 11, 9, 'E', 3.4);
@@ -292,6 +315,20 @@ export function generateVillage(seed: number, y = 0, cx = 0, cz = 0, name = 'Gri
    * The buildings of a village that is not square: round the plaza, each facing its middle, pushed out as far as
    * the wall allows, clear of the middle (well, boards) and of the lanes from the gates.
    */
+  /** (0.209) The buildings the editor set out: the first of each shop, every house; the door side from the turn. */
+  function placeLayout() {
+    const ROLE: Record<string, [Role, string, number]> = { 'b:tavern': ['innkeeper', tl('TAVERN'), 3.6], 'b:elder': ['elder', tl("ELDER'S HALL"), 3.4],
+      'b:smith': ['blacksmith', tl('BLACKSMITH'), 3.4], 'b:store': ['merchant', tl('GENERAL STORE'), 3.4], 'b:food': ['grocer', tl('FOOD & PROVISIONS'), 3.2], 'b:house': ['house', '', 3] };
+    for (const it of lay!.items) {
+      const r = ROLE[it.k];
+      if (!r || (r[0] !== 'house' && buildings.some((b) => b.role === r[0])) || !insideWall(poly, PC + it.x, PC + it.z, 0)) continue;
+      const q = ((Math.round(it.rot / 90) % 4) + 4) % 4, least = r[0] === 'house' ? 5 : 8; // room for the counter and the furniture
+      const w = Math.max(least, Math.round(q % 2 ? it.d : it.w)), d = Math.max(least, Math.round(q % 2 ? it.w : it.d));
+      const x = Math.round(PC + it.x - w / 2), z = Math.round(PC + it.z - d / 2);
+      if (buildings.some((o) => x < o.x + o.w && x + w > o.x && z < o.z + o.d && z + d > o.z)) continue; // on top of one set down before
+      B(r[0] === 'house' ? (it.label ?? '') : it.label ? it.label.toUpperCase() : r[1], r[0], x, z, w, d, (['S', 'W', 'N', 'E'] as Dir[])[q], r[2]);
+    }
+  }
   function ringLayout() {
     const lanes = gates.map((g) => g.dir === 'N' ? [32, LO, 40, 36] : g.dir === 'S' ? [37, 36, 45, HI] : g.dir === 'W' ? [LO, 35, 36, 43] : [36, 33, HI, 41]);
     const angles = Array.from({ length: 36 }, (_, i) => i * 10 + ri(-3, 3)).sort(() => R() - 0.5);
@@ -312,11 +349,16 @@ export function generateVillage(seed: number, y = 0, cx = 0, cz = 0, name = 'Gri
       }
       return null;
     };
-    place(tl('TAVERN'), 'innkeeper', 13, 10, 3.6); place(tl("ELDER'S HALL"), 'elder', 11, 9, 3.4);
-    place(tl('BLACKSMITH'), 'blacksmith', 11, 9, 3.4); place(tl('GENERAL STORE'), 'merchant', 11, 9, 3.4); place(tl('FOOD & PROVISIONS'), 'grocer', 9, 8, 3.2);
+    // (a laid-out village: only what the editor left out, and houses up to HOMES_MIN)
+    const has = (r: Role) => buildings.some((b) => b.role === r);
+    if (!has('innkeeper')) place(tl('TAVERN'), 'innkeeper', 13, 10, 3.6);
+    if (!has('elder')) place(tl("ELDER'S HALL"), 'elder', 11, 9, 3.4);
+    if (!has('blacksmith')) place(tl('BLACKSMITH'), 'blacksmith', 11, 9, 3.4);
+    if (!has('merchant')) place(tl('GENERAL STORE'), 'merchant', 11, 9, 3.4);
+    if (!has('grocer')) place(tl('FOOD & PROVISIONS'), 'grocer', 9, 8, 3.2);
     // the houses: at least HOMES_MIN, smaller ones where the bigger will not fit
-    let n = 0;
-    for (let i = 0; i < 6; i++) if (place('', 'house', 6, 8, 3)) n++;
+    let n = buildings.filter((b) => b.role === 'house').length;
+    for (let i = 0; i < 6 && !lay; i++) if (place('', 'house', 6, 8, 3)) n++;
     const fine = Array.from({ length: 120 }, (_, i) => i * 3); // every 3 degrees
     for (let i = 0; i < 12 && n < HOMES_MIN; i++) if (place('', 'house', 5, i < 6 ? 7 : 6, 3, 1.5, 10, fine)) n++; // smaller, closer
     for (let i = 0; i < 6 && n < HOMES_MIN; i++) if (place('', 'house', 5, 5, 3, 1.2, 8, fine)) n++; // cottages, the last resort
@@ -325,11 +367,11 @@ export function generateVillage(seed: number, y = 0, cx = 0, cz = 0, name = 'Gri
   buildings.filter((b) => b.role === 'house').forEach((b, i) => { b.hero = i; });
   // well, trees, lamps
   // the well only collides: world/water.ts `drawWell` draws it (the same stone well as out in the wilds)
-  const wellOp: Op = { op: 'solid', x: 35, y: 0, z: 36, w: 2, h: 1, d: 2 }, treeOps = new Set<Op>();
+  const wellOp: Op = { op: 'solid', x: wellX - 1, y: 0, z: wellZ - 1, w: 2, h: 1, d: 2 }, treeOps = new Set<Op>();
   late.push(wellOp);
   const blocked = (x: number, z: number, m: number) => !insideWall(poly, x + 0.5, z + 0.5, m + 1) || towers.some((t) => x >= t.x - 3 && x < t.x + t.w + 3 && z >= t.z - 3 && z < t.z + t.d + 3) || buildings.some((b) => x >= b.x - m && x < b.x + b.w + m && z >= b.z - m && z < b.z + b.d + m)
-    || (Math.abs(x - 41) < 4 && Math.abs(z - 45) < 3) || (Math.abs(x - 31) < 4 && Math.abs(z - 45) < 3)
-    || (Math.abs(x - 36) < 5 && z < LO + 10) || (Math.abs(x - 36) < 4 && Math.abs(z - 37) < 4) || (Math.abs(x - 36) < 3 && Math.abs(z - 50) < 3)
+    || (Math.abs(x - boardX) < 4 && Math.abs(z - boardZ) < 3) || (Math.abs(x - mapX) < 4 && Math.abs(z - mapZ) < 3)
+    || (Math.abs(x - 36) < 5 && z < LO + 10) || (Math.abs(x - wellX) < 4 && Math.abs(z - wellZ) < 4) || (Math.abs(x - 36) < 3 && Math.abs(z - 50) < 3)
     || gates.some((g) => Math.abs(x - Math.min(Math.max(g.x, LO + 1), HI - 2)) < 5 && Math.abs(z - Math.min(Math.max(g.z, LO + 1), HI - 2)) < 5);
   for (let n = 0; n < 200 && trees.length < 4; n++) { // a few shade trees (the plaza is for people)
     const x = ri(LO + 2, HI - 3), z = ri(LO + 2, HI - 3);
@@ -356,14 +398,14 @@ export function generateVillage(seed: number, y = 0, cx = 0, cz = 0, name = 'Gri
       const l = square ? ladderOf(t, stone, PW, PD) : ladderIn(t, stone);
       return { ...t, x: t.x + ox, z: t.z + oz, ladder: { ...l, x: l.x + ox, z: l.z + oz, deck: { x0: l.deck.x0 + ox, z0: l.deck.z0 + oz, x1: l.deck.x1 + ox, z1: l.deck.z1 + oz } } };
     }),
-    board: { x: 41 + ox, z: 45 + oz }, mapBoard: { x: 31 + ox, z: 45 + oz },
+    board: { x: boardX + ox, z: boardZ + oz }, mapBoard: { x: mapX + ox, z: mapZ + oz },
     buildings: buildings.map((b) => ({ ...b, x: b.x + ox, z: b.z + oz, door: P(b.door), home: b.home && P(b.home),
       walls: b.walls.map(([x0, y0, z0, x1, y1, z1]) => [x0 + ox, y0 + y, z0 + oz, x1 + ox, y1 + y, z1 + oz]),
       furniture: b.furniture.map((f) => ({ ...f, x0: f.x0 + ox, z0: f.z0 + oz, x1: f.x1 + ox, z1: f.z1 + oz })) })),
     homes: buildings.filter((b) => b.role === 'house').map(({ bedChest: h }) => ({ bed: { x0: h!.bed.x0 + ox, z0: h!.bed.z0 + oz, x1: h!.bed.x1 + ox, z1: h!.bed.z1 + oz, side: { x: h!.bed.side.x + ox, z: h!.bed.side.z + oz } },
       chest: { x: h!.chest.x + ox, z: h!.chest.z + oz } })),
     trees: trees.map((t) => ({ ...t, x: t.x + ox, z: t.z + oz })), lamps: lamps.map((l) => ({ x: l.x + ox, z: l.z + oz })),
-    well: { x: 36 + ox, z: 37 + oz }, walk: walk.map(([x, z]) => [x + ox, z + oz]),
+    well: { x: wellX + ox, z: wellZ + oz }, walk: walk.map(([x, z]) => [x + ox, z + oz]),
     tier, wallH: WALL_H, fence: stone ? [] : fenceRuns().map((r) => ({ x0: r.x0 + ox, z0: r.z0 + oz, x1: r.x1 + ox, z1: r.z1 + oz })),
     shown: translateOps(all.filter((o) => o !== wellOp && !treeOps.has(o) && (stone || !fenceOps.has(o))), ox, y, oz),
     ...wallWalk(ox, oz, buildings, trees, towers),

@@ -23,6 +23,8 @@ export interface TownState {
   rcv?: Record<string, Partial<Record<ItemKey, number>>>; ship?: Record<string, number>;
   /** The wall's tier (0 = the stake fence every village starts with). */
   wall?: number;
+  /** (0.209) the editor's layout was put into this state (gen/layouts.ts) */
+  lay?: 1;
   /** The houses the heroes bought (gen/homes.ts): house index → owner. Shared on a server. */
   homes?: Record<string, import('./homes').HomeOwner>;
   /** Where each farm's field stands (gen/fields.ts; farms built before keep their corner of the wall), and whether the next farm's materials are in and it waits for the hero to stake out its field. */
