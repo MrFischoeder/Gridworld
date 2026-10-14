@@ -16,6 +16,8 @@ import { BOATS, NEW_BOATS, boatRows, handOverBoat, refitsOf, launchSpot, type Bo
 import { redrawBoats } from '../world/boats';
 import { OW } from '../world/overworld';
 import { nearX } from '../gen/regions';
+import { portId } from '../gen/ports';
+import { foundPort, foundProblem, openPort } from './port';
 import { tl, TL } from '../i18n';
 
 /** How many boats you may own. */
@@ -56,6 +58,14 @@ function refits(p: Pier): string {
   }).join('');
 }
 
+/** (0.216, stage Z2) The port behind this dock: found one, or open it. */
+function portRow(p: Pier): string {
+  const o = G.char.outposts[portId(p.id)];
+  if (o) return TL`<div class="say" style="margin:8px 0 0"><b>${o.name}</b>: the port behind this dock.</div><button class="opt" data-pier="port">Open the port</button>`;
+  const why = foundProblem(p);
+  return TL`<div class="say" style="margin:8px 0 0"><b>A port.</b> Behind the dock you can found a port: a warehouse with a crane, its own power source, bunkhouses and fields for the people who will work it. Later, cargo ships will sail between ports.</div>` +
+    (why ? `<div class="say" style="opacity:.7">${why}</div>` : TL`<button class="opt" data-pier="found" style="color:var(--gold)">Found a port here</button>`);
+}
 const dlgEl = $('dlg'), panel = () => dlgEl.querySelector('.panel') as HTMLElement;
 let site: Pier | null = null;
 const at = () => (site ? { x: site.x, z: site.z } : null);
@@ -67,7 +77,7 @@ function render(msg = '') {
   if (!p) return;
   let s = TL`<h2>${p.done ? tl('Dock') : tl('Dock site')}</h2><div class="role">On the sea coast · ${Math.round(p.len)} m out to ${PIER.depth} m of water</div><div class="say">${msg ? msg + '<br><br>' : ''}`;
   if (p.done) {
-    s += TL`A timber dock runs out from the beach on piles, ${PIER.clear} m above the sea, to a head with bollards, a lamp and a crate for goods (E at the crate). It was finished on ${fmtClock(p.done)}.</div>` + slip(p);
+    s += TL`A timber dock runs out from the beach on piles, ${PIER.clear} m above the sea, to a head with bollards, a lamp and a crate for goods (E at the crate). It was finished on ${fmtClock(p.done)}.</div>` + portRow(p) + slip(p);
   } else {
     const rows = pierRows(p);
     s += TL`Your stakes mark a dock out to deep enough water for boats and ships: piles driven into the sea bed, a planked deck ramping up from the beach, a wide head with bollards, a lamp and a crate. Bring the materials here (in your backpack, or in the trunk of a vehicle parked by the beach) and hand them over bit by bit.</div>` +
@@ -93,6 +103,8 @@ export function pierClick(t: HTMLElement): boolean {
   if (!b) return false;
   const c = G.char, a = b.dataset.pier, p = savedPier(site.id);
   if (a === 'close' || !p) { close(); return true; }
+  if (a === 'found' && p.done) { const why = foundProblem(p); if (why) { render(why); return true; } site = null; foundPort(p); return true; }
+  if (a === 'port' && p.done) { site = null; G.dlgOpen = false; openPort(portId(p.id), p.id); return true; }
   if (a === 'drop' && !p.done) {
     const lost: string[] = [];
     for (const [k, n] of Object.entries(p.given) as [ItemKey, number][]) { const left = n ? putAway(k, n, at()) : 0; if (left) lost.push(`${ITEMS[k].name} ×${left}`); }

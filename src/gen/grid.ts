@@ -11,7 +11,7 @@ import { daylight, sunTilt } from '../core/time';
 import { latitude, worldDist } from './regions';
 import { windAt } from './energy';
 import type { ItemKey } from '../data/items';
-import { digOf, settle, type OutpostState, type DigKind } from './outposts';
+import { digOf, settle, PORT, type OutpostState, type DigKind } from './outposts';
 import type { Lode } from './lodes';
 import { crewFactor, settleLife } from './outpostlife';
 import { settleRaids } from './outpostraids';
@@ -62,7 +62,7 @@ export function supplyAt(world: number, id: string, o: OutpostState, t: number):
   if (o.pk === 'solar') return s.kw * daylight(t, sunTilt(latitude(o.z)));
   return fuelLeft(o, t) > 0 ? s.kw : 0;
 }
-export const demandOf = (o: OutpostState) => (o.done?.dig ? DIG_KW[digOf(o.k)] : 0) + procKw(o) + (o.route?.truck?.parts.ev !== undefined ? CHARGE_KW : 0);
+export const demandOf = (o: OutpostState) => (o.done?.dig ? DIG_KW[digOf(o.k)] : 0) + (o.done?.port ? PORT.kw : 0) + procKw(o) + (o.route?.truck?.parts.ev !== undefined ? CHARGE_KW : 0);
 /** (0.188) What a route's electric truck draws while it charges at its outpost (kW, counted all the time). */
 export const CHARGE_KW = 15;
 const isSource = (o: OutpostState) => !!(o.done?.power && o.pk);

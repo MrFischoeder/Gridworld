@@ -28,7 +28,7 @@ Ustalenie z właścicielem gry (14 października 2026, po wersji 0.214.0). Zasad
   - magazyn: 3 kW i 2 osoby (oświetlenie, magazynierzy); bez nich terminal rozładowuje wolniej.
 
   Panel starszego i terminal pokazują, czego brakuje („brak prądu”, „brak rąk do pracy”).
-- **Z2. Port.** Na gotowym doku można zbudować **magazyn portowy** (plac, szopa, dźwig). Port działa jak placówka: wybierasz mu źródło prądu (generator, wiatrak, panele, elektrownia węglowa z sieci placówek), stawiasz baraki i pola, a mieszkańcy przychodzą sami. Magazyn portowy bez prądu i ludzi stoi.
+- **Z2. Port.** *(Zrobione w 0.216.0: port to wpis we wspólnym polu `outposts` pod kluczem `port:<id doku>`, więc korzysta z sieci, baraków, pól i ludzi placówek; magazyn portowy ma 6000 l, dźwig potrzebuje 4 osób i co najmniej 25% prądu z doby; ręczne składanie zawsze działa; portów jeszcze nikt nie napada.)* Na gotowym doku można zbudować **magazyn portowy** (plac, szopa, dźwig). Port działa jak placówka: wybierasz mu źródło prądu (generator, wiatrak, panele, elektrownia węglowa z sieci placówek), stawiasz baraki i pola, a mieszkańcy przychodzą sami. Magazyn portowy bez prądu i ludzi stoi.
 - **Z3. Rejsy towarowe.** Statek (żaglowiec albo motorowiec) przydzielony do trasy między dwoma portami pływa sam według rozkładu, jak ciężarówka na trasach placówek (O6). Przewozi skrzynie z magazynu do magazynu i spala paliwo (motorowiec) albo płynie z wiatrem (żaglowiec). Rejs rusza tylko wtedy, gdy oba porty mają prąd i ludzi. Później dojdą napady piratów.
 - **Z4. Ludzie w starych fabrykach.** Każda odbudowana instalacja potrzebuje obsady, np. 6–10 osób. Leży daleko od wiosek, więc trzeba przy niej postawić baraki i pola (tak jak przy placówce) albo dowozić ludzi i jedzenie trasą.
 - **Z5. Linie przesyłowe.** Słupy z kablem łączą sieć wioski z siecią placówek i portów. Nadwyżka prądu z jednego miejsca zasila drugie, z ograniczeniem przepustowości linii.
@@ -37,10 +37,10 @@ Ustalenie z właścicielem gry (14 października 2026, po wersji 0.214.0). Zasad
 
 ## Gra wieloosobowa (dla każdego etapu)
 
-- Wszystko liczy się ze wspólnego stanu (`towns`, `outposts`, a dla portów i rejsów też wspólnego pola `ports`). Każda gra wylicza to samo, deterministycznie, tak jak dziś sieć placówek.
+- Wszystko liczy się ze wspólnego stanu (`towns`, `outposts`; porty i rejsy też w `outposts`). Każda gra wylicza to samo, deterministycznie, tak jak dziś sieć placówek.
 - Budowy i przekazywanie materiałów idą pod blokadą wioski lub placówki (`withTownStock`, `withOutpost`), więc dwóch graczy nie zbuduje tego samego naraz.
 - Rejsy (Z3) liczą się z rozkładu, jak trasy ciężarówek: dwa liczniki skumulowane, każdy zapisywany przez jedną stronę, więc opóźniony zapis nie dubluje dostawy.
-- **Serwer:** Z2 i Z3 dodają nowe wspólne pole (`ports`) do `SHARED` i do `FIELDS` serwera. Serwer trzeba będzie zaktualizować (zapis w `SERWER.md` i changelogu). Protokół nie musi się zmieniać.
+- **Serwer:** porty (Z2) zapisują się we wspólnym polu `outposts`, które serwer już zna, więc serwera nie trzeba aktualizować. Rejsy (Z3) też zmieszczą się w `outposts` (trasa przy porcie, jak trasy ciężarówek). Protokół się nie zmienia.
 
 ## Pytania do właściciela przed startem
 

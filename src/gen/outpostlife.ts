@@ -11,7 +11,7 @@ import type { ItemKey } from '../data/items';
 import { FOOD } from './farms';
 import { fertility } from './fertility';
 import { hash } from '../core/rng';
-import type { OutpostLife, OutpostState } from './outposts';
+import { PORT, type OutpostLife, type OutpostState } from './outposts';
 
 export const LIFE = {
   /** Game minutes a step; the longest catch-up (older life is skipped to it). */
@@ -36,15 +36,16 @@ export const PESTS = { trample: 0.25, pantry: 0.25, eat: 0.2 };
 /** Food units a crate of k is worth to the pantry (0 = not food). */
 export const foodValue = (k: ItemKey) => FOOD.value[k] ?? 0;
 export const bedsOf = (o: OutpostState) => (o.n?.bunks ?? 0) * LIFE.beds;
-export const pantryOf = (o: OutpostState) => (o.done?.store ? LIFE.shed : LIFE.pantry);
+export const pantryOf = (o: OutpostState) => (o.done?.store || o.done?.port ? LIFE.shed : LIFE.pantry);
 const fresh = (t: number): OutpostLife => ({ t, n: 0, food: 0, fed: 1 });
 const mark = (t: number) => Math.floor(t / LIFE.step) * LIFE.step;
 
-/** How the people are put to work: the fields' crews first, then the dig. */
+/** How the people are put to work: the fields' crews first, then the dig (or, 0.216, a port's warehouse crew). */
 export function crews(o: OutpostState, people: number) {
   const n = Math.floor(people), fields = o.n?.field ?? 0, need = fields * LIFE.fieldCrew;
-  const farm = Math.min(n, need), dig = o.done?.dig ? Math.min(n - farm, LIFE.digCrew) : 0;
-  return { farm, dig, idle: n - farm - dig, farmFill: need ? farm / need : 0, digFill: dig / LIFE.digCrew };
+  const work = o.done?.dig ? LIFE.digCrew : o.done?.port ? PORT.crew : 0;
+  const farm = Math.min(n, need), dig = Math.min(n - farm, work);
+  return { farm, dig, idle: n - farm - dig, farmFill: need ? farm / need : 0, digFill: work ? dig / work : 0 };
 }
 /** Food units the fields make a day with these people (fertility f). */
 export const foodMade = (o: OutpostState, people: number, f: number) => (o.n?.field ?? 0) * LIFE.field * f * crews(o, people).farmFill * (o.n?.wall ? 1 : 1 - PESTS.trample);

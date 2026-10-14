@@ -13,6 +13,7 @@ import { OW, rebuildChunksNear } from './overworld';
 import { driving } from './vehicles';
 import { nearX } from '../gen/regions';
 import { fieldClaims } from '../gen/fields';
+import { portClaims } from '../gen/ports';
 import { CLAIM, CLEAR_R, claimFlatten, claimProblem, padHeight, claimDist, type Claim } from '../gen/claims';
 import { EYE } from './player';
 import { redraw as redrawBase, syncBases } from './building';
@@ -46,7 +47,9 @@ export function syncFlags() {
 export function clearFlags() { for (const g of drawn.values()) scene.remove(g); drawn.clear(); }
 
 /** Every levelled pad the terrain takes: the players' claims and the villages' fields (gen/fields.ts). */
-export const allClaims = (): Claim[] => [...G.char.claims, ...fieldClaims(G.char.towns)];
+export const allClaims = (): Claim[] => [...G.char.claims, ...fieldClaims(G.char.towns), ...portClaims(G.char.world, G.char.outposts)];
+/** (0.216) The ground under a port's pieces changed (here or by another player): level it there. */
+export function padsChanged(ats: { x: number; z: number; y: number }[]) { for (const a of ats) applyClaims({ x: a.x, z: a.z, y: a.y }); }
 /** Hand the claims to the terrain and rebuild the ground around `at` (a flag raised or taken down, or a field staked out there). */
 function applyClaims(at?: Claim) {
   const T = OW.terrain; if (!T) return;

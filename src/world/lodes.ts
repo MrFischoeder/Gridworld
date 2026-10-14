@@ -32,6 +32,8 @@ interface Hand { f: Figure; x: number; z: number; face: number; phase: number; w
 export interface OutGun { head: THREE.Object3D; yaw: number; home: number; cd: number; look: number; target: unknown }
 interface Live { l: Lode; g: THREE.Group; rings: [number, number, number][]; boxes: [number, number, number, number][]; oil?: OilMotion; sig: string; rotor?: THREE.Object3D; hands: Hand[]; H?: (x: number, z: number) => number; wall?: { R: number; gate: number; half: number; th: number }; guns: OutGun[] }
 const live = new Map<string, Live>();
+/** (0.216) What the shared drawings below need from the place they draw into (an outpost or a port: world/ports.ts). */
+export type DrawInto = Pick<Live, 'g' | 'rings' | 'boxes' | 'rotor'>;
 const STONE = [0xb2b2a3, 0x88978f], ROCK = 0x89988b;
 
 /** What a deposit gives, in words. */
@@ -226,7 +228,7 @@ function drawProc(pb: PropBatch, H: (x: number, z: number) => number, L: Live, o
     cyl(pb, x + 2.6, y, z - 1.6, 0.45, 11, BR, 8);
     pb.box(x - 1.6, y - 0.2, z + 2, x + 3.2, y + 2.6, z + 5, WOOD); pb.gableRoof(x - 1.9, z + 1.7, x + 3.5, z + 5.3, y + 2.6, 1, WOOD);
     pb.seg(0xffb347, [x - 0.5, y + 1, z + 1.61], [x + 0.5, y + 1, z + 1.61]);
-    for (let k = 0; k < 4; k++) pb.box(x + 3.6 + (k % 2) * 0.7, y, z + 2.2 + Math.floor(k / 2) * 0.5, x + 4.2 + (k % 2) * 0.7, y + 0.25, z + 2.6 + Math.floor(k / 2) * 0.5, LODES[o.k].c);
+    for (let k = 0; k < 4; k++) pb.box(x + 3.6 + (k % 2) * 0.7, y, z + 2.2 + Math.floor(k / 2) * 0.5, x + 4.2 + (k % 2) * 0.7, y + 0.25, z + 2.6 + Math.floor(k / 2) * 0.5, LODES[L.l.k].c);
     L.boxes.push([x - 1.6, z - 1.6, x + 1.6, z + 1.6]); L.boxes.push([x - 1.6, z + 2, x + 3.2, z + 5]); L.rings.push([x + 2.6, z - 1.6, 0.5]);
   } else if (out === 'planks') { // an open saw shed, the bench and a stack of planks
     for (const [sx, sz] of [[-3, -2], [3, -2], [3, 2], [-3, 2]]) pb.box(x + sx - 0.12, H(x + sx, z + sz), z + sz - 0.12, x + sx + 0.12, y + 3, z + sz + 0.12, WOOD);
@@ -299,7 +301,7 @@ function drawTurret(pb: PropBatch, H: (x: number, z: number) => number, L: Live,
   for (const [sx, sz] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) L.rings.push([x + sx * 1.15, z + sz * 1.15, 0.2]);
 }
 /** (0.185) A plank bunkhouse with a stove pipe, a door on the long side and a bench. */
-function drawBunks(pb: PropBatch, H: (x: number, z: number) => number, L: Live, x: number, z: number) {
+export function drawBunks(pb: PropBatch, H: (x: number, z: number) => number, L: DrawInto, x: number, z: number) {
   const y = Math.min(H(x - 4, z), H(x + 4, z), H(x, z));
   pb.box(x - 4, y - 0.3, z - 2, x + 4, y + 2.6, z + 2, WOOD); pb.gableRoof(x - 4.3, z - 2.3, x + 4.3, z + 2.3, y + 2.6, 1.3, WOOD);
   for (let k = -3; k <= 3; k++) if (k) pb.seg(WOOD, [x + k, y, z + 2.01], [x + k, y + 2.6, z + 2.01]);
@@ -310,7 +312,7 @@ function drawBunks(pb: PropBatch, H: (x: number, z: number) => number, L: Live, 
   L.boxes.push([x - 4, z - 2, x + 4, z + 2]);
 }
 /** (0.185) A fenced field, 12 m square: posts and rails, crop rows over the furrows (grain, roots or greens by index). */
-function drawField(pb: PropBatch, H: (x: number, z: number) => number, x: number, z: number, i: number) {
+export function drawField(pb: PropBatch, H: (x: number, z: number) => number, x: number, z: number, i: number) {
   const s = 6, CROP = [0xd8c860, 0x6fd24a, 0x9adf5a][i % 3];
   for (let k = 0; k < 4; k++) {
     const P = (t: number): [number, number] => k === 0 ? [x - s + t * 2 * s, z - s] : k === 1 ? [x + s, z - s + t * 2 * s] : k === 2 ? [x + s - t * 2 * s, z + s] : [x - s, z + s - t * 2 * s];
@@ -339,7 +341,7 @@ function drawHands(L: Live, o: OutpostState, sp: ReturnType<typeof outpostSpots>
   for (let i = 0; i < w.idle; i++) { const [bx, bz] = sp.bunks[0], x = bx - 2 + i * 1.3, z = bz + 3.6; put(x, z, 'none', false, 0, i); }
 }
 /** (0.184) A power source at an outpost: a generator box, a wind turbine (its rotor turns with the wind), panels, a coal boiler. */
-function drawPowerSource(pb: PropBatch, H: (x: number, z: number) => number, L: Live, o: OutpostState, x: number, z: number, y: number) {
+export function drawPowerSource(pb: PropBatch, H: (x: number, z: number) => number, L: DrawInto, o: OutpostState, x: number, z: number, y: number) {
   if (o.pk === 'generator') {
     pb.box(x - 2, y, z - 1.1, x + 2, y + 2.4, z + 1.1, STEEL);
     for (let k = -1; k <= 1; k++) pb.seg(STEEL, [x + k * 1.2, y + 0.3, z + 1.11], [x + k * 1.2, y + 2.1, z + 1.11]);

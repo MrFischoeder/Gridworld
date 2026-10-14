@@ -35,6 +35,8 @@ import { installHit, dropInstalls, primeInstalls } from './installs';
 import { cityHit, cityRay, dropCities, cityName, cityVaultHint } from './cities';
 import { toxicHit, dropToxic, toxicName } from './toxic';
 import { lodeHit, dropLodes, lodeName } from './lodes';
+import { portHit, dropPorts, portNameAt } from './ports';
+import { portClaims } from '../gen/ports';
 import { installAt } from '../gen/installs';
 import { drawFarms } from './farms';
 import { scene, V, GRID, localize } from './render';
@@ -209,7 +211,7 @@ export function treeHit(x: number, y: number, z: number, r: number): boolean {
  *  village fences, ruins), sampled round its circle at the knee and the chest. Vehicles, boats and caravans are left
  *  out: foes must still reach whoever is in them. */
 export function foeBody(x: number, y: number, z: number, r: number): boolean {
-  if (treeHit(x, y, z, r) || cityHit(x, y + 0.5, z, r) || houseHit(x, y, z, r) || hallHit(x, y, z, r) || settlementHit(x, y, z, r) || walkHit(x, y, z, r) || ladderHit(x, y, z, r) || guardHit(x, y, z, r) || installHit(x, y, z, r) || lighthouseHit(x, y, z, r) || lodeHit(x, y, z, r) || podHit(x, y, z, r) || baseHit(x, y, z, r) || megalithHit(x, y, z, r) || worldGateHit(x, y, z, r) || doorHit(x, y, z, r) || toxicHit(x, y, z, r)) return true;
+  if (treeHit(x, y, z, r) || cityHit(x, y + 0.5, z, r) || houseHit(x, y, z, r) || hallHit(x, y, z, r) || settlementHit(x, y, z, r) || walkHit(x, y, z, r) || ladderHit(x, y, z, r) || guardHit(x, y, z, r) || installHit(x, y, z, r) || lighthouseHit(x, y, z, r) || lodeHit(x, y, z, r) || portHit(x, y, z, r) || podHit(x, y, z, r) || baseHit(x, y, z, r) || megalithHit(x, y, z, r) || worldGateHit(x, y, z, r) || doorHit(x, y, z, r) || toxicHit(x, y, z, r)) return true;
   const k = r * 0.75, y0 = Math.floor(y + 0.3), y1 = Math.floor(y + 1.2);
   for (const [dx, dz] of [[0, 0], [r, 0], [-r, 0], [0, r], [0, -r], [k, k], [-k, k], [k, -k], [-k, -k]]) {
     const fx = Math.floor(x + dx), fz = Math.floor(z + dz);
@@ -687,12 +689,12 @@ export function openWorld(x: number, z: number) {
   }
   const w = G.char.world;
   if (!OW.terrain || OW.terrain.world !== w) { OW.terrain = new Terrain(w); riversOf(w); } // the rivers are worked out once, while the world loads
-  OW.terrain.setClaims([...G.char.claims, ...fieldClaims(G.char.towns)]); // bases and the villages' fields are levelled
+  OW.terrain.setClaims([...G.char.claims, ...fieldClaims(G.char.towns), ...portClaims(w, G.char.outposts)]); // bases and the villages' fields are levelled
   OW.terrain.setSettlementPads(villagePads(w));
-  primeInstalls(w, [...G.char.claims, ...fieldClaims(G.char.towns)]); // the installations' sites are worked out in a worker meanwhile
+  primeInstalls(w, [...G.char.claims, ...fieldClaims(G.char.towns), ...portClaims(w, G.char.outposts)]); // the installations' sites are worked out in a worker meanwhile
   closeWorld();
   G.water = (px, pz) => (inStructure(px, pz) ? null : OW.terrain!.water(px, pz));
-  G.space = space; G.ground = groundAt; G.obstacle = (px, py, pz, r) => settlementHit(px, py, pz, r) || megalithHit(px, py, pz, r) || worldGateHit(px, py, pz, r) || treeHit(px, py, pz, r) || vehicleHit(px, py, pz, r) || caravanHit(px, py, pz, r) || peerCarHit(px, py, pz, r) || ambushHit(px, py, pz, r) || baseHit(px, py, pz, r) || ladderHit(px, py, pz, r) || walkHit(px, py, pz, r) || guardHit(px, py, pz, r) || houseHit(px, py, pz, r) || doorHit(px, py, pz, r) || podHit(px, py, pz, r) || installHit(px, py, pz, r) || cityHit(px, py, pz, r) || hallHit(px, py, pz, r) || bridgeHit(px, py, pz, r) || pierHit(px, py, pz, r) || lighthouseHit(px, py, pz, r) || boatHit(px, py, pz, r) || shipHit(px, py, pz, r) || toxicHit(px, py, pz, r) || lodeHit(px, py, pz, r);
+  G.space = space; G.ground = groundAt; G.obstacle = (px, py, pz, r) => settlementHit(px, py, pz, r) || megalithHit(px, py, pz, r) || worldGateHit(px, py, pz, r) || treeHit(px, py, pz, r) || vehicleHit(px, py, pz, r) || caravanHit(px, py, pz, r) || peerCarHit(px, py, pz, r) || ambushHit(px, py, pz, r) || baseHit(px, py, pz, r) || ladderHit(px, py, pz, r) || walkHit(px, py, pz, r) || guardHit(px, py, pz, r) || houseHit(px, py, pz, r) || doorHit(px, py, pz, r) || podHit(px, py, pz, r) || installHit(px, py, pz, r) || cityHit(px, py, pz, r) || hallHit(px, py, pz, r) || bridgeHit(px, py, pz, r) || pierHit(px, py, pz, r) || lighthouseHit(px, py, pz, r) || boatHit(px, py, pz, r) || shipHit(px, py, pz, r) || toxicHit(px, py, pz, r) || lodeHit(px, py, pz, r) || portHit(px, py, pz, r);
   G.floor = (x, y, z) => Math.max(rockFloor(x, y, z), settlementFloor(x, y, z), megalithFloor(x, y, z), baseFloor(x, y, z), ladderFloor(x, y, z), walkFloor(x, y, z), bridgeFloor(x, y, z), pierFloor(x, y, z), shipFloor(x, y, z)); G.rayBlock = (o, d, t) => settlementRay(o, d, megalithRay(o, d, worldGateRay(o, d, cityRay(o, d, doorRay(o, d, houseRay(o, d, baseRay(o, d, t))))))); G.solid = (p) => settlementSolid(p) || megalithHit(p.x, p.y, p.z, 0) || worldGateHit(p.x, p.y, p.z, 0) || baseSolid(p) || houseSolid(p);
   foeRules.blocked = (p) => megalithHit(p.x, p.y, p.z, .7) || nearVillage(p.x, p.z) < 2;
   foeRules.body = foeBody;
@@ -732,7 +734,7 @@ export function openWorld(x: number, z: number) {
 export function closeWorld() {
   clearMegaliths();
   clearWorldGates();
-  dropGarrisons(); clearVehicles(); dropCrash(); dropInstalls(); dropCities(); dropToxic(); dropLodes(); clearBridges(); clearPiers();
+  dropGarrisons(); clearVehicles(); dropCrash(); dropInstalls(); dropCities(); dropToxic(); dropLodes(); dropPorts(); clearBridges(); clearPiers();
   setCreatureEnv(null); clearCreatures();
   setRobotEnv(null); clearRobots();
   setBanditEnv(null); clearBandits();
@@ -820,7 +822,7 @@ export function placeName(x: number, z: number): string {
   { const mn = megalithName(x, z); if (mn) return mn + ' (megalith)' + tag; }
   { const cn = cityName(x, z); if (cn) return cn + cityVaultHint(x,z) + tag; }
   { const f = toxicName(x, z); if (f) return f + tag; }
-  { const l = lodeName(x, z); if (l) return l + tag; }
+  { const l = lodeName(x, z) ?? portNameAt(x, z); if (l) return l + tag; }
   for (const r of OW.terrain!.chunkFeatures(Math.floor(x / CHUNK), Math.floor(z / CHUNK)).roads) {
     if (!r.h) continue;
     const top = r.pts[r.pts.length - 1], foot = r.pts[0];

@@ -37,6 +37,7 @@ import { installClick } from './install';
 import { outpostClick } from './outpost';
 import { bridgeClick } from './bridge';
 import { pierClick } from './pier';
+import { portClick } from './port';
 import { stockHas, stockTake, hallNote } from './stock';
 import { buildersLine, jobHTML, building } from './jobs';
 import { hallClick, openStoresHere, storesWithElder } from './hall';
@@ -494,7 +495,7 @@ dlgEl.addEventListener('click', async (e) => {
   const dm = developmentClick(e.target as HTMLElement, townId());
   if (dm !== null) { panel().innerHTML = developmentHTML(townId()!, dlgHead(), dm); return; }
   if (craftClick(e.target as HTMLElement) || buildClick(e.target as HTMLElement)) return;
-  if (gateConsoleClick(e.target as HTMLElement) || caravanClick(e.target as HTMLElement) || shuttleClick(e.target as HTMLElement) || installClick(e.target as HTMLElement) || outpostClick(e.target as HTMLElement) || bridgeClick(e.target as HTMLElement) || pierClick(e.target as HTMLElement) || hallClick(e.target as HTMLElement) || worksClick(e.target as HTMLElement) || stationClick(e.target as HTMLElement) || terminalClick(e.target as HTMLElement) || logbookClick(e.target as HTMLElement)) return;
+  if (gateConsoleClick(e.target as HTMLElement) || caravanClick(e.target as HTMLElement) || shuttleClick(e.target as HTMLElement) || installClick(e.target as HTMLElement) || outpostClick(e.target as HTMLElement) || portClick(e.target as HTMLElement) || bridgeClick(e.target as HTMLElement) || pierClick(e.target as HTMLElement) || hallClick(e.target as HTMLElement) || worksClick(e.target as HTMLElement) || stationClick(e.target as HTMLElement) || terminalClick(e.target as HTMLElement) || logbookClick(e.target as HTMLElement)) return;
   const pm = plantUpClick(town(), e.target as HTMLElement);
   if (pm !== null) { if (pm.built) { const tn = town(); closeDialog(); showPlantUp(tn); } else panel().innerHTML = plantUpHTML(town(), dlgHead(), pm.msg); return; }
   const im = improveClick(town(), e.target as HTMLElement);

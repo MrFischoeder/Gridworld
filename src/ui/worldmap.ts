@@ -275,7 +275,7 @@ function drawArea(ctx: CanvasRenderingContext2D, w: number, h: number, ppm: numb
     ctx.strokeStyle = ctx.fillStyle = theirs ? '#d0805a' : '#ffd060'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(x, y, r, 0, 6.283); ctx.stroke(); ctx.lineWidth = 1;
     if (theirs && labels) ctx.fillText(TL`${ownerName(o.o)}'s`, x, y - r - 6);
     if (o.life?.v) { ctx.beginPath(); ctx.arc(x, y, r + 4, 0, 6.283); ctx.stroke(); } // (0.185) a hamlet: a double ring
-    if (labels) ctx.fillText(o.life?.v ? TL`Hamlet · ${Math.floor(o.life.n)} people` : tl('Outpost') + (o.done?.dig ? '' : ' (building)') + (o.life && o.life.n >= 1 ? ` · ${Math.floor(o.life.n)} people` : ''), x, y + r + 16);
+    if (labels) ctx.fillText(o.life?.v ? TL`Hamlet · ${Math.floor(o.life.n)} people` : (o.k === 'port' ? o.name : tl('Outpost') + (o.done?.dig ? '' : ' (building)')) + (o.life && o.life.n >= 1 ? ` · ${Math.floor(o.life.n)} people` : ''), x, y + r + 16);
   }
   for (const m of leadMarkers()) { // leads: a violet diamond for a data carrier, a lime one for a great installation (held at the edge of the big map when further)
     let x = X(m.x), y = Z(m.z); const r = labels ? 9 : 5, out = x < 24 || y < 40 || x > w - 24 || y > h - 40;

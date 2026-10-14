@@ -3,6 +3,14 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.216.0', date: '2026-10-14', title: 'Ports', notes: [
+    'At a finished dock you can now found a port (its window opens from the dock\'s sign, then from the port\'s own board). A port works like an outpost in the wilds: it has no village behind it, so it needs its own power and its own people.',
+    'Its main building is the port warehouse: a fenced yard, a big plank shed with racks and a steel crane by the dock (planks, nails, stone, steel, rope, gears, scrap; 14 hours). Its hold takes 6000 litres of goods.',
+    'Beside it you build a power source (a diesel generator, a wind turbine, solar panels or a coal boiler; it joins the outposts\' grid when their reaches meet), bunkhouses and fields. Settlers come on their own when there are free beds and food to spare, work the fields first and then the warehouse.',
+    'The crane needs a crew of 4 and power (the grid must meet at least a quarter of the demand over the last day). With them it unloads your trucks parked by the warehouse and your boats at the dock into the hold, and loads them from it. Without them it stands still; storing and taking by hand from your backpack always works.',
+    'Cargo ships between ports come next. Ports are not raided yet.',
+    'Multiplayer: a port is part of the shared outposts (under the port\'s lock), so every player sees and works the same port. The server does not need an update.',
+  ] },
   { v: '0.215.0', date: '2026-10-14', title: 'Every building needs power and people', notes: [
     'A settlement\'s warehouse, fuel pump, charging post and convoy depot now have a crew: 2 storekeepers, a pump attendant, a hand at the charging post, and the depot\'s 4 drivers and mechanic. Each needs its whole crew, taken from the village\'s free workers.',
     'They also draw power from the village like its works: the warehouse 3 kW, the pump 2 kW, the depot 6 kW. Over the last day the village must give its works at least a quarter of the power they need, so a solar plant\'s nights do not stop them.',
