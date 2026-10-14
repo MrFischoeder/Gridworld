@@ -32,7 +32,7 @@ export class WorldTab implements Tab<WorldFile> {
   private river: [number, number][] | null = null; private dragSel: { x: number; z: number } | null = null;
   private img: HTMLCanvasElement | null = null; private dirtyImg = true; private busy = '';
   private tools!: HTMLElement; private side!: HTMLElement;
-  constructor(private changed: () => void, private redraw: () => void, private layouts: () => string[]) { this.file = newWorld(tl('New world')); }
+  constructor(private changed: () => void, private redraw: () => void, private layouts: () => string[], private dungeons: () => string[] = () => []) { this.file = newWorld(tl('New world')); }
 
   fresh(name: string) { return newWorld(name); }
   load(f: WorldFile, fresh: boolean) { this.file = f; this.sel = null; this.river = null; this.dirtyImg = true; if (fresh) this.hist.clear(); this.refresh(); }
@@ -90,6 +90,7 @@ export class WorldTab implements Tab<WorldFile> {
       const p = f.places[s.pl];
       props.push(h('div', { class: 'what' }, PLACE_NAME[p.k]), textField(tl('Name'), p.name ?? '', (v) => this.edit(() => { p.name = v || undefined; })));
       if (p.k === 'city') props.push(numField(tl('Radius (m)'), p.r ?? 600, (v) => this.edit(() => { p.r = v; }), 50, 200, 2000));
+      if (p.k === 'ruin' || p.k === 'wreck' || p.k === 'city') props.push(selectField(tl('Dungeon'), p.dungeon ?? '', [['', tl('(generated)')], ...this.dungeons().map((n): [string, string] => [n, n])], (v) => this.edit(() => { p.dungeon = v || undefined; })));
       if (p.k === 'village' || p.k === 'start') props.push(selectField(tl('Layout'), p.layout ?? '', [['', tl('(generated)')], ...this.layouts().map((n): [string, string] => [n, n])], (v) => this.edit(() => { p.layout = v || undefined; })));
       if (p.k === 'install') props.push(selectField(tl('Plant'), p.install ?? INSTALLS[0].k, INSTALLS.map((i): [string, string] => [i.k, i.name]), (v) => this.edit(() => { p.install = v; })));
       props.push(h('button', { onclick: () => this.removeSel() }, tl('Remove')));
@@ -165,6 +166,10 @@ export class WorldTab implements Tab<WorldFile> {
     else if (wet(start.x, start.z)) out.push(tl('The start is in the sea: Gridholm needs dry land.'));
     const n = f.places.filter((p) => p.k === 'village' && wet(p.x, p.z)).length;
     if (n) out.push(TL`${n} villages stand in the sea.`);
+    // (0.210) a layout or a dungeon named that this browser does not keep (the game would build the place itself)
+    const lays = this.layouts(), dgs = this.dungeons();
+    const lost = f.places.filter((p) => (p.layout && !lays.includes(p.layout)) || (p.dungeon && !dgs.includes(p.dungeon))).length;
+    if (lost) out.push(TL`${lost} places name a village layout or a dungeon that is not saved here.`);
     return out;
   }
   private at(x: number, z: number) { const i = Math.floor(x), j = Math.floor(z); return i >= 0 && j >= 0 && i < this.file.w && j < this.file.h ? j * this.file.w + i : -1; }

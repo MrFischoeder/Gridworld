@@ -194,7 +194,7 @@ export function reachable(g: VoxelGrid, sx: number, sz: number, sy: number): Set
 // ---------- worlds ----------
 export type PlaceKind = 'start' | 'village' | 'ruin' | 'camp' | 'wreck' | 'city' | 'install' | 'megalith' | 'cave';
 export const PLACE_KINDS: PlaceKind[] = ['start', 'village', 'ruin', 'camp', 'wreck', 'city', 'install', 'megalith', 'cave'];
-export interface WorldPlace { k: PlaceKind; x: number; z: number; name?: string; r?: number; layout?: string; install?: string }
+export interface WorldPlace { k: PlaceKind; x: number; z: number; name?: string; r?: number; layout?: string; install?: string; /** (0.210) a ruin's, wreck's or dead city's level drawn in the editor (a dungeon file's name) */ dungeon?: string }
 export interface WorldRiver { pts: [number, number][]; w: number; name?: string }
 export interface WorldLode { k: LodeKind; x: number; z: number; rich: number }
 export interface WorldFile {

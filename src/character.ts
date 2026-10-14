@@ -172,7 +172,7 @@ export const depth = () => G.char.dungeon?.depth ?? 1;
 export const droneHp = () => 2 + Math.floor((depth() - 1) / 2);
 export const droneDps = () => 16 + 3 * (depth() - 1);
 /** Save key of the current dungeon sector: every ruin has its own network of sectors. */
-export const dungeonKey = () => { const d = G.char.dungeon!; return d.ruinId + ':' + d.depth + ':' + d.gx + ':' + d.gz; };
+export const dungeonKey = () => { const d = G.char.dungeon!; return d.ruinId + ':' + d.depth + ':' + d.gx + ':' + d.gz + (d.custom ? '@' + d.custom : ''); }; // (0.210) an editor's level keeps its own chests and kills, also under a place
 /** Per-dungeon progress list (opened chests, unlocked doors, killed bosses). */
 export function progress(which: 'opened' | 'unlocked' | 'killed'): number[] {
   const k = dungeonKey(), m = G.char[which];

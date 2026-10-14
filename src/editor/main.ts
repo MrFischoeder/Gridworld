@@ -34,7 +34,7 @@ let frameQueued = false;
 const redraw = () => { if (frameQueued) return; frameQueued = true; requestAnimationFrame(() => { frameQueued = false; paint(); }); };
 
 const tabs = {
-  world: new WorldTab(markDirty, redraw, () => names('village')),
+  world: new WorldTab(markDirty, redraw, () => names('village'), () => names('dungeon')),
   village: new VillageTab(markDirty, redraw),
   dungeon: new DungeonTab(markDirty, redraw),
 } as { world: WorldTab; village: VillageTab; dungeon: DungeonTab };

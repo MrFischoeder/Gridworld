@@ -18,7 +18,7 @@ import { metroCity, metroId, generateMetro } from '../gen/metro';
 import { drawMetro } from './metro';
 import { stepFloor } from '../core/steps';
 import { expandDungeon } from '../gen/mapfile';
-import { customDungeon, customId } from './custommaps';
+import { customDungeon, customId, editorDungeonAt } from './custommaps';
 import { setPlaceLight, fixtureModel, torchModel, postLantern } from './light';
 import { dungeonLamps, underAmb, villageLanterns } from '../gen/darkness';
 import { MOUNTED_TURRET } from '../data/mountedturrets';
@@ -485,6 +485,12 @@ export function exitCave(i: number) {
 export function enterDungeon(ruinId: number) {
   saveOverworldPos();
   const c = G.char, entrance = cityEntrance(c.world, ruinId), city = entrance && metroCity(c.world, ruinId);
+  const drawn = editorDungeonAt(c.world, ruinId);
+  if (drawn) { // (0.210, stage E4) a drawn world's place with a level from the editor: down into it; its stairs bring you back here
+    c.loc = 'dungeon'; c.dungeon = { ruinId, depth: 1, gx: 0, gz: 0, custom: drawn }; saveChar();
+    loadDungeon(customDungeon(drawn)!.marks.some((m) => m.k === 'spawn') ? null : 'V0');
+    showToast(entrance?.name ?? findPoi(c.world, ruinId)?.name ?? drawn); arriveVia(W.arrivalStair); return;
+  }
   if (entrance && city) { // (0.195) down into the city's metro, at this entrance's station
     c.loc = 'dungeon'; c.dungeon = { ruinId: metroId(c.world, city), depth: 1, gx: 0, gz: 0 }; saveChar();
     loadDungeon('V' + entrance.n); showToast(entrance.name); arriveVia(W.arrivalStair); return;
@@ -504,7 +510,8 @@ export function enterCustom(name: string): boolean {
   return true;
 }
 function exitCustom() {
-  const c = G.char;
+  const c = G.char, d = c.dungeon!;
+  if (d.custom && d.ruinId !== customId(d.custom)) { exitToRuin(); return; } // (0.210) under a place of the world: out at that place
   c.loc = 'overworld'; c.dungeon = null; saveChar();
   loadOverworld({ kind: 'saved' }); arriveVia(null);
 }

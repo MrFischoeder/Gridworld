@@ -3903,4 +3903,5 @@ export const PL: Record<string, string> = {
   "Worlds drawn in the map editor of this browser": "Światy narysowane w edytorze map w tej przeglądarce",
   "Play on an editor world": "Graj na świecie z edytora",
   "In the game a world's village named with this layout gets its wall, the village buildings, the well, the boards and the fields. The other pieces are kept for later.": "W grze wioska świata, która wskazuje ten układ, dostaje z niego mur, budynki wioski, studnię, tablice i pola. Pozostałe elementy czekają na później.",
+  "{0} places name a village layout or a dungeon that is not saved here.": "Miejsc wskazujących układ wioski albo loch, którego tu nie zapisano: {0}.",
 };

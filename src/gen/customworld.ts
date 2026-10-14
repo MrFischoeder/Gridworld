@@ -26,7 +26,7 @@ export const isCustomSeed = (world: number) => world >= CUSTOM_SEED.lo && world 
 /** Outside the drawn grid: the sea bed (m below the sea level). */
 export const OFF_MAP = -40;
 /** A place of the file in game metres (canonical x), with the region it stands in. */
-export interface GamePlace { k: PlaceKind; x: number; z: number; rx: number; rz: number; name?: string; r?: number; install?: string; layout?: string; i: number }
+export interface GamePlace { k: PlaceKind; x: number; z: number; rx: number; rz: number; name?: string; r?: number; install?: string; layout?: string; dungeon?: string; i: number }
 export interface GameLode { k: LodeKind; x: number; z: number; rx: number; rz: number; rich: number; i: number }
 export interface GameRiver { x: number[]; z: number[]; w: number; name?: string }
 export interface CustomWorld {
@@ -53,7 +53,7 @@ export function setCustomWorld(world: number, f: WorldFile | null, villages: Rec
   const places: GamePlace[] = [], byRegion = new Map<string, GamePlace[]>();
   f.places.forEach((p: WorldPlace, i) => {
     if (p.k === 'start') return;
-    const [x, z] = toGame(p.x, p.z), [rx, rz] = regionOf(x, z), g: GamePlace = { k: p.k, x, z, rx: wrapR(rx), rz, name: p.name || undefined, r: p.r, install: p.install, layout: p.layout || undefined, i };
+    const [x, z] = toGame(p.x, p.z), [rx, rz] = regionOf(x, z), g: GamePlace = { k: p.k, x, z, rx: wrapR(rx), rz, name: p.name || undefined, r: p.r, install: p.install, layout: p.layout || undefined, dungeon: p.dungeon || undefined, i };
     places.push(g);
     const k = rkey(g.rx, g.rz);
     let l = byRegion.get(k); if (!l) byRegion.set(k, l = []); l.push(g);
@@ -76,6 +76,19 @@ export function setCustomWorld(world: number, f: WorldFile | null, villages: Rec
   for (const p of places) if (p.k === 'village' && p.layout) lay(villageSeed(world, { id: packId(p.rx, p.rz, 0) } as Poi), p.layout);
   reg.set(world, { world, f, sx, sz, places, lodes, rivers, byRegion, lodeByRegion, laid });
 }
+/** (0.210, stage E4) The editor's dungeon under a place of a drawn world, or undefined (the place's own level): a
+ *  ruin's (packId(rx, rz, 1)) or a wreck's (packId(rx, rz, 3)) by its id, the first of its kind drawn in its region
+ *  (as gen/regions.ts places them); a dead city's by its index in `citySites` (the file's cities in order). */
+export function placeDungeon(world: number, id: number): string | undefined {
+  const cw = customWorld(world);
+  if (!cw) return undefined;
+  for (const [k, i] of [['ruin', 1], ['wreck', 3]] as const) {
+    const p = cw.places.find((q) => q.k === k && packId(q.rx, q.rz, i) === id);
+    if (p) return p === cw.places.find((q) => q.k === k && q.rx === p.rx && q.rz === p.rz) ? p.dungeon : undefined;
+  }
+  return undefined;
+}
+export const cityDungeon = (world: number, i: number): string | undefined => { const cw = customWorld(world); return cw ? placesOf(cw, 'city')[i]?.dungeon : undefined; };
 /** The drawn world registered for `world`, or null (every seed's own land). */
 export const customWorld = (world: number): CustomWorld | null => (reg.size ? reg.get(world) ?? null : null);
 /** The file's places of a kind / in a canonical region. */

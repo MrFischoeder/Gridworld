@@ -3,6 +3,13 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.210.0', date: '2026-10-14', title: 'Your own dungeons in your own worlds', notes: [
+    'In the world editor, a ruin, a crashed ship or a dead city can now be given a dungeon drawn in the dungeon editor. In the game its stairs, its hatch or the city\'s metro entrances lead down into your level instead of the generated one.',
+    'The level\'s stairs bring you back out at the place you went in by. Its chests and robots are kept for that place, apart from the same level used anywhere else.',
+    'Any style goes anywhere: an ancient ruin, a ship or a metro under any of them. A place without a dungeon keeps its own generated level.',
+    'The world editor warns when a place names a village layout or a dungeon that is not saved in this browser.',
+    'Like the drawn worlds, these levels live in your browser, so they are single player for now.',
+  ] },
   { v: '0.209.0', date: '2026-10-14', title: 'Your own village layouts', notes: [
     'A village drawn in the map editor is now built in the game. In the world editor, give a village (or the start, Gridholm) a layout, and the game raises it as you drew it.',
     'From the layout: the shape of the wall (hexagon, octagon or dodecagon) and with it the gates and the roads, the tavern, the elder\'s hall, the blacksmith, the store, the food shop and the houses (where you put them, as big as you drew them, the door on the side you turned it to, your own names on the signs), the well, the notice board and the map board, and the fields.',

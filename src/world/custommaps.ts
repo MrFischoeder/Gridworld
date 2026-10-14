@@ -5,7 +5,8 @@
 // before the world is opened, so the generators take its land, rivers and places.
 import { storedMaps, type DungeonFile, type WorldFile, type VillageFile } from '../gen/mapfile';
 import { hash } from '../core/rng';
-import { setCustomWorld, customWorld } from '../gen/customworld';
+import { setCustomWorld, customWorld, placeDungeon, cityDungeon } from '../gen/customworld';
+import { metroCity } from '../gen/metro';
 import type { Char } from '../save';
 
 const store = () => { try { return globalThis.localStorage; } catch { return undefined; } };
@@ -42,3 +43,9 @@ export function syncCustomWorld(c: Char): boolean {
 }
 /** The world the editor's 'Test in the game' asked for (?world=<name>), offered in the menu. */
 export const worldAsked = (() => { try { return new URLSearchParams(location.search).get('world'); } catch { return null; } })();
+/** (0.210, stage E4) The editor's level under a place of a drawn world (a ruin, a wreck or a metro entrance of a dead
+ *  city), when its file is in this browser. */
+export function editorDungeonAt(world: number, id: number): string | undefined {
+  const city = metroCity(world, id), name = city ? cityDungeon(world, city.i) : placeDungeon(world, id);
+  return name && customDungeon(name) ? name : undefined;
+}
