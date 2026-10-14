@@ -25,7 +25,16 @@ describe('islands', () => {
       if (!s) continue;
       n++;
       expect(naturalHeight(W, s.x, s.z)).toBeGreaterThan(SEA.level + 0.5);
-      expect(isleHeight(W, s.x, s.z)).toBeGreaterThan(SEA.level + ISLE.top[0] - 0.1);
+      // (0.206) mountainous: a high middle, a peak near its top, steep flanks somewhere
+      expect(isleHeight(W, s.x, s.z)).toBeGreaterThan(SEA.level + 12);
+      let top = -Infinity, steep = 0;
+      for (let u = -0.9; u <= 0.9; u += 0.1) for (let v = -0.9; v <= 0.9; v += 0.1) {
+        const x = s.x + u * s.r, z = s.z + v * s.r, h = isleHeight(W, x, z);
+        top = Math.max(top, h); steep = Math.max(steep, Math.abs(isleHeight(W, x + 20, z) - h) / 20);
+      }
+      expect(top).toBeGreaterThan(SEA.level + s.top * 0.7);
+      expect(top).toBeGreaterThan(SEA.level + ISLE.top[0] * 0.7);
+      expect(steep).toBeGreaterThan(0.35);
       expect(naturalHeight(W, s.x + s.r * 2.2, s.z)).toBeLessThan(SEA.level); // sea round it
     }
     expect(n).toBeGreaterThan(5);

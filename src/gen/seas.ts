@@ -52,8 +52,11 @@ export const inSea = (world: number, x: number, z: number, margin = 0) =>
 export const ISLE = {
   /** Grid cell (m, adjusted to fit round the planet), the share of cells with an island. */
   cell: 1600, chance: 0.35,
-  /** The dry island's radius (m) and top above the sea (m). */
-  r: [240, 700] as [number, number], top: [6, 18] as [number, number],
+  /** The dry island's radius (m) and its peak above the sea (m; 0.206: mountainous, the smaller ones the higher). */
+  r: [240, 700] as [number, number], top: [38, 95] as [number, number],
+  /** (0.206) The peak lies this share of r off the middle; ridges and gullies (`rough` of the height) on a `grain` m scale;
+   *  a beach rising over `beach` of r from the shore; a level shelf `shelf` m round the middle (a fog site's ground). */
+  peakOff: 0.22, rough: 0.55, grain: 110, beach: 0.1, shelf: [20, 42] as [number, number],
   /** The sea mask wanted at the middle (open water, the coast out of sight). */
   mask: 0.6,
   /** The island's foot reaches this many times its dry radius under water. */
@@ -77,7 +80,8 @@ export function isleOf(world: number, i: number, j: number): Isle | null {
     const x = X_MIN + (i + 0.5 + (u(0x1511) - 0.5) * 0.5) * c, z = (j + 0.5 + (u(0x1512) - 0.5) * 0.5) * c;
     const r = ISLE.r[0] + u(0x1513) * (ISLE.r[1] - ISLE.r[0]);
     if (Math.abs(z) < POLAR_Z - SEA.pole && seaMask(world, x, z) >= ISLE.mask && [0, 2.1, 4.2].every((a) => seaMask(world, x + Math.cos(a) * r * 2.5, z + Math.sin(a) * r * 2.5) > 0.35))
-      s = { i, j, x, z, r, top: ISLE.top[0] + u(0x1514) * (ISLE.top[1] - ISLE.top[0]), ph: u(0x1515) * 6.283 };
+      // the smaller the island, the higher its peak stands for its size
+      s = { i, j, x, z, r, top: (ISLE.top[0] + u(0x1514) * (ISLE.top[1] - ISLE.top[0])) * (1.1 - 0.3 * (r - ISLE.r[0]) / (ISLE.r[1] - ISLE.r[0])), ph: u(0x1515) * 6.283 };
   }
   isles.set(key, s);
   return s;
@@ -98,14 +102,29 @@ export function islesNear(world: number, x: number, z: number, m = 0): Isle[] {
 }
 /** The island's radius in direction a (a lobed outline, not a circle). */
 export const isleEdge = (s: Isle, a: number) => s.r * (1 + 0.14 * Math.sin(3 * a + s.ph) + 0.08 * Math.sin(5 * a + 2 * s.ph));
+/** (0.206) The dry land of island s at (dx, dz) from its middle (d = the share of the way to the shore): a peak a little
+ *  off the middle with concave flanks, ridged and gullied by noise, steep to the sea behind a narrow beach, and a level
+ *  shelf round the middle (where a poisoned island's site stands). Local coordinates, so both copies of the planet agree. */
+function isleRelief(world: number, s: Isle, dx: number, dz: number, d: number): number {
+  const seed = hash(world, s.i, s.j, 0x15e8), px = Math.cos(s.ph) * s.r * ISLE.peakOff, pz = Math.sin(s.ph) * s.r * ISLE.peakOff;
+  const at = (x: number, z: number, dd: number) => {
+    const q = Math.max(0, 1 - Math.hypot(x - px, z - pz) / (s.r * (1 + ISLE.peakOff))), cone = q ** 1.6;
+    const n = fbm(seed, x / ISLE.grain + 37, z / ISLE.grain - 11, 3), ridge = 1 - Math.abs(2 * n - 1); // sharp crests, soft gullies
+    const beach = smooth((1 - dd) / ISLE.beach);
+    return SEA.level + 0.6 + beach * (1.4 + (s.top - 1.4) * cone * (1 - ISLE.rough + ISLE.rough * 1.6 * ridge));
+  };
+  const y = at(dx, dz, d), r = Math.hypot(dx, dz), [a, b] = ISLE.shelf;
+  if (r >= b) return y;
+  return at(0, 0, 0) + (y - at(0, 0, 0)) * smooth((r - a) / (b - a));
+}
 /** The ground of the islands at (x, z) (the highest), or -Infinity where there is none. */
 export function isleHeight(world: number, x: number, z: number): number {
   let h = -Infinity;
   for (const s of islesNear(world, x, z)) {
     const dx = x - s.x, dz = z - s.z, d = Math.hypot(dx, dz) / isleEdge(s, Math.atan2(dz, dx));
     if (d >= ISLE.foot) continue;
-    // dry to d = 1, then down under the sea to the foot; a gentle dome on top
-    const y = d <= 1 ? SEA.level + 0.6 + (s.top - 0.6) * smooth(1 - d) : SEA.level + 0.6 - (SEA.deep * 0.4) * smooth((d - 1) / (ISLE.foot - 1));
+    // dry to d = 1, then down under the sea to the foot; on the dry part a mountain (0.206)
+    const y = d <= 1 ? isleRelief(world, s, dx, dz, d) : SEA.level + 0.6 - (SEA.deep * 0.4) * smooth((d - 1) / (ISLE.foot - 1));
     h = Math.max(h, y);
   }
   return h;

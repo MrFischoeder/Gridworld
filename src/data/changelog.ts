@@ -3,6 +3,11 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.206.0', date: '2026-10-14', title: 'Mountainous islands', notes: [
+    'The small islands out in the ocean are mountains now: each rises to a peak of roughly 40 to 100 m (the smaller the island, the higher for its size), a little off its middle, with ridges and gullies on its flanks, steep slopes and cliffs down to the sea behind a narrow beach.',
+    'A level shelf stays round each island\'s middle, where the old sites on the poisoned islands stand.',
+    'The islands lie where they did; only their shape changed. Online, everyone sees the same islands.',
+  ] },
   { v: '0.205.0', date: '2026-10-13', title: 'The metro\'s track trench', notes: [
     'In a dead city\'s metro the track now lies in a trench: the platforms on both sides of every station stand a step higher, and the track runs on out of the station into the tunnels at the trench\'s level, so to go into a tunnel you step down into the trench and walk along the rails.',
     'The rails are solid steel on timber sleepers now, easy to see down in the trench and along the tunnels.',
