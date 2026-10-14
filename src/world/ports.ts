@@ -19,6 +19,12 @@ import { settleAll, pwOf, POWER_SRC } from '../gen/grid';
 import { crews, lifeNow } from '../gen/outpostlife';
 import { portSpots, portWorks, portVol, isPort, portPoint, portClaims } from '../gen/ports';
 import { padsChanged } from './claims';
+import { settleLine, unloadLines, dueVoyages, arriving, voyageSails, shipAt, periodOf } from '../gen/shiplines';
+import { showcaseBoat } from './boats';
+import { SEA } from '../gen/seas';
+import { PIER } from '../gen/piers';
+import { BOATS } from '../gen/boats';
+import { withOutpost } from '../ui/stock';
 import { drawBunks, drawField, drawPowerSource, tellRaids, type DrawInto } from './lodes';
 import { saveChar } from '../character';
 import { showToast, logLine } from '../ui/hud';
@@ -123,8 +129,41 @@ function build(id: string, o: OutpostState, p: Pier): Live {
   return L;
 }
 function drop(L: Live) { scene.remove(L.g); L.g.traverse((o) => (o as THREE.Mesh).geometry?.dispose()); }
-export function dropPorts() { for (const L of live.values()) drop(L); live.clear(); }
+export function dropPorts() { for (const L of live.values()) drop(L); live.clear(); for (const L of lineShips.values()) scene.remove(L.g); lineShips.clear(); }
 
+// ---------- (0.217, stage Z3) the ships on the cargo lines ----------
+interface LineShipLive { g: THREE.Group; key: string; yaw: number }
+const lineShips = new Map<string, LineShipLive>();
+/** Where a ship lies by a dock's head (on your copy of the planet), and the way out. */
+function berth(pierId: string): [number, number] | null {
+  const p = G.char.piers.find((q) => q.id === pierId);
+  if (!p) return null;
+  const s = p.len - PIER.head / 2, b = PIER.headW / 2 + 4;
+  return [nearX(p.x + p.dx * s - p.dz * b, G.pos.x), p.z + p.dz * s + p.dx * b];
+}
+/** Every frame: each line's ship where its timetable puts it, within 700 m of you (not solid). */
+function drawLineShips() {
+  const c = G.char, T = OW.terrain, seen = new Set<string>();
+  if (T) for (const [id, o] of Object.entries(c.outposts)) {
+    const l = o?.line, sh = l?.ship;
+    if (!l || !sh || l.t0 === undefined || !o.pier) continue;
+    const to = c.outposts[l.to], a = berth(o.pier), b = to?.pier ? berth(to.pier) : null;
+    if (!a || !b) continue;
+    const bx = nearX(b[0], a[0]), k = Math.floor((c.time - l.t0) / periodOf(l, sh.k));
+    const at = shipAt(l, c.time), p = !voyageSails(c.world, c.outposts, id, k) ? 0 : at.at === 'home' ? 0 : at.at === 'out' ? at.p : at.at === 'there' ? 1 : 1 - at.p;
+    const x = a[0] + (bx - a[0]) * p, z = a[1] + (b[1] - a[1]) * p;
+    if (Math.hypot(x - G.pos.x, z - G.pos.z) > 700) continue;
+    const w = T.water(x, z);
+    if (w?.kind !== 'sea' && p > 0.02 && p < 0.98) continue; // over land on the straight way: not drawn
+    seen.add(id);
+    let L = lineShips.get(id);
+    if (!L || L.key !== sh.id) { if (L) scene.remove(L.g); L = { g: showcaseBoat(sh.k), key: sh.id, yaw: 0 }; scene.add(L.g); lineShips.set(id, L); }
+    const back = at.at === 'back' || at.at === 'there';
+    L.yaw = Math.atan2((bx - a[0]) * (back ? -1 : 1), (b[1] - a[1]) * (back ? -1 : 1));
+    L.g.position.set(x, SEA.level + Math.sin(time * 0.9 + x) * 0.08, z); L.g.rotation.y = L.yaw;
+  }
+  for (const [id, L] of lineShips) if (!seen.has(id)) { scene.remove(L.g); lineShips.delete(id); }
+}
 let time = 0;
 /** Twice a second: draw the ports within reach, redraw changed ones, finish due builds; every frame the settlers and the crane. */
 export function updatePorts(dt: number) {
@@ -136,10 +175,12 @@ export function updatePorts(dt: number) {
     if (L.jib && L.works) L.jib.rotation.y = Math.atan2(L.p.dx, L.p.dz) + Math.sin(time * 0.25) * 0.9;
     if (L.rotor) L.rotor.rotation.z += dt * 2.4 * windAt(hash(G.char.world, L.id.length, L.ox | 0, L.oz | 0), G.char.time);
   }
+  drawLineShips();
   if ((tick -= dt) > 0) return;
   tick = 0.5;
   finishPorts();
   levelPads();
+  tickLines(0.5);
   const seen = new Set<string>();
   for (const [id, o] of Object.entries(G.char.outposts)) {
     if (!isPort(o)) continue;
@@ -154,6 +195,31 @@ export function updatePorts(dt: number) {
     live.set(id, build(id, o, p));
   }
   for (const [id, L] of live) if (!seen.has(id) || Math.hypot(L.ox - G.pos.x, L.oz - G.pos.z) > DROP) { drop(L); live.delete(id); }
+}
+/** (0.217, stage Z3) Settle this port's line and take what the lines brought off into the hold (under the port's lock);
+ *  a few words about it for the window. */
+export function tickPort(id: string): string {
+  const c = G.char, o = c.outposts[id];
+  if (!o) return '';
+  const words: string[] = [];
+  for (const v of settleLine(c.world, c.outposts, id, c.time)) if (v.fate === 'ok' && v.n) words.push(TL`The ${BOATS[o.line!.ship!.k].name.toLowerCase()} carried ${v.n} crates to ${o.line!.toName}.`);
+  const got = unloadLines(c.world, c.outposts, id, c.time), n = got.reduce((a, [, m]) => a + m, 0);
+  if (n) words.push(TL`The crane took ${n} crates off the ships into the hold.`);
+  for (const w of words) logLine(`${o.name}: ${w}`);
+  return words.join(' ');
+}
+/** Every 15 s: the lines whose voyages have come in are settled, and the ports whose crane can take cargo off unload
+ *  (each under its port's lock; whoever gets there first, the same result on every game). */
+let lineT = 0;
+function tickLines(dt: number) {
+  if ((lineT -= dt) > 0) return;
+  lineT = 15;
+  const c = G.char;
+  for (const [id, o] of Object.entries(c.outposts)) {
+    if (!isPort(o)) continue;
+    const due = o.line ? dueVoyages(o.line, c.time) > 0 : false, wait = arriving(c.outposts, id).some((a) => a.n > 0) && !portWorks(c.world, c.outposts, id, c.time).why;
+    if (due || wait) void withOutpost(id, () => { tickPort(id); }, true).then((ok) => { if (ok) saveChar(); });
+  }
 }
 /** The ground under the ports' pieces follows what is built or going up (on every game alike, from the shared state). */
 let padSig: string | null = null, pads: { x: number; z: number; y: number }[] = [];

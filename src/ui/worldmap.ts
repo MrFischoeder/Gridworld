@@ -1,5 +1,6 @@
 import { truckAt } from '../world/convoyroutes';
 import { wrecked } from '../gen/routes';
+import { shipPos } from '../gen/shiplines';
 import { cityEntrances, stationName } from '../gen/citydungeons';
 import { megalithsNear } from '../gen/megaliths';
 import { dryCaravan } from '../world/convoyfuel';
@@ -266,6 +267,14 @@ function drawArea(ctx: CanvasRenderingContext2D, w: number, h: number, ppm: numb
     ctx.strokeStyle = '#ffd060'; ctx.globalAlpha = 0.6; ctx.setLineDash([6, 5]); ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.stroke(); ctx.setLineDash([]); ctx.globalAlpha = 1;
     const at = truckAt(o, r, G.char.time, px);
     if (at) { ctx.fillStyle = wrecked(r) ? '#ff6a4a' : '#ffd060'; ctx.fillRect(X(at[0]) - 3, Z(at[1]) - 3, 6, 6); }
+  }
+  for (const [id, o] of Object.entries(G.char.outposts)) { // (0.217) cargo lines between ports: a dashed teal line, the ship a dot
+    const l = o?.line;
+    if (!l) continue;
+    const ax = X(nearX(o.x, px)), ay = Z(o.z), bx = X(nearX(l.tx, nearX(o.x, px))), by = Z(l.tz);
+    ctx.strokeStyle = '#2ac8b0'; ctx.globalAlpha = 0.7; ctx.setLineDash([6, 5]); ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.stroke(); ctx.setLineDash([]); ctx.globalAlpha = 1;
+    const p = l.ship ? shipPos(G.char.world, G.char.outposts, id, G.char.time) : null;
+    if (p !== null) { ctx.fillStyle = '#2ac8b0'; ctx.fillRect(ax + (bx - ax) * p - 3, ay + (by - ay) * p - 3, 6, 6); }
   }
   for (const o of Object.values(G.char.outposts)) { // (0.183) the outposts (shared): a gold ring round the deposit
     if (!o?.k) continue;

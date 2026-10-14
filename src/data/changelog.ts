@@ -3,6 +3,13 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.217.0', date: '2026-10-14', title: 'Cargo ships between ports', notes: [
+    'A port with its warehouse built can open a cargo line to another port within 40 km. Hand a Sailing Ship or a Motor Ship of yours over to the line at the dock (its hold empty, nobody aboard) and it sails on a timetable: a round voyage every few hours, as long as the line is.',
+    'Each voyage loads what the home port\'s hold has, everything or only the goods you choose, up to the ship\'s load (96 crates on a Sailing Ship, 80 on a Motor Ship), and carries it to the other port, whose crane takes it off into its hold.',
+    'A voyage sails only when both ports\' cranes have their crew and power. A Motor Ship is faster but burns diesel: pour canisters into it at the home port. A Sailing Ship burns nothing, but now and then lies becalmed and misses a voyage.',
+    'The port window shows the line, where the ship is, its tank, the last voyage and what waits for the crane. Recall the ship and it moors at the home dock again. The lines and their ships are drawn on the maps, and the ships can be seen at sea near you.',
+    'Multiplayer: lines and their ships are part of the shared ports. The home port counts what its voyages carried and the other port counts what its crane took off, each under its own lock, so nothing is delivered twice. The server does not need an update.',
+  ] },
   { v: '0.216.0', date: '2026-10-14', title: 'Ports', notes: [
     'At a finished dock you can now found a port (its window opens from the dock\'s sign, then from the port\'s own board). A port works like an outpost in the wilds: it has no village behind it, so it needs its own power and its own people.',
     'Its main building is the port warehouse: a fenced yard, a big plank shed with racks and a steel crane by the dock (planks, nails, stone, steel, rope, gears, scrap; 14 hours). Its hold takes 6000 litres of goods.',

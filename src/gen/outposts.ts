@@ -51,6 +51,9 @@ export interface OutpostState {
   hold?: Partial<Record<ItemKey, number>>; pier?: string;
   /** (0.216) Where a port's pieces stand (gen/ports.ts `portSpots`, worked out once when it was founded). */
   ps?: PortSpots;
+  /** (0.217, stage Z3) A port's cargo line to another port (gen/shiplines.ts), and what its crane took off the lines
+   *  coming in (`rcvKey` → item → count, cumulative). */
+  line?: import('./shiplines').ShipLine; rcv?: Record<string, Partial<Record<ItemKey, number>>>;
 }
 export interface PortSpots { house: [number, number]; crane: [number, number]; power: [number, number]; bunks: [number, number][]; fields: [number, number][] }
 export interface OutpostLife {
@@ -182,4 +185,4 @@ export function finishDue(o: OutpostState, l: Lode | null, now: number, pw = 1):
   return p;
 }
 /** Nothing built or handed over yet: the stake can be pulled up. */
-export const bare = (o: OutpostState) => !o.done?.dig && !o.done?.store && !o.done?.power && !o.done?.proc && !o.done?.port && !Object.values(o.hold ?? {}).some((n) => (n ?? 0) > 0) && !o.n?.bunks && !o.n?.field && !o.n?.wall && !o.n?.turret && !o.route?.truck && !o.job && !Object.values(o.given ?? {}).some((g) => Object.values(g ?? {}).some((n) => (n ?? 0) > 0));
+export const bare = (o: OutpostState) => !o.done?.dig && !o.done?.store && !o.done?.power && !o.done?.proc && !o.done?.port && !Object.values(o.hold ?? {}).some((n) => (n ?? 0) > 0) && !o.n?.bunks && !o.n?.field && !o.n?.wall && !o.n?.turret && !o.route?.truck && !o.line?.ship && !o.job && !Object.values(o.given ?? {}).some((g) => Object.values(g ?? {}).some((n) => (n ?? 0) > 0));

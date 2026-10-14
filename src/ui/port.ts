@@ -16,7 +16,11 @@ import { newPort, portSpots, portId, portProblem, portWorks, portVol, portPut, p
 import { storable } from '../gen/hall';
 import type { Pier } from '../gen/piers';
 import { nearX } from '../gen/regions';
-import { BOATS } from '../gen/boats';
+import { BOATS, launchSpot, type BoatKind } from '../gen/boats';
+import { PIER } from '../gen/piers';
+import { LINE, newLine, isLineShip, shipCap, voyageOf, periodOf, voyageFuel, assignShip, recallShip, fuelShip, shipAt, arriving, lineTargets } from '../gen/shiplines';
+import { net } from '../net/client';
+import { redrawBoats, inBoat } from '../world/boats';
 import { partHTML, powerHTML, peopleHTML } from './outpost';
 import { carried, takeFrom, stores } from './market';
 import { itemName } from './icons';
@@ -24,7 +28,7 @@ import { withOutpost } from './stock';
 import { $, showToast, logLine } from './hud';
 import { lockPointer } from './input';
 import { tellRaids } from '../world/lodes';
-import { redrawPorts, dryAt } from '../world/ports';
+import { redrawPorts, dryAt, tickPort } from '../world/ports';
 import { boatHold } from '../world/boats';
 import { OW } from '../world/overworld';
 import { myOwner, ownerName } from '../world/rivals';
@@ -75,6 +79,45 @@ function holdHTML(id: string): string {
   }
   return s;
 }
+const hrs = (m: number) => (m >= 60 ? TL`${Math.floor(m / 60)} h ${Math.round(m % 60)} min` : `${Math.round(m)} min`);
+const FATE: Record<string, string> = { ok: tl('sailed'), idle: tl('stayed in port: a crane had no crew or no power'), dry: tl('stayed in port: no diesel'), calm: tl('lay becalmed') };
+/** Your ships moored at this dock that could take a line (within 60 m of its head). */
+function shipsHere(p: Pier) {
+  const hx = p.x + p.dx * p.len, hz = p.z + p.dz * p.len;
+  return G.char.boats.filter((b) => isLineShip(b.k) && b.id.startsWith(`boat:${G.char.pid}:`) && Math.hypot(nearX(b.x, hx) - hx, b.z - hz) < 60);
+}
+const someoneAboard = (id: string) => (inBoat() && G.char.boats.some((b) => b.id === id)) || [...net.peers.values()].some((q) => q.st?.boat?.[0] === id);
+/** The cargo line: open one to another port, hand a ship over, keep a Motor Ship's tank full, choose the goods. */
+function lineHTML(id: string): string {
+  const c = G.char, o = c.outposts[id], p = dockOf(), l = o?.line;
+  if (!o || !p) return '';
+  let s = '';
+  for (const a of arriving(c.outposts, id)) if (a.n) s += TL`<div class="say">From ${a.name}: ${a.n} crates delivered here wait for the crane.</div>`;
+  if (!l) {
+    const ts = lineTargets(c.outposts, id);
+    return s + TL`<div class="say"><b>Cargo line</b>: a ship of yours can carry this hold's crates to another port on a timetable. It sails only while both ports' cranes have their crew and power.</div>` +
+      (ts.length ? ts.slice(0, 5).map((q) => TL`<button class="opt" data-port="lnew:${q.id}">Open a line to ${q.o.name} (${(q.d * LINE.detour / 1000).toFixed(1)} km by sea)</button>`).join('') : TL`<div class="say" style="opacity:.7">No other port within ${LINE.reach / 1000} km. Found one at another dock.</div>`);
+  }
+  const sh = l.ship;
+  s += TL`<div class="say"><b>Cargo line</b> to ${l.toName}: ${l.km} km by sea.`;
+  const sent = Object.entries(l.sent).filter(([, n]) => n).map(([g, n]) => `${n} × ${ITEMS[g as ItemKey].name}`).join(', ');
+  if (sent) s += TL`<br>Delivered so far: ${sent}.`;
+  if (!sh) {
+    s += TL`<br>No ship on it. Moor a Sailing Ship or a Motor Ship of yours at this dock (its hold empty, nobody aboard) and hand it over.</div>`;
+    s += shipsHere(p).map((b) => TL`<button class="opt" data-port="lship:${b.id}">Hand over your ${BOATS[b.k].name.toLowerCase()} (${shipCap(b.k)} crates a voyage)</button>`).join('');
+    return s + small('lgive', tl('Give up the line'));
+  }
+  const P = periodOf(l, sh.k), at = shipAt(l, c.time), where = at.at === 'home' ? tl('loading here') : at.at === 'out' ? TL`at sea, bound for ${l.toName} (${Math.round(at.p * 100)}%)` : at.at === 'there' ? TL`unloading at ${l.toName}` : TL`at sea, coming back (${Math.round(at.p * 100)}%)`;
+  s += TL`<br>Ship: a ${BOATS[sh.k].name.toLowerCase()} (handed over by ${sh.by}), ${shipCap(sh.k)} crates a voyage, ${hrs(voyageOf(l, sh.k))} each way, a round voyage every ${hrs(P)}; now ${where}.`;
+  if (BOATS[sh.k].motor) { const need = voyageFuel(l, sh.k); s += TL`<br>Tank: ${Math.round(sh.fuel ?? 0)} of ${BOATS[sh.k].motor!.tank} L, ${need} L a round voyage: ${need ? Math.floor((sh.fuel ?? 0) / need) : 0} more. With you: ${carried('fuel', at0())} canisters.`; }
+  else s += TL`<br>Under sail it burns nothing, but ${Math.round(LINE.calm * 100)}% of voyages lie becalmed.`;
+  if (l.last) s += TL`<br>Last voyage: ${FATE[l.last[1]]}.`;
+  const goods = Object.keys(o.hold ?? {}) as ItemKey[];
+  s += `<br>` + (l.only ? TL`It carries only: ${l.only.map((g) => ITEMS[g].name).join(', ') || tl('nothing')}.` : tl('It carries everything in the hold.')) + `</div>`;
+  if (goods.length || l.only) s += `<div class="say">` + (l.only ? small('lall', tl('Carry everything')) : '') + [...new Set([...goods, ...(l.only ?? [])])].map((g) => small(`lonly:${g}`, (l.only?.includes(g) ? '✓ ' : '') + ITEMS[g].name)).join('') + `</div>`;
+  return s + (BOATS[sh.k].motor ? small('lfuel', tl('Pour fuel canisters into the ship')) : '') + small('lrecall', tl('Recall the ship (it moors at this dock)'));
+}
+const at0 = () => at();
 function render(msg = '') {
   if (!open) return;
   const o = state(), p = dockOf();
@@ -85,7 +128,7 @@ function render(msg = '') {
   else {
     s += TL`<div class="say" style="opacity:.85">A port works like an outpost: it needs its own power and its own people. Build the warehouse, a power source, bunkhouses and fields; settlers come when there are beds and food. The warehouse's crane needs ${PORT.crew} people and power.</div>`;
     const pos = at();
-    s += partHTML(o, 'port', pos) + holdHTML(open.id) + partHTML(o, 'power', pos) + powerHTML(open.id, o, pos) + partHTML(o, 'bunks', pos) + partHTML(o, 'field', pos) + peopleHTML(o, pos);
+    s += partHTML(o, 'port', pos) + holdHTML(open.id) + partHTML(o, 'power', pos) + powerHTML(open.id, o, pos) + partHTML(o, 'bunks', pos) + partHTML(o, 'field', pos) + peopleHTML(o, pos) + (o.done?.port ? lineHTML(open.id) : '');
     if (bare(o) && (o.o === 'crew' || o.o === myOwner())) s += small('drop', tl('Give up the port'));
   }
   panel().classList.add('wide');
@@ -96,6 +139,8 @@ export function openPort(id: string, pierId: string) {
   open = { id, pier: pierId }; G.dlgOpen = true; W.talkNpc = null; G.firing = false; for (const k in G.keys) G.keys[k] = false;
   render();
   dlgEl.style.display = 'flex'; if (document.pointerLockElement) document.exitPointerLock();
+  let news = '';
+  void withOutpost(id, () => { news = tickPort(id); }).then((ok) => { if (ok && news) { saveChar(); if (open?.id === id) render(news); } });
 }
 function close() { open = null; G.dlgOpen = false; dlgEl.style.display = 'none'; if (!G.isTouch) lockPointer(); }
 /** Why no port can be founded at this finished dock ('' = it can). */
@@ -120,13 +165,45 @@ export function portClick(t: HTMLElement): boolean {
   if (!open) return false;
   const b = (t.closest('[data-port]') ?? t.closest('[data-op]')) as HTMLElement | null;
   if (!b) return false;
-  const c = G.char, { id } = open, [a, x, y] = (b.dataset.port ?? b.dataset.op)!.split(':'), byId = (q: string) => lodeById(c.world, q);
+  const b0 = b, c = G.char, { id } = open, [a, x, y] = (b.dataset.port ?? b.dataset.op)!.split(':'), byId = (q: string) => lodeById(c.world, q);
   if (a === 'close') { close(); return true; }
   let msg = '';
   void withOutpost(id, () => {
     const o = c.outposts[id], here = at(), p = dockOf();
     if (!o || !p || !mayUse(o, myOwner())) { msg = tl('Not yours to work.'); return; }
-    if (a === 'pk') msg = choosePower(o, x as PowerKind) ? TL`You mark out the ground for a ${POWER_SRC[x as PowerKind].name.toLowerCase()}.` : tl('The builders have started on another source already.');
+    msg = tickPort(id);
+    const say = (w: string) => { msg = msg ? msg + ' ' + w : w; };
+    const l = o.line;
+    if (a === 'lnew' && !l) {
+      const to = lineTargets(c.outposts, id).find((q) => q.id === b0.dataset.port!.slice(5));
+      if (!to) { say(tl('That port is out of reach.')); return; }
+      o.line = newLine(o, to.id, to.o, c.time); say(TL`A cargo line to ${to.o.name} is open. Hand a ship over to sail it.`);
+    } else if (a === 'lgive' && l && !l.ship) { delete o.line; say(tl('You give up the line.')); }
+    else if (a === 'lship' && l && !l.ship) {
+      const b = shipsHere(p).find((q) => q.id === b0.dataset.port!.slice(6));
+      if (!b) { say(tl('Moor it at this dock first.')); return; }
+      if (someoneAboard(b.id)) { say(tl('Everyone must be off the ship first.')); return; }
+      if (boatHold(b).items.some(Boolean) || boatHold(b).gold > 0) { say(tl('Empty its hold first.')); return; }
+      assignShip(l, { id: b.id, k: b.k, ...(b.fuel !== undefined ? { fuel: b.fuel } : {}), by: c.name || tl('You') }, c.time);
+      c.boats = c.boats.filter((q) => q.id !== b.id); redrawBoats();
+      say(TL`The crew takes your ${BOATS[b.k].name.toLowerCase()} on the line to ${l.toName}. She sails in ${LINE.load} minutes, when both cranes are working.`);
+    } else if (a === 'lfuel' && l?.ship) {
+      const n = fuelShip(l, carried('fuel', here));
+      if (n) takeFrom('fuel', n, here);
+      say(n ? TL`Poured ${n} canister${n === 1 ? '' : 's'} into the ship.` : tl('No canisters with you, or the tank is full.'));
+    } else if (a === 'lrecall' && l?.ship) {
+      const T = OW.terrain, k: BoatKind = l.ship.k;
+      const spot = T ? launchSpot(k, { ...p, head: PIER.head, headW: PIER.headW, w: PIER.w }, (qx, qz) => { const w = T.water(qx, qz); return w ? w.depth : null; }) : null;
+      if (!spot) { say(tl('The water by this dock is too shallow to moor her.')); return; }
+      const sh = recallShip(l)!;
+      c.boats.push({ id: sh.id, k: sh.k, x: spot.x, z: spot.z, yaw: spot.yaw, t: c.time, ...(sh.fuel !== undefined ? { fuel: sh.fuel } : {}) }); redrawBoats();
+      say(TL`Your ${BOATS[sh.k].name.toLowerCase()} is back and moored alongside the dock.`);
+    } else if (a === 'lall' && l) { delete l.only; say(tl('The ship carries everything in the hold.')); }
+    else if (a === 'lonly' && l) {
+      const g = x as ItemKey, only = l.only ?? [];
+      l.only = only.includes(g) ? only.filter((q) => q !== g) : [...only, g];
+    }
+    else if (a === 'pk') msg = choosePower(o, x as PowerKind) ? TL`You mark out the ground for a ${POWER_SRC[x as PowerKind].name.toLowerCase()}.` : tl('The builders have started on another source already.');
     else if (a === 'give') {
       const part = x as OutpostPart, { taken, started } = handOver(o, part, (k) => carried(k, here), c.time);
       for (const [k, n] of taken) takeFrom(k, n, here);
