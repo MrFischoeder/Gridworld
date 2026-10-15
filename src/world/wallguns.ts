@@ -14,10 +14,20 @@ import type { Mount } from '../gen/village';
 import { villageHooks } from './overworld';
 import { worksOf } from '../gen/town';
 import { hasImprove, SIGHTS } from '../gen/improve';
+import { findPoi, villageSeed } from '../gen/regions';
+import { wallGunsAt } from '../gen/energy';
 
 export const WALL_GUN = { range: 60, rate: 0.5, dmg: 1.3, turn: 2.6, noise: 40 };
 interface Gun { m: Mount; g: THREE.Group; head: THREE.Group; yaw: number; home: number; cd: number; look: number; target: Foe | null }
 const guns = new Map<number, Gun[]>();
+/** (0.221, PLAN_PRAD_I_LUDZIE.md stage Z7) How many of each village's turrets fire (a settlement's need power and a
+ *  guard each: gen/energy.ts wallGunsAt; the others always), checked every 2 s. The rest only sweep. */
+const working = new Map<number, number>();
+let check = 0;
+function refresh() {
+  const c = G.char;
+  for (const id of guns.keys()) { const poi = findPoi(c.world, id); working.set(id, poi ? wallGunsAt(c.world, poi, villageSeed(c.world, poi), c.towns[id], c.time).work : 0); }
+}
 const ON = 0x7dffc8, WOOD = 0xb8b060, fill = fillMat();
 
 function solid(geo: THREE.BufferGeometry, color: number, at?: [number, number, number]) {
@@ -53,7 +63,7 @@ export function setWallGuns(id: number, mounts: Mount[], n: number, y0: number) 
 }
 export function dropWallGuns(id: number) {
   for (const t of guns.get(id) ?? []) { scene.remove(t.g); t.g.traverse((o) => (o as THREE.Mesh).geometry?.dispose()); }
-  guns.delete(id);
+  guns.delete(id); working.delete(id);
 }
 /** Things a turret shoots at: everything hostile except calm Brambles. */
 const hostile = (f: Foe) => !('kind' in f && f.kind === 'bramble' && (f as { state?: string }).state === 'roam');
@@ -61,13 +71,16 @@ const hostile = (f: Foe) => !('kind' in f && f.kind === 'bramble' && (f as { sta
 export function updateWallGuns(dt: number) {
   if (!guns.size || G.char.loc !== 'overworld') return;
   const all = foes(), t0 = performance.now() / 1000;
+  if ((check -= dt) <= 0) { check = 2; refresh(); }
   for (const [id, list] of guns) {
+  const live = working.get(id) ?? 0;
   const sharp = hasImprove(G.char.towns[id], 'sights'), range = WALL_GUN.range * (sharp ? SIGHTS.range : 1), rate = WALL_GUN.rate * (sharp ? SIGHTS.rate : 1);
-  for (const t of list) {
+  list.forEach((t, i) => {
     t.cd -= dt; t.look -= dt;
+    if (i >= live) t.target = null; // no power or no guard: it only sweeps
     const o = t.head.getWorldPosition(new THREE.Vector3());
     if (t.target && (!all.includes(t.target) || t.target.g.position.distanceTo(o) > range)) t.target = null;
-    if (t.look <= 0) {
+    if (t.look <= 0 && i < live) {
       t.look = 0.35;
       let best: Foe | null = null, bd = range;
       for (const f of all) {
@@ -93,7 +106,7 @@ export function updateWallGuns(dt: number) {
       makeNoise(o, WALL_GUN.noise);
       const flash = G.hitFlash; damageFoe(t.target, WALL_GUN.dmg); G.hitFlash = flash; // the hit marker is for your own shots
     }
-  }
+  });
   }
 }
 

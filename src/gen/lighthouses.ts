@@ -26,6 +26,9 @@ export const LH = {
   h: 22, r: 3.3,
   needs: [['stone', 40], ['planks', 24], ['scrap', 12], ['wire', 6], ['glass', 2], ['circuit', 2]] as [ItemKey, number][],
   xp: 400, periods: [3, 4, 5, 6, 8, 10, 12, 15, 20, 30], p0: 8, see: 9000, village: 150, apart: 80, steep: 3,
+  /** (0.221, stage Z7) In a towns world its lamp is electric (gen/lhpower.ts): `kw` it draws, a village within `grid`
+   *  m to feed it, or an outposts' grid meeting at least `share` of its demand. */
+  kw: 2, grid: 500, share: 0.25,
 };
 export const lhRows = (l: Lighthouse) => LH.needs.map(([k, n]) => ({ k, n, given: l.given[k] ?? 0 }));
 export const lhProgress = (l: Lighthouse) => (l.done ? 1 : LH.needs.reduce((a, [k, n]) => a + Math.min(n, l.given[k] ?? 0), 0) / LH.needs.reduce((a, [, n]) => a + n, 0));

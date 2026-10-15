@@ -50,16 +50,16 @@ export function nextRaid(world: number, id: string, o: OutpostState, t: number):
 /** Is there anything to rob (it digs, or people live there)? */
 export const worthRobbing = (o: OutpostState) => o.k !== 'port' && o.k !== 'camp' && (!!o.done?.dig || (o.life?.n ?? 0) >= 1); // (0.216) ports are not raided yet (stage Z7)
 /** The chance the outpost holds raid r on its own. */
-export function holdChance(o: OutpostState, strength: number): number {
+export function holdChance(o: OutpostState, strength: number, guns = turretsOf(o)): number {
   const wall = Math.min(OUTRAID.hold.length - 1, wallOf(o));
-  const v = OUTRAID.hold[wall] + turretsOf(o) * OUTRAID.turret + Math.min(OUTRAID.peopleMax, Math.floor(o.life?.n ?? 0) * OUTRAID.person) - (strength - 2) * OUTRAID.strength;
+  const v = OUTRAID.hold[wall] + guns * OUTRAID.turret + Math.min(OUTRAID.peopleMax, Math.floor(o.life?.n ?? 0) * OUTRAID.person) - (strength - 2) * OUTRAID.strength;
   return Math.max(0.05, Math.min(0.97, v));
 }
 /** How raid r ended: as fought with a player there (saved), else rolled from the seed. */
-export function raidResult(world: number, o: OutpostState, r: OutRaid): 'won' | 'lost' {
+export function raidResult(world: number, o: OutpostState, r: OutRaid, guns?: number): 'won' | 'lost' {
   const seen = o.raids?.[r.k];
   if (seen) return seen;
-  return (hash(world, o.x | 0, o.z | 0, r.k, 0x0a60) % 1000) / 1000 < holdChance(o, r.strength) ? 'won' : 'lost';
+  return (hash(world, o.x | 0, o.z | 0, r.k, 0x0a60) % 1000) / 1000 < holdChance(o, r.strength, guns) ? 'won' : 'lost';
 }
 /** What a lost raid does: most of the crates and half the pantry go, some people leave (at the raid's end). */
 function plunder(o: OutpostState) {
@@ -67,7 +67,7 @@ function plunder(o: OutpostState) {
   if (o.life) { o.life.food *= 1 - OUTRAID.food; o.life.n = Math.max(0, o.life.n * (1 - OUTRAID.people)); }
 }
 /** Settle every raid on outpost `id` whose time is over by `now`, in order (`pw` = its digging factor); the raids settled. */
-export function settleRaids(world: number, id: string, o: OutpostState, l: Lode | null, now: number, pw = 1): { k: number; won: boolean }[] {
+export function settleRaids(world: number, id: string, o: OutpostState, l: Lode | null, now: number, pw = 1, gunsAt?: (t: number) => number): { k: number; won: boolean }[] {
   const out: { k: number; won: boolean }[] = [];
   if (!strengthAt(world, o)) return out;
   for (let k = (o.rk ?? 0) + 1; ; k++) {
@@ -77,7 +77,7 @@ export function settleRaids(world: number, id: string, o: OutpostState, l: Lode 
     if (l) settle(o, l, end, pw); settleLife(world, o, end);
     o.rk = k;
     if (!worthRobbing(o)) { if (o.raids) delete o.raids[k]; continue; } // nothing there to rob: the band passes by
-    const won = raidResult(world, o, r) === 'won';
+    const won = raidResult(world, o, r, gunsAt?.(end)) === 'won'; // (0.221) only the turrets with power and a guard at the raid's end count
     if (!won) plunder(o);
     o.rlast = [k, won ? 'won' : 'lost']; if (o.raids) delete o.raids[k];
     out.push({ k, won });

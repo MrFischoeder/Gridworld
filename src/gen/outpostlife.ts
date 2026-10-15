@@ -11,7 +11,7 @@ import type { ItemKey } from '../data/items';
 import { FOOD } from './farms';
 import { fertility } from './fertility';
 import { hash } from '../core/rng';
-import { PORT, type OutpostLife, type OutpostState } from './outposts';
+import { PORT, turretsOf, type OutpostLife, type OutpostState } from './outposts';
 
 export const LIFE = {
   /** Game minutes a step; the longest catch-up (older life is skipped to it). */
@@ -40,12 +40,13 @@ export const pantryOf = (o: OutpostState) => (o.done?.store || o.done?.port || o
 const fresh = (t: number): OutpostLife => ({ t, n: 0, food: 0, fed: 1 });
 const mark = (t: number) => Math.floor(t / LIFE.step) * LIFE.step;
 
-/** How the people are put to work: the fields' crews first, then the dig (or, 0.216, a port's warehouse crew). */
+/** How the people are put to work: the fields' crews first, (0.221, stage Z7) then a guard at each turret, then the
+ *  dig (or, 0.216, a port's warehouse crew). */
 export function crews(o: OutpostState, people: number, extra = commuters(o)) {
   const n = Math.floor(people), fields = o.n?.field ?? 0, need = fields * LIFE.fieldCrew;
   const work = workCap(o), walk = Math.min(work, Math.max(0, Math.floor(extra))); // (0.220) commuters from a nearby village work the post first
-  const farm = Math.min(n, need), mine = Math.min(n - farm, work - walk), dig = walk + mine;
-  return { farm, dig, idle: n - farm - mine, walk, farmFill: need ? farm / need : 0, digFill: work ? dig / work : 0 };
+  const farm = Math.min(n, need), guard = Math.min(n - farm, turretsOf(o)), mine = Math.min(n - farm - guard, work - walk), dig = walk + mine;
+  return { farm, guard, dig, idle: n - farm - guard - mine, walk, farmFill: need ? farm / need : 0, digFill: work ? dig / work : 0 };
 }
 /** The crew the outpost's work post wants: the dig, a port's crane, (0.218) a crew camp's old plant. */
 export const workCap = (o: OutpostState) => (o.done?.dig ? LIFE.digCrew : o.done?.port ? PORT.crew : o.k === 'camp' ? o.cw ?? 0 : 0);

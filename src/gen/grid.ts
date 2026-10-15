@@ -11,9 +11,9 @@ import { daylight, sunTilt } from '../core/time';
 import { latitude, worldDist, wrapDx } from './regions';
 import { windAt, type Balance } from './energy';
 import type { ItemKey } from '../data/items';
-import { digOf, settle, PORT, type OutpostState, type DigKind } from './outposts';
+import { digOf, settle, PORT, turretsOf, type OutpostState, type DigKind } from './outposts';
 import type { Lode } from './lodes';
-import { crewFactor, settleLife } from './outpostlife';
+import { crewFactor, settleLife, crews } from './outpostlife';
 import { settleRaids } from './outpostraids';
 import { procKw, runProc } from './outpostproc';
 import { settleRoute, takeFood, routeKey } from './routes';
@@ -62,7 +62,7 @@ export function supplyAt(world: number, id: string, o: OutpostState, t: number):
   if (o.pk === 'solar') return s.kw * daylight(t, sunTilt(latitude(o.z)));
   return fuelLeft(o, t) > 0 ? s.kw : 0;
 }
-export const demandOf = (o: OutpostState) => (o.done?.dig ? DIG_KW[digOf(o.k)] : 0) + (o.done?.port ? PORT.kw : 0) + procKw(o) + (o.route?.truck?.parts.ev !== undefined ? CHARGE_KW : 0);
+export const demandOf = (o: OutpostState) => (o.done?.dig ? DIG_KW[digOf(o.k)] : 0) + (o.done?.port ? PORT.kw : 0) + procKw(o) + (o.route?.truck?.parts.ev !== undefined ? CHARGE_KW : 0) + turretsOf(o) * OUT_GUN_KW;
 /** (0.188) What a route's electric truck draws while it charges at its outpost (kW, counted all the time). */
 export const CHARGE_KW = 15;
 const isSource = (o: OutpostState) => !!(o.done?.power && o.pk);
@@ -113,6 +113,20 @@ export function powerShare(world: number, outposts: Record<string, OutpostState>
   for (let i = 0; i < GRID.samples; i++) sum += gridState(world, outposts, g, t0 - i * GRID.step).share[n] ?? 0;
   return sum / GRID.samples;
 }
+/**
+ * (0.221, PLAN_PRAD_I_LUDZIE.md stage Z7) An outpost's turrets: each draws `OUT_GUN_KW` from its grid (in `demandOf`)
+ * and wants a guard from the settlers (gen/outpostlife.ts crews: after the fields, before the dig). A turret fires
+ * only with its guard and while the outpost has at least `OUT_GUN_POWER` of its power over the day; off the grid or
+ * below that none fires. Pure: the raids settle with it at their end, the game fires by it.
+ */
+export const OUT_GUN_KW = 3, OUT_GUN_POWER = 0.25;
+export interface OutGuns { n: number; work: number; guards: number; power: number; why: '' | 'hands' | 'power' }
+export function outGunsAt(world: number, outposts: Record<string, OutpostState>, id: string, t: number): OutGuns {
+  const o = outposts[id], n = o ? turretsOf(o) : 0;
+  if (!n) return { n, work: 0, guards: 0, power: 1, why: '' };
+  const guards = crews(o, o.life?.n ?? 0).guard, power = powerShare(world, outposts, id, t), work = power < OUT_GUN_POWER ? 0 : guards;
+  return { n, work, guards, power, why: power < OUT_GUN_POWER ? 'power' : guards < n ? 'hands' : '' };
+}
 /** What the share does to the outpost's digging: `unpowered` with none, full rate with all it needs. */
 export const powerFactor = (share: number) => GRID.unpowered + (1 - GRID.unpowered) * share;
 /** Bring every working outpost's stock forward at its present factor (before the grid or the people change, and every
@@ -122,7 +136,7 @@ export function settleAll(world: number, outposts: Record<string, OutpostState>,
   for (const [id, o] of Object.entries(outposts)) {
     if (!o?.k) continue;
     const l = o.done?.dig ? lodeOf(id) : null, pw = () => powerFactor(powerShare(world, outposts, id, now)) * crewFactor(o);
-    for (const r of settleRaids(world, id, o, l, now, l ? pw() : 1)) raided.push({ id, ...r }); // (0.186) the raids whose time is over, in order
+    for (const r of settleRaids(world, id, o, l, now, l ? pw() : 1, (t) => outGunsAt(world, outposts, id, t).work)) raided.push({ id, ...r }); // (0.186) the raids whose time is over, in order
     if (o.route) { // (0.187) the convoys: trips that reached the village, then food the village shipped back
       for (const r of settleRoute(world, o, l, now, l ? pw() : 1, grids(outposts).has(id))) raided.push({ id, k: r.k, won: false, road: r.what });
       const shipped = towns?.[o.route.v]?.ship?.[routeKey(id)];

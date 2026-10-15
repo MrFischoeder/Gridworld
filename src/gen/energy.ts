@@ -121,7 +121,7 @@ export const SITE_UNPOWERED = 0.5;
 /** What the site draws now (nothing while a refinery is not built). */
 export function siteKw(world: number, v: Poi, seed: number, s: TownState | undefined): number {
   const k = industryOf(world, v, seed);
-  return (siteBuilt(k, s) && !(progressive(s) && industryProject(k)) ? SITE_KW[k] : 0) + (progressive(s) ? (projectDone(s, 'quarry') ? 6 : 0) + (projectDone(s, 'mine') ? 12 : 0) + (projectDone(s, 'lumber') ? 8 : 0) + (projectDone(s, 'oil') ? 10 : 0) + (projectDone(s, 'refinery') ? 30 : 0) + (projectDone(s, 'foodworks') ? 8 : 0) + (projectDone(s, 'raremine') ? DEEP.kw : 0) + FURNACE.kw[furnaceLevel(s)] + SAW.kw[sawLevel(s)] + (Object.keys(SERVICE_KW) as Service[]).reduce((a, k) => a + (projectDone(s, k) ? SERVICE_KW[k] : 0), 0) : 0);
+  return (siteBuilt(k, s) && !(progressive(s) && industryProject(k)) ? SITE_KW[k] : 0) + (progressive(s) ? (projectDone(s, 'quarry') ? 6 : 0) + (projectDone(s, 'mine') ? 12 : 0) + (projectDone(s, 'lumber') ? 8 : 0) + (projectDone(s, 'oil') ? 10 : 0) + (projectDone(s, 'refinery') ? 30 : 0) + (projectDone(s, 'foodworks') ? 8 : 0) + (projectDone(s, 'raremine') ? DEEP.kw : 0) + FURNACE.kw[furnaceLevel(s)] + SAW.kw[sawLevel(s)] + (Object.keys(SERVICE_KW) as Service[]).reduce((a, k) => a + (projectDone(s, k) ? SERVICE_KW[k] : 0), 0) + (s?.works?.turret ?? 0) * GUN_KW : 0);
 }
 /** The renewables' rating and their output now (kW): the own plant if solar or wind, the solar and wind farms that are on (for the battery bank). */
 function renewables(world: number, v: Poi, seed: number, s: TownState | undefined, t: number): [number, number] {
@@ -182,7 +182,7 @@ const siteCache = new Map<string, number>();
  */
 export function sitePower(world: number, v: Poi, seed: number, s: TownState | undefined, t: number): number {
   if (!siteKw(world, v, seed, s)) return 1;
-  const key = `${world}:${v.id}:${Math.floor(t / 60)}:${s ? JSON.stringify([s.stations, s.fixed, s.hurt, s.pup, s.farms, s.fup, s.built, s.imp, s.settlement?.done]) : ''}`;
+  const key = `${world}:${v.id}:${Math.floor(t / 60)}:${s ? JSON.stringify([s.stations, s.fixed, s.hurt, s.pup, s.farms, s.fup, s.built, s.imp, s.settlement?.done, s.works?.turret]) : ''}`;
   let p = siteCache.get(key);
   if (p === undefined) {
     p = 0; for (let k = 0; k < 12; k++) p += balance(world, v, seed, s, t - k * 120).sitePowered;
@@ -238,4 +238,20 @@ export function serviceOf(world: number, v: Poi, seed: number, s: TownState | un
   const p = assign(s, workersAt(seed, v.id === GRIDHOLM_ID, s, t)).posts.find((q) => q.id === k);
   const hands = p?.fill ?? 1, power = SERVICE_KW[k] ? sitePower(world, v, seed, s, t) : 1;
   return { hands, power, why: hands < 1 ? 'hands' : power < SERVICE_POWER ? 'power' : '' };
+}
+
+/**
+ * (0.221, PLAN_PRAD_I_LUDZIE.md stage Z7) A settlement's wall turrets: each draws `GUN_KW` from the site's power (in
+ * `siteKw`) and wants a guard (gen/workforce.ts 'guard:i', one man, manned after the services). A turret fires only
+ * with its guard and at least `SERVICE_POWER` of the site's power over the day; without power none fires. Established
+ * villages: every turret fires, as before.
+ */
+export const GUN_KW = 4;
+export interface GunsState { n: number; work: number; manned: number; power: number; why: '' | 'hands' | 'power' }
+export function wallGunsAt(world: number, v: Poi, seed: number, s: TownState | undefined, t: number): GunsState {
+  const n = s?.works?.turret ?? 0;
+  if (!n || !progressive(s)) return { n, work: n, manned: n, power: 1, why: '' };
+  const manned = assign(s, workersAt(seed, v.id === GRIDHOLM_ID, s, t)).posts.filter((p) => p.kind === 'guard' && p.fill >= 1).length;
+  const power = sitePower(world, v, seed, s, t), work = power < SERVICE_POWER ? 0 : manned;
+  return { n, work, manned, power, why: power < SERVICE_POWER ? 'power' : manned < n ? 'hands' : '' };
 }

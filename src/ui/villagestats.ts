@@ -6,7 +6,7 @@ import { villageStats, type VillageStats } from '../gen/villagestats';
 import { FOOD, CROPS, cropOf } from '../gen/farms';
 import { PROJECTS, type Project } from '../gen/settlement';
 import { PLANTS } from '../gen/plants';
-import { STATIONS, farmPower, serviceOf, SERVICE_POWER, type Service } from '../gen/energy';
+import { STATIONS, farmPower, serviceOf, SERVICE_POWER, wallGunsAt, type Service } from '../gen/energy';
 import { JOBS } from '../gen/workforce';
 import type { Post } from '../gen/workforce';
 import type { ItemKey } from '../data/items';
@@ -31,11 +31,21 @@ export function serviceWhy(vid: number, k: Service): string {
   if (st.why === 'power') return TL`${PROJECTS[k].name} has no power: the village gave its works only ${Math.round(st.power * 100)}% of what they need over the last day (at least ${Math.round(SERVICE_POWER * 100)}%). Build more power.`;
   return '';
 }
+/** (0.221, stage Z7) Why some of village vid's wall turrets do not fire now ('' = all of them do). */
+export function gunsWhy(vid: number): string {
+  const c = G.char, poi = findPoi(c.world, vid);
+  if (!poi) return '';
+  const g = wallGunsAt(c.world, poi, villageSeed(c.world, poi), c.towns[vid], c.time);
+  if (g.why === 'power') return TL`The wall turrets have no power: the village gave its works only ${Math.round(g.power * 100)}% of what they need over the last day (at least ${Math.round(SERVICE_POWER * 100)}%). Not one of them fires.`;
+  if (g.why === 'hands') return TL`Only ${g.manned} of ${g.n} wall turrets have a guard (a man each): the rest stand silent until there are free hands.`;
+  return '';
+}
 /** A post's name: Farm 2 (potatoes), Stone quarry, Smelter... */
 export function postName(s: TownState | undefined, p: Post): string {
   if (p.kind === 'farm') return TL`Farm ${p.i + 1} (${CROPS[cropOf(s, p.i)].name.toLowerCase()})`;
   if (p.kind === 'works') { const w = s?.plants?.[p.i]; return w ? PLANTS[w.k].name : tl('Works'); }
   if (p.kind === 'station') { const w = s?.stations?.[p.i]; return w ? STATIONS[w.k].name : tl('Power station'); }
+  if (p.kind === 'guard') return TL`Guard at wall turret ${p.i + 1}`; // (0.221)
   if (p.kind === 'commute') return TL`Walking out to ${G.char.outposts[p.id.slice(8)]?.name ?? tl('an outpost')}`; // (0.220)
   return PROJECTS[p.kind as Project]?.name ?? p.kind;
 }
@@ -65,6 +75,7 @@ export function statusHTML(vid: number, head: string): string {
       h += tl('<h3>Who works where</h3>') + v.posts.map((p) => `<div class="shoprow">${postName(s, p)}: ${p.got}/${p.jobs}${p.fill < 1 ? (p.got === 0 ? tl(' · <span style="color:var(--warn,#ff5a3c)">no hands, it stands still</span>') : tl(' · short of hands, works at ') + Math.round(p.fill * 100) + '%') : ''}</div>`).join('');
     } else h += tl('<div class="say">Nobody works a farm or a works yet: we live off the wilds.</div>');
     for (const k of ['warehouse', 'fuelpump', 'charger', 'depot'] as Service[]) { const w = serviceWhy(vid, k); if (w) h += `<div class="say" style="color:var(--warn,#ff5a3c)">${w}</div>`; } // (0.215)
+    const gw = gunsWhy(vid); if (gw) h += `<div class="say" style="color:var(--warn,#ff5a3c)">${gw}</div>`; // (0.221)
     if (v.limit) h += `<div class="say">${v.limit}</div>`;
     h += tl('<div class="say">More food brings more families, more families bring more hands, and more hands work more farms and works. Families come gradually, over days, while there are homes and food to spare.</div>');
   }

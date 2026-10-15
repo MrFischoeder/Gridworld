@@ -24,6 +24,7 @@ import { withOutpost } from '../ui/stock';
 import { nextRaid, worthRobbing, OUTRAID, type OutRaid } from '../gen/outpostraids';
 import { wallOf, type OutpostState } from '../gen/outposts';
 import { worldDist, nearX } from '../gen/regions';
+import { outGunsAt } from '../gen/grid';
 import { hash } from '../core/rng';
 import { outpostGuns, outpostRing } from './lodes';
 import { tl, TL } from '../i18n';
@@ -129,16 +130,22 @@ export function clearOutpostRaid() { if (live) for (const b of live.bandits) if 
 // ---------- the turrets ----------
 const hostile = (f: Foe) => !('kind' in f && f.kind === 'bramble' && (f as { state?: string }).state === 'roam');
 const tmp = new THREE.Vector3();
+/** (0.221, PLAN_PRAD_I_LUDZIE.md stage Z7) How many of each outpost's turrets fire (power from its grid and a guard
+ *  each: gen/grid.ts outGunsAt), checked every 2 s; the rest only sweep. */
+const working = new Map<string, number>();
+let check = 0;
 function updateGuns(dt: number) {
   const list = outpostGuns();
   if (!list.length) return;
-  const fire = spawnAuthority(), all = fire ? foes() : [], t0 = performance.now() / 1000;
-  for (const { gun: t } of list) {
+  if ((check -= dt) <= 0) { check = 2; working.clear(); for (const { id } of list) if (!working.has(id)) working.set(id, outGunsAt(G.char.world, G.char.outposts, id, G.char.time).work); }
+  const fire = spawnAuthority(), all = fire ? foes() : [], t0 = performance.now() / 1000, seen = new Map<string, number>();
+  for (const { id, gun: t } of list) {
+    const i = seen.get(id) ?? 0, on = fire && i < (working.get(id) ?? 0); seen.set(id, i + 1);
     t.cd -= dt; t.look -= dt;
     const o = t.head.getWorldPosition(tmp).clone();
     let target = t.target as Foe | null;
-    if (target && (!all.includes(target) || target.g.position.distanceTo(o) > OUT_GUN.range)) target = null;
-    if (fire && t.look <= 0) {
+    if (target && (!on || !all.includes(target) || target.g.position.distanceTo(o) > OUT_GUN.range)) target = null;
+    if (on && t.look <= 0) {
       t.look = 0.35; let bd = OUT_GUN.range; target = null;
       for (const f of all) {
         if (!hostile(f)) continue;

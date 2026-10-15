@@ -18,7 +18,7 @@ import { allVillages, worldDist as wdist } from '../gen/regions';
 import { VEHICLES, vehicleTitle, type VehicleModel } from '../data/vehicles';
 import { myCarList, takeVehicle, parkVehicle } from '../world/vehicles';
 import { FOOD } from '../gen/farms';
-import { POWER_SRC, POWER_KINDS, grids, gridState, powerShare, powerFactor, pwOf, fuelLeft, loadFuel, settleAll, demandOf, PLINE, newLine, plineProblem, lineFlows, type PowerKind } from '../gen/grid';
+import { POWER_SRC, POWER_KINDS, grids, gridState, powerShare, powerFactor, pwOf, fuelLeft, loadFuel, settleAll, demandOf, PLINE, newLine, plineProblem, lineFlows, outGunsAt, OUT_GUN_KW, OUT_GUN_POWER, type PowerKind } from '../gen/grid';
 import { balance } from '../gen/energy';
 import { villageSeed } from '../gen/regions';
 import { lodeById } from '../gen/lodes';
@@ -96,11 +96,15 @@ function routeHTML(id: string, o: OutpostState): string {
  *  next raid, the last one, the animals. */
 function defenceHTML(id: string, o: OutpostState): string {
   const c = G.char, str = strengthAt(c.world, o), tier = wallOf(o);
+  const guns = outGunsAt(c.world, c.outposts, id, c.time); // (0.221, stage Z7) power from the grid and a guard each
   let s = TL`<div class="say"><b>Defence</b>: ${tier ? WALL[tier - 1].name.toLowerCase() : tl('no wall')}, ${turretsOf(o)} turret${turretsOf(o) === 1 ? '' : 's'}.`;
+  if (guns.why === 'power') s += TL` <span style="color:#ff6a4a">The turrets have no power: they need ${OUT_GUN_KW} kW each from the grid and the outpost got only ${Math.round(guns.power * 100)}% of its power over the day (at least ${Math.round(OUT_GUN_POWER * 100)}%). None fires.</span>`;
+  else if (guns.why === 'hands') s += TL` <span style="color:#ff6a4a">Only ${guns.guards} of ${guns.n} turrets have a guard: a settler each, after the fields' crews. Build bunkhouses and feed them.</span>`;
+  else if (guns.n) s += TL` Every turret has power and a guard.`;
   if (!str) s += tl(' This near Gridholm no bandits raid it.');
   else {
     const r = nextRaid(c.world, id, o, c.time);
-    s += TL` Bandits here are of strength ${str.toFixed(1)}; without you it holds a raid ${Math.round(holdChance(o, str) * 100)}% of the time.`;
+    s += TL` Bandits here are of strength ${str.toFixed(1)}; without you it holds a raid ${Math.round(holdChance(o, str, guns.work) * 100)}% of the time.`;
     if (!worthRobbing(o)) s += tl(' Nothing here is worth robbing yet.');
     else if (r) s += r.t0 <= c.time ? TL` <b style="color:#ff6a4a">A raid is on now!</b>` : TL` The next raid comes in about ${hrs(r.t0 - c.time)} (day ${Math.floor(r.t0 / 1440) + 1}, ${fmtTime(r.t0)}); be here to fight it.`;
   }
@@ -113,7 +117,7 @@ export function peopleHTML(o: OutpostState, pos = at()): string {
   const c = G.char, L = lifeNow(c.world, o, c.time), f = fertility(c.world, o.x, o.z), n = Math.floor(L.n), beds = bedsOf(o), w = crews(o, L.n);
   const made = foodMade(o, L.n, f), eat = foodEaten(L.n), net = made - eat;
   let s = TL`<div class="say"><b>People</b>${isHamlet(o) ? tl(' <b style="color:var(--gold)">· a hamlet now</b>') : ''}: ${n} of ${beds} beds${beds ? '' : tl(' (build a bunkhouse and settlers will come)')}` +
-    (n ? TL` · ${w.farm} on the fields, ${w.dig} at the ${o.k === 'port' ? PORT.name.toLowerCase() : o.k === 'camp' ? tl('plant') : o.done?.dig ? DIG[digOf(o.k)].name.toLowerCase() : 'dig'}${w.idle ? `, ${w.idle} idle` : ''}` : '') +
+    (n ? TL` · ${w.farm} on the fields, ${w.dig} at the ${o.k === 'port' ? PORT.name.toLowerCase() : o.k === 'camp' ? tl('plant') : o.done?.dig ? DIG[digOf(o.k)].name.toLowerCase() : 'dig'}${w.guard ? TL`, ${w.guard} on guard at the turrets` : ''}${w.idle ? `, ${w.idle} idle` : ''}` : '') +
     TL`<br>Land: ${fertilityWord(f)} (fertility ${Math.round(f * 100)}%) · ${o.n?.field ?? 0} field${o.n?.field === 1 ? '' : 's'} grow ${made.toFixed(1)} food a day, the people eat ${eat.toFixed(1)}` +
     TL`<br>Pantry: ${L.food.toFixed(1)} of ${pantryOf(o)} food${eat > 0 ? ` (${net >= 0 ? tl('growing') : TL`${(L.food / (eat - made)).toFixed(1)} days left`})` : ''}` +
     (L.fed < 1 ? TL` · <span style="color:#ff6a4a">hungry: settlers are leaving</span>` : '') +

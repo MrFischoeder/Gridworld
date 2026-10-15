@@ -19,6 +19,15 @@ import { lockPointer } from '../ui/input';
 import { logLine, showToast } from '../ui/hud';
 import { ITEMS, type ItemKey } from '../data/items';
 import { tl, TL } from '../i18n';
+import { lhPower, type LhPower } from '../gen/lhpower';
+
+/** (0.221, PLAN_PRAD_I_LUDZIE.md stage Z7) Each lighthouse's power (gen/lhpower.ts), worked out every 2 s for the
+ *  ones within sight; a lamp that is on but has no power stays dark. */
+const power = new Map<string, LhPower>();
+let powTick = 0;
+const powerOf = (l: Lighthouse) => { let p = power.get(l.id); if (!p) { p = lhPower(G.char.world, l, G.char.towns, G.char.outposts, G.char.time); power.set(l.id, p); } return p; };
+/** Its lamp turns now: finished, lit and powered. */
+const shining = (l: Lighthouse) => !!l.done && l.on && powerOf(l).ok;
 
 const list = () => (G.char.lighthouses ??= []);
 const byId = (id: string) => list().find((l) => l.id === id) ?? null;
@@ -91,8 +100,9 @@ export function updateLighthouses(dt: number) {
     for (const id of [...live.keys()]) if (!seen.has(id)) drop(id);
   }
   const now = G.char.time;
+  if ((powTick -= dt) <= 0) { powTick = 2; power.clear(); }
   for (const t of live.values()) {
-    const on = !!t.l.done && t.l.on;
+    const on = shining(t.l);
     if (t.spin) { t.spin.visible = on; t.spin.rotation.y = beamAngle(t.l, now); }
     if (t.core) t.core.visible = on;
   }
@@ -102,7 +112,7 @@ addGlows((out) => {
   if (G.char.loc !== 'overworld') return;
   const now = G.char.time;
   for (const l of list()) {
-    if (!l.done || !l.on || worldDist(l.x, l.z, G.pos.x, G.pos.z) > LH.see) continue;
+    if (!l.done || !l.on || worldDist(l.x, l.z, G.pos.x, G.pos.z) > LH.see || !shining(l)) continue;
     const p = placeOf(l), f = flashAt(l, now, G.pos.x - (p.x - l.x), G.pos.z);
     out.push({ x: p.x, y: l.y + LH.h + 1.5, z: p.z, c: 0xfff4d0, s: 0.07 + f * 0.2, a: 0.35 + f * 0.65, far: LH.see });
   }
@@ -120,7 +130,7 @@ export function nearLighthouse(): Lighthouse | null {
   for (const t of live.values()) { const p = placeOf(t.l); if (Math.hypot(G.pos.x - p.x, G.pos.z - p.z) < LH.r + 2.2) return t.l; }
   return null;
 }
-export const lighthousePrompt = (l: Lighthouse) => (l.done ? TL`E — the lighthouse (${l.on ? TL`lit, a turn every ${l.p} s` : tl('dark')})` : TL`E — the lighthouse site (${Math.round(lhProgress(l) * 100)}% handed over)`);
+export const lighthousePrompt = (l: Lighthouse) => (l.done ? TL`E — the lighthouse (${l.on ? (powerOf(l).ok ? TL`lit, a turn every ${l.p} s` : tl('no power')) : tl('dark')})` : TL`E — the lighthouse site (${Math.round(lhProgress(l) * 100)}% handed over)`);
 let open: string | null = null;
 const root = () => document.getElementById('dlg')!;
 const at = () => { const l = open ? byId(open) : null; return l ? placeOf(l) : null; };
@@ -130,7 +140,11 @@ function render(msg = '') {
   if (!l) { close(); return; }
   let h = TL`<div data-lhouse="1"><h2>${l.done ? tl('Lighthouse') : tl('Lighthouse site')}</h2>`;
   if (l.done) {
-    h += TL`<div class="say">Its lamp ${l.on ? TL`is lit and turns once every <b>${l.p} s</b>: two beams, so it flashes every ${l.p / 2} s` : tl('is dark')}. Seen from kilometres away by night; it lights nothing round it. Set its own rhythm so it can be told from the others.${msg ? '<br>' + msg : ''}</div>`;
+    const pw = lhPower(G.char.world, l, G.char.towns, G.char.outposts, G.char.time); power.set(l.id, pw);
+    h += TL`<div class="say">Its lamp ${l.on ? (pw.ok ? TL`is lit and turns once every <b>${l.p} s</b>: two beams, so it flashes every ${l.p / 2} s` : tl('is switched on but stands dark')) : tl('is dark')}. Seen from kilometres away by night; it lights nothing round it. Set its own rhythm so it can be told from the others.${msg ? '<br>' + msg : ''}</div>`;
+    if (pw.by === 'village') h += TL`<div class="say">Power: ${LH.kw} kW from ${pw.name}'s spare.</div>`;
+    else if (pw.by === 'grid') h += TL`<div class="say">Power: ${LH.kw} kW from the grid of ${pw.name}.</div>`;
+    else if (!pw.ok) h += TL`<div class="say" style="color:#ff6a4a">No power: the lamp is electric and wants ${LH.kw} kW, from a village within ${LH.grid} m with power to spare or from an outpost's power source that reaches it (its grid at least ${Math.round(LH.share * 100)}% fed).</div>`;
     h += `<div class="acts" style="display:flex;flex-wrap:wrap;gap:6px">` + LH.periods.map((p) => `<button class="opt${p === l.p ? ' sel' : ''}" data-lh="p:${p}" style="width:auto;min-width:56px">${p} s</button>`).join('') + `</div>`;
     h += `<button class="opt" data-lh="on">${l.on ? tl('Put the lamp out') : tl('Light the lamp')}</button>`;
   } else {

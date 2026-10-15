@@ -3,6 +3,12 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.221.0', date: '2026-10-15', title: 'Defence takes power and people', notes: [
+    'In a settlement (new worlds) every wall turret now draws 4 kW from the village\'s power and wants a guard, one man each, taken from the people the farms, yards, works, stations and services leave free. A turret without its guard stands silent; with too little power (under a quarter of what the works need over the day) none of them fires. The elder\'s "How is the village doing?" says which and why.',
+    'An outpost\'s turrets draw 3 kW each from its grid and take a settler each as a guard, after the fields\' crews and before the dig. Off the grid or short of power none fires; short of settlers only as many as have a guard. A raid settled without you counts only the turrets that work, and the outpost window says how it stands.',
+    'Lighthouses in new worlds are electric: the lamp turns only with power from a village within 500 m that has 2 kW to spare, or from an outpost\'s power source that reaches it (its grid at least a quarter fed). The window says where its power comes from, or that it has none. Old worlds and established villages keep their turrets and lamps as before.',
+    'Multiplayer: everything follows from the shared villages and outposts, so every game agrees on which turrets fire and which lamps turn. The server does not need an update.',
+  ] },
   { v: '0.220.0', date: '2026-10-15', title: 'Commuters', notes: [
     'An outpost, a port or a crew camp within 2 km of a settlement can now ask the village for its free people: they walk out each day to work the outpost\'s post (the dig, a port\'s crane, an old plant) and eat at home, so no bunkhouses or fields are needed for them.',
     'The village sends only the people its own posts leave free: farms, power, yards, works, stations and services come first. The window shows how many come of how many were asked for, and how many the village has free. You can stop asking at any time.',
