@@ -357,6 +357,11 @@ function foeKey(t: Foe): FoeKey | null {
   return 'boss' in t && t.boss ? null : 'drone';
 }
 let tacticTold = 0;
+/** (0.226) The line for a hit that counted by the foe's moment (gen/tactics.ts STATE_MULT). */
+const WHY: Record<string, (k: string) => string> = {
+  stun: (k) => TL`Stunned! ×${k}`, grounded: (k) => TL`Caught on the ground ×${k}`, shield: (k) => TL`Its shield is up: ×${k}`,
+  hot: (k) => TL`Overheated! ×${k}`, exposed: (k) => TL`Wide open ×${k}`,
+};
 /** The hit's multiplier by where it comes from and where it lands (`u` its height in the foe's sphere, null for a
  *  blade), with a short line now and then saying why (a weak spot, from behind, its armour). */
 function tactic(t: Foe, u: number | null, melee: boolean): number {
@@ -364,10 +369,11 @@ function tactic(t: Foe, u: number | null, melee: boolean): number {
   if (!key) return 1;
   const h = (t as { heading?: number }).heading, p = t.g.position;
   const cos = h === undefined || key === 'drone' ? NaN : Math.cos(Math.atan2(G.pos.x - p.x, G.pos.z - p.z) - h);
-  const m = hitMult(key, cos, u, melee), now = performance.now();
+  const st = (t as { mode?: string }).mode || (t as { state?: string }).state || '';
+  const m = hitMult(key, cos, u, melee, st), now = performance.now();
   if (now - tacticTold > 700 && Math.abs(m.k - 1) > 0.15) {
     tacticTold = now;
-    logLine(m.spot ? TL`Weak spot! ×${m.k.toFixed(1)}` : m.from === 'back' && m.k > 1 ? TL`From behind ×${m.k.toFixed(1)}` : m.k < 1 ? TL`Armour turns it: ×${m.k.toFixed(1)}` : TL`A good angle ×${m.k.toFixed(1)}`);
+    logLine(m.why ? WHY[m.why](m.k.toFixed(1)) : m.spot ? TL`Weak spot! ×${m.k.toFixed(1)}` : m.from === 'back' && m.k > 1 ? TL`From behind ×${m.k.toFixed(1)}` : m.k < 1 ? TL`Armour turns it: ×${m.k.toFixed(1)}` : TL`A good angle ×${m.k.toFixed(1)}`);
   }
   return m.k;
 }
@@ -379,7 +385,7 @@ let sneakTold = 0;
 function sneak(t: Foe, melee: boolean): number {
   const s = (t as { state?: string }).state;
   const busy = 'kind' in t
-    ? t.kind === 'raider' || (t.kind === 'bandit' ? s === 'fight' || s === 'flee' : t.kind === 'robot' ? s === 'hunt' : !(s === 'roam' || s === 'investigate'))
+    ? t.kind === 'raider' || (t.kind === 'bandit' ? s === 'fight' || s === 'flee' : t.kind === 'robot' ? s === 'hunt' : !(s === 'roam' || s === 'investigate' || s === 'feed'))
     : 'boss' in t && t.boss ? t.engaged : (t as Drone).chasing;
   if (!unaware(t, busy)) return 1;
   const k = sneakBonus(melee), now = performance.now();

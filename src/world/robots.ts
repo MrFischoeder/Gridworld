@@ -29,6 +29,7 @@ import { logLine } from '../ui/hud';
 import { mayspawn, FOE_HIT } from './threat';
 import type { SpawnEnv } from './creatures';
 import { coverStep, inCover } from './cover';
+import { tl } from '../i18n';
 
 type State = 'patrol' | 'hunt' | 'return';
 export interface Robot {
@@ -47,6 +48,11 @@ export interface Robot {
   drones: Drone[]; charge: number;
   /** (0.224) Crouched behind cover (a Guardian), and the eased crouch. */
   cover?: number; duck?: number;
+  /** (0.226, stage W2) A moment seen by everyone: 'shield' (a Sentinel firing behind its arm), 'hot' (overheated),
+   *  'mark' (an Artillery Walker painting its target), 'exposed' (an Assault Construct after a missed charge), '' none. */
+  mode?: string; modeT?: number;
+  /** Where an Artillery Walker's laser rests, an Assault Construct's locked charge, a second hammer blow on its way. */
+  markAt?: THREE.Vector3; chargeDir?: THREE.Vector3; swing2?: number; beam?: THREE.Line;
 }
 
 // ---------- models (local +z forward, origin at the body centre) ----------
@@ -336,10 +342,14 @@ function hit(dmg: number, push = 0, from?: THREE.Vector3) {
 // artillery shells: a ring marks where it will land, then the blast
 interface Shell { at: THREE.Vector3; t: number; dmg: number; source: Robot; ring: THREE.LineLoop }
 const shells: Shell[] = [];
-function lob(r: Robot) {
+/** Where a shell would come down now: your position led by your speed, a little scattered. */
+function aimShell(): THREE.Vector3 {
   const lead = V(G.vel.x, 0, G.vel.z).multiplyScalar(SHELL.flight * 0.6);
   const at = V(G.pos.x + lead.x + (Math.random() - 0.5) * 3, 0, G.pos.z + lead.z + (Math.random() - 0.5) * 3);
   at.y = env ? env.ground(at.x, at.z) + 0.1 : G.pos.y;
+  return at;
+}
+function lob(r: Robot, at = aimShell()) {
   const pts: THREE.Vector3[] = []; for (let i = 0; i < 24; i++) { const a = i / 24 * 6.283; pts.push(V(Math.cos(a) * SHELL.radius, 0, Math.sin(a) * SHELL.radius)); }
   const ring = new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(pts), addMat(0xff6a4a)); ring.position.copy(at); scene.add(ring);
   shells.push({ at, t: SHELL.flight, dmg: ROBOTS.artillery.dmg * (1 + r.level * 0.1), source: r, ring });
@@ -366,11 +376,27 @@ function updateShells(dt: number, time: number) {
 }
 
 const robotEye = new THREE.Vector3();
+/** (0.226, stage W2) The moments (s), and the scouts' circle (m) and turn to go in; how far a Repair Drone keeps behind its cover. */
+const SHIELD = 0.8, HOT = 1.6, MARK = 1.2, EXPOSED = 2.4, SWING2 = 0.5, SCOUT_RING = 6.5, SCOUT_TURN = 4, HIDE_BEHIND = 4;
+/** A Guardian that has lost sight of you sprays the spot it last saw you at: a burst of three, now and then. */
+function suppress(r: Robot, at: THREE.Vector3, dist: number): boolean {
+  if (r.model !== 'guardian' || r.atkT > 0 || dist > 30) return false;
+  r.atkT = 2.6 + Math.random();
+  const lvl = 1 + r.level * 0.12, spot = V(at.x, at.y + 1, at.z);
+  face(r, at.x - r.p.x, at.z - r.p.z, 1, 1);
+  for (let i = 0; i < 3; i++) setTimeout(() => { if (W.robots.includes(r)) withFoeTarget(r, () => fireBolt(r.g.localToWorld(V(0, 0.6, 1.4)), ROBOTS.guardian.dmg * lvl * 0.7, 0xff9a3a, spot.clone().add(V((Math.random() - 0.5) * 2.5, (Math.random() - 0.3) * 1.2, (Math.random() - 0.5) * 2.5)))); }, i * 160);
+  return true;
+}
 /** (0.224) A Guardian behind cover: the height that must be hidden, and how far its body sinks. */
 const GUARD_COVER = { low: 0.95, duck: 0.6 };
 function think(r: Robot, dt: number, time: number) {
   const s = ROBOTS[r.model], to = V(G.pos.x - r.p.x, G.pos.y + 1.1 - r.p.y, G.pos.z - r.p.z), dist = Math.hypot(to.x, to.z), safe = !targetingFoe() && foeRules.playerSafe();
   r.timer -= dt; r.atkT -= dt;
+  if (r.modeT !== undefined && r.modeT > 0 && (r.modeT -= dt) <= 0) { // (0.226, stage W2) a moment ends: a Sentinel's shield gives way to the overheat
+    if (r.mode === 'shield') { r.mode = 'hot'; r.modeT = HOT; r.atkT = Math.max(r.atkT, HOT + 1.6); }
+    else if (r.mode === 'mark' && r.markAt) { lob(r, r.markAt); r.mode = ''; r.markAt = undefined; }
+    else r.mode = '';
+  }
   if (r.state === 'hunt' && (safe || dist > s.sight * 2.2)) r.state = 'return';
   // its sensors: a crouched, still or hidden target is made out later, from behind much later
   const m = mindOf(r), hunting = r.state === 'hunt';
@@ -398,6 +424,7 @@ function think(r: Robot, dt: number, time: number) {
   if (seen) share(r.group.length ? r.group : [r], r);
   else if (m.lost > (inCover(r) ? 7 : 1)) { // lost the target (a Guardian behind cover waits longer): sweep the spot it was last seen at, then go back
     if (!m.last || m.lost > LOSE.robot) { r.state = 'return'; return; }
+    if (suppress(r, m.last, dist)) return;
     const hx = m.last.x - r.p.x, hz = m.last.z - r.p.z;
     if (Math.hypot(hx, hz) > 2.5) { walk(r, hx, hz, s.speed * 0.7, dt); face(r, hx, hz, dt, 2); }
     else { r.speed = 0; r.heading += dt * 1.6; }
@@ -407,6 +434,13 @@ function think(r: Robot, dt: number, time: number) {
   const lvl = 1 + r.level * 0.12;
   switch (r.model) {
     case 'scout': { // swing wide round the flank, then dart in and slash; skitter back after a hit
+      // (0.226, stage W2) three or more: one goes in while the others circle you at a few metres, then they change over
+      const pack = r.group.filter((o) => o.model === 'scout' && W.robots.includes(o));
+      if (pack.length >= 3 && r.charge <= 0 && pack.indexOf(r) !== Math.floor(time / SCOUT_TURN) % pack.length) {
+        const a = Math.atan2(r.p.x - G.pos.x, r.p.z - G.pos.z) + (pack.indexOf(r) % 2 ? 1 : -1) * 0.9;
+        walk(r, G.pos.x + Math.sin(a) * SCOUT_RING - r.p.x, G.pos.z + Math.cos(a) * SCOUT_RING - r.p.z, s.speed * 0.8, dt); face(r, to.x, to.z, dt, 8);
+        break;
+      }
       if (r.charge > 0) { r.charge -= dt; walk(r, -to.x, -to.z, s.speed * 0.8, dt); face(r, to.x, to.z, dt, 8); break; }
       const side = V(-to.z, 0, to.x).normalize().multiplyScalar(dist > 9 ? Math.sin(r.flank) * 7 : 0);
       walk(r, to.x + side.x, to.z + side.z, s.speed, dt); face(r, to.x, to.z, dt, 8);
@@ -424,6 +458,7 @@ function think(r: Robot, dt: number, time: number) {
       }
       face(r, to.x, to.z, dt);
       if (r.atkT <= 0 && dist < 32 && sees() && (!cv || cv.fire)) { r.atkT = 1.5 + Math.random() * 0.6; fireBolt(r.g.localToWorld(V(0, 0.6, 1.4)), s.dmg * lvl, 0xff9a3a); }
+      else if (!sees() && m.last) suppress(r, m.last, dist); // (0.226) you ducked: it rakes the spot you were at
       break;
     }
     case 'repair': { // stay back, mend the most hurt machine near, drop defence drones
@@ -435,7 +470,15 @@ function think(r: Robot, dt: number, time: number) {
           hurt.hp = Math.min(hurt.maxHp, hurt.hp + 1.2 * dt * lvl);
           if (Math.random() < dt * 8) addFx(new THREE.Line(new THREE.BufferGeometry().setFromPoints([r.p.clone(), hurt.p.clone()]), addMat(BEAM_COLOR)), 0.08);
         }
-      } else { const k = dist < 22 ? -1 : dist > 30 ? 1 : 0; walk(r, to.x * k, to.z * k, s.speed, dt); face(r, to.x, to.z, dt); }
+      } else {
+        // (0.226, stage W2) it keeps a heavy machine between itself and you
+        const heavy = W.robots.filter((o) => o !== r && (o.model === 'sentinel' || o.model === 'assault' || o.model === 'guardian') && o.p.distanceTo(r.p) < 30).sort((a, b) => a.p.distanceTo(r.p) - b.p.distanceTo(r.p))[0];
+        if (heavy) {
+          const away = V(heavy.p.x - G.pos.x, 0, heavy.p.z - G.pos.z).normalize().multiplyScalar(HIDE_BEHIND);
+          const hx = heavy.p.x + away.x - r.p.x, hz = heavy.p.z + away.z - r.p.z;
+          if (Math.hypot(hx, hz) > 1) walk(r, hx, hz, s.speed, dt); face(r, to.x, to.z, dt);
+        } else { const k = dist < 22 ? -1 : dist > 30 ? 1 : 0; walk(r, to.x * k, to.z * k, s.speed, dt); face(r, to.x, to.z, dt); }
+      }
       r.drones = r.drones.filter((d) => W.drones.includes(d));
       if (r.atkT <= 0 && r.drones.length < 2 && dist < 40) {
         r.atkT = 12;
@@ -448,9 +491,10 @@ function think(r: Robot, dt: number, time: number) {
     }
     case 'sentinel': { // walk in to ~10 m, bursts of three bolts, a crushing blow up close
       if (dist > 10) walk(r, to.x, to.z, s.speed, dt); face(r, to.x, to.z, dt, 3);
+      if (r.mode === 'hot') { if (dist > 6) walk(r, -to.x, -to.z, s.speed * 0.4, dt); break; } // venting: it backs off, weak
       if (dist < 3.2 + s.r * 0.5 && r.atkT <= 0) { r.atkT = 2; r.swing = 1; hit(22 * lvl, 9, r.p); burst(G.pos.clone(), ROBOT_COLOR, 14, 0.8); break; }
       if (r.atkT <= 0 && dist < 34 && sees()) {
-        r.atkT = 3.2;
+        r.atkT = 3.2; r.mode = 'shield'; r.modeT = SHIELD; // (0.226) the arm shield comes up for the burst, then the barrels overheat
         for (let i = 0; i < 3; i++) setTimeout(() => { if (W.robots.includes(r)) withFoeTarget(r, () => fireBolt(r.g.localToWorld(V(i % 2 ? 1.2 : -1.2, -0.2, 1.5)), s.dmg * lvl, 0xff9a3a)); }, i * 180);
       }
       break;
@@ -459,13 +503,22 @@ function think(r: Robot, dt: number, time: number) {
       face(r, to.x, to.z, dt, 0.8);
       if (dist < SHELL.minRange) walk(r, -to.x, -to.z, s.speed, dt);
       else if (dist > SHELL.range * 0.8) walk(r, to.x, to.z, s.speed, dt);
-      if (r.atkT <= 0 && dist > SHELL.minRange && dist < SHELL.range) { r.atkT = SHELL.every + Math.random(); lob(r); }
+      if (r.mode === 'mark') { r.markAt = aimShell(); break; } // the laser follows you until it fires (the shell lands where it last rested)
+      if (r.atkT <= 0 && dist > SHELL.minRange && dist < SHELL.range) { r.atkT = SHELL.every + Math.random(); r.mode = 'mark'; r.modeT = MARK; r.markAt = aimShell(); } // (0.226) paint first, then fire
       break;
     }
-    case 'assault': { // stomp in, charge the last stretch, smash
-      if (r.charge > 0) { r.charge -= dt; walk(r, to.x, to.z, s.speed * 2, dt); face(r, to.x, to.z, dt, 6); }
-      else { walk(r, to.x, to.z, s.speed, dt); face(r, to.x, to.z, dt, 3); if (dist < 12 && dist > 5 && r.atkT <= 0) r.charge = 1.2; }
-      if (dist < 3 + s.r * 0.5 && r.atkT <= 0) { r.atkT = 1.9; r.swing = 1; r.charge = 0; hit(s.dmg * lvl, 14, r.p); burst(G.pos.clone(), ROBOT_COLOR, 20, 1); }
+    case 'assault': { // stomp in, charge the last stretch (straight: step aside and it runs past), smash twice
+      if (r.mode === 'exposed') { r.speed = 0; break; } // (0.226) stranded after a missed charge, its back to you
+      if (r.swing2 !== undefined && r.swing2 > 0 && (r.swing2 -= dt) <= 0) { // the second blow of the pair
+        r.swing = 1;
+        if (dist < 3.4 + s.r * 0.5) { hit(s.dmg * lvl * 0.8, 10, r.p); burst(G.pos.clone(), ROBOT_COLOR, 16, 0.9); }
+      }
+      if (r.charge > 0) {
+        r.charge -= dt; const d = r.chargeDir ?? V(to.x, 0, to.z).normalize();
+        walk(r, d.x, d.z, s.speed * 2, dt); face(r, d.x, d.z, dt, 6);
+        if (r.charge <= 0) { r.mode = 'exposed'; r.modeT = EXPOSED; if (dist < 40) logLine(tl('The Assault Construct charges past and stands exposed!')); }
+      } else { walk(r, to.x, to.z, s.speed, dt); face(r, to.x, to.z, dt, 3); if (dist < 12 && dist > 5 && r.atkT <= 0) { r.charge = 1.2; r.chargeDir = V(to.x, 0, to.z).normalize(); } }
+      if (dist < 3 + s.r * 0.5 && r.atkT <= 0) { r.atkT = 2.4; r.swing = 1; r.charge = 0; r.swing2 = SWING2; hit(s.dmg * lvl, 14, r.p); burst(G.pos.clone(), ROBOT_COLOR, 20, 1); }
       break;
     }
   }
@@ -484,7 +537,10 @@ function animate(r: Robot, dt: number, time: number) {
   if (r.model === 'scout') r.arms.forEach((a) => (a.rotation.x = -sw * 1.2 + Math.sin(time * 3 + r.flank) * 0.05));
   else if (r.model === 'repair') r.arms.forEach((a, i) => { a.rotation.x = Math.sin(time * 1.3 + i) * 0.25; a.rotation.z = Math.cos(time * 1.1 + i * 2) * 0.2; });
   else if (r.model === 'assault') { r.arms[0].rotation.x = -sw * 1.8 + (r.charge > 0 ? -0.6 : 0); r.arms[1].rotation.x = Math.sin(r.anim) * 0.3 * move; }
-  else if (r.model === 'sentinel') r.arms.forEach((a, i) => (a.rotation.x = -sw * 1.2 + Math.sin(r.anim + i * Math.PI) * 0.2 * move));
+  else if (r.model === 'sentinel') r.arms.forEach((a, i) => (a.rotation.x = r.mode === 'shield' && i === 0 ? -1.4 : -sw * 1.2 + Math.sin(r.anim + i * Math.PI) * 0.2 * move)); // (0.226) the shield arm up while it fires
+  if (r.mode === 'hot' && Math.random() < dt * 14) burst(r.p.clone().add(V((Math.random() - 0.5) * 1.5, 0.8 + Math.random(), (Math.random() - 0.5) * 1.5)), 0xffa040, 2, 0.5); // venting heat
+  if (r.mode === 'exposed' && Math.random() < dt * 6) burst(r.p.clone().add(V(0, 1.6, 0)), 0xffd060, 1, 0.4);
+  markBeam(r);
   const bob = r.model === 'repair' ? Math.sin(time * 2 + r.flank) * 0.15 : Math.abs(Math.sin(r.anim)) * 0.05 * move;
   if (env) r.p.y = env.ground(r.p.x, r.p.z) + s.lift;
   const dk = (r.duck = (r.duck ?? 0) + ((r.cover ?? 0) - (r.duck ?? 0)) * Math.min(1, dt * 6)); // crouched behind cover
@@ -492,6 +548,14 @@ function animate(r: Robot, dt: number, time: number) {
   r.g.rotation.y = r.heading;
   r.flash -= dt;
   r.mat.color.setHex(r.flash > 0 ? 0xffffff : ROBOT_COLOR);
+}
+
+/** (0.226) The Artillery Walker's red laser while it paints its target (on the copies it points at your own position). */
+function markBeam(r: Robot) {
+  if (r.mode !== 'mark') { if (r.beam) r.beam.visible = false; return; }
+  if (!r.beam) { r.beam = new THREE.Line(new THREE.BufferGeometry().setFromPoints([V(0, 0, 0), V(0, 0, 1)]), addMat(0xff3030)); scene.add(r.beam); }
+  const from = r.g.localToWorld(V(0, 1.25, 4.5)), to = r.markAt ?? V(G.pos.x, G.pos.y + 0.1, G.pos.z);
+  r.beam.geometry.setFromPoints([from, to]); r.beam.visible = Math.random() > 0.15; // a flicker
 }
 
 export function updateRobots(dt: number, time: number) {
@@ -536,6 +600,7 @@ interface Scrap { r: Robot; t: number; dir: 1 | -1; land: number; vy: number; y0
 const scraps: Scrap[] = [];
 const SHUDDER = BLAST.pulse, COLLAPSE = 0.7, LIE_R = 6, SINK_R = 1.8, DARK = 0x6a4a2a;
 export function wreckRobot(r: Robot) {
+  if (r.beam) r.beam.visible = false; r.mode = ''; // (0.226) no laser or shield on a wreck
   if (r.guard !== undefined) guardDown(r.guard);
   const i = W.robots.indexOf(r); if (i >= 0) W.robots.splice(i, 1);
   const j = r.group.indexOf(r); if (j >= 0) r.group.splice(j, 1);
@@ -605,6 +670,7 @@ function updateScraps(dt: number) {
 }
 export function removeRobot(r: Robot) {
   scene.remove(r.g);
+  if (r.beam) { scene.remove(r.beam); r.beam.geometry.dispose(); }
   r.g.traverse((o) => { const m = o as THREE.Mesh; if (m.geometry) m.geometry.dispose(); });
   r.mat.dispose();
   const i = W.robots.indexOf(r); if (i >= 0) W.robots.splice(i, 1);

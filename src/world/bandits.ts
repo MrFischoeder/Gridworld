@@ -26,6 +26,8 @@ import { mayspawn, BANDIT_COST } from './threat';
 import { campWay, type BanditRole, type CampMap } from '../gen/camps';
 import { tl } from '../i18n';
 import { coverStep, dropCover, inCover } from './cover';
+import { throwGrenade } from './throwing';
+import { GRENADE } from '../gen/throwing';
 import { peekK } from './weapons';
 import { COVER } from '../gen/cover';
 
@@ -50,6 +52,10 @@ export interface Bandit {
   recoil: number; blow: boolean;
   /** (0.224) Crouched behind cover (1) or not, as its mind wants it; `duck` eases the figure down. */
   cover?: number; duck?: number;
+  /** (0.226) 'flank' while it works round you (the rest pin you down); '' otherwise. Synced with the copies. */
+  mode?: string; grenadeT?: number;
+  /** Where a flanker is going, how long it keeps at it, and the wait before it flanks again. */
+  flankAt?: THREE.Vector3; flankT?: number;
 }
 interface Bolt { m: THREE.Line; p: THREE.Vector3; v: THREE.Vector3; dmg: number; life: number; ghost?: boolean; source?: CombatFoe }
 const bolts: Bolt[] = [];
@@ -164,9 +170,9 @@ function fire(b: Bandit) {
   fireBolt(muzzle, (b.role === 'leader' ? 9 : 5) * (1 + b.level * 0.2), b.role === 'leader' ? BOSS_COLOR : BANDIT);
 }
 /** A bolt from `muzzle` at the player (with spread for distance and the player's speed). */
-export function fireBolt(muzzle: THREE.Vector3, dmg: number, color = BANDIT) {
-  // at you: at the driver's seat when you are driving (the whole vehicle absorbs it, updateBolts)
-  const target = driving.v && !proxied() ? seatPoint(driving.v, driving.seat) : V(G.pos.x, G.pos.y + aimHeight(), G.pos.z), dist = target.distanceTo(muzzle);
+export function fireBolt(muzzle: THREE.Vector3, dmg: number, color = BANDIT, at?: THREE.Vector3) {
+  // at you: at the driver's seat when you are driving (the whole vehicle absorbs it, updateBolts); (0.226) or at a spot (suppressing fire)
+  const target = at ? at.clone() : driving.v && !proxied() ? seatPoint(driving.v, driving.seat) : V(G.pos.x, G.pos.y + aimHeight(), G.pos.z), dist = target.distanceTo(muzzle);
   const spread = 0.035 * dist + Math.hypot(G.vel.x, G.vel.z) * 0.1;
   target.x += (Math.random() - 0.5) * spread; target.y += (Math.random() - 0.5) * spread * 0.5; target.z += (Math.random() - 0.5) * spread;
   const v = target.sub(muzzle).normalize().multiplyScalar(30);
@@ -222,6 +228,20 @@ export function updateBolts(dt: number) {
 }
 
 const eye = new THREE.Vector3();
+/** (0.226, stage W2) When each group last threw a grenade (game seconds of the loop's clock), and the flanking rule:
+ *  the side angle from the group (rad), the distance from you (m), how long it tries (s), the wait before the next. */
+const groupNade = new WeakMap<Bandit[], number>();
+const FLANK = { angle: 1.75, r: 13, time: 9, again: 22, pin: 0.55 };
+/** A gunner who has lost sight of you lobs a grenade at the spot now and then (its group not too often). */
+function tryGrenade(b: Bandit, at: THREE.Vector3 | null | undefined, time: number) {
+  if (b.role === 'bruiser' || !at || targetingFoe()) return;
+  if (b.grenadeT === undefined) b.grenadeT = 3 + Math.random() * 3;
+  if (b.grenadeT > 0 || time - (groupNade.get(b.group) ?? -99) < GRENADE.group) return;
+  const d = Math.hypot(at.x - b.p.x, at.z - b.p.z);
+  if (d < GRENADE.min || d > GRENADE.max) return;
+  throwGrenade(V(b.p.x, b.p.y + 0.7, b.p.z), V(at.x, at.y, at.z), GRENADE.dmg * (1 + b.level * 0.15));
+  b.grenadeT = GRENADE.cool + Math.random() * 6; groupNade.set(b.group, time);
+}
 function think(b: Bandit, dt: number, time: number) {
   const to = V(G.pos.x - b.p.x, G.pos.y + 1.1 - b.p.y, G.pos.z - b.p.z), dist = to.length(), safe = !targetingFoe() && foeRules.playerSafe();
   b.timer -= dt; b.fireT -= dt; b.hitT -= dt;
@@ -233,6 +253,8 @@ function think(b: Bandit, dt: number, time: number) {
   const sees = () => seen;
   if (!fighting && !safe && m.aware >= STEALTH.spotted) { alert(b); if (!proxied() && !targetingFoe()) spottedBy(b); }
   if (b.state !== 'fight' && b.cover) { b.cover = 0; dropCover(b); }
+  if (b.state !== 'fight' && b.mode) b.mode = '';
+  if (b.grenadeT !== undefined) b.grenadeT -= dt;
   switch (b.state) {
     case 'idle':
       b.speed = 0;
@@ -250,6 +272,7 @@ function think(b: Bandit, dt: number, time: number) {
     case 'search': { // careful steps to where it saw or heard you, then a look round; gives up after a while
       const l = m.last;
       if (!l || b.timer <= 0) { b.state = 'return'; break; }
+      if (b.grenadeT !== undefined) tryGrenade(b, l, time); // (0.226) one that fought you lobs a grenade where you went to ground
       const hx = l.x - b.p.x, hz = l.z - b.p.z;
       if (Math.hypot(hx, hz) > 2) { walk(b, hx, hz, 2.8, dt); face(b, hx, hz, dt); }
       else { b.speed = 0; b.heading += Math.sin(time * 0.9 + b.home.z) * dt * 1.4; }
@@ -279,6 +302,21 @@ function think(b: Bandit, dt: number, time: number) {
         break;
       }
       const want = b.role === 'leader' ? 12 : 15;
+      if (!seen) tryGrenade(b, m.last, time); // (0.226, stage W2) gone to ground behind something: a grenade at where you were
+      // (0.226) three guns or more: the last works round your side while the others pin you down
+      const guns = b.group.filter((o) => o.role !== 'bruiser' && o.state === 'fight' && W.bandits.includes(o));
+      b.flankT = (b.flankT ?? 6) - dt;
+      if (b.mode !== 'flank' && guns.length >= 3 && b === guns[guns.length - 1] && b.flankT <= 0 && dist < 40) {
+        const cx = guns.reduce((a, o) => a + o.p.x, 0) / guns.length, cz = guns.reduce((a, o) => a + o.p.z, 0) / guns.length;
+        const a0 = Math.atan2(cx - G.pos.x, cz - G.pos.z) + (Math.random() < 0.5 ? 1 : -1) * FLANK.angle;
+        b.flankAt = V(G.pos.x + Math.sin(a0) * FLANK.r, 0, G.pos.z + Math.cos(a0) * FLANK.r); b.mode = 'flank'; b.flankT = FLANK.time;
+      }
+      if (b.mode === 'flank') {
+        const fa = b.flankAt!, fx = fa.x - b.p.x, fz = fa.z - b.p.z;
+        if (Math.hypot(fx, fz) < 1.5 || b.flankT <= 0) { b.mode = ''; b.flankT = FLANK.again; }
+        else { walk(b, fx, fz, 5, dt); b.cover = 0; break; }
+      }
+      const pinning = guns.some((o) => o.mode === 'flank');
       // (0.224, stage W3) from cover when there is any: run to it, crouch, rise for a burst, drop back
       const tg = seen || !m.last ? G.pos : m.last;
       const cv = env ? coverStep(b, b.p.x, b.p.z, tg.x, tg.y, tg.z, dt, { ground: env.ground, body: (x, y, z) => foeRules.body(x, y, z, BODY_R), low: COVER.low, stand: COVER.stand, far: want + 12 }) : null;
@@ -295,7 +333,7 @@ function think(b: Bandit, dt: number, time: number) {
       if (b.fireT <= 0 && dist < 45 && sees() && (!cv || cv.fire)) {
         if (b.burst <= 0) b.burst = b.role === 'leader' ? 4 : 3;
         fire(b); b.burst--;
-        b.fireT = b.burst > 0 ? 0.13 : (b.role === 'leader' ? 1.1 : 1.8) + Math.random();
+        b.fireT = b.burst > 0 ? 0.13 : ((b.role === 'leader' ? 1.1 : 1.8) + Math.random()) * (pinning ? FLANK.pin : 1); // pinning you down: faster
       }
       break;
     }

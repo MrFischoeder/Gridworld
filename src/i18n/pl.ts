@@ -4085,4 +4085,13 @@ export const PL: Record<string, string> = {
   'Throwing {0}: {1}%': 'Rzut ({0}): {1}%',
   'A Bramble charges at the noise!': 'Bramble szarżuje na hałas!',
   'Ready to throw (Z)': 'Przygotuj do rzutu (Z)',
+  'Stunned! ×{0}': 'Oszołomiony! ×{0}',
+  'Caught on the ground ×{0}': 'Złapany na ziemi ×{0}',
+  'Its shield is up: ×{0}': 'Tarcza w górze: ×{0}',
+  'Overheated! ×{0}': 'Przegrzany! ×{0}',
+  'Wide open ×{0}': 'Odsłonięty ×{0}',
+  'The Bramble slams into it and reels, stunned!': 'Bramble wbija się w przeszkodę i chwieje się, oszołomiony!',
+  'The Leechwing misses and lands hard: hit it now!': 'Leechwing chybia i ciężko ląduje: bij teraz!',
+  'The Assault Construct charges past and stands exposed!': 'Assault Construct przebiega obok i stoi odsłonięty!',
+  'Grenade! Get away from it!': 'Granat! Uciekaj od niego!',
 };

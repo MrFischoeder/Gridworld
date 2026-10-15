@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { THROW, THROWABLES, throwKind, throwSpeed, throwShare, throwVelocity, landing } from '../src/gen/throwing';
+import { THROW, THROWABLES, GRENADE, throwKind, throwSpeed, throwShare, throwVelocity, landing, lobVelocity, grenadeHarm } from '../src/gen/throwing';
 import { ITEMS } from '../src/data/items';
 import { ORDERS } from '../src/data/orders';
 
@@ -23,5 +23,12 @@ describe('throwing (W4)', () => {
     expect(throwKind('stone')).toBe('stone'); expect(throwKind('flare')).toBe('flare'); expect(throwKind('meatR')).toBe('meat');
     expect(THROW.noise.flare).toBeGreaterThan(THROW.noise.stone); expect(THROW.noise.meat).toBe(0);
     expect(ORDERS.some((o) => o.out === 'flare' && o.tech === '')).toBe(true);
+  });
+  it('W2: a lobbed grenade comes down by its target and hurts less towards the edge', () => {
+    for (const [x, z] of [[8, 0], [0, -20], [15, 12]]) {
+      const at = landing([0, 1.6, 0], lobVelocity([0, 1.6, 0], [x, 0, z]), () => 0, 1 / 120);
+      expect(Math.hypot(at[0] - x, at[2] - z)).toBeLessThan(0.6);
+    }
+    expect(grenadeHarm(0)).toBe(GRENADE.dmg); expect(grenadeHarm(GRENADE.r * 0.9)).toBeLessThan(GRENADE.dmg * 0.5); expect(grenadeHarm(GRENADE.r)).toBe(0);
   });
 });

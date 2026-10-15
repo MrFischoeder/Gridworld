@@ -26,6 +26,7 @@ export const SFX = {
   throw: { voices: [{ w: 'noise', f: [900, 2600], d: 0.18, a: 0.06, v: 0.45 }] },
   thud: { voices: [{ w: 'noise', f: [700, 200], d: 0.12, v: 0.7 }, { w: 'tri', f: [160, 70], d: 0.1, v: 0.5 }] },
   hiss: { voices: [{ w: 'noise', f: [6000, 4200], d: 1.0, a: 0.05, v: 0.45 }, { w: 'square', f: [220, 180], d: 0.08, duty: 0.25, v: 0.3 }] },
+  beep: { voices: [{ w: 'square', f: [1800, 1800], d: 0.05, duty: 0.5, v: 0.4 }] },
   ricochet: { voices: [{ w: 'tri', f: [2600, 900], d: 0.2, v: 0.5, vib: [38, 0.05] }, { w: 'noise', f: [5200, 2400], d: 0.06, v: 0.55 }] },
   hurt: { voices: [{ w: 'square', f: [420, 110], d: 0.22, duty: 0.5, v: 0.6, vib: [28, 0.12] }, { w: 'noise', f: [2000, 600], d: 0.12, v: 0.35 }] },
   // the player's body

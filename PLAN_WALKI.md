@@ -21,7 +21,7 @@ Prośba właściciela (15 października 2026): walka ma być bardziej taktyczna.
   - Komunikaty: „Słaby punkt! ×2”, „Od tyłu ×1.7”, „Pancerz odbija: ×0.4”.
   - Pancerz Bramble'a z przodu został przeniesiony do tej tabeli.
   - Unik: dwa szybkie stuknięcia W/A/S/D albo lewy Alt z kierunkiem. Krótki zryw 12 m/s przez 0,24 s, kosztuje 18 punktów wytrzymałości, potem 0,75 s przerwy. Nie działa w wodzie, w powietrzu ani przy przeciążeniu.
-- **W2. Zapowiedzi i drugie tryby ataku.** Każdy przeciwnik dostaje drugi atak i jego zapowiedź:
+- **W2. Zapowiedzi i drugie tryby ataku.** Każdy przeciwnik dostaje drugi atak i jego zapowiedź *(Zrobione w 0.226.0.)*:
   - Ravager: zwód (udaje doskok) i okrążanie; samiec alfa wyje i zbiera stado.
   - Bramble: przed szarżą grzebie ziemię. Jeśli wpadnie na przeszkodę, jest oszołomiony przez 2 s.
   - Leechwing: krzyczy przed nurkowaniem. Po chybionym ataku siedzi chwilę na ziemi.
@@ -33,6 +33,11 @@ Prośba właściciela (15 października 2026): walka ma być bardziej taktyczna.
   - Assault: podwójny zamach młotem; po chybionej szarży zostaje odsłonięty tył.
   - Repair: chowa się za ciężkimi robotami.
   - Bandyci: rzucają granaty, które wypłaszają gracza zza zasłony; jedni przyszpilają ogniem, a inni w tym czasie flankują.
+  - Zrobione: stworzenia mają nowe stany (`howl`, `stun`, `screech`, `grounded`, `scatter` w `world/creatures.ts`); przewodnik stada wyje 1,3 s i dołącza samotne Ravagery do 70 m; 30% skoków to zmyłki (po 0,45 s odskok). Bramble grzebie racicą 1,4 s (kurz); zablokowany w szarży jest ogłuszony 2 s. Leechwing skrzeczy 0,8 s przed nurkowaniem; chybione nurkowanie przy ziemi = 2,6 s na ziemi. Śmierć Gnawera rozprasza resztę gniazda na boki.
+  - Roboty i bandyci mają `mode` (pole 14 wpisu w `world/foesync.ts`, więc kopie u innych graczy pokazują to samo i tak samo obrywają). Sentinel: `shield` przy serii (przód ×0,45), potem `hot` 1,6 s (×1,8, cofa się, iskry). Artillery: `mark` 1,2 s, czerwony promień, potem salwa w znakowane miejsce. Assault: drugi cios młota 0,5 s po pierwszym, szarża po stałej prostej, chybiona = `exposed` 2,4 s (×1,25, tył ×1,4). Guardian bez wzroku strzela seriami po 3 w ostatnie znane miejsce. Scouty w grupie ≥ 3: dwa krążą na 6,5 m, atakujący zmienia się co 4 s. Repair chowa się 4 m za najbliższym ciężkim robotem.
+  - Mnożniki stanów są w `STATE_MULT` w `gen/tactics.ts` (`hitMult(..., state)`), komunikaty w dzienniku („Stunned! ×2”, „Overheated! ×1.8”...).
+  - Bandyci: granaty (`GRENADE` w `gen/throwing.ts`: zapalnik 2,2 s, promień 4,5 m, 22 HP, odrzut) rzucane w miejsce, gdzie gracz zniknął z oczu, z 6–24 m, co 14–20 s, grupa nie częściej niż co 7 s; migają, piszczą, czerwony krąg pokazuje zasięg. Przy ≥ 3 strzelcach ostatni flankuje (punkt 13 m od gracza, obrócony o ±100° od grupy, do 9 s), reszta strzela ×0,55 częściej.
+  - Gra wieloosobowa: zachowanie prowadzi gra właściciela; stany stworzeń idą w polu `state`, robotów i bandytów w nowym polu `mode`. Granat idzie tym samym przekazem `throw` co rzuty (k 'grenade'); obrażenia liczy tylko gra rzucającego (lokalny gracz i `hurtOther` dla reszty). Protokół i serwer bez zmian.
 - **W3. Zasłony.** Bandyci i Guardiany szukają osłony (kamień, ściana, pojazd) i strzelają zza niej. Gracz za niską zasłoną może się kucając wychylić i strzelić. Trafienia w osłonę widać po iskrach. *(Zrobione w 0.224.0.)*
   - Pnie drzew, kamienie wyższe niż stopień, kamienne bloki ruin i wysokie kryształy zatrzymują każdy promień gry (`natureRay` w `world/overworld.ts`, w łańcuchu `G.rayBlock`): strzały gracza, linie wzroku przeciwników i pociski. Geometria jest w czystym `gen/cover.ts` (`rayCyl`, `rayHull`, `rayRod`).
   - Strzał, który kończy się na osłonie, sypie jasnymi odpryskami i daje dźwięk rykoszetu.

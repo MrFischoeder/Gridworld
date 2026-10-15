@@ -4,10 +4,10 @@
 // landing. world/throwing.ts flies them and world/baits.ts keeps the meat on the ground.
 import type { ItemKey } from '../data/items';
 
-export type ThrowKind = 'stone' | 'flare' | 'meat';
+export type ThrowKind = 'stone' | 'flare' | 'meat' | 'grenade';
 /** The items that can be thrown, in the order the throw key picks them when none is chosen. */
 export const THROWABLES: ItemKey[] = ['stone', 'flare', 'meatR', 'fishR'];
-export const throwKind = (k: ItemKey): ThrowKind => (k === 'flare' ? 'flare' : k === 'stone' ? 'stone' : 'meat');
+export const throwKind = (k: ItemKey | 'grenade'): ThrowKind => (k === 'grenade' ? 'grenade' : k === 'flare' ? 'flare' : k === 'stone' ? 'stone' : 'meat');
 
 export const THROW = {
   /** Release speed (m/s) from a tap to a full swing, and the hold that reaches it (s). */
@@ -15,7 +15,7 @@ export const THROW = {
   /** A little up from the view, so a level throw arcs. */
   up: 0.16, gravity: 9.8,
   /** The noise where it lands (m): a stone's clatter, a flare's hiss (again every `every` s while it burns). */
-  noise: { stone: 24, flare: 30, meat: 0 } as Record<ThrowKind, number>,
+  noise: { stone: 24, flare: 30, meat: 0, grenade: 0 } as Record<ThrowKind, number>,
   flare: { burn: 50, every: 5, r: 14 },
   /** Meat on the ground: how long it lies there (s), how far a roaming predator smells it, how near one already
    *  hunting must be to break off for it (and the hunted player at least `away` m off), how close it feeds. */
@@ -51,3 +51,17 @@ export function throwVelocity(yaw: number, pitch: number, speed: number): [numbe
   const p = pitch + THROW.up, c = Math.cos(p);
   return [-Math.sin(yaw) * c * speed, Math.sin(p) * speed, -Math.cos(yaw) * c * speed];
 }
+
+/**
+ * (0.226, stage W2) Bandits' grenades, thrown at where they last saw you when you have gone to ground: they blink and
+ * beep for `fuse` s where they land (a red ring marks the blast) and then go off, hurting within `r` m. A gunner
+ * throws one now and then (`cool` s), its group not more often than every `group` s, from `min` to `max` m away.
+ */
+export const GRENADE = { fuse: 2.2, r: 4.5, dmg: 22, push: 7, cool: 14, group: 7, min: 6, max: 24 };
+/** The velocity that lobs from `p` to `at` in about the right time for the distance. */
+export function lobVelocity(p: [number, number, number], at: [number, number, number]): [number, number, number] {
+  const d = Math.hypot(at[0] - p[0], at[2] - p[2]), T = 0.8 + d / 30;
+  return [(at[0] - p[0]) / T, (at[1] - p[1] + 0.5 * THROW.gravity * T * T) / T, (at[2] - p[2]) / T];
+}
+/** A blast's harm at distance d (full at the middle, 40% at the edge, none beyond). */
+export const grenadeHarm = (d: number, dmg = GRENADE.dmg) => (d >= GRENADE.r ? 0 : dmg * (1 - (d / GRENADE.r) * 0.6));

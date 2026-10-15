@@ -12,7 +12,7 @@
 // (a shared drop). An older server drops 'throw': the others then see nothing.
 import * as THREE from 'three';
 import { G } from '../game';
-import { scene, camera, V, lineMat, fillMat } from './render';
+import { scene, camera, V, lineMat, fillMat, add as addMat } from './render';
 import { rayWorld } from './player';
 import { OW } from './overworld';
 import { makeNoise } from './noise';
@@ -25,7 +25,11 @@ import { relay, onRelay, type Relay } from '../net/client';
 import { myLoc } from './peers';
 import { addLights, addGlows } from './light';
 import { addBait, updateBaits, clearBaits } from './baits';
-import { THROW, THROWABLES, throwKind, throwSpeed, throwShare, throwVelocity, stepFlight, type Flight, type ThrowKind } from '../gen/throwing';
+import { THROW, THROWABLES, GRENADE, throwKind, throwSpeed, throwShare, throwVelocity, stepFlight, lobVelocity, grenadeHarm, type Flight, type ThrowKind } from '../gen/throwing';
+import { addBlast } from './fx';
+import { hurtPlayer } from './damage';
+import { foeRules } from './enemies';
+import { otherPlayers, hurtOther } from './remote';
 import { ITEMS, type ItemKey } from '../data/items';
 import { logLine } from '../ui/hud';
 import { TL, tl } from '../i18n';
@@ -35,7 +39,10 @@ import { inBoat } from './boats';
 import { climbing } from './ladders';
 import { working } from './gather';
 
-interface Thrown { k: ItemKey; kind: ThrowKind; f: Flight; m: THREE.Object3D; t: number; mine: boolean; spin: THREE.Vector3 }
+interface Thrown { k: ItemKey | 'grenade'; kind: ThrowKind; f: Flight; m: THREE.Object3D; t: number; mine: boolean; spin: THREE.Vector3; dmg?: number }
+/** (0.226) A grenade lying where it fell, its fuse burning: `mine` = this game reckons the harm. */
+interface Live { p: THREE.Vector3; t: number; m: THREE.Object3D; ring: THREE.LineLoop; mine: boolean; dmg: number; beep: number }
+const grenades: Live[] = [];
 interface Flare { p: THREE.Vector3; t: number; next: number; m: THREE.Object3D; core: THREE.Mesh }
 const flying: Thrown[] = [];
 const flares: Flare[] = [];
@@ -80,25 +87,41 @@ export function throwHint(): string | null {
   return k ? TL`Throwing ${ITEMS[k].name}: ${Math.round(throwShare(held) * 100)}%` : null;
 }
 
-function modelOf(k: ItemKey, kind: ThrowKind): THREE.Object3D {
+function modelOf(k: ItemKey | 'grenade', kind: ThrowKind): THREE.Object3D {
+  if (kind === 'grenade') {
+    const g = new THREE.Group(), geo = new THREE.IcosahedronGeometry(0.1, 0);
+    g.add(new THREE.Mesh(geo, fillMat(0x1a1a10)), new THREE.LineSegments(new THREE.EdgesGeometry(geo), lineMat(0xffb347)));
+    const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.035, 6, 4), new THREE.MeshBasicMaterial({ color: 0xff3020, fog: false })); lamp.name = 'lamp'; lamp.position.y = 0.1; g.add(lamp);
+    return g;
+  }
   if (kind === 'flare') {
     const g = new THREE.Group();
     const stick = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.3, 6), fillMat(0x3a0a06)); stick.rotation.z = Math.PI / 2; g.add(stick);
     const edge = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.CylinderGeometry(0.03, 0.03, 0.3, 6)), lineMat(FLARE_C)); edge.rotation.z = Math.PI / 2; g.add(edge);
     return g;
   }
-  return lyingModel(k, ITEMS[k].type) ?? new THREE.Mesh(new THREE.IcosahedronGeometry(0.1, 0), fillMat(0x555555));
+  return lyingModel(k as ItemKey, ITEMS[k as ItemKey].type) ?? new THREE.Mesh(new THREE.IcosahedronGeometry(0.1, 0), fillMat(0x555555));
 }
-function launch(k: ItemKey, p: [number, number, number], v: [number, number, number], mine: boolean) {
+function launch(k: ItemKey | 'grenade', p: [number, number, number], v: [number, number, number], mine: boolean, dmg = 0) {
   const kind = throwKind(k), m = modelOf(k, kind);
   m.position.set(p[0], p[1], p[2]); scene.add(m);
-  flying.push({ k, kind, f: { p: [...p], v: [...v] }, m, t: 0, mine, spin: V(Math.random() * 9, Math.random() * 9, Math.random() * 9) });
+  flying.push({ k, kind, f: { p: [...p], v: [...v] }, m, t: 0, mine, dmg, spin: V(Math.random() * 9, Math.random() * 9, Math.random() * 9) });
+}
+/**
+ * (0.226, stage W2) A bandit lobs a grenade from `from` at `at`: this game (the bandit's owner) reckons the blast's harm;
+ * the others in the place see it fly, blink and go off (relayed as a 'throw' of kind 'grenade').
+ */
+export function throwGrenade(from: THREE.Vector3, at: THREE.Vector3, dmg: number) {
+  const p: [number, number, number] = [from.x, from.y, from.z], v = lobVelocity(p, [at.x, at.y, at.z]);
+  launch('grenade', p, v, true, dmg);
+  play('throw', { at: from, vol: 0.7, far: 40 });
+  relay({ t: 'throw', loc: myLoc(), k: 'grenade', p: p.map((x) => +x.toFixed(2)), v: v.map((x) => +x.toFixed(2)) });
 }
 onRelay((m: Relay) => {
-  if (m.t !== 'throw' || m.loc !== myLoc() || typeof m.k !== 'string' || !(m.k in ITEMS)) return;
+  if (m.t !== 'throw' || m.loc !== myLoc() || typeof m.k !== 'string' || !(m.k in ITEMS || m.k === 'grenade')) return;
   const p = m.p as number[], v = m.v as number[];
   if (!Array.isArray(p) || !Array.isArray(v) || p.length !== 3 || v.length !== 3 || ![...p, ...v].every(Number.isFinite)) return;
-  launch(m.k as ItemKey, p as [number, number, number], v as [number, number, number], false);
+  launch(m.k as ItemKey | 'grenade', p as [number, number, number], v as [number, number, number], false);
 });
 
 const A = new THREE.Vector3(), D = new THREE.Vector3();
@@ -110,6 +133,14 @@ function waterAt(x: number, z: number): number {
 }
 function land(o: Thrown, at: THREE.Vector3, wet: boolean) {
   scene.remove(o.m);
+  if (o.kind === 'grenade') { // lies there blinking and beeping, a red ring round it, then goes off (even in shallow water)
+    o.m.position.copy(at); o.m.position.y += 0.08; scene.add(o.m);
+    const pts: THREE.Vector3[] = []; for (let i = 0; i < 28; i++) { const a = (i / 28) * 6.283; pts.push(V(Math.cos(a) * GRENADE.r, 0.08, Math.sin(a) * GRENADE.r)); }
+    const ring = new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(pts), addMat(0xff3020)); ring.position.copy(at); scene.add(ring);
+    grenades.push({ p: at.clone(), t: GRENADE.fuse, m: o.m, ring, mine: o.mine, dmg: o.dmg ?? 0, beep: 0 });
+    if (Math.hypot(G.pos.x - at.x, G.pos.z - at.z) < GRENADE.r * 2.5) logLine(tl('Grenade! Get away from it!'));
+    return;
+  }
   if (wet) { play('splash', { at, vol: 0.5, far: 40 }); burst(at, 0x2ac8b0, 8, 0.5); if (o.kind === 'stone') makeNoise(at, THROW.noise.stone * 0.6, true); return; } // a flare goes out, meat sinks
   if (o.kind === 'stone') {
     play('thud', { at, vol: 0.8, far: 45 }); burst(at, 0xd8e0c8, 6, 0.4);
@@ -162,13 +193,37 @@ export function updateThrowing(dt: number, time: number) {
     if (f.t > 0) continue;
     scene.remove(f.m); flares.splice(i, 1);
   }
+  for (let i = grenades.length - 1; i >= 0; i--) {
+    const g = grenades[i];
+    g.t -= dt;
+    const blink = Math.sin(time * (8 + (GRENADE.fuse - g.t) * 10)) > 0, lamp = g.m.getObjectByName('lamp');
+    if (lamp) lamp.visible = blink;
+    g.ring.visible = blink || g.t < 0.5; g.ring.scale.setScalar(0.5 + 0.5 * Math.min(1, (GRENADE.fuse - g.t) / GRENADE.fuse));
+    if ((g.beep -= dt) <= 0) { g.beep = Math.max(0.12, g.t * 0.22); play('beep', { at: g.p, vol: 0.6, far: 30 }); }
+    if (g.t > 0) continue;
+    blowGrenade(g); scene.remove(g.m); scene.remove(g.ring); g.ring.geometry.dispose(); grenades.splice(i, 1);
+  }
   updateBaits(dt);
+}
+/** The blast: seen and heard by everyone; the harm only from the thrower's game (to you and to the others there). */
+function blowGrenade(g: Live) {
+  addBlast(g.p.clone().setY(g.p.y + 0.4), GRENADE.r, 0xffb347, g.p.y);
+  burst(g.p.clone().setY(g.p.y + 0.3), 0xffb347, 30, 2); play('explosion', { at: g.p, vol: 1, far: 140 });
+  makeNoise(g.p, 50);
+  if (!g.mine) return;
+  const d = Math.hypot(G.pos.x - g.p.x, G.pos.y + 0.9 - g.p.y, G.pos.z - g.p.z);
+  if (d < GRENADE.r && !foeRules.playerSafe() && !hurtPlayer(grenadeHarm(d, g.dmg), true, 0.6)) {
+    const a = Math.atan2(G.pos.x - g.p.x, G.pos.z - g.p.z), k = GRENADE.push * (1 - d / GRENADE.r);
+    G.vel.x += Math.sin(a) * k; G.vel.z += Math.cos(a) * k; G.vel.y += k * 0.5; G.onGround = false;
+  }
+  for (const t of otherPlayers()) { const e = Math.hypot(t.x - g.p.x, t.y + 0.9 - g.p.y, t.z - g.p.z); if (e < GRENADE.r) hurtOther(t.id, grenadeHarm(e, g.dmg)); }
 }
 /** Leaving a place: nothing thrown stays. */
 export function clearThrowing() {
   for (const o of flying) scene.remove(o.m);
   for (const f of flares) scene.remove(f.m);
-  flying.length = 0; flares.length = 0; held = -1;
+  for (const g of grenades) { scene.remove(g.m); scene.remove(g.ring); }
+  flying.length = 0; flares.length = 0; grenades.length = 0; held = -1;
   clearBaits();
 }
 addLights((out) => { for (const f of flares) out.push({ x: f.p.x, y: f.p.y + 0.3, z: f.p.z, r: THROW.flare.r * Math.min(1, f.t / 3 + 0.2), k: 'fire' }); });

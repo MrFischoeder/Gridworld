@@ -39,6 +39,19 @@ export const TACTICS: Record<FoeKey, Tactic> = {
   bruiser: T(1, 1.1, 1.5, 1, 0.9, { at: 'top', k: 1.8 }), // (the shield itself still halves what comes at its front)
   leader: T(0.9, 1, 1.3, 1, 1, { at: 'top', k: 1.5 }), // a helmet
 };
+/**
+ * (0.226, stage W2) What a foe's moment does to a hit: a Bramble stunned against a tree, a Leechwing down on the ground
+ * after a missed dive, a Sentinel with its arm shield up (front) or overheated after a burst, an Assault Construct
+ * stranded after a missed charge. Keyed by the foe's `state` (creatures) or `mode` (robots, bandits), which the
+ * other players' copies carry too, so the shooter's game reckons it the same way.
+ */
+export interface StateMult { all?: number; front?: number; back?: number; why: 'stun' | 'grounded' | 'shield' | 'hot' | 'exposed' }
+export const STATE_MULT: Partial<Record<FoeKey, Record<string, StateMult>>> = {
+  bramble: { stun: { all: 1.6, front: 2, why: 'stun' } }, // the plate does not matter while it reels
+  leechwing: { grounded: { all: 1.5, why: 'grounded' } },
+  sentinel: { shield: { front: 0.45, why: 'shield' }, hot: { all: 1.8, why: 'hot' } },
+  assault: { exposed: { all: 1.25, back: 1.4, why: 'exposed' } },
+};
 /** The sphere's share above / below which a hit is on the top / the bottom of the body. */
 export const SPOT_EDGE = 0.45;
 export type HitFrom = 'front' | 'side' | 'back';
@@ -48,10 +61,12 @@ export const fromOf = (cos: number): HitFrom => (cos > 0.5 ? 'front' : cos < -0.
  * The multiplier of a hit on foe `k`: `cos` as above (NaN when the foe has no facing: all round), `u` the hit's
  * height in the sphere −1..1 (null for a blade), `melee` a blade. Also says what made it count, for the hint.
  */
-export function hitMult(k: FoeKey, cos: number, u: number | null, melee: boolean): { k: number; from: HitFrom | null; spot: boolean } {
+export function hitMult(k: FoeKey, cos: number, u: number | null, melee: boolean, state = ''): { k: number; from: HitFrom | null; spot: boolean; why: StateMult['why'] | null } {
   const t = TACTICS[k];
   const from = Number.isFinite(cos) ? fromOf(cos) : null;
   let m = (from ? t[from] : 1) * (melee ? t.melee : t.gun), spot = false;
   if (t.spot && u !== null && (t.spot.at === 'top' ? u > SPOT_EDGE : u < -SPOT_EDGE)) { m *= t.spot.k; spot = true; }
-  return { k: m, from, spot };
+  const s = state ? STATE_MULT[k]?.[state] : undefined;
+  if (s) m *= (s.all ?? 1) * (from === 'front' ? s.front ?? 1 : from === 'back' ? s.back ?? 1 : 1);
+  return { k: m, from, spot, why: s ? s.why : null };
 }

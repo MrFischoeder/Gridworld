@@ -1,6 +1,6 @@
 # GridWorld: opis gry, cel, plan i historia zmian
 
-Stan na wersję **0.225.0**. Ten dokument opisuje, czym jest GridWorld, jaki jest cel gry, co już w niej jest, czego jeszcze nie ma, dokąd zmierza i jak powstawała, wersja po wersji. Nazwy z gry (przedmioty, miejsca, postacie) są podane po angielsku; od 0.190 gra ma też wersję polską (wybór języka w menu głównym).
+Stan na wersję **0.226.0**. Ten dokument opisuje, czym jest GridWorld, jaki jest cel gry, co już w niej jest, czego jeszcze nie ma, dokąd zmierza i jak powstawała, wersja po wersji. Nazwy z gry (przedmioty, miejsca, postacie) są podane po angielsku; od 0.190 gra ma też wersję polską (wybór języka w menu głównym).
 
 ---
 
@@ -243,7 +243,9 @@ Strzelcy bandytów, ich bossowie i Guardiany też korzystają z osłon: szukają
 
 - **przynęty** (od 0.225): przytrzymaj Z i puść, żeby rzucić. Kamień stuka tam, gdzie spadnie, flara sygnałowa syczy i świeci na czerwono prawie przez minutę: przeciwnicy idą sprawdzić hałas i odwracają się do ciebie plecami. Mięso zwabia Ravagery i Gnawery, które jedzą z głową w dół. Pasący się Bramble szarżuje na każdy bliski hałas zamiast na ciebie.
 
-Kolejne etapy dodadzą zapowiedzi ataków, drugie tryby ataku, stany (zachwianie, powalenie, EMP), morale i bestiariusz w grze.
+- **zapowiedzi i drugie tryby ataku** (od 0.226): każdy przeciwnik zdradza, co zaraz zrobi (wycie, grzebanie racicą, skrzek, czerwony laser, podniesiona tarcza), a po nieudanym ataku ma chwilę słabości, w której obrywa mocniej. Gra pisze wtedy w dzienniku, za ile trafiłeś („Stunned! ×2”, „Overheated! ×1,8”).
+
+Kolejne etapy dodadzą stany (zachwianie, powalenie, EMP), morale i bestiariusz w grze.
 
 ### Stworzenia
 
@@ -251,21 +253,25 @@ Kolejne etapy dodadzą zapowiedzi ataków, drugie tryby ataku, stany (zachwianie
   - **atakuje:** stado obchodzi gracza z boków, skacze, gryzie i odskakuje;
   - **mocne strony:** szybkość, liczba, flankowanie;
   - **słabe strony:** głowa ×1,6, bok ×1,2, tył ×1,4, broń biała ×1,25 (cios spotyka skok);
-  - **jak walczyć:** stań plecami do skały albo ściany, żeby nie mogły obejść; pierwszego skaczącego przyjmij ostrzem.
+  - **zapowiedź:** przewodnik stada staje dęba i wyje, a samotne Ravagery z okolicy (do 70 m) dołączają do polowania; część skoków to zmyłki, po których wilk odskakuje;
+  - **jak walczyć:** stań plecami do skały albo ściany, żeby nie mogły obejść; pierwszego skaczącego przyjmij ostrzem. Nie trać ciosu na zmyłkę.
 - **Bramble** (terytorialny roślinożerca w dolinach):
   - **atakuje:** szarżą z pochyloną głową i odrzuceniem, ale tylko gdy podejdziesz na ok. 11 m;
   - **mocne strony:** opancerzony łeb i barki, przód ×0,4;
   - **słabe strony:** boki, tył ×1,7, miękki brzuch ×1,5 (strzał nisko);
-  - **jak walczyć:** uskocz z linii szarży (unik), a potem strzelaj w bok i w tył, zanim się obróci. Spokojnego najlepiej ominąć. Daje mięso.
+  - **zapowiedź:** przed szarżą grzebie racicą i wzbija kurz;
+  - **jak walczyć:** uskocz z linii szarży (unik), najlepiej tak, żeby wbił się w kamień, drzewo albo ścianę: wtedy zatacza się ogłuszony przez 2 s i obrywa ×1,6 (w łeb ×2). Spokojnego najlepiej ominąć. Daje mięso.
 - **Leechwing** (lata od zagrożenia 2,5):
   - **atakuje:** krąży wysoko, zawęża kręgi, nurkuje i odlatuje;
   - **mocne strony:** poza zasięgiem broni białej (×0,8), trudny do trafienia w locie;
   - **słabe strony:** cienkie skrzydła z boku ×1,25, góra ×1,4, broń palna ×1,3;
-  - **jak walczyć:** czekaj na nurkowanie (leci wtedy prosto na ciebie) i strzelaj; tuż przed uderzeniem zrób unik.
+  - **zapowiedź:** skrzeczy przed nurkowaniem;
+  - **jak walczyć:** na skrzek odwróć się do niego, strzelaj w nurkującego i tuż przed uderzeniem zrób unik. Po chybionym nurkowaniu siada ciężko na ziemi na ok. 2,5 s i obrywa wtedy ×1,5, także ostrzem.
 - **Gnawer** (szczurze gniazda):
   - **atakuje:** cały rój naraz, zygzakiem, gryzie i odskakuje; ostatnie uciekają;
   - **mocne strony:** liczba, zygzaki, które utrudniają celowanie;
   - **słabe strony:** jeden cios zabija, broń biała ×1,5, bo zamach przecina rój;
+  - **drugi tryb:** kiedy zginie jeden, reszta rozbiega się na boki, przypada w trawie i wraca z innej strony;
   - **jak walczyć:** stój i tnij szeroko zamiast strzelać serią w powietrze.
 - **Skitterwing** (stadka 3–5): pikują po jednym albo po dwa i dziobią. Słabe strony: jeden cios zabija, broń biała ×1,4. Jak walczyć: tnij, gdy pikują.
 - **Sea Lurker** (morze):
@@ -283,31 +289,36 @@ Zostawiają złom, elektronikę i rdzenie mocy.
   - **atakuje:** szybkie paczki z ostrzami, flankują i tną;
   - **mocne strony:** szybkość, liczba;
   - **słabe strony:** cienkie nogi ×1,5 (strzał nisko), tył ×1,3, broń biała ×1,2;
+  - **drugi tryb:** w grupie trzech i więcej dwa krążą wokół ciebie, a trzeci atakuje; co kilka sekund się zmieniają;
   - **jak walczyć:** wciągnij je w wąskie przejście; strzelaj w nogi, kiedy biegną.
 - **Guardian Drone** (od 1,8):
   - **atakuje:** działem energetycznym z 12–22 m, w grupach;
   - **mocne strony:** zasięg, osłonięty przód ×0,8;
   - **słabe strony:** kopuła czujnika na górze ×1,8, tył ×1,6;
-  - **jak walczyć:** pociski są widoczne, więc unikaj ich w bok; podejdź blisko albo zajdź od tyłu; celuj w kopułę. Od 0.224 chowa się za kamieniem albo pniem i wychyla na strzał: poczekaj, aż się podniesie, albo obejdź osłonę.
+  - **jak walczyć:** pociski są widoczne, więc unikaj ich w bok; podejdź blisko albo zajdź od tyłu; celuj w kopułę. Od 0.224 chowa się za kamieniem albo pniem i wychyla na strzał: poczekaj, aż się podniesie, albo obejdź osłonę. Od 0.226, kiedy cię straci z oczu, ostrzeliwuje seriami miejsce, gdzie cię ostatnio widział (ogień zaporowy): nie wychylaj się w tym samym miejscu.
 - **Repair Drone** (od 3):
   - **atakuje:** nie walczy sam; naprawia inne roboty i wypuszcza drony obronne;
   - **słabe strony:** góra ×1,3; bez niego reszta robotów się nie leczy;
-  - **jak walczyć:** zabij go pierwszego.
+  - **drugi tryb:** chowa się za najbliższym ciężkim robotem (Sentinel, Assault, Guardian);
+  - **jak walczyć:** zabij go pierwszego; obejdź osłaniającego go robota.
 - **Sentinel** (od 4,5):
   - **atakuje:** ciężki dwunóg, serie po trzy pociski i miażdżący cios z bliska;
   - **mocne strony:** pancerz, przód ×0,6, broń biała słaba ×0,8;
   - **słabe strony:** głowa ×2, tył ×1,5;
-  - **jak walczyć:** strzelaj w głowę zza zasłony, przerywaj jego linię wzroku, nie podchodź z ostrzem.
+  - **zapowiedź:** strzelając, podnosi ramię z tarczą (przód wtedy tylko ×0,45); po serii przegrzewa się na ok. 1,5 s, sypie iskrami, cofa się i nie strzela;
+  - **jak walczyć:** przeczekaj serię za zasłoną, a kiedy się przegrzeje, wychyl się i strzelaj: obrywa wtedy ×1,8. Nie podchodź z ostrzem.
 - **Artillery Walker** (od 5):
   - **atakuje:** ostrzeliwuje twoją pozycję z 16–110 m; czerwony krąg pokazuje, gdzie spadnie pocisk;
   - **mocne strony:** zasięg, pancerz;
   - **słabe strony:** bezradny z bliska, broń biała ×1,6, cienkie nogi ×1,5, tył ×1,4;
-  - **jak walczyć:** biegnij zygzakiem poza czerwone kręgi, dopadnij go i tnij.
+  - **zapowiedź:** przed strzałem przez ok. 1,2 s świeci w cel czerwonym laserem;
+  - **jak walczyć:** gdy laser cię dotknie, zmień miejsce; biegnij zygzakiem poza czerwone kręgi, dopadnij go i tnij.
 - **Assault Construct** (od 6):
   - **atakuje:** szarżuje i uderza młotem z odrzuceniem;
   - **mocne strony:** młot osłania przód ×0,5, ogromna wytrzymałość, broń biała słaba ×0,8;
   - **słabe strony:** tył ×1,8, góra ×1,4;
-  - **jak walczyć:** unik w bok w ostatniej chwili szarży, potem strzały w plecy, zanim się odwróci.
+  - **drugi tryb:** z bliska uderza młotem dwa razy pod rząd; szarżuje po prostej, której nie zmienia;
+  - **jak walczyć:** unik w bok w ostatniej chwili szarży: kiedy chybi, stoi odsłonięty przez ok. 2,5 s i obrywa ×1,25 (w plecy jeszcze ×1,4). Po pierwszym ciosie młota odskocz przed drugim.
 - **Drony** (labirynty, z Repair Drone):
   - **atakuje:** krążą i uderzają przy kontakcie;
   - **słabe strony:** nie mają przodu ani tyłu; broń biała ×1,3.
@@ -318,7 +329,8 @@ Zostawiają złom, elektronikę i rdzenie mocy.
   - **atakuje:** trzymają 12–20 m, chowają się za kamieniami, pniami i ścianami, wstają albo wychylają się na serię (widoczne pociski, które można ominąć); bez osłony krążą bokiem;
   - **mocne strony:** zasięg, ruch;
   - **słabe strony:** głowa ×2, tył ×1,3; z bliska karabin jest niezgrabny (broń biała ×1,3);
-  - **jak walczyć:** skracaj dystans zza osłon, łap moment, kiedy się wychylają, albo zajdź ich z boku, tak żeby osłona przestała ich chronić.
+  - **drugi tryb (od 0.226):** kiedy schowasz się przed nimi, rzucają granaty, które migają, piszczą i wybuchają po ok. 2 s (czerwony krąg pokazuje zasięg); w grupie trzech i więcej strzelców jeden obchodzi cię bokiem, a reszta przyciska cię ogniem, strzelając częściej;
+  - **jak walczyć:** skracaj dystans zza osłon, łap moment, kiedy się wychylają, albo zajdź ich z boku, tak żeby osłona przestała ich chronić. Na pisk granatu uciekaj z czerwonego kręgu; pilnuj boku, z którego nadchodzi flankujący.
 - **Osiłki** (ostrza, połowa z tarczą):
   - **atakuje:** rzucają się z ostrzem;
   - **mocne strony:** tarcza z przodu połyka połowę trafień, broń biała ×0,9;
@@ -528,7 +540,7 @@ Kierunek wyznaczony przez właściciela projektu, w przybliżonej kolejności:
 6. **Mgła i skażenie.** Kombinezon NBC, mgła w lochach, stworzenia mgły.
 7. **Woda i ludzie.** Nurkowanie i piraci na liniach towarowych (porty od 0.216, linie od 0.217); dowożenie ludzi i jedzenia do obozów załóg przy starych instalacjach (obozy od 0.218).
 8. **Dopracowanie.** Lepsze dźwięki i własna muzyka (efekty, silniki, grzmoty i strzały innych graczy są od 0.212–0.213), spalanie paliwa w pojazdach, skutki pogody (pioruny, burze zrywające dachy, deszcz na drogach, chmury a panele słoneczne).
-9. **Taktyczna walka** (`PLAN_WALKI.md`, W1 zrobione w 0.223, W3 zasłony w 0.224, W4 przynęty w 0.225): zapowiedzi ataków i drugie tryby ataku każdego przeciwnika, stany (zachwianie, powalenie, EMP), morale i odwrót, okrążanie, bestiariusz w grze.
+9. **Taktyczna walka** (`PLAN_WALKI.md`, W1 zrobione w 0.223, W3 zasłony w 0.224, W4 przynęty w 0.225, W2 zapowiedzi i drugie tryby ataku w 0.226): stany (zachwianie, powalenie, EMP), morale i odwrót, okrążanie, bestiariusz w grze.
 10. **Ewentualnie** zmniejszenie mapy, jeśli okaże się za duża do gry. Właściciel to rozważa.
 
 ---
@@ -798,6 +810,7 @@ Pełne notatki (po angielsku) są w grze pod przyciskiem **Changelog** w menu g�
 - **0.212.0 Dźwięk.** Gra ma dźwięki: proste 8-bitowe efekty każdej broni, przeładowania, pustego magazynka, zamachów i trafień, kroków gracza (po ziemi, po twardym i w wodzie), skoków, lądowania i obrażeń; maszyny stukają krokami i szumią siłownikami, słychać strzały robotów, bandytów i działek, wybuchy, warczenie, prychanie, piski i skrzeki zwierząt oraz kroki innych graczy. Dźwięk dochodzi z miejsca zdarzenia (ciszej z daleka, z lewej albo z prawej). W menu panel Dźwięk: głośność ogólna, efektów i muzyki, wyciszenie i dźwięk próbny. Każdy efekt to plik w folderze sfx (lista sfx/sounds.json), do podmiany na własny; muzykę właściciel wrzuci do folderu music i wpisze do music/music.json według nastroju (menu, świat, noc, podziemia, walka).
 - **0.213.0 Więcej dźwięku, słyszanego przez innych.** Dźwięk budzi się pewniej: jest gotowy od wczytania strony, rusza po dowolnym kliknięciu, klawiszu albo dotknięciu i sam próbuje się wznowić w trakcie gry; panel Dźwięk pokazuje, czy działa i ile dźwięków już zagrało, a polecenie konsoli `sound` to samo i odtwarza dowolny dźwięk. Nowe dźwięki: silniki pojazdów (własnego, bandyckich i innych graczy, wyżej z prędkością), działko, drzwi, skrzynie, jedzenie i picie, grzmot po błyskawicy, wpływ złota, nowy poziom, rąbanie drzew i kucie skał, plusk wody, kliknięcia przycisków, śmierć zwierząt i bandytów, młotki budowniczych. W grze sieciowej inni słyszą twoje strzały, zamachy, przeładowania, działko, skoki, lądowania, plusk, rąbanie i drzwi z miejsca, gdzie stoisz (kroki i silnik już wcześniej z ruchu); serwer trzeba zaktualizować.
 - **0.214.0 Konwoje trzeba rozwinąć.** W nowym świecie na początku nie jeżdżą żadne konwoje: nie ma karawan na drogach, dostaw ruszających ceny ani konwojów biorących paliwo z wioski. Gdy przyjedzie mechanik i stanie magazyn, starszy proponuje nową budowę: Bazę konwojów przy północnej drodze (deski, kamień, złom, drut, części maszyn; 12 godzin), z ciężarówką i dwoma uzbrojonymi łazikami na placu, szopą naprawczą i budką dyspozytora. Od jej ukończenia karawany ruszają drogami między wioskami (można je spotkać, eskortować i kupować od nich, poruszają ceny), a konwoje osady tankują z jej zapasów. Stare światy zachowują konwoje jak dotąd. W grze sieciowej wszyscy widzą to samo, bo czas startu wynika ze wspólnego stanu wiosek.
+- **0.226.0 Zapowiedzi i drugie tryby ataku (etap W2 taktycznej walki).** Każdy przeciwnik zdradza, co zaraz zrobi, i ma chwilę słabości. Przewodnik stada Ravagerów wyje i zwołuje stado, a część skoków to zmyłki. Bramble grzebie racicą przed szarżą i po uderzeniu w przeszkodę jest ogłuszony. Leechwing skrzeczy przed nurkowaniem i siada na ziemi po chybieniu. Gnawery rozbiegają się, kiedy ginie jeden z nich. Scouty krążą po dwa, a trzeci atakuje. Guardian strzela zaporowo w miejsce, gdzie cię stracił. Sentinel podnosi tarczę i przegrzewa się po serii. Artillery Walker celuje czerwonym laserem. Assault Construct uderza młotem dwa razy i stoi odsłonięty po chybionej szarży. Repair Drone chowa się za ciężkimi robotami. Bandyci rzucają granaty w kryjówki, a jeden obchodzi cię bokiem, kiedy reszta przyciska cię ogniem. W grze wieloosobowej stany przeciwników idą do wszystkich graczy razem z ich pozycjami, a granaty lecą tym samym kanałem co rzuty; serwera nie trzeba aktualizować.
 - **0.225.0 Przynęty (etap W4 taktycznej walki).** Nowy rzut (przytrzymaj Z, puść): kamień, flara sygnałowa albo mięso. Kamień i flara robią hałas w miejscu upadku, więc przeciwnicy idą tam i odwracają się plecami; flara pali się i świeci prawie minutę. Mięso zwabia Ravagery i Gnawery, które jedzą z głową w dół, nawet porzucając pościg. Pasący się Bramble szarżuje na bliski hałas. Nowy przedmiot: flara sygnałowa (Zofia, kowal). W grze wieloosobowej wszyscy w tym miejscu widzą rzut, a przeciwnicy każdej gry reagują na niego; serwer trzeba zaktualizować, żeby przekazywał rzuty.
 - **0.224.0 Zasłony (etap W3 taktycznej walki).** Duże kamienie, pnie drzew, kamienne bloki ruin i wysokie kryształy zatrzymują strzały, pociski i wzrok przeciwników, a trafienie w nie sypie odpryskami. Strzelcy bandytów, ich bossowie i Guardiany szukają osłony między sobą a graczem (kamień, pień, ściana, zaparkowany pojazd, grzbiet terenu), kucają za nią i co chwilę wstają albo wychylają się w bok na serię; obejście osłony zmusza ich do szukania nowej. Gracz kucający za niską osłoną wychyla się nad nią, kiedy celuje, i chowa, kiedy puści przycisk. W grze wieloosobowej osłonę wybiera gra właściciela przeciwnika, a pozostali widzą przykucniętą kopię (i trafiają ją nisko); serwera nie trzeba aktualizować.
 - **0.223.0 Taktyczna walka: słabe i mocne strony, unik (etap W1).** Każdy przeciwnik (stworzenia, roboty, role bandytów, drony) ma swoje mocne i słabe strony: inne obrażenia z przodu, z boku i od tyłu (według tego, gdzie patrzy), słaby punkt na górze albo na dole ciała (głowa, kopuła czujnika, nogi, brzuch) i inną podatność na broń palną i białą. Gra mówi krótko, dlaczego trafienie było mocniejsze albo słabsze. Nowy unik: dwa razy W/A/S/D albo lewy Alt z kierunkiem, krótki zryw za 18 punktów wytrzymałości. Rozdział 6 opisuje każdego przeciwnika: jak atakuje, jego mocne i słabe strony i jak z nim walczyć. Plan kolejnych etapów (zapowiedzi ataków, drugie tryby, zasłony, przynęty, stany, morale, okrążanie, bestiariusz w grze) jest w `PLAN_WALKI.md`. W grze wieloosobowej mnożniki liczy gra strzelającego, a właściciel przeciwnika dostaje sam wynik; serwera nie trzeba aktualizować.

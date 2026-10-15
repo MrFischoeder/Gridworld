@@ -72,6 +72,12 @@
     ],
     "vol": 1
   },
+  "beep": {
+    "files": [
+      "beep.wav"
+    ],
+    "vol": 1
+  },
   "ricochet": {
     "files": [
       "ricochet.wav"

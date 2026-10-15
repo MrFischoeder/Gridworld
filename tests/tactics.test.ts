@@ -22,4 +22,14 @@ describe('every foe has its strong and weak sides (stage W1)', () => {
     expect(hitMult('drone', NaN, 0, false).from).toBe(null);
     for (const t of Object.values(TACTICS)) for (const v of [t.front, t.side, t.back, t.gun, t.melee]) expect(v).toBeGreaterThanOrEqual(0.4);
   });
+  it('W2: a foe\'s moment changes the hit (stunned, grounded, shield, overheated, exposed)', () => {
+    const plain = hitMult('bramble', 1, null, false).k, stun = hitMult('bramble', 1, null, false, 'stun');
+    expect(stun.k).toBeGreaterThan(plain * 2.5); expect(stun.why).toBe('stun');
+    expect(hitMult('sentinel', 1, null, false, 'shield').k).toBeLessThan(hitMult('sentinel', 1, null, false).k);
+    expect(hitMult('sentinel', -1, null, false, 'shield').k).toBe(hitMult('sentinel', -1, null, false).k); // the shield only guards its front
+    expect(hitMult('sentinel', 0, null, false, 'hot').k).toBeGreaterThan(hitMult('sentinel', 0, null, false).k * 1.5);
+    expect(hitMult('assault', -1, null, false, 'exposed').k).toBeGreaterThan(hitMult('assault', -1, null, false).k * 1.5);
+    expect(hitMult('leechwing', 0, null, false, 'grounded').k).toBeGreaterThan(hitMult('leechwing', 0, null, false).k);
+    expect(hitMult('ravager', 0, null, false, 'hunt').why).toBe(null);
+  });
 });

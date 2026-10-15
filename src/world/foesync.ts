@@ -109,7 +109,7 @@ function entry(f: Thing, n: number, t: number): unknown[] {
   if (t === TYPE.boss) { const b = f as Boss; return [n, t, String(b.idx), r2(b.p.x), r2(b.p.y), r2(b.p.z), 0, r2(b.hp), b.maxHp, 0, b.engaged ? 'e' : '']; }
   if (t === TYPE.raider) { const r = f as Raider; return [n, t, r.v.st.model, r2(r.v.st.x), r2(r.v.y), r2(r.v.st.z), r2(r.v.st.heading), r2(r.hp), r.maxHp, r2(r.level), String(r2(r.v.turret?.rotation.y ?? 0))]; }
   const o = f as Foe, kind = t === TYPE.robot ? (o as Robot).model : t === TYPE.bandit ? (o as Bandit).role : (o as Creature).kind;
-  return [n, t, kind, r2(o.p.x), r2(o.p.y), r2(o.p.z), r2(o.heading), r2(o.hp), o.maxHp, r2(o.level), o.state, o.cityPost ?? null, (o as { cover?: number }).cover ? 1 : 0];
+  return [n, t, kind, r2(o.p.x), r2(o.p.y), r2(o.p.z), r2(o.heading), r2(o.hp), o.maxHp, r2(o.level), o.state, o.cityPost ?? null, (o as { cover?: number }).cover ? 1 : 0, (o as { mode?: string }).mode ?? ''];
 }
 function tell() {
   const now = performance.now() / 1000, list: unknown[] = [], next = new Map<number, Thing>();
@@ -223,6 +223,7 @@ function heard(from: number, loc: string, list: unknown[]) {
     if (t === TYPE.raider) continue;
     if (typeof e[11] === 'string') (f as Foe).cityPost = e[11];
     (f as { cover?: number }).cover = e[12] ? 1 : 0; // (0.224) crouched behind cover in its owner's game
+    if (typeof e[13] === 'string') (f as { mode?: string }).mode = e[13]; // (0.226) a telegraph or a weak moment (stage W2)
     if (typeof state === 'string') (f as { state: string }).state = state;
   }
   for (const [n, c] of [...o.foes]) if (!seen.has(n)) { o.foes.delete(n); drop(c); } // gone from its owner's game

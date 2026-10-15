@@ -22,12 +22,14 @@ import { onKill } from './quests';
 import { mayspawn, FOE_HIT } from './threat';
 import { ALPHA, type Quest } from '../gen/quests';
 import { textSprite } from './npc';
-import { targetingFoe, proxied, stepRemote, withFoeTarget, nearestPlayer } from './remote';
+import { targetingFoe, proxied, stepRemote, withFoeTarget, nearestPlayer, remoteOf } from './remote';
 import { mindOf, sense, share, spottedBy, targetVis } from './stealth';
 import { STEALTH, LOSE } from '../gen/stealth';
 import { tl } from '../i18n';
 
-type State = 'roam' | 'hunt' | 'dash' | 'retreat' | 'threat' | 'charge' | 'recover' | 'stalk' | 'dive' | 'climb' | 'investigate' | 'feed';
+type State = 'roam' | 'hunt' | 'dash' | 'retreat' | 'threat' | 'charge' | 'recover' | 'stalk' | 'dive' | 'climb' | 'investigate' | 'feed'
+  // (0.226, stage W2) the telegraphs and the weak moments, seen on the other players' copies too
+  | 'howl' | 'stun' | 'screech' | 'grounded' | 'scatter';
 
 export interface Creature {
   /** Fixed city post; transmitted to prevent duplicate garrisons on another client. */
@@ -48,6 +50,8 @@ export interface Creature {
   rageAt?: THREE.Vector3 | null; bait?: Bait | null;
   /** Seconds it will not go for a bait after being hurt or startled at one. */
   spooked?: number;
+  /** (0.226) A Ravager's dash that is only a feint (seconds until it breaks off). */
+  feint?: number;
   /** Leechwing flight: orbit angle, banking into turns, the creature it is hunting (null = the player), spotted you yet. */
   orbit: number; bank: number; prey: Creature | null; spotted: boolean;
 }
@@ -275,6 +279,10 @@ let env: SpawnEnv | null = null, spawnT = 2;
  * coming from all around the place the shooting was heard. It fades over half a minute or so.
  */
 let heat = 0, heard = false;
+/** (0.226, stage W2) The telegraphs and weak moments (s): a pack leader's howl, the share of Ravager dashes that are
+ *  only feints, a Bramble pawing the ground before it charges and reeling after it hits something, a Leechwing's
+ *  shriek before it dives and its time on the ground after a missed dive. */
+const HOWL = 1.3, FEINT = 0.3, PAW = 1.4, STUN = 2, SCREECH = 0.8, GROUNDED = 2.6;
 /** (0.225) A grazing Bramble charges at a noise this close (m). */
 const BRAMBLE_EAR = 28;
 /** (0.225) After a hit, or startled at a bait, a beast leaves baits alone this long (s). */
@@ -285,7 +293,7 @@ onNoise((at, r, decoy) => {
   for (const c of W.creatures) {
     if (c.kind === 'bramble') { // (0.225, stage W4) a noise close by enrages a grazing Bramble: it charges at the sound
       if (c.state === 'roam' && Math.hypot(c.p.x - at.x, c.p.z - at.z) < Math.min(r, BRAMBLE_EAR)) {
-        c.state = 'threat'; c.timer = 0.9; c.rageAt = at.clone(); c.mat.color.setHex(HOSTILE);
+        c.state = 'threat'; c.timer = PAW; c.rageAt = at.clone(); c.mat.color.setHex(HOSTILE);
         if (decoy) logLine(tl('A Bramble charges at the noise!'));
       }
       continue;
@@ -432,21 +440,32 @@ function ravager(c: Creature, dt: number, to: THREE.Vector3, dist: number, safe:
       if (back.length() > 15) c.dir.copy(back);
       walk(c, c.dir.x, c.dir.z, 2, dt);
       if (!safe && spots(c, 22, dt)) {
-        share(c.pack ?? [c], c);
-        for (const m of c.pack ?? [c]) { m.state = 'hunt'; m.timer = 3 + Math.random() * 2; }
+        const pack = c.pack ?? [c], lead = pack.find((m) => m.alpha) ?? pack[0];
+        share(pack, c);
+        for (const m of pack) { m.state = 'hunt'; m.timer = 3 + Math.random() * 2 + HOWL; }
+        if (pack.length > 1) { // (0.226, stage W2) the leader rears and howls: the pack gathers, lone ones near come running
+          lead.state = 'howl'; lead.timer = HOWL;
+          play('growl_ravager', { at: lead.p, vol: 1, rate: 0.55, far: 150, share: 150 });
+          for (const o of W.creatures) if (o.kind === 'ravager' && !pack.includes(o) && (o.state === 'roam' || o.state === 'investigate') && o.p.distanceTo(lead.p) < 70) { o.state = 'hunt'; o.timer = 2; }
+        }
         if (c.pack && !alerted.has(c.pack)) { alerted.add(c.pack); logLine(tl('Ravagers are hunting you!')); }
       }
       break;
     }
+    case 'howl': // head up, standing: the pack holds back until the call is done
+      c.speed = 0;
+      if (c.timer <= 0) { c.state = 'hunt'; c.timer = 1.5; }
+      break;
     case 'hunt': { // circle to a flanking spot, then go in
       const base = Math.atan2(c.p.x - G.pos.x, c.p.z - G.pos.z) + c.flank;
       const fx = G.pos.x + Math.sin(base) * 4.5, fz = G.pos.z + Math.cos(base) * 4.5;
       walk(c, fx - c.p.x, fz - c.p.z, speed, dt);
-      if (Math.hypot(fx - c.p.x, fz - c.p.z) < 1.5 || c.timer <= 0) { c.state = 'dash'; c.timer = 1.6; }
+      if (Math.hypot(fx - c.p.x, fz - c.p.z) < 1.5 || c.timer <= 0) { c.state = 'dash'; c.timer = 1.6; c.feint = Math.random() < FEINT ? 0.45 : 0; }
       break;
     }
     case 'dash':
       walk(c, to.x, to.z, speed * 1.25, dt);
+      if (c.feint && (c.feint -= dt) <= 0) { c.feint = 0; c.state = 'retreat'; c.timer = 0.6; break; } // (0.226) only a feint: it breaks off and comes again
       if (dist < 1.5) { bite((s.damage + 2 * c.level) * c.dmgMul); c.state = 'retreat'; c.timer = 0.8; }
       else if (c.timer <= 0) { c.state = 'hunt'; c.timer = 2.5; }
       break;
@@ -460,14 +479,14 @@ function ravager(c: Creature, dt: number, to: THREE.Vector3, dist: number, safe:
 function bramble(c: Creature, dt: number, to: THREE.Vector3, dist: number, safe: boolean) {
   const s = CREATURES.bramble;
   c.timer -= dt;
-  const angry = c.state === 'threat' || c.state === 'charge' || c.state === 'recover';
-  if (!angry && !safe && (dist < 11 * Math.min(1, targetVis()) + 2 || c.hurt)) { c.state = 'threat'; c.timer = 0.9; c.mat.color.setHex(HOSTILE); showToast(tl('A Bramble charges!')); }
+  const angry = c.state === 'threat' || c.state === 'charge' || c.state === 'recover' || c.state === 'stun';
+  if (!angry && c.state !== 'stun' && !safe && (dist < 11 * Math.min(1, targetVis()) + 2 || c.hurt)) { c.state = 'threat'; c.timer = PAW; c.mat.color.setHex(HOSTILE); showToast(tl('A Bramble charges!')); }
   switch (c.state) {
     case 'roam': // graze: amble a little, then stand
       if (c.timer <= 0) { c.dir.set(Math.random() - 0.5, 0, Math.random() - 0.5); c.timer = 3 + Math.random() * 4; }
       if (c.timer > 2) walk(c, c.dir.x, c.dir.z, 0.8, dt); else c.speed = 0;
       break;
-    case 'threat': { // face the intruder (or the noise that enraged it), head down, then go
+    case 'threat': { // face the intruder (or the noise that enraged it), head down, paw the ground, then go
       const ax = c.rageAt ? c.rageAt.x - c.p.x : to.x, az = c.rageAt ? c.rageAt.z - c.p.z : to.z;
       let dh = Math.atan2(ax, az) - c.heading; dh = Math.atan2(Math.sin(dh), Math.cos(dh)); c.heading += dh * Math.min(1, dt * 5);
       if (c.timer <= 0) { c.state = 'charge'; c.timer = c.rageAt ? Math.min(3.5, Math.hypot(ax, az) / s.speed + 0.6) : 2.2; c.dir.set(ax, 0, az).normalize(); }
@@ -480,9 +499,17 @@ function bramble(c: Creature, dt: number, to: THREE.Vector3, dist: number, safe:
         bite((s.damage + 4 * c.level) * c.dmgMul);
         if (!foeRules.shielded()) { G.vel.x += c.dir.x * 10; G.vel.z += c.dir.z * 10; G.vel.y = 5; G.onGround = false; }
         c.state = 'recover'; c.timer = 1.6;
+      } else if (before.distanceTo(c.p) < 1e-3 && c.timer < 2.2 - 0.25) { // (0.226) head first into a trunk, a stone or a wall: stunned
+        c.state = 'stun'; c.timer = STUN; c.rageAt = null;
+        burst(c.p.clone().addScaledVector(c.dir, 1.4), 0xffd060, 14, 0.8); play('thud', { at: c.p, vol: 1, rate: 0.6, far: 60 });
+        if (dist < 40) logLine(tl('The Bramble slams into it and reels, stunned!'));
       } else if (c.timer <= 0 || before.distanceTo(c.p) < 1e-3) { c.state = 'recover'; c.timer = 1.4; }
       break;
     }
+    case 'stun': // reeling: easy to hit, harmless for a moment
+      c.speed = 0;
+      if (c.timer <= 0) { c.state = 'recover'; c.timer = 0.4; }
+      break;
     case 'recover':
       c.speed = 0; c.rageAt = null;
       if (c.timer <= 0) {
@@ -491,7 +518,7 @@ function bramble(c: Creature, dt: number, to: THREE.Vector3, dist: number, safe:
       }
       break;
   }
-  if (c.head) c.head.rotation.x += ((c.state === 'charge' || c.state === 'threat' ? 0.45 : 0) - c.head.rotation.x) * Math.min(1, dt * 6);
+  if (c.head) c.head.rotation.x += ((c.state === 'charge' || c.state === 'threat' ? 0.45 : c.state === 'stun' ? 0.7 : 0) - c.head.rotation.x) * Math.min(1, dt * 6);
 }
 /**
  * Leechwings fly by steering: they turn only so fast, so every move is an arc. They soar high in wide, lazy
@@ -550,8 +577,22 @@ function leechwing(c: Creature, dt: number, to: THREE.Vector3, dist: number, saf
       c.orbit += dt * 0.32;
       const k = Math.max(0, c.timer), R = 14 + k * 2.6;
       steer(target.x + Math.cos(c.orbit) * R, target.y + 10 + k * 1.3, target.z + Math.sin(c.orbit) * R, 13, 1.0);
-      if (c.timer <= 0) { c.state = 'dive'; c.timer = 3.5; }
+      if (c.timer <= 0) {
+        if (c.prey) { c.state = 'dive'; c.timer = 3.5; }
+        else { c.state = 'screech'; c.timer = SCREECH; play('screech_leechwing', { at: c.p, vol: 1, rate: 1.25, far: 120, share: 120 }); } // (0.226) a shriek before it drops
+      }
       if (!c.prey && (hd > SIGHT * 1.25 || safe)) { c.state = 'roam'; c.home.copy(c.p); c.timer = 2; }
+      break;
+    }
+    case 'screech': // hangs in the air, wings spread, and shrieks: dodge now
+      c.orbit += dt * 0.1;
+      steer(c.p.x + c.dir.x * 2, c.p.y + 0.5, c.p.z + c.dir.z * 2, 3, 0.8);
+      if (c.timer <= 0) { c.state = 'dive'; c.timer = 3.5; }
+      break;
+    case 'grounded': { // missed: down on the ground for a moment, wings spread, before it can take off
+      c.speed = 0; c.bank *= 0.9;
+      c.p.y += (g + 0.35 - c.p.y) * Math.min(1, dt * 6);
+      if (c.timer <= 0) { c.state = 'climb'; c.timer = 2.5; c.dir.set(c.dir.x, 0.6, c.dir.z).normalize(); }
       break;
     }
     case 'dive': {
@@ -561,7 +602,10 @@ function leechwing(c: Creature, dt: number, to: THREE.Vector3, dist: number, saf
         const p = c.prey; p.hp = 0; c.prey = null; burst(p.p.clone(), HOSTILE, 12, 0.8); removeCreature(p);
         c.state = 'climb'; c.timer = 3;
       } else if (!c.prey && dist < 1.8) { bite((s.damage + 3 * c.level) * c.dmgMul); c.state = 'climb'; c.timer = 3; }
-      else if (c.timer <= 0) { c.state = 'climb'; c.timer = 2.5; }
+      else if (c.timer <= 0) {
+        if (!c.prey && c.p.y - g < 5) { c.state = 'grounded'; c.timer = GROUNDED; if (dist < 40) logLine(tl('The Leechwing misses and lands hard: hit it now!')); } // (0.226) a missed dive leaves it on the ground
+        else { c.state = 'climb'; c.timer = 2.5; }
+      }
       break;
     }
     case 'climb': // pull out in a long climbing arc, carrying on the way it was going
@@ -643,6 +687,10 @@ function gnawer(c: Creature, dt: number, to: THREE.Vector3, dist: number, safe: 
     case 'retreat':
       walk(c, -to.x + (Math.random() - 0.5) * 2, -to.z + (Math.random() - 0.5) * 2, speed, dt);
       if (c.timer <= 0) { c.state = nest.length <= 2 && c.hurt ? 'retreat' : 'hunt'; c.timer = nest.length <= 2 && c.hurt ? 3 : 0; }
+      break;
+    case 'scatter': // (0.226) one of the nest fell: the rest break every way and go to ground in the grass, then come from all sides
+      walk(c, c.dir.x, c.dir.z, speed * 1.1, dt);
+      if (c.timer <= 0) { c.state = 'hunt'; c.timer = 0; c.flank = Math.random() * 6.283; }
       break;
   }
 }
@@ -810,10 +858,17 @@ function animate(c: Creature, dt: number, time: number) {
   c.anim += dt * (1 + c.speed * 1.4);
   const sw = c.speed > 0.1 ? Math.sin(c.anim * 1.6) * Math.min(0.7, 0.2 + c.speed * 0.06) : 0;
   c.legs.forEach((l, i) => { l.rotation.x = (i === 0 || i === 3 ? 1 : -1) * sw; });
-  if (c.kind === 'ravager' || c.kind === 'gnawer') { // (0.225) nose down, tearing at the bait
-    const eating = c.state === 'feed' && c.speed < 0.1;
-    c.g.rotation.x += ((eating ? 0.24 + Math.sin(time * 9 + c.flank) * 0.07 : 0) - c.g.rotation.x) * Math.min(1, dt * 8);
+  if (c.kind === 'ravager' || c.kind === 'gnawer') { // (0.225) nose down, tearing at the bait; (0.226) reared up howling
+    const eating = c.state === 'feed' && c.speed < 0.1, howl = c.state === 'howl';
+    c.g.rotation.x += ((eating ? 0.24 + Math.sin(time * 9 + c.flank) * 0.07 : howl ? -0.45 : 0) - c.g.rotation.x) * Math.min(1, dt * 8);
     if (eating && c.jaw) c.jaw.rotation.x = 0.05 + Math.max(0, Math.sin(time * 9 + c.flank)) * 0.4;
+    if (howl && c.jaw) c.jaw.rotation.x = 0.6;
+    if (c.state === 'scatter') c.g.position.y -= 0.14; // low in the grass
+  }
+  if (c.kind === 'bramble') { // (0.226) pawing the ground before a charge; reeling with sparks when stunned
+    if (c.state === 'threat') { c.g.rotation.z = Math.sin(time * 14) * 0.05; if (Math.random() < dt * 8) burst(c.p.clone().setY(c.p.y - CREATURES.bramble.lift + 0.1).addScaledVector(V(Math.sin(c.heading), 0, Math.cos(c.heading)), 1), 0x8a7a4a, 2, 0.35); }
+    else if (c.state === 'stun') { c.g.rotation.z = Math.sin(time * 5) * 0.12; if (Math.random() < dt * 10) burst(c.p.clone().setY(c.p.y + 1), 0xffd060, 1, 0.5); }
+    else c.g.rotation.z = 0;
   }
   if (c.tail) c.tail.rotation.y = Math.sin(time * (c.state === 'hunt' ? 12 : 4) + c.flank) * (c.state === 'hunt' ? 0.45 : 0.25);
   if (c.kind === 'skitter') { // fast beating wings, nose along the flight path
@@ -823,10 +878,10 @@ function animate(c: Creature, dt: number, time: number) {
   } else if (c.kind === 'silverfin') c.g.rotation.x = c.state === 'climb' ? -Math.cos(Math.min(1, c.orbit) * Math.PI) * 0.7 : 0;
   else if (c.wings.length) {
     // gliding on outstretched wings, beating hard when climbing, folded back in a dive; nose follows the flight path
-    const beat = c.state === 'climb' ? 0.5 + Math.sin(time * 11) * 0.45 : c.state === 'stalk' ? 0.25 + Math.sin(time * 5) * 0.2 : 0.12 + Math.sin(time * 2.2) * 0.1;
+    const beat = c.state === 'climb' ? 0.5 + Math.sin(time * 11) * 0.45 : c.state === 'stalk' ? 0.25 + Math.sin(time * 5) * 0.2 : c.state === 'screech' ? 0.7 + Math.sin(time * 16) * 0.5 : c.state === 'grounded' ? -0.15 : 0.12 + Math.sin(time * 2.2) * 0.1;
     const lift = c.state === 'dive' ? 0.95 : beat;
     c.wings[0].rotation.z = -lift; c.wings[1].rotation.z = lift;
-    c.g.rotation.x = -Math.asin(Math.max(-1, Math.min(1, c.dir.y))); c.g.rotation.z = c.bank;
+    c.g.rotation.x = c.state === 'grounded' ? 0 : c.state === 'screech' ? -0.5 : -Math.asin(Math.max(-1, Math.min(1, c.dir.y))); c.g.rotation.z = c.state === 'grounded' ? 0 : c.bank;
   }
   c.flash -= dt;
   if (c.flash > 0) c.mat.color.setHex(0xffffff);
@@ -872,6 +927,11 @@ export function fallCreature(c: Creature) {
   play('die_creature', { at: c.p, vol: 0.8, far: 60, rate: c.kind === 'bramble' ? 0.6 : c.kind === 'gnawer' || c.kind === 'skitter' ? 1.8 : c.kind === 'silverfin' ? 2.2 : 1 });
   const i = W.creatures.indexOf(c); if (i >= 0) W.creatures.splice(i, 1);
   if (c.pack) { const j = c.pack.indexOf(c); if (j >= 0) c.pack.splice(j, 1); }
+  if (c.kind === 'gnawer' && c.pack && c.pack.length >= 2 && !remoteOf(c)) for (const m of c.pack) { // (0.226, stage W2) the nest scatters
+    if (remoteOf(m) || (m.state !== 'hunt' && m.state !== 'retreat')) continue;
+    const a = Math.atan2(m.p.x - G.pos.x, m.p.z - G.pos.z) + (Math.random() - 0.5) * 2;
+    m.dir.set(Math.sin(a), 0, Math.cos(a)); m.state = 'scatter'; m.timer = 2 + Math.random();
+  }
   const away = V(c.p.x - G.pos.x, 0, c.p.z - G.pos.z).normalize();
   const slide = away.multiplyScalar(c.kind === 'bramble' ? 0.8 : 1.6 + c.speed * 0.25);
   c.mat.color.setHex(0xffffff);

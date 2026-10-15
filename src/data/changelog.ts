@@ -3,6 +3,15 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.226.0', date: '2026-10-15', title: 'Telegraphs and second attacks', notes: [
+    'Every foe now gives away what it is about to do, and most have a moment of weakness after a failed attack. A line tells you when a hit counts more ("Stunned! ×2", "Overheated! ×1.8").',
+    'Ravagers: the pack leader rears and howls, and lone Ravagers nearby join the hunt. Some of their leaps are feints that break off before the bite.',
+    'Bramble: it paws the ground and kicks up dust before it charges. Dodge so it slams into a rock, a tree or a wall and it reels, stunned, for two seconds: hit it then, the head included.',
+    'Leechwing: a screech before the dive. Miss and it lands hard and sits on the ground for a moment, open to guns and blades alike. Gnawers scatter to the sides when one of the nest falls, then come back from another way.',
+    'Robots: Scouts in threes circle you two at a time while the third goes in. Guardians spray bursts at where they last saw you. Sentinels raise an arm shield while they fire and overheat after the burst (back off, sparks, and they take much more). The Artillery Walker paints its target with a red laser before the shell. The Assault Construct swings its hammer twice and, after a missed charge, stands exposed. The Repair Drone hides behind the heaviest robot near it.',
+    'Bandits: gunners throw grenades at where you went to ground (they blink and beep and a red ring shows the blast: get out of it), and in a group of three or more one of them works round your side while the rest pin you down with faster fire.',
+    'Multiplayer: the game that runs a foe also runs its new moves, and the others see the same howl, shield, laser or stagger. Grenades travel like thrown stones. The server does not need an update.',
+  ] },
   { v: '0.225.0', date: '2026-10-15', title: 'Decoys: throw stones, flares and meat', notes: [
     'New: throwing. Hold Z and let go: the longer you hold, the further it flies. It throws a stone, a Signal Flare or a piece of meat (the backpack\'s "Ready to throw" picks which).',
     'A stone clatters where it lands: creatures, robots and bandits go to see what made the noise, and while they look the other way they show you their backs (a hit from behind counts more). The stone lies there to be picked up again.',
