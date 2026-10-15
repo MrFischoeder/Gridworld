@@ -1,6 +1,7 @@
 // The restoration window of a great installation (gen/installs.ts), opened at its control desk: the stages, what the
 // current one needs (handed over bit by bit from the backpack and vehicles parked by the plant), and once restored the
 // works: load ore into the hopper, collect the fuel.
+import { commuteHTML, commuteClick } from './commute';
 import { G, W } from '../game';
 import { ITEMS, type ItemKey } from '../data/items';
 import { calcStats, saveChar, gainXp } from '../character';
@@ -111,7 +112,7 @@ function crewHTML(st0: InstallSite): string {
   if (!o) return TL`<div class="say" style="margin:8px 0 0"><b>The crew.</b> Once restored, this plant needs ${need} people to run its batches. No village is near: they will have to live here, in a crew camp with bunkhouses and fields of its own. Settlers come when there are beds and food to spare.</div><button class="opt" data-ins="camp" style="color:var(--gold)">Stake out a crew camp</button>`;
   const cr = crewOf(c.world, c.outposts, st0.k, c.time), pos = at();
   return TL`<div class="say" style="margin:8px 0 0"><b>The crew</b>: ${cr.at} of ${need} at the plant.${cr.at >= need ? tl(' Its batches run while the hall has power.') : tl(' <span style="color:#ff6a4a">Not enough hands: no batch starts.</span>')} The people work the fields first, then the plant.</div>` +
-    partHTML(o, 'bunks', pos) + partHTML(o, 'field', pos) + peopleHTML(o, pos);
+    partHTML(o, 'bunks', pos) + partHTML(o, 'field', pos) + peopleHTML(o, pos) + commuteHTML(campId(st0.k), o);
 }
 /** The power hall: its generator sets and their bunkers (once the second stage has brought it back). */
 function hall(k: InstallKind, st: InstallState): string {
@@ -175,6 +176,7 @@ function sweep(s: InstallSite): string {
 /** (0.218) The crew camp's buttons: stake it out, hand over for a bunkhouse or a field, load food. Under the camp's lock. */
 function campClick(s0: InstallSite, op: string): boolean {
   const c = G.char, id = campId(s0.k), [a, x] = op.split(':'), here = at();
+  if (a === 'commute') { commuteClick(id, x, (m) => { if (site === s0) render(m); }); return true; }
   let msg = '';
   void withOutpost(id, () => {
     const o = c.outposts[id];

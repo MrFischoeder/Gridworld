@@ -41,12 +41,19 @@ const fresh = (t: number): OutpostLife => ({ t, n: 0, food: 0, fed: 1 });
 const mark = (t: number) => Math.floor(t / LIFE.step) * LIFE.step;
 
 /** How the people are put to work: the fields' crews first, then the dig (or, 0.216, a port's warehouse crew). */
-export function crews(o: OutpostState, people: number) {
+export function crews(o: OutpostState, people: number, extra = commuters(o)) {
   const n = Math.floor(people), fields = o.n?.field ?? 0, need = fields * LIFE.fieldCrew;
-  const work = o.done?.dig ? LIFE.digCrew : o.done?.port ? PORT.crew : o.k === 'camp' ? o.cw ?? 0 : 0; // (0.218) a camp's crew works at its old plant
-  const farm = Math.min(n, need), dig = Math.min(n - farm, work);
-  return { farm, dig, idle: n - farm - dig, farmFill: need ? farm / need : 0, digFill: work ? dig / work : 0 };
+  const work = workCap(o), walk = Math.min(work, Math.max(0, Math.floor(extra))); // (0.220) commuters from a nearby village work the post first
+  const farm = Math.min(n, need), mine = Math.min(n - farm, work - walk), dig = walk + mine;
+  return { farm, dig, idle: n - farm - mine, walk, farmFill: need ? farm / need : 0, digFill: work ? dig / work : 0 };
 }
+/** The crew the outpost's work post wants: the dig, a port's crane, (0.218) a crew camp's old plant. */
+export const workCap = (o: OutpostState) => (o.done?.dig ? LIFE.digCrew : o.done?.port ? PORT.crew : o.k === 'camp' ? o.cw ?? 0 : 0);
+/** (0.220, PLAN_PRAD_I_LUDZIE.md stage Z6) How many commuters from a nearby village work at the outpost now (gen/commute.ts);
+ *  set by the game from the shared `towns` (world/commute.ts); unset (tests, workers): none. */
+let commuteHook: ((o: OutpostState) => number) | null = null;
+export const setCommuteHook = (f: typeof commuteHook) => { commuteHook = f; };
+export const commuters = (o: OutpostState) => (commuteHook ? commuteHook(o) : 0);
 /** Food units the fields make a day with these people (fertility f). */
 export const foodMade = (o: OutpostState, people: number, f: number) => (o.n?.field ?? 0) * LIFE.field * f * crews(o, people).farmFill * (o.n?.wall ? 1 : 1 - PESTS.trample);
 /** Food units the people eat a day. */
@@ -91,7 +98,9 @@ export function loadFood(world: number, o: OutpostState, k: ItemKey, n: number, 
 /** What the people add to the digging (1 with no dig crew, up to 1 + `boost`). */
 export function crewFactor(o: OutpostState): number {
   const L = o.life;
-  return L ? 1 + LIFE.boost * crews(o, L.n).digFill * L.fed : 1;
+  if (!L) return commuters(o) ? 1 + LIFE.boost * crews(o, 0).digFill : 1; // (0.220) commuters alone, fed at home
+  const w = crews(o, L.n), own = w.dig - w.walk, cap = workCap(o);
+  return 1 + LIFE.boost * (cap ? (w.walk + own * L.fed) / cap : 0); // the settlers' share as fed as they are, the commuters' whole
 }
 /** Has it become a hamlet? */
 export const isHamlet = (o: OutpostState) => !!o.life?.v;

@@ -32,6 +32,7 @@ import { givesText } from '../world/lodes';
 import { procOf } from '../gen/outpostproc';
 import { addPartner, dropPartner } from '../gen/rivals';
 import { rivalsOn, myOwner, ownerName, seats } from '../world/rivals';
+import { commuteHTML, commuteClick } from './commute';
 import { tl, TL } from '../i18n';
 
 const dlgEl = $('dlg'), panel = () => dlgEl.querySelector('.panel') as HTMLElement;
@@ -192,7 +193,7 @@ function render(msg = '') {
     s += TL`<div class="say">Staked by ${o.by}${o.o !== 'crew' && ownerName(o.o) !== o.by ? TL` for ${ownerName(o.o)}` : ''}. Only they and the partners they let in work it: ask them to make you a partner.</div>`;
   } else {
     s += TL`<div class="say" style="opacity:.85">Outpost staked by ${o.by}. Owner: ${ownerName(o.o)}.${o.pp?.length ? TL` Partners: ${o.pp.map(ownerName).join(', ')}.` : ''}</div>` + partnersHTML(o);
-    s += partHTML(o, 'dig') + partHTML(o, 'store') + (procOf(o.k) ? partHTML(o, 'proc') : '') + partHTML(o, 'power') + powerHTML(l.id, o) + plineHTML(l.id, o) + partHTML(o, 'bunks') + partHTML(o, 'field') + peopleHTML(o) + partHTML(o, 'wall') + partHTML(o, 'turret') + defenceHTML(l.id, o) + routeHTML(l.id, o);
+    s += partHTML(o, 'dig') + partHTML(o, 'store') + (procOf(o.k) ? partHTML(o, 'proc') : '') + partHTML(o, 'power') + powerHTML(l.id, o) + plineHTML(l.id, o) + partHTML(o, 'bunks') + partHTML(o, 'field') + peopleHTML(o) + commuteHTML(l.id, o) + partHTML(o, 'wall') + partHTML(o, 'turret') + defenceHTML(l.id, o) + routeHTML(l.id, o);
     if (o.done?.dig) {
       const pw = pwOf(c.world, c.outposts, l.id, c.time), now = stockNow(o, l, c.time, pw), cap = capOf(o);
       s += TL`<div class="say"><b>On site</b> (${o.done.store ? tl('in the shed') : tl('piled in the open')}, up to ${cap} of each):<br>` + outputs(l).map(([g, r]) => {
@@ -227,6 +228,7 @@ export function outpostClick(t: HTMLElement): boolean {
   if (!b) return false;
   const c = G.char, l = lode, [a, x, y] = b.dataset.op!.split(':');
   if (a === 'close') { close(); return true; }
+  if (a === 'commute') { commuteClick(l.id, x, (m) => { if (lode === l) render(m); }); return true; } // (0.220) the village's lock, not the outpost's
   let msg = '';
   void withOutpost(l.id, () => {
     const o = c.outposts[l.id], byId = (id: string) => lodeById(c.world, id);

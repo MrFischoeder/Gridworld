@@ -36,6 +36,7 @@ export function postName(s: TownState | undefined, p: Post): string {
   if (p.kind === 'farm') return TL`Farm ${p.i + 1} (${CROPS[cropOf(s, p.i)].name.toLowerCase()})`;
   if (p.kind === 'works') { const w = s?.plants?.[p.i]; return w ? PLANTS[w.k].name : tl('Works'); }
   if (p.kind === 'station') { const w = s?.stations?.[p.i]; return w ? STATIONS[w.k].name : tl('Power station'); }
+  if (p.kind === 'commute') return TL`Walking out to ${G.char.outposts[p.id.slice(8)]?.name ?? tl('an outpost')}`; // (0.220)
   return PROJECTS[p.kind as Project]?.name ?? p.kind;
 }
 const FOOD_WORDS = { short: tl('Short: the food does not cover everyone, families will leave'), tight: tl('Tight: enough to eat, but no newcomers will settle'), secure: tl('Secure: food to spare, families may settle') };

@@ -9,7 +9,7 @@
 //
 // Pure: the camp's spots from the plant's site and a dry test, worked out once when it is set up.
 import { townsWorld } from './worldrules';
-import { crews, lifeNow } from './outpostlife';
+import { crews, lifeNow, commuters } from './outpostlife';
 import type { OutpostState, PortSpots } from './outposts';
 import type { InstallKind, InstallSite } from './installs';
 import { tl } from '../i18n';
@@ -45,7 +45,8 @@ export function newCamp(site: InstallSite, by: string, now: number, owner: strin
 /** The camp's crew at the plant at game time t: how many work there of how many it needs. */
 export function crewOf(world: number, outposts: Record<string, OutpostState>, k: InstallKind, t: number): { at: number; need: number } {
   const need = CREW[k] ?? 0, o = outposts[campId(k)];
-  if (!o?.life) return { at: 0, need };
+  if (!o) return { at: 0, need };
+  if (!o.life) return { at: crews(o, 0).dig, need }; // (0.220) commuters alone
   return { at: crews(o, lifeNow(world, o, t).n).dig, need };
 }
 /** The rule gen/installs.ts asks before a batch: the whole crew is there (or none is needed). */
@@ -53,7 +54,7 @@ export function crewRuleFor(world: number, outposts: () => Record<string, Outpos
   const memo = new Map<string, boolean>();
   return (k: InstallKind, t: number) => {
     if (!needsCrew(world, k)) return true;
-    const o = outposts()[campId(k)], key = `${k}|${Math.floor(t / 120)}|${o?.life?.t ?? -1}|${o?.n?.bunks ?? 0}|${o?.n?.field ?? 0}|${Math.round((o?.life?.food ?? 0) * 10)}|${Math.floor((o?.life?.n ?? 0) * 4)}`;
+    const o = outposts()[campId(k)], key = `${k}|${Math.floor(t / 120)}|${o?.life?.t ?? -1}|${o?.n?.bunks ?? 0}|${o?.n?.field ?? 0}|${Math.round((o?.life?.food ?? 0) * 10)}|${Math.floor((o?.life?.n ?? 0) * 4)}|${o ? commuters(o) : 0}`;
     let v = memo.get(key);
     if (v === undefined) { if (memo.size > 2000) memo.clear(); v = (() => { const c = crewOf(world, outposts(), k, t); return c.at >= c.need; })(); memo.set(key, v); }
     return v;

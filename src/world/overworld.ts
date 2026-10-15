@@ -38,6 +38,7 @@ import { lodeHit, dropLodes, lodeName } from './lodes';
 import { portHit, dropPorts, portNameAt } from './ports';
 import { campHit, dropCamps } from './plantcamps';
 import { dropPowerLines } from './powerlines';
+import { dropCommuters } from './commute';
 import { portClaims } from '../gen/ports';
 import { installAt } from '../gen/installs';
 import { drawFarms } from './farms';
@@ -736,7 +737,7 @@ export function openWorld(x: number, z: number) {
 export function closeWorld() {
   clearMegaliths();
   clearWorldGates();
-  dropGarrisons(); clearVehicles(); dropCrash(); dropInstalls(); dropCities(); dropToxic(); dropLodes(); dropPorts(); dropCamps(); dropPowerLines(); clearBridges(); clearPiers();
+  dropGarrisons(); clearVehicles(); dropCrash(); dropInstalls(); dropCities(); dropToxic(); dropLodes(); dropPorts(); dropCamps(); dropPowerLines(); dropCommuters(); clearBridges(); clearPiers();
   setCreatureEnv(null); clearCreatures();
   setRobotEnv(null); clearRobots();
   setBanditEnv(null); clearBandits();

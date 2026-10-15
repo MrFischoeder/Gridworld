@@ -3,6 +3,12 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.220.0', date: '2026-10-15', title: 'Commuters', notes: [
+    'An outpost, a port or a crew camp within 2 km of a settlement can now ask the village for its free people: they walk out each day to work the outpost\'s post (the dig, a port\'s crane, an old plant) and eat at home, so no bunkhouses or fields are needed for them.',
+    'The village sends only the people its own posts leave free: farms, power, yards, works, stations and services come first. The window shows how many come of how many were asked for, and how many the village has free. You can stop asking at any time.',
+    'Commuters work the post first; the outpost\'s own settlers, if it has any, do the rest and the fields. The elder\'s "How is the village doing?" lists the people walking out to each outpost. A few of them can be seen on the way.',
+    'Multiplayer: the ask is the village\'s (built under the village\'s lock), and every game works out the same commuters from the shared villages. The server does not need an update.',
+  ] },
   { v: '0.219.0', date: '2026-10-15', title: 'Power lines', notes: [
     'An outpost or a port can now run a power line to a village within 6 km: choose the village in its window and the line is staked out with yellow stakes. Bring the poles and cable: per km 12 planks, 10 wire and 3 scrap, plus 2 cable and machine parts for the transformers. The builders take 4 hours and 2 more per km, and raise the poles from the outpost\'s end.',
     'Once it stands, whichever side has power to spare feeds the other\'s shortfall, up to 60 kW: a village with spare power runs an outpost that has no source of its own, and an outpost grid with a generator, turbine or boiler can help a village whose works stand for want of power.',
