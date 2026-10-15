@@ -101,6 +101,10 @@ export const spawnAuthority = () => authority();
 export const otherPlayers = () => others();
 /** You hit another player's foe: tell its owner. */
 export const hitOwner = (o: object, dmg: number, npc = false, fx?: HitFx) => hit(o, dmg, npc, fx);
+let spare: (o: object) => void = () => {};
+/** (0.228) world/foesync.ts: tell the owner of a bandit who gave himself up that you searched him. */
+export function setSpareHook(f: (o: object) => void) { spare = f; }
+export const spareOwner = (o: object) => spare(o);
 let turretHit: (id: number, dmg: number) => void = () => {};
 /** world/foesync.ts: how to tell the others a gun of this place was hit. */
 export function setTurretHook(f: (id: number, dmg: number) => void) { turretHit = f; }

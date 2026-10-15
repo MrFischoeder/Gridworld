@@ -24,3 +24,5 @@ export function updateBaits(dt: number) {
   }
 }
 export function clearBaits() { for (const b of baits) scene.remove(b.m); baits.length = 0; }
+/** (0.228, stage W6) Where fire burns this frame (flares lying lit, torches in the players' hands): the beasts fear it. */
+export const fires: THREE.Vector3[] = [];

@@ -190,7 +190,7 @@ function raids(dt: number) {
     }
     const blocked = lead ? barriersNear(lead.x + Math.sin(lead.yaw) * 8, lead.z + Math.cos(lead.yaw) * 8, 9).length > 0 : false;
     if (!near.length && !blocked && (!alive.length || !lead)) {
-      const killed = l.raid.filter((b) => b.hp <= 0).length, there = !!lead && Math.hypot(lead.x - G.pos.x, lead.z - G.pos.z) < 150;
+      const killed = l.raid.filter((b) => b.hp <= 0 || !!b.fate || !b.g.parent).length, there = !!lead && Math.hypot(lead.x - G.pos.x, lead.z - G.pos.z) < 150;
       const won = killed >= Math.ceil(l.raid.length / 2) && !!c && there;
       l.raid = [];
       if (won && c) {
@@ -201,7 +201,7 @@ function raids(dt: number) {
     }
   }
 }
-const W_has = (b: Bandit) => b.hp > 0 && !!b.g.parent;
+const W_has = (b: Bandit) => b.hp > 0 && !!b.g.parent && !b.fate; // (0.228) a broken one is out of the fight
 
 // ---------- escort ----------
 /** Take on guarding caravan c to its destination (from the drover's panel). */

@@ -3,6 +3,15 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.228.0', date: '2026-10-15', title: 'Morale and retreat', notes: [
+    'Bandits and hunting beasts now have nerve. Losing comrades (the boss or the pack leader worst of all), their own wounds and fire wear it down; once a fight a bandit boss can roar his men back into line.',
+    'A bandit who breaks does one of three things, at random: runs for good, throws down his arms and raises his hands, or runs off to fetch his friends and comes back with them a minute later.',
+    'Walk up to a bandit with his hands up and press E: he drops his gun and what he carries, and sometimes tells you where some old machine lies. Shooting a man who gave up earns no bounty.',
+    'A bandit camp whose people have all fled or given up counts as cleared: no need to hunt down every runner.',
+    'Beasts keep to their own ground round their den. Past its edge they give up the chase, call, and go home, where they lick their wounds; by the den they fight hardest. Get away, rethink, come back. They fear fire too: a torch in your hand or a burning flare.',
+    'Machines feel no fear, but a squad that has lost half falls back to its Repair Drone to be mended before going in again.',
+    'Multiplayer: the game that runs a foe runs its nerve too, and everyone sees the same hands up or the same rout. Searching a bandit run by another player\'s game needs the updated server (an older one ignores it, and he simply runs off after a while).',
+  ] },
   { v: '0.227.1', date: '2026-10-15', title: 'The plan for morale and retreat', notes: [
     'No change in the game yet: the design of the next combat stage is written down. Bandits will break and run when their boss or half of them fall (and may even give up), beasts will guard their own ground and give up a chase at its edge, and machines will fall back to regroup.',
   ] },

@@ -8,6 +8,7 @@ import * as THREE from 'three';
 import { G } from '../game';
 import { condOf, condTime, bleedDps, BLEED, COND, PLAYER_COND, playerBleed, type Cond, type HitFx } from '../gen/conditions';
 import type { FoeKey } from '../gen/tactics';
+import { shocked } from '../gen/morale';
 import { proxied, peerFx } from './remote';
 import { tl } from '../i18n';
 
@@ -64,6 +65,8 @@ export function applyFx(f: object, dmg: number, fx: HitFx, by = 0): Cond | null 
   if (o.kind === 'leechwing' && c === 'stagger' && o.state === 'grounded') return null;
   o.cond = c; o.condT = condTime(k, c);
   breakOff(o, c);
+  const mo = o as { morale?: number };
+  if (typeof mo.morale === 'number' && c !== 'stun') mo.morale = shocked(mo.morale, 'cond'); // (0.228) knocked about, the nerve goes
   if (o.cond === 'down' && o.kind === 'leechwing') { o.cond = ''; o.condT = 0; } // its own 'grounded' does it
   return c;
 }

@@ -6,7 +6,8 @@ import { hurtPlayer } from './damage';
 import * as THREE from 'three';
 import { nearX } from '../gen/regions';
 import { onNoise } from './noise';
-import { baits, baitNear, baitAlive, type Bait } from './baits';
+import { baits, baitNear, baitAlive, fires, type Bait } from './baits';
+import { MORALE, DEN, LEASH_POSE, TERRITORY, effective, breaks, pastEdge, shocked } from '../gen/morale';
 import { THROW } from '../gen/throwing';
 import { scene, V, lineMat } from './render';
 import { G, W } from '../game';
@@ -26,15 +27,20 @@ import { targetingFoe, proxied, stepRemote, withFoeTarget, nearestPlayer, remote
 import { tickCond, knockDown, heavyHit, bleed, type CondFoe } from './conditions';
 import { mindOf, sense, share, spottedBy, targetVis } from './stealth';
 import { STEALTH, LOSE } from '../gen/stealth';
-import { tl } from '../i18n';
+import { tl, TL } from '../i18n';
 
 type State = 'roam' | 'hunt' | 'dash' | 'retreat' | 'threat' | 'charge' | 'recover' | 'stalk' | 'dive' | 'climb' | 'investigate' | 'feed'
   // (0.226, stage W2) the telegraphs and the weak moments, seen on the other players' copies too
-  | 'howl' | 'stun' | 'screech' | 'grounded' | 'scatter';
+  | 'howl' | 'stun' | 'screech' | 'grounded' | 'scatter'
+  // (0.228, stage W6) giving up the chase at the edge of its ground; broken, running for its den
+  | 'leash' | 'rout';
 
 export interface Creature extends CondFoe {
   /** (0.227) how far down on its side it is drawn (eased) */
   down?: number;
+  /** (0.228, stage W6) Its den (where it was born: it never moves), its morale (pack beasts and the Leechwing),
+   *  knocked once by its own wound; seconds since anything hurt it. */
+  den?: THREE.Vector3; morale?: number; wounded?: boolean; calm?: number;
   /** Fixed city post; transmitted to prevent duplicate garrisons on another client. */
   cityPost?: string;
   kind: CreatureKind; boss?: false;
@@ -259,6 +265,7 @@ function make(kind: CreatureKind, p: THREE.Vector3, level: number, showcase = fa
     state: kind === 'leechwing' ? 'roam' : 'roam', timer: 0, anim: Math.random() * 10, legs: [], wings: [], head: null, jaw: null, tail: null,
     pack: null, flank: 0, home: p.clone(), dir: V(Math.random() - 0.5, 0, Math.random() - 0.5).normalize(), level, hurt: false, dmgMul: 1,
     noiseAt: null, orbit: Math.random() * 6.283, bank: 0, prey: null, spotted: false,
+    den: p.clone(), morale: MORALE.start[kind], calm: 99,
   };
   if (kind === 'ravager') ravagerModel(c); else if (kind === 'bramble') brambleModel(c); else if (kind === 'gnawer') gnawerModel(c);
   else if (kind === 'skitter') skitterModel(c); else if (kind === 'lurker') lurkerModel(c); else if (kind === 'silverfin') silverfinModel(c); else leechwingModel(c);
@@ -832,6 +839,59 @@ function silverfin(c: Creature, dt: number, to: THREE.Vector3) {
   if (Math.random() < dt * 0.05) { c.state = 'climb'; c.orbit = 0; }
 }
 
+// ---------- its ground and its nerve (0.228, PLAN_WALKI.md stage W6) ----------
+const packSize = new WeakMap<Creature[], number>(), packHalf = new WeakSet<Creature[]>(), leashTold = new WeakSet<object>();
+/** The states in which it is after someone. */
+const CHASING = new Set<State>(['hunt', 'dash', 'threat', 'charge', 'stalk', 'dive', 'screech', 'howl', 'scatter']);
+const GROUND_KINDS = new Set<CreatureKind>(['ravager', 'gnawer', 'bramble']);
+/** How it takes up the chase again when you come back onto its ground. */
+const RESUME: Partial<Record<CreatureKind, State>> = { ravager: 'hunt', gnawer: 'hunt', bramble: 'threat' };
+/**
+ * Its ground and its nerve, before the kind's own turn: it heals at its den when left alone, takes heart again,
+ * fears fire; a beast after you past the edge of its ground gives up (a ground beast stops and calls first), a broken
+ * one runs for its den (by its den it fights on). True = this turn is taken.
+ */
+function beastMorale(c: Creature, dt: number, dist: number, safe: boolean): boolean {
+  const den = c.den ?? (c.den = c.p.clone());
+  if (c.pack && !packSize.has(c.pack)) packSize.set(c.pack, c.pack.length);
+  c.calm = (c.calm ?? 99) + dt;
+  const fromDen = Math.hypot(c.p.x - den.x, c.p.z - den.z), tgtDen = Math.hypot(G.pos.x - den.x, G.pos.z - den.z), R = TERRITORY[c.kind];
+  if (fromDen < DEN.at && c.calm > DEN.calm && c.hp < c.maxHp) c.hp = Math.min(c.maxHp, c.hp + c.maxHp * DEN.heal * dt); // licking its wounds
+  if (c.morale !== undefined) {
+    const top = c.alpha ? MORALE.start.alpha : MORALE.start[c.kind] ?? 0.6;
+    if (c.calm > MORALE.calm && c.morale < top) c.morale = Math.min(top, c.morale + MORALE.regain * dt);
+    for (const f of fires) if (Math.hypot(f.x - c.p.x, f.z - c.p.z) < MORALE.fire.r) { c.morale = Math.max(0, c.morale - MORALE.fire.rate * dt); break; } // fire!
+    if (CHASING.has(c.state) && breaks(effective(c.morale, { atDen: fromDen < DEN.r }))) {
+      if (GROUND_KINDS.has(c.kind)) { c.state = 'rout'; c.timer = 12; }
+      else { c.state = c.kind === 'leechwing' ? 'climb' : 'roam'; c.timer = 4; c.home.copy(den); c.prey = null; }
+      if (!proxied() && dist < 60) logLine(TL`The ${CREATURES[c.kind].name} breaks off and flees!`);
+      return true;
+    }
+  }
+  if (c.state === 'rout') { // to its den as fast as it can; there it holds on
+    const s = CREATURES[c.kind];
+    if (fromDen < 3 || c.timer <= 0) { c.state = 'roam'; c.home.copy(den); c.timer = 0; return true; }
+    c.timer -= dt; walk(c, den.x - c.p.x, den.z - c.p.z, s.speed * 0.9, dt);
+    return true;
+  }
+  if (c.state === 'leash') { // at the edge: it stops and calls, then goes home; back on its ground and it comes again
+    c.timer -= dt;
+    if (!safe && tgtDen < R * 0.85 && c.timer < 0) { c.state = RESUME[c.kind] ?? 'hunt'; c.timer = 1; return true; }
+    if (c.timer > 0) { c.speed = 0; const dh = Math.atan2(G.pos.x - c.p.x, G.pos.z - c.p.z) - c.heading; c.heading += Math.atan2(Math.sin(dh), Math.cos(dh)) * Math.min(1, dt * 5); return true; }
+    if (fromDen < 3) { c.state = 'roam'; c.home.copy(den); c.timer = 0; return true; }
+    walk(c, den.x - c.p.x, den.z - c.p.z, CREATURES[c.kind].speed * 0.45, dt);
+    return true;
+  }
+  if (CHASING.has(c.state) && pastEdge(c.kind, tgtDen) && fromDen > R * 0.5) { // you are off its ground: the chase ends
+    const key = c.pack ?? c;
+    if (!leashTold.has(key) && !proxied() && dist < 90) { leashTold.add(key); logLine(c.pack ? tl('The pack gives up the chase at the edge of its ground.') : TL`The ${CREATURES[c.kind].name} gives up the chase at the edge of its ground.`); }
+    if (GROUND_KINDS.has(c.kind)) { c.state = 'leash'; c.timer = LEASH_POSE; c.rageAt = null; }
+    else { c.state = c.kind === 'leechwing' ? 'climb' : 'roam'; c.timer = 3; c.home.copy(den); c.prey = null; }
+    return true;
+  }
+  return false;
+}
+
 /** Spawning, behaviour and animation of every creature (open world only). */
 export function updateCreatures(dt: number, time: number) {
   if (!env) return;
@@ -847,6 +907,7 @@ export function updateCreatures(dt: number, time: number) {
     withFoeTarget(c, () => {
       const to = V(G.pos.x, G.pos.y + 1.2, G.pos.z).sub(c.p), dist = to.length(), safe = !targetingFoe() && foeRules.playerSafe();
       if (c.spooked) c.spooked = Math.max(0, c.spooked - dt);
+      if (beastMorale(c, dt, dist, safe)) return; // (0.228, stage W6) its ground, its nerve
       if (baits.length && c.state !== 'feed') { const b = lured(c, dist); if (b) { c.state = 'feed'; c.bait = b; } }
       if (c.state === 'feed') { feed(c, dt, dist, safe); return; }
       if (!safe && (c.kind === 'ravager' || c.kind === 'gnawer' || c.kind === 'skitter') && (c.state === 'hunt' || c.state === 'dash' || c.state === 'retreat')) track(c, dt, dist);
@@ -869,7 +930,7 @@ function animate(c: Creature, dt: number, time: number) {
   const sw = c.speed > 0.1 ? Math.sin(c.anim * 1.6) * Math.min(0.7, 0.2 + c.speed * 0.06) : 0;
   c.legs.forEach((l, i) => { l.rotation.x = (i === 0 || i === 3 ? 1 : -1) * sw; });
   if (c.kind === 'ravager' || c.kind === 'gnawer') { // (0.225) nose down, tearing at the bait; (0.226) reared up howling
-    const eating = c.state === 'feed' && c.speed < 0.1, howl = c.state === 'howl';
+    const eating = c.state === 'feed' && c.speed < 0.1, howl = c.state === 'howl' || (c.state === 'leash' && c.speed < 0.1); // (0.228) it stops at the edge of its ground and calls
     c.g.rotation.x += ((eating ? 0.24 + Math.sin(time * 9 + c.flank) * 0.07 : howl ? -0.45 : 0) - c.g.rotation.x) * Math.min(1, dt * 8);
     if (eating && c.jaw) c.jaw.rotation.x = 0.05 + Math.max(0, Math.sin(time * 9 + c.flank)) * 0.4;
     if (howl && c.jaw) c.jaw.rotation.x = 0.6;
@@ -914,7 +975,8 @@ function condLook(c: Creature, dt: number, time: number) {
 // ---------- damage ----------
 export function hurtCreature(c: Creature, dmg: number, credit = true) {
   // (0.223) the Bramble's plated front, like every foe's strong and weak sides, is reckoned by the attacker (gen/tactics.ts)
-  c.hp -= dmg; c.flash = 0.12; c.hurt = true; G.hitFlash = 0.15;
+  c.hp -= dmg; c.flash = 0.12; c.hurt = true; G.hitFlash = 0.15; c.calm = 0;
+  if (!c.wounded && c.morale !== undefined && c.hp > 0 && c.hp < c.maxHp * 0.3) { c.wounded = true; c.morale = shocked(c.morale, 'wound'); } // (0.228)
   for (const m of c.pack ?? [c]) { m.spooked = SPOOKED; if (m.state === 'feed') { m.state = 'roam'; m.bait = null; } } // a hit ends the meal (then the pack turns on you below)
   if (c.kind === 'ravager' && c.state === 'roam') for (const m of c.pack ?? [c]) { m.state = 'hunt'; m.timer = 2; }
   if (c.kind === 'leechwing' && (c.state === 'roam' || c.state === 'investigate')) { c.prey = null; c.spotted = true; c.state = 'stalk'; c.timer = 2; }
@@ -950,6 +1012,11 @@ export function fallCreature(c: Creature) {
   play('die_creature', { at: c.p, vol: 0.8, far: 60, rate: c.kind === 'bramble' ? 0.6 : c.kind === 'gnawer' || c.kind === 'skitter' ? 1.8 : c.kind === 'silverfin' ? 2.2 : 1 });
   const i = W.creatures.indexOf(c); if (i >= 0) W.creatures.splice(i, 1);
   if (c.pack) { const j = c.pack.indexOf(c); if (j >= 0) c.pack.splice(j, 1); }
+  if (c.pack && !remoteOf(c)) { // (0.228) the pack's nerve: a fallen member, the leader worst, and half of them gone
+    for (const m of c.pack) if (m.morale !== undefined && m.p.distanceTo(c.p) < MORALE.near) m.morale = shocked(m.morale, c.alpha ? 'leader' : 'ally');
+    const size = packSize.get(c.pack) ?? 0;
+    if (size >= 3 && !packHalf.has(c.pack) && c.pack.length <= size / 2) { packHalf.add(c.pack); for (const m of c.pack) if (m.morale !== undefined) m.morale = shocked(m.morale, 'half'); }
+  }
   if (c.kind === 'gnawer' && c.pack && c.pack.length >= 2 && !remoteOf(c)) for (const m of c.pack) { // (0.226, stage W2) the nest scatters
     if (remoteOf(m) || (m.state !== 'hunt' && m.state !== 'retreat')) continue;
     const a = Math.atan2(m.p.x - G.pos.x, m.p.z - G.pos.z) + (Math.random() - 0.5) * 2;
@@ -1063,7 +1130,7 @@ export function spawnQuestGroup(q: Quest) {
   const members: Creature[] = [];
   if (!q.alphaDead) {
     const c = make(kind, at(0), lv);
-    c.alpha = true; c.hp = c.maxHp = c.maxHp * 3; c.dmgMul = 1.5; c.r *= 1.35; c.g.scale.setScalar(1.35);
+    c.alpha = true; c.morale = MORALE.start.alpha; c.hp = c.maxHp = c.maxHp * 3; c.dmgMul = 1.5; c.r *= 1.35; c.g.scale.setScalar(1.35);
     const tag = textSprite(alpha, '#ffb347', 2.4); tag.position.y = kind === 'bramble' ? 1.9 : 1.3; c.g.add(tag);
     members.push(c);
   }

@@ -103,7 +103,7 @@ export function updateOutpostRaids(dt: number) {
   }
 }
 function tickLive(L: Live, o: OutpostState, dt: number) {
-  const alive = L.bandits.filter((b) => b.hp > 0 && b.g.parent), tier = Math.min(ORAID.drain.length - 1, wallOf(o));
+  const alive = L.bandits.filter((b) => b.hp > 0 && b.g.parent && !b.fate), tier = Math.min(ORAID.drain.length - 1, wallOf(o));
   for (const b of alive) if (Math.hypot(b.p.x - b.home.x, b.p.z - b.home.z) < ORAID.near) L.defence -= ORAID.drain[tier] * dt;
   if (L.defence <= 0) { finish(L, false); return; }
   L.nextT -= dt;

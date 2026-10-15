@@ -21,10 +21,10 @@ import { takeOne, hasItem } from '../character';
 import { dropPickup } from './loot';
 import { burst } from './fx';
 import { lyingModel } from './pickmodels';
-import { relay, onRelay, type Relay } from '../net/client';
+import { relay, onRelay, net, type Relay } from '../net/client';
 import { myLoc } from './peers';
-import { addLights, addGlows } from './light';
-import { addBait, updateBaits, clearBaits } from './baits';
+import { addLights, addGlows, carriedLight } from './light';
+import { addBait, updateBaits, clearBaits, fires } from './baits';
 import { THROW, THROWABLES, GRENADE, throwKind, throwSpeed, throwShare, throwVelocity, stepFlight, lobVelocity, grenadeHarm, type Flight, type ThrowKind } from '../gen/throwing';
 import { addBlast } from './fx';
 import { hurtPlayer } from './damage';
@@ -205,6 +205,12 @@ export function updateThrowing(dt: number, time: number) {
     blowGrenade(g); scene.remove(g.m); scene.remove(g.ring); g.ring.geometry.dispose(); grenades.splice(i, 1);
   }
   updateBaits(dt);
+  // (0.228, stage W6) where fire burns, for the beasts' fear of it: the flares lying lit, torches in hands here
+  fires.length = 0;
+  for (const f of flares) fires.push(f.p);
+  if (carriedLight() === 3) fires.push(G.pos.clone());
+  const here = myLoc();
+  for (const p of net.peers.values()) { const s = p.st; if (s?.lt === 3 && s.loc === here && !s.away) fires.push(V(s.p[0], s.p[1], s.p[2])); }
 }
 /** The blast: seen and heard by everyone; the harm only from the thrower's game (to you and to the others there). */
 function blowGrenade(g: Live) {

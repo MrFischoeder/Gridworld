@@ -4100,4 +4100,16 @@ export const PL: Record<string, string> = {
   "You are knocked off your feet!": "Zwala cię z nóg!",
   "You are bleeding! A medkit will stop it.": "Krwawisz! Apteczka zatamuje krwawienie.",
   "The bleeding stops.": "Krwawienie ustało.",
+  // (0.228) stage W6: morale and retreat
+  "\"Hold the line, you dogs!\" the bandit boss roars.": "„Trzymać się, psy!” ryczy herszt bandytów.",
+  "A bandit throws down his arms and raises his hands!": "Bandyta rzuca broń i podnosi ręce!",
+  "\"I'll be back with the others!\" A bandit runs.": "„Wrócę z resztą!” Bandyta ucieka.",
+  "A bandit breaks and runs!": "Bandyta pęka i ucieka!",
+  "The bandit who ran is back, and he brought friends!": "Bandyta, który uciekł, wrócił i przyprowadził kompanów!",
+  "He drops his gun and what he carries at your feet.": "Rzuca ci pod nogi broń i wszystko, co miał przy sobie.",
+  "\"Don't shoot! I know something...\" ": "„Nie strzelaj! Coś wiem...” ",
+  "E — take his things and let him go": "E — zabierz mu rzeczy i puść go wolno",
+  "The {0} breaks off and flees!": "{0} przerywa atak i ucieka!",
+  "The pack gives up the chase at the edge of its ground.": "Stado odpuszcza pościg na granicy swojego terenu.",
+  "The {0} gives up the chase at the edge of its ground.": "{0} odpuszcza pościg na granicy swojego terenu.",
 };

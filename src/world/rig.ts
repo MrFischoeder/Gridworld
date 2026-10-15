@@ -19,6 +19,8 @@ export interface Pose {
   strike?: number;
   /** Recoil kick 0..1 (just fired). */
   recoil?: number;
+  /** (0.228) Both hands up: he gives himself up. */
+  hands?: boolean;
 }
 
 const UPPER = 0.29, FORE = 0.28, fill = fillMat();
@@ -134,6 +136,11 @@ function hang(a: Arm, th: number, fwd = 0.04) {
 export function poseRig(r: Rig, ps: Pose) {
   const sw = ps.swing ?? 0, aim = ps.aim ?? 0, rec = ps.recoil ?? 0, { armL, armR } = r;
   const outL = V(-0.6, -0.4, -0.6), outR = V(0.6, -0.4, -0.6);
+  if (ps.hands) { // hands up, open, either side of the head
+    reach(armL, V(-0.3, 1.86, 0.08), V(-1, -0.2, 0)); reach(armR, V(0.3, 1.86, 0.08), V(1, -0.2, 0));
+    aimHand(armL, V(0, 1, 0)); aimHand(armR, V(0, 1, 0));
+    return;
+  }
   switch (r.kit) {
     case 'none': hang(armL, -sw * 0.7); hang(armR, sw * 0.7); break;
     case 'drive': { // both hands on the wheel

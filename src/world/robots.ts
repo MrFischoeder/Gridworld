@@ -31,11 +31,14 @@ import { mayspawn, FOE_HIT } from './threat';
 import type { SpawnEnv } from './creatures';
 import { coverStep, inCover } from './cover';
 import { tl } from '../i18n';
+import { REGROUP } from '../gen/morale';
 
 type State = 'patrol' | 'hunt' | 'return';
 export interface Robot extends CondFoe {
   /** (0.227) how far over on its side it is drawn (eased) */
   down?: number;
+  /** (0.228, stage W6) Fell back once to regroup at its Repair Drone (machines have no morale, but a protocol). */
+  regrouped?: boolean;
   /** Fixed city post; transmitted to prevent duplicate garrisons on another client. */
   cityPost?: string;
   kind: 'robot'; model: RobotKind; boss?: false;
@@ -394,6 +397,7 @@ function suppress(r: Robot, at: THREE.Vector3, dist: number): boolean {
 }
 /** (0.224) A Guardian behind cover: the height that must be hidden, and how far its body sinks. */
 const GUARD_COVER = { low: 0.95, duck: 0.6 };
+const squadSize = new WeakMap<Robot[], number>();
 function think(r: Robot, dt: number, time: number) {
   const s = ROBOTS[r.model], to = V(G.pos.x - r.p.x, G.pos.y + 1.1 - r.p.y, G.pos.z - r.p.z), dist = Math.hypot(to.x, to.z), safe = !targetingFoe() && foeRules.playerSafe();
   r.timer -= dt; r.atkT -= dt;
@@ -434,6 +438,21 @@ function think(r: Robot, dt: number, time: number) {
     if (Math.hypot(hx, hz) > 2.5) { walk(r, hx, hz, s.speed * 0.7, dt); face(r, hx, hz, dt, 2); }
     else { r.speed = 0; r.heading += dt * 1.6; }
     return;
+  }
+  // (0.228, stage W6) a squad that lost half falls back to its Repair Drone, once, to be mended before going in again
+  if (!squadSize.has(r.group)) squadSize.set(r.group, r.group.length);
+  if (!r.regrouped && r.model !== 'repair' && r.group.length <= (squadSize.get(r.group) ?? 0) * (1 - REGROUP.lost)) {
+    r.regrouped = true;
+    if (r.group.some((o) => o.model === 'repair' && W.robots.includes(o))) { r.mode = 'regroup'; r.modeT = REGROUP.time; r.charge = 0; r.swing2 = 0; }
+  }
+  if (r.mode === 'regroup') {
+    const rep = r.group.find((o) => o.model === 'repair' && W.robots.includes(o));
+    if (!rep || r.hp >= r.maxHp * REGROUP.hp) { r.mode = ''; r.modeT = 0; }
+    else {
+      const hx = rep.p.x - r.p.x, hz = rep.p.z - r.p.z;
+      if (Math.hypot(hx, hz) > REGROUP.at) { walk(r, hx, hz, s.speed, dt); face(r, hx, hz, dt); } else { r.speed = 0; face(r, to.x, to.z, dt); }
+      return;
+    }
   }
   // hunting
   const lvl = 1 + r.level * 0.12;

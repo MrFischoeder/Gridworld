@@ -2,7 +2,7 @@
 // Unsaved (like drones and creatures) except that a cleared camp stays empty for a while (char.camps).
 import { hurtPlayer } from './damage';
 import { play } from './sound';
-import { targetingFoe, actingFoe, combatFoes, factionOf, hitCombatFoe, type CombatFoe, stepRemote, withFoeTarget, proxied, otherPlayers, hurtOther, boltOut, spawnAuthority, nearestPlayer } from './remote';
+import { targetingFoe, actingFoe, combatFoes, factionOf, hitCombatFoe, type CombatFoe, stepRemote, withFoeTarget, proxied, otherPlayers, hurtOther, boltOut, spawnAuthority, nearestPlayer, remoteOf, spareOwner } from './remote';
 import { tickCond, heavyHit, bleed, type CondFoe } from './conditions';
 import { mindOf, sense, heard, share, spottedBy, aimHeight } from './stealth';
 import { STEALTH, LOSE } from '../gen/stealth';
@@ -31,6 +31,9 @@ import { throwGrenade } from './throwing';
 import { GRENADE } from '../gen/throwing';
 import { peekK } from './weapons';
 import { COVER } from '../gen/cover';
+import { MORALE, BROKEN, FATE, DRIVEN_XP, fateOf, shocked, effective, breaks, clamp01, type Fate } from '../gen/morale';
+import { askLead } from './datacarriers';
+import type { ItemKey } from '../data/items';
 
 export const BANDIT = 0xffb347, BOSS_COLOR = 0xff6a4a;
 /** How long a cleared camp stays empty (real time). */
@@ -59,6 +62,9 @@ export interface Bandit extends CondFoe {
   mode?: string; grenadeT?: number;
   /** Where a flanker is going, how long it keeps at it, and the wait before it flanks again. */
   flankAt?: THREE.Vector3; flankT?: number;
+  /** (0.228, stage W6) Morale (gen/morale.ts), knocked once by its own wound; broken: its fate and the time left in
+   *  it (a surrender's wait); `came` = it already came back once with help. The copies see `mode` 'give' / 'rout'. */
+  morale?: number; wounded?: boolean; fate?: Fate; fateT?: number; came?: boolean;
 }
 interface Bolt { m: THREE.Line; p: THREE.Vector3; v: THREE.Vector3; dmg: number; life: number; ghost?: boolean; source?: CombatFoe }
 const bolts: Bolt[] = [];
@@ -86,8 +92,9 @@ export function spawnBandit(role: BanditRole, at: THREE.Vector3, level: number, 
     kind: 'bandit', role, g, fig, mat, p: at.clone(), heading: Math.random() * 6.28, speed: 0, r: 0.55,
     hp, maxHp: hp, flash: 0, state: 'idle', timer: Math.random() * 3, fireT: 1 + Math.random(), burst: 0, strafe: Math.random() < 0.5 ? 1 : -1, hitT: 0,
     home: at.clone(), campId, group, level, fled: false, sight: 40, recoil: 0, blow: false,
+    morale: role === 'leader' ? MORALE.start.leader : MORALE.start.bandit,
   };
-  group.push(b); W.bandits.push(b);
+  group.push(b); W.bandits.push(b); groupSize.set(group, (groupSize.get(group) ?? 0) + 1);
   return b;
 }
 
@@ -248,6 +255,7 @@ function tryGrenade(b: Bandit, at: THREE.Vector3 | null | undefined, time: numbe
 function think(b: Bandit, dt: number, time: number) {
   const to = V(G.pos.x - b.p.x, G.pos.y + 1.1 - b.p.y, G.pos.z - b.p.z), dist = to.length(), safe = !targetingFoe() && foeRules.playerSafe();
   b.timer -= dt; b.fireT -= dt; b.hitT -= dt;
+  if (b.fate) { brokenTurn(b, dt, to, dist); return; } // (0.228, stage W6) broken: running, or hands up
   if (b.state !== 'return' && (safe || dist > 75)) { b.state = 'return'; }
   // what it makes of you: crouched, still, in the dark or the fog it takes longer, and from behind much longer
   const m = mindOf(b), fighting = b.state === 'fight' || b.state === 'flee';
@@ -260,7 +268,7 @@ function think(b: Bandit, dt: number, time: number) {
   if (b.grenadeT !== undefined) b.grenadeT -= dt;
   switch (b.state) {
     case 'idle':
-      b.speed = 0;
+      b.speed = 0; calmDown(b, dt);
       if (m.aware >= STEALTH.suspicious && m.last) { // "huh?": turn to look, and go and see if it does not go away
         face(b, m.last.x - b.p.x, m.last.z - b.p.z, dt * 0.6);
         if (m.aware >= 0.6) search(b, m.last, m.aware);
@@ -275,6 +283,7 @@ function think(b: Bandit, dt: number, time: number) {
     case 'search': { // careful steps to where it saw or heard you, then a look round; gives up after a while
       const l = m.last;
       if (!l || b.timer <= 0) { b.state = 'return'; break; }
+      if (moraleBreaks(b, dist)) return;
       if (b.grenadeT !== undefined) tryGrenade(b, l, time); // (0.226) one that fought you lobs a grenade where you went to ground
       const hx = l.x - b.p.x, hz = l.z - b.p.z;
       if (Math.hypot(hx, hz) > 2) { walk(b, hx, hz, 2.8, dt); face(b, hx, hz, dt); }
@@ -286,6 +295,7 @@ function think(b: Bandit, dt: number, time: number) {
       if (b.timer <= 0) b.state = 'fight';
       break;
     case 'fight': {
+      if (moraleBreaks(b, dist)) return; // (0.228) too many down round him: he breaks
       if (seen) share(b.group, b); // they call out where you are
       else if (m.lost > (inCover(b) ? 7 : 1.5)) { // lost you (behind cover it waits longer: you are hidden by its own rock): to where you were last seen, and search there
         b.state = 'search'; b.timer = LOSE.bandit;
@@ -351,7 +361,7 @@ function animate(b: Bandit, dt: number) {
   // weapons up while fighting, lowered otherwise; the sword follows its stroke, guns kick when they fire
   const r = f.rig; r.aim += ((b.state === 'fight' ? 1 : 0) - r.aim) * Math.min(1, dt * 5);
   b.recoil = Math.max(0, b.recoil - dt * 8);
-  poseRig(r, { swing: sw, aim: r.aim, recoil: b.recoil, strike: b.hitT > 0 ? 1 - b.hitT / 0.9 : -1 });
+  poseRig(r, { swing: sw, aim: b.mode === 'rout' ? 0 : r.aim, recoil: b.recoil, strike: b.hitT > 0 ? 1 - b.hitT / 0.9 : -1, hands: b.mode === 'give' }); // (0.228) hands up when he gives up
   // (0.227, stage W5) knocked flat on his back, or rocked back on his heels
   b.down = (b.down ?? 0) + ((b.cond === 'down' ? 1 : 0) - (b.down ?? 0)) * Math.min(1, dt * 9);
   b.g.rotation.x = -1.4 * b.down + (b.cond === 'stagger' ? -0.25 + Math.sin(performance.now() / 40) * 0.05 : 0);
@@ -388,6 +398,7 @@ export function updateBandits(dt: number, time: number) {
   }
   updateBolts(dt);
   updateCorpses(dt);
+  updateComebacks(dt);
 }
 
 // ---------- dying ----------
@@ -453,6 +464,7 @@ function updateCorpses(dt: number) {
 
 // ---------- damage ----------
 export function hurtBandit(b: Bandit, dmg: number, credit = true) {
+  if (b.mode === 'give') credit = false; // (0.228) one who had given himself up: no bounty for him
   // a raised shield takes half of what comes from the front
   if (b.fig.rig.shield && Math.cos(Math.atan2(G.pos.x - b.p.x, G.pos.z - b.p.z) - b.heading) > 0.5) dmg *= 0.5;
   b.hp -= dmg; b.flash = 0.12; G.hitFlash = 0.15;
@@ -461,7 +473,8 @@ export function hurtBandit(b: Bandit, dmg: number, credit = true) {
     if (o !== b && o.p.distanceTo(b.p) < 25 && o.state !== 'fight' && o.state !== 'flee') search(o, b.p, 0.75);
   }
   if (b.hp > 0) {
-    if (!b.fled && b.role !== 'leader' && b.hp < b.maxHp * 0.3 && Math.random() < 0.5) { b.fled = true; b.state = 'flee'; b.timer = 3 + Math.random() * 2; }
+    if (!b.wounded && b.hp < b.maxHp * 0.3) { b.wounded = true; b.morale = shocked(b.morale ?? MORALE.start.bandit, 'wound'); } // (0.228) the wound shakes him
+    if (b.fate === 'give') { b.fate = 'run'; b.mode = 'rout'; } // shot at with his hands up: he runs
     return;
   }
   const at = b.p.clone(), lead = b.role === 'leader';
@@ -476,13 +489,114 @@ export function hurtBandit(b: Bandit, dmg: number, credit = true) {
   if (Math.random() < (lead ? 1 : 0.35)) { const [k, n] = rollAmmo(lead ? 1.5 : 0.5); dropPickup(at.clone().add(V(-0.3, 0, -0.4)), k, n); } // their rounds
   if (Math.random() < (lead ? 0.3 : 0.04)) dropPickup(at.clone().add(V(0, 0, -0.7)), LOOT_GUNS[(Math.random() * LOOT_GUNS.length) | 0]);
   if (lead && credit) gainXp(40);
-  const camp = b.campId;
+  const camp = b.campId, group = b.group;
+  for (const o of group) if (o !== b && !o.fate && o.p.distanceTo(b.p) < MORALE.near) o.morale = shocked(o.morale ?? MORALE.start.bandit, lead ? 'leader' : 'ally'); // (0.228) a comrade falls
   fallBandit(b, G.pos);
   if (credit) onKill('bandit');
-  if (camp !== undefined && !campAlive(camp)) {
-    G.char.camps[camp] = Date.now(); saveChar();
-    showToast(tl('Camp cleared')); onCampCleared(camp);
+  const size = groupSize.get(group) ?? 0;
+  if (size >= 3 && !halfDown.has(group) && group.length <= size / 2) { halfDown.add(group); for (const o of group) o.morale = shocked(o.morale ?? MORALE.start.bandit, 'half'); }
+  campCheck(camp);
+}
+/** A camp with nobody left to fight for it (dead, or broken and gone) is cleared (0.228: routing it counts). */
+function campCheck(camp: number | undefined) {
+  if (camp === undefined || campAlive(camp)) return;
+  G.char.camps[camp] = Date.now(); saveChar();
+  showToast(tl('Camp cleared')); onCampCleared(camp);
+}
+
+// ---------- morale (0.228, PLAN_WALKI.md stage W6) ----------
+const groupSize = new WeakMap<Bandit[], number>(), halfDown = new WeakSet<Bandit[]>(), rallied = new WeakSet<Bandit[]>();
+/** The group's boss, alive, not broken and within reach of b. */
+const bossNear = (b: Bandit) => b.group.find((o) => o !== b && o.role === 'leader' && !o.fate && W.bandits.includes(o) && o.p.distanceTo(b.p) < MORALE.near);
+/** Nothing doing: the nerve comes back. */
+function calmDown(b: Bandit, dt: number) {
+  const top = b.role === 'leader' ? MORALE.start.leader : MORALE.start.bandit;
+  if ((b.morale ?? top) < top) b.morale = Math.min(top, (b.morale ?? top) + MORALE.regain * dt);
+}
+/** Whether he breaks now (and what he does then). */
+function moraleBreaks(b: Bandit, dist: number): boolean {
+  const weak = !proxied() && !targetingFoe() && G.hp < G.S.maxHp * MORALE.winning.hp;
+  if (!breaks(effective(b.morale ?? MORALE.start.bandit, { leader: !!bossNear(b), weakTarget: weak }))) return false;
+  const boss = bossNear(b);
+  if (boss && !rallied.has(b.group)) { // the boss shouts them back into line, once a fight
+    rallied.add(b.group);
+    for (const o of b.group) if (o.p.distanceTo(boss.p) < MORALE.near) { o.morale = clamp01((o.morale ?? 0) + MORALE.rally); if (o.fate && o.fate !== 'give') { o.fate = undefined; o.mode = ''; o.state = 'fight'; } }
+    if (!proxied() && boss.p.distanceTo(G.pos) < 60) logLine(tl('"Hold the line, you dogs!" the bandit boss roars.'));
+    return false;
   }
+  breakBandit(b, fateOf(Math.random(), dist < FATE.cornered), dist);
+  return true;
+}
+/** He breaks: out of the fight and out of his camp's count (a routed camp is a cleared camp). */
+function breakBandit(b: Bandit, fate: Fate, dist: number) {
+  if (fate === 'back' && b.came) fate = 'run'; // he fetched help once already
+  b.fate = fate; b.mode = fate === 'give' ? 'give' : 'rout'; b.state = 'flee'; b.cover = 0; dropCover(b);
+  b.fateT = fate === 'give' ? BROKEN.wait : 0; b.burst = 0; b.blow = false;
+  const camp = b.campId; b.campId = undefined;
+  if (!proxied() && dist < 70) logLine(fate === 'give' ? tl('A bandit throws down his arms and raises his hands!') : fate === 'back' ? tl('"I\'ll be back with the others!" A bandit runs.') : tl('A bandit breaks and runs!'));
+  if (!proxied()) gainXp(Math.round((b.role === 'leader' ? 40 : 10) * DRIVEN_XP)); // driving him off is worth half a kill
+  campCheck(camp);
+}
+const away = V(0, 0, 0);
+/** A broken bandit's turn: runners make off (gone once far from everyone; one fetching help comes back with more),
+ *  one who gave up stands with his hands up and runs if nobody comes to him. */
+function brokenTurn(b: Bandit, dt: number, to: THREE.Vector3, dist: number) {
+  if (b.fate === 'give') {
+    b.speed = 0; face(b, to.x, to.z, dt);
+    if (dist > 12 && (b.fateT = (b.fateT ?? BROKEN.wait) - dt) <= 0) { b.fate = 'run'; b.mode = 'rout'; }
+    return;
+  }
+  away.set(-to.x, 0, -to.z);
+  walk(b, away.x, away.z, 5.8, dt); face(b, away.x, away.z, dt);
+  if (nearestPlayer(b.p.x, b.p.z) < BROKEN.gone) return;
+  if (b.fate === 'back') comebacks.push({ x: b.p.x, z: b.p.z, y: b.p.y, t: BROKEN.help[0] + Math.random() * (BROKEN.help[1] - BROKEN.help[0]), level: b.level, role: b.role, n: BROKEN.extra[0] + Math.floor(Math.random() * (BROKEN.extra[1] - BROKEN.extra[0] + 1)) });
+  removeBandit(b);
+}
+/** Runners who went for help: after a while they come back with more (only if a player is still about). */
+interface Comeback { x: number; z: number; y: number; t: number; level: number; role: BanditRole; n: number }
+const comebacks: Comeback[] = [];
+function updateComebacks(dt: number) {
+  for (let i = comebacks.length - 1; i >= 0; i--) {
+    const c = comebacks[i];
+    if ((c.t -= dt) > 0) continue;
+    comebacks.splice(i, 1);
+    const d = nearestPlayer(c.x, c.z);
+    if (!env || d > 320 || !spawnAuthority()) continue; // nobody to come back for
+    // they come from the side they ran to, at most 80 m off
+    const k = Math.min(1, 80 / Math.max(1, d)), x = G.pos.x + (c.x - G.pos.x) * k, z = G.pos.z + (c.z - G.pos.z) * k;
+    if (env.forbidden(x, z)) continue;
+    const group: Bandit[] = [], lv = c.level;
+    for (let j = 0; j <= c.n; j++) {
+      const px = x + (j % 3) * 1.8, pz = z + Math.floor(j / 3) * 1.8;
+      const nb = spawnBandit(j === 0 ? c.role : Math.random() < 0.3 ? 'bruiser' : 'gunner', V(px, env.ground(px, pz) + 0.9, pz), lv, group);
+      nb.came = true; nb.morale = BROKEN.helpMorale; nb.sight = 70; alert(nb, G.pos.clone());
+    }
+    logLine(tl('The bandit who ran is back, and he brought friends!'));
+  }
+}
+/** E by a bandit who gave himself up: he hands over his gun and what he carries, maybe talks, and goes. On another
+ *  player's copy the word goes to the game that runs him (`spareOwner`). */
+export function spareBandit(b: Bandit, local = true) {
+  if (b.mode !== 'give') return;
+  if (remoteOf(b)) { spareOwner(b); b.mode = 'rout'; }
+  else {
+    const at = b.p.clone(); at.y -= 0.6;
+    const gun: ItemKey = b.role === 'bruiser' ? 'machete' : b.fig.rig.kit === 'pistol' ? 'pistol' : 'rifle';
+    dropPickup(at.clone().add(V(0.4, 0, 0.2)), gun);
+    if (Math.random() < 0.8) { const [k, n] = rollAmmo(0.7); dropPickup(at.clone().add(V(-0.3, 0, 0.3)), k, n); }
+    if (Math.random() < 0.35) dropPickup(at.clone().add(V(0, 0, -0.4)), 'medkit');
+    if (Math.random() < 0.4) dropPickup(at.clone().add(V(0.3, 0, -0.3)), 'scrap');
+    b.fate = 'run'; b.mode = 'rout'; b.fig.rig.armR.hand.visible = false; // unarmed now
+  }
+  if (!local) return;
+  logLine(tl('He drops his gun and what he carries at your feet.'));
+  if (Math.random() < 0.3) logLine(tl('"Don\'t shoot! I know something..." ') + askLead(b.p.x, b.p.z));
+}
+/** The nearest bandit with his hands up within reach (for the prompt and E). */
+export function nearSurrendered(): Bandit | null {
+  let best: Bandit | null = null, bd = BROKEN.reach;
+  for (const b of W.bandits) if (b.mode === 'give') { const d = Math.hypot(b.p.x - G.pos.x, b.p.z - G.pos.z); if (d < bd) { bd = d; best = b; } }
+  return best;
 }
 export function removeBandit(b: Bandit) {
   scene.remove(b.g);
@@ -492,6 +606,7 @@ export function removeBandit(b: Bandit) {
 }
 export function clearBandits() {
   for (const b of [...W.bandits]) removeBandit(b);
+  comebacks.length = 0;
   for (const c of corpses) { for (const d of c.drop) scene.remove(d.o); removeBandit(c.b); }
   corpses.length = 0;
   for (const o of bolts) { scene.remove(o.m); o.m.geometry.dispose(); }

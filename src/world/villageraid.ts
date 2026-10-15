@@ -127,7 +127,7 @@ export function updateVillageRaids(dt: number) {
 }
 function liveTick(dt: number) {
   const L = live!;
-  const alive = L.bandits.filter((b) => b.hp > 0 && b.g.parent);
+  const alive = L.bandits.filter((b) => b.hp > 0 && b.g.parent && !b.fate);
   // bandits at a gate wear down the defences; at the plant they wreck it
   const tier = Math.min(VRAID.drain.length - 1, G.char.towns[L.vid]?.wall ?? 0);
   for (const b of alive) for (const t of L.targets) {
@@ -230,7 +230,7 @@ export function raidLine(): string {
     }
     return '';
   }
-  const alive = live.bandits.filter((b) => b.hp > 0 && b.g.parent).length;
+  const alive = live.bandits.filter((b) => b.hp > 0 && b.g.parent && !b.fate).length;
   return TL`▸ Defend ${live.name}: wave ${live.wave}/${VRAID.waves}, ${alive} bandit${alive === 1 ? '' : 's'} left · defences ${Math.max(0, Math.round(live.defence))}%`;
 }
 /** Where the raiders are (for the maps). */

@@ -118,3 +118,5 @@ PORT=8517 SERVER_NAME="Mój serwer" npm run serve
 **Wersja 0.213 (protokół bez zmian):** dźwięki innych graczy. Gra wysyła przez serwer krótkie wiadomości `snd` (strzał, zamach, przeładowanie, działko, skok, plusk, rąbanie, drzwi), żeby inni gracze w tym samym miejscu je słyszeli. Starszy serwer takich wiadomości nie przepuszcza: gra działa, tylko nie słychać cudzych strzałów. Zaktualizuj serwer skryptem `install.sh`.
 
 **Wersja 0.225 (protokół bez zmian):** rzuty. Gra wysyła przez serwer krótkie wiadomości `throw` (rzucony kamień, flara albo mięso), żeby inni gracze w tym samym miejscu widzieli lot, a ich przeciwnicy reagowali na hałas i przynętę. Starszy serwer takich wiadomości nie przepuszcza: gra działa, tylko cudze rzuty są niewidoczne. Zaktualizuj serwer skryptem `install.sh`.
+
+**Wersja 0.228 (protokół bez zmian):** poddający się bandyci. Gracz, który przeszukuje bandytę z rękami w górze prowadzonego przez grę innego gracza, wysyła przez serwer krótką wiadomość `spare`. Starszy serwer jej nie przepuszcza: gra działa, tylko taki bandyta po chwili po prostu ucieka. Zaktualizuj serwer skryptem `install.sh`.

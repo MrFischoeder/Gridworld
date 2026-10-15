@@ -14,10 +14,10 @@ import { nearX } from '../gen/regions';
 import { V } from './render';
 import { myLoc } from './peers';
 import { remoteTurretHit } from './mountedturrets';
-import { setTurretHook, setRemoteHooks, markRemote, unmarkRemote, remoteOf, type Target } from './remote';
+import { setSpareHook, setTurretHook, setRemoteHooks, markRemote, unmarkRemote, remoteOf, type Target } from './remote';
 import { spawnRemoteCreature, fallCreature, removeCreature, type Creature } from './creatures';
 import { spawnRemoteRobot, wreckRobot, removeRobot, type Robot } from './robots';
-import { spawnBandit, fallBandit, removeBandit, ghostBolt, type Bandit } from './bandits';
+import { spawnBandit, fallBandit, removeBandit, ghostBolt, spareBandit, type Bandit } from './bandits';
 import { damageFoe, foeRules, makeDrone, type Drone, type Boss } from './enemies';
 import { raiders, spawnRemoteRaider, remoteRaiderKilled, dropRaider, hurtRaider, barricades, barricadeAlive, placeBarricadeCopy, removeBarricade, hurtBarrier, type Raider, type Barricade } from './raiders';
 import { quietLoot } from './loot';
@@ -269,6 +269,9 @@ onRelay((m: Relay) => {
     if (foeRules.playerSafe()) return;
     if (dmg) hurtPlayer(dmg, !!m.a);
     for (const k of fx) takeFx(k); // (0.227) thrown down, staggered, bleeding
+  } else if (m.t === 'spare') { // (0.228, stage W6) they searched your bandit who gave himself up: he drops his things and goes
+    const f = mineOf(+(m.nid as number));
+    if (f && typeOf(f) === TYPE.bandit) spareBandit(f as Bandit, false);
   } else if (m.t === 'thit') { // a gun of this place was hit by another player
     if (m.loc === myLoc()) remoteTurretHit(+(m.id as number), Math.max(0, Math.min(1e4, +(m.dmg as number) || 0)));
   } else if (m.t === 'bolt') {
@@ -278,6 +281,7 @@ onRelay((m: Relay) => {
   }
 });
 
+setSpareHook((o) => { const r = remoteOf(o); if (r) relay({ t: 'spare', nid: r.nid }, r.owner); });
 setTurretHook((id, dmg) => { if (online() && company()) relay({ t: 'thit', id, dmg, loc: myLoc() }); });
 setRemoteHooks({
   others,
