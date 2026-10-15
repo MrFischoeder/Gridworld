@@ -75,7 +75,8 @@ export const RAW_SICK = { chance: 0.4, hp: 8 };
 export const FORAGE = {
   shroom: { item: 'cap', min: 2, max: 4, regrow: 12 * 60 },
   pod: { item: 'pod', min: 0, max: 0, regrow: 24 * 60 },
-  crys: { item: 'ncrys', min: 1, max: 2, regrow: 48 * 60 },
+  /** (0.222) Underground the old nutrient crystals gave way to glowing cave mushrooms: their caps are Nutrient Caps (the key prefix stays 'crys' so old picks hold). */
+  crys: { item: 'cap', min: 2, max: 4, regrow: 36 * 60 },
 } as const;
 export type ForageKind = keyof typeof FORAGE;
 /** A campfire lit from a Fire Kit burns this long (real seconds). */

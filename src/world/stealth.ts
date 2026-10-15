@@ -13,8 +13,6 @@ import { seen as sky } from './weather';
 import { rayWorld } from './player';
 import { proxied, targetingFoe, targetPeer } from './remote';
 import { net } from '../net/client';
-import { showToast } from '../ui/hud';
-import { tl } from '../i18n';
 
 export interface Mind {
   /** 0 nothing there .. 1 spotted. */
@@ -60,8 +58,6 @@ function targetLoud(): boolean {
 }
 const targetCrouched = () => (targetingFoe() ? false : proxied() ? !!net.peers.get(targetPeer())?.st?.cr : G.crouch);
 
-// what the foes running in your game make of you this frame (for the HUD)
-let peak = 0, spotted = false, peakNext = 0, spottedNext = false;
 
 /**
  * One foe looks for its target (G.pos during its turn). `eye` = where it looks from, `heading` = where it faces
@@ -82,7 +78,6 @@ export function sense(f: object, eye: THREE.Vector3, heading: number, sight: num
   m.aware = awareness(m.aware, dt, sees, dist, range, hunting, close);
   m.sees = sees;
   if (sees) { m.last = (m.last ?? new THREE.Vector3()).set(tx, G.pos.y, tz); m.lost = 0; } else m.lost += dt;
-  if (!proxied() && !targetingFoe()) { peakNext = Math.max(peakNext, Math.min(1, m.aware)); if (sees && hunting) spottedNext = true; }
   return sees;
 }
 /** The foe heard something at `at` (a shot, a fight): it now knows where to look. */
@@ -96,30 +91,17 @@ export function share(group: readonly object[], from: object) {
   if (!src.last) return;
   for (const g of group) if (g !== from) { const m = mindOf(g); m.last = (m.last ?? new THREE.Vector3()).copy(src.last); m.lost = Math.min(m.lost, src.lost); m.aware = Math.max(m.aware, src.aware); }
 }
-let toldAt = -1e9;
-/** A foe has just made you out (in your own game, against you): say so, now and then. */
-export function spottedBy(_f: object) {
-  const now = performance.now();
-  if (now - toldAt > 8000) { toldAt = now; showToast(tl('Spotted!')); }
-}
+/** A foe has just made you out (in your own game, against you). (0.222, the owner's call) Nothing is shown: no toast, no meter. */
+export function spottedBy(_f: object) { /* nothing shown */ }
 /** Whether a foe has not made you out: a blow or shot on it then is a sneak attack. */
 export const unaware = (f: object, engaged: boolean) => !engaged && mindOf(f).aware < STEALTH.spotted;
 export const sneakBonus = (melee: boolean) => (melee ? SNEAK.melee : SNEAK.gun);
 
-// ---------- the HUD ----------
-const box = document.getElementById('stealth');
-let shown = '';
-/** Every frame: your visibility, the crouch lock, and the meter of how much the foes around have made out. */
+// ---------- every frame ----------
+/** Every frame: your visibility and the crouch lock. (0.222, the owner's call) No visibility or awareness meter is
+ *  shown any more; the foes still sense you the same way. */
 export function updateStealth(dt: number, free: boolean) {
   shotT += dt;
   if (!free && G.crouch) G.crouch = false; // in a vehicle, a boat, the water or on a ladder you stand
   vis = work();
-  peak = peakNext; spotted = spottedNext; peakNext = 0; spottedNext = false;
-  if (!box) return;
-  const state = spotted ? 'spotted' : peak >= STEALTH.suspicious ? 'suspicious' : peak > 0.02 ? 'noticed' : 'hidden';
-  const show = G.playing && (G.crouch || state !== 'hidden');
-  const text = !show ? '' : `${G.crouch ? tl('CROUCHED · ') : ''}seen ${Math.round(vis * 100)}% · ${state === 'spotted' ? tl('! SPOTTED') : state === 'suspicious' ? tl('? SUSPICIOUS') : state === 'noticed' ? tl('… something stirs') : tl('unseen')}`;
-  if (text !== shown) { shown = text; box.textContent = text; box.className = state; box.style.display = text ? 'block' : 'none'; }
-  const bar = Math.round(Math.min(1, peak) * 100);
-  box.style.setProperty('--aware', bar + '%');
 }

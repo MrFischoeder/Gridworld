@@ -3,6 +3,13 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.222.0', date: '2026-10-15', title: 'Crystal forests', notes: [
+    'Crystal forests now grow here and there across the planet: groves of giant six-sided crystals, the titans at their heart taller than a house, fans of smaller columns leaning out from each root and shards underfoot. Each has its own colour and name (shown as you walk in). By night their edges glow and the biggest light the ground round them. For now they are only scenery; you cannot walk through them.',
+    'Below ground the nutrient crystals have given way to clumps of pale cave mushrooms: pick their small glowing caps (Nutrient Caps) as before. Nutrient Crystals you already carry are still good to eat.',
+    'The stones round the ancient ruins are solid at last: fallen frames, broken pylon tops, the fallen ring, obelisks and their broken tops, the great block by the temple and the rubble stop you and the creatures, bandits and robots alike. Low pieces are stepped onto, and you can climb on top of the bigger ones.',
+    'The visibility and awareness meter (and the "Spotted!" message) is gone. Sneaking works as before.',
+    'Multiplayer: the forests, the mushrooms and the ruin stones all come from the world seed, the same for everyone. The server does not need an update.',
+  ] },
   { v: '0.221.0', date: '2026-10-15', title: 'Defence takes power and people', notes: [
     'In a settlement (new worlds) every wall turret now draws 4 kW from the village\'s power and wants a guard, one man each, taken from the people the farms, yards, works, stations and services leave free. A turret without its guard stands silent; with too little power (under a quarter of what the works need over the day) none of them fires. The elder\'s "How is the village doing?" says which and why.',
     'An outpost\'s turrets draw 3 kW each from its grid and take a settler each as a guard, after the fields\' crews and before the dig. Off the grid or short of power none fires; short of settlers only as many as have a guard. A raid settled without you counts only the turrets that work, and the outpost window says how it stands.',

@@ -1,6 +1,7 @@
 // Edible plants (RF-01 alien flora sheet): F-01 Nutrient Mushroom Cluster and F-02 Alien Fruit Pod Tree on the
-// surface (placed by gen/flora.ts), F-03 Nutrient Crystals in the dungeons (gen/dungeon.ts crystals). The plant
-// itself is part of the chunk's PropBatch; the part you pick (small caps, pods, crystals, drawn lime) is its own
+// surface (placed by gen/flora.ts), and (0.222, in place of the old nutrient crystals) glowing cave mushrooms in the
+// dungeons (the spots of gen/dungeon.ts crystals). The plant
+// itself is part of the chunk's PropBatch; the part you pick (small caps, pods, drawn lime) is its own
 // object that hides once picked and comes back when it has grown again (char.harvest, data/survival FORAGE).
 import * as THREE from 'three';
 import { scene, GRID } from './render';
@@ -19,7 +20,7 @@ import { saveChar, dungeonKey, packVol } from '../character';
 import { logLine } from '../ui/hud';
 import { tl } from '../i18n';
 
-const FOOD = FOOD_COLOR, STEM = GRID, CAP = 0x3dff6e;
+const FOOD = FOOD_COLOR, STEM = GRID, CAP = 0x3dff6e, CAVE_CAP = 0x7ad8c8;
 
 export interface PlantNode {
   key: string; kind: ForageKind; x: number; y: number; z: number;
@@ -127,9 +128,10 @@ export function drawPlants(pb: PropBatch, plants: Plant[], lod: number, parent: 
 }
 export function dropPlants(list: PlantNode[]) { for (const n of list) nodes.delete(n); }
 
-// ---------- F-03 Nutrient Crystals (dungeons) ----------
+// ---------- cave mushrooms (dungeons; the old F-03 Nutrient Crystals' spots) ----------
 let crystalGroup: THREE.Group | null = null, crystalNodes: PlantNode[] = [];
-/** A cluster of long, pointed six-sided crystals on a rocky base (in a room corner). */
+/** (0.222) A clump of pale cave mushrooms on a rocky base (in a room corner): two or three taller ones with bluish caps,
+ *  and round their feet the small glowing lime caps you pick. Keys stay 'crys:<dungeonKey>:<i>' (old picks hold). */
 export function placeCrystals(spots: { x: number; z: number; y?: number }[]) {
   clearCrystals();
   const gr = G.grid, pb = new PropBatch(), g = new THREE.Group();
@@ -137,20 +139,15 @@ export function placeCrystals(spots: { x: number; z: number; y?: number }[]) {
     const f = c.y !== undefined ? [Math.floor(c.x), c.y, Math.floor(c.z)] : floorNear(G.space, c.x, c.z, 0, gr.oy + 1, gr.oy + gr.ny - 1); if (!f) return;
     const x = f[0] + 0.5, y = f[1], z = f[2] + 0.5, R = rng((x * 73856093) ^ (z * 19349663) ^ i), fb = new PropBatch();
     for (let k = 0; k < 4; k++) { const a = R() * 6.283; pb.rock(x + Math.cos(a) * 0.35, y - 0.05, z + Math.sin(a) * 0.35, 0.3, 0.25, 5, a, GRID); }
-    const n = 4 + ((R() * 4) | 0);
+    const big = 2 + ((R() * 2) | 0);
+    for (let k = 0; k < big; k++) {
+      const a = R() * 6.283, d = 0.15 + R() * 0.3, h = 0.7 + R() * 0.7;
+      mushroom(pb, [x + Math.cos(a) * d, y, z + Math.sin(a) * d], h, 0.28 + h * 0.22, 0.05, h * 0.15 * (R() - 0.3), a, 8, STEM, CAVE_CAP);
+    }
+    const n = 5 + ((R() * 4) | 0);
     for (let k = 0; k < n; k++) {
-      const a = R() * 6.283, tilt = k ? 0.25 + R() * 0.45 : R() * 0.15, len = k ? 0.5 + R() * 0.7 : 1.1 + R() * 0.5, w = 0.07 + len * 0.07;
-      const d: P = [Math.cos(a) * Math.sin(tilt), Math.cos(tilt), Math.sin(a) * Math.sin(tilt)], b: P = [x + Math.cos(a) * 0.12, y + 0.05, z + Math.sin(a) * 0.12];
-      const sides = 6, u: P = Math.abs(d[1]) > 0.9 ? [1, 0, 0] : [0, 1, 0];
-      const ux = [d[1] * u[2] - d[2] * u[1], d[2] * u[0] - d[0] * u[2], d[0] * u[1] - d[1] * u[0]], ul = Math.hypot(...ux);
-      const e1: P = [ux[0] / ul, ux[1] / ul, ux[2] / ul], e2: P = [d[1] * e1[2] - d[2] * e1[1], d[2] * e1[0] - d[0] * e1[2], d[0] * e1[1] - d[1] * e1[0]];
-      const ringAt = (t: number): P[] => Array.from({ length: sides }, (_, s) => { const q = s / sides * 6.283; return [b[0] + d[0] * t + (e1[0] * Math.cos(q) + e2[0] * Math.sin(q)) * w, b[1] + d[1] * t + (e1[1] * Math.cos(q) + e2[1] * Math.sin(q)) * w, b[2] + d[2] * t + (e1[2] * Math.cos(q) + e2[2] * Math.sin(q)) * w]; });
-      const lo = ringAt(0), hi = ringAt(len * 0.78), tip: P = [b[0] + d[0] * len, b[1] + d[1] * len, b[2] + d[2] * len];
-      for (let s = 0; s < sides; s++) {
-        const s1 = (s + 1) % sides;
-        fb.seg(FOOD, lo[s], hi[s]); fb.seg(FOOD, hi[s], hi[s1]); fb.seg(FOOD, hi[s], tip);
-        fb.face(lo[s], lo[s1], hi[s1], hi[s]); fb.face(hi[s], hi[s1], tip);
-      }
+      const a = R() * 6.283, d = 0.25 + R() * 0.55, h = 0.18 + R() * 0.25;
+      mushroom(fb, [x + Math.cos(a) * d, y, z + Math.sin(a) * d], h, h * 0.65, 0.03, h * 0.2 * (R() - 0.5), a, 6, FOOD, FOOD);
     }
     const key = `crys:${dungeonKey()}:${i}`, fruit = fb.build();
     fruit.visible = ripe(key); g.add(fruit);
@@ -171,7 +168,7 @@ export function updateFlora(dt: number) {
   tick -= dt; if (tick > 0) return; tick = 1;
   for (const n of nodes) n.fruit.visible = ripe(n.key);
 }
-const REACH: Record<ForageKind, number> = { shroom: 2.6, pod: 2.8, crys: 1.8 };
+const REACH: Record<ForageKind, number> = { shroom: 2.6, pod: 2.8, crys: 2.0 };
 /** A ripe plant within reach. */
 export function nearPlant(): PlantNode | null {
   const p = G.pos;
@@ -183,7 +180,7 @@ export function nearPlant(): PlantNode | null {
   }
   return best;
 }
-export const plantPrompt = (n: PlantNode) => (n.kind === 'shroom' ? tl('E — pick Nutrient Caps') : n.kind === 'pod' ? tl('E — pick the Fruit Pods') : tl('E — break off Nutrient Crystals'));
+export const plantPrompt = (n: PlantNode) => (n.kind === 'shroom' ? tl('E — pick Nutrient Caps') : n.kind === 'pod' ? tl('E — pick the Fruit Pods') : tl('E — pick the cave mushrooms'));
 
 export function harvest(n: PlantNode) {
   const f = FORAGE[n.kind], k = f.item;

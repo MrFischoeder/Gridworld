@@ -64,7 +64,7 @@ Spis: 1. Surowce · 2. Przetwarzanie · 3. Budowy · 4. Indeks: gdzie użyć ka�
 | Ravager Hide | stworzenie: Lurker (upolowane) |
 | Ravager Fang | stworzenie: Lurker (upolowane) |
 | Raw Fish | stworzenie: Silverfin (upolowane) |
-| Nutrient Cap, Fruit Pod, Nutrient Crystal | grzyby w lesie, drzewa z owocami, kryształy w podziemiach (jedzenie) |
+| Nutrient Cap, Fruit Pod, Nutrient Crystal | grzyby w lesie, drzewa z owocami, grzyby jaskiniowe w podziemiach (Nutrient Caps; stare Nutrient Crystals nadal jadalne) |
 
 ### 1.2 Towary, które wioski wydobywają i wytwarzają same
 

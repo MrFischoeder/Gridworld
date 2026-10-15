@@ -445,12 +445,6 @@ body.cinematic > *:not(#view):not(#cinematic){visibility:hidden}
 #menu.mp > p,#menu.mp #keys,#menu.mp > label:not(#nameRow),#menu.mp #cwRow{display:none !important}
 #cwPick{font:inherit;font-size:20px;background:#000;color:var(--g);border:1px solid var(--g2);padding:4px 8px;max-width:14em}
 #menu #replayCinematic{background:transparent;color:var(--g);border:1px solid var(--g)}
-/* sneaking (world/stealth.ts): your visibility and how much the foes round you have made out */
-#stealth{display:none;position:fixed;left:50%;top:64%;transform:translateX(-50%);padding:3px 10px 6px;font-size:17px;color:#9dffb4;
-  background:linear-gradient(90deg,rgba(255,179,71,.55) var(--aware,0%),rgba(0,0,0,.35) var(--aware,0%)) bottom/100% 3px no-repeat,rgba(0,12,4,.45);
-  border:1px solid rgba(47,224,96,.35);pointer-events:none;white-space:nowrap;letter-spacing:.04em}
-#stealth.suspicious{color:#ffd060;border-color:rgba(255,208,96,.6)}
-#stealth.spotted{color:#ff6a4a;border-color:rgba(255,106,74,.7)}
 /* accounts on a dedicated server (ui/mp.ts) */
 #mpAcct{margin:6px 0;padding:6px 8px;border:1px solid rgba(61,255,110,.3)}
 #mpAcct>div{display:flex;gap:8px;align-items:center;flex-wrap:wrap}

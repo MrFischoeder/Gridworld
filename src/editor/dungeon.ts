@@ -18,7 +18,7 @@ export const PIECE_NAME: Record<PieceKind, string> = {
   shipcorr: tl('Ship corridor'), station: tl('Station hall'), tunnel: tl('Metro tunnel'), train: tl('Wrecked train'), rubble: tl('Rubble fall'), niche: tl('Niche'),
 };
 export const MARK_NAME: Record<MarkKind, string> = {
-  spawn: tl('Start'), exit: tl('Exit stairs'), chest: tl('Chest'), crystal: tl('Crystals'), boss: tl('Boss'), guard: tl('Robot guard'), door: tl('Door'),
+  spawn: tl('Start'), exit: tl('Exit stairs'), chest: tl('Chest'), crystal: tl('Cave mushrooms'), boss: tl('Boss'), guard: tl('Robot guard'), door: tl('Door'),
 };
 export const STYLE_NAME: Record<DStyle, string> = { temple: tl('Ancient ruin'), ship: tl('Crashed ship'), metro: tl('Metro') };
 const ROOM_H: Record<DStyle, number> = { temple: 5, ship: 4, metro: 4 };

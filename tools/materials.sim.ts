@@ -99,7 +99,7 @@ it('writes SUROWCE.md', () => {
   P(`| ${N('pcore')} | rzadko: drony naprawcze, wartownicy, konstrukty; skrzynie we wrakach; szafki skażonych obiektów w toksycznej mgle (często, potrzebna maska gazowa) |`);
   P(`| ${N('filter')} | kowal (zamówienie, plany Filter Masks), czasem w szafkach skażonych obiektów |`);
   for (const [cr, drops] of Object.entries(DROPS)) for (const [k] of drops) P(`| ${N(k)} | stworzenie: ${cr[0].toUpperCase() + cr.slice(1)} (upolowane) |`);
-  P(`| ${N('cap')}, ${N('pod')}, ${N('ncrys')} | grzyby w lesie, drzewa z owocami, kryształy w podziemiach (jedzenie) |`);
+  P(`| ${N('cap')}, ${N('pod')}, ${N('ncrys')} | grzyby w lesie, drzewa z owocami, grzyby jaskiniowe w podziemiach (Nutrient Caps; stare Nutrient Crystals nadal jadalne) |`);
   P('');
   P('### 1.2 Towary, które wioski wydobywają i wytwarzają same');
   P('');

@@ -14,12 +14,44 @@ type P = number[];
  * The temple's shapes and, in `blocks`, the fallen pieces lying about that have no collision voxels (rubble, snapped
  * pylon tops, the broken block) as world circles [x, z, r]: vehicles bump into them (world/overworld.ts).
  */
-export function drawTemple(t: TempleDeco, seed: number): { g: THREE.Group; blocks: [number, number, number][] } {
-  const pb = new PropBatch(), f = t.frame, R = rng(seed ^ 0x7e3b1), blocks: [number, number, number][] = [];
+/**
+ * (0.222, the owner's report: you and the foes walked through the stones round a ruin) A temple piece for collision:
+ * the convex outline of a solid seen from above (or a rubble stone's circle `c`) and the heights it spans. Leaning
+ * pieces are taken whole (their outline holds both the foot and the top), a little generous but never hollow.
+ */
+export interface TempleSolid { hull: [number, number][]; c?: [number, number, number]; y0: number; y1: number; x0: number; x1: number; z0: number; z1: number }
+/** The convex hull (from above) of a solid's corners, with its height span and box. */
+function prism(pts: number[][]): TempleSolid {
+  const q = pts.map((p) => [p[0], p[2]] as [number, number]).sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+  const cross = (o: [number, number], a: [number, number], b: [number, number]) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
+  const lo: [number, number][] = [], hi: [number, number][] = [];
+  for (const p of q) { while (lo.length >= 2 && cross(lo[lo.length - 2], lo[lo.length - 1], p) <= 0) lo.pop(); lo.push(p); }
+  for (let i = q.length - 1; i >= 0; i--) { const p = q[i]; while (hi.length >= 2 && cross(hi[hi.length - 2], hi[hi.length - 1], p) <= 0) hi.pop(); hi.push(p); }
+  const hull = [...lo.slice(0, -1), ...hi.slice(0, -1)], ys = pts.map((p) => p[1]), xs = hull.map((p) => p[0]), zs = hull.map((p) => p[1]);
+  return { hull, y0: Math.min(...ys), y1: Math.max(...ys), x0: Math.min(...xs), x1: Math.max(...xs), z0: Math.min(...zs), z1: Math.max(...zs) };
+}
+/** How far (x, z) lies outside the piece's outline from above (0 inside). */
+export function solidDist(s: TempleSolid, x: number, z: number): number {
+  if (s.c) return Math.max(0, Math.hypot(x - s.c[0], z - s.c[1]) - s.c[2]);
+  const h = s.hull; let inside = true, best = Infinity;
+  for (let i = 0; i < h.length; i++) {
+    const a = h[i], b = h[(i + 1) % h.length], ex = b[0] - a[0], ez = b[1] - a[1];
+    if (ex * (z - a[1]) - ez * (x - a[0]) < 0) inside = false; // the hull runs anticlockwise (x right, z up)
+    const L = ex * ex + ez * ez || 1, t = Math.max(0, Math.min(1, ((x - a[0]) * ex + (z - a[1]) * ez) / L));
+    best = Math.min(best, Math.hypot(a[0] + ex * t - x, a[1] + ez * t - z));
+  }
+  return inside ? 0 : best;
+}
+export function drawTemple(t: TempleDeco, seed: number): { g: THREE.Group; blocks: [number, number, number][]; solids: TempleSolid[] } {
+  const pb = new PropBatch(), f = t.frame, R = rng(seed ^ 0x7e3b1), blocks: [number, number, number][] = [], solids: TempleSolid[] = [];
   const block = (u: number, v: number, r: number) => { const [x, z] = templeXZ(f, u, v); blocks.push([x, z, r]); };
   const P = (u: number, v: number, h: number): P => { const [x, z] = templeXZ(f, u, v); return [x, f.y + h, z]; };
   /** A solid from a bottom and a top quad given in (u, v, h). */
-  const solid = (b: [number, number, number][], tp: [number, number, number][]) => pb.solid8(b.map((q) => P(...q)), tp.map((q) => P(...q)), STONE);
+  const solid = (b: [number, number, number][], tp: [number, number, number][]) => {
+    const bb = b.map((q) => P(...q)), tt = tp.map((q) => P(...q));
+    pb.solid8(bb, tt, STONE);
+    solids.push(prism([...bb, ...tt])); // (0.222) every stone piece is solid to you and the foes, not only those over voxels
+  };
   const crack = (pts: [number, number, number][]) => pb.line(STONE, ...pts.map((q) => P(...q)));
 
   // ---- the main body: two leaning side masses and the lintel over the portal, tops broken off unevenly
@@ -108,6 +140,6 @@ export function drawTemple(t: TempleDeco, seed: number): { g: THREE.Group; block
     for (let q = 0.8; q < l; q += 1.6) block(u0 + q, v0 + s * 2, 2); }
 
   // ---- rubble
-  for (const r of t.rubble) { const [x, z] = templeXZ(f, r.u, r.v); pb.rock(x, f.y - 0.1, z, r.r, r.h, 4 + (r.rot * 10 | 0) % 3, r.rot, STONE); if (r.h > 0.6) blocks.push([x, z, r.r * 0.9]); }
-  return { g: pb.build(), blocks };
+  for (const r of t.rubble) { const [x, z] = templeXZ(f, r.u, r.v); pb.rock(x, f.y - 0.1, z, r.r, r.h, 4 + (r.rot * 10 | 0) % 3, r.rot, STONE); if (r.h > 0.6) blocks.push([x, z, r.r * 0.9]); solids.push({ c: [x, z, r.r * 0.85], hull: [], y0: f.y - 0.1, y1: f.y - 0.1 + r.h, x0: x - r.r, x1: x + r.r, z0: z - r.r, z1: z + r.r }); }
+  return { g: pb.build(), blocks, solids };
 }

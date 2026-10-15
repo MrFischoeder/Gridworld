@@ -4070,4 +4070,7 @@ export const PL: Record<string, string> = {
   "<div class=\"say\">Power: {0} kW from {1}'s spare.</div>": "<div class=\"say\">Prąd: {0} kW z nadwyżki wioski {1}.</div>",
   "<div class=\"say\">Power: {0} kW from the grid of {1}.</div>": "<div class=\"say\">Prąd: {0} kW z sieci placówki {1}.</div>",
   "<div class=\"say\" style=\"color:#ff6a4a\">No power: the lamp is electric and wants {0} kW, from a village within {1} m with power to spare or from an outpost's power source that reaches it (its grid at least {2}% fed).</div>": "<div class=\"say\" style=\"color:#ff6a4a\">Brak prądu: lampa jest elektryczna i potrzebuje {0} kW, z wioski w promieniu {1} m z nadwyżką prądu albo ze źródła prądu placówki, które tu sięga (jego sieć zasilona co najmniej w {2}%).</div>",
+  "Cave mushrooms": "Grzyby jaskiniowe",
+  "Crystal forest: {0}": "Kryształowy las: {0}",
+  "E — pick the cave mushrooms": "E — zbierz grzyby jaskiniowe",
 };

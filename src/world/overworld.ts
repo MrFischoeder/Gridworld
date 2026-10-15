@@ -35,6 +35,7 @@ import { installHit, dropInstalls, primeInstalls } from './installs';
 import { cityHit, cityRay, dropCities, cityName, cityVaultHint } from './cities';
 import { toxicHit, dropToxic, toxicName } from './toxic';
 import { lodeHit, dropLodes, lodeName } from './lodes';
+import { crystalHit, dropCrystals, crystalName } from './crystals';
 import { portHit, dropPorts, portNameAt } from './ports';
 import { campHit, dropCamps } from './plantcamps';
 import { dropPowerLines } from './powerlines';
@@ -55,7 +56,7 @@ import { CHUNK, poisNear, X_MIN, WORLD_W, POLE_Z, POLAR_Z, villageContaining, vi
 import { chunkTrees, chunkRocks, type Tree, type Rock, type OreKind } from '../gen/trees';
 import { drawTree } from './trees';
 import { rockShape, rockSurface, type RockShape } from '../gen/rockshape';
-import { drawTemple } from './temple';
+import { drawTemple, solidDist, type TempleSolid } from './temple';
 import { chunkWells, type Well } from '../gen/water';
 import { chunkPlants, type Plant } from '../gen/flora';
 import { dangerAt } from '../gen/danger';
@@ -119,6 +120,8 @@ interface Structure {
   doors: Door[]; stairs: Stair[]; npcs: Npc[]; village?: VillageMap; camp?: CampMap; flames?: THREE.LineSegments;
   /** Fallen pieces with no voxels under them, for vehicles: world [x, z, r] (a temple's rubble). */
   blocks?: [number, number, number][];
+  /** (0.222) A temple's stone pieces for walking bodies (world/temple.ts): walls to you and the foes, floors on top. */
+  solids?: TempleSolid[];
 }
 
 /** Things that come and go with a loaded village and live in modules this one must not import (world/wallguns.ts). */
@@ -195,6 +198,24 @@ export function rockFloor(x: number, y: number, z: number): number {
   }
   return best;
 }
+/** (0.222, the owner's report) The stone pieces round a ruin (fallen frames, pylon tops, the ring, obelisks, blocks,
+ *  rubble) are solid: the low ones (no taller than `TEMPLE_LOW`) are stepped onto like small stones, the rest are
+ *  walls until you stand on top. */
+const TEMPLE_LOW = 0.75;
+function templeNear(x: number, z: number, r: number, f: (s: TempleSolid) => void) {
+  for (const st of OW.structs.values()) if (st.solids) for (const s of st.solids) if (x + r > s.x0 && x - r < s.x1 && z + r > s.z0 && z - r < s.z1) f(s);
+}
+export function templeHit(x: number, y: number, z: number, r: number): boolean {
+  let hit = false;
+  templeNear(x, z, r, (s) => { if (!hit && s.y1 - s.y0 > TEMPLE_LOW && y < s.y1 - ROCK_TOL && y + 1.7 > s.y0 && solidDist(s, x, z) < r) hit = true; });
+  return hit;
+}
+/** The top of the temple pieces under you that you can stand on from height y (-Infinity when none). */
+export function templeFloor(x: number, y: number, z: number): number {
+  let best = -Infinity;
+  templeNear(x, z, BODY_R, (s) => { if (s.y1 > best && s.y1 <= y + (s.y1 - s.y0 <= TEMPLE_LOW ? ROCK_STEP : ROCK_TOL) && solidDist(s, x, z) < BODY_R) best = s.y1; });
+  return best;
+}
 /** Tree trunks (an arch has one per leg): vertical cylinders, solid up to a bit above their base. */
 export function treeHit(x: number, y: number, z: number, r: number): boolean {
   const cx = Math.floor(x / CHUNK), cz = Math.floor(z / CHUNK);
@@ -214,7 +235,7 @@ export function treeHit(x: number, y: number, z: number, r: number): boolean {
  *  village fences, ruins), sampled round its circle at the knee and the chest. Vehicles, boats and caravans are left
  *  out: foes must still reach whoever is in them. */
 export function foeBody(x: number, y: number, z: number, r: number): boolean {
-  if (treeHit(x, y, z, r) || cityHit(x, y + 0.5, z, r) || houseHit(x, y, z, r) || hallHit(x, y, z, r) || settlementHit(x, y, z, r) || walkHit(x, y, z, r) || ladderHit(x, y, z, r) || guardHit(x, y, z, r) || installHit(x, y, z, r) || lighthouseHit(x, y, z, r) || lodeHit(x, y, z, r) || portHit(x, y, z, r) || campHit(x, y, z, r) || podHit(x, y, z, r) || baseHit(x, y, z, r) || megalithHit(x, y, z, r) || worldGateHit(x, y, z, r) || doorHit(x, y, z, r) || toxicHit(x, y, z, r)) return true;
+  if (treeHit(x, y, z, r) || templeHit(x, y, z, r) || crystalHit(x, y, z, r) || cityHit(x, y + 0.5, z, r) || houseHit(x, y, z, r) || hallHit(x, y, z, r) || settlementHit(x, y, z, r) || walkHit(x, y, z, r) || ladderHit(x, y, z, r) || guardHit(x, y, z, r) || installHit(x, y, z, r) || lighthouseHit(x, y, z, r) || lodeHit(x, y, z, r) || portHit(x, y, z, r) || campHit(x, y, z, r) || podHit(x, y, z, r) || baseHit(x, y, z, r) || megalithHit(x, y, z, r) || worldGateHit(x, y, z, r) || doorHit(x, y, z, r) || toxicHit(x, y, z, r)) return true;
   const k = r * 0.75, y0 = Math.floor(y + 0.3), y1 = Math.floor(y + 1.2);
   for (const [dx, dz] of [[0, 0], [r, 0], [-r, 0], [0, r], [0, -r], [k, k], [-k, k], [k, -k], [-k, -k]]) {
     const fx = Math.floor(x + dx), fz = Math.floor(z + dz);
@@ -459,7 +480,7 @@ function loadRuinStruct(poi: Poi): Structure {
   group.add(new THREE.LineSegments(tg, sharedLine(TILE_COLOR)));
   const tpl = drawTemple(rm.temple, poi.id); group.add(tpl.g, drawSettlementComms(poi, T));
   scene.add(group);
-  const s: Structure = { poi, grid, group, edges: mesh, doors: [], stairs: [], npcs: [], blocks: tpl.blocks };
+  const s: Structure = { poi, grid, group, edges: mesh, doors: [], stairs: [], npcs: [], blocks: tpl.blocks, solids: tpl.solids };
   OW.structs.set(poi.id, s); // the door below is placed through the shared space
   const p = rm.portal, placed = tryPlaceDoor(space, { axis: p.axis, m: p.m, c: p.c, stair: true, y0: y }, [])!;
   const st = makeStair(p, placed, 0, '▼ ' + poi.name.toUpperCase(), tl('Stairs down into the ') + poi.name, () => enterRuin(poi.id));
@@ -697,8 +718,8 @@ export function openWorld(x: number, z: number) {
   primeInstalls(w, [...G.char.claims, ...fieldClaims(G.char.towns), ...portClaims(w, G.char.outposts)]); // the installations' sites are worked out in a worker meanwhile
   closeWorld();
   G.water = (px, pz) => (inStructure(px, pz) ? null : OW.terrain!.water(px, pz));
-  G.space = space; G.ground = groundAt; G.obstacle = (px, py, pz, r) => settlementHit(px, py, pz, r) || megalithHit(px, py, pz, r) || worldGateHit(px, py, pz, r) || treeHit(px, py, pz, r) || vehicleHit(px, py, pz, r) || caravanHit(px, py, pz, r) || peerCarHit(px, py, pz, r) || ambushHit(px, py, pz, r) || baseHit(px, py, pz, r) || ladderHit(px, py, pz, r) || walkHit(px, py, pz, r) || guardHit(px, py, pz, r) || houseHit(px, py, pz, r) || doorHit(px, py, pz, r) || podHit(px, py, pz, r) || installHit(px, py, pz, r) || cityHit(px, py, pz, r) || hallHit(px, py, pz, r) || bridgeHit(px, py, pz, r) || pierHit(px, py, pz, r) || lighthouseHit(px, py, pz, r) || boatHit(px, py, pz, r) || shipHit(px, py, pz, r) || toxicHit(px, py, pz, r) || lodeHit(px, py, pz, r) || portHit(px, py, pz, r) || campHit(px, py, pz, r);
-  G.floor = (x, y, z) => Math.max(rockFloor(x, y, z), settlementFloor(x, y, z), megalithFloor(x, y, z), baseFloor(x, y, z), ladderFloor(x, y, z), walkFloor(x, y, z), bridgeFloor(x, y, z), pierFloor(x, y, z), shipFloor(x, y, z)); G.rayBlock = (o, d, t) => settlementRay(o, d, megalithRay(o, d, worldGateRay(o, d, cityRay(o, d, doorRay(o, d, houseRay(o, d, baseRay(o, d, t))))))); G.solid = (p) => settlementSolid(p) || megalithHit(p.x, p.y, p.z, 0) || worldGateHit(p.x, p.y, p.z, 0) || baseSolid(p) || houseSolid(p);
+  G.space = space; G.ground = groundAt; G.obstacle = (px, py, pz, r) => settlementHit(px, py, pz, r) || templeHit(px, py, pz, r) || crystalHit(px, py, pz, r) || megalithHit(px, py, pz, r) || worldGateHit(px, py, pz, r) || treeHit(px, py, pz, r) || vehicleHit(px, py, pz, r) || caravanHit(px, py, pz, r) || peerCarHit(px, py, pz, r) || ambushHit(px, py, pz, r) || baseHit(px, py, pz, r) || ladderHit(px, py, pz, r) || walkHit(px, py, pz, r) || guardHit(px, py, pz, r) || houseHit(px, py, pz, r) || doorHit(px, py, pz, r) || podHit(px, py, pz, r) || installHit(px, py, pz, r) || cityHit(px, py, pz, r) || hallHit(px, py, pz, r) || bridgeHit(px, py, pz, r) || pierHit(px, py, pz, r) || lighthouseHit(px, py, pz, r) || boatHit(px, py, pz, r) || shipHit(px, py, pz, r) || toxicHit(px, py, pz, r) || lodeHit(px, py, pz, r) || portHit(px, py, pz, r) || campHit(px, py, pz, r);
+  G.floor = (x, y, z) => Math.max(rockFloor(x, y, z), templeFloor(x, y, z), settlementFloor(x, y, z), megalithFloor(x, y, z), baseFloor(x, y, z), ladderFloor(x, y, z), walkFloor(x, y, z), bridgeFloor(x, y, z), pierFloor(x, y, z), shipFloor(x, y, z)); G.rayBlock = (o, d, t) => settlementRay(o, d, megalithRay(o, d, worldGateRay(o, d, cityRay(o, d, doorRay(o, d, houseRay(o, d, baseRay(o, d, t))))))); G.solid = (p) => settlementSolid(p) || megalithHit(p.x, p.y, p.z, 0) || worldGateHit(p.x, p.y, p.z, 0) || baseSolid(p) || houseSolid(p);
   foeRules.blocked = (p) => megalithHit(p.x, p.y, p.z, .7) || nearVillage(p.x, p.z) < 2;
   foeRules.body = foeBody;
   foeRules.playerSafe = () => inVillage(G.pos.x, G.pos.z) && !raidHere(); // no safe place while bandits raid it
@@ -716,7 +737,7 @@ export function openWorld(x: number, z: number) {
   spawnVehicles({
     height: (px, pz) => Math.max(T.heightAt(px, pz), bridgeDeck(px, pz) ?? -Infinity, pierDeck(px, pz) ?? -Infinity), // over a bridge or a pier, its deck
     water: (px, pz) => (bridgeDeck(px, pz) !== null || pierDeck(px, pz) !== null ? 0 : T.water(px, pz)?.depth ?? 0),
-    blocked: (px, pz, r) => settlementHit(px, T.heightAt(px, pz), pz, r) || megalithHit(px, T.heightAt(px, pz) + .5, pz, r) || worldGateHit(px, T.heightAt(px, pz) + .5, pz, r) || structBlocks(px, pz, r, T.heightAt(px, pz)) || treeHit(px, T.heightAt(px, pz) + 0.5, pz, r) || ambushHit(px, 0, pz, r) || peerCarHit(px, T.heightAt(px, pz) + 0.5, pz, r) || cityHit(px, T.heightAt(px, pz) + 0.5, pz, r) || hallHit(px, T.heightAt(px, pz), pz, r) || bridgeHit(px, (bridgeDeck(px, pz) ?? -99) + 0.5, pz, r), // a bridge's rails keep you on its deck
+    blocked: (px, pz, r) => settlementHit(px, T.heightAt(px, pz), pz, r) || megalithHit(px, T.heightAt(px, pz) + .5, pz, r) || worldGateHit(px, T.heightAt(px, pz) + .5, pz, r) || structBlocks(px, pz, r, T.heightAt(px, pz)) || treeHit(px, T.heightAt(px, pz) + 0.5, pz, r) || crystalHit(px, T.heightAt(px, pz), pz, r) || ambushHit(px, 0, pz, r) || peerCarHit(px, T.heightAt(px, pz) + 0.5, pz, r) || cityHit(px, T.heightAt(px, pz) + 0.5, pz, r) || hallHit(px, T.heightAt(px, pz), pz, r) || bridgeHit(px, (bridgeDeck(px, pz) ?? -99) + 0.5, pz, r), // a bridge's rails keep you on its deck
     ceiling: hallCeiling,
   });
   syncFound(T, x, z);
@@ -737,7 +758,7 @@ export function openWorld(x: number, z: number) {
 export function closeWorld() {
   clearMegaliths();
   clearWorldGates();
-  dropGarrisons(); clearVehicles(); dropCrash(); dropInstalls(); dropCities(); dropToxic(); dropLodes(); dropPorts(); dropCamps(); dropPowerLines(); dropCommuters(); clearBridges(); clearPiers();
+  dropGarrisons(); clearVehicles(); dropCrash(); dropInstalls(); dropCities(); dropToxic(); dropLodes(); dropCrystals(); dropPorts(); dropCamps(); dropPowerLines(); dropCommuters(); clearBridges(); clearPiers();
   setCreatureEnv(null); clearCreatures();
   setRobotEnv(null); clearRobots();
   setBanditEnv(null); clearBandits();
@@ -825,7 +846,7 @@ export function placeName(x: number, z: number): string {
   { const mn = megalithName(x, z); if (mn) return mn + ' (megalith)' + tag; }
   { const cn = cityName(x, z); if (cn) return cn + cityVaultHint(x,z) + tag; }
   { const f = toxicName(x, z); if (f) return f + tag; }
-  { const l = lodeName(x, z) ?? portNameAt(x, z); if (l) return l + tag; }
+  { const l = lodeName(x, z) ?? portNameAt(x, z) ?? crystalName(x, z); if (l) return l + tag; }
   for (const r of OW.terrain!.chunkFeatures(Math.floor(x / CHUNK), Math.floor(z / CHUNK)).roads) {
     if (!r.h) continue;
     const top = r.pts[r.pts.length - 1], foot = r.pts[0];
