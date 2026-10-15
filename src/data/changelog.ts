@@ -3,6 +3,9 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.227.1', date: '2026-10-15', title: 'The plan for morale and retreat', notes: [
+    'No change in the game yet: the design of the next combat stage is written down. Bandits will break and run when their boss or half of them fall (and may even give up), beasts will guard their own ground and give up a chase at its edge, and machines will fall back to regroup.',
+  ] },
   { v: '0.227.0', date: '2026-10-15', title: 'Conditions: stagger, knockdown, bleeding and EMP', notes: [
     'A heavy enough blow staggers a foe and breaks off whatever it was doing: a leap, a charge, a dive, a hammer swing, a burst. The bigger the foe, the harder you have to hit.',
     'The Sledgehammer knocks the lighter foes off their feet (Ravagers, Gnawers, Scouts, Guardians, bandits) and brings a Leechwing down to the ground. While they lie there they take more ("It is down! ×1.3").',
