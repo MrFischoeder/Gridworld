@@ -17,6 +17,7 @@ import { putItems } from '../inventory';
 import { openTransfer } from '../ui/transfer';
 import type { Container, Slot } from '../save';
 import { logLine } from '../ui/hud';
+import { bleedingWounds, stopBleeding } from './conditions';
 import { foes, damageFoe } from './enemies';
 import { closePack } from '../ui/backpack';
 import { onPickup } from './quests';
@@ -235,9 +236,10 @@ export function makeHatch(h: { x: number; z: number }): Hatch | null {
 export function useItem(k: ItemKey): boolean {
   const heal = HEAL[k];
   if (heal) {
-    if (G.hp >= G.S.maxHp) { logLine(tl('HP already full')); return false; }
+    if (G.hp >= G.S.maxHp && !bleedingWounds()) { logLine(tl('HP already full')); return false; }
     if (!takeOne(k)) { logLine(tl('None left: ') + ITEMS[k].name); return false; }
     G.hp = Math.min(G.S.maxHp, G.hp + heal); logLine('+' + heal + ' HP');
+    if (stopBleeding()) logLine(tl('The bleeding stops.')); // (0.227, stage W5)
     return true;
   }
   const food = NOURISH[k];
@@ -292,7 +294,7 @@ export function useItem(k: ItemKey): boolean {
       const ring = new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(circlePts(2 + i * 2, 40)), add(0x5cc8ff));
       ring.rotation.x = Math.PI / 2; ring.position.copy(c); addFx(ring, 0.4 + i * 0.15);
     }
-    let n = 0; for (const t of foes()) if (t.p.distanceTo(c) < 6 + (t.boss ? 1 : 0)) { damageFoe(t, (t.boss ? 6 : 3) * G.S.bm); n++; }
+    let n = 0; for (const t of foes()) if (t.p.distanceTo(c) < 6 + (t.boss ? 1 : 0)) { damageFoe(t, (t.boss ? 6 : 3) * G.S.bm, true, { impact: 0, emp: true }); n++; } // (0.227) machines short-circuit for a few seconds
     makeNoise(c, 35);
     logLine(tl('EMP hit drones: ') + n); return true;
   }

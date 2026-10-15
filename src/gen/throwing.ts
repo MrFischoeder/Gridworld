@@ -57,7 +57,7 @@ export function throwVelocity(yaw: number, pitch: number, speed: number): [numbe
  * beep for `fuse` s where they land (a red ring marks the blast) and then go off, hurting within `r` m. A gunner
  * throws one now and then (`cool` s), its group not more often than every `group` s, from `min` to `max` m away.
  */
-export const GRENADE = { fuse: 2.2, r: 4.5, dmg: 22, push: 7, cool: 14, group: 7, min: 6, max: 24 };
+export const GRENADE = { fuse: 2.2, r: 4.5, dmg: 22, push: 7, cool: 14, group: 7, min: 6, max: 24, fell: 0.45 };
 /** The velocity that lobs from `p` to `at` in about the right time for the distance. */
 export function lobVelocity(p: [number, number, number], at: [number, number, number]): [number, number, number] {
   const d = Math.hypot(at[0] - p[0], at[2] - p[2]), T = 0.8 + d / 30;

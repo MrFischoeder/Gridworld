@@ -10,6 +10,7 @@
 // shared threat budget (world/threat.ts): near the villages you meet none, further out ever heavier machines.
 import { hurtPlayer } from './damage';
 import { targetingFoe, proxied, stepRemote, withFoeTarget, hitCombatFoe, otherPlayers, hurtOther, nearestPlayer } from './remote';
+import { tickCond, knockDown, heavyHit, bleed, type CondFoe } from './conditions';
 import * as THREE from 'three';
 import { scene, V, lineMat, add as addMat } from './render';
 import { G, W } from '../game';
@@ -32,7 +33,9 @@ import { coverStep, inCover } from './cover';
 import { tl } from '../i18n';
 
 type State = 'patrol' | 'hunt' | 'return';
-export interface Robot {
+export interface Robot extends CondFoe {
+  /** (0.227) how far over on its side it is drawn (eased) */
+  down?: number;
   /** Fixed city post; transmitted to prevent duplicate garrisons on another client. */
   cityPost?: string;
   kind: 'robot'; model: RobotKind; boss?: false;
@@ -334,8 +337,10 @@ function face(r: Robot, dx: number, dz: number, dt: number, rate = 5) {
   r.heading += dh * Math.min(1, dt * rate);
 }
 /** A blow that reaches the player (any occupied vehicle takes it instead). */
-function hit(dmg: number, push = 0, from?: THREE.Vector3) {
+function hit(dmg: number, push = 0, from?: THREE.Vector3, cut = 0) {
   if (hurtPlayer(dmg * FOE_HIT, true, .45)) return;
+  if (push >= 10) knockDown(); else heavyHit(dmg * FOE_HIT); // (0.227, stage W5) the Assault's hammer throws you down
+  if (cut && Math.random() < cut) bleed(); // a Scout's blades
   if (push && from) { const d = V(G.pos.x - from.x, 0, G.pos.z - from.z).normalize(); G.vel.x += d.x * push; G.vel.z += d.z * push; G.vel.y += push * 0.4; }
 }
 
@@ -444,7 +449,7 @@ function think(r: Robot, dt: number, time: number) {
       if (r.charge > 0) { r.charge -= dt; walk(r, -to.x, -to.z, s.speed * 0.8, dt); face(r, to.x, to.z, dt, 8); break; }
       const side = V(-to.z, 0, to.x).normalize().multiplyScalar(dist > 9 ? Math.sin(r.flank) * 7 : 0);
       walk(r, to.x + side.x, to.z + side.z, s.speed, dt); face(r, to.x, to.z, dt, 8);
-      if (dist < 1.9 + s.r && r.atkT <= 0) { r.atkT = 1.1; r.swing = 1; hit(s.dmg * lvl); r.charge = 0.6; }
+      if (dist < 1.9 + s.r && r.atkT <= 0) { r.atkT = 1.1; r.swing = 1; hit(s.dmg * lvl, 0, undefined, 0.2); r.charge = 0.6; }
       break;
     }
     case 'guardian': { // keep 12-22 m from cover if there is any (stage W3), else strafe; shoot
@@ -546,8 +551,15 @@ function animate(r: Robot, dt: number, time: number) {
   const dk = (r.duck = (r.duck ?? 0) + ((r.cover ?? 0) - (r.duck ?? 0)) * Math.min(1, dt * 6)); // crouched behind cover
   r.g.position.set(r.p.x, r.p.y + bob - GUARD_COVER.duck * dk, r.p.z);
   r.g.rotation.y = r.heading;
+  // (0.227, stage W5) knocked over on its side, reeling from a blow, or short-circuited (frozen, blue arcs)
+  r.down = (r.down ?? 0) + ((r.cond === 'down' ? 1 : 0) - (r.down ?? 0)) * Math.min(1, dt * 8);
+  r.g.rotation.z = 1.25 * r.down + (r.cond === 'stagger' ? Math.sin(time * 28) * 0.08 : 0);
+  if (r.down > 0.01) r.g.position.y -= s.lift * 0.55 * r.down;
+  const stun = r.cond === 'stun';
+  if (stun) { r.g.rotation.x = Math.sin(time * 40) * 0.03; if (Math.random() < dt * 12) burst(r.p.clone().add(V((Math.random() - 0.5) * s.r * 2, Math.random() * s.h * 0.6, (Math.random() - 0.5) * s.r * 2)), 0x5cc8ff, 2, 0.6); }
+  else r.g.rotation.x = 0;
   r.flash -= dt;
-  r.mat.color.setHex(r.flash > 0 ? 0xffffff : ROBOT_COLOR);
+  r.mat.color.setHex(r.flash > 0 ? 0xffffff : stun && Math.sin(time * 25) > 0 ? 0x5cc8ff : ROBOT_COLOR);
 }
 
 /** (0.226) The Artillery Walker's red laser while it paints its target (on the copies it points at your own position). */
@@ -564,6 +576,7 @@ export function updateRobots(dt: number, time: number) {
   for (const r of [...W.robots]) {
     if (stepRemote(r, dt)) { animate(r, dt, time); continue; } // another player's: it does what its owner says
     if (!r.cityPost && !indoor && r.state !== 'hunt' && nearestPlayer(r.p.x, r.p.z) > 150) { removeRobot(r); continue; }
+    if (tickCond(r, dt, (d, cr) => hurtRobot(r, d, cr))) { r.speed = 0; animate(r, dt, time); continue; } // (0.227, stage W5) short-circuited, knocked over or reeling
     withFoeTarget(r, () => think(r, dt, time));
     animate(r, dt, time);
   }

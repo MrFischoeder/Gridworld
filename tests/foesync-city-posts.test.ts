@@ -56,7 +56,7 @@ describe('shared city posts and faction damage', () => {
     const nid = state.relay.mock.calls.filter(([p]) => p.t === 'foes').at(-1)![0].list[0][0];
     state.damage.mockImplementation((target, damage) => { target.hp -= damage; }); state.relay.mockClear();
     state.heard({ t: 'fhit', from: 2, nid, dmg: 30, npc: true });
-    expect(state.damage).toHaveBeenCalledWith(f, 30, false);
+    expect(state.damage).toHaveBeenCalledWith(f, 30, false, undefined, 0); // (0.227) no effects, an NPC's hit
     expect(state.relay).not.toHaveBeenCalledWith(expect.objectContaining({ t: 'kill' }), expect.anything());
   });
 });

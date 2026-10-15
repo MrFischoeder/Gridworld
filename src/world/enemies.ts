@@ -24,6 +24,8 @@ import { hurtBandit, type Bandit } from './bandits';
 import { hurtRaider, raiders, type Raider } from './raiders';
 import { onKill } from './quests';
 import { tl } from '../i18n';
+import { applyFx, tickCond, clearCond, type CondFoe } from './conditions';
+import type { HitFx } from '../gen/conditions';
 
 export interface Drone {
   boss?: false; g: THREE.Group; inner: THREE.LineSegments; mat: THREE.LineBasicMaterial; p: THREE.Vector3;
@@ -93,6 +95,7 @@ function droneMove(t: Drone, d: THREE.Vector3) {
 export function updateDrones(dt: number) {
   for (const t of W.drones) {
     if (stepRemoteP(t, dt)) continue; // another player's (shared foes): it does what its owner says
+    if (tickCond(t, dt, () => {})) continue; // (0.227) short-circuited by an EMP: it hangs there
     withTarget(t.p.x, t.p.z, () => droneTurn(t, dt));
   }
 }
@@ -221,12 +224,20 @@ function killBoss(b: Boss) {
 }
 export const foes = (): Foe[] => (W.drones as Foe[]).concat(W.bosses, W.creatures, W.bandits, raiders, W.robots);
 
-export function damageFoe(t: Foe, dmg: number, credit = true) {
-  if (remoteOf(t)) { (t as { flash: number }).flash = 0.12; G.hitFlash = 0.15; hitOwner(t, dmg, !credit); return; } // another player's foe: their game reckons it
-  if ('kind' in t) { if (t.kind === 'bandit') hurtBandit(t, dmg, credit); else if (t.kind === 'raider') hurtRaider(t, dmg); else if (t.kind === 'robot') hurtRobot(t, dmg, credit); else hurtCreature(t, dmg, credit); return; }
+/** A hit on a foe. `fx` (0.227, stage W5): what else it does (a stagger, a fall, a cut, an EMP; gen/conditions.ts), on
+ *  the owner's game; `by` the other player whose hit it was (0: yours). */
+export function damageFoe(t: Foe, dmg: number, credit = true, fx?: HitFx, by = 0) {
+  if (remoteOf(t)) { (t as { flash: number }).flash = 0.12; G.hitFlash = 0.15; hitOwner(t, dmg, !credit, fx); return; } // another player's foe: their game reckons it
+  if ('kind' in t) {
+    if (t.kind === 'bandit') hurtBandit(t, dmg, credit); else if (t.kind === 'raider') hurtRaider(t, dmg); else if (t.kind === 'robot') hurtRobot(t, dmg, credit); else hurtCreature(t, dmg, credit);
+    if (fx && t.kind !== 'raider' && t.hp > 0) applyFx(t, dmg, fx, by);
+    return;
+  }
   if (t.boss) { t.hp -= dmg; t.flash = 0.1; t.engaged = true; G.hitFlash = 0.15; if (t.hp <= 0) killBoss(t); return; }
   t.hp -= dmg; t.flash = 0.12; if (!t.chasing) heard(t, G.pos, 1); t.chasing = true; G.hitFlash = 0.15;
+  if (fx && t.hp > 0) applyFx(t, dmg, { ...fx, impact: 0 }, by); // a drone only short-circuits
   if (t.hp <= 0) {
+    clearCond(t);
     const at = t.g.position.clone(); burst(at, 0xffb347, 26, 1.4);
     const n = 2 + (Math.random() < 0.5 ? 1 : 0); for (let i = 0; i < n; i++) dropCrystal(at);
     const r = Math.random(); if (r < 0.12) dropPickup(at, 'medkit'); else if (r < 0.17) dropPickup(at, 'emp');
@@ -251,7 +262,9 @@ export function animateFoes(dt: number, time: number, camPos: THREE.Vector3) {
   for (const t of W.drones) {
     t.g.position.copy(t.p); t.g.position.y += Math.sin(time * 2 + t.phase) * 0.2;
     t.g.rotation.y = time * (t.chasing ? 3 : 1.3) + t.phase; t.inner.rotation.x = time * 2.4;
-    t.flash -= dt; t.mat.color.setHex(t.flash > 0 ? 0xffffff : 0xffb347);
+    const stun = (t as CondFoe).cond === 'stun'; // (0.227) a short-circuited drone sags, blue sparks
+    if (stun) { t.g.position.y -= 0.35; t.g.rotation.y = t.phase; if (Math.random() < dt * 8) burst(t.p.clone(), 0x5cc8ff, 2, 0.4); }
+    t.flash -= dt; t.mat.color.setHex(t.flash > 0 ? 0xffffff : stun ? 0x5cc8ff : 0xffb347);
   }
 }
 

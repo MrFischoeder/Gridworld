@@ -124,6 +124,8 @@ import { updateRivals } from './world/rivals';
 import { syncVillagePads } from './world/overworld';
 import { tl, TL } from './i18n';
 import { updateThrowing } from './world/throwing';
+import { updateMyCond, clearMyCond, downView, setCondLog } from './world/conditions';
+setCondLog(logLine); // (0.227)
 /** Redraw the open world from the save where you stand (after taking the server's shared world). */
 function reloadWorld() { if (G.char.loc !== 'overworld') return; saveOverworldPos(); loadOverworld({ kind: 'saved' }); }
 setWorldReload(reloadWorld);
@@ -204,7 +206,7 @@ function frame(now: number) {
   if (outdoors) updateWorldGates(dt);
   refreshGateConsole();
   // the clock runs whenever the game is not paused in the menu
-  if (G.playing && !gateTravelPending()) { G.char.time += dt * MIN_PER_SEC; updateSurvival(dt); updateFlora(dt); updateFires(dt, time); updatePower(dt); updateSettlementSites(dt); updateJobSites(dt); updateHouseDoors(dt); updateWallGuns(dt); updateWorks(dt); updateStations(dt); updateChariot(dt); syncConvoyStart(dt); updateCaravans(dt); updateVillageRaids(dt); updateFallen(dt); updateIndustry(dt); updateFarms(dt); updateInstalls(dt); updateCities(dt); updateToxic(dt); updateGuide(dt); updateBridges(dt); updatePiers(dt); updateStreetLamps(dt); updateLighthouses(dt); updateContracts(dt); updateForge(dt); updateGarage(dt); updateHomes(dt); updateSawing(dt); updateCharging(dt); syncVillagePads(dt); updateLodes(dt); updateCrystals(dt); updateThrowing(dt, time); updatePorts(dt); updateCamps(dt); updatePowerLines(dt); updateCommute(dt); updateOutpostRaids(dt); updateRouteTrucks(); updateRivals(dt); if (testWaiting() && !G.trans && !G.intro) { const n = takeTest(); if (n) setTimeout(() => { if (!enterCustom(n)) showToast(TL`No editor map called ${n} in this browser.`); }); } /* after this frame (its place name) */ if ((benchT -= dt) <= 0) { benchT = 1; syncBenches(); syncFlags(); syncBases(); syncTurrets(); } }
+  if (G.playing && !gateTravelPending()) { G.char.time += dt * MIN_PER_SEC; updateSurvival(dt); updateFlora(dt); updateFires(dt, time); updatePower(dt); updateSettlementSites(dt); updateJobSites(dt); updateHouseDoors(dt); updateWallGuns(dt); updateWorks(dt); updateStations(dt); updateChariot(dt); syncConvoyStart(dt); updateCaravans(dt); updateVillageRaids(dt); updateFallen(dt); updateIndustry(dt); updateFarms(dt); updateInstalls(dt); updateCities(dt); updateToxic(dt); updateGuide(dt); updateBridges(dt); updatePiers(dt); updateStreetLamps(dt); updateLighthouses(dt); updateContracts(dt); updateForge(dt); updateGarage(dt); updateHomes(dt); updateSawing(dt); updateCharging(dt); syncVillagePads(dt); updateLodes(dt); updateCrystals(dt); updateThrowing(dt, time); updateMyCond(dt, (d) => { if (!G.god && !foeRules.playerSafe()) G.hp -= d; }); updatePorts(dt); updateCamps(dt); updatePowerLines(dt); updateCommute(dt); updateOutpostRaids(dt); updateRouteTrucks(); updateRivals(dt); if (testWaiting() && !G.trans && !G.intro) { const n = takeTest(); if (n) setTimeout(() => { if (!enterCustom(n)) showToast(TL`No editor map called ${n} in this browser.`); }); } /* after this frame (its place name) */ if ((benchT -= dt) <= 0) { benchT = 1; syncBenches(); syncFlags(); syncBases(); syncTurrets(); } }
   updateCompass(dt); // hides itself while paused
   const clock = fmtClock(G.char.time) + (G.char.loc === 'overworld' && seen.kind !== 'clear' ? ' · ' + WEATHER_NAME[seen.kind] : '');
   if (el.clock.textContent !== clock) el.clock.textContent = clock;
@@ -256,7 +258,7 @@ function frame(now: number) {
     const boss = updateBosses(dt, time); updateOrbs(dt);
     updateBossBar(boss);
     if (G.god) G.hp = G.S.maxHp;
-    if (G.hp <= 0) { el.warp.style.opacity = '1'; toVillage('death'); }
+    if (G.hp <= 0) { el.warp.style.opacity = '1'; clearMyCond(); toVillage('death'); }
     updateStealth(dt, !driving.v && !riding() && !inBoat() && !G.swimming && !climbing() && !G.fly);
     updateLoot(dt, time); spinCarrier(time); updateEntities(dt, time);
     if (outdoors) {
@@ -268,7 +270,7 @@ function frame(now: number) {
   } else { el.prompt.style.display = 'none'; el.bUse.classList.remove('on'); el.bossbar.style.display = 'none'; }
   let sw: ReturnType<typeof updateBodySway> | null = null;
   if (G.trans) updateTrans(dt, camera); else if (driving.v) vehicleCamera(camera); else if (riding()) rideCamera(camera); else if (inBoat()) boatCamera(camera); else {
-    coverHint(dt); crouchDrop += ((G.crouch ? CROUCH_DROP * (1 - 0.85 * peekK()) : 0) - crouchDrop) * Math.min(1, dt * 10); camera.position.set(G.pos.x, G.pos.y + EYE - crouchDrop, G.pos.z);
+    coverHint(dt); crouchDrop += ((G.crouch ? CROUCH_DROP * (1 - 0.85 * peekK()) : 0) - crouchDrop) * Math.min(1, dt * 10); camera.position.set(G.pos.x, G.pos.y + EYE - crouchDrop - downView().drop, G.pos.z);
     if (!G.fly && G.playing) { // (0.191) the body rocks with the steps and the breath (core/sway.ts)
       sw = updateBodySway(dt);
       if (!driving.v && !riding() && !inBoat() && !climbing()) updateMySteps(dt); // (0.212)
@@ -277,7 +279,7 @@ function frame(now: number) {
   }
   if (sw) updateRecoil(dt);
   const rc = sw ? recoilView() : null; // (0.192) the shot's punch, on foot only
-  camera.rotation.set(G.pitch + (sw?.pitch ?? 0) + (rc?.up ?? 0), G.yaw + (sw?.yaw ?? 0) + (rc?.side ?? 0), sw?.roll ?? 0);
+  camera.rotation.set(G.pitch + (sw?.pitch ?? 0) + (rc?.up ?? 0), G.yaw + (sw?.yaw ?? 0) + (rc?.side ?? 0), (sw?.roll ?? 0) + (sw ? downView().roll : 0)); // (0.227) lying on a side after a fall
   updateSoundFrame(dt);
   updateWeather(dt, sky.visible);
   if (sky.visible) { sky.position.set(camera.position.x, camera.position.y - 20, camera.position.z); horizon.position.set(camera.position.x, 0, camera.position.z); shapeHorizon(camera.position.x, camera.position.z); updateSky(G.char.time, latitude(G.pos.z)); tintToxic(); updateFarPeaks(camera.position); } else farPeaks.visible = false;

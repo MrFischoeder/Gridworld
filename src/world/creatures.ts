@@ -23,6 +23,7 @@ import { mayspawn, FOE_HIT } from './threat';
 import { ALPHA, type Quest } from '../gen/quests';
 import { textSprite } from './npc';
 import { targetingFoe, proxied, stepRemote, withFoeTarget, nearestPlayer, remoteOf } from './remote';
+import { tickCond, knockDown, heavyHit, bleed, type CondFoe } from './conditions';
 import { mindOf, sense, share, spottedBy, targetVis } from './stealth';
 import { STEALTH, LOSE } from '../gen/stealth';
 import { tl } from '../i18n';
@@ -31,7 +32,9 @@ type State = 'roam' | 'hunt' | 'dash' | 'retreat' | 'threat' | 'charge' | 'recov
   // (0.226, stage W2) the telegraphs and the weak moments, seen on the other players' copies too
   | 'howl' | 'stun' | 'screech' | 'grounded' | 'scatter';
 
-export interface Creature {
+export interface Creature extends CondFoe {
+  /** (0.227) how far down on its side it is drawn (eased) */
+  down?: number;
   /** Fixed city post; transmitted to prevent duplicate garrisons on another client. */
   cityPost?: string;
   kind: CreatureKind; boss?: false;
@@ -404,8 +407,12 @@ function walk(c: Creature, dx: number, dz: number, speed: number, dt: number) {
   c.heading += dh * Math.min(1, dt * 8);
   c.p.y = env.ground(c.p.x, c.p.z) + CREATURES[c.kind].lift;
 }
-function bite(dmg: number) {
-  hurtPlayer(dmg * FOE_HIT, true, .4);
+/** A bite or a blow that reaches you; (0.227, stage W5) a heavy one staggers you, some open a wound (`bleeds`: the
+ *  chance) and a Bramble's charge throws you down. */
+function bite(dmg: number, bleeds = 0, fell = false) {
+  if (hurtPlayer(dmg * FOE_HIT, true, .4)) return; // a vehicle took it
+  if (fell) knockDown(); else heavyHit(dmg * FOE_HIT);
+  if (bleeds && Math.random() < bleeds) bleed();
 }
 const alerted = new WeakSet<Creature[]>();
 const cEye = new THREE.Vector3();
@@ -466,7 +473,7 @@ function ravager(c: Creature, dt: number, to: THREE.Vector3, dist: number, safe:
     case 'dash':
       walk(c, to.x, to.z, speed * 1.25, dt);
       if (c.feint && (c.feint -= dt) <= 0) { c.feint = 0; c.state = 'retreat'; c.timer = 0.6; break; } // (0.226) only a feint: it breaks off and comes again
-      if (dist < 1.5) { bite((s.damage + 2 * c.level) * c.dmgMul); c.state = 'retreat'; c.timer = 0.8; }
+      if (dist < 1.5) { bite((s.damage + 2 * c.level) * c.dmgMul, 0.3); c.state = 'retreat'; c.timer = 0.8; }
       else if (c.timer <= 0) { c.state = 'hunt'; c.timer = 2.5; }
       break;
     case 'retreat':
@@ -496,7 +503,7 @@ function bramble(c: Creature, dt: number, to: THREE.Vector3, dist: number, safe:
       const before = c.p.clone();
       walk(c, c.dir.x, c.dir.z, s.speed, dt);
       if (dist < 2.4 && c.speed > 0) {
-        bite((s.damage + 4 * c.level) * c.dmgMul);
+        bite((s.damage + 4 * c.level) * c.dmgMul, 0, true);
         if (!foeRules.shielded()) { G.vel.x += c.dir.x * 10; G.vel.z += c.dir.z * 10; G.vel.y = 5; G.onGround = false; }
         c.state = 'recover'; c.timer = 1.6;
       } else if (before.distanceTo(c.p) < 1e-3 && c.timer < 2.2 - 0.25) { // (0.226) head first into a trunk, a stone or a wall: stunned
@@ -681,7 +688,7 @@ function gnawer(c: Creature, dt: number, to: THREE.Vector3, dist: number, safe: 
       if (nest.length <= 2 && c.hurt) { c.state = 'retreat'; c.timer = 4; break; }
       const side = Math.sin(c.anim * 0.35 + c.flank) * 0.9, sx = -to.z, sz = to.x, L = Math.hypot(sx, sz) || 1;
       walk(c, to.x + sx / L * side * Math.min(4, dist), to.z + sz / L * side * Math.min(4, dist), speed, dt);
-      if (dist < 1.25) { bite((s.damage + c.level) * c.dmgMul); c.state = 'retreat'; c.timer = 0.5 + Math.random() * 0.6; }
+      if (dist < 1.25) { bite((s.damage + c.level) * c.dmgMul, 0.12); c.state = 'retreat'; c.timer = 0.5 + Math.random() * 0.6; }
       break;
     }
     case 'retreat':
@@ -795,7 +802,7 @@ function lurker(c: Creature, dt: number, to: THREE.Vector3, _dist: number, safe:
     }
     case 'dash':
       swim(c, to.x, to.z, speed * 1.5, dt, LURK_DEPTH * 0.5, 1.2);
-      if (prey && flat < 1.9) { bite((s.damage + 3 * c.level) * c.dmgMul); c.state = 'retreat'; c.timer = 2; }
+      if (prey && flat < 1.9) { bite((s.damage + 3 * c.level) * c.dmgMul, 0.45); c.state = 'retreat'; c.timer = 2; }
       else if (c.timer <= 0 || !prey) { c.state = 'stalk'; c.timer = 3; }
       break;
     case 'retreat':
@@ -834,6 +841,9 @@ export function updateCreatures(dt: number, time: number) {
     const c = W.creatures[i];
     if (stepRemote(c, dt)) { animate(c, dt, time); continue; } // another player's: it does what its owner says
     if (!c.cityPost && nearestPlayer(c.p.x, c.p.z) > (c.questId ? 240 : c.kind === 'leechwing' ? 220 : 130)) { removeCreature(c); continue; }
+    const held = tickCond(c, dt, (d, cr) => hurtCreature(c, d, cr)); // (0.227, stage W5) bleeding; down or reeling
+    if (c.hp <= 0 || !W.creatures.includes(c)) continue; // bled out
+    if (held) { c.speed = 0; animate(c, dt, time); continue; }
     withFoeTarget(c, () => {
       const to = V(G.pos.x, G.pos.y + 1.2, G.pos.z).sub(c.p), dist = to.length(), safe = !targetingFoe() && foeRules.playerSafe();
       if (c.spooked) c.spooked = Math.max(0, c.spooked - dt);
@@ -883,9 +893,22 @@ function animate(c: Creature, dt: number, time: number) {
     c.wings[0].rotation.z = -lift; c.wings[1].rotation.z = lift;
     c.g.rotation.x = c.state === 'grounded' ? 0 : c.state === 'screech' ? -0.5 : -Math.asin(Math.max(-1, Math.min(1, c.dir.y))); c.g.rotation.z = c.state === 'grounded' ? 0 : c.bank;
   }
+  condLook(c, dt, time);
   c.flash -= dt;
   if (c.flash > 0) c.mat.color.setHex(0xffffff);
   else c.mat.color.setHex(baseColor(c));
+}
+/** (0.227, stage W5) A beast knocked down lies on its side kicking; a staggered one reels; a bleeding one drips. */
+function condLook(c: Creature, dt: number, time: number) {
+  if (c.kind !== 'bramble' && !c.wings.length) c.g.rotation.z = 0; // (the others set their own roll every frame)
+  const down = c.cond === 'down' ? 1 : 0;
+  c.down = (c.down ?? 0) + (down - (c.down ?? 0)) * Math.min(1, dt * 9);
+  if (c.down > 0.01) {
+    c.g.rotation.z = 1.35 * c.down; c.g.position.y -= CREATURES[c.kind].lift * 0.45 * c.down;
+    c.legs.forEach((l, i) => { l.rotation.x = Math.sin(time * 18 + i) * 0.5 * c.down!; });
+  }
+  if (c.cond === 'stagger') c.g.rotation.z += Math.sin(time * 30) * 0.12;
+  if ((c.bleed ?? 0) > 0 && Math.random() < dt * 5) burst(V(c.p.x, c.p.y - CREATURES[c.kind].lift * 0.6, c.p.z), 0xd84a2a, 1, 0.25);
 }
 
 // ---------- damage ----------

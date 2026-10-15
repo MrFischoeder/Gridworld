@@ -21,6 +21,8 @@ import { spawnBandit, fallBandit, removeBandit, ghostBolt, type Bandit } from '.
 import { damageFoe, foeRules, makeDrone, type Drone, type Boss } from './enemies';
 import { raiders, spawnRemoteRaider, remoteRaiderKilled, dropRaider, hurtRaider, barricades, barricadeAlive, placeBarricadeCopy, removeBarricade, hurtBarrier, type Raider, type Barricade } from './raiders';
 import { quietLoot } from './loot';
+import { setBleedRoute, takeFx, type CondFoe } from './conditions';
+import type { HitFx } from '../gen/conditions';
 import { scene } from './render';
 import { burst } from './fx';
 import type { VehicleModel } from '../data/vehicles';
@@ -105,11 +107,11 @@ const dying = new Map<number, number>();
 const r2 = (v: number) => Math.round(v * 100) / 100;
 function entry(f: Thing, n: number, t: number): unknown[] {
   if (t === TYPE.barricade) { const b = f as Barricade; return [n, t, b.big ? 'b' : '', r2(b.x), r2(b.y), r2(b.z), r2(b.ang), r2(b.hp), b.max, 0, '']; }
-  if (t === TYPE.drone) { const d = f as Drone; return [n, t, '', r2(d.p.x), r2(d.p.y), r2(d.p.z), 0, r2(d.hp), r2(d.hp), 0, d.chasing ? 'c' : '']; }
+  if (t === TYPE.drone) { const d = f as Drone; return [n, t, '', r2(d.p.x), r2(d.p.y), r2(d.p.z), 0, r2(d.hp), r2(d.hp), 0, d.chasing ? 'c' : '', null, 0, '', (d as CondFoe).cond ?? '']; }
   if (t === TYPE.boss) { const b = f as Boss; return [n, t, String(b.idx), r2(b.p.x), r2(b.p.y), r2(b.p.z), 0, r2(b.hp), b.maxHp, 0, b.engaged ? 'e' : '']; }
   if (t === TYPE.raider) { const r = f as Raider; return [n, t, r.v.st.model, r2(r.v.st.x), r2(r.v.y), r2(r.v.st.z), r2(r.v.st.heading), r2(r.hp), r.maxHp, r2(r.level), String(r2(r.v.turret?.rotation.y ?? 0))]; }
   const o = f as Foe, kind = t === TYPE.robot ? (o as Robot).model : t === TYPE.bandit ? (o as Bandit).role : (o as Creature).kind;
-  return [n, t, kind, r2(o.p.x), r2(o.p.y), r2(o.p.z), r2(o.heading), r2(o.hp), o.maxHp, r2(o.level), o.state, o.cityPost ?? null, (o as { cover?: number }).cover ? 1 : 0, (o as { mode?: string }).mode ?? ''];
+  return [n, t, kind, r2(o.p.x), r2(o.p.y), r2(o.p.z), r2(o.heading), r2(o.hp), o.maxHp, r2(o.level), o.state, o.cityPost ?? null, (o as { cover?: number }).cover ? 1 : 0, (o as { mode?: string }).mode ?? '', (o as CondFoe).cond ?? '', (o as CondFoe).bleed ? 1 : 0]; // (0.227) [14] its condition, [15] bleeding
 }
 function tell() {
   const now = performance.now() / 1000, list: unknown[] = [], next = new Map<number, Thing>();
@@ -218,13 +220,14 @@ function heard(from: number, loc: string, list: unknown[]) {
     const f = c.o, r = remoteOf(f);
     if (r) { r.x = x; r.y = y; r.z = z; r.h = h; r.hp = hp; r.maxHp = maxHp; if (t === TYPE.raider) r.aux = parseFloat(state) || 0; }
     if (t === TYPE.barricade) { (f as Barricade).hp = hp; continue; }
-    if (t === TYPE.drone) { (f as Drone).chasing = state === 'c'; continue; }
+    if (t === TYPE.drone) { (f as Drone).chasing = state === 'c'; (f as CondFoe).cond = typeof e[14] === 'string' ? e[14] : ''; continue; }
     if (t === TYPE.boss) { (f as Boss).engaged = state === 'e'; (f as Boss).maxHp = maxHp; continue; }
     if (t === TYPE.raider) continue;
     if (typeof e[11] === 'string') (f as Foe).cityPost = e[11];
     (f as { cover?: number }).cover = e[12] ? 1 : 0; // (0.224) crouched behind cover in its owner's game
     if (typeof e[13] === 'string') (f as { mode?: string }).mode = e[13]; // (0.226) a telegraph or a weak moment (stage W2)
     if (typeof state === 'string') (f as { state: string }).state = state;
+    (f as CondFoe).cond = typeof e[14] === 'string' ? e[14] : ''; (f as CondFoe).bleed = e[15] ? 1 : 0; // (0.227, stage W5) down, reeling, short-circuited; bleeding
   }
   for (const [n, c] of [...o.foes]) if (!seen.has(n)) { o.foes.delete(n); drop(c); } // gone from its owner's game
 }
@@ -239,7 +242,8 @@ onRelay((m: Relay) => {
     const t = typeOf(f), dmg = Math.max(0, Math.min(1e4, +(m.dmg as number) || 0)), flash = G.hitFlash;
     if (t === TYPE.barricade) { hurtBarrier(f as Barricade, dmg); return; }
     const before = (f as Drone).hp;
-    const hit = () => { if (t === TYPE.raider) hurtRaider(f as Raider, dmg); else damageFoe(f as Foe | Drone | Boss, dmg, false); };
+    const fx = cleanFx(m.fx); // (0.227) what else the hit does: a stagger, a fall, a cut, an EMP
+    const hit = () => { if (t === TYPE.raider) hurtRaider(f as Raider, dmg); else damageFoe(f as Foe | Drone | Boss, dmg, false, fx, m.npc ? 0 : m.from); };
     if (m.npc) hit(); else quietLoot(hit);
     G.hitFlash = flash; // not your shot
     const died = t === TYPE.drone ? before - dmg <= 0 : !alive(f, t) || (f as Foe).hp <= 0;
@@ -255,15 +259,16 @@ onRelay((m: Relay) => {
     else if (c.t !== TYPE.barricade) damageFoe(c.o as Foe | Boss, 1e9);
   } else if (m.t === 'hurt') { // their foe hurt you
     if (m.loc !== undefined && m.loc !== myLoc()) return;
-    const dmg = Math.max(0, Math.min(500, +(m.dmg as number) || 0));
-    if (!dmg) return;
+    const dmg = Math.max(0, Math.min(500, +(m.dmg as number) || 0)), fx = Array.isArray(m.fx) ? (m.fx as unknown[]).filter((k): k is string => typeof k === 'string').slice(0, 4) : [];
+    if (!dmg && !fx.length) return;
     if (m.car !== undefined || m.carIndex !== undefined) {
       const v = myCarList().find(v => v.st.id === m.car) ?? (m.car === undefined && Number.isInteger(m.carIndex) ? myCarList()[Number(m.carIndex)] : undefined);
       if (v && v.riders.some(r => r?.who === 'peer:' + m.from)) damageVehicle(v, dmg);
       return;
     }
     if (foeRules.playerSafe()) return;
-    hurtPlayer(dmg, !!m.a);
+    if (dmg) hurtPlayer(dmg, !!m.a);
+    for (const k of fx) takeFx(k); // (0.227) thrown down, staggered, bleeding
   } else if (m.t === 'thit') { // a gun of this place was hit by another player
     if (m.loc === myLoc()) remoteTurretHit(+(m.id as number), Math.max(0, Math.min(1e4, +(m.dmg as number) || 0)));
   } else if (m.t === 'bolt') {
@@ -277,9 +282,23 @@ setTurretHook((id, dmg) => { if (online() && company()) relay({ t: 'thit', id, d
 setRemoteHooks({
   others,
   authority,
-  hurt: (id, dmg, a) => { relay({ t: 'hurt', dmg: Math.round(dmg * 100) / 100, a, loc: myLoc() }, id); },
-  hit: (o, dmg, npc) => { const r = remoteOf(o); if (r) relay({ t: 'fhit', nid: r.nid, dmg, npc }, r.owner); },
+  hurt: (id, dmg, a, fx) => { relay({ t: 'hurt', dmg: Math.round(dmg * 100) / 100, a, loc: myLoc(), ...(fx ? { fx } : {}) }, id); },
+  hit: (o, dmg, npc, fx) => { const r = remoteOf(o); if (r) relay({ t: 'fhit', nid: r.nid, dmg, npc, ...(fx ? { fx } : {}) }, r.owner); },
   bolt: (p: THREE.Vector3, v: THREE.Vector3, c: number) => { if (online() && company()) relay({ t: 'bolt', loc: myLoc(), p: [r2(p.x), r2(p.y), r2(p.z)], v: [r2(v.x), r2(v.y), r2(v.z)], c }); },
+});
+
+/** (0.227) A hit's effects from another game, kept to what they may be. */
+function cleanFx(v: unknown): HitFx | undefined {
+  if (!v || typeof v !== 'object') return undefined;
+  const o = v as Record<string, unknown>;
+  return { impact: Math.max(0, Math.min(3, +(o.impact as number) || 0)), knock: !!o.knock, cut: !!o.cut, emp: !!o.emp };
+}
+// (0.227) bleeding from another player's cut: their kill, so their game is told when it ends the foe
+setBleedRoute((f, by, d, hurt) => {
+  if (!by) { hurt(d, true); return; }
+  const n = ids.get(f);
+  quietLoot(() => hurt(d, false));
+  if (n !== undefined && (f as Foe).hp <= 0) relay({ t: 'kill', nid: n }, by);
 });
 
 let clock = 0, lastLoc = '';

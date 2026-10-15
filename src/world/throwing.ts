@@ -30,6 +30,7 @@ import { addBlast } from './fx';
 import { hurtPlayer } from './damage';
 import { foeRules } from './enemies';
 import { otherPlayers, hurtOther } from './remote';
+import { knockDown, stagger } from './conditions';
 import { ITEMS, type ItemKey } from '../data/items';
 import { logLine } from '../ui/hud';
 import { TL, tl } from '../i18n';
@@ -215,8 +216,9 @@ function blowGrenade(g: Live) {
   if (d < GRENADE.r && !foeRules.playerSafe() && !hurtPlayer(grenadeHarm(d, g.dmg), true, 0.6)) {
     const a = Math.atan2(G.pos.x - g.p.x, G.pos.z - g.p.z), k = GRENADE.push * (1 - d / GRENADE.r);
     G.vel.x += Math.sin(a) * k; G.vel.z += Math.cos(a) * k; G.vel.y += k * 0.5; G.onGround = false;
+    if (d < GRENADE.r * GRENADE.fell) knockDown(); else stagger(); // (0.227, stage W5) at its feet it throws you down
   }
-  for (const t of otherPlayers()) { const e = Math.hypot(t.x - g.p.x, t.y + 0.9 - g.p.y, t.z - g.p.z); if (e < GRENADE.r) hurtOther(t.id, grenadeHarm(e, g.dmg)); }
+  for (const t of otherPlayers()) { const e = Math.hypot(t.x - g.p.x, t.y + 0.9 - g.p.y, t.z - g.p.z); if (e < GRENADE.r) hurtOther(t.id, grenadeHarm(e, g.dmg), true, [e < GRENADE.r * GRENADE.fell ? 'down' : 'stagger']); }
 }
 /** Leaving a place: nothing thrown stays. */
 export function clearThrowing() {

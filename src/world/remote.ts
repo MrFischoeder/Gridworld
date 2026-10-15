@@ -6,6 +6,7 @@
 import * as THREE from 'three';
 import { G, W } from '../game';
 import { hostile, type Faction } from '../core/factions';
+import type { HitFx } from '../gen/conditions';
 
 export interface CombatFoe { kind: string; hp: number; p: THREE.Vector3; r: number }
 export const factionOf = (f: CombatFoe): Faction => f.kind === 'robot' ? 'robot' : f.kind === 'bandit' ? 'bandit' : 'wildlife';
@@ -86,12 +87,12 @@ export function stepRemote(o: { p: THREE.Vector3; heading: number; speed: number
 // ---------- the players a foe can go for ----------
 export interface Target { id: number; x: number; y: number; z: number }
 let others: () => Target[] = () => [];
-let hurtPeer: (id: number, dmg: number, armour: boolean) => void = () => {};
+let hurtPeer: (id: number, dmg: number, armour: boolean, fx?: string[]) => void = () => {};
 let authority: () => boolean = () => true;
-let hit: (o: object, dmg: number, npc?: boolean) => void = () => {};
+let hit: (o: object, dmg: number, npc?: boolean, fx?: HitFx) => void = () => {};
 let bolt: (p: THREE.Vector3, v: THREE.Vector3, color: number) => void = () => {};
 /** world/foesync.ts: who else is here, how to hurt them, whether your game spawns the foes here. */
-export function setRemoteHooks(h: { others: () => Target[]; hurt: (id: number, dmg: number, armour: boolean) => void; authority: () => boolean; hit: (o: object, dmg: number, npc?: boolean) => void; bolt: (p: THREE.Vector3, v: THREE.Vector3, color: number) => void }) {
+export function setRemoteHooks(h: { others: () => Target[]; hurt: (id: number, dmg: number, armour: boolean, fx?: string[]) => void; authority: () => boolean; hit: (o: object, dmg: number, npc?: boolean, fx?: HitFx) => void; bolt: (p: THREE.Vector3, v: THREE.Vector3, color: number) => void }) {
   others = h.others; hurtPeer = h.hurt; authority = h.authority; hit = h.hit; bolt = h.bolt;
 }
 /** Whether your game spawns the foes where you are (alone, or the first player here): the others see yours. */
@@ -99,14 +100,18 @@ export const spawnAuthority = () => authority();
 /** The other players here (same place, in the game), for bolts and blasts that may hit them. */
 export const otherPlayers = () => others();
 /** You hit another player's foe: tell its owner. */
-export const hitOwner = (o: object, dmg: number, npc = false) => hit(o, dmg, npc);
+export const hitOwner = (o: object, dmg: number, npc = false, fx?: HitFx) => hit(o, dmg, npc, fx);
 let turretHit: (id: number, dmg: number) => void = () => {};
 /** world/foesync.ts: how to tell the others a gun of this place was hit. */
 export function setTurretHook(f: (id: number, dmg: number) => void) { turretHit = f; }
 export const turretHitOut = (id: number, dmg: number) => turretHit(id, dmg);
 /** One of your foes fired a bolt (the others draw it). */
 export const boltOut = (p: THREE.Vector3, v: THREE.Vector3, color: number) => bolt(p, v, color);
-export const hurtOther = (id: number, dmg: number, armour = true) => hurtPeer(id, dmg, armour);
+export const hurtOther = (id: number, dmg: number, armour = true, fx?: string[]) => hurtPeer(id, dmg, armour, fx);
+let fxOut: string[] = [];
+/** (0.227, stage W5) A condition a foe's turn put on "you" while it ran against someone else: sent to that player with
+ *  the turn's harm (world/conditions.ts); dropped when the turn ran against another foe. */
+export function peerFx(k: string) { if (!npcTarget) fxOut.push(k); }
 
 const saved = new THREE.Vector3(), savedVel = new THREE.Vector3();
 let proxy = false;
@@ -126,12 +131,12 @@ export function withTarget(x: number, z: number, fn: () => void) {
   for (const p of ps) { const d = Math.hypot(p.x - x, p.z - z); if (d < bd) { bd = d; best = p; } }
   if (!best) { fn(); return; }
   saved.copy(G.pos); savedVel.copy(G.vel);
-  const hp = G.hp, flash = G.dmgFlash;
-  G.pos.set(best.x, best.y, best.z); proxy = true; peer = best.id;
+  const hp = G.hp, flash = G.dmgFlash, fx0 = fxOut;
+  G.pos.set(best.x, best.y, best.z); proxy = true; peer = best.id; fxOut = [];
   try { fn(); } finally {
-    const dmg = hp - G.hp;
-    proxy = false; peer = 0;
+    const dmg = hp - G.hp, fx = fxOut;
+    proxy = false; peer = 0; fxOut = fx0;
     G.pos.copy(saved); G.vel.copy(savedVel); G.hp = hp; G.dmgFlash = flash;
-    if (dmg > 0) hurtPeer(best.id, dmg, true); // their own armour is reckoned on their side
+    if (dmg > 0 || fx.length) hurtPeer(best.id, Math.max(0, dmg), true, fx.length ? fx : undefined); // their own armour is reckoned on their side
   }
 }

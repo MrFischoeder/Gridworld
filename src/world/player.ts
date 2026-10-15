@@ -9,6 +9,8 @@ import { V } from './render';
 import { STAMINA, BURN } from '../data/survival';
 import { drainStamina, spendStamina, load, loadSpeed, burn } from './survival';
 import { tl } from '../i18n';
+import { playerDown, playerStaggered } from './conditions';
+import { PLAYER_COND } from '../gen/conditions';
 
 export const R = 0.3, H = 1.7, EYE = 1.55, EPS = 1e-4, GRAV = 20, JUMP = 7.2;
 /** Log hook for water messages (set by the HUD owner; keeps this module free of UI imports). */
@@ -138,6 +140,8 @@ export function updatePlayer(dt: number): boolean {
   recoverRoundedContact();
   const { keys, stick, vel, pos } = G;
   let f = (keys.KeyW ? 1 : 0) - (keys.KeyS ? 1 : 0) - stick.dy, s = (keys.KeyD ? 1 : 0) - (keys.KeyA ? 1 : 0) + stick.dx;
+  const down = playerDown(); // (0.227, stage W5) knocked down: no feet under you until you are up
+  if (down) { f = 0; s = 0; dodgeAsk = null; }
   const m = Math.hypot(f, s); if (m > 1) { f /= m; s /= m; }
   const moving = m > 0.1 && G.onGround;
   // water: wading slows you down, deeper water makes you swim (at the surface; diving comes later)
@@ -153,7 +157,7 @@ export function updatePlayer(dt: number): boolean {
   const wantSprint = (keys.ShiftLeft || keys.ShiftRight) && m > 0.1 && !G.swimming && !over && !G.crouch;
   const sprint = wantSprint && drainStamina(STAMINA.sprint * (L.state === 'heavy' ? 1.4 : 1), dt);
   const swimTired = G.swimming && m > 0.1 && !drainStamina(STAMINA.swim, dt);
-  const speed = (sprint ? 9 : 6) * G.S.speed * loadSpeed(L.kg) * (G.swimming ? (swimTired ? 0.25 : 0.45) : wet > 0.45 ? 0.65 : 1) * (G.crouch && !G.swimming ? STEALTH.crouchSpeed : 1);
+  const speed = (sprint ? 9 : 6) * G.S.speed * loadSpeed(L.kg) * (G.swimming ? (swimTired ? 0.25 : 0.45) : wet > 0.45 ? 0.65 : 1) * (G.crouch && !G.swimming ? STEALTH.crouchSpeed : 1) * (playerStaggered() ? PLAYER_COND.slow : 1);
   G.activity = m < 0.1 || G.trans ? 1 : sprint ? BURN.sprint : G.swimming ? BURN.swim : BURN.walk;
   const fw = V(-Math.sin(G.yaw), 0, -Math.cos(G.yaw)), rt = V(Math.cos(G.yaw), 0, -Math.sin(G.yaw));
   const want = fw.multiplyScalar(f * speed).addScaledVector(rt, s * speed);
@@ -174,7 +178,8 @@ export function updatePlayer(dt: number): boolean {
     const target = w.level - SWIM_DEPTH - 0.05;
     vel.y += ((target - pos.y) * 5 - vel.y) * Math.min(1, dt * 6);
   } else {
-    if ((keys.Space || G.touchJump) && G.onGround && !over && G.crouch) G.crouch = false; // Space stands you up
+    if (down) { /* lying there */ }
+    else if ((keys.Space || G.touchJump) && G.onGround && !over && G.crouch) G.crouch = false; // Space stands you up
     else if ((keys.Space || G.touchJump) && G.onGround && !over && spendStamina(STAMINA.jump)) { vel.y = JUMP * (wet > 0.45 ? 0.6 : 1); G.onGround = false; burn(BURN.jump); }
     vel.y -= GRAV * dt;
   }

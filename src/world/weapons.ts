@@ -14,6 +14,8 @@ import { vehicles, rayVehicle, damageVehicle, type Vehicle } from './vehicles';
 import { foes, damageFoe, type Foe, type Drone } from './enemies';
 import { noteShot, unaware, sneakBonus } from './stealth';
 import { hitMult, type FoeKey } from '../gen/tactics';
+import { IMPACT, condMult, type HitFx } from '../gen/conditions';
+import { playerDown, type CondFoe } from './conditions';
 import { rayBarrier, hurtBarrier, rayRaider, type Raider } from './raiders';
 import { el } from '../ui/hud';
 import { gunOf, meleeOf, SHOT, type GunLook, type MeleeLook } from '../data/weapons';
@@ -349,7 +351,7 @@ function ray(d: THREE.Vector3, dmg: number) {
   } else addBolt(gun, end, struck ? 0xffd27a : look.c, look.len, look.speed, sparks, struck ? look.hit * 1.4 : look.hit * 0.6);
   if (car) { damageVehicle(car, dmg); G.hitFlash = .15; }
   if (turret) damageMountedTurret(turret.gun, dmg);
-  if (hitT) { damageFoe(hitT, dmg * sneak(hitT, false) * tactic(hitT, Math.max(-1, Math.min(1, (end.y - hitT.g.position.y) / (hitT.r || 0.6))), false)); play('hit', { at: hitT.g.position, vol: 0.5, far: 80 }); }
+  if (hitT) { damageFoe(hitT, dmg * sneak(hitT, false) * tactic(hitT, Math.max(-1, Math.min(1, (end.y - hitT.g.position.y) / (hitT.r || 0.6))), false), true, gunFx()); play('hit', { at: hitT.g.position, vol: 0.5, far: 80 }); }
 }
 /** (0.223, PLAN_WALKI.md stage W1) What kind of foe it is for gen/tactics.ts (null: a raider's vehicle, a boss). */
 function foeKey(t: Foe): FoeKey | null {
@@ -361,7 +363,12 @@ let tacticTold = 0;
 const WHY: Record<string, (k: string) => string> = {
   stun: (k) => TL`Stunned! ×${k}`, grounded: (k) => TL`Caught on the ground ×${k}`, shield: (k) => TL`Its shield is up: ×${k}`,
   hot: (k) => TL`Overheated! ×${k}`, exposed: (k) => TL`Wide open ×${k}`,
+  down: (k) => TL`It is down! ×${k}`, emp: (k) => TL`Short-circuited ×${k}`,
 };
+/** (0.227, stage W5) What a shot carries beyond its damage: its weight (a rifle round more, a pellet less). */
+const gunFx = (): HitFx => ({ impact: curGun()?.look === 'rifle' ? IMPACT.rifle : curGun()?.look === 'shotgun' ? IMPACT.shotgun : IMPACT.gun });
+/** A swing's: a sledge knocks down, an edge cuts (beasts bleed); a tired swing has no weight behind it. */
+const meleeFx = (look: MeleeLook, tired: boolean): HitFx => ({ impact: IMPACT[look] * (tired ? 0.4 : 1), knock: look === 'sledge' && !tired, cut: look !== 'sledge' });
 /** The hit's multiplier by where it comes from and where it lands (`u` its height in the foe's sphere, null for a
  *  blade), with a short line now and then saying why (a weak spot, from behind, its armour). */
 function tactic(t: Foe, u: number | null, melee: boolean): number {
@@ -371,9 +378,11 @@ function tactic(t: Foe, u: number | null, melee: boolean): number {
   const cos = h === undefined || key === 'drone' ? NaN : Math.cos(Math.atan2(G.pos.x - p.x, G.pos.z - p.z) - h);
   const st = (t as { mode?: string }).mode || (t as { state?: string }).state || '';
   const m = hitMult(key, cos, u, melee, st), now = performance.now();
+  const cond = (t as CondFoe).cond, ck = condMult(cond); // (0.227) down or short-circuited: it takes more
+  if (ck !== 1) { m.k *= ck; m.why = null; }
   if (now - tacticTold > 700 && Math.abs(m.k - 1) > 0.15) {
     tacticTold = now;
-    logLine(m.why ? WHY[m.why](m.k.toFixed(1)) : m.spot ? TL`Weak spot! ×${m.k.toFixed(1)}` : m.from === 'back' && m.k > 1 ? TL`From behind ×${m.k.toFixed(1)}` : m.k < 1 ? TL`Armour turns it: ×${m.k.toFixed(1)}` : TL`A good angle ×${m.k.toFixed(1)}`);
+    logLine(ck !== 1 ? WHY[cond === 'stun' ? 'emp' : 'down'](m.k.toFixed(1)) : m.why ? WHY[m.why](m.k.toFixed(1)) : m.spot ? TL`Weak spot! ×${m.k.toFixed(1)}` : m.from === 'back' && m.k > 1 ? TL`From behind ×${m.k.toFixed(1)}` : m.k < 1 ? TL`Armour turns it: ×${m.k.toFixed(1)}` : TL`A good angle ×${m.k.toFixed(1)}`);
   }
   return m.k;
 }
@@ -424,11 +433,11 @@ function slash(tired: boolean) {
     const v = t.g.position.clone().sub(o), dist = v.length();
     if (dist > reach + (t.r || 0.5)) continue;
     if (v.normalize().dot(f) < Math.cos(wide)) continue;
-    burst(t.g.position.clone(), 0xc8ffd6, tired ? 6 : 14, tired ? 0.5 : 0.9); damageFoe(t, m.dmg * G.S.mm * (tired ? BLADE.tiredDmg : 1) * sneak(t, true) * tactic(t, null, true));
+    burst(t.g.position.clone(), 0xc8ffd6, tired ? 6 : 14, tired ? 0.5 : 0.9); damageFoe(t, m.dmg * G.S.mm * (tired ? BLADE.tiredDmg : 1) * sneak(t, true) * tactic(t, null, true), true, meleeFx(m.look, tired));
   }
 }
 export function attack() {
-  if (G.cooldown > 0 || !armed() || G.weapon < 0) return;
+  if (G.cooldown > 0 || !armed() || G.weapon < 0 || playerDown()) return; // (0.227) not while lying on the ground
   if (G.weapon === 0) {
     if (G.reloadT > 0 || !curGun()) return;
     if (G.ammo <= 0) { reload(); return; }

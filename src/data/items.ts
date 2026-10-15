@@ -195,7 +195,7 @@ export const ITEMS = {
   membrane: { name: tl('Leechwing Membrane'), ab: 'MEM', type: 'mat', desc: tl('a thin, strong wing membrane. Crafting material; Oskar buys it'), stack: 10 },
   incisor: { name: tl('Gnawer Incisor'), ab: 'INC', type: 'mat', desc: tl('a long, sharp rodent tooth. Crafting material; Oskar buys it'), stack: 10 },
   recall: { name: tl('Recall Beacon'), ab: 'RCL', type: 'cons', desc: tl('returns you to the village from anywhere'), stack: 5 },
-  emp: { name: tl('EMP Charge'), ab: 'EMP', type: 'cons', desc: tl('damages every drone within 6 m (G key)'), stack: 5 },
+  emp: { name: tl('EMP Charge'), ab: 'EMP', type: 'cons', desc: tl('damages every machine within 6 m and short-circuits it for a few seconds (G key)'), stack: 5 },
   book: { name: tl('Ancient Book'), ab: 'BOK', type: 'quest', desc: tl('a crumbling book of the old machine folk; Elder Maciej wants it'), stack: 1 },
   gearbox: { name: tl('Precision Gearbox'), ab: 'GBX', type: 'quest', desc: tl('a rare pre-war part; Oskar the blacksmith wants it'), stack: 1 },
   datacore: { name: tl('Data Core'), ab: 'COR', type: 'quest', desc: tl('a sealed memory core; Zofia at the store wants it'), stack: 1 },

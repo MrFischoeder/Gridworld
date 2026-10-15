@@ -499,7 +499,7 @@ export const PL: Record<string, string> = {
   "Recall Beacon": "Radiolatarnia powrotu",
   "returns you to the village from anywhere": "przenosi cię do wioski z dowolnego miejsca",
   "EMP Charge": "Ładunek EMP",
-  "damages every drone within 6 m (G key)": "uszkadza każdego drona w promieniu 6 m (klawisz G)",
+  "damages every machine within 6 m and short-circuits it for a few seconds (G key)": "uszkadza każdą maszynę w promieniu 6 m i na kilka sekund wywołuje w niej zwarcie (klawisz G)",
   "Ancient Book": "Starożytna księga",
   "a crumbling book of the old machine folk; Elder Maciej wants it": "rozpadająca się księga dawnego ludu maszyn; chce jej Starszy Maciej",
   "Precision Gearbox": "Precyzyjna przekładnia",
@@ -4094,4 +4094,10 @@ export const PL: Record<string, string> = {
   'The Leechwing misses and lands hard: hit it now!': 'Leechwing chybia i ciężko ląduje: bij teraz!',
   'The Assault Construct charges past and stands exposed!': 'Assault Construct przebiega obok i stoi odsłonięty!',
   'Grenade! Get away from it!': 'Granat! Uciekaj od niego!',
+  // (0.227) stage W5: conditions
+  "It is down! ×{0}": "Leży! ×{0}",
+  "Short-circuited ×{0}": "Zwarcie! ×{0}",
+  "You are knocked off your feet!": "Zwala cię z nóg!",
+  "You are bleeding! A medkit will stop it.": "Krwawisz! Apteczka zatamuje krwawienie.",
+  "The bleeding stops.": "Krwawienie ustało.",
 };

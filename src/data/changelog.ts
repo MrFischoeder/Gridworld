@@ -3,6 +3,14 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.227.0', date: '2026-10-15', title: 'Conditions: stagger, knockdown, bleeding and EMP', notes: [
+    'A heavy enough blow staggers a foe and breaks off whatever it was doing: a leap, a charge, a dive, a hammer swing, a burst. The bigger the foe, the harder you have to hit.',
+    'The Sledgehammer knocks the lighter foes off their feet (Ravagers, Gnawers, Scouts, Guardians, bandits) and brings a Leechwing down to the ground. While they lie there they take more ("It is down! ×1.3").',
+    'Blades cut: the Energy Blade, the Machete and the Spear leave a beast bleeding for a few seconds after the blow.',
+    'An EMP Charge now short-circuits every machine within 6 m, not only drones: it stands frozen in blue sparks for about three seconds (the heavy ones for two) and takes more while it does.',
+    'The same can happen to you. A Bramble\'s charge, the Assault Construct\'s hammer or a grenade at your feet throws you to the ground for a moment; a heavy blow staggers you; bites and blades can open wounds that bleed until you use a medkit (a medkit now helps even at full health).',
+    'Multiplayer: what your hit does goes to the game that runs the foe, and what a foe does to you comes from the game that runs it; a beast that bleeds out from your cut is your kill. The server does not need an update.',
+  ] },
   { v: '0.226.0', date: '2026-10-15', title: 'Telegraphs and second attacks', notes: [
     'Every foe now gives away what it is about to do, and most have a moment of weakness after a failed attack. A line tells you when a hit counts more ("Stunned! ×2", "Overheated! ×1.8").',
     'Ravagers: the pack leader rears and howls, and lone Ravagers nearby join the hunt. Some of their leaps are feints that break off before the bite.',

@@ -3,6 +3,7 @@
 import { hurtPlayer } from './damage';
 import { play } from './sound';
 import { targetingFoe, actingFoe, combatFoes, factionOf, hitCombatFoe, type CombatFoe, stepRemote, withFoeTarget, proxied, otherPlayers, hurtOther, boltOut, spawnAuthority, nearestPlayer } from './remote';
+import { tickCond, heavyHit, bleed, type CondFoe } from './conditions';
 import { mindOf, sense, heard, share, spottedBy, aimHeight } from './stealth';
 import { STEALTH, LOSE } from '../gen/stealth';
 import { hostile, shotSphere } from '../core/factions';
@@ -35,7 +36,9 @@ export const BANDIT = 0xffb347, BOSS_COLOR = 0xff6a4a;
 /** How long a cleared camp stays empty (real time). */
 export const CAMP_RESPAWN_MS = 30 * 60 * 1000;
 
-export interface Bandit {
+export interface Bandit extends CondFoe {
+  /** (0.227) how far down on his back he is drawn (eased) */
+  down?: number;
   /** Fixed city post; transmitted to prevent duplicate garrisons on another client. */
   cityPost?: string;
   kind: 'bandit'; boss?: false; role: BanditRole;
@@ -221,7 +224,7 @@ export function updateBolts(dt: number) {
     else if (!dead && !foeRules.playerSafe()) {
       // on foot: distance from the bolt to the player's body (a vertical segment)
       const cy = Math.max(body0.y, Math.min(body1.y, o.p.y)), hitD = Math.hypot(o.p.x - G.pos.x, o.p.y - cy, o.p.z - G.pos.z);
-      if (hitD < 0.45) { dead = true; hurtPlayer(o.dmg); }
+      if (hitD < 0.45) { dead = true; if (!hurtPlayer(o.dmg)) heavyHit(o.dmg); }
     }
     if (dead) { burst(o.p, BANDIT, 6, 0.35); scene.remove(o.m); o.m.geometry.dispose(); bolts.splice(i, 1); }
   }
@@ -297,7 +300,7 @@ function think(b: Bandit, dt: number, time: number) {
           b.blow = false;
           if (dist > 2.4) break;
           const dmg = 10 * (1 + b.level * 0.2);
-          hurtPlayer(dmg);
+          if (!hurtPlayer(dmg)) { heavyHit(dmg); if (Math.random() < 0.35) bleed(); } // (0.227) a blade opens a wound
         }
         break;
       }
@@ -349,6 +352,10 @@ function animate(b: Bandit, dt: number) {
   const r = f.rig; r.aim += ((b.state === 'fight' ? 1 : 0) - r.aim) * Math.min(1, dt * 5);
   b.recoil = Math.max(0, b.recoil - dt * 8);
   poseRig(r, { swing: sw, aim: r.aim, recoil: b.recoil, strike: b.hitT > 0 ? 1 - b.hitT / 0.9 : -1 });
+  // (0.227, stage W5) knocked flat on his back, or rocked back on his heels
+  b.down = (b.down ?? 0) + ((b.cond === 'down' ? 1 : 0) - (b.down ?? 0)) * Math.min(1, dt * 9);
+  b.g.rotation.x = -1.4 * b.down + (b.cond === 'stagger' ? -0.25 + Math.sin(performance.now() / 40) * 0.05 : 0);
+  if (b.down > 0.01) b.g.position.y -= 0.65 * b.down;
   b.flash -= dt;
   b.mat.color.setHex(b.flash > 0 ? 0xffffff : b.role === 'leader' ? BOSS_COLOR : BANDIT);
 }
@@ -376,6 +383,7 @@ export function updateBandits(dt: number, time: number) {
     const b = W.bandits[i];
     if (stepRemote(b, dt)) { animate(b, dt); continue; } // another player's: it does what its owner says
     if (!b.cityPost && b.campId === undefined && nearestPlayer(b.p.x, b.p.z) > (b.ambush !== undefined ? 240 : 160)) { removeBandit(b); continue; }
+    if (tickCond(b, dt, (d, cr) => hurtBandit(b, d, cr))) { b.speed = 0; animate(b, dt); continue; } // (0.227, stage W5) knocked down or reeling
     withFoeTarget(b, () => think(b, dt, time)); animate(b, dt);
   }
   updateBolts(dt);

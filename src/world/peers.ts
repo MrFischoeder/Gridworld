@@ -20,6 +20,7 @@ import { WEAPON_KIND, type ItemKey } from '../data/items';
 import { gunOf } from '../data/weapons';
 import { peekK } from './weapons';
 import { tl } from '../i18n';
+import { playerDown } from './conditions';
 
 /** Each player's colour, by id (castaways' suits: none of them amber, red or gold, which mean danger or loot). */
 const COLORS = [0x7dd3ff, 0xd8a8ff, 0xffffff, 0x9dffe0, 0xff9ad8, 0xa8c8ff, 0xc8ff9d, 0xffc8a8];
@@ -63,7 +64,7 @@ let sendT = 0;
 export function flushPeerState(moving = false) {
   if (!net.id) return;
   sendT = SEND_EVERY;
-  const s: PeerState = { p: [G.pos.x, G.pos.y, G.pos.z], yaw: G.yaw, pitch: G.pitch, loc: myLoc(), held: G.char.hands[0]?.k ?? '', mv: moving && G.playing, away: !G.playing, cars: myCars(), carIds: myCarList().map(v => v.st.id), ride: ride.on ? [ride.on.owner, ride.on.idx, ride.on.seat] : undefined, gun: ride.on ? ride.gun : undefined, boat: myBoatSpot(), vis: Math.round(myVis() * 100) / 100, cr: (G.crouch && peekK() < 0.5) || undefined, pod: myPod(), lt: carriedLight() || undefined, oh: offFree() ? offHeld()?.k : undefined };
+  const s: PeerState = { p: [G.pos.x, G.pos.y, G.pos.z], yaw: G.yaw, pitch: G.pitch, loc: myLoc(), held: G.char.hands[0]?.k ?? '', mv: moving && G.playing, away: !G.playing, cars: myCars(), carIds: myCarList().map(v => v.st.id), ride: ride.on ? [ride.on.owner, ride.on.idx, ride.on.seat] : undefined, gun: ride.on ? ride.gun : undefined, boat: myBoatSpot(), vis: Math.round(myVis() * 100) / 100, cr: (G.crouch && peekK() < 0.5) || playerDown() || undefined, pod: myPod(), lt: carriedLight() || undefined, oh: offFree() ? offHeld()?.k : undefined };
   sendState(s, isHost() ? G.char.time : undefined);
 }
 /** Every frame: send where you are now and then, and draw the others. */
