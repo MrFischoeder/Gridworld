@@ -3,6 +3,14 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.225.0', date: '2026-10-15', title: 'Decoys: throw stones, flares and meat', notes: [
+    'New: throwing. Hold Z and let go: the longer you hold, the further it flies. It throws a stone, a Signal Flare or a piece of meat (the backpack\'s "Ready to throw" picks which).',
+    'A stone clatters where it lands: creatures, robots and bandits go to see what made the noise, and while they look the other way they show you their backs (a hit from behind counts more). The stone lies there to be picked up again.',
+    'A Signal Flare burns red where it lands for most of a minute, hissing now and then and lighting a little round it. Zofia sells them and the blacksmith makes three from a flask of lamp oil and some scrap.',
+    'Meat lures the hungry beasts: Ravagers and Gnawers go to it and feed with their heads down, even breaking off a hunt when it lands close to them. Hurt one or walk right up to it and the meal is over.',
+    'A grazing Bramble hates noise: a stone, a flare or a shot close by sends it charging at the sound instead of at you.',
+    'Multiplayer: everyone in the place sees the throw and where it lands, and each game\'s foes react to it. The server needs the update to pass throws on (an older one simply drops them).',
+  ] },
   { v: '0.224.0', date: '2026-10-15', title: 'Cover', notes: [
     'Big stones, tree trunks, the stone blocks of the ruins and tall crystals now stop shots, bolts and the foes\' line of sight. A shot that hits cover throws up chips of stone.',
     'Bandit gunners, their bosses and Guardians fight from cover: they find a stone, a trunk, a wall or a parked vehicle between you and them, crouch behind it and rise or lean out for a burst. Get round their cover and they have to find new; get close and they fight in the open.',

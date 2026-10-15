@@ -16,6 +16,8 @@ import { refreshGunLook } from '../world/weapons';
 import { lockPointer } from './input';
 import { slotHTML, bindSlots, itemInfo, parseId, loadText } from './slots';
 import { tl, TL } from '../i18n';
+import { THROWABLES } from '../gen/throwing';
+import { readyThrow } from '../world/throwing';
 
 let sel: string | null = null;
 const loadEl = $('packLoad');
@@ -90,6 +92,7 @@ function renderPack() {
     else if (it.type === 'weapon') acts.push(['hold', tl('Take in hands')], ['on', tl('Sling on back')]);
     else if (it.type === 'cons') acts.push(['use', tl('Use')]);
     else if (HAND_TOOLS.has(s.k)) acts.push(['hold', tl('Take in hands')]);
+    if (THROWABLES.includes(s.k) && (w === 'p' || w === 'h')) acts.push(['throw', tl('Ready to throw (Z)')]); // (0.225) world/throwing.ts
     if (s.k === 'log' && (w === 'p' || w === 'h')) acts.push(['saw', tl('Saw into planks')], ['sawall', tl('Saw all')]); // (world/sawing.ts: a Saw in your kit)
     if (w === 'p' || w === 'h' || w === 'k' || w === 'o') acts.push(['drop', tl('Drop')]);
   } else sel = null;
@@ -182,6 +185,7 @@ packEl.addEventListener('click', (e) => {
   const id = sel, [w, i] = parseId(id), act = a.dataset.a!;
   if (act === 'off' || act === 'on' || act === 'hold' || act === 'stow' || act === 'stowo' || act === 'offh') { const m = quick(sel, act); if (m) logLine(m); note = m; sel = null; }
   if (act === 'use' && (w === 'p' || w === 'h' || w === 'o')) { const s = listOf(w)[i]; if (s) useItem(s.k); }
+  if (act === 'throw' && (w === 'p' || w === 'h')) { const s = listOf(w)[i]; if (s) readyThrow(s.k); }
   if (act === 'saw' || act === 'sawall') { const m = sawLogs(act === 'sawall'); logLine(m); note = m; if (!G.char.inv.some((x) => x?.k === 'log') && G.char.hands[0]?.k !== 'log') sel = null; }
   if (side?.act && act === side.act[0] && side.doAct) { note = side.doAct(id); sel = null; if (!G.packOpen) return; }
   if (act === 'drop' && (w === 'p' || w === 'h' || w === 'k' || w === 'o')) { const s = listOf(w)[i]; listOf(w)[i] = null; sel = null; if (s) dropAtFeet(s); } // laid at your feet, for you or anyone to pick up

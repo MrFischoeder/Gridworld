@@ -23,6 +23,9 @@ export const SFX = {
   reload: { voices: [{ w: 'noise', f: [5000, 4000], d: 0.035, v: 0.6 }, { w: 'square', f: [620, 560], t: 0.1, d: 0.035, v: 0.45 }, { w: 'noise', f: [7000, 6000], t: 0.32, d: 0.045, v: 0.6 }, { w: 'square', f: [1050, 980], t: 0.37, d: 0.045, v: 0.45 }] },
   swing: { voices: [{ w: 'noise', f: [1800, 6500], d: 0.17, a: 0.07, v: 0.55, curve: 1.2 }] },
   hit: { voices: [{ w: 'square', f: [520, 190], d: 0.07, v: 0.6 }, { w: 'noise', f: [3200, 1800], d: 0.05, v: 0.5 }] },
+  throw: { voices: [{ w: 'noise', f: [900, 2600], d: 0.18, a: 0.06, v: 0.45 }] },
+  thud: { voices: [{ w: 'noise', f: [700, 200], d: 0.12, v: 0.7 }, { w: 'tri', f: [160, 70], d: 0.1, v: 0.5 }] },
+  hiss: { voices: [{ w: 'noise', f: [6000, 4200], d: 1.0, a: 0.05, v: 0.45 }, { w: 'square', f: [220, 180], d: 0.08, duty: 0.25, v: 0.3 }] },
   ricochet: { voices: [{ w: 'tri', f: [2600, 900], d: 0.2, v: 0.5, vib: [38, 0.05] }, { w: 'noise', f: [5200, 2400], d: 0.06, v: 0.55 }] },
   hurt: { voices: [{ w: 'square', f: [420, 110], d: 0.22, duty: 0.5, v: 0.6, vib: [28, 0.12] }, { w: 'noise', f: [2000, 600], d: 0.12, v: 0.35 }] },
   // the player's body

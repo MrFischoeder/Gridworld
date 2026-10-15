@@ -65,6 +65,7 @@ import { raidHere } from './villageraid';
 import { PropBatch } from './props';
 import { drawLadder, climbing, onClimbChange } from './ladders';
 import { working, onWorkChange, setToolRule } from './gather';
+import { clearThrowing } from './throwing';
 import { drawHouse, drawFurniture } from './houses';
 import { onDungeonLoaded, syncQuestWorld } from './quests';
 import { driving, leave } from './vehicles';
@@ -89,7 +90,7 @@ export function voxelObject(grid: VoxelGrid, skyY = Infinity, outline?: OutlineS
 /** Removes every entity of the current place (the open world also unloads its chunks and structures). */
 function clearLevel() {
   dropCarrier(); clearMountedTurrets(); clearRobots();
-  closeWorld(); leaveCave(); clearCrystals(); clearFires(); clearBenches(); clearFlags(); cancelPlacing(true); cancelBridgePlacing(true); cancelFieldPlacing(true); cancelStreetPlacing(true); cancelLhPlacing(true); cancelPierPlacing(true); clearBoats(); clearBases(); clearTurrets();
+  closeWorld(); leaveCave(); clearCrystals(); clearFires(); clearBenches(); clearFlags(); cancelPlacing(true); cancelBridgePlacing(true); cancelFieldPlacing(true); cancelStreetPlacing(true); cancelLhPlacing(true); cancelPierPlacing(true); clearBoats(); clearBases(); clearTurrets(); clearThrowing();
   if (worldGroup) { scene.remove(worldGroup); worldGroup.traverse((o) => (o as THREE.Mesh).geometry?.dispose()); worldGroup = null; }
   [...W.crystals.map((c) => c.m), ...W.pickups.map((p) => p.g), ...W.chests.map((c) => c.g), ...W.doors.map((d) => d.g), ...W.bosses.map((b) => b.g),
     ...W.orbs.map((o) => o.m), ...W.drones.map((t) => t.g), ...W.npcs.map((n) => n.g)].forEach((o) => scene.remove(o));

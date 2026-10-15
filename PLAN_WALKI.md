@@ -40,7 +40,13 @@ Prośba właściciela (15 października 2026): walka ma być bardziej taktyczna.
   - Strzelcy, bossowie i Guardiany (na powierzchni) walczą z osłon; osiłki dalej szarżują. Przykucnięty przeciwnik obniża się razem z kulą trafień.
   - Gracz: kucanie i celowanie podnosi oko prawie do pozycji stojącej (`peekK` w `world/weapons.ts`); wtedy pociski znajdują więcej ciała, a przeciwnicy celują wyżej. Raz na grę podpowiedź, kiedy kucasz za niską osłoną.
   - Gra wieloosobowa: osłonę wybiera gra właściciela przeciwnika; przykucnięcie idzie w 13. polu wpisu przeciwnika (`world/foesync.ts`), więc kopie u innych też kucają i są trafiane nisko. Wychylenie gracza wysyła się jako zwykłe `cr` (wychylony gracz liczy się jako stojący). Protokół bez zmian.
-- **W4. Przynęty i odwracanie uwagi.** Rzucony kamień albo flara robi hałas w miejscu upadku (system hałasu już jest). Mięso zwabia drapieżniki, a hałas rozjusza Bramble'a. Odwrócony przeciwnik pokazuje tył.
+- **W4. Przynęty i odwracanie uwagi.** Rzucony kamień albo flara robi hałas w miejscu upadku (system hałasu już jest). Mięso zwabia drapieżniki, a hałas rozjusza Bramble'a. Odwrócony przeciwnik pokazuje tył. *(Zrobione w 0.225.0.)*
+  - Rzut: przytrzymaj Z i puść. Im dłużej trzymasz, tym dalej leci (8–22 m/s, pełny zamach po 0,9 s). Rzuca się kamień, flarę sygnałową albo kawałek mięsa (surowe mięso, ryba); w plecaku „Przygotuj do rzutu” wybiera, co poleci. Czyste zasady są w `gen/throwing.ts` (`THROW`, `throwSpeed`, `throwVelocity`, `stepFlight`, `landing`), lot i lądowanie w `world/throwing.ts` (zatrzymuje się na pierwszej przeszkodzie z `rayWorld` albo na wodzie).
+  - Kamień: hałas 24 m w miejscu upadku i leży tam do podniesienia. Flara: syczy (hałas 30 m, ponownie co 5 s), świeci na czerwono przez 50 s, widać ją z daleka. Nowy przedmiot `flare` (Zofia, kowal: 3 z oleju do lamp i złomu).
+  - Hałas z rzutu (`makeNoise(..., decoy)`) ściąga stworzenia, roboty i bandytów do sprawdzenia miejsca, ale nie podgrzewa spawnów jak strzały.
+  - Mięso: przynęta na 60 s (`world/baits.ts`). Ravagery i Gnawery wyczuwają ją z 35 m, a te, które polują, z 14 m (jeśli gracz jest dalej niż 9 m). Jedzą z głową w dół (stan `feed`). Trafienie albo podejście blisko kończy posiłek.
+  - Bramble: hałas bliżej niż 28 m rozwściecza pasącego się Bramble'a i ten szarżuje na źródło dźwięku, nie na gracza.
+  - Gra wieloosobowa: gra rzucającego wysyła `{t:'throw', loc, k, p, v}`; każda gra w tym samym miejscu leci tym samym rzutem i w miejscu upadku robi hałas dla swoich przeciwników, zapala flarę i kładzie przynętę. Kamień do podniesienia kładzie tylko gra rzucającego (wspólny drop). Serwer przepuszcza nowy typ `throw` (starszy go odrzuca). Protokół bez zmian.
 - **W5. Stany.**
   - Zachwianie: mocny cios przerywa atak.
   - Powalenie: młot, sledge i szarża Bramble'a mogą przewrócić.

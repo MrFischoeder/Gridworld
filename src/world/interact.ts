@@ -1,4 +1,5 @@
 import { lightKey } from './light';
+import { throwHint } from './throwing';
 import { nearSettlementComms, openSettlementComms } from './settlement';
 import { nearFuelPump, openFuelPump } from './fuelpump';
 import { nearCharger, chargerPrompt } from './charging';
@@ -243,6 +244,8 @@ export function updateEntities(dt: number, time: number) {
   if (fhint !== null) { prompt.className = fieldPlacingOk() ? '' : 'lock'; prompt.textContent = fhint; prompt.style.display = G.playing && fhint ? 'block' : 'none'; }
   const bhint = bridgePlacingHint();
   if (bhint !== null) { prompt.className = bridgePlacingOk() ? '' : 'lock'; prompt.textContent = bhint; prompt.style.display = G.playing && bhint ? 'block' : 'none'; }
+  const thint = throwHint(); // (0.225) the swing of a throw
+  if (thint !== null) { prompt.className = ''; prompt.textContent = thint; prompt.style.display = G.playing ? 'block' : 'none'; }
   const hint = placingHint();
   if (hint !== null) { prompt.className = placingOk() ? '' : 'lock'; prompt.textContent = hint; prompt.style.display = G.playing && hint ? 'block' : 'none'; }
   const canUse = nearHatch || nearCityVault || nearNpc || nearChest || nearBoard || nearStash || nearVehicle || (nearLock && hasItem('key'));

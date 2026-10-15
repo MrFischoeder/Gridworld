@@ -1,4 +1,5 @@
 // XP crystals, pickups, chests, the hatch, and item use.
+import { readyThrow } from './throwing';
 import { environmentalDamage } from './damage';
 import { play } from './sound';
 import * as THREE from 'three';
@@ -283,6 +284,7 @@ export function useItem(k: ItemKey): boolean {
     G.trans = { phase: 'out', t: 0, dur: 1.2, st: {}, pts: [here, here.clone().add(V(0, 0.8, 0))], yaw0: G.yaw, yaw1: G.yaw, p0: G.pitch, p1: G.pitch + 0.8, go: () => toVillage('recall') };
     logLine(tl('The beacon hums...')); return true;
   }
+  if (k === 'flare') { readyThrow(k); return false; } // (0.225) thrown with Z, not used in hand
   if (k === 'emp') {
     if (!takeOne(k)) { logLine(tl('No EMP charges')); return false; }
     const c = V(G.pos.x, G.pos.y + 1, G.pos.z);

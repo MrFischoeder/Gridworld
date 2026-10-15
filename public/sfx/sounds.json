@@ -54,6 +54,24 @@
     ],
     "vol": 1
   },
+  "throw": {
+    "files": [
+      "throw.wav"
+    ],
+    "vol": 1
+  },
+  "thud": {
+    "files": [
+      "thud.wav"
+    ],
+    "vol": 1
+  },
+  "hiss": {
+    "files": [
+      "hiss.wav"
+    ],
+    "vol": 1
+  },
   "ricochet": {
     "files": [
       "ricochet.wav"

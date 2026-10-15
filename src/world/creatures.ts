@@ -6,6 +6,8 @@ import { hurtPlayer } from './damage';
 import * as THREE from 'three';
 import { nearX } from '../gen/regions';
 import { onNoise } from './noise';
+import { baits, baitNear, baitAlive, type Bait } from './baits';
+import { THROW } from '../gen/throwing';
 import { scene, V, lineMat } from './render';
 import { G, W } from '../game';
 import { PropBatch, sharedFill } from './props';
@@ -25,7 +27,7 @@ import { mindOf, sense, share, spottedBy, targetVis } from './stealth';
 import { STEALTH, LOSE } from '../gen/stealth';
 import { tl } from '../i18n';
 
-type State = 'roam' | 'hunt' | 'dash' | 'retreat' | 'threat' | 'charge' | 'recover' | 'stalk' | 'dive' | 'climb' | 'investigate';
+type State = 'roam' | 'hunt' | 'dash' | 'retreat' | 'threat' | 'charge' | 'recover' | 'stalk' | 'dive' | 'climb' | 'investigate' | 'feed';
 
 export interface Creature {
   /** Fixed city post; transmitted to prevent duplicate garrisons on another client. */
@@ -42,6 +44,10 @@ export interface Creature {
   questId?: string; alpha?: boolean; dmgMul: number;
   /** Where a noise came from (state 'investigate'). */
   noiseAt: THREE.Vector3 | null;
+  /** (0.225) A Bramble enraged by a noise charges at it, not at you; a beast feeding (state 'feed') eats this bait. */
+  rageAt?: THREE.Vector3 | null; bait?: Bait | null;
+  /** Seconds it will not go for a bait after being hurt or startled at one. */
+  spooked?: number;
   /** Leechwing flight: orbit angle, banking into turns, the creature it is hunting (null = the player), spotted you yet. */
   orbit: number; bank: number; prey: Creature | null; spotted: boolean;
 }
@@ -269,11 +275,23 @@ let env: SpawnEnv | null = null, spawnT = 2;
  * coming from all around the place the shooting was heard. It fades over half a minute or so.
  */
 let heat = 0, heard = false;
+/** (0.225) A grazing Bramble charges at a noise this close (m). */
+const BRAMBLE_EAR = 28;
+/** (0.225) After a hit, or startled at a bait, a beast leaves baits alone this long (s). */
+const SPOOKED = 25;
 const lastNoise = new THREE.Vector3();
-onNoise((at, r) => {
-  heat = Math.min(4, heat + r / 55); lastNoise.copy(at); heard = true;
+onNoise((at, r, decoy) => {
+  if (!decoy) { heat = Math.min(4, heat + r / 55); lastNoise.copy(at); heard = true; } // a thrown stone or flare does not stir up the wilds
   for (const c of W.creatures) {
-    if (c.kind === 'bramble' || c.kind === 'skitter' || SWIMMERS.includes(c.kind)) continue; // grazers, fliers and the fish do not care about a bang in the distance
+    if (c.kind === 'bramble') { // (0.225, stage W4) a noise close by enrages a grazing Bramble: it charges at the sound
+      if (c.state === 'roam' && Math.hypot(c.p.x - at.x, c.p.z - at.z) < Math.min(r, BRAMBLE_EAR)) {
+        c.state = 'threat'; c.timer = 0.9; c.rageAt = at.clone(); c.mat.color.setHex(HOSTILE);
+        if (decoy) logLine(tl('A Bramble charges at the noise!'));
+      }
+      continue;
+    }
+    if (c.kind === 'skitter' || SWIMMERS.includes(c.kind)) continue; // fliers and the fish do not care about a bang in the distance
+    if (c.state === 'feed') continue; // busy eating
     const reach = c.kind === 'leechwing' ? r * 1.8 : r; // flyers hear it from further and see it from above
     if (Math.hypot(c.p.x - at.x, c.p.z - at.z) > reach) continue;
     if (c.state === 'roam' || c.state === 'investigate') { c.state = 'investigate'; c.noiseAt = at.clone(); c.timer = 14; }
@@ -449,9 +467,10 @@ function bramble(c: Creature, dt: number, to: THREE.Vector3, dist: number, safe:
       if (c.timer <= 0) { c.dir.set(Math.random() - 0.5, 0, Math.random() - 0.5); c.timer = 3 + Math.random() * 4; }
       if (c.timer > 2) walk(c, c.dir.x, c.dir.z, 0.8, dt); else c.speed = 0;
       break;
-    case 'threat': { // face the intruder, head down, then go
-      let dh = Math.atan2(to.x, to.z) - c.heading; dh = Math.atan2(Math.sin(dh), Math.cos(dh)); c.heading += dh * Math.min(1, dt * 5);
-      if (c.timer <= 0) { c.state = 'charge'; c.timer = 2.2; c.dir.set(to.x, 0, to.z).normalize(); }
+    case 'threat': { // face the intruder (or the noise that enraged it), head down, then go
+      const ax = c.rageAt ? c.rageAt.x - c.p.x : to.x, az = c.rageAt ? c.rageAt.z - c.p.z : to.z;
+      let dh = Math.atan2(ax, az) - c.heading; dh = Math.atan2(Math.sin(dh), Math.cos(dh)); c.heading += dh * Math.min(1, dt * 5);
+      if (c.timer <= 0) { c.state = 'charge'; c.timer = c.rageAt ? Math.min(3.5, Math.hypot(ax, az) / s.speed + 0.6) : 2.2; c.dir.set(ax, 0, az).normalize(); }
       break;
     }
     case 'charge': {
@@ -465,7 +484,7 @@ function bramble(c: Creature, dt: number, to: THREE.Vector3, dist: number, safe:
       break;
     }
     case 'recover':
-      c.speed = 0;
+      c.speed = 0; c.rageAt = null;
       if (c.timer <= 0) {
         if (!safe && dist < 26) { c.state = 'threat'; c.timer = 1.0; }
         else { c.state = 'roam'; c.hurt = false; c.mat.color.setHex(CALM); }
@@ -557,6 +576,28 @@ function leechwing(c: Creature, dt: number, to: THREE.Vector3, dist: number, saf
 }
 
 /** Ground creatures that heard something walk over to have a look; seeing the player there sets them off. */
+/**
+ * (0.225, stage W4) A hungry beast at a bait: it trots over and feeds, head down, turned from the world. Something
+ * that hurts it, or you right on top of it, ends the meal; so does the bait running out.
+ */
+function feed(c: Creature, dt: number, dist: number, safe: boolean) {
+  const b = c.bait;
+  if (!b || !baitAlive(b)) { c.state = 'roam'; c.bait = null; c.home.set(c.p.x, c.home.y, c.p.z); c.timer = 0; return; }
+  const dx = b.p.x - c.p.x, dz = b.p.z - c.p.z, d = Math.hypot(dx, dz);
+  if (d > THROW.bait.eat) { walk(c, dx, dz, CREATURES[c.kind].speed * 0.9, dt); return; }
+  c.speed = 0;
+  let dh = Math.atan2(dx, dz) - c.heading; dh = Math.atan2(Math.sin(dh), Math.cos(dh)); c.heading += dh * Math.min(1, dt * 4);
+  if (!safe && dist < (G.crouch ? 2.5 : 4.5)) { // you walked right up: it turns on you
+    for (const m of c.pack ?? [c]) { m.spooked = SPOOKED; if (m.state === 'feed' || m.state === 'roam') { m.state = 'hunt'; m.timer = 0.5; m.bait = null; } }
+  }
+}
+/** Whether a beast leaves what it is doing for a bait: a roaming one smells it from afar, a hunting one only close by. */
+function lured(c: Creature, dist: number): Bait | null {
+  if ((c.kind !== 'ravager' && c.kind !== 'gnawer') || (c.spooked ?? 0) > 0) return null;
+  if (c.state === 'roam' || c.state === 'investigate') return baitNear(c.p.x, c.p.z, THROW.bait.reach);
+  if ((c.state === 'hunt' || c.state === 'retreat') && dist > THROW.bait.away) return baitNear(c.p.x, c.p.z, THROW.bait.hunt);
+  return null;
+}
 function investigate(c: Creature, dt: number, safe: boolean) {
   const n = c.noiseAt ?? c.home, s = CREATURES[c.kind];
   c.timer -= dt;
@@ -747,6 +788,9 @@ export function updateCreatures(dt: number, time: number) {
     if (!c.cityPost && nearestPlayer(c.p.x, c.p.z) > (c.questId ? 240 : c.kind === 'leechwing' ? 220 : 130)) { removeCreature(c); continue; }
     withFoeTarget(c, () => {
       const to = V(G.pos.x, G.pos.y + 1.2, G.pos.z).sub(c.p), dist = to.length(), safe = !targetingFoe() && foeRules.playerSafe();
+      if (c.spooked) c.spooked = Math.max(0, c.spooked - dt);
+      if (baits.length && c.state !== 'feed') { const b = lured(c, dist); if (b) { c.state = 'feed'; c.bait = b; } }
+      if (c.state === 'feed') { feed(c, dt, dist, safe); return; }
       if (!safe && (c.kind === 'ravager' || c.kind === 'gnawer' || c.kind === 'skitter') && (c.state === 'hunt' || c.state === 'dash' || c.state === 'retreat')) track(c, dt, dist);
       if (c.state === 'investigate' && (c.kind === 'ravager' || c.kind === 'bramble' || c.kind === 'gnawer')) investigate(c, dt, safe);
       else if (c.kind === 'skitter') skitter(c, dt, to, dist, safe);
@@ -766,6 +810,11 @@ function animate(c: Creature, dt: number, time: number) {
   c.anim += dt * (1 + c.speed * 1.4);
   const sw = c.speed > 0.1 ? Math.sin(c.anim * 1.6) * Math.min(0.7, 0.2 + c.speed * 0.06) : 0;
   c.legs.forEach((l, i) => { l.rotation.x = (i === 0 || i === 3 ? 1 : -1) * sw; });
+  if (c.kind === 'ravager' || c.kind === 'gnawer') { // (0.225) nose down, tearing at the bait
+    const eating = c.state === 'feed' && c.speed < 0.1;
+    c.g.rotation.x += ((eating ? 0.24 + Math.sin(time * 9 + c.flank) * 0.07 : 0) - c.g.rotation.x) * Math.min(1, dt * 8);
+    if (eating && c.jaw) c.jaw.rotation.x = 0.05 + Math.max(0, Math.sin(time * 9 + c.flank)) * 0.4;
+  }
   if (c.tail) c.tail.rotation.y = Math.sin(time * (c.state === 'hunt' ? 12 : 4) + c.flank) * (c.state === 'hunt' ? 0.45 : 0.25);
   if (c.kind === 'skitter') { // fast beating wings, nose along the flight path
     const beat = 0.2 + Math.sin(time * 30 + c.flank) * 0.7;
@@ -788,6 +837,7 @@ function animate(c: Creature, dt: number, time: number) {
 export function hurtCreature(c: Creature, dmg: number, credit = true) {
   // (0.223) the Bramble's plated front, like every foe's strong and weak sides, is reckoned by the attacker (gen/tactics.ts)
   c.hp -= dmg; c.flash = 0.12; c.hurt = true; G.hitFlash = 0.15;
+  for (const m of c.pack ?? [c]) { m.spooked = SPOOKED; if (m.state === 'feed') { m.state = 'roam'; m.bait = null; } } // a hit ends the meal (then the pack turns on you below)
   if (c.kind === 'ravager' && c.state === 'roam') for (const m of c.pack ?? [c]) { m.state = 'hunt'; m.timer = 2; }
   if (c.kind === 'leechwing' && (c.state === 'roam' || c.state === 'investigate')) { c.prey = null; c.spotted = true; c.state = 'stalk'; c.timer = 2; }
   if (c.kind === 'gnawer') for (const m of c.pack ?? [c]) { m.hurt = true; if (m.state === 'roam') { m.state = 'hunt'; m.timer = 0; } }

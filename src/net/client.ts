@@ -283,7 +283,7 @@ export function connect(url: string, me: { name: string; world: number; time: nu
       case 'drop': net.drops.set(m.d.id, m.d); break;
       case 'gone': net.drops.delete(m.id); break;
       case 'got': net.drops.delete(m.d.id); gotHook?.(m.d); break;
-      case 'foes': case 'bolt': case 'fhit': case 'kill': case 'hurt': case 'thit': case 'boat': case 'row': case 'snd': for (const f of relayHooks) f(m); break;
+      case 'foes': case 'bolt': case 'fhit': case 'kill': case 'hurt': case 'thit': case 'boat': case 'row': case 'snd': case 'throw': for (const f of relayHooks) f(m); break;
       case 'renamed': { if (m.id === net.id) { net.hero = m.name; } else { const p = net.peers.get(m.id); if (p) { if (p.name !== m.name) h.say(TL`${p.name} is now ${m.name}.`, 'info'); p.name = m.name; } } heroHook?.(m.id === net.id, m.name, ''); break; }
       case 'heroBad': heroHook?.(true, m.name, m.why); break;
       case 'chat': h.say(`${m.name}: ${m.text}`, 'chat'); break;
@@ -323,7 +323,7 @@ export function sendTake(id: string): boolean {
   return true;
 }
 /** The shared foes (world/foesync.ts): a message from another player ({t, from, ...}). */
-export type Relay = { t: 'foes' | 'bolt' | 'fhit' | 'kill' | 'hurt' | 'thit' | 'boat' | 'row' | 'snd'; from: number; [k: string]: unknown };
+export type Relay = { t: 'foes' | 'bolt' | 'fhit' | 'kill' | 'hurt' | 'thit' | 'boat' | 'row' | 'snd' | 'throw'; from: number; [k: string]: unknown };
 const relayHooks: ((m: Relay) => void)[] = [];
 /** Listen to the relayed messages (foes, turrets, boats...); every listener sees every message. */
 export function onRelay(f: (m: Relay) => void) { relayHooks.push(f); }

@@ -1,5 +1,6 @@
 import { gateTravelPending } from '../world/worldgates';
 // Keyboard and mouse. Pointer lock drives mouse look; losing it pauses the game.
+import { startThrow, releaseThrow } from '../world/throwing';
 import { toggleCrouch } from '../world/stealth';
 import { riding, rideSeat, toggleRideView } from '../world/ride';
 import { isPlacing, cancelPlacing } from '../world/claims';
@@ -84,6 +85,7 @@ export function initInput(onPause: () => void) {
     if (e.code === 'KeyF' && !isBuilding() && G.playing) openBoatHold();
     if (e.code === 'KeyH') useItem('medkit');
     if (e.code === 'KeyG') useItem('emp');
+    if (e.code === 'KeyZ' && !e.repeat) startThrow(); // (0.225) hold to swing harder, let go to throw
     const seatKey = e.code === 'Digit1' ? 0 : e.code === 'Digit2' ? 1 : e.code === 'Digit3' ? 2 : -1;
     if (seatKey >= 0 && (driving.v || riding())) { if (driving.v) switchSeat(seatKey); else rideSeat(seatKey); } // in a vehicle the numbers pick the seat
     else if (e.code === 'Digit1') drawBack(0);
@@ -95,7 +97,7 @@ export function initInput(onPause: () => void) {
     if (e.code === 'KeyR' && !e.repeat && !refuel() && !refuelVehicle()) reload();
     if (e.code === 'F3') { e.preventDefault(); el.perf.style.display = el.perf.style.display === 'block' ? 'none' : 'block'; }
   });
-  addEventListener('keyup', (e) => { G.keys[e.code] = false; if (e.code === 'AltLeft' && G.playing) e.preventDefault(); }); // (0.223) Alt is the dodge, not the browser's menu
+  addEventListener('keyup', (e) => { G.keys[e.code] = false; if (e.code === 'KeyZ') releaseThrow(); if (e.code === 'AltLeft' && G.playing) e.preventDefault(); }); // (0.223) Alt is the dodge, not the browser's menu
   // Ctrl crouches, and Ctrl+W would close the tab mid-game: while playing the browser asks first
   addEventListener('beforeunload', (e) => { if (G.playing) { e.preventDefault(); e.returnValue = ''; } });
   addEventListener('wheel', () => { if (G.playing && !uiOpen() && armed()) swapWeapon(); }, { passive: true });
