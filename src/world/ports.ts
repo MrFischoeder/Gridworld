@@ -238,7 +238,7 @@ function finishPorts() {
     if (!p) continue;
     saveChar(); const what = partName(o.k, p, o.pk, countOf(o, p) - 1).toLowerCase();
     showToast(`${o.name}: ${what} built`);
-    logLine(TL`The builders finished the ${what} at ${o.name}.${o.k === 'camp' ? tl(' Settlers come when there are beds and food to spare.') : p === 'port' ? TL` Its crane needs ${PORT.crew} people and power to work; storing by hand works now.` : p === 'power' && o.pk ? TL` It powers every outpost and port within ${POWER_SRC[o.pk].r} m.${POWER_SRC[o.pk].fuel ? tl(' Load its bunker with fuel.') : ''}` : ''}`);
+    logLine(TL`The builders finished the ${what} at ${o.name}.${o.k === 'camp' ? tl(' Settlers come when there are beds and food to spare.') : p === 'pline' && o.pl ? TL` Power flows along it to and from ${o.pl.name} now.` : p === 'port' ? TL` Its crane needs ${PORT.crew} people and power to work; storing by hand works now.` : p === 'power' && o.pk ? TL` It powers every outpost and port within ${POWER_SRC[o.pk].r} m.${POWER_SRC[o.pk].fuel ? tl(' Load its bunker with fuel.') : ''}` : ''}`);
   }
 }
 /** The port whose board you stand by (its id and dock). */

@@ -5,7 +5,7 @@ import { G, W } from '../game';
 import { ITEMS, type ItemKey } from '../data/items';
 import { calcStats, saveChar, gainXp } from '../character';
 import { LODES, type Lode } from '../gen/lodes';
-import { newOutpost, outputs, stockNow, takeCrates, partPlan, partProblem, partName, handOver, jobEnd, capOf, bare, mayUse, choosePower, DIG, digOf, STORE, OUTPOST, PORT, BUNKS, FIELD, WALL, TURRET, wallOf, turretsOf, countOf, maxOf, isMany, type OutpostState, type OutpostPart } from '../gen/outposts';
+import { newOutpost, outputs, stockNow, takeCrates, partPlan, partProblem, partName, handOver, hoursOf, xpOf, jobEnd, capOf, bare, mayUse, choosePower, DIG, digOf, STORE, PORT, BUNKS, FIELD, WALL, TURRET, wallOf, turretsOf, countOf, maxOf, isMany, type OutpostState, type OutpostPart } from '../gen/outposts';
 import { LIFE, lifeNow, crews, foodMade, foodEaten, bedsOf, pantryOf, loadFood, crewFactor, isHamlet } from '../gen/outpostlife';
 import { fertility, fertilityWord } from '../gen/fertility';
 import { strengthAt, nextRaid, holdChance, worthRobbing } from '../gen/outpostraids';
@@ -18,7 +18,9 @@ import { allVillages, worldDist as wdist } from '../gen/regions';
 import { VEHICLES, vehicleTitle, type VehicleModel } from '../data/vehicles';
 import { myCarList, takeVehicle, parkVehicle } from '../world/vehicles';
 import { FOOD } from '../gen/farms';
-import { POWER_SRC, POWER_KINDS, grids, gridState, powerShare, powerFactor, pwOf, fuelLeft, loadFuel, settleAll, demandOf, type PowerKind } from '../gen/grid';
+import { POWER_SRC, POWER_KINDS, grids, gridState, powerShare, powerFactor, pwOf, fuelLeft, loadFuel, settleAll, demandOf, PLINE, newLine, plineProblem, lineFlows, type PowerKind } from '../gen/grid';
+import { balance } from '../gen/energy';
+import { villageSeed } from '../gen/regions';
 import { lodeById } from '../gen/lodes';
 import { nearX } from '../gen/regions';
 import { itemName } from './icons';
@@ -54,7 +56,7 @@ function partBody(o: OutpostState, p: OutpostPart, name: string, text: string, p
   if (o.job?.p === p) return TL`<div class="say"><b>${name}${tally}</b>: the builders are at ${many && have ? tl('another') : tl('it')}, ${hrs(jobEnd(o) - G.char.time)} left.</div>`;
   const rows = partPlan(o, p).map((r) => `${itemName(r.k)} ${r.given}/${r.n}${r.given >= r.n ? ' ✓' : TL` · with you: ${carried(r.k, pos)}`}`).join('<br>');
   const why = partProblem(o, p);
-  return TL`<div class="say"><b>${name}${tally}</b> <span style="opacity:.8">(${OUTPOST.hours[p]} h to build${many && have ? tl(' another') : ''})</span>: ${text}<br>${rows}</div>` +
+  return TL`<div class="say"><b>${name}${tally}</b> <span style="opacity:.8">(${hoursOf(o, p)} h to build${many && have ? tl(' another') : ''})</span>: ${text}<br>${rows}</div>` +
     (why ? `<div class="say" style="opacity:.7">${why}</div>` : TL`<button class="opt" data-op="give:${p}">Hand over materials for the ${many && have ? tl('next ') : ''}${name.toLowerCase()}</button>`);
 }
 /** (0.187, stage O6) The convoy route: pick a village, hand over a truck, keep its tank full, bring food back. */
@@ -138,6 +140,37 @@ export function powerHTML(id: string, o: OutpostState, pos = at()): string {
   const st = gridState(c.world, c.outposts, g, c.time), share = powerShare(c.world, c.outposts, id, c.time), members = [...g.values()].filter((m) => m === n).length;
   return s + TL`<div class="say"><b>Grid</b> (${members} outpost${members === 1 ? '' : 's'}): making ${Math.round(st.supply[n] ?? 0)} kW now, the outposts draw ${Math.round(st.demand[n] ?? 0)} kW${demandOf(o) ? TL` (this one ${demandOf(o)} kW)` : ''}. Over the last day it met ${Math.round(share * 100)}% of the demand${o.done?.dig ? TL`: the crew digs at ${Math.round(powerFactor(share) * 100)}% pace` : ''}.</div>`;
 }
+/** (0.219, stage Z5) The power line to a village: choose the village, hand over the poles and cable, then what it carries. */
+export function plineHTML(id: string, o: OutpostState, pos = at()): string {
+  const c = G.char, l = o.pl;
+  if (o.k === 'camp') return '';
+  if (!l) {
+    const vs = allVillages(c.world).map((v) => ({ v, d: wdist(o.x, o.z, v.x, v.z) })).filter((q) => q.d <= PLINE.reach).sort((a, b) => a.d - b.d).slice(0, 3);
+    return TL`<div class="say"><b>Power line</b>: poles and cable to a village within ${PLINE.reach / 1000} km. Whichever side has power to spare feeds the other's shortfall, up to ${PLINE.cap} kW.</div>` +
+      (vs.length ? vs.map(({ v }) => { const why = plineProblem(c.outposts, id, v), k = newLine(o, v).km; return why ? `<div class="say" style="opacity:.7">${v.name}: ${why}</div>` : TL`<button class="opt" data-op="pl:${v.id}">Stake out a line to ${v.name} (${k.toFixed(1)} km)</button>`; }).join('') : TL`<div class="say" style="opacity:.7">No village within ${PLINE.reach / 1000} km.</div>`);
+  }
+  if (!o.done?.pline) {
+    const loose = !o.job && !Object.values(o.given?.pline ?? {}).some((n) => (n ?? 0) > 0);
+    return partHTML(o, 'pline', pos).replace('</b>', TL` to ${l.name}, ${l.km.toFixed(1)} km</b>`) + (loose ? TL`<button class="opt" data-op="unpl">Pull up the line's stakes</button>` : '');
+  }
+  const f = lineFlows(c.world, c.outposts, c.time).get(id) ?? 0, v = allVillages(c.world).find((q) => q.id === l.v);
+  const b = v ? balance(c.world, v, villageSeed(c.world, v), c.towns[v.id], c.time, true) : null;
+  return TL`<div class="say"><b style="color:var(--xp)">Power line to ${l.name} ✓</b> (${l.km.toFixed(1)} km, up to ${PLINE.cap} kW): ` +
+    (f > 0 ? TL`it carries <b>${Math.round(f)} kW</b> from this grid to ${l.name}.` : f < 0 ? TL`it carries <b>${Math.round(-f)} kW</b> from ${l.name} into this grid.` : tl('nothing flows now: neither side has power to spare for the other.')) +
+    (b ? TL` ${l.name} has ${Math.round(b.free)} kW to spare and lacks ${Math.round(b.short)} kW.` : '') + `</div>`;
+}
+/** (0.219) The line's clicks (from this window and the port's): choose the village, give up an empty line. */
+export function plineClick(id: string, o: OutpostState, a: string, x: string): string | null {
+  const c = G.char;
+  if (a === 'pl') {
+    const v = allVillages(c.world).find((q) => q.id === +x);
+    const why = v ? plineProblem(c.outposts, id, v) : tl('Not here.');
+    if (why) return why;
+    o.pl = newLine(o, v!); return TL`You stake out a line of poles to ${v!.name}, ${o.pl.km.toFixed(1)} km. Bring the poles and the cable.`;
+  }
+  if (a === 'unpl' && o.pl && !o.done?.pline && !o.job && !Object.values(o.given?.pline ?? {}).some((n) => (n ?? 0) > 0)) { delete o.pl; delete o.given?.pline; return tl('You pull up the line\'s stakes.'); }
+  return null;
+}
 /** (0.189, stage O8) A rivals game: the owner lets the other seats in, or shuts them out again. */
 function partnersHTML(o: OutpostState): string {
   if (!rivalsOn() || o.o !== myOwner()) return '';
@@ -159,7 +192,7 @@ function render(msg = '') {
     s += TL`<div class="say">Staked by ${o.by}${o.o !== 'crew' && ownerName(o.o) !== o.by ? TL` for ${ownerName(o.o)}` : ''}. Only they and the partners they let in work it: ask them to make you a partner.</div>`;
   } else {
     s += TL`<div class="say" style="opacity:.85">Outpost staked by ${o.by}. Owner: ${ownerName(o.o)}.${o.pp?.length ? TL` Partners: ${o.pp.map(ownerName).join(', ')}.` : ''}</div>` + partnersHTML(o);
-    s += partHTML(o, 'dig') + partHTML(o, 'store') + (procOf(o.k) ? partHTML(o, 'proc') : '') + partHTML(o, 'power') + powerHTML(l.id, o) + partHTML(o, 'bunks') + partHTML(o, 'field') + peopleHTML(o) + partHTML(o, 'wall') + partHTML(o, 'turret') + defenceHTML(l.id, o) + routeHTML(l.id, o);
+    s += partHTML(o, 'dig') + partHTML(o, 'store') + (procOf(o.k) ? partHTML(o, 'proc') : '') + partHTML(o, 'power') + powerHTML(l.id, o) + plineHTML(l.id, o) + partHTML(o, 'bunks') + partHTML(o, 'field') + peopleHTML(o) + partHTML(o, 'wall') + partHTML(o, 'turret') + defenceHTML(l.id, o) + routeHTML(l.id, o);
     if (o.done?.dig) {
       const pw = pwOf(c.world, c.outposts, l.id, c.time), now = stockNow(o, l, c.time, pw), cap = capOf(o);
       s += TL`<div class="say"><b>On site</b> (${o.done.store ? tl('in the shed') : tl('piled in the open')}, up to ${cap} of each):<br>` + outputs(l).map(([g, r]) => {
@@ -207,6 +240,7 @@ export function outpostClick(t: HTMLElement): boolean {
       const who = x;
       if (a === 'pin' ? addPartner(o, who) : dropPartner(o, who)) { msg = a === 'pin' ? TL`${ownerName(who)} may work ${o.name} with you now.` : TL`${ownerName(who)} may no longer work ${o.name}.`; logLine(msg); }
     }
+    else if (a === 'pl' || a === 'unpl') msg = plineClick(l.id, o, a, x) ?? '';
     else if (a === 'pk') {
       msg = choosePower(o, x as PowerKind) ? TL`You mark out the ground for a ${POWER_SRC[x as PowerKind].name.toLowerCase()}.` : tl('The builders have started on another source already.');
     } else if (a === 'fuel' && o.pk && POWER_SRC[o.pk].fuel) {
@@ -253,7 +287,7 @@ export function outpostClick(t: HTMLElement): boolean {
       const p = x as OutpostPart, { taken, started } = handOver(o, p, (k) => carried(k, at()), c.time);
       for (const [k, n] of taken) takeFrom(k, n, at());
       msg = taken.length ? tl('Handed over: ') + taken.map(([k, n]) => `${ITEMS[k].name} ×${n}`).join(', ') + '.' : tl('You carry nothing it still needs.');
-      if (started) { msg += TL` <b>Everything is here: the builders start on the ${partName(o.k, p, o.pk, countOf(o, p)).toLowerCase()} (${OUTPOST.hours[p]} h).</b>`; gainXp(OUTPOST.xp[p]); }
+      if (started) { msg += TL` <b>Everything is here: the builders start on the ${partName(o.k, p, o.pk, countOf(o, p)).toLowerCase()} (${hoursOf(o, p)} h).</b>`; gainXp(xpOf(o, p)); }
     } else if (a === 'take') {
       tellRaids(settleAll(c.world, c.outposts, byId, c.time, c.towns)); // (0.186) a raid over since: count it first
       const g = x as ItemKey, want = Math.max(1, +y || 1), n = takeCrates(o, l, g, want, c.time, pwOf(c.world, c.outposts, l.id, c.time));

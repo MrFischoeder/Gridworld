@@ -29,7 +29,7 @@ import { OUTRAID } from '../src/gen/outpostraids';
 import { ROUTE } from '../src/gen/routes';
 import { PROC } from '../src/gen/outpostproc';
 import { LIFE } from '../src/gen/outpostlife';
-import { POWER_SRC, DIG_KW, GRID } from '../src/gen/grid';
+import { POWER_SRC, DIG_KW, GRID, PLINE } from '../src/gen/grid';
 import { MENU } from '../src/gen/foodshop';
 import { DROPS } from '../src/data/creatures';
 import { ROBOTS } from '../src/data/robots';
@@ -75,6 +75,7 @@ it('writes SUROWCE.md', () => {
     P(`**Trasy konwojów (od 0.187):** z okna placówki wyznaczasz trasę do wioski (do ${ROUTE.reach / 1000} km, droga ${ROUTE.detour}× dłuższa niż w linii prostej) i przekazujesz jej swój pojazd: Mastodon wozi ${ROUTE.cap.mastodon} skrzyń, Scout ${ROUTE.cap.scout}. Konwój jedzie ${ROUTE.speed} m na minutę gry, ładuje i rozładowuje po ${ROUTE.load} min, pali olej z baku ciężarówki (dolewasz kanistry), zostawia skrzynie w magazynie wioski i może wieźć jedzenie z powrotem do spiżarni. Napad na kurs: ${ROUTE.rob * 100}% + ${ROUTE.robPer * 100}% za każdy stopień zagrożenia w połowie drogi (najwyżej ${ROUTE.robMax * 100}%, z działkiem ×${ROUTE.cannon}); ładunek przepada, kadłub traci ${ROUTE.hurt * 100}%.`);
     P(`**Porty (od 0.216):** na gotowym doku zakładasz port, który działa jak placówka: ${PORT.name} (${need(PORT.needs)}; ${OUTPOST.hours.port} h; magazyn ${PORT.vol} l), własne źródło prądu, baraki i pola. Dźwig magazynu rozładowuje i ładuje twoje ciężarówki i łodzie tylko z ${PORT.crew} ludźmi i prądem (pobór ${PORT.kw} kW); ręcznie z plecaka można składać zawsze. Od 0.217 port otwiera linię towarową do innego portu (do ${LINE.reach / 1000} km): przekazany jej żaglowiec (${shipCap('ship')} skrzyń, bez paliwa) albo motorowiec (${shipCap('steamer')} skrzyń, ${LINE.lpkm} l paliwa na km) wozi towary z magazynu do drugiego portu, gdy oba dźwigi pracują.`);
     P(`**Obozy załóg (od 0.218):** w nowym świecie każda odbudowana wielka instalacja, która coś robi, potrzebuje obsady (${Object.entries(CREW).map(([k, n]) => `${INSTALLS.find((q) => q.k === k)?.name ?? k} ${n}`).join(', ')}). Przy pulpicie zakładasz obóz załogi i budujesz wokół instalacji baraki (${need(BUNKS.needs)}) i pola (${need(FIELD.needs)}), po 3 każdego; partia rusza tylko z pełną obsadą.`);
+    P(`**Linie przesyłowe (od 0.219):** placówka albo port buduje linię słupów z kablem do wioski w promieniu ${PLINE.reach / 1000} km (jedna linia na placówkę i na wioskę): na każdy km ${need(PLINE.perKm)}, do tego transformatory ${need(PLINE.ends)} (co najmniej pół km); budowa trwa 4 h + 2 h na km. Strona z nadwyżką prądu pokrywa niedobór drugiej, do ${PLINE.cap} kW.`);
     P(`**Przetwórnie przy placówkach (od 0.188):** ${Object.entries(PROC).map(([k, p]) => `${p!.name} przy złożu ${k} (${need(p!.needs)}; ${p!.n} ${ITEMS[p!.inp].name} → ${p!.m} ${ITEMS[p!.out].name} co ${p!.batch} min, ${p!.kw} kW)`).join('; ')}. Ciężarówki elektryczne ładują się do pełna przy placówce podłączonej do sieci (pobór 15 kW).`); }
   P('');
   P('Spis: 1. Surowce · 2. Przetwarzanie · 3. Budowy · 4. Indeks: gdzie użyć każdego materiału · 5. Surowce bez zastosowania');

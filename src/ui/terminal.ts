@@ -3,6 +3,7 @@
 // the next day hour by hour), trade (your contracts, what you have bought and sold where, the caravans on our roads,
 // our market), the villages you know of (what each makes and wants, what stands there), and the Chariot of the
 // Ancients. It reads only; everything it shows comes from the pure models the rest of the game runs on.
+import { lineOfVillage } from '../gen/grid';
 import { villageKw, IMPROVE, IMPROVE_KINDS, hasImprove } from '../gen/improve';
 import { G, W } from '../game';
 import { ITEMS, type ItemKey } from '../data/items';
@@ -101,6 +102,8 @@ function powerPage(poi: Poi, vm: VillageMap): string {
     s += row(sp.name, TL`${x.on ? Math.round(stationKw(poi, seed, x, now)) + ' kW' : tl('OFF')} of ${sp.kw}` + (sp.fuel ? ` · bunker ${Math.ceil(fuelAt(x, now) * 10) / 10} ${fuelWords(x.k)[2]}, ${x.on && fuelAt(x, now) > 0 ? TL`~${fuelAt(x, now) * sp.burn! > 2880 ? Math.round(fuelAt(x, now) * sp.burn! / 1440) + ' days' : Math.round(fuelAt(x, now) * sp.burn! / 60) + ' h'} left` : tl('not burning')}` : ''));
   }
   if (!(st?.stations ?? []).length) s += TL`<div class="tdim">No power stations. The works need them.</div>`;
+  const pl = lineOfVillage(c.outposts, poi.id); // (0.219) the power line to an outposts' grid
+  if (pl) s += row(TL`Power line from ${pl[1].name}`, !pl[1].done?.pline ? tl('going up') : b.line > 0 ? TL`brings in ${Math.round(b.line)} kW` : b.line < 0 ? TL`sends out ${Math.round(-b.line)} kW` : tl('nothing flows now'));
   if (b.farms) s += h(tl('FARMS')) + row(`${farmsOf(st)} farm${farmsOf(st) > 1 ? 's' : ''}${upgradedOf(st) ? TL`, ${upgradedOf(st)} with pumps` : ''}`, TL`draw ${b.farms} kW · ${Math.round(b.farmsPowered * 100)}% powered now (first in line)`);
   if (b.site) { const sp = sitePower(c.world, poi, seed, st, now); s += h(tl('INDUSTRY')) + row(INDUSTRY[industryOf(c.world, poi, seed)].site, TL`draw ${b.site} kW · ${Math.round(b.sitePowered * 100)}% powered now · ${Math.round(sp * 100)}% over the last day (output ×${(SITE_UNPOWERED + (1 - SITE_UNPOWERED) * sp).toFixed(2)})`); }
   s += h(tl('WORKS'));

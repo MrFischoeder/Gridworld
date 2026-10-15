@@ -425,7 +425,7 @@ function finishOutposts() {
     if (p) {
       saveChar(); const what = partName(o.k, p, o.pk, countOf(o, p) - 1).toLowerCase();
       showToast(`${o.name}: ${what} built`);
-      logLine(TL`The builders finished the ${what} at ${o.name}.${p === 'dig' ? tl(' It is being worked now.') : p === 'power' && o.pk ? TL` It powers every outpost within ${POWER_SRC[o.pk].r} m.${POWER_SRC[o.pk].fuel ? tl(' Load its bunker with fuel.') : ''}` : ''}`);
+      logLine(TL`The builders finished the ${what} at ${o.name}.${p === 'dig' ? tl(' It is being worked now.') : p === 'pline' && o.pl ? TL` Power flows along it to and from ${o.pl.name} now.` : p === 'power' && o.pk ? TL` It powers every outpost within ${POWER_SRC[o.pk].r} m.${POWER_SRC[o.pk].fuel ? tl(' Load its bunker with fuel.') : ''}` : ''}`);
     }
   }
 }

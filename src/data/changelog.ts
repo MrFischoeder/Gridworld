@@ -3,6 +3,12 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.219.0', date: '2026-10-15', title: 'Power lines', notes: [
+    'An outpost or a port can now run a power line to a village within 6 km: choose the village in its window and the line is staked out with yellow stakes. Bring the poles and cable: per km 12 planks, 10 wire and 3 scrap, plus 2 cable and machine parts for the transformers. The builders take 4 hours and 2 more per km, and raise the poles from the outpost\'s end.',
+    'Once it stands, whichever side has power to spare feeds the other\'s shortfall, up to 60 kW: a village with spare power runs an outpost that has no source of its own, and an outpost grid with a generator, turbine or boiler can help a village whose works stand for want of power.',
+    'One line per outpost and one per village. The outpost and port windows show what the line carries; the elder and the village computer\'s POWER page say what it brings in or sends out. The lines are drawn on the maps, and the poles and cable stand in the world.',
+    'Multiplayer: the line is part of the shared outposts (built under the outpost\'s lock), and every game works out what it carries the same way from the shared villages and outposts. The server does not need an update.',
+  ] },
   { v: '0.218.0', date: '2026-10-15', title: 'Crews at the old plants', notes: [
     'In a new world every restored old plant that makes something now needs a crew to run its batches: 6 to 10 people by plant (8 at the Enrichment Plant and the Chip Foundry, 10 at the Alloy Complex, the Robotics Plant and the Aerospace Works). The Radar Station and the Ancient Power Complex need none yet.',
     'The old plants stand far from any village, so the crew lives at the plant. At the plant\'s control desk you stake out a crew camp, then build up to 3 bunkhouses and 3 fields round the plant, like at an outpost. Settlers come on their own while there are free beds and food to spare; they work the fields first, then the plant. You can also bring food to the camp\'s pantry.',

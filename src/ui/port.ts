@@ -7,7 +7,7 @@ import { G, W } from '../game';
 import { ITEMS, type ItemKey } from '../data/items';
 import { calcStats, saveChar, gainXp, packVol } from '../character';
 import { putItems } from '../inventory';
-import { handOver, partName, countOf, choosePower, mayUse, bare, PORT, OUTPOST, type OutpostPart } from '../gen/outposts';
+import { handOver, partName, hoursOf, xpOf, countOf, choosePower, mayUse, bare, PORT, type OutpostPart } from '../gen/outposts';
 import { loadFood } from '../gen/outpostlife';
 import { POWER_SRC, loadFuel, settleAll, type PowerKind } from '../gen/grid';
 import { FOOD } from '../gen/farms';
@@ -21,7 +21,7 @@ import { PIER } from '../gen/piers';
 import { LINE, newLine, isLineShip, shipCap, voyageOf, periodOf, voyageFuel, assignShip, recallShip, fuelShip, shipAt, arriving, lineTargets } from '../gen/shiplines';
 import { net } from '../net/client';
 import { redrawBoats, inBoat } from '../world/boats';
-import { partHTML, powerHTML, peopleHTML } from './outpost';
+import { partHTML, powerHTML, peopleHTML, plineHTML, plineClick } from './outpost';
 import { carried, takeFrom, stores } from './market';
 import { itemName } from './icons';
 import { withOutpost } from './stock';
@@ -128,7 +128,7 @@ function render(msg = '') {
   else {
     s += TL`<div class="say" style="opacity:.85">A port works like an outpost: it needs its own power and its own people. Build the warehouse, a power source, bunkhouses and fields; settlers come when there are beds and food. The warehouse's crane needs ${PORT.crew} people and power.</div>`;
     const pos = at();
-    s += partHTML(o, 'port', pos) + holdHTML(open.id) + partHTML(o, 'power', pos) + powerHTML(open.id, o, pos) + partHTML(o, 'bunks', pos) + partHTML(o, 'field', pos) + peopleHTML(o, pos) + (o.done?.port ? lineHTML(open.id) : '');
+    s += partHTML(o, 'port', pos) + holdHTML(open.id) + partHTML(o, 'power', pos) + powerHTML(open.id, o, pos) + plineHTML(open.id, o, pos) + partHTML(o, 'bunks', pos) + partHTML(o, 'field', pos) + peopleHTML(o, pos) + (o.done?.port ? lineHTML(open.id) : '');
     if (bare(o) && (o.o === 'crew' || o.o === myOwner())) s += small('drop', tl('Give up the port'));
   }
   panel().classList.add('wide');
@@ -203,12 +203,13 @@ export function portClick(t: HTMLElement): boolean {
       const g = x as ItemKey, only = l.only ?? [];
       l.only = only.includes(g) ? only.filter((q) => q !== g) : [...only, g];
     }
+    else if (a === 'pl' || a === 'unpl') msg = plineClick(id, o, a, x) ?? '';
     else if (a === 'pk') msg = choosePower(o, x as PowerKind) ? TL`You mark out the ground for a ${POWER_SRC[x as PowerKind].name.toLowerCase()}.` : tl('The builders have started on another source already.');
     else if (a === 'give') {
       const part = x as OutpostPart, { taken, started } = handOver(o, part, (k) => carried(k, here), c.time);
       for (const [k, n] of taken) takeFrom(k, n, here);
       msg = taken.length ? tl('Handed over: ') + taken.map(([k, n]) => `${ITEMS[k].name} ×${n}`).join(', ') + '.' : tl('You carry nothing it still needs.');
-      if (started) { msg += TL` <b>Everything is here: the builders start on the ${partName(o.k, part, o.pk, countOf(o, part)).toLowerCase()} (${OUTPOST.hours[part]} h).</b>`; gainXp(OUTPOST.xp[part]); }
+      if (started) { msg += TL` <b>Everything is here: the builders start on the ${partName(o.k, part, o.pk, countOf(o, part)).toLowerCase()} (${hoursOf(o, part)} h).</b>`; gainXp(xpOf(o, part)); }
     } else if (a === 'fuel' && o.pk && POWER_SRC[o.pk].fuel) {
       const f = POWER_SRC[o.pk].fuel!;
       tellRaids(settleAll(c.world, c.outposts, byId, c.time, c.towns));

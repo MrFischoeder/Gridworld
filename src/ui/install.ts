@@ -21,7 +21,7 @@ import { carried, takeFrom, putAway } from './market';
 import { $, showToast, logLine } from './hud';
 import { lockPointer } from './input';
 import { CREW, campId, needsCrew, newCamp, campSpots, crewOf } from '../gen/plantcamps';
-import { handOver, partName, countOf, OUTPOST, type OutpostPart } from '../gen/outposts';
+import { handOver, partName, hoursOf, xpOf, countOf, type OutpostPart } from '../gen/outposts';
 import { loadFood } from '../gen/outpostlife';
 import { FOOD } from '../gen/farms';
 import { partHTML, peopleHTML } from './outpost';
@@ -189,7 +189,7 @@ function campClick(s0: InstallSite, op: string): boolean {
       const p = x as OutpostPart, { taken, started } = handOver(o, p, (k) => carried(k, here), c.time);
       for (const [k, n] of taken) takeFrom(k, n, here);
       msg = taken.length ? tl('Handed over: ') + taken.map(([k, n]) => `${ITEMS[k].name} ×${n}`).join(', ') + '.' : tl('You carry nothing it still needs.');
-      if (started) { msg += TL` <b>Everything is here: the builders start on the ${partName(o.k, p, o.pk, countOf(o, p)).toLowerCase()} (${OUTPOST.hours[p]} h).</b>`; gainXp(OUTPOST.xp[p]); }
+      if (started) { msg += TL` <b>Everything is here: the builders start on the ${partName(o.k, p, o.pk, countOf(o, p)).toLowerCase()} (${hoursOf(o, p)} h).</b>`; gainXp(xpOf(o, p)); }
     } else if (a === 'food') {
       const got: string[] = [];
       for (const k of Object.keys(FOOD.value) as ItemKey[]) { const n = loadFood(c.world, o, k, carried(k, here), c.time); if (n) { takeFrom(k, n, here); got.push(`${ITEMS[k].name} ×${n}`); } }

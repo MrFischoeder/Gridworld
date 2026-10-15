@@ -3,7 +3,7 @@
 import { PROJECTS, type Project } from '../gen/settlement';
 import { DIG, STORE, BUNKS, FIELD, WALL, TURRET, PORT } from '../gen/outposts';
 import { PROC } from '../gen/outpostproc';
-import { POWER_SRC } from '../gen/grid';
+import { POWER_SRC, PLINE } from '../gen/grid';
 import { FOOD } from '../gen/farms';
 import { ITEMS, type ItemKey } from './items';
 import { ORDERS } from './orders';
@@ -60,6 +60,7 @@ function build(): Map<ItemKey, Map<UseGroup, string[]>> {
   for (const k of Object.keys(FOOD.value) as ItemKey[]) use(k, tl('Other'), tl('Outposts: the settlers\' pantry'));
   use('fuel', tl('Fuel for'), tl('Outposts: convoy trucks on a route')); // (0.187)
   for (const p of new Set(Object.values(PROC))) { if (!p) continue; for (const [i] of p.needs) use(i, tl('Building'), TL`Outposts: ${p.name}`); use(p.inp, tl('Processed into'), TL`Outposts: ${p.name} (${ITEMS[p.out].name})`); } // (0.188)
+  for (const [i] of [...PLINE.perKm, ...PLINE.ends]) use(i, tl('Building'), tl('Outposts: Power line')); // (0.219)
   for (const q of Object.values(POWER_SRC)) { for (const [i] of q.needs) use(i, tl('Building'), TL`Outposts: ${q.name}`); if (q.fuel) use(q.fuel, tl('Fuel for'), TL`Outposts: ${q.name}`); } // (0.184)
   for (const k of Object.keys(PROJECTS) as Project[]) for (const [i] of PROJECTS[k].needs) use(i, tl('Building'), TL`New settlements: ${PROJECTS[k].name}`); // (0.175: the deep mine's drill rig among them)
   for (const [i] of UPGRADE.needs) use(i, tl('Building'), tl('Steel ploughs'));

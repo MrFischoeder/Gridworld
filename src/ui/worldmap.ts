@@ -276,6 +276,13 @@ function drawArea(ctx: CanvasRenderingContext2D, w: number, h: number, ppm: numb
     const p = l.ship ? shipPos(G.char.world, G.char.outposts, id, G.char.time) : null;
     if (p !== null) { ctx.fillStyle = '#2ac8b0'; ctx.fillRect(ax + (bx - ax) * p - 3, ay + (by - ay) * p - 3, 6, 6); }
   }
+  for (const o of Object.values(G.char.outposts)) { // (0.219) power lines: a pale yellow line to the village (dashed while going up)
+    const l = o?.pl;
+    if (!l || !(o.done?.pline || o.job?.p === 'pline')) continue;
+    const ax = X(nearX(o.x, px)), ay = Z(o.z), bx = X(nearX(l.x, nearX(o.x, px))), by = Z(l.z);
+    ctx.strokeStyle = '#e8e070'; ctx.globalAlpha = o.done?.pline ? 0.85 : 0.45; ctx.lineWidth = o.done?.pline ? 2 : 1; if (!o.done?.pline) ctx.setLineDash([3, 4]);
+    ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.stroke(); ctx.setLineDash([]); ctx.globalAlpha = 1; ctx.lineWidth = 1;
+  }
   for (const o of Object.values(G.char.outposts)) { // (0.183) the outposts (shared): a gold ring round the deposit
     if (!o?.k) continue;
     const x = X(nearX(o.x, px)), y = Z(o.z), r = labels ? 11 : 6;

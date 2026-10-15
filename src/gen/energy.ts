@@ -140,31 +140,40 @@ export interface Balance {
   made: number; village: number; free: number; draw: number; powered: boolean[]; farms: number; farmsPowered: number;
   /** The industry site's draw and the share of it it got. */
   site: number; sitePowered: number;
+  /** (0.219, stage Z5) What its power line brings in (kW; negative: sends out), and what the village still lacks
+   *  (the village, the farms, the site and the works that stand for want of power). */
+  line: number; short: number;
 }
+/** (0.219, PLAN_PRAD_I_LUDZIE.md stage Z5) A power line to an outposts' grid: what it brings into village `vid` at time t
+ *  (kW, negative when the village sends power out). Set by the game (world/powerlines.ts, from the shared `outposts`);
+ *  unset (tests, workers, old worlds) nothing flows. */
+let lineHook: ((world: number, vid: number, t: number) => number) | null = null;
+export const setLineHook = (f: typeof lineHook) => { lineHook = f; };
 /**
  * The village's power at time t: made (its plant and stations), taken by the village, then the farms (pumps and
  * lamps), then the industry site, then the works in the order they were built (each that has work to do takes its
  * draw while enough is left).
  */
-export function balance(world: number, v: Poi, seed: number, s: TownState | undefined, t: number): Balance {
+export function balance(world: number, v: Poi, seed: number, s: TownState | undefined, t: number, noLine = false): Balance {
   const bank = s?.imp?.bank ? bankKw(s, ...renewables(world, v, seed, s, t)) : 0;
-  const posts = crew(seed, v, s, t);
-  const made = baseKw(world, v, seed, s, t) + (s?.stations ?? []).reduce((a, st, i) => a + stationKw(v, seed, st, t) * crewFill(posts, 'station:' + i), 0) + bank, vkw = villageKw(s) + streetKw(s, t); // (0.203) the street lamps by night
-  let free = Math.max(0, made - vkw), draw = 0;
+  const posts = crew(seed, v, s, t), line = !noLine && lineHook ? lineHook(world, v.id, t) : 0; // (0.219) an export never exceeds what was left over, an import fills what was short
+  const made = Math.max(0, baseKw(world, v, seed, s, t) + (s?.stations ?? []).reduce((a, st, i) => a + stationKw(v, seed, st, t) * crewFill(posts, 'station:' + i), 0) + bank + line), vkw = villageKw(s) + streetKw(s, t); // (0.203) the street lamps by night
+  let free = Math.max(0, made - vkw), draw = 0, short = Math.max(0, vkw - made);
   // the farms come first (gen/farms.ts): pumps and lamps before the works
   const farms = farmsKw(s), farmsGot = Math.min(free, farms);
-  free -= farmsGot;
+  free -= farmsGot; short += farms - farmsGot;
   // then the industry site (a share of its draw is a share of its power)
   const site = siteKw(world, v, seed, s), siteGot = Math.min(free, site);
-  free -= siteGot;
+  free -= siteGot; short += site - siteGot;
   const powered = (s?.plants ?? []).map((p, i) => {
     if (!running(p) || crewFill(posts, 'works:' + i) < 1) return false; // a works short of hands stands still and draws nothing
     const d = DRAW[p.k];
     draw += d;
     if (free >= d) { free -= d; return true; }
+    short += d;
     return false;
   });
-  return { bank, made, village: Math.min(made, vkw), free, draw, powered, farms, farmsPowered: farms ? farmsGot / farms : 1, site, sitePowered: site ? siteGot / site : 1 };
+  return { bank, made, village: Math.min(made, vkw), free, draw, powered, farms, farmsPowered: farms ? farmsGot / farms : 1, site, sitePowered: site ? siteGot / site : 1, line, short };
 }
 const siteCache = new Map<string, number>();
 /**

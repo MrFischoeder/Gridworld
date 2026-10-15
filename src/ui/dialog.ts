@@ -1,3 +1,4 @@
+import { lineOfVillage } from '../gen/grid';
 import { withTownStock } from './stock';
 import { online } from '../net/client';
 import { settleOwn, anchorNew } from '../gen/hall';
@@ -312,7 +313,14 @@ function powerText(vid: number, vm: VillageMap, st: TownState | undefined): stri
     TL`; the village itself takes ${villageKw(st)} kW` + (b.farms ? TL`, the farms ${b.farms} kW` : '') +
     (b.site ? TL`, our ${INDUSTRY[industryOf(c.world, poi, vm.seed)].site.toLowerCase()} ${b.site} kW${b.sitePowered < 1 ? TL` <span style="color:var(--red,#ff5a3c)">(${Math.round(b.sitePowered * 100)}% powered: it makes less)</span>` : ''}` : '') +
     TL`, which leaves <b>${Math.round(b.free + b.powered.reduce((a, on, i) => a + (on ? DRAW[plantsOf(st)[i].k] : 0), 0))} kW</b> for works.` + (works.length ? TL` They draw: ${works.join(', ')}.` : '') +
-    TL` Every works needs power to run: build power stations first.`;
+    TL` Every works needs power to run: build power stations first.` + lineText(poi.id, b.line);
+}
+/** (0.219, stage Z5) What the village's power line carries, if it has one. */
+function lineText(vid: number, f: number): string {
+  const pl = lineOfVillage(G.char.outposts, vid);
+  if (!pl) return '';
+  if (!pl[1].done?.pline) return TL` A power line from ${pl[1].name} is going up.`;
+  return f > 0 ? TL` The power line from ${pl[1].name} brings us ${Math.round(f)} kW.` : f < 0 ? TL` We send ${Math.round(-f)} kW we do not need down the line to ${pl[1].name}.` : TL` The power line to ${pl[1].name} carries nothing just now.`;
 }
 function worksText(st: TownState | undefined): string {
   const built = plantsOf(st), plan = plantPlan(st), free = PLANT_SLOTS - built.length - (plan && !isStation(plan.k) ? 1 : 0), sfree = STATION_SLOTS - (st?.stations?.length ?? 0) - (plan && isStation(plan.k) ? 1 : 0);
