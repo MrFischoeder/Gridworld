@@ -3,6 +3,13 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.218.0', date: '2026-10-15', title: 'Crews at the old plants', notes: [
+    'In a new world every restored old plant that makes something now needs a crew to run its batches: 6 to 10 people by plant (8 at the Enrichment Plant and the Chip Foundry, 10 at the Alloy Complex, the Robotics Plant and the Aerospace Works). The Radar Station and the Ancient Power Complex need none yet.',
+    'The old plants stand far from any village, so the crew lives at the plant. At the plant\'s control desk you stake out a crew camp, then build up to 3 bunkhouses and 3 fields round the plant, like at an outpost. Settlers come on their own while there are free beds and food to spare; they work the fields first, then the plant. You can also bring food to the camp\'s pantry.',
+    'A batch starts only while the whole crew is there; the plant\'s screen says NO CREW otherwise and the desk shows how many work there of how many it needs. The camp\'s board, bunkhouses, fields and people are drawn round the plant.',
+    'Worlds made before keep their plants without crews.',
+    'Multiplayer: the camp is part of the shared outposts (under the camp\'s lock), and every game works out the crew the same way from it, so all players see the same plant running or standing. The server does not need an update.',
+  ] },
   { v: '0.217.0', date: '2026-10-14', title: 'Cargo ships between ports', notes: [
     'A port with its warehouse built can open a cargo line to another port within 40 km. Hand a Sailing Ship or a Motor Ship of yours over to the line at the dock (its hold empty, nobody aboard) and it sails on a timetable: a round voyage every few hours, as long as the line is.',
     'Each voyage loads what the home port\'s hold has, everything or only the goods you choose, up to the ship\'s load (96 crates on a Sailing Ship, 80 on a Motor Ship), and carries it to the other port, whose crane takes it off into its hold.',

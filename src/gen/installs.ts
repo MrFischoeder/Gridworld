@@ -290,10 +290,15 @@ export function handOverInstall(k: InstallKind, s: InstallState, known: Record<s
   if (installDone(k, s)) s.t = now; // the works start now
   return { taken, built: true };
 }
-/** Can it work a batch now: restored, the inputs in the hopper, room in the bay and enough power from its hall? */
+/** (0.218, PLAN_PRAD_I_LUDZIE.md stage Z4) Is the plant's crew at work at game time t (gen/plantcamps.ts sets the rule
+ *  for the world being played; unset: always, as for tests and old worlds)? A batch starts only with its crew. */
+let crewRule: (k: InstallKind, t: number) => boolean = () => true;
+export const setCrewRule = (f: ((k: InstallKind, t: number) => boolean) | null) => { crewRule = f ?? (() => true); };
+export const crewAt = (k: InstallKind, t: number) => crewRule(k, t);
+/** Can it work a batch now: restored, the inputs in the hopper, room in the bay, enough power from its hall and its crew? */
 export function canRun(k: InstallKind, s: InstallState, grid = 0): boolean {
   const w = workOf(k, s);
-  return !!w && installDone(k, s) && batchesIn(k, s) >= 1 && s.out + (w.n ?? 1) <= w.bay && !!hallPick(k, s, grid);
+  return !!w && installDone(k, s) && batchesIn(k, s) >= 1 && s.out + (w.n ?? 1) <= w.bay && !!hallPick(k, s, grid) && crewRule(k, s.t);
 }
 /**
  * Settle the batches made since it was last looked at: one per batch while the hopper has enough, the bay has room

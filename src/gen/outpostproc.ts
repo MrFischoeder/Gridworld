@@ -24,7 +24,7 @@ export const PROC: Partial<Record<LodeKind, ProcSpec>> = {
   grove: { name: tl('Sawmill'), text: tl('A saw shed by the felling: every log comes out as five planks.'), needs: [['planks', 20], ['stone', 8], ['scrap', 6], ['wire', 4]], inp: 'log', n: 1, out: 'planks', m: 5, batch: 20, kw: 8 },
   stone: { name: tl('Stone saw'), text: tl('A wire saw and a crusher: three crates of stone make two pallets of cut stone.'), needs: [['planks', 12], ['scrap', 10], ['wire', 6], ['parts', 1]], inp: 'stone', n: 3, out: 'cutstone', m: 2, batch: 60, kw: 6 },
 };
-export const procOf = (k: LodeKind | 'port'): ProcSpec | null => (k === 'port' ? null : PROC[k] ?? null);
+export const procOf = (k: LodeKind | 'port' | 'camp'): ProcSpec | null => (k === 'port' || k === 'camp' ? null : PROC[k] ?? null);
 /** What the works draws while it stands (kW). */
 export const procKw = (o: OutpostState) => (o.done?.proc ? procOf(o.k)?.kw ?? 0 : 0);
 /** Run the works up to `now` (after the stock is settled there): whole batches while the input lasts and the output

@@ -12,13 +12,13 @@ import type { ItemKey } from '../data/items';
 import { lodeGives, type Lode, type LodeKind } from './lodes';
 import { isRare } from './deposits';
 import { POWER_SRC, type PowerKind } from './grid';
-import { PROC } from './outpostproc';
+import { procOf } from './outpostproc';
 import { tl, TL } from '../i18n';
 
 export type OutpostPart = 'dig' | 'store' | 'power' | 'bunks' | 'field' | 'wall' | 'turret' | 'proc' | 'port';
 /** (0.216, PLAN_PRAD_I_LUDZIE.md stage Z2) What an entry of the shared `outposts` stands at: a deposit's kind, or a port at
  *  a finished dock (gen/ports.ts; id 'port:<dock id>', no deposit, nothing dug). */
-export type OutpostKind = LodeKind | 'port';
+export type OutpostKind = LodeKind | 'port' | 'camp';
 /** (0.185, stage O4) Parts built more than once: bunkhouses and fields (counted in `OutpostState.n`); (0.186, stage O5)
  *  the wall (each build raises it a tier) and turrets. */
 export type ManyPart = 'bunks' | 'field' | 'wall' | 'turret';
@@ -51,6 +51,8 @@ export interface OutpostState {
   hold?: Partial<Record<ItemKey, number>>; pier?: string;
   /** (0.216) Where a port's pieces stand (gen/ports.ts `portSpots`, worked out once when it was founded). */
   ps?: PortSpots;
+  /** (0.218, stage Z4) A crew camp at an old plant (gen/plantcamps.ts): the plant's kind and the crew it needs. */
+  ik?: string; cw?: number;
   /** (0.217, stage Z3) A port's cargo line to another port (gen/shiplines.ts), and what its crane took off the lines
    *  coming in (`rcvKey` → item → count, cumulative). */
   line?: import('./shiplines').ShipLine; rcv?: Record<string, Partial<Record<ItemKey, number>>>;
@@ -99,8 +101,8 @@ export const OUTPOST = {
   hours: { dig: 10, store: 8, power: 8, bunks: 10, field: 8, wall: 12, turret: 6, proc: 10, port: 14 } as Record<OutpostPart, number>, xp: { dig: 80, store: 40, power: 60, bunks: 50, field: 40, wall: 60, turret: 50, proc: 70, port: 120 } as Record<OutpostPart, number>,
 };
 /** A part's name; for the wall, the tier the next build gives (`tier` = the tier standing now). */
-export const partName = (k: OutpostKind, p: OutpostPart, pk?: PowerKind, tier = 0) => (p === 'port' ? PORT.name : p === 'dig' ? DIG[digOf(k)].name : p === 'power' ? (pk ? POWER_SRC[pk].name : tl('Power source')) : p === 'bunks' ? BUNKS.name : p === 'field' ? FIELD.name : p === 'wall' ? WALL[Math.min(WALL.length - 1, tier)].name : p === 'turret' ? TURRET.name : p === 'proc' ? (k !== 'port' && PROC[k]?.name) || tl('Works') : STORE.name);
-export const partNeeds = (k: OutpostKind, p: OutpostPart, pk?: PowerKind, tier = 0): [ItemKey, number][] => (p === 'port' ? PORT.needs : p === 'dig' ? DIG[digOf(k)].needs : p === 'power' ? (pk ? POWER_SRC[pk].needs : []) : p === 'bunks' ? BUNKS.needs : p === 'field' ? FIELD.needs : p === 'wall' ? WALL[Math.min(WALL.length - 1, tier)].needs : p === 'turret' ? TURRET.needs : p === 'proc' ? (k !== 'port' && PROC[k]?.needs) || [] : STORE.needs);
+export const partName = (k: OutpostKind, p: OutpostPart, pk?: PowerKind, tier = 0) => (p === 'port' ? PORT.name : p === 'dig' ? DIG[digOf(k)].name : p === 'power' ? (pk ? POWER_SRC[pk].name : tl('Power source')) : p === 'bunks' ? BUNKS.name : p === 'field' ? FIELD.name : p === 'wall' ? WALL[Math.min(WALL.length - 1, tier)].name : p === 'turret' ? TURRET.name : p === 'proc' ? (procOf(k)?.name) || tl('Works') : STORE.name);
+export const partNeeds = (k: OutpostKind, p: OutpostPart, pk?: PowerKind, tier = 0): [ItemKey, number][] => (p === 'port' ? PORT.needs : p === 'dig' ? DIG[digOf(k)].needs : p === 'power' ? (pk ? POWER_SRC[pk].needs : []) : p === 'bunks' ? BUNKS.needs : p === 'field' ? FIELD.needs : p === 'wall' ? WALL[Math.min(WALL.length - 1, tier)].needs : p === 'turret' ? TURRET.needs : p === 'proc' ? (procOf(k)?.needs) || [] : STORE.needs);
 /** The wall's tier (0 none, 1 stakes, 2 palisade, 3 stone) and the turrets. */
 export const wallOf = (o: OutpostState) => o.n?.wall ?? 0;
 export const turretsOf = (o: OutpostState) => o.n?.turret ?? 0;
@@ -151,9 +153,10 @@ export function partPlan(o: OutpostState, p: OutpostPart) {
 /** Why part p cannot be worked on now ('' = it can). */
 export function partProblem(o: OutpostState, p: OutpostPart): string {
   if (countOf(o, p) >= maxOf(p)) return p === 'wall' ? tl('The stone wall stands.') : isMany(p) ? TL`All ${maxOf(p)} stand.` : tl('It stands.');
+  if (o.k === 'camp' && p !== 'bunks' && p !== 'field') return tl('Not here.'); // (0.218) a crew camp: bunkhouses and fields
   if ((o.k === 'port') !== (p === 'port') && !(o.k === 'port' && (p === 'power' || p === 'bunks' || p === 'field'))) return tl('Not here.'); // (0.216) a port builds its warehouse, power, bunks and fields
   if (p === 'power' && !o.pk) return tl('Choose a power source first.');
-  if (p === 'proc' && (o.k === 'port' || !PROC[o.k])) return tl('Nothing here to process.');
+  if (p === 'proc' && !procOf(o.k)) return tl('Nothing here to process.');
   if (p === 'proc' && !o.done?.dig) return tl('The extraction must stand first.');
   if (o.job) return o.job.p === p ? tl('The builders are at it.') : tl('The builders are busy with the ') + partName(o.k, o.job.p, o.pk, countOf(o, o.job.p)).toLowerCase() + '.';
   return '';

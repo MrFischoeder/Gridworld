@@ -110,7 +110,7 @@ export function peopleHTML(o: OutpostState, pos = at()): string {
   const c = G.char, L = lifeNow(c.world, o, c.time), f = fertility(c.world, o.x, o.z), n = Math.floor(L.n), beds = bedsOf(o), w = crews(o, L.n);
   const made = foodMade(o, L.n, f), eat = foodEaten(L.n), net = made - eat;
   let s = TL`<div class="say"><b>People</b>${isHamlet(o) ? tl(' <b style="color:var(--gold)">· a hamlet now</b>') : ''}: ${n} of ${beds} beds${beds ? '' : tl(' (build a bunkhouse and settlers will come)')}` +
-    (n ? TL` · ${w.farm} on the fields, ${w.dig} at the ${o.k === 'port' ? PORT.name.toLowerCase() : o.done?.dig ? DIG[digOf(o.k)].name.toLowerCase() : 'dig'}${w.idle ? `, ${w.idle} idle` : ''}` : '') +
+    (n ? TL` · ${w.farm} on the fields, ${w.dig} at the ${o.k === 'port' ? PORT.name.toLowerCase() : o.k === 'camp' ? tl('plant') : o.done?.dig ? DIG[digOf(o.k)].name.toLowerCase() : 'dig'}${w.idle ? `, ${w.idle} idle` : ''}` : '') +
     TL`<br>Land: ${fertilityWord(f)} (fertility ${Math.round(f * 100)}%) · ${o.n?.field ?? 0} field${o.n?.field === 1 ? '' : 's'} grow ${made.toFixed(1)} food a day, the people eat ${eat.toFixed(1)}` +
     TL`<br>Pantry: ${L.food.toFixed(1)} of ${pantryOf(o)} food${eat > 0 ? ` (${net >= 0 ? tl('growing') : TL`${(L.food / (eat - made)).toFixed(1)} days left`})` : ''}` +
     (L.fed < 1 ? TL` · <span style="color:#ff6a4a">hungry: settlers are leaving</span>` : '') +

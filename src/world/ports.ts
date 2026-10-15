@@ -232,13 +232,13 @@ function levelPads() {
 function finishPorts() {
   const c = G.char, byId = (id: string) => lodeById(c.world, id);
   for (const [id, o] of Object.entries(c.outposts)) {
-    if (!isPort(o) || !o.job || c.time < jobEnd(o)) continue;
+    if ((!isPort(o) && o?.k !== 'camp') || !o.job || c.time < jobEnd(o)) continue; // (0.218) and the crew camps at the old plants
     tellRaids(settleAll(c.world, c.outposts, byId, jobEnd(o), c.towns)); // a new source, beds or field change the grid and the people: count up to it first
     const p = finishDue(o, null, c.time, pwOf(c.world, c.outposts, id, c.time));
     if (!p) continue;
     saveChar(); const what = partName(o.k, p, o.pk, countOf(o, p) - 1).toLowerCase();
     showToast(`${o.name}: ${what} built`);
-    logLine(TL`The builders finished the ${what} at ${o.name}.${p === 'port' ? TL` Its crane needs ${PORT.crew} people and power to work; storing by hand works now.` : p === 'power' && o.pk ? TL` It powers every outpost and port within ${POWER_SRC[o.pk].r} m.${POWER_SRC[o.pk].fuel ? tl(' Load its bunker with fuel.') : ''}` : ''}`);
+    logLine(TL`The builders finished the ${what} at ${o.name}.${o.k === 'camp' ? tl(' Settlers come when there are beds and food to spare.') : p === 'port' ? TL` Its crane needs ${PORT.crew} people and power to work; storing by hand works now.` : p === 'power' && o.pk ? TL` It powers every outpost and port within ${POWER_SRC[o.pk].r} m.${POWER_SRC[o.pk].fuel ? tl(' Load its bunker with fuel.') : ''}` : ''}`);
   }
 }
 /** The port whose board you stand by (its id and dock). */

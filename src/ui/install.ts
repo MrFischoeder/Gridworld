@@ -20,6 +20,14 @@ import { redrawInstalls } from '../world/installs';
 import { carried, takeFrom, putAway } from './market';
 import { $, showToast, logLine } from './hud';
 import { lockPointer } from './input';
+import { CREW, campId, needsCrew, newCamp, campSpots, crewOf } from '../gen/plantcamps';
+import { handOver, partName, countOf, OUTPOST, type OutpostPart } from '../gen/outposts';
+import { loadFood } from '../gen/outpostlife';
+import { FOOD } from '../gen/farms';
+import { partHTML, peopleHTML } from './outpost';
+import { withOutpost } from './stock';
+import { dryAt } from '../world/ports';
+import { myOwner } from '../world/rivals';
 import { tl, TL } from '../i18n';
 
 const dlgEl = $('dlg'), panel = () => dlgEl.querySelector('.panel') as HTMLElement;
@@ -69,7 +77,7 @@ function render(msg = '') {
       TL`<button class="opt" data-ins="take" ${st.out ? '' : 'disabled'}>Collect the ${ITEMS[w.out].name} (${st.out})</button>`;
   }
   panel().classList.add('wide');
-  panel().innerHTML = s + hall(site.k, st) + buyers() + TL`<button class="opt" data-ins="close">Close</button>`;
+  panel().innerHTML = s + crewHTML(site) + hall(site.k, st) + buyers() + TL`<button class="opt" data-ins="close">Close</button>`;
 }
 /** The complex's control room: the core's rods, how long they last, and the old plants on its lines. */
 function plex(st: InstallState): string {
@@ -91,8 +99,19 @@ function screen(k: InstallKind, st: InstallState): string {
   for (const [i] of w.inp) t += TL`${pad(short(ITEMS[i].name))}${st.inp[i] ?? 0} crates\n`;
   t += TL`${pad(tl('Production'))}${ITEMS[w.out].name.toUpperCase()} · ${st.out}/${w.bay} in the bay\n`;
   const left = Math.max(0, w.batch - (c.time - st.t));
-  t += `${pad(tl('Next batch'))}${run ? `${String(Math.floor(left / 60)).padStart(2, '0')}:${String(Math.floor(left % 60)).padStart(2, '0')}` : st.out >= w.bay ? tl('STOPPED · THE BAY IS FULL') : batchesIn(k, st) < 1 ? tl('WAITING FOR ') + w.inp.filter(([i, n]) => (st.inp[i] ?? 0) < n).map(([i]) => short(ITEMS[i].name).toUpperCase()).join(', ') : tl('NO POWER')}`;
+  t += `${pad(tl('Next batch'))}${run ? `${String(Math.floor(left / 60)).padStart(2, '0')}:${String(Math.floor(left % 60)).padStart(2, '0')}` : st.out >= w.bay ? tl('STOPPED · THE BAY IS FULL') : batchesIn(k, st) < 1 ? tl('WAITING FOR ') + w.inp.filter(([i, n]) => (st.inp[i] ?? 0) < n).map(([i]) => short(ITEMS[i].name).toUpperCase()).join(', ') : !pick ? tl('NO POWER') : tl('NO CREW')}`;
   return `<pre style="font-family:monospace;white-space:pre-wrap;color:var(--xp);background:#010d04;border:1px solid #2fe06055;padding:8px 10px;margin:6px 0">${t}</pre>`;
+}
+/** (0.218, stage Z4) The plant's crew and the camp where it lives: bunkhouses, fields and the people (the outposts'
+ *  own rows from ui/outpost.ts; their clicks come back through `installClick`). */
+function crewHTML(st0: InstallSite): string {
+  const c = G.char;
+  if (!needsCrew(c.world, st0.k)) return '';
+  const o = c.outposts[campId(st0.k)], need = CREW[st0.k] ?? 0;
+  if (!o) return TL`<div class="say" style="margin:8px 0 0"><b>The crew.</b> Once restored, this plant needs ${need} people to run its batches. No village is near: they will have to live here, in a crew camp with bunkhouses and fields of its own. Settlers come when there are beds and food to spare.</div><button class="opt" data-ins="camp" style="color:var(--gold)">Stake out a crew camp</button>`;
+  const cr = crewOf(c.world, c.outposts, st0.k, c.time), pos = at();
+  return TL`<div class="say" style="margin:8px 0 0"><b>The crew</b>: ${cr.at} of ${need} at the plant.${cr.at >= need ? tl(' Its batches run while the hall has power.') : tl(' <span style="color:#ff6a4a">Not enough hands: no batch starts.</span>')} The people work the fields first, then the plant.</div>` +
+    partHTML(o, 'bunks', pos) + partHTML(o, 'field', pos) + peopleHTML(o, pos);
 }
 /** The power hall: its generator sets and their bunkers (once the second stage has brought it back). */
 function hall(k: InstallKind, st: InstallState): string {
@@ -153,12 +172,41 @@ function sweep(s: InstallSite): string {
   const all = places.length + sites.length;
   return n ? TL`The sweep shows ${all} places within ${R / 1000} km (${v} villages${sites.length ? `, ${sites.map((o) => tl('the ') + o.name).join(tl(' and '))}` : ''}): ${Math.min(n, all)} of them are new on your map.` : TL`The sweep shows ${all} places within ${R / 1000} km; you already have them all on your map.`;
 }
+/** (0.218) The crew camp's buttons: stake it out, hand over for a bunkhouse or a field, load food. Under the camp's lock. */
+function campClick(s0: InstallSite, op: string): boolean {
+  const c = G.char, id = campId(s0.k), [a, x] = op.split(':'), here = at();
+  let msg = '';
+  void withOutpost(id, () => {
+    const o = c.outposts[id];
+    if (a === 'camp') {
+      if (o) return;
+      c.outposts[id] = newCamp(s0, c.name || tl('You'), c.time, myOwner(), campSpots(s0, dryAt));
+      msg = tl('The camp is staked out by the plant. Bring the materials for a bunkhouse and a field.'); logLine(TL`You staked out a crew camp at ${s0.name}.`);
+      return;
+    }
+    if (!o) return;
+    if (a === 'give' && (x === 'bunks' || x === 'field')) {
+      const p = x as OutpostPart, { taken, started } = handOver(o, p, (k) => carried(k, here), c.time);
+      for (const [k, n] of taken) takeFrom(k, n, here);
+      msg = taken.length ? tl('Handed over: ') + taken.map(([k, n]) => `${ITEMS[k].name} ×${n}`).join(', ') + '.' : tl('You carry nothing it still needs.');
+      if (started) { msg += TL` <b>Everything is here: the builders start on the ${partName(o.k, p, o.pk, countOf(o, p)).toLowerCase()} (${OUTPOST.hours[p]} h).</b>`; gainXp(OUTPOST.xp[p]); }
+    } else if (a === 'food') {
+      const got: string[] = [];
+      for (const k of Object.keys(FOOD.value) as ItemKey[]) { const n = loadFood(c.world, o, k, carried(k, here), c.time); if (n) { takeFrom(k, n, here); got.push(`${ITEMS[k].name} ×${n}`); } }
+      msg = got.length ? TL`Into the pantry: ${got.join(', ')}.` : tl('No food with you, or the pantry is full.');
+    }
+  }).then((ok) => { if (!ok) return; calcStats(); saveChar(); if (site === s0) render(msg); });
+  return true;
+}
 function close() { site = null; G.dlgOpen = false; dlgEl.style.display = 'none'; if (!G.isTouch) lockPointer(); }
 /** Clicks in the restoration window; true when handled. */
 export function installClick(t: HTMLElement): boolean {
   if (!site) return false;
+  const op = t.closest('[data-op]') as HTMLElement | null;
+  if (op && !t.closest('[data-ins]')) return campClick(site, op.dataset.op!);
   const b = t.closest('[data-ins]') as HTMLElement | null;
   if (!b) return false;
+  if (b.dataset.ins === 'camp') return campClick(site, 'camp');
   const c = G.char, st = stateOf(site), a = b.dataset.ins;
   if (a === 'close') { close(); return true; }
   if (a === 'give') {

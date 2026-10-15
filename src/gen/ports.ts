@@ -72,7 +72,7 @@ export const PORT_PAD = { house: [11, 10, 0.25], power: [5, 8, 0.3], bunks: [6, 
 export function portClaims(world: number, outposts: Record<string, OutpostState>): Claim[] {
   const out: Claim[] = [];
   for (const o of Object.values(outposts)) {
-    const sp = o?.k === 'port' ? o.ps : undefined;
+    const sp = o?.k === 'port' || o?.k === 'camp' ? o.ps : undefined; // (0.218) and the crew camps at the old plants
     if (!sp) continue;
     const pad = (q: [number, number], [flat, blend, soft]: readonly [number, number, number]) => out.push({ x: q[0], z: q[1], y: Math.round(naturalHeight(world, q[0], q[1]) * 10) / 10, flat, blend, soft });
     const going = (p: string) => o.job?.p === p;

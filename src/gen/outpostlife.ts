@@ -36,14 +36,14 @@ export const PESTS = { trample: 0.25, pantry: 0.25, eat: 0.2 };
 /** Food units a crate of k is worth to the pantry (0 = not food). */
 export const foodValue = (k: ItemKey) => FOOD.value[k] ?? 0;
 export const bedsOf = (o: OutpostState) => (o.n?.bunks ?? 0) * LIFE.beds;
-export const pantryOf = (o: OutpostState) => (o.done?.store || o.done?.port ? LIFE.shed : LIFE.pantry);
+export const pantryOf = (o: OutpostState) => (o.done?.store || o.done?.port || o.k === 'camp' ? LIFE.shed : LIFE.pantry);
 const fresh = (t: number): OutpostLife => ({ t, n: 0, food: 0, fed: 1 });
 const mark = (t: number) => Math.floor(t / LIFE.step) * LIFE.step;
 
 /** How the people are put to work: the fields' crews first, then the dig (or, 0.216, a port's warehouse crew). */
 export function crews(o: OutpostState, people: number) {
   const n = Math.floor(people), fields = o.n?.field ?? 0, need = fields * LIFE.fieldCrew;
-  const work = o.done?.dig ? LIFE.digCrew : o.done?.port ? PORT.crew : 0;
+  const work = o.done?.dig ? LIFE.digCrew : o.done?.port ? PORT.crew : o.k === 'camp' ? o.cw ?? 0 : 0; // (0.218) a camp's crew works at its old plant
   const farm = Math.min(n, need), dig = Math.min(n - farm, work);
   return { farm, dig, idle: n - farm - dig, farmFill: need ? farm / need : 0, digFill: work ? dig / work : 0 };
 }
