@@ -121,6 +121,17 @@ function flyStep(dt: number) {
   if (G.ground) pos.y = Math.max(pos.y, G.ground(pos.x, pos.z) + 0.3);
   vel.set(0, 0, 0); G.onGround = false; G.swimming = false; G.activity = 1;
 }
+/**
+ * (0.223, PLAN_WALKI.md stage W1) A dodge: a quick dash `speed` m/s for `time` s to a side (or back, or ahead), out of
+ * a charge, a bite or a line of bolts. Costs stamina, `cool` s between two; not swimming, overloaded or in the air.
+ * Asked for by a double tap of W / A / S / D or Left Alt with the direction held (ui/input.ts).
+ */
+export const DODGE = { speed: 12, time: 0.24, cool: 0.75, stamina: 18 };
+let dodgeAsk: [number, number, number] | null = null, dodgeT = 0, dodgeCool = 0;
+const dodgeV = { x: 0, z: 0 };
+/** Ask for a dodge: f forward (−1 back), s right (−1 left), in the view's frame. */
+export function askDodge(f: number, s: number) { dodgeAsk = [f, s, performance.now()]; }
+export const dodging = () => dodgeT > 0;
 /** One physics step from input. Returns whether the player is walking (for view bob). */
 export function updatePlayer(dt: number): boolean {
   if (G.fly) { flyStep(dt); return false; }
@@ -148,7 +159,15 @@ export function updatePlayer(dt: number): boolean {
   const want = fw.multiplyScalar(f * speed).addScaledVector(rt, s * speed);
   // a river's current carries a swimmer along (and pushes at your legs when you wade)
   if (w?.flow && wet > 0.3) { const c = G.swimming ? 1 : 0.35; want.x += w.flow[0] * c; want.z += w.flow[1] * c; }
-  const k = G.swimming ? 5 : G.onGround ? 14 : 3;
+  // (0.223) a dodge takes over the feet for a moment
+  dodgeCool -= dt;
+  if (dodgeAsk && performance.now() - dodgeAsk[2] < 150 && dodgeCool <= 0 && G.onGround && !G.swimming && !over && spendStamina(DODGE.stamina)) {
+    const [df, ds] = dodgeAsk, n = Math.hypot(df, ds) || 1, d = V(-Math.sin(G.yaw), 0, -Math.cos(G.yaw)).multiplyScalar(df / n).addScaledVector(V(Math.cos(G.yaw), 0, -Math.sin(G.yaw)), ds / n);
+    dodgeV.x = d.x * DODGE.speed; dodgeV.z = d.z * DODGE.speed; dodgeT = DODGE.time; dodgeCool = DODGE.cool; burn(BURN.jump);
+  }
+  dodgeAsk = null;
+  if (dodgeT > 0) { dodgeT -= dt; want.x = dodgeV.x; want.z = dodgeV.z; }
+  const k = dodgeT > 0 ? 40 : G.swimming ? 5 : G.onGround ? 14 : 3;
   vel.x += (want.x - vel.x) * Math.min(1, k * dt); vel.z += (want.z - vel.z) * Math.min(1, k * dt);
   if (G.swimming && w) {
     // float with the head above the surface

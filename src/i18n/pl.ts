@@ -79,7 +79,7 @@ export const PL: Record<string, string> = {
   "Create a server": "Załóż serwer",
   "World seed": "Ziarno świata",
   "WASD — move · mouse — look · LMB — attack · 1/2 — draw the weapon from your back · Q or wheel — swap · X — sling it on your back · B — build (on your claim) · L — code lock at a door": "WASD — ruch · mysz — rozglądanie · LPM — atak · 1/2 — dobądź broń z pleców · Q lub kółko — zmiana · X — przewieś na plecy · B — budowa (na twojej działce) · L — zamek szyfrowy przy drzwiach",
-  "E — talk / open / drive · T — chat (online) · V — vehicle view · ~ — console · I or Tab — backpack · M — map · H — medkit · G — EMP charge · space — jump · shift — sprint · C or Ctrl — crouch / sneak · Esc — pause": "E — rozmowa / otwórz / jazda · T — czat (online) · V — widok z pojazdu · ~ — konsola · I lub Tab — plecak · M — mapa · H — apteczka · G — ładunek EMP · spacja — skok · shift — sprint · C lub Ctrl — kucanie / skradanie · Esc — pauza",
+  "E — talk / open / drive · T — chat (online) · V — vehicle view · ~ — console · I or Tab — backpack · M — map · H — medkit · G — EMP charge · space — jump · shift — sprint · C or Ctrl — crouch / sneak · double-tap W/A/S/D or left Alt — dodge · Esc — pause": "E — rozmowa / otwórz / jazda · T — czat (online) · V — widok z pojazdu · ~ — konsola · I lub Tab — plecak · M — mapa · H — apteczka · G — ładunek EMP · spacja — skok · shift — sprint · C lub Ctrl — kucanie / skradanie · dwa razy W/A/S/D albo lewy Alt — unik · Esc — pauza",
   "DEV WORLD MAP": "MAPA ŚWIATA (DEV)",
   "■ village": "■ wioska",
   "○ ruin": "○ ruina",
@@ -4073,4 +4073,8 @@ export const PL: Record<string, string> = {
   "Cave mushrooms": "Grzyby jaskiniowe",
   "Crystal forest: {0}": "Kryształowy las: {0}",
   "E — pick the cave mushrooms": "E — zbierz grzyby jaskiniowe",
+  "Weak spot! ×{0}": "Słaby punkt! ×{0}",
+  "From behind ×{0}": "Od tyłu ×{0}",
+  "Armour turns it: ×{0}": "Pancerz odbija: ×{0}",
+  "A good angle ×{0}": "Dobry kąt ×{0}",
 };

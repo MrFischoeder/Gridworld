@@ -27,6 +27,8 @@ import { interact, lockKey } from '../world/interact';
 import { useItem } from '../world/loot';
 import { drawBack, swapWeapon, holster, armed, reload } from '../world/weapons';
 import { toggleMap, zoomMap, orbitalScan, toggleRoute, toggleFertility } from './worldmap';
+import { askDodge } from '../world/player';
+let lastTap: [string, number] = ['', 0];
 import { townsWorld } from '../gen/worldrules';
 
 export function lockPointer() {
@@ -63,6 +65,17 @@ export function initInput(onPause: () => void) {
     if (!G.playing) return;
     if (e.code === 'KeyE' && !e.repeat) interact();
     if (e.code === 'KeyC' && !e.repeat && !G.fly && G.playing) toggleCrouch();
+    // (0.223) a dodge: a double tap of W / A / S / D, or Left Alt with the direction held (backwards with none)
+    if (!e.repeat && G.playing && !G.fly && (e.code === 'KeyW' || e.code === 'KeyA' || e.code === 'KeyS' || e.code === 'KeyD')) {
+      const now = performance.now();
+      if (lastTap[0] === e.code && now - lastTap[1] < 260) { askDodge(e.code === 'KeyW' ? 1 : e.code === 'KeyS' ? -1 : 0, e.code === 'KeyD' ? 1 : e.code === 'KeyA' ? -1 : 0); lastTap = ['', 0]; }
+      else lastTap = [e.code, now];
+    }
+    if (e.code === 'AltLeft' && !e.repeat && G.playing && !G.fly) {
+      e.preventDefault();
+      const f = (G.keys.KeyW ? 1 : 0) - (G.keys.KeyS ? 1 : 0), s2 = (G.keys.KeyD ? 1 : 0) - (G.keys.KeyA ? 1 : 0);
+      askDodge(f || s2 ? f : -1, s2);
+    }
     if ((e.code === 'ControlLeft' || e.code === 'ControlRight') && !e.repeat && !G.fly && G.playing) { e.preventDefault(); toggleCrouch(); } // Ctrl, like C, crouches until pressed again
     if (e.code === 'KeyV' && driving.v) toggleCockpit();
     if (e.code === 'KeyV' && riding()) toggleRideView();
@@ -82,7 +95,7 @@ export function initInput(onPause: () => void) {
     if (e.code === 'KeyR' && !e.repeat && !refuel() && !refuelVehicle()) reload();
     if (e.code === 'F3') { e.preventDefault(); el.perf.style.display = el.perf.style.display === 'block' ? 'none' : 'block'; }
   });
-  addEventListener('keyup', (e) => { G.keys[e.code] = false; });
+  addEventListener('keyup', (e) => { G.keys[e.code] = false; if (e.code === 'AltLeft' && G.playing) e.preventDefault(); }); // (0.223) Alt is the dodge, not the browser's menu
   // Ctrl crouches, and Ctrl+W would close the tab mid-game: while playing the browser asks first
   addEventListener('beforeunload', (e) => { if (G.playing) { e.preventDefault(); e.returnValue = ''; } });
   addEventListener('wheel', () => { if (G.playing && !uiOpen() && armed()) swapWeapon(); }, { passive: true });

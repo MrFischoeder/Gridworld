@@ -1,6 +1,6 @@
 # GridWorld: opis gry, cel, plan i historia zmian
 
-Stan na wersję **0.222.0**. Ten dokument opisuje, czym jest GridWorld, jaki jest cel gry, co już w niej jest, czego jeszcze nie ma, dokąd zmierza i jak powstawała, wersja po wersji. Nazwy z gry (przedmioty, miejsca, postacie) są podane po angielsku; od 0.190 gra ma też wersję polską (wybór języka w menu głównym).
+Stan na wersję **0.223.0**. Ten dokument opisuje, czym jest GridWorld, jaki jest cel gry, co już w niej jest, czego jeszcze nie ma, dokąd zmierza i jak powstawała, wersja po wersji. Nazwy z gry (przedmioty, miejsca, postacie) są podane po angielsku; od 0.190 gra ma też wersję polską (wybór języka w menu głównym).
 
 ---
 
@@ -223,28 +223,109 @@ Gra jest pomyślana jako **kooperacja do 8 graczy** na autorytatywnym serwerze (
 
 ## 6. Wrogowie
 
-- **Stworzenia**:
-  - **Ravager**: stada, flankowanie, doskoki;
-  - **Bramble**: terytorialny roślinożerca, szarżuje, z przodu opancerzony; daje mięso;
-  - **Leechwing**: krąży, poluje z powietrza, nurkuje;
-  - **Gnawer**: szczurze gniazda, które rzucają się rojem.
-  - **Skitterwing**: małe latające stworki w stadkach, czasem w pierwszej strefie; pikują i dziobią.
-  - **Sea Lurker** (morze): drapieżnik z płetwą nad wodą, atakuje pływających; łódź tylko okrąża.
-  - **Silverfin** (morze): niegroźne ławice ryb, uciekają i wyskakują z wody; dają surową rybę.
-- **Roboty** (arkusz RD):
-  - Scout Automaton;
-  - Guardian Drone (działo energetyczne);
-  - Repair Drone (leczy inne roboty, wypuszcza drony);
-  - Sentinel (ciężki dwunóg);
-  - Artillery Walker (ostrzał z daleka);
-  - Assault Construct (szarża z młotem).
+Walka ma być taktyczna (od 0.223, plan w `PLAN_WALKI.md`). Każdy przeciwnik ma inne mocne i słabe strony:
 
-  Zostawiają złom, elektronikę i rdzenie mocy.
-- **Bandyci**:
-  - strzelcy z karabinami i pistoletami;
-  - osiłki z ostrzami i tarczami;
-  - boss w każdym obozie;
-  - patrole.
+- dostaje więcej albo mniej obrażeń z przodu, z boku i z tyłu, liczonych według tego, gdzie patrzy;
+- ma słaby punkt (głowa, kopuła czujnika, nogi, brzuch);
+- jest bardziej podatny na broń palną albo białą.
+
+Gra mówi krótko, dlaczego trafienie było mocniejsze („Słaby punkt! ×2”, „Od tyłu ×1.7”) albo słabsze („Pancerz odbija: ×0.4”). Atak z ukrycia nadal daje ×3 z broni białej i ×1,5 z palnej.
+
+Gracz ma do dyspozycji kilka taktyk:
+- **unik**: dwa razy W/A/S/D albo lewy Alt z kierunkiem; krótki zryw w bok, w tył albo do przodu za 18 punktów wytrzymałości;
+- **skradanie**: kucanie, cień i noc;
+- **zajście od tyłu**;
+- **ucieczka**;
+- **wąskie przejścia i wysokość**: mury, skały.
+
+Kolejne etapy dodadzą zapowiedzi ataków, drugie tryby ataku, zasłony, przynęty, stany (zachwianie, powalenie, EMP), morale i bestiariusz w grze.
+
+### Stworzenia
+
+- **Ravager** (stada od zagrożenia 1,2):
+  - **atakuje:** stado obchodzi gracza z boków, skacze, gryzie i odskakuje;
+  - **mocne strony:** szybkość, liczba, flankowanie;
+  - **słabe strony:** głowa ×1,6, bok ×1,2, tył ×1,4, broń biała ×1,25 (cios spotyka skok);
+  - **jak walczyć:** stań plecami do skały albo ściany, żeby nie mogły obejść; pierwszego skaczącego przyjmij ostrzem.
+- **Bramble** (terytorialny roślinożerca w dolinach):
+  - **atakuje:** szarżą z pochyloną głową i odrzuceniem, ale tylko gdy podejdziesz na ok. 11 m;
+  - **mocne strony:** opancerzony łeb i barki, przód ×0,4;
+  - **słabe strony:** boki, tył ×1,7, miękki brzuch ×1,5 (strzał nisko);
+  - **jak walczyć:** uskocz z linii szarży (unik), a potem strzelaj w bok i w tył, zanim się obróci. Spokojnego najlepiej ominąć. Daje mięso.
+- **Leechwing** (lata od zagrożenia 2,5):
+  - **atakuje:** krąży wysoko, zawęża kręgi, nurkuje i odlatuje;
+  - **mocne strony:** poza zasięgiem broni białej (×0,8), trudny do trafienia w locie;
+  - **słabe strony:** cienkie skrzydła z boku ×1,25, góra ×1,4, broń palna ×1,3;
+  - **jak walczyć:** czekaj na nurkowanie (leci wtedy prosto na ciebie) i strzelaj; tuż przed uderzeniem zrób unik.
+- **Gnawer** (szczurze gniazda):
+  - **atakuje:** cały rój naraz, zygzakiem, gryzie i odskakuje; ostatnie uciekają;
+  - **mocne strony:** liczba, zygzaki, które utrudniają celowanie;
+  - **słabe strony:** jeden cios zabija, broń biała ×1,5, bo zamach przecina rój;
+  - **jak walczyć:** stój i tnij szeroko zamiast strzelać serią w powietrze.
+- **Skitterwing** (stadka 3–5): pikują po jednym albo po dwa i dziobią. Słabe strony: jeden cios zabija, broń biała ×1,4. Jak walczyć: tnij, gdy pikują.
+- **Sea Lurker** (morze):
+  - **atakuje:** okrąża pływaka, a potem rzuca się i gryzie; łódź tylko okrąża;
+  - **mocne strony:** w wodzie jest u siebie, przód ×0,8;
+  - **słabe strony:** płetwa i grzbiet nad wodą ×1,5, tył ×1,4;
+  - **jak walczyć:** wyjdź z wody albo wejdź do łodzi i strzelaj w płetwę.
+- **Silverfin**: niegroźne ławice ryb.
+
+### Roboty (arkusz RD)
+
+Zostawiają złom, elektronikę i rdzenie mocy.
+
+- **Scout Automaton** (od zagrożenia 1):
+  - **atakuje:** szybkie paczki z ostrzami, flankują i tną;
+  - **mocne strony:** szybkość, liczba;
+  - **słabe strony:** cienkie nogi ×1,5 (strzał nisko), tył ×1,3, broń biała ×1,2;
+  - **jak walczyć:** wciągnij je w wąskie przejście; strzelaj w nogi, kiedy biegną.
+- **Guardian Drone** (od 1,8):
+  - **atakuje:** działem energetycznym z 12–22 m, w grupach;
+  - **mocne strony:** zasięg, osłonięty przód ×0,8;
+  - **słabe strony:** kopuła czujnika na górze ×1,8, tył ×1,6;
+  - **jak walczyć:** pociski są widoczne, więc unikaj ich w bok; podejdź blisko albo zajdź od tyłu; celuj w kopułę.
+- **Repair Drone** (od 3):
+  - **atakuje:** nie walczy sam; naprawia inne roboty i wypuszcza drony obronne;
+  - **słabe strony:** góra ×1,3; bez niego reszta robotów się nie leczy;
+  - **jak walczyć:** zabij go pierwszego.
+- **Sentinel** (od 4,5):
+  - **atakuje:** ciężki dwunóg, serie po trzy pociski i miażdżący cios z bliska;
+  - **mocne strony:** pancerz, przód ×0,6, broń biała słaba ×0,8;
+  - **słabe strony:** głowa ×2, tył ×1,5;
+  - **jak walczyć:** strzelaj w głowę zza zasłony, przerywaj jego linię wzroku, nie podchodź z ostrzem.
+- **Artillery Walker** (od 5):
+  - **atakuje:** ostrzeliwuje twoją pozycję z 16–110 m; czerwony krąg pokazuje, gdzie spadnie pocisk;
+  - **mocne strony:** zasięg, pancerz;
+  - **słabe strony:** bezradny z bliska, broń biała ×1,6, cienkie nogi ×1,5, tył ×1,4;
+  - **jak walczyć:** biegnij zygzakiem poza czerwone kręgi, dopadnij go i tnij.
+- **Assault Construct** (od 6):
+  - **atakuje:** szarżuje i uderza młotem z odrzuceniem;
+  - **mocne strony:** młot osłania przód ×0,5, ogromna wytrzymałość, broń biała słaba ×0,8;
+  - **słabe strony:** tył ×1,8, góra ×1,4;
+  - **jak walczyć:** unik w bok w ostatniej chwili szarży, potem strzały w plecy, zanim się odwróci.
+- **Drony** (labirynty, z Repair Drone):
+  - **atakuje:** krążą i uderzają przy kontakcie;
+  - **słabe strony:** nie mają przodu ani tyłu; broń biała ×1,3.
+
+### Bandyci
+
+- **Strzelcy** (karabin albo pistolet):
+  - **atakuje:** trzymają 12–20 m, krążą bokiem i strzelają widocznymi seriami, które można ominąć;
+  - **mocne strony:** zasięg, ruch;
+  - **słabe strony:** głowa ×2, tył ×1,3; z bliska karabin jest niezgrabny (broń biała ×1,3);
+  - **jak walczyć:** skracaj dystans zza osłon albo zachodź ich z boku.
+- **Osiłki** (ostrza, połowa z tarczą):
+  - **atakuje:** rzucają się z ostrzem;
+  - **mocne strony:** tarcza z przodu połyka połowę trafień, broń biała ×0,9;
+  - **słabe strony:** głowa ×1,8 (nad tarczą), tył ×1,5;
+  - **jak walczyć:** trzymaj dystans, strzelaj w głowę nad tarczą albo obejdź go unikiem i bij w plecy.
+- **Boss obozu** (luneta, hełm):
+  - **atakuje:** celnie z dużej odległości;
+  - **mocne strony:** hełm (głowa tylko ×1,5), przód ×0,9;
+  - **słabe strony:** tył ×1,3;
+  - **jak walczyć:** podchodź od strony, w którą nie patrzy.
+- **Patrole**: mniejsze grupy dalej w dziczy, te same role.
+
 - **Rajdowcy**: uzbrojone pojazdy z kierowcą i strzelcem. Rozbity pojazd można przejąć.
 - **Zasadzki** na drogach: blokady z barykad i ukryci bandyci.
 - **Najazdy na wioski i karawany** (rozdziały 7–8).
@@ -442,7 +523,8 @@ Kierunek wyznaczony przez właściciela projektu, w przybliżonej kolejności:
 6. **Mgła i skażenie.** Kombinezon NBC, mgła w lochach, stworzenia mgły.
 7. **Woda i ludzie.** Nurkowanie i piraci na liniach towarowych (porty od 0.216, linie od 0.217); dowożenie ludzi i jedzenia do obozów załóg przy starych instalacjach (obozy od 0.218).
 8. **Dopracowanie.** Lepsze dźwięki i własna muzyka (efekty, silniki, grzmoty i strzały innych graczy są od 0.212–0.213), spalanie paliwa w pojazdach, skutki pogody (pioruny, burze zrywające dachy, deszcz na drogach, chmury a panele słoneczne).
-9. **Ewentualnie** zmniejszenie mapy, jeśli okaże się za duża do gry. Właściciel to rozważa.
+9. **Taktyczna walka** (`PLAN_WALKI.md`, W1 zrobione w 0.223): zapowiedzi ataków i drugie tryby ataku każdego przeciwnika, zasłony, przynęty, stany (zachwianie, powalenie, EMP), morale i odwrót, okrążanie, bestiariusz w grze.
+10. **Ewentualnie** zmniejszenie mapy, jeśli okaże się za duża do gry. Właściciel to rozważa.
 
 ---
 
@@ -711,6 +793,7 @@ Pełne notatki (po angielsku) są w grze pod przyciskiem **Changelog** w menu g�
 - **0.212.0 Dźwięk.** Gra ma dźwięki: proste 8-bitowe efekty każdej broni, przeładowania, pustego magazynka, zamachów i trafień, kroków gracza (po ziemi, po twardym i w wodzie), skoków, lądowania i obrażeń; maszyny stukają krokami i szumią siłownikami, słychać strzały robotów, bandytów i działek, wybuchy, warczenie, prychanie, piski i skrzeki zwierząt oraz kroki innych graczy. Dźwięk dochodzi z miejsca zdarzenia (ciszej z daleka, z lewej albo z prawej). W menu panel Dźwięk: głośność ogólna, efektów i muzyki, wyciszenie i dźwięk próbny. Każdy efekt to plik w folderze sfx (lista sfx/sounds.json), do podmiany na własny; muzykę właściciel wrzuci do folderu music i wpisze do music/music.json według nastroju (menu, świat, noc, podziemia, walka).
 - **0.213.0 Więcej dźwięku, słyszanego przez innych.** Dźwięk budzi się pewniej: jest gotowy od wczytania strony, rusza po dowolnym kliknięciu, klawiszu albo dotknięciu i sam próbuje się wznowić w trakcie gry; panel Dźwięk pokazuje, czy działa i ile dźwięków już zagrało, a polecenie konsoli `sound` to samo i odtwarza dowolny dźwięk. Nowe dźwięki: silniki pojazdów (własnego, bandyckich i innych graczy, wyżej z prędkością), działko, drzwi, skrzynie, jedzenie i picie, grzmot po błyskawicy, wpływ złota, nowy poziom, rąbanie drzew i kucie skał, plusk wody, kliknięcia przycisków, śmierć zwierząt i bandytów, młotki budowniczych. W grze sieciowej inni słyszą twoje strzały, zamachy, przeładowania, działko, skoki, lądowania, plusk, rąbanie i drzwi z miejsca, gdzie stoisz (kroki i silnik już wcześniej z ruchu); serwer trzeba zaktualizować.
 - **0.214.0 Konwoje trzeba rozwinąć.** W nowym świecie na początku nie jeżdżą żadne konwoje: nie ma karawan na drogach, dostaw ruszających ceny ani konwojów biorących paliwo z wioski. Gdy przyjedzie mechanik i stanie magazyn, starszy proponuje nową budowę: Bazę konwojów przy północnej drodze (deski, kamień, złom, drut, części maszyn; 12 godzin), z ciężarówką i dwoma uzbrojonymi łazikami na placu, szopą naprawczą i budką dyspozytora. Od jej ukończenia karawany ruszają drogami między wioskami (można je spotkać, eskortować i kupować od nich, poruszają ceny), a konwoje osady tankują z jej zapasów. Stare światy zachowują konwoje jak dotąd. W grze sieciowej wszyscy widzą to samo, bo czas startu wynika ze wspólnego stanu wiosek.
+- **0.223.0 Taktyczna walka: słabe i mocne strony, unik (etap W1).** Każdy przeciwnik (stworzenia, roboty, role bandytów, drony) ma swoje mocne i słabe strony: inne obrażenia z przodu, z boku i od tyłu (według tego, gdzie patrzy), słaby punkt na górze albo na dole ciała (głowa, kopuła czujnika, nogi, brzuch) i inną podatność na broń palną i białą. Gra mówi krótko, dlaczego trafienie było mocniejsze albo słabsze. Nowy unik: dwa razy W/A/S/D albo lewy Alt z kierunkiem, krótki zryw za 18 punktów wytrzymałości. Rozdział 6 opisuje każdego przeciwnika: jak atakuje, jego mocne i słabe strony i jak z nim walczyć. Plan kolejnych etapów (zapowiedzi ataków, drugie tryby, zasłony, przynęty, stany, morale, okrążanie, bestiariusz w grze) jest w `PLAN_WALKI.md`. W grze wieloosobowej mnożniki liczy gra strzelającego, a właściciel przeciwnika dostaje sam wynik; serwera nie trzeba aktualizować.
 - **0.222.0 Kryształowe lasy.** Na planecie losowo (z ziarna świata) rosną kryształowe lasy: gaje olbrzymich sześciokątnych kryształów, w sercu tytany po 25–38 m, wokół wachlarze mniejszych kolumn z jednego korzenia i odłamki pod nogami; każdy las ma swój kolor i nazwę, nocą krawędzie świecą, a największe kryształy oświetlają okolicę. Na razie to tylko ozdoba, ale lite: nie da się przez nie przejść. W podziemiach kryształy jedzenia zastąpiły kępy bladych grzybów jaskiniowych (dają Nutrient Caps). Kamienie wokół ruin są wreszcie lite dla gracza i przeciwników (upadłe ramy, czubki pylonów, pierścień, obeliski, wielki blok, gruz): niskie można przekroczyć, na wyższe wskoczyć. Zniknął wskaźnik widoczności i wykrycia (oraz komunikat „Wykryto!”); skradanie działa po staremu. Wszystko z ziarna świata, tak samo dla każdego gracza; serwera nie trzeba aktualizować.
 - **0.221.0 Obrona bierze prąd i ludzi (etap Z7).** W osadach (nowe światy) każde działko na murze bierze 4 kW z prądu wioski i potrzebuje strażnika: jednego człowieka spośród tych, których nie zajmują farmy, kopalnie, zakłady, elektrownie i usługi. Działko bez strażnika milczy, a przy zbyt małej ilości prądu (poniżej ćwierci potrzeb zakładów w ciągu doby) nie strzela żadne; starszy w „Jak się wiedzie wiosce?” mówi, które i dlaczego. Działka placówki biorą po 3 kW z jej sieci i po osadniku na straży (po obsadzie pól, przed wydobyciem); poza siecią nie strzelają, a najazd rozliczany bez gracza liczy tylko działające działka. Latarnie morskie w nowych światach są elektryczne: lampa kręci się tylko z prądem z wioski do 500 m, która ma 2 kW nadwyżki, albo ze źródła prądu placówki, które tam sięga. Stare światy bez zmian. W grze wieloosobowej wszystko wynika ze wspólnego stanu wiosek i placówek; serwera nie trzeba aktualizować.
 - **0.220.0 Dojeżdżający ludzie (etap Z6).** Placówka, port albo obóz załogi w promieniu 2 km od osady może poprosić wioskę o jej wolnych ludzi: codziennie przychodzą do pracy przy stanowisku placówki (wydobycie, dźwig portu, stara fabryka) i jedzą w domu, więc nie trzeba dla nich baraków ani pól. Wioska wysyła tylko tych, których nie zajmują jej własne stanowiska (farmy, prąd, kopalnie, zakłady, elektrownie i usługi idą pierwsze). Okno pokazuje, ilu przychodzi z ilu poproszonych i ilu wolnych ma wioska; prośbę można wycofać. Dochodzący pracują przy stanowisku pierwsi, osadnicy z placówki robią resztę i pola. Starszy w „Jak się wiedzie wiosce?” wymienia ludzi chodzących do każdej placówki; kilku widać w drodze. W grze wieloosobowej prośba należy do wioski (pod jej blokadą), a każda gra liczy dochodzących tak samo. Serwera nie trzeba aktualizować.

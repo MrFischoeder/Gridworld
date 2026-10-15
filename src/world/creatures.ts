@@ -786,11 +786,7 @@ function animate(c: Creature, dt: number, time: number) {
 
 // ---------- damage ----------
 export function hurtCreature(c: Creature, dmg: number, credit = true) {
-  // the Bramble's head and front plates shrug off most of a hit
-  if (c.kind === 'bramble') {
-    const toShooter = V(G.pos.x - c.p.x, 0, G.pos.z - c.p.z).normalize();
-    if (toShooter.x * Math.sin(c.heading) + toShooter.z * Math.cos(c.heading) > 0.5) dmg *= 0.4;
-  }
+  // (0.223) the Bramble's plated front, like every foe's strong and weak sides, is reckoned by the attacker (gen/tactics.ts)
   c.hp -= dmg; c.flash = 0.12; c.hurt = true; G.hitFlash = 0.15;
   if (c.kind === 'ravager' && c.state === 'roam') for (const m of c.pack ?? [c]) { m.state = 'hunt'; m.timer = 2; }
   if (c.kind === 'leechwing' && (c.state === 'roam' || c.state === 'investigate')) { c.prey = null; c.spotted = true; c.state = 'stalk'; c.timer = 2; }

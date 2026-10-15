@@ -3,6 +3,13 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.223.0', date: '2026-10-15', title: 'Tactical combat: strengths, weak spots and the dodge', notes: [
+    'Every foe now has its own strong and weak sides. Where a hit comes from counts (its front, a side or behind, by where it faces), so does where it lands (a head, a sensor dome, legs, a soft belly) and what it is (a gun or a blade).',
+    'A few examples: the Bramble shrugs off most of what hits its plated front but bleeds from behind and under the belly; a Sentinel wants a head shot and laughs at blades; an Artillery Walker is helpless against a blade up close; an Assault Construct guards its front with the hammer and is wide open behind; a Guardian\'s sensor dome and a bandit\'s head take double; a swing cuts through a Gnawer swarm.',
+    'A short line tells you why a hit counted more or less: "Weak spot! ×2", "From behind ×1.7", "Armour turns it: ×0.4". Sneak attacks still count on top.',
+    'New: the dodge. Double-tap W, A, S or D (or press Left Alt with a direction held) for a quick dash out of a charge, a bite or a line of bolts. It costs stamina and needs a moment before the next one.',
+    'Multiplayer: the shooter\'s game reckons the hit and the foe\'s owner gets the result. The server does not need an update.',
+  ] },
   { v: '0.222.0', date: '2026-10-15', title: 'Crystal forests', notes: [
     'Crystal forests now grow here and there across the planet: groves of giant six-sided crystals, the titans at their heart taller than a house, fans of smaller columns leaning out from each root and shards underfoot. Each has its own colour and name (shown as you walk in). By night their edges glow and the biggest light the ground round them. For now they are only scenery; you cannot walk through them.',
     'Below ground the nutrient crystals have given way to clumps of pale cave mushrooms: pick their small glowing caps (Nutrient Caps) as before. Nutrient Crystals you already carry are still good to eat.',

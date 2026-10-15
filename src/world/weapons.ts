@@ -12,6 +12,7 @@ import { rayWorld } from './player';
 import { vehicles, rayVehicle, damageVehicle, type Vehicle } from './vehicles';
 import { foes, damageFoe, type Foe, type Drone } from './enemies';
 import { noteShot, unaware, sneakBonus } from './stealth';
+import { hitMult, type FoeKey } from '../gen/tactics';
 import { rayBarrier, hurtBarrier, rayRaider, type Raider } from './raiders';
 import { el } from '../ui/hud';
 import { gunOf, meleeOf, SHOT, type GunLook, type MeleeLook } from '../data/weapons';
@@ -328,7 +329,27 @@ function ray(d: THREE.Vector3, dmg: number) {
   } else addBolt(gun, end, struck ? 0xffd27a : look.c, look.len, look.speed, sparks, struck ? look.hit * 1.4 : look.hit * 0.6);
   if (car) { damageVehicle(car, dmg); G.hitFlash = .15; }
   if (turret) damageMountedTurret(turret.gun, dmg);
-  if (hitT) { damageFoe(hitT, dmg * sneak(hitT, false)); play('hit', { at: hitT.g.position, vol: 0.5, far: 80 }); }
+  if (hitT) { damageFoe(hitT, dmg * sneak(hitT, false) * tactic(hitT, Math.max(-1, Math.min(1, (end.y - hitT.g.position.y) / (hitT.r || 0.6))), false)); play('hit', { at: hitT.g.position, vol: 0.5, far: 80 }); }
+}
+/** (0.223, PLAN_WALKI.md stage W1) What kind of foe it is for gen/tactics.ts (null: a raider's vehicle, a boss). */
+function foeKey(t: Foe): FoeKey | null {
+  if ('kind' in t) return t.kind === 'raider' ? null : t.kind === 'bandit' ? t.role : t.kind === 'robot' ? t.model : t.kind;
+  return 'boss' in t && t.boss ? null : 'drone';
+}
+let tacticTold = 0;
+/** The hit's multiplier by where it comes from and where it lands (`u` its height in the foe's sphere, null for a
+ *  blade), with a short line now and then saying why (a weak spot, from behind, its armour). */
+function tactic(t: Foe, u: number | null, melee: boolean): number {
+  const key = foeKey(t);
+  if (!key) return 1;
+  const h = (t as { heading?: number }).heading, p = t.g.position;
+  const cos = h === undefined || key === 'drone' ? NaN : Math.cos(Math.atan2(G.pos.x - p.x, G.pos.z - p.z) - h);
+  const m = hitMult(key, cos, u, melee), now = performance.now();
+  if (now - tacticTold > 700 && Math.abs(m.k - 1) > 0.15) {
+    tacticTold = now;
+    logLine(m.spot ? TL`Weak spot! ×${m.k.toFixed(1)}` : m.from === 'back' && m.k > 1 ? TL`From behind ×${m.k.toFixed(1)}` : m.k < 1 ? TL`Armour turns it: ×${m.k.toFixed(1)}` : TL`A good angle ×${m.k.toFixed(1)}`);
+  }
+  return m.k;
 }
 /**
  * A foe that has not made you out takes a sneak attack: ×3 from a blade, ×1.5 from a gun. Busy = already after you
@@ -377,7 +398,7 @@ function slash(tired: boolean) {
     const v = t.g.position.clone().sub(o), dist = v.length();
     if (dist > reach + (t.r || 0.5)) continue;
     if (v.normalize().dot(f) < Math.cos(wide)) continue;
-    burst(t.g.position.clone(), 0xc8ffd6, tired ? 6 : 14, tired ? 0.5 : 0.9); damageFoe(t, m.dmg * G.S.mm * (tired ? BLADE.tiredDmg : 1) * sneak(t, true));
+    burst(t.g.position.clone(), 0xc8ffd6, tired ? 6 : 14, tired ? 0.5 : 0.9); damageFoe(t, m.dmg * G.S.mm * (tired ? BLADE.tiredDmg : 1) * sneak(t, true) * tactic(t, null, true));
   }
 }
 export function attack() {
