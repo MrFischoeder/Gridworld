@@ -33,6 +33,8 @@ import { peekK } from './weapons';
 import { COVER } from '../gen/cover';
 import { MORALE, BROKEN, FATE, DRIVEN_XP, fateOf, shocked, effective, breaks, clamp01, type Fate } from '../gen/morale';
 import { askLead } from './datacarriers';
+import { slotFor } from './surround';
+import { upSpread } from '../gen/surround';
 import type { ItemKey } from '../data/items';
 
 export const BANDIT = 0xffb347, BOSS_COLOR = 0xff6a4a;
@@ -183,7 +185,7 @@ function fire(b: Bandit) {
 export function fireBolt(muzzle: THREE.Vector3, dmg: number, color = BANDIT, at?: THREE.Vector3) {
   // at you: at the driver's seat when you are driving (the whole vehicle absorbs it, updateBolts); (0.226) or at a spot (suppressing fire)
   const target = at ? at.clone() : driving.v && !proxied() ? seatPoint(driving.v, driving.seat) : V(G.pos.x, G.pos.y + aimHeight(), G.pos.z), dist = target.distanceTo(muzzle);
-  const spread = 0.035 * dist + Math.hypot(G.vel.x, G.vel.z) * 0.1;
+  const spread = 0.035 * dist + Math.hypot(G.vel.x, G.vel.z) * 0.1 + upSpread(target.y - muzzle.y) * dist; // (0.229) uphill at you is harder
   target.x += (Math.random() - 0.5) * spread; target.y += (Math.random() - 0.5) * spread * 0.5; target.z += (Math.random() - 0.5) * spread;
   const v = target.sub(muzzle).normalize().multiplyScalar(30);
   const m = new THREE.Line(new THREE.BufferGeometry().setFromPoints([V(0, 0, 0), v.clone().normalize().multiplyScalar(-0.9)]), addMat(color));
@@ -304,7 +306,12 @@ function think(b: Bandit, dt: number, time: number) {
       if (!seen && m.last) to.set(m.last.x - b.p.x, m.last.y + 1.1 - b.p.y, m.last.z - b.p.z); // where they think you are
       face(b, to.x, to.z, dt);
       if (b.role === 'bruiser') {
-        if (dist > 1.5) walk(b, to.x, to.z, 6.2, dt);
+        // (0.229, stage W7) blades come from different sides; with your back to a wall the rest wait their turn
+        const blades = b.group.filter((o) => o.role === 'bruiser' && o.state === 'fight' && !o.fate && W.bandits.includes(o));
+        const sl = blades.length > 1 ? slotFor(b, blades, blades[0].group, 1.6) : null;
+        if (sl?.wait) { const wx = sl.x - b.p.x, wz = sl.z - b.p.z; if (Math.hypot(wx, wz) > 1) walk(b, wx, wz, 3.5, dt); else b.speed = 0; break; }
+        if (sl && dist > 3 && Math.hypot(sl.x - b.p.x, sl.z - b.p.z) > 1.2) walk(b, sl.x - b.p.x, sl.z - b.p.z, 6.2, dt);
+        else if (dist > 1.5) walk(b, to.x, to.z, 6.2, dt);
         if (dist < 1.8 && b.hitT <= 0) { b.hitT = 0.9; b.blow = true; } // wind up...
         if (b.blow && b.hitT < 0.55) { // ...and the blade comes down
           b.blow = false;

@@ -3,6 +3,12 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.229.0', date: '2026-10-15', title: 'Surrounded: packs, walls and high ground', notes: [
+    'A Ravager pack, a Gnawer nest and bandit bruisers now spread out round you and come at you from several sides at once instead of all from the front.',
+    'Walls, rocks, tree trunks and houses take that room away: with your back to something they can only come from the open side, and in a narrow passage only one or two at a time while the rest pace and wait their turn. A short line tells you when your back is to the wall.',
+    'High ground pays: a shot or a blow from a wall walk, a rock or a roof well above the foe counts more (up to ×1.3, "From above"), and bandits shooting uphill at you miss more often.',
+    'Multiplayer: the game that runs a pack works out where its members go, and the shooter\'s game the height bonus. The server does not need an update.',
+  ] },
   { v: '0.228.0', date: '2026-10-15', title: 'Morale and retreat', notes: [
     'Bandits and hunting beasts now have nerve. Losing comrades (the boss or the pack leader worst of all), their own wounds and fire wear it down; once a fight a bandit boss can roar his men back into line.',
     'A bandit who breaks does one of three things, at random: runs for good, throws down his arms and raises his hands, or runs off to fetch his friends and comes back with them a minute later.',

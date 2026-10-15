@@ -4112,4 +4112,7 @@ export const PL: Record<string, string> = {
   "The {0} breaks off and flees!": "{0} przerywa atak i ucieka!",
   "The pack gives up the chase at the edge of its ground.": "Stado odpuszcza pościg na granicy swojego terenu.",
   "The {0} gives up the chase at the edge of its ground.": "{0} odpuszcza pościg na granicy swojego terenu.",
+  // (0.229) stage W7: surrounding and tight places
+  "Your back is to the wall: they can only come at you from the open side.": "Stoisz plecami do ściany: mogą podejść tylko od otwartej strony.",
+  "From above ×{0}": "Z góry ×{0}",
 };

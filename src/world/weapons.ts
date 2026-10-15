@@ -15,6 +15,7 @@ import { foes, damageFoe, type Foe, type Drone } from './enemies';
 import { noteShot, unaware, sneakBonus } from './stealth';
 import { hitMult, type FoeKey } from '../gen/tactics';
 import { IMPACT, condMult, type HitFx } from '../gen/conditions';
+import { HEIGHT, heightMult } from '../gen/surround';
 import { playerDown, type CondFoe } from './conditions';
 import { rayBarrier, hurtBarrier, rayRaider, type Raider } from './raiders';
 import { el } from '../ui/hud';
@@ -380,9 +381,12 @@ function tactic(t: Foe, u: number | null, melee: boolean): number {
   const m = hitMult(key, cos, u, melee, st), now = performance.now();
   const cond = (t as CondFoe).cond, ck = condMult(cond); // (0.227) down or short-circuited: it takes more
   if (ck !== 1) { m.k *= ck; m.why = null; }
+  // (0.229, stage W7) from above (a wall walk, a rock, a roof): the foe's ground well below your feet counts more; not a flier in the air
+  const fg = G.ground ? G.ground(p.x, p.z) : NaN, hk = Number.isFinite(fg) && p.y - fg < HEIGHT.flyer ? heightMult(G.pos.y - fg) : 1;
+  m.k *= hk;
   if (now - tacticTold > 700 && Math.abs(m.k - 1) > 0.15) {
     tacticTold = now;
-    logLine(ck !== 1 ? WHY[cond === 'stun' ? 'emp' : 'down'](m.k.toFixed(1)) : m.why ? WHY[m.why](m.k.toFixed(1)) : m.spot ? TL`Weak spot! ×${m.k.toFixed(1)}` : m.from === 'back' && m.k > 1 ? TL`From behind ×${m.k.toFixed(1)}` : m.k < 1 ? TL`Armour turns it: ×${m.k.toFixed(1)}` : TL`A good angle ×${m.k.toFixed(1)}`);
+    logLine(hk > 1.05 && ck === 1 && !m.why && !m.spot ? TL`From above ×${m.k.toFixed(1)}` : ck !== 1 ? WHY[cond === 'stun' ? 'emp' : 'down'](m.k.toFixed(1)) : m.why ? WHY[m.why](m.k.toFixed(1)) : m.spot ? TL`Weak spot! ×${m.k.toFixed(1)}` : m.from === 'back' && m.k > 1 ? TL`From behind ×${m.k.toFixed(1)}` : m.k < 1 ? TL`Armour turns it: ×${m.k.toFixed(1)}` : TL`A good angle ×${m.k.toFixed(1)}`);
   }
   return m.k;
 }

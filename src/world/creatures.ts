@@ -7,6 +7,7 @@ import * as THREE from 'three';
 import { nearX } from '../gen/regions';
 import { onNoise } from './noise';
 import { baits, baitNear, baitAlive, fires, type Bait } from './baits';
+import { slotFor } from './surround';
 import { MORALE, DEN, LEASH_POSE, TERRITORY, effective, breaks, pastEdge, shocked } from '../gen/morale';
 import { THROW } from '../gen/throwing';
 import { scene, V, lineMat } from './render';
@@ -470,11 +471,12 @@ function ravager(c: Creature, dt: number, to: THREE.Vector3, dist: number, safe:
       c.speed = 0;
       if (c.timer <= 0) { c.state = 'hunt'; c.timer = 1.5; }
       break;
-    case 'hunt': { // circle to a flanking spot, then go in
-      const base = Math.atan2(c.p.x - G.pos.x, c.p.z - G.pos.z) + c.flank;
-      const fx = G.pos.x + Math.sin(base) * 4.5, fz = G.pos.z + Math.cos(base) * 4.5;
-      walk(c, fx - c.p.x, fz - c.p.z, speed, dt);
-      if (Math.hypot(fx - c.p.x, fz - c.p.z) < 1.5 || c.timer <= 0) { c.state = 'dash'; c.timer = 1.6; c.feint = Math.random() < FEINT ? 0.45 : 0; }
+    case 'hunt': { // circle to its own place round you (0.229: the pack spreads out, or waits its turn where walls leave no room), then go in
+      const pack = (c.pack ?? [c]).filter((m) => m.state === 'hunt' || m.state === 'dash' || m.state === 'retreat' || m === c);
+      const sl = slotFor(c, pack, c.pack ?? c), fx = sl.x, fz = sl.z;
+      walk(c, fx - c.p.x, fz - c.p.z, speed * (sl.wait ? 0.6 : 1), dt);
+      if (sl.wait) { if (c.timer <= 0) c.timer = 0.5; break; } // no room on your open side: it paces, waiting its turn
+      if (Math.hypot(fx - c.p.x, fz - c.p.z) < 1.5 || c.timer <= -3) { c.state = 'dash'; c.timer = 1.6; c.feint = Math.random() < FEINT ? 0.45 : 0; } // (0.229) given time to get round to its side
       break;
     }
     case 'dash':
@@ -693,8 +695,12 @@ function gnawer(c: Creature, dt: number, to: THREE.Vector3, dist: number, safe: 
     }
     case 'hunt': { // zig-zag in
       if (nest.length <= 2 && c.hurt) { c.state = 'retreat'; c.timer = 4; break; }
-      const side = Math.sin(c.anim * 0.35 + c.flank) * 0.9, sx = -to.z, sz = to.x, L = Math.hypot(sx, sz) || 1;
-      walk(c, to.x + sx / L * side * Math.min(4, dist), to.z + sz / L * side * Math.min(4, dist), speed, dt);
+      // (0.229) each comes from its own side; with no room left it waits a few metres off
+      const sl = slotFor(c, nest.filter((m) => m.state === 'hunt' || m.state === 'retreat' || m === c), nest, 2.5);
+      if (sl.wait) { const wx = sl.x - c.p.x, wz = sl.z - c.p.z; if (Math.hypot(wx, wz) > 1) walk(c, wx, wz, speed * 0.6, dt); else c.speed = 0; break; }
+      const close = dist < 3 || Math.hypot(sl.x - c.p.x, sl.z - c.p.z) < 1.5, gx = close ? to.x : sl.x - c.p.x, gz = close ? to.z : sl.z - c.p.z, gd = Math.hypot(gx, gz);
+      const side = Math.sin(c.anim * 0.35 + c.flank) * 0.9, sx = -gz, sz = gx, L = Math.hypot(sx, sz) || 1;
+      walk(c, gx + sx / L * side * Math.min(4, gd), gz + sz / L * side * Math.min(4, gd), speed, dt);
       if (dist < 1.25) { bite((s.damage + c.level) * c.dmgMul, 0.12); c.state = 'retreat'; c.timer = 0.5 + Math.random() * 0.6; }
       break;
     }
