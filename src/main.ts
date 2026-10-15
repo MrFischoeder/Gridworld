@@ -26,7 +26,7 @@ import { updateLoot } from './world/loot';
 import { updateEntities } from './world/interact';
 import './ui/sound';
 import { initSound, setSoundCamera, setLocHook, updateMySteps, updateFoeSounds, updateSoundFrame } from './world/sound';
-import { updateBodySway, updateRecoil, recoilView, attack, animateVM, refreshWeaponVisibility, vmScene, syncViewmodel, updateGun, refreshGunLook, syncHeld } from './world/weapons';
+import { peekK, coverHint, updateBodySway, updateRecoil, recoilView, attack, animateVM, refreshWeaponVisibility, vmScene, syncViewmodel, updateGun, refreshGunLook, syncHeld } from './world/weapons';
 import { updateFx, updateStreaks } from './world/fx';
 import { updateStreaming, updateFieldEnemies, placeName, OW, groundAt, treeHit, animateCamps, keepOnPlanet, villageHere } from './world/overworld';
 import { collides, setWaterNote } from './world/player';
@@ -267,7 +267,7 @@ function frame(now: number) {
   } else { el.prompt.style.display = 'none'; el.bUse.classList.remove('on'); el.bossbar.style.display = 'none'; }
   let sw: ReturnType<typeof updateBodySway> | null = null;
   if (G.trans) updateTrans(dt, camera); else if (driving.v) vehicleCamera(camera); else if (riding()) rideCamera(camera); else if (inBoat()) boatCamera(camera); else {
-    crouchDrop += ((G.crouch ? CROUCH_DROP : 0) - crouchDrop) * Math.min(1, dt * 10); camera.position.set(G.pos.x, G.pos.y + EYE - crouchDrop, G.pos.z);
+    coverHint(dt); crouchDrop += ((G.crouch ? CROUCH_DROP * (1 - 0.85 * peekK()) : 0) - crouchDrop) * Math.min(1, dt * 10); camera.position.set(G.pos.x, G.pos.y + EYE - crouchDrop, G.pos.z);
     if (!G.fly && G.playing) { // (0.191) the body rocks with the steps and the breath (core/sway.ts)
       sw = updateBodySway(dt);
       if (!driving.v && !riding() && !inBoat() && !climbing()) updateMySteps(dt); // (0.212)

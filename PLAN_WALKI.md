@@ -33,7 +33,13 @@ Prośba właściciela (15 października 2026): walka ma być bardziej taktyczna.
   - Assault: podwójny zamach młotem; po chybionej szarży zostaje odsłonięty tył.
   - Repair: chowa się za ciężkimi robotami.
   - Bandyci: rzucają granaty, które wypłaszają gracza zza zasłony; jedni przyszpilają ogniem, a inni w tym czasie flankują.
-- **W3. Zasłony.** Bandyci i Guardiany szukają osłony (kamień, ściana, pojazd) i strzelają zza niej. Gracz za niską zasłoną może się kucając wychylić i strzelić. Trafienia w osłonę widać po iskrach.
+- **W3. Zasłony.** Bandyci i Guardiany szukają osłony (kamień, ściana, pojazd) i strzelają zza niej. Gracz za niską zasłoną może się kucając wychylić i strzelić. Trafienia w osłonę widać po iskrach. *(Zrobione w 0.224.0.)*
+  - Pnie drzew, kamienie wyższe niż stopień, kamienne bloki ruin i wysokie kryształy zatrzymują każdy promień gry (`natureRay` w `world/overworld.ts`, w łańcuchu `G.rayBlock`): strzały gracza, linie wzroku przeciwników i pociski. Geometria jest w czystym `gen/cover.ts` (`rayCyl`, `rayHull`, `rayRod`).
+  - Strzał, który kończy się na osłonie, sypie jasnymi odpryskami i daje dźwięk rykoszetu.
+  - `world/cover.ts`: `findCover` sprawdza miejsca na pierścieniach 3–11 m wokół przeciwnika (najpierw te od strony odwrotnej do gracza). Miejsce jest dobre, kiedy ciało się tam mieści, coś twardego (także zaparkowany pojazd albo teren) stoi w ciągu 3,5 m w stronę gracza na wysokości przykucniętej piersi, a z pozycji stojącej albo z kroku w bok jest czysta linia strzału. `coverStep` prowadzi przeciwnika: biegnie, kuca 1,8–3 s, wstaje albo wychyla się na 1,4–2,2 s i strzela. Co 3 s sprawdza, czy osłona nadal chroni; jeśli gracz ją obszedł albo podszedł bliżej niż ~6 m, porzuca ją. Za osłoną przeciwnik dłużej nie uznaje, że zgubił cel.
+  - Strzelcy, bossowie i Guardiany (na powierzchni) walczą z osłon; osiłki dalej szarżują. Przykucnięty przeciwnik obniża się razem z kulą trafień.
+  - Gracz: kucanie i celowanie podnosi oko prawie do pozycji stojącej (`peekK` w `world/weapons.ts`); wtedy pociski znajdują więcej ciała, a przeciwnicy celują wyżej. Raz na grę podpowiedź, kiedy kucasz za niską osłoną.
+  - Gra wieloosobowa: osłonę wybiera gra właściciela przeciwnika; przykucnięcie idzie w 13. polu wpisu przeciwnika (`world/foesync.ts`), więc kopie u innych też kucają i są trafiane nisko. Wychylenie gracza wysyła się jako zwykłe `cr` (wychylony gracz liczy się jako stojący). Protokół bez zmian.
 - **W4. Przynęty i odwracanie uwagi.** Rzucony kamień albo flara robi hałas w miejscu upadku (system hałasu już jest). Mięso zwabia drapieżniki, a hałas rozjusza Bramble'a. Odwrócony przeciwnik pokazuje tył.
 - **W5. Stany.**
   - Zachwianie: mocny cios przerywa atak.

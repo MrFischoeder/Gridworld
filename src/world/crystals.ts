@@ -12,6 +12,7 @@ import { nearX, worldDist, latitude } from '../gen/regions';
 import { daylight, sunTilt } from '../core/time';
 import { addLights, addGlows } from './light';
 import { TL } from '../i18n';
+import { rayRod, type V3 } from '../gen/cover';
 
 const NEAR = 900, DROP = 1100;
 /** A solid crystal in world coordinates (on the drawn copy of the planet): root, direction, length, radius. */
@@ -112,6 +113,19 @@ export function crystalHit(x: number, y: number, z: number, r: number): boolean 
     }
   }
   return false;
+}
+/** (0.224) Where a ray first meets a tall crystal (cover: shots, sight lines and bolts stop there), or maxT. */
+export function crystalRay(o: V3, d: V3, maxT: number): number {
+  let best = maxT;
+  for (const L of live.values()) {
+    const mx = o.x + d.x * maxT / 2, mz = o.z + d.z * maxT / 2;
+    if (Math.hypot(mx - L.ox, mz - L.f.z) > L.f.r + 40 + maxT / 2) continue;
+    for (const s of L.solids) {
+      if (Math.abs(mx - s.x) > s.len + maxT / 2 + s.w || Math.abs(mz - s.z) > s.len + maxT / 2 + s.w) continue;
+      best = rayRod(o, d, best, s, { x: s.d[0], y: s.d[1], z: s.d[2] }, s.len * 0.9, s.w * 0.92);
+    }
+  }
+  return best;
 }
 /** The name of the crystal forest you stand in, for the HUD's place name. */
 export function crystalName(x: number, z: number): string | null {

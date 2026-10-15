@@ -28,6 +28,7 @@ import { onKill } from './quests';
 import { logLine } from '../ui/hud';
 import { mayspawn, FOE_HIT } from './threat';
 import type { SpawnEnv } from './creatures';
+import { coverStep, inCover } from './cover';
 
 type State = 'patrol' | 'hunt' | 'return';
 export interface Robot {
@@ -44,6 +45,8 @@ export interface Robot {
   group: Robot[]; flank: number; swing: number;
   /** Repair drone: its defence drones; assault construct: charging. */
   drones: Drone[]; charge: number;
+  /** (0.224) Crouched behind cover (a Guardian), and the eased crouch. */
+  cover?: number; duck?: number;
 }
 
 // ---------- models (local +z forward, origin at the body centre) ----------
@@ -363,6 +366,8 @@ function updateShells(dt: number, time: number) {
 }
 
 const robotEye = new THREE.Vector3();
+/** (0.224) A Guardian behind cover: the height that must be hidden, and how far its body sinks. */
+const GUARD_COVER = { low: 0.95, duck: 0.6 };
 function think(r: Robot, dt: number, time: number) {
   const s = ROBOTS[r.model], to = V(G.pos.x - r.p.x, G.pos.y + 1.1 - r.p.y, G.pos.z - r.p.z), dist = Math.hypot(to.x, to.z), safe = !targetingFoe() && foeRules.playerSafe();
   r.timer -= dt; r.atkT -= dt;
@@ -391,7 +396,7 @@ function think(r: Robot, dt: number, time: number) {
     return;
   }
   if (seen) share(r.group.length ? r.group : [r], r);
-  else if (m.lost > 1) { // lost the target: sweep the spot it was last seen at, then go back
+  else if (m.lost > (inCover(r) ? 7 : 1)) { // lost the target (a Guardian behind cover waits longer): sweep the spot it was last seen at, then go back
     if (!m.last || m.lost > LOSE.robot) { r.state = 'return'; return; }
     const hx = m.last.x - r.p.x, hz = m.last.z - r.p.z;
     if (Math.hypot(hx, hz) > 2.5) { walk(r, hx, hz, s.speed * 0.7, dt); face(r, hx, hz, dt, 2); }
@@ -408,10 +413,17 @@ function think(r: Robot, dt: number, time: number) {
       if (dist < 1.9 + s.r && r.atkT <= 0) { r.atkT = 1.1; r.swing = 1; hit(s.dmg * lvl); r.charge = 0.6; }
       break;
     }
-    case 'guardian': { // keep 12-22 m, strafe, shoot
-      const k = dist > 22 ? 1 : dist < 12 ? -1 : 0, side = V(-to.z, 0, to.x).normalize().multiplyScalar(Math.sin(time * 0.6 + r.flank) * 0.8);
-      walk(r, to.x * k + side.x * dist, to.z * k + side.z * dist, s.speed, dt); face(r, to.x, to.z, dt);
-      if (r.atkT <= 0 && dist < 32 && sees()) { r.atkT = 1.5 + Math.random() * 0.6; fireBolt(r.g.localToWorld(V(0, 0.6, 1.4)), s.dmg * lvl, 0xff9a3a); }
+    case 'guardian': { // keep 12-22 m from cover if there is any (stage W3), else strafe; shoot
+      const tg = seen || !m.last ? G.pos : m.last;
+      const cv = env && !indoor ? coverStep(r, r.p.x, r.p.z, tg.x, tg.y, tg.z, dt, { ground: env.ground, body: (x, y, z) => foeRules.body(x, y, z, bodyR(r)), low: GUARD_COVER.low, stand: s.lift + 0.5, far: 24 }) : null;
+      r.cover = cv?.duck ? 1 : 0;
+      if (cv) { if (cv.to) walk(r, cv.to[0] - r.p.x, cv.to[1] - r.p.z, s.speed, dt); else r.speed = 0; }
+      else {
+        const k = dist > 22 ? 1 : dist < 12 ? -1 : 0, side = V(-to.z, 0, to.x).normalize().multiplyScalar(Math.sin(time * 0.6 + r.flank) * 0.8);
+        walk(r, to.x * k + side.x * dist, to.z * k + side.z * dist, s.speed, dt);
+      }
+      face(r, to.x, to.z, dt);
+      if (r.atkT <= 0 && dist < 32 && sees() && (!cv || cv.fire)) { r.atkT = 1.5 + Math.random() * 0.6; fireBolt(r.g.localToWorld(V(0, 0.6, 1.4)), s.dmg * lvl, 0xff9a3a); }
       break;
     }
     case 'repair': { // stay back, mend the most hurt machine near, drop defence drones
@@ -475,7 +487,8 @@ function animate(r: Robot, dt: number, time: number) {
   else if (r.model === 'sentinel') r.arms.forEach((a, i) => (a.rotation.x = -sw * 1.2 + Math.sin(r.anim + i * Math.PI) * 0.2 * move));
   const bob = r.model === 'repair' ? Math.sin(time * 2 + r.flank) * 0.15 : Math.abs(Math.sin(r.anim)) * 0.05 * move;
   if (env) r.p.y = env.ground(r.p.x, r.p.z) + s.lift;
-  r.g.position.set(r.p.x, r.p.y + bob, r.p.z);
+  const dk = (r.duck = (r.duck ?? 0) + ((r.cover ?? 0) - (r.duck ?? 0)) * Math.min(1, dt * 6)); // crouched behind cover
+  r.g.position.set(r.p.x, r.p.y + bob - GUARD_COVER.duck * dk, r.p.z);
   r.g.rotation.y = r.heading;
   r.flash -= dt;
   r.mat.color.setHex(r.flash > 0 ? 0xffffff : ROBOT_COLOR);

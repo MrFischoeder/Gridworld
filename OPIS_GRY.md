@@ -1,6 +1,6 @@
 # GridWorld: opis gry, cel, plan i historia zmian
 
-Stan na wersję **0.223.0**. Ten dokument opisuje, czym jest GridWorld, jaki jest cel gry, co już w niej jest, czego jeszcze nie ma, dokąd zmierza i jak powstawała, wersja po wersji. Nazwy z gry (przedmioty, miejsca, postacie) są podane po angielsku; od 0.190 gra ma też wersję polską (wybór języka w menu głównym).
+Stan na wersję **0.224.0**. Ten dokument opisuje, czym jest GridWorld, jaki jest cel gry, co już w niej jest, czego jeszcze nie ma, dokąd zmierza i jak powstawała, wersja po wersji. Nazwy z gry (przedmioty, miejsca, postacie) są podane po angielsku; od 0.190 gra ma też wersję polską (wybór języka w menu głównym).
 
 ---
 
@@ -236,9 +236,12 @@ Gracz ma do dyspozycji kilka taktyk:
 - **skradanie**: kucanie, cień i noc;
 - **zajście od tyłu**;
 - **ucieczka**;
-- **wąskie przejścia i wysokość**: mury, skały.
+- **wąskie przejścia i wysokość**: mury, skały;
+- **zasłony** (od 0.224): duże kamienie, pnie drzew, bloki ruin, wysokie kryształy, ściany i pojazdy zatrzymują strzały, pociski i linię wzroku przeciwników. Trafienie w osłonę sypie odpryskami. Kucając za niską zasłoną jesteś schowany, a kiedy celujesz (prawy przycisk myszy), wychylasz się nad nią i strzelasz; puść przycisk, żeby się schować.
 
-Kolejne etapy dodadzą zapowiedzi ataków, drugie tryby ataku, zasłony, przynęty, stany (zachwianie, powalenie, EMP), morale i bestiariusz w grze.
+Strzelcy bandytów, ich bossowie i Guardiany też korzystają z osłon: szukają kamienia, pnia albo ściany między sobą a tobą, kucają za nią, a co chwilę wstają albo wychylają się w bok na serię. Kiedy obejdziesz ich osłonę, szukają nowej; z bliska walczą w otwartym polu.
+
+Kolejne etapy dodadzą zapowiedzi ataków, drugie tryby ataku, przynęty, stany (zachwianie, powalenie, EMP), morale i bestiariusz w grze.
 
 ### Stworzenia
 
@@ -283,7 +286,7 @@ Zostawiają złom, elektronikę i rdzenie mocy.
   - **atakuje:** działem energetycznym z 12–22 m, w grupach;
   - **mocne strony:** zasięg, osłonięty przód ×0,8;
   - **słabe strony:** kopuła czujnika na górze ×1,8, tył ×1,6;
-  - **jak walczyć:** pociski są widoczne, więc unikaj ich w bok; podejdź blisko albo zajdź od tyłu; celuj w kopułę.
+  - **jak walczyć:** pociski są widoczne, więc unikaj ich w bok; podejdź blisko albo zajdź od tyłu; celuj w kopułę. Od 0.224 chowa się za kamieniem albo pniem i wychyla na strzał: poczekaj, aż się podniesie, albo obejdź osłonę.
 - **Repair Drone** (od 3):
   - **atakuje:** nie walczy sam; naprawia inne roboty i wypuszcza drony obronne;
   - **słabe strony:** góra ×1,3; bez niego reszta robotów się nie leczy;
@@ -310,10 +313,10 @@ Zostawiają złom, elektronikę i rdzenie mocy.
 ### Bandyci
 
 - **Strzelcy** (karabin albo pistolet):
-  - **atakuje:** trzymają 12–20 m, krążą bokiem i strzelają widocznymi seriami, które można ominąć;
+  - **atakuje:** trzymają 12–20 m, chowają się za kamieniami, pniami i ścianami, wstają albo wychylają się na serię (widoczne pociski, które można ominąć); bez osłony krążą bokiem;
   - **mocne strony:** zasięg, ruch;
   - **słabe strony:** głowa ×2, tył ×1,3; z bliska karabin jest niezgrabny (broń biała ×1,3);
-  - **jak walczyć:** skracaj dystans zza osłon albo zachodź ich z boku.
+  - **jak walczyć:** skracaj dystans zza osłon, łap moment, kiedy się wychylają, albo zajdź ich z boku, tak żeby osłona przestała ich chronić.
 - **Osiłki** (ostrza, połowa z tarczą):
   - **atakuje:** rzucają się z ostrzem;
   - **mocne strony:** tarcza z przodu połyka połowę trafień, broń biała ×0,9;
@@ -523,7 +526,7 @@ Kierunek wyznaczony przez właściciela projektu, w przybliżonej kolejności:
 6. **Mgła i skażenie.** Kombinezon NBC, mgła w lochach, stworzenia mgły.
 7. **Woda i ludzie.** Nurkowanie i piraci na liniach towarowych (porty od 0.216, linie od 0.217); dowożenie ludzi i jedzenia do obozów załóg przy starych instalacjach (obozy od 0.218).
 8. **Dopracowanie.** Lepsze dźwięki i własna muzyka (efekty, silniki, grzmoty i strzały innych graczy są od 0.212–0.213), spalanie paliwa w pojazdach, skutki pogody (pioruny, burze zrywające dachy, deszcz na drogach, chmury a panele słoneczne).
-9. **Taktyczna walka** (`PLAN_WALKI.md`, W1 zrobione w 0.223): zapowiedzi ataków i drugie tryby ataku każdego przeciwnika, zasłony, przynęty, stany (zachwianie, powalenie, EMP), morale i odwrót, okrążanie, bestiariusz w grze.
+9. **Taktyczna walka** (`PLAN_WALKI.md`, W1 zrobione w 0.223, W3 zasłony w 0.224): zapowiedzi ataków i drugie tryby ataku każdego przeciwnika, przynęty, stany (zachwianie, powalenie, EMP), morale i odwrót, okrążanie, bestiariusz w grze.
 10. **Ewentualnie** zmniejszenie mapy, jeśli okaże się za duża do gry. Właściciel to rozważa.
 
 ---
@@ -793,6 +796,7 @@ Pełne notatki (po angielsku) są w grze pod przyciskiem **Changelog** w menu g�
 - **0.212.0 Dźwięk.** Gra ma dźwięki: proste 8-bitowe efekty każdej broni, przeładowania, pustego magazynka, zamachów i trafień, kroków gracza (po ziemi, po twardym i w wodzie), skoków, lądowania i obrażeń; maszyny stukają krokami i szumią siłownikami, słychać strzały robotów, bandytów i działek, wybuchy, warczenie, prychanie, piski i skrzeki zwierząt oraz kroki innych graczy. Dźwięk dochodzi z miejsca zdarzenia (ciszej z daleka, z lewej albo z prawej). W menu panel Dźwięk: głośność ogólna, efektów i muzyki, wyciszenie i dźwięk próbny. Każdy efekt to plik w folderze sfx (lista sfx/sounds.json), do podmiany na własny; muzykę właściciel wrzuci do folderu music i wpisze do music/music.json według nastroju (menu, świat, noc, podziemia, walka).
 - **0.213.0 Więcej dźwięku, słyszanego przez innych.** Dźwięk budzi się pewniej: jest gotowy od wczytania strony, rusza po dowolnym kliknięciu, klawiszu albo dotknięciu i sam próbuje się wznowić w trakcie gry; panel Dźwięk pokazuje, czy działa i ile dźwięków już zagrało, a polecenie konsoli `sound` to samo i odtwarza dowolny dźwięk. Nowe dźwięki: silniki pojazdów (własnego, bandyckich i innych graczy, wyżej z prędkością), działko, drzwi, skrzynie, jedzenie i picie, grzmot po błyskawicy, wpływ złota, nowy poziom, rąbanie drzew i kucie skał, plusk wody, kliknięcia przycisków, śmierć zwierząt i bandytów, młotki budowniczych. W grze sieciowej inni słyszą twoje strzały, zamachy, przeładowania, działko, skoki, lądowania, plusk, rąbanie i drzwi z miejsca, gdzie stoisz (kroki i silnik już wcześniej z ruchu); serwer trzeba zaktualizować.
 - **0.214.0 Konwoje trzeba rozwinąć.** W nowym świecie na początku nie jeżdżą żadne konwoje: nie ma karawan na drogach, dostaw ruszających ceny ani konwojów biorących paliwo z wioski. Gdy przyjedzie mechanik i stanie magazyn, starszy proponuje nową budowę: Bazę konwojów przy północnej drodze (deski, kamień, złom, drut, części maszyn; 12 godzin), z ciężarówką i dwoma uzbrojonymi łazikami na placu, szopą naprawczą i budką dyspozytora. Od jej ukończenia karawany ruszają drogami między wioskami (można je spotkać, eskortować i kupować od nich, poruszają ceny), a konwoje osady tankują z jej zapasów. Stare światy zachowują konwoje jak dotąd. W grze sieciowej wszyscy widzą to samo, bo czas startu wynika ze wspólnego stanu wiosek.
+- **0.224.0 Zasłony (etap W3 taktycznej walki).** Duże kamienie, pnie drzew, kamienne bloki ruin i wysokie kryształy zatrzymują strzały, pociski i wzrok przeciwników, a trafienie w nie sypie odpryskami. Strzelcy bandytów, ich bossowie i Guardiany szukają osłony między sobą a graczem (kamień, pień, ściana, zaparkowany pojazd, grzbiet terenu), kucają za nią i co chwilę wstają albo wychylają się w bok na serię; obejście osłony zmusza ich do szukania nowej. Gracz kucający za niską osłoną wychyla się nad nią, kiedy celuje, i chowa, kiedy puści przycisk. W grze wieloosobowej osłonę wybiera gra właściciela przeciwnika, a pozostali widzą przykucniętą kopię (i trafiają ją nisko); serwera nie trzeba aktualizować.
 - **0.223.0 Taktyczna walka: słabe i mocne strony, unik (etap W1).** Każdy przeciwnik (stworzenia, roboty, role bandytów, drony) ma swoje mocne i słabe strony: inne obrażenia z przodu, z boku i od tyłu (według tego, gdzie patrzy), słaby punkt na górze albo na dole ciała (głowa, kopuła czujnika, nogi, brzuch) i inną podatność na broń palną i białą. Gra mówi krótko, dlaczego trafienie było mocniejsze albo słabsze. Nowy unik: dwa razy W/A/S/D albo lewy Alt z kierunkiem, krótki zryw za 18 punktów wytrzymałości. Rozdział 6 opisuje każdego przeciwnika: jak atakuje, jego mocne i słabe strony i jak z nim walczyć. Plan kolejnych etapów (zapowiedzi ataków, drugie tryby, zasłony, przynęty, stany, morale, okrążanie, bestiariusz w grze) jest w `PLAN_WALKI.md`. W grze wieloosobowej mnożniki liczy gra strzelającego, a właściciel przeciwnika dostaje sam wynik; serwera nie trzeba aktualizować.
 - **0.222.0 Kryształowe lasy.** Na planecie losowo (z ziarna świata) rosną kryształowe lasy: gaje olbrzymich sześciokątnych kryształów, w sercu tytany po 25–38 m, wokół wachlarze mniejszych kolumn z jednego korzenia i odłamki pod nogami; każdy las ma swój kolor i nazwę, nocą krawędzie świecą, a największe kryształy oświetlają okolicę. Na razie to tylko ozdoba, ale lite: nie da się przez nie przejść. W podziemiach kryształy jedzenia zastąpiły kępy bladych grzybów jaskiniowych (dają Nutrient Caps). Kamienie wokół ruin są wreszcie lite dla gracza i przeciwników (upadłe ramy, czubki pylonów, pierścień, obeliski, wielki blok, gruz): niskie można przekroczyć, na wyższe wskoczyć. Zniknął wskaźnik widoczności i wykrycia (oraz komunikat „Wykryto!”); skradanie działa po staremu. Wszystko z ziarna świata, tak samo dla każdego gracza; serwera nie trzeba aktualizować.
 - **0.221.0 Obrona bierze prąd i ludzi (etap Z7).** W osadach (nowe światy) każde działko na murze bierze 4 kW z prądu wioski i potrzebuje strażnika: jednego człowieka spośród tych, których nie zajmują farmy, kopalnie, zakłady, elektrownie i usługi. Działko bez strażnika milczy, a przy zbyt małej ilości prądu (poniżej ćwierci potrzeb zakładów w ciągu doby) nie strzela żadne; starszy w „Jak się wiedzie wiosce?” mówi, które i dlaczego. Działka placówki biorą po 3 kW z jej sieci i po osadniku na straży (po obsadzie pól, przed wydobyciem); poza siecią nie strzelają, a najazd rozliczany bez gracza liczy tylko działające działka. Latarnie morskie w nowych światach są elektryczne: lampa kręci się tylko z prądem z wioski do 500 m, która ma 2 kW nadwyżki, albo ze źródła prądu placówki, które tam sięga. Stare światy bez zmian. W grze wieloosobowej wszystko wynika ze wspólnego stanu wiosek i placówek; serwera nie trzeba aktualizować.

@@ -7,6 +7,7 @@ import { camera, lineMat, add, V } from './render';
 import { G } from '../game';
 import { SWAY, newSway, stepSway, type Sway, RECOIL, newRecoil, kickRecoil, stepRecoil } from '../core/sway';
 import { addFx, addBolt, burst } from './fx';
+import { natureRay } from './overworld';
 import { rayMountedTurret, damageMountedTurret } from './mountedturrets';
 import { rayWorld } from './player';
 import { vehicles, rayVehicle, damageVehicle, type Vehicle } from './vehicles';
@@ -244,6 +245,21 @@ export function updateGun(dt: number, onFoot: boolean) {
   hudWeapon();
 }
 let aimK = 0;
+/**
+ * (0.224, PLAN_WALKI.md stage W3) Crouched behind low cover, aiming rises over it: 0 crouched, 1 risen to shoot.
+ * main.ts lifts the eye by it and the bolts find more of you to hit (world/bandits.ts).
+ */
+export const peekK = () => (G.crouch && !G.fly ? Math.max(0, (aimK - 0.3) / 0.7) : 0);
+let coverT = 0, coverTold = false;
+/** Once a game: crouched with something low and solid just ahead, a line says you can rise over it to shoot. */
+export function coverHint(dt: number) {
+  if (coverTold || !G.crouch || G.char.loc !== 'overworld' || (coverT -= dt) > 0) return;
+  coverT = 0.5;
+  const d = V(Math.sin(G.yaw + Math.PI), 0, Math.cos(G.yaw + Math.PI));
+  if (rayWorld(V(G.pos.x, G.pos.y + 0.8, G.pos.z), d, 1.8) < 1.8 && rayWorld(V(G.pos.x, G.pos.y + 1.55, G.pos.z), d, 2.2) >= 2.2) {
+    coverTold = true; logLine(tl('Behind cover: aim (right mouse) to rise over it and shoot, let go to duck.'));
+  }
+}
 const activeGun = () => gunLooks[curGun()?.look ?? 'blaster'];
 const activeMelee = () => meleeLooks[curMelee()?.look ?? 'blade'];
 /** Re-apply holstered / drawn state after the armed rule may have changed. */
@@ -319,6 +335,10 @@ function ray(d: THREE.Vector3, dmg: number) {
   const bar = rayBarrier(o, d, tHit); // a roadblock in the way takes the shot
   if (bar) { tHit = bar.t; hitT = null; turret = null; car = null; hurtBarrier(bar.p, dmg); }
   const end = o.clone().addScaledVector(d, tHit);
+  // (0.224, stage W3) a shot that ends on cover (a stone, a trunk, a ruin's block, a crystal) throws chips there
+  if (!hitT && !turret && !car && !bar && tHit < range - 0.01 && G.char.loc === 'overworld' && natureRay(o, d, tHit + 0.05) <= tHit + 0.01) {
+    burst(end, 0xd8e0c8, 9, 0.9); play('ricochet', { at: end, vol: 0.35, far: 50 });
+  }
   const gun = V(0.24 * (1 - aimK), -0.2 + aimK * 0.1, -0.75); camera.localToWorld(gun);
   // (0.193) each gun's shots look its own (SHOT): a beam that fades, or a bolt that flies; amber where it hits something
   const look = SHOT[curGun()?.look ?? 'blaster'], struck = !!(hitT || turret), sparks = struck ? 0xffb347 : 0x3dff6e;

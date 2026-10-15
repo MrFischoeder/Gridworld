@@ -35,7 +35,8 @@ import { installHit, dropInstalls, primeInstalls } from './installs';
 import { cityHit, cityRay, dropCities, cityName, cityVaultHint } from './cities';
 import { toxicHit, dropToxic, toxicName } from './toxic';
 import { lodeHit, dropLodes, lodeName } from './lodes';
-import { crystalHit, dropCrystals, crystalName } from './crystals';
+import { crystalHit, crystalRay, dropCrystals, crystalName } from './crystals';
+import { rayCyl, rayHull, type V3 } from '../gen/cover';
 import { portHit, dropPorts, portNameAt } from './ports';
 import { campHit, dropCamps } from './plantcamps';
 import { dropPowerLines } from './powerlines';
@@ -215,6 +216,29 @@ export function templeFloor(x: number, y: number, z: number): number {
   let best = -Infinity;
   templeNear(x, z, BODY_R, (s) => { if (s.y1 > best && s.y1 <= y + (s.y1 - s.y0 <= TEMPLE_LOW ? ROCK_STEP : ROCK_TOL) && solidDist(s, x, z) < BODY_R) best = s.y1; });
   return best;
+}
+/**
+ * (0.224, PLAN_WALKI.md stage W3: cover) Where a ray first meets natural cover: a tree trunk, a stone taller than a
+ * step, a ruin's stone piece or a tall crystal. In `G.rayBlock`, so the player's shots, the foes' sight lines and
+ * every bolt stop there: a stone or a trunk hides whoever crouches behind it.
+ */
+export function natureRay(o: V3, d: V3, maxT: number): number {
+  let best = maxT;
+  const ex = o.x + d.x * maxT, ez = o.z + d.z * maxT;
+  const cx0 = Math.floor((Math.min(o.x, ex) - 8) / CHUNK), cx1 = Math.floor((Math.max(o.x, ex) + 8) / CHUNK);
+  const cz0 = Math.floor((Math.min(o.z, ez) - 8) / CHUNK), cz1 = Math.floor((Math.max(o.z, ez) + 8) / CHUNK);
+  const hd = Math.hypot(d.x, d.z) || 1e-9, nx = -d.z / hd, nz = d.x / hd; // across the ray, for a quick cull
+  const off = (x: number, z: number, r: number) => Math.abs((x - o.x) * nx + (z - o.z) * nz) > r;
+  for (let cx = cx0; cx <= cx1; cx++) for (let cz = cz0; cz <= cz1; cz++) {
+    const c = OW.chunks.get(ckey(cx, cz)); if (!c) continue;
+    for (const t of c.trees) for (const [tx, tz, tr] of t.cols) if (!off(tx, tz, tr)) best = rayCyl(o, d, best, tx, tz, tr, t.y - 1, t.y + 2 + t.h * 0.3);
+    for (const k of c.rocks) if (k.h > ROCK_STEP && !off(k.x, k.z, k.r)) best = rayCyl(o, d, best, k.x, k.z, k.r * 0.72, k.y - 1, k.y + k.h * 0.92);
+  }
+  for (const st of OW.structs.values()) if (st.solids) for (const s of st.solids) {
+    if (s.y1 - s.y0 <= TEMPLE_LOW || Math.max(o.x, ex) < s.x0 || Math.min(o.x, ex) > s.x1 || Math.max(o.z, ez) < s.z0 || Math.min(o.z, ez) > s.z1) continue;
+    best = s.c ? rayCyl(o, d, best, s.c[0], s.c[1], s.c[2], s.y0, s.y1) : rayHull(o, d, best, s.hull, s.y0, s.y1);
+  }
+  return crystalRay(o, d, best);
 }
 /** Tree trunks (an arch has one per leg): vertical cylinders, solid up to a bit above their base. */
 export function treeHit(x: number, y: number, z: number, r: number): boolean {
@@ -719,7 +743,7 @@ export function openWorld(x: number, z: number) {
   closeWorld();
   G.water = (px, pz) => (inStructure(px, pz) ? null : OW.terrain!.water(px, pz));
   G.space = space; G.ground = groundAt; G.obstacle = (px, py, pz, r) => settlementHit(px, py, pz, r) || templeHit(px, py, pz, r) || crystalHit(px, py, pz, r) || megalithHit(px, py, pz, r) || worldGateHit(px, py, pz, r) || treeHit(px, py, pz, r) || vehicleHit(px, py, pz, r) || caravanHit(px, py, pz, r) || peerCarHit(px, py, pz, r) || ambushHit(px, py, pz, r) || baseHit(px, py, pz, r) || ladderHit(px, py, pz, r) || walkHit(px, py, pz, r) || guardHit(px, py, pz, r) || houseHit(px, py, pz, r) || doorHit(px, py, pz, r) || podHit(px, py, pz, r) || installHit(px, py, pz, r) || cityHit(px, py, pz, r) || hallHit(px, py, pz, r) || bridgeHit(px, py, pz, r) || pierHit(px, py, pz, r) || lighthouseHit(px, py, pz, r) || boatHit(px, py, pz, r) || shipHit(px, py, pz, r) || toxicHit(px, py, pz, r) || lodeHit(px, py, pz, r) || portHit(px, py, pz, r) || campHit(px, py, pz, r);
-  G.floor = (x, y, z) => Math.max(rockFloor(x, y, z), templeFloor(x, y, z), settlementFloor(x, y, z), megalithFloor(x, y, z), baseFloor(x, y, z), ladderFloor(x, y, z), walkFloor(x, y, z), bridgeFloor(x, y, z), pierFloor(x, y, z), shipFloor(x, y, z)); G.rayBlock = (o, d, t) => settlementRay(o, d, megalithRay(o, d, worldGateRay(o, d, cityRay(o, d, doorRay(o, d, houseRay(o, d, baseRay(o, d, t))))))); G.solid = (p) => settlementSolid(p) || megalithHit(p.x, p.y, p.z, 0) || worldGateHit(p.x, p.y, p.z, 0) || baseSolid(p) || houseSolid(p);
+  G.floor = (x, y, z) => Math.max(rockFloor(x, y, z), templeFloor(x, y, z), settlementFloor(x, y, z), megalithFloor(x, y, z), baseFloor(x, y, z), ladderFloor(x, y, z), walkFloor(x, y, z), bridgeFloor(x, y, z), pierFloor(x, y, z), shipFloor(x, y, z)); G.rayBlock = (o, d, t) => natureRay(o, d, settlementRay(o, d, megalithRay(o, d, worldGateRay(o, d, cityRay(o, d, doorRay(o, d, houseRay(o, d, baseRay(o, d, t)))))))); G.solid = (p) => settlementSolid(p) || megalithHit(p.x, p.y, p.z, 0) || worldGateHit(p.x, p.y, p.z, 0) || baseSolid(p) || houseSolid(p);
   foeRules.blocked = (p) => megalithHit(p.x, p.y, p.z, .7) || nearVillage(p.x, p.z) < 2;
   foeRules.body = foeBody;
   foeRules.playerSafe = () => inVillage(G.pos.x, G.pos.z) && !raidHere(); // no safe place while bandits raid it

@@ -4077,4 +4077,5 @@ export const PL: Record<string, string> = {
   "From behind ×{0}": "Od tyłu ×{0}",
   "Armour turns it: ×{0}": "Pancerz odbija: ×{0}",
   "A good angle ×{0}": "Dobry kąt ×{0}",
+  'Behind cover: aim (right mouse) to rise over it and shoot, let go to duck.': 'Za osłoną: celuj (prawy przycisk myszy), żeby się nad nią wychylić i strzelić; puść, żeby się schować.',
 };

@@ -25,6 +25,9 @@ import type { SpawnEnv } from './creatures';
 import { mayspawn, BANDIT_COST } from './threat';
 import { campWay, type BanditRole, type CampMap } from '../gen/camps';
 import { tl } from '../i18n';
+import { coverStep, dropCover, inCover } from './cover';
+import { peekK } from './weapons';
+import { COVER } from '../gen/cover';
 
 export const BANDIT = 0xffb347, BOSS_COLOR = 0xff6a4a;
 /** How long a cleared camp stays empty (real time). */
@@ -45,6 +48,8 @@ export interface Bandit {
   ambush?: number;
   /** Recoil of the last shot (1 → 0), and a sword stroke on its way (the blow lands mid-swing). */
   recoil: number; blow: boolean;
+  /** (0.224) Crouched behind cover (1) or not, as its mind wants it; `duck` eases the figure down. */
+  cover?: number; duck?: number;
 }
 interface Bolt { m: THREE.Line; p: THREE.Vector3; v: THREE.Vector3; dmg: number; life: number; ghost?: boolean; source?: CombatFoe }
 const bolts: Bolt[] = [];
@@ -179,7 +184,7 @@ export function ghostBolt(p: THREE.Vector3, v: THREE.Vector3, color: number) {
   play(color === 0xff9a3a || color === 0xff6a4a || color === 0xff5a3c ? 'robot_shot' : 'enemy_shot', { at: p, vol: 0.8, far: 110 });
 }
 export function updateBolts(dt: number) {
-  const body0 = V(G.pos.x, G.pos.y + 0.3, G.pos.z), body1 = V(G.pos.x, G.pos.y + (G.crouch ? 1.05 : 1.6), G.pos.z); // crouched behind cover, less of you to hit
+  const body0 = V(G.pos.x, G.pos.y + 0.3, G.pos.z), body1 = V(G.pos.x, G.pos.y + (G.crouch ? 1.05 + 0.45 * peekK() : 1.6), G.pos.z); // crouched behind cover, less of you to hit (rising to shoot shows more)
   for (let i = bolts.length - 1; i >= 0; i--) {
     const o = bolts[i]; o.life -= dt;
     const step = o.v.length() * dt, dir = o.v.clone().normalize(), walled = !!G.rayBlock && G.rayBlock(o.p, dir, step) < step; // fast bolts skip thin walls otherwise
@@ -227,6 +232,7 @@ function think(b: Bandit, dt: number, time: number) {
   const seen = !safe && sense(b, eye, b.heading, b.sight * (b.state === 'search' ? 1.25 : b.state === 'return' ? 0.75 : 1), dt, fighting);
   const sees = () => seen;
   if (!fighting && !safe && m.aware >= STEALTH.spotted) { alert(b); if (!proxied() && !targetingFoe()) spottedBy(b); }
+  if (b.state !== 'fight' && b.cover) { b.cover = 0; dropCover(b); }
   switch (b.state) {
     case 'idle':
       b.speed = 0;
@@ -255,7 +261,7 @@ function think(b: Bandit, dt: number, time: number) {
       break;
     case 'fight': {
       if (seen) share(b.group, b); // they call out where you are
-      else if (m.lost > 1.5) { // lost you: to where you were last seen, and search there
+      else if (m.lost > (inCover(b) ? 7 : 1.5)) { // lost you (behind cover it waits longer: you are hidden by its own rock): to where you were last seen, and search there
         b.state = 'search'; b.timer = LOSE.bandit;
         break;
       }
@@ -273,12 +279,20 @@ function think(b: Bandit, dt: number, time: number) {
         break;
       }
       const want = b.role === 'leader' ? 12 : 15;
-      if (b.timer <= 0) { b.strafe = Math.random() < 0.5 ? 1 : -1; b.timer = 1.5 + Math.random() * 1.5; }
-      const side = V(-to.z, 0, to.x).normalize().multiplyScalar(b.strafe);
-      if (dist > want + 7) walk(b, to.x, to.z, 4.2, dt);
-      else if (dist < want - 5) walk(b, -to.x + side.x, -to.z + side.z, 3.6, dt);
-      else walk(b, side.x, side.z, 2.6, dt);
-      if (b.fireT <= 0 && dist < 45 && sees()) {
+      // (0.224, stage W3) from cover when there is any: run to it, crouch, rise for a burst, drop back
+      const tg = seen || !m.last ? G.pos : m.last;
+      const cv = env ? coverStep(b, b.p.x, b.p.z, tg.x, tg.y, tg.z, dt, { ground: env.ground, body: (x, y, z) => foeRules.body(x, y, z, BODY_R), low: COVER.low, stand: COVER.stand, far: want + 12 }) : null;
+      b.cover = cv?.duck ? 1 : 0;
+      if (cv) {
+        if (cv.to) walk(b, cv.to[0] - b.p.x, cv.to[1] - b.p.z, cv.duck ? 3.4 : 4.8, dt); else b.speed = 0;
+      } else {
+        if (b.timer <= 0) { b.strafe = Math.random() < 0.5 ? 1 : -1; b.timer = 1.5 + Math.random() * 1.5; }
+        const side = V(-to.z, 0, to.x).normalize().multiplyScalar(b.strafe);
+        if (dist > want + 7) walk(b, to.x, to.z, 4.2, dt);
+        else if (dist < want - 5) walk(b, -to.x + side.x, -to.z + side.z, 3.6, dt);
+        else walk(b, side.x, side.z, 2.6, dt);
+      }
+      if (b.fireT <= 0 && dist < 45 && sees() && (!cv || cv.fire)) {
         if (b.burst <= 0) b.burst = b.role === 'leader' ? 4 : 3;
         fire(b); b.burst--;
         b.fireT = b.burst > 0 ? 0.13 : (b.role === 'leader' ? 1.1 : 1.8) + Math.random();
@@ -288,9 +302,11 @@ function think(b: Bandit, dt: number, time: number) {
   }
 }
 function animate(b: Bandit, dt: number) {
-  b.g.position.copy(b.p); b.g.rotation.y = b.heading;
-  const f = b.fig, ph = performance.now() / 1000 * (4 + b.speed * 1.2), sw = b.speed > 0.2 ? Math.sin(ph) * 0.55 : 0;
-  f.legL.rotation.x = sw; f.legR.rotation.x = -sw;
+  // crouched behind cover: the body sinks (so does the hit sphere, at b.g), the legs fold into a kneel
+  const dk = (b.duck = (b.duck ?? 0) + ((b.cover ?? 0) - (b.duck ?? 0)) * Math.min(1, dt * 8));
+  b.g.position.copy(b.p); b.g.position.y -= COVER.duck * dk; b.g.rotation.y = b.heading;
+  const f = b.fig, ph = performance.now() / 1000 * (4 + b.speed * 1.2), sw = (b.speed > 0.2 ? Math.sin(ph) * 0.55 : 0) * (1 - dk);
+  f.legL.rotation.x = sw - 1.16 * dk; f.legR.rotation.x = -sw + 1.16 * dk;
   // weapons up while fighting, lowered otherwise; the sword follows its stroke, guns kick when they fire
   const r = f.rig; r.aim += ((b.state === 'fight' ? 1 : 0) - r.aim) * Math.min(1, dt * 5);
   b.recoil = Math.max(0, b.recoil - dt * 8);

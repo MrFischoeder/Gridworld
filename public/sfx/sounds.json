@@ -54,6 +54,12 @@
     ],
     "vol": 1
   },
+  "ricochet": {
+    "files": [
+      "ricochet.wav"
+    ],
+    "vol": 1
+  },
   "hurt": {
     "files": [
       "hurt.wav"

@@ -3,6 +3,12 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.224.0', date: '2026-10-15', title: 'Cover', notes: [
+    'Big stones, tree trunks, the stone blocks of the ruins and tall crystals now stop shots, bolts and the foes\' line of sight. A shot that hits cover throws up chips of stone.',
+    'Bandit gunners, their bosses and Guardians fight from cover: they find a stone, a trunk, a wall or a parked vehicle between you and them, crouch behind it and rise or lean out for a burst. Get round their cover and they have to find new; get close and they fight in the open.',
+    'Your turn: crouch (C) behind something low and aim (right mouse) to rise over it and shoot; let go to duck back down. While you are down the bolts find little of you to hit.',
+    'Multiplayer: the game that runs a foe picks its cover, and the others see it crouch (and hit it low). The server does not need an update.',
+  ] },
   { v: '0.223.0', date: '2026-10-15', title: 'Tactical combat: strengths, weak spots and the dodge', notes: [
     'Every foe now has its own strong and weak sides. Where a hit comes from counts (its front, a side or behind, by where it faces), so does where it lands (a head, a sensor dome, legs, a soft belly) and what it is (a gun or a blade).',
     'A few examples: the Bramble shrugs off most of what hits its plated front but bleeds from behind and under the belly; a Sentinel wants a head shot and laughs at blades; an Artillery Walker is helpless against a blade up close; an Assault Construct guards its front with the hammer and is wide open behind; a Guardian\'s sensor dome and a bandit\'s head take double; a swing cuts through a Gnawer swarm.',

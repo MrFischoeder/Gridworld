@@ -4,6 +4,7 @@
 // notice you later when you crouch, keep still, stay in the dark or the fog, and once they have lost you they go to
 // where they saw you last, look round and give up. Multiplayer: a foe is run by one game (its owner); when its turn
 // is against another player it reads that player's visibility from their `PeerState.vis` (world/remote.ts targetPeer).
+import { peekK } from './weapons';
 import * as THREE from 'three';
 import { G } from '../game';
 import { daylight, sunTilt } from '../core/time';
@@ -56,7 +57,7 @@ function targetLoud(): boolean {
   if (proxied()) { const st = net.peers.get(targetPeer())?.st; return !!st?.mv && !st.cr; }
   return !G.crouch && Math.hypot(G.vel.x, G.vel.z) > 0.5;
 }
-const targetCrouched = () => (targetingFoe() ? false : proxied() ? !!net.peers.get(targetPeer())?.st?.cr : G.crouch);
+const targetCrouched = () => (targetingFoe() ? false : proxied() ? !!net.peers.get(targetPeer())?.st?.cr : G.crouch && peekK() < 0.5);
 
 
 /**
