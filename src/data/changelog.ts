@@ -3,6 +3,12 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.230.0', date: '2026-10-19', title: 'Flickering flames and underground wall lights', notes: [
+    'Held and wall torches now burn with five independently moving outlined triangle tongues and two rising triangular embers. Their shapes and brightness flicker in warm amber and gold, using reusable geometry buffers.',
+    'More torches and electric wall fixtures appear in labyrinth rooms and passages, crashed ships and metro stations and tunnels. Deeper floors remain darker; some rooms and passages still have no fixed light.',
+    'Light brackets attach to real walls and avoid doorways, stairs and solid debris. Placement uses a separate seeded stream, preserving rooms, enemies, loot, saved progress and identical lamp locations for every player.',
+    'Torch fuel, carried light range and ambient darkness are unchanged. No multiplayer protocol or server update is required.',
+  ] },
   { v: '0.229.0', date: '2026-10-15', title: 'Surrounded: packs, walls and high ground', notes: [
     'A Ravager pack, a Gnawer nest and bandit bruisers now spread out round you and come at you from several sides at once instead of all from the front.',
     'Walls, rocks, tree trunks and houses take that room away: with your back to something they can only come from the open side, and in a narrow passage only one or two at a time while the rest pace and wait their turn. A short line tells you when your back is to the wall.',

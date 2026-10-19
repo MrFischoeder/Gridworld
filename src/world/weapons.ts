@@ -28,6 +28,7 @@ import { onHandsChanged, stowHeld, saveChar, calcStats, offHeld, offFree } from 
 import { count } from '../data/crafting';
 import { logLine } from '../ui/hud';
 import { tl, TL } from '../i18n';
+import { VectorFlame } from './vectorflame';
 
 /** Weapons are holstered in safe places (the village). */
 export let armed = () => true;
@@ -110,7 +111,7 @@ carryVM.visible = false; vmRoot.add(carryVM);
 const woodMat = lineMat(0xd8b070, { fog: false }), steelMat = lineMat(0xb8d8c8, { fog: false });
 const glowMat = (c: number) => new THREE.MeshBasicMaterial({ color: c, fog: false, transparent: true, opacity: 0.85, blending: THREE.AdditiveBlending, depthWrite: false });
 const offLooks: Partial<Record<ItemKey, THREE.Group>> = {};
-let flame: THREE.Object3D | null = null, lens: THREE.Mesh | null = null, wick: THREE.Mesh | null = null;
+let flame: VectorFlame | null = null, lens: THREE.Mesh | null = null, wick: THREE.Mesh | null = null;
 {
   const fl = new THREE.Group(); // the flashlight: a tube pointing ahead, a wider head with a lit lens
   fl.add(part(cyl(0.022, 0.2), vmMat));
@@ -126,7 +127,7 @@ let flame: THREE.Object3D | null = null, lens: THREE.Mesh | null = null, wick: T
   const tc = new THREE.Group(); // a torch: a stick, rags at its head, a flame
   const stick = part(new THREE.CylinderGeometry(0.016, 0.02, 0.4, 6), woodMat); stick.position.y = -0.1; tc.add(stick);
   const rags = part(new THREE.CylinderGeometry(0.03, 0.026, 0.08, 6), woodMat); rags.position.y = 0.12; tc.add(rags);
-  const f = new THREE.Mesh(new THREE.ConeGeometry(0.04, 0.16, 6), glowMat(0xffa040)); f.position.y = 0.24; tc.add(f); flame = f;
+  const f = new VectorFlame(.2); f.position.y = .16; tc.add(f); flame = f;
   offLooks.firebrand = tc;
   const ws = new THREE.Group(); // a wooden shield: a board of planks, a boss
   ws.add(part(new THREE.BoxGeometry(0.42, 0.52, 0.03), woodMat));
@@ -158,7 +159,7 @@ function animateOff(dt: number, bob: number, side: number) {
     cur.position.set(-0.3 + side * 1.2, -0.3 + bob * 1.4 - aimK * 0.08, -0.5);
     cur.rotation.set(o.k === 'flashlight' ? 0 : -0.15, o.k === 'flashlight' ? 0.12 : 0, o.k === 'firebrand' ? 0.25 : 0);
   }
-  if (flame) { flame.visible = lit; const k = 0.85 + 0.15 * Math.sin(offT * 17) * Math.sin(offT * 6.3); flame.scale.set(1 / k, k * 1.1, 1 / k); }
+  if (flame) { flame.visible = lit; if (lit) flame.animate(offT); }
   if (lens) lens.visible = lit;
   if (wick) wick.visible = lit;
 }

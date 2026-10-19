@@ -153,7 +153,7 @@ export function loadDungeon(arriveDir: string | null) {
   { // (0.199) how dark it is down here, and the lamps that still burn (gen/darkness.ts)
     const lamps = dungeonLamps(map, d.depth);
     setPlaceLight(true, underAmb(wreck || map.style === 'ship' ? 'wreck' : map.style === 'metro' ? 'metro' : 'labyrinth', d.depth), lamps);
-    for (const l of lamps) group.add(l.k === 'torch' ? torchModel(l.x, l.y, l.z, l.n) : fixtureModel(l.x, l.y, l.z, map.style === 'metro' ? 1.4 : 0.6, map.style === 'ship' ? 0xff8a5c : 0xdff2ff));
+    for (const l of lamps) group.add(l.k === 'torch' ? torchModel(l.x, l.y, l.z, l.n) : fixtureModel(l.x, l.y, l.z, map.style === 'metro' ? 1.4 : 0.6, map.style === 'ship' ? 0xff8a5c : 0xdff2ff, l.n));
   }
   for (const p of map.portals) {
     const pd = tryPlaceDoor(G.space, { axis: p.axis, m: p.m, c: p.c, stair: true, y0: p.y0 }, placed)!;

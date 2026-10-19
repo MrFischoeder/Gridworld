@@ -47,49 +47,66 @@ export type Under = 'labyrinth' | 'wreck' | 'metro' | 'cave';
 /** The ambient light below ground. */
 export const underAmb = (k: Under, depth = 1) => (k === 'labyrinth' ? UNDER.depth[Math.max(0, Math.min(2, depth - 1))] : UNDER[k]);
 
-/**
- * (0.200, the owner's rule: below ground light is rare, electric or a torch.) The lights of a labyrinth, a crashed
- * ship or a metro (own hash stream, so nothing else in the map moves): now and then a torch burns on the wall of a
- * room (fewer the deeper you go) or, rarer, an old electric fixture still works; a torch in a long passage once in a
- * while; a ship's emergency lights in a few compartments; in the metro only some stations still have power (a row of
- * lamps over the platform), a work lamp burns here and there in the tunnels and scavengers left a torch or two.
- */
-export const UNDER_LAMPS = { room: [0.2, 0.12, 0.06], electric: 0.3, tunnel: 0.35, ship: 0.18, station: 0.35, work: 0.07, scav: 0.05 };
+/** Seeded wall lights: more frequent near the entrance and on upper floors, with dark stretches between them. */
+export const UNDER_LAMPS = { room: [0.7, 0.55, 0.42], electric: 0.38, tunnel: 0.65, ship: 0.62, station: 0.65, work: 0.32, scav: 0.16 };
 export function dungeonLamps(map: DungeonMap, depth = 1): Lamp[] {
   const out: Lamp[] = [], P = (i: number, s: number) => (hash(map.seed, i, s, 0x1a3b) % 1000) / 1000, U = UNDER_LAMPS;
+  // Query the final CSG operations without building a second voxel grid. Openings, stairs and debris count too.
+  const empty = (x: number, y: number, z: number) => {
+    x = Math.floor(x); y = Math.floor(y); z = Math.floor(z);
+    for (let i = map.ops.length - 1; i >= 0; i--) {
+      const o = map.ops[i];
+      if (x >= o.x && x < o.x + o.w && y >= o.y && y < o.y + o.h && z >= o.z && z < o.z + o.d) return o.op === 'room';
+    }
+    return false;
+  };
+  const place = (b: DungeonMap['boxes'][number], p: number, r: number, kind: 'torch' | 'electric', along = .5, fixedSide?: number) => {
+    const first = Math.floor(p * 4);
+    for (let turn = 0; turn < (fixedSide === undefined ? 4 : 1); turn++) for (const f of [along, Math.max(.15, along - .15), Math.min(.85, along + .15)]) {
+      const side = fixedSide ?? (first + turn) % 4;
+      const x = side < 2 ? b.x + b.w * f : side === 2 ? b.x + .25 : b.x + b.w - .25;
+      const z = side < 2 ? side === 0 ? b.z + .25 : b.z + b.d - .25 : b.z + b.d * f;
+      const deck = map.metro?.decks.find(d => x >= d.x && x < d.x + d.w && z >= d.z && z < d.z + d.d);
+      const y = Math.min(b.h - .8, (deck ? deck.y + deck.h : 0) + (kind === 'torch' ? 2.2 : 2.5));
+      const n: [number, number] = side === 0 ? [0, 1] : side === 1 ? [0, -1] : side === 2 ? [1, 0] : [-1, 0];
+      if (out.some(l => Math.hypot(l.x - x, l.z - z) < 6)) continue;
+      if ([...map.doorCands, ...map.portals].some(d => Math.abs(x - (d.axis === 'x' ? d.m : d.c)) < 2 && Math.abs(z - (d.axis === 'x' ? d.c : d.m)) < 2)) continue;
+      // The bracket has solid backing, the flame/bulb and its sides have air, above players' heads.
+      if (![-.2, 0, .2].every(t => [.0, .35].every(dy => empty(x + n[0] * .2 - n[1] * t, y + dy, z + n[1] * .2 + n[0] * t) && !empty(x - n[0] * .5 - n[1] * t, y + dy, z - n[1] * .5 + n[0] * t)))) continue;
+      out.push({ x, y, z, r, k: kind, n }); return;
+    }
+  };
   if (map.style === 'metro' && map.metro) {
     map.metro.stations.forEach((st, i) => {
-      if (P(i, 1) > U.station) return; // no power left here
-      for (const t of [-11, 0, 11]) out.push({ x: st.alongX ? st.x + t : st.x, y: 6.5, z: st.alongX ? st.z : st.z + t, r: 14, k: 'electric' });
+      if (P(i, 1) > U.station) { if (P(i, 2) < .5) place(st.hall, P(i, 4), 8, 'torch'); return; }
+      for (const f of [.18, .5, .82]) for (const side of st.alongX ? [0, 1] : [2, 3]) place(st.hall, 0, 14, 'electric', f, side);
     });
     map.boxes.forEach((b, i) => {
       if (!b.tunnel) return;
-      const len = Math.max(b.w, b.d), along = b.w > b.d;
-      for (let s = 15, k = 0; s < len - 5; s += 30, k++) {
-        const p = P(i, 10 + k);
-        if (p < U.work) out.push(along ? { x: b.x + s, y: 5, z: b.z + b.d / 2, r: 9, k: 'electric' } : { x: b.x + b.w / 2, y: 5, z: b.z + s, r: 9, k: 'electric' });
-        else if (p < U.work + U.scav) out.push(along ? { x: b.x + s, y: 2.2, z: b.z + 0.3, r: 7, k: 'torch', n: [0, 1] } : { x: b.x + 0.3, y: 2.2, z: b.z + s, r: 7, k: 'torch', n: [1, 0] });
+      const len = Math.max(b.w, b.d), alongX = b.w > b.d;
+      for (let s = 7, k = 0; s < len - 3; s += 18, k++) {
+        const p = P(i, 10 + k), side = (alongX ? 0 : 2) + (k % 2);
+        if (p < U.work + U.scav) place(b, p, p < U.work ? 10 : 8, p < U.work ? 'electric' : 'torch', s / len, side);
       }
     });
     return out;
   }
   const ship = map.style === 'ship', room = ship ? U.ship : U.room[Math.max(0, Math.min(2, depth - 1))];
   map.boxes.forEach((b, i) => {
-    const len = Math.max(b.w, b.d);
-    if (b.tunnel) { if (len >= 10 && P(i, 2) < room * U.tunnel) out.push(ship ? { x: b.x + b.w / 2, y: Math.min(b.h - 0.6, 2.6), z: b.z + b.d / 2, r: 7, k: 'electric' } : wallTorch(b, P(i, 4), 7)); return; }
-    if (P(i, 3) >= room) return;
-    if (ship || P(i, 6) < U.electric) out.push({ x: b.x + b.w / 2, y: Math.min(b.h - 0.8, 3.4), z: b.z + b.d / 2, r: Math.max(7, Math.min(14, len * 0.7)), k: 'electric' });
-    else out.push(wallTorch(b, P(i, 4), Math.max(7, Math.min(11, len * 0.6))));
+    const len = Math.max(b.w, b.d), alongX = b.w > b.d;
+    if (b.tunnel) {
+      for (let s = 4, k = 0; s < len - 2; s += ship ? 10 : 14, k++) {
+        if (P(i, 20 + k) < (ship ? U.ship : U.tunnel * room)) place(b, P(i, 40 + k), 8, ship || P(i, 60 + k) < U.electric ? 'electric' : 'torch', s / len, (alongX ? 0 : 2) + (k % 2));
+      }
+      return;
+    }
+    const entry = map.spawn[0] >= b.x && map.spawn[0] < b.x + b.w && map.spawn[2] >= b.z && map.spawn[2] < b.z + b.d;
+    if (!entry && P(i, 3) >= room) return;
+    const kind = ship || P(i, 6) < U.electric ? 'electric' : 'torch';
+    place(b, P(i, 4), kind === 'electric' ? 12 : 10, kind);
+    if (len >= 16 && P(i, 7) < .45) place(b, (P(i, 4) + .5) % 1, 10, kind);
   });
   return out;
-}
-/** A torch on one of a box's four walls (by `p`), in the middle of it, facing in. */
-function wallTorch(b: { x: number; z: number; w: number; d: number; h: number }, p: number, r: number): Lamp {
-  const side = Math.floor(p * 4), y = Math.min(b.h - 0.6, 2.2);
-  return side === 0 ? { x: b.x + b.w / 2, y, z: b.z + 0.25, r, k: 'torch', n: [0, 1] }
-    : side === 1 ? { x: b.x + b.w / 2, y, z: b.z + b.d - 0.25, r, k: 'torch', n: [0, -1] }
-    : side === 2 ? { x: b.x + 0.25, y, z: b.z + b.d / 2, r, k: 'torch', n: [1, 0] }
-    : { x: b.x + b.w - 0.25, y, z: b.z + b.d / 2, r, k: 'torch', n: [-1, 0] };
 }
 /**
  * (0.200) A town's oil lanterns (village-local, as the map): on posts either side of every gate, a little way in, and

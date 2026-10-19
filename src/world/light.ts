@@ -21,6 +21,7 @@ import { takeOne, hasItem, saveChar, offHeld, bothHands, takeInOff, handsChanged
 import { item } from '../data/items';
 import { logLine, showToast } from '../ui/hud';
 import { tl, TL } from '../i18n';
+import { VectorFlame } from './vectorflame';
 
 /** 0 off, 1 the flashlight, 2 the oil lamp, 3 a torch. */
 export type LightKind = 0 | 1 | 2 | 3;
@@ -168,22 +169,23 @@ export function lanternModel(x: number, y: number, z: number, up = 0.8, color = 
 }
 const seg = (m: THREE.Material, pts: number[][]) => new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(pts.map(([a, b, c]) => new THREE.Vector3(a, b, c))), m);
 /** (0.200) An old electric fixture: a caged bulb under a shade on a short rod, cold white (`color`). */
-export function fixtureModel(x: number, y: number, z: number, up = 0.6, color = 0xdff2ff): THREE.Group {
+export function fixtureModel(x: number, y: number, z: number, up = 0.6, color = 0xdff2ff, n?: [number, number]): THREE.Group {
   const g = new THREE.Group(), m = add(color); m.fog = false;
   const shade = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.CylinderGeometry(0.12, 0.42, 0.22, 8, 1, true)), m); shade.position.y = 0.14;
   const bulb = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.IcosahedronGeometry(0.11, 0)), m);
   const cage: number[][] = [];
   for (let i = 0; i < 4; i++) { const a = i * Math.PI / 2, c = Math.cos(a) * 0.2, s2 = Math.sin(a) * 0.2; cage.push([c, 0.03, s2], [c * 0.4, -0.2, s2 * 0.4]); }
-  g.add(shade, bulb, seg(m, [...cage, [0, 0.25, 0], [0, 0.25 + up, 0]])); g.position.set(x, y, z);
+  const support = n ? [[0, .25, 0], [-n[0] * .25, .25, -n[1] * .25], [-n[0] * .25, .05, -n[1] * .25], [-n[0] * .25, .45, -n[1] * .25]] : [[0, .25, 0], [0, .25 + up, 0]];
+  g.add(shade, bulb, seg(m, [...cage, ...support])); g.position.set(x, y, z);
   return g;
 }
 /** (0.200) A torch in an iron bracket on a wall, leaning out along `n` (into the room); its flame flickers (`flames`). */
 export function torchModel(x: number, y: number, z: number, n: [number, number] = [0, 1]): THREE.Group {
-  const g = new THREE.Group(), iron = add(0x9a8a6a), fire = add(0xffa040); fire.fog = false;
+  const g = new THREE.Group(), iron = add(0x9a8a6a);
   const [nx, nz] = n;
   g.add(seg(iron, [[-nx * 0.2, -0.35, -nz * 0.2], [nx * 0.05, -0.05, nz * 0.05], [-nx * 0.2, -0.1, -nz * 0.2], [nx * 0.05, -0.05, nz * 0.05], [-nx * 0.05, -0.55, -nz * 0.05], [nx * 0.18, 0.12, nz * 0.18]]));
-  const flame = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.ConeGeometry(0.1, 0.32, 5)), fire);
-  flame.position.set(nx * 0.2, 0.3, nz * 0.2); flame.name = 'flame'; flames.set(flame, 0);
+  const flame = new VectorFlame(.4, x * 1.7 + z * 2.3);
+  flame.position.set(nx * 0.2, .13, nz * 0.2); flames.set(flame, 0);
   g.add(flame); g.position.set(x, y, z);
   return g;
 }
@@ -206,13 +208,12 @@ function townLanterns(out: Lamp[]) {
   }
 }
 /** The flames drawn now (torches): flickered by `animateFlames`, forgotten once off the scene. */
-const flames = new Map<THREE.Object3D, number>();
+const flames = new Map<VectorFlame, number>();
 export function animateFlames(t: number) {
   for (const [f, miss] of flames) {
     let o: THREE.Object3D = f; while (o.parent) o = o.parent;
     if (!(o as THREE.Scene).isScene) { if (miss > 300) flames.delete(f); else flames.set(f, miss + 1); continue; }
     if (miss) flames.set(f, 0);
-    const k = 0.85 + 0.15 * Math.sin(t * 17 + f.id) * Math.sin(t * 6.3 + f.id * 0.7);
-    f.scale.set(1 / k, k * 1.1, 1 / k);
+    f.animate(t);
   }
 }

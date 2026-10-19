@@ -7,6 +7,7 @@ import { citySites } from '../src/gen/cities';
 import { generateCave, floorAtCave } from '../src/gen/cavegen';
 import { generateShip } from '../src/gen/ship';
 import { hash } from '../src/core/rng';
+import { VoxelGrid } from '../src/core/voxel';
 
 describe('darkness and lamps (0.199)', () => {
   it('the surface is dark only once the day fades, clouds take the moon', () => {
@@ -35,17 +36,37 @@ describe('darkness and lamps (0.199)', () => {
     let ship = 0; for (let i = 1; i < 6; i++) ship += dungeonLamps(generateShip(hash(9, i))).length;
     expect(ship).toBeGreaterThan(0);
   });
-  it('(0.200) below ground light is rare: torches on the walls, now and then an electric fixture', () => {
+  it('adds plentiful wall torches and electric fixtures while retaining dark rooms and passages', () => {
     let torch = 0, elec = 0, boxes = 0;
     for (let i = 0; i < 30; i++) {
       const m = generateDungeon(hash(8, i), { depth: 1 }); boxes += m.boxes.length;
       for (const l of dungeonLamps(m, 1)) {
-        if (l.k === 'torch') { torch++; expect(l.n).toBeDefined(); } else { expect(l.k).toBe('electric'); elec++; }
+        expect(l.n).toBeDefined();
+        if (l.k === 'torch') torch++; else { expect(l.k).toBe('electric'); elec++; }
       }
     }
     expect(torch).toBeGreaterThan(elec); expect(elec).toBeGreaterThan(0);
-    expect((torch + elec) / boxes).toBeLessThan(0.25);
+    expect((torch + elec) / boxes).toBeGreaterThan(0.3);
+    expect((torch + elec) / boxes).toBeLessThan(1.2);
     for (const l of dungeonLamps(generateShip(hash(9, 2)))) expect(l.k).toBe('electric');
+  });
+  it('mounts lights against real walls with air round the flame or bulb and keeps doorways clear', () => {
+    const maps = [generateDungeon(1234, { depth: 1 }), generateDungeon(777, { depth: 3 }), generateShip(1234), generateMetro(11, citySites(11)[0])];
+    for (const map of maps) {
+      const grid = VoxelGrid.fromOps(map.ops), lamps = dungeonLamps(map);
+      expect(lamps.length).toBeGreaterThan(5);
+      expect(dungeonLamps(map)).toEqual(lamps);
+      for (const l of lamps) {
+        const [nx, nz] = l.n!;
+        const deck = map.metro?.decks.find(d => l.x >= d.x && l.x < d.x + d.w && l.z >= d.z && l.z < d.z + d.d);
+        expect(l.y - (deck ? deck.y + deck.h : 0)).toBeGreaterThanOrEqual(2.1);
+        expect(grid.empty(Math.floor(l.x), Math.floor(l.y), Math.floor(l.z))).toBe(true);
+        expect(grid.empty(Math.floor(l.x - nx * .5), Math.floor(l.y), Math.floor(l.z - nz * .5))).toBe(false);
+        expect(grid.empty(Math.floor(l.x + nx * .2), Math.floor(l.y + .35), Math.floor(l.z + nz * .2))).toBe(true);
+        for (const d of [...map.doorCands, ...map.portals]) expect(Math.abs(l.x - (d.axis === 'x' ? d.m : d.c)) >= 2 || Math.abs(l.z - (d.axis === 'x' ? d.c : d.m)) >= 2).toBe(true);
+      }
+      for (let i = 0; i < lamps.length; i++) for (let j = i + 1; j < lamps.length; j++) expect(Math.hypot(lamps[i].x - lamps[j].x, lamps[i].z - lamps[j].z)).toBeGreaterThanOrEqual(6);
+    }
   });
   it('(0.200) a town has oil lanterns by its gates and its shops', () => {
     const v = generateVillage(1234, 0, 0, 0, 'Testholm', false), ls = villageLanterns(v);
