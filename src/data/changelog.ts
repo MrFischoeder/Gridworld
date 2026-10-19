@@ -3,6 +3,13 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.231.0', date: '2026-10-19', title: 'Biomes', notes: [
+    'The land now falls into biomes: Plains, Forest, Taiga, Tundra, Desert, Savanna, Swamp, Jungle, Mountains, Coast and the rare Crystal Wastes. Warmer towards the equator and lower down, colder towards the poles and up high; wetter by the rivers. The land round Gridholm stays temperate.',
+    'The place name in the corner shows the biome you stand in (it used to say only Wilds).',
+    'Open the map (M) and press B for the biome layer: the explored land in the colours of its biomes, with a key. The dev map shows the biomes of the whole planet.',
+    'For now biomes only name and colour the land. The next stages change how it looks (colours, trees, plants), then its shape in new worlds, and later give each biome its own rules.',
+    'Multiplayer: the biomes come from the world seed, the same for every player; nothing is sent. The server does not need an update.',
+  ] },
   { v: '0.230.0', date: '2026-10-19', title: 'The journal', notes: [
     'J opens the journal: everything you have taken on in one place: the elder\'s next step and the side task, your tasks from the notice boards (what is left, where, who gave it, the reward and the full notice), your delivery contracts, the escort and your leads.',
     'Every entry with a place to go has a switch: Marked or Hidden. A hidden one leaves your map, minimap and compass but stays in the journal and the tracker. Mark everything / Hide every marker switch them all at once.',

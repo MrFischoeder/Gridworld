@@ -1,4 +1,5 @@
 import { truckAt } from '../world/convoyroutes';
+import { biomeAt, biomeName, BIOMES, BIOME_KINDS, type BiomeHere } from '../gen/biomes';
 import { wrecked } from '../gen/routes';
 import { shipPos } from '../gen/shiplines';
 import { cityEntrances, stationName } from '../gen/citydungeons';
@@ -111,6 +112,34 @@ function drawFertility(ctx: CanvasRenderingContext2D, X: (x: number) => number, 
   }
   ctx.globalAlpha = 1;
 }
+/** (0.231) The biome layer of the big map (B): each 128 m cell of explored ground in its biome's colour (gen/biomes.ts). */
+export let biomeLayer = false;
+export const toggleBiomes = () => { biomeLayer = !biomeLayer; };
+const biomeCells = new Map<string, BiomeHere>();
+let biomeWorld = NaN;
+function drawBiomes(ctx: CanvasRenderingContext2D, X: (x: number) => number, Z: (z: number) => number, px: number, pz: number, hw: number, hh: number, ppm: number) {
+  const world = G.char.world, d = G.char.discovered;
+  if (biomeWorld !== world) { biomeCells.clear(); biomeWorld = world; }
+  const until = performance.now() + 8;
+  ctx.globalAlpha = 0.5;
+  for (let i = Math.floor((px - hw) / FCELL); i <= Math.floor((px + hw) / FCELL); i++) for (let j = Math.floor((pz - hh) / FCELL); j <= Math.floor((pz + hh) / FCELL); j++) {
+    const x = i * FCELL + FCELL / 2, z = j * FCELL + FCELL / 2;
+    if (!isDiscovered(d, Math.floor(x / CHUNK), Math.floor(z / CHUNK))) continue;
+    const k = Math.floor(wrapX(x) / FCELL) + ',' + j;
+    let b = biomeCells.get(k);
+    if (b === undefined) { if (performance.now() > until) continue; b = biomeAt(world, x, z); biomeCells.set(k, b); }
+    if (b === 'sea') continue;
+    ctx.fillStyle = BIOMES[b].c; ctx.fillRect(X(i * FCELL), Z(j * FCELL), FCELL * ppm + 0.5, FCELL * ppm + 0.5);
+  }
+  ctx.globalAlpha = 1;
+}
+/** The biome layer's key: the biomes seen in the cells worked out so far, with their colours. */
+function biomeKey(ctx: CanvasRenderingContext2D, w: number) {
+  const seen = BIOME_KINDS.filter((b) => [...biomeCells.values()].includes(b));
+  ctx.font = '18px VT323, monospace'; ctx.textAlign = 'left';
+  if (seen.length) { ctx.fillStyle = 'rgba(0,8,3,0.85)'; ctx.fillRect(w - 180, 46, 170, seen.length * 20 + 10); }
+  seen.forEach((b, i) => { const y = 64 + i * 20; ctx.fillStyle = BIOMES[b].c; ctx.fillRect(w - 170, y - 11, 12, 12); ctx.fillStyle = '#c4ffd2'; ctx.fillText(tl(biomeName(b)), w - 152, y); });
+}
 function nearest(pts: [number, number][], x: number, z: number) {
   let best = Infinity;
   for (let i = 0; i + 1 < pts.length; i++) {
@@ -150,6 +179,7 @@ function drawArea(ctx: CanvasRenderingContext2D, w: number, h: number, ppm: numb
     else { ctx.fillStyle = '#06200c'; ctx.fillRect(X(cx * CHUNK), Z(cz * CHUNK), CHUNK * ppm + 0.5, CHUNK * ppm + 0.5); }
   }
   if (fertLayer && labels) drawFertility(ctx, X, Z, px, pz, hw, hh, ppm);
+  if (biomeLayer && labels) drawBiomes(ctx, X, Z, px, pz, hw, hh, ppm);
   ctx.font = (labels ? 20 : 11) + 'px VT323, monospace'; ctx.textAlign = 'center';
   for (const p of poisNear(OW.terrain!.world, px, pz, Math.max(hw, hh) + 60)) {
     if (!isDiscovered(d, Math.floor(p.x / CHUNK), Math.floor(p.z / CHUNK))) continue;
@@ -457,6 +487,12 @@ function drawFullMap() {
       const sx = w / 2 + (nearX(lastScan.x, G.pos.x) - G.pos.x) * zoom, sy = h / 2 + (lastScan.z - G.pos.z) * zoom;
       bctx.strokeStyle = '#5cc8ff'; bctx.setLineDash([8, 6]); bctx.beginPath(); bctx.arc(sx, sy, lastScan.r * zoom, 0, Math.PI * 2); bctx.stroke(); bctx.setLineDash([]);
     }
+  }
+  { // (0.231) the biome layer
+    const b = biomeAt(G.char.world, G.pos.x, G.pos.z);
+    bctx.fillText((biomeLayer ? TL`B: biome layer on · the land where you stand: ${tl(biomeName(b))}` : TL`B: biome layer off · the land where you stand: ${tl(biomeName(b))}`), 16, h - (sat ? (townsWorld(G.char.world) ? 120 : 94) : townsWorld(G.char.world) ? 68 : 42));
+    if (biomeLayer) biomeKey(bctx, w);
+    bctx.textAlign = 'left';
   }
   if (townsWorld(G.char.world)) { // (0.182) the fertility layer
     const f = fertility(G.char.world, G.pos.x, G.pos.z);

@@ -28,7 +28,7 @@ import { closeDialog } from './dialog';
 import { interact, lockKey } from '../world/interact';
 import { useItem } from '../world/loot';
 import { drawBack, swapWeapon, holster, armed, reload } from '../world/weapons';
-import { toggleMap, zoomMap, orbitalScan, toggleRoute, toggleFertility } from './worldmap';
+import { toggleMap, zoomMap, orbitalScan, toggleRoute, toggleFertility, toggleBiomes } from './worldmap';
 import { askDodge } from '../world/player';
 let lastTap: [string, number] = ['', 0];
 import { townsWorld } from '../gen/worldrules';
@@ -53,7 +53,7 @@ export function initInput(onPause: () => void) {
     if (e.code === 'KeyM' && G.playing) { toggleMap(); return; }
     if (e.code === 'KeyJ' && G.playing && !G.mapOpen && !e.repeat) { toggleJournal(); return; } // (0.230) the journal
     if (e.code === 'KeyT' && G.playing && online()) { e.preventDefault(); openChat(); return; }
-    if (G.mapOpen) { if (e.code === 'KeyO') { orbitalScan(); return; } if (e.code === 'KeyR') { toggleRoute(); return; } if (e.code === 'KeyF' && townsWorld(G.char.world)) { toggleFertility(); return; } if (e.code === 'Escape') toggleMap(false); if (e.code === 'Equal' || e.code === 'NumpadAdd') zoomMap(1.25); if (e.code === 'Minus' || e.code === 'NumpadSubtract') zoomMap(0.8); }
+    if (G.mapOpen) { if (e.code === 'KeyO') { orbitalScan(); return; } if (e.code === 'KeyR') { toggleRoute(); return; } if (e.code === 'KeyF' && townsWorld(G.char.world)) { toggleFertility(); return; } if (e.code === 'KeyB') { toggleBiomes(); return; } if (e.code === 'Escape') toggleMap(false); if (e.code === 'Equal' || e.code === 'NumpadAdd') zoomMap(1.25); if (e.code === 'Minus' || e.code === 'NumpadSubtract') zoomMap(0.8); }
     if (extraKeys.some((f) => f(e))) return;
     if (e.code === 'Escape' && isPlacing()) cancelPlacing();
     if (e.code === 'Escape' && isBridgePlacing()) cancelBridgePlacing();

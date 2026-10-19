@@ -17,6 +17,7 @@ import { $, logLine } from './hud';
 import { lockPointer } from './input';
 import { oceanMapSeam, mapOverview, longitudeCopies, mapToScreen, mapToWorld } from './devmap-layout';
 import { tl, TL } from '../i18n';
+import { biomeAt, BIOMES } from '../gen/biomes';
 
 const root = $('devmap'), cv = $<HTMLCanvasElement>('devmapCv'), info = $('devmapInfo'), ctx = cv.getContext('2d')!;
 /** View: centre (world metres) and scale (metres per pixel). */
@@ -98,6 +99,19 @@ function seas(): HTMLCanvasElement {
   return c;
 }
 
+/** (0.231) The biomes of the whole planet, 500 m a pixel, worked out a few rows a frame while the map is open. */
+const BIO_PX = 500;
+const bioScan = { world: NaN, row: 0, done: false, cv: null as HTMLCanvasElement | null };
+function scanBiomes(ms: number) {
+  const w = G.char.world, W = Math.round(WORLD_W / BIO_PX), H = Math.round(2 * POLAR_Z / BIO_PX);
+  if (bioScan.world !== w || !bioScan.cv) { const c = document.createElement('canvas'); c.width = W; c.height = H; Object.assign(bioScan, { world: w, row: 0, done: false, cv: c }); }
+  const x2 = bioScan.cv!.getContext('2d')!, seam = oceanMapSeam(w), t0 = performance.now();
+  while (!bioScan.done && performance.now() - t0 < ms) {
+    const j = bioScan.row, z = -POLAR_Z + (j + 0.5) * BIO_PX;
+    for (let i = 0; i < W; i++) { const b = biomeAt(w, seam + (i + 0.5) * BIO_PX, z); if (b === 'sea') continue; x2.fillStyle = BIOMES[b].c; x2.fillRect(i, j, 1, 1); }
+    if (++bioScan.row >= H) bioScan.done = true;
+  }
+}
 function draw() {
   if (!open) return;
   cv.width = root.clientWidth; cv.height = root.clientHeight;
@@ -119,6 +133,7 @@ function draw() {
   const sl = seas(), [, sy0] = toScreen(0, -POLAR_Z), sw = WORLD_W / view.mpp, sh = 2 * POLAR_Z / view.mpp;
   ctx.imageSmoothingEnabled = true;
   let [sx0] = toScreen(oceanMapSeam(G.char.world), 0); sx0 -= Math.ceil(sx0 / sw) * sw;
+  if (bioScan.cv && bioScan.world === G.char.world) { ctx.globalAlpha = 0.45; ctx.imageSmoothingEnabled = false; for (let sx = sx0; sx < W; sx += sw) ctx.drawImage(bioScan.cv, sx, sy0, sw, sh); ctx.globalAlpha = 1; ctx.imageSmoothingEnabled = true; } // (0.231) the biomes under the seas
   for (let sx = sx0; sx < W; sx += sw) ctx.drawImage(sl, sx, sy0, sw, sh);
   // the rivers
   ctx.strokeStyle = '#2ac8b0'; ctx.lineWidth = 1.5;
@@ -223,7 +238,7 @@ function draw() {
     TL` · danger ${dangerAt(G.char.world, hover ? hover.x : mx, hover ? hover.z : mz).toFixed(1)} · ${Math.round(view.mpp * 100) / 100} m/px · click to teleport · drag to pan · wheel to zoom · Esc to close`;
 }
 
-function tick() { if (!open || fogScan.done) return; scanFog(6); draw(); requestAnimationFrame(tick); }
+function tick() { if (!open || fogScan.done && bioScan.done && bioScan.world === G.char.world) return; scanFog(4); scanBiomes(6); draw(); requestAnimationFrame(tick); }
 export function openDevMap() {
   open = true; G.playing = false; G.firing = false; for (const k in G.keys) G.keys[k] = false;
   root.style.display = 'block'; overview();

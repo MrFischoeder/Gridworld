@@ -1,4 +1,5 @@
 import { applyLayouts } from '../gen/layouts';
+import { biomeAt, biomeName, type BiomeHere } from '../gen/biomes';
 import { syncConvoyStart } from './convoyfuel';
 import { drawSettlementSites, drawSettlementComms, settlementHit, settlementFloor, settlementRay, settlementSolid, forgetSettlement } from './settlement';
 import { settlementVillage } from '../gen/settlement-village';
@@ -878,7 +879,18 @@ export function placeName(x: number, z: number): string {
     if (Math.hypot(foot[0] - x, foot[1] - z) < 20) return TL`Trail to ${r.name}` + tag;
   }
   for (const s of OW.structs.values()) if (s.poi.type !== 'village' && rectDist(s.poi.rect, x, z) < 10) return s.poi.name + tag;
-  return tl('Wilds') + tag;
+  return tl(biomeName(biomeHere(x, z))) + tag;
+}
+/** (0.231) The biome under the player, cached per 32 m cell (placeName asks every frame). */
+const biomeCells = new Map<string, BiomeHere>();
+let biomeWorld = NaN;
+function biomeHere(x: number, z: number): BiomeHere {
+  const w = OW.terrain!.world;
+  if (w !== biomeWorld) { biomeCells.clear(); biomeWorld = w; }
+  const k = Math.floor(x / 32) + ',' + Math.floor(z / 32);
+  let b = biomeCells.get(k);
+  if (!b) { if (biomeCells.size > 4000) biomeCells.clear(); b = biomeAt(w, x, z); biomeCells.set(k, b); }
+  return b;
 }
 
 /** Cave mouths in the loaded chunks. */
