@@ -3,12 +3,14 @@ import { item, BULK, HANDS_ONLY, type ItemKey } from './data/items';
 import type { Slot } from './save';
 
 /** Worn parts (with a condition) never stack; everything else stacks up to its item's limit. */
-export const stackable = (a: Slot, b: Slot) => a.k === b.k && a.c === undefined && b.c === undefined;
+export const stackable = (a: Slot, b: Slot) => a.k === b.k && a.c === undefined && b.c === undefined && !a.fl && !b.fl;
 const maxOf = (k: ItemKey) => item(k).stack ?? 1;
 
 /** Total weight (kg) and bulk (litres) of what the slots hold. */
-export const weightOf = (slots: (Slot | null)[]) => slots.reduce((a, s) => a + (s ? BULK[s.k][0] * s.n : 0), 0);
-export const bulkOf = (slots: (Slot | null)[]) => slots.reduce((a, s) => a + (s ? BULK[s.k][1] * s.n : 0), 0);
+export const slotBulk = (s: Slot) => (BULK[s.k][1] + (s.fl ? BULK.flashlight[1] : 0)) * s.n;
+export const weightOf = (slots: (Slot | null)[]) => slots.reduce((a, s) => a + (s ? (BULK[s.k][0] + (s.fl ? BULK.flashlight[0] : 0)) * s.n : 0), 0);
+export const bulkOf = (slots: (Slot | null)[]) => slots.reduce((a, s) => a + (s ? slotBulk(s) : 0), 0);
+const roomForSlot = (slots: (Slot | null)[], s: Slot, cap?: number) => cap === undefined ? Infinity : HANDS_ONLY.has(s.k) ? 0 : Math.max(0, Math.floor((cap - bulkOf(slots)) / (slotBulk(s) / s.n) + 1e-6));
 /**
  * How many more of k fit into a list holding at most `cap` litres (no cap: any number). Only the backpack has a cap,
  * and things too big for it (HANDS_ONLY: wheels, the cannon, the flagpole...) never go in, whatever room is left.
@@ -26,7 +28,7 @@ export function putItems(slots: (Slot | null)[], k: ItemKey, n: number, cap?: nu
   const max = maxOf(k);
   for (const s of slots) {
     if (n <= 0) break;
-    if (s && s.k === k && s.c === undefined && s.n < max) { const m = Math.min(n, max - s.n); s.n += m; n -= m; }
+    if (s && s.k === k && s.c === undefined && !s.fl && s.n < max) { const m = Math.min(n, max - s.n); s.n += m; n -= m; }
   }
   for (let i = 0; i < slots.length && n > 0; i++) {
     if (slots[i]) continue;
@@ -36,9 +38,9 @@ export function putItems(slots: (Slot | null)[], k: ItemKey, n: number, cap?: nu
 }
 /** Puts a whole slot (e.g. a worn tire with its condition) somewhere in the list. Returns how many did not fit. */
 export function putSlot(slots: (Slot | null)[], s: Slot, cap?: number): number {
-  if (s.c === undefined) return putItems(slots, s.k, s.n, cap);
+  if (s.c === undefined && !s.fl) return putItems(slots, s.k, s.n, cap);
   const f = slots.indexOf(null);
-  if (f < 0 || roomFor(slots, s.k, cap) < 1) return s.n;
+  if (f < 0 || roomForSlot(slots, s, cap) < s.n) return s.n;
   slots[f] = { ...s }; return 0;
 }
 
@@ -60,7 +62,7 @@ export function moveStack(from: (Slot | null)[], i: number, to: (Slot | null)[],
 export function dropStack(from: (Slot | null)[], i: number, to: (Slot | null)[], j: number, capTo?: number, capFrom?: number): boolean {
   const a = from[i], b = to[j];
   if (!a || (from === to && i === j)) return false;
-  const room = from === to ? Infinity : roomFor(to, a.k, capTo);
+  const room = from === to ? Infinity : roomForSlot(to, a, capTo);
   if (!b) {
     const m = Math.min(a.n, room);
     if (m <= 0) return false;
@@ -75,7 +77,7 @@ export function dropStack(from: (Slot | null)[], i: number, to: (Slot | null)[],
     return true;
   }
   if (from !== to) {
-    const va = BULK[a.k][1] * a.n, vb = BULK[b.k][1] * b.n;
+    const va = slotBulk(a), vb = slotBulk(b);
     if (capTo !== undefined && bulkOf(to) - vb + va > capTo + 1e-6) return false;
     if (capFrom !== undefined && bulkOf(from) - va + vb > capFrom + 1e-6) return false;
   }

@@ -1,10 +1,12 @@
-# GRIDWORLD · 0.230.0
+# GRIDWORLD · 0.231.0
 
 Symulator ekonomiczno-strategiczny z perspektywy pierwszej osoby w świecie z zielonych linii wektorowych. Handluj, buduj fabryki i elektrownie, broń wiosek i przeszukuj ruiny obcych, żeby uruchomić Rydwan Przedwiecznych.
 
 - **Strona gry:** https://mrfischoeder.github.io/Gridworld/
 - **Zagraj w przeglądarce:** https://mrfischoeder.github.io/Gridworld/play/
-- **Pobierz:** https://github.com/MrFischoeder/Gridworld/archive/refs/heads/feat/flickering-torches-underground-lamps.zip
+- **Pobierz:** https://github.com/MrFischoeder/Gridworld/archive/refs/heads/feat/weapon-mounted-flashlights.zip
+
+W 0.231.0 zwykłą latarkę można zamontować na konkretnym blasterze, pistolecie maszynowym, strzelbie lub karabinie: wybierz broń w plecaku i kliknij „Zamontuj latarkę”. Klawisz L przełącza światło bez odkładania broni; latarka zużywa zwykłe baterie i zostaje przy broni także w skrzyniach oraz po wyrzuceniu.
 
 W 0.230.0 pochodnie mają migoczące płomienie z kilku trójkątów, a podziemia więcej pochodni i lamp elektrycznych na ścianach.
 
@@ -12,7 +14,7 @@ Nowe światy zaczynają od ośmiu mieszkańców, małego magazynu i zrujnowanych
 
 Wersja **0.130.0 jest zamrożona**: [pobierz jej kod](https://github.com/MrFischoeder/Gridworld/archive/refs/tags/v0.130.0.zip). Instrukcja uruchomienia i odzyskania zapisu: [FROZEN_0.130.0.md](FROZEN_0.130.0.md).
 
-Multiplayer 0.230.0 używa protokołu 15: zaktualizuj klienta i serwer razem, zachowując katalog z danymi serwera. Budowy i rozładunek rezerwują współdzielony zapas na czas transakcji.
+Multiplayer 0.231.0 używa protokołu 16: zaktualizuj klienta i serwer razem, zachowując katalog z danymi serwera. Budowy i rozładunek rezerwują współdzielony zapas na czas transakcji.
 
 Uruchomienie lokalnie: rozpakuj, `npm install`, potem `start-gry.bat` albo `npm run dev`.
 

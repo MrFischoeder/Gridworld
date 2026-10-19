@@ -22,6 +22,7 @@ import { item } from '../data/items';
 import { logLine, showToast } from '../ui/hud';
 import { tl, TL } from '../i18n';
 import { VectorFlame } from './vectorflame';
+import { mountedFlashlight } from '../gen/weaponlight';
 
 /** 0 off, 1 the flashlight, 2 the oil lamp, 3 a torch. */
 export type LightKind = 0 | 1 | 2 | 3;
@@ -56,17 +57,19 @@ export function setDrivingHook(f: () => boolean) { driving = f; }
  * onto your back). Returns the message.
  */
 export function toggleLight(k: LightKind = 0): string {
-  const s = st(), has = (n: LightKind) => (n === 0 ? true : n === 3 ? hasItem('firebrand') : hasItem(FUEL[n].tool) && (s[FUEL[n].left] > 0 || hasItem(FUEL[n].k)));
+  const s = st(), mounted = mountedFlashlight(G.char.hands[0]);
+  const has = (n: LightKind) => (n === 0 ? true : n === 3 ? hasItem('firebrand') : (n === 1 && mounted || hasItem(FUEL[n].tool)) && (s[FUEL[n].left] > 0 || hasItem(FUEL[n].k)));
   let next: LightKind;
-  if (k) next = s.on === k ? 0 : k;
+  if (!k && mounted) next = s.on === 1 ? 0 : 1; // L toggles the rail light without cycling to a hand-held lamp.
+  else if (k) next = s.on === k ? 0 : k;
   else { const order: LightKind[] = [1, 2, 3, 0], from = order.indexOf(s.on as LightKind); next = 0; for (let i = 1; i <= 4; i++) { const n = order[(from + i) % 4]; if (has(n)) { next = n; break; } } }
   if (next && !has(next)) {
-    return next === 1 ? (hasItem('flashlight') ? tl('The flashlight needs a Battery.') : tl('You have no flashlight.')) : next === 2 ? (hasItem('oillamp') ? tl('The lamp needs a flask of Lamp Oil.') : tl('You have no oil lamp.')) : tl('You have no torch.');
+    return next === 1 ? (mounted || hasItem('flashlight') ? tl('The flashlight needs a Battery.') : tl('You have no flashlight.')) : next === 2 ? (hasItem('oillamp') ? tl('The lamp needs a flask of Lamp Oil.') : tl('You have no oil lamp.')) : tl('You have no torch.');
   }
   let slung = '';
   if (next) {
-    const f = FUEL[next], two = bothHands() ? G.char.hands[0]!.k : null;
-    const m = takeInOff(f.tool); if (m) return m;
+    const f = FUEL[next], fitted = next === 1 && mounted, two = !fitted && bothHands() ? G.char.hands[0]!.k : null;
+    const m = fitted ? '' : takeInOff(f.tool); if (m) return m;
     if (two) slung = ' ' + TL`The ${item(two).name} goes on your back: it needs both hands.`;
     if (s[f.left] <= 0 && (next === 3 || takeOne(f.k))) s[f.left] = f.per; // a fresh torch (it is the one in your hand)
   }
@@ -74,7 +77,7 @@ export function toggleLight(k: LightKind = 0): string {
   return (next === 1 ? tl('Flashlight on.') : next === 2 ? tl('Oil lamp lit.') : next === 3 ? tl('Torch lit.') : tl('Light out.')) + slung;
 }
 /** Whether you carry anything to light (a flashlight, a lamp, a torch). */
-const carriesLight = () => hasItem('flashlight') || hasItem('oillamp') || hasItem('firebrand');
+const carriesLight = () => mountedFlashlight(G.char.hands[0]) || hasItem('flashlight') || hasItem('oillamp') || hasItem('firebrand');
 /** L: switch the light (cycling what you carry); the message in the log. */
 export function lightKey() { logLine(toggleLight(0)); }
 
@@ -104,7 +107,8 @@ export function updateLight(dt: number) {
     // (0.201) the light is held in the other hand: put down, or both hands taken by a long gun, it goes out
     if (s.on) {
       const tool = FUEL[s.on as 1 | 2 | 3].tool, o2 = offHeld();
-      if (o2?.k !== tool) { s.on = 0; logLine(tl('Your light is out of your hand: it goes out.')); }
+      if (s.on === 1 && mountedFlashlight(c.hands[0])) { /* The weapon carries the lamp; both hands stay on the gun. */ }
+      else if (o2?.k !== tool) { s.on = 0; logLine(tl('Your light is out of your hand: it goes out.')); }
       else if (bothHands()) { s.on = 0; logLine(TL`Both hands on the ${item(G.char.hands[0]!.k).name}: your light goes out.`); }
     }
   }
@@ -153,7 +157,7 @@ function showLight(dark: number, on: LightKind) {
   if (!want) return;
   const hm = (m: number) => `${Math.floor(m / 60)}:${String(Math.floor(m % 60)).padStart(2, '0')}`;
   const spare = (k: 'battery' | 'lampoil' | 'firebrand') => G.char.inv.reduce((a, x) => a + (x && x.k === k ? x.n : 0), 0) + (k === 'firebrand' && offHeld()?.k === k ? offHeld()!.n - 1 : 0); // the rest of the bunch in your hand
-  const t = on === 1 ? TL`FLASHLIGHT ${hm(s.flash)} · batteries ${spare('battery')}` : on === 2 ? TL`OIL LAMP ${hm(s.oil)} · oil ${spare('lampoil')}` : on === 3 ? TL`TORCH ${hm(s.torch)} · torches ${spare('firebrand')}` : tl('DARK · L: light');
+  const t = on === 1 ? mountedFlashlight(G.char.hands[0]) ? TL`WEAPON LIGHT ${hm(s.flash)} · batteries ${spare('battery')}` : TL`FLASHLIGHT ${hm(s.flash)} · batteries ${spare('battery')}` : on === 2 ? TL`OIL LAMP ${hm(s.oil)} · oil ${spare('lampoil')}` : on === 3 ? TL`TORCH ${hm(s.torch)} · torches ${spare('firebrand')}` : tl('DARK · L: light');
   if (t !== last) { box.textContent = t; last = t; }
   box.className = on === 1 && s.flash < 20 || on === 2 && s.oil < 30 || on === 3 && s.torch < 8 && !spare('firebrand') ? 'low' : on ? '' : 'off';
 }

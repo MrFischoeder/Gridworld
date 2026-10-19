@@ -13,6 +13,8 @@ export interface SlotView {
   k: ItemKey | null; n?: number;
   /** Condition in percent (worn parts, a vehicle's engine...): drawn as a bar along the bottom. */
   c?: number;
+  /** A flashlight mounted on this weapon. */
+  fl?: boolean;
   /** Shown in an empty slot, e.g. "Optic" or "FL" (front left wheel). */
   hint?: string;
   /** Overrides the item abbreviation (e.g. "ENG" for the engine slot). */
@@ -30,11 +32,12 @@ export function slotHTML(id: string, v: SlotView, selected = false): string {
   const it = v.k ? item(v.k) : null, cls = ['slot', it?.type ?? '', v.cls ?? '', selected ? 'sel' : '', v.k && !v.fixed ? 'drag' : ''].filter(Boolean).join(' ');
   const cnt = (v.n ?? 0) > 1 ? `<span class="n">${v.n}</span>` : '';
   const bar = v.c !== undefined ? `<i class="cond${v.c < 35 ? ' low' : ''}" style="width:${Math.max(0, Math.min(100, v.c))}%"></i>` : '';
-  const title = v.title ?? (it ? `${it.name}: ${it.desc}${v.c !== undefined ? ` (${Math.round(v.c)}%)` : ''}` : v.hint ?? tl('Empty slot'));
+  const title = v.title ?? (it ? `${it.name}: ${it.desc}${v.c !== undefined ? ` (${Math.round(v.c)}%)` : ''}${v.fl ? ' · ' + tl('Flashlight mounted') : ''}` : v.hint ?? tl('Empty slot'));
   // an item: its icon and short name (the full sheet comes up on hover, ui/itemtip.ts); else the hint
   const face = v.text ?? (it && v.k ? `${itemIcon(v.k) || `<span class="ab">${it.ab}</span>`}<span class="nm">${shortName(v.k)}</span>` : v.hint ? `<span class="hint">${v.hint}</span>` : '');
   const data = v.k ? ` data-k="${v.k}"${v.n && v.n > 1 ? ` data-n="${v.n}"` : ''}${v.c !== undefined ? ` data-c="${Math.round(v.c)}"` : ''}` : ` title="${esc(title)}"`;
-  return `<button class="${cls}${it && !v.text ? ' iconic' : ''}" data-id="${id}"${data} aria-label="${esc(title)}">${face}${cnt}${bar}</button>`;
+  const mount = v.fl ? `<span class="n" title="${esc(tl('Flashlight mounted'))}">☼</span>` : '';
+  return `<button class="${cls}${it && !v.text ? ' iconic' : ''}" data-id="${id}"${data} aria-label="${esc(title)}">${face}${cnt}${bar}${mount}</button>`;
 }
 
 /** One line about an item for the detail area under the slots. */

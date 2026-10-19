@@ -4115,4 +4115,20 @@ export const PL: Record<string, string> = {
   // (0.229) stage W7: surrounding and tight places
   "Your back is to the wall: they can only come at you from the open side.": "Stoisz plecami do ściany: mogą podejść tylko od otwartej strony.",
   "From above ×{0}": "Z góry ×{0}",
+  // (0.231) flashlights mounted on long guns
+  "A flashlight fits a two-handed gun only.": "Latarkę można zamontować tylko na dwuręcznej broni palnej.",
+  "This weapon already has a flashlight.": "Ta broń ma już zamontowaną latarkę.",
+  "You need a flashlight in your kit to fit it to this weapon.": "Aby zamontować latarkę na tej broni, musisz mieć ją w ekwipunku.",
+  "This weapon has no mounted flashlight.": "Ta broń nie ma zamontowanej latarki.",
+  "No room in the backpack for the flashlight.": "W plecaku nie ma miejsca na latarkę.",
+  "<br>Flashlight mounted · L: switch on / off": "<br>Latarka zamontowana · L: włącz / wyłącz",
+  "<br>A flashlight can be fitted to this weapon.": "<br>Na tej broni można zamontować latarkę.",
+  "Remove flashlight": "Zdemontuj latarkę",
+  "Fit flashlight": "Zamontuj latarkę",
+  "Fit to held weapon": "Zamontuj na trzymanej broni",
+  "Flashlight removed into your backpack.": "Latarka została zdemontowana i trafiła do plecaka.",
+  "Flashlight fitted. Draw this weapon and press L to light it.": "Latarka zamontowana. Weź tę broń do rąk i naciśnij L, aby ją włączyć.",
+  "Flashlight mounted": "Latarka zamontowana",
+  "WEAPON LIGHT {0} · batteries {1}": "LATARKA NA BRONI {0} · baterie {1}",
+  "a white-beam flashlight: hold it in your other hand or fit it to a two-handed gun in the backpack. Press L to switch it on or off. Uses a Battery every three hours and replaces spent batteries from your kit": "latarka z białym snopem światła: trzymaj ją w drugiej ręce albo zamontuj na broni dwuręcznej w oknie plecaka. Klawisz L włącza i wyłącza światło. Zużywa baterię co trzy godziny i sama wymienia wyczerpane baterie na kolejne z ekwipunku",
 };

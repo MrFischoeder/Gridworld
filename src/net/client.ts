@@ -3,7 +3,7 @@
 // it with `sendState` (about 10 times a second) and reads `peers`.
 
 /** Must match PROTOCOL in server/mp.mjs. */
-export const PROTOCOL = 15;
+export const PROTOCOL = 16;
 export const SEND_EVERY = 0.1;
 
 /** `away`: in the menu (still in the game: the others see you standing there). */
@@ -24,6 +24,8 @@ export interface PeerState { p: [number, number, number]; yaw: number; pitch: nu
   pod?: number;
   /** (0.201) What their other hand holds and uses (a shield, a light), beside a one-handed weapon. */
   oh?: string;
+  /** A flashlight is mounted to the held long gun, whether lit or not. */
+  fl?: boolean;
   /** (0.199) The light they carry: 1 flashlight, 2 oil lamp, (0.200) 3 torch (world/light.ts). */
   lt?: number }
 export interface Peer {
@@ -52,7 +54,7 @@ export function peerAt(p: Peer, t: number): { a: PeerState; b: PeerState; k: num
 }
 /** An item lying in the room's world (server/mp.mjs): put down by `by`, at p in the place `loc` (see world/peers.ts myLoc). */
 /** `auto`: loot (a kill's drops, logs from a felled tree...) lying only a while (server `MP.lootTtl`); taken like any drop. */
-export interface NetDrop { id: string; k: string; n: number; c?: number; p: [number, number, number]; loc: string; by: string; at: number; auto?: boolean }
+export interface NetDrop { id: string; k: string; n: number; c?: number; fl?: boolean; p: [number, number, number]; loc: string; by: string; at: number; auto?: boolean }
 let gotHook: ((d: NetDrop) => void) | null = null;
 /** Who receives an item the server handed you (world/drops.ts). */
 export function onGot(f: (d: NetDrop) => void) { gotHook = f; }
@@ -255,7 +257,7 @@ export function connect(url: string, me: { name: string; world: number; time: nu
           const p = net.peers.get(s.id);
           if (!p) continue;
           if (p.st && (p.st.loc !== s.loc || Math.hypot(p.st.p[0] - s.p[0], p.st.p[2] - s.p[2]) > 80)) p.hist = [];
-          p.prev = p.st; p.st = { p: s.p, yaw: s.yaw, pitch: s.pitch, loc: s.loc, held: s.held, mv: s.mv, away: !!s.away, cars: Array.isArray(s.cars) ? s.cars : [], carIds: s.carIds, ride: Array.isArray(s.ride) ? s.ride : undefined, gun: typeof s.gun === 'number' ? s.gun : undefined, boat: Array.isArray(s.boat) ? s.boat : undefined, vis: typeof s.vis === 'number' ? s.vis : undefined, cr: !!s.cr, pod: typeof s.pod === 'number' ? s.pod : undefined, lt: typeof s.lt === 'number' ? s.lt : undefined, oh: typeof s.oh === 'string' ? s.oh : undefined }; p.at = now; // (0.204) the light and the other hand were dropped here before
+          p.prev = p.st; p.st = { p: s.p, yaw: s.yaw, pitch: s.pitch, loc: s.loc, held: s.held, mv: s.mv, away: !!s.away, cars: Array.isArray(s.cars) ? s.cars : [], carIds: s.carIds, ride: Array.isArray(s.ride) ? s.ride : undefined, gun: typeof s.gun === 'number' ? s.gun : undefined, boat: Array.isArray(s.boat) ? s.boat : undefined, vis: typeof s.vis === 'number' ? s.vis : undefined, cr: !!s.cr, pod: typeof s.pod === 'number' ? s.pod : undefined, lt: typeof s.lt === 'number' ? s.lt : undefined, oh: typeof s.oh === 'string' ? s.oh : undefined, fl: s.fl === true }; p.at = now; // (0.204) the light and the other hand were dropped here before
           p.hist.push({ t: now, s: p.st }); if (p.hist.length > 8) p.hist.shift();
         }
         if (!isHost()) h.clock(m.time);
@@ -311,9 +313,9 @@ export function sendState(s: PeerState, time?: number) {
   net.ws.send(JSON.stringify({ t: 'state', ...s, ...(isHost() && time !== undefined ? { time } : {}) }));
 }
 /** Put an item down where you stand (already taken out of your kit). */
-export function sendDrop(k: string, n: number, c: number | undefined, p: [number, number, number], loc: string, auto = false): boolean {
+export function sendDrop(k: string, n: number, c: number | undefined, p: [number, number, number], loc: string, auto = false, fl = false): boolean {
   if (!online() || net.ws?.readyState !== 1) return false;
-  net.ws.send(JSON.stringify({ t: 'drop', k, n, c, p, loc, ...(auto ? { auto } : {}) }));
+  net.ws.send(JSON.stringify({ t: 'drop', k, n, c, p, loc, ...(auto ? { auto } : {}), ...(fl ? { fl } : {}) }));
   return true;
 }
 /** Ask for a lying item: the server answers 'got' if you were first, 'gone' if not. */

@@ -74,7 +74,7 @@ export const MP = { path: '/mp', port: 7777, max: 8, rate: 100, nameMax: 20, cha
 const AUTH = new Set(['register', 'login', 'logout', 'passwd', 'verify', 'resend', 'forgot', 'reset', 'email', 'profile']);
 const RELAY = new Set(['foes', 'bolt', 'fhit', 'kill', 'hurt', 'thit', 'boat', 'row', 'snd', 'throw', 'spare']);
 /** Protocol version: a client with another one is refused (the game shows why). */
-export const PROTOCOL = 15;
+export const PROTOCOL = 16;
 
 const clean = (s, n) => String(s ?? '').replace(/[\u0000-\u001f<>]/g, '').trim().slice(0, n);
 const num = (v) => (typeof v === 'number' && Number.isFinite(v) ? v : 0);
@@ -272,7 +272,7 @@ export function createMp(log = (m) => console.log('[mp] ' + m), opts = {}) {
       } else if (m.t === 'state') {
         if (me.trip) return; // Ignore queued movement and seat changes during an accepted transport.
         const previousCars = me.st?.cars, previousIds = me.st?.carIds;
-        me.st = { p: Array.isArray(m.p) ? m.p.slice(0, 3).map(num) : [0, 0, 0], yaw: num(m.yaw), pitch: num(m.pitch), loc: clean(m.loc, 80), held: clean(m.held, 24), mv: !!m.mv, away: !!m.away, cars: Array.isArray(m.cars) ? m.cars.slice(0, MP.cars).filter(Array.isArray).map((c) => c.slice(0, 12).map(num)) : [], ride: Array.isArray(m.ride) ? m.ride.slice(0, 3).map(num) : undefined, gun: typeof m.gun === 'number' ? num(m.gun) : undefined, boat: Array.isArray(m.boat) && m.boat.length === 5 ? [clean(String(m.boat[0]), 80), ...m.boat.slice(1).map(num)] : undefined, vis: typeof m.vis === 'number' ? Math.max(0, Math.min(2, num(m.vis))) : undefined, cr: m.cr ? true : undefined, pod: typeof m.pod === 'number' ? Math.max(0, Math.min(15, num(m.pod) | 0)) : undefined, lt: m.lt === 1 || m.lt === 2 || m.lt === 3 ? m.lt : undefined, oh: m.oh ? clean(m.oh, 24) : undefined };
+        me.st = { p: Array.isArray(m.p) ? m.p.slice(0, 3).map(num) : [0, 0, 0], yaw: num(m.yaw), pitch: num(m.pitch), loc: clean(m.loc, 80), held: clean(m.held, 24), mv: !!m.mv, away: !!m.away, cars: Array.isArray(m.cars) ? m.cars.slice(0, MP.cars).filter(Array.isArray).map((c) => c.slice(0, 12).map(num)) : [], ride: Array.isArray(m.ride) ? m.ride.slice(0, 3).map(num) : undefined, gun: typeof m.gun === 'number' ? num(m.gun) : undefined, boat: Array.isArray(m.boat) && m.boat.length === 5 ? [clean(String(m.boat[0]), 80), ...m.boat.slice(1).map(num)] : undefined, vis: typeof m.vis === 'number' ? Math.max(0, Math.min(2, num(m.vis))) : undefined, cr: m.cr ? true : undefined, pod: typeof m.pod === 'number' ? Math.max(0, Math.min(15, num(m.pod) | 0)) : undefined, lt: m.lt === 1 || m.lt === 2 || m.lt === 3 ? m.lt : undefined, oh: m.oh ? clean(m.oh, 24) : undefined, fl: m.fl === true && ['blaster', 'smg', 'shotgun', 'rifle'].includes(m.held) ? true : undefined };
         if (Array.isArray(m.carIds)) me.st.carIds = m.carIds.slice(0, MP.cars).map((id) => clean(id, 100));
         // The owner still simulates the vehicle; the server alone grants its seats.
         const seatOK = (car, seat) => car && (car[10] === undefined || car[10] > 0) && Number.isInteger(seat) && seat >= 0 && seat < 3 && (seat !== 2 || !!car[7]);
@@ -302,6 +302,7 @@ export function createMp(log = (m) => console.log('[mp] ' + m), opts = {}) {
         if (room.drops.size >= MP.drops) { const old = room.drops.keys().next().value; room.drops.delete(old); all(room, { t: 'gone', id: old }); }
         const d = { id: 'd' + (dropSeq++).toString(36) + randomInt(1000, 9999).toString(36), k, n, p: m.p.slice(0, 3).map(num), loc: clean(m.loc, 80), by: me.name, at: Date.now() };
         if (typeof m.c === 'number' && Number.isFinite(m.c)) d.c = m.c;
+        if (m.fl === true && n === 1 && ['blaster', 'smg', 'shotgun', 'rifle'].includes(k)) d.fl = true;
         if (m.auto) d.auto = true; // loot (kills, felled trees...): lies only `MP.lootTtl` h
         room.drops.set(d.id, d);
         all(room, { t: 'drop', d });

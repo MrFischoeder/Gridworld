@@ -108,7 +108,7 @@ export function takeInHands(k: ItemKey): string {
   const m = stowHeld();
   if (m) return m;
   const s = c.inv[i]!;
-  if (s.n > 1) { s.n--; c.hands[0] = { k, n: 1, ...(s.c !== undefined ? { c: s.c } : {}) }; } else { c.hands[0] = s; c.inv[i] = null; }
+  if (s.n > 1) { s.n--; c.hands[0] = { ...s, n: 1 }; } else { c.hands[0] = s; c.inv[i] = null; }
   handsChanged(); saveChar();
   return '';
 }

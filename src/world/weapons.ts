@@ -29,6 +29,8 @@ import { count } from '../data/crafting';
 import { logLine } from '../ui/hud';
 import { tl, TL } from '../i18n';
 import { VectorFlame } from './vectorflame';
+import { mountedFlashlight } from '../gen/weaponlight';
+import { weaponFlashlight } from './weaponflashlight';
 
 /** Weapons are holstered in safe places (the village). */
 export let armed = () => true;
@@ -86,6 +88,16 @@ gunLooks.pistol = gunModel([[new THREE.BoxGeometry(0.05, 0.07, 0.22), 0, 0.02, -
 gunLooks.smg = gunModel([[new THREE.BoxGeometry(0.07, 0.09, 0.34), 0, 0, -0.1], [new THREE.BoxGeometry(0.035, 0.18, 0.05), 0, -0.13, -0.12], [new THREE.BoxGeometry(0.045, 0.12, 0.05), 0, -0.1, 0.06, 0.3], [cyl(0.016, 0.14), 0, 0.01, -0.33], [new THREE.BoxGeometry(0.03, 0.05, 0.16), 0, 0.02, 0.16]]);
 gunLooks.shotgun = gunModel([[new THREE.BoxGeometry(0.07, 0.08, 0.3), 0, 0, 0.02], [cyl(0.024, 0.5), -0.017, 0.03, -0.35], [cyl(0.024, 0.5), 0.017, 0.03, -0.35], [cyl(0.03, 0.2), 0, -0.03, -0.25], [new THREE.BoxGeometry(0.05, 0.1, 0.22), 0, -0.05, 0.22, 0.2]]);
 gunLooks.rifle = gunModel([[new THREE.BoxGeometry(0.06, 0.07, 0.4), 0, 0, 0], [cyl(0.015, 0.45), 0, 0.02, -0.42], [cyl(0.022, 0.26), 0, 0.085, -0.05], [cyl(0.03, 0.04), 0, 0.085, -0.19], [new THREE.BoxGeometry(0.05, 0.11, 0.26), 0, -0.04, 0.3, 0.15], [new THREE.BoxGeometry(0.02, 0.02, 0.05), 0.04, 0.03, 0.08]]);
+const gunLights = new Map<GunLook, ReturnType<typeof weaponFlashlight>>();
+for (const k of ['blaster', 'smg', 'shotgun', 'rifle'] as GunLook[]) {
+  const light = weaponFlashlight(true);
+  light.g.position.set(0, k === 'shotgun' ? -.095 : -.055, k === 'rifle' ? -.38 : k === 'shotgun' ? -.42 : -.28);
+  light.g.visible = false; gunLooks[k].add(light.g); gunLights.set(k, light);
+}
+function updateMountLook() {
+  const held = G.char.hands[0], look = mountedFlashlight(held) ? gunOf(held!.k)?.look : null;
+  for (const [k, light] of gunLights) { light.g.visible = k === look; light.lens.visible = G.char.light?.on === 1; }
+}
 const meleeLooks = {} as Record<MeleeLook, THREE.Group>;
 export const bladeVM = new THREE.Group();
 const hilt = part(new THREE.BoxGeometry(0.05, 0.2, 0.05), vmMat); hilt.position.y = 0.1; bladeVM.add(hilt);
@@ -293,6 +305,7 @@ export function updateRecoil(dt: number) {
   G.pitch = Math.max(-1.5, Math.min(1.5, G.pitch - back));
 }
 export function animateVM(dt: number, _moving: boolean) {
+  updateMountLook();
   // the gun trails the view's turns a little, then catches up
   let dy = G.yaw - lastYaw; dy -= Math.round(dy / (Math.PI * 2)) * Math.PI * 2;
   const dp = G.pitch - lastPitch; lastYaw = G.yaw; lastPitch = G.pitch;

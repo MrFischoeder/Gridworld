@@ -41,6 +41,7 @@ import { vehicles, driving, refreshParts } from './vehicles';
 import { repairWithKit, vehicleTitle } from '../data/vehicles';
 import { tl, TL } from '../i18n';
 import { AMMO_TYPES } from '../data/weapons';
+import { mountedFlashlight } from '../gen/weaponlight';
 
 export interface Crystal { m: THREE.LineSegments; p: THREE.Vector3; v: THREE.Vector3; age: number }
 /** `rest`: it lies on the ground as what it is (world/pickmodels.ts) instead of floating and spinning as a token. */
@@ -48,7 +49,7 @@ export interface Crystal { m: THREE.LineSegments; p: THREE.Vector3; v: THREE.Vec
  * `drop`: put down by a player (world/drops.ts): shared through the server (every pickup waits for E or the backpack's ground panel); `c` the
  * condition of a worn part, `by` who put it down, `taking` when you last asked the server for it.
  */
-export interface Pickup { g: THREE.Group; k: ItemKey; p: THREE.Vector3; age: number; warned?: boolean; rest?: boolean; n?: number; drop?: string; c?: number; by?: string; taking?: number; auto?: boolean }
+export interface Pickup { g: THREE.Group; k: ItemKey; p: THREE.Vector3; age: number; warned?: boolean; rest?: boolean; n?: number; drop?: string; c?: number; fl?: boolean; by?: string; taking?: number; auto?: boolean }
 export interface Chest { g: THREE.Group; lidPivot: THREE.Group; beam: THREE.Line; beamMat: THREE.LineBasicMaterial; i: number; open: boolean; anim: number }
 export interface Hatch { g: THREE.Group; rings: THREE.LineLoop[] }
 
@@ -267,7 +268,7 @@ export function useItem(k: ItemKey): boolean {
   if (k === 'pierkit') { if (startPierPlacing()) closePack(); return false; } // used up when the pier is staked out
   if (k === 'flashlight' || k === 'oillamp') { logLine(toggleLight(k === 'flashlight' ? 1 : 2)); return false; } // (0.199) switch it on or off
   if (k === 'firebrand') { logLine(toggleLight(3)); return false; } // (0.200) light one (or put it out)
-  if (k === 'battery') { logLine(G.char.light?.on === 1 ? tl('The flashlight is on: it takes a fresh battery by itself when one runs flat.') : hasItem('flashlight') ? toggleLight(1) : tl('A battery for a flashlight. You have no flashlight.')); return false; }
+  if (k === 'battery') { logLine(G.char.light?.on === 1 ? tl('The flashlight is on: it takes a fresh battery by itself when one runs flat.') : hasItem('flashlight') || mountedFlashlight(G.char.hands[0]) ? toggleLight(1) : tl('A battery for a flashlight. You have no flashlight.')); return false; }
   if (k === 'lampoil') { logLine(G.char.light?.on === 2 ? tl('The lamp is burning: it takes a fresh flask by itself when it runs dry.') : toggleLight(2)); return false; }
   if (k === 'lhkit') { if (startLhPlacing()) closePack(); return false; } // (0.204) used up when it is staked out
   if (k === 'elampkit' || k === 'olampkit') { if (startStreetPlacing(k === 'elampkit' ? 'electric' : 'oil')) closePack(); return false; } // (0.203) used up when it stands

@@ -3,6 +3,12 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.231.0', date: '2026-10-19', title: 'Flashlights on long guns', notes: [
+    'Fit an ordinary crafted, bought or found Flashlight to a Blaster, Scrap SMG, Scattergun or Hunting Rifle from the backpack. Select a gun and choose Fit flashlight, select a flashlight and choose Fit to held weapon, or drag it onto the gun.',
+    'The flashlight belongs to that particular weapon. A visible clamp and lamp appear beneath its barrel; L switches the beam on and off while both hands stay on the gun. It follows the view, uses the usual batteries and replaces spent batteries from your kit.',
+    'Remove flashlight returns the same lamp to the backpack, provided it fits. Mounted lights count towards weight and bulk and stay with their weapons through moves, chests, vehicle trunks, save/load, death drops and pickups. A spare copy of the gun gets no free lamp.',
+    'Other players see the mounted lamp and its light. Multiplayer protocol is now 16: update the client and server together so dropped weapons retain their flashlights.',
+  ] },
   { v: '0.230.0', date: '2026-10-19', title: 'Flickering flames and underground wall lights', notes: [
     'Held and wall torches now burn with five independently moving outlined triangle tongues and two rising triangular embers. Their shapes and brightness flicker in warm amber and gold, using reusable geometry buffers.',
     'More torches and electric wall fixtures appear in labyrinth rooms and passages, crashed ships and metro stations and tunnels. Deeper floors remain darker; some rooms and passages still have no fixed light.',

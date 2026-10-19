@@ -289,6 +289,23 @@ describe('multiplayer server', () => {
     expect((await d.wait('welcome')).drops[0]).toMatchObject({ k: 'lwheel', c: 63, by: 'Ada' });
     d.ws.close();
   });
+  it('mounted flashlights stay with dropped guns, survive server restarts and appear in peer snapshots', async () => {
+    const port = await server({ rooms: [{ id: 'main', name: 'Main', world: 11, time: 100 }] });
+    const a = await client(port, { name: 'Ada' }), b = await client(port, { name: 'Bob' });
+    const wa = await a.wait('welcome'); await b.wait('welcome');
+    a.send({ t: 'state', p: [1, 0, 1], loc: 'o', held: 'rifle', fl: true, lt: 1 });
+    const snap = await b.wait('snap', 2);
+    expect(snap.ps.find((s: { id: number }) => s.id === wa.id)).toMatchObject({ held: 'rifle', fl: true, lt: 1 });
+    a.send({ t: 'drop', k: 'rifle', n: 1, fl: true, p: [1, 1, 1], loc: 'o' });
+    const dropped = (await b.wait('drop')).d; expect(dropped).toMatchObject({ k: 'rifle', fl: true });
+    b.send({ t: 'take', id: dropped.id }); expect((await b.wait('got')).d).toMatchObject({ k: 'rifle', fl: true });
+    b.send({ t: 'drop', k: 'rifle', n: 1, fl: true, p: [2, 1, 1], loc: 'o' }); await b.wait('drop', 2);
+    b.send({ t: 'drop', k: 'pistol', n: 1, fl: true, p: [3, 1, 1], loc: 'o' }); expect((await b.wait('drop', 3)).d.fl).toBeUndefined();
+    const kept = mp!.save(); a.ws.close(); b.ws.close(); mp!.close(); http!.close();
+    const port2 = await server({ rooms: kept }), c = await client(port2, { name: 'Cy' });
+    expect((await c.wait('welcome')).drops.find((d: { k: string }) => d.k === 'rifle')).toMatchObject({ n: 1, fl: true });
+    c.ws.close();
+  });
   it('the shared world: the first who played it brings it, changes reach the others, a newcomer gets it all, it is kept', async () => {
     const port = await server({ rooms: [{ id: 'main', name: 'Main', world: 11, time: 100 }] });
     const a = await client(port, { name: 'Ada' }), wa = await a.wait('welcome');

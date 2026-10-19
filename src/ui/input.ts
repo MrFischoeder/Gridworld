@@ -93,7 +93,7 @@ export function initInput(onPause: () => void) {
     if (e.code === 'KeyQ') swapWeapon();
     if (e.code === 'KeyX') holster();
     if (e.code === 'KeyF' && isBuilding()) dismantle();
-    if (e.code === 'KeyL') lockKey();
+    if (e.code === 'KeyL' && !e.repeat) lockKey();
     if (e.code === 'KeyR' && !e.repeat && !refuel() && !refuelVehicle()) reload();
     if (e.code === 'F3') { e.preventDefault(); el.perf.style.display = el.perf.style.display === 'block' ? 'none' : 'block'; }
   });

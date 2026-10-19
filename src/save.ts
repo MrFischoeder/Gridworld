@@ -24,7 +24,7 @@ import { fixShuttle, type ShuttleState } from './gen/shuttle';
 import type { Contract } from './gen/contracts';
 
 /** An item stack. `c` is the condition in percent of a used part (worn tires); such items do not stack. */
-export interface Slot { k: ItemKey; n: number; c?: number }
+export interface Slot { k: ItemKey; n: number; c?: number; /** A real flashlight fitted to this particular long gun. */ fl?: boolean }
 /** Per-dungeon progress, keyed by dungeonKey() = "ruinId:depth:gx:gz". */
 export type Progress = Record<string, number[]>;
 /** Where in which dungeon the player is. In a cave system (`cave`), ruinId is the system's id; its mouths are kept so the way out is known. */

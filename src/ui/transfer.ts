@@ -25,7 +25,7 @@ let locked: string | null = null, opening = false;
 
 /** Slot lists by id prefix: b = the container, p = backpack, k = your back, h = your hands. */
 const list = (w: string): (Slot | null)[] => (w === 'b' ? spec!.box.items : w === 'h' ? G.char.hands : w === 'k' ? G.char.back : G.char.inv);
-const view = (s: Slot | null) => ({ k: s?.k ?? null, n: s?.n, c: s?.c });
+const view = (s: Slot | null) => ({ k: s?.k ?? null, n: s?.n, c: s?.c, fl: s?.fl });
 const mine = (w: string) => w === 'b' || w === 'p' || w === 'k' || w === 'h';
 
 /** False (and the window shut) when the server took the container away from us. */
