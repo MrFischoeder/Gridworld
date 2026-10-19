@@ -8,6 +8,7 @@ import { showToast, logLine } from './ui/hud';
 import { BLASTER, gunStats, gunOf, meleeOf } from './data/weapons';
 import { proxied } from './world/remote';
 import { tl, TL } from './i18n';
+import { toggleId } from './gen/journal';
 
 export const saveChar = () => persist(G.char);
 
@@ -179,3 +180,7 @@ export function progress(which: 'opened' | 'unlocked' | 'killed'): number[] {
   return (m[k] = m[k] || []);
 }
 export const progressHas = (which: 'opened' | 'unlocked' | 'killed', i: number) => (G.char[which][dungeonKey()] || []).includes(i);
+
+/** (0.230) Whether a journal entry's marker is shown on the map and the compass (switched in the journal, J). */
+export const markShown = (id: string) => !G.char.hideMarks?.includes(id);
+export function toggleMark(id: string) { G.char.hideMarks = toggleId(G.char.hideMarks ?? [], id); persist(G.char); }

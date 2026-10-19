@@ -85,6 +85,8 @@ export interface Char {
   homeOf?: Record<string, number>;
   /** Quests finished (0.166): the notice boards post more notices as you prove yourself (world/quests.ts boardOffers). */
   questsDone?: number;
+  /** (0.230) Markers switched off in the journal (J): 'q:<quest id>', 'c:<contract id>', 'l:<lead id>', 'elder', 'side', 'guide'. Personal. */
+  hideMarks?: string[];
   /** The shuttle project in the hangar by Gridholm (gen/shuttle.ts): crates handed over per stage. */
   shuttle: ShuttleState;
   level: number; xp: number; gold: number; world: number;

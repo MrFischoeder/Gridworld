@@ -1,3 +1,4 @@
+import { toggleJournal, journalOpen } from './journal';
 import { gateTravelPending } from '../world/worldgates';
 // Keyboard and mouse. Pointer lock drives mouse look; losing it pauses the game.
 import { startThrow, releaseThrow } from '../world/throwing';
@@ -47,9 +48,10 @@ export function initInput(onPause: () => void) {
     if (G.consoleOpen || gateTravelPending()) return;
     if (e.code === 'KeyI' || e.code === 'Tab') { e.preventDefault(); if (!G.dlgOpen && !G.xferOpen) togglePack(); return; }
     if (G.packOpen) { if (e.code === 'Escape' || e.code === 'KeyE' && !e.repeat && packSide()?.prefix === 'b') closePack(); return; }
-    if (G.dlgOpen) { if (e.code === 'Escape') closeDialog(); return; }
+    if (G.dlgOpen) { if (e.code === 'Escape' || e.code === 'KeyJ' && journalOpen()) closeDialog(); return; }
     if (G.xferOpen) { if (e.code === 'Escape' || e.code === 'KeyE') { closeTransfer(); closeService(); closeBoard(); } return; }
     if (e.code === 'KeyM' && G.playing) { toggleMap(); return; }
+    if (e.code === 'KeyJ' && G.playing && !G.mapOpen && !e.repeat) { toggleJournal(); return; } // (0.230) the journal
     if (e.code === 'KeyT' && G.playing && online()) { e.preventDefault(); openChat(); return; }
     if (G.mapOpen) { if (e.code === 'KeyO') { orbitalScan(); return; } if (e.code === 'KeyR') { toggleRoute(); return; } if (e.code === 'KeyF' && townsWorld(G.char.world)) { toggleFertility(); return; } if (e.code === 'Escape') toggleMap(false); if (e.code === 'Equal' || e.code === 'NumpadAdd') zoomMap(1.25); if (e.code === 'Minus' || e.code === 'NumpadSubtract') zoomMap(0.8); }
     if (extraKeys.some((f) => f(e))) return;

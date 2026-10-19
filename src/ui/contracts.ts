@@ -105,7 +105,7 @@ export function updateContracts(dt: number) {
 /** Tracker lines. */
 export const contractLines = () => G.char.contracts.map((k) => TL`▸ ${k.kind === 'supply' ? tl('Supply') : tl('Haul')} ${left(k)} × ${ITEMS[k.good].name} to ${k.toName} · ${dueText(k.due)}` + (G.char.loc === 'overworld' ? ` · ${where(k.tx, k.tz)}` : ''));
 /** Map and compass markers. */
-export const contractMarkers = () => G.char.contracts.map((k) => ({ x: nearX(k.tx, G.pos.x), z: k.tz, label: `${ITEMS[k.good].name} → ${k.toName}` }));
+export const contractMarkers = () => G.char.contracts.map((k) => ({ id: 'c:' + k.id, x: nearX(k.tx, G.pos.x), z: k.tz, label: `${ITEMS[k.good].name} → ${k.toName}` }));
 
 /** Take offer o (at its village's store, or on a notice board). A haul loads its crates where it starts. */
 export function acceptOffer(o: Contract): string {

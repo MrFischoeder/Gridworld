@@ -3,6 +3,12 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.230.0', date: '2026-10-19', title: 'The journal', notes: [
+    'J opens the journal: everything you have taken on in one place: the elder\'s next step and the side task, your tasks from the notice boards (what is left, where, who gave it, the reward and the full notice), your delivery contracts, the escort and your leads.',
+    'Every entry with a place to go has a switch: Marked or Hidden. A hidden one leaves your map, minimap and compass but stays in the journal and the tracker. Mark everything / Hide every marker switch them all at once.',
+    'A task can be given up from the journal (click twice).',
+    'Multiplayer: the switches are your own and saved with your character; nothing is sent. The server does not need an update.',
+  ] },
   { v: '0.229.0', date: '2026-10-15', title: 'Surrounded: packs, walls and high ground', notes: [
     'A Ravager pack, a Gnawer nest and bandit bruisers now spread out round you and come at you from several sides at once instead of all from the front.',
     'Walls, rocks, tree trunks and houses take that room away: with your back to something they can only come from the open side, and in a narrow passage only one or two at a time while the rest pace and wait their turn. A short line tells you when your back is to the wall.',

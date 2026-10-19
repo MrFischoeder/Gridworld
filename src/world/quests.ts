@@ -19,7 +19,8 @@ import { worldDist, nearX, wrapDx, findPoi, GRIDHOLM_ID, type Poi } from '../gen
 import type { CreatureKind } from '../data/creatures';
 import { ITEMS, RELIC_KEYS, type ItemKey } from '../data/items';
 import { NPC_INFO, type NpcRole } from '../data/npcs';
-import { gainXp, saveChar, hasItem, takeOne, giveLoot } from '../character';
+import { gainXp, saveChar, hasItem, takeOne, giveLoot, markShown } from '../character';
+import { markId } from '../gen/journal';
 import { floorAt } from '../core/voxel';
 import { dropPickup } from './loot';
 import { V } from './render';
@@ -208,24 +209,26 @@ export function questTarget(q: Quest): { x: number; z: number } | null {
   if (q.kind === 'fetch' && !hasItem(q.item!)) return q.place!;
   return null;
 }
+/** A quest's line: what is left to do, and where (the tracker and the journal). */
+export function questStatus(q: Quest): string {
+  let s = '▸ ' + q.title;
+  const at = q.townName ? tl(' in ') + q.townName : '';
+  if (q.state === 'talk') s += TL` — talk to ${giverOf(q)}${at}`;
+  else if (q.state === 'ready') s += q.kind === 'fetch' ? TL` — bring it to ${giverOf(q)}${at}` : TL` — claim at ${boardName(q)}`;
+  else if (q.kind === 'resource') s += TL` — bring ${q.count} ${ITEMS[q.item!].name} to ${boardName(q)}`;
+  else if (q.kind === 'bounty') s += ` — ${q.progress ?? 0}/${q.count}`;
+  else if (q.kind === 'hunt') s += ` — ${q.killed ?? 0}/${q.pack!.count}${q.alphaDead ? '' : ', ' + q.pack!.alpha + ' alive'}`;
+  else if (q.kind === 'camp') s += tl(' — clear it');
+  const t = questTarget(q);
+  if (t && G.char.loc === 'overworld') { const dx = wrapDx(t.x - G.pos.x), d = Math.hypot(dx, t.z - G.pos.z); s += d < 25 ? tl(' · right here') : ` · ${km(d)} ${compass(dx, t.z - G.pos.z)}`; }
+  else if (t && q.place?.type === 'ruin') s += tl(' · in the dungeon below');
+  return s;
+}
 let trackT = 0;
 export function updateTracker(dt: number) {
   if ((trackT -= dt) > 0) return;
   trackT = 0.4;
-  const lines = G.char.quests.map((q) => {
-    let s = '▸ ' + q.title;
-    const at = q.townName ? tl(' in ') + q.townName : '';
-    if (q.state === 'talk') s += TL` — talk to ${giverOf(q)}${at}`;
-    else if (q.state === 'ready') s += q.kind === 'fetch' ? TL` — bring it to ${giverOf(q)}${at}` : TL` — claim at ${boardName(q)}`;
-    else if (q.kind === 'resource') s += TL` — bring ${q.count} ${ITEMS[q.item!].name} to ${boardName(q)}`;
-    else if (q.kind === 'bounty') s += ` — ${q.progress ?? 0}/${q.count}`;
-    else if (q.kind === 'hunt') s += ` — ${q.killed ?? 0}/${q.pack!.count}${q.alphaDead ? '' : ', ' + q.pack!.alpha + ' alive'}`;
-    else if (q.kind === 'camp') s += tl(' — clear it');
-    const t = questTarget(q);
-    if (t && G.char.loc === 'overworld') { const dx = wrapDx(t.x - G.pos.x), d = Math.hypot(dx, t.z - G.pos.z); s += d < 25 ? tl(' · right here') : ` · ${km(d)} ${compass(dx, t.z - G.pos.z)}`; }
-    else if (t && q.place?.type === 'ruin') s += tl(' · in the dungeon below');
-    return s;
-  });
+  const lines = G.char.quests.map(questStatus);
   const esc = escortLine(); if (esc) lines.push(esc);
   lines.push(...contractLines());
   lines.push(...leadLines());
@@ -239,5 +242,11 @@ export function updateTracker(dt: number) {
   const gl = guideLine(); if (gl) lines.unshift(gl);
   trackEl.innerHTML = lines.map((l) => `<div>${l}</div>`).join('');
 }
-export const questMarkers = (): { x: number; z: number; label: string }[] => [...(settlementMarker() ? [settlementMarker()!] : []), ...(sideMarker() ? [sideMarker()!] : []), ...(guideMarker() ? [guideMarker()!] : []), ...contractMarkers(), ...(
-  G.char.quests.map((q) => ({ t: questTarget(q), q })).filter((m) => m.t).map(({ t, q }) => ({ x: nearX(t!.x, G.pos.x), z: t!.z, label: q.state === 'talk' || q.state === 'ready' || (q.kind === 'fetch' && hasItem(q.item!)) ? q.townName! : q.kind === 'hunt' ? q.pack!.alpha : q.kind === 'camp' ? q.place!.name : ITEMS[q.item!].name })))];
+/** Every quest-like marker with its journal id (shown or not). */
+export const allQuestMarkers = (): { x: number; z: number; label: string; id: string }[] => {
+  const one = (m: { x: number; z: number; label: string } | null, id: string) => (m ? [{ ...m, id }] : []);
+  return [...one(settlementMarker(), 'elder'), ...one(sideMarker(), 'side'), ...one(guideMarker(), 'guide'), ...contractMarkers(),
+    ...G.char.quests.map((q) => ({ t: questTarget(q), q })).filter((m) => m.t).map(({ t, q }) => ({ id: markId('q', q.id), x: nearX(t!.x, G.pos.x), z: t!.z, label: q.state === 'talk' || q.state === 'ready' || (q.kind === 'fetch' && hasItem(q.item!)) ? q.townName ?? 'Gridholm' : q.kind === 'hunt' ? q.pack!.alpha : q.kind === 'camp' ? q.place!.name : ITEMS[q.item!].name }))];
+};
+/** The markers on the map and the compass: those not switched off in the journal (J). */
+export const questMarkers = () => allQuestMarkers().filter((m) => markShown(m.id));
