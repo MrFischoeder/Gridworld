@@ -50,7 +50,7 @@ import { dropCommuters } from './commute';
 import { portClaims } from '../gen/ports';
 import { installAt } from '../gen/installs';
 import { drawFarms } from './farms';
-import { scene, V, GRID, localize } from './render';
+import { scene, V, GRID, FILL, localize } from './render';
 import { G, W } from '../game';
 import { VoxelGrid, type Space } from '../core/voxel';
 import { Terrain, inRect, rectDist, STEP, CELLS, VERTS, type Pad } from '../gen/terrain';
@@ -82,7 +82,7 @@ import { generateRuin } from '../gen/ruins';
 import { generateWreck } from '../gen/wreck';
 import { drawWreck } from './wreck';
 import { tryPlaceDoor } from '../gen/doors';
-import { PropBatch, sharedFill, sharedLine, sharedFillV, sharedLineV } from './props';
+import { PropBatch, sharedFill, sharedLine, sharedFillV, sharedLineV, tintGroup } from './props';
 import { makeStair, disposeStair, type Door, type Stair } from './doors';
 import { makeNpc, type Npc } from './npc';
 import { foeRules, type Drone } from './enemies';
@@ -388,6 +388,16 @@ function tintOf(b: BiomeHere): Map<number, number> {
   if (!m) { const L = BIOME_LOOK[b], v = new THREE.Color(L.leaf).multiplyScalar(0.55).getHex(); tints.set(b, (m = new Map([[GRID, L.line], [LEAF, L.leaf], [VINE, v]]))); }
   return m;
 }
+/** (0.238, the owner's report) A ruin, a wreck or a camp is drawn in the colours of the biome it stands in: its
+ *  grid-green lines (and the paving's brighter green) take the biome's line colour, the mint trim and glyphs of
+ *  world/wreck.ts and world/temple.ts (`TRIM_GLOW`) a paler shade of it, its fill the biome's fill. */
+const TRIM_GLOW = 0x7dffc8;
+function biomeLook(group: THREE.Object3D, poi: Poi) {
+  const T = OW.terrain!, b: BiomeHere = Math.abs(poi.z) > POLAR_Z + 800 ? 'ice' : biomeOfCell(T.world, poi.x, poi.z), L = BIOME_LOOK[b];
+  if (L.line === GRID && L.fill === FILL) return;
+  const bright = new THREE.Color(L.line).lerp(new THREE.Color(0xffffff), 0.2).getHex();
+  tintGroup(group, new Map([[GRID, L.line], [TILE_COLOR, bright], [TRIM_GLOW, new THREE.Color(L.line).lerp(new THREE.Color(0xffffff), 0.45).getHex()]]), [FILL, L.fill]);
+}
 /** (0.232) Small things on the ground by the chunk's biome (near chunks only): reeds in a swamp, tufts of grass,
  *  patches of snow, pebbles. Spots from the chunk's own hash, so every player sees the same. */
 function groundDeco(pb: PropBatch, T: Terrain, cx: number, cz: number, skip: (x: number, z: number) => boolean) {
@@ -556,6 +566,7 @@ function loadRuinStruct(poi: Poi): Structure {
   const tg = new THREE.BufferGeometry(); tg.setAttribute('position', new THREE.Float32BufferAttribute(tlv, 3));
   group.add(new THREE.LineSegments(tg, sharedLine(TILE_COLOR)));
   const tpl = drawTemple(rm.temple, poi.id); group.add(tpl.g, drawSettlementComms(poi, T));
+  biomeLook(group, poi);
   scene.add(group);
   const s: Structure = { poi, grid, group, edges: mesh, doors: [], stairs: [], npcs: [], blocks: tpl.blocks, solids: tpl.solids };
   OW.structs.set(poi.id, s); // the door below is placed through the shared space
@@ -572,6 +583,7 @@ function loadWreckStruct(poi: Poi): Structure {
   const grid = VoxelGrid.surface(wm.ops, wm.rect, y);
   const { group, mesh } = voxelObject(grid, Infinity, OUTLINE);
   group.add(drawWreck(wm.deco, poi.id));
+  biomeLook(group, poi);
   scene.add(group);
   const s: Structure = { poi, grid, group, edges: mesh, doors: [], stairs: [], npcs: [] };
   OW.structs.set(poi.id, s);
@@ -633,6 +645,7 @@ function loadCampStruct(poi: Poi): Structure {
   const flames = new THREE.LineSegments(new THREE.BufferGeometry(), addMat(0xffb347));
   flames.geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(10 * 6), 3));
   flames.frustumCulled = false; flames.position.set(cm.fire.x, y, cm.fire.z); group.add(flames);
+  biomeLook(group, poi);
   scene.add(group);
   const s: Structure = { poi, grid, group, edges: mesh, doors: [], stairs: [], npcs: [], camp: cm, flames };
   OW.structs.set(poi.id, s);

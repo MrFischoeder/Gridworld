@@ -169,6 +169,24 @@ export const sharedFill = () => (fillShared ??= fillMat());
 let fillV: THREE.MeshBasicMaterial | null = null, lineV: THREE.LineBasicMaterial | null = null;
 export const sharedFillV = () => (fillV ??= (() => { const m = fillMat(0xffffff); m.vertexColors = true; return m; })());
 export const sharedLineV = () => (lineV ??= lineMat(0xffffff, { vertexColors: true }));
+const fillByColour = new Map<number, THREE.MeshBasicMaterial>();
+/** (0.238) A shared fill in another colour (a biome's dark fill). */
+export function sharedFillC(color: number) {
+  let m = fillByColour.get(color); if (!m) fillByColour.set(color, (m = fillMat(color)));
+  return m;
+}
+/** (0.238, the owner's report: ruins and wrecks stayed green in tinted biomes) Re-colour a built group: every line
+ *  in a colour of `lines` takes the colour it maps to, every fill in `fill[0]` takes `fill[1]`. Vertex-coloured
+ *  lines and other colours (glows, hatches, warning paint) stay as they are. */
+export function tintGroup(g: THREE.Object3D, lines: Map<number, number>, fill?: [number, number]) {
+  g.traverse((o) => {
+    const m = (o as THREE.Mesh).material as THREE.Material & { color?: THREE.Color; vertexColors?: boolean };
+    if (!m || Array.isArray(m) || !m.color || m.vertexColors) return;
+    const hex = m.color.getHex();
+    if ((o as THREE.LineSegments).isLineSegments) { const to = lines.get(hex); if (to !== undefined && to !== hex) (o as THREE.LineSegments).material = sharedLine(to); }
+    else if ((o as THREE.Mesh).isMesh && fill && hex === fill[0] && fill[1] !== hex) (o as THREE.Mesh).material = sharedFillC(fill[1]);
+  });
+}
 export function sharedLine(color: number) {
   let m = lineShared.get(color); if (!m) lineShared.set(color, (m = lineMat(color)));
   return m;

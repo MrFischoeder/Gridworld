@@ -3,6 +3,11 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.238.0', date: '2026-10-20', title: 'Ruins and wrecks in the colours of their land', notes: [
+    'Alien ruins, crashed ships and bandit camps are now drawn in the colours of the biome they stand in, like the ground, trees and stones round them: yellow in the savanna and desert, teal in the taiga, pale on the ice and so on. They no longer stand out in grid green.',
+    'Their old paving and the trim and glyphs on wrecks and temples take a lighter shade of the same colour. Warning colours (hatches, locked doors, chests, foes) stay as they were.',
+    'Multiplayer: worked out from the world seed on every game; nothing new is sent and the server is unchanged.',
+  ] },
   { v: '0.237.2', date: '2026-10-20', title: 'Stones and beasts on hillsides', notes: [
     'Stones on a slope no longer stand level on a flat shelf: they lie along the hillside, the foot following the ground and the top tilting a little less, and sit a bit deeper where the ground bends under them. You still walk into them and climb on them where they really are.',
     'Ravagers, brambles, gnawers and the other beasts that walk now lean with the ground: nose up going uphill, down going downhill, and tipped to the side across a slope.',
