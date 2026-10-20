@@ -1,5 +1,6 @@
 // Bandits: human enemies with guns and blades. They live in camps and patrol the wilds.
 // Unsaved (like drones and creatures) except that a cleared camp stays empty for a while (char.camps).
+import { ringSpot, heading, hiddenFrom, farFromPlayers, meetPoint, mayDrop } from './spawnring';
 import { hurtPlayer } from './damage';
 import { play } from './sound';
 import { targetingFoe, actingFoe, combatFoes, factionOf, hitCombatFoe, type CombatFoe, stepRemote, withFoeTarget, proxied, otherPlayers, hurtOther, boltOut, spawnAuthority, nearestPlayer, remoteOf, spareOwner } from './remote';
@@ -383,14 +384,16 @@ function patrols(dt: number) {
   patrolT = 18;
   const pos = G.pos, lv = env.danger(pos.x, pos.z);
   if (lv < 2 || W.bandits.filter((b) => b.campId === undefined && b.ambush === undefined).length >= 3 || Math.random() > 0.35) return;
-  const a = G.yaw + Math.PI + (Math.random() - 0.5) * 3, d = 70 + Math.random() * 20;   // ahead or to a side
-  const x = pos.x + Math.sin(a) * d, z = pos.z + Math.cos(a) * d;
-  if (env.forbidden(x, z)) return;
+  // (0.235, stage L1) out past the fog, ahead or to a side, out of everyone's sight; then they walk out to meet you
+  const { x, z } = ringSpot(heading() + (Math.random() - 0.5) * 3, Math.random());
+  if (env.forbidden(x, z) || !farFromPlayers(x, z) || !hiddenFrom(x, env.ground(x, z), z)) return;
   const group: Bandit[] = [], n = 2 + (lv > 3.5 && Math.random() < 0.4 ? 1 : 0);
   if (!mayspawn(n * BANDIT_COST, lv)) return;
+  const meet = meetPoint();
   for (let i = 0; i < n; i++) {
     const px = x + i * 1.6, pz = z + (i % 2) * 1.4;
-    spawnBandit(i === 0 && Math.random() < 0.3 ? 'bruiser' : 'gunner', V(px, env.ground(px, pz) + 0.9, pz), lv, group);
+    const b = spawnBandit(i === 0 && Math.random() < 0.3 ? 'bruiser' : 'gunner', V(px, env.ground(px, pz) + 0.9, pz), lv, group);
+    b.home.set(meet.x + i * 1.6, b.home.y, meet.z + (i % 2) * 1.4); b.state = 'return'; // they walk there and look about
   }
 }
 
@@ -399,7 +402,7 @@ export function updateBandits(dt: number, time: number) {
   for (let i = W.bandits.length - 1; i >= 0; i--) {
     const b = W.bandits[i];
     if (stepRemote(b, dt)) { animate(b, dt); continue; } // another player's: it does what its owner says
-    if (!b.cityPost && b.campId === undefined && nearestPlayer(b.p.x, b.p.z) > (b.ambush !== undefined ? 240 : 160)) { removeBandit(b); continue; }
+    if (!b.cityPost && b.campId === undefined && (b.ambush !== undefined ? nearestPlayer(b.p.x, b.p.z) > 240 : mayDrop(b, b.p.x, b.p.y, b.p.z))) { removeBandit(b); continue; } // (0.235) far off and unseen
     if (tickCond(b, dt, (d, cr) => hurtBandit(b, d, cr))) { b.speed = 0; animate(b, dt); continue; } // (0.227, stage W5) knocked down or reeling
     withFoeTarget(b, () => think(b, dt, time)); animate(b, dt);
   }

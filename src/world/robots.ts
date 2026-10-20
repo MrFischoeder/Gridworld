@@ -8,8 +8,9 @@
 //   assault    RD-06: a hunched heavy biped with a hammer arm; charges and smashes you off your feet
 // Like the creatures they are not saved. Where they turn up, and how many, is set by the danger level and the
 // shared threat budget (world/threat.ts): near the villages you meet none, further out ever heavier machines.
+import { ringSpot, heading, hiddenFrom, farFromPlayers, meetPoint, mayDrop } from './spawnring';
 import { hurtPlayer } from './damage';
-import { targetingFoe, proxied, stepRemote, withFoeTarget, hitCombatFoe, otherPlayers, hurtOther, nearestPlayer } from './remote';
+import { targetingFoe, proxied, stepRemote, withFoeTarget, hitCombatFoe, otherPlayers, hurtOther } from './remote';
 import { tickCond, knockDown, heavyHit, bleed, type CondFoe } from './conditions';
 import * as THREE from 'three';
 import { scene, V, lineMat, add as addMat } from './render';
@@ -263,19 +264,24 @@ function trySpawn() {
   if (!env) return;
   const pos = G.pos, lv = env.danger(pos.x, pos.z);
   if (lv < ROBOTS.scout.min) return;
-  const fwx = -Math.sin(G.yaw), fwz = -Math.cos(G.yaw);
-  for (let tries = 0; tries < 8; tries++) {
-    const a = Math.atan2(fwx, fwz) + (Math.random() - 0.5) * 3.4, d = 65 + Math.random() * 30; // ahead or to a side
-    const x = pos.x + Math.sin(a) * d, z = pos.z + Math.cos(a) * d;
-    if (env.forbidden(x, z)) continue;
+  const toward = heading();
+  for (let tries = 0; tries < 10; tries++) {
+    // (0.235, stage L1) out past the fog, ahead or to a side, out of everyone's sight; then they march to meet you
+    const a = toward + (Math.random() - 0.5) * 3.4, { x, z } = ringSpot(a, Math.random());
+    if (env.forbidden(x, z) || !farFromPlayers(x, z) || !hiddenFrom(x, env.ground(x, z), z, 3)) continue;
     const lvHere = env.danger(x, z), kinds = pickGroup(lvHere, env.nearRuin(x, z));
     if (!kinds.length) return;
     const cost = kinds.reduce((c, k) => c + ROBOTS[k].cost, 0);
     if (!mayspawn(cost, lvHere)) return;
     // artillery stands off far away; everyone else comes in a loose group
-    const far = kinds[0] === 'artillery' ? 1.5 : 1, gx = pos.x + Math.sin(a) * d * far, gz = pos.z + Math.cos(a) * d * far;
-    const group: Robot[] = [];
-    kinds.forEach((k, i) => make(k, gx + (i % 2 ? 1 : -1) * (i * 2.2), gz + (i > 1 ? 3 : 0), lvHere, group));
+    const group: Robot[] = [], meet = meetPoint();
+    kinds.forEach((k, i) => make(k, x + (i % 2 ? 1 : -1) * (i * 2.2), z + (i > 1 ? 3 : 0), lvHere, group));
+    const back = Math.hypot(x - meet.x, z - meet.z) || 1;
+    for (const r of group) { // their patrol ground becomes the meeting point (artillery stands 60 m back from it)
+      const off = r.model === 'artillery' ? 60 : 0;
+      r.home.set(meet.x + (r.p.x - x) + (x - meet.x) / back * off, r.home.y, meet.z + (r.p.z - z) + (z - meet.z) / back * off);
+      r.state = 'return';
+    }
     return;
   }
 }
@@ -594,7 +600,7 @@ export function updateRobots(dt: number, time: number) {
   if (!indoor && (spawnT -= dt) <= 0) { spawnT = 7; trySpawn(); }
   for (const r of [...W.robots]) {
     if (stepRemote(r, dt)) { animate(r, dt, time); continue; } // another player's: it does what its owner says
-    if (!r.cityPost && !indoor && r.state !== 'hunt' && nearestPlayer(r.p.x, r.p.z) > 150) { removeRobot(r); continue; }
+    if (!r.cityPost && !indoor && r.state !== 'hunt' && mayDrop(r, r.p.x, r.p.y, r.p.z)) { removeRobot(r); continue; } // (0.235) far off and unseen
     if (tickCond(r, dt, (d, cr) => hurtRobot(r, d, cr))) { r.speed = 0; animate(r, dt, time); continue; } // (0.227, stage W5) short-circuited, knocked over or reeling
     withFoeTarget(r, () => think(r, dt, time));
     animate(r, dt, time);

@@ -1,4 +1,5 @@
 // Bandits on wheels (raider vehicles) and roadside ambushes with a roadblock. Unsaved, like other enemies.
+import { SPAWN, hiddenFrom, farFromPlayers } from './spawnring';
 import { engineAt } from './sound';
 import { vehiclesOpen } from '../gen/settlement';
 import { hurtPlayer } from './damage';
@@ -76,10 +77,11 @@ function spawnRaidersMaybe(dt: number) {
   if (!vehiclesOpen(G.char)) return; // (0.202) no cars before the mechanic comes
   if (lv < 3 || raiders.length >= (lv > 5 ? 2 : 1) || Math.random() > (driving.v ? 0.5 : 0.25) || !mayspawn(3, lv)) return;
   const back = driving.v ? driving.v.st.heading + Math.PI : G.yaw;   // G.yaw looks along -forward: + sin/cos is behind
-  for (let i = 0; i < 8; i++) {
-    const a = back + (Math.random() - 0.5) * 1.2, d = 95 + Math.random() * 30;
+  for (let i = 0; i < 10; i++) {
+    // (0.235, stage L1) far behind, out of everyone's sight: you hear the engine before you see the car
+    const a = back + (Math.random() - 0.5) * 1.2, d = SPAWN.raiders[0] + Math.random() * (SPAWN.raiders[1] - SPAWN.raiders[0]);
     const x = G.pos.x + Math.sin(a) * d, z = G.pos.z + Math.cos(a) * d, model: VehicleModel = Math.random() < 0.2 ? 'mastodon' : 'scout';
-    if (env.forbidden(x, z) || !clearSpot(env.terrain, model, x, z, a + Math.PI)) continue;
+    if (env.forbidden(x, z) || !farFromPlayers(x, z, SPAWN.raiders[0] * 0.8) || !hiddenFrom(x, env.terrain.heightAt(x, z), z, 2.5) || !clearSpot(env.terrain, model, x, z, a + Math.PI)) continue;
     spawnRaider(model, x, z, a + Math.PI, lv);
     return;
   }
@@ -283,12 +285,22 @@ function tryAmbush(dt: number, force = false) {
   if (mv.length() < 0.5) mv.set(-Math.sin(G.yaw), 0, -Math.cos(G.yaw));
   mv.normalize();
   const [, cx, cz] = nearestOnRoad(road, px, pz);
-  // walk 45 m along the road in that direction by sampling points on it
-  let bx = cx, bz = cz;
-  for (let s = 5; s <= 45; s += 5) {
-    const [, qx, qz] = nearestOnRoad(road, cx + mv.x * s, cz + mv.z * s);
-    bx = qx; bz = qz;
+  // (0.235, stage L1) follow the road ahead in that direction and set the block up 90-160 m on, behind a bend or a
+  // rise where nobody sees it go up (else as far on as the road goes); the way is stepped along the road itself
+  let bx = cx, bz = cz, qx0 = cx, qz0 = cz, pick: [number, number] | null = null, far: [number, number] | null = null;
+  for (let s = 5; s <= SPAWN.ambush[1]; s += 5) {
+    const [, qx, qz] = nearestOnRoad(road, qx0 + mv.x * 5, qz0 + mv.z * 5);
+    const sx = qx - qx0, sz = qz - qz0, L = Math.hypot(sx, sz);
+    if (L > 0.5) { mv.set(sx / L, 0, sz / L); } // the road bends: keep to it
+    qx0 = qx; qz0 = qz;
+    const d = Math.hypot(qx - px, qz - pz);
+    if (d < SPAWN.ambush[0] || env.forbidden(qx, qz)) continue;
+    far = [qx, qz];
+    if (farFromPlayers(qx, qz, SPAWN.ambush[0] * 0.8) && hiddenFrom(qx, T.heightAt(qx, qz), qz, 2)) { pick = [qx, qz]; break; }
   }
+  const at = pick ?? far;
+  if (!at) return false;
+  [bx, bz] = at;
   if (Math.hypot(bx - px, bz - pz) < 25 || env.forbidden(bx, bz)) return false;
   // the road's direction at the block, and across it
   const [, ax, az] = nearestOnRoad(road, bx + mv.x * 3, bz + mv.z * 3), dir = V(ax - bx, 0, az - bz).normalize(), side = V(-dir.z, 0, dir.x);
@@ -333,7 +345,7 @@ export function updateRaiders(dt: number) {
       r.p.set(v.st.x, v.y + v.spec.height * 0.5, v.st.z); r.g.position.copy(r.p); r.hp = rm.hp;
       continue;
     }
-    if (nearestPlayer(r.v.st.x, r.v.st.z) > 260) { dropRaider(r); continue; }
+    if (nearestPlayer(r.v.st.x, r.v.st.z) > SPAWN.raiders[1] + 100) { dropRaider(r); continue; } // (0.235) they start further out
     withTarget(r.v.st.x, r.v.st.z, () => driveRaider(r, dt));
     r.hp = r.maxHp * r.v.st.parts.hull / r.v.spec.hull;
     if (r.v.st.parts.hull <= 0) wreckRaider(r);

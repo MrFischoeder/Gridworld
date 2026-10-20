@@ -1,6 +1,7 @@
 // Wild creatures of the open world: Ravager packs, territorial Brambles and diving Leechwings, Gnawer nests,
 // Skitterwing flocks fluttering low in the near wilds, and in the sea Sea Lurkers and shoals of Silverfin.
 // Spawns and movement use Math.random (unsaved, like drones); models are built from PropBatch.
+import { ringSpot, heading, hiddenFrom, farFromPlayers, meetPoint, mayDrop, SPAWN } from './spawnring';
 import { play } from './sound';
 import { hurtPlayer } from './damage';
 import * as THREE from 'three';
@@ -56,6 +57,8 @@ export interface Creature extends CondFoe {
   questId?: string; alpha?: boolean; dmgMul: number;
   /** Where a noise came from (state 'investigate'). */
   noiseAt: THREE.Vector3 | null;
+  /** (0.235) On its way from where it turned up to meet you (world/spawnring.ts): its den moves with it. */
+  coming?: boolean;
   /** (0.225) A Bramble enraged by a noise charges at it, not at you; a beast feeding (state 'feed') eats this bait. */
   rageAt?: THREE.Vector3 | null; bait?: Bait | null;
   /** Seconds it will not go for a bait after being hurt or startled at one. */
@@ -325,22 +328,24 @@ export function setCreatureEnv(e: SpawnEnv | null) { env = e; }
  */
 function trySpawn() {
   if (!env) return;
-  const pos = G.pos, fwx = -Math.sin(G.yaw), fwz = -Math.cos(G.yaw);
+  const pos = G.pos;
   if (Math.random() > 0.55 + heat * 0.12) return;
   const drawn = heard && heat > 0.4 && Math.random() < 0.75, before = W.creatures.length; // the shooting draws them in
-  for (let tries = 0; tries < 10; tries++) {
-    // ahead of you or off to a side (so you meet them on the way, not with a pack piling up behind you)
-    const a = drawn ? Math.random() * 6.283 : Math.atan2(fwx, fwz) + (Math.random() - 0.5) * 3.4, d = drawn ? 55 + Math.random() * 25 : 60 + Math.random() * 25;
-    const bx = drawn ? lastNoise.x : pos.x, bz = drawn ? lastNoise.z : pos.z, x = bx + Math.sin(a) * d, z = bz + Math.cos(a) * d;
-    if (Math.hypot(x - pos.x, z - pos.z) < 40) continue;
+  // (0.235, stage L1) out past the fog, ahead of you or off to a side (the shooting: from the side it was heard on),
+  // out of everyone's sight; then they make for where you are heading
+  const toward = drawn ? Math.atan2(lastNoise.x - pos.x, lastNoise.z - pos.z) : heading(), spread = drawn ? 2.4 : 3.4;
+  for (let tries = 0; tries < 12; tries++) {
+    const { x, z } = ringSpot(toward + (Math.random() - 0.5) * spread, Math.random());
+    if (!farFromPlayers(x, z)) continue;
     const w = env.water(x, z);
     if (w?.kind === 'sea') { // out at sea: a Sea Lurker hunting, or a shoal of Silverfin
-      if (w.depth < 2.5) continue;
+      if (w.depth < 2.5 || !hiddenFrom(x, w.level - 1, z, 1.5)) continue;
       spawnSea(x, z, w.level, env.danger(x, z));
       return;
     }
     if (env.forbidden(x, z)) continue;
     const h = env.ground(x, z), lv = env.danger(x, z), roll = Math.random();
+    if (!hiddenFrom(x, h, z, 2)) continue;
     if (lv >= 0.6 && lv < 2.2 && Math.random() < 0.12) { // now and then a flock of Skitterwings in the near wilds
       const n = 3 + Math.floor(Math.random() * 3);
       if (!mayspawn(n * 0.3, lv, heat)) return;
@@ -373,8 +378,19 @@ function trySpawn() {
         c.flank = (i - (n - 1) / 2) * 1.1; c.pack = pack; pack.push(c);
       }
     } else continue;
-    if (drawn) for (const c of W.creatures.slice(before)) if (c.kind !== 'bramble') { c.state = 'investigate'; c.noiseAt = lastNoise.clone(); c.timer = 20; }
+    comeOver(W.creatures.slice(before), drawn ? { x: lastNoise.x, z: lastNoise.z } : meetPoint());
     return;
+  }
+}
+
+/**
+ * (0.235, stage L1) Newcomers make for the meeting point: ground beasts walk there (their den goes with them until
+ * they settle or start a hunt), fliers move their range there; a grazing Bramble stays where it is.
+ */
+function comeOver(group: Creature[], at: { x: number; z: number }) {
+  for (const c of group) {
+    if (c.kind === 'ravager' || c.kind === 'gnawer') { c.state = 'investigate'; c.noiseAt = V(at.x + (c.p.x - group[0].p.x), c.p.y, at.z + (c.p.z - group[0].p.z)); c.timer = SPAWN.march; c.coming = true; }
+    else if (c.kind === 'leechwing' || c.kind === 'skitter') c.home.set(at.x, c.home.y, at.z);
   }
 }
 
@@ -906,7 +922,8 @@ export function updateCreatures(dt: number, time: number) {
   for (let i = W.creatures.length - 1; i >= 0; i--) {
     const c = W.creatures[i];
     if (stepRemote(c, dt)) { animate(c, dt, time); continue; } // another player's: it does what its owner says
-    if (!c.cityPost && nearestPlayer(c.p.x, c.p.z) > (c.questId ? 240 : c.kind === 'leechwing' ? 220 : 130)) { removeCreature(c); continue; }
+    if (!c.cityPost && (c.questId ? nearestPlayer(c.p.x, c.p.z) > 240 : mayDrop(c, c.p.x, c.p.y, c.p.z))) { removeCreature(c); continue; } // (0.235) far off and out of everyone's sight
+    if (c.coming) { if (c.state === 'investigate') (c.den ?? (c.den = c.p.clone())).copy(c.p); else c.coming = false; } // on its way: its ground goes with it
     const held = tickCond(c, dt, (d, cr) => hurtCreature(c, d, cr)); // (0.227, stage W5) bleeding; down or reeling
     if (c.hp <= 0 || !W.creatures.includes(c)) continue; // bled out
     if (held) { c.speed = 0; animate(c, dt, time); continue; }

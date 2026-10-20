@@ -3,6 +3,13 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.235.0', date: '2026-10-20', title: 'Foes come from afar', notes: [
+    'Creatures, robots and bandit patrols in the wilds no longer appear out of thin air a stone\'s throw away. They turn up past the edge of what you can see (about 120-310 m off, nearer at night and in fog), always out of sight of every player, and then make their way to where you are heading: you can see them coming, hide or step aside.',
+    'They only go away once they are far off (350 m) and nobody has seen them for a few seconds, never before your eyes.',
+    'Raider cars start 300-420 m behind you. Roadblocks go up 90-160 m ahead along the road, behind a bend or a rise where they can.',
+    'Everything already on its way counts towards how much may be about at once, so the wilds do not fill up.',
+    'Multiplayer: the player who spawns the foes (as before) checks every player\'s view and keeps new foes at least 120 m from all of them. Nothing new is sent; the server is unchanged.',
+  ] },
   { v: '0.234.1', date: '2026-10-20', title: 'A plan for the wilds', notes: [
     'No change in play yet: the plan for better encounters in the wilds is written down. Foes will turn up further away and out of sight, come towards you instead of appearing, warn you with sounds, tracks and smoke, and live in lairs and on patrol routes that stay cleared for 6 to 9 days.',
   ] },

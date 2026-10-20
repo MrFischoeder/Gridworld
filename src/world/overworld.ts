@@ -820,7 +820,7 @@ export function openWorld(x: number, z: number) {
     danger,
     nearRuin: (px: number, pz: number) => poisNear(T.world, px, pz, 90).some((p) => (p.type === 'ruin' || p.type === 'wreck') && rectDist(p.rect, px, pz) < 60),
     water: (px: number, pz: number) => T.water(px, pz),
-    forbidden: (px: number, pz: number) => megalithHit(px, T.heightAt(px, pz), pz, .7) || inGateClearing(T.world, px, pz, 4) || nearVillage(px, pz) < 35 || baseHit(px, T.heightAt(px, pz), pz, 0.7) || cityHit(px, T.heightAt(px, pz) + 0.5, pz, 0.7) || (T.water(px, pz)?.depth ?? 0) > 0.5 || [...OW.structs.values()].some((s) => rectDist(s.poi.rect, px, pz) < 1),
+    forbidden: (px: number, pz: number) => megalithHit(px, T.heightAt(px, pz), pz, .7) || inGateClearing(T.world, px, pz, 4) || nearVillage(px, pz) < 35 || baseHit(px, T.heightAt(px, pz), pz, 0.7) || cityHit(px, T.heightAt(px, pz) + 0.5, pz, 0.7) || (T.water(px, pz)?.depth ?? 0) > 0.5 || [...OW.structs.values()].some((s) => rectDist(s.poi.rect, px, pz) < 1) || (Math.hypot(px - G.pos.x, pz - G.pos.z) > STRUCT_LOAD - 30 && poisNear(T.world, px, pz, 40).some((p) => rectDist(p.rect, px, pz) < 1)), // (0.235) places not loaded yet too: spawns come from further off
   };
   setCreatureEnv(envHooks);
   setRobotEnv(envHooks);

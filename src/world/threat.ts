@@ -3,6 +3,7 @@
 // dangerous land, less when gunfire has been heard), nothing new joins while you are fighting, and how much may be
 // about at once grows with the danger level (gen/danger.ts). Fewer foes, but they hit harder (FOE_HIT).
 // Right after you leave a village nothing new turns up for a little while.
+import { SPAWN } from '../gen/spawnring';
 import { spawnAuthority } from './remote';
 import { G, W } from '../game';
 import { ROBOTS } from '../data/robots';
@@ -26,9 +27,9 @@ export const GRACE = 20;
 let outside = 0, next = 12;
 export function updateThreat(dt: number) { outside = inVillage(G.pos.x, G.pos.z) ? 0 : outside + dt; next -= dt; }
 
-/** What is already about (within 160 m). */
+/** What is already about (0.235: within SPAWN.threat 350 m, so foes on their way count too). */
 export function threat(): number {
-  const p = G.pos, near = (q: { x: number; z: number }) => Math.hypot(q.x - p.x, q.z - p.z) < 160;
+  const p = G.pos, near = (q: { x: number; z: number }) => Math.hypot(q.x - p.x, q.z - p.z) < SPAWN.threat;
   let t = 0;
   for (const c of W.creatures) if (near(c.p)) t += CREATURE_COST[c.kind];
   for (const r of W.robots) if (near(r.p)) t += ROBOTS[r.model].cost;

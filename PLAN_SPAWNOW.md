@@ -15,7 +15,10 @@ Ustalenia z właścicielem (20 października 2026):
 
 ## Etapy
 
-### L1: dalej i poza wzrokiem
+### L1: dalej i poza wzrokiem (0.235, zrobione)
+
+Zrobione: pierścień spawnu tuż za granicą mgły (za dnia ok. 180–290 m, w nocy ok. 130–240 m), test widoczności dla wszystkich graczy, znikanie dopiero za 350 m i po 5 s poza wzrokiem, najeźdźcy 300–420 m z tyłu, zasadzki 90–160 m przed graczem na drodze (za zakrętem lub wzniesieniem, gdy się da), budżet zagrożenia do 350 m. Żeby wrogowie z daleka w ogóle do gracza dotarli, już w L1 idą do punktu spotkania na jego drodze (20 s przed nim, najwyżej 120 m): Rozszarpywacze i Gryzacze idą tam węsząc, roboty i patrole bandytów idą tam i patrolują okolicę, Pijawki i Skrzydlaki przenoszą tam krąg lotu, Bramble pasą się, gdzie się pojawiły. L2 zastąpi to zamiarami (trop, przecięcie, czatowanie).
+
 
 **Gdzie się pojawia.**
 - Nowy pierścień spawnu `SPAWN`:
