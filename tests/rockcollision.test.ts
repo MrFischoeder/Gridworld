@@ -65,3 +65,13 @@ describe('0.211.2: camp folk use the gates', async () => {
     }
   });
 });
+
+describe('stones on a slope (0.237.2)', () => {
+  it('lean with the hillside: the foot fully, the crown a little less', async () => {
+    const { leanY, LEAN_TOP } = await import('../src/gen/rockshape');
+    expect(leanY(undefined, 1, 1, 0, 1)).toBe(0);
+    expect(leanY([0.3, 0], 2, 0, 0, 1)).toBeCloseTo(0.6);
+    expect(leanY([0.3, 0], 2, 0, 1, 1)).toBeCloseTo(0.6 * LEAN_TOP);
+    expect(leanY([0, -0.5], 0, 1, 0.5, 1)).toBeCloseTo(-0.5 * (1 + LEAN_TOP) / 2);
+  });
+});

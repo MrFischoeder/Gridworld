@@ -42,6 +42,8 @@ type State = 'roam' | 'hunt' | 'dash' | 'retreat' | 'threat' | 'charge' | 'recov
 export interface Creature extends CondFoe {
   /** (0.227) how far down on its side it is drawn (eased) */
   down?: number;
+  /** (0.237.2) the body's lean along the slope under it, eased: pitch and roll (rad) */
+  slope?: [number, number];
   /** (0.228, stage W6) Its den (where it was born: it never moves), its morale (pack beasts and the Leechwing),
    *  knocked once by its own wound; seconds since anything hurt it. */
   den?: THREE.Vector3; morale?: number; wounded?: boolean; calm?: number;
@@ -963,6 +965,7 @@ export function updateCreatures(dt: number, time: number) {
 }
 function animate(c: Creature, dt: number, time: number) {
   c.g.position.copy(c.p); c.g.rotation.y = c.heading;
+  if (c.slope) { c.g.rotation.x -= c.slope[0]; c.g.rotation.z -= c.slope[1]; } // the poses below ease from their own angles
   c.anim += dt * (1 + c.speed * 1.4);
   const sw = c.speed > 0.1 ? Math.sin(c.anim * 1.6) * Math.min(0.7, 0.2 + c.speed * 0.06) : 0;
   c.legs.forEach((l, i) => { l.rotation.x = (i === 0 || i === 3 ? 1 : -1) * sw; });
@@ -992,9 +995,24 @@ function animate(c: Creature, dt: number, time: number) {
     c.g.rotation.x = c.state === 'grounded' ? 0 : c.state === 'screech' ? -0.5 : -Math.asin(Math.max(-1, Math.min(1, c.dir.y))); c.g.rotation.z = c.state === 'grounded' ? 0 : c.bank;
   }
   condLook(c, dt, time);
+  onSlope(c, dt);
   c.flash -= dt;
   if (c.flash > 0) c.mat.color.setHex(0xffffff);
   else c.mat.color.setHex(baseColor(c));
+}
+/** (0.237.2, the owner's report) A beast walking a hillside lies along it: pitched up or down the slope it faces and
+ *  rolled across it, sampled from the ground half a body ahead, behind and to each side and eased, on top of its pose. */
+const SLOPE = { reach: 0.5, max: 0.5, ease: 6 };
+function onSlope(c: Creature, dt: number) {
+  if (!env || FLYERS.includes(c.kind) || SWIMMERS.includes(c.kind)) return;
+  const L = Math.max(0.4, c.r * SLOPE.reach * 2), s = Math.sin(c.heading), k = Math.cos(c.heading), { x, z } = c.p;
+  const f = env.ground(x + s * L, z + k * L), b = env.ground(x - s * L, z - k * L);
+  const r = env.ground(x + k * L, z - s * L), l = env.ground(x - k * L, z + s * L); // local +x = (cos h, −sin h)
+  const ok = [f, b, r, l].every(Number.isFinite), cap = (v: number) => Math.max(-SLOPE.max, Math.min(SLOPE.max, v));
+  const want: [number, number] = ok ? [cap(-Math.atan((f - b) / (2 * L))), cap(Math.atan((r - l) / (2 * L)))] : [0, 0];
+  const now = c.slope ?? want, e = Math.min(1, dt * SLOPE.ease);
+  now[0] += (want[0] - now[0]) * e; now[1] += (want[1] - now[1]) * e; c.slope = now;
+  c.g.rotation.x += now[0]; c.g.rotation.z += now[1];
 }
 /** (0.227, stage W5) A beast knocked down lies on its side kicking; a staggered one reels; a bleeding one drips. */
 function condLook(c: Creature, dt: number, time: number) {

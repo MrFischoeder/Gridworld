@@ -3,6 +3,11 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.237.2', date: '2026-10-20', title: 'Stones and beasts on hillsides', notes: [
+    'Stones on a slope no longer stand level on a flat shelf: they lie along the hillside, the foot following the ground and the top tilting a little less, and sit a bit deeper where the ground bends under them. You still walk into them and climb on them where they really are.',
+    'Ravagers, brambles, gnawers and the other beasts that walk now lean with the ground: nose up going uphill, down going downhill, and tipped to the side across a slope.',
+    'Multiplayer: everything comes from the world seed and the foes\' positions; nothing new is sent and the server is unchanged.',
+  ] },
   { v: '0.237.1', date: '2026-10-20', title: 'Smoke over the crash site', notes: [
     'Your crashed ship no longer puffs little rings: a tall dark column of smoke rises from the gash in its roof and a thinner one from the engine, the same smoke as the bandits\' fires. You can see it from far off, so it shows you the way back to the ship.',
     'The opening film shows the same smoke over the wreck.',

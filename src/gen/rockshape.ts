@@ -13,6 +13,14 @@ export function rockShape(r: number, h: number, sides: number, rot: number): Roc
     return [Math.cos(angle) * radius + offsets[level][0], y, Math.sin(angle) * radius + offsets[level][1]];
   })) as RockShape;
 }
+/** (0.237.2, the owner's report: stones on a hillside stood level on a flat shelf) A stone lies along the slope under
+ *  it: every point of its shape is raised by the slope's rise there (`lean` = [dy/dx, dy/dz]), fully at the foot so the
+ *  foot ring follows the hillside, easing to `LEAN_TOP` at the crown so the stone does not look tipped over. */
+export const LEAN_TOP = 0.6, LEAN_MAX = 0.9;
+export function leanY(lean: readonly [number, number] | undefined, px: number, pz: number, y: number, h: number): number {
+  if (!lean) return 0;
+  return (lean[0] * px + lean[1] * pz) * (1 - (1 - LEAN_TOP) * Math.min(1, Math.max(0, y / h)));
+}
 /** Point and outward unit normal on the actual triangle used to fill a stone face (not a curved approximation). */
 export function rockFacePoint(shape: RockShape, band: 0 | 1, face: number, s: number, t: number): { point: RockPoint; normal: RockPoint } {
   const j = (face + 1) % shape[0].length, a = shape[band][face], b = shape[band][j], c = shape[band + 1][j], d = shape[band + 1][face];

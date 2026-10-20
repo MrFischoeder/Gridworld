@@ -61,7 +61,7 @@ import { lighthouseHit } from './lighthouses';
 import { boatHit, shipFloor, shipHit } from './boats';
 import { CHUNK, poisNear, X_MIN, WORLD_W, POLE_Z, POLAR_Z, villageContaining, villageDist, villageSeed, GRIDHOLM_ID, type Poi, type Rect, wrapC, wrapDx } from '../gen/regions';
 import { chunkTrees, chunkRocks, TREE_SPAN, type Tree, type Rock, type OreKind } from '../gen/trees';
-import { rockShape, rockSurface, type RockShape } from '../gen/rockshape';
+import { rockShape, rockSurface, leanY, type RockShape } from '../gen/rockshape';
 import { drawTemple, solidDist, type TempleSolid } from './temple';
 import { chunkWells, type Well } from '../gen/water';
 import { chunkPlants, type Plant } from '../gen/flora';
@@ -184,11 +184,13 @@ function rockTop(k: Rock, x: number, z: number, r: number): number {
   if (d >= k.r + r) return -Infinity;
   const f = d > r ? (d - r) / d : 0; dx *= f; dz *= f;
   let s = rockShapes.get(k); if (!s) rockShapes.set(k, s = rockShape(k.r, k.h, k.sides, k.rot));
-  return k.y + rockSurface(s, dx, dz);
+  const top = rockSurface(s, dx, dz);
+  return k.y + top + (isFinite(top) ? leanY(k.lean, dx, dz, top, k.h) : 0);
 }
 /** A body (feet at y, `r` wide) runs into the stone: some of it under the body's circle stands above the feet. */
 function rockBlocks(k: Rock, x: number, y: number, z: number, r: number): boolean {
-  if (k.h <= ROCK_STEP || y > k.y + k.h || y + 1.7 < k.y) return false;
+  const tilt = k.lean ? (Math.abs(k.lean[0]) + Math.abs(k.lean[1])) * k.r : 0;
+  if (k.h <= ROCK_STEP || y > k.y + k.h + tilt || y + 1.7 < k.y - tilt) return false;
   return y < rockTop(k, x, z, r) - ROCK_TOL;
 }
 /** The top of the stones under the player you can stand on from height y (-Infinity when none). */
@@ -370,7 +372,7 @@ function buildChunk(cx: number, cz: number, lod = 1): Chunk {
     for (const cv of caves) drawCave(pb, cv, T);
     for (const m of marks) drawTrailMark(pb, m, T);
     for (const t of trees) { const lk = looks.get(t)!; pb.remap = tintOf(lk.b); drawTreeLook(pb, t, lod, lk.look, lk.size); }
-    for (const k of rocks) { pb.remap = tintOf(polar ? 'ice' : biomeOfCell(T.world, k.x, k.z)); pb.rock(k.x, k.y, k.z, k.r, k.h, k.sides, k.rot, GRID); pb.remap = null; if (k.ore) pb.vein(k.x, k.y, k.z, k.r, k.h, k.sides, k.rot, ORE_COLOR[k.ore]); }
+    for (const k of rocks) { pb.remap = tintOf(polar ? 'ice' : biomeOfCell(T.world, k.x, k.z)); pb.rock(k.x, k.y, k.z, k.r, k.h, k.sides, k.rot, GRID, k.lean); pb.remap = null; if (k.ore) pb.vein(k.x, k.y, k.z, k.r, k.h, k.sides, k.rot, ORE_COLOR[k.ore], k.lean); }
     pb.remap = null;
     if (lod === 1 && !polar) groundDeco(pb, T, cx, cz, (x, z) => cleared(x, z) || holes.some((h) => inRect(h, x, z)) || f.roads.some((rd) => nearestOnRoad(rd, x, z)[0] < rd.half + 1));
     group.add(pb.build());

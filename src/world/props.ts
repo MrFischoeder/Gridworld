@@ -1,6 +1,6 @@
 // Batched wireframe props with dark fills (roofs, tree crowns). Many props share one fill mesh and one line mesh.
 import * as THREE from 'three';
-import { rockShape, rockFacePoint } from '../gen/rockshape';
+import { rockShape, rockFacePoint, leanY } from '../gen/rockshape';
 import { lineMat, fillMat } from './render';
 
 export class PropBatch {
@@ -91,8 +91,8 @@ export class PropBatch {
   }
 
   /** Broad faceted boulder with uneven shoulders and a broken, flat crown. */
-  rock(x: number, y: number, z: number, r: number, h: number, sides: number, rot: number, color: number) {
-    const rings = rockShape(r, h, sides, rot).map(ring => ring.map(p => [x + p[0], y + p[1], z + p[2]]));
+  rock(x: number, y: number, z: number, r: number, h: number, sides: number, rot: number, color: number, lean?: readonly [number, number]) {
+    const rings = rockShape(r, h, sides, rot).map(ring => ring.map(p => [x + p[0], y + p[1] + leanY(lean, p[0], p[2], p[1], h), z + p[2]]));
     sides = rings[0].length;
     for (let band = 0; band < 2; band++) for (let i = 0; i < sides; i++) {
       const j = (i + 1) % sides;
@@ -107,12 +107,12 @@ export class PropBatch {
    * A vein of ore in a rock drawn by `rock` with the same numbers: zigzag streaks across every other face and a few
    * glinting nuggets, in the ore's colour.
    */
-  vein(x: number, y: number, z: number, r: number, h: number, sides: number, rot: number, color: number) {
+  vein(x: number, y: number, z: number, r: number, h: number, sides: number, rot: number, color: number, lean?: readonly [number, number]) {
     const shape = rockShape(r, h, sides, rot);
     sides = shape[0].length;
     const on = (i: number, band: 0 | 1, s: number, t: number) => {
       const { point, normal } = rockFacePoint(shape, band, i, s, t), gap = Math.min(r, h) * .004;
-      return [x + point[0] + normal[0] * gap, y + point[1] + normal[1] * gap, z + point[2] + normal[2] * gap];
+      return [x + point[0] + normal[0] * gap, y + point[1] + normal[1] * gap + leanY(lean, point[0], point[2], point[1], h), z + point[2] + normal[2] * gap];
     };
     const stroke = (i: number, band: 0 | 1, points: number[][]) => {
       for (let j = 0; j + 1 < points.length; j++) {

@@ -13,6 +13,7 @@ import { inFogSite } from './toxic';
 import { inLode } from './lodes';
 import { inCrystals } from './crystals';
 import { boulderDensity } from './boulders';
+import { LEAN_MAX } from './rockshape';
 
 /** Open ground kept around places: villages keep a wide ring (the vehicle yard sits there). */
 const clearing = (p: { type: string }) => (p.type === 'village' ? 20 : 6);
@@ -113,7 +114,11 @@ export function chunkTrees(t: Terrain, cx: number, cz: number): Tree[] {
 }
 
 /** A rock; `ore` = a vein of metal in it (mined with the Pickaxe: more blows, ore besides the stones). */
-export interface Rock { x: number; z: number; y: number; r: number; h: number; sides: number; rot: number; ore?: OreKind }
+export interface Rock {
+  x: number; z: number; y: number; r: number; h: number; sides: number; rot: number; ore?: OreKind;
+  /** (0.237.2) the hillside's rise under it [dy/dx, dy/dz]: the stone lies along it (gen/rockshape.ts `leanY`) */
+  lean?: [number, number];
+}
 export type OreKind = 'iron' | 'copper';
 /** Veins only in rocks big enough to work (data/crafting ROCK_MIN_R); rare in the lowlands, common in the mountains. */
 export const ORE = { minR: 0.55, base: 0.05, mountain: 0.4, high: 0.08, copper: 0.35, copperHigh: 0.5 };
@@ -126,6 +131,23 @@ export function oreOf(world: number, cx: number, cz: number, i: number, k: { x: 
   return R() < ORE.copper + (ORE.copperHigh - ORE.copper) * m ? 'copper' : 'iron';
 }
 
+/** (0.237.2) The hillside's rise across a stone of radius r at (x, z): the secant over its foot, so the foot ring
+ *  meets the ground at its edge; capped at `LEAN_MAX`. */
+function slopeAt(t: Terrain, x: number, z: number, r: number): [number, number] {
+  const cap = (v: number) => Math.max(-LEAN_MAX, Math.min(LEAN_MAX, v));
+  return [cap((t.heightAt(x + r, z) - t.heightAt(x - r, z)) / (2 * r)), cap((t.heightAt(x, z + r) - t.heightAt(x, z - r)) / (2 * r))];
+}
+/** How much deeper a stone sits where the ground bends under it (a hollow or a hilltop): the most the ground at its
+ *  foot lies below the slope's plane through the middle, so no edge hangs in the air. */
+function slopeSink(t: Terrain, x: number, z: number, r: number, [gx, gz]: [number, number]): number {
+  const y = t.heightAt(x, z);
+  let most = 0;
+  for (let i = 0; i < 8; i++) {
+    const a = i * Math.PI / 4, dx = Math.cos(a) * r * 0.9, dz = Math.sin(a) * r * 0.9;
+    most = Math.max(most, y + gx * dx + gz * dz - t.heightAt(x + dx, z + dz));
+  }
+  return Math.min(most, r * 0.3);
+}
 /** Scattered rocks: irregular faceted boulders, a few per chunk, never on roads or places. */
 export function chunkRocks(t: Terrain, cx: number, cz: number): Rock[] {
   const c = wrapC(cx);
@@ -138,7 +160,7 @@ export function chunkRocks(t: Terrain, cx: number, cz: number): Rock[] {
     if (f.pads.some((p) => rectDist(p.poi.rect, x, z) < p.poi.flat + clearing(p.poi))) continue;
     if (f.roads.some((rd) => nearestOnRoad(rd, x, z)[0] < rd.half + r + 0.5)) continue;
     if (t.water(x, z) || inScar(t, x, z, 8 + r) || inInstall(t, x, z, 4 + r) || inCity(t.world, x, z, 2 + r) || inFogSite(t.world, x, z, 2 + r) || inLode(t.world, x, z, 2 + r) || inCrystals(t.world, x, z, r)) continue;
-    const k: Rock = { x, z, y: t.heightAt(x, z) - 0.15, r, h, sides, rot }, ore = oreOf(t.world, cx, cz, out.length, k);
+    const lean = slopeAt(t, x, z, r), k: Rock = { x, z, y: t.heightAt(x, z) - 0.15 - slopeSink(t, x, z, r, lean), r, h, sides, rot, lean }, ore = oreOf(t.world, cx, cz, out.length, k);
     if (ore) k.ore = ore;
     out.push(k);
   }
@@ -151,8 +173,8 @@ export function chunkRocks(t: Terrain, cx: number, cz: number): Rock[] {
     if (f.pads.some(p => rectDist(p.poi.rect, x, z) < p.poi.flat + clearing(p.poi) + r)) continue;
     if (f.roads.some(rd => nearestOnRoad(rd, x, z)[0] < rd.half + r + 2)) continue;
     if (t.water(x, z) || inScar(t, x, z, 8 + r) || inInstall(t, x, z, 4 + r) || inCity(t.world, x, z, 2 + r) || inFogSite(t.world, x, z, 2 + r) || inLode(t.world, x, z, 2 + r) || inCrystals(t.world, x, z, r)) continue;
-    const y = Math.min(t.heightAt(x - r * 0.5, z), t.heightAt(x + r * 0.5, z), t.heightAt(x, z - r * 0.5), t.heightAt(x, z + r * 0.5)) - 0.2;
-    out.push({ x, z, y, r, h, rot, sides: 6 });
+    const lean = slopeAt(t, x, z, r);
+    out.push({ x, z, y: t.heightAt(x, z) - 0.2 - slopeSink(t, x, z, r, lean), r, h, rot, sides: 6, lean });
   }
   return out;
 }
