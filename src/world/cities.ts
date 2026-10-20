@@ -11,6 +11,8 @@ import * as THREE from 'three';
 import { scene } from './render';
 import { PropBatch } from './props';
 import { G } from '../game';
+/** world/player.ts EYE (not imported: that module's chain needs the DOM) */
+const EYE_H = 1.55;
 import { OW } from './overworld';
 import { rng } from '../core/rng';
 import { citySites, cityAt, cityLayout, worldToCity, bldsNear, carsNear, inBld, bldTop, corners, CITY, type CityLayout, type CitySite, type Bld, type Street, type Car } from '../gen/cities';
@@ -197,9 +199,10 @@ const METRO_C = 0x5cc8ff, DEAD_C = 0x6f8f80, HOLE = 0x010d04;
 function metroEntrance(pb: PropBatch, u: number, v: number, y: number, R: () => number, dead: boolean) {
   const c = dead ? DEAD_C : METRO_C;
   // the opening: dark, with the treads running down into it
-  pb.face([u - 1.25, y + .05, v - 2.5], [u + 1.25, y + .05, v - 2.5], [u + 1.25, y + .05, v + 2.5], [u - 1.25, y + .05, v + 2.5]);
-  if (!dead) for (let t = 0; t < 9; t++) pb.seg(c, [u - 1.2, y + .07, v - 2.2 + t * .55], [u + 1.2, y + .07, v - 2.2 + t * .55]);
-  pb.line(HOLE, [u - 1.25, y + .06, v - 2.5], [u + 1.25, y + .06, v - 2.5]);
+  if (dead) { // a decoy's opening is filled with rubble: a dark lid; a live one is a real shaft (metroPit)
+    pb.face([u - 1.25, y + .05, v - 2.5], [u + 1.25, y + .05, v - 2.5], [u + 1.25, y + .05, v + 2.5], [u - 1.25, y + .05, v + 2.5]);
+    pb.line(HOLE, [u - 1.25, y + .06, v - 2.5], [u + 1.25, y + .06, v - 2.5]);
+  }
   // the parapet round three sides, rails on top (a decoy's lean and break)
   for (const sd of [-1, 1]) {
     const tilt = dead && R() < 0.6 ? (R() - 0.3) * 0.7 : 0;
@@ -231,15 +234,66 @@ function metroEntrance(pb: PropBatch, u: number, v: number, y: number, R: () => 
     pb.line(c, [u + 2.0, y + 4.75, v - 2.96], [u + 2.0, y + 5.35, v - 2.96], [u + 2.3, y + 4.95, v - 2.96], [u + 2.6, y + 5.35, v - 2.96], [u + 2.6, y + 4.75, v - 2.96]);
   }
 }
+/** (0.238.2) A live entrance's shaft: stairs going down under the street. The ground hides everything below it, so
+ * the opening is a stencil mask drawn after the city (`PIT.mask`); inside it a box's far faces reset the depth and paint
+ * the dark, then the walls, treads and their edges are drawn only through the opening. No collision: walking into the
+ * opening starts the descent (`metroDescent`). */
+const PIT = { hw: 1.2, v0: -2.4, len: 0.3, rise: 0.25, treads: 24, back: 2.4, lintel: 2.3, end: 4.6, deep: 8, order: 40 };
+const stencil = (m: THREE.Material, write: boolean) => {
+  m.stencilWrite = true; m.stencilRef = 1;
+  m.stencilFunc = write ? THREE.AlwaysStencilFunc : THREE.EqualStencilFunc;
+  m.stencilZPass = write ? THREE.ReplaceStencilOp : THREE.KeepStencilOp;
+  return m;
+};
+const PIT_MASK = stencil(new THREE.MeshBasicMaterial({ color: HOLE, side: THREE.DoubleSide, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }), true);
+const PIT_BACK = stencil(new THREE.MeshBasicMaterial({ color: 0x000000, side: THREE.BackSide, depthFunc: THREE.AlwaysDepth }), false);
+const PIT_FILL = stencil(new THREE.MeshBasicMaterial({ color: HOLE, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 }), false);
+const PIT_EDGE = stencil(new THREE.LineBasicMaterial({ color: METRO_C }), false);
+const PIT_DIM = stencil(new THREE.LineBasicMaterial({ color: 0x2c7a96 }), false);
+/** The tread's top at v (entrance-local), for the descent's camera. */
+function pitFloor(v: number) { return -PIT.rise * Math.max(0, Math.min(PIT.treads, Math.floor((v - PIT.v0) / PIT.len) + 1)); }
+function metroPit(u: number, v: number, y: number): THREE.Group {
+  const g = new THREE.Group(), tri: number[] = [], edge: number[] = [], dim: number[] = [], { hw } = PIT;
+  const P = (a: number, h: number, b: number) => [u + a, y + h, v + b];
+  const quad = (a: number[], b: number[], c: number[], d: number[]) => tri.push(...a, ...b, ...c, ...a, ...c, ...d);
+  for (let i = 0; i < PIT.treads; i++) {
+    const b0 = PIT.v0 + i * PIT.len, b1 = b0 + PIT.len, top = -PIT.rise * (i + 1);
+    quad(P(-hw, top, b0), P(hw, top, b0), P(hw, top, b1), P(-hw, top, b1)); // the tread
+    quad(P(-hw, top + PIT.rise, b0), P(hw, top + PIT.rise, b0), P(hw, top, b0), P(-hw, top, b0)); // its riser
+    edge.push(...P(-hw, top + PIT.rise, b0), ...P(hw, top + PIT.rise, b0)); // the step's lip, seen from the top
+  }
+  const low = -PIT.deep;
+  for (const sd of [-1, 1]) { // the side walls, a handrail and wall panels
+    quad(P(sd * hw, 0, PIT.v0), P(sd * hw, 0, PIT.end), P(sd * hw, low, PIT.end), P(sd * hw, low, PIT.v0));
+    const rail = (b: number) => pitFloor(b) + 0.95;
+    for (let b = PIT.v0; b < PIT.end - 0.3; b += 0.6) dim.push(...P(sd * (hw - 0.08), rail(b), b), ...P(sd * (hw - 0.08), rail(b + 0.6), b + 0.6));
+    for (let b = PIT.v0 + 1.2; b < PIT.end; b += 1.2) dim.push(...P(sd * hw, Math.min(0, pitFloor(b) + 3), b), ...P(sd * hw, pitFloor(b), b));
+    edge.push(...P(sd * hw, 0, PIT.v0), ...P(sd * hw, pitFloor(PIT.v0 + 0.01), PIT.v0));
+  }
+  // the back wall over the tunnel's mouth, the sloping ceiling beyond it, a lamp strip under the lintel
+  quad(P(-hw, 0, PIT.back), P(hw, 0, PIT.back), P(hw, -PIT.lintel, PIT.back), P(-hw, -PIT.lintel, PIT.back));
+  const slope = PIT.rise / PIT.len, ceil = (b: number) => -PIT.lintel - (b - PIT.back) * slope;
+  quad(P(-hw, ceil(PIT.back), PIT.back), P(hw, ceil(PIT.back), PIT.back), P(hw, ceil(PIT.end), PIT.end), P(-hw, ceil(PIT.end), PIT.end));
+  edge.push(...P(-hw, -PIT.lintel, PIT.back), ...P(hw, -PIT.lintel, PIT.back));
+  edge.push(...P(-0.7, -PIT.lintel + 0.12, PIT.back - 0.02), ...P(0.7, -PIT.lintel + 0.12, PIT.back - 0.02));
+  const geo = (a: number[]) => new THREE.BufferGeometry().setAttribute('position', new THREE.Float32BufferAttribute(a, 3));
+  const mask = new THREE.Mesh(geo([...P(-hw, .06, PIT.v0), ...P(hw, .06, PIT.v0), ...P(hw, .06, PIT.back), ...P(-hw, .06, PIT.v0), ...P(hw, .06, PIT.back), ...P(-hw, .06, PIT.back)]), PIT_MASK);
+  const box = new THREE.Mesh(new THREE.BoxGeometry(hw * 2 + 0.1, PIT.deep, PIT.end - PIT.v0 + 0.2), PIT_BACK);
+  box.position.set(u, y - PIT.deep / 2 + 0.03, v + (PIT.v0 + PIT.end) / 2);
+  const parts: THREE.Object3D[] = [mask, box, new THREE.Mesh(geo(tri), PIT_FILL), new THREE.LineSegments(geo(dim), PIT_DIM), new THREE.LineSegments(geo(edge), PIT_EDGE)];
+  parts.forEach((o, i) => { o.renderOrder = PIT.order + i; o.frustumCulled = false; g.add(o); });
+  return g;
+}
 function cityVaultModel(T: Terrain, l: Live): THREE.Group {
   const pb = new PropBatch(), H = groundOf(T, l), entries = cityEntrances(T.world, l.c), decoys = cityDecoys(T.world, l.c), R = rng(l.c.i * 131 + 7);
   for (const e of entries) metroEntrance(pb, e.u, e.v, H(e.u, e.v), R, false);
   for (const d of decoys) metroEntrance(pb, d.u, d.v, H(d.u, d.v), R, true);
   const g = pb.build(); g.name = 'city-vaults'; g.userData.entrances = entries.map(e => e.id);
+  for (const e of entries) g.add(metroPit(e.u, e.v, H(e.u, e.v)));
   for (const e of entries) {
     const board = textSprite(tl('METRO'), '#5cc8ff', 2.4);
     board.position.set(e.u, H(e.u, e.v) + 3.65, e.v - 2.8); g.add(board);
-    const sign = textSprite(TL`${stationName(T.world, l.c.i, e.n)} Station [E]`, '#5cc8ff', 5);
+    const sign = textSprite(TL`${stationName(T.world, l.c.i, e.n)} Station`, '#5cc8ff', 5);
     sign.position.set(e.u, H(e.u, e.v) + 6.2, e.v - 2.5); g.add(sign);
   }
   for (const d of decoys) {
@@ -383,6 +437,27 @@ export function nearCityEntrance(): CityEntrance | null {
   return best;
 }
 
+/** (0.238.2) Walked into a live entrance's opening on foot: the camera's way down its stairs (world points at eye
+ * height), the yaw facing down them, and the entrance. Null anywhere else. */
+export function metroDescent(): { e: CityEntrance; pts: THREE.Vector3[]; yaw: number } | null {
+  const T = OW.terrain;
+  if (!T || G.char.loc !== 'overworld') return null;
+  for (const l of live.values()) {
+    const [pu, pv] = worldToCity(l.c, G.pos.x, G.pos.z);
+    if (Math.hypot(pu, pv) > l.c.r + 10) continue;
+    for (const e of cityEntrances(T.world, l.c)) {
+      const du = pu - e.u, dv = pv - e.v;
+      if (Math.abs(du) > PIT.hw - 0.1 || dv < PIT.v0 + 0.55 || dv > PIT.back - 0.2) continue;
+      const y = groundOf(T, l)(e.u, e.v);
+      if (Math.abs(G.pos.y - y) > 1.2) continue;
+      const W2 = (a: number, b: number, h: number) => new THREE.Vector3(l.ox + a * l.co + b * l.si, h, l.c.z - a * l.si + b * l.co);
+      const pts = [W2(pu, pv, G.pos.y + EYE_H)];
+      for (let b = dv + 0.5; b <= PIT.end - 0.3; b += 0.6) pts.push(W2(e.u + du * Math.max(0, 1 - (b - dv) / 2), e.v + b, y + pitFloor(b) + EYE_H));
+      return { e, pts, yaw: Math.atan2(-l.si, -l.co) };
+    }
+  }
+  return null;
+}
 /** (0.195) A caved-in metro entrance within a few metres (only a word: there is no way down). */
 export function nearCityDecoy(): boolean {
   const T = OW.terrain;

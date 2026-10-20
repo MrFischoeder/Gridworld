@@ -47,6 +47,12 @@ export function cityEntrances(world: number, city: CitySite): CityEntrance[] {
   cache.set(key, out);
   return out;
 }
+/** (0.238.2) Where you come up out of an entrance: on the street in front of its arch, facing away from the stairs
+ * (the opening itself takes you down again). */
+export function entranceFront(city: CitySite, e: CityEntrance): { x: number; z: number; yaw: number } {
+  const [x, z] = cityToWorld(city, e.u, e.v - 4.6);
+  return { x, z, yaw: city.yaw };
+}
 /** (0.195) Metro entrances that lead nowhere: caved in, the stairs full of rubble. 2–3 a city, on the surface only. */
 export interface CityDecoy { city: number; u: number; v: number; x: number; z: number }
 const decoyCache = new Map<string, CityDecoy[]>();

@@ -5,7 +5,7 @@ import './darkshader'; // (0.199) the light map in every fogged material, before
 // Match the look of the original (three r128: no colour management, linear output).
 THREE.ColorManagement.enabled = false;
 
-export const renderer = new THREE.WebGLRenderer({ antialias: true });
+export const renderer = new THREE.WebGLRenderer({ antialias: true, stencil: true }); // (0.238.2) the metro shafts draw through a stencil mask
 renderer.outputColorSpace = THREE.LinearSRGBColorSpace;
 renderer.domElement.id = 'view';
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2));

@@ -3558,6 +3558,7 @@ export const PL: Record<string, string> = {
   "M {0}": "M {0}",
   "METRO": "METRO",
   "{0} Station [E]": "Stacja {0} [E]",
+  "{0} Station": "Stacja {0}",
   " · Metro: {0} Station {1} m · M map": " · Metro: stacja {0} {1} m · mapa M",
   "METRO · Caved in: the stairs are buried under rubble. No way down here.": "METRO · Zawalone: schody są zasypane gruzem. Tędy nie zejdziesz.",
   "{0} Metro": "Metro {0}",

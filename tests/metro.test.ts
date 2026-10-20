@@ -80,3 +80,17 @@ describe('0.238.1: curved track at the turns', () => {
     }
   });
 });
+
+describe('(0.238.2) coming up out of an entrance', () => {
+  it('stands you on the street in front of its arch, off the opening that takes you down', async () => {
+    const { entranceFront } = await import('../src/gen/citydungeons');
+    const { worldToCity, cityLayout, bldsNear, inBld } = await import('../src/gen/cities');
+    for (const city of citySites(12345).slice(0, 4)) for (const e of cityEntrances(12345, city)) {
+      const f = entranceFront(city, e), [u, v] = worldToCity(city, f.x, f.z), L = cityLayout(12345, city);
+      expect(Math.abs(u - e.u)).toBeLessThan(0.01);
+      expect(v - e.v).toBeLessThan(-4); // the opening runs v −2.4 .. 2.4
+      expect(bldsNear(L, u, v, 2).every((i) => !inBld(L.blds[i], u, v, 0.5))).toBe(true);
+      expect([Math.sin(f.yaw), Math.cos(f.yaw)].map((x) => +x.toFixed(6))).toEqual([Math.sin(city.yaw), Math.cos(city.yaw)].map((x) => +x.toFixed(6)));
+    }
+  });
+});

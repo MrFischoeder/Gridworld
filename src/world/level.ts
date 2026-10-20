@@ -26,8 +26,8 @@ import { setRobotEnv, spawnGuards, clearRobots } from './robots';
 import { spawnAuthority } from './remote';
 import { dangerAt } from '../gen/danger';
 import { clearMountedTurrets, loadMountedTurrets, mountedTurretHit } from './mountedturrets';
-import { cityEntrance, cityEntrances, dungeonSeed } from '../gen/citydungeons';
-import type { CitySite } from '../gen/cities';
+import { cityEntrance, cityEntrances, dungeonSeed, entranceFront } from '../gen/citydungeons';
+import { citySites, type CitySite } from '../gen/cities';
 import { G, W } from '../game';
 import { hash, OPP, DIRV, type Dir } from '../core/rng';
 import { VoxelGrid } from '../core/voxel';
@@ -518,16 +518,18 @@ function exitCustom() {
 }
 /** (0.195) Up a metro station's stairs onto its own street (gen/metro.ts): in at one end of the city, out at another. */
 function exitMetro(city: CitySite, n: number) {
-  const c = G.char, e = cityEntrances(c.world, city)[n];
-  c.ow = { x: nearX(e.x, c.ow?.x ?? e.x), y: -1e4, z: e.z, yaw: c.ow?.yaw ?? 0 };
+  const c = G.char, e = cityEntrances(c.world, city)[n], f = entranceFront(city, e);
+  c.ow = { x: nearX(f.x, c.ow?.x ?? f.x), y: -1e4, z: f.z, yaw: f.yaw };
   c.loc = 'overworld'; c.dungeon = null; saveChar();
   loadOverworld({ kind: 'saved' }); showToast(e.name); arriveVia(null);
 }
 export function exitToRuin() {
   const c = G.char, id = c.dungeon!.ruinId;
   const entrance = cityEntrance(c.world, id);
-  if (entrance) {
-    c.ow = { x: nearX(entrance.x, c.ow?.x ?? entrance.x), y: -1e4, z: entrance.z, yaw: c.ow?.yaw ?? 0 };
+  const site = entrance && citySites(c.world).find((s) => s.i === entrance.city);
+  if (entrance && site) {
+    const f = entranceFront(site, entrance);
+    c.ow = { x: nearX(f.x, c.ow?.x ?? f.x), y: -1e4, z: f.z, yaw: f.yaw };
     c.loc = 'overworld'; c.dungeon = null; saveChar();
     loadOverworld({ kind: 'saved' }); showToast(entrance.name); arriveVia(null); return;
   }

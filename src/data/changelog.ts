@@ -3,6 +3,12 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.239.0', date: '2026-10-20', title: 'Walking down into the metro', notes: [
+    'A metro entrance is now a real stairwell: look over the railings and the steps run down under the street, between tiled walls with handrails, to a lit lintel and the dark tunnel beyond.',
+    'You no longer press E to go down: walk in under the arch and onto the stairs and you go down into the station on your own. Coming back up you step out on the street in front of the arch, facing away from it.',
+    'Fix: climbing the stairs out of a ruin or a crashed ship sometimes left you standing on the stairs, so you had to go down and climb again. A quick climb no longer slips past the point where the way out begins.',
+    'Multiplayer: each player goes down or up on their own; nothing new is sent and the server is unchanged.',
+  ] },
   { v: '0.238.1', date: '2026-10-20', title: 'Curved track in the metro', notes: [
     'Where a metro tunnel turns, the rails no longer cross each other in a tangle: both rails bend round the corner in a smooth curve, sleepers and all.',
     'The yellow lines that hung over the track in the stations like loose power cables are gone. They were the platforms\' yellow safety strips drawn in the wrong place; they now run along the platform edges where they belong.',
