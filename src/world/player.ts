@@ -1,4 +1,5 @@
 // Player movement: AABB against voxels, gravity and jumping.
+import { BODY_FX } from './bodystate';
 import { STEALTH } from '../gen/stealth';
 import { environmentalDamage } from './damage';
 import * as THREE from 'three';
@@ -157,7 +158,7 @@ export function updatePlayer(dt: number): boolean {
   const wantSprint = (keys.ShiftLeft || keys.ShiftRight) && m > 0.1 && !G.swimming && !over && !G.crouch;
   const sprint = wantSprint && drainStamina(STAMINA.sprint * (L.state === 'heavy' ? 1.4 : 1), dt);
   const swimTired = G.swimming && m > 0.1 && !drainStamina(STAMINA.swim, dt);
-  const speed = (sprint ? 9 : 6) * G.S.speed * loadSpeed(L.kg) * (G.swimming ? (swimTired ? 0.25 : 0.45) : wet > 0.45 ? 0.65 : 1) * (G.crouch && !G.swimming ? STEALTH.crouchSpeed : 1) * (playerStaggered() ? PLAYER_COND.slow : 1);
+  const speed = (sprint ? 9 : 6) * G.S.speed * loadSpeed(L.kg) * (G.swimming ? (swimTired ? 0.25 : 0.45) : wet > 0.45 ? 0.65 : 1) * (G.crouch && !G.swimming ? STEALTH.crouchSpeed : 1) * (playerStaggered() ? PLAYER_COND.slow : 1) * BODY_FX.speed;
   G.activity = m < 0.1 || G.trans ? 1 : sprint ? BURN.sprint : G.swimming ? BURN.swim : BURN.walk;
   const fw = V(-Math.sin(G.yaw), 0, -Math.cos(G.yaw)), rt = V(Math.cos(G.yaw), 0, -Math.sin(G.yaw));
   const want = fw.multiplyScalar(f * speed).addScaledVector(rt, s * speed);

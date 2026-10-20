@@ -12,6 +12,7 @@ import { carriedKg, gear } from '../character';
 import { MIN_PER_SEC } from '../core/time';
 import { $, logLine, showToast } from '../ui/hud';
 import { tl, TL } from '../i18n';
+import { BODY_FX } from './bodystate';
 
 const bar = { st: $('stfill'), food: $('foodfill'), belly: $('bellyfill'), water: $('waterfill'), foodBox: $('foodbar'), waterBox: $('waterbar'), stLbl: $('stlbl'), foodLbl: $('foodlbl') };
 
@@ -35,7 +36,7 @@ export function loadSpeed(kg: number) {
 /** Spend stamina on an effort. Returns false (and spends nothing) when there is not enough or you are exhausted. */
 export function spendStamina(n: number, force = false): boolean {
   if (G.god) return true;
-  n *= G.S.stamina; // an exoskeleton takes part of the effort
+  n *= G.S.stamina * BODY_FX.effort; // an exoskeleton takes part of the effort; cold and heat add to it
   if (!force && (G.exhausted || G.stamina < n * 0.5)) return false;
   G.stamina = Math.max(0, G.stamina - n); G.effortT = 0;
   if (G.stamina <= 0 && !G.exhausted) { G.exhausted = true; showToast(tl('Exhausted')); }
@@ -45,7 +46,7 @@ export function spendStamina(n: number, force = false): boolean {
 export function drainStamina(n: number, dt: number): boolean {
   if (G.god) return true;
   if (G.exhausted) return false;
-  G.stamina = Math.max(0, G.stamina - n * G.S.stamina * dt); G.effortT = 0;
+  G.stamina = Math.max(0, G.stamina - n * G.S.stamina * BODY_FX.effort * dt); G.effortT = 0;
   if (G.stamina <= 0) { G.exhausted = true; showToast(tl('Exhausted')); }
   return true;
 }
@@ -69,14 +70,14 @@ let warnT = 0, lastLow = '';
 export function updateSurvival(dt: number) {
   const c = G.char, gameMin = dt * MIN_PER_SEC, busy = G.effortT < 0.5 ? DRAIN.effort : 1, L = load();
   if (G.god) { c.kcal = KCAL.max; c.water = 100; G.stamina = STAMINA.max; G.exhausted = false; }
-  c.water = Math.max(0, c.water - DRAIN.water * gameMin * busy);
-  c.kcal = Math.max(0, c.kcal - burnPerMin(G.activity, L.kg) * gameMin);
+  c.water = Math.max(0, c.water - DRAIN.water * gameMin * busy * BODY_FX.water);
+  c.kcal = Math.max(0, c.kcal - burnPerMin(G.activity, L.kg) * gameMin * BODY_FX.kcal);
   G.activity = 1; // the player's movement sets it again for the next frame (not at all while driving)
   c.stomach = Math.max(0, c.stomach - STOMACH.digest / 60 * gameMin);
   // stamina comes back after a moment's rest; hunger, thirst and a heavy pack slow it down
   G.effortT += dt;
   const slow = (c.water < LOW ? 0.5 : 1) * (c.kcal < KCAL.low ? 0.6 : 1) * (L.state === 'over' ? 0.5 : L.state === 'heavy' ? 0.8 : 1);
-  if (G.effortT > STAMINA.regenDelay) G.stamina = Math.min(STAMINA.max, G.stamina + STAMINA.regen * slow * dt);
+  if (G.effortT > STAMINA.regenDelay) G.stamina = Math.min(STAMINA.max, G.stamina + STAMINA.regen * slow * BODY_FX.regen * dt);
   if (G.exhausted && G.stamina >= STAMINA.recover) G.exhausted = false;
   // starving or parched: health drains away
   const empty = (c.water <= 0 ? 1 : 0) + (c.kcal <= 0 ? 1 : 0);

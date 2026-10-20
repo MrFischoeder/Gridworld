@@ -14,13 +14,20 @@ const WALL = 0x2fe060, BOARD = 0x1f9a44, POST = 0x4dff7e, TRIM = 0x9dffb4, ROOF 
 // ---------- collision ----------
 const sets = new Map<number, Box[]>();
 let all: Box[] = [];
-const rebuild = () => { all = [...sets.values()].flat(); };
+/** (0.234) Each house's floor rect and height, for being indoors (world/bodyheat.ts). */
+const rooms = new Map<number, [number, number, number, number, number, number][]>();
+let roomList: [number, number, number, number, number, number][] = [];
+const rebuild = () => { all = [...sets.values()].flat(); roomList = [...rooms.values()].flat(); };
 /** A village was loaded / dropped: its house walls come and go with it. */
 export function setHouses(id: number, vm: VillageMap) {
   sets.set(id, vm.buildings.flatMap((b) => [...b.walls.map((w) => ({ b: w as Box['b'], slab: false })),
-    ...b.furniture.filter((f) => furnSolid(f.k)).map((f) => ({ b: [f.x0, vm.y, f.z0, f.x1, vm.y + f.h, f.z1] as Box['b'], slab: false }))])); rebuild();
+    ...b.furniture.filter((f) => furnSolid(f.k)).map((f) => ({ b: [f.x0, vm.y, f.z0, f.x1, vm.y + f.h, f.z1] as Box['b'], slab: false }))]));
+  rooms.set(id, vm.buildings.filter((b) => b.condition === undefined || b.condition >= 2).map((b) => [b.x, vm.y - 0.5, b.z, b.x + b.w, vm.y + b.h, b.z + b.d]));
+  rebuild();
 }
-export function dropHouses(id: number) { sets.delete(id); rebuild(); }
+export function dropHouses(id: number) { sets.delete(id); rooms.delete(id); rebuild(); }
+/** Is (x, y feet, z) inside a whole house (under its roof, between its walls)? */
+export const insideHouse = (x: number, y: number, z: number) => roomList.some((r) => x > r[0] && x < r[3] && z > r[2] && z < r[5] && y > r[1] && y < r[4]);
 /** Does a figure (radius r, feet at y) run into a house wall? */
 export function houseHit(x: number, y: number, z: number, r: number): boolean {
   for (const { b } of all) {

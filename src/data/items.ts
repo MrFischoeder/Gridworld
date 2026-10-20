@@ -49,6 +49,13 @@ export const ITEMS = {
   gloves: { name: tl('Work Gloves'), ab: 'GLV', type: 'wear', desc: tl('tough gloves: take 3% off every hit'), stack: 1 },
   trousers: { name: tl('Cargo Trousers'), ab: 'TRS', type: 'wear', desc: tl('reinforced trousers: take 4% off every hit'), stack: 1 },
   boots: { name: tl('Field Boots'), ab: 'BTS', type: 'wear', desc: tl('sturdy boots: take 4% off every hit'), stack: 1 },
+  furHood: { name: tl('Fur Hood'), ab: 'FHD', type: 'wear', desc: tl('a deep hood of thick Ravager fur: keeps your head warm in the frost (+4 °C against the cold)'), stack: 1 },
+  furCoat: { name: tl('Fur Coat'), ab: 'FCT', type: 'wear', desc: tl('a long coat of fur sewn hair inwards: the warmest thing you can wear (+9 °C against the cold), heavy and stifling in the heat'), stack: 1 },
+  furMitts: { name: tl('Fur Mittens'), ab: 'FMT', type: 'wear', desc: tl('fur-lined mittens: warm hands in the frost (+3 °C against the cold)'), stack: 1 },
+  furTrousers: { name: tl('Fur Trousers'), ab: 'FTR', type: 'wear', desc: tl('trousers lined with fur: +4 °C against the cold'), stack: 1 },
+  furBoots: { name: tl('Fur Boots'), ab: 'FBT', type: 'wear', desc: tl('tall boots of fur over hide soles: +3 °C against the cold'), stack: 1 },
+  desertRobe: { name: tl('Desert Robe'), ab: 'DRB', type: 'wear', desc: tl('a loose, pale robe of light cloth: keeps the sun off and lets the air through (−8 °C in the heat)'), stack: 1 },
+  shemagh: { name: tl('Shemagh'), ab: 'SHM', type: 'wear', desc: tl('a long cloth wrapped round the head and face against the sun and the sand (−4 °C in the heat)'), stack: 1 },
   gasmask: { name: tl('Gas Mask'), ab: 'GSM', type: 'wear', desc: tl('a rubber face mask with a screw-in filter: worn on the face, it keeps the toxic fog out of your lungs as long as the filter lasts. Spare filters in the backpack are screwed in when one is spent'), stack: 1 },
   filter: { name: tl('Mask Filter'), ab: 'FLT', type: 'cons', desc: tl('a charcoal filter canister for the gas mask: about five minutes in the thickest fog, longer in thin fog. Use it to screw a fresh one into your mask'), stack: 10 },
   // trade goods (gen/market.ts): bulky crates, bought cheap where they are made and sold dear where they are wanted
@@ -230,6 +237,7 @@ export const INV_SIZE = 24, MOD_SIZE = 3; // (0.201) the backpack has 24 slots (
  */
 export const BULK: Record<ItemKey, [kg: number, litres: number]> = {
   blaster: [3.5, 9], blade: [1.5, 4], pistol: [1.2, 1.5], smg: [2.8, 5], shotgun: [3.4, 8], rifle: [4, 10], machete: [0.9, 2], spear: [1.8, 6], sledge: [6, 6], ammoE: [0.02, 0.02], ammo9: [0.012, 0.01], ammoS: [0.04, 0.04], ammoR: [0.025, 0.02], tablet: [0.6, 0.5], repairkit: [3, 4], helmet: [1.5, 5], vest: [4, 10], armour: [12, 18], gloves: [0.3, 0.5], trousers: [0.8, 1.5], boots: [1.2, 3], gasmask: [0.7, 2], filter: [0.25, 0.3], hideCap: [0.8, 2], hideCoat: [3, 6], hideGloves: [0.3, 0.5], hideLegs: [1.2, 2], hideBoots: [1, 2.5], wovenHood: [1, 3], wovenJacket: [3.5, 6], wovenGloves: [0.3, 0.5], wovenLegs: [1.5, 2], wovenBoots: [1.1, 2.5], compHelm: [1.3, 4], compVest: [5, 8], compGloves: [0.4, 0.6], compLegs: [2, 3], compBoots: [1.3, 3], rucksack: [1.5, 3], framepack: [2.5, 4], cargopack: [3, 5], exoL: [9, 10], exoH: [14, 12],
+  furHood: [0.6, 3], furCoat: [4, 12], furMitts: [0.3, 1], furTrousers: [1.5, 4], furBoots: [1.4, 4], desertRobe: [0.8, 2], shemagh: [0.2, 0.4],
   shield: [1.5, 1], lens: [0.3, 0.3], edge: [0.5, 0.5], servo: [2, 2], cell: [1, 0.5],
   flashlight: [0.4, 0.4], oillamp: [1, 1.5], lampoil: [0.5, 0.5], battery: [0.06, 0.04], firebrand: [0.5, 1], woodshield: [3, 6], riotshield: [5, 8], elampkit: [7, 9], olampkit: [5, 8], lhkit: [1, 2], flare: [0.2, 0.3],
   medkit: [0.5, 1], key: [0.05, 0.05], recall: [0.4, 0.3], emp: [0.8, 0.6], flask: [0.3, 0.8], firekit: [1, 1.5],
@@ -257,6 +265,7 @@ export const WEAR: Partial<Record<ItemKey, { slot: WearSlot; def: number }>> = {
   gloves: { slot: 'gloves', def: 0.03 }, trousers: { slot: 'legs', def: 0.04 }, boots: { slot: 'feet', def: 0.04 },
   gasmask: { slot: 'face', def: 0 },
   hideCap: { slot: 'head', def: 0.04 }, hideCoat: { slot: 'body', def: 0.1 }, hideGloves: { slot: 'gloves', def: 0.02 }, hideLegs: { slot: 'legs', def: 0.04 }, hideBoots: { slot: 'feet', def: 0.03 }, wovenHood: { slot: 'head', def: 0.07 }, wovenJacket: { slot: 'body', def: 0.17 }, wovenGloves: { slot: 'gloves', def: 0.04 }, wovenLegs: { slot: 'legs', def: 0.07 }, wovenBoots: { slot: 'feet', def: 0.05 }, compHelm: { slot: 'head', def: 0.12 }, compVest: { slot: 'body', def: 0.3 }, compGloves: { slot: 'gloves', def: 0.06 }, compLegs: { slot: 'legs', def: 0.1 }, compBoots: { slot: 'feet', def: 0.08 }, rucksack: { slot: 'pack', def: 0 }, framepack: { slot: 'pack', def: 0 }, cargopack: { slot: 'pack', def: 0 }, exoL: { slot: 'frame', def: 0 }, exoH: { slot: 'frame', def: 0 },
+  furHood: { slot: 'head', def: 0.02 }, furCoat: { slot: 'body', def: 0.06 }, furMitts: { slot: 'gloves', def: 0.01 }, furTrousers: { slot: 'legs', def: 0.02 }, furBoots: { slot: 'feet', def: 0.02 }, desertRobe: { slot: 'body', def: 0.02 }, shemagh: { slot: 'head', def: 0 },
 };
 /** Weapons in the hands: which one it is for world/weapons.ts (0 = gun, 1 = blade). Only weapons go on your back. */
 export const WEAPON_KIND: Partial<Record<ItemKey, 0 | 1>> = { blaster: 0, pistol: 0, smg: 0, shotgun: 0, rifle: 0, blade: 1, machete: 1, spear: 1, sledge: 1 };
@@ -276,7 +285,7 @@ export const TWO_HANDED = new Set<ItemKey>(['blaster', 'smg', 'shotgun', 'rifle'
 /** Tools and building supplies: what Oskar (tools) and Zofia (supplies) charge. */
 export const TOOL_PRICE: Partial<Record<ItemKey, number>> = { hammer: 20, saw: 35, screwdriver: 10, pliers: 12, welder: 200, torch: 160, shovel: 25, turretkit: 350, bridgekit: 80, pierkit: 90 };
 export const SUPPLY_PRICE: Partial<Record<ItemKey, number>> = { nails: 3, rope: 6, wire: 5, codelock: 120, oillamp: 45, lampoil: 8, flashlight: 160, battery: 10, firebrand: 4, flare: 12 };
-export const GEAR_PRICE: Partial<Record<ItemKey, number>> = { blaster: 150, blade: 80, pistol: 140, shotgun: 240, machete: 60, spear: 45, sledge: 70, woodshield: 50, riotshield: 220, helmet: 60, vest: 120, armour: 260, gloves: 20, trousers: 30, boots: 40 };
+export const GEAR_PRICE: Partial<Record<ItemKey, number>> = { blaster: 150, blade: 80, pistol: 140, shotgun: 240, machete: 60, spear: 45, sledge: 70, woodshield: 50, riotshield: 220, helmet: 60, vest: 120, armour: 260, gloves: 20, trousers: 30, boots: 40, furHood: 30, furCoat: 90, furMitts: 20, furTrousers: 45, furBoots: 40, desertRobe: 35, shemagh: 15 };
 /** The backpack: how much fits (litres), the load you carry easily, and beyond `max` you are overloaded (kg). */
 export const PACK = { vol: 40, comfy: 20, max: 35 };
 /** A bigger pack worn in the 'pack' slot: the backpack's litres. */

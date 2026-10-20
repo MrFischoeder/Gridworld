@@ -87,6 +87,8 @@ export interface Char {
   questsDone?: number;
   /** (0.230) Markers switched off in the journal (J): 'q:<quest id>', 'c:<contract id>', 'l:<lead id>', 'elder', 'side', 'guide'. Personal. */
   hideMarks?: string[];
+  /** (0.234) The body's warmth, −100 freezing .. 100 overheating (world/bodyheat.ts). Personal. */
+  body?: number;
   /** The shuttle project in the hangar by Gridholm (gen/shuttle.ts): crates handed over per stage. */
   shuttle: ShuttleState;
   level: number; xp: number; gold: number; world: number;

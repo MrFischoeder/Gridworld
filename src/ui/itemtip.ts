@@ -1,6 +1,7 @@
 // The item tooltip: hover the mouse over any item slot (or anything carrying data-k) and a panel follows the cursor
 // with everything about the item: its kind, what it does, its numbers (weapon and armour values, food, attachments'
 // effects), weight and bulk, the stack, what the traders ask for it and what it is used for (data/uses.ts).
+import { CLOTH_TEMP } from '../gen/temperature';
 import { classOf, CLASS_NAME } from '../data/itemclass';
 import { ITEMS, BULK, WEAR, WEAR_NAME, PACK, PACK_VOL, EXO, HEAL, HANDS_ONLY, HAND_TOOLS, GEAR_PRICE, TOOL_PRICE, SUPPLY_PRICE, PART_PRICE, ATTACH_PRICE, type ItemKey, type ItemType, type ItemDef } from '../data/items';
 import { NOURISH, BLADE } from '../data/survival';
@@ -47,6 +48,8 @@ function statLines(k: ItemKey): string[] {
   if (users.length) out.push(TL`rounds for the ${users.join(tl(' and the '))} · loaded when you reload (R)`);
   void BLADE;
   if (w) out.push(TL`worn on: ${WEAR_NAME[w.slot]}${w.def ? TL` · takes ${Math.round(w.def * 100)}% off every hit` : ''}`);
+  const ct = CLOTH_TEMP[k];
+  if (ct) out.push([ct.warm ? TL`+${ct.warm} °C against the cold` : '', ct.cool ? TL`−${ct.cool} °C in the heat` : ''].filter(Boolean).join(' · '));
   if (PACK_VOL[k]) out.push(TL`the backpack holds ${PACK_VOL[k]} L (${PACK.vol} without it)`);
   const x = EXO[k];
   if (x) out.push(TL`carry ${PACK.comfy + x.comfy} kg with ease (${PACK.comfy} without) · overloaded past ${PACK.max + x.max} kg (${PACK.max})`, TL`walk and run ${Math.round((x.speed - 1) * 100)}% faster · sprinting and swimming cost ${Math.round((1 - x.stamina) * 100)}% less stamina`);

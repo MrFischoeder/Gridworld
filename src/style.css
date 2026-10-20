@@ -224,6 +224,8 @@ body.is-touch #bUse.on{display:flex}
 #foodbar{width:75px}
 #waterbar{border-color:#2ac8b0;margin-right:8px}
 #stfill,#foodfill,#waterfill{height:100%;width:100%}
+#heatbar{display:inline-block;width:120px;height:6px;border:1px solid #9a9a8a;vertical-align:middle;margin-right:8px}
+#heatfill{height:100%;width:0}
 #stfill{background:#d8ff7a}
 #foodfill{background:#c8b060}
 #foodbar{position:relative}

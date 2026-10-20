@@ -3,6 +3,13 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.234.0', date: '2026-10-20', title: 'Cold and heat', notes: [
+    'Every biome has its own air: freezing tundra and ice, cold taiga and mountains, a scorching desert by day that turns cold at night, a hot and damp jungle. Height, rain, storms, clouds and the wind cool the air. The clock shows the temperature.',
+    'Your body warms and cools slowly towards what you feel. Getting cold, you burn more calories; freezing, you also tire faster, get your stamina back slower and walk a little slower. Getting hot, you sweat out more water; overheating, you tire faster too. Cold and heat never take health. A line under the food bar shows how you feel once it matters.',
+    'Clothes count: armour keeps you a little warmer, new fur clothes (hood, coat, mittens, trousers, boots) keep out the frost, a desert robe and a shemagh keep off the sun. Any blacksmith makes them from hides or cloth; Oskar also sells them. The item\'s details show how warm or cool it is.',
+    'A fire, a torch in your hand, a house, a village\'s walls and a closed vehicle cab help; swimming chills you. Underground the air stays mild.',
+    'Multiplayer: your body\'s warmth is your own (saved with your character); nothing new is sent, the server is unchanged.',
+  ] },
   { v: '0.233.0', date: '2026-10-20', title: 'Biomes shape the land', notes: [
     'In new worlds the biomes shape the land itself: the desert rises into long dunes, the swamps sink to their water table and are full of shallow pools of murky water (you wade through them, never swim), the tundra\'s ground is heaved by the frost and the Crystal Wastes rise in jagged ridges.',
     'Roads keep their feet dry above the swamp water; villages and fields stand on dry ground. The map shows the pools.',
