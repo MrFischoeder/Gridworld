@@ -3,6 +3,11 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.237.1', date: '2026-10-20', title: 'Smoke over the crash site', notes: [
+    'Your crashed ship no longer puffs little rings: a tall dark column of smoke rises from the gash in its roof and a thinner one from the engine, the same smoke as the bandits\' fires. You can see it from far off, so it shows you the way back to the ship.',
+    'The opening film shows the same smoke over the wreck.',
+    'Multiplayer: drawn by every game for itself; nothing is sent.',
+  ] },
   { v: '0.237.0', date: '2026-10-20', title: 'Warnings from afar', notes: [
     'You now hear what is about before you see it. A ravager pack howls from up to 260 m, brambles bellow, gnawers chitter, leechwings screech, heavy machines hum and scouts chirp on their radios, and bandits talk (round a fire they laugh too). Far calls sound faint and muffled, and come from where the caller is.',
     'Whatever walks the wilds near you leaves prints on the ground: paws, hooves, boots and the three-toed feet of machines. They point the way it went and fade over two game minutes, so fresh prints mean it passed a moment ago. At night you need a light to see them.',

@@ -3,6 +3,7 @@
 // its sky and what moves in it: the survey ship in deep space, the meteor strike and the fall, the crash site, Gridholm,
 // builders at work, an ancient gate waking, the stone heads, a dead city, a firefight, a convoy under fire, a ship at
 // sea, a storm over the ranges, the Chariot of the Ancients, and the planet with the title.
+import { makeColumn, stepColumn, WRECK_VENTS } from '../world/smokecolumn';
 import * as THREE from 'three';
 import { cinematicFrame, CINEMATIC_SHOTS, STRIKE } from '../core/cinematic';
 import { rng } from '../core/rng';
@@ -149,12 +150,14 @@ function build() {
     for (let z = -70; z < -8; z += 4) for (const s of [-1, 1]) pb.rock(s * (4.5 + Math.sin(z) * .6) + z * .14, -.2, z, 1.2 + Math.abs(Math.cos(z)) * .8, 1.1, 5, z, 0x3f5a50);
     for (let i = 0; i < 14; i++) pb.rock(Math.sin(i * 2.3) * 14, 0, Math.cos(i * 1.7) * 12 - 6, .5, .4, 5, i, HULL_C);
     g.add(pb.build());
-    const smoke = Array.from({ length: 7 }, () => { const r = new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(Array.from({ length: 16 }, (_, k) => new THREE.Vector3(Math.cos(k / 16 * 6.283), 0, Math.sin(k / 16 * 6.283)))), lineMat(0x6f8a7a)); g.add(r); return r; });
+    const smoke = WRECK_VENTS.map((v) => { const c = makeColumn({ ...v.look, c: 0x7f8a7c }); c.g.position.set(...v.at); ship.add(c.g); return c; }); // (0.237.1) the same smoke as in the game
+    let last = 0;
     const lamp = new THREE.Mesh(new THREE.BoxGeometry(.35, .35, .35), new THREE.MeshBasicMaterial({ color: WARN_C })); lamp.position.set(-1.6, 3.4, 4); g.add(lamp);
     shot(g, {
       path: curve([[-22, 2.2, 26], [-9, 2.8, 15], [9, 4.5, 12]]), look: V([0, 1.8, 0]), sky: 0x061a0c, fog: [60, 300],
       motion: (t) => {
-        smoke.forEach((r, i) => { const k = ((t * .35 + i / smoke.length) % 1); r.position.set(.6 + k * 2, 3 + k * 14, .5 + k * 3); r.scale.setScalar(.6 + k * 4); (r.material as THREE.LineBasicMaterial).opacity = 1 - k; (r.material as THREE.LineBasicMaterial).transparent = true; });
+        const dt = Math.min(0.1, Math.max(0, t - last)); last = t;
+        smoke.forEach((c) => stepColumn(c, dt, 0.4, 0.6, 1));
         lamp.visible = Math.floor(t * 2.5) % 2 === 0;
       },
     });

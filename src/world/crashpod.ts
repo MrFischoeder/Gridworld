@@ -7,7 +7,11 @@
 // `loadOverworld` with a 'new' or 'pod' arrival). A pod stands open while its castaway is in the game, the others
 // shut with a sleeper behind the frost (`syncPods`).
 import * as THREE from 'three';
-import { scene, add, lineMat } from './render';
+import { scene, add, camera } from './render';
+import { makeColumn, stepColumn, placeFar, clearView, dropColumn, WRECK_VENTS, type Column } from './smokecolumn';
+import { seen } from './weather';
+import { daylight, sunTilt } from '../core/time';
+import { latitude } from '../gen/regions';
 import { PropBatch } from './props';
 import { drawLander, landerWalls, drawPod, drawPilot, HULL_C, SCORCH_C, WARN_C, LOCKER, CONSOLE, PODS, POD_C } from './lander';
 import { net } from '../net/client';
@@ -24,9 +28,9 @@ let pods: THREE.Group | null = null, podKey = '';
 /** The name plates on the lockers (whoever looks sees their own name: every castaway has their own locker). */
 let plates: THREE.Group | null = null, plateName: string | null = null;
 let cos = 1, sin = 0, gy = 0;
-interface Puff { o: THREE.LineLoop; t: number; life: number; v: number }
-const puffs: Puff[] = [];
-let puffT = 0;
+/** (0.237.1) Two columns of smoke: a big dark one from the gash in the roof and a thinner one from the engine
+ *  (world/smokecolumn.ts, as the bandits' fires), seen from far off, ship-local [x, y, z] where they leave the hull. */
+let cols: { c: Column; x: number; y: number; z: number; seen: boolean }[] = [], terr: Terrain | null = null, viewT = 0;
 
 /** World -> ship-local (x to starboard, z to the nose). */
 function toLocal(x: number, z: number): [number, number] {
@@ -79,6 +83,8 @@ export function setCrash(t: Terrain) {
   const handle = new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(LOCKER.x - 0.33, 1.0, LOCKER.z - 0.1), new THREE.Vector3(LOCKER.x - 0.33, 1.3, LOCKER.z - 0.1)]), add(0xffd060));
   grp.add(handle);
   grp.position.set(site.x, gy, site.z); grp.rotation.y = site.yaw;
+  terr = t;
+  cols = WRECK_VENTS.map((v) => { const [x, z] = crashWorld(v.at[0], v.at[2]), c = makeColumn(v.look); scene.add(c.g); return { c, x, y: gy + v.at[1], z, seen: true }; });
   scene.add(grp);
   podKey = ''; syncPods(); plateName = null; syncPlates();
 }
@@ -130,8 +136,8 @@ export function syncPods() {
 }
 export function dropCrash() {
   if (grp) { scene.remove(grp); grp.traverse((o) => { const m = o as THREE.Mesh; m.geometry?.dispose(); }); }
-  for (const p of puffs) p.o.geometry.dispose();
-  grp = null; lamp = null; pods = null; podKey = ''; plates = null; plateName = null; puffs.length = 0; site = null;
+  for (const c of cols) dropColumn(c.c);
+  grp = null; lamp = null; pods = null; podKey = ''; plates = null; plateName = null; cols = []; terr = null; site = null;
 }
 
 /** Hull, wings and engines as walls (the hatch is open). */
@@ -172,28 +178,19 @@ export function lockerBox() {
   return c.containers[key];
 }
 
-/** Smoke from the gash and the crumpled engine, and the lamp's blink (only when you are near enough to see it). */
+/** Smoke from the gash and the crumpled engine (seen from afar, hidden by the hills between) and the lamp's blink. */
 export function updateCrash(dt: number, time: number) {
   if (!grp || !site) return;
-  const near = Math.hypot(G.pos.x - site.x, G.pos.z - site.z) < 260;
   grp.visible = G.char.loc === 'overworld';
   if (lamp) lamp.visible = Math.sin(time * 5) > 0;
   syncPods(); syncPlates();
-  if (near && (puffT -= dt) <= 0) {
-    puffT = 0.35;
-    for (const [x, y, z] of [[0.9, 3, -1.5], [1.5, 2.6, -10.6]]) {
-      if (puffs.length > 36) break;
-      const pts = Array.from({ length: 8 }, (_, k) => new THREE.Vector3(Math.cos(k / 8 * 6.283) * 0.4, 0, Math.sin(k / 8 * 6.283) * 0.4));
-      const o = new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(pts), lineMat(0x7a9a86, { transparent: true, opacity: 0.6 }));
-      o.position.set(x + (Math.random() - 0.5) * 0.4, y, z + (Math.random() - 0.5) * 0.4); o.rotation.y = Math.random() * 3;
-      grp.add(o); puffs.push({ o, t: 0, life: 4 + Math.random() * 2, v: 1 + Math.random() * 0.6 });
-    }
-  }
-  for (let i = puffs.length - 1; i >= 0; i--) {
-    const p = puffs[i]; p.t += dt;
-    p.o.position.y += p.v * dt; p.o.position.x += dt * 0.3; // drifting a little to starboard
-    p.o.scale.setScalar(1 + p.t * 0.9);
-    (p.o.material as THREE.LineBasicMaterial).opacity = 0.6 * (1 - p.t / p.life);
-    if (p.t >= p.life) { grp.remove(p.o); p.o.geometry.dispose(); (p.o.material as THREE.Material).dispose(); puffs.splice(i, 1); }
+  const on = G.char.loc === 'overworld';
+  if ((viewT -= dt) <= 0 && terr) { viewT = 0.5; for (const c of cols) c.seen = clearView(camera.position, c.x, c.y, c.z, 25, (x, z) => terr!.heightAt(x, z)); }
+  const wx = Math.cos(seen.windDir) * (0.3 + seen.wind), wz = Math.sin(seen.windDir) * (0.3 + seen.wind);
+  const day = Math.max(0.2, Math.min(1, daylight(G.char.time, sunTilt(latitude(site.z))) * 1.6)), edge = Math.min(camera.far * 0.9, 130);
+  for (const c of cols) {
+    const k = placeFar(c.c, c.x, c.y, c.z, camera, edge);
+    c.c.g.visible = on && (k >= 1 || c.seen) && Math.hypot(c.x - G.pos.x, c.z - G.pos.z) < 2500;
+    if (c.c.g.visible) stepColumn(c.c, dt, wx, wz, day * (1 - seen.fog * 0.4));
   }
 }
