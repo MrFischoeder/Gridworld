@@ -3,6 +3,11 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.236.2', date: '2026-10-20', title: 'Cleared places stay cleared', notes: [
+    'A ruin, wreck, cave or metro you have cleared no longer fills up with drones and robots again after a week or two: once it is empty it stays empty, so new fights wait further out. Bosses and turrets never came back anyway.',
+    'Places that were already cleared stay empty too. The refill can be switched back on later; the time each place was cleared is still kept.',
+    'Multiplayer: the same for everyone, nothing new is sent; the server is unchanged.',
+  ] },
   { v: '0.236.1', date: '2026-10-20', title: 'Plan: no lairs for now', notes: [
     'The plan for encounters in the wilds changes: there will be no lairs for now. Patrols stay random: each one turns up somewhere new beyond the fog and crosses your way at a random point, so there is no fixed route to farm.',
   ] },

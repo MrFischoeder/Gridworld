@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { DRONE, GUARD, CLEARED, REPOP, recordKill, refill, refillAt, clearedAt, labyrinthDrones } from '../src/gen/repopulate';
+import { DRONE, GUARD, CLEARED, REPOP, REFILL_ON, recordKill, refill, refillAt, clearedAt, labyrinthDrones } from '../src/gen/repopulate';
 import { labyrinthTurrets } from '../src/gen/mountedturrets';
 
 describe('dungeon foes stay dead until the place is cleared, then come back after 7–14 days', () => {
@@ -10,17 +10,18 @@ describe('dungeon foes stay dead until the place is cleared, then come back afte
     expect(clearedAt(k)).toBeNull();
     expect(recordKill(k, GUARD + 0, 2, 1, 300)).toBe(true);
     expect(clearedAt(k)).toBe(300);
-    expect(refill(1, 's:1:0:0', k, 300 + REPOP.min - 1)).toBe(false); // nothing before a week
+    expect(refill(1, 's:1:0:0', k, 300 + REPOP.min - 1, true)).toBe(false); // nothing before a week
     const back = refillAt(1, 's:1:0:0', 300);
     expect(back).toBeGreaterThanOrEqual(300 + REPOP.min); expect(back).toBeLessThanOrEqual(300 + REPOP.max);
-    expect(refill(1, 's:1:0:0', k, back)).toBe(true);
+    expect(refill(1, 's:1:0:0', k, back)).toBe(REFILL_ON); // off for now
+    expect(refill(1, 's:1:0:0', k, back, true)).toBe(true);
     expect(k).toEqual([3, 1_000_000 + 2]);
     expect(k.some((n) => n >= CLEARED)).toBe(false);
   });
   it('a partly cleared sector never refills, however long you wait', () => {
     const k: number[] = [];
     recordKill(k, DRONE + 0, 3, 0, 10);
-    expect(refill(1, 'x', k, 10 + 100 * 1440)).toBe(false);
+    expect(refill(1, 'x', k, 10 + 100 * 1440, true)).toBe(false);
     expect(k).toEqual([DRONE]);
   });
   it('labyrinths hold more drones than before and at most one anchored gun', () => {

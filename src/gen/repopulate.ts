@@ -6,14 +6,20 @@
 import { hash } from '../core/rng';
 
 export const DRONE = 10_000, GUARD = 20_000, CLEARED = 1_000_000_000;
-/** How long a cleared sector stays empty (game minutes): 7 to 14 days. */
+/** (0.236.2, the owner's call) Whether a cleared sector ever fills up again. Off for now: a ruin, wreck, cave or metro
+ *  once cleared stays empty for good, so the players have to look further out. Set it to true to bring the refill
+ *  back (the clearing marks are kept either way, so places cleared meanwhile refill on the next visit). */
+export const REFILL_ON = false;
+/** How long a cleared sector stays empty (game minutes): 7 to 14 days (only while `REFILL_ON`). */
 export const REPOP = { min: 7 * 1440, max: 14 * 1440 };
 const strHash = (s: string) => { let h = 2166136261; for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 16777619); return h >>> 0; };
 export const clearedAt = (killed: readonly number[]) => { const m = killed.find((n) => n >= CLEARED); return m === undefined ? null : m - CLEARED; };
 /** When a sector cleared at `at` fills up again. */
 export const refillAt = (world: number, key: string, at: number) => at + REPOP.min + hash(world, strHash(key), Math.floor(at), 0x7e9) % (REPOP.max - REPOP.min + 1);
-/** On arrival: true when the sector's time is up (then drop every drone, guard and the clearing mark: they are back). */
-export function refill(world: number, key: string, killed: number[], now: number): boolean {
+/** On arrival: true when the sector's time is up (then drop every drone, guard and the clearing mark: they are back).
+ *  Never while `on` (default `REFILL_ON`) is false. */
+export function refill(world: number, key: string, killed: number[], now: number, on = REFILL_ON): boolean {
+  if (!on) return false;
   const at = clearedAt(killed);
   if (at === null || now < refillAt(world, key, at)) return false;
   const keep = killed.filter((n) => n < DRONE || (n >= GUARD + 10_000 && n < CLEARED)); // bosses, turrets and the like stay

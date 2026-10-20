@@ -127,7 +127,7 @@ Właściciel (20 października 2026): legowisk na razie nie chce. Stałe legowis
 - Po 3 minutach bez spotkania patrol odchodzi; następny wyjdzie z zupełnie innej strony. Nie ma tras, które można by obstawić.
 
 **Do rozważenia (pomysły właściciela, bez decyzji).**
-- Raz wyczyszczone ruiny i wraki nie odradzają się więcej (dziś drony i strażnicy wracają po 7–14 dniach, `REPOP` w `gen/repopulate.ts`), żeby gracze szukali dalszych okolic.
+- ~~Raz wyczyszczone ruiny i wraki nie odradzają się więcej~~ **zrobione w 0.236.2:** odnawianie wyłączone przełącznikiem `REFILL_ON = false` w `gen/repopulate.ts` (wcześniej drony i strażnicy wracali po 7–14 dniach, `REPOP`). Czas wyczyszczenia dalej jest zapisywany, więc po włączeniu `true` wszystko wraca do dawnych zasad.
 - Legowisko jako jednorazowe miejsce walki: widoczne, po wyczyszczeniu po jakimś czasie znika i nic już tam nie wychodzi.
 
 ### L4: ostrzeżenia, zanim go zobaczysz
