@@ -88,3 +88,71 @@ export function biomeAt(world: number, x: number, z: number): BiomeHere {
 }
 /** The biome's name for the HUD and the maps (English; pass through tl). */
 export const biomeName = (b: BiomeHere) => BIOMES[b].name;
+
+// ---------- stage B2: the look (0.232) ----------
+/**
+ * How each biome looks: `line` the colour of the ground's lines, rocks and bark; `leaf` crowns and grass; `fill` the
+ * dark fill under the lines; `keep` the share of the generated trees that stand there; `tree` what they grow into
+ * (null: as generated); `big` whether the great trees (twisted, umbrella, arch) stand; `size` the trees' scale.
+ */
+export type TreeLook = 'pine' | 'cactus' | 'dead' | 'palm' | 'acacia' | 'shard' | 'lush' | null;
+export interface BiomeLook { /** The day's haze over it (0: the plain green sky) and how much thicker its air is (0..1). */ haze?: number; thick?: number; line: number; leaf: number; fill: number; keep: number; tree: TreeLook; big: boolean; size: number; deco: 'reeds' | 'grass' | 'snow' | 'pebbles' | null }
+export const BIOME_LOOK: Record<BiomeHere, BiomeLook> = {
+  plains:   { line: 0x2fe060, leaf: 0x3dff6e, fill: 0x010d04, keep: 0.7, tree: null, big: true, size: 1, deco: 'grass' },
+  forest:   { line: 0x28d24c, leaf: 0x34f060, fill: 0x010f04, keep: 1, tree: null, big: true, size: 1.1, deco: null },
+  taiga:    { haze: 0x5aa890, thick: 0.1, line: 0x3ccf98, leaf: 0x2fd8a0, fill: 0x01100c, keep: 1, tree: 'pine', big: false, size: 1.15, deco: 'snow' },
+  tundra:   { haze: 0xc8e0e0, thick: 0.15, line: 0xc8e8e0, leaf: 0xd8fff4, fill: 0x0a1212, keep: 0.25, tree: 'pine', big: false, size: 0.6, deco: 'snow' },
+  desert:   { haze: 0xd0a850, thick: 0, line: 0xe8b848, leaf: 0xa8d050, fill: 0x120c02, keep: 0.22, tree: 'cactus', big: false, size: 1, deco: 'pebbles' },
+  savanna:  { haze: 0xb8b058, thick: 0, line: 0xd0c848, leaf: 0xb8d848, fill: 0x0e0e02, keep: 0.35, tree: 'acacia', big: true, size: 1, deco: 'grass' },
+  swamp:    { haze: 0x7a8a48, thick: 0.35, line: 0x9aac48, leaf: 0x7c9a3c, fill: 0x080c02, keep: 0.75, tree: 'dead', big: true, size: 1, deco: 'reeds' },
+  jungle:   { haze: 0x3aa860, thick: 0.2, line: 0x1cf040, leaf: 0x18ff50, fill: 0x001404, keep: 1, tree: 'lush', big: true, size: 1.3, deco: null },
+  mountain: { haze: 0x8ab09a, thick: 0, line: 0x8fcf9c, leaf: 0x3dff6e, fill: 0x060c08, keep: 1, tree: null, big: true, size: 1, deco: 'pebbles' },
+  coast:    { haze: 0xb8c8a0, thick: 0, line: 0xe0dca0, leaf: 0x9ae070, fill: 0x0e0e08, keep: 0.35, tree: 'palm', big: false, size: 1, deco: 'grass' },
+  crystal:  { haze: 0x9a78d8, thick: 0.1, line: 0xb48cff, leaf: 0xc8a0ff, fill: 0x0a0614, keep: 0.2, tree: 'shard', big: false, size: 1, deco: 'pebbles' },
+  sea:      { line: 0x2fe060, leaf: 0x3dff6e, fill: 0x010d04, keep: 1, tree: null, big: true, size: 1, deco: null },
+  ice:      { line: 0xbfffe8, leaf: 0xd8fff4, fill: 0x0a1212, keep: 0.2, tree: 'pine', big: false, size: 0.6, deco: 'snow' },
+};
+/** The biome map's cell (m): the ground's colours are blended between cells, so a border fades over ~3 cells. */
+export const BIOME_CELL = 24;
+const cellCache = new Map<string, BiomeHere>();
+let cellWorld = NaN;
+/** The biome at cell (i, j) (its middle), cached. */
+export function biomeCell(world: number, i: number, j: number): BiomeHere {
+  if (world !== cellWorld) { cellCache.clear(); soft.clear(); cellWorld = world; }
+  const k = i + ',' + j;
+  let b = cellCache.get(k);
+  if (b === undefined) { if (cellCache.size > 300000) cellCache.clear(); b = biomeAt(world, (i + 0.5) * BIOME_CELL, (j + 0.5) * BIOME_CELL); cellCache.set(k, b); }
+  return b;
+}
+/** The biome of the cell holding (x, z). */
+export const biomeOfCell = (world: number, x: number, z: number) => biomeCell(world, Math.floor(x / BIOME_CELL), Math.floor(z / BIOME_CELL));
+const soft = new Map<string, [number, number, number]>();
+const rgb = (c: number): [number, number, number] => [((c >> 16) & 255) / 255, ((c >> 8) & 255) / 255, (c & 255) / 255];
+/** A cell's colour (`line` or `fill`) averaged over it and its 8 neighbours. */
+function softCell(world: number, i: number, j: number, k: 'line' | 'fill'): [number, number, number] {
+  const key = k + i + ',' + j;
+  let c = soft.get(key);
+  if (c) return c;
+  if (soft.size > 200000) soft.clear();
+  c = [0, 0, 0];
+  for (let a = -1; a <= 1; a++) for (let b = -1; b <= 1; b++) { const [r, g, bl] = rgb(BIOME_LOOK[biomeCell(world, i + a, j + b)][k]); c[0] += r / 9; c[1] += g / 9; c[2] += bl / 9; }
+  soft.set(key, c);
+  return c;
+}
+/** The ground's colour at (x, z) (0..1 rgb), blended smoothly across the biomes' borders. */
+export function biomeTint(world: number, x: number, z: number, k: 'line' | 'fill' = 'line'): [number, number, number] {
+  biomeCell(world, 0, 0); // a new world clears the caches
+  const u = x / BIOME_CELL - 0.5, v = z / BIOME_CELL - 0.5, i = Math.floor(u), j = Math.floor(v), fu = u - i, fv = v - j;
+  const a = softCell(world, i, j, k), b = softCell(world, i + 1, j, k), c = softCell(world, i, j + 1, k), d = softCell(world, i + 1, j + 1, k);
+  const mix = (n: number) => (a[n] * (1 - fu) + b[n] * fu) * (1 - fv) + (c[n] * (1 - fu) + d[n] * fu) * fv;
+  return [mix(0), mix(1), mix(2)];
+}
+/** What a generated tree becomes in its biome: null = it does not stand there; else the look and the scale. */
+export function treeIn(b: BiomeHere, seed: number, big: boolean): { look: TreeLook; size: number } | null {
+  const L = BIOME_LOOK[b];
+  if (big && !L.big) return null;
+  if (((seed >>> 0) % 1000) / 1000 >= L.keep) return null;
+  let look = big ? null : L.tree;
+  if (look === 'dead' && (seed >>> 7) % 2) look = null; // half the swamp's trees still green
+  return { look, size: big ? 1 : L.size };
+}

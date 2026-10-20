@@ -9,9 +9,10 @@ import { rng } from '../core/rng';
 import { GRID } from './render';
 import type { PropBatch } from './props';
 import type { Tree } from '../gen/trees';
+import type { TreeLook } from '../gen/biomes';
 
 export type P = [number, number, number];
-const BARK = GRID, LEAF = 0x3dff6e, VINE = 0x1f9a44;
+export const BARK = GRID, LEAF = 0x3dff6e, VINE = 0x1f9a44;
 const add = (a: P, b: P, k = 1): P => [a[0] + b[0] * k, a[1] + b[1] * k, a[2] + b[2] * k];
 const sub = (a: P, b: P): P => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
 const norm = (a: P): P => { const l = Math.hypot(a[0], a[1], a[2]) || 1; return [a[0] / l, a[1] / l, a[2] / l]; };
@@ -195,4 +196,77 @@ export function drawGiant(pb: PropBatch, x: number, y: number, z: number, r: num
     crown(pb, end, 4 + R() * 2, 5 + R() * 2, 7, R);
   }
   crown(pb, add(trunk[3], [0, h * 0.12, 0]), 8 + R() * 3, h * 0.42, 9, R);
+}
+
+// ---------- (0.232) the biomes' trees: the same spots (and trunks to bump into) drawn as what grows there ----------
+/** Saguaro: a ribbed column with one or two arms bending up. */
+function cactus(pb: PropBatch, t: Tree, lod: number, R: () => number) {
+  const h = 2.4 + t.h * 0.3, s = lod > 1 ? 5 : 8;
+  tube(pb, [[t.x, t.y - 0.3, t.z], [t.x, t.y + h * 0.6, t.z], [t.x, t.y + h, t.z]], [0.34, 0.32, 0.22], s, LEAF);
+  const arms = 1 + ((R() * 2) | 0);
+  for (let i = 0; i < arms; i++) {
+    const a = t.rot + i * 3.1 + (R() - 0.5) * 0.6, d: P = [Math.cos(a), 0, Math.sin(a)], y0 = h * (0.35 + R() * 0.2), out = 0.7 + R() * 0.3;
+    tube(pb, [[t.x, t.y + y0, t.z], add([t.x, t.y + y0 + 0.15, t.z], d, out), add([t.x, t.y + y0 + 1.3 + R() * 0.6, t.z], d, out)], [0.2, 0.19, 0.15], lod > 1 ? 4 : 6, LEAF);
+  }
+}
+/** A dead swamp tree: a leaning bare trunk, a few broken limbs and twigs. */
+function dead(pb: PropBatch, t: Tree, lod: number, R: () => number) {
+  const lean: P = [Math.cos(t.rot) * 0.6, 0, Math.sin(t.rot) * 0.6], H = 3 + t.h * 0.6;
+  const trunk: P[] = [[t.x, t.y - 0.4, t.z], add([t.x, t.y + H * 0.5, t.z], lean, 0.5), add([t.x, t.y + H, t.z], lean, 1.2)];
+  tube(pb, trunk, [0.38, 0.26, 0.1], lod > 1 ? 5 : 6);
+  for (let i = 0; i < 3; i++) {
+    const a = t.rot + i * 2.1 + R(), d = norm([Math.cos(a), 0.4 + R() * 0.5, Math.sin(a)]), from = trunk[1 + (i % 2)], end = add(from, d, 1.2 + R() * 1.5);
+    tube(pb, [from, end], [0.14, 0.05], 4);
+    if (lod === 1) twigs(pb, end, d, 0.7, 2, R);
+  }
+}
+/** A palm: a curved, ringed trunk and drooping fronds. */
+function palm(pb: PropBatch, t: Tree, lod: number, R: () => number) {
+  const lean: P = [Math.cos(t.rot), 0, Math.sin(t.rot)], H = 4.5 + t.h * 0.5, pts: P[] = [];
+  for (let i = 0; i <= 4; i++) { const k = i / 4; pts.push(add([t.x, t.y - 0.3 + H * k, t.z], lean, 1.6 * k * k)); }
+  tube(pb, pts, [0.3, 0.27, 0.24, 0.21, 0.18], lod > 1 ? 5 : 7);
+  const top = pts[4], n = lod > 1 ? 5 : 8;
+  for (let i = 0; i < n; i++) {
+    const a = t.rot + i / n * 6.283 + (R() - 0.5) * 0.3, d: P = [Math.cos(a), 0, Math.sin(a)], side: P = [-d[2], 0, d[0]], l = 2.4 + R() * 1;
+    const mid = add(add(top, d, l * 0.5), [0, 0.4, 0]), tip = add(add(top, d, l), [0, -0.9, 0]);
+    pb.line(LEAF, top, mid, tip);
+    pb.face(top, add(mid, side, 0.35), tip); pb.face(top, tip, add(mid, side, -0.35));
+    pb.seg(LEAF, add(mid, side, 0.35), tip); pb.seg(LEAF, add(mid, side, -0.35), tip);
+  }
+}
+/** An acacia: a thin trunk forking into a flat, wide crown. */
+function acacia(pb: PropBatch, t: Tree, lod: number, R: () => number) {
+  const H = 3 + t.h * 0.35, fork: P = [t.x, t.y + H * 0.55, t.z];
+  tube(pb, [[t.x, t.y - 0.3, t.z], fork], [0.26, 0.2], lod > 1 ? 5 : 6);
+  for (let i = 0; i < 3; i++) {
+    const a = t.rot + i * 2.1, end: P = [t.x + Math.cos(a) * 1.3, t.y + H, t.z + Math.sin(a) * 1.3];
+    tube(pb, [fork, end], [0.15, 0.08], 4);
+  }
+  canopy(pb, [t.x, t.y + H + 0.3, t.z], t.r * 1.6 + 1.2, lod > 1 ? 6 : 8, 0, R);
+}
+/** A cluster of crystal shards in place of a tree (the crystal wastes). */
+function shards(pb: PropBatch, t: Tree, lod: number, R: () => number) {
+  const n = lod > 1 ? 3 : 5;
+  for (let i = 0; i < n; i++) {
+    const a = t.rot + i * 2.4, out = i ? 0.3 + R() * 0.7 : 0, base: P = [t.x + Math.cos(a) * out, t.y - 0.2, t.z + Math.sin(a) * out];
+    spike(pb, base, [Math.cos(a) * (i ? 0.45 : 0.1), 1, Math.sin(a) * (i ? 0.45 : 0.1)], (i ? 1.2 : 2.5) + R() * t.h * 0.35, i ? 0.22 : 0.4);
+  }
+}
+/** A generated tree drawn as its biome grows it (`size` scales the normal kinds). */
+export function drawTreeLook(pb: PropBatch, t: Tree, lod: number, look: TreeLook, size = 1) {
+  const s = size === 1 ? t : { ...t, h: t.h * size, r: t.r * size }, R = rng(t.seed + 1);
+  switch (look) {
+    case 'pine': pine(pb, s, lod); break;
+    case 'cactus': cactus(pb, s, lod, R); break;
+    case 'dead': dead(pb, s, lod, R); break;
+    case 'palm': palm(pb, s, lod, R); break;
+    case 'acacia': acacia(pb, s, lod, R); break;
+    case 'shard': shards(pb, s, lod, R); break;
+    case 'lush': {
+      broad(pb, s, lod, R);
+      if (lod === 1) for (let v = 0; v < 3; v++) { const a = R() * 6.283, p: P = [s.x + Math.cos(a) * s.r * 0.8, s.y + 1.6 + s.h * 0.4, s.z + Math.sin(a) * s.r * 0.8]; pb.line(VINE, p, [p[0], p[1] - 1.5 - R() * 1.5, p[2]]); }
+      break;
+    }
+    default: drawTree(pb, s, lod);
+  }
 }

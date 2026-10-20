@@ -37,7 +37,7 @@ Rozkład lądu (ok. 58% planety to ląd, świat 12345): góry 17%, równiny 14%,
 ## Etapy
 
 - **B1 (0.231, zrobione): mapa biomów.** `biomeAt`, nazwa biomu w HUD zamiast „Dzicz”, warstwa biomów na mapie M (klawisz B, legenda), biomy na mapie deweloperskiej, testy.
-- **B2: wygląd.** Odcień linii terenu, wypełnienia i mgły według biomu (z płynnym przejściem na granicach), rodzaje i gęstość drzew, roślin i skał (pustynia: kaktusy i skały, tundra: karłowate drzewa i śnieg, bagna: trzciny i martwe drzewa, dżungla: wielkie drzewa, kryształowe pustkowia: dużo kryształów), kolor trawy.
+- **B2 (0.232, zrobione): wygląd.** Kolory linii i wypełnienia terenu według biomu (mieszane między komórkami 24 m, śnieg wysoko w górach), drzewa biomów na tych samych miejscach (kaktusy, akacje, palmy, sosny, martwe drzewa, bujne korony, kryształowe odłamki; część drzew znika, indeksy zapisów zostają), skały w kolorze biomu, drobiazgi na ziemi (trzciny, trawa, śnieg, kamyki), dzienna mgła w kolorze biomu i gęstsze powietrze nad bagnami i dżunglą, Kryształowe Pustkowia pełne pól kryształów.
 - **B3: kształt terenu (tylko nowe światy).** Wydmy na pustyni, płaskie bagna z oczkami wody, ostrzejsze zbocza tundry, kryształowe grzbiety.
 - **B4: mechanika (później).** Temperatura i ubiór, pragnienie na pustyni, plony zależne od biomu, stwory i surowce typowe dla biomu, pogoda biomu (burze piaskowe, zamiecie).
 

@@ -1,5 +1,8 @@
 import { applyLayouts } from '../gen/layouts';
+import { biomeTint, biomeOfCell, treeIn, BIOME_LOOK, type TreeLook } from '../gen/biomes';
+import { drawTreeLook, LEAF, VINE } from './trees';
 import { biomeAt, biomeName, type BiomeHere } from '../gen/biomes';
+import { nearestOnRoad } from '../gen/roads';
 import { syncConvoyStart } from './convoyfuel';
 import { drawSettlementSites, drawSettlementComms, settlementHit, settlementFloor, settlementRay, settlementSolid, forgetSettlement } from './settlement';
 import { settlementVillage } from '../gen/settlement-village';
@@ -55,8 +58,7 @@ import { pierFloor, pierHit, pierDeck, clearPiers } from './piers';
 import { lighthouseHit } from './lighthouses';
 import { boatHit, shipFloor, shipHit } from './boats';
 import { CHUNK, poisNear, X_MIN, WORLD_W, POLE_Z, POLAR_Z, villageContaining, villageDist, villageSeed, GRIDHOLM_ID, type Poi, type Rect, wrapC, wrapDx } from '../gen/regions';
-import { chunkTrees, chunkRocks, type Tree, type Rock, type OreKind } from '../gen/trees';
-import { drawTree } from './trees';
+import { chunkTrees, chunkRocks, TREE_SPAN, type Tree, type Rock, type OreKind } from '../gen/trees';
 import { rockShape, rockSurface, type RockShape } from '../gen/rockshape';
 import { drawTemple, solidDist, type TempleSolid } from './temple';
 import { chunkWells, type Well } from '../gen/water';
@@ -78,7 +80,7 @@ import { generateRuin } from '../gen/ruins';
 import { generateWreck } from '../gen/wreck';
 import { drawWreck } from './wreck';
 import { tryPlaceDoor } from '../gen/doors';
-import { PropBatch, sharedFill, sharedLine } from './props';
+import { PropBatch, sharedFill, sharedLine, sharedFillV, sharedLineV } from './props';
 import { makeStair, disposeStair, type Door, type Stair } from './doors';
 import { makeNpc, type Npc } from './npc';
 import { foeRules, type Drone } from './enemies';
@@ -97,7 +99,7 @@ import { YARD } from '../gen/vehicles';
 import { setStreakSources, type EdgeSource } from './fx';
 import { voxelObject, villageDeco, wallSign } from './level';
 import { NPC_INFO, VILLAGER_NAMES, type NpcRole } from '../data/npcs';
-import { DIRV, hash } from '../core/rng';
+import { DIRV, hash, rng } from '../core/rng';
 import { claimDist, CLAIM } from '../gen/claims';
 import { baseHit, baseFloor, baseRay, baseSolid } from './building';
 import { chunkCaves, type Cave } from '../gen/caves';
@@ -283,21 +285,30 @@ function buildChunk(cx: number, cz: number, lod = 1): Chunk {
   const holes = f.pads.filter((p) => !p.surface).map((p) => p.poi.rect);
   const hole = (ax: number, az: number, bx: number, bz: number) => holes.some((r) => Math.min(ax, bx) >= r.x0 && Math.max(ax, bx) <= r.x1 && Math.min(az, bz) >= r.z0 && Math.max(az, bz) <= r.z1);
   const H = (i: number, j: number) => lat[i + VERTS * j];
-  const tri: number[] = [], lines: number[] = [];
+  // (0.232) the ground's colours by biome, blended across the borders; snow pales the lines high up
+  const polar = Math.abs(z0 + CHUNK / 2) > POLAR_Z + 800, LC: number[][] = [], FC: number[][] = [];
+  for (let j = 0; j <= CELLS; j++) for (let i = 0; i <= CELLS; i++) {
+    const x = x0 + i * STEP, z = z0 + j * STEP, l = biomeTint(T.world, x, z, 'line'), snow = Math.min(1, Math.max(0, (H(i, j) - SNOW_LINE) / 25));
+    LC.push(snow ? [l[0] + (0.75 - l[0]) * snow, l[1] + (1 - l[1]) * snow, l[2] + (0.91 - l[2]) * snow] : l);
+    FC.push(biomeTint(T.world, x, z, 'fill'));
+  }
+  const C = (i: number, j: number) => LC[i + VERTS * j], F = (i: number, j: number) => FC[i + VERTS * j];
+  const tri: number[] = [], lines: number[] = [], tcol: number[] = [], lcol: number[] = [];
   for (let j = 0; j < CELLS; j++) for (let i = 0; i < CELLS; i++) {
     const ax = x0 + i * STEP, az = z0 + j * STEP, bx = ax + STEP, bz = az + STEP;
     if (hole(ax, az, bx, bz)) continue;
     const a = [ax, H(i, j), az], b = [bx, H(i + 1, j), az], c = [bx, H(i + 1, j + 1), bz], d = [ax, H(i, j + 1), bz];
     tri.push(...a, ...b, ...c, ...a, ...c, ...d);
+    tcol.push(...F(i, j), ...F(i + 1, j), ...F(i + 1, j + 1), ...F(i, j), ...F(i + 1, j + 1), ...F(i, j + 1));
   }
   // grid lines every 2 m, aligned with the world grid (each chunk draws its own lower/left edges)
   for (let j = 0; j < CELLS; j += lod) for (let i = 0; i < CELLS; i++) {
     const ax = x0 + i * STEP, z = z0 + j * STEP;
-    if (!hole(ax, z, ax + STEP, z)) lines.push(ax, H(i, j), z, ax + STEP, H(i + 1, j), z);
+    if (!hole(ax, z, ax + STEP, z)) { lines.push(ax, H(i, j), z, ax + STEP, H(i + 1, j), z); lcol.push(...C(i, j), ...C(i + 1, j)); }
   }
   for (let i = 0; i < CELLS; i += lod) for (let j = 0; j < CELLS; j++) {
     const x = x0 + i * STEP, az = z0 + j * STEP;
-    if (!hole(x, az, x, az + STEP)) lines.push(x, H(i, j), az, x, H(i, j + 1), az + STEP);
+    if (!hole(x, az, x, az + STEP)) { lines.push(x, H(i, j), az, x, H(i, j + 1), az + STEP); lcol.push(...C(i, j), ...C(i, j + 1)); }
   }
   // roads and mountain trails: a shaded strip on the ground, no lines (a way worn into the land, not a highway)
   const road: number[] = [], trails = f.roads.filter((r) => r.h);
@@ -321,9 +332,12 @@ function buildChunk(cx: number, cz: number, lod = 1): Chunk {
   const group = new THREE.Group();
   const fg = new THREE.BufferGeometry(); fg.setAttribute('position', new THREE.Float32BufferAttribute(tri, 3));
   const lg = new THREE.BufferGeometry(); lg.setAttribute('position', new THREE.Float32BufferAttribute(lines, 3));
-  // pale lines on the ice caps and high up the mountains (snow)
-  let top = 0; for (let k = 0; k < lat.length; k++) top = Math.max(top, lat[k]);
-  group.add(new THREE.Mesh(fg, sharedFill()), new THREE.LineSegments(lg, sharedLine(Math.abs(z0 + CHUNK / 2) > POLAR_Z + 800 || top > SNOW_LINE ? ICE_COLOR : GRID)));
+  // pale lines on the ice caps; elsewhere each vertex takes its biome's colour (and the snow's, high up)
+  if (polar) group.add(new THREE.Mesh(fg, sharedFill()), new THREE.LineSegments(lg, sharedLine(ICE_COLOR)));
+  else {
+    fg.setAttribute('color', new THREE.Float32BufferAttribute(tcol, 3)); lg.setAttribute('color', new THREE.Float32BufferAttribute(lcol, 3));
+    group.add(new THREE.Mesh(fg, sharedFillV()), new THREE.LineSegments(lg, sharedLineV()));
+  }
   if (road.length) { const rg = new THREE.BufferGeometry(); rg.setAttribute('position', new THREE.Float32BufferAttribute(road, 3)); group.add(new THREE.Mesh(rg, ROAD_FILL)); }
   const sea = seaSheet(T, cx, cz, lat, lod); if (sea) group.add(sea);
   const river = f.rivers.length ? riverSheet(T, cx, cz, f.rivers) : null; if (river) group.add(river);
@@ -334,24 +348,57 @@ function buildChunk(cx: number, cz: number, lod = 1): Chunk {
   // a claimed site is cleared: nothing grows on the levelled ground (the generated lists keep their indices)
   const giants = groveGiants(T.world, cx * CHUNK + CHUNK / 2, cz * CHUNK + CHUNK / 2, CHUNK); // the great groves' giants stand alone
   const cleared = (x: number, z: number) => inMonument(x, z) || !!T.claimAt(x, z, 1) || inGateClearing(T.world, x, z, 2) || giants.some((g) => Math.hypot(x - g.x, z - g.z) < g.r + 7);
-  chunkTrees(T, cx, cz).forEach((t, i) => { if (t.cols.some(([x, z]) => cleared(x, z))) return; const k = `tree:${wrapC(cx)}:${cz}:${i}`; gatherKey.set(t, k); (ripe(k) ? trees : stumps).push(t); });
+  const looks = new Map<Tree, { b: BiomeHere; look: TreeLook; size: number }>();
+  chunkTrees(T, cx, cz).forEach((t, i) => {
+    if (t.cols.some(([x, z]) => cleared(x, z))) return;
+    const b = polar ? 'ice' : biomeOfCell(T.world, t.x, t.z), as = treeIn(b, hash(t.seed, 0xb10e), TREE_SPAN[t.kind] > 0);
+    if (!as) return; // (0.232) the biome does not grow it (the list keeps its index, so the saved keys hold)
+    looks.set(t, { b, ...as });
+    const k = `tree:${wrapC(cx)}:${cz}:${i}`; gatherKey.set(t, k); (ripe(k) ? trees : stumps).push(t);
+  });
   chunkRocks(T, cx, cz).forEach((r, i) => { if (cleared(r.x, r.z)) return; const k = `rock:${wrapC(cx)}:${cz}:${i}`; gatherKey.set(r, k); if (ripe(k)) rocks.push(r); });
   let nodes: PlantNode[] = [];
   const marks = trailMarks(trails, x0, z0);
-  if (trees.length || stumps.length || rocks.length || wells.length || plants.length || caves.length || marks.length) {
+  if (true) {
     const pb = new PropBatch();
     for (const t of stumps) for (const [sx, sz, sr] of t.cols) { const r = Math.max(0.25, sr * 0.8); pb.box(sx - r, t.y - 0.1, sz - r, sx + r, t.y + 0.5, sz + r, GRID); }
     nodes = drawPlants(pb, plants, lod, group);
     for (const w of wells) drawWell(pb, w, T.heightAt(w.x, w.z));
     for (const cv of caves) drawCave(pb, cv, T);
     for (const m of marks) drawTrailMark(pb, m, T);
-    for (const t of trees) drawTree(pb, t, lod);
-    for (const k of rocks) { pb.rock(k.x, k.y, k.z, k.r, k.h, k.sides, k.rot, GRID); if (k.ore) pb.vein(k.x, k.y, k.z, k.r, k.h, k.sides, k.rot, ORE_COLOR[k.ore]); }
+    for (const t of trees) { const lk = looks.get(t)!; pb.remap = tintOf(lk.b); drawTreeLook(pb, t, lod, lk.look, lk.size); }
+    for (const k of rocks) { pb.remap = tintOf(polar ? 'ice' : biomeOfCell(T.world, k.x, k.z)); pb.rock(k.x, k.y, k.z, k.r, k.h, k.sides, k.rot, GRID); pb.remap = null; if (k.ore) pb.vein(k.x, k.y, k.z, k.r, k.h, k.sides, k.rot, ORE_COLOR[k.ore]); }
+    pb.remap = null;
+    if (lod === 1 && !polar) groundDeco(pb, T, cx, cz, (x, z) => cleared(x, z) || holes.some((h) => inRect(h, x, z)) || f.roads.some((rd) => nearestOnRoad(rd, x, z)[0] < rd.half + 1));
     group.add(pb.build());
   }
   localize(group, x0, z0);
   scene.add(group);
   return { cx, cz, group, trees, rocks, wells, plants, nodes, caves, lod };
+}
+/** (0.232) A biome's colours for trees and rocks drawn through a PropBatch (bark and stone, leaves, vines). */
+const tints = new Map<BiomeHere, Map<number, number>>();
+function tintOf(b: BiomeHere): Map<number, number> {
+  let m = tints.get(b);
+  if (!m) { const L = BIOME_LOOK[b], v = new THREE.Color(L.leaf).multiplyScalar(0.55).getHex(); tints.set(b, (m = new Map([[GRID, L.line], [LEAF, L.leaf], [VINE, v]]))); }
+  return m;
+}
+/** (0.232) Small things on the ground by the chunk's biome (near chunks only): reeds in a swamp, tufts of grass,
+ *  patches of snow, pebbles. Spots from the chunk's own hash, so every player sees the same. */
+function groundDeco(pb: PropBatch, T: Terrain, cx: number, cz: number, skip: (x: number, z: number) => boolean) {
+  const x0 = cx * CHUNK, z0 = cz * CHUNK, b = biomeOfCell(T.world, x0 + CHUNK / 2, z0 + CHUNK / 2), L = BIOME_LOOK[b];
+  if (!L.deco) return;
+  const R = rng(hash(T.world, wrapC(cx), cz, 0xdec0)), n = L.deco === 'reeds' ? 14 : L.deco === 'grass' ? 10 : 7;
+  for (let k = 0; k < n; k++) {
+    const x = x0 + R() * CHUNK, z = z0 + R() * CHUNK, a = R() * 6.283, s = 0.6 + R() * 0.8;
+    if (skip(x, z) || biomeOfCell(T.world, x, z) !== b) continue;
+    const w = T.water(x, z), y = T.heightAt(x, z);
+    if (w && w.depth > (L.deco === 'reeds' ? 0.6 : 0.05)) continue;
+    if (L.deco === 'reeds') for (let r = 0; r < 5; r++) { const ox = x + (R() - 0.5) * 0.8, oz = z + (R() - 0.5) * 0.8, h = 1 + R() * 1.2; pb.seg(L.leaf, [ox, y - 0.1, oz], [ox + (R() - 0.5) * 0.3, y + h, oz + (R() - 0.5) * 0.3]); if (R() < 0.4) pb.seg(L.line, [ox, y + h * 0.8, oz], [ox, y + h * 0.95, oz]); }
+    else if (L.deco === 'grass') for (let r = 0; r < 5; r++) { const d = a + r * 1.25; pb.seg(L.leaf, [x, y, z], [x + Math.cos(d) * 0.3 * s, y + 0.45 * s + R() * 0.2, z + Math.sin(d) * 0.3 * s]); }
+    else if (L.deco === 'snow') { const c = 0xe8fff8, r0 = 0.8 + R() * 1.4, pts: number[][] = []; for (let q = 0; q <= 6; q++) { const d = a + q / 6 * 6.283; pts.push([x + Math.cos(d) * r0 * (0.7 + 0.3 * Math.sin(q * 2.1)), T.heightAt(x + Math.cos(d) * r0, z + Math.sin(d) * r0) + 0.05, z + Math.sin(d) * r0]); } pb.line(c, ...pts); }
+    else pb.rock(x, y - 0.05, z, 0.18 + R() * 0.25, 0.15 + R() * 0.2, 5, a, L.line);
+  }
 }
 /** Save keys of the trees and rocks in loaded chunks ("tree:<cx>:<cz>:<i>", canonical chunk x). */
 export const gatherKey = new WeakMap<object, string>();

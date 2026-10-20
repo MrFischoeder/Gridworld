@@ -24,3 +24,20 @@ describe('biomes (0.231)', () => {
     for (const b of BIOME_KINDS) expect(n[b] ?? 0, b).toBeGreaterThan(0);
   }, 120000);
 });
+
+import { biomeTint, treeIn, BIOME_LOOK } from '../src/gen/biomes';
+describe('biome looks (0.232)', () => {
+  it('the ground colour changes smoothly (no jumps between neighbouring vertices)', () => {
+    let worst = 0;
+    for (let x = 5000; x < 9000; x += 2) { const a = biomeTint(7, x, 3000), b = biomeTint(7, x + 2, 3000); worst = Math.max(worst, Math.abs(a[0] - b[0]), Math.abs(a[1] - b[1]), Math.abs(a[2] - b[2])); }
+    expect(worst).toBeLessThan(0.12);
+  });
+  it('a desert grows a few cacti, a forest every tree, and no great trees stand in the tundra', () => {
+    const n = (b: Parameters<typeof treeIn>[0], big = false) => Array.from({ length: 1000 }, (_, i) => treeIn(b, i * 7919, big)).filter(Boolean).length;
+    expect(n('forest')).toBe(1000);
+    expect(n('desert')).toBeGreaterThan(150); expect(n('desert')).toBeLessThan(300);
+    expect(treeIn('desert', 3, false)?.look ?? 'cactus').toBe('cactus');
+    expect(n('tundra', true)).toBe(0);
+    expect(Object.keys(BIOME_LOOK).length).toBe(13);
+  });
+});

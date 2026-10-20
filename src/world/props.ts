@@ -7,8 +7,11 @@ export class PropBatch {
   tri: number[] = [];
   /** Line segments grouped by colour. */
   lines = new Map<number, number[]>();
+  /** (0.232) Colours swapped as they are drawn (a biome's tint on trees and rocks); unset: none. */
+  remap: Map<number, number> | null = null;
 
   seg(color: number, a: number[], b: number[]) {
+    if (this.remap) color = this.remap.get(color) ?? color;
     let l = this.lines.get(color); if (!l) this.lines.set(color, (l = []));
     l.push(a[0], a[1], a[2], b[0], b[1], b[2]);
   }
@@ -162,6 +165,10 @@ export class PropBatch {
 let fillShared: THREE.MeshBasicMaterial | null = null;
 const lineShared = new Map<number, THREE.LineBasicMaterial>();
 export const sharedFill = () => (fillShared ??= fillMat());
+/** (0.232) The ground's fill and lines coloured per vertex (the biomes' tints, gen/biomes.ts). */
+let fillV: THREE.MeshBasicMaterial | null = null, lineV: THREE.LineBasicMaterial | null = null;
+export const sharedFillV = () => (fillV ??= (() => { const m = fillMat(0xffffff); m.vertexColors = true; return m; })());
+export const sharedLineV = () => (lineV ??= lineMat(0xffffff, { vertexColors: true }));
 export function sharedLine(color: number) {
   let m = lineShared.get(color); if (!m) lineShared.set(color, (m = lineMat(color)));
   return m;

@@ -3,6 +3,13 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.232.0', date: '2026-10-20', title: 'Biomes you can see', notes: [
+    'Each biome now looks its own: the ground\'s lines take its colour (amber desert, yellow savanna, olive swamp, deep green jungle, teal taiga, pale tundra, sandy coast, violet crystal wastes), blended smoothly across the borders; snow pales the lines high on the mountains.',
+    'The trees follow the land: cacti in the desert, acacias with flat crowns on the savanna, palms on the coast, pines in the taiga, low pines in the tundra, dead trees among the green ones in the swamp, big crowns with vines in the jungle and crystal shards in the crystal wastes. The open lands have fewer trees, and the great trees grow only where they fit.',
+    'Small things on the ground: reeds in the swamp, tufts of grass on the plains, savanna and coast, patches of snow in the taiga and tundra, pebbles in the desert, the mountains and the crystal wastes.',
+    'By day the haze takes the biome\'s colour too, and the air over a swamp or the jungle is thicker. The Crystal Wastes are thick with crystal fields.',
+    'Felled trees and broken rocks stay as they were. Multiplayer: all of it comes from the world seed, the same for every player; the server does not need an update.',
+  ] },
   { v: '0.231.0', date: '2026-10-19', title: 'Biomes', notes: [
     'The land now falls into biomes: Plains, Forest, Taiga, Tundra, Desert, Savanna, Swamp, Jungle, Mountains, Coast and the rare Crystal Wastes. Warmer towards the equator and lower down, colder towards the poles and up high; wetter by the rivers. The land round Gridholm stays temperate.',
     'The place name in the corner shows the biome you stand in (it used to say only Wilds).',

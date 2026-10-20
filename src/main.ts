@@ -91,6 +91,7 @@ import { syncConvoyStart } from './world/convoyfuel';
 import { updateInstalls } from './world/installs';
 import { updateCities } from './world/cities';
 import { updateToxic, tintToxic, toxicHere } from './world/toxic';
+import { tintBiome } from './world/biomesky';
 import { updateGuide } from './world/guide';
 import { updateBridges, isBridgePlacing, updateBridgePlacing, confirmBridgePlacing, cancelBridgePlacing } from './world/bridges';
 import { updatePiers, isPierPlacing, updatePierPlacing, confirmPierPlacing, cancelPierPlacing } from './world/piers';
@@ -283,7 +284,7 @@ function frame(now: number) {
   camera.rotation.set(G.pitch + (sw?.pitch ?? 0) + (rc?.up ?? 0), G.yaw + (sw?.yaw ?? 0) + (rc?.side ?? 0), (sw?.roll ?? 0) + (sw ? downView().roll : 0)); // (0.227) lying on a side after a fall
   updateSoundFrame(dt);
   updateWeather(dt, sky.visible);
-  if (sky.visible) { sky.position.set(camera.position.x, camera.position.y - 20, camera.position.z); horizon.position.set(camera.position.x, 0, camera.position.z); shapeHorizon(camera.position.x, camera.position.z); updateSky(G.char.time, latitude(G.pos.z)); tintToxic(); updateFarPeaks(camera.position); } else farPeaks.visible = false;
+  if (sky.visible) { sky.position.set(camera.position.x, camera.position.y - 20, camera.position.z); horizon.position.set(camera.position.x, 0, camera.position.z); shapeHorizon(camera.position.x, camera.position.z); updateSky(G.char.time, latitude(G.pos.z)); tintBiome(); tintToxic(); updateFarPeaks(camera.position); } else farPeaks.visible = false;
   // A sanctuary spans hundreds of metres: give it room in clear weather while preserving dense fog.
   const monumentView = sky.visible && nearMegalith(G.pos.x, G.pos.z);
   if (monumentView && !G.fly && seen.fog < .45 && toxicHere() < .3) { fog.near *= 1.8; fog.far *= 2.5; }

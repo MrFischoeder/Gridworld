@@ -19,12 +19,15 @@ import { inFogSite } from './toxic';
 import { inLode } from './lodes';
 import { megalithsNear } from './megaliths';
 import { gatesNear } from './worldgates';
+import { biomeAt } from './biomes';
 
 /** Field colours: [line, the inner facets]. */
 export const CRYSTAL_HUES: [number, number][] = [[0x7ae8ff, 0x3a8ab8], [0xc09cff, 0x6a4ab0], [0x9dffd0, 0x3aa878], [0xff9ce0, 0xa04a8a], [0xe8f8ff, 0x7898b0], [0xb6ff3a, 0x5a9a20]];
 export const CRYSTALS = {
   /** The share of regions holding a field, none within `from` m of Gridholm. */
   chance: 0.03, from: 1800,
+  /** (0.232) The share in the Crystal Wastes biome. */
+  wastes: 0.6,
   /** The field's radius (m). */
   r: [34, 90] as [number, number],
   /** Villages keep this far (m), other places this far from the edge, roads and rivers this far. */
@@ -71,7 +74,8 @@ export function regionCrystals(world: number, rx: number, rz: number): CrystalFi
 }
 function rollField(world: number, rx: number, rz: number): CrystalField | null {
   const R = rng(hash(world, rx, rz, 0xc7a1)), x = rx * REGION + (R() - 0.5) * REGION * 0.5, z = rz * REGION + (R() - 0.5) * REGION * 0.5;
-  if (R() > CRYSTALS.chance || Math.hypot(wrapDx(x), z) < CRYSTALS.from) return null;
+  const roll = R(); // (0.232) the crystal wastes are thick with fields
+  if (Math.hypot(wrapDx(x), z) < CRYSTALS.from || roll > CRYSTALS.chance && (roll > CRYSTALS.wastes || biomeAt(world, x, z) !== 'crystal')) return null;
   const [a, b] = CRYSTALS.r, r = a + (b - a) * R();
   if (misfit(world, x, z, r)) return null;
   const seed = hash(world, rx, rz, 0xc7a2);
