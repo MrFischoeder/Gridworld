@@ -14,6 +14,7 @@ import { seen as sky } from './weather';
 import { rayWorld } from './player';
 import { proxied, targetingFoe, targetPeer } from './remote';
 import { net } from '../net/client';
+import { sensesOf, viewFacing, seenAs, TRACK, type SenseKey } from '../gen/senses';
 
 export interface Mind {
   /** 0 nothing there .. 1 spotted. */
@@ -22,6 +23,8 @@ export interface Mind {
   last: THREE.Vector3 | null; lost: number;
   /** Whether it saw you this turn. */
   sees: boolean;
+  /** (0.236) It has had your scent: it keeps to your track (gen/senses.ts `trail`). */
+  nose?: boolean;
 }
 const minds = new WeakMap<object, Mind>();
 export function mindOf(f: object): Mind {
@@ -31,7 +34,7 @@ export function mindOf(f: object): Mind {
 }
 
 // ---------- you ----------
-let shotT = Infinity, vis = 1;
+let shotT = Infinity, vis = 1, lit = 1;
 /** A shot: muzzle flashes give you away for a moment. */
 export function noteShot() { shotT = 0; }
 /** C or Ctrl toggles crouching (it stays until pressed again). Not while flying, driving, riding, boating, swimming or climbing. */
@@ -40,8 +43,9 @@ export function toggleCrouch() { G.crouch = !G.crouch; }
 export const myVis = () => vis;
 function work(): number {
   const under = G.char.loc !== 'overworld', light = Math.max(under ? 0 : daylight(G.char.time, sunTilt(latitude(G.pos.z))), G.char.light?.on ? 0.85 : 0); // (0.199) a light you carry shows you in the dark
-  const speed = Math.hypot(G.vel.x, G.vel.z);
-  return visibility({ crouch: G.crouch, speed, sprint: speed > 7.5, light, under, fog: under ? 0 : sky.fog, rain: under ? 0 : sky.rain, shot: shotT });
+  const speed = Math.hypot(G.vel.x, G.vel.z), e = { crouch: G.crouch, speed, sprint: speed > 7.5, light, under, fog: under ? 0 : sky.fog, rain: under ? 0 : sky.rain, shot: shotT };
+  lit = visibility({ ...e, light: 1, under: false, fog: 0, rain: 0 }); // (0.236) how you show to eyes the dark does not stop
+  return visibility(e);
 }
 /** The visibility of whoever the current foe's turn is against: you, another player (as they last told), or a foe (fully). */
 export function targetVis(): number {
@@ -57,6 +61,57 @@ function targetLoud(): boolean {
   if (proxied()) { const st = net.peers.get(targetPeer())?.st; return !!st?.mv && !st.cr; }
   return !G.crouch && Math.hypot(G.vel.x, G.vel.z) > 0.5;
 }
+/** (0.236) How the target would show in good light (another player: as they last told). */
+const targetLit = () => (targetingFoe() ? 1 : proxied() ? targetVis() : lit);
+
+// ---------- your track (0.236, stage L2) ----------
+// Where you walked, every TRACK.every s, and whether you left a scent there (not in a vehicle, a boat or the water).
+const crumbs: { x: number; z: number; t: number; s: boolean }[] = [];
+let crumbT = 0, scentNow = true;
+/** Every frame (main.ts): lay your track; `scented` = on foot, out of the water and out of every vehicle and boat. */
+export function layTrail(dt: number, scented: boolean) {
+  scentNow = scented;
+  if ((crumbT -= dt) > 0) return;
+  crumbT = TRACK.every;
+  const t = G.char.time; // game minutes: a real second each while playing
+  const lastC = crumbs[crumbs.length - 1];
+  if (lastC && Math.hypot(G.pos.x - lastC.x, G.pos.z - lastC.z) > 60) crumbs.length = 0; // a jump (death, recall, a gate): the old track is not here
+  crumbs.push({ x: G.pos.x, z: G.pos.z, t, s: scented });
+  while (crumbs.length && t - crumbs[0].t > TRACK.keep) crumbs.shift();
+}
+/** Whether the current target leaves a scent now. */
+function targetScented(): boolean {
+  if (targetingFoe()) return true;
+  if (proxied()) { const st = net.peers.get(targetPeer())?.st; return !st?.boat && !st?.ride && !st?.cars?.some((c) => c[8]); }
+  return scentNow;
+}
+/** (0.236) Your own track `lag` s back (the newest scented spot at least that old, or the last scented one when the
+ *  track has broken off); null with no track. For the approaching packs (world/intents.ts). */
+export function myTrack(lag: number): { x: number; z: number; broken: boolean } | null {
+  const t = G.char.time;
+  let broken = !scentNow;
+  for (let i = crumbs.length - 1; i >= 0; i--) {
+    const c = crumbs[i];
+    if (!c.s) { broken = true; continue; }
+    if (t - c.t >= lag || i === 0 || broken) return { x: c.x, z: c.z, broken };
+  }
+  return null;
+}
+const trackAt = new THREE.Vector3();
+/** Where a tracker following the current target's track is led: `TRACK.lag` s behind them on the track, or the last
+ *  scented spot when the track breaks (a vehicle, a boat, the water). Another player's track: where they are, while scented. */
+function trackPoint(): THREE.Vector3 | null {
+  if (targetingFoe()) return null;
+  if (proxied()) return targetScented() ? trackAt.set(G.pos.x, G.pos.y, G.pos.z) : null;
+  const t = G.char.time;
+  for (let i = crumbs.length - 1; i >= 0; i--) {
+    const c = crumbs[i];
+    if (!c.s) continue;
+    if (t - c.t >= TRACK.lag || i === 0 || !scentNow) return trackAt.set(c.x, G.pos.y, c.z);
+  }
+  return null;
+}
+
 const targetCrouched = () => (targetingFoe() ? false : proxied() ? !!net.peers.get(targetPeer())?.st?.cr : G.crouch && peekK() < 0.5);
 
 
@@ -65,21 +120,34 @@ const targetCrouched = () => (targetingFoe() ? false : proxied() ? !!net.peers.g
  * (0 = +z, as three.js rotation.y), `sight` its plain range, `hunting` whether it is already after you.
  * Returns whether it sees the target now; its mind keeps the awareness and the last spot.
  */
-export function sense(f: object, eye: THREE.Vector3, heading: number, sight: number, dt: number, hunting: boolean): boolean {
-  const m = mindOf(f), crouched = targetCrouched();
+export function sense(f: object, eye: THREE.Vector3, heading: number, sight: number, dt: number, hunting: boolean, key?: SenseKey): boolean {
+  const m = mindOf(f), crouched = targetCrouched(), S = sensesOf(key);
   const tx = G.pos.x, ty = G.pos.y + (crouched ? 0.7 : 1.1), tz = G.pos.z;
   const dx = tx - eye.x, dy = ty - eye.y, dz = tz - eye.z, dist = Math.hypot(dx, dy, dz), flat = Math.hypot(dx, dz) || 1;
-  const facing = (Math.sin(heading) * dx + Math.cos(heading) * dz) / flat;
-  const range = reach(sight, targetVis(), facing, hunting), close = atOnce(dist, facing, hunting, targetLoud());
+  const facing = viewFacing(S, (Math.sin(heading) * dx + Math.cos(heading) * dz) / flat);
+  const range = reach(sight, seenAs(S, targetVis(), targetLit()), facing, hunting), close = atOnce(dist, facing, hunting, targetLoud(), S.steps);
   let sees = false;
   if (dist < range || close) {
     const d = new THREE.Vector3(dx / dist, dy / dist, dz / dist);
     sees = rayWorld(eye, d, dist) >= dist - 0.5;
   }
-  m.aware = awareness(m.aware, dt, sees, dist, range, hunting, close);
+  // (0.236, stage L2) a nose finds you through bushes and walls; once it has your scent it keeps to your track
+  const smell = S.scent > 0 && flat < S.scent && targetScented();
+  if (smell) m.nose = true;
+  m.aware = awareness(m.aware, dt, sees || smell, dist, Math.max(range, S.scent), hunting, close);
   m.sees = sees;
-  if (sees) { m.last = (m.last ?? new THREE.Vector3()).set(tx, G.pos.y, tz); m.lost = 0; } else m.lost += dt;
-  return sees;
+  if (sees || smell) { m.last = (m.last ?? new THREE.Vector3()).set(tx, G.pos.y, tz); m.lost = 0; }
+  else {
+    m.lost += dt;
+    const p = hunting && m.nose && m.lost < S.trail ? trackPoint() : null;
+    if (p) m.last = (m.last ?? new THREE.Vector3()).copy(p);
+  }
+  return sees || smell;
+}
+/** (0.236) How long (s) a foe of this kind keeps looking for you once it lost you: a tracker with your scent, as long as your track holds. */
+export function loseOf(f: object, key?: SenseKey): number {
+  const S = sensesOf(key);
+  return mindOf(f).nose ? Math.max(S.lose, S.trail) : S.lose;
 }
 /** The foe heard something at `at` (a shot, a fight): it now knows where to look. */
 export function heard(f: object, at: THREE.Vector3, how = 0.6) {

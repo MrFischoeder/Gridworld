@@ -64,7 +64,8 @@ import { campFires } from './world/overworld';
 import { MIN_PER_SEC, fmtClock } from './core/time';
 import { latitude } from './gen/regions';
 import { updateCreatures, spawnCreatureNear } from './world/creatures';
-import { updateStealth } from './world/stealth';
+import { updateStealth, layTrail } from './world/stealth';
+import { updateIntents } from './world/intents';
 import { updateBandits, spawnBanditsNear } from './world/bandits';
 import { updateRaiders, spawnRaiderNear, forceAmbush, raiders } from './world/raiders';
 import { updateTracker, boardOffers, accept, syncQuestWorld, refreshBoard } from './world/quests';
@@ -255,7 +256,7 @@ function frame(now: number) {
     if (driving.v) fireCannon(dt);
     updateDoors(dt);
     updateRobots(dt, time); // the open world's robots, or a crashed ship's guards
-    if (outdoors) { updateGarrisons(dt); updateFieldEnemies(dt); updateCreatures(dt, time); updateBandits(dt, time); updateRaiders(dt); animateCamps(time); smokeWrecks(dt); updateCrash(dt, time); animateWater(time); }
+    if (outdoors) { updateIntents(dt); updateGarrisons(dt); updateFieldEnemies(dt); updateCreatures(dt, time); updateBandits(dt, time); updateRaiders(dt); animateCamps(time); smokeWrecks(dt); updateCrash(dt, time); animateWater(time); }
     updateDrones(dt);
     updateFoeSounds(dt);
     const boss = updateBosses(dt, time); updateOrbs(dt);
@@ -263,6 +264,7 @@ function frame(now: number) {
     if (G.god) G.hp = G.S.maxHp;
     if (G.hp <= 0) { el.warp.style.opacity = '1'; clearMyCond(); resetBodyHeat(); toVillage('death'); }
     updateStealth(dt, !driving.v && !riding() && !inBoat() && !G.swimming && !climbing() && !G.fly);
+    if (G.char.loc === 'overworld') layTrail(dt, !driving.v && !riding() && !inBoat() && !G.swimming && !G.fly); // (0.236) your scent and track for the trackers
     updateLoot(dt, time); spinCarrier(time); updateEntities(dt, time);
     if (outdoors) {
       const name = placeName(G.pos.x, G.pos.z);

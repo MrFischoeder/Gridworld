@@ -42,10 +42,29 @@ export function heading(): number {
   return s > 0.8 ? Math.atan2(G.vel.x, G.vel.z) : Math.atan2(-Math.sin(G.yaw), -Math.cos(G.yaw));
 }
 /** Where a newcomer makes for: a little ahead on your way, so you meet it rather than it piling up behind you. */
-export function meetPoint(): { x: number; z: number } {
-  const s = Math.hypot(G.vel.x, G.vel.z), a = heading(), lead = leadOf(s), j = (Math.random() - 0.5) * 2 * SPAWN.jitter;
+export function meetPoint(secs: number = SPAWN.lead): { x: number; z: number } {
+  const s = Math.hypot(G.vel.x, G.vel.z), a = heading(), lead = leadOf(s, secs), j = (Math.random() - 0.5) * 2 * SPAWN.jitter;
   return { x: G.pos.x + Math.sin(a) * lead + Math.cos(a) * j, z: G.pos.z + Math.cos(a) * lead - Math.sin(a) * j };
 }
+
+/** (0.236) Whether a group at (x, z) can walk straight towards you: no water, wall or place in the way (sampled every
+ *  12 m by `bad`, the spawner's own forbidden ground), so it does not stand stuck behind a river all the way. */
+export function wayClear(x: number, z: number, bad: (x: number, z: number) => boolean): boolean {
+  const dx = G.pos.x - x, dz = G.pos.z - z, L = Math.hypot(dx, dz);
+  for (let s = 12; s < L - 20; s += 12) if (bad(x + dx / L * s, z + dz / L * s)) return false;
+  return true;
+}
+/** (0.236) Two points of a crossing: where the group meets your way (`SPAWN.crossLead` s ahead of you) and a point
+ *  `SPAWN.crossOn` m on past it, away from where the group turned up at (x, z). */
+export function crossPoints(x: number, z: number): [number, number][] {
+  const m = meetPoint(SPAWN.crossLead), dx = m.x - x, dz = m.z - z, L = Math.hypot(dx, dz) || 1;
+  return [[m.x, m.z], [m.x + dx / L * SPAWN.crossOn, m.z + dz / L * SPAWN.crossOn]];
+}
+let roadAhead: (d0: number, d1: number) => [number, number] | null = () => null;
+/** world/raiders.ts tells where the roadside ahead of you is (it knows the roads). */
+export function setRoadAhead(f: typeof roadAhead) { roadAhead = f; }
+/** A roadside spot ahead of you on the road you are on, for bandits to lie in wait at; null off the road. */
+export const roadsideSpot = () => roadAhead(SPAWN.wait[0], SPAWN.wait[1]);
 
 const hid = new WeakMap<object, { t: number; next: number }>();
 /**
@@ -53,7 +72,7 @@ const hid = new WeakMap<object, { t: number; next: number }>();
  * of everyone's sight for `unseen` s (checked once a second); past `hard` m always.
  */
 export function mayDrop(o: object, x: number, y: number, z: number): boolean {
-  const d = nearestPlayer(x, z), now = performance.now() / 1000;
+  const d = nearestPlayer(x, z), now = G.char.time; // game minutes, a real second each while playing
   if (d > SPAWN.hard) return true;
   if (d <= SPAWN.despawn) { hid.delete(o); return false; }
   let s = hid.get(o);

@@ -69,8 +69,8 @@ export function awareness(a: number, dt: number, seen: boolean, dist: number, ra
   return Math.max(0, a - dt * (hunting ? S.huntFall : S.fall));
 }
 /** Whether a foe this close notices you at once: anything in front of it or hunting, and anyone it can hear (upright and moving within `steps`). */
-export const atOnce = (dist: number, facing: number, hunting: boolean, loud: boolean) =>
-  dist < STEALTH.touch && (facing >= STEALTH.back || hunting) || loud && dist < STEALTH.steps;
+export const atOnce = (dist: number, facing: number, hunting: boolean, loud: boolean, steps: number = STEALTH.steps) =>
+  dist < STEALTH.touch && (facing >= STEALTH.back || hunting) || loud && dist < steps;
 /** How long (s) each kind keeps looking for you after losing sight of you, and the bonus for striking an unaware foe. */
 export const LOSE = { bandit: 12, robot: 14, creature: 9, drone: 7 };
 export const SNEAK = { melee: 3, gun: 1.5 };

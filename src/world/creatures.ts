@@ -1,7 +1,9 @@
 // Wild creatures of the open world: Ravager packs, territorial Brambles and diving Leechwings, Gnawer nests,
 // Skitterwing flocks fluttering low in the near wilds, and in the sea Sea Lurkers and shoals of Silverfin.
 // Spawns and movement use Math.random (unsaved, like drones); models are built from PropBatch.
-import { ringSpot, heading, hiddenFrom, farFromPlayers, meetPoint, mayDrop, SPAWN } from './spawnring';
+import { addIntent, type IntentOps } from './intents';
+import { hears } from '../gen/senses';
+import { ringSpot, heading, hiddenFrom, farFromPlayers, meetPoint, mayDrop, wayClear, SPAWN } from './spawnring';
 import { play } from './sound';
 import { hurtPlayer } from './damage';
 import * as THREE from 'three';
@@ -27,8 +29,8 @@ import { ALPHA, type Quest } from '../gen/quests';
 import { textSprite } from './npc';
 import { targetingFoe, proxied, stepRemote, withFoeTarget, nearestPlayer, remoteOf } from './remote';
 import { tickCond, knockDown, heavyHit, bleed, type CondFoe } from './conditions';
-import { mindOf, sense, share, spottedBy, targetVis } from './stealth';
-import { STEALTH, LOSE } from '../gen/stealth';
+import { mindOf, sense, loseOf, share, spottedBy, targetVis } from './stealth';
+import { STEALTH } from '../gen/stealth';
 import { tl, TL } from '../i18n';
 
 type State = 'roam' | 'hunt' | 'dash' | 'retreat' | 'threat' | 'charge' | 'recover' | 'stalk' | 'dive' | 'climb' | 'investigate' | 'feed'
@@ -314,7 +316,7 @@ onNoise((at, r, decoy) => {
     }
     if (c.kind === 'skitter' || SWIMMERS.includes(c.kind)) continue; // fliers and the fish do not care about a bang in the distance
     if (c.state === 'feed') continue; // busy eating
-    const reach = c.kind === 'leechwing' ? r * 1.8 : r; // flyers hear it from further and see it from above
+    const reach = hears(c.kind, r); // (0.236) each kind's ears (gen/senses.ts): leechwings far, brambles hardly
     if (Math.hypot(c.p.x - at.x, c.p.z - at.z) > reach) continue;
     if (c.state === 'roam' || c.state === 'investigate') { c.state = 'investigate'; c.noiseAt = at.clone(); c.timer = 14; }
   }
@@ -345,7 +347,7 @@ function trySpawn() {
     }
     if (env.forbidden(x, z)) continue;
     const h = env.ground(x, z), lv = env.danger(x, z), roll = Math.random();
-    if (!hiddenFrom(x, h, z, 2)) continue;
+    if (!hiddenFrom(x, h, z, 2) || (!drawn && !wayClear(x, z, env.forbidden))) continue; // (0.236) a way to you, not across a river
     if (lv >= 0.6 && lv < 2.2 && Math.random() < 0.12) { // now and then a flock of Skitterwings in the near wilds
       const n = 3 + Math.floor(Math.random() * 3);
       if (!mayspawn(n * 0.3, lv, heat)) return;
@@ -378,7 +380,7 @@ function trySpawn() {
         c.flank = (i - (n - 1) / 2) * 1.1; c.pack = pack; pack.push(c);
       }
     } else continue;
-    comeOver(W.creatures.slice(before), drawn ? { x: lastNoise.x, z: lastNoise.z } : meetPoint());
+    comeOver(W.creatures.slice(before), drawn ? { x: lastNoise.x, z: lastNoise.z } : meetPoint(), drawn);
     return;
   }
 }
@@ -387,12 +389,24 @@ function trySpawn() {
  * (0.235, stage L1) Newcomers make for the meeting point: ground beasts walk there (their den goes with them until
  * they settle or start a hunt), fliers move their range there; a grazing Bramble stays where it is.
  */
-function comeOver(group: Creature[], at: { x: number; z: number }) {
+function comeOver(group: Creature[], at: { x: number; z: number }, drawn: boolean) {
+  const noses = group.filter((c) => c.kind === 'ravager' || c.kind === 'gnawer');
   for (const c of group) {
-    if (c.kind === 'ravager' || c.kind === 'gnawer') { c.state = 'investigate'; c.noiseAt = V(at.x + (c.p.x - group[0].p.x), c.p.y, at.z + (c.p.z - group[0].p.z)); c.timer = SPAWN.march; c.coming = true; }
+    if (noses.includes(c)) { c.state = 'investigate'; c.noiseAt = V(at.x + (c.p.x - group[0].p.x), c.p.y, at.z + (c.p.z - group[0].p.z)); c.timer = SPAWN.march; c.coming = true; }
     else if (c.kind === 'leechwing' || c.kind === 'skitter') c.home.set(at.x, c.home.y, at.z);
   }
+  // (0.236, stage L2) packs of noses go along your track (gen/senses.ts, world/intents.ts); drawn by a shot, they make for the shot
+  if (noses.length && !drawn) addIntent('track', noses, BEAST_OPS, noses[0].p.x, noses[0].p.z);
 }
+/** How world/intents.ts moves a beast on its way: sniffing after a point, until it is after you. */
+const BEAST_OPS: IntentOps<Creature> = {
+  goto(c, x, z) { if (c.state !== 'roam' && c.state !== 'investigate') return; c.state = 'investigate'; (c.noiseAt ?? (c.noiseAt = V(x, c.p.y, z))).set(x, c.p.y, z); c.timer = 30; c.coming = true; },
+  engaged: (c) => c.state !== 'roam' && c.state !== 'investigate',
+  alive: (c) => c.hp > 0 && W.creatures.includes(c),
+  settle(c) { if (c.state === 'investigate') c.state = 'roam'; c.home.set(c.p.x, c.home.y, c.p.z); c.coming = false; c.den?.copy(c.p); },
+  drop: (c) => removeCreature(c),
+  at: (c) => c.p,
+};
 
 /** A sea spawn at (x, z): a Sea Lurker (from danger 1; two further out) or a shoal of Silverfin. */
 function spawnSea(x: number, z: number, level: number, lv: number) {
@@ -443,7 +457,7 @@ const cEye = new THREE.Vector3();
 /** Whether a ground beast has made you out (sight `sight` m before crouching, darkness and the like). */
 function spots(c: Creature, sight: number, dt: number): boolean {
   cEye.set(c.p.x, c.p.y + 0.3, c.p.z);
-  sense(c, cEye, c.heading, sight, dt, false);
+  sense(c, cEye, c.heading, sight, dt, false, c.kind);
   if (mindOf(c).aware < STEALTH.spotted) return false;
   if (!proxied() && !targetingFoe()) spottedBy(c);
   return true;
@@ -452,9 +466,9 @@ function spots(c: Creature, sight: number, dt: number): boolean {
 function track(c: Creature, dt: number, dist: number) {
   cEye.set(c.p.x, c.p.y + 0.3, c.p.z);
   const sight = c.kind === 'gnawer' ? 18 : c.kind === 'skitter' ? 28 : 22;
-  if (sense(c, cEye, c.heading, sight, dt, true)) { share(c.pack ?? [c], c); return; }
+  if (sense(c, cEye, c.heading, sight, dt, true, c.kind)) { share(c.pack ?? [c], c); return; }
   const m = mindOf(c);
-  if (m.lost > LOSE.creature && dist > 8 && m.last) {
+  if (m.lost > loseOf(c, c.kind) && dist > 8 && m.last) { // (0.236) a tracker with your scent keeps on while your track holds
     if (c.kind === 'skitter') { c.state = 'roam'; c.home.set(m.last.x, c.home.y, m.last.z); return; }
     c.state = 'investigate'; c.noiseAt = m.last.clone(); c.timer = 12;
   }

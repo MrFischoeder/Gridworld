@@ -2,5 +2,5 @@
 // Bump it with every pushed change (and keep package.json's "version" the same): the middle number for a new
 // feature (0.4.0 -> 0.5.0), the last one for a fix (0.5.0 -> 0.5.1). BUILD says what the latest change was.
 // Every change also gets an entry at the top of data/changelog.ts (the Changelog button in the menu).
-export const VERSION = '0.235.0';
-export const BUILD = '2026-10-20 · encounters stage L1: foes turn up past the fog, out of sight, and come to meet you; they go only far off and unseen';
+export const VERSION = '0.236.0';
+export const BUILD = '2026-10-20 · encounters stage L2: each foe has its own senses (eyes, ears, nose); packs follow your track, patrols cross your way, bandits wait by the road';

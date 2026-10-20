@@ -105,7 +105,7 @@ function droneTurn(t: Drone, dt: number) {
     const to = head.clone().sub(t.p), dist = to.length(), sc = t.scout;
     // a drone looks all round, but makes out a crouched, still or hidden target later; once it has lost you it
     // flies to where it saw you last and gives up after a few seconds there
-    const m = mindOf(t), seen = !safe && sense(t, t.p, Math.atan2(to.x, to.z), sc ? sc.detect : 16, dt, t.chasing);
+    const m = mindOf(t), seen = !safe && sense(t, t.p, Math.atan2(to.x, to.z), sc ? sc.detect : 16, dt, t.chasing, 'drone');
     if (safe) t.chasing = false; // the village: pursuers give up at the gate
     else if (!t.chasing && m.aware >= STEALTH.spotted) { t.chasing = true; if (!proxied()) spottedBy(t); }
     if (t.chasing && !seen && m.lost > LOSE.drone) t.chasing = false;

@@ -62,6 +62,32 @@ Zrobione: pierścień spawnu tuż za granicą mgły (za dnia ok. 180–290 m, w 
 
 ### L2: wróg przychodzi, a nie wyrasta
 
+**Zrobione w 0.236.** Na prośbę właściciela doszły do tego zmysły każdego rodzaju wroga (`gen/senses.ts`): jak widzi (stożek przed sobą, prawie dookoła albo dookoła), czy noc i mgła go zwodzą, jak daleko słyszy strzały i kroki, czy ma węch i jak długo idzie tropem.
+
+| Wróg | Wzrok | Ciemność i mgła | Słuch (strzały) | Kroki | Węch | Trop | Szuka po zgubieniu |
+|---|---|---|---|---|---|---|---|
+| Rozszarpywacz | przed sobą | trochę go mylą | ×1,2 | 10 m | 30 m | 120 s | 30 s |
+| Gryzacz | prawie dookoła | połowicznie | ×1 | 8 m | 18 m | 45 s | 15 s |
+| Bramble | przed sobą | mylą | ×0,5 | 6 m | 10 m | — | 6 s |
+| Pijawka | dookoła (z góry) | mylą | ×1,8 | — | — | — | 12 s |
+| Skrzydlak | prawie dookoła | mylą | ×0,6 | 5 m | — | — | 8 s |
+| Morski Czajacz | dookoła | widzi (drgania wody) | ×0,5 | 12 m | — | — | 10 s |
+| Zwiadowca | prawie dookoła (czujnik ruchu) | w dużej części widzi | ×1 | 8 m | — | — | 14 s |
+| Strażnik | przed sobą | połowicznie | ×1 | 4 m | — | — | 18 s |
+| Dron naprawczy | dookoła | połowicznie | ×0,6 | 4 m | — | — | 10 s |
+| Wartownik | przed sobą, termowizja | widzi | ×0,8 | 4 m | — | — | 20 s |
+| Artyleria | przed sobą | prawie widzi | ×1,3 | 4 m | — | — | 25 s |
+| Konstrukt szturmowy | przed sobą | trochę go mylą | ×1 | 6 m | — | — | 14 s |
+| Bandyta | przed sobą | mylą | ×0,8 | 4 m | — | — | 12 s |
+| Dron | dookoła | w dużej części widzi | ×0,5 | — | — | — | 7 s |
+
+- Węch działa przez krzaki i ściany. Kto raz złapał zapach, idzie twoim tropem (6 s za tobą); zgubienie go z oczu nic nie daje, dopóki trop trwa. Trop przerywa woda, łódź i pojazd.
+- Słuch: zasięg hałasu (strzał z blastera 55 m, z tłumikiem ok. 12 m) razy mnożnik z tabeli.
+- Zamiary (`world/intents.ts`): watahy Rozszarpywaczy i gniazda Gryzaczy idą twoim tropem (im dalej, tym starszym, do 40 s za tobą); patrole robotów i bandytów idą linią przecinającą twoją drogę 35 s przed tobą i dalej 90 m; na drodze bandyci idą 110–170 m przed ciebie i czekają na poboczu. Spotkanie bez kontaktu przez 3 minuty wygasa (znika, jeśli nikt go nie widzi i jest dalej niż 120 m; inaczej zostaje na miejscu). Przy strzałach stwory nadal idą do miejsca hałasu.
+- Gra wieloosobowa: zamiary prowadzi gra, która stworzyła wrogów; tropiciel idący za innym graczem idzie tam, gdzie ten gracz jest (jego ślady nie są wysyłane).
+
+Plan pierwotny:
+
 Każde losowe spotkanie dostaje zamiar (`Intent`) i idzie z nim do gracza w swoim tempie. Gracz ma 20–90 s, żeby go zauważyć, przyczaić się, zająć osłonę albo zejść z drogi.
 
 **Zamiary.**

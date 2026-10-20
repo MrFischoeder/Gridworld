@@ -1,4 +1,5 @@
 import { applyLayouts } from '../gen/layouts';
+import { clearIntents } from './intents';
 import { biomeTint, biomeOfCell, treeIn, BIOME_LOOK, type TreeLook } from '../gen/biomes';
 import { drawTreeLook, LEAF, VINE } from './trees';
 import { biomeAt, biomeName, type BiomeHere } from '../gen/biomes';
@@ -833,7 +834,7 @@ export function closeWorld() {
   clearMegaliths();
   clearWorldGates();
   dropGarrisons(); clearVehicles(); dropCrash(); dropInstalls(); dropCities(); dropToxic(); dropLodes(); dropCrystals(); dropPorts(); dropCamps(); dropPowerLines(); dropCommuters(); clearBridges(); clearPiers();
-  setCreatureEnv(null); clearCreatures();
+  setCreatureEnv(null); clearCreatures(); clearIntents();
   setRobotEnv(null); clearRobots();
   setBanditEnv(null); clearBandits();
   setRaiderEnv(null); clearRaiders();
@@ -870,7 +871,7 @@ export function keepOnPlanet(dt: number) {
   const d = x < X_MIN ? WORLD_W : -WORLD_W;
   G.pos.x += d;
   // unsaved foes are simply let go (new ones turn up); loot on the ground moves along
-  clearCreatures(); clearBandits(); clearRaiders(); clearRobots();
+  clearCreatures(); clearBandits(); clearRaiders(); clearRobots(); clearIntents();
   for (const t of W.drones) scene.remove(t.g);
   W.drones = [];
   for (const c of W.crystals) { c.p.x += d; c.m.position.x += d; }

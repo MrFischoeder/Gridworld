@@ -8,7 +8,9 @@
 //   assault    RD-06: a hunched heavy biped with a hammer arm; charges and smashes you off your feet
 // Like the creatures they are not saved. Where they turn up, and how many, is set by the danger level and the
 // shared threat budget (world/threat.ts): near the villages you meet none, further out ever heavier machines.
-import { ringSpot, heading, hiddenFrom, farFromPlayers, meetPoint, mayDrop } from './spawnring';
+import { hears } from '../gen/senses';
+import { ringSpot, heading, hiddenFrom, farFromPlayers, crossPoints, mayDrop, wayClear } from './spawnring';
+import { addIntent, type IntentOps } from './intents';
 import { hurtPlayer } from './damage';
 import { targetingFoe, proxied, stepRemote, withFoeTarget, hitCombatFoe, otherPlayers, hurtOther } from './remote';
 import { tickCond, knockDown, heavyHit, bleed, type CondFoe } from './conditions';
@@ -18,8 +20,8 @@ import { G, W } from '../game';
 import { PropBatch, sharedFill } from './props';
 import { ROBOTS, ROBOT_COLOR, BEAM_COLOR, SHELL, BLAST, blastPulse, type RobotKind } from '../data/robots';
 import { machineBlast } from './blast';
-import { mindOf, sense, heard, share, spottedBy } from './stealth';
-import { STEALTH, LOSE } from '../gen/stealth';
+import { mindOf, sense, loseOf, heard, share, spottedBy } from './stealth';
+import { STEALTH } from '../gen/stealth';
 import { footStep } from '../core/footstep';
 import { foeRules, makeDrone, type Drone } from './enemies';
 import { burst, addFx } from './fx';
@@ -268,23 +270,28 @@ function trySpawn() {
   for (let tries = 0; tries < 10; tries++) {
     // (0.235, stage L1) out past the fog, ahead or to a side, out of everyone's sight; then they march to meet you
     const a = toward + (Math.random() - 0.5) * 3.4, { x, z } = ringSpot(a, Math.random());
-    if (env.forbidden(x, z) || !farFromPlayers(x, z) || !hiddenFrom(x, env.ground(x, z), z, 3)) continue;
+    if (env.forbidden(x, z) || !farFromPlayers(x, z) || !hiddenFrom(x, env.ground(x, z), z, 3) || !wayClear(x, z, env.forbidden)) continue;
     const lvHere = env.danger(x, z), kinds = pickGroup(lvHere, env.nearRuin(x, z));
     if (!kinds.length) return;
     const cost = kinds.reduce((c, k) => c + ROBOTS[k].cost, 0);
     if (!mayspawn(cost, lvHere)) return;
     // artillery stands off far away; everyone else comes in a loose group
-    const group: Robot[] = [], meet = meetPoint();
+    const group: Robot[] = [];
     kinds.forEach((k, i) => make(k, x + (i % 2 ? 1 : -1) * (i * 2.2), z + (i > 1 ? 3 : 0), lvHere, group));
-    const back = Math.hypot(x - meet.x, z - meet.z) || 1;
-    for (const r of group) { // their patrol ground becomes the meeting point (artillery stands 60 m back from it)
-      const off = r.model === 'artillery' ? 60 : 0;
-      r.home.set(meet.x + (r.p.x - x) + (x - meet.x) / back * off, r.home.y, meet.z + (r.p.z - z) + (z - meet.z) / back * off);
-      r.state = 'return';
-    }
+    // (0.236, stage L2) a patrol: it walks a line across your way and on past it; its sensors (gen/senses.ts) decide whether it finds you
+    addIntent('cross', group, ROBOT_OPS, x, z, crossPoints(x, z));
     return;
   }
 }
+/** How world/intents.ts moves a robot on patrol: its patrol ground goes ahead of it, until it hunts. */
+const ROBOT_OPS: IntentOps<Robot> = {
+  goto(r, x, z) { r.home.set(x, r.home.y, z); if (r.state === 'patrol') r.state = 'return'; },
+  engaged: (r) => r.state === 'hunt',
+  alive: (r) => r.hp > 0 && W.robots.includes(r),
+  settle(r) { r.home.set(r.p.x, r.home.y, r.p.z); },
+  drop: (r) => removeRobot(r),
+  at: (r) => r.p,
+};
 /** A city's machines (world/citygarrisons.ts): `n` of the usual groups for the danger there, together at (x, z). */
 /** A copy of another player's robot (world/foesync.ts): wherever its owner says, forbidden ground or not. */
 export function spawnRemoteRobot(model: RobotKind, x: number, y: number, z: number, level: number): Robot | null {
@@ -313,7 +320,7 @@ export function spawnRobotNear(model: RobotKind, d = 25) {
 
 // ---------- behaviour ----------
 // a shot heard: the machines come to where it was fired from (they do not see you yet)
-onNoise((at, rad) => { for (const r of W.robots) if (r.p.distanceTo(at) < rad * 0.7) { heard(r, at, r.state === 'hunt' ? 1 : 0.7); if (r.state !== 'hunt') alert(r, at); } });
+onNoise((at, rad) => { for (const r of W.robots) if (r.p.distanceTo(at) < hears(r.model, rad) * 0.7) { heard(r, at, r.state === 'hunt' ? 1 : 0.7); if (r.state !== 'hunt') alert(r, at); } });
 /** The squad goes hunting; they share where the target is (`at`, else what this one knows, else here). */
 function alert(r: Robot, at?: THREE.Vector3) {
   if (at || !mindOf(r).last) heard(r, at ?? G.pos, 1);
@@ -416,7 +423,7 @@ function think(r: Robot, dt: number, time: number) {
   // its sensors: a crouched, still or hidden target is made out later, from behind much later
   const m = mindOf(r), hunting = r.state === 'hunt';
   robotEye.set(r.p.x, r.p.y + 0.5, r.p.z);
-  const seen = !safe && sense(r, robotEye, r.heading, s.sight * (r.state === 'return' ? 0.6 : 1), dt, hunting);
+  const seen = !safe && sense(r, robotEye, r.heading, s.sight * (r.state === 'return' ? 0.6 : 1), dt, hunting, r.model);
   const sees = () => seen;
   if (!hunting && !safe && m.aware >= STEALTH.spotted) { alert(r); if (!proxied() && !targetingFoe()) spottedBy(r); return; }
   if (r.state === 'patrol') {
@@ -438,7 +445,7 @@ function think(r: Robot, dt: number, time: number) {
   }
   if (seen) share(r.group.length ? r.group : [r], r);
   else if (m.lost > (inCover(r) ? 7 : 1)) { // lost the target (a Guardian behind cover waits longer): sweep the spot it was last seen at, then go back
-    if (!m.last || m.lost > LOSE.robot) { r.state = 'return'; return; }
+    if (!m.last || m.lost > loseOf(r, r.model)) { r.state = 'return'; return; }
     if (suppress(r, m.last, dist)) return;
     const hx = m.last.x - r.p.x, hz = m.last.z - r.p.z;
     if (Math.hypot(hx, hz) > 2.5) { walk(r, hx, hz, s.speed * 0.7, dt); face(r, hx, hz, dt, 2); }

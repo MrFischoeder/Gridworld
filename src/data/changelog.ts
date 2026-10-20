@@ -3,6 +3,13 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.236.0', date: '2026-10-20', title: 'Senses and intentions', notes: [
+    'Every kind of foe now finds you its own way. Ravagers and gnawers have noses: they smell you through bushes and walls (ravagers from 30 m) and, once they have your scent, follow your track for up to two minutes, so they are hard to shake off. Water, a boat or a vehicle leaves no track.',
+    'Leechwings and drones see all round, scouts nearly so; sentinels see as well in the dark and the fog, other robots partly; bandits and brambles are fooled by night and fog like you would be. Leechwings hear shots from far off, brambles hardly at all; ravagers hear your footsteps from 10 m.',
+    'Foes from the wilds now come with a purpose: packs of ravagers and gnawers follow your track some way behind you; robot and bandit patrols walk a line across your way and, if they do not make you out, walk on by; on a road, bandits go ahead and lie in wait on the roadside.',
+    'A group that has not met you within three minutes gives up: out of sight and far off it goes, otherwise it stays where it is.',
+    'Multiplayer: the player who spawns the foes runs their plans; the others see them as before. Trackers follow another player to where that player is (their steps are not sent). Nothing new is sent; the server is unchanged.',
+  ] },
   { v: '0.235.0', date: '2026-10-20', title: 'Foes come from afar', notes: [
     'Creatures, robots and bandit patrols in the wilds no longer appear out of thin air a stone\'s throw away. They turn up past the edge of what you can see (about 120-310 m off, nearer at night and in fog), always out of sight of every player, and then make their way to where you are heading: you can see them coming, hide or step aside.',
     'They only go away once they are far off (350 m) and nobody has seen them for a few seconds, never before your eyes.',

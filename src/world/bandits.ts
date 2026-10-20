@@ -1,6 +1,8 @@
 // Bandits: human enemies with guns and blades. They live in camps and patrol the wilds.
 // Unsaved (like drones and creatures) except that a cleared camp stays empty for a while (char.camps).
-import { ringSpot, heading, hiddenFrom, farFromPlayers, meetPoint, mayDrop } from './spawnring';
+import { hears } from '../gen/senses';
+import { ringSpot, heading, hiddenFrom, farFromPlayers, crossPoints, roadsideSpot, mayDrop, wayClear } from './spawnring';
+import { addIntent, type IntentOps } from './intents';
 import { hurtPlayer } from './damage';
 import { play } from './sound';
 import { targetingFoe, actingFoe, combatFoes, factionOf, hitCombatFoe, type CombatFoe, stepRemote, withFoeTarget, proxied, otherPlayers, hurtOther, boltOut, spawnAuthority, nearestPlayer, remoteOf, spareOwner } from './remote';
@@ -172,7 +174,7 @@ function search(b: Bandit, at: THREE.Vector3, how = 0.6) {
 // Already fighting, they now know where you shot from. A suppressed gun is heard only close by.
 onNoise((at, r) => {
   for (const b of W.bandits) {
-    if (b.sight <= 20 || b.p.distanceTo(at) >= r * 0.8) continue;
+    if (b.sight <= 20 || b.p.distanceTo(at) >= hears('bandit', r)) continue;
     if (b.state === 'fight' || b.state === 'flee') heard(b, at, 1); else search(b, at, 0.7);
   }
 });
@@ -263,7 +265,7 @@ function think(b: Bandit, dt: number, time: number) {
   // what it makes of you: crouched, still, in the dark or the fog it takes longer, and from behind much longer
   const m = mindOf(b), fighting = b.state === 'fight' || b.state === 'flee';
   eye.set(b.p.x, b.p.y + 0.65, b.p.z);
-  const seen = !safe && sense(b, eye, b.heading, b.sight * (b.state === 'search' ? 1.25 : b.state === 'return' ? 0.75 : 1), dt, fighting);
+  const seen = !safe && sense(b, eye, b.heading, b.sight * (b.state === 'search' ? 1.25 : b.state === 'return' ? 0.75 : 1), dt, fighting, 'bandit');
   const sees = () => seen;
   if (!fighting && !safe && m.aware >= STEALTH.spotted) { alert(b); if (!proxied() && !targetingFoe()) spottedBy(b); }
   if (b.state !== 'fight' && b.cover) { b.cover = 0; dropCover(b); }
@@ -386,17 +388,28 @@ function patrols(dt: number) {
   if (lv < 2 || W.bandits.filter((b) => b.campId === undefined && b.ambush === undefined).length >= 3 || Math.random() > 0.35) return;
   // (0.235, stage L1) out past the fog, ahead or to a side, out of everyone's sight; then they walk out to meet you
   const { x, z } = ringSpot(heading() + (Math.random() - 0.5) * 3, Math.random());
-  if (env.forbidden(x, z) || !farFromPlayers(x, z) || !hiddenFrom(x, env.ground(x, z), z)) return;
+  if (env.forbidden(x, z) || !farFromPlayers(x, z) || !hiddenFrom(x, env.ground(x, z), z) || !wayClear(x, z, env.forbidden)) return;
   const group: Bandit[] = [], n = 2 + (lv > 3.5 && Math.random() < 0.4 ? 1 : 0);
   if (!mayspawn(n * BANDIT_COST, lv)) return;
-  const meet = meetPoint();
   for (let i = 0; i < n; i++) {
     const px = x + i * 1.6, pz = z + (i % 2) * 1.4;
-    const b = spawnBandit(i === 0 && Math.random() < 0.3 ? 'bruiser' : 'gunner', V(px, env.ground(px, pz) + 0.9, pz), lv, group);
-    b.home.set(meet.x + i * 1.6, b.home.y, meet.z + (i % 2) * 1.4); b.state = 'return'; // they walk there and look about
+    spawnBandit(i === 0 && Math.random() < 0.3 ? 'bruiser' : 'gunner', V(px, env.ground(px, pz) + 0.9, pz), lv, group);
   }
+  // (0.236, stage L2) on a road they lie in wait on the roadside ahead of you; off it they walk a line across your way
+  const wait = roadsideSpot();
+  if (wait) addIntent('wait', group, BANDIT_OPS, x, z, [wait]);
+  else addIntent('cross', group, BANDIT_OPS, x, z, crossPoints(x, z));
 }
 
+/** How world/intents.ts moves a patrol: where it is to stand goes ahead of it, until it is after you. */
+const BANDIT_OPS: IntentOps<Bandit> = {
+  goto(b, x, z) { b.home.set(x, b.home.y, z); if (b.state === 'idle') b.state = 'return'; },
+  engaged: (b) => b.state === 'fight' || b.state === 'search' || b.state === 'flee',
+  alive: (b) => b.hp > 0 && W.bandits.includes(b),
+  settle(b) { b.home.set(b.p.x, b.home.y, b.p.z); },
+  drop: (b) => removeBandit(b),
+  at: (b) => b.p,
+};
 export function updateBandits(dt: number, time: number) {
   if (env) patrols(dt);
   for (let i = W.bandits.length - 1; i >= 0; i--) {

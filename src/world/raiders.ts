@@ -1,5 +1,5 @@
 // Bandits on wheels (raider vehicles) and roadside ambushes with a roadblock. Unsaved, like other enemies.
-import { SPAWN, hiddenFrom, farFromPlayers } from './spawnring';
+import { SPAWN, hiddenFrom, farFromPlayers, setRoadAhead } from './spawnring';
 import { engineAt } from './sound';
 import { vehiclesOpen } from '../gen/settlement';
 import { hurtPlayer } from './damage';
@@ -270,6 +270,29 @@ export function ambushHit(x: number, _y: number, z: number, r: number): boolean 
 }
 /** On (or right by) a road here? (Checked before the pacing, so an ambush does not use up an encounter off-road.) */
 const nearRoadHere = (T: Terrain, px: number, pz: number) => T.chunkFeatures(Math.floor(px / CHUNK), Math.floor(pz / CHUNK)).roads.some((rd) => !rd.h && nearestOnRoad(rd, px, pz)[0] < 8);
+/** (0.236, stage L2) A spot on the roadside `d0`-`d1` m ahead of you along the road you are on (bandits lie in wait
+ *  there), or null when you are not on a road. */
+function roadsideAhead(d0: number, d1: number): [number, number] | null {
+  if (!env) return null;
+  const T = env.terrain, px = G.pos.x, pz = G.pos.z;
+  const road = T.chunkFeatures(Math.floor(px / CHUNK), Math.floor(pz / CHUNK)).roads.find((rd) => !rd.h && nearestOnRoad(rd, px, pz)[0] < 8);
+  if (!road) return null;
+  const mv = driving.v ? V(Math.sin(driving.v.st.heading), 0, Math.cos(driving.v.st.heading)) : V(G.vel.x, 0, G.vel.z);
+  if (mv.length() < 0.5) mv.set(-Math.sin(G.yaw), 0, -Math.cos(G.yaw));
+  mv.normalize();
+  let [, qx, qz] = nearestOnRoad(road, px, pz);
+  for (let s = 5; s <= d1; s += 5) {
+    const [, nx, nz] = nearestOnRoad(road, qx + mv.x * 5, qz + mv.z * 5), L = Math.hypot(nx - qx, nz - qz);
+    if (L > 0.5) mv.set((nx - qx) / L, 0, (nz - qz) / L);
+    qx = nx; qz = nz;
+    if (Math.hypot(qx - px, qz - pz) >= d0 && !env.forbidden(qx, qz)) {
+      const side = Math.random() < 0.5 ? 1 : -1;
+      return [qx - mv.z * 7 * side, qz + mv.x * 7 * side];
+    }
+  }
+  return null;
+}
+setRoadAhead(roadsideAhead);
 function tryAmbush(dt: number, force = false) {
   if (!env || (!force && (ambushT -= dt) > 0)) return false;
   ambushT = 4;
