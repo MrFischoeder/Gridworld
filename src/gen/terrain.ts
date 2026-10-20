@@ -9,7 +9,9 @@ import { lakesIn, lakeBed, shoreR, type Lake, type WaterHere } from './water';
 import { claimFlatten, claimDist, clearOf, type Claim } from './claims';
 import { regionTrails, trailHeight } from './trails';
 import { seaMask, SEA } from './seas';
-import { naturalHeight } from './heights';
+import { naturalHeight, baseHeight } from './heights';
+import { swampWater } from './biomeshape';
+import { shapedWorld } from './worldrules';
 import { riverSegsIn, riverNear, riverCarve, type RiverSeg } from './rivers';
 import { depositDepth } from './resource-sites';
 
@@ -116,7 +118,7 @@ export class Terrain {
       if (r.h) { const [d, hh] = trailHeight(r, x, z); if (d < td) { td = d; th = hh; thalf = r.half; } continue; }
       const [d, px, pz] = nearestOnRoad(r, x, z);
       if (d >= r.half + ROAD_BLEND) continue;
-      const w = d <= r.half ? 1 : 1 - smooth((d - r.half) / ROAD_BLEND), rh = this.base(px, pz);
+      const w = d <= r.half ? 1 : 1 - smooth((d - r.half) / ROAD_BLEND), rh = this.dry(px, pz);
       h = w >= 1 ? rh : h + (rh - h) * w;
     }
     if (td < thalf + TRAIL_BLEND) { const w = td <= thalf ? 1 : 1 - smooth((td - thalf) / TRAIL_BLEND); h = w >= 1 ? th : h + (th - h) * w; }
@@ -170,6 +172,10 @@ export class Terrain {
     const h00 = a[i + VERTS * j], h10 = a[i + 1 + VERTS * j], h01 = a[i + VERTS * (j + 1)], h11 = a[i + 1 + VERTS * (j + 1)];
     return h00 + (h10 - h00) * fx + (h01 - h00) * fz + (h00 - h10 - h01 + h11) * fx * fz;
   }
+  /** (0.233) The swamp's water level at a point (new worlds; null where it holds none). */
+  swampLevel(x: number, z: number): number | null { return shapedWorld(this.world) ? swampWater(this.world, x, z, baseHeight(this.world, x, z)) : null; }
+  /** The natural ground, but raised out of a swamp's pools (the roads keep their feet dry). */
+  dry(x: number, z: number): number { const h = this.base(x, z), l = this.swampLevel(x, z); return l === null ? h : Math.max(h, l + 0.3); }
   /** Standing water at a point: its surface level, how deep it is over the ground here, and its kind. */
   water(x: number, z: number): WaterHere | null {
     for (const l of this.chunkFeatures(Math.floor(x / CHUNK), Math.floor(z / CHUNK)).lakes) {
@@ -184,6 +190,9 @@ export class Terrain {
       const r = riverNear(segs, x, z);
       if (r && r.d < r.half) { const g = this.heightAt(x, z); if (g < r.level) return { level: r.level, depth: r.level - g, kind: 'fresh', flow: [r.fx * r.speed, r.fz * r.speed] }; }
     }
+    // (0.233) a swamp's shallow pools of murky water, where the ground is still as the swamp made it
+    const sl = this.swampLevel(x, z);
+    if (sl !== null) { const g = this.heightAt(x, z); if (g < sl && Math.abs(g - this.base(x, z)) < 0.35) return { level: sl, depth: sl - g, kind: 'murky' }; }
     // the sea: wherever its mask reaches and the ground lies below its level
     if (seaMask(this.world, x, z) > 0) { const g = this.heightAt(x, z); if (g < SEA.level) return { level: SEA.level, depth: SEA.level - g, kind: 'sea' }; }
     return null;

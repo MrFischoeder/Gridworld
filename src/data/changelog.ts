@@ -3,6 +3,12 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.233.0', date: '2026-10-20', title: 'Biomes shape the land', notes: [
+    'In new worlds the biomes shape the land itself: the desert rises into long dunes, the swamps sink to their water table and are full of shallow pools of murky water (you wade through them, never swim), the tundra\'s ground is heaved by the frost and the Crystal Wastes rise in jagged ridges.',
+    'Roads keep their feet dry above the swamp water; villages and fields stand on dry ground. The map shows the pools.',
+    'Worlds you already play keep their land; only worlds started from this version on are shaped.',
+    'Multiplayer: the land comes from the world seed, the same for every player. A dedicated server rolls the seeds of its new worlds itself, so update it (install.sh) for its new worlds to be shaped; nothing else changes.',
+  ] },
   { v: '0.232.0', date: '2026-10-20', title: 'Biomes you can see', notes: [
     'Each biome now looks its own: the ground\'s lines take its colour (amber desert, yellow savanna, olive swamp, deep green jungle, teal taiga, pale tundra, sandy coast, violet crystal wastes), blended smoothly across the borders; snow pales the lines high on the mountains.',
     'The trees follow the land: cacti in the desert, acacias with flat crowns on the savanna, palms on the coast, pines in the taiga, low pines in the tundra, dead trees among the green ones in the swamp, big crowns with vines in the jungle and crystal shards in the crystal wastes. The open lands have fewer trees, and the great trees grow only where they fit.',

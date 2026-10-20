@@ -3,6 +3,7 @@ import { biomeTint, biomeOfCell, treeIn, BIOME_LOOK, type TreeLook } from '../ge
 import { drawTreeLook, LEAF, VINE } from './trees';
 import { biomeAt, biomeName, type BiomeHere } from '../gen/biomes';
 import { nearestOnRoad } from '../gen/roads';
+import { shapedWorld } from '../gen/worldrules';
 import { syncConvoyStart } from './convoyfuel';
 import { drawSettlementSites, drawSettlementComms, settlementHit, settlementFloor, settlementRay, settlementSolid, forgetSettlement } from './settlement';
 import { settlementVillage } from '../gen/settlement-village';
@@ -65,7 +66,7 @@ import { chunkWells, type Well } from '../gen/water';
 import { chunkPlants, type Plant } from '../gen/flora';
 import { dangerAt } from '../gen/danger';
 import { drawPlants, dropPlants, ripe, type PlantNode } from './flora';
-import { drawWell, syncLakes, clearLakes, seaSheet, riverSheet } from './water';
+import { drawWell, syncLakes, clearLakes, seaSheet, swampSheet, riverSheet } from './water';
 import { generateVillage, WALL_TIERS, STONE_TIER, wallPolygon, villageSides, insideWall, type VillageMap } from '../gen/village';
 import { wallOf } from '../gen/town';
 import { drawPower, setPlantLamps, forgetPower } from './power';
@@ -340,6 +341,7 @@ function buildChunk(cx: number, cz: number, lod = 1): Chunk {
   }
   if (road.length) { const rg = new THREE.BufferGeometry(); rg.setAttribute('position', new THREE.Float32BufferAttribute(road, 3)); group.add(new THREE.Mesh(rg, ROAD_FILL)); }
   const sea = seaSheet(T, cx, cz, lat, lod); if (sea) group.add(sea);
+  const swamp = !polar && shapedWorld(T.world) ? swampSheet(T, cx, cz, lat, lod) : null; if (swamp) group.add(swamp); // (0.233) the swamps' pools
   const river = f.rivers.length ? riverSheet(T, cx, cz, f.rivers) : null; if (river) group.add(river);
   const inMonument = (x: number, z: number) => f.megaliths.some(m => Math.hypot(x - m.x, z - m.z) < m.radius + 3);
   const caves = chunkCaves(T, cx, cz).filter(c => !inMonument(c.x, c.z)), wells = chunkWells(T, cx, cz).filter(w => !inMonument(w.x, w.z)), plants = chunkPlants(T, cx, cz).filter((p) => !T.claimAt(p.x, p.z, 2) && !inMonument(p.x, p.z));

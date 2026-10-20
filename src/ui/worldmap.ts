@@ -71,6 +71,7 @@ function tile(cx: number, cz: number, budget?: { n: number; until: number }): HT
     for (const k of near) { const s = L.streets[k]; if (segDist(u, v, s.ax, s.az, s.bx, s.bz) < s.w / 2) return [45, 75, 50]; }
     return [22, 48, 26];
   };
+  const swampy = [[0, 0], [CHUNK, 0], [0, CHUNK], [CHUNK, CHUNK], [CHUNK / 2, CHUNK / 2]].some(([a, b]) => T.swampLevel(cx * CHUNK + a, cz * CHUNK + b) !== null); // (0.233) a swamp's pools
   for (let j = 0; j < CELLS; j++) for (let i = 0; i < CELLS; i++) {
     // contour lines every 4 m in the lowlands, every 12 m up the mountains
     const h = lat[i + VERTS * j], cs = h > 26 ? 12 : 4, band = Math.floor(h / cs) !== Math.floor(lat[i + 1 + VERTS * j] / cs) || Math.floor(h / cs) !== Math.floor(lat[i + VERTS * (j + 1)] / cs);
@@ -82,7 +83,7 @@ function tile(cx: number, cz: number, budget?: { n: number; until: number }): HT
     if (cp) [r, g, b] = cp;
     else if (f.pads.some((p) => inRect(p.poi.rect, x, z))) { r = 10; g = 90; b = 40; }
     else if (f.roads.some((rd) => nearest(rd.pts, x, z) < rd.half + 0.5)) { r = 60; g = 170; b = 90; }
-    else if (f.lakes.length || f.rivers.length || h < SEA.level) { const w = T.water(x, z); if (w) [r, g, b] = w.kind === 'sea' ? [8, 60 - Math.min(30, w.depth), 130 - Math.min(60, w.depth * 1.5)] : w.kind === 'toxic' ? [110, 190, 20] : w.kind === 'murky' ? [70, 80, 30] : [15, 110, 100]; }
+    else if (f.lakes.length || f.rivers.length || swampy || h < SEA.level) { const w = T.water(x, z); if (w) [r, g, b] = w.kind === 'sea' ? [8, 60 - Math.min(30, w.depth), 130 - Math.min(60, w.depth * 1.5)] : w.kind === 'toxic' ? [110, 190, 20] : w.kind === 'murky' ? [70, 80, 30] : [15, 110, 100]; }
     const o = 4 * (i + CELLS * j); img.data[o] = r; img.data[o + 1] = g; img.data[o + 2] = b; img.data[o + 3] = 255;
   }
   ctx.putImageData(img, 0, 0);

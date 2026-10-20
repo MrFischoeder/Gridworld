@@ -8,6 +8,8 @@ import { regionClimate, REGION, WORLD_W, POLAR_Z, POLE_Z } from './regions';
 import { mountainMask, mountainLift } from './mountains';
 import { seaMask, seaSink, isleHeight, SEA } from './seas';
 import { customWorld, fileHeight, customMountainMask } from './customworld';
+import { shapeLand } from './biomeshape';
+import { shapedWorld } from './worldrules';
 
 const smooth = (t: number) => t * t * (3 - 2 * t);
 /**
@@ -30,8 +32,13 @@ function rough(world: number, x: number, z: number): number {
   const a = v(x0, z0), b = v(x0 + 1, z0), c = v(x0, z0 + 1), d = v(x0 + 1, z0 + 1);
   return a + (b - a) * tx + (c - a) * tz + (a - b - c + d) * tx * tz;
 }
-/** Height of the natural land at (x, z). */
+/** Height of the natural land at (x, z): the base land, then (new worlds) shaped by its biome (gen/biomeshape.ts). */
 export function naturalHeight(world: number, x: number, z: number): number {
+  const h = baseHeight(world, x, z);
+  return shapedWorld(world) && Math.abs(z) < POLAR_Z ? shapeLand(world, x, z, h) : h;
+}
+/** The land before the biomes shape it (the climate and the biomes read this). */
+export function baseHeight(world: number, x: number, z: number): number {
   const { S170, P170, S48, P48 } = sc(), [s1, s2] = seedsOf(world), amp = 0.55 + 0.8 * rough(world, x, z);
   const raw = 12.5 + amp * (46 * (fbm(s1, x / S170, z / 170, 4, P170) - 0.5) + 8 * (fbm(s2, x / S48, z / 48, 3, P48) - 0.5));
   let h = 12.5 + 12.5 * Math.tanh((raw - 12.5) / 12.5);

@@ -39,7 +39,7 @@ let saved = null;
 try { saved = JSON.parse(await readFile(SAVE, 'utf8')); } catch { /* first start */ }
 const seedEnv = Number(env.WORLD_SEED), seedSet = env.WORLD_SEED !== undefined && env.WORLD_SEED !== '' && Number.isFinite(seedEnv);
 let rooms = Array.isArray(saved?.rooms) ? saved.rooms : saved ? [{ id: 'main', name: NAME, world: saved.world | 0, time: Number(saved.time) || 0 }] : [];
-if (!rooms.length || rooms[0].id !== 'main') rooms.unshift({ id: 'main', name: NAME, world: seedSet ? seedEnv | 0 : -randomInt(1, 1000000), time: 7 * 60, mode: env.GAME_MODE === 'rivals' ? 'rivals' : 'coop' }); // a new world starts at 07:00 of day 1
+if (!rooms.length || rooms[0].id !== 'main') rooms.unshift({ id: 'main', name: NAME, world: seedSet ? seedEnv | 0 : -randomInt(1_000_000, 999_000_000), time: 7 * 60, mode: env.GAME_MODE === 'rivals' ? 'rivals' : 'coop' }); // a new world starts at 07:00 of day 1
 if (env.FORCE_SEED === '1' && env.GAME_MODE) rooms[0].mode = env.GAME_MODE === 'rivals' ? 'rivals' : 'coop'; // (0.189) the first server's mode, with its seed
 if (env.FORCE_SEED === '1' && seedSet && rooms[0].world !== (seedEnv | 0)) rooms[0] = { ...rooms[0], world: seedEnv | 0, time: 7 * 60 };
 rooms[0].name = NAME; // (the first server's name follows SERVER_NAME)

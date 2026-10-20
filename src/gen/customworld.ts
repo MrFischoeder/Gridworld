@@ -13,7 +13,7 @@ import { setVillageLayout } from './village';
 import type { LodeKind } from './lodes';
 import { WORLD_W, wrapDx, wrapX, wrapR, regionOf, villageSeed, packId, type Poi } from './regions';
 
-/** Drawn worlds' seeds lie in [-2e9, -1e9]: far from the rolled ones (towns worlds go down to -1e6). */
+/** Drawn worlds' seeds lie in [-2e9, -1e9]: below the rolled ones (towns worlds go down to -1e6, shaped worlds (0.233) to -999e6). */
 export const CUSTOM_SEED = { lo: -2_000_000_000, hi: -1_000_000_000 };
 /** The world seed of the drawn world called `name` (the same in every browser). */
 export function customSeed(name: string): number {

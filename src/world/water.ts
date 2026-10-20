@@ -230,3 +230,44 @@ export function useWater(s: WaterSource) {
   else if (Math.random() < 0.35) { environmentalDamage(6); G.dmgFlash = 0.35; nourish(0, SIP.murky); logLine(tl('The swamp water turns your stomach. -6 HP')); }
   else { logLine(tl('It tastes of mud, but it is water.')); nourish(0, SIP.murky); }
 }
+
+// ---------- (0.233, PLAN_BIOMOW.md stage B3) the swamps' pools ----------
+const SWAMP_FILL = new THREE.MeshBasicMaterial({ color: 0x3c4a16, transparent: true, opacity: 0.86, depthWrite: false, side: THREE.DoubleSide });
+const SWAMP_SHORE = new THREE.LineBasicMaterial({ color: 0xb8c860 });
+const SWAMP_RIP = new THREE.LineBasicMaterial({ color: WATER_LINE.murky, transparent: true, opacity: 0.6 });
+/** A chunk's swamp pools (new worlds): the murky surface over every lattice cell lying under the water table where the
+ *  ground is as the swamp made it (not under a road, a pad or a field), the pools' shores, a few still ripples. */
+export function swampSheet(T: Terrain, cx: number, cz: number, lat: Float32Array, lod: number): THREE.Group | null {
+  const x0 = cx * CHUNK, z0 = cz * CHUNK;
+  if ([[0, 0], [CHUNK, 0], [0, CHUNK], [CHUNK, CHUNK], [CHUNK / 2, CHUNK / 2]].every(([a, b]) => T.swampLevel(x0 + a, z0 + b) === null)) return null;
+  const lv = new Float32Array(VERTS * VERTS);
+  for (let j = 0; j < VERTS; j++) for (let i = 0; i < VERTS; i++) {
+    const x = x0 + i * STEP, z = z0 + j * STEP, l = T.swampLevel(x, z), k = i + VERTS * j;
+    lv[k] = l !== null && Math.abs(lat[k] - T.base(x, z)) < 0.35 ? l : NaN;
+  }
+  const tri: number[] = [], sh: number[] = [], rip: number[] = [];
+  const D = (i: number, j: number) => lat[i + VERTS * j] - lv[i + VERTS * j], Y = (i: number, j: number) => lv[i + VERTS * j] + 0.02;
+  for (let j = 0; j < CELLS; j++) for (let i = 0; i < CELLS; i++) {
+    const c = [[i, j], [i + 1, j], [i + 1, j + 1], [i, j + 1]];
+    if (c.some(([a, b]) => isNaN(lv[a + VERTS * b]))) continue;
+    const d = c.map(([a, b]) => D(a, b));
+    if (d.every((v) => v >= 0)) continue;
+    const P = (n: number) => [x0 + c[n][0] * STEP, Y(c[n][0], c[n][1]), z0 + c[n][1] * STEP];
+    tri.push(...P(0), ...P(1), ...P(2), ...P(0), ...P(2), ...P(3));
+    const cut: number[][] = [];
+    for (let e = 0; e < 4; e++) {
+      const a = d[e], b = d[(e + 1) % 4];
+      if ((a < 0) === (b < 0)) continue;
+      const t = a / (a - b), [ai, aj] = c[e], [bi, bj] = c[(e + 1) % 4];
+      cut.push([x0 + (ai + (bi - ai) * t) * STEP, Y(ai, aj) + (Y(bi, bj) - Y(ai, aj)) * t + 0.01, z0 + (aj + (bj - aj) * t) * STEP]);
+    }
+    for (let k = 0; k + 1 < cut.length; k += 2) sh.push(...cut[k], ...cut[k + 1]);
+    if (lod === 1 && d.every((v) => v < -0.1) && (i * 7 + j * 3) % 2 === 0) { const p = P(0); rip.push(p[0] + 0.4, p[1] + 0.01, p[2] + 1, p[0] + 1.6, p[1] + 0.01, p[2] + 1); }
+  }
+  if (!tri.length) return null;
+  const g = new THREE.Group(), geo = (a: number[]) => { const b = new THREE.BufferGeometry(); b.setAttribute('position', new THREE.Float32BufferAttribute(a, 3)); return b; };
+  g.add(new THREE.Mesh(geo(tri), SWAMP_FILL));
+  if (sh.length) g.add(new THREE.LineSegments(geo(sh), SWAMP_SHORE));
+  if (rip.length) g.add(new THREE.LineSegments(geo(rip), SWAMP_RIP));
+  return g;
+}
