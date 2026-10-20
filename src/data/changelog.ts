@@ -3,6 +3,9 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.234.1', date: '2026-10-20', title: 'A plan for the wilds', notes: [
+    'No change in play yet: the plan for better encounters in the wilds is written down. Foes will turn up further away and out of sight, come towards you instead of appearing, warn you with sounds, tracks and smoke, and live in lairs and on patrol routes that stay cleared for 6 to 9 days.',
+  ] },
   { v: '0.234.0', date: '2026-10-20', title: 'Cold and heat', notes: [
     'Every biome has its own air: freezing tundra and ice, cold taiga and mountains, a scorching desert by day that turns cold at night, a hot and damp jungle. Height, rain, storms, clouds and the wind cool the air. The clock shows the temperature.',
     'Your body warms and cools slowly towards what you feel. Getting cold, you burn more calories; freezing, you also tire faster, get your stamina back slower and walk a little slower. Getting hot, you sweat out more water; overheating, you tire faster too. Cold and heat never take health. A line under the food bar shows how you feel once it matters.',
