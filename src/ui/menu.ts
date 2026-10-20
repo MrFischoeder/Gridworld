@@ -89,6 +89,7 @@ export function initMenu(h: MenuHooks) {
   $('replayCinematic').onclick = async () => { const film = await import('./cinematic'); film.playCinematic(() => showMenu(false)); };
   $('changelog').onclick = openChangelog;
   $('mapEditor').onclick = () => window.open('editor.html', '_blank'); // (0.207) the map editor, in its own tab
+  $('faunaGallery').onclick = () => window.open('fauna.html', '_blank', 'noopener');
   let cwArmed = '';
   cwPlay.onclick = () => {
     const n = cwPick.value;

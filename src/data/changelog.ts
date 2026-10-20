@@ -3,6 +3,13 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.232.0', date: '2026-10-20', title: 'Five natural fauna models', notes: [
+    'Five new biological visual assets: Ridgeback Bear, six-legged Hexastrider, 22 m Banded Serpent, crocodilian Crestjaw and a colossal Crown Titan, 36 m long and 18 m tall.',
+    'Open Fauna gallery from the menu to rotate and inspect each model, see its named parts and compare all five at their actual metric scale beside a 1.8 m human.',
+    'Download model exports a neutral Three.js JSON asset with geometry, materials and the named part hierarchy.',
+    'Models are independent reusable factories with named joints, opaque dark faces, amber outlines and explicit resource disposal. The catalogue, concept art and integration guide are included in the repository for future mechanics.',
+    'This stage adds visual assets only. They do not spawn, fight or change saves or the multiplayer protocol.',
+  ] },
   { v: '0.231.0', date: '2026-10-19', title: 'Flashlights on long guns', notes: [
     'Fit an ordinary crafted, bought or found Flashlight to a Blaster, Scrap SMG, Scattergun or Hunting Rifle from the backpack. Select a gun and choose Fit flashlight, select a flashlight and choose Fit to held weapon, or drag it onto the gun.',
     'The flashlight belongs to that particular weapon. A visible clamp and lamp appear beneath its barrel; L switches the beam on and off while both hands stay on the gun. It follows the view, uses the usual batteries and replaces spent batteries from your kit.',

@@ -15,7 +15,7 @@ const multiplayer = (): Plugin => {
 export default defineConfig({
   base: './',
   plugins: [multiplayer()],
-  // (0.207) two pages: the game and the map editor
-  build: { target: 'es2022', chunkSizeWarningLimit: 1000, rolldownOptions: { input: { main: 'index.html', editor: 'editor.html' } } },
+  // Game, map editor and the standalone visual fauna workshop.
+  build: { target: 'es2022', chunkSizeWarningLimit: 1000, rolldownOptions: { input: { main: 'index.html', editor: 'editor.html', fauna: 'fauna.html' } } },
   test: { include: ['tests/**/*.test.ts'], environment: 'node', testTimeout: 30000 },
 });
