@@ -53,3 +53,30 @@ describe('the metro under a dead city', () => {
     });
   }
 });
+
+describe('0.238.1: curved track at the turns', () => {
+  it('joins two stretches meeting at a right angle with a quarter circle', async () => {
+    const { railLayout, CURVE } = await import('../src/gen/metro');
+    const { straights, arcs } = railLayout([[0, 0, 20, 0], [20, 0, 20, 30], [0, 0, 20, 0]]);
+    expect(arcs.length).toBe(1);
+    expect(straights.length).toBe(2);
+    const a = arcs[0];
+    expect(a.r).toBeCloseTo(CURVE);
+    expect(Math.abs(a.a1 - a.a0)).toBeCloseTo(Math.PI / 2);
+    const end = (ang: number) => [a.cx + Math.cos(ang) * a.r, a.cz + Math.sin(ang) * a.r];
+    const pts = straights.flatMap((s) => [[s[0], s[1]], [s[2], s[3]]]);
+    for (const p of [end(a.a0), end(a.a1)]) expect(pts.some((q) => Math.hypot(q[0] - p[0], q[1] - p[1]) < 1e-6)).toBe(true);
+  });
+  it('every curve of a city metro ends where a straight run ends', async () => {
+    const { railLayout, generateMetro } = await import('../src/gen/metro');
+    const { citySites } = await import('../src/gen/cities');
+    const city = citySites(12345)[0], m = generateMetro(12345, city).metro!;
+    const { straights, arcs } = railLayout(m.rails);
+    expect(arcs.length).toBeGreaterThan(0);
+    const pts = straights.flatMap((s) => [[s[0], s[1]], [s[2], s[3]]]);
+    for (const a of arcs) for (const ang of [a.a0, a.a1]) {
+      const p = [a.cx + Math.cos(ang) * a.r, a.cz + Math.sin(ang) * a.r];
+      expect(pts.some((q) => Math.hypot(q[0] - p[0], q[1] - p[1]) < 1e-6)).toBe(true);
+    }
+  });
+});

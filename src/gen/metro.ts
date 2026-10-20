@@ -57,6 +57,45 @@ export function metroCity(world: number, id: number): CitySite | null {
 /** The id the metro is saved under: its first entrance's. */
 export const metroId = (world: number, city: CitySite) => cityEntrances(world, city)[0].id;
 
+/** (0.238.1, the owner's report: the rails met oddly where a tunnel turns) The track laid as straight runs and
+ *  curves: wherever exactly two stretches of `rails` meet end to end at a right angle, both are cut back by the
+ *  curve's radius (`CURVE` 2.4 m, less on short stretches) and a quarter circle joins them. Duplicate stretches (two
+ *  tunnels leaving a hall the same way) are laid once. `straights` are [x0, z0, x1, z1]; an arc is its centre, radius
+ *  and the angles (rad, atan2 of z and x) it runs between. */
+export const CURVE = 2.4;
+export interface RailArc { cx: number; cz: number; r: number; a0: number; a1: number }
+export function railLayout(rails: [number, number, number, number][]): { straights: [number, number, number, number][]; arcs: RailArc[] } {
+  const seen = new Set<string>(), list: [number, number, number, number][] = [];
+  for (const r of rails) {
+    if (r[0] === r[2] && r[1] === r[3]) continue;
+    const k = r[0] < r[2] || (r[0] === r[2] && r[1] < r[3]) ? r.join(',') : [r[2], r[3], r[0], r[1]].join(',');
+    if (!seen.has(k)) { seen.add(k); list.push(r); }
+  }
+  const ends = new Map<string, [number, 0 | 1][]>();
+  list.forEach((r, i) => { for (const e of [0, 1] as const) { const k = r[e * 2] + ',' + r[e * 2 + 1]; let l = ends.get(k); if (!l) ends.set(k, (l = [])); l.push([i, e]); } });
+  const cut = list.map(() => [0, 0]), arcs: RailArc[] = [];
+  const len = (r: number[]) => Math.abs(r[2] - r[0]) + Math.abs(r[3] - r[1]);
+  for (const at of ends.values()) {
+    if (at.length !== 2) continue;
+    const [[i, ei], [j, ej]] = at, a = list[i], b = list[j];
+    if ((a[0] === a[2]) === (b[0] === b[2])) continue; // straight on, not a turn
+    const cx = a[ei * 2], cz = a[ei * 2 + 1];
+    const da = [Math.sign(a[(1 - ei) * 2] - cx), Math.sign(a[(1 - ei) * 2 + 1] - cz)], db = [Math.sign(b[(1 - ej) * 2] - cx), Math.sign(b[(1 - ej) * 2 + 1] - cz)];
+    const r = Math.min(CURVE, 0.45 * len(a), 0.45 * len(b));
+    cut[i][ei] = r; cut[j][ej] = r;
+    const ox = cx + (da[0] + db[0]) * r, oz = cz + (da[1] + db[1]) * r;
+    const a0 = Math.atan2(cz + da[1] * r - oz, cx + da[0] * r - ox);
+    let a1 = Math.atan2(cz + db[1] * r - oz, cx + db[0] * r - ox);
+    while (a1 - a0 > Math.PI) a1 -= 2 * Math.PI;
+    while (a0 - a1 > Math.PI) a1 += 2 * Math.PI;
+    arcs.push({ cx: ox, cz: oz, r, a0, a1 });
+  }
+  const straights = list.map((r, i): [number, number, number, number] => {
+    const L = len(r), ux = (r[2] - r[0]) / L, uz = (r[3] - r[1]) / L, [c0, c1] = cut[i];
+    return [r[0] + ux * c0, r[1] + uz * c0, r[2] - ux * c1, r[3] - uz * c1];
+  }).filter((s) => Math.abs(s[2] - s[0]) + Math.abs(s[3] - s[1]) > 0.01);
+  return { straights, arcs };
+}
 /** (0.207) A station hall centred at (x, z) with its track along x or z: the hall, the platforms either side of the
  *  track's trench (with their tops as floors), the half steps, the columns and the track's centreline. Shared by
  *  `generateMetro` and the map editor's station piece (gen/mapfile.ts). */

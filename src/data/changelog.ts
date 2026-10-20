@@ -3,6 +3,11 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.238.1', date: '2026-10-20', title: 'Curved track in the metro', notes: [
+    'Where a metro tunnel turns, the rails no longer cross each other in a tangle: both rails bend round the corner in a smooth curve, sleepers and all.',
+    'The yellow lines that hung over the track in the stations like loose power cables are gone. They were the platforms\' yellow safety strips drawn in the wrong place; they now run along the platform edges where they belong.',
+    'Multiplayer: drawn from the world seed on every game; nothing new is sent and the server is unchanged.',
+  ] },
   { v: '0.238.0', date: '2026-10-20', title: 'Ruins and wrecks in the colours of their land', notes: [
     'Alien ruins, crashed ships and bandit camps are now drawn in the colours of the biome they stand in, like the ground, trees and stones round them: yellow in the savanna and desert, teal in the taiga, pale on the ice and so on. They no longer stand out in grid green.',
     'Their old paving and the trim and glyphs on wrecks and temples take a lighter shade of the same colour. Warning colours (hatches, locked doors, chests, foes) stay as they were.',

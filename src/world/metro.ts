@@ -7,16 +7,17 @@ import { PropBatch } from './props';
 import { signTexture } from './doors';
 import { rng } from '../core/rng';
 import type { DungeonMap } from '../gen/dungeon';
-import { METRO } from '../gen/metro';
+import { METRO, railLayout } from '../gen/metro';
 import { tl } from '../i18n';
 
 const RAIL = 0xd8f0e8, SLEEPER = 0x4a7a5a, EDGE = 0xe0e070, CABLE = 0x3f8f6a, TRAIN = 0x8fd0c0, RUBBLE = 0x6f8f70, SIGN = '#e0e070';
 
 export function drawMetro(map: DungeonMap): THREE.Group {
   const m = map.metro!, pb = new PropBatch(), R = rng(map.seed ^ 0x3e7a2), g = new THREE.Group();
-  // track: two rails 1.44 m apart on sleepers
-  for (const [x0, z0, x1, z1] of m.rails) {
-    const alongX = z0 === z1, len = Math.abs(x1 - x0) + Math.abs(z1 - z0), sg = Math.sign(x1 - x0 + z1 - z0) || 1;
+  // track: two rails 1.44 m apart on sleepers; (0.238.1) curved where a tunnel turns (`railLayout`)
+  const track = railLayout(m.rails);
+  for (const [x0, z0, x1, z1] of track.straights) {
+    const alongX = Math.abs(z1 - z0) < 1e-6, len = Math.abs(x1 - x0) + Math.abs(z1 - z0), sg = Math.sign(x1 - x0 + z1 - z0) || 1;
     const P = (t: number, side: number, y: number) => (alongX ? [x0 + sg * t, y, z0 + side] : [x0 + side, y, z0 + sg * t]);
     // (0.205) solid steel rails and timber sleepers, so the track reads clearly down in its trench
     const B = (t0: number, t1: number, v0: number, v1: number, y0: number, y1: number, c: number) => {
@@ -25,6 +26,15 @@ export function drawMetro(map: DungeonMap): THREE.Group {
     };
     for (let t = 0.75; t < len; t += 1.5) B(t - 0.13, t + 0.13, -1.15, 1.15, 0, 0.1, SLEEPER);
     for (const side of [-0.72, 0.72]) B(0, len, side - 0.05, side + 0.05, 0.1, 0.24, RAIL);
+  }
+  for (const a of track.arcs) {
+    const Q = (ang: number, r: number, y: number) => [a.cx + Math.cos(ang) * r, y, a.cz + Math.sin(ang) * r];
+    const bent = (u0: number, u1: number, r0: number, r1: number, y0: number, y1: number, c: number) =>
+      pb.solid8([Q(u0, r0, y0), Q(u0, r1, y0), Q(u1, r1, y0), Q(u1, r0, y0)], [Q(u0, r0, y1), Q(u0, r1, y1), Q(u1, r1, y1), Q(u1, r0, y1)], c);
+    const n = 10, d = (a.a1 - a.a0) / n;
+    for (const side of [-0.72, 0.72]) for (let i = 0; i < n; i++) bent(a.a0 + d * i, a.a0 + d * (i + 1), a.r + side - 0.05, a.r + side + 0.05, 0.1, 0.24, RAIL);
+    const arc = Math.abs(a.a1 - a.a0) * a.r, k = Math.max(1, Math.round(arc / 1.5)), w = 0.13 / a.r * Math.sign(a.a1 - a.a0);
+    for (let i = 0; i < k; i++) { const u = a.a0 + (a.a1 - a.a0) * (i + 0.5) / k; bent(u - w, u + w, a.r - 1.15, a.r + 1.15, 0, 0.1, SLEEPER); }
   }
   // tunnels: cables along both walls
   for (const b of map.boxes) {
@@ -42,8 +52,9 @@ export function drawMetro(map: DungeonMap): THREE.Group {
   for (const s of m.stations) {
     const A = (t: number, v: number, y: number) => (s.alongX ? [s.x + t, y, s.z + v] : [s.x + v, y, s.z + t]);
     for (const sd of [-1, 1]) {
-      for (const v of [th + 0.2, th + 0.5]) pb.seg(EDGE, A(-hl, top, sd * v), A(hl, top, sd * v));
-      pb.seg(EDGE, A(-hl, METRO.platform - 0.12, sd * (th - 0.02)), A(hl, METRO.platform - 0.12, sd * (th - 0.02)));
+      // (0.238.1) A takes (along, across, height): these were swapped, so the strips floated over the track like wires
+      for (const v of [th + 0.2, th + 0.5]) pb.seg(EDGE, A(-hl, sd * v, top), A(hl, sd * v, top));
+      pb.seg(EDGE, A(-hl, sd * (th - 0.02), METRO.platform - 0.12), A(hl, sd * (th - 0.02), METRO.platform - 0.12));
     }
   }
   for (const b of m.steps) {
