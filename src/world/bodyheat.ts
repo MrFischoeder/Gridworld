@@ -10,6 +10,7 @@ import { seen } from './weather';
 import { carriedLight } from './light';
 import { fireSpots } from './cooking';
 import { campFires, inVillage } from './overworld';
+import { restFires } from './restsmoke';
 import { insideHouse } from './houses';
 import { driving } from './vehicles';
 import { VEHICLES } from '../data/vehicles';
@@ -34,7 +35,7 @@ function air(): number {
 function warmth(): number {
   const p = G.pos, F = TEMP.fire;
   let add = 0;
-  const fires = G.char.loc === 'overworld' ? [...fireSpots(), ...campFires()] : fireSpots();
+  const fires = G.char.loc === 'overworld' ? [...fireSpots(), ...campFires(), ...restFires()] : fireSpots();
   for (const f of fires) { const d = Math.hypot(f.x - p.x, f.z - p.z); if (d < F.r && Math.abs(f.y - p.y) < 3) add = Math.max(add, F.add * (1 - d / F.r)); }
   heatNow.fire = add > 0;
   const l = carriedLight();

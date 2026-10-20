@@ -186,6 +186,48 @@
     ],
     "vol": 1
   },
+  "howl_ravager": {
+    "files": [
+      "howl_ravager.wav"
+    ],
+    "vol": 1
+  },
+  "bellow_bramble": {
+    "files": [
+      "bellow_bramble.wav"
+    ],
+    "vol": 1
+  },
+  "chitter_gnawer": {
+    "files": [
+      "chitter_gnawer.wav"
+    ],
+    "vol": 1
+  },
+  "robot_hum": {
+    "files": [
+      "robot_hum.wav"
+    ],
+    "vol": 1
+  },
+  "robot_chirp": {
+    "files": [
+      "robot_chirp.wav"
+    ],
+    "vol": 1
+  },
+  "bandit_talk": {
+    "files": [
+      "bandit_talk.wav"
+    ],
+    "vol": 1
+  },
+  "bandit_laugh": {
+    "files": [
+      "bandit_laugh.wav"
+    ],
+    "vol": 1
+  },
   "engine": {
     "files": [
       "engine.wav"

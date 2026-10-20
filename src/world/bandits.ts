@@ -269,7 +269,7 @@ function think(b: Bandit, dt: number, time: number) {
   const sees = () => seen;
   if (!fighting && !safe && m.aware >= STEALTH.spotted) { alert(b); if (!proxied() && !targetingFoe()) spottedBy(b); }
   if (b.state !== 'fight' && b.cover) { b.cover = 0; dropCover(b); }
-  if (b.state !== 'fight' && b.mode) b.mode = '';
+  if (b.mode === 'rest' ? b.state === 'fight' || b.state === 'search' || b.state === 'flee' : b.state !== 'fight' && b.mode) b.mode = ''; // (0.237) 'rest' (by the fire) lasts until it is after you
   if (b.grenadeT !== undefined) b.grenadeT -= dt;
   switch (b.state) {
     case 'idle':
@@ -406,7 +406,7 @@ const BANDIT_OPS: IntentOps<Bandit> = {
   goto(b, x, z) { b.home.set(x, b.home.y, z); if (b.state === 'idle') b.state = 'return'; },
   engaged: (b) => b.state === 'fight' || b.state === 'search' || b.state === 'flee',
   alive: (b) => b.hp > 0 && W.bandits.includes(b),
-  settle(b) { b.home.set(b.p.x, b.home.y, b.p.z); },
+  settle(b, k) { b.home.set(b.p.x, b.home.y, b.p.z); if (k === 'wait' && (b.state === 'idle' || b.state === 'return')) b.mode = 'rest'; }, // (0.237) lying in wait: a fire, its smoke (world/restsmoke.ts)
   drop: (b) => removeBandit(b),
   at: (b) => b.p,
 };

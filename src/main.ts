@@ -66,6 +66,9 @@ import { latitude } from './gen/regions';
 import { updateCreatures, spawnCreatureNear } from './world/creatures';
 import { updateStealth, layTrail } from './world/stealth';
 import { updateIntents } from './world/intents';
+import { updateFarCalls } from './world/farcalls';
+import { updateFoeTracks } from './world/foetracks';
+import { updateRestSmoke } from './world/restsmoke';
 import { updateBandits, spawnBanditsNear } from './world/bandits';
 import { updateRaiders, spawnRaiderNear, forceAmbush, raiders } from './world/raiders';
 import { updateTracker, boardOffers, accept, syncQuestWorld, refreshBoard } from './world/quests';
@@ -258,7 +261,7 @@ function frame(now: number) {
     updateRobots(dt, time); // the open world's robots, or a crashed ship's guards
     if (outdoors) { updateIntents(dt); updateGarrisons(dt); updateFieldEnemies(dt); updateCreatures(dt, time); updateBandits(dt, time); updateRaiders(dt); animateCamps(time); smokeWrecks(dt); updateCrash(dt, time); animateWater(time); }
     updateDrones(dt);
-    updateFoeSounds(dt);
+    updateFoeSounds(dt); updateFarCalls(dt); updateFoeTracks(dt); updateRestSmoke(dt, time); // (0.237, stage L4) warnings from afar
     const boss = updateBosses(dt, time); updateOrbs(dt);
     updateBossBar(boss);
     if (G.god) G.hp = G.S.maxHp;

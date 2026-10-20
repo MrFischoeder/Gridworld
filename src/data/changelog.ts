@@ -3,6 +3,12 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.237.0', date: '2026-10-20', title: 'Warnings from afar', notes: [
+    'You now hear what is about before you see it. A ravager pack howls from up to 260 m, brambles bellow, gnawers chitter, leechwings screech, heavy machines hum and scouts chirp on their radios, and bandits talk (round a fire they laugh too). Far calls sound faint and muffled, and come from where the caller is.',
+    'Whatever walks the wilds near you leaves prints on the ground: paws, hooves, boots and the three-toed feet of machines. They point the way it went and fade over two game minutes, so fresh prints mean it passed a moment ago. At night you need a light to see them.',
+    'Bandits lying in wait by a road sit at a small fire. Its smoke rises in a column you can see from far off, and by night its glow shows. It smokes on for a minute after they leave.',
+    'Multiplayer: every game plays the calls, lays the prints and draws the smoke from the foes it sees, so everyone gets the same warnings. Nothing new is sent and the server is unchanged.',
+  ] },
   { v: '0.236.2', date: '2026-10-20', title: 'Cleared places stay cleared', notes: [
     'A ruin, wreck, cave or metro you have cleared no longer fills up with drones and robots again after a week or two: once it is empty it stays empty, so new fights wait further out. Bosses and turrets never came back anyway.',
     'Places that were already cleared stay empty too. The refill can be switched back on later; the time each place was cleared is still kept.',

@@ -47,6 +47,14 @@ export const SFX = {
   squeak_gnawer: { voices: [{ w: 'square', f: [2200, 3100], d: 0.08, duty: 0.25, v: 0.4 }, { w: 'square', f: [2700, 2000], t: 0.1, d: 0.07, duty: 0.25, v: 0.35 }] },
   screech_leechwing: { voices: [{ w: 'saw', f: [1650, 880], d: 0.5, a: 0.03, v: 0.45, vib: [25, 0.08] }, { w: 'noise', f: [5200, 4000], d: 0.3, v: 0.18 }] },
   chirp_skitter: { voices: [{ w: 'square', f: [3000, 4100], d: 0.04, v: 0.3 }, { w: 'square', f: [3200, 4300], t: 0.07, d: 0.04, v: 0.3 }, { w: 'square', f: [2900, 3900], t: 0.14, d: 0.04, v: 0.25 }] },
+  // (0.237, PLAN_SPAWNOW.md stage L4) calls heard from afar, before you see what makes them
+  howl_ravager: { voices: [{ w: 'saw', f: [260, 520], d: 0.7, a: 0.25, v: 0.45, vib: [6, 0.05] }, { w: 'saw', f: [520, 300], t: 0.65, d: 1.0, v: 0.45, vib: [6, 0.06], curve: 1.3 }, { w: 'noise', f: [900, 600], d: 1.5, a: 0.3, v: 0.12 }] },
+  bellow_bramble: { voices: [{ w: 'square', f: [70, 58], d: 0.9, a: 0.12, duty: 0.25, v: 0.55, vib: [9, 0.08] }, { w: 'noise', f: [700, 300], d: 0.8, a: 0.1, v: 0.35 }] },
+  chitter_gnawer: { voices: [0, 0.09, 0.17, 0.3, 0.38].map((t, i) => ({ w: 'square' as const, f: [2400 + i * 180, 3000 - i * 90] as [number, number], t, d: 0.05, duty: 0.25, v: 0.32 })) },
+  robot_hum: { voices: [{ w: 'saw', f: [62, 70], d: 1.05, a: 0.25, v: 0.45, vib: [3, 0.04] }, { w: 'square', f: [124, 140], d: 1.0, a: 0.3, duty: 0.125, v: 0.2 }] },
+  robot_chirp: { voices: [{ w: 'square', f: [1400, 1400], d: 0.05, v: 0.35 }, { w: 'square', f: [2100, 2100], t: 0.08, d: 0.05, v: 0.35 }, { w: 'square', f: [1700, 1150], t: 0.17, d: 0.12, v: 0.3 }] },
+  bandit_talk: { voices: [[180, 230, 0], [150, 190, 0.17], [210, 160, 0.33], [170, 220, 0.52], [140, 120, 0.7]].map(([a, b, t]) => ({ w: 'tri' as const, f: [a, b] as [number, number], t, d: 0.13, a: 0.02, v: 0.45, vib: [24, 0.06] as [number, number] })) },
+  bandit_laugh: { voices: [0, 0.16, 0.31, 0.45].map((t, i) => ({ w: 'square' as const, f: [330 - i * 30, 250 - i * 25] as [number, number], t, d: 0.11, duty: 0.25, a: 0.01, v: 0.4 })) },
   // (0.212.1) the world round you
   engine: { voices: [{ w: 'saw', f: [55, 55], d: 0.4, a: 0.001, curve: 0, v: 0.6 }, { w: 'square', f: [110, 110], d: 0.4, a: 0.001, curve: 0, duty: 0.25, v: 0.3 }, { w: 'noise', f: [700, 700], d: 0.4, a: 0.001, curve: 0, v: 0.15 }] },
   cannon: { voices: [{ w: 'noise', f: [4000, 300], d: 0.6, v: 1, curve: 1.3 }, { w: 'square', f: [110, 30], d: 0.35, v: 0.8 }] },

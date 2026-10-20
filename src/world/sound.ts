@@ -6,6 +6,7 @@
 // Multiplayer: every game plays what it sees itself (its player, the foes it runs or copies, the other players' steps);
 // (0.212.1) a player's own loud sounds (shots, blade swings, reloads, the cannon, jumps, landings, splashes, chopping)
 // are also relayed ({t:'snd', loc, l}) so the others in the same place hear them where that player stands.
+import { farGain, muffle } from '../gen/warnings';
 import * as THREE from 'three';
 import { G, W } from '../game';
 import { net, relay, onRelay, type Relay } from '../net/client';
@@ -81,7 +82,8 @@ async function loadSounds() {
 }
 
 export interface PlayOpts { at?: { x: number; y: number; z: number }; vol?: number; rate?: number; /** random pitch spread */ jitter?: number; /** metres it carries */ far?: number;
-  /** (0.212.1) online: the others in this place hear it too, carrying `share` metres (at `at`, else where you stand) */ share?: number }
+  /** (0.212.1) online: the others in this place hear it too, carrying `share` metres (at `at`, else where you stand) */ share?: number;
+  /** (0.237) a call from afar: it fades gently over `far` and sounds muffled the further it is (gen/warnings.ts) */ carry?: boolean }
 const right = new THREE.Vector3(), fwd = new THREE.Vector3();
 /** Where you hear from: the game's camera, given by main.ts (so this module stays free of the renderer and anything
  *  may import it, the tests' windows included). */
@@ -94,11 +96,12 @@ export function play(name: SfxName, o: PlayOpts = {}) {
   if (!c || volumes.mute || live >= MAX_VOICES) return;
   if (c.state !== 'running') { if (c.state === 'suspended') void c.resume(); return; } // put to sleep by the browser: wake it
   const list = buffers.get(name); if (!list?.length) return;
-  let vol = (o.vol ?? 1) * (listVol.get(name) ?? 1), pan = 0;
+  let vol = (o.vol ?? 1) * (listVol.get(name) ?? 1), pan = 0, cut = 0;
   if (o.at) {
     const dx = o.at.x - camera.position.x, dy = o.at.y - camera.position.y, dz = o.at.z - camera.position.z, d = Math.hypot(dx, dy, dz), far = o.far ?? 60;
     if (d > far) return;
-    vol *= Math.pow(1 - d / far, 1.6) / (1 + d * 0.04);
+    if (o.carry) { vol *= farGain(d, far); if (d > 30) cut = muffle(d); }
+    else vol *= Math.pow(1 - d / far, 1.6) / (1 + d * 0.04);
     if (vol < 0.01) return;
     camera.getWorldDirection(fwd); right.crossVectors(fwd, camera.up).normalize();
     pan = d > 0.5 ? Math.max(-1, Math.min(1, (dx * right.x + dz * right.z) / d)) * 0.8 : 0;
@@ -107,7 +110,8 @@ export function play(name: SfxName, o: PlayOpts = {}) {
   src.playbackRate.value = (o.rate ?? 1) * (1 + (Math.random() - 0.5) * 2 * (o.jitter ?? 0.04));
   const g = c.createGain(); g.gain.value = vol;
   let tail: AudioNode = g;
-  if (pan && c.createStereoPanner) { const p = c.createStereoPanner(); p.pan.value = pan; g.connect(p); tail = p; }
+  if (cut && c.createBiquadFilter) { const f = c.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = cut; tail.connect(f); tail = f; }
+  if (pan && c.createStereoPanner) { const p = c.createStereoPanner(); p.pan.value = pan; tail.connect(p); tail = p; }
   src.connect(g); tail.connect(sfxBus);
   live++; played++; src.onended = () => { live--; src.disconnect(); };
   src.start();

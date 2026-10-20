@@ -20,7 +20,8 @@ export interface IntentOps<T> {
   goto(o: T, x: number, z: number): void;
   engaged(o: T): boolean;
   alive(o: T): boolean;
-  settle(o: T): void;
+  /** made to stay put (`k`: the plan it had: a 'wait' sits down by the road) */
+  settle(o: T, k?: IntentKind): void;
   drop(o: T): void;
   at(o: T): { x: number; y: number; z: number };
 }
@@ -80,7 +81,7 @@ function aim(p: Plan<any>): [number, number] | null {
 }
 function steer(p: Plan<any>) {
   let a = aim(p);
-  if (!a) { for (const o of p.foes) if (p.ops.alive(o)) p.ops.settle(o); return false; }
+  if (!a) { for (const o of p.foes) if (p.ops.alive(o)) p.ops.settle(o, p.k); return false; }
   // stuck against water, rocks or a wall (its own steps go round small things only): a detour to one side for a while
   const lead = p.ops.at(p.foes.find((o) => p.ops.alive(o)) ?? p.foes[0]);
   if (Math.hypot(lead.x - p.seen[0], lead.z - p.seen[1]) < 1.5 && Math.hypot(a[0] - lead.x, a[1] - lead.z) > 8) p.stuck++;
@@ -108,7 +109,7 @@ export function updateIntents(dt: number) {
     if (t - p.t0 > SPAWN.march) { // it never met you: it goes, or (in sight or near) it stays where it is
       for (const o of live) {
         const q = p.ops.at(o);
-        if (farFromPlayers(q.x, q.z, SPAWN.minPlayer) && hiddenFrom(q.x, q.y, q.z)) p.ops.drop(o); else p.ops.settle(o);
+        if (farFromPlayers(q.x, q.z, SPAWN.minPlayer) && hiddenFrom(q.x, q.y, q.z)) p.ops.drop(o); else p.ops.settle(o, p.k);
       }
       plans.splice(i, 1); continue;
     }

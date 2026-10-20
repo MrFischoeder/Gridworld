@@ -130,7 +130,9 @@ Właściciel (20 października 2026): legowisk na razie nie chce. Stałe legowis
 - ~~Raz wyczyszczone ruiny i wraki nie odradzają się więcej~~ **zrobione w 0.236.2:** odnawianie wyłączone przełącznikiem `REFILL_ON = false` w `gen/repopulate.ts` (wcześniej drony i strażnicy wracali po 7–14 dniach, `REPOP`). Czas wyczyszczenia dalej jest zapisywany, więc po włączeniu `true` wszystko wraca do dawnych zasad.
 - Legowisko jako jednorazowe miejsce walki: widoczne, po wyczyszczeniu po jakimś czasie znika i nic już tam nie wychodzi.
 
-### L4: ostrzeżenia, zanim go zobaczysz
+### L4: ostrzeżenia, zanim go zobaczysz (0.237, zrobione)
+
+Zrobione: dalekie głosy (`gen/warnings.ts` `FAR_CALLS`, `world/farcalls.ts`: tylko gdy wróg nie walczy, ciszej i z filtrem dolnoprzepustowym z odległości, Rozszarpywacze do 260 m, ciężkie maszyny 170–200 m, bandyci 130 m, przy ognisku częściej i ze śmiechem; nowe dźwięki howl_ravager, bellow_bramble, chitter_gnawer, robot_hum, robot_chirp, bandit_talk, bandit_laugh), tropy (`world/foetracks.ts`: łapy, małe łapki Gryzaczy, kopyta Brambli, buty bandytów, trójpalczaste stopy robotów, co 0,8–1,9 m, skierowane w stronę marszu, blakną przez 120 s, do 900 naraz, w promieniu 160 m; w ciemności ich nie widać bez światła), dym (`world/restsmoke.ts`: bandyci z zamiarem 'wait' po dojściu mają `mode` 'rest' i siedzą przy ognisku; słup dymu ok. 45 m widoczny do 1,2 km, dalekie słupy rysowane bliżej pod tym samym kątem i chowane, gdy zasłania je teren; nocą poświata, ogień świeci i grzeje; pali się jeszcze minutę po odejściu). Szczegóły poniżej (pierwotny plan).
 
 **Dźwięki z oddali.**
 - Głosy stworów (wycie, skrzek, pomruk), serwa i kroki robotów, rozmowy i śmiech bandytów słychać do 250 m (dziś głosy co 5–15 s z bliska).
@@ -155,7 +157,7 @@ Właściciel (20 października 2026): legowisk na razie nie chce. Stałe legowis
 - **L1 (0.235):** podstawa; od razu widać różnicę.
 - **L2 (0.236):** zamiary i podchodzenie.
 - **L3:** odłożone (legowiska nie teraz; patrole są losowe od L2).
-- **L4 (0.237):** dźwięki, ślady, dym.
+- **L4 (0.237, zrobione):** dźwięki, ślady, dym.
 
 Po każdym etapie: krótki test w grze i strojenie liczb (odległości, przerwy, liczebność).
 
