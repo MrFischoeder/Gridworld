@@ -3,6 +3,9 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.236.1', date: '2026-10-20', title: 'Plan: no lairs for now', notes: [
+    'The plan for encounters in the wilds changes: there will be no lairs for now. Patrols stay random: each one turns up somewhere new beyond the fog and crosses your way at a random point, so there is no fixed route to farm.',
+  ] },
   { v: '0.236.0', date: '2026-10-20', title: 'Senses and intentions', notes: [
     'Every kind of foe now finds you its own way. Ravagers and gnawers have noses: they smell you through bushes and walls (ravagers from 30 m) and, once they have your scent, follow your track for up to two minutes, so they are hard to shake off. Water, a boat or a vehicle leaves no track.',
     'Leechwings and drones see all round, scouts nearly so; sentinels see as well in the dark and the fog, other robots partly; bandits and brambles are fooled by night and fog like you would be. Leechwings hear shots from far off, brambles hardly at all; ravagers hear your footsteps from 10 m.',

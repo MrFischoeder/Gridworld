@@ -3,6 +3,7 @@
 Ustalenia z właścicielem (20 października 2026):
 - bierzemy cztery rzeczy: spawn dalej i poza wzrokiem, wróg przychodzi zamiast wyrastać, ostrzeżenia zanim go zobaczysz, stałe legowiska i patrole z ziarna świata;
 - wyczyszczone legowisko wraca po 6–9 dniach gry;
+- **zmiana z 20 października (po L2): legowisk na razie nie robimy** (za bardzo stałe, łatwo je farmić); patrole tak, ale losowe, nie na tej samej ścieżce (zob. L3 niżej);
 - zmiana obejmuje wszystkie światy (także te już grane).
 
 ## Jak jest dziś (0.234)
@@ -94,7 +95,7 @@ Każde losowe spotkanie dostaje zamiar (`Intent`) i idzie z nim do gracza w swoi
 - **trop** (wataha Rozszarpywaczy, Gryzacze):
   - idą śladem gracza: okruchy pozycji co 8 s, ostatnie 3 minuty;
   - w kłusie, nie biegiem;
-  - zgubiony trop (gracz wszedł do wody, do wioski, odjechał pojazdem) → wracają do legowiska albo rozchodzą się;
+  - zgubiony trop (gracz wszedł do wody, do wioski, odjechał pojazdem) → węszą przy ostatnim śladzie i rozchodzą się;
   - jeśli gracz ich nie widzi, a mają widok, przechodzą w łowy (stan `hunt` jak dziś).
 - **przecięcie** (patrole robotów, bandyci):
   - idą trasą, która przetnie przewidzianą drogę gracza (z kierunku i prędkości ostatnich 20 s);
@@ -116,102 +117,49 @@ Każde losowe spotkanie dostaje zamiar (`Intent`) i idzie z nim do gracza w swoi
 - Przecięcie trafia w drogę gracza.
 - Spotkanie wygasa.
 
-### L3: stałe legowiska i patrole z ziarna świata
+### L3: legowiska i stałe patrole (odłożone)
 
-**Generator `gen/lairs.ts` (czysty).**
-- `regionLairs(world, rx, rz)` (cache na region kanoniczny), id `lair:<rx>:<rz>:<i>`.
-- Od 0 do 2 legowisk na region, częściej przy wyższym niebezpieczeństwie.
+Właściciel (20 października 2026): legowisk na razie nie chce. Stałe legowisko, które wraca po kilku dniach, za bardzo przypomina miejsce do farmienia, a w świecie i tak ma być coraz mniej rzeczy, które się odnawiają. Stałe trasy patroli z ziarna odpadają z tego samego powodu: gracz nauczyłby się ich na pamięć.
 
-**Rodzaje i gdzie stoją.**
-- **nora Gryzaczy:** wszędzie, wejścia w ziemi, kości;
-- **legowisko Rozszarpywaczy:** od niebezpieczeństwa 1,2, równiny i skraj lasu, jama pod skałą;
-- **pastwisko Bramble:** niziny;
-- **gniazdo Pijawek:** od 2,5, na szczytach i skałach;
-- **patrol robotów:** stacja ładowania (słup z lampką) i trasa 4–6 punktów po okolicy, skład z `pickGroup`;
-- **biwak bandytów:** od 2, namiot, ognisko, skrzynka; to nie obóz POI, bez palisady, 3–5 bandytów.
+**Patrole zostają losowe (tak działa już L2, 0.236).**
+- Każdy patrol (roboty, bandyci) pojawia się w innym, losowym miejscu pierścienia za mgłą (`Math.random`, nic z ziarna, nic zapisane).
+- Jego linia przecina drogę gracza w losowym punkcie przed nim (`crossPoints`: rozrzut ±25 m) i idzie dalej; bandyci przy drodze czatują w losowym miejscu 110–170 m przed graczem.
+- Po 3 minutach bez spotkania patrol odchodzi; następny wyjdzie z zupełnie innej strony. Nie ma tras, które można by obstawić.
 
-**Skład.** Z ziarna, jak `garrisonRoster` w miastach. Liczba rośnie z niebezpieczeństwem. Zawiera przywódcę (alfa, matka, szef).
-
-**Czego unikają.** Tak jak inne miejsca:
-- wiosek (500 m) i innych miejsc;
-- dróg;
-- wody, morza i lodu;
-- miast, instalacji i stref mgły;
-- złóż (placówek), pól i działek.
-
-W starych światach legowisko, które wypadłoby na czymś zbudowanym przez graczy (pole, placówka, port, most, latarnia), jest pomijane w czasie gry (sprawdzane przy budzeniu), więc nic nie wyskoczy w środku czyjejś osady.
-
-**Rysowanie i budzenie (`world/lairs.ts`).**
-- Legowiska do 600 m są rysowane: nory, kości, gniazda, słup ładowania, namiot z ogniskiem.
-- Mieszkańcy budzą się, gdy gracz podejdzie na 300 m. Usypiają ponad 380 m, gdy nikogo nie ma w pobliżu; ranni wracają ze swoim zdrowiem.
-- Mieszkańcy mają legowisko jako `den` i swoje terytorium (`TERRITORY`, `DEN` z etapu W6): pilnują go, wracają do niego, leczą się tam.
-- Patrol robotów chodzi swoją trasą i wraca na stację.
-
-**Pamięć.**
-- Stan legowiska tak jak garnizonów: zdrowie każdego mieszkańca i `until`.
-- Wszyscy mieszkańcy martwi → `until` = teraz + 6–9 dni gry (z hasha świata i id).
-- Po tym czasie legowisko jest znów pełne (zdrowie wyczyszczone).
-- Częściowe straty zostają do czasu wyczyszczenia: ubity alfa nie wraca jutro.
-
-**Mapa.**
-- Legowisko pojawia się na mapie (ikona rodzaju) po zobaczeniu z bliska (150 m) albo po wyczyszczeniu.
-- Wyczyszczone jest szare z liczbą dni do powrotu, o ile gracz o nim wie.
-- Lista „widzianych” jest osobista (jak złoża i mapa).
-
-**Wpływ na losowe spotkania.**
-- Gdy legowiska są w pobliżu, losowe spotkania z L1–L2 są rzadsze: przerwa `gap` ×1,6.
-- Budżet zagrożenia liczy obudzonych mieszkańców legowisk.
-- Losowe spotkania biorą się z najbliższego legowiska: wataha z nory 400 m dalej wychodzi na trop gracza, a gdy zginie, legowisko traci tych mieszkańców.
-
-**Gra wieloosobowa.**
-- Legowiska wynikają z ziarna, więc każdy widzi te same.
-- Budzi i prowadzi mieszkańców gra z `spawnAuthority`; inni widzą kopie (jak dziś).
-- Stan legowisk jest we wspólnym stanie świata.
-- Propozycja: trzymać go we wspólnej mapie garnizonów (`cityGarrisons`, klucz `lair:...`, ten sam kształt stanu). Wtedy serwer i protokół zostają bez zmian, a stare serwery też go przechowują. Osobne pole `lairs` byłoby czystsze, ale wymagałoby aktualizacji serwera (`FIELDS`).
-- Dwóch graczy naraz: ostatni zapis wygrywa. Zabójstwa liczy właściciel, tak jak w garnizonach.
-- Test na dwóch kartach przeglądarki.
-
-**Testy.**
-- Te same legowiska dla tego samego ziarna.
-- Legowiska poza wioskami, drogami i wodą.
-- Wyczyszczenie i powrót po 6–9 dniach.
-- Częściowe straty zostają.
+**Do rozważenia (pomysły właściciela, bez decyzji).**
+- Raz wyczyszczone ruiny i wraki nie odradzają się więcej (dziś drony i strażnicy wracają po 7–14 dniach, `REPOP` w `gen/repopulate.ts`), żeby gracze szukali dalszych okolic.
+- Legowisko jako jednorazowe miejsce walki: widoczne, po wyczyszczeniu po jakimś czasie znika i nic już tam nie wychodzi.
 
 ### L4: ostrzeżenia, zanim go zobaczysz
 
 **Dźwięki z oddali.**
 - Głosy stworów (wycie, skrzek, pomruk), serwa i kroki robotów, rozmowy i śmiech bandytów słychać do 250 m (dziś głosy co 5–15 s z bliska).
 - Odległe brzmią ciszej i mają kierunek (dźwięk ma już stereo).
-- Obudzone legowisko słychać z daleka: wycie z nory, buczenie stacji ładowania.
 
 **Ślady.**
 - Wróg w drodze (L2) zostawia tropy na ziemi: odciski łap, gąsienicowe pasy robotów, buty.
 - Tropy blakną po 2 minutach gry. Są rysowane, nie zapisywane.
 - Kierunek tropu pokazuje, skąd i dokąd szedł.
 
-**Znaki przy legowiskach.**
-- Kości i padlina w promieniu 60 m.
-- Rozdrapane drzewa.
-- Wraki dronów przy stacji robotów.
-- Dym z ogniska biwaku widoczny z daleka (słup bez mgły, jak latarnie z 0.204), także nocą jako poświata.
+**Znaki grup w drodze.**
+- Dym z ogniska grupy bandytów, która stanęła na postój (czatowanie), widoczny z daleka (słup bez mgły, jak latarnie z 0.204), nocą jako poświata.
 
 **Gra wieloosobowa.**
 - Dźwięki i tropy liczy każda gra sama z widzianych wrogów, ich kopii u innych i ich ruchu.
-- Znaki legowisk wynikają z ziarna.
 - Nic nie idzie przez sieć.
 
-**Testy.** Tropy powstają i znikają, dym tylko przy biwaku.
+**Testy.** Tropy powstają i znikają, dym tylko przy czatujących bandytach.
 
 ## Kolejność i wersje
 
 - **L1 (0.235):** podstawa; od razu widać różnicę.
 - **L2 (0.236):** zamiary i podchodzenie.
-- **L3 (0.237):** legowiska i patrole.
-- **L4 (0.238):** dźwięki, ślady, znaki.
+- **L3:** odłożone (legowiska nie teraz; patrole są losowe od L2).
+- **L4 (0.237):** dźwięki, ślady, dym.
 
 Po każdym etapie: krótki test w grze i strojenie liczb (odległości, przerwy, liczebność).
 
 ## Później
 
-- Skład wrogów według biomu (etap B4d planu biomów) wejdzie do L3: rodzaj legowiska zależny od biomu.
+- Skład wrogów według biomu (etap B4d planu biomów): kto wychodzi z pierścienia, zależy od biomu.
 - Pora dnia: nocą więcej stworów, za dnia więcej bandytów i robotów.
