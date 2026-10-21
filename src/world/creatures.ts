@@ -380,7 +380,7 @@ export function spawnLairBeast(kind: CreatureKind, x: number, z: number, lv: num
 function trySpawn() {
   if (!env) return;
   const pos = G.pos;
-  if (Math.random() > 0.55 + heat * 0.12) return;
+  if (Math.random() > 0.8 + heat * 0.12) return; // (0.246) was 0.55
   const drawn = heard && heat > 0.4 && Math.random() < 0.75, before = W.creatures.length; // the shooting draws them in
   // (0.235, stage L1) out past the fog, ahead of you or off to a side (the shooting: from the side it was heard on),
   // out of everyone's sight; then they make for where you are heading
@@ -1136,7 +1136,7 @@ function beastMorale(c: Creature, dt: number, dist: number, safe: boolean): bool
 export function updateCreatures(dt: number, time: number) {
   if (!env) return;
   heat *= Math.exp(-dt / 25);
-  if (!indoor && (spawnT -= dt) <= 0) { spawnT = 4.5 / (1 + heat); trySpawn(); } // (0.244) nothing wanders into a cave: its beasts lie there
+  if (!indoor && (spawnT -= dt) <= 0) { spawnT = 3.5 / (1 + heat); trySpawn(); } // (0.244) nothing wanders into a cave: its beasts lie there
   if (!indoor && (wildT -= dt) <= 0) { wildT = WILDLIFE.every; tryWild(); }
   for (let i = W.creatures.length - 1; i >= 0; i--) {
     const c = W.creatures[i];

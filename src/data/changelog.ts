@@ -3,6 +3,12 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.246.0', date: '2026-10-21', title: 'More life in the wilds', notes: [
+    'More creatures turn up in the wilds: encounters come about twice as often, more of them may be about at once, and the next group can turn up while the last one is still a little way off.',
+    'More wildlife roams the land too: up to eight herds and groups around you, checked more often.',
+    'The place name at the top no longer tells you how dangerous the land is. You have to judge it by what you meet. The danger level is shown only in god mode (the dev console\'s god command).',
+    'Multiplayer: the game that spawns for a place spawns more; nothing new is sent. The server is unchanged.',
+  ] },
   { v: '0.245.1', date: '2026-10-21', title: 'No more cracks in the ground', notes: [
     'Fixed gaps in the ground through which you could see under the map, mostly along the edge of a village. A field (or other levelled ground) laid out near the wall could pull the land at the village\'s edge away from the village\'s own floor and leave a slit below it. The village floor now always wins at its edge.',
     'When levelled ground changes (a field, a yard, a flag), every loaded piece of the land is now checked and redrawn if it moved, not only the pieces near the change, so neighbouring pieces can no longer disagree at their seam.',

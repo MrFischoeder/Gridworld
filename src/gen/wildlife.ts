@@ -58,7 +58,7 @@ export const WILD_KINDS = Object.keys(WILD) as WildKind[];
 export const isWild = (k: string): k is WildKind => k in WILD;
 
 /** How many wildlife groups may be about the player at once (within `reach` m), and how often one is tried (s). */
-export const WILDLIFE = { groups: 5, reach: 350, every: 3.5, giantReach: 600 };
+export const WILDLIFE = { groups: 8, reach: 350, every: 2.5, giantReach: 600 }; // (0.246) was 5 groups every 3.5 s
 
 /** Pick a kind for a spot: weighted by where it lives and from what danger; `roll` in [0, 1). Null: nothing lives here. */
 export function wildPick(biome: BiomeHere, lv: number, roll: number, shore: boolean, crowd: Partial<Record<WildKind, number>> = {}): WildKind | null {

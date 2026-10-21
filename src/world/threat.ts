@@ -16,13 +16,13 @@ const CREATURE_COST: Record<CreatureKind, number> = { gnawer: 0.5, ravager: 1, b
   hexastrider: 0, hopling: 0, titan: 0, tusker: 0.2, ridgeback: 0.5, serpent: 0.5, crestjaw: 0.4, scorpid: 0.3 };
 export const BANDIT_COST = 1.5;
 /** Threat allowed at a danger level (at 0: a small nest of gnawers or one bramble; at 8: a small army). */
-export const budget = (lv: number) => 1 + lv * 1.1;
+export const budget = (lv: number) => 1.6 + lv * 1.5; // (0.246) more about: was 1 + 1.1 lv
 /** Creatures and robots hit this much harder than their data says (fewer of them, but each one counts). */
 export const FOE_HIT = 1.35;
-/** Seconds between encounters at a danger level: ~45-75 s by the villages, ~20-30 s in the deepest wilds. */
-const gap = (lv: number) => (60 - Math.min(8, lv) * 4.8) * (0.75 + Math.random() * 0.5);
+/** Seconds between encounters at a danger level: ~26-44 s by the villages, ~10-17 s in the deepest wilds (0.246: was 45-75 / 20-30). */
+const gap = (lv: number) => (35 - Math.min(8, lv) * 2.8) * (0.75 + Math.random() * 0.5);
 /** Nothing new turns up while something hostile is this close (m). */
-const FIGHT_R = 45;
+const FIGHT_R = 35; // (0.246) was 45
 /** Seconds after leaving a village before anything new may spawn. */
 export const GRACE = 20;
 

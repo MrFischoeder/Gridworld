@@ -950,7 +950,7 @@ export function placeName(x: number, z: number): string {
   if (v) return v.name + ' (village)';
   if (Math.abs(z) > POLE_Z - 400) return z < 0 ? tl('North Pole ice wall') : tl('South Pole ice wall');
   if (Math.abs(z) > POLAR_Z) return z < 0 ? tl('Northern ice cap') : tl('Southern ice cap');
-  const lv = Math.round(danger(x, z)), tag = lv ? TL` · danger ${lv}` : tl(' · calm');
+  const lv = Math.round(danger(x, z)), tag = !G.god ? '' : lv ? TL` · danger ${lv}` : tl(' · calm'); // (0.246) the danger shows only in god mode
   if (G.char.claims.some((c) => claimDist(c, x, z) < CLAIM.r)) return tl('Your claim') + tag;
   { const segs = OW.terrain!.chunkFeatures(Math.floor(x / CHUNK), Math.floor(z / CHUNK)).rivers, r = riverNear(segs, x, z); if (r && r.d < r.half + 25) return riversOf(OW.terrain!.world).list[r.seg.r].name + tag; }
   for (const cv of loadedCaves()) if (Math.hypot(cv.x - x, cv.z - z) < 30) return cv.name + tag;
