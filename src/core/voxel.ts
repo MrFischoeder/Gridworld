@@ -13,6 +13,8 @@ export interface Space {
   setCell(x: number, y: number, z: number, v: 0 | 1): void;
 }
 
+/** (0.245.1) How deep a surface structure's floor slab reaches below its ground. */
+const SKIRT = 6;
 export class VoxelGrid implements Space {
   cells: Uint8Array;
   constructor(
@@ -44,7 +46,7 @@ export class VoxelGrid implements Space {
    * the ops then add walls and carve shafts.
    */
   static surface(ops: Op[], fp: { x0: number; z0: number; x1: number; z1: number }, groundY: number): VoxelGrid {
-    let y0 = groundY - 1, y1 = groundY + 1;
+    let y0 = groundY - SKIRT, y1 = groundY + 1; // (0.245.1) a deep floor slab: the land beside it can never open a gap under it
     for (const o of ops) { y0 = Math.min(y0, o.y - 1); y1 = Math.max(y1, o.y + o.h); }
     const g = new VoxelGrid(fp.x0, y0, fp.z0, fp.x1 - fp.x0, y1 - y0, fp.z1 - fp.z0, groundY);
     const nxz = g.nx;

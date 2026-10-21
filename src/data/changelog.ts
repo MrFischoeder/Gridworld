@@ -3,6 +3,11 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.245.1', date: '2026-10-21', title: 'No more cracks in the ground', notes: [
+    'Fixed gaps in the ground through which you could see under the map, mostly along the edge of a village. A field (or other levelled ground) laid out near the wall could pull the land at the village\'s edge away from the village\'s own floor and leave a slit below it. The village floor now always wins at its edge.',
+    'When levelled ground changes (a field, a yard, a flag), every loaded piece of the land is now checked and redrawn if it moved, not only the pieces near the change, so neighbouring pieces can no longer disagree at their seam.',
+    'Multiplayer: nothing changes; the land comes from the world seed and the shared state, the same on every game.',
+  ] },
   { v: '0.245.0', date: '2026-10-21', title: 'The fallen leave their bodies', notes: [
     'Death is the end of your character in single player too, not only online. Another member of the survey team wakes in the next cryo-pod aboard the ship and needs a new name.',
     'The dead character no longer keeps their things. Their body lies where they fell for one game day with everything they carried: the backpack, both hands, the back, the clothes, the attachments and the gold. Walk up to it and press E to search it.',

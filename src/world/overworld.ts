@@ -120,7 +120,7 @@ const ROAD_FILL = new THREE.MeshBasicMaterial({ color: 0x0f4020, transparent: tr
 /** Chunks reaching above this height (m) are snowy: pale lines. */
 const SNOW_LINE = 115;
 
-interface Chunk { cx: number; cz: number; group: THREE.Group; trees: Tree[]; rocks: Rock[]; wells: Well[]; plants: Plant[]; nodes: PlantNode[]; caves: Cave[]; lod: number }
+interface Chunk { cx: number; cz: number; group: THREE.Group; /** the heights it was built on */ lat: Float32Array; trees: Tree[]; rocks: Rock[]; wells: Well[]; plants: Plant[]; nodes: PlantNode[]; caves: Cave[]; lod: number }
 interface Structure {
   poi: Poi; grid: VoxelGrid; group: THREE.Group; edges: EdgeSource;
   doors: Door[]; stairs: Stair[]; npcs: Npc[]; village?: VillageMap; camp?: CampMap; flames?: THREE.LineSegments;
@@ -379,7 +379,7 @@ function buildChunk(cx: number, cz: number, lod = 1): Chunk {
   }
   localize(group, x0, z0);
   scene.add(group);
-  return { cx, cz, group, trees, rocks, wells, plants, nodes, caves, lod };
+  return { cx, cz, group, lat, trees, rocks, wells, plants, nodes, caves, lod };
 }
 /** (0.232) A biome's colours for trees and rocks drawn through a PropBatch (bark and stone, leaves, vines). */
 const tints = new Map<BiomeHere, Map<number, number>>();
@@ -708,6 +708,26 @@ function updateStructs(x: number, z: number) {
 }
 
 // ---------- streaming ----------
+/**
+ * (0.245.1) When levelled ground changes (a claim, a field, a settlement's yard: `Terrain.rev`), every loaded chunk is
+ * checked against the new heights, a few a frame, and rebuilt if they moved, so no chunk keeps old edges beside a
+ * rebuilt neighbour (a crack you could see through). `rebuildChunksNear` still rebuilds the nearest at once.
+ */
+let seenRev = -1, recheck: number[] = [];
+function recheckChunks(t0: number, budgetMs: number) {
+  const T = OW.terrain!;
+  if (T.rev !== seenRev) { seenRev = T.rev; recheck = [...OW.chunks.keys()]; }
+  while (recheck.length && performance.now() - t0 < budgetMs) {
+    const k = recheck.pop()!, c = OW.chunks.get(k);
+    if (!c) continue;
+    const a = T.lattice(c.cx, c.cz);
+    if (a === c.lat) continue;
+    let moved = false;
+    for (let i = 0; i < a.length && !moved; i++) moved = Math.abs(a[i] - c.lat[i]) > 1e-4;
+    if (!moved) { c.lat = a; continue; }
+    OW.chunks.set(k, buildChunk(c.cx, c.cz, c.lod)); dropChunk(c);
+  }
+}
 /** Queue chunks around the player; unload far ones. Cheap unless the player crossed a chunk border. */
 export function updateStreaming(budgetMs = 4) {
   const x = G.pos.x, z = G.pos.z, pcx = Math.floor(x / CHUNK), pcz = Math.floor(z / CHUNK), k = pcx + ',' + pcz;
@@ -729,6 +749,7 @@ export function updateStreaming(budgetMs = 4) {
     syncQuestWorld();
   }
   const t0 = performance.now();
+  recheckChunks(t0, budgetMs);
   while (queue.length && (performance.now() - t0 < budgetMs)) {
     const [cx, cz, lod] = queue.pop()!, old = OW.chunks.get(ckey(cx, cz));
     if (old && old.lod === lod) continue;

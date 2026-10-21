@@ -33,6 +33,8 @@ const TRAIL_BLEND = 9;
 const wrapScale = (s: number): [number, number] => { const n = Math.round(WORLD_W / s); return [WORLD_W / n, n]; };
 const [S90, P90] = wrapScale(90);
 
+/** (0.245.1) Over this many metres outside a place's hole the ground eases from its floor back to the land. */
+const EDGE_EASE = 4;
 export class Terrain {
   private s2: number;
   private lat = new Map<number, Float32Array>();
@@ -42,7 +44,9 @@ export class Terrain {
   private claims: Claim[] = [];
   private settlementPads: Pad[] = [];
   /** Reserved construction plots of new settlements; the rules come from runtime, not saved geometry. */
-  setSettlementPads(pads: Pad[]) { this.settlementPads = pads; this.feat.clear(); this.lat.clear(); }
+  setSettlementPads(pads: Pad[]) { this.settlementPads = pads; this.feat.clear(); this.lat.clear(); this.rev++; }
+  /** (0.245.1) Bumped whenever claims or settlement pads change the heights: the runtime rechecks its loaded chunks. */
+  rev = 0;
   constructor(public world: number, public readonly includeMegaliths = true) { this.s2 = hash(world, 0x7e12) * 7919; }
 
   /** Natural terrain before any flattening (gen/heights.ts). */
@@ -55,7 +59,7 @@ export class Terrain {
   }
 
   /** Replace the claims (a flag raised or taken down): heights around them change, so the caches go. */
-  setClaims(list: Claim[]) { this.claims = list.map((c) => ({ ...c })); this.feat.clear(); this.lat.clear(); }
+  setClaims(list: Claim[]) { this.claims = list.map((c) => ({ ...c })); this.feat.clear(); this.lat.clear(); this.rev++; }
   /** The claim whose cleared ground covers (x, z), within `margin` more metres. */
   claimAt(x: number, z: number, margin = 0): Claim | undefined { return this.claims.find((c) => claimDist(c, x, z) < clearOf(c) + margin); }
 
@@ -141,6 +145,14 @@ export class Terrain {
       const d = Math.hypot(x - m.x, z - m.z);
       if (d <= m.radius) h = m.y;
       else if (d < m.radius + MEGALITH_BLEND) h += (m.y - h) * (1 - smooth((d - m.radius) / MEGALITH_BLEND));
+    }
+    // (0.245.1) a place's own floor (a village, a ruin, a camp: voxels over a hole in the ground) wins at the hole's
+    // edge whatever was laid after it (a field or a claim levelled nearby), easing back over `EDGE_EASE` m, so the ground
+    // meets the 1 m floor slab and no gap opens under it
+    for (const p of f.pads) {
+      if (p.surface) continue;
+      const d = rectDist(p.poi.rect, x, z);
+      if (d < EDGE_EASE) h = p.y + (h - p.y) * smooth(d / EDGE_EASE);
     }
     // Reserved extraction yards stay dry and retain their visible ground, including walkable ore bowls.
     for (const p of f.pads) if (p.surface) {
