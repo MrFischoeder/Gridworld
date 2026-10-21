@@ -30,3 +30,5 @@ function record(id: number) {
   saveChar();
 }
 onGuardDown((i) => record(GUARD + i));
+/** (0.244) A cave's beast i fell: it counts as the place's guard i. */
+export const beastDown = (i: number) => record(GUARD + i);

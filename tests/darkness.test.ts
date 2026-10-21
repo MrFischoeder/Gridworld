@@ -62,7 +62,7 @@ describe('darkness and lamps (0.199)', () => {
   });
   it('a cave is lit only at its mouths and by its crystals', () => {
     const m = generateCave(hash(3, 4), 2), lamps = caveLamps(m, (x, z) => floorAtCave(m, x, z));
-    expect(lamps.length).toBe(m.exits.length + m.crystals.length);
+    expect(lamps.length).toBe(m.exits.length + m.crystals.length + m.glow.length); // (0.244) the glowing crystals
   });
   it('the shader takes the nearest lamps in reach', () => {
     const lamps = Array.from({ length: 30 }, (_, i) => ({ x: i * 5, y: 2, z: 0, r: 8 }));

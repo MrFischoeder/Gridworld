@@ -10,10 +10,16 @@ import { hash } from '../core/rng';
 import { VoxelGrid } from '../core/voxel';
 import { setPlaceLight } from './light';
 import { UNDER, caveLamps } from '../gen/darkness';
+import { CRYSTAL_HUES } from '../gen/crystals';
+import { rng } from '../core/rng';
 import { generateCave, headroom, floorAtCave, ceilAtCave, type CaveMap } from '../gen/cavegen';
 import { makeChest, setCrystalXp } from './loot';
 import { placeCrystals } from './flora';
-import { populate } from './dungeonfoes';
+import { populate, guardAlive, beastDown } from './dungeonfoes';
+import { caveBeasts, caveDrones } from '../gen/cavefauna';
+import { setCreatureEnv, spawnLairBeast, onLairDown, clearCreatures, type Creature } from './creatures';
+import { spawnAuthority } from './remote';
+import { dangerAt } from '../gen/danger';
 import { setStreakSources } from './fx';
 import { PropBatch } from './props';
 import { el } from '../ui/hud';
@@ -55,11 +61,44 @@ function caveMesh(m: CaveMap): THREE.Group {
   }
   for (const e of m.exits) {
     const y = floorAtCave(m, e.ox, e.oz), pts: number[][] = [];
-    for (let t = 0; t <= 12; t++) { const a = Math.PI * t / 12; pts.push([e.ox, y + Math.sin(a) * 2.9, e.oz - Math.cos(a) * 1.8]); }
-    pb.line(EXIT, ...pts); pb.line(EXIT, [e.ox, y + 0.05, e.oz - 1.8], [e.ox, y + 0.05, e.oz + 1.8]);
+    for (let t = 0; t <= 12; t++) { const a = Math.PI * t / 12; pts.push([e.ox, y + Math.sin(a) * 4.4, e.oz - Math.cos(a) * 2.8]); }
+    pb.line(EXIT, ...pts); pb.line(EXIT, [e.ox, y + 0.05, e.oz - 2.8], [e.ox, y + 0.05, e.oz + 2.8]);
   }
-  grp.add(pb.build());
+  grp.add(pb.build(), glowCrystals(m));
   return grp;
+}
+/**
+ * (0.244) The glowing crystals: each cluster a fan of pointed six-sided columns growing up from the floor or hanging
+ * from the vault, dark inside, their edges drawn without fog so they shine in the black (they are the cave's lamps,
+ * gen/darkness.ts `caveLamps`).
+ */
+function glowCrystals(m: CaveMap): THREE.Group {
+  const tri: number[] = [], seg: number[] = [], col: number[] = [], g = new THREE.Group();
+  for (const [ci, c] of m.glow.entries()) {
+    const R = rng(m.seed ^ (0x9c1 + ci * 7919)), [hc] = CRYSTAL_HUES[c.hue % CRYSTAL_HUES.length], cr = new THREE.Color(hc);
+    const y0 = c.up ? floorAtCave(m, c.x, c.z) - 0.15 : ceilAtCave(m, c.x, c.z) + 0.15, sgn = c.up ? 1 : -1, room = headroom(m, c.x, c.z);
+    const n = 3 + Math.floor(R() * 4);
+    for (let j = 0; j < n; j++) {
+      const main = j === 0, a = R() * 6.283, tilt = main ? R() * 0.2 : 0.35 + R() * 0.5;
+      const len = Math.min(room * (c.up ? 0.6 : 0.4), (main ? 1.4 : 0.6 + R() * 0.8) * (1 + c.r * 1.6)), w = (main ? 0.22 : 0.1 + R() * 0.1) * (1 + c.r);
+      const bx = c.x + (main ? 0 : Math.cos(a) * c.r * 0.5), bz = c.z + (main ? 0 : Math.sin(a) * c.r * 0.5);
+      const ax = Math.cos(a) * Math.sin(tilt), ay = Math.cos(tilt) * sgn, az = Math.sin(a) * Math.sin(tilt);
+      // two axes across the column
+      const ux = -az, uz = ax, ul = Math.hypot(ux, uz) || 1, U = [ux / ul, 0, uz / ul], V = [ay * U[2] - az * 0, az * U[0] - ax * U[2], ax * 0 - ay * U[0]];
+      const at = (k: number, h: number, rr: number) => { const t = k / 6 * 6.283, cu = Math.cos(t) * rr, sv = Math.sin(t) * rr; return [bx + U[0] * cu + V[0] * sv + ax * h, y0 + U[1] * cu + V[1] * sv + ay * h, bz + U[2] * cu + V[2] * sv + az * h]; };
+      const tip = [bx + ax * len * 1.2, y0 + ay * len * 1.2, bz + az * len * 1.2];
+      for (let k = 0; k < 6; k++) {
+        const p0 = at(k, 0, w * 1.1), p1 = at(k + 1, 0, w * 1.1), q0 = at(k, len, w), q1 = at(k + 1, len, w);
+        tri.push(...p0, ...p1, ...q1, ...p0, ...q1, ...q0, ...q0, ...q1, ...tip);
+        for (const [s0, s1] of [[p0, q0], [q0, q1], [q0, tip]]) { seg.push(...s0, ...s1); col.push(cr.r, cr.g, cr.b, cr.r, cr.g, cr.b); }
+      }
+    }
+  }
+  const geo = (a: number[]) => { const q = new THREE.BufferGeometry(); q.setAttribute('position', new THREE.Float32BufferAttribute(a, 3)); return q; };
+  const fill = fillMat(); (fill as THREE.MeshBasicMaterial).side = THREE.DoubleSide;
+  const lg = geo(seg); lg.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+  g.add(new THREE.Mesh(geo(tri), fill), new THREE.LineSegments(lg, new THREE.LineBasicMaterial({ vertexColors: true, fog: false, transparent: true, opacity: 0.9 })));
+  return g;
 }
 /** The rock as a coarse voxel grid: columns open from the floor to the vault (collision, shots, minimap, drones). */
 function caveGrid(m: CaveMap): VoxelGrid {
@@ -95,13 +134,22 @@ export function buildCave(d: DungeonPos, clear: () => void, setGroup: (g: THREE.
   W.chests = m.chests.map((p, i) => { const ch = makeChest(p, i); if (ch) ch.g.position.y = floorAtCave(m, ch.g.position.x, ch.g.position.z); return ch; }).filter((x) => !!x);
   placeCrystals(m.crystals.map((p) => ({ ...p, y: floorAtCave(m, Math.floor(p.x) + 0.5, Math.floor(p.z) + 0.5) })));
   for (let k = 0; k < m.nz - 1; k += 2) for (let i = 0; i < m.nx - 1; i += 2) if (headroom(m, i + 0.5, k + 0.5) > 3.2) W.spawnCells.push([i, Math.floor(floorAtCave(m, i + 0.5, k + 0.5)), k]);
-  populate(5 + (hash(d.ruinId, 7) % 5), 0, hash(c.world, d.ruinId, 0xca12)); // they stay dead until the cave is clear and a week or two has passed
+  // (0.244) the beasts in their lairs, now and then a stray machine; a killed one stays dead
+  const mouth = info.mouths[Math.min(info.from, info.mouths.length - 1)], lv = Math.max(1, dangerAt(c.world, mouth.x, mouth.z) + 0.5);
+  const beasts = caveBeasts(m, lv);
+  populate(caveDrones(m.seed), beasts.length, hash(c.world, d.ruinId, 0xca12));
+  setCreatureEnv({ ground: (x, z) => floorAtCave(m, x, z), danger: () => lv, nearRuin: () => false, forbidden: (x, z) => headroom(m, x, z) < 2.2, water: () => null }, { indoor: true });
+  onLairDown(beastDown);
+  if (spawnAuthority()) { // the first one here runs them; the others see copies (world/foesync.ts)
+    const groups = new Map<number, Creature[]>();
+    beasts.forEach((b, i) => { if (!guardAlive(i)) return; if (!groups.has(b.group)) groups.set(b.group, []); spawnLairBeast(b.kind, b.x, b.z, lv, i, groups.get(b.group)!); });
+  }
   setMiniOpen((x, z) => headroom(m, x + 0.5, z + 0.5) > 1.2);
   setMiniMode('voxel'); buildMini();
   el.hudL.textContent = info.name; el.route.style.display = 'none';
   setPlaceLight(true, UNDER.cave, caveLamps(m, (x, z) => floorAtCave(m, x, z))); // (0.199) black as pitch but for the mouths and the crystals' glow
 }
-export function leaveCave() { cave = null; setMiniOpen(null); }
+export function leaveCave() { if (cave) { clearCreatures(); setCreatureEnv(null); onLairDown(null); } cave = null; setMiniOpen(null); }
 /** The way out you stand at (its index), or -1. */
 export function caveExitNear(): number {
   if (!cave) return -1;

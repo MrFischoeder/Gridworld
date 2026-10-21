@@ -6,6 +6,7 @@ import { installSites } from '../gen/installs';
 import { citySites } from '../gen/cities';
 import { regionFog } from '../gen/toxic';
 import { OW } from '../world/overworld';
+import { regionCaves } from '../gen/caves';
 import { G } from '../game';
 import { forceRaid } from '../world/villageraid';
 import { forceOutpostRaid } from '../world/outpostraid';
@@ -121,6 +122,16 @@ const COMMANDS: Record<string, { help: string; run: (args: string[]) => string }
   cities: {
     help: 'the dead cities: where they are (tp to their edge)',
     run: () => { const T = OW.terrain; if (!T) return 'Only on the surface.'; return citySites(T.world).map((c) => `${c.name} (${c.pattern}, ${(c.r * 2 / 1000).toFixed(1)} km across): tp ${Math.round(c.x)} ${Math.round(c.z - c.r + 30)}  (${(Math.hypot(c.x, c.z) / 1000).toFixed(1)} km out)`).join('\n'); },
+  },
+  caves: {
+    help: 'caves [km]: the nearest cave mouths within km (default 3) of you (tp to them)',
+    run: (a) => {
+      const T = OW.terrain; if (!T) return 'Only on the surface.';
+      const km = parseFloat(a[0]) || 3, n = Math.ceil(km * 1000 / 256), [rx, rz] = regionOf(G.pos.x, G.pos.z), out = [];
+      for (let i = -n; i <= n; i++) for (let j = -n; j <= n; j++) out.push(...regionCaves(T, rx + i, rz + j));
+      out.sort((p, q) => worldDist(p.x, p.z, G.pos.x, G.pos.z) - worldDist(q.x, q.z, G.pos.x, G.pos.z));
+      return out.slice(0, 12).map((c) => `${c.name} (${c.kind}): tp ${Math.round(c.x + Math.cos(c.face) * 8)} ${Math.round(c.z + Math.sin(c.face) * 8)}  (${Math.round(worldDist(c.x, c.z, G.pos.x, G.pos.z))} m)`).join('\n') || 'None near.';
+    },
   },
   fogs: {
     help: 'fogs [km]: the nearest toxic fog zones within km (default 12) of you (tp to their edge)',

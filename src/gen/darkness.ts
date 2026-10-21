@@ -113,7 +113,8 @@ export function villageLanterns(map: VillageMap): { x: number; z: number }[] {
 export function caveLamps(m: CaveMap, floor: (x: number, z: number) => number): Lamp[] {
   return [
     ...m.exits.map((e) => ({ x: e.x, y: e.y + 2.5, z: e.z, r: 15 })),
-    ...m.crystals.map((c) => ({ x: c.x, y: floor(c.x, c.z) + 0.6, z: c.z, r: 4.5 })),
+    ...m.crystals.map((c) => ({ x: c.x, y: floor(c.x, c.z) + 0.6, z: c.z, r: 3 })), // the mushrooms glow a little
+    ...(m.glow ?? []).map((c) => ({ x: c.x, y: floor(c.x, c.z) + 1.2, z: c.z, r: 7 + c.r * 7 })), // (0.244) the crystals light the cave
   ];
 }
 /** Lamps in reach: the `n` nearest to (x, y, z) within `near` m (for the shader's slots). */

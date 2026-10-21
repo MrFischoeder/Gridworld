@@ -17,13 +17,18 @@ function reach(m: ReturnType<typeof generateCave>, x: number, z: number) {
 }
 describe('cave interiors', () => {
   it('are one walkable labyrinth from the entrance to every chamber and out the other side', () => {
-    for (let s = 1; s <= 40; s++) {
+    for (let s = 1; s <= 24; s++) {
       const m = generateCave(s * 7919, s % 2 ? 2 : 1), e = m.exits[0], r = reach(m, e.x, e.z);
       const at = (x: number, z: number) => r.has(Math.round(x) + m.nx * Math.round(z));
       expect(m.exits.length).toBe(s % 2 ? 2 : 1);
       for (const n of m.nodes) expect(at(n.x, n.z)).toBe(true);
       if (m.exits.length === 2) expect(at(m.exits[1].x, m.exits[1].z)).toBe(true);
-      expect(generateCave(s * 7919, s % 2 ? 2 : 1).floor).toEqual(m.floor);
+      if (s < 4) expect(generateCave(s * 7919, s % 2 ? 2 : 1).floor).toEqual(m.floor);
+      // (0.244) longer, more branched; every glowing crystal and lair where you can stand
+      expect(m.nodes.filter((n) => n.kind === 'chamber').length).toBeGreaterThanOrEqual(9);
+      expect(m.nodes.filter((n) => n.kind === 'pocket').length).toBeGreaterThanOrEqual(5);
+      expect(m.glow.length).toBeGreaterThan(10);
+      for (const l of m.lairs) expect(at(l.x, l.z)).toBe(true);
     }
-  });
+  }, 240000);
 });

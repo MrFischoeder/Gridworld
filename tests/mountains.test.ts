@@ -27,7 +27,7 @@ describe('mountains', () => {
     for (const c of caves) {
       const fx = Math.cos(c.face), fz = Math.sin(c.face);
       expect(Math.abs(t.base(c.x + fx * 8, c.z + fz * 8) - c.y) / 8).toBeLessThan(0.6); // the approach
-      expect(t.base(c.x - fx * 9, c.z - fz * 9) - c.y).toBeGreaterThan(5); // the rock face
+      if (c.kind === 'mountain') expect(t.base(c.x - fx * 9, c.z - fz * 9) - c.y).toBeGreaterThan(c.old ? 5 : 3.5); // the rock face (0.244: a lowland cave opens into a heap of boulders)
       expect(regionCaves(t, Math.floor((c.x + 128) / 256), Math.floor((c.z + 128) / 256))).toContainEqual(c); // deterministic
     }
   });

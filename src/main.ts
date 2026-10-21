@@ -10,7 +10,7 @@ import { G, W, uiOpen } from './game';
 import { loadChar, newChar, SAVE_KEY, type Char } from './save';
 import { initItemTips } from './ui/itemtip';
 import { calcStats, saveChar, armoured, handsChanged } from './character';
-import { loadDungeon, loadOverworld, toVillage, saveOverworldPos, enterDungeon, enterCustom, type Arrival } from './world/level';
+import { loadDungeon, loadOverworld, toVillage, saveOverworldPos, enterDungeon, enterCave, enterCustom, type Arrival } from './world/level';
 import { takeTest, testWaiting, syncCustomWorld, worldAsked } from './world/custommaps';
 import { initRebirth } from './ui/rebirth';
 import { isFieldPlacing, updateFieldPlacing, confirmFieldPlacing, cancelFieldPlacing } from './world/fields';
@@ -64,6 +64,7 @@ import { campFires } from './world/overworld';
 import { MIN_PER_SEC, fmtClock } from './core/time';
 import { latitude } from './gen/regions';
 import { updateCreatures, spawnCreatureNear } from './world/creatures';
+import { cave } from './world/cavelevel';
 import { updateStealth, layTrail } from './world/stealth';
 import { updateIntents } from './world/intents';
 import { updateFarCalls } from './world/farcalls';
@@ -259,6 +260,7 @@ function frame(now: number) {
     if (driving.v) fireCannon(dt);
     updateDoors(dt);
     updateRobots(dt, time); // the open world's robots, or a crashed ship's guards
+    if (!outdoors && cave) updateCreatures(dt, time); // (0.244) a cave's beasts
     if (outdoors) { updateIntents(dt); updateGarrisons(dt); updateFieldEnemies(dt); updateCreatures(dt, time); updateBandits(dt, time); updateRaiders(dt); animateCamps(time); smokeWrecks(dt); updateCrash(dt, time); animateWater(time); }
     updateDrones(dt);
     updateFoeSounds(dt); updateFarCalls(dt); updateFoeTracks(dt); updateRestSmoke(dt, time); // (0.237, stage L4) warnings from afar
@@ -345,4 +347,4 @@ setGateTravel((gate, x, z, heading, car) => {
 setRideWarpArrival(() => { vehiclesNear(G.pos.x); updateStreaming(12); saveOverworldPos(); });
 
 // Debug handle for automated checks in development builds.
-if (import.meta.env.DEV) Object.assign(window, { __game: { G, W, OW, camera, scene, renderer, regionRoads, poisNear, groundAt, treeHit, collides, vehicles, driving, interact, buy: buyVehicle, foeRules, makeDrone, spawnCreature: spawnCreatureNear, damageFoe, boardOffers, accept, syncQuestWorld, enterDungeon, generateQuest, spawnBandits: spawnBanditsNear, spawnRaider: spawnRaiderNear, forceAmbush, raiders, damageVehicle } });
+if (import.meta.env.DEV) Object.assign(window, { __game: { G, W, OW, camera, scene, renderer, regionRoads, poisNear, groundAt, treeHit, collides, vehicles, driving, interact, buy: buyVehicle, foeRules, makeDrone, spawnCreature: spawnCreatureNear, damageFoe, boardOffers, accept, syncQuestWorld, enterDungeon, enterCave, generateQuest, spawnBandits: spawnBanditsNear, spawnRaider: spawnRaiderNear, forceAmbush, raiders, damageVehicle } });

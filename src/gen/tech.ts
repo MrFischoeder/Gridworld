@@ -74,7 +74,7 @@ function spotsNear(t: Terrain, x: number, z: number, r: number): Spot[] {
   const out: Spot[] = [];
   for (const p of poisNear(t.world, x, z, r) as Poi[]) if (p.type === 'ruin' || p.type === 'wreck') out.push({ kind: p.type, place: p.id, name: p.name, x: p.x, z: p.z });
   const [ax, az] = regionOf(x - r, z - r), [bx, bz] = regionOf(x + r, z + r);
-  for (let rx = ax; rx <= bx; rx++) for (let rz = az; rz <= bz; rz++) for (const c of regionCaves(t, rx, rz)) if (c.mouth === 0) out.push({ kind: 'cave', place: c.sys, name: c.name, x: c.x, z: c.z });
+  for (let rx = ax; rx <= bx; rx++) for (let rz = az; rz <= bz; rz++) for (const c of regionCaves(t, rx, rz, true)) if (c.mouth === 0) out.push({ kind: 'cave', place: c.sys, name: c.name, x: c.x, z: c.z });
   return out;
 }
 

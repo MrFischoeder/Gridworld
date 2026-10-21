@@ -56,6 +56,8 @@ export interface Creature extends CondFoe {
   den?: THREE.Vector3; morale?: number; wounded?: boolean; calm?: number;
   /** Fixed city post; transmitted to prevent duplicate garrisons on another client. */
   cityPost?: string;
+  /** (0.244) A cave's beast: its index in the cave's record (kept dead once killed), never culled by distance. */
+  lair?: number;
   kind: CreatureKind; boss?: false;
   g: THREE.Group; mat: THREE.LineBasicMaterial;
   /** Body centre (the hit sphere is around it). */
@@ -322,7 +324,7 @@ export interface SpawnEnv {
   /** The water at a point (Terrain.water): the sea creatures keep to 'sea' deep enough for them. */
   water(x: number, z: number): { level: number; depth: number; kind: string } | null;
 }
-let env: SpawnEnv | null = null, spawnT = 2;
+let env: SpawnEnv | null = null, spawnT = 2, indoor = false;
 /**
  * How much noise there has been lately (gunfire): it makes creatures turn up faster and in greater numbers,
  * coming from all around the place the shooting was heard. It fades over half a minute or so.
@@ -358,7 +360,17 @@ onNoise((at, r, decoy) => {
     if (c.state === 'roam' || c.state === 'investigate') { c.state = 'investigate'; c.noiseAt = at.clone(); c.timer = 14; }
   }
 });
-export function setCreatureEnv(e: SpawnEnv | null) { env = e; }
+export function setCreatureEnv(e: SpawnEnv | null, opts: { indoor?: boolean } = {}) { env = e; indoor = !!opts.indoor; }
+let lairDown: ((i: number) => void) | null = null;
+/** (0.244) Told when a cave's beast falls (world/cavelevel.ts records it). */
+export function onLairDown(f: ((i: number) => void) | null) { lairDown = f; }
+/** (0.244) A cave's beast: made where it lies, a member of `group` (a pack, a nest or a pair). */
+export function spawnLairBeast(kind: CreatureKind, x: number, z: number, lv: number, i: number, group: Creature[]): Creature | null {
+  if (!env) return null;
+  const c = make(kind, V(x, env.ground(x, z) + CREATURES[kind].lift, z), lv);
+  c.lair = i; c.pack = group; c.flank = Math.random() * 6.283; group.push(c);
+  return c;
+}
 
 /**
  * Something new turns up behind the player (or around a noise). What it may be depends on the danger there
@@ -1124,12 +1136,12 @@ function beastMorale(c: Creature, dt: number, dist: number, safe: boolean): bool
 export function updateCreatures(dt: number, time: number) {
   if (!env) return;
   heat *= Math.exp(-dt / 25);
-  if ((spawnT -= dt) <= 0) { spawnT = 4.5 / (1 + heat); trySpawn(); }
-  if ((wildT -= dt) <= 0) { wildT = WILDLIFE.every; tryWild(); }
+  if (!indoor && (spawnT -= dt) <= 0) { spawnT = 4.5 / (1 + heat); trySpawn(); } // (0.244) nothing wanders into a cave: its beasts lie there
+  if (!indoor && (wildT -= dt) <= 0) { wildT = WILDLIFE.every; tryWild(); }
   for (let i = W.creatures.length - 1; i >= 0; i--) {
     const c = W.creatures[i];
     if (stepRemote(c, dt)) { animate(c, dt, time); continue; } // another player's: it does what its owner says
-    if (!c.cityPost && (c.questId ? nearestPlayer(c.p.x, c.p.z) > 240 : mayDrop(c, c.p.x, c.p.y, c.p.z))) { removeCreature(c); continue; } // (0.235) far off and out of everyone's sight
+    if (!c.cityPost && c.lair === undefined && (c.questId ? nearestPlayer(c.p.x, c.p.z) > 240 : mayDrop(c, c.p.x, c.p.y, c.p.z))) { removeCreature(c); continue; } // (0.235) far off and out of everyone's sight
     if (c.coming) { if (c.state === 'investigate') (c.den ?? (c.den = c.p.clone())).copy(c.p); else c.coming = false; } // on its way: its ground goes with it
     const held = tickCond(c, dt, (d, cr) => hurtCreature(c, d, cr)); // (0.227, stage W5) bleeding; down or reeling
     if (c.hp <= 0 || !W.creatures.includes(c)) continue; // bled out
@@ -1275,6 +1287,7 @@ const LIE_C = 5, SINK_C = 1.5, DRAINED = 0x8a6a3a;
 export function fallCreature(c: Creature) {
   play('die_creature', { at: c.p, vol: 0.8, far: 60, rate: c.kind === 'bramble' ? 0.6 : c.kind === 'gnawer' || c.kind === 'skitter' ? 1.8 : c.kind === 'silverfin' ? 2.2 : 1 });
   const i = W.creatures.indexOf(c); if (i >= 0) W.creatures.splice(i, 1);
+  if (c.lair !== undefined) lairDown?.(c.lair);
   if (c.pack) { const j = c.pack.indexOf(c); if (j >= 0) c.pack.splice(j, 1); }
   if (c.pack && !remoteOf(c)) { // (0.228) the pack's nerve: a fallen member, the leader worst, and half of them gone
     for (const m of c.pack) if (m.morale !== undefined && m.p.distanceTo(c.p) < MORALE.near) m.morale = shocked(m.morale, c.alpha ? 'leader' : 'ally');

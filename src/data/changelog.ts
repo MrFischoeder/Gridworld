@@ -3,6 +3,15 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.244.0', date: '2026-10-21', title: 'Deeper caves', notes: [
+    'Caves are far more common. Mountains that had no cave often have one now, and lone caves open on the lowlands too, their mouths sunk into a heap of great boulders.',
+    'Cave mouths are bigger and wilder: a ragged arch under a lintel stone, framed by boulders, with teeth of rock hanging inside it, great stones at its feet and rubble in front.',
+    'Inside, the caves run much further, with more chambers, more loops and many more side passages, some of which branch again into deeper pockets. The way in is a wider hall.',
+    'Glowing crystals grow in the chambers and along the tunnels in cyan, violet, mint or pink. They are the cave\'s light; away from them it is pitch dark.',
+    'Caves are home to beasts now: gnawer nests and ravager packs in the halls, a ridgeback or a tusker herd in its chamber, scorpids and crestjaws waiting in the side pockets. A stray machine turns up only now and then, and nothing new wanders in. What you kill stays dead.',
+    'Caves you have already been into are laid out anew inside.',
+    'Multiplayer: the first player in a cave runs its beasts and the others see the same ones; kills go into the place\'s shared record. Everything else comes from the world seed. The server is unchanged.',
+  ] },
   { v: '0.243.0', date: '2026-10-21', title: 'Names for cities and caves', notes: [
     'Dead cities take their names from the same old lists as the ruins (Agni Megacity, Rune Metropolis...), and no two cities on one world share one.',
     'Caves are named from the ruins\' lists too (Yama Cloud Watch Cave...): no two caves share a name, and no cave shares one with a ruin.',
