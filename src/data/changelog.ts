@@ -3,6 +3,11 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.242.0', date: '2026-10-21', title: 'Names for ruins and wrecks', notes: [
+    'Ruins and crashed ships take their names from two long lists of 500 first and 500 second parts each (Valken Spire, Gunnar Cinder Shrine; the Astra Adventurer...), so no two ruins and no two wrecks on one world share a name.',
+    'Only the names changed: every place stands where it stood.',
+    'Multiplayer: the names come from the world seed and are the same on every game; nothing new is sent and the server is unchanged.',
+  ] },
   { v: '0.241.0', date: '2026-10-21', title: 'Old script, weathered stones, wrecks that differ', notes: [
     'The walls of the ruins\' labyrinths carry inscriptions in the old builders\' script, in the manner of the gate symbols: carved panels with a column of glyphs under a pointed head, or a single great glyph in a frame. They glow faintly, so you see them even in the dark.',
     'Inside crashed ships the walls carry rows of the same script stencilled between two bars.',

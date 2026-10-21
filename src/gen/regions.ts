@@ -2,6 +2,7 @@
 // features from hash(world, rx, rz): points of interest (villages, ruins), forest density, terrain roughness.
 // New kinds of places are added as new PoiType values plus a placement rule here.
 import { customWorld, placesIn, placesOf } from './customworld';
+import { ruinTitle, shipTitle, regionIndex } from './placenames';
 import { hash, rng, rangeInt, DIRV, type Dir } from '../core/rng';
 import { onMountain } from './mountains';
 import { inSea } from './seas';
@@ -214,10 +215,11 @@ export const VILLAGE_RECT: Rect = { x0: -50, z0: -50, x1: 50, z1: 50 };
  */
 export const HANGAR: Rect = { x0: 76, z0: -130, x1: 122, z1: -96 }; // (0.198: 12 m further out, clear of the bigger Gridholm)
 
-function ruinAt(rx: number, rz: number, i: number, x: number, z: number, R: () => number): Poi {
+function ruinAt(world: number, rx: number, rz: number, i: number, x: number, z: number, R: () => number): Poi {
+  ruinName(R); // (0.242) the two old draws stay, so everything rolled after them in the region stays where it was
   const x0 = even(x - RUIN_SIZE / 2), z0 = even(z - RUIN_SIZE / 2);
   return {
-    type: 'ruin', id: packId(rx, rz, i), name: tl('Ruins of ') + ruinName(R),
+    type: 'ruin', id: packId(rx, rz, i), name: tl('Ruins of ') + ruinTitle(world, regionIndex(wrapR(rx) - R0, rz, NR)),
     x: x0 + RUIN_SIZE / 2, z: z0 + RUIN_SIZE / 2, rect: { x0, z0, x1: x0 + RUIN_SIZE, z1: z0 + RUIN_SIZE }, flat: 4, blend: 26,
   };
 }
@@ -234,12 +236,12 @@ function campAt(rx: number, rz: number, x: number, z: number, R: () => number): 
 
 /** Crash sites: a wrecked freighter half buried in the ground, lying along x or z (see gen/wreck.ts). */
 export const WRECK_LEN = 52, WRECK_WID = 24;
-const SHIP_NAMES = ['Kestrel', 'Halcyon', 'Meridian', tl('Vagrant Star'), tl('Iron Tern'), 'Covenant', 'Longreach', tl('Pale Heron'), 'Ardent', tl('Sable Wake'), 'Tessaract', 'Orison'];
-function wreckAt(rx: number, rz: number, x: number, z: number, R: () => number): Poi {
+function wreckAt(world: number, rx: number, rz: number, x: number, z: number, R: () => number): Poi {
   const alongX = R() < 0.5, w = alongX ? WRECK_LEN : WRECK_WID, d = alongX ? WRECK_WID : WRECK_LEN;
   const x0 = even(x - w / 2), z0 = even(z - d / 2);
+  R(); // (0.242) the old name's draw stays, so the rest of the region's rolls do not move
   return {
-    type: 'wreck', id: packId(rx, rz, 3), name: tl('Wreck of the ') + SHIP_NAMES[Math.floor(R() * SHIP_NAMES.length)],
+    type: 'wreck', id: packId(rx, rz, 3), name: tl('Wreck of the ') + shipTitle(world, regionIndex(wrapR(rx) - R0, rz, NR)),
     x: x0 + w / 2, z: z0 + d / 2, rect: { x0, z0, x1: x0 + w, z1: z0 + d }, flat: 4, blend: 24,
   };
 }
@@ -281,7 +283,7 @@ function baseInfo(world: number, rx: number, rz: number): RegionInfo {
       const Rv = rng(hash(world, rx, rz, 0x7a3e));
       pois.push(villageAt(rx, rz, vil.name ?? V_A[Math.floor(Rv() * V_A.length)] + V_B[Math.floor(Rv() * V_B.length)]));
     } else if (ruin) {
-      const p = ruinAt(rx, rz, 1, cx + clamp64(ruin.x - cx), cz + clamp64(ruin.z - cz), R);
+      const p = ruinAt(world, rx, rz, 1, cx + clamp64(ruin.x - cx), cz + clamp64(ruin.z - cz), R);
       if (ruin.name) p.name = ruin.name;
       pois.push(p);
     }
@@ -297,11 +299,11 @@ function baseInfo(world: number, rx: number, rz: number): RegionInfo {
       const dist = ri(150, 250), l0 = ri(-60, 60), o = DIRV[dir];
       // the north and east ones keep to the side away from the hangar (north-east of the village)
       const lat = dir === 'N' ? -Math.abs(l0) : dir === 'E' ? Math.abs(l0) : l0;
-      pois.push(ruinAt(rx, rz, 1, o[0] * dist + (o[0] ? 0 : lat), o[1] * dist + (o[1] ? 0 : lat), R));
+      pois.push(ruinAt(world, rx, rz, 1, o[0] * dist + (o[0] ? 0 : lat), o[1] * dist + (o[1] ? 0 : lat), R));
     }
   } else if (R() < (Math.abs(rx) <= 1 && Math.abs(rz) <= 1 ? 0.4 : 0.5)) {
     const x = cx + ri(-64, 64), z = cz + ri(-64, 64); // (kept in so neighbouring temples' grounds never meet)
-    if (!onMountain(world, x, z, 60) && !inSea(world, x, z, 80) && !nearRiver(world, x, z, 110) && !inCity(world, x, z, CITY.place)) pois.push(ruinAt(rx, rz, 1, x, z, R));
+    if (!onMountain(world, x, z, 60) && !inSea(world, x, z, 80) && !nearRiver(world, x, z, 110) && !inCity(world, x, z, CITY.place)) pois.push(ruinAt(world, rx, rz, 1, x, z, R));
   }
   r = { rx, rz, pois, forest, rough };
   baseCache.set(key, r);
@@ -316,7 +318,7 @@ function customPlaces(world: number, rx: number, rz: number, base: Poi[]): Poi[]
   const camp = here.find((p) => p.k === 'camp'), wreck = here.find((p) => p.k === 'wreck'), cx = rx * REGION, cz = rz * REGION;
   const clear = (x: number, z: number, d: number) => ![...base, ...out].some((p) => worldDist(p.x, p.z, x, z) < d);
   if (camp && clear(camp.x, camp.z, 90)) { const p = campAt(rx, rz, cx + clamp64(camp.x - cx), cz + clamp64(camp.z - cz), rng(hash(world, rx, rz, 0xca4b))); if (camp.name) p.name = camp.name; out.push(p); }
-  if (wreck && clear(wreck.x, wreck.z, 70)) { const p = wreckAt(rx, rz, cx + clamp64(wreck.x - cx), cz + clamp64(wreck.z - cz), rng(hash(world, rx, rz, 0x3ec7))); if (wreck.name) p.name = wreck.name; out.push(p); }
+  if (wreck && clear(wreck.x, wreck.z, 70)) { const p = wreckAt(world, rx, rz, cx + clamp64(wreck.x - cx), cz + clamp64(wreck.z - cz), rng(hash(world, rx, rz, 0x3ec7))); if (wreck.name) p.name = wreck.name; out.push(p); }
   return out;
 }
 /** Everything in a region: its village and ruins, plus maybe a bandit camp. */
@@ -354,7 +356,7 @@ export function regionInfo(world: number, rx: number, rz: number): RegionInfo {
       if (worldDist(x, z, 0, 0) < 400) continue;
       if (around.some((p) => worldDist(p.x, p.z, x, z) < (p.type === 'village' ? 400 : 110)) || pois.some((p) => worldDist(p.x, p.z, x, z) < 110)) continue;
       if (onMountain(world, x, z, 60) || inSea(world, x, z, 80) || nearRiver(world, x, z, 110) || inCity(world, x, z, CITY.place)) continue;
-      pois.push(wreckAt(rx, rz, x, z, Rw)); break;
+      pois.push(wreckAt(world, rx, rz, x, z, Rw)); break;
     }
   }
   r = { ...base, pois };
