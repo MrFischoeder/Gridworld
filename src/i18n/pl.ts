@@ -2451,8 +2451,6 @@ export const PL: Record<string, string> = {
   "You wake aboard the {0}. Who are you?": "Budzisz się na pokładzie statku {0}. Kim jesteś?",
   "A castaway": "Rozbitek",
   "{0} is dead": "{0} nie żyje",
-  "{0} died. Their kit lies where they fell.": "{0} zginął. Jego ekwipunek leży tam, gdzie padł.",
-  "Another member of the survey team thaws out in a cryo-pod aboard the {0}, with nothing but what the crew left in the locker. {1}'s kit lies where they fell. Name the survivor:": "Kolejny członek zespołu zwiadowczego budzi się w kriokapsule na pokładzie statku {0}, tylko z tym, co załoga zostawiła w szafce. Ekwipunek: {1} leży tam, gdzie padł. Nazwij ocalałego:",
   "won't move: ": "nie ruszy: ",
   "ready to drive": "gotowy do jazdy",
   "<h3>Vehicle condition and equipment</h3><div class=\"svcgrid\">": "<h3>Stan i wyposażenie pojazdu</h3><div class=\"svcgrid\">",
@@ -4244,4 +4242,10 @@ export const PL: Record<string, string> = {
   '2.3 m tusks to tail · 1.3 m at the bristles': '2,3 m od kłów do ogona · 1,3 m w kłębie',
   'A desert scorpion the size of a calf, pincers held before it and the sting curled over its back.': 'Pustynny skorpion wielkości cielaka, ze szczypcami wysuniętymi przed siebie i żądłem zawiniętym nad grzbietem.',
   '3 m with the pincers · 1.5 m to the sting': '3 m ze szczypcami · 1,5 m do żądła',
+  // (0.245) bodies of the fallen
+  "{0} died. Their body lies where they fell, with everything they carried, for a day.": "{0} nie żyje. Ciało leży tam, gdzie padło, ze wszystkim, co miało przy sobie, przez jeden dzień.",
+  "Another member of the survey team thaws out in a cryo-pod aboard the {0}, with nothing but what the crew left in the locker. {1}'s body lies where they fell, with everything they carried; in a day it will be gone. Name the survivor:": "Kolejny członek zespołu zwiadowczego budzi się w kriokapsule na pokładzie statku {0}, tylko z tym, co załoga zostawiła w szafce. Ciało ({1}) leży tam, gdzie padło, ze wszystkim, co miało przy sobie; za dzień zniknie. Nazwij ocalałego:",
+  'E — search the body of {0}': 'E — przeszukaj ciało: {0}',
+  'The body of {0}': 'Ciało: {0}',
+  'Gone in {0} h': 'Zniknie za {0} h',
 };

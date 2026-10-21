@@ -1,15 +1,16 @@
-// Death on a server is the end of that character. Their kit falls where they died (shared drops, anyone may take it),
+// Death is the end of that character (online since 0.161, alone too since 0.245, the owner's rule). Their body lies
+// where they died for a game day with everything they carried and their gold (world/bodies.ts; anyone may search it),
 // their name joins the world's fallen crew (`Char.fallen`, shared: the server refuses it as a character name from then
 // on) and their cryo-pod stays open. Another member of the survey team thaws out in the next shut pod aboard the
-// Kestrel with an empty backpack, a fresh locker and no map, quests or gold, and needs a new name. Alone nothing of this
-// happens: you wake in your pod as before (world/level.ts toVillage).
+// Kestrel with an empty backpack, a fresh locker and no map, quests or gold, and needs a new name; the vehicles stay
+// the crew's (they go to the new member).
 // Their houses go to the next crew member of the same player (`Char.estate`), handed over by the village elder.
 // Multiplayer: each player's game runs their own death; the drops, `fallen` and the server's name check are shared.
 import { G } from '../game';
-import { online, net, sendHero, onHero } from '../net/client';
+import { net, sendHero, onHero } from '../net/client';
 import { newChar, type Char, type Slot } from '../save';
 import { saveChar } from '../character';
-import { dropAtFeet } from '../world/drops';
+import { layBody } from '../world/bodies';
 import { myPod, nextPod } from '../world/crashpod';
 import { SHARED } from '../world/share';
 import { setCrewDeath, type Arrival } from '../world/level';
@@ -68,18 +69,18 @@ let use: ((c: Char, a: Arrival) => void) | null = null;
 export function initRebirth(f: (c: Char, a: Arrival) => void) {
   use = f;
   setCrewDeath(() => {
-    if (!online() || !use) return false;
+    if (!use) return false;
     const old = G.char, name = old.name || tl('A castaway');
-    // the kit falls where they died
+    // the body lies where they died, with the whole kit and the gold
     const kit: Slot[] = [];
     for (const s of [...old.inv, ...old.hands, ...old.back, ...(old.off ?? [])]) if (s) kit.push(s);
     for (const k of [...Object.values(old.wear), ...old.mods, ...old.gunMods]) if (k) kit.push({ k, n: 1 });
-    for (const s of kit) dropAtFeet(s);
+    layBody(name, old.pid, kit, old.gold);
     // the name joins the fallen, the pod stays open
     old.fallen[name.toLowerCase()] = { n: name, t: Math.round(old.time), pod: myPod() };
     const c = newChar(), pod = nextPod();
     for (const f of SHARED) (c as unknown as Record<string, unknown>)[f.f] = old[f.f]; // the world stays the world
-    Object.assign(c, { world: old.world, time: old.time, name: '', intro: true, guide: 2, pod, settlementRules: old.settlementRules });
+    Object.assign(c, { world: old.world, time: old.time, name: '', intro: true, guide: 2, pod, settlementRules: old.settlementRules, vehicles: old.vehicles });
     // their house waits for the next crew member of this same player: the elder hands it over (ui/dialog.ts)
     const homes = Object.fromEntries(Object.entries(old.containers).filter(([k]) => k.startsWith('home:')));
     for (const k of Object.keys(homes)) delete c.containers[k];
@@ -88,8 +89,8 @@ export function initRebirth(f: (c: Char, a: Arrival) => void) {
     if (houses.length) c.estate = { from: old.houses.length ? name : prev!.from, houses, chests: { ...(prev?.chests ?? {}), ...homes }, idx: { ...(prev?.idx ?? {}), ...Object.fromEntries(old.houses.map((v) => [v, old.homeOf?.[v] ?? 0])) }, pid: old.houses.length ? old.pid : prev!.pid };
     use(c, { kind: 'pod' });
     showToast(TL`${name} is dead`);
-    logLine(TL`${name} died. Their kit lies where they fell.`);
-    askName(TL`${name} is dead`, TL`Another member of the survey team thaws out in a cryo-pod aboard the ${SHIP_NAME}, with nothing but what the crew left in the locker. ${name}'s kit lies where they fell. Name the survivor:`);
+    logLine(TL`${name} died. Their body lies where they fell, with everything they carried, for a day.`);
+    askName(TL`${name} is dead`, TL`Another member of the survey team thaws out in a cryo-pod aboard the ${SHIP_NAME}, with nothing but what the crew left in the locker. ${name}'s body lies where they fell, with everything they carried; in a day it will be gone. Name the survivor:`);
     return true;
   });
 }

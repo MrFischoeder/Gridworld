@@ -55,6 +55,7 @@ import { inBoat, clearBoats } from './boats';
 import { clearBases } from './building';
 import { clearTurrets } from './turrets';
 import { buildCave, leaveCave } from './cavelevel';
+import { clearBodies } from './bodies';
 import type { Cave } from '../gen/caves';
 import { placeDrone, makeBoss, setDroneRespawn } from './enemies';
 import { drawCrown } from './trees';
@@ -90,7 +91,7 @@ export function voxelObject(grid: VoxelGrid, skyY = Infinity, outline?: OutlineS
 /** Removes every entity of the current place (the open world also unloads its chunks and structures). */
 function clearLevel() {
   dropCarrier(); clearMountedTurrets(); clearRobots();
-  closeWorld(); leaveCave(); clearCrystals(); clearFires(); clearBenches(); clearFlags(); cancelPlacing(true); cancelBridgePlacing(true); cancelFieldPlacing(true); cancelStreetPlacing(true); cancelLhPlacing(true); cancelPierPlacing(true); clearBoats(); clearBases(); clearTurrets(); clearThrowing();
+  closeWorld(); leaveCave(); clearBodies(); clearCrystals(); clearFires(); clearBenches(); clearFlags(); cancelPlacing(true); cancelBridgePlacing(true); cancelFieldPlacing(true); cancelStreetPlacing(true); cancelLhPlacing(true); cancelPierPlacing(true); clearBoats(); clearBases(); clearTurrets(); clearThrowing();
   if (worldGroup) { scene.remove(worldGroup); worldGroup.traverse((o) => (o as THREE.Mesh).geometry?.dispose()); worldGroup = null; }
   [...W.crystals.map((c) => c.m), ...W.pickups.map((p) => p.g), ...W.chests.map((c) => c.g), ...W.doors.map((d) => d.g), ...W.bosses.map((b) => b.g),
     ...W.orbs.map((o) => o.m), ...W.drones.map((t) => t.g), ...W.npcs.map((n) => n.g)].forEach((o) => scene.remove(o));
@@ -541,12 +542,12 @@ export function exitToRuin() {
  * directly (the console's `home` goes to Gridholm). A bad day ('death') ends where the castaway first woke: out of
  * their cryo-pod in the crashed ship (world/crashpod.ts), the ship's medical systems having patched them up.
  */
-/** Online a death ends the character (ui/rebirth.ts): another crew member wakes instead. */
+/** A death ends the character (ui/rebirth.ts; online since 0.161, alone too since 0.245): another crew member wakes instead. */
 let crewDeath: (() => boolean) | null = null;
 export function setCrewDeath(f: () => boolean) { crewDeath = f; }
 export function toVillage(how: 'death' | 'recall', id?: number) {
   const c = G.char;
-  // online a death ends the character: the next crew member wakes in a pod (ui/rebirth.ts); the screen fades back in
+  // a death ends the character: the next crew member wakes in a pod (ui/rebirth.ts); the screen fades back in
   if (how === 'death' && id === undefined && crewDeath?.()) { arriveVia(null); return; }
   if (how === 'death' && id === undefined) {
     c.loc = 'overworld'; c.dungeon = null; saveChar();

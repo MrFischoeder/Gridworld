@@ -65,6 +65,7 @@ import { MIN_PER_SEC, fmtClock } from './core/time';
 import { latitude } from './gen/regions';
 import { updateCreatures, spawnCreatureNear } from './world/creatures';
 import { cave } from './world/cavelevel';
+import { updateBodies } from './world/bodies';
 import { updateStealth, layTrail } from './world/stealth';
 import { updateIntents } from './world/intents';
 import { updateFarCalls } from './world/farcalls';
@@ -264,6 +265,7 @@ function frame(now: number) {
     if (outdoors) { updateIntents(dt); updateGarrisons(dt); updateFieldEnemies(dt); updateCreatures(dt, time); updateBandits(dt, time); updateRaiders(dt); animateCamps(time); smokeWrecks(dt); updateCrash(dt, time); animateWater(time); }
     updateDrones(dt);
     updateFoeSounds(dt); updateFarCalls(dt); updateFoeTracks(dt); updateRestSmoke(dt, time); // (0.237, stage L4) warnings from afar
+    updateBodies(dt); // (0.245) the fallen's bodies
     const boss = updateBosses(dt, time); updateOrbs(dt);
     updateBossBar(boss);
     if (G.god) G.hp = G.S.maxHp;

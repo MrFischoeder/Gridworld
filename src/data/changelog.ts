@@ -3,6 +3,13 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.245.0', date: '2026-10-21', title: 'The fallen leave their bodies', notes: [
+    'Death is the end of your character in single player too, not only online. Another member of the survey team wakes in the next cryo-pod aboard the ship and needs a new name.',
+    'The dead character no longer keeps their things. Their body lies where they fell for one game day with everything they carried: the backpack, both hands, the back, the clothes, the attachments and the gold. Walk up to it and press E to search it.',
+    'After a day the body is gone, along with whatever is still on it.',
+    'The new crew member starts with the basic kit and the crew\'s locker; the vehicles stay with the crew.',
+    'Multiplayer: bodies are shared, so everyone sees them and anyone may search one (one player at a time, like a chest). Whoever sees a body past its day removes it. An older server does not share bodies; the server is updated for it.',
+  ] },
   { v: '0.244.0', date: '2026-10-21', title: 'Deeper caves', notes: [
     'Caves are far more common. Mountains that had no cave often have one now, and lone caves open on the lowlands too, their mouths sunk into a heap of great boulders.',
     'Cave mouths are bigger and wilder: a ragged arch under a lintel stone, framed by boulders, with teeth of rock hanging inside it, great stones at its feet and rubble in front.',
