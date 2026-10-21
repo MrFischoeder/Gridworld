@@ -145,7 +145,7 @@ export function loadDungeon(arriveDir: string | null) {
   W.chests = map.chests.map(makeChest).filter((x) => !!x);
   placeCrystals(map.crystals);
   W.hatch = map.hatch ? makeHatch(map.hatch) : null;
-  group.add(decorateDungeon(map));
+  group.add(decorateDungeon(map, (x, y, z) => !G.grid.empty(x, y, z))); // (0.241) the voxels before any door is set
   if (map.metro) { // (0.205) the half steps up from the track's trench onto the platforms
     group.add(drawMetro(map));
     const floors = [...map.metro.steps, ...map.metro.decks]; G.floor = (x, y, z) => stepFloor(floors, x, y, z);

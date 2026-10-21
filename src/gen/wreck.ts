@@ -18,12 +18,29 @@ export function wreckXZ(f: WreckFrame, u: number, v: number): [number, number] {
 }
 /** The hull: its radius and the height of its centre line along u (the nose is buried, the tail sticks up). */
 export const HULL = { tail: -24, nose: 22, r: 5, tailR: 4.2, noseR: 1.4 };
-export function hullR(u: number) {
-  if (u < -18) return HULL.tailR;
-  if (u > 8) return HULL.r - (u - 8) / (HULL.nose - 8) * (HULL.r - HULL.noseR);
-  return HULL.r;
+/**
+ * (0.241, the owner's request: not every wreck alike) How this one came down: `pitch` how steeply its nose went in
+ * (0.03 slid in on its belly .. 0.13 stood on its nose, the tail high), `scale` its size, a broken-backed bow bent
+ * `kink` rad sideways from `kinkU` on (always ahead of the hatch), one or two engines, one or two fins.
+ * The hatch (u −2) stays at the ground whatever the pitch.
+ */
+export interface WreckShape { pitch: number; scale: number; kink: number; kinkU: number; engines: 1 | 2; fins: 1 | 2 }
+export const PLAIN_SHAPE: WreckShape = { pitch: 0.075, scale: 1, kink: 0, kinkU: 8, engines: 1, fins: 1 };
+export function hullR(u: number, sh: WreckShape = PLAIN_SHAPE) {
+  if (u < -18) return HULL.tailR * sh.scale;
+  if (u > 8) return (HULL.r - (u - 8) / (HULL.nose - 8) * (HULL.r - HULL.noseR)) * sh.scale;
+  return HULL.r * sh.scale;
 }
-export const hullY = (u: number) => 2.4 - u * 0.075;
+export const hullY = (u: number, sh: WreckShape = PLAIN_SHAPE) => 2.55 - (u + 2) * sh.pitch;
+/** How far the bent bow has swung sideways at u (0 behind the break). */
+export const bendV = (u: number, sh: WreckShape = PLAIN_SHAPE) => (u > sh.kinkU ? (u - sh.kinkU) * Math.tan(sh.kink) : 0);
+/** Its shape from its own hash stream (the other rolls of the place stay as they were). */
+export function wreckShape(world: number, id: number): WreckShape {
+  const R = rng(hash(world, id, 0x3ec7)), roll = R();
+  const pitch = roll < 0.25 ? 0.025 + R() * 0.02 : roll < 0.7 ? 0.06 + R() * 0.03 : 0.1 + R() * 0.03;
+  const kink = R() < 0.4 ? (R() < 0.5 ? -1 : 1) * (0.1 + R() * 0.08) : 0;
+  return { pitch, scale: 0.85 + R() * 0.3, kink, kinkU: 6 + R() * 5, engines: R() < 0.35 ? 2 : 1, fins: R() < 0.3 ? 2 : 1 };
+}
 /** Half width of the octagonal cross-section at height dy above the centre line (0 outside it). */
 export function octHalf(r: number, dy: number) {
   const a = Math.abs(dy) / r;
@@ -38,6 +55,8 @@ export interface WreckDeco {
   hatchU: number; hatchS: 1 | -1;
   /** The fin is snapped off (and lies beside the ship)? Where the hull cracked open, rubble around it. */
   finBroken: boolean; crackU: number;
+  /** (0.241) How it came down (gen/wreck.ts WreckShape). */
+  shape: WreckShape;
   debris: { u: number; v: number; r: number; h: number; rot: number }[];
   plates: { u: number; v: number; l: number; w: number; rot: number }[];
 }
@@ -48,7 +67,7 @@ export function generateWreck(world: number, poi: Poi, y: number): WreckMap {
   const { x0, z0, x1, z1 } = poi.rect, axis: 'x' | 'z' = x1 - x0 >= z1 - z0 ? 'x' : 'z';
   const s: 1 | -1 = R() < 0.5 ? 1 : -1, hatchS: 1 | -1 = R() < 0.5 ? 1 : -1, hatchU = -2;
   const a0 = axis === 'x' ? poi.x : poi.z, b0 = axis === 'x' ? poi.z : poi.x;
-  const frame: WreckFrame = { axis, s, a0, b0, y };
+  const frame: WreckFrame = { axis, s, a0, b0, y }, sh = wreckShape(world, poi.id);
   /** A voxel box over hull-local cells u in [ua, ub), v in [va, vb], heights [h0, h1). */
   const box = (op: 'solid' | 'room', ua: number, ub: number, va: number, vb: number, h0: number, h1: number): Op => {
     const a = s > 0 ? a0 + ua : a0 - ub, w = ub - ua, b = b0 + va, d = vb - va + 1;
@@ -57,12 +76,13 @@ export function generateWreck(world: number, poi: Poi, y: number): WreckMap {
   const ops: Op[] = [];
   // The hull in 2 m slices: the biggest box that fits inside the octagon from its lowest point above ground up
   for (let u = HULL.tail; u < HULL.nose; u += 2) {
-    const r = Math.min(hullR(u), hullR(u + 2)), cy = Math.min(hullY(u), hullY(u + 2));
+    const r = Math.min(hullR(u, sh), hullR(u + 2, sh)), cy = Math.min(hullY(u, sh), hullY(u + 2, sh));
     const bot = Math.max(0, Math.ceil(cy - 0.8 * r)), top = Math.floor(cy + 0.5 * r);
     if (top - bot < 1) continue;
-    const hw = Math.min(octHalf(r, bot - cy), octHalf(r, top - cy)) - 0.25, k = Math.floor(hw - 0.5);
+    const bend = Math.abs(bendV(u + 2, sh) - bendV(u, sh)); // a bent stretch: the slice narrows so it stays inside
+    const hw = Math.min(octHalf(r, bot - cy), octHalf(r, top - cy)) - 0.25 - bend / 2, k = Math.floor(hw - 0.5), off = Math.round(bendV(u + 1, sh));
     if (k < 0) continue;
-    ops.push(box('solid', u, u + 2, -k, k, bot, top));
+    ops.push(box('solid', u, u + 2, -k + off, k + off, bot, top));
   }
   // The hatch: a vestibule from the side of the hull to a door, the stairwell behind it going down towards the tail
   const dir: Dir = axis === 'x' ? (-s > 0 ? 'E' : 'W') : (-s > 0 ? 'S' : 'N');
@@ -73,7 +93,7 @@ export function generateWreck(world: number, poi: Poi, y: number): WreckMap {
 
   const debris: WreckDeco['debris'] = [], plates: WreckDeco['plates'] = [];
   for (let i = 0; i < 22; i++) {
-    const u = HULL.tail + R() * (HULL.nose - HULL.tail), side = R() < 0.5 ? -1 : 1, v = side * (hullR(u) * 0.95 + 0.4 + R() * 2.5);
+    const u = HULL.tail + R() * (HULL.nose - HULL.tail), side = R() < 0.5 ? -1 : 1, v = bendV(u, sh) + side * (hullR(u, sh) * 0.95 + 0.4 + R() * 2.5);
     if (u > hatchU - 1 && u < hatchU + 6 && side === hatchS) continue; // keep the way to the hatch clear
     debris.push({ u, v, r: 0.4 + R() * 1.1, h: 0.3 + R() * 1, rot: R() * 6.283 });
   }
@@ -83,6 +103,6 @@ export function generateWreck(world: number, poi: Poi, y: number): WreckMap {
   }
   return {
     id: poi.id, name: poi.name, y, rect: poi.rect, ops, portal,
-    deco: { frame, hatchU, hatchS, finBroken: R() < 0.5, crackU: -12 + R() * 6, debris, plates },
+    deco: { frame, hatchU, hatchS, finBroken: R() < 0.5, crackU: -12 + R() * 6, debris, plates, shape: sh },
   };
 }

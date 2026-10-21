@@ -8,6 +8,8 @@ import { GRID } from './render';
 import { PropBatch } from './props';
 import { rng } from '../core/rng';
 import type { DungeonMap, DecoBox } from '../gen/dungeon';
+import { inscription } from '../gen/glyphs';
+import { hash } from '../core/rng';
 
 const RIB = 0x7dffc8;
 type P = number[];
@@ -101,8 +103,64 @@ function ribs(pb: PropBatch, b: DecoBox, c: number, doors: (t: number) => boolea
   }
 }
 
-export function decorateDungeon(map: DungeonMap): THREE.Group {
+/**
+ * (0.241, the owner's request) Inscriptions in the old builders' script (gen/glyphs.ts) on the walls: in a temple's
+ * labyrinth carved panels (a frame round a column of glyphs or a single great one), in a crashed ship stencilled
+ * rows between two bars. Only on whole stretches of wall (solid behind, open in front, no doorway or stairwell
+ * near), at eye height, below the slanted panels. Lines only, a few centimetres off the wall.
+ */
+const CARVED = 0x7dffc8, PAINT = 0xc8b77c;
+/** The glyphs glow faintly (the old script still holds a little light), so they are drawn apart from the walls: a
+ *  fog-free line batch the dark of the place does not swallow (world/darkshader.ts only darkens fogged materials). */
+function glowLines(pts: number[], color: number): THREE.LineSegments {
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3));
+  return new THREE.LineSegments(g, new THREE.LineBasicMaterial({ color, fog: false, transparent: true, opacity: 0.5, depthWrite: false }));
+}
+function inscriptions(out: number[], map: DungeonMap, solid: (x: number, y: number, z: number) => boolean, ship: boolean) {
+  const pb = { line: (_c: number, ...p: P[]) => { for (let i = 1; i < p.length; i++) out.push(...p[i - 1], ...p[i]); }, seg: (_c: number, a: P, b: P) => out.push(...a, ...b) };
+  const R = rng(map.seed ^ 0x61f), keep: [number, number][] = [];
+  for (const d of [...map.doorCands, ...map.portals]) keep.push(d.axis === 'x' ? [d.m + 0.5, d.c + 0.5] : [d.c + 0.5, d.m + 0.5]);
+  const clear = (x: number, z: number) => keep.every(([a, b]) => Math.hypot(a - x, b - z) > 3.2) && map.chests.every((c) => Math.hypot(c.x + 0.5 - x, c.z + 0.5 - z) > 1.5);
+  const color = ship ? PAINT : CARVED;
+  for (const b of map.boxes) {
+    const top = ship ? b.h - Math.min(1.2, b.h * 0.25) - (b.tunnel ? 0.2 : 0) : b.h - Math.min(1.6, b.h * 0.25);
+    if (top < 2.4) continue;
+    for (const side of ['W', 'E', 'N', 'S'] as const) {
+      const alongZ = side === 'W' || side === 'E', len = alongZ ? b.d : b.w;
+      for (let t = 1.2 + R() * 2; t < len - 1.2; t += 2.6 + R() * 3) {
+        if (R() < 0.45) continue;
+        const a = (alongZ ? b.z : b.x) + t, wall = side === 'W' ? b.x : side === 'E' ? b.x + b.w : side === 'N' ? b.z : b.z + b.d;
+        const into = side === 'W' || side === 'N' ? 1 : -1, x = alongZ ? wall : a, z = alongZ ? a : wall;
+        // the wall itself (behind) and the room (in front) along the panel's width, at its heights
+        const behind = (k: number, y: number) => (alongZ ? solid(Math.floor(wall - 0.5 * into), y, Math.floor(a + k)) : solid(Math.floor(a + k), y, Math.floor(wall - 0.5 * into)));
+        const front = (k: number, y: number) => (alongZ ? !solid(Math.floor(wall + 0.5 * into), y, Math.floor(a + k)) : !solid(Math.floor(a + k), y, Math.floor(wall + 0.5 * into)));
+        if (![-0.6, 0, 0.6].every((k) => [1, 2].every((y) => behind(k, y) && front(k, y))) || !clear(x, z)) continue;
+        const off = 0.03 * into, P = (u: number, y: number): P => (alongZ ? [wall + off, y, a + u] : [a + u, y, wall + off]);
+        const seed = hash(map.seed, Math.floor(x * 7), Math.floor(z * 7));
+        const glyphAt = (g: [number, number][][], cu: number, cy: number, r: number) => { for (const st of g.map((s2) => s2.map(([u, v]) => P(cu + u * r * into, cy + v * r)))) pb.line(color, ...st); };
+        if (ship) { // a stencilled row of three or four between two bars
+          const n = 3 + (seed % 2), r = 0.16, w = n * r * 2.6, cy = Math.min(1.7, top - 0.4), g = inscription(seed, n);
+          pb.seg(color, P(-w / 2, cy + 0.32), P(w / 2, cy + 0.32)); pb.seg(color, P(-w / 2, cy - 0.32), P(w / 2, cy - 0.32));
+          g.forEach((gl, i) => glyphAt(gl, -w / 2 + r * 1.3 + i * r * 2.6, cy, r));
+        } else if (seed % 3 === 0 || top < 3.6) { // a single great glyph in a square frame
+          const r = 0.42, cy = Math.min(1.9, top - 0.6);
+          pb.line(color, P(-0.6, cy - 0.6), P(0.6, cy - 0.6), P(0.6, cy + 0.6), P(-0.6, cy + 0.6), P(-0.6, cy - 0.6));
+          glyphAt(inscription(seed, 1)[0], 0, cy, r);
+        } else { // a column of glyphs in a tall cartouche with a pointed head
+          const n = 3, r = 0.24, y0 = 1.1, step = 0.62, y1 = y0 + (n - 1) * step, hw = 0.38;
+          pb.line(color, P(-hw, y0 - 0.38), P(hw, y0 - 0.38), P(hw, y1 + 0.32), P(0, y1 + 0.62), P(-hw, y1 + 0.32), P(-hw, y0 - 0.38));
+          inscription(seed, n).forEach((gl, i) => glyphAt(gl, 0, y1 - i * step, r));
+        }
+      }
+    }
+  }
+}
+
+export function decorateDungeon(map: DungeonMap, solid?: (x: number, y: number, z: number) => boolean): THREE.Group {
   const pb = new PropBatch(), R = rng(map.seed ^ 0xdec0);
+  const glyphs: number[] = [];
+  if (solid && map.style !== 'metro') inscriptions(glyphs, map, solid, map.style === 'ship');
+  const build = () => { const g = pb.build(); if (glyphs.length) g.add(glowLines(glyphs, map.style === 'ship' ? PAINT : CARVED)); return g; };
   if (map.style === 'ship') {
     // bulkhead and stub doors: no panels or ribs across their frames
     const doorAt = (x: number, z: number) => map.doorCands.some((d) => (d.axis === 'z' ? Math.abs(d.m + 0.5 - z) < 2 && Math.abs(d.c + 0.5 - x) < 3 : Math.abs(d.m + 0.5 - x) < 2 && Math.abs(d.c + 0.5 - z) < 3));
@@ -113,7 +171,7 @@ export function decorateDungeon(map: DungeonMap): THREE.Group {
         ribs(pb, b, 0.6, (a) => (alongX ? doorAt(a, b.z + 1.5) : doorAt(b.x + 1.5, a)));
       } else chamfer(pb, b, Math.min(1.2, b.h * 0.25), ['W', 'E', 'N', 'S']);
     }
-    return pb.build();
+    return build();
   }
   if (map.style === 'metro') { // (0.195) tall tunnels with their upper corners cut away and a ring every 3 m; vaulted halls
     for (const b of map.boxes) {
@@ -131,5 +189,5 @@ export function decorateDungeon(map: DungeonMap): THREE.Group {
     else if (roll < 0.8) { struts(pb, b, R); squinches(pb, b, 1.4); }
     else if (roll < 0.9) squinches(pb, b, 2);
   }
-  return pb.build();
+  return build();
 }

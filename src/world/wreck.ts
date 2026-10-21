@@ -6,20 +6,21 @@ import * as THREE from 'three';
 import { GRID } from './render';
 import { PropBatch } from './props';
 import { rng } from '../core/rng';
-import { wreckXZ, hullR, hullY, HULL, type WreckDeco } from '../gen/wreck';
+import { wreckXZ, hullR, hullY, bendV, HULL, type WreckDeco } from '../gen/wreck';
 
 const HULL_C = GRID, TRIM = 0x7dffc8, HATCH = 0x5cc8ff;
 type P = number[];
 
 export function drawWreck(d: WreckDeco, seed: number): THREE.Group {
-  const pb = new PropBatch(), f = d.frame, R = rng(seed ^ 0x3ec9);
-  const P = (u: number, v: number, h: number): P => { const [x, z] = wreckXZ(f, u, v); return [x, f.y + h, z]; };
+  const pb = new PropBatch(), f = d.frame, R = rng(seed ^ 0x3ec9), sh = d.shape;
+  // (0.241) a broken-backed bow is drawn sheared sideways from its break on (gen/wreck.ts bendV)
+  const P = (u: number, v: number, h: number): P => { const [x, z] = wreckXZ(f, u, v + bendV(u, sh)); return [x, f.y + h, z]; };
   const ANG = Array.from({ length: 8 }, (_, k) => (k + 0.5) / 8 * 6.283);
-  const ring = (u: number, r = hullR(u), cy = hullY(u)) => ANG.map((a) => P(u, Math.cos(a) * r, cy + Math.sin(a) * r));
+  const ring = (u: number, r = hullR(u, sh), cy = hullY(u, sh)) => ANG.map((a) => P(u, Math.cos(a) * r, cy + Math.sin(a) * r));
   // faces facing the hatch side (and the one below it) stay open over the vestibule
   const open = d.hatchS > 0 ? [6, 7] : [3, 4];
   const hu0 = d.hatchU + 1, hu1 = d.hatchU + 4;
-  const us = [HULL.tail + 2, -20, -18, -15, d.crackU - 0.6, d.crackU + 0.6, -6, hu0, hu1, 5, 8, 12, 16, 19, HULL.nose].filter((u, i, a) => a.indexOf(u) === i).sort((a, b) => a - b);
+  const us = [HULL.tail + 2, -20, -18, -15, d.crackU - 0.6, d.crackU + 0.6, -6, hu0, hu1, 5, 8, 12, 16, 19, HULL.nose, ...(sh.kink ? [sh.kinkU] : [])].filter((u, i, a) => a.indexOf(u) === i).sort((a, b) => a - b);
 
   // ---- the hull: rings joined by panels; the crack shifts one ring a little so the plating breaks
   const rings = us.map((u) => { const rr = ring(u); if (Math.abs(u - d.crackU - 0.6) < 0.01) return rr.map((p) => [p[0] + 0.15, p[1] - 0.25, p[2] + 0.1]); return rr; });
@@ -37,39 +38,53 @@ export function drawWreck(d: WreckDeco, seed: number): THREE.Group {
     if (!hatchSpan) for (const k of [0, 3]) { const m0 = a[k].map((v, j) => (v + a[(k + 1) % 8][j]) / 2), m1 = b[k].map((v, j) => (v + b[(k + 1) % 8][j]) / 2); pb.seg(HULL_C, m0, m1); }
   }
   // the nose: a blunt cap buried in the ground
-  const tip = P(HULL.nose + 1.2, 0, hullY(HULL.nose) - 0.3), last = rings[rings.length - 1];
+  const tip = P(HULL.nose + 1.2, 0, hullY(HULL.nose, sh) - 0.3), last = rings[rings.length - 1];
   for (let k = 0; k < 8; k++) { pb.face(last[k], last[(k + 1) % 8], tip); pb.seg(HULL_C, last[k], tip); }
   // cockpit windows on the upper faces near the nose
   for (const [u0, u1] of [[13, 15.5], [16, 18.3]]) for (const k of [1, 2]) {
-    const q = (u: number, t: number) => { const r = hullR(u) + 0.03, a0 = ANG[k], a1 = ANG[(k + 1) % 8], cy = hullY(u), ax = Math.cos(a0) * (1 - t) + Math.cos(a1) * t, ay = Math.sin(a0) * (1 - t) + Math.sin(a1) * t; return P(u, ax * r, cy + ay * r); };
+    const q = (u: number, t: number) => { const r = hullR(u, sh) + 0.03, a0 = ANG[k], a1 = ANG[(k + 1) % 8], cy = hullY(u, sh), ax = Math.cos(a0) * (1 - t) + Math.cos(a1) * t, ay = Math.sin(a0) * (1 - t) + Math.sin(a1) * t; return P(u, ax * r, cy + ay * r); };
     pb.line(TRIM, q(u0, 0.2), q(u1, 0.2), q(u1, 0.8), q(u0, 0.8), q(u0, 0.2));
   }
 
-  // ---- the engine nacelle at the tail: a wider 12-sided drum with rings inside its open end
-  const n = 12, er = HULL.tailR + 0.7, ecy = hullY(HULL.tail) + 0.2, eu0 = HULL.tail - 1.5, eu1 = HULL.tail + 3;
-  const eRing = (u: number, r: number) => Array.from({ length: n }, (_, k) => { const a = k / n * 6.283; return P(u, Math.cos(a) * r, ecy + Math.sin(a) * r); });
-  const e0 = eRing(eu0, er), e1 = eRing(eu1, er * 0.95);
-  for (let k = 0; k < n; k++) { const k1 = (k + 1) % n; pb.face(e0[k], e0[k1], e1[k1], e1[k]); pb.seg(HULL_C, e0[k], e0[k1]); pb.seg(HULL_C, e1[k], e1[k1]); pb.seg(HULL_C, e0[k], e1[k]); }
-  for (const [t, rr] of [[0, 0.72], [0.4, 0.45], [0.8, 0.22]] as [number, number][]) {
-    const c = eRing(eu0 + t, er * rr);
-    for (let k = 0; k < n; k++) pb.seg(TRIM, c[k], c[(k + 1) % n]);
+  // ---- the engine nacelle at the tail: a wider 12-sided drum with rings inside its open end; (0.241) or two smaller ones side by side
+  const n = 12, ecy = hullY(HULL.tail, sh) + 0.2, eu0 = HULL.tail - 1.5, eu1 = HULL.tail + 3;
+  const pods: [number, number][] = sh.engines === 2 ? [[-hullR(HULL.tail, sh) * 0.62, (HULL.tailR * sh.scale) * 0.62 + 0.3], [hullR(HULL.tail, sh) * 0.62, (HULL.tailR * sh.scale) * 0.62 + 0.3]] : [[0, HULL.tailR * sh.scale + 0.7]];
+  for (const [ev, er] of pods) {
+    const eRing = (u: number, r: number) => Array.from({ length: n }, (_, k) => { const a = k / n * 6.283; return P(u, ev + Math.cos(a) * r, ecy + Math.sin(a) * r); });
+    const e0 = eRing(eu0, er), e1 = eRing(eu1, er * 0.95);
+    for (let k = 0; k < n; k++) { const k1 = (k + 1) % n; pb.face(e0[k], e0[k1], e1[k1], e1[k]); pb.seg(HULL_C, e0[k], e0[k1]); pb.seg(HULL_C, e1[k], e1[k1]); pb.seg(HULL_C, e0[k], e1[k]); }
+    for (const [t, rr] of [[0, 0.72], [0.4, 0.45], [0.8, 0.22]] as [number, number][]) {
+      const c = eRing(eu0 + t, er * rr);
+      for (let k = 0; k < n; k++) pb.seg(TRIM, c[k], c[(k + 1) % n]);
+    }
+    const back = eRing(eu0 + 1, er * 0.98); pb.face(...back); // the dark disc behind the rings
   }
-  const back = eRing(eu0 + 1, er * 0.98); pb.face(...back); // the dark disc behind the rings
 
-  // ---- the fin: a swept plate on the top of the tail (or snapped off and lying beside the ship)
-  const finTop = hullY(-18) + hullR(-18) * 0.92;
-  if (!d.finBroken) {
-    pb.solid8([P(-19, -0.15, finTop), P(-9, -0.15, hullY(-9) + 4.4), P(-9, 0.15, hullY(-9) + 4.4), P(-19, 0.15, finTop)],
-      [P(-21.5, -0.1, finTop + 6.5), P(-17, -0.1, finTop + 6.5), P(-17, 0.1, finTop + 6.5), P(-21.5, 0.1, finTop + 6.5)], HULL_C);
-  } else {
-    pb.solid8([P(-19, -0.15, finTop), P(-12, -0.15, hullY(-12) + 4.3), P(-12, 0.15, hullY(-12) + 4.3), P(-19, 0.15, finTop)],
-      [P(-19.5, -0.12, finTop + 2.2), P(-15, -0.12, finTop + 1.6), P(-15, 0.12, finTop + 1.6), P(-19.5, 0.12, finTop + 2.2)], HULL_C);
+  // ---- the fin: a swept plate on the top of the tail (or snapped off and lying beside the ship); (0.241) or two, canted out
+  const finTop = hullY(-18, sh) + hullR(-18, sh) * 0.92;
+  const finAt = (fv: number, lean: number, tall: boolean) => {
+    const t = finTop - Math.abs(fv) * 0.35, Q = (u: number, v: number, h: number) => P(u, fv + v + lean * (h - t) / 6.5, h);
+    if (tall) pb.solid8([Q(-19, -0.15, t), Q(-9, -0.15, hullY(-9, sh) + 4.4 - Math.abs(fv) * 0.35), Q(-9, 0.15, hullY(-9, sh) + 4.4 - Math.abs(fv) * 0.35), Q(-19, 0.15, t)],
+      [Q(-21.5, -0.1, t + 6.5), Q(-17, -0.1, t + 6.5), Q(-17, 0.1, t + 6.5), Q(-21.5, 0.1, t + 6.5)], HULL_C);
+    else pb.solid8([Q(-19, -0.15, t), Q(-12, -0.15, hullY(-12, sh) + 4.3), Q(-12, 0.15, hullY(-12, sh) + 4.3), Q(-19, 0.15, t)],
+      [Q(-19.5, -0.12, t + 2.2), Q(-15, -0.12, t + 1.6), Q(-15, 0.12, t + 1.6), Q(-19.5, 0.12, t + 2.2)], HULL_C);
+  };
+  const fins = sh.fins === 2 ? [[-1.8 * sh.scale, -2], [1.8 * sh.scale, 2]] : [[0, 0]];
+  fins.forEach(([fv, lean], i) => finAt(fv, lean, !(d.finBroken && i === 0)));
+  if (d.finBroken) {
     const s = -d.hatchS, v0 = s * 7;
     pb.solid8([P(-16, v0, 0), P(-9, v0 + s * 1, 0), P(-9, v0 + s * 1.3, 0), P(-16, v0 + s * 0.3, 0)], [P(-15.5, v0, 0.6), P(-9.5, v0 + s * 1, 0.4), P(-9.5, v0 + s * 1.3, 0.4), P(-15.5, v0 + s * 0.3, 0.6)], HULL_C);
   }
+  // (0.241) a broken back: a torn seam round the hull where the bow bent away, and plating sprung out of it
+  if (sh.kink) {
+    const a = ring(sh.kinkU), side = Math.sign(sh.kink);
+    for (let k = 0; k < 8; k++) { const p = a[k]; pb.seg(HULL_C, p, [p[0] + (R() - 0.5) * 0.6, p[1] + 0.2 + R() * 0.5, p[2] + (R() - 0.5) * 0.6]); }
+    const q = (dv: number, h: number) => P(sh.kinkU + 0.3, -side * (hullR(sh.kinkU, sh) + dv), h);
+    pb.solid8([q(0, 0.5), q(1.6, 0.2), q(1.6, 0.3), q(0, 0.6)], [q(0, 2.4), q(1.2, 1.6), q(1.2, 1.7), q(0, 2.5)], HULL_C);
+  }
 
   // ---- the hatch: a framed collar from the hull skin to the vestibule, a ramp down to the ground
-  const hs = d.hatchS, vIn = hs * 3.5, vOut = hs * hullR(d.hatchU) * 0.93, top = 3;
+  const hs = d.hatchS, vIn = hs * 3.5, vOut = hs * hullR(d.hatchU, sh) * 0.93, top = 3;
   for (const u of [hu0, hu1]) pb.solid8([P(u, vIn, 0), P(u, vOut, 0), P(u, vOut, 0.3), P(u, vIn, 0.3)].map((p) => p), [P(u, vIn, top), P(u, vOut, top), P(u, vOut, top + 0.3), P(u, vIn, top + 0.3)], HATCH);
   pb.face(P(hu0, vIn, top), P(hu1, vIn, top), P(hu1, vOut, top), P(hu0, vOut, top));
   pb.line(HATCH, P(hu0, vOut, 0), P(hu0, vOut, top), P(hu1, vOut, top), P(hu1, vOut, 0));

@@ -556,7 +556,7 @@ export function setEnterRuin(f: (id: number) => void) { enterRuin = f; }
 function loadRuinStruct(poi: Poi): Structure {
   const T = OW.terrain!, y = T.padY(poi), rm = generateRuin(T.world, poi, y);
   const grid = VoxelGrid.surface(rm.ops, rm.rect, y);
-  const { group, mesh } = voxelObject(grid, Infinity, OUTLINE);
+  const { group, mesh } = voxelObject(VoxelGrid.surface(rm.shown, rm.rect, y), Infinity, OUTLINE); // (0.241) the wall stones are drawn by world/temple.ts
   // fragments of the old paving
   const tlv: number[] = [];
   for (const t of rm.tiles) {

@@ -34,10 +34,15 @@ export interface TempleDeco {
   armPylons: Obelisk[];
   /** Rubble: rocks and broken blocks lying about. */
   rubble: { u: number; v: number; r: number; h: number; rot: number }[];
+  /** (0.241) The broken walls of the inner ring and the arms, a weathered stone per collision voxel column (world
+   *  cell x / z, the column's height): drawn as irregular many-sided stones (world/temple.ts), not as cubes. */
+  stones: { x: number; z: number; h: number }[];
 }
 export interface RuinMap {
   id: number; name: string; y: number; rect: Rect;
   ops: Op[];
+  /** (0.241) The ops that are drawn as voxels: all but the wall stones (TempleDeco.stones), which only collide. */
+  shown: Op[];
   portal: PortalSpec;
   /** Decorative floor fragments (brighter tiles), in world x/z. */
   tiles: { x: number; z: number }[];
@@ -70,10 +75,13 @@ export function generateRuin(world: number, poi: Poi, y: number): RuinMap {
   ops.push(...stairOpsFor(dir, m, c, false).map((op) => ({ ...op, y: op.y + y })));
 
   // The round inner wall and the four arms, broken: gaps, ragged heights, fallen stretches.
-  const occupied = new Set<string>(), put = (u: number, v: number, h: number) => {
+  const stones: TempleDeco['stones'] = [], stoneOps = new Set<Op>();
+  const occupied = new Set<string>(), put = (u: number, v: number, h: number, stone = true) => {
     if (h <= 0 || avenue(u, v) || !inRect(u, v) || (u >= -2 && u <= 15 && Math.abs(v) <= 9)) return;
     const k = u + ',' + v; if (occupied.has(k)) return; occupied.add(k);
-    const [x, z] = cell(u, v); ops.push({ op: 'solid', x, y, z, w: 1, h, d: 1 });
+    const [x, z] = cell(u, v), op: Op = { op: 'solid', x, y, z, w: 1, h, d: 1 };
+    ops.push(op);
+    if (stone) { stones.push({ x, z, h }); stoneOps.add(op); }
   };
   let hgt = 2;
   const ragged = () => { hgt = Math.max(0, Math.min(4, hgt + ri(-1, 1))); if (R() < 0.22) return 0; return hgt; };
@@ -93,13 +101,13 @@ export function generateRuin(world: number, poi: Poi, y: number): RuinMap {
     if (!inRect(u, s * 6) || R() < 0.2) continue; // some are simply gone
     const broken = R() < 0.6 ? 0.25 + R() * 0.5 : 0;
     obelisks.push({ u: u + (R() - 0.5), v: s * (6 + R() * 0.8), h: 9 + R() * 9, w: 1.6 + R() * 0.45, broken, fall: R() * 6.283, lu: (R() - 0.5) * 2.4, lv: (R() - 0.5) * 2.4 });
-    put(Math.round(u), s * 6, 3); put(Math.round(u) + 1, s * 6, 3);
+    put(Math.round(u), s * 6, 3, false); put(Math.round(u) + 1, s * 6, 3, false);
   }
   const armPylons: Obelisk[] = [];
   for (const [u, v] of [[7.5, -(ringR + 13)], [7.5, ringR + 13], [rc + ringR + 12, 0]] as [number, number][]) {
     if (!inRect(Math.round(u), Math.round(v)) || R() < 0.2) continue;
     armPylons.push({ u, v, h: 12 + R() * 10, w: 3 + R() * 0.9, broken: R() < 0.65 ? 0.25 + R() * 0.4 : 0, fall: R() * 6.283, lu: (R() - 0.5) * 1.2, lv: (R() - 0.5) * 1.2 });
-    for (let a = -1; a <= 1; a++) for (let b = -1; b <= 1; b++) put(Math.round(u) + a, Math.round(v) + b, 3);
+    for (let a = -1; a <= 1; a++) for (let b = -1; b <= 1; b++) put(Math.round(u) + a, Math.round(v) + b, 3, false);
   }
   const rubble: TempleDeco['rubble'] = [];
   for (let i = 0; i < 40; i++) {
@@ -114,7 +122,7 @@ export function generateRuin(world: number, poi: Poi, y: number): RuinMap {
   for (let u = -24; u < 0; u++) for (let v = -2; v <= 2; v++) if (R() < 0.55 && inRect(u, v)) { const [x, z] = cell(u, v); tiles.push({ x, z }); }
   const portal: PortalSpec = { key: 'D', dir, m, c, up: false, axis: along ? 'x' : 'z', y0: y };
   return {
-    id: poi.id, name: poi.name, y, rect: poi.rect, ops, portal, tiles,
-    temple: { frame: f, bodyW: 9.3, bodyH: 15 + R() * 6, jag, pylons, ring, frames: ri(1, 3), obelisks, armPylons, rubble },
+    id: poi.id, name: poi.name, y, rect: poi.rect, ops, shown: ops.filter((o) => !stoneOps.has(o)), portal, tiles,
+    temple: { frame: f, bodyW: 9.3, bodyH: 15 + R() * 6, jag, pylons, ring, frames: ri(1, 3), obelisks, armPylons, rubble, stones },
   };
 }

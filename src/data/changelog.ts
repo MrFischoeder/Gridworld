@@ -3,6 +3,13 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.241.0', date: '2026-10-21', title: 'Old script, weathered stones, wrecks that differ', notes: [
+    'The walls of the ruins\' labyrinths carry inscriptions in the old builders\' script, in the manner of the gate symbols: carved panels with a column of glyphs under a pointed head, or a single great glyph in a frame. They glow faintly, so you see them even in the dark.',
+    'Inside crashed ships the walls carry rows of the same script stencilled between two bars.',
+    'The broken walls round the alien temples are no longer rows of square blocks: every stone is a weathered, many-sided piece, leaning a little, its broken top sloping. You still bump into them where they stand.',
+    'Crashed ships no longer all look alike: some slid in on their bellies, some came down nose first with the tail high in the air, some broke their backs so the bow lies bent to one side; they come in different sizes, with one or two engines and one or two fins.',
+    'Multiplayer: everything comes from the world seed and is the same on every game; nothing new is sent and the server is unchanged.',
+  ] },
   { v: '0.240.0', date: '2026-10-21', title: 'Wildlife', notes: [
     'The wilds are alive: eight new animals graze, bask and wander the land, each where it belongs. You meet them far more often than the beasts that hunt you, and most of them want nothing to do with you.',
     'The five animals from the fauna designs now live in the game: herds of six-legged Hexastriders on the plains and savanna, the shaggy Ridgeback Bear in forests, taiga and mountains, the 22 m Banded Serpent in swamps and jungles, the Crestjaw lying by lakes and rivers, and now and then a 36 m Crown Titan walking the plains.',

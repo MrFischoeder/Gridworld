@@ -4,7 +4,7 @@
 import * as THREE from 'three';
 import { GRID } from './render';
 import { PropBatch } from './props';
-import { rng } from '../core/rng';
+import { rng, hash } from '../core/rng';
 import { templeXZ, type TempleDeco, type Obelisk } from '../gen/ruins';
 
 const STONE = GRID, GLYPH = 0x7dffc8;
@@ -41,6 +41,27 @@ export function solidDist(s: TempleSolid, x: number, z: number): number {
     best = Math.min(best, Math.hypot(a[0] + ex * t - x, a[1] + ez * t - z));
   }
   return inside ? 0 : best;
+}
+/**
+ * (0.241, the owner's report: too many cubes round the temples) A weathered wall stone over a 1 m collision column
+ * of height h: an irregular 6–8-sided prism (every side at least 0.71 m from the middle, so the cube stays inside),
+ * leaning a little, its broken top sloping and rising 0.15–0.6 m above the column, with a crack now and then.
+ */
+function wallStone(pb: PropBatch, x: number, y: number, z: number, h: number, seed: number) {
+  const R = rng(seed), n = 6 + Math.floor(R() * 3), rot = R() * 6.283, lx = (R() - 0.5) * 0.18, lz = (R() - 0.5) * 0.18;
+  const radius = Array.from({ length: n }, () => 0.84 + R() * 0.22), tilt = R() * 6.283, slope = 0.15 + R() * 0.35;
+  const ang = Array.from({ length: n }, (_, i) => rot + (i + (R() - 0.5) * 0.35) / n * 6.283);
+  const bot = ang.map((a, i) => [x + Math.cos(a) * radius[i], y - 0.15, z + Math.sin(a) * radius[i]]);
+  const mid = ang.map((a, i) => [x + lx + Math.cos(a) * radius[i] * 0.97, y + h, z + lz + Math.sin(a) * radius[i] * 0.97]);
+  const top = ang.map((a, i) => { const k = 0.62 + R() * 0.2; return [x + lx * 1.2 + Math.cos(a) * radius[i] * k, y + h + 0.15 + slope * (1 + Math.cos(a - tilt)) + R() * 0.12, z + lz * 1.2 + Math.sin(a) * radius[i] * k]; });
+  for (let i = 0; i < n; i++) {
+    const j = (i + 1) % n;
+    pb.face(bot[i], bot[j], mid[j], mid[i]); pb.face(mid[i], mid[j], top[j], top[i]);
+    pb.seg(STONE, bot[i], mid[i]); pb.seg(STONE, mid[i], top[i]); pb.seg(STONE, top[i], top[j]);
+    if (h > 1.5 && R() < 0.3) pb.seg(STONE, mid[i], mid[j]); // a course line on the taller ones
+  }
+  pb.face(...top);
+  if (R() < 0.35) { const i = Math.floor(R() * n), j = (i + 1) % n, m = (k: number, t: number) => bot[k].map((v, q) => v + (mid[k][q] - v) * t); pb.line(STONE, m(i, 0.15), m(j, 0.55).map((v, q) => (q === 1 ? v : (v + m(i, 0.55)[q]) / 2)), m(j, 0.85)); }
 }
 export function drawTemple(t: TempleDeco, seed: number): { g: THREE.Group; blocks: [number, number, number][]; solids: TempleSolid[] } {
   const pb = new PropBatch(), f = t.frame, R = rng(seed ^ 0x7e3b1), blocks: [number, number, number][] = [], solids: TempleSolid[] = [];
@@ -138,6 +159,9 @@ export function drawTemple(t: TempleDeco, seed: number): { g: THREE.Group; block
   { const s = R() < 0.5 ? -1 : 1, u0 = 4.5 + R() * 6, v0 = s * (W + 2 + R() * 3), l = 3.8 + R() * 3;
     solid([[u0, v0, -0.2], [u0 + l, v0 + s * 0.9, -0.2], [u0 + l, v0 + s * 3.9, -0.2], [u0, v0 + s * 3.3, -0.2]], [[u0 + 0.4, v0, 2.1], [u0 + l - 0.3, v0 + s * 1, 2.8], [u0 + l - 0.6, v0 + s * 3.4, 1.8], [u0 + 0.3, v0 + s * 3, 1.5]]);
     for (let q = 0.8; q < l; q += 1.6) block(u0 + q, v0 + s * 2, 2); }
+
+  // ---- (0.241) the broken walls: a weathered many-sided stone over each collision column (gen/ruins.ts `stones`)
+  for (const st of t.stones) wallStone(pb, st.x + 0.5, f.y, st.z + 0.5, st.h, hash(seed, st.x, st.z, 0x570e));
 
   // ---- rubble
   for (const r of t.rubble) { const [x, z] = templeXZ(f, r.u, r.v); pb.rock(x, f.y - 0.1, z, r.r, r.h, 4 + (r.rot * 10 | 0) % 3, r.rot, STONE); if (r.h > 0.6) blocks.push([x, z, r.r * 0.9]); solids.push({ c: [x, z, r.r * 0.85], hull: [], y0: f.y - 0.1, y1: f.y - 0.1 + r.h, x0: x - r.r, x1: x + r.r, z0: z - r.r, z1: z + r.r }); }
