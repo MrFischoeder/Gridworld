@@ -4,8 +4,8 @@
 // village's own goods (part of the same stock; the elder shares them). Below: what you have here, in your backpack,
 // your vehicles by it and crates set down on its floor, to store (one, or all of a kind, or everything). Only
 // materials and goods are kept (`storable`): weapons, medkits, food, tools and clothes go in your own house's chest.
-import { vehicles } from '../world/vehicles';
-import { unloadCargo, cargoVehicleInside, storable, hallStands } from '../gen/hall';
+import { vehicles, refreshBays } from '../world/vehicles';
+import { unloadCargo, unloadBays, cargoVehicleInside, storable, hallStands } from '../gen/hall';
 import { G, W } from '../game';
 import { scene } from '../world/render';
 import { ITEMS, type ItemKey } from '../data/items';
@@ -97,7 +97,7 @@ export function hallClick(t: HTMLElement): boolean {
     const why = serviceWhy(vid, 'warehouse'); // (0.215) no storekeepers or no power: carry the goods in by hand
     if (why) { render(why + ' ' + tl('Store your goods by hand meanwhile.')); return true; }
     const r = hallRect(vid), st = (G.char.towns[vid] ??= {}); let n = 0;
-    if (r && hallSpec(st).h >= 6) for (const v of vehicles) if (v.claimed && !v.ai && cargoVehicleInside(r, v.st, v.spec)) n += unloadCargo(st, v.st.trunk.items);
+    if (r && hallSpec(st).h >= 6) for (const v of vehicles) if (v.claimed && !v.ai && cargoVehicleInside(r, v.st, v.spec)) { n += unloadCargo(st, v.st.trunk.items) + unloadBays(st, v.st.bays); refreshBays(v); }
     calcStats(); saveChar(); refreshHall(vid); render(n ? TL`Unloaded ${n} items directly from vehicle trunks.` : tl('Park your vehicle fully inside, or make room in the hold.')); return true;
   }
   const out = t.closest<HTMLElement>('[data-hout]'), inn = t.closest<HTMLElement>('[data-hin]'), all = t.closest('[data-hall]');

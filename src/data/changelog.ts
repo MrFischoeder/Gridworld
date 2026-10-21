@@ -3,6 +3,15 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.247.0', date: '2026-10-21', title: 'Crates, barrels and a van', notes: [
+    'Crates and barrels move bulk. A crate holds one kind of building material (planks, stone, logs, ore, scrap and the like) and a barrel holds one liquid (diesel, lamp oil or milk). They are too big for the backpack: you carry one in your hands, slowly when it is full and heavy.',
+    'A wooden crate or barrel holds 60 litres; a steel one holds 100 litres in the same room. The blacksmith makes them: wooden ones from planks with nails or wire, steel ones from steel and scrap. Oskar also sells them.',
+    'Vehicles have cargo bays, one crate or barrel to a bay: the RTV-1 Scout has 2 in its open bed (you can see them), the new van 6 and the HTV-6 Mastodon 16. They sit under the trunk in the trunk window. Drop a crate from your hands onto a bay to load it, and click a bay to take its crate back into your hands. Drag a stack onto a crate to fill it, or drag the crate onto the trunk or the backpack to empty it.',
+    'With a crate or barrel in your hands, the backpack can fill it ("Into the crate") or empty it ("Empty into the backpack"). You can also put one down on the ground and pick it up again with its load.',
+    'A drum of diesel in a cargo bay refuels the vehicle first when you press R. The warehouse\'s "Unload vehicles" takes what the crates in the bays hold too, and leaves the empty crates aboard.',
+    'New vehicle: the UTV-3 Nomad, a utility van that sits between the jeep and the truck. It has a short bonnet, a cab with side windows, a closed cargo box with a sliding door and twin rear doors, a roof hatch for a gunner, and a red stripe. It has 6 cargo bays, a 14-slot trunk and a closed cab, and reaches 68 km/h. Kuba sells it for 600 gold in the old worlds, and in the new worlds builds it in his workshop from salvage. Some abandoned vehicles in the wilds are vans now, and raiders sometimes drive one.',
+    'Multiplayer: a vehicle\'s bays are its owner\'s, like the trunk. A crate goes from one player to another by hand or on the ground, and the server now keeps a dropped crate\'s load, so update the server. Other players see your van, but an older game shows it as a jeep. Not synced: the crates in a jeep\'s bed on another player\'s screen.',
+  ] },
   { v: '0.246.0', date: '2026-10-21', title: 'More life in the wilds', notes: [
     'More creatures turn up in the wilds: encounters come about twice as often, more of them may be about at once, and the next group can turn up while the last one is still a little way off.',
     'More wildlife roams the land too: up to eight herds and groups around you, checked more often.',

@@ -3,11 +3,11 @@ import { item, BULK, HANDS_ONLY, type ItemKey } from './data/items';
 import type { Slot } from './save';
 
 /** Worn parts (with a condition) never stack; everything else stacks up to its item's limit. */
-export const stackable = (a: Slot, b: Slot) => a.k === b.k && a.c === undefined && b.c === undefined;
+export const stackable = (a: Slot, b: Slot) => a.k === b.k && a.c === undefined && b.c === undefined && !a.b && !b.b;
 const maxOf = (k: ItemKey) => item(k).stack ?? 1;
 
 /** Total weight (kg) and bulk (litres) of what the slots hold. */
-export const weightOf = (slots: (Slot | null)[]) => slots.reduce((a, s) => a + (s ? BULK[s.k][0] * s.n : 0), 0);
+export const weightOf = (slots: (Slot | null)[]) => slots.reduce((a, s) => a + (s ? BULK[s.k][0] * s.n + (s.b ? BULK[s.b.k][0] * s.b.n : 0) : 0), 0); // (0.247) with what a crate or a barrel holds
 export const bulkOf = (slots: (Slot | null)[]) => slots.reduce((a, s) => a + (s ? BULK[s.k][1] * s.n : 0), 0);
 /**
  * How many more of k fit into a list holding at most `cap` litres (no cap: any number). Only the backpack has a cap,
@@ -36,7 +36,7 @@ export function putItems(slots: (Slot | null)[], k: ItemKey, n: number, cap?: nu
 }
 /** Puts a whole slot (e.g. a worn tire with its condition) somewhere in the list. Returns how many did not fit. */
 export function putSlot(slots: (Slot | null)[], s: Slot, cap?: number): number {
-  if (s.c === undefined) return putItems(slots, s.k, s.n, cap);
+  if (s.c === undefined && !s.b) return putItems(slots, s.k, s.n, cap);
   const f = slots.indexOf(null);
   if (f < 0 || roomFor(slots, s.k, cap) < 1) return s.n;
   slots[f] = { ...s }; return 0;

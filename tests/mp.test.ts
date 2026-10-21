@@ -289,6 +289,16 @@ describe('multiplayer server', () => {
     expect((await d.wait('welcome')).drops[0]).toMatchObject({ k: 'lwheel', c: 63, by: 'Ada' });
     d.ws.close();
   });
+  it('(0.247) a crate put down keeps its load', async () => {
+    const port = await server({ rooms: [{ id: 'main', name: 'Main', world: 11, time: 100 }] });
+    const a = await client(port, { name: 'Ada' }); await a.wait('welcome');
+    a.send({ t: 'drop', k: 'crateW', n: 1, p: [1, 1, 1], loc: 'o', b: { k: 'planks', n: 40 } });
+    a.send({ t: 'drop', k: 'crateW', n: 1, p: [2, 1, 1], loc: 'o', b: { k: '', n: 4 } });
+    const d1 = await a.wait('drop'), d2 = await a.wait('drop', 2);
+    expect(d1.d.b).toEqual({ k: 'planks', n: 40 });
+    expect(d2.d.b).toBeUndefined(); // nothing named: no load
+    a.ws.close();
+  });
   it('the shared world: the first who played it brings it, changes reach the others, a newcomer gets it all, it is kept', async () => {
     const port = await server({ rooms: [{ id: 'main', name: 'Main', world: 11, time: 100 }] });
     const a = await client(port, { name: 'Ada' }), wa = await a.wait('welcome');

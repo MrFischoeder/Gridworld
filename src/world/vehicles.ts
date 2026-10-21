@@ -5,7 +5,7 @@ import * as THREE from 'three';
 import { scene, camera, V, GRID } from './render';
 import { G } from '../game';
 import { PropBatch } from './props';
-import { VEHICLES, SEATS, HULL_BOXES, vehicleTitle, freshParts, upgradeParts, immobile, partPerformance, resaleValue, fuelBurn, outOfFuel, rangeKm, cansToFill, FUEL, isEV, evBurn, evRangeKm, energyOf, damageCondition, crashDamage, engineBoost, type VehicleSpec, type VehicleModel, type VehicleParts } from '../data/vehicles';
+import { VEHICLES, SEATS, HULL_BOXES, BAY_SPOTS, MODEL_ORDER, fitBays, vehicleTitle, freshParts, upgradeParts, immobile, partPerformance, resaleValue, fuelBurn, outOfFuel, rangeKm, cansToFill, FUEL, isEV, evBurn, evRangeKm, energyOf, damageCondition, crashDamage, engineBoost, type VehicleSpec, type VehicleModel, type VehicleParts } from '../data/vehicles';
 import { PART_PRICE, PART_BUYBACK } from '../data/items';
 import { rayWorld } from './player';
 import { foes, damageFoe } from './enemies';
@@ -18,6 +18,7 @@ import type { Terrain } from '../gen/terrain';
 import { regionOf, nearX } from '../gen/regions';
 import { RELIC_KEYS } from '../data/items';
 import { putItems } from '../inventory';
+import { CARGO, takeOut } from '../data/cargo';
 import { villageDist } from '../gen/regions';
 import type { VehicleState } from '../save';
 import { saveChar, takeOne } from '../character';
@@ -155,11 +156,49 @@ function mastodonBody(pb: PropBatch) {
 }
 
 /**
+ * (0.247) The UTV-3 Nomad, a utility van: a short bonnet, a cab with a raked windscreen and open side windows (you see
+ * who sits there), a closed cargo box behind with a sliding side door and twin rear doors, a roof hatch for the
+ * gunner between the two, and a stripe down its flanks.
+ */
+function vanBody(pb: PropBatch) {
+  box(pb, -1.15, 0.6, -3.05, 1.15, 1.6, 2.2); // the body below the windows
+  pb.solid8([[-1.1, 0.6, 2.2], [1.1, 0.6, 2.2], [1.1, 0.6, 3.1], [-1.1, 0.6, 3.1]], [[-1.1, 1.38, 2.2], [1.1, 1.38, 2.2], [1.05, 1.15, 3.05], [-1.05, 1.15, 3.05]], BODY); // bonnet
+  for (let x = -0.7; x <= 0.7; x += 0.2) pb.line(DETAIL, [x, 0.72, 3.11], [x, 1.05, 3.09]);
+  box(pb, -1.15, 0.6, 3.05, 1.15, 0.85, 3.25, DETAIL); // bumper
+  box(pb, -1.15, 1.6, -3.05, 1.15, 2.65, -0.1); // the cargo box
+  for (const [x0, x1] of [[-1.15, -0.95], [0.95, 1.15]]) {
+    box(pb, x0, 1.6, -0.1, x1, 2.65, 0.6); // round the hatch
+    box(pb, x0, 1.6, 0.6, x1, 2.65, 0.75); // B pillar
+    pb.solid8([[x0, 1.6, 1.85], [x1, 1.6, 1.85], [x1, 1.6, 2.2], [x0, 1.6, 2.2]], [[x0, 2.55, 1.55], [x1, 2.55, 1.55], [x1, 2.55, 1.85], [x0, 2.55, 1.85]], BODY); // A pillar, raked
+  }
+  box(pb, -0.95, 2.55, 0.6, 0.95, 2.65, 1.85); // cab roof
+  for (const [x0, z0, x1, z1] of [[-0.95, -0.1, -0.45, 0.6], [0.45, -0.1, 0.95, 0.6]]) box(pb, x0, 2.55, z0, x1, 2.65, z1); // beside the hatch
+  pb.line(DETAIL, [-0.45, 2.66, -0.1], [0.45, 2.66, -0.1], [0.45, 2.66, 0.6], [-0.45, 2.66, 0.6], [-0.45, 2.66, -0.1]);
+  // windows: the windscreen and the side windows of the cab
+  pb.line(GLASS, [-0.95, 1.62, 2.18], [0.95, 1.62, 2.18], [0.95, 2.52, 1.88], [-0.95, 2.52, 1.88], [-0.95, 1.62, 2.18]);
+  for (const x of [-1.16, 1.16]) pb.line(GLASS, [x, 1.65, 0.8], [x, 1.65, 1.8], [x, 2.5, 1.55], [x, 2.5, 0.8], [x, 1.65, 0.8]);
+  // the sliding side door, the rear doors, the stripe and the wheel arches
+  for (const x of [-1.16, 1.16]) {
+    pb.line(DETAIL, [x, 0.75, -1.9], [x, 2.5, -1.9]); pb.line(DETAIL, [x, 0.75, -0.2], [x, 2.5, -0.2]); pb.line(DETAIL, [x, 2.38, -1.9], [x, 2.38, -0.2]);
+    pb.line(0xff5a3c, [x, 1.25, -3.0], [x, 1.25, 2.2], [x, 1.18, 3.05]); pb.line(0xff5a3c, [x, 1.33, -3.0], [x, 1.33, 2.2]);
+  }
+  pb.line(DETAIL, [-1.0, 0.75, -3.06], [1.0, 0.75, -3.06], [1.0, 2.5, -3.06], [-1.0, 2.5, -3.06], [-1.0, 0.75, -3.06]); pb.line(DETAIL, [0, 0.75, -3.06], [0, 2.5, -3.06]);
+  for (const z of VEHICLES.van.axles) for (const sx of [-1, 1]) box(pb, sx * 0.98, 1.05, z - 0.62, sx * 1.2, 1.15, z + 0.62, DETAIL);
+  for (const x of [-0.75, 0.75]) pb.line(DETAIL, [x - 0.15, 0.95, 3.06], [x + 0.15, 0.95, 3.06], [x + 0.15, 1.05, 3.05], [x - 0.15, 1.05, 3.05], [x - 0.15, 0.95, 3.06]);
+  // seats and the wheel
+  for (const x of [-0.55, 0.55]) { box(pb, x - 0.28, 1.15, 0.95, x + 0.28, 1.22, 1.5, DETAIL); box(pb, x - 0.28, 1.15, 0.8, x + 0.28, 1.95, 0.95, DETAIL); }
+  steeringWheel(pb, VEHICLES.van.eye[0], SEATS.van[0]);
+}
+/** The body of a model. */
+function bodyOf(m: VehicleModel, pb: PropBatch) { if (m === 'scout') scoutBody(pb); else if (m === 'van') vanBody(pb); else mastodonBody(pb); }
+
+/**
  * (0.203) A vehicle's headlights: two lit lenses on its nose and a faint beam ahead of each, named 'headlights' so
  * whoever draws the vehicle can switch them (body coordinates, facing +z).
  */
+const LAMPS: Record<VehicleModel, [number, number]> = { scout: [1.0, 0.55], van: [1.12, 0.48], mastodon: [1.6, 0.9] };
 export function headlightModel(m: VehicleModel): THREE.Group {
-  const spec = VEHICLES[m], g = new THREE.Group(), z = spec.axles[0] + (m === 'scout' ? 1.0 : 1.6), y = spec.wheelR + (m === 'scout' ? 0.55 : 0.9);
+  const spec = VEHICLES[m], [dz, dy] = LAMPS[m], g = new THREE.Group(), z = spec.axles[0] + dz, y = spec.wheelR + dy;
   const lens = new THREE.MeshBasicMaterial({ color: 0xf6ffe0, fog: false, transparent: true, opacity: 0.95, blending: THREE.AdditiveBlending, depthWrite: false });
   const beam = new THREE.MeshBasicMaterial({ color: 0xe8ffd0, transparent: true, opacity: 0.07, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
   for (const sx of [-1, 1]) {
@@ -188,7 +227,7 @@ export function refreshLights(v: Vehicle) { const h = v.group.getObjectByName('h
  */
 export function convoyModel(model: VehicleModel, cannon: boolean, crew?: number): { g: THREE.Group; turret: THREE.Group | null; gunner: THREE.Group | null } {
   const spec = VEHICLES[model], g = new THREE.Group(), pb = new PropBatch();
-  if (model === 'scout') scoutBody(pb); else mastodonBody(pb);
+  bodyOf(model, pb);
   g.add(pb.build(), headlightModel(model));
   for (const z of spec.axles) for (const sx of [-1, 1]) { const w = wheelModel(model).clone(); w.position.set(sx * spec.track, spec.wheelR, z); g.add(w); }
   let turret: THREE.Group | null = null;
@@ -203,7 +242,7 @@ export function convoyModel(model: VehicleModel, cannon: boolean, crew?: number)
 }
 function makeVehicle(st: VehicleState, claimed = true): Vehicle {
   const spec = VEHICLES[st.model], group = new THREE.Group(), pb = new PropBatch();
-  if (st.model === 'scout') scoutBody(pb); else mastodonBody(pb);
+  bodyOf(st.model, pb);
   group.add(pb.build(), headlightModel(st.model));
   const wheels: Vehicle['wheels'] = [];
   spec.axles.forEach((z, ai) => {
@@ -216,9 +255,10 @@ function makeVehicle(st: VehicleState, claimed = true): Vehicle {
   });
   st.parts ??= freshParts(st.model); // saves from before vehicles had parts
   upgradeParts(st.model, st.parts);
+  st.bays = fitBays(st.model, st.bays);
   scene.add(group);
   const v: Vehicle = { st, spec, group, claimed, wheels, turret: null, riders: SEATS[st.model].map(() => null), speed: 0, spin: 0, steer: 0, y: 0, pitch: 0, roll: 0 };
-  refreshParts(v); refreshLights(v);
+  refreshParts(v); refreshLights(v); refreshBays(v);
   pose(v);
   return v;
 }
@@ -299,6 +339,30 @@ function turretModel(): THREE.Group {
   g.add(edgesOf(new THREE.CylinderGeometry(0.42, 0.42, 0.06, 10), turretMat));
   return g;
 }
+/**
+ * (0.247) The crates and barrels in an open bed (the jeep's): drawn where they stand, a crate with its planks or ribs,
+ * a barrel with its hoops; a full one with a gold lid line. Closed bodies hide theirs.
+ */
+export function refreshBays(v: Vehicle) {
+  const old = v.group.getObjectByName('bays');
+  if (old) { v.group.remove(old); old.traverse((o) => (o as THREE.Mesh).geometry?.dispose()); }
+  if (v.spec.enclosed || !v.st.bays?.some(Boolean)) return;
+  const pb = new PropBatch(), sp = BAY_SPOTS[v.st.model];
+  v.st.bays.forEach((s, i) => {
+    const at = sp.at[i]; if (!s || !at) return;
+    const [x, z] = at, y = sp.y, steel = s.k === 'crateM' || s.k === 'barrelM', c = steel ? 0x9fd8b0 : 0xb8b060;
+    if (CARGO[s.k]?.kind === 'barrel') {
+      const r = 0.26, h = 0.66, n = 10, P = (a: number, yy: number, rr = r) => [x + Math.cos(a) * rr, yy, z + Math.sin(a) * rr];
+      for (let k = 0; k < n; k++) { const a = k / n * 6.283, b = (k + 1) / n * 6.283; pb.face(P(a, y), P(b, y), P(b, y + h), P(a, y + h)); pb.face([x, y + h, z], P(b, y + h), P(a, y + h)); for (const yy of [y + 0.08, y + h / 2, y + h - 0.08]) pb.seg(c, P(a, yy, r * 1.02), P(b, yy, r * 1.02)); }
+    } else {
+      const w = 0.3, h = 0.56;
+      box(pb, x - w, y, z - w, x + w, y + h, z + w, c);
+      for (const yy of [y + h * 0.33, y + h * 0.66]) for (const sx of [-1, 1]) pb.line(c, [x + sx * (w + 0.01), yy, z - w], [x + sx * (w + 0.01), yy, z + w]);
+    }
+    if (s.b) pb.line(0xffd060, [x - 0.2, y + 0.68, z], [x + 0.2, y + 0.68, z]);
+  });
+  const g = pb.build(); g.name = 'bays'; v.group.add(g);
+}
 /** Wheels are permanent; only optional roof equipment is fitted or removed. */
 export function refreshParts(v: Vehicle) {
   v.wheels.forEach((w) => { ((w.g as THREE.Object3D).userData.pivot as THREE.Group).visible = true; });
@@ -348,8 +412,9 @@ export function pourCanister(v: Vehicle): string {
   const p = v.st.parts;
   if (isEV(p)) return tl('It runs on electricity: charge it at a charging post.');
   if (cansToFill(v.st.model, p.fuel) <= 0) return tl('The tank is nearly full.');
-  const t = v.st.trunk.items, i = t.findIndex((x) => x?.k === 'fuel');
-  if (i >= 0) { const x = t[i]!; if (--x.n <= 0) t[i] = null; }
+  const t = v.st.trunk.items, i = t.findIndex((x) => x?.k === 'fuel'), drum = (v.st.bays ?? []).find((x) => x?.b?.k === 'fuel'); // (0.247) a barrel of diesel in the cargo bay first
+  if (drum) takeOut(drum, 1);
+  else if (i >= 0) { const x = t[i]!; if (--x.n <= 0) t[i] = null; }
   else if (!takeOne('fuel')) return tl('You have no Fuel Canister, in the trunk or your backpack. Villages trade them.');
   p.fuel = Math.min(v.spec.tank, p.fuel + FUEL.can);
   saveChar();
@@ -495,7 +560,7 @@ export function spawnVehicles(h: WorldHooks) {
   for (const st of G.char.vehicles) { st.x = nearX(st.x, G.pos.x); vehicles.push(makeVehicle(st)); }
 }
 const emptyTrunk = (m: VehicleModel) => ({ items: Array(VEHICLES[m].trunk).fill(null), gold: 0 });
-const stateOf = (p: Parking): VehicleState => ({ ...p, parts: structuredClone(p.parts), trunk: emptyTrunk(p.model) });
+const stateOf = (p: Parking): VehicleState => ({ ...p, parts: structuredClone(p.parts), trunk: emptyTrunk(p.model), bays: fitBays(p.model, undefined) });
 
 // ---------- abandoned vehicles ----------
 const foundCache = new Map<string, Parking | null>();
@@ -594,7 +659,8 @@ export function useVehicle(s: VehicleSpot) {
   if (s.kind === 'service') { openService(s.v); return; }
   if (s.kind === 'trunk') {
     const v = s.v;
-    openTransfer({ title: vehicleTitle(v.st.model), subtitle: v.spec.role + ' · ' + v.spec.seats + ' seats', boxLabel: tl('Trunk'), box: v.st.trunk });
+    v.st.bays = fitBays(v.st.model, v.st.bays);
+    openTransfer({ title: vehicleTitle(v.st.model), subtitle: v.spec.role + ' · ' + v.spec.seats + ' seats', boxLabel: tl('Trunk'), box: v.st.trunk, bays: v.st.bays, onClose: () => { refreshBays(v); saveChar(); } });
     return;
   }
   const why = immobile(s.v.st.parts);
@@ -671,7 +737,7 @@ export function updateDriving(dt: number) {
   const want = wheel ? Math.max(-1, Math.min(1, (k.KeyW ? 1 : 0) - (k.KeyS ? 1 : 0) - stick.dy)) : 0;
   const dry = outOfFuel(v.st.parts), thr = dry ? 0 : want; // a dry tank: it only rolls and brakes
   if (dry && want) dryWarn();
-  if (!dry) hum('mine', 'engine', 0.32 + Math.abs(thr) * 0.12, (v.st.model === 'mastodon' ? 0.75 : 0.95) + Math.min(1.3, Math.abs(v.speed) / 18) + Math.abs(thr) * 0.1); // (0.212.1) your engine
+  if (!dry) hum('mine', 'engine', 0.32 + Math.abs(thr) * 0.12, (v.st.model === 'mastodon' ? 0.75 : v.st.model === 'van' ? 0.85 : 0.95) + Math.min(1.3, Math.abs(v.speed) / 18) + Math.abs(thr) * 0.1); // (0.212.1) your engine
   const steer = wheel ? Math.max(-1, Math.min(1, (k.KeyA ? 1 : 0) - (k.KeyD ? 1 : 0) - stick.dx)) : 0;
   const brake = wheel ? k.Space || G.touchJump : true;
   // throttle, rolling drag, brakes, and gravity along the slope
@@ -835,7 +901,7 @@ export function myCars(): number[][] {
   const out: number[][] = [];
   for (const v of myCarList()) {
     const r = (n: number) => Math.round(n * 100) / 100;
-    out.push([v.st.model === 'scout' ? 0 : 1, r(v.st.x), r(v.y), r(v.st.z), r(v.st.heading), r(v.pitch), r(v.roll), v.st.parts.gun ? 1 : 0, v === driving.v ? driving.seat + 1 : 0, r(v.turret?.rotation.y ?? 0), r(v.st.parts.hull / v.spec.hull * 100), v.st.lights ? 1 : 0]); // (0.203) [11] the headlights
+    out.push([MODEL_ORDER.indexOf(v.st.model), r(v.st.x), r(v.y), r(v.st.z), r(v.st.heading), r(v.pitch), r(v.roll), v.st.parts.gun ? 1 : 0, v === driving.v ? driving.seat + 1 : 0, r(v.turret?.rotation.y ?? 0), r(v.st.parts.hull / v.spec.hull * 100), v.st.lights ? 1 : 0]); // (0.203) [11] the headlights
   }
   return out;
 }

@@ -31,7 +31,7 @@
 //                                          shown by its name; a name of the fallen crew (shared `fallen`) or of another
 //                                          player here is refused
 //   {t:'chat', text}
-//   {t:'drop', k, n, c?, p:[x,y,z], loc, auto?}   auto: loot (kept `MP.lootTtl` h); taken like any drop
+//   {t:'drop', k, n, c?, p:[x,y,z], loc, auto?, b?:{k, n}}   auto: loot (kept `MP.lootTtl` h); taken like any drop; b: a crate's or a barrel's load (0.247)
 //   (was) {t:'drop', k, n, c?, p:[x,y,z], loc}   an item put down at your feet (taken out of your own kit first)
 //   {t:'take', id}                       pick a lying item up: only the first to ask gets it
 //   {t:'wset', seq, ch:[[field, key, value|null, baseline], ...]}   changes to the shared world (villages, bridges, chests...: see
@@ -303,6 +303,7 @@ export function createMp(log = (m) => console.log('[mp] ' + m), opts = {}) {
         const d = { id: 'd' + (dropSeq++).toString(36) + randomInt(1000, 9999).toString(36), k, n, p: m.p.slice(0, 3).map(num), loc: clean(m.loc, 80), by: me.name, at: Date.now() };
         if (typeof m.c === 'number' && Number.isFinite(m.c)) d.c = m.c;
         if (m.auto) d.auto = true; // loot (kills, felled trees...): lies only `MP.lootTtl` h
+        if (m.b && typeof m.b === 'object' && clean(m.b.k, 24)) d.b = { k: clean(m.b.k, 24), n: Math.max(1, Math.min(9999, Math.floor(num(m.b.n)))) }; // (0.247) what a crate or a barrel holds
         room.drops.set(d.id, d);
         all(room, { t: 'drop', d });
       } else if (m.t === 'take') {

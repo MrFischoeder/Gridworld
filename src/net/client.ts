@@ -52,7 +52,7 @@ export function peerAt(p: Peer, t: number): { a: PeerState; b: PeerState; k: num
 }
 /** An item lying in the room's world (server/mp.mjs): put down by `by`, at p in the place `loc` (see world/peers.ts myLoc). */
 /** `auto`: loot (a kill's drops, logs from a felled tree...) lying only a while (server `MP.lootTtl`); taken like any drop. */
-export interface NetDrop { id: string; k: string; n: number; c?: number; p: [number, number, number]; loc: string; by: string; at: number; auto?: boolean }
+export interface NetDrop { id: string; k: string; n: number; c?: number; p: [number, number, number]; loc: string; by: string; at: number; auto?: boolean; /** (0.247) a crate's or a barrel's load */ b?: { k: string; n: number } }
 let gotHook: ((d: NetDrop) => void) | null = null;
 /** Who receives an item the server handed you (world/drops.ts). */
 export function onGot(f: (d: NetDrop) => void) { gotHook = f; }
@@ -311,9 +311,9 @@ export function sendState(s: PeerState, time?: number) {
   net.ws.send(JSON.stringify({ t: 'state', ...s, ...(isHost() && time !== undefined ? { time } : {}) }));
 }
 /** Put an item down where you stand (already taken out of your kit). */
-export function sendDrop(k: string, n: number, c: number | undefined, p: [number, number, number], loc: string, auto = false): boolean {
+export function sendDrop(k: string, n: number, c: number | undefined, p: [number, number, number], loc: string, auto = false, b?: { k: string; n: number }): boolean {
   if (!online() || net.ws?.readyState !== 1) return false;
-  net.ws.send(JSON.stringify({ t: 'drop', k, n, c, p, loc, ...(auto ? { auto } : {}) }));
+  net.ws.send(JSON.stringify({ t: 'drop', k, n, c, p, loc, ...(auto ? { auto } : {}), ...(b ? { b } : {}) }));
   return true;
 }
 /** Ask for a lying item: the server answers 'got' if you were first, 'gone' if not. */

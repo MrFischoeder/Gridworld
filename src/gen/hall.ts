@@ -179,6 +179,16 @@ export function unloadCargo(s: TownState, slots: ({ k: ItemKey; n: number } | nu
   }
   return total;
 }
+/** (0.247) What the crates and barrels in a vehicle's cargo bays hold, into the hold (the empty crates stay aboard). */
+export function unloadBays(s: TownState, bays: ({ k: ItemKey; n: number; b?: { k: ItemKey; n: number } } | null)[] | undefined): number {
+  let total = 0;
+  for (const c of bays ?? []) {
+    if (!c?.b || !storable(c.b.k)) continue;
+    const n = deposit(s, c.b.k, c.b.n); total += n;
+    if ((c.b.n -= n) <= 0) delete c.b;
+  }
+  return total;
+}
 /** Whole vehicle footprint, including sideways parking, must fit inside the warehouse walls. */
 export function cargoVehicleInside(rect: { x0: number; x1: number; z0: number; z1: number }, at: { x: number; z: number; heading: number }, spec: { width: number; length: number }): boolean {
   const sn = Math.abs(Math.sin(at.heading)), cs = Math.abs(Math.cos(at.heading));

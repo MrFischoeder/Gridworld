@@ -1,7 +1,11 @@
 // Vehicle models. Dimensions in metres; the body is built from these in world/vehicles.ts.
 import type { ItemKey } from './items';
+import type { Slot } from '../save';
 import { tl } from '../i18n';
-export type VehicleModel = 'scout' | 'mastodon';
+export type VehicleModel = 'scout' | 'van' | 'mastodon';
+/** (0.247) The models by number, as the other players' cars travel (`PeerCar` [0]): never reorder, only append. */
+export const MODEL_ORDER: VehicleModel[] = ['scout', 'mastodon', 'van'];
+export const modelOf = (n: number): VehicleModel => MODEL_ORDER[n] ?? 'scout';
 
 export interface VehicleSpec {
   designation: string; name: string; role: string;
@@ -9,6 +13,8 @@ export interface VehicleSpec {
   seats: number;
   /** Trunk slots (one stack per slot, like the backpack). */
   trunk: number;
+  /** (0.247) Cargo bays: a crate or a barrel each (data/cargo.ts). */
+  bays: number;
   length: number; width: number; height: number;
   wheelR: number; wheelW: number;
   /** Wheel axle positions along the body (local z, forward is +z); each axle has a left and a right wheel. */
@@ -38,14 +44,22 @@ export interface VehicleSpec {
 export const VEHICLES: Record<VehicleModel, VehicleSpec> = {
   scout: {
     designation: 'RTV-1', name: tl('Scout'), role: tl('Reconnaissance vehicle'),
-    seats: 3, trunk: 8, length: 4.2, width: 2.1, height: 2.1, wheelR: 0.48, wheelW: 0.38,
+    seats: 3, trunk: 8, bays: 2, length: 4.2, width: 2.1, height: 2.1, wheelR: 0.48, wheelW: 0.38,
     axles: [1.35, -1.3], track: 0.92, maxSpeed: 22, accel: 9, turn: 1.9, enclosed: false, price: 350,
     eye: [0.42, 1.84, -0.12], door: [1.6, 0], rear: [0, -2.9], front: [0, 2.9], mount: [0, 2.12, -0.3], wheelItem: 'wheelL',
     hull: 120, tank: 60, fuelUse: 0.5, wade: 0.6,
   },
+  // (0.247) the van: between the jeep and the truck, a closed box on a short bonnet with a roof hatch for a gunner
+  van: {
+    designation: 'UTV-3', name: tl('Nomad'), role: tl('Utility van'),
+    seats: 3, trunk: 14, bays: 6, length: 6.2, width: 2.4, height: 2.7, wheelR: 0.52, wheelW: 0.36,
+    axles: [1.95, -1.75], track: 1.02, maxSpeed: 19, accel: 6.5, turn: 1.5, enclosed: true, price: 600,
+    eye: [0.55, 2.0, 1.25], door: [1.75, 1.3], rear: [0, -3.9], front: [0, 3.7], mount: [0, 2.68, 0.25], wheelItem: 'wheelL',
+    hull: 200, tank: 110, fuelUse: 0.9, wade: 0.8,
+  },
   mastodon: {
     designation: 'HTV-6', name: tl('Mastodon'), role: tl('Heavy transport vehicle'),
-    seats: 3, trunk: 24, length: 9.8, width: 3.6, height: 3.4, wheelR: 0.82, wheelW: 0.6,
+    seats: 3, trunk: 24, bays: 16, length: 9.8, width: 3.6, height: 3.4, wheelR: 0.82, wheelW: 0.6,
     axles: [3.3, -1.6, -3.4], track: 1.45, maxSpeed: 14, accel: 4.5, turn: 1.15, enclosed: true, price: 900,
     eye: [0.7, 2.75, 3.4], door: [2.4, 3.2], rear: [0, -5.6], front: [0, 5.8], mount: [0, 3.26, 3.0], wheelItem: 'wheelH',
     hull: 320, tank: 220, fuelUse: 1.5, wade: 1.2,
@@ -59,8 +73,24 @@ export const VEHICLES: Record<VehicleModel, VehicleSpec> = {
 export interface Seat { x: number; y: number; z: number; gun?: boolean }
 export const SEATS: Record<VehicleModel, Seat[]> = {
   scout: [{ x: 0.42, y: 1.02, z: -0.2 }, { x: -0.42, y: 1.02, z: -0.2 }, { x: 0, y: 1.0, z: -1.2, gun: true }],
+  van: [{ x: 0.55, y: 1.2, z: 1.2 }, { x: -0.55, y: 1.2, z: 1.2 }, { x: 0, y: 1.6, z: 0.25, gun: true }],
   mastodon: [{ x: 0.7, y: 1.9, z: 3.3 }, { x: -0.7, y: 1.9, z: 3.3 }, { x: 0, y: 2.2, z: 2.5, gun: true }],
 };
+/**
+ * (0.247) Where the crates and barrels stand in each body (x, z of a bay's middle; `y` the floor). The jeep's are in
+ * its open bed, so you see them; the van's and the truck's inside their closed boxes.
+ */
+export const BAY_SPOTS: Record<VehicleModel, { y: number; at: [number, number][] }> = {
+  scout: { y: 1.0, at: [[-0.38, -1.55], [0.38, -1.55]] },
+  van: { y: 0.7, at: [[-0.45, -2.6], [0.45, -2.6], [-0.45, -1.85], [0.45, -1.85], [-0.45, -1.1], [0.45, -1.1]] },
+  mastodon: { y: 1.45, at: Array.from({ length: 16 }, (_, i) => [-1.2 + (i % 4) * 0.8, -4.5 + Math.floor(i / 4) * 0.85] as [number, number]) },
+};
+/** A vehicle's cargo bays, sized to its model (older saves had none). */
+export function fitBays(m: VehicleModel, bays: (Slot | null)[] | undefined): (Slot | null)[] {
+  const b = bays ?? [];
+  while (b.length < VEHICLES[m].bays) b.push(null);
+  return b;
+}
 /**
  * The solid parts of each body as boxes [x0, y0, z0, x1, y1, z1] (body coordinates; the wheels are added from the
  * spec). A shot meets these or an occupant silhouette: both reduce the same vehicle condition pool.
@@ -70,6 +100,13 @@ export const HULL_BOXES: Record<VehicleModel, number[][]> = {
     [-0.82, 0.55, -1.95, 0.82, 1.0, 1.0], [-0.85, 0.6, 1.0, 0.85, 1.2, 2.08], [-0.3, 0.7, -2.12, 0.3, 1.3, -1.95],
     [-0.82, 1.0, -1.95, 0.82, 1.28, -1.85], [-0.82, 1.0, -1.95, -0.72, 1.28, -0.75], [0.72, 1.0, -1.95, 0.82, 1.28, -0.75],
     [-0.68, 0.95, -0.6, -0.16, 1.55, -0.45], [0.16, 0.95, -0.6, 0.68, 1.55, -0.45], // seat backs
+  ],
+  van: [
+    [-1.15, 0.6, -3.05, 1.15, 1.6, 2.2], [-1.1, 0.6, 2.2, 1.1, 1.35, 3.1], // the body below the windows, the bonnet
+    [-1.15, 1.6, -3.05, 1.15, 2.65, -0.1], // the cargo box
+    [-1.15, 1.6, -0.1, -0.95, 2.65, 0.6], [0.95, 1.6, -0.1, 1.15, 2.65, 0.6], // the walls round the gunner's hatch
+    [-0.95, 2.55, 0.6, 0.95, 2.65, 1.85], [-1.15, 1.6, 0.6, -0.95, 2.65, 0.75], [0.95, 1.6, 0.6, 1.15, 2.65, 0.75], // the cab's roof, B pillars
+    [-1.15, 1.6, 1.85, -0.95, 2.55, 2.2], [0.95, 1.6, 1.85, 1.15, 2.55, 2.2], // A pillars
   ],
   mastodon: [
     [-0.65, 0.95, -4.8, 0.65, 1.35, 4.4], [-1.78, 1.45, -4.95, 1.78, 3.4, 1.8], [-1.8, 0.95, 4.75, 1.8, 1.35, 5.0],
@@ -139,7 +176,7 @@ export const outOfFuel = (p: VehicleParts) => (isEV(p) ? p.ev! <= 0 : p.fuel <= 
  * a Lithium Battery Pack multiplies the capacity by `pack`. A charging post fills it from the village's spare power at
  * `price` gold a kWh. A fresh kit comes with `start` of its charge.
  */
-export const EV = { scout: { cap: 30, use: 0.2 }, mastodon: { cap: 100, use: 0.6 }, pack: 2, price: 3, idle: 0.0004, start: 0.25 } as const;
+export const EV = { scout: { cap: 30, use: 0.2 }, van: { cap: 60, use: 0.38 }, mastodon: { cap: 100, use: 0.6 }, pack: 2, price: 3, idle: 0.0004, start: 0.25 } as const;
 export const isEV = (p: VehicleParts) => p.ev !== undefined;
 export const evCap = (m: VehicleModel, p: VehicleParts) => EV[m].cap * (p.evPack ? EV.pack : 1);
 /** kWh used over `metres` with throttle `thr` plus `secs` at the wheel. */

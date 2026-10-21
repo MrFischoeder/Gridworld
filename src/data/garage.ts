@@ -18,6 +18,8 @@ export const GARAGE: GarageJob[] = [
   { car: 'scout', n: 1, hours: 8, needs: [['scrap', 24], ['parts', 4], ['gears', 4], ['engine', 2], ['circuit', 3]], blurb: tl('a light four-seater from salvage: a scrap frame, a rebuilt engine, a gearbox of found gears and wiring from old electronics') },
   { car: 'mastodon', n: 1, hours: 14, needs: [['scrap', 40], ['parts', 8], ['gears', 6], ['engine', 4], ['circuit', 5], ['steel', 6]], blurb: tl('a heavy truck with a closed cab: twice the engine, a steel chassis and a big trunk') },
   { out: 'repairkit', n: 2, hours: 2, needs: [['scrap', 4], ['parts', 1], ['circuit', 1]], blurb: tl('patches, clamps and spare wiring to mend a vehicle in the field') },
+  // (0.247) appended so the orders in progress keep their numbers
+  { car: 'van', n: 1, hours: 11, needs: [['scrap', 32], ['parts', 6], ['gears', 5], ['engine', 3], ['circuit', 4], ['planks', 10]], blurb: tl('a utility van with a closed box: six cargo bays for crates and barrels, a roof hatch for a gunner') },
 ];
 /** At most this many jobs at the workshop at once. */
 export const GARAGE_MAX = 2;

@@ -48,7 +48,7 @@ export interface Crystal { m: THREE.LineSegments; p: THREE.Vector3; v: THREE.Vec
  * `drop`: put down by a player (world/drops.ts): shared through the server (every pickup waits for E or the backpack's ground panel); `c` the
  * condition of a worn part, `by` who put it down, `taking` when you last asked the server for it.
  */
-export interface Pickup { g: THREE.Group; k: ItemKey; p: THREE.Vector3; age: number; warned?: boolean; rest?: boolean; n?: number; drop?: string; c?: number; by?: string; taking?: number; auto?: boolean }
+export interface Pickup { g: THREE.Group; k: ItemKey; p: THREE.Vector3; age: number; warned?: boolean; rest?: boolean; n?: number; drop?: string; c?: number; by?: string; taking?: number; auto?: boolean; /** (0.247) what a crate or a barrel lying here holds */ b?: { k: ItemKey; n: number } }
 export interface Chest { g: THREE.Group; lidPivot: THREE.Group; beam: THREE.Line; beamMat: THREE.LineBasicMaterial; i: number; open: boolean; anim: number }
 export interface Hatch { g: THREE.Group; rings: THREE.LineLoop[] }
 

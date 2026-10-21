@@ -106,7 +106,7 @@ import { updateBoats, inBoat, boatCamera } from './world/boats';
 import { initMp } from './ui/mp';
 import { updatePeers, ride, ghostOf, myLoc } from './world/peers';
 import { riding, updateRide, rideCamera } from './world/ride';
-import { SEATS } from './data/vehicles';
+import { SEATS, modelOf } from './data/vehicles';
 /** Riding at another player's cannon (the crosshair stays for aiming it). */
 const SEATS_GUN = () => { const o = ride.on, g = o ? ghostOf(o.owner, o.idx) : null; return !!g && !!SEATS[g.m][o!.seat]?.gun; };
 import { syncDrops, clearLocalDrops } from './world/drops';
@@ -196,7 +196,7 @@ addLights((out) => {
   // (0.203) headlights left on: your parked vehicles and the other players' (the one you drive throws its beam itself)
   if (G.char.loc === 'overworld') {
     for (const v of vehicles) if (v.st.lights && v !== driving.v && G.char.vehicles.includes(v.st)) { const s = headlightSpot(v.st.x, v.st.z, v.st.heading, v.st.model); out.push({ x: s.x, y: v.y + 1, z: s.z, r: 13, k: 'electric' }); }
-    for (const p of net.peers.values()) if (p.st?.loc === 'o') for (const c of p.st.cars ?? []) if (c[11]) { const s = headlightSpot(nearX(c[1], G.pos.x), c[3], c[4], c[0] ? 'mastodon' : 'scout'); out.push({ x: s.x, y: c[2] + 1, z: s.z, r: 13, k: 'electric' }); }
+    for (const p of net.peers.values()) if (p.st?.loc === 'o') for (const c of p.st.cars ?? []) if (c[11]) { const s = headlightSpot(nearX(c[1], G.pos.x), c[3], c[4], modelOf(c[0])); out.push({ x: s.x, y: c[2] + 1, z: s.z, r: 13, k: 'electric' }); }
   }
   for (const f of [...fireSpots(), ...campFires().map((c) => ({ x: c.x, y: c.y + 0.8, z: c.z }))]) out.push({ ...f, r: LIGHT.fire, k: 'fire' });
   for (const l of litLamps()) out.push({ ...l, r: LIGHT.village });

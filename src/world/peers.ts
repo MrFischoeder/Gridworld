@@ -13,7 +13,7 @@ import { myPod } from './crashpod';
 import { poseRig, type Kit } from './rig';
 import { net, sendState, isHost, SEND_EVERY, type PeerState, type PeerCar, peerAt, PEER_DELAY, onSeats } from '../net/client';
 import { convoyModel, seatFigure, myCars, toLocalOf, myCarList, driving, seatRider, unseat, gunSeat, leave } from './vehicles';
-import { VEHICLES, SEATS, type VehicleModel } from '../data/vehicles';
+import { VEHICLES, SEATS, MODEL_ORDER, type VehicleModel } from '../data/vehicles';
 import { nearX } from '../gen/regions';
 import { dungeonKey, offFree, offHeld } from '../character';
 import { WEAPON_KIND, type ItemKey } from '../data/items';
@@ -126,7 +126,7 @@ export interface Ghost {
   condition: number;
 }
 const ghosts = new Map<string, Ghost>();
-const MODELS: VehicleModel[] = ['scout', 'mastodon'];
+const MODELS: VehicleModel[] = MODEL_ORDER; // (0.247) the van is 2
 const ME_C = 0xd8ffe8;
 /** You riding in another player's vehicle (world/ride.ts runs it): whose, which of theirs, which seat, the cannon's yaw. */
 export const ride = { on: null as { owner: number; idx: number; seat: number } | null, gun: 0, cockpit: false };

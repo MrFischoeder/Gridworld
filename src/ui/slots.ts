@@ -6,6 +6,7 @@ import { NOURISH } from '../data/survival';
 import { bulkOf } from '../inventory';
 import { carriedKg, packVol, gear } from '../character';
 import { itemIcon } from './icons';
+import { CARGO, boxCap } from '../data/cargo';
 import { shortName } from './itemtip';
 import { tl, TL } from '../i18n';
 
@@ -23,18 +24,21 @@ export interface SlotView {
   fixed?: boolean;
   /** Tooltip; defaults to the item's name and description. */
   title?: string;
+  /** (0.247) What a crate or a barrel holds: a fill bar and the tooltip's line. */
+  b?: { k: ItemKey; n: number };
 }
 const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
 
 export function slotHTML(id: string, v: SlotView, selected = false): string {
   const it = v.k ? item(v.k) : null, cls = ['slot', it?.type ?? '', v.cls ?? '', selected ? 'sel' : '', v.k && !v.fixed ? 'drag' : ''].filter(Boolean).join(' ');
   const cnt = (v.n ?? 0) > 1 ? `<span class="n">${v.n}</span>` : '';
+  const fillBar = v.k && CARGO[v.k] && v.b ? `<i class="fill" style="width:${Math.round(Math.min(1, v.b.n / Math.max(1, boxCap(v.k, v.b.k))) * 100)}%"></i>` : '';
   const bar = v.c !== undefined ? `<i class="cond${v.c < 35 ? ' low' : ''}" style="width:${Math.max(0, Math.min(100, v.c))}%"></i>` : '';
   const title = v.title ?? (it ? `${it.name}: ${it.desc}${v.c !== undefined ? ` (${Math.round(v.c)}%)` : ''}` : v.hint ?? tl('Empty slot'));
   // an item: its icon and short name (the full sheet comes up on hover, ui/itemtip.ts); else the hint
   const face = v.text ?? (it && v.k ? `${itemIcon(v.k) || `<span class="ab">${it.ab}</span>`}<span class="nm">${shortName(v.k)}</span>` : v.hint ? `<span class="hint">${v.hint}</span>` : '');
-  const data = v.k ? ` data-k="${v.k}"${v.n && v.n > 1 ? ` data-n="${v.n}"` : ''}${v.c !== undefined ? ` data-c="${Math.round(v.c)}"` : ''}` : ` title="${esc(title)}"`;
-  return `<button class="${cls}${it && !v.text ? ' iconic' : ''}" data-id="${id}"${data} aria-label="${esc(title)}">${face}${cnt}${bar}</button>`;
+  const data = v.k ? ` data-k="${v.k}"${v.n && v.n > 1 ? ` data-n="${v.n}"` : ''}${v.c !== undefined ? ` data-c="${Math.round(v.c)}"` : ''}${v.b ? ` data-b="${v.b.k}:${v.b.n}"` : ''}` : ` title="${esc(title)}"`;
+  return `<button class="${cls}${it && !v.text ? ' iconic' : ''}" data-id="${id}"${data} aria-label="${esc(title)}">${face}${cnt}${bar}${fillBar}</button>`;
 }
 
 /** One line about an item for the detail area under the slots. */

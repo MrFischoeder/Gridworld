@@ -11,11 +11,12 @@ import { MASK } from '../gen/toxic';
 import { RARE_VALUE, isRare } from '../gen/deposits';
 import { usesOf } from '../data/uses';
 import { itemIcon } from './icons';
+import { CARGO, LIQUID, boxCap } from '../data/cargo';
 import { tl, TL, lang } from '../i18n';
 
 export const TYPE_NAME: Record<ItemType, string> = {
   relic: tl('Relic module'), cons: tl('Consumable'), key: tl('Key'), part: tl('Vehicle part'), quest: tl('Quest item'), attach: tl('Weapon attachment'),
-  mat: tl('Material'), tool: tl('Tool'), weapon: tl('Weapon'), wear: tl('Clothing and armour'), good: tl('Trade good'), ammo: tl('Ammunition'),
+  mat: tl('Material'), tool: tl('Tool'), weapon: tl('Weapon'), wear: tl('Clothing and armour'), good: tl('Trade good'), ammo: tl('Ammunition'), cargo: tl('Crate or barrel'),
 };
 const PREFIX = /^(Crate of |Sack of |Flask of |Barrel of |Bolt of |Churn of |Basket of |Cup of )/;
 /** The name shortened for a slot's label ("Sack of Grain" -> "Grain"). */
@@ -42,6 +43,9 @@ function attachLines(k: ItemKey): string[] {
 function statLines(k: ItemKey): string[] {
   const out: string[] = [], w = WEAR[k], f = NOURISH[k];
   const gun = GUNS[k], mel = MELEE[k];
+  { const cg = CARGO[k]; if (cg) out.push(cg.kind === 'barrel' // (0.247) crates and barrels
+    ? TL`holds ${cg.cap} litres of one liquid: ${boxCap(k, 'fuel')} Fuel Canisters, ${boxCap(k, 'lampoil')} Lamp Oil or ${boxCap(k, 'milk')} churns of milk`
+    : TL`holds ${cg.cap} litres of one kind of building stuff: ${boxCap(k, 'planks')} planks, ${boxCap(k, 'stone')} stones or ${boxCap(k, 'ironO')} lumps of ore`, tl('one takes a vehicle\'s cargo bay; fill it by dragging items onto it')); }
   if (gun) { const s = gun.base; out.push(TL`damage ${s.dmg}${gun.pellets ? ` × ${gun.pellets} pellets` : ''} a shot · ${(1 / s.interval).toFixed(s.interval > 0.5 ? 1 : 0)} shots/s`, TL`range ${s.range} m · magazine ${s.mag} · reload ${s.reload} s${s.zoom >= 2 ? ` · scope ${s.zoom}×` : ''}`, TL`fires ${ITEMS[gun.ammo].name} · heard ${s.noise} m away${gun.slots.length ? TL` · ${gun.slots.length} attachment slots` : ''}`); }
   if (mel) out.push(TL`damage ${mel.dmg} a swing · a swing every ${mel.rate} s · reach ${mel.reach} m`, TL`each swing costs ${mel.stamina === 1 ? '' : TL`${mel.stamina}× the `}stamina${mel.stamina === 1 ? '' : tl(' of a blade swing')}; exhausted: slower and half as strong`);
   const users = Object.values(GUNS).filter((g) => g!.ammo === k).map((g) => g!.name);
@@ -72,13 +76,14 @@ function priceLine(k: ItemKey): string {
 }
 
 /** The full tooltip for an item (n: how many in the stack, c: condition in percent). */
-export function itemTip(k: ItemKey, n = 1, c?: number): string {
+export function itemTip(k: ItemKey, n = 1, c?: number, b?: string): string {
   const it = ITEMS[k] as ItemDef | undefined;
   if (!it) return '';
   const [kg, l] = BULK[k] ?? [0, 0], stats = statLines(k), uses = usesOf(k), price = priceLine(k);
   let s = `<div class="tiphead">${itemIcon(k)}<div><b>${it.name}</b><div class="tiptype t-${it.type}">${TYPE_NAME[it.type]}</div></div></div>`;
   s += `<div class="tipdesc">${it.desc}</div>`;
   { const cl = classOf(k); if (cl) s += `<div class="tipline">class: ${CLASS_NAME[cl]}</div>`; }
+  if (CARGO[k]) { const [bk, bn] = (b ?? '').split(':'), ik = bk as ItemKey; s += `<div class="tipline">${ITEMS[ik] ? TL`holds ${ITEMS[ik].name} ×${bn} of ${boxCap(k, ik)}${LIQUID[ik] ? TL` (${Math.round(+bn * LIQUID[ik]!)} L)` : ''}` : tl('empty')}</div>`; }
   if (c !== undefined) s += `<div class="tipline">condition <span class="${c < 35 ? 'bad' : ''}">${Math.round(c)}%</span></div>`;
   if (stats.length) s += `<div class="tipstats">${stats.map((x) => `<div>${x}</div>`).join('')}</div>`;
   s += TL`<div class="tipline">${kg} kg · ${l} L each${n > 1 ? TL` · this stack: ${n} = ${+(kg * n).toFixed(2)} kg, ${+(l * n).toFixed(2)} L` : ''}${it.stack ? TL` · stacks to ${it.stack}` : ''}</div>`;
@@ -104,8 +109,8 @@ export function initItemTips() {
     if (e.pointerType === 'touch') return;
     const el = (e.target as HTMLElement | null)?.closest?.<HTMLElement>('[data-k]');
     if (!el || document.pointerLockElement || document.querySelector('.slot.ghost')) { hide(); return; }
-    const k = el.dataset.k as ItemKey, key = `${k}|${el.dataset.n ?? ''}|${el.dataset.c ?? ''}`;
-    if (key !== shown) { tip!.innerHTML = itemTip(k, +(el.dataset.n ?? 1) || 1, el.dataset.c ? +el.dataset.c : undefined); shown = key; }
+    const k = el.dataset.k as ItemKey, key = `${k}|${el.dataset.n ?? ''}|${el.dataset.c ?? ''}|${el.dataset.b ?? ''}`;
+    if (key !== shown) { tip!.innerHTML = itemTip(k, +(el.dataset.n ?? 1) || 1, el.dataset.c ? +el.dataset.c : undefined, el.dataset.b); shown = key; }
     tip!.style.display = 'block';
     place(e);
   });

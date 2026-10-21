@@ -48,7 +48,7 @@ export function regionVehicle(t: Terrain, rx: number, rz: number): Parking | nul
   if ((rx === 0 && rz === 0) || Math.abs(rz * REGION) > POLAR_Z) return null;
   const R = rng(hash(t.world, rx, rz, 0x7e41)), near = Math.abs(rx) <= 1 && Math.abs(rz) <= 1;
   if (R() > (near ? 0.5 : 0.3)) return null;
-  const model: VehicleModel = R() < 0.75 ? 'scout' : 'mastodon';
+  const pick = R(), model: VehicleModel = pick >= 0.75 ? 'mastodon' : hash(t.world, rx, rz, 0x7a4e) % 4 === 0 ? 'van' : 'scout'; // (0.247) a quarter of the jeeps are vans (its own hash: the draws stay)
   for (let i = 0; i < 8; i++) {
     const x = rx * REGION + (R() - 0.5) * 180, z = rz * REGION + (R() - 0.5) * 180, heading = R() * 6.283;
     if (inCity(t.world, x, z, 10) || !clearSpot(t, model, x, z, heading)) continue; // (the cities have their own wrecks)

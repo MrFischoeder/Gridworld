@@ -216,7 +216,7 @@ function renderVehicleShop(msg?: string) {
   panel().innerHTML = dlgHead() + TL`<div class="say">Your gold: <b>${G.char.gold}</b>${msg ? '<br>' + msg : ''}${salvage ? tl('<br>I have no new vehicles to sell, no engine parts and no fuel: nobody makes them any more, and fuel comes from a refinery. Bring me salvage and I build you one in the workshop.') : ''}</div>` +
     (salvage ? [] : Object.keys(VEHICLES) as VehicleModel[]).map((m) => {
       const s = VEHICLES[m];
-      return TL`<div class="shoprow"><div><b>${vehicleTitle(m)}</b><br><span>${s.role} · ${s.seats} seats · trunk ${s.trunk} · ${Math.round(s.maxSpeed * 3.6)} km/h · tank ${s.tank} L (~${Math.round(rangeKm(m, s.tank))} km)${s.enclosed ? tl(' · closed cab') : tl(' · open top')}</span></div>
+      return TL`<div class="shoprow"><div><b>${vehicleTitle(m)}</b><br><span>${s.role} · ${s.seats} seats · trunk ${s.trunk} · cargo bays ${s.bays} · ${Math.round(s.maxSpeed * 3.6)} km/h · tank ${s.tank} L (~${Math.round(rangeKm(m, s.tank))} km)${s.enclosed ? tl(' · closed cab') : tl(' · open top')}</span></div>
       <button class="buy" data-v="${m}" ${G.char.gold < s.price ? 'disabled' : ''}>${s.price} g</button></div>`;
     }).join('') +
     PARTS.filter((k) => !salvage || k !== 'engine' && k !== 'fuel').map((k) => `<div class="shoprow"><div>${itemName(k)}<br><span>${ITEMS[k].desc}</span></div>

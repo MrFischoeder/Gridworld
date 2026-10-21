@@ -1,5 +1,5 @@
 import { tl } from '../i18n';
-export type ItemType = 'relic' | 'cons' | 'key' | 'part' | 'quest' | 'attach' | 'mat' | 'tool' | 'weapon' | 'wear' | 'good' | 'ammo';
+export type ItemType = 'relic' | 'cons' | 'key' | 'part' | 'quest' | 'attach' | 'mat' | 'tool' | 'weapon' | 'wear' | 'good' | 'ammo' | 'cargo';
 export interface ItemDef { name: string; ab: string; type: ItemType; desc: string; stack?: number }
 
 export const ITEMS = {
@@ -216,6 +216,11 @@ export const ITEMS = {
   turbo: { name: tl('Turbocharger'), ab: 'TRB', type: 'part', desc: tl('engine upgrade: +15% top speed, +30% acceleration'), stack: 1 },
   eguard: { name: tl('Engine Guard'), ab: 'EGD', type: 'part', desc: tl('vehicle upgrade: armour plate that halves vehicle damage'), stack: 1 },
   plating: { name: tl('Hull Plating'), ab: 'HUL', type: 'part', desc: tl('armour plates that restore 40% vehicle condition (fit them at the front of the vehicle)'), stack: 5 },
+  // (0.247) crates and barrels for the vehicles' cargo bays (data/cargo.ts): carried in your hands, one a bay
+  crateW: { name: tl('Wooden Crate'), ab: 'CRT', type: 'cargo', desc: tl('a plank crate for building stuff: planks, stone, logs, ore, scrap. Holds 60 litres; it rides in a vehicle\'s cargo bay and is carried in your hands'), stack: 1 },
+  crateM: { name: tl('Steel Crate'), ab: 'SCR', type: 'cargo', desc: tl('a riveted steel crate: holds 100 litres of building stuff in the room of a wooden one. Rides in a vehicle\'s cargo bay, carried in your hands'), stack: 1 },
+  barrelW: { name: tl('Wooden Barrel'), ab: 'BRL', type: 'cargo', desc: tl('a hooped wooden barrel for liquids: fuel, lamp oil, milk. Holds 60 litres; it rides in a vehicle\'s cargo bay and is carried in your hands'), stack: 1 },
+  barrelM: { name: tl('Steel Drum'), ab: 'DRM', type: 'cargo', desc: tl('a steel drum for liquids: holds 100 litres in the room of a wooden barrel. A drum of diesel in the cargo bay refuels the vehicle (R)'), stack: 1 },
   cannon: { name: tl('Vehicle Cannon'), ab: 'CAN', type: 'part', desc: tl('roof-mounted gun for any vehicle; fire with the attack button while driving'), stack: 1 },
   reflex: { name: tl('Reflex Sight'), ab: 'RFX', type: 'attach', desc: 'optic: 1.6× zoom when aiming, +10 m range', stack: 1 },
   scope: { name: tl('Long Scope'), ab: 'SCP', type: 'attach', desc: 'optic: 3.5× zoom when aiming, +50 m range', stack: 1 },
@@ -253,7 +258,7 @@ export const BULK: Record<ItemKey, [kg: number, litres: number]> = {
   eggs: [6, 10], milk: [22, 20], microchip: [6, 6], powercell: [14, 8], sensor: [5, 6], ancalloy: [16, 6], ceramics: [12, 10], composite: [8, 12], aerocomp: [30, 30], avionics: [14, 14], lifesup: [40, 30], drillrig: [120, 60], rocketeng: [90, 60], precision: [10, 6], automation: [24, 12], nfuel: [30, 8], bauxite: [20, 10], sulfur: [14, 10], lithium: [12, 10], rareearth: [22, 8], uranium: [25, 8],
   sand: [20, 12], steel: [20, 8], copperbar: [20, 8], plastic: [12, 14], glass: [14, 12], cable: [10, 10], boards: [5, 8], parts: [15, 12], alloy: [20, 8], propellant: [15, 14],
   clay: [22, 10], limestone: [22, 10], lead: [24, 8], nickel: [22, 8], lumber: [14, 16], iron: [20, 8], bricks: [24, 12], cement: [25, 16], chems: [18, 16], aluminium: [8, 8], leadbar: [26, 6], batteries: [16, 10], fibre: [10, 16], wool: [8, 18], cotton: [9, 16], meat: [20, 16], motor: [30, 14], generator: [80, 40], pipes: [24, 20], gears: [26, 10], pump: [60, 30], chromite: [26, 10], rutile: [24, 10], pgmore: [22, 8], cutstone: [40, 24], advsteel: [20, 6], titanium: [12, 6], pgm: [10, 3], silicon: [10, 6], control: [8, 8], optics: [5, 6], hpe: [18, 12], computer: [16, 20], pcm: [24, 18],
-  wheelL: [12, 22], wheelH: [28, 36], engine: [8, 6], evkit: [16, 12], evpack: [10, 8], turbo: [6, 5], drivetrain: [9, 6], scanner: [0.4, 0.3], eguard: [5, 4], plating: [7, 5], cannon: [25, 30],
+  wheelL: [12, 22], wheelH: [28, 36], engine: [8, 6], evkit: [16, 12], evpack: [10, 8], turbo: [6, 5], drivetrain: [9, 6], scanner: [0.4, 0.3], eguard: [5, 4], plating: [7, 5], cannon: [25, 30], crateW: [9, 70], crateM: [16, 110], barrelW: [8, 65], barrelM: [14, 110],
   reflex: [0.3, 0.3], scope: [0.8, 1], barL: [1.2, 1], barR: [1, 0.8], barS: [0.9, 0.8], magX: [0.5, 0.4], magD: [1.2, 1],
 };
 /** What you wear, one piece per slot: which slot, and the share of every hit it takes off (pieces multiply). */
@@ -272,7 +277,7 @@ export const WEAPON_KIND: Partial<Record<ItemKey, 0 | 1>> = { blaster: 0, pistol
 /** Tools that work only from your hands (a hatchet in the backpack fells no tree); instruments like the compass work carried. */
 export const HAND_TOOLS = new Set<ItemKey>(['hatchet', 'pickaxe', 'hammer', 'saw', 'screwdriver', 'pliers', 'welder', 'torch', 'shovel']);
 /** Too big or awkward for the backpack: carried in your hands (and then you cannot hold a weapon). */
-export const HANDS_ONLY = new Set<ItemKey>(['wheelL', 'wheelH', 'cannon', 'benchkit', 'flagpole']);
+export const HANDS_ONLY = new Set<ItemKey>(['wheelL', 'wheelH', 'cannon', 'benchkit', 'flagpole', 'crateW', 'crateM', 'barrelW', 'barrelM']);
 /**
  * (0.201) Two hands: the weapon (or tool) in your main hand, and in the other (`Char.off`) a light or a shield. What
  * goes in the other hand, the share of a hit a shield takes, and what needs both hands (then the other hand's light
@@ -283,7 +288,7 @@ export const SHIELD: Partial<Record<ItemKey, number>> = { woodshield: 0.15, riot
 export const TWO_HANDED = new Set<ItemKey>(['blaster', 'smg', 'shotgun', 'rifle', 'spear', 'sledge', 'pickaxe', 'shovel', 'welder', ...HANDS_ONLY]);
 /** Weapons and gear Oskar sells. */
 /** Tools and building supplies: what Oskar (tools) and Zofia (supplies) charge. */
-export const TOOL_PRICE: Partial<Record<ItemKey, number>> = { hammer: 20, saw: 35, screwdriver: 10, pliers: 12, welder: 200, torch: 160, shovel: 25, turretkit: 350, bridgekit: 80, pierkit: 90 };
+export const TOOL_PRICE: Partial<Record<ItemKey, number>> = { hammer: 20, saw: 35, screwdriver: 10, pliers: 12, welder: 200, torch: 160, shovel: 25, turretkit: 350, bridgekit: 80, pierkit: 90, crateW: 25, barrelW: 30, crateM: 90, barrelM: 110 };
 export const SUPPLY_PRICE: Partial<Record<ItemKey, number>> = { nails: 3, rope: 6, wire: 5, codelock: 120, oillamp: 45, lampoil: 8, flashlight: 160, battery: 10, firebrand: 4, flare: 12 };
 export const GEAR_PRICE: Partial<Record<ItemKey, number>> = { blaster: 150, blade: 80, pistol: 140, shotgun: 240, machete: 60, spear: 45, sledge: 70, woodshield: 50, riotshield: 220, helmet: 60, vest: 120, armour: 260, gloves: 20, trousers: 30, boots: 40, furHood: 30, furCoat: 90, furMitts: 20, furTrousers: 45, furBoots: 40, desertRobe: 35, shemagh: 15 };
 /** The backpack: how much fits (litres), the load you carry easily, and beyond `max` you are overloaded (kg). */

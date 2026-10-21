@@ -25,14 +25,15 @@ import { fixShuttle, type ShuttleState } from './gen/shuttle';
 import type { Contract } from './gen/contracts';
 
 /** An item stack. `c` is the condition in percent of a used part (worn tires); such items do not stack. */
-export interface Slot { k: ItemKey; n: number; c?: number }
+/** `b` (0.247): what a crate or a barrel holds (data/cargo.ts), one kind of thing. */
+export interface Slot { k: ItemKey; n: number; c?: number; b?: { k: ItemKey; n: number } }
 /** Per-dungeon progress, keyed by dungeonKey() = "ruinId:depth:gx:gz". */
 export type Progress = Record<string, number[]>;
 /** Where in which dungeon the player is. In a cave system (`cave`), ruinId is the system's id; its mouths are kept so the way out is known. */
 export interface DungeonPos { ruinId: number; depth: number; gx: number; gz: number; /** (0.207) a hand-made level from the map editor, by name (world/custommaps.ts) */ custom?: string; cave?: { name: string; mouths: { x: number; z: number; face: number }[]; from: number } }
 /** Anything that holds items: a searched chest, a vehicle trunk. */
 export interface Container { items: (Slot | null)[]; gold: number }
-export interface VehicleState { id: string; model: VehicleModel; x: number; z: number; heading: number; trunk: Container; parts: VehicleParts; /** (0.203) its headlights are on */ lights?: boolean }
+export interface VehicleState { id: string; model: VehicleModel; x: number; z: number; heading: number; trunk: Container; parts: VehicleParts; /** (0.203) its headlights are on */ lights?: boolean; /** (0.247) the cargo bays: crates and barrels (data/cargo.ts), `VEHICLES[model].bays` long */ bays?: (Slot | null)[] }
 export interface Char {
   v: 3;
   /** The hero's name, entered in the menu before the first game (everyone calls you by it). */

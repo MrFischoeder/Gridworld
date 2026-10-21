@@ -8,7 +8,7 @@ import { driving, myCarList, myCars, vehicles, type Vehicle } from './vehicles';
 import { riding } from './ride';
 import { flushPeerState } from './peers';
 import { worldDist, wrapDx } from '../gen/regions';
-import { VEHICLES, SEATS } from '../data/vehicles';
+import { VEHICLES, SEATS, modelOf } from '../data/vehicles';
 import { showToast } from '../ui/hud';
 import type { Terrain } from '../gen/terrain';
 import { scene, disposeTree } from './render';
@@ -91,7 +91,7 @@ function landing(to: WorldGate, car: Vehicle | null, side: number): [number, num
   const length = car?.spec.length ?? 1, width = car?.spec.width ?? .8;
   const occupied = vehicles.filter(v => v !== car).map(v => ({ x: v.st.x, z: v.st.z, w: v.spec.width, l: v.spec.length, h: v.st.heading }));
   for (const p of net.peers.values()) if (p.st?.loc === 'o') for (const c of p.st.cars ?? []) {
-    const s = VEHICLES[c[0] === 1 ? 'mastodon' : 'scout']; occupied.push({ x: c[1], z: c[3], w: s.width, l: s.length, h: c[4] });
+    const s = VEHICLES[modelOf(c[0])]; occupied.push({ x: c[1], z: c[3], w: s.width, l: s.length, h: c[4] });
   }
   for (const offset of [0, width + 2, -width - 2]) {
     const point = gatePoint(to, offset, side * (length / 2 + 4));

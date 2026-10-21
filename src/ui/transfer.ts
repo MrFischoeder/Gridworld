@@ -5,7 +5,8 @@ import { play } from '../world/sound';
 import { online, lockContainer, unlockContainer, saveContainer, activeContainers, net } from '../net/client';
 import { G } from '../game';
 import { item, HANDS_ONLY, WEAPON_KIND } from '../data/items';
-import { moveStack, dropStack, countFree } from '../inventory';
+import { moveStack, dropStack, countFree, putItems } from '../inventory';
+import { isCargo, holds, packFrom, takeOut, CARGO } from '../data/cargo';
 import { stowHeld, packVol } from '../character';
 import type { Container, Slot } from '../save';
 import { $, showToast } from './hud';
@@ -16,6 +17,8 @@ import { tl, TL } from '../i18n';
 export interface TransferSpec {
   title: string; subtitle: string; boxLabel: string;
   box: Container;
+  /** (0.247) A vehicle's cargo bays (VehicleState.bays): crates and barrels, one a bay, shown under the trunk. */
+  bays?: (Slot | null)[];
   onClose?: () => void;
 }
 
@@ -23,18 +26,70 @@ const el = { side: $('packSide'), title: $('sideTitle'), sub: $('sideSub'), labe
 let spec: TransferSpec | null = null;
 let locked: string | null = null, opening = false;
 
-/** Slot lists by id prefix: b = the container, p = backpack, k = your back, h = your hands. */
-const list = (w: string): (Slot | null)[] => (w === 'b' ? spec!.box.items : w === 'h' ? G.char.hands : w === 'k' ? G.char.back : G.char.inv);
-const view = (s: Slot | null) => ({ k: s?.k ?? null, n: s?.n, c: s?.c });
-const mine = (w: string) => w === 'b' || w === 'p' || w === 'k' || w === 'h';
+/** Slot lists by id prefix: b = the container, c = a vehicle's cargo bays, p = backpack, k = your back, h = your hands. */
+const list = (w: string): (Slot | null)[] => (w === 'b' ? spec!.box.items : w === 'c' ? spec!.bays ?? [] : w === 'h' ? G.char.hands : w === 'k' ? G.char.back : G.char.inv);
+const view = (s: Slot | null) => ({ k: s?.k ?? null, n: s?.n, c: s?.c, b: s?.b });
+const mine = (w: string) => w === 'b' || w === 'c' || w === 'p' || w === 'k' || w === 'h';
 
 /** False (and the window shut) when the server took the container away from us. */
 function canTransfer() { if (locked && !activeContainers.has(locked)) { locked = null; closePack(); return false; } return true; }
 function takeGold() { if (!spec) return; G.char.gold += spec.box.gold; spec.box.gold = 0; }
 const save = () => { if (locked && spec) saveContainer(locked, spec.box); };
 
+/**
+ * (0.247) A drag or a click that involves the cargo bays ('c') or a crate / barrel: put one in a bay or take it out
+ * into your hands, fill one from a stack dragged onto it, empty one onto the trunk or the backpack. Returns the message,
+ * or null when the move is an ordinary one.
+ */
+function cargoMove(fw: string, i: number, tw: string, j: number): string | null {
+  const src = list(fw), s = src[i], dst = list(tw)[j];
+  if (!s) return '';
+  const name = item(s.k).name;
+  if (tw === 'c' && !isCargo(s.k)) { // a stack dropped on a crate in a bay: into it
+    if (!dst || !isCargo(dst.k)) return tl('Only crates and barrels go in the cargo bay.');
+    if (!holds(dst.k, s.k)) return CARGO[dst.k]!.kind === 'barrel' ? tl('A barrel takes only liquids: fuel, lamp oil, milk.') : tl('A crate takes building stuff: planks, stone, logs, ore, scrap and the like.');
+    if (dst.b && dst.b.k !== s.k) return TL`It already holds ${item(dst.b.k).name}: one kind of thing to a crate.`;
+    const m = packFrom(dst, src, i);
+    return m ? TL`${name} ×${m} into the ${item(dst.k).name}.` : TL`The ${item(dst.k).name} is full.`;
+  }
+  if (fw === 'c' && (tw === 'b' || tw === 'p')) { // a crate dragged onto the trunk or the backpack: emptied there
+    if (!s.b) return tl('It is empty.');
+    const k = s.b.k, left = putItems(list(tw), k, s.b.n, tw === 'p' ? packVol() : undefined), m = s.b.n - left;
+    takeOut(s, m);
+    return m ? TL`${item(k).name} ×${m} out of the ${name}${left ? TL` (${left} stay inside: no more room)` : ''}.` : tl('No room there.');
+  }
+  if (tw === 'c' || fw === 'c') { // between the bays and your hands, or bay to bay
+    if (fw === 'c' && tw === 'c') { src[i] = dst ?? null; list('c')[j] = s; return ''; }
+    if (tw === 'c' && fw !== 'h') return tl('Crates and barrels are carried in your hands.');
+    if (fw === 'c' && tw !== 'h') return tl('Take it in your hands.');
+    return fw === 'c' ? takeBay(i) : putBay(j);
+  }
+  if (tw === 'b' && isCargo(s.k) && spec!.bays) return tl('Crates and barrels ride in the cargo bay, not the trunk.');
+  return null;
+}
+/** The crate / barrel in bay i into your hands (what you held goes onto your back or into the backpack). */
+function takeBay(i: number): string {
+  const bays = spec!.bays!, s = bays[i], h = G.char.hands[0];
+  if (!s) return '';
+  if (h && isCargo(h.k)) { bays[i] = h; G.char.hands[0] = s; return TL`You swap the ${item(h.k).name} for the ${item(s.k).name}.`; }
+  const m = stowHeld(); if (m) return m;
+  G.char.hands[0] = s; bays[i] = null;
+  return TL`You carry the ${item(s.k).name} in your hands.`;
+}
+/** The crate / barrel in your hands into bay j (the first free one when j < 0). */
+function putBay(j: number): string {
+  const bays = spec!.bays!, h = G.char.hands[0];
+  if (!h || !isCargo(h.k)) return tl('Carry a crate or a barrel in your hands to load it.');
+  if (j < 0) j = bays.indexOf(null);
+  if (j < 0) return tl('Every cargo bay is taken.');
+  const old = bays[j];
+  bays[j] = h; G.char.hands[0] = old ?? null;
+  return TL`You load the ${item(h.k).name} into the cargo bay.`;
+}
+
 const box: PackSide = {
   prefix: 'b',
+  prefixes: ['c'],
   act: ['store', tl('Store')],
   render() {
     if (!spec) return;
@@ -42,7 +97,7 @@ const box: PackSide = {
     el.side.classList.remove('ground');
     el.title.textContent = spec.title; el.sub.textContent = spec.subtitle;
     el.label.textContent = `${spec.boxLabel} (${b.items.length - countFree(b.items)}/${b.items.length})`;
-    el.grid.innerHTML = b.items.map((s, i) => slotHTML('b:' + i, view(s))).join('');
+    el.grid.innerHTML = b.items.map((s, i) => slotHTML('b:' + i, view(s))).join('') + (spec.bays ? `<div class="bayhead">${TL`Cargo bay (${spec.bays.filter(Boolean).length}/${spec.bays.length}): crates and barrels, carried in your hands`}</div>` + spec.bays.map((s, i) => slotHTML('c:' + i, { ...view(s), hint: tl('Bay') })).join('') : '');
     el.gold.innerHTML = b.gold > 0 ? TL`Gold: ${b.gold}<button data-gold="1">Take gold</button>` : '';
     el.all.textContent = tl('Take all');
     el.all.style.display = b.items.some(Boolean) || b.gold > 0 ? '' : 'none';
@@ -50,7 +105,9 @@ const box: PackSide = {
   drop(from, to) {
     if (!spec || !canTransfer()) return '';
     const [fw, i] = parseId(from), [tw, j] = parseId(to);
-    if (!mine(fw) || !mine(tw)) return fw === 'b' ? tl('Put it in your backpack first.') : tl('Take it off into your backpack first.');
+    if (!mine(fw) || !mine(tw)) return fw === 'b' || fw === 'c' ? tl('Put it in your backpack first.') : tl('Take it off into your backpack first.');
+    const cm = cargoMove(fw, i, tw, j);
+    if (cm !== null) { save(); return cm; }
     const src = list(fw), s = src[i];
     if (!s) return '';
     const name = item(s.k).name, dst = list(tw)[j];
@@ -64,8 +121,10 @@ const box: PackSide = {
   click(id) {
     if (!spec || !canTransfer()) return '';
     const [w, i] = parseId(id), src = list(w), s = src[i];
+    if (w === 'c') return s ? takeBay(i) : putBay(i); // (0.247) the cargo bays
     if (!s) return '';
     const name = item(s.k).name;
+    if (isCargo(s.k) && w !== 'b' && spec.bays) return putBay(-1);
     if (w === 'b' && HANDS_ONLY.has(s.k)) { // too big for the backpack: into your hands (a weapon you held goes onto your back)
       const m = stowHeld(); if (m) return m;
       G.char.hands[0] = { ...s, n: 1 }; if (--s.n <= 0) src[i] = null;

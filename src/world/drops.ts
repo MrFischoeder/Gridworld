@@ -33,10 +33,10 @@ export function dropAtFeet(s: Slot) {
   const r = Math.min(1.1, 0.32 * Math.sqrt(n)), a = n * 2.39996 + G.yaw;
   const x = cx + Math.cos(a) * r, z = cz + Math.sin(a) * r;
   const p: [number, number, number] = [x, G.pos.y + 0.6, z], loc = myLoc();
-  if (sendDrop(s.k, s.n, s.c, p, loc)) recent.push([cx, cz, now]);
+  if (sendDrop(s.k, s.n, s.c, p, loc, false, s.b)) recent.push([cx, cz, now]);
   else {
     const id = 'local:' + ++seq;
-    local.set(id, { id, k: s.k, n: s.n, c: s.c, p, loc, by: G.char.name || 'you', at: Date.now() });
+    local.set(id, { id, k: s.k, n: s.n, c: s.c, p, loc, by: G.char.name || 'you', at: Date.now(), ...(s.b ? { b: { ...s.b } } : {}) });
   }
   logLine(TL`You put down ${label(s.k, s.n)}.`);
   syncDrops(true);
@@ -46,6 +46,10 @@ export function dropAtFeet(s: Slot) {
 function give(d: NetDrop): boolean {
   const k = d.k as ItemKey, c = G.char;
   if (!ITEMS[k]) return false;
+  if (d.b && ITEMS[d.b.k as ItemKey]) { // (0.247) a crate or a barrel with its load: into your hands as it was
+    if (!addItem(k, 1) || c.hands[0]?.k !== k) return false;
+    c.hands[0].b = { k: d.b.k as ItemKey, n: d.b.n }; handsChanged(); return true;
+  }
   if (d.c === undefined) return !!addItem(k, d.n);
   if (HANDS_ONLY.has(k)) { if (!addItem(k, 1)) return false; c.hands[0] = { k, n: 1, c: d.c }; handsChanged(); return true; }
   const i = c.inv.indexOf(null);
@@ -56,7 +60,7 @@ function took(d: NetDrop) {
   if (give(d)) { saveChar(); logLine(TL`Picked up ${label(d.k, d.n)}${d.by && d.by !== G.char.name && !d.auto ? TL` (left by ${d.by})` : ''}.`); }
   else { // no room after all: it goes back down where it was
     showToast(tl('No room for it')); logLine(TL`No room for ${label(d.k, d.n)}: it stays on the ground.`);
-    if (!sendDrop(d.k, d.n, d.c, d.p, d.loc)) local.set(d.id, d); // (now only for E, so it is not taken again at once)
+    if (!sendDrop(d.k, d.n, d.c, d.p, d.loc, false, d.b)) local.set(d.id, d); // (now only for E, so it is not taken again at once)
   }
   syncDrops(true);
 }
@@ -109,7 +113,7 @@ export function syncDrops(now = false, dt = 0) {
     if (d.loc !== here || shown.has(d.id) || !ITEMS[d.k as ItemKey]) continue;
     const x = here === 'o' ? nearX(d.p[0], G.pos.x) : d.p[0];
     const p = drawPickup(new THREE.Vector3(x, d.p[1], d.p[2]), d.k as ItemKey, d.n);
-    p.drop = d.id; p.c = d.c; p.by = d.by; p.age = d.auto ? 0 : 1; p.auto = d.auto;
+    p.drop = d.id; p.c = d.c; p.by = d.by; p.age = d.auto ? 0 : 1; p.auto = d.auto; if (d.b) p.b = d.b as Pickup['b'];
     shown.set(d.id, p);
   }
 }

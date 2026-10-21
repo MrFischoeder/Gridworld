@@ -51,9 +51,9 @@ function spawnRaider(model: VehicleModel, x: number, z: number, heading: number,
   const v = spawnAIVehicle({ id: 'raider-' + Math.random().toString(36).slice(2, 8), model, x, z, heading, parts, trunk: { items: Array(VEHICLES[model].trunk).fill(null), gold: 0 } });
   const s = v.spec, crewHp = SEATS[model].map(() => 0);
   // a driver and a gunner; a Mastodon carries a third man beside the driver
-  for (const i of [0, gunSeat(model), ...(model === 'mastodon' ? [1] : [])]) { seatRider(v, i, 'raider', BANDIT); crewHp[i] = Math.round(5 * (1 + level * 0.35)); }
+  for (const i of [0, gunSeat(model), ...(model !== 'scout' ? [1] : [])]) { seatRider(v, i, 'raider', BANDIT); crewHp[i] = Math.round(5 * (1 + level * 0.35)); }
   const g = new THREE.Group(); scene.add(g);
-  const hp = Math.round((model === 'mastodon' ? 60 : 30) * (1 + level * 0.3));
+  const hp = Math.round((model === 'mastodon' ? 60 : model === 'van' ? 45 : 30) * (1 + level * 0.3));
   const r: Raider = { kind: 'raider', v, g, p: new THREE.Vector3(), r: Math.max(s.length, s.width) * 0.45, hp, maxHp: hp, level,
     fireT: 2, burst: 0, orbit: Math.random() < 0.5 ? 1 : -1, ramT: 0, plan: 'chase', planT: 0, crewHp };
   raiders.push(r);
@@ -80,7 +80,7 @@ function spawnRaidersMaybe(dt: number) {
   for (let i = 0; i < 10; i++) {
     // (0.235, stage L1) far behind, out of everyone's sight: you hear the engine before you see the car
     const a = back + (Math.random() - 0.5) * 1.2, d = SPAWN.raiders[0] + Math.random() * (SPAWN.raiders[1] - SPAWN.raiders[0]);
-    const x = G.pos.x + Math.sin(a) * d, z = G.pos.z + Math.cos(a) * d, model: VehicleModel = Math.random() < 0.2 ? 'mastodon' : 'scout';
+    const x = G.pos.x + Math.sin(a) * d, z = G.pos.z + Math.cos(a) * d, rm = Math.random(), model: VehicleModel = rm < 0.15 ? 'mastodon' : rm < 0.35 ? 'van' : 'scout';
     if (env.forbidden(x, z) || !farFromPlayers(x, z, SPAWN.raiders[0] * 0.8) || !hiddenFrom(x, env.terrain.heightAt(x, z), z, 2.5) || !clearSpot(env.terrain, model, x, z, a + Math.PI)) continue;
     spawnRaider(model, x, z, a + Math.PI, lv);
     return;
@@ -357,7 +357,7 @@ export function updateRaiders(dt: number) {
   if (!env) return;
   spawnRaidersMaybe(dt); tryAmbush(dt); updateAmbushes();
   for (const r of [...raiders]) {
-    if (G.playing) engineAt('raider:' + raiders.indexOf(r), r.p, dt, r.v.st.model === 'mastodon', 0.6);
+    if (G.playing) engineAt('raider:' + raiders.indexOf(r), r.p, dt, r.v.st.model !== 'scout', 0.6);
     const rm = remoteOf(r);
     if (rm) { // another player's raider: it drives where its owner says
       const v = r.v, k = Math.min(1, dt * 7), far = Math.hypot(rm.x - v.st.x, rm.z - v.st.z) > 30;

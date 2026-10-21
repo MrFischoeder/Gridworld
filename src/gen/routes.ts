@@ -31,7 +31,7 @@ export const ROUTE = {
   /** The convoy's pace (m a game minute) and the time to load or unload at each end (min). */
   speed: 12, load: 30,
   /** Crates a truck carries. */
-  cap: { scout: 8, mastodon: 30 } as Record<VehicleModel, number>,
+  cap: { scout: 8, van: 18, mastodon: 30 } as Record<VehicleModel, number>,
   /** A robbery on a trip: base chance, more with the danger half way, less with a roof cannon; the hull's share lost. */
   rob: 0.03, robPer: 0.025, robMax: 0.35, cannon: 0.6, hurt: 0.3,
   /** How far behind the settling may fall before old trips are skipped. */
