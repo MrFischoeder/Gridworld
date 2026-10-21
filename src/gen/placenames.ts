@@ -28,3 +28,15 @@ const pair = (A: string[], B: string[], k: number) => A[Math.floor(k / N)] + ' '
 export const ruinTitle = (world: number, i: number) => pair(RUIN_A, RUIN_B, nameIndex(world, 0x7a11, i));
 /** The ship wrecked in the region with this index, e.g. 'Astra Adventurer'. */
 export const shipTitle = (world: number, i: number) => pair(SHIP_A, SHIP_B, nameIndex(world, 0x5ce1, i));
+
+// (0.243) Caves take the ruins' pairs from a range of indices no ruin uses (ruins stay below ROWS × columns), so a
+// cave never shares a ruin's name; one mouth a region, a linked system keeps its first mouth's name.
+const CAVE_OFF = ROWS * 470;
+/** The cave of the region with this index (see `regionIndex`), e.g. 'Dunmere Hollow'. */
+export const caveTitle = (world: number, i: number) => pair(RUIN_A, RUIN_B, nameIndex(world, 0x7a11, CAVE_OFF + i));
+const STRIDES = [3, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47];
+/** The i-th dead city's name: one of the ruins' first parts, never the same for two cities of a world, e.g. 'Valken'. */
+export function cityTitle(world: number, i: number): string {
+  const s = STRIDES[hash(world, 0xc17a, 1) % STRIDES.length], o = hash(world, 0xc17a, 2) % N;
+  return RUIN_A[(o + i * s) % N];
+}

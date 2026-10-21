@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { NAME_PARTS, nameIndex, regionIndex, ruinTitle, shipTitle, NAME_ROWS } from '../src/gen/placenames';
+import { NAME_PARTS, nameIndex, regionIndex, ruinTitle, shipTitle, caveTitle, cityTitle, NAME_ROWS } from '../src/gen/placenames';
+import { citySites } from '../src/gen/cities';
 import { NR, regionInfo, POLE_Z, REGION } from '../src/gen/regions';
 
 describe('(0.242) names of ruins and wrecks', () => {
@@ -29,5 +30,16 @@ describe('(0.242) names of ruins and wrecks', () => {
     expect(n).toBeGreaterThan(20);
     const a = regionInfo(4242, 5, 3).pois.map((p) => p.name), b = regionInfo(4242, 5 + NR, 3).pois.map((p) => p.name);
     expect(b).toEqual(a);
+  });
+  it('(0.243) caves never share a name with each other or a ruin; cities never with each other', () => {
+    const rn = new Set<string>(), cn = new Set<string>();
+    for (let rz = -118; rz <= 118; rz++) for (let cx = 0; cx < NR; cx++) { const i = regionIndex(cx, rz, NR); rn.add(ruinTitle(3, i)); cn.add(caveTitle(3, i)); }
+    expect(cn.size).toBe(237 * NR);
+    for (const c of cn) expect(rn.has(c)).toBe(false);
+    const cities = Array.from({ length: 40 }, (_, i) => cityTitle(3, i));
+    expect(new Set(cities).size).toBe(40);
+    const sites = citySites(12345);
+    expect(new Set(sites.map((c) => c.name.split(' ')[0])).size).toBe(sites.length);
+    for (const c of sites) expect(NAME_PARTS.ruinA).toContain(c.name.split(' ')[0]);
   });
 });

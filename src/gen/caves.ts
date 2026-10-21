@@ -4,7 +4,9 @@
 // come out at the other. The inside is gen/cavegen.ts. Pure and deterministic, per region; drawn by world/caves.ts.
 import { rng, hash } from '../core/rng';
 import { customWorld, placesIn } from './customworld';
-import { REGION, CHUNK, wrapR, ruinName } from './regions';
+import { REGION, CHUNK, wrapR, ruinName, NR } from './regions';
+import { caveTitle, regionIndex } from './placenames'; // (0.243) the old name's draws stay, so the mouth's size is unchanged
+const R0C = -(NR >> 1);
 import { mountainMask } from './mountains';
 import { inSea } from './seas';
 import { nearRiver } from './rivers';
@@ -38,7 +40,7 @@ function rawCaves(t: Terrain, rx: number, rz: number): Cave[] {
     if (p) {
       const h = (px: number, pz: number) => t.base(px, pz), gx = h(p.x + 4, p.z) - h(p.x - 4, p.z), gz = h(p.x, p.z + 4) - h(p.x, p.z - 4);
       const id = hash(t.world, rx, rz, 0xca7e);
-      out.push({ id, name: p.name ?? TL`${ruinName(R)} Cave`, sys: id, other: null, mouth: 0, x: p.x, z: p.z, y: h(p.x, p.z), face: Math.hypot(gx, gz) > 0.01 ? Math.atan2(-gz, -gx) : 0, w: 3.6 + R() * 1.4, h: 3 + R() });
+      out.push({ id, name: p.name ?? TL`${(ruinName(R), caveTitle(t.world, regionIndex(rx - R0C, rz, NR)))} Cave`, sys: id, other: null, mouth: 0, x: p.x, z: p.z, y: h(p.x, p.z), face: Math.hypot(gx, gz) > 0.01 ? Math.atan2(-gz, -gx) : 0, w: 3.6 + R() * 1.4, h: 3 + R() });
     }
   } else if (mountainMask(t.world, cx, cz) + mountainMask(t.world, cx + 90, cz) + mountainMask(t.world, cx, cz + 90) > 0.2 && R() < 0.45) {
     for (let tries = 0; tries < 30; tries++) {
@@ -53,7 +55,7 @@ function rawCaves(t: Terrain, rx: number, rz: number): Cave[] {
       const front = (y - h(x - ux * 8, z - uz * 8)) / 8, behind = h(x + ux * 9, z + uz * 9) - y;
       if (front > 0.55 || front < -0.2 || behind < 6) continue;
       const id = hash(t.world, rx, rz, 0xca7e);
-      out.push({ id, name: TL`${ruinName(R)} Cave`, sys: id, other: null, mouth: 0, x, z, y, face: Math.atan2(-uz, -ux), w: 3.6 + R() * 1.4, h: 3 + R() });
+      out.push({ id, name: TL`${(ruinName(R), caveTitle(t.world, regionIndex(rx - R0C, rz, NR)))} Cave`, sys: id, other: null, mouth: 0, x, z, y, face: Math.atan2(-uz, -ux), w: 3.6 + R() * 1.4, h: 3 + R() });
       break;
     }
   }

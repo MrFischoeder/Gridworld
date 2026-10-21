@@ -15,6 +15,7 @@
 import { hash, rng } from '../core/rng';
 import { customWorld, placesOf } from './customworld';
 import { POLAR_Z, worldDist, wrapDx, wrapX, ruinName } from './regions';
+import { cityTitle } from './placenames'; // (0.243) the old name's draws stay, so the yaw is unchanged
 import { mountainMask } from './mountains';
 import { continents } from './continents';
 import { seaMask } from './seas';
@@ -68,7 +69,7 @@ export function citySites(world: number): CitySite[] {
   if (cw) { // (0.208) a drawn world: its cities where they were drawn, as big as drawn
     placesOf(cw, 'city').forEach((p, i) => {
       const R = rng(hash(world, i, 0xc174)), r = Math.max(200, Math.min(1200, p.r ?? 600));
-      const name = p.name ?? ((n: string, k: number) => [TL`${n} Metropolis`, TL`${n} City`, TL`${n} Sprawl`, TL`${n} Megacity`][k])(ruinName(R), Math.floor(R() * 4));
+      const name = p.name ?? ((n: string, k: number) => [TL`${n} Metropolis`, TL`${n} City`, TL`${n} Sprawl`, TL`${n} Megacity`][k])((ruinName(R), cityTitle(world, i)), Math.floor(R() * 4));
       out.push({ i, id: 'city:' + i, name, x: p.x, z: p.z, r, yaw: R() * Math.PI, pattern: PATTERNS[(hash(world, i, 0xc175) + i) % PATTERNS.length], y: naturalHeight(world, p.x, p.z) });
     });
     return out;
@@ -87,7 +88,7 @@ export function citySites(world: number): CitySite[] {
       if (out.some((o) => worldDist(o.x, o.z, x, z) < o.r + r + CITY.apart)) continue;
       if (misfit(world, x, z, r)) continue;
       const R = rng(hash(world, i, k, 0xc174));
-      out.push({ i, id: 'city:' + i, name: ((n: string, k: number) => [TL`${n} Metropolis`, TL`${n} City`, TL`${n} Sprawl`, TL`${n} Megacity`][k])(ruinName(R), Math.floor(R() * 4)), x, z, r, yaw: R() * Math.PI, pattern: PATTERNS[(hash(world, i, 0xc175) + i) % PATTERNS.length], y: naturalHeight(world, x, z) });
+      out.push({ i, id: 'city:' + i, name: ((n: string, k: number) => [TL`${n} Metropolis`, TL`${n} City`, TL`${n} Sprawl`, TL`${n} Megacity`][k])((ruinName(R), cityTitle(world, i)), Math.floor(R() * 4)), x, z, r, yaw: R() * Math.PI, pattern: PATTERNS[(hash(world, i, 0xc175) + i) % PATTERNS.length], y: naturalHeight(world, x, z) });
       break;
     }
   }

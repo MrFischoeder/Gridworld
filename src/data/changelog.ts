@@ -3,6 +3,12 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.243.0', date: '2026-10-21', title: 'Names for cities and caves', notes: [
+    'Dead cities take their names from the same old lists as the ruins (Agni Megacity, Rune Metropolis...), and no two cities on one world share one.',
+    'Caves are named from the ruins\' lists too (Yama Cloud Watch Cave...): no two caves share a name, and no cave shares one with a ruin.',
+    'Only the names changed: every city and cave mouth is where it was. Metro stations keep their own names.',
+    'Multiplayer: the names come from the world seed and are the same on every game; nothing new is sent and the server is unchanged.',
+  ] },
   { v: '0.242.0', date: '2026-10-21', title: 'Names for ruins and wrecks', notes: [
     'Ruins and crashed ships take their names from two long lists of 500 first and 500 second parts each (Valken Spire, Gunnar Cinder Shrine; the Astra Adventurer...), so no two ruins and no two wrecks on one world share a name.',
     'Only the names changed: every place stands where it stood.',
