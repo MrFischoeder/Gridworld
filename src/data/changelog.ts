@@ -3,6 +3,15 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.240.0', date: '2026-10-21', title: 'Wildlife', notes: [
+    'The wilds are alive: eight new animals graze, bask and wander the land, each where it belongs. You meet them far more often than the beasts that hunt you, and most of them want nothing to do with you.',
+    'The five animals from the fauna designs now live in the game: herds of six-legged Hexastriders on the plains and savanna, the shaggy Ridgeback Bear in forests, taiga and mountains, the 22 m Banded Serpent in swamps and jungles, the Crestjaw lying by lakes and rivers, and now and then a 36 m Crown Titan walking the plains.',
+    'Three more of the planet\'s animals join them: little long-eared Hoplings almost everywhere, Tuskers (bristled boars in a sounder) in woods and jungles, and the Scorpid in deserts.',
+    'Every kind has its own temper. Hoplings and Hexastriders run from you (keep low and slow to get closer); the Ridgeback Bear rears up and growls when you come near, and charges if you keep coming; the Serpent and the Scorpid let you pass if you crouch and go slowly, but come at them upright, running or head-on and they strike; the Crestjaw strikes without warning at whatever comes within a few metres; Tuskers and the Crown Titan leave you alone until you hurt one, then the whole sounder charges, and the Titan stamps the ground, throwing everything near.',
+    'A calm animal is drawn olive; it turns amber when it is roused. A shot sends the timid ones running. Animals give meat, hides, fangs and plates; the Titan a great deal.',
+    'The Fauna gallery (a button in the main menu) shows all eight models; spawn any of them with the console (spawn hopling, spawn titan...).',
+    'Multiplayer: the game that spawns for a place runs the animals as it runs the other creatures; everyone sees the same ones. Nothing new is sent and the server is unchanged, but every player in a room needs this version.',
+  ] },
   { v: '0.239.0', date: '2026-10-20', title: 'Walking down into the metro', notes: [
     'A metro entrance is now a real stairwell: look over the railings and the steps run down under the street, between tiled walls with handrails, to a lit lintel and the dark tunnel beyond.',
     'You no longer press E to go down: walk in under the arch and onto the stairs and you go down into the station on your own. Coming back up you step out on the street in front of the arch, facing away from it.',

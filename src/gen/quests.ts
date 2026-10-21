@@ -58,8 +58,10 @@ export function describeSpot(t: Terrain, x: number, z: number): { where: string;
   if (t.forest(x, z) > 0.45) return { where: tl('in the forest'), kind: 'ravager' };
   return { where: tl('in the open fields'), kind: 'ravager' };
 }
-export const ALPHA: Record<CreatureKind, string> = { ravager: tl('Pack Alpha'), bramble: tl('Old Bull'), leechwing: tl('Matriarch'), gnawer: tl('Rat King'), skitter: tl('Flock Leader'), lurker: tl('Old Lurker'), silverfin: tl('Silver King') };
-const GROUP: Record<CreatureKind, string> = { ravager: tl('a pack of'), bramble: tl('a herd of'), leechwing: tl('a swarm of'), gnawer: tl('a nest of'), skitter: tl('a flock of'), lurker: tl('a pod of'), silverfin: tl('a shoal of') };
+export const ALPHA: Record<CreatureKind, string> = { ravager: tl('Pack Alpha'), bramble: tl('Old Bull'), leechwing: tl('Matriarch'), gnawer: tl('Rat King'), skitter: tl('Flock Leader'), lurker: tl('Old Lurker'), silverfin: tl('Silver King'),
+  ridgeback: tl('Old Ridgeback'), hexastrider: tl('Herd Stallion'), serpent: tl('Great Serpent'), crestjaw: tl('Old Crestjaw'), titan: tl('Crown Elder'), hopling: tl('Big Hopling'), tusker: tl('Old Tusker'), scorpid: tl('Scorpid Queen') };
+const GROUP: Record<CreatureKind, string> = { ravager: tl('a pack of'), bramble: tl('a herd of'), leechwing: tl('a swarm of'), gnawer: tl('a nest of'), skitter: tl('a flock of'), lurker: tl('a pod of'), silverfin: tl('a shoal of'),
+  ridgeback: tl('a pair of'), hexastrider: tl('a herd of'), serpent: tl('a nest of'), crestjaw: tl('a bask of'), titan: tl('a herd of'), hopling: tl('a group of'), tusker: tl('a sounder of'), scorpid: tl('a nest of') };
 
 /** Fetch errands: who wants what, and from which kind of place. */
 const ERRANDS: { giver: NpcRole; item: ItemKey; place: 'ruin' | 'wreck'; where: string }[] = [

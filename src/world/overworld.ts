@@ -833,6 +833,7 @@ export function openWorld(x: number, z: number) {
   syncFound(T, x, z);
   const envHooks = {
     ground: (px: number, pz: number) => T.heightAt(px, pz),
+    biome: (px: number, pz: number): BiomeHere => (Math.abs(pz) > POLAR_Z + 800 ? 'ice' : biomeOfCell(T.world, px, pz)), // (0.240) where the wildlife lives
     danger,
     nearRuin: (px: number, pz: number) => poisNear(T.world, px, pz, 90).some((p) => (p.type === 'ruin' || p.type === 'wreck') && rectDist(p.rect, px, pz) < 60),
     water: (px: number, pz: number) => T.water(px, pz),

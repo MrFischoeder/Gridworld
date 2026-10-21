@@ -16,7 +16,7 @@ import { THROW } from '../gen/throwing';
 import { scene, V, lineMat } from './render';
 import { G, W } from '../game';
 import { PropBatch, sharedFill } from './props';
-import { CREATURES, HOSTILE, CALM, DROPS, FLYERS, SWIMMERS, type CreatureKind } from '../data/creatures';
+import { CREATURES, HOSTILE, CALM, DROPS, FLYERS, SWIMMERS, calmBeast, type CreatureKind } from '../data/creatures';
 import { footStep } from '../core/footstep';
 import { foeRules } from './enemies';
 import { rayWorld } from './player';
@@ -32,12 +32,19 @@ import { tickCond, knockDown, heavyHit, bleed, type CondFoe } from './conditions
 import { mindOf, sense, loseOf, share, spottedBy, targetVis } from './stealth';
 import { STEALTH } from '../gen/stealth';
 import { tl, TL } from '../i18n';
+import { createFaunaModel } from '../models/fauna';
+import type { FaunaId } from '../models/fauna';
+import { WILD, WILDLIFE, isWild, wildPick, scared, provoke, temperAfter, type WildKind } from '../gen/wildlife';
+import { wildOk } from './threat';
+import type { BiomeHere } from '../gen/biomes';
 
 type State = 'roam' | 'hunt' | 'dash' | 'retreat' | 'threat' | 'charge' | 'recover' | 'stalk' | 'dive' | 'climb' | 'investigate' | 'feed'
   // (0.226, stage W2) the telegraphs and the weak moments, seen on the other players' copies too
   | 'howl' | 'stun' | 'screech' | 'grounded' | 'scatter'
   // (0.228, stage W6) giving up the chase at the edge of its ground; broken, running for its den
-  | 'leash' | 'rout';
+  | 'leash' | 'rout'
+  // (0.240) a wild animal running from you
+  | 'flee';
 
 export interface Creature extends CondFoe {
   /** (0.227) how far down on its side it is drawn (eased) */
@@ -71,6 +78,9 @@ export interface Creature extends CondFoe {
   feint?: number;
   /** Leechwing flight: orbit angle, banking into turns, the creature it is hunting (null = the player), spotted you yet. */
   orbit: number; bank: number; prey: Creature | null; spotted: boolean;
+  /** (0.240) A wild animal's temper (0..1.2: it attacks at 1), how long it stays roused (s), its legs' gait (+1 / −1
+   *  per leg), the fauna model's own clean-up, and whether it has warned you yet. */
+  anger?: number; roused?: number; gait?: number[]; free?: () => void; warned?: boolean;
 }
 
 // ---------- models (local +z forward, origin at the body centre) ----------
@@ -257,16 +267,34 @@ function silverfinModel(c: Creature) {
   const t: P[] = [[0, 0, -0.2], [0, 0.12, -0.38], [0, 0, -0.3], [0, -0.12, -0.38]]; pb.face(t[0], t[1], t[2]); pb.face(t[0], t[2], t[3]); pb.line(K, ...t, t[0]);
   c.g.add(finish(pb, m));
 }
+/** (0.240) A wild animal drawn from its fauna model (src/models/fauna): the model stands on the ground, the creature's
+ *  origin is its body centre, so the model is lowered by the lift. Its ink lines take the creature's own material (so
+ *  it flashes and turns colour with its temper), the faces the shared dark fill. */
+const FAUNA_SHIFT: Partial<Record<WildKind, number>> = { serpent: -6.5 }; // the snake's raised fore-body is what you hit
+function faunaModel(c: Creature) {
+  const k = c.kind as WildKind, m = createFaunaModel(WILD[k].model as FaunaId), parts = m.parts;
+  m.root.position.set(0, -CREATURES[k].lift, FAUNA_SHIFT[k] ?? 0);
+  m.root.traverse((o) => {
+    if ((o as THREE.LineSegments).isLineSegments) { const l = o as THREE.LineSegments; if ((l.material as THREE.LineBasicMaterial).color.getHex() === HOSTILE) l.material = c.mat; }
+    else if ((o as THREE.Mesh).isMesh) (o as THREE.Mesh).material = sharedFill();
+  });
+  c.g.add(m.root); c.free = () => m.dispose();
+  c.head = parts.neck ?? null; c.jaw = parts.jaw ?? null; c.tail = parts.tail ?? null;
+  // legs in a walking order: the diagonal pairs of a quadruped, the two tripods of a six-legged one
+  const order: [string, number][] = [['front.left', 1], ['front.right', -1], ['rear.left', -1], ['rear.right', 1], ['middle.left', -1], ['middle.right', 1]];
+  c.gait = [];
+  for (const [n, g] of order) { const l = parts['leg.' + n]; if (l) { c.legs.push(l); c.gait.push(g); } }
+}
 /** The colour a creature is drawn in: amber when hostile, olive for a calm Bramble, silver for the shoal fish. */
 const FISH = 0xa8d8e8;
-const baseColor = (c: Creature) => (c.kind === 'silverfin' ? FISH : c.kind === 'bramble' && c.state === 'roam' ? CALM : HOSTILE);
+const baseColor = (c: Creature) => (c.kind === 'silverfin' ? FISH : c.kind === 'bramble' && c.state === 'roam' ? CALM : isWild(c.kind) ? (calmBeast(c.kind, c.state) ? CALM : HOSTILE) : HOSTILE);
 
 // ---------- spawning ----------
 /** A display-only creature, kept out of gameplay state and combat. */
 export const showcaseCreature = (kind: CreatureKind) => make(kind, V(0, CREATURES[kind].lift, 0), 1, true);
 
 function make(kind: CreatureKind, p: THREE.Vector3, level: number, showcase = false): Creature {
-  const s = CREATURES[kind], mat = lineMat(kind === 'bramble' ? CALM : kind === 'silverfin' ? FISH : HOSTILE), g = new THREE.Group();
+  const s = CREATURES[kind], mat = lineMat(kind === 'bramble' || isWild(kind) ? CALM : kind === 'silverfin' ? FISH : HOSTILE), g = new THREE.Group();
   const hp = Math.round(s.hp * (1 + level * 0.35));
   const c: Creature = {
     kind, g, mat, p: p.clone(), heading: Math.random() * 6.28, speed: 0, hp, maxHp: hp, r: s.r, flash: 0,
@@ -275,7 +303,8 @@ function make(kind: CreatureKind, p: THREE.Vector3, level: number, showcase = fa
     noiseAt: null, orbit: Math.random() * 6.283, bank: 0, prey: null, spotted: false,
     den: p.clone(), morale: MORALE.start[kind], calm: 99,
   };
-  if (kind === 'ravager') ravagerModel(c); else if (kind === 'bramble') brambleModel(c); else if (kind === 'gnawer') gnawerModel(c);
+  if (isWild(kind)) { faunaModel(c); c.anger = 0; c.roused = 0; }
+  else if (kind === 'ravager') ravagerModel(c); else if (kind === 'bramble') brambleModel(c); else if (kind === 'gnawer') gnawerModel(c);
   else if (kind === 'skitter') skitterModel(c); else if (kind === 'lurker') lurkerModel(c); else if (kind === 'silverfin') silverfinModel(c); else leechwingModel(c);
   g.position.copy(p); g.rotation.order = 'YXZ';
   if (!showcase) { scene.add(g); W.creatures.push(c); }
@@ -283,6 +312,8 @@ function make(kind: CreatureKind, p: THREE.Vector3, level: number, showcase = fa
 }
 export interface SpawnEnv {
   ground(x: number, z: number): number;
+  /** (0.240) The biome at a point (where the wildlife lives). */
+  biome?(x: number, z: number): BiomeHere;
   /** 0 near the start, growing with distance (see overworld danger()). */
   danger(x: number, z: number): number;
   nearRuin(x: number, z: number): boolean;
@@ -314,6 +345,10 @@ onNoise((at, r, decoy) => {
         c.state = 'threat'; c.timer = PAW; c.rageAt = at.clone(); c.mat.color.setHex(HOSTILE);
         if (decoy) logLine(tl('A Bramble charges at the noise!'));
       }
+      continue;
+    }
+    if (isWild(c.kind)) { // (0.240) a shot startles the timid ones into a run; the rest only lift their heads
+      if (WILD[c.kind].temper === 'timid' && !decoy && c.state !== 'flee' && Math.hypot(c.p.x - at.x, c.p.z - at.z) < r * 0.8) bolt(c.pack ?? [c], at.x, at.z);
       continue;
     }
     if (c.kind === 'skitter' || SWIMMERS.includes(c.kind)) continue; // fliers and the fish do not care about a bang in the distance
@@ -877,11 +912,166 @@ function silverfin(c: Creature, dt: number, to: THREE.Vector3) {
   if (Math.random() < dt * 0.05) { c.state = 'climb'; c.orbit = 0; }
 }
 
+// ---------- wildlife (0.240, gen/wildlife.ts) ----------
+/** A timid herd bolts away from a point (you, a shot), each a little to its own side. */
+function bolt(herd: Creature[], x: number, z: number) {
+  for (const m of herd) {
+    if (remoteOf(m)) continue;
+    const a = Math.atan2(m.p.x - x, m.p.z - z) + (Math.random() - 0.5) * 0.9;
+    m.dir.set(Math.sin(a), 0, Math.cos(a)); m.state = 'flee'; m.timer = 5 + Math.random() * 3;
+  }
+}
+/** Rouse a wild animal against whoever it is facing: it charges (the giant comes to stamp). */
+function rouse(c: Creature, why: 'temper' | 'hurt') {
+  const w = WILD[c.kind as WildKind];
+  c.anger = 1.2; c.roused = w.chase; c.state = 'charge'; c.timer = 2.5;
+  if (why === 'temper' && !c.warned && !proxied()) logLine(TL`The ${CREATURES[c.kind].name} attacks!`);
+  c.warned = true;
+}
+/** How you come at it (gen/wildlife.ts `Approach`): the turn's target, how much it stands out, how fast, at its face. */
+function approach(c: Creature, to: THREE.Vector3) {
+  const flat = Math.hypot(to.x, to.z) || 1e-3;
+  const speed = proxied() || targetingFoe() ? 2 : Math.hypot(G.vel.x, G.vel.z);
+  return { d: flat, vis: targetVis(), speed, front: (Math.sin(c.heading) * to.x + Math.cos(c.heading) * to.z) / flat };
+}
+/** Turn to face a direction (rad a second, eased). */
+function face(c: Creature, x: number, z: number, dt: number, rate = 5) {
+  let dh = Math.atan2(x, z) - c.heading; dh = Math.atan2(Math.sin(dh), Math.cos(dh)); c.heading += dh * Math.min(1, dt * rate);
+}
+const WARN_SOUND: Partial<Record<WildKind, [string, number]>> = { ridgeback: ['growl_ravager', 0.6], serpent: ['hiss', 0.55], scorpid: ['hiss', 1.3], crestjaw: ['hiss', 0.8], tusker: ['growl_ravager', 1.4] };
+/**
+ * A wild animal's turn. It grazes about its ground (a herd keeps near its first), and how it takes you is its temper:
+ * a timid one bolts, a wary one rears and growls and then charges if you keep coming, a touchy one rises the more
+ * carelessly you come (upright, running, at its face) and strikes, an ambusher strikes from close without a word, a
+ * defensive one only answers a blow. Roused, it goes at you for a while, backs off after a blow and comes again,
+ * then calms down. The Crown Titan stamps the ground round it instead of biting.
+ */
+function wild(c: Creature, dt: number, to: THREE.Vector3, dist: number, safe: boolean) {
+  const k = c.kind as WildKind, w = WILD[k], s = CREATURES[k], herd = c.pack ?? [c], lead = herd[0];
+  c.timer -= dt;
+  const a = approach(c, to), flat = a.d;
+  if (safe && c.state !== 'flee') { c.anger = 0; c.roused = 0; if (c.state !== 'roam') { c.state = 'roam'; c.timer = 0; } }
+  if (c.state === 'hunt') c.state = 'charge'; // back on its ground after the edge of it (beastMorale)
+  const grazeTo = () => { // amble about its ground; the herd keeps to its lead
+    if (c !== lead && lead.p.distanceTo(c.p) > 7) { walk(c, lead.p.x + Math.cos(c.flank) * 4 - c.p.x, lead.p.z + Math.sin(c.flank) * 4 - c.p.z, s.speed * 0.25, dt); return; }
+    if (c.timer <= 0) { c.dir.set(Math.random() - 0.5, 0, Math.random() - 0.5); c.timer = 3 + Math.random() * 6; }
+    const back = c.home.clone().sub(c.p); back.y = 0;
+    if (back.length() > (k === 'titan' ? 40 : 14)) c.dir.copy(back);
+    const still = k === 'crestjaw' || k === 'serpent' ? 0.85 : 0.45; // the basking ones hardly move
+    if (c.timer > 6 * still) walk(c, c.dir.x, c.dir.z, k === 'titan' ? s.speed * 0.6 : s.speed * 0.12, dt); else c.speed = 0;
+  };
+  switch (c.state) {
+    case 'roam': case 'investigate': case 'recover': {
+      if (c.state === 'recover') { c.speed = 0; if (c.timer > 0) break; c.state = 'roam'; c.hurt = false; }
+      if (c.state === 'investigate') c.state = 'roam';
+      grazeTo();
+      if (safe || flat > w.notice * 1.5) { c.anger = Math.max(0, (c.anger ?? 0) - dt * 0.3); break; }
+      if (w.temper === 'timid') { if (scared(w, a)) bolt(herd, c.p.x + to.x, c.p.z + to.z); break; }
+      c.anger = temperAfter(c.anger ?? 0, provoke(w, a), dt);
+      if (c.anger >= 1) { rouse(c, 'temper'); break; }
+      if ((w.temper === 'wary' && c.anger > 0.05) || (w.temper === 'touchy' && c.anger > 0.3)) { // the warning: stand, face you, call
+        c.state = 'threat'; c.timer = 1;
+        const snd = WARN_SOUND[k]; if (snd) play(snd[0] as never, { at: c.p, vol: 1, rate: snd[1], far: 120, share: 120 });
+        if (!c.warned && !proxied() && dist < 60) { c.warned = true; logLine(w.temper === 'wary' ? TL`A ${s.name} rears up and warns you off. Back away!` : TL`A ${s.name} stirs: keep low and go slowly.`); }
+      }
+      break;
+    }
+    case 'threat': // facing you, warning; back away and it settles, keep coming and it goes for you
+      c.speed = 0; face(c, to.x, to.z, dt);
+      c.anger = temperAfter(c.anger ?? 0, safe ? -1 : provoke(w, a), dt);
+      if (c.anger >= 1) rouse(c, 'temper');
+      else if (c.anger <= 0 && c.timer <= 0) { c.state = 'roam'; c.timer = 0; }
+      break;
+    case 'charge': {
+      c.roused = (c.roused ?? 0) - dt;
+      if (k === 'titan') { // walks up, rears and brings its forefeet down: everything near is thrown
+        if (flat > w.strike) { walk(c, to.x, to.z, s.speed * 1.4, dt); break; }
+        c.speed = 0;
+        const hit = Math.max(0, 1 - flat / (w.strike + 2));
+        burst(V(c.p.x + Math.sin(c.heading) * 4, c.p.y - s.lift + 0.3, c.p.z + Math.cos(c.heading) * 4), 0x8a7a4a, 30, 3);
+        play('thud', { at: c.p, vol: 1, rate: 0.35, far: 220, share: 220 });
+        if (hit > 0 && !safe) { bite(s.damage * hit * c.dmgMul, 0, true); if (!foeRules.shielded() && !proxied()) { G.vel.x += to.x / flat * 9; G.vel.z += to.z / flat * 9; G.vel.y = 6; G.onGround = false; } }
+        c.state = 'retreat'; c.timer = 2.6;
+        break;
+      }
+      walk(c, to.x, to.z, s.speed * (k === 'serpent' ? 2.2 : 1.15), dt);
+      if (flat < s.r + 1.3) {
+        bite((s.damage + 2 * c.level) * c.dmgMul, k === 'scorpid' ? 0.6 : k === 'crestjaw' || k === 'ridgeback' ? 0.35 : 0, k === 'ridgeback' || k === 'tusker');
+        c.state = 'retreat'; c.timer = k === 'crestjaw' ? 3 : 1 + Math.random();
+      } else if (c.timer <= 0) { c.state = 'retreat'; c.timer = 0.8; }
+      break;
+    }
+    case 'retreat': { // after a blow: back off (an ambusher slips back to its spot), then again while still roused
+      c.roused = (c.roused ?? 0) - dt;
+      if (k === 'crestjaw') walk(c, c.home.x - c.p.x, c.home.z - c.p.z, s.speed * 0.6, dt);
+      else if (k === 'titan') { c.speed = 0; face(c, to.x, to.z, dt, 1); }
+      else walk(c, -to.x, -to.z, s.speed * 0.7, dt);
+      if (c.timer > 0) break;
+      if ((c.roused ?? 0) > 0 && !safe && flat < w.ground + 10) { c.state = 'charge'; c.timer = 2.5; }
+      else { c.state = 'recover'; c.timer = 1.5; c.anger = 0; c.roused = 0; c.warned = false; c.home.set(c.p.x, c.home.y, c.p.z); }
+      break;
+    }
+    case 'flee': { // run from where the fright came from, then graze where it ended up
+      walk(c, c.dir.x, c.dir.z, s.speed, dt);
+      if (c.timer <= 0) { c.state = 'roam'; c.timer = 0; c.home.set(c.p.x, c.home.y, c.p.z); c.den?.copy(c.p); }
+      break;
+    }
+    default: c.state = 'roam';
+  }
+}
+/** (0.240) The wildlife's spawner, paced apart from the encounters (WILDLIFE in gen/wildlife.ts): a herd of what
+ *  lives in this land turns up out of sight round you, at most `groups` of them about at once. */
+let wildT = 3;
+function tryWild() {
+  if (!env?.biome || !wildOk()) return;
+  const pos = G.pos, herds = new Set<unknown>(), crowd: Partial<Record<WildKind, number>> = {};
+  for (const c of W.creatures) {
+    if (!isWild(c.kind)) continue;
+    const d = Math.hypot(c.p.x - pos.x, c.p.z - pos.z);
+    if (d < WILDLIFE.reach) herds.add(c.pack ?? c);
+    if (d < WILDLIFE.giantReach) crowd[c.kind] = (crowd[c.kind] ?? 0) + 1;
+  }
+  if (herds.size >= WILDLIFE.groups) return;
+  for (let tries = 0; tries < 8; tries++) {
+    let { x, z } = ringSpot(Math.random() * 6.283, Math.random());
+    if (!farFromPlayers(x, z) || env.forbidden(x, z)) continue;
+    const biome = env.biome(x, z);
+    if (biome === 'sea' || biome === 'ice') continue;
+    const shore = shoreNear(x, z);
+    const k = wildPick(biome, env.danger(x, z), Math.random(), !!shore, crowd);
+    if (!k) continue;
+    if (WILD[k].shore && shore) { x = shore[0]; z = shore[1]; }
+    if (!hiddenFrom(x, env.ground(x, z), z, Math.min(6, CREATURES[k].lift * 2 + 1))) continue;
+    const [lo, hi] = WILD[k].herd, n = lo + Math.floor(Math.random() * (hi - lo + 1)), herd: Creature[] = [], lv = env.danger(x, z);
+    const spread = k === 'titan' ? 18 : k === 'hexastrider' ? 9 : 5;
+    for (let i = 0; i < n; i++) {
+      const px = x + (i ? (Math.random() - 0.5) * spread : 0), pz = z + (i ? (Math.random() - 0.5) * spread : 0);
+      if (i && env.forbidden(px, pz)) continue;
+      const c = make(k, V(px, env.ground(px, pz) + CREATURES[k].lift, pz), lv);
+      c.pack = herd; c.flank = Math.random() * 6.283; herd.push(c);
+    }
+    return;
+  }
+}
+/** A dry spot at the edge of fresh or murky water within ~30 m (where a Crestjaw lies), or null. */
+function shoreNear(x: number, z: number): [number, number] | null {
+  if (!env) return null;
+  for (let a = 0; a < 6.283; a += 0.785) {
+    let dry: [number, number] = [x, z];
+    for (let r = 4; r <= 32; r += 4) {
+      const px = x + Math.sin(a) * r, pz = z + Math.cos(a) * r, w = env.water(px, pz);
+      if (w && w.kind !== 'sea' && w.kind !== 'toxic' && w.depth > 0.4) return r > 4 ? dry : null;
+      dry = [px, pz];
+    }
+  }
+  return null;
+}
+
 // ---------- its ground and its nerve (0.228, PLAN_WALKI.md stage W6) ----------
 const packSize = new WeakMap<Creature[], number>(), packHalf = new WeakSet<Creature[]>(), leashTold = new WeakSet<object>();
 /** The states in which it is after someone. */
 const CHASING = new Set<State>(['hunt', 'dash', 'threat', 'charge', 'stalk', 'dive', 'screech', 'howl', 'scatter']);
-const GROUND_KINDS = new Set<CreatureKind>(['ravager', 'gnawer', 'bramble']);
+const GROUND_KINDS = new Set<CreatureKind>(['ravager', 'gnawer', 'bramble', 'ridgeback', 'serpent', 'crestjaw', 'titan', 'tusker', 'scorpid']);
 /** How it takes up the chase again when you come back onto its ground. */
 const RESUME: Partial<Record<CreatureKind, State>> = { ravager: 'hunt', gnawer: 'hunt', bramble: 'threat' };
 /**
@@ -935,6 +1125,7 @@ export function updateCreatures(dt: number, time: number) {
   if (!env) return;
   heat *= Math.exp(-dt / 25);
   if ((spawnT -= dt) <= 0) { spawnT = 4.5 / (1 + heat); trySpawn(); }
+  if ((wildT -= dt) <= 0) { wildT = WILDLIFE.every; tryWild(); }
   for (let i = W.creatures.length - 1; i >= 0; i--) {
     const c = W.creatures[i];
     if (stepRemote(c, dt)) { animate(c, dt, time); continue; } // another player's: it does what its owner says
@@ -950,7 +1141,8 @@ export function updateCreatures(dt: number, time: number) {
       if (baits.length && c.state !== 'feed') { const b = lured(c, dist); if (b) { c.state = 'feed'; c.bait = b; } }
       if (c.state === 'feed') { feed(c, dt, dist, safe); return; }
       if (!safe && (c.kind === 'ravager' || c.kind === 'gnawer' || c.kind === 'skitter') && (c.state === 'hunt' || c.state === 'dash' || c.state === 'retreat')) track(c, dt, dist);
-      if (c.state === 'investigate' && (c.kind === 'ravager' || c.kind === 'bramble' || c.kind === 'gnawer')) investigate(c, dt, safe);
+      if (isWild(c.kind)) wild(c, dt, to, dist, safe); // (0.240) the wildlife
+      else if (c.state === 'investigate' && (c.kind === 'ravager' || c.kind === 'bramble' || c.kind === 'gnawer')) investigate(c, dt, safe);
       else if (c.kind === 'skitter') skitter(c, dt, to, dist, safe);
       else if (c.kind === 'lurker') lurker(c, dt, to, dist, safe);
       else if (c.kind === 'silverfin') silverfin(c, dt, to);
@@ -968,7 +1160,7 @@ function animate(c: Creature, dt: number, time: number) {
   if (c.slope) { c.g.rotation.x -= c.slope[0]; c.g.rotation.z -= c.slope[1]; } // the poses below ease from their own angles
   c.anim += dt * (1 + c.speed * 1.4);
   const sw = c.speed > 0.1 ? Math.sin(c.anim * 1.6) * Math.min(0.7, 0.2 + c.speed * 0.06) : 0;
-  c.legs.forEach((l, i) => { l.rotation.x = (i === 0 || i === 3 ? 1 : -1) * sw; });
+  c.legs.forEach((l, i) => { l.rotation.x = (c.gait ? c.gait[i] : i === 0 || i === 3 ? 1 : -1) * sw * (c.kind === 'titan' ? 0.45 : 1); });
   if (c.kind === 'ravager' || c.kind === 'gnawer') { // (0.225) nose down, tearing at the bait; (0.226) reared up howling
     const eating = c.state === 'feed' && c.speed < 0.1, howl = c.state === 'howl' || (c.state === 'leash' && c.speed < 0.1); // (0.228) it stops at the edge of its ground and calls
     c.g.rotation.x += ((eating ? 0.24 + Math.sin(time * 9 + c.flank) * 0.07 : howl ? -0.45 : 0) - c.g.rotation.x) * Math.min(1, dt * 8);
@@ -976,6 +1168,7 @@ function animate(c: Creature, dt: number, time: number) {
     if (howl && c.jaw) c.jaw.rotation.x = 0.6;
     if (c.state === 'scatter') c.g.position.y -= 0.14; // low in the grass
   }
+  if (isWild(c.kind)) wildLook(c, dt, time);
   if (c.kind === 'bramble') { // (0.226) pawing the ground before a charge; reeling with sparks when stunned
     if (c.state === 'threat') { c.g.rotation.z = Math.sin(time * 14) * 0.05; if (Math.random() < dt * 8) burst(c.p.clone().setY(c.p.y - CREATURES.bramble.lift + 0.1).addScaledVector(V(Math.sin(c.heading), 0, Math.cos(c.heading)), 1), 0x8a7a4a, 2, 0.35); }
     else if (c.state === 'stun') { c.g.rotation.z = Math.sin(time * 5) * 0.12; if (Math.random() < dt * 10) burst(c.p.clone().setY(c.p.y + 1), 0xffd060, 1, 0.5); }
@@ -999,6 +1192,17 @@ function animate(c: Creature, dt: number, time: number) {
   c.flash -= dt;
   if (c.flash > 0) c.mat.color.setHex(0xffffff);
   else c.mat.color.setHex(baseColor(c));
+}
+/** (0.240) A wild animal's head and jaw: the head down grazing, up and the jaw open when it warns or strikes; a
+ *  hopling hops, a serpent's neck sways. */
+function wildLook(c: Creature, dt: number, time: number) {
+  const k = c.kind as WildKind, angry = c.state === 'threat' || c.state === 'charge', e = Math.min(1, dt * 6);
+  if (c.head) c.head.rotation.x += ((angry ? -0.25 : c.speed < 0.1 && c.state === 'roam' && k !== 'serpent' && k !== 'crestjaw' ? 0.35 + Math.sin(time * 1.3 + c.flank) * 0.1 : 0) - c.head.rotation.x) * e;
+  if (c.head && k === 'serpent') c.head.rotation.y = Math.sin(time * 0.9 + c.flank) * (angry ? 0.25 : 0.12);
+  if (c.jaw) c.jaw.rotation.x += ((angry ? 0.45 + (c.state === 'threat' ? Math.sin(time * 9) * 0.1 : 0) : 0.02) - c.jaw.rotation.x) * e;
+  if (k === 'hopling' && c.speed > 0.1) c.g.position.y += Math.abs(Math.sin(c.anim * 2.2)) * 0.35;
+  if (k === 'ridgeback' && c.state === 'threat') c.g.rotation.x += (-0.35 - c.g.rotation.x) * e; // up on its hind legs
+  else if (k === 'ridgeback') c.g.rotation.x += (0 - c.g.rotation.x) * e;
 }
 /** (0.237.2, the owner's report) A beast walking a hillside lies along it: pitched up or down the slope it faces and
  *  rolled across it, sampled from the ground half a body ahead, behind and to each side and eased, on top of its pose. */
@@ -1039,6 +1243,11 @@ export function hurtCreature(c: Creature, dmg: number, credit = true) {
   if (c.kind === 'skitter') for (const m of c.pack ?? [c]) if (m.state === 'roam') { m.state = 'hunt'; m.timer = Math.random() * 2; }
   if (c.kind === 'lurker' && (c.state === 'roam' || c.state === 'stalk')) { c.state = 'stalk'; c.timer = 1; }
   if (c.kind === 'silverfin') for (const m of c.pack ?? [c]) m.hurt = true;
+  if (isWild(c.kind) && c.hp > 0) { // (0.240) a timid one bolts; any other turns on you, a defensive herd all together
+    const w = WILD[c.kind];
+    if (w.temper === 'timid') bolt(c.pack ?? [c], G.pos.x, G.pos.z);
+    else for (const m of w.temper === 'defensive' ? c.pack ?? [c] : [c]) if (!remoteOf(m)) rouse(m, 'hurt');
+  }
   if (c.hp > 0) return;
   const at = c.p.clone(), s = CREATURES[c.kind];
   const sea = SWIMMERS.includes(c.kind) ? env?.water(at.x, at.z) : null;
@@ -1134,7 +1343,7 @@ function updateDead(dt: number) {
   }
 }
 export function removeCreature(c: Creature) {
-  scene.remove(c.g);
+  scene.remove(c.g); c.free?.(); c.free = undefined;
   c.g.traverse((o) => { const m = o as THREE.Mesh; if (m.geometry) m.geometry.dispose(); });
   c.mat.dispose();
   const i = W.creatures.indexOf(c); if (i >= 0) W.creatures.splice(i, 1);
@@ -1156,6 +1365,11 @@ export function spawnCreatureNear(kind: CreatureKind, d = 18) {
       return true;
     }
     return false;
+  }
+  if (isWild(kind)) { // (0.240) a herd of it, as it would turn up
+    const herd: Creature[] = [], n = WILD[kind].herd[1], sp = kind === 'titan' ? 30 : 6;
+    for (let i = 0; i < n; i++) { const px = x + (Math.random() - 0.5) * sp, pz = z + (Math.random() - 0.5) * sp, c = make(kind, V(px, env.ground(px, pz) + CREATURES[kind].lift, pz), lv); c.pack = herd; c.flank = Math.random() * 6.283; herd.push(c); }
+    return true;
   }
   if (kind === 'gnawer') { const nest: Creature[] = []; for (let i = 0; i < 5; i++) { const px = x + (Math.random() - 0.5) * 4, pz = z + (Math.random() - 0.5) * 4, c = make(kind, V(px, env.ground(px, pz) + CREATURES.gnawer.lift, pz), lv); c.pack = nest; c.flank = Math.random() * 6.283; nest.push(c); } return true; }
   if (kind === 'ravager') { const pack: Creature[] = []; for (let i = 0; i < 3; i++) { const c = make(kind, V(x + i * 1.5, env.ground(x + i * 1.5, z) + CREATURES.ravager.lift, z), lv); c.flank = (i - 1) * 1.1; c.pack = pack; pack.push(c); } }

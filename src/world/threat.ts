@@ -7,11 +7,13 @@ import { SPAWN } from '../gen/spawnring';
 import { spawnAuthority } from './remote';
 import { G, W } from '../game';
 import { ROBOTS } from '../data/robots';
-import type { CreatureKind } from '../data/creatures';
+import { calmBeast, type CreatureKind } from '../data/creatures';
 import { inCity } from '../gen/cities';
 import { inVillage } from './overworld';
 
-const CREATURE_COST: Record<CreatureKind, number> = { gnawer: 0.5, ravager: 1, bramble: 0.4, leechwing: 1.5, skitter: 0.3, lurker: 1.2, silverfin: 0 };
+const CREATURE_COST: Record<CreatureKind, number> = { gnawer: 0.5, ravager: 1, bramble: 0.4, leechwing: 1.5, skitter: 0.3, lurker: 1.2, silverfin: 0,
+  // (0.240) the wildlife keeps to itself: it barely holds back the hunters (WILDLIFE in gen/wildlife.ts paces it apart)
+  hexastrider: 0, hopling: 0, titan: 0, tusker: 0.2, ridgeback: 0.5, serpent: 0.5, crestjaw: 0.4, scorpid: 0.3 };
 export const BANDIT_COST = 1.5;
 /** Threat allowed at a danger level (at 0: a small nest of gnawers or one bramble; at 8: a small army). */
 export const budget = (lv: number) => 1 + lv * 1.1;
@@ -39,7 +41,12 @@ export function threat(): number {
 /** Is anything hostile close enough to count as a fight going on? */
 function fighting(): boolean {
   const p = G.pos, near = (q: { x: number; z: number }) => Math.hypot(q.x - p.x, q.z - p.z) < FIGHT_R;
-  return W.creatures.some((c) => near(c.p) && c.kind !== 'silverfin' && !(c.kind === 'bramble' && c.state === 'roam')) || W.robots.some((r) => near(r.p)) || W.bandits.some((b) => b.campId === undefined && near(b.p));
+  return W.creatures.some((c) => near(c.p) && !calmBeast(c.kind, c.state)) || W.robots.some((r) => near(r.p)) || W.bandits.some((b) => b.campId === undefined && near(b.p));
+}
+/** (0.240) Whether wildlife may turn up now (its own pacing, not the encounters'): not in a city, not flying, not
+ *  right outside a village, and only on the game that spawns for this place. */
+export function wildOk(): boolean {
+  return !inCity(G.char.world, G.pos.x, G.pos.z) && spawnAuthority() && !G.fly && outside > GRACE;
 }
 /**
  * Whether an encounter costing `cost` may turn up where the danger is `lv`. When it may, the next one is put off

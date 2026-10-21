@@ -11,7 +11,7 @@ import * as THREE from 'three';
 import { G, W } from '../game';
 import { net, relay, onRelay, type Relay } from '../net/client';
 import { SFX_NAMES, SFX_RATE, render, sfxFiles, MUSIC_MOODS, type SfxName, type SoundList, type MusicList } from '../audio/synth';
-import { FLYERS, SWIMMERS, type CreatureKind } from '../data/creatures';
+import { FLYERS, SWIMMERS, calmBeast, type CreatureKind } from '../data/creatures';
 
 export interface Volumes { master: number; sfx: number; music: number; mute: boolean }
 const KEY = 'gridWorld.audio';
@@ -310,7 +310,7 @@ export function updateSoundFrame(dt: number) {
   if (ctx.state !== 'running' && (retryT -= dt) <= 0) { retryT = 1; void ctx.resume().catch(() => { /* waits for a click */ }); }
   const hour = Math.floor((G.char.time % 1440) / 60), x = G.pos.x, z = G.pos.z;
   const foeNear = (l: { p: { x: number; z: number } }[]) => l.some((f) => Math.abs(f.p.x - x) < 30 && Math.abs(f.p.z - z) < 30);
-  const mood: Mood = !G.playing ? 'menu' : foeNear(W.robots) || foeNear(W.bandits) || foeNear(W.creatures.filter((c) => c.kind !== 'silverfin')) ? 'fight'
+  const mood: Mood = !G.playing ? 'menu' : foeNear(W.robots) || foeNear(W.bandits) || foeNear(W.creatures.filter((c) => !calmBeast(c.kind, c.state))) ? 'fight'
     : G.char.loc === 'dungeon' ? 'underground' : hour < 6 || hour >= 20 ? 'night' : 'world';
   updateMusic(mood, dt);
 }

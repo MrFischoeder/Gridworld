@@ -19,6 +19,9 @@ export const FAR_CALLS: Record<string, FarCall> = {
   artillery: { s: 'robot_hum', far: 200, every: [10, 20], vol: 1 },
   assault: { s: 'robot_hum', far: 180, every: [10, 20], vol: 1 },
   bandit: { s: 'bandit_talk', far: 130, every: [14, 28], vol: 0.8 },
+  // (0.240) the wildlife: the giant's bellow carries a long way, a bear's growl less
+  titan: { s: 'bellow_bramble', far: 600, every: [25, 50], vol: 1 },
+  ridgeback: { s: 'growl_ravager', far: 140, every: [25, 45], vol: 0.8 },
 };
 /** Bandits round a fire talk more and laugh now and then. */
 export const REST_TALK = { every: [7, 14] as [number, number], laugh: 0.3 };
@@ -46,6 +49,14 @@ export const PRINTS: Record<string, PrintSpec> = {
   sentinel: { k: 'claw', step: 1.6, size: 1.8, c: 0xffb347 },
   artillery: { k: 'claw', step: 1.7, size: 1.7, c: 0xffb347 },
   assault: { k: 'claw', step: 1.6, size: 1.9, c: 0xffb347 },
+  // (0.240) the wildlife, in the calm olive
+  ridgeback: { k: 'paw', step: 1.8, size: 2.4, c: 0xb8b060 },
+  hexastrider: { k: 'hoof', step: 1.6, size: 1.1, c: 0xb8b060 },
+  crestjaw: { k: 'claw', step: 1.4, size: 1.6, c: 0xb8b060 },
+  titan: { k: 'hoof', step: 4.5, size: 6, c: 0xb8b060 },
+  hopling: { k: 'small', step: 0.9, size: 0.5, c: 0xb8b060 },
+  tusker: { k: 'hoof', step: 1.0, size: 0.8, c: 0xb8b060 },
+  scorpid: { k: 'claw', step: 0.8, size: 0.9, c: 0xb8b060 },
 };
 /** Prints fade over `life` s (game minutes, a real second each), at most `max` at once, laid within `reach` m of you,
  *  dimmed to `dim` of the kind's colour when fresh. */

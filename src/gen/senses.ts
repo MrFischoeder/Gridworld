@@ -33,6 +33,15 @@ export const SENSES: Record<SenseKey, Senses> = {
   skitter:   { view: 'wide', dark: 0, hear: 0.6, steps: 5, scent: 0, trail: 0, lose: 8 },
   lurker:    { view: 'all', dark: 1, hear: 0.5, steps: 12, scent: 0, trail: 0, lose: 10 },
   silverfin: { view: 'all', dark: 0, hear: 0.3, steps: 6, scent: 0, trail: 0, lose: 3 },
+  // (0.240) the wildlife: its temper (gen/wildlife.ts) does most of the noticing; these are for noises and searches
+  ridgeback: { view: 'wide', dark: 0.3, hear: 1, steps: 10, scent: 25, trail: 20, lose: 10 },
+  hexastrider: { view: 'all', dark: 0.2, hear: 1.2, steps: 14, scent: 20, trail: 0, lose: 4 },
+  serpent: { view: 'cone', dark: 1, hear: 0.4, steps: 12, scent: 10, trail: 0, lose: 6 },
+  crestjaw: { view: 'cone', dark: 0.5, hear: 0.5, steps: 8, scent: 0, trail: 0, lose: 6 },
+  titan: { view: 'wide', dark: 0, hear: 0.6, steps: 0, scent: 0, trail: 0, lose: 15 },
+  hopling: { view: 'all', dark: 0.3, hear: 1.4, steps: 12, scent: 12, trail: 0, lose: 3 },
+  tusker: { view: 'wide', dark: 0.3, hear: 1, steps: 8, scent: 22, trail: 15, lose: 10 },
+  scorpid: { view: 'wide', dark: 1, hear: 0.6, steps: 10, scent: 0, trail: 0, lose: 6 },
   // machines: motion sensors, thermal sights, a seismic ear on the artillery; none of them smells
   scout:     { view: 'wide', dark: 0.6, hear: 1, steps: 8, scent: 0, trail: 0, lose: 14 },
   guardian:  { view: 'cone', dark: 0.5, hear: 1, steps: 4, scent: 0, trail: 0, lose: 18 },

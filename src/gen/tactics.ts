@@ -26,6 +26,15 @@ export const TACTICS: Record<FoeKey, Tactic> = {
   skitter: T(1, 1, 1, 1, 1.4),
   lurker: T(0.8, 1, 1.4, 1, 1, { at: 'top', k: 1.5 }), // the fin and the back above the water
   silverfin: T(1, 1, 1),
+  // (0.240) the wildlife
+  ridgeback: T(0.85, 1, 1.4, 1, 1, { at: 'top', k: 1.5 }), // the hump and skull take a lot; flanks and back less
+  hexastrider: T(1, 1.2, 1, 1, 1.2), // long, thin flanks
+  serpent: T(1, 1.1, 1.1, 1, 1, { at: 'top', k: 1.7 }), // the raised head
+  crestjaw: T(0.6, 1.1, 1.4, 1, 0.9, { at: 'low', k: 1.6 }), // the bony snout; soft belly
+  titan: T(1, 1.1, 1.2, 1, 0.7, { at: 'top', k: 1.4 }),
+  hopling: T(1, 1, 1),
+  tusker: T(0.8, 1.1, 1.3, 1, 1.1),
+  scorpid: T(0.7, 1.1, 1.4, 1, 1.2, { at: 'low', k: 1.6 }), // the claws guard its front; the legs and belly are soft
   // machines
   scout: T(1, 1.1, 1.3, 1, 1.2, { at: 'low', k: 1.5 }), // thin legs
   guardian: T(0.8, 1, 1.6, 1, 1, { at: 'top', k: 1.8 }), // the sensor dome over the cannon

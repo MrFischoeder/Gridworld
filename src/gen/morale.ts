@@ -5,6 +5,7 @@
 // Machines have no morale (the owner's call), but a squad that lost half falls back to its Repair Drone to regroup.
 // Pure: the numbers, the shocks, the fates and the territories; world/morale.ts and the foes' minds run them.
 import type { CreatureKind } from '../data/creatures';
+import { WILD } from './wildlife';
 
 export const MORALE = {
   /** Where morale starts: bandits (a boss starts higher), the pack beasts, the lone Leechwing. */
@@ -46,7 +47,9 @@ export const BROKEN = { gone: 70, help: [35, 70] as [number, number], extra: [1,
 export const DRIVEN_XP = 0.5;
 
 /** How far each beast keeps to its ground round its den (m); past it the chase ends. */
-export const TERRITORY: Record<CreatureKind, number> = { ravager: 90, gnawer: 40, bramble: 30, leechwing: 160, lurker: 70, skitter: 50, silverfin: 0 };
+export const TERRITORY: Record<CreatureKind, number> = { ravager: 90, gnawer: 40, bramble: 30, leechwing: 160, lurker: 70, skitter: 50, silverfin: 0,
+  // (0.240) the wildlife's ground: how far a roused one follows you from where it lives (gen/wildlife.ts `ground`)
+  ridgeback: WILD.ridgeback.ground, hexastrider: 0, serpent: WILD.serpent.ground, crestjaw: WILD.crestjaw.ground, titan: WILD.titan.ground, hopling: 0, tusker: WILD.tusker.ground, scorpid: WILD.scorpid.ground };
 /** At the den: it fights on harder (morale never below `floor` within `r` m) and, left alone `calm` s, heals `heal` of its health a second. */
 export const DEN = { r: 10, floor: 0.35, calm: 20, heal: 0.02, at: 6 };
 /** The posture at the edge before it turns back (s). */
