@@ -41,6 +41,7 @@ import { nearSurrendered, spareBandit, type Bandit } from './bandits';
 import { FOG_SITE } from '../gen/toxic';
 import { isFieldPlacing, confirmFieldPlacing, fieldPlacingHint, fieldPlacingOk } from './fields';
 import { isLhPlacing, confirmLhPlacing, lhPlacingHint, lhPlacingOk, nearLighthouse, lighthousePrompt, openLighthouse } from './lighthouses';
+import { isWhPlacing, confirmWhPlacing, whPlacingHint, whPlacingOk } from './wildstores';
 import type { Lighthouse } from '../gen/lighthouses';
 import { isStreetPlacing, confirmStreetPlacing, streetPlacingHint, streetPlacingOk, nearStreetLamp, streetLampPrompt, openStreetLamp, type NearLamp } from './streetlamps';
 import { sawingHint } from './sawing';
@@ -250,6 +251,8 @@ export function updateEntities(dt: number, time: number) {
   if (phint !== null) { prompt.className = pierPlacingOk() ? '' : 'lock'; prompt.textContent = phint; prompt.style.display = G.playing && phint ? 'block' : 'none'; }
   const shint = sawingHint();
   if (shint !== null) { prompt.className = ''; prompt.textContent = shint; prompt.style.display = G.playing ? 'block' : 'none'; }
+  const whint = whPlacingHint(); // (0.249) staking out a warehouse
+  if (whint !== null) { prompt.className = whPlacingOk() ? '' : 'lock'; prompt.textContent = whint; prompt.style.display = G.playing && whint ? 'block' : 'none'; }
   const hhint = lhPlacingHint();
   if (hhint !== null) { prompt.className = lhPlacingOk() ? '' : 'lock'; prompt.textContent = hhint; prompt.style.display = G.playing && hhint ? 'block' : 'none'; }
   const lhint = streetPlacingHint();
@@ -313,6 +316,7 @@ export function interact() {
   if (nearLad) { const m = startClimb(nearLad); if (m) logLine(m); return; }
   if (isPlacing()) { confirmPlacing(); return; }
   if (isLhPlacing()) { confirmLhPlacing(); return; }
+  if (isWhPlacing()) { void confirmWhPlacing(); return; }
   if (isStreetPlacing()) { void confirmStreetPlacing(); return; }
   if (isFieldPlacing()) { void confirmFieldPlacing(); return; }
   if (isBridgePlacing()) { confirmBridgePlacing(); return; }

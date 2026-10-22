@@ -3,6 +3,15 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.249.0', date: '2026-10-22', title: 'The warehouse network', notes: [
+    'Every warehouse now serves an area: the planet is divided into hexes about a kilometre across, and a warehouse serves the hex it stands in. There is one warehouse to a hex. A second warehouse cannot be built where one already serves (a village\'s warehouse, a port\'s or one in the wilds), so warehouses form a network without overlapping. The hexes of the warehouses show on the maps with their names.',
+    'Warehouses in the wilds: the new Warehouse Plans (a basic order at the blacksmith) let you stake out a big plank warehouse anywhere in the wilds, for example by a mine or a quarry. A hologram shows the shed and the hex it will serve. Like a port, it needs its own power source, bunkhouses and fields; its storekeepers (4 people and power) take the goods in. Its window is at its board.',
+    'What the deposits dig now goes to the warehouse on its own. Every two hours the carriers take the crates from the outposts in a warehouse\'s hex into it, as long as the warehouse works. An outpost\'s window says where its crates go. The works on site keep what they process.',
+    'Warehouses have names. Rename one at its terminal in a village, or at the board of a port or a wild warehouse.',
+    'The village computer has a new WAREHOUSES tab: every warehouse the players built and the halls of the villages you know, nearest first, with what each serves and whether it works. Their stocks cannot be read from afar yet: that comes with the radio link between warehouses (the next stages: carriers you can see, more room with crates and barrels, radio, automatic convoys, ships and later flying machines; see PLAN_MAGAZYNOW.md).',
+    'Fixed: the port window showed only your own boats at its dock; since vehicles belong to nobody it shows everyone\'s.',
+    'Multiplayer: everything lives in the shared villages and outposts. The carriers and the warehouses keep separate counters, so a delivery is never doubled. The protocol and the server are unchanged.',
+  ] },
   { v: '0.248.0', date: '2026-10-22', title: 'Vehicles belong to nobody', notes: [
     'Vehicles no longer have owners. Every vehicle in the world (bought, built, found or taken from raiders) is everyone\'s: any player can drive it, ride in it, service it, refuel it, sell it to Kuba or hand it over to a convoy route.',
     'Every trunk is open to everyone, cargo bays included. Like a chest, a trunk is shared: what one player puts in, the others find there. While one player has it open, the others wait until they close it.',

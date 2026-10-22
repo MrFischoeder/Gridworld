@@ -15,6 +15,7 @@ import { takeTest, testWaiting, syncCustomWorld, worldAsked } from './world/cust
 import { initRebirth } from './ui/rebirth';
 import { isFieldPlacing, updateFieldPlacing, confirmFieldPlacing, cancelFieldPlacing } from './world/fields';
 import { isLhPlacing, updateLhPlacing, confirmLhPlacing, cancelLhPlacing, updateLighthouses } from './world/lighthouses';
+import { isWhPlacing, updateWhPlacing, confirmWhPlacing, cancelWhPlacing } from './world/wildstores';
 import { isStreetPlacing, updateStreetPlacing, confirmStreetPlacing, cancelStreetPlacing, updateStreetLamps } from './world/streetlamps';
 import { updateSawing } from './world/sawing';
 import { updateHomes } from './world/home';
@@ -236,6 +237,10 @@ function frame(now: number) {
       updatePierPlacing();
       if (G.firing) { G.firing = false; confirmPierPlacing(); }
       if (G.aiming) { G.aiming = false; cancelPierPlacing(); }
+    } else if (isWhPlacing()) { // (0.249) Warehouse Plans: the mouse picks the warehouse's spot
+      updateWhPlacing();
+      if (G.firing) { G.firing = false; void confirmWhPlacing(); }
+      if (G.aiming) { G.aiming = false; cancelWhPlacing(); }
     } else if (isLhPlacing()) { // (0.204) Lighthouse Plans: the mouse picks the tower's spot
       updateLhPlacing();
       if (G.firing) { G.firing = false; confirmLhPlacing(); }

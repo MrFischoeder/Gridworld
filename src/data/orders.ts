@@ -100,6 +100,7 @@ export const ORDERS: Order[] = [
   { tech: '', out: 'barrelW', n: 1, needs: [['planks', 8], ['wire', 3]] },
   { tech: '', out: 'crateM', n: 1, needs: [['steel', 1], ['scrap', 4], ['wire', 2]] },
   { tech: '', out: 'barrelM', n: 1, needs: [['steel', 1], ['scrap', 6]] },
+  { tech: '', out: 'whkit', n: 1, needs: [['planks', 2], ['scrap', 1]] }, // (0.249) a warehouse in the wilds
 ];
 /** Technologies that are for the villages themselves (farms, power, works), not for the craftsmen's bench. */
 export const VILLAGE_TECHS = ['fields', 'plough', 'rotor', 'solar', 'chips', 'radio', 'chemistry', 'enrichment', 'propellant', 'rail', 'aluminium', 'batteries', 'alloys', 'powercells', 'sensors', 'ancmetal', 'precision', 'automation', 'electricity', 'metallurgy', 'semiconductors', 'computing', 'aerospace', 'powergrid', 'avionics', 'lifesupport', 'rocketry', 'heavymach'];

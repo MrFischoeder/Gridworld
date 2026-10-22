@@ -2,6 +2,7 @@
 // mound of stone, giant trees, seams and ore showing in the rocks, black pools of oil), found when you come near
 // (then on your maps: `char.lodes`), heard of in the towns (`askLode`, marked as heard until you see it), and swept up
 // by the orbital scan. Outposts at them come in stage O2.
+import { handOff } from '../gen/warehouses';
 import * as THREE from 'three';
 import { hash, rng } from '../core/rng';
 import { scene } from './render';
@@ -415,7 +416,7 @@ export function updateLodes(dt: number) {
 let bucket = -1;
 function finishOutposts() {
   const c = G.char, byId = (id: string) => lodeById(c.world, id), b = Math.floor(c.time / GRID.step);
-  if (b !== bucket) { if (bucket >= 0 && Object.keys(c.outposts).length) { tellRaids(settleAll(c.world, c.outposts, byId, c.time, c.towns)); saveChar(); } bucket = b; } // the grid's share moves on every two hours: count up to here
+  if (b !== bucket) { if (bucket >= 0 && Object.keys(c.outposts).length) { tellRaids(settleAll(c.world, c.outposts, byId, c.time, c.towns)); handOff(c.world, c.outposts, c.towns, byId, c.time); saveChar(); } bucket = b; } // the grid's share moves on every two hours: count up to here; (0.249) then the carriers take the crates to the warehouse of the hex
   for (const [id, o] of Object.entries(c.outposts)) {
     if (!o?.job || c.time < jobEnd(o)) continue;
     const l = lodeById(c.world, id);

@@ -177,6 +177,6 @@ export function unloadLines(world: number, outposts: Record<string, OutpostState
 export function lineTargets(outposts: Record<string, OutpostState>, id: string): { id: string; o: OutpostState; d: number }[] {
   const o = outposts[id];
   if (!o) return [];
-  return Object.entries(outposts).filter(([q, p]) => q !== id && p?.k === 'port').map(([q, p]) => ({ id: q, o: p, d: worldDist(o.x, o.z, p.x, p.z) }))
+  return Object.entries(outposts).filter(([q, p]) => q !== id && p?.k === 'port' && !!p.pier).map(([q, p]) => ({ id: q, o: p, d: worldDist(o.x, o.z, p.x, p.z) }))
     .filter((q) => q.d <= LINE.reach).sort((a, b) => a.d - b.d);
 }

@@ -15,6 +15,7 @@ import { driving } from './vehicles';
 import { scene } from './render';
 import { allVillages, worldDist, findPoi, villageSeed, wrapDx } from '../gen/regions';
 import { FIELD, fieldProblem, fieldPad, warehouseProblem } from '../gen/fields';
+import { hubs } from '../gen/warehouses';
 import { placeFarm, FARM } from '../gen/farms';
 import { placeWarehouse } from '../gen/settlement';
 import { WAREHOUSE, warehouseAt, apronOf, hallPoint, type HallSpot } from '../gen/hall';
@@ -114,7 +115,7 @@ function warehouseHologram(T: NonNullable<typeof OW.terrain>, poi: ReturnType<ty
   const spot: HallSpot = { x: Math.round(x - ox), z: Math.round(z - oz), d };
   const at0 = hall && at; if (at0 && hall!.x === spot.x && hall!.z === spot.z && hall!.d === spot.d) return;
   hall = spot;
-  problem = warehouseProblem(T, poi, villageSeed(G.char.world, poi), s, spot, allClaims()) || null;
+  problem = warehouseProblem(T, poi, villageSeed(G.char.world, poi), s, spot, allClaims(), hubs(G.char.world, G.char.towns, G.char.outposts)) || null;
   const h = warehouseAt(spot), wr = { x0: ox + h.x0, z0: oz + h.z0, x1: ox + h.x1, z1: oz + h.z1 }, y = meanGround(G.char.world, wr);
   at = { x: ox + spot.x, z: oz + spot.z, y };
   const a: number[] = [], b: number[] = [], P = (u: number, v: number) => { const [hx, hz] = hallPoint(h, u, v); return [ox + hx, oz + hz]; };

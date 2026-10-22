@@ -48,7 +48,7 @@ export function nextRaid(world: number, id: string, o: OutpostState, t: number):
   return null;
 }
 /** Is there anything to rob (it digs, or people live there)? */
-export const worthRobbing = (o: OutpostState) => o.k !== 'port' && o.k !== 'camp' && (!!o.done?.dig || (o.life?.n ?? 0) >= 1); // (0.216) ports are not raided yet (stage Z7)
+export const worthRobbing = (o: OutpostState) => o.k !== 'port' && o.k !== 'store' && o.k !== 'camp' && (!!o.done?.dig || (o.life?.n ?? 0) >= 1); // (0.216) ports are not raided yet (stage Z7)
 /** The chance the outpost holds raid r on its own. */
 export function holdChance(o: OutpostState, strength: number, guns = turretsOf(o)): number {
   const wall = Math.min(OUTRAID.hold.length - 1, wallOf(o));

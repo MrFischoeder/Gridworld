@@ -22,6 +22,7 @@ import { nearestOnRoad } from './roads';
 import { farmPlot, farmsOf } from './farms';
 import { claimDist, clearOf, type Claim } from './claims';
 import type { Terrain } from './terrain';
+import { hexProblem, villageHub, type Hub } from './warehouses';
 import { tl, TL } from '../i18n';
 
 /** How far out a field may go (from the village's middle), its half size, the levelled radius and the blend back, the most the ground may be cut or filled. */
@@ -104,9 +105,11 @@ const overlap = (a: { x0: number; z0: number; x1: number; z1: number }, b: { x0:
  * roads, water, places, fields and bases; the ground under it levelled at most `WAREHOUSE.maxCut`; and the apron
  * before its doors clear and not too steep, so vehicles and the convoys drive in.
  */
-export function warehouseProblem(t: Terrain, poi: Poi, seed: number, s: TownState | undefined, p: HallSpot, claims: Claim[]): string {
+export function warehouseProblem(t: Terrain, poi: Poi, seed: number, s: TownState | undefined, p: HallSpot, claims: Claim[], others: Hub[] = []): string {
   const ox = poi.x + VILLAGE_OFFSET.x, oz = poi.z + VILLAGE_OFFSET.z, cx = ox + p.x, cz = oz + p.z;
   if (worldDist(poi.x, poi.z, cx, cz) > WAREHOUSE.reach) return TL`Too far from ${poi.name}: the warehouse goes within ${WAREHOUSE.reach} m of the village.`;
+  const taken = hexProblem(others, cx, cz, villageHub(poi.id)); // (0.249) one warehouse to a hex
+  if (taken) return taken;
   const h = warehouseAt(p), a = apronOf(h), W = (r: { x0: number; z0: number; x1: number; z1: number }) => ({ x0: ox + r.x0, z0: oz + r.z0, x1: ox + r.x1, z1: oz + r.z1 });
   const hall = W(h), apron = W(a), half = (h.x1 - h.x0) / 2;
   for (const zn of reservedZones(t.world, poi, seed, s)) {

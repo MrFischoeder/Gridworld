@@ -1,4 +1,5 @@
 import { truckAt } from '../world/convoyroutes';
+import { hubs, hexCorners, parseHex, HEX } from '../gen/warehouses';
 import { biomeAt, biomeName, BIOMES, BIOME_KINDS, type BiomeHere } from '../gen/biomes';
 import { wrecked } from '../gen/routes';
 import { shipPos } from '../gen/shiplines';
@@ -314,6 +315,14 @@ function drawArea(ctx: CanvasRenderingContext2D, w: number, h: number, ppm: numb
     ctx.strokeStyle = '#e8e070'; ctx.globalAlpha = o.done?.pline ? 0.85 : 0.45; ctx.lineWidth = o.done?.pline ? 2 : 1; if (!o.done?.pline) ctx.setLineDash([3, 4]);
     ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.stroke(); ctx.setLineDash([]); ctx.globalAlpha = 1; ctx.lineWidth = 1;
   }
+  for (const hb of hubs(G.char.world, G.char.towns, G.char.outposts)) { // (0.249) the warehouses' areas: a dashed hex, the name at its top
+    const cs = hexCorners(parseHex(hb.hex), px).map(([x, z]) => [X(x), Z(z)] as const);
+    if (cs.every(([x]) => x < -20) || cs.every(([x]) => x > w + 20) || cs.every(([, y]) => y < -20) || cs.every(([, y]) => y > h + 20)) continue;
+    ctx.strokeStyle = ctx.fillStyle = '#ffd060'; ctx.globalAlpha = hb.kind === 'village' ? 0.3 : 0.55; ctx.setLineDash([5, 6]);
+    ctx.beginPath(); cs.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y))); ctx.closePath(); ctx.stroke(); ctx.setLineDash([]);
+    if (labels) { const [hx, hz] = hexCorners(parseHex(hb.hex), px).reduce((a, [x, z]) => [a[0] + x / 6, a[1] + z / 6], [0, 0]); ctx.globalAlpha = 0.8; ctx.fillText(hb.name, X(hx), Z(hz) - HEX.r * ppm * 0.78); }
+    ctx.globalAlpha = 1;
+  }
   for (const o of Object.values(G.char.outposts)) { // (0.183) the outposts (shared): a gold ring round the deposit
     if (!o?.k) continue;
     const x = X(nearX(o.x, px)), y = Z(o.z), r = labels ? 11 : 6;
@@ -322,7 +331,7 @@ function drawArea(ctx: CanvasRenderingContext2D, w: number, h: number, ppm: numb
     ctx.strokeStyle = ctx.fillStyle = theirs ? '#d0805a' : '#ffd060'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(x, y, r, 0, 6.283); ctx.stroke(); ctx.lineWidth = 1;
     if (theirs && labels) ctx.fillText(TL`${ownerName(o.o)}'s`, x, y - r - 6);
     if (o.life?.v) { ctx.beginPath(); ctx.arc(x, y, r + 4, 0, 6.283); ctx.stroke(); } // (0.185) a hamlet: a double ring
-    if (labels) ctx.fillText(o.life?.v ? TL`Hamlet · ${Math.floor(o.life.n)} people` : (o.k === 'port' || o.k === 'camp' ? o.name : tl('Outpost') + (o.done?.dig ? '' : ' (building)')) + (o.life && o.life.n >= 1 ? ` · ${Math.floor(o.life.n)} people` : ''), x, y + r + 16);
+    if (labels) ctx.fillText(o.life?.v ? TL`Hamlet · ${Math.floor(o.life.n)} people` : (o.k === 'port' || o.k === 'store' || o.k === 'camp' ? o.name : tl('Outpost') + (o.done?.dig ? '' : ' (building)')) + (o.life && o.life.n >= 1 ? ` · ${Math.floor(o.life.n)} people` : ''), x, y + r + 16);
   }
   for (const m of leadMarkers()) { // leads: a violet diamond for a data carrier, a lime one for a great installation (held at the edge of the big map when further)
     let x = X(m.x), y = Z(m.z); const r = labels ? 9 : 5, out = x < 24 || y < 40 || x > w - 24 || y > h - 40;

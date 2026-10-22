@@ -21,6 +21,8 @@ export interface TownState {
   /** (0.187, gen/routes.ts) Crates the outposts' convoys delivered that went into the hall, and food units shipped back,
    *  per route (cumulative; only written under the village's lock). */
   rcv?: Record<string, Partial<Record<ItemKey, number>>>; ship?: Record<string, number>;
+  /** (0.249, PLAN_MAGAZYNOW.md) The name the players gave the village's warehouse (else '<village> Warehouse'). */
+  whn?: string;
   /** (0.220, gen/commute.ts) People asked to walk out to work at nearby outposts, ports and crew camps: outpost id → how many. */
   commute?: Record<string, number>;
   /** The wall's tier (0 = the stake fence every village starts with). */

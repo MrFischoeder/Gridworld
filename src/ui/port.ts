@@ -3,6 +3,9 @@
 // the warehouse's hold. Storing and taking by hand (the backpack) always works; the crane, which unloads your trucks
 // parked by the warehouse and your boats at the dock, and loads them from the hold, works only with its whole crew and
 // power (gen/ports.ts `portWorks`). Every change runs under the port's lock online (`withOutpost`).
+// (0.249, PLAN_MAGAZYNOW.md stage M1) The same window serves a warehouse built in the wilds (kind 'store': no dock, no
+// crane, no lines; its storekeepers unload the trucks by it and take in what the deposits of its hex dig), and every
+// warehouse can be renamed here.
 import { G, W } from '../game';
 import { ITEMS, type ItemKey } from '../data/items';
 import { calcStats, saveChar, gainXp, packVol } from '../character';
@@ -13,6 +16,7 @@ import { POWER_SRC, loadFuel, settleAll, type PowerKind } from '../gen/grid';
 import { FOOD } from '../gen/farms';
 import { lodeById } from '../gen/lodes';
 import { newPort, portSpots, portId, portProblem, portWorks, portVol, portPut, portTake } from '../gen/ports';
+import { hubs, hexProblem, feeders, waitingAt, cleanHubName } from '../gen/warehouses';
 import { storable } from '../gen/hall';
 import type { Pier } from '../gen/piers';
 import { nearX } from '../gen/regions';
@@ -38,8 +42,10 @@ import { tl, TL } from '../i18n';
 
 const dlgEl = $('dlg'), panel = () => dlgEl.querySelector('.panel') as HTMLElement;
 let open: { id: string; pier: string } | null = null;
+/** (0.249) A warehouse in the wilds (no dock). */
+const wild = () => state()?.k === 'store';
 const state = () => (open ? G.char.outposts[open.id] : undefined);
-const dockOf = () => (open ? G.char.piers.find((q) => q.id === open!.pier) : undefined);
+const dockOf = () => (open && open.pier ? G.char.piers.find((q) => q.id === open!.pier) : undefined);
 /** The warehouse on your copy of the planet: materials, food and fuel are counted from the backpack and the trunks there. */
 const at = () => { const o = state(); return o ? { x: nearX(o.x, G.pos.x), z: o.z } : null; };
 const small = (op: string, t: string) => `<button class="opt" style="display:inline-block;width:auto;margin:2px 4px" data-port="${op}">${t}</button>`;
@@ -48,11 +54,19 @@ const WHY: Record<string, string> = {
   hands: TL`The crane stands: it needs ${PORT.crew} people at the warehouse.`,
   power: TL`The crane stands: the grid met less than ${Math.round(PORT.power * 100)}% of the demand over the last day.`,
 };
+/** (0.249) The same for a wild warehouse's storekeepers. */
+const WHY_WILD: Record<string, string> = {
+  unbuilt: tl('The warehouse is not built yet.'),
+  hands: TL`The storekeepers are missing: the warehouse needs ${PORT.crew} people at work.`,
+  power: TL`The storekeepers stand idle: the grid met less than ${Math.round(PORT.power * 100)}% of the demand over the last day.`,
+};
+const whyOf = (w: string) => (wild() ? WHY_WILD : WHY)[w];
 
-/** Your boats moored at this dock (within 45 m of its head). */
-function boatsHere(p: Pier) {
+/** The boats moored at this dock (within 45 m of its head; 0.248: anyone's). */
+function boatsHere(p: Pier | undefined) {
+  if (!p) return [];
   const hx = p.x + p.dx * p.len, hz = p.z + p.dz * p.len;
-  return G.char.boats.filter((b) => b.id.startsWith(`boat:${G.char.pid}:`) && Math.hypot(nearX(b.x, hx) - hx, b.z - hz) < 45);
+  return G.char.boats.filter((b) => Math.hypot(nearX(b.x, hx) - hx, b.z - hz) < 45);
 }
 /** Your trucks' trunks parked by the warehouse. */
 const trunksHere = () => stores(at()).slice(1);
@@ -60,20 +74,21 @@ const count = (slots: (Slot | null)[]) => slots.reduce((a, s) => a + (s && stora
 
 function holdHTML(id: string): string {
   const c = G.char, o = c.outposts[id], p = dockOf();
-  if (!o?.done?.port || !p) return '';
+  if (!o?.done?.port || (!p && o.k !== 'store')) return '';
   const used = Math.round(portVol(o)), works = portWorks(c.world, c.outposts, id, c.time);
   let s = TL`<div class="say"><b>The hold</b>: ${used} of ${PORT.vol} L.<br>`;
   const list = Object.entries(o.hold ?? {}).filter(([, n]) => (n ?? 0) > 0) as [ItemKey, number][];
   s += list.length ? list.map(([k, n]) => `${itemName(k)} ×${n} ` + small(`take:${k}:1`, tl('Take 1')) + small(`take:${k}:${n}`, tl('Take all'))).join('<br>') : tl('Empty.');
   const mine = (Object.entries(G.char.inv.reduce((a, x) => { if (x && storable(x.k)) a[x.k] = (a[x.k] ?? 0) + x.n; return a; }, {} as Record<string, number>)) as [ItemKey, number][]);
   s += '</div>' + (mine.length ? TL`<div class="say">In your backpack: ` + mine.map(([k, n]) => `${itemName(k)} ×${n} ` + small(`put:${k}`, tl('Store'))).join('<br>') + `</div>` + small('putall', tl('Store everything from the backpack')) : '');
-  // the crane
-  s += TL`<div class="say"><b>The crane</b>: `;
-  if (works.why) return s + `<span style="color:#ff6a4a">${WHY[works.why]}</span>` + tl(' Storing and taking by hand still works.') + '</div>';
+  // the crane (a wild warehouse: its storekeepers)
+  s += o.k === 'store' ? TL`<div class="say"><b>The storekeepers</b>: ` : TL`<div class="say"><b>The crane</b>: `;
+  if (works.why) return s + `<span style="color:#ff6a4a">${whyOf(works.why)}</span>` + tl(' Storing and taking by hand still works.') + '</div>' + carriersHTML(id);
   const boats = boatsHere(p), tr = trunksHere();
-  s += TL`it works (${works.hands} people, ${Math.round(works.power * 100)}% power). It unloads the trucks parked by the warehouse and the boats at the dock, and loads them from the hold.</div>`;
+  s += o.k === 'store' ? TL`they work (${works.hands} people, ${Math.round(works.power * 100)}% power). They unload the trucks parked by the warehouse and load them from the hold.</div>` : TL`it works (${works.hands} people, ${Math.round(works.power * 100)}% power). It unloads the trucks parked by the warehouse and the boats at the dock, and loads them from the hold.</div>`;
+  s += carriersHTML(id);
   const inTrunks = tr.reduce((a, t) => a + count(t.slots), 0), inBoats = boats.reduce((a, b) => a + count(boatHold(b).items), 0);
-  s += inTrunks + inBoats ? small('cunload', TL`Unload ${inTrunks + inBoats} crates into the hold`) : TL`<div class="say" style="opacity:.7">Nothing to unload: park a truck by the warehouse or moor a boat of yours at the dock.</div>`;
+  s += inTrunks + inBoats ? small('cunload', TL`Unload ${inTrunks + inBoats} crates into the hold`) : o.k === 'store' ? TL`<div class="say" style="opacity:.7">Nothing to unload: park a truck by the warehouse.</div>` : TL`<div class="say" style="opacity:.7">Nothing to unload: park a truck by the warehouse or moor a boat at the dock.</div>`;
   if (list.length) {
     if (tr.length) s += small('cloadt', tl('Load your trucks here from the hold'));
     boats.forEach((b, i) => { s += small(`cloadb:${i}`, TL`Load your ${BOATS[b.k].name.toLowerCase()} from the hold`); });
@@ -82,11 +97,21 @@ function holdHTML(id: string): string {
 }
 const hrs = (m: number) => (m >= 60 ? TL`${Math.floor(m / 60)} h ${Math.round(m % 60)} min` : `${Math.round(m)} min`);
 const FATE: Record<string, string> = { ok: tl('sailed'), idle: tl('stayed in port: a crane had no crew or no power'), dry: tl('stayed in port: no diesel'), calm: tl('lay becalmed') };
-/** Your ships moored at this dock that could take a line (within 60 m of its head). */
+/** The ships moored at this dock that could take a line (within 60 m of its head; 0.248: anyone's). */
 function shipsHere(p: Pier) {
   const hx = p.x + p.dx * p.len, hz = p.z + p.dz * p.len;
-  return G.char.boats.filter((b) => isLineShip(b.k) && b.id.startsWith(`boat:${G.char.pid}:`) && Math.hypot(nearX(b.x, hx) - hx, b.z - hz) < 60);
+  return G.char.boats.filter((b) => isLineShip(b.k) && Math.hypot(nearX(b.x, hx) - hx, b.z - hz) < 60);
 }
+/** (0.249) What the carriers bring here from the deposits of this warehouse's hex, and its name. */
+function carriersHTML(id: string): string {
+  const c = G.char, h = hubs(c.world, c.towns, c.outposts).find((q) => q.id === id);
+  if (!h) return '';
+  const from = feeders(h, c.outposts, (q) => lodeById(c.world, q)), wait = waitingAt(id, c.outposts, c.outposts[id]?.rcv).reduce((a, w) => a + w[3], 0);
+  return TL`<div class="say"><b>Its area</b> (a hex about a kilometre across): ` + (from.length ? TL`the carriers bring in what ${from.map(([, n]) => n).join(', ')} dig, every two hours while the storekeepers work.` : tl('no deposit is worked in it yet. Outposts staked at deposits in this area send what they dig here on their own.')) +
+    (wait ? TL` ${wait} crates wait outside for room in the hold.` : '') + '</div>';
+}
+/** (0.249) The name row: rename this warehouse. */
+const nameHTML = (o: { name: string }) => { const v = o.name.replace(/"/g, '&quot;'); return tl('<div class="say"><b>Name</b>: ') + `<input id="whName" maxlength="28" value="${v}" style="width:14em"> ` + small('rename', tl('Rename')) + '</div>'; };
 const someoneAboard = (id: string) => (inBoat() && G.char.boats.some((b) => b.id === id)) || [...net.peers.values()].some((q) => q.st?.boat?.[0] === id);
 /** The cargo line: open one to another port, hand a ship over, keep a Motor Ship's tank full, choose the goods. */
 function lineHTML(id: string): string {
@@ -122,15 +147,16 @@ const at0 = () => at();
 function render(msg = '') {
   if (!open) return;
   const o = state(), p = dockOf();
-  if (!o || !p) { close(); return; }
-  let s = TL`<h2>${o.name}</h2><div class="role">A port on the dock · founded by ${o.by}${o.o !== 'crew' ? ` · ${ownerName(o.o)}` : ''}</div>`;
+  if (!o || (!p && o.k !== 'store')) { close(); return; }
+  let s = (o.k === 'store' ? TL`<h2>${o.name}</h2><div class="role">A warehouse in the wilds · staked out by ${o.by}${o.o !== 'crew' ? ` · ${ownerName(o.o)}` : ''}</div>` : TL`<h2>${o.name}</h2><div class="role">A port on the dock · founded by ${o.by}${o.o !== 'crew' ? ` · ${ownerName(o.o)}` : ''}</div>`);
   if (msg) s += `<div class="say">${msg}</div>`;
   if (!mayUse(o, myOwner())) s += TL`<div class="say">Founded by ${o.by}. Only they and the partners they let in work it.</div>`;
   else {
-    s += TL`<div class="say" style="opacity:.85">A port works like an outpost: it needs its own power and its own people. Build the warehouse, a power source, bunkhouses and fields; settlers come when there are beds and food. The warehouse's crane needs ${PORT.crew} people and power.</div>`;
+    s += o.k === 'store' ? TL`<div class="say" style="opacity:.85">A warehouse in the wilds works like an outpost: it needs its own power and its own people. Build the warehouse, a power source, bunkhouses and fields; settlers come when there are beds and food. Its storekeepers need ${PORT.crew} people and power. It serves its hex: one warehouse to an area.</div>` : TL`<div class="say" style="opacity:.85">A port works like an outpost: it needs its own power and its own people. Build the warehouse, a power source, bunkhouses and fields; settlers come when there are beds and food. The warehouse's crane needs ${PORT.crew} people and power.</div>`;
+    s += nameHTML(o);
     const pos = at();
     s += partHTML(o, 'port', pos) + holdHTML(open.id) + partHTML(o, 'power', pos) + powerHTML(open.id, o, pos) + plineHTML(open.id, o, pos) + partHTML(o, 'bunks', pos) + partHTML(o, 'field', pos) + peopleHTML(o, pos) + commuteHTML(open.id, o) + (o.done?.port ? lineHTML(open.id) : '');
-    if (bare(o) && (o.o === 'crew' || o.o === myOwner())) s += small('drop', tl('Give up the port'));
+    if (bare(o) && (o.o === 'crew' || o.o === myOwner())) s += small('drop', o.k === 'store' ? tl('Pull up the stakes') : tl('Give up the port'));
   }
   panel().classList.add('wide');
   panel().innerHTML = s + TL`<button class="opt" data-port="close">Close</button>`;
@@ -148,6 +174,8 @@ function close() { open = null; G.dlgOpen = false; dlgEl.style.display = 'none';
 export function foundProblem(p: Pier): string {
   const T = OW.terrain;
   if (!T) return tl('Not here.');
+  const [hx, hz] = (() => { const ps = portSpots(p, dryAt); return ps.house; })(), taken = hexProblem(hubs(G.char.world, G.char.towns, G.char.outposts), hx, hz); // (0.249) one warehouse to a hex
+  if (taken) return taken;
   const q = { ...p, x: nearX(p.x, G.pos.x) }, why = portProblem(q, (x, z) => T.heightAt(x, z), dryAt);
   return why === 'wet' ? tl('There is no dry ground for a warehouse behind this dock.') : why === 'steep' ? tl('The shore behind this dock is too steep for a warehouse.') : why ? tl('The dock is not finished.') : '';
 }
@@ -168,11 +196,14 @@ export function portClick(t: HTMLElement): boolean {
   if (!b) return false;
   const b0 = b, c = G.char, { id } = open, [a, x, y] = (b.dataset.port ?? b.dataset.op)!.split(':'), byId = (q: string) => lodeById(c.world, q);
   if (a === 'close') { close(); return true; }
+  const typed = a === 'rename' ? cleanHubName((document.getElementById('whName') as HTMLInputElement | null)?.value ?? '') : '';
+  if (a === 'rename' && !typed) { render(tl('Give it a name.')); return true; }
   if (a === 'commute') { commuteClick(id, x, (m) => { if (open?.id === id) render(m); }); return true; }
   let msg = '';
   void withOutpost(id, () => {
     const o = c.outposts[id], here = at(), p = dockOf();
-    if (!o || !p || !mayUse(o, myOwner())) { msg = tl('Not yours to work.'); return; }
+    if (!o || (!p && o.k !== 'store') || !mayUse(o, myOwner())) { msg = tl('Not yours to work.'); return; }
+    if (a === 'rename') { o.name = typed; msg = TL`It is called ${typed} now.`; return; }
     msg = tickPort(id);
     const say = (w: string) => { msg = msg ? msg + ' ' + w : w; };
     const l = o.line;
@@ -180,9 +211,10 @@ export function portClick(t: HTMLElement): boolean {
       const to = lineTargets(c.outposts, id).find((q) => q.id === b0.dataset.port!.slice(5));
       if (!to) { say(tl('That port is out of reach.')); return; }
       o.line = newLine(o, to.id, to.o, c.time); say(TL`A cargo line to ${to.o.name} is open. Hand a ship over to sail it.`);
+    } else if (!p && /^l(new|give|ship|fuel|recall|all|only)$/.test(a)) { return; // (0.249) a wild warehouse has no dock and no line
     } else if (a === 'lgive' && l && !l.ship) { delete o.line; say(tl('You give up the line.')); }
     else if (a === 'lship' && l && !l.ship) {
-      const b = shipsHere(p).find((q) => q.id === b0.dataset.port!.slice(6));
+      const b = shipsHere(p!).find((q) => q.id === b0.dataset.port!.slice(6));
       if (!b) { say(tl('Moor it at this dock first.')); return; }
       if (someoneAboard(b.id)) { say(tl('Everyone must be off the ship first.')); return; }
       if (boatHold(b).items.some(Boolean) || boatHold(b).gold > 0) { say(tl('Empty its hold first.')); return; }
@@ -195,7 +227,7 @@ export function portClick(t: HTMLElement): boolean {
       say(n ? TL`Poured ${n} canister${n === 1 ? '' : 's'} into the ship.` : tl('No canisters with you, or the tank is full.'));
     } else if (a === 'lrecall' && l?.ship) {
       const T = OW.terrain, k: BoatKind = l.ship.k;
-      const spot = T ? launchSpot(k, { ...p, head: PIER.head, headW: PIER.headW, w: PIER.w }, (qx, qz) => { const w = T.water(qx, qz); return w ? w.depth : null; }) : null;
+      const spot = T && p ? launchSpot(k, { ...p, head: PIER.head, headW: PIER.headW, w: PIER.w }, (qx, qz) => { const w = T.water(qx, qz); return w ? w.depth : null; }) : null;
       if (!spot) { say(tl('The water by this dock is too shallow to moor her.')); return; }
       const sh = recallShip(l)!;
       c.boats.push({ id: sh.id, k: sh.k, x: spot.x, z: spot.z, yaw: spot.yaw, t: c.time, ...(sh.fuel !== undefined ? { fuel: sh.fuel } : {}) }); redrawBoats();
@@ -237,7 +269,7 @@ export function portClick(t: HTMLElement): boolean {
       msg = moved ? TL`Stored ${moved} by hand.` : tl('The hold is full.');
     } else if (a === 'cunload' || a === 'cloadt' || a === 'cloadb') {
       const why = portWorks(c.world, c.outposts, id, c.time).why;
-      if (why) { msg = WHY[why]; return; }
+      if (why) { msg = whyOf(why); return; }
       if (a === 'cunload') {
         let moved = 0;
         for (const box of [...trunksHere().map((t) => t.slots), ...boatsHere(p).map((bt) => boatHold(bt).items)]) for (let i = 0; i < box.length; i++) {
@@ -245,7 +277,7 @@ export function portClick(t: HTMLElement): boolean {
           if (!s || !storable(s.k)) continue;
           const m = portPut(o, s.k, s.n); moved += m; s.n -= m; if (s.n <= 0) box[i] = null;
         }
-        msg = moved ? TL`The crane swings ${moved} crates into the hold.` : tl('Nothing fits in the hold.');
+        msg = moved ? (o.k === 'store' ? TL`The storekeepers carry ${moved} crates into the hold.` : TL`The crane swings ${moved} crates into the hold.`) : tl('Nothing fits in the hold.');
       } else {
         const boxes = a === 'cloadt' ? trunksHere().map((t) => t.slots) : [boatHold(boatsHere(p)[+x]).items].filter(Boolean);
         let moved = 0;
@@ -254,10 +286,10 @@ export function portClick(t: HTMLElement): boolean {
           for (const box of boxes) if (left > 0) left = putItems(box, k, left);
           if (left < n) { portTake(o, k, n - left); moved += n - left; }
         }
-        msg = moved ? TL`The crane loads ${moved} crates.` : tl('No room aboard.');
+        msg = moved ? (o.k === 'store' ? TL`The storekeepers load ${moved} crates.` : TL`The crane loads ${moved} crates.`) : tl('No room aboard.');
       }
     } else if (a === 'drop' && bare(o) && (o.o === 'crew' || o.o === myOwner())) {
-      delete c.outposts[id]; msg = tl('You give up the port. The dock is just a dock again.');
+      delete c.outposts[id]; msg = o.k === 'store' ? tl('You pull up the stakes. The ground is open again.') : tl('You give up the port. The dock is just a dock again.');
     }
   }).then((ok) => { if (!ok) return; calcStats(); saveChar(); redrawPorts(); if (open?.id === id) render(msg); });
   return true;

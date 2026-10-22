@@ -18,15 +18,22 @@ import { powerShare } from './grid';
 
 export const portId = (pierId: string) => 'port:' + pierId;
 export const isPort = (o: OutpostState | undefined) => o?.k === 'port';
+/** (0.249) A port's or a wild warehouse (both drawn and worked by world/ports.ts). */
+export const isStore = (o: OutpostState | undefined) => o?.k === 'port' || o?.k === 'store';
+/** The frame a port's pieces are laid out in: its dock, or (0.249) a wild warehouse's own (`OutpostState.fr`). */
+export type Frame = Pick<Pier, 'x' | 'z' | 'dx' | 'dz'> & { id: string; len: number };
+export const frameOf = (o: OutpostState, piers: Pier[]): Frame | null => (o.fr ? { id: '', x: o.fr[0], z: o.fr[1], dx: o.fr[2], dz: o.fr[3], len: 0 } : piers.find((q) => q.id === o.pier) ?? null);
+/** (0.249) A wild warehouse's frame: the house at (x, z), its doors facing (dx, dz). */
+export const wildFrame = (x: number, z: number, dx: number, dz: number): [number, number, number, number] => [Math.round((x + dx * PORT.back) * 10) / 10, Math.round((z + dz * PORT.back) * 10) / 10, dx, dz];
 /** The port's name, hashed from the dock's place. */
 export const portName = (world: number, p: Pier) => ruinName(rng(hash(world, p.x | 0, p.z | 0, 0x9077))) + ' Port';
 
 /** A point in the dock's frame: a along it (out to sea +, inland −) from its root, b across. */
-export const portPoint = (p: Pier, a: number, b: number): [number, number] => [p.x + p.dx * a - p.dz * b, p.z + p.dz * a + p.dx * b];
+export const portPoint = (p: Pick<Pier, 'x' | 'z' | 'dx' | 'dz'>, a: number, b: number): [number, number] => [p.x + p.dx * a - p.dz * b, p.z + p.dz * a + p.dx * b];
 /** Where the pieces of a port stand (world x, z on the dock's copy of the planet): the warehouse (its doors towards the
  *  dock), the crane by the dock's root, the power source, three bunkhouses and three fields, each the first of its
  *  candidates on dry land clear of the others (`dry` tells dry ground; the fallback is the first candidate). */
-export function portSpots(p: Pier, dry: (x: number, z: number) => boolean): PortSpots {
+export function portSpots(p: Pick<Pier, 'x' | 'z' | 'dx' | 'dz'>, dry: (x: number, z: number) => boolean): PortSpots {
   const B = PORT.back, taken: [number, number, number][] = [];
   const pick = (cands: [number, number][], r: number): [number, number] => {
     for (const [a, b] of cands) {
@@ -72,7 +79,7 @@ export const PORT_PAD = { house: [11, 10, 0.25], power: [5, 8, 0.3], bunks: [6, 
 export function portClaims(world: number, outposts: Record<string, OutpostState>): Claim[] {
   const out: Claim[] = [];
   for (const o of Object.values(outposts)) {
-    const sp = o?.k === 'port' || o?.k === 'camp' ? o.ps : undefined; // (0.218) and the crew camps at the old plants
+    const sp = o?.k === 'port' || o?.k === 'store' || o?.k === 'camp' ? o.ps : undefined; // (0.218) and the crew camps at the old plants
     if (!sp) continue;
     const pad = (q: [number, number], [flat, blend, soft]: readonly [number, number, number]) => out.push({ x: q[0], z: q[1], y: Math.round(naturalHeight(world, q[0], q[1]) * 10) / 10, flat, blend, soft });
     const going = (p: string) => o.job?.p === p;

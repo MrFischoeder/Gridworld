@@ -9,6 +9,7 @@ import { isBridgePlacing, cancelBridgePlacing } from '../world/bridges';
 import { isFieldPlacing, cancelFieldPlacing } from '../world/fields';
 import { isStreetPlacing, cancelStreetPlacing } from '../world/streetlamps';
 import { isLhPlacing, cancelLhPlacing } from '../world/lighthouses';
+import { isWhPlacing, cancelWhPlacing } from '../world/wildstores';
 import { isPierPlacing, cancelPierPlacing } from '../world/piers';
 import { inBoat, openBoatHold, toggleBoatView, toggleSail, refuel } from '../world/boats';
 import { isBuilding, stopBuilding, dismantle } from '../world/building';
@@ -60,6 +61,7 @@ export function initInput(onPause: () => void) {
     if (e.code === 'Escape' && isFieldPlacing()) cancelFieldPlacing();
     if (e.code === 'Escape' && isStreetPlacing()) cancelStreetPlacing();
     if (e.code === 'Escape' && isLhPlacing()) cancelLhPlacing();
+    if (e.code === 'Escape' && isWhPlacing()) cancelWhPlacing();
     if (e.code === 'Escape' && isPierPlacing()) cancelPierPlacing();
     if (e.code === 'Escape' && isBuilding()) stopBuilding();
     if (e.code === 'KeyB' && G.playing) { toggleBuildMenu(); return; }

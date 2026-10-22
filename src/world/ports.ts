@@ -2,6 +2,8 @@
 // board, the warehouse with its yard and crates, the crane by the dock's root, the power source, bunkhouses and
 // fields, the settlers at work), finished when their builders' time is up (whoever sees it first, the same on every
 // game), and the board where E opens the port window (ui/port.ts). Everything is drawn from the shared `outposts`.
+// (0.249, PLAN_MAGAZYNOW.md stage M1) The warehouses built in the wilds are drawn the same way in their own frame
+// (`OutpostState.fr`), without the dock's crane, and take in what the carriers bring from their hex's deposits.
 import * as THREE from 'three';
 import { scene } from './render';
 import { PropBatch } from './props';
@@ -12,12 +14,13 @@ import { OW } from './overworld';
 import { nearX, worldDist } from '../gen/regions';
 import { windAt } from '../gen/energy';
 import { hash } from '../core/rng';
-import type { Pier } from '../gen/piers';
 import { PORT, countOf, finishDue, jobEnd, partName, type OutpostState } from '../gen/outposts';
 import { lodeById } from '../gen/lodes';
 import { settleAll, pwOf, POWER_SRC } from '../gen/grid';
 import { crews, lifeNow } from '../gen/outpostlife';
-import { portSpots, portWorks, portVol, isPort, portPoint, portClaims } from '../gen/ports';
+import { portSpots, portWorks, portVol, isStore, portPoint, portClaims, frameOf, type Frame } from '../gen/ports';
+import { drainStore, waitingAt } from '../gen/warehouses';
+import { ITEMS } from '../data/items';
 import { padsChanged } from './claims';
 import { settleLine, unloadLines, dueVoyages, arriving, voyageSails, shipAt, periodOf } from '../gen/shiplines';
 import { showcaseBoat } from './boats';
@@ -33,13 +36,13 @@ import { tl, TL } from '../i18n';
 const NEAR = 520, DROP = 640;
 const WOOD = 0xc8a060, STEEL = 0xa8c8b8, STAKE = 0xffd060, GOLD = 0xffd060;
 interface Hand { f: Figure; x: number; z: number; face: number; phase: number; work: boolean; carry: boolean }
-interface Live extends DrawInto { id: string; p: Pier; sig: string; ox: number; oy: number; oz: number; hands: Hand[]; jib?: THREE.Object3D; board: [number, number]; works: boolean }
+interface Live extends DrawInto { id: string; p: Frame; sig: string; ox: number; oy: number; oz: number; hands: Hand[]; jib?: THREE.Object3D; board: [number, number]; works: boolean }
 const live = new Map<string, Live>();
 let tick = 0;
 
-/** The dock of a port (the saved one), and the dock on your copy of the planet. */
-const pierOf = (o: OutpostState) => G.char.piers.find((q) => q.id === o.pier);
-const onMyCopy = (p: Pier): Pier => ({ ...p, x: nearX(p.x, G.pos.x) });
+/** The frame of a port (its dock, the saved one) or of a wild warehouse, and the same on your copy of the planet. */
+const pierOf = (o: OutpostState) => frameOf(o, G.char.piers);
+const onMyCopy = (p: Frame): Frame => ({ ...p, x: nearX(p.x, G.pos.x) });
 /** Dry ground (no water over it) for the port's pieces. */
 export const dryAt = (x: number, z: number) => { const w = OW.terrain?.water(x, z); return !w || w.depth < 0.05; };
 
@@ -47,7 +50,7 @@ function sigOf(id: string, o: OutpostState): string {
   const L = o.life ? Math.floor(lifeNow(G.char.world, o, G.char.time).n) : 0, w = portWorks(G.char.world, G.char.outposts, id, G.char.time).why;
   return JSON.stringify([o.done ?? {}, o.n ?? {}, o.job?.p ?? '', o.pk ?? '', o.job ? Math.floor((G.char.time - o.job.t) / (o.job.h * 6)) : 0, Math.floor(portVol(o) / 300), L, w]);
 }
-function build(id: string, o: OutpostState, p: Pier): Live {
+function build(id: string, o: OutpostState, p: Frame): Live {
   const T = OW.terrain!, saved = pierOf(o), sh = saved ? p.x - saved.x : 0, raw = o.ps ?? portSpots(saved ?? p, dryAt), mv = (q: [number, number]): [number, number] => [q[0] + sh, q[1]];
   const sp = { house: mv(raw.house), crane: mv(raw.crane), power: mv(raw.power), bunks: raw.bunks.map(mv), fields: raw.fields.map(mv) }, [hx, hz] = sp.house, oy = T.heightAt(hx, hz);
   const H = (x: number, z: number) => T.heightAt(hx + x, hz + z) - oy, loc = (x: number, z: number): [number, number] => [x - hx, z - hz];
@@ -82,7 +85,7 @@ function build(id: string, o: OutpostState, p: Pier): Live {
     for (const sg of [-1, 1]) { pb.face(V(-B - 6.4, sg * 8.4, eave - 0.2), V(-B + 6.4, sg * 8.4, eave - 0.2), V(-B + 6.4, 0, ridge), V(-B - 6.4, 0, ridge)); pb.line(WOOD, V(-B - 6.4, sg * 8.4, eave - 0.2), V(-B + 6.4, sg * 8.4, eave - 0.2)); }
     pb.line(WOOD, V(-B - 6.4, 0, ridge), V(-B + 6.4, 0, ridge));
     for (let b = -6; b <= 6; b += 3) pb.seg(WOOD, V(-B - 5.9, b, yF + 0.1), V(-B - 5.9, b, yF + 3)); // racks along the back wall
-    const sign = textSprite(tl('PORT WAREHOUSE'), '#ffd060', 2.2), [sx, , sz] = V(-B + 6.3, 0, 0); sign.position.set(sx, eave + 0.6, sz); g.add(sign);
+    const sign = textSprite(o.k === 'store' ? o.name.toUpperCase() : tl('PORT WAREHOUSE'), '#ffd060', 2.2), [sx, , sz] = V(-B + 6.3, 0, 0); sign.position.set(sx, eave + 0.6, sz); g.add(sign);
     // the yard: a fence from the shed's front corners to the shore, open towards the dock
     for (const sg of [-1, 1]) for (let a = -B + 6; a < -4; a += 2.5) {
       const [x0, , z0] = V(a, sg * 10, 0), [x1, , z1] = V(Math.min(-4, a + 2.5), sg * 10, 0), y0f = H(x0, z0), y1f = H(x1, z1);
@@ -92,8 +95,8 @@ function build(id: string, o: OutpostState, p: Pier): Live {
     const n = Math.min(36, Math.ceil(portVol(o) / 160));
     for (let k = 0; k < n; k++) { const a = -B + 8 + (k % 6) * 0.9, b = -8 + Math.floor(k / 12) * 1.1, [x, , z] = V(a, b, 0), y = H(x, z) + Math.floor((k % 12) / 6) * 0.65; pb.box(x - 0.34, y, z - 0.34, x + 0.34, y + 0.62, z + 0.34, GOLD); }
     if (n) { const [x0, , z0] = V(-B + 8, -8, 0), [x1, , z1] = V(-B + 13.4, -5.8, 0); L.boxes.push([Math.min(x0, x1) - 0.4, Math.min(z0, z1) - 0.4, Math.max(x0, x1) + 0.4, Math.max(z0, z1) + 0.4]); }
-    // the crane: a lattice mast by the dock's root, the jib turning over the dock while it works
-    const [cx, cz] = loc(...sp.crane), cy = H(cx, cz), h = 9;
+    // the crane: a lattice mast by the dock's root, the jib turning over the dock while it works (a port's only)
+    if (o.k === 'port') { const [cx, cz] = loc(...sp.crane), cy = H(cx, cz), h = 9;
     for (const [sx, sz] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) pb.seg(STEEL, [cx + sx * 0.9, cy, cz + sz * 0.9], [cx + sx * 0.5, cy + h, cz + sz * 0.5]);
     for (let k = 1; k < 5; k++) { const r = 0.9 - 0.4 * k / 5, yy = cy + h * k / 5; pb.line(STEEL, [cx - r, yy, cz - r], [cx + r, yy, cz - r], [cx + r, yy, cz + r], [cx - r, yy, cz + r], [cx - r, yy, cz - r]); }
     pb.box(cx - 1.4, cy, cz - 1.4, cx + 1.4, cy + 0.5, cz + 1.4, STEEL);
@@ -103,7 +106,7 @@ function build(id: string, o: OutpostState, p: Pier): Live {
     for (let s = 0; s < len; s += 1.5) jp.seg(STEEL, [-0.3, 0, s], [0.3, 0, s + 1.5]);
     jp.box(-0.6, -0.9, -3.2, 0.6, 0, -2.2, STEEL); // the counterweight
     jp.seg(GOLD, [0, 0, len - 1], [0, -5, len - 1]); jp.box(-0.3, -5.6, len - 1.3, 0.3, -5, len - 0.7, GOLD); // the hook and a crate on it
-    const jib = jp.build(); jib.position.set(cx, cy + h + 0.3, cz); jib.rotation.y = Math.atan2(p.dx, p.dz); g.add(jib); L.jib = jib;
+    const jib = jp.build(); jib.position.set(cx, cy + h + 0.3, cz); jib.rotation.y = Math.atan2(p.dx, p.dz); g.add(jib); L.jib = jib; }
   }
   // the power source
   { const [x, z] = loc(...sp.power), y = H(x, z);
@@ -183,9 +186,9 @@ export function updatePorts(dt: number) {
   tickLines(0.5);
   const seen = new Set<string>();
   for (const [id, o] of Object.entries(G.char.outposts)) {
-    if (!isPort(o)) continue;
+    if (!isStore(o)) continue;
     const saved = pierOf(o);
-    if (!saved?.done) continue;
+    if (!saved || (o.k === 'port' && !G.char.piers.find((q) => q.id === o.pier)?.done)) continue;
     const p = onMyCopy(saved);
     if (Math.hypot(p.x - G.pos.x, p.z - G.pos.z) > NEAR) continue;
     seen.add(id);
@@ -205,6 +208,8 @@ export function tickPort(id: string): string {
   for (const v of settleLine(c.world, c.outposts, id, c.time)) if (v.fate === 'ok' && v.n) words.push(TL`The ${BOATS[o.line!.ship!.k].name.toLowerCase()} carried ${v.n} crates to ${o.line!.toName}.`);
   const got = unloadLines(c.world, c.outposts, id, c.time), n = got.reduce((a, [, m]) => a + m, 0);
   if (n) words.push(TL`The crane took ${n} crates off the ships into the hold.`);
+  const carried = drainStore(id, c.outposts); // (0.249) what the carriers brought from the deposits of its hex
+  if (carried.length) words.push(TL`The storekeepers took in ${carried.map(([g, m]) => `${m} × ${ITEMS[g].name}`).join(', ')} from the deposits round about.`);
   for (const w of words) logLine(`${o.name}: ${w}`);
   return words.join(' ');
 }
@@ -216,8 +221,8 @@ function tickLines(dt: number) {
   lineT = 15;
   const c = G.char;
   for (const [id, o] of Object.entries(c.outposts)) {
-    if (!isPort(o)) continue;
-    const due = o.line ? dueVoyages(o.line, c.time) > 0 : false, wait = arriving(c.outposts, id).some((a) => a.n > 0) && !portWorks(c.world, c.outposts, id, c.time).why;
+    if (!isStore(o)) continue;
+    const due = o.line ? dueVoyages(o.line, c.time) > 0 : false, wait = (arriving(c.outposts, id).some((a) => a.n > 0) || waitingAt(id, c.outposts, o.rcv).length > 0) && !portWorks(c.world, c.outposts, id, c.time).why;
     if (due || wait) void withOutpost(id, () => { tickPort(id); }, true).then((ok) => { if (ok) saveChar(); });
   }
 }
@@ -232,17 +237,17 @@ function levelPads() {
 function finishPorts() {
   const c = G.char, byId = (id: string) => lodeById(c.world, id);
   for (const [id, o] of Object.entries(c.outposts)) {
-    if ((!isPort(o) && o?.k !== 'camp') || !o.job || c.time < jobEnd(o)) continue; // (0.218) and the crew camps at the old plants
+    if ((!isStore(o) && o?.k !== 'camp') || !o.job || c.time < jobEnd(o)) continue; // (0.218) and the crew camps at the old plants
     tellRaids(settleAll(c.world, c.outposts, byId, jobEnd(o), c.towns)); // a new source, beds or field change the grid and the people: count up to it first
     const p = finishDue(o, null, c.time, pwOf(c.world, c.outposts, id, c.time));
     if (!p) continue;
     saveChar(); const what = partName(o.k, p, o.pk, countOf(o, p) - 1).toLowerCase();
     showToast(`${o.name}: ${what} built`);
-    logLine(TL`The builders finished the ${what} at ${o.name}.${o.k === 'camp' ? tl(' Settlers come when there are beds and food to spare.') : p === 'pline' && o.pl ? TL` Power flows along it to and from ${o.pl.name} now.` : p === 'port' ? TL` Its crane needs ${PORT.crew} people and power to work; storing by hand works now.` : p === 'power' && o.pk ? TL` It powers every outpost and port within ${POWER_SRC[o.pk].r} m.${POWER_SRC[o.pk].fuel ? tl(' Load its bunker with fuel.') : ''}` : ''}`);
+    logLine(TL`The builders finished the ${what} at ${o.name}.${o.k === 'camp' ? tl(' Settlers come when there are beds and food to spare.') : p === 'pline' && o.pl ? TL` Power flows along it to and from ${o.pl.name} now.` : p === 'port' && o.k === 'store' ? TL` Its storekeepers need ${PORT.crew} people and power to take in what the deposits round about dig; storing by hand works now.` : p === 'port' ? TL` Its crane needs ${PORT.crew} people and power to work; storing by hand works now.` : p === 'power' && o.pk ? TL` It powers every outpost and port within ${POWER_SRC[o.pk].r} m.${POWER_SRC[o.pk].fuel ? tl(' Load its bunker with fuel.') : ''}` : ''}`);
   }
 }
-/** The port whose board you stand by (its id and dock). */
-export function nearPortBoard(): { id: string; p: Pier } | null {
+/** The port (or wild warehouse) whose board you stand by (its id and frame). */
+export function nearPortBoard(): { id: string; p: Frame } | null {
   if (G.char.loc !== 'overworld' || G.fly) return null;
   for (const L of live.values()) if (Math.hypot(L.ox + L.board[0] - G.pos.x, L.oz + L.board[1] - G.pos.z) < 2) return { id: L.id, p: L.p };
   return null;

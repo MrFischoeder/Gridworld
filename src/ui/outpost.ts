@@ -25,6 +25,7 @@ import { lodeById } from '../gen/lodes';
 import { nearX } from '../gen/regions';
 import { itemName } from './icons';
 import { carried, takeFrom, putAway } from './market';
+import { hubs, hubAt, hubWorks } from '../gen/warehouses';
 import { withOutpost } from './stock';
 import { $, showToast, logLine } from './hud';
 import { lockPointer } from './input';
@@ -166,6 +167,13 @@ export function plineHTML(id: string, o: OutpostState, pos = at()): string {
     (f > 0 ? TL`it carries <b>${Math.round(f)} kW</b> from this grid to ${l.name}.` : f < 0 ? TL`it carries <b>${Math.round(-f)} kW</b> from ${l.name} into this grid.` : tl('nothing flows now: neither side has power to spare for the other.')) +
     (b ? TL` ${l.name} has ${Math.round(b.free)} kW to spare and lacks ${Math.round(b.short)} kW.` : '') + `</div>`;
 }
+/** (0.249, PLAN_MAGAZYNOW.md) Where this outpost's crates go: the warehouse serving its hex, if any. */
+function carriedHTML(id: string, x: number, z: number): string {
+  const c = G.char, o = c.outposts[id], h = hubAt(hubs(c.world, c.towns, c.outposts), x, z, id);
+  if (!h) return TL`<div class="say" style="opacity:.8">No warehouse serves this area. Build one (Warehouse Plans) within its hex, or a village's warehouse here, and the carriers will take what is dug there on their own.</div>`;
+  const works = hubWorks(c.world, h, c.towns, c.outposts, c.time), sent = o?.out?.hub === h.id ? Object.values(o.out.n).reduce((a, n) => a + (n ?? 0), 0) : 0;
+  return `<div class="say">` + (works ? TL`Every two hours the carriers take the crates dug here to ${h.name}.` : TL`${h.name} serves this area, but it is not working now (no storekeepers or no power): the crates stay here.`) + (sent ? TL` So far: ${sent} crates.` : '') + '</div>';
+}
 /** (0.219) The line's clicks (from this window and the port's): choose the village, give up an empty line. */
 export function plineClick(id: string, o: OutpostState, a: string, x: string): string | null {
   const c = G.char;
@@ -202,6 +210,7 @@ function render(msg = '') {
     s += partHTML(o, 'dig') + partHTML(o, 'store') + (procOf(o.k) ? partHTML(o, 'proc') : '') + partHTML(o, 'power') + powerHTML(l.id, o) + plineHTML(l.id, o) + partHTML(o, 'bunks') + partHTML(o, 'field') + peopleHTML(o) + commuteHTML(l.id, o) + partHTML(o, 'wall') + partHTML(o, 'turret') + defenceHTML(l.id, o) + routeHTML(l.id, o);
     if (o.done?.dig) {
       const pw = pwOf(c.world, c.outposts, l.id, c.time), now = stockNow(o, l, c.time, pw), cap = capOf(o);
+      s += carriedHTML(l.id, l.x, l.z); // (0.249) the warehouse of its hex
       s += TL`<div class="say"><b>On site</b> (${o.done.store ? tl('in the shed') : tl('piled in the open')}, up to ${cap} of each):<br>` + outputs(l).map(([g, r]) => {
         const n = Math.floor(now[g] ?? 0);
         return TL`${itemName(g)} ${n}/${cap} · ${(r * 24 * pw).toFixed(1)} a day${n >= cap ? tl(' · full: the crew stands idle') : ''} ` +

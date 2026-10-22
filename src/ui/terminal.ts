@@ -39,11 +39,13 @@ import { installSites, installDone, INSTALL_STAGES, workOf } from '../gen/instal
 import { oldReactor, fuelOrder, chipBuyer, chipOrder, cellBuyer, cellOrder } from '../gen/contracts';
 import { OW } from '../world/overworld';
 import { lockPointer } from './input';
+import { hubs, hubWorks, feeders, hubsNear, villageHub, type Hub } from '../gen/warehouses';
+import { lodeById } from '../gen/lodes';
 import { tl, TL } from '../i18n';
 
 const dlgEl = $('dlg'), panel = () => dlgEl.querySelector('.panel') as HTMLElement;
-type Page = 'village' | 'power' | 'trade' | 'villages' | 'archive' | 'chariot';
-const PAGES: [Page, string][] = [['village', tl('VILLAGE')], ['power', tl('POWER')], ['trade', tl('TRADE')], ['villages', tl('VILLAGES')], ['archive', tl('ARCHIVE')], ['chariot', tl('CHARIOT')]];
+type Page = 'village' | 'power' | 'trade' | 'villages' | 'stores' | 'archive' | 'chariot';
+const PAGES: [Page, string][] = [['village', tl('VILLAGE')], ['power', tl('POWER')], ['trade', tl('TRADE')], ['villages', tl('VILLAGES')], ['stores', tl('WAREHOUSES')], ['archive', tl('ARCHIVE')], ['chariot', tl('CHARIOT')]];
 let open: { vid: number; vm: VillageMap } | null = null, page: Page = 'village';
 
 const name = (g: ItemKey) => ITEMS[g].name;
@@ -181,6 +183,22 @@ function villagesPage(poi: Poi): string {
   return s;
 }
 
+/** (0.249, PLAN_MAGAZYNOW.md stage M1) The warehouse network: every warehouse the players built (in the villages, at the
+ *  ports, in the wilds) and the halls of the villages you know, nearest first: where, what it serves, whether it works.
+ *  Their stocks need the radio link between warehouses (stage M3). */
+function storesPage(poi: Poi): string {
+  const c = G.char, KIND: Record<Hub['kind'], string> = { village: tl('village'), port: tl('port'), wild: tl('in the wilds') };
+  const known = (h: Hub) => h.kind !== 'village' || progressive(c.towns[h.vid!]) || h.vid === poi.id || isDiscovered(c.discovered, Math.floor(h.x / CHUNK), Math.floor(h.z / CHUNK)) || !!c.ledger[h.vid!];
+  const list = hubsNear(hubs(c.world, c.towns, c.outposts).filter(known), poi.x, poi.z);
+  let s = h(TL`WAREHOUSE NETWORK · ${list.length}`) + TL`<div class="tdim">Each warehouse serves its hex, an area about a kilometre across: what the deposits there dig comes to it on its own. One warehouse to a hex. Stocks cannot be read from here until the warehouses are linked by radio.</div>`;
+  for (const { h: w, d } of list.slice(0, 30)) {
+    const from = feeders(w, c.outposts, (q) => lodeById(c.world, q)), on = hubWorks(c.world, w, c.towns, c.outposts, c.time);
+    s += `<div class="tline"><b>${w.name}</b>${w.id === villageHub(poi.id) ? tl(' (this one)') : ''} <span class="tdim">${KIND[w.kind]} · ${fmtDist(d)} ${point8(bearingTo(w.x, w.z))} · ${tl('area')} ${w.hex}</span><br>` +
+      `<span class="tdim">${on ? tl('working') : tl('standing idle (no storekeepers or no power)')}${from.length ? TL` · serves ${from.map(([, n]) => n).join(', ')}` : ''} · ${tl('stock: no link')}</span></div>`;
+  }
+  return s;
+}
+
 /** The technologies read off the data carriers you found (gen/tech.ts). */
 function archivePage(): string {
   const c = G.char, sites = techSites(OW.terrain && OW.terrain.world === c.world ? OW.terrain : new Terrain(c.world));
@@ -212,7 +230,7 @@ function render() {
   if (!open) return;
   const poi = findPoi(G.char.world, open.vid);
   if (!poi) return;
-  const body = page === 'village' ? villagePage(poi, open.vm) : page === 'power' ? powerPage(poi, open.vm) : page === 'trade' ? tradePage(poi, open.vm) : page === 'villages' ? villagesPage(poi) : page === 'archive' ? archivePage() : chariotPage();
+  const body = page === 'village' ? villagePage(poi, open.vm) : page === 'power' ? powerPage(poi, open.vm) : page === 'trade' ? tradePage(poi, open.vm) : page === 'villages' ? villagesPage(poi) : page === 'stores' ? storesPage(poi) : page === 'archive' ? archivePage() : chariotPage();
   panel().classList.add('wide');
   panel().innerHTML = `<div class="term"><div class="ttabs">${PAGES.map(([k, t]) => `<button class="ttab${k === page ? tl(' on') : ''}" data-tt="${k}">${t}</button>`).join('')}</div>` +
     TL`<div class="tbody">${body}</div><div class="tfoot">${open.vm.name.toUpperCase()} HALL TERMINAL · ${fmtClock(G.char.time)}</div></div>` +
