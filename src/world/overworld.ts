@@ -1,6 +1,7 @@
 import { applyLayouts } from '../gen/layouts';
 import { clearCarriers } from './carriers';
 import { clearHubTrucks } from './hublines';
+import { clearCargoDrones } from './airlines';
 import { clearIntents } from './intents';
 import { biomeTint, biomeOfCell, treeIn, BIOME_LOOK, type TreeLook } from '../gen/biomes';
 import { drawTreeLook, LEAF, VINE } from './trees';
@@ -872,7 +873,7 @@ export function openWorld(x: number, z: number) {
 export function closeWorld() {
   clearMegaliths();
   clearWorldGates();
-  dropGarrisons(); clearVehicles(); dropCrash(); dropInstalls(); dropCities(); dropToxic(); dropLodes(); dropCrystals(); dropPorts(); clearCarriers(); clearHubTrucks(); dropCamps(); dropPowerLines(); dropCommuters(); clearBridges(); clearPiers();
+  dropGarrisons(); clearVehicles(); dropCrash(); dropInstalls(); dropCities(); dropToxic(); dropLodes(); dropCrystals(); dropPorts(); clearCarriers(); clearHubTrucks(); clearCargoDrones(); dropCamps(); dropPowerLines(); dropCommuters(); clearBridges(); clearPiers();
   setCreatureEnv(null); clearCreatures(); clearIntents();
   setRobotEnv(null); clearRobots();
   setBanditEnv(null); clearBandits();

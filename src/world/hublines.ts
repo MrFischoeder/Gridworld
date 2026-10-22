@@ -1,7 +1,7 @@
-// (0.252, PLAN_MAGAZYNOW.md stage M4) The convoy lines between warehouses at runtime: settling them under the right
-// warehouse's lock (the home's for its trips, the other's for taking the cargo in), every 15 s for the lines whose
-// trips are due or whose cargo waits, and on opening a warehouse's window; and the trucks drawn where their timetable
-// puts them on the straight way between the two. Every game draws the same from the shared state.
+// (0.252, PLAN_MAGAZYNOW.md stage M4) The convoy lines (and since 0.254 the air lines, gen/airlines.ts) between
+// warehouses at runtime: settling them under the right warehouse's lock (the home's for its trips, the other's for
+// taking the cargo in), every 15 s for the lines whose trips are due or whose cargo waits, and on opening a
+// warehouse's window; and the trucks drawn where their timetable puts them on the straight way between the two. Every game draws the same from the shared state.
 import * as THREE from 'three';
 import { G } from '../game';
 import { scene } from './render';
@@ -15,6 +15,7 @@ import { deposit, withdraw } from '../gen/hall';
 import { portPut, portTake } from '../gen/ports';
 import { hubs, hubWorks, type Hub } from '../gen/warehouses';
 import { linkedHubs } from '../gen/radio';
+import { airLineOf, alDue, alWaiting, alDrain, airLoad, settleAirLine, padWhy, allAirLines } from '../gen/airlines';
 import { allHubLines, hubLineOf, hlDue, hlWaiting, hlDrain, settleHubLine, lineLoad, hlAt, hlWrecked, type HubLine } from '../gen/hublines';
 import { ITEMS, type ItemKey } from '../data/items';
 import { TL } from '../i18n';
@@ -33,6 +34,19 @@ export function runHub(id: string): string[] {
     if (out.includes('robbed')) words.push(TL`Bandits robbed the convoy to ${l.toName}.`);
     if (out.includes('wrecked')) words.push(TL`The convoy truck to ${l.toName} lies wrecked on the road.`);
   }
+  const al = airLineOf(id, c.towns, c.outposts); // (0.254, stage F1) its air line
+  if (al?.drone && alDue(al, c.time)) {
+    const there = hubOf(al.to), linked = linkedHubs(c.world, c.towns, c.outposts, id, c.time).some((q) => q.id === al.to);
+    const take = (cap: number, only?: ItemKey[]) => (vs ? airLoad(vs, vs.hold, cap, only, (k, n) => withdraw(vs, k, n)) : o ? airLoad(o, o.hold, cap, only, (k, n) => portTake(o, k, n)) : []);
+    const out = settleAirLine(c.world, h, al, linked, !!there && !padWhy(c.world, there, c.towns, c.outposts, c.time), !padWhy(c.world, h, c.towns, c.outposts, c.time), take, c.time);
+    const n = out.filter((q) => q === 'ok').length;
+    if (n) words.push(n > 1 ? TL`Drones flew ${n} loads to ${al.toName}.` : TL`A drone flew a load to ${al.toName}.`);
+    if (out.includes('lost')) words.push(TL`The cargo drone to ${al.toName} came down in the wilds, its load with it.`);
+  }
+  if (!padWhy(c.world, h, c.towns, c.outposts, c.time)) {
+    const got = vs ? alDrain(id, c.towns, c.outposts, vs, (k, n) => deposit(vs, k, n)) : o?.done?.port ? alDrain(id, c.towns, c.outposts, o, (k, n) => portPut(o, k, n)) : [];
+    if (got.length) words.push(TL`A drone landed with ${got.map(([g, m]) => `${m} × ${ITEMS[g].name}`).join(', ')}.`);
+  }
   if (hubWorks(c.world, h, c.towns, c.outposts, c.time)) {
     const got = vs ? hlDrain(id, c.towns, c.outposts, vs, (k, n) => deposit(vs, k, n)) : o?.done?.port ? hlDrain(id, c.towns, c.outposts, o, (k, n) => portPut(o, k, n)) : [];
     if (got.length) words.push(TL`A convoy unloaded ${got.map(([g, m]) => `${m} × ${ITEMS[g].name}`).join(', ')}.`);
@@ -49,6 +63,10 @@ export function tickHubLines(dt: number) {
   for (const [home, l] of allHubLines(c.towns, c.outposts)) {
     if (hlDue(l, c.time)) todo.add(home);
     if (!todo.has(l.to)) { const r = l.to.startsWith('v:') ? c.towns[l.to.slice(2)]?.rcv : c.outposts[l.to]?.rcv; if (hlWaiting(l.to, c.towns, c.outposts, r).length) todo.add(l.to); }
+  }
+  for (const [home, l] of allAirLines(c.towns, c.outposts)) { // (0.254) the air lines likewise
+    if (alDue(l, c.time)) todo.add(home);
+    if (!todo.has(l.to)) { const r = l.to.startsWith('v:') ? c.towns[l.to.slice(2)]?.rcv : c.outposts[l.to]?.rcv; if (alWaiting(l.to, c.towns, c.outposts, r).length) todo.add(l.to); }
   }
   for (const id of todo) {
     const done = (ok: boolean) => { if (ok) saveChar(); };

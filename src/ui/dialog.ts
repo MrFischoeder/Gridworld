@@ -480,7 +480,7 @@ function giveFortify() {
 let economicPending = false, economicDispatch = false;
 dlgEl.addEventListener('click', async (e) => {
   const target = e.target as HTMLElement;
-  const mutation = target.closest('[data-devkit], [data-devsupplies], [data-devbuild], [data-devgps], [data-hin], [data-hout], [data-hall], [data-hvehicle], [data-hname], [data-hrack], [data-hradio], [data-hhl], [data-htr], [data-farm], [data-crop], [data-make], [data-fort], [data-rbuild], [data-work], [data-pnew], [data-pgive], [data-plantup], [data-imp], [data-share], [data-rare], [data-food], .buy');
+  const mutation = target.closest('[data-devkit], [data-devsupplies], [data-devbuild], [data-devgps], [data-hin], [data-hout], [data-hall], [data-hvehicle], [data-hname], [data-hrack], [data-hradio], [data-hhl], [data-htr], [data-hal], [data-hpad], [data-farm], [data-crop], [data-make], [data-fort], [data-rbuild], [data-work], [data-pnew], [data-pgive], [data-plantup], [data-imp], [data-share], [data-rare], [data-food], .buy');
   if (online() && mutation && !economicDispatch) {
     if (economicPending) return;
     const dev = target.closest<HTMLElement>('[data-devkit], [data-devsupplies], [data-devbuild], [data-devgps]');

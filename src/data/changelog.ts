@@ -3,6 +3,13 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.254.0', date: '2026-10-22', title: 'Cargo drones', notes: [
+    'The first flying machines (flying machines stage F1): a new technology, Aviation, is recovered from an old data carrier like the others. With its plans the blacksmith makes a Cargo Drone.',
+    'A warehouse can build a drone pad: a village\'s from its stock at the warehouse terminal, a port or a wild warehouse at its board. A pad draws 4 kW and needs one person to tend it.',
+    'A pad opens an air line to another warehouse with a pad on its radio network, up to 10 km away. Set a Cargo Drone on the pad and it flies there and back on a timetable, straight over sea and mountains, 3 crates a time: the goods picked, or anything in the hold. It charges at home while the warehouse has power.',
+    'A drone stays down in a storm, without the radio link, when the other pad does not work, or with nothing to carry. Over dangerous land a flight may come down in the wilds, the drone and its load with it; the line then waits for a new drone.',
+    'Drones take part in goods passing through warehouses: cargo can come in by drone or go on by drone. The air lines show on the maps as dotted pale blue lines, and the drones can be seen in the air with their lights blinking.',
+  ] },
   { v: '0.253.0', date: '2026-10-22', title: 'Ports as hubs of the network', notes: [
     'Warehouse network stage M5: goods can pass through a warehouse. In a warehouse\'s window (a village\'s warehouse terminal, a port\'s or a wild warehouse\'s board) every line that brings cargo there can be set to keep its cargo there, or to send it on by the warehouse\'s own convoy line or, at a port, its cargo line.',
     'Goods sent on leave first on the next line, whatever that line is set to carry, and then the line fills up as usual. So a convoy can bring steel to a port, a ship carry it across the sea, and a convoy on the other shore take it inland, with no one touching it.',

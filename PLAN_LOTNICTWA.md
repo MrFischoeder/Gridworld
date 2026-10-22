@@ -20,7 +20,8 @@ Do akceptacji właściciela. Wyrasta z ostatniego etapu planu magazynów (`PLAN_
 
 ## Etapy
 
-### F1: drony towarowe
+### F1 (0.254): drony towarowe
+Zrobione. Decyzje przy okazji: dron to przedmiot z zamówienia u kowala (Lotnictwo), stawiany na lądowisku; rozbity dron przepada razem z ładunkiem; zasięg 10 km, 3 skrzynie na lot.
 - **Lądowisko dronów:** nowa część magazynu.
   - We wsi budowane z zapasu przy terminalu magazynu.
   - W porcie i w magazynie w dziczy budowane przy tablicy.

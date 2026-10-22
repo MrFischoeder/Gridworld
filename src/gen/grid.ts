@@ -20,6 +20,7 @@ import { settleRoute, takeFood, routeKey } from './routes';
 import type { TownState } from './town';
 import { tl } from '../i18n';
 import { RADIO } from './radiomast';
+import { PAD } from './dronepad';
 
 export type PowerKind = 'generator' | 'wind' | 'solar' | 'coal';
 export interface PowerSpec {
@@ -63,7 +64,7 @@ export function supplyAt(world: number, id: string, o: OutpostState, t: number):
   if (o.pk === 'solar') return s.kw * daylight(t, sunTilt(latitude(o.z)));
   return fuelLeft(o, t) > 0 ? s.kw : 0;
 }
-export const demandOf = (o: OutpostState) => (o.done?.dig ? DIG_KW[digOf(o.k)] : 0) + (o.done?.port ? PORT.kw : 0) + procKw(o) + (o.route?.truck?.parts.ev !== undefined ? CHARGE_KW : 0) + turretsOf(o) * OUT_GUN_KW + (o.done?.radio ? RADIO.kw : 0);
+export const demandOf = (o: OutpostState) => (o.done?.dig ? DIG_KW[digOf(o.k)] : 0) + (o.done?.port ? PORT.kw : 0) + procKw(o) + (o.route?.truck?.parts.ev !== undefined ? CHARGE_KW : 0) + turretsOf(o) * OUT_GUN_KW + (o.done?.radio ? RADIO.kw : 0) + (o.done?.pad ? PAD.kw : 0);
 /** (0.188) What a route's electric truck draws while it charges at its outpost (kW, counted all the time). */
 export const CHARGE_KW = 15;
 const isSource = (o: OutpostState) => !!(o.done?.power && o.pk);

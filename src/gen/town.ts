@@ -17,6 +17,8 @@ export interface TownState {
   mast?: number; mgiven?: Partial<Record<ItemKey, number>>;
   /** (0.252, gen/hublines.ts) The convoy line from this village's warehouse. */
   hline?: import('./hublines').HubLine;
+  /** (0.254) The drone pad (built at), its materials handed over, its air line (gen/airlines.ts). */
+  dpad?: number; dgiven?: Partial<Record<ItemKey, number>>; aline?: import('./airlines').AirLine;
   /** (0.253) Cargo sent on through this warehouse (gen/transit.ts). */
   fwd?: import('./transit').Transit['fwd']; tr?: import('./transit').Transit['tr'];
   settlement?: import('./settlement').SettlementState;

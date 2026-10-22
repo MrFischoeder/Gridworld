@@ -59,6 +59,8 @@ export const TECHS: Tech[] = [
   { id: 'heavymach', name: tl('Heavy Machinery'), area: 'metal', tier: 2, blurb: tl('Gantry cranes, geared derricks and engine blocks: the machines that dig deep and haul heavy.') },
   // (0.180) appended: electric vehicles
   { id: 'evdrive', name: tl('Electric Drive'), area: 'transport', tier: 2, blurb: tl('A motor at each axle and a battery under the floor: vehicles that run on the village\'s power instead of diesel.') },
+  // (0.254) appended: flying machines (PLAN_LOTNICTWA.md)
+  { id: 'aviation', name: tl('Aviation'), area: 'transport', tier: 3, blurb: tl('Rotors, light frames and flight controllers: machines that carry loads through the air, over sea and mountains.') },
 ];
 export const TECH_BY_ID: Record<string, Tech> = Object.fromEntries(TECHS.map((t) => [t.id, t]));
 /** How far from Gridholm (m) each tier's carriers lie. */

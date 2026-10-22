@@ -1,15 +1,15 @@
 // (0.253, PLAN_MAGAZYNOW.md stage M5) Goods passing through a warehouse. A warehouse that takes in cargo from a line
-// (a convoy line, gen/hublines.ts, or a port's cargo line, gen/shiplines.ts) may send that line's cargo on: by its own
-// convoy line ('hl') or, at a port, by its own cargo line ('sl'). `fwd` says, per incoming line (its counter key at this
-// warehouse), where its cargo goes on; what comes in is counted into `tr` (the goods waiting to go on, by the way out),
-// and the outgoing line loads those first, whatever it is set to carry, then fills up as usual. The goods sit in the
+// (a convoy line, gen/hublines.ts, a port's cargo line, gen/shiplines.ts, or an air line, gen/airlines.ts) may send that
+// line's cargo on: by its own convoy line ('hl'), its air line ('al', 0.254) or, at a port, its cargo line ('sl'). `fwd`
+// says, per incoming line (its counter key at this warehouse), where its cargo goes on; what comes in is counted into
+// `tr` (the goods waiting to go on, by the way out), and the outgoing line loads those first, whatever it is set to carry, then fills up as usual. The goods sit in the
 // hold meanwhile: what someone takes out by hand is simply no longer there to go on (`takeTransit` trims to the hold).
 //
 // Written only under this warehouse's own lock (taking in and sending out both happen there), so the shared state
 // never sees two writers. Pure.
 import type { ItemKey } from '../data/items';
 
-export type Way = 'hl' | 'sl';
+export type Way = 'hl' | 'sl' | 'al';
 export interface Transit {
   /** Incoming line (counter key here) → the way its cargo goes on. */
   fwd?: Record<string, Way>;

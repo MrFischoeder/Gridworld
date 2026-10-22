@@ -27,6 +27,7 @@ import { LH } from '../gen/lighthouses';
 import { BOATS, type BoatKind } from '../gen/boats';
 import { tl, TL } from '../i18n';
 import { RADIO } from '../gen/radiomast';
+import { PAD } from '../gen/dronepad';
 
 /** The kinds of use, in the order the tooltip lists them. */
 export const USE_GROUPS = [tl('Blacksmith makes'), tl('Processed into'), tl('Cooked into'), tl('Fuel for'), tl('Building'), tl('Repairs'), tl('Restoring'), tl('The Chariot'), tl('Other')] as const;
@@ -59,6 +60,7 @@ function build(): Map<ItemKey, Map<UseGroup, string[]>> {
   for (const b of [BUNKS, FIELD, ...WALL, TURRET]) for (const [i] of b.needs) use(i, tl('Building'), TL`Outposts: ${b.name}`); // (0.185)
   for (const [i] of PORT.needs) use(i, tl('Building'), TL`Ports: ${PORT.name}`); // (0.216)
   for (const [i] of RADIO.needs) use(i, tl('Building'), TL`Warehouses: ${RADIO.name}`); // (0.251)
+  for (const [i] of PAD.needs) use(i, tl('Building'), TL`Warehouses: ${PAD.name}`); // (0.254)
   for (const k of Object.keys(FOOD.value) as ItemKey[]) use(k, tl('Other'), tl('Outposts: the settlers\' pantry'));
   use('fuel', tl('Fuel for'), tl('Outposts: convoy trucks on a route')); // (0.187)
   for (const p of new Set(Object.values(PROC))) { if (!p) continue; for (const [i] of p.needs) use(i, tl('Building'), TL`Outposts: ${p.name}`); use(p.inp, tl('Processed into'), TL`Outposts: ${p.name} (${ITEMS[p.out].name})`); } // (0.188)
