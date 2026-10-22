@@ -21,6 +21,8 @@ export interface TownState {
   dpad?: number; dgiven?: Partial<Record<ItemKey, number>>; aline?: import('./airlines').AirLine;
   /** (0.255) Its air lines (up to `DRONE.lines`); where the pad was staked out (world, canonical x) or that it waits for that. */
   alines?: import('./airlines').AirLine[]; dpspot?: { x: number; z: number }; dpWait?: true;
+  /** (0.256) The mooring mast (built at), its materials handed over; an airship going up at it (gen/airships.ts). */
+  amast?: number; agiven?: Partial<Record<ItemKey, number>>; abuild?: import('./airships').AirBuild;
   /** (0.253) Cargo sent on through this warehouse (gen/transit.ts). */
   fwd?: import('./transit').Transit['fwd']; tr?: import('./transit').Transit['tr'];
   settlement?: import('./settlement').SettlementState;

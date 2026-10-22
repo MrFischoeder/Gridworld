@@ -3,6 +3,13 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.256.0', date: '2026-10-22', title: 'Airships', notes: [
+    'Flying machines stage F3, part one: the first machine you fly yourself. A warehouse can build a mooring mast (with the Aviation plans): a village\'s from its stock at the warehouse terminal, a port or a wild warehouse at its board. It draws 6 kW and needs one person to tend it.',
+    'At a mast you lay the keel of an airship and pick its drive: diesel engines (faster, filled from canisters with R) or electric motors on power cells (they charge while moored at a working mast). Its materials come from the warehouse\'s stock. The envelope is filled with lifting gas when it is built; the gas never runs out. A world holds up to 4 airships.',
+    'A finished airship rides at the mast. E by its gondola gets in: the first seat is the helm, three more ride along. At the helm W/S set the throttle (it stays where you leave it), A/D turn, Space climbs and C sinks; the wind pushes it off course. It flies straight over land, sea and mountains, keeping its gondola clear of the ground. V switches between the view from behind and the gondola, F opens its hold of 30 slots.',
+    'E at the helm ties it up at a mast whose head is by its nose, lets you climb out when the gondola hangs low, or leaves the helm to ride while she holds her course.',
+    'Together: airships belong to the world, like vehicles and boats. Whoever holds the helm flies it and everyone else sees it move; passengers are carried along. The server must be updated to keep airships and pass their movement on.',
+  ] },
   { v: '0.255.0', date: '2026-10-22', title: 'Drone pads in the settlements', notes: [
     'Flying machines stage F2: once a village\'s warehouse stands, the elder lists the drone pad among the work open to the village. It is still built from the village stores at the warehouse terminal.',
     'When the pad\'s materials are in, you stake out its place yourself: ask the storekeeper for a Survey Stake, walk out beside the warehouse (within 120 m of it), use the stake and click. A hologram shows the slab and turns red with the reason where it cannot go. The trees there are cleared, the ground is not levelled.',

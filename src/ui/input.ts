@@ -12,6 +12,7 @@ import { isLhPlacing, cancelLhPlacing } from '../world/lighthouses';
 import { isWhPlacing, cancelWhPlacing } from '../world/wildstores';
 import { isPierPlacing, cancelPierPlacing } from '../world/piers';
 import { inBoat, openBoatHold, toggleBoatView, toggleSail, refuel } from '../world/boats';
+import { inAir, toggleAirView, openAirHold, refuelAir } from '../world/airships';
 import { isBuilding, stopBuilding, dismantle } from '../world/building';
 import { toggleBuildMenu } from './build';
 import { G, uiOpen } from '../game';
@@ -85,8 +86,9 @@ export function initInput(onPause: () => void) {
     if (e.code === 'KeyV' && driving.v) toggleCockpit();
     if (e.code === 'KeyV' && riding()) toggleRideView();
     if (e.code === 'KeyV' && inBoat()) toggleBoatView();
+    if (e.code === 'KeyV' && inAir()) toggleAirView();
     if (e.code === 'Space' && !e.repeat && inBoat()) toggleSail();
-    if (e.code === 'KeyF' && !isBuilding() && G.playing) openBoatHold();
+    if (e.code === 'KeyF' && !isBuilding() && G.playing && !openAirHold()) openBoatHold();
     if (e.code === 'KeyH') useItem('medkit');
     if (e.code === 'KeyG') useItem('emp');
     if (e.code === 'KeyZ' && !e.repeat) startThrow(); // (0.225) hold to swing harder, let go to throw
@@ -98,7 +100,7 @@ export function initInput(onPause: () => void) {
     if (e.code === 'KeyX') holster();
     if (e.code === 'KeyF' && isBuilding()) dismantle();
     if (e.code === 'KeyL') lockKey();
-    if (e.code === 'KeyR' && !e.repeat && !refuel() && !refuelVehicle()) reload();
+    if (e.code === 'KeyR' && !e.repeat && !refuelAir() && !refuel() && !refuelVehicle()) reload();
     if (e.code === 'F3') { e.preventDefault(); el.perf.style.display = el.perf.style.display === 'block' ? 'none' : 'block'; }
   });
   addEventListener('keyup', (e) => { G.keys[e.code] = false; if (e.code === 'KeyZ') releaseThrow(); if (e.code === 'AltLeft' && G.playing) e.preventDefault(); }); // (0.223) Alt is the dodge, not the browser's menu

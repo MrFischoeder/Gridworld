@@ -105,6 +105,7 @@ import { updateGuide } from './world/guide';
 import { updateBridges, isBridgePlacing, updateBridgePlacing, confirmBridgePlacing, cancelBridgePlacing } from './world/bridges';
 import { updatePiers, isPierPlacing, updatePierPlacing, confirmPierPlacing, cancelPierPlacing } from './world/piers';
 import { updateBoats, inBoat, boatCamera } from './world/boats';
+import { updateAirships, inAir, airCamera } from './world/airships';
 import { initMp } from './ui/mp';
 import { updatePeers, ride, ghostOf, myLoc } from './world/peers';
 import { riding, updateRide, rideCamera } from './world/ride';
@@ -230,8 +231,8 @@ function frame(now: number) {
     { const up = refreshBoard(); if (up.length) { saveChar(); const v = outdoors ? villageHere(G.pos.x, G.pos.z) : undefined; if (v && up.includes(v.id)) logLine(tl('New notices are up on the board.')); } }
   }
   if (live) {
-    if (driving.v) updateDriving(dt); else if (riding()) updateRide(dt); else if (!(outdoors && updateBoats(dt)) && !updateClimb(dt)) moving = updatePlayer(dt);
-    if (outdoors) { keepOnPlanet(dt); updateWorldGates(0, !riding() && !inBoat()); }
+    if (driving.v) updateDriving(dt); else if (riding()) updateRide(dt); else { const inA = outdoors && updateAirships(dt), inB = outdoors && updateBoats(dt); if (!inA && !inB && !updateClimb(dt)) moving = updatePlayer(dt); }
+    if (outdoors) { keepOnPlanet(dt); updateWorldGates(0, !riding() && !(inBoat() || inAir())); }
     G.cooldown -= dt;
     if (isPlacing()) { // holding a Flagpole: the mouse picks its spot instead of fighting
       updatePlacing();
@@ -265,9 +266,9 @@ function frame(now: number) {
       updateBuilding();
       if (G.firing) { G.firing = false; placePart(); }
       if (G.aiming) { G.aiming = false; stopBuilding(); }
-    } else if (G.firing && !driving.v && !inBoat() && !riding()) attack();
+    } else if (G.firing && !driving.v && !(inBoat() || inAir()) && !riding()) attack();
     updateTurrets(dt); updateMountedTurrets(dt);
-    updateGun(dt, !driving.v && !inBoat() && !riding());
+    updateGun(dt, !driving.v && !(inBoat() || inAir()) && !riding());
     if (driving.v) fireCannon(dt);
     updateDoors(dt);
     updateRobots(dt, time); // the open world's robots, or a crashed ship's guards
@@ -280,8 +281,8 @@ function frame(now: number) {
     updateBossBar(boss);
     if (G.god) G.hp = G.S.maxHp;
     if (G.hp <= 0) { el.warp.style.opacity = '1'; clearMyCond(); resetBodyHeat(); toVillage('death'); }
-    updateStealth(dt, !driving.v && !riding() && !inBoat() && !G.swimming && !climbing() && !G.fly);
-    if (G.char.loc === 'overworld') layTrail(dt, !driving.v && !riding() && !inBoat() && !G.swimming && !G.fly); // (0.236) your scent and track for the trackers
+    updateStealth(dt, !driving.v && !riding() && !(inBoat() || inAir()) && !G.swimming && !climbing() && !G.fly);
+    if (G.char.loc === 'overworld') layTrail(dt, !driving.v && !riding() && !(inBoat() || inAir()) && !G.swimming && !G.fly); // (0.236) your scent and track for the trackers
     updateLoot(dt, time); spinCarrier(time); updateEntities(dt, time);
     if (outdoors) {
       const name = placeName(G.pos.x, G.pos.z);
@@ -291,11 +292,11 @@ function frame(now: number) {
     }
   } else { el.prompt.style.display = 'none'; el.bUse.classList.remove('on'); el.bossbar.style.display = 'none'; }
   let sw: ReturnType<typeof updateBodySway> | null = null;
-  if (G.trans) updateTrans(dt, camera); else if (driving.v) vehicleCamera(camera); else if (riding()) rideCamera(camera); else if (inBoat()) boatCamera(camera); else {
+  if (G.trans) updateTrans(dt, camera); else if (driving.v) vehicleCamera(camera); else if (riding()) rideCamera(camera); else if (inAir()) airCamera(camera); else if (inBoat()) boatCamera(camera); else {
     coverHint(dt); crouchDrop += ((G.crouch ? CROUCH_DROP * (1 - 0.85 * peekK()) : 0) - crouchDrop) * Math.min(1, dt * 10); camera.position.set(G.pos.x, G.pos.y + EYE - crouchDrop - downView().drop, G.pos.z);
     if (!G.fly && G.playing) { // (0.191) the body rocks with the steps and the breath (core/sway.ts)
       sw = updateBodySway(dt);
-      if (!driving.v && !riding() && !inBoat() && !climbing()) updateMySteps(dt); // (0.212)
+      if (!driving.v && !riding() && !(inBoat() || inAir()) && !climbing()) updateMySteps(dt); // (0.212)
       camera.position.x += Math.cos(G.yaw) * sw.right; camera.position.z -= Math.sin(G.yaw) * sw.right; camera.position.y += sw.up;
     }
   }

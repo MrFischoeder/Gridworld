@@ -4,6 +4,7 @@
 import { carriedLight } from './light';
 import { getOff } from './ride';
 import { myBoatSpot, boatPoint } from './boats';
+import { myAirSpot, airSeatPoint } from './airships';
 import * as THREE from 'three';
 import { G } from '../game';
 import { myVis } from './stealth';
@@ -65,7 +66,7 @@ let sendT = 0;
 export function flushPeerState(moving = false) {
   if (!net.id) return;
   sendT = SEND_EVERY;
-  const s: PeerState = { p: [G.pos.x, G.pos.y, G.pos.z], yaw: G.yaw, pitch: G.pitch, loc: myLoc(), held: G.char.hands[0]?.k ?? '', mv: moving && G.playing, away: !G.playing, cars: myCars(), carIds: myCarList().map(v => v.st.id), ride: ride.on ? [ride.on.owner, ride.on.idx, ride.on.seat] : undefined, gun: ride.on ? ride.gun : undefined, boat: myBoatSpot(), vis: Math.round(myVis() * 100) / 100, cr: (G.crouch && peekK() < 0.5) || playerDown() || undefined, pod: myPod(), lt: carriedLight() || undefined, oh: offFree() ? offHeld()?.k : undefined };
+  const s: PeerState = { p: [G.pos.x, G.pos.y, G.pos.z], yaw: G.yaw, pitch: G.pitch, loc: myLoc(), held: G.char.hands[0]?.k ?? '', mv: moving && G.playing, away: !G.playing, cars: myCars(), carIds: myCarList().map(v => v.st.id), ride: ride.on ? [ride.on.owner, ride.on.idx, ride.on.seat] : undefined, gun: ride.on ? ride.gun : undefined, boat: myBoatSpot() ?? myAirSpot(), vis: Math.round(myVis() * 100) / 100, cr: (G.crouch && peekK() < 0.5) || playerDown() || undefined, pod: myPod(), lt: carriedLight() || undefined, oh: offFree() ? offHeld()?.k : undefined };
   sendState(s, isHost() ? G.char.time : undefined);
 }
 /** Every frame: send where you are now and then, and draw the others. */
@@ -85,7 +86,7 @@ export function updatePeers(dt: number, moving: boolean) {
     const x = q.p[0] + (e.p[0] - q.p[0]) * k, y = q.p[1] + (e.p[1] - q.p[1]) * k, z = q.p[2] + (e.p[2] - q.p[2]) * k;
     a.f.g.position.set(here === 'o' ? nearX(x, G.pos.x) : x, y, z);
     // aboard one of the boats drawn here: where they stand on it now, so they ride with it instead of lagging behind
-    const onb = here === 'o' && e.boat ? boatPoint(e.boat[0], e.boat[1], e.boat[2], e.boat[3]) : null;
+    const onb = here === 'o' && e.boat ? boatPoint(e.boat[0], e.boat[1], e.boat[2], e.boat[3]) ?? airSeatPoint(e.boat[0], e.boat[1], e.boat[2], e.boat[3]) : null;
     if (onb) a.f.g.position.set(onb[0], onb[1], onb[2]);
     let dy = e.yaw - q.yaw; dy = Math.atan2(Math.sin(dy), Math.cos(dy));
     a.f.g.rotation.y = q.yaw + dy * k + Math.PI; // the figure faces +z, the player looks along -z

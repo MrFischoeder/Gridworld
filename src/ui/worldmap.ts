@@ -1,5 +1,6 @@
 import { hubTruckAt } from '../world/hublines';
 import { droneMapAt } from '../world/airlines';
+import { airshipsForMap } from '../world/airships';
 import { allAirLines } from '../gen/airlines';
 import { allHubLines, hlWrecked } from '../gen/hublines';
 import { truckAt } from '../world/convoyroutes';
@@ -329,6 +330,10 @@ function drawArea(ctx: CanvasRenderingContext2D, w: number, h: number, ppm: numb
       const at = l.drone ? droneMapAt(hb, byId.get(l.to), l, G.char.time, px) : null;
       if (at) { ctx.fillStyle = '#9fd8ff'; ctx.fillRect(X(at[0]) - 2, Z(at[1]) - 2, 4, 4); }
     }
+  }
+  for (const [x, z, yaw] of airshipsForMap()) { // (0.256) the airships: a pale blue cigar along their heading
+    const ax = X(nearX(x, px)), ay = Z(z), fx = Math.sin(yaw), fz = Math.cos(yaw);
+    ctx.strokeStyle = '#c4ffd2'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(ax - fx * 5, ay - fz * 5); ctx.lineTo(ax + fx * 5, ay + fz * 5); ctx.stroke(); ctx.lineWidth = 1;
   }
   { // (0.252) convoy lines between warehouses: a dashed amber line, the truck a dot
     const all = hubs(G.char.world, G.char.towns, G.char.outposts), byId = new Map(all.map((q) => [q.id, q]));

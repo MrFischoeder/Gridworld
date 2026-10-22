@@ -45,6 +45,7 @@ import { BOATS, type BoatKind } from '../src/gen/boats';
 import { RADIO } from '../src/gen/radiomast';
 import { HLINE } from '../src/gen/hublines';
 import { PAD, DRONE } from '../src/gen/dronepad';
+import { AIRMAST, AIRSHIP } from '../src/gen/airmast';
 
 const N = (k: ItemKey) => ITEMS[k]?.name ?? k;
 const list = (xs: [ItemKey, number][]) => xs.map(([k, n]) => `${n} × ${N(k)}`).join(', ');
@@ -81,6 +82,7 @@ it('writes SUROWCE.md', () => {
     P(`**Konwoje między magazynami (od 0.252):** magazyn z działającym masztem otwiera linię do innego magazynu w swojej sieci radiowej (do ${HLINE.reach / 1000} km); przekazana ciężarówka wozi według rozkładu to, co złożono w magazynie (do ${ROUTE.cap.scout} skrzyń zwiadowcą, ${ROUTE.cap.mastodon} Mastodonem), na ropie albo na prądzie, z ryzykiem napadu.`);
     P(`**Tranzyt (od 0.253):** w oknie magazynu każdą linię, która przywozi towar, można ustawić tak, by jej ładunek jechał dalej własną linią konwojową magazynu albo (w porcie) statkiem; towar w tranzycie wyjeżdża pierwszy. Statek na linii łączy sieci radiowe obu portów.`);
     P(`**Drony towarowe (od 0.254):** lądowisko dronów przy magazynie: ${need(PAD.needs)}; ${PAD.hours} h; pobór ${PAD.kw} kW i jedna osoba obsługi. Dron towarowy robi kowal z planami Lotnictwa; lata do magazynu z lądowiskiem w sieci radiowej (do ${DRONE.reach / 1000} km), po ${DRONE.cap} skrzynie, nad morzem i górami. Od 0.255 miejsce lądowiska we wsi wytycza się palikiem mierniczym (najwyżej ${DRONE.near} m od magazynu), a jedno lądowisko obsługuje do ${DRONE.lines} linii, każdą z własnym dronem.`);
+    P(`**Sterowce (od 0.256):** maszt cumowniczy przy magazynie (plany Lotnictwa): ${need(AIRMAST.needs)}; ${AIRMAST.hours} h; pobór ${AIRMAST.kw} kW i jedna osoba obsługi. Sterowiec buduje się przy maszcie z zapasu magazynu: ${need(AIRSHIP.needs)}, do tego napęd: diesel ${need(AIRSHIP.drive.fuel)} albo ogniwa ${need(AIRSHIP.drive.cell)}. Najwyżej ${AIRSHIP.max} sterowce na świat.`);
     P(`**Obozy załóg (od 0.218):** w nowym świecie każda odbudowana wielka instalacja, która coś robi, potrzebuje obsady (${Object.entries(CREW).map(([k, n]) => `${INSTALLS.find((q) => q.k === k)?.name ?? k} ${n}`).join(', ')}). Przy pulpicie zakładasz obóz załogi i budujesz wokół instalacji baraki (${need(BUNKS.needs)}) i pola (${need(FIELD.needs)}), po 3 każdego; partia rusza tylko z pełną obsadą.`);
     P(`**Linie przesyłowe (od 0.219):** placówka albo port buduje linię słupów z kablem do wioski w promieniu ${PLINE.reach / 1000} km (jedna linia na placówkę i na wioskę): na każdy km ${need(PLINE.perKm)}, do tego transformatory ${need(PLINE.ends)} (co najmniej pół km); budowa trwa 4 h + 2 h na km. Strona z nadwyżką prądu pokrywa niedobór drugiej, do ${PLINE.cap} kW.`);
     P(`**Obrona z prądem i ludźmi (od 0.221):** w nowych światach działko na murze osady bierze 4 kW i jednego strażnika, działko placówki 3 kW z jej sieci i osadnika na straży; bez prądu nie strzela. Latarnia morska świeci tylko z prądem: z wioski do 500 m z 2 kW nadwyżki albo ze źródła prądu placówki.`);

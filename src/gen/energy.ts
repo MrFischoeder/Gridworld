@@ -27,6 +27,7 @@ import { streetKw } from './streetlamps';
 import { tl } from '../i18n';
 import { RADIO } from './radiomast';
 import { PAD } from './dronepad';
+import { AIRMAST } from './airmast';
 
 export type StationKind = 'solarfarm' | 'windfarm' | 'coalplant' | 'dieselbank' | 'reactor';
 export const STATION_KINDS: StationKind[] = ['solarfarm', 'windfarm', 'coalplant', 'dieselbank', 'reactor'];
@@ -123,7 +124,7 @@ export const SITE_UNPOWERED = 0.5;
 /** What the site draws now (nothing while a refinery is not built). */
 export function siteKw(world: number, v: Poi, seed: number, s: TownState | undefined): number {
   const k = industryOf(world, v, seed);
-  return (siteBuilt(k, s) && !(progressive(s) && industryProject(k)) ? SITE_KW[k] : 0) + (progressive(s) ? (projectDone(s, 'quarry') ? 6 : 0) + (projectDone(s, 'mine') ? 12 : 0) + (projectDone(s, 'lumber') ? 8 : 0) + (projectDone(s, 'oil') ? 10 : 0) + (projectDone(s, 'refinery') ? 30 : 0) + (projectDone(s, 'foodworks') ? 8 : 0) + (projectDone(s, 'raremine') ? DEEP.kw : 0) + FURNACE.kw[furnaceLevel(s)] + SAW.kw[sawLevel(s)] + (Object.keys(SERVICE_KW) as Service[]).reduce((a, k) => a + (projectDone(s, k) ? SERVICE_KW[k] : 0), 0) + (s?.works?.turret ?? 0) * GUN_KW + (s?.mast ? RADIO.kw : 0) + (s?.dpad ? PAD.kw : 0) : 0);
+  return (siteBuilt(k, s) && !(progressive(s) && industryProject(k)) ? SITE_KW[k] : 0) + (progressive(s) ? (projectDone(s, 'quarry') ? 6 : 0) + (projectDone(s, 'mine') ? 12 : 0) + (projectDone(s, 'lumber') ? 8 : 0) + (projectDone(s, 'oil') ? 10 : 0) + (projectDone(s, 'refinery') ? 30 : 0) + (projectDone(s, 'foodworks') ? 8 : 0) + (projectDone(s, 'raremine') ? DEEP.kw : 0) + FURNACE.kw[furnaceLevel(s)] + SAW.kw[sawLevel(s)] + (Object.keys(SERVICE_KW) as Service[]).reduce((a, k) => a + (projectDone(s, k) ? SERVICE_KW[k] : 0), 0) + (s?.works?.turret ?? 0) * GUN_KW + (s?.mast ? RADIO.kw : 0) + (s?.dpad ? PAD.kw : 0) + (s?.amast ? AIRMAST.kw : 0) : 0);
 }
 /** The renewables' rating and their output now (kW): the own plant if solar or wind, the solar and wind farms that are on (for the battery bank). */
 function renewables(world: number, v: Poi, seed: number, s: TownState | undefined, t: number): [number, number] {
@@ -246,6 +247,13 @@ export function serviceOf(world: number, v: Poi, seed: number, s: TownState | un
 export function padOf(world: number, v: Poi, seed: number, s: TownState | undefined, t: number): ServiceState {
   if (!progressive(s) || !s?.dpad) return { hands: 1, power: 1, why: '' };
   const p = assign(s, workersAt(seed, v.id === GRIDHOLM_ID, s, t)).posts.find((q) => q.id === 'dronepad');
+  const hands = p?.fill ?? 1, power = sitePower(world, v, seed, s, t);
+  return { hands, power, why: hands < 1 ? 'hands' : power < SERVICE_POWER ? 'power' : '' };
+}
+/** (0.256, stage F3) A settlement's mooring mast: its hand (gen/workforce.ts 'airmast') and `SERVICE_POWER` of the site's power over the day. Old villages: always. */
+export function amastOf(world: number, v: Poi, seed: number, s: TownState | undefined, t: number): ServiceState {
+  if (!progressive(s) || !s?.amast) return { hands: 1, power: 1, why: '' };
+  const p = assign(s, workersAt(seed, v.id === GRIDHOLM_ID, s, t)).posts.find((q) => q.id === 'airmast');
   const hands = p?.fill ?? 1, power = sitePower(world, v, seed, s, t);
   return { hands, power, why: hands < 1 ? 'hands' : power < SERVICE_POWER ? 'power' : '' };
 }

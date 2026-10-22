@@ -11,6 +11,7 @@ import { completeProject, type Project } from './settlement';
 import { settleOwn, anchorNew } from './hall';
 import { completeMast } from './radio';
 import { completePad } from './airlines';
+import { completeAmast } from './airships';
 import { peopleAt, setPeople } from './people';
 import { villageSeed, GRIDHOLM_ID, type Poi } from './regions';
 
@@ -30,6 +31,7 @@ export function finishJob(world: number, v: Poi, s: TownState, j: Job, now: numb
     case 'plantup': completePlantUp(s); break;
     case 'radio': completeMast(s, now); break;
     case 'dronepad': completePad(s, now); break;
+    case 'airmast': completeAmast(s, now); break;
     case 'plant': built = completePlant(s, now) !== null; break;
     case 'project': {
       setPeople(s, seed, home, now, peopleAt(seed, home, s, now)); // development changes the homes: grow from where it is

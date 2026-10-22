@@ -52,6 +52,7 @@ import { cancelStreetPlacing } from './streetlamps';
 import { cancelLhPlacing } from './lighthouses';
 import { cancelWhPlacing } from './wildstores';
 import { cancelPierPlacing } from './piers';
+import { inAir, clearAirships } from './airships';
 import { inBoat, clearBoats } from './boats';
 import { clearBases } from './building';
 import { clearTurrets } from './turrets';
@@ -92,7 +93,7 @@ export function voxelObject(grid: VoxelGrid, skyY = Infinity, outline?: OutlineS
 /** Removes every entity of the current place (the open world also unloads its chunks and structures). */
 function clearLevel() {
   dropCarrier(); clearMountedTurrets(); clearRobots();
-  closeWorld(); leaveCave(); clearBodies(); clearCrystals(); clearFires(); clearBenches(); clearFlags(); cancelPlacing(true); cancelWhPlacing(true); cancelBridgePlacing(true); cancelFieldPlacing(true); cancelStreetPlacing(true); cancelLhPlacing(true); cancelPierPlacing(true); clearBoats(); clearBases(); clearTurrets(); clearThrowing();
+  closeWorld(); leaveCave(); clearBodies(); clearCrystals(); clearFires(); clearBenches(); clearFlags(); cancelPlacing(true); cancelWhPlacing(true); cancelBridgePlacing(true); cancelFieldPlacing(true); cancelStreetPlacing(true); cancelLhPlacing(true); cancelPierPlacing(true); clearBoats(); clearAirships(); clearBases(); clearTurrets(); clearThrowing();
   if (worldGroup) { scene.remove(worldGroup); worldGroup.traverse((o) => (o as THREE.Mesh).geometry?.dispose()); worldGroup = null; }
   [...W.crystals.map((c) => c.m), ...W.pickups.map((p) => p.g), ...W.chests.map((c) => c.g), ...W.doors.map((d) => d.g), ...W.bosses.map((b) => b.g),
     ...W.orbs.map((o) => o.m), ...W.drones.map((t) => t.g), ...W.npcs.map((n) => n.g)].forEach((o) => scene.remove(o));
@@ -110,9 +111,9 @@ function setLocationLook(outdoors: boolean) {
   refreshWeaponVisibility();
 }
 /** Weapons are holstered inside the village walls and drawn everywhere else. */
-setToolRule(() => !driving.v && !riding() && !inBoat() && !G.swimming && !climbing());
-setOffRule(() => !driving.v && !riding() && !inBoat() && !G.swimming && !climbing() && !G.fly);
-setArmedRule(() => !driving.v && !riding() && !inBoat() && !G.swimming && !G.fly && !climbing() && !working() && (G.char.loc === 'dungeon' || !inVillage(G.pos.x, G.pos.z) || raidHere()));
+setToolRule(() => !driving.v && !riding() && !(inBoat() || inAir()) && !G.swimming && !climbing());
+setOffRule(() => !driving.v && !riding() && !(inBoat() || inAir()) && !G.swimming && !climbing() && !G.fly);
+setArmedRule(() => !driving.v && !riding() && !(inBoat() || inAir()) && !G.swimming && !G.fly && !climbing() && !working() && (G.char.loc === 'dungeon' || !inVillage(G.pos.x, G.pos.z) || raidHere()));
 onClimbChange(refreshWeaponVisibility);
 onWorkChange(refreshWeaponVisibility);
 

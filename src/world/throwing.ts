@@ -36,6 +36,7 @@ import { logLine } from '../ui/hud';
 import { TL, tl } from '../i18n';
 import { driving } from './vehicles';
 import { riding } from './ride';
+import { inAir } from './airships';
 import { inBoat } from './boats';
 import { climbing } from './ladders';
 import { working } from './gather';
@@ -58,7 +59,7 @@ export function throwPick(): ItemKey | null {
 /** Choose what Z throws (the backpack's 'Ready to throw'). */
 export function readyThrow(k: ItemKey) { pick = k; logLine(TL`Ready to throw: ${ITEMS[k].name} (hold Z, let go)`); }
 /** When you cannot throw: at the wheel, riding, in a boat, swimming, climbing, flying or working. */
-const blocked = () => !!driving.v || riding() || inBoat() || G.swimming || climbing() || G.fly || working();
+const blocked = () => !!driving.v || riding() || inBoat() || inAir() || G.swimming || climbing() || G.fly || working();
 
 /** Z pressed: start the swing (the longer you hold, the further it goes). */
 export function startThrow() {

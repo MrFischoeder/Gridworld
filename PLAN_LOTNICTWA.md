@@ -49,6 +49,7 @@ Zrobione. Decyzje przy okazji: lądowisko wioski nadal buduje się przy terminal
 - **Komputer wioski:** w zakładce MAGAZYNY pokazuje linie powietrzne.
 
 ### F3: sterowiec (pojazd, którym steruje gracz)
+Część 1 (0.256) zrobiona. Decyzje właściciela: oba napędy do wyboru przy budowie (diesel albo ogniwa), powłoka napełniona przy budowie (gaz się nie zużywa), najpierw lot i maszt. Maszt stoi sam obok magazynu (po przeciwnej stronie niż lądowisko), bez wytyczania palikiem. Część 2: chodzenie po gondoli w locie, spuszczana drabinka, zderzenia w powietrzu.
 - **Budowa:** duży, wolny statek powietrzny budowany przy maszcie cumowniczym.
   - Maszt cumowniczy to nowa budowla magazynu albo osady.
   - Materiały: tkanina na powłokę, aluminium na szkielet, silniki, sterownik, gaz nośny z zakładów chemicznych.
