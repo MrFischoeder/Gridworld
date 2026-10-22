@@ -20,8 +20,9 @@ import { portId } from '../gen/ports';
 import { foundPort, foundProblem, openPort } from './port';
 import { tl, TL } from '../i18n';
 
-/** How many boats you may own. */
-export const MAX_BOATS = 3;
+/** How many boats and ships the world may hold. */
+/** Boats and ships on the world at most (0.248: they are everyone's, so the cap is the world's). */
+export const MAX_BOATS = 8;
 const rowsHTML = (rows: { k: ItemKey; n: number; given: number }[]) => rows.map((r) => { const h = have(r.k); return `<span style="color:${r.given >= r.n ? 'var(--xp)' : h ? 'var(--txt)' : '#ff9a7a'}">${ITEMS[r.k].name} ${r.given}/${r.n}${r.given < r.n && h ? TL` (you have ${h} with you)` : ''}</span>`; }).join(' · ');
 const needsText = (k: BoatKind) => BOATS[k].needs.map(([i, n]) => `${n} ${ITEMS[i].name.toLowerCase()}`).join(', ');
 /** The slip: build a boat or a ship at this dock (bit by bit), then it is launched alongside. */
@@ -33,7 +34,7 @@ function slip(p: Pier): string {
     s += TL`A ${spec.name.toLowerCase()} is going up: ${spec.blurb}.</div><div class="shoprow"><div>` + rowsHTML(rows) +
       TL`<br><span style="opacity:.7">On launching: ${spec.xp} xp.</span></div></div>` +
       TL`<button class="opt" data-pier="bgive" ${rows.some((r) => r.given < r.n && have(r.k) > 0) ? '' : 'disabled'}>Hand over what I carry for the ${spec.name.toLowerCase()}</button>`;
-  } else if (own >= MAX_BOATS) s += TL`You have ${own} boats and ships already: that is as many as you can keep.</div>`;
+  } else if (own >= MAX_BOATS) s += TL`There are ${own} boats and ships on this world already: that is as many as the docks can keep.</div>`;
   else s += TL`You can build a small boat or a ship here and launch it alongside. The small boat is rowed and can be refitted later with a sail or a motor; a ship carries far more, only sails or steams, and you can walk her deck while she goes.</div>` +
     NEW_BOATS.map((k) => TL`<button class="opt" data-pier="bnew" data-bk="${k}">Build a ${BOATS[k].name.toLowerCase()} · hold ${BOATS[k].hold} (${needsText(k)})</button>`).join('');
   return s + refits(p);

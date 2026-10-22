@@ -20,7 +20,8 @@ import { RELIC_KEYS } from '../data/items';
 import { putItems } from '../inventory';
 import { CARGO, takeOut } from '../data/cargo';
 import { villageDist } from '../gen/regions';
-import type { VehicleState } from '../save';
+import { trunkKey, type VehicleState, type Container, type Slot } from '../save';
+import { online } from '../net/client';
 import { saveChar, takeOne } from '../character';
 import { collides } from './player';
 import { openTransfer } from '../ui/transfer';
@@ -35,8 +36,12 @@ const YOU = 0xd8ffe8;
 
 export interface Vehicle {
   st: VehicleState; spec: VehicleSpec; group: THREE.Group;
-  /** Abandoned vehicles out in the wilds belong to nobody until someone gets in or opens the trunk. */
+  /** In the world's list of vehicles (G.char.vehicles, shared online): an abandoned one out in the wilds joins it when
+   *  someone first gets in or opens the trunk. (0.248) Nobody owns a vehicle: anyone drives it, anyone opens its trunk. */
   claimed: boolean;
+  /** (0.248) Another player is in it: their game moves it and it is drawn from what they send (world/peers.ts ghosts);
+   *  this copy is hidden and left alone meanwhile. */
+  held?: boolean;
   wheels: { g: THREE.Group; front: boolean }[];
   /** Roof cannon (present when one is fitted). */
   turret: THREE.Group | null;
@@ -44,6 +49,8 @@ export interface Vehicle {
   ai?: boolean;
   /** Who sits in each seat (`SEATS[model]`), drawn as a figure; null = empty. */
   riders: (Rider | null)[];
+  /** What the bays and the fittings looked like when last drawn (a change by someone else redraws them). */
+  bayLook?: string; partLook?: string;
   /** Another player at the cannon (world/peers.ts): where they aim it, body-relative. */
   gunYaw?: number;
   speed: number; spin: number; steer: number; y: number; pitch: number; roll: number;
@@ -255,7 +262,7 @@ function makeVehicle(st: VehicleState, claimed = true): Vehicle {
   });
   st.parts ??= freshParts(st.model); // saves from before vehicles had parts
   upgradeParts(st.model, st.parts);
-  st.bays = fitBays(st.model, st.bays);
+  if (!claimed) st.bays = fitBays(st.model, st.bays);
   scene.add(group);
   const v: Vehicle = { st, spec, group, claimed, wheels, turret: null, riders: SEATS[st.model].map(() => null), speed: 0, spin: 0, steer: 0, y: 0, pitch: 0, roll: 0 };
   refreshParts(v); refreshLights(v); refreshBays(v);
@@ -313,6 +320,7 @@ const inv = new THREE.Matrix4(), ray = new THREE.Ray(), bx = new THREE.Box3(), h
  * A shot from o along d (normalised) meets this vehicle within `max`: at t, its body or an occupant silhouette. Both are vehicle hits (seat -1).
  */
 export function rayVehicle(v: Vehicle, o: THREE.Vector3, d: THREE.Vector3, max: number): { t: number; seat: number } | null {
+  if (v.held) return null; // (0.248) another player's game has it: their copy (a ghost) is what you see and hit
   const R = Math.max(v.spec.length, v.spec.height) * 0.6, cx = v.st.x - o.x, cy = v.y + v.spec.height / 2 - o.y, cz = v.st.z - o.z;
   const along = cx * d.x + cy * d.y + cz * d.z;
   if (along < -R || along > max + R || cx * cx + cy * cy + cz * cz - along * along > R * R) return null; // nowhere near
@@ -344,11 +352,12 @@ function turretModel(): THREE.Group {
  * a barrel with its hoops; a full one with a gold lid line. Closed bodies hide theirs.
  */
 export function refreshBays(v: Vehicle) {
-  const old = v.group.getObjectByName('bays');
+  const old = v.group.getObjectByName('bays'), bays = baysOf(v);
   if (old) { v.group.remove(old); old.traverse((o) => (o as THREE.Mesh).geometry?.dispose()); }
-  if (v.spec.enclosed || !v.st.bays?.some(Boolean)) return;
+  v.bayLook = JSON.stringify(bays);
+  if (v.spec.enclosed || !bays.some(Boolean)) return;
   const pb = new PropBatch(), sp = BAY_SPOTS[v.st.model];
-  v.st.bays.forEach((s, i) => {
+  bays.forEach((s, i) => {
     const at = sp.at[i]; if (!s || !at) return;
     const [x, z] = at, y = sp.y, steel = s.k === 'crateM' || s.k === 'barrelM', c = steel ? 0x9fd8b0 : 0xb8b060;
     if (CARGO[s.k]?.kind === 'barrel') {
@@ -365,6 +374,7 @@ export function refreshBays(v: Vehicle) {
 }
 /** Wheels are permanent; only optional roof equipment is fitted or removed. */
 export function refreshParts(v: Vehicle) {
+  v.partLook = (v.st.parts.gun ? 1 : 0) + ':' + (v.st.lights ? 1 : 0);
   v.wheels.forEach((w) => { ((w.g as THREE.Object3D).userData.pivot as THREE.Group).visible = true; });
   if (v.st.parts.gun && !v.turret) {
     v.turret = turretModel(); v.turret.position.set(...v.spec.mount); v.group.add(v.turret);
@@ -396,12 +406,12 @@ function dryWarn() {
   if (driving.v && isEV(driving.v.st.parts)) { showToast(tl('Battery flat')); logLine(tl('The battery is flat: the motor whines and stops. Tow or push it to a charging post.')); return; }
   showToast(tl('Out of fuel')); logLine(tl('The tank is dry: the engine coughs and dies. R pours in a Fuel Canister from the trunk or your backpack.'));
 }
-/** The vehicle you could refuel now: the one you drive, else your own one beside you (within 4 m of its body). */
+/** The vehicle you could refuel now: the one you are in, else one beside you (within 4 m of its body). */
 function refuelTarget(): Vehicle | null {
   if (driving.v) return driving.v;
   let best: Vehicle | null = null, bd = 4;
   for (const v of vehicles) {
-    if (v.ai || !G.char.vehicles.includes(v.st) || Math.abs(G.pos.y - v.y) > 2.5) continue;
+    if (v.ai || !v.claimed || v.held || Math.abs(G.pos.y - v.y) > 2.5) continue;
     const [lx, lz] = toLocal(v, G.pos.x, G.pos.z), d = Math.max(Math.abs(lx) - v.spec.width / 2, Math.abs(lz) - v.spec.length / 2, 0);
     if (d < bd) { bd = d; best = v; }
   }
@@ -412,7 +422,7 @@ export function pourCanister(v: Vehicle): string {
   const p = v.st.parts;
   if (isEV(p)) return tl('It runs on electricity: charge it at a charging post.');
   if (cansToFill(v.st.model, p.fuel) <= 0) return tl('The tank is nearly full.');
-  const t = v.st.trunk.items, i = t.findIndex((x) => x?.k === 'fuel'), drum = (v.st.bays ?? []).find((x) => x?.b?.k === 'fuel'); // (0.247) a barrel of diesel in the cargo bay first
+  const t = trunkFor(v).items, i = t.findIndex((x) => x?.k === 'fuel'), drum = baysOf(v).find((x) => x?.b?.k === 'fuel'); // (0.247) a barrel of diesel in the cargo bay first
   if (drum) takeOut(drum, 1);
   else if (i >= 0) { const x = t[i]!; if (--x.n <= 0) t[i] = null; }
   else if (!takeOne('fuel')) return tl('You have no Fuel Canister, in the trunk or your backpack. Villages trade them.');
@@ -420,7 +430,7 @@ export function pourCanister(v: Vehicle): string {
   saveChar();
   return TL`You pour a canister into the tank: ${Math.round(p.fuel)} of ${v.spec.tank} litres, about ${Math.round(rangeKm(v.st.model, p.fuel))} km.`;
 }
-/** R in or beside your own vehicle: pour a canister in. False when there is no vehicle here (R then reloads). */
+/** R in or beside a vehicle: pour a canister in. False when there is no vehicle here (R then reloads). */
 export function refuelVehicle(): boolean {
   const v = refuelTarget();
   if (!v) return false;
@@ -558,8 +568,69 @@ export function spawnVehicles(h: WorldHooks) {
   hooks = h;
   clearVehicles();
   for (const st of G.char.vehicles) { st.x = nearX(st.x, G.pos.x); vehicles.push(makeVehicle(st)); }
+  unsent.clear();
 }
 const emptyTrunk = (m: VehicleModel) => ({ items: Array(VEHICLES[m].trunk).fill(null), gold: 0 });
+/**
+ * (0.248) The trunk of a vehicle in the world's list: the shared container `trunk:<id>` (locked while someone has it
+ * open, like any chest), with its cargo bays. A trunk still kept inside the vehicle (a found one, a raider's wreck, an
+ * older game's) moves there first.
+ */
+export function trunkOf(st: VehicleState): Container {
+  const k = trunkKey(st.id), all = G.char.containers;
+  if (!all[k]) { all[k] = { ...(st.trunk ?? emptyTrunk(st.model)) }; if (st.bays) all[k].bays = st.bays; }
+  delete st.trunk; delete st.bays;
+  const t = all[k];
+  t.bays = fitBays(st.model, t.bays);
+  return t;
+}
+/** The trunk of any vehicle: the shared one of a listed vehicle, else the one it carries (a raider's, a found one). */
+export const trunkFor = (v: Vehicle): Container => (v.claimed ? trunkOf(v.st) : (v.st.trunk ??= emptyTrunk(v.st.model)));
+/** The shared trunk of a vehicle standing here for the stores and markets (not one another player is in), or null. */
+export const trunkHere = (v: Vehicle): Container | null => (v.claimed && !v.ai && !v.held ? G.char.containers[trunkKey(v.st.id)] ?? null : null);
+/** Its cargo bays. */
+export const baysOf = (v: Vehicle): (Slot | null)[] => (v.claimed ? G.char.containers[trunkKey(v.st.id)]?.bays ?? v.st.bays ?? [] : (v.st.bays = fitBays(v.st.model, v.st.bays))); // (only looks: a trunk not heard of yet is not made here)
+/** A vehicle joins the world's list (found, bought, built, back from a route): its trunk becomes the shared container. */
+function enlist(st: VehicleState) { if (!G.char.vehicles.includes(st)) G.char.vehicles.push(st); trunkOf(st); }
+/** (0.248) The vehicles this game moves (the one you are in, and one you left whose last place is not sent yet):
+ *  online only these send where they stand (world/share.ts), the others' copies follow what the driver's game tells. */
+const unsent = new Set<string>();
+export const steeredHere = (id: string) => driving.v?.st.id === id || unsent.has(id);
+/** world/share.ts: the place of vehicle id went out. */
+export const poseSent = (id: string) => { unsent.delete(id); };
+/** The vehicles this game looks after (charging): the ones it drove last this session, or alone every one. */
+const tended = new Set<string>();
+export const tendsHere = (v: Vehicle) => v.claimed && !v.held && (!online() || tended.has(v.st.id));
+/**
+ * (0.248) Keep the vehicles drawn here in step with the world's list (twice a second, main loop): a vehicle someone
+ * else found, bought or brought appears, one sold or sent off on a route goes; one moved, refitted or loaded by someone
+ * else is drawn where and as it is now.
+ */
+export function syncVehicles() {
+  if (!hooks || G.char.loc !== 'overworld') return;
+  const byId = new Map(G.char.vehicles.map((s) => [s.id, s]));
+  for (let i = vehicles.length - 1; i >= 0; i--) {
+    const v = vehicles[i];
+    if (v.ai) continue;
+    const st = byId.get(v.st.id);
+    if (!st) { if (v.claimed && v !== driving.v) { dropVehicle(v); vehicles.splice(i, 1); } continue; }
+    byId.delete(v.st.id);
+    if (v.st !== st || !v.claimed) { v.st = st; v.claimed = true; }
+    if (v === driving.v || v.held) continue;
+    if (JSON.stringify(baysOf(v)) !== v.bayLook) refreshBays(v);
+    if ((v.st.parts.gun ? 1 : 0) + ':' + (v.st.lights ? 1 : 0) !== v.partLook) { refreshParts(v); refreshLights(v); }
+    v.st.x = nearX(v.st.x, G.pos.x);
+    if (v.group.position.x !== v.st.x || v.group.position.z !== v.st.z || v.group.rotation.y !== v.st.heading) pose(v);
+  }
+  for (const st of byId.values()) { st.x = nearX(st.x, G.pos.x); vehicles.push(makeVehicle(st)); }
+}
+/** world/peers.ts: whether another player is in vehicle v now, and where their game shows it. */
+export function holdVehicle(v: Vehicle, held: boolean, at?: { x: number; z: number; h: number }) {
+  if (at) { v.st.x = at.x; v.st.z = at.z; v.st.heading = at.h; }
+  if (v.held === held) { if (held && at) v.group.position.set(at.x, v.group.position.y, at.z); return; }
+  v.held = held; v.group.visible = !held; v.speed = 0;
+  if (!held) pose(v);
+}
 const stateOf = (p: Parking): VehicleState => ({ ...p, parts: structuredClone(p.parts), trunk: emptyTrunk(p.model), bays: fitBays(p.model, undefined) });
 
 // ---------- abandoned vehicles ----------
@@ -579,11 +650,11 @@ export function syncFound(t: Terrain, x: number, z: number) {
     if (!v.claimed && Math.hypot(v.st.x - x, v.st.z - z) > 420) { dropVehicle(v); vehicles.splice(i, 1); }
   }
 }
-/** Taking an abandoned vehicle: it becomes yours, with whatever its last owner left in the trunk. */
+/** Taking an abandoned vehicle: it joins the world's vehicles (anyone's to drive), with whatever its last owner left in the trunk. */
 function claim(v: Vehicle) {
   if (v.claimed) return;
   v.claimed = true;
-  const t = v.st.trunk;
+  const t = (v.st.trunk ??= emptyTrunk(v.st.model));
   t.gold = 10 + Math.floor(Math.random() * 60);
   if (Math.random() < 0.6) putItems(t.items, 'medkit', 1 + Math.floor(Math.random() * 2));
   if (Math.random() < 0.3) putItems(t.items, 'emp', 1);
@@ -593,7 +664,7 @@ function claim(v: Vehicle) {
   if (Math.random() < 0.3) putItems(t.items, 'parts', 1);
   if (Math.random() < 0.25) putItems(t.items, 'engine', 1);
   if (Math.random() < 0.35) putItems(t.items, 'fuel', 1); // (0.177) a spare canister
-  G.char.vehicles.push(v.st); saveChar();
+  enlist(v.st); saveChar();
   showToast(tl('Found: ') + vehicleTitle(v.st.model));
 }
 
@@ -602,31 +673,32 @@ function claim(v: Vehicle) {
 export function buyVehicle(model: VehicleModel): string {
   const spec = VEHICLES[model], c = G.char;
   if (c.gold < spec.price) return tl('Not enough gold.');
-  if (!yardBay()) return tl('The yard is full. Drive one of your vehicles away first.');
+  if (!yardBay()) return tl('The yard is full. Drive one of the vehicles away first.');
   c.gold -= spec.price;
   parkNew(model);
-  return TL`Your ${vehicleTitle(model)} is waiting in the yard outside the north gate.`;
+  return TL`The ${vehicleTitle(model)} is waiting in the yard outside the north gate.`;
 }
 /** The first free bay of Gridholm's yard, or null. */
 export const yardBay = () => YARD.bays.find((b) => !vehicles.some((v) => Math.hypot(v.st.x - b.x, v.st.z - b.z) < 7)) ?? null;
-/** A new vehicle of yours parked in the yard's first free bay (false when it is full). */
+/** A new vehicle parked in the yard's first free bay (false when it is full). */
 export function parkNew(model: VehicleModel): boolean {
   const bay = yardBay();
   if (!bay) return false;
   const st = stateOf({ id: model + '-' + Date.now().toString(36), model, x: bay.x, z: bay.z, heading: YARD.heading, parts: freshParts(model) });
-  G.char.vehicles.push(st); vehicles.push(makeVehicle(st)); saveChar();
+  enlist(st); vehicles.push(makeVehicle(st)); saveChar();
   return true;
 }
-/** (0.187) One of your vehicles handed over to a convoy route: out of your list and off the ground. */
+/** (0.187) A vehicle handed over to a convoy route: out of the world's list and off the ground. */
 export function takeVehicle(v: Vehicle) {
   if (driving.v === v) leave(false);
-  G.char.vehicles = G.char.vehicles.filter((s) => s !== v.st);
+  const i = G.char.vehicles.indexOf(v.st); if (i >= 0) G.char.vehicles.splice(i, 1); // in place: the shared list keeps its object
+  delete G.char.containers[trunkKey(v.st.id)];
   removeVehicle(v); saveChar();
 }
-/** (0.187) A vehicle back from a convoy route, parked at (x, z) and yours (its trunk empty, as it left). */
+/** (0.187) A vehicle back from a convoy route, parked at (x, z) (its trunk empty, as it left). */
 export function parkVehicle(id: string, model: VehicleModel, parts: VehicleParts, x: number, z: number, heading: number) {
   const st = stateOf({ id, model, x, z, heading, parts });
-  G.char.vehicles.push(st); vehicles.push(makeVehicle(st)); saveChar();
+  enlist(st); vehicles.push(makeVehicle(st)); saveChar();
 }
 export function clearVehicles() {
   if (driving.v) leave(false);
@@ -642,7 +714,7 @@ export interface VehicleSpot { v: Vehicle; kind: 'drive' | 'trunk' | 'service'; 
 export function vehicleSpot(): VehicleSpot | null {
   let best: VehicleSpot | null = null, bd = 2.4;
   for (const v of vehicles) {
-    if (v.ai || Math.abs(G.pos.y - v.y) > 2.5) continue;
+    if (v.ai || v.held || Math.abs(G.pos.y - v.y) > 2.5) continue;
     for (const side of [-1, 1]) {
       const [x, z] = toWorld(v, side * v.spec.door[0], v.spec.door[1]), d = Math.hypot(x - G.pos.x, z - G.pos.z);
       if (d < bd) { bd = d; best = { v, kind: 'drive', label: (v.claimed ? tl('drive the ') : tl('take the abandoned ')) + vehicleTitle(v.st.model) + (v.st.parts.hull <= 0 ? tl(' (wrecked)') : '') }; }
@@ -659,15 +731,16 @@ export function useVehicle(s: VehicleSpot) {
   if (s.kind === 'service') { openService(s.v); return; }
   if (s.kind === 'trunk') {
     const v = s.v;
-    v.st.bays = fitBays(v.st.model, v.st.bays);
-    openTransfer({ title: vehicleTitle(v.st.model), subtitle: v.spec.role + ' · ' + v.spec.seats + ' seats', boxLabel: tl('Trunk'), box: v.st.trunk, bays: v.st.bays, onClose: () => { refreshBays(v); saveChar(); } });
+    const t = trunkOf(v.st);
+    openTransfer({ title: vehicleTitle(v.st.model), subtitle: v.spec.role + ' · ' + v.spec.seats + ' seats', boxLabel: tl('Trunk'), box: t, bays: t.bays, onClose: () => { refreshBays(v); saveChar(); } });
     return;
   }
   const why = immobile(s.v.st.parts);
   if (why) { showToast(tl("It won't move")); logLine(why + tl(' Service it at the front of the vehicle.')); return; }
   const seat = s.v.riders[0] ? s.v.riders.findIndex((r) => !r) : 0; // the wheel, unless someone else sits there
   if (seat < 0) { showToast(tl('No free seat')); return; }
-  driving.v = s.v; s.v.speed = 0; driving.since = performance.now(); driving.seat = seat;
+  if (s.v.held) { showToast(tl('Someone else is in it')); return; }
+  driving.v = s.v; s.v.speed = 0; driving.since = performance.now(); driving.seat = seat; tended.add(s.v.st.id);
   seatRider(s.v, seat, 'you', YOU); setSeeThrough(s.v, driving.cockpit);
   G.vel.set(0, 0, 0); G.firing = false;
   G.yaw = s.v.st.heading + Math.PI; G.pitch = -0.12;
@@ -677,7 +750,7 @@ export function useVehicle(s: VehicleSpot) {
 export function leave(save = true) {
   const v = driving.v;
   if (!v) return;
-  driving.v = null; v.speed = 0; v.steer = 0; aimTurret(v); setSeeThrough(v, false);
+  driving.v = null; v.speed = 0; v.steer = 0; aimTurret(v); setSeeThrough(v, false); unsent.add(v.st.id);
   v.riders.forEach((r, i) => { if (r?.who === 'you') unseat(v, i); });
   const spots: [number, number][] = [[v.spec.door[0], v.spec.door[1]], [-v.spec.door[0], v.spec.door[1]], [v.spec.rear[0], v.spec.rear[1]], [v.spec.door[0] + 1, v.spec.door[1]]];
   for (const [lx, lz] of spots) {
@@ -702,7 +775,7 @@ export function teleportVehicle(v: Vehicle, x: number, z: number, heading: numbe
 /** Player collision with parked vehicles (their body box). */
 export function vehicleHit(x: number, y: number, z: number, r: number): boolean {
   for (const v of vehicles) {
-    if (v === driving.v || y > v.y + v.spec.height || y + 1.7 < v.y) continue;
+    if (v === driving.v || v.held || y > v.y + v.spec.height || y + 1.7 < v.y) continue;
     const [lx, lz] = toLocal(v, x, z);
     if (Math.abs(lx) < v.spec.width / 2 + r && Math.abs(lz) < v.spec.length / 2 + r) return true;
   }
@@ -725,7 +798,7 @@ function hullBlocked(v: Vehicle, x: number, z: number, h: number): boolean {
     if (hooks.water(px, pz) > s.wade) { blockedByWater = true; if (v === driving.v) deepWarn(v); return true; } // too deep to ford
     if (villageDist(G.char.world, px, pz, 60) < 1 || hooks.blocked(px, pz, 0.4)) return true;
   }
-  for (const o of vehicles) if (o !== v && Math.hypot(o.st.x - x, o.st.z - z) < (o.spec.length + s.length) / 2 * 0.8) {
+  for (const o of vehicles) if (o !== v && !o.held && Math.hypot(o.st.x - x, o.st.z - z) < (o.spec.length + s.length) / 2 * 0.8) {
     const [lx, lz] = toLocal(o, x, z);
     if (Math.abs(lx) < (o.spec.width + s.width) / 2 && Math.abs(lz) < (o.spec.length + s.length) / 2) return true;
   }
@@ -818,11 +891,11 @@ function setSeeThrough(v: Vehicle, on: boolean) {
 export const toggleCockpit = () => { driving.cockpit = !driving.cockpit; if (driving.v) setSeeThrough(driving.v, driving.cockpit); };
 
 // ---------- selling back to the dealer ----------
-/** Own vehicles parked near the dealer's yard, with what Kuba would pay for each. */
+/** Vehicles parked near the dealer's yard, with what Kuba would pay for each (anyone may sell one: nobody owns them). */
 export function vehiclesForSale(): { v: Vehicle; price: number; why: string | null }[] {
-  return vehicles.filter((v) => v.claimed && Math.hypot(v.st.x - YARD.dealer.x, v.st.z - YARD.dealer.z) < 45).map((v) => ({
+  return vehicles.filter((v) => v.claimed && !v.held && Math.hypot(v.st.x - YARD.dealer.x, v.st.z - YARD.dealer.z) < 45).map((v) => ({
     v, price: resaleValue(v.st.model, v.st.parts, PART_PRICE.cannon ?? 0, PART_BUYBACK),
-    why: v === driving.v ? tl('You are sitting in it.') : v.st.trunk.items.some(Boolean) || v.st.trunk.gold > 0 ? tl('Empty the trunk first.') : null,
+    why: v === driving.v ? tl('You are sitting in it.') : trunkOf(v.st).items.some(Boolean) || trunkOf(v.st).bays!.some(Boolean) || trunkOf(v.st).gold > 0 ? tl('Empty the trunk first.') : null,
   }));
 }
 export function sellVehicle(id: string): string {
@@ -831,7 +904,8 @@ export function sellVehicle(id: string): string {
   if (offer.why) return offer.why;
   const c = G.char;
   c.gold += offer.price;
-  c.vehicles = c.vehicles.filter((s) => s.id !== id);
+  const i = c.vehicles.findIndex((s) => s.id === id); if (i >= 0) c.vehicles.splice(i, 1);
+  delete c.containers[trunkKey(id)];
   dropVehicle(offer.v); vehicles.splice(vehicles.indexOf(offer.v), 1);
   saveChar();
   return TL`Sold the ${vehicleTitle(offer.v.st.model)} for ${offer.price} gold.`;
@@ -894,9 +968,10 @@ export function steerVehicle(v: Vehicle, tx: number, tz: number, want: number, d
 export const bodyToWorld = (v: Vehicle, lx: number, lz: number) => toWorld(v, lx, lz);
 
 
-/** Your own vehicles in the order the others know them by (`myCars`, the index in a ride). */
-export const myCarList = () => vehicles.filter((v) => !v.ai && G.char.vehicles.includes(v.st));
-/** Your own vehicles as the other players see them (net/client.ts PeerCar): model, where, the body's pose, cannon, your seat + 1 (0 = not in it), the cannon's yaw. */
+/** (0.248) The vehicle you sit in, as the others know it (`myCars`, the index in a ride): your game moves it while
+ *  you are in it, and the others draw it from what you send. Parked vehicles are the world's and need no sending. */
+export const myCarList = () => (driving.v && !driving.v.ai ? [driving.v] : []);
+/** The vehicle you sit in as the other players see it (net/client.ts PeerCar): model, where, the body's pose, cannon, your seat + 1, the cannon's yaw. */
 export function myCars(): number[][] {
   const out: number[][] = [];
   for (const v of myCarList()) {

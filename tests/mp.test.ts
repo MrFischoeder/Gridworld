@@ -360,6 +360,17 @@ describe('multiplayer server', () => {
     expect(set.ch.map((c: unknown[]) => c[0])).toEqual(['claims', 'benches', 'board', 'boards']);
     for (const x of [a, b]) x.ws.close();
   });
+  it('(0.248) the vehicles and their trunks are the world\'s: one player\'s change reaches the others', async () => {
+    const port = await server({ rooms: [{ id: 'main', name: 'Main', world: 11, time: 100 }] });
+    const a = await client(port, { name: 'Ada' }), b = await client(port, { name: 'Bob' });
+    await a.wait('welcome'); await b.wait('welcome');
+    const car = { id: 'scout-1', model: 'scout', x: 4, z: 5, heading: 0, parts: { hull: 100, fuel: 20 } };
+    a.send({ t: 'wset', ch: [['vehicles', 'scout-1', car], ['containers', 'trunk:scout-1', { items: [{ k: 'stone', n: 3 }], gold: 0, bays: [null, null] }]] });
+    const set = await b.wait('wset');
+    expect(set.ch.map((c: unknown[]) => c[0])).toEqual(['vehicles', 'containers']);
+    expect(set.ch[0][2]).toMatchObject({ id: 'scout-1', x: 4 });
+    for (const x of [a, b]) x.ws.close();
+  });
   it('a character name: shown to the others, never one of the fallen crew or another living player\'s', async () => {
     const port = await server({ rooms: [{ id: 'main', name: 'Main', world: 11, time: 100 }] });
     const a = await client(port, { name: 'Ada' }), wa = await a.wait('welcome');

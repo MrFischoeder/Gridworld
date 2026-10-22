@@ -9,7 +9,7 @@ import { allVillages, villageSeed, worldDist, nearX, findPoi, type Poi } from '.
 import { progressive, projectDone, RESOURCE_PLOTS, CHARGER } from '../gen/settlement';
 import { balance } from '../gen/energy';
 import { isEV, evCap, EV, vehicleTitle } from '../data/vehicles';
-import { vehicles, type Vehicle } from './vehicles';
+import { vehicles, tendsHere, type Vehicle } from './vehicles';
 import { saveChar } from '../character';
 import { logLine, showToast } from '../ui/hud';
 import { tl, TL } from '../i18n';
@@ -29,7 +29,7 @@ export function updateCharging(dt: number) {
   const was = new Set(charging.keys()); charging.clear();
   for (const v of allVillages(G.char.world)) {
     if (worldDist(v.x, v.z, G.pos.x, G.pos.z) > 900 || !hasPost(v)) continue;
-    const p = postAt(v), cars = vehicles.filter((c) => !c.ai && isEV(c.st.parts) && G.char.vehicles.includes(c.st) && Math.hypot(c.st.x - nearX(p.x, c.st.x), c.st.z - p.z) < CHARGER.reach);
+    const p = postAt(v), cars = vehicles.filter((c) => !c.ai && isEV(c.st.parts) && tendsHere(c) && Math.hypot(c.st.x - nearX(p.x, c.st.x), c.st.z - p.z) < CHARGER.reach);
     if (!cars.length || serviceWhy(v.id, 'charger')) continue; // (0.215) nobody at the post: no charging
     let left = Math.min(CHARGER.kw, balance(G.char.world, v, villageSeed(G.char.world, v), G.char.towns[v.id], G.char.time).free);
     for (const c of cars) {

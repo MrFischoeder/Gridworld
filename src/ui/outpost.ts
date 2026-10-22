@@ -16,7 +16,7 @@ import { tellRaids } from '../world/lodes';
 import { ROUTE, newRoute, legOf, periodOf, truckEnergy, robChance, truckProblem, assignTruck, recallTruck, fuelTruck, wrecked, convoyAt, waiting } from '../gen/routes';
 import { allVillages, worldDist as wdist } from '../gen/regions';
 import { VEHICLES, vehicleTitle, type VehicleModel } from '../data/vehicles';
-import { myCarList, takeVehicle, parkVehicle } from '../world/vehicles';
+import { vehicles, takeVehicle, parkVehicle, trunkOf } from '../world/vehicles';
 import { FOOD } from '../gen/farms';
 import { POWER_SRC, POWER_KINDS, grids, gridState, powerShare, powerFactor, pwOf, fuelLeft, loadFuel, settleAll, demandOf, PLINE, newLine, plineProblem, lineFlows, outGunsAt, OUT_GUN_KW, OUT_GUN_POWER, type PowerKind } from '../gen/grid';
 import { balance } from '../gen/energy';
@@ -62,7 +62,9 @@ function partBody(o: OutpostState, p: OutpostPart, name: string, text: string, p
 }
 /** (0.187, stage O6) The convoy route: pick a village, hand over a truck, keep its tank full, bring food back. */
 const nearVillages = (o: OutpostState) => allVillages(G.char.world).map((v) => ({ v, d: wdist(o.x, o.z, v.x, v.z) })).filter((q) => q.d < ROUTE.reach).sort((a, b) => a.d - b.d).slice(0, 4);
-const myTrucks = (o: OutpostState) => myCarList().filter((v) => wdist(v.st.x, v.st.z, o.x, o.z) < 80);
+/** (0.248) The vehicles parked by the outpost (anyone's to hand over). */
+const myTrucks = (o: OutpostState) => vehicles.filter((v) => v.claimed && !v.ai && !v.held && wdist(v.st.x, v.st.z, o.x, o.z) < 80);
+const trunkFull = (v: (typeof vehicles)[number]) => { const t = trunkOf(v.st); return t.items.some(Boolean) || !!t.bays?.some(Boolean) || t.gold > 0; };
 function routeHTML(id: string, o: OutpostState): string {
   const c = G.char, r = o.route;
   if (!r) {
@@ -79,8 +81,8 @@ function routeHTML(id: string, o: OutpostState): string {
   if (r.robbed) s += TL` Robbed ${r.robbed} time${r.robbed === 1 ? '' : 's'}.`;
   if (!t) {
     const mine = myTrucks(o);
-    s += TL`<br>No truck on it. Park one of your vehicles by the outpost and hand it over (its trunk empty).</div>`;
-    s += mine.map((v) => { const why = truckProblem(v.st.parts, v.st.model) || (v.st.trunk.items.some(Boolean) || v.st.trunk.gold > 0 ? tl('Empty its trunk first.') : ''); return why ? `<div class="say" style="opacity:.7">${vehicleTitle(v.st.model)}: ${why}</div>` : TL`<button class="opt" data-op="truck:${v.st.id}">Hand over your ${vehicleTitle(v.st.model)} (${ROUTE.cap[v.st.model]} crates a trip)</button>`; }).join('');
+    s += TL`<br>No truck on it. Park a vehicle by the outpost and hand it over (its trunk empty).</div>`;
+    s += mine.map((v) => { const why = truckProblem(v.st.parts, v.st.model) || (trunkFull(v) ? tl('Empty its trunk first.') : ''); return why ? `<div class="say" style="opacity:.7">${vehicleTitle(v.st.model)}: ${why}</div>` : TL`<button class="opt" data-op="truck:${v.st.id}">Hand over the ${vehicleTitle(v.st.model)} (${ROUTE.cap[v.st.model]} crates a trip)</button>`; }).join('');
     return s + TL`<button class="opt" data-op="unroute">Give up the route</button>`;
   }
   const [fuel, need, unit] = truckEnergy(r), ev = unit === 'kWh', cv = convoyAt(r, c.time), hull = Math.round((t.parts.hull ?? 0) / VEHICLES[t.model].hull * 100);
@@ -264,12 +266,12 @@ export function outpostClick(t: HTMLElement): boolean {
     } else if (a === 'truck' && o.route && !o.route.truck) {
       const v = myTrucks(o).find((q) => q.st.id === x);
       if (!v) { msg = tl('Park it by the outpost first.'); return; }
-      const why = truckProblem(v.st.parts, v.st.model) || (v.st.trunk.items.some(Boolean) || v.st.trunk.gold > 0 ? tl('Empty its trunk first.') : '');
+      const why = truckProblem(v.st.parts, v.st.model) || (trunkFull(v) ? tl('Empty its trunk first.') : '');
       if (why) { msg = why; return; }
       tellRaids(settleAll(c.world, c.outposts, byId, c.time, c.towns));
       assignTruck(o.route, { id: v.st.id, model: v.st.model as VehicleModel, parts: structuredClone(v.st.parts), by: c.name || tl('You') }, c.time);
       takeVehicle(v);
-      msg = TL`The crew takes your ${vehicleTitle(v.st.model)} on the route to ${o.route.vname}. The first convoy leaves in half an hour.`;
+      msg = TL`The crew takes the ${vehicleTitle(v.st.model)} on the route to ${o.route.vname}. The first convoy leaves in half an hour.`;
     } else if (a === 'recall' && o.route?.truck) {
       tellRaids(settleAll(c.world, c.outposts, byId, c.time, c.towns));
       const t = recallTruck(o.route)!, sp = at()!, ang = (hash(c.world, t.id.length, 0x0a71) % 628) / 100;

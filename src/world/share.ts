@@ -5,8 +5,8 @@ import { GRIDHOLM_ID } from '../gen/regions';
 // a hero lives on the server (server/mp.mjs keeps it per room) and every change reaches everyone: the villages (walls,
 // farms, works, stations, the hall's stock, defences...), the markets, bridges, piers and boats, the great
 // installations, the Chariot, chests and dungeon progress, felled trees and picked plants, cleared bandit camps and
-// the caravans' fates. The hero's own things stay theirs: kit, gold, xp, quests, contracts, maps, knowledge, vehicles
-// (shared through world/peers.ts), the house chest.
+// the caravans' fates, (0.248) the vehicles and their trunks (nobody owns a vehicle). The hero's own things stay
+// theirs: kit, gold, xp, quests, contracts, maps, knowledge, the house chest.
 // Once a second the shared parts of the save are compared with what was last sent (key by key) and the changes go to
 // the server; the others' changes are written into the save and shown (a village rebuilt, a tree gone...).
 // Independent property edits merge; conflicting leaves follow server order. The first player to join who already
@@ -24,7 +24,21 @@ import { boardPeriod } from '../core/time';
 
 type Kind = 'map' | 'list' | 'one';
 /** `key`: what names an entry of a list (its `id` unless given). */
-interface Field { f: keyof Char; kind: Kind; skip?: (k: string) => boolean; key?: (o: Record<string, unknown>) => string }
+interface Field {
+  f: keyof Char; kind: Kind; skip?: (k: string) => boolean; key?: (o: Record<string, unknown>) => string;
+  /** What of an entry this game sends: `base` is what was last sent or heard (vehicles: only the game that drives one
+   *  sends where it stands; the others' copies follow what it says and keep the last word on the place). */
+  mask?: (k: string, v: Record<string, unknown>, base: Record<string, unknown> | undefined) => unknown;
+}
+/** (0.248) world/vehicles.ts: whether this game moved vehicle id lately (main.ts sets it). */
+let steered: (id: string) => boolean = () => true, poseSent: (id: string) => void = () => {};
+export function setSteered(f: typeof steered, sent: typeof poseSent) { steered = f; poseSent = sent; }
+const POSE = ['x', 'z', 'heading'] as const;
+const vehicleMask: Field['mask'] = (k, v, base) => {
+  if (!base) return v;
+  if (steered(k)) { poseSent(k); return v; }
+  return { ...v, ...Object.fromEntries(POSE.filter((p) => p in base).map((p) => [p, base[p]])) };
+};
 /** Claims and benches have no id: a flag or a bench is known by where it stands. */
 const at = (o: Record<string, unknown>) => (+(o.x as number)).toFixed(1) + ':' + (+(o.z as number)).toFixed(1);
 const keyOf = (f: Field, o: Record<string, unknown>) => (f.key ? f.key(o) : String(o.id));
@@ -32,7 +46,8 @@ const keyOf = (f: Field, o: Record<string, unknown>) => (f.key ? f.key(o) : Stri
 export const SHARED: Field[] = [
   { f: 'towns', kind: 'map' }, { f: 'market', kind: 'map' }, { f: 'installs', kind: 'map' }, { f: 'bridges', kind: 'map' },
   { f: 'bridgeSites', kind: 'list' }, { f: 'piers', kind: 'list' }, { f: 'lighthouses', kind: 'list' }, { f: 'boats', kind: 'list' }, { f: 'shuttle', kind: 'one' },
-  { f: 'containers', kind: 'map', skip: (k) => k.startsWith('home:') }, // your house chest is yours
+  { f: 'containers', kind: 'map', skip: (k) => k.startsWith('home:') }, // your house chest is yours (a vehicle's trunk is 'trunk:<id>')
+  { f: 'vehicles', kind: 'list', mask: vehicleMask }, // (0.248) the vehicles: anyone's to drive
   { f: 'opened', kind: 'map' }, { f: 'unlocked', kind: 'map' }, { f: 'killed', kind: 'map' },
   { f: 'harvest', kind: 'map' }, { f: 'camps', kind: 'map' }, { f: 'cityGarrisons', kind: 'map' }, { f: 'caravans', kind: 'map' },
   // the players' land claims with what is built on them, wild workbenches and the notice boards are the world's too
@@ -218,8 +233,8 @@ export function syncWorld(dt: number) {
       seen.add(k);
       if (f.f === 'containers' && activeContainers.has(k)) continue; // transfer windows publish through their reservation
       if (f.f === 'towns' && activeTowns.has(k) || f.f === 'outposts' && activeTowns.has('outposts:' + k)) continue; // stock transactions publish atomically on release
-      const j = JSON.stringify(v);
-      if (m.get(k) !== j) { const base = m.get(k); ch.push([f.f, k, v, base === undefined ? null : JSON.parse(base)]); }
+      const prev = m.get(k), out = f.mask ? f.mask(k, v as Record<string, unknown>, prev === undefined ? undefined : JSON.parse(prev)) : v, j = JSON.stringify(out);
+      if (prev !== j) ch.push([f.f, k, out, prev === undefined ? null : JSON.parse(prev)]);
     }
     for (const k of [...m.keys()]) if (!seen.has(k)) { ch.push([f.f, k, null, JSON.parse(m.get(k)!)]); }
   }

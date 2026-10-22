@@ -71,7 +71,7 @@ function holdHTML(id: string): string {
   s += TL`<div class="say"><b>The crane</b>: `;
   if (works.why) return s + `<span style="color:#ff6a4a">${WHY[works.why]}</span>` + tl(' Storing and taking by hand still works.') + '</div>';
   const boats = boatsHere(p), tr = trunksHere();
-  s += TL`it works (${works.hands} people, ${Math.round(works.power * 100)}% power). It unloads your trucks parked by the warehouse and your boats at the dock, and loads them from the hold.</div>`;
+  s += TL`it works (${works.hands} people, ${Math.round(works.power * 100)}% power). It unloads the trucks parked by the warehouse and the boats at the dock, and loads them from the hold.</div>`;
   const inTrunks = tr.reduce((a, t) => a + count(t.slots), 0), inBoats = boats.reduce((a, b) => a + count(boatHold(b).items), 0);
   s += inTrunks + inBoats ? small('cunload', TL`Unload ${inTrunks + inBoats} crates into the hold`) : TL`<div class="say" style="opacity:.7">Nothing to unload: park a truck by the warehouse or moor a boat of yours at the dock.</div>`;
   if (list.length) {

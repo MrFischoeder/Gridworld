@@ -30,10 +30,10 @@ export function nearFuelPump(): number | null {
   }
   return null;
 }
-/** Your vehicles standing by village v's pump. */
+/** The vehicles standing by village v's pump (nobody's own: anyone fills any). */
 function carsHere(v: Poi): Vehicle[] {
   const p = pumpAt(v);
-  return vehicles.filter((c) => !c.ai && !isEV(c.st.parts) && G.char.vehicles.includes(c.st) && Math.hypot(c.st.x - nearX(p.x, c.st.x), c.st.z - p.z) < FUEL_PUMP.reach);
+  return vehicles.filter((c) => !c.ai && !isEV(c.st.parts) && c.claimed && !c.held && Math.hypot(c.st.x - nearX(p.x, c.st.x), c.st.z - p.z) < FUEL_PUMP.reach);
 }
 const priceOf = (v: Poi) => quote(v, villageSeed(G.char.world, v), G.char.world, 'fuel', G.char.market, G.char.time, true, 1, G.char.towns[v.id]).buy;
 

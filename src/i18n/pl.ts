@@ -4287,4 +4287,13 @@ export const PL: Record<string, string> = {
   "You swap the {0} for the {1}.": "Zamieniasz: {0} na {1}.",
   "You load the {0} into the cargo bay.": "Ładujesz do ładowni: {0}.",
   "Cargo bay ({0}/{1}): crates and barrels, carried in your hands": "Ładownia ({0}/{1}): skrzynie i beczki, noszone w rękach",
+  "<br>No truck on it. Park a vehicle by the outpost and hand it over (its trunk empty).</div>": "<br>Brak ciężarówki. Zaparkuj pojazd przy placówce i przekaż go (z pustym bagażnikiem).</div>",
+  "<button class=\"opt\" data-op=\"truck:{0}\">Hand over the {1} ({2} crates a trip)</button>": "<button class=\"opt\" data-op=\"truck:{0}\">Przekaż pojazd: {1} ({2} skrzyń na kurs)</button>",
+  "The crew takes the {0} on the route to {1}. The first convoy leaves in half an hour.": "Załoga zabiera pojazd ({0}) na trasę do: {1}. Pierwszy konwój wyjeżdża za pół godziny.",
+  "There are {0} boats and ships on this world already: that is as many as the docks can keep.</div>": "Na tym świecie jest już łodzi i statków: {0}. Więcej doki nie utrzymają.</div>",
+  "it works ({0} people, {1}% power). It unloads the trucks parked by the warehouse and the boats at the dock, and loads them from the hold.</div>": "pracuje ({0} ludzi, {1}% prądu). Rozładowuje ciężarówki stojące przy magazynie i łodzie przy doku, i ładuje je z magazynu.</div>",
+  "Someone else got in first": "Ktoś inny wsiadł pierwszy",
+  "The yard is full. Drive one of the vehicles away first.": "Plac jest pełny. Najpierw odjedź któryś z pojazdów.",
+  "Someone else is in it": "Ktoś inny w nim siedzi",
+  "The {0} is waiting in the yard outside the north gate.": "{0} czeka na placu za północną bramą.",
 };

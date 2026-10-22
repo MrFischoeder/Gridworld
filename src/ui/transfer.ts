@@ -173,6 +173,7 @@ export async function openTransfer(s: TransferSpec) {
     }
     locked = key;
     s.box = G.char.containers[key];
+    if (s.bays) s.bays = (s.box.bays ??= s.bays); // (0.248) a trunk's cargo bays come with it
   }
   spec = s;
   el.msg.textContent = tl('Drag items between the two, click one in here to take it, or select one of yours and Store it. Whatever you leave stays here.');

@@ -8,7 +8,7 @@ import { calcStats, saveChar, packVol } from '../character';
 import { quote } from '../gen/market';
 import { findPoi, villageSeed } from '../gen/regions';
 import { fmtTime } from '../core/time';
-import { vehicles } from '../world/vehicles';
+import { vehicles, trunkHere } from '../world/vehicles';
 import { CARAVAN, escortPay, type Caravan } from '../gen/caravans';
 import { savedBy, takeEscort, plundered } from '../world/caravans';
 import { danger } from '../world/overworld';
@@ -62,7 +62,7 @@ export function caravanClick(t: HTMLElement): boolean {
   if (!b) return false;
   const c = open, want = +b.dataset.cvb!, p = price(c), ch = G.char;
   // your backpack first, then a vehicle you are standing by
-  const stores = [{ s: ch.inv, cap: packVol() as number | undefined }, ...vehicles.filter((v) => v.claimed && !v.ai && Math.hypot(v.st.x - G.pos.x, v.st.z - G.pos.z) < 25).map((v) => ({ s: v.st.trunk.items, cap: undefined }))];
+  const stores = [{ s: ch.inv, cap: packVol() as number | undefined }, ...vehicles.filter((v) => trunkHere(v) && Math.hypot(v.st.x - G.pos.x, v.st.z - G.pos.z) < 25).map((v) => ({ s: trunkHere(v)!.items, cap: undefined }))];
   let got = 0;
   for (let i = 0; i < want && left(c) > 0 && ch.gold >= p; i++) {
     let rest = 1; for (const st of stores) if (rest) rest = putItems(st.s, c.good as ItemKey, 1, st.cap);

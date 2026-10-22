@@ -3,6 +3,14 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.248.0', date: '2026-10-22', title: 'Vehicles belong to nobody', notes: [
+    'Vehicles no longer have owners. Every vehicle in the world (bought, built, found or taken from raiders) is everyone\'s: any player can drive it, ride in it, service it, refuel it, sell it to Kuba or hand it over to a convoy route.',
+    'Every trunk is open to everyone, cargo bays included. Like a chest, a trunk is shared: what one player puts in, the others find there. While one player has it open, the others wait until they close it.',
+    'Whoever gets in first has the vehicle. Their game moves it and the others see it drive by. Anyone can ride along in a free seat or work the roof cannon. When the driver gets out, the vehicle stays where they left it, free for anyone. If two players get in at the same moment, one of them gives way.',
+    'Boats and ships were already shared. The cap on how many a world can hold goes up from 3 to 8, because they are everyone\'s.',
+    'Multiplayer: the vehicles and their trunks are now part of the shared world. The protocol changes (16), so update the server with install.sh and then refresh the page (Ctrl+F5). A player who joins a server finds the vehicles of that world, not the ones from their own game (those stay in the single-player save). Future flying machines will follow the same rule.',
+    'Not synced: an electric vehicle at a charging post charges only from the game of the player who last drove it.',
+  ] },
   { v: '0.247.0', date: '2026-10-21', title: 'Crates, barrels and a van', notes: [
     'Crates and barrels move bulk. A crate holds one kind of building material (planks, stone, logs, ore, scrap and the like) and a barrel holds one liquid (diesel, lamp oil or milk). They are too big for the backpack: you carry one in your hands, slowly when it is full and heavy.',
     'A wooden crate or barrel holds 60 litres; a steel one holds 100 litres in the same room. The blacksmith makes them: wooden ones from planks with nails or wire, steel ones from steel and scrap. Oskar also sells them.',

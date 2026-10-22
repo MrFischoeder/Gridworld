@@ -10,7 +10,7 @@ import { calcStats, saveChar, packVol } from '../character';
 import { GOODS, quote, trade, tidyMarket, profileFor, type Good } from '../gen/market';
 import { allVillages, findPoi, villageSeed, worldDist, type Poi } from '../gen/regions';
 import { loadedVillage } from '../world/overworld';
-import { vehicles } from '../world/vehicles';
+import { vehicles, trunkHere } from '../world/vehicles';
 import { bearingTo, point8, fmtDist } from './compass';
 import type { Slot } from '../save';
 import { lastArrival } from '../gen/caravans';
@@ -48,10 +48,10 @@ const TRUNK_REACH = 90; // metres from the village middle: vehicles parked by th
 let here: { poi: Poi; seed: number } | null = null;
 
 const ago = (t: number) => { const h = (G.char.time - t) / 60; return h < 1 ? tl('just now') : h < 24 ? Math.round(h) + tl(' h ago') : Math.round(h / 24) + tl(' d ago'); };
-/** Your backpack, then the trunks of your vehicles parked by village `at` (the market's village by default). */
+/** Your backpack, then the trunks of the vehicles parked by village `at` (the market's village by default). */
 export function stores(at: { x: number; z: number } | null = here?.poi ?? null): { name: string; slots: (Slot | null)[]; cap?: number }[] {
   const out: { name: string; slots: (Slot | null)[]; cap?: number }[] = [{ name: 'backpack', slots: G.char.inv, cap: packVol() }];
-  if (at) for (const v of vehicles) if (v.claimed && !v.ai && worldDist(v.st.x, v.st.z, at.x, at.z) < TRUNK_REACH) out.push({ name: 'trunk', slots: v.st.trunk.items });
+  if (at) for (const v of vehicles) { const t = trunkHere(v); if (t && worldDist(v.st.x, v.st.z, at.x, at.z) < TRUNK_REACH) out.push({ name: 'trunk', slots: t.items }); }
   return out;
 }
 /** Crates of g you have with you at `at` (backpack and trunks parked there). */

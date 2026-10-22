@@ -14,7 +14,7 @@ import { rayWorld } from './player';
 import { burst } from './fx';
 import { dropCrystal, rollAmmo, lootQuiet } from './loot';
 import { spawnBandit, alert, fireBolt, BANDIT, type Bandit } from './bandits';
-import { placeAI, spawnAIVehicle, releaseAI, removeVehicle, steerVehicle, bodyToWorld, driving, damageVehicle, seatRider, unseat, rayVehicle, type Vehicle } from './vehicles';
+import { placeAI, spawnAIVehicle, releaseAI, removeVehicle, steerVehicle, bodyToWorld, driving, damageVehicle, seatRider, unseat, rayVehicle, trunkFor, type Vehicle } from './vehicles';
 import { VEHICLES, SEATS, freshParts, type VehicleModel } from '../data/vehicles';
 import { RELIC_KEYS } from '../data/items';
 import { putItems } from '../inventory';
@@ -145,7 +145,7 @@ function wreckRaider(r: Raider) {
   const p = v.st.parts;
   p.gun = Math.random() < 0.5;
   p.hull = 0; p.fuel = Math.round(v.spec.tank * (0.2 + Math.random() * 0.5));
-  const t = v.st.trunk; t.gold = 20 + Math.floor(Math.random() * 60);
+  const t = trunkFor(v); t.gold = 20 + Math.floor(Math.random() * 60);
   if (Math.random() < 0.5) putItems(t.items, 'medkit', 1);
   putItems(t.items, 'scrap', 2 + Math.floor(Math.random() * 3));
   { const [k, n] = rollAmmo(); putItems(t.items, k, n); }

@@ -32,8 +32,24 @@ export type Progress = Record<string, number[]>;
 /** Where in which dungeon the player is. In a cave system (`cave`), ruinId is the system's id; its mouths are kept so the way out is known. */
 export interface DungeonPos { ruinId: number; depth: number; gx: number; gz: number; /** (0.207) a hand-made level from the map editor, by name (world/custommaps.ts) */ custom?: string; cave?: { name: string; mouths: { x: number; z: number; face: number }[]; from: number } }
 /** Anything that holds items: a searched chest, a vehicle trunk. */
-export interface Container { items: (Slot | null)[]; gold: number }
-export interface VehicleState { id: string; model: VehicleModel; x: number; z: number; heading: number; trunk: Container; parts: VehicleParts; /** (0.203) its headlights are on */ lights?: boolean; /** (0.247) the cargo bays: crates and barrels (data/cargo.ts), `VEHICLES[model].bays` long */ bays?: (Slot | null)[] }
+export interface Container { items: (Slot | null)[]; gold: number; /** (0.247) a vehicle's cargo bays: crates and barrels (data/cargo.ts), `VEHICLES[model].bays` long */ bays?: (Slot | null)[] }
+/**
+ * A vehicle on the surface. (0.248) Vehicles belong to nobody: the list is the world's (shared online), and the trunk
+ * with its cargo bays is the shared container `containers['trunk:<id>']` (`trunkKey`, world/vehicles.ts `trunkOf`).
+ * `trunk` / `bays` here only for a vehicle not in the list yet (a raider's, a found one) and old saves.
+ */
+export interface VehicleState { id: string; model: VehicleModel; x: number; z: number; heading: number; trunk?: Container; parts: VehicleParts; /** (0.203) its headlights are on */ lights?: boolean; bays?: (Slot | null)[] }
+/** (0.248) The shared container that is a vehicle's trunk. */
+export const trunkKey = (id: string) => 'trunk:' + id;
+/** (0.248) Moves the trunks (and cargo bays) kept inside the vehicles into the shared containers. */
+export function trunksOut(c: Pick<Char, 'vehicles' | 'containers'>) {
+  for (const v of c.vehicles) {
+    if (!v.trunk && !v.bays) continue;
+    const k = trunkKey(v.id);
+    if (!c.containers[k]) c.containers[k] = { ...(v.trunk ?? { items: [], gold: 0 }), ...(v.bays ? { bays: v.bays } : {}) };
+    delete v.trunk; delete v.bays;
+  }
+}
 export interface Char {
   v: 3;
   /** The hero's name, entered in the menu before the first game (everyone calls you by it). */
@@ -107,7 +123,7 @@ export interface Char {
   discovered: Record<string, string>;
   /** What is left in searched chests, keyed "chest:<dungeonKey>:<index>". */
   containers: Record<string, Container>;
-  /** The player's vehicles on the surface. */
+  /** The vehicles on the surface: (0.248) the world's, anyone drives them (shared online). */
   vehicles: VehicleState[];
   /** Notice board: offers on display, the counter that numbers new notices, and the posting they are from (core/time boardPeriod). */
   board: { seq: number; offers: Quest[]; stamp?: number };
@@ -237,6 +253,7 @@ export function loadChar(storage: Pick<Storage, 'getItem'> & Partial<Pick<Storag
       if (!Array.isArray(c.off) || c.off.length !== 1) c.off = [null];
       retireOldCrossings(c);
       planksForLogs(c); // (0.165) logs handed over to builds count on as planks
+      trunksOut(c); // (0.248) the trunks are shared containers now
       return c;
     }
     const v2 = storage?.getItem(V2_KEY);

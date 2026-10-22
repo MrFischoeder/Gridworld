@@ -12,7 +12,8 @@ import { makeFigure, textSprite, type Figure } from './npc';
 import { myPod } from './crashpod';
 import { poseRig, type Kit } from './rig';
 import { net, sendState, isHost, SEND_EVERY, type PeerState, type PeerCar, peerAt, PEER_DELAY, onSeats } from '../net/client';
-import { convoyModel, seatFigure, myCars, toLocalOf, myCarList, driving, seatRider, unseat, gunSeat, leave } from './vehicles';
+import { convoyModel, seatFigure, myCars, toLocalOf, myCarList, driving, seatRider, unseat, gunSeat, leave, vehicles, holdVehicle } from './vehicles';
+import { showToast } from '../ui/hud';
 import { VEHICLES, SEATS, MODEL_ORDER, type VehicleModel } from '../data/vehicles';
 import { nearX } from '../gen/regions';
 import { dungeonKey, offFree, offHeld } from '../character';
@@ -104,15 +105,18 @@ export function updatePeers(dt: number, moving: boolean) {
 export function clearPeers() {
   for (const id of [...avatars.keys()]) drop(id);
   for (const k of [...ghosts.keys()]) dropGhost(k);
+  for (const v of vehicles) if (v.held) holdVehicle(v, false); // alone again: every vehicle is here to drive
   ride.on = null;
   for (const v of myCarList()) { v.riders.forEach((r, i) => { if (r?.who.startsWith('peer:')) unseat(v, i); }); v.gunYaw = undefined; }
 }
 
-// ---------- the others' vehicles ----------
-// Every player sends where their own vehicles stand (and which one they drive); here each is drawn as a body with
-// wheels (and the cannon), the people aboard in their seats, eased between snapshots while it moves. They block you
-// and your vehicle like any other. Only their owner drives them (their game moves them), but anyone can ride along
-// in a free seat (world/ride.ts) and work the cannon from the gunner's.
+// ---------- the vehicles the others are in ----------
+// (0.248) Vehicles belong to nobody: the world's list is shared and every game draws every one of them. Whoever gets
+// in first has it: their game moves it and sends where it is (and their seat) ten times a second; here it is drawn
+// from that as a body with wheels (and the cannon), the people aboard in their seats, eased between snapshots while
+// it moves, and this game's own copy of it is hidden meanwhile (`holdVehicle`). It blocks you and your vehicle like
+// any other. Anyone can ride along in a free seat (world/ride.ts) and work the cannon from the gunner's; when the one
+// who has it gets out, it stands where they left it, anyone's again.
 /** Who sits in a seat: 'p<id>' another player, 'me' you. */
 export type Occupant = string | null;
 export interface Ghost {
@@ -155,7 +159,7 @@ function seatsFor(n: number, own: number, riders: { id: string; seat: number; n:
   return { occ, bumped, byId };
 }
 function syncCars(here: string, now: number) {
-  const seen = new Set<string>();
+  const seen = new Set<string>(), held = new Map<string, Ghost>();
   if (here === 'o') for (const p of net.peers.values()) {
     const at = peerAt(p, now - PEER_DELAY), cars = at?.b.cars;
     if (!at || !cars || p.st?.loc !== here) continue;
@@ -163,6 +167,7 @@ function syncCars(here: string, now: number) {
     cars.forEach((c: PeerCar, i) => {
       const m = MODELS[c[0]] ?? 'scout', gun = !!c[7], key = p.id + ':' + i;
       seen.add(key);
+      const vid = at.b.carIds?.[i];
       let g = ghosts.get(key);
       if (g && (g.m !== m || g.gun !== gun)) { dropGhost(key); g = undefined; }
       if (!g) {
@@ -177,6 +182,8 @@ function syncCars(here: string, now: number) {
       const hl = g.g.getObjectByName('headlights'); if (hl) hl.visible = !!c[11]; // (0.203) their headlights
       g.aim = c.length > 9 ? lerpAng(q[9] ?? c[9], c[9], k) : 0;
       g.x = nearX(g.x, G.pos.x);
+      if (vid) held.set(vid, g);
+      if (vid && driving.v?.st.id === vid && p.id < net.id) { leave(); showToast(tl('Someone else got in first')); } // both got in at once: the lower id keeps it
       g.g.position.set(g.x, g.y - 0.05, g.z);
       g.g.rotation.set(-g.p, g.h, g.r, 'YXZ');
       // who sits where: the owner (their seat + 1 in c[8]; older games send 1 for driving), then the riders
@@ -201,6 +208,7 @@ function syncCars(here: string, now: number) {
     });
   }
   for (const k of [...ghosts.keys()]) if (!seen.has(k)) dropGhost(k);
+  for (const v of vehicles) if (!v.ai && v !== driving.v) { const g = held.get(v.st.id); holdVehicle(v, !!g, g ? { x: g.x, z: g.z, h: g.h } : undefined); }
   syncMyRiders();
 }
 /** The players riding in your own vehicles: seated there, the one at the cannon aiming it. */

@@ -74,7 +74,7 @@ import { updateRestSmoke } from './world/restsmoke';
 import { updateBandits, spawnBanditsNear } from './world/bandits';
 import { updateRaiders, spawnRaiderNear, forceAmbush, raiders } from './world/raiders';
 import { updateTracker, boardOffers, accept, syncQuestWorld, refreshBoard } from './world/quests';
-import { driving, updateDriving, vehicleCamera, vehicles, buyVehicle, fireCannon, smokeWrecks, damageVehicle } from './world/vehicles';
+import { driving, updateDriving, vehicleCamera, vehicles, buyVehicle, fireCannon, smokeWrecks, damageVehicle, syncVehicles, steeredHere, poseSent } from './world/vehicles';
 import { interact } from './world/interact';
 import { el, updateHud, logLine, showToast } from './ui/hud';
 import { drawMini } from './ui/minimap';
@@ -110,7 +110,8 @@ import { SEATS, modelOf } from './data/vehicles';
 /** Riding at another player's cannon (the crosshair stays for aiming it). */
 const SEATS_GUN = () => { const o = ride.on, g = o ? ghostOf(o.owner, o.idx) : null; return !!g && !!SEATS[g.m][o!.seat]?.gun; };
 import { syncDrops, clearLocalDrops } from './world/drops';
-import { syncWorld, setWorldReload } from './world/share';
+import { syncWorld, setWorldReload, setSteered } from './world/share';
+setSteered(steeredHere, poseSent); // (0.248) only the game that moves a vehicle says where it stands
 import { syncFoes } from './world/foesync';
 import { updateGarrisons } from './world/citygarrisons';
 import { refreshGateConsole } from './ui/worldgates';
@@ -190,12 +191,12 @@ addEventListener('visibilitychange', () => { last = performance.now(); });
 /** How far the eye sinks when you crouch (eased). */
 const CROUCH_DROP = 0.6;
 let crouchDrop = 0;
-let benchT = 0; // workbenches in the wilds are synced about once a second
+let benchT = 0, vehSyncT = 0; // (0.248) the vehicles drawn here follow the world's list twice a second // workbenches in the wilds are synced about once a second
 // (0.199) what lights the dark besides your own light: fires, powered village lamps, the other players' lights
 addLights((out) => {
-  // (0.203) headlights left on: your parked vehicles and the other players' (the one you drive throws its beam itself)
+  // (0.203) headlights left on: parked vehicles and the ones the other players are in (the one you drive throws its beam itself)
   if (G.char.loc === 'overworld') {
-    for (const v of vehicles) if (v.st.lights && v !== driving.v && G.char.vehicles.includes(v.st)) { const s = headlightSpot(v.st.x, v.st.z, v.st.heading, v.st.model); out.push({ x: s.x, y: v.y + 1, z: s.z, r: 13, k: 'electric' }); }
+    for (const v of vehicles) if (v.st.lights && v !== driving.v && v.claimed && !v.held) { const s = headlightSpot(v.st.x, v.st.z, v.st.heading, v.st.model); out.push({ x: s.x, y: v.y + 1, z: s.z, r: 13, k: 'electric' }); }
     for (const p of net.peers.values()) if (p.st?.loc === 'o') for (const c of p.st.cars ?? []) if (c[11]) { const s = headlightSpot(nearX(c[1], G.pos.x), c[3], c[4], modelOf(c[0])); out.push({ x: s.x, y: c[2] + 1, z: s.z, r: 13, k: 'electric' }); }
   }
   for (const f of [...fireSpots(), ...campFires().map((c) => ({ x: c.x, y: c.y + 0.8, z: c.z }))]) out.push({ ...f, r: LIGHT.fire, k: 'fire' });
@@ -262,7 +263,7 @@ function frame(now: number) {
     updateDoors(dt);
     updateRobots(dt, time); // the open world's robots, or a crashed ship's guards
     if (!outdoors && cave) updateCreatures(dt, time); // (0.244) a cave's beasts
-    if (outdoors) { updateIntents(dt); updateGarrisons(dt); updateFieldEnemies(dt); updateCreatures(dt, time); updateBandits(dt, time); updateRaiders(dt); animateCamps(time); smokeWrecks(dt); updateCrash(dt, time); animateWater(time); }
+    if (outdoors) { updateIntents(dt); updateGarrisons(dt); updateFieldEnemies(dt); updateCreatures(dt, time); updateBandits(dt, time); updateRaiders(dt); animateCamps(time); smokeWrecks(dt); if ((vehSyncT -= dt) <= 0) { vehSyncT = 0.5; syncVehicles(); } updateCrash(dt, time); animateWater(time); }
     updateDrones(dt);
     updateFoeSounds(dt); updateFarCalls(dt); updateFoeTracks(dt); updateRestSmoke(dt, time); // (0.237, stage L4) warnings from afar
     updateBodies(dt); // (0.245) the fallen's bodies
