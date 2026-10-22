@@ -10,6 +10,12 @@
 // Like the convoy lines (gen/hublines.ts): the line lives on its home warehouse and counts what it delivered
 // (`sent`, under the home's lock); the other warehouse counts what it took in (`rcv['al:<home>:<id>']`, under its own
 // lock, only while it works), so a stale write delays a delivery but never doubles it. Pure.
+//
+// (0.255, stage F2) A pad serves up to `DRONE.lines` air lines (`alines`), each to a different warehouse with a drone
+// of its own; a 0.254 save's single `aline` is read as the first and moved into the list by the first write under the
+// home's lock (`ownAirLines`). A village's pad is staked out with a Survey Stake once its materials are in (`dpWait`,
+// `placePad`, world/fields.ts): `dpspot` (world, canonical x) is where `padAt` puts it, and it keeps trees off
+// (gen/fields.ts `padClaim`, a claim that levels nothing).
 import { hash } from '../core/rng';
 import { dangerAt } from './danger';
 import { allVillages, villageSeed, worldDist, nearX } from './regions';
@@ -18,7 +24,7 @@ import { hubWorks, type Hub } from './warehouses';
 import { padOf } from './energy';
 import { startJob, jobOf } from './construction';
 import { takeHold } from './hublines';
-import { noteArrival, takeTransit, dropWay, type Transit } from './transit';
+import { noteArrival, takeTransit, dropWay, renameWay, type Transit, type Way } from './transit';
 import { PAD, DRONE } from './dronepad';
 import type { ItemKey } from '../data/items';
 import type { TownState } from './town';
@@ -40,20 +46,30 @@ export interface AirLine {
 /** A village pad's materials with what was handed over. */
 export const padPlan = (s: TownState | undefined) => PAD.needs.map(([k, n]) => ({ k, n, given: Math.min(n, s?.dgiven?.[k] ?? 0) }));
 /** Hand over what the village's pad still needs (from the stock); with all of it in, the builders start. */
-export function handOverPad(s: TownState, have: (k: ItemKey) => number, at: number): { taken: [ItemKey, number][]; started: boolean } {
+export function handOverPad(s: TownState, have: (k: ItemKey) => number, at: number): { taken: [ItemKey, number][]; started: boolean; wait?: boolean } {
   const taken: [ItemKey, number][] = [];
-  if (s.dpad || jobOf(s, 'dronepad')) return { taken, started: false };
+  if (s.dpad || s.dpWait || jobOf(s, 'dronepad')) return { taken, started: false };
   const g = (s.dgiven ??= {});
   for (const r of padPlan(s)) { const n = Math.max(0, Math.min(r.n - r.given, Math.floor(have(r.k)))); if (n) { g[r.k] = r.given + n; taken.push([r.k, n]); } }
   if (!padPlan(s).every((r) => r.given >= r.n)) return { taken, started: false };
+  if (!s.dpspot) { s.dpWait = true; return { taken, started: false, wait: true }; } // (0.255) the hero stakes out where it goes, then the builders start: placePad
   startJob(s, 'dronepad', undefined, at, PAD.hours);
   return { taken, started: true };
 }
+/** (0.255) The pad's spot is staked out (`spot` world, canonical x): the builders start. False when nothing waits for it. */
+export function placePad(s: TownState, spot: { x: number; z: number }, now: number): boolean {
+  if (!s.dpWait || s.dpad || jobOf(s, 'dronepad')) return false;
+  s.dpspot = { x: Math.round(spot.x), z: Math.round(spot.z) }; delete s.dpWait;
+  startJob(s, 'dronepad', undefined, now, PAD.hours);
+  return true;
+}
 /** The builders are done (gen/jobs.ts). */
 export function completePad(s: TownState, now: number) { s.dpad = now; delete s.dgiven; }
-/** Where warehouse h's pad lies: 18 m out from the warehouse, away from its village's middle (else by hash). */
-export function padAt(world: number, h: Hub): { x: number; z: number; a: number } {
+/** Where warehouse h's pad lies: where it was staked out (a village's, `towns`), else 18 m out from the warehouse, away from its village's middle (else by hash). */
+export function padAt(world: number, h: Hub, towns?: Record<string, TownState | undefined>): { x: number; z: number; a: number } {
   const v = h.kind === 'village' ? allVillages(world).find((q) => q.id === h.vid) : undefined;
+  const sp = v && towns?.[v.id]?.dpspot;
+  if (v && sp) { const a = Math.atan2(sp.z - v.z, sp.x - v.x); return { x: sp.x, z: sp.z, a: Number.isFinite(a) ? a : 0 }; }
   let a = v ? Math.atan2(h.z - v.z, nearX(h.x, v.x) - v.x) : ((hash(h.x | 0, h.z | 0, 0x9ad) % 628) / 100);
   if (!Number.isFinite(a)) a = 0;
   return { x: h.x + Math.cos(a) * 18, z: h.z + Math.sin(a) * 18, a };
@@ -128,20 +144,32 @@ export function settleAirLine(world: number, home: { x: number; z: number }, l: 
   }
   return out;
 }
-/** What the line loads: the goods sent on by air first, then the hold as set. */
-export function airLoad(st: Transit, hold: Partial<Record<ItemKey, number>> | undefined, cap: number, only: ItemKey[] | undefined, takeOne: (k: ItemKey, n: number) => number): [ItemKey, number][] {
-  const first = takeTransit(st, 'al', hold, cap, takeOne), left = cap - first.reduce((a, [, n]) => a + n, 0);
-  return [...first, ...takeHold(hold, left, only, takeOne)];
+/** (0.255) The way line l's cargo goes on by (gen/transit.ts). */
+export const alWay = (l: AirLine): Way => `al:${l.id}`;
+/** What line l loads: the goods sent on by it first, then the hold as set. */
+export function airLoad(st: Transit, l: AirLine, hold: Partial<Record<ItemKey, number>> | undefined, cap: number, takeOne: (k: ItemKey, n: number) => number): [ItemKey, number][] {
+  const first = takeTransit(st, alWay(l), hold, cap, takeOne), left = cap - first.reduce((a, [, n]) => a + n, 0);
+  return [...first, ...takeHold(hold, left, l.only, takeOne)];
+}
+type Lined = { aline?: AirLine; alines?: AirLine[] } & Transit;
+/** (0.255) A warehouse's air lines (a 0.254 save's single line first). Read only. */
+export const airLinesOf = (st: Lined | undefined): AirLine[] => [...(st?.aline ? [st.aline] : []), ...(st?.alines ?? [])];
+/** (0.255) The list to change (under the home's lock): a 0.254 line moves into it, its way on 'al' becoming its own. */
+export function ownAirLines(st: Lined): AirLine[] {
+  const list = (st.alines ??= []);
+  if (st.aline) { list.unshift(st.aline); renameWay(st, 'al', alWay(st.aline)); delete st.aline; }
+  return list;
 }
 /** Every air line: [its home warehouse's id, the line]. */
 export function allAirLines(towns: Record<string, TownState | undefined>, outposts: Record<string, OutpostState | undefined>): [string, AirLine][] {
   const out: [string, AirLine][] = [];
-  for (const [id, s] of Object.entries(towns)) if (s?.aline) out.push(['v:' + id, s.aline]);
-  for (const [id, o] of Object.entries(outposts)) if (o?.aline) out.push([id, o.aline]);
+  for (const [id, s] of Object.entries(towns)) for (const l of airLinesOf(s)) out.push(['v:' + id, l]);
+  for (const [id, o] of Object.entries(outposts)) for (const l of airLinesOf(o)) out.push([id, l]);
   return out;
 }
-export const airLineOf = (id: string, towns: Record<string, TownState | undefined>, outposts: Record<string, OutpostState | undefined>) =>
-  id.startsWith('v:') ? towns[id.slice(2)]?.aline : outposts[id]?.aline;
+/** Warehouse `id`'s air lines. */
+export const airLinesFor = (id: string, towns: Record<string, TownState | undefined>, outposts: Record<string, OutpostState | undefined>) =>
+  airLinesOf(id.startsWith('v:') ? towns[id.slice(2)] : outposts[id]);
 /** What the air lines brought to warehouse `dest` that it has not taken in: [counter key, good, how many]. */
 export function alWaiting(dest: string, towns: Record<string, TownState | undefined>, outposts: Record<string, OutpostState | undefined>, rcv: Record<string, Partial<Record<ItemKey, number>>> | undefined): [string, ItemKey, number][] {
   const out: [string, ItemKey, number][] = [];
@@ -161,5 +189,5 @@ export function alDrain(dest: string, towns: Record<string, TownState | undefine
   }
   return got;
 }
-/** A warehouse gives up its air line: the goods waiting to go on by air stay in the hold. */
-export const dropAirWay = (st: Transit) => dropWay(st, 'al');
+/** A warehouse gives up air line l: the goods waiting to go on by it stay in the hold. */
+export const dropAirWay = (st: Transit, l: AirLine) => dropWay(st, alWay(l));

@@ -42,7 +42,8 @@ Zrobione. Decyzje przy okazji: dron to przedmiot z zamówienia u kowala (Lotnict
 - **Pogoda:** w burzy dron nie startuje. Bandyci go nie rabują, ale na terenach o dużym zagrożeniu lot może się nie udać (dron spada, ładunek przepada, dron trzeba odbudować). Szansa niewielka, rośnie z zagrożeniem po drodze.
 - **Widok:** dron lata nad ziemią po prostej, z migającymi światłami. Na mapach jest kropkowana linia i kropka.
 
-### F2: osady i lądowiska
+### F2 (0.255): osady i lądowiska
+Zrobione. Decyzje przy okazji: lądowisko wioski nadal buduje się przy terminalu magazynu (starszy pokazuje je wśród prac otwartych po magazynie), palik daje magazynier; miejsce najwyżej 120 m od magazynu, bez równania terenu; do 3 linii na lądowisko; lądowiska z 0.254 zostają na starym miejscu.
 - **Lądowisko jako projekt osady** (rozwój po magazynie): miejsce wytycza się palikiem, jak magazyn.
 - **Kilka dronów na jednym lądowisku** (np. do 3): każdy na osobnej linii do innego magazynu, dzięki czemu wioska staje się węzłem powietrznym.
 - **Komputer wioski:** w zakładce MAGAZYNY pokazuje linie powietrzne.

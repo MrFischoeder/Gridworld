@@ -14,6 +14,7 @@ export const PAD = {
  * A cargo drone on an air line: it flies straight to a warehouse with a pad within `reach` (m) on the same radio
  * network, `cap` crates a flight, `pace` m a game minute at `alt` m over the ground, `load` minutes at each end.
  * It charges at home while the home warehouse works; a storm (`storm`) keeps it down; over dangerous land a flight
- * may be lost (`lose` + `losePer` × the danger half way, at most `loseMax`).
+ * may be lost (`lose` + `losePer` × the danger half way, at most `loseMax`). (0.255) A pad serves up to `lines` air lines,
+ * each to another warehouse with its own drone; a village's pad is staked out within `near` m of its warehouse.
  */
-export const DRONE = { reach: 10000, cap: 3, pace: 90, load: 8, alt: 35, storm: 0.45, lose: 0.004, losePer: 0.008, loseMax: 0.08, catchup: 300 };
+export const DRONE = { lines: 3, near: 120, reach: 10000, cap: 3, pace: 90, load: 8, alt: 35, storm: 0.45, lose: 0.004, losePer: 0.008, loseMax: 0.08, catchup: 300 };

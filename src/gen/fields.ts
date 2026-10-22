@@ -23,6 +23,7 @@ import { farmPlot, farmsOf } from './farms';
 import { claimDist, clearOf, type Claim } from './claims';
 import type { Terrain } from './terrain';
 import { hexProblem, villageHub, type Hub } from './warehouses';
+import { DRONE } from './dronepad';
 import { tl, TL } from '../i18n';
 
 /** How far out a field may go (from the village's middle), its half size, the levelled radius and the blend back, the most the ground may be cut or filled. */
@@ -30,7 +31,7 @@ export const FIELD = { reach: 500, half: 6, flat: 9, blend: 14, maxCut: 3.5, sof
 /** Where a farm's field stands (world; x as placed) and the height its ground is levelled to. */
 export interface FieldSpot { x: number; z: number; y: number }
 
-interface Zone { x0: number; z0: number; x1: number; z1: number; why: string; k?: 'village' | 'warehouse' }
+interface Zone { x0: number; z0: number; x1: number; z1: number; why: string; k?: 'village' | 'warehouse' | 'pad' }
 /** The ground kept for other things round a village (world rects). */
 export function reservedZones(world: number, poi: Poi, seed: number, s: TownState | undefined): Zone[] {
   const ox = poi.x + VILLAGE_OFFSET.x, oz = poi.z + VILLAGE_OFFSET.z, out: Zone[] = [];
@@ -50,6 +51,7 @@ export function reservedZones(world: number, poi: Poi, seed: number, s: TownStat
   { const w = warehouseSpot(s); if (w) { const h = warehouseAt(w), a = apronOf(h); rect(Math.min(h.x0, a.x0), Math.min(h.z0, a.z0), Math.max(h.x1, a.x1), Math.max(h.z1, a.z1), tl('That ground is kept for the warehouse and the way to its doors')); out[out.length - 1].k = 'warehouse'; } }
   if (poi.id === GRIDHOLM_ID) { const xs = [YARD.dealer.x, ...YARD.bays.map((b) => b.x)], zs = [YARD.dealer.z, ...YARD.bays.map((b) => b.z)]; rect(Math.min(...xs) - 6, Math.min(...zs) - 6, Math.max(...xs) + 6, Math.max(...zs) + 6, tl('That ground is the vehicle yard')); }
   for (let i = 0; i < farmsOf(s); i++) if (!s?.fplots?.[i]) { const p = farmPlot(seed, i); rect(p.x0, p.z0, p.x1, p.z1, tl('Another farm stands there')); } // the old corner fields
+  if (s?.dpspot) { const r = PAD_HALF + 2, px = poi.x + wrapDx(s.dpspot.x - poi.x); out.push({ x0: px - r, z0: s.dpspot.z - r, x1: px + r, z1: s.dpspot.z + r, why: tl('The drone pad stands there'), k: 'pad' }); } // (0.255)
   return out;
 }
 const rectGap = (z: { x0: number; z0: number; x1: number; z1: number }, x: number, zz: number) => Math.hypot(Math.max(z.x0 - x, 0, x - z.x1), Math.max(z.z0 - zz, 0, zz - z.z1));
@@ -60,12 +62,19 @@ export function fieldPad(t: Pick<Terrain, 'heightAt'>, x: number, z: number): nu
   for (let u = -FIELD.half; u <= FIELD.half; u += 2) for (let v = -FIELD.half; v <= FIELD.half; v += 2) { sum += t.heightAt(x + u, z + v); n++; }
   return Math.round(sum / n * 4) / 4;
 }
+/** (0.255) Half the drone pad's side (its slab, the windsock and the cabinet round it). */
+export const PAD_HALF = 6;
+/** (0.255) A staked drone pad as a claim that levels nothing (`soft` 1 keeps the ground), only keeping trees, rocks and plants off it. */
+export const padClaim = (p: { x: number; z: number }): Claim => ({ x: p.x, z: p.z, y: 0, flat: PAD_HALF, blend: 2, soft: 1 });
 /** The field as a terrain claim (gen/claims.ts): levelled within `flat`, blended back over `blend`. */
 export const fieldClaim = (f: FieldSpot): Claim => ({ x: f.x, z: f.z, y: f.y, flat: FIELD.flat, blend: FIELD.blend, soft: FIELD.soft });
 /** Every placed field of every village (the terrain levels them all, on every player's game alike). */
 export function fieldClaims(towns: Record<string, TownState | undefined>): Claim[] {
   const out: Claim[] = [];
-  for (const s of Object.values(towns)) for (const f of Object.values(s?.fplots ?? {})) if (f) out.push(fieldClaim(f));
+  for (const s of Object.values(towns)) {
+    for (const f of Object.values(s?.fplots ?? {})) if (f) out.push(fieldClaim(f));
+    if (s?.dpspot) out.push(padClaim(s.dpspot)); // (0.255)
+  }
   return out;
 }
 
@@ -135,5 +144,34 @@ export function warehouseProblem(t: Terrain, poi: Poi, seed: number, s: TownStat
     if (t.water(x, z)) return tl('There is water before its doors: vehicles could not drive in.');
     if (Math.abs(t.heightAt(x, z) - y) > WAREHOUSE.maxCut + 1) return tl('The ground before its doors is too steep for vehicles.');
   }
+  return '';
+}
+
+
+/**
+ * (0.255, PLAN_LOTNICTWA.md F2) What is wrong with a village's drone pad at (x, z) (world; '' = fine): within
+ * `DRONE.near` of the warehouse at `hall` and clear of it, outside the ground kept for other things, off fields and
+ * bases, places, roads, the old stones and water, on ground level enough for the slab (it is not levelled).
+ */
+export function padProblem(t: Terrain, poi: Poi, seed: number, s: TownState | undefined, x: number, z: number, claims: Claim[], hall: { x: number; z: number }): string {
+  const d = worldDist(hall.x, hall.z, x, z), R = PAD_HALF;
+  if (d > DRONE.near) return TL`Too far from the warehouse: the pad goes within ${DRONE.near} m of it.`;
+  const cx = poi.x + wrapDx(x - poi.x), box = { x0: cx - R, z0: z - R, x1: cx + R, z1: z + R }; // on the village's copy of the planet
+  for (const zn of reservedZones(t.world, poi, seed, s)) if (zn.k !== 'pad' && overlap(zn, box, 1)) return zn.why + '.';
+  for (const c of claims) if (claimDist(c, x, z) < clearOf(c) + R) return tl('Too close to a field or a base.');
+  for (const q of poisNear(t.world, x, z, 200)) {
+    const gap = rectGap(q.rect, wrapDx(x - q.x) + q.x, z);
+    if (q.type !== 'village' && gap < R + q.flat + q.blend + 4) return tl('Too close to ') + q.name + '.';
+    if (q.type === 'village' && q.id !== poi.id && gap < 120) return tl('That is the land of ') + q.name + '.';
+  }
+  const f = t.featuresIn({ x0: x - R - 16, z0: z - R - 16, x1: x + R + 16, z1: z + R + 16 });
+  for (const road of f.roads) if (nearestOnRoad(road, x, z)[0] < road.half + R + 1) return road.h ? tl('A trail runs there.') : tl('A road runs there: put the pad beside it.');
+  if (f.megaliths.length || f.gates.length) return tl('The old stones there are not to be built over.');
+  let lo = Infinity, hi = -Infinity;
+  for (let u = -R; u <= R; u += 2) for (let v = -R; v <= R; v += 2) {
+    if (t.water(x + u, z + v)) return tl('There is water there.');
+    const h = t.heightAt(x + u, z + v); lo = Math.min(lo, h); hi = Math.max(hi, h);
+  }
+  if (hi - lo > 2) return tl('Too steep: the pad wants level ground.');
   return '';
 }

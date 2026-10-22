@@ -11,6 +11,8 @@ import { settleOwn, anchorNew, hallStands, WAREHOUSE } from '../gen/hall';
 import { ITEMS, type ItemKey } from '../data/items';
 import { stockHas, stockTake } from './stock';
 import { buildersLine, jobHTML, building } from './jobs';
+import { PAD, DRONE } from '../gen/dronepad';
+import { jobOf } from '../gen/construction';
 import { tl, TL, DIR8 } from '../i18n';
 
 /** Rewards belong to the character; projects and deliveries belong to the shared world. */
@@ -78,6 +80,8 @@ export function developmentHTML(vid: number, head: string, msg = '', atComms = f
     else if (!why) h += TL`<button class="opt" data-devbuild="${k}" data-devvid="${vid}">Hand over materials and build</button>`;
     else h += `<div class="say">${why}</div>`;
   }
+  if (!atComms && projectDone(s, 'warehouse') && !s.dpad) // (0.255, PLAN_LOTNICTWA.md F2) the drone pad, built at the warehouse's terminal
+    h += TL`<h3>${PAD.name}</h3><div class="say">${PAD.text} It is built from the village stores at the warehouse's terminal, and once its materials are in you stake out its place beside the warehouse. Cargo drones from it fly to other warehouses with a pad, up to ${DRONE.lines} lines at once.${s.dpWait ? tl(' The materials are in: it waits for its place.') : jobOf(s, 'dronepad') ? tl(' The builders are at it.') : ''}</div>`;
   if (atComms && projectDone(s, 'comms')) h += TL`<button class="opt" data-devgps="${vid}">Receive my GPS tablet</button>`;
   if (atComms && projectDone(s, 'relay')) h += TL`<div class="say">The relay mast stands: orbital scans within ${RELAY.reach / 1000} km of ${v.name} use its own passes and reach ${RELAY.r / 1000} km.</div>`;
   if (projectDone(s, 'power')) h += tl('<button class="opt" data-o="fortify">Local industry and defences</button><button class="opt" data-o="works">More processing works and power stations</button>');

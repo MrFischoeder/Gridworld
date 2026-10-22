@@ -127,6 +127,8 @@ function show(f: string, k: string, before: unknown, after: unknown) {
   if (f === 'towns') { // a field staked out by someone else: the ground there is levelled here too
     const was = (before as TownState | undefined)?.fplots ?? {}, now = (after as TownState | undefined)?.fplots ?? {};
     for (const [i, p] of Object.entries(now)) if (p && JSON.stringify(was[i]) !== JSON.stringify(p)) claimsHook(p as unknown as Char['claims'][number]);
+    const pad = (after as TownState | undefined)?.dpspot; // (0.255) a drone pad staked out by someone else: its trees go here too
+    if (pad && JSON.stringify(pad) !== JSON.stringify((before as TownState | undefined)?.dpspot)) claimsHook({ ...pad, y: 0 } as Char['claims'][number]);
   }
   if (f === 'towns' && townLook(before) !== townLook(after)) {
     reloadStruct(+k);

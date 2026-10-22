@@ -10,8 +10,10 @@ import { finishJob } from '../src/gen/jobs';
 import { allVillages } from '../src/gen/regions';
 import { takeHold } from '../src/gen/hublines';
 import { setForward, transitCount } from '../src/gen/transit';
+import { padClaim } from '../src/gen/fields';
+import { claimFlatten } from '../src/gen/claims';
 import { PAD, DRONE } from '../src/gen/dronepad';
-import { padPlan, handOverPad, newAirLine, alLeg, alPeriod, alAt, alDue, settleAirLine, alDrain, alKey, airLoad, type AirLine } from '../src/gen/airlines';
+import { padPlan, handOverPad, placePad, padAt, newAirLine, alLeg, alPeriod, alAt, alDue, settleAirLine, alDrain, alKey, airLoad, alWay, airLinesOf, ownAirLines, allAirLines, type AirLine } from '../src/gen/airlines';
 import type { Hub } from '../src/gen/warehouses';
 
 const W = 12345;
@@ -22,7 +24,11 @@ const hold = (h: Partial<Record<ItemKey, number>>) => (cap: number, only?: ItemK
 describe('cargo drones (0.254)', () => {
   it('a village builds its pad from its stock; it wants a hand; an outpost builds it as a part and it draws power', () => {
     const s: TownState = {}, v = allVillages(W)[0];
-    expect(handOverPad(s, () => 99, 100).started).toBe(true);
+    expect(handOverPad(s, () => 99, 100)).toMatchObject({ started: false, wait: true }); // (0.255) its place is staked out first
+    expect(s.dpWait).toBe(true);
+    expect(placePad(s, { x: v.x + 30, z: v.z }, 100)).toBe(true);
+    expect(placePad(s, { x: v.x + 40, z: v.z }, 100)).toBe(false); // only once
+    expect(s.dpWait).toBeUndefined();
     expect(padPlan(s).every((r) => r.given >= r.n)).toBe(true);
     finishJob(W, v, s, jobOf(s, 'dronepad')!, 100 + PAD.hours * 60);
     expect(s.dpad).toBeGreaterThan(0); expect(s.dgiven).toBeUndefined();
@@ -65,11 +71,35 @@ describe('cargo drones (0.254)', () => {
     const l: AirLine = { ...newAirLine(A, B, 9), sent: { steel: 6 } };
     const towns: Record<string, TownState> = { 5: { aline: l } }, outposts: Record<string, OutpostState> = {};
     const dest = {} as OutpostState;
-    setForward(dest, alKey('v:5', l), 'al');
+    const mine = { ...newAirLine(B, A, 30), only: ['log'] as ItemKey[] };
+    setForward(dest, alKey('v:5', l), alWay(mine));
     expect(alDrain(B.id, towns, outposts, dest, (_k, n) => n)).toEqual([['steel', 6]]);
     expect(alDrain(B.id, towns, outposts, dest, (_k, n) => n)).toEqual([]);
-    expect(transitCount(dest, 'al')).toBe(6);
+    expect(transitCount(dest, alWay(mine))).toBe(6);
     const h: Partial<Record<ItemKey, number>> = { steel: 6, log: 50 };
-    expect(airLoad(dest, h, DRONE.cap, ['log'], (k, n) => { h[k]! -= n; return n; })).toEqual([['steel', DRONE.cap]]);
+    expect(airLoad(dest, mine, h, DRONE.cap, (k, n) => { h[k]! -= n; return n; })).toEqual([['steel', DRONE.cap]]);
+  });
+});
+
+describe('drone pads in the settlements (0.255)', () => {
+  it('a pad serves several lines; a 0.254 line moves into the list with its goods on the way', () => {
+    const old: AirLine = { ...newAirLine(A, B, 5), drone: { by: 'Ada' }, t0: 5 };
+    const st: TownState = { aline: old, fwd: { 'hl:x:1': 'al' }, tr: { al: { steel: 4 } } };
+    const other = newAirLine(A, { ...B, id: 'wh:9:9', x: 3000 }, 7);
+    expect(airLinesOf(st)).toEqual([old]);
+    const list = ownAirLines(st); list.push(other);
+    expect(st.aline).toBeUndefined();
+    expect(airLinesOf(st)).toEqual([old, other]);
+    expect(st.fwd!['hl:x:1']).toBe(alWay(old)); expect(st.tr![alWay(old)]).toEqual({ steel: 4 }); expect(st.tr!.al).toBeUndefined();
+    expect(allAirLines({ 5: st }, {}).map(([h, l]) => [h, l.to])).toEqual([['v:5', B.id], ['v:5', 'wh:9:9']]);
+    expect(alWay(old)).not.toBe(alWay(other));
+  });
+  it('a staked pad stands where it was put and keeps the trees off without levelling the ground', () => {
+    const v = allVillages(W)[1], h: Hub = { ...A, id: 'v:' + v.id, vid: v.id, x: v.x + 60, z: v.z };
+    const towns: Record<string, TownState> = { [v.id]: { dpspot: { x: v.x + 70, z: v.z + 15 } } };
+    expect(padAt(W, h, towns)).toMatchObject({ x: v.x + 70, z: v.z + 15 });
+    expect(padAt(W, h)).not.toMatchObject({ x: v.x + 70, z: v.z + 15 }); // unstaked (a 0.254 pad): beside the warehouse
+    const c = padClaim({ x: 10, z: 10 });
+    expect(claimFlatten(c, 10, 10, 37.5)).toBeCloseTo(37.5);
   });
 });

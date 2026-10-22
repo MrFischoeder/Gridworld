@@ -17,8 +17,10 @@ export interface TownState {
   mast?: number; mgiven?: Partial<Record<ItemKey, number>>;
   /** (0.252, gen/hublines.ts) The convoy line from this village's warehouse. */
   hline?: import('./hublines').HubLine;
-  /** (0.254) The drone pad (built at), its materials handed over, its air line (gen/airlines.ts). */
+  /** (0.254) The drone pad (built at), its materials handed over, its air line (gen/airlines.ts; 0.254 saves only). */
   dpad?: number; dgiven?: Partial<Record<ItemKey, number>>; aline?: import('./airlines').AirLine;
+  /** (0.255) Its air lines (up to `DRONE.lines`); where the pad was staked out (world, canonical x) or that it waits for that. */
+  alines?: import('./airlines').AirLine[]; dpspot?: { x: number; z: number }; dpWait?: true;
   /** (0.253) Cargo sent on through this warehouse (gen/transit.ts). */
   fwd?: import('./transit').Transit['fwd']; tr?: import('./transit').Transit['tr'];
   settlement?: import('./settlement').SettlementState;

@@ -3,6 +3,13 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.255.0', date: '2026-10-22', title: 'Drone pads in the settlements', notes: [
+    'Flying machines stage F2: once a village\'s warehouse stands, the elder lists the drone pad among the work open to the village. It is still built from the village stores at the warehouse terminal.',
+    'When the pad\'s materials are in, you stake out its place yourself: ask the storekeeper for a Survey Stake, walk out beside the warehouse (within 120 m of it), use the stake and click. A hologram shows the slab and turns red with the reason where it cannot go. The trees there are cleared, the ground is not levelled.',
+    'A pad now serves up to 3 air lines, each to a different warehouse with its own drone, so a village can become an air hub. Resting drones sit side by side on the slab. Drone pads built before keep their place beside the warehouse, and their one line becomes the first of the list.',
+    'Goods passing through a warehouse can be sent on by any of its air lines.',
+    'The village computer\'s WAREHOUSES tab lists the air lines round the village: where each drone is, how much it delivered and how its last flight went.',
+  ] },
   { v: '0.254.0', date: '2026-10-22', title: 'Cargo drones', notes: [
     'The first flying machines (flying machines stage F1): a new technology, Aviation, is recovered from an old data carrier like the others. With its plans the blacksmith makes a Cargo Drone.',
     'A warehouse can build a drone pad: a village\'s from its stock at the warehouse terminal, a port or a wild warehouse at its board. A pad draws 4 kW and needs one person to tend it.',

@@ -40,6 +40,7 @@ import { oldReactor, fuelOrder, chipBuyer, chipOrder, cellBuyer, cellOrder } fro
 import { OW } from '../world/overworld';
 import { lockPointer } from './input';
 import { hubs, hubWorks, feeders, hubsNear, villageHub, type Hub } from '../gen/warehouses';
+import { allAirLines, alAt } from '../gen/airlines';
 import { lodeById } from '../gen/lodes';
 import { tl, TL } from '../i18n';
 import { mastWhy, linkedHubs, hubStock } from '../gen/radio';
@@ -188,6 +189,7 @@ function villagesPage(poi: Poi): string {
 /** (0.249, PLAN_MAGAZYNOW.md stage M1) The warehouse network: every warehouse the players built (in the villages, at the
  *  ports, in the wilds) and the halls of the villages you know, nearest first: where, what it serves, whether it works.
  *  Their stocks need the radio link between warehouses (stage M3). */
+const TRIP: Record<string, string> = { ok: tl('delivered'), silent: tl('no radio'), storm: tl('storm'), nopad: tl('far pad down'), flat: tl('no charge'), empty: tl('nothing to carry'), lost: tl('lost') };
 function storesPage(poi: Poi): string {
   const c = G.char, KIND: Record<Hub['kind'], string> = { village: tl('village'), port: tl('port'), wild: tl('in the wilds') };
   const known = (h: Hub) => h.kind !== 'village' || progressive(c.towns[h.vid!]) || h.vid === poi.id || isDiscovered(c.discovered, Math.floor(h.x / CHUNK), Math.floor(h.z / CHUNK)) || !!c.ledger[h.vid!];
@@ -200,6 +202,17 @@ function storesPage(poi: Poi): string {
     const from = feeders(w, c.outposts, (q) => lodeById(c.world, q)), on = hubWorks(c.world, w, c.towns, c.outposts, c.time);
     s += `<div class="tline"><b>${w.name}</b>${w.id === villageHub(poi.id) ? tl(' (this one)') : ''} <span class="tdim">${KIND[w.kind]} · ${fmtDist(d)} ${point8(bearingTo(w.x, w.z))} · ${tl('area')} ${w.hex}</span><br>` +
       `<span class="tdim">${on ? tl('working') : tl('standing idle (no storekeepers or no power)')}${from.length ? TL` · serves ${from.map(([, n]) => n).join(', ')}` : ''} · ${heard.has(w.id) ? tl('stock') + ': ' + stockLine(hubStock(c.world, w, c.towns, c.outposts, c.time)) : tl('stock: no link')}</span></div>`;
+  }
+  // (0.255, PLAN_LOTNICTWA.md F2) the air lines of the warehouses listed: where each drone is and what it brought
+  const near = new Set(list.slice(0, 30).map((q) => q.h.id)), names = new Map(hubs(c.world, c.towns, c.outposts).map((q) => [q.id, q.name]));
+  const air = allAirLines(c.towns, c.outposts).filter(([home, l]) => near.has(home) || near.has(l.to));
+  if (air.length) {
+    s += h(TL`AIR LINES · ${air.length}`);
+    for (const [home, l] of air) {
+      const cv = alAt(l, c.time), sent = Object.values(l.sent).reduce((a: number, n) => a + (n ?? 0), 0);
+      const where = !l.drone ? tl('no drone') : cv.at === 'out' ? TL`flying out (${Math.round(cv.p * 100)}%)` : cv.at === 'back' ? TL`flying back (${Math.round(cv.p * 100)}%)` : cv.at === 'there' ? tl('on the far pad') : tl('on its pad');
+      s += row(`${names.get(home) ?? home} → ${l.toName}`, `${l.km} km · ${where}`) + `<div class="tdim">${TL`${sent} crates delivered`}${l.lost ? TL` · drones lost: ${l.lost}` : ''}${l.last ? ' · ' + TL`last flight: ${TRIP[l.last[1]]}` : ''}</div>`;
+    }
   }
   return s;
 }

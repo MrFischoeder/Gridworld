@@ -8,14 +8,18 @@
 // (0.197) The same stake marks out a settlement's warehouse once its materials are in (`SettlementState.whWait`):
 // anywhere outside the wall within `WAREHOUSE.reach`, its wide doors facing you, with a clear apron before them for
 // the vehicles and convoys (gen/fields.ts warehouseProblem); saved as `SettlementState.wh` (shared), then the builders.
+// (0.255) And a village's drone pad once its materials are in (`TownState.dpWait`): within `DRONE.near` of the
+// warehouse (gen/fields.ts padProblem); saved as `TownState.dpspot` (shared), then the builders (gen/airlines.ts placePad).
 import * as THREE from 'three';
 import { G } from '../game';
 import { OW, reloadStruct } from './overworld';
 import { driving } from './vehicles';
 import { scene } from './render';
 import { allVillages, worldDist, findPoi, villageSeed, wrapDx } from '../gen/regions';
-import { FIELD, fieldProblem, fieldPad, warehouseProblem } from '../gen/fields';
-import { hubs } from '../gen/warehouses';
+import { FIELD, fieldProblem, fieldPad, warehouseProblem, padProblem, PAD_HALF } from '../gen/fields';
+import { placePad } from '../gen/airlines';
+import { DRONE } from '../gen/dronepad';
+import { hubs, villageHub } from '../gen/warehouses';
 import { placeFarm, FARM } from '../gen/farms';
 import { placeWarehouse } from '../gen/settlement';
 import { WAREHOUSE, warehouseAt, apronOf, hallPoint, type HallSpot } from '../gen/hall';
@@ -30,18 +34,20 @@ import { tl, TL } from '../i18n';
 
 let placing = false, preview: THREE.Group | null = null, problem: string | null = null, at: { x: number; z: number; y: number } | null = null, vid = -1;
 /** (0.197) What the stake marks out: a farm's field or the settlement's warehouse (`hall` = its plaza-local spot). */
-let mode: 'field' | 'warehouse' = 'field', hall: HallSpot | null = null;
+let mode: 'field' | 'warehouse' | 'pad' = 'field', hall: HallSpot | null = null;
 let last = { x: NaN, z: NaN, t: 0 };
 const OK = 0xb6ff3a, BAD = 0xff5a3c;
 const matA = new THREE.LineBasicMaterial({ color: OK, depthTest: false, transparent: true, opacity: 0.95 });
 const matB = new THREE.LineBasicMaterial({ color: OK, depthTest: false, transparent: true, opacity: 0.45 });
 
 /** The village nearest to you whose warehouse waits for its spot (first) or whose farm waits for its field, within reach. */
-function waiting(): { id: number; mode: 'field' | 'warehouse' } | null {
+function waiting(): { id: number; mode: 'field' | 'warehouse' | 'pad' } | null {
   const c = G.char, d = (v: { x: number; z: number }) => worldDist(v.x, v.z, G.pos.x, G.pos.z);
   const by = (f: (id: number) => unknown, reach: number) => allVillages(c.world).filter((v) => f(v.id) && d(v) < reach + 150).sort((a, b) => d(a) - d(b))[0];
   const w = by((id) => c.towns[id]?.settlement?.whWait, WAREHOUSE.reach);
   if (w) return { id: w.id, mode: 'warehouse' };
+  const p = by((id) => c.towns[id]?.dpWait, DRONE.near + 150); // (0.255) the drone pad (near the village: its warehouse is)
+  if (p) return { id: p.id, mode: 'pad' };
   const f = by((id) => c.towns[id]?.fwait, FIELD.reach);
   return f ? { id: f.id, mode: 'field' } : null;
 }
@@ -51,9 +57,10 @@ export function startFieldPlacing(): boolean {
   if (G.char.loc !== 'overworld' || !OW.terrain) { logLine(tl('A field is staked out in the open, near its village.')); return false; }
   if (driving.v) { logLine(tl('Get out of the vehicle first.')); return false; }
   const w = waiting();
-  if (!w) { logLine(tl('Nothing waits for its ground near here. The elder gives a stake once the materials of a new farm or of the warehouse are in.')); return false; }
+  if (!w) { logLine(tl('Nothing waits for its ground near here. The elder gives a stake once the materials of a new farm or of the warehouse are in, the storekeeper once those of a drone pad are.')); return false; }
   vid = w.id; mode = w.mode;
   placing = true; at = null; hall = null; problem = null; last = { x: NaN, z: NaN, t: 0 };
+  if (mode === 'pad') { logLine(TL`Look where the drone pad of ${findPoi(G.char.world, vid)?.name ?? tl('the village')} should go, beside its warehouse (within ${DRONE.near} m of it). Click to stake it out, right mouse button or Esc to cancel.`); return true; }
   if (mode === 'warehouse') { logLine(TL`Look where the warehouse of ${findPoi(G.char.world, vid)?.name ?? tl('the village')} should stand, outside its wall (within ${WAREHOUSE.reach} m). Its doors face you: walk round it to turn them. Click to stake it out, right mouse button or Esc to cancel.`); return true; }
   logLine(TL`Look where the new field of ${findPoi(G.char.world, vid)?.name ?? tl('the village')} should go (within ${FIELD.reach} m): click to stake it out, right mouse button or Esc to cancel.`);
   return true;
@@ -64,7 +71,7 @@ export function cancelFieldPlacing(quiet = false) {
   if (preview) { scene.remove(preview); preview.traverse((o) => (o as THREE.Line).geometry?.dispose()); preview = null; }
   if (!quiet) logLine(tl('You put the Survey Stake away.'));
 }
-export const fieldPlacingHint = () => (!placing ? null : problem ?? (mode === 'warehouse' ? tl('Click — stake out the warehouse here (its doors face you) · right mouse / Esc — cancel') : tl('Click — stake out the field here · right mouse / Esc — cancel')));
+export const fieldPlacingHint = () => (!placing ? null : problem ?? (mode === 'pad' ? tl('Click — stake out the drone pad here · right mouse / Esc — cancel') : mode === 'warehouse' ? tl('Click — stake out the warehouse here (its doors face you) · right mouse / Esc — cancel') : tl('Click — stake out the field here · right mouse / Esc — cancel')));
 export const fieldPlacingOk = () => !!at && !problem;
 
 /** The ground point you look at (up to 60 m away). */
@@ -84,6 +91,7 @@ export function updateFieldPlacing() {
   last = { x, z, t: now };
   const poi = findPoi(G.char.world, vid);
   if (mode === 'warehouse') { warehouseHologram(T, poi, x, z); return; }
+  if (mode === 'pad') { padHologram(T, poi, x, z); return; }
   if (!poi || !G.char.towns[vid]?.fwait) { cancelFieldPlacing(true); logLine(tl('That farm\'s field has been staked out already.')); return; }
   problem = fieldProblem(T, poi, villageSeed(G.char.world, poi), G.char.towns[vid], x, z, allClaims()) || null;
   const y = fieldPad(T, x, z); at = { x, z, y };
@@ -136,10 +144,31 @@ function warehouseHologram(T: NonNullable<typeof OW.terrain>, poi: ReturnType<ty
   for (let u = -hw + 3; u < hw; u += 3) { const [p0x, p0z] = P(u, -hd), [p1x, p1z] = P(u, hd); b.push(p0x, y + 0.05, p0z, p1x, y + 0.05, p1z); }
   lines(a, b);
 }
-/** Stake out the field (or the warehouse) where the hologram stands: the builders start there. */
+/** (0.255) The drone pad's hologram: its slab with the ring and the H, corner stakes down to the ground. */
+function padHologram(T: NonNullable<typeof OW.terrain>, poi: ReturnType<typeof findPoi>, x: number, z: number) {
+  const c = G.char, s = poi && c.towns[vid];
+  if (!poi || !s?.dpWait) { cancelFieldPlacing(true); logLine(tl('That drone pad has been staked out already.')); return; }
+  const me = hubs(c.world, c.towns, c.outposts).find((h) => h.id === villageHub(vid));
+  if (!me) { cancelFieldPlacing(true); return; }
+  problem = padProblem(T, poi, villageSeed(c.world, poi), s, x, z, allClaims(), me) || null;
+  const y = T.heightAt(x, z); at = { x, z, y };
+  const a: number[] = [], b: number[] = [], R = 4, Y = (px: number, pz: number) => T.heightAt(px, pz) + 0.12;
+  const cs = [[-R, -R], [R, -R], [R, R], [-R, R]];
+  for (let k = 0; k < 4; k++) { const [u0, v0] = cs[k], [u1, v1] = cs[(k + 1) % 4]; a.push(x + u0, Y(x + u0, z + v0), z + v0, x + u1, Y(x + u1, z + v1), z + v1, x + u0, Y(x + u0, z + v0) - 0.1, z + v0, x + u0, Y(x + u0, z + v0) + 1.2, z + v0); }
+  for (let k = 0; k < 24; k++) { const p0 = k / 24 * 6.283, p1 = (k + 1) / 24 * 6.283; a.push(x + Math.cos(p0) * 2.6, Y(x + Math.cos(p0) * 2.6, z + Math.sin(p0) * 2.6), z + Math.sin(p0) * 2.6, x + Math.cos(p1) * 2.6, Y(x + Math.cos(p1) * 2.6, z + Math.sin(p1) * 2.6), z + Math.sin(p1) * 2.6); }
+  for (const u of [-1, 1]) a.push(x + u, Y(x + u, z - 1.2), z - 1.2, x + u, Y(x + u, z + 1.2), z + 1.2);
+  a.push(x - 1, Y(x - 1, z), z, x + 1, Y(x + 1, z), z);
+  const H = PAD_HALF, ring = [[-H, -H], [H, -H], [H, H], [-H, H]];
+  for (let k = 0; k < 4; k++) { const [u0, v0] = ring[k], [u1, v1] = ring[(k + 1) % 4]; b.push(x + u0, Y(x + u0, z + v0), z + v0, x + u1, Y(x + u1, z + v1), z + v1); }
+  const wx = x + wrapDx(me.x - x);
+  b.push(x, Y(x, z), z, wx, T.heightAt(wx, me.z) + 0.2, me.z); // a line back to the warehouse
+  lines(a, b);
+}
+/** Stake out the field (or the warehouse, or the drone pad) where the hologram stands: the builders start there. */
 export async function confirmFieldPlacing() {
   if (!placing) return;
   if (mode === 'warehouse') { await confirmWarehouse(); return; }
+  if (mode === 'pad') { await confirmPad(); return; }
   if (!at || problem) { logLine(problem ?? tl('Look at the ground where the field should go.')); return; }
   const spot = at, id = vid, c = G.char;
   let ok = false;
@@ -164,4 +193,19 @@ async function confirmWarehouse() {
   reloadStruct(id); // (the ground under it is eased within a second: world/overworld.ts syncVillagePads)
   showToast(tl('Warehouse staked out'));
   logLine(tl('The builders carry the planks out to your stakes: the ground is levelled and the warehouse goes up there, its wide doors facing the way you came.'));
+}
+/** (0.255) Stake out the drone pad: its spot is saved in the village (shared) and the builders start. */
+async function confirmPad() {
+  if (!at || problem) { logLine(problem ?? tl('Look at the ground where the pad should go.')); return; }
+  const id = vid, c = G.char, poi = findPoi(c.world, id);
+  if (!poi) return;
+  const spot = { x: poi.x + wrapDx(at.x - poi.x), z: at.z };
+  let ok = false;
+  await withTownStock(id, () => { const s = (c.towns[id] ??= {}); ok = placePad(s, spot, c.time); });
+  if (!ok) { cancelFieldPlacing(true); logLine(tl('Someone else has staked out the drone pad already.')); return; }
+  takeOne('fieldstake'); saveChar();
+  cancelFieldPlacing(true);
+  fieldsChanged({ ...spot, y: 0 }); // the trees there are cleared
+  showToast(tl('Drone pad staked out'));
+  logLine(tl('The builders bring the cement out to your stakes: the drone pad goes down there.'));
 }

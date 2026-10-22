@@ -15,7 +15,7 @@ import { deposit, withdraw } from '../gen/hall';
 import { portPut, portTake } from '../gen/ports';
 import { hubs, hubWorks, type Hub } from '../gen/warehouses';
 import { linkedHubs } from '../gen/radio';
-import { airLineOf, alDue, alWaiting, alDrain, airLoad, settleAirLine, padWhy, allAirLines } from '../gen/airlines';
+import { airLinesOf, ownAirLines, alDue, alWaiting, alDrain, airLoad, settleAirLine, padWhy, allAirLines } from '../gen/airlines';
 import { allHubLines, hubLineOf, hlDue, hlWaiting, hlDrain, settleHubLine, lineLoad, hlAt, hlWrecked, type HubLine } from '../gen/hublines';
 import { ITEMS, type ItemKey } from '../data/items';
 import { TL } from '../i18n';
@@ -34,14 +34,19 @@ export function runHub(id: string): string[] {
     if (out.includes('robbed')) words.push(TL`Bandits robbed the convoy to ${l.toName}.`);
     if (out.includes('wrecked')) words.push(TL`The convoy truck to ${l.toName} lies wrecked on the road.`);
   }
-  const al = airLineOf(id, c.towns, c.outposts); // (0.254, stage F1) its air line
-  if (al?.drone && alDue(al, c.time)) {
-    const there = hubOf(al.to), linked = linkedHubs(c.world, c.towns, c.outposts, id, c.time).some((q) => q.id === al.to);
-    const take = (cap: number, only?: ItemKey[]) => (vs ? airLoad(vs, vs.hold, cap, only, (k, n) => withdraw(vs, k, n)) : o ? airLoad(o, o.hold, cap, only, (k, n) => portTake(o, k, n)) : []);
-    const out = settleAirLine(c.world, h, al, linked, !!there && !padWhy(c.world, there, c.towns, c.outposts, c.time), !padWhy(c.world, h, c.towns, c.outposts, c.time), take, c.time);
-    const n = out.filter((q) => q === 'ok').length;
-    if (n) words.push(n > 1 ? TL`Drones flew ${n} loads to ${al.toName}.` : TL`A drone flew a load to ${al.toName}.`);
-    if (out.includes('lost')) words.push(TL`The cargo drone to ${al.toName} came down in the wilds, its load with it.`);
+  const st = vs ?? o; // (0.254, stage F1; 0.255 several) its air lines
+  if (st?.aline) ownAirLines(st); // a 0.254 save's single line moves into the list (under this lock)
+  if (st && airLinesOf(st).some((l) => l.drone && alDue(l, c.time))) {
+    const mine = linkedHubs(c.world, c.towns, c.outposts, id, c.time), charge = !padWhy(c.world, h, c.towns, c.outposts, c.time);
+    for (const al of ownAirLines(st)) {
+      if (!al.drone || !alDue(al, c.time)) continue;
+      const there = hubOf(al.to), linked = mine.some((q) => q.id === al.to);
+      const take = (cap: number) => (vs ? airLoad(vs, al, vs.hold, cap, (k, n) => withdraw(vs, k, n)) : o ? airLoad(o, al, o.hold, cap, (k, n) => portTake(o, k, n)) : []);
+      const out = settleAirLine(c.world, h, al, linked, !!there && !padWhy(c.world, there, c.towns, c.outposts, c.time), charge, take, c.time);
+      const n = out.filter((q) => q === 'ok').length;
+      if (n) words.push(n > 1 ? TL`Drones flew ${n} loads to ${al.toName}.` : TL`A drone flew a load to ${al.toName}.`);
+      if (out.includes('lost')) words.push(TL`The cargo drone to ${al.toName} came down in the wilds, its load with it.`);
+    }
   }
   if (!padWhy(c.world, h, c.towns, c.outposts, c.time)) {
     const got = vs ? alDrain(id, c.towns, c.outposts, vs, (k, n) => deposit(vs, k, n)) : o?.done?.port ? alDrain(id, c.towns, c.outposts, o, (k, n) => portPut(o, k, n)) : [];

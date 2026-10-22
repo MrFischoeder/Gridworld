@@ -7,12 +7,13 @@ import { ITEMS, type ItemKey } from '../data/items';
 import { hubs } from '../gen/warehouses';
 import { allHubLines, hubLineOf, hlKey } from '../gen/hublines';
 import { rcvKey } from '../gen/shiplines';
-import { allAirLines, airLineOf, alKey } from '../gen/airlines';
+import { allAirLines, airLinesFor, alKey, alWay } from '../gen/airlines';
 import { setForward, transitCount, type Transit, type Way } from '../gen/transit';
 import { tl, TL } from '../i18n';
 
 const stOf = (id: string, make = false): Transit | undefined => (id.startsWith('v:') ? (make ? (G.char.towns[id.slice(2)] ??= {}) : G.char.towns[id.slice(2)]) : G.char.outposts[id]);
-interface In { key: string; from: string; by: Way }
+interface In { key: string; from: string; by: 'hl' | 'sl' | 'al' }
+const air = (w: string) => w.startsWith('al');
 /** The lines that bring cargo to warehouse `id`. */
 function incoming(id: string): In[] {
   const c = G.char, names = new Map(hubs(c.world, c.towns, c.outposts).map((h) => [h.id, h.name])), out: In[] = [];
@@ -25,8 +26,7 @@ function incoming(id: string): In[] {
 function waysOut(id: string): [Way, string][] {
   const c = G.char, out: [Way, string][] = [], hl = hubLineOf(id, c.towns, c.outposts), sl = id.startsWith('v:') ? undefined : c.outposts[id]?.line;
   if (hl) out.push(['hl', hl.toName]);
-  const al = airLineOf(id, c.towns, c.outposts);
-  if (al) out.push(['al', al.toName]);
+  for (const al of airLinesFor(id, c.towns, c.outposts)) out.push([alWay(al), al.toName]); // (0.255) each air line its own way
   if (sl) out.push(['sl', sl.toName]);
   return out;
 }
@@ -42,14 +42,14 @@ export function transitHTML(id: string, attr: (v: string) => string): string {
   for (const q of ins) {
     const now = st?.fwd?.[q.key];
     s += `<div class="say">` + (q.by === 'sl' ? TL`From ${q.from} by ship:` : q.by === 'al' ? TL`From ${q.from} by drone:` : TL`From ${q.from} by convoy:`) + ' ' + pill(attr, 'no~' + q.key, tl('Keep here'), !now);
-    for (const [w, to] of outs) s += pill(attr, w + '~' + q.key, w === 'hl' ? TL`On by convoy to ${to}` : w === 'al' ? TL`On by drone to ${to}` : TL`On by ship to ${to}`, now === w);
+    for (const [w, to] of outs) s += pill(attr, w + '~' + q.key, w === 'hl' ? TL`On by convoy to ${to}` : air(w) ? TL`On by drone to ${to}` : TL`On by ship to ${to}`, now === w);
     s += `</div>`;
   }
   for (const [w, to] of outs) {
     const n = transitCount(st, w);
     if (!n) continue;
     const list = Object.entries(st?.tr?.[w] ?? {}).filter(([, m]) => m).map(([g, m]) => `${m} × ${ITEMS[g as ItemKey].name}`).join(', ');
-    s += `<div class="say" style="opacity:.85">` + (w === 'hl' ? TL`Waiting to go on by convoy to ${to}: ${list}.` : w === 'al' ? TL`Waiting to go on by drone to ${to}: ${list}.` : TL`Waiting to go on by ship to ${to}: ${list}.`) + `</div>`;
+    s += `<div class="say" style="opacity:.85">` + (w === 'hl' ? TL`Waiting to go on by convoy to ${to}: ${list}.` : air(w) ? TL`Waiting to go on by drone to ${to}: ${list}.` : TL`Waiting to go on by ship to ${to}: ${list}.`) + `</div>`;
   }
   return s;
 }
@@ -61,5 +61,5 @@ export function transitClick(id: string, what: string): string {
   const way = waysOut(id).find(([x]) => x === w);
   if (!way) return '';
   setForward(st, key, way[0]);
-  return way[0] === 'hl' ? TL`Its cargo goes on by convoy to ${way[1]}.` : way[0] === 'al' ? TL`Its cargo goes on by drone to ${way[1]}.` : TL`Its cargo goes on by ship to ${way[1]}.`;
+  return way[0] === 'hl' ? TL`Its cargo goes on by convoy to ${way[1]}.` : air(way[0]) ? TL`Its cargo goes on by drone to ${way[1]}.` : TL`Its cargo goes on by ship to ${way[1]}.`;
 }

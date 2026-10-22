@@ -2,7 +2,9 @@
 // warehouses (a concrete slab with a painted ring, a windsock mast, a charging cabinet; a drone resting on it while the
 // line's drone is at home), and every drone in flight drawn where its timetable puts it on the straight way between the
 // two pads, `DRONE.alt` over the ground or the sea, its rotors spinning and its lights blinking. Every game draws the same
-// from the shared state; the lines are settled with the convoy lines (world/hublines.ts `runHub`).
+// from the shared state; the lines are settled with the convoy lines (world/hublines.ts `runHub`). (0.255) A pad holds
+// up to `DRONE.lines` drones (one a line), each resting at its own spot on the slab while at home; a village's pad
+// stands where it was staked out (`padAt` with the towns).
 import * as THREE from 'three';
 import { G } from '../game';
 import { scene } from './render';
@@ -21,7 +23,9 @@ const dispose = (g: THREE.Object3D) => { scene.remove(g); g.traverse((o) => (o a
 // ---------- the pads ----------
 interface Pad { g: THREE.Group; sig: string }
 const pads = new Map<string, Pad>();
-function drawPad(withDrone: boolean): THREE.Group {
+/** Where the n-th resting drone sits on the slab. */
+const REST: [number, number][] = [[-2, -2], [2, 2], [-2, 2]];
+function drawPad(resting: number): THREE.Group {
   const pb = new PropBatch(), R = 4;
   pb.box(-R, -0.3, -R, R, 0.15, R, CONC);
   for (let i = 0; i < 16; i++) { const a = i / 16 * Math.PI * 2, b = (i + 1) / 16 * Math.PI * 2; pb.seg(RING, [Math.cos(a) * 2.6, 0.17, Math.sin(a) * 2.6], [Math.cos(b) * 2.6, 0.17, Math.sin(b) * 2.6]); }
@@ -30,7 +34,8 @@ function drawPad(withDrone: boolean): THREE.Group {
   pb.cone(R + 1.6, 4.6, -R, 0.25, 1.4, SOCK, 6);
   pb.box(-R - 1.4, 0, R - 1.2, -R - 0.4, 1.6, R, CONC); // the charging cabinet
   pb.box(-R - 1.42, 1.1, R - 0.9, -R - 1.38, 1.4, R - 0.3, RING);
-  if (withDrone) droneShape(pb, 0, 0.6, 0);
+  if (resting === 1) droneShape(pb, 0, 0.6, 0);
+  else for (let i = 0; i < Math.min(resting, REST.length); i++) droneShape(pb, REST[i][0], 0.6, REST[i][1]);
   return pb.build();
 }
 function droneShape(pb: PropBatch, x: number, y: number, z: number) {
@@ -42,18 +47,18 @@ function droneShape(pb: PropBatch, x: number, y: number, z: number) {
     for (let i = 0; i < 8; i++) { const a = i / 8 * Math.PI * 2, b = (i + 1) / 8 * Math.PI * 2; pb.seg(BODY, [ax + Math.cos(a) * 0.6, y + 0.3, az + Math.sin(a) * 0.6], [ax + Math.cos(b) * 0.6, y + 0.3, az + Math.sin(b) * 0.6]); }
   }
 }
-function updatePads(list: Hub[], atHome: Set<string>) {
+function updatePads(list: Hub[], atHome: Map<string, number>) {
   const c = G.char, T = OW.terrain!, seen = new Set<string>();
   for (const h of list) {
     if (!hasPad(h, c.towns, c.outposts)) continue;
-    const p = padAt(c.world, h), x = nearX(p.x, G.pos.x);
+    const p = padAt(c.world, h, c.towns), x = nearX(p.x, G.pos.x);
     if (worldDist(x, p.z, G.pos.x, G.pos.z) > PAD_R) continue;
     seen.add(h.id);
-    const sig = (atHome.has(h.id) ? 'd' : '') + Math.round(x);
+    const sig = (atHome.get(h.id) ?? 0) + ':' + Math.round(x) + ':' + Math.round(p.z);
     const was = pads.get(h.id);
     if (was && was.sig === sig) continue;
     if (was) dispose(was.g);
-    const g = drawPad(atHome.has(h.id));
+    const g = drawPad(atHome.get(h.id) ?? 0);
     g.position.set(x, Math.max(T.heightAt(x, p.z), SEA.level) + 0.1, p.z); g.rotation.y = -p.a;
     scene.add(g); pads.set(h.id, { g, sig });
   }
@@ -73,7 +78,7 @@ function makeDrone(): Drone {
 export function droneAt(home: Hub, to: Hub | undefined, l: AirLine, now: number, px: number): [number, number, number, number] | null {
   const T = OW.terrain, c = G.char, cv = alAt(l, now);
   if (!T || !to || cv.at === 'parked' || cv.at === 'home' || cv.at === 'there') return null;
-  const a = padAt(c.world, home), b = padAt(c.world, to), ax = nearX(a.x, px), bx = nearX(b.x, ax);
+  const a = padAt(c.world, home, c.towns), b = padAt(c.world, to, c.towns), ax = nearX(a.x, px), bx = nearX(b.x, ax);
   const p = cv.at === 'out' ? cv.p : 1 - cv.p, x = ax + (bx - ax) * p, z = a.z + (b.z - a.z) * p;
   const lift = Math.min(1, p / 0.06, (1 - p) / 0.06), ground = Math.max(T.heightAt(x, z), SEA.level);
   const yaw = cv.at === 'out' ? Math.atan2(bx - ax, b.z - a.z) : Math.atan2(ax - bx, a.z - b.z);
@@ -83,24 +88,26 @@ export function droneAt(home: Hub, to: Hub | undefined, l: AirLine, now: number,
 export function droneMapAt(home: Hub, to: Hub | undefined, l: AirLine, now: number, px: number): [number, number] | null {
   const cv = alAt(l, now);
   if (!to || cv.at === 'parked' || cv.at === 'home' || cv.at === 'there') return null;
-  const c = G.char, a = padAt(c.world, home), b = padAt(c.world, to), ax = nearX(a.x, px), bx = nearX(b.x, ax), p = cv.at === 'out' ? cv.p : 1 - cv.p;
+  const c = G.char, a = padAt(c.world, home, c.towns), b = padAt(c.world, to, c.towns), ax = nearX(a.x, px), bx = nearX(b.x, ax), p = cv.at === 'out' ? cv.p : 1 - cv.p;
   return [ax + (bx - ax) * p, a.z + (b.z - a.z) * p];
 }
 let spin = 0;
 export function updateCargoDrones(dt: number) {
   const c = G.char;
   if (!OW.terrain || c.loc !== 'overworld') { clearCargoDrones(); return; }
-  const list = hubs(c.world, c.towns, c.outposts), byId = new Map(list.map((h) => [h.id, h])), atHome = new Set<string>(), seen = new Set<string>();
+  const list = hubs(c.world, c.towns, c.outposts), byId = new Map(list.map((h) => [h.id, h])), atHome = new Map<string, number>(), seen = new Set<string>();
+  const rest = (id: string) => atHome.set(id, (atHome.get(id) ?? 0) + 1);
   spin += dt;
   for (const [home, l] of allAirLines(c.towns, c.outposts)) {
     const h = byId.get(home);
     if (!h || !l.drone) continue;
     const at = droneAt(h, byId.get(l.to), l, c.time, G.pos.x);
-    if (!at) { const cv = alAt(l, c.time); if (cv.at === 'there') atHome.add(l.to); else atHome.add(home); continue; }
+    if (!at) { rest(alAt(l, c.time).at === 'there' ? l.to : home); continue; }
     if (worldDist(at[0], at[2], G.pos.x, G.pos.z) > DRONE_R) continue;
-    seen.add(home);
-    let d = drones.get(home);
-    if (!d) { d = makeDrone(); drones.set(home, d); }
+    const key = home + '#' + l.id;
+    seen.add(key);
+    let d = drones.get(key);
+    if (!d) { d = makeDrone(); drones.set(key, d); }
     d.g.position.set(at[0], at[1], at[2]); d.g.rotation.set(0.12, at[3], 0);
     d.light.visible = Math.floor(spin * 2) % 2 === 0;
   }
