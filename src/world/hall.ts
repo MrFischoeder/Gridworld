@@ -3,6 +3,9 @@
 // and tall enough to drive a vehicle in and park in the painted bay), timber racks, crates stacked by how full the hold
 // is, and the terminal against the back wall. A new settlement has none until its warehouse is built. Its walls collide (`hallHit`); E at the terminal (`nearHallTerminal`) opens ui/hall.ts. The
 // crates are a group of their own, redrawn when the hold changes (`refreshHall`).
+import { CARGO } from '../data/cargo';
+import type { Racks } from '../gen/racks';
+import type { ItemKey } from '../data/items';
 import * as THREE from 'three';
 import { G, W } from '../game';
 import { drawComputer } from './computer';
@@ -125,8 +128,22 @@ function drawCrates(h: Hall) {
     if (z > hd - 1.8) continue;
     pb.box(x - 0.28, y, z - 0.28, x + 0.28, y + 0.56, z + 0.28, CRATE);
   }
+  rackDeco(pb, G.char.towns[h.id]?.racks, (HALL.x1 - HALL.x0) / 2, -(HALL.z1 - HALL.z0) / 2 + 0.45, h.y0);
   h.crates = pb.build();
   h.grp.add(h.crates);
+}
+/** (0.250) The crates and barrels on the racks along the back wall (the hall's own frame): steel ones pale, wooden ones
+ *  brown, in rows of shelves either side of the terminal. */
+export function rackDeco(pb: PropBatch, racks: Racks | undefined, hw: number, zBack: number, y0: number) {
+  const list: ItemKey[] = [];
+  for (const [k, n] of Object.entries(racks ?? {}) as [ItemKey, number][]) for (let i = 0; i < n; i++) list.push(k);
+  const per = Math.max(1, Math.floor((hw - 1.6) / 0.72)) * 2;
+  list.forEach((k, i) => {
+    const lay = Math.floor(i / per), j = i % per, side = j % 2 ? 1 : -1, x = side * (1.6 + Math.floor(j / 2) * 0.72), y = y0 + 0.05 + lay * 0.75, z = zBack;
+    const c = k === 'crateM' || k === 'barrelM' ? 0x9fd8b0 : 0xb8b060;
+    if (CARGO[k]?.kind === 'barrel') { pb.box(x - 0.25, y, z - 0.25, x + 0.25, y + 0.62, z + 0.25, c); for (const yy of [0.12, 0.31, 0.5]) pb.line(c, [x - 0.26, y + yy, z + 0.26], [x + 0.26, y + yy, z + 0.26]); }
+    else { pb.box(x - 0.3, y, z - 0.28, x + 0.3, y + 0.56, z + 0.28, c); pb.line(c, [x - 0.3, y, z + 0.29], [x + 0.3, y + 0.56, z + 0.29]); }
+  });
 }
 export function refreshHall(id: number) { const h = halls.get(id); if (h) drawCrates(h); }
 export function forgetHall(id: number) { halls.delete(id); }

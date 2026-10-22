@@ -4,6 +4,7 @@
 // game), and the board where E opens the port window (ui/port.ts). Everything is drawn from the shared `outposts`.
 // (0.249, PLAN_MAGAZYNOW.md stage M1) The warehouses built in the wilds are drawn the same way in their own frame
 // (`OutpostState.fr`), without the dock's crane, and take in what the carriers bring from their hex's deposits.
+import { rackDeco } from './hall';
 import * as THREE from 'three';
 import { scene } from './render';
 import { PropBatch } from './props';
@@ -48,7 +49,7 @@ export const dryAt = (x: number, z: number) => { const w = OW.terrain?.water(x, 
 
 function sigOf(id: string, o: OutpostState): string {
   const L = o.life ? Math.floor(lifeNow(G.char.world, o, G.char.time).n) : 0, w = portWorks(G.char.world, G.char.outposts, id, G.char.time).why;
-  return JSON.stringify([o.done ?? {}, o.n ?? {}, o.job?.p ?? '', o.pk ?? '', o.job ? Math.floor((G.char.time - o.job.t) / (o.job.h * 6)) : 0, Math.floor(portVol(o) / 300), L, w]);
+  return JSON.stringify([o.done ?? {}, o.n ?? {}, o.job?.p ?? '', o.pk ?? '', o.job ? Math.floor((G.char.time - o.job.t) / (o.job.h * 6)) : 0, Math.floor(portVol(o) / 300), L, w, JSON.stringify(o.racks ?? {})]);
 }
 function build(id: string, o: OutpostState, p: Frame): Live {
   const T = OW.terrain!, saved = pierOf(o), sh = saved ? p.x - saved.x : 0, raw = o.ps ?? portSpots(saved ?? p, dryAt), mv = (q: [number, number]): [number, number] => [q[0] + sh, q[1]];
@@ -85,6 +86,9 @@ function build(id: string, o: OutpostState, p: Frame): Live {
     for (const sg of [-1, 1]) { pb.face(V(-B - 6.4, sg * 8.4, eave - 0.2), V(-B + 6.4, sg * 8.4, eave - 0.2), V(-B + 6.4, 0, ridge), V(-B - 6.4, 0, ridge)); pb.line(WOOD, V(-B - 6.4, sg * 8.4, eave - 0.2), V(-B + 6.4, sg * 8.4, eave - 0.2)); }
     pb.line(WOOD, V(-B - 6.4, 0, ridge), V(-B + 6.4, 0, ridge));
     for (let b = -6; b <= 6; b += 3) pb.seg(WOOD, V(-B - 5.9, b, yF + 0.1), V(-B - 5.9, b, yF + 3)); // racks along the back wall
+    { // (0.250) the crates and barrels on the racks: drawn in the shed's own frame (a group turned like it)
+      const rg = new PropBatch(); rackDeco(rg, o.racks, 8, -5.5, yF);
+      const [cx, , cz] = V(-B, 0, 0), rack = rg.build(); rack.position.set(cx, 0, cz); rack.rotation.y = Math.atan2(p.dx, p.dz); g.add(rack); }
     const sign = textSprite(o.k === 'store' ? o.name.toUpperCase() : tl('PORT WAREHOUSE'), '#ffd060', 2.2), [sx, , sz] = V(-B + 6.3, 0, 0); sign.position.set(sx, eave + 0.6, sz); g.add(sign);
     // the yard: a fence from the shed's front corners to the shore, open towards the dock
     for (const sg of [-1, 1]) for (let a = -B + 6; a < -4; a += 2.5) {

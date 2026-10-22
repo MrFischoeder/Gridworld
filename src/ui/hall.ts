@@ -11,7 +11,7 @@ import { scene } from '../world/render';
 import { ITEMS, type ItemKey } from '../data/items';
 import { calcStats, saveChar } from '../character';
 import { findPoi, villageSeed } from '../gen/regions';
-import { hallSpec, OWN, holdVol, holdRoom, deposit, withdraw, stockOf, refineStock, sawStock, smeltStock, settleConvoys } from '../gen/hall';
+import { hallSpec, hallVol, OWN, holdVol, holdRoom, deposit, withdraw, stockOf, refineStock, sawStock, smeltStock, settleConvoys } from '../gen/hall';
 import { hallRect, floorPickups, refreshHall } from '../world/hall';
 import { stores, takeFrom, putAway } from './market';
 import { $, logLine } from './hud';
@@ -19,6 +19,7 @@ import { lockPointer } from './input';
 import { itemName } from './icons';
 import { tl, TL } from '../i18n';
 import { serviceWhy } from './villagestats';
+import { racksHTML, rackClick } from './racks';
 import { hubs, villageHub, villageHubName, feeders, waitingAt, drainVillage, cleanHubName } from '../gen/warehouses';
 import { lodeById } from '../gen/lodes';
 
@@ -47,7 +48,7 @@ function render(msg = '') {
   const mine = [...withYou()].sort((a, b) => ITEMS[a[0]].name.localeCompare(ITEMS[b[0]].name));
   const elder = elderHead !== null, big = hallSpec(st).h >= 6, other = personal();
   let s = (elder ? elderHead + TL`<div class="role">The village's stores, kept by the elder · ${Math.round(holdVol(st))} / ${hallSpec(st).vol} L</div>`
-    : TL`<h2>${poi.name} · ${big ? tl('Warehouse') : tl('Village Hall')}</h2><div class="role">The village's stock · hold ${Math.round(holdVol(st))} / ${hallSpec(st).vol} L</div>` + networkHTML(vid, poi.name)) +
+    : TL`<h2>${poi.name} · ${big ? tl('Warehouse') : tl('Village Hall')}</h2><div class="role">The village's stock · hold ${Math.round(holdVol(st))} / ${Math.round(hallVol(st))} L</div>` + networkHTML(vid, poi.name)) +
     TL`<div class="say">${msg ? msg + '<br><br>' : ''}${elder ? tl('Until we raise a warehouse, bring what the village needs to me: I keep it in my house and the outbuildings. ') : ''}Whatever is stored here belongs to the village: its builds will draw on it. You can take it back out whenever you like.` +
     TL`<br><span style="opacity:.75">Only materials are kept here: wood, stone, ore and metals, parts, crates of goods and what the works make of them. Weapons, ammunition, medkits, food, tools and clothes are yours to keep: leave them in a chest in your own house.${other.length ? TL` (Not taken: ${other.slice(0, 6).map((k) => ITEMS[k].name).join(', ')}${other.length > 6 ? '…' : ''}.)` : ''}</span></div>`;
   s += TL`<div class="say" style="margin:8px 0 0">In the hold</div>` + (hold.length ? hold.sort((a, b) => ITEMS[a[0]].name.localeCompare(ITEMS[b[0]].name)).map(([k, n]) =>
@@ -60,6 +61,7 @@ function render(msg = '') {
     const room = holdRoom(st, k), n = e.carried + e.floor;
     return TL`<div class="shoprow"><div>${itemName(k)} ×${n}${e.floor ? TL` <span style="opacity:.7">(${e.floor} on the floor)</span>` : ''}</div><button class="opt" style="width:auto" data-hin="${k}" data-hn="1" ${room ? '' : 'disabled'}>Store 1</button><button class="opt" style="width:auto" data-hin="${k}" data-hn="999" ${room ? '' : 'disabled'}>Store all</button></div>`;
   }).join('') + TL`<button class="opt" data-hall="1">Store everything I have here</button>` : tl('<div class="say" style="opacity:.7">Nothing the village could use.</div>'));
+  if (!elder) s += racksHTML(st?.racks, 'data-hrack'); // (0.250) crates and barrels on the racks
   const off = !elder && big ? serviceWhy(vid!, 'warehouse') : ''; // (0.215) no storekeepers or no power
   if (off) s += `<div class="say" style="color:var(--warn,#ff5a3c)">${off} ${tl('Store your goods by hand meanwhile.')}</div>`;
   else if (!elder && big) s += tl('<button class="opt" data-hvehicle="1">Unload vehicles parked inside this warehouse</button><div class="say">Drive in through the wide doors, park fully inside, leave the cab and use this terminal. The materials in the trunk move straight into the hold; anything else stays in the trunk.</div>');
@@ -109,6 +111,12 @@ export function hallClick(t: HTMLElement): boolean {
     const n = cleanHubName((document.getElementById('whName') as HTMLInputElement | null)?.value ?? ''), st = (G.char.towns[vid] ??= {});
     if (n) st.whn = n; else delete st.whn;
     saveChar(); render(n ? TL`It is called ${n} now.` : tl('It goes by the village\'s name again.')); return true;
+  }
+  const rk = t.closest<HTMLElement>('[data-hrack]');
+  if (rk) { // (0.250) the racks
+    const st = (G.char.towns[vid] ??= {}), m = rackClick((st.racks ??= {}), rk.dataset.hrack!, (k, n) => deposit(st, k, n), holdVol(st), hallVol(st));
+    if (!Object.keys(st.racks).length) delete st.racks;
+    calcStats(); saveChar(); refreshHall(vid); render(m); return true;
   }
   if (t.closest('[data-hback]')) { vid = null; elderHead = null; const b = backToTalk; backToTalk = null; b?.(); return true; }
   if (t.closest('[data-hvehicle]')) {

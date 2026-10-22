@@ -23,6 +23,8 @@ export interface TownState {
   rcv?: Record<string, Partial<Record<ItemKey, number>>>; ship?: Record<string, number>;
   /** (0.249, PLAN_MAGAZYNOW.md) The name the players gave the village's warehouse (else '<village> Warehouse'). */
   whn?: string;
+  /** (0.250) The crates and barrels on its warehouse's racks (gen/racks.ts). */
+  racks?: import('./racks').Racks;
   /** (0.220, gen/commute.ts) People asked to walk out to work at nearby outposts, ports and crew camps: outpost id → how many. */
   commute?: Record<string, number>;
   /** The wall's tier (0 = the stake fence every village starts with). */

@@ -8,6 +8,7 @@
 //   unvisited village needs no state (it starts from a hashed fill); old saves' industry storehouse carries over.
 // Every build of the village (farms, the power plant, works, walls, the blacksmith's orders) draws on the stock
 // (`stockOf`): the hold first, then its own goods.
+import { rackVol } from './racks';
 import { progressive, projectDone, resourceYield, sawLevel, SAW, furnaceLevel, FURNACE } from './settlement';
 import { hash } from '../core/rng';
 import { jobOf } from './construction';
@@ -85,7 +86,10 @@ const vol = (k: ItemKey) => BULK[k]?.[1] ?? 1;
 /** Litres in the hold. */
 export const holdVol = (s: TownState | undefined) => Object.entries(s?.hold ?? {}).reduce((a, [k, n]) => a + vol(k as ItemKey) * (n ?? 0), 0);
 /** How many of k still fit. */
-export const holdRoom = (s: TownState | undefined, k: ItemKey) => Math.max(0, Math.floor((hallSpec(s).vol - holdVol(s) + 1e-6) / vol(k)));
+/** (0.250) The hold's size: the building's, plus what the crates and barrels on its racks add (gen/racks.ts; not the
+ *  elder's small store). */
+export const hallVol = (s: TownState | undefined) => hallSpec(s).vol + (hallStands(s) ? rackVol(s?.racks) : 0);
+export const holdRoom = (s: TownState | undefined, k: ItemKey) => Math.max(0, Math.floor((hallVol(s) - holdVol(s) + 1e-6) / vol(k)));
 export const holdOf = (s: TownState | undefined, k: ItemKey) => s?.hold?.[k] ?? 0;
 /** Store up to n of k (as much as fits); returns how many went in. */
 export function deposit(s: TownState, k: ItemKey, n: number): number {

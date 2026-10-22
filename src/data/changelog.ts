@@ -3,6 +3,12 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.250.0', date: '2026-10-22', title: 'Carriers and warehouse racks', notes: [
+    'You can now see the goods going to the warehouse. People walk from the deposits\' outposts to the warehouse of their hex with crates of stone, ore and logs, and roll barrels of crude along the ground ahead of them. In a settlement whose warehouse stands, farmers carry sacks of grain and roots from the fields, crates of eggs and barrels of milk, and the yards\' workers carry their crates in. They walk there loaded, set the load down and walk back empty, only while the warehouse works.',
+    'Warehouses keep more with crates and barrels. Carry an empty crate or barrel in your hands to a warehouse (its terminal in a village, the board of a port or a wild warehouse) and put it on the racks: each one adds two and a half times its size to the hold (a wooden one 150 L, a steel one 250 L), up to 40 a warehouse. They stand stacked along the back wall. One comes off again while what is stored still fits without it.',
+    'A loaded crate or barrel in your hands can be emptied straight into the hold from the same window.',
+    'Multiplayer: the racks live in the shared villages and outposts and change under the warehouse\'s lock. The carriers walk by the game clock, so every player sees the same people in the same places; nothing new is sent. The protocol and the server are unchanged.',
+  ] },
   { v: '0.249.0', date: '2026-10-22', title: 'The warehouse network', notes: [
     'Every warehouse now serves an area: the planet is divided into hexes about a kilometre across, and a warehouse serves the hex it stands in. There is one warehouse to a hex. A second warehouse cannot be built where one already serves (a village\'s warehouse, a port\'s or one in the wilds), so warehouses form a network without overlapping. The hexes of the warehouses show on the maps with their names.',
     'Warehouses in the wilds: the new Warehouse Plans (a basic order at the blacksmith) let you stake out a big plank warehouse anywhere in the wilds, for example by a mine or a quarry. A hologram shows the shed and the hex it will serve. Like a port, it needs its own power source, bunkhouses and fields; its storekeepers (4 people and power) take the goods in. Its window is at its board.',

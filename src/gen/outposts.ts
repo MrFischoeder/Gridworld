@@ -66,6 +66,8 @@ export interface OutpostState {
   /** (0.249) A wild warehouse's frame: [x, z] of the point before its doors and [dx, dz] the way the doors face (the
    *  port drawing's frame, gen/ports.ts `portPoint`, without a dock). */
   fr?: [number, number, number, number];
+  /** (0.250) The crates and barrels on its warehouse's racks (gen/racks.ts). */
+  racks?: import('./racks').Racks;
 }
 export interface PortSpots { house: [number, number]; crane: [number, number]; power: [number, number]; bunks: [number, number][]; fields: [number, number][] }
 export interface OutpostLife {

@@ -15,7 +15,7 @@ import { loadFood } from '../gen/outpostlife';
 import { POWER_SRC, loadFuel, settleAll, type PowerKind } from '../gen/grid';
 import { FOOD } from '../gen/farms';
 import { lodeById } from '../gen/lodes';
-import { newPort, portSpots, portId, portProblem, portWorks, portVol, portPut, portTake } from '../gen/ports';
+import { newPort, portSpots, portId, portProblem, portWorks, portVol, portPut, portTake, portCap } from '../gen/ports';
 import { hubs, hexProblem, feeders, waitingAt, cleanHubName } from '../gen/warehouses';
 import { storable } from '../gen/hall';
 import type { Pier } from '../gen/piers';
@@ -26,6 +26,7 @@ import { LINE, newLine, isLineShip, shipCap, voyageOf, periodOf, voyageFuel, ass
 import { net } from '../net/client';
 import { redrawBoats, inBoat } from '../world/boats';
 import { partHTML, powerHTML, peopleHTML, plineHTML, plineClick } from './outpost';
+import { racksHTML, rackClick } from './racks';
 import { commuteHTML, commuteClick } from './commute';
 import { carried, takeFrom, stores } from './market';
 import { itemName } from './icons';
@@ -76,11 +77,11 @@ function holdHTML(id: string): string {
   const c = G.char, o = c.outposts[id], p = dockOf();
   if (!o?.done?.port || (!p && o.k !== 'store')) return '';
   const used = Math.round(portVol(o)), works = portWorks(c.world, c.outposts, id, c.time);
-  let s = TL`<div class="say"><b>The hold</b>: ${used} of ${PORT.vol} L.<br>`;
+  let s = TL`<div class="say"><b>The hold</b>: ${used} of ${Math.round(portCap(o))} L.<br>`;
   const list = Object.entries(o.hold ?? {}).filter(([, n]) => (n ?? 0) > 0) as [ItemKey, number][];
   s += list.length ? list.map(([k, n]) => `${itemName(k)} ×${n} ` + small(`take:${k}:1`, tl('Take 1')) + small(`take:${k}:${n}`, tl('Take all'))).join('<br>') : tl('Empty.');
   const mine = (Object.entries(G.char.inv.reduce((a, x) => { if (x && storable(x.k)) a[x.k] = (a[x.k] ?? 0) + x.n; return a; }, {} as Record<string, number>)) as [ItemKey, number][]);
-  s += '</div>' + (mine.length ? TL`<div class="say">In your backpack: ` + mine.map(([k, n]) => `${itemName(k)} ×${n} ` + small(`put:${k}`, tl('Store'))).join('<br>') + `</div>` + small('putall', tl('Store everything from the backpack')) : '');
+  s += '</div>' + racksHTML(o.racks, 'data-port', 'rack:') + (mine.length ? TL`<div class="say">In your backpack: ` + mine.map(([k, n]) => `${itemName(k)} ×${n} ` + small(`put:${k}`, tl('Store'))).join('<br>') + `</div>` + small('putall', tl('Store everything from the backpack')) : '');
   // the crane (a wild warehouse: its storekeepers)
   s += o.k === 'store' ? TL`<div class="say"><b>The storekeepers</b>: ` : TL`<div class="say"><b>The crane</b>: `;
   if (works.why) return s + `<span style="color:#ff6a4a">${whyOf(works.why)}</span>` + tl(' Storing and taking by hand still works.') + '</div>' + carriersHTML(id);
@@ -204,6 +205,12 @@ export function portClick(t: HTMLElement): boolean {
     const o = c.outposts[id], here = at(), p = dockOf();
     if (!o || (!p && o.k !== 'store') || !mayUse(o, myOwner())) { msg = tl('Not yours to work.'); return; }
     if (a === 'rename') { o.name = typed; msg = TL`It is called ${typed} now.`; return; }
+    if (a === 'rack') { // (0.250) the racks
+      if (!o.done?.port) return;
+      msg = rackClick((o.racks ??= {}), b0.dataset.port!.slice(5), (k, n) => portPut(o, k, n), portVol(o), portCap(o));
+      if (!Object.keys(o.racks).length) delete o.racks;
+      return;
+    }
     msg = tickPort(id);
     const say = (w: string) => { msg = msg ? msg + ' ' + w : w; };
     const l = o.line;

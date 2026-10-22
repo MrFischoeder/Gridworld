@@ -6,6 +6,7 @@
 // same rule as the settlement's services, gen/energy.ts `serviceOf`). Cargo voyages between ports come in stage Z3.
 //
 // Pure: everything from the dock, the terrain asked through callbacks and the shared state.
+import { rackVol } from './racks';
 import { BULK, type ItemKey } from '../data/items';
 import { rng, hash } from '../core/rng';
 import { ruinName } from './regions';
@@ -94,7 +95,9 @@ export function portClaims(world: number, outposts: Record<string, OutpostState>
 // ---------- the hold ----------
 const vol = (k: ItemKey) => BULK[k]?.[1] ?? 1;
 export const portVol = (o: OutpostState) => Object.entries(o.hold ?? {}).reduce((a, [k, n]) => a + vol(k as ItemKey) * (n ?? 0), 0);
-export const portRoom = (o: OutpostState, k: ItemKey) => (o.done?.port ? Math.max(0, Math.floor((PORT.vol - portVol(o) + 1e-6) / vol(k))) : 0);
+/** (0.250) A port's or wild warehouse's hold: the shed's, plus its racks (gen/racks.ts). */
+export const portCap = (o: OutpostState) => PORT.vol + rackVol(o.racks);
+export const portRoom = (o: OutpostState, k: ItemKey) => (o.done?.port ? Math.max(0, Math.floor((portCap(o) - portVol(o) + 1e-6) / vol(k))) : 0);
 /** Store up to n of k (as much as fits); how many went in. */
 export function portPut(o: OutpostState, k: ItemKey, n: number): number {
   const m = Math.max(0, Math.min(n, portRoom(o, k)));

@@ -26,7 +26,7 @@ Na podstawie opisu właściciela z 22.10.2026. Etapy po kolei, każdy jako osobn
   - Zmiana nazwy.
   - Zakładka MAGAZYNY w komputerze wioski: wszystkie magazyny, gdzie stoją, co obsługują i czy działają; bez stanów.
   - Heksy magazynów na mapach.
-- **M2: tragarze i więcej miejsca.**
+- **M2 (0.250): tragarze i więcej miejsca.**
   - Widoczni tragarze: rolnik z workami zboża z pól do magazynu, ludzie ze skrzyniami urobku z kopalni, toczone beczki ropy.
   - Magazyn przechowuje więcej, gdy dostanie skrzynie i beczki (data/cargo.ts) na regały: każda podnosi pojemność.
 - **M3: łączność między magazynami.**
