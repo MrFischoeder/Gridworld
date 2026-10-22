@@ -121,7 +121,7 @@ export function hallClick(t: HTMLElement): boolean {
   }
   const al = t.closest<HTMLElement>('[data-hal]');
   if (al) { runHub('v:' + vid); const m = airLineClick('v:' + vid, al.dataset.hal!); calcStats(); saveChar(); render(m); return true; } // (0.254) the air line
-  if (t.closest('[data-hamast]')) { const m = villageMastClick(vid); calcStats(); saveChar(); render(m); return true; } // (0.256) the mooring mast
+  { const ma = t.closest<HTMLElement>('[data-hamast]'); if (ma) { const m = villageMastClick(vid, ma.dataset.hamast ?? ''); calcStats(); saveChar(); render(m); return true; } } // (0.256) the mooring mast (0.257: or a Survey Stake for it)
   { const ay = t.closest<HTMLElement>('[data-hay]'); if (ay) { const m = airYardClick('v:' + vid, ay.dataset.hay!); calcStats(); saveChar(); render(m); return true; } } // (0.256) the airship yard
   { const pb = t.closest<HTMLElement>('[data-hpad]'); if (pb) { const m = villagePadClick(vid, pb.dataset.hpad ?? ''); calcStats(); saveChar(); render(m); return true; } } // (0.254) the drone pad (0.255: or a Survey Stake for it)
   const tr = t.closest<HTMLElement>('[data-htr]');

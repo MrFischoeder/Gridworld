@@ -49,7 +49,8 @@ Zrobione. Decyzje przy okazji: lądowisko wioski nadal buduje się przy terminal
 - **Komputer wioski:** w zakładce MAGAZYNY pokazuje linie powietrzne.
 
 ### F3: sterowiec (pojazd, którym steruje gracz)
-Część 1 (0.256) zrobiona. Decyzje właściciela: oba napędy do wyboru przy budowie (diesel albo ogniwa), powłoka napełniona przy budowie (gaz się nie zużywa), najpierw lot i maszt. Maszt stoi sam obok magazynu (po przeciwnej stronie niż lądowisko), bez wytyczania palikiem. Część 2: chodzenie po gondoli w locie, spuszczana drabinka, zderzenia w powietrzu.
+Część 1 (0.256) zrobiona. Decyzje właściciela: oba napędy do wyboru przy budowie (diesel albo ogniwa), powłoka napełniona przy budowie (gaz się nie zużywa), najpierw lot i maszt. Maszt stoi sam obok magazynu (po przeciwnej stronie niż lądowisko), bez wytyczania palikiem.
+Część 2 (0.257) zrobiona: chodzenie po gondoli w locie (E w fotelu wstaje, E przy sterze lub fotelu siada; drzwi otwarte tylko, gdy gondola wisi nisko albo stoi przy maszcie), drabinka sznurowa z prawych drzwi, gdy sterowiec wisi wolno najwyżej 40 m nad suchym gruntem (wspinaczka W/S, Spacja puszcza), zderzenia w powietrzu (budynki, korony drzew, stare zakłady, latarnie morskie i reszta tego, o co zatrzymują się wrogowie), maszt wioski wytyczany palikiem (do 150 m od magazynu, sterowiec leży dalej od gracza, ziemia pod nim wolna i nie wyżej niż 1,5 m nad stopą masztu; wchodzi do terenu zarezerwowanego), przepustnica z zatrzaskiem na zerze, żeby dało się zawisnąć. Maszty z 0.256 oraz maszty portów i dzikich magazynów zostają na starym miejscu.
 - **Budowa:** duży, wolny statek powietrzny budowany przy maszcie cumowniczym.
   - Maszt cumowniczy to nowa budowla magazynu albo osady.
   - Materiały: tkanina na powłokę, aluminium na szkielet, silniki, sterownik, gaz nośny z zakładów chemicznych.

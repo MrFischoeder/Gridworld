@@ -23,6 +23,8 @@ export interface TownState {
   alines?: import('./airlines').AirLine[]; dpspot?: { x: number; z: number }; dpWait?: true;
   /** (0.256) The mooring mast (built at), its materials handed over; an airship going up at it (gen/airships.ts). */
   amast?: number; agiven?: Partial<Record<ItemKey, number>>; abuild?: import('./airships').AirBuild;
+  /** (0.257) The mooring mast's staked spot (world, canonical x) and the way its moored airship lies (`a`); the materials are in and it waits for its spot. */
+  amspot?: { x: number; z: number; a: number }; amWait?: true;
   /** (0.253) Cargo sent on through this warehouse (gen/transit.ts). */
   fwd?: import('./transit').Transit['fwd']; tr?: import('./transit').Transit['tr'];
   settlement?: import('./settlement').SettlementState;

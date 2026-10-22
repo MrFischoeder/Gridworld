@@ -10,13 +10,18 @@
 // the vehicles and convoys (gen/fields.ts warehouseProblem); saved as `SettlementState.wh` (shared), then the builders.
 // (0.255) And a village's drone pad once its materials are in (`TownState.dpWait`): within `DRONE.near` of the
 // warehouse (gen/fields.ts padProblem); saved as `TownState.dpspot` (shared), then the builders (gen/airlines.ts placePad).
+// (0.257) And a village's mooring mast once its materials are in (`TownState.amWait`): within `AIRMAST.near` of the
+// warehouse, its moored airship lying away from you (gen/fields.ts mastProblem); saved as `TownState.amspot` (shared,
+// with the airship's heading), then the builders (gen/airships.ts placeMast).
 import * as THREE from 'three';
 import { G } from '../game';
 import { OW, reloadStruct } from './overworld';
 import { driving } from './vehicles';
 import { scene } from './render';
 import { allVillages, worldDist, findPoi, villageSeed, wrapDx } from '../gen/regions';
-import { FIELD, fieldProblem, fieldPad, warehouseProblem, padProblem, PAD_HALF } from '../gen/fields';
+import { FIELD, fieldProblem, fieldPad, warehouseProblem, padProblem, PAD_HALF, mastProblem, mastClaims } from '../gen/fields';
+import { placeMast } from '../gen/airships';
+import { AIRMAST, AIRSHIP } from '../gen/airmast';
 import { placePad } from '../gen/airlines';
 import { DRONE } from '../gen/dronepad';
 import { hubs, villageHub } from '../gen/warehouses';
@@ -34,20 +39,22 @@ import { tl, TL } from '../i18n';
 
 let placing = false, preview: THREE.Group | null = null, problem: string | null = null, at: { x: number; z: number; y: number } | null = null, vid = -1;
 /** (0.197) What the stake marks out: a farm's field or the settlement's warehouse (`hall` = its plaza-local spot). */
-let mode: 'field' | 'warehouse' | 'pad' = 'field', hall: HallSpot | null = null;
+let mode: 'field' | 'warehouse' | 'pad' | 'mast' = 'field', hall: HallSpot | null = null, heading = 0;
 let last = { x: NaN, z: NaN, t: 0 };
 const OK = 0xb6ff3a, BAD = 0xff5a3c;
 const matA = new THREE.LineBasicMaterial({ color: OK, depthTest: false, transparent: true, opacity: 0.95 });
 const matB = new THREE.LineBasicMaterial({ color: OK, depthTest: false, transparent: true, opacity: 0.45 });
 
 /** The village nearest to you whose warehouse waits for its spot (first) or whose farm waits for its field, within reach. */
-function waiting(): { id: number; mode: 'field' | 'warehouse' | 'pad' } | null {
+function waiting(): { id: number; mode: 'field' | 'warehouse' | 'pad' | 'mast' } | null {
   const c = G.char, d = (v: { x: number; z: number }) => worldDist(v.x, v.z, G.pos.x, G.pos.z);
   const by = (f: (id: number) => unknown, reach: number) => allVillages(c.world).filter((v) => f(v.id) && d(v) < reach + 150).sort((a, b) => d(a) - d(b))[0];
   const w = by((id) => c.towns[id]?.settlement?.whWait, WAREHOUSE.reach);
   if (w) return { id: w.id, mode: 'warehouse' };
   const p = by((id) => c.towns[id]?.dpWait, DRONE.near + 150); // (0.255) the drone pad (near the village: its warehouse is)
   if (p) return { id: p.id, mode: 'pad' };
+  const m = by((id) => c.towns[id]?.amWait, AIRMAST.near + 150); // (0.257) the mooring mast
+  if (m) return { id: m.id, mode: 'mast' };
   const f = by((id) => c.towns[id]?.fwait, FIELD.reach);
   return f ? { id: f.id, mode: 'field' } : null;
 }
@@ -57,9 +64,10 @@ export function startFieldPlacing(): boolean {
   if (G.char.loc !== 'overworld' || !OW.terrain) { logLine(tl('A field is staked out in the open, near its village.')); return false; }
   if (driving.v) { logLine(tl('Get out of the vehicle first.')); return false; }
   const w = waiting();
-  if (!w) { logLine(tl('Nothing waits for its ground near here. The elder gives a stake once the materials of a new farm or of the warehouse are in, the storekeeper once those of a drone pad are.')); return false; }
+  if (!w) { logLine(tl('Nothing waits for its ground near here. The elder gives a stake once the materials of a new farm or of the warehouse are in, the storekeeper once those of a drone pad or a mooring mast are.')); return false; }
   vid = w.id; mode = w.mode;
   placing = true; at = null; hall = null; problem = null; last = { x: NaN, z: NaN, t: 0 };
+  if (mode === 'mast') { logLine(TL`Look where the mooring mast of ${findPoi(G.char.world, vid)?.name ?? tl('the village')} should stand, beside its warehouse (within ${AIRMAST.near} m of it). Its airship will lie on beyond it, away from you: walk round to turn it. Click to stake it out, right mouse button or Esc to cancel.`); return true; }
   if (mode === 'pad') { logLine(TL`Look where the drone pad of ${findPoi(G.char.world, vid)?.name ?? tl('the village')} should go, beside its warehouse (within ${DRONE.near} m of it). Click to stake it out, right mouse button or Esc to cancel.`); return true; }
   if (mode === 'warehouse') { logLine(TL`Look where the warehouse of ${findPoi(G.char.world, vid)?.name ?? tl('the village')} should stand, outside its wall (within ${WAREHOUSE.reach} m). Its doors face you: walk round it to turn them. Click to stake it out, right mouse button or Esc to cancel.`); return true; }
   logLine(TL`Look where the new field of ${findPoi(G.char.world, vid)?.name ?? tl('the village')} should go (within ${FIELD.reach} m): click to stake it out, right mouse button or Esc to cancel.`);
@@ -71,7 +79,7 @@ export function cancelFieldPlacing(quiet = false) {
   if (preview) { scene.remove(preview); preview.traverse((o) => (o as THREE.Line).geometry?.dispose()); preview = null; }
   if (!quiet) logLine(tl('You put the Survey Stake away.'));
 }
-export const fieldPlacingHint = () => (!placing ? null : problem ?? (mode === 'pad' ? tl('Click — stake out the drone pad here · right mouse / Esc — cancel') : mode === 'warehouse' ? tl('Click — stake out the warehouse here (its doors face you) · right mouse / Esc — cancel') : tl('Click — stake out the field here · right mouse / Esc — cancel')));
+export const fieldPlacingHint = () => (!placing ? null : problem ?? (mode === 'mast' ? tl('Click — stake out the mooring mast here (its airship lies away from you) · right mouse / Esc — cancel') : mode === 'pad' ? tl('Click — stake out the drone pad here · right mouse / Esc — cancel') : mode === 'warehouse' ? tl('Click — stake out the warehouse here (its doors face you) · right mouse / Esc — cancel') : tl('Click — stake out the field here · right mouse / Esc — cancel')));
 export const fieldPlacingOk = () => !!at && !problem;
 
 /** The ground point you look at (up to 60 m away). */
@@ -92,6 +100,7 @@ export function updateFieldPlacing() {
   const poi = findPoi(G.char.world, vid);
   if (mode === 'warehouse') { warehouseHologram(T, poi, x, z); return; }
   if (mode === 'pad') { padHologram(T, poi, x, z); return; }
+  if (mode === 'mast') { mastHologram(T, poi, x, z); return; }
   if (!poi || !G.char.towns[vid]?.fwait) { cancelFieldPlacing(true); logLine(tl('That farm\'s field has been staked out already.')); return; }
   problem = fieldProblem(T, poi, villageSeed(G.char.world, poi), G.char.towns[vid], x, z, allClaims()) || null;
   const y = fieldPad(T, x, z); at = { x, z, y };
@@ -164,11 +173,38 @@ function padHologram(T: NonNullable<typeof OW.terrain>, poi: ReturnType<typeof f
   b.push(x, Y(x, z), z, wx, T.heightAt(wx, me.z) + 0.2, me.z); // a line back to the warehouse
   lines(a, b);
 }
+/** (0.257) The mooring mast's hologram: its foot, the mast up to its head, the airship moored there lying away from you
+ *  (its outline at the mast's height) and the ground kept clear under it. */
+function mastHologram(T: NonNullable<typeof OW.terrain>, poi: ReturnType<typeof findPoi>, x: number, z: number) {
+  const c = G.char, s = poi && c.towns[vid];
+  if (!poi || !s?.amWait) { cancelFieldPlacing(true); logLine(tl('That mooring mast has been staked out already.')); return; }
+  const me = hubs(c.world, c.towns, c.outposts).find((h) => h.id === villageHub(vid));
+  if (!me) { cancelFieldPlacing(true); return; }
+  heading = Math.atan2(z - G.pos.z, x - G.pos.x);
+  if (!Number.isFinite(heading)) heading = 0;
+  problem = mastProblem(T, poi, villageSeed(c.world, poi), s, x, z, heading, allClaims(), me) || null;
+  const y = T.heightAt(x, z); at = { x, z, y };
+  const a: number[] = [], b: number[] = [], H = AIRMAST.h, Y = (px: number, pz: number) => T.heightAt(px, pz) + 0.12;
+  const ox = Math.cos(heading), oz = Math.sin(heading), px = -oz, pz = ox, P = (d: number, w: number): [number, number] => [x + ox * d + px * w, z + oz * d + pz * w];
+  const cs = [[-1.5, -1.5], [1.5, -1.5], [1.5, 1.5], [-1.5, 1.5]];
+  for (let k = 0; k < 4; k++) { const [u0, v0] = cs[k], [u1, v1] = cs[(k + 1) % 4]; a.push(x + u0, Y(x + u0, z + v0), z + v0, x + u1, Y(x + u1, z + v1), z + v1, x + u0, Y(x + u0, z + v0), z + v0, x, y + H, z); }
+  // the airship lying at its mast: the hull's outline at the mast's head, its nose by the head
+  const R = AIRSHIP.r, L = AIRSHIP.len, n0 = 0.6;
+  for (const w of [-R, R]) { const [q0x, q0z] = P(n0 + 4, w), [q1x, q1z] = P(n0 + L - 6, w); a.push(q0x, y + H, q0z, q1x, y + H, q1z); }
+  for (const [d0, w0, d1, w1] of [[n0, 0, n0 + 4, -R], [n0, 0, n0 + 4, R], [n0 + L - 6, -R, n0 + L, 0], [n0 + L - 6, R, n0 + L, 0]]) { const [q0x, q0z] = P(d0, w0), [q1x, q1z] = P(d1, w1); a.push(q0x, y + H, q0z, q1x, y + H, q1z); }
+  { const [gx, gz] = P(n0 + L / 2, 0); a.push(x, y + H, z, gx, y + H, gz); b.push(gx, y + H, gz, gx, Y(gx, gz), gz); }
+  // the ground kept clear under it
+  for (const w of [-AIRMAST.clear, AIRMAST.clear]) for (let d = 2; d < L + 1; d += 3) { const [q0x, q0z] = P(d, w), [q1x, q1z] = P(d + 3, w); b.push(q0x, Y(q0x, q0z), q0z, q1x, Y(q1x, q1z), q1z); }
+  const wx = x + wrapDx(me.x - x);
+  b.push(x, Y(x, z), z, wx, T.heightAt(wx, me.z) + 0.2, me.z); // a line back to the warehouse
+  lines(a, b);
+}
 /** Stake out the field (or the warehouse, or the drone pad) where the hologram stands: the builders start there. */
 export async function confirmFieldPlacing() {
   if (!placing) return;
   if (mode === 'warehouse') { await confirmWarehouse(); return; }
   if (mode === 'pad') { await confirmPad(); return; }
+  if (mode === 'mast') { await confirmMast(); return; }
   if (!at || problem) { logLine(problem ?? tl('Look at the ground where the field should go.')); return; }
   const spot = at, id = vid, c = G.char;
   let ok = false;
@@ -208,4 +244,19 @@ async function confirmPad() {
   fieldsChanged({ ...spot, y: 0 }); // the trees there are cleared
   showToast(tl('Drone pad staked out'));
   logLine(tl('The builders bring the cement out to your stakes: the drone pad goes down there.'));
+}
+/** (0.257) Stake out the mooring mast: its spot and its airship's heading are saved in the village (shared) and the builders start. */
+async function confirmMast() {
+  if (!at || problem) { logLine(problem ?? tl('Look at the ground where the mast should stand.')); return; }
+  const id = vid, c = G.char, poi = findPoi(c.world, id);
+  if (!poi) return;
+  const spot = { x: poi.x + wrapDx(at.x - poi.x), z: at.z, a: heading };
+  let ok = false;
+  await withTownStock(id, () => { const s = (c.towns[id] ??= {}); ok = placeMast(s, spot, c.time); });
+  if (!ok) { cancelFieldPlacing(true); logLine(tl('Someone else has staked out the mooring mast already.')); return; }
+  takeOne('fieldstake'); saveChar();
+  cancelFieldPlacing(true);
+  for (const q of mastClaims(spot)) fieldsChanged({ x: q.x, z: q.z, y: 0 }); // the trees there are cleared
+  showToast(tl('Mooring mast staked out'));
+  logLine(tl('The builders bring the steel out to your stakes: the mast goes up there, and the ground beyond it is kept clear for its airship.'));
 }

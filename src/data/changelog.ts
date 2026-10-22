@@ -3,6 +3,15 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.257.0', date: '2026-10-22', title: 'Aboard the airship', notes: [
+    'Flying machines stage F3, part two. The gondola is now a deck you walk about in flight, like a ship\'s: E in a seat stands you up, E by the helm or a seat sits you down. Whoever stands in it is carried along. Its doors amidships are open only while it hangs low or rides at a mast, so you can walk in and out there.',
+    'The rope ladder: when the airship hovers slowly with its gondola at most 40 m over dry ground, a rope ladder hangs from the right-hand door to the ground. E at the door climbs down, E at its foot climbs up; W up, S down, Space lets go.',
+    'The throttle now stops at zero on its way down: hold S to slow to a hover, then press it again to go astern.',
+    'Airships bump into what stands in their way: buildings and dead cities, tall trees\' crowns, the old plants, lighthouses and the other solid things. Fly over them, or steer round.',
+    'A village\'s mooring mast is now staked out like the drone pad: once its materials are in, the storekeeper gives you a Survey Stake, and you choose where it stands (within 150 m of the warehouse) and which way its airship lies. The ground under the moored airship is kept clear of trees and other buildings. Masts built before stay where they are; a port\'s or a wild warehouse\'s mast still stands by its shed.',
+    'A moored airship\'s gondola now rests on the ground, so you walk straight in. The gondola is taller inside.',
+    'Together: nothing new is sent. Every game works out the doors and the ladder from the airship\'s shared place, sees the others where they stand or climb, and the driver\'s game does the bumping.',
+  ] },
   { v: '0.256.0', date: '2026-10-22', title: 'Airships', notes: [
     'Flying machines stage F3, part one: the first machine you fly yourself. A warehouse can build a mooring mast (with the Aviation plans): a village\'s from its stock at the warehouse terminal, a port or a wild warehouse at its board. It draws 6 kW and needs one person to tend it.',
     'At a mast you lay the keel of an airship and pick its drive: diesel engines (faster, filled from canisters with R) or electric motors on power cells (they charge while moored at a working mast). Its materials come from the warehouse\'s stock. The envelope is filled with lifting gas when it is built; the gas never runs out. A world holds up to 4 airships.',

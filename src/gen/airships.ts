@@ -34,14 +34,22 @@ export interface AirBuild { drive: AirDrive; given: Partial<Record<ItemKey, numb
 // ---------- the mast ----------
 export const amastPlan = (s: TownState | undefined) => AIRMAST.needs.map(([k, n]) => ({ k, n, given: Math.min(n, s?.agiven?.[k] ?? 0) }));
 /** Hand over what the village's mast still needs (from its stock); with all of it in, the builders start. */
-export function handOverAmast(s: TownState, have: (k: ItemKey) => number, at: number): { taken: [ItemKey, number][]; started: boolean } {
+export function handOverAmast(s: TownState, have: (k: ItemKey) => number, at: number): { taken: [ItemKey, number][]; started: boolean; wait?: boolean } {
   const taken: [ItemKey, number][] = [];
-  if (s.amast || jobOf(s, 'airmast')) return { taken, started: false };
+  if (s.amast || s.amWait || jobOf(s, 'airmast')) return { taken, started: false };
   const g = (s.agiven ??= {});
   for (const r of amastPlan(s)) { const n = Math.max(0, Math.min(r.n - r.given, Math.floor(have(r.k)))); if (n) { g[r.k] = r.given + n; taken.push([r.k, n]); } }
   if (!amastPlan(s).every((r) => r.given >= r.n)) return { taken, started: false };
+  if (!s.amspot) { s.amWait = true; return { taken, started: false, wait: true }; } // (0.257) the hero stakes out where it goes, then the builders start: placeMast
   startJob(s, 'airmast', undefined, at, AIRMAST.hours);
   return { taken, started: true };
+}
+/** (0.257) The mast staked out at `spot` (world; `a` the way its airship lies): saved, and the builders start. False if it no longer waits. */
+export function placeMast(s: TownState, spot: { x: number; z: number; a: number }, now: number): boolean {
+  if (!s.amWait || s.amast || jobOf(s, 'airmast')) return false;
+  s.amspot = { x: Math.round(spot.x), z: Math.round(spot.z), a: Math.round(spot.a * 1000) / 1000 }; delete s.amWait;
+  startJob(s, 'airmast', undefined, now, AIRMAST.hours);
+  return true;
 }
 /** The builders are done (gen/jobs.ts). */
 export function completeAmast(s: TownState, now: number) { s.amast = now; delete s.agiven; }
@@ -55,9 +63,12 @@ export function amastWhy(world: number, h: Hub, towns: Record<string, TownState 
   if (h.kind === 'village') { const v = allVillages(world).find((q) => q.id === h.vid); if (v) return amastOf(world, v, villageSeed(world, v), towns[v.id], t).why; }
   return '';
 }
-/** Where warehouse h's mast stands (its foot) and which way its moored airship lies (`a`: from the mast out, away from the warehouse). */
-export function mastAt(world: number, h: Hub): { x: number; z: number; a: number } {
+/** Where warehouse h's mast stands (its foot) and which way its moored airship lies (`a`: from the mast out, away from
+ *  the warehouse): a village's staked spot (0.257), else beside the warehouse (a port's or a wild one, and the masts of 0.256). */
+export function mastAt(world: number, h: Hub, towns?: Record<string, TownState | undefined>): { x: number; z: number; a: number } {
   const v = h.kind === 'village' ? allVillages(world).find((q) => q.id === h.vid) : undefined;
+  const sp = v && towns?.[v.id]?.amspot;
+  if (sp) return { x: sp.x, z: sp.z, a: sp.a };
   let a = v ? Math.atan2(h.z - v.z, nearX(h.x, v.x) - v.x) : ((hash(h.x | 0, h.z | 0, 0x9ad) % 628) / 100);
   if (!Number.isFinite(a)) a = 0;
   const b = a + Math.PI / 2; // beside the warehouse, a quarter turn from the drone pad

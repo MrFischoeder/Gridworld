@@ -62,6 +62,7 @@ import { bridgeFloor, bridgeHit, bridgeDeck, clearBridges } from './bridges';
 import { pierFloor, pierHit, pierDeck, clearPiers } from './piers';
 import { lighthouseHit } from './lighthouses';
 import { boatHit, shipFloor, shipHit } from './boats';
+import { gondolaFloor, gondolaHit } from './airships';
 import { CHUNK, poisNear, X_MIN, WORLD_W, POLE_Z, POLAR_Z, villageContaining, villageDist, villageSeed, GRIDHOLM_ID, type Poi, type Rect, wrapC, wrapDx } from '../gen/regions';
 import { chunkTrees, chunkRocks, TREE_SPAN, type Tree, type Rock, type OreKind } from '../gen/trees';
 import { rockShape, rockSurface, leanY, type RockShape } from '../gen/rockshape';
@@ -260,6 +261,15 @@ export function treeHit(x: number, y: number, z: number, r: number): boolean {
     for (const p of c.plants) if (y < p.y + 2) for (const [px, pz, pr] of p.cols) if (Math.hypot(px - x, pz - z) < pr + r) return true;
     for (const w of c.wells) if (Math.hypot(w.x - x, w.z - z) < 1.05 + r && y < OW.terrain!.heightAt(w.x, w.z) + 0.9) return true;
     for (const cv of c.caves) if (caveHit(cv, x, y, z, r, cv.y)) return true;
+  }
+  return false;
+}
+/** (0.257) A tree's crown (its whole height and crown radius) in the way of something flying at y, r wide: airships. */
+export function crownHit(x: number, y: number, z: number, r: number): boolean {
+  const cx = Math.floor(x / CHUNK), cz = Math.floor(z / CHUNK);
+  for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) {
+    const c = OW.chunks.get(ckey(cx + i, cz + j)); if (!c) continue;
+    for (const t of c.trees) if (y < t.y + t.h + 1 && Math.hypot(t.x - x, t.z - z) < t.r + r) return true;
   }
   return false;
 }
@@ -832,8 +842,8 @@ export function openWorld(x: number, z: number) {
   primeInstalls(w, [...G.char.claims, ...fieldClaims(G.char.towns), ...portClaims(w, G.char.outposts)]); // the installations' sites are worked out in a worker meanwhile
   closeWorld();
   G.water = (px, pz) => (inStructure(px, pz) ? null : OW.terrain!.water(px, pz));
-  G.space = space; G.ground = groundAt; G.obstacle = (px, py, pz, r) => settlementHit(px, py, pz, r) || templeHit(px, py, pz, r) || crystalHit(px, py, pz, r) || megalithHit(px, py, pz, r) || worldGateHit(px, py, pz, r) || treeHit(px, py, pz, r) || vehicleHit(px, py, pz, r) || caravanHit(px, py, pz, r) || peerCarHit(px, py, pz, r) || ambushHit(px, py, pz, r) || baseHit(px, py, pz, r) || ladderHit(px, py, pz, r) || walkHit(px, py, pz, r) || guardHit(px, py, pz, r) || houseHit(px, py, pz, r) || doorHit(px, py, pz, r) || podHit(px, py, pz, r) || installHit(px, py, pz, r) || cityHit(px, py, pz, r) || hallHit(px, py, pz, r) || bridgeHit(px, py, pz, r) || pierHit(px, py, pz, r) || lighthouseHit(px, py, pz, r) || boatHit(px, py, pz, r) || shipHit(px, py, pz, r) || toxicHit(px, py, pz, r) || lodeHit(px, py, pz, r) || portHit(px, py, pz, r) || campHit(px, py, pz, r);
-  G.floor = (x, y, z) => Math.max(rockFloor(x, y, z), templeFloor(x, y, z), settlementFloor(x, y, z), megalithFloor(x, y, z), baseFloor(x, y, z), ladderFloor(x, y, z), walkFloor(x, y, z), bridgeFloor(x, y, z), pierFloor(x, y, z), shipFloor(x, y, z)); G.rayBlock = (o, d, t) => natureRay(o, d, settlementRay(o, d, megalithRay(o, d, worldGateRay(o, d, cityRay(o, d, doorRay(o, d, houseRay(o, d, baseRay(o, d, t)))))))); G.solid = (p) => settlementSolid(p) || megalithHit(p.x, p.y, p.z, 0) || worldGateHit(p.x, p.y, p.z, 0) || baseSolid(p) || houseSolid(p);
+  G.space = space; G.ground = groundAt; G.obstacle = (px, py, pz, r) => settlementHit(px, py, pz, r) || templeHit(px, py, pz, r) || crystalHit(px, py, pz, r) || megalithHit(px, py, pz, r) || worldGateHit(px, py, pz, r) || treeHit(px, py, pz, r) || vehicleHit(px, py, pz, r) || caravanHit(px, py, pz, r) || peerCarHit(px, py, pz, r) || ambushHit(px, py, pz, r) || baseHit(px, py, pz, r) || ladderHit(px, py, pz, r) || walkHit(px, py, pz, r) || guardHit(px, py, pz, r) || houseHit(px, py, pz, r) || doorHit(px, py, pz, r) || podHit(px, py, pz, r) || installHit(px, py, pz, r) || cityHit(px, py, pz, r) || hallHit(px, py, pz, r) || bridgeHit(px, py, pz, r) || pierHit(px, py, pz, r) || lighthouseHit(px, py, pz, r) || boatHit(px, py, pz, r) || shipHit(px, py, pz, r) || gondolaHit(px, py, pz, r) || toxicHit(px, py, pz, r) || lodeHit(px, py, pz, r) || portHit(px, py, pz, r) || campHit(px, py, pz, r);
+  G.floor = (x, y, z) => Math.max(rockFloor(x, y, z), templeFloor(x, y, z), settlementFloor(x, y, z), megalithFloor(x, y, z), baseFloor(x, y, z), ladderFloor(x, y, z), walkFloor(x, y, z), bridgeFloor(x, y, z), pierFloor(x, y, z), shipFloor(x, y, z), gondolaFloor(x, y, z)); G.rayBlock = (o, d, t) => natureRay(o, d, settlementRay(o, d, megalithRay(o, d, worldGateRay(o, d, cityRay(o, d, doorRay(o, d, houseRay(o, d, baseRay(o, d, t)))))))); G.solid = (p) => settlementSolid(p) || megalithHit(p.x, p.y, p.z, 0) || worldGateHit(p.x, p.y, p.z, 0) || baseSolid(p) || houseSolid(p);
   foeRules.blocked = (p) => megalithHit(p.x, p.y, p.z, .7) || nearVillage(p.x, p.z) < 2;
   foeRules.body = foeBody;
   foeRules.playerSafe = () => inVillage(G.pos.x, G.pos.z) && !raidHere(); // no safe place while bandits raid it

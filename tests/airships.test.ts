@@ -8,14 +8,17 @@ import { jobOf } from '../src/gen/construction';
 import { finishJob } from '../src/gen/jobs';
 import { allVillages } from '../src/gen/regions';
 import { AIRMAST, AIRSHIP } from '../src/gen/airmast';
-import { amastPlan, handOverAmast, hasAmast, mastAt, moorPose, airNeeds, airRows, handOverAir, newAirship, burnAir, chargeAir, fuelAir, airRangeKm, lowest, type AirBuild } from '../src/gen/airships';
+import { Terrain } from '../src/gen/terrain';
+import { findPoi, villageSeed, GRIDHOLM_ID } from '../src/gen/regions';
+import { mastProblem, mastLine, fieldClaims, reservedZones } from '../src/gen/fields';
+import { amastPlan, handOverAmast, placeMast, hasAmast, mastAt, moorPose, airNeeds, airRows, handOverAir, newAirship, burnAir, chargeAir, fuelAir, airRangeKm, lowest, type AirBuild } from '../src/gen/airships';
 import type { Hub } from '../src/gen/warehouses';
 
 const W = 12345;
 
 describe('mooring masts and airships (0.256)', () => {
   it('a village builds its mast from its stock; it wants a hand; an outpost builds it as a part and it draws power', () => {
-    const s: TownState = {}, v = allVillages(W)[0];
+    const s: TownState = { amspot: { x: 0, z: 0, a: 0 } }, v = allVillages(W)[0]; // (0.257) staked already: the builders start at once
     expect(handOverAmast(s, () => 99, 100).started).toBe(true);
     expect(amastPlan(s).every((r) => r.given >= r.n)).toBe(true);
     finishJob(W, v, s, jobOf(s, 'airmast')!, 100 + AIRMAST.hours * 60);
@@ -65,6 +68,34 @@ describe('mooring masts and airships (0.256)', () => {
     burnAir(c, 0, 10);
     expect(c.kwh).toBeLessThan(AIRSHIP.cell.cap / 2); // the systems draw even idle
     expect(chargeAir(c, 1e6)).toBeGreaterThan(0); expect(c.kwh).toBe(AIRSHIP.cell.cap);
+  });
+  it('(0.257) a village mast waits for its stake; the ground under its airship is kept clear and level enough', () => {
+    const T = new Terrain(W), s: TownState = {};
+    const r = handOverAmast(s, () => 99, 100);
+    expect(r.wait).toBe(true); expect(s.amWait).toBe(true); expect(jobOf(s, 'airmast')).toBeFalsy();
+    expect(handOverAmast(s, () => 99, 100).taken).toEqual([]);
+    const gh = findPoi(W, GRIDHOLM_ID)!;
+    expect(mastProblem(T, gh, villageSeed(W, gh), s, gh.x, gh.z, 0, [], { x: gh.x + 80, z: gh.z })).toMatch(/village/i);
+    expect(mastProblem(T, gh, villageSeed(W, gh), s, gh.x + 80 + AIRMAST.near + 40, gh.z, 0, [], { x: gh.x + 80, z: gh.z })).toMatch(/far/i);
+    let spot: { x: number; z: number; a: number } | null = null, home = gh, hall = { x: 0, z: 0 };
+    for (const v of allVillages(W).slice(0, 6)) for (let q = 0; q < 4 && !spot; q++) {
+      const hl = { x: v.x + Math.cos(q * 1.57) * 85, z: v.z + Math.sin(q * 1.57) * 85 }, sd = villageSeed(W, v);
+      for (let k = 0; k < 24 && !spot; k++) for (const d of [30, 60, 100]) {
+        const x = Math.round(hl.x + Math.cos(k * 0.27) * d), z = Math.round(hl.z + Math.sin(k * 0.27) * d), a = k * 0.27 + q * 1.57;
+        if (!mastProblem(T, v, sd, s, x, z, a, [], hl)) { spot = { x, z, a }; home = v; hall = hl; break; }
+      }
+    }
+    const seed = villageSeed(W, home);
+    expect(spot).not.toBeNull();
+    expect(placeMast(s, spot!, 200)).toBe(true); expect(placeMast(s, spot!, 200)).toBe(false);
+    expect(s.amWait).toBeUndefined(); expect(jobOf(s, 'airmast')).toBeTruthy();
+    const h: Hub = { id: 'v:' + home.id, kind: 'village', x: hall.x, z: hall.z, hex: '', name: '', vid: home.id };
+    const m = mastAt(W, h, { [home.id]: s });
+    expect(m.x).toBe(spot!.x); expect(m.a).toBeCloseTo(spot!.a, 2);
+    const p = moorPose(m, 0), [tx, , tr] = mastLine(m).at(-1)!;
+    expect(Math.hypot(p.x - m.x, p.z - m.z)).toBeLessThan(Math.hypot(tx - m.x, p.z - m.z) + tr); // the ship lies over the kept ground
+    expect(fieldClaims({ [home.id]: s }).length).toBe(mastLine(m).length);
+    expect(reservedZones(W, home, seed, s).some((z) => z.k === 'mast')).toBe(true);
   });
   it('the gondola keeps clear of the ground', () => {
     expect(lowest(10) - AIRSHIP.below).toBeCloseTo(10 + AIRSHIP.min);

@@ -6,7 +6,7 @@
 // button attribute.
 import { G } from '../game';
 import { ITEMS, type ItemKey } from '../data/items';
-import { gainXp } from '../character';
+import { gainXp, hasItem, addItem } from '../character';
 import { findPoi } from '../gen/regions';
 import { SEA } from '../gen/seas';
 import { hubs, type Hub } from '../gen/warehouses';
@@ -37,17 +37,24 @@ export function villageMastHTML(vid: number): string {
   const job = jobHTML(s, 'airmast', undefined, AIRMAST.name.toLowerCase());
   if (job || jobOf(s, 'airmast')) return job;
   if (!known()) return TL`<div class="say" style="opacity:.7"><b>${AIRMAST.name}</b>: the plans for it are lost (Aviation, on an old data carrier).</div>`;
+  if (s?.amWait) return TL`<div class="say"><b>${AIRMAST.name}</b>: the materials are in. Now choose where it stands: take a Survey Stake out beside the warehouse (within ${AIRMAST.near} m of it, outside the wall), use it and click. Its airship lies on beyond it, away from you, so the ground there must be clear and no higher than the mast's foot.</div>` +
+    (hasItem('fieldstake') ? tl('<div class="say" style="opacity:.8">You have a Survey Stake.</div>') : TL`<button class="opt" data-hamast="stake">Give me a Survey Stake</button>`);
   const has = stockHas(vid), rows = amastPlan(s), miss = lacking(rows, has);
   return TL`<div class="say"><b>${AIRMAST.name}</b> <span style="opacity:.8">(${AIRMAST.hours} h to build, ${AIRMAST.kw} kW, one hand to tend it)</span>: ${AIRMAST.text}<br>` +
     rows.map((r) => `${itemName(r.k)} ${r.given}/${r.n}${hallNote(has(r.k), r.given, r.n)}`).join('<br>') + '</div>' +
     (miss ? `<div class="say" style="opacity:.7">${miss}</div>` : '') + buildButton('data-hamast="1"', AIRMAST.name.toLowerCase(), rows.some((r) => r.given < r.n && has(r.k) > 0));
 }
 /** The mast's build button (inside the village's stock lock). Returns the message. */
-export function villageMastClick(vid: number): string {
+export function villageMastClick(vid: number, what = ''): string {
   const c = G.char, s = (c.towns[vid] ??= {});
+  if (what === 'stake') { // (0.257) a Survey Stake to mark where it goes
+    if (!s.amWait) return tl('The mast does not wait for its ground.');
+    return hasItem('fieldstake') ? tl('You have one already.') : addItem('fieldstake') ? tl('The storekeeper hands you a Survey Stake. Walk out and mark where the mooring mast should stand.') : tl('No room for the stake in your backpack.');
+  }
   if (!known()) return tl('The plans for it are lost.');
   const r = handOverAmast(s, stockHas(vid), c.time);
   stockTake(vid, r.taken);
+  if (r.wait) { gainXp(AIRMAST.xp); return tl('All the materials are in. Now stake out where the mast stands: ask for a Survey Stake here.'); }
   if (r.started) { gainXp(AIRMAST.xp); return TL`The builders start on the mooring mast of ${findPoi(c.world, vid)?.name ?? ''}.`; }
   return r.taken.length ? TL`Handed over ${r.taken.map(([k, n]) => `${ITEMS[k].name} ×${n}`).join(', ')}.` : tl('The village hall has nothing more for it.');
 }
@@ -98,7 +105,7 @@ export function airYardClick(id: string, what: string): string {
   const sto = store(id), r = handOverAir(b, sto.has);
   sto.take(r.taken);
   if (!r.built) return r.taken.length ? TL`Handed over ${r.taken.map(([k, n]) => `${ITEMS[k].name} ×${n}`).join(', ')}.` : tl('The warehouse has nothing more for it.');
-  const T = OW.terrain, m = mastAt(c.world, me), g = T ? Math.max(T.heightAt(m.x, m.z), SEA.level) : SEA.level;
+  const T = OW.terrain, m = mastAt(c.world, me, c.towns), g = T ? Math.max(T.heightAt(m.x, m.z), SEA.level) : SEA.level;
   (c.airships ??= []).push(newAirship(b, id, moorPose(m, g), c.name || tl('You'), c.pid, c.time));
   delete st.abuild; gainXp(AIRSHIP.xp); redrawAirships();
   return tl('The envelope fills with gas and rises: the airship rides at the mast. Climb into its gondola to fly it.');

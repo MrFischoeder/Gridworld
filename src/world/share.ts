@@ -19,6 +19,7 @@ import { OW, reloadStruct, rebuildChunkAt } from './overworld';
 import { CHUNK, HANGAR_ID, nearX } from '../gen/regions';
 import type { Char } from '../save';
 import type { TownState } from '../gen/town';
+import { mastClaims } from '../gen/fields';
 import { retireOldCrossings } from '../gen/bridges';
 import { boardPeriod } from '../core/time';
 
@@ -129,6 +130,8 @@ function show(f: string, k: string, before: unknown, after: unknown) {
     for (const [i, p] of Object.entries(now)) if (p && JSON.stringify(was[i]) !== JSON.stringify(p)) claimsHook(p as unknown as Char['claims'][number]);
     const pad = (after as TownState | undefined)?.dpspot; // (0.255) a drone pad staked out by someone else: its trees go here too
     if (pad && JSON.stringify(pad) !== JSON.stringify((before as TownState | undefined)?.dpspot)) claimsHook({ ...pad, y: 0 } as Char['claims'][number]);
+    const mast = (after as TownState | undefined)?.amspot; // (0.257) a mooring mast staked out by someone else: the trees under its airship go too
+    if (mast && JSON.stringify(mast) !== JSON.stringify((before as TownState | undefined)?.amspot)) for (const q of mastClaims(mast)) claimsHook({ x: q.x, z: q.z, y: 0 } as Char['claims'][number]);
   }
   if (f === 'towns' && townLook(before) !== townLook(after)) {
     reloadStruct(+k);

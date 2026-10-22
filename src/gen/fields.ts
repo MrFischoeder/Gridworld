@@ -24,6 +24,7 @@ import { claimDist, clearOf, type Claim } from './claims';
 import type { Terrain } from './terrain';
 import { hexProblem, villageHub, type Hub } from './warehouses';
 import { DRONE } from './dronepad';
+import { AIRMAST, AIRSHIP } from './airmast';
 import { tl, TL } from '../i18n';
 
 /** How far out a field may go (from the village's middle), its half size, the levelled radius and the blend back, the most the ground may be cut or filled. */
@@ -31,7 +32,7 @@ export const FIELD = { reach: 500, half: 6, flat: 9, blend: 14, maxCut: 3.5, sof
 /** Where a farm's field stands (world; x as placed) and the height its ground is levelled to. */
 export interface FieldSpot { x: number; z: number; y: number }
 
-interface Zone { x0: number; z0: number; x1: number; z1: number; why: string; k?: 'village' | 'warehouse' | 'pad' }
+interface Zone { x0: number; z0: number; x1: number; z1: number; why: string; k?: 'village' | 'warehouse' | 'pad' | 'mast' }
 /** The ground kept for other things round a village (world rects). */
 export function reservedZones(world: number, poi: Poi, seed: number, s: TownState | undefined): Zone[] {
   const ox = poi.x + VILLAGE_OFFSET.x, oz = poi.z + VILLAGE_OFFSET.z, out: Zone[] = [];
@@ -52,6 +53,7 @@ export function reservedZones(world: number, poi: Poi, seed: number, s: TownStat
   if (poi.id === GRIDHOLM_ID) { const xs = [YARD.dealer.x, ...YARD.bays.map((b) => b.x)], zs = [YARD.dealer.z, ...YARD.bays.map((b) => b.z)]; rect(Math.min(...xs) - 6, Math.min(...zs) - 6, Math.max(...xs) + 6, Math.max(...zs) + 6, tl('That ground is the vehicle yard')); }
   for (let i = 0; i < farmsOf(s); i++) if (!s?.fplots?.[i]) { const p = farmPlot(seed, i); rect(p.x0, p.z0, p.x1, p.z1, tl('Another farm stands there')); } // the old corner fields
   if (s?.dpspot) { const r = PAD_HALF + 2, px = poi.x + wrapDx(s.dpspot.x - poi.x); out.push({ x0: px - r, z0: s.dpspot.z - r, x1: px + r, z1: s.dpspot.z + r, why: tl('The drone pad stands there'), k: 'pad' }); } // (0.255)
+  if (s?.amspot) for (const [x, z, r] of mastLine(s.amspot)) { const px = poi.x + wrapDx(x - poi.x); out.push({ x0: px - r, z0: z - r, x1: px + r, z1: z + r, why: tl('The mooring mast and the ground under its airship are there'), k: 'mast' }); } // (0.257)
   return out;
 }
 const rectGap = (z: { x0: number; z0: number; x1: number; z1: number }, x: number, zz: number) => Math.hypot(Math.max(z.x0 - x, 0, x - z.x1), Math.max(z.z0 - zz, 0, zz - z.z1));
@@ -66,6 +68,14 @@ export function fieldPad(t: Pick<Terrain, 'heightAt'>, x: number, z: number): nu
 export const PAD_HALF = 6;
 /** (0.255) A staked drone pad as a claim that levels nothing (`soft` 1 keeps the ground), only keeping trees, rocks and plants off it. */
 export const padClaim = (p: { x: number; z: number }): Claim => ({ x: p.x, z: p.z, y: 0, flat: PAD_HALF, blend: 2, soft: 1 });
+/** (0.257) A staked mooring mast's ground: circles [x, z, r] at its foot and along the way its moored airship lies. */
+export function mastLine(m: { x: number; z: number; a: number }): [number, number, number][] {
+  const ox = Math.cos(m.a), oz = Math.sin(m.a), out: [number, number, number][] = [[m.x, m.z, 4]];
+  for (let d = 8; d <= AIRSHIP.len + 2; d += 10) out.push([m.x + ox * d, m.z + oz * d, AIRMAST.clear + 1]);
+  return out;
+}
+/** (0.257) The mast's ground as claims that level nothing, keeping trees, rocks and plants off it and off the ground under its airship. */
+export const mastClaims = (m: { x: number; z: number; a: number }): Claim[] => mastLine(m).map(([x, z, r]) => ({ x, z, y: 0, flat: r, blend: 2, soft: 1 }));
 /** The field as a terrain claim (gen/claims.ts): levelled within `flat`, blended back over `blend`. */
 export const fieldClaim = (f: FieldSpot): Claim => ({ x: f.x, z: f.z, y: f.y, flat: FIELD.flat, blend: FIELD.blend, soft: FIELD.soft });
 /** Every placed field of every village (the terrain levels them all, on every player's game alike). */
@@ -74,6 +84,7 @@ export function fieldClaims(towns: Record<string, TownState | undefined>): Claim
   for (const s of Object.values(towns)) {
     for (const f of Object.values(s?.fplots ?? {})) if (f) out.push(fieldClaim(f));
     if (s?.dpspot) out.push(padClaim(s.dpspot)); // (0.255)
+    if (s?.amspot) out.push(...mastClaims(s.amspot)); // (0.257)
   }
   return out;
 }
@@ -173,5 +184,42 @@ export function padProblem(t: Terrain, poi: Poi, seed: number, s: TownState | un
     const h = t.heightAt(x + u, z + v); lo = Math.min(lo, h); hi = Math.max(hi, h);
   }
   if (hi - lo > 2) return tl('Too steep: the pad wants level ground.');
+  return '';
+}
+
+/**
+ * (0.257, PLAN_LOTNICTWA.md F3) What is wrong with a village's mooring mast at (x, z) whose moored airship lies the way
+ * `a` (world; '' = fine): within `AIRMAST.near` of the warehouse at `hall`, its foot and the ground under the airship
+ * outside the ground kept for other things, off fields and bases, places, the old stones; the foot off roads and water
+ * and on level ground; the ground under the airship no higher than `AIRMAST.rise` over the foot (the gondola hangs low).
+ */
+export function mastProblem(t: Terrain, poi: Poi, seed: number, s: TownState | undefined, x: number, z: number, a: number, claims: Claim[], hall: { x: number; z: number }): string {
+  if (worldDist(hall.x, hall.z, x, z) > AIRMAST.near) return TL`Too far from the warehouse: the mast goes within ${AIRMAST.near} m of it.`;
+  const line = mastLine({ x, z, a }), zones = reservedZones(t.world, poi, seed, s).filter((zn) => zn.k !== 'mast');
+  for (const [px, pz, r] of line) {
+    const cx = poi.x + wrapDx(px - poi.x), box = { x0: cx - r, z0: pz - r, x1: cx + r, z1: pz + r };
+    for (const zn of zones) if (overlap(zn, box, 0)) return (px === x ? '' : tl('Under its airship: ')) + zn.why + '.';
+    for (const c of claims) if (claimDist(c, px, pz) < clearOf(c) + r) return tl('Too close to a field, a base or a pad.');
+    if (worldDist(hall.x, hall.z, px, pz) < 9) return tl('Too close to the warehouse: its airship would lie on the roof.');
+  }
+  for (const q of poisNear(t.world, x, z, 260)) {
+    const gap = rectGap(q.rect, wrapDx(x - q.x) + q.x, z);
+    if (q.type !== 'village' && gap < AIRSHIP.len + q.flat + q.blend + 6) return tl('Too close to ') + q.name + '.';
+    if (q.type === 'village' && q.id !== poi.id && gap < 120) return tl('That is the land of ') + q.name + '.';
+  }
+  const f = t.featuresIn({ x0: x - 50, z0: z - 50, x1: x + 50, z1: z + 50 });
+  for (const road of f.roads) if (nearestOnRoad(road, x, z)[0] < road.half + 5) return road.h ? tl('A trail runs there.') : tl('A road runs there: put the mast beside it.');
+  if (f.megaliths.length || f.gates.length) return tl('The old stones there are not to be built over.');
+  let lo = Infinity, hi = -Infinity;
+  for (let u = -3; u <= 3; u += 1.5) for (let v = -3; v <= 3; v += 1.5) {
+    if (t.water(x + u, z + v)) return tl('There is water there.');
+    const h = t.heightAt(x + u, z + v); lo = Math.min(lo, h); hi = Math.max(hi, h);
+  }
+  if (hi - lo > 2) return tl('Too steep for the mast\'s foot.');
+  const ox = Math.cos(a), oz = Math.sin(a), px = -oz, pz = ox;
+  for (let d = 3; d <= AIRSHIP.len + 1; d += 3) for (const w of [-AIRMAST.clear, 0, AIRMAST.clear]) {
+    const qx = x + ox * d + px * w, qz = z + oz * d + pz * w;
+    if (t.heightAt(qx, qz) > lo + AIRMAST.rise) return tl('The ground rises under where its airship would lie: turn it the other way or find flatter ground.');
+  }
   return '';
 }
