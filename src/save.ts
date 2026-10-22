@@ -4,6 +4,7 @@ import { newWorldSeed } from './gen/worldrules';
 import type { OutpostState } from './gen/outposts';
 import type { RivalSeat } from './gen/rivals';
 import { planksForLogs } from './gen/wood';
+import { dropEmpty } from './data/cargo';
 import { fixInstall, type InstallKind, type InstallState } from './gen/installs';
 import { fixPlant } from './gen/plants';
 import { retireOldCrossings, type BridgeState, type Ford } from './gen/bridges';
@@ -254,6 +255,7 @@ export function loadChar(storage: Pick<Storage, 'getItem'> & Partial<Pick<Storag
       retireOldCrossings(c);
       planksForLogs(c); // (0.165) logs handed over to builds count on as planks
       trunksOut(c); // (0.248) the trunks are shared containers now
+      dropEmpty(c.hands); for (const b of Object.values(c.containers ?? {})) dropEmpty(b?.bays); // (0.251) one crate and one barrel; empty ones are gone
       return c;
     }
     const v2 = storage?.getItem(V2_KEY);

@@ -31,6 +31,8 @@ import { settlementReward, stationSweep } from '../ui/settlement';
 import { saveChar, calcStats } from '../character';
 import { showToast, logLine } from '../ui/hud';
 import { tl, TL } from '../i18n';
+import { RADIO } from '../gen/radiomast';
+import { villageHall } from '../gen/warehouses';
 
 const STAKE = 0xffd060, WOOD = 0xb8b060, PLANK = 0xd8c890, WORKER = 0xdce8ff;
 /** What a job builds, for the sign and the news. */
@@ -45,6 +47,7 @@ export function jobName(s: TownState | undefined, j: Job): string {
     case 'improve': return IMPROVE[a as ImproveKind]?.name.toLowerCase() ?? 'improvement';
     case 'plantup': return TL`power plant, ${PLANT_LEVELS[+a]?.name.toLowerCase() ?? tl('upgrade')}`;
     case 'plant': return s?.pbuild ? specOf(s.pbuild.k).name : 'works';
+    case 'radio': return RADIO.name.toLowerCase();
     case 'project': return a === 'comms' && isStationVillage(s) ? STATION_STAGES[Math.min(stationStage(s), STATION_STAGES.length - 1)].title.toLowerCase() : PROJECTS[a as Project]?.name.toLowerCase() ?? 'project';
   }
 }
@@ -67,6 +70,7 @@ function spotOf(vid: number, s: TownState, j: Job): { x: number; z: number; w: n
     case 'wall': return gate();
     case 'work': { if (a === 'turret') { const m = vm.mounts[worksOf(s, 'turret')] ?? vm.mounts[0]; return m ? { x: m.x - m.fx * 3, z: m.z - m.fz * 3, w: 4, d: 4 } : gate(); } return P(a === 'siteGuard' ? industrySite(seed, ind) : powerSite(seed), 9, 9); }
     case 'refinery': return P(industrySite(seed, ind), 14, 12);
+    case 'radio': { const h = villageHall(v, s); return h ? { x: nearX(h[0], vm.ox), z: h[1], w: 4, d: 4 } : null; } // (0.251) on the warehouse's roof
     case 'improve': return a === 'automation' ? P(industrySite(seed, ind)) : a === 'sights' || a === 'armour' ? gate() : P(powerSite(seed), 8, 6);
     case 'plantup': return P(powerSite(seed), 8, 6);
     case 'plant': { const k = s.pbuild?.k; if (!k) return null; const p = isStation(k) ? stationSite(seed, ind, s.stations?.length ?? 0) : plantSite(seed, ind, s.plants?.length ?? 0); return P(p, 14, 12); }

@@ -3,6 +3,10 @@
 import type { ItemKey } from './items';
 import { craft, count, type Recipe } from './crafting';
 import type { Slot } from '../save';
+import { roundsInUse } from './weapons';
+import { isCargo } from './cargo';
+/** Whether an order is open: (0.193) not rounds while one kind serves, (0.251) not crates or barrels (they come on their own). */
+export const orderOpen = (k: ItemKey) => roundsInUse(k) && !isCargo(k);
 
 /** An order: the technology it needs ('' = none, a basic), what comes out, and what you hand over. */
 export interface Order { tech: string; out: ItemKey; n: number; needs: [ItemKey, number][] }

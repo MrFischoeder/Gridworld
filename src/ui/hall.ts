@@ -13,13 +13,14 @@ import { calcStats, saveChar } from '../character';
 import { findPoi, villageSeed } from '../gen/regions';
 import { hallSpec, hallVol, OWN, holdVol, holdRoom, deposit, withdraw, stockOf, refineStock, sawStock, smeltStock, settleConvoys } from '../gen/hall';
 import { hallRect, floorPickups, refreshHall } from '../world/hall';
-import { stores, takeFrom, putAway } from './market';
+import { stores, takeFrom, putAway, crates } from './market';
 import { $, logLine } from './hud';
 import { lockPointer } from './input';
 import { itemName } from './icons';
 import { tl, TL } from '../i18n';
 import { serviceWhy } from './villagestats';
 import { racksHTML, rackClick } from './racks';
+import { villageRadioHTML, villageRadioClick } from './radio';
 import { hubs, villageHub, villageHubName, feeders, waitingAt, drainVillage, cleanHubName } from '../gen/warehouses';
 import { lodeById } from '../gen/lodes';
 
@@ -34,6 +35,7 @@ const personal = () => { const ks = new Set<ItemKey>(); for (const x of G.char.i
 function withYou(): Map<ItemKey, { carried: number; floor: number }> {
   const m = new Map<ItemKey, { carried: number; floor: number }>(), get = (k: ItemKey) => { let e = m.get(k); if (!e) m.set(k, e = { carried: 0, floor: 0 }); return e; };
   for (const s of stores(at())) for (const x of s.slots) if (x && storable(x.k)) get(x.k).carried += x.n;
+  for (const L of crates(at())) for (const x of L) if (x?.b && storable(x.b.k)) get(x.b.k).carried += x.b.n; // (0.251) the crate in your hands, the cargo bays
   if (elderHead === null) for (const p of floorPickups(vid!)) if (storable(p.k)) get(p.k).floor++;
   return m;
 }
@@ -48,7 +50,7 @@ function render(msg = '') {
   const mine = [...withYou()].sort((a, b) => ITEMS[a[0]].name.localeCompare(ITEMS[b[0]].name));
   const elder = elderHead !== null, big = hallSpec(st).h >= 6, other = personal();
   let s = (elder ? elderHead + TL`<div class="role">The village's stores, kept by the elder · ${Math.round(holdVol(st))} / ${hallSpec(st).vol} L</div>`
-    : TL`<h2>${poi.name} · ${big ? tl('Warehouse') : tl('Village Hall')}</h2><div class="role">The village's stock · hold ${Math.round(holdVol(st))} / ${Math.round(hallVol(st))} L</div>` + networkHTML(vid, poi.name)) +
+    : TL`<h2>${poi.name} · ${big ? tl('Warehouse') : tl('Village Hall')}</h2><div class="role">The village's stock · hold ${Math.round(holdVol(st))} / ${Math.round(hallVol(st))} L</div>` + networkHTML(vid, poi.name) + (big ? villageRadioHTML(vid) : '')) +
     TL`<div class="say">${msg ? msg + '<br><br>' : ''}${elder ? tl('Until we raise a warehouse, bring what the village needs to me: I keep it in my house and the outbuildings. ') : ''}Whatever is stored here belongs to the village: its builds will draw on it. You can take it back out whenever you like.` +
     TL`<br><span style="opacity:.75">Only materials are kept here: wood, stone, ore and metals, parts, crates of goods and what the works make of them. Weapons, ammunition, medkits, food, tools and clothes are yours to keep: leave them in a chest in your own house.${other.length ? TL` (Not taken: ${other.slice(0, 6).map((k) => ITEMS[k].name).join(', ')}${other.length > 6 ? '…' : ''}.)` : ''}</span></div>`;
   s += TL`<div class="say" style="margin:8px 0 0">In the hold</div>` + (hold.length ? hold.sort((a, b) => ITEMS[a[0]].name.localeCompare(ITEMS[b[0]].name)).map(([k, n]) =>
@@ -112,6 +114,7 @@ export function hallClick(t: HTMLElement): boolean {
     if (n) st.whn = n; else delete st.whn;
     saveChar(); render(n ? TL`It is called ${n} now.` : tl('It goes by the village\'s name again.')); return true;
   }
+  if (t.closest('[data-hradio]')) { const m = villageRadioClick(vid); calcStats(); saveChar(); render(m); return true; } // (0.251) the radio mast
   const rk = t.closest<HTMLElement>('[data-hrack]');
   if (rk) { // (0.250) the racks
     const st = (G.char.towns[vid] ??= {}), m = rackClick((st.racks ??= {}), rk.dataset.hrack!, (k, n) => deposit(st, k, n), holdVol(st), hallVol(st));

@@ -11,13 +11,13 @@ import type { Lode } from '../src/gen/lodes';
 
 describe('racks (0.250)', () => {
   it('an empty crate or barrel on the racks adds 2.5 times its size, up to the most', () => {
-    expect(rackGain('crateW')).toBe(150);
+    expect(rackGain('crateW')).toBe(250);
     expect(rackGain('barrelM')).toBe(250);
     const r: Racks = {};
     expect(rackProblem(r, 'crateW', true)).toBe('loaded');
     expect(rackProblem(r, 'stone', false)).toBe('not');
     putRack(r, 'crateW'); putRack(r, 'barrelM');
-    expect(rackVol(r)).toBe(400);
+    expect(rackVol(r)).toBe(500);
     for (let i = rackCount(r); i < RACK.max; i++) putRack(r, 'crateW');
     expect(rackProblem(r, 'crateW', false)).toBe('full');
   });
@@ -30,7 +30,7 @@ describe('racks (0.250)', () => {
     expect(takeRack(r, 'crateM', 5000, 6250)).toBe(true);
     expect(r).toEqual({});
     const o = { done: { port: true }, racks: { barrelW: 4 } } as unknown as OutpostState;
-    expect(portCap(o)).toBe(PORT.vol + 600);
+    expect(portCap(o)).toBe(PORT.vol + 1000);
     expect(portRoom(o, 'stone')).toBeGreaterThan(0);
   });
 });

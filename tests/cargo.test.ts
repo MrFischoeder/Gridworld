@@ -9,13 +9,13 @@ import { GARAGE } from '../src/data/garage';
 import type { Slot } from '../src/save';
 
 describe('crates and barrels (0.247)', () => {
-  it('a steel one holds more than a wooden one, both carried in the hands', () => {
-    expect(CARGO.crateM!.cap).toBeGreaterThan(CARGO.crateW!.cap);
-    expect(CARGO.barrelM!.cap).toBeGreaterThan(CARGO.barrelW!.cap);
+  it('(0.251) one crate and one barrel, both carried in the hands', () => {
+    expect(CARGO.crateM!.cap).toBe(CARGO.crateW!.cap);
+    expect(CARGO.barrelM!.cap).toBe(CARGO.barrelW!.cap);
     for (const k of ['crateW', 'crateM', 'barrelW', 'barrelM'] as const) { expect(HANDS_ONLY.has(k)).toBe(true); expect(isCargo(k)).toBe(true); }
-    expect(boxCap('crateW', 'planks')).toBe(40);
+    expect(boxCap('crateW', 'planks')).toBe(66);
     expect(boxCap('crateM', 'planks')).toBe(66);
-    expect(boxCap('barrelW', 'fuel')).toBe(3);
+    expect(boxCap('barrelW', 'fuel')).toBe(5);
     expect(boxCap('barrelM', 'fuel')).toBe(5);
   });
   it('a crate takes building stuff, a barrel liquids, neither the other', () => {
@@ -28,19 +28,19 @@ describe('crates and barrels (0.247)', () => {
     expect(holds('crateW', 'wheelL')).toBe(false);
   });
   it('packs one kind at a time, up to the brim, and empties again', () => {
-    const crate: Slot = { k: 'crateW', n: 1 }, from: (Slot | null)[] = [{ k: 'planks', n: 20 }, { k: 'planks', n: 20 }, { k: 'planks', n: 20 }, { k: 'stone', n: 5 }];
-    expect(packFrom(crate, from, 0)).toBe(20);
+    const crate: Slot = { k: 'crateW', n: 1 }, from: (Slot | null)[] = [{ k: 'planks', n: 30 }, { k: 'planks', n: 30 }, { k: 'planks', n: 30 }, { k: 'stone', n: 5 }];
+    expect(packFrom(crate, from, 0)).toBe(30);
     expect(from[0]).toBe(null);
-    expect(packFrom(crate, from, 1)).toBe(20);
-    expect(packFrom(crate, from, 2)).toBe(0); // full
+    expect(packFrom(crate, from, 1)).toBe(30);
+    expect(packFrom(crate, from, 2)).toBe(6); // up to the brim
     expect(packFrom(crate, from, 3)).toBe(0); // planks inside, not stone
-    expect(crate.b).toEqual({ k: 'planks', n: 40 });
+    expect(crate.b).toEqual({ k: 'planks', n: 66 });
     expect(boxRoom(crate, 'planks')).toBe(0);
-    expect(slotKg(crate)).toBeCloseTo(BULK.crateW[0] + 40 * BULK.planks[0]);
+    expect(slotKg(crate)).toBeCloseTo(BULK.crateW[0] + 66 * BULK.planks[0]);
     expect(weightOf([crate])).toBeCloseTo(slotKg(crate));
-    expect(takeOut(crate, 15)).toBe(15);
-    expect(crate.b!.n).toBe(25);
-    expect(takeOut(crate)).toBe(25);
+    expect(takeOut(crate, 16)).toBe(16);
+    expect(crate.b!.n).toBe(50);
+    expect(takeOut(crate)).toBe(50);
     expect(crate.b).toBeUndefined();
   });
   it('a filled crate never stacks and keeps its load wherever it is put', () => {

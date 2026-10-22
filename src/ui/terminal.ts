@@ -42,6 +42,8 @@ import { lockPointer } from './input';
 import { hubs, hubWorks, feeders, hubsNear, villageHub, type Hub } from '../gen/warehouses';
 import { lodeById } from '../gen/lodes';
 import { tl, TL } from '../i18n';
+import { mastWhy, linkedHubs, hubStock } from '../gen/radio';
+import { stockLine } from './radio';
 
 const dlgEl = $('dlg'), panel = () => dlgEl.querySelector('.panel') as HTMLElement;
 type Page = 'village' | 'power' | 'trade' | 'villages' | 'stores' | 'archive' | 'chariot';
@@ -190,11 +192,14 @@ function storesPage(poi: Poi): string {
   const c = G.char, KIND: Record<Hub['kind'], string> = { village: tl('village'), port: tl('port'), wild: tl('in the wilds') };
   const known = (h: Hub) => h.kind !== 'village' || progressive(c.towns[h.vid!]) || h.vid === poi.id || isDiscovered(c.discovered, Math.floor(h.x / CHUNK), Math.floor(h.z / CHUNK)) || !!c.ledger[h.vid!];
   const list = hubsNear(hubs(c.world, c.towns, c.outposts).filter(known), poi.x, poi.z);
-  let s = h(TL`WAREHOUSE NETWORK · ${list.length}`) + TL`<div class="tdim">Each warehouse serves its hex, an area about a kilometre across: what the deposits there dig comes to it on its own. One warehouse to a hex. Stocks cannot be read from here until the warehouses are linked by radio.</div>`;
+  const mine = villageHub(poi.id), me = hubs(c.world, c.towns, c.outposts).find((q) => q.id === mine), why = me ? mastWhy(c.world, me, c.towns, c.outposts, c.time) : 'none';
+  const heard = new Set(why ? [] : [mine, ...linkedHubs(c.world, c.towns, c.outposts, mine, c.time).map((q) => q.id)]); // (0.251, stage M3) the radio
+  let s = h(TL`WAREHOUSE NETWORK · ${list.length}`) + TL`<div class="tdim">Each warehouse serves its hex, an area about a kilometre across: what the deposits there dig comes to it on its own. One warehouse to a hex.</div>` +
+    `<div class="tdim">${!why ? TL`The radio is on: the stocks of ${heard.size - 1} linked warehouses can be read here.` : why === 'none' ? tl('Stocks cannot be read from here: the village warehouse has no radio mast (build one at its terminal).') : tl('The radio is silent: the warehouse stands idle, or the mast has no operator or no power.')}</div>`;
   for (const { h: w, d } of list.slice(0, 30)) {
     const from = feeders(w, c.outposts, (q) => lodeById(c.world, q)), on = hubWorks(c.world, w, c.towns, c.outposts, c.time);
     s += `<div class="tline"><b>${w.name}</b>${w.id === villageHub(poi.id) ? tl(' (this one)') : ''} <span class="tdim">${KIND[w.kind]} · ${fmtDist(d)} ${point8(bearingTo(w.x, w.z))} · ${tl('area')} ${w.hex}</span><br>` +
-      `<span class="tdim">${on ? tl('working') : tl('standing idle (no storekeepers or no power)')}${from.length ? TL` · serves ${from.map(([, n]) => n).join(', ')}` : ''} · ${tl('stock: no link')}</span></div>`;
+      `<span class="tdim">${on ? tl('working') : tl('standing idle (no storekeepers or no power)')}${from.length ? TL` · serves ${from.map(([, n]) => n).join(', ')}` : ''} · ${heard.has(w.id) ? tl('stock') + ': ' + stockLine(hubStock(c.world, w, c.towns, c.outposts, c.time)) : tl('stock: no link')}</span></div>`;
   }
   return s;
 }

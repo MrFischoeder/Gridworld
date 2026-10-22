@@ -29,7 +29,7 @@ Na podstawie opisu właściciela z 22.10.2026. Etapy po kolei, każdy jako osobn
 - **M2 (0.250): tragarze i więcej miejsca.**
   - Widoczni tragarze: rolnik z workami zboża z pól do magazynu, ludzie ze skrzyniami urobku z kopalni, toczone beczki ropy.
   - Magazyn przechowuje więcej, gdy dostanie skrzynie i beczki (data/cargo.ts) na regały: każda podnosi pojemność.
-- **M3: łączność między magazynami.**
+- **M3 (0.251): łączność między magazynami.** Przy okazji (decyzja właściciela): skrzynie i beczki nie są budowane, pojawiają się same, gdy w kieszeniach jest za dużo materiału (np. 11 kamieni), i znikają po opróżnieniu; jedna skrzynia i jedna beczka. Później: większe skrzynie z materiałów.
   - Ulepszenie: maszt radiowy przy magazynie.
   - Magazyny połączone radiem pokazują w komputerze swoje stany.
 - **M4: konwoje między magazynami.**

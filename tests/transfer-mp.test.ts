@@ -16,7 +16,7 @@ vi.mock('../src/ui/hud', () => ({
     return state.elements.get(id);
   }, showToast: state.toast,
 }));
-vi.mock('../src/character', () => ({ calcStats: vi.fn(), saveChar: vi.fn(), stowHeld: vi.fn(), handsChanged: vi.fn(), packVol: () => 1000 }));
+vi.mock('../src/character', () => ({ calcStats: vi.fn(), saveChar: vi.fn(), stowHeld: vi.fn(), handsChanged: vi.fn(), packVol: () => 1000, settleCrates: vi.fn() }));
 vi.mock('../src/ui/input', () => ({ lockPointer: vi.fn() }));
 vi.mock('../src/world/sound', () => ({ play: vi.fn() }));
 // the container opens beside the backpack (ui/backpack.ts)

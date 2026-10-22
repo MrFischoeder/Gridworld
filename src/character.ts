@@ -8,6 +8,7 @@ import { showToast, logLine } from './ui/hud';
 import { BLASTER, gunStats, gunOf, meleeOf } from './data/weapons';
 import { proxied } from './world/remote';
 import { tl, TL } from './i18n';
+import { isCargo, autoBox, boxOf, boxRoom, boxCap, pocketOf, dropEmpty, takeOut } from './data/cargo';
 import { toggleId } from './gen/journal';
 
 export const saveChar = () => persist(G.char);
@@ -129,11 +130,18 @@ export function addItem(k: ItemKey, n = 1, quiet = false): 'mod' | 'inv' | 'hand
     c.hands[0] = { k, n: 1 }; handsChanged(); return 'hands';
   }
   if (WEAPON_KIND[k] !== undefined && n === 1) { const f = c.back.indexOf(null); if (f >= 0) { c.back[f] = { k, n: 1 }; return 'back'; } }
+  if (autoBox(k) && packRoom(k) < n) { // (0.251) no room loose: into the crate you hold, or a new one in your hands
+    const h = handBox();
+    if (h?.b?.k === k && boxRoom(h, k) >= n) { h.b.n += n; handsChanged(); return 'hands'; }
+    if (h || n > boxCap(autoBox(k)!, k) || (c.hands[0] && stowHeld())) return null;
+    c.hands[0] = boxOf(k, n); handsChanged(); return 'hands';
+  }
   if (packRoom(k) < n) return null;
   // all of it or nothing, spread over stacks as they allow (a box of 40 rounds may fill one stack and start the next)
   const copy = c.inv.map((s) => (s ? { ...s } : null));
   if (putItems(copy, k, n, packVol()) > 0) return null;
   copy.forEach((s, i) => { c.inv[i] = s; });
+  if (autoBox(k)) settleCrates();
   void it; return 'inv';
 }
 
@@ -146,9 +154,63 @@ export function takeOne(k: ItemKey): boolean {
     if (L !== c.inv) handsChanged();
     saveChar(); return true;
   }
+  const h = handBox(); // (0.251) from the crate you hold
+  if (h?.b?.k === k) { takeOut(h, 1); settleCrates(); saveChar(); return true; }
   return false;
 }
-export const hasItem = (k: ItemKey) => G.char.inv.some((x) => x && x.k === k) || G.char.hands[0]?.k === k || G.char.off?.[0]?.k === k;
+export const hasItem = (k: ItemKey) => G.char.inv.some((x) => x && x.k === k) || G.char.hands[0]?.k === k || G.char.off?.[0]?.k === k || handBox()?.b?.k === k;
+
+// ---------- (0.251) crates that come and go (data/cargo.ts) ----------
+/** The crate or barrel in your hands, if you hold one. */
+export const handBox = () => { const h = G.char.hands[0]; return h && isCargo(h.k) ? h : null; };
+/** How many of k you have on you: loose in the backpack, in your hands and in the crate you hold. */
+export const countHeld = (k: ItemKey) => G.char.inv.reduce((a, s) => a + (s?.k === k ? s.n : 0), 0) + (G.char.hands[0]?.k === k ? G.char.hands[0].n : 0) + (handBox()?.b?.k === k ? handBox()!.b!.n : 0);
+/** Puts up to n of k into the crate you hold (or a new one in your hands, if they are free or what they hold can be
+ *  stowed). Returns how many went in. */
+export function intoHandBox(k: ItemKey, n: number): number {
+  const c = G.char, box = autoBox(k);
+  if (!box || n <= 0) return 0;
+  let h = handBox();
+  if (!h) { if (c.hands[0] && stowHeld()) return 0; c.hands[0] = h = { k: box, n: 1 }; }
+  if (h.k !== box && !(h.b?.k === k)) return 0;
+  const m = Math.min(n, boxRoom(h, k));
+  if (m > 0) h.b = { k, n: (h.b?.n ?? 0) + m };
+  dropEmpty(c.hands); handsChanged();
+  return m;
+}
+let overflow: (s: Slot) => void = () => {};
+/** Where a crate goes when your hands hold another one (world/drops.ts: put down at your feet). */
+export const onCrateOverflow = (f: (s: Slot) => void) => { overflow = f; };
+const looseOf = (k: ItemKey) => G.char.inv.reduce((a, s) => a + (s && s.k === k && s.c === undefined && !s.b ? s.n : 0), 0);
+function takeLoose(k: ItemKey, n: number) {
+  const inv = G.char.inv;
+  for (let i = inv.length - 1; i >= 0 && n > 0; i--) { const s = inv[i]; if (s?.k === k && s.c === undefined) { const m = Math.min(n, s.n); s.n -= m; n -= m; if (s.n <= 0) inv[i] = null; } }
+}
+/**
+ * The pockets' rule: a heap of a material bigger than your pockets hold (`pocketOf`) is a crate (a liquid a barrel) you
+ * carry in your hands; what you hold goes onto your back or into the backpack, and when your hands already hold
+ * another crate the new one is set down at your feet. A crate with no more in it than the pockets hold goes back into
+ * them, an empty one is gone. Returns whether anything changed.
+ */
+export function settleCrates(): boolean {
+  const c = G.char;
+  let ch = dropEmpty(c.hands), h = handBox();
+  if (h?.b && h.b.n + looseOf(h.b.k) <= pocketOf(h.b.k) && roomFor(c.inv, h.b.k, packVol()) >= h.b.n) { // little left: back into the pockets
+    putItems(c.inv, h.b.k, h.b.n, packVol()); c.hands[0] = null; h = null; ch = true;
+  }
+  if (h?.b) { const k = h.b.k, m = Math.min(looseOf(k), boxRoom(h, k)); if (m) { takeLoose(k, m); h.b.n += m; ch = true; } } // into the crate you hold
+  for (let guard = 0; guard < 8; guard++) { // a heap over the pockets: a crate
+    const s0 = c.inv.find((s) => s && s.c === undefined && autoBox(s.k) && looseOf(s.k) > pocketOf(s.k));
+    if (!s0) break;
+    const k = s0.k, n = Math.min(looseOf(k), boxCap(autoBox(k)!, k));
+    takeLoose(k, n);
+    const box = boxOf(k, n)!;
+    if (!handBox() && (!c.hands[0] || !stowHeld())) c.hands[0] = box; else overflow(box);
+    ch = true;
+  }
+  if (ch) handsChanged();
+  return ch;
+}
 
 export const xpNeed = (lvl: number) => 40 + 30 * (lvl - 1);
 export function gainXp(n: number) {

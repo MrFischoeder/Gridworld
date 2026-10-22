@@ -6,7 +6,8 @@ import { G } from '../game';
 import { ITEMS, type ItemKey } from '../data/items';
 import { count } from '../data/crafting';
 import { putItems } from '../inventory';
-import { calcStats, saveChar, packVol } from '../character';
+import { calcStats, saveChar, packVol, settleCrates, intoHandBox } from '../character';
+import { isCargo, takeOut, dropEmpty, autoBox } from '../data/cargo';
 import { GOODS, quote, trade, tidyMarket, profileFor, type Good } from '../gen/market';
 import { allVillages, findPoi, villageSeed, worldDist, type Poi } from '../gen/regions';
 import { loadedVillage } from '../world/overworld';
@@ -54,15 +55,28 @@ export function stores(at: { x: number; z: number } | null = here?.poi ?? null):
   if (at) for (const v of vehicles) { const t = trunkHere(v); if (t && worldDist(v.st.x, v.st.z, at.x, at.z) < TRUNK_REACH) out.push({ name: 'trunk', slots: t.items }); }
   return out;
 }
-/** Crates of g you have with you at `at` (backpack and trunks parked there). */
-export const carried = (g: ItemKey, at: { x: number; z: number } | null = here?.poi ?? null) => stores(at).reduce((a, s) => a + count(s.slots, g), 0);
+/** (0.251) The crates and barrels you have with you at `at`: the one in your hands and those in the cargo bays of your
+ *  vehicles parked there (each a list and its index, so what is taken out of them can be written back). */
+export function crates(at: { x: number; z: number } | null = here?.poi ?? null): (Slot | null)[][] {
+  const out: (Slot | null)[][] = [];
+  if (G.char.hands[0] && isCargo(G.char.hands[0].k)) out.push(G.char.hands);
+  if (at) for (const v of vehicles) { const t = trunkHere(v); if (t?.bays && worldDist(v.st.x, v.st.z, at.x, at.z) < TRUNK_REACH) out.push(t.bays); }
+  return out;
+}
+const inCrates = (g: ItemKey, at: { x: number; z: number } | null) => crates(at).reduce((a, L) => a + L.reduce((b, x) => b + (x && isCargo(x.k) && x.b?.k === g ? x.b.n : 0), 0), 0);
+/** Crates of g you have with you at `at` (backpack and trunks parked there; since 0.251 also in the crate you hold and the cargo bays). */
+export const carried = (g: ItemKey, at: { x: number; z: number } | null = here?.poi ?? null) => stores(at).reduce((a, s) => a + count(s.slots, g), 0) + inCrates(g, at);
 export function takeFrom(g: ItemKey, n: number, at: { x: number; z: number } | null = here?.poi ?? null) {
   for (const s of stores(at)) for (let i = 0; i < s.slots.length && n > 0; i++) { const x = s.slots[i]; if (x?.k === g) { const m = Math.min(n, x.n); x.n -= m; n -= m; if (x.n <= 0) s.slots[i] = null; } }
+  if (n > 0) for (const L of crates(at)) { for (const x of L) if (n > 0 && x && isCargo(x.k) && x.b?.k === g) n -= takeOut(x, n); dropEmpty(L); } // (0.251) an emptied crate is gone
+  settleCrates();
 }
-/** Put n crates away; returns how many found no room. */
+/** Put n crates away; returns how many found no room. (0.251) A heap too big for your pockets goes into the crate in your hands. */
 export function putAway(g: ItemKey, n: number, at: { x: number; z: number } | null = here?.poi ?? null, trunksFirst = false): number {
   const list = stores(at);
   for (const s of trunksFirst ? [...list.slice(1), list[0]] : list) if (n > 0) n = putItems(s.slots, g as ItemKey, n, s.cap);
+  if (n > 0 && autoBox(g)) n -= intoHandBox(g, n);
+  settleCrates();
   return n;
 }
 

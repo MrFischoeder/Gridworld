@@ -5,12 +5,12 @@
 import type { TownState } from './town';
 import { TL } from '../i18n';
 
-export type JobKind = 'farm' | 'plough' | 'wall' | 'work' | 'refinery' | 'improve' | 'plantup' | 'plant' | 'project';
+export type JobKind = 'farm' | 'plough' | 'wall' | 'work' | 'refinery' | 'improve' | 'plantup' | 'plant' | 'project' | 'radio';
 /** A build under way: what (`k` and its sub-kind `a`), since when (game minutes) and for how many game hours. */
 export interface Job { k: JobKind; a?: string; t: number; h: number }
 
 /** How long each build takes, in game hours (a game hour is a real minute). */
-export const BUILD_HOURS: Record<JobKind, number> = { farm: 14, plough: 8, wall: 16, work: 8, refinery: 18, improve: 12, plantup: 10, plant: 16, project: 12 };
+export const BUILD_HOURS: Record<JobKind, number> = { farm: 14, plough: 8, wall: 16, work: 8, refinery: 18, improve: 12, plantup: 10, plant: 16, project: 12, radio: 6 };
 /** Sub-kinds that take longer or shorter than their kind. */
 const MORE: Record<string, number> = {
   'wall:2': 24, 'work:siteGuard': 6, 'work:plantGuard': 6,

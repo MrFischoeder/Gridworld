@@ -5,6 +5,7 @@
 // (0.249, PLAN_MAGAZYNOW.md stage M1) The warehouses built in the wilds are drawn the same way in their own frame
 // (`OutpostState.fr`), without the dock's crane, and take in what the carriers bring from their hex's deposits.
 import { rackDeco } from './hall';
+import { drawMast } from './radiomast';
 import * as THREE from 'three';
 import { scene } from './render';
 import { PropBatch } from './props';
@@ -85,6 +86,7 @@ function build(id: string, o: OutpostState, p: Frame): Live {
     for (const a of [-B - 6, -B + 6]) { pb.face(V(a, -8, eave), V(a, 8, eave), V(a, 0, ridge)); pb.line(WOOD, V(a, -8, eave), V(a, 0, ridge), V(a, 8, eave)); } // gables
     for (const sg of [-1, 1]) { pb.face(V(-B - 6.4, sg * 8.4, eave - 0.2), V(-B + 6.4, sg * 8.4, eave - 0.2), V(-B + 6.4, 0, ridge), V(-B - 6.4, 0, ridge)); pb.line(WOOD, V(-B - 6.4, sg * 8.4, eave - 0.2), V(-B + 6.4, sg * 8.4, eave - 0.2)); }
     pb.line(WOOD, V(-B - 6.4, 0, ridge), V(-B + 6.4, 0, ridge));
+    if (o.done?.radio) { const [mx, my, mz] = V(-B + 4, 0, ridge); drawMast(pb, mx, my, mz); } // (0.251, stage M3)
     for (let b = -6; b <= 6; b += 3) pb.seg(WOOD, V(-B - 5.9, b, yF + 0.1), V(-B - 5.9, b, yF + 3)); // racks along the back wall
     { // (0.250) the crates and barrels on the racks: drawn in the shed's own frame (a group turned like it)
       const rg = new PropBatch(); rackDeco(rg, o.racks, 8, -5.5, yF);

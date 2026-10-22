@@ -109,7 +109,7 @@ function put(c: Char, f: Field, k: string, v: unknown) {
 const townLook = (t: unknown) => {
   const s = (t ?? {}) as Record<string, unknown>;
   const settlement = s.settlement as { v?: number; done?: unknown; deposits?: unknown; stage?: number; wh?: unknown; whWait?: unknown } | undefined;
-  return JSON.stringify([s.homes, s.fplots, s.fwait, s.wall, s.works, s.farms, s.crops, s.fup, s.pup, s.imp, s.built, settlement?.v, settlement?.done, settlement?.deposits, settlement?.stage, settlement?.wh, settlement?.whWait, s.pbuild, (s.plants as { k: string }[] | undefined)?.map((p) => p.k), (s.stations as { k: string }[] | undefined)?.map((p) => p.k)]);
+  return JSON.stringify([s.mast, s.homes, s.fplots, s.fwait, s.wall, s.works, s.farms, s.crops, s.fup, s.pup, s.imp, s.built, settlement?.v, settlement?.done, settlement?.deposits, settlement?.stage, settlement?.wh, settlement?.whWait, s.pbuild, (s.plants as { k: string }[] | undefined)?.map((p) => p.k), (s.stations as { k: string }[] | undefined)?.map((p) => p.k)]);
 };
 function show(f: string, k: string, before: unknown, after: unknown) {
   if (G.char.loc === 'dungeon' && G.char.dungeon && k === dungeonKey()) {

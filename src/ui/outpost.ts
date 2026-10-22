@@ -35,6 +35,7 @@ import { addPartner, dropPartner } from '../gen/rivals';
 import { rivalsOn, myOwner, ownerName, seats } from '../world/rivals';
 import { commuteHTML, commuteClick } from './commute';
 import { tl, TL } from '../i18n';
+import { RADIO } from '../gen/radiomast';
 
 const dlgEl = $('dlg'), panel = () => dlgEl.querySelector('.panel') as HTMLElement;
 let lode: Lode | null = null;
@@ -44,7 +45,7 @@ const hrs = (m: number) => (m >= 60 ? TL`${Math.floor(m / 60)} h ${Math.round(m 
 
 /** (0.216) Also the port window's (ui/port.ts): `pos` is where the materials are counted (the backpack and trunks there). */
 export function partHTML(o: OutpostState, p: OutpostPart, pos = at()): string {
-  const tier = countOf(o, p), name = partName(o.k, p, o.pk, tier), text = p === 'dig' ? DIG[digOf(o.k)].text : p === 'power' ? (o.pk ? POWER_SRC[o.pk].text : '') : p === 'bunks' ? BUNKS.text : p === 'field' ? FIELD.text : p === 'wall' ? WALL[Math.min(WALL.length - 1, tier)].text : p === 'turret' ? TURRET.text : p === 'proc' ? procOf(o.k)?.text ?? '' : p === 'port' ? PORT.text : STORE.text;
+  const tier = countOf(o, p), name = partName(o.k, p, o.pk, tier), text = p === 'dig' ? DIG[digOf(o.k)].text : p === 'power' ? (o.pk ? POWER_SRC[o.pk].text : '') : p === 'bunks' ? BUNKS.text : p === 'field' ? FIELD.text : p === 'wall' ? WALL[Math.min(WALL.length - 1, tier)].text : p === 'turret' ? TURRET.text : p === 'proc' ? procOf(o.k)?.text ?? '' : p === 'port' ? PORT.text : p === 'radio' ? RADIO.text : STORE.text;
   if (p === 'power' && !o.done?.power && !o.job && !Object.values(o.given?.power ?? {}).some((n) => (n ?? 0) > 0)) { // pick (or change) the source while nothing is handed over
     const pick = POWER_KINDS.filter((k) => k !== o.pk).map((k) => { const q = POWER_SRC[k]; return TL`<button class="opt" data-op="pk:${k}">${o.pk ? tl('Build a ') : ''}${q.name}: ${q.kw} kW${k === 'wind' ? tl(' at full wind') : k === 'solar' ? tl(' in full sun') : ''}, reach ${q.r} m${q.fuel ? TL`, burns ${ITEMS[q.fuel].name} (1 every ${q.burn! / 60} h)` : ''}</button>`; }).join('');
     if (!o.pk) return (o.k === 'port' ? TL`<div class="say"><b>Power</b>: the port's crane stands still without power. A power source here powers every outpost and port within its reach, and sources whose reach meets form one grid.</div>` : TL`<div class="say"><b>Power</b>: an extraction works at half pace without power. A power source here powers every outpost within its reach, and sources whose reach meets form one grid.</div>`) + pick;

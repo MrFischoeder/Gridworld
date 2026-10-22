@@ -6,8 +6,8 @@ import { online, lockContainer, unlockContainer, saveContainer, activeContainers
 import { G } from '../game';
 import { item, HANDS_ONLY, WEAPON_KIND } from '../data/items';
 import { moveStack, dropStack, countFree, putItems } from '../inventory';
-import { isCargo, holds, packFrom, takeOut, CARGO } from '../data/cargo';
-import { stowHeld, packVol } from '../character';
+import { isCargo, holds, packFrom, takeOut, CARGO, autoBox, boxCap, boxOf, dropEmpty } from '../data/cargo';
+import { stowHeld, packVol, settleCrates } from '../character';
 import type { Container, Slot } from '../save';
 import { $, showToast } from './hud';
 import { slotHTML, parseId } from './slots';
@@ -46,7 +46,8 @@ function cargoMove(fw: string, i: number, tw: string, j: number): string | null 
   if (!s) return '';
   const name = item(s.k).name;
   if (tw === 'c' && !isCargo(s.k)) { // a stack dropped on a crate in a bay: into it
-    if (!dst || !isCargo(dst.k)) return tl('Only crates and barrels go in the cargo bay.');
+    if (!dst && autoBox(s.k)) { const m = Math.min(s.n, boxCap(autoBox(s.k)!, s.k)), box = boxOf(s.k, m)!; list('c')[j] = box; if ((s.n -= m) <= 0) src[i] = null; return TL`${name} ×${m} into a ${item(box.k).name.toLowerCase()} in the cargo bay.`; } // (0.251) a crate turns up for it
+    if (!dst || !isCargo(dst.k)) return tl('Only building stuff and liquids go in the cargo bay: they are packed in a crate or a barrel there.');
     if (!holds(dst.k, s.k)) return CARGO[dst.k]!.kind === 'barrel' ? tl('A barrel takes only liquids: fuel, lamp oil, milk.') : tl('A crate takes building stuff: planks, stone, logs, ore, scrap and the like.');
     if (dst.b && dst.b.k !== s.k) return TL`It already holds ${item(dst.b.k).name}: one kind of thing to a crate.`;
     const m = packFrom(dst, src, i);
@@ -55,7 +56,7 @@ function cargoMove(fw: string, i: number, tw: string, j: number): string | null 
   if (fw === 'c' && (tw === 'b' || tw === 'p')) { // a crate dragged onto the trunk or the backpack: emptied there
     if (!s.b) return tl('It is empty.');
     const k = s.b.k, left = putItems(list(tw), k, s.b.n, tw === 'p' ? packVol() : undefined), m = s.b.n - left;
-    takeOut(s, m);
+    takeOut(s, m); dropEmpty(src); // (0.251) emptied, it is gone
     return m ? TL`${item(k).name} ×${m} out of the ${name}${left ? TL` (${left} stay inside: no more room)` : ''}.` : tl('No room there.');
   }
   if (tw === 'c' || fw === 'c') { // between the bays and your hands, or bay to bay
@@ -107,7 +108,7 @@ const box: PackSide = {
     const [fw, i] = parseId(from), [tw, j] = parseId(to);
     if (!mine(fw) || !mine(tw)) return fw === 'b' || fw === 'c' ? tl('Put it in your backpack first.') : tl('Take it off into your backpack first.');
     const cm = cargoMove(fw, i, tw, j);
-    if (cm !== null) { save(); return cm; }
+    if (cm !== null) { dropEmpty(spec.bays); settleCrates(); save(); return cm; }
     const src = list(fw), s = src[i];
     if (!s) return '';
     const name = item(s.k).name, dst = list(tw)[j];

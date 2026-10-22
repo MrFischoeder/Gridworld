@@ -6,6 +6,7 @@ import { G } from '../game';
 import { ITEMS, type ItemKey } from '../data/items';
 import { CARGO, isCargo, takeOut } from '../data/cargo';
 import { RACK, rackCount, rackVol, rackGain, rackProblem, putRack, takeRack, type Racks } from '../gen/racks';
+import { settleCrates } from '../character';
 import { handsChanged } from '../character';
 import { itemName } from './icons';
 import { tl, TL } from '../i18n';
@@ -14,11 +15,14 @@ const btn = (attr: string, v: string, t: string) => `<button class="opt" style="
 /** The racks row; `attr` makes the buttons ('data-hrack', or 'data-port' with values prefixed 'rack:'). */
 export function racksHTML(r: Racks | undefined, attr: string, pre = ''): string {
   const n = rackCount(r), h = G.char.hands[0];
-  let s = TL`<div class="say"><b>Racks</b>: ${n} of ${RACK.max} crates and barrels, +${Math.round(rackVol(r))} L of room. Goods packed in crates and barrels stack tidily: each empty one on the racks adds ${RACK.gain} times its size (a wooden one ${Math.round(rackGain('crateW'))} L, a steel one ${Math.round(rackGain('crateM'))} L).`;
-  const on = (Object.entries(r ?? {}) as [ItemKey, number][]).filter(([, m]) => m > 0);
-  if (on.length) s += '<br>' + on.map(([k, m]) => `${itemName(k)} ×${m} ` + btn(attr, pre + 'take:' + k, tl('Take one off'))).join('<br>');
-  s += '</div>';
-  if (h && isCargo(h.k)) s += h.b ? btn(attr, pre + 'empty', TL`Empty the ${ITEMS[h.k].name.toLowerCase()} in your hands into the hold`) : n < RACK.max ? btn(attr, pre + 'put', TL`Put the ${ITEMS[h.k].name.toLowerCase()} in your hands on the racks`) : '';
+  let s = '';
+  if (n) { // (0.251) crates come and go on their own now: the racks already standing keep their room
+    s += TL`<div class="say"><b>Racks</b>: ${n} crates and barrels stacked tidily, +${Math.round(rackVol(r))} L of room.`;
+    const on = (Object.entries(r ?? {}) as [ItemKey, number][]).filter(([, m]) => m > 0);
+    if (on.length) s += '<br>' + on.map(([k, m]) => `${itemName(k)} ×${m}`).join(', ');
+    s += '</div>';
+  }
+  if (h && isCargo(h.k) && h.b) s += btn(attr, pre + 'empty', TL`Unload the ${ITEMS[h.k].name.toLowerCase()} of ${ITEMS[h.b.k].name} in your hands into the hold`);
   return s;
 }
 /**
@@ -41,7 +45,8 @@ export function rackClick(r: Racks, what: string, put: (k: ItemKey, n: number) =
     if (!h?.b) return tl('It is empty.');
     const k = h.b.k, m = put(k, h.b.n);
     takeOut(h, m);
-    return m ? TL`${ITEMS[k].name} ×${m} out of the ${ITEMS[h.k].name.toLowerCase()} into the hold${h.b ? tl(' (the rest stays: the hold is full)') : ''}.` : tl('The hold is full.');
+    const name = ITEMS[h.k].name.toLowerCase(), rest = !!h.b; settleCrates(); // (0.251) emptied, the crate is gone
+    return m ? TL`${ITEMS[k].name} ×${m} out of the ${name} into the hold${rest ? tl(' (the rest stays: the hold is full)') : ''}.` : tl('The hold is full.');
   }
   if (what.startsWith('take:')) {
     const k = what.slice(5) as ItemKey;

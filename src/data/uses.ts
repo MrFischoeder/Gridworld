@@ -6,10 +6,10 @@ import { PROC } from '../gen/outpostproc';
 import { POWER_SRC, PLINE } from '../gen/grid';
 import { FOOD } from '../gen/farms';
 import { ITEMS, type ItemKey } from './items';
-import { ORDERS } from './orders';
+import { ORDERS, orderOpen } from './orders';
 import { GARAGE } from './garage';
 import { vehicleTitle } from './vehicles';
-import { GUNS, roundsInUse } from './weapons';
+import { GUNS } from './weapons';
 import { PLANTS, type PlantKind } from '../gen/plants';
 import { STATIONS, type StationKind } from '../gen/energy';
 import { FORTIFY, WORKS, POWER, type WorkKind } from '../gen/town';
@@ -26,6 +26,7 @@ import { PIER } from '../gen/piers';
 import { LH } from '../gen/lighthouses';
 import { BOATS, type BoatKind } from '../gen/boats';
 import { tl, TL } from '../i18n';
+import { RADIO } from '../gen/radiomast';
 
 /** The kinds of use, in the order the tooltip lists them. */
 export const USE_GROUPS = [tl('Blacksmith makes'), tl('Processed into'), tl('Cooked into'), tl('Fuel for'), tl('Building'), tl('Repairs'), tl('Restoring'), tl('The Chariot'), tl('Other')] as const;
@@ -40,7 +41,7 @@ function build(): Map<ItemKey, Map<UseGroup, string[]>> {
     if (!a.includes(what)) a.push(what);
     gs.set(g, a); m.set(k, gs);
   };
-  for (const o of ORDERS) if (roundsInUse(o.out)) for (const [i] of o.needs) use(i, tl('Blacksmith makes'), N(o.out));
+  for (const o of ORDERS) if (orderOpen(o.out)) for (const [i] of o.needs) use(i, tl('Blacksmith makes'), N(o.out));
   use('log', tl('Other'), tl('sawn into 4 Planks by hand, slowly (a Saw in your kit: the backpack\'s Saw into planks); a village sawmill gets 6 to 8')); // world/sawing.ts
   for (const g of GARAGE) for (const [i] of g.needs) use(i, tl('Other'), tl('the mechanic: ') + (g.car ? vehicleTitle(g.car) : N(g.out!)));
   for (const k of Object.keys(PLANTS) as PlantKind[]) for (const r of PLANTS[k].recipes) for (const [i] of r.in) use(i, tl('Processed into'), `${N(r.out[0])} (${PLANTS[k].name})`);
@@ -57,6 +58,7 @@ function build(): Map<ItemKey, Map<UseGroup, string[]>> {
   for (const [i] of STORE.needs) use(i, tl('Building'), TL`Outposts: ${STORE.name}`);
   for (const b of [BUNKS, FIELD, ...WALL, TURRET]) for (const [i] of b.needs) use(i, tl('Building'), TL`Outposts: ${b.name}`); // (0.185)
   for (const [i] of PORT.needs) use(i, tl('Building'), TL`Ports: ${PORT.name}`); // (0.216)
+  for (const [i] of RADIO.needs) use(i, tl('Building'), TL`Warehouses: ${RADIO.name}`); // (0.251)
   for (const k of Object.keys(FOOD.value) as ItemKey[]) use(k, tl('Other'), tl('Outposts: the settlers\' pantry'));
   use('fuel', tl('Fuel for'), tl('Outposts: convoy trucks on a route')); // (0.187)
   for (const p of new Set(Object.values(PROC))) { if (!p) continue; for (const [i] of p.needs) use(i, tl('Building'), TL`Outposts: ${p.name}`); use(p.inp, tl('Processed into'), TL`Outposts: ${p.name} (${ITEMS[p.out].name})`); } // (0.188)

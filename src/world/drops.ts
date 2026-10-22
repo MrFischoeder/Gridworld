@@ -9,7 +9,7 @@ import { drawPickup, setGroundHook, grabPickup, type Pickup } from './loot';
 import { net, online, sendDrop, sendTake, onGot, type NetDrop } from '../net/client';
 import { myLoc } from './peers';
 import { nearX } from '../gen/regions';
-import { addItem, saveChar, handsChanged, packRoom } from '../character';
+import { addItem, saveChar, handsChanged, packRoom, onCrateOverflow, settleCrates } from '../character';
 import { ITEMS, HANDS_ONLY, type ItemKey } from '../data/items';
 import { logLine, showToast } from '../ui/hud';
 import type { Slot } from '../save';
@@ -57,7 +57,7 @@ function give(d: NetDrop): boolean {
   c.inv[i] = { k, n: d.n, c: d.c }; return true;
 }
 function took(d: NetDrop) {
-  if (give(d)) { saveChar(); logLine(TL`Picked up ${label(d.k, d.n)}${d.by && d.by !== G.char.name && !d.auto ? TL` (left by ${d.by})` : ''}.`); }
+  if (give(d)) { settleCrates(); saveChar(); logLine(TL`Picked up ${label(d.k, d.n)}${d.by && d.by !== G.char.name && !d.auto ? TL` (left by ${d.by})` : ''}.`); }
   else { // no room after all: it goes back down where it was
     showToast(tl('No room for it')); logLine(TL`No room for ${label(d.k, d.n)}: it stays on the ground.`);
     if (!sendDrop(d.k, d.n, d.c, d.p, d.loc, false, d.b)) local.set(d.id, d); // (now only for E, so it is not taken again at once)
@@ -119,3 +119,5 @@ export function syncDrops(now = false, dt = 0) {
 }
 /** Leaving to the menu's other world: forget what you put down alone. */
 export function clearLocalDrops() { local.clear(); syncDrops(true); }
+// (0.251) a second crate turns up while your hands hold one: it is set down at your feet
+onCrateOverflow((s) => { dropAtFeet(s); showToast(TL`Your hands are full: the ${ITEMS[s.k].name.toLowerCase()} of ${ITEMS[s.b!.k].name} is set down at your feet`); });

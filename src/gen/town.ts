@@ -13,6 +13,8 @@ import { startJob, jobOf } from './construction';
 import { tl } from '../i18n';
 
 export interface TownState {
+  /** (0.251, gen/radio.ts) When the warehouse's radio mast stood (game minutes), and what was handed over for it. */
+  mast?: number; mgiven?: Partial<Record<ItemKey, number>>;
   settlement?: import('./settlement').SettlementState;
   /** (0.203, gen/streetlamps.ts) The street lamps the heroes put up: electric or oil, each where it was placed. */
   lamps?: import('./streetlamps').StreetLamp[];

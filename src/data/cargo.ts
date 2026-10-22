@@ -2,16 +2,24 @@
 // backpack (HANDS_ONLY): you carry one in your hands, and a vehicle carries them in its cargo bays, one a bay (a jeep
 // 2, a van 6, the heavy truck 16; data/vehicles.ts `bays`). A crate holds building stuff (planks, stone, logs, ore,
 // scrap...), a barrel holds a liquid (diesel, lamp oil, milk). Each holds one kind of thing at a time, kept on its
-// slot as `Slot.b`. A steel one holds more than a wooden one but takes the same bay. Pure: no UI, no game state.
+// slot as `Slot.b`. Pure: no UI, no game state.
+//
+// (0.251, the owner's rule) Nobody builds them for now: there is one crate and one barrel (`crateW`, `barrelW`; the old
+// steel ones turn into them, `ONE_KIND`), and they come and go on their own. A crate is not a thing in itself but room
+// for a heap: a few of a material fit in your pockets (`pocketOf`: 10 stones, more of small things), one more and the
+// heap is a crate you carry in your hands (character.ts `settleCrates`); a stack dropped into an empty cargo bay is a
+// crate there; and a crate or barrel emptied is gone (`dropEmpty`). Bigger crates built from materials come later.
 import { item, BULK, HANDS_ONLY, type ItemKey } from './items';
 import type { Slot } from '../save';
 
 export type CargoKind = 'crate' | 'barrel';
 /** What each holds, in litres. */
 export const CARGO: Partial<Record<ItemKey, { kind: CargoKind; cap: number }>> = {
-  crateW: { kind: 'crate', cap: 60 }, crateM: { kind: 'crate', cap: 100 },
-  barrelW: { kind: 'barrel', cap: 60 }, barrelM: { kind: 'barrel', cap: 100 },
+  crateW: { kind: 'crate', cap: 100 }, crateM: { kind: 'crate', cap: 100 },
+  barrelW: { kind: 'barrel', cap: 100 }, barrelM: { kind: 'barrel', cap: 100 },
 };
+/** (0.251) One crate and one barrel: the old steel ones become them. */
+export const ONE_KIND: Partial<Record<ItemKey, ItemKey>> = { crateM: 'crateW', barrelM: 'barrelW' };
 /** Liquids a barrel takes, and how many litres one of the item is (a Fuel Canister is 20 L of diesel). */
 export const LIQUID: Partial<Record<ItemKey, number>> = { fuel: 20, lampoil: 0.5, milk: 20 };
 export const isCargo = (k: ItemKey | undefined | null) => !!k && CARGO[k] !== undefined;
@@ -52,3 +60,24 @@ export function takeOut(s: Slot, n = Infinity): number {
 export const slotKg = (s: Slot) => BULK[s.k][0] * s.n + (s.b ? BULK[s.b.k][0] * s.b.n : 0);
 /** How full it is, 0..1. */
 export const fill = (s: Slot) => (s.b ? s.b.n / Math.max(1, boxCap(s.k, s.b.k)) : 0);
+
+// ---------- (0.251) crates that come and go ----------
+/** Litres of a material your pockets (the backpack) keep loose; at least `POCKET.min` of anything. */
+export const POCKET = { litres: 20, min: 10 };
+/** How many of k you carry loose before the heap becomes a crate (10 stones, 13 planks, 40 wire...). */
+export const pocketOf = (k: ItemKey) => Math.max(POCKET.min, Math.floor(POCKET.litres / Math.max(0.01, BULK[k][1]) + 1e-6));
+/** The crate or barrel a heap of k goes into on its own, or null when k is not packed (goods, tools, weapons...). */
+export const autoBox = (k: ItemKey): ItemKey | null => (holds('crateW', k) ? 'crateW' : holds('barrelW', k) ? 'barrelW' : null);
+/** A crate / barrel with its load as a new slot (k into `autoBox(k)`). */
+export const boxOf = (k: ItemKey, n: number): Slot | null => { const b = autoBox(k); return b && n > 0 ? { k: b, n: 1, b: { k, n } } : null; };
+/** Empty crates and barrels in a list vanish, old steel ones become the one kind. Returns whether anything changed. */
+export function dropEmpty(list: (Slot | null)[] | undefined): boolean {
+  let ch = false;
+  for (let i = 0; list && i < list.length; i++) {
+    const s = list[i];
+    if (!s || !isCargo(s.k)) continue;
+    if (!s.b || s.b.n <= 0) { list[i] = null; ch = true; continue; }
+    const one = ONE_KIND[s.k]; if (one) { s.k = one; ch = true; }
+  }
+  return ch;
+}

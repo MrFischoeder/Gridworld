@@ -9,7 +9,7 @@ import { renderer, scene, camera, fog } from './world/render';
 import { G, W, uiOpen } from './game';
 import { loadChar, newChar, SAVE_KEY, type Char } from './save';
 import { initItemTips } from './ui/itemtip';
-import { calcStats, saveChar, armoured, handsChanged } from './character';
+import { calcStats, saveChar, armoured, handsChanged, settleCrates } from './character';
 import { loadDungeon, loadOverworld, toVillage, saveOverworldPos, enterDungeon, enterCave, enterCustom, type Arrival } from './world/level';
 import { takeTest, testWaiting, syncCustomWorld, worldAsked } from './world/custommaps';
 import { initRebirth } from './ui/rebirth';
@@ -137,6 +137,7 @@ import { tl, TL } from './i18n';
 import { updateThrowing } from './world/throwing';
 import { updateMyCond, clearMyCond, downView, setCondLog } from './world/conditions';
 import { updateSurround } from './world/surround';
+import { refreshPack } from './ui/backpack';
 setCondLog(logLine); // (0.227)
 /** Redraw the open world from the save where you stand (after taking the server's shared world). */
 function reloadWorld() { if (G.char.loc !== 'overworld') return; saveOverworldPos(); loadOverworld({ kind: 'saved' }); }
@@ -193,7 +194,7 @@ addEventListener('visibilitychange', () => { last = performance.now(); });
 /** How far the eye sinks when you crouch (eased). */
 const CROUCH_DROP = 0.6;
 let crouchDrop = 0;
-let benchT = 0, vehSyncT = 0; // (0.248) the vehicles drawn here follow the world's list twice a second // workbenches in the wilds are synced about once a second
+let benchT = 0, vehSyncT = 0, crateT = 0; // (0.248) the vehicles drawn here follow the world's list twice a second // workbenches in the wilds are synced about once a second
 // (0.199) what lights the dark besides your own light: fires, powered village lamps, the other players' lights
 addLights((out) => {
   // (0.203) headlights left on: parked vehicles and the ones the other players are in (the one you drive throws its beam itself)
@@ -218,7 +219,7 @@ function frame(now: number) {
   if (outdoors) updateWorldGates(dt);
   refreshGateConsole();
   // the clock runs whenever the game is not paused in the menu
-  if (G.playing && !gateTravelPending()) { G.char.time += dt * MIN_PER_SEC; updateSurvival(dt); updateBodyHeat(dt); updateFlora(dt); updateFires(dt, time); updatePower(dt); updateSettlementSites(dt); updateJobSites(dt); updateHouseDoors(dt); updateWallGuns(dt); updateWorks(dt); updateStations(dt); updateChariot(dt); syncConvoyStart(dt); updateCaravans(dt); updateVillageRaids(dt); updateFallen(dt); updateIndustry(dt); updateFarms(dt); updateInstalls(dt); updateCities(dt); updateToxic(dt); updateGuide(dt); updateBridges(dt); updatePiers(dt); updateStreetLamps(dt); updateLighthouses(dt); updateContracts(dt); updateForge(dt); updateGarage(dt); updateHomes(dt); updateSawing(dt); updateCharging(dt); syncVillagePads(dt); updateLodes(dt); updateCrystals(dt); updateThrowing(dt, time); updateMyCond(dt, (d) => { if (!G.god && !foeRules.playerSafe()) G.hp -= d; }); if (G.char.loc === 'overworld' || G.char.loc === 'dungeon') updateSurround(dt, logLine); updatePorts(dt); updateCarriers(dt); updateCamps(dt); updatePowerLines(dt); updateCommute(dt); updateOutpostRaids(dt); updateRouteTrucks(); updateRivals(dt); if (testWaiting() && !G.trans && !G.intro) { const n = takeTest(); if (n) setTimeout(() => { if (!enterCustom(n)) showToast(TL`No editor map called ${n} in this browser.`); }); } /* after this frame (its place name) */ if ((benchT -= dt) <= 0) { benchT = 1; syncBenches(); syncFlags(); syncBases(); syncTurrets(); } }
+  if (G.playing && !gateTravelPending()) { G.char.time += dt * MIN_PER_SEC; updateSurvival(dt); updateBodyHeat(dt); updateFlora(dt); updateFires(dt, time); updatePower(dt); updateSettlementSites(dt); updateJobSites(dt); updateHouseDoors(dt); updateWallGuns(dt); updateWorks(dt); updateStations(dt); updateChariot(dt); syncConvoyStart(dt); updateCaravans(dt); updateVillageRaids(dt); updateFallen(dt); updateIndustry(dt); updateFarms(dt); updateInstalls(dt); updateCities(dt); updateToxic(dt); updateGuide(dt); updateBridges(dt); updatePiers(dt); updateStreetLamps(dt); updateLighthouses(dt); updateContracts(dt); updateForge(dt); updateGarage(dt); updateHomes(dt); updateSawing(dt); updateCharging(dt); syncVillagePads(dt); updateLodes(dt); updateCrystals(dt); updateThrowing(dt, time); updateMyCond(dt, (d) => { if (!G.god && !foeRules.playerSafe()) G.hp -= d; }); if (G.char.loc === 'overworld' || G.char.loc === 'dungeon') updateSurround(dt, logLine); updatePorts(dt); updateCarriers(dt); if ((crateT -= dt) <= 0) { crateT = 0.3; if (settleCrates()) { calcStats(); saveChar(); refreshPack(); } } updateCamps(dt); updatePowerLines(dt); updateCommute(dt); updateOutpostRaids(dt); updateRouteTrucks(); updateRivals(dt); if (testWaiting() && !G.trans && !G.intro) { const n = takeTest(); if (n) setTimeout(() => { if (!enterCustom(n)) showToast(TL`No editor map called ${n} in this browser.`); }); } /* after this frame (its place name) */ if ((benchT -= dt) <= 0) { benchT = 1; syncBenches(); syncFlags(); syncBases(); syncTurrets(); } }
   updateCompass(dt); // hides itself while paused
   const clock = fmtClock(G.char.time) + (G.char.loc === 'overworld' && seen.kind !== 'clear' ? ' · ' + WEATHER_NAME[seen.kind] : '') + ' · ' + airText();
   if (el.clock.textContent !== clock) el.clock.textContent = clock;

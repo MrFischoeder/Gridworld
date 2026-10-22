@@ -7,9 +7,9 @@ import { dropAtFeet } from '../world/drops';
 import { G } from '../game';
 import { item, BULK, WEAR, WEAR_SLOTS, WEAR_NAME, gearOf, WEAPON_KIND, HANDS_ONLY, HAND_TOOLS, OFF_HAND, TWO_HANDED, type ItemKey } from '../data/items';
 import { BLASTER, SLOT_NAME, attachSlot } from '../data/weapons';
-import { calcStats, saveChar, listOf, stowHeld, handsChanged, packVol, stowOff, takeInOff, bothHands } from '../character';
+import { calcStats, saveChar, listOf, stowHeld, handsChanged, packVol, stowOff, takeInOff, bothHands, settleCrates } from '../character';
 import { dropStack, bulkOf, putItems } from '../inventory';
-import { isCargo, holds, boxRoom, boxCap, packFrom, takeOut, CARGO } from '../data/cargo';
+import { isCargo, holds, boxRoom, boxCap, packFrom, takeOut, CARGO, pocketOf } from '../data/cargo';
 import type { Slot } from '../save';
 import { logLine, $ } from './hud';
 import { useItem } from '../world/loot';
@@ -100,7 +100,6 @@ function renderPack() {
     if (THROWABLES.includes(s.k) && (w === 'p' || w === 'h')) acts.push(['throw', tl('Ready to throw (Z)')]); // (0.225) world/throwing.ts
     if (s.k === 'log' && (w === 'p' || w === 'h')) acts.push(['saw', tl('Saw into planks')], ['sawall', tl('Saw all')]); // (world/sawing.ts: a Saw in your kit)
     { const h = c.hands[0]; // (0.247) a crate or a barrel in your hands: fill it from the backpack, or empty it
-      if (w === 'h' && isCargo(s.k) && s.b) acts.unshift(['unpack', tl('Empty into the backpack')]);
       if (w === 'p' && h && isCargo(h.k) && boxRoom(h, s.k) > 0) acts.unshift(['pack', TL`Into the ${item(h.k).name}`]); }
     if (w === 'p' || w === 'h' || w === 'k' || w === 'o') acts.push(['drop', tl('Drop')]);
   } else sel = null;
@@ -109,7 +108,7 @@ function renderPack() {
   detailEl.innerHTML = html + (acts.length ? '<div class="acts">' + acts.map(([a, t]) => `<button class="${a === 'drop' ? 'drop' : ''}" data-a="${a}">${t}</button>`).join('') + '</div>' : '');
   side?.render();
 }
-function changed() { calcStats(); refreshGunLook(); handsChanged(); saveChar(); renderPack(); }
+function changed() { settleCrates(); calcStats(); refreshGunLook(); handsChanged(); saveChar(); renderPack(); } // (0.251) heaps into crates, empty crates gone
 
 /** Whether item k may sit in slot (w, idx). */
 function fits(w: string, idx: number, k: ItemKey): boolean {
@@ -172,6 +171,7 @@ function packHeld(i: number): string {
 function unpackHeld(): string {
   const h = G.char.hands[0];
   if (!h?.b) return tl('It is empty.');
+  if (h.b.n > pocketOf(h.b.k)) return TL`More than your pockets hold: it stays a crate. Put it down, or into a cargo bay or a warehouse.`; // (0.251)
   const k = h.b.k, left = putItems(G.char.inv, k, h.b.n, packVol()), m = h.b.n - left;
   takeOut(h, m);
   return m ? TL`${item(k).name} ×${m} into your backpack${left ? TL` (${left} stay inside: no more room)` : ''}.` : tl('No room in your backpack.');

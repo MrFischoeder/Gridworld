@@ -9,6 +9,7 @@ import type { ItemKey } from '../data/items';
 import * as THREE from 'three';
 import { G, W } from '../game';
 import { drawComputer } from './computer';
+import { drawMast } from './radiomast';
 import { PropBatch } from './props';
 import { wallSign } from './level';
 import { hallSpec, hallTerminal, holdVol, hallStands, hallPoint } from '../gen/hall';
@@ -108,6 +109,7 @@ export function drawHall(vm: VillageMap, T: Terrain, id: number): THREE.Group {
     drawComputer(pb, { x0: tx - 0.7, x1: tx + 0.7, z0: tz - 0.4, z1: tz + 0.4, h: 1.05, n: [0, 1] }, y0);
     seg(tx - 0.7, tz - 0.35, tx + 0.7, tz - 0.35); seg(tx - 0.7, tz + 0.35, tx + 0.7, tz + 0.35);
   }
+  if (st?.mast) drawMast(pb, rx, rh + 0.15, Z0 + 1.2); // (0.251, stage M3) the radio mast on the ridge
   grp.add(pb.build());
   grp.add(wallSign(big ? tl('WAREHOUSE') : tl('VILLAGE HALL'), '#ffd060', { x: dx, z: Z1 + 0.1 }, [0, 1], y0 + dh + 0.9));
   const [ea, eb] = wx(d0, Z1), [fa, fb] = wx(d1, Z1);

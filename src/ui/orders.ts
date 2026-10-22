@@ -4,19 +4,18 @@ import { smithAllows, starterRecipe, progressive } from '../gen/settlement';
 // game hours (`forgeHours`): go about your business and come back to collect it (`char.forge`, yours alone).
 import { G } from '../game';
 import { ITEMS } from '../data/items';
-import { ORDERS, known as knows } from '../data/orders';
+import { ORDERS, known as knows, orderOpen } from '../data/orders';
 import { TECH_BY_ID } from '../gen/tech';
 import { saveChar, calcStats, handsChanged, addItem } from '../character';
 import { showToast, logLine } from './hud';
 import type { Order } from '../data/orders';
 import { stockHas, stockTake } from './stock';
 import { tl, TL } from '../i18n';
-import { roundsInUse } from '../data/weapons';
 
 /** The order list, as dialogue panel HTML (after `head`). */
 export function ordersHTML(head: string, vid: number | null, msg = ''): string {
   const c = G.char, st = vid === null ? undefined : c.towns[vid], has = vid !== null ? stockHas(vid) : () => 0;
-  const allowed = ORDERS.filter((o) => smithAllows(st, o.out) && roundsInUse(o.out));
+  const allowed = ORDERS.filter((o) => smithAllows(st, o.out) && orderOpen(o.out));
   const known = allowed.filter((o) => knows(o, c.tech) || starterRecipe(st, o.out));
   const lost = allowed.filter((o) => !(knows(o, c.tech) || starterRecipe(st, o.out)));
 
