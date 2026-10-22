@@ -39,7 +39,7 @@ Na podstawie opisu właściciela z 22.10.2026. Etapy po kolei, każdy jako osobn
 - **M5 (0.253): porty jako węzły sieci.** Tranzyt: dla każdej linii przywożącej towar magazyn ustawia, czy ładunek zostaje, czy jedzie dalej jego własną linią konwojową albo statkiem; towar w tranzycie wyjeżdża pierwszy. Statek na linii łączy sieci radiowe obu portów (wozi pocztę). Na razie bez wyznaczania całej trasy z góry: każdy węzeł ustawia się osobno.
   - Linie statków (`gen/shiplines.ts`) jako transport między magazynami portowymi, także między kontynentami.
   - Łączenie z konwojami lądowymi: towar przechodzi przez port.
-- **M6: maszyny latające** obsługujące magazyny bez dróg (gdy powstaną pojazdy latające).
+- **M6: maszyny latające** obsługujące magazyny bez dróg (gdy powstaną pojazdy latające). Rozpisane osobno w `PLAN_LOTNICTWA.md` (etapy F1–F6, do akceptacji).
 
 ## Otwarte sprawy
 
