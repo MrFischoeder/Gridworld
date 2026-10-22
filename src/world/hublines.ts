@@ -15,8 +15,8 @@ import { deposit, withdraw } from '../gen/hall';
 import { portPut, portTake } from '../gen/ports';
 import { hubs, hubWorks, type Hub } from '../gen/warehouses';
 import { linkedHubs } from '../gen/radio';
-import { allHubLines, hubLineOf, hlDue, hlWaiting, hlDrain, settleHubLine, takeHold, hlAt, hlWrecked, type HubLine } from '../gen/hublines';
-import { ITEMS } from '../data/items';
+import { allHubLines, hubLineOf, hlDue, hlWaiting, hlDrain, settleHubLine, lineLoad, hlAt, hlWrecked, type HubLine } from '../gen/hublines';
+import { ITEMS, type ItemKey } from '../data/items';
 import { TL } from '../i18n';
 
 const hubOf = (id: string): Hub | undefined => hubs(G.char.world, G.char.towns, G.char.outposts).find((h) => h.id === id);
@@ -27,7 +27,7 @@ export function runHub(id: string): string[] {
   const l = hubLineOf(id, c.towns, c.outposts), vs = id.startsWith('v:') ? (c.towns[id.slice(2)] ??= {}) : null, o = vs ? null : c.outposts[id];
   if (l?.truck && hlDue(l, c.time)) {
     const linked = linkedHubs(c.world, c.towns, c.outposts, id, c.time).some((q) => q.id === l.to), works = hubWorks(c.world, h, c.towns, c.outposts, c.time);
-    const take = (cap: number, only?: Parameters<typeof takeHold>[2]) => (vs ? takeHold(vs.hold, cap, only, (k, n) => withdraw(vs, k, n)) : takeHold(o?.hold, cap, only, (k, n) => (o ? portTake(o, k, n) : 0)));
+    const take = (cap: number, only?: ItemKey[]) => (vs ? lineLoad(vs, vs.hold, cap, only, (k, n) => withdraw(vs, k, n)) : o ? lineLoad(o, o.hold, cap, only, (k, n) => portTake(o, k, n)) : []);
     const before = l.trips ?? 0, out = settleHubLine(c.world, h, l, linked, works, take, c.time);
     if ((l.trips ?? 0) > before) words.push(TL`A convoy left for ${l.toName}.`);
     if (out.includes('robbed')) words.push(TL`Bandits robbed the convoy to ${l.toName}.`);

@@ -16,6 +16,7 @@ import type { OutpostState } from './outposts';
 import { portPut, portTake, portWorks } from './ports';
 import type { ItemKey } from '../data/items';
 import { tl } from '../i18n';
+import { noteArrival, takeTransit } from './transit';
 
 export const LINE = {
   /** The furthest port a line may reach (m, straight); the sea way winds: this much longer. */
@@ -133,6 +134,7 @@ export function settleLine(world: number, outposts: Record<string, OutpostState>
     let n = 0;
     if (fate === 'ok') {
       let room = shipCap(s.k);
+      for (const [g, m] of takeTransit(o, 'sl', o.hold, room, (k, q) => portTake(o, k, q))) { l.sent[g] = (l.sent[g] ?? 0) + m; room -= m; n += m; } // (0.253) the goods sent on first
       for (const [g, have] of Object.entries(o.hold ?? {}) as [ItemKey, number][]) {
         if (room <= 0) break;
         if (l.only && !l.only.includes(g)) continue;
@@ -168,7 +170,7 @@ export function unloadLines(world: number, outposts: Record<string, OutpostState
     const rcv = ((p.rcv ??= {})[rcvKey(from, l)] ??= {});
     for (const [g, n] of Object.entries(l.sent) as [ItemKey, number][]) {
       const m = portPut(p, g, Math.max(0, n - (rcv[g] ?? 0)));
-      if (m) { rcv[g] = (rcv[g] ?? 0) + m; got.push([g, m]); }
+      if (m) { rcv[g] = (rcv[g] ?? 0) + m; got.push([g, m]); noteArrival(p, rcvKey(from, l), g, m); }
     }
   }
   return got;

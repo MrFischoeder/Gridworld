@@ -19,6 +19,7 @@ import type { ItemKey } from '../data/items';
 import type { TownState } from './town';
 import type { OutpostState } from './outposts';
 import type { Hub } from './warehouses';
+import { noteArrival, takeTransit, type Transit } from './transit';
 
 export const HLINE = { reach: 25000 };
 export type HubTrip = 'ok' | 'dry' | 'robbed' | 'wrecked' | 'silent' | 'empty';
@@ -129,11 +130,11 @@ export function hlWaiting(dest: string, towns: Record<string, TownState | undefi
   return out;
 }
 /** The other warehouse takes in what the lines brought (under its lock): `put` stores as much as fits. */
-export function hlDrain(dest: string, towns: Record<string, TownState | undefined>, outposts: Record<string, OutpostState | undefined>, rcvOwner: { rcv?: Record<string, Partial<Record<ItemKey, number>>> }, put: (k: ItemKey, n: number) => number): [ItemKey, number][] {
+export function hlDrain(dest: string, towns: Record<string, TownState | undefined>, outposts: Record<string, OutpostState | undefined>, rcvOwner: { rcv?: Record<string, Partial<Record<ItemKey, number>>> } & Transit, put: (k: ItemKey, n: number) => number): [ItemKey, number][] {
   const got: [ItemKey, number][] = [];
   for (const [key, g, n] of hlWaiting(dest, towns, outposts, rcvOwner.rcv)) {
     const m = put(g, n);
-    if (m) { const r = ((rcvOwner.rcv ??= {})[key] ??= {}); r[g] = (r[g] ?? 0) + m; got.push([g, m]); }
+    if (m) { const r = ((rcvOwner.rcv ??= {})[key] ??= {}); r[g] = (r[g] ?? 0) + m; got.push([g, m]); noteArrival(rcvOwner, key, g, m); } // (0.253) and maybe on
   }
   return got;
 }
@@ -143,4 +144,9 @@ export function takeHold(hold: Partial<Record<ItemKey, number>> | undefined, cap
   const ks = (Object.entries(hold ?? {}) as [ItemKey, number][]).filter(([k, n]) => n > 0 && (!only || only.includes(k))).sort((a, b) => b[1] - a[1]);
   for (const [k, n] of ks) { if (cap <= 0) break; const m = takeOne(k, Math.min(cap, n)); if (m) { out.push([k, m]); cap -= m; } }
   return out;
+}
+/** (0.253) What a warehouse's own convoy line loads: the goods waiting to go on by it first, then from the hold as set. */
+export function lineLoad(st: Transit, hold: Partial<Record<ItemKey, number>> | undefined, cap: number, only: ItemKey[] | undefined, takeOne: (k: ItemKey, n: number) => number): [ItemKey, number][] {
+  const first = takeTransit(st, 'hl', hold, cap, takeOne), left = cap - first.reduce((a, [, n]) => a + n, 0);
+  return [...first, ...takeHold(hold, left, only, takeOne)];
 }

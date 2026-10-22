@@ -5,6 +5,9 @@
 // a port or a wild warehouse as its part 'radio' (gen/outposts.ts). A mast works while its warehouse works and, in a
 // settlement, with its operator and power (gen/energy.ts `mastOf`); old villages' masts always work.
 //
+// (0.253, stage M5) Two ports whose masts work and that a cargo line with a ship joins are one network, however far
+// apart: the ship carries the mail, so warehouses on other shores show their stock too.
+//
 // Pure: everything from the shared `towns` and `outposts`, the same on every game.
 import type { ItemKey } from '../data/items';
 import type { TownState } from './town';
@@ -46,6 +49,8 @@ export function radioNet(world: number, towns: Record<string, TownState | undefi
   const on = hubs(world, towns, outposts).filter((h) => !mastWhy(world, h, towns, outposts, t)), up = on.map((_, i) => i);
   const find = (i: number): number => (up[i] === i ? i : (up[i] = find(up[i])));
   for (let i = 0; i < on.length; i++) for (let j = i + 1; j < on.length; j++) if (worldDist(on[i].x, on[i].z, on[j].x, on[j].z) <= RADIO.reach) up[find(i)] = find(j);
+  const at = new Map(on.map((h, i) => [h.id, i]));
+  for (const [i, h] of on.entries()) { const l = outposts[h.id]?.line, j = l?.ship ? at.get(l.to) : undefined; if (j !== undefined) up[find(i)] = find(j); } // (0.253) a ship on a cargo line carries the mail between two ports
   return new Map(on.map((h, i) => [h.id, find(i)]));
 }
 /** The other warehouses warehouse `id` is linked to by radio now (none without a working mast). */

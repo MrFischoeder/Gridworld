@@ -59,7 +59,7 @@ export interface OutpostState {
   ik?: string; cw?: number;
   /** (0.217, stage Z3) A port's cargo line to another port (gen/shiplines.ts), and what its crane took off the lines
    *  coming in (`rcvKey` → item → count, cumulative). */
-  line?: import('./shiplines').ShipLine; /** (0.252) A warehouse's convoy line (gen/hublines.ts). */ hline?: import('./hublines').HubLine; rcv?: Record<string, Partial<Record<ItemKey, number>>>;
+  line?: import('./shiplines').ShipLine; /** (0.252) A warehouse's convoy line (gen/hublines.ts). */ hline?: import('./hublines').HubLine; /** (0.253) Cargo sent on (gen/transit.ts). */ fwd?: import('./transit').Transit['fwd']; tr?: import('./transit').Transit['tr']; rcv?: Record<string, Partial<Record<ItemKey, number>>>;
   /** (0.219, stage Z5) The power line to a village (gen/grid.ts), staked out, going up or standing (`done.pline`). */
   pl?: PowerLine;
   /** (0.249, stage M1) What the carriers took from this outpost's site to the warehouse of its hex (gen/warehouses.ts). */

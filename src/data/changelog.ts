@@ -3,6 +3,11 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.253.0', date: '2026-10-22', title: 'Ports as hubs of the network', notes: [
+    'Warehouse network stage M5: goods can pass through a warehouse. In a warehouse\'s window (a village\'s warehouse terminal, a port\'s or a wild warehouse\'s board) every line that brings cargo there can be set to keep its cargo there, or to send it on by the warehouse\'s own convoy line or, at a port, its cargo line.',
+    'Goods sent on leave first on the next line, whatever that line is set to carry, and then the line fills up as usual. So a convoy can bring steel to a port, a ship carry it across the sea, and a convoy on the other shore take it inland, with no one touching it.',
+    'A ship on a cargo line carries the mail: two ports with working radio masts that a line joins are one radio network however far apart, so warehouses on other shores show their stock and can be reached by convoy lines from their own side.',
+  ] },
   { v: '0.252.0', date: '2026-10-22', title: 'Convoys between warehouses', notes: [
     'Warehouse network stage M4: a warehouse with a working radio mast can open a convoy line to another warehouse on its radio network within 25 km (a village\'s warehouse at its terminal, a port or a wild warehouse at its board).',
     'Hand a truck over to the line: park it by the warehouse with its trunk empty. On a timetable it loads what the home warehouse holds (only the goods you pick, or anything, most first), drives to the other warehouse and back. It runs on diesel (pour canisters into it) or, converted to electric, charges full at home while the warehouse has power.',

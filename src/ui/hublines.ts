@@ -13,6 +13,7 @@ import { mastWhy, linkedHubs } from '../gen/radio';
 import { ROUTE, truckProblem } from '../gen/routes';
 import { HLINE, newHubLine, hubLineOf, hlLeg, hlPeriod, hlRob, hlEnergy, hlAt, hlWrecked, hlFuel, hlWaiting, hlKey, type HubLine } from '../gen/hublines';
 import { carried, takeFrom } from './market';
+import { dropWay } from '../gen/transit';
 import { itemName } from './icons';
 import { tl, TL } from '../i18n';
 
@@ -23,8 +24,8 @@ const trucksBy = (h: Hub) => vehicles.filter((v) => v.claimed && !v.ai && !v.hel
 const trunkFull = (v: (typeof vehicles)[number]) => { const t = trunkOf(v.st); return t.items.some(Boolean) || !!t.bays?.some(Boolean) || t.gold > 0; };
 function setLine(id: string, l: HubLine | undefined) {
   const c = G.char;
-  if (id.startsWith('v:')) { const s = (c.towns[id.slice(2)] ??= {}); if (l) s.hline = l; else delete s.hline; }
-  else { const o = c.outposts[id]; if (o) { if (l) o.hline = l; else delete o.hline; } }
+  if (id.startsWith('v:')) { const s = (c.towns[id.slice(2)] ??= {}); if (l) s.hline = l; else { delete s.hline; dropWay(s, 'hl'); } }
+  else { const o = c.outposts[id]; if (o) { if (l) o.hline = l; else { delete o.hline; dropWay(o, 'hl'); } } }
 }
 const holdOf = (id: string) => (id.startsWith('v:') ? G.char.towns[id.slice(2)]?.hold : G.char.outposts[id]?.hold) ?? {};
 const FATE: Record<string, string> = {
