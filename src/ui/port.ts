@@ -27,6 +27,7 @@ import { net } from '../net/client';
 import { redrawBoats, inBoat } from '../world/boats';
 import { partHTML, powerHTML, peopleHTML, plineHTML, plineClick } from './outpost';
 import { linkedHTML } from './radio';
+import { hubLineHTML, hubLineClick } from './hublines';
 import { racksHTML, rackClick } from './racks';
 import { commuteHTML, commuteClick } from './commute';
 import { carried, takeFrom, stores } from './market';
@@ -157,7 +158,7 @@ function render(msg = '') {
     s += o.k === 'store' ? TL`<div class="say" style="opacity:.85">A warehouse in the wilds works like an outpost: it needs its own power and its own people. Build the warehouse, a power source, bunkhouses and fields; settlers come when there are beds and food. Its storekeepers need ${PORT.crew} people and power. It serves its hex: one warehouse to an area.</div>` : TL`<div class="say" style="opacity:.85">A port works like an outpost: it needs its own power and its own people. Build the warehouse, a power source, bunkhouses and fields; settlers come when there are beds and food. The warehouse's crane needs ${PORT.crew} people and power.</div>`;
     s += nameHTML(o);
     const pos = at();
-    s += partHTML(o, 'port', pos) + holdHTML(open.id) + partHTML(o, 'power', pos) + powerHTML(open.id, o, pos) + plineHTML(open.id, o, pos) + partHTML(o, 'bunks', pos) + partHTML(o, 'field', pos) + peopleHTML(o, pos) + commuteHTML(open.id, o) + (o.done?.port ? partHTML(o, 'radio', pos) + linkedHTML(open.id) : '') + (o.done?.port ? lineHTML(open.id) : '');
+    s += partHTML(o, 'port', pos) + holdHTML(open.id) + partHTML(o, 'power', pos) + powerHTML(open.id, o, pos) + plineHTML(open.id, o, pos) + partHTML(o, 'bunks', pos) + partHTML(o, 'field', pos) + peopleHTML(o, pos) + commuteHTML(open.id, o) + (o.done?.port ? partHTML(o, 'radio', pos) + linkedHTML(open.id) + hubLineHTML(open.id, (v) => `data-port="hl" data-hl="${v}"`) : '') + (o.done?.port ? lineHTML(open.id) : '');
     if (bare(o) && (o.o === 'crew' || o.o === myOwner())) s += small('drop', o.k === 'store' ? tl('Pull up the stakes') : tl('Give up the port'));
   }
   panel().classList.add('wide');
@@ -213,6 +214,7 @@ export function portClick(t: HTMLElement): boolean {
       return;
     }
     msg = tickPort(id);
+    if (a === 'hl') { if (o.done?.port) { const m = hubLineClick(id, b0.dataset.hl ?? ''); if (m) msg = msg ? msg + ' ' + m : m; } return; } // (0.252) the convoy line
     const say = (w: string) => { msg = msg ? msg + ' ' + w : w; };
     const l = o.line;
     if (a === 'lnew' && !l) {

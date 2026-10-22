@@ -3,6 +3,12 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.252.0', date: '2026-10-22', title: 'Convoys between warehouses', notes: [
+    'Warehouse network stage M4: a warehouse with a working radio mast can open a convoy line to another warehouse on its radio network within 25 km (a village\'s warehouse at its terminal, a port or a wild warehouse at its board).',
+    'Hand a truck over to the line: park it by the warehouse with its trunk empty. On a timetable it loads what the home warehouse holds (only the goods you pick, or anything, most first), drives to the other warehouse and back. It runs on diesel (pour canisters into it) or, converted to electric, charges full at home while the warehouse has power.',
+    'A convoy stays home when the two warehouses cannot talk over the radio, when its tank is dry or when there is nothing to carry. Bandits rob some trips half way (a roof cannon helps); a robbed truck loses its load and part of its hull, and a wreck stops the line until you recall it and mend it.',
+    'The other warehouse takes the cargo in while its storekeepers work; what does not fit waits for room. The lines and their trucks show on the maps as dashed amber lines.',
+  ] },
   { v: '0.251.0', date: '2026-10-22', title: 'Crates that come and go, and the radio link', notes: [
     'Crates and barrels are no longer built or bought. There is one crate and one barrel (100 litres each); the old steel ones count as them. They turn up on their own: your pockets hold a few of a material (10 stones, a dozen planks, more of small things like wire or nails), and one more turns the heap into a crate you carry in your hands. Fuel and other liquids go into a barrel the same way.',
     'A crate is only room for a heap. Take enough out of it and the rest goes back into your pockets; empty, it is gone. Whatever you held goes onto your back or into the backpack; if your hands already carry another crate, the new one is set down at your feet.',

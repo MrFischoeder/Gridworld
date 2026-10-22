@@ -59,7 +59,7 @@ export interface OutpostState {
   ik?: string; cw?: number;
   /** (0.217, stage Z3) A port's cargo line to another port (gen/shiplines.ts), and what its crane took off the lines
    *  coming in (`rcvKey` → item → count, cumulative). */
-  line?: import('./shiplines').ShipLine; rcv?: Record<string, Partial<Record<ItemKey, number>>>;
+  line?: import('./shiplines').ShipLine; /** (0.252) A warehouse's convoy line (gen/hublines.ts). */ hline?: import('./hublines').HubLine; rcv?: Record<string, Partial<Record<ItemKey, number>>>;
   /** (0.219, stage Z5) The power line to a village (gen/grid.ts), staked out, going up or standing (`done.pline`). */
   pl?: PowerLine;
   /** (0.249, stage M1) What the carriers took from this outpost's site to the warehouse of its hex (gen/warehouses.ts). */
@@ -212,4 +212,4 @@ export function finishDue(o: OutpostState, l: Lode | null, now: number, pw = 1):
   return p;
 }
 /** Nothing built or handed over yet: the stake can be pulled up. */
-export const bare = (o: OutpostState) => !o.done?.dig && !o.done?.store && !o.done?.power && !o.done?.proc && !o.done?.port && !o.done?.radio && !Object.values(o.hold ?? {}).some((n) => (n ?? 0) > 0) && !o.n?.bunks && !o.n?.field && !o.n?.wall && !o.n?.turret && !o.route?.truck && !o.line?.ship && !o.done?.pline && !o.job && !Object.values(o.given ?? {}).some((g) => Object.values(g ?? {}).some((n) => (n ?? 0) > 0));
+export const bare = (o: OutpostState) => !o.done?.dig && !o.done?.store && !o.done?.power && !o.done?.proc && !o.done?.port && !o.done?.radio && !o.hline?.truck && !Object.values(o.hold ?? {}).some((n) => (n ?? 0) > 0) && !o.n?.bunks && !o.n?.field && !o.n?.wall && !o.n?.turret && !o.route?.truck && !o.line?.ship && !o.done?.pline && !o.job && !Object.values(o.given ?? {}).some((g) => Object.values(g ?? {}).some((n) => (n ?? 0) > 0));

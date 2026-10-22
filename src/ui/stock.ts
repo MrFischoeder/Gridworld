@@ -12,11 +12,11 @@ import { initializeSettlements } from '../gen/settlement';
 import { tl, TL } from '../i18n';
 
 /** No inventory is changed until the shared stock is reserved and refreshed from the server. */
-export async function withTownStock(vid: number, action: () => void): Promise<boolean> {
+export async function withTownStock(vid: number, action: () => void, quiet = false): Promise<boolean> {
   if (!online()) { action(); return true; }
   const key = String(vid), connection = net.id;
   const locked = await lockTown(key, G.char.towns[key] ?? {});
-  if (!locked || net.id !== connection) { if (locked && net.id === connection) unlockTown(key); showToast(tl('The village stock is in use. Try again shortly.')); return false; }
+  if (!locked || net.id !== connection) { if (locked && net.id === connection) unlockTown(key); if (!quiet) showToast(tl('The village stock is in use. Try again shortly.')); return false; }
   try {
     // A persisted 0.131 room may return a town before its deposit metadata was migrated locally.
     initializeSettlements(G.char);

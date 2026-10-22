@@ -32,7 +32,7 @@ Na podstawie opisu właściciela z 22.10.2026. Etapy po kolei, każdy jako osobn
 - **M3 (0.251): łączność między magazynami.** Przy okazji (decyzja właściciela): skrzynie i beczki nie są budowane, pojawiają się same, gdy w kieszeniach jest za dużo materiału (np. 11 kamieni), i znikają po opróżnieniu; jedna skrzynia i jedna beczka. Później: większe skrzynie z materiałów.
   - Ulepszenie: maszt radiowy przy magazynie.
   - Magazyny połączone radiem pokazują w komputerze swoje stany.
-- **M4: konwoje między magazynami.**
+- **M4 (0.252): konwoje między magazynami.** Na razie ciężarówka jedzie prosto między magazynami (jak trasy placówek), łączność sprawdzana przy każdym kursie, wozi tylko to, co złożono w magazynie (nie własne towary wsi).
   - Ciężarówka przypisana do trasy magazyn → magazyn, z wyborem towarów.
   - Jeździ sama, po drogach, z paliwem albo prądem, z ryzykiem napadu (jak trasy placówek, `gen/routes.ts`).
   - Wymaga łączności z M3.

@@ -21,6 +21,8 @@ import { tl, TL } from '../i18n';
 import { serviceWhy } from './villagestats';
 import { racksHTML, rackClick } from './racks';
 import { villageRadioHTML, villageRadioClick } from './radio';
+import { hubLineHTML, hubLineClick } from './hublines';
+import { runHub } from '../world/hublines';
 import { hubs, villageHub, villageHubName, feeders, waitingAt, drainVillage, cleanHubName } from '../gen/warehouses';
 import { lodeById } from '../gen/lodes';
 
@@ -44,13 +46,13 @@ function render(msg = '') {
   if (vid === null) return;
   const c = G.char, poi = findPoi(c.world, vid), st = c.towns[vid];
   if (!poi) return;
-  if (st) { refineStock(c.world, poi, villageSeed(c.world, poi), st, c.time); sawStock(c.world, poi, villageSeed(c.world, poi), st, c.time); smeltStock(c.world, poi, villageSeed(c.world, poi), st, c.time); settleConvoys(c.world, poi, villageSeed(c.world, poi), st, c.time); drainVillage(st, vid, c.outposts); }
+  if (st) { refineStock(c.world, poi, villageSeed(c.world, poi), st, c.time); sawStock(c.world, poi, villageSeed(c.world, poi), st, c.time); smeltStock(c.world, poi, villageSeed(c.world, poi), st, c.time); settleConvoys(c.world, poi, villageSeed(c.world, poi), st, c.time); drainVillage(st, vid, c.outposts); runHub('v:' + vid); }
   const hold = Object.entries(st?.hold ?? {}).filter(([, n]) => n) as [ItemKey, number][];
   const seed = villageSeed(c.world, poi), sk = stockOf(c.world, poi, seed, st, c.time);
   const mine = [...withYou()].sort((a, b) => ITEMS[a[0]].name.localeCompare(ITEMS[b[0]].name));
   const elder = elderHead !== null, big = hallSpec(st).h >= 6, other = personal();
   let s = (elder ? elderHead + TL`<div class="role">The village's stores, kept by the elder · ${Math.round(holdVol(st))} / ${hallSpec(st).vol} L</div>`
-    : TL`<h2>${poi.name} · ${big ? tl('Warehouse') : tl('Village Hall')}</h2><div class="role">The village's stock · hold ${Math.round(holdVol(st))} / ${Math.round(hallVol(st))} L</div>` + networkHTML(vid, poi.name) + (big ? villageRadioHTML(vid) : '')) +
+    : TL`<h2>${poi.name} · ${big ? tl('Warehouse') : tl('Village Hall')}</h2><div class="role">The village's stock · hold ${Math.round(holdVol(st))} / ${Math.round(hallVol(st))} L</div>` + networkHTML(vid, poi.name) + (big ? villageRadioHTML(vid) + hubLineHTML('v:' + vid, (v) => `data-hhl="${v}"`) : '')) +
     TL`<div class="say">${msg ? msg + '<br><br>' : ''}${elder ? tl('Until we raise a warehouse, bring what the village needs to me: I keep it in my house and the outbuildings. ') : ''}Whatever is stored here belongs to the village: its builds will draw on it. You can take it back out whenever you like.` +
     TL`<br><span style="opacity:.75">Only materials are kept here: wood, stone, ore and metals, parts, crates of goods and what the works make of them. Weapons, ammunition, medkits, food, tools and clothes are yours to keep: leave them in a chest in your own house.${other.length ? TL` (Not taken: ${other.slice(0, 6).map((k) => ITEMS[k].name).join(', ')}${other.length > 6 ? '…' : ''}.)` : ''}</span></div>`;
   s += TL`<div class="say" style="margin:8px 0 0">In the hold</div>` + (hold.length ? hold.sort((a, b) => ITEMS[a[0]].name.localeCompare(ITEMS[b[0]].name)).map(([k, n]) =>
@@ -114,6 +116,8 @@ export function hallClick(t: HTMLElement): boolean {
     if (n) st.whn = n; else delete st.whn;
     saveChar(); render(n ? TL`It is called ${n} now.` : tl('It goes by the village\'s name again.')); return true;
   }
+  const hl = t.closest<HTMLElement>('[data-hhl]');
+  if (hl) { const m = hubLineClick('v:' + vid, hl.dataset.hhl!); calcStats(); saveChar(); render(m); return true; } // (0.252) the convoy line
   if (t.closest('[data-hradio]')) { const m = villageRadioClick(vid); calcStats(); saveChar(); render(m); return true; } // (0.251) the radio mast
   const rk = t.closest<HTMLElement>('[data-hrack]');
   if (rk) { // (0.250) the racks

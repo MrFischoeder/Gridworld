@@ -34,6 +34,7 @@ import { drawBunks, drawField, drawPowerSource, tellRaids, type DrawInto } from 
 import { saveChar } from '../character';
 import { showToast, logLine } from '../ui/hud';
 import { tl, TL } from '../i18n';
+import { runHub } from './hublines';
 
 const NEAR = 520, DROP = 640;
 const WOOD = 0xc8a060, STEEL = 0xa8c8b8, STAKE = 0xffd060, GOLD = 0xffd060;
@@ -217,7 +218,7 @@ export function tickPort(id: string): string {
   const carried = drainStore(id, c.outposts); // (0.249) what the carriers brought from the deposits of its hex
   if (carried.length) words.push(TL`The storekeepers took in ${carried.map(([g, m]) => `${m} × ${ITEMS[g].name}`).join(', ')} from the deposits round about.`);
   for (const w of words) logLine(`${o.name}: ${w}`);
-  return words.join(' ');
+  return [...words, ...runHub(id)].join(' '); // (0.252) its convoy line, and the lines that brought it cargo
 }
 /** Every 15 s: the lines whose voyages have come in are settled, and the ports whose crane can take cargo off unload
  *  (each under its port's lock; whoever gets there first, the same result on every game). */

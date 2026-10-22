@@ -1,3 +1,5 @@
+import { hubTruckAt } from '../world/hublines';
+import { allHubLines, hlWrecked } from '../gen/hublines';
 import { truckAt } from '../world/convoyroutes';
 import { hubs, hexCorners, parseHex, HEX } from '../gen/warehouses';
 import { biomeAt, biomeName, BIOMES, BIOME_KINDS, type BiomeHere } from '../gen/biomes';
@@ -314,6 +316,17 @@ function drawArea(ctx: CanvasRenderingContext2D, w: number, h: number, ppm: numb
     const ax = X(nearX(o.x, px)), ay = Z(o.z), bx = X(nearX(l.x, nearX(o.x, px))), by = Z(l.z);
     ctx.strokeStyle = '#e8e070'; ctx.globalAlpha = o.done?.pline ? 0.85 : 0.45; ctx.lineWidth = o.done?.pline ? 2 : 1; if (!o.done?.pline) ctx.setLineDash([3, 4]);
     ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.stroke(); ctx.setLineDash([]); ctx.globalAlpha = 1; ctx.lineWidth = 1;
+  }
+  { // (0.252) convoy lines between warehouses: a dashed amber line, the truck a dot
+    const all = hubs(G.char.world, G.char.towns, G.char.outposts), byId = new Map(all.map((q) => [q.id, q]));
+    for (const [home, l] of allHubLines(G.char.towns, G.char.outposts)) {
+      const hb = byId.get(home);
+      if (!hb) continue;
+      const ax = X(nearX(hb.x, px)), ay = Z(hb.z), bx = X(nearX(l.tx, nearX(hb.x, px))), by = Z(l.tz);
+      ctx.strokeStyle = '#ffb347'; ctx.globalAlpha = 0.7; ctx.setLineDash([6, 5]); ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.stroke(); ctx.setLineDash([]); ctx.globalAlpha = 1;
+      const at = hubTruckAt(hb, l, G.char.time, px);
+      if (at) { ctx.fillStyle = hlWrecked(l) ? '#ff6a4a' : '#ffb347'; ctx.fillRect(X(at[0]) - 3, Z(at[1]) - 3, 6, 6); }
+    }
   }
   for (const hb of hubs(G.char.world, G.char.towns, G.char.outposts)) { // (0.249) the warehouses' areas: a dashed hex, the name at its top
     const cs = hexCorners(parseHex(hb.hex), px).map(([x, z]) => [X(x), Z(z)] as const);
