@@ -3,6 +3,10 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.261.0', date: '2026-10-29', title: 'Air and sea lines in the village terminal', notes: [
+    'The WAREHOUSES page of the hall terminal now lists, besides the drone lines, the airship lines (where each airship is, crates delivered, its hull, the last trip) and the sea lines of the ports (where the ship is, crates delivered, voyages, the last voyage), for the warehouses listed there.',
+    'Read only; nothing is saved or sent, so `PROTOCOL` and the server are unchanged. Every game shows the same from the shared records.',
+  ] },
   { v: '0.260.0', date: '2026-10-28', title: 'The dangers of the air', notes: [
     'Flying machines stage F6: the air is no longer safe. Airships and rotorcrafts now have a hull (shown in the flight line once it is below 100%). What would have hurt you aboard hurts the hull instead: a Leechwing\'s bite, a bandit\'s bolt, a flak burst. Your own health is spared while you sit in the machine.',
     'A torn hull (below 50%) flies slower; at 0% the machine no longer lifts and settles to the ground (an airship slowly, a rotorcraft fast). A Vehicle Repair Kit mends 40% of the hull, used while sitting in the machine or standing within 9 m of it.',

@@ -41,6 +41,9 @@ import { OW } from '../world/overworld';
 import { lockPointer } from './input';
 import { hubs, hubWorks, feeders, hubsNear, villageHub, type Hub } from '../gen/warehouses';
 import { allAirLines, alAt } from '../gen/airlines';
+import { allSkyLines, skAt } from '../gen/skylines';
+import { shipAt } from '../gen/shiplines';
+import { hullOf } from '../gen/airhull';
 import { lodeById } from '../gen/lodes';
 import { tl, TL } from '../i18n';
 import { mastWhy, linkedHubs, hubStock } from '../gen/radio';
@@ -189,6 +192,8 @@ function villagesPage(poi: Poi): string {
 /** (0.249, PLAN_MAGAZYNOW.md stage M1) The warehouse network: every warehouse the players built (in the villages, at the
  *  ports, in the wilds) and the halls of the villages you know, nearest first: where, what it serves, whether it works.
  *  Their stocks need the radio link between warehouses (stage M3). */
+const SKY_TRIP: Record<string, string> = { ok: tl('delivered'), dry: tl('no fuel or charge'), storm: tl('storm'), empty: tl('nothing to carry'), nomast: tl('far mast down'), damaged: tl('damaged, load lost'), wrecked: tl('wrecked') };
+const SEA_TRIP: Record<string, string> = { ok: tl('delivered'), idle: tl('a port stood idle'), dry: tl('no fuel'), calm: tl('becalmed') };
 const TRIP: Record<string, string> = { ok: tl('delivered'), silent: tl('no radio'), storm: tl('storm'), nopad: tl('far pad down'), flat: tl('no charge'), empty: tl('nothing to carry'), lost: tl('lost') };
 function storesPage(poi: Poi): string {
   const c = G.char, KIND: Record<Hub['kind'], string> = { village: tl('village'), port: tl('port'), wild: tl('in the wilds') };
@@ -212,6 +217,25 @@ function storesPage(poi: Poi): string {
       const cv = alAt(l, c.time), sent = Object.values(l.sent).reduce((a: number, n) => a + (n ?? 0), 0);
       const where = !l.drone ? tl('no drone') : cv.at === 'out' ? TL`flying out (${Math.round(cv.p * 100)}%)` : cv.at === 'back' ? TL`flying back (${Math.round(cv.p * 100)}%)` : cv.at === 'there' ? tl('on the far pad') : tl('on its pad');
       s += row(`${names.get(home) ?? home} → ${l.toName}`, `${l.km} km · ${where}`) + `<div class="tdim">${TL`${sent} crates delivered`}${l.lost ? TL` · drones lost: ${l.lost}` : ''}${l.last ? ' · ' + TL`last flight: ${TRIP[l.last[1]]}` : ''}</div>`;
+    }
+  }
+  // (0.261) the airship lines and the sea (cargo ship) lines of the warehouses listed
+  const sky = allSkyLines(c.towns, c.outposts).filter(([home, l]) => near.has(home) || near.has(l.to));
+  if (sky.length) {
+    s += h(TL`AIRSHIP LINES · ${sky.length}`);
+    for (const [home, l] of sky) {
+      const cv = skAt(l, c.time), sent = Object.values(l.sent).reduce((a: number, n) => a + (n ?? 0), 0);
+      const where = !l.ship ? tl('no airship') : cv.at === 'out' ? TL`sailing out (${Math.round(cv.p * 100)}%)` : cv.at === 'back' ? TL`sailing back (${Math.round(cv.p * 100)}%)` : cv.at === 'there' ? tl('moored at the far mast') : cv.at === 'parked' ? tl('standing at the mast') : tl('loading at the mast');
+      s += row(`${names.get(home) ?? home} → ${l.toName}`, `${l.km} km · ${where}`) + `<div class="tdim">${TL`${sent} crates delivered`}${l.ship ? TL` · hull ${Math.round(hullOf(l.ship))}%` : ''}${l.last ? ' · ' + TL`last trip: ${SKY_TRIP[l.last[1]]}` : ''}</div>`;
+    }
+  }
+  const sea = Object.entries(c.outposts).filter(([id, o]) => o.line && (near.has(id) || near.has(o.line.to)));
+  if (sea.length) {
+    s += h(TL`SEA LINES · ${sea.length}`);
+    for (const [id, o] of sea) {
+      const l = o.line!, cv = shipAt(l, c.time), sent = Object.values(l.sent).reduce((a: number, n) => a + (n ?? 0), 0);
+      const where = !l.ship ? tl('no ship') : cv.at === 'out' ? TL`sailing out (${Math.round(cv.p * 100)}%)` : cv.at === 'back' ? TL`sailing back (${Math.round(cv.p * 100)}%)` : cv.at === 'there' ? tl('unloading at the far port') : tl('loading at the quay');
+      s += row(`${names.get(id) ?? o.name} → ${l.toName}`, `${l.km} km · ${where}`) + `<div class="tdim">${TL`${sent} crates delivered`}${l.trips ? TL` · voyages: ${l.trips}` : ''}${l.last ? ' · ' + TL`last voyage: ${SEA_TRIP[l.last[1]]}` : ''}</div>`;
     }
   }
   return s;
