@@ -3,6 +3,11 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.257.1', date: '2026-10-26', title: 'Tools in the ship\'s locker', notes: [
+    'The locker in your crashed ship now holds a hatchet and a pickaxe beside the saw (12 slots, was 10), so you can start the timber loop at once: fell a tree with the hatchet (hold E), saw its logs into planks from the backpack (select the log, Saw into planks) and break rocks for stone with the pickaxe. Before, the hatchet had to be bought for 35 gold or made from a log and two stones you could not yet get.',
+    'Lockers already opened in older saves keep their contents; the blacksmith still sells both tools.',
+    'Together: the locker is yours alone, nothing new is sent.',
+  ] },
   { v: '0.257.0', date: '2026-10-22', title: 'Aboard the airship', notes: [
     'Flying machines stage F3, part two. The gondola is now a deck you walk about in flight, like a ship\'s: E in a seat stands you up, E by the helm or a seat sits you down. Whoever stands in it is carried along. Its doors amidships are open only while it hangs low or rides at a mast, so you can walk in and out there.',
     'The rope ladder: when the airship hovers slowly with its gondola at most 40 m over dry ground, a rope ladder hangs from the right-hand door to the ground. E at the door climbs down, E at its foot climbs up; W up, S down, Space lets go.',
