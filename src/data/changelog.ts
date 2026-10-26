@@ -3,6 +3,11 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.264.0', date: '2026-10-29', title: 'Everything in the backpack', notes: [
+    'The two slots on your back are gone: nothing hangs there any more, everything you carry lies in the backpack (weapons and tools included). What used to hang on your back goes into free backpack slots when you load an older save; a new hero starts with the blaster in the hands and the blade in the first backpack slot.',
+    'Quick switching: keys 1 to 6 take the item in the first six backpack slots (numbered in the window) into your hands and put what you held in its place: a weapon, a tool (axe, saw, pickaxe) or a light or shield for the other hand. A key over an empty slot puts away what you hold there. Q or the mouse wheel swaps back to what you held before, X puts it away. In a vehicle 1 to 3 still pick the seat.',
+    'Multiplayer: personal; nothing is sent. `PROTOCOL` and the server are unchanged.',
+  ] },
   { v: '0.263.0', date: '2026-10-29', title: 'Working things up where they lie', notes: [
     'Planks from logs are fixed and made handy: take a Saw in your hands, stand by a log lying on the ground (a felled tree\'s logs, or any you put down) and hold E. A bar fills while the saw works in front of you (10 s a log, 4 planks each, some stamina and calories); the planks go into your kit, or lie at your feet if there is no room. Out of a pile it works one log at a time and goes on with the rest. A quick tap of E still picks the log up.',
     'The same table (data/handwork.ts) will take more tools and materials. Multiplayer: the log is a shared drop, claimed from the server first, so two players cannot both saw the same log. `PROTOCOL` and the server are unchanged.',

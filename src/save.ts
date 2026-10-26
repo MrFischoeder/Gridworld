@@ -196,9 +196,9 @@ export const ARENA_V3_KEY = 'gridArena.character.v3', V2_KEY = 'gridArena.charac
 
 export const newChar = (): Char => ({
   v: 3, settlementRules: 1, name: '', intro: false, tech: {}, leads: [], installs: {}, bridges: {}, bridgeSites: [], cityGarrisons: {}, fallen: {}, bodies: {}, piers: [], lighthouses: [], boats: [], airships: [], copters: [], filter: 0, fogs: {}, lodes: {}, outposts: {}, rivals: {}, guide: 0, houses: [], shuttle: { given: {}, v: 2 }, level: 1, xp: 0, gold: 0, world: newWorldSeed(),
-  inv: Array(INV_SIZE).fill(null), mods: Array(MOD_SIZE).fill(null), opened: {}, unlocked: {}, killed: {},
+  inv: [{ k: 'blade', n: 1 }, ...Array(INV_SIZE - 1).fill(null)], mods: Array(MOD_SIZE).fill(null), opened: {}, unlocked: {}, killed: {},
   loc: 'overworld', ow: null, dungeon: null, discovered: {}, containers: {}, vehicles: [], board: { seq: 0, offers: [], stamp: boardPeriod(START_TIME) }, boards: {}, quests: [], camps: {}, time: START_TIME, gunMods: [null, null, null], loaded: { blaster: 20 }, waypoint: null, kcal: KCAL.start, stomach: 0, water: 100, harvest: {}, benches: [], claims: [],
-  hands: [{ k: 'blaster', n: 1 }], back: [{ k: 'blade', n: 1 }, null], off: [null], wear: {}, pid: Math.random().toString(36).slice(2, 10), towns: {}, market: {}, ledger: {}, caravans: {}, escort: null, contracts: [], taken: [],
+  hands: [{ k: 'blaster', n: 1 }], back: [], off: [null], wear: {}, pid: Math.random().toString(36).slice(2, 10), towns: {}, market: {}, ledger: {}, caravans: {}, escort: null, contracts: [], taken: [],
 });
 
 interface V2 { level?: number; xp?: number; gold?: number; world?: number; inv?: (Slot | null)[]; mods?: (ItemKey | null)[] }
@@ -258,6 +258,9 @@ export function loadChar(storage: Pick<Storage, 'getItem'> & Partial<Pick<Storag
       }
       if (c.inv.length < INV_SIZE) c.inv = [...c.inv, ...Array(INV_SIZE - c.inv.length).fill(null)]; // (0.201) a bigger backpack
       if (!Array.isArray(c.off) || c.off.length !== 1) c.off = [null];
+      // (0.264) nothing hangs on your back any more: what was slung there goes into the backpack's first free slots
+      if (!Array.isArray(c.back)) c.back = [];
+      c.back = c.back.filter((s) => { if (!s) return false; const f = c.inv.indexOf(null); if (f < 0) return true; c.inv[f] = s; return false; });
       retireOldCrossings(c);
       planksForLogs(c); // (0.165) logs handed over to builds count on as planks
       trunksOut(c); // (0.248) the trunks are shared containers now

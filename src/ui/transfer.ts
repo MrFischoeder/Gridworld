@@ -4,7 +4,7 @@
 import { play } from '../world/sound';
 import { online, lockContainer, unlockContainer, saveContainer, activeContainers, net } from '../net/client';
 import { G } from '../game';
-import { item, HANDS_ONLY, WEAPON_KIND } from '../data/items';
+import { item, HANDS_ONLY } from '../data/items';
 import { moveStack, dropStack, countFree, putItems } from '../inventory';
 import { isCargo, holds, packFrom, takeOut, CARGO, autoBox, boxCap, boxOf, dropEmpty } from '../data/cargo';
 import { stowHeld, packVol, settleCrates } from '../character';
@@ -113,7 +113,6 @@ const box: PackSide = {
     if (!s) return '';
     const name = item(s.k).name, dst = list(tw)[j];
     const cap = (w: string) => (w === 'p' ? packVol() : undefined);
-    if (tw === 'k' && WEAPON_KIND[s.k] === undefined || fw === 'k' && dst && WEAPON_KIND[dst.k] === undefined) return tl('Only weapons go on your back.');
     if (tw === 'p' && HANDS_ONLY.has(s.k) || fw === 'p' && dst && HANDS_ONLY.has(dst.k)) return TL`The ${item((tw === 'p' ? s : dst!).k).name} is too big for the backpack: carry it in your hands.`;
     if (!dropStack(src, i, list(tw), j, cap(tw), cap(fw))) return fw === tw ? '' : tl('It does not fit in your backpack.');
     save();
@@ -132,7 +131,6 @@ const box: PackSide = {
       save(); return TL`You carry the ${name} in your hands.`;
     }
     let moved = moveStack(src, i, list(w === 'b' ? 'p' : 'b'), w === 'b' ? packVol() : undefined);
-    if (!moved && w === 'b' && WEAPON_KIND[s.k] !== undefined) { const f = G.char.back.indexOf(null); if (f >= 0) { G.char.back[f] = { ...s, n: 1 }; if (--s.n <= 0) src[i] = null; moved = 1; } }
     if (moved) save();
     const where = w === 'b' ? tl('Took ') : tl('Stored ');
     return moved ? `${where}${name}${moved > 1 ? ' ×' + moved : ''}.` : w === 'b' ? tl('No room in your backpack.') : TL`The ${spec.boxLabel.toLowerCase()} is full.`;

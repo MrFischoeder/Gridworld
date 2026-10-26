@@ -23,8 +23,9 @@ import { gunOf, meleeOf, SHOT, type GunLook, type MeleeLook } from '../data/weap
 import { BLADE, STAMINA, BURN } from '../data/survival';
 import { spendStamina, burn } from './survival';
 import { makeNoise } from './noise';
-import { item, WEAPON_KIND, HAND_TOOLS, type ItemKey } from '../data/items';
-import { onHandsChanged, stowHeld, saveChar, calcStats, offHeld, offFree } from '../character';
+import { item, WEAPON_KIND, HAND_TOOLS, HANDS_ONLY, OFF_HAND, type ItemKey } from '../data/items';
+import { putSlot } from '../inventory';
+import { onHandsChanged, stowHeld, saveChar, calcStats, offHeld, offFree, handsChanged, packVol, bothHands, stowOff, takeInOff } from '../character';
 import { count } from '../data/crafting';
 import { logLine } from '../ui/hud';
 import { tl, TL } from '../i18n';
@@ -201,23 +202,33 @@ export function syncHeld() {
   refreshWeaponVisibility(); hudWeapon();
 }
 onHandsChanged(syncHeld);
-/** Keys 1 / 2: take the weapon on that side of your back into your hands (what you held goes onto your back). */
-export function drawBack(i: number) {
-  const c = G.char, b = c.back[i], h = c.hands[0];
-  if (!b) { logLine(TL`Nothing on your back (slot ${i + 1}).`); return; }
-  if (h && WEAPON_KIND[h.k] === undefined) { logLine(TL`Your hands are full: ${item(h.k).name}. Put it away first (a trunk, a chest or a vehicle; the backpack window can drop it).`); return; }
-  c.hands[0] = b; c.back[i] = h; saveChar(); syncHeld();
+/** What the hands held before the last switch (Q swaps back to it). */
+let before: string | null = null;
+/** Keys 1 to 6 (0.264): take what lies in that backpack slot into your hands (a weapon, a tool or a light for the other
+ *  hand), the item you held goes into the slot. An empty slot takes what you hold: it is put away there. */
+export function quickSlot(i: number) {
+  const c = G.char, s = c.inv[i], h = c.hands[0];
+  if (!s) { if (h && !HANDS_ONLY.has(h.k)) { c.inv[i] = h; c.hands[0] = null; before = h.k; saveChar(); handsChanged(); } return; }
+  if (OFF_HAND.has(s.k)) { const m = takeInOff(s.k); if (m) logLine(m); return; }
+  if (WEAPON_KIND[s.k] === undefined && !HAND_TOOLS.has(s.k)) { logLine(TL`The ${item(s.k).name} is not something you hold in your hands.`); return; }
+  if (h && HANDS_ONLY.has(h.k)) { logLine(TL`Your hands are full: ${item(h.k).name}. Put it down first.`); return; }
+  before = h?.k ?? null;
+  c.hands[0] = s.n > 1 ? { k: s.k, n: 1, ...(s.c !== undefined ? { c: s.c } : {}) } : s;
+  if (s.n > 1) { s.n--; if (h) { if (putSlot(c.inv, h, packVol()) > 0) { s.n++; c.hands[0] = h; logLine(tl('No room in the backpack to put it away.')); return; } } }
+  else c.inv[i] = h;
+  if (bothHands()) stowOff();
+  saveChar(); handsChanged();
 }
-/** Q / mouse wheel: swap the weapon in your hands for the (first) one on your back. */
+/** Q / mouse wheel: swap back to what you held before. */
 export function swapWeapon() {
-  const i = G.char.back.findIndex((s) => s && WEAPON_KIND[s.k] !== undefined);
-  if (i >= 0) drawBack(i);
+  const k = before as ItemKey | null, i = k ? G.char.inv.findIndex((s) => s?.k === k) : G.char.inv.findIndex((s) => s && WEAPON_KIND[s.k] !== undefined);
+  if (i >= 0) quickSlot(i);
 }
-/** X: sling the weapon in your hands onto your back. */
+/** X: put away what you hold (into the backpack). */
 export function holster() {
   const h = G.char.hands[0];
   if (!h) return;
-  if (WEAPON_KIND[h.k] === undefined) { logLine(TL`You carry the ${item(h.k).name} in your hands.`); return; }
+  before = h.k;
   const m = stowHeld(); if (m) logLine(m); else saveChar();
   syncHeld();
 }

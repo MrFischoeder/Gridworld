@@ -30,7 +30,7 @@ import { togglePack, closePack, packSide } from './backpack';
 import { closeDialog } from './dialog';
 import { interact, lockKey } from '../world/interact';
 import { useItem } from '../world/loot';
-import { drawBack, swapWeapon, holster, armed, reload } from '../world/weapons';
+import { quickSlot, swapWeapon, holster, armed, reload } from '../world/weapons';
 import { toggleMap, zoomMap, orbitalScan, toggleRoute, toggleFertility, toggleBiomes } from './worldmap';
 import { askDodge } from '../world/player';
 let lastTap: [string, number] = ['', 0];
@@ -95,8 +95,7 @@ export function initInput(onPause: () => void) {
     if (e.code === 'KeyZ' && !e.repeat) startThrow(); // (0.225) hold to swing harder, let go to throw
     const seatKey = e.code === 'Digit1' ? 0 : e.code === 'Digit2' ? 1 : e.code === 'Digit3' ? 2 : -1;
     if (seatKey >= 0 && (driving.v || riding())) { if (driving.v) switchSeat(seatKey); else rideSeat(seatKey); } // in a vehicle the numbers pick the seat
-    else if (e.code === 'Digit1') drawBack(0);
-    else if (e.code === 'Digit2') drawBack(1);
+    else if (/^Digit[1-6]$/.test(e.code)) quickSlot(+e.code.slice(5) - 1);
     if (e.code === 'KeyQ') swapWeapon();
     if (e.code === 'KeyX') holster();
     if (e.code === 'KeyF' && isBuilding()) dismantle();

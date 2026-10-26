@@ -1,6 +1,6 @@
 // Character rules: stats from level and equipped relics, inventory, XP.
 import { G } from './game';
-import { ITEMS, item, BULK, WEAR, WEAPON_KIND, HANDS_ONLY, OFF_HAND, SHIELD, TWO_HANDED, gearOf, type ItemKey } from './data/items';
+import { ITEMS, item, BULK, WEAR, HANDS_ONLY, OFF_HAND, SHIELD, TWO_HANDED, gearOf, type ItemKey } from './data/items';
 import { roomFor, weightOf, putSlot, putItems } from './inventory';
 import type { Slot } from './save';
 import { saveChar as persist } from './save';
@@ -54,7 +54,6 @@ export const handsChanged = () => handsHook();
 export function stowHeld(): string {
   const c = G.char, s = c.hands[0];
   if (!s) return '';
-  if (WEAPON_KIND[s.k] !== undefined) { const f = c.back.indexOf(null); if (f >= 0) { c.back[f] = s; c.hands[0] = null; handsChanged(); return ''; } }
   if (putSlot(c.inv, s, packVol()) === 0) { c.hands[0] = null; handsChanged(); return ''; }
   return TL`Your hands are full (${item(s.k).name}) and there is nowhere to put it.`;
 }
@@ -116,7 +115,7 @@ export function takeInHands(k: ItemKey): string {
 }
 
 /** How many more of k the backpack has room for (by bulk); for things carried in the hands, whether your hands can take it. */
-export const packRoom = (k: ItemKey) => (HANDS_ONLY.has(k) ? (!G.char.hands[0] || WEAPON_KIND[G.char.hands[0].k] !== undefined && G.char.back.includes(null) ? 1 : 0) : roomFor(G.char.inv, k, packVol()));
+export const packRoom = (k: ItemKey) => (HANDS_ONLY.has(k) ? (!G.char.hands[0] ? 1 : 0) : roomFor(G.char.inv, k, packVol()));
 /**
  * Adds an item; new relics go straight into a free module, things too big for the backpack into your hands (a weapon you
  * held goes onto your back), weapons onto a free back slot. Returns where it went, or null when it does not fit.
@@ -129,7 +128,6 @@ export function addItem(k: ItemKey, n = 1, quiet = false): 'mod' | 'inv' | 'hand
     if (n !== 1 || (c.hands[0] && stowHeld())) return null;
     c.hands[0] = { k, n: 1 }; handsChanged(); return 'hands';
   }
-  if (WEAPON_KIND[k] !== undefined && n === 1) { const f = c.back.indexOf(null); if (f >= 0) { c.back[f] = { k, n: 1 }; return 'back'; } }
   if (autoBox(k) && packRoom(k) < n) { // (0.251) no room loose: into the crate you hold, or a new one in your hands
     const h = handBox();
     if (h?.b?.k === k && boxRoom(h, k) >= n) { h.b.n += n; handsChanged(); return 'hands'; }

@@ -466,3 +466,4 @@ body.cinematic > *:not(#view):not(#cinematic){visibility:hidden}
 /* (0.230) the journal: a marker switched off */
 .buy.off{background:transparent;color:var(--g);border:1px solid var(--g2)}
 .jsec{font-size:24px;color:var(--gold);margin:14px 0 2px} .jtext{font-size:19px;opacity:.7;margin-top:2px}
+.slot{position:relative}.slot .hk{position:absolute;left:2px;top:0;font-size:10px;line-height:12px;color:var(--amber);opacity:.85;pointer-events:none}

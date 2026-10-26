@@ -12,6 +12,8 @@ import { tl, TL } from '../i18n';
 
 export interface SlotView {
   k: ItemKey | null; n?: number;
+  /** (0.264) a number key that picks this slot (the backpack's first row). */
+  key?: number;
   /** Condition in percent (worn parts, a vehicle's engine...): drawn as a bar along the bottom. */
   c?: number;
   /** Shown in an empty slot, e.g. "Optic" or "FL" (front left wheel). */
@@ -38,7 +40,7 @@ export function slotHTML(id: string, v: SlotView, selected = false): string {
   // an item: its icon and short name (the full sheet comes up on hover, ui/itemtip.ts); else the hint
   const face = v.text ?? (it && v.k ? `${itemIcon(v.k) || `<span class="ab">${it.ab}</span>`}<span class="nm">${shortName(v.k)}</span>` : v.hint ? `<span class="hint">${v.hint}</span>` : '');
   const data = v.k ? ` data-k="${v.k}"${v.n && v.n > 1 ? ` data-n="${v.n}"` : ''}${v.c !== undefined ? ` data-c="${Math.round(v.c)}"` : ''}${v.b ? ` data-b="${v.b.k}:${v.b.n}"` : ''}` : ` title="${esc(title)}"`;
-  return `<button class="${cls}${it && !v.text ? ' iconic' : ''}" data-id="${id}"${data} aria-label="${esc(title)}">${face}${cnt}${bar}${fillBar}</button>`;
+  return `<button class="${cls}${it && !v.text ? ' iconic' : ''}" data-id="${id}"${data} aria-label="${esc(title)}">${face}${cnt}${bar}${fillBar}${v.key ? `<span class="hk">${v.key}</span>` : ''}</button>`;
 }
 
 /** One line about an item for the detail area under the slots. */

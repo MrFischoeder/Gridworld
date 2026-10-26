@@ -69,15 +69,14 @@ function renderPack() {
   modsEl.innerHTML = c.mods.map((k, i) => slotHTML('m:' + i, { k, hint: tl('Relic') }, sel === 'm:' + i)).join('');
   gunEl.innerHTML = BLASTER.slots.map((s, i) => slotHTML('w:' + i, { k: c.gunMods[i], hint: SLOT_NAME[s], cls: 'att' }, sel === 'w:' + i)).join('');
   gearEl.innerHTML = WEAR_SLOTS.map((s, i) => slotHTML('g:' + i, { k: c.wear[s] ?? null, hint: WEAR_NAME[s] }, sel === 'g:' + i)).join('') + '<div></div>' +
-    c.back.map((s, i) => slotHTML('k:' + i, { k: s?.k ?? null, hint: tl('Back ') + (i + 1), title: s ? undefined : TL`Back ${i + 1}: a weapon slung on your back (key ${i + 1} draws it)` }, sel === 'k:' + i)).join('') +
     slotHTML('h:0', { k: c.hands[0]?.k ?? null, n: c.hands[0]?.n, c: c.hands[0]?.c, b: c.hands[0]?.b, hint: tl('Hands'), cls: 'held', title: c.hands[0] ? undefined : tl('Your hands: the weapon you fight with, or something too big for the backpack') }, sel === 'h:0') +
     slotHTML('o:0', { k: c.off[0]?.k ?? null, n: c.off[0]?.n, hint: tl('Other hand'), cls: 'held' + (c.off[0] && bothHands() ? ' idle' : ''), title: c.off[0] ? undefined : tl('Your other hand: a light (flashlight, oil lamp, torches) or a shield, beside a one-handed weapon') }, sel === 'o:0');
   const oh = c.off[0] ? (bothHands() ? TL`${item(c.off[0].k).name} (idle: both hands on the weapon)` : item(c.off[0].k).name) : tl('nothing');
   defEl.textContent = TL`armour ${Math.round(G.S.def * 100)}% · in hands: ${c.hands[0] ? item(c.hands[0].k).name : tl('nothing')}` + ' · ' + TL`other hand: ${oh}`;
-  invEl.innerHTML = c.inv.map((s, i) => slotHTML('p:' + i, { k: s?.k ?? null, n: s?.n, c: s?.c }, sel === 'p:' + i)).join('');
+  invEl.innerHTML = c.inv.map((s, i) => slotHTML('p:' + i, { k: s?.k ?? null, n: s?.n, c: s?.c, ...(i < 6 ? { key: i + 1, title: s ? undefined : TL`Backpack slot ${i + 1}: keys 1 to 6 take what lies in the first six slots into your hands` } : {}) }, sel === 'p:' + i)).join('');
   loadEl.innerHTML = loadText();
   statsEl.textContent = TL`damage ${(g.dmg * G.S.bm).toFixed(2)} · ${(1 / G.S.rate).toFixed(1)} shots/s · range ${g.range} m · magazine ${g.mag} · reload ${g.reload.toFixed(1)} s · zoom ${g.zoom}×`;
-  let html = note || tl('Drag items between slots. Weapons go in your hands or on your back, armour and clothes on your body, relics in the modules, attachments in the Blaster slots. Wheels and other big things only fit in your hands.');
+  let html = note || tl('Drag items between slots. Keys 1 to 6 take the item in the first six backpack slots into your hands, swapping what you held (weapons, tools, lights); armour and clothes on your body, relics in the modules, attachments in the Blaster slots. Wheels and other big things only fit in your hands.');
   const acts: [string, string][] = [];
   const s = sel && !isSide(sel) ? at(sel) : null;
   if (sel && s) {
@@ -197,7 +196,7 @@ function quick(id: string, act: string): string {
   if (it.type === 'relic') { const f = c.mods.indexOf(null); return f < 0 ? tl('All modules are full. Unequip one first.') : move(id, 'm:' + f); }
   if (it.type === 'attach') return move(id, 'w:' + BLASTER.slots.indexOf(attachSlot(a.k)!));
   if (it.type === 'wear') return move(id, 'g:' + WEAR_SLOTS.indexOf(WEAR[a.k]!.slot));
-  if (it.type === 'weapon') { const f = c.back.indexOf(null); return f < 0 ? tl('Both back slots are taken.') : move(id, 'k:' + f); }
+  if (it.type === 'weapon') return move(id, 'h:0');
   return '';
 }
 

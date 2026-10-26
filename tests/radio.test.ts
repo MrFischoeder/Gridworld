@@ -33,12 +33,12 @@ describe('crates that come and go (0.251)', () => {
     expect(c.hands[0]).toBe(null); // 10 left: back into the pockets, the crate is gone
     expect(countHeld('stone')).toBe(10);
   });
-  it('the weapon you hold goes onto your back; a second crate is set down', () => {
+  it('the weapon you hold goes into the backpack; a second crate is set down', () => {
     const c = newChar(); state.G.char = c; c.back = [null, null]; c.hands[0] = { k: 'blaster', n: 1 };
     const down: unknown[] = []; onCrateOverflow((s) => down.push(s));
     c.inv[0] = { k: 'log', n: 12 };
     expect(settleCrates()).toBe(true);
-    expect(c.hands[0]?.b).toEqual({ k: 'log', n: 12 }); expect(c.back.some((s) => s?.k === 'blaster')).toBe(true);
+    expect(c.hands[0]?.b).toEqual({ k: 'log', n: 12 }); expect(c.inv.some((s) => s?.k === 'blaster')).toBe(true);
     c.inv[1] = { k: 'stone', n: 12 };
     settleCrates();
     expect(down.length).toBe(1);
