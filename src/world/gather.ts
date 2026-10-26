@@ -69,7 +69,8 @@ export function gatherPrompt(t: Target) {
 
 // ---------- the work: hold E, a blow every swing ----------
 let work: { key: string; t: number; landed: boolean } | null = null;
-export const working = () => !!work;
+let ext = false;
+export const working = () => !!work || ext;
 let onChange: () => void = () => {};
 /** The weapon goes away while you work (world/weapons.ts refreshes on this). */
 export function onWorkChange(f: () => void) { onChange = f; }
@@ -94,6 +95,14 @@ function restPose() {
   showTool(h);
   pivot.rotation.set(0.12, 0.3, -0.35); pivot.position.set(0.28, -0.36, -0.22);
 }
+/** (0.263) Another kind of work with the tool in your hands (world/handwork.ts): `phase` is the stroke (cycles), null stops it. */
+export function setHandWork(k: ToolKey | null, phase = 0) {
+  if (!k) { if (ext) { ext = false; pivot.visible = false; onChange(); } return; }
+  if (!ext) { ext = true; onChange(); }
+  showTool(k); pivot.visible = true;
+  const s = Math.sin(phase * Math.PI * 2);
+  pivot.rotation.set(0.15, 0.35, -0.25); pivot.position.set(0.12 + s * 0.02, -0.34, -0.4 + s * 0.12);
+}
 /** E pressed at a tree or rock: start working it (the blows land while E is held). */
 export function strike(t: Target) {
   if (t.grove && !t.grove.camp) { logLine(gatherPrompt(t)); return; }
@@ -105,7 +114,7 @@ export function strike(t: Target) {
 }
 /** Every frame (world/interact.ts) with the target in reach, if any: swing while E is held. */
 export function updateGather(dt: number, t: Target | null) {
-  if (!work) { restPose(); return; }
+  if (!work) { if (!ext) restPose(); return; }
   if (!t || !t.held || t.key !== work.key || !G.keys.KeyE || !G.playing || G.dlgOpen) { stop(); return; }
   // wind up over the shoulder, then the blow; the blow lands at the bottom of the swing
   work.t += dt / GATHER.swing;

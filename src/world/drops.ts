@@ -56,7 +56,21 @@ function give(d: NetDrop): boolean {
   if (i < 0 || packRoom(k) < 1) return false;
   c.inv[i] = { k, n: d.n, c: d.c }; return true;
 }
+/** Lying items being worked up rather than picked up (world/handwork.ts): drop id → what to do once the server hands it over. */
+const eat = new Map<string, (n: number) => void>();
+/** Use a lying item up (alone at once; online once the server says you were first). False if it cannot be had now. */
+export function consumeDrop(p: Pickup, then: (n: number) => void): boolean {
+  if (!p.drop) { const i = W.pickups.indexOf(p); if (i < 0) return false; scene.remove(p.g); W.pickups.splice(i, 1); then(p.n ?? 1); return true; }
+  const id = p.drop;
+  if (id.startsWith('local:')) { const d = local.get(id); if (!d) return false; local.delete(id); syncDrops(true); then(d.n); return true; }
+  if (p.taking && performance.now() - p.taking < 3000) return false;
+  p.taking = performance.now(); eat.set(id, then);
+  if (!sendTake(id)) { p.taking = 0; eat.delete(id); return false; }
+  return true;
+}
 function took(d: NetDrop) {
+  const then = eat.get(d.id);
+  if (then) { eat.delete(d.id); then(d.n); syncDrops(true); return; }
   if (give(d)) { settleCrates(); saveChar(); logLine(TL`Picked up ${label(d.k, d.n)}${d.by && d.by !== G.char.name && !d.auto ? TL` (left by ${d.by})` : ''}.`); }
   else { // no room after all: it goes back down where it was
     showToast(tl('No room for it')); logLine(TL`No room for ${label(d.k, d.n)}: it stays on the ground.`);

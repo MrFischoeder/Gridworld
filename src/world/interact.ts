@@ -45,6 +45,7 @@ import { isWhPlacing, confirmWhPlacing, whPlacingHint, whPlacingOk } from './wil
 import type { Lighthouse } from '../gen/lighthouses';
 import { isStreetPlacing, confirmStreetPlacing, streetPlacingHint, streetPlacingOk, nearStreetLamp, streetLampPrompt, openStreetLamp, type NearLamp } from './streetlamps';
 import { sawingHint } from './sawing';
+import { handworkTarget, handworkPrompt, updateHandwork, type HandTarget } from './handwork';
 import { nearBridgeSign, built as bridgeBuilt, isBridgePlacing, confirmBridgePlacing, bridgePlacingHint, bridgePlacingOk } from './bridges';
 import { openBridge } from '../ui/bridge';
 import { nearPierSign, nearPierCrate, pierCrate, isPierPlacing, confirmPierPlacing, pierPlacingHint, pierPlacingOk } from './piers';
@@ -110,7 +111,7 @@ let nearHatch = false;
 let nearDecoy = false;
 let nearLock2 = false, nearRec = false, nearData: ReturnType<typeof nearCarrier> = null;
 let nearLd: Lode | null = null, nearIns: InstallSite | null = null, nearHall: number | null = null, nearComms: number | null = null, nearPump: number | null = null, nearSL: NearLamp | null = null, nearLH: Lighthouse | null = null, nearChg: number | null = null, nearBrg: Ford | null = null, nearPier: Pier | null = null, nearPCrate: Pier | null = null, nearBt: Boat | null = null, nearAir: Airship | null = null, nearCop: Copter | null = null, nearFogL: ReturnType<typeof nearFogLocker> = null, nearBd: Body | null = null, nearGd = false, nearSur: Bandit | null = null, nearPt: ReturnType<typeof nearPortBoard> = null;
-let nearDp: Pickup | null = null, nearRide: RideSpot | null = null;
+let nearHW: HandTarget | null = null, nearDp: Pickup | null = null, nearRide: RideSpot | null = null;
 let nearAncient: ReturnType<typeof nearGatePanel> = null, nearAncientTablet: ReturnType<typeof nearGateTablet> = null;
 let nearMap = false, nearClaim: SavedClaim | null = null, nearGate: ReturnType<typeof nearDoor> = null, nearHD: ReturnType<typeof nearHouseDoor> = null, nearDesk = false, nearWk: ReturnType<typeof nearWorks> = null, nearSt: ReturnType<typeof nearStation> = null, nearTerm: ReturnType<typeof nearTerminal> = null, nearGun: ReturnType<typeof nearTurret> = null;
 let nearMine: ReturnType<typeof nearHome> = null, nearPow: Plant | null = null, nearCar: Caravan | null = null, nearWork2: ReturnType<typeof nearSite> = null;
@@ -156,7 +157,7 @@ export function updateEntities(dt: number, time: number) {
   nearGate = nearDoor(); nearGun = nearGate ? null : nearTurret(); nearHD = nearGate || nearGun ? null : nearHouseDoor(); nearDesk = atShuttleDesk(); nearWk = nearGate || nearGun || nearHD || nearDesk ? null : nearWorks(); nearSt = nearGate || nearGun || nearHD || nearDesk || nearWk ? null : nearStation(); nearTerm = nearGate || nearHD ? null : nearTerminal();
   nearComms = nearSettlementComms(); nearPump = nearFuelPump(); nearSL = nearStreetLamp(); nearLH = nearLighthouse(); nearChg = nearPump === null ? nearCharger() : null; nearIns = nearInstallDesk(); nearLd = nearIns || nearVehicle ? null : nearOutpostLode(); nearPt = nearLd ? null : nearPortBoard(); nearHall = nearHallTerminal(); nearBrg = nearBridgeSign(); nearPier = nearPierSign(); nearPCrate = nearPier ? null : nearPierCrate(); nearBt = nearPier || nearPCrate ? null : nearBoat(); nearAir = nearBt ? null : nearAirship(); nearCop = nearBt || nearAir ? null : nearCopter();
   nearFogL = nearFogLocker(); nearBd = nearBody(); nearGd = G.char.loc === 'overworld' && nearGuide(); nearSur = G.char.loc === 'overworld' ? nearSurrendered() : null;
-  nearDp = nearDrop();
+  nearDp = nearDrop(); nearHW = handworkTarget(); if (nearHW) nearDp = nearHW.p; updateHandwork(dt, nearHW);
   nearLock2 = nearLocker(); nearRec = !nearLock2 && nearConsole(); nearData = nearCarrier();
   W.nearChest = null; W.nearPortal = null; W.nearLock = null;
   if (npcsActive()) updateNpcs(dt, time); else W.nearNpc = null;
@@ -189,6 +190,7 @@ export function updateEntities(dt: number, time: number) {
   updateGather(dt, nearGather);
   nearWater = G.char.loc === 'overworld' && !nearFood && !nearCook && !nearWork && !nearClaim && !nearGather && !nearNpc && !nearChest && !nearBoard && !nearStash && !nearVehicle && !nearMine && !nearPow && !nearCar && !nearWork2 ? waterSource(loadedWells()) : null;
   if (climbing()) { prompt.className = ''; prompt.textContent = tl('W / S — up or down · Space — let go'); }
+  else if (nearHW) { prompt.className = ''; prompt.textContent = handworkPrompt(nearHW); }
   else if (nearDp) { prompt.className = ''; prompt.textContent = dropPrompt(nearDp); }
   else if (nearRide) { prompt.className = nearRide.seat < 0 ? 'lock' : ''; prompt.textContent = ridePrompt(nearRide); }
   else if (nearAncientTablet) { prompt.className = 'portal'; prompt.textContent = tl('E — read the ancient address tablet'); }
@@ -300,6 +302,7 @@ export function interact() {
   if (inCopter()) { copterUse(); return; }
   if (inAir()) { airUse(); return; }
   if (inBoat()) { stepOff(); return; }
+  if (nearHW) return; // (0.263) held E works it, a tap picks it up: world/handwork.ts
   if (nearDp) { takeDrop(nearDp); return; }
   if (nearRide) { boardRide(nearRide); return; }
   if (nearBt) { board(nearBt); return; }

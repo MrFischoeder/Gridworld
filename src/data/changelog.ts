@@ -3,6 +3,10 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.263.0', date: '2026-10-29', title: 'Working things up where they lie', notes: [
+    'Planks from logs are fixed and made handy: take a Saw in your hands, stand by a log lying on the ground (a felled tree\'s logs, or any you put down) and hold E. A bar fills while the saw works in front of you (10 s a log, 4 planks each, some stamina and calories); the planks go into your kit, or lie at your feet if there is no room. Out of a pile it works one log at a time and goes on with the rest. A quick tap of E still picks the log up.',
+    'The same table (data/handwork.ts) will take more tools and materials. Multiplayer: the log is a shared drop, claimed from the server first, so two players cannot both saw the same log. `PROTOCOL` and the server are unchanged.',
+  ] },
   { v: '0.262.0', date: '2026-10-29', title: 'Convoy lines in the village terminal', notes: [
     'The WAREHOUSES page of the hall terminal now also lists the convoy lines between warehouses (where the truck is, crates delivered, times robbed, the last trip), above the airship and sea lines. Read only; nothing is saved or sent.',
   ] },
