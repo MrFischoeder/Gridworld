@@ -41,6 +41,7 @@ import { OW } from '../world/overworld';
 import { lockPointer } from './input';
 import { hubs, hubWorks, feeders, hubsNear, villageHub, type Hub } from '../gen/warehouses';
 import { allAirLines, alAt } from '../gen/airlines';
+import { allHubLines, hlAt } from '../gen/hublines';
 import { allSkyLines, skAt } from '../gen/skylines';
 import { shipAt } from '../gen/shiplines';
 import { hullOf } from '../gen/airhull';
@@ -193,6 +194,7 @@ function villagesPage(poi: Poi): string {
  *  ports, in the wilds) and the halls of the villages you know, nearest first: where, what it serves, whether it works.
  *  Their stocks need the radio link between warehouses (stage M3). */
 const SKY_TRIP: Record<string, string> = { ok: tl('delivered'), dry: tl('no fuel or charge'), storm: tl('storm'), empty: tl('nothing to carry'), nomast: tl('far mast down'), damaged: tl('damaged, load lost'), wrecked: tl('wrecked') };
+const ROAD_TRIP: Record<string, string> = { ok: tl('delivered'), dry: tl('no fuel or charge'), robbed: tl('robbed'), wrecked: tl('wrecked'), silent: tl('no radio'), empty: tl('nothing to carry') };
 const SEA_TRIP: Record<string, string> = { ok: tl('delivered'), idle: tl('a port stood idle'), dry: tl('no fuel'), calm: tl('becalmed') };
 const TRIP: Record<string, string> = { ok: tl('delivered'), silent: tl('no radio'), storm: tl('storm'), nopad: tl('far pad down'), flat: tl('no charge'), empty: tl('nothing to carry'), lost: tl('lost') };
 function storesPage(poi: Poi): string {
@@ -217,6 +219,15 @@ function storesPage(poi: Poi): string {
       const cv = alAt(l, c.time), sent = Object.values(l.sent).reduce((a: number, n) => a + (n ?? 0), 0);
       const where = !l.drone ? tl('no drone') : cv.at === 'out' ? TL`flying out (${Math.round(cv.p * 100)}%)` : cv.at === 'back' ? TL`flying back (${Math.round(cv.p * 100)}%)` : cv.at === 'there' ? tl('on the far pad') : tl('on its pad');
       s += row(`${names.get(home) ?? home} → ${l.toName}`, `${l.km} km · ${where}`) + `<div class="tdim">${TL`${sent} crates delivered`}${l.lost ? TL` · drones lost: ${l.lost}` : ''}${l.last ? ' · ' + TL`last flight: ${TRIP[l.last[1]]}` : ''}</div>`;
+    }
+  }
+  const road = allHubLines(c.towns, c.outposts).filter(([home, l]) => near.has(home) || near.has(l.to));
+  if (road.length) {
+    s += h(TL`CONVOY LINES · ${road.length}`);
+    for (const [home, l] of road) {
+      const cv = hlAt(l, c.time), sent = Object.values(l.sent).reduce((a: number, n) => a + (n ?? 0), 0);
+      const where = !l.truck ? tl('no truck') : cv.at === 'out' ? TL`driving out (${Math.round(cv.p * 100)}%)` : cv.at === 'back' ? TL`driving back (${Math.round(cv.p * 100)}%)` : cv.at === 'there' ? tl('unloading at the far warehouse') : cv.at === 'parked' ? tl('parked') : tl('loading at the warehouse');
+      s += row(`${names.get(home) ?? home} → ${l.toName}`, `${l.km} km · ${where}`) + `<div class="tdim">${TL`${sent} crates delivered`}${l.robbed ? TL` · robbed: ${l.robbed}` : ''}${l.last ? ' · ' + TL`last trip: ${ROAD_TRIP[l.last[1]]}` : ''}</div>`;
     }
   }
   // (0.261) the airship lines and the sea (cargo ship) lines of the warehouses listed

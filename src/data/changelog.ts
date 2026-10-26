@@ -3,6 +3,9 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.262.0', date: '2026-10-29', title: 'Convoy lines in the village terminal', notes: [
+    'The WAREHOUSES page of the hall terminal now also lists the convoy lines between warehouses (where the truck is, crates delivered, times robbed, the last trip), above the airship and sea lines. Read only; nothing is saved or sent.',
+  ] },
   { v: '0.261.0', date: '2026-10-29', title: 'Air and sea lines in the village terminal', notes: [
     'The WAREHOUSES page of the hall terminal now lists, besides the drone lines, the airship lines (where each airship is, crates delivered, its hull, the last trip) and the sea lines of the ports (where the ship is, crates delivered, voyages, the last voyage), for the warehouses listed there.',
     'Read only; nothing is saved or sent, so `PROTOCOL` and the server are unchanged. Every game shows the same from the shared records.',
