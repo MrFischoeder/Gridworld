@@ -60,7 +60,7 @@ export function villageMastClick(vid: number, what = ''): string {
 }
 
 /** The warehouse's stock: what it has and taking from it (a village's stock, a port's or a wild warehouse's hold). */
-function store(id: string) {
+export function store(id: string) {
   if (id.startsWith('v:')) { const vid = +id.slice(2); return { has: stockHas(vid), take: (t: [ItemKey, number][]) => stockTake(vid, t) }; }
   const o = G.char.outposts[id];
   return { has: (k: ItemKey) => o?.hold?.[k] ?? 0, take: (t: [ItemKey, number][]) => { for (const [k, n] of t) if (o) portTake(o, k, n); } };

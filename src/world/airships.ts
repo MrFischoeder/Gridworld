@@ -29,6 +29,7 @@ import { scene } from './render';
 import { PropBatch } from './props';
 import { G } from '../game';
 import { OW, foeBody, crownHit } from './overworld';
+import { inCopter } from './copters';
 import { nearX, worldDist, WORLD_W } from '../gen/regions';
 import { SEA } from '../gen/seas';
 import { weatherAt } from '../gen/weather';
@@ -58,7 +59,7 @@ let aboard: Live | null = null, seat = 0, third = true, scanT = 0, saveT = 0;
 /** (0.257) On the rope ladder: `d` = your feet's metres under the gondola's floor. */
 let climb: { l: Live; d: number } | null = null;
 /** Seated in an airship or on its ladder (the armed, tool and camera rules). */
-export const inAir = () => !!aboard || !!climb;
+export const inAir = () => !!aboard || !!climb || inCopter(); // (0.259) the rotorcraft shares every rule of the airships
 const me = () => (online() ? net.id : 0);
 const groundAt = (x: number, z: number) => Math.max(OW.terrain!.heightAt(x, z), SEA.level);
 

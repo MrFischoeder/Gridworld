@@ -19,6 +19,8 @@ export interface TownState {
   hline?: import('./hublines').HubLine;
   /** (0.258) Its airship line (gen/skylines.ts). */
   zline?: import('./skylines').SkyLine;
+  /** (0.259) A rotorcraft going up at its warehouse (gen/copters.ts). */
+  cbuild?: import('./copters').CopterBuild;
   /** (0.254) The drone pad (built at), its materials handed over, its air line (gen/airlines.ts; 0.254 saves only). */
   dpad?: number; dgiven?: Partial<Record<ItemKey, number>>; aline?: import('./airlines').AirLine;
   /** (0.255) Its air lines (up to `DRONE.lines`); where the pad was staked out (world, canonical x) or that it waits for that. */

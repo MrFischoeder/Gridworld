@@ -31,6 +31,7 @@ import { linkedHTML } from './radio';
 import { hubLineHTML, hubLineClick } from './hublines';
 import { transitHTML, transitClick } from './transit';
 import { skyLineHTML, skyLineClick } from './skylines';
+import { copterYardHTML, copterYardClick } from './copters';
 import { airLineHTML, airLineClick } from './airlines';
 import { dropWay } from '../gen/transit';
 import { racksHTML, rackClick } from './racks';
@@ -163,7 +164,7 @@ function render(msg = '') {
     s += o.k === 'store' ? TL`<div class="say" style="opacity:.85">A warehouse in the wilds works like an outpost: it needs its own power and its own people. Build the warehouse, a power source, bunkhouses and fields; settlers come when there are beds and food. Its storekeepers need ${PORT.crew} people and power. It serves its hex: one warehouse to an area.</div>` : TL`<div class="say" style="opacity:.85">A port works like an outpost: it needs its own power and its own people. Build the warehouse, a power source, bunkhouses and fields; settlers come when there are beds and food. The warehouse's crane needs ${PORT.crew} people and power.</div>`;
     s += nameHTML(o);
     const pos = at();
-    s += partHTML(o, 'port', pos) + holdHTML(open.id) + partHTML(o, 'power', pos) + powerHTML(open.id, o, pos) + plineHTML(open.id, o, pos) + partHTML(o, 'bunks', pos) + partHTML(o, 'field', pos) + peopleHTML(o, pos) + commuteHTML(open.id, o) + (o.done?.port ? partHTML(o, 'radio', pos) + linkedHTML(open.id) + hubLineHTML(open.id, (v) => `data-port="hl" data-hl="${v}"`) + partHTML(o, 'pad', pos) + airLineHTML(open.id, (v) => `data-port="al" data-al="${v}"`) + partHTML(o, 'amast', pos) + airYardHTML(open.id, (v) => `data-port="ay" data-ay="${v}"`) + skyLineHTML(open.id, (v) => `data-port="sk" data-sk="${v}"`) : '') + (o.done?.port ? lineHTML(open.id) + transitHTML(open.id, (v) => `data-port="tr" data-tr="${v}"`) : '');
+    s += partHTML(o, 'port', pos) + holdHTML(open.id) + partHTML(o, 'power', pos) + powerHTML(open.id, o, pos) + plineHTML(open.id, o, pos) + partHTML(o, 'bunks', pos) + partHTML(o, 'field', pos) + peopleHTML(o, pos) + commuteHTML(open.id, o) + (o.done?.port ? partHTML(o, 'radio', pos) + linkedHTML(open.id) + hubLineHTML(open.id, (v) => `data-port="hl" data-hl="${v}"`) + partHTML(o, 'pad', pos) + airLineHTML(open.id, (v) => `data-port="al" data-al="${v}"`) + partHTML(o, 'amast', pos) + airYardHTML(open.id, (v) => `data-port="ay" data-ay="${v}"`) + skyLineHTML(open.id, (v) => `data-port="sk" data-sk="${v}"`) + copterYardHTML(open.id, (v) => `data-port="cp" data-cp="${v}"`) : '') + (o.done?.port ? lineHTML(open.id) + transitHTML(open.id, (v) => `data-port="tr" data-tr="${v}"`) : '');
     if (bare(o) && (o.o === 'crew' || o.o === myOwner())) s += small('drop', o.k === 'store' ? tl('Pull up the stakes') : tl('Give up the port'));
   }
   panel().classList.add('wide');
@@ -220,6 +221,7 @@ export function portClick(t: HTMLElement): boolean {
     }
     msg = tickPort(id);
     if (a === 'ay') { if (o.done?.port) { const m = airYardClick(id, b0.dataset.ay ?? ''); if (m) msg = msg ? msg + ' ' + m : m; } return; } // (0.256) the airship yard
+    if (a === 'cp') { if (o.done?.port) { const m = copterYardClick(id, b0.dataset.cp ?? ''); if (m) msg = msg ? msg + ' ' + m : m; } return; } // (0.259) the rotorcraft yard
     if (a === 'sk') { if (o.done?.port) { const m = skyLineClick(id, b0.dataset.sk ?? ''); if (m) msg = msg ? msg + ' ' + m : m; } return; } // (0.258) the airship line
     if (a === 'al') { if (o.done?.port) { const m = airLineClick(id, b0.dataset.al ?? ''); if (m) msg = msg ? msg + ' ' + m : m; } return; } // (0.254) the air line
     if (a === 'tr') { if (o.done?.port) { const m = transitClick(id, b0.dataset.tr ?? ''); if (m) msg = msg ? msg + ' ' + m : m; } return; } // (0.253) goods passing through

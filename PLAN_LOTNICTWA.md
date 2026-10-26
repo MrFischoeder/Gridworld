@@ -81,6 +81,7 @@ Zrobione (0.258): jedna linia sterowcowa na magazyn z masztem (do 30 km w linii 
 - **Tranzyt:** sterowiec działa jako trzeci sposób wysyłki dalej (obok konwoju i statku).
 
 ### F5: wiropłat (opcjonalnie)
+Zrobione (0.259, decyzja właściciela: wchodzi do planu): technologia `rotorcraft` (tier 4), budowa przy działającym magazynie z jego zapasu (bez masztu, czasu, prądu i załogi), parkuje na placu przy magazynie, dwa miejsca, ładownia 8 miejsc, tylko diesel (zbiornik 90 L), do 6 na świat, lot W/S/A/D/Spacja/C (bez klawisza zawisa), siada tylko na płaskim i suchym gruncie, wirnik 4,4 m zderza się z budynkami i drzewami, wspólny w grze wieloosobowej (`Char.copters`, nowe pole serwera). Poniżej plan wyjściowy:
 - Mała, szybka maszyna dla gracza:
   - dwa miejsca;
   - mała ładownia;

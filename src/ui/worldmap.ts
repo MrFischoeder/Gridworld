@@ -2,6 +2,7 @@ import { hubTruckAt } from '../world/hublines';
 import { droneMapAt } from '../world/airlines';
 import { airshipsForMap } from '../world/airships';
 import { skyShipsForMap } from '../world/skyships';
+import { coptersForMap } from '../world/copters';
 import { allSkyLines } from '../gen/skylines';
 import { allAirLines } from '../gen/airlines';
 import { allHubLines, hlWrecked } from '../gen/hublines';
@@ -336,6 +337,10 @@ function drawArea(ctx: CanvasRenderingContext2D, w: number, h: number, ppm: numb
   for (const [x, z, yaw] of [...airshipsForMap(), ...skyShipsForMap()]) { // (0.256) the airships: a pale blue cigar along their heading
     const ax = X(nearX(x, px)), ay = Z(z), fx = Math.sin(yaw), fz = Math.cos(yaw);
     ctx.strokeStyle = '#c4ffd2'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(ax - fx * 5, ay - fz * 5); ctx.lineTo(ax + fx * 5, ay + fz * 5); ctx.stroke(); ctx.lineWidth = 1;
+  }
+  for (const [x, z, yaw] of coptersForMap()) { // (0.259) the rotorcrafts: a small pale cross along their heading
+    const ax = X(nearX(x, px)), ay = Z(z), fx = Math.sin(yaw), fz = Math.cos(yaw);
+    ctx.strokeStyle = '#c4ffd2'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(ax - fx * 4, ay - fz * 4); ctx.lineTo(ax + fx * 4, ay + fz * 4); ctx.moveTo(ax - fz * 3, ay + fx * 3); ctx.lineTo(ax + fz * 3, ay - fx * 3); ctx.stroke(); ctx.lineWidth = 1;
   }
   { // (0.258) airship lines between warehouses with masts: a dashed pale green line
     const all = hubs(G.char.world, G.char.towns, G.char.outposts), byId = new Map(all.map((q) => [q.id, q]));

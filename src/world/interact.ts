@@ -52,6 +52,8 @@ import { openPier } from '../ui/pier';
 import { inBoat, nearBoat, board, stepOff, boatHint, boatPrompt } from './boats';
 import type { Airship } from '../gen/airships';
 import { inAir, nearAirship, boardAir, airUse, airHint, airPrompt } from './airships';
+import { inCopter, nearCopter, boardCopter, copterUse, copterHint, copterPrompt } from './copters';
+import type { Copter } from '../gen/copters';
 import type { Boat } from '../gen/boats';
 import type { Pier } from '../gen/piers';
 import type { Ford } from '../gen/bridges';
@@ -107,7 +109,7 @@ let nearCave: Cave | null = null, caveOut = -1;
 let nearHatch = false;
 let nearDecoy = false;
 let nearLock2 = false, nearRec = false, nearData: ReturnType<typeof nearCarrier> = null;
-let nearLd: Lode | null = null, nearIns: InstallSite | null = null, nearHall: number | null = null, nearComms: number | null = null, nearPump: number | null = null, nearSL: NearLamp | null = null, nearLH: Lighthouse | null = null, nearChg: number | null = null, nearBrg: Ford | null = null, nearPier: Pier | null = null, nearPCrate: Pier | null = null, nearBt: Boat | null = null, nearAir: Airship | null = null, nearFogL: ReturnType<typeof nearFogLocker> = null, nearBd: Body | null = null, nearGd = false, nearSur: Bandit | null = null, nearPt: ReturnType<typeof nearPortBoard> = null;
+let nearLd: Lode | null = null, nearIns: InstallSite | null = null, nearHall: number | null = null, nearComms: number | null = null, nearPump: number | null = null, nearSL: NearLamp | null = null, nearLH: Lighthouse | null = null, nearChg: number | null = null, nearBrg: Ford | null = null, nearPier: Pier | null = null, nearPCrate: Pier | null = null, nearBt: Boat | null = null, nearAir: Airship | null = null, nearCop: Copter | null = null, nearFogL: ReturnType<typeof nearFogLocker> = null, nearBd: Body | null = null, nearGd = false, nearSur: Bandit | null = null, nearPt: ReturnType<typeof nearPortBoard> = null;
 let nearDp: Pickup | null = null, nearRide: RideSpot | null = null;
 let nearAncient: ReturnType<typeof nearGatePanel> = null, nearAncientTablet: ReturnType<typeof nearGateTablet> = null;
 let nearMap = false, nearClaim: SavedClaim | null = null, nearGate: ReturnType<typeof nearDoor> = null, nearHD: ReturnType<typeof nearHouseDoor> = null, nearDesk = false, nearWk: ReturnType<typeof nearWorks> = null, nearSt: ReturnType<typeof nearStation> = null, nearTerm: ReturnType<typeof nearTerminal> = null, nearGun: ReturnType<typeof nearTurret> = null;
@@ -152,7 +154,7 @@ export function updateEntities(dt: number, time: number) {
   caveOut = G.char.loc === 'dungeon' && G.char.dungeon?.cave ? caveExitNear() : -1;
   nearAncient = nearGatePanel(); nearAncientTablet = nearGateTablet();
   nearGate = nearDoor(); nearGun = nearGate ? null : nearTurret(); nearHD = nearGate || nearGun ? null : nearHouseDoor(); nearDesk = atShuttleDesk(); nearWk = nearGate || nearGun || nearHD || nearDesk ? null : nearWorks(); nearSt = nearGate || nearGun || nearHD || nearDesk || nearWk ? null : nearStation(); nearTerm = nearGate || nearHD ? null : nearTerminal();
-  nearComms = nearSettlementComms(); nearPump = nearFuelPump(); nearSL = nearStreetLamp(); nearLH = nearLighthouse(); nearChg = nearPump === null ? nearCharger() : null; nearIns = nearInstallDesk(); nearLd = nearIns || nearVehicle ? null : nearOutpostLode(); nearPt = nearLd ? null : nearPortBoard(); nearHall = nearHallTerminal(); nearBrg = nearBridgeSign(); nearPier = nearPierSign(); nearPCrate = nearPier ? null : nearPierCrate(); nearBt = nearPier || nearPCrate ? null : nearBoat(); nearAir = nearBt ? null : nearAirship();
+  nearComms = nearSettlementComms(); nearPump = nearFuelPump(); nearSL = nearStreetLamp(); nearLH = nearLighthouse(); nearChg = nearPump === null ? nearCharger() : null; nearIns = nearInstallDesk(); nearLd = nearIns || nearVehicle ? null : nearOutpostLode(); nearPt = nearLd ? null : nearPortBoard(); nearHall = nearHallTerminal(); nearBrg = nearBridgeSign(); nearPier = nearPierSign(); nearPCrate = nearPier ? null : nearPierCrate(); nearBt = nearPier || nearPCrate ? null : nearBoat(); nearAir = nearBt ? null : nearAirship(); nearCop = nearBt || nearAir ? null : nearCopter();
   nearFogL = nearFogLocker(); nearBd = nearBody(); nearGd = G.char.loc === 'overworld' && nearGuide(); nearSur = G.char.loc === 'overworld' ? nearSurrendered() : null;
   nearDp = nearDrop();
   nearLock2 = nearLocker(); nearRec = !nearLock2 && nearConsole(); nearData = nearCarrier();
@@ -178,7 +180,7 @@ export function updateEntities(dt: number, time: number) {
     if (along > 0.9 && along < 4 && lat < 1.6 && Math.abs(pos.y - p.y0 - tread) < 1.2 && G.playing && !G.trans) enter = p;
   }
   const { nearNpc, nearLock, nearChest, nearPortal } = W, prompt = el.prompt;
-  const busy = !!(nearBd || nearLd || nearPt || nearAncientTablet || nearAncient || inBoat() || inAir() || nearAir || nearDp || nearRide || nearGd || nearSur || nearFogL || nearBt || (nearHall !== null || nearComms !== null || nearPump !== null || nearSL !== null || nearLH !== null || nearChg !== null) || nearIns || nearBrg || nearPier || nearPCrate || nearData || nearLock2 || nearRec || nearLad || nearMine || nearPow || nearCar || nearWork2 || nearNpc || nearLock || nearChest || nearBoard || nearMap || nearStash || nearVehicle || nearGate || nearHD || nearDesk || nearWk || nearSt || nearTerm || nearSt || nearGun || nearHatch || nearCave || caveOut >= 0);
+  const busy = !!(nearBd || nearLd || nearPt || nearAncientTablet || nearAncient || inBoat() || inAir() || nearAir || nearCop || nearDp || nearRide || nearGd || nearSur || nearFogL || nearBt || (nearHall !== null || nearComms !== null || nearPump !== null || nearSL !== null || nearLH !== null || nearChg !== null) || nearIns || nearBrg || nearPier || nearPCrate || nearData || nearLock2 || nearRec || nearLad || nearMine || nearPow || nearCar || nearWork2 || nearNpc || nearLock || nearChest || nearBoard || nearMap || nearStash || nearVehicle || nearGate || nearHD || nearDesk || nearWk || nearSt || nearTerm || nearSt || nearGun || nearHatch || nearCave || caveOut >= 0);
   nearFood = busy ? null : nearPlant();
   nearWork = busy || nearFood ? null : nearBench();
   nearClaim = busy || nearFood || nearWork ? null : nearFlag();
@@ -249,7 +251,7 @@ export function updateEntities(dt: number, time: number) {
   if (bh !== null && !nearGate && !nearGun) { prompt.className = buildOk() ? '' : 'lock'; prompt.textContent = bh; prompt.style.display = G.playing && bh ? 'block' : 'none'; }
   const bth = boatHint();
   if (bth !== null) { prompt.className = ''; prompt.textContent = bth; prompt.style.display = G.playing ? 'block' : 'none'; }
-  const ath = airHint() ?? (nearAir ? airPrompt(nearAir) : null); // (0.256) the airship you sit in or stand by
+  const ath = copterHint() ?? airHint() ?? (nearAir ? airPrompt(nearAir) : nearCop ? copterPrompt(nearCop) : null); // (0.256) the airship you sit in or stand by
   if (ath !== null) { prompt.className = ''; prompt.textContent = ath; prompt.style.display = G.playing && ath ? 'block' : 'none'; }
   const phint = pierPlacingHint();
   if (phint !== null) { prompt.className = pierPlacingOk() ? '' : 'lock'; prompt.textContent = phint; prompt.style.display = G.playing && phint ? 'block' : 'none'; }
@@ -295,12 +297,14 @@ export function interact() {
   if (riding()) { getOff(); return; }
   if (climbing()) return;
   if (nearHatch) { nearHatch = false; descend(); return; }
+  if (inCopter()) { copterUse(); return; }
   if (inAir()) { airUse(); return; }
   if (inBoat()) { stepOff(); return; }
   if (nearDp) { takeDrop(nearDp); return; }
   if (nearRide) { boardRide(nearRide); return; }
   if (nearBt) { board(nearBt); return; }
   if (nearAir) { boardAir(nearAir); return; }
+  if (nearCop) { boardCopter(nearCop); return; }
   if (nearComms !== null) { openSettlementComms(nearComms); return; }
   if (nearPump !== null) { openFuelPump(nearPump); return; }
   if (nearSL !== null) { openStreetLamp(nearSL); return; }
