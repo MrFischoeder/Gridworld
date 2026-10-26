@@ -90,6 +90,7 @@ Zrobione (0.259, decyzja właściciela: wchodzi do planu): technologia `rotorcra
 - Osobna technologia (np. `rotorcraft`, poziom 4).
 
 ### F6: zagrożenia w powietrzu
+Zrobione (0.260): kadłub (`hull`, procent) sterowców i wiropłatów przyjmuje trafienia zamiast załogi (pijawkoskrzydłe, pociski bandytów, działka), poniżej 50% lot jest wolniejszy, przy 0 maszyna opada, naprawa Zestawem naprawczym (+40%), pijawkoskrzydłe nie sięgają wyżej niż 70 m nad ziemią, burze z piorunami (od siły 0,55) uderzają w maszynę w locie, około jedna trzecia obozów od pierścienia niebezpieczeństwa 2 ma działko przeciwlotnicze (170 m), rejs na linii sterowcowej może być uszkodzony (ryzyko z niebezpieczeństwa i burzy, do 30%: ładunek przepada, kadłub −35%, przy 0 linia stoi). Linie dronów zostają jak w F1. Poniżej plan wyjściowy:
 - Pijawkoskrzydłe (`leechwing`) atakują nisko lecące maszyny.
 - Bandyci w obozach mają czasem działko przeciwlotnicze.
 - Burze z piorunami uszkadzają powłokę sterowca.

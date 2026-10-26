@@ -1,6 +1,7 @@
 // XP crystals, pickups, chests, the hatch, and item use.
 import { readyThrow } from './throwing';
 import { environmentalDamage } from './damage';
+import { repairAircraft } from './airhull';
 import { play } from './sound';
 import * as THREE from 'three';
 import { fitFilter } from './toxic';
@@ -325,6 +326,7 @@ export function openStash(id: number, name: string) {
 
 /** The Vehicle Repair Kit on the vehicle you drive or the nearest of yours within 7 m. */
 function useRepairKit(): boolean {
+  if (!driving.v) { const ar = repairAircraft(); if (ar !== null) return ar; } // (0.260) an airship or rotorcraft beside you
   let v = driving.v, best = 49;
   if (!v) for (const u of vehicles) {
     if (!u.claimed || u.ai) continue;

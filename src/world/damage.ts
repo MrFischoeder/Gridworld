@@ -6,16 +6,21 @@ let occupied = () => false;
 let absorb = (_damage: number) => {};
 export function setVehicleProtection(hasSeat: () => boolean, takeHit: (damage: number) => void, armour?: (damage: number) => number) { occupied = hasSeat; absorb = takeHit; if (armour) armourDamage = armour; }
 export const insideVehicle = () => !proxied() && occupied();
+// (0.260) An airship or a rotorcraft takes the hits for everyone aboard, like a vehicle (world/airhull.ts).
+let aboardAircraft = () => false;
+let absorbAircraft = (_damage: number) => {};
+export function setAircraftProtection(isAboard: () => boolean, takeHit: (damage: number) => void) { aboardAircraft = isAboard; absorbAircraft = takeHit; }
 export const hitOccupiedVehicle = (damage: number) => { if (damage > 0) absorb(damage); };
 export function hurtPlayer(damage: number, armour = true, flash = .35) {
   if (!Number.isFinite(damage) || damage <= 0) return false;
   if (insideVehicle()) { hitOccupiedVehicle(damage); return true; }
+  if (!proxied() && aboardAircraft()) { absorbAircraft(damage); return true; }
   G.hp -= armour ? armourDamage(damage) : damage;
   G.dmgFlash = Math.max(G.dmgFlash, flash);
   return false;
 }
 /** Natural hazards cannot harm an occupant or wear down a vehicle. */
 export function environmentalDamage(damage: number, flash = 0) {
-  if (insideVehicle() || damage <= 0) return;
+  if (insideVehicle() || (!proxied() && aboardAircraft()) || damage <= 0) return;
   G.hp -= damage; G.dmgFlash = Math.max(G.dmgFlash, flash);
 }

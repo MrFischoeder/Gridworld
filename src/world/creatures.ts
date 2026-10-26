@@ -622,6 +622,8 @@ function bramble(c: Creature, dt: number, to: THREE.Vector3, dist: number, safe:
  * is about they hunt Gnawers.
  */
 const SIGHT = 90;
+/** (0.260) A Leechwing does not climb after a machine flying higher than this over the ground (it soars at 24 m): high up you are out of its reach. */
+const LEECH_CEIL = 70;
 function leechwing(c: Creature, dt: number, to: THREE.Vector3, dist: number, safe: boolean) {
   const s = CREATURES.leechwing, g = env!.ground(c.p.x, c.p.z), hd = Math.hypot(to.x, to.z);
   c.timer -= dt;
@@ -638,7 +640,8 @@ function leechwing(c: Creature, dt: number, to: THREE.Vector3, dist: number, saf
     c.heading = Math.atan2(c.dir.x, c.dir.z); c.speed = speed;
   };
   // from above a crouched figure stands out less, but never as little as on the ground
-  const seesPlayer = () => !safe && hd < SIGHT * Math.max(0.6, Math.min(1.3, targetVis())) && rayWorld(c.p, to.clone().normalize(), dist) >= dist - 1;
+  const tooHigh = G.pos.y - env!.ground(G.pos.x, G.pos.z) > LEECH_CEIL;
+  const seesPlayer = () => !safe && !tooHigh && hd < SIGHT * Math.max(0.6, Math.min(1.3, targetVis())) && rayWorld(c.p, to.clone().normalize(), dist) >= dist - 1;
   if (c.prey && !W.creatures.includes(c.prey)) c.prey = null; // someone else got it
   const target = c.prey ? c.prey.p : V(G.pos.x, G.pos.y + 1.1, G.pos.z);
   if (safe && !c.prey && (c.state === 'stalk' || c.state === 'dive')) { c.state = 'climb'; c.timer = 2; }
@@ -676,7 +679,7 @@ function leechwing(c: Creature, dt: number, to: THREE.Vector3, dist: number, saf
         if (c.prey) { c.state = 'dive'; c.timer = 3.5; }
         else { c.state = 'screech'; c.timer = SCREECH; play('screech_leechwing', { at: c.p, vol: 1, rate: 1.25, far: 120, share: 120 }); } // (0.226) a shriek before it drops
       }
-      if (!c.prey && (hd > SIGHT * 1.25 || safe)) { c.state = 'roam'; c.home.copy(c.p); c.timer = 2; }
+      if (!c.prey && (hd > SIGHT * 1.25 || safe || tooHigh)) { c.state = 'roam'; c.home.copy(c.p); c.timer = 2; }
       break;
     }
     case 'screech': // hangs in the air, wings spread, and shrieks: dodge now

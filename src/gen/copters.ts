@@ -29,6 +29,8 @@ export interface Copter {
   id: string; x: number; y: number; z: number; yaw: number; fuel: number;
   /** The warehouse it was built at; who built it; when. */
   hub: string; by: string; t: number;
+  /** (0.260) The hull in percent (gen/airhull.ts; absent = whole). */
+  hull?: number;
 }
 /** A rotorcraft going up at a warehouse: what was handed over (absent: none going up). */
 export interface CopterBuild { given: Partial<Record<ItemKey, number>> }

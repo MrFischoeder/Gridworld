@@ -5,8 +5,9 @@
 // departure it loads what the home warehouse's hold holds (only the goods picked, or anything stored) up to its hold
 // (`AIRSHIP.hold` slots × `SKY.perSlot` crates), burns its diesel (a cell ship charges full at home while the home mast
 // works), and flies the straight way (over land and sea alike) at an economical cruise. A storm over the home warehouse
-// at the departure keeps it at the mast ('storm'); it leaves only while both masts stand. Robbery and the wild's
-// dangers are for a later stage (F6).
+// at the departure keeps it at the mast ('storm'); it leaves only while both masts stand. (0.260, F6) A trip may be
+// damaged on the way (`tripRisk`: the danger half way and storms over the route): it brings no cargo and takes
+// `RISK.dmg` percent off the hull; at 0 the line stops until the airship is recalled and mended.
 //
 // Like the convoy lines (gen/hublines.ts) the line lives on its home warehouse (`TownState.zline` / `OutpostState.zline`)
 // and counts what it delivered (`sent`, cumulative, under the home's lock); the other warehouse counts what it took in
@@ -16,7 +17,10 @@ import type { ItemKey } from '../data/items';
 import type { TownState } from './town';
 import type { OutpostState } from './outposts';
 import type { Hub } from './warehouses';
-import { worldDist } from './regions';
+import { worldDist, nearX } from './regions';
+import { dangerAt } from './danger';
+import { hash } from '../core/rng';
+import { hullOf, hullDamage, RISK, tripRisk } from './airhull';
 import { weatherAt } from './weather';
 import { AIRSHIP, type AirDrive } from './airmast';
 import type { Airship } from './airships';
@@ -30,9 +34,9 @@ import { takeHold } from './hublines';
  * home warehouse over which it stays at the mast.
  */
 export const SKY = { reach: 30000, pace: 10, load: 45, perSlot: 4, lpkm: 2.2, kwhpkm: 2.4, storm: 0.45 };
-export type SkyTrip = 'ok' | 'dry' | 'storm' | 'empty' | 'nomast';
+export type SkyTrip = 'ok' | 'dry' | 'storm' | 'empty' | 'nomast' | 'damaged' | 'wrecked';
 /** An airship on a line: what it was in the list, minus its place. */
-export interface SkyShip { id: string; drive: AirDrive; fuel: number; kwh: number; by: string; t: number }
+export interface SkyShip { id: string; drive: AirDrive; fuel: number; kwh: number; by: string; t: number; /** (0.260) its hull, percent (absent = whole) */ hull?: number }
 export interface SkyLine {
   /** When it was opened (its id), the warehouse it serves, its name and place, the straight way's length (km). */
   id: number; to: string; toName: string; tx: number; tz: number; km: number;
@@ -71,19 +75,20 @@ export function skFuel(l: SkyLine, n: number): number {
 }
 /** The airship leaves the list for the line (`now` starts the timetable). */
 export function skAssign(l: SkyLine, a: Airship, now: number, by: string) {
-  l.ship = { id: a.id, drive: a.drive, fuel: a.fuel, kwh: a.kwh, by: a.by || by, t: a.t }; l.t0 = now; l.k = 0; delete l.last;
+  l.ship = { id: a.id, drive: a.drive, fuel: a.fuel, kwh: a.kwh, by: a.by || by, t: a.t, ...(a.hull !== undefined ? { hull: a.hull } : {}) }; l.t0 = now; l.k = 0; delete l.last;
 }
 /** The line's airship as a list entry moored at a mast (the caller places it: `pose`). */
 export function skRecall(l: SkyLine, hub: string, pose: { x: number; y: number; z: number; yaw: number }): Airship {
   const s = l.ship!;
-  const a: Airship = { id: s.id, ...pose, drive: s.drive, fuel: s.fuel, kwh: s.kwh, moor: hub, by: s.by, t: s.t };
+  const a: Airship = { id: s.id, ...pose, drive: s.drive, fuel: s.fuel, kwh: s.kwh, moor: hub, by: s.by, t: s.t, ...(s.hull !== undefined ? { hull: s.hull } : {}) };
   delete l.ship; delete l.t0; l.k = 0;
   return a;
 }
 /** Where the airship is at `now`: at the home mast loading, flying out / back (0..1), at the other mast, or standing. */
 export function skAt(l: SkyLine, now: number): { at: 'home' | 'out' | 'there' | 'back' | 'parked'; p: number } {
   if (!l.ship || l.t0 === undefined) return { at: 'parked', p: 0 };
-  if (l.last && (l.last[1] === 'dry' || l.last[1] === 'storm' || l.last[1] === 'empty' || l.last[1] === 'nomast') && now - (l.t0 + l.last[0] * skPeriod(l)) < skPeriod(l)) return { at: 'parked', p: 0 };
+  if (hullOf(l.ship) <= 0) return { at: 'parked', p: 0 };
+  if (l.last && (l.last[1] === 'dry' || l.last[1] === 'storm' || l.last[1] === 'empty' || l.last[1] === 'nomast' || l.last[1] === 'damaged') && now - (l.t0 + l.last[0] * skPeriod(l)) < skPeriod(l)) return { at: 'parked', p: 0 };
   const P = skPeriod(l), leg = skLeg(l), ph = ((now - l.t0) % P + P) % P;
   if (ph < SKY.load) return { at: 'home', p: 0 };
   if (ph < SKY.load + leg) return { at: 'out', p: (ph - SKY.load) / leg };
@@ -103,6 +108,7 @@ export function settleSkyLine(world: number, home: { x: number; z: number }, l: 
   const P = skPeriod(l), last = Math.floor((now - l.t0 - SKY.load - skLeg(l)) / P);
   if (last - l.k > 200) l.k = last - 200;
   for (; l.k <= last; l.k++) {
+    if (hullOf(s) <= 0) { l.last = [l.k, 'wrecked']; break; }
     if (!masts) { l.last = [l.k, 'nomast']; continue; }
     const [, need] = skEnergy(l), dep = l.t0 + l.k * P + SKY.load;
     if (weatherAt(world, home.x, home.z, dep).storm > SKY.storm) { l.last = [l.k, 'storm']; out.push('storm'); continue; }
@@ -111,6 +117,13 @@ export function settleSkyLine(world: number, home: { x: number; z: number }, l: 
     const cargo = take(skCap(), l.only);
     if (!cargo.length) { l.last = [l.k, 'empty']; continue; }
     if (s.drive === 'fuel') s.fuel = Math.round((s.fuel - need) * 10) / 10; else s.kwh = Math.round((s.kwh - need) * 10) / 10;
+    // (0.260) the dangers of the way: the danger half way and a storm over the route
+    const mx = home.x + (nearX(l.tx, home.x) - home.x) / 2, mz = (home.z + l.tz) / 2;
+    if ((hash(world, l.id, l.k, l.to.length, 0x5ca1) % 1000) / 1000 < tripRisk(dangerAt(world, mx, mz), weatherAt(world, mx, mz, dep).storm)) {
+      hullDamage(s, RISK.dmg); l.last = [l.k, hullOf(s) <= 0 ? 'wrecked' : 'damaged']; out.push(hullOf(s) <= 0 ? 'wrecked' : 'damaged');
+      if (hullOf(s) <= 0) { l.k++; break; }
+      continue;
+    }
     for (const [g, n] of cargo) l.sent[g] = (l.sent[g] ?? 0) + n;
     l.trips = (l.trips ?? 0) + 1;
     l.last = [l.k, 'ok']; out.push('ok');

@@ -21,6 +21,7 @@ import { nearX, WORLD_W } from '../gen/regions';
 import { SEA } from '../gen/seas';
 import { weatherAt } from '../gen/weather';
 import { windSpeed } from '../gen/boats';
+import { hullOf, hullSpeed } from '../gen/airhull';
 import { COPTER, COP_SEATS, burnCop, fuelCop, copRangeKm, fitToLand, type Copter } from '../gen/copters';
 import { net, online, relay, onRelay, type Relay } from '../net/client';
 import { saveChar, takeOne } from '../character';
@@ -161,12 +162,12 @@ function step(l: Live, dt: number, manned: boolean) {
   const fwd = manned ? (k.KeyW ? 1 : 0) - (k.KeyS ? 1 : 0) : 0, turn = manned ? (k.KeyA ? 1 : 0) - (k.KeyD ? 1 : 0) : 0, up = manned ? (k.Space ? 1 : 0) - (k.KeyC ? 1 : 0) : 0;
   const { base } = footprint(l), landed = l.y <= base + 0.05, was = { x: l.x, y: l.y, z: l.z, yaw: l.yaw };
   if (w <= 0) { l.windT = 1; const wt = weatherAt(G.char.world, l.x, l.z, G.char.time), s = windSpeed(wt.wind) * COPTER.wind; l.wind = [Math.cos(wt.windDir) * s, Math.sin(wt.windDir) * s]; }
-  const lift = c.fuel > 0, flying = !landed || (manned && up > 0 && lift);
+  const hs = hullSpeed(hullOf(c)), lift = c.fuel > 0 && hullOf(c) > 0, flying = !landed || (manned && up > 0 && lift);
   if (flying && !burnCop(c, lift ? fwd : 0, dt) && manned) showToast(tl('Out of fuel: she is settling. R pours in a canister once down.'));
-  const top = fwd > 0 ? COPTER.speed : COPTER.back, want = lift && !landed ? fwd * top : 0;
+  const top = (fwd > 0 ? COPTER.speed : COPTER.back) * hs, want = lift && !landed ? fwd * top : 0;
   l.th = lift && manned ? fwd : 0;
   l.sp += (want - l.sp) * Math.min(1, dt * 1.6);
-  const wantVy = !lift ? (landed ? 0 : -COPTER.fall) : up * COPTER.climb;
+  const wantVy = !lift ? (landed ? 0 : -COPTER.fall) : up * COPTER.climb * hs;
   l.vy += (wantVy - l.vy) * Math.min(1, dt * 2.2);
   const dyaw = turn * COPTER.turn * dt * (lift ? 1 : 0);
   l.yaw += dyaw; if (manned) G.yaw += dyaw;
@@ -307,13 +308,15 @@ export function copterSeatPoint(id: string, u: number, v: number, h: number): [n
   const [x, z] = at(l, u, v);
   return [x, l.y + h, z];
 }
+/** (0.260) The rotorcraft you sit in: its shared record, height, whether you are at the controls. */
+export const copAboard = () => (aboard ? { c: aboard.c, y: aboard.y, x: aboard.x, z: aboard.z, sp: aboard.sp, pilot: seat === 0 } : null);
 /** The HUD line aboard. */
 export function copterHint(): string | null {
   const l = aboard;
   if (!l) return null;
   const c = l.c, { base } = footprint(l), up = Math.round(l.y - base);
   const head = TL`Rotorcraft · ${Math.round(Math.abs(l.sp) * 3.6)} km/h · ${up} m up · ${Math.round(c.fuel)}/${COPTER.fuel.tank} L (~${copRangeKm(c).toFixed(0)} km)`;
-  return head + (up < 1 ? tl(' · E get out') : '') + (c.fuel <= 0 ? tl(' · no fuel') : '');
+  return head + (hullOf(c) < 100 ? TL` · hull ${Math.round(hullOf(c))}%` : '') + (up < 1 ? tl(' · E get out') : '') + (c.fuel <= 0 ? tl(' · no fuel') : '');
 }
 export function copterHold(c: Copter): Container {
   const box = (G.char.containers[c.id] ??= { items: Array(COPTER.hold).fill(null), gold: 0 });

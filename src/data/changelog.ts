@@ -3,6 +3,14 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.260.0', date: '2026-10-28', title: 'The dangers of the air', notes: [
+    'Flying machines stage F6: the air is no longer safe. Airships and rotorcrafts now have a hull (shown in the flight line once it is below 100%). What would have hurt you aboard hurts the hull instead: a Leechwing\'s bite, a bandit\'s bolt, a flak burst. Your own health is spared while you sit in the machine.',
+    'A torn hull (below 50%) flies slower; at 0% the machine no longer lifts and settles to the ground (an airship slowly, a rotorcraft fast). A Vehicle Repair Kit mends 40% of the hull, used while sitting in the machine or standing within 9 m of it.',
+    'Leechwings go after low-flying machines (they soar at about 24 m and do not climb after anything higher than 70 m over the ground). In a storm (strength over 0.55) lightning strikes a machine in flight now and then, more often the fiercer the storm: 14% off an airship\'s hull, 22% off a rotorcraft\'s.',
+    'Some bandit camps (about a third of those in the danger rings from 2 up) keep an anti-air gun, drawn at the camp. While the camp stands it fires at a machine flying over 8 m up within 170 m, every three seconds or so: a tracer and a thud, 9% off an airship\'s hull and 16% off a rotorcraft\'s on a hit (a distant or fast machine is hit less). Clear the camp and the gun falls silent.',
+    'Sky lines are riskier too: each trip of an airship on a line may be damaged on the way (more likely where it is dangerous and in storms, at most 30%). A damaged trip brings no cargo and takes 35% off the airship\'s hull; at 0% the line stops until you recall the airship and mend it. The line\'s window shows the hull.',
+    'Together: the hull is part of the shared airship, rotorcraft and line records. Each player\'s game works out the hits on its own occupant; the pilot\'s game rolls lightning and the flak at the machine. `PROTOCOL` and the server are unchanged.',
+  ] },
   { v: '0.259.0', date: '2026-10-27', title: 'The rotorcraft', notes: [
     'Flying machines stage F5: a small, quick machine you fly yourself. With the new plans Rotorcraft (tier 4, on an old data carrier) a working warehouse can build one from its stock (aluminium, motors, engines, controls, cable, plastic, planks): in the warehouse\'s window the new Rotorcraft section starts the frame and takes the materials. It stands on the warehouse\'s apron, needs no mast, no build time, no power and no crew. A world holds up to 6.',
     'E beside it climbs in: the pilot\'s seat first, then the passenger\'s (two seats). W/S fly forward and astern (up to 108 km/h), A/D turn, Space climbs, C descends; let go and it hangs where it is. V switches between the view from behind and the cabin, F opens its hold of 8 slots, R pours a fuel canister (diesel only, a 90 L tank, about 50 km).',

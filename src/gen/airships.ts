@@ -27,6 +27,8 @@ export interface Airship {
   id: string; x: number; y: number; z: number; yaw: number; drive: AirDrive; fuel: number; kwh: number;
   /** The warehouse whose mast it is tied to (absent: free); who built it; when. */
   moor?: string; by: string; t: number;
+  /** (0.260) The hull in percent (gen/airhull.ts; absent = whole). */
+  hull?: number;
 }
 /** An airship going up at a warehouse's mast: its drive and what was handed over. */
 export interface AirBuild { drive: AirDrive; given: Partial<Record<ItemKey, number>> }

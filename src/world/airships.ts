@@ -30,6 +30,7 @@ import { PropBatch } from './props';
 import { G } from '../game';
 import { OW, foeBody, crownHit } from './overworld';
 import { inCopter } from './copters';
+import { hullOf, hullSpeed, HULL } from '../gen/airhull';
 import { nearX, worldDist, WORLD_W } from '../gen/regions';
 import { SEA } from '../gen/seas';
 import { weatherAt } from '../gen/weather';
@@ -253,9 +254,10 @@ function step(l: Live, dt: number, manned: boolean) {
   }
   const was = { x: l.x, y: l.y, z: l.z, yaw: l.yaw };
   if (!burnAir(a, l.th, dt)) { if (l.th && manned) showToast(a.drive === 'fuel' ? tl('Out of fuel: R to pour in a canister') : tl('The cells are flat: drift to a mast to charge')); l.th = 0; }
-  const top = AIRSHIP.speed[a.drive], want = l.th > 0 ? l.th * top : l.th * top * AIRSHIP.back;
+  const dead = hullOf(a) <= 0, hs = hullSpeed(hullOf(a)); // (0.260) a torn hull flies slower, a dead one settles to the ground
+  const top = AIRSHIP.speed[a.drive] * hs, want = dead ? 0 : l.th > 0 ? l.th * top : l.th * top * AIRSHIP.back;
   l.sp += (want - l.sp) * Math.min(1, dt * 0.35);
-  l.vy += (up * AIRSHIP.climb - l.vy) * Math.min(1, dt * 1.5);
+  l.vy += ((dead ? -HULL.sink : up * AIRSHIP.climb * hs) - l.vy) * Math.min(1, dt * 1.5);
   const dyaw = turn * AIRSHIP.turn * (0.4 + 0.6 * Math.min(1, Math.abs(l.sp) / 4)) * dt;
   l.yaw += dyaw; if (manned) G.yaw += dyaw;
   l.turn = dyaw / Math.max(dt, 1e-3);
@@ -549,6 +551,8 @@ export function airSeatPoint(id: string, u: number, v: number, h: number): [numb
   const [x, z] = at(l, u, v);
   return [x, l.y + h, z];
 }
+/** (0.260) The airship you are in (not on its ladder): its shared record, height, whether you hold the helm. */
+export const airAboard = () => (aboard ? { a: aboard.a, y: aboard.y, x: aboard.x, z: aboard.z, sp: aboard.sp, pilot: seat === 0 } : null);
 /** (0.258) Someone is in or on the airship `id` (seated, standing in the gondola or on its ladder: you or another player). */
 export function airOccupied(id: string): boolean {
   if (aboard?.a.id === id || climb?.l.a.id === id || gondolaUnder()?.a.id === id) return true;
@@ -559,7 +563,7 @@ export function airHint(): string | null {
   if (climb) return tl('Rope ladder · W up · S down · Space let go');
   const l = aboard;
   if (!l) return null;
-  const a = l.a, head = status(l);
+  const a = l.a, head = status(l) + (hullOf(l.a) < 100 ? TL` · hull ${Math.round(hullOf(l.a))}%` : '');
   if (a.moor) return head + ' · ' + (l.charging ? tl('moored, charging') : tl('moored')) + (seat === 0 ? tl(' · W or Space casts off · E stand up') : tl(' · E stand up'));
   if (seat !== 0) return head + tl(' · E stand up');
   const m = mastNear(l);

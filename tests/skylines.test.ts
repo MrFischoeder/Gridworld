@@ -61,12 +61,12 @@ describe('airship lines (0.258)', () => {
       expect(skDrain(B.id, towns, outposts, dest, (_k, n) => n)).toEqual([['planks', skCap() - 40]]);
       expect(skDrain(B.id, towns, outposts, dest, (_k, n) => n)).toEqual([]);
       expect(allSkyLines(towns, outposts)).toEqual([[A.id, l]]); expect(skyLineOf(A.id, towns, outposts)).toBe(l);
-    } else expect(l.last![1]).toBe('storm'); // the world's weather may keep it home: the rest of the trip is then not reached
+    } else expect(['storm', 'damaged']).toContain(l.last![1]); // the world's weather or the way's dangers may keep it home or cost the load: the rest of the trip is then not reached
   });
   it('a cell ship charges full at home while the mast works', () => {
     const l = newSkyLine(A, B, 0), s = ship('cell'); s.kwh = 3; skAssign(l, s, 0, 'x');
     settleSkyLine(W, A, l, true, true, store(10), SKY.load + skLeg(l) + 5);
-    expect(l.last![1] === 'ok' || l.last![1] === 'storm').toBe(true);
+    expect(['ok', 'storm', 'damaged']).toContain(l.last![1]);
     if (l.last![1] === 'ok') expect(l.ship!.kwh).toBeCloseTo(AIRSHIP.cell.cap - skEnergy(l)[1]);
   });
   it('goods that came in can go on by the sky line first', () => {

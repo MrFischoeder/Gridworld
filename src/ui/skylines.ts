@@ -9,6 +9,7 @@ import { SEA } from '../gen/seas';
 import { hubs, type Hub } from '../gen/warehouses';
 import { AIRSHIP } from '../gen/airmast';
 import { hasAmast, mastAt, moorPose } from '../gen/airships';
+import { hullOf } from '../gen/airhull';
 import { SKY, newSkyLine, skyLineOf, skLeg, skPeriod, skCap, skEnergy, skAt, skFuel, skAssign, skRecall, skWaiting, skKey, type SkyLine, type SkyTrip } from '../gen/skylines';
 import { dropWay } from '../gen/transit';
 import { runHub } from '../world/hublines';
@@ -32,6 +33,7 @@ function setLine(id: string, l: SkyLine | undefined) {
 const FATE: Record<SkyTrip, string> = {
   ok: tl('delivered'), dry: tl('stayed at the mast for want of fuel or charge'), storm: tl('stayed at the mast: a storm'),
   empty: tl('stayed at the mast: nothing to carry'), nomast: tl('stayed at the mast: no mast at the other end'),
+  damaged: tl('<span style="color:#ff6a4a">damaged on the way: the load is lost</span>'), wrecked: tl('<span style="color:#ff6a4a">wrecked: recall it and mend its hull</span>'),
 };
 const DRIVE = { fuel: tl('diesel'), cell: tl('electric') };
 /** The warehouses with a mast within reach of `me`, nearest first. */
@@ -63,7 +65,7 @@ export function skyLineHTML(id: string, attr: (v: string) => string): string {
   }
   const [now, need, unit] = skEnergy(l), cv = skAt(l, c.time);
   const where = cv.at === 'parked' ? tl('standing at the mast') : cv.at === 'out' ? TL`on its way to ${l.toName} (${Math.round(cv.p * 100)}%)` : cv.at === 'back' ? TL`on its way back (${Math.round(cv.p * 100)}%)` : cv.at === 'there' ? TL`unloading at ${l.toName}` : tl('loading here');
-  s += TL`<br>Airship: ${DRIVE[a.drive]}, built by ${a.by}, ${skCap()} crates a trip, ${where}.`;
+  s += TL`<br>Airship: ${DRIVE[a.drive]}, built by ${a.by}, ${skCap()} crates a trip, hull ${Math.round(hullOf(a))}%, ${where}.`;
   s += unit === 'kWh' ? TL`<br>Cells: ${Math.round(now)} of ${AIRSHIP.cell.cap} kWh, ${need} kWh a round trip; they charge full here while the mast works.`
     : TL`<br>Tank: ${Math.round(now)} of ${AIRSHIP.fuel.tank} L, ${need} L a round trip. With you: ${carried('fuel', me)} canisters.`;
   if (l.last) s += TL`<br>Last trip: ${FATE[l.last[1]]}.`;
