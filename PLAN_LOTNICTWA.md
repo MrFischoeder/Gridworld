@@ -71,6 +71,7 @@ Część 2 (0.257) zrobiona: chodzenie po gondoli w locie (E w fotelu wstaje, E 
   - gracze na pokładzie lecą razem z nim.
 
 ### F4: sterowiec na linii
+Zrobione (0.258): jedna linia sterowcowa na magazyn z masztem (do 30 km w linii prostej, prosto nad lądem i morzem), sterowiec zacumowany przy maszcie przekazuje się linii (schodzi ze wspólnej listy `Char.airships`, wraca po odwołaniu), rozkład z gry (pace 10 m na minutę gry, załadunek 45 min na końcu), do 120 skrzyń na rejs, zużycie 2,2 L albo 2,4 kWh na km, burza nad magazynem zatrzymuje, tranzyt przez drogę `sk`, rysowanie lotu i mapa. Rabunek i zagrożenia w powietrzu zostają na F6. Poniżej plan wyjściowy:
 - **Przekazanie na linię:** sterowiec przekazuje się linii między dwoma masztami, jak ciężarówkę albo statek.
 - **Porównanie z innymi środkami transportu:**
   - duży zasięg (także nad morzem, między kontynentami);

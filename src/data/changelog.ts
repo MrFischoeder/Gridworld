@@ -3,6 +3,13 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.258.0', date: '2026-10-26', title: 'Airship lines', notes: [
+    'Flying machines stage F4: an airship can now run a line between two warehouses that both have a mooring mast. In a warehouse\'s window (a village\'s terminal, a port\'s or a wild warehouse\'s board) the airship row opens a line to another warehouse with a mast within 30 km, and you hand an airship moored at this mast over to it (nobody aboard).',
+    'On the line the airship loads what the warehouse holds (everything, or only the goods you pick) up to 120 crates a trip, flies the straight way over land and sea at an economical cruise (10 m a game minute, slower than flying it yourself, but a big hold), moors at the other mast and unloads while its storekeepers work. A round trip burns about 2.2 L (diesel) or 2.4 kWh (cells) a km: pour canisters into a diesel ship, a cell ship charges full at its home mast while the mast works. A storm over the home warehouse keeps it at the mast; no fuel, nothing to carry or no mast at the far end likewise.',
+    'You see it fly: it climbs from its mast, cruises 40 m over the ground and comes down at the other mast; the maps draw the line dashed pale green with the airship on it. Recall it and it moors at the home mast again (the mast must be free), and you can fly it yourself.',
+    'Goods can go on: a warehouse that takes in cargo from a convoy, ship, drone or airship line can send it on by its own airship line (the passing-through row).',
+    'Together: the line lives in the shared village or outpost state under the warehouse\'s lock, the airship leaves and returns to the shared airship list, every game works the timetable out the same way and draws the same ship. `PROTOCOL` and the server are unchanged. Not yet: robbery and dangers of the wild in the air (stage F6), the terminal\'s list of sky lines.',
+  ] },
   { v: '0.257.1', date: '2026-10-26', title: 'Tools in the ship\'s locker', notes: [
     'The locker in your crashed ship now holds a hatchet and a pickaxe beside the saw (12 slots, was 10), so you can start the timber loop at once: fell a tree with the hatchet (hold E), saw its logs into planks from the backpack (select the log, Saw into planks) and break rocks for stone with the pickaxe. Before, the hatchet had to be bought for 35 gold or made from a log and two stones you could not yet get.',
     'Lockers already opened in older saves keep their contents; the blacksmith still sells both tools.',

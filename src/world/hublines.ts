@@ -1,5 +1,5 @@
 // (0.252, PLAN_MAGAZYNOW.md stage M4) The convoy lines (and since 0.254 the air lines, gen/airlines.ts) between
-// warehouses at runtime: settling them under the right warehouse's lock (the home's for its trips, the other's for
+// warehouses (and since 0.258 the sky lines, gen/skylines.ts) at runtime: settling them under the right warehouse's lock (the home's for its trips, the other's for
 // taking the cargo in), every 15 s for the lines whose trips are due or whose cargo waits, and on opening a
 // warehouse's window; and the trucks drawn where their timetable puts them on the straight way between the two. Every game draws the same from the shared state.
 import * as THREE from 'three';
@@ -16,6 +16,8 @@ import { portPut, portTake } from '../gen/ports';
 import { hubs, hubWorks, type Hub } from '../gen/warehouses';
 import { linkedHubs } from '../gen/radio';
 import { airLinesOf, ownAirLines, alDue, alWaiting, alDrain, airLoad, settleAirLine, padWhy, allAirLines } from '../gen/airlines';
+import { allSkyLines, skyLineOf, skDue, skWaiting, skDrain, skLoad, settleSkyLine } from '../gen/skylines';
+import { hasAmast, amastWhy } from '../gen/airships';
 import { allHubLines, hubLineOf, hlDue, hlWaiting, hlDrain, settleHubLine, lineLoad, hlAt, hlWrecked, type HubLine } from '../gen/hublines';
 import { ITEMS, type ItemKey } from '../data/items';
 import { TL } from '../i18n';
@@ -48,6 +50,18 @@ export function runHub(id: string): string[] {
       if (out.includes('lost')) words.push(TL`The cargo drone to ${al.toName} came down in the wilds, its load with it.`);
     }
   }
+  const zl = skyLineOf(id, c.towns, c.outposts); // (0.258, stage F4) its sky line
+  if (zl?.ship && skDue(zl, c.time)) {
+    const there = hubOf(zl.to), masts = hasAmast(h, c.towns, c.outposts) && !!there && hasAmast(there, c.towns, c.outposts), charge = !amastWhy(c.world, h, c.towns, c.outposts, c.time);
+    const take = (cap: number, only?: ItemKey[]) => (vs ? skLoad(vs, vs.hold, cap, only, (k, n) => withdraw(vs, k, n)) : o ? skLoad(o, o.hold, cap, only, (k, n) => portTake(o, k, n)) : []);
+    const before = zl.trips ?? 0, out = settleSkyLine(c.world, h, zl, masts, charge, take, c.time);
+    if ((zl.trips ?? 0) > before) words.push(TL`An airship left for ${zl.toName}.`);
+    if (out.includes('storm')) words.push(TL`The airship to ${zl.toName} stayed at its mast: a storm.`);
+  }
+  if (hubWorks(c.world, h, c.towns, c.outposts, c.time) && hasAmast(h, c.towns, c.outposts)) {
+    const got = vs ? skDrain(id, c.towns, c.outposts, vs, (k, n) => deposit(vs, k, n)) : o?.done?.port ? skDrain(id, c.towns, c.outposts, o, (k, n) => portPut(o, k, n)) : [];
+    if (got.length) words.push(TL`An airship moored with ${got.map(([g, m]) => `${m} × ${ITEMS[g].name}`).join(', ')}.`);
+  }
   if (!padWhy(c.world, h, c.towns, c.outposts, c.time)) {
     const got = vs ? alDrain(id, c.towns, c.outposts, vs, (k, n) => deposit(vs, k, n)) : o?.done?.port ? alDrain(id, c.towns, c.outposts, o, (k, n) => portPut(o, k, n)) : [];
     if (got.length) words.push(TL`A drone landed with ${got.map(([g, m]) => `${m} × ${ITEMS[g].name}`).join(', ')}.`);
@@ -72,6 +86,10 @@ export function tickHubLines(dt: number) {
   for (const [home, l] of allAirLines(c.towns, c.outposts)) { // (0.254) the air lines likewise
     if (alDue(l, c.time)) todo.add(home);
     if (!todo.has(l.to)) { const r = l.to.startsWith('v:') ? c.towns[l.to.slice(2)]?.rcv : c.outposts[l.to]?.rcv; if (alWaiting(l.to, c.towns, c.outposts, r).length) todo.add(l.to); }
+  }
+  for (const [home, l] of allSkyLines(c.towns, c.outposts)) { // (0.258) the sky lines likewise
+    if (skDue(l, c.time)) todo.add(home);
+    if (!todo.has(l.to)) { const r = l.to.startsWith('v:') ? c.towns[l.to.slice(2)]?.rcv : c.outposts[l.to]?.rcv; if (skWaiting(l.to, c.towns, c.outposts, r).length) todo.add(l.to); }
   }
   for (const id of todo) {
     const done = (ok: boolean) => { if (ok) saveChar(); };

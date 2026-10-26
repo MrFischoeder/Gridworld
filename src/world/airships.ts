@@ -548,6 +548,11 @@ export function airSeatPoint(id: string, u: number, v: number, h: number): [numb
   const [x, z] = at(l, u, v);
   return [x, l.y + h, z];
 }
+/** (0.258) Someone is in or on the airship `id` (seated, standing in the gondola or on its ladder: you or another player). */
+export function airOccupied(id: string): boolean {
+  if (aboard?.a.id === id || climb?.l.a.id === id || gondolaUnder()?.a.id === id) return true;
+  return online() && [...net.peers.values()].some((p) => p.st?.boat?.[0] === id);
+}
 /** The HUD line seated or on the ladder. */
 export function airHint(): string | null {
   if (climb) return tl('Rope ladder · W up · S down · Space let go');
