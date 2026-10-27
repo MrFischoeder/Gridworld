@@ -94,6 +94,14 @@ Spis: 1. Surowce · 2. Przetwarzanie · 3. Budowy · 4. Indeks: gdzie użyć ka�
 | Ravager Fang | stworzenie: Tusker (upolowane) |
 | Bramble Plate | stworzenie: Scorpid (upolowane) |
 | Ravager Fang | stworzenie: Scorpid (upolowane) |
+| Nutrient Crystal | stworzenie: Shardling (upolowane) |
+| Nutrient Crystal | stworzenie: Prismwalker (upolowane) |
+| Sensors | stworzenie: Prismwalker (upolowane) |
+| Sensors | stworzenie: Colossus (upolowane) |
+| Optical Components | stworzenie: Colossus (upolowane) |
+| Power Cell | stworzenie: Colossus (upolowane) |
+| Power Core | stworzenie: Colossus (upolowane) |
+| Nutrient Crystal | stworzenie: Colossus (upolowane) |
 | Nutrient Cap, Fruit Pod, Nutrient Crystal | grzyby w lesie, drzewa z owocami, grzyby jaskiniowe w podziemiach (Nutrient Caps; stare Nutrient Crystals nadal jadalne) |
 
 ### 1.2 Towary, które wioski wydobywają i wytwarzają same
@@ -624,7 +632,7 @@ Materiały biorą się z hali wioski; złoto płacisz ze swojej sakiewki (opłat
 
 Te rzeczy można tylko sprzedać (na targu albo kowalowi/Janowi), zjeść albo przewieźć w kontraktach:
 
-Dried Fish, Crate of Tools, Medical Supplies, Salvaged Tech, Drill Rig, Raw Meat, Bramble Plate, Ravager Fang, Gnawer Incisor, Raw Fish.
+Dried Fish, Crate of Tools, Medical Supplies, Salvaged Tech, Drill Rig, Raw Meat, Bramble Plate, Ravager Fang, Gnawer Incisor, Raw Fish, Nutrient Crystal, Power Cell.
 
 ## 6. Klasy przedmiotów
 

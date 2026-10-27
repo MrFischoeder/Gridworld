@@ -327,16 +327,23 @@ let swingDur = 0.26;
 function ray(d: THREE.Vector3, dmg: number) {
   const o = camera.position.clone();
   const range = G.gun.range;
-  let tHit = rayWorld(o, d, range), hitT = null;
+  let tHit = rayWorld(o, d, range), hitT = null, ballMul = 1;
   for (const t of foes()) {
     if ('kind' in t && t.kind === 'raider') { // a vehicle: its body, or the crew through the windows
       const h = rayRaider(t as Raider, o, d, tHit);
       if (h) { tHit = h.t; hitT = t; }
       continue;
     }
+    const balls = (t as { balls?: number[][] }).balls;
+    if (balls) { // (0.277) a giant: hit ball by ball (legs, body, arms, head), its heart through the front
+      for (const q of balls) { const tt = ballT(o, d, q[0], q[1], q[2], q[3]); if (tt > 0 && tt < tHit) { tHit = tt; hitT = t; ballMul = q[4]; } }
+      const h = (t as { heart?: number[] }).heart, ch = Math.cos((t as { heading?: number }).heading ?? 0), sh = Math.sin((t as { heading?: number }).heading ?? 0);
+      if (hitT === t && h && d.x * sh + d.z * ch < -0.3 && ballT(o, d, h[0], h[1], h[2], h[3]) > 0) ballMul = 2.5;
+      continue;
+    }
     const rr = t.r || 0.6, oc = o.clone().sub(t.g.position), b = oc.dot(d), c = oc.lengthSq() - rr * rr, disc = b * b - c;
     if (disc < 0) continue; const tt = -b - Math.sqrt(disc);
-    if (tt > 0 && tt < tHit) { tHit = tt; hitT = t; }
+    if (tt > 0 && tt < tHit) { tHit = tt; hitT = t; ballMul = 1; }
   }
   let car: Vehicle | null = null;
   for (const v of vehicles) {
@@ -363,7 +370,13 @@ function ray(d: THREE.Vector3, dmg: number) {
   } else addBolt(gun, end, struck ? 0xffd27a : look.c, look.len, look.speed, sparks, struck ? look.hit * 1.4 : look.hit * 0.6);
   if (car) { damageVehicle(car, dmg); G.hitFlash = .15; }
   if (turret) damageMountedTurret(turret.gun, dmg);
-  if (hitT) { damageFoe(hitT, dmg * sneak(hitT, false) * tactic(hitT, Math.max(-1, Math.min(1, (end.y - hitT.g.position.y) / (hitT.r || 0.6))), false), true, gunFx()); play('hit', { at: hitT.g.position, vol: 0.5, far: 80 }); }
+  if (hitT && ballMul >= 2.5 && performance.now() - tacticTold > 700) { tacticTold = performance.now(); logLine(tl('The heart! ×2.5')); } // (0.277)
+  if (hitT) { damageFoe(hitT, dmg * ballMul * sneak(hitT, false) * tactic(hitT, (hitT as { balls?: unknown }).balls ? 0 : Math.max(-1, Math.min(1, (end.y - hitT.g.position.y) / (hitT.r || 0.6))), false), true, gunFx()); play('hit', { at: hitT.g.position, vol: 0.5, far: 80 }); }
+}
+/** Where a ray (unit d) from o first enters a ball, or −1. */
+function ballT(o: THREE.Vector3, d: THREE.Vector3, x: number, y: number, z: number, r: number): number {
+  const ox = o.x - x, oy = o.y - y, oz = o.z - z, b = ox * d.x + oy * d.y + oz * d.z, c = ox * ox + oy * oy + oz * oz - r * r, disc = b * b - c;
+  return disc < 0 ? -1 : -b - Math.sqrt(disc);
 }
 /** (0.223, PLAN_WALKI.md stage W1) What kind of foe it is for gen/tactics.ts (null: a raider's vehicle, a boss). */
 function foeKey(t: Foe): FoeKey | null {
@@ -445,7 +458,9 @@ function slash(tired: boolean) {
   const turret = rayMountedTurret(o, f, Math.min(reach, rayWorld(o, f, reach)));
   if (turret) damageMountedTurret(turret.gun, m.dmg * G.S.mm * (tired ? BLADE.tiredDmg : 1));
   for (const t of foes()) {
-    const v = t.g.position.clone().sub(o), dist = v.length();
+    const balls = (t as { balls?: number[][] }).balls; // (0.277) a giant: the nearest of its balls (a leg, mostly)
+    const near = balls ? balls.reduce<[number, number[]]>((m, q) => { const dd = Math.hypot(q[0] - o.x, q[1] - o.y, q[2] - o.z) - q[3]; return dd < m[0] ? [dd, q] : m; }, [Infinity, balls[0]]) : null;
+    const v = near ? V(near[1][0], near[1][1], near[1][2]).sub(o) : t.g.position.clone().sub(o), dist = near ? near[0] + (t.r || 0.5) : v.length();
     if (dist > reach + (t.r || 0.5)) continue;
     if (v.normalize().dot(f) < Math.cos(wide)) continue;
     burst(t.g.position.clone(), 0xc8ffd6, tired ? 6 : 14, tired ? 0.5 : 0.9); damageFoe(t, m.dmg * G.S.mm * (tired ? BLADE.tiredDmg : 1) * sneak(t, true) * tactic(t, null, true), true, meleeFx(m.look, tired));

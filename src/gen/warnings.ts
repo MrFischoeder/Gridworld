@@ -22,6 +22,8 @@ export const FAR_CALLS: Record<string, FarCall> = {
   // (0.240) the wildlife: the giant's bellow carries a long way, a bear's growl less
   titan: { s: 'bellow_bramble', far: 600, every: [25, 50], vol: 1 },
   ridgeback: { s: 'growl_ravager', far: 140, every: [25, 45], vol: 0.8 },
+  // (0.277) the colossus's grinding roar
+  colossus: { s: 'bellow_bramble', far: 700, every: [20, 40], vol: 1 },
 };
 /** Bandits round a fire talk more and laugh now and then. */
 export const REST_TALK = { every: [7, 14] as [number, number], laugh: 0.3 };
@@ -57,6 +59,9 @@ export const PRINTS: Record<string, PrintSpec> = {
   hopling: { k: 'small', step: 0.9, size: 0.5, c: 0xb8b060 },
   tusker: { k: 'hoof', step: 1.0, size: 0.8, c: 0xb8b060 },
   scorpid: { k: 'claw', step: 0.8, size: 0.9, c: 0xb8b060 },
+  shardling: { k: 'claw', step: 0.7, size: 0.7, c: 0xb48cff },
+  prismwalker: { k: 'claw', step: 1.6, size: 1.2, c: 0xb48cff },
+  colossus: { k: 'boot', step: 6, size: 7, c: 0xb48cff },
 };
 /** Prints fade over `life` s (game minutes, a real second each), at most `max` at once, laid within `reach` m of you,
  *  dimmed to `dim` of the kind's colour when fresh. */

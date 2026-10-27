@@ -268,7 +268,7 @@ export function animateFoes(dt: number, time: number, camPos: THREE.Vector3) {
   }
 }
 
-export function updateBossBar(boss: Boss | null) {
+export function updateBossBar(boss: { name: string; hp: number; maxHp: number } | null) {
   el.bossbar.style.display = boss ? 'block' : 'none';
   if (boss) { el.bossName.textContent = boss.name; el.bossFill.style.width = Math.max(0, boss.hp / boss.maxHp * 100) + '%'; }
 }

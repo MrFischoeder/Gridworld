@@ -37,6 +37,8 @@ import type { FaunaId } from '../models/fauna';
 import { WILD, WILDLIFE, isWild, wildPick, scared, provoke, temperAfter, type WildKind } from '../gen/wildlife';
 import { wildOk } from './threat';
 import type { BiomeHere } from '../gen/biomes';
+import { shardlingModel, prismModel, colossusModel } from './crystalbeasts';
+import { GIANT, giantTurn } from '../gen/crystalspikes';
 
 type State = 'roam' | 'hunt' | 'dash' | 'retreat' | 'threat' | 'charge' | 'recover' | 'stalk' | 'dive' | 'climb' | 'investigate' | 'feed'
   // (0.226, stage W2) the telegraphs and the weak moments, seen on the other players' copies too
@@ -44,7 +46,9 @@ type State = 'roam' | 'hunt' | 'dash' | 'retreat' | 'threat' | 'charge' | 'recov
   // (0.228, stage W6) giving up the chase at the edge of its ground; broken, running for its den
   | 'leash' | 'rout'
   // (0.240) a wild animal running from you
-  | 'flee';
+  | 'flee'
+  // (0.277) the Crystal Colossus: skidding out of a charge it overran, turning round, swinging its fists down
+  | 'skid' | 'turn' | 'smash';
 
 export interface Creature extends CondFoe {
   /** (0.227) how far down on its side it is drawn (eased) */
@@ -83,6 +87,10 @@ export interface Creature extends CondFoe {
   /** (0.240) A wild animal's temper (0..1.2: it attacks at 1), how long it stays roused (s), its legs' gait (+1 / −1
    *  per leg), the fauna model's own clean-up, and whether it has warned you yet. */
   anger?: number; roused?: number; gait?: number[]; free?: () => void; warned?: boolean;
+  /** (0.277) The Crystal Colossus: its body (leans) and arms, the balls it is hit by (world, [x, y, z, r, damage ×],
+   *  set every frame), its glowing heart (world [x, y, z, r]: a shot through it from the front counts ×2.5), and the
+   *  seconds until it can trample again. */
+  body?: THREE.Group; arms?: THREE.Group[]; balls?: number[][]; heart?: number[]; stomp?: number;
 }
 
 // ---------- models (local +z forward, origin at the body centre) ----------
@@ -289,7 +297,9 @@ function faunaModel(c: Creature) {
 }
 /** The colour a creature is drawn in: amber when hostile, olive for a calm Bramble, silver for the shoal fish. */
 const FISH = 0xa8d8e8;
-const baseColor = (c: Creature) => (c.kind === 'silverfin' ? FISH : c.kind === 'bramble' && c.state === 'roam' ? CALM : isWild(c.kind) ? (calmBeast(c.kind, c.state) ? CALM : HOSTILE) : HOSTILE);
+/** (0.277) The crystal creatures shine violet while calm; the colossus in the bosses' red. */
+const CRYS_CALM = 0xb48cff, GIANT_C = 0xff6a4a;
+const baseColor = (c: Creature) => (c.kind === 'colossus' ? GIANT_C : (c.kind === 'shardling' || c.kind === 'prismwalker') ? (calmBeast(c.kind, c.state) ? CRYS_CALM : HOSTILE) : c.kind === 'silverfin' ? FISH : c.kind === 'bramble' && c.state === 'roam' ? CALM : isWild(c.kind) ? (calmBeast(c.kind, c.state) ? CALM : HOSTILE) : HOSTILE);
 
 // ---------- spawning ----------
 /** A display-only creature, kept out of gameplay state and combat. */
@@ -305,7 +315,12 @@ function make(kind: CreatureKind, p: THREE.Vector3, level: number, showcase = fa
     noiseAt: null, orbit: Math.random() * 6.283, bank: 0, prey: null, spotted: false,
     den: p.clone(), morale: MORALE.start[kind], calm: 99,
   };
-  if (isWild(kind)) { faunaModel(c); c.anger = 0; c.roused = 0; }
+  if (kind === 'shardling' || kind === 'prismwalker' || kind === 'colossus') { // (0.277) crystal: world/crystalbeasts.ts
+    const m = (kind === 'shardling' ? shardlingModel : kind === 'prismwalker' ? prismModel : colossusModel)(g, mat);
+    c.legs = m.legs; c.gait = m.gait; c.head = m.head; c.body = m.body; c.arms = m.arms;
+    if (kind !== 'colossus') { c.anger = 0; c.roused = 0; }
+    mat.color.setHex(baseColor(c));
+  } else if (isWild(kind)) { faunaModel(c); c.anger = 0; c.roused = 0; }
   else if (kind === 'ravager') ravagerModel(c); else if (kind === 'bramble') brambleModel(c); else if (kind === 'gnawer') gnawerModel(c);
   else if (kind === 'skitter') skitterModel(c); else if (kind === 'lurker') lurkerModel(c); else if (kind === 'silverfin') silverfinModel(c); else leechwingModel(c);
   g.position.copy(p); g.rotation.order = 'YXZ';
@@ -972,8 +987,9 @@ function wild(c: Creature, dt: number, to: THREE.Vector3, dist: number, safe: bo
     if (c.timer <= 0) { c.dir.set(Math.random() - 0.5, 0, Math.random() - 0.5); c.timer = 3 + Math.random() * 6; }
     const back = c.home.clone().sub(c.p); back.y = 0;
     if (back.length() > (k === 'titan' ? 40 : 14)) c.dir.copy(back);
-    const still = k === 'crestjaw' || k === 'serpent' ? 0.85 : 0.45; // the basking ones hardly move
-    if (c.timer > 6 * still) walk(c, c.dir.x, c.dir.z, k === 'titan' ? s.speed * 0.6 : s.speed * 0.12, dt); else c.speed = 0;
+    const crys = k === 'shardling' || k === 'prismwalker'; // (0.277) the crystal creatures keep on the move
+    const still = k === 'crestjaw' || k === 'serpent' ? 0.85 : crys ? 0.15 : 0.45; // the basking ones hardly move
+    if (c.timer > 6 * still) walk(c, c.dir.x, c.dir.z, k === 'titan' ? s.speed * 0.6 : crys ? s.speed * 0.35 : s.speed * 0.12, dt); else c.speed = 0;
   };
   switch (c.state) {
     case 'roam': case 'investigate': case 'recover': {
@@ -1034,6 +1050,142 @@ function wild(c: Creature, dt: number, to: THREE.Vector3, dist: number, safe: bo
     default: c.state = 'roam';
   }
 }
+// ---------- the Crystal Colossus (0.277) ----------
+/** Its own sound: the roar of grinding crystal. */
+function roar(c: Creature, rate = 0.3) { play('bellow_bramble', { at: c.p, vol: 1, rate, far: 500, share: 500 }); }
+/** A blow or a trampling that reaches the turn's target: thrown down and away. */
+function slam(dmg: number, to: THREE.Vector3, flat: number, throwV: number) {
+  bite(dmg, 0, true);
+  if (!foeRules.shielded() && !proxied()) { G.vel.x += to.x / (flat || 1) * throwV; G.vel.z += to.z / (flat || 1) * throwV; G.vel.y = throwV * 0.6; G.onGround = false; }
+}
+/**
+ * The Crystal Colossus's turn (gen/crystalspikes.ts GIANT). It paces round its lair; whoever comes within `notice`
+ * makes it roar, then it charges: fast and straight, but it can only swing its heading round slowly, the more slowly
+ * the faster it runs. Within `strike` and in front, it brings both fists down (a wind-up you can see); off its line
+ * close by, it overran you: it skids to a stop and turns round in place. Running you down tramples. Beyond its leash
+ * from the lair, or you in a safe place, it walks home.
+ */
+function colossus(c: Creature, dt: number, to: THREE.Vector3, safe: boolean) {
+  const s = CREATURES.colossus, flat = Math.hypot(to.x, to.z), want = Math.atan2(to.x, to.z);
+  let off = want - c.heading; off = Math.atan2(Math.sin(off), Math.cos(off));
+  const fromHome = Math.hypot(c.p.x - c.home.x, c.p.z - c.home.z), lost = safe || Math.hypot(G.pos.x - c.home.x, G.pos.z - c.home.z) > GIANT.leash;
+  const brake = (rate: number) => { c.speed = Math.max(0, c.speed - rate * dt); };
+  c.timer -= dt; c.stomp = Math.max(0, (c.stomp ?? 0) - dt);
+  const dmg = (s.damage + 6 * c.level) * c.dmgMul;
+  switch (c.state) {
+    case 'roam': { // pace about the lair; go back to it when far
+      const back = fromHome > 35, aim = back ? Math.atan2(c.home.x - c.p.x, c.home.z - c.p.z) : c.heading + (c.timer > 0 ? 0 : (Math.random() - 0.5) * 2);
+      if (c.timer <= 0) c.timer = 4 + Math.random() * 6;
+      c.heading = giantTurn(c.heading, aim, c.speed, dt);
+      c.speed += ((back ? 4 : c.timer > 3 ? 1.6 : 0) - c.speed) * Math.min(1, dt * 1.5);
+      if (!lost && flat < GIANT.notice) { c.state = 'howl'; c.timer = GIANT.roar; roar(c); if (!proxied() && flat < 140) logLine(tl('The Crystal Colossus roars and turns towards you. Run in zigzags: it cannot turn!')); }
+      break;
+    }
+    case 'howl': // arms up, roaring; it turns to face you meanwhile
+      brake(GIANT.brake); c.heading = giantTurn(c.heading, want, 0, dt);
+      if (c.timer <= 0) { c.state = lost ? 'roam' : 'charge'; c.timer = 0; }
+      break;
+    case 'charge': {
+      if (lost) { c.state = 'skid'; break; }
+      c.speed = Math.min(GIANT.speed * (1 + 0.04 * c.level), c.speed + GIANT.accel * dt);
+      c.heading = giantTurn(c.heading, want, c.speed, dt);
+      if (flat < GIANT.strike && Math.abs(off) < GIANT.aim) { c.state = 'smash'; c.timer = GIANT.windup; break; }
+      if (flat < GIANT.trample && c.speed > 6 && (c.stomp ?? 0) <= 0) { c.stomp = 1.2; slam(dmg * GIANT.trampleHurt, to, flat, 9); play('thud', { at: c.p, vol: 1, rate: 0.3, far: 200, share: 200 }); }
+      if (flat < GIANT.near && Math.abs(off) > GIANT.skid) { c.state = 'skid'; c.timer = 0; } // it overran you
+      break;
+    }
+    case 'skid': // digging its heels in, sparks and dust; then it must turn round
+      brake(GIANT.brake);
+      if (Math.random() < dt * 14) burst(V(c.p.x + (Math.random() - 0.5) * 6, c.p.y - CREATURES.colossus.lift + 0.3, c.p.z + (Math.random() - 0.5) * 6), 0xb48cff, 3, 1.2);
+      if (c.speed < 1) { c.state = 'turn'; c.timer = 0; }
+      break;
+    case 'turn': // round in place, slowly
+      brake(GIANT.brake); c.heading = giantTurn(c.heading, lost ? Math.atan2(c.home.x - c.p.x, c.home.z - c.p.z) : want, 0, dt);
+      if (lost) { if (Math.abs(Math.atan2(Math.sin(Math.atan2(c.home.x - c.p.x, c.home.z - c.p.z) - c.heading), Math.cos(Math.atan2(c.home.x - c.p.x, c.home.z - c.p.z) - c.heading))) < 0.3) { c.state = 'roam'; c.timer = 0; } }
+      else if (Math.abs(off) < 0.25) { c.state = 'charge'; roar(c, 0.4); }
+      break;
+    case 'smash': // both fists up, then down: everything in front of it within reach is thrown
+      brake(GIANT.brake * 1.5);
+      if (c.timer > 0) break;
+      burst(V(c.p.x + Math.sin(c.heading) * 7, c.p.y - CREATURES.colossus.lift + 0.4, c.p.z + Math.cos(c.heading) * 7), 0xb48cff, 40, 3.5);
+      play('thud', { at: c.p, vol: 1, rate: 0.25, far: 260, share: 260 });
+      if (!safe && flat < GIANT.reach && Math.abs(off) < GIANT.cone) slam(dmg, to, flat, 13);
+      c.state = 'recover'; c.timer = GIANT.recover;
+      break;
+    case 'recover': // straightening up: the moment to hit its heart
+      brake(GIANT.brake);
+      if (c.timer <= 0) { c.state = 'turn'; c.timer = 0; }
+      break;
+    default: c.state = 'roam';
+  }
+  c.p.x += Math.sin(c.heading) * c.speed * dt; c.p.z += Math.cos(c.heading) * c.speed * dt;
+  if (env) c.p.y = env.ground(c.p.x, c.p.z) + CREATURES.colossus.lift;
+}
+/** The colossus's ball model (creature frame: x across, y over its centre, z forward; r; damage ×): legs, hips, belly,
+ *  chest, head, arms. The heart is apart (`HEART`). */
+const BALLS: number[][] = [
+  [-3.3, -11, 0.4, 1.9, 0.7], [3.3, -11, 0.4, 1.9, 0.7], [-3.1, -7.5, 0.2, 1.8, 0.7], [3.1, -7.5, 0.2, 1.8, 0.7], [-2.8, -4, 0, 1.9, 0.7], [2.8, -4, 0, 1.9, 0.7],
+  [0, -1, 0, 3.4, 1], [0, 2.6, 0, 3.8, 1], [0, 5.6, 0, 4.4, 1], [0, 10.2, 0.4, 2.1, 1.5],
+  [-6.6, 3.5, 0, 1.6, 0.8], [6.6, 3.5, 0, 1.6, 0.8], [-7, -1, 0.2, 1.5, 0.8], [7, -1, 0.2, 1.5, 0.8], [-7.4, -4.4, 0.8, 1.9, 0.8], [7.4, -4.4, 0.8, 1.9, 0.8],
+];
+const HEART = [0, 4.6, 2.9, 1.7];
+/** The colossus's pose (legs and arms by its stride, the fists up in a wind-up, leaning into a run or back in a skid)
+ *  and its hit balls for this frame. */
+function colossusLook(c: Creature, dt: number, time: number) {
+  const e = Math.min(1, dt * 6), run = Math.min(1, c.speed / GIANT.speed), sw = Math.sin(c.anim * 1.1) * (0.15 + 0.45 * run);
+  c.anim -= dt * (1 + c.speed * 1.4) * 0.8; // (the generic stride is too quick for its long legs)
+  c.legs.forEach((l, i) => { l.rotation.x = (i ? 1 : -1) * sw; });
+  const windup = c.state === 'smash' ? Math.max(0, c.timer / GIANT.windup) : 0;
+  const armX = c.state === 'howl' ? -2.4 + Math.sin(time * 6) * 0.15 : c.state === 'smash' ? -2.9 * windup + 0.2 * (1 - windup) : c.state === 'recover' ? 0.3 : 0;
+  (c.arms ?? []).forEach((a, i) => {
+    const want = armX || (i ? -1 : 1) * sw * 0.8;
+    a.rotation.x += (want - a.rotation.x) * (c.state === 'smash' && windup <= 0.05 ? 1 : e);
+    a.rotation.z = (i ? -1 : 1) * (c.state === 'howl' ? 0.5 : 0.08);
+  });
+  if (c.body) c.body.rotation.x += ((c.state === 'skid' ? -0.22 : c.state === 'smash' ? 0.25 - 0.45 * windup : c.state === 'recover' ? 0.3 : run * 0.18) - c.body.rotation.x) * e;
+  if (c.head) c.head.rotation.x = c.state === 'howl' ? -0.4 : 0;
+  const sh = Math.sin(c.heading), ch = Math.cos(c.heading), at = (b: number[]) => [c.p.x + b[0] * ch + b[2] * sh, c.p.y + b[1], c.p.z - b[0] * sh + b[2] * ch];
+  c.balls = BALLS.map((b) => [...at(b), b[3], b[4]]);
+  c.heart = [...at(HEART), HEART[3]];
+}
+/** (0.277) Whoever records the colossus's death (world/crystalgiants.ts: its lair stays empty a while). */
+let colossusDown: ((c: Creature) => void) | null = null;
+export function onColossusDown(f: (c: Creature) => void) { colossusDown = f; }
+/** (0.277) Wake the colossus of a lair (`post` = the lair's id; it is never culled by distance). */
+export function spawnColossus(x: number, z: number, lv: number, post: string): Creature | null {
+  if (!env) return null;
+  const c = make('colossus', V(x, env.ground(x, z) + CREATURES.colossus.lift, z), lv);
+  c.cityPost = post; c.home.set(x, c.home.y, z); c.timer = 0;
+  return c;
+}
+/** (0.277) A body (feet at y, r wide) runs into a colossus's legs or fists: you cannot walk through a giant. */
+export function colossusBodyHit(x: number, y: number, z: number, r: number): boolean {
+  for (const c of W.creatures) {
+    if (c.kind !== 'colossus' || !c.balls || Math.abs(c.p.x - x) > 14 || Math.abs(c.p.z - z) > 14) continue;
+    for (const q of c.balls) for (const yy of [y + 0.4, y + 1.3]) if (Math.hypot(q[0] - x, q[1] - yy, q[2] - z) < q[3] + r) return true;
+  }
+  return false;
+}
+/** (0.277) A colossus's leg or fist that has come into you shoves you out of it (so its solid body never traps you). */
+function shoveOut() {
+  if (proxied()) return;
+  for (const c of W.creatures) {
+    if (c.kind !== 'colossus' || !c.balls || Math.abs(c.p.x - G.pos.x) > 14 || Math.abs(c.p.z - G.pos.z) > 14) continue;
+    for (const q of c.balls) for (const yy of [G.pos.y + 0.4, G.pos.y + 1.3]) {
+      const dx = G.pos.x - q[0], dz = G.pos.z - q[2], dy = yy - q[1], d = Math.hypot(dx, dy, dz), need = q[3] + 0.45;
+      if (d >= need) continue;
+      const h = Math.hypot(dx, dz) || 1e-3, out = Math.sqrt(Math.max(0, need * need - dy * dy)) - h + 0.05;
+      G.pos.x += dx / h * out; G.pos.z += dz / h * out;
+    }
+  }
+}
+/** (0.277) The nearest roused colossus within r of you, for the boss bar. */
+export function colossusNear(r: number): Creature | null {
+  let best: Creature | null = null, bd = r;
+  for (const c of W.creatures) if (c.kind === 'colossus' && c.state !== 'roam') { const d = Math.hypot(c.p.x - G.pos.x, c.p.z - G.pos.z); if (d < bd) { bd = d; best = c; } }
+  return best;
+}
+
 /** (0.240) The wildlife's spawner, paced apart from the encounters (WILDLIFE in gen/wildlife.ts): a herd of what
  *  lives in this land turns up out of sight round you, at most `groups` of them about at once. */
 let wildT = 3;
@@ -1086,7 +1238,7 @@ function shoreNear(x: number, z: number): [number, number] | null {
 const packSize = new WeakMap<Creature[], number>(), packHalf = new WeakSet<Creature[]>(), leashTold = new WeakSet<object>();
 /** The states in which it is after someone. */
 const CHASING = new Set<State>(['hunt', 'dash', 'threat', 'charge', 'stalk', 'dive', 'screech', 'howl', 'scatter']);
-const GROUND_KINDS = new Set<CreatureKind>(['ravager', 'gnawer', 'bramble', 'ridgeback', 'serpent', 'crestjaw', 'titan', 'tusker', 'scorpid']);
+const GROUND_KINDS = new Set<CreatureKind>(['ravager', 'gnawer', 'bramble', 'ridgeback', 'serpent', 'crestjaw', 'titan', 'tusker', 'scorpid', 'shardling', 'prismwalker']);
 /** How it takes up the chase again when you come back onto its ground. */
 const RESUME: Partial<Record<CreatureKind, State>> = { ravager: 'hunt', gnawer: 'hunt', bramble: 'threat' };
 /**
@@ -1152,6 +1304,7 @@ export function updateCreatures(dt: number, time: number) {
     withFoeTarget(c, () => {
       const to = V(G.pos.x, G.pos.y + 1.2, G.pos.z).sub(c.p), dist = to.length(), safe = !targetingFoe() && foeRules.playerSafe();
       if (c.spooked) c.spooked = Math.max(0, c.spooked - dt);
+      if (c.kind === 'colossus') { colossus(c, dt, to, safe); return; } // (0.277) no nerve to break, its own leash
       if (beastMorale(c, dt, dist, safe)) return; // (0.228, stage W6) its ground, its nerve
       if (baits.length && c.state !== 'feed') { const b = lured(c, dist); if (b) { c.state = 'feed'; c.bait = b; } }
       if (c.state === 'feed') { feed(c, dt, dist, safe); return; }
@@ -1168,6 +1321,7 @@ export function updateCreatures(dt: number, time: number) {
     });
     animate(c, dt, time);
   }
+  shoveOut();
   updateDead(dt);
 }
 function animate(c: Creature, dt: number, time: number) {
@@ -1184,6 +1338,7 @@ function animate(c: Creature, dt: number, time: number) {
     if (c.state === 'scatter') c.g.position.y -= 0.14; // low in the grass
   }
   if (isWild(c.kind)) wildLook(c, dt, time);
+  if (c.kind === 'colossus') colossusLook(c, dt, time);
   if (c.kind === 'bramble') { // (0.226) pawing the ground before a charge; reeling with sparks when stunned
     if (c.state === 'threat') { c.g.rotation.z = Math.sin(time * 14) * 0.05; if (Math.random() < dt * 8) burst(c.p.clone().setY(c.p.y - CREATURES.bramble.lift + 0.1).addScaledVector(V(Math.sin(c.heading), 0, Math.cos(c.heading)), 1), 0x8a7a4a, 2, 0.35); }
     else if (c.state === 'stun') { c.g.rotation.z = Math.sin(time * 5) * 0.12; if (Math.random() < dt * 10) burst(c.p.clone().setY(c.p.y + 1), 0xffd060, 1, 0.5); }
@@ -1223,7 +1378,7 @@ function wildLook(c: Creature, dt: number, time: number) {
  *  rolled across it, sampled from the ground half a body ahead, behind and to each side and eased, on top of its pose. */
 const SLOPE = { reach: 0.5, max: 0.5, ease: 6 };
 function onSlope(c: Creature, dt: number) {
-  if (!env || FLYERS.includes(c.kind) || SWIMMERS.includes(c.kind)) return;
+  if (!env || FLYERS.includes(c.kind) || SWIMMERS.includes(c.kind) || c.kind === 'colossus') return; // (a giant stands upright)
   const L = Math.max(0.4, c.r * SLOPE.reach * 2), s = Math.sin(c.heading), k = Math.cos(c.heading), { x, z } = c.p;
   const f = env.ground(x + s * L, z + k * L), b = env.ground(x - s * L, z - k * L);
   const r = env.ground(x + k * L, z - s * L), l = env.ground(x - k * L, z + s * L); // local +x = (cos h, −sin h)
@@ -1258,6 +1413,7 @@ export function hurtCreature(c: Creature, dmg: number, credit = true) {
   if (c.kind === 'skitter') for (const m of c.pack ?? [c]) if (m.state === 'roam') { m.state = 'hunt'; m.timer = Math.random() * 2; }
   if (c.kind === 'lurker' && (c.state === 'roam' || c.state === 'stalk')) { c.state = 'stalk'; c.timer = 1; }
   if (c.kind === 'silverfin') for (const m of c.pack ?? [c]) m.hurt = true;
+  if (c.kind === 'colossus' && c.hp > 0 && c.state === 'roam' && !remoteOf(c)) { c.state = 'howl'; c.timer = GIANT.roar * 0.6; }
   if (isWild(c.kind) && c.hp > 0) { // (0.240) a timid one bolts; any other turns on you, a defensive herd all together
     const w = WILD[c.kind];
     if (w.temper === 'timid') bolt(c.pack ?? [c], G.pos.x, G.pos.z);
@@ -1275,6 +1431,7 @@ export function hurtCreature(c: Creature, dmg: number, credit = true) {
     for (let i = 0; i < n; i++) dropPickup(V(at.x + (Math.random() - 0.5) * 1.2, at.y, at.z + (Math.random() - 0.5) * 1.2), k);
   }
   logLine((c.alpha ? ALPHA[c.kind] : s.name) + ' killed');
+  if (c.kind === 'colossus') { colossusDown?.(c); showToast(tl('The Crystal Colossus shatters!')); }
   const qid = c.questId, alpha = !!c.alpha;
   fallCreature(c);
   if (credit) onKill(c.kind, qid, alpha);

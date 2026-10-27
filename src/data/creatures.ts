@@ -3,6 +3,8 @@ import type { ItemKey } from './items';
 import { tl } from '../i18n';
 import { WILD, isWild, type WildKind } from '../gen/wildlife';
 export type CreatureKind = 'ravager' | 'bramble' | 'leechwing' | 'gnawer' | 'skitter' | 'lurker' | 'silverfin'
+  // (0.277) the giant of the Crystal Wastes (one to a stretch of them: gen/crystalspikes.ts)
+  | 'colossus'
   // (0.240) the wildlife (gen/wildlife.ts): animals living in the land, most of them not out to get you
   | WildKind;
 /** Creatures that fly (they fall out of the sky when killed) and those that live in the sea. */
@@ -34,6 +36,9 @@ export const CREATURES: Record<CreatureKind, CreatureSpec> = {
   titan: { code: 'PF-13', name: tl('Crown Titan'), role: tl('A colossal grazer that walks the plains; harmless until it is attacked'), r: 6.5, lift: 5.6, hp: 300, damage: 45, speed: 3.2, crystals: 30 },
   hopling: { code: 'PF-14', name: tl('Hopling'), role: tl('Small long-eared hopper, grazes in little groups and bolts'), r: 0.35, lift: 0.35, hp: 1, damage: 0, speed: 9, crystals: 0 },
   tusker: { code: 'PF-15', name: tl('Tusker'), role: tl('Bristled boar in a sounder; hurt one and they all come for you'), r: 0.75, lift: 0.75, hp: 7, damage: 12, speed: 8.5, crystals: 2 },
+  shardling: { code: 'PF-17', name: tl('Shardling'), role: tl('A knot of living crystal shards that skitters about the Crystal Wastes in packs'), r: 0.55, lift: 0.55, hp: 4, damage: 9, speed: 8.5, crystals: 3 },
+  prismwalker: { code: 'PF-18', name: tl('Prismwalker'), role: tl('Tall crystal prisms walking on three legs; leave them be and they leave you'), r: 1.2, lift: 2.1, hp: 14, damage: 18, speed: 5, crystals: 6 },
+  colossus: { code: 'PF-19', name: tl('Crystal Colossus'), role: tl('A giant of living crystal, one to a stretch of the wastes: it charges in a straight line but turns badly, so run in zigzags'), r: 4.5, lift: 13, hp: 800, damage: 70, speed: 16, crystals: 40 },
   scorpid: { code: 'PF-16', name: tl('Scorpid'), role: tl('Desert scorpion: crouch and go slowly, or feel its sting'), r: 0.9, lift: 0.45, hp: 10, damage: 16, speed: 7, crystals: 3 },
 };
 
@@ -57,6 +62,9 @@ export const DROPS: Record<CreatureKind, [ItemKey, number, number, number][]> = 
   hopling: [['meatR', 0.8, 1, 1]],
   tusker: [['meatR', 1, 1, 3], ['hide', 0.5, 1, 1], ['fang', 0.4, 1, 2]],
   scorpid: [['plate', 0.6, 1, 1], ['fang', 0.5, 1, 1]],
+  shardling: [['ncrys', 0.35, 1, 1]],
+  prismwalker: [['ncrys', 0.6, 1, 2], ['sensor', 0.06, 1, 1]],
+  colossus: [['sensor', 1, 2, 3], ['optics', 1, 1, 2], ['cell', 0.6, 1, 1], ['pcore', 1, 1, 2], ['ncrys', 1, 3, 6]],
 };
 
 /** Hostile creatures are drawn amber like drones; a calm Bramble is olive until provoked. */
@@ -68,6 +76,7 @@ const ROUSED = new Set(['threat', 'charge', 'hunt', 'dash', 'retreat', 'leash'])
  *  and wildlife that is not roused. */
 export function calmBeast(kind: CreatureKind, state: string): boolean {
   if (kind === 'silverfin') return true;
+  if (kind === 'colossus') return state === 'roam';
   if (kind === 'bramble') return state === 'roam';
   if (isWild(kind)) return WILD[kind].temper === 'timid' || !ROUSED.has(state);
   return false;

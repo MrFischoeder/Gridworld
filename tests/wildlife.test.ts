@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { WILD, WILD_KINDS, wildPick, scared, provoke, temperAfter } from '../src/gen/wildlife';
+import { CRYSTAL_BEASTS, WILD, WILD_KINDS, wildPick, scared, provoke, temperAfter } from '../src/gen/wildlife';
 import { CREATURES, DROPS, calmBeast } from '../src/data/creatures';
 import { FAUNA_IDS } from '../src/models/fauna';
 
@@ -10,7 +10,7 @@ describe('(0.240) wildlife', () => {
     for (const k of WILD_KINDS) {
       expect(CREATURES[k].hp).toBeGreaterThan(0);
       expect(DROPS[k]).toBeDefined();
-      expect(FAUNA_IDS).toContain(WILD[k].model);
+      if (!CRYSTAL_BEASTS.includes(k)) expect(FAUNA_IDS).toContain(WILD[k].model); // (0.277) the crystal ones are drawn by world/crystalbeasts.ts
     }
   });
   it('picks only what lives in the land, at its danger, and nothing at sea', () => {

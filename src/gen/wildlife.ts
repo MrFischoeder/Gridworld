@@ -14,7 +14,9 @@ import type { BiomeHere } from './biomes';
  * Every temper but timid turns on whoever hurts it; a timid one runs.
  */
 export type Temper = 'timid' | 'wary' | 'touchy' | 'ambush' | 'defensive';
-export type WildKind = 'ridgeback' | 'hexastrider' | 'serpent' | 'crestjaw' | 'titan' | 'hopling' | 'tusker' | 'scorpid';
+export type WildKind = 'ridgeback' | 'hexastrider' | 'serpent' | 'crestjaw' | 'titan' | 'hopling' | 'tusker' | 'scorpid'
+  // (0.277) the crystal creatures of the Crystal Wastes (drawn by world/crystalbeasts.ts, not a fauna model)
+  | 'shardling' | 'prismwalker';
 
 export interface WildSpec {
   temper: Temper;
@@ -53,7 +55,15 @@ export const WILD: Record<WildKind, WildSpec> = {
     notice: 30, warn: 0, strike: 2.2, flee: 0, chase: 12, ground: 45 },
   scorpid: { temper: 'touchy', model: 'skorpid', biomes: ['desert', 'savanna', 'crystal', 'mountain'], weight: 4, from: 0.5, herd: [1, 2],
     notice: 18, warn: 0, strike: 4, flee: 0, chase: 8, ground: 30 },
+  // (0.277) shardlings skitter about the wastes in little packs and go for whoever comes close; prismwalkers stalk
+  // about on their crystal legs, minding their own business until one is hurt
+  shardling: { temper: 'wary', model: 'crystal', biomes: ['crystal'], weight: 7, from: 0, herd: [2, 5],
+    notice: 30, warn: 18, strike: 7, flee: 0, chase: 12, ground: 50 },
+  prismwalker: { temper: 'defensive', model: 'crystal', biomes: ['crystal'], weight: 4, from: 0, herd: [1, 3],
+    notice: 40, warn: 0, strike: 3.2, flee: 0, chase: 16, ground: 60 },
 };
+/** (0.277) The kinds drawn from crystal rather than a fauna model. */
+export const CRYSTAL_BEASTS: WildKind[] = ['shardling', 'prismwalker'];
 export const WILD_KINDS = Object.keys(WILD) as WildKind[];
 export const isWild = (k: string): k is WildKind => k in WILD;
 

@@ -3,6 +3,14 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.277.0', date: '2026-10-31', title: 'The Crystal Wastes bite back', notes: [
+    'The crystal spikes sticking out of the ground in the Crystal Wastes are solid: you cannot walk through them, and walking or running into one cuts you (the faster you come, the deeper) and throws you back. The shard clusters there count as spikes too.',
+    'Crystal creatures roam the wastes, each one a different combination of crystals: Shardlings, little knots of shards on four legs, skitter about in packs, warn you off and go for you if you keep coming; Prismwalkers, tall prisms striding on three legs, mind their own business until one of them is hurt.',
+    'Every stretch of the wastes has one Crystal Colossus, a humanoid giant of living crystal some 26 m tall (about 15 times your height). It is very hard to kill and its fists hit very hard, but it charges in a straight line and turns badly: run in zigzags, step aside when it raises its fists, and it overruns you, skids and has to turn round. Its glowing heart in the chest takes 2.5× damage from the front.',
+    'The colossus wakes when someone comes within about 260 m of its lair, has a health bar, gives up the chase about 230 m from its lair, and once killed stays dead for three hours. It leaves sensor crystals, optics, power cores and maybe a relic.',
+    'Dev console: giants [km] lists the colossi\'s lairs; spawn shardling | prismwalker | colossus.',
+    'Multiplayer: the colossus and the crystal creatures are run by the game that spawns the foes there and copied to everyone else as usual; its death is shared, so it stays dead for everyone; the spikes hurt each player on their own game.',
+  ] },
   { v: '0.276.1', date: '2026-10-30', title: 'Natural distant mountains', notes: [
     'The decorative mountain ranges on the horizon no longer stand in front of the land: every real hill, tree and building now covers them, as it should for mountains far away.',
     'They sit just under your eye wherever you are, instead of floating high above or sinking low depending on the ground\'s height.',

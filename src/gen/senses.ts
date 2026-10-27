@@ -42,6 +42,10 @@ export const SENSES: Record<SenseKey, Senses> = {
   hopling: { view: 'all', dark: 0.3, hear: 1.4, steps: 12, scent: 12, trail: 0, lose: 3 },
   tusker: { view: 'wide', dark: 0.3, hear: 1, steps: 8, scent: 22, trail: 15, lose: 10 },
   scorpid: { view: 'wide', dark: 1, hear: 0.6, steps: 10, scent: 0, trail: 0, lose: 6 },
+  // (0.277) the crystal creatures feel the ground shake; the colossus sees over everything
+  shardling: { view: 'all', dark: 1, hear: 0.8, steps: 10, scent: 0, trail: 0, lose: 8 },
+  prismwalker: { view: 'all', dark: 1, hear: 0.6, steps: 12, scent: 0, trail: 0, lose: 10 },
+  colossus: { view: 'all', dark: 1, hear: 1, steps: 30, scent: 0, trail: 0, lose: 20 },
   // machines: motion sensors, thermal sights, a seismic ear on the artillery; none of them smells
   scout:     { view: 'wide', dark: 0.6, hear: 1, steps: 8, scent: 0, trail: 0, lose: 14 },
   guardian:  { view: 'cone', dark: 0.5, hear: 1, steps: 4, scent: 0, trail: 0, lose: 18 },

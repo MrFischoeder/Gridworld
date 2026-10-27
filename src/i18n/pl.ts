@@ -4825,4 +4825,18 @@ export const PL: Record<string, string> = {
   "Stairs up to the shrine on top of {0}": "Schody w górę, do świątyni na szczycie: {0}",
   "{0} · depth {1}": "{0} · poziom {1}",
   "{0} (megalith)": "{0} (megalit)",
+  // (0.277) the Crystal Wastes
+  'Shardling': 'Odłamkowiec',
+  'A knot of living crystal shards that skitters about the Crystal Wastes in packs': 'Kłąb żywych kryształowych odłamków, który w stadach przebiega Kryształowe Pustkowia',
+  'Prismwalker': 'Pryzmochód',
+  'Tall crystal prisms walking on three legs; leave them be and they leave you': 'Wysokie kryształowe pryzmaty na trzech nogach; zostaw je w spokoju, a one zostawią ciebie',
+  'Crystal Colossus': 'Kryształowy Kolos',
+  'A giant of living crystal, one to a stretch of the wastes: it charges in a straight line but turns badly, so run in zigzags': 'Olbrzym z żywego kryształu, jeden na każde pustkowie: szarżuje prosto, ale źle skręca, więc uciekaj zygzakiem',
+  'Shard Mother': 'Matka Odłamków',
+  'Great Prism': 'Wielki Pryzmat',
+  'a cluster of': 'grupę',
+  'The Crystal Colossus roars and turns towards you. Run in zigzags: it cannot turn!': 'Kryształowy Kolos ryczy i odwraca się w twoją stronę. Uciekaj zygzakiem: on nie umie skręcać!',
+  'The Crystal Colossus shatters!': 'Kryształowy Kolos rozpada się w drobny mak!',
+  'The crystal spikes cut! Walk round them, and never run into them.': 'Kryształowe kolce tną! Obchodź je i nigdy w nie nie wbiegaj.',
+  'The heart! ×2.5': 'Serce! ×2.5',
 };

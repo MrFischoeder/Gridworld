@@ -1,4 +1,5 @@
 // Developer console, opened with ~ (the backquote key). Cheats for testing.
+import { giantLairsNear } from '../gen/crystalspikes';
 import { play, soundInfo, volumes } from '../world/sound';
 import { SFX_NAMES, type SfxName } from '../audio/synth';
 import { myHomeId } from '../world/rivals';
@@ -112,6 +113,10 @@ const COMMANDS: Record<string, { help: string; run: (args: string[]) => string }
     help: 'the great installations: where they are (tp to them)',
     run: () => { const T = OW.terrain; if (!T) return 'Only on the surface.'; return installSites(T).map((s) => `${s.name}: tp ${Math.round(s.x)} ${Math.round(s.z - s.r - 12)}  (${(Math.hypot(s.x, s.z) / 1000).toFixed(1)} km out)`).join('\n'); },
   },
+  giants: {
+    help: '[km] the Crystal Colossi\'s lairs in the wastes (tp to them)',
+    run: (a) => { const T = OW.terrain; if (!T) return 'Only on the surface.'; const r = (Number(a[0]) || 25) * 1000, L = giantLairsNear(T.world, G.pos.x, G.pos.z, r); return L.length ? L.map((l) => `${l.id}: tp ${Math.round(l.x)} ${Math.round(l.z - 150)}  (${(Math.hypot(l.x - G.pos.x, l.z - G.pos.z) / 1000).toFixed(1)} km)`).join('\n') : 'No crystal wastes within ' + r / 1000 + ' km.'; },
+  },
   custom: {
     help: '[name] the map editor\'s dungeons: list them, or go down into one',
     run: (a) => {
@@ -157,13 +162,13 @@ const COMMANDS: Record<string, { help: string; run: (args: string[]) => string }
     },
   },
   spawn: {
-    help: 'spawn ravager | bramble | leechwing | gnawer | skitter | lurker | silverfin | ridgeback | hexastrider | serpent | crestjaw | titan | hopling | tusker | scorpid | bandits | raider [mastodon] | scout | guardian | repair | sentinel | artillery | assault (open world)',
+    help: 'spawn ravager | bramble | leechwing | gnawer | skitter | lurker | silverfin | ridgeback | hexastrider | serpent | crestjaw | titan | hopling | tusker | scorpid | shardling | prismwalker | colossus | bandits | raider [mastodon] | scout | guardian | repair | sentinel | artillery | assault (open world)',
     run: (a) => {
       if (a[0] in ROBOTS) return spawnRobotNear(a[0] as RobotKind) ? `${ROBOTS[a[0] as RobotKind].name} spawned.` : 'Only in the open world.';
       if (a[0] === 'bandits') return spawnBanditsNear() ? 'Bandits!' : 'Only in the open world.';
       if (a[0] === 'raider') return spawnRaiderNear(a[1] === 'mastodon' ? 'mastodon' : 'scout') ? 'Raiders incoming.' : 'Only in the open world.';
       const k = a[0] as CreatureKind;
-      if (!(k in CREATURES)) return 'Usage: spawn ravager | bramble | leechwing | gnawer | skitter | lurker | silverfin | ridgeback | hexastrider | serpent | crestjaw | titan | hopling | tusker | scorpid | bandits';
+      if (!(k in CREATURES)) return 'Usage: spawn ravager | bramble | leechwing | gnawer | skitter | lurker | silverfin | ridgeback | hexastrider | serpent | crestjaw | titan | hopling | tusker | scorpid | shardling | prismwalker | colossus | bandits';
       return spawnCreatureNear(k) ? `${CREATURES[k].name} spawned.` : 'Only in the open world.';
     },
   },

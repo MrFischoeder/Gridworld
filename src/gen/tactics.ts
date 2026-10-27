@@ -35,6 +35,10 @@ export const TACTICS: Record<FoeKey, Tactic> = {
   hopling: T(1, 1, 1),
   tusker: T(0.8, 1.1, 1.3, 1, 1.1),
   scorpid: T(0.7, 1.1, 1.4, 1, 1.2, { at: 'low', k: 1.6 }), // the claws guard its front; the legs and belly are soft
+  // (0.277) crystal: a blade chips it; the colossus's weak spot is its glowing heart (by the hit ball: world/weapons.ts)
+  shardling: T(1, 1, 1.2, 1, 1.2),
+  prismwalker: T(0.8, 1, 1.3, 1, 1, { at: 'top', k: 1.5 }), // the glowing crown on its prisms
+  colossus: T(0.8, 1, 1.5, 1, 0.8),
   // machines
   scout: T(1, 1.1, 1.3, 1, 1.2, { at: 'low', k: 1.5 }), // thin legs
   guardian: T(0.8, 1, 1.6, 1, 1, { at: 'top', k: 1.8 }), // the sensor dome over the cannon

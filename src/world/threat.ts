@@ -13,7 +13,7 @@ import { inVillage } from './overworld';
 
 const CREATURE_COST: Record<CreatureKind, number> = { gnawer: 0.5, ravager: 1, bramble: 0.4, leechwing: 1.5, skitter: 0.3, lurker: 1.2, silverfin: 0,
   // (0.240) the wildlife keeps to itself: it barely holds back the hunters (WILDLIFE in gen/wildlife.ts paces it apart)
-  hexastrider: 0, hopling: 0, titan: 0, tusker: 0.2, ridgeback: 0.5, serpent: 0.5, crestjaw: 0.4, scorpid: 0.3 };
+  hexastrider: 0, hopling: 0, titan: 0, tusker: 0.2, ridgeback: 0.5, serpent: 0.5, crestjaw: 0.4, scorpid: 0.3, shardling: 0.3, prismwalker: 0.2, colossus: 0 };
 export const BANDIT_COST = 1.5;
 /** Threat allowed at a danger level (at 0: a small nest of gnawers or one bramble; at 8: a small army). */
 export const budget = (lv: number) => 1.6 + lv * 1.5; // (0.246) more about: was 1 + 1.1 lv

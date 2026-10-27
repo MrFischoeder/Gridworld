@@ -96,7 +96,9 @@ import { foeRules, type Drone } from './enemies';
 import { spawnVehicles, clearVehicles, vehicleHit, syncFound, driving, vehiclesNear } from './vehicles';
 import { logLine, showToast } from '../ui/hud';
 import { dropGarrisons } from './citygarrisons';
-import { setCreatureEnv, clearCreatures } from './creatures';
+import { setCreatureEnv, clearCreatures, colossusBodyHit } from './creatures';
+import { chunkSpikes, type Spike } from '../gen/crystalspikes';
+import { crystal } from './crystalbeasts';
 import { setRobotEnv, clearRobots } from './robots';
 import { updateThreat } from './threat';
 import { setBanditEnv, clearBandits, spawnCamp, despawnCamp } from './bandits';
@@ -127,7 +129,9 @@ const ROAD_FILL = new THREE.MeshBasicMaterial({ color: 0x0f4020, transparent: tr
 /** Chunks reaching above this height (m) are snowy: pale lines. */
 const SNOW_LINE = 115;
 
-interface Chunk { cx: number; cz: number; group: THREE.Group; /** the heights it was built on */ lat: Float32Array; trees: Tree[]; rocks: Rock[]; wells: Well[]; plants: Plant[]; nodes: PlantNode[]; caves: Cave[]; lod: number }
+interface Chunk { cx: number; cz: number; group: THREE.Group; /** the heights it was built on */ lat: Float32Array; trees: Tree[]; rocks: Rock[]; wells: Well[]; plants: Plant[]; nodes: PlantNode[]; caves: Cave[]; lod: number;
+  /** (0.277) the crystal spikes of the wastes: solid, and they cut (the shard trees among them): [x, y (ground), z, r, h] */
+  spikes: number[][] }
 interface Structure {
   poi: Poi; grid: VoxelGrid; group: THREE.Group; edges: EdgeSource;
   doors: Door[]; stairs: Stair[]; npcs: Npc[]; village?: VillageMap; camp?: CampMap; flames?: THREE.LineSegments;
@@ -264,8 +268,19 @@ export function treeHit(x: number, y: number, z: number, r: number): boolean {
     for (const p of c.plants) if (y < p.y + 2) for (const [px, pz, pr] of p.cols) if (Math.hypot(px - x, pz - z) < pr + r) return true;
     for (const w of c.wells) if (Math.hypot(w.x - x, w.z - z) < 1.05 + r && y < OW.terrain!.heightAt(w.x, w.z) + 0.9) return true;
     for (const cv of c.caves) if (caveHit(cv, x, y, z, r, cv.y)) return true;
+    for (const k of c.spikes) if (y < k[1] + k[4] && Math.hypot(k[0] - x, k[2] - z) < k[3] + r) return true;
   }
   return false;
+}
+/** (0.277) The crystal spike a body (feet at y, r wide) presses against, within `reach` m more than it can come: [x, z] of
+ *  its middle, or null. */
+export function spikeTouch(x: number, y: number, z: number, r: number, reach: number): [number, number] | null {
+  const cx = Math.floor(x / CHUNK), cz = Math.floor(z / CHUNK);
+  for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) {
+    const c = OW.chunks.get(ckey(cx + i, cz + j)); if (!c) continue;
+    for (const k of c.spikes) if (y < k[1] + k[4] && Math.hypot(k[0] - x, k[2] - z) < k[3] + r + reach) return [k[0], k[2]];
+  }
+  return null;
 }
 /** (0.257) A tree's crown (its whole height and crown radius) in the way of something flying at y, r wide: airships. */
 export function crownHit(x: number, y: number, z: number, r: number): boolean {
@@ -370,11 +385,13 @@ function buildChunk(cx: number, cz: number, lod = 1): Chunk {
   const giants = groveGiants(T.world, cx * CHUNK + CHUNK / 2, cz * CHUNK + CHUNK / 2, CHUNK); // the great groves' giants stand alone
   const cleared = (x: number, z: number) => inMonument(x, z) || !!T.claimAt(x, z, 1) || inGateClearing(T.world, x, z, 2) || giants.some((g) => Math.hypot(x - g.x, z - g.z) < g.r + 7);
   const looks = new Map<Tree, { b: BiomeHere; look: TreeLook; size: number }>();
+  const spikes: number[][] = [], spikeList: Spike[] = polar ? [] : chunkSpikes(T.world, cx, cz).filter((k) => !cleared(k.x, k.z) && !holes.some((h) => inRect(h, k.x, k.z)) && !f.roads.some((rd) => nearestOnRoad(rd, k.x, k.z)[0] < rd.half + 1.5 + k.r) && !(T.water(k.x, k.z)?.depth));
   chunkTrees(T, cx, cz).forEach((t, i) => {
     if (t.cols.some(([x, z]) => cleared(x, z))) return;
     const b = polar ? 'ice' : biomeOfCell(T.world, t.x, t.z), as = treeIn(b, hash(t.seed, 0xb10e), TREE_SPAN[t.kind] > 0);
     if (!as) return; // (0.232) the biome does not grow it (the list keeps its index, so the saved keys hold)
     looks.set(t, { b, ...as });
+    if (as.look === 'shard') spikes.push([t.x, t.y, t.z, Math.max(0.5, t.cols[0]?.[2] ?? 0.5) + 0.25, 1.4 + t.h * 0.35]); // (0.277) a shard cluster cuts too
     const k = `tree:${wrapC(cx)}:${cz}:${i}`; gatherKey.set(t, k); (ripe(k) ? trees : stumps).push(t);
   });
   chunkRocks(T, cx, cz).forEach((r, i) => { if (cleared(r.x, r.z)) return; const k = `rock:${wrapC(cx)}:${cz}:${i}`; gatherKey.set(r, k); if (ripe(k)) rocks.push(r); });
@@ -388,6 +405,12 @@ function buildChunk(cx: number, cz: number, lod = 1): Chunk {
     for (const cv of caves) drawCave(pb, cv, T);
     for (const m of marks) drawTrailMark(pb, m, T);
     for (const t of trees) { const lk = looks.get(t)!; pb.remap = tintOf(lk.b); drawTreeLook(pb, t, lod, lk.look, lk.size); }
+    for (const k of spikeList) { // (0.277) the wastes' spikes: 1–4 pointed columns from one foot
+      const y = T.heightAt(k.x, k.z), R = rng(k.seed), n = 1 + Math.floor(R() * 4);
+      pb.remap = tintOf('crystal');
+      for (let q = 0; q < n; q++) { const a = R() * 6.283, lean = q ? 0.25 + R() * 0.45 : R() * 0.15; crystal(pb, [k.x + Math.cos(a) * k.r * 0.3, y - 0.3, k.z + Math.sin(a) * k.r * 0.3], [Math.cos(a) * lean, 1, Math.sin(a) * lean], k.h * (q ? 0.5 + R() * 0.4 : 1), k.r * (q ? 0.35 : 0.5), q ? 4 : 6, GRID); }
+      spikes.push([k.x, y, k.z, k.r * 0.8, k.h]);
+    }
     for (const k of rocks) { pb.remap = tintOf(polar ? 'ice' : biomeOfCell(T.world, k.x, k.z)); pb.rock(k.x, k.y, k.z, k.r, k.h, k.sides, k.rot, GRID, k.lean); pb.remap = null; if (k.ore) pb.vein(k.x, k.y, k.z, k.r, k.h, k.sides, k.rot, ORE_COLOR[k.ore], k.lean); }
     pb.remap = null;
     if (lod === 1 && !polar) groundDeco(pb, T, cx, cz, (x, z) => cleared(x, z) || holes.some((h) => inRect(h, x, z)) || f.roads.some((rd) => nearestOnRoad(rd, x, z)[0] < rd.half + 1));
@@ -395,7 +418,7 @@ function buildChunk(cx: number, cz: number, lod = 1): Chunk {
   }
   localize(group, x0, z0);
   scene.add(group);
-  return { cx, cz, group, lat, trees, rocks, wells, plants, nodes, caves, lod };
+  return { cx, cz, group, lat, trees, rocks, wells, plants, nodes, caves, lod, spikes };
 }
 /** (0.232) A biome's colours for trees and rocks drawn through a PropBatch (bark and stone, leaves, vines). */
 const tints = new Map<BiomeHere, Map<number, number>>();
@@ -845,7 +868,7 @@ export function openWorld(x: number, z: number) {
   primeInstalls(w, [...G.char.claims, ...fieldClaims(G.char.towns), ...portClaims(w, G.char.outposts)]); // the installations' sites are worked out in a worker meanwhile
   closeWorld();
   G.water = (px, pz) => (inStructure(px, pz) ? null : OW.terrain!.water(px, pz));
-  G.space = space; G.ground = groundAt; G.obstacle = (px, py, pz, r) => settlementHit(px, py, pz, r) || templeHit(px, py, pz, r) || crystalHit(px, py, pz, r) || colossusHit(px, py, pz, r) || megalithHit(px, py, pz, r) || worldGateHit(px, py, pz, r) || treeHit(px, py, pz, r) || vehicleHit(px, py, pz, r) || caravanHit(px, py, pz, r) || peerCarHit(px, py, pz, r) || ambushHit(px, py, pz, r) || baseHit(px, py, pz, r) || ladderHit(px, py, pz, r) || walkHit(px, py, pz, r) || guardHit(px, py, pz, r) || houseHit(px, py, pz, r) || doorHit(px, py, pz, r) || podHit(px, py, pz, r) || installHit(px, py, pz, r) || cityHit(px, py, pz, r) || hallHit(px, py, pz, r) || bridgeHit(px, py, pz, r) || pierHit(px, py, pz, r) || lighthouseHit(px, py, pz, r) || boatHit(px, py, pz, r) || shipHit(px, py, pz, r) || gondolaHit(px, py, pz, r) || toxicHit(px, py, pz, r) || lodeHit(px, py, pz, r) || portHit(px, py, pz, r) || campHit(px, py, pz, r) || fallHit(px, py, pz, r);
+  G.space = space; G.ground = groundAt; G.obstacle = (px, py, pz, r) => settlementHit(px, py, pz, r) || colossusBodyHit(px, py, pz, r) || templeHit(px, py, pz, r) || crystalHit(px, py, pz, r) || colossusHit(px, py, pz, r) || megalithHit(px, py, pz, r) || worldGateHit(px, py, pz, r) || treeHit(px, py, pz, r) || vehicleHit(px, py, pz, r) || caravanHit(px, py, pz, r) || peerCarHit(px, py, pz, r) || ambushHit(px, py, pz, r) || baseHit(px, py, pz, r) || ladderHit(px, py, pz, r) || walkHit(px, py, pz, r) || guardHit(px, py, pz, r) || houseHit(px, py, pz, r) || doorHit(px, py, pz, r) || podHit(px, py, pz, r) || installHit(px, py, pz, r) || cityHit(px, py, pz, r) || hallHit(px, py, pz, r) || bridgeHit(px, py, pz, r) || pierHit(px, py, pz, r) || lighthouseHit(px, py, pz, r) || boatHit(px, py, pz, r) || shipHit(px, py, pz, r) || gondolaHit(px, py, pz, r) || toxicHit(px, py, pz, r) || lodeHit(px, py, pz, r) || portHit(px, py, pz, r) || campHit(px, py, pz, r) || fallHit(px, py, pz, r);
   G.floor = (x, y, z) => Math.max(rockFloor(x, y, z), templeFloor(x, y, z), settlementFloor(x, y, z), megalithFloor(x, y, z), baseFloor(x, y, z), ladderFloor(x, y, z), walkFloor(x, y, z), bridgeFloor(x, y, z), pierFloor(x, y, z), shipFloor(x, y, z), gondolaFloor(x, y, z)); G.rayBlock = (o, d, t) => natureRay(o, d, settlementRay(o, d, megalithRay(o, d, worldGateRay(o, d, cityRay(o, d, doorRay(o, d, houseRay(o, d, baseRay(o, d, t)))))))); G.solid = (p) => settlementSolid(p) || megalithHit(p.x, p.y, p.z, 0) || worldGateHit(p.x, p.y, p.z, 0) || baseSolid(p) || houseSolid(p);
   foeRules.blocked = (p) => megalithHit(p.x, p.y, p.z, .7) || nearVillage(p.x, p.z) < 2;
   foeRules.body = foeBody;

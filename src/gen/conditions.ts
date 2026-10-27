@@ -15,6 +15,7 @@ export interface HitFx { impact: number; knock?: boolean; cut?: boolean; emp?: b
 export const POISE: Record<FoeKey, number> = {
   ravager: 0.3, bramble: 0.32, leechwing: 0.3, skitter: 0.3, lurker: 0.35, silverfin: 0.3, gnawer: 0.3,
   ridgeback: 0.3, hexastrider: 0.25, serpent: 0.35, crestjaw: 0.35, titan: 0.6, hopling: 0.3, tusker: 0.3, scorpid: 0.3,
+  shardling: 0.3, prismwalker: 0.32, colossus: 9, // (0.277) the colossus is never staggered by a hit
   scout: 0.3, guardian: 0.3, repair: 0.3, sentinel: 0.3, artillery: 0.28, assault: 0.4,
   gunner: 0.28, bruiser: 0.32, leader: 0.3, drone: 0.4,
 };
