@@ -13,6 +13,7 @@ import { PropBatch } from './props';
 import { scene } from './render';
 import { spendStamina, burn } from './survival';
 import { setHandWork } from './gather';
+import { reportWork } from '../ui/workring';
 import { dropAtFeet } from './drops';
 import { play } from './sound';
 import { kestrelEngine } from './crashpod';
@@ -123,7 +124,7 @@ export function salvagePrompt(s: Spot): string {
   const who = workingOn(st, c.pid, c.time);
   if (who) return TL`${who} is taking the ${nameOf(s)} apart.`;
   if (!hasItem('wrench')) return TL`The ${nameOf(s)}: a wrench would strip it for parts (${left} of ${total} left).`;
-  if (t > 0 && cur?.key === s.key) { const f = Math.min(1, t / SALVAGE.secs[s.k]), k = Math.round(f * 10); return `${tl('Unbolting')} ${'▮'.repeat(k)}${'▯'.repeat(10 - k)} ${Math.round(f * 100)}%`; }
+  if (t > 0 && cur?.key === s.key) { return `${tl('Unbolting')} ${Math.round(Math.min(1, t / SALVAGE.secs[s.k]) * 100)}%`; }
   return TL`Hold E — strip the ${nameOf(s)} for parts (${left} of ${total} left)`;
 }
 /** Does E belong to the machine (so the press opens nothing else)? */
@@ -150,6 +151,7 @@ export function updateSalvage(dt: number, s: Spot | null) {
   if (beatClaim <= 0) { beatClaim = 3; mine.by = c.pid; mine.nm = c.name || tl('Someone'); mine.t = c.time; }
   t += dt; beat += dt;
   setHandWork('wrench', t * 1.6);
+  reportWork(t / SALVAGE.secs[s.k]);
   if (beat > 0.75) { beat = 0; play('hammer', { vol: 0.35, far: 30, share: 25 }); }
   if (t < SALVAGE.secs[s.k]) return;
   t = 0;

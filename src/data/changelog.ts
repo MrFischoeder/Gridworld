@@ -3,6 +3,13 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.274.0', date: '2026-10-30', title: 'The work ring', notes: [
+    'While you work at something, an empty dodecagon appears in the middle of the screen and its edge fills clockwise from the top until the work is done, with the percentage under the crosshair.',
+    'It shows for stripping machines with the wrench, sawing logs by hand, chopping trees and mining rocks and ore veins (over all the blows the job needs), the workshop and working things up where they lie. Each job fills at its own speed.',
+    'When one part of a longer job is done (a part unbolted, a log sawn, a batch made) the ring gives a short pulse and starts again.',
+    'The prompts keep a plain percentage instead of the old text bars.',
+    'Multiplayer: what you see on your own screen only; nothing is sent. `PROTOCOL` unchanged.',
+  ] },
   { v: '0.273.0', date: '2026-10-30', title: 'More to strip in the wrecks', notes: [
     'The bridge of a crashed freighter has two flight consoles you can take apart with the wrench: electronics, control units, now and then optics, a sensor, a power inverter or even a computer.',
     'Every cargo hold has a hydraulic loader folded against each side wall: electric motors, gears, bearings, pipes and now and then a pump.',

@@ -20,6 +20,7 @@ import { play } from './sound';
 import type { Pickup } from './loot';
 import { logLine, showToast } from '../ui/hud';
 import { tl, TL } from '../i18n';
+import { reportWork } from '../ui/workring';
 
 export interface Ref { k: ItemKey; n: number; src: 'pack' | 'hand' | 'ground' | 'bench'; id?: string }
 /** Cells 0..5 are materials, 6..8 tools. */
@@ -117,8 +118,8 @@ export const working = () => !!job;
 export const workProgress = () => (job ? Math.min(1, job.t / job.make.secs) : 0);
 export function workPrompt(): string {
   if (!job) return '';
-  const k = Math.round(workProgress() * 10), more = job.left > 1 ? ' ' + TL`(${job.left - 1} more)` : '';
-  return `${tl('Working')} ${'▮'.repeat(k)}${'▯'.repeat(10 - k)} ${Math.round(workProgress() * 100)}% — ${ITEMS[job.make.out[0]].name}${more}`;
+  const more = job.left > 1 ? ' ' + TL`(${job.left - 1} more)` : '';
+  return `${tl('Working')} ${Math.round(workProgress() * 100)}% — ${ITEMS[job.make.out[0]].name}${more}`;
 }
 const toolCell = () => { const k = cells.slice(CELLS.inputs).find((r) => r && avail(r) && isToolModel(r.k))?.k; return k && isToolModel(k) ? k : null; };
 
@@ -207,6 +208,7 @@ export function updateWorkshop(dt: number) {
   const j = job;
   if (!j) return;
   if (Math.hypot(G.pos.x - j.x, G.pos.z - j.z) > 2.5) { stop(tl('You walked away from your work.')); return; }
+  reportWork(workProgress());
   if (j.waiting) { // the lying things are being handed over by the server
     if (j.pending === 0) complete(j);
     else if ((j.wait -= dt) <= 0) stop(tl('Someone got there first.'));

@@ -8,6 +8,7 @@ import { spendStamina, burn } from './survival';
 import { HAND_PLANKS } from '../gen/settlement';
 import { logLine, showToast } from '../ui/hud';
 import { tl, TL } from '../i18n';
+import { reportWork } from '../ui/workring';
 
 export { HAND_PLANKS };
 /** What a log costs you by hand: the seconds of work, stamina and calories. */
@@ -27,7 +28,7 @@ const stop = (why: string) => { if (job?.done) saveChar(); logLine(why + (job?.d
 export function updateSawing(dt: number) {
   if (!job) return;
   if (Math.hypot(G.pos.x - job.x, G.pos.z - job.z) > 1.5) { stop(tl('You stop sawing.')); return; }
-  if ((job.t += dt) < HAND.secs) return;
+  if ((job.t += dt) < HAND.secs) { reportWork(job.t / HAND.secs); return; }
   job.t = 0;
   if (!hasItem('saw')) { stop(tl('Your saw is gone.')); return; }
   if (!spendStamina(HAND.stamina)) { stop(tl('Too tired to saw on. Catch your breath.')); return; }

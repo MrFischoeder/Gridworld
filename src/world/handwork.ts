@@ -10,6 +10,7 @@ import { handworkOf, HANDWORK_TAP, type Handwork } from '../data/handwork';
 import { W } from '../game';
 import { spendStamina, burn } from './survival';
 import { setHandWork } from './gather';
+import { reportWork } from '../ui/workring';
 import { consumeDrop, dropAtFeet, takeDrop } from './drops';
 import { play } from './sound';
 import { workedBy } from './worklocks';
@@ -38,7 +39,7 @@ export function handworkTarget(): HandTarget | null {
 }
 export function handworkPrompt(h: HandTarget): string {
   const more = h.p.n && h.p.n > 1 ? ` ×${h.p.n}` : '';
-  if (held >= HANDWORK_TAP) { const k = Math.round(Math.min(1, t / h.w.secs) * 10); return `${tl('Working')} ${'▮'.repeat(k)}${'▯'.repeat(10 - k)} ${Math.round(Math.min(1, t / h.w.secs) * 100)}%`; }
+  if (held >= HANDWORK_TAP) return `${tl('Working')} ${Math.round(Math.min(1, t / h.w.secs) * 100)}%`;
   return TL`Hold E — ${tl(h.w.verb)}${more} · tap E — pick it up`;
 }
 const stop = () => { held = 0; t = 0; cur = null; setHandWork(null); };
@@ -55,6 +56,7 @@ export function updateHandwork(dt: number, h: HandTarget | null) {
   if (held < HANDWORK_TAP) return;
   t += dt; beat += dt;
   setHandWork(h.w.tool as ToolKey, t * 2.5);
+  reportWork(t / h.w.secs);
   if (beat > 0.8) { beat = 0; play('chop', { vol: 0.35, far: 30, share: 25 }); }
   if (t < h.w.secs) return;
   if (!spendStamina(h.w.stamina)) { logLine(tl('Too tired to work on. Catch your breath.')); stop(); return; }

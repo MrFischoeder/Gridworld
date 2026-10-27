@@ -21,6 +21,7 @@ import { logLine } from '../ui/hud';
 import { camera } from './render';
 import { TOOL_KEYS, toolModel, isToolModel, type ToolKey } from './toolmodels';
 import { tl, TL } from '../i18n';
+import { reportWork } from '../ui/workring';
 
 export interface Target { kind: 'tree' | 'rock'; key: string; x: number; y: number; z: number; big: boolean; ore?: OreKind; held: boolean;
   /** A giant of a village's great grove (gen/resource-sites.ts): never felled; worked only once the village's lumber camp stands. */
@@ -58,13 +59,12 @@ const need = (t: Target) => {
   const n = t.kind === 'tree' ? (t.big ? GATHER.tree.bigHits : GATHER.tree.hits) : (t.big ? GATHER.rock.bigHits : GATHER.rock.hits);
   return t.ore ? Math.round(n * GATHER.ore.hits) : n;
 };
-const bar = (n: number, of: number) => { const k = Math.round(n / of * 10); return '▮'.repeat(k) + '▯'.repeat(10 - k); };
 const toolOf = (t: Target) => (t.kind === 'tree' ? 'hatchet' : 'pickaxe');
 export function gatherPrompt(t: Target) {
   if (t.grove && !t.grove.camp) return TL`A giant of ${t.grove.name}'s great grove: far too big for one axe. Only a lumber camp's crews work it (ask the elder of ${t.grove.name}).`;
   if (!t.held) return TL`E — take the ${t.kind === 'tree' ? tl('hatchet') : tl('pickaxe')} in your hands (tools work only from your hands)`;
   const n = blows.get(t.key) ?? 0, what = t.grove ? tl('take timber from the giant') : t.kind === 'tree' ? tl('chop the tree') : t.ore ? TL`mine the ${ORE_NAME[t.ore]} vein` : tl('break the rock');
-  return n || work ? `${work ? (t.kind === 'tree' ? tl('Chopping') : tl('Mining')) : tl('Hold E — ') + what} ${bar(n, need(t))} ${n}/${need(t)}` : TL`Hold E — ${what}`;
+  return n || work ? `${work ? (t.kind === 'tree' ? tl('Chopping') : tl('Mining')) : tl('Hold E — ') + what} ${n}/${need(t)}` : TL`Hold E — ${what}`;
 }
 
 // ---------- the work: hold E, a blow every swing ----------
@@ -123,6 +123,7 @@ export function updateGather(dt: number, t: Target | null) {
   pivot.position.y = -0.3 + raise * 0.1;
   if (ph >= 0.95 && !work.landed) { work.landed = true; blow(t); }
   if (ph < 0.95) work.landed = false;
+  if (work) reportWork(((blows.get(t.key) ?? 0) + (ph < 0.95 ? ph / 0.95 : 0)) / need(t));
 }
 
 /** One blow of the hatchet or the pickaxe. */

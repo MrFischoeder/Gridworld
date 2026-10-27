@@ -19,6 +19,7 @@ import { updateCarriers } from './world/carriers';
 import { isWhPlacing, updateWhPlacing, confirmWhPlacing, cancelWhPlacing } from './world/wildstores';
 import { isStreetPlacing, updateStreetPlacing, confirmStreetPlacing, cancelStreetPlacing, updateStreetLamps } from './world/streetlamps';
 import { updateSawing } from './world/sawing';
+import { drawWorkRing } from './ui/workring';
 import { updateHomes } from './world/home';
 import { updatePlayer, EYE } from './world/player';
 import { updateClimb, climbing } from './world/ladders';
@@ -298,6 +299,7 @@ function frame(now: number) {
       if ((saveT -= dt) <= 0) { saveT = 3; saveOverworldPos(); }
     }
   } else { el.prompt.style.display = 'none'; el.bUse.classList.remove('on'); el.bossbar.style.display = 'none'; }
+  drawWorkRing(); // (0.274) the work ring: whatever reported progress this frame
   let sw: ReturnType<typeof updateBodySway> | null = null;
   if (G.trans) updateTrans(dt, camera); else if (driving.v) vehicleCamera(camera); else if (riding()) rideCamera(camera); else if (inCopter()) copterCamera(camera); else if (inAir()) airCamera(camera); else if (inBoat()) boatCamera(camera); else {
     coverHint(dt); crouchDrop += ((G.crouch ? CROUCH_DROP * (1 - 0.85 * peekK()) : 0) - crouchDrop) * Math.min(1, dt * 10); camera.position.set(G.pos.x, G.pos.y + EYE - crouchDrop - downView().drop, G.pos.z);
