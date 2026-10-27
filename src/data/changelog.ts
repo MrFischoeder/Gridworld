@@ -3,6 +3,12 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.276.0', date: '2026-10-30', title: 'Winged sphinxes', notes: [
+    'The sphinxes have a real lion\'s body now: rounded hindquarters with the hind thighs folded along them and their paws on the ground, a ridged spine rising to broad shoulders, front legs with upper arms and elbows, great paws with four toes and claws, and a tail curled round to a tuft.',
+    'Every sphinx carries a pair of great stone wings folded along its flanks, the wrist arching over its head and the long flight feathers sweeping back to raised tips behind the rump: a rolled leading edge, rows of rounded coverts, and notched feather tips along the trailing edge.',
+    'The face is a little fuller and the eyes a little larger. The wings are solid like the rest.',
+    'Multiplayer: from the world seed, the same for everyone; nothing new is sent.',
+  ] },
   { v: '0.275.0', date: '2026-10-30', title: 'Pyramids, sphinxes and lone stone heads', notes: [
     'Five great stepped pyramids now stand on the continents, never two in sight of each other: the Feathered Serpent (nine terraces, a stair up every face, serpent heads at their feet), the Devoured Sun and the Pale Moon (sloping and upright panels carved with the old script), the Twin Shrines (two stairs, two shrines on the top) and the steep Jaguar Spire with its pierced roof comb. They are 45 to 75 metres tall.',
     'Climb the great stair between its balustrades to the shrine on the top, where braziers burn at the corners. Inside the shrine a stair goes down into the pyramid: a labyrinth, deeper and more dangerous level by level. Its stairs up bring you out at the shrine\'s door again.',

@@ -129,7 +129,7 @@ export const inColossus = (world: number, x: number, z: number, m = 0) => coloss
 
 /**
  * A colossus's solids: capsules in the world. A head: one up its axis. A sphinx: the haunches and back, the chest
- * and neck, the head, and the two front legs with their paws.
+ * and neck, the head, the two front legs with their paws and (0.276) the two folded wings.
  */
 export function colossusCapsules(o: Colossus): Capsule[] {
   const P = tiltFrame(o.lean, o.roll, o.yaw, o.x, o.y, o.z), H = o.h;
@@ -141,6 +141,9 @@ export function colossusCapsules(o: Colossus): Capsule[] {
     cap([0, H * 0.74, H * 0.22], [0, H * 0.93, H * 0.2], H * 0.12),
     cap([-H * 0.1, H * 0.05, H * 0.36], [-H * 0.1, H * 0.42, H * 0.26], H * 0.07),
     cap([H * 0.1, H * 0.05, H * 0.36], [H * 0.1, H * 0.42, H * 0.26], H * 0.07),
+    // (0.276) the folded wings: from the wrist over the back down to the raised tips behind the rump
+    cap([-H * 0.21, H * 1.03, -H * 0.16], [-H * 0.32, H * 0.55, -H * 0.88], H * 0.05),
+    cap([H * 0.21, H * 1.03, -H * 0.16], [H * 0.32, H * 0.55, -H * 0.88], H * 0.05),
   ];
 }
 /** A body (feet at y, r wide) runs into one of these colossi. */
