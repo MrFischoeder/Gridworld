@@ -3,6 +3,10 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.264.1', date: '2026-10-29', title: 'Smoke hides behind buildings', notes: [
+    'The smoke of the crashed ship (and of the bandits\' fires) no longer shows through houses, walls, ruins, city blocks and other structures: a far column is hidden whenever something solid stands between your eye and it, not only a hill.',
+    'Multiplayer: purely visual, each game checks its own view. `PROTOCOL` and the server are unchanged.',
+  ] },
   { v: '0.264.0', date: '2026-10-29', title: 'Everything in the backpack', notes: [
     'The two slots on your back are gone: nothing hangs there any more, everything you carry lies in the backpack (weapons and tools included). What used to hang on your back goes into free backpack slots when you load an older save; a new hero starts with the blaster in the hands and the blade in the first backpack slot.',
     'Quick switching: keys 1 to 6 take the item in the first six backpack slots (numbered in the window) into your hands and put what you held in its place: a weapon, a tool (axe, saw, pickaxe) or a light or shield for the other hand. A key over an empty slot puts away what you hold there. Q or the mouse wheel swaps back to what you held before, X puts it away. In a vehicle 1 to 3 still pick the seat.',

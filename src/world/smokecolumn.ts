@@ -61,8 +61,9 @@ export function placeFar(c: Column, x: number, y: number, z: number, cam: THREE.
 }
 /** Whether a column's middle (`top` m up) at (x, y, z) shows over the land between `from` and it (sampled every 15 m
  *  on `ground`): a far column is drawn over everything, so the hills that hide it are checked here. */
-export function clearView(from: THREE.Vector3, x: number, y: number, z: number, top: number, ground: (x: number, z: number) => number): boolean {
+export function clearView(from: THREE.Vector3, x: number, y: number, z: number, top: number, ground: (x: number, z: number) => number, blocked?: (mid: THREE.Vector3) => boolean): boolean {
   const mid = y + top, dx = x - from.x, dz = z - from.z, L = Math.hypot(dx, dz);
+  if (blocked && blocked(new THREE.Vector3(x, mid, z))) return false; // (0.264.1) houses, walls, ruins, cities: anything solid on the line
   for (let d = 15; d < L - 20; d += 15) { const f = d / L; if (ground(from.x + dx * f, from.z + dz * f) > from.y + (mid - from.y) * f) return false; }
   return true;
 }

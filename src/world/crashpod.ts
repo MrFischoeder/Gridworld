@@ -9,6 +9,7 @@
 import * as THREE from 'three';
 import { scene, add, camera } from './render';
 import { makeColumn, stepColumn, placeFar, clearView, dropColumn, WRECK_VENTS, type Column } from './smokecolumn';
+import { viewBlocked } from './smokeview';
 import { seen } from './weather';
 import { daylight, sunTilt } from '../core/time';
 import { latitude } from '../gen/regions';
@@ -185,7 +186,7 @@ export function updateCrash(dt: number, time: number) {
   if (lamp) lamp.visible = Math.sin(time * 5) > 0;
   syncPods(); syncPlates();
   const on = G.char.loc === 'overworld';
-  if ((viewT -= dt) <= 0 && terr) { viewT = 0.5; for (const c of cols) c.seen = clearView(camera.position, c.x, c.y, c.z, 25, (x, z) => terr!.heightAt(x, z)); }
+  if ((viewT -= dt) <= 0 && terr) { viewT = 0.5; for (const c of cols) c.seen = clearView(camera.position, c.x, c.y, c.z, 25, (x, z) => terr!.heightAt(x, z), viewBlocked); }
   const wx = Math.cos(seen.windDir) * (0.3 + seen.wind), wz = Math.sin(seen.windDir) * (0.3 + seen.wind);
   const day = Math.max(0.2, Math.min(1, daylight(G.char.time, sunTilt(latitude(site.z))) * 1.6)), edge = Math.min(camera.far * 0.9, 130);
   for (const c of cols) {

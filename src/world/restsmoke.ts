@@ -16,6 +16,7 @@ import { latitude } from '../gen/regions';
 import { LIGHT } from '../gen/darkness';
 import { SMOKE } from '../gen/warnings';
 import { makeColumn, stepColumn, placeFar, clearView, dropColumn, CAMPFIRE, type Column } from './smokecolumn';
+import { viewBlocked } from './smokeview';
 
 interface Smoke { x: number; y: number; z: number; left: number; seen: boolean; g: THREE.Group; near: THREE.Group; flames: THREE.LineSegments; column: Column }
 const smokes: Smoke[] = [];
@@ -56,7 +57,7 @@ export function updateRestSmoke(dt: number, time: number) {
     const resting = W.bandits.filter((b) => b.mode === 'rest' && b.hp > 0);
     for (const s of smokes) s.left = resting.some((b) => Math.hypot(b.p.x - s.x, b.p.z - s.z) < SMOKE.join) ? SMOKE.linger : s.left - 0.5;
     for (const s of [...smokes]) if (s.left <= 0 || Math.hypot(s.x - G.pos.x, s.z - G.pos.z) > SMOKE.far + 200) drop(s);
-    for (const s of smokes) s.seen = clearView(camera.position, s.x, s.y, s.z, 20, (x, z) => OW.terrain!.heightAt(x, z));
+    for (const s of smokes) s.seen = clearView(camera.position, s.x, s.y, s.z, 20, (x, z) => OW.terrain!.heightAt(x, z), viewBlocked);
     for (const b of resting) {
       if (smokes.some((s) => Math.hypot(b.p.x - s.x, b.p.z - s.z) < SMOKE.join)) continue;
       const a = b.heading, s = make(b.p.x + Math.sin(a) * 1.6, b.p.z + Math.cos(a) * 1.6); // just ahead of the first to sit down
