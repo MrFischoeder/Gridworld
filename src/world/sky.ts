@@ -1,7 +1,7 @@
 // Sky above open-air places: stars, a wireframe moon and sun moving with the game clock, and a ring of distant mountains.
 import * as THREE from 'three';
 import { scene, fog, lineMat, fillMat, V } from './render';
-import { sunAngle, daylight, twilight, sunTilt } from '../core/time';
+import { sunAngle, daylight, twilight, sunTilt, stationDir, stationAngle } from '../core/time';
 import { rng, hash } from '../core/rng';
 import { G } from '../game';
 import { seen as weather } from './weather';
@@ -32,6 +32,25 @@ const domeMat = new THREE.ShaderMaterial({
 });
 const dome = new THREE.Mesh(new THREE.SphereGeometry(120, 32, 16), domeMat);
 dome.renderOrder = -10; dome.frustumCulled = false;
+// The orbital station: two coaxial wheels on one axle with spokes, like the wheel stations of old films; a dark fill hides
+// the stars behind it, green lines draw it. It spins slowly and crosses the sky far quicker than the sun and the moon.
+const STATION_R = 4.2, STATION_AT = 158;
+const station = (() => {
+  const g = new THREE.Group(), wheels = new THREE.Group(), line = lineMat(0xc8ffe0, { fog: false }), fill = noFog(fillMat(0x000000));
+  const ring = (z: number) => {
+    const t = new THREE.TorusGeometry(STATION_R, 0.42, 6, 40);
+    const m = new THREE.Mesh(t, fill), l = new THREE.LineSegments(new THREE.WireframeGeometry(t), line);
+    m.position.z = l.position.z = z; wheels.add(m, l);
+  };
+  ring(-1.5); ring(1.5);
+  const sp: THREE.Vector3[] = [];
+  for (const z of [-1.5, 1.5]) for (let i = 0; i < 6; i++) { const a = i / 6 * 6.283; sp.push(V(0, 0, z), V(Math.cos(a) * STATION_R, Math.sin(a) * STATION_R, z)); }
+  wheels.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(sp), line));
+  const hub = new THREE.CylinderGeometry(0.9, 0.9, 5.6, 10); hub.rotateX(Math.PI / 2);
+  wheels.add(new THREE.Mesh(hub, fill), new THREE.LineSegments(new THREE.WireframeGeometry(hub), line));
+  wheels.userData.spin = true; g.add(wheels); g.userData.wheels = wheels; g.visible = false; g.renderOrder = 1;
+  return g;
+})();
 let sunDisc: THREE.MeshBasicMaterial, moonFill: THREE.Mesh;
 
 export const sky = (() => {
@@ -65,7 +84,7 @@ export const sky = (() => {
   for (let i = 0; i < 16; i++) { const a = i / 16 * 6.283, l = i % 2 ? 1.35 : 1.7; sp.push(V(Math.cos(a) * S * 1.15, Math.sin(a) * S * 1.15, 0), V(Math.cos(a) * S * l, Math.sin(a) * S * l, 0)); }
   sun.add(disc, new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(sp), lineMat(0xfff0a0, { fog: false })));
   sunDisc = disc.material as THREE.MeshBasicMaterial; moonFill = globe.children[0] as THREE.Mesh;
-  grp.add(dome, moon, sun);
+  grp.add(dome, moon, sun, station);
   grp.visible = false; scene.add(grp); return grp;
 })();
 
@@ -89,6 +108,13 @@ export function updateSky(t: number, lat = 0) {
   onOrbit(sun, a, tilt); onOrbit(moon, a + Math.PI, tilt);
   sun.quaternion.setFromUnitVectors(Z, EYE.clone().sub(sun.position).normalize()); // face the viewer (the sky sits 20 m below the eye)
   const wc = weather.cloud, wf = weather.fog, fl = weather.flash;
+  { // the orbital station: seen while above the horizon, hidden by thick cloud
+    const d = stationDir(t);
+    station.position.set(d[0] * STATION_AT, d[1] * STATION_AT, d[2] * STATION_AT);
+    station.rotation.set(1.05, 0.6, 0); // the axle leans, so the wheels show as ellipses and their edge-on view changes along the pass
+    (station.userData.wheels as THREE.Group).rotation.z = stationAngle(t) * 9;
+    station.visible = d[1] > -0.06 && wc < 0.85;
+  }
   starMat.opacity = Math.max(0, 1 - day * 1.6) * (1 - wc * 0.95);
   sky.children[0].visible = starMat.opacity > 0.01;
   tmpZ.copy(NIGHT_Z).lerp(DAY_Z, day).lerp(DUSK_Z, glow * 0.5);
@@ -115,7 +141,7 @@ export function updateSky(t: number, lat = 0) {
 export function tintSky(c: THREE.Color, k: number) {
   const u = domeMat.uniforms;
   (u.zenith.value as THREE.Color).lerp(c, k); (u.horizon.value as THREE.Color).lerp(c, k); u.glowK.value *= 1 - k;
-  starMat.opacity *= 1 - k; sun.visible &&= k < 0.6; moon.visible &&= k < 0.6;
+  starMat.opacity *= 1 - k; sun.visible &&= k < 0.6; moon.visible &&= k < 0.6; station.visible &&= k < 0.6;
 }
 /** Underground: always black. */
 export function darkSky() { (scene.background as THREE.Color).set(0x000000); fog.color.set(0x000000); }

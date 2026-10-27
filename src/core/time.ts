@@ -37,3 +37,15 @@ export const BOARD_HOURS = 6;
 export const boardPeriod = (t: number) => Math.floor(t / (BOARD_HOURS * 60));
 /** Game time of the next posting. */
 export const nextPosting = (t: number) => (boardPeriod(t) + 1) * BOARD_HOURS * 60;
+
+/** The orbital station crosses the sky in about two real minutes and circles in `STATION.period` game minutes
+ *  (1 real second = 1 game minute), far quicker than the sun or the moon, against their direction. Its plane is
+ *  tilted by `incl` and turned by `node` round the vertical. Angle 0 = at the plane's x end. */
+export const STATION = { period: 240, incl: 0.95, node: 0.7, phase: 1.1 };
+export const stationAngle = (t: number) => STATION.phase - (t / STATION.period) * Math.PI * 2;
+/** Unit direction of the station from the viewer at game time t (x east, y up, z south). */
+export function stationDir(t: number): [number, number, number] {
+  const a = stationAngle(t), c = Math.cos(a), s = Math.sin(a), ci = Math.cos(STATION.incl), si = Math.sin(STATION.incl);
+  const x = c, y = s * ci, z = s * si, n = Math.cos(STATION.node), m = Math.sin(STATION.node);
+  return [x * n + z * m, y, -x * m + z * n];
+}
