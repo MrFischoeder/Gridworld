@@ -3,6 +3,9 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.265.1', date: '2026-10-29', title: 'A bigger station', notes: [
+    'The orbital station is about two and a half times larger, with thicker wheels and brighter lines, so it stands out clearly against the sky as it crosses. Multiplayer: visual only, from the clock. `PROTOCOL` and the server are unchanged.',
+  ] },
   { v: '0.265.0', date: '2026-10-29', title: 'The orbital station', notes: [
     'A space station of two wheels on a common axle, like the wheel stations of old films, now circles the planet: you see it cross the sky as a small turning ring, day or night, about once every four minutes, in about two minutes from horizon to horizon. It is far quicker than the sun and the moon, yet slow enough to watch. It goes against their direction and is hidden by thick cloud and toxic fog.',
     'It is scenery for now; a later stage of the game will use it. Multiplayer: it comes from the game clock, so every player sees it in the same place. `PROTOCOL` and the server are unchanged.',

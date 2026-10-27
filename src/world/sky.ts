@@ -34,19 +34,19 @@ const dome = new THREE.Mesh(new THREE.SphereGeometry(120, 32, 16), domeMat);
 dome.renderOrder = -10; dome.frustumCulled = false;
 // The orbital station: two coaxial wheels on one axle with spokes, like the wheel stations of old films; a dark fill hides
 // the stars behind it, green lines draw it. It spins slowly and crosses the sky far quicker than the sun and the moon.
-const STATION_R = 4.2, STATION_AT = 158;
+const STATION_R = 10, STATION_AT = 158, SS = STATION_R / 4.2; // (0.265.1) bigger: about 7 degrees across, well over the sun's disc
 const station = (() => {
-  const g = new THREE.Group(), wheels = new THREE.Group(), line = lineMat(0xc8ffe0, { fog: false }), fill = noFog(fillMat(0x000000));
+  const g = new THREE.Group(), wheels = new THREE.Group(), line = lineMat(0xe8fff0, { fog: false }), fill = noFog(fillMat(0x000000));
   const ring = (z: number) => {
-    const t = new THREE.TorusGeometry(STATION_R, 0.42, 6, 40);
+    const t = new THREE.TorusGeometry(STATION_R, 0.42 * SS * 1.3, 8, 48);
     const m = new THREE.Mesh(t, fill), l = new THREE.LineSegments(new THREE.WireframeGeometry(t), line);
     m.position.z = l.position.z = z; wheels.add(m, l);
   };
-  ring(-1.5); ring(1.5);
+  ring(-1.5 * SS); ring(1.5 * SS);
   const sp: THREE.Vector3[] = [];
-  for (const z of [-1.5, 1.5]) for (let i = 0; i < 6; i++) { const a = i / 6 * 6.283; sp.push(V(0, 0, z), V(Math.cos(a) * STATION_R, Math.sin(a) * STATION_R, z)); }
+  for (const z of [-1.5 * SS, 1.5 * SS]) for (let i = 0; i < 6; i++) { const a = i / 6 * 6.283; sp.push(V(0, 0, z), V(Math.cos(a) * STATION_R, Math.sin(a) * STATION_R, z)); }
   wheels.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(sp), line));
-  const hub = new THREE.CylinderGeometry(0.9, 0.9, 5.6, 10); hub.rotateX(Math.PI / 2);
+  const hub = new THREE.CylinderGeometry(0.9 * SS, 0.9 * SS, 5.6 * SS, 12); hub.rotateX(Math.PI / 2);
   wheels.add(new THREE.Mesh(hub, fill), new THREE.LineSegments(new THREE.WireframeGeometry(hub), line));
   wheels.userData.spin = true; g.add(wheels); g.userData.wheels = wheels; g.visible = false; g.renderOrder = 1;
   return g;
