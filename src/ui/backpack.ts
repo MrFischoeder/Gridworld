@@ -20,10 +20,10 @@ import { slotHTML, bindSlots, itemInfo, parseId, loadText } from './slots';
 import { tl, TL } from '../i18n';
 import { THROWABLES } from '../gen/throwing';
 import { readyThrow } from '../world/throwing';
-import { packClosed } from '../world/workshop';
+import { packClosed, packInCell } from '../world/workshop';
 
 /** (0.270) The workshop cells beside the window (ui/workshop.ts registers itself). Slot ids 'x:<cell>'. */
-export interface CraftPanel { show(on: boolean): void; render(): void; drop(from: string, to: string): string; click(id: string): string }
+export interface CraftPanel { show(on: boolean): void; render(): void; drop(from: string, to: string): string; click(id: string): string; put(id: string): string }
 let craftUi: CraftPanel | null = null;
 export function setCraftPanel(p: CraftPanel) { craftUi = p; }
 const isCraft = (id: string) => parseId(id)[0] === 'x';
@@ -79,7 +79,7 @@ function renderPack() {
     slotHTML('o:0', { k: c.off[0]?.k ?? null, n: c.off[0]?.n, hint: tl('Other hand'), cls: 'held' + (c.off[0] && bothHands() ? ' idle' : ''), title: c.off[0] ? undefined : tl('Your other hand: a light (flashlight, oil lamp, torches) or a shield, beside a one-handed weapon') }, sel === 'o:0');
   const oh = c.off[0] ? (bothHands() ? TL`${item(c.off[0].k).name} (idle: both hands on the weapon)` : item(c.off[0].k).name) : tl('nothing');
   defEl.textContent = TL`armour ${Math.round(G.S.def * 100)}% · in hands: ${c.hands[0] ? item(c.hands[0].k).name : tl('nothing')}` + ' · ' + TL`other hand: ${oh}`;
-  invEl.innerHTML = c.inv.map((s, i) => slotHTML('p:' + i, { k: s?.k ?? null, n: s?.n, c: s?.c, ...(i < 6 ? { key: i + 1, title: s ? undefined : TL`Backpack slot ${i + 1}: keys 1 to 6 take what lies in the first six slots into your hands` } : {}) }, sel === 'p:' + i)).join('');
+  invEl.innerHTML = c.inv.map((s, i) => slotHTML('p:' + i, { k: s?.k ?? null, n: s?.n, c: s?.c, cls: s && packInCell(s.k) ? 'incell' : undefined, ...(i < 6 ? { key: i + 1, title: s ? undefined : TL`Backpack slot ${i + 1}: keys 1 to 6 take what lies in the first six slots into your hands` } : {}) }, sel === 'p:' + i)).join('');
   loadEl.innerHTML = loadText();
   statsEl.textContent = TL`damage ${(g.dmg * G.S.bm).toFixed(2)} · ${(1 / G.S.rate).toFixed(1)} shots/s · range ${g.range} m · magazine ${g.mag} · reload ${g.reload.toFixed(1)} s · zoom ${g.zoom}×`;
   let html = note || tl('Drag items between slots. Keys 1 to 6 take the item in the first six backpack slots into your hands, swapping what you held (weapons, tools, lights); armour and clothes on your body, relics in the modules, attachments in the Blaster slots. Wheels and other big things only fit in your hands.');
@@ -106,6 +106,7 @@ function renderPack() {
     if (s.k === 'log' && (w === 'p' || w === 'h')) acts.push(['saw', tl('Saw into planks')], ['sawall', tl('Saw all')]); // (world/sawing.ts: a Saw in your kit)
     { const h = c.hands[0]; // (0.247) a crate or a barrel in your hands: fill it from the backpack, or empty it
       if (w === 'p' && h && isCargo(h.k) && boxRoom(h, s.k) > 0) acts.unshift(['pack', TL`Into the ${item(h.k).name}`]); }
+    if (craftUi && (w === 'p' || w === 'h' || w === 'o')) acts.push(['cell', tl('Into the workshop')]); // (0.271)
     if (w === 'p' || w === 'h' || w === 'k' || w === 'o') acts.push(['drop', tl('Drop')]);
   } else sel = null;
   note = '';
@@ -220,6 +221,7 @@ packEl.addEventListener('click', (e) => {
   if (!a || !sel) return;
   const id = sel, [w, i] = parseId(id), act = a.dataset.a!;
   if (act === 'off' || act === 'on' || act === 'hold' || act === 'stow' || act === 'stowo' || act === 'offh') { const m = quick(sel, act); if (m) logLine(m); note = m; sel = null; }
+  if (act === 'cell' && craftUi) { note = craftUi.put(id); sel = null; }
   if (act === 'use' && (w === 'p' || w === 'h' || w === 'o')) { const s = listOf(w)[i]; if (s) useItem(s.k); }
   if (act === 'pack' && w === 'p') { note = packHeld(i); logLine(note); }
   if (act === 'unpack' && w === 'h') { note = unpackHeld(); logLine(note); sel = null; }

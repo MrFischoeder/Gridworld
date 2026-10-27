@@ -2,5 +2,5 @@
 // Bump it with every pushed change (and keep package.json's "version" the same): the middle number for a new
 // feature (0.4.0 -> 0.5.0), the last one for a fix (0.5.0 -> 0.5.1). BUILD says what the latest change was.
 // Every change also gets an entry at the top of data/changelog.ts (the Changelog button in the menu).
-export const VERSION = '0.270.0';
-export const BUILD = '2026-10-29 · new crafting: a workshop of six material cells and three tool cells beside the backpack'
+export const VERSION = '0.271.0';
+export const BUILD = '2026-10-29 · the workshop fills its own cells from the recipe list, makes a whole pile in one go, keeps your cells'

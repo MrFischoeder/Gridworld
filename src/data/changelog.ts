@@ -3,6 +3,13 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.271.0', date: '2026-10-29', title: 'A quicker workshop', notes: [
+    'The recipe list in the workshop now shows first what you can make right here, from your backpack, your hands and what lies within reach, with a Prepare button that fills the cells for you; the rest say what is missing.',
+    'All ×N makes as many as the materials allow in one go, also from a pile lying on the ground: the pile is taken up once, what is left of it waits on your bench between batches and is laid back down when you stop. The prompt shows how many are still to come.',
+    'Into the workshop: a button on a selected item in the backpack or your hands puts it in the first free cell of the right kind. Clear the cells empties them. Things you have in the cells are marked in the backpack and on the ground.',
+    'Closing the backpack keeps the cells filled from your backpack and hands (only lying things are let go), so you can make the same again without dragging. Lying things count only while they are within reach.',
+    'Multiplayer: unchanged rules: the cells and the bench are yours alone, the claim on a lying thing is shared, the server decides who gets it. `PROTOCOL` and the server are unchanged.',
+  ] },
   { v: '0.270.0', date: '2026-10-29', title: 'The workshop', notes: [
     'Crafting is new. Open the backpack: beside your things and the ground there is now a Workshop with nine cells, six for materials and three for tools. Drag a log from the backpack (or lying in front of you) into a material cell and a saw into a tool cell: only a shadow of each goes in, the things stay where they are. When the cells fit a recipe, buttons appear, for example Make Planks; press it and your hero stands and works for a few seconds (the tool moves in front of the view), then the materials are used up and the product lies at your feet. The button beside it keeps making the same thing while the materials last.',
     'Things lying on the ground can be used too. While a lying log sits in your cell it is yours: nobody else can pick it up, saw it or put it in their own cell, and the ground list shows who is working it. The claim fades by itself a few seconds after you stop (close the backpack, walk off, or finish).',

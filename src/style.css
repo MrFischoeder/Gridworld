@@ -83,6 +83,10 @@ label{font-size:22px;margin-top:16px;display:block}
 .slot.cell{border-style:dashed}
 .slot.cell.toolcell{border-color:#7a5a2a}
 .slot.shadow{opacity:.62;border-style:dotted;border-color:var(--amber)}
+.slot.incell{outline:1px dashed var(--amber);outline-offset:-3px}
+#pack .craft .rec button{background:transparent;color:var(--amber);border:1px solid var(--amber);padding:1px 8px;font-size:17px;cursor:pointer;margin-right:4px}
+#pack .craft .rec.off{opacity:.55}
+#pack .craft .acts button{font-size:18px}
 .slot.shadow.gone{opacity:.25;border-color:#ff5a3c}
 #pack .craft .makes{margin-top:10px;font-size:20px}
 #pack .craft .mk{display:flex;gap:6px;margin-bottom:6px}
