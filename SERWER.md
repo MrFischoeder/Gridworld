@@ -125,6 +125,8 @@ PORT=8517 SERVER_NAME="Mój serwer" npm run serve
 
 **Wersja 0.248 (protokół 16):** pojazdy niczyje. Lista pojazdów (`vehicles`) i ich bagażniki (pojemniki `trunk:<id>`) należą teraz do wspólnego świata: serwer przechowuje je w pliku świata i rozsyła zmiany wszystkim graczom. Każdy gracz może prowadzić każdy pojazd i zaglądać do każdego bagażnika. Pojazd porusza gra tego, kto w nim siedzi; pozostali widzą go z jej komunikatów. Gra i serwer muszą mieć tę samą wersję, więc zaktualizuj serwer skryptem `install.sh`. Po aktualizacji gracze muszą odświeżyć stronę (Ctrl+F5).
 
+**Wersja 0.267 (protokół bez zmian):** spadki z orbity są wspólne (nowe pole `skyfalls` w `FIELDS`). Starszy serwer nie przekazuje go dalej, więc każdy gracz widzi tylko własne spadki. Zaktualizuj serwer skryptem `install.sh`.
+
 **Wersja 0.259 (protokół bez zmian):** wiropłaty. Lista wiropłatów (`copters`) należy do wspólnego świata (nowe pole w `FIELDS`), a gra pilota wysyła przez serwer te same wiadomości `air` (identyfikatory zaczynają się od `cop:`). Starszy serwer nie zapisuje wiropłatów: gra działa, ale wiropłaty nie są wspólne między graczami. Zaktualizuj serwer skryptem `install.sh`.
 
 **Wersja 0.256 (protokół bez zmian):** sterowce. Lista sterowców (`airships`) należy do wspólnego świata, a gra tego, kto trzyma ster, wysyła przez serwer krótkie wiadomości `air` z pozycją sterowca, żeby inni widzieli go w locie. Starszy serwer nie zapisuje sterowców i nie przepuszcza tych wiadomości: gra działa, tylko inni gracze nie widzą cudzego sterowca w ruchu. Zaktualizuj serwer skryptem `install.sh`.

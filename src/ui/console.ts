@@ -145,7 +145,7 @@ const COMMANDS: Record<string, { help: string; run: (args: string[]) => string }
     },
   },
   meteor: {
-    help: 'meteor: a container falls out of orbit and lands 200-400 m away (the sky fall event)',
+    help: 'meteor: a container falls out of orbit and lands 200-400 m away, for everyone in the place (the sky fall event)',
     run: () => { const r = startFall(true); if (!r) close(); return r || 'Incoming.'; },
   },
   tp: {

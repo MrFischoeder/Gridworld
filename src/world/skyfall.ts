@@ -1,8 +1,9 @@
-// (0.266) Sky falls: now and then a container comes down out of orbit like a meteor. The boom is heard, a burning streak
-// crosses the sky for a few seconds, and the container lies wrecked somewhere 400-800 m from where you stood, a column of
-// smoke over it (seen from far, hidden behind buildings like the crash site's) and a glow by night. E at it opens the
-// crate. The schedule is the game clock's (gen/skyfall.ts), so every player hears the same boom; each has their own
-// container, drawn and opened only on their own game. Console `meteor` brings one at once.
+// (0.266, shared since 0.267) Sky falls: now and then a container comes down out of orbit like a meteor. A player entering
+// a new area rolls for it; a hit writes one shared record (Char.skyfalls, gen/skyfall.ts) and from then on every game in
+// the place animates the same fall from the game clock: the roar, a burning streak crossing the sky, the flare and the
+// boom of the impact. The container lies wrecked 380-820 m from where it was rolled, a column of smoke over it (seen
+// from far, hidden behind buildings like the crash site's) and a glow by night, and anyone can search it (one shared
+// container). Console `meteor` brings one at once.
 import * as THREE from 'three';
 import { G } from '../game';
 import { scene, camera, lineMat, fillMat, V } from './render';
@@ -13,7 +14,7 @@ import { addGlows } from './light';
 import { makeColumn, stepColumn, placeFar, clearView, dropColumn, WRECK_SMOKE, type Column } from './smokecolumn';
 import { viewBlocked } from './smokeview';
 import { addBlast } from './fx';
-import { FALL, fallSlot, fallIn, fallSpot, fallFrom, fallLoot, fallGold, fallPath } from '../gen/skyfall';
+import { FALL, fallSlot, fallCell, fallId, fallRolls, fallSpot, fallFrom, fallLoot, fallGold, fallPath, type SkyFall } from '../gen/skyfall';
 import { villageDist } from '../gen/regions';
 import { daylight, sunTilt } from '../core/time';
 import { latitude } from '../gen/regions';
@@ -23,9 +24,6 @@ import { logLine, showToast } from '../ui/hud';
 import { bearingTo, point8, fmtDist } from '../ui/compass';
 import { TL, tl } from '../i18n';
 import { saveChar as persist } from '../character';
-
-interface Live { t: number; to: THREE.Vector3; from: number; booms: boolean; slot: number; bang: number }
-let live: Live | null = null;
 
 const tex = (() => {
   const cv = document.createElement('canvas'); cv.width = cv.height = 64;
@@ -49,10 +47,13 @@ function project(s: THREE.Sprite, p: { x: number; y: number; z: number }, size: 
   s.scale.setScalar(size); (s.material as THREE.SpriteMaterial).opacity = op;
 }
 
-// the container lying on the ground
+// the containers lying on the ground (by record id)
 interface Crate { id: string; x: number; y: number; z: number; g: THREE.Group; col: Column; seen: boolean }
-let crate: Crate | null = null;
-let viewT = 0, syncT = 0;
+const crates = new Map<string, Crate>();
+let viewT = 0, syncT = 0, lastCell = '';
+/** What this game has already played of each fall (id → 1 streak begun, 2 impact flared, 3 boom heard). */
+const played = new Map<string, number>();
+let flare = 0, flareAt: THREE.Vector3 | null = null;
 
 function crateModel(): THREE.Group {
   const g = new THREE.Group();
@@ -71,129 +72,141 @@ function crateModel(): THREE.Group {
   return g;
 }
 
-function dropCrate() {
-  if (!crate) return;
-  scene.remove(crate.g); dropColumn(crate.col); crate = null;
+function dropCrate(id: string) {
+  const c = crates.get(id); if (!c) return;
+  scene.remove(c.g); dropColumn(c.col); crates.delete(id);
 }
-function showCrate(c: NonNullable<NonNullable<typeof G.char.fall>['crate']>) {
-  const y = groundAt(c.x, c.z);
+function showCrate(r: SkyFall) {
+  const y = groundAt(r.x, r.z);
   if (!Number.isFinite(y)) return;
-  const g = crateModel(); g.position.set(c.x, y, c.z); g.rotation.y = (c.x * 7.1 + c.z * 3.3) % 6.28;
+  const g = crateModel(); g.position.set(r.x, y, r.z); g.rotation.y = (r.x * 7.1 + r.z * 3.3) % 6.28;
   const col = makeColumn(WRECK_SMOKE); scene.add(g, col.g);
-  crate = { id: c.id, x: c.x, y, z: c.z, g, col, seen: true };
+  crates.set(r.id, { id: r.id, x: r.x, y, z: r.z, g, col, seen: true });
 }
 
-function containerFor(slot: number, id: string): Container {
-  const w = G.char.world;
+const boxId = (r: SkyFall) => 'fall:' + r.id;
+function containerFor(r: SkyFall): Container {
+  const w = G.char.world, id = boxId(r);
   if (!G.char.containers[id]) {
     const items: (Container['items'][number])[] = Array(12).fill(null);
-    for (const [k, n] of fallLoot(w, slot)) putItems(items, k as never, n);
-    G.char.containers[id] = { items, gold: fallGold(w, slot) };
+    for (const [k, n] of fallLoot(w, r.slot)) putItems(items, k as never, n);
+    G.char.containers[id] = { items, gold: fallGold(w, r.slot) };
   }
   return G.char.containers[id];
 }
 
-/** Begin a fall for the player where they stand. `force` (console) ignores the schedule and lands it nearer. */
+const bearingText = (x: number, z: number) => point8(bearingTo(x, z));
+const landsOn = (r: SkyFall) => { const y = groundAt(r.x, r.z); return new THREE.Vector3(r.x, Number.isFinite(y) ? y : G.pos.y, r.z); };
+
+/** Write a fall for everyone: rolled near the player (or, from the console, forced and closer). Returns why not, or ''. */
 export function startFall(force = false): string {
   const c = G.char;
-  if (c.loc !== 'overworld' || !OW.terrain || live) return tl('A fall needs the open sky and no other one in flight.');
-  const slot = fallSlot(c.time), w = c.world;
+  if (c.loc !== 'overworld' || !OW.terrain) return tl('A fall needs the open sky and no other one in flight.');
+  if (Object.values(c.skyfalls).some((r) => c.time - r.t < FALL.secs + 4)) return tl('A fall needs the open sky and no other one in flight.');
+  const slot = force ? 100000 + Math.floor(c.time) : fallSlot(c.time), w = c.world;
   let spot: { x: number; z: number } | null = null;
   for (let k = 0; k < 14 && !spot; k++) {
-    const p = force ? fallSpot(w, slot + 1000, G.pos.x, G.pos.z, k, 200, 420) : fallSpot(w, slot, G.pos.x, G.pos.z, k);
+    const p = force ? fallSpot(w, slot, G.pos.x, G.pos.z, k, 200, 420) : fallSpot(w, slot, G.pos.x, G.pos.z, k);
     const y = groundAt(p.x, p.z);
     if (!Number.isFinite(y) || OW.terrain.water(p.x, p.z) || villageDist(w, p.x, p.z, 160) < Infinity) continue;
     if (Math.abs(groundAt(p.x + 8, p.z) - y) > 3.5 || Math.abs(groundAt(p.x, p.z + 8) - y) > 3.5) continue;
     spot = p;
   }
   if (!spot) return tl('No clear ground for it to fall on here.');
-  const y = groundAt(spot.x, spot.z);
-  live = { t: 0, to: new THREE.Vector3(spot.x, y, spot.z), from: fallFrom(w, slot), booms: false, slot: force ? slot + 1000 : slot, bang: -1 };
-  streakGroup.visible = true;
-  play('thunder', { vol: 0.7, rate: 0.45 });
-  showToast(tl('A roar from above: something is coming down.'));
+  const id = force ? 'sky:dev:' + Math.floor(c.time) : fallId(slot);
+  c.skyfalls[id] = { id, slot, x: Math.round(spot.x), z: Math.round(spot.z), t: c.time, by: c.pid };
+  persist();
   return '';
 }
 
-const bearingText = (x: number, z: number) => point8(bearingTo(x, z));
+/** Entering a new area: maybe a fall begins (once a slot, whoever rolls it first). */
+function roll() {
+  const c = G.char, cell = fallCell(G.pos.x, G.pos.z);
+  if (cell === lastCell) return;
+  const first = lastCell === ''; lastCell = cell;
+  if (first || !G.playing || G.intro || c.skyfalls[fallId(fallSlot(c.time))]) return;
+  if (fallRolls(Math.random())) startFall();
+}
 
-function land() {
-  const L = live!, c = G.char;
-  const id = 'fall:' + L.slot + ':' + (c.pid ?? 'me');
-  if (c.fall?.crate) delete c.containers[c.fall.crate.id];
-  c.fall = { slot: c.fall?.slot ?? fallSlot(c.time), crate: { id, x: Math.round(L.to.x), z: Math.round(L.to.z), t: c.time } };
-  containerFor(L.slot, id);
-  persist();
-  addBlast(L.to.clone(), 10, 0xffa040, L.to.y);
-  seen.flash = Math.max(seen.flash, 0.7);
-  const d = Math.hypot(L.to.x - G.pos.x, L.to.z - G.pos.z);
-  L.bang = Math.min(FALL.lag, d / FALL.sound);
-  L.booms = true;
-  dropCrate(); showCrate(c.fall.crate!);
-  logLine(TL`Something heavy fell from orbit, ${fmtDist(d)} to the ${bearingText(L.to.x, L.to.z)}. Follow the smoke.`);
+function expire() {
+  const c = G.char;
+  for (const r of Object.values(c.skyfalls)) if (c.time - r.t > FALL.life) { delete c.skyfalls[r.id]; delete c.containers[boxId(r)]; dropCrate(r.id); played.delete(r.id); persist(); }
+  for (const id of [...crates.keys()]) if (!c.skyfalls[id]) dropCrate(id);
 }
 
 /** Every frame on the surface. */
-let frames = 0;
 export function updateSkyFall(dt: number) {
-  frames++;
   const c = G.char;
-  if (c.loc !== 'overworld' || !OW.terrain) { if (live || crate) { live = null; streakGroup.visible = false; dropCrate(); } return; }
-  // the schedule: once a second, the slot's fall when its minute has come
+  if (c.loc !== 'overworld' || !OW.terrain) { streakGroup.visible = false; lastCell = ''; for (const id of [...crates.keys()]) dropCrate(id); return; }
   if ((syncT -= dt) <= 0) {
-    syncT = 1;
-    const slot = fallSlot(c.time), f = fallIn(c.world, slot);
-    if (!live && (c.fall?.slot ?? -1) < slot && c.time >= f.at && G.playing && !G.intro) {
-      c.fall = { ...c.fall, slot };
-      if (f.go && c.time < f.at + 30 && !c.fall.crate) startFall();
-      persist();
-    }
-    const cr = c.fall?.crate;
-    if (cr && c.time - cr.t > FALL.life) { delete c.containers[cr.id]; delete c.fall!.crate; dropCrate(); persist(); }
-    else if (cr && !crate && Math.hypot(cr.x - G.pos.x, cr.z - G.pos.z) < 2600) showCrate(cr);
-    else if (!cr && crate) dropCrate();
-  }
-  if (live) {
-    live.t += dt;
-    const u = Math.min(1, live.t / FALL.secs);
-    if (live.t < FALL.secs) {
-      for (let i = 0; i < STREAK; i++) {
-        const p = fallPath(live.to, live.from, Math.max(0, u - i * 0.006));
-        project(streak[i], p, (i === 0 ? 7 : 5.5) * (1 - i / STREAK), (0.4 + 0.6 * u) * (1 - i / STREAK));
-      }
-    } else if (!live.booms) land();
-    if (live.booms) {
-      const k = live.t - FALL.secs;
-      // the flare of the impact, projected to its true direction, then the boom when the sound arrives
-      project(streak[0], live.to, 18 * Math.max(0, 1 - k / 1.4), Math.max(0, 1 - k / 1.4));
-      for (let i = 1; i < STREAK; i++) streak[i].visible = false;
-      if (live.bang >= 0 && k >= live.bang) { live.bang = -1; play('impact', { at: live.to, vol: 1, far: 3000 }); }
-      if (k > 1.6 && live.bang < 0) { live = null; streakGroup.visible = false; for (const s of streak) s.visible = true; }
+    syncT = 1; roll(); expire();
+    for (const r of Object.values(c.skyfalls)) {
+      const near = Math.hypot(r.x - G.pos.x, r.z - G.pos.z) < 2600;
+      if (c.time - r.t >= FALL.secs && near && !crates.has(r.id)) showCrate(r);
     }
   }
-  if (crate) {
-    const k = c.fall?.crate;
-    if (k && (viewT -= dt) <= 0) {
-      viewT = 0.5;
-      crate.seen = clearView(camera.position, crate.x, crate.y, crate.z, 12, (x, z) => OW.terrain!.heightAt(x, z), viewBlocked);
+  // the streak and the impact of the fall in flight (or just landed), the same for everyone from the shared clock
+  let flying: SkyFall | null = null;
+  for (const r of Object.values(c.skyfalls)) {
+    const e = c.time - r.t;
+    if (e < -1 || e > FALL.secs + 8) continue;
+    if (Math.hypot(r.x - G.pos.x, r.z - G.pos.z) > FALL.hear) continue;
+    const st = played.get(r.id) ?? 0, to = landsOn(r);
+    if (st < 1 && e < FALL.secs) {
+      played.set(r.id, 1);
+      play('thunder', { vol: 0.7, rate: 0.45 });
+      showToast(tl('A roar from above: something is coming down.'));
     }
-    const day = Math.max(0.2, Math.min(1, daylight(c.time, sunTilt(latitude(crate.z))) * 1.6)), edge = Math.min(camera.far * 0.9, 130);
-    const kk = placeFar(crate.col, crate.x, crate.y + 1.5, crate.z, camera, edge);
-    crate.g.visible = Math.hypot(crate.x - G.pos.x, crate.z - G.pos.z) < 500;
-    crate.col.g.visible = kk >= 1 || crate.seen;
-    if (crate.col.g.visible) stepColumn(crate.col, dt, Math.cos(seen.windDir) * (0.3 + seen.wind), Math.sin(seen.windDir) * (0.3 + seen.wind), day * (1 - seen.fog * 0.4));
+    if (e >= FALL.secs && st < 2) {
+      played.set(r.id, 2);
+      addBlast(to.clone(), 10, 0xffa040, to.y);
+      seen.flash = Math.max(seen.flash, 0.7);
+      flare = 1.4; flareAt = to;
+      const d = Math.hypot(r.x - G.pos.x, r.z - G.pos.z);
+      logLine(TL`Something heavy fell from orbit, ${fmtDist(d)} to the ${bearingText(r.x, r.z)}. Follow the smoke.`);
+    }
+    if (e >= FALL.secs && (played.get(r.id) ?? 0) < 3) {
+      const d = Math.hypot(r.x - G.pos.x, r.z - G.pos.z);
+      if (e - FALL.secs >= Math.min(FALL.lag, d / FALL.sound)) { played.set(r.id, 3); play('impact', { at: to, vol: 1, far: 3000 }); }
+    }
+    if (e >= 0 && e < FALL.secs) flying = r;
+  }
+  if (flying) {
+    const to = landsOn(flying), from = fallFrom(c.world, flying.slot), u = Math.min(1, (c.time - flying.t) / FALL.secs);
+    streakGroup.visible = true;
+    for (let i = 0; i < STREAK; i++) {
+      streak[i].visible = true;
+      project(streak[i], fallPath(to, from, Math.max(0, u - i * 0.006)), (i === 0 ? 7 : 5.5) * (1 - i / STREAK), (0.4 + 0.6 * u) * (1 - i / STREAK));
+    }
+  } else if (flare > 0 && flareAt) {
+    flare -= dt; streakGroup.visible = flare > 0;
+    for (let i = 1; i < STREAK; i++) streak[i].visible = false;
+    project(streak[0], flareAt, 18 * Math.max(0, flare / 1.4), Math.max(0, flare / 1.4));
+  } else streakGroup.visible = false;
+  if (crates.size) {
+    const refresh = (viewT -= dt) <= 0; if (refresh) viewT = 0.5;
+    const day = Math.max(0.2, Math.min(1, daylight(c.time, sunTilt(latitude(G.pos.z))) * 1.6)), edge = Math.min(camera.far * 0.9, 130);
+    for (const cr of crates.values()) {
+      if (refresh) cr.seen = clearView(camera.position, cr.x, cr.y, cr.z, 12, (x, z) => OW.terrain!.heightAt(x, z), viewBlocked);
+      const kk = placeFar(cr.col, cr.x, cr.y + 1.5, cr.z, camera, edge);
+      cr.g.visible = Math.hypot(cr.x - G.pos.x, cr.z - G.pos.z) < 500;
+      cr.col.g.visible = kk >= 1 || cr.seen;
+      if (cr.col.g.visible) stepColumn(cr.col, dt, Math.cos(seen.windDir) * (0.3 + seen.wind), Math.sin(seen.windDir) * (0.3 + seen.wind), day * (1 - seen.fog * 0.4));
+    }
   }
 }
-addGlows((out) => { if (crate) out.push({ x: crate.x, y: crate.y + 1, z: crate.z, c: 0xff8a30, s: 0.07, a: 0.9, far: 2500 }); });
+addGlows((out) => { for (const c of crates.values()) out.push({ x: c.x, y: c.y + 1, z: c.z, c: 0xff8a30, s: 0.07, a: 0.9, far: 2500 }); });
 
 /** The container within reach, if any. */
-export function nearFall(): boolean {
-  return !!crate && G.char.loc === 'overworld' && Math.hypot(crate.x - G.pos.x, crate.z - G.pos.z) < FALL.reach + 2 && Math.abs(crate.y - G.pos.y) < 3;
+function nearest(): Crate | null {
+  if (G.char.loc !== 'overworld') return null;
+  for (const c of crates.values()) if (Math.hypot(c.x - G.pos.x, c.z - G.pos.z) < FALL.reach + 2 && Math.abs(c.y - G.pos.y) < 3) return c;
+  return null;
 }
+export const nearFall = () => !!nearest();
 export function fallBox(): Container | null {
-  const cr = G.char.fall?.crate;
-  if (!cr) return null;
-  return G.char.containers[cr.id] ?? containerFor(Number(cr.id.split(':')[1]), cr.id);
+  const n = nearest(), r = n && G.char.skyfalls[n.id];
+  return r ? containerFor(r) : null;
 }
-export function clearSkyFall() { live = null; streakGroup.visible = false; dropCrate(); }
-export const skyFallDebug = () => ({ t: live?.t ?? null, crate: !!crate, booms: live?.booms ?? null, frames });
+export function clearSkyFall() { streakGroup.visible = false; lastCell = ''; for (const id of [...crates.keys()]) dropCrate(id); }
+export const skyFallDebug = () => ({ crates: crates.size, falls: Object.keys(G.char.skyfalls).length });

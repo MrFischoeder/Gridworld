@@ -1,14 +1,21 @@
-// (0.266) Now and then something falls out of orbit: a container comes down like a meteor, the ground booms, and it
-// lies wrecked somewhere near the player for them to follow and open. Pure: the schedule comes from the world seed
-// and the game clock (so every player in a world hears the same boom at the same moment); where each player's own
-// container lands is chosen from where they stand when it falls.
+// (0.266, shared since 0.267) Now and then something falls out of orbit: a container comes down like a meteor, the
+// ground booms, and it lies wrecked for everyone in the place to follow and open. One fall is one shared record
+// (`SkyFall`, Char.skyfalls): a player entering a new area rolls for it (world/skyfall.ts), the record carries where it
+// lands and when, and every game animates the same streak, flare and boom from the game clock.
 import { hash } from '../core/rng';
 
+/** One fall, shared by the whole room. */
+export interface SkyFall { id: string; slot: number; x: number; z: number; t: number; by: string }
+
 export const FALL = {
-  /** game minutes in a slot; each slot may hold one fall (1 real second = 1 game minute) */
-  period: 1080,
-  /** the share of slots that hold one: about one fall in 45 real minutes */
-  chance: 0.4,
+  /** game minutes in a slot; at most one fall begins in a slot (1 real second = 1 game minute) */
+  period: 720,
+  /** the chance, when a player enters a new area, that a fall begins (at most one a slot) */
+  chance: 0.12,
+  /** the area a roll belongs to, metres a side */
+  cell: 1000,
+  /** a streak is seen, and a boom heard, by everyone this near the impact, metres */
+  hear: 4500,
   /** the fall itself, real seconds from the first streak to the impact */
   secs: 11,
   /** the container lands this far from the player, metres */
@@ -26,10 +33,11 @@ export const FALL = {
 const unit = (...v: number[]) => hash(...v) / 1e6;
 export const fallSlot = (t: number) => Math.floor(t / FALL.period);
 
-/** Whether slot `s` holds a fall in this world, and the game minute it happens. */
-export function fallIn(world: number, s: number): { go: boolean; at: number } {
-  return { go: unit(world, s, 0xfa11) < FALL.chance, at: s * FALL.period + Math.floor(unit(world, s, 0xfa12) * FALL.period * 0.8) };
-}
+/** The area (cell) a position belongs to; a change of it is a new location. */
+export const fallCell = (x: number, z: number) => Math.floor(x / FALL.cell) + ':' + Math.floor(z / FALL.cell);
+export const fallId = (slot: number) => 'sky:' + slot;
+/** Whether a new area rolls a fall: `r` is a random 0..1. */
+export const fallRolls = (r: number) => r < FALL.chance;
 
 /** Candidate k for the landing, round (px, pz): bearing and distance. */
 export function fallSpot(world: number, s: number, px: number, pz: number, k: number, near = FALL.near, far = FALL.far) {

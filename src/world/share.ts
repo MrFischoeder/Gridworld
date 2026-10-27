@@ -47,7 +47,7 @@ const keyOf = (f: Field, o: Record<string, unknown>) => (f.key ? f.key(o) : Stri
 export const SHARED: Field[] = [
   { f: 'towns', kind: 'map' }, { f: 'market', kind: 'map' }, { f: 'installs', kind: 'map' }, { f: 'bridges', kind: 'map' },
   { f: 'bridgeSites', kind: 'list' }, { f: 'piers', kind: 'list' }, { f: 'lighthouses', kind: 'list' }, { f: 'boats', kind: 'list' }, { f: 'airships', kind: 'list' }, { f: 'copters', kind: 'list' }, { f: 'shuttle', kind: 'one' },
-  { f: 'containers', kind: 'map', skip: (k) => k.startsWith('home:') || k.startsWith('fall:') }, // your house chest is yours (a vehicle's trunk is 'trunk:<id>')
+  { f: 'containers', kind: 'map', skip: (k) => k.startsWith('home:') }, // your house chest is yours (a vehicle's trunk is 'trunk:<id>')
   { f: 'vehicles', kind: 'list', mask: vehicleMask }, // (0.248) the vehicles: anyone's to drive
   { f: 'opened', kind: 'map' }, { f: 'unlocked', kind: 'map' }, { f: 'killed', kind: 'map' },
   { f: 'harvest', kind: 'map' }, { f: 'camps', kind: 'map' }, { f: 'cityGarrisons', kind: 'map' }, { f: 'caravans', kind: 'map' },
@@ -56,6 +56,7 @@ export const SHARED: Field[] = [
   { f: 'outposts', kind: 'map' }, // (0.183) the outposts at the deposits
   { f: 'rivals', kind: 'map' }, // (0.189) the rivals' seats: names and home villages
   { f: 'fallen', kind: 'map' }, // the crew who died here: their names are not taken again
+  { f: 'skyfalls', kind: 'map' }, // (0.267) a container fallen from orbit, one for the whole room
   { f: 'bodies', kind: 'map' }, // (0.245) their bodies, a game day where they fell
 ];
 const EMPTY: Partial<Record<keyof Char, () => unknown>> = { shuttle: () => ({ given: {}, v: 2 }), board: () => ({ seq: 0, offers: [], stamp: boardPeriod(G.char.time) }) };

@@ -11,6 +11,7 @@ import { retireOldCrossings, type BridgeState, type Ford } from './gen/bridges';
 import type { Pier } from './gen/piers';
 import type { Lighthouse } from './gen/lighthouses';
 import type { Body } from './gen/bodies';
+import type { SkyFall } from './gen/skyfall';
 import type { Boat } from './gen/boats';
 import type { Airship } from './gen/airships';
 import type { Copter } from './gen/copters';
@@ -114,8 +115,8 @@ export interface Char {
   questsDone?: number;
   /** (0.230) Markers switched off in the journal (J): 'q:<quest id>', 'c:<contract id>', 'l:<lead id>', 'elder', 'side', 'guide'. Personal. */
   hideMarks?: string[];
-  /** (0.266) The last sky fall handled (a slot of the game clock) and the container lying from it (world/skyfall.ts). Personal. */
-  fall?: { slot: number; crate?: { id: string; x: number; z: number; t: number } };
+  /** (0.267) The sky falls lying or in flight: one record each, seen and opened by everyone (gen/skyfall.ts); shared. */
+  skyfalls: Record<string, SkyFall>;
   /** (0.234) The body's warmth, −100 freezing .. 100 overheating (world/bodyheat.ts). Personal. */
   body?: number;
   /** The shuttle project in the hangar by Gridholm (gen/shuttle.ts): crates handed over per stage. */
@@ -197,7 +198,7 @@ export const SAVE_KEY = 'gridWorld.character.v3';
 export const ARENA_V3_KEY = 'gridArena.character.v3', V2_KEY = 'gridArena.character.v2', OLD_KEY = 'gridArena.character.v1';
 
 export const newChar = (): Char => ({
-  v: 3, settlementRules: 1, name: '', intro: false, tech: {}, leads: [], installs: {}, bridges: {}, bridgeSites: [], cityGarrisons: {}, fallen: {}, bodies: {}, piers: [], lighthouses: [], boats: [], airships: [], copters: [], filter: 0, fogs: {}, lodes: {}, outposts: {}, rivals: {}, guide: 0, houses: [], shuttle: { given: {}, v: 2 }, level: 1, xp: 0, gold: 0, world: newWorldSeed(),
+  v: 3, settlementRules: 1, name: '', intro: false, tech: {}, leads: [], installs: {}, bridges: {}, bridgeSites: [], cityGarrisons: {}, fallen: {}, bodies: {}, skyfalls: {}, piers: [], lighthouses: [], boats: [], airships: [], copters: [], filter: 0, fogs: {}, lodes: {}, outposts: {}, rivals: {}, guide: 0, houses: [], shuttle: { given: {}, v: 2 }, level: 1, xp: 0, gold: 0, world: newWorldSeed(),
   inv: [{ k: 'blade', n: 1 }, ...Array(INV_SIZE - 1).fill(null)], mods: Array(MOD_SIZE).fill(null), opened: {}, unlocked: {}, killed: {},
   loc: 'overworld', ow: null, dungeon: null, discovered: {}, containers: {}, vehicles: [], board: { seq: 0, offers: [], stamp: boardPeriod(START_TIME) }, boards: {}, quests: [], camps: {}, time: START_TIME, gunMods: [null, null, null], loaded: { blaster: 20 }, waypoint: null, kcal: KCAL.start, stomach: 0, water: 100, harvest: {}, benches: [], claims: [],
   hands: [{ k: 'blaster', n: 1 }], back: [], off: [null], wear: {}, pid: Math.random().toString(36).slice(2, 10), towns: {}, market: {}, ledger: {}, caravans: {}, escort: null, contracts: [], taken: [],

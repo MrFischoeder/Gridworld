@@ -3,6 +3,11 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.267.0', date: '2026-10-29', title: 'One fall for everyone', notes: [
+    'A fall from orbit is now one event for the whole world, not one per player. When a player enters a new area there is a small chance that a container begins to fall; if it does, everyone in the place hears the roar, sees the burning streak and the flare of the impact, hears the boom, and can follow the smoke to the same wreck. Anyone can search the one container; what one player takes the others no longer find.',
+    'Alone you see it all the same. Late arrivals simply find the container lying there. It still lies two game days.',
+    'Multiplayer: new shared field `skyfalls` (the record of each fall); the animation comes from the shared game clock. `PROTOCOL` unchanged, but the server needs updating (run `install.sh`): an older server does not pass the record on, so players see their own falls only. Developer console: `meteor` still brings a fall at once, now for everyone.',
+  ] },
   { v: '0.266.0', date: '2026-10-29', title: 'Falls from orbit', notes: [
     'Now and then (on average about once in three quarters of an hour of play) the sky gives a roar: a burning streak crosses the heavens, the ground booms and a container from orbit crashes somewhere 400 to 800 m from where you stand. A column of smoke rises from the wreck, seen from far off (and hidden behind buildings), and by night it glows. Follow it, and press E at the container to search it: a rare part from the old world, salvage and some gold. It lies two game days, then the land takes it.',
     'Developer console: `meteor` brings a fall at once, landing 200 to 400 m away.',
