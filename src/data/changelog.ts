@@ -3,6 +3,12 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.277.1', date: '2026-10-31', title: 'A colossus of crystal', notes: [
+    'The Crystal Colossus no longer looks like a robot: its trunk and head are one great double-pointed crystal, two leaning crystals are its shoulders, bursts of crystals grow from its back and flanks, its arms and legs are chains of long crystals ending in clusters of points, and light runs inside the crystals.',
+    'Its glowing heart now sits on the front of its chest, where you can see and hit it (still 2.5× damage from the front).',
+    'While it paces round its lair it shines violet like the rest of the wastes; once it has seen you it turns the bosses\' red.',
+    'Multiplayer: looks only, nothing new is sent.',
+  ] },
   { v: '0.277.0', date: '2026-10-31', title: 'The Crystal Wastes bite back', notes: [
     'The crystal spikes sticking out of the ground in the Crystal Wastes are solid: you cannot walk through them, and walking or running into one cuts you (the faster you come, the deeper) and throws you back. The shard clusters there count as spikes too.',
     'Crystal creatures roam the wastes, each one a different combination of crystals: Shardlings, little knots of shards on four legs, skitter about in packs, warn you off and go for you if you keep coming; Prismwalkers, tall prisms striding on three legs, mind their own business until one of them is hurt.',

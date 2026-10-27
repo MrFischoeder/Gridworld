@@ -297,9 +297,9 @@ function faunaModel(c: Creature) {
 }
 /** The colour a creature is drawn in: amber when hostile, olive for a calm Bramble, silver for the shoal fish. */
 const FISH = 0xa8d8e8;
-/** (0.277) The crystal creatures shine violet while calm; the colossus in the bosses' red. */
+/** (0.277) The crystal creatures shine violet while calm; roused, the colossus turns the bosses' red. */
 const CRYS_CALM = 0xb48cff, GIANT_C = 0xff6a4a;
-const baseColor = (c: Creature) => (c.kind === 'colossus' ? GIANT_C : (c.kind === 'shardling' || c.kind === 'prismwalker') ? (calmBeast(c.kind, c.state) ? CRYS_CALM : HOSTILE) : c.kind === 'silverfin' ? FISH : c.kind === 'bramble' && c.state === 'roam' ? CALM : isWild(c.kind) ? (calmBeast(c.kind, c.state) ? CALM : HOSTILE) : HOSTILE);
+const baseColor = (c: Creature) => (c.kind === 'colossus' ? (c.state === 'roam' ? CRYS_CALM : GIANT_C) : (c.kind === 'shardling' || c.kind === 'prismwalker') ? (calmBeast(c.kind, c.state) ? CRYS_CALM : HOSTILE) : c.kind === 'silverfin' ? FISH : c.kind === 'bramble' && c.state === 'roam' ? CALM : isWild(c.kind) ? (calmBeast(c.kind, c.state) ? CALM : HOSTILE) : HOSTILE);
 
 // ---------- spawning ----------
 /** A display-only creature, kept out of gameplay state and combat. */
@@ -1125,10 +1125,10 @@ function colossus(c: Creature, dt: number, to: THREE.Vector3, safe: boolean) {
  *  chest, head, arms. The heart is apart (`HEART`). */
 const BALLS: number[][] = [
   [-3.3, -11, 0.4, 1.9, 0.7], [3.3, -11, 0.4, 1.9, 0.7], [-3.1, -7.5, 0.2, 1.8, 0.7], [3.1, -7.5, 0.2, 1.8, 0.7], [-2.8, -4, 0, 1.9, 0.7], [2.8, -4, 0, 1.9, 0.7],
-  [0, -1, 0, 3.4, 1], [0, 2.6, 0, 3.8, 1], [0, 5.6, 0, 4.4, 1], [0, 10.2, 0.4, 2.1, 1.5],
+  [0, -1, 0, 3.4, 1], [0, 2.6, 0, 3.8, 1], [0, 5.6, 0, 4.4, 1], [0, 10.2, 0.4, 2.4, 1.5], [0, 13, 0.2, 1.4, 1.5],
   [-6.6, 3.5, 0, 1.6, 0.8], [6.6, 3.5, 0, 1.6, 0.8], [-7, -1, 0.2, 1.5, 0.8], [7, -1, 0.2, 1.5, 0.8], [-7.4, -4.4, 0.8, 1.9, 0.8], [7.4, -4.4, 0.8, 1.9, 0.8],
 ];
-const HEART = [0, 4.6, 2.9, 1.7];
+const HEART = [0, 4.6, 3.8, 1.7];
 /** The colossus's pose (legs and arms by its stride, the fists up in a wind-up, leaning into a run or back in a skid)
  *  and its hit balls for this frame. */
 function colossusLook(c: Creature, dt: number, time: number) {

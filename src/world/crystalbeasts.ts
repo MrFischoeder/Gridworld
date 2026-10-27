@@ -96,60 +96,87 @@ export function prismModel(g: THREE.Group, mat: THREE.LineBasicMaterial): BeastP
   return { body, legs, gait, head: null, arms: [] }; // (the crown stays still: the grazing nod is for heads on necks)
 }
 
+/** A crystal pointed at both ends (a bipyramid): a point at `base`, the prism from `foot` to 70% of `len`, a point at
+ *  the tip; its axis returned as glowing core lines (the light inside the crystal) when `core` is given. */
+function bipyr(pb: PropBatch, base: P3, dir: P3, len: number, w: number, sides = 6, foot = 0.18, core?: number[]) {
+  const n = Math.hypot(...dir), d = dir.map((v) => v / n) as P3;
+  const up: P3 = Math.abs(d[1]) > 0.9 ? [1, 0, 0] : [0, 1, 0];
+  const cx = (a: P3, b: P3): P3 => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+  const u0 = cx(d, up), ul = Math.hypot(...u0), u = u0.map((v) => v / ul) as P3, v = cx(d, u);
+  const at = (t: number, a: number, r: number): number[] => [0, 1, 2].map((i) => base[i] + d[i] * t + (u[i] * Math.cos(a) + v[i] * Math.sin(a)) * r);
+  const tip = at(len, 0, 0), bot = at(0, 0, 0), lo: number[][] = [], hi: number[][] = [];
+  for (let i = 0; i < sides; i++) { const a = (i / sides) * 6.2832; lo.push(at(len * foot, a, w * 0.9)); hi.push(at(len * 0.7, a, w)); }
+  for (let i = 0; i < sides; i++) {
+    const j = (i + 1) % sides;
+    pb.seg(0, lo[i], hi[i]); pb.seg(0, hi[i], tip); pb.seg(0, lo[i], bot); pb.seg(0, hi[i], hi[j]); pb.seg(0, lo[i], lo[j]);
+    pb.face(lo[i], lo[j], hi[j], hi[i]); pb.face(hi[i], hi[j], tip); pb.face(lo[j], lo[i], bot);
+  }
+  if (core) { // the light along its axis and two fractures
+    const a = at(len * 0.08, 0, 0), b = at(len * 0.9, 0, 0);
+    core.push(...a, ...b, ...at(len * 0.3, 1, w * 0.45), ...at(len * 0.62, 2.6, w * 0.4), ...at(len * 0.45, 4, w * 0.5), ...at(len * 0.78, 5.2, w * 0.3));
+  }
+}
+/** A druse: `n` crystals bursting from one point, round `dir` within `spread` (rad). */
+function druse(pb: PropBatch, at: P3, dir: P3, n: number, len: [number, number], w: [number, number], spread: number) {
+  for (let i = 0; i < n; i++) {
+    const a = (i / n) * 6.283 + rr(-0.4, 0.4), k = i ? rr(0.4, 1) * spread : 0;
+    const d: P3 = [dir[0] + Math.cos(a) * Math.sin(k) * 1.4, dir[1] + Math.sin(a) * Math.sin(k) * 1.4 * (1 - Math.abs(dir[1])), dir[2] + Math.sin(a) * Math.sin(k) * 1.4];
+    crystal(pb, at, d, rr(len[0], len[1]), rr(w[0], w[1]), R() < 0.5 ? 5 : 6);
+  }
+}
+
 /**
- * The Crystal Colossus (lift 13: its feet at −13, hips at −1, shoulders at 7, the head's top at 13). The torso, the
- * head and the heart are in `body` (it leans when it runs); the legs pivot at the hips, the arms at the shoulders.
+ * The Crystal Colossus (lift 13: its feet at −13, hips at −1, its crown 14 over the middle): a walking crystal formation
+ * rather than a body. A great double-pointed crystal is its trunk and head at once, two leaning crystals its shoulders,
+ * druses burst from its back and flanks, every limb is a chain of long crystals ending in a burst of points; a glowing
+ * geode is its heart and light runs inside the crystals. The torso and the heart are in `body` (it leans when it
+ * runs); the legs pivot at the hips, the arms at the shoulders.
  */
 export function colossusModel(g: THREE.Group, mat: THREE.LineBasicMaterial): BeastParts {
-  const pb = new PropBatch();
-  // pelvis, a broad waist and a great chest of stacked crystal blocks
-  pb.solid8([[-3.2, -2.2, -1.6], [3.2, -2.2, -1.6], [3.2, -2.2, 1.6], [-3.2, -2.2, 1.6]], [[-3.6, 0.5, -1.8], [3.6, 0.5, -1.8], [3.6, 0.5, 1.8], [-3.6, 0.5, 1.8]], 0);
-  pb.solid8([[-3.4, 0.5, -1.8], [3.4, 0.5, -1.8], [3.4, 0.5, 1.9], [-3.4, 0.5, 1.9]], [[-5.6, 6.5, -2.6], [5.6, 6.5, -2.6], [5.6, 6.5, 2.8], [-5.6, 6.5, 2.8]], 0);
-  pb.solid8([[-5.6, 6.5, -2.6], [5.6, 6.5, -2.6], [5.6, 6.5, 2.8], [-5.6, 6.5, 2.8]], [[-4.2, 8.4, -2], [4.2, 8.4, -2], [4.2, 8.4, 2.2], [-4.2, 8.4, 2.2]], 0);
-  // shards growing from the shoulders and back, a ridge down the spine
-  for (const s of [-1, 1]) for (let i = 0; i < 4; i++) crystal(pb, [s * (3.6 + i * 0.5), 7 + i * 0.2, rr(-1.6, 1.2)], [s * rr(0.4, 1.1), 1, rr(-0.6, 0.2)], rr(2.4, 5), rr(0.4, 0.8), 6);
-  for (let i = 0; i < 6; i++) crystal(pb, [rr(-1.5, 1.5), 1 + i * 1.2, -2 - i * 0.12], [rr(-0.3, 0.3), 0.5, -1], rr(1.5, 3.2), rr(0.3, 0.55), 5);
-  // crystals breaking out of the chest, the flanks and the belly, all leaning outwards and up
-  for (let i = 0; i < 14; i++) {
-    const side = i % 2 ? 1 : -1, y = rr(1, 7), x = side * rr(1.2, 4.6), z = rr(0.6, 2.4);
-    crystal(pb, [x, y, z], [side * rr(0.2, 0.9), rr(0.3, 1), rr(0.4, 1)], rr(1, 2.6), rr(0.25, 0.5), R() < 0.5 ? 5 : 6);
+  const pb = new PropBatch(), core: number[] = [];
+  bipyr(pb, [0, -3.5, 0.2], [0, 1, 0.04], 18, 3.4, 6, 0.16, core); // the trunk, pointed at the crown
+  for (const s of [-1, 1]) {
+    bipyr(pb, [s * 1.8, 0.5, 0.1], [s * 0.6, 1, 0], 11, 2.1, 6, 0.2, core); // the shoulders, leaning out
+    bipyr(pb, [s * 1.2, -1.5, -1.2], [s * 0.35, 1, -0.45], 9, 1.6, 5, 0.2, core); // the flanks and back
+    bipyr(pb, [s * 1.4, -2.5, 1], [s * 0.5, 0.7, 0.5], 5.5, 1.1, 5, 0.2); // the hips
   }
-  for (let i = 0; i < 6; i++) { const side = i % 2 ? 1 : -1; crystal(pb, [side * rr(3, 5), rr(0.5, 6), rr(-2, 1)], [side, rr(0.2, 0.8), rr(-0.5, 0.3)], rr(1.6, 3), rr(0.3, 0.6), 6); }
-  const body = new THREE.Group(); body.add(built(pb, mat));
+  bipyr(pb, [0, 0, -1.6], [0, 1, -0.55], 10, 1.9, 6, 0.2, core); // the spine, out of the back
+  druse(pb, [0, 5, -2.2], [0, 0.4, -1], 6, [1.8, 3.6], [0.35, 0.7], 0.9); // a burst on the back
+  for (const s of [-1, 1]) druse(pb, [s * 2.6, 2, 1.2], [s, 0.5, 0.4], 4, [1, 2.2], [0.25, 0.45], 0.7); // on the flanks
+  const body = new THREE.Group(); body.add(built(pb, mat)); body.add(glow(core));
   // the heart: a geode set in the chest, its own crystal outlined in glowing lines with a burning star inside
-  const hp = new PropBatch(), hz = 2.7, hy = 4.6, pts: number[] = [];
+  const hp = new PropBatch(), hz = 3.6, hy = 4.6, pts: number[] = [];
   const oct: P3[] = [[0, hy + 1.6, hz], [1.2, hy, hz], [0, hy - 1.6, hz], [-1.2, hy, hz]];
   for (let i = 0; i < 4; i++) { const a = oct[i], b = oct[(i + 1) % 4], f: P3 = [0, hy, hz + 1.1], k: P3 = [0, hy, hz - 0.6]; hp.face(a, b, f); pts.push(...a, ...b, ...a, ...f, ...a, ...k); }
   const hg = hp.build(); hg.traverse((o) => { if ((o as THREE.Mesh).isMesh) (o as THREE.Mesh).material = sharedFill(); });
   body.add(hg); body.add(glow([...pts, ...star([0, hy, hz + 0.3], 0.9)]));
-  // the head: a faceted helm with a crest of shards and two glowing slits
+  // the head: no face, only a crown of crystals round the trunk's point and two cold sparks for eyes
   const hb = new PropBatch();
-  hb.solid8([[-1.5, 0, -1.4], [1.5, 0, -1.4], [1.3, 0, 1.6], [-1.3, 0, 1.6]], [[-1.2, 3.2, -1.2], [1.2, 3.2, -1.2], [0.9, 2.8, 1.5], [-0.9, 2.8, 1.5]], 0);
-  for (let i = 0; i < 5; i++) crystal(hb, [(i - 2) * 0.45, 3, rr(-0.8, 0.6)], [(i - 2) * 0.25, 1, -0.3], rr(1.4, 2.6), 0.28, 5);
-  const head = new THREE.Group(); head.add(built(hb, mat)); head.add(glow([-1, 1.9, 1.62, -0.35, 1.7, 1.62, 0.35, 1.7, 1.62, 1, 1.9, 1.62]));
-  head.position.set(0, 8.4, 0.2); body.add(head);
+  druse(hb, [0, 0, 0], [0, 1, 0.15], 5, [1.6, 3.2], [0.3, 0.55], 0.6);
+  const head = new THREE.Group(); head.add(built(hb, mat));
+  head.add(glow([...star([-0.8, -0.6, 2.25], 0.3), ...star([0.8, -0.6, 2.25], 0.3)]));
+  head.position.set(0, 9.6, 0.2); body.add(head);
   g.add(body);
-  // legs: a thick crystal thigh and shin to a broad foot (pivot at the hip, 12 m to the ground)
+  // legs: two long crystals from the hip to the ground, the foot a burst of points gripping it (12 m to the ground)
   const legs: THREE.Group[] = [];
   for (const s of [-1, 1]) {
-    const lb = new PropBatch();
-    crystal(lb, [0, 0, 0], [s * 0.12, -1, 0.05], 6.5, 1.5, 6);
-    crystal(lb, [s * 0.75, -5.8, 0.3], [s * 0.05, -1, -0.04], 6, 1.2, 6);
-    lb.solid8([[-1.6, -12, -1.4], [1.6, -12, -1.4], [1.6, -12, 2.8], [-1.6, -12, 2.8]].map(([x, y, z]) => [x + s * 0.9, y, z]), [[-1.2, -10.8, -1.1], [1.2, -10.8, -1.1], [1.1, -11.2, 1.8], [-1.1, -11.2, 1.8]].map(([x, y, z]) => [x + s * 0.9, y, z]), 0);
-    crystal(lb, [s * 1.3, -6.2, 1], [s * 0.5, 0.2, 1], 1.8, 0.4, 4); // a knee spur
-    for (let i = 0; i < 4; i++) crystal(lb, [s * rr(0.6, 1.4), rr(-9, -1.5), rr(-1, 1)], [s * rr(0.4, 1), rr(-0.2, 0.6), rr(-0.6, 0.6)], rr(0.9, 2), rr(0.2, 0.4), 5);
-    const l = new THREE.Group(); l.add(built(lb, mat)); l.position.set(s * 2.4, -1, 0); g.add(l); legs.push(l);
+    const lb = new PropBatch(), lc: number[] = [];
+    bipyr(lb, [0, 1, 0], [s * 0.1, -1, 0.05], 7.4, 1.5, 6, 0.18, lc);
+    bipyr(lb, [s * 0.65, -5.4, 0.3], [s * 0.04, -1, -0.02], 6.8, 1.2, 6, 0.18, lc);
+    druse(lb, [s * 0.9, -11.3, 0.4], [0, -0.35, 1], 5, [1.2, 2.4], [0.3, 0.55], 1.2); // the foot
+    crystal(lb, [s * 1.1, -5.6, 0.9], [s * 0.5, 0.3, 1], 1.8, 0.45, 5); // a knee spur
+    for (let i = 0; i < 3; i++) crystal(lb, [s * rr(0.6, 1.3), rr(-9, -2), rr(-0.9, 0.9)], [s * rr(0.4, 1), rr(-0.1, 0.6), rr(-0.6, 0.6)], rr(0.9, 1.9), rr(0.2, 0.4), 5);
+    const l = new THREE.Group(); l.add(built(lb, mat)); l.add(glow(lc)); l.position.set(s * 2.4, -1, 0); g.add(l); legs.push(l);
   }
-  // arms: hanging from the shoulders to great crystal fists
+  // arms: two long crystals hanging from the shoulders, the fist a druse of points
   const arms: THREE.Group[] = [];
   for (const s of [-1, 1]) {
-    const ab = new PropBatch();
-    crystal(ab, [0, 0, 0], [s * 0.2, -1, 0.05], 5.5, 1.2, 6);
-    crystal(ab, [s * 1, -5.2, 0.25], [s * 0.05, -1, 0.15], 5, 1, 6);
-    ab.solid8([[-1.4, -12, -1.2], [1.4, -12, -1.2], [1.4, -12, 1.4], [-1.4, -12, 1.4]].map(([x, y, z]) => [x + s * 1.2, y, z + 0.8]), [[-1.6, -9.6, -1.4], [1.6, -9.6, -1.4], [1.6, -9.6, 1.6], [-1.6, -9.6, 1.6]].map(([x, y, z]) => [x + s * 1.2, y, z + 0.8]), 0);
-    for (let i = 0; i < 3; i++) crystal(ab, [s * 1.2 + (i - 1) * 0.8, -11.5, 1.6], [(i - 1) * 0.2, -0.3, 1], 1.4, 0.3, 4); // knuckle shards
-    for (let i = 0; i < 4; i++) crystal(ab, [s * rr(0.8, 1.6), rr(-9, -1), rr(-0.8, 0.6)], [s * rr(0.5, 1), rr(-0.1, 0.7), rr(-0.8, 0.2)], rr(1, 2.4), rr(0.2, 0.4), 5); // shards along the arm
-    const a = new THREE.Group(); a.add(built(ab, mat)); a.position.set(s * 6.2, 6.5, 0); body.add(a); arms.push(a);
+    const ab = new PropBatch(), ac: number[] = [];
+    bipyr(ab, [0, 1, 0], [s * 0.15, -1, 0.05], 6.6, 1.15, 6, 0.18, ac);
+    bipyr(ab, [s * 0.9, -4.8, 0.3], [s * 0.05, -1, 0.15], 6, 0.95, 6, 0.18, ac);
+    druse(ab, [s * 1.2, -10, 1], [0, -1, 0.25], 7, [1.6, 3], [0.4, 0.7], 1.1); // the fist
+    for (let i = 0; i < 3; i++) crystal(ab, [s * rr(0.7, 1.4), rr(-8.5, -1), rr(-0.7, 0.5)], [s * rr(0.5, 1), rr(-0.1, 0.7), rr(-0.8, 0.2)], rr(1, 2.2), rr(0.2, 0.4), 5);
+    const a = new THREE.Group(); a.add(built(ab, mat)); a.add(glow(ac)); a.position.set(s * 6.2, 6.5, 0); body.add(a); arms.push(a);
   }
   return { body, legs, gait: [1, -1], head, arms };
 }
