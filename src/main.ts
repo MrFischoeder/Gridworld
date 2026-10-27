@@ -94,6 +94,7 @@ import { updateWeather, seen } from './world/weather';
 import { WEATHER_NAME } from './gen/weather';
 import { introOn, renderIntro } from './ui/intro';
 import { updateCrash } from './world/crashpod';
+import { updateSkyFall } from './world/skyfall';
 import { spinCarrier } from './world/datacarriers';
 import { updateFarms } from './world/farms';
 import { syncConvoyStart } from './world/convoyfuel';
@@ -277,7 +278,7 @@ function frame(now: number) {
     updateDoors(dt);
     updateRobots(dt, time); // the open world's robots, or a crashed ship's guards
     if (!outdoors && cave) updateCreatures(dt, time); // (0.244) a cave's beasts
-    if (outdoors) { updateIntents(dt); updateGarrisons(dt); updateFieldEnemies(dt); updateCreatures(dt, time); updateBandits(dt, time); updateRaiders(dt); animateCamps(time); smokeWrecks(dt); if ((vehSyncT -= dt) <= 0) { vehSyncT = 0.5; syncVehicles(); } updateCrash(dt, time); animateWater(time); }
+    if (outdoors) { updateIntents(dt); updateGarrisons(dt); updateFieldEnemies(dt); updateCreatures(dt, time); updateBandits(dt, time); updateRaiders(dt); animateCamps(time); smokeWrecks(dt); if ((vehSyncT -= dt) <= 0) { vehSyncT = 0.5; syncVehicles(); } updateCrash(dt, time); updateSkyFall(dt); animateWater(time); }
     updateDrones(dt);
     updateFoeSounds(dt); updateFarCalls(dt); updateFoeTracks(dt); updateRestSmoke(dt, time); // (0.237, stage L4) warnings from afar
     updateBodies(dt); // (0.245) the fallen's bodies

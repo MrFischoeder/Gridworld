@@ -3,6 +3,11 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.266.0', date: '2026-10-29', title: 'Falls from orbit', notes: [
+    'Now and then (on average about once in three quarters of an hour of play) the sky gives a roar: a burning streak crosses the heavens, the ground booms and a container from orbit crashes somewhere 400 to 800 m from where you stand. A column of smoke rises from the wreck, seen from far off (and hidden behind buildings), and by night it glows. Follow it, and press E at the container to search it: a rare part from the old world, salvage and some gold. It lies two game days, then the land takes it.',
+    'Developer console: `meteor` brings a fall at once, landing 200 to 400 m away.',
+    'Multiplayer: the schedule comes from the game clock, so everyone in a world hears the same boom at the same moment; each player gets their own container, near where they stood, drawn and searched only on their own game. `PROTOCOL` and the server are unchanged.',
+  ] },
   { v: '0.265.1', date: '2026-10-29', title: 'A bigger station', notes: [
     'The orbital station is about two and a half times larger, with thicker wheels and brighter lines, so it stands out clearly against the sky as it crosses. Multiplayer: visual only, from the clock. `PROTOCOL` and the server are unchanged.',
   ] },

@@ -16,6 +16,7 @@ import { fmtClock, DAY } from '../core/time';
 import { forceWeather, seen } from '../world/weather';
 import { WEATHER_NAME, type WeatherKind } from '../gen/weather';
 import { saveChar } from '../character';
+import { startFall } from '../world/skyfall';
 import { toVillage } from '../world/level';
 import { regionOf, worldDist, findPoi } from '../gen/regions';
 import { jobShare } from '../gen/construction';
@@ -142,6 +143,10 @@ const COMMANDS: Record<string, { help: string; run: (args: string[]) => string }
       out.sort((p, q) => worldDist(p.x, p.z, G.pos.x, G.pos.z) - worldDist(q.x, q.z, G.pos.x, G.pos.z));
       return out.slice(0, 8).map((f) => `${f.name} (${f.kind === 'isle' ? 'island' : 'land'}, ${f.site}): tp ${Math.round(f.x)} ${Math.round(f.z - f.r - 20)}  ${(worldDist(f.x, f.z, G.pos.x, G.pos.z) / 1000).toFixed(1)} km`).join('\n') || 'No toxic fog within ' + km + ' km.';
     },
+  },
+  meteor: {
+    help: 'meteor: a container falls out of orbit and lands 200-400 m away (the sky fall event)',
+    run: () => { const r = startFall(true); if (!r) close(); return r || 'Incoming.'; },
   },
   tp: {
     help: 'tp <x> <z>: teleport to a point on the surface',

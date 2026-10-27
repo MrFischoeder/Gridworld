@@ -6,7 +6,7 @@ describe('0.212: the 8-bit sound effects', () => {
   it('renders every sound: short, loud enough, never clipping', () => {
     for (const n of SFX_NAMES) {
       const s = render(n);
-      expect(s.length / SFX_RATE).toBeLessThan(n === 'thunder' ? 2.6 : n === 'howl_ravager' ? 1.8 : 1.2); // thunder rolls on, a howl carries
+      expect(s.length / SFX_RATE).toBeLessThan(n === 'impact' ? 3.6 : n === 'thunder' ? 2.6 : n === 'howl_ravager' ? 1.8 : 1.2); // thunder rolls on, a howl carries
       let peak = 0; for (const v of s) peak = Math.max(peak, Math.abs(v));
       expect(peak).toBeGreaterThan(0.1);
       expect(peak).toBeLessThanOrEqual(1);

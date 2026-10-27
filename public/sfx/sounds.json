@@ -264,6 +264,12 @@
     ],
     "vol": 1
   },
+  "impact": {
+    "files": [
+      "impact.wav"
+    ],
+    "vol": 1
+  },
   "thunder": {
     "files": [
       "thunder.wav"

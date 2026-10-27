@@ -62,6 +62,7 @@ export const SFX = {
   chest: { voices: [{ w: 'noise', f: [4500, 3500], d: 0.03, v: 0.5 }, { w: 'square', f: [380, 640], t: 0.04, d: 0.16, duty: 0.25, v: 0.35 }, { w: 'tri', f: [180, 120], t: 0.2, d: 0.08, v: 0.4 }] },
   eat: { voices: [{ w: 'noise', f: [2600, 1400], d: 0.06, v: 0.6, curve: 2 }, { w: 'noise', f: [2400, 1200], t: 0.16, d: 0.06, v: 0.55, curve: 2 }, { w: 'noise', f: [2800, 1300], t: 0.32, d: 0.07, v: 0.5, curve: 2 }] },
   drink: { voices: [{ w: 'tri', f: [380, 820], d: 0.08, v: 0.5 }, { w: 'tri', f: [420, 900], t: 0.13, d: 0.08, v: 0.5 }, { w: 'tri', f: [360, 780], t: 0.26, d: 0.09, v: 0.45 }] },
+  impact: { voices: [{ w: 'noise', f: [2400, 40], d: 3.2, a: 0.01, v: 1, curve: 1.0 }, { w: 'square', f: [70, 20], d: 2.2, v: 0.8 }, { w: 'noise', f: [400, 60], t: 0.35, d: 2.6, a: 0.2, v: 0.7, curve: 1.2 }] },
   thunder: { voices: [{ w: 'noise', f: [1600, 60], d: 2.4, a: 0.03, v: 1, curve: 1.1 }, { w: 'noise', f: [300, 80], t: 0.25, d: 1.8, a: 0.2, v: 0.7, curve: 1.3 }, { w: 'square', f: [55, 30], d: 1.2, v: 0.3 }] },
   coin: { voices: [{ w: 'square', f: [988, 988], d: 0.07, duty: 0.5, v: 0.35 }, { w: 'square', f: [1319, 1319], t: 0.07, d: 0.25, duty: 0.5, v: 0.35 }] },
   levelup: { voices: [523, 659, 784, 1047].map((f, i) => ({ w: 'square' as const, f: [f, f] as [number, number], t: i * 0.09, d: i === 3 ? 0.35 : 0.09, duty: 0.5, v: 0.35 })) },
