@@ -11,7 +11,6 @@ import { meshVoxels } from '../core/meshing';
 import { VoxelGrid } from '../core/voxel';
 import { generateVillage } from '../gen/village';
 import { generateRuin } from '../gen/ruins';
-import { MEGALITH_DESIGNS, type Megalith } from '../gen/megaliths';
 import { PropBatch } from '../world/props';
 import { drawHouse } from '../world/houses';
 import { drawTemple } from '../world/temple';
@@ -22,7 +21,7 @@ import { makeFigure } from '../world/npc';
 import { poseRig } from '../world/rig';
 import { convoyModel } from '../world/vehicles';
 import { drawLander, HULL_C, ENGINE_C, WARN_C } from '../world/lander';
-import { megalithModel } from '../world/megaliths';
+import { drawHead } from '../world/megaliths';
 import { showcaseBoat } from '../world/boats';
 import { showcaseShuttle } from '../world/hangar';
 import { GRID, fillMat, lineMat, add } from '../world/render';
@@ -210,9 +209,11 @@ function build() {
   }
   // 6 · the stone heads at dusk
   {
-    const g = ground(R, false, 120), d = MEGALITH_DESIGNS[12];
-    const site: Megalith = { id: 'film', index: 12, name: d.name, x: 0, y: 0, z: 0, yaw: 0, radius: d.radius, height: d.height, seed: 0x5ea7 };
-    g.add(megalithModel(site));
+    const g = ground(R, false, 120), heads = new PropBatch(); // (0.275) lone heads along the way, sunk and leaning
+    for (const [x, z, h, yaw, lean, roll] of [[-22, -18, 34, Math.PI / 2, 0.12, -0.18], [24, 18, 30, -Math.PI / 2, -0.22, 0.2], [-6, 72, 42, Math.PI, 0.08, 0.1], [30, 52, 26, -2.4, 1.2, 0.2]])
+      drawHead(heads, { x, z, y: -h * 0.18, h, yaw, lean, roll });
+    for (let i = 0; i < 18; i++) heads.rock(-40 + R() * 80, 0, -30 + R() * 110, 2 + R() * 4, 2 + R() * 4, 7, R() * 3, 0x3fbf62);
+    g.add(heads.build());
     shot(g, { path: curve([[-14, 5, -95], [-4, 9, -40], [6, 13, 15], [14, 18, 55]]), look: (t) => V([0, 14 + Math.sin(t) * .5, 70]), sky: 0x180b02, fog: [90, 420] });
   }
   // 7 · a dead city, its machines on patrol, bolts in the street

@@ -4811,4 +4811,18 @@ export const PL: Record<string, string> = {
   "Hold E — strip the {0} for parts ({1} of {2} left)": "Przytrzymaj E — rozbieraj na części: {0} (zostało {1} z {2})",
   "You unbolt a part of the {0}: {1}.": "Odkręcasz część ({0}): {1}.",
   "The {0} is stripped bare.": "Rozebrane do gołej ramy: {0}.",
+  // (0.275) pyramids, sphinxes, scattered stone heads
+  "Pyramid of the Feathered Serpent": "Piramida Pierzastego Węża",
+  "Pyramid of the Devoured Sun": "Piramida Pożartego Słońca",
+  "The Twin Shrines": "Bliźniacze Świątynie",
+  "The Jaguar Spire": "Iglica Jaguara",
+  "Pyramid of the Pale Moon": "Piramida Bladego Księżyca",
+  "Stone head: {0}": "Kamienna głowa: {0}",
+  "Sphinx gate: the {0} Gate": "Brama sfinksów: {0}",
+  "Sphinx: the {0} Sphinx": "Sfinks: {0}",
+  "E — go down into {0}": "E — zejdź w głąb: {0}",
+  "The stair goes down into the heart of the pyramid. The air is cold and old.": "Schody prowadzą w głąb piramidy, do jej serca. Powietrze jest zimne i stare.",
+  "Stairs up to the shrine on top of {0}": "Schody w górę, do świątyni na szczycie: {0}",
+  "{0} · depth {1}": "{0} · poziom {1}",
+  "{0} (megalith)": "{0} (megalit)",
 };

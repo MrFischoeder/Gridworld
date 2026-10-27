@@ -11,6 +11,7 @@ import { inCity } from './cities';
 import { inFogSite } from './toxic';
 import { inLode } from './lodes';
 import { inCrystals } from './crystals';
+import { inColossus } from './colossi';
 import { nearOutcrop } from './caves';
 
 export type PlantKind = 'shroom' | 'pod';
@@ -60,7 +61,7 @@ function makePlants(t: Terrain, cx: number, cz: number): Plant[] {
   const span = PLANT_SPAN[kind], f = t.chunkFeatures(cx, cz);
   if (f.pads.some((p) => rectDist(p.poi.rect, x, z) < p.poi.flat + (p.poi.type === 'village' ? 20 : 6) + span)) return [];
   if (f.roads.some((rd) => nearestOnRoad(rd, x, z)[0] < rd.half + span + 1)) return [];
-  if (inScar(t, x, z, 9 + span) || inInstall(t, x, z, 6 + span) || inCity(t.world, x, z, 4 + span) || inFogSite(t.world, x, z, 4 + span) || inLode(t.world, x, z, 4 + span) || inCrystals(t.world, x, z, span) || nearOutcrop(t.world, x, z, span)) return []; // the hero's ship tore up the ground here; an old plant stands here
+  if (inScar(t, x, z, 9 + span) || inInstall(t, x, z, 6 + span) || inCity(t.world, x, z, 4 + span) || inFogSite(t.world, x, z, 4 + span) || inLode(t.world, x, z, 4 + span) || inCrystals(t.world, x, z, span) || inColossus(t.world, x, z, span) || nearOutcrop(t.world, x, z, span)) return []; // the hero's ship tore up the ground here; an old plant stands here
   for (let a = 0; a < 6.28; a += 1.05) if (t.water(x + Math.cos(a) * span, z + Math.sin(a) * span)) return [];
   if (t.water(x, z)) return [];
   const seed = hash(t.world, cx, cz, 0xf10b), rot = R() * 6.283;

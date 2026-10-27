@@ -77,6 +77,7 @@ export function cityEntrance(world: number, id: number): CityEntrance | undefine
 }
 /** Existing ruins keep their exact seed. City vaults cannot alias a region ID through hash's 32-bit conversion. */
 export function dungeonSeed(world: number, d: Pick<DungeonPos, 'ruinId' | 'depth' | 'gx' | 'gz'>): number {
+  if (d.ruinId >= 2 ** 33) return hash(world, d.ruinId - 2 ** 33, d.depth, d.gx, d.gz, 0x9a7a); // (0.275) a pyramid's inside (gen/megaliths.ts `PYRAMID_BASE`)
   return d.ruinId >= CITY_VAULT_BASE
     ? hash(world, d.ruinId - CITY_VAULT_BASE, d.depth, d.gx, d.gz, 0xc17d)
     : hash(world, d.ruinId, d.depth, d.gx, d.gz);

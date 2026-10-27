@@ -1,9 +1,16 @@
 // Batched, opaque ancient stonework. Each monument is a local mesh, streamed independently of terrain chunks.
 import * as THREE from 'three';
-import { megalithsNear, megalithStones, megalithLocal, megalithStoneHit, megalithHeads, type Megalith, type MegalithStone, type MegalithHead } from '../gen/megaliths';
+import { megalithsNear, megalithStones, megalithLocal, megalithStoneHit, megalithHeads, megalithPoint, rampTop, isPyramid, pyramidDoors, type Megalith, type MegalithStone, type MegalithHead, type PyramidDoor } from '../gen/megaliths';
+import { drawPyramid, pyramidFires } from './pyramids';
+import { addLights, addGlows } from './light';
+import { G } from '../game';
+import { daylight, sunTilt } from '../core/time';
+import { latitude } from '../gen/regions';
+import { TL } from '../i18n';
 import { PropBatch } from './props';
 import { scene, disposeTree } from './render';
 import { rng } from '../core/rng';
+import { tiltFrame } from '../gen/tilt';
 const STONE = 0x91ad94, CARVING = 0x4f765a, CROWN = 0xd1c597, EYES = 0xc8ff6a, BOULDER = 0x3fbf62, FACE = 0x46d870, GROOVE = 0x2a8f4a;
 /**
  * The colossal head's cross-sections from the buried shoulders to the flat crown, as shares of its height:
@@ -23,11 +30,13 @@ function frontAt(t: number): number {
   }
   return HEAD_RINGS[HEAD_RINGS.length - 1][2];
 }
-/** One colossal head: a faceted, triangulated stone bust with nose, lips, ears and glowing visor eyes. */
-function drawHead(pb: PropBatch, o: MegalithHead) {
-  const H = o.h, cy = Math.cos(o.yaw), sy = Math.sin(o.yaw), cl = Math.cos(o.lean), sl = Math.sin(o.lean);
-  // head frame (x across, y up, z out of the face) → site frame: lean forward about x, turn by yaw, move to its place
-  const P = (x: number, y: number, z: number) => { const y1 = y * cl - z * sl, z1 = y * sl + z * cl; return [o.x + cy * x + sy * z1, o.y + y1, o.z - sy * x + cy * z1]; };
+/**
+ * One colossal head: a faceted, triangulated stone bust with nose, lips and ears. (0.275) Leaning and rolled to a side
+ * (`tiltFrame`), and new eyes: deep almond sockets under a heavy brow, a glowing ring of an iris with a slit pupil, a
+ * lid drooping over each and a carved tear line under it, as if the face were half asleep.
+ */
+export function drawHead(pb: PropBatch, o: MegalithHead) {
+  const H = o.h, P = tiltFrame(o.lean, o.roll, o.yaw, o.x, o.y, o.z);
   const rings = HEAD_RINGS.map(([t, a, f, b], r) => {
     const y = t * H, A = a * H, F = f * H, B = b * H, k = r === 0 || r === HEAD_RINGS.length - 1 ? .015 : .035;
     return [[-A * .7, y, F], [A * .7, y, F], [A, y, F * .45], [A, y, -B * .45], [A * .7, y, -B], [-A * .7, y, -B], [-A, y, -B * .45], [-A, y, F * .45]]
@@ -56,20 +65,33 @@ function drawHead(pb: PropBatch, o: MegalithHead) {
     pb.solid8([P(x0, .42 * H, -.02 * H), P(x1, .42 * H, -.02 * H), P(x1, .42 * H, .05 * H), P(x0, .42 * H, .05 * H)],
       [P(x0, .72 * H, -.04 * H), P(x1, .72 * H, -.04 * H), P(x1, .72 * H, .06 * H), P(x0, .72 * H, .06 * H)], FACE);
   }
-  // the eyes: dark visor plates under the brow, lit with rows of glowing glyph lines
-  const ey = .635 * H, ez = frontAt(.635) * H;
+  drawEyes(pb, P, H, .63, frontAt(.63) * H, .1, .05, .03);
+}
+/**
+ * (0.275) A pair of stone eyes on a face (frame P, height H): almond sockets set in under a heavy brow at height ey
+ * (a share of H), `ez` the face's front there; `ex` the eyes' middles from the nose, `w` / `hgt` an eye's half width
+ * and height (shares of H). Each: the dark socket, a lid drooping over its top, a glowing iris ring round a slit
+ * pupil, a tear line carved down the cheek.
+ */
+export function drawEyes(pb: PropBatch, P: (x: number, y: number, z: number) => number[], H: number, ey: number, ez: number, ex: number, w: number, hgt: number) {
+  const y0 = ey * H, W = w * H, E = hgt * H, zs = ez - .012 * H, zf = ez + .006 * H;
   for (const side of [-1, 1]) {
-    const x0 = side * .035 * H, x1 = side * .165 * H, lo = ey - .034 * H, hi = ey + .034 * H, z0 = ez - .005 * H, z1 = ez + .018 * H;
-    pb.solid8([P(x0, lo, z0), P(x1, lo, z0), P(x1, lo, z1), P(x0, lo, z1)], [P(x0, hi, z0), P(x1, hi, z0), P(x1, hi, z1), P(x0, hi, z1)], GROOVE);
-    const zf = z1 + .004 * H, xa = Math.min(x0, x1), xb = Math.max(x0, x1);
-    for (let row = 0; row < 3; row++) {
-      const y = lo + (row + 1) * (hi - lo) / 4;
-      for (let k = 0; k < 4; k++) { // dashes like a line of old script
-        const u0 = xa + (xb - xa) * (k / 4 + .03 + ((row + k) % 2) * .04), u1 = xa + (xb - xa) * ((k + 1) / 4 - .03);
-        pb.seg(EYES, P(u0, y, zf), P(u1, y, zf));
-      }
-    }
-    pb.line(EYES, P(x0, lo, zf), P(x1, lo, zf), P(x1, hi, zf), P(x0, hi, zf), P(x0, lo, zf));
+    const cx = side * ex * H;
+    // the brow: a ridge over the eye
+    pb.solid8([P(cx - W * 1.25, y0 + E * 1.1, ez - .01 * H), P(cx + W * 1.25, y0 + E * 1.1, ez - .01 * H), P(cx + W * 1.2, y0 + E * 1.1, ez + .03 * H), P(cx - W * 1.2, y0 + E * 1.1, ez + .03 * H)],
+      [P(cx - W * 1.2, y0 + E * 1.9, ez - .01 * H), P(cx + W * 1.2, y0 + E * 1.9, ez - .01 * H), P(cx + W * 1.1, y0 + E * 1.7, ez + .02 * H), P(cx - W * 1.1, y0 + E * 1.7, ez + .02 * H)], FACE);
+    // the socket: a dark almond (corner, top, corner, bottom), set into the face
+    const almond = (z: number) => [P(cx - W, y0, z), P(cx, y0 + E, z), P(cx + W, y0, z), P(cx, y0 - E * .8, z)];
+    pb.solid8(almond(zs), almond(zf), GROOVE);
+    // the drooping lid: a heavy band over the socket's top half
+    pb.line(FACE, P(cx - W * 1.05, y0 + E * .1, zf + .004 * H), P(cx - W * .4, y0 + E * .55, zf + .006 * H), P(cx + W * .4, y0 + E * .55, zf + .006 * H), P(cx + W * 1.05, y0 + E * .1, zf + .004 * H));
+    // the iris: a glowing ring under the lid, a slit pupil, and the light round its rim
+    const ri = E * .48, iy = y0 - E * .05, zi = zf + .003 * H, ring: number[][] = [];
+    for (let k = 0; k <= 12; k++) { const a = k / 12 * Math.PI * 2; ring.push(P(cx + Math.cos(a) * ri, iy + Math.sin(a) * ri * .9, zi)); }
+    pb.line(EYES, ...ring);
+    pb.seg(EYES, P(cx, iy - ri * .7, zi + .002 * H), P(cx, iy + ri * .45, zi + .002 * H));
+    // a tear line carved from the eye's inner corner down the cheek
+    pb.line(GROOVE, P(cx - side * W * .7, y0 - E * .55, zf), P(cx - side * W * .75, y0 - E * 2.2, zf - .004 * H), P(cx - side * W * .55, y0 - E * 3.4, zf - .01 * H));
   }
 }
 interface Loaded { site: Megalith; group: THREE.Group; stones: MegalithStone[] }
@@ -77,6 +99,7 @@ const loaded = new Map<string, Loaded>();
 export function megalithModel(site: Megalith): THREE.Group {
   const pb = new PropBatch(), R = rng(site.seed);
   const { heads, rocks } = megalithHeads(site);
+  if (isPyramid(site)) drawPyramid(pb, site); // (0.275)
   for (const o of heads) drawHead(pb, o);
   for (const o of rocks) pb.rock(o.x, 0, o.z, o.r, o.h, o.sides, o.rot, BOULDER);
   for (const b of megalithStones(site)) {
@@ -128,7 +151,7 @@ export function megalithRay(o: { x: number; y: number; z: number }, d: { x: numb
   }
   return maxT;
 }
-export const megalithName = (x: number, z: number) => [...loaded.values()].find(m => Math.hypot(...megalithLocal(m.site, x, z)) < m.site.radius)?.site.name;
+export const megalithName = (x: number, z: number) => { const m = [...loaded.values()].find(m => Math.hypot(...megalithLocal(m.site, x, z)) < m.site.radius)?.site; return m && (isPyramid(m) ? m.name : TL`${m.name} (megalith)`); };
 
 /** Extend the local view only near these exceptionally large structures. */
 export const nearMegalith = (x: number, z: number) => [...loaded.values()].some(m => Math.hypot(...megalithLocal(m.site, x, z)) < m.site.radius + 220);
@@ -137,10 +160,40 @@ export function megalithFloor(x: number, y: number, z: number): number {
   for (const m of loaded.values()) {
     const [u, v] = megalithLocal(m.site, x, z);
     for (const b of m.stones) {
-      const top = m.site.y + b.y + b.h; if (y < top - .5) continue;
-      const c = Math.cos(b.yaw), s = Math.sin(b.yaw), dx = u - b.x, dz = v - b.z;
-      if (Math.abs(c * dx - s * dz) <= b.w * .47 && Math.abs(s * dx + c * dz) <= b.d * .47) floor = Math.max(floor, top);
+      if (b.axis) continue; // a tilted head: no standing on it
+      const c = Math.cos(b.yaw), s = Math.sin(b.yaw), dx = u - b.x, dz = v - b.z, lv = s * dx + c * dz;
+      const top = m.site.y + (b.kind === 'ramp' ? rampTop(b, lv) : b.y + b.h); if (y < top - .5) continue; // (0.275) up a pyramid's stair
+      if (Math.abs(c * dx - s * dz) <= b.w * (b.kind === 'tier' ? .5 : .47) && Math.abs(lv) <= b.d * (b.kind === 'ramp' || b.kind === 'tier' ? .5 : .47)) floor = Math.max(floor, top);
     }
   }
   return floor;
 }
+
+/** (0.275) The pyramid shrine you stand in (its room inside the walls, on the top), or null: the way down into the pyramid. */
+export function nearPyramidDoor(x: number, y: number, z: number): { site: Megalith; door: PyramidDoor } | null {
+  for (const m of loaded.values()) {
+    if (!isPyramid(m.site)) continue;
+    const [u, v] = megalithLocal(m.site, x, z);
+    for (const d of pyramidDoors(m.site)) if (u > d.x0 && u < d.x1 && v > d.z0 && v < d.z1 && Math.abs(y - m.site.y - d.y) < 2.5) return { site: m.site, door: d };
+  }
+  return null;
+}
+/** (0.275) The way out of a pyramid's shrine, in the world: before its door on the top, facing out. */
+export function pyramidExit(m: Megalith, i: number): { x: number; y: number; z: number; yaw: number } {
+  const d = pyramidDoors(m)[i] ?? pyramidDoors(m)[0], [x, z] = megalithPoint(m, d.out[0], d.out[1]);
+  const fx = Math.sin(m.yaw), fz = Math.cos(m.yaw); // the site's +z, the doors' way out
+  return { x, y: m.y + d.y + 0.05, z, yaw: Math.atan2(-fx, -fz) };
+}
+// (0.275) the braziers on the pyramids' tops: a little light round them, seen from afar by night
+const fireSpots = (): [number, number, number][] => {
+  const out: [number, number, number][] = [];
+  for (const m of loaded.values()) if (isPyramid(m.site)) for (const [fx, fy, fz] of pyramidFires(m.site)) {
+    const c = Math.cos(m.site.yaw), s = Math.sin(m.site.yaw); out.push([m.site.x + c * fx + s * fz, m.site.y + fy + 1.5, m.site.z - s * fx + c * fz]);
+  }
+  return out;
+};
+addLights((out) => { if (G.char.loc === 'overworld') for (const [x, y, z] of fireSpots()) if (Math.hypot(x - G.pos.x, z - G.pos.z) < 140) out.push({ x, y, z, r: 9, k: 'fire' }); });
+addGlows((out) => {
+  if (G.char.loc !== 'overworld' || daylight(G.char.time, sunTilt(latitude(G.pos.z))) > .6) return;
+  for (const [x, y, z] of fireSpots()) out.push({ x, y, z, c: 0xffa850, s: 0.05, a: 0.8, far: 2500 });
+});

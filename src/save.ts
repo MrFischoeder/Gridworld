@@ -36,7 +36,7 @@ export interface Slot { k: ItemKey; n: number; c?: number; b?: { k: ItemKey; n: 
 /** Per-dungeon progress, keyed by dungeonKey() = "ruinId:depth:gx:gz". */
 export type Progress = Record<string, number[]>;
 /** Where in which dungeon the player is. In a cave system (`cave`), ruinId is the system's id; its mouths are kept so the way out is known. */
-export interface DungeonPos { ruinId: number; depth: number; gx: number; gz: number; /** (0.207) a hand-made level from the map editor, by name (world/custommaps.ts) */ custom?: string; cave?: { name: string; mouths: { x: number; z: number; face: number }[]; from: number } }
+export interface DungeonPos { ruinId: number; depth: number; gx: number; gz: number; /** (0.207) a hand-made level from the map editor, by name (world/custommaps.ts) */ custom?: string; cave?: { name: string; mouths: { x: number; z: number; face: number }[]; from: number }; /** (0.275) the pyramid shrine you went down by (gen/megaliths.ts `pyramidDoors`) */ door?: number }
 /** Anything that holds items: a searched chest, a vehicle trunk. */
 export interface Container { items: (Slot | null)[]; gold: number; /** (0.247) a vehicle's cargo bays: crates and barrels (data/cargo.ts), `VEHICLES[model].bays` long */ bays?: (Slot | null)[] }
 /**

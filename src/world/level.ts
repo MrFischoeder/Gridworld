@@ -35,6 +35,8 @@ import { meshVoxels, type OutlineStyle } from '../core/meshing';
 import { generateDungeon, MAX_DUNGEON_DEPTH } from '../gen/dungeon';
 import { myHome } from '../gen/homes';
 import { findPoi, allVillages, worldDist, nearX, poisNear, GRIDHOLM_ID, CHUNK, type Poi } from '../gen/regions';
+import { pyramidOf, pyramidId, type Megalith } from '../gen/megaliths';
+import { pyramidExit } from './megaliths';
 import { isDiscovered } from '../save';
 import { WALL_TIERS, STONE_TIER, HOUSE, WALK, type VillageMap } from '../gen/village';
 import { placeTunnelDoors, tryPlaceDoor, type PlacedDoor } from '../gen/doors';
@@ -121,7 +123,7 @@ onClimbChange(refreshWeaponVisibility);
 onWorkChange(refreshWeaponVisibility);
 
 // ---------- dungeon ----------
-const ruinName = (id: number) => { const m = metroCity(G.char.world, id); return m ? TL`${m.name} Metro` : findPoi(G.char.world, id)?.name ?? tl('Ruins'); };
+const ruinName = (id: number) => { const py = pyramidOf(G.char.world, id); if (py) return py.name; const m = metroCity(G.char.world, id); return m ? TL`${m.name} Metro` : findPoi(G.char.world, id)?.name ?? tl('Ruins'); };
 export function loadDungeon(arriveDir: string | null) {
   const c = G.char, d = c.dungeon!;
   if (d.cave) { // a cave system: its own kind of place
@@ -135,6 +137,7 @@ export function loadDungeon(arriveDir: string | null) {
   const wreck = !custom && findPoi(c.world, d.ruinId)?.type === 'wreck';
   // (0.195) a dead city's vaults are one metro now: saved under its first entrance, one level (gen/metro.ts)
   const metro = wreck || custom ? null : metroCity(c.world, d.ruinId);
+  const pyr = custom ? null : pyramidOf(c.world, d.ruinId); // (0.275) inside a pyramid: a labyrinth going down
   if (metro) { d.ruinId = metroId(c.world, metro); d.depth = 1; d.gx = 0; d.gz = 0; }
   if (!wreck) d.depth = Math.max(1, Math.min(MAX_DUNGEON_DEPTH, d.depth));
   const seed = dungeonSeed(c.world, d);
@@ -176,7 +179,7 @@ export function loadDungeon(arriveDir: string | null) {
       continue;
     }
     W.portals.push(p.key === 'V'
-      ? makeStair(p, pd, placed.length - 1, '▲ ' + (d.depth > 1 && !wreck ? tl('DEPTH ') + (d.depth - 1) : name.toUpperCase()), d.depth > 1 && !wreck ? tl('Stairs up to depth ') + (d.depth - 1) : tl('Stairs up to the ') + name, () => { if (d.depth > 1 && !wreck) ascend(); else exitToRuin(); })
+      ? makeStair(p, pd, placed.length - 1, '▲ ' + (d.depth > 1 && !wreck ? tl('DEPTH ') + (d.depth - 1) : name.toUpperCase()), d.depth > 1 && !wreck ? tl('Stairs up to depth ') + (d.depth - 1) : pyr ? TL`Stairs up to the shrine on top of ${name}` : tl('Stairs up to the ') + name, () => { if (d.depth > 1 && !wreck) ascend(); else exitToRuin(); })
       : p.key === 'D' ? makeStair(p, pd, placed.length - 1, '▼ ' + tl('DEPTH ') + (d.depth + 1), tl('Stairs down to depth ') + (d.depth + 1), descend)
       : makeStair(p, pd, placed.length - 1, (p.up ? '▲ ' : '▼ ') + tl('SECTOR ') + tx + ', ' + tz, (p.up ? TL`Stairs up to sector ${tx}, ${tz}` : TL`Stairs down to sector ${tx}, ${tz}`), () => travel(p.dir)));
   }
@@ -199,15 +202,15 @@ export function loadDungeon(arriveDir: string | null) {
   loadMountedTurrets(dungeonTurrets(map, G.grid, custom ? 0 : wreck ? MOUNTED_TURRET.wreck : labyrinthTurrets(seed))); G.obstacle = mountedTurretHit;
   // ... and its robot crew still patrols the ship (on a server only the first player aboard brings them: shared foes)
   {
-    const poi = metro ?? findPoi(c.world, d.ruinId), dz = poi ? dangerAt(c.world, poi.x, poi.z, true) : 1;
-    const lv = custom ? Math.max(1, Math.min(8, custom.danger)) : wreck || metro ? Math.max(2, dz) : Math.max(1, dz) + (d.depth - 1) * 0.5;
+    const poi = pyr ?? metro ?? findPoi(c.world, d.ruinId), dz = poi ? dangerAt(c.world, poi.x, poi.z, true) : 1;
+    const lv = custom ? Math.max(1, Math.min(8, custom.danger)) : wreck || metro ? Math.max(2, dz) : pyr ? Math.min(8, Math.max(2, dz + 0.5) + (d.depth - 1) * 0.6) : Math.max(1, dz) + (d.depth - 1) * 0.5;
     setRobotEnv({ ground: () => 0, danger: () => lv, nearRuin: () => false, forbidden: () => false, water: () => null }, { indoor: true });
     if (guards.length && spawnAuthority()) spawnGuards(guards, lv, guardAlive);
   }
   onDungeonLoaded(map);
   placeCarrier();
   setMiniMode('voxel'); buildMini();
-  el.hudL.textContent = custom ? TL`${custom.name} · editor map` : wreck || metro ? ruinName(d.ruinId) : tl('Depth ') + d.depth + ', sector ' + d.gx + ', ' + d.gz;
+  el.hudL.textContent = custom ? TL`${custom.name} · editor map` : wreck || metro ? ruinName(d.ruinId) : pyr ? TL`${pyr.name} · depth ${d.depth}` : tl('Depth ') + d.depth + ', sector ' + d.gx + ', ' + d.gz;
   if (wreck || metro || custom) el.route.style.display = 'none'; // no way further down from a wreck
   el.seed.value = String(c.world); renderSheet(); saveChar();
 }
@@ -530,8 +533,23 @@ function exitMetro(city: CitySite, n: number) {
   c.loc = 'overworld'; c.dungeon = null; saveChar();
   loadOverworld({ kind: 'saved' }); showToast(e.name); arriveVia(null);
 }
+/** (0.275) Into a pyramid by its shrine's door (world/megaliths.ts `nearPyramidDoor`): a labyrinth, deeper going down. */
+export function enterPyramid(m: Megalith, door: number) {
+  saveOverworldPos();
+  const c = G.char;
+  c.loc = 'dungeon'; c.dungeon = { ruinId: pyramidId(m), depth: 1, gx: 0, gz: 0, door }; saveChar();
+  loadDungeon('V'); showToast(m.name); logLine(tl('The stair goes down into the heart of the pyramid. The air is cold and old.')); arriveVia(W.arrivalStair);
+}
+/** (0.275) Up out of a pyramid: in its shrine's door on the top, facing out over the stair. */
+function exitPyramid(m: Megalith) {
+  const c = G.char, e = pyramidExit(m, c.dungeon?.door ?? 0);
+  c.ow = { x: nearX(e.x, c.ow?.x ?? e.x), y: e.y, z: e.z, yaw: e.yaw };
+  c.loc = 'overworld'; c.dungeon = null; saveChar();
+  loadOverworld({ kind: 'saved' }); showToast(m.name); arriveVia(null);
+}
 export function exitToRuin() {
   const c = G.char, id = c.dungeon!.ruinId;
+  const pyr = pyramidOf(c.world, id); if (pyr) { exitPyramid(pyr); return; }
   const entrance = cityEntrance(c.world, id);
   const site = entrance && citySites(c.world).find((s) => s.i === entrance.city);
   if (entrance && site) {

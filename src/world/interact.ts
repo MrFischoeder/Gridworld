@@ -83,7 +83,8 @@ import { nearBench, type Bench } from './benches';
 import { nearTurret, toggleTurret } from './turrets';
 import { atMouth } from './caves';
 import { caveExitNear } from './cavelevel';
-import { enterCave, exitCave } from './level';
+import { enterCave, exitCave, enterPyramid } from './level';
+import { nearPyramidDoor } from './megaliths';
 import type { Cave } from '../gen/caves';
 import { nearDoor, toggleDoor, buildHint, buildOk, doorPrompt, lockMenu } from './building';
 import { nearFlag, takeDownFlag, isPlacing, confirmPlacing, placingHint, placingOk, type SavedClaim } from './claims';
@@ -109,7 +110,7 @@ export let npcsActive = () => G.char.loc === 'overworld' && W.npcs.length > 0;
 export function setNpcsActive(f: () => boolean) { npcsActive = f; }
 
 let nearWater: WaterSource | null = null, nearFood: PlantNode | null = null, nearCook = false, nearWork: Bench | null = null, nearGather: Target | null = null;
-let nearCave: Cave | null = null, caveOut = -1;
+let nearCave: Cave | null = null, caveOut = -1, nearPyr: ReturnType<typeof nearPyramidDoor> = null;
 let nearHatch = false;
 let nearDecoy = false;
 let nearFl = false, nearLock2 = false, nearRec = false, nearData: ReturnType<typeof nearCarrier> = null;
@@ -157,6 +158,7 @@ export function updateEntities(dt: number, time: number) {
   nearMine = nearHome(); nearPow = nearMine ? null : nearPower(); nearCar = nearMine || nearPow ? null : nearCaravan(); nearWork2 = nearMine || nearPow || nearCar ? null : nearSite();
   nearCave = G.char.loc === 'overworld' ? loadedCaves().find((c) => atMouth(c, pos.x, pos.z)) ?? null : null;
   caveOut = G.char.loc === 'dungeon' && G.char.dungeon?.cave ? caveExitNear() : -1;
+  nearPyr = G.char.loc === 'overworld' && !driving.v ? nearPyramidDoor(pos.x, pos.y, pos.z) : null; // (0.275) a pyramid's shrine: the way down
   nearAncient = nearGatePanel(); nearAncientTablet = nearGateTablet();
   nearGate = nearDoor(); nearGun = nearGate ? null : nearTurret(); nearHD = nearGate || nearGun ? null : nearHouseDoor(); nearDesk = atShuttleDesk(); nearWk = nearGate || nearGun || nearHD || nearDesk ? null : nearWorks(); nearSt = nearGate || nearGun || nearHD || nearDesk || nearWk ? null : nearStation(); nearTerm = nearGate || nearHD ? null : nearTerminal();
   nearComms = nearSettlementComms(); nearPump = nearFuelPump(); nearSL = nearStreetLamp(); nearLH = nearLighthouse(); nearChg = nearPump === null ? nearCharger() : null; nearIns = nearInstallDesk(); nearLd = nearIns || nearVehicle ? null : nearOutpostLode(); nearPt = nearLd ? null : nearPortBoard(); nearHall = nearHallTerminal(); nearBrg = nearBridgeSign(); nearPier = nearPierSign(); nearPCrate = nearPier ? null : nearPierCrate(); nearBt = nearPier || nearPCrate ? null : nearBoat(); nearAir = nearBt ? null : nearAirship(); nearCop = nearBt || nearAir ? null : nearCopter();
@@ -185,7 +187,7 @@ export function updateEntities(dt: number, time: number) {
     if (along > 0.9 && along < 4 && lat < 1.6 && Math.abs(pos.y - p.y0 - tread) < 1.2 && G.playing && !G.trans) enter = p;
   }
   const { nearNpc, nearLock, nearChest, nearPortal } = W, prompt = el.prompt;
-  const busy = !!(nearFl || nearBd || nearLd || nearPt || nearAncientTablet || nearAncient || inBoat() || inAir() || nearAir || nearCop || nearDp || nearRide || nearGd || nearSur || nearFogL || nearBt || (nearHall !== null || nearComms !== null || nearPump !== null || nearSL !== null || nearLH !== null || nearChg !== null) || nearIns || nearBrg || nearPier || nearPCrate || nearData || nearLock2 || nearRec || nearLad || nearMine || nearPow || nearCar || nearWork2 || nearNpc || nearLock || nearChest || nearBoard || nearMap || nearStash || nearVehicle || nearGate || nearHD || nearDesk || nearWk || nearSt || nearTerm || nearSt || nearGun || nearHatch || nearCave || caveOut >= 0);
+  const busy = !!(nearFl || nearBd || nearLd || nearPt || nearAncientTablet || nearAncient || inBoat() || inAir() || nearAir || nearCop || nearDp || nearRide || nearGd || nearSur || nearFogL || nearBt || (nearHall !== null || nearComms !== null || nearPump !== null || nearSL !== null || nearLH !== null || nearChg !== null) || nearIns || nearBrg || nearPier || nearPCrate || nearData || nearLock2 || nearRec || nearLad || nearMine || nearPow || nearCar || nearWork2 || nearNpc || nearLock || nearChest || nearBoard || nearMap || nearStash || nearVehicle || nearGate || nearHD || nearDesk || nearWk || nearSt || nearTerm || nearSt || nearGun || nearHatch || nearCave || nearPyr || caveOut >= 0);
   nearFood = busy ? null : nearPlant();
   nearWork = busy || nearFood ? null : nearBench();
   nearClaim = busy || nearFood || nearWork ? null : nearFlag();
@@ -231,6 +233,7 @@ export function updateEntities(dt: number, time: number) {
   else if (nearSt) { const t = stationPrompt(nearSt); prompt.className = t.startsWith('E') ? '' : 'lock'; prompt.textContent = t; }
   else if (nearWk) { const t = worksPrompt(nearWk); prompt.className = t.startsWith('E') ? '' : 'lock'; prompt.textContent = t; }
   else if (nearHD) { const t = houseDoorPrompt(nearHD); prompt.className = t.locked ? 'lock' : ''; prompt.textContent = t.text; }
+  else if (nearPyr) { prompt.className = 'portal'; prompt.textContent = TL`E — go down into ${nearPyr.site.name}`; }
   else if (nearCave) { prompt.className = 'portal'; prompt.textContent = tl('E — enter ') + nearCave.name + (nearCave.other ? tl(' (it runs through the mountain)') : ''); }
   else if (caveOut >= 0) { const info = G.char.dungeon!.cave!; prompt.className = 'portal'; prompt.textContent = tl('E — leave the cave') + (info.mouths.length > 1 && caveOut !== info.from ? tl(' (the far side of the mountain)') : ''); }
   else if (nearGun) { prompt.className = ''; prompt.textContent = nearGun.p.off ? tl('E — switch the turret on') : tl('E — switch the turret off'); }
@@ -255,7 +258,7 @@ export function updateEntities(dt: number, time: number) {
   else if (nearGather) { prompt.className = ''; prompt.textContent = gatherPrompt(nearGather); }
   else if (nearCook) { prompt.className = ''; prompt.textContent = fireHasWork() ? tl('E — roast your raw meat') : tl('A campfire: bring raw meat to roast'); }
   else if (nearWater) { prompt.className = nearWater.kind === 'toxic' || nearWater.kind === 'sea' ? 'lock' : ''; prompt.textContent = sourcePrompt(nearWater); }
-  prompt.style.display = (nearSv || nearFl || nearBd || nearLd || nearPt || nearAncientTablet || nearAncient || climbing() || nearDp || nearRide || nearGd || nearSur || nearFogL || nearBt || (nearHall !== null || nearComms !== null) || nearIns || nearBrg || nearPier || nearPCrate || nearData || nearLock2 || nearRec || nearLad || nearMine || nearPow || nearCar || nearWork2 || nearGate || nearHD || nearDesk || nearWk || nearSt || nearTerm || nearTerm || nearGun || nearHatch || nearDecoy || nearCave || caveOut >= 0 || nearNpc || nearLock || nearChest || nearBoard || nearMap || nearStash || nearVehicle || nearPortal || nearFood || nearWork || nearClaim || nearGather || nearCook || nearWater) && G.playing && prompt.textContent ? 'block' : 'none';
+  prompt.style.display = (nearSv || nearFl || nearBd || nearLd || nearPt || nearAncientTablet || nearAncient || climbing() || nearDp || nearRide || nearGd || nearSur || nearFogL || nearBt || (nearHall !== null || nearComms !== null) || nearIns || nearBrg || nearPier || nearPCrate || nearData || nearLock2 || nearRec || nearLad || nearMine || nearPow || nearCar || nearWork2 || nearGate || nearHD || nearDesk || nearWk || nearSt || nearTerm || nearTerm || nearGun || nearHatch || nearDecoy || nearCave || nearPyr || caveOut >= 0 || nearNpc || nearLock || nearChest || nearBoard || nearMap || nearStash || nearVehicle || nearPortal || nearFood || nearWork || nearClaim || nearGather || nearCook || nearWater) && G.playing && prompt.textContent ? 'block' : 'none';
   const bh = buildHint();
   if (bh !== null && !nearGate && !nearGun) { prompt.className = buildOk() ? '' : 'lock'; prompt.textContent = bh; prompt.style.display = G.playing && bh ? 'block' : 'none'; }
   const bth = boatHint();
@@ -352,6 +355,7 @@ export function interact() {
   if (nearTerm) { openTerminal(nearTerm); return; }
   if (nearSt) { if (!openStation(nearSt)) logLine(stationPrompt(nearSt) + '.'); return; }
   if (nearGun) { toggleTurret(nearGun); return; }
+  if (nearPyr) { enterPyramid(nearPyr.site, nearPyr.door.i); return; }
   if (nearCave) { enterCave(nearCave); return; }
   if (caveOut >= 0) { exitCave(caveOut); return; }
   if (nearMine) { useHome(nearMine); return; }

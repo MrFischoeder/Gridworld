@@ -3,6 +3,15 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.275.0', date: '2026-10-30', title: 'Pyramids, sphinxes and lone stone heads', notes: [
+    'Five great stepped pyramids now stand on the continents, never two in sight of each other: the Feathered Serpent (nine terraces, a stair up every face, serpent heads at their feet), the Devoured Sun and the Pale Moon (sloping and upright panels carved with the old script), the Twin Shrines (two stairs, two shrines on the top) and the steep Jaguar Spire with its pierced roof comb. They are 45 to 75 metres tall.',
+    'Climb the great stair between its balustrades to the shrine on the top, where braziers burn at the corners. Inside the shrine a stair goes down into the pyramid: a labyrinth, deeper and more dangerous level by level. Its stairs up bring you out at the shrine\'s door again.',
+    'Sphinxes are scattered over the land: a lion seated on its haunches with a calm stone face under long hair, alone or two facing each other across the way like a gate. Their eyes glow faintly at night.',
+    'The great stone heads no longer stand in crowds. Each head site holds only two to four, spread wide, and lone heads (now and then two) lie far apart across the planet. Sphinxes and heads are sunk into the ground, some to the shoulders, most lean or are rolled to a side, and a few have toppled.',
+    'The stone heads have new eyes: deep almond sockets under a heavy brow, a drooping lid, a glowing ring of an iris with a slit pupil, and a tear line carved down the cheek.',
+    'High on a pyramid the view reaches further and the horizon\'s decorative ranges no longer float in the air.',
+    'Multiplayer: everything comes from the world seed and stands the same for everyone. Players who go down into the same pyramid meet in the same levels and share its chests and kills like any ruin. Nothing new is sent and the server is unchanged.',
+  ] },
   { v: '0.274.0', date: '2026-10-30', title: 'The work ring', notes: [
     'While you work at something, an empty dodecagon appears in the middle of the screen and its edge fills clockwise from the top until the work is done, with the percentage under the crosshair.',
     'It shows for stripping machines with the wrench, sawing logs by hand, chopping trees and mining rocks and ore veins (over all the blows the job needs), the workshop and working things up where they lie. Each job fills at its own speed.',

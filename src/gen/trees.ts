@@ -12,6 +12,7 @@ import { inCity } from './cities';
 import { inFogSite } from './toxic';
 import { inLode } from './lodes';
 import { inCrystals } from './crystals';
+import { inColossus } from './colossi';
 import { nearOutcrop } from './caves';
 import { boulderDensity } from './boulders';
 import { LEAN_MAX } from './rockshape';
@@ -106,7 +107,7 @@ export function chunkTrees(t: Terrain, cx: number, cz: number): Tree[] {
   for (const s of treeSpots(t, cx, cz)) {
     const tr = classify(t, f, s), span = TREE_SPAN[tr.kind];
     if (wet(s.x, s.z, span * 0.6 + 1) || t.water(s.x, s.z)) continue; // no trees in the water
-    if (inScar(t, s.x, s.z, 9 + span) || inInstall(t, s.x, s.z, 6 + span) || inCity(t.world, s.x, s.z, 4 + span) || inFogSite(t.world, s.x, s.z, 4 + span) || inLode(t.world, s.x, s.z, 4 + span) || inCrystals(t.world, s.x, s.z, span) || nearOutcrop(t.world, s.x, s.z, span)) continue; // the hero's ship flattened them; the old plants stand on bare ground
+    if (inScar(t, s.x, s.z, 9 + span) || inInstall(t, s.x, s.z, 6 + span) || inCity(t.world, s.x, s.z, 4 + span) || inFogSite(t.world, s.x, s.z, 4 + span) || inLode(t.world, s.x, s.z, 4 + span) || inCrystals(t.world, s.x, s.z, span) || inColossus(t.world, s.x, s.z, span) || nearOutcrop(t.world, s.x, s.z, span)) continue; // the hero's ship flattened them; the old plants stand on bare ground
     if (plants.some((p) => Math.hypot(p.x - s.x, p.z - s.z) < PLANT_SPAN[p.kind] + span + 0.8)) continue;
     const blocked = near.some((b) => b.seed !== tr.seed && Math.hypot(b.x - tr.x, b.z - tr.z) < Math.max(TREE_SPAN[b.kind], span) && (span === 0 || beats(b, tr)));
     if (!blocked) out.push(tr);
@@ -160,7 +161,7 @@ export function chunkRocks(t: Terrain, cx: number, cz: number): Rock[] {
     const r = big ? 1.4 + R() * 1.2 : 0.4 + R() * 0.7, h = r * (0.5 + R() * 0.6), sides = 3 + Math.floor(R() * 3), rot = R() * 6.283;
     if (f.pads.some((p) => rectDist(p.poi.rect, x, z) < p.poi.flat + clearing(p.poi))) continue;
     if (f.roads.some((rd) => nearestOnRoad(rd, x, z)[0] < rd.half + r + 0.5)) continue;
-    if (t.water(x, z) || inScar(t, x, z, 8 + r) || inInstall(t, x, z, 4 + r) || inCity(t.world, x, z, 2 + r) || inFogSite(t.world, x, z, 2 + r) || inLode(t.world, x, z, 2 + r) || inCrystals(t.world, x, z, r) || nearOutcrop(t.world, x, z, r)) continue;
+    if (t.water(x, z) || inScar(t, x, z, 8 + r) || inInstall(t, x, z, 4 + r) || inCity(t.world, x, z, 2 + r) || inFogSite(t.world, x, z, 2 + r) || inLode(t.world, x, z, 2 + r) || inCrystals(t.world, x, z, r) || inColossus(t.world, x, z, r) || nearOutcrop(t.world, x, z, r)) continue;
     const lean = slopeAt(t, x, z, r), k: Rock = { x, z, y: t.heightAt(x, z) - 0.15 - slopeSink(t, x, z, r, lean), r, h, sides, rot, lean }, ore = oreOf(t.world, cx, cz, out.length, k);
     if (ore) k.ore = ore;
     out.push(k);
@@ -173,7 +174,7 @@ export function chunkRocks(t: Terrain, cx: number, cz: number): Rock[] {
     if (roll > boulderDensity(t.world, x, z) * 0.85) continue;
     if (f.pads.some(p => rectDist(p.poi.rect, x, z) < p.poi.flat + clearing(p.poi) + r)) continue;
     if (f.roads.some(rd => nearestOnRoad(rd, x, z)[0] < rd.half + r + 2)) continue;
-    if (t.water(x, z) || inScar(t, x, z, 8 + r) || inInstall(t, x, z, 4 + r) || inCity(t.world, x, z, 2 + r) || inFogSite(t.world, x, z, 2 + r) || inLode(t.world, x, z, 2 + r) || inCrystals(t.world, x, z, r) || nearOutcrop(t.world, x, z, r)) continue;
+    if (t.water(x, z) || inScar(t, x, z, 8 + r) || inInstall(t, x, z, 4 + r) || inCity(t.world, x, z, 2 + r) || inFogSite(t.world, x, z, 2 + r) || inLode(t.world, x, z, 2 + r) || inCrystals(t.world, x, z, r) || inColossus(t.world, x, z, r) || nearOutcrop(t.world, x, z, r)) continue;
     const lean = slopeAt(t, x, z, r);
     out.push({ x, z, y: t.heightAt(x, z) - 0.2 - slopeSink(t, x, z, r, lean), r, h, rot, sides: 6, lean });
   }
