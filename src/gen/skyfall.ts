@@ -5,7 +5,9 @@
 import { hash } from '../core/rng';
 
 /** One fall, shared by the whole room. */
-export interface SkyFall { id: string; slot: number; x: number; z: number; t: number; by: string }
+export interface SkyFall { id: string; slot: number; x: number; z: number; t: number; by: string;
+  /** (0.268) bandits still holding the wreck; unset until a game has put them there, 0 once they are all dead */
+  guards?: number }
 
 export const FALL = {
   /** game minutes in a slot; at most one fall begins in a slot (1 real second = 1 game minute) */
@@ -66,3 +68,6 @@ export function fallPath(to: { x: number; y: number; z: number }, from: number, 
   const k = 1 - u, h = FALL.high * k * (0.45 + 0.55 * k), o = FALL.off * k;
   return { x: to.x + Math.cos(from) * o, y: to.y + h, z: to.z + Math.sin(from) * o };
 }
+
+/** How many bandits gather round a wreck: two small groups, 4 to 7 in all. */
+export const fallGuards = (world: number, s: number) => 4 + Math.floor(unit(world, s, 0xfa21) * 4);

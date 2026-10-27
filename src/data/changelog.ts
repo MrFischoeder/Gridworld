@@ -3,6 +3,10 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.268.0', date: '2026-10-29', title: 'Guarded wrecks', notes: [
+    'Bandits now gather round a fallen container: two small groups of four to seven in all, a boss among them, who lie in wait and attack when you come near. Clear them to reach the crate. They stand at their posts while anyone is close, and the ones you kill stay dead for everyone; if you leave and come back, only the survivors return.',
+    'Multiplayer: the first game with a player near the wreck puts the bandits there (like the other foes, the rest see them through the usual foe snapshots); the number still alive is kept in the shared fall record. `PROTOCOL` unchanged; the server already carries `skyfalls` since 0.267.',
+  ] },
   { v: '0.267.0', date: '2026-10-29', title: 'One fall for everyone', notes: [
     'A fall from orbit is now one event for the whole world, not one per player. When a player enters a new area there is a small chance that a container begins to fall; if it does, everyone in the place hears the roar, sees the burning streak and the flare of the impact, hears the boom, and can follow the smoke to the same wreck. Anyone can search the one container; what one player takes the others no longer find.',
     'Alone you see it all the same. Late arrivals simply find the container lying there. It still lies two game days.',

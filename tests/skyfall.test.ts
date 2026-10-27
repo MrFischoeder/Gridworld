@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { FALL, fallCell, fallId, fallRolls, fallSlot, fallSpot, fallLoot, fallPath } from '../src/gen/skyfall';
+import { FALL, fallCell, fallId, fallRolls, fallGuards, fallSlot, fallSpot, fallLoot, fallPath } from '../src/gen/skyfall';
 import { ITEMS } from '../src/data/items';
 
 describe('sky falls', () => {
@@ -12,6 +12,9 @@ describe('sky falls', () => {
   it('lands 380-820 m away and holds real items', () => {
     for (let k = 0; k < 20; k++) { const p = fallSpot(5, 2, 100, -50, k); const d = Math.hypot(p.x - 100, p.z + 50); expect(d).toBeGreaterThanOrEqual(FALL.near - 1); expect(d).toBeLessThanOrEqual(FALL.far + 1); }
     for (let s = 0; s < 50; s++) for (const [k, n] of fallLoot(9, s)) { expect((ITEMS as Record<string, unknown>)[k]).toBeTruthy(); expect(n).toBeGreaterThan(0); }
+  });
+  it('guards are four to seven', () => {
+    for (let s = 0; s < 60; s++) { const n = fallGuards(3, s); expect(n).toBeGreaterThanOrEqual(4); expect(n).toBeLessThanOrEqual(7); }
   });
   it('the streak ends on the impact point', () => {
     const to = { x: 10, y: 3, z: -4 }, e = fallPath(to, 1.2, 1), s = fallPath(to, 1.2, 0);

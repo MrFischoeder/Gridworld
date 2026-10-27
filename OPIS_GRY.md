@@ -1,6 +1,6 @@
 # GridWorld: opis gry, cel, plan i historia zmian
 
-Stan na wersję **0.267.0**. Ten dokument opisuje, czym jest GridWorld, jaki jest cel gry, co już w niej jest, czego jeszcze nie ma, dokąd zmierza i jak powstawała, wersja po wersji. Nazwy z gry (przedmioty, miejsca, postacie) są podane po angielsku; od 0.190 gra ma też wersję polską (wybór języka w menu głównym).
+Stan na wersję **0.268.0**. Ten dokument opisuje, czym jest GridWorld, jaki jest cel gry, co już w niej jest, czego jeszcze nie ma, dokąd zmierza i jak powstawała, wersja po wersji. Nazwy z gry (przedmioty, miejsca, postacie) są podane po angielsku; od 0.190 gra ma też wersję polską (wybór języka w menu głównym).
 
 ---
 
@@ -853,6 +853,7 @@ Pełne notatki (po angielsku) są w grze pod przyciskiem **Changelog** w menu g�
 - **0.264.0 Wszystko w plecaku.** Znikły dwa miejsca na plecach: broń i narzędzia leżą w plecaku. Klawisze 1–6 biorą przedmiot z pierwszych sześciu miejsc plecaka do rąk (broń, narzędzie, światło lub tarcza), a to, co trzymałeś, trafia na jego miejsce; Q wraca do poprzedniego, X chowa. Stare zapisy: to, co wisiało na plecach, trafia do plecaka.
 - **0.266.0 Spadki z orbity.** Raz na jakiś czas (średnio raz na ok. 45 minut gry) niebo ryczy: smuga ognia przecina niebo, ziemia dudni, a kilkaset metrów od gracza spada kontener z orbity. Z rozbitego kontenera unosi się słup dymu (widać go z daleka, w nocy świeci). Po dojściu E przeszukuje kontener: rzadka część ze starego świata, złom i trochę złota; leży dwie doby gry. Konsola: `meteor` wywołuje spadek od razu.
 - **0.267.0 Jeden spadek dla wszystkich.** Spadek z orbity jest teraz wspólny: gdy gracz wchodzi w nowy obszar, losowane jest (z małym prawdopodobieństwem), czy kontener zacznie spadać. Jeśli tak, wszyscy w tym miejscu słyszą ryk, widzą smugę i błysk uderzenia, słyszą huk i mogą pójść do tego samego wraku; kontener jest jeden i każdy może go przeszukać. Starszy serwer nie przekazuje nowego pola `skyfalls` – zaktualizuj go skryptem `install.sh`.
+- **0.268.0 Strzeżone wraki.** Wokół upadłego kontenera zbierają się grupy bandytów (cztery do siedmiu, z przywódcą), którzy czają się i atakują, gdy się zbliżysz – trzeba ich pokonać, żeby dostać się do skrzyni. Zabici zostają martwi dla wszystkich graczy; po odejściu i powrocie wracają tylko ci, którzy przeżyli.
 - **0.265.1 Większa stacja.** Stacja orbitalna jest ok. 2,5 raza większa i jaśniejsza, wyraźnie widoczna na tle nieba.
 - **0.265.0 Stacja orbitalna.** Po niebie przelatuje stacja z dwóch kół na wspólnej osi (jak w filmowych stacjach kołowych): okrąża planetę co ok. 4 minuty, przecina niebo w ok. 2 minuty, znacznie szybciej niż Słońce i Księżyc, w przeciwnym kierunku. Na razie sama dekoracja; posłuży w dalszym etapie gry.
 - **0.264.1 Dym za budynkami.** Dym z rozbitego statku (i z ognisk bandytów) nie prześwituje już przez domy, mury, ruiny i inne budowle: daleka kolumna dymu jest ukryta, gdy coś litego stoi między okiem a nią.
