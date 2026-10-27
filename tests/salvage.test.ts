@@ -13,17 +13,21 @@ const POWER_PARTS = ['coil', 'bearing', 'pvcell', 'inverter'];
 
 describe('stripping wrecks for parts (0.272)', () => {
   it('every freighter has two reactor drums and two drive cabinets, many have laboratories, all standing on clear floor', () => {
-    let labs = 0;
+    let labs = 0, consoles = 0, loaders = 0, holds = 0;
     for (let seed = 1; seed <= 40; seed++) {
       const m = generateShip(seed * 7919), g = VoxelGrid.fromOps(m.ops);
       const s = shipSalvage(m, (x, z) => g.empty(x, 0, z) && !g.empty(x, -1, z));
       expect(s.filter((x) => x.k === 'reactor').length).toBe(2);
       expect(s.filter((x) => x.k === 'drive').length).toBe(2);
-      labs += s.filter((x) => x.k === 'lab').length;
+      labs += s.filter((x) => x.k === 'lab').length; consoles += s.filter((x) => x.k === 'console').length; loaders += s.filter((x) => x.k === 'loader').length;
+      holds += (m.boxes ?? []).filter((b) => !b.tunnel && b.w === 27).length;
+      expect(s.slice(0, 4).map((x) => x.k)).toEqual(['reactor', 'reactor', 'drive', 'drive']); // older indices kept
       for (const x of s) expect(g.empty(Math.floor(x.x), 0, Math.floor(x.z)), `${seed} ${x.k} ${x.x} ${x.z}`).toBe(true);
       expect(shipSalvage(m, (x, z) => g.empty(x, 0, z))).toEqual(shipSalvage(m, (x, z) => g.empty(x, 0, z)));
     }
     expect(labs).toBeGreaterThan(20);
+    expect(consoles).toBeGreaterThan(60); // two a bridge, nearly always clear
+    if (holds) expect(loaders).toBeGreaterThan(holds);
   });
   it('yields are hashed (the same for everyone) and items exist', () => {
     const a = salvageYield(5, wreckKey(77, 0), 'reactor', 1), b = salvageYield(5, wreckKey(77, 0), 'reactor', 1);

@@ -3,6 +3,12 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.273.0', date: '2026-10-30', title: 'More to strip in the wrecks', notes: [
+    'The bridge of a crashed freighter has two flight consoles you can take apart with the wrench: electronics, control units, now and then optics, a sensor, a power inverter or even a computer.',
+    'Every cargo hold has a hydraulic loader folded against each side wall: electric motors, gears, bearings, pipes and now and then a pump.',
+    'As before, each machine has three parts, they never come back, and the machines already in a wreck keep what was taken from them.',
+    'Multiplayer: the same shared `salvage` record; nothing new on the server. `PROTOCOL` unchanged.',
+  ] },
   { v: '0.272.0', date: '2026-10-30', title: 'Wrecks stripped for power parts', notes: [
     'A new tool: the Wrench. Carry it (backpack or hands) and stand by a machine in a crashed freighter: hold E and your hero unbolts a part every few seconds, its salvage lies at your feet. The engine room at the stern has two reactor drums and two drive cabinets, and many side compartments are now laboratories with a bench of glass cylinders. Each machine has three parts and its lit strips go dark as you take them. Nothing grows back: once the wrecks round you are stripped, they are stripped for good.',
     'Four new power parts: Stator Coil, Turbine Bearing, Solar Cell Sheets and Power Inverter. Reactor drums give coils and power cores, drive cabinets bearings, laboratories solar cells, inverters and electronics. Heavy robots drop them now and then, and fallen containers sometimes hold one.',

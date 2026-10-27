@@ -112,7 +112,7 @@ it('writes SUROWCE.md', () => {
   P(`| ${N('filter')} | kowal (zamówienie, plany Filter Masks), czasem w szafkach skażonych obiektów |`);
   // (0.272) power parts: stripped with a wrench from wrecks, dropped by robots, later made by the restored old plants
   const robotsWith = (k: string) => Object.entries(ROBOTS).filter(([, r]) => r.loot.some(([x]) => x === k)).map(([n]) => n).join(', ');
-  const salv = (k: string) => (Object.keys(SALVAGE_YIELD) as (keyof typeof SALVAGE_YIELD)[]).filter((m) => SALVAGE_YIELD[m].some(([x]) => x === k)).map((m) => ({ reactor: 'bęben reaktora', drive: 'szafa napędu', lab: 'stół laboratoryjny' })[m]).join(', ');
+  const salv = (k: string) => (Object.keys(SALVAGE_YIELD) as (keyof typeof SALVAGE_YIELD)[]).filter((m) => SALVAGE_YIELD[m].some(([x]) => x === k)).map((m) => ({ reactor: 'bęben reaktora', drive: 'szafa napędu', lab: 'stół laboratoryjny', console: 'konsola na mostku', loader: 'podnośnik w ładowni' })[m]).join(', ');
   const plant = (k: string) => (Object.keys(INSTALL_MORE) as InstallKind[]).filter((m) => INSTALL_MORE[m]!.some((w) => w.out === k)).map((m) => INSTALLS.find((x) => x.k === m)!.name).join(', ');
   for (const k of ['coil', 'bearing', 'pvcell', 'inverter'] as const) P(`| ${N(k)} | rozbiórka kluczem we wrakach statków (${salv(k)})${KESTREL_PARTS.some((p) => p.some(([x]) => x === k)) ? ', silnik własnego statku (raz)' : ''}; roboty (${robotsWith(k)}); kontenery z orbity; później odbudowane: ${plant(k)} |`);
   P(`| ${N('wrench')} | szafka na statku, kowal (zamówienie podstawowe: 3 złom), Oskar sprzedaje |`);

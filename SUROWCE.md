@@ -59,9 +59,9 @@ Spis: 1. Surowce · 2. Przetwarzanie · 3. Budowy · 4. Indeks: gdzie użyć ka�
 | Power Core | rzadko: drony naprawcze, wartownicy, konstrukty; skrzynie we wrakach; szafki skażonych obiektów w toksycznej mgle (często, potrzebna maska gazowa) |
 | Mask Filter | kowal (zamówienie, plany Filter Masks), czasem w szafkach skażonych obiektów |
 | Stator Coil | rozbiórka kluczem we wrakach statków (bęben reaktora, szafa napędu), silnik własnego statku (raz); roboty (sentinel, assault); kontenery z orbity; później odbudowane: Old Precision Works |
-| Turbine Bearing | rozbiórka kluczem we wrakach statków (szafa napędu), silnik własnego statku (raz); roboty (guardian, sentinel); kontenery z orbity; później odbudowane: Old Precision Works |
+| Turbine Bearing | rozbiórka kluczem we wrakach statków (szafa napędu, podnośnik w ładowni), silnik własnego statku (raz); roboty (guardian, sentinel); kontenery z orbity; później odbudowane: Old Precision Works |
 | Solar Cell Sheets | rozbiórka kluczem we wrakach statków (stół laboratoryjny); roboty (artillery); kontenery z orbity; później odbudowane: Old Optical Works |
-| Power Inverter | rozbiórka kluczem we wrakach statków (stół laboratoryjny), silnik własnego statku (raz); roboty (repair, artillery); kontenery z orbity; później odbudowane: Old Chip Foundry |
+| Power Inverter | rozbiórka kluczem we wrakach statków (konsola na mostku, stół laboratoryjny), silnik własnego statku (raz); roboty (repair, artillery); kontenery z orbity; później odbudowane: Old Chip Foundry |
 | Wrench | szafka na statku, kowal (zamówienie podstawowe: 3 złom), Oskar sprzedaje |
 | Raw Meat | stworzenie: Bramble (upolowane) |
 | Bramble Plate | stworzenie: Bramble (upolowane) |

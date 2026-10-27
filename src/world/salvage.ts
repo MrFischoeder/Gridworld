@@ -63,6 +63,16 @@ function model(s: Spot, left: number): THREE.Group {
     }
     pb.seg(STEEL, [-1.2, 1.7, -0.95], [1.2, 1.7, -0.95]); pb.seg(STEEL, [-1.2, 2.4, -0.95], [1.2, 2.4, -0.95]);
     bars(-1.0, 1.0, 2.05, -0.94);
+  } else if (s.k === 'console') { // a sloped console with dead screens over the machine's front (gen/ship.ts' solid)
+    pb.box(-1.5, 0, -1.6, 1.5, 1.05, -0.6, STEEL);
+    pb.seg(STEEL, [-1.4, 1.05, -0.6], [-1.4, 1.5, -1.3]); pb.seg(STEEL, [1.4, 1.05, -0.6], [1.4, 1.5, -1.3]); pb.seg(STEEL, [-1.4, 1.5, -1.3], [1.4, 1.5, -1.3]);
+    for (let i = 0; i < total; i++) { const x = -1 + i; pb.seg(i < left ? LIT : DARK, [x - 0.35, 1.2, -0.95], [x + 0.35, 1.2, -0.95]); pb.seg(i < left ? LIT : DARK, [x - 0.35, 1.38, -1.15], [x + 0.35, 1.38, -1.15]); }
+  } else if (s.k === 'loader') { // a hydraulic loader arm folded against the hold's wall
+    pb.box(-0.8, 0, -0.9, 0.8, 0.5, -0.3, AMBER);
+    pb.box(-0.15, 0.5, -0.75, 0.15, 3.2, -0.45, AMBER);
+    pb.seg(STEEL, [0, 3.2, -0.6], [0, 3.6, 0.6]); pb.seg(STEEL, [0, 3.6, 0.6], [0, 2.4, 0.9]);
+    pb.seg(STEEL, [-0.4, 1, -0.3], [-0.4, 2.6, -0.3]); pb.seg(STEEL, [0.4, 1, -0.3], [0.4, 2.6, -0.3]);
+    bars(-0.6, 0.6, 0.42, -0.29);
   } else { // the Kestrel: a hatch on the crumpled nacelle, the parts' strips beside it
     bars(-0.5, 0.5, 2.0, 0.6);
     pb.seg(AMBER, [-0.6, 1.7, 0.6], [0.6, 1.7, 0.6]); pb.seg(AMBER, [-0.6, 2.3, 0.6], [0.6, 2.3, 0.6]);

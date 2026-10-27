@@ -18,7 +18,7 @@ generatory (farmy wiatrowe, słoneczne itd.) wymagają tych części; na począt
 
 - **E1 (0.272, zrobione):** klucz, rozbiórka maszyn we wrakach i silnika Kestrela (wspólny stan `salvage`), 4 części,
   wymagania wszystkich generatorów, łupy robotów, przepisy starożytnych zakładów.
-- **E2:** więcej rodzajów maszyn do rozbiórki (mostek: konsole z elektroniką; ładownia: zamki i siłowniki),
-  rozbiórka wraków porzuconych pojazdów i robotów leżących na ziemi.
+- **E2 (0.273, zrobione w części):** konsole lotu na mostku (elektronika) i podnośniki w ładowniach (silniki, przekładnie,
+  hydraulika). Zostaje: rozbiórka wraków porzuconych pojazdów i robotów leżących na ziemi.
 - **E3:** inne urządzenia na części (pompy, silniki elektryczne, radio, drony) – po jednej części kluczowej każde.
 - **E4:** bilans w `npm run sim` (ile wraków na ile stacji, czas do pierwszej odbudowanej fabryki).

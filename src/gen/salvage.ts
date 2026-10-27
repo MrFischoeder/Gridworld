@@ -11,7 +11,7 @@ import type { DungeonMap, DecoBox } from './dungeon';
 import { SHIP_CX } from './ship';
 import { tl } from '../i18n';
 
-export type SalvageKind = 'reactor' | 'drive' | 'lab' | 'kestrel';
+export type SalvageKind = 'reactor' | 'drive' | 'lab' | 'kestrel' | 'console' | 'loader';
 /** One machine to strip: where to stand by it (ship cells, or world metres for the Kestrel), which way it faces. */
 export interface SalvageSpot { k: SalvageKind; x: number; z: number; nx: number; nz: number }
 /** What a machine has given: parts taken, and who is working on it now (a claim, refreshed while they work). */
@@ -23,21 +23,25 @@ export const SALVAGE = {
   /** game minutes a claim holds without a beat from its worker */
   claim: 1.5,
   /** real seconds a part takes, stamina and kcal it costs */
-  secs: { reactor: 16, drive: 12, lab: 10, kestrel: 12 } as Record<SalvageKind, number>,
+  secs: { reactor: 16, drive: 12, lab: 10, kestrel: 12, console: 9, loader: 14 } as Record<SalvageKind, number>,
   stamina: 18, kcal: 60,
   /** parts in each machine */
-  parts: { reactor: 3, drive: 3, lab: 3, kestrel: 3 } as Record<SalvageKind, number>,
+  parts: { reactor: 3, drive: 3, lab: 3, kestrel: 3, console: 3, loader: 3 } as Record<SalvageKind, number>,
   /** the share of a ship's side compartments that are laboratories */
   labs: 0.55,
 };
 export const SALVAGE_NAME: Record<SalvageKind, string> = {
   reactor: tl('reactor drum'), drive: tl('drive cabinet'), lab: tl('laboratory bench'), kestrel: tl('crumpled engine of the Kestrel'),
+  console: tl('flight console'), loader: tl('cargo loader'),
 };
 
 /** What one part of each kind may give: [item, chance, min, max]. */
 export const SALVAGE_YIELD: Record<Exclude<SalvageKind, 'kestrel'>, [ItemKey, number, number, number][]> = {
   reactor: [['coil', 0.7, 1, 1], ['pcore', 0.25, 1, 1], ['scrap', 1, 3, 5], ['wire', 0.6, 2, 4], ['circuit', 0.3, 1, 2]],
   drive: [['bearing', 0.7, 1, 2], ['coil', 0.25, 1, 1], ['gears', 0.2, 1, 1], ['parts', 0.35, 1, 1], ['scrap', 1, 2, 4]],
+  // (0.273) the bridge's consoles: electronics; the cargo hold's loaders: motors, gears and hydraulics
+  console: [['circuit', 0.9, 1, 3], ['control', 0.35, 1, 1], ['inverter', 0.15, 1, 1], ['optics', 0.2, 1, 1], ['sensor', 0.08, 1, 1], ['computer', 0.06, 1, 1]],
+  loader: [['motor', 0.45, 1, 1], ['gears', 0.4, 1, 2], ['bearing', 0.25, 1, 1], ['pipes', 0.3, 1, 1], ['pump', 0.1, 1, 1], ['scrap', 1, 2, 4]],
   lab: [['pvcell', 0.6, 1, 2], ['inverter', 0.45, 1, 1], ['circuit', 0.8, 1, 3], ['optics', 0.12, 1, 1], ['control', 0.1, 1, 1], ['glass', 0.15, 1, 1]],
 };
 /** Your own ship's engine: always the same three parts, enough for the village's first power plant and a turbine. */
@@ -92,6 +96,22 @@ export function shipSalvage(map: DungeonMap, free: (x: number, z: number) => boo
       if (z - 1 < b.z + 1 || z + 1 > b.z + b.d - 2 || ![-1, 0, 1].every((o) => free(wx, z + o)) || !free(wx + (right ? -1 : 1), z)) continue;
       out.push({ k: 'lab', x: wx + 0.5 + (right ? -0.6 : 0.6), z: z + 0.5, nx: right ? -1 : 1, nz: 0 });
       break;
+    }
+  }
+  // (0.273, appended so the older machines keep their indices) the bridge's two consoles, worked from behind the
+  // seats, and a cargo loader against each side wall of every hold
+  const bridge = (map.boxes ?? []).find((b) => !b.tunnel && b.w === 17 && b.h === 5);
+  if (bridge) {
+    const cz = bridge.z + bridge.d - 2; // the console's cells (gen/ship.ts)
+    for (const x of [CX - 4, CX + 4]) if (free(x, cz - 1)) out.push({ k: 'console', x: x + 0.5, z: cz - 0.6, nx: 0, nz: -1 });
+  }
+  for (const b of map.boxes ?? []) {
+    if (b.tunnel || b.w !== 27 || b.h !== 6) continue;
+    const mz = b.z + (b.d >> 1);
+    for (const right of [false, true]) {
+      const wx = right ? b.x + b.w - 1 : b.x, sx = wx + (right ? -1 : 1);
+      if (![-1, 0, 1].every((o) => free(wx, mz + o)) || !free(sx, mz)) continue;
+      out.push({ k: 'loader', x: wx + 0.5 + (right ? -0.9 : 0.9), z: mz + 0.5, nx: right ? -1 : 1, nz: 0 });
     }
   }
   return out;
