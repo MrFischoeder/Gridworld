@@ -12,6 +12,7 @@ import { spendStamina, burn } from './survival';
 import { setHandWork } from './gather';
 import { consumeDrop, dropAtFeet, takeDrop } from './drops';
 import { play } from './sound';
+import { workedBy } from './worklocks';
 import type { Pickup } from './loot';
 import type { ToolKey } from './toolmodels';
 import { logLine, showToast } from '../ui/hud';
@@ -29,7 +30,7 @@ export function handworkTarget(): HandTarget | null {
   let best: HandTarget | null = null, bd = REACH;
   for (const p of W.pickups) {
     const w = handworkOf(tool, p.k);
-    if (!w || !ITEMS[p.k]) continue;
+    if (!w || !ITEMS[p.k] || workedBy(p.drop)) continue;
     const d = Math.hypot(p.p.x - G.pos.x, p.p.z - G.pos.z);
     if (d < bd && Math.abs(p.p.y - (G.pos.y + 0.9)) < 2.5) { bd = d; best = { p, w }; }
   }

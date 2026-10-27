@@ -3,6 +3,12 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.270.0', date: '2026-10-29', title: 'The workshop', notes: [
+    'Crafting is new. Open the backpack: beside your things and the ground there is now a Workshop with nine cells, six for materials and three for tools. Drag a log from the backpack (or lying in front of you) into a material cell and a saw into a tool cell: only a shadow of each goes in, the things stay where they are. When the cells fit a recipe, buttons appear, for example Make Planks; press it and your hero stands and works for a few seconds (the tool moves in front of the view), then the materials are used up and the product lies at your feet. The button beside it keeps making the same thing while the materials last.',
+    'Things lying on the ground can be used too. While a lying log sits in your cell it is yours: nobody else can pick it up, saw it or put it in their own cell, and the ground list shows who is working it. The claim fades by itself a few seconds after you stop (close the backpack, walk off, or finish).',
+    'Recipes so far: planks (log, saw), fire kit, hatchet and pickaxe (hammer), flask, compass, medkit, ore crates, wire, scrap, circuits, hull plating, engine and EMP (with their tools). Moving more than a couple of metres away stops the work and nothing is lost. The old blacksmith orders stay.',
+    'Multiplayer: new shared field `workclaims` (who works which lying thing); the cells and the work are yours alone, the server\'s drop decides who really gets a lying thing, so nothing doubles. `PROTOCOL` unchanged, but update the server (`install.sh`); an older one does not share the claims, so two heroes could reach for one log (the first to be served wins).',
+  ] },
   { v: '0.269.0', date: '2026-10-29', title: 'A military drop pod', notes: [
     'The fallen container has a new look: a long armoured drop pod, about seven metres, with bevelled edges, a sloped roof and keel, tapered angled nose and tail, armour bands, hazard chevrons, glowing light strips, a warped nose door, a blown-off roof hatch, an antenna, torn plates thrown round it and a wide scorched crater. It lies tilted in the ground.',
     'It is solid now: you walk round it instead of through it, and you can search it from a little further away. Multiplayer: visual and local collision only; nothing new is sent. `PROTOCOL` and the server are unchanged.',

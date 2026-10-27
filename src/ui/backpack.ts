@@ -20,7 +20,13 @@ import { slotHTML, bindSlots, itemInfo, parseId, loadText } from './slots';
 import { tl, TL } from '../i18n';
 import { THROWABLES } from '../gen/throwing';
 import { readyThrow } from '../world/throwing';
+import { packClosed } from '../world/workshop';
 
+/** (0.270) The workshop cells beside the window (ui/workshop.ts registers itself). Slot ids 'x:<cell>'. */
+export interface CraftPanel { show(on: boolean): void; render(): void; drop(from: string, to: string): string; click(id: string): string }
+let craftUi: CraftPanel | null = null;
+export function setCraftPanel(p: CraftPanel) { craftUi = p; }
+const isCraft = (id: string) => parseId(id)[0] === 'x';
 let sel: string | null = null;
 const loadEl = $('packLoad');
 const packEl = $('pack'), invEl = $('inv'), modsEl = $('mods'), gunEl = $('gunSlots'), statsEl = $('gunStats'), detailEl = $('detail'), gearEl = $('gear'), defEl = $('gearDef');
@@ -106,6 +112,7 @@ function renderPack() {
   if (sel && s && side?.act && (parseId(sel)[0] === 'p' || parseId(sel)[0] === 'h' || parseId(sel)[0] === 'k' || parseId(sel)[0] === 'o')) acts.unshift(side.act);
   detailEl.innerHTML = html + (acts.length ? '<div class="acts">' + acts.map(([a, t]) => `<button class="${a === 'drop' ? 'drop' : ''}" data-a="${a}">${t}</button>`).join('') + '</div>' : '');
   side?.render();
+  craftUi?.render();
 }
 function changed() { settleCrates(); calcStats(); refreshGunLook(); handsChanged(); saveChar(); renderPack(); } // (0.251) heaps into crates, empty crates gone
 
@@ -201,8 +208,9 @@ function quick(id: string, act: string): string {
 }
 
 bindSlots(packEl, {
-  drop(from, to) { note = side && (isSide(from) || isSide(to)) ? side.drop(from, to) : move(from, to); sel = null; if (G.packOpen) changed(); },
+  drop(from, to) { note = isCraft(from) || isCraft(to) ? craftUi!.drop(from, to) : side && (isSide(from) || isSide(to)) ? side.drop(from, to) : move(from, to); sel = null; if (G.packOpen) changed(); },
   click(id) {
+    if (isCraft(id)) { note = craftUi!.click(id); sel = null; if (G.packOpen) changed(); return; }
     if (side && isSide(id)) { note = side.click(id); sel = null; if (G.packOpen) changed(); return; }
     sel = sel === id ? null : id; renderPack();
   },
@@ -225,12 +233,12 @@ packEl.addEventListener('click', (e) => {
 export function openPack(with_?: PackSide) {
   if (!G.playing || G.packOpen || G.dlgOpen || G.xferOpen) return;
   side = with_ ?? ground; sideEl.style.display = side ? '' : 'none';
-  G.packOpen = true; G.firing = false; for (const k in G.keys) G.keys[k] = false; sel = null; renderPack(); packEl.style.display = 'flex';
+  craftUi?.show(true); G.packOpen = true; G.firing = false; for (const k in G.keys) G.keys[k] = false; sel = null; renderPack(); packEl.style.display = 'flex';
   if (document.pointerLockElement) document.exitPointerLock();
 }
 export function closePack() {
   if (!G.packOpen) return;
-  G.packOpen = false; packEl.style.display = 'none';
+  G.packOpen = false; packEl.style.display = 'none'; craftUi?.show(false); packClosed();
   const s = side; side = null; s?.close();
   if (!G.isTouch) lockPointer();
 }

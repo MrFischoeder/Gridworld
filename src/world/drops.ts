@@ -13,6 +13,7 @@ import { addItem, saveChar, handsChanged, packRoom, onCrateOverflow, settleCrate
 import { ITEMS, HANDS_ONLY, type ItemKey } from '../data/items';
 import { logLine, showToast } from '../ui/hud';
 import type { Slot } from '../save';
+import { workedBy } from './worklocks';
 import { tl, TL } from '../i18n';
 
 /** Put down while playing alone (runtime only), in the same shape as the server's. */
@@ -62,6 +63,7 @@ const eat = new Map<string, (n: number) => void>();
 export function consumeDrop(p: Pickup, then: (n: number) => void): boolean {
   if (!p.drop) { const i = W.pickups.indexOf(p); if (i < 0) return false; scene.remove(p.g); W.pickups.splice(i, 1); then(p.n ?? 1); return true; }
   const id = p.drop;
+  if (workedBy(id)) return false; // another hero's workshop has it
   if (id.startsWith('local:')) { const d = local.get(id); if (!d) return false; local.delete(id); syncDrops(true); then(d.n); return true; }
   if (p.taking && performance.now() - p.taking < 3000) return false;
   p.taking = performance.now(); eat.set(id, then);
@@ -100,7 +102,8 @@ export const dropPrompt = (p: Pickup) => {
 };
 export function takeDrop(p: Pickup) {
   if (!p.drop) { if (!grabPickup(p)) showToast(tl('No room in your backpack')); return; } // loot of your own game
-  const id = p.drop;
+  const id = p.drop, busy = workedBy(id);
+  if (busy) { showToast(TL`${busy} is working that.`); return; }
   play('pickup', { vol: 0.5 });
   if (id.startsWith('local:')) { const d = local.get(id); if (d) { local.delete(id); took(d); } return; }
   if (p.taking && performance.now() - p.taking < 3000) return; // already asked

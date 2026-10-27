@@ -46,6 +46,7 @@ import type { Lighthouse } from '../gen/lighthouses';
 import { isStreetPlacing, confirmStreetPlacing, streetPlacingHint, streetPlacingOk, nearStreetLamp, streetLampPrompt, openStreetLamp, type NearLamp } from './streetlamps';
 import { sawingHint } from './sawing';
 import { handworkTarget, handworkPrompt, updateHandwork, type HandTarget } from './handwork';
+import { updateWorkshop, working as workshopWorking, workPrompt } from './workshop';
 import { nearBridgeSign, built as bridgeBuilt, isBridgePlacing, confirmBridgePlacing, bridgePlacingHint, bridgePlacingOk } from './bridges';
 import { openBridge } from '../ui/bridge';
 import { nearPierSign, nearPierCrate, pierCrate, isPierPlacing, confirmPierPlacing, pierPlacingHint, pierPlacingOk } from './piers';
@@ -158,7 +159,7 @@ export function updateEntities(dt: number, time: number) {
   nearGate = nearDoor(); nearGun = nearGate ? null : nearTurret(); nearHD = nearGate || nearGun ? null : nearHouseDoor(); nearDesk = atShuttleDesk(); nearWk = nearGate || nearGun || nearHD || nearDesk ? null : nearWorks(); nearSt = nearGate || nearGun || nearHD || nearDesk || nearWk ? null : nearStation(); nearTerm = nearGate || nearHD ? null : nearTerminal();
   nearComms = nearSettlementComms(); nearPump = nearFuelPump(); nearSL = nearStreetLamp(); nearLH = nearLighthouse(); nearChg = nearPump === null ? nearCharger() : null; nearIns = nearInstallDesk(); nearLd = nearIns || nearVehicle ? null : nearOutpostLode(); nearPt = nearLd ? null : nearPortBoard(); nearHall = nearHallTerminal(); nearBrg = nearBridgeSign(); nearPier = nearPierSign(); nearPCrate = nearPier ? null : nearPierCrate(); nearBt = nearPier || nearPCrate ? null : nearBoat(); nearAir = nearBt ? null : nearAirship(); nearCop = nearBt || nearAir ? null : nearCopter();
   nearFogL = nearFogLocker(); nearBd = nearBody(); nearGd = G.char.loc === 'overworld' && nearGuide(); nearSur = G.char.loc === 'overworld' ? nearSurrendered() : null;
-  nearDp = nearDrop(); nearHW = handworkTarget(); if (nearHW) nearDp = nearHW.p; updateHandwork(dt, nearHW);
+  updateWorkshop(dt); nearDp = nearDrop(); nearHW = handworkTarget(); if (nearHW) nearDp = nearHW.p; updateHandwork(dt, nearHW);
   nearFl = nearFall(); nearLock2 = nearLocker(); nearRec = !nearLock2 && nearConsole(); nearData = nearCarrier();
   W.nearChest = null; W.nearPortal = null; W.nearLock = null;
   if (npcsActive()) updateNpcs(dt, time); else W.nearNpc = null;
@@ -190,7 +191,8 @@ export function updateEntities(dt: number, time: number) {
   nearGather = busy || nearFood || nearWork || nearClaim || nearCook ? null : gatherTarget();
   updateGather(dt, nearGather);
   nearWater = G.char.loc === 'overworld' && !nearFood && !nearCook && !nearWork && !nearClaim && !nearGather && !nearNpc && !nearChest && !nearBoard && !nearStash && !nearVehicle && !nearMine && !nearPow && !nearCar && !nearWork2 ? waterSource(loadedWells()) : null;
-  if (climbing()) { prompt.className = ''; prompt.textContent = tl('W / S — up or down · Space — let go'); }
+  if (workshopWorking()) { prompt.className = ''; prompt.textContent = workPrompt(); }
+  else if (climbing()) { prompt.className = ''; prompt.textContent = tl('W / S — up or down · Space — let go'); }
   else if (nearHW) { prompt.className = ''; prompt.textContent = handworkPrompt(nearHW); }
   else if (nearDp) { prompt.className = ''; prompt.textContent = dropPrompt(nearDp); }
   else if (nearRide) { prompt.className = nearRide.seat < 0 ? 'lock' : ''; prompt.textContent = ridePrompt(nearRide); }

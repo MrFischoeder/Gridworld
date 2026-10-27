@@ -76,6 +76,21 @@ label{font-size:22px;margin-top:16px;display:block}
 #dlg .panel,#pack .panel{max-height:100%;overflow-y:auto;box-sizing:border-box;scrollbar-gutter:stable}
 #pack .packrow{display:flex;gap:14px;align-items:flex-start;justify-content:center;max-height:100%;max-width:100%;min-height:0}
 #pack .panel.side{width:min(380px,100%);border-color:#4a5a2a}
+#pack .panel.craft{width:min(330px,100%);border-color:#7a5a2a;display:none}
+#pack .craft h2{color:var(--amber);text-shadow:0 0 8px rgba(255,179,71,.5);font-size:34px}
+#pack .craft .role{font-size:18px;opacity:.7}
+.grid.cells{grid-template-columns:repeat(3,minmax(0,1fr));max-width:240px}
+.slot.cell{border-style:dashed}
+.slot.cell.toolcell{border-color:#7a5a2a}
+.slot.shadow{opacity:.62;border-style:dotted;border-color:var(--amber)}
+.slot.shadow.gone{opacity:.25;border-color:#ff5a3c}
+#pack .craft .makes{margin-top:10px;font-size:20px}
+#pack .craft .mk{display:flex;gap:6px;margin-bottom:6px}
+#pack .craft .mk button{background:transparent;color:var(--amber);border:1px solid var(--amber);padding:3px 12px;font-size:20px;cursor:pointer}
+#pack .craft .cmsg{margin-top:8px;color:var(--gold);font-size:19px}
+#pack .craft details{margin-top:12px;font-size:17px;opacity:.85}
+#pack .craft .rec{margin:3px 0}
+#sideGrid .slot.off{opacity:.45;cursor:default}
 #pack .side h2{color:var(--gold);text-shadow:0 0 8px rgba(255,208,96,.6);font-size:34px}
 #pack .side .role{font-size:20px;opacity:.7}
 #pack .side.ground h2{color:var(--txt);text-shadow:none}

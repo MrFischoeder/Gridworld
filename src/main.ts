@@ -96,6 +96,7 @@ import { introOn, renderIntro } from './ui/intro';
 import { updateCrash } from './world/crashpod';
 import { updateSkyFall } from './world/skyfall';
 import { updateFallGuards } from './world/fallguards';
+import './ui/workshop';
 import { spinCarrier } from './world/datacarriers';
 import { updateFarms } from './world/farms';
 import { syncConvoyStart } from './world/convoyfuel';

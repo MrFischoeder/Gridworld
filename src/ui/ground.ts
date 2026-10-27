@@ -8,6 +8,7 @@ import { listOf } from '../character';
 import type { Pickup } from '../world/loot';
 import { grabPickup } from '../world/loot';
 import { dropAtFeet, takeDrop } from '../world/drops';
+import { workedBy } from '../world/worklocks';
 import { $ } from './hud';
 import { slotHTML, parseId } from './slots';
 import { setGroundSide, refreshPack, packSide, type PackSide } from './backpack';
@@ -29,12 +30,14 @@ export function groundNear(): Pickup[] {
     .sort((a, b) => Math.hypot(a.p.x - G.pos.x, a.p.z - G.pos.z) - Math.hypot(b.p.x - G.pos.x, b.p.z - G.pos.z))
     .slice(0, GROUND.max);
 }
-const sigOf = (ps: Pickup[]) => ps.map((p) => `${p.drop ?? p.k}:${p.n ?? 1}:${p.taking ? 1 : 0}`).join('|');
+/** The pickup shown in ground slot i (for the workshop cells). */
+export const groundPickup = (i: number): Pickup | undefined => shown[i];
+const sigOf = (ps: Pickup[]) => ps.map((p) => `${p.drop ?? p.k}:${p.n ?? 1}:${p.taking ? 1 : 0}:${workedBy(p.drop) ? 1 : 0}`).join('|');
 
 /** Picks a lying thing up: a shared drop asks the server (it arrives a moment later), loot comes at once. */
 function take(p: Pickup): string {
   const name = item(p.k).name + ((p.n ?? 1) > 1 ? ' ×' + p.n : '');
-  if (p.drop) { takeDrop(p); return TL`Picking up ${name}…`; }
+  if (p.drop) { const w = workedBy(p.drop); if (w) return TL`${w} is working that.`; takeDrop(p); return TL`Picking up ${name}…`; }
   return grabPickup(p) ? TL`Picked up ${name}.` : tl('No room for it in your backpack.');
 }
 
@@ -49,7 +52,7 @@ const ground: PackSide = {
     const n = Math.max(GROUND.min, Math.ceil((shown.length + 6) / 6) * 6); // always a free row to put things down
     el.grid.innerHTML = Array.from({ length: n }, (_, i) => {
       const p = shown[i];
-      return p ? slotHTML('f:' + i, { k: p.k, n: p.n, c: p.c, b: p.b, cls: p.taking ? 'off' : '' }) : slotHTML('f:' + i, { k: null, cls: 'empty-ground', title: tl('Drag an item here to put it down') });
+      return p ? slotHTML('f:' + i, { k: p.k, n: p.n, c: p.c, b: p.b, cls: p.taking || workedBy(p.drop) ? 'off' : '', title: workedBy(p.drop) ? TL`${workedBy(p.drop)} is working this` : undefined }) : slotHTML('f:' + i, { k: null, cls: 'empty-ground', title: tl('Drag an item here to put it down') });
     }).join('');
     el.gold.innerHTML = '';
     el.all.textContent = tl('Pick up all');

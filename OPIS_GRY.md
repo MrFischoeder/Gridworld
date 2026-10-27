@@ -1,6 +1,6 @@
 # GridWorld: opis gry, cel, plan i historia zmian
 
-Stan na wersję **0.269.0**. Ten dokument opisuje, czym jest GridWorld, jaki jest cel gry, co już w niej jest, czego jeszcze nie ma, dokąd zmierza i jak powstawała, wersja po wersji. Nazwy z gry (przedmioty, miejsca, postacie) są podane po angielsku; od 0.190 gra ma też wersję polską (wybór języka w menu głównym).
+Stan na wersję **0.270.0**. Ten dokument opisuje, czym jest GridWorld, jaki jest cel gry, co już w niej jest, czego jeszcze nie ma, dokąd zmierza i jak powstawała, wersja po wersji. Nazwy z gry (przedmioty, miejsca, postacie) są podane po angielsku; od 0.190 gra ma też wersję polską (wybór języka w menu głównym).
 
 ---
 
@@ -855,6 +855,7 @@ Pełne notatki (po angielsku) są w grze pod przyciskiem **Changelog** w menu g�
 - **0.267.0 Jeden spadek dla wszystkich.** Spadek z orbity jest teraz wspólny: gdy gracz wchodzi w nowy obszar, losowane jest (z małym prawdopodobieństwem), czy kontener zacznie spadać. Jeśli tak, wszyscy w tym miejscu słyszą ryk, widzą smugę i błysk uderzenia, słyszą huk i mogą pójść do tego samego wraku; kontener jest jeden i każdy może go przeszukać. Starszy serwer nie przekazuje nowego pola `skyfalls` – zaktualizuj go skryptem `install.sh`.
 - **0.268.0 Strzeżone wraki.** Wokół upadłego kontenera zbierają się grupy bandytów (cztery do siedmiu, z przywódcą), którzy czają się i atakują, gdy się zbliżysz – trzeba ich pokonać, żeby dostać się do skrzyni. Zabici zostają martwi dla wszystkich graczy; po odejściu i powrocie wracają tylko ci, którzy przeżyli.
 - **0.269.0 Wojskowy kontener.** Upadły kontener wygląda teraz jak duża, pancerna kapsuła desantowa (ok. 7 m): skośne krawędzie, ścięty dach i spód, zwężony nos i tył, pasy pancerza, żółto-czarne szewrony, świecące listwy, wyrwany właz, antena i porozrzucane blachy. Jest też bryłą – można go obejść, ale nie przejść na wylot.
+- **0.270.0 Warsztat.** Nowy crafting: w oknie plecaka obok plecaka i ziemi jest Warsztat z dziewięcioma komórkami – sześć na materiały, trzy na narzędzia. Przeciągasz tam kłodę (z plecaka albo leżącą przed tobą) i piłę: do komórki trafia tylko cień rzeczy, sama rzecz zostaje, gdzie była. Gdy komórki pasują do przepisu, pojawia się przycisk (np. Zrób: deski); bohater przez chwilę pracuje, po czym materiały znikają, a produkt leży przed nim. Leżąca rzecz w czyjejś komórce jest zajęta: nikt inny jej nie podniesie ani nie obrobi.
 - **0.265.1 Większa stacja.** Stacja orbitalna jest ok. 2,5 raza większa i jaśniejsza, wyraźnie widoczna na tle nieba.
 - **0.265.0 Stacja orbitalna.** Po niebie przelatuje stacja z dwóch kół na wspólnej osi (jak w filmowych stacjach kołowych): okrąża planetę co ok. 4 minuty, przecina niebo w ok. 2 minuty, znacznie szybciej niż Słońce i Księżyc, w przeciwnym kierunku. Na razie sama dekoracja; posłuży w dalszym etapie gry.
 - **0.264.1 Dym za budynkami.** Dym z rozbitego statku (i z ognisk bandytów) nie prześwituje już przez domy, mury, ruiny i inne budowle: daleka kolumna dymu jest ukryta, gdy coś litego stoi między okiem a nią.
