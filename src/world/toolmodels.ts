@@ -5,7 +5,7 @@ import * as THREE from 'three';
 import { fillMat } from './render';
 import type { ItemKey } from '../data/items';
 
-export const TOOL_KEYS = ['hatchet', 'pickaxe', 'hammer', 'saw', 'screwdriver', 'pliers', 'welder', 'torch', 'shovel'] as const;
+export const TOOL_KEYS = ['hatchet', 'pickaxe', 'hammer', 'saw', 'screwdriver', 'pliers', 'welder', 'torch', 'shovel', 'wrench'] as const;
 export type ToolKey = typeof TOOL_KEYS[number];
 export const isToolModel = (k: ItemKey | undefined): k is ToolKey => !!k && (TOOL_KEYS as readonly string[]).includes(k);
 
@@ -69,6 +69,11 @@ export function toolModel(k: ToolKey, wood: number, steel: number): THREE.Group 
       piece(g, rod(0.02, 0.018, 0.2), wood, 0, 0, -0.1);
       piece(g, rod(0.009, 0.007, 0.22, 5), steel, 0, 0, -0.31);
       piece(g, rod(0.012, 0.006, 0.06, 5), steel, 0, 0.02, -0.44, 0.5, 0, 0);
+      break;
+    case 'wrench':
+      piece(g, box(0.03, 0.022, 0.3), steel, 0, 0, -0.15);
+      piece(g, slab([[0.03, -0.28], [-0.03, -0.28], [-0.06, -0.33], [-0.04, -0.39], [-0.012, -0.36], [0.012, -0.36], [0.04, -0.39], [0.06, -0.33]], 0.026), steel, 0, 0, 0);
+      piece(g, box(0.034, 0.03, 0.09), wood, 0, 0, -0.045);
       break;
     case 'shovel':
       piece(g, box(0.1, 0.03, 0.04), wood, 0, 0, 0.02);

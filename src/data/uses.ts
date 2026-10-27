@@ -88,6 +88,7 @@ function build(): Map<ItemKey, Map<UseGroup, string[]>> {
   for (const h of HALL_SETS) use(h.fuel, tl('Fuel for'), h.fuel === 'nfuel' ? tl('the Old Enrichment Plant\'s own reactor') : tl('the power halls of the old plants'));
   use('filter', tl('Other'), tl('breathing in toxic fog (in a Gas Mask)'));
   for (const g of Object.values(GUNS)) use(g!.ammo, tl('Other'), TL`rounds for the ${g!.name}`);
+  use('wrench', tl('Other'), tl('stripping wrecks\' reactor drums, drive cabinets and laboratories, and your own ship\'s engine, for parts (carried, hold E by the machine)')); // (0.272) world/salvage.ts
   use('repairkit', tl('Repairs'), tl('the shared condition of your vehicles in the field'));
   return m;
 }

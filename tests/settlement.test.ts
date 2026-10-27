@@ -56,7 +56,7 @@ describe('new settlements and frozen saves', () => {
     const first = buildProject(s, 'power', (k) => k === 'scrap' ? 3 : 0);
     expect(first.built).toBe(false); expect(first.taken).toEqual([['scrap', 3]]);
     const rest = buildProject(s, 'power', () => 999); expect(rest.built).toBe(true);
-    expect(rest.taken).toEqual([['scrap', 9], ['wire', 8], ['circuit', 2]]);
+    expect(rest.taken).toEqual([['scrap', 9], ['wire', 8], ['circuit', 2], ['coil', 1], ['inverter', 1]]);
     expect(buildProject(s, 'power', () => 999)).toMatchObject({ taken: [], built: false });
     expect(sideStep(s)?.project).toBe('comms'); expect(projectProblem(s, 'comms')).toBe('');
     expect(tutorialStep(s)?.project).toBe('sawmill'); // (0.170) the sawmill runs on the power

@@ -37,7 +37,7 @@ export const projectDone = (s: TownState | undefined, k: Project) => !!s?.settle
 export const SETTLEMENT_START = 8;
 export const PROJECTS: Record<Project, { name: string; needs: [ItemKey, number][]; description: string }> = {
   warehouse: { name: tl('Vehicle warehouse'), needs: [['planks', 84], ['stone', 24], ['nails', 20]], description: tl('Build the plank warehouse outside the wall, wherever you stake it out, with room before its doors for the vehicles and the convoys. From then on the village stores are kept there: drive in through its wide doors and unload your vehicle at the terminal.') },
-  power: { name: tl('Village power plant'), needs: [['scrap', 12], ['wire', 8], ['circuit', 2]], description: tl('Build electricity on the marked site outside the fence. Farms work by hand until then.') },
+  power: { name: tl('Village power plant'), needs: [['scrap', 12], ['wire', 8], ['circuit', 2], ['coil', 1], ['inverter', 1]], description: tl('Build electricity on the marked site outside the fence. Farms work by hand until then. A generator needs a stator coil and a power inverter, and nobody makes them any more: the crumpled engine of your own ship still has both. Strip it with a wrench.') },
   comms: { name: tl('Satellite link'), needs: [['planks', 12], ['stone', 6], ['scrap', 4]], description: tl('Restore the receiver in the nearby communications ruin. Use its console to reconnect the satellites and receive a GPS tablet.') },
   quarry: { name: tl('Stone quarry'), needs: [['planks', 44], ['scrap', 4]], description: tl('Build stone-cutting works beside the large pile of boulders about 100 metres beyond our fence. Every village has its own quarry; it supplies building stone.') },
   mine: { name: tl('Ore mine'), needs: [['planks', 48], ['stone', 12], ['scrap', 6]], description: tl('Build a mine at the coloured rocky hollow. Only villages with a local ore seam can extract that ore.') },
@@ -166,7 +166,7 @@ export function development(s: TownState | undefined): number {
   return Math.min(6, (s?.farms ?? 0) + (projectDone(s, 'warehouse') ? 1 : 0) + (projectDone(s, 'power') ? 1 : 0) + (projectDone(s, 'quarry') || projectDone(s, 'mine') || projectDone(s, 'lumber') || s?.built ? 1 : 0));
 }
 export const housingCapacity = (s: TownState | undefined) => SETTLEMENT_START + development(s) * 8;
-export const basicSmith = ['hatchet', 'pickaxe', 'firekit', 'flask', 'saw', 'oillamp', 'lampoil', 'firebrand', 'battery', 'woodshield', 'elampkit', 'olampkit', 'lhkit', 'whkit', 'flare'] as ItemKey[];
+export const basicSmith = ['hatchet', 'pickaxe', 'firekit', 'flask', 'saw', 'oillamp', 'lampoil', 'firebrand', 'battery', 'woodshield', 'elampkit', 'olampkit', 'lhkit', 'whkit', 'flare', 'wrench'] as ItemKey[];
 export function smithAllows(s: TownState | undefined, k: ItemKey): boolean {
   if (!progressive(s)) return true;
   if (basicSmith.includes(k)) return true;

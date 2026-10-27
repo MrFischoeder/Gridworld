@@ -43,6 +43,7 @@ import { makeChest, makeHatch, setCrystalXp } from './loot';
 import { placeCrystals, clearCrystals } from './flora';
 import { decorateDungeon } from './dungeondeco';
 import { generateShip } from '../gen/ship';
+import { setWreckSalvage, clearSalvage } from './salvage';
 import { clearFires } from './cooking';
 import { clearBenches } from './benches';
 import { clearFlags, cancelPlacing } from './claims';
@@ -94,7 +95,7 @@ export function voxelObject(grid: VoxelGrid, skyY = Infinity, outline?: OutlineS
 
 /** Removes every entity of the current place (the open world also unloads its chunks and structures). */
 function clearLevel() {
-  dropCarrier(); clearMountedTurrets(); clearRobots();
+  dropCarrier(); clearMountedTurrets(); clearRobots(); clearSalvage();
   closeWorld(); leaveCave(); clearBodies(); clearCrystals(); clearFires(); clearBenches(); clearFlags(); cancelPlacing(true); cancelWhPlacing(true); cancelBridgePlacing(true); cancelFieldPlacing(true); cancelStreetPlacing(true); cancelLhPlacing(true); cancelPierPlacing(true); clearBoats(); clearAirships(); clearCopters(); clearAirHazards(); clearBases(); clearTurrets(); clearThrowing();
   if (worldGroup) { scene.remove(worldGroup); worldGroup.traverse((o) => (o as THREE.Mesh).geometry?.dispose()); worldGroup = null; }
   [...W.crystals.map((c) => c.m), ...W.pickups.map((p) => p.g), ...W.chests.map((c) => c.g), ...W.doors.map((d) => d.g), ...W.bosses.map((b) => b.g),
@@ -151,6 +152,7 @@ export function loadDungeon(arriveDir: string | null) {
   placeCrystals(map.crystals);
   W.hatch = map.hatch ? makeHatch(map.hatch) : null;
   group.add(decorateDungeon(map, (x, y, z) => !G.grid.empty(x, y, z))); // (0.241) the voxels before any door is set
+  if (wreck) setWreckSalvage(map, d.ruinId, (x, z) => G.grid.empty(x, 0, z) && !G.grid.empty(x, -1, z) && !map.chests.some((q) => q.x === x && q.z === z)); // (0.272) machines to strip
   if (map.metro) { // (0.205) the half steps up from the track's trench onto the platforms
     group.add(drawMetro(map));
     const floors = [...map.metro.steps, ...map.metro.decks]; G.floor = (x, y, z) => stepFloor(floors, x, y, z);

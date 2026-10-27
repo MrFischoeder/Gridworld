@@ -33,10 +33,10 @@ export interface PowerSpec {
   fuel?: ItemKey; burn?: number; bunker?: number;
 }
 export const POWER_SRC: Record<PowerKind, PowerSpec> = {
-  generator: { name: tl('Diesel generator'), text: tl('A generator set in a steel box: steady power while it has fuel.'), needs: [['scrap', 16], ['parts', 2], ['wire', 6], ['planks', 8]], r: 350, kw: 40, fuel: 'fuel', burn: 180, bunker: 20 },
-  wind: { name: tl('Wind turbine'), text: tl('A lattice mast with three blades: free power, as much as the wind gives.'), needs: [['planks', 20], ['scrap', 10], ['wire', 8], ['gears', 2]], r: 500, kw: 60 },
-  solar: { name: tl('Solar panels'), text: tl('Rows of old panels on frames: power by day, none at night.'), needs: [['glass', 6], ['wire', 8], ['scrap', 6], ['circuit', 2]], r: 250, kw: 45 },
-  coal: { name: tl('Coal boiler'), text: tl('A brick boiler house with a stack, burning coal: strong, steady power with a long reach.'), needs: [['stone', 20], ['scrap', 20], ['pipes', 4], ['parts', 2]], r: 700, kw: 90, fuel: 'coal', burn: 120, bunker: 20 },
+  generator: { name: tl('Diesel generator'), text: tl('A generator set in a steel box: steady power while it has fuel.'), needs: [['scrap', 16], ['parts', 2], ['wire', 6], ['planks', 8], ['coil', 1]], r: 350, kw: 40, fuel: 'fuel', burn: 180, bunker: 20 },
+  wind: { name: tl('Wind turbine'), text: tl('A lattice mast with three blades: free power, as much as the wind gives.'), needs: [['planks', 20], ['scrap', 10], ['wire', 8], ['gears', 2], ['bearing', 2], ['coil', 1]], r: 500, kw: 60 },
+  solar: { name: tl('Solar panels'), text: tl('Rows of old panels on frames: power by day, none at night.'), needs: [['glass', 6], ['wire', 8], ['scrap', 6], ['circuit', 2], ['pvcell', 4], ['inverter', 1]], r: 250, kw: 45 },
+  coal: { name: tl('Coal boiler'), text: tl('A brick boiler house with a stack, burning coal: strong, steady power with a long reach.'), needs: [['stone', 20], ['scrap', 20], ['pipes', 4], ['parts', 2], ['coil', 1], ['bearing', 1]], r: 700, kw: 90, fuel: 'coal', burn: 120, bunker: 20 },
 };
 export const POWER_KINDS = Object.keys(POWER_SRC) as PowerKind[];
 /** What each extraction draws (kW). */

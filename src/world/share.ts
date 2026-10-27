@@ -57,6 +57,7 @@ export const SHARED: Field[] = [
   { f: 'rivals', kind: 'map' }, // (0.189) the rivals' seats: names and home villages
   { f: 'fallen', kind: 'map' }, // the crew who died here: their names are not taken again
   { f: 'workclaims', kind: 'map' }, // (0.270) who is working which lying thing
+  { f: 'salvage', kind: 'map' }, // (0.272) machines stripped for parts
   { f: 'skyfalls', kind: 'map' }, // (0.267) a container fallen from orbit, one for the whole room
   { f: 'bodies', kind: 'map' }, // (0.245) their bodies, a game day where they fell
 ];

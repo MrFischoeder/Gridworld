@@ -231,6 +231,12 @@ export const ITEMS = {
   barS: { name: tl('Suppressor'), ab: 'SUP', type: 'attach', desc: 'barrel: shots are heard 78% less far, -5% damage, -5 m range', stack: 1 },
   magX: { name: tl('Extended Magazine'), ab: 'EXM', type: 'attach', desc: 'magazine: +60% capacity', stack: 1 },
   magD: { name: tl('Drum Magazine'), ab: 'DRM', type: 'attach', desc: 'magazine: +150% capacity, reloads 40% slower', stack: 1 },
+  // (0.272) the wrench that takes machines apart, and the power parts every generator needs (gen/salvage.ts)
+  wrench: { name: tl('Wrench'), ab: 'WRN', type: 'tool', desc: tl('a heavy adjustable wrench: carry it and you can strip a wreck\'s engine room, reactor drums and laboratories (and your own ship\'s crumpled engine) for parts. Hold E by the machine'), stack: 1 },
+  coil: { name: tl('Stator Coil'), ab: 'COL', type: 'mat', desc: tl('the wound heart of an old generator: copper on a laminated core, sealed in resin. Every power plant, station and generator needs them. First only from wrecks and heavy robots; a restored Old Precision Works winds new ones'), stack: 10 },
+  bearing: { name: tl('Turbine Bearing'), ab: 'BRG', type: 'mat', desc: tl('a sealed precision bearing that carries a turbine\'s shaft: wind turbines and boilers need them. From wrecks\' engine rooms and robots; later from the Old Precision Works'), stack: 10 },
+  pvcell: { name: tl('Solar Cell Sheets'), ab: 'PVC', type: 'mat', desc: tl('thin sheets of old photovoltaic cells, still clean under their film: solar panels are built of them. From wrecks\' laboratories and artillery walkers; later from the Old Optical Works'), stack: 10 },
+  inverter: { name: tl('Power Inverter'), ab: 'INV', type: 'mat', desc: tl('a sealed box that turns what a generator makes into steady current for a grid: solar and wind need them most. From wrecks\' laboratories, repair drones and your own ship; later from the Old Chip Foundry'), stack: 10 },
 } satisfies Record<string, ItemDef>;
 
 export type ItemKey = keyof typeof ITEMS;
@@ -262,6 +268,7 @@ export const BULK: Record<ItemKey, [kg: number, litres: number]> = {
   clay: [22, 10], limestone: [22, 10], lead: [24, 8], nickel: [22, 8], lumber: [14, 16], iron: [20, 8], bricks: [24, 12], cement: [25, 16], chems: [18, 16], aluminium: [8, 8], leadbar: [26, 6], batteries: [16, 10], fibre: [10, 16], wool: [8, 18], cotton: [9, 16], meat: [20, 16], motor: [30, 14], generator: [80, 40], pipes: [24, 20], gears: [26, 10], pump: [60, 30], chromite: [26, 10], rutile: [24, 10], pgmore: [22, 8], cutstone: [40, 24], advsteel: [20, 6], titanium: [12, 6], pgm: [10, 3], silicon: [10, 6], control: [8, 8], optics: [5, 6], hpe: [18, 12], computer: [16, 20], pcm: [24, 18],
   wheelL: [12, 22], wheelH: [28, 36], engine: [8, 6], evkit: [16, 12], cargodrone: [14, 30], evpack: [10, 8], turbo: [6, 5], drivetrain: [9, 6], scanner: [0.4, 0.3], eguard: [5, 4], plating: [7, 5], cannon: [25, 30], crateW: [6, 100], crateM: [6, 100], barrelW: [6, 100], barrelM: [6, 100],
   reflex: [0.3, 0.3], scope: [0.8, 1], barL: [1.2, 1], barR: [1, 0.8], barS: [0.9, 0.8], magX: [0.5, 0.4], magD: [1.2, 1],
+  wrench: [1.2, 0.6], coil: [3, 1.5], bearing: [2, 1], pvcell: [1, 2], inverter: [2.5, 2],
 };
 /** What you wear, one piece per slot: which slot, and the share of every hit it takes off (pieces multiply). */
 export type WearSlot = 'head' | 'face' | 'body' | 'gloves' | 'legs' | 'feet' | 'pack' | 'frame';
@@ -290,7 +297,7 @@ export const SHIELD: Partial<Record<ItemKey, number>> = { woodshield: 0.15, riot
 export const TWO_HANDED = new Set<ItemKey>(['blaster', 'smg', 'shotgun', 'rifle', 'spear', 'sledge', 'pickaxe', 'shovel', 'welder', ...HANDS_ONLY]);
 /** Weapons and gear Oskar sells. */
 /** Tools and building supplies: what Oskar (tools) and Zofia (supplies) charge. */
-export const TOOL_PRICE: Partial<Record<ItemKey, number>> = { hammer: 20, saw: 35, screwdriver: 10, pliers: 12, welder: 200, torch: 160, shovel: 25, turretkit: 350, bridgekit: 80, pierkit: 90 };
+export const TOOL_PRICE: Partial<Record<ItemKey, number>> = { hammer: 20, saw: 35, screwdriver: 10, pliers: 12, welder: 200, torch: 160, shovel: 25, wrench: 30, turretkit: 350, bridgekit: 80, pierkit: 90 };
 export const SUPPLY_PRICE: Partial<Record<ItemKey, number>> = { nails: 3, rope: 6, wire: 5, codelock: 120, oillamp: 45, lampoil: 8, flashlight: 160, battery: 10, firebrand: 4, flare: 12 };
 export const GEAR_PRICE: Partial<Record<ItemKey, number>> = { blaster: 150, blade: 80, pistol: 140, shotgun: 240, machete: 60, spear: 45, sledge: 70, woodshield: 50, riotshield: 220, helmet: 60, vest: 120, armour: 260, gloves: 20, trousers: 30, boots: 40, furHood: 30, furCoat: 90, furMitts: 20, furTrousers: 45, furBoots: 40, desertRobe: 35, shemagh: 15 };
 /** The backpack: how much fits (litres), the load you carry easily, and beyond `max` you are overloaded (kg). */

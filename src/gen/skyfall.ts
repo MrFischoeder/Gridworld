@@ -59,6 +59,8 @@ export function fallLoot(world: number, s: number): [string, number][] {
   if (unit(world, s, 0xfa1a) < 0.6) out.push(['parts', 1 + Math.floor(unit(world, s, 0xfa1b) * 3)]);
   if (unit(world, s, 0xfa1c) < 0.5) out.push(['medkit', 1 + Math.floor(unit(world, s, 0xfa1d) * 2)]);
   if (unit(world, s, 0xfa1e) < 0.35) out.push(['battery', 2 + Math.floor(unit(world, s, 0xfa1f) * 4)]);
+  // (0.272) now and then a power part (gen/salvage.ts)
+  if (unit(world, s, 0xfa22) < 0.4) out.push([['coil', 'bearing', 'pvcell', 'inverter'][Math.floor(unit(world, s, 0xfa23) * 4)], 1 + Math.floor(unit(world, s, 0xfa24) * 2)]);
   return out;
 }
 export const fallGold = (world: number, s: number) => 60 + Math.floor(unit(world, s, 0xfa20) * 240);

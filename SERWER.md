@@ -125,6 +125,8 @@ PORT=8517 SERVER_NAME="Mój serwer" npm run serve
 
 **Wersja 0.248 (protokół 16):** pojazdy niczyje. Lista pojazdów (`vehicles`) i ich bagażniki (pojemniki `trunk:<id>`) należą teraz do wspólnego świata: serwer przechowuje je w pliku świata i rozsyła zmiany wszystkim graczom. Każdy gracz może prowadzić każdy pojazd i zaglądać do każdego bagażnika. Pojazd porusza gra tego, kto w nim siedzi; pozostali widzą go z jej komunikatów. Gra i serwer muszą mieć tę samą wersję, więc zaktualizuj serwer skryptem `install.sh`. Po aktualizacji gracze muszą odświeżyć stronę (Ctrl+F5).
 
+**Wersja 0.272 (protokół bez zmian):** rozbiórka wraków kluczem – nowe wspólne pole `salvage` (ile części wzięto z każdej maszyny i kto ją właśnie rozbiera). Starszy serwer go nie przekazuje, więc każdy gracz widzi własny stan maszyn; zaktualizuj serwer skryptem `install.sh`.
+
 **Wersja 0.270 (protokół bez zmian):** warsztat – nowe wspólne pole `workclaims` (kto obrabia którą leżącą rzecz). Starszy serwer go nie przekazuje; zaktualizuj serwer skryptem `install.sh`.
 
 **Wersja 0.267 (protokół bez zmian):** spadki z orbity są wspólne (nowe pole `skyfalls` w `FIELDS`). Starszy serwer nie przekazuje go dalej, więc każdy gracz widzi tylko własne spadki. Zaktualizuj serwer skryptem `install.sh`.

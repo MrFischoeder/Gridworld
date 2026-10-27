@@ -189,6 +189,11 @@ export const INSTALL_WORK: Partial<Record<InstallKind, InstallWork>> = {
 };
 /** Further things an installation can make instead (picked at its desk while its bay is empty): the first is INSTALL_WORK[k]. */
 export const INSTALL_MORE: Partial<Record<InstallKind, InstallWork[]>> = {
+  // (0.272) the power parts every generator needs, which at first only the wrecks and the robots give (gen/salvage.ts)
+  precision: [{ inp: [['steel', 2], ['ancalloy', 1]], out: 'bearing', n: 4, batch: 240, hopper: 30, bay: 24, what: tl('The grinders whine and the bearings roll out sealed and greased.') },
+    { inp: [['copperbar', 3], ['ancalloy', 1], ['chems', 1]], out: 'coil', n: 3, batch: 240, hopper: 30, bay: 24, what: tl('The winding machines spin copper onto the cores and the resin baths steam.') }],
+  chips: [{ inp: [['microchip', 1], ['copperbar', 1], ['plastic', 1]], out: 'inverter', n: 2, batch: 180, hopper: 30, bay: 24, what: tl('The assembly line fits the boards into their cases and the inverters hum on test.') }],
+  optical: [{ inp: [['glass', 2], ['rareearth', 1], ['chems', 1]], out: 'pvcell', n: 4, batch: 200, hopper: 30, bay: 24, what: tl('The coating line glows blue and the cell sheets come out under their film.') }],
   // (0.147) the engine test stand builds rocket engines, once the plans for rocket propulsion are known
   aerospace: [{ inp: [['ancalloy', 2], ['precision', 2], ['ceramics', 1], ['pump', 1]], out: 'rocketeng', batch: 480, hopper: 20, bay: 4, what: tl('An engine is lowered onto the test stand and fired until the ground shakes.'), tech: 'rocketry' }],
   alloy: [{ inp: [['clay', 3], ['aluminium', 1], ['chems', 1]], out: 'ceramics', n: 2, batch: 240, hopper: 30, bay: 12, what: tl('The kiln line glows and the ceramic tiles come out white.') },

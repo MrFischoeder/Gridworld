@@ -3,6 +3,14 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.272.0', date: '2026-10-30', title: 'Wrecks stripped for power parts', notes: [
+    'A new tool: the Wrench. Carry it (backpack or hands) and stand by a machine in a crashed freighter: hold E and your hero unbolts a part every few seconds, its salvage lies at your feet. The engine room at the stern has two reactor drums and two drive cabinets, and many side compartments are now laboratories with a bench of glass cylinders. Each machine has three parts and its lit strips go dark as you take them. Nothing grows back: once the wrecks round you are stripped, they are stripped for good.',
+    'Four new power parts: Stator Coil, Turbine Bearing, Solar Cell Sheets and Power Inverter. Reactor drums give coils and power cores, drive cabinets bearings, laboratories solar cells, inverters and electronics. Heavy robots drop them now and then, and fallen containers sometimes hold one.',
+    'Every generator now needs them: the village power plant (a coil and an inverter), the Solar Farm (cells and inverters), the Wind Farm (bearings and coils), the coal station, the diesel bank, the Small Reactor, the outposts\' generators, turbines, panels and boilers, and the power plant\'s first two upgrades.',
+    'Your own ship\'s crumpled engine can be stripped once with the wrench: it holds exactly a coil, an inverter and two bearings, enough for the first village power plant. A new character finds a wrench in the ship\'s locker; the blacksmith makes one from 3 scrap and Oskar sells them.',
+    'Later the old plants make them: a restored Old Precision Works winds coils and grinds bearings, the Old Chip Foundry assembles inverters and the Old Optical Works coats solar cell sheets (pick it at the plant\'s desk, What it makes).',
+    'Multiplayer: new shared field `salvage` (the parts taken from each machine, and who is working it: a second hero is kept off while the first works). The yield of every part comes from the world seed, so it is the same on every game. `PROTOCOL` unchanged, but update the server (`install.sh`): an older one does not share the stripped machines.',
+  ] },
   { v: '0.271.0', date: '2026-10-29', title: 'A quicker workshop', notes: [
     'The recipe list in the workshop now shows first what you can make right here, from your backpack, your hands and what lies within reach, with a Prepare button that fills the cells for you; the rest say what is missing.',
     'All ×N makes as many as the materials allow in one go, also from a pile lying on the ground: the pile is taken up once, what is left of it waits on your bench between batches and is laid back down when you stop. The prompt shows how many are still to come.',

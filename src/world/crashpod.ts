@@ -162,6 +162,12 @@ export function crashSpawn(pod = myPod()): { x: number; z: number; yaw: number }
   return { x, z, yaw: Math.atan2(-(hx - x), -(hz - z)) };
 }
 const localNear = (lx: number, lz: number, d: number) => { if (!site || G.char.loc !== 'overworld') return false; if (Math.abs(G.pos.x - site.x) > 20 || Math.abs(G.pos.z - site.z) > 20) return false; const [x, z] = toLocal(G.pos.x, G.pos.z); return Math.hypot(x - lx, z - lz) < d; };
+/** (0.272) Where you stand behind the tail to strip the crumpled starboard engine with a wrench (world/salvage.ts). */
+export function kestrelEngine(): { x: number; y: number; z: number; nx: number; nz: number } | null {
+  if (!site) return null;
+  const [x, z] = crashWorld(1.5, -11.4), [fx, fz] = crashWorld(1.5, -10.4);
+  return { x, y: site.y, z, nx: fx - x, nz: fz - z };
+}
 export const nearLocker = () => localNear(LOCKER.x + 0.5, LOCKER.z, 1.4);
 export const nearConsole = () => localNear(CONSOLE.x, CONSOLE.z - 0.5, 1.5);
 
@@ -172,8 +178,8 @@ export const nearConsole = () => localNear(CONSOLE.x, CONSOLE.z - 0.5, 1.5);
 export function lockerBox() {
   const c = G.char, own = 'ship:locker:' + c.pid, key = !c.containers[own] && c.containers['ship:locker'] && !net.id ? 'ship:locker' : own;
   if (!c.containers[key]) {
-    const items: (Slot | null)[] = Array(12).fill(null); // (0.257.1) 12 slots: a hatchet and a pickaxe join the saw, so the first logs, planks and stones need no gold
-    putItems(items, 'medkit', 2); putItems(items, 'waterF', 2); putItems(items, 'bread', 3); putItems(items, 'firekit', 1); putItems(items, 'compass', 1); putItems(items, 'saw', 1); putItems(items, 'hatchet', 1); putItems(items, 'pickaxe', 1); putItems(items, 'ammoE', 40); putItems(items, 'oillamp', 1); putItems(items, 'lampoil', 2); putItems(items, 'firebrand', 4); // the ship's own cells: all the rounds you have until you find more; (0.199) a lamp for the dark
+    const items: (Slot | null)[] = Array(14).fill(null); // (0.257.1) 12 slots: a hatchet and a pickaxe join the saw, so the first logs, planks and stones need no gold
+    putItems(items, 'medkit', 2); putItems(items, 'waterF', 2); putItems(items, 'bread', 3); putItems(items, 'firekit', 1); putItems(items, 'compass', 1); putItems(items, 'saw', 1); putItems(items, 'hatchet', 1); putItems(items, 'pickaxe', 1); putItems(items, 'ammoE', 40); putItems(items, 'oillamp', 1); putItems(items, 'lampoil', 2); putItems(items, 'firebrand', 4); putItems(items, 'wrench', 1); // the ship's own cells: all the rounds you have until you find more; (0.199) a lamp for the dark; (0.272) a wrench to strip the ship's own engine for parts
     c.containers[key] = { items, gold: 0 };
   }
   return c.containers[key];

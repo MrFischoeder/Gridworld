@@ -10,8 +10,8 @@ export type ItemClass = 'raw' | 'food' | 'material' | 'industrial' | 'electrical
 export const CLASS_NAME: Record<ItemClass, string> = { raw: tl('Raw resource'), food: tl('Food & farm crop'), material: tl('Material'), industrial: tl('Industrial component'), electrical: tl('Electrical & electronic'), advanced: tl('Advanced component'), aerospace: tl('Aerospace component') };
 const SETS: [ItemClass, string[]][] = [
   ['food', ['grain', 'carrots', 'potatoes', 'fish', 'eggs', 'milk', 'meat', 'fibre', 'wool', 'cotton']],
-  ['industrial', ['parts', 'tools', 'motor', 'pump', 'gears', 'pipes', 'engine', 'plating', 'drillrig']],
-  ['electrical', ['cable', 'boards', 'circuit', 'batteries', 'generator', 'powercell', 'wire', 'control', 'hpe', 'pcm']],
+  ['industrial', ['parts', 'tools', 'motor', 'pump', 'gears', 'pipes', 'engine', 'plating', 'drillrig', 'bearing']],
+  ['electrical', ['cable', 'boards', 'circuit', 'batteries', 'generator', 'powercell', 'wire', 'control', 'hpe', 'pcm', 'coil', 'inverter', 'pvcell']],
   ['advanced', ['microchip', 'sensor', 'precision', 'automation', 'pcore', 'ancalloy', 'ceramics', 'alloy', 'optics', 'computer']],
   ['aerospace', ['aerocomp', 'avionics', 'lifesup', 'rocketeng']],
   ['material', ['steel', 'copperbar', 'plastic', 'glass', 'iron', 'bricks', 'cement', 'chems', 'aluminium', 'leadbar', 'silicon', 'composite', 'lumber', 'cloth', 'fuel', 'propellant', 'nfuel', 'planks', 'nails', 'rope', 'scrap', 'meds', 'tech']],

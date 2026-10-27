@@ -40,11 +40,11 @@ export interface StationSpec {
   needs: [ItemKey, number][]; fee: number; xp: number;
 }
 export const STATIONS: Record<StationKind, StationSpec> = {
-  solarfarm: { name: tl('Solar Farm'), blurb: tl('rows of panels: power by day, none at night'), kw: 70, needs: [['scrap', 12], ['wire', 12], ['circuit', 6], ['planks', 10]], fee: 500, xp: 120 },
-  windfarm: { name: tl('Wind Farm'), blurb: tl('three turbines: power as the wind blows'), kw: 80, needs: [['scrap', 20], ['wire', 10], ['planks', 20], ['engine', 1], ['gears', 2]], fee: 650, xp: 140 },
-  coalplant: { name: tl('Coal Power Station'), blurb: tl('a boiler and a turbine: steady power while it has coal'), kw: 140, fuel: 'coal', burn: 120, needs: [['stone', 10], ['bricks', 20], ['cement', 8], ['scrap', 20], ['planks', 16], ['engine', 1], ['generator', 1], ['pump', 1], ['cutstone', 10]], fee: 900, xp: 200 },
-  dieselbank: { name: tl('Diesel Generator Bank'), blurb: tl('four big generators: steady power while it has fuel'), kw: 110, fuel: 'fuel', burn: 150, needs: [['scrap', 16], ['engine', 2], ['wire', 6], ['generator', 2]], fee: 800, xp: 180 },
-  reactor: { name: tl('Small Reactor'), blurb: tl('a sealed reactor under a concrete dome: a great deal of steady power while its core holds fuel rods'), kw: 250, fuel: 'nfuel', burn: 5760, bunker: 4, tech: 'enrichment', needs: [['steel', 12], ['alloy', 6], ['cable', 8], ['circuit', 10], ['pcore', 2], ['cement', 20], ['pcm', 2]], fee: 2000, xp: 500 },
+  solarfarm: { name: tl('Solar Farm'), blurb: tl('rows of panels: power by day, none at night'), kw: 70, needs: [['scrap', 12], ['wire', 12], ['circuit', 6], ['planks', 10], ['pvcell', 8], ['inverter', 2]], fee: 500, xp: 120 },
+  windfarm: { name: tl('Wind Farm'), blurb: tl('three turbines: power as the wind blows'), kw: 80, needs: [['scrap', 20], ['wire', 10], ['planks', 20], ['engine', 1], ['gears', 2], ['bearing', 3], ['coil', 3]], fee: 650, xp: 140 },
+  coalplant: { name: tl('Coal Power Station'), blurb: tl('a boiler and a turbine: steady power while it has coal'), kw: 140, fuel: 'coal', burn: 120, needs: [['stone', 10], ['bricks', 20], ['cement', 8], ['scrap', 20], ['planks', 16], ['engine', 1], ['generator', 1], ['pump', 1], ['cutstone', 10], ['coil', 2], ['bearing', 1]], fee: 900, xp: 200 },
+  dieselbank: { name: tl('Diesel Generator Bank'), blurb: tl('four big generators: steady power while it has fuel'), kw: 110, fuel: 'fuel', burn: 150, needs: [['scrap', 16], ['engine', 2], ['wire', 6], ['generator', 2], ['coil', 2]], fee: 800, xp: 180 },
+  reactor: { name: tl('Small Reactor'), blurb: tl('a sealed reactor under a concrete dome: a great deal of steady power while its core holds fuel rods'), kw: 250, fuel: 'nfuel', burn: 5760, bunker: 4, tech: 'enrichment', needs: [['steel', 12], ['alloy', 6], ['cable', 8], ['circuit', 10], ['pcore', 2], ['cement', 20], ['pcm', 2], ['coil', 4], ['inverter', 2]], fee: 2000, xp: 500 },
 };
 /** Stations per village; the most crates a bunker holds. */
 export const STATION_SLOTS = 2, BUNKER = 30;
