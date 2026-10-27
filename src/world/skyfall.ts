@@ -6,7 +6,8 @@
 // container). Console `meteor` brings one at once.
 import * as THREE from 'three';
 import { G } from '../game';
-import { scene, camera, lineMat, fillMat, V } from './render';
+import { scene, camera } from './render';
+import { PropBatch } from './props';
 import { OW, groundAt } from './overworld';
 import { play } from './sound';
 import { seen } from './weather';
@@ -48,27 +49,63 @@ function project(s: THREE.Sprite, p: { x: number; y: number; z: number }, size: 
 }
 
 // the containers lying on the ground (by record id)
-interface Crate { id: string; x: number; y: number; z: number; g: THREE.Group; col: Column; seen: boolean }
+interface Crate { id: string; x: number; y: number; z: number; yaw: number; g: THREE.Group; col: Column; seen: boolean }
 const crates = new Map<string, Crate>();
 let viewT = 0, syncT = 0, lastCell = '';
 /** What this game has already played of each fall (id → 1 streak begun, 2 impact flared, 3 boom heard). */
 const played = new Map<string, number>();
 let flare = 0, flareAt: THREE.Vector3 | null = null;
 
+/** (0.269) A military drop pod: a long armoured container, its edges bevelled and its nose and tail tapered, ribbed
+ *  with armour bands, hazard chevrons and light strips, the roof hatch blown off, lying tilted in its scorched crater.
+ *  Model frame: x along it, z across, y up. About 7.4 m long, 2.8 m high. */
 function crateModel(): THREE.Group {
-  const g = new THREE.Group();
-  const box = (w: number, h: number, d: number, x: number, y: number, z: number, rz = 0) => {
-    const geo = new THREE.BoxGeometry(w, h, d);
-    const m = new THREE.Mesh(geo, fillMat(0x1a0d04)); m.position.set(x, y, z); m.rotation.z = rz;
-    const l = new THREE.LineSegments(new THREE.EdgesGeometry(geo), lineMat(0xffb060)); l.position.copy(m.position); l.rotation.copy(m.rotation);
-    g.add(m, l);
-  };
-  box(2.6, 1.5, 1.5, 0, 0.55, 0, 0.14); // the shipping container, tilted in its crater
-  box(0.5, 0.3, 1.6, -1.1, 1.35, 0); // buckled lid
+  const pb = new PropBatch(), HULL = 0xffa050, RIB = 0xffd060, LIGHT = 0x7dffc8, SCORCH = 0xb07040;
+  type Pt = number[];
+  const quad = (x: number, hw: number, y0: number, y1: number, hw1 = hw): Pt[] => [[x, y0, -hw], [x, y0, hw], [x, y1, hw1], [x, y1, -hw1]];
+  const loft = (xa: number, ha: number, ya0: number, ya1: number, xb: number, hb: number, yb0: number, yb1: number, c = HULL) =>
+    pb.solid8(quad(xa, ha, ya0, ya1), quad(xb, hb, yb0, yb1), c);
+  // the body: a straight middle, a bevelled roof and keel, and angled noses
+  loft(-2.6, 1.3, 0.55, 2.0, 2.6, 1.3, 0.55, 2.0);              // middle
+  loft(2.6, 1.3, 0.55, 2.0, 3.7, 0.85, 0.95, 1.65);             // nose, narrowing and dropping
+  loft(-2.6, 1.3, 0.55, 2.0, -3.7, 0.85, 0.95, 1.65);           // tail
+  // the roof and keel bevels: the top face steps in under a sloped shoulder, the belly tucks up
+  pb.solid8([[-2.6, 2.0, -1.3], [2.6, 2.0, -1.3], [2.6, 2.0, 1.3], [-2.6, 2.0, 1.3]], [[-2.2, 2.5, -0.8], [2.2, 2.5, -0.8], [2.2, 2.5, 0.8], [-2.2, 2.5, 0.8]], HULL);
+  pb.solid8([[-2.6, 0.55, -1.3], [2.6, 0.55, -1.3], [2.6, 0.55, 1.3], [-2.6, 0.55, 1.3]], [[-2.2, 0.2, -0.85], [2.2, 0.2, -0.85], [2.2, 0.2, 0.85], [-2.2, 0.2, 0.85]], HULL);
+  // armour bands round the middle, standing proud of the skin
+  for (const x of [-2.2, -0.9, 0.9, 2.2]) loft(x - 0.12, 1.4, 0.45, 2.1, x + 0.12, 1.4, 0.45, 2.1, RIB);
+  // chamfered corner posts (angled braces) at each end of the middle
+  for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
+    pb.line(RIB, [sx * 2.6, 0.55, sz * 1.3], [sx * 3.1, 1.0, sz * 1.0], [sx * 3.1, 1.6, sz * 1.0], [sx * 2.6, 2.0, sz * 1.3]);
+  }
+  // hazard chevrons and light strips down the flanks
+  for (const sz of [-1, 1]) {
+    for (let i = -3; i <= 3; i++) pb.line(RIB, [i * 0.7 - 0.25, 0.85, sz * 1.32], [i * 0.7 + 0.1, 1.25, sz * 1.32], [i * 0.7 - 0.25, 1.65, sz * 1.32]);
+    pb.line(LIGHT, [-2.4, 1.85, sz * 1.32], [2.4, 1.85, sz * 1.32]);
+    pb.line(LIGHT, [-2.4, 0.7, sz * 1.32], [2.4, 0.7, sz * 1.32]);
+    pb.line(HULL, [-2.0, 0.55, sz * 1.31], [-2.0, 2.0, sz * 1.31], [-0.4, 2.0, sz * 1.31]); // a service hatch outline
+  }
+  // the nose door, ajar and warped, with its lock plates
+  pb.solid8([[3.7, 0.95, -0.85], [3.7, 0.95, 0.0], [3.7, 1.65, 0.0], [3.7, 1.65, -0.85]], [[3.85, 0.95, -0.95], [3.85, 0.95, -0.1], [3.85, 1.65, -0.1], [3.85, 1.65, -0.95]], RIB);
+  pb.line(LIGHT, [3.72, 1.3, 0.1], [3.72, 1.3, 0.8]);
+  // the roof hatch torn off: a slab thrown up and over, with the crack it left
+  pb.solid8([[0.4, 2.55, -0.6], [1.6, 2.7, -0.6], [1.6, 2.7, 0.6], [0.4, 2.55, 0.6]], [[0.4, 2.7, -0.6], [1.6, 2.95, -0.6], [1.6, 2.95, 0.6], [0.4, 2.7, 0.6]], HULL);
+  pb.line(SCORCH, [-0.4, 2.5, -0.5], [0.1, 2.5, 0.0], [-0.3, 2.5, 0.6]);
+  // an antenna mast and a flat sensor dish on the roof
+  pb.line(LIGHT, [-1.6, 2.5, 0.3], [-1.6, 3.6, 0.3]);
+  pb.line(LIGHT, [-1.9, 3.6, 0.3], [-1.3, 3.6, 0.3]);
+  // torn plates thrown round it, each leaning at its own angle
+  for (let i = 0; i < 7; i++) {
+    const a = i * 2.4 + 0.5, d = 5.2 + (i % 3) * 1.2, cx = Math.cos(a) * d, cz = Math.sin(a) * d, w = 0.5 + (i % 4) * 0.25, lean = 0.2 + (i % 3) * 0.25;
+    const dx = Math.cos(a) * w, dz = Math.sin(a) * w;
+    pb.solid8([[cx - dz, 0, cz + dx], [cx + dz, 0, cz - dx], [cx + dz + dx * lean, 0.12, cz - dx + dz * lean], [cx - dz + dx * lean, 0.12, cz + dx + dz * lean]],
+      [[cx - dz, 0.9 * w, cz + dx], [cx + dz, 0.9 * w, cz - dx], [cx + dz + dx * lean, 0.9 * w + 0.1, cz - dx + dz * lean], [cx - dz + dx * lean, 0.9 * w + 0.1, cz + dx + dz * lean]], HULL);
+  }
   // a ring of thrown earth
-  const pts: THREE.Vector3[] = [];
-  for (let i = 0; i < 28; i++) { const a = i / 28 * 6.283, b = (i + 1) / 28 * 6.283, r = 5 + Math.sin(i * 2.3) * 0.8; pts.push(V(Math.cos(a) * r, 0.1, Math.sin(a) * r), V(Math.cos(b) * r, 0.1, Math.sin(b) * r)); }
-  g.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(pts), lineMat(0xb07040)));
+  for (let i = 0; i < 32; i++) { const a = i / 32 * 6.283, c = (i + 1) / 32 * 6.283, r = 7.5 + Math.sin(i * 2.3) * 1.1; pb.seg(SCORCH, [Math.cos(a) * r, 0.1, Math.sin(a) * r], [Math.cos(c) * r, 0.1, Math.sin(c) * r]); }
+  const g = new THREE.Group(), body = pb.build();
+  body.rotation.z = 0.12; body.rotation.x = 0.05; // pitched into its crater
+  g.add(body);
   return g;
 }
 
@@ -79,9 +116,9 @@ function dropCrate(id: string) {
 function showCrate(r: SkyFall) {
   const y = groundAt(r.x, r.z);
   if (!Number.isFinite(y)) return;
-  const g = crateModel(); g.position.set(r.x, y, r.z); g.rotation.y = (r.x * 7.1 + r.z * 3.3) % 6.28;
+  const yaw = (r.x * 7.1 + r.z * 3.3) % 6.28, g = crateModel(); g.position.set(r.x, y, r.z); g.rotation.y = yaw;
   const col = makeColumn(WRECK_SMOKE); scene.add(g, col.g);
-  crates.set(r.id, { id: r.id, x: r.x, y, z: r.z, g, col, seen: true });
+  crates.set(r.id, { id: r.id, x: r.x, y, z: r.z, yaw, g, col, seen: true });
 }
 
 const boxId = (r: SkyFall) => 'fall:' + r.id;
@@ -197,10 +234,20 @@ export function updateSkyFall(dt: number) {
 }
 addGlows((out) => { for (const c of crates.values()) out.push({ x: c.x, y: c.y + 1, z: c.z, c: 0xff8a30, s: 0.07, a: 0.9, far: 2500 }); });
 
+/** (0.269) The container is solid: a box 7.4 m long and 2.6 m wide, 2.5 m high, lying along its yaw. */
+export function fallHit(x: number, y: number, z: number, r: number): boolean {
+  for (const c of crates.values()) {
+    const dx = x - c.x, dz = z - c.z;
+    if (Math.abs(dx) > 5 || Math.abs(dz) > 5 || y > c.y + 2.5) continue;
+    const co = Math.cos(c.yaw), si = Math.sin(c.yaw), lx = dx * co - dz * si, lz = dx * si + dz * co;
+    if (Math.abs(lx) < 3.7 + r && Math.abs(lz) < 1.3 + r) return true;
+  }
+  return false;
+}
 /** The container within reach, if any. */
 function nearest(): Crate | null {
   if (G.char.loc !== 'overworld') return null;
-  for (const c of crates.values()) if (Math.hypot(c.x - G.pos.x, c.z - G.pos.z) < FALL.reach + 2 && Math.abs(c.y - G.pos.y) < 3) return c;
+  for (const c of crates.values()) if (Math.hypot(c.x - G.pos.x, c.z - G.pos.z) < FALL.reach + 4.5 && Math.abs(c.y - G.pos.y) < 3) return c;
   return null;
 }
 export const nearFall = () => !!nearest();

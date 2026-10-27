@@ -3,6 +3,10 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.269.0', date: '2026-10-29', title: 'A military drop pod', notes: [
+    'The fallen container has a new look: a long armoured drop pod, about seven metres, with bevelled edges, a sloped roof and keel, tapered angled nose and tail, armour bands, hazard chevrons, glowing light strips, a warped nose door, a blown-off roof hatch, an antenna, torn plates thrown round it and a wide scorched crater. It lies tilted in the ground.',
+    'It is solid now: you walk round it instead of through it, and you can search it from a little further away. Multiplayer: visual and local collision only; nothing new is sent. `PROTOCOL` and the server are unchanged.',
+  ] },
   { v: '0.268.0', date: '2026-10-29', title: 'Guarded wrecks', notes: [
     'Bandits now gather round a fallen container: two small groups of four to seven in all, a boss among them, who lie in wait and attack when you come near. Clear them to reach the crate. They stand at their posts while anyone is close, and the ones you kill stay dead for everyone; if you leave and come back, only the survivors return.',
     'Multiplayer: the first game with a player near the wreck puts the bandits there (like the other foes, the rest see them through the usual foe snapshots); the number still alive is kept in the shared fall record. `PROTOCOL` unchanged; the server already carries `skyfalls` since 0.267.',
