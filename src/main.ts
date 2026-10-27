@@ -57,7 +57,7 @@ import { updateContracts } from './ui/contracts';
 import { regionRoads } from './gen/roads';
 import { generateQuest } from './gen/quests';
 import { poisNear, nearX } from './gen/regions';
-import { sky, horizon, updateSky, shapeHorizon } from './world/sky';
+import { sky, horizon, updateSky, shapeHorizon, hazeHorizon } from './world/sky';
 import { updateLight, setDrivingHook, addLights } from './world/light';
 import { LIGHT } from './gen/darkness';
 import { fireSpots } from './world/cooking';
@@ -85,7 +85,7 @@ import { toggleMap } from './ui/worldmap';
 import { initInput } from './ui/input';
 import { initTouch } from './ui/touch';
 import { initMenu, showMenu } from './ui/menu';
-import { farPeaks, updateFarPeaks } from './world/farpeaks';
+import { farPeaks, updateFarPeaks, hazeFarPeaks } from './world/farpeaks';
 import { updateHouseDoors } from './world/housedoors';
 import { updateWallGuns } from './world/wallguns';
 import { updateWorks } from './world/works';
@@ -315,7 +315,7 @@ function frame(now: number) {
   camera.rotation.set(G.pitch + (sw?.pitch ?? 0) + (rc?.up ?? 0), G.yaw + (sw?.yaw ?? 0) + (rc?.side ?? 0), (sw?.roll ?? 0) + (sw ? downView().roll : 0)); // (0.227) lying on a side after a fall
   updateSoundFrame(dt);
   updateWeather(dt, sky.visible);
-  if (sky.visible) { sky.position.set(camera.position.x, camera.position.y - 20, camera.position.z); horizon.position.set(camera.position.x, 0, camera.position.z); shapeHorizon(camera.position.x, camera.position.z); updateSky(G.char.time, latitude(G.pos.z)); tintBiome(); tintToxic(); updateFarPeaks(camera.position); } else farPeaks.visible = false;
+  if (sky.visible) { sky.position.set(camera.position.x, camera.position.y - 20, camera.position.z); shapeHorizon(camera.position); updateSky(G.char.time, latitude(G.pos.z)); tintBiome(); tintToxic(); hazeHorizon(); hazeFarPeaks(fog.color); updateFarPeaks(camera.position); } else farPeaks.visible = false;
   // A sanctuary spans hundreds of metres: give it room in clear weather while preserving dense fog.
   const monumentView = sky.visible && (nearMegalith(G.pos.x, G.pos.z) || nearColossus(G.pos.x, G.pos.z)); // (0.275) and the colossi
   if (monumentView && !G.fly && seen.fog < .45 && toxicHere() < .3) { fog.near *= 1.8; fog.far *= 2.5; }

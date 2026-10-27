@@ -3,6 +3,13 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.276.1', date: '2026-10-30', title: 'Natural distant mountains', notes: [
+    'The decorative mountain ranges on the horizon no longer stand in front of the land: every real hill, tree and building now covers them, as it should for mountains far away.',
+    'They sit just under your eye wherever you are, instead of floating high above or sinking low depending on the ground\'s height.',
+    'Their ridges rise and fall in long, irregular swells instead of a regular saw, and they fade into the haze of the air (paler by day, dark by night).',
+    'Over the sea they sink away smoothly instead of ending in sheer black walls, and the silhouettes of the real mountains slope down to the horizon where they end.',
+    'Multiplayer: what you see on your own screen only; nothing is sent.',
+  ] },
   { v: '0.276.0', date: '2026-10-30', title: 'Winged sphinxes', notes: [
     'The sphinxes have a real lion\'s body now: rounded hindquarters with the hind thighs folded along them and their paws on the ground, a ridged spine rising to broad shoulders, front legs with upper arms and elbows, great paws with four toes and claws, and a tail curled round to a tuft.',
     'Every sphinx carries a pair of great stone wings folded along its flanks, the wrist arching over its head and the long flight feathers sweeping back to raised tips behind the rump: a rolled leading edge, rows of rounded coverts, and notched feather tips along the trailing edge.',

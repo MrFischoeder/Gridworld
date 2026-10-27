@@ -85,6 +85,8 @@ export const sky = (() => {
   sun.add(disc, new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(sp), lineMat(0xfff0a0, { fog: false })));
   sunDisc = disc.material as THREE.MeshBasicMaterial; moonFill = globe.children[0] as THREE.Mesh;
   grp.add(dome, moon, sun, station);
+  // (0.277) the sun, the moon, the stars and the station come before the distant ranges, which are painted over them
+  grp.traverse((o) => { if (o !== dome) o.renderOrder = -8; });
   grp.visible = false; scene.add(grp); return grp;
 })();
 
@@ -148,30 +150,48 @@ export function darkSky() { (scene.background as THREE.Color).set(0x000000); fog
 
 /**
  * Distant mountains: two jagged rings that travel with the player, so they always sit on the horizon.
- * Their shape comes from the world seed. Dark fill hides the stars behind them; lines are dimmed by distance.
+ * Their shape comes from the world seed. (0.277, the owner's report: they stood out unnaturally and in front of the
+ * land) They are a backdrop now: drawn right after the sky without the depth test, so every real hill, tree and
+ * building covers them; set below the eye wherever you stand (not at the world's height 0); their ridges rise and
+ * fall in long irregular swells; and they fade into the haze by distance (`hazeHorizon`).
  */
 export const horizon = new THREE.Group();
 horizon.visible = false; scene.add(horizon);
 let horizonWorld = -1;
-interface Ring { radius: number; h: number[]; fill: THREE.BufferGeometry; lines: THREE.BufferGeometry }
+interface Ring { radius: number; h: number[]; fill: THREE.BufferGeometry; lines: THREE.BufferGeometry; fm: THREE.MeshBasicMaterial; lm: THREE.LineBasicMaterial; line: THREE.Color; haze: number }
 let rings: Ring[] = [], shapedAt: [number, number] | null = null;
 const BASE_LAND = -6, BASE_SEA = 0.5;
+/** How far below the eye the ranges' ground lies: on land, and out on the water. */
+const DROP_LAND = 12, DROP_SEA = 2;
 let shapedLow = false;
+const backdrop = <T extends THREE.Material>(m: T) => { m.depthTest = false; m.depthWrite = false; (m as unknown as { fog: boolean }).fog = false; return m; };
 export function buildHorizon(world: number) {
   if (horizonWorld === world) return;
   horizonWorld = world; shapedAt = null;
   horizon.traverse((o) => (o as THREE.Mesh).geometry?.dispose());
   horizon.clear(); rings = [];
   const R = rng(hash(world, 0x4a1b));
-  const ring = (radius: number, hMin: number, hMax: number, n: number, color: number) => {
-    const h: number[] = [];
-    for (let i = 0; i < n; i++) h.push(i % 2 === 0 ? hMin + R() * (hMax - hMin) : hMin * (0.3 + R() * 0.4));
-    const r: Ring = { radius, h, fill: new THREE.BufferGeometry(), lines: new THREE.BufferGeometry() };
+  const ring = (radius: number, hMin: number, hMax: number, n: number, color: number, haze: number, order: number) => {
+    // long swells (a few ranges round the horizon), peaks and saddles on them, and a little roughness
+    const p1 = R() * 6.283, p2 = R() * 6.283, p3 = R() * 6.283, h: number[] = [];
+    for (let i = 0; i < n; i++) {
+      const a = i / n * 6.283, swell = 0.5 + 0.3 * Math.sin(a * 2 + p1) + 0.2 * Math.sin(a * 5 + p2) + 0.1 * Math.sin(a * 11 + p3);
+      const peak = (i % 2 === 0 ? 1 : 0.55 + R() * 0.3) * (0.75 + R() * 0.25);
+      h.push(hMin + (hMax - hMin) * Math.max(0, Math.min(1, swell)) * peak);
+    }
+    const fm = backdrop(fillMat(0x000000)), lm = backdrop(lineMat(color));
+    const r: Ring = { radius, h, fill: new THREE.BufferGeometry(), lines: new THREE.BufferGeometry(), fm, lm, line: new THREE.Color(color), haze };
     rings.push(r); shapeRing(r, h.map(() => 1));
-    horizon.add(new THREE.Mesh(r.fill, noFog(fillMat(0x000000))), new THREE.LineSegments(r.lines, lineMat(color, { fog: false })));
+    const mesh = new THREE.Mesh(r.fill, fm), ls = new THREE.LineSegments(r.lines, lm);
+    mesh.renderOrder = order; ls.renderOrder = order + 0.1; mesh.frustumCulled = ls.frustumCulled = false;
+    horizon.add(mesh, ls);
   };
-  ring(162, 26, 48, 48, 0x1a8a3c); // far range, dimmer
-  ring(150, 12, 26, 64, 0x26b050); // nearer foothills
+  ring(162, 10, 40, 72, 0x1a8a3c, 0.62, -7); // far range, the hazier
+  ring(150, 4, 20, 96, 0x26b050, 0.42, -6); // nearer foothills
+}
+/** (0.277) The ranges take the air's colour: the further, the paler by day (at night the fog is black, so are they). */
+export function hazeHorizon() {
+  for (const r of rings) { r.fm.color.copy(fog.color).multiplyScalar(r.haze); r.lm.color.copy(r.line).lerp(fog.color, r.haze); }
 }
 /** Lay out a ring's geometry with each ridge point's height scaled by f (0 = sunk below the horizon). */
 function shapeRing(r: Ring, f: number[], BASE = BASE_LAND) {
@@ -179,14 +199,14 @@ function shapeRing(r: Ring, f: number[], BASE = BASE_LAND) {
   for (let i = 0; i < n; i++) { const a = i / n * 6.283; ridge.push([Math.cos(a) * r.radius, BASE + (r.h[i] - BASE) * f[i], Math.sin(a) * r.radius]); }
   for (let i = 0; i < n; i++) {
     // over the sea (both ends sunk) nothing is drawn: seen from a boat, the sunk fill would stand dark above the water
-    if (f[i] + f[(i + 1) % n] < 0.7) continue;
-    const p = ridge[i], q = ridge[(i + 1) % n], pb = [p[0], BASE, p[2]], qb = [q[0], BASE, q[2]];
+    if (f[i] + f[(i + 1) % n] < 0.08) continue;
+    const p = ridge[i], q = ridge[(i + 1) % n], pb = [p[0], BASE - 30, p[2]], qb = [q[0], BASE - 30, q[2]];
     tri.push(...pb, ...qb, ...q, ...pb, ...q, ...p);
     lines.push(...p, ...q);
-    // facets: from every peak down to the valley on either side, stopping halfway down
-    if (i % 2 === 0) {
+    // facets: from every peak down towards the saddle on either side, stopping partway
+    if (i % 2 === 0 && f[i] > 0.5) {
       for (const o of [-1, 1]) {
-        const v = ridge[(i + o + n) % n], m = [(p[0] + v[0]) / 2 * 1.01, BASE + (v[1] - BASE) * 0.4, (p[2] + v[2]) / 2 * 1.01];
+        const v = ridge[(i + o + n) % n], m = [(p[0] + v[0]) / 2, p[1] + (v[1] - p[1]) * 0.5 - (p[1] - BASE) * 0.25, (p[2] + v[2]) / 2];
         lines.push(...p, ...m);
       }
     }
@@ -194,16 +214,24 @@ function shapeRing(r: Ring, f: number[], BASE = BASE_LAND) {
   r.fill.setAttribute('position', new THREE.Float32BufferAttribute(tri, 3)); r.fill.computeBoundingSphere();
   r.lines.setAttribute('position', new THREE.Float32BufferAttribute(lines, 3)); r.lines.computeBoundingSphere();
 }
-/** Over the sea there are no distant ranges: the rings sink where the land a few kilometres off is sea (reshaped every 250 m). */
-export function shapeHorizon(x: number, z: number) {
-  // out on the sea (a boat) the ranges stand on the water's horizon, not below it
+/**
+ * Over the sea there are no distant ranges: the rings sink smoothly where the land a few kilometres off is sea
+ * (reshaped every 250 m), and they sit below the eye wherever you are (every frame: `cam`).
+ */
+export function shapeHorizon(cam: { x: number; y: number; z: number }) {
+  const x = cam.x, z = cam.z;
+  // out on the sea (a boat) the ranges stand on the water's horizon, just under the eye
   const low = seaMask(horizonWorld, x, z) > 0.2;
+  horizon.position.set(x, cam.y - (low ? DROP_SEA : DROP_LAND), z);
   if (shapedAt && Math.hypot(x - shapedAt[0], z - shapedAt[1]) < 250 && low === shapedLow) return;
   shapedAt = [x, z]; shapedLow = low;
-  for (const r of rings) shapeRing(r, r.h.map((_, i) => {
-    const a = i / r.h.length * 6.283; // ring point (cos a, sin a) lies towards +x/+z in world space
-    let wet = 0;
-    for (const d of [900, 2000, 3500]) if (seaMask(horizonWorld, x + Math.cos(a) * d, z + Math.sin(a) * d) > 0.3) wet++;
-    return 1 - wet / 3;
-  }), low ? BASE_SEA : BASE_LAND);
+  for (const r of rings) {
+    let f = r.h.map((_, i) => {
+      const a = i / r.h.length * 6.283; // ring point (cos a, sin a) lies towards +x/+z in world space
+      const ds = [700, 1400, 2200, 3000, 3800];
+      return 1 - ds.filter((d) => seaMask(horizonWorld, x + Math.cos(a) * d, z + Math.sin(a) * d) > 0.3).length / ds.length;
+    });
+    for (let pass = 0; pass < 3; pass++) f = f.map((v, i) => 0.25 * f[(i + f.length - 1) % f.length] + 0.5 * v + 0.25 * f[(i + 1) % f.length]); // no cliffs at the coast
+    shapeRing(r, f, low ? BASE_SEA : BASE_LAND);
+  }
 }

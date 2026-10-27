@@ -13,7 +13,12 @@ export const farPeaks = new THREE.Group();
 farPeaks.visible = false; scene.add(farPeaks);
 let at = { x: NaN, y: NaN, z: NaN, world: -1, wet: false };
 const noFog = <T extends THREE.Material>(m: T) => { (m as unknown as { fog: boolean }).fog = false; return m; };
-const lineGreen = noFog(lineMat(0x3ad866)), lineSnow = noFog(lineMat(0xbfffe8)), fill = noFog(fillMat(0x000000));
+// (0.277) a backdrop like the sky's ranges (world/sky.ts): no depth test, drawn just after them, so the real land covers it, and hazed by the air
+const backdrop = <T extends THREE.Material>(m: T) => { m.depthTest = false; m.depthWrite = false; return noFog(m); };
+const GREEN = new THREE.Color(0x3ad866), SNOW = new THREE.Color(0xbfffe8), HAZE = 0.45;
+const lineGreen = backdrop(lineMat(0x3ad866)), lineSnow = backdrop(lineMat(0xbfffe8)), fill = backdrop(fillMat(0x000000));
+/** The silhouettes take a little of the air's colour (paler by day). */
+export function hazeFarPeaks(fog: THREE.Color) { fill.color.copy(fog).multiplyScalar(HAZE * 1.1); lineGreen.color.copy(GREEN).lerp(fog, HAZE); lineSnow.color.copy(SNOW).lerp(fog, HAZE); }
 
 function rebuild(x: number, y: number, z: number) {
   const T = OW.terrain!, w = T.world, eye = y + 1.6;
@@ -34,6 +39,11 @@ function rebuild(x: number, y: number, z: number) {
     }
     top.push(best !== null && best > 0.01 ? best : null); snow.push(hi > 115); // only what rises above the horizon
   }
+  // (0.277) where the mountains end the ridge slopes down to the horizon (no sheer walls), and it is smoothed a little
+  const at0 = top.slice(), FLOOR = -0.004;
+  for (let i = 0; i < N; i++) if (at0[i] === null && (at0[(i + N - 1) % N] !== null || at0[(i + 1) % N] !== null)) top[i] = FLOOR;
+  const sm = top.map((v, i) => { if (v === null) return null; const a = top[(i + N - 1) % N] ?? FLOOR, b = top[(i + 1) % N] ?? FLOOR; return 0.25 * a + 0.5 * v + 0.25 * b; });
+  for (let i = 0; i < N; i++) top[i] = sm[i];
   const tri: number[] = [], green: number[] = [], white: number[] = [];
   const pt = (i: number) => { const a = i / N * Math.PI * 2; return [Math.cos(a) * RING, top[i]! * RING, Math.sin(a) * RING]; };
   for (let i = 0; i < N; i++) {
@@ -48,6 +58,7 @@ function rebuild(x: number, y: number, z: number) {
   const geo = (a: number[]) => { const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(a, 3)); return g; };
   farPeaks.add(new THREE.Mesh(geo(tri), fill), new THREE.LineSegments(geo(green), lineGreen));
   if (white.length) farPeaks.add(new THREE.LineSegments(geo(white), lineSnow));
+  farPeaks.children.forEach((o, k) => { o.renderOrder = k ? -4.9 : -5; o.frustumCulled = false; });
 }
 /** Every frame outdoors: follow the camera, and rebuild after moving 120 m (or climbing 12 m). */
 export function updateFarPeaks(cam: THREE.Vector3) {
