@@ -23,7 +23,7 @@ import { MENU } from '../gen/foodshop';
 import { INDUSTRY, type Industry } from '../gen/industry';
 import { BRIDGE } from '../gen/bridges';
 import { PIER } from '../gen/piers';
-import { PROAD } from '../gen/playerroads';
+import { PROAD, CAMP, MACHINE } from '../gen/playerroads';
 import { LH } from '../gen/lighthouses';
 import { BOATS, type BoatKind } from '../gen/boats';
 import { tl, TL } from '../i18n';
@@ -83,6 +83,8 @@ function build(): Map<ItemKey, Map<UseGroup, string[]>> {
   for (const k of Object.keys(INDUSTRY) as Industry[]) for (const [i] of INDUSTRY[k].fix) use(i, tl('Repairs'), INDUSTRY[k].site);
   for (const k of Object.keys(BRIDGE.per) as ItemKey[]) use(k, tl('Building'), tl('Bridge'));
   for (const k of Object.keys(PROAD.per) as ItemKey[]) use(k, tl('Building'), tl('Track')); // (0.280) the players' tracks
+  for (const k of Object.keys(CAMP) as ItemKey[]) use(k, tl('Building'), tl('Road camp')); // (0.281)
+  for (const k of Object.keys(MACHINE) as ItemKey[]) use(k, tl('Building'), tl('Steam grader'));
   for (const k of [...Object.keys(PIER.per), ...Object.keys(PIER.fittings)] as ItemKey[]) use(k, tl('Building'), tl('Pier'));
   for (const [k] of LH.needs) use(k, tl('Building'), tl('Lighthouse')); // (0.204)
   for (const k of Object.keys(BOATS) as BoatKind[]) for (const [i] of BOATS[k].needs) use(i, tl('Building'), BOATS[k].name);

@@ -7,6 +7,15 @@
 //
 // Pure: the state is the shared `Char.proads` (id → PlayerRoad); every game derives the same work front and the same
 // moment the track is done from the game clock, so nothing more is sent.
+//
+// (0.281, stage D2) The front and the crews: a track staked out from now on (`v` 2) is dug by a crew from its home
+// (the nearest village or outpost with free hands within `hire` m of either end; the work starts from that end), as
+// many diggers as are free there when the work starts (`crew`). The materials and the wages come bit by bit: the front
+// only goes as far as they cover (`coverOf`), and without a road camp (`CAMP`, bunks at the front) only `walk` m from
+// home. Heavy machines (`MACHINE`, from the Heavy Engineering Works) dig faster. The front is one anchor `fr` [metres,
+// game minute] moved on by every hand-over (`settleFront`), so its place and the moment the track is done stay closed
+// forms of the clock. Stone for the swamp fill (`wet` m), logs felled on the way (`logs`, taken at the sign as the
+// front passes them). A river is crossed only on a built bridge (the survey's own concern, world/playerroads.ts).
 import type { ItemKey } from '../data/items';
 import type { Road } from './roads';
 import { tl, TL } from '../i18n';
@@ -34,7 +43,22 @@ export const PROAD = {
   open: 2,
   /** The surveyors' search: the finest grid (m; coarser for a long way so it stays within `cells`), the margin round the two ends (m). */
   grid: 12, margin: 360, cells: 70000,
+  /** (0.281, D2) The crews: at most `crew` diggers, at least `minCrew`; each digs `dig` m a game minute; `setup` game
+   *  minutes to pitch the camp before the front moves; a home within `hire` m of an end; the front goes `walk` m from
+   *  home without a road camp; the work starts once `first` m (or the whole track) is covered. */
+  crew: 8, minCrew: 2, dig: 0.45, setup: 90, hire: 2500, walk: 2200, first: 120,
+  /** A stone per `wetStone` m of swamp fill; logs from a tree felled on the way (a big one ×3). */
+  wetStone: 4, perTree: 2,
 };
+/** (0.281) The road camp (bunks and a cookhouse at the front): the diggers sleep there, so the front goes on past `walk`. */
+export const CAMP: Partial<Record<ItemKey, number>> = { planks: 16, nails: 12, rope: 4, hide: 2 };
+/** (0.281) A steam grader and a dump cart from the Heavy Engineering Works: the front moves `MACHINE_X` times as fast. */
+export const MACHINE: Partial<Record<ItemKey, number>> = { engine: 2, gears: 2, steel: 2 };
+export const MACHINE_X = 1.8;
+export type RoadPart = 'camp' | 'mach';
+export const PART_NEEDS: Record<RoadPart, Partial<Record<ItemKey, number>>> = { camp: CAMP, mach: MACHINE };
+/** (0.281) Where a track's crew comes from: a village or an outpost, `d` m from the track's start. */
+export interface RoadHome { id: string; k: 'village' | 'outpost'; name: string; x: number; z: number; d: number }
 
 /** What an end of a track meets. */
 export interface RoadEnd { kind: 'gate' | 'outpost' | 'warehouse' | 'road' | 'track'; id: string; name: string; x: number; z: number; /** a gate's side: N / E / S / W */ dir?: string }
@@ -51,23 +75,86 @@ export interface PlayerRoad {
   t0?: number;
   /** Who staked it out (name, pid) and when. */
   by: string; pid: string; t: number;
+  /** (0.281, D2) 2 = dug by a crew from `home` along a supplied front; unset = a D1 track (all in, then `h` hours). */
+  v?: 2;
+  home?: RoadHome;
+  /** The diggers (set when the work starts). */
+  crew?: number;
+  /** The front's anchor: [metres dug, game minute]. */
+  fr?: [number, number];
+  /** The camp and the machines: handed over, and built. */
+  parts?: Partial<Record<RoadPart, Partial<Record<ItemKey, number>>>>;
+  has?: Partial<Record<RoadPart, number>>;
+  /** Metres of swamp to fill, logs to fell on the way, logs taken. */
+  wet?: number; logs?: number; took?: number;
 }
 
 export const roadLength = (pts: [number, number][]) => { let s = 0; for (let i = 1; i < pts.length; i++) s += Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]); return s; };
 export const roadHours = (len: number) => Math.round((PROAD.hours0 + len / 1000 * PROAD.perKm) * 10) / 10;
 export const roadWage = (len: number) => Math.round(len * PROAD.wage);
 export const roadXp = (len: number) => Math.round(len * PROAD.xp);
-export function roadNeeds(len: number): [ItemKey, number][] {
-  return (Object.entries(PROAD.per) as [ItemKey, number][]).map(([k, m]) => [k, Math.max(1, Math.ceil(len / m))]);
+/** What a track takes; (0.281) `wet` m of swamp take a stone per `wetStone` m more. */
+export function roadNeeds(len: number, wet = 0): [ItemKey, number][] {
+  return (Object.entries(PROAD.per) as [ItemKey, number][]).map(([k, m]) => [k, Math.max(1, Math.ceil(len / m)) + (k === 'stone' && wet > 0 ? Math.ceil(wet / PROAD.wetStone) : 0)]);
 }
 export function roadRows(r: PlayerRoad): { k: ItemKey; n: number; given: number }[] {
-  return roadNeeds(r.len).map(([k, n]) => ({ k, n, given: Math.min(n, r.given[k] ?? 0) }));
+  return roadNeeds(r.len, r.wet).map(([k, n]) => ({ k, n, given: Math.min(n, r.given[k] ?? 0) }));
 }
 /** Everything in and paid? */
 export const roadReady = (r: PlayerRoad) => roadRows(r).every((w) => w.given >= w.n) && r.paid >= roadWage(r.len);
-/** Hand over what you have (`have`) and up to `gold` of the wages; the diggers start at `now` once everything is in. */
-export function handOverRoad(r: PlayerRoad, have: (k: ItemKey) => number, gold: number, now: number): { taken: [ItemKey, number][]; paid: number; started: boolean } {
-  if (r.t0 !== undefined) return { taken: [], paid: 0, started: false };
+const isV2 = (r: PlayerRoad) => r.v === 2;
+/** (0.281) How many metres the materials and the wages handed over so far cover (a D1 track: all or nothing). */
+export function coverOf(r: PlayerRoad): number {
+  let share = Math.min(1, r.paid / Math.max(1, roadWage(r.len)));
+  for (const w of roadRows(r)) share = Math.min(share, w.given / w.n);
+  return share >= 1 ? r.len : Math.floor(share * r.len);
+}
+/** Does the track want a road camp (its far end more than `walk` m from home)? */
+export const campWanted = (r: PlayerRoad) => isV2(r) && !!r.home && r.home.d + r.len > PROAD.walk;
+/** How far from the start the diggers go: the whole track with a camp (or when it is near home), else `walk` m from home. */
+export const reachOf = (r: PlayerRoad) => (!campWanted(r) || r.has?.camp ? r.len : Math.max(0, Math.min(r.len, PROAD.walk - (r.home?.d ?? 0))));
+/** The furthest the front may go now: what is supplied, and the camp's reach. */
+export const capOf = (r: PlayerRoad) => Math.min(coverOf(r), reachOf(r));
+/** Metres a game minute. */
+export const paceOf = (r: PlayerRoad) => Math.max(1, r.crew ?? PROAD.minCrew) * PROAD.dig * (r.has?.mach ? MACHINE_X : 1);
+/** The front (metres dug from the start) at `now`. */
+export function frontAt(r: PlayerRoad, now: number): number {
+  if (r.t0 === undefined) return 0;
+  if (!isV2(r)) return Math.max(0, Math.min(1, (now - r.t0) / (r.h * 60))) * r.len;
+  const [p, t] = r.fr ?? [0, r.t0];
+  if (now >= doneAt(r)) return r.len;
+  return now <= t ? p : Math.max(p, Math.min(capOf(r), p + paceOf(r) * (now - t)));
+}
+/** When the front reaches the end (Infinity while the supplies or the camp hold it back, or before the start). */
+export function doneAt(r: PlayerRoad): number {
+  if (r.t0 === undefined) return Infinity;
+  if (!isV2(r)) return r.t0 + r.h * 60;
+  const [p, t] = r.fr ?? [0, r.t0];
+  return p >= r.len ? t : capOf(r) >= r.len ? t + (r.len - p) / paceOf(r) : Infinity;
+}
+/** Why the front stands still at `now` ('' = it moves or is done): 'supply' (materials or wages), 'camp'. */
+export function stalled(r: PlayerRoad, now: number): '' | 'supply' | 'camp' {
+  if (!isV2(r) || r.t0 === undefined || roadBuilt(r, now)) return '';
+  const f = frontAt(r, now);
+  if (f < capOf(r) - 0.01) return '';
+  return coverOf(r) <= reachOf(r) ? 'supply' : 'camp';
+}
+/** Move the front's anchor to `now` (before anything that changes its pace or its cap). */
+export function settleFront(r: PlayerRoad, now: number) {
+  if (!isV2(r) || r.t0 === undefined) return;
+  const t = (r.fr ?? [0, r.t0])[1];
+  r.fr = [Math.round(frontAt(r, now) * 100) / 100, Math.max(now, t)];
+}
+/** (0.281) What the crew's home can send (the free hands, at most `crew`), worked out by the game (world/playerroads.ts). */
+export type FreeHands = (home: RoadHome, now: number) => number;
+/**
+ * Hand over what you have (`have`) and up to `gold` of the wages. A D1 track: the diggers start at `now` once
+ * everything is in. A D2 track: whatever is brought moves the front on; the work starts once `first` m are covered
+ * and the home has `minCrew` free hands (`free`), the crew being as many as it has then.
+ */
+export function handOverRoad(r: PlayerRoad, have: (k: ItemKey) => number, gold: number, now: number, free?: FreeHands): { taken: [ItemKey, number][]; paid: number; started: boolean; noCrew?: boolean } {
+  if (r.t0 !== undefined && (!isV2(r) || roadBuilt(r, now))) return { taken: [], paid: 0, started: false };
+  settleFront(r, now);
   const taken: [ItemKey, number][] = [];
   for (const w of roadRows(r)) {
     const n = Math.min(w.n - w.given, have(w.k));
@@ -75,15 +162,42 @@ export function handOverRoad(r: PlayerRoad, have: (k: ItemKey) => number, gold: 
   }
   const paid = Math.max(0, Math.min(Math.floor(gold), roadWage(r.len) - r.paid));
   r.paid += paid;
-  const started = roadReady(r);
-  if (started) r.t0 = now;
-  return { taken, paid, started };
+  if (r.t0 !== undefined) return { taken, paid, started: false };
+  if (!isV2(r)) {
+    const started = roadReady(r);
+    if (started) r.t0 = now;
+    return { taken, paid, started };
+  }
+  if (coverOf(r) < Math.min(r.len, PROAD.first)) return { taken, paid, started: false };
+  const crew = Math.min(PROAD.crew, Math.floor(r.home && free ? free(r.home, now) : PROAD.crew));
+  if (crew < PROAD.minCrew) return { taken, paid, started: false, noCrew: true };
+  r.t0 = now; r.crew = crew; r.fr = [0, now + PROAD.setup];
+  return { taken, paid, started: true };
 }
+/** The camp's or the machines' rows. */
+export function partRows(r: PlayerRoad, k: RoadPart): { k: ItemKey; n: number; given: number }[] {
+  return (Object.entries(PART_NEEDS[k]) as [ItemKey, number][]).map(([i, n]) => ({ k: i, n, given: Math.min(n, r.parts?.[k]?.[i] ?? 0) }));
+}
+/** Hand over to the camp or the machines; built once everything is in (the front settled first: its pace or reach changes). */
+export function handOverPart(r: PlayerRoad, k: RoadPart, have: (k: ItemKey) => number, now: number): { taken: [ItemKey, number][]; built: boolean } {
+  if (!isV2(r) || r.has?.[k] || roadBuilt(r, now)) return { taken: [], built: false };
+  const taken: [ItemKey, number][] = [];
+  const got = ((r.parts ??= {})[k] ??= {});
+  for (const w of partRows(r, k)) {
+    const n = Math.min(w.n - w.given, have(w.k));
+    if (n > 0) { got[w.k] = (got[w.k] ?? 0) + n; taken.push([w.k, n]); }
+  }
+  const built = partRows(r, k).every((w) => w.given >= w.n);
+  if (built) { settleFront(r, now); (r.has ??= {})[k] = now; }
+  return { taken, built };
+}
+/** Logs the diggers have felled on the way and stacked by the start's sign, not yet taken. */
+export const logsReady = (r: PlayerRoad, now: number) => Math.max(0, Math.floor((r.logs ?? 0) * roadShare(r, now)) - (r.took ?? 0));
 /** How far the work has come (0..1); 0 before the diggers start. */
-export const roadShare = (r: PlayerRoad, now: number) => (r.t0 === undefined ? 0 : Math.max(0, Math.min(1, (now - r.t0) / (r.h * 60))));
-export const roadBuilt = (r: PlayerRoad, now: number) => r.t0 !== undefined && now >= r.t0 + r.h * 60;
-/** Game minutes until it is done (Infinity before the work starts). */
-export const roadLeft = (r: PlayerRoad, now: number) => (r.t0 === undefined ? Infinity : Math.max(0, r.t0 + r.h * 60 - now));
+export const roadShare = (r: PlayerRoad, now: number) => (r.len ? Math.max(0, Math.min(1, frontAt(r, now) / r.len)) : 0);
+export const roadBuilt = (r: PlayerRoad, now: number) => now >= doneAt(r);
+/** Game minutes until it is done (Infinity before the work starts or while it stands). */
+export const roadLeft = (r: PlayerRoad, now: number) => Math.max(0, doneAt(r) - now);
 
 /** The point `d` metres along a polyline, and the direction there. */
 export function along(pts: [number, number][], d: number): { x: number; z: number; dx: number; dz: number; i: number } {
@@ -152,6 +266,16 @@ export function routeProblem(g: RoadGround, pts: [number, number][]): string {
  * Null when there is no way within `margin` of the two ends.
  */
 export function proposeWay(g: RoadGround, from: [number, number], to: [number, number]): [number, number][] | null {
+  // (0.281) the lattice sees the land only at its points: a way whose stretch still climbs too steeply between them
+  // is searched again, keeping further from the limit
+  for (const strict of [0.9, 0.75, 0.6]) {
+    const way = searchWay(g, from, to, strict);
+    if (!way) return null;
+    if (!routeProblem(g, way)) return way;
+  }
+  return null;
+}
+function searchWay(g: RoadGround, from: [number, number], to: [number, number], strict: number): [number, number][] | null {
   const M = PROAD.margin, x0 = Math.min(from[0], to[0]) - M, z0 = Math.min(from[1], to[1]) - M;
   const spanX = Math.max(from[0], to[0]) + M - x0, spanZ = Math.max(from[1], to[1]) + M - z0;
   const S = Math.max(PROAD.grid, Math.ceil(Math.sqrt(spanX * spanZ / PROAD.cells))); // a coarser lattice for a longer way
@@ -187,7 +311,7 @@ export function proposeWay(g: RoadGround, from: [number, number], to: [number, n
       if (mid === undefined) { mid = !g.bad((cx(i) + cx(j)) / 2, (cz(i) + cz(j)) / 2); mids.set(mk, mid); }
       if (!mid) continue;
       const d = Math.hypot(dx, dz) * S, rise = Math.abs(hAt(j) - hAt(i)) / d;
-      if (rise > PROAD.grade * 0.9) continue;
+      if (rise > PROAD.grade * strict) continue;
       const cost = gs[i] + d * (1 + 30 * rise * rise);
       if (cost < gs[j]) { gs[j] = cost; came[j] = i; push(cost + est(j), j); }
     }
@@ -219,8 +343,15 @@ export function newRoadProblem(g: RoadGround, a: RoadEnd, b: RoadEnd, pts: [numb
   if (mine >= PROAD.open) return TL`You have ${mine} tracks staked out and not yet built: finish or pull one up first.`;
   return routeProblem(g, pts);
 }
-/** A new track's record (the work not yet started). */
-export function newRoad(id: string, a: RoadEnd, b: RoadEnd, pts: [number, number][], by: string, pid: string, now: number): PlayerRoad {
+/** A new track's record (the work not yet started); (0.281) with a home it is a D2 track, dug from its start. */
+export function newRoad(id: string, a: RoadEnd, b: RoadEnd, pts: [number, number][], by: string, pid: string, now: number, d2?: { home: RoadHome; wet: number; logs: number }): PlayerRoad {
   const len = Math.round(roadLength(pts));
-  return { id, name: roadName(a, b), pts: pts.map(([x, z]) => [Math.round(x * 10) / 10, Math.round(z * 10) / 10]), a, b, len, h: roadHours(len), given: {}, paid: 0, by, pid, t: now };
+  const r: PlayerRoad = { id, name: roadName(a, b), pts: pts.map(([x, z]) => [Math.round(x * 10) / 10, Math.round(z * 10) / 10]), a, b, len, h: roadHours(len), given: {}, paid: 0, by, pid, t: now };
+  if (d2) { r.v = 2; r.home = d2.home; r.wet = Math.round(d2.wet); r.logs = d2.logs; r.took = 0; }
+  return r;
+}
+/** The home nearer the end b: the way reversed so the work starts at the home's end. */
+export function startFrom<T extends { pts: [number, number][]; a: RoadEnd; b: RoadEnd }>(w: T, home: { x: number; z: number }): T {
+  const da = Math.hypot(home.x - w.a.x, home.z - w.a.z), db = Math.hypot(home.x - w.b.x, home.z - w.b.z);
+  return db < da ? { ...w, pts: [...w.pts].reverse(), a: w.b, b: w.a } : w;
 }

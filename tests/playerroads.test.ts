@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { PROAD, newRoad, roadNeeds, roadHours, roadWage, handOverRoad, roadShare, roadBuilt, stretchProblem, routeProblem, proposeWay, terrainWays, waysKey, smoothPts, roadLength, newRoadProblem, type RoadGround, type RoadEnd } from '../src/gen/playerroads';
+import { PROAD, MACHINE_X, frontAt, doneAt, stalled, coverOf, handOverPart, logsReady, startFrom, newRoad, roadNeeds, roadHours, roadWage, handOverRoad, roadShare, roadBuilt, stretchProblem, routeProblem, proposeWay, terrainWays, waysKey, smoothPts, roadLength, newRoadProblem, type RoadGround, type RoadEnd } from '../src/gen/playerroads';
 import { Terrain } from '../src/gen/terrain';
 import { chunkTrees } from '../src/gen/trees';
 
@@ -62,5 +62,50 @@ describe('(0.280) tracks the heroes build', () => {
     const mid = t.exact(x0, z0 + 5), side = t.exact(x0, z0 + 5 + PROAD.half * 0.8);
     expect(Math.abs(mid - side)).toBeLessThan(0.05);
     expect(chunkTrees(t, Math.floor(x0 / 64), Math.floor(z0 / 64)).map((q) => q.seed)).toEqual(before);
+  });
+
+  it('(0.281, D2) a crew from home digs as far as the supplies go, waits, and goes on when more comes', () => {
+    const home = { id: '7', k: 'village' as const, name: 'Home', x: 0, z: -100, d: 100 };
+    const r = newRoad('t2', A, B, [[0, 0], [150, 0], [300, 0]], 'Ala', 'p1', 0, { home, wet: 40, logs: 12 });
+    expect(r.v).toBe(2);
+    const stone = r.len / 16;
+    // half of everything: covers ~150 m, enough to start; the home sends 4
+    const half = (k: string) => Math.ceil(({ stone: Math.ceil(300 / 16) + 10, planks: Math.ceil(300 / 22) } as Record<string, number>)[k] / 2);
+    void stone;
+    const st = handOverRoad(r, half as never, Math.ceil(105 / 2), 10, () => 4);
+    expect(st.started).toBe(true); expect(r.crew).toBe(4);
+    const cov = coverOf(r); expect(cov).toBeGreaterThanOrEqual(PROAD.first); expect(cov).toBeLessThan(r.len);
+    // after the camp is pitched the front moves at 4 × dig and stops at the cover
+    const t1 = 10 + PROAD.setup + 20;
+    expect(frontAt(r, t1)).toBeCloseTo(4 * PROAD.dig * 20);
+    expect(doneAt(r)).toBe(Infinity);
+    expect(stalled(r, 10 + PROAD.setup + 1e4)).toBe('supply');
+    expect(frontAt(r, 1e5)).toBeCloseTo(cov);
+    // the rest comes later: the front goes on from where it waited, at the grader's pace
+    handOverPart(r, 'mach', () => 99, 2e4);
+    expect(r.has?.mach).toBe(2e4);
+    handOverRoad(r, () => 999, 999, 3e4, () => 4);
+    expect(coverOf(r)).toBe(r.len);
+    expect(frontAt(r, 3e4)).toBeCloseTo(cov);
+    expect(doneAt(r)).toBeCloseTo(3e4 + (r.len - cov) / (4 * PROAD.dig * MACHINE_X));
+    expect(roadBuilt(r, doneAt(r))).toBe(true);
+    expect(logsReady(r, doneAt(r))).toBe(12);
+  });
+  it('(0.281, D2) no free hands: the work waits; far from home it needs a road camp', () => {
+    const far = newRoad('t3', A, { ...B, x: 3000 }, [[0, 0], [3000, 0]], 'Ala', 'p1', 0, { home: { id: '1', k: 'outpost', name: 'Camp', x: 0, z: 0, d: 0 }, wet: 0, logs: 0 });
+    expect(handOverRoad(far, () => 999, 9999, 5, () => 1).noCrew).toBe(true);
+    expect(far.t0).toBeUndefined();
+    handOverRoad(far, () => 999, 9999, 6, () => 9);
+    expect(far.crew).toBe(PROAD.crew);
+    expect(frontAt(far, 1e6)).toBeCloseTo(PROAD.walk);
+    expect(stalled(far, 1e6)).toBe('camp');
+    handOverPart(far, 'camp', () => 99, 1e6);
+    expect(stalled(far, 1e6)).toBe('');
+    expect(roadBuilt(far, 1e6 + (3000 - PROAD.walk) / (PROAD.crew * PROAD.dig) + 1)).toBe(true);
+  });
+  it('(0.281, D2) the home nearer the far end turns the way round; swamp takes more stone', () => {
+    const w = startFrom({ pts: [[0, 0], [300, 0]] as [number, number][], a: A, b: B }, { x: 320, z: 0 });
+    expect(w.a.id).toBe(B.id); expect(w.pts[0]).toEqual([300, 0]);
+    expect(roadNeeds(300, 40)[0][1]).toBe(roadNeeds(300)[0][1] + 10);
   });
 });

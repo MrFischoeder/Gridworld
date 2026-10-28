@@ -3,6 +3,16 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.281.0', date: '2026-10-28', title: 'Road crews and the work front', notes: [
+    'Tracks staked out from now on are dug by a crew from home: the nearest village or outpost with people within 2.5 km of either end. The work starts from the end nearer to it. When the work starts it sends as many diggers as it has free hands, up to 8 and at least 2; a settlement gives its people without a post, an older village hires a full crew, an outpost sends its idle settlers. With nobody free the work waits.',
+    'Supplies bit by bit: bring stone, planks and wages to the sign at either end or to the diggers\' camp at the front (in your backpack or a vehicle parked there). The work starts once the first 120 m are covered, and the front goes only as far as what was brought covers; then the diggers stand and wait for more (WAITING FOR SUPPLIES).',
+    'Road camp (16 planks, 12 nails, 4 ropes, 2 hides): without it the diggers go no further than 2.2 km from home. Steam grader (2 engine parts, 2 crates of gears, 2 steel ingots): the front moves 1.8 times as fast. Both are handed over in the track\'s window and show up at the front.',
+    'Swamp ground on the way takes a stone more for every 4 m of fill. The trees on the way are felled as the front passes them; their logs are stacked by the start\'s sign for anyone to take.',
+    'Rivers: a track may now cross a river on a finished bridge (at a ford, or one built with a Bridge Kit). Build the bridge first, then stake the track over it.',
+    'Fix: the surveyors\' way (R) could include a stretch slightly too steep; they now check the whole way and search again more carefully.',
+    'Tracks staked out before this version keep their old rules (everything first, then the work).',
+    'Multiplayer: the work front is one anchor in the shared track, moved on under the track\'s lock by every hand-over; every game works out the front and the moment the track is done from the game clock. The server and the protocol are unchanged.',
+  ] },
   { v: '0.280.0', date: '2026-10-28', title: 'Tracks you build', notes: [
     'New tool: Surveyor\'s Poles (the blacksmith makes them from 3 planks and a rope; Oskar sells them for 40 gold). Use them to stake out a dirt track between two places of the world\'s infrastructure: a village gate, an outpost, a warehouse, a port, an old road or another track.',
     'The survey: look at where the track should start and click. Then click to set each stake (up to 70 m apart), or press R and the surveyors lay out the whole way to the place you look at, or to your map\'s waypoint, going round water, steep slopes, ruins and camps. The right mouse button (or Backspace) takes the last stake back, Esc gives up. A hologram shows the track\'s edges; a stretch that cannot be built turns red and the hint says why.',

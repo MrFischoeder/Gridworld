@@ -26,7 +26,16 @@ import { seaMask, SEA } from '../gen/seas';
 import { lakesIn, shoreR } from '../gen/water';
 import { megalithsNear } from '../gen/megaliths';
 import { hubs } from '../gen/warehouses';
-import { PROAD, along, smoothPts, terrainWays, waysKey, roadBuilt, roadShare, roadLength, stretchProblem, proposeWay, newRoadProblem, newRoad, roadRows, type PlayerRoad, type RoadEnd, type RoadGround } from '../gen/playerroads';
+import { PROAD, along, smoothPts, terrainWays, waysKey, roadBuilt, roadShare, roadLength, stretchProblem, proposeWay, newRoadProblem, newRoad, roadRows, startFrom, stalled, logsReady, type PlayerRoad, type RoadEnd, type RoadGround, type RoadHome } from '../gen/playerroads';
+import { regionFords, deckAt, type Ford } from '../gen/bridges';
+import { regionOf, wrapDx } from '../gen/regions';
+import { chunkTrees, TREE_SPAN } from '../gen/trees';
+import { treeIn, biomeOfCell } from '../gen/biomes';
+import { hash } from '../core/rng';
+import { progressive } from '../gen/settlement';
+import { assign } from '../gen/workforce';
+import { workersAt } from '../gen/people';
+import { lifeNow, crews } from '../gen/outpostlife';
 import { tl, TL, DIR8 } from '../i18n';
 
 const STAKE = 0xffd060, EARTH = 0xb8a060, POST = 0x1f9a44, WORKER = 0xdce8ff;
@@ -41,7 +50,7 @@ export function roadGround(): RoadGround | null {
   if (!T) return null;
   const w = T.world;
   return {
-    h: (x, z) => T.dry(x, z),
+    h: (x, z) => (nearRiver(w, x, z, 3) ? builtDeck(x, z) ?? T.dry(x, z) : T.dry(x, z)),
     bad(x, z) {
       if (Math.abs(z) > POLAR_Z) return tl('The ice: no track holds there.');
       if (inCity(w, x, z, 8)) return tl('A dead city: its streets are blocked with rubble.');
@@ -51,11 +60,71 @@ export function roadGround(): RoadGround | null {
       }
       if (megalithsNear(w, x, z, 6).length) return tl('Old stones stand in the way.');
       if (seaMask(w, x, z) > 0 && T.base(x, z) < SEA.level + 0.4) return tl('The sea.');
-      if (nearRiver(w, x, z, 3)) return tl('A river: a track cannot wade it yet (bridges on tracks come later).');
+      if (nearRiver(w, x, z, 3) && builtDeck(x, z) === null) return tl('A river: a track crosses only on a bridge. Build one first (a Bridge Kit, or at a ford), then stake the track over it.');
       for (const l of lakesIn(T, { x0: x - 1, z0: z - 1, x1: x + 1, z1: z + 1 })) if (Math.hypot(x - l.x, z - l.z) < shoreR(l, Math.atan2(z - l.z, x - l.x)) + 3) return tl('A lake.');
       return '';
     },
   };
+}
+
+/** (0.281, D2) The deck of a finished bridge under (x, z) (at a ford or placed with a Bridge Kit), or null: a track may cross a river there. */
+export function builtDeck(x: number, z: number): number | null {
+  const T = OW.terrain, c = G.char;
+  if (!T) return null;
+  const [rx, rz] = regionOf(x, z), all: Ford[] = [];
+  for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) all.push(...regionFords(T.world, rx + i, rz + j, (px, pz) => T.heightAt(px, pz)));
+  for (const f of c.bridgeSites) all.push({ ...f, x: x + wrapDx(f.x - x) });
+  for (const f of all) if (c.bridges[f.id]?.done && Math.abs(f.x - x) < 60 && Math.abs(f.z - z) < 60) { const y = deckAt(f, x, z); if (y !== null) return y; }
+  return null;
+}
+
+// ---------- the crews (0.281, D2) ----------
+/** The free hands a home can send now: a settlement's people not at a post, any other village hires diggers, an outpost's idle settlers. */
+export function freeHands(home: RoadHome, now: number): number {
+  const c = G.char, w = c.world;
+  if (home.k === 'village') {
+    const vid = Number(home.id), v = allVillages(w).find((p) => p.id === vid);
+    if (!v) return 0;
+    const s = c.towns[vid];
+    if (!progressive(s)) return PROAD.crew;
+    return assign(s, workersAt(villageSeed(w, v), vid === GRIDHOLM_ID, s, now)).free;
+  }
+  const o = c.outposts[home.id];
+  return o?.life ? crews(o, lifeNow(w, o, now).n).idle : 0;
+}
+/** The crew's home for a way from a to b: the nearest village or outpost with people within `hire` m of either end
+ *  (one with free hands now first); null when none. `d` is set from the end nearer to it. */
+export function findHome(a: RoadEnd, b: RoadEnd): RoadHome | null {
+  const c = G.char, w = c.world, now = c.time, cand: RoadHome[] = [];
+  const dEnd = (x: number, z: number) => Math.min(worldDist(x, z, a.x, a.z), worldDist(x, z, b.x, b.z));
+  for (const v of allVillages(w)) { const d = dEnd(v.x, v.z); if (d < PROAD.hire) cand.push({ id: String(v.id), k: 'village', name: v.name, x: nearX(v.x, a.x), z: v.z, d }); }
+  for (const [id, o] of Object.entries(c.outposts)) if (o?.life && typeof o.x === 'number') { const d = dEnd(o.x, o.z); if (d < PROAD.hire) cand.push({ id, k: 'outpost', name: o.name, x: nearX(o.x, a.x), z: o.z, d }); }
+  if (!cand.length) return null;
+  cand.sort((p, q) => (freeHands(q, now) >= PROAD.minCrew ? 1 : 0) - (freeHands(p, now) >= PROAD.minCrew ? 1 : 0) || p.d - q.d);
+  return { ...cand[0], d: Math.round(cand[0].d) };
+}
+/** Metres of swamp along a way and the trees standing on it (big ones count `3`), for the fill and the logs. */
+function alongWay(pts: [number, number][]): { wet: number; logs: number } {
+  const T = OW.terrain!, sp = smoothPts(pts), L = roadLength(sp);
+  let wet = 0;
+  const chunks = new Set<string>();
+  for (let d = 0; d <= L; d += 4) {
+    const p = along(sp, d), l = T.swampLevel(p.x, p.z);
+    if (l !== null && T.base(p.x, p.z) < l) wet += 4;
+    for (const s of [-1, 1]) chunks.add(Math.floor((p.x - p.dz * 4 * s) / CHUNK) + ',' + Math.floor((p.z + p.dx * 4 * s) / CHUNK));
+  }
+  let logs = 0;
+  const way = { id: '', from: 0, to: 0, gate: '', half: 0, pts: sp };
+  for (const k of chunks) {
+    const [cx, cz] = k.split(',').map(Number);
+    for (const t of chunkTrees(T, cx, cz)) {
+      if (Math.abs(t.z) > POLAR_Z) continue;
+      const big = TREE_SPAN[t.kind] > 0;
+      if (!treeIn(biomeOfCell(T.world, t.x, t.z), hash(t.seed, 0xb10e), big)) continue;
+      if (nearestOnRoad(way, t.x, t.z)[0] < PROAD.half + 1.5 + (big ? TREE_SPAN[t.kind] * 0.5 : 0)) logs += PROAD.perTree * (big ? 3 : 1);
+    }
+  }
+  return { wet, logs };
 }
 
 // ---------- the places a track may start and end at ----------
@@ -180,12 +249,14 @@ function finish(g: RoadGround, b: RoadEnd) {
   if (!sv?.a) return;
   const why = newRoadProblem(g, sv.a, b, sv.pts, mine());
   if (why) { logLine(why); showToast(tl('The track cannot be staked out')); sv.b = null; return; }
-  const c = G.char, id = `${c.pid}:${Math.round(c.time)}`;
-  const r = newRoad(id, { ...sv.a }, { ...b }, sv.pts, c.name || tl('a castaway'), c.pid, c.time);
+  const home = findHome(sv.a, b);
+  if (!home) { logLine(TL`No village or outpost with people lies within ${PROAD.hire / 1000} km of either end: nobody could dig this track.`); showToast(tl('The track cannot be staked out')); sv.b = null; return; }
+  const c = G.char, id = `${c.pid}:${Math.round(c.time)}`, way = startFrom({ pts: sv.pts, a: { ...sv.a }, b: { ...b } }, home);
+  const r = newRoad(id, way.a, way.b, way.pts, c.name || tl('a castaway'), c.pid, c.time, { home: { ...home, d: Math.round(worldDist(home.x, home.z, way.a.x, way.a.z)) }, ...alongWay(way.pts) });
   c.proads[id] = r; saveChar();
   cancelRoadSurvey(true); scanT = 0;
   showToast(tl('Track staked out'));
-  logLine(TL`The track ${r.name} is staked out: ${r.len} m. Bring the materials and the diggers' wages to its sign at either end.`);
+  logLine(TL`The track ${r.name} is staked out: ${r.len} m. The diggers will come from ${home.name} and work from ${endWord(r.a)}. Bring the materials and the wages to its sign (or to the diggers at the front), bit by bit: the front goes as far as they cover.`);
 }
 /** R: the surveyors lay out the way from the last stake to the place you look at, or your map's waypoint. */
 export function proposeRoad(): boolean {
@@ -258,7 +329,13 @@ let scanT = 0, waysAt = '', first = true;
 const told = new Set<string>();
 /** Distance from (x, z) to a track's way on this copy of the planet. */
 const distTo = (r: PlayerRoad, sx: number, x: number, z: number) => nearestOnRoad({ id: '', from: 0, to: 0, gate: '', half: 0, pts: r.pts.map(([a, b]) => [a + sx, b] as [number, number]) }, x, z)[0];
-const keyOf = (r: PlayerRoad, now: number) => (roadBuilt(r, now) ? 'd' : r.t0 !== undefined ? 'w' + Math.floor(roadShare(r, now) * r.len / 8) : 's' + roadRows(r).map((w) => Math.floor(w.given / w.n * 10)).join('.'));
+const keyOf = (r: PlayerRoad, now: number) => (roadBuilt(r, now) ? 'd' : r.t0 !== undefined ? 'w' + Math.floor(roadShare(r, now) * r.len / 8) + stalled(r, now) + (r.has?.camp ? 'c' : '') + (r.has?.mach ? 'm' : '') + (logsReady(r, now) > 0 ? 'l' : '') : 's' + roadRows(r).map((w) => Math.floor(w.given / w.n * 10)).join('.'));
+/** The diggers' camp beside the front (on this copy of the planet), or null before the work starts. */
+function campAt(r: PlayerRoad, sx: number, now: number) {
+  if (r.t0 === undefined || roadBuilt(r, now)) return null;
+  const pts = smoothPts(r.pts), p = along(pts, roadShare(r, now) * roadLength(pts));
+  return { x: p.x + sx - p.dz * (PROAD.half + 3.5), z: p.z + p.dx * (PROAD.half + 3.5), p };
+}
 function drawRoad(r: PlayerRoad, sx: number, now: number): Live {
   const T = OW.terrain!, pts = smoothPts(r.pts).map(([x, z]) => [x + sx, z] as [number, number]), ox = pts[0][0], oz = pts[0][1];
   const pb = new PropBatch(), h = (x: number, z: number) => T.heightAt(x, z), L = roadLength(pts);
@@ -294,9 +371,33 @@ function drawRoad(r: PlayerRoad, sx: number, now: number): Live {
       const hx = p.x + p.dx * 4 + sxp * 0.7, hz = p.z + p.dz * 4 + szp * 0.7, hy = h(hx, hz);
       for (let i = 0; i < 3; i++) pb.box(hx - ox - 0.6 + i * 0.4, hy, hz - oz - 0.5, hx - ox - 0.25 + i * 0.4, hy + 0.35, hz - oz + 0.5, 0xb2b2a3);
       pb.box(hx - ox - 0.8, hy + 0.35, hz - oz - 0.6, hx - ox + 0.8, hy + 0.55, hz - oz + 0.6, 0xd8c890);
+      if (r.has?.camp) { // (0.281) the road camp: a bunkhouse behind the tent, a stove pipe
+        const bx = tx + sxp * 0.9, bz = tz + szp * 0.9, by = h(bx, bz), u = [p.dx * 3, p.dz * 3], v = [-p.dz * 1.8, p.dx * 1.8];
+        const C = (a: number, b: number, y: number) => P(bx + u[0] * a + v[0] * b, by + y, bz + u[1] * a + v[1] * b);
+        for (const [a, b] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) pb.seg(EARTH, C(a, b, 0), C(a, b, 2));
+        for (const y of [0, 2]) { pb.seg(EARTH, C(-1, -1, y), C(1, -1, y)); pb.seg(EARTH, C(1, -1, y), C(1, 1, y)); pb.seg(EARTH, C(1, 1, y), C(-1, 1, y)); pb.seg(EARTH, C(-1, 1, y), C(-1, -1, y)); }
+        pb.seg(EARTH, C(-1, 0, 2.8), C(1, 0, 2.8));
+        for (const a of [-1, 1]) for (const b of [-1, 1]) pb.seg(EARTH, C(a, b, 2), C(a, 0, 2.8));
+        pb.seg(0x9a9a9a, C(0.6, 0.5, 2.4), C(0.6, 0.5, 3.6));
+      }
+      if (r.has?.mach) { // (0.281) the steam grader behind the front: a boiler on wheels, a blade, a stack
+        const gx = p.x - p.dx * 6 - p.dz * 0.3, gz = p.z - p.dz * 6 + p.dx * 0.3, gy = h(gx, gz);
+        pb.box(gx - ox - 1, gy + 0.5, gz - oz - 1, gx - ox + 1, gy + 1.6, gz - oz + 1, 0x8a8a7a);
+        pb.box(gx - ox - 0.2, gy + 1.6, gz - oz - 0.2, gx - ox + 0.2, gy + 2.8, gz - oz + 0.2, 0x5a5a50);
+        pb.seg(0xd8c890, P(gx + p.dx * 1.5 - p.dz * 1.6, gy + 0.2, gz + p.dz * 1.5 + p.dx * 1.6), P(gx + p.dx * 1.5 + p.dz * 1.6, gy + 0.2, gz + p.dz * 1.5 - p.dx * 1.6));
+      }
+      const stop = stalled(r, now);
+      if (stop) { const wl = textSprite(stop === 'camp' ? tl('WAITING FOR A ROAD CAMP') : tl('WAITING FOR SUPPLIES'), '#ff9a7a', 2.6); wl.position.set(tx - ox, ty + 3.4, tz - oz); g.add(wl); }
       for (const [off, side, kit] of [[1.5, -0.5, 'pick'], [3, 0.6, 'hoe'], [0, 0.2, 'pick']] as const) {
         const f = makeFigure(WORKER, kit); g.add(f.g); hands.push({ f, off, side, phase: hands.length * 0.37 });
       }
+    }
+  }
+  if (logsReady(r, now) > 0) { // (0.281) the felled logs stacked by the start's sign
+    const q = along(pts, 6), x = q.x + q.dz * (hw + 2.5), z = q.z - q.dx * (hw + 2.5), y = h(x, z);
+    for (let i = 0; i < 3; i++) for (let j = 0; j < 3 - i; j++) {
+      const cx = x - q.dz * (j - 1 + i * 0.5) * 0.45, cz = z + q.dx * (j - 1 + i * 0.5) * 0.45, cy = y + 0.2 + i * 0.38;
+      pb.seg(0xb08850, P(cx - q.dx * 1.6, cy, cz - q.dz * 1.6), P(cx + q.dx * 1.6, cy, cz + q.dz * 1.6));
     }
   }
   // a sign at each end
@@ -351,24 +452,26 @@ export function updateRoads(dt: number) {
   // the diggers at the front: picks and hoes, the front moving on with the clock
   for (const l of live.values()) {
     if (!l.hands.length || l.r.t0 === undefined) continue;
-    const pts = smoothPts(l.r.pts), L = roadLength(pts), front = roadShare(l.r, c.time) * L;
+    const pts = smoothPts(l.r.pts), L = roadLength(pts), front = roadShare(l.r, c.time) * L, idle = !!stalled(l.r, c.time) || c.time < (l.r.fr?.[1] ?? 0);
     for (const hd of l.hands) {
       hd.phase += dt;
       const p = along(pts, Math.max(0, front - hd.off)), x = p.x + l.sx - p.dz * PROAD.half * hd.side, z = p.z + p.dx * PROAD.half * hd.side;
       hd.f.g.position.set(x - l.g.position.x, T.heightAt(x, z), z - l.g.position.z); hd.f.g.rotation.y = Math.atan2(p.dx, p.dz);
-      const s = (hd.phase * 0.8) % 1;
+      const s = idle ? 0 : (hd.phase * 0.8) % 1;
       poseRig(hd.f.rig, { swing: 0, strike: s });
-      if (((hd.phase - dt) * 0.8) % 1 < 0.5 && s >= 0.5) play('mine', { at: hd.f.g.getWorldPosition(dig), vol: 0.35, far: 40, jitter: 0.15 });
+      if (!idle && ((hd.phase - dt) * 0.8) % 1 < 0.5 && s >= 0.5) play('mine', { at: hd.f.g.getWorldPosition(dig), vol: 0.35, far: 40, jitter: 0.15 });
     }
   }
 }
 export function clearRoads() { for (const l of live.values()) dropLive(l); live.clear(); }
 /** Redraw now (a hand-over moved a site on). */
 export function redrawRoads() { scanT = 0; }
-/** The sign of a track (either end) you stand by. */
+/** The sign of a track (either end) you stand by, (0.281) or its diggers' camp at the front. */
 export function nearRoadSign(): PlayerRoad | null {
   if (G.char.loc !== 'overworld') return null;
   for (const l of live.values()) {
+    const cp = campAt(l.r, l.sx, G.char.time);
+    if (cp && Math.hypot(G.pos.x - cp.x, G.pos.z - cp.z) < 7) return l.r;
     const pts = smoothPts(l.r.pts), L = roadLength(pts);
     for (const k of [0, 1]) {
       const q = along(pts, k ? L - 3 : 3), x = q.x + l.sx - q.dz * (PROAD.half + 1.6), z = q.z + q.dx * (PROAD.half + 1.6);
@@ -377,4 +480,9 @@ export function nearRoadSign(): PlayerRoad | null {
   }
   return null;
 }
-export const roadSignPrompt = (r: PlayerRoad) => (roadBuilt(r, G.char.time) ? TL`E — the track ${r.name}` : r.t0 !== undefined ? TL`E — the track works ${r.name}` : TL`E — the track site ${r.name} (bring the materials and the wages)`);
+export const roadSignPrompt = (r: PlayerRoad) => (roadBuilt(r, G.char.time) ? TL`E — the track ${r.name}` : r.t0 !== undefined ? TL`E — the track works ${r.name}${stalled(r, G.char.time) ? tl(' (the diggers wait)') : ''}` : TL`E — the track site ${r.name} (bring the materials and the wages)`);
+/** (0.281) The front's point (the diggers' camp) on this copy of the planet, for handing over from vehicles parked there. */
+export function roadFront(r: PlayerRoad): { x: number; z: number } | null {
+  const sx = nearX(r.pts[0][0], G.pos.x) - r.pts[0][0], cp = campAt(r, sx, G.char.time);
+  return cp ? { x: cp.x, z: cp.z } : null;
+}
