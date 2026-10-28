@@ -3,6 +3,12 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.282.0', date: '2026-10-28', title: 'Gravel and paved roads', notes: [
+    'A finished track can be given a better surface in its window: a gravel road (stone and quartz sand) and then a paved road (cut stone, cement and stone). A crew from the track\'s home lays it along a front, like the track itself: bring the materials and the wages bit by bit to either sign or to the crew; the road camp and the steam grader help here too.',
+    'The new surface appears on the land in 50 m steps behind the crew: gravel paler than the dirt track, a paved road grey with kerbs and a dashed middle line. The maps show each surface in its own colour.',
+    'Driving now depends on what the wheels are on: off the roads a vehicle reaches 80% of its top speed and burns 20% more; dirt tracks and trails as before; the old roads between the villages 8% faster and 5% thriftier; gravel 12% / 8%; paved 25% / 15%. The vehicle\'s line on the screen names the surface.',
+    'Multiplayer: the surface and the work on it live in the shared track under its lock; every game lays it on the land at the same moment of the game clock and works out its own driver\'s speed. The server and the protocol are unchanged.',
+  ] },
   { v: '0.281.0', date: '2026-10-28', title: 'Road crews and the work front', notes: [
     'Tracks staked out from now on are dug by a crew from home: the nearest village or outpost with people within 2.5 km of either end. The work starts from the end nearer to it. When the work starts it sends as many diggers as it has free hands, up to 8 and at least 2; a settlement gives its people without a post, an older village hires a full crew, an outpost sends its idle settlers. With nobody free the work waits.',
     'Supplies bit by bit: bring stone, planks and wages to the sign at either end or to the diggers\' camp at the front (in your backpack or a vehicle parked there). The work starts once the first 120 m are covered, and the front goes only as far as what was brought covers; then the diggers stand and wait for more (WAITING FOR SUPPLIES).',

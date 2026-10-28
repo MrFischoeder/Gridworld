@@ -26,13 +26,12 @@ Drogi z ziarna świata (`gen/roads.ts`, między wioskami) zostają bez zmian. Dr
   - Mierniczy: zaproponowana trasa jest sprawdzana w całości; gdy któryś odcinek mimo wszystko wychodzi za stromy, szukają ponownie ostrożniej (poprawka błędu D1).
   - Zapis i gra wieloosobowa: czoło to jedna kotwica `fr` [metry, minuta gry] przestawiana przy każdym oddaniu (pod blokadą drogi). Miejsce czoła i chwila końca wynikają z zegara, więc wszystkie gry widzą to samo. Ekipa jest liczona raz, przy starcie (ludzie w domu się przez to nie zmieniają).
 
-- **D3. Nawierzchnie i jazda.** Do zrobienia:
-  - Klasy drogi: dukt (D1/D2), żwirówka, droga utwardzona. Ulepszenie to kolejna robota na tej samej drodze, z czołem jak w D2: żwirówka za kamień i piasek, utwardzona za cement i kamień łamany (później asfalt z rafinerii). Zapis `PlayerRoad.cls` i osobna kotwica czoła ulepszenia.
-  - Wygląd: dukt ziemisty, żwirówka jaśniejsza z obrzeżem, utwardzona z krawężnikiem i linią środkową; mapy rysują klasy różnie.
-  - Jazda: pojazd na drodze (gracza albo z ziarna) jedzie szybciej, pali mniej i mniej niszczy koła. Poza drogą wolniej i drożej. Potrzebne `onWay(x, z)` w `world/vehicles.ts` (szybki indeks odcinków po kratkach), mnożniki w `VehicleSpec` i `fuelBurn`.
-  - Teren: utwardzona droga dostaje szerszy, gładszy profil (mniej nierówności) i mostki przepustowe na małych ciekach.
-  - Gra wieloosobowa: nowe pola w `proads`, bez zmian serwera poza tym, co już jest.
-
+- **D3. Nawierzchnie i jazda.** *(Zrobione w 0.282.0.)*
+  - Gotową drogę można ulepszyć w jej oknie: dukt → żwirówka (kamień 1 na 5 m, piasek 1 na 60 m, 0,2 zł/m) → droga utwardzona (cięty kamień 1 na 10 m, cement 1 na 20 m, kamień 1 na 8 m, 0,3 zł/m). Ulepszenie to robota jak w D2: ekipa z tego samego domu (wolne ręce w chwili startu), dostawy po trochu do tablicy albo czoła, start po pokryciu 120 m, obóz drogowy i równiarka działają tak samo; żwir układa się 1,6 razy szybciej niż kopie dukt, bruk 0,8 razy.
+  - Teren dostaje nową nawierzchnię co 50 m za czołem (przerysowany jest tylko nowy odcinek). Wygląd: dukt ziemisty, żwirówka jaśniejsza, utwardzona szara z jasnymi krawężnikami i przerywaną linią środkową; mapy rysują klasy innymi kolorami, a ułożony już odcinek nowej nawierzchni na wierzchu.
+  - Jazda: prędkość maksymalna i spalanie zależą od tego, po czym jadą koła: poza drogą 80% prędkości i 120% paliwa, dukt i szlak 100%, stara droga między wioskami 108% / 95%, żwirówka 112% / 92%, utwardzona 125% / 85%. HUD pojazdu pokazuje nawierzchnię.
+  - Gra wieloosobowa: ulepszenie siedzi we wspólnej drodze (`PlayerRoad.cls`, `up`), oddawanie pod blokadą drogi, czoło z zegara; każda gra liczy jazdę swojego kierowcy. Serwer i protokół bez zmian.
+  - Na później (z D5): zużycie nawierzchni, mostki przepustowe.
 - **D4. Konwoje po sieci dróg.** Do zrobienia:
   - Graf sieci: węzły to bramy, magazyny, placówki i skrzyżowania. Krawędzie to drogi z ziarna (`network`) i gotowe drogi graczy. Łączenie na wspólnych końcach i punktach przyłączenia (`RoadEnd` kind road/track).
   - Planowanie trasy (Dijkstra jak `planRoute`) z kosztem: długość ÷ prędkość klasy drogi; przełaj z karą.
@@ -57,7 +56,7 @@ Drogi z ziarna świata (`gen/roads.ts`, między wioskami) zostają bez zmian. Dr
   - Drogi wspólne (co-op) zostają otwarte dla wszystkich.
 
 ## Co jeszcze potrzeba, żeby drogi i konwoje działały jak należy
-1. **Jazda po drogach (D3)**: dziś droga tylko wygładza teren, pojazd nie jedzie po niej szybciej. Bez tego drogi dla gracza za kierownicą niewiele dają.
+1. ~~Jazda po drogach (D3)~~: zrobione w 0.282 (pojazdy są szybsze i oszczędniejsze na drogach, wolniejsze poza nimi). Konwoje NPC i linie jeszcze tego nie liczą (D4).
 2. **Sieć zamiast linii prostych (D4)**: linie konwojów i trasy placówek liczą czas i ryzyko z odległości w linii prostej, więc drogi jeszcze ich nie skracają ani nie zabezpieczają.
 3. **Ryzyko na trasie (D5)**: rabunek konwojów zależy od groźności w połowie drogi, a nie od tego, czy jadą drogą i czy jest strzeżona.
 4. **Utrzymanie (D5)**: drogi są wieczne. Zużycie da powód do domów drogowych i ekip.

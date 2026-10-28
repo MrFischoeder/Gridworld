@@ -13,7 +13,7 @@ import { inCity } from './cities';
 import { townsWorld } from './worldrules';
 
 /** A road between places, or a mountain trail (gen/trails.ts: `gate` 'trail', its height profile `h` per point, the summit's `name`). */
-export interface Road { id: string; from: number; to: number; gate: string; pts: [number, number][]; half: number; h?: number[]; name?: string }
+export interface Road { id: string; from: number; to: number; gate: string; pts: [number, number][]; half: number; h?: number[]; name?: string; /** (0.282) a players' track's surface: 0 dirt, 1 gravel, 2 paved */ cls?: number }
 
 const GATE_POINT = { N: [36, -14], S: [41, 86], E: [86, 37], W: [-14, 39] } as const; // (0.198: just outside the bigger wall)
 /** Where the road of a gate starts (just outside the wall apron), for a village centred at its POI. */

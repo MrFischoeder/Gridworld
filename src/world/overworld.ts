@@ -41,6 +41,7 @@ import { setWalkways, dropWalkways, walkFloor, walkHit } from './walkways';
 import { setDoors, dropDoors, doorHit, doorRay } from './housedoors';
 import { recentDead } from './villageraid';
 import * as THREE from 'three';
+import type { Surface } from '../data/vehicles';
 import { setCrash, dropCrash, podHit } from './crashpod';
 import { installHit, dropInstalls, primeInstalls } from './installs';
 import { cityHit, cityRay, dropCities, cityName, cityVaultHint } from './cities';
@@ -128,6 +129,10 @@ const TILE_COLOR = 0x4dff7e, ICE_COLOR = 0xbfffe8;
 /** Roads and trails: a lighter, shaded strip over the ground (drawn over the terrain fill, under its grid lines). */
 /** (0.280) The players' dirt tracks: an earthier strip than the old roads. */
 const TRACK_FILL = new THREE.MeshBasicMaterial({ color: 0x2a3214, transparent: true, opacity: 0.85, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -2 });
+/** (0.282, D3) The heroes' surfaced tracks: gravel paler, paved grey with pale kerbs. */
+const GRAVEL_FILL = new THREE.MeshBasicMaterial({ color: 0x3e4030, transparent: true, opacity: 0.9, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -2 });
+const PAVED_FILL = new THREE.MeshBasicMaterial({ color: 0x343b3a, transparent: true, opacity: 0.95, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -2 });
+const KERB = new THREE.LineBasicMaterial({ color: 0x9aa8a0 });
 const ROAD_FILL = new THREE.MeshBasicMaterial({ color: 0x0f4020, transparent: true, opacity: 0.8, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -2 });
 /** Chunks reaching above this height (m) are snowy: pale lines. */
 const SNOW_LINE = 115;
@@ -349,9 +354,9 @@ function buildChunk(cx: number, cz: number, lod = 1): Chunk {
     if (!hole(x, az, x, az + STEP)) { lines.push(x, H(i, j), az, x, H(i, j + 1), az + STEP); lcol.push(...C(i, j), ...C(i, j + 1)); }
   }
   // roads and mountain trails: a shaded strip on the ground, no lines (a way worn into the land, not a highway)
-  const road: number[] = [], track: number[] = [], trails = f.roads.filter((r) => r.h);
+  const road: number[] = [], track: number[] = [], gravel: number[] = [], paved: number[] = [], kerb: number[] = [], trails = f.roads.filter((r) => r.h);
   for (const r of [...f.roads, ...f.ways]) {
-    const out = r.gate === 'player' ? track : road; // (0.280) the players' tracks
+    const out = r.gate === 'player' ? (r.cls === 2 ? paved : r.cls === 1 ? gravel : track) : road; // (0.280) the players' tracks, (0.282) by surface
     const hw = r.h ? r.half * 0.8 : r.half;
     for (let k = 0; k + 1 < r.pts.length; k++) {
       const [ax, az] = r.pts[k], [bx, bz] = r.pts[k + 1], L = Math.hypot(bx - ax, bz - az);
@@ -365,6 +370,7 @@ function buildChunk(cx: number, cz: number, lod = 1): Chunk {
         const P = (x: number, z: number) => [x, T.heightAt(x, z) + 0.04, z];
         const a = P(px - nx, pz - nz), b = P(px + nx, pz + nz), c = P(qx + nx, qz + nz), d = P(qx - nx, qz - nz);
         out.push(...a, ...b, ...c, ...a, ...c, ...d);
+        if (out === paved) { a[1] += 0.04; b[1] += 0.04; c[1] += 0.04; d[1] += 0.04; kerb.push(...a, ...d, ...b, ...c); if (Math.floor(s / 2) % 3 === 0) { const m0 = P((px + qx) / 2 - (qx - px) / 4, (pz + qz) / 2 - (qz - pz) / 4), m1 = P((px + qx) / 2 + (qx - px) / 4, (pz + qz) / 2 + (qz - pz) / 4); m0[1] += 0.06; m1[1] += 0.06; kerb.push(...m0, ...m1); } }
       }
     }
   }
@@ -378,7 +384,8 @@ function buildChunk(cx: number, cz: number, lod = 1): Chunk {
     group.add(new THREE.Mesh(fg, sharedFillV()), new THREE.LineSegments(lg, sharedLineV()));
   }
   if (road.length) { const rg = new THREE.BufferGeometry(); rg.setAttribute('position', new THREE.Float32BufferAttribute(road, 3)); group.add(new THREE.Mesh(rg, ROAD_FILL)); }
-  if (track.length) { const rg = new THREE.BufferGeometry(); rg.setAttribute('position', new THREE.Float32BufferAttribute(track, 3)); group.add(new THREE.Mesh(rg, TRACK_FILL)); }
+  for (const [pts, m] of [[track, TRACK_FILL], [gravel, GRAVEL_FILL], [paved, PAVED_FILL]] as const) if (pts.length) { const rg = new THREE.BufferGeometry(); rg.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3)); group.add(new THREE.Mesh(rg, m)); }
+  if (kerb.length) { const kg = new THREE.BufferGeometry(); kg.setAttribute('position', new THREE.Float32BufferAttribute(kerb, 3)); group.add(new THREE.LineSegments(kg, KERB)); }
   const sea = seaSheet(T, cx, cz, lat, lod); if (sea) group.add(sea);
   const swamp = !polar && shapedWorld(T.world) ? swampSheet(T, cx, cz, lat, lod) : null; if (swamp) group.add(swamp); // (0.233) the swamps' pools
   const river = f.rivers.length ? riverSheet(T, cx, cz, f.rivers) : null; if (river) group.add(river);
@@ -477,6 +484,17 @@ export function rebuildChunkAt(x: number, z: number) {
 }
 /** Rebuild every loaded chunk that comes within r of (x, z) (a claim levelled the ground there). */
 /** (0.280) Rebuild every loaded chunk within r of a polyline (a track finished there: the trees along it go). */
+/** (0.282, D3) The road surface at a point: the heroes' tracks by their surface, the old roads, mountain trails as dirt. */
+export function surfaceAt(x: number, z: number): Surface {
+  const T = OW.terrain; if (!T) return 'off';
+  const f = T.chunkFeatures(Math.floor(x / CHUNK), Math.floor(z / CHUNK));
+  let best: Surface = 'off', rank = -1;
+  const RANK: Record<Surface, number> = { off: -1, dirt: 0, road: 1, gravel: 2, paved: 3 };
+  for (const w of f.ways) if (nearestOnRoad(w, x, z)[0] < w.half + 0.8) { const k: Surface = w.cls === 2 ? 'paved' : w.cls === 1 ? 'gravel' : 'dirt'; if (RANK[k] > rank) { rank = RANK[k]; best = k; } }
+  for (const r of f.roads) if (nearestOnRoad(r, x, z)[0] < r.half + 0.8) { const k: Surface = r.h ? 'dirt' : 'road'; if (RANK[k] > rank) { rank = RANK[k]; best = k; } }
+  if (best === 'off' && (bridgeDeck(x, z) !== null || pierDeck(x, z) !== null)) best = 'road';
+  return best;
+}
 export function rebuildChunksAlong(pts: [number, number][], r: number) {
   for (const c of [...OW.chunks.values()]) {
     const x0 = c.cx * CHUNK, z0 = c.cz * CHUNK, mx = x0 + CHUNK / 2, mz = z0 + CHUNK / 2;
@@ -904,6 +922,7 @@ export function openWorld(x: number, z: number) {
     water: (px, pz) => (bridgeDeck(px, pz) !== null || pierDeck(px, pz) !== null ? 0 : T.water(px, pz)?.depth ?? 0),
     blocked: (px, pz, r) => settlementHit(px, T.heightAt(px, pz), pz, r) || megalithHit(px, T.heightAt(px, pz) + .5, pz, r) || worldGateHit(px, T.heightAt(px, pz) + .5, pz, r) || structBlocks(px, pz, r, T.heightAt(px, pz)) || treeHit(px, T.heightAt(px, pz) + 0.5, pz, r) || crystalHit(px, T.heightAt(px, pz), pz, r) || colossusHit(px, T.heightAt(px, pz), pz, r) || ambushHit(px, 0, pz, r) || peerCarHit(px, T.heightAt(px, pz) + 0.5, pz, r) || cityHit(px, T.heightAt(px, pz) + 0.5, pz, r) || hallHit(px, T.heightAt(px, pz), pz, r) || bridgeHit(px, (bridgeDeck(px, pz) ?? -99) + 0.5, pz, r), // a bridge's rails keep you on its deck
     ceiling: hallCeiling,
+    surface: (px, pz) => surfaceAt(px, pz),
   });
   syncFound(T, x, z);
   const envHooks = {

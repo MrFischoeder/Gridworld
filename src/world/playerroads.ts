@@ -26,7 +26,7 @@ import { seaMask, SEA } from '../gen/seas';
 import { lakesIn, shoreR } from '../gen/water';
 import { megalithsNear } from '../gen/megaliths';
 import { hubs } from '../gen/warehouses';
-import { PROAD, along, smoothPts, terrainWays, waysKey, roadBuilt, roadShare, roadLength, stretchProblem, proposeWay, newRoadProblem, newRoad, roadRows, startFrom, stalled, logsReady, type PlayerRoad, type RoadEnd, type RoadGround, type RoadHome } from '../gen/playerroads';
+import { PROAD, along, smoothPts, terrainWays, waysKey, roadBuilt, roadLength, stretchProblem, proposeWay, newRoadProblem, newRoad, roadRows, startFrom, stalled, logsReady, workNow, slicePts, SURFACE_CLS, UP_STEP, type PlayerRoad, type RoadEnd, type RoadGround, type RoadHome } from '../gen/playerroads';
 import { regionFords, deckAt, type Ford } from '../gen/bridges';
 import { regionOf, wrapDx } from '../gen/regions';
 import { chunkTrees, TREE_SPAN } from '../gen/trees';
@@ -329,18 +329,19 @@ let scanT = 0, waysAt = '', first = true;
 const told = new Set<string>();
 /** Distance from (x, z) to a track's way on this copy of the planet. */
 const distTo = (r: PlayerRoad, sx: number, x: number, z: number) => nearestOnRoad({ id: '', from: 0, to: 0, gate: '', half: 0, pts: r.pts.map(([a, b]) => [a + sx, b] as [number, number]) }, x, z)[0];
-const keyOf = (r: PlayerRoad, now: number) => (roadBuilt(r, now) ? 'd' : r.t0 !== undefined ? 'w' + Math.floor(roadShare(r, now) * r.len / 8) + stalled(r, now) + (r.has?.camp ? 'c' : '') + (r.has?.mach ? 'm' : '') + (logsReady(r, now) > 0 ? 'l' : '') : 's' + roadRows(r).map((w) => Math.floor(w.given / w.n * 10)).join('.'));
-/** The diggers' camp beside the front (on this copy of the planet), or null before the work starts. */
+const keyOf = (r: PlayerRoad, now: number) => { const w = workNow(r, now); return (roadBuilt(r, now) ? 'd' + (r.cls ?? 0) + (r.up ? r.up.to + (r.up.t0 === undefined ? 's' : '') : '') : r.t0 !== undefined ? 'w' : 's' + roadRows(r).map((x) => Math.floor(x.given / x.n * 10)).join('.')) + (w ? Math.floor(w.front / 8) + w.idle : '') + (r.has?.camp ? 'c' : '') + (r.has?.mach ? 'm' : '') + (logsReady(r, now) > 0 ? 'l' : ''); };
+/** The diggers' camp beside the front of the work going on (on this copy of the planet), or null when none is. */
 function campAt(r: PlayerRoad, sx: number, now: number) {
-  if (r.t0 === undefined || roadBuilt(r, now)) return null;
-  const pts = smoothPts(r.pts), p = along(pts, roadShare(r, now) * roadLength(pts));
+  const w = workNow(r, now);
+  if (!w) return null;
+  const pts = smoothPts(r.pts), p = along(pts, w.share * roadLength(pts));
   return { x: p.x + sx - p.dz * (PROAD.half + 3.5), z: p.z + p.dx * (PROAD.half + 3.5), p };
 }
 function drawRoad(r: PlayerRoad, sx: number, now: number): Live {
   const T = OW.terrain!, pts = smoothPts(r.pts).map(([x, z]) => [x + sx, z] as [number, number]), ox = pts[0][0], oz = pts[0][1];
   const pb = new PropBatch(), h = (x: number, z: number) => T.heightAt(x, z), L = roadLength(pts);
   const P = (x: number, y: number, z: number) => [x - ox, y, z - oz];
-  const built = roadBuilt(r, now), share = roadShare(r, now), front = share * L, hw = PROAD.half;
+  const built = roadBuilt(r, now), work = workNow(r, now), share = work ? work.share : built ? 1 : 0, front = share * L, hw = PROAD.half;
   const g = new THREE.Group(), hands: Hand[] = [];
   if (!built) {
     // the stakes and the tape ahead of the work (all of it before it starts)
@@ -362,7 +363,8 @@ function drawRoad(r: PlayerRoad, sx: number, now: number): Live {
       const cx0 = a.x - a.dz * hw, cz0 = a.z + a.dx * hw, cx1 = a.x + a.dz * hw, cz1 = a.z - a.dx * hw;
       pb.seg(EARTH, P(cx0, h(cx0, cz0) + 0.05, cz0), P(cx1, h(cx1, cz1) + 0.05, cz1));
     }
-    if (r.t0 !== undefined) { // the diggers' camp at the front: a tent, a barrow, a heap of stone and planks
+  }
+  if (work) { // the diggers' camp at the front: a tent, a barrow, a heap of stone and planks (gravel or cement bags for a surface)
       const p = along(pts, front), sxp = -p.dz * (hw + 3.5), szp = p.dx * (hw + 3.5), tx = p.x + sxp, tz = p.z + szp, ty = h(tx, tz);
       const T0 = P(tx - p.dx * 1.6, ty, tz - p.dz * 1.6), T1 = P(tx + p.dx * 1.6, ty, tz + p.dz * 1.6), ridge0 = P(tx - p.dx * 1.6, ty + 1.7, tz - p.dz * 1.6), ridge1 = P(tx + p.dx * 1.6, ty + 1.7, tz + p.dz * 1.6);
       const w = (q: number[], s: number) => [q[0] - p.dz * 1.3 * s, q[1], q[2] + p.dx * 1.3 * s];
@@ -386,12 +388,15 @@ function drawRoad(r: PlayerRoad, sx: number, now: number): Live {
         pb.box(gx - ox - 0.2, gy + 1.6, gz - oz - 0.2, gx - ox + 0.2, gy + 2.8, gz - oz + 0.2, 0x5a5a50);
         pb.seg(0xd8c890, P(gx + p.dx * 1.5 - p.dz * 1.6, gy + 0.2, gz + p.dz * 1.5 + p.dx * 1.6), P(gx + p.dx * 1.5 + p.dz * 1.6, gy + 0.2, gz + p.dz * 1.5 - p.dx * 1.6));
       }
-      const stop = stalled(r, now);
+      if (work.up) { // (0.282) the new surface: a heap of gravel, or pallets of cut stone, behind the camp
+        const hx2 = p.x - p.dx * 4 + sxp * 0.6, hz2 = p.z - p.dz * 4 + szp * 0.6, hy2 = h(hx2, hz2);
+        for (let i = 0; i < 4; i++) pb.box(hx2 - ox - 1 + i * 0.5, hy2, hz2 - oz - 0.7, hx2 - ox - 0.6 + i * 0.5, hy2 + 0.3 + (i % 2) * 0.2, hz2 - oz + 0.7, r.up!.to === 2 ? 0xb8bcb4 : 0x9a9478);
+      }
+      const stop = work.idle === 'setup' ? '' : work.idle;
       if (stop) { const wl = textSprite(stop === 'camp' ? tl('WAITING FOR A ROAD CAMP') : tl('WAITING FOR SUPPLIES'), '#ff9a7a', 2.6); wl.position.set(tx - ox, ty + 3.4, tz - oz); g.add(wl); }
       for (const [off, side, kit] of [[1.5, -0.5, 'pick'], [3, 0.6, 'hoe'], [0, 0.2, 'pick']] as const) {
         const f = makeFigure(WORKER, kit); g.add(f.g); hands.push({ f, off, side, phase: hands.length * 0.37 });
       }
-    }
   }
   if (logsReady(r, now) > 0) { // (0.281) the felled logs stacked by the start's sign
     const q = along(pts, 6), x = q.x + q.dz * (hw + 2.5), z = q.z - q.dx * (hw + 2.5), y = h(x, z);
@@ -405,7 +410,7 @@ function drawRoad(r: PlayerRoad, sx: number, now: number): Live {
     const q = along(pts, k ? L - 3 : 3), x = q.x - q.dz * (hw + 1.6), z = q.z + q.dx * (hw + 1.6), y = h(x, z);
     pb.box(x - ox - 0.07, y - 0.1, z - oz - 0.07, x - ox + 0.07, y + 2.2, z - oz + 0.07, POST);
     pb.box(x - ox - 0.5, y + 1.6, z - oz - 0.06, x - ox + 0.5, y + 2.1, z - oz + 0.06, POST);
-    const label = textSprite(built ? r.name.toUpperCase() : (r.t0 !== undefined ? TL`TRACK WORKS · ${Math.floor(share * 100)}%` : tl('TRACK SITE')) + ' · ' + r.name.toUpperCase(), built ? '#d8c890' : '#ffd060', 3.2);
+    const label = textSprite(built ? (work ? TL`SURFACING · ${Math.floor(share * 100)}%` + ' · ' : '') + r.name.toUpperCase() : (r.t0 !== undefined ? TL`TRACK WORKS · ${Math.floor(share * 100)}%` : tl('TRACK SITE')) + ' · ' + r.name.toUpperCase(), built && !work ? '#d8c890' : '#ffd060', 3.2);
     label.position.set(x - ox, y + 2.6, z - oz); g.add(label);
   }
   g.add(pb.build());
@@ -423,14 +428,25 @@ export function updateRoads(dt: number) {
     scanT = 1;
     const key = waysKey(c.proads, c.time);
     if (first) waysAt = key; // openWorld handed the land the tracks finished by then
-    if (key !== waysAt) { // a track finished (or was given up): the land changes
-      const was = new Set(waysAt ? waysAt.split(',') : []), now = new Set(key ? key.split(',') : []);
+    if (key !== waysAt) { // a track finished, a surface moved on (or a track was given up): the land changes
+      const parse = (k: string) => new Map(k ? k.split(',').map((e) => [e.split('|')[0], e] as [string, string]) : []);
+      const was = parse(waysAt), now = parse(key);
       waysAt = key; T.setWays(terrainWays(c.proads, c.time));
-      for (const id of new Set([...was, ...now])) {
-        if (was.has(id) === now.has(id)) continue;
+      for (const id of new Set([...was.keys(), ...now.keys()])) {
+        const a = was.get(id), b = now.get(id);
+        if (a === b) continue;
         const r = c.proads[id];
-        if (r) rebuildChunksAlong(r.pts, 12);
-        if (r && now.has(id) && !first && !told.has(id)) { told.add(id); showToast(tl('A track is finished')); logLine(TL`The diggers finish the track ${r.name}: ${r.len} m of graded earth.`); }
+        if (!r) continue;
+        if (a && b) { // the same track: its new surface laid further (redraw only that stretch)
+          const [, ca, ua] = a.split('|'), [, cb, ub] = b.split('|'), sa = Number(ua.split(':')[1] ?? 0), sb = Number(ub.split(':')[1] ?? 0);
+          const pts = smoothPts(r.pts), L = roadLength(pts), k = L / Math.max(1, r.len);
+          if (ca === cb && ua.split(':')[0] === ub.split(':')[0] && sb > sa) rebuildChunksAlong(slicePts(pts, Math.max(0, sa * k - UP_STEP), Math.min(L, sb * k + UP_STEP)), 12);
+          else rebuildChunksAlong(r.pts, 12);
+          if (r.up && sb >= r.len && sa < r.len && !first && !told.has(id + ':' + r.up.to)) { told.add(id + ':' + r.up.to); const what = SURFACE_CLS[r.up.to].name; showToast(TL`${what} laid`); logLine(TL`The crew finishes the ${what.toLowerCase()} on ${r.name}: ${r.len} m.`); }
+          continue;
+        }
+        rebuildChunksAlong(r.pts, 12);
+        if (b && !first && !told.has(id)) { told.add(id); showToast(tl('A track is finished')); logLine(TL`The diggers finish the track ${r.name}: ${r.len} m of graded earth.`); }
       }
       const gy = T.heightAt(G.pos.x, G.pos.z); if (G.pos.y < gy) G.pos.y = gy;
     }
@@ -451,8 +467,9 @@ export function updateRoads(dt: number) {
   }
   // the diggers at the front: picks and hoes, the front moving on with the clock
   for (const l of live.values()) {
-    if (!l.hands.length || l.r.t0 === undefined) continue;
-    const pts = smoothPts(l.r.pts), L = roadLength(pts), front = roadShare(l.r, c.time) * L, idle = !!stalled(l.r, c.time) || c.time < (l.r.fr?.[1] ?? 0);
+    const w = workNow(l.r, c.time);
+    if (!l.hands.length || !w) continue;
+    const pts = smoothPts(l.r.pts), L = roadLength(pts), front = w.share * L, idle = !!w.idle;
     for (const hd of l.hands) {
       hd.phase += dt;
       const p = along(pts, Math.max(0, front - hd.off)), x = p.x + l.sx - p.dz * PROAD.half * hd.side, z = p.z + p.dx * PROAD.half * hd.side;
@@ -480,7 +497,7 @@ export function nearRoadSign(): PlayerRoad | null {
   }
   return null;
 }
-export const roadSignPrompt = (r: PlayerRoad) => (roadBuilt(r, G.char.time) ? TL`E — the track ${r.name}` : r.t0 !== undefined ? TL`E — the track works ${r.name}${stalled(r, G.char.time) ? tl(' (the diggers wait)') : ''}` : TL`E — the track site ${r.name} (bring the materials and the wages)`);
+export const roadSignPrompt = (r: PlayerRoad) => (roadBuilt(r, G.char.time) ? (workNow(r, G.char.time) ? TL`E — the surfacing works ${r.name}` : TL`E — the track ${r.name}`) : r.t0 !== undefined ? TL`E — the track works ${r.name}${stalled(r, G.char.time) ? tl(' (the diggers wait)') : ''}` : TL`E — the track site ${r.name} (bring the materials and the wages)`);
 /** (0.281) The front's point (the diggers' camp) on this copy of the planet, for handing over from vehicles parked there. */
 export function roadFront(r: PlayerRoad): { x: number; z: number } | null {
   const sx = nearX(r.pts[0][0], G.pos.x) - r.pts[0][0], cp = campAt(r, sx, G.char.time);

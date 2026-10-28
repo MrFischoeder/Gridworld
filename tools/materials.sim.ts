@@ -40,7 +40,7 @@ import { HOUSE_PRICE } from '../src/data/npcs';
 import { FUEL, CHIPS } from '../src/gen/contracts';
 import { OWN, HALL } from '../src/gen/hall';
 import { BRIDGE } from '../src/gen/bridges';
-import { PROAD, CAMP, MACHINE, MACHINE_X, roadNeeds, roadWage } from '../src/gen/playerroads';
+import { PROAD, CAMP, MACHINE, MACHINE_X, SURFACE_CLS, roadNeeds, roadWage } from '../src/gen/playerroads';
 import { PIER } from '../src/gen/piers';
 import { LH } from '../src/gen/lighthouses';
 import { BOATS, type BoatKind } from '../src/gen/boats';
@@ -283,6 +283,11 @@ it('writes SUROWCE.md', () => {
   for (const k of Object.keys(CAMP) as ItemKey[]) use(k, 'obóz drogowy');
   P(`- **Równiarka parowa** (od 0.281, czoło robót ×${MACHINE_X}): ${(Object.entries(MACHINE) as [ItemKey, number][]).map(([k, n]) => `${n} × ${N(k)}`).join(', ')}`);
   for (const k of Object.keys(MACHINE) as ItemKey[]) use(k, 'równiarka parowa');
+  for (const [i, pl] of [[1, 'Żwirówka'], [2, 'Droga utwardzona']] as const) {
+    const c = SURFACE_CLS[i];
+    P(`- **${pl}** (od 0.282, ulepszenie gotowej drogi, ${i === 1 ? 'z duktu' : 'ze żwirówki'}): ${(Object.entries(c.per) as [ItemKey, number][]).map(([k, m]) => `${N(k)} 1 na ${m} m`).join(', ')}, zapłata ${c.wage} zł na metr; pojazdy jadą po niej szybciej i palą mniej`);
+    for (const k of Object.keys(c.per) as ItemKey[]) use(k, pl.toLowerCase());
+  }
   P(`- **Dok** (Dock Kit u kowala): na długość pomostu: ${per(PIER.per)}, do tego ${list(Object.entries(PIER.fittings) as [ItemKey, number][])} na głowicę`);
   for (const k of [...Object.keys(PIER.per), ...Object.keys(PIER.fittings)] as ItemKey[]) use(k, 'dok');
   P(`- **Latarnia morska** (Lighthouse Plans u kowala, od 0.204): ${list(LH.needs)}; obracające się, migające światło widać z ${LH.see / 1000} km, nie oświetla okolicy; okres obrotu ${LH.periods.join(' / ')} s do wyboru przy drzwiach`);

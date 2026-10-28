@@ -129,6 +129,19 @@ export const wheelCount = (m: VehicleModel) => VEHICLES[m].axles.length * 2;
  * throttle, and `idle` litres a second while someone sits at the wheel. A Fuel Canister pours `can` litres in.
  */
 export const FUEL = { cruise: 0.55, idle: 0.002, can: 20 };
+/**
+ * (0.282, PLAN_DROG.md stage D3) What the ground under the wheels does: `speed` multiplies the top speed, `fuel` the
+ * fuel or charge burnt. Off the roads a vehicle goes slower and thirstier; the old roads between the villages are
+ * packed earth and stone; the heroes' tracks go dirt → gravel → paved.
+ */
+export type Surface = 'off' | 'dirt' | 'road' | 'gravel' | 'paved';
+export const SURFACE: Record<Surface, { speed: number; fuel: number; name: string }> = {
+  off: { speed: 0.8, fuel: 1.2, name: tl('off the road') },
+  dirt: { speed: 1, fuel: 1, name: tl('dirt track') },
+  road: { speed: 1.08, fuel: 0.95, name: tl('old road') },
+  gravel: { speed: 1.12, fuel: 0.92, name: tl('gravel road') },
+  paved: { speed: 1.25, fuel: 0.85, name: tl('paved road') },
+};
 /** Litres burnt over `metres` with throttle `thr` (−1..1) plus `secs` at the wheel. */
 export const fuelBurn = (m: VehicleModel, metres: number, thr: number, secs: number) =>
   metres / 1000 * VEHICLES[m].fuelUse * (FUEL.cruise + (1 - FUEL.cruise) * Math.min(1, Math.abs(thr))) + secs * FUEL.idle;

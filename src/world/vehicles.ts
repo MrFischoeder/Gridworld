@@ -5,7 +5,7 @@ import * as THREE from 'three';
 import { scene, camera, V, GRID } from './render';
 import { G } from '../game';
 import { PropBatch } from './props';
-import { VEHICLES, SEATS, HULL_BOXES, BAY_SPOTS, MODEL_ORDER, fitBays, vehicleTitle, freshParts, upgradeParts, immobile, partPerformance, resaleValue, fuelBurn, outOfFuel, rangeKm, cansToFill, FUEL, isEV, evBurn, evRangeKm, energyOf, damageCondition, crashDamage, engineBoost, type VehicleSpec, type VehicleModel, type VehicleParts } from '../data/vehicles';
+import { VEHICLES, SEATS, HULL_BOXES, BAY_SPOTS, MODEL_ORDER, fitBays, vehicleTitle, freshParts, upgradeParts, immobile, partPerformance, resaleValue, fuelBurn, outOfFuel, rangeKm, SURFACE, type Surface, cansToFill, FUEL, isEV, evBurn, evRangeKm, energyOf, damageCondition, crashDamage, engineBoost, type VehicleSpec, type VehicleModel, type VehicleParts } from '../data/vehicles';
 import { PART_PRICE, PART_BUYBACK } from '../data/items';
 import { rayWorld } from './player';
 import { foes, damageFoe } from './enemies';
@@ -65,6 +65,8 @@ export interface WorldHooks {
   blocked(x: number, z: number, r: number): boolean;
   /** The height the chase camera must stay under at a point (a roof over it), or undefined in the open. */
   ceiling?(x: number, z: number): number | undefined;
+  /** (0.282) The road surface under a point (data/vehicles.ts `SURFACE`); unset = off the road. */
+  surface?(x: number, z: number): Surface;
 }
 let hooks: WorldHooks | null = null;
 export const vehicles: Vehicle[] = [];
@@ -804,8 +806,13 @@ function hullBlocked(v: Vehicle, x: number, z: number, h: number): boolean {
   }
   return false;
 }
+/** (0.282) The surface under the driven vehicle, looked up a few times a second. */
+let surf: Surface = 'off', surfT = 0;
+export const surfaceNow = () => surf;
 export function updateDriving(dt: number) {
-  const v = driving.v!, s = v.spec, k = G.keys, stick = G.stick, boost = engineBoost(v.st.parts), perf = partPerformance(v.st.parts), maxSpeed = s.maxSpeed * perf * boost.speed;
+  const v = driving.v!, s = v.spec, k = G.keys, stick = G.stick, boost = engineBoost(v.st.parts), perf = partPerformance(v.st.parts);
+  if ((surfT -= dt) <= 0) { surfT = 0.2; surf = hooks?.surface?.(v.st.x, v.st.z) ?? 'off'; }
+  const ground = SURFACE[surf], maxSpeed = s.maxSpeed * perf * boost.speed * ground.speed;
   const wheel = driving.seat === 0; // from another seat nobody drives: it rolls to a stop
   const want = wheel ? Math.max(-1, Math.min(1, (k.KeyW ? 1 : 0) - (k.KeyS ? 1 : 0) - stick.dy)) : 0;
   const dry = outOfFuel(v.st.parts), thr = dry ? 0 : want; // a dry tank: it only rolls and brakes
@@ -833,7 +840,7 @@ export function updateDriving(dt: number) {
     damageVehicle(v, crashDamage(v.st.model, impact));
     if (driving.v !== v) return; // the crash wrecked it
   } else if (climb > 0.8) { v.speed = 0; } else {
-    if (wheel) consumeFuel(v, Math.abs(v.speed) * dt, thr, dt);
+    if (wheel) consumeFuel(v, Math.abs(v.speed) * dt * ground.fuel, thr, dt);
     v.st.x = nx; v.st.z = nz; v.st.heading = nh;
     if (!driving.cockpit) G.yaw += dh * 0.9; // the chase camera swings with the vehicle
     else G.yaw += dh;
@@ -845,7 +852,7 @@ export function updateDriving(dt: number) {
   G.vel.set(0, 0, 0);
   if (driving.seat !== 0 && v.riders[driving.seat]?.who !== 'you') { seatRider(v, driving.seat, 'you', YOU); }
   const p = v.st.parts;
-  el.veh.innerHTML = TL`${vehicleTitle(v.st.model)} · ${SEAT_NAMES[driving.seat] ?? tl('seat')} · ${Math.round(Math.abs(v.speed) * 3.6)} km/h · ${aboard(v)}/${s.seats} aboard${s.enclosed ? tl(' · cab closed') : ''}` + (v.st.lights ? tl(' · lights on (L)') : tl(' · lights off (L)')) +
+  el.veh.innerHTML = TL`${vehicleTitle(v.st.model)} · ${SEAT_NAMES[driving.seat] ?? tl('seat')} · ${Math.round(Math.abs(v.speed) * 3.6)} km/h (${ground.name}) · ${aboard(v)}/${s.seats} aboard${s.enclosed ? tl(' · cab closed') : ''}` + (v.st.lights ? tl(' · lights on (L)') : tl(' · lights off (L)')) +
     `<br><span${p.hull < s.hull * 0.25 ? ' class="warn"' : ''}>${tl('condition')} ${Math.ceil(p.hull / s.hull * 100)}%</span>` +
     (([e, full, km, u]) => `<span${e < full * 0.1 ? ' class="warn"' : ''}> · ${u === 'kWh' ? tl('battery') : tl('fuel')} ${Math.ceil(e)}/${full} ${u} · ~${Math.round(km)} km</span>`)(energyOf(v.st.model, p)) + (v.turret ? tl(' · cannon') : '');
 }

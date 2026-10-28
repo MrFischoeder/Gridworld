@@ -6,7 +6,7 @@
 import { G, W } from '../game';
 import { ITEMS, type ItemKey } from '../data/items';
 import { calcStats, saveChar, gainXp } from '../character';
-import { roadRows, roadWage, roadXp, handOverRoad, handOverPart, partRows, roadShare, roadBuilt, roadLeft, frontAt, coverOf, doneAt, campWanted, stalled, paceOf, logsReady, MACHINE_X, PROAD, type PlayerRoad, type RoadPart } from '../gen/playerroads';
+import { roadRows, roadWage, roadXp, handOverRoad, handOverPart, partRows, roadShare, roadBuilt, roadLeft, frontAt, coverOf, doneAt, campWanted, stalled, paceOf, logsReady, MACHINE_X, PROAD, SURFACE_CLS, clsOf, nextCls, startUpgrade, handOverUp, upRows, upWage, upXp, upNeeds, upCover, upFrontAt, upDone, upDoneAt, upStalled, upPace, type PlayerRoad, type RoadPart } from '../gen/playerroads';
 import { fmtClock } from '../core/time';
 import { redrawRoads, endWord, freeHands, roadFront } from '../world/playerroads';
 import { carried, takeFrom, putAway } from './market';
@@ -60,13 +60,38 @@ function partHTML(r: PlayerRoad, k: RoadPart): string {
   if (done) return `<div class="shoprow"><div><b>${name}</b> · <span style="color:var(--xp)">${tl('built')}</span> · ${what}</div></div>`;
   return `<div class="shoprow"><div><b>${name}</b> · ${what}<br>${rowsHTML(rows)}</div><button class="buy" data-road="${k}" ${canGive(rows) ? '' : 'disabled'}>${tl('Hand over')}</button></div>`;
 }
+/** (0.282, D3) The surface and laying the next one. */
+function surfaceHTML(r: PlayerRoad): string {
+  const c = G.char, now = c.time, u = r.up, cur = u && upDone(r, now) ? u.to : clsOf(r);
+  let s = `<div class="say">` + TL`Surface: <b>${SURFACE_CLS[cur].name}</b>.`;
+  if (u && !upDone(r, now)) {
+    const name = SURFACE_CLS[u.to].name, f = upFrontAt(r, now), stop = upStalled(r, now), rows = upRows(r), wage = upWage(r.len, u.to), left = wage - u.paid;
+    if (u.t0 === undefined) s += ' ' + TL`Laying a ${name.toLowerCase()}: the crew from ${r.home?.name ?? tl('nearby')} starts once the supplies cover the first ${Math.min(r.len, PROAD.first)} m (now ${upCover(r)} m).`;
+    else {
+      s += ' ' + TL`<b>${u.crew} workers</b> lay a ${name.toLowerCase()}: ${Math.round(f)} m of ${r.len} m (${Math.floor(f / r.len * 100)}%), ${Math.round(upPace(r) * 60)} m an hour. `;
+      if (stop === 'supply') s += TL`<span style="color:#ff9a7a">They wait at ${Math.round(f)} m: the supplies brought cover no further. Bring more.</span>`;
+      else if (stop === 'camp') s += TL`<span style="color:#ff9a7a">They wait ${PROAD.walk} m from home: too far to walk back each night. Build them a road camp.</span>`;
+      else if (Number.isFinite(upDoneAt(r))) s += TL`Everything is in: done in ${hrs(upDoneAt(r) - now)}.`;
+      else s += TL`The supplies cover ${upCover(r)} m: they dig on towards it.`;
+    }
+    s += '</div>' + `<div class="shoprow"><div>${rowsHTML(rows)} · <span style="color:${left <= 0 ? 'var(--xp)' : c.gold > 0 ? 'var(--txt)' : '#ff9a7a'}">${TL`Wages ${u.paid}/${wage} gold`}</span>` +
+      TL`<br><span style="opacity:.7">Bring them to either sign or to the crew at the front. When the work starts: ${upXp(r.len, u.to)} xp.</span>` + `</div></div>` +
+      TL`<button class="opt" data-road="upgive" ${canGive(rows) || (left > 0 && c.gold > 0) ? '' : 'disabled'}>Hand over what I carry and pay the wages</button>`;
+    if (r.v === 2) { if (campWanted(r)) s += partHTML(r, 'camp'); s += partHTML(r, 'mach'); }
+    return s;
+  }
+  const nx = nextCls(r, now);
+  s += ' ' + (nx ? TL`A ${SURFACE_CLS[nx].name.toLowerCase()} would let vehicles go faster and burn less: it takes ${upNeeds(r.len, nx).map(([k, n]) => `${n} × ${ITEMS[k].name}`).join(', ')} and ${upWage(r.len, nx)} gold in wages.` : tl('The best surface there is.')) + '</div>';
+  if (nx) s += TL`<button class="opt" data-road="upnew">Stake out the ${SURFACE_CLS[nx].name.toLowerCase()}</button>`;
+  return s;
+}
 function render(msg = '') {
   const r = road(), c = G.char;
   if (!r) { close(); return; }
   const built = roadBuilt(r, c.time), v2 = r.v === 2;
   let s = TL`<h2>${r.name}</h2><div class="role">${built ? tl('Track') : r.t0 !== undefined ? tl('Track works') : tl('Track site')} · ${r.len} m · from ${endWord(r.a)} to ${endWord(r.b)}</div><div class="say">${msg ? msg + '<br><br>' : ''}`;
   if (built) {
-    s += TL`A dirt track ${PROAD.half * 2} m wide: graded flat across, cleared of trees and rocks, kept dry over the swamp pools. Staked out by ${r.by}, finished on ${fmtClock(doneAt(r))}.</div>`;
+    s += TL`A dirt track ${PROAD.half * 2} m wide: graded flat across, cleared of trees and rocks, kept dry over the swamp pools. Staked out by ${r.by}, finished on ${fmtClock(doneAt(r))}.</div>` + surfaceHTML(r);
   } else if (!v2 && r.t0 !== undefined) {
     const p = roadShare(r, c.time);
     s += TL`The diggers are at work: ${Math.floor(p * 100)}% done, about ${Math.round(p * r.len)} m of ${r.len} m graded. Their camp moves along the front of the work. It will be done in ${hrs(roadLeft(r, c.time))}.</div>`;
@@ -125,6 +150,33 @@ export function roadClick(t: HTMLElement): boolean {
         showToast(TL`The diggers start on ${r.name}`);
         logLine(TL`Everything is in: the diggers start grading the track ${r.name}. +${roadXp(r.len)} xp`);
         msg += tl(' <b>The diggers start work.</b>');
+      }
+      if (noCrew) msg += TL` <b>${r.home?.name ?? ''} has no free hands to send: the work waits until people are free there.</b>`;
+      redrawRoads(); calcStats(); saveChar();
+    }).then(() => render(msg));
+    return true;
+  }
+  if (a === 'upnew') {
+    let msg = '';
+    void withRoad(() => {
+      const r = road(); if (!r) return;
+      if (startUpgrade(r, c.time)) { msg = TL`The stakes for a ${SURFACE_CLS[r.up!.to].name.toLowerCase()} go in. Bring the materials and the wages.`; redrawRoads(); saveChar(); }
+    }).then(() => render(msg));
+    return true;
+  }
+  if (a === 'upgive') {
+    let msg = '';
+    void withRoad(() => {
+      const r = road(); if (!r?.up) return;
+      const { taken, paid, started, noCrew } = handOverUp(r, have, c.gold, c.time, freeHands);
+      for (const [k, n] of taken) takeFrom(k, n, whereHas(k));
+      c.gold -= paid;
+      msg = taken.length || paid ? tl('Handed over: ') + [...taken.map(([k, n]) => `${ITEMS[k].name} ×${n}`), ...(paid ? [TL`${paid} gold in wages`] : [])].join(', ') + '.' : tl('You carry nothing the track still needs.');
+      if (started) {
+        const what = SURFACE_CLS[r.up.to].name;
+        gainXp(upXp(r.len, r.up.to));
+        showToast(TL`The crew starts laying the ${what.toLowerCase()}`);
+        logLine(TL`Everything needed is in: the crew starts laying the ${what.toLowerCase()} on ${r.name}. +${upXp(r.len, r.up.to)} xp`);
       }
       if (noCrew) msg += TL` <b>${r.home?.name ?? ''} has no free hands to send: the work waits until people are free there.</b>`;
       redrawRoads(); calcStats(); saveChar();

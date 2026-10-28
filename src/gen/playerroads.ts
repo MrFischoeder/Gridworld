@@ -87,7 +87,28 @@ export interface PlayerRoad {
   has?: Partial<Record<RoadPart, number>>;
   /** Metres of swamp to fill, logs to fell on the way, logs taken. */
   wet?: number; logs?: number; took?: number;
+  /** (0.282, D3) The surface laid for its whole length (0 dirt, 1 gravel, 2 paved; unset = 0) and the upgrade under way. */
+  cls?: number;
+  up?: RoadUp;
 }
+/** (0.282, D3) Laying a better surface over a finished track: like the track's own work, a crew along a supplied front. */
+export interface RoadUp {
+  to: 1 | 2;
+  given: Partial<Record<ItemKey, number>>; paid: number;
+  t0?: number; fr?: [number, number]; crew?: number;
+}
+/**
+ * (0.282, D3) The surfaces. `per`: a piece of each material per so many metres; `wage` gold a metre; `pace` the
+ * crew's speed against digging the track; `speed` / `fuel` what driving on it does to a vehicle (data/vehicles.ts
+ * reads `SURFACE` through the world's hook). Off the roads a vehicle goes slower and burns more.
+ */
+export const SURFACE_CLS = [
+  { k: 'dirt', name: tl('Dirt track'), per: {}, wage: 0, pace: 1 },
+  { k: 'gravel', name: tl('Gravel road'), per: { stone: 5, sand: 60 } as Partial<Record<ItemKey, number>>, wage: 0.2, pace: 1.6 },
+  { k: 'paved', name: tl('Paved road'), per: { cutstone: 10, cement: 20, stone: 8 } as Partial<Record<ItemKey, number>>, wage: 0.3, pace: 0.8 },
+] as const;
+/** The surface of the whole track (what was laid before the upgrade under way). */
+export const clsOf = (r: PlayerRoad) => r.cls ?? 0;
 
 export const roadLength = (pts: [number, number][]) => { let s = 0; for (let i = 1; i < pts.length; i++) s += Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]); return s; };
 export const roadHours = (len: number) => Math.round((PROAD.hours0 + len / 1000 * PROAD.perKm) * 10) / 10;
@@ -180,7 +201,7 @@ export function partRows(r: PlayerRoad, k: RoadPart): { k: ItemKey; n: number; g
 }
 /** Hand over to the camp or the machines; built once everything is in (the front settled first: its pace or reach changes). */
 export function handOverPart(r: PlayerRoad, k: RoadPart, have: (k: ItemKey) => number, now: number): { taken: [ItemKey, number][]; built: boolean } {
-  if (!isV2(r) || r.has?.[k] || roadBuilt(r, now)) return { taken: [], built: false };
+  if (!isV2(r) || r.has?.[k] || (roadBuilt(r, now) && !(r.up && !upDone(r, now)))) return { taken: [], built: false };
   const taken: [ItemKey, number][] = [];
   const got = ((r.parts ??= {})[k] ??= {});
   for (const w of partRows(r, k)) {
@@ -188,9 +209,98 @@ export function handOverPart(r: PlayerRoad, k: RoadPart, have: (k: ItemKey) => n
     if (n > 0) { got[w.k] = (got[w.k] ?? 0) + n; taken.push([w.k, n]); }
   }
   const built = partRows(r, k).every((w) => w.given >= w.n);
-  if (built) { settleFront(r, now); (r.has ??= {})[k] = now; }
+  if (built) { settleFront(r, now); settleUp(r, now); (r.has ??= {})[k] = now; }
   return { taken, built };
 }
+// ---------- (0.282, D3) a better surface ----------
+export const upNeeds = (len: number, to: 1 | 2): [ItemKey, number][] => (Object.entries(SURFACE_CLS[to].per) as [ItemKey, number][]).map(([k, m]) => [k, Math.max(1, Math.ceil(len / m))]);
+export const upWage = (len: number, to: 1 | 2) => Math.round(len * SURFACE_CLS[to].wage);
+export const upXp = (len: number, to: 1 | 2) => Math.round(len * PROAD.xp * (to === 2 ? 1 : 0.6));
+export function upRows(r: PlayerRoad): { k: ItemKey; n: number; given: number }[] {
+  const u = r.up; if (!u) return [];
+  return upNeeds(r.len, u.to).map(([k, n]) => ({ k, n, given: Math.min(n, u.given[k] ?? 0) }));
+}
+/** Metres of the upgrade the materials and wages cover. */
+export function upCover(r: PlayerRoad): number {
+  const u = r.up; if (!u) return 0;
+  let share = Math.min(1, u.paid / Math.max(1, upWage(r.len, u.to)));
+  for (const w of upRows(r)) share = Math.min(share, w.given / w.n);
+  return share >= 1 ? r.len : Math.floor(share * r.len);
+}
+const upCap = (r: PlayerRoad) => Math.min(upCover(r), reachOf(r));
+export const upPace = (r: PlayerRoad) => Math.max(1, r.up?.crew ?? PROAD.minCrew) * PROAD.dig * SURFACE_CLS[r.up?.to ?? 1].pace * (r.has?.mach ? MACHINE_X : 1);
+/** When the upgrade's front reaches the end (Infinity while supplies or the camp hold it, or before it starts). */
+export function upDoneAt(r: PlayerRoad): number {
+  const u = r.up; if (!u || u.t0 === undefined) return Infinity;
+  const [p, t] = u.fr ?? [0, u.t0];
+  return p >= r.len ? t : upCap(r) >= r.len ? t + (r.len - p) / upPace(r) : Infinity;
+}
+/** The upgrade's front (metres from the start) at `now`. */
+export function upFrontAt(r: PlayerRoad, now: number): number {
+  const u = r.up; if (!u || u.t0 === undefined) return 0;
+  if (now >= upDoneAt(r)) return r.len;
+  const [p, t] = u.fr ?? [0, u.t0];
+  return now <= t ? p : Math.max(p, Math.min(upCap(r), p + upPace(r) * (now - t)));
+}
+export const upDone = (r: PlayerRoad, now: number) => now >= upDoneAt(r);
+/** Why the upgrade's front stands ('' = it moves, is done or not started). */
+export function upStalled(r: PlayerRoad, now: number): '' | 'supply' | 'camp' {
+  const u = r.up; if (!u || u.t0 === undefined || upDone(r, now)) return '';
+  if (upFrontAt(r, now) < upCap(r) - 0.01) return '';
+  return upCover(r) <= reachOf(r) ? 'supply' : 'camp';
+}
+function settleUp(r: PlayerRoad, now: number) {
+  const u = r.up; if (!u || u.t0 === undefined) return;
+  u.fr = [Math.round(upFrontAt(r, now) * 100) / 100, Math.max(now, (u.fr ?? [0, u.t0])[1])];
+}
+/** The surface `metres` from the start at `now`. */
+export const clsAt = (r: PlayerRoad, metres: number, now: number) => (r.up && metres < upFrontAt(r, now) ? r.up.to : clsOf(r));
+/** The surface the track can be upgraded to next (null at the best, or while an upgrade is still under way). */
+export function nextCls(r: PlayerRoad, now: number): 1 | 2 | null {
+  if (!roadBuilt(r, now)) return null;
+  if (r.up && !upDone(r, now)) return null;
+  const c = r.up ? r.up.to : clsOf(r);
+  return c >= 2 ? null : ((c + 1) as 1 | 2);
+}
+/** Begin laying the next surface: a finished upgrade is folded into `cls` first. */
+export function startUpgrade(r: PlayerRoad, now: number): boolean {
+  const to = nextCls(r, now);
+  if (!to) return false;
+  if (r.up) r.cls = r.up.to;
+  r.up = { to, given: {}, paid: 0 };
+  return true;
+}
+/** Hand over to the upgrade; it starts like the track's own work (`first` m covered, `minCrew` free hands). */
+export function handOverUp(r: PlayerRoad, have: (k: ItemKey) => number, gold: number, now: number, free?: FreeHands): { taken: [ItemKey, number][]; paid: number; started: boolean; noCrew?: boolean } {
+  const u = r.up;
+  if (!u || upDone(r, now)) return { taken: [], paid: 0, started: false };
+  settleUp(r, now);
+  const taken: [ItemKey, number][] = [];
+  for (const w of upRows(r)) {
+    const n = Math.min(w.n - w.given, have(w.k));
+    if (n > 0) { u.given[w.k] = (u.given[w.k] ?? 0) + n; taken.push([w.k, n]); }
+  }
+  const paid = Math.max(0, Math.min(Math.floor(gold), upWage(r.len, u.to) - u.paid));
+  u.paid += paid;
+  if (u.t0 !== undefined) return { taken, paid, started: false };
+  if (upCover(r) < Math.min(r.len, PROAD.first)) return { taken, paid, started: false };
+  const crew = Math.min(PROAD.crew, Math.floor(r.home && free ? free(r.home, now) : PROAD.crew));
+  if (crew < PROAD.minCrew) return { taken, paid, started: false, noCrew: true };
+  u.t0 = now; u.crew = crew; u.fr = [0, now + PROAD.setup];
+  return { taken, paid, started: true };
+}
+/** The work going on at the track now: the track's own, or a surface being laid; null when nothing is. */
+export function workNow(r: PlayerRoad, now: number): { front: number; share: number; idle: '' | 'supply' | 'camp' | 'setup'; up: boolean } | null {
+  if (!roadBuilt(r, now)) {
+    if (r.t0 === undefined) return null;
+    return { front: frontAt(r, now), share: roadShare(r, now), idle: now < (r.fr?.[1] ?? 0) ? 'setup' : stalled(r, now), up: false };
+  }
+  const u = r.up;
+  if (!u || u.t0 === undefined || upDone(r, now)) return null;
+  const f = upFrontAt(r, now);
+  return { front: f, share: f / r.len, idle: now < (u.fr?.[1] ?? 0) ? 'setup' : upStalled(r, now), up: true };
+}
+
 /** Logs the diggers have felled on the way and stacked by the start's sign, not yet taken. */
 export const logsReady = (r: PlayerRoad, now: number) => Math.max(0, Math.floor((r.logs ?? 0) * roadShare(r, now)) - (r.took ?? 0));
 /** How far the work has come (0..1); 0 before the diggers start. */
@@ -221,13 +331,41 @@ export function smoothPts(pts: [number, number][]): [number, number][] {
   }
   return p;
 }
-/** The finished tracks as roads for the terrain (gen/terrain.ts `setWays`): graded, trees kept off. */
-export function terrainWays(roads: Record<string, PlayerRoad | undefined>, now: number): Road[] {
-  return Object.values(roads).filter((r): r is PlayerRoad => !!r && roadBuilt(r, now)).sort((a, b) => (a.id < b.id ? -1 : 1))
-    .map((r) => ({ id: 'proad:' + r.id, from: -1, to: -1, gate: 'player', pts: smoothPts(r.pts), half: PROAD.half, name: r.name }));
+/** (0.282) The surface changes on the land in steps of this many metres (each step redraws the ground along it). */
+export const UP_STEP = 50;
+/** How far the upgrade's surface is shown on the land (whole steps; the whole track once it is done). */
+export const upShown = (r: PlayerRoad, now: number) => (!r.up || r.up.t0 === undefined ? 0 : upDone(r, now) ? r.len : Math.floor(upFrontAt(r, now) / UP_STEP) * UP_STEP);
+/** The part of a polyline from `a` to `b` metres along it. */
+export function slicePts(pts: [number, number][], a: number, b: number): [number, number][] {
+  const out: [number, number][] = [];
+  let d = 0;
+  for (let i = 1; i < pts.length; i++) {
+    const [ax, az] = pts[i - 1], [bx, bz] = pts[i], L = Math.hypot(bx - ax, bz - az), e = d + L;
+    if (e >= a && d <= b && L > 0) {
+      const t0 = Math.max(0, (a - d) / L), t1 = Math.min(1, (b - d) / L);
+      if (!out.length) out.push([ax + (bx - ax) * t0, az + (bz - az) * t0]);
+      out.push([ax + (bx - ax) * t1, az + (bz - az) * t1]);
+    }
+    d = e;
+  }
+  return out;
 }
-/** A key of which tracks are finished: when it changes the land changes. */
-export const waysKey = (roads: Record<string, PlayerRoad | undefined>, now: number) => Object.values(roads).filter((r) => r && roadBuilt(r, now)).map((r) => r!.id).sort().join(',');
+/** The finished tracks as roads for the terrain (gen/terrain.ts `setWays`): graded, trees kept off; (0.282) a track
+ *  being surfaced comes in two pieces, the laid part with the new surface (`Road.cls`). */
+export function terrainWays(roads: Record<string, PlayerRoad | undefined>, now: number): Road[] {
+  const out: Road[] = [];
+  for (const r of Object.values(roads).filter((r): r is PlayerRoad => !!r && roadBuilt(r, now)).sort((a, b) => (a.id < b.id ? -1 : 1))) {
+    const pts = smoothPts(r.pts), L = roadLength(pts), cut = upShown(r, now) / Math.max(1, r.len) * L;
+    const base = { from: -1, to: -1, gate: 'player', half: PROAD.half, name: r.name };
+    if (cut >= L - 0.01) out.push({ ...base, id: 'proad:' + r.id, pts, cls: r.up!.to });
+    else if (cut > 1) out.push({ ...base, id: 'proad:' + r.id + ':up', pts: slicePts(pts, 0, cut), cls: r.up!.to }, { ...base, id: 'proad:' + r.id, pts: slicePts(pts, cut, L), cls: clsOf(r) });
+    else out.push({ ...base, id: 'proad:' + r.id, pts, cls: clsOf(r) });
+  }
+  return out;
+}
+/** A key of which tracks are finished and how far their surface goes: when it changes the land changes. Each entry is
+ *  `id|surface|metres laid of the new one`. */
+export const waysKey = (roads: Record<string, PlayerRoad | undefined>, now: number) => Object.values(roads).filter((r) => r && roadBuilt(r, now)).map((r) => `${r!.id}|${clsOf(r!)}|${r!.up ? r!.up.to + ':' + upShown(r!, now) : ''}`).sort().join(',');
 
 // ---------- the survey ----------
 /** What the survey asks of the land: the ground a track would lie on, and why a spot is no place for it ('' = fine). */

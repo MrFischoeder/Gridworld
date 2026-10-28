@@ -1,4 +1,6 @@
 import { describe, it, expect } from 'vitest';
+import { nextCls, startUpgrade, handOverUp, upNeeds, upStalled, upFrontAt, upDone, upDoneAt, clsAt, clsOf, slicePts } from '../src/gen/playerroads';
+import { SURFACE } from '../src/data/vehicles';
 import { PROAD, MACHINE_X, frontAt, doneAt, stalled, coverOf, handOverPart, logsReady, startFrom, newRoad, roadNeeds, roadHours, roadWage, handOverRoad, roadShare, roadBuilt, stretchProblem, routeProblem, proposeWay, terrainWays, waysKey, smoothPts, roadLength, newRoadProblem, type RoadGround, type RoadEnd } from '../src/gen/playerroads';
 import { Terrain } from '../src/gen/terrain';
 import { chunkTrees } from '../src/gen/trees';
@@ -21,7 +23,7 @@ describe('(0.280) tracks the heroes build', () => {
     // the land takes only finished tracks
     expect(terrainWays({ t1: r }, 301)).toHaveLength(0);
     expect(terrainWays({ t1: r }, 300 + r.h * 60)[0].gate).toBe('player');
-    expect(waysKey({ t1: r }, 300 + r.h * 60)).toBe('t1');
+    expect(waysKey({ t1: r }, 300 + r.h * 60)).toBe('t1|0|');
   });
   it('a stretch: water, places and steep ground are refused; the ends are let off', () => {
     const wall: RoadGround = { h: () => 0, bad: (x) => (Math.abs(x - 50) < 3 ? 'wall' : '') };
@@ -107,5 +109,40 @@ describe('(0.280) tracks the heroes build', () => {
     const w = startFrom({ pts: [[0, 0], [300, 0]] as [number, number][], a: A, b: B }, { x: 320, z: 0 });
     expect(w.a.id).toBe(B.id); expect(w.pts[0]).toEqual([300, 0]);
     expect(roadNeeds(300, 40)[0][1]).toBe(roadNeeds(300)[0][1] + 10);
+  });
+  it('(0.282, D3) a gravel surface laid along a supplied front, then paved; the land gets it in steps', () => {
+    const home = { id: '7', k: 'village' as const, name: 'Home', x: 0, z: -100, d: 100 };
+    const r = newRoad('t4', A, B, [[0, 0], [150, 0], [300, 0]], 'Ala', 'p1', 0, { home, wet: 0, logs: 0 });
+    handOverRoad(r, () => 999, 999, 1, () => 4);
+    const end = doneAt(r);
+    expect(nextCls(r, end - 1)).toBeNull();
+    expect(nextCls(r, end)).toBe(1);
+    expect(startUpgrade(r, end)).toBe(true);
+    expect(terrainWays({ t4: r }, end)[0].cls).toBe(0);
+    // a third of the gravel: the front waits at the cover
+    handOverUp(r, (k) => Math.ceil((upNeeds(r.len, 1).find(([i]) => i === k)?.[1] ?? 0) / 2), 999, end + 10, () => 5);
+    expect(r.up!.crew).toBe(5);
+    expect(upStalled(r, end + 1e5)).toBe('supply');
+    const half = upFrontAt(r, end + 1e5);
+    expect(half).toBeGreaterThan(100); expect(half).toBeLessThan(r.len);
+    const ways = terrainWays({ t4: r }, end + 1e5);
+    expect(ways.map((w) => w.cls)).toEqual([1, 0]);
+    expect(clsAt(r, 10, end + 1e5)).toBe(1); expect(clsAt(r, r.len - 1, end + 1e5)).toBe(0);
+    handOverUp(r, () => 999, 999, end + 1e5, () => 5);
+    expect(upDone(r, upDoneAt(r))).toBe(true);
+    const t = upDoneAt(r);
+    expect(terrainWays({ t4: r }, t).map((w) => w.cls)).toEqual([1]);
+    expect(nextCls(r, t)).toBe(2);
+    startUpgrade(r, t);
+    expect(clsOf(r)).toBe(1); expect(r.up!.to).toBe(2);
+    expect(nextCls(r, t)).toBeNull();
+  });
+  it('(0.282, D3) better surfaces are faster and thriftier; off the road slower and thirstier', () => {
+    const order = ['off', 'dirt', 'road', 'gravel', 'paved'] as const;
+    for (let i = 1; i < order.length; i++) {
+      expect(SURFACE[order[i]].speed).toBeGreaterThan(SURFACE[order[i - 1]].speed);
+      expect(SURFACE[order[i]].fuel).toBeLessThan(SURFACE[order[i - 1]].fuel);
+    }
+    expect(slicePts([[0, 0], [10, 0], [10, 10]], 5, 15)).toEqual([[5, 0], [10, 0], [10, 5]]);
   });
 });
