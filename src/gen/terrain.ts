@@ -24,7 +24,9 @@ export const inRect = (r: Rect, x: number, z: number) => x >= r.x0 && x < r.x1 &
 
 /** `soft` (surface pads, 0.181): the share of the natural relief kept inside (0 or unset = table-flat). */
 export interface Pad { poi: Poi; y: number; surface?: boolean; depression?: boolean; soft?: number }
-export interface Features { pads: Pad[]; roads: Road[]; lakes: Lake[]; claims: Claim[]; rivers: RiverSeg[]; gates: WorldGate[]; megaliths: Megalith[] }
+/** `ways` (0.280): the tracks the players built (gen/playerroads.ts): graded like roads, kept apart so the generated
+ *  trees, rocks and plants (whose lists are keyed by index) do not shift; the runtime keeps them off. */
+export interface Features { pads: Pad[]; roads: Road[]; ways: Road[]; lakes: Lake[]; claims: Claim[]; rivers: RiverSeg[]; gates: WorldGate[]; megaliths: Megalith[] }
 
 const ROAD_BLEND = 5;
 /** Trails blend back into the slope more gently: the 2 m height lattice must still see a flat bench across them. */
@@ -60,6 +62,9 @@ export class Terrain {
 
   /** Replace the claims (a flag raised or taken down): heights around them change, so the caches go. */
   setClaims(list: Claim[]) { this.claims = list.map((c) => ({ ...c })); this.feat.clear(); this.lat.clear(); this.rev++; }
+  /** (0.280) The players' finished tracks (gen/playerroads.ts `terrainWays`), x as staked. */
+  private ways: Road[] = [];
+  setWays(list: Road[]) { this.ways = list; this.feat.clear(); this.lat.clear(); this.rev++; }
   /** The claim whose cleared ground covers (x, z), within `margin` more metres. */
   claimAt(x: number, z: number, margin = 0): Claim | undefined { return this.claims.find((c) => claimDist(c, x, z) < clearOf(c) + margin); }
 
@@ -99,7 +104,13 @@ export class Terrain {
     const [tx, tz] = regionOf(cx - 1500, cz - 1500), [ux, uz] = regionOf(cx + 1500, cz + 1500);
     for (let rx = tx; rx <= ux; rx++) for (let rz = tz; rz <= uz; rz++) regionTrails(this, rx, rz).forEach(take);
     const claims = this.claims.filter((c) => claimDist(c, cx, cz) < half * 1.42 + clearOf(c));
-    return { pads, roads, megaliths: this.includeMegaliths ? megalithsIn(this.world, r) : [], gates: gatesNear(this.world, cx, cz, half * 1.42 + GATE_CLEAR + GATE_BLEND), lakes: lakesIn(this, r), claims, rivers: riverSegsIn(this.world, r.x0, r.z0, r.x1, r.z1) };
+    const ways: Road[] = [];
+    for (const w of this.ways) { // on the copy of the planet asked for
+      const sx = nearX(w.pts[0][0], cx) - w.pts[0][0], b = roadBounds(w), m = w.half + ROAD_BLEND + 1;
+      if (b.x1 + sx + m < r.x0 || b.x0 + sx - m > r.x1 || b.z1 + m < r.z0 || b.z0 - m > r.z1) continue;
+      ways.push(sx ? { ...w, pts: w.pts.map(([x, z]) => [x + sx, z] as [number, number]) } : w);
+    }
+    return { pads, roads, ways, megaliths: this.includeMegaliths ? megalithsIn(this.world, r) : [], gates: gatesNear(this.world, cx, cz, half * 1.42 + GATE_CLEAR + GATE_BLEND), lakes: lakesIn(this, r), claims, rivers: riverSegsIn(this.world, r.x0, r.z0, r.x1, r.z1) };
   }
   chunkFeatures(cx: number, cz: number): Features {
     const k = key(cx, cz);
@@ -120,6 +131,12 @@ export class Terrain {
     let td = Infinity, th = 0, thalf = 0;
     for (const r of f.roads) {
       if (r.h) { const [d, hh] = trailHeight(r, x, z); if (d < td) { td = d; th = hh; thalf = r.half; } continue; }
+      const [d, px, pz] = nearestOnRoad(r, x, z);
+      if (d >= r.half + ROAD_BLEND) continue;
+      const w = d <= r.half ? 1 : 1 - smooth((d - r.half) / ROAD_BLEND), rh = this.dry(px, pz);
+      h = w >= 1 ? rh : h + (rh - h) * w;
+    }
+    for (const r of f.ways) { // (0.280) the players' tracks, like the roads
       const [d, px, pz] = nearestOnRoad(r, x, z);
       if (d >= r.half + ROAD_BLEND) continue;
       const w = d <= r.half ? 1 : 1 - smooth((d - r.half) / ROAD_BLEND), rh = this.dry(px, pz);

@@ -166,7 +166,7 @@ export function development(s: TownState | undefined): number {
   return Math.min(6, (s?.farms ?? 0) + (projectDone(s, 'warehouse') ? 1 : 0) + (projectDone(s, 'power') ? 1 : 0) + (projectDone(s, 'quarry') || projectDone(s, 'mine') || projectDone(s, 'lumber') || s?.built ? 1 : 0));
 }
 export const housingCapacity = (s: TownState | undefined) => SETTLEMENT_START + development(s) * 8;
-export const basicSmith = ['hatchet', 'pickaxe', 'firekit', 'flask', 'saw', 'oillamp', 'lampoil', 'firebrand', 'battery', 'woodshield', 'elampkit', 'olampkit', 'lhkit', 'whkit', 'flare', 'wrench'] as ItemKey[];
+export const basicSmith = ['hatchet', 'pickaxe', 'firekit', 'flask', 'saw', 'oillamp', 'lampoil', 'firebrand', 'battery', 'woodshield', 'elampkit', 'olampkit', 'lhkit', 'whkit', 'flare', 'wrench', 'roadkit'] as ItemKey[];
 export function smithAllows(s: TownState | undefined, k: ItemKey): boolean {
   if (!progressive(s)) return true;
   if (basicSmith.includes(k)) return true;

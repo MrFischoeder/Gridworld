@@ -54,6 +54,7 @@ export const SHARED: Field[] = [
   // the players' land claims with what is built on them, wild workbenches and the notice boards are the world's too
   { f: 'claims', kind: 'list', key: at }, { f: 'benches', kind: 'list', key: at }, { f: 'board', kind: 'one' }, { f: 'boards', kind: 'map' },
   { f: 'outposts', kind: 'map' }, // (0.183) the outposts at the deposits
+  { f: 'proads', kind: 'map' }, // (0.280) the tracks the heroes build
   { f: 'rivals', kind: 'map' }, // (0.189) the rivals' seats: names and home villages
   { f: 'fallen', kind: 'map' }, // the crew who died here: their names are not taken again
   { f: 'workclaims', kind: 'map' }, // (0.270) who is working which lying thing
@@ -171,7 +172,7 @@ onWorld({
       if (!f || f.skip?.(k)) continue;
       const before = entries(G.char, f).find(([kk]) => kk === k)?.[1], was = before === undefined ? undefined : JSON.stringify(before);
       const baseline = last.get(fk)?.get(k);
-      const ownReservation = from === net.id && (fk === 'containers' && activeContainers.has(k) || fk === 'towns' && activeTowns.has(k) || fk === 'outposts' && activeTowns.has('outposts:' + k));
+      const ownReservation = from === net.id && (fk === 'containers' && activeContainers.has(k) || fk === 'towns' && activeTowns.has(k) || fk === 'outposts' && activeTowns.has('outposts:' + k) || fk === 'proads' && activeTowns.has('proads:' + k));
       const authoritative = rejected || (force && !ownReservation);
       const merge = ['opened', 'unlocked', 'killed'].includes(fk) ? mergeProgress : mergeWorld;
       const rebased = authoritative ? v : merge(v, baseline === undefined ? undefined : JSON.parse(baseline), before);

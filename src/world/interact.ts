@@ -48,6 +48,9 @@ import { sawingHint } from './sawing';
 import { handworkTarget, handworkPrompt, updateHandwork, type HandTarget } from './handwork';
 import { updateWorkshop, working as workshopWorking, workPrompt } from './workshop';
 import { eating, eatingPrompt } from './eating';
+import { nearRoadSign, roadSignPrompt, isRoadSurvey, confirmRoadSurvey, roadSurveyHint, roadSurveyOk } from './playerroads';
+import { openRoad } from '../ui/road';
+import type { PlayerRoad } from '../gen/playerroads';
 import { nearBridgeSign, built as bridgeBuilt, isBridgePlacing, confirmBridgePlacing, bridgePlacingHint, bridgePlacingOk } from './bridges';
 import { openBridge } from '../ui/bridge';
 import { nearPierSign, nearPierCrate, pierCrate, isPierPlacing, confirmPierPlacing, pierPlacingHint, pierPlacingOk } from './piers';
@@ -115,6 +118,7 @@ let nearCave: Cave | null = null, caveOut = -1, nearPyr: ReturnType<typeof nearP
 let nearHatch = false;
 let nearDecoy = false;
 let nearFl = false, nearLock2 = false, nearRec = false, nearData: ReturnType<typeof nearCarrier> = null;
+let nearRd: PlayerRoad | null = null; // (0.280) a track's sign
 let nearLd: Lode | null = null, nearIns: InstallSite | null = null, nearHall: number | null = null, nearComms: number | null = null, nearPump: number | null = null, nearSL: NearLamp | null = null, nearLH: Lighthouse | null = null, nearChg: number | null = null, nearBrg: Ford | null = null, nearPier: Pier | null = null, nearPCrate: Pier | null = null, nearBt: Boat | null = null, nearAir: Airship | null = null, nearCop: Copter | null = null, nearFogL: ReturnType<typeof nearFogLocker> = null, nearBd: Body | null = null, nearGd = false, nearSur: Bandit | null = null, nearPt: ReturnType<typeof nearPortBoard> = null;
 let nearSv: ReturnType<typeof salvageTarget> = null;
 let nearHW: HandTarget | null = null, nearDp: Pickup | null = null, nearRide: RideSpot | null = null;
@@ -162,7 +166,7 @@ export function updateEntities(dt: number, time: number) {
   nearPyr = G.char.loc === 'overworld' && !driving.v ? nearPyramidDoor(pos.x, pos.y, pos.z) : null; // (0.275) a pyramid's shrine: the way down
   nearAncient = nearGatePanel(); nearAncientTablet = nearGateTablet();
   nearGate = nearDoor(); nearGun = nearGate ? null : nearTurret(); nearHD = nearGate || nearGun ? null : nearHouseDoor(); nearDesk = atShuttleDesk(); nearWk = nearGate || nearGun || nearHD || nearDesk ? null : nearWorks(); nearSt = nearGate || nearGun || nearHD || nearDesk || nearWk ? null : nearStation(); nearTerm = nearGate || nearHD ? null : nearTerminal();
-  nearComms = nearSettlementComms(); nearPump = nearFuelPump(); nearSL = nearStreetLamp(); nearLH = nearLighthouse(); nearChg = nearPump === null ? nearCharger() : null; nearIns = nearInstallDesk(); nearLd = nearIns || nearVehicle ? null : nearOutpostLode(); nearPt = nearLd ? null : nearPortBoard(); nearHall = nearHallTerminal(); nearBrg = nearBridgeSign(); nearPier = nearPierSign(); nearPCrate = nearPier ? null : nearPierCrate(); nearBt = nearPier || nearPCrate ? null : nearBoat(); nearAir = nearBt ? null : nearAirship(); nearCop = nearBt || nearAir ? null : nearCopter();
+  nearComms = nearSettlementComms(); nearPump = nearFuelPump(); nearSL = nearStreetLamp(); nearLH = nearLighthouse(); nearChg = nearPump === null ? nearCharger() : null; nearIns = nearInstallDesk(); nearLd = nearIns || nearVehicle ? null : nearOutpostLode(); nearPt = nearLd ? null : nearPortBoard(); nearHall = nearHallTerminal(); nearBrg = nearBridgeSign(); nearRd = nearBrg ? null : nearRoadSign(); nearPier = nearPierSign(); nearPCrate = nearPier ? null : nearPierCrate(); nearBt = nearPier || nearPCrate ? null : nearBoat(); nearAir = nearBt ? null : nearAirship(); nearCop = nearBt || nearAir ? null : nearCopter();
   nearFogL = nearFogLocker(); nearBd = nearBody(); nearGd = G.char.loc === 'overworld' && nearGuide(); nearSur = G.char.loc === 'overworld' ? nearSurrendered() : null;
   updateWorkshop(dt); nearSv = salvageTarget(); updateSalvage(dt, nearSv); nearDp = nearDrop(); nearHW = handworkTarget(); if (nearHW) nearDp = nearHW.p; updateHandwork(dt, nearHW);
   nearFl = nearFall(); nearLock2 = nearLocker(); nearRec = !nearLock2 && nearConsole(); nearData = nearCarrier();
@@ -188,7 +192,7 @@ export function updateEntities(dt: number, time: number) {
     if (along > 0.9 && along < 4 && lat < 1.6 && Math.abs(pos.y - p.y0 - tread) < 1.2 && G.playing && !G.trans) enter = p;
   }
   const { nearNpc, nearLock, nearChest, nearPortal } = W, prompt = el.prompt;
-  const busy = !!(nearFl || nearBd || nearLd || nearPt || nearAncientTablet || nearAncient || inBoat() || inAir() || nearAir || nearCop || nearDp || nearRide || nearGd || nearSur || nearFogL || nearBt || (nearHall !== null || nearComms !== null || nearPump !== null || nearSL !== null || nearLH !== null || nearChg !== null) || nearIns || nearBrg || nearPier || nearPCrate || nearData || nearLock2 || nearRec || nearLad || nearMine || nearPow || nearCar || nearWork2 || nearNpc || nearLock || nearChest || nearBoard || nearMap || nearStash || nearVehicle || nearGate || nearHD || nearDesk || nearWk || nearSt || nearTerm || nearSt || nearGun || nearHatch || nearCave || nearPyr || caveOut >= 0);
+  const busy = !!(nearRd || nearFl || nearBd || nearLd || nearPt || nearAncientTablet || nearAncient || inBoat() || inAir() || nearAir || nearCop || nearDp || nearRide || nearGd || nearSur || nearFogL || nearBt || (nearHall !== null || nearComms !== null || nearPump !== null || nearSL !== null || nearLH !== null || nearChg !== null) || nearIns || nearBrg || nearPier || nearPCrate || nearData || nearLock2 || nearRec || nearLad || nearMine || nearPow || nearCar || nearWork2 || nearNpc || nearLock || nearChest || nearBoard || nearMap || nearStash || nearVehicle || nearGate || nearHD || nearDesk || nearWk || nearSt || nearTerm || nearSt || nearGun || nearHatch || nearCave || nearPyr || caveOut >= 0);
   nearFood = busy ? null : nearPlant();
   nearWork = busy || nearFood ? null : nearBench();
   nearClaim = busy || nearFood || nearWork ? null : nearFlag();
@@ -216,6 +220,7 @@ export function updateEntities(dt: number, time: number) {
   else if (nearBt) { prompt.className = ''; prompt.textContent = boatPrompt(nearBt); }
   else if (nearPier) { prompt.className = ''; prompt.textContent = nearPier.done ? tl('E — the dock') : tl('E — build the dock'); }
   else if (nearPCrate) { prompt.className = ''; prompt.textContent = tl('E — open the crate on the dock'); }
+  else if (nearRd) { prompt.className = ''; prompt.textContent = roadSignPrompt(nearRd); }
   else if (nearBrg) { prompt.className = ''; prompt.textContent = bridgeBuilt(nearBrg) ? TL`E — the bridge over the ${nearBrg.river}` : TL`E — build a bridge over the ${nearBrg.river}`; }
   else if (nearPt) { prompt.className = ''; const o = G.char.outposts[nearPt.id]; prompt.textContent = TL`E — ${o?.name ?? tl('the port')}` + (o?.job ? TL` (building the ${partName(o.k, o.job.p, o.pk).toLowerCase()}, ${Math.max(0, Math.ceil((jobEnd(o) - G.char.time) / 60))} h left)` : ''); }
   else if (nearLd) { prompt.className = ''; const o = G.char.outposts[nearLd.id]; prompt.textContent = !o?.k ? TL`E — ${nearLd.name}: stake an outpost` : TL`E — outpost at ${nearLd.name}` + (o.job ? TL` (building the ${partName(o.k, o.job.p, o.pk).toLowerCase()}, ${Math.max(0, Math.ceil((jobEnd(o) - G.char.time) / 60))} h left)` : o.done?.dig ? ' (working)' : tl(' (nothing built yet)')); }
@@ -260,7 +265,7 @@ export function updateEntities(dt: number, time: number) {
   else if (nearGather) { prompt.className = ''; prompt.textContent = gatherPrompt(nearGather); }
   else if (nearCook) { prompt.className = ''; prompt.textContent = fireHasWork() ? tl('E — roast your raw meat') : tl('A campfire: bring raw meat to roast'); }
   else if (nearWater) { prompt.className = nearWater.kind === 'toxic' || nearWater.kind === 'sea' ? 'lock' : ''; prompt.textContent = sourcePrompt(nearWater); }
-  prompt.style.display = (nearSv || nearFl || nearBd || nearLd || nearPt || nearAncientTablet || nearAncient || climbing() || nearDp || nearRide || nearGd || nearSur || nearFogL || nearBt || (nearHall !== null || nearComms !== null) || nearIns || nearBrg || nearPier || nearPCrate || nearData || nearLock2 || nearRec || nearLad || nearMine || nearPow || nearCar || nearWork2 || nearGate || nearHD || nearDesk || nearWk || nearSt || nearTerm || nearTerm || nearGun || nearHatch || nearDecoy || nearCave || nearPyr || caveOut >= 0 || nearNpc || nearLock || nearChest || nearBoard || nearMap || nearStash || nearVehicle || nearPortal || nearFood || nearWork || nearClaim || nearGather || nearCook || nearWater) && G.playing && prompt.textContent ? 'block' : 'none';
+  prompt.style.display = (nearRd || nearSv || nearFl || nearBd || nearLd || nearPt || nearAncientTablet || nearAncient || climbing() || nearDp || nearRide || nearGd || nearSur || nearFogL || nearBt || (nearHall !== null || nearComms !== null) || nearIns || nearBrg || nearPier || nearPCrate || nearData || nearLock2 || nearRec || nearLad || nearMine || nearPow || nearCar || nearWork2 || nearGate || nearHD || nearDesk || nearWk || nearSt || nearTerm || nearTerm || nearGun || nearHatch || nearDecoy || nearCave || nearPyr || caveOut >= 0 || nearNpc || nearLock || nearChest || nearBoard || nearMap || nearStash || nearVehicle || nearPortal || nearFood || nearWork || nearClaim || nearGather || nearCook || nearWater) && G.playing && prompt.textContent ? 'block' : 'none';
   const bh = buildHint();
   if (bh !== null && !nearGate && !nearGun) { prompt.className = buildOk() ? '' : 'lock'; prompt.textContent = bh; prompt.style.display = G.playing && bh ? 'block' : 'none'; }
   const bth = boatHint();
@@ -279,6 +284,8 @@ export function updateEntities(dt: number, time: number) {
   if (lhint !== null) { prompt.className = streetPlacingOk() ? '' : 'lock'; prompt.textContent = lhint; prompt.style.display = G.playing && lhint ? 'block' : 'none'; }
   const fhint = fieldPlacingHint();
   if (fhint !== null) { prompt.className = fieldPlacingOk() ? '' : 'lock'; prompt.textContent = fhint; prompt.style.display = G.playing && fhint ? 'block' : 'none'; }
+  const rhint = roadSurveyHint(); // (0.280) staking out a track
+  if (rhint !== null) { prompt.className = roadSurveyOk() ? '' : 'lock'; prompt.textContent = rhint; prompt.style.display = G.playing && rhint ? 'block' : 'none'; }
   const bhint = bridgePlacingHint();
   if (bhint !== null) { prompt.className = bridgePlacingOk() ? '' : 'lock'; prompt.textContent = bhint; prompt.style.display = G.playing && bhint ? 'block' : 'none'; }
   const thint = throwHint(); // (0.225) the swing of a throw
@@ -329,6 +336,8 @@ export function interact() {
   if (nearLd) { openOutpost(nearLd); return; }
   if (nearPt) { openPort(nearPt.id, nearPt.p.id); return; }
   if (nearIns) { openInstall(nearIns); return; }
+  if (isRoadSurvey()) { confirmRoadSurvey(); return; }
+  if (nearRd) { openRoad(nearRd); return; }
   if (nearBrg) { openBridge(nearBrg); return; }
   if (nearPier) { openPier(nearPier); return; }
   if (nearPCrate) { openTransfer({ title: tl('Crate'), subtitle: tl('Your dock'), boxLabel: tl('Crate'), box: pierCrate(nearPCrate) }); return; }

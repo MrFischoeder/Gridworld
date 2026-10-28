@@ -1,7 +1,7 @@
 {
   "name": "gridworld",
   "private": true,
-  "version": "0.279.1",
+  "version": "0.280.0",
   "type": "module",
   "scripts": {
     "dev": "vite",

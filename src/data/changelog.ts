@@ -3,6 +3,15 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.280.0', date: '2026-10-28', title: 'Tracks you build', notes: [
+    'New tool: Surveyor\'s Poles (the blacksmith makes them from 3 planks and a rope; Oskar sells them for 40 gold). Use them to stake out a dirt track between two places of the world\'s infrastructure: a village gate, an outpost, a warehouse, a port, an old road or another track.',
+    'The survey: look at where the track should start and click. Then click to set each stake (up to 70 m apart), or press R and the surveyors lay out the whole way to the place you look at, or to your map\'s waypoint, going round water, steep slopes, ruins and camps. The right mouse button (or Backspace) takes the last stake back, Esc gives up. A hologram shows the track\'s edges; a stretch that cannot be built turns red and the hint says why.',
+    'A track climbs at most 20%, keeps out of the sea, rivers and lakes, out of villages (it ends at their gates), ruins, camps, wrecks and the dead cities, and runs up to 8 km. You can have two tracks staked out and not yet built at a time.',
+    'Building: at the sign at either end hand over stone (one for every 16 m) and planks (one for every 22 m) from your backpack or a vehicle parked there, and pay the diggers (0.35 gold a metre). Anyone can bring them, bit by bit. Once everything is in, the diggers work their way from the start to the end: about 2 game hours plus 6 an hour for each kilometre. Their camp moves along with the front of the work.',
+    'A finished track is graded flat across, its trees, rocks and plants cleared, and dry over the swamp pools; it shows as an earthy strip, with a name board at each end and a line on the maps (a site dashed gold, the part already graded solid).',
+    'Multiplayer: the tracks are shared by everyone in the world, and handing things over is locked so two players never lose a crate. Every game finishes the track and changes the land at the same moment of the game clock. The server must be updated (rerun install.sh): an older one does not keep the tracks. The protocol is unchanged.',
+    'This is the first stage of the roads plan (PLAN_DROG.md): road crews and bridges on tracks, road surfaces and faster driving, convoys using the roads, dangers and upkeep, inns and tolls come next.',
+  ] },
   { v: '0.279.1', date: '2026-10-28', title: 'Guns keep their attachments on the ground', notes: [
     'A gun put down on the ground keeps its attachments fitted. Whoever picks it up, you or another player, gets it just as it was modified: the same optic, barrel and magazine. The ground panel shows the +n mark and the sheet lists them.',
     'Multiplayer: the server now keeps a dropped gun\'s attachments; update the server (rerun install.sh). An older server would lose them, so with one the attachments still come off and lie beside the gun as before. The protocol is unchanged.',

@@ -83,7 +83,7 @@ const num = (v) => (typeof v === 'number' && Number.isFinite(v) ? v : 0);
 const DAY = 86400000;
 /** A creator's secret as the server keeps it (the secret itself is never stored or shown). */
 const ownerOf = (key) => (typeof key === 'string' && key.length >= 16 ? createHash('sha256').update(key).digest('hex') : '');
-const FIELDS = new Set(['towns', 'market', 'installs', 'bridges', 'bridgeSites', 'piers', 'lighthouses', 'boats', 'airships', 'copters', 'vehicles', 'shuttle', 'containers', 'opened', 'unlocked', 'killed', 'harvest', 'camps', 'cityGarrisons', 'caravans', 'claims', 'benches', 'board', 'boards', 'fallen', 'outposts', 'rivals', 'bodies', 'skyfalls', 'workclaims', 'salvage']);
+const FIELDS = new Set(['towns', 'market', 'installs', 'bridges', 'bridgeSites', 'piers', 'lighthouses', 'boats', 'airships', 'copters', 'vehicles', 'shuttle', 'containers', 'opened', 'unlocked', 'killed', 'harvest', 'camps', 'cityGarrisons', 'caravans', 'claims', 'benches', 'board', 'boards', 'fallen', 'outposts', 'rivals', 'bodies', 'skyfalls', 'workclaims', 'salvage', 'proads']);
 /** (15) The map editor's files a room plays on (the world, the village layouts and the dungeons it names): kept with
  *  the room and sent to everyone in the welcome. Only their shape is checked here; each game reads them itself. */
 const cleanMaps = (m) => {
@@ -334,7 +334,7 @@ export function createMp(log = (m) => console.log('[mp] ' + m), opts = {}) {
         send(ws, { t: 'wset', ch, from: me.id, seq: m.seq });
         const accepted = ch.filter((c) => !c[3]);
         if (accepted.length) all(room, { t: 'wset', ch: accepted, from: me.id, seq: m.seq }, me.id);
-      } else if (m.t === 'wlock' && worldKey(m.f, m.k) && ['containers', 'towns', 'outposts'].includes(m.f)) {
+      } else if (m.t === 'wlock' && worldKey(m.f, m.k) && ['containers', 'towns', 'outposts', 'proads'].includes(m.f)) {
         const key = m.f + ':' + m.k, holder = room.locks.get(key);
         const ok = !holder || holder === me.id;
         if (ok) {

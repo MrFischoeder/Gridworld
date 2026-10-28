@@ -40,6 +40,7 @@ import { HOUSE_PRICE } from '../src/data/npcs';
 import { FUEL, CHIPS } from '../src/gen/contracts';
 import { OWN, HALL } from '../src/gen/hall';
 import { BRIDGE } from '../src/gen/bridges';
+import { PROAD, roadNeeds, roadWage, roadHours } from '../src/gen/playerroads';
 import { PIER } from '../src/gen/piers';
 import { LH } from '../src/gen/lighthouses';
 import { BOATS, type BoatKind } from '../src/gen/boats';
@@ -276,6 +277,8 @@ it('writes SUROWCE.md', () => {
   const per = (m: Partial<Record<ItemKey, number>>) => (Object.entries(m) as [ItemKey, number][]).map(([k, r]) => `${N(k)} 1 na ${(1 / r).toFixed(1).replace('.0', '')} m`).join(', ');
   P(`- **Most na brodzie drogi** albo w wybranym miejscu (Bridge Kit u kowala): na długość pomostu: ${per(BRIDGE.per)} (np. pomost 40 m: ${(Object.entries(BRIDGE.per) as [ItemKey, number][]).map(([k, r]) => `${Math.ceil(40 * r)} × ${N(k)}`).join(', ')})`);
   for (const k of Object.keys(BRIDGE.per) as ItemKey[]) use(k, 'most');
+  P(`- **Droga gruntowa** (Tyczki geodety u kowala, od 0.280; między bramą wioski, placówką, magazynem, portem albo drogą): ${(Object.entries(PROAD.per) as [ItemKey, number][]).map(([k, m]) => `${N(k)} 1 na ${m} m`).join(', ')}, zapłata dla kopaczy ${PROAD.wage} zł na metr (np. 1 km: ${roadNeeds(1000).map(([k, n]) => `${n} × ${N(k)}`).join(', ')}, ${roadWage(1000)} zł, ${roadHours(1000)} godz. pracy)`);
+  for (const k of Object.keys(PROAD.per) as ItemKey[]) use(k, 'droga gruntowa');
   P(`- **Dok** (Dock Kit u kowala): na długość pomostu: ${per(PIER.per)}, do tego ${list(Object.entries(PIER.fittings) as [ItemKey, number][])} na głowicę`);
   for (const k of [...Object.keys(PIER.per), ...Object.keys(PIER.fittings)] as ItemKey[]) use(k, 'dok');
   P(`- **Latarnia morska** (Lighthouse Plans u kowala, od 0.204): ${list(LH.needs)}; obracające się, migające światło widać z ${LH.see / 1000} km, nie oświetla okolicy; okres obrotu ${LH.periods.join(' / ')} s do wyboru przy drzwiach`);

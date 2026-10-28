@@ -1,6 +1,6 @@
 # GridWorld: opis gry, cel, plan i historia zmian
 
-Stan na wersję **0.279.1**. Ten dokument opisuje, czym jest GridWorld, jaki jest cel gry, co już w niej jest, czego jeszcze nie ma, dokąd zmierza i jak powstawała, wersja po wersji. Nazwy z gry (przedmioty, miejsca, postacie) są podane po angielsku; od 0.190 gra ma też wersję polską (wybór języka w menu głównym).
+Stan na wersję **0.280.0**. Ten dokument opisuje, czym jest GridWorld, jaki jest cel gry, co już w niej jest, czego jeszcze nie ma, dokąd zmierza i jak powstawała, wersja po wersji. Nazwy z gry (przedmioty, miejsca, postacie) są podane po angielsku; od 0.190 gra ma też wersję polską (wybór języka w menu głównym).
 
 ---
 
@@ -184,6 +184,7 @@ Gra jest pomyślana jako **kooperacja do 8 graczy** na autorytatywnym serwerze (
   - każda ma własny kształt muru (4, 6, 8 lub 12 boków), bramy, wieże z drabinami, domy z pruskiego muru z meblami, drzwi otwierane i zamykane, mieszkańców z imionami i strażnika;
   - każda ma przemysł (farma, kopalnia, ropa, rafineria, tartak, rybołówstwo, warsztat, złomowisko), elektrownię (generator, słoneczną albo wiatrową) i halę wioski;
   - drogi łączą je w sieć.
+- **Drogi graczy** (od 0.280): Tyczkami geodety gracz wytycza drogę gruntową między bramą wioski, placówką, magazynem, portem albo istniejącą drogą (sam, tyczka po tyczce, albo przebieg wyznaczony przez mierniczych). Przy tablicy oddaje kamień, deski i zapłatę dla kopaczy; kopacze budują ją od początku do końca przez kilka godzin gry, a gotowa droga zostaje w terenie: wyrównana, oczyszczona z drzew i kamieni, na mapie. Plan dalszych etapów (ekipy wiosek, mosty, nawierzchnie, konwoje po drogach, zagrożenia, zajazdy, myto) jest w PLAN_DROG.md.
 - **Ruiny, czyli świątynie obcych**: 60 m, krzyżowy plan, pylony, pierścień, aleja obelisków, wszystko zniszczone. W krypcie są schody do **lochów** na kilku poziomach, z skrzyniami, strażnikami i bossami.
 - **Wraki frachtowców** na wpół zakopane w ziemi. W środku są zatoki: maszynownia, śluza, kajuty, ładownia, mostek. Pilnują ich roboty.
 - **Obozy bandytów**: namioty, barykady, ognisko, skrytka i boss. Po oczyszczeniu stoją puste przez 30 minut.
@@ -552,7 +553,8 @@ Kierunek wyznaczony przez właściciela projektu, w przybliżonej kolejności:
 7. **Woda i ludzie.** Nurkowanie i piraci na liniach towarowych (porty od 0.216, linie od 0.217); dowożenie ludzi i jedzenia do obozów załóg przy starych instalacjach (obozy od 0.218).
 8. **Dopracowanie.** Lepsze dźwięki i własna muzyka (efekty, silniki, grzmoty i strzały innych graczy są od 0.212–0.213), spalanie paliwa w pojazdach, skutki pogody (pioruny, burze zrywające dachy, deszcz na drogach, chmury a panele słoneczne).
 9. **Taktyczna walka** (`PLAN_WALKI.md`, W1 zrobione w 0.223, W3 zasłony w 0.224, W4 przynęty w 0.225, W2 zapowiedzi i drugie tryby ataku w 0.226, W5 stany w 0.227, W6 morale i odwrót w 0.228, W7 okrążanie i ciasne przejścia w 0.229): bestiariusz w grze.
-10. **Ewentualnie** zmniejszenie mapy, jeśli okaże się za duża do gry. Właściciel to rozważa.
+10. **Drogi graczy** (`PLAN_DROG.md`, D1 tyczenie i dukt w 0.280): ekipy wiosek i dowóz na czoło robót, mosty na drogach, nawierzchnie i szybsza jazda, konwoje po sieci dróg, zasadzki i utrzymanie, zajazdy, myto w trybie rywali.
+11. **Ewentualnie** zmniejszenie mapy, jeśli okaże się za duża do gry. Właściciel to rozważa.
 
 ---
 
@@ -869,6 +871,7 @@ Pełne notatki (po angielsku) są w grze pod przyciskiem **Changelog** w menu g�
 - **0.278.1 Prosto z ziemi do warsztatu.** Rzeczy upuszczone przez samą grę (kłody ze ściętego drzewa, łupy z zabitych stworów) można przeciągnąć z panelu ziemi prosto do komórek warsztatu, bez przekładania przez plecak.
 - **0.279.0 Szybkie ręce i własna broń.** Po najechaniu myszą na przedmiot w plecaku obok niego staje karta z opisem i przyciskami (Zjedz, Wypij, Użyj, Modyfikuj...). Jedzenie i picie trwa chwilę: postać podnosi jedzenie do ust kilka razy, idzie wolniej i chowa broń; przedmiot znika i karmi dopiero na końcu, strzał przerywa. Każda broń palna ma własne gniazda na dodatki (celownik, lufa, magazynek) z własnym zestawem; Modyfikuj otwiera kartę tej broni obok plecaka. Odłożona na ziemię broń zrzuca dodatki obok.
 - **0.279.1 Broń z dodatkami na ziemi.** Odłożona na ziemię broń zachowuje zamocowane dodatki, a kto ją podniesie (także inny gracz), dostaje ją z tym samym celownikiem, lufą i magazynkiem. Serwer przechowuje dodatki (trzeba go zaktualizować; ze starszym serwerem dodatki jak dotąd spadają obok broni).
+- **0.280.0 Drogi budowane przez graczy.** Pierwszy etap planu dróg (PLAN_DROG.md). Nowe narzędzie, Tyczki geodety, pozwala wytyczyć drogę gruntową między bramą wioski, placówką, magazynem, portem albo istniejącą drogą: tyczka po tyczce albo klawiszem R, kiedy mierniczy sami wyznaczają przebieg do wskazanego miejsca lub punktu na mapie, omijając wodę, strome zbocza i ruiny. Hologram pokazuje krawędzie drogi, a odcinek, którego nie da się zbudować, świeci na czerwono z podanym powodem. Przy tablicy na końcu drogi oddaje się kamień, deski i zapłatę dla kopaczy; potem kopacze pracują od początku do końca (ok. 2 godzin gry plus 6 na kilometr), a ich obóz przesuwa się z czołem robót. Gotowa droga jest wyrównana w poprzek, oczyszczona z drzew i kamieni, widoczna jako pas ziemi i linia na mapie. W grze wieloosobowej drogi są wspólne, oddawanie materiałów jest zablokowane na czas jednego gracza, a teren zmienia się u wszystkich w tej samej chwili; serwer trzeba zaktualizować.
 - **0.265.1 Większa stacja.** Stacja orbitalna jest ok. 2,5 raza większa i jaśniejsza, wyraźnie widoczna na tle nieba.
 - **0.265.0 Stacja orbitalna.** Po niebie przelatuje stacja z dwóch kół na wspólnej osi (jak w filmowych stacjach kołowych): okrąża planetę co ok. 4 minuty, przecina niebo w ok. 2 minuty, znacznie szybciej niż Słońce i Księżyc, w przeciwnym kierunku. Na razie sama dekoracja; posłuży w dalszym etapie gry.
 - **0.264.1 Dym za budynkami.** Dym z rozbitego statku (i z ognisk bandytów) nie prześwituje już przez domy, mury, ruiny i inne budowle: daleka kolumna dymu jest ukryta, gdy coś litego stoi między okiem a nią.

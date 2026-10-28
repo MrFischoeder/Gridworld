@@ -32,6 +32,7 @@ import { lightFire } from './cooking';
 import { placeBench } from './benches';
 import { startPlacing } from './claims';
 import { startBridgePlacing } from './bridges';
+import { startRoadSurvey } from './playerroads';
 import { startFieldPlacing } from './fields';
 import { startStreetPlacing } from './streetlamps';
 import { startLhPlacing } from './lighthouses';
@@ -285,6 +286,7 @@ export function useItem(k: ItemKey): boolean {
   if (k === 'whkit') { if (startWhPlacing()) closePack(); return false; } // (0.249) used up when it is staked out // (0.204) used up when it is staked out
   if (k === 'elampkit' || k === 'olampkit') { if (startStreetPlacing(k === 'elampkit' ? 'electric' : 'oil')) closePack(); return false; } // (0.203) used up when it stands
   if (k === 'fieldstake') { if (startFieldPlacing()) closePack(); return false; } // used up when the field is staked out
+  if (k === 'roadkit') { if (startRoadSurvey()) closePack(); return false; } // (0.280) the poles are not used up
   if (k === 'bridgekit') { if (startBridgePlacing()) closePack(); return false; } // used up when the site is staked out
   if (k === 'flagpole' && !BASES_OPEN) { logLine(BASES_CLOSED_MSG); return false; }
   if (k === 'flagpole') { if (startPlacing()) { closePack(); } return false; } // the flag is used up once raised

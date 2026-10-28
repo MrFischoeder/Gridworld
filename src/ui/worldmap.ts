@@ -1,3 +1,4 @@
+import { roadLength, roadBuilt, roadShare, PROAD } from '../gen/playerroads';
 import { hubTruckAt } from '../world/hublines';
 import { droneMapAt } from '../world/airlines';
 import { airshipsForMap } from '../world/airships';
@@ -239,6 +240,31 @@ function drawArea(ctx: CanvasRenderingContext2D, w: number, h: number, ppm: numb
     ctx.save(); ctx.translate(x, y); ctx.rotate(-v.st.heading); ctx.strokeStyle = '#e8fff0'; ctx.strokeRect(-w, -l, w * 2, l * 2); ctx.restore();
     if (labels) { ctx.fillStyle = '#e8fff0'; ctx.fillText(v.spec.name, x, y - l - 6); }
   }
+  // (0.280) the heroes' tracks: built solid and earthy, the graded part of the works solid, the rest dashed gold
+  for (const r of Object.values(G.char.proads)) {
+    if (!r) continue;
+    const sx = nearX(r.pts[0][0], px) - r.pts[0][0], pts = r.pts.map(([x, z]) => [X(x + sx), Z(z)] as [number, number]);
+    if (pts.every(([x, y]) => x < -20 || y < -20 || x > w + 20 || y > h + 20)) continue;
+    const L = roadLength(r.pts), done = roadBuilt(r, G.char.time) ? L : roadShare(r, G.char.time) * L;
+    const line = (from: number, to: number, solid: boolean) => {
+      ctx.strokeStyle = solid ? '#d8c890' : '#ffd060'; ctx.lineWidth = solid ? Math.max(2, PROAD.half * 2 * ppm) : 1.5; ctx.setLineDash(solid ? [] : [4, 3]);
+      ctx.beginPath(); let d = 0, on = false;
+      for (let i = 1; i < pts.length; i++) {
+        const seg = Math.hypot(r.pts[i][0] - r.pts[i - 1][0], r.pts[i][1] - r.pts[i - 1][1]), a0 = Math.max(from, d), a1 = Math.min(to, d + seg);
+        if (a1 > a0 && seg > 0) {
+          const t0 = (a0 - d) / seg, t1 = (a1 - d) / seg, [ax, ay] = pts[i - 1], [bx, by] = pts[i];
+          if (!on) { ctx.moveTo(ax + (bx - ax) * t0, ay + (by - ay) * t0); on = true; }
+          ctx.lineTo(ax + (bx - ax) * t1, ay + (by - ay) * t1);
+        }
+        d += seg;
+      }
+      ctx.stroke(); ctx.setLineDash([]);
+    };
+    if (done > 0) line(0, done, true);
+    if (done < L) line(done, L, false);
+    if (labels && ppm > 0.08) { const [mx, my] = pts[Math.floor(pts.length / 2)]; ctx.fillStyle = '#d8c890'; ctx.fillText(r.name, mx, my - 6); }
+  }
+  ctx.lineWidth = 1;
   // bridges: the built ones, and the sites you staked out (dashed)
   const bars: [number, number, number, number, number, boolean][] = [];
   for (const b of Object.values(G.char.bridges)) if (b.done && b.at) bars.push([...b.at, true]);

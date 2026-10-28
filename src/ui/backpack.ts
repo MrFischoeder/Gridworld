@@ -144,6 +144,7 @@ function actsFor(id: string): [string, string][] {
     else if (it.type === 'wear') acts.push(['on', tl('Wear')]);
     else if (it.type === 'weapon') { acts.push(['hold', tl('Take in hands')]); if (gunOf(s.k)) acts.push(['mod', tl('Modify')]); }
     else if (it.type === 'cons') acts.push(['use', food ? (food.kcal ? tl('Eat') : tl('Drink')) : tl('Use')]);
+    else if (s.k === 'roadkit') acts.push(['use', tl('Stake out a track')]); // (0.280)
     else if (HAND_TOOLS.has(s.k)) acts.push(['hold', tl('Take in hands')]);
     if (THROWABLES.includes(s.k) && (w === 'p' || w === 'h')) acts.push(['throw', tl('Ready to throw (Z)')]); // (0.225) world/throwing.ts
     if (s.k === 'log' && (w === 'p' || w === 'h')) acts.push(['saw', tl('Saw into planks')], ['sawall', tl('Saw all')]); // (world/sawing.ts: a Saw in your kit)

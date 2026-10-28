@@ -10,6 +10,7 @@ import { fixPlant } from './gen/plants';
 import { retireOldCrossings, type BridgeState, type Ford } from './gen/bridges';
 import type { Pier } from './gen/piers';
 import type { Lighthouse } from './gen/lighthouses';
+import type { PlayerRoad } from './gen/playerroads';
 import type { Body } from './gen/bodies';
 import type { SkyFall } from './gen/skyfall';
 import type { WorkClaim } from './gen/workshop';
@@ -89,6 +90,8 @@ export interface Char {
   piers: Pier[];
   /** (0.204) The lighthouses the heroes built or staked out (gen/lighthouses.ts); shared. */
   lighthouses: Lighthouse[];
+  /** (0.280) The tracks the heroes staked out and build (gen/playerroads.ts), by id; shared. */
+  proads: Record<string, PlayerRoad>;
   /** Your boats and where they lie (gen/boats.ts; each hold is `containers[id]`). */
   boats: Boat[];
   /** (0.256) The airships of this world (gen/airships.ts; each hold is `containers[id]`); shared. */
@@ -204,7 +207,7 @@ export const SAVE_KEY = 'gridWorld.character.v3';
 export const ARENA_V3_KEY = 'gridArena.character.v3', V2_KEY = 'gridArena.character.v2', OLD_KEY = 'gridArena.character.v1';
 
 export const newChar = (): Char => ({
-  v: 3, settlementRules: 1, name: '', intro: false, tech: {}, leads: [], installs: {}, bridges: {}, bridgeSites: [], cityGarrisons: {}, fallen: {}, bodies: {}, skyfalls: {}, workclaims: {}, salvage: {}, piers: [], lighthouses: [], boats: [], airships: [], copters: [], filter: 0, fogs: {}, lodes: {}, outposts: {}, rivals: {}, guide: 0, houses: [], shuttle: { given: {}, v: 2 }, level: 1, xp: 0, gold: 0, world: newWorldSeed(),
+  v: 3, settlementRules: 1, name: '', intro: false, tech: {}, leads: [], installs: {}, bridges: {}, bridgeSites: [], cityGarrisons: {}, fallen: {}, bodies: {}, skyfalls: {}, workclaims: {}, salvage: {}, piers: [], lighthouses: [], proads: {}, boats: [], airships: [], copters: [], filter: 0, fogs: {}, lodes: {}, outposts: {}, rivals: {}, guide: 0, houses: [], shuttle: { given: {}, v: 2 }, level: 1, xp: 0, gold: 0, world: newWorldSeed(),
   inv: [{ k: 'blade', n: 1 }, ...Array(INV_SIZE - 1).fill(null)], mods: Array(MOD_SIZE).fill(null), opened: {}, unlocked: {}, killed: {},
   loc: 'overworld', ow: null, dungeon: null, discovered: {}, containers: {}, vehicles: [], board: { seq: 0, offers: [], stamp: boardPeriod(START_TIME) }, boards: {}, quests: [], camps: {}, time: START_TIME, gunMods: [null, null, null], loaded: { blaster: 20 }, waypoint: null, kcal: KCAL.start, stomach: 0, water: 100, harvest: {}, benches: [], claims: [],
   hands: [{ k: 'blaster', n: 1 }], back: [], off: [null], wear: {}, pid: Math.random().toString(36).slice(2, 10), towns: {}, market: {}, ledger: {}, caravans: {}, escort: null, contracts: [], taken: [],

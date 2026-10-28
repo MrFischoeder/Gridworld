@@ -108,6 +108,7 @@ import { updateToxic, tintToxic, toxicHere } from './world/toxic';
 import { tintBiome } from './world/biomesky';
 import { updateGuide } from './world/guide';
 import { updateBridges, isBridgePlacing, updateBridgePlacing, confirmBridgePlacing, cancelBridgePlacing } from './world/bridges';
+import { updateRoads, isRoadSurvey, updateRoadSurvey, confirmRoadSurvey, undoRoadStake } from './world/playerroads';
 import { updatePiers, isPierPlacing, updatePierPlacing, confirmPierPlacing, cancelPierPlacing } from './world/piers';
 import { updateBoats, inBoat, boatCamera } from './world/boats';
 import { updateAirships, inAir, airCamera } from './world/airships';
@@ -233,7 +234,7 @@ function frame(now: number) {
   if (outdoors) updateWorldGates(dt);
   refreshGateConsole();
   // the clock runs whenever the game is not paused in the menu
-  if (G.playing && !gateTravelPending()) { G.char.time += dt * MIN_PER_SEC; updateSurvival(dt); updateEating(dt); updateBodyHeat(dt); updateFlora(dt); updateFires(dt, time); updatePower(dt); updateSettlementSites(dt); updateJobSites(dt); updateHouseDoors(dt); updateWallGuns(dt); updateWorks(dt); updateStations(dt); updateChariot(dt); syncConvoyStart(dt); updateCaravans(dt); updateVillageRaids(dt); updateFallen(dt); updateIndustry(dt); updateFarms(dt); updateInstalls(dt); updateCities(dt); updateToxic(dt); updateGuide(dt); updateBridges(dt); updatePiers(dt); updateStreetLamps(dt); updateLighthouses(dt); updateContracts(dt); updateForge(dt); updateGarage(dt); updateHomes(dt); updateSawing(dt); updateCharging(dt); syncVillagePads(dt); updateLodes(dt); updateCrystals(dt); updateColossi(dt); updateCrystalWastes(dt); updateThrowing(dt, time); updateMyCond(dt, (d) => { if (!G.god && !foeRules.playerSafe()) G.hp -= d; }); if (G.char.loc === 'overworld' || G.char.loc === 'dungeon') updateSurround(dt, logLine); updatePorts(dt); updateCarriers(dt); updateHubTrucks(dt); updateSkyShips(); updateAirHazards(dt); updateCargoDrones(dt); if ((crateT -= dt) <= 0) { crateT = 0.3; if (settleCrates()) { calcStats(); saveChar(); refreshPack(); } } updateCamps(dt); updatePowerLines(dt); updateCommute(dt); updateOutpostRaids(dt); updateRouteTrucks(); updateRivals(dt); if (testWaiting() && !G.trans && !G.intro) { const n = takeTest(); if (n) setTimeout(() => { if (!enterCustom(n)) showToast(TL`No editor map called ${n} in this browser.`); }); } /* after this frame (its place name) */ if ((benchT -= dt) <= 0) { benchT = 1; syncBenches(); syncFlags(); syncBases(); syncTurrets(); } }
+  if (G.playing && !gateTravelPending()) { G.char.time += dt * MIN_PER_SEC; updateSurvival(dt); updateEating(dt); updateBodyHeat(dt); updateFlora(dt); updateFires(dt, time); updatePower(dt); updateSettlementSites(dt); updateJobSites(dt); updateHouseDoors(dt); updateWallGuns(dt); updateWorks(dt); updateStations(dt); updateChariot(dt); syncConvoyStart(dt); updateCaravans(dt); updateVillageRaids(dt); updateFallen(dt); updateIndustry(dt); updateFarms(dt); updateInstalls(dt); updateCities(dt); updateToxic(dt); updateGuide(dt); updateBridges(dt); updateRoads(dt); updatePiers(dt); updateStreetLamps(dt); updateLighthouses(dt); updateContracts(dt); updateForge(dt); updateGarage(dt); updateHomes(dt); updateSawing(dt); updateCharging(dt); syncVillagePads(dt); updateLodes(dt); updateCrystals(dt); updateColossi(dt); updateCrystalWastes(dt); updateThrowing(dt, time); updateMyCond(dt, (d) => { if (!G.god && !foeRules.playerSafe()) G.hp -= d; }); if (G.char.loc === 'overworld' || G.char.loc === 'dungeon') updateSurround(dt, logLine); updatePorts(dt); updateCarriers(dt); updateHubTrucks(dt); updateSkyShips(); updateAirHazards(dt); updateCargoDrones(dt); if ((crateT -= dt) <= 0) { crateT = 0.3; if (settleCrates()) { calcStats(); saveChar(); refreshPack(); } } updateCamps(dt); updatePowerLines(dt); updateCommute(dt); updateOutpostRaids(dt); updateRouteTrucks(); updateRivals(dt); if (testWaiting() && !G.trans && !G.intro) { const n = takeTest(); if (n) setTimeout(() => { if (!enterCustom(n)) showToast(TL`No editor map called ${n} in this browser.`); }); } /* after this frame (its place name) */ if ((benchT -= dt) <= 0) { benchT = 1; syncBenches(); syncFlags(); syncBases(); syncTurrets(); } }
   updateCompass(dt); // hides itself while paused
   const clock = fmtClock(G.char.time) + (G.char.loc === 'overworld' && seen.kind !== 'clear' ? ' · ' + WEATHER_NAME[seen.kind] : '') + ' · ' + airText();
   if (el.clock.textContent !== clock) el.clock.textContent = clock;
@@ -269,6 +270,10 @@ function frame(now: number) {
       updateFieldPlacing();
       if (G.firing) { G.firing = false; void confirmFieldPlacing(); }
       if (G.aiming) { G.aiming = false; cancelFieldPlacing(); }
+    } else if (isRoadSurvey()) { // (0.280) the Surveyor's Poles: the mouse stakes out a track
+      updateRoadSurvey();
+      if (G.firing) { G.firing = false; confirmRoadSurvey(); }
+      if (G.aiming) { G.aiming = false; undoRoadStake(); }
     } else if (isBridgePlacing()) { // a Bridge Kit: the mouse picks where the bridge crosses
       updateBridgePlacing();
       if (G.firing) { G.firing = false; confirmBridgePlacing(); }

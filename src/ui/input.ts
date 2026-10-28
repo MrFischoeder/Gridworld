@@ -6,6 +6,7 @@ import { toggleCrouch } from '../world/stealth';
 import { riding, rideSeat, toggleRideView } from '../world/ride';
 import { isPlacing, cancelPlacing } from '../world/claims';
 import { isBridgePlacing, cancelBridgePlacing } from '../world/bridges';
+import { isRoadSurvey, cancelRoadSurvey, proposeRoad, undoRoadStake } from '../world/playerroads';
 import { isFieldPlacing, cancelFieldPlacing } from '../world/fields';
 import { isStreetPlacing, cancelStreetPlacing } from '../world/streetlamps';
 import { isLhPlacing, cancelLhPlacing } from '../world/lighthouses';
@@ -60,6 +61,11 @@ export function initInput(onPause: () => void) {
     if (extraKeys.some((f) => f(e))) return;
     if (e.code === 'Escape' && isPlacing()) cancelPlacing();
     if (e.code === 'Escape' && isBridgePlacing()) cancelBridgePlacing();
+    if (isRoadSurvey() && G.playing) { // (0.280) the survey: Esc gives up, R lays out the way, Backspace takes a stake back
+      if (e.code === 'Escape') { cancelRoadSurvey(); return; }
+      if (e.code === 'KeyR') { if (!e.repeat) proposeRoad(); return; }
+      if (e.code === 'Backspace') { e.preventDefault(); undoRoadStake(); return; }
+    }
     if (e.code === 'Escape' && isFieldPlacing()) cancelFieldPlacing();
     if (e.code === 'Escape' && isStreetPlacing()) cancelStreetPlacing();
     if (e.code === 'Escape' && isLhPlacing()) cancelLhPlacing();

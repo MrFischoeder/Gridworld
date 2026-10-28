@@ -8,6 +8,7 @@ import { biomeTint, biomeOfCell, treeIn, BIOME_LOOK, type TreeLook } from '../ge
 import { drawTreeLook, LEAF, VINE } from './trees';
 import { biomeAt, biomeName, type BiomeHere } from '../gen/biomes';
 import { nearestOnRoad } from '../gen/roads';
+import { terrainWays } from '../gen/playerroads';
 import { shapedWorld } from '../gen/worldrules';
 import { syncConvoyStart } from './convoyfuel';
 import { drawSettlementSites, drawSettlementComms, settlementHit, settlementFloor, settlementRay, settlementSolid, forgetSettlement } from './settlement';
@@ -66,7 +67,7 @@ import { lighthouseHit } from './lighthouses';
 import { fallHit } from './skyfall';
 import { boatHit, shipFloor, shipHit } from './boats';
 import { gondolaFloor, gondolaHit } from './airships';
-import { CHUNK, poisNear, X_MIN, WORLD_W, POLE_Z, POLAR_Z, villageContaining, villageDist, villageSeed, GRIDHOLM_ID, type Poi, type Rect, wrapC, wrapDx } from '../gen/regions';
+import { CHUNK, poisNear, X_MIN, WORLD_W, POLE_Z, POLAR_Z, villageContaining, villageDist, villageSeed, GRIDHOLM_ID, type Poi, type Rect, wrapC, wrapDx, nearX } from '../gen/regions';
 import { chunkTrees, chunkRocks, TREE_SPAN, type Tree, type Rock, type OreKind } from '../gen/trees';
 import { rockShape, rockSurface, leanY, type RockShape } from '../gen/rockshape';
 import { drawTemple, solidDist, type TempleSolid } from './temple';
@@ -125,6 +126,8 @@ export const LOAD_R = 4, UNLOAD_R = 6, STRUCT_LOAD = 170, STRUCT_UNLOAD = 240;
 const OUTLINE = { floor: 2, wall: 4 };
 const TILE_COLOR = 0x4dff7e, ICE_COLOR = 0xbfffe8;
 /** Roads and trails: a lighter, shaded strip over the ground (drawn over the terrain fill, under its grid lines). */
+/** (0.280) The players' dirt tracks: an earthier strip than the old roads. */
+const TRACK_FILL = new THREE.MeshBasicMaterial({ color: 0x2a3214, transparent: true, opacity: 0.85, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -2 });
 const ROAD_FILL = new THREE.MeshBasicMaterial({ color: 0x0f4020, transparent: true, opacity: 0.8, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -2 });
 /** Chunks reaching above this height (m) are snowy: pale lines. */
 const SNOW_LINE = 115;
@@ -346,8 +349,9 @@ function buildChunk(cx: number, cz: number, lod = 1): Chunk {
     if (!hole(x, az, x, az + STEP)) { lines.push(x, H(i, j), az, x, H(i, j + 1), az + STEP); lcol.push(...C(i, j), ...C(i, j + 1)); }
   }
   // roads and mountain trails: a shaded strip on the ground, no lines (a way worn into the land, not a highway)
-  const road: number[] = [], trails = f.roads.filter((r) => r.h);
-  for (const r of f.roads) {
+  const road: number[] = [], track: number[] = [], trails = f.roads.filter((r) => r.h);
+  for (const r of [...f.roads, ...f.ways]) {
+    const out = r.gate === 'player' ? track : road; // (0.280) the players' tracks
     const hw = r.h ? r.half * 0.8 : r.half;
     for (let k = 0; k + 1 < r.pts.length; k++) {
       const [ax, az] = r.pts[k], [bx, bz] = r.pts[k + 1], L = Math.hypot(bx - ax, bz - az);
@@ -360,7 +364,7 @@ function buildChunk(cx: number, cz: number, lod = 1): Chunk {
         if (holes.some((h) => inRect(h, mx, mz))) continue;
         const P = (x: number, z: number) => [x, T.heightAt(x, z) + 0.04, z];
         const a = P(px - nx, pz - nz), b = P(px + nx, pz + nz), c = P(qx + nx, qz + nz), d = P(qx - nx, qz - nz);
-        road.push(...a, ...b, ...c, ...a, ...c, ...d);
+        out.push(...a, ...b, ...c, ...a, ...c, ...d);
       }
     }
   }
@@ -374,16 +378,18 @@ function buildChunk(cx: number, cz: number, lod = 1): Chunk {
     group.add(new THREE.Mesh(fg, sharedFillV()), new THREE.LineSegments(lg, sharedLineV()));
   }
   if (road.length) { const rg = new THREE.BufferGeometry(); rg.setAttribute('position', new THREE.Float32BufferAttribute(road, 3)); group.add(new THREE.Mesh(rg, ROAD_FILL)); }
+  if (track.length) { const rg = new THREE.BufferGeometry(); rg.setAttribute('position', new THREE.Float32BufferAttribute(track, 3)); group.add(new THREE.Mesh(rg, TRACK_FILL)); }
   const sea = seaSheet(T, cx, cz, lat, lod); if (sea) group.add(sea);
   const swamp = !polar && shapedWorld(T.world) ? swampSheet(T, cx, cz, lat, lod) : null; if (swamp) group.add(swamp); // (0.233) the swamps' pools
   const river = f.rivers.length ? riverSheet(T, cx, cz, f.rivers) : null; if (river) group.add(river);
   const inMonument = (x: number, z: number) => f.megaliths.some(m => Math.hypot(x - m.x, z - m.z) < m.radius + 3);
-  const caves = chunkCaves(T, cx, cz).filter(c => !inMonument(c.x, c.z)), wells = chunkWells(T, cx, cz).filter(w => !inMonument(w.x, w.z)), plants = chunkPlants(T, cx, cz).filter((p) => !T.claimAt(p.x, p.z, 2) && !inMonument(p.x, p.z));
+  const caves = chunkCaves(T, cx, cz).filter(c => !inMonument(c.x, c.z)), wells = chunkWells(T, cx, cz).filter(w => !inMonument(w.x, w.z)), plants = chunkPlants(T, cx, cz).filter((p) => !T.claimAt(p.x, p.z, 2) && !inMonument(p.x, p.z) && !f.ways.some((w) => nearestOnRoad(w, p.x, p.z)[0] < w.half + 4));
   // felled trees and broken rocks (player changes, keyed by their index in the generated list) are left out
   const trees: Tree[] = [], stumps: Tree[] = [], rocks: Rock[] = [];
   // a claimed site is cleared: nothing grows on the levelled ground (the generated lists keep their indices)
   const giants = groveGiants(T.world, cx * CHUNK + CHUNK / 2, cz * CHUNK + CHUNK / 2, CHUNK); // the great groves' giants stand alone
-  const cleared = (x: number, z: number) => inMonument(x, z) || !!T.claimAt(x, z, 1) || inGateClearing(T.world, x, z, 2) || giants.some((g) => Math.hypot(x - g.x, z - g.z) < g.r + 7);
+  const onWay = (x: number, z: number, m: number) => f.ways.some((w) => nearestOnRoad(w, x, z)[0] < w.half + m); // (0.280) the players' tracks are cleared
+  const cleared = (x: number, z: number) => inMonument(x, z) || !!T.claimAt(x, z, 1) || onWay(x, z, 3) || inGateClearing(T.world, x, z, 2) || giants.some((g) => Math.hypot(x - g.x, z - g.z) < g.r + 7);
   const looks = new Map<Tree, { b: BiomeHere; look: TreeLook; size: number }>();
   const spikes: number[][] = [], spikeList: Spike[] = polar ? [] : chunkSpikes(T.world, cx, cz).filter((k) => !cleared(k.x, k.z) && !holes.some((h) => inRect(h, k.x, k.z)) && !f.roads.some((rd) => nearestOnRoad(rd, k.x, k.z)[0] < rd.half + 1.5 + k.r) && !(T.water(k.x, k.z)?.depth));
   chunkTrees(T, cx, cz).forEach((t, i) => {
@@ -470,6 +476,14 @@ export function rebuildChunkAt(x: number, z: number) {
   dropChunk(old);
 }
 /** Rebuild every loaded chunk that comes within r of (x, z) (a claim levelled the ground there). */
+/** (0.280) Rebuild every loaded chunk within r of a polyline (a track finished there: the trees along it go). */
+export function rebuildChunksAlong(pts: [number, number][], r: number) {
+  for (const c of [...OW.chunks.values()]) {
+    const x0 = c.cx * CHUNK, z0 = c.cz * CHUNK, mx = x0 + CHUNK / 2, mz = z0 + CHUNK / 2;
+    const [d] = nearestOnRoad({ id: '', from: 0, to: 0, gate: '', half: 0, pts: pts.map(([x, z]) => [nearX(x, mx), z] as [number, number]) }, mx, mz);
+    if (d < r + CHUNK * 0.71) { OW.chunks.set(ckey(c.cx, c.cz), buildChunk(c.cx, c.cz, c.lod)); dropChunk(c); }
+  }
+}
 export function rebuildChunksNear(x: number, z: number, r: number) {
   for (const c of [...OW.chunks.values()]) {
     const x0 = c.cx * CHUNK, z0 = c.cz * CHUNK, d = Math.hypot(Math.max(x0 - x, 0, x - x0 - CHUNK), Math.max(z0 - z, 0, z - z0 - CHUNK));
@@ -865,6 +879,7 @@ export function openWorld(x: number, z: number) {
   if (!OW.terrain || OW.terrain.world !== w) { OW.terrain = new Terrain(w); riversOf(w); } // the rivers are worked out once, while the world loads
   OW.terrain.setClaims([...G.char.claims, ...fieldClaims(G.char.towns), ...portClaims(w, G.char.outposts)]); // bases and the villages' fields are levelled
   OW.terrain.setSettlementPads(villagePads(w));
+  OW.terrain.setWays(terrainWays(G.char.proads, G.char.time)); // (0.280) the players' finished tracks
   primeInstalls(w, [...G.char.claims, ...fieldClaims(G.char.towns), ...portClaims(w, G.char.outposts)]); // the installations' sites are worked out in a worker meanwhile
   closeWorld();
   G.water = (px, pz) => (inStructure(px, pz) ? null : OW.terrain!.water(px, pz));
