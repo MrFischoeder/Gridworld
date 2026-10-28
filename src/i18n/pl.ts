@@ -4839,4 +4839,5 @@ export const PL: Record<string, string> = {
   'The Crystal Colossus shatters!': 'Kryształowy Kolos rozpada się w drobny mak!',
   'The crystal spikes cut! Walk round them, and never run into them.': 'Kryształowe kolce tną! Obchodź je i nigdy w nie nie wbiegaj.',
   'The heart! ×2.5': 'Serce! ×2.5',
+  'The Crystal Colossus hurls shards torn from its body. Run sideways or get behind cover!': 'Kryształowy Kolos ciska odłamkami wyrwanymi z własnego ciała. Uciekaj w bok albo schowaj się za osłoną!',
 };

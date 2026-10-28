@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { chunkSpikes, spikeHurt, giantLair, giantLairsNear, giantTurn, GIANT, SPIKE } from '../src/gen/crystalspikes';
+import { chunkSpikes, spikeHurt, giantLair, giantLairsNear, giantTurn, GIANT, SPIKE, VOLLEY, volleyReady, volleyFan } from '../src/gen/crystalspikes';
 import { biomeAt } from '../src/gen/biomes';
 import { CHUNK } from '../src/gen/regions';
 
@@ -66,5 +66,19 @@ describe('the Crystal Wastes (0.277)', () => {
     const z = chase(true);
     expect(z.caught).toBe(false);
     expect(z.trampled).toBeLessThanOrEqual(1);
+  });
+  it('(0.278) it hurls shards only out of its fists\' reach, not too often, in an even fan', () => {
+    expect(volleyReady(GIANT.reach, 0)).toBe(false);
+    expect(volleyReady(60, 0)).toBe(true);
+    expect(volleyReady(60, 1)).toBe(false);
+    expect(volleyReady(VOLLEY.to + 1, 0)).toBe(false);
+    const f = volleyFan();
+    expect(f.length).toBe(VOLLEY.n);
+    expect(f[Math.floor(f.length / 2)]).toBeCloseTo(0);
+    expect(f[0]).toBeCloseTo(-f[f.length - 1]);
+    // a shard at 60 m takes long enough to see and step aside from (wind-up + flight)
+    expect(VOLLEY.windup + 60 / VOLLEY.speed).toBeGreaterThan(2.2);
+    // at 60 m the fan's outer shards land a few metres either side: a sideways run of ~2 s gets clear
+    expect(Math.abs(Math.tan(f[0]) * 60)).toBeLessThan(9 * 1.5);
   });
 });

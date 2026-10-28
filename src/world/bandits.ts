@@ -71,7 +71,7 @@ export interface Bandit extends CondFoe {
    *  it (a surrender's wait); `came` = it already came back once with help. The copies see `mode` 'give' / 'rout'. */
   morale?: number; wounded?: boolean; fate?: Fate; fateT?: number; came?: boolean;
 }
-interface Bolt { m: THREE.Line; p: THREE.Vector3; v: THREE.Vector3; dmg: number; life: number; ghost?: boolean; source?: CombatFoe }
+interface Bolt { m: THREE.Line; p: THREE.Vector3; v: THREE.Vector3; dmg: number; life: number; ghost?: boolean; source?: CombatFoe; /** its colour (a crystal shard cuts: SHARD_C) */ c?: number }
 const bolts: Bolt[] = [];
 let env: SpawnEnv | null = null, patrolT = 10;
 export function setBanditEnv(e: SpawnEnv | null) { env = e; }
@@ -185,24 +185,37 @@ function fire(b: Bandit) {
   fireBolt(muzzle, (b.role === 'leader' ? 9 : 5) * (1 + b.level * 0.2), b.role === 'leader' ? BOSS_COLOR : BANDIT);
 }
 /** A bolt from `muzzle` at the player (with spread for distance and the player's speed). */
-export function fireBolt(muzzle: THREE.Vector3, dmg: number, color = BANDIT, at?: THREE.Vector3) {
+/** (0.278) The Crystal Colossus's shards fly as bolts of this colour, drawn as crystals (here and on the others' games). */
+export const SHARD_C = 0xd8b8ff;
+/** A bolt's model: a short streak, or for a shard a long pointed crystal along its flight. */
+function boltModel(v: THREE.Vector3, color: number): THREE.LineSegments | THREE.Line {
+  const d = v.clone().normalize();
+  if (color !== SHARD_C) return new THREE.Line(new THREE.BufferGeometry().setFromPoints([V(0, 0, 0), d.multiplyScalar(-0.9)]), addMat(color));
+  const a = new THREE.Vector3().crossVectors(d, Math.abs(d.y) > 0.9 ? V(1, 0, 0) : V(0, 1, 0)).normalize(), b = new THREE.Vector3().crossVectors(d, a);
+  const tail = d.clone().multiplyScalar(-3.2), mid = d.clone().multiplyScalar(-1), ring = [a, b, a.clone().negate(), b.clone().negate()].map((q) => mid.clone().addScaledVector(q, 0.42));
+  const pts: THREE.Vector3[] = [];
+  for (let i = 0; i < 4; i++) pts.push(V(0, 0, 0), ring[i], ring[i], tail, ring[i], ring[(i + 1) % 4]);
+  pts.push(V(0, 0, 0), tail); // its glowing core
+  return new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(pts), addMat(color));
+}
+export function fireBolt(muzzle: THREE.Vector3, dmg: number, color = BANDIT, at?: THREE.Vector3, speed = 30) {
   // at you: at the driver's seat when you are driving (the whole vehicle absorbs it, updateBolts); (0.226) or at a spot (suppressing fire)
   const target = at ? at.clone() : driving.v && !proxied() ? seatPoint(driving.v, driving.seat) : V(G.pos.x, G.pos.y + aimHeight(), G.pos.z), dist = target.distanceTo(muzzle);
   const spread = 0.035 * dist + Math.hypot(G.vel.x, G.vel.z) * 0.1 + upSpread(target.y - muzzle.y) * dist; // (0.229) uphill at you is harder
   target.x += (Math.random() - 0.5) * spread; target.y += (Math.random() - 0.5) * spread * 0.5; target.z += (Math.random() - 0.5) * spread;
-  const v = target.sub(muzzle).normalize().multiplyScalar(30);
-  const m = new THREE.Line(new THREE.BufferGeometry().setFromPoints([V(0, 0, 0), v.clone().normalize().multiplyScalar(-0.9)]), addMat(color));
+  const v = target.sub(muzzle).normalize().multiplyScalar(speed);
+  const m = boltModel(v, color);
   m.position.copy(muzzle); scene.add(m);
-  bolts.push({ m, p: muzzle.clone(), v, dmg, life: 3, source: actingFoe() ?? undefined });
-  play(color === 0xff9a3a ? 'robot_shot' : 'enemy_shot', { at: muzzle, vol: 0.8, far: 110 });
+  bolts.push({ m, p: muzzle.clone(), v, dmg, life: color === SHARD_C ? 4 : 3, source: actingFoe() ?? undefined, c: color });
+  if (color !== SHARD_C) play(color === 0xff9a3a ? 'robot_shot' : 'enemy_shot', { at: muzzle, vol: 0.8, far: 110 });
   boltOut(muzzle, v, color);
 }
 /** Another player's foe fired: the bolt is drawn here, but its harm is reckoned in the owner's game (world/foesync.ts). */
 export function ghostBolt(p: THREE.Vector3, v: THREE.Vector3, color: number) {
-  const m = new THREE.Line(new THREE.BufferGeometry().setFromPoints([V(0, 0, 0), v.clone().normalize().multiplyScalar(-0.9)]), addMat(color));
+  const m = boltModel(v, color);
   m.position.copy(p); scene.add(m);
-  bolts.push({ m, p: p.clone(), v: v.clone(), dmg: 0, life: 3, ghost: true });
-  play(color === 0xff9a3a || color === 0xff6a4a || color === 0xff5a3c ? 'robot_shot' : 'enemy_shot', { at: p, vol: 0.8, far: 110 });
+  bolts.push({ m, p: p.clone(), v: v.clone(), dmg: 0, life: color === SHARD_C ? 4 : 3, ghost: true, c: color });
+  if (color !== SHARD_C) play(color === 0xff9a3a || color === 0xff6a4a || color === 0xff5a3c ? 'robot_shot' : 'enemy_shot', { at: p, vol: 0.8, far: 110 });
 }
 export function updateBolts(dt: number) {
   const body0 = V(G.pos.x, G.pos.y + 0.3, G.pos.z), body1 = V(G.pos.x, G.pos.y + (G.crouch ? 1.05 + 0.45 * peekK() : 1.6), G.pos.z); // crouched behind cover, less of you to hit (rising to shoot shows more)
@@ -236,9 +249,9 @@ export function updateBolts(dt: number) {
     else if (!dead && !foeRules.playerSafe()) {
       // on foot: distance from the bolt to the player's body (a vertical segment)
       const cy = Math.max(body0.y, Math.min(body1.y, o.p.y)), hitD = Math.hypot(o.p.x - G.pos.x, o.p.y - cy, o.p.z - G.pos.z);
-      if (hitD < 0.45) { dead = true; if (!hurtPlayer(o.dmg)) heavyHit(o.dmg); }
+      if (hitD < (o.c === SHARD_C ? 0.6 : 0.45)) { dead = true; if (!hurtPlayer(o.dmg)) { heavyHit(o.dmg); if (o.c === SHARD_C && Math.random() < 0.35) bleed(); } } // (0.278) a shard is bigger and cuts
     }
-    if (dead) { burst(o.p, BANDIT, 6, 0.35); scene.remove(o.m); o.m.geometry.dispose(); bolts.splice(i, 1); }
+    if (dead) { burst(o.p, o.c === SHARD_C ? SHARD_C : BANDIT, o.c === SHARD_C ? 14 : 6, o.c === SHARD_C ? 0.8 : 0.35); scene.remove(o.m); o.m.geometry.dispose(); bolts.splice(i, 1); }
   }
 }
 

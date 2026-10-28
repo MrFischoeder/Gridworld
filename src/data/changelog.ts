@@ -3,6 +3,12 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.278.0', date: '2026-10-28', title: 'Shards from afar', notes: [
+    'The Crystal Colossus no longer only charges: when you are out of its fists\' reach (about 26 to 110 m) it stops every 6 to 9 seconds, raises an arm behind it with a shriek, tears shards from its own body and hurls a fan of five at you.',
+    'The wind-up (just over a second) and the flight (about two seconds from 60 m) give you time: run sideways out of the fan or get behind a rock, a crystal or a wall. It leads a runner a little.',
+    'Each shard hits for 11 + 2 per danger level, staggers you and may open a bleeding wound; they also stop at cover and hurt vehicles like any shot.',
+    'Multiplayer: the game that runs the colossus throws the shards and reckons the hits on every player; the others see the same crystal shards flying (sent as ordinary bolts, so the server is unchanged).',
+  ] },
   { v: '0.277.1', date: '2026-10-31', title: 'A colossus of crystal', notes: [
     'The Crystal Colossus no longer looks like a robot: its trunk and head are one great double-pointed crystal, two leaning crystals are its shoulders, bursts of crystals grow from its back and flanks, its arms and legs are chains of long crystals ending in clusters of points, and light runs inside the crystals.',
     'Its glowing heart now sits on the front of its chest, where you can see and hit it (still 2.5× damage from the front).',

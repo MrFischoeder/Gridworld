@@ -50,6 +50,19 @@ export const GIANT = {
   /** It notices you within `notice` m (it is a giant: sight is not the point), roars `roar` s, then comes. */
   notice: 95, roar: 1.6,
 };
+/**
+ * (0.278, the owner's request) Its shards from afar: when you are `from`..`to` m off (out of its fists' reach, so it
+ * cannot run you down quickly), every `every` s at most it stops, tears `n` shards from its body (a wind-up of
+ * `windup` s with its arm raised: the moment to get behind cover or run sideways) and hurls them in a fan `fan` rad
+ * wide at `speed` m/s, each `dmg` + `perLevel` × level (they cut: a chance to bleed); then `after` s before it moves.
+ */
+export const VOLLEY = { from: 26, to: 110, every: [6, 9] as [number, number], windup: 1.1, n: 5, fan: 0.16, speed: 34, dmg: 11, perLevel: 2, after: 0.7 };
+/** Whether it may hurl now: in range and its last volley long enough ago. */
+export const volleyReady = (flat: number, wait: number) => wait <= 0 && flat >= VOLLEY.from && flat <= VOLLEY.to;
+/** The volley's spread: each shard's turn off the aim (rad), evenly across the fan, the middle one straight. */
+export function volleyFan(n = VOLLEY.n, fan = VOLLEY.fan): number[] {
+  return Array.from({ length: n }, (_, i) => (n === 1 ? 0 : (i / (n - 1) - 0.5) * fan));
+}
 export interface Lair { id: string; x: number; z: number; v: number }
 const lairs = new Map<string, Lair | null>();
 let lairWorld = NaN;

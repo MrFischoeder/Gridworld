@@ -38,7 +38,8 @@ import { WILD, WILDLIFE, isWild, wildPick, scared, provoke, temperAfter, type Wi
 import { wildOk } from './threat';
 import type { BiomeHere } from '../gen/biomes';
 import { shardlingModel, prismModel, colossusModel } from './crystalbeasts';
-import { GIANT, giantTurn } from '../gen/crystalspikes';
+import { GIANT, VOLLEY, giantTurn, volleyReady, volleyFan } from '../gen/crystalspikes';
+import { fireBolt, SHARD_C } from './bandits';
 
 type State = 'roam' | 'hunt' | 'dash' | 'retreat' | 'threat' | 'charge' | 'recover' | 'stalk' | 'dive' | 'climb' | 'investigate' | 'feed'
   // (0.226, stage W2) the telegraphs and the weak moments, seen on the other players' copies too
@@ -48,7 +49,9 @@ type State = 'roam' | 'hunt' | 'dash' | 'retreat' | 'threat' | 'charge' | 'recov
   // (0.240) a wild animal running from you
   | 'flee'
   // (0.277) the Crystal Colossus: skidding out of a charge it overran, turning round, swinging its fists down
-  | 'skid' | 'turn' | 'smash';
+  | 'skid' | 'turn' | 'smash'
+  // (0.278) tearing shards from its body and hurling them
+  | 'hurl';
 
 export interface Creature extends CondFoe {
   /** (0.227) how far down on its side it is drawn (eased) */
@@ -91,6 +94,8 @@ export interface Creature extends CondFoe {
    *  set every frame), its glowing heart (world [x, y, z, r]: a shot through it from the front counts ×2.5), and the
    *  seconds until it can trample again. */
   body?: THREE.Group; arms?: THREE.Group[]; balls?: number[][]; heart?: number[]; stomp?: number;
+  /** (0.278) Seconds until the colossus may hurl shards again; whether it has told you once. */
+  hurlT?: number; hurlTold?: boolean;
 }
 
 // ---------- models (local +z forward, origin at the body centre) ----------
@@ -1070,7 +1075,9 @@ function colossus(c: Creature, dt: number, to: THREE.Vector3, safe: boolean) {
   let off = want - c.heading; off = Math.atan2(Math.sin(off), Math.cos(off));
   const fromHome = Math.hypot(c.p.x - c.home.x, c.p.z - c.home.z), lost = safe || Math.hypot(G.pos.x - c.home.x, G.pos.z - c.home.z) > GIANT.leash;
   const brake = (rate: number) => { c.speed = Math.max(0, c.speed - rate * dt); };
-  c.timer -= dt; c.stomp = Math.max(0, (c.stomp ?? 0) - dt);
+  c.timer -= dt; c.stomp = Math.max(0, (c.stomp ?? 0) - dt); c.hurlT = (c.hurlT ?? 2) - dt;
+  const mayHurl = !lost && volleyReady(flat, c.hurlT) && Math.abs(off) < 0.9;
+  const startHurl = () => { c.state = 'hurl'; c.timer = VOLLEY.windup; c.hurlT = VOLLEY.every[0] + Math.random() * (VOLLEY.every[1] - VOLLEY.every[0]); play('screech_leechwing', { at: c.p, vol: 1, rate: 0.35, far: 300, share: 300 }); };
   const dmg = (s.damage + 6 * c.level) * c.dmgMul;
   switch (c.state) {
     case 'roam': { // pace about the lair; go back to it when far
@@ -1089,6 +1096,7 @@ function colossus(c: Creature, dt: number, to: THREE.Vector3, safe: boolean) {
       if (lost) { c.state = 'skid'; break; }
       c.speed = Math.min(GIANT.speed * (1 + 0.04 * c.level), c.speed + GIANT.accel * dt);
       c.heading = giantTurn(c.heading, want, c.speed, dt);
+      if (mayHurl) { startHurl(); break; } // (0.278) out of reach of its fists: shards
       if (flat < GIANT.strike && Math.abs(off) < GIANT.aim) { c.state = 'smash'; c.timer = GIANT.windup; break; }
       if (flat < GIANT.trample && c.speed > 6 && (c.stomp ?? 0) <= 0) { c.stomp = 1.2; slam(dmg * GIANT.trampleHurt, to, flat, 9); play('thud', { at: c.p, vol: 1, rate: 0.3, far: 200, share: 200 }); }
       if (flat < GIANT.near && Math.abs(off) > GIANT.skid) { c.state = 'skid'; c.timer = 0; } // it overran you
@@ -1102,8 +1110,23 @@ function colossus(c: Creature, dt: number, to: THREE.Vector3, safe: boolean) {
     case 'turn': // round in place, slowly
       brake(GIANT.brake); c.heading = giantTurn(c.heading, lost ? Math.atan2(c.home.x - c.p.x, c.home.z - c.p.z) : want, 0, dt);
       if (lost) { if (Math.abs(Math.atan2(Math.sin(Math.atan2(c.home.x - c.p.x, c.home.z - c.p.z) - c.heading), Math.cos(Math.atan2(c.home.x - c.p.x, c.home.z - c.p.z) - c.heading))) < 0.3) { c.state = 'roam'; c.timer = 0; } }
+      else if (mayHurl) startHurl();
       else if (Math.abs(off) < 0.25) { c.state = 'charge'; roar(c, 0.4); }
       break;
+    case 'hurl': { // (0.278) an arm raised behind it, tearing shards from its back; then a fan of them at you
+      brake(GIANT.brake * 1.5); c.heading = giantTurn(c.heading, want, 0, dt);
+      if (c.timer > 0) break;
+      const sh = Math.sin(c.heading), ch = Math.cos(c.heading), from = V(c.p.x + 6.4 * ch + 2 * sh, c.p.y + 12, c.p.z - 6.4 * sh + 2 * ch);
+      const aim = V(G.pos.x, G.pos.y + 1.1, G.pos.z);
+      if (!proxied() && !targetingFoe()) aim.addScaledVector(V(G.vel.x, 0, G.vel.z), (aim.distanceTo(from) / VOLLEY.speed) * 0.5); // leads a runner a little
+      const dx = aim.x - from.x, dz = aim.z - from.z, dmgS = (VOLLEY.dmg + VOLLEY.perLevel * c.level) * c.dmgMul;
+      for (const a of volleyFan()) { const cs = Math.cos(a), sn = Math.sin(a); fireBolt(from, dmgS, SHARD_C, V(from.x + dx * cs - dz * sn, aim.y, from.z + dx * sn + dz * cs), VOLLEY.speed); }
+      burst(from, SHARD_C, 24, 2);
+      play('throw', { at: c.p, vol: 1, rate: 0.4, far: 260, share: 260 });
+      if (!c.hurlTold && !proxied() && flat < 140) { c.hurlTold = true; logLine(tl('The Crystal Colossus hurls shards torn from its body. Run sideways or get behind cover!')); }
+      c.state = 'recover'; c.timer = VOLLEY.after;
+      break;
+    }
     case 'smash': // both fists up, then down: everything in front of it within reach is thrown
       brake(GIANT.brake * 1.5);
       if (c.timer > 0) break;
@@ -1136,9 +1159,10 @@ function colossusLook(c: Creature, dt: number, time: number) {
   c.anim -= dt * (1 + c.speed * 1.4) * 0.8; // (the generic stride is too quick for its long legs)
   c.legs.forEach((l, i) => { l.rotation.x = (i ? 1 : -1) * sw; });
   const windup = c.state === 'smash' ? Math.max(0, c.timer / GIANT.windup) : 0;
+  const hurl = c.state === 'hurl' ? 1 - Math.max(0, c.timer / VOLLEY.windup) : 0;
   const armX = c.state === 'howl' ? -2.4 + Math.sin(time * 6) * 0.15 : c.state === 'smash' ? -2.9 * windup + 0.2 * (1 - windup) : c.state === 'recover' ? 0.3 : 0;
   (c.arms ?? []).forEach((a, i) => {
-    const want = armX || (i ? -1 : 1) * sw * 0.8;
+    const want = c.state === 'hurl' ? (i ? -2.9 * Math.min(1, hurl * 1.6) : 0.3) : armX || (i ? -1 : 1) * sw * 0.8; // (0.278) the throwing arm back and up
     a.rotation.x += (want - a.rotation.x) * (c.state === 'smash' && windup <= 0.05 ? 1 : e);
     a.rotation.z = (i ? -1 : 1) * (c.state === 'howl' ? 0.5 : 0.08);
   });
