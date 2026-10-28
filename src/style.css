@@ -222,7 +222,13 @@ body.is-touch #bUse.on{display:flex}
 .packtop > div{flex:1}
 .packtop .grid.mods{max-width:none}
 #pack h3 .sub{font-size:17px;opacity:.7}
-#gunStats{font-size:17px;opacity:.8;margin-top:6px}
+#pack .panel.gun{width:min(330px,100%);border-color:#5a7a9a}
+#pack .gun h2{color:#9fd8ff;text-shadow:0 0 8px rgba(120,200,255,.5);font-size:32px}
+#pack .gun .role{font-size:18px;opacity:.75}
+#pack .gun .gstat{font-size:17px;line-height:1.2;margin:2px 0}
+#pack .gun .gstat.sub{opacity:.65}
+#pack .gun .gfit{background:transparent;color:var(--g);border:1px solid var(--g2);padding:1px 7px;font-size:16px;margin:2px 2px 0 0;cursor:pointer}
+.slot .mk{position:absolute;right:3px;top:0;font-size:13px;color:#9fd8ff}
 #scope{position:fixed;inset:0;pointer-events:none;opacity:0;
   background:radial-gradient(circle at 50% 50%,transparent 0,transparent 32vmin,rgba(61,255,110,.7) 32.3vmin,#000 33vmin,#000 100%)}
 #scope::before,#scope::after{content:"";position:absolute;background:rgba(61,255,110,.55)}
@@ -384,6 +390,11 @@ body.intro > *:not(#view):not(.fx):not(#intro){visibility:hidden}
 #itip .tipuses span{color:var(--xp)}
 #itip .tipuses i{font-style:normal;color:var(--xp);opacity:.85}
 #itip .bad{color:#ff6a4a}
+#itip.acts{pointer-events:auto;max-height:72vh;overflow-y:auto;border-color:var(--gold)}
+#itip .tipacts{display:flex;flex-wrap:wrap;gap:6px;margin:2px 0 7px}
+#itip .tipacts button{background:transparent;color:var(--g);border:1px solid var(--g);padding:2px 11px;font-size:19px;cursor:pointer}
+#itip .tipacts button:hover{background:rgba(61,255,110,.15)}
+#itip .tipacts button.drop{color:var(--amber);border-color:var(--amber)}
 .iname{display:inline-flex;align-items:center;gap:6px;cursor:help}
 .iname .ico{width:22px;height:22px;flex:none;color:var(--g)}
 /* a spoken line (ui/speech.ts) */

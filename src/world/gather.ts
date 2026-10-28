@@ -69,8 +69,10 @@ export function gatherPrompt(t: Target) {
 
 // ---------- the work: hold E, a blow every swing ----------
 let work: { key: string; t: number; landed: boolean } | null = null;
-let ext = false;
-export const working = () => !!work || ext;
+let ext = false, busy = false;
+export const working = () => !!work || ext || busy;
+/** (0.279) Busy with something else in the hands (eating: world/eating.ts): the weapon goes away meanwhile. */
+export function setBusy(on: boolean) { if (on !== busy) { busy = on; onChange(); } }
 let onChange: () => void = () => {};
 /** The weapon goes away while you work (world/weapons.ts refreshes on this). */
 export function onWorkChange(f: () => void) { onChange = f; }

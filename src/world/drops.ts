@@ -27,6 +27,11 @@ const label = (k: string, n: number) => (ITEMS[k as ItemKey]?.name ?? k) + (n > 
 /** Lay a stack you have just taken out of your kit at your feet (a little ahead, so you see it fall). */
 let recent: [number, number, number][] = [];
 export function dropAtFeet(s: Slot) {
+  if (s.m?.some(Boolean)) { // (0.279) a gun's attachments come off and lie beside it (a drop carries only the item)
+    for (const k of s.m) if (k) dropAtFeet({ k, n: 1 });
+    s = { k: s.k, n: s.n, ...(s.c !== undefined ? { c: s.c } : {}) };
+    logLine(tl('The attachments come off the gun as you put it down.'));
+  }
   // a pile spreads out round the spot in front of you (a golden-angle spiral), so a whole backpack put down stays apart
   const f = 0.7, cx = G.pos.x - Math.sin(G.yaw) * f, cz = G.pos.z - Math.cos(G.yaw) * f;
   const now = performance.now(); recent = recent.filter((q) => now - q[2] < 8000); // ours still on their way through the server

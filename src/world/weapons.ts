@@ -70,7 +70,7 @@ const LOOK = {
 };
 /** Show the fitted attachments on the held gun (the plain sight and power cell give way to them). */
 export function refreshGunLook() {
-  const m = G.char.gunMods;
+  const h = G.char.hands[0], m = (h?.k === 'blaster' && h.m) || []; // (0.279) the held Blaster's own attachments (the other guns' models show none yet)
   for (const [k, o] of Object.entries(LOOK)) o.visible = m.includes(k as keyof typeof LOOK);
   sight.visible = !m[0]; cell.visible = !m[2];
   hudWeapon();

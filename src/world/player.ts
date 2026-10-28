@@ -7,11 +7,12 @@ import { stepFloor, stepHit, boxRay } from '../core/steps';
 import { G, W } from '../game';
 import { rayVoxel, emptyAt as spaceEmptyAt, type Vec3Like } from '../core/voxel';
 import { V } from './render';
-import { STAMINA, BURN } from '../data/survival';
+import { STAMINA, BURN, EAT } from '../data/survival';
 import { drainStamina, spendStamina, load, loadSpeed, burn } from './survival';
 import { tl } from '../i18n';
 import { playerDown, playerStaggered } from './conditions';
 import { PLAYER_COND } from '../gen/conditions';
+import { EATING } from './eatstate';
 
 export const R = 0.3, H = 1.7, EYE = 1.55, EPS = 1e-4, GRAV = 20, JUMP = 7.2;
 /** Log hook for water messages (set by the HUD owner; keeps this module free of UI imports). */
@@ -158,7 +159,7 @@ export function updatePlayer(dt: number): boolean {
   const wantSprint = (keys.ShiftLeft || keys.ShiftRight) && m > 0.1 && !G.swimming && !over && !G.crouch;
   const sprint = wantSprint && drainStamina(STAMINA.sprint * (L.state === 'heavy' ? 1.4 : 1), dt);
   const swimTired = G.swimming && m > 0.1 && !drainStamina(STAMINA.swim, dt);
-  const speed = (sprint ? 9 : 6) * G.S.speed * loadSpeed(L.kg) * (G.swimming ? (swimTired ? 0.25 : 0.45) : wet > 0.45 ? 0.65 : 1) * (G.crouch && !G.swimming ? STEALTH.crouchSpeed : 1) * (playerStaggered() ? PLAYER_COND.slow : 1) * BODY_FX.speed;
+  const speed = (sprint ? 9 : 6) * G.S.speed * loadSpeed(L.kg) * (G.swimming ? (swimTired ? 0.25 : 0.45) : wet > 0.45 ? 0.65 : 1) * (G.crouch && !G.swimming ? STEALTH.crouchSpeed : 1) * (playerStaggered() ? PLAYER_COND.slow : 1) * BODY_FX.speed * (EATING.on ? EAT.slow : 1); // (0.279) slow while eating
   G.activity = m < 0.1 || G.trans ? 1 : sprint ? BURN.sprint : G.swimming ? BURN.swim : BURN.walk;
   const fw = V(-Math.sin(G.yaw), 0, -Math.cos(G.yaw)), rt = V(Math.cos(G.yaw), 0, -Math.sin(G.yaw));
   const want = fw.multiplyScalar(f * speed).addScaledVector(rt, s * speed);

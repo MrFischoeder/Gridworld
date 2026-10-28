@@ -65,6 +65,17 @@ export const NOURISH: Record<string, { kcal?: number; water?: number; hp?: numbe
 };
 /** Edible things (plants' fruit, food pickups) are drawn in this lime. */
 export const FOOD_COLOR = 0xd8ff7a;
+/**
+ * (0.279) Eating and drinking take a moment (world/eating.ts): a drink `drink` s, food `food` s plus `perKcal` s for
+ * every kcal, at most `max` s; meanwhile you walk at `slow` of your pace and cannot fight.
+ */
+export const EAT = { drink: 1.6, food: 1.6, perKcal: 0.004, max: 4.5, slow: 0.45, bite: 0.9 };
+/** How long eating or drinking item k takes (s). */
+export function eatSecs(k: string): number {
+  const f = NOURISH[k];
+  if (!f) return 0;
+  return f.kcal ? Math.min(EAT.max, EAT.food + f.kcal * EAT.perKcal) : EAT.drink;
+}
 /** Raw meat: the chance it makes you sick, and how much that hurts. */
 export const RAW_SICK = { chance: 0.4, hp: 8 };
 

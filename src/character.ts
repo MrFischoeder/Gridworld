@@ -16,9 +16,9 @@ export const saveChar = () => persist(G.char);
 export function calcStats() {
   const c = G.char, L = c.level - 1, r = (k: ItemKey) => c.mods.filter((m) => m === k).length;
   c.gunMods ??= [null, null, null]; c.loaded ??= { blaster: BLASTER.base.mag };
-  // the gun in your hands (the Blaster's stats when you hold none, for the backpack's numbers); attachments fit the Blaster only
-  const hk = c.hands[0]?.k, gun = gunOf(hk) ?? BLASTER, mel = meleeOf(hk) ?? meleeOf('blade')!;
-  G.gun = gunStats(gun, gun === BLASTER ? c.gunMods : []);
+  // the gun in your hands with its own attachments (0.279; the Blaster's bare stats when you hold none)
+  const h = c.hands[0], hk = h?.k, gun = gunOf(hk) ?? BLASTER, mel = meleeOf(hk) ?? meleeOf('blade')!;
+  G.gun = gunStats(gun, gunOf(hk) ? h?.m ?? [] : []);
   G.ammo = Math.min(G.ammo, G.gun.mag);
   G.S = {
     maxHp: 100 + L * 15 + r('shield') * 20, bm: (1 + L * 0.12) * (1 + r('lens') * 0.25), mm: (1 + L * 0.12) * (1 + r('edge') * 0.25),

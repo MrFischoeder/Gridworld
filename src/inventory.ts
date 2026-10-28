@@ -3,7 +3,7 @@ import { item, BULK, HANDS_ONLY, type ItemKey } from './data/items';
 import type { Slot } from './save';
 
 /** Worn parts (with a condition) never stack; everything else stacks up to its item's limit. */
-export const stackable = (a: Slot, b: Slot) => a.k === b.k && a.c === undefined && b.c === undefined && !a.b && !b.b;
+export const stackable = (a: Slot, b: Slot) => a.k === b.k && a.c === undefined && b.c === undefined && !a.b && !b.b && !a.m?.some(Boolean) && !b.m?.some(Boolean);
 const maxOf = (k: ItemKey) => item(k).stack ?? 1;
 
 /** Total weight (kg) and bulk (litres) of what the slots hold. */
@@ -36,7 +36,7 @@ export function putItems(slots: (Slot | null)[], k: ItemKey, n: number, cap?: nu
 }
 /** Puts a whole slot (e.g. a worn tire with its condition) somewhere in the list. Returns how many did not fit. */
 export function putSlot(slots: (Slot | null)[], s: Slot, cap?: number): number {
-  if (s.c === undefined && !s.b) return putItems(slots, s.k, s.n, cap);
+  if (s.c === undefined && !s.b && !s.m?.some(Boolean)) return putItems(slots, s.k, s.n, cap);
   const f = slots.indexOf(null);
   if (f < 0 || roomFor(slots, s.k, cap) < 1) return s.n;
   slots[f] = { ...s }; return 0;

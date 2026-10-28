@@ -28,6 +28,8 @@ export interface SlotView {
   title?: string;
   /** (0.247) What a crate or a barrel holds: a fill bar and the tooltip's line. */
   b?: { k: ItemKey; n: number };
+  /** (0.279) A gun's own attachments: a mark on the slot and the tooltip's lines. */
+  m?: (ItemKey | null)[];
 }
 const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
 
@@ -39,8 +41,8 @@ export function slotHTML(id: string, v: SlotView, selected = false): string {
   const title = v.title ?? (it ? `${it.name}: ${it.desc}${v.c !== undefined ? ` (${Math.round(v.c)}%)` : ''}` : v.hint ?? tl('Empty slot'));
   // an item: its icon and short name (the full sheet comes up on hover, ui/itemtip.ts); else the hint
   const face = v.text ?? (it && v.k ? `${itemIcon(v.k) || `<span class="ab">${it.ab}</span>`}<span class="nm">${shortName(v.k)}</span>` : v.hint ? `<span class="hint">${v.hint}</span>` : '');
-  const data = v.k ? ` data-k="${v.k}"${v.n && v.n > 1 ? ` data-n="${v.n}"` : ''}${v.c !== undefined ? ` data-c="${Math.round(v.c)}"` : ''}${v.b ? ` data-b="${v.b.k}:${v.b.n}"` : ''}` : ` title="${esc(title)}"`;
-  return `<button class="${cls}${it && !v.text ? ' iconic' : ''}" data-id="${id}"${data} aria-label="${esc(title)}">${face}${cnt}${bar}${fillBar}${v.key ? `<span class="hk">${v.key}</span>` : ''}</button>`;
+  const data = v.k ? ` data-k="${v.k}"${v.n && v.n > 1 ? ` data-n="${v.n}"` : ''}${v.c !== undefined ? ` data-c="${Math.round(v.c)}"` : ''}${v.b ? ` data-b="${v.b.k}:${v.b.n}"` : ''}${v.m?.some(Boolean) ? ` data-m="${v.m.map((x) => x ?? '').join(',')}"` : ''}` : ` title="${esc(title)}"`;
+  return `<button class="${cls}${it && !v.text ? ' iconic' : ''}" data-id="${id}"${data} aria-label="${esc(title)}">${face}${cnt}${bar}${fillBar}${v.key ? `<span class="hk">${v.key}</span>` : ''}${v.m?.some(Boolean) ? '<span class="mk">+' + v.m.filter(Boolean).length + '</span>' : ''}</button>`;
 }
 
 /** One line about an item for the detail area under the slots. */

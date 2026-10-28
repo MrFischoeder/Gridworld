@@ -32,7 +32,7 @@ import type { Contract } from './gen/contracts';
 
 /** An item stack. `c` is the condition in percent of a used part (worn tires); such items do not stack. */
 /** `b` (0.247): what a crate or a barrel holds (data/cargo.ts), one kind of thing. */
-export interface Slot { k: ItemKey; n: number; c?: number; b?: { k: ItemKey; n: number } }
+export interface Slot { k: ItemKey; n: number; c?: number; b?: { k: ItemKey; n: number }; /** (0.279) a gun's own attachments, one per slot of its `GunSpec.slots` (optic, barrel, magazine) */ m?: (ItemKey | null)[] }
 /** Per-dungeon progress, keyed by dungeonKey() = "ruinId:depth:gx:gz". */
 export type Progress = Record<string, number[]>;
 /** Where in which dungeon the player is. In a cave system (`cave`), ruinId is the system's id; its mouths are kept so the way out is known. */
@@ -153,7 +153,7 @@ export interface Char {
   time: number;
   /** Survival (data/survival.ts): calories in store, food in the stomach (kg), and water 0..100. */
   kcal: number; stomach: number; water: number;
-  /** Attachments fitted to the Blaster, one per slot of data/weapons BLASTER.slots (optic, barrel, magazine). */
+  /** Attachments fitted to the Blaster before 0.279 (now every gun keeps its own on its slot, `Slot.m`): emptied by `gunModsOut` on load. */
   gunMods: (ItemKey | null)[];
   /** Rounds in each gun's magazine (data/weapons.ts GUNS; ammunition is limited: reloads come out of the backpack). */
   loaded: Partial<Record<ItemKey, number>>;
@@ -271,6 +271,7 @@ export function loadChar(storage: Pick<Storage, 'getItem'> & Partial<Pick<Storag
       if (!Array.isArray(c.back)) c.back = [];
       c.back = c.back.filter((s) => { if (!s) return false; const f = c.inv.indexOf(null); if (f < 0) return true; c.inv[f] = s; return false; });
       retireOldCrossings(c);
+      gunModsOut(c); // (0.279) the Blaster's attachments go onto the Blaster itself
       planksForLogs(c); // (0.165) logs handed over to builds count on as planks
       trunksOut(c); // (0.248) the trunks are shared containers now
       dropEmpty(c.hands); for (const b of Object.values(c.containers ?? {})) dropEmpty(b?.bays); // (0.251) one crate and one barrel; empty ones are gone
@@ -284,6 +285,18 @@ export function loadChar(storage: Pick<Storage, 'getItem'> & Partial<Pick<Storag
   return newChar();
 }
 
+/**
+ * (0.279) Before, the attachments sat in three slots of the character and fitted only the Blaster: they go onto the
+ * first Blaster you carry (hands, then the backpack), or into the backpack loose when you carry none.
+ */
+export function gunModsOut(c: Char) {
+  const mods = c.gunMods ?? [];
+  if (!mods.some(Boolean)) { c.gunMods = [null, null, null]; return; }
+  const gun = [...c.hands, ...c.inv].find((s) => s?.k === 'blaster' && !s.m?.some(Boolean));
+  if (gun) gun.m = [...mods];
+  else for (const k of mods) if (k) putItems(c.inv, k, 1);
+  c.gunMods = [null, null, null];
+}
 /** Online the character also lives under the server's own key (ui/mp.ts), so the same hero comes back to it. */
 let mirror: () => string | null = () => null;
 export function setSaveMirror(f: () => string | null) { mirror = f; }

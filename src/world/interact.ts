@@ -47,6 +47,7 @@ import { isStreetPlacing, confirmStreetPlacing, streetPlacingHint, streetPlacing
 import { sawingHint } from './sawing';
 import { handworkTarget, handworkPrompt, updateHandwork, type HandTarget } from './handwork';
 import { updateWorkshop, working as workshopWorking, workPrompt } from './workshop';
+import { eating, eatingPrompt } from './eating';
 import { nearBridgeSign, built as bridgeBuilt, isBridgePlacing, confirmBridgePlacing, bridgePlacingHint, bridgePlacingOk } from './bridges';
 import { openBridge } from '../ui/bridge';
 import { nearPierSign, nearPierCrate, pierCrate, isPierPlacing, confirmPierPlacing, pierPlacingHint, pierPlacingOk } from './piers';
@@ -195,7 +196,8 @@ export function updateEntities(dt: number, time: number) {
   nearGather = busy || nearFood || nearWork || nearClaim || nearCook ? null : gatherTarget();
   updateGather(dt, nearGather);
   nearWater = G.char.loc === 'overworld' && !nearFood && !nearCook && !nearWork && !nearClaim && !nearGather && !nearNpc && !nearChest && !nearBoard && !nearStash && !nearVehicle && !nearMine && !nearPow && !nearCar && !nearWork2 ? waterSource(loadedWells()) : null;
-  if (workshopWorking()) { prompt.className = ''; prompt.textContent = workPrompt(); }
+  if (eating()) { prompt.className = ''; prompt.textContent = eatingPrompt(); } // (0.279)
+  else if (workshopWorking()) { prompt.className = ''; prompt.textContent = workPrompt(); }
   else if (climbing()) { prompt.className = ''; prompt.textContent = tl('W / S — up or down · Space — let go'); }
   else if (nearSv && (salvageTakesE(nearSv) || !W.nearChest)) { prompt.className = salvageTakesE(nearSv) ? '' : 'lock'; prompt.textContent = salvagePrompt(nearSv); }
   else if (nearHW) { prompt.className = ''; prompt.textContent = handworkPrompt(nearHW); }

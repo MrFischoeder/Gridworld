@@ -23,7 +23,8 @@ export interface GunStats {
 /** How a gun looks in your hands (world/weapons.ts). */
 export type GunLook = 'blaster' | 'pistol' | 'shotgun' | 'rifle' | 'smg';
 /**
- * A gun: its base stats, attachment slots (only the Blaster takes attachments for now), the rounds it fires (an item
+ * A gun: its base stats, attachment slots ((0.279) every gun: optic, barrel, magazine, each gun with its own fitted on
+ * its slot, `Slot.m`), the rounds it fires (an item
  * in the backpack: ammunition is limited), and for a shotgun the pellets per shot and their spread (radians).
  */
 export interface GunSpec { name: string; base: GunStats; slots: AttachSlot[]; ammo: ItemKey; look: GunLook; pellets?: number; spread?: number; /** (0.193) Its own kind of rounds, used only when AMMO_TYPES is on. */ round?: ItemKey }
@@ -41,10 +42,10 @@ export const BLASTER: GunSpec = { name: tl('Blaster'), base: { dmg: 1, interval:
 /** Every gun, by its item. */
 export const GUNS: Partial<Record<ItemKey, GunSpec>> = {
   blaster: BLASTER,
-  pistol: { name: tl('Old Pistol'), base: { dmg: 1.6, interval: 0.3, range: 45, mag: 12, reload: 1.2, zoom: 1.15, noise: 45 }, slots: [], ammo: fires('ammo9'), round: 'ammo9', look: 'pistol' },
-  smg: { name: tl('Scrap SMG'), base: { dmg: 0.75, interval: 0.085, range: 45, mag: 30, reload: 1.7, zoom: 1.15, noise: 50 }, slots: [], ammo: fires('ammo9'), round: 'ammo9', look: 'smg' },
-  shotgun: { name: tl('Scattergun'), base: { dmg: 0.9, interval: 0.8, range: 26, mag: 6, reload: 2.6, zoom: 1.1, noise: 70 }, slots: [], ammo: fires('ammoS'), round: 'ammoS', look: 'shotgun', pellets: 7, spread: 0.07 },
-  rifle: { name: tl('Hunting Rifle'), base: { dmg: 4.5, interval: 1.0, range: 150, mag: 5, reload: 2.4, zoom: 3, noise: 95 }, slots: [], ammo: fires('ammoR'), round: 'ammoR', look: 'rifle' },
+  pistol: { name: tl('Old Pistol'), base: { dmg: 1.6, interval: 0.3, range: 45, mag: 12, reload: 1.2, zoom: 1.15, noise: 45 }, slots: ATTACH_SLOTS, ammo: fires('ammo9'), round: 'ammo9', look: 'pistol' },
+  smg: { name: tl('Scrap SMG'), base: { dmg: 0.75, interval: 0.085, range: 45, mag: 30, reload: 1.7, zoom: 1.15, noise: 50 }, slots: ATTACH_SLOTS, ammo: fires('ammo9'), round: 'ammo9', look: 'smg' },
+  shotgun: { name: tl('Scattergun'), base: { dmg: 0.9, interval: 0.8, range: 26, mag: 6, reload: 2.6, zoom: 1.1, noise: 70 }, slots: ATTACH_SLOTS, ammo: fires('ammoS'), round: 'ammoS', look: 'shotgun', pellets: 7, spread: 0.07 },
+  rifle: { name: tl('Hunting Rifle'), base: { dmg: 4.5, interval: 1.0, range: 150, mag: 5, reload: 2.4, zoom: 3, noise: 95 }, slots: ATTACH_SLOTS, ammo: fires('ammoR'), round: 'ammoR', look: 'rifle' },
 };
 export const gunOf = (k: ItemKey | null | undefined): GunSpec | null => (k && GUNS[k]) || null;
 
@@ -78,8 +79,8 @@ export const SHOT: Record<GunLook, ShotLook> = {
 
 export interface AttachDef { slot: AttachSlot; apply(s: GunStats): void }
 export const ATTACHMENTS: Partial<Record<ItemKey, AttachDef>> = {
-  reflex: { slot: 'optic', apply: (s) => { s.zoom = 1.6; s.range += 10; } },
-  scope: { slot: 'optic', apply: (s) => { s.zoom = 3.5; s.range += 50; } },
+  reflex: { slot: 'optic', apply: (s) => { s.zoom = Math.max(s.zoom, 1.6); s.range += 10; } },
+  scope: { slot: 'optic', apply: (s) => { s.zoom = Math.max(s.zoom, 3.5); s.range += 50; } },
   barL: { slot: 'barrel', apply: (s) => { s.dmg *= 1.25; s.range += 20; s.interval *= 1.1; } },
   barR: { slot: 'barrel', apply: (s) => { s.interval /= 1.25; s.dmg *= 0.9; } },
   barS: { slot: 'barrel', apply: (s) => { s.noise *= 0.22; s.dmg *= 0.95; s.range -= 5; } },
@@ -89,7 +90,7 @@ export const ATTACHMENTS: Partial<Record<ItemKey, AttachDef>> = {
 /** Which slot an item fits in, or null when it is not an attachment. */
 export const attachSlot = (k: ItemKey | null | undefined): AttachSlot | null => (k && ATTACHMENTS[k]?.slot) || null;
 
-/** Stats of a gun with the attachments fitted in its slots (same order as spec.slots; a gun without slots takes none). */
+/** Stats of a gun with the attachments fitted in its slots (same order as spec.slots). */
 export function gunStats(gun: GunSpec, fitted: (ItemKey | null)[]): GunStats {
   const s = { ...gun.base };
   gun.slots.forEach((slot, i) => { const k = fitted[i], a = k && ATTACHMENTS[k]; if (a && a.slot === slot) a.apply(s); });

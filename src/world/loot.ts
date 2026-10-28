@@ -20,7 +20,8 @@ import type { Container, Slot } from '../save';
 import { logLine } from '../ui/hud';
 import { bleedingWounds, stopBleeding } from './conditions';
 import { foes, damageFoe } from './enemies';
-import { closePack } from '../ui/backpack';
+import { closePack, refreshPack } from '../ui/backpack';
+import { startEating } from './eating';
 import { onPickup } from './quests';
 import { toVillage } from './level';
 import { NOURISH, RAW_SICK, FOOD_COLOR, STOMACH, cantEat } from '../data/survival';
@@ -235,6 +236,18 @@ export function makeHatch(h: { x: number; z: number }): Hatch | null {
 }
 
 // ---------- item use ----------
+/** (0.279) The end of eating or drinking k (world/eating.ts): used up, and it feeds (or sickens) you. */
+function eatNow(k: ItemKey, kcal: number, kg: number) {
+  const food = NOURISH[k];
+  if (!food || !takeOne(k)) { logLine(tl('None left: ') + ITEMS[k].name); return; }
+  nourish(kcal, food.water ?? 0, food.hp ?? 0, kg);
+  if (k === 'waterF' || k === 'waterM') {
+    addItem('flask'); // the flask is kept
+    if (k === 'waterM' && Math.random() < 0.35) { environmentalDamage(8); G.dmgFlash = 0.4; logLine(tl('The murky water turns your stomach. -8 HP')); }
+  }
+  if (k === 'meatR' && Math.random() < RAW_SICK.chance) { environmentalDamage(RAW_SICK.hp); G.dmgFlash = 0.4; logLine(TL`The raw meat makes you sick. -${RAW_SICK.hp} HP`); }
+  saveChar(); refreshPack();
+}
 export function useItem(k: ItemKey): boolean {
   const heal = HEAL[k];
   if (heal) {
@@ -254,14 +267,11 @@ export function useItem(k: ItemKey): boolean {
       if (no === 'full') { logLine(TL`Your stomach is full. Wait until you have digested a little (${(STOMACH.cap - c.stomach).toFixed(1)} of ${STOMACH.cap} kg free, this weighs ${kg} kg).`); return false; }
     }
     if ((food.water ?? 0) > 0 && !kcal && c.water >= 99) { logLine(tl('You are not thirsty.')); return false; }
-    if (!takeOne(k)) { logLine(tl('None left: ') + ITEMS[k].name); return false; }
-    nourish(kcal, food.water ?? 0, food.hp ?? 0, kg);
-    if (k === 'waterF' || k === 'waterM') {
-      addItem('flask'); // the flask is kept
-      if (k === 'waterM' && Math.random() < 0.35) { environmentalDamage(8); G.dmgFlash = 0.4; logLine(tl('The murky water turns your stomach. -8 HP')); }
-    }
-    if (k === 'meatR' && Math.random() < RAW_SICK.chance) { environmentalDamage(RAW_SICK.hp); G.dmgFlash = 0.4; logLine(TL`The raw meat makes you sick. -${RAW_SICK.hp} HP`); }
-    return true;
+    if (!hasItem(k)) { logLine(tl('None left: ') + ITEMS[k].name); return false; }
+    // (0.279) it takes a moment (world/eating.ts): used up and felt only at the end
+    const why = startEating(k, () => eatNow(k, kcal, kg));
+    if (why) logLine(why);
+    return false;
   }
   if (k === 'filter') return fitFilter('');
   if (k === 'repairkit') return useRepairKit();

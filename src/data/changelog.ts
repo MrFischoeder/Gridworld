@@ -3,6 +3,14 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.279.0', date: '2026-10-28', title: 'Quick hands and guns of your own', notes: [
+    'Hover over an item of yours in the backpack window and its sheet stands beside it with its buttons at the top: Eat, Drink, Use, Modify, Take in hands, Drop... Move the mouse onto the sheet and click; no more selecting first and hunting for the button under the grid.',
+    'Eating and drinking take a moment: the food comes up to your mouth a few times (about 1.5 s for a drink, 2 to 4.5 s for a meal by how much it feeds), you walk slowly and your weapon is put away. It is used up and feeds you only at the end; firing, swimming or losing the food stops it and nothing is lost. It goes on while the backpack stays open, so you can eat one thing after another.',
+    'Every gun now has its own attachments: an optic, a barrel and a magazine slot on every pistol, SMG, scattergun, rifle and Blaster, each gun with its own combination. Modify on a gun opens its card beside the backpack: drag attachments in and out, or click one of the loose attachments listed there; the card shows its numbers with and without them and the rounds in its magazine.',
+    'The Blaster\'s three attachment slots are gone from the backpack. What was fitted there is now fitted on your Blaster (or lies loose in the backpack if you carry none). A gun with attachments shows a small +n on its slot, and its sheet lists them.',
+    'A gun put down on the ground drops its attachments beside it. In chests, trunks and bodies it keeps them.',
+    'Multiplayer: all of this is personal (your hands, your backpack); a gun keeps its attachments in shared chests and trunks. The server is unchanged.',
+  ] },
   { v: '0.278.1', date: '2026-10-28', title: 'Straight from the ground into the workshop', notes: [
     'Things lying on the ground that the game itself dropped (logs from a felled tree, a kill\'s drops, loot your backpack had no room for) can now be dragged from the ground panel straight into the workshop cells; before, they had to go through the backpack first.',
     'They stay where they lie until the work takes them, like the things you put down yourself.',
