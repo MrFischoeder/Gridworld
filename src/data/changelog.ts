@@ -3,6 +3,11 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.278.1', date: '2026-10-28', title: 'Straight from the ground into the workshop', notes: [
+    'Things lying on the ground that the game itself dropped (logs from a felled tree, a kill\'s drops, loot your backpack had no room for) can now be dragged from the ground panel straight into the workshop cells; before, they had to go through the backpack first.',
+    'They stay where they lie until the work takes them, like the things you put down yourself.',
+    'Multiplayer: unchanged; online such loot was already a shared drop on the server, and the claim on a lying thing works as before.',
+  ] },
   { v: '0.278.0', date: '2026-10-28', title: 'Shards from afar', notes: [
     'The Crystal Colossus no longer only charges: when you are out of its fists\' reach (about 26 to 110 m) it stops every 6 to 9 seconds, raises an arm behind it with a shriek, tears shards from its own body and hurls a fan of five at you.',
     'The wind-up (just over a second) and the flight (about two seconds from 60 m) give you time: run sideways out of the fan or get behind a rock, a crystal or a wall. It leads a runner a little.',

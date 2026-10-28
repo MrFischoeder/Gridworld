@@ -43,6 +43,20 @@ export function dropAtFeet(s: Slot) {
   syncDrops(true);
 }
 
+/**
+ * (0.278.1) Loot of your own game lies without a drop id (alone, or what the server does not keep): the workshop
+ * needs one to claim it and take it later, so it becomes one of your local drops in place (same model, same spot).
+ * False for things that cannot be (relics, keys, quest items).
+ */
+export function adoptPickup(p: Pickup): boolean {
+  if (p.drop) return true;
+  const t = ITEMS[p.k]?.type;
+  if (!t || t === 'relic' || t === 'quest' || p.k === 'key' || !W.pickups.includes(p)) return false;
+  const id = 'local:' + ++seq;
+  local.set(id, { id, k: p.k, n: p.n ?? 1, c: p.c, p: [p.p.x, p.p.y, p.p.z], loc: myLoc(), by: '', at: Date.now(), auto: true, ...(p.b ? { b: { ...p.b } } : {}) });
+  p.drop = id; p.auto = true; shown.set(id, p);
+  return true;
+}
 /** Into your kit, keeping a worn part's condition. False if there is no room. */
 function give(d: NetDrop): boolean {
   const k = d.k as ItemKey, c = G.char;
@@ -119,14 +133,14 @@ export function syncDrops(now = false, dt = 0) {
   clock = 0.25;
   const here = G.char.loc === 'overworld' || G.char.loc === 'dungeon' ? myLoc() : '', src = source();
   for (const [id, p] of [...shown]) {
-    const d = src.get(id);
+    const d = (id.startsWith('local:') ? local : src).get(id);
     if (d && d.loc === here && W.pickups.includes(p)) continue;
     shown.delete(id);
     const i = W.pickups.indexOf(p);
     if (i >= 0) { scene.remove(p.g); W.pickups.splice(i, 1); }
   }
   if (!here) return;
-  for (const d of src.values()) {
+  for (const d of src === local ? local.values() : [...src.values(), ...local.values()]) {
     if (d.loc !== here || shown.has(d.id) || !ITEMS[d.k as ItemKey]) continue;
     const x = here === 'o' ? nearX(d.p[0], G.pos.x) : d.p[0];
     const p = drawPickup(new THREE.Vector3(x, d.p[1], d.p[2]), d.k as ItemKey, d.n);

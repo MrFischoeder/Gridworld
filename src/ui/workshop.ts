@@ -9,6 +9,7 @@ import { CELLS, MAKES, TOOLS } from '../gen/workshop';
 import { count } from '../data/crafting';
 import { cells, setCell, fits, avail, startMake, working, batchesNow, missing, fillFor, type Ref } from '../world/workshop';
 import { groundPickup } from './ground';
+import { adoptPickup } from '../world/drops';
 import { setCraftPanel, closePack, refreshPack } from './backpack';
 import { slotHTML, parseId } from './slots';
 import { $ } from './hud';
@@ -67,7 +68,7 @@ function refOf(from: string, tool: boolean): Ref | string {
   if (fw === 'f') {
     const p = groundPickup(fi);
     if (!p) return '';
-    return p.drop ? { k: p.k, n: p.n ?? 1, src: 'ground', id: p.drop } : tl('That cannot be worked where it lies.');
+    return p.drop || adoptPickup(p) ? { k: p.k, n: p.n ?? 1, src: 'ground', id: p.drop } : tl('That cannot be worked where it lies.');
   }
   return tl('That cannot go in a cell.');
 }
