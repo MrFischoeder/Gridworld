@@ -1,6 +1,6 @@
 # GridWorld: opis gry, cel, plan i historia zmian
 
-Stan na wersję **0.279.0**. Ten dokument opisuje, czym jest GridWorld, jaki jest cel gry, co już w niej jest, czego jeszcze nie ma, dokąd zmierza i jak powstawała, wersja po wersji. Nazwy z gry (przedmioty, miejsca, postacie) są podane po angielsku; od 0.190 gra ma też wersję polską (wybór języka w menu głównym).
+Stan na wersję **0.279.1**. Ten dokument opisuje, czym jest GridWorld, jaki jest cel gry, co już w niej jest, czego jeszcze nie ma, dokąd zmierza i jak powstawała, wersja po wersji. Nazwy z gry (przedmioty, miejsca, postacie) są podane po angielsku; od 0.190 gra ma też wersję polską (wybór języka w menu głównym).
 
 ---
 
@@ -868,6 +868,7 @@ Pełne notatki (po angielsku) są w grze pod przyciskiem **Changelog** w menu g�
 - **0.278.0 Odłamki z daleka.** Kryształowy Kolos atakuje też z dystansu: gdy gracz jest poza zasięgiem pięści (ok. 26–110 m), co 6–9 s zatrzymuje się, z krzykiem unosi rękę, wyrywa odłamki z własnego ciała i ciska wachlarzem pięciu. Zamach i lot dają czas na ucieczkę w bok albo za osłonę; odłamek rani, zatacza i może wywołać krwawienie.
 - **0.278.1 Prosto z ziemi do warsztatu.** Rzeczy upuszczone przez samą grę (kłody ze ściętego drzewa, łupy z zabitych stworów) można przeciągnąć z panelu ziemi prosto do komórek warsztatu, bez przekładania przez plecak.
 - **0.279.0 Szybkie ręce i własna broń.** Po najechaniu myszą na przedmiot w plecaku obok niego staje karta z opisem i przyciskami (Zjedz, Wypij, Użyj, Modyfikuj...). Jedzenie i picie trwa chwilę: postać podnosi jedzenie do ust kilka razy, idzie wolniej i chowa broń; przedmiot znika i karmi dopiero na końcu, strzał przerywa. Każda broń palna ma własne gniazda na dodatki (celownik, lufa, magazynek) z własnym zestawem; Modyfikuj otwiera kartę tej broni obok plecaka. Odłożona na ziemię broń zrzuca dodatki obok.
+- **0.279.1 Broń z dodatkami na ziemi.** Odłożona na ziemię broń zachowuje zamocowane dodatki, a kto ją podniesie (także inny gracz), dostaje ją z tym samym celownikiem, lufą i magazynkiem. Serwer przechowuje dodatki (trzeba go zaktualizować; ze starszym serwerem dodatki jak dotąd spadają obok broni).
 - **0.265.1 Większa stacja.** Stacja orbitalna jest ok. 2,5 raza większa i jaśniejsza, wyraźnie widoczna na tle nieba.
 - **0.265.0 Stacja orbitalna.** Po niebie przelatuje stacja z dwóch kół na wspólnej osi (jak w filmowych stacjach kołowych): okrąża planetę co ok. 4 minuty, przecina niebo w ok. 2 minuty, znacznie szybciej niż Słońce i Księżyc, w przeciwnym kierunku. Na razie sama dekoracja; posłuży w dalszym etapie gry.
 - **0.264.1 Dym za budynkami.** Dym z rozbitego statku (i z ognisk bandytów) nie prześwituje już przez domy, mury, ruiny i inne budowle: daleka kolumna dymu jest ukryta, gdy coś litego stoi między okiem a nią.

@@ -3,6 +3,10 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.279.1', date: '2026-10-28', title: 'Guns keep their attachments on the ground', notes: [
+    'A gun put down on the ground keeps its attachments fitted. Whoever picks it up, you or another player, gets it just as it was modified: the same optic, barrel and magazine. The ground panel shows the +n mark and the sheet lists them.',
+    'Multiplayer: the server now keeps a dropped gun\'s attachments; update the server (rerun install.sh). An older server would lose them, so with one the attachments still come off and lie beside the gun as before. The protocol is unchanged.',
+  ] },
   { v: '0.279.0', date: '2026-10-28', title: 'Quick hands and guns of your own', notes: [
     'Hover over an item of yours in the backpack window and its sheet stands beside it with its buttons at the top: Eat, Drink, Use, Modify, Take in hands, Drop... Move the mouse onto the sheet and click; no more selecting first and hunting for the button under the grid.',
     'Eating and drinking take a moment: the food comes up to your mouth a few times (about 1.5 s for a drink, 2 to 4.5 s for a meal by how much it feeds), you walk slowly and your weapon is put away. It is used up and feeds you only at the end; firing, swimming or losing the food stops it and nothing is lost. It goes on while the backpack stays open, so you can eat one thing after another.',

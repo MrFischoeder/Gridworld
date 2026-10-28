@@ -53,7 +53,7 @@ const ground: PackSide = {
     const n = Math.max(GROUND.min, Math.ceil((shown.length + 6) / 6) * 6); // always a free row to put things down
     el.grid.innerHTML = Array.from({ length: n }, (_, i) => {
       const p = shown[i];
-      return p ? slotHTML('f:' + i, { k: p.k, n: p.n, c: p.c, b: p.b, cls: p.taking || workedBy(p.drop) ? 'off' : inMyCell(p.drop) ? 'incell' : '', title: workedBy(p.drop) ? TL`${workedBy(p.drop)} is working this` : undefined }) : slotHTML('f:' + i, { k: null, cls: 'empty-ground', title: tl('Drag an item here to put it down') });
+      return p ? slotHTML('f:' + i, { k: p.k, n: p.n, c: p.c, b: p.b, m: p.m, cls: p.taking || workedBy(p.drop) ? 'off' : inMyCell(p.drop) ? 'incell' : '', title: workedBy(p.drop) ? TL`${workedBy(p.drop)} is working this` : undefined }) : slotHTML('f:' + i, { k: null, cls: 'empty-ground', title: tl('Drag an item here to put it down') });
     }).join('');
     el.gold.innerHTML = '';
     el.all.textContent = tl('Pick up all');

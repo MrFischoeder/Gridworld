@@ -2,6 +2,7 @@
 import type { Server } from 'node:http';
 import type { Accounts } from './accounts.mjs';
 export declare const MP: { path: string; port: number; max: number; rate: number; nameMax: number; chatMax: number; roomName: number; rooms: number; roomTtl: number; cars: number; drops: number; dropTtl: number; payload: number; maps: number };
+export declare const FEATURES: string[];
 export declare const PROTOCOL: number;
 export interface DropRow { id: string; k: string; n: number; c?: number; p: number[]; loc: string; by: string; at: number }
 export interface RoomSeed { id: string; name: string; world: number; time: number; owner?: string; by?: string; created?: number; last?: number; drops?: DropRow[]; doc?: Record<string, Record<string, unknown>>; seeded?: boolean; mode?: 'coop' | 'rivals'; slots?: Record<string, number>; maps?: RoomMaps | null }

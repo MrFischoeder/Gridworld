@@ -52,7 +52,7 @@ export function peerAt(p: Peer, t: number): { a: PeerState; b: PeerState; k: num
 }
 /** An item lying in the room's world (server/mp.mjs): put down by `by`, at p in the place `loc` (see world/peers.ts myLoc). */
 /** `auto`: loot (a kill's drops, logs from a felled tree...) lying only a while (server `MP.lootTtl`); taken like any drop. */
-export interface NetDrop { id: string; k: string; n: number; c?: number; p: [number, number, number]; loc: string; by: string; at: number; auto?: boolean; /** (0.247) a crate's or a barrel's load */ b?: { k: string; n: number } }
+export interface NetDrop { id: string; k: string; n: number; c?: number; p: [number, number, number]; loc: string; by: string; at: number; auto?: boolean; /** (0.247) a crate's or a barrel's load */ b?: { k: string; n: number }; /** (0.279.1) a gun's own attachments */ m?: (string | null)[] }
 let gotHook: ((d: NetDrop) => void) | null = null;
 /** Who receives an item the server handed you (world/drops.ts). */
 export function onGot(f: (d: NetDrop) => void) { gotHook = f; }
@@ -116,6 +116,8 @@ export const net = {
    *  first); and your seat in a rivals room (-1 otherwise). */
   mode: 'coop' as 'coop' | 'rivals',
   slot: -1,
+  /** (0.279.1) What the server keeps beyond the protocol (server/mp.mjs `FEATURES`): an older one sends none. */
+  feat: [] as string[],
 };
 export const online = () => net.id > 0;
 export const isHost = () => online() && net.id === net.host;
@@ -238,6 +240,7 @@ export function connect(url: string, me: { name: string; world: number; time: nu
       case 'welcome':
         welcomed = true; net.hero = ''; net.id = m.id; net.name = typeof m.name === 'string' ? m.name : me.name; net.host = m.host; net.dedicated = !!m.dedicated; net.room = m.room ?? null; net.peers.clear();
         net.mode = m.mode === 'rivals' ? 'rivals' : 'coop'; net.slot = typeof m.slot === 'number' ? m.slot : -1;
+        net.feat = Array.isArray(m.feat) ? m.feat.filter((x: unknown) => typeof x === 'string') : [];
         net.drops = new Map((Array.isArray(m.drops) ? m.drops : []).map((d: NetDrop) => [d.id, d]));
         receiveGates(m);
         for (const p of m.players) if (p.id !== m.id) net.peers.set(p.id, { id: p.id, name: p.name, st: null, prev: null, at: 0, hist: [] });
@@ -311,9 +314,9 @@ export function sendState(s: PeerState, time?: number) {
   net.ws.send(JSON.stringify({ t: 'state', ...s, ...(isHost() && time !== undefined ? { time } : {}) }));
 }
 /** Put an item down where you stand (already taken out of your kit). */
-export function sendDrop(k: string, n: number, c: number | undefined, p: [number, number, number], loc: string, auto = false, b?: { k: string; n: number }): boolean {
+export function sendDrop(k: string, n: number, c: number | undefined, p: [number, number, number], loc: string, auto = false, b?: { k: string; n: number }, gm?: (string | null)[]): boolean {
   if (!online() || net.ws?.readyState !== 1) return false;
-  net.ws.send(JSON.stringify({ t: 'drop', k, n, c, p, loc, ...(auto ? { auto } : {}), ...(b ? { b } : {}) }));
+  net.ws.send(JSON.stringify({ t: 'drop', k, n, c, p, loc, ...(auto ? { auto } : {}), ...(b ? { b } : {}), ...(gm?.some(Boolean) ? { m: gm } : {}) }));
   return true;
 }
 /** Ask for a lying item: the server answers 'got' if you were first, 'gone' if not. */

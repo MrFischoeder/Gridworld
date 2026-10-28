@@ -69,6 +69,8 @@ import { GateConnections, GATE_TRANSIT_SECONDS } from '../shared/gates.mjs';
 import { createAccounts, ACCOUNT } from './accounts.mjs';
 
 export const MP = { path: '/mp', port: 7777, max: 8, rate: 100, nameMax: 20, chatMax: 200, roomName: 28, rooms: 12, roomTtl: 14, cars: 8, drops: 800, dropTtl: 6, lootTtl: 2, payload: 4 * 1024 * 1024, maps: 2 * 1024 * 1024 };
+/** What this server keeps beyond the protocol (a client checks before relying on it): `gunmods` drops keep a gun's own attachments (`m`, 0.279.1). */
+export const FEATURES = ['gunmods'];
 /** What players may pass to each other through 'cast' (everyone else in the room) and 'to' (one player). */
 /** Account messages (one each, on a connection of their own). */
 const AUTH = new Set(['register', 'login', 'logout', 'passwd', 'verify', 'resend', 'forgot', 'reset', 'email', 'profile']);
@@ -231,7 +233,7 @@ export function createMp(log = (m) => console.log('[mp] ' + m), opts = {}) {
         me = { id: nextId++, ws, name, st: null, joined: Date.now(), acct: acct?.key, slot };
         if (!room.players.size && !dedicated) { room.hostId = me.id; if (room.world === null) { room.world = num(m.world) | 0; room.time0 = num(m.time); room.maps = cleanMaps(m.maps); } log(`${name} hosts world ${room.world}`); }
         room.players.set(me.id, me); room.last = Date.now(); occupied(room, true);
-        send(ws, { t: 'welcome', id: me.id, name: me.name, host: room.hostId, world: room.world, time: clock(room), dedicated, room: { id: room.id, name: room.name }, mode: room.mode, slot: me.slot, maps: room.maps, drops: [...room.drops.values()], wdoc: room.doc, wseeded: room.seeded, links: room.gates.state(), drafts: room.gates.draftState(), now: Date.now(), players: [...room.players.values()].map((p) => ({ id: p.id, name: p.name })) });
+        send(ws, { t: 'welcome', id: me.id, name: me.name, host: room.hostId, world: room.world, time: clock(room), dedicated, room: { id: room.id, name: room.name }, mode: room.mode, slot: me.slot, maps: room.maps, drops: [...room.drops.values()], wdoc: room.doc, wseeded: room.seeded, links: room.gates.state(), drafts: room.gates.draftState(), now: Date.now(), feat: FEATURES, players: [...room.players.values()].map((p) => ({ id: p.id, name: p.name })) });
         all(room, { t: 'join', id: me.id, name }, me.id);
         log(`${name} joined ${room.name} (${room.players.size}/${MP.max})`);
         return;
@@ -304,6 +306,7 @@ export function createMp(log = (m) => console.log('[mp] ' + m), opts = {}) {
         if (typeof m.c === 'number' && Number.isFinite(m.c)) d.c = m.c;
         if (m.auto) d.auto = true; // loot (kills, felled trees...): lies only `MP.lootTtl` h
         if (m.b && typeof m.b === 'object' && clean(m.b.k, 24)) d.b = { k: clean(m.b.k, 24), n: Math.max(1, Math.min(9999, Math.floor(num(m.b.n)))) }; // (0.247) what a crate or a barrel holds
+        if (Array.isArray(m.m) && m.m.some(Boolean)) d.m = m.m.slice(0, 3).map((x) => (x ? clean(x, 24) || null : null)); // (0.279.1) a gun's own attachments stay on it
         room.drops.set(d.id, d);
         all(room, { t: 'drop', d });
       } else if (m.t === 'take') {

@@ -27,7 +27,9 @@ const label = (k: string, n: number) => (ITEMS[k as ItemKey]?.name ?? k) + (n > 
 /** Lay a stack you have just taken out of your kit at your feet (a little ahead, so you see it fall). */
 let recent: [number, number, number][] = [];
 export function dropAtFeet(s: Slot) {
-  if (s.m?.some(Boolean)) { // (0.279) a gun's attachments come off and lie beside it (a drop carries only the item)
+  // (0.279.1) a gun keeps its attachments on the ground and whoever picks it up has them; only an older server, which
+  // would lose them, gets them laid down loose beside the gun as in 0.279
+  if (s.m?.some(Boolean) && online() && !net.feat.includes('gunmods')) {
     for (const k of s.m) if (k) dropAtFeet({ k, n: 1 });
     s = { k: s.k, n: s.n, ...(s.c !== undefined ? { c: s.c } : {}) };
     logLine(tl('The attachments come off the gun as you put it down.'));
@@ -39,10 +41,10 @@ export function dropAtFeet(s: Slot) {
   const r = Math.min(1.1, 0.32 * Math.sqrt(n)), a = n * 2.39996 + G.yaw;
   const x = cx + Math.cos(a) * r, z = cz + Math.sin(a) * r;
   const p: [number, number, number] = [x, G.pos.y + 0.6, z], loc = myLoc();
-  if (sendDrop(s.k, s.n, s.c, p, loc, false, s.b)) recent.push([cx, cz, now]);
+  if (sendDrop(s.k, s.n, s.c, p, loc, false, s.b, s.m)) recent.push([cx, cz, now]);
   else {
     const id = 'local:' + ++seq;
-    local.set(id, { id, k: s.k, n: s.n, c: s.c, p, loc, by: G.char.name || 'you', at: Date.now(), ...(s.b ? { b: { ...s.b } } : {}) });
+    local.set(id, { id, k: s.k, n: s.n, c: s.c, p, loc, by: G.char.name || 'you', at: Date.now(), ...(s.b ? { b: { ...s.b } } : {}), ...(s.m?.some(Boolean) ? { m: [...s.m] } : {}) });
   }
   logLine(TL`You put down ${label(s.k, s.n)}.`);
   syncDrops(true);
@@ -58,7 +60,7 @@ export function adoptPickup(p: Pickup): boolean {
   const t = ITEMS[p.k]?.type;
   if (!t || t === 'relic' || t === 'quest' || p.k === 'key' || !W.pickups.includes(p)) return false;
   const id = 'local:' + ++seq;
-  local.set(id, { id, k: p.k, n: p.n ?? 1, c: p.c, p: [p.p.x, p.p.y, p.p.z], loc: myLoc(), by: '', at: Date.now(), auto: true, ...(p.b ? { b: { ...p.b } } : {}) });
+  local.set(id, { id, k: p.k, n: p.n ?? 1, c: p.c, p: [p.p.x, p.p.y, p.p.z], loc: myLoc(), by: '', at: Date.now(), auto: true, ...(p.b ? { b: { ...p.b } } : {}), ...(p.m?.some(Boolean) ? { m: [...p.m] } : {}) });
   p.drop = id; p.auto = true; shown.set(id, p);
   return true;
 }
@@ -69,6 +71,12 @@ function give(d: NetDrop): boolean {
   if (d.b && ITEMS[d.b.k as ItemKey]) { // (0.247) a crate or a barrel with its load: into your hands as it was
     if (!addItem(k, 1) || c.hands[0]?.k !== k) return false;
     c.hands[0].b = { k: d.b.k as ItemKey, n: d.b.n }; handsChanged(); return true;
+  }
+  const gm = d.m?.some(Boolean) ? d.m.map((x) => (x && ITEMS[x as ItemKey] ? x as ItemKey : null)) : undefined;
+  if (gm) { // (0.279.1) a gun with its own attachments, just as it was put down
+    const i = c.inv.indexOf(null);
+    if (i < 0 || packRoom(k) < 1) return false;
+    c.inv[i] = { k, n: 1, ...(d.c !== undefined ? { c: d.c } : {}), m: gm }; return true;
   }
   if (d.c === undefined) return !!addItem(k, d.n);
   if (HANDS_ONLY.has(k)) { if (!addItem(k, 1)) return false; c.hands[0] = { k, n: 1, c: d.c }; handsChanged(); return true; }
@@ -95,7 +103,7 @@ function took(d: NetDrop) {
   if (give(d)) { settleCrates(); saveChar(); logLine(TL`Picked up ${label(d.k, d.n)}${d.by && d.by !== G.char.name && !d.auto ? TL` (left by ${d.by})` : ''}.`); }
   else { // no room after all: it goes back down where it was
     showToast(tl('No room for it')); logLine(TL`No room for ${label(d.k, d.n)}: it stays on the ground.`);
-    if (!sendDrop(d.k, d.n, d.c, d.p, d.loc, false, d.b)) local.set(d.id, d); // (now only for E, so it is not taken again at once)
+    if (!sendDrop(d.k, d.n, d.c, d.p, d.loc, false, d.b, d.m)) local.set(d.id, d); // (now only for E, so it is not taken again at once)
   }
   syncDrops(true);
 }
@@ -149,7 +157,7 @@ export function syncDrops(now = false, dt = 0) {
     if (d.loc !== here || shown.has(d.id) || !ITEMS[d.k as ItemKey]) continue;
     const x = here === 'o' ? nearX(d.p[0], G.pos.x) : d.p[0];
     const p = drawPickup(new THREE.Vector3(x, d.p[1], d.p[2]), d.k as ItemKey, d.n);
-    p.drop = d.id; p.c = d.c; p.by = d.by; p.age = d.auto ? 0 : 1; p.auto = d.auto; if (d.b) p.b = d.b as Pickup['b'];
+    p.drop = d.id; p.c = d.c; p.by = d.by; p.age = d.auto ? 0 : 1; p.auto = d.auto; if (d.b) p.b = d.b as Pickup['b']; if (d.m) p.m = d.m as Pickup['m'];
     shown.set(d.id, p);
   }
 }

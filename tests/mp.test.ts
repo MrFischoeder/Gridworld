@@ -299,6 +299,18 @@ describe('multiplayer server', () => {
     expect(d2.d.b).toBeUndefined(); // nothing named: no load
     a.ws.close();
   });
+  it('(0.279.1) a gun put down keeps its own attachments for whoever takes it', async () => {
+    const port = await server({ rooms: [{ id: 'main', name: 'Main', world: 11, time: 100 }] });
+    const a = await client(port, { name: 'Ada' }), wa = await a.wait('welcome');
+    expect(wa.feat).toContain('gunmods');
+    a.send({ t: 'drop', k: 'pistol', n: 1, p: [1, 1, 1], loc: 'o', m: ['scope', null, 'magX', 'extra'] });
+    const d = (await a.wait('drop')).d;
+    expect(d.m).toEqual(['scope', null, 'magX']);
+    const b = await client(port, { name: 'Bob' }); await b.wait('welcome');
+    b.send({ t: 'take', id: d.id });
+    expect((await b.wait('got')).d.m).toEqual(['scope', null, 'magX']);
+    a.ws.close(); b.ws.close();
+  });
   it('the shared world: the first who played it brings it, changes reach the others, a newcomer gets it all, it is kept', async () => {
     const port = await server({ rooms: [{ id: 'main', name: 'Main', world: 11, time: 100 }] });
     const a = await client(port, { name: 'Ada' }), wa = await a.wait('welcome');
