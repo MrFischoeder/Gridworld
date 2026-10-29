@@ -6,7 +6,7 @@
 // read from the shared state, not written: two players charging at one post at once each see all of it (not synced).
 import { G } from '../game';
 import { allVillages, villageSeed, worldDist, nearX, findPoi, type Poi } from '../gen/regions';
-import { progressive, projectDone, RESOURCE_PLOTS, CHARGER } from '../gen/settlement';
+import { progressive, projectDone, plotsOf, CHARGER } from '../gen/settlement';
 import { balance } from '../gen/energy';
 import { isEV, evCap, EV, vehicleTitle } from '../data/vehicles';
 import { vehicles, tendsHere, type Vehicle } from './vehicles';
@@ -15,7 +15,7 @@ import { logLine, showToast } from '../ui/hud';
 import { tl, TL } from '../i18n';
 import { serviceWhy } from '../ui/villagestats';
 
-const postAt = (v: Poi) => { const p = RESOURCE_PLOTS.charger; return { x: v.x - 36 + p.x, z: v.z - 36 + p.z }; };
+const postAt = (v: Poi) => { const p = plotsOf(G.char.world, v.id).charger; return { x: v.x - 36 + p.x, z: v.z - 36 + p.z }; };
 const hasPost = (v: Poi) => progressive(G.char.towns[v.id]) && projectDone(G.char.towns[v.id], 'charger');
 /** Vehicles charging now (kW) and the gold owed below a whole coin. */
 const charging = new Map<Vehicle, number>();

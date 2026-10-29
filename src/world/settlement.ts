@@ -3,7 +3,7 @@ import { myHomeId } from './rivals';
 import * as THREE from 'three';
 import { projectBegun } from '../gen/buildpads';
 import { G, W } from '../game';
-import { RESOURCE_PLOTS, FUEL_PUMP, CHARGER, PROJECTS, progressive, projectDone, projectAvailable, depositsOf, linkRuin, tutorialStep, sideStep, sawLevel, furnaceLevel, isStation, stationStage, STATION_RANGE } from '../gen/settlement';
+import { RESOURCE_PLOTS, plotsOf, FUEL_PUMP, CHARGER, PROJECTS, progressive, projectDone, projectAvailable, depositsOf, linkRuin, tutorialStep, sideStep, sawLevel, furnaceLevel, isStation, stationStage, STATION_RANGE } from '../gen/settlement';
 import { ORES } from '../gen/resource-sites';
 import { RARE_NAME } from '../gen/deposits';
 import { resourceRockHit, resourceRockFloor } from '../gen/resource-rocks';
@@ -104,7 +104,8 @@ export function drawSettlementSites(vm: VillageMap, T: Terrain, id: number): THR
   };
   if (!progressive(s)) return grp;
   const crew: Crew[] = []; crews.set(id, crew); crewT = 0;
-  for (const [k, p] of Object.entries(RESOURCE_PLOTS) as [keyof typeof RESOURCE_PLOTS, { x: number; z: number }][]) {
+  const plots = plotsOf(T.world, id);
+  for (const [k, p] of Object.entries(plots) as [keyof typeof RESOURCE_PLOTS, { x: number; z: number }][]) {
     if (!projectAvailable(s, k)) continue;
     const x = vm.ox + p.x, z = vm.oz + p.z, y = T.heightAt(x, z), built = projectDone(s, k), begun = projectBegun(s, k);
     const ore = depositsOf(s).ore;
@@ -229,7 +230,7 @@ export function drawSettlementSites(vm: VillageMap, T: Terrain, id: number): THR
     } else {
       for (const dx of [-3, 3]) box(x + dx - 1, y, z - 2, x + dx + 1, y + 6, z + 2, METAL);
       box(x - .7, y, z - .7, x + .7, y + 9, z + .7, METAL);
-      const oil = RESOURCE_PLOTS.oil; pb.line(METAL, [x + 3, y + .5, z], [vm.ox + oil.x, y + .5, z], [vm.ox + oil.x, y + .5, vm.oz + oil.z]);
+      const oil = plots.oil; pb.line(METAL, [x + 3, y + .5, z], [vm.ox + oil.x, y + .5, z], [vm.ox + oil.x, y + .5, vm.oz + oil.z]);
     }
     if (built) crew.push(yardCrew(grp, T, id, k, x, z));
     const rares = depositsOf(s).rares ?? [];
@@ -326,6 +327,6 @@ export function settlementMarker(): { x: number; z: number; label: string } | nu
   const c = G.char, h = myHomeId(), v = findPoi(c.world, h), step = tutorialStep(c.towns[h]); // (0.189) a rival's own home
   if (!v || !step || !(c.guide === 2)) return null;
   const r = step.project === 'comms' ? linkRuin(c.world, v, c.towns[h]) : null;
-  const p = step.project && step.project in RESOURCE_PLOTS ? RESOURCE_PLOTS[step.project as keyof typeof RESOURCE_PLOTS] : null;
+  const p = step.project && step.project in RESOURCE_PLOTS ? plotsOf(c.world, h)[step.project as keyof typeof RESOURCE_PLOTS] : null;
   return { x: nearX(r ? r.rect.x0 - 3 : p ? v.x - 36 + p.x : v.x, G.pos.x), z: r ? r.z : p ? v.z - 36 + p.z : v.z, label: step.title };
 }

@@ -3,6 +3,11 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.283.1', date: '2026-10-29', title: 'Groves and yards clear of the ruins', notes: [
+    'Fix: a village\'s great grove (and any of its work yards: the quarry, the mine, the oil wells, the refinery, the sawmill, the furnace, the pump, the charger, the depot...) could lie right on an old temple, a camp, a wreck or the hangar next to it, so the giant trees grew through the ruin. Such a yard now moves round the village to the nearest clear ground, away from every place and from the other yards; yards on clear ground stay where they were. A yard already built on a ruin moves with it.',
+    'A giant tree of the grove also never stands on another place\'s ground nor within a few metres of it.',
+    'Multiplayer: the yards\' places come from the world seed, so every game moves the same ones the same way. The server and the protocol are unchanged.',
+  ] },
   { v: '0.283.0', date: '2026-10-29', title: 'Convoys on the roads', notes: [
     'Convoys now drive the roads. A convoy line between two warehouses and an outpost\'s convoy route can only be opened where a road joins the two places: the old roads between the villages, or a track the players built (an outpost or a wild warehouse needs its own track first). The way is the quickest by road, a better surface counting as quicker, and the trips\' times and fuel come from it; the trucks are drawn driving along it, and the maps draw the line along the roads it takes. Lines opened before keep their straight way; a line whose quicker road appears can be sent by it from its window.',
     'Building a road now also takes food for the crew: crates of grain, potatoes, carrots, eggs, milk or meat, 4 a km of dirt track (a gravel road 60% of that, a paved one as much again). It is brought bit by bit like the stone and planks, and the front goes only as far as the food covers too. Tracks staked out before need none.',

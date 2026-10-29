@@ -1,6 +1,6 @@
 // Village resources use their own seeded stream; changing scenery never moves villages or other POIs.
 import { hash } from '../core/rng';
-import { GRIDHOLM_ID, allVillages, worldDist } from './regions';
+import { GRIDHOLM_ID, allVillages, worldDist, poisNear } from './regions';
 import type { ItemKey } from '../data/items';
 import { depositsOf as rareDeposits, type Rare } from './deposits';
 import { tl } from '../i18n';
@@ -100,6 +100,43 @@ export const RESOURCE_PLOTS = {
 } as const;
 export type ResourceProject = keyof typeof RESOURCE_PLOTS;
 export const RESOURCE_YARD = { halfX: 18, halfZ: 14 };
+type Plots = Record<ResourceProject, { x: number; z: number }>;
+const plotCache = new Map<string, Plots>();
+/** How far a yard (the great grove: its whole reach) keeps from another place's ground (m). */
+const PLOT_CLEAR = 10;
+/**
+ * (0.283.1, the owner's report: an old temple stood inside a village's great grove) Where a village's yards lie
+ * (plaza-local, like `RESOURCE_PLOTS`): each at its usual spot unless that ground meets a ruin, a camp, a wreck, the
+ * hangar or another village; then it is turned round the village's middle (12° steps either way, then a little
+ * further out) to the first spot clear of every place and of the yards already laid. Pure of the world seed.
+ */
+export function plotsOf(world: number, vid: number): Plots {
+  const key = world + ':' + vid, old = plotCache.get(key); if (old) return old;
+  const v = allVillages(world).find((q) => q.id === vid), out = { ...RESOURCE_PLOTS } as Plots;
+  if (v) {
+    const ox = v.x - 36, oz = v.z - 36, places = poisNear(world, v.x, v.z, 330).filter((p) => p.id !== vid);
+    const reach = (k: ResourceProject) => (k === 'lumber' ? GROVE_REACH + 4 : 0);
+    const free = (k: ResourceProject, x: number, z: number) => {
+      const hx = RESOURCE_YARD.halfX + reach(k), hz = RESOURCE_YARD.halfZ + reach(k);
+      return places.every((p) => p.rect.x1 + PLOT_CLEAR < ox + x - hx || p.rect.x0 - PLOT_CLEAR > ox + x + hx || p.rect.z1 + PLOT_CLEAR < oz + z - hz || p.rect.z0 - PLOT_CLEAR > oz + z + hz);
+    };
+    const laid: [number, number, number][] = [];
+    const apart = (k: ResourceProject, x: number, z: number) => laid.every(([lx, lz, r]) => Math.hypot(lx - x, lz - z) > r + reach(k) + 40);
+    for (const k of Object.keys(RESOURCE_PLOTS) as ResourceProject[]) {
+      const p = RESOURCE_PLOTS[k];
+      if (!free(k, p.x, p.z)) {
+        const dx = p.x - 36, dz = p.z - 36, R = Math.hypot(dx, dz), a0 = Math.atan2(dz, dx);
+        search: for (const f of [1, 1.2, 1.4]) for (let j = 1; j <= 8; j++) for (const sg of [1, -1]) {
+          const a = a0 + sg * j * 0.21, x = Math.round(36 + Math.cos(a) * R * f), z = Math.round(36 + Math.sin(a) * R * f);
+          if (free(k, x, z) && apart(k, x, z)) { out[k] = { x, z }; break search; }
+        }
+      }
+      laid.push([out[k].x, out[k].z, reach(k)]);
+    }
+  }
+  if (plotCache.size > 500) plotCache.clear();
+  plotCache.set(key, out); return out;
+}
 /** Gentle walkable bowl: the exact same profile is used by terrain rendering and player ground queries. */
 export function depositDepth(x: number, z: number, radius = 8, depth = 1.6): number {
   const t = Math.max(0, 1 - Math.hypot(x, z) / radius);
@@ -115,13 +152,21 @@ const giantCache = new Map<string, Giant[]>();
 export function groveTrees(world: number, vid: number): Giant[] {
   const key = world + ':' + vid, old = giantCache.get(key); if (old) return old;
   const out: Giant[] = [];
+  // (0.283.1, the owner's report: an old temple stood inside a grove) a giant never stands on another place's ground
+  const v = allVillages(world).find((q) => q.id === vid), lp = plotsOf(world, vid).lumber, px = v ? v.x - 36 + lp.x : 0, pz = v ? v.z - 36 + lp.z : 0;
+  const places = v ? poisNear(world, px, pz, GROVE_REACH + 80).filter((p) => p.id !== vid) : [];
   for (let i = 0; i < 9; i++) {
     const a = Math.PI * (-0.72 + i / 8 * 1.44) + ((hash(world, vid, i, 0x9e07) % 100) / 100 - 0.5) * 0.25; // round the east side, away from the village (west)
     const d = 24 + (hash(world, vid, i, 0x9e08) % 80) / 10;
-    out.push({ u: Math.cos(a) * d, v: Math.sin(a) * d * 0.9, r: 1.6 + (hash(world, vid, i, 0x9e09) % 9) / 10, h: 26 + (hash(world, vid, i, 0x9e0a) % 12), seed: hash(world, vid, i, 0x9e0b) });
+    const g = { u: Math.cos(a) * d, v: Math.sin(a) * d * 0.9, r: 1.6 + (hash(world, vid, i, 0x9e09) % 9) / 10, h: 26 + (hash(world, vid, i, 0x9e0a) % 12), seed: hash(world, vid, i, 0x9e0b) };
+    if (places.some((p) => placeGap(p.rect, px + g.u, pz + g.v) < g.r * 2 + GROVE_CLEAR)) continue;
+    out.push(g);
   }
   if (giantCache.size > 500) giantCache.clear();
   giantCache.set(key, out); return out;
 }
+/** How far a giant's crown keeps from another place's ground (m). */
+export const GROVE_CLEAR = 8;
+const placeGap = (r: { x0: number; z0: number; x1: number; z1: number }, x: number, z: number) => Math.hypot(Math.max(r.x0 - x, 0, x - r.x1), Math.max(r.z0 - z, 0, z - r.z1));
 /** How far the grove reaches round the lumber plot's middle (for the fields and the wild trees to keep off). */
 export const GROVE_REACH = 36;

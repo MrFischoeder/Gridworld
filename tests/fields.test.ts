@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { Terrain } from '../src/gen/terrain';
 import { allVillages, villageSeed, GRIDHOLM_ID, findPoi } from '../src/gen/regions';
 import { FIELD, fieldProblem, fieldPad, fieldClaim, farmField, reservedZones } from '../src/gen/fields';
-import { RESOURCE_PLOTS } from '../src/gen/resource-sites';
+import { plotsOf } from '../src/gen/resource-sites';
 import { handOverFarm, placeFarm, farmsOf, FARM } from '../src/gen/farms';
 import { finishJob } from '../src/gen/jobs';
 import { jobOf } from '../src/gen/construction';
@@ -13,9 +13,9 @@ describe('farm fields', () => {
   const T = new Terrain(world), home = findPoi(world, GRIDHOLM_ID)!, seed = villageSeed(world, home);
   it('refuses the village, the resource yards, too far out; finds room within reach', () => {
     expect(fieldProblem(T, home, seed, {}, home.x, home.z, [])).toMatch(/village/);
-    const q = RESOURCE_PLOTS.quarry, ox = home.x - 36, oz = home.z - 36;
+    const P = plotsOf(world, home.id), q = P.quarry, ox = home.x - 36, oz = home.z - 36;
     expect(fieldProblem(T, home, seed, {}, ox + q.x, oz + q.z, [])).toMatch(/quarry/);
-    expect(fieldProblem(T, home, seed, {}, ox + RESOURCE_PLOTS.oil.x, oz + RESOURCE_PLOTS.oil.z, [])).toMatch(/oil/);
+    expect(fieldProblem(T, home, seed, {}, ox + P.oil.x, oz + P.oil.z, [])).toMatch(/oil/);
     expect(fieldProblem(T, home, seed, {}, home.x + FIELD.reach + 50, home.z, [])).toMatch(/far/);
     for (const v of allVillages(world).slice(0, 12)) {
       const sd = villageSeed(world, v); let ok = 0;

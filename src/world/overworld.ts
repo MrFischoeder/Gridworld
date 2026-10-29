@@ -13,7 +13,7 @@ import { shapedWorld } from '../gen/worldrules';
 import { syncConvoyStart } from './convoyfuel';
 import { drawSettlementSites, drawSettlementComms, settlementHit, settlementFloor, settlementRay, settlementSolid, forgetSettlement } from './settlement';
 import { settlementVillage } from '../gen/settlement-village';
-import { initializeSettlements, progressive, RESOURCE_PLOTS, projectAvailable, depositsOf, mechanicHere } from '../gen/settlement';
+import { initializeSettlements, progressive, plotsOf, projectAvailable, depositsOf, mechanicHere } from '../gen/settlement';
 import { RESOURCE_YARD, type ResourceProject } from '../gen/resource-sites';
 import { peopleAt } from '../gen/people';
 import { warehouseSpot, warehouseAt } from '../gen/hall';
@@ -837,7 +837,7 @@ export function groveGiants(world: number, x: number, z: number, r: number): { x
     if (v.type !== 'village') continue;
     const s = G.char.towns[v.id];
     if (!progressive(s) || depositsOf(s).grove === false) continue;
-    const px = v.x - 36 + RESOURCE_PLOTS.lumber.x, pz = v.z - 36 + RESOURCE_PLOTS.lumber.z;
+    const lp = plotsOf(world, v.id).lumber, px = v.x - 36 + lp.x, pz = v.z - 36 + lp.z;
     if (Math.hypot(px - x, pz - z) > r + 100) continue;
     groveTrees(world, v.id).forEach((g, i) => out.push({ x: px + g.u, z: pz + g.v, r: g.r, h: g.h, vid: v.id, i }));
   }
@@ -860,7 +860,7 @@ function padsOf(w: number, v: Poi): Pad[] {
   const levelled = sitePads(w, v, G.char.towns[v.id]);
   const pads = [v].filter((v) => progressive(G.char.towns[v.id])).flatMap((v) => {
     const s = G.char.towns[v.id], ox = v.x - 36, oz = v.z - 36;
-    const plots = Object.entries(RESOURCE_PLOTS).filter(([k]) => projectAvailable(s, k as ResourceProject) && projectBegun(s, k as ResourceProject));
+    const plots = Object.entries(plotsOf(w, v.id)).filter(([k]) => projectAvailable(s, k as ResourceProject) && projectBegun(s, k as ResourceProject));
     const wh = warehouseSpot(s), rects = [...(wh ? [{ rect: warehouseAt(wh) as Rect, depression: false, soft: 0 }] : []), ...plots.map(([k, p]) => ({ rect: { x0: p.x - RESOURCE_YARD.halfX, x1: p.x + RESOURCE_YARD.halfX, z0: p.z - RESOURCE_YARD.halfZ, z1: p.z + RESOURCE_YARD.halfZ }, depression: k === 'mine', soft: SITE_PAD.soft }))];
     return rects.map(({ rect: r, depression, soft }, i) => {
       const rect = { x0: ox + r.x0, x1: ox + r.x1, z0: oz + r.z0, z1: oz + r.z1 };

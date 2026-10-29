@@ -10,7 +10,7 @@ import { hash } from '../core/rng';
 import { allVillages, villageSeed, wrapDx, worldDist } from './regions';
 import { VILLAGE_OFFSET } from './village';
 import { progressive, projectDone } from './settlement';
-import { RESOURCE_PLOTS } from './resource-sites';
+import { plotsOf } from './resource-sites';
 import { farmField } from './fields';
 import { cropOf, farmsOf } from './farms';
 import { hubs, hubAt, hubWorks, villageHall, villageHub, type Hub } from './warehouses';
@@ -55,7 +55,7 @@ export function carrierRoutes(world: number, towns: Record<string, TownState | u
     }
     for (const k of ['quarry', 'mine', 'lumber', 'oil', 'raremine'] as const) {
       if (!projectDone(s, k)) continue;
-      const p = RESOURCE_PLOTS[k];
+      const p = plotsOf(world, v.id)[k];
       add({ id: `y:${v.id}:${k}`, ax: v.x + VILLAGE_OFFSET.x + p.x, az: v.z + VILLAGE_OFFSET.z + p.z, bx: at[0], bz: at[1], n: 1, load: k === 'oil' ? 'barrel' : 'crate' });
     }
   }

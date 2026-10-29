@@ -10,7 +10,7 @@
 // are in and it waits for its field.
 import { worldDist, wrapDx, poisNear, GRIDHOLM_ID, type Poi } from './regions';
 import { VILLAGE_OFFSET } from './village';
-import { RESOURCE_PLOTS, RESOURCE_YARD, GROVE_REACH } from './resource-sites';
+import { plotsOf, RESOURCE_YARD, GROVE_REACH } from './resource-sites';
 import { industryOf, industrySite } from './industry';
 import { powerSite, type TownState } from './town';
 import { plantSite } from './plants';
@@ -39,7 +39,7 @@ export function reservedZones(world: number, poi: Poi, seed: number, s: TownStat
   const rect = (x0: number, z0: number, x1: number, z1: number, why: string) => out.push({ x0: ox + x0, z0: oz + z0, x1: ox + x1, z1: oz + z1, why });
   const site = (p: { x: number; z: number; w: number; d: number }, why: string) => rect(p.x, p.z, p.x + p.w, p.z + p.d, why);
   rect(-26, -26, 98, 98, tl('Too close to the village: its walls and clearing')); out[out.length - 1].k = 'village'; // the wall, the gates' lanes and the ring of side plots
-  for (const [k, p] of Object.entries(RESOURCE_PLOTS)) {
+  for (const [k, p] of Object.entries(plotsOf(world, poi.id))) {
     const word = k === 'quarry' ? tl('the stone quarry') : k === 'oil' ? tl('the oil wells') : k === 'mine' ? tl('the mine') : k === 'lumber' ? tl('the lumber camp') : k === 'refinery' ? tl('the refinery') : tl('the food processing house');
     const m = k === 'lumber' ? GROVE_REACH + 4 : 6; // the lumber camp's yard lies in the great grove
     rect(p.x - RESOURCE_YARD.halfX - m, p.z - RESOURCE_YARD.halfZ - m, p.x + RESOURCE_YARD.halfX + m, p.z + RESOURCE_YARD.halfZ + m, k === 'lumber' ? tl('That is the great grove: its ground is kept for the lumber camp') : TL`That ground is kept for ${word}`);

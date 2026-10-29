@@ -7,7 +7,7 @@ import { allVillages, poisNear, GRIDHOLM_ID, worldDist, type Poi } from './regio
 import { villageDeposits, rareDepositsOf, quarryMineral, brine, ORES, YARD_KINDS, type Deposits, type YardKind } from './resource-sites';
 import { startJob, jobOf } from './construction';
 import { tl, TL } from '../i18n';
-export { RESOURCE_PLOTS } from './resource-sites';
+export { RESOURCE_PLOTS, plotsOf } from './resource-sites';
 
 export type Project = 'warehouse' | 'power' | 'comms' | 'quarry' | 'mine' | 'lumber' | 'oil' | 'refinery' | 'foodworks' | 'relay' | 'sawmill' | 'sawmill2' | 'sawmill3' | 'raremine' | 'furnace' | 'furnace2' | 'furnace3' | 'fuelpump' | 'charger' | 'depot';
 export interface SettlementState {

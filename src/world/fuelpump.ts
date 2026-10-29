@@ -5,7 +5,7 @@
 // (`withTownStock`), so two players at the pump cannot take the same canister; the tank is the owner's vehicle.
 import { G, W } from '../game';
 import { allVillages, findPoi, villageSeed, worldDist, nearX, type Poi } from '../gen/regions';
-import { progressive, projectDone, RESOURCE_PLOTS, FUEL_PUMP } from '../gen/settlement';
+import { progressive, projectDone, plotsOf, FUEL_PUMP } from '../gen/settlement';
 import { quote } from '../gen/market';
 import { VEHICLES, vehicleTitle, rangeKm, cansToFill, FUEL, isEV } from '../data/vehicles';
 import { vehicles, type Vehicle } from './vehicles';
@@ -18,7 +18,7 @@ import { tl, TL } from '../i18n';
 import { serviceWhy } from '../ui/villagestats';
 
 /** The pump island's middle (world) of village v. */
-function pumpAt(v: Poi) { const p = RESOURCE_PLOTS.fuelpump; return { x: v.x - 36 + p.x, z: v.z - 36 + p.z }; }
+function pumpAt(v: Poi) { const p = plotsOf(G.char.world, v.id).fuelpump; return { x: v.x - 36 + p.x, z: v.z - 36 + p.z }; }
 const pumpVillage = (v: Poi) => progressive(G.char.towns[v.id]) && projectDone(G.char.towns[v.id], 'fuelpump');
 /** The village whose pump column you stand at (E), or null. */
 export function nearFuelPump(): number | null {

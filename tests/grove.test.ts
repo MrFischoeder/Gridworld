@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { groveTrees, groveRoll, villageDeposits, RESOURCE_PLOTS, GROVE_REACH } from '../src/gen/resource-sites';
+import { groveTrees, groveRoll, villageDeposits, plotsOf, GROVE_REACH } from '../src/gen/resource-sites';
 import { allVillages, GRIDHOLM_ID, findPoi, villageSeed } from '../src/gen/regions';
 import { projectAvailable, resourceYield, initializeSettlements, PROJECTS } from '../src/gen/settlement';
 import { PLANTS } from '../src/gen/plants';
@@ -43,7 +43,7 @@ describe('great groves and planks', () => {
   });
   it('fields keep off the grove', () => {
     const home = findPoi(world, GRIDHOLM_ID)!, z = reservedZones(world, home, villageSeed(world, home), {}).find((r) => /grove/.test(r.why))!;
-    const px = home.x - 36 + RESOURCE_PLOTS.lumber.x, pz = home.z - 36 + RESOURCE_PLOTS.lumber.z;
+    const lp = plotsOf(world, home.id).lumber, px = home.x - 36 + lp.x, pz = home.z - 36 + lp.z;
     for (const g of groveTrees(world, GRIDHOLM_ID)) { const x = px + g.u, zz = pz + g.v; expect(x >= z.x0 && x <= z.x1 && zz >= z.z0 && zz <= z.z1).toBe(true); }
   });
 });

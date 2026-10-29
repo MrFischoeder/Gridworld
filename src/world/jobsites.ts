@@ -23,7 +23,7 @@ import { plantSite, specOf, isStation, PLANTS } from '../gen/plants';
 import { stationSite, STATIONS, DRAW } from '../gen/energy';
 import { IMPROVE, type ImproveKind } from '../gen/improve';
 import { PLANT_LEVELS } from '../gen/plantup';
-import { PROJECTS, RESOURCE_PLOTS, linkRuin, isStation as isStationVillage, stationStage, STATION_STAGES, type Project } from '../gen/settlement';
+import { PROJECTS, RESOURCE_PLOTS, plotsOf, linkRuin, isStation as isStationVillage, stationStage, STATION_STAGES, type Project } from '../gen/settlement';
 import { warehouseSpot } from '../gen/hall';
 import type { VillageMap } from '../gen/village';
 import { syncFarmVillage } from './farms';
@@ -85,7 +85,7 @@ function spotOf(vid: number, s: TownState, j: Job): { x: number; z: number; w: n
     case 'project': {
       if (a === 'warehouse') { const w = warehouseSpot(s); return w ? P(w, 22, 22) : null; }
       if (a === 'power') return P(powerSite(seed), 10, 8);
-      const r = RESOURCE_PLOTS[(a === 'sawmill2' || a === 'sawmill3' ? 'sawmill' : a === 'furnace2' || a === 'furnace3' ? 'furnace' : a) as keyof typeof RESOURCE_PLOTS];
+      const r = plotsOf(G.char.world, vid)[(a === 'sawmill2' || a === 'sawmill3' ? 'sawmill' : a === 'furnace2' || a === 'furnace3' ? 'furnace' : a) as keyof typeof RESOURCE_PLOTS];
       return r ? P(r, 16, 12) : null;
     }
   }
