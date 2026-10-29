@@ -21,6 +21,7 @@ import { hasAmast, amastWhy } from '../gen/airships';
 import { allHubLines, hubLineOf, hlDue, hlWaiting, hlDrain, settleHubLine, lineLoad, hlAt, hlWrecked, type HubLine } from '../gen/hublines';
 import { ITEMS, type ItemKey } from '../data/items';
 import { TL } from '../i18n';
+import { wayPose } from '../gen/roadnet';
 
 const hubOf = (id: string): Hub | undefined => hubs(G.char.world, G.char.towns, G.char.outposts).find((h) => h.id === id);
 /** Settle warehouse `id`'s own line and take in what other lines brought it (call under its lock). The words for the log. */
@@ -108,8 +109,9 @@ export function hubTruckAt(home: Hub, l: HubLine, now: number, px: number): [num
   if (!l.truck) return null;
   const hx = nearX(home.x, px), tx = nearX(l.tx, hx), dx = tx - hx, dz = l.tz - home.z, d = Math.hypot(dx, dz) || 1, ux = dx / d, uz = dz / d;
   const ax = hx + ux * 22, az = home.z + uz * 22, bx = tx - ux * 22, bz = l.tz - uz * 22, yaw = Math.atan2(bx - ax, bz - az), cv = hlAt(l, now);
-  if (cv.at === 'parked' || cv.at === 'home') return [ax, az, yaw];
-  if (cv.at === 'there') return [bx, bz, yaw + Math.PI];
+  if (!l.way && (cv.at === 'parked' || cv.at === 'home')) return [ax, az, yaw];
+  if (!l.way && cv.at === 'there') return [bx, bz, yaw + Math.PI];
+  if (l.way) return wayPose(l.way.pts, cv.at === 'parked' || cv.at === 'home' ? 'start' : cv.at === 'there' ? 'end' : cv.at, cv.p, px); // (0.283) along its road
   const p = cv.at === 'out' ? cv.p : 1 - cv.p, side = cv.at === 'out' ? -1.5 : 1.5;
   return [ax + (bx - ax) * p + Math.cos(yaw) * side, az + (bz - az) * p - Math.sin(yaw) * side, cv.at === 'out' ? yaw : yaw + Math.PI];
 }

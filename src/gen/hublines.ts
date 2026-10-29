@@ -20,6 +20,7 @@ import type { TownState } from './town';
 import type { OutpostState } from './outposts';
 import type { Hub } from './warehouses';
 import { noteArrival, takeTransit, type Transit } from './transit';
+import type { RoadWay } from './roadnet';
 
 export const HLINE = { reach: 25000 };
 export type HubTrip = 'ok' | 'dry' | 'robbed' | 'wrecked' | 'silent' | 'empty';
@@ -32,23 +33,31 @@ export interface HubLine {
   only?: ItemKey[]; sent: Partial<Record<ItemKey, number>>;
   /** The last trip's fate, trips robbed, trips done. */
   last?: [number, HubTrip]; robbed?: number; trips?: number;
+  /** (0.283, D4) The way by road it drives (gen/roadnet.ts); absent on a line opened before 0.283 (straight across country). */
+  way?: RoadWay;
 }
 /** The other warehouse's counter key for a line. */
 export const hlKey = (home: string, l: HubLine) => 'hl:' + home + ':' + l.id;
 /** A new line from warehouse `a` to warehouse `b`. */
-export function newHubLine(a: Hub, b: Hub, now: number): HubLine {
-  const km = Math.round(worldDist(a.x, a.z, b.x, b.z) * ROUTE.detour / 100) / 10;
-  return { id: Math.round(now), to: b.id, toName: b.name, tx: Math.round(b.x), tz: Math.round(b.z), km, k: 0, sent: {} };
+export function newHubLine(a: Hub, b: Hub, now: number, way?: RoadWay): HubLine {
+  const km = way ? way.km : Math.round(worldDist(a.x, a.z, b.x, b.z) * ROUTE.detour / 100) / 10;
+  const l: HubLine = { id: Math.round(now), to: b.id, toName: b.name, tx: Math.round(b.x), tz: Math.round(b.z), km, k: 0, sent: {} };
+  if (way) l.way = way;
+  return l;
 }
+/** (0.283) The km a trip costs in time and the fuel against a dirt track: from its way by road (an old line: its km). */
+export const wayTime = (w: { km: number; way?: RoadWay }) => (w.way ? w.way.t : w.km);
+export const wayFuel = (w: { way?: RoadWay }) => w.way?.f ?? 1;
 /** Minutes one way, a whole round trip with loading at both ends. */
-export const hlLeg = (l: HubLine) => Math.ceil(l.km * 1000 / ROUTE.speed);
+export const hlLeg = (l: HubLine) => Math.ceil(wayTime(l) * 1000 / ROUTE.speed);
 export const hlPeriod = (l: HubLine) => 2 * (hlLeg(l) + ROUTE.load);
 const isEV = (t: RouteTruck | undefined) => t?.parts.ev !== undefined;
 /** The truck's energy now and what a round trip takes ('L' diesel, 'kWh' battery). */
 export function hlEnergy(l: HubLine): [number, number, 'L' | 'kWh'] {
   const t = l.truck, f = FUEL.cruise + (1 - FUEL.cruise) * 0.5;
   if (!t) return [0, 0, 'L'];
-  return isEV(t) ? [t.parts.ev ?? 0, Math.round(2 * l.km * EV[t.model].use * f * 10) / 10, 'kWh'] : [t.parts.fuel ?? 0, Math.round(2 * l.km * VEHICLES[t.model].fuelUse * f * 10) / 10, 'L'];
+  const km = l.km * wayFuel(l);
+  return isEV(t) ? [t.parts.ev ?? 0, Math.round(2 * km * EV[t.model].use * f * 10) / 10, 'kWh'] : [t.parts.fuel ?? 0, Math.round(2 * km * VEHICLES[t.model].fuelUse * f * 10) / 10, 'L'];
 }
 /** The chance a trip is robbed (the danger half way; a roof cannon helps). */
 export function hlRob(world: number, home: { x: number; z: number }, l: HubLine): number {

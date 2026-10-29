@@ -84,6 +84,7 @@ function build(): Map<ItemKey, Map<UseGroup, string[]>> {
   for (const k of Object.keys(BRIDGE.per) as ItemKey[]) use(k, tl('Building'), tl('Bridge'));
   for (const k of Object.keys(PROAD.per) as ItemKey[]) use(k, tl('Building'), tl('Track')); // (0.280) the players' tracks
   for (const k of Object.keys(CAMP) as ItemKey[]) use(k, tl('Building'), tl('Road camp')); // (0.281)
+  for (const k of Object.keys(FOOD.value) as ItemKey[]) use(k, tl('Building'), tl('Food for a road crew')); // (0.283)
   for (const k of Object.keys(MACHINE) as ItemKey[]) use(k, tl('Building'), tl('Steam grader'));
   for (const c of [SURFACE_CLS[1], SURFACE_CLS[2]]) for (const k of Object.keys(c.per) as ItemKey[]) use(k, tl('Building'), c.name); // (0.282)
   for (const k of [...Object.keys(PIER.per), ...Object.keys(PIER.fittings)] as ItemKey[]) use(k, tl('Building'), tl('Pier'));

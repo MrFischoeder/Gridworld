@@ -19,6 +19,7 @@
 import type { ItemKey } from '../data/items';
 import type { Road } from './roads';
 import { tl, TL } from '../i18n';
+import { FOOD } from './farms';
 
 export const PROAD = {
   /** Half the track's width (m); the seed's roads are 2.3. */
@@ -49,7 +50,24 @@ export const PROAD = {
   crew: 8, minCrew: 2, dig: 0.45, setup: 90, hire: 2500, walk: 2200, first: 120,
   /** A stone per `wetStone` m of swamp fill; logs from a tree felled on the way (a big one ×3). */
   wetStone: 4, perTree: 2,
+  /** (0.283, D4) Food the crew eats: crates (food units, `FOOD.value`) a km of track; a surface takes `upFood` of it. */
+  food: 4, upFood: [0, 0.6, 1],
 };
+/** (0.283) The food handed over (in `given`, by `FOOD.value`). */
+export const fedOf = (given: Partial<Record<ItemKey, number>>) => Object.entries(given).reduce((a, [k, n]) => a + (FOOD.value[k as ItemKey] ?? 0) * (n ?? 0), 0);
+/** Food units a track of `len` m wants (`share` of it for a surface). */
+export const foodFor = (len: number, share = 1) => Math.max(1, Math.ceil(len / 1000 * PROAD.food * share));
+/** Hand over food from `have` into `given` up to `need` units (whole crates); what was taken. */
+function feedFrom(given: Partial<Record<ItemKey, number>>, need: number, have: (k: ItemKey) => number): [ItemKey, number][] {
+  const taken: [ItemKey, number][] = [];
+  for (const k of Object.keys(FOOD.value) as ItemKey[]) {
+    const left = need - fedOf(given), v = FOOD.value[k]!;
+    if (left <= 1e-6) break;
+    const n = Math.min(have(k), Math.ceil(left / v - 1e-6));
+    if (n > 0) { given[k] = (given[k] ?? 0) + n; taken.push([k, n]); }
+  }
+  return taken;
+}
 /** (0.281) The road camp (bunks and a cookhouse at the front): the diggers sleep there, so the front goes on past `walk`. */
 export const CAMP: Partial<Record<ItemKey, number>> = { planks: 16, nails: 12, rope: 4, hide: 2 };
 /** (0.281) A steam grader and a dump cart from the Heavy Engineering Works: the front moves `MACHINE_X` times as fast. */
@@ -90,12 +108,16 @@ export interface PlayerRoad {
   /** (0.282, D3) The surface laid for its whole length (0 dirt, 1 gravel, 2 paved; unset = 0) and the upgrade under way. */
   cls?: number;
   up?: RoadUp;
+  /** (0.283, D4) Food units the crew eats on the work (in `given` by `FOOD.value`); unset on older tracks. */
+  food?: number;
 }
 /** (0.282, D3) Laying a better surface over a finished track: like the track's own work, a crew along a supplied front. */
 export interface RoadUp {
   to: 1 | 2;
   given: Partial<Record<ItemKey, number>>; paid: number;
   t0?: number; fr?: [number, number]; crew?: number;
+  /** (0.283) Food units the crew eats (in `given`). */
+  food?: number;
 }
 /**
  * (0.282, D3) The surfaces. `per`: a piece of each material per so many metres; `wage` gold a metre; `pace` the
@@ -128,6 +150,7 @@ const isV2 = (r: PlayerRoad) => r.v === 2;
 export function coverOf(r: PlayerRoad): number {
   let share = Math.min(1, r.paid / Math.max(1, roadWage(r.len)));
   for (const w of roadRows(r)) share = Math.min(share, w.given / w.n);
+  if (r.food) share = Math.min(share, fedOf(r.given) / r.food); // (0.283) the crew must be fed
   return share >= 1 ? r.len : Math.floor(share * r.len);
 }
 /** Does the track want a road camp (its far end more than `walk` m from home)? */
@@ -181,6 +204,7 @@ export function handOverRoad(r: PlayerRoad, have: (k: ItemKey) => number, gold: 
     const n = Math.min(w.n - w.given, have(w.k));
     if (n > 0) { r.given[w.k] = (r.given[w.k] ?? 0) + n; taken.push([w.k, n]); }
   }
+  if (r.food) taken.push(...feedFrom(r.given, r.food, have));
   const paid = Math.max(0, Math.min(Math.floor(gold), roadWage(r.len) - r.paid));
   r.paid += paid;
   if (r.t0 !== undefined) return { taken, paid, started: false };
@@ -225,6 +249,7 @@ export function upCover(r: PlayerRoad): number {
   const u = r.up; if (!u) return 0;
   let share = Math.min(1, u.paid / Math.max(1, upWage(r.len, u.to)));
   for (const w of upRows(r)) share = Math.min(share, w.given / w.n);
+  if (u.food) share = Math.min(share, fedOf(u.given) / u.food);
   return share >= 1 ? r.len : Math.floor(share * r.len);
 }
 const upCap = (r: PlayerRoad) => Math.min(upCover(r), reachOf(r));
@@ -267,7 +292,7 @@ export function startUpgrade(r: PlayerRoad, now: number): boolean {
   const to = nextCls(r, now);
   if (!to) return false;
   if (r.up) r.cls = r.up.to;
-  r.up = { to, given: {}, paid: 0 };
+  r.up = { to, given: {}, paid: 0, food: foodFor(r.len, PROAD.upFood[to]) };
   return true;
 }
 /** Hand over to the upgrade; it starts like the track's own work (`first` m covered, `minCrew` free hands). */
@@ -280,6 +305,7 @@ export function handOverUp(r: PlayerRoad, have: (k: ItemKey) => number, gold: nu
     const n = Math.min(w.n - w.given, have(w.k));
     if (n > 0) { u.given[w.k] = (u.given[w.k] ?? 0) + n; taken.push([w.k, n]); }
   }
+  if (u.food) taken.push(...feedFrom(u.given, u.food, have));
   const paid = Math.max(0, Math.min(Math.floor(gold), upWage(r.len, u.to) - u.paid));
   u.paid += paid;
   if (u.t0 !== undefined) return { taken, paid, started: false };
@@ -406,17 +432,18 @@ export function routeProblem(g: RoadGround, pts: [number, number][]): string {
 export function proposeWay(g: RoadGround, from: [number, number], to: [number, number]): [number, number][] | null {
   // (0.281) the lattice sees the land only at its points: a way whose stretch still climbs too steeply between them
   // is searched again, keeping further from the limit
-  for (const strict of [0.9, 0.75, 0.6]) {
-    const way = searchWay(g, from, to, strict);
-    if (!way) return null;
-    if (!routeProblem(g, way)) return way;
+  // (0.283) near the steepest grade allowed, whether a way is found depends on where the lattice's points fall: a
+  // failed search is tried again on a lattice a little coarser, then finer
+  for (const [strict, scale] of [[0.9, 1], [0.75, 1], [0.6, 1], [0.95, 1.17], [0.95, 0.85], [0.95, 1.4]]) {
+    const way = searchWay(g, from, to, strict, scale);
+    if (way && !routeProblem(g, way)) return way;
   }
   return null;
 }
-function searchWay(g: RoadGround, from: [number, number], to: [number, number], strict: number): [number, number][] | null {
+function searchWay(g: RoadGround, from: [number, number], to: [number, number], strict: number, scale = 1): [number, number][] | null {
   const M = PROAD.margin, x0 = Math.min(from[0], to[0]) - M, z0 = Math.min(from[1], to[1]) - M;
   const spanX = Math.max(from[0], to[0]) + M - x0, spanZ = Math.max(from[1], to[1]) + M - z0;
-  const S = Math.max(PROAD.grid, Math.ceil(Math.sqrt(spanX * spanZ / PROAD.cells))); // a coarser lattice for a longer way
+  const S = Math.max(Math.round(PROAD.grid * Math.min(1, scale)), Math.ceil(Math.sqrt(spanX * spanZ / PROAD.cells) * Math.max(1, scale)), Math.round(PROAD.grid * scale)); // a coarser lattice for a longer way
   const W = Math.ceil(spanX / S) + 1, H = Math.ceil(spanZ / S) + 1;
   const cell = (x: number, z: number) => Math.round((x - x0) / S) + W * Math.round((z - z0) / S);
   const cx = (i: number) => x0 + (i % W) * S, cz = (i: number) => z0 + Math.floor(i / W) * S;
@@ -485,7 +512,7 @@ export function newRoadProblem(g: RoadGround, a: RoadEnd, b: RoadEnd, pts: [numb
 export function newRoad(id: string, a: RoadEnd, b: RoadEnd, pts: [number, number][], by: string, pid: string, now: number, d2?: { home: RoadHome; wet: number; logs: number }): PlayerRoad {
   const len = Math.round(roadLength(pts));
   const r: PlayerRoad = { id, name: roadName(a, b), pts: pts.map(([x, z]) => [Math.round(x * 10) / 10, Math.round(z * 10) / 10]), a, b, len, h: roadHours(len), given: {}, paid: 0, by, pid, t: now };
-  if (d2) { r.v = 2; r.home = d2.home; r.wet = Math.round(d2.wet); r.logs = d2.logs; r.took = 0; }
+  if (d2) { r.v = 2; r.home = d2.home; r.wet = Math.round(d2.wet); r.logs = d2.logs; r.took = 0; r.food = foodFor(len); }
   return r;
 }
 /** The home nearer the end b: the way reversed so the work starts at the home's end. */

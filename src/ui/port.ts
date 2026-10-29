@@ -13,6 +13,7 @@ import { calcStats, saveChar, gainXp, packVol } from '../character';
 import { putItems } from '../inventory';
 import { handOver, partName, hoursOf, xpOf, countOf, choosePower, mayUse, bare, PORT, type OutpostPart } from '../gen/outposts';
 import { loadFood } from '../gen/outpostlife';
+import { airRoadWhy } from '../world/roadnet';
 import { POWER_SRC, loadFuel, settleAll, type PowerKind } from '../gen/grid';
 import { FOOD } from '../gen/farms';
 import { lodeById } from '../gen/lodes';
@@ -260,6 +261,7 @@ export function portClick(t: HTMLElement): boolean {
     }
     else if (a === 'pl' || a === 'unpl') msg = plineClick(id, o, a, x) ?? '';
     else if (a === 'pk') msg = choosePower(o, x as PowerKind) ? TL`You mark out the ground for a ${POWER_SRC[x as PowerKind].name.toLowerCase()}.` : tl('The builders have started on another source already.');
+    else if (a === 'give' && (x === 'pad' || x === 'amast') && airRoadWhy(id)) msg = airRoadWhy(id); // (0.283) flying after the roads
     else if (a === 'give') {
       const part = x as OutpostPart, { taken, started } = handOver(o, part, (k) => carried(k, here), c.time);
       for (const [k, n] of taken) takeFrom(k, n, here);

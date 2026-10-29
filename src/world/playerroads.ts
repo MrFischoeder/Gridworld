@@ -26,7 +26,8 @@ import { seaMask, SEA } from '../gen/seas';
 import { lakesIn, shoreR } from '../gen/water';
 import { megalithsNear } from '../gen/megaliths';
 import { hubs } from '../gen/warehouses';
-import { PROAD, along, smoothPts, terrainWays, waysKey, roadBuilt, roadLength, stretchProblem, proposeWay, newRoadProblem, newRoad, roadRows, startFrom, stalled, logsReady, workNow, slicePts, SURFACE_CLS, UP_STEP, type PlayerRoad, type RoadEnd, type RoadGround, type RoadHome } from '../gen/playerroads';
+import { ITEMS } from '../data/items';
+import { PROAD, roadNeeds, roadWage, foodFor, along, smoothPts, terrainWays, waysKey, roadBuilt, roadLength, stretchProblem, proposeWay, newRoadProblem, newRoad, roadRows, startFrom, stalled, logsReady, workNow, slicePts, SURFACE_CLS, UP_STEP, type PlayerRoad, type RoadEnd, type RoadGround, type RoadHome } from '../gen/playerroads';
 import { regionFords, deckAt, type Ford } from '../gen/bridges';
 import { regionOf, wrapDx } from '../gen/regions';
 import { chunkTrees, TREE_SPAN } from '../gen/trees';
@@ -194,6 +195,7 @@ export function startRoadSurvey(): boolean {
   if (driving.v) { logLine(tl('Get out of the vehicle first.')); return false; }
   sv = { pts: [], a: null, b: null, aim: [G.pos.x, G.pos.z], snap: null, problem: '', last: { x: NaN, z: NaN, t: 0, n: -1 } };
   logLine(tl('The survey: look at a village gate, an outpost, a warehouse or a road and click to start the track there. Click on to set each stake, R lets the surveyors lay out the way to the place you look at (or your map\'s waypoint), the right mouse button takes the last stake back, Esc gives up.'));
+  logLine(perKmWords() + ' ' + tl('With a GPS you can also plan a track on the map: T by a waypoint at each end.'));
   return true;
 }
 export function cancelRoadSurvey(quiet = false) {
@@ -218,7 +220,7 @@ export function roadSurveyHint(): string | null {
   const len = Math.round(lenNow() + Math.hypot(sv.aim[0] - sv.pts[sv.pts.length - 1][0], sv.aim[1] - sv.pts[sv.pts.length - 1][1]));
   if (sv.b) return TL`${Math.round(lenNow())} m to ${endWord(sv.b)}: click to stake out the track · right mouse — take the last stake back`;
   if (sv.snap) return TL`Click — end the track at ${endWord(sv.snap)} (${len} m) · R — let the surveyors lay out the way`;
-  return TL`Click — set a stake (${len} m so far) · R — the surveyors lay out the way to what you look at · right mouse — back · Esc — give up`;
+  return TL`Click — set a stake (${len} m so far: ${costShort(len)}) · R — the surveyors lay out the way to what you look at · right mouse — back · Esc — give up`;
 }
 export const roadSurveyOk = () => !!sv && !sv.problem && (!!sv.a || !!sv.snap);
 /** The ground point the player looks at (up to 140 m away). */
@@ -247,16 +249,51 @@ export function confirmRoadSurvey() {
 }
 function finish(g: RoadGround, b: RoadEnd) {
   if (!sv?.a) return;
-  const why = newRoadProblem(g, sv.a, b, sv.pts, mine());
-  if (why) { logLine(why); showToast(tl('The track cannot be staked out')); sv.b = null; return; }
-  const home = findHome(sv.a, b);
-  if (!home) { logLine(TL`No village or outpost with people lies within ${PROAD.hire / 1000} km of either end: nobody could dig this track.`); showToast(tl('The track cannot be staked out')); sv.b = null; return; }
-  const c = G.char, id = `${c.pid}:${Math.round(c.time)}`, way = startFrom({ pts: sv.pts, a: { ...sv.a }, b: { ...b } }, home);
+  if (!stakeTrack(g, sv.a, b, sv.pts)) { sv.b = null; return; }
+  cancelRoadSurvey(true);
+}
+/** Stake out a track from a to b along `pts` (the survey on foot, or the plan on the GPS map): false when it cannot be. */
+export function stakeTrack(g: RoadGround, a: RoadEnd, b: RoadEnd, pts: [number, number][]): boolean {
+  const why = newRoadProblem(g, a, b, pts, mine());
+  if (why) { logLine(why); showToast(tl('The track cannot be staked out')); return false; }
+  const home = findHome(a, b);
+  if (!home) { logLine(TL`No village or outpost with people lies within ${PROAD.hire / 1000} km of either end: nobody could dig this track.`); showToast(tl('The track cannot be staked out')); return false; }
+  const c = G.char, id = `${c.pid}:${Math.round(c.time)}`, way = startFrom({ pts, a: { ...a }, b: { ...b } }, home);
   const r = newRoad(id, way.a, way.b, way.pts, c.name || tl('a castaway'), c.pid, c.time, { home: { ...home, d: Math.round(worldDist(home.x, home.z, way.a.x, way.a.z)) }, ...alongWay(way.pts) });
   c.proads[id] = r; saveChar();
-  cancelRoadSurvey(true); scanT = 0;
+  scanT = 0;
   showToast(tl('Track staked out'));
-  logLine(TL`The track ${r.name} is staked out: ${r.len} m. The diggers will come from ${home.name} and work from ${endWord(r.a)}. Bring the materials and the wages to its sign (or to the diggers at the front), bit by bit: the front goes as far as they cover.`);
+  logLine(TL`The track ${r.name} is staked out: ${r.len} m. The diggers will come from ${home.name} and work from ${endWord(r.a)}. Bring the materials, food for the crew and the wages to its sign (or to the diggers at the front), bit by bit: the front goes as far as they cover.`);
+  return true;
+}
+/** (0.283) What a track of `len` m takes, in short. */
+export const costShort = (len: number) => roadNeeds(len).map(([k, n]) => `${n} ${ITEMS[k].name.toLowerCase()}`).concat([TL`${foodFor(len)} food`, TL`${roadWage(len)} gold`]).join(' · ');
+/** (0.283) What a km of dirt track takes: the materials, the crew's food and the wages. */
+export const perKmWords = () => TL`A km of track takes ${roadNeeds(1000).map(([k, n]) => `${n} × ${ITEMS[k].name}`).join(', ')}, ${foodFor(1000)} food for the crew and ${roadWage(1000)} gold in wages (more stone over swamp).`;
+/** (0.283, D4) The place of the infrastructure nearest (x, z) within `r` m (roads and tracks within a fifth of it), or null. */
+export function anchorAt(x: number, z: number, r: number, not?: string): RoadEnd | null {
+  let best: RoadEnd | null = null, bd = Infinity;
+  for (const a of anchorsNear(x, z)) {
+    if (a.id === not) continue;
+    const way = a.kind === 'road' || a.kind === 'track', d = Math.hypot(a.x - x, a.z - z);
+    if (d < (way ? r / 5 : r) && d + (way ? r : 0) < bd) { bd = d + (way ? r : 0); best = a; }
+  }
+  return best;
+}
+/** (0.283, D4) The surveyors lay a way from a to b on the map (null: none). */
+export function planWay(a: RoadEnd, b: RoadEnd): { pts: [number, number][] | null; why: string } {
+  const g = roadGround();
+  if (!g) return { pts: null, why: '' };
+  const bx = nearX(b.x, a.x), far = Math.hypot(bx - a.x, b.z - a.z);
+  if (far > PROAD.len) return { pts: null, why: TL`${endWord(b)} is ${(far / 1000).toFixed(1)} km away: a survey stakes out at most ${PROAD.len / 1000} km. Plan it in parts, by a road or a track on the way.` };
+  const pts = proposeWay(g, [a.x, a.z], [bx, b.z]);
+  if (!pts) return { pts: null, why: TL`The surveyors find no way from ${endWord(a)} to ${endWord(b)}: water and steep ground in between.` };
+  return { pts, why: newRoadProblem(g, a, { ...b, x: bx }, pts, mine()) };
+}
+/** Stake out a way planned on the map. */
+export function stakePlanned(a: RoadEnd, b: RoadEnd, pts: [number, number][]): boolean {
+  const g = roadGround();
+  return !!g && stakeTrack(g, a, { ...b, x: nearX(b.x, a.x) }, pts);
 }
 /** R: the surveyors lay out the way from the last stake to the place you look at, or your map's waypoint. */
 export function proposeRoad(): boolean {

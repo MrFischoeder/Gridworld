@@ -18,6 +18,7 @@ import { stockHas, stockTake, hallNote, lacking, buildButton } from './stock';
 import { jobHTML } from './jobs';
 import { itemName } from './icons';
 import { tl, TL } from '../i18n';
+import { airRoadWhy } from '../world/roadnet';
 
 const hrs = (m: number) => (m >= 60 ? TL`${Math.floor(m / 60)} h ${Math.round(m % 60)} min` : `${Math.round(m)} min`);
 const hubOf = (id: string): Hub | undefined => hubs(G.char.world, G.char.towns, G.char.outposts).find((h) => h.id === id);
@@ -53,6 +54,8 @@ export function villagePadHTML(vid: number): string {
   if (job || jobOf(s, 'dronepad')) return job;
   if (s?.dpWait) return TL`<div class="say"><b>${PAD.name}</b>: the materials are in. Now choose where it stands: take a Survey Stake out beside the warehouse (within ${DRONE.near} m of it, outside the wall), use it and click. Level open ground, off the roads and the ground kept for other work.</div>` +
     (hasItem('fieldstake') ? tl('<div class="say" style="opacity:.8">You have a Survey Stake.</div>') : TL`<button class="opt" data-hpad="stake">Give me a Survey Stake</button>`);
+  const road = airRoadWhy('v:' + vid); // (0.283) flying after the roads
+  if (road) return TL`<div class="say"><b>${PAD.name}</b>: ${road}</div>`;
   const has = stockHas(vid), rows = padPlan(s), miss = lacking(rows, has);
   return TL`<div class="say"><b>${PAD.name}</b> <span style="opacity:.8">(${PAD.hours} h to build, ${PAD.kw} kW, one hand to tend it)</span>: ${PAD.text} Cargo drones fly from it to other warehouses with a pad on the radio, up to ${DRONE.reach / 1000} km.<br>` +
     rows.map((r) => `${itemName(r.k)} ${r.given}/${r.n}${hallNote(has(r.k), r.given, r.n)}`).join('<br>') + '</div>' +
@@ -65,6 +68,8 @@ export function villagePadClick(vid: number, what = ''): string {
     if (!s.dpWait) return tl('The pad does not wait for its ground.');
     return hasItem('fieldstake') ? tl('You have one already.') : addItem('fieldstake') ? tl('The storekeeper hands you a Survey Stake. Walk out and mark where the drone pad should go.') : tl('No room for the stake in your backpack.');
   }
+  const road = airRoadWhy('v:' + vid);
+  if (road) return road;
   const r = handOverPad(s, stockHas(vid), c.time);
   stockTake(vid, r.taken);
   if (r.wait) { gainXp(PAD.xp); return tl('All the materials are in. Now stake out where the pad goes: ask for a Survey Stake here.'); }

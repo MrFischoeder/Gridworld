@@ -24,6 +24,7 @@ import type { ItemKey } from '../data/items';
 import { VEHICLES, FUEL, EV, evCap, type VehicleModel, type VehicleParts } from '../data/vehicles';
 import { cargoGoods } from './outpostproc';
 import { tl } from '../i18n';
+import type { RoadWay } from './roadnet';
 
 export const ROUTE = {
   /** Villages further than this from the outpost cannot be served (m); roads wind: the way is this much longer. */
@@ -49,21 +50,25 @@ export interface Route {
   last?: [number, 'ok' | 'dry' | 'robbed' | 'wrecked']; robbed?: number;
   /** (0.188) The outpost was on a grid at the last settling (an electric truck charges there). */
   grid?: boolean;
+  /** (0.283, D4) The way by road (gen/roadnet.ts); absent on a route set up before 0.283 (straight across country). */
+  way?: RoadWay;
 }
 /** The route's id in the village's counters. */
 export const routeKey = (outpostId: string) => outpostId;
 /** A new route from outpost `o` to village `v`. */
-export function newRoute(o: OutpostState, v: Poi, name: string): Route {
-  const km = Math.round(worldDist(o.x, o.z, v.x, v.z) * ROUTE.detour / 100) / 10;
-  return { v: v.id, vname: name, vx: Math.round(v.x), vz: Math.round(v.z), km, k: 0, sent: {}, fed: 0 };
+export function newRoute(o: OutpostState, v: Poi, name: string, way?: RoadWay): Route {
+  const km = way ? way.km : Math.round(worldDist(o.x, o.z, v.x, v.z) * ROUTE.detour / 100) / 10;
+  const r: Route = { v: v.id, vname: name, vx: Math.round(v.x), vz: Math.round(v.z), km, k: 0, sent: {}, fed: 0 };
+  if (way) r.way = way;
+  return r;
 }
 /** Minutes one way, and a whole round trip with loading at both ends. */
-export const legOf = (r: Route) => Math.ceil(r.km * 1000 / ROUTE.speed);
+export const legOf = (r: Route) => Math.ceil((r.way ? r.way.t : r.km) * 1000 / ROUTE.speed);
 export const periodOf = (r: Route) => 2 * (legOf(r) + ROUTE.load);
 /** Litres a round trip burns. */
-export const tripFuel = (r: Route, m: VehicleModel) => Math.round(2 * r.km * VEHICLES[m].fuelUse * (FUEL.cruise + (1 - FUEL.cruise) * 0.5) * 10) / 10;
+export const tripFuel = (r: Route, m: VehicleModel) => Math.round(2 * r.km * (r.way?.f ?? 1) * VEHICLES[m].fuelUse * (FUEL.cruise + (1 - FUEL.cruise) * 0.5) * 10) / 10;
 /** (0.188, stage O7) kWh a round trip takes from an electric truck's battery. */
-export const tripKwh = (r: Route, m: VehicleModel) => Math.round(2 * r.km * EV[m].use * (FUEL.cruise + (1 - FUEL.cruise) * 0.5) * 10) / 10;
+export const tripKwh = (r: Route, m: VehicleModel) => Math.round(2 * r.km * (r.way?.f ?? 1) * EV[m].use * (FUEL.cruise + (1 - FUEL.cruise) * 0.5) * 10) / 10;
 export const isElectric = (t: RouteTruck | undefined) => t?.parts.ev !== undefined;
 /** The truck's energy now and what a round trip takes, with the unit ('L' diesel, 'kWh' battery). */
 export function truckEnergy(r: Route): [number, number, 'L' | 'kWh'] {

@@ -20,6 +20,7 @@ import { stockHas, stockTake, hallNote, lacking, buildButton } from './stock';
 import { jobHTML } from './jobs';
 import { itemName } from './icons';
 import { tl, TL } from '../i18n';
+import { airRoadWhy } from '../world/roadnet';
 
 const hubOf = (id: string): Hub | undefined => hubs(G.char.world, G.char.towns, G.char.outposts).find((h) => h.id === id);
 const btn = (attr: (v: string) => string, v: string, t: string) => `<button class="opt" ${attr(v)}>${t}</button>`;
@@ -39,6 +40,8 @@ export function villageMastHTML(vid: number): string {
   if (!known()) return TL`<div class="say" style="opacity:.7"><b>${AIRMAST.name}</b>: the plans for it are lost (Aviation, on an old data carrier).</div>`;
   if (s?.amWait) return TL`<div class="say"><b>${AIRMAST.name}</b>: the materials are in. Now choose where it stands: take a Survey Stake out beside the warehouse (within ${AIRMAST.near} m of it, outside the wall), use it and click. Its airship lies on beyond it, away from you, so the ground there must be clear and no higher than the mast's foot.</div>` +
     (hasItem('fieldstake') ? tl('<div class="say" style="opacity:.8">You have a Survey Stake.</div>') : TL`<button class="opt" data-hamast="stake">Give me a Survey Stake</button>`);
+  const road = airRoadWhy('v:' + vid); // (0.283) flying after the roads
+  if (road) return TL`<div class="say"><b>${AIRMAST.name}</b>: ${road}</div>`;
   const has = stockHas(vid), rows = amastPlan(s), miss = lacking(rows, has);
   return TL`<div class="say"><b>${AIRMAST.name}</b> <span style="opacity:.8">(${AIRMAST.hours} h to build, ${AIRMAST.kw} kW, one hand to tend it)</span>: ${AIRMAST.text}<br>` +
     rows.map((r) => `${itemName(r.k)} ${r.given}/${r.n}${hallNote(has(r.k), r.given, r.n)}`).join('<br>') + '</div>' +
@@ -52,6 +55,8 @@ export function villageMastClick(vid: number, what = ''): string {
     return hasItem('fieldstake') ? tl('You have one already.') : addItem('fieldstake') ? tl('The storekeeper hands you a Survey Stake. Walk out and mark where the mooring mast should stand.') : tl('No room for the stake in your backpack.');
   }
   if (!known()) return tl('The plans for it are lost.');
+  const road = airRoadWhy('v:' + vid);
+  if (road) return road;
   const r = handOverAmast(s, stockHas(vid), c.time);
   stockTake(vid, r.taken);
   if (r.wait) { gainXp(AIRMAST.xp); return tl('All the materials are in. Now stake out where the mast stands: ask for a Survey Stake here.'); }

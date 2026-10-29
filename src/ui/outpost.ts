@@ -28,6 +28,7 @@ import { carried, takeFrom, putAway } from './market';
 import { hubs, hubAt, hubWorks } from '../gen/warehouses';
 import { withOutpost } from './stock';
 import { $, showToast, logLine } from './hud';
+import { roadBetween, wayWords, airRoadWhy } from '../world/roadnet';
 import { lockPointer } from './input';
 import { givesText } from '../world/lodes';
 import { procOf } from '../gen/outpostproc';
@@ -58,7 +59,7 @@ function partBody(o: OutpostState, p: OutpostPart, name: string, text: string, p
   if (have >= maxOf(p)) return `<div class="say"><b style="color:var(--xp)">${wall ? WALL[WALL.length - 1].name : name}${many ? TL`s ${have}/${maxOf(p)}` : ''} ✓</b></div>`;
   if (o.job?.p === p) return TL`<div class="say"><b>${name}${tally}</b>: the builders are at ${many && have ? tl('another') : tl('it')}, ${hrs(jobEnd(o) - G.char.time)} left.</div>`;
   const rows = partPlan(o, p).map((r) => `${itemName(r.k)} ${r.given}/${r.n}${r.given >= r.n ? ' ✓' : TL` · with you: ${carried(r.k, pos)}`}`).join('<br>');
-  const why = partProblem(o, p);
+  const why = partProblem(o, p) || (p === 'pad' || p === 'amast' ? airRoadWhy(Object.entries(G.char.outposts).find(([, q]) => q === o)?.[0] ?? '') : ''); // (0.283) flying after the roads
   return TL`<div class="say"><b>${name}${tally}</b> <span style="opacity:.8">(${hoursOf(o, p)} h to build${many && have ? tl(' another') : ''})</span>: ${text}<br>${rows}</div>` +
     (why ? `<div class="say" style="opacity:.7">${why}</div>` : TL`<button class="opt" data-op="give:${p}">Hand over materials for the ${many && have ? tl('next ') : ''}${name.toLowerCase()}</button>`);
 }
@@ -72,10 +73,11 @@ function routeHTML(id: string, o: OutpostState): string {
   if (!r) {
     const vs = nearVillages(o);
     return TL`<div class="say"><b>Convoy route</b>: a truck of yours can haul this outpost's crates to a village's hall on a timetable, and bring food back for the pantry.</div>` +
-      (vs.length ? vs.map(({ v, d }) => TL`<button class="opt" data-op="route:${v.id}">Set up a route to ${v.name} (${(d * ROUTE.detour / 1000).toFixed(1)} km by road)</button>`).join('') : TL`<div class="say" style="opacity:.7">No village within ${ROUTE.reach / 1000} km.</div>`);
+      TL`<div class="say" style="opacity:.8">The convoys drive the roads: build a track from the outpost to a road or a village first (the Surveyor's Poles).</div>` +
+      (vs.length ? vs.map(({ v }) => { const w = roadBetween(id, 'v:' + v.id, o.x); return w ? TL`<button class="opt" data-op="route:${v.id}">Set up a route to ${v.name} (${wayWords(w)})</button>` : TL`<div class="say" style="opacity:.7">${v.name}: no road joins it to the outpost yet.</div>`; }).join('') : TL`<div class="say" style="opacity:.7">No village within ${ROUTE.reach / 1000} km.</div>`);
   }
   const P = periodOf(r), t = r.truck, s0 = c.towns[r.v];
-  let s = TL`<div class="say"><b>Convoy route</b> to ${r.vname}: ${r.km} km by road, ${hrs(legOf(r))} each way, a round trip every ${hrs(P)}. Bandits rob ${Math.round(robChance(c.world, o, r) * 100)}% of the trips${t?.parts.gun ? tl(' (the roof cannon helps)') : ''}.`;
+  let s = (r.way ? TL`<div class="say"><b>Convoy route</b> to ${r.vname}: ${wayWords(r.way)}` : TL`<div class="say"><b>Convoy route</b> to ${r.vname}: ${r.km} km across country (set up before the convoys kept to the roads)`) + TL`, ${hrs(legOf(r))} each way, a round trip every ${hrs(P)}. Bandits rob ${Math.round(robChance(c.world, o, r) * 100)}% of the trips${t?.parts.gun ? tl(' (the roof cannon helps)') : ''}.`;
   const sent = Object.entries(r.sent).filter(([, n]) => n).map(([g, n]) => `${n} × ${ITEMS[g as ItemKey].name}`).join(', ');
   if (sent) s += TL`<br>Delivered so far: ${sent}.`;
   const wait = waiting(r, s0, id);
@@ -270,7 +272,9 @@ export function outpostClick(t: HTMLElement): boolean {
     } else if (a === 'route' && !o.route) { // (0.187) the convoy route
       const v = allVillages(c.world).find((q) => q.id === +x);
       if (!v || wdist(o.x, o.z, v.x, v.z) > ROUTE.reach) { msg = tl('Too far.'); return; }
-      o.route = newRoute(o, v, v.name); msg = TL`A route to ${v.name} is staked out. Hand over a truck to run it.`;
+      const way = roadBetween(l.id, 'v:' + v.id, o.x);
+      if (!way) { msg = TL`No road joins the outpost to ${v.name}: build a track first.`; return; }
+      o.route = newRoute(o, v, v.name, way); msg = TL`A route to ${v.name} is set up, ${wayWords(way)}. Hand over a truck to run it.`;
     } else if (a === 'unroute' && o.route && !o.route.truck) {
       delete o.route; msg = tl('You give up the route.');
     } else if (a === 'truck' && o.route && !o.route.truck) {

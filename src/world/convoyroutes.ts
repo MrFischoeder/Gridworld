@@ -10,6 +10,7 @@ import { convoyModel } from './vehicles';
 import { convoyAt, wrecked, type Route } from '../gen/routes';
 import { nearX } from '../gen/regions';
 import type { OutpostState } from '../gen/outposts';
+import { wayPose } from '../gen/roadnet';
 
 const DRAW_R = 600;
 interface Truck { g: THREE.Group; key: string }
@@ -23,6 +24,7 @@ export function routeEnds(o: OutpostState, r: Route, px: number): [number, numbe
 export function truckAt(o: OutpostState, r: Route, now: number, px: number): [number, number, number] | null {
   if (!r.truck) return null;
   const [ax, az, bx, bz] = routeEnds(o, r, px), yaw = Math.atan2(bx - ax, bz - az), cv = convoyAt(r, now);
+  if (r.way) return wayPose(r.way.pts, cv.at === 'parked' || cv.at === 'outpost' ? 'start' : cv.at === 'village' ? 'end' : cv.at, cv.p, px); // (0.283) along its road
   if (cv.at === 'parked' || cv.at === 'outpost') return [ax - Math.cos(yaw) * 4, az + Math.sin(yaw) * 4, yaw];
   if (cv.at === 'village') return [bx, bz, yaw + Math.PI];
   const p = cv.at === 'out' ? cv.p : 1 - cv.p;

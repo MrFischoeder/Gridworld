@@ -32,12 +32,14 @@ Drogi z ziarna świata (`gen/roads.ts`, między wioskami) zostają bez zmian. Dr
   - Jazda: prędkość maksymalna i spalanie zależą od tego, po czym jadą koła: poza drogą 80% prędkości i 120% paliwa, dukt i szlak 100%, stara droga między wioskami 108% / 95%, żwirówka 112% / 92%, utwardzona 125% / 85%. HUD pojazdu pokazuje nawierzchnię.
   - Gra wieloosobowa: ulepszenie siedzi we wspólnej drodze (`PlayerRoad.cls`, `up`), oddawanie pod blokadą drogi, czoło z zegara; każda gra liczy jazdę swojego kierowcy. Serwer i protokół bez zmian.
   - Na później (z D5): zużycie nawierzchni, mostki przepustowe.
-- **D4. Konwoje po sieci dróg.** Do zrobienia:
-  - Graf sieci: węzły to bramy, magazyny, placówki i skrzyżowania. Krawędzie to drogi z ziarna (`network`) i gotowe drogi graczy. Łączenie na wspólnych końcach i punktach przyłączenia (`RoadEnd` kind road/track).
-  - Planowanie trasy (Dijkstra jak `planRoute`) z kosztem: długość ÷ prędkość klasy drogi; przełaj z karą.
-  - Linie konwojów między magazynami (`gen/hublines.ts`) i trasy placówek (`gen/routes.ts`) liczą czas i paliwo z trasy po sieci, a nie z linii prostej. Ciężarówki rysowane jadą po drodze.
-  - Okno linii pokazuje trasę i jej klasę. Bez połączenia drogą konwój jedzie przełajem (wolniej, więcej paliwa, większe ryzyko).
-  - Zgodność: istniejące linie przechodzą na nowe liczenie od następnego kursu (kotwice kursów zostają).
+- **D4. Konwoje po sieci dróg.** *(Zrobione w 0.283.0.)*
+  - Sieć (`gen/roadnet.ts`): węzły to wioski (ich magazyny), placówki, porty, dzikie magazyny i obozy ekip starych fabryk; krawędzie to drogi z ziarna między wioskami i gotowe drogi graczy. Droga gracza kończąca się na drodze z ziarna albo innej drodze gracza łączy się z nią w skrzyżowaniu, które dzieli tamtą drogę na dwie części.
+  - Trasa: najszybsza drogą (Dijkstra po czasie przejazdu, lepsza nawierzchnia szybsza). Linia konwojów między magazynami i trasa placówki do wioski dają się otworzyć tylko tam, gdzie łączy je droga. Czas kursu i paliwo liczone są z trasy (długość, nawierzchnia), a ciężarówki jadą po drodze. Mapy rysują linie wzdłuż dróg.
+  - Zgodność: linie i trasy otwarte przed 0.283 zostają przy linii prostej. W oknie linii jest przycisk „Poślij ją szybszą drogą”, gdy pojawi się szybsza droga (rozkład zaczyna się od nowa, kursy zaległe są rozliczone).
+  - Lotnictwo po drogach (nowe światy): lądowisko dronów, maszt sterowców i wiatrakowiec można zacząć budować przy magazynie dopiero wtedy, gdy droga łączy go z zakładami (placówką, kamieniołomem, szybem, portem albo obozem starej fabryki). To, co już stoi, zostaje.
+  - Jedzenie dla ekipy: 4 skrzynki jedzenia na km duktu (zboże, ziemniaki, marchew, jajka, mleko, mięso liczone w jednostkach jak w spiżarni placówek), na żwirówkę 60% tego, na bruk tyle samo co na dukt. Przynoszone po trochu, czoło idzie tylko tak daleko, jak starczy też jedzenia. Drogi wytyczone wcześniej go nie potrzebują.
+  - Planowanie na mapie: z GPS na mapie satelitarnej i z tyczkami przy sobie punkt trasy przy bramie, placówce, magazynie albo drodze i T, potem przy drugim końcu i T: mierniczy wyznaczają przebieg, mapa pokazuje go z kosztem (kamień, deski, jedzenie, zapłata), trzecie T go wytycza, Backspace porzuca plan. Bez GPS tyczy się pieszo, tyczka po tyczce, a podpowiedź pokazuje koszt dotychczasowego odcinka; przy starcie tyczenia dziennik podaje koszt kilometra.
+  - Gra wieloosobowa: sieć wynika z ziarna i wspólnych dróg, tak samo w każdej grze; linia i trasa trzymają swój przebieg we wspólnym stanie, więc ciężarówka jest w tym samym miejscu u wszystkich. Serwer i protokół bez zmian.
 
 - **D5. Zagrożenia i utrzymanie.** Do zrobienia:
   - Zasadzki i rajdy na drogach graczy (dziś tylko na drogach z ziarna): `tryAmbush` bierze też drogi graczy. Ryzyko konwoju z D4 rośnie z groźnością terenu na trasie.
@@ -56,8 +58,8 @@ Drogi z ziarna świata (`gen/roads.ts`, między wioskami) zostają bez zmian. Dr
   - Drogi wspólne (co-op) zostają otwarte dla wszystkich.
 
 ## Co jeszcze potrzeba, żeby drogi i konwoje działały jak należy
-1. ~~Jazda po drogach (D3)~~: zrobione w 0.282 (pojazdy są szybsze i oszczędniejsze na drogach, wolniejsze poza nimi). Konwoje NPC i linie jeszcze tego nie liczą (D4).
-2. **Sieć zamiast linii prostych (D4)**: linie konwojów i trasy placówek liczą czas i ryzyko z odległości w linii prostej, więc drogi jeszcze ich nie skracają ani nie zabezpieczają.
+1. ~~Jazda po drogach (D3)~~: zrobione w 0.282 (pojazdy są szybsze i oszczędniejsze na drogach, wolniejsze poza nimi). Linie konwojów liczą to od 0.283; karawany NPC jeszcze nie (D6).
+2. ~~Sieć zamiast linii prostych (D4)~~: zrobione w 0.283. Ryzyko rabunku nadal liczy groźność w połowie odległości w linii prostej (D5).
 3. **Ryzyko na trasie (D5)**: rabunek konwojów zależy od groźności w połowie drogi, a nie od tego, czy jadą drogą i czy jest strzeżona.
 4. **Utrzymanie (D5)**: drogi są wieczne. Zużycie da powód do domów drogowych i ekip.
 5. **Wątek szukający miejsc dawnych zakładów** (`installworker.ts`) liczy teren bez dróg graczy (różnica znikoma, do dorobienia przy D3).
@@ -65,5 +67,6 @@ Drogi z ziarna świata (`gen/roads.ts`, między wioskami) zostają bez zmian. Dr
 ## Nie zsynchronizowane / ograniczenia
 - Ekipa D2 jest liczona przy starcie robót; ludzie w domu nie mają jeszcze stanowiska „przy drodze” (`postsOf`), więc ich liczba nie spada w trakcie budowy.
 - Osobny wątek, który szuka miejsc dawnych zakładów (`installworker.ts`), liczy teren bez dróg graczy (drogi idą po naturalnym gruncie, różnica znikoma).
-- Zasadzki bandytów i konwoje jeszcze nie korzystają z dróg graczy (D4, D5).
+- Zasadzki bandytów jeszcze nie korzystają z dróg graczy (D5); karawany NPC jeżdżą tylko drogami z ziarna (D6).
+- Linie i trasy otwarte przed 0.283 jadą dalej w linii prostej, dopóki ktoś nie pośle ich szybszą drogą (trasy placówek nie mają tego przycisku: trzeba je zamknąć i otworzyć na nowo).
 - Nazwy dróg zapisuje gra, która je wytyczyła, w swoim języku.

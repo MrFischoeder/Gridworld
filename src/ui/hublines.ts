@@ -16,6 +16,7 @@ import { carried, takeFrom } from './market';
 import { dropWay } from '../gen/transit';
 import { itemName } from './icons';
 import { tl, TL } from '../i18n';
+import { roadBetween, wayWords } from '../world/roadnet';
 
 const hrs = (m: number) => (m >= 60 ? TL`${Math.floor(m / 60)} h ${Math.round(m % 60)} min` : `${Math.round(m)} min`);
 const hubOf = (id: string): Hub | undefined => hubs(G.char.world, G.char.towns, G.char.outposts).find((h) => h.id === id);
@@ -41,10 +42,12 @@ export function hubLineHTML(id: string, attr: (v: string) => string): string {
   if (!l) {
     if (why) return s + TL` It needs the radio link: a working radio mast here and at the other warehouse.</div>`;
     const to = linkedHubs(c.world, c.towns, c.outposts, id, c.time).filter((h) => worldDist(h.x, h.z, me.x, me.z) <= HLINE.reach).sort((a, b) => worldDist(a.x, a.z, me.x, me.z) - worldDist(b.x, b.z, me.x, me.z));
-    return s + '</div>' + (to.length ? to.slice(0, 6).map((h) => btn(attr, 'new:' + h.id, TL`Open a line to ${h.name} (${(worldDist(h.x, h.z, me.x, me.z) * ROUTE.detour / 1000).toFixed(1)} km by road)`)).join('') : TL`<div class="say" style="opacity:.7">No warehouse on the radio within ${HLINE.reach / 1000} km.</div>`);
+    s += TL` The convoys drive the roads: only a warehouse joined to this one by road (the old roads between the villages, or a track the players built) can be served.</div>`;
+    return s + (to.length ? to.slice(0, 6).map((h) => { const w = roadBetween(id, h.id, me.x); return w ? btn(attr, 'new:' + h.id, TL`Open a line to ${h.name} (${wayWords(w)})`) : TL`<div class="say" style="opacity:.7">${h.name}: no road joins it to this warehouse. Build a track (the Surveyor's Poles).</div>`; }).join('') : TL`<div class="say" style="opacity:.7">No warehouse on the radio within ${HLINE.reach / 1000} km.</div>`);
   }
   const t = l.truck, other = l.to.startsWith('v:') ? c.towns[l.to.slice(2)]?.rcv : c.outposts[l.to]?.rcv;
-  s += TL`<br>To ${l.toName}: ${l.km} km by road, ${hrs(hlLeg(l))} each way, a round trip every ${hrs(hlPeriod(l))}. Bandits rob ${Math.round(hlRob(c.world, me, l) * 100)}% of the trips${t?.parts.gun ? tl(' (the roof cannon helps)') : ''}.`;
+  s += l.way ? TL`<br>To ${l.toName}: ${wayWords(l.way)}, ${hrs(hlLeg(l))} each way` : TL`<br>To ${l.toName}: ${l.km} km across country (opened before the convoys kept to the roads), ${hrs(hlLeg(l))} each way`;
+  s += TL`, a round trip every ${hrs(hlPeriod(l))}. Bandits rob ${Math.round(hlRob(c.world, me, l) * 100)}% of the trips${t?.parts.gun ? tl(' (the roof cannon helps)') : ''}.`;
   if (why) s += TL` <span style="color:#ff6a4a">The radio here is silent: the convoy stays home.</span>`;
   const sent = Object.entries(l.sent).filter(([, n]) => n).map(([g, n]) => `${n} × ${ITEMS[g as ItemKey].name}`).join(', ');
   if (sent) s += TL`<br>Delivered so far: ${sent}.`;
@@ -65,7 +68,9 @@ export function hubLineHTML(id: string, attr: (v: string) => string): string {
   const kinds = [...new Set([...(Object.keys(holdOf(id)) as ItemKey[]), ...(l.only ?? [])])].sort((a, b) => ITEMS[a].name.localeCompare(ITEMS[b].name));
   s += TL`<br>It carries: ${l.only?.length ? l.only.map((k) => ITEMS[k].name).join(', ') : tl('anything in the hold, most first')}.</div>`;
   if (kinds.length) s += `<div class="say">${tl('Pick what it carries:')} ` + kinds.map((k) => `<button class="buy${l.only?.includes(k) ? '' : ' off'}" style="display:inline-block;width:auto;margin:2px" ${attr('only:' + k)}>${itemName(k)}</button>`).join('') + (l.only?.length ? ' ' + `<button class="buy" style="display:inline-block;width:auto;margin:2px" ${attr('all')}>${tl('Anything')}</button>` : '') + '</div>';
-  return s + (unit === 'kWh' ? '' : btn(attr, 'fuel', tl('Pour fuel canisters into the truck'))) + btn(attr, 'recall', tl('Recall the truck (it parks here)'));
+  const better = roadBetween(id, l.to, me.x), quicker = better && (!l.way || better.t < l.way.t * 0.98);
+  return s + (unit === 'kWh' ? '' : btn(attr, 'fuel', tl('Pour fuel canisters into the truck'))) + btn(attr, 'recall', tl('Recall the truck (it parks here)')) +
+    (quicker ? btn(attr, 'reroute', TL`Send it by the quicker road now (${wayWords(better!)})`) : '');
 }
 /** A click on warehouse `id`'s line row (under its lock). Returns the message. */
 export function hubLineClick(id: string, what: string): string {
@@ -76,7 +81,9 @@ export function hubLineClick(id: string, what: string): string {
   if (a === 'new' && !l) {
     const to = linkedHubs(c.world, c.towns, c.outposts, id, c.time).find((h) => h.id === x);
     if (!to || worldDist(to.x, to.z, me.x, me.z) > HLINE.reach) return tl('That warehouse is not on the radio within reach.');
-    setLine(id, newHubLine(me, to, c.time)); return TL`A convoy line to ${to.name} is open. Hand a truck over to run it.`;
+    const way = roadBetween(id, to.id, me.x);
+    if (!way) return TL`No road joins ${to.name} to this warehouse: build a track first.`;
+    setLine(id, newHubLine(me, to, c.time, way)); return TL`A convoy line to ${to.name} is open, ${wayWords(way)}. Hand a truck over to run it.`;
   }
   if (!l) return '';
   if (a === 'drop' && !l.truck) { setLine(id, undefined); return tl('You give up the line.'); }
@@ -99,6 +106,13 @@ export function hubLineClick(id: string, what: string): string {
     const n = hlFuel(l, carried('fuel', me));
     if (n) takeFrom('fuel', n, me);
     return n ? TL`Poured ${n} canisters into the truck.` : tl('No canisters with you, or the tank is full.');
+  }
+  if (a === 'reroute') { // (0.283) the trips due are settled above; the timetable starts again on the new way
+    const way = roadBetween(id, l.to, me.x);
+    if (!way) return '';
+    l.way = way; l.km = way.km;
+    if (l.truck) { l.t0 = c.time; l.k = 0; delete l.last; }
+    return TL`The convoy takes the new way: ${wayWords(way)}.`;
   }
   if (a === 'only') { const k = x as ItemKey, on = l.only ?? []; l.only = on.includes(k) ? on.filter((q) => q !== k) : [...on, k]; if (!l.only.length) delete l.only; return ''; }
   if (a === 'all') { delete l.only; return ''; }

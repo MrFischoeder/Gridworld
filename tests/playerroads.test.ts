@@ -72,7 +72,7 @@ describe('(0.280) tracks the heroes build', () => {
     expect(r.v).toBe(2);
     const stone = r.len / 16;
     // half of everything: covers ~150 m, enough to start; the home sends 4
-    const half = (k: string) => Math.ceil(({ stone: Math.ceil(300 / 16) + 10, planks: Math.ceil(300 / 22) } as Record<string, number>)[k] / 2);
+    const half = (k: string) => Math.ceil((({ stone: Math.ceil(300 / 16) + 10, planks: Math.ceil(300 / 22), grain: 2 } as Record<string, number>)[k] ?? 0) / 2);
     void stone;
     const st = handOverRoad(r, half as never, Math.ceil(105 / 2), 10, () => 4);
     expect(st.started).toBe(true); expect(r.crew).toBe(4);
@@ -120,7 +120,7 @@ describe('(0.280) tracks the heroes build', () => {
     expect(startUpgrade(r, end)).toBe(true);
     expect(terrainWays({ t4: r }, end)[0].cls).toBe(0);
     // a third of the gravel: the front waits at the cover
-    handOverUp(r, (k) => Math.ceil((upNeeds(r.len, 1).find(([i]) => i === k)?.[1] ?? 0) / 2), 999, end + 10, () => 5);
+    handOverUp(r, (k) => Math.ceil((upNeeds(r.len, 1).find(([i]) => i === k)?.[1] ?? (k === 'grain' ? 2 : 0)) / 2), 999, end + 10, () => 5);
     expect(r.up!.crew).toBe(5);
     expect(upStalled(r, end + 1e5)).toBe('supply');
     const half = upFrontAt(r, end + 1e5);

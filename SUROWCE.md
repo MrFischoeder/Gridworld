@@ -516,7 +516,7 @@ Materiały biorą się z hali wioski; złoto płacisz ze swojej sakiewki (opłat
 ### 3.11 Mosty, doki, łodzie i statki (budujesz sam, materiały z plecaka i bagażnika)
 
 - **Most na brodzie drogi** albo w wybranym miejscu (Bridge Kit u kowala): na długość pomostu: Planks 1 na 0.8 m, Stone 1 na 4 m, Nails 1 na 2 m, Rope 1 na 6 m (np. pomost 40 m: 50 × Planks, 10 × Stone, 20 × Nails, 7 × Rope)
-- **Droga gruntowa** (Tyczki geodety u kowala, od 0.280; między bramą wioski, placówką, magazynem, portem albo drogą): Stone 1 na 16 m, Planks 1 na 22 m, zapłata dla kopaczy 0.35 zł na metr, na bagnie 1 × Stone więcej na 4 m podsypki (np. 1 km: 63 × Stone, 46 × Planks, 350 zł; od 0.281 przynoszone po trochu, ekipa 2–8 kopaczy z najbliższej wioski lub placówki, 0.45 m na minutę gry na kopacza)
+- **Droga gruntowa** (Tyczki geodety u kowala, od 0.280; między bramą wioski, placówką, magazynem, portem albo drogą): Stone 1 na 16 m, Planks 1 na 22 m, zapłata dla kopaczy 0.35 zł na metr, na bagnie 1 × Stone więcej na 4 m podsypki (np. 1 km: 63 × Stone, 46 × Planks, 350 zł, od 0.283 także 4 skrzynki jedzenia na km dla ekipy (zboże, ziemniaki, marchew, jajka, mleko, mięso; nawierzchnia: żwir 0.6, bruk 1 tego); od 0.281 przynoszone po trochu, ekipa 2–8 kopaczy z najbliższej wioski lub placówki, 0.45 m na minutę gry na kopacza)
 - **Obóz drogowy** (od 0.281, gdy droga sięga dalej niż 2200 m od domu ekipy): 16 × Planks, 12 × Nails, 4 × Rope, 2 × Ravager Hide
 - **Równiarka parowa** (od 0.281, czoło robót ×1.8): 2 × Engine Parts, 2 × Crate of Gears & Bearings, 2 × Steel Ingots
 - **Żwirówka** (od 0.282, ulepszenie gotowej drogi, z duktu): Stone 1 na 5 m, Sack of Quartz Sand 1 na 60 m, zapłata 0.2 zł na metr; pojazdy jadą po niej szybciej i palą mniej

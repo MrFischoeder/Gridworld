@@ -15,6 +15,7 @@ import { store } from './airships';
 import { hallNote } from './stock';
 import { itemName } from './icons';
 import { tl, TL } from '../i18n';
+import { airRoadWhy } from '../world/roadnet';
 
 const hubOf = (id: string): Hub | undefined => hubs(G.char.world, G.char.towns, G.char.outposts).find((h) => h.id === id);
 const btn = (attr: (v: string) => string, v: string, t: string) => `<button class="opt" ${attr(v)}>${t}</button>`;
@@ -30,6 +31,8 @@ export function copterYardHTML(id: string, attr: (v: string) => string): string 
   if (!known()) return s + tl('<br><span style="opacity:.7">The plans for it are lost (Rotorcraft, on an old data carrier).</span></div>');
   if (!hubWorks(c.world, me, c.towns, c.outposts, c.time)) return s + tl('<br><span style="opacity:.7">The warehouse stands idle (no storekeepers or no power): nothing is built here.</span></div>');
   if ((c.copters ?? []).length >= COPTER.max) return s + TL`<br><span style="opacity:.7">This world has ${COPTER.max} rotorcrafts already.</span></div>`;
+  const road = copBuildOf(id, c.towns, c.outposts) ? '' : airRoadWhy(id); // (0.283) flying after the roads
+  if (road) return s + `<br><span style="opacity:.7">${road}</span></div>`;
   const has = store(id).has, rows = copRows(b);
   s += TL`<br>${b ? tl('Going up on the apron') : tl('Needs')}:<br>` + rows.map((r) => `${itemName(r.k)} ${r.given}/${r.n}${hallNote(has(r.k), r.given, r.n)}`).join('<br>') + '</div>';
   return s + btn(attr, b ? 'give' : 'start', b ? tl('Hand over from the warehouse\'s stock') : tl('Start a rotorcraft')) + (b && !Object.values(b.given).some((n) => n) ? btn(attr, 'drop', tl('Take it down')) : '');
@@ -39,6 +42,7 @@ export function copterYardClick(id: string, what: string): string {
   const c = G.char, me = hubOf(id), st = id.startsWith('v:') ? (c.towns[id.slice(2)] ??= {}) : c.outposts[id];
   if (!me || !st || !known() || !hubWorks(c.world, me, c.towns, c.outposts, c.time)) return '';
   if ((c.copters ?? []).length >= COPTER.max) return tl('No more rotorcrafts can be built on this world.');
+  if (what === 'start' && !st.cbuild && airRoadWhy(id)) return airRoadWhy(id);
   if (what === 'start' && !st.cbuild) { st.cbuild = { given: {} }; return tl('You lay out the frame on the apron.'); }
   const b = st.cbuild;
   if (!b) return '';

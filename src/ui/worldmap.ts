@@ -8,6 +8,9 @@ import { allSkyLines } from '../gen/skylines';
 import { allAirLines } from '../gen/airlines';
 import { allHubLines, hlWrecked } from '../gen/hublines';
 import { truckAt } from '../world/convoyroutes';
+import { anchorAt, planWay, stakePlanned, endWord, costShort } from '../world/playerroads';
+import type { RoadEnd } from '../gen/playerroads';
+import { wayNear } from '../gen/roadnet';
 import { hubs, hexCorners, parseHex, HEX } from '../gen/warehouses';
 import { biomeAt, biomeName, BIOMES, BIOME_KINDS, type BiomeHere } from '../gen/biomes';
 import { wrecked } from '../gen/routes';
@@ -332,7 +335,9 @@ function drawArea(ctx: CanvasRenderingContext2D, w: number, h: number, ppm: numb
     const r = o?.route;
     if (!r) continue;
     const ax = X(nearX(o.x, px)), ay = Z(o.z), bx = X(nearX(r.vx, nearX(o.x, px))), by = Z(r.vz);
-    ctx.strokeStyle = '#ffd060'; ctx.globalAlpha = 0.6; ctx.setLineDash([6, 5]); ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.stroke(); ctx.setLineDash([]); ctx.globalAlpha = 1;
+    ctx.strokeStyle = '#ffd060'; ctx.globalAlpha = 0.6; ctx.setLineDash([6, 5]); ctx.beginPath();
+    if (r.way) wayLine(ctx, r.way.pts, px, X, Z); else { ctx.moveTo(ax, ay); ctx.lineTo(bx, by); } // (0.283) along its road
+    ctx.stroke(); ctx.setLineDash([]); ctx.globalAlpha = 1;
     const at = truckAt(o, r, G.char.time, px);
     if (at) { ctx.fillStyle = wrecked(r) ? '#ff6a4a' : '#ffd060'; ctx.fillRect(X(at[0]) - 3, Z(at[1]) - 3, 6, 6); }
   }
@@ -385,7 +390,9 @@ function drawArea(ctx: CanvasRenderingContext2D, w: number, h: number, ppm: numb
       const hb = byId.get(home);
       if (!hb) continue;
       const ax = X(nearX(hb.x, px)), ay = Z(hb.z), bx = X(nearX(l.tx, nearX(hb.x, px))), by = Z(l.tz);
-      ctx.strokeStyle = '#ffb347'; ctx.globalAlpha = 0.7; ctx.setLineDash([6, 5]); ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.stroke(); ctx.setLineDash([]); ctx.globalAlpha = 1;
+      ctx.strokeStyle = '#ffb347'; ctx.globalAlpha = 0.7; ctx.setLineDash([6, 5]); ctx.beginPath();
+      if (l.way) wayLine(ctx, l.way.pts, px, X, Z); else { ctx.moveTo(ax, ay); ctx.lineTo(bx, by); }
+      ctx.stroke(); ctx.setLineDash([]); ctx.globalAlpha = 1;
       const at = hubTruckAt(hb, l, G.char.time, px);
       if (at) { ctx.fillStyle = hlWrecked(l) ? '#ff6a4a' : '#ffb347'; ctx.fillRect(X(at[0]) - 3, Z(at[1]) - 3, 6, 6); }
     }
@@ -468,6 +475,10 @@ function drawArea(ctx: CanvasRenderingContext2D, w: number, h: number, ppm: numb
   drawPlayerArrow(ctx, w / 2, h / 2);
 }
 
+/** (0.283) A convoy's way by road as a path on the map. */
+function wayLine(ctx: CanvasRenderingContext2D, pts: [number, number][], px: number, X: (x: number) => number, Z: (z: number) => number) {
+  wayNear(pts, px).forEach(([x, z], i) => (i ? ctx.lineTo(X(x), Z(z)) : ctx.moveTo(X(x), Z(z))));
+}
 export function drawWorldMini(ctx: CanvasRenderingContext2D, size: number) {
   explore();
   drawArea(ctx, size, size, 1, false);
@@ -543,6 +554,48 @@ export function routeAhead(ahead = 120): [number, number] | null {
   while (i < P.length) { const sx = P[i][0] - x, sz = P[i][1] - z, L = Math.hypot(sx, sz); if (L >= left) return [x + sx / L * left, z + sz / L * left]; left -= L; x = P[i][0]; z = P[i][1]; i++; }
   return end;
 }
+/** (0.283, PLAN_DROG.md D4) A track planned on the GPS map: T by the waypoint picks the start, then the end (the
+ *  surveyors lay out the way), then T again stakes it out. Yours alone until it is staked. */
+let plan: { a: RoadEnd; b?: RoadEnd; pts?: [number, number][] | null; why?: string } | null = null;
+export function planTrack(): string {
+  const c = G.char, say = (m: string) => { logLine(m); return m; };
+  if (!gpsOn() || mapLocked()) return say(tl('No GPS: without the satellite link a track is staked out on foot with the Surveyor\'s Poles, stake by stake.'));
+  if (!hasItem('roadkit')) return say(tl('You need the Surveyor\'s Poles with you to plan a track.'));
+  if (plan?.pts && !plan.why) {
+    if (stakePlanned(plan.a, plan.b!, plan.pts)) { plan = null; return tl('Track staked out.'); }
+    return '';
+  }
+  const wp = c.waypoint;
+  if (!wp) return say(tl('Set a waypoint (right click) by a village gate, an outpost, a warehouse or a road, then press T.'));
+  const x = nearX(wp[0], G.pos.x), z = wp[1];
+  if (!plan || plan.pts !== undefined) {
+    const a = anchorAt(x, z, 160);
+    if (!a) return say(tl('No gate, outpost, warehouse or road by the waypoint: move it nearer one.'));
+    plan = { a };
+    return say(TL`The track starts at ${endWord(a)}. Now set the waypoint at the other end and press T.`);
+  }
+  const b = anchorAt(x, z, 160, plan.a.id);
+  if (!b) return say(tl('No gate, outpost, warehouse or road by the waypoint: move it nearer one.'));
+  const r = planWay(plan.a, b);
+  plan = { a: plan.a, b, pts: r.pts, why: r.why };
+  if (!r.pts) { plan = { a: plan.a }; return say(r.why); }
+  const len = roadLength(r.pts);
+  if (r.why) return say(r.why);
+  return say(TL`The surveyors lay out ${(len / 1000).toFixed(2)} km to ${endWord(b)}: ${costShort(len)}. T again stakes it out, Backspace drops the plan.`);
+}
+export function dropPlan() { if (plan) { plan = null; logLine(tl('The plan is dropped.')); } }
+function drawPlan(w: number, h: number) {
+  if (!plan) return;
+  const X = (x: number) => w / 2 + (nearX(x, G.pos.x) - G.pos.x) * zoom, Z = (z: number) => h / 2 + (z - G.pos.z) * zoom;
+  bctx.strokeStyle = plan.why ? '#ff5a3c' : '#ffd060'; bctx.lineWidth = 2;
+  if (plan.pts) { bctx.setLineDash([6, 4]); bctx.beginPath(); const sx = nearX(plan.pts[0][0], G.pos.x) - plan.pts[0][0]; plan.pts.forEach(([x, z], i) => (i ? bctx.lineTo(X(x + sx), Z(z)) : bctx.moveTo(X(x + sx), Z(z)))); bctx.stroke(); bctx.setLineDash([]); }
+  for (const e of [plan.a, plan.b]) if (e) { bctx.beginPath(); bctx.arc(X(e.x), Z(e.z), 6, 0, 6.283); bctx.stroke(); }
+  bctx.lineWidth = 1;
+  bctx.fillStyle = '#ffd060'; bctx.textAlign = 'center';
+  const txt = plan.pts ? (plan.why ? plan.why : TL`Planned track: ${(roadLength(plan.pts) / 1000).toFixed(2)} km · ${costShort(roadLength(plan.pts))} · T — stake it out · Backspace — drop`) : TL`Track from ${endWord(plan.a)}: set the waypoint at the other end, T`;
+  bctx.fillText(txt, w / 2, 58);
+  bctx.textAlign = 'left';
+}
 /** The glove computer's satellite map waits for the start village's station in a new world (document 04). */
 export const mapLocked = () => { const s = G.char.towns[GRIDHOLM_ID]; return isStation(s) && !projectDone(s, 'comms'); };
 function drawFullMap() {
@@ -561,6 +614,7 @@ function drawFullMap() {
     return;
   }
   drawArea(bctx, w, h, zoom, true);
+  drawPlan(w, h);
   bctx.fillStyle = '#3dff6e'; bctx.font = '22px VT323, monospace'; bctx.textAlign = 'left';
   const sat = satelliteUp(G.char.towns[GRIDHOLM_ID]);
   bctx.fillText((sat ? tl('SATELLITE MAP') : tl('WORLD MAP')) + tl(' — M or Esc to close · wheel / + - to zoom') + (gpsOn() ? tl(' · right click: set / clear the GPS waypoint') : ''), 16, h - 16);
@@ -568,6 +622,7 @@ function drawFullMap() {
     const sp = scanPlan(), wait = sp.wait, now = weatherAt(G.char.world, G.pos.x, G.pos.z, G.char.time), later = weatherAt(G.char.world, G.pos.x, G.pos.z, G.char.time + 240);
     bctx.fillText(`O: orbital scan ${G.char.waypoint ? tl('round the waypoint') : tl('round you')} (${sp.r / 1000} km${sp.relay ? ', ' + sp.relay.name + ' relay' : ''}) · ${wait > 0 ? tl('next pass in ') + hrs(wait) : tl('a satellite is overhead')} · R: ${route ? tl('clear the route') + (route ? tl(' to ') + route.to : '') : tl('route by road to the waypoint')}`, 16, h - 42);
     bctx.fillText(TL`Sky where you stand: ${now.kind} now, ${later.kind} in 4 h`, 16, h - 68);
+    if (hasItem('roadkit')) bctx.fillText(tl('T: plan a track from the waypoint (the Surveyor\'s Poles)'), 16, 84);
     if (lastScan && G.char.time - lastScan.t < 120) { // the scanned ring, for two game hours
       const sx = w / 2 + (nearX(lastScan.x, G.pos.x) - G.pos.x) * zoom, sy = h / 2 + (lastScan.z - G.pos.z) * zoom;
       bctx.strokeStyle = '#5cc8ff'; bctx.setLineDash([8, 6]); bctx.beginPath(); bctx.arc(sx, sy, lastScan.r * zoom, 0, Math.PI * 2); bctx.stroke(); bctx.setLineDash([]);

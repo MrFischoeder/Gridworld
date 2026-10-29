@@ -6,8 +6,9 @@
 import { G, W } from '../game';
 import { ITEMS, type ItemKey } from '../data/items';
 import { calcStats, saveChar, gainXp } from '../character';
-import { roadRows, roadWage, roadXp, handOverRoad, handOverPart, partRows, roadShare, roadBuilt, roadLeft, frontAt, coverOf, doneAt, campWanted, stalled, paceOf, logsReady, MACHINE_X, PROAD, SURFACE_CLS, clsOf, nextCls, startUpgrade, handOverUp, upRows, upWage, upXp, upNeeds, upCover, upFrontAt, upDone, upDoneAt, upStalled, upPace, type PlayerRoad, type RoadPart } from '../gen/playerroads';
+import { roadRows, fedOf, foodFor, roadWage, roadXp, handOverRoad, handOverPart, partRows, roadShare, roadBuilt, roadLeft, frontAt, coverOf, doneAt, campWanted, stalled, paceOf, logsReady, MACHINE_X, PROAD, SURFACE_CLS, clsOf, nextCls, startUpgrade, handOverUp, upRows, upWage, upXp, upNeeds, upCover, upFrontAt, upDone, upDoneAt, upStalled, upPace, type PlayerRoad, type RoadPart } from '../gen/playerroads';
 import { fmtClock } from '../core/time';
+import { FOOD } from '../gen/farms';
 import { redrawRoads, endWord, freeHands, roadFront } from '../world/playerroads';
 import { carried, takeFrom, putAway } from './market';
 import { dropAtFeet } from '../world/drops';
@@ -35,6 +36,14 @@ const hrs = (m: number) => (m >= 120 ? TL`${Math.round(m / 60)} h` : TL`${Math.m
 
 const rowsHTML = (rows: { k: ItemKey; n: number; given: number }[]) => rows.map((w) => { const h = have(w.k); return `<span style="color:${w.given >= w.n ? 'var(--xp)' : h ? 'var(--txt)' : '#ff9a7a'}">${ITEMS[w.k].name} ${w.given}/${w.n}${w.given < w.n && h ? TL` (you have ${h} with you)` : ''}</span>`; }).join(' · ');
 const canGive = (rows: { k: ItemKey; n: number; given: number }[]) => rows.some((w) => w.given < w.n && have(w.k) > 0);
+/** (0.283, D4) The crew's food: crates of grain, potatoes, carrots, eggs, milk or meat, counted in food units. */
+const FOODS = Object.keys(FOOD.value) as ItemKey[];
+function foodHTML(given: Partial<Record<ItemKey, number>>, need: number | undefined): string {
+  if (!need) return '';
+  const fed = Math.floor(fedOf(given) + 1e-6), h = FOODS.reduce((a, k) => a + have(k) * FOOD.value[k]!, 0);
+  return ` · <span style="color:${fed >= need ? 'var(--xp)' : h ? 'var(--txt)' : '#ff9a7a'}">${TL`Food for the crew ${fed}/${need}`}${fed < need && h ? TL` (you have ${Math.floor(h)} with you)` : ''}</span>`;
+}
+const canFeed = (given: Partial<Record<ItemKey, number>>, need: number | undefined) => !!need && fedOf(given) < need - 1e-6 && FOODS.some((k) => have(k) > 0);
 /** (0.281) The crew, the front, the supplies, the camp, the machines and the logs of a D2 track. */
 function frontHTML(r: PlayerRoad): string {
   const c = G.char, now = c.time, home = r.home!, f = frontAt(r, now), cov = coverOf(r), stop = stalled(r, now);
@@ -74,14 +83,14 @@ function surfaceHTML(r: PlayerRoad): string {
       else if (Number.isFinite(upDoneAt(r))) s += TL`Everything is in: done in ${hrs(upDoneAt(r) - now)}.`;
       else s += TL`The supplies cover ${upCover(r)} m: they dig on towards it.`;
     }
-    s += '</div>' + `<div class="shoprow"><div>${rowsHTML(rows)} · <span style="color:${left <= 0 ? 'var(--xp)' : c.gold > 0 ? 'var(--txt)' : '#ff9a7a'}">${TL`Wages ${u.paid}/${wage} gold`}</span>` +
+    s += '</div>' + `<div class="shoprow"><div>${rowsHTML(rows)}${foodHTML(u.given, u.food)} · <span style="color:${left <= 0 ? 'var(--xp)' : c.gold > 0 ? 'var(--txt)' : '#ff9a7a'}">${TL`Wages ${u.paid}/${wage} gold`}</span>` +
       TL`<br><span style="opacity:.7">Bring them to either sign or to the crew at the front. When the work starts: ${upXp(r.len, u.to)} xp.</span>` + `</div></div>` +
-      TL`<button class="opt" data-road="upgive" ${canGive(rows) || (left > 0 && c.gold > 0) ? '' : 'disabled'}>Hand over what I carry and pay the wages</button>`;
+      TL`<button class="opt" data-road="upgive" ${canGive(rows) || canFeed(u.given, u.food) || (left > 0 && c.gold > 0) ? '' : 'disabled'}>Hand over what I carry and pay the wages</button>`;
     if (r.v === 2) { if (campWanted(r)) s += partHTML(r, 'camp'); s += partHTML(r, 'mach'); }
     return s;
   }
   const nx = nextCls(r, now);
-  s += ' ' + (nx ? TL`A ${SURFACE_CLS[nx].name.toLowerCase()} would let vehicles go faster and burn less: it takes ${upNeeds(r.len, nx).map(([k, n]) => `${n} × ${ITEMS[k].name}`).join(', ')} and ${upWage(r.len, nx)} gold in wages.` : tl('The best surface there is.')) + '</div>';
+  s += ' ' + (nx ? TL`A ${SURFACE_CLS[nx].name.toLowerCase()} would let vehicles go faster and burn less: it takes ${upNeeds(r.len, nx).map(([k, n]) => `${n} × ${ITEMS[k].name}`).join(', ')}, ${foodFor(r.len, PROAD.upFood[nx])} food for the crew and ${upWage(r.len, nx)} gold in wages.` : tl('The best surface there is.')) + '</div>';
   if (nx) s += TL`<button class="opt" data-road="upnew">Stake out the ${SURFACE_CLS[nx].name.toLowerCase()}</button>`;
   return s;
 }
@@ -99,10 +108,10 @@ function render(msg = '') {
     const rows = roadRows(r), wage = roadWage(r.len), left = wage - r.paid;
     if (v2) s += frontHTML(r) + '</div>';
     else s += TL`The stakes mark the way. Diggers from the nearby villages will grade a dirt track along it, ${PROAD.half * 2} m wide, once the materials are here and their wages are paid: stone for the culverts and the wet spots, planks for the pegs and the culvert boxes. Anyone can bring them, bit by bit (in your backpack, or in a vehicle parked by either sign). The work takes about ${hrs(r.h * 60)}.</div>`;
-    s += `<div class="shoprow"><div>` + rowsHTML(rows) +
+    s += `<div class="shoprow"><div>` + rowsHTML(rows) + foodHTML(r.given, r.food) +
       ` · <span style="color:${left <= 0 ? 'var(--xp)' : c.gold > 0 ? 'var(--txt)' : '#ff9a7a'}">${TL`Wages ${r.paid}/${wage} gold`}</span>` +
-      TL`<br><span style="opacity:.7">Stones from the rocks (a Pickaxe) or a quarry, planks from logs (a Saw) or a sawmill. Bring them to either sign or to the diggers at the front, in your backpack or a vehicle. When the work starts: ${roadXp(r.len)} xp.</span></div></div>` +
-      TL`<button class="opt" data-road="give" ${canGive(rows) || (left > 0 && c.gold > 0) ? '' : 'disabled'}>Hand over what I carry and pay the wages</button>`;
+      TL`<br><span style="opacity:.7">Stones from the rocks (a Pickaxe) or a quarry, planks from logs (a Saw) or a sawmill${r.food ? tl(', and food for the crew: crates of grain, potatoes, carrots, eggs, milk or meat') : ''}. Bring them to either sign or to the diggers at the front, in your backpack or a vehicle. When the work starts: ${roadXp(r.len)} xp.</span></div></div>` +
+      TL`<button class="opt" data-road="give" ${canGive(rows) || canFeed(r.given, r.food) || (left > 0 && c.gold > 0) ? '' : 'disabled'}>Hand over what I carry and pay the wages</button>`;
     if (v2) {
       if (campWanted(r)) s += partHTML(r, 'camp');
       s += partHTML(r, 'mach');
