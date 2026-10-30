@@ -11,18 +11,18 @@
 // On a dedicated server every player has an account (a name and a password, server/accounts.mjs): the menu logs in or
 // makes one, keeps only the session token the server gave (`gridWorld.mpAuth`, per server), and the server names you
 // by your account. A server you created shows Close server in the list: closing it sends its players away for good.
-import { joinWorld, willSeed } from '../world/share';
+import { joinWorld, willSeed, personalPart } from '../world/share';
 import { takeSeat, homeName } from '../world/rivals';
 import { homeOf } from '../gen/rivals';
 import { presentHero } from './rebirth';
 import { G } from '../game';
 import { $, logLine } from './hud';
 import { saveChar } from '../character';
-import { connect, disconnect, deleteRoom, account, accountAsk, logout, changePassword, net, online, isHost, sendChat, serverUrl, serverInfo, type ServerInfo, type RoomInfo, type RoomMaps } from '../net/client';
+import { connect, disconnect, sendCharSave, deleteRoom, account, accountAsk, logout, changePassword, net, online, isHost, sendChat, serverUrl, serverInfo, type ServerInfo, type RoomInfo, type RoomMaps } from '../net/client';
 import { mapsFor } from '../world/custommaps';
 import { clearPeers, peerColor } from '../world/peers';
 import { lockPointer } from './input';
-import { SAVE_KEY, newChar, loadCharAt, setSaveMirror, type Char } from '../save';
+import { SAVE_KEY, newChar, loadCharAt, charFrom, setSaveMirror, type Char } from '../save';
 import { tl, TL } from '../i18n';
 
 /** Where the hero's own save waits while they play in someone else's world. */
@@ -58,8 +58,14 @@ let roomKey: string | null = null;
 setSaveMirror(() => roomKey);
 const charKey = (url: string, room: string, world: number, name: string) => 'gridWorld.mpChar.' + JSON.stringify([url.replace(/^wss?:\/\//, ''), room, world, name.toLowerCase()]);
 const stored = (k: string) => { try { return !!localStorage.getItem(k); } catch { return false; } };
-/** The last save to the server's key, then online saves stop going there. */
-function leaveRoomChar() { if (roomKey) { saveChar(); roomKey = null; } }
+/** The last save to the server's key (and (0.284) to the server itself), then online saves stop going there. */
+function leaveRoomChar() { if (roomKey) { saveChar(); sendCharSave(personalPart(), true); roomKey = null; } }
+/** (0.284) Your character here as the server keeps it for your account, or the one this browser kept: the newer. */
+function roomChar(key: string): Char | null {
+  const local = loadCharAt(key), s = net.saved;
+  if (!s) return local;
+  return !local || (local.savedAt ?? 0) + net.skew <= s.at ? charFrom(s.c) : local;
+}
 /** This browser's secret for the servers it creates: the server keeps only its hash and deletes a server for it. */
 const KEY_STORE = 'gridWorld.mpKey', MINE_STORE = 'gridWorld.mpRooms';
 function mpKey(): string {
@@ -86,6 +92,9 @@ function setAuth(a: Auth | null) {
 /** Does this server want an account, and are you logged in? */
 const accounts = () => !!ded?.accounts;
 const loggedIn = () => !accounts() || !!auth();
+/** (0.284) A server that mails codes lets in only accounts with a confirmed email: this one has none yet. */
+const needMail = () => { const a = auth(); return accounts() && mailing() && !!a && profile?.for === a.token && !!profile.got && !profile.email; };
+const canPlay = () => loggedIn() && !needMail();
 /** Does the server mail codes (confirming an email, resetting a password)? */
 const mailing = () => !!ded?.mail;
 /** Making an account: the email field is out. */
@@ -94,7 +103,7 @@ let regMode = false;
  * (`id` = the email). `pass` (memory only, for Send again) = the password typed with it. */
 let pending: { mode: 'verify' | 'reset'; id: string; pass?: string; to?: string } | null = null;
 /** The logged-in account's email, as the server last told (fetched once per login). */
-let profile: { email: string; next: string; for: string; admin?: boolean } | null = null;
+let profile: { email: string; next: string; for: string; admin?: boolean; got?: boolean } | null = null;
 let busy = false;
 /** A server is yours to close: made by your account (or, before accounts, from this browser). */
 const yours = (r: RoomInfo) => r.id !== 'main' && (!!auth() && (r.by ?? '').toLowerCase() === auth()!.name.toLowerCase() || myRooms().includes(r.id) || isAdmin());
@@ -119,7 +128,7 @@ function roomRows(): string {
     const you = online() && r.id === at, n = you ? net.peers.size + 1 : r.online;
     const state = n ? `<span class="dot">●</span> ${n}/${r.max} playing` : '<span class="dot off">○</span> paused';
     const who = you ? tl('you are here') : r.players.length ? r.players.map(esc).join(', ') : 'empty';
-    const btn = you ? '' : `<button data-room="${esc(r.id)}"${connecting || !loggedIn() ? ' disabled' : ''}>${online() ? tl('Move here') : tl('Join')}</button>`;
+    const btn = you ? '' : `<button data-room="${esc(r.id)}"${connecting || !canPlay() ? ' disabled' : ''}>${online() ? tl('Move here') : tl('Join')}</button>`;
     const del = !you && yours(r)
       ? `<button class="del${armed === r.id ? ' armed' : ''}" data-del="${esc(r.id)}"${deleting ? ' disabled' : ''}>${deleting === r.id ? tl('Closing…') : armed === r.id ? (r.online ? TL`Close it? ${r.online} playing` : tl('Sure? Close it')) : tl('Close server')}</button>` : '';
     const by = (r.by ? TL` · made by ${esc(r.by)}` : '') + (r.mode === 'rivals' ? ' · <b style="color:#d0805a">rivals</b>' : '') + (r.map ? TL` · editor world ${esc(r.map)}` : '');
@@ -132,13 +141,13 @@ function render() {
   joinBtn.style.display = on || connecting || rooms ? 'none' : '';
   joinBtn.textContent = ded ? tl('Join the server') : tl('Join');
   roomsEl.innerHTML = roomRows();
-  newEl.style.display = rooms && !connecting && loggedIn() ? '' : 'none';
+  newEl.style.display = rooms && !connecting && canPlay() ? '' : 'none';
   // the account box (dedicated servers): log in / make one, or who you are with a way out
   const a = auth();
   acctEl.style.display = accounts() && !on ? '' : 'none';
   acctIn.style.display = a ? 'none' : '';
   acctOn.style.display = a ? '' : 'none';
-  if (a && profile?.for !== a.token) { profile = { email: '', next: '', for: a.token }; void accountAsk(here(), { t: 'profile', token: a.token }).then((r) => { if (r.t === 'profile') { profile = { email: r.email ?? '', next: r.next ?? '', for: a.token, admin: !!r.admin }; render(); } }); }
+  if (a && profile?.for !== a.token) { profile = { email: '', next: '', for: a.token }; void accountAsk(here(), { t: 'profile', token: a.token }).then((r) => { if (r.t === 'profile') { profile = { email: r.email ?? '', next: r.next ?? '', for: a.token, admin: !!r.admin, got: true }; if (needMail() && !pending) addForm.style.display = ''; render(); } }); }
   if (a) who.innerHTML = TL`Logged in as <b>${esc(a.name)}</b>${profile?.email ? ` <small>· ${esc(profile.email)}</small>` : mailing() ? tl(' <small>· no email yet</small>') : ''}` + (isAdmin() ? tl(' <small>· admin</small>') : '');
   emailRow.style.display = !a && regMode && !pending ? '' : 'none';
   emailNote.textContent = mailing() ? tl('we send a code to confirm it') : 'optional';
@@ -164,6 +173,7 @@ function render() {
   } else {
     list.textContent = '';
     if (note) status.textContent = note;
+    else if (needMail() && !pending && !connecting) status.textContent = tl('This server lets in only accounts with a confirmed email. Add your email below and type the code we send to it: then your game is kept on the server and you can carry on from any computer.');
     else if (accounts() && !auth() && !connecting) status.textContent = mailing() ? tl('Log in with your name or email, or make an account (a name, your email and a password). Your name is yours alone on this server.') : tl('Log in, or make an account (a name and a password) to play here. Your name is yours alone on this server.');
     else if (rooms && !connecting) status.textContent = tl('Pick a server and press Join, or create your own (you can close it later). A server pauses while nobody is on it.');
     else if (ded && !connecting) status.textContent = TL`${ded.name} · ${ded.online}/${ded.max} online${ded.players.length ? ': ' + ded.players.join(', ') : ''} · press Join the server.`;
@@ -188,6 +198,7 @@ function say(text: string, kind: 'chat' | 'info' | 'error') {
 
 function start(url: string, room?: string, create?: { name: string; world?: number; rivals?: boolean; maps?: RoomMaps }) {
   if (accounts() && !auth()) { status.textContent = tl('Log in first.'); userIn.focus(); return; }
+  if (needMail()) { addForm.style.display = ''; newEmailIn.focus(); render(); return; }
   if (!accounts() && !G.char.name) { status.textContent = tl('Name your hero first.'); return; }
   if (online()) { leaveRoomChar(); disconnect(); clearPeers(); } // moving to another server
   connecting = true; status.textContent = tl('Connecting…'); render();
@@ -196,11 +207,11 @@ function start(url: string, room?: string, create?: { name: string; world?: numb
       connecting = false;
       const name = net.name || G.char.name, key = charKey(url, net.room?.id ?? 'lan', world, name);
       // your own character stays when you bring your own world to a room that has none yet, or host it on the LAN
-      const keep = !solo() && world === G.char.world && (host || willSeed()) && !stored(key);
+      const keep = !solo() && world === G.char.world && (host || willSeed()) && !stored(key) && !net.saved;
       if (!keep) {
         // the hero's own save waits (once) to be restored with "Back to my own world"
         try { if (!solo()) localStorage.setItem(SOLO_KEY, JSON.stringify(G.char)); } catch { /* storage full or blocked */ }
-        const back = loadCharAt(key);
+        const back = roomChar(key); // (0.284) the server's copy for your account, wherever you played last
         const c = back ?? Object.assign(newChar(), { world, time, name });
         c.world = world; c.time = time; // (the character keeps its own name: after a death it is not the account's)
         roomKey = key;
@@ -215,13 +226,14 @@ function start(url: string, room?: string, create?: { name: string; world?: numb
       }
       presentHero(); // the server shows you by your character's name (a new one is asked for if the dead own it)
       say(host ? tl('You host the game: others can join you now.') : dedicated ? TL`Joined ${net.room?.name ?? ded?.name ?? tl('the server')}.` : tl('Joined the game.'), 'info');
-      saveChar(); look();
+      saveChar(); sendCharSave(personalPart(), true); look();
     },
     say,
     clock(time) { if (Math.abs(G.char.time - time) > 3) G.char.time = time; }, // the host's clock is everyone's
     closed(why) {
       connecting = false; clearPeers(); leaveRoomChar();
       if (net.needAuth) { setAuth(null); tell(tl('Your login has run out: log in again.')); } // the session is gone (expired, or the password changed)
+      if (net.needEmail) { profile = null; addForm.style.display = ''; tell(why); } // (0.284) confirm an email first
       say(why, 'error'); look();
     },
   });
@@ -328,6 +340,9 @@ export function initMp(h: MpHooks) {
   addr.placeholder = location.host || 'host:5173';
   if (DEFAULT_SERVER && !addr.value) addr.value = DEFAULT_SERVER;
   look = () => { serverInfo().then((i) => { ded = i; render(); }); };
+  // (0.284) the character you play goes to the server every half minute (and as you leave or close the page)
+  setInterval(() => { if (online() && roomKey) sendCharSave(personalPart()); }, 30_000);
+  addEventListener('pagehide', () => { if (online() && roomKey) { saveChar(); sendCharSave(personalPart(), true); } });
   if (/^https?:$/.test(location.protocol)) { look(); setInterval(() => { if (ded && !G.playing) look(); }, 5000); } // the list stays fresh while the menu is up
   roomsEl.onclick = (e) => {
     const d = (e.target as HTMLElement).closest('[data-del]') as HTMLElement | null;

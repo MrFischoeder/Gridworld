@@ -52,6 +52,10 @@ ADMINS=TwojaNazwaKonta
 
 Od tej chwili nowi gracze zakładają konto z e-mailem (kod przychodzi na skrzynkę), logują się nazwą albo e-mailem, a zapomniane hasło odzyskują przyciskiem **Forgot password?**. Żeby maile nie lądowały w spamie, domena potrzebuje rekordów SPF i DKIM (u dostawcy poczty zwykle są już ustawione dla jego serwerów).
 
+**Obowiązkowy e-mail i zapis gry na serwerze (od 0.284.0):** gdy serwer ma ustawioną pocztę (`MAIL_FROM` i `SMTP_HOST` albo `MAIL_SENDMAIL=1`), do gry wchodzi tylko konto z **potwierdzonym e-mailem**. Nowe konta potwierdzają go przy zakładaniu (jak dotąd), a konta założone wcześniej bez e-maila po zalogowaniu widzą komunikat, wyszarzony przycisk Join i otwarte pole **Add email**: wpisują adres i hasło, dostają kod, wpisują go i mogą grać. Bez ustawionej poczty serwer nie ma jak potwierdzać adresów: wtedy konta działają jak dawniej, a w logu przy starcie jest ostrzeżenie `warning: no mail set up`. Żeby wymóg działał, ustaw pocztę według opisu powyżej.
+
+Postać każdego konta zapisuje się teraz **na serwerze**, osobno w każdym serwerze gry: co pół minuty, przy wyjściu z gry i przy zamknięciu karty. Gracz, który zaloguje się na innym komputerze lub w innej przeglądarce, wraca do tej samej postaci (ekwipunek, złoto, poziom, dom, odkryta mapa, położenie). Gdy przeglądarka ma nowszy własny zapis niż serwer (np. serwer był wyłączony), wygrywa nowszy. Zapisy leżą w `server/data/chars-<id serwera gry>.json` (plik czytelny tylko dla usługi, do 2 MB na postać) i znikają razem z zamkniętym serwerem gry. Wspólny świat (wioski, pojazdy, skrzynie...) zapisuje się jak dotąd w `world-<id>.json`. Protokół się nie zmienia (16), ale nowy zapis działa dopiero po aktualizacji serwera skryptem `install.sh`; stary serwer go nie obsługuje i postać zostaje tylko w przeglądarce.
+
 **Śmierć na serwerze i imiona postaci (od 0.161.0):** na serwerze śmierć kończy postać. Jej ekwipunek zostaje na ziemi tam, gdzie zginęła, a imię trafia na listę poległych świata (pole `fallen` we wspólnym świecie, w `world-<id>.json`). Gracz budzi się jako nowy członek załogi w innej kapsule we wraku i musi podać nowe imię. Serwer odrzuca imiona poległych i imiona innych graczy, którzy są w grze. Pozostali widzą gracza pod imieniem jego postaci, a konto zostaje to samo. Wersja 0.161.0 zmienia protokół (12): po aktualizacji serwera gracze muszą odświeżyć stronę (Ctrl+F5).
 
 **Własne serwery i ich zamykanie (od 0.158.0):** zalogowany gracz zakłada serwer (**Create a server**, najwyżej 3 na konto, 12 na maszynę) i tylko on widzi przy nim przycisk **Close server** (dwa kliknięcia). Serwer jest przypisany do konta, nie do przeglądarki, więc można go zamknąć z każdego komputera po zalogowaniu. Gracze, którzy na nim są, wracają do menu z komunikatem, a jego świat (`world-<id>.json`) znika z dysku. Serwery założone przed 0.158.0 zamyka się jak dawniej, z tej samej przeglądarki. Wersja 0.158.0 zmienia protokół (11): po aktualizacji serwera gracze muszą odświeżyć stronę (Ctrl+F5).
@@ -105,9 +109,8 @@ PORT=8517 SERVER_NAME="Mój serwer" npm run serve
 
 ## Czego jeszcze nie ma
 
-- Postać gracza zapisuje się w jego przeglądarce (dla adresu serwera osobno niż przy grze lokalnej), nie na serwerze.
+- Gra na LAN (`start-gry.bat`) nie ma kont, więc postać zapisuje się tam tylko w przeglądarce.
 - Nie są zsynchronizowane: spacery mieszkańców wiosek (tylko wygląd) i chwilowe zatrzymanie karawany w czasie napadu. Porzucony wrak pojazdu rabusiów można zająć tylko u gracza, w którego grze go pokonano. Protokół multiplayer: 9 (od 0.140: wspólne łodzie i statki; serwer i gra muszą być w tej samej wersji, więc po aktualizacji gry zaktualizuj też serwer).
-- Brak haseł i kont: każdy, kto zna adres, może dołączyć (do 8 graczy naraz na każdym serwerze gry) i założyć nowy serwer gry.
 
 **Wersja 0.183 (protokół 13):** gra i serwer muszą mieć tę samą wersję, bo placówki przy złożach (pole `outposts`) są wspólne dla graczy. Po aktualizacji gry zaktualizuj serwer skryptem `install.sh`.
 

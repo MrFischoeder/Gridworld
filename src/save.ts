@@ -120,6 +120,8 @@ export interface Char {
   questsDone?: number;
   /** (0.230) Markers switched off in the journal (J): 'q:<quest id>', 'c:<contract id>', 'l:<lead id>', 'elder', 'side', 'guide'. Personal. */
   hideMarks?: string[];
+  /** (0.284) When this browser last saved the character (ms): online, the newer of this and the server's copy wins. */
+  savedAt?: number;
   /** (0.267) The sky falls lying or in flight: one record each, seen and opened by everyone (gen/skyfall.ts); shared. */
   skyfalls: Record<string, SkyFall>;
   /** (0.270) Lying things being worked up in somebody's workshop cells (gen/workshop.ts), by drop id; shared. */
@@ -305,6 +307,7 @@ let mirror: () => string | null = () => null;
 export function setSaveMirror(f: () => string | null) { mirror = f; }
 export function saveChar(c: Char): void {
   try {
+    c.savedAt = Date.now();
     const j = JSON.stringify(c), m = mirror();
     localStorage.setItem(SAVE_KEY, j);
     if (m) localStorage.setItem(m, j);
@@ -316,6 +319,12 @@ export function loadCharAt(key: string): Char | null {
   try { raw = localStorage.getItem(key); } catch { return null; }
   if (!raw) return null;
   const r = raw;
+  return loadChar({ getItem: (k) => (k === SAVE_KEY ? r : null) });
+}
+
+/** (0.284) A character from plain data (the server's copy of it), with every migration of loadChar. */
+export function charFrom(o: Record<string, unknown>): Char {
+  const r = JSON.stringify(o);
   return loadChar({ getItem: (k) => (k === SAVE_KEY ? r : null) });
 }
 

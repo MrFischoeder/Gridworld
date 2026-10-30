@@ -237,6 +237,8 @@ export function createAccounts(saved = {}, opts = {}) {
       return '';
     },
     has: (name) => accounts.has(keyOf(name)),
+    /** (0.284) Has the account a confirmed email address? */
+    confirmed: (key) => !!accounts.get(key)?.email,
     count: () => accounts.size,
     /** What to save, and whether anything changed since the last call. */
     dirty: () => { const d = dirty; dirty = false; return d; },

@@ -21,6 +21,7 @@ export interface Accounts {
   logout(token: string): void;
   passwd(token: string, old: string, pass: string, ip?: string): Promise<string>;
   has(name: string): boolean;
+  confirmed(key: string): boolean;
   count(): number;
   dirty(): boolean;
   save(): SavedAccounts;

@@ -85,7 +85,8 @@ export function initMenu(h: MenuHooks) {
     });
   };
   mpBtn.onclick = () => showMpBox();
-  onMpChange(labels);
+  // (0.284) joining a server swaps the character: the name field follows it (not while you type in it)
+  onMpChange(() => { labels(); if (document.activeElement !== nameIn && nameIn.value !== G.char.name) showName(); });
   $('replayCinematic').onclick = async () => { const film = await import('./cinematic'); film.playCinematic(() => showMenu(false)); };
   $('changelog').onclick = openChangelog;
   $('mapEditor').onclick = () => window.open('editor.html', '_blank'); // (0.207) the map editor, in its own tab

@@ -5046,4 +5046,5 @@ export const PL: Record<string, string> = {
   '{0} is {1} km away: a survey stakes out at most {2} km. Plan it in parts, by a road or a track on the way.': '{0} jest {1} km stąd: jeden pomiar wytycza najwyżej {2} km. Zaplanuj go w częściach, przez drogę albo trakt po drodze.',
   'No road joins this warehouse to the works yet: build a track to an outpost, a quarry, a well or an old plant first (the Surveyor\'s Poles). Flying comes after the roads.': 'Żadna droga nie łączy jeszcze tego magazynu z zakładami: najpierw zbuduj trakt do placówki, kamieniołomu, szybu naftowego albo starej fabryki (Tyczki geodety). Latanie przychodzi po drogach.',
   '{0} km by road ({1})': '{0} km drogą ({1})',
+  'This server lets in only accounts with a confirmed email. Add your email below and type the code we send to it: then your game is kept on the server and you can carry on from any computer.': 'Ten serwer wpuszcza tylko konta z potwierdzonym e-mailem. Dodaj e-mail poniżej i wpisz kod, który na niego wyślemy: wtedy twoja gra zapisuje się na serwerze i możesz grać dalej z każdego komputera.',
 };

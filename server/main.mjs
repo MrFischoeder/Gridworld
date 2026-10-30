@@ -46,6 +46,9 @@ rooms[0].name = NAME; // (the first server's name follows SERVER_NAME)
 // each room's shared world (villages, bridges, chests...) lives in its own file: it can grow large
 const docFile = (id) => join(DATA, 'world-' + String(id).replace(/[^\w-]/g, '') + '.json');
 for (const r of rooms) { try { const w = JSON.parse(await readFile(docFile(r.id), 'utf8')); r.doc = w.doc; r.seeded = w.seeded; } catch { /* none yet */ } }
+// (0.284) and the players' characters in it (per account), so they carry on from any browser
+const charFile = (id) => join(DATA, 'chars-' + String(id).replace(/[^\w-]/g, '') + '.json');
+for (const r of rooms) { try { r.chars = JSON.parse(await readFile(charFile(r.id), 'utf8')).chars; } catch { /* none yet */ } }
 // the players' accounts (names and password hashes, never the passwords) in their own file, readable only by the server
 let savedAccounts = {};
 try { savedAccounts = JSON.parse(await readFile(ACCOUNTS, 'utf8')); } catch { /* none yet */ }
@@ -54,7 +57,9 @@ try { savedAccounts = JSON.parse(await readFile(ACCOUNTS, 'utf8')); } catch { /*
 // game's address, e.g. https://example.pl/gridworld/) adds a confirmation link to the mail. ADMINS: account names that
 // may close any player's server.
 const accounts = createAccounts(savedAccounts, { mail: await makeMailer(env, log), publicUrl: env.PUBLIC_URL || '', title: NAME });
-const mp = createMp((m) => log('[mp] ' + m), { rooms, accounts, admins: adminsOf(env), accountsChanged: () => { persist().catch(() => {}); }, removed: (id) => { unlink(docFile(id)).catch(() => {}); persist().catch(() => {}); } }); // a deleted or forgotten server's world goes with it
+// (0.284) with mail every player confirms an email before playing; without it anyone may make an account
+if (!accounts.mailing) log('warning: no mail set up (MAIL_FROM and SMTP_HOST or MAIL_SENDMAIL=1 in /etc/gridworld.env): accounts are not confirmed by email');
+const mp = createMp((m) => log('[mp] ' + m), { rooms, accounts, admins: adminsOf(env), accountsChanged: () => { persist().catch(() => {}); }, removed: (id) => { unlink(docFile(id)).catch(() => {}); unlink(charFile(id)).catch(() => {}); persist().catch(() => {}); } }); // a deleted or forgotten server's world goes with it
 const world = rooms[0].world;
 
 // one save at a time (an account made mid-save waits for the next turn)
@@ -66,6 +71,7 @@ async function write() {
   await writeFile(tmp, JSON.stringify({ rooms: list, saved: new Date().toISOString() }, null, 1));
   await rename(tmp, SAVE);
   if (accounts.dirty()) { await writeFile(ACCOUNTS + '.tmp', JSON.stringify(accounts.save()), { mode: 0o600 }); await rename(ACCOUNTS + '.tmp', ACCOUNTS); }
+  for (const d of mp.dirtyChars()) { const f = charFile(d.id); await writeFile(f + '.tmp', JSON.stringify({ chars: d.chars }), { mode: 0o600 }); await rename(f + '.tmp', f); }
   for (const d of mp.dirtyDocs()) { const f = docFile(d.id); await writeFile(f + '.tmp', JSON.stringify({ doc: d.doc, seeded: d.seeded })); await rename(f + '.tmp', f); }
 }
 await persist();

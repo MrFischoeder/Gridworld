@@ -259,6 +259,40 @@ describe('multiplayer server', () => {
     expect(accounts.profile(made.token!)).toMatchObject({ email: 'cy@example.com', next: '' });
     expect((await accounts.login('cy@example.com', 'secret12')).token).toBeTruthy();
   });
+  it('(0.284) with mail only a confirmed account plays; each account\'s character is kept on the server per room', async () => {
+    const sent: string[] = [];
+    const old = createAccounts();
+    const made = await old.register('Cy', 'secret12'); // an account from before email was needed
+    const accounts = createAccounts(JSON.parse(JSON.stringify(old.save())), { mail: async (_t: string, _s: string, text: string) => { sent.push(text); } });
+    mp = createMp(() => {}, { rooms: [{ id: 'main', name: 'Main', world: 11, time: 100 }], accounts }); http = createServer(); mp.attach(http);
+    accountsOn = true; tokens.clear();
+    await new Promise<void>((r) => http!.listen(0, r));
+    const port = (http.address() as { port: number }).port;
+    const no = await client(port, { name: 'Cy', token: made.token });
+    expect(await no.wait('refused')).toMatchObject({ email: true });
+    expect(accounts.profile(made.token!)).toMatchObject({ email: '' }); // the session still works for adding one
+    expect(await accounts.setEmail(made.token!, 'secret12', 'cy@example.com')).toBe('');
+    const ok = accounts.verify('Cy', /\b(\d{6})\b/.exec(sent[0])![1]);
+    const a = await client(port, { name: 'Cy', token: ok.token }), wa = await a.wait('welcome');
+    expect(wa.feat).toContain('charsave'); expect(wa.char).toBeNull(); // nothing kept yet
+    a.send({ t: 'csave', c: { name: 'Cyra', inv: [{ k: 'log', n: 3 }], world: 11 } });
+    expect(await a.wait('csaved')).toMatchObject({ ok: true });
+    a.send({ t: 'csave', c: { name: 'Cyra', inv: [] } }); // too soon after the last: ignored
+    a.send({ t: 'csave', c: { name: 'Cyra', inv: [{ k: 'log', n: 5 }] }, last: true }); // leaving: always kept
+    expect(await a.wait('csaved', 2)).toMatchObject({ ok: true });
+    a.ws.close(); await new Promise((r) => setTimeout(r, 50));
+    // another browser, the same account: the character comes back
+    const b = await client(port, { name: 'Cy', token: (await accounts.login('cy@example.com', 'secret12')).token }), wb = await b.wait('welcome');
+    expect(wb.char.c).toEqual({ name: 'Cyra', inv: [{ k: 'log', n: 5 }] }); expect(typeof wb.char.at).toBe('number');
+    // kept with the room for the next start
+    const rows = mp!.dirtyChars();
+    expect(rows[0].id).toBe('main'); expect(rows[0].chars.cy.c.name).toBe('Cyra'); expect(mp!.dirtyChars()).toEqual([]);
+    b.ws.close(); mp!.close(); http!.close();
+    mp = createMp(() => {}, { rooms: [{ id: 'main', name: 'Main', world: 11, time: 100, chars: rows[0].chars }], accounts }); http = createServer(); mp.attach(http);
+    await new Promise<void>((r) => http!.listen(0, r));
+    const c = await client((http.address() as { port: number }).port, { name: 'Cy', token: (await accounts.login('Cy', 'secret12')).token });
+    expect((await c.wait('welcome')).char.c.name).toBe('Cyra');
+  });
   it('too many wrong passwords from one address lock it out for a while', async () => {
     const accts = createAccounts();
     await accts.register('Cy', 'rightpass');

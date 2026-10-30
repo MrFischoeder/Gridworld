@@ -74,6 +74,16 @@ function entries(c: Char, f: Field): [string, unknown][] {
   if (f.kind === 'list') return ((v as Record<string, unknown>[]) ?? []).map((o) => [keyOf(f, o), o]);
   return Object.entries((v as Record<string, unknown>) ?? {}).filter(([k]) => !f.skip?.(k));
 }
+/** (0.284) Your own part of the save, what a server keeps for your account: everything but the world's (only your
+ *  house chests of the containers). */
+export function personalPart(c = G.char): Record<string, unknown> {
+  const out: Record<string, unknown> = { ...c };
+  for (const f of SHARED) {
+    if (f.f === 'containers') out.containers = Object.fromEntries(Object.entries(c.containers ?? {}).filter(([k]) => f.skip!(k)));
+    else delete out[f.f];
+  }
+  return out;
+}
 /** The shared world as it stands in your save. */
 export function worldDoc(c = G.char): WorldDoc {
   const doc: WorldDoc = {};

@@ -102,6 +102,12 @@ export const net = {
   hero: '',
   /** The last refusal asked you to log in (again). */
   needAuth: false,
+  /** (0.284) The last refusal asked you to confirm an email address first. */
+  needEmail: false,
+  /** (0.284) Your character in this room as the server keeps it for your account ({c, at}: `at` in the server's ms),
+   *  and the server's clock minus this browser's at the welcome. */
+  saved: null as { c: Record<string, unknown>; at: number } | null,
+  skew: 0,
   peers: new Map<number, Peer>(),
   address: '',
   /** A dedicated server (server/main.mjs): the world and the clock are the room's, nobody hosts. */
@@ -231,7 +237,7 @@ export function connect(url: string, me: { name: string; world: number; time: nu
   try { ws = new WebSocket(url); } catch { h.closed(TL`Not a server address: ${url}`); return; }
   net.ws = ws;
   let welcomed = false, why = '';
-  ws.onopen = () => { net.needAuth = false; ws.send(JSON.stringify({ t: 'hello', ver: PROTOCOL, name: me.name, world: me.world, time: me.time, token: me.token, room: me.room, create: me.create, maps: me.maps })); };
+  ws.onopen = () => { net.needAuth = false; net.needEmail = false; ws.send(JSON.stringify({ t: 'hello', ver: PROTOCOL, name: me.name, world: me.world, time: me.time, token: me.token, room: me.room, create: me.create, maps: me.maps })); };
   ws.onmessage = (e) => {
     let m: any;
     try { m = JSON.parse(String(e.data)); } catch { return; }
@@ -241,6 +247,8 @@ export function connect(url: string, me: { name: string; world: number; time: nu
         welcomed = true; net.hero = ''; net.id = m.id; net.name = typeof m.name === 'string' ? m.name : me.name; net.host = m.host; net.dedicated = !!m.dedicated; net.room = m.room ?? null; net.peers.clear();
         net.mode = m.mode === 'rivals' ? 'rivals' : 'coop'; net.slot = typeof m.slot === 'number' ? m.slot : -1;
         net.feat = Array.isArray(m.feat) ? m.feat.filter((x: unknown) => typeof x === 'string') : [];
+        net.saved = m.char && typeof m.char === 'object' && m.char.c && typeof m.char.c === 'object' && typeof m.char.at === 'number' ? m.char : null;
+        net.skew = typeof m.now === 'number' ? m.now - Date.now() : 0;
         net.drops = new Map((Array.isArray(m.drops) ? m.drops : []).map((d: NetDrop) => [d.id, d]));
         receiveGates(m);
         for (const p of m.players) if (p.id !== m.id) net.peers.set(p.id, { id: p.id, name: p.name, st: null, prev: null, at: 0, hist: [] });
@@ -291,7 +299,7 @@ export function connect(url: string, me: { name: string; world: number; time: nu
       case 'heroBad': heroHook?.(true, m.name, m.why); break;
       case 'chat': h.say(`${m.name}: ${m.text}`, 'chat'); break;
       case 'full': why = tl('The server is full (8 players).'); break;
-      case 'refused': why = m.why; if (m.auth) net.needAuth = true; break;
+      case 'refused': why = m.why; if (m.auth) net.needAuth = true; if (m.email) net.needEmail = true; break;
     }
   };
   ws.onclose = () => {
@@ -334,6 +342,13 @@ export function onRelay(f: (m: Relay) => void) { relayHooks.push(f); }
 export function relay(m: { t: Relay['t']; [k: string]: unknown }, to?: number): boolean {
   if (!online() || net.ws?.readyState !== 1) return false;
   net.ws.send(JSON.stringify(to === undefined ? { t: 'cast', m } : { t: 'to', to, m }));
+  return true;
+}
+/** (0.284) Keep the character you play in this room on the server, for your account (a dedicated server that has
+ *  `charsave`); `last` = leaving, sent even if one went a moment ago. */
+export function sendCharSave(c: Record<string, unknown>, last = false): boolean {
+  if (!online() || !net.dedicated || !net.feat.includes('charsave') || net.ws?.readyState !== 1) return false;
+  net.ws.send(JSON.stringify({ t: 'csave', c, ...(last ? { last } : {}) }));
   return true;
 }
 /** The character you play (after the welcome, and after a death): the server shows you by its name. */

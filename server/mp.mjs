@@ -27,6 +27,9 @@
 //                                          away); `key` = the old per-browser secret of servers made before accounts;
 //                                          answered {t:'deleted', room} or {t:'refused', why}, then closed
 //   {t:'state', p:[x,y,z], yaw, pitch, loc, held, mv, away, cars, ride?, gun?, boat?, vis?, cr?, pod?, lt?, oh?, time?}   vis: how visible they are (sneaking), cr: crouched, pod: the cryo-pod their character woke from   lt: the light they carry (1 flashlight, 2 oil lamp, 3 torch)   oh: what the other hand holds (a shield, a light)   boat: [boat id, u, v, h, seat] aboard one of the boats   cars: the player's own vehicles (net/client.ts PeerCar)   ~10 times a second; time from a hosted room's host only
+//   {t:'csave', c, last?}                (0.284, accounts only) the character you play in this room (without the world's parts):
+//                                        kept for your account, given back in a later welcome as `char` {c, at}; at most every
+//                                        MP.charEvery s unless `last`; answered {t:'csaved', ok, at}
 //   {t:'hero', name}                     the character you play (after the welcome, and a new one after a death): you are
 //                                          shown by its name; a name of the fallen crew (shared `fallen`) or of another
 //                                          player here is refused
@@ -68,9 +71,11 @@ import { randomInt, createHash } from 'node:crypto';
 import { GateConnections, GATE_TRANSIT_SECONDS } from '../shared/gates.mjs';
 import { createAccounts, ACCOUNT } from './accounts.mjs';
 
-export const MP = { path: '/mp', port: 7777, max: 8, rate: 100, nameMax: 20, chatMax: 200, roomName: 28, rooms: 12, roomTtl: 14, cars: 8, drops: 800, dropTtl: 6, lootTtl: 2, payload: 4 * 1024 * 1024, maps: 2 * 1024 * 1024 };
-/** What this server keeps beyond the protocol (a client checks before relying on it): `gunmods` drops keep a gun's own attachments (`m`, 0.279.1). */
-export const FEATURES = ['gunmods'];
+export const MP = { path: '/mp', port: 7777, max: 8, rate: 100, nameMax: 20, chatMax: 200, roomName: 28, rooms: 12, roomTtl: 14, cars: 8, drops: 800, dropTtl: 6, lootTtl: 2, payload: 4 * 1024 * 1024, maps: 2 * 1024 * 1024, char: 2 * 1024 * 1024, charEvery: 5 };
+/** What this server keeps beyond the protocol (a client checks before relying on it): `gunmods` drops keep a gun's own
+ *  attachments (`m`, 0.279.1); `charsave` (0.284) keeps every account's character in each room ({t:'csave'}; the
+ *  welcome's `char`), so a player carries on from any browser. */
+export const FEATURES = ['gunmods', 'charsave'];
 /** What players may pass to each other through 'cast' (everyone else in the room) and 'to' (one player). */
 /** Account messages (one each, on a connection of their own). */
 const AUTH = new Set(['register', 'login', 'logout', 'passwd', 'verify', 'resend', 'forgot', 'reset', 'email', 'profile']);
@@ -115,7 +120,7 @@ export function createMp(log = (m) => console.log('[mp] ' + m), opts = {}) {
   const rooms = new Map();
   let nextId = 1, dropSeq = 1;
   const newRoom = (r) => {
-    const room = { id: r.id, name: clean(r.name, MP.roomName) || 'GridWorld', world: r.world == null ? null : r.world | 0, time0: num(r.time), run: 0, since: 0, players: new Map(), hostId: 0, owner: typeof r.owner === 'string' ? r.owner : '', by: clean(r.by, MP.nameMax), created: r.created ?? Date.now(), last: r.last ?? Date.now(), drops: new Map((Array.isArray(r.drops) ? r.drops : []).map((d) => [d.id, d])), mode: r.mode === 'rivals' && (r.world ?? 0) < 0 ? 'rivals' : 'coop', slots: object(r.slots) ? Object.fromEntries(Object.entries(r.slots).filter(([k, v]) => safeKey(k) && Number.isInteger(v) && v >= 0 && v < MP.max)) : {}, doc: object(r.doc) ? cleanDoc(r.doc) : {}, locks: new Map(), seeded: !!r.seeded, dirty: false, maps: cleanMaps(r.maps) };
+    const room = { id: r.id, name: clean(r.name, MP.roomName) || 'GridWorld', world: r.world == null ? null : r.world | 0, time0: num(r.time), run: 0, since: 0, players: new Map(), hostId: 0, owner: typeof r.owner === 'string' ? r.owner : '', by: clean(r.by, MP.nameMax), created: r.created ?? Date.now(), last: r.last ?? Date.now(), drops: new Map((Array.isArray(r.drops) ? r.drops : []).map((d) => [d.id, d])), mode: r.mode === 'rivals' && (r.world ?? 0) < 0 ? 'rivals' : 'coop', slots: object(r.slots) ? Object.fromEntries(Object.entries(r.slots).filter(([k, v]) => safeKey(k) && Number.isInteger(v) && v >= 0 && v < MP.max)) : {}, doc: object(r.doc) ? cleanDoc(r.doc) : {}, locks: new Map(), seeded: !!r.seeded, dirty: false, maps: cleanMaps(r.maps), chars: new Map(object(r.chars) ? Object.entries(r.chars).filter(([k, v]) => safeKey(k) && object(v) && object(v.c)) : []), charsDirty: false };
     room.gates = new GateConnections(); room.trips = new Map();
     rooms.set(room.id, room);
     return room;
@@ -212,13 +217,15 @@ export function createMp(log = (m) => console.log('[mp] ' + m), opts = {}) {
         // a dedicated server knows you by your account: no session, no game
         const acct = accts ? accts.session(m.token) : null;
         if (accts && !acct) { send(ws, { t: 'refused', why: 'Log in to play on this server.', auth: true }); ws.close(); return; }
+        // (0.284) a server that sends mail lets in only accounts with a confirmed email (older ones add one first)
+        if (accts?.mailing && !accts.confirmed(acct.key)) { send(ws, { t: 'refused', why: 'Confirm an email address for your account first: press Add email, then type the code we send.', email: true }); ws.close(); return; }
         const got = pickRoom(m, acct);
         if (!got.room) { send(ws, { t: 'refused', why: got.why }); ws.close(); return; }
         room = got.room;
         // the same account in another window or room: that one gives way
         const twins = acct ? sameAccount(acct.key) : [];
         if (room.players.size - twins.filter((p) => room.players.get(p.id) === p).length >= MP.max) { send(ws, { t: 'full' }); ws.close(); return; }
-        for (const p of twins) { send(p.ws, { t: 'refused', why: 'You logged in to the game somewhere else.' }); p.ws.close(); }
+        for (const p of twins) { p.gone = true; send(p.ws, { t: 'refused', why: 'You logged in to the game somewhere else.' }); p.ws.close(); } // (0.284) gone at once: not in the welcome, its name free
         let name = acct ? acct.name : clean(m.name, MP.nameMax) || 'Castaway';
         if (!acct && [...room.players.values()].some((p) => p.name === name)) name = `${name} ${nextId}`;
         // (0.189) a rivals room gives every account a seat for good: its home village and what it stakes go by it
@@ -233,7 +240,7 @@ export function createMp(log = (m) => console.log('[mp] ' + m), opts = {}) {
         me = { id: nextId++, ws, name, st: null, joined: Date.now(), acct: acct?.key, slot };
         if (!room.players.size && !dedicated) { room.hostId = me.id; if (room.world === null) { room.world = num(m.world) | 0; room.time0 = num(m.time); room.maps = cleanMaps(m.maps); } log(`${name} hosts world ${room.world}`); }
         room.players.set(me.id, me); room.last = Date.now(); occupied(room, true);
-        send(ws, { t: 'welcome', id: me.id, name: me.name, host: room.hostId, world: room.world, time: clock(room), dedicated, room: { id: room.id, name: room.name }, mode: room.mode, slot: me.slot, maps: room.maps, drops: [...room.drops.values()], wdoc: room.doc, wseeded: room.seeded, links: room.gates.state(), drafts: room.gates.draftState(), now: Date.now(), feat: FEATURES, players: [...room.players.values()].map((p) => ({ id: p.id, name: p.name })) });
+        send(ws, { t: 'welcome', id: me.id, name: me.name, host: room.hostId, world: room.world, time: clock(room), dedicated, room: { id: room.id, name: room.name }, mode: room.mode, slot: me.slot, maps: room.maps, drops: [...room.drops.values()], wdoc: room.doc, wseeded: room.seeded, links: room.gates.state(), drafts: room.gates.draftState(), now: Date.now(), feat: FEATURES, char: me.acct ? room.chars.get(me.acct) ?? null : null, players: [...room.players.values()].filter((p) => !p.gone).map((p) => ({ id: p.id, name: p.name })) });
         all(room, { t: 'join', id: me.id, name }, me.id);
         log(`${name} joined ${room.name} (${room.players.size}/${MP.max})`);
         return;
@@ -361,12 +368,19 @@ export function createMp(log = (m) => console.log('[mp] ' + m), opts = {}) {
         const out = { ...m.m, from: me.id };
         if (m.t === 'cast') all(room, out, me.id);
         else { const p = room.players.get(num(m.to)); if (p) send(p.ws, out); }
+      } else if (m.t === 'csave' && me.acct && object(m.c)) {
+        // (0.284) the character you play here, kept for your account (the world's own parts live in the room's doc)
+        const was = room.chars.get(me.acct), now = Date.now();
+        if (!m.last && was && now - was.at < MP.charEvery * 1000) return;
+        if (JSON.stringify(m.c).length > MP.char) { send(ws, { t: 'csaved', ok: false }); return; }
+        room.chars.set(me.acct, { c: m.c, at: now }); room.charsDirty = true;
+        send(ws, { t: 'csaved', ok: true, at: now });
       } else if (m.t === 'hero') {
         // the character you play now: its name is how the others see you (your account stays yours); the crew who died in
         // this world (the shared `fallen`) keep their names, and two living players do not share one
         const name = clean(m.name, MP.nameMax), low = name.toLowerCase();
         const why = !name ? 'Your character needs a name.' : room.doc.fallen?.[low] ? `${name} died in this world. Pick another name.`
-          : [...room.players.values()].some((p) => p !== me && p.name.toLowerCase() === low) ? `Someone here is already called ${name}.` : '';
+          : [...room.players.values()].some((p) => p !== me && !p.gone && p.name.toLowerCase() === low) ? `Someone here is already called ${name}.` : '';
         if (why) send(ws, { t: 'heroBad', why, name });
         else if (name !== me.name) { me.name = name; all(room, { t: 'renamed', id: me.id, name }); }
         else send(ws, { t: 'renamed', id: me.id, name });
@@ -427,10 +441,12 @@ export function createMp(log = (m) => console.log('[mp] ' + m), opts = {}) {
   /** What server/main.mjs saves: the rooms with their clocks and the items lying in their worlds. */
   const save = () => list().map(({ id, name, world, time, by, mode, created, last }) => ({ id, name, world, time, owner: rooms.get(id).owner, by, mode, slots: rooms.get(id).slots, maps: rooms.get(id).maps, created, last, drops: [...rooms.get(id).drops.values()] }));
   /** The rooms' shared worlds that changed since the last call (server/main.mjs writes each to its own file). */
+  /** (0.284) The rooms whose players' characters changed since the last call (server/main.mjs writes chars-<id>.json). */
+  const dirtyChars = () => [...rooms.values()].filter((r) => r.charsDirty).map((r) => { r.charsDirty = false; return { id: r.id, chars: Object.fromEntries(r.chars) }; });
   const dirtyDocs = () => [...rooms.values()].filter((r) => r.dirty).map((r) => { r.dirty = false; return { id: r.id, doc: r.doc, seeded: r.seeded }; });
   const first = () => rooms.values().next().value;
   return {
-    attach, close, dedicated, list, save, dirtyDocs, accounts: accts,
+    attach, close, dedicated, list, save, dirtyDocs, dirtyChars, accounts: accts,
     get players() { return first().players; },
     state: () => { const r = first(); return { hostId: r.hostId, world: r.world, time: clock(r), n: r.players.size, names: [...r.players.values()].map((p) => p.name) }; },
   };

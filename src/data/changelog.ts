@@ -3,6 +3,13 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.284.0', date: '2026-10-30', title: 'Confirmed emails and your game kept on the server', notes: [
+    'On a server that sends mail, only an account with a confirmed email may play. A new account confirms it as it is made (as before); an account made before without one is shown why, the Join buttons wait, and the Add email field opens: type your email and password, then the code we send, and you are in.',
+    'Your character is now kept on the server, for your account, in each of its game servers: every half minute, when you leave the game and when you close the page. Log in on another computer or in another browser and you carry on with the same character: the backpack, gold, level, your house, the map you explored, where you stood. If this browser holds a newer save than the server (say the server was down), the newer one wins.',
+    'Logging in on a second machine while the first is still in the game sends the first away and the second keeps your character\'s name (it was refused as taken before).',
+    'The name field in the menu follows the character you play after joining a server.',
+    'Multiplayer: the protocol is unchanged (16), but the server must be updated (install.sh) for both: an older server lets accounts without an email in and keeps no characters (they stay in the browser as before). The server keeps the characters in DATA_DIR/chars-<server id>.json. Without mail set up a server cannot confirm addresses: its accounts work as before and it says so in its log.',
+  ] },
   { v: '0.283.1', date: '2026-10-29', title: 'Groves and yards clear of the ruins', notes: [
     'Fix: a village\'s great grove (and any of its work yards: the quarry, the mine, the oil wells, the refinery, the sawmill, the furnace, the pump, the charger, the depot...) could lie right on an old temple, a camp, a wreck or the hangar next to it, so the giant trees grew through the ruin. Such a yard now moves round the village to the nearest clear ground, away from every place and from the other yards; yards on clear ground stay where they were. A yard already built on a ruin moves with it.',
     'A giant tree of the grove also never stands on another place\'s ground nor within a few metres of it.',
