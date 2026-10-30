@@ -446,7 +446,14 @@ const corpses: Corpse[] = [];
 const FALL = 0.85, LIE = 6, SINK = 1.6;
 const groundUnder = (x: number, z: number, fallback: number) => { const g = G.ground ? G.ground(x, z) : -Infinity; return Number.isFinite(g) && g > fallback - 3 ? Math.max(g, fallback - 0.2) : fallback; };
 /** Take `b` out of the fight and let him fall (away from `from`, when given). */
+/** (0.285.1) Told when a bandit posted somewhere (`cityPost`) is beaten for real: killed, fled or gave up. Only on the
+ *  game that runs him (a copy's fate is told by its owner). */
+let postDown: (b: Bandit) => void = () => {};
+export const setPostDown = (f: (b: Bandit) => void) => { postDown = f; };
+const beaten = new WeakSet<Bandit>();
+function tellDown(b: Bandit) { if (!b.cityPost || remoteOf(b) || beaten.has(b)) return; beaten.add(b); postDown(b); }
 export function fallBandit(b: Bandit, from?: THREE.Vector3) {
+  tellDown(b);
   play('die_bandit', { at: b.p, vol: 0.8, far: 50, jitter: 0.12 });
   const i = W.bandits.indexOf(b); if (i >= 0) W.bandits.splice(i, 1);
   const j = b.group.indexOf(b); if (j >= 0) b.group.splice(j, 1);
@@ -569,6 +576,7 @@ function breakBandit(b: Bandit, fate: Fate, dist: number) {
   b.fate = fate; b.mode = fate === 'give' ? 'give' : 'rout'; b.state = 'flee'; b.cover = 0; dropCover(b);
   b.fateT = fate === 'give' ? BROKEN.wait : 0; b.burst = 0; b.blow = false;
   const camp = b.campId; b.campId = undefined;
+  tellDown(b);
   if (!proxied() && dist < 70) logLine(fate === 'give' ? tl('A bandit throws down his arms and raises his hands!') : fate === 'back' ? tl('"I\'ll be back with the others!" A bandit runs.') : tl('A bandit breaks and runs!'));
   if (!proxied()) gainXp(Math.round((b.role === 'leader' ? 40 : 10) * DRIVEN_XP)); // driving him off is worth half a kill
   campCheck(camp);

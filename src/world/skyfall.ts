@@ -58,8 +58,10 @@ let flare = 0, flareAt: THREE.Vector3 | null = null;
 
 /** (0.269) A military drop pod: a long armoured container, its edges bevelled and its nose and tail tapered, ribbed
  *  with armour bands, hazard chevrons and light strips, the roof hatch blown off, lying tilted in its scorched crater.
- *  Model frame: x along it, z across, y up. About 7.4 m long, 2.8 m high. */
-function crateModel(): THREE.Group {
+ *  Model frame: x along it, z across, y up. About 7.4 m long, 2.8 m high.
+ *  (0.285.1) `h(x, z)` = the ground's height under a model-frame point, relative to the middle: the pod lies along the
+ *  slope and every plate and the ring of earth sit on the ground where they are. */
+function crateModel(h: (x: number, z: number) => number): THREE.Group {
   const pb = new PropBatch(), HULL = 0xffa050, RIB = 0xffd060, LIGHT = 0x7dffc8, SCORCH = 0xb07040;
   type Pt = number[];
   const quad = (x: number, hw: number, y0: number, y1: number, hw1 = hw): Pt[] => [[x, y0, -hw], [x, y0, hw], [x, y1, hw1], [x, y1, -hw1]];
@@ -94,18 +96,26 @@ function crateModel(): THREE.Group {
   // an antenna mast and a flat sensor dish on the roof
   pb.line(LIGHT, [-1.6, 2.5, 0.3], [-1.6, 3.6, 0.3]);
   pb.line(LIGHT, [-1.9, 3.6, 0.3], [-1.3, 3.6, 0.3]);
-  // torn plates thrown round it, each leaning at its own angle
+  const body = pb.build(), pd = new PropBatch();
+  // torn plates thrown round it, each leaning at its own angle, each on the ground where it lies
   for (let i = 0; i < 7; i++) {
     const a = i * 2.4 + 0.5, d = 5.2 + (i % 3) * 1.2, cx = Math.cos(a) * d, cz = Math.sin(a) * d, w = 0.5 + (i % 4) * 0.25, lean = 0.2 + (i % 3) * 0.25;
     const dx = Math.cos(a) * w, dz = Math.sin(a) * w;
-    pb.solid8([[cx - dz, 0, cz + dx], [cx + dz, 0, cz - dx], [cx + dz + dx * lean, 0.12, cz - dx + dz * lean], [cx - dz + dx * lean, 0.12, cz + dx + dz * lean]],
-      [[cx - dz, 0.9 * w, cz + dx], [cx + dz, 0.9 * w, cz - dx], [cx + dz + dx * lean, 0.9 * w + 0.1, cz - dx + dz * lean], [cx - dz + dx * lean, 0.9 * w + 0.1, cz + dx + dz * lean]], HULL);
+    // each corner on the ground under it, sunk a little so no edge hangs over a dip
+    const at = (x: number, z: number, up: number): Pt => [x, h(x, z) - 0.08 + up, z];
+    pd.solid8([at(cx - dz, cz + dx, 0), at(cx + dz, cz - dx, 0), at(cx + dz + dx * lean, cz - dx + dz * lean, 0.12), at(cx - dz + dx * lean, cz + dx + dz * lean, 0.12)],
+      [at(cx - dz, cz + dx, 0.9 * w), at(cx + dz, cz - dx, 0.9 * w), at(cx + dz + dx * lean, cz - dx + dz * lean, 0.9 * w + 0.1), at(cx - dz + dx * lean, cz + dx + dz * lean, 0.9 * w + 0.1)], HULL);
   }
-  // a ring of thrown earth
-  for (let i = 0; i < 32; i++) { const a = i / 32 * 6.283, c = (i + 1) / 32 * 6.283, r = 7.5 + Math.sin(i * 2.3) * 1.1; pb.seg(SCORCH, [Math.cos(a) * r, 0.1, Math.sin(a) * r], [Math.cos(c) * r, 0.1, Math.sin(c) * r]); }
-  const g = new THREE.Group(), body = pb.build();
-  body.rotation.z = 0.12; body.rotation.x = 0.05; // pitched into its crater
-  g.add(body);
+  // a ring of thrown earth following the ground
+  const rim = (a: number, r: number): Pt => { const x = Math.cos(a) * r, z = Math.sin(a) * r; return [x, h(x, z) + 0.1, z]; };
+  for (let i = 0; i < 32; i++) { const a = i / 32 * 6.283, c = (i + 1) / 32 * 6.283, r = 7.5 + Math.sin(i * 2.3) * 1.1; pd.seg(SCORCH, rim(a, r), rim(c, r)); }
+  const g = new THREE.Group();
+  // the pod lies along the slope: pitched by the ground at its ends, rolled by the ground at its sides, then a little
+  // more nose down into its crater, and sunk so its lowest end does not hang
+  const along = Math.atan2(h(3.4, 0) - h(-3.4, 0), 6.8), across = Math.atan2(h(0, 1.4) - h(0, -1.4), 2.8);
+  body.rotation.set(-across + 0.05, 0, along + 0.12);
+  body.position.y = Math.min(0, h(3.4, 0) - 3.4 * Math.tan(along), h(-3.4, 0) + 3.4 * Math.tan(along)) - 0.15;
+  g.add(body, pd.build());
   return g;
 }
 
@@ -116,7 +126,10 @@ function dropCrate(id: string) {
 function showCrate(r: SkyFall) {
   const y = groundAt(r.x, r.z);
   if (!Number.isFinite(y)) return;
-  const yaw = (r.x * 7.1 + r.z * 3.3) % 6.28, g = crateModel(); g.position.set(r.x, y, r.z); g.rotation.y = yaw;
+  const yaw = (r.x * 7.1 + r.z * 3.3) % 6.28, co = Math.cos(yaw), si = Math.sin(yaw);
+  // a model-frame point turned by the group's yaw (three's rotation.y) to the world, and the ground there
+  const h = (lx: number, lz: number) => { const gy = groundAt(r.x + lx * co + lz * si, r.z - lx * si + lz * co); return Number.isFinite(gy) ? gy - y : 0; };
+  const g = crateModel(h); g.position.set(r.x, y, r.z); g.rotation.y = yaw;
   const col = makeColumn(WRECK_SMOKE); scene.add(g, col.g);
   crates.set(r.id, { id: r.id, x: r.x, y, z: r.z, yaw, g, col, seen: true });
 }

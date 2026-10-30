@@ -7,7 +7,12 @@ import { hash } from '../core/rng';
 /** One fall, shared by the whole room. */
 export interface SkyFall { id: string; slot: number; x: number; z: number; t: number; by: string;
   /** (0.268) bandits still holding the wreck; unset until a game has put them there, 0 once they are all dead */
-  guards?: number }
+  guards?: number;
+  /** (0.285.1) the guards (by their index) beaten for real: killed, fled or gave up. The others come back however
+   *  often they vanish (a death, leaving, the room emptying); a list so two games telling the same kill agree. */
+  out?: number[] }
+/** The guards' indices still holding the wreck (none before they were first put there). */
+export const guardsLeft = (r: SkyFall): number[] => { const out = new Set(r.out ?? []), n = r.guards ?? 0; return Array.from({ length: n }, (_, i) => i).filter((i) => !out.has(i)); };
 
 export const FALL = {
   /** game minutes in a slot; at most one fall begins in a slot (1 real second = 1 game minute) */

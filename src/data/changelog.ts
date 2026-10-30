@@ -3,6 +3,11 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.285.1', date: '2026-10-30', title: 'Fallen containers on slopes, and guards that stay', notes: [
+    'A container fallen from orbit now lies along the slope it landed on (pitched and rolled with the ground), and the torn plates and the ring of thrown earth round it sit on the ground instead of hanging in the air over a hillside.',
+    'The bandits guarding a fallen container no longer vanish for good when you die, reload or leave: only guards really beaten (killed, run off or given up) are struck off, and the rest are back at the wreck when you return. Wrecks whose gang was wrongly cleared by the old rule get their full gang back.',
+    'Multiplayer: the beaten guards are a list in the shared record of the fall, so two games telling the same kill agree; the game running the guards puts them to sleep only when every player is far off. The protocol and the server are unchanged.',
+  ] },
   { v: '0.285.0', date: '2026-10-30', title: 'The exoskeleton, and the backpack in your hands', notes: [
     'The two "back" slots are gone from the Body row for good (nothing has hung on your back since 0.264; the captions were left over).',
     'What were called relics are exoskeleton modules now, and the Modules row is the Exoskeleton. Modules plug into sockets: the plain harness has 3 (as before), a Salvage Exoframe opens one more and a Powered Exoskeleton two.',
