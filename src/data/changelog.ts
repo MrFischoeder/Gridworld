@@ -3,6 +3,12 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.286.0', date: '2026-10-30', title: 'The compass in the HUD, a map of where you walked', notes: [
+    'The compass strip is part of the suit\'s HUD: it is always there on the surface, nothing to carry, buy or make. The Compass is no longer sold, ordered or made in the workshop, and the ship\'s locker no longer holds one (an old one can still be sold).',
+    'Without the satellite link the glove\'s map (M) no longer shows a blank NO SATELLITE LINK screen: it shows the ground you have walked through, and keeps it, with the warning on top. What the crew built (tracks, bridges, outposts, lines, warehouses) shows only where you have been. The satellites, once restored, add more (orbital scans, routes, the waypoint); better satellites will show more detail later.',
+    'A new crew member starts with a blank map and no quests. The tasks the dead hero carried go back up on the boards that posted them, from the start, so the next one can take them up again.',
+    'Multiplayer: the map is each character\'s own; the boards are shared, so the returned notices appear for everyone. The protocol and the server are unchanged.',
+  ] },
   { v: '0.285.1', date: '2026-10-30', title: 'Fallen containers on slopes, and guards that stay', notes: [
     'A container fallen from orbit now lies along the slope it landed on (pitched and rolled with the ground), and the torn plates and the ring of thrown earth round it sit on the ground instead of hanging in the air over a hillside.',
     'The bandits guarding a fallen container no longer vanish for good when you die, reload or leave: only guards really beaten (killed, run off or given up) are struck off, and the rest are back at the wreck when you return. Wrecks whose gang was wrongly cleared by the old rule get their full gang back.',

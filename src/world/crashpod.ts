@@ -179,7 +179,7 @@ export function lockerBox() {
   const c = G.char, own = 'ship:locker:' + c.pid, key = !c.containers[own] && c.containers['ship:locker'] && !net.id ? 'ship:locker' : own;
   if (!c.containers[key]) {
     const items: (Slot | null)[] = Array(14).fill(null); // (0.257.1) 12 slots: a hatchet and a pickaxe join the saw, so the first logs, planks and stones need no gold
-    putItems(items, 'medkit', 2); putItems(items, 'waterF', 2); putItems(items, 'bread', 3); putItems(items, 'firekit', 1); putItems(items, 'compass', 1); putItems(items, 'saw', 1); putItems(items, 'hatchet', 1); putItems(items, 'pickaxe', 1); putItems(items, 'ammoE', 40); putItems(items, 'oillamp', 1); putItems(items, 'lampoil', 2); putItems(items, 'firebrand', 4); putItems(items, 'wrench', 1); // the ship's own cells: all the rounds you have until you find more; (0.199) a lamp for the dark; (0.272) a wrench to strip the ship's own engine for parts
+    putItems(items, 'medkit', 2); putItems(items, 'waterF', 2); putItems(items, 'bread', 3); putItems(items, 'firekit', 1); putItems(items, 'saw', 1); putItems(items, 'hatchet', 1); putItems(items, 'pickaxe', 1); putItems(items, 'ammoE', 40); putItems(items, 'oillamp', 1); putItems(items, 'lampoil', 2); putItems(items, 'firebrand', 4); putItems(items, 'wrench', 1); // the ship's own cells: all the rounds you have until you find more; (0.199) a lamp for the dark; (0.272) a wrench to strip the ship's own engine for parts
     c.containers[key] = { items, gold: 0 };
   }
   return c.containers[key];

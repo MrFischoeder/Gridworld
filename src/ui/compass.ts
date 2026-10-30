@@ -1,4 +1,4 @@
-// The compass strip at the top of the screen (only while you carry a Compass, on the surface): your heading with
+// The compass strip at the top of the screen (on the surface; since 0.286 always there, built into the suit's HUD): your heading with
 // the cardinal points, a mark towards the nearest village (the next one while you stand in a village) (with its name and distance) and marks for the
 // places your accepted quests send you to, and your flags. The Sensor Compass (`scanner`) also marks the nearest old
 // installation not yet restored within SCAN_R and the nearest toxic fog you have found. The GPS Tablet (`tablet`)
@@ -33,7 +33,7 @@ let nearT = 0, near: Mark = null, old: Mark = null, fog: Mark = null;
 /** How far the sensor compass sees old installations and known fog (m). */
 export const SCAN_R = 30000;
 export function updateCompass(dt: number) {
-  const scan = hasItem('scanner'), tab = gpsOn(), on = G.char.loc === 'overworld' && (scan || tab || hasItem('compass')) && G.playing;
+  const scan = hasItem('scanner'), tab = gpsOn(), on = G.char.loc === 'overworld' && G.playing; // (0.286) the HUD's own compass: nothing to carry
   cv.style.display = on ? 'block' : 'none';
   gps.style.display = on && tab ? 'block' : 'none';
   if (!on) return;

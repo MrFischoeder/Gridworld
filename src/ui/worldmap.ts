@@ -185,6 +185,10 @@ function drawArea(ctx: CanvasRenderingContext2D, w: number, h: number, ppm: numb
   // the explored tiles, nearest first; the ones not worked out yet come in over the next frames (a dim square meanwhile)
   const pcx = Math.floor(px / CHUNK), pcz = Math.floor(pz / CHUNK), todo: [number, number][] = [];
   for (let cx = cx0; cx <= cx1; cx++) for (let cz = cz0; cz <= cz1; cz++) if (isDiscovered(d, cx, cz)) todo.push([cx, cz]);
+  // (0.286) the ground you have seen as one clip path (vertical runs of tiles): what the crew built shows only there
+  const seen = new Path2D();
+  { const cols = new Map<number, number[]>(); for (const [cx, cz] of todo) (cols.get(cx) ?? cols.set(cx, []).get(cx)!).push(cz);
+    for (const [cx, zs] of cols) { zs.sort((a, b) => a - b); let a = zs[0], b = a; for (let i = 1; i <= zs.length; i++) { if (i < zs.length && zs[i] === b + 1) { b = zs[i]; continue; } seen.rect(X(cx * CHUNK), Z(a * CHUNK), CHUNK * ppm + 0.5, (b - a + 1) * CHUNK * ppm + 0.5); if (i < zs.length) a = b = zs[i]; } } }
   todo.sort((a, b) => Math.hypot(a[0] - pcx, a[1] - pcz) - Math.hypot(b[0] - pcx, b[1] - pcz));
   const budget = { n: TILE_BUDGET.n, until: performance.now() + TILE_BUDGET.ms };
   for (const [cx, cz] of todo) {
@@ -243,6 +247,7 @@ function drawArea(ctx: CanvasRenderingContext2D, w: number, h: number, ppm: numb
     ctx.save(); ctx.translate(x, y); ctx.rotate(-v.st.heading); ctx.strokeStyle = '#e8fff0'; ctx.strokeRect(-w, -l, w * 2, l * 2); ctx.restore();
     if (labels) { ctx.fillStyle = '#e8fff0'; ctx.fillText(v.spec.name, x, y - l - 6); }
   }
+  ctx.save(); ctx.clip(seen); // (0.286) the crew's tracks, bridges, outposts, lines and warehouses: only on ground you have seen
   // (0.280) the heroes' tracks: built solid and earthy, the graded part of the works solid, the rest dashed gold
   for (const r of Object.values(G.char.proads)) {
     if (!r) continue;
@@ -415,6 +420,7 @@ function drawArea(ctx: CanvasRenderingContext2D, w: number, h: number, ppm: numb
     if (o.life?.v) { ctx.beginPath(); ctx.arc(x, y, r + 4, 0, 6.283); ctx.stroke(); } // (0.185) a hamlet: a double ring
     if (labels) ctx.fillText(o.life?.v ? TL`Hamlet · ${Math.floor(o.life.n)} people` : (o.k === 'port' || o.k === 'store' || o.k === 'camp' ? o.name : tl('Outpost') + (o.done?.dig ? '' : ' (building)')) + (o.life && o.life.n >= 1 ? ` · ${Math.floor(o.life.n)} people` : ''), x, y + r + 16);
   }
+  ctx.restore();
   for (const m of leadMarkers()) { // leads: a violet diamond for a data carrier, a lime one for a great installation (held at the edge of the big map when further)
     let x = X(m.x), y = Z(m.z); const r = labels ? 9 : 5, out = x < 24 || y < 40 || x > w - 24 || y > h - 40;
     if (out && !labels) continue;
@@ -601,19 +607,15 @@ export const mapLocked = () => { const s = G.char.towns[GRIDHOLM_ID]; return isS
 function drawFullMap() {
   const w = innerWidth, h = innerHeight;
   if (big.width !== w || big.height !== h) { big.width = w; big.height = h; }
-  if (mapLocked()) { // the glove's screen: no uplink
-    bctx.fillStyle = '#010d04'; bctx.fillRect(0, 0, w, h);
-    bctx.strokeStyle = '#2fe06055'; for (let y = 0; y < h; y += 4) { bctx.beginPath(); bctx.moveTo(0, y); bctx.lineTo(w, y); bctx.stroke(); }
-    bctx.textAlign = 'center'; bctx.fillStyle = '#3dff6e'; bctx.font = '30px VT323, monospace';
-    bctx.fillText(tl('GLOVE COMPUTER · SATELLITE MAP'), w / 2, h / 2 - 60);
-    bctx.fillStyle = (Date.now() >> 9) % 2 ? '#ff6a4a' : '#ffb347'; bctx.font = '44px VT323, monospace'; bctx.fillText(tl('NO SATELLITE LINK'), w / 2, h / 2);
-    bctx.fillStyle = '#9dffb4'; bctx.font = '22px VT323, monospace';
-    bctx.fillText(tl('No ground station answers. Restore the radar and communications station near Gridholm'), w / 2, h / 2 + 50);
-    bctx.fillText(tl('(ask the elder) and the satellites still circling the planet will feed this map.'), w / 2, h / 2 + 78);
-    bctx.fillStyle = '#3dff6e'; bctx.fillText(tl('M or Esc to close · the minimap still shows what your glove sees around you'), w / 2, h - 20);
-    return;
-  }
   drawArea(bctx, w, h, zoom, true);
+  if (mapLocked()) { // (0.286) no uplink: the glove only keeps the ground you have walked through
+    bctx.textAlign = 'center'; bctx.fillStyle = (Date.now() >> 9) % 2 ? '#ff6a4a' : '#ffb347'; bctx.font = '30px VT323, monospace';
+    bctx.fillText(tl('NO SATELLITE LINK'), w / 2, 40);
+    bctx.fillStyle = '#9dffb4'; bctx.font = '20px VT323, monospace';
+    bctx.fillText(tl('The glove maps only the ground you have walked through.'), w / 2, 66);
+    bctx.fillText(tl('Restore the radar and communications station near Gridholm (ask the elder) to reach the satellites.'), w / 2, 88);
+    bctx.textAlign = 'left';
+  }
   drawPlan(w, h);
   bctx.fillStyle = '#3dff6e'; bctx.font = '22px VT323, monospace'; bctx.textAlign = 'left';
   const sat = satelliteUp(G.char.towns[GRIDHOLM_ID]);

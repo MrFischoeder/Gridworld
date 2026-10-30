@@ -14,7 +14,6 @@ export const MAKES: Make[] = [
   M('hatchet', 1, [['log', 1], ['stone', 2]], ['hammer'], 6),
   M('pickaxe', 1, [['log', 1], ['stone', 3]], ['hammer'], 6),
   M('flask', 1, [['hide', 1]], [], 3),
-  M('compass', 1, [['scrap', 1], ['circuit', 1]], ['screwdriver'], 5),
   M('medkit', 1, [['membrane', 1], ['cap', 3]], [], 4),
   M('ore', 1, [['ironO', 8], ['planks', 2]], ['hammer'], 7),
   M('copper', 1, [['copperO', 8], ['planks', 2]], ['hammer'], 7),

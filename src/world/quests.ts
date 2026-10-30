@@ -95,6 +95,21 @@ export function accept(id: string, poi?: Poi): string {
   G.char.quests.push(q); boardOffers(poi); saveChar();
   return q.kind === 'fetch' ? TL`Taken. Talk to ${giverOf(q)}.` : tl('Taken: ') + q.title + '.';
 }
+/**
+ * (0.286) A hero died: the tasks they carried go back up on the boards that posted them, from the start (the progress
+ * died with them), so the next crew member begins them anew. The boards are the world's (shared), the quests were theirs.
+ */
+export function returnQuests(old: { quests: Quest[]; board: Board; boards: Record<number, Board> }) {
+  for (const q of old.quests) {
+    if (q.state === 'done') continue;
+    for (const c of W.creatures) if (c.questId === q.id) c.questId = undefined;
+    const back: Quest = { ...q, state: 'offer' };
+    delete back.progress; delete back.killed; delete back.alphaDead;
+    const id = q.town ?? GRIDHOLM_ID, b = id === GRIDHOLM_ID ? old.board : (old.boards[id] ??= { seq: 0, offers: [], stamp: boardPeriod(G.char.time) });
+    if (!b.offers.some((o) => o.id === q.id)) b.offers.unshift(back);
+  }
+  old.quests = [];
+}
 export function abandon(id: string): string {
   const q = G.char.quests.find((x) => x.id === id);
   if (!q) return '';

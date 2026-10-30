@@ -5103,4 +5103,7 @@ export const PL: Record<string, string> = {
   "Exoskeleton": "Egzoszkielet",
   "Take the backpack off": "Zdejmij plecak",
   "Your backpack is off: you carry it in your hands.": "Plecak jest zdjęty: niesiesz go w rękach.",
+  "an old hand compass; the suit's HUD has had its own compass strip since you woke, so this one is only worth selling": "stary kompas ręczny; HUD skafandra ma własny pasek kompasu od chwili przebudzenia, więc ten nadaje się już tylko na sprzedaż",
+  "The glove maps only the ground you have walked through.": "Rękawica mapuje tylko teren, przez który przeszedłeś.",
+  "Restore the radar and communications station near Gridholm (ask the elder) to reach the satellites.": "Odbuduj stację radarowo-łączności koło Gridholm (zapytaj starszego), żeby połączyć się z satelitami.",
 };

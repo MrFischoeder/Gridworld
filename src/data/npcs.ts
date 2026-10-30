@@ -55,7 +55,7 @@ export function stockFor(role: NpcRole, world: number): [ItemKey, number][] {
   return BASES_OPEN ? stock : stock.filter(([k]) => !BASE_ITEMS.includes(k));
 }
 function stockAll(role: NpcRole, world: number): [ItemKey, number][] {
-  if (role === 'merchant') return [['medkit', 30], ['emp', 45], ['key', 90], ['recall', 60], ['flask', 15], ['firekit', 12], ['compass', 40], ['flagpole', 250],
+  if (role === 'merchant') return [['medkit', 30], ['emp', 45], ['key', 90], ['recall', 60], ['flask', 15], ['firekit', 12], ['flagpole', 250], // (0.286) no compass: the HUD has one
     ...(Object.keys(SUPPLY_PRICE) as ItemKey[]).map((k): [ItemKey, number] => [k, SUPPLY_PRICE[k]!])];
   if (role === 'grocer') return [['waterF', 25]]; // the dishes come from the village hall (ui/foodshop.ts)
   if (role === 'blacksmith') {

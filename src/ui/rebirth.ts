@@ -2,7 +2,8 @@
 // where they died for a game day with everything they carried and their gold (world/bodies.ts; anyone may search it),
 // their name joins the world's fallen crew (`Char.fallen`, shared: the server refuses it as a character name from then
 // on) and their cryo-pod stays open. Another member of the survey team thaws out in the next shut pod aboard the
-// Kestrel with an empty backpack, a fresh locker and no map, quests or gold, and needs a new name; the vehicles stay
+// Kestrel with an empty backpack, a fresh locker and no map, quests or gold (the quests they carried go back on their
+// boards from the start, 0.286), and needs a new name; the vehicles stay
 // the crew's (they go to the new member).
 // Their houses go to the next crew member of the same player (`Char.estate`), handed over by the village elder.
 // Multiplayer: each player's game runs their own death; the drops, `fallen` and the server's name check are shared.
@@ -11,6 +12,7 @@ import { net, sendHero, onHero } from '../net/client';
 import { newChar, type Char, type Slot } from '../save';
 import { saveChar } from '../character';
 import { layBody } from '../world/bodies';
+import { returnQuests } from '../world/quests';
 import { myPod, nextPod } from '../world/crashpod';
 import { SHARED } from '../world/share';
 import { setCrewDeath, type Arrival } from '../world/level';
@@ -78,6 +80,7 @@ export function initRebirth(f: (c: Char, a: Arrival) => void) {
     layBody(name, old.pid, kit, old.gold);
     // the name joins the fallen, the pod stays open
     old.fallen[name.toLowerCase()] = { n: name, t: Math.round(old.time), pod: myPod() };
+    returnQuests(old); // (0.286) their tasks go back on the boards, to be begun anew
     const c = newChar(), pod = nextPod();
     for (const f of SHARED) (c as unknown as Record<string, unknown>)[f.f] = old[f.f]; // the world stays the world
     Object.assign(c, { world: old.world, time: old.time, name: '', intro: true, guide: 2, pod, settlementRules: old.settlementRules, vehicles: old.vehicles });
