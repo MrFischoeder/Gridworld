@@ -22,7 +22,7 @@ export function renderSheet() {
   const c = G.char, names = c.mods.filter((k): k is ItemKey => !!k).map((k) => ITEMS[k].name);
   const d = c.dungeon, where = d ? TL`Depth ${d.depth}, sector ${d.gx}, ${d.gz}.` + ' ' : el.hudL.textContent + '. ';
   el.sheet.innerHTML = (c.name ? '<b>' + c.name.replace(/[<>&]/g, '') + '</b> · ' : '') + where + TL`Level ${c.level}, XP ${c.xp}/${xpNeed(c.level)}, gold ${c.gold}` +
-    '<div style="color:var(--gold);font-size:20px;margin-top:4px">' + (names.length ? TL`Modules: ${names.join(', ')}` : tl('No relics equipped')) + '</div>';
+    '<div style="color:var(--gold);font-size:20px;margin-top:4px">' + (names.length ? TL`Modules: ${names.join(', ')}` : tl('No modules fitted')) + '</div>';
 }
 
 export function updateHud(dt: number) {

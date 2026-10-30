@@ -3,6 +3,13 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.285.0', date: '2026-10-30', title: 'The exoskeleton, and the backpack in your hands', notes: [
+    'The two "back" slots are gone from the Body row for good (nothing has hung on your back since 0.264; the captions were left over).',
+    'What were called relics are exoskeleton modules now, and the Modules row is the Exoskeleton. Modules plug into sockets: the plain harness has 3 (as before), a Salvage Exoframe opens one more and a Powered Exoskeleton two.',
+    'With a frame on you can build it up: three extensions one after another (Load struts, Shoulder servos, Spine core), each built from materials in your backpack with the button under the sockets. Each opens one more socket and lets you carry more (up to 8 sockets and +19 kg before you are overloaded). The extensions are yours and work while you wear a frame; a frame cannot come off while modules sit in the sockets it opened.',
+    'Take the backpack off (the button beside Contents): it goes into both hands with everything in it, and the bigger pack you wore with it. Carried, it can be opened, put down anywhere, picked up again (E) and put back on. While it is off nothing goes into the backpack slots. Anyone may pick up a backpack left lying, carry it off, open it, or put it on if their own is off.',
+    'Multiplayer: a backpack put down is shared world state (the new field "bags") and its contents a shared container; picking one up takes the container\'s lock, so when two players grab it at once only one gets it. The protocol is unchanged, but the server must be updated (install.sh) to keep backpacks lying on the ground: with an older server a backpack can only be carried and put back on.',
+  ] },
   { v: '0.284.0', date: '2026-10-30', title: 'Confirmed emails and your game kept on the server', notes: [
     'On a server that sends mail, only an account with a confirmed email may play. A new account confirms it as it is made (as before); an account made before without one is shown why, the Join buttons wait, and the Add email field opens: type your email and password, then the code we send, and you are in.',
     'Your character is now kept on the server, for your account, in each of its game servers: every half minute, when you leave the game and when you close the page. Log in on another computer or in another browser and you carry on with the same character: the backpack, gold, level, your house, the map you explored, where you stood. If this browser holds a newer save than the server (say the server was down), the newer one wins.',

@@ -1,5 +1,6 @@
 import { tl } from '../i18n';
-export type ItemType = 'relic' | 'cons' | 'key' | 'part' | 'quest' | 'attach' | 'mat' | 'tool' | 'weapon' | 'wear' | 'good' | 'ammo' | 'cargo';
+import { MOD_MAX, extLoad } from '../gen/exoframe';
+export type ItemType = 'relic' | 'cons' | 'key' | 'part' | 'quest' | 'attach' | 'mat' | 'tool' | 'weapon' | 'wear' | 'good' | 'ammo' | 'cargo' | 'bag';
 export interface ItemDef { name: string; ab: string; type: ItemType; desc: string; stack?: number }
 
 export const ITEMS = {
@@ -218,6 +219,8 @@ export const ITEMS = {
   turbo: { name: tl('Turbocharger'), ab: 'TRB', type: 'part', desc: tl('engine upgrade: +15% top speed, +30% acceleration'), stack: 1 },
   eguard: { name: tl('Engine Guard'), ab: 'EGD', type: 'part', desc: tl('vehicle upgrade: armour plate that halves vehicle damage'), stack: 1 },
   plating: { name: tl('Hull Plating'), ab: 'HUL', type: 'part', desc: tl('armour plates that restore 40% vehicle condition (fit them at the front of the vehicle)'), stack: 5 },
+  // (0.285) your backpack taken off: carried in both hands with everything in it (gen/bags.ts)
+  backpack: { name: tl('Backpack'), ab: 'BAG', type: 'bag', desc: tl('your backpack taken off, with everything in it. Carried in both hands; put it down anywhere and pick it up again, open it, or put it back on. Anyone may pick up a backpack left lying'), stack: 1 },
   // (0.247) crates and barrels for the vehicles' cargo bays (data/cargo.ts): carried in your hands, one a bay
   crateW: { name: tl('Crate'), ab: 'CRT', type: 'cargo', desc: tl('room for a heap of building stuff: planks, stone, logs, ore, scrap. It turns up on its own when you carry more than your pockets hold, and is gone once empty. Holds 100 litres; carried in your hands or in a vehicle\'s cargo bay'), stack: 1 },
   crateM: { name: tl('Steel Crate'), ab: 'SCR', type: 'cargo', desc: tl('an old steel crate: it counts as a crate now'), stack: 1 },
@@ -244,7 +247,7 @@ export const ITEMS = {
 export type ItemKey = keyof typeof ITEMS;
 export const item = (k: ItemKey): ItemDef => ITEMS[k];
 export const RELIC_KEYS = (Object.keys(ITEMS) as ItemKey[]).filter((k) => item(k).type === 'relic');
-export const INV_SIZE = 24, MOD_SIZE = 3; // (0.201) the backpack has 24 slots (was 12); its litres stay the limit
+export const INV_SIZE = 24, MOD_SIZE = MOD_MAX; // (0.285) module sockets: gen/exoframe.ts (3 on the harness, more with a frame); // (0.201) the backpack has 24 slots (was 12); its litres stay the limit
 
 /**
  * Weight (kg) and bulk (litres) of one item. Bulk has to fit in the backpack (PACK.vol); weight only slows you down.
@@ -268,7 +271,7 @@ export const BULK: Record<ItemKey, [kg: number, litres: number]> = {
   eggs: [6, 10], milk: [22, 20], microchip: [6, 6], powercell: [14, 8], sensor: [5, 6], ancalloy: [16, 6], ceramics: [12, 10], composite: [8, 12], aerocomp: [30, 30], avionics: [14, 14], lifesup: [40, 30], drillrig: [120, 60], rocketeng: [90, 60], precision: [10, 6], automation: [24, 12], nfuel: [30, 8], bauxite: [20, 10], sulfur: [14, 10], lithium: [12, 10], rareearth: [22, 8], uranium: [25, 8],
   sand: [20, 12], steel: [20, 8], copperbar: [20, 8], plastic: [12, 14], glass: [14, 12], cable: [10, 10], boards: [5, 8], parts: [15, 12], alloy: [20, 8], propellant: [15, 14],
   clay: [22, 10], limestone: [22, 10], lead: [24, 8], nickel: [22, 8], lumber: [14, 16], iron: [20, 8], bricks: [24, 12], cement: [25, 16], chems: [18, 16], aluminium: [8, 8], leadbar: [26, 6], batteries: [16, 10], fibre: [10, 16], wool: [8, 18], cotton: [9, 16], meat: [20, 16], motor: [30, 14], generator: [80, 40], pipes: [24, 20], gears: [26, 10], pump: [60, 30], chromite: [26, 10], rutile: [24, 10], pgmore: [22, 8], cutstone: [40, 24], advsteel: [20, 6], titanium: [12, 6], pgm: [10, 3], silicon: [10, 6], control: [8, 8], optics: [5, 6], hpe: [18, 12], computer: [16, 20], pcm: [24, 18],
-  wheelL: [12, 22], wheelH: [28, 36], engine: [8, 6], evkit: [16, 12], cargodrone: [14, 30], evpack: [10, 8], turbo: [6, 5], drivetrain: [9, 6], scanner: [0.4, 0.3], eguard: [5, 4], plating: [7, 5], cannon: [25, 30], crateW: [6, 100], crateM: [6, 100], barrelW: [6, 100], barrelM: [6, 100],
+  wheelL: [12, 22], wheelH: [28, 36], engine: [8, 6], evkit: [16, 12], cargodrone: [14, 30], evpack: [10, 8], turbo: [6, 5], drivetrain: [9, 6], scanner: [0.4, 0.3], eguard: [5, 4], plating: [7, 5], cannon: [25, 30], backpack: [1.2, 40], crateW: [6, 100], crateM: [6, 100], barrelW: [6, 100], barrelM: [6, 100],
   reflex: [0.3, 0.3], scope: [0.8, 1], barL: [1.2, 1], barR: [1, 0.8], barS: [0.9, 0.8], magX: [0.5, 0.4], magD: [1.2, 1],
   wrench: [1.2, 0.6], roadkit: [2.5, 3], coil: [3, 1.5], bearing: [2, 1], pvcell: [1, 2], inverter: [2.5, 2],
 };
@@ -288,7 +291,7 @@ export const WEAPON_KIND: Partial<Record<ItemKey, 0 | 1>> = { blaster: 0, pistol
 /** Tools that work only from your hands (a hatchet in the backpack fells no tree); instruments like the compass work carried. */
 export const HAND_TOOLS = new Set<ItemKey>(['hatchet', 'pickaxe', 'hammer', 'saw', 'screwdriver', 'pliers', 'welder', 'torch', 'shovel']);
 /** Too big or awkward for the backpack: carried in your hands (and then you cannot hold a weapon). */
-export const HANDS_ONLY = new Set<ItemKey>(['wheelL', 'wheelH', 'cannon', 'benchkit', 'flagpole', 'crateW', 'crateM', 'barrelW', 'barrelM']);
+export const HANDS_ONLY = new Set<ItemKey>(['wheelL', 'wheelH', 'cannon', 'benchkit', 'flagpole', 'crateW', 'crateM', 'barrelW', 'barrelM', 'backpack']);
 /**
  * (0.201) Two hands: the weapon (or tool) in your main hand, and in the other (`Char.off`) a light or a shield. What
  * goes in the other hand, the share of a hit a shield takes, and what needs both hands (then the other hand's light
@@ -312,9 +315,9 @@ export const EXO: Partial<Record<ItemKey, { comfy: number; max: number; speed: n
   exoH: { comfy: 30, max: 40, speed: 1.12, stamina: 0.6 },
 };
 /** What you wear makes of the backpack and your legs: litres, easy and overload limits (kg), speed and stamina factors. */
-export function gearOf(wear: Partial<Record<WearSlot, ItemKey | null>>) {
-  const p = wear.pack, x = wear.frame ? EXO[wear.frame] : undefined;
-  return { vol: (p && PACK_VOL[p]) || PACK.vol, comfy: PACK.comfy + (x?.comfy ?? 0), max: PACK.max + (x?.max ?? 0), speed: x?.speed ?? 1, stamina: x?.stamina ?? 1 };
+export function gearOf(wear: Partial<Record<WearSlot, ItemKey | null>>, ext = 0) {
+  const p = wear.pack, x = wear.frame ? EXO[wear.frame] : undefined, e = extLoad(wear, ext); // (0.285) the frame's extensions carry more
+  return { vol: (p && PACK_VOL[p]) || PACK.vol, comfy: PACK.comfy + (x?.comfy ?? 0) + e.comfy, max: PACK.max + (x?.max ?? 0) + e.max, speed: x?.speed ?? 1, stamina: x?.stamina ?? 1 };
 }
 /** What Kuba charges for vehicle parts. He buys them back for only a fifth of that. */
 export const PART_PRICE: Partial<Record<ItemKey, number>> = { wheelL: 40, wheelH: 90, engine: 70, plating: 60, turbo: 220, eguard: 150, cannon: 400, repairkit: 90, fuel: 80 };

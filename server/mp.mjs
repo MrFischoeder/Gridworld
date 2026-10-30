@@ -74,8 +74,8 @@ import { createAccounts, ACCOUNT } from './accounts.mjs';
 export const MP = { path: '/mp', port: 7777, max: 8, rate: 100, nameMax: 20, chatMax: 200, roomName: 28, rooms: 12, roomTtl: 14, cars: 8, drops: 800, dropTtl: 6, lootTtl: 2, payload: 4 * 1024 * 1024, maps: 2 * 1024 * 1024, char: 2 * 1024 * 1024, charEvery: 5 };
 /** What this server keeps beyond the protocol (a client checks before relying on it): `gunmods` drops keep a gun's own
  *  attachments (`m`, 0.279.1); `charsave` (0.284) keeps every account's character in each room ({t:'csave'}; the
- *  welcome's `char`), so a player carries on from any browser. */
-export const FEATURES = ['gunmods', 'charsave'];
+ *  welcome's `char`), so a player carries on from any browser; `bags` (0.285) keeps backpacks put down (the field 'bags'). */
+export const FEATURES = ['gunmods', 'charsave', 'bags'];
 /** What players may pass to each other through 'cast' (everyone else in the room) and 'to' (one player). */
 /** Account messages (one each, on a connection of their own). */
 const AUTH = new Set(['register', 'login', 'logout', 'passwd', 'verify', 'resend', 'forgot', 'reset', 'email', 'profile']);
@@ -88,7 +88,7 @@ const num = (v) => (typeof v === 'number' && Number.isFinite(v) ? v : 0);
 const DAY = 86400000;
 /** A creator's secret as the server keeps it (the secret itself is never stored or shown). */
 const ownerOf = (key) => (typeof key === 'string' && key.length >= 16 ? createHash('sha256').update(key).digest('hex') : '');
-const FIELDS = new Set(['towns', 'market', 'installs', 'bridges', 'bridgeSites', 'piers', 'lighthouses', 'boats', 'airships', 'copters', 'vehicles', 'shuttle', 'containers', 'opened', 'unlocked', 'killed', 'harvest', 'camps', 'cityGarrisons', 'caravans', 'claims', 'benches', 'board', 'boards', 'fallen', 'outposts', 'rivals', 'bodies', 'skyfalls', 'workclaims', 'salvage', 'proads']);
+const FIELDS = new Set(['towns', 'market', 'installs', 'bridges', 'bridgeSites', 'piers', 'lighthouses', 'boats', 'airships', 'copters', 'vehicles', 'shuttle', 'containers', 'opened', 'unlocked', 'killed', 'harvest', 'camps', 'cityGarrisons', 'caravans', 'claims', 'benches', 'board', 'boards', 'fallen', 'outposts', 'rivals', 'bodies', 'skyfalls', 'workclaims', 'salvage', 'proads', 'bags']);
 /** (15) The map editor's files a room plays on (the world, the village layouts and the dungeons it names): kept with
  *  the room and sent to everyone in the welcome. Only their shape is checked here; each game reads them itself. */
 const cleanMaps = (m) => {

@@ -14,6 +14,7 @@ import { ITEMS, HANDS_ONLY, type ItemKey } from '../data/items';
 import { logLine, showToast } from '../ui/hud';
 import type { Slot } from '../save';
 import { workedBy } from './worklocks';
+import { layBag } from './bags';
 import { tl, TL } from '../i18n';
 
 /** Put down while playing alone (runtime only), in the same shape as the server's. */
@@ -27,6 +28,10 @@ const label = (k: string, n: number) => (ITEMS[k as ItemKey]?.name ?? k) + (n > 
 /** Lay a stack you have just taken out of your kit at your feet (a little ahead, so you see it fall). */
 let recent: [number, number, number][] = [];
 export function dropAtFeet(s: Slot) {
+  if (s.k === 'backpack') { // (0.285) a backpack is put down as a backpack (world/bags.ts), its things in it
+    if (!G.char.hands[0]) { G.char.hands[0] = s; logLine(layBag()); handsChanged(); } else logLine(tl('Put down what you hold first, then the backpack.'));
+    return;
+  }
   // (0.279.1) a gun keeps its attachments on the ground and whoever picks it up has them; only an older server, which
   // would lose them, gets them laid down loose beside the gun as in 0.279
   if (s.m?.some(Boolean) && online() && !net.feat.includes('gunmods')) {

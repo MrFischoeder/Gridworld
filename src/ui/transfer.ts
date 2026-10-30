@@ -111,6 +111,7 @@ const box: PackSide = {
     if (cm !== null) { dropEmpty(spec.bays); settleCrates(); save(); return cm; }
     const src = list(fw), s = src[i];
     if (!s) return '';
+    if (s.k === 'backpack' && tw === 'b' && fw !== 'b') return tl('A backpack is carried, put down or put on, not packed into something.'); // (0.285)
     const name = item(s.k).name, dst = list(tw)[j];
     const cap = (w: string) => (w === 'p' ? packVol() : undefined);
     if (tw === 'p' && HANDS_ONLY.has(s.k) || fw === 'p' && dst && HANDS_ONLY.has(dst.k)) return TL`The ${item((tw === 'p' ? s : dst!).k).name} is too big for the backpack: carry it in your hands.`;
@@ -123,6 +124,7 @@ const box: PackSide = {
     const [w, i] = parseId(id), src = list(w), s = src[i];
     if (w === 'c') return s ? takeBay(i) : putBay(i); // (0.247) the cargo bays
     if (!s) return '';
+    if (s.k === 'backpack' && w !== 'b') return tl('A backpack is carried, put down or put on, not packed into something.'); // (0.285)
     const name = item(s.k).name;
     if (isCargo(s.k) && w !== 'b' && spec.bays) return putBay(-1);
     if (w === 'b' && HANDS_ONLY.has(s.k)) { // too big for the backpack: into your hands (a weapon you held goes onto your back)

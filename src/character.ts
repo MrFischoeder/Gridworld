@@ -10,11 +10,12 @@ import { proxied } from './world/remote';
 import { tl, TL } from './i18n';
 import { isCargo, autoBox, boxOf, boxRoom, boxCap, pocketOf, dropEmpty, takeOut } from './data/cargo';
 import { toggleId } from './gen/journal';
+import { modSockets } from './gen/exoframe';
 
 export const saveChar = () => persist(G.char);
 
 export function calcStats() {
-  const c = G.char, L = c.level - 1, r = (k: ItemKey) => c.mods.filter((m) => m === k).length;
+  const c = G.char, L = c.level - 1, open = c.mods.slice(0, sockets()), r = (k: ItemKey) => open.filter((m) => m === k).length; // (0.285) only modules in open sockets work
   c.gunMods ??= [null, null, null]; c.loaded ??= { blaster: BLASTER.base.mag };
   // the gun in your hands with its own attachments (0.279; the Blaster's bare stats when you hold none)
   const h = c.hands[0], hk = h?.k, gun = gunOf(hk) ?? BLASTER, mel = meleeOf(hk) ?? meleeOf('blade')!;
@@ -22,7 +23,7 @@ export function calcStats() {
   G.ammo = Math.min(G.ammo, G.gun.mag);
   G.S = {
     maxHp: 100 + L * 15 + r('shield') * 20, bm: (1 + L * 0.12) * (1 + r('lens') * 0.25), mm: (1 + L * 0.12) * (1 + r('edge') * 0.25),
-    range: mel.reach + r('edge') * 0.3, rate: G.gun.interval * Math.pow(0.9, r('cell')), speed: (1 + r('servo') * 0.08) * gearOf(c.wear).speed, stamina: gearOf(c.wear).stamina,
+    range: mel.reach + r('edge') * 0.3, rate: G.gun.interval * Math.pow(0.9, r('cell')), speed: (1 + r('servo') * 0.08) * gear().speed, stamina: gear().stamina,
     // worn armour, and a shield in the other hand beside a one-handed weapon
     def: 1 - Object.values(c.wear).reduce((a, k) => a * (1 - (k ? WEAR[k]?.def ?? 0 : 0)), 1) * (1 - shieldNow()),
   };
@@ -30,16 +31,20 @@ export function calcStats() {
 }
 
 /** What you wear makes of the backpack and your legs (a bigger pack, an exoskeleton): data/items.ts gearOf. */
-export const gear = () => gearOf(G.char.wear);
-/** The backpack's litres now. */
-export const packVol = () => gearOf(G.char.wear).vol;
+export const gear = () => gearOf(G.char.wear, G.char.exoExt);
+/** The backpack's litres now (0.285: none while it is off). */
+export const packVol = () => (G.char.packOff ? 0 : gearOf(G.char.wear).vol);
+/** (0.285) Open module sockets: the harness, the frame you wear and its extensions (gen/exoframe.ts). */
+export const sockets = () => modSockets(G.char.wear, G.char.exoExt);
+/** (0.285) The weight of a backpack carried in your hands: what is in it and the pack it was worn with. */
+const bagKg = (s: Slot | null) => { const b = s?.bag ? G.char.containers[s.bag] : undefined; return b ? weightOf(b.items) + (b.pack ? BULK[b.pack][0] : 0) : 0; };
 
 /** A hit on the player after worn armour took its share off. */
 export const armoured = (dmg: number) => (proxied() ? dmg : dmg * (1 - G.S.def));
 /** Everything you carry (kg): the backpack, your hands, your back and what you wear. */
 export function carriedKg(): number {
   const c = G.char;
-  return weightOf(c.inv) + weightOf(c.hands) + weightOf(c.back) + weightOf(c.off ?? []) + Object.values(c.wear).reduce((a, k) => a + (k ? BULK[k][0] : 0), 0);
+  return weightOf(c.inv) + weightOf(c.hands) + bagKg(c.hands[0]) + weightOf(c.back) + weightOf(c.off ?? []) + Object.values(c.wear).reduce((a, k) => a + (k ? BULK[k][0] : 0), 0);
 }
 
 // ---------- hands and back ----------
@@ -122,8 +127,9 @@ export const packRoom = (k: ItemKey) => (HANDS_ONLY.has(k) ? (!G.char.hands[0] ?
  */
 export function addItem(k: ItemKey, n = 1, quiet = false): 'mod' | 'inv' | 'hands' | 'back' | null {
   const it = item(k), c = G.char;
-  if (it.type === 'relic' && !quiet) { const free = c.mods.indexOf(null); if (free >= 0 && !c.mods.includes(k)) { c.mods[free] = k; calcStats(); return 'mod'; } }
-  if (it.type === 'relic' && quiet) { const free = c.mods.indexOf(null); if (free >= 0) { c.mods[free] = k; return 'mod'; } }
+  const free0 = c.mods.slice(0, sockets()).indexOf(null);
+  if (it.type === 'relic' && !quiet) { const free = free0; if (free >= 0 && !c.mods.includes(k)) { c.mods[free] = k; calcStats(); return 'mod'; } }
+  if (it.type === 'relic' && quiet) { const free = free0; if (free >= 0) { c.mods[free] = k; return 'mod'; } }
   if (HANDS_ONLY.has(k)) {
     if (n !== 1 || (c.hands[0] && stowHeld())) return null;
     c.hands[0] = { k, n: 1 }; handsChanged(); return 'hands';

@@ -1,5 +1,7 @@
-// Backpack window: 3 relic modules, your body (what you wear, two weapons on your
-// back, what you hold in your hand and (0.201) your other hand: a light or a shield) and 24 backpack slots.
+// Backpack window: the exoskeleton's module sockets (0.285: the harness's three, more with a frame and its extensions;
+// gen/exoframe.ts), your body (what you wear, what you hold in your hand and (0.201) your other hand: a light or a
+// shield) and 24 backpack slots. (0.285) The backpack can be taken off into your hands, opened, put down and put on
+// again (world/bags.ts).
 // Items are dragged between slots (or selected and handled with the buttons under the grid).
 // Beside it stands a side panel: what lies on the ground around you (ui/ground.ts), or the chest, trunk or locker you
 // opened (ui/transfer.ts). Items move between the two by dragging, a click, or the buttons.
@@ -9,7 +11,9 @@ import { dropAtFeet } from '../world/drops';
 import { G } from '../game';
 import { item, BULK, WEAR, WEAR_SLOTS, WEAR_NAME, gearOf, WEAPON_KIND, HANDS_ONLY, HAND_TOOLS, OFF_HAND, TWO_HANDED, type ItemKey } from '../data/items';
 import { SLOT_NAME, attachSlot, gunOf, gunStats } from '../data/weapons';
-import { calcStats, saveChar, listOf, stowHeld, handsChanged, packVol, stowOff, takeInOff, bothHands, settleCrates } from '../character';
+import { calcStats, saveChar, listOf, stowHeld, handsChanged, packVol, stowOff, takeInOff, bothHands, settleCrates, sockets, countHeld, takeOne } from '../character';
+import { EXO_EXT, MOD_MAX, extProblem, modSockets, strandedMods } from '../gen/exoframe';
+import { takeOffPack, putOnPack, openCarried, layBag } from '../world/bags';
 import { dropStack, bulkOf, putItems } from '../inventory';
 import { isCargo, holds, boxRoom, boxCap, packFrom, takeOut, CARGO, pocketOf } from '../data/cargo';
 import type { Slot } from '../save';
@@ -32,7 +36,22 @@ let craftUi: CraftPanel | null = null;
 export function setCraftPanel(p: CraftPanel) { craftUi = p; }
 const isCraft = (id: string) => parseId(id)[0] === 'x';
 let sel: string | null = null;
-const loadEl = $('packLoad');
+const loadEl = $('packLoad'), modsSub = $('modsSub'), exoEl = $('exoExt'), offBtn = $<HTMLButtonElement>('packOffBtn');
+/** (0.285) The frame's line: what it is, its extensions and the next one to build. */
+function exoLine(): string {
+  const c = G.char, f = c.wear.frame, n = c.exoExt ?? 0;
+  if (!f) return tl('The plain harness: 3 sockets. Wear an exoskeleton frame to open more, then build it up.');
+  const head = TL`${item(f).name}: extensions ${Math.min(n, EXO_EXT.length)} / ${EXO_EXT.length}`;
+  if (n >= EXO_EXT.length) return head + ' · ' + tl('built up to the full');
+  const e = EXO_EXT[n], why = extProblem(c.wear, n, countHeld);
+  const needs = e.needs.map(([k, m]) => `${item(k).name} ${Math.min(countHeld(k), m)}/${m}`).join(', ');
+  return head + '<br>' + TL`Next: ${e.name} (one more socket, +${e.max} kg before overload): ${needs}` + `<button data-exo="1"${why ? ' disabled' : ''}>${tl('Build it')}</button>`;
+}
+/** (0.285) What the backpack grid says while the backpack is off. */
+function packOffText(): string {
+  const h = G.char.hands[0];
+  return h?.k === 'backpack' ? tl('Your backpack is off: you carry it in your hands.') + `<div class="acts"><button data-bag="puton">${tl('Put on')}</button><button data-bag="open">${tl('Open')}</button><button data-bag="down">${tl('Put down')}</button></div>` : tl('Your backpack is off: it lies where you put it down. Pick it up (E) and put it on. Until then nothing goes into the backpack.');
+}
 const packEl = $('pack'), invEl = $('inv'), modsEl = $('mods'), cardEl = $('gunCard'), detailEl = $('detail'), gearEl = $('gear'), defEl = $('gearDef');
 let note = '';
 
@@ -103,20 +122,25 @@ function renderCard() {
 }
 function renderPack() {
   const c = G.char;
-  modsEl.innerHTML = c.mods.map((k, i) => slotHTML('m:' + i, { k, hint: tl('Relic') }, sel === 'm:' + i)).join('');
+  const open = sockets();
+  modsEl.innerHTML = c.mods.slice(0, MOD_MAX).map((k, i) => slotHTML('m:' + i, i < open ? { k, hint: tl('Module') } : { k, hint: '—', cls: 'locked', title: tl('A closed socket: a frame and its extensions open more') }, sel === 'm:' + i)).join('');
+  modsSub.textContent = TL`modules: ${open} of ${MOD_MAX} sockets open`;
+  exoEl.innerHTML = exoLine();
+  offBtn.textContent = c.packOff ? '' : tl('Take the backpack off');
+  offBtn.style.display = c.packOff ? 'none' : '';
   gearEl.innerHTML = WEAR_SLOTS.map((s, i) => slotHTML('g:' + i, { k: c.wear[s] ?? null, hint: WEAR_NAME[s] }, sel === 'g:' + i)).join('') + '<div></div>' +
     slotHTML('h:0', { k: c.hands[0]?.k ?? null, n: c.hands[0]?.n, c: c.hands[0]?.c, b: c.hands[0]?.b, m: c.hands[0]?.m, hint: tl('Hands'), cls: 'held', title: c.hands[0] ? undefined : tl('Your hands: the weapon you fight with, or something too big for the backpack') }, sel === 'h:0') +
     slotHTML('o:0', { k: c.off[0]?.k ?? null, n: c.off[0]?.n, hint: tl('Other hand'), cls: 'held' + (c.off[0] && bothHands() ? ' idle' : ''), title: c.off[0] ? undefined : tl('Your other hand: a light (flashlight, oil lamp, torches) or a shield, beside a one-handed weapon') }, sel === 'o:0');
   const oh = c.off[0] ? (bothHands() ? TL`${item(c.off[0].k).name} (idle: both hands on the weapon)` : item(c.off[0].k).name) : tl('nothing');
   defEl.textContent = TL`armour ${Math.round(G.S.def * 100)}% · in hands: ${c.hands[0] ? item(c.hands[0].k).name : tl('nothing')}` + ' · ' + TL`other hand: ${oh}`;
-  invEl.innerHTML = c.inv.map((s, i) => slotHTML('p:' + i, { k: s?.k ?? null, n: s?.n, c: s?.c, m: s?.m, cls: s && packInCell(s.k) ? 'incell' : undefined, ...(i < 6 ? { key: i + 1, title: s ? undefined : TL`Backpack slot ${i + 1}: keys 1 to 6 take what lies in the first six slots into your hands` } : {}) }, sel === 'p:' + i)).join('');
+  invEl.innerHTML = c.packOff ? `<div class="packoff">${packOffText()}</div>` : c.inv.map((s, i) => slotHTML('p:' + i, { k: s?.k ?? null, n: s?.n, c: s?.c, m: s?.m, cls: s && packInCell(s.k) ? 'incell' : undefined, ...(i < 6 ? { key: i + 1, title: s ? undefined : TL`Backpack slot ${i + 1}: keys 1 to 6 take what lies in the first six slots into your hands` } : {}) }, sel === 'p:' + i)).join('');
   loadEl.innerHTML = loadText();
-  let html = note || tl('Drag items between slots, or hover one for its buttons. Keys 1 to 6 take the item in the first six backpack slots into your hands, swapping what you held (weapons, tools, lights); armour and clothes on your body, relics in the modules. A gun\'s attachments go on its own card: Modify. Wheels and other big things only fit in your hands.');
+  let html = note || tl('Drag items between slots, or hover one for its buttons. Keys 1 to 6 take the item in the first six backpack slots into your hands, swapping what you held (weapons, tools, lights); armour and clothes on your body, modules in the exoskeleton\'s sockets. A gun\'s attachments go on its own card: Modify. Wheels and other big things only fit in your hands.');
   const s = sel && !isSide(sel) ? at(sel) : null;
   const acts = sel && s ? actsFor(sel) : [];
   if (sel && s) {
     const [w] = parseId(sel);
-    html = itemInfo(s.k, s.c) + (w === 'm' ? tl('<br>Equipped in a module') : w === 'a' ? tl('<br>Fitted to the gun') : w === 'g' ? tl('<br>Worn') : w === 'k' ? tl('<br>On your back') : w === 'h' ? tl('<br>In your hands') : w === 'o' ? tl('<br>In your other hand') : '')
+    html = itemInfo(s.k, s.c) + (w === 'm' ? tl('<br>Fitted in a socket') : w === 'a' ? tl('<br>Fitted to the gun') : w === 'g' ? tl('<br>Worn') : w === 'k' ? tl('<br>On your back') : w === 'h' ? tl('<br>In your hands') : w === 'o' ? tl('<br>In your other hand') : '')
       + (TWO_HANDED.has(s.k) && (WEAPON_KIND[s.k] !== undefined || HAND_TOOLS.has(s.k)) ? tl('<br>Needs both hands') : '')
       + (s.m?.some(Boolean) ? '<br>' + TL`Fitted: ${s.m.filter(Boolean).map((k) => item(k!).name).join(', ')}` : '')
       + (isCargo(s.k) ? '<br>' + boxLine(s) : '');
@@ -136,7 +160,8 @@ function actsFor(id: string): [string, string][] {
     if (w === 'm') acts.push(['off', tl('Unequip')]);
     else if (w === 'a' || w === 'g') acts.push(['off', tl('Take off')]);
     else if (w === 'k') { if (gunOf(s.k)) acts.push(['mod', tl('Modify')]); acts.push(['hold', tl('Take in hands')], ['off', tl('Into backpack')]); }
-    else if (w === 'h') { if (gunOf(s.k)) acts.push(['mod', tl('Modify')]); if (it.type === 'cons') acts.push(['use', food ? (food.kcal ? tl('Eat') : tl('Drink')) : tl('Use')]); if (OFF_HAND.has(s.k)) acts.push(['offh', tl('Into other hand')]); acts.push(['stow', WEAPON_KIND[s.k] !== undefined ? tl('Sling on back') : tl('Put away')]); }
+    else if (w === 'h' && s.k === 'backpack') { if (c.packOff) acts.push(['puton', tl('Put on')]); acts.push(['bagopen', tl('Open')]); acts.push(['drop', tl('Put down')]); return acts; }
+    else if (w === 'h') { if (gunOf(s.k)) acts.push(['mod', tl('Modify')]); if (it.type === 'cons') acts.push(['use', food ? (food.kcal ? tl('Eat') : tl('Drink')) : tl('Use')]); if (OFF_HAND.has(s.k)) acts.push(['offh', tl('Into other hand')]); acts.push(['stow', tl('Put away')]); }
     else if (w === 'o') { if (s.k === 'flashlight' || s.k === 'oillamp' || s.k === 'firebrand') acts.push(['use', tl('Light / put out')]); acts.push(['stowo', tl('Put away')]); }
     else if (OFF_HAND.has(s.k)) { acts.push(['offh', tl('Take in other hand')]); if (it.type === 'cons' || s.k === 'flashlight' || s.k === 'oillamp') acts.push(['use', tl('Use')]); }
     else if (it.type === 'relic') acts.push(['on', tl('Equip')]);
@@ -161,7 +186,8 @@ function changed() { settleCrates(); calcStats(); refreshGunLook(); handsChanged
 /** Whether item k may sit in slot (w, idx). */
 function fits(w: string, idx: number, k: ItemKey): boolean {
   if (w === 'p') return !HANDS_ONLY.has(k);
-  if (w === 'm') return item(k).type === 'relic';
+  if (w === 'm') return item(k).type === 'relic' && idx < sockets();
+  if (w === 'g' && WEAR_SLOTS[idx] === 'pack' && G.char.packOff) return false;
   if (w === 'a') { const g = card && gunOf(card.k); return !!g && attachSlot(k) === g.slots[idx]; }
   if (w === 'g') return WEAR[k]?.slot === WEAR_SLOTS[idx];
   if (w === 'k') return WEAPON_KIND[k] !== undefined;
@@ -170,7 +196,8 @@ function fits(w: string, idx: number, k: ItemKey): boolean {
 }
 function why(w: string, idx: number, k: ItemKey): string {
   if (w === 'p') return TL`The ${item(k).name} is too big for the backpack: carry it in your hands.`;
-  if (w === 'm') return tl('Only relics go in the modules.');
+  if (w === 'm') return item(k).type === 'relic' ? tl('That socket is closed: a frame and its extensions open more.') : tl('Only exoskeleton modules go in the sockets.');
+  if (w === 'g' && WEAR_SLOTS[idx] === 'pack' && G.char.packOff) return tl('Your backpack is off: put it on first.');
   if (w === 'a') { const g = card && gunOf(card.k); return g ? TL`That does not fit the ${SLOT_NAME[g.slots[idx]].toLowerCase()} slot.` : ''; }
   if (w === 'g') return WEAR[k] ? TL`That is worn on the ${WEAR_NAME[WEAR[k]!.slot].toLowerCase()}.` : tl('You cannot wear that.');
   if (w === 'k') return tl('Only weapons go on your back.');
@@ -191,6 +218,13 @@ function move(from: string, to: string): string {
   const packIdx = WEAR_SLOTS.indexOf('pack'), wearAfter = { ...c.wear };
   if (tw === 'g' && j === packIdx) wearAfter.pack = a.k;
   if (fw === 'g' && i === packIdx) wearAfter.pack = b?.k ?? null;
+  { // (0.285) a frame coming off may not leave modules in the sockets it opened
+    const frameIdx = WEAR_SLOTS.indexOf('frame');
+    if ((tw === 'g' && j === frameIdx) || (fw === 'g' && i === frameIdx)) {
+      const w2 = { ...c.wear, frame: tw === 'g' && j === frameIdx ? a.k : b?.k ?? null };
+      if (strandedMods(c.mods, modSockets(w2, c.exoExt)) > 0) return tl('Take the modules out of the frame\'s sockets first.');
+    }
+  }
   const room = gearOf(wearAfter).vol, after = bulkOf(c.inv) + (tw === 'p' ? vol(a) - vol(b) : 0) + (fw === 'p' ? vol(b) - vol(a) : 0);
   if (after > room + 1e-6) return room < packVol() ? TL`Empty the backpack down to ${room} L first: without that pack it holds no more.` : tl('No room for it in your backpack.');
   const single = (w: string) => w === 'm' || w === 'a' || w === 'g' || w === 'k';
@@ -244,7 +278,7 @@ function quick(id: string, act: string): string {
   if (act === 'offh') return takeInOff(a.k);
   if (w !== 'p') return toPack();
   const it = item(a.k);
-  if (it.type === 'relic') { const f = c.mods.indexOf(null); return f < 0 ? tl('All modules are full. Unequip one first.') : move(id, 'm:' + f); }
+  if (it.type === 'relic') { const f = c.mods.slice(0, sockets()).indexOf(null); return f < 0 ? tl('Every open socket holds a module. Take one out first.') : move(id, 'm:' + f); }
   if (it.type === 'attach') {
     const g = fitTarget(), spec = g && gunOf(g.k);
     if (!g || !spec) return tl('Hold a gun, or open one\'s card (Modify), to fit it.');
@@ -268,6 +302,9 @@ bindSlots(packEl, {
 packEl.addEventListener('click', (e) => {
   const t = e.target as HTMLElement;
   if (t.closest('[data-gc]')) { card = null; renderPack(); return; }
+  const bg = t.closest<HTMLElement>('[data-bag]')?.dataset.bag; // (0.285) the backpack in your hands
+  if (bg) { doAct('h:0', bg === 'puton' ? 'puton' : bg === 'open' ? 'bagopen' : 'drop'); return; }
+  if (t.closest('[data-exo]')) { note = buildExt(); logLine(note); changed(); return; }
   const gf = t.closest<HTMLElement>('[data-gfit]');
   if (gf) { const m = quick('p:' + gf.dataset.gfit, 'on'); note = m; if (m) logLine(m); changed(); return; }
   const a = t.closest<HTMLElement>('[data-a]');
@@ -286,6 +323,9 @@ function doAct(id: string, act: string) {
   if (act === 'throw' && (w === 'p' || w === 'h')) { const s = listOf(w)[i]; if (s) readyThrow(s.k); }
   if (act === 'saw' || act === 'sawall') { const m = sawLogs(act === 'sawall'); logLine(m); note = m; if (!G.char.inv.some((x) => x?.k === 'log') && G.char.hands[0]?.k !== 'log') sel = null; }
   if (side?.act && act === side.act[0] && side.doAct) { note = side.doAct(id); sel = null; if (!G.packOpen) return; }
+  if (act === 'puton') { void putOnPack().then((m) => { logLine(m); note = m; changed(); }); return; }
+  if (act === 'bagopen') { closePack(); const m = openCarried(); if (m) logLine(m); return; }
+  if (act === 'drop' && w === 'h' && G.char.hands[0]?.k === 'backpack') { const m = layBag(); logLine(m); note = m; sel = null; changed(); return; }
   if (act === 'drop' && (w === 'p' || w === 'h' || w === 'k' || w === 'o')) { const s = listOf(w)[i]; listOf(w)[i] = null; sel = null; if (s) dropAtFeet(s); } // laid at your feet, for you or anyone to pick up
   changed();
 }
@@ -311,3 +351,15 @@ export function closePack() {
 }
 export const togglePack = () => (G.packOpen ? closePack() : openPack());
 $('packClose').onclick = closePack;
+offBtn.onclick = () => { const m = takeOffPack(); logLine(m); note = m; sel = null; changed(); };
+/** (0.285) Build the frame's next extension from what you carry. */
+function buildExt(): string {
+  const c = G.char, n = c.exoExt ?? 0, why = extProblem(c.wear, n, countHeld);
+  if (why === 'frame') return tl('Wear an exoskeleton frame first.');
+  if (why === 'full') return tl('The frame is built up to the full.');
+  const e = EXO_EXT[n];
+  if (why) return TL`For the ${e.name} you need: ${e.needs.map(([k, m]) => `${item(k).name} ×${m}`).join(', ')}.`;
+  for (const [k, m] of e.needs) for (let i = 0; i < m; i++) takeOne(k);
+  c.exoExt = n + 1; calcStats(); saveChar();
+  return TL`You build the ${e.name} onto the frame: one more socket, and it carries more.`;
+}

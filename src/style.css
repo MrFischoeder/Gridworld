@@ -220,7 +220,12 @@ body.is-touch #bUse.on{display:flex}
 .detail .bad,#detail .bad{color:#ff7a5c}
 .packtop{display:flex;gap:14px}
 .packtop > div{flex:1}
-.packtop .grid.mods{max-width:none}
+.packtop .grid.mods{max-width:none;grid-template-columns:repeat(8,minmax(0,1fr))}
+.slot.locked{border-style:dashed;opacity:.35}
+#exoExt{font-size:16px;opacity:.85;margin-top:6px;line-height:1.25}
+#exoExt button,#packOffBtn{font-size:15px;padding:2px 8px;margin-left:6px}
+#packOffBtn{vertical-align:middle}
+.packoff{grid-column:1/-1;padding:14px;border:1px dashed var(--g2);font-size:18px;line-height:1.3;opacity:.85}
 #pack h3 .sub{font-size:17px;opacity:.7}
 #pack .panel.gun{width:min(330px,100%);border-color:#5a7a9a}
 #pack .gun h2{color:#9fd8ff;text-shadow:0 0 8px rgba(120,200,255,.5);font-size:32px}

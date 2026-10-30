@@ -13,6 +13,8 @@ import type { Lighthouse } from './gen/lighthouses';
 import type { PlayerRoad } from './gen/playerroads';
 import type { Body } from './gen/bodies';
 import type { SkyFall } from './gen/skyfall';
+import type { Bag } from './gen/bags';
+import { HARNESS } from './gen/exoframe';
 import type { WorkClaim } from './gen/workshop';
 import type { SalvageState } from './gen/salvage';
 import type { Boat } from './gen/boats';
@@ -33,13 +35,13 @@ import type { Contract } from './gen/contracts';
 
 /** An item stack. `c` is the condition in percent of a used part (worn tires); such items do not stack. */
 /** `b` (0.247): what a crate or a barrel holds (data/cargo.ts), one kind of thing. */
-export interface Slot { k: ItemKey; n: number; c?: number; b?: { k: ItemKey; n: number }; /** (0.279) a gun's own attachments, one per slot of its `GunSpec.slots` (optic, barrel, magazine) */ m?: (ItemKey | null)[] }
+export interface Slot { k: ItemKey; n: number; c?: number; b?: { k: ItemKey; n: number }; /** (0.279) a gun's own attachments, one per slot of its `GunSpec.slots` (optic, barrel, magazine) */ m?: (ItemKey | null)[]; /** (0.285) a backpack taken off: its container (gen/bags.ts) */ bag?: string }
 /** Per-dungeon progress, keyed by dungeonKey() = "ruinId:depth:gx:gz". */
 export type Progress = Record<string, number[]>;
 /** Where in which dungeon the player is. In a cave system (`cave`), ruinId is the system's id; its mouths are kept so the way out is known. */
 export interface DungeonPos { ruinId: number; depth: number; gx: number; gz: number; /** (0.207) a hand-made level from the map editor, by name (world/custommaps.ts) */ custom?: string; cave?: { name: string; mouths: { x: number; z: number; face: number }[]; from: number }; /** (0.275) the pyramid shrine you went down by (gen/megaliths.ts `pyramidDoors`) */ door?: number }
 /** Anything that holds items: a searched chest, a vehicle trunk. */
-export interface Container { items: (Slot | null)[]; gold: number; /** (0.247) a vehicle's cargo bays: crates and barrels (data/cargo.ts), `VEHICLES[model].bays` long */ bays?: (Slot | null)[] }
+export interface Container { items: (Slot | null)[]; gold: number; /** (0.247) a vehicle's cargo bays: crates and barrels (data/cargo.ts), `VEHICLES[model].bays` long */ bays?: (Slot | null)[]; /** (0.285) a backpack's: the pack worn with it, and the hero carrying it (gen/bags.ts) */ pack?: ItemKey | null; held?: string }
 /**
  * A vehicle on the surface. (0.248) Vehicles belong to nobody: the list is the world's (shared online), and the trunk
  * with its cargo bays is the shared container `containers['trunk:<id>']` (`trunkKey`, world/vehicles.ts `trunkOf`).
@@ -122,6 +124,12 @@ export interface Char {
   hideMarks?: string[];
   /** (0.284) When this browser last saved the character (ms): online, the newer of this and the server's copy wins. */
   savedAt?: number;
+  /** (0.285) Extensions built onto the exoskeleton frame (gen/exoframe.ts); personal. */
+  exoExt?: number;
+  /** (0.285) Your backpack is off (in your hands or on the ground): nothing goes into the backpack slots. Personal. */
+  packOff?: boolean;
+  /** (0.285) Backpacks lying on the ground (gen/bags.ts); shared. */
+  bags?: Record<string, Bag>;
   /** (0.267) The sky falls lying or in flight: one record each, seen and opened by everyone (gen/skyfall.ts); shared. */
   skyfalls: Record<string, SkyFall>;
   /** (0.270) Lying things being worked up in somebody's workshop cells (gen/workshop.ts), by drop id; shared. */
@@ -209,7 +217,7 @@ export const SAVE_KEY = 'gridWorld.character.v3';
 export const ARENA_V3_KEY = 'gridArena.character.v3', V2_KEY = 'gridArena.character.v2', OLD_KEY = 'gridArena.character.v1';
 
 export const newChar = (): Char => ({
-  v: 3, settlementRules: 1, name: '', intro: false, tech: {}, leads: [], installs: {}, bridges: {}, bridgeSites: [], cityGarrisons: {}, fallen: {}, bodies: {}, skyfalls: {}, workclaims: {}, salvage: {}, piers: [], lighthouses: [], proads: {}, boats: [], airships: [], copters: [], filter: 0, fogs: {}, lodes: {}, outposts: {}, rivals: {}, guide: 0, houses: [], shuttle: { given: {}, v: 2 }, level: 1, xp: 0, gold: 0, world: newWorldSeed(),
+  v: 3, settlementRules: 1, name: '', intro: false, tech: {}, leads: [], installs: {}, bridges: {}, bridgeSites: [], cityGarrisons: {}, fallen: {}, bodies: {}, bags: {}, skyfalls: {}, workclaims: {}, salvage: {}, piers: [], lighthouses: [], proads: {}, boats: [], airships: [], copters: [], filter: 0, fogs: {}, lodes: {}, outposts: {}, rivals: {}, guide: 0, houses: [], shuttle: { given: {}, v: 2 }, level: 1, xp: 0, gold: 0, world: newWorldSeed(),
   inv: [{ k: 'blade', n: 1 }, ...Array(INV_SIZE - 1).fill(null)], mods: Array(MOD_SIZE).fill(null), opened: {}, unlocked: {}, killed: {},
   loc: 'overworld', ow: null, dungeon: null, discovered: {}, containers: {}, vehicles: [], board: { seq: 0, offers: [], stamp: boardPeriod(START_TIME) }, boards: {}, quests: [], camps: {}, time: START_TIME, gunMods: [null, null, null], loaded: { blaster: 20 }, waypoint: null, kcal: KCAL.start, stomach: 0, water: 100, harvest: {}, benches: [], claims: [],
   hands: [{ k: 'blaster', n: 1 }], back: [], off: [null], wear: {}, pid: Math.random().toString(36).slice(2, 10), towns: {}, market: {}, ledger: {}, caravans: {}, escort: null, contracts: [], taken: [],
@@ -224,7 +232,7 @@ function migrateV1(o: { level?: number; xp?: number; gold?: number; relics?: Rec
   for (const [k, n] of Object.entries(o.relics || {})) {
     if (!(k in ITEMS)) continue;
     for (let i = 0; i < n; i++) {
-      const free = c.mods.indexOf(null);
+      const free = c.mods.slice(0, HARNESS).indexOf(null); // (0.285) into the harness's sockets
       if (free >= 0) { c.mods[free] = k as ItemKey; continue; }
       const f = c.inv.indexOf(null); if (f >= 0) c.inv[f] = { k: k as ItemKey, n: 1 };
     }
@@ -272,6 +280,7 @@ export function loadChar(storage: Pick<Storage, 'getItem'> & Partial<Pick<Storag
       }
       if (c.inv.length < INV_SIZE) c.inv = [...c.inv, ...Array(INV_SIZE - c.inv.length).fill(null)]; // (0.201) a bigger backpack
       if (!Array.isArray(c.off) || c.off.length !== 1) c.off = [null];
+      if (!Array.isArray(c.mods)) c.mods = []; while (c.mods.length < MOD_SIZE) c.mods.push(null); // (0.285) more module sockets
       // (0.264) nothing hangs on your back any more: what was slung there goes into the backpack's first free slots
       if (!Array.isArray(c.back)) c.back = [];
       c.back = c.back.filter((s) => { if (!s) return false; const f = c.inv.indexOf(null); if (f < 0) return true; c.inv[f] = s; return false; });

@@ -17,8 +17,8 @@ import { CARGO, LIQUID, boxCap } from '../data/cargo';
 import { tl, TL, lang } from '../i18n';
 
 export const TYPE_NAME: Record<ItemType, string> = {
-  relic: tl('Relic module'), cons: tl('Consumable'), key: tl('Key'), part: tl('Vehicle part'), quest: tl('Quest item'), attach: tl('Weapon attachment'),
-  mat: tl('Material'), tool: tl('Tool'), weapon: tl('Weapon'), wear: tl('Clothing and armour'), good: tl('Trade good'), ammo: tl('Ammunition'), cargo: tl('Crate or barrel'),
+  relic: tl('Exoskeleton module'), cons: tl('Consumable'), key: tl('Key'), part: tl('Vehicle part'), quest: tl('Quest item'), attach: tl('Weapon attachment'),
+  mat: tl('Material'), tool: tl('Tool'), weapon: tl('Weapon'), wear: tl('Clothing and armour'), good: tl('Trade good'), ammo: tl('Ammunition'), cargo: tl('Crate or barrel'), bag: tl('Backpack'),
 };
 const PREFIX = /^(Crate of |Sack of |Flask of |Barrel of |Bolt of |Churn of |Basket of |Cup of )/;
 /** The name shortened for a slot's label ("Sack of Grain" -> "Grain"). */

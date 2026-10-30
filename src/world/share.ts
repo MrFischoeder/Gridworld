@@ -61,6 +61,7 @@ export const SHARED: Field[] = [
   { f: 'salvage', kind: 'map' }, // (0.272) machines stripped for parts
   { f: 'skyfalls', kind: 'map' }, // (0.267) a container fallen from orbit, one for the whole room
   { f: 'bodies', kind: 'map' }, // (0.245) their bodies, a game day where they fell
+  { f: 'bags', kind: 'map' }, // (0.285) backpacks put down on the ground
 ];
 const EMPTY: Partial<Record<keyof Char, () => unknown>> = { shuttle: () => ({ given: {}, v: 2 }), board: () => ({ seq: 0, offers: [], stamp: boardPeriod(G.char.time) }) };
 

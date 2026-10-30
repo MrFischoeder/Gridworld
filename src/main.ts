@@ -70,6 +70,7 @@ import { latitude } from './gen/regions';
 import { updateCreatures, spawnCreatureNear } from './world/creatures';
 import { cave } from './world/cavelevel';
 import { updateBodies } from './world/bodies';
+import { updateBags } from './world/bags';
 import { updateStealth, layTrail } from './world/stealth';
 import { updateIntents } from './world/intents';
 import { updateFarCalls } from './world/farcalls';
@@ -293,6 +294,7 @@ function frame(now: number) {
     updateDrones(dt);
     updateFoeSounds(dt); updateFarCalls(dt); updateFoeTracks(dt); updateRestSmoke(dt, time); // (0.237, stage L4) warnings from afar
     updateBodies(dt); // (0.245) the fallen's bodies
+    updateBags(dt); // (0.285) backpacks put down
     const boss = updateBosses(dt, time); updateOrbs(dt);
     updateBossBar(boss ?? (outdoors ? colossusBar() : null)); // (0.277) the Crystal Colossus has a bar too
     if (G.god) G.hp = G.S.maxHp;
