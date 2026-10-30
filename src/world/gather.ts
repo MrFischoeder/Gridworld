@@ -39,7 +39,7 @@ export function gatherTarget(): Target | null {
   let best: Target | null = null, bd = Infinity;
   if (axe) for (const t of trees) for (const [x, z, r] of t.cols) {
     const d = Math.hypot(x - p.x, z - p.z) - r;
-    if (d < 1.4 && d < bd && Math.abs(t.y - p.y) < 2) { bd = d; best = { kind: 'tree', key: gatherKey.get(t)!, x, y: t.y, z, big: TREE_SPAN[t.kind] > 0, held: axeH }; }
+    if (d < 1.4 && d < bd && Math.abs(t.y - p.y) < 2) { bd = d; best = { kind: 'tree', key: gatherKey.get(t)!, x, y: t.y, z, big: TREE_SPAN[t.kind] > 0 || t.h > 20, held: axeH }; } // (0.287) a jungle giant too
   }
   if (axe) for (const g of groveGiants(G.char.world, p.x, p.z, 12)) {
     const d = Math.hypot(g.x - p.x, g.z - p.z) - g.r * 1.1, y = OW.terrain?.heightAt(g.x, g.z) ?? p.y;

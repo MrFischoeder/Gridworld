@@ -79,7 +79,7 @@ export const BIOME_LOOK: Record<BiomeHere, BiomeLook> = {
   desert:   { haze: 0xd0a850, thick: 0, line: 0xe8b848, leaf: 0xa8d050, fill: 0x120c02, keep: 0.22, tree: 'cactus', big: false, size: 1, deco: 'pebbles' },
   savanna:  { haze: 0xb8b058, thick: 0, line: 0xd0c848, leaf: 0xb8d848, fill: 0x0e0e02, keep: 0.35, tree: 'acacia', big: true, size: 1, deco: 'grass' },
   swamp:    { haze: 0x7a8a48, thick: 0.35, line: 0x9aac48, leaf: 0x7c9a3c, fill: 0x080c02, keep: 0.75, tree: 'dead', big: true, size: 1, deco: 'reeds' },
-  jungle:   { haze: 0x3aa860, thick: 0.2, line: 0x1cf040, leaf: 0x18ff50, fill: 0x001404, keep: 1, tree: 'lush', big: true, size: 1.3, deco: null },
+  jungle:   { haze: 0x3aa860, thick: 0.2, line: 0x1cf040, leaf: 0x18ff50, fill: 0x001404, keep: 1, tree: 'lush', big: true, size: 1.6, deco: null },
   mountain: { haze: 0x8ab09a, thick: 0, line: 0x8fcf9c, leaf: 0x3dff6e, fill: 0x060c08, keep: 1, tree: null, big: true, size: 1, deco: 'pebbles' },
   coast:    { haze: 0xb8c8a0, thick: 0, line: 0xe0dca0, leaf: 0x9ae070, fill: 0x0e0e08, keep: 0.35, tree: 'palm', big: false, size: 1, deco: 'grass' },
   crystal:  { haze: 0x9a78d8, thick: 0.1, line: 0xb48cff, leaf: 0xc8a0ff, fill: 0x0a0614, keep: 0.2, tree: 'shard', big: false, size: 1, deco: 'pebbles' },

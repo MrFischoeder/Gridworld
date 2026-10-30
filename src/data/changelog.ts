@@ -3,6 +3,12 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.287.0', date: '2026-10-30', title: 'The jungle: giant trees and thorny lianas', notes: [
+    'The jungle now stands apart from every other forest: giant trees 24 to 34 m tall, as big as the giants of a village\'s great grove, with buttress roots, heavy limbs and layered crowns, stand every 13 m or so; the smaller jungle trees round them grow taller too and give the giants room.',
+    'Thorny lianas hang between the giants and drape from their limbs down to the forest floor, low enough to catch you. Running into one cuts you (the faster, the worse) and throws you back; creeping through slowly only scratches. Their thorns are rust-red.',
+    'A jungle giant can be felled with a hatchet like the other great trees (more blows, more logs); its lianas fall with it, and it grows back in a few days.',
+    'Multiplayer: the giants and the lianas come from the world seed, the same for everyone; each game hurts only its own player. The protocol and the server are unchanged.',
+  ] },
   { v: '0.286.0', date: '2026-10-30', title: 'The compass in the HUD, a map of where you walked', notes: [
     'The compass strip is part of the suit\'s HUD: it is always there on the surface, nothing to carry, buy or make. The Compass is no longer sold, ordered or made in the workshop, and the ship\'s locker no longer holds one (an old one can still be sold).',
     'Without the satellite link the glove\'s map (M) no longer shows a blank NO SATELLITE LINK screen: it shows the ground you have walked through, and keeps it, with the warning on top. What the crew built (tracks, bridges, outposts, lines, warehouses) shows only where you have been. The satellites, once restored, add more (orbital scans, routes, the waypoint); better satellites will show more detail later.',

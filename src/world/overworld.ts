@@ -5,7 +5,8 @@ import { clearSkyShips } from './skyships';
 import { clearCargoDrones } from './airlines';
 import { clearIntents } from './intents';
 import { biomeTint, biomeOfCell, treeIn, BIOME_LOOK, type TreeLook } from '../gen/biomes';
-import { drawTreeLook, LEAF, VINE } from './trees';
+import { drawTreeLook, drawGiant, drawLiana, LEAF, VINE } from './trees';
+import { jungleChunk, thornContact, type Giant as JungleGiant, type Thorn } from '../gen/jungle';
 import { biomeAt, biomeName, type BiomeHere } from '../gen/biomes';
 import { nearestOnRoad } from '../gen/roads';
 import { terrainWays } from '../gen/playerroads';
@@ -139,7 +140,9 @@ const SNOW_LINE = 115;
 
 interface Chunk { cx: number; cz: number; group: THREE.Group; /** the heights it was built on */ lat: Float32Array; trees: Tree[]; rocks: Rock[]; wells: Well[]; plants: Plant[]; nodes: PlantNode[]; caves: Cave[]; lod: number;
   /** (0.277) the crystal spikes of the wastes: solid, and they cut (the shard trees among them): [x, y (ground), z, r, h] */
-  spikes: number[][] }
+  spikes: number[][];
+  /** (0.287) the jungle's thorny lianas (world points): they cut whoever runs into them */
+  thorns: Thorn[] }
 interface Structure {
   poi: Poi; grid: VoxelGrid; group: THREE.Group; edges: EdgeSource;
   doors: Door[]; stairs: Stair[]; npcs: Npc[]; village?: VillageMap; camp?: CampMap; flames?: THREE.LineSegments;
@@ -290,6 +293,17 @@ export function spikeTouch(x: number, y: number, z: number, r: number, reach: nu
   }
   return null;
 }
+/** (0.287) The jungle's thorny liana a body (feet at y, r wide) touches within `reach` more: the nearest point [x, z], or null. */
+export function thornTouch(x: number, y: number, z: number, r: number, reach: number): [number, number] | null {
+  const cx = Math.floor(x / CHUNK), cz = Math.floor(z / CHUNK);
+  let best: [number, number] | null = null, bd = Infinity;
+  for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) {
+    const c = OW.chunks.get(ckey(cx + i, cz + j)); if (!c || !c.thorns.length) continue;
+    const h = thornContact(c.thorns, x, y, z, r, reach);
+    if (h) { const d = Math.hypot(h[0] - x, h[1] - z); if (d < bd) { bd = d; best = h; } }
+  }
+  return best;
+}
 /** (0.257) A tree's crown (its whole height and crown radius) in the way of something flying at y, r wide: airships. */
 export function crownHit(x: number, y: number, z: number, r: number): boolean {
   const cx = Math.floor(x / CHUNK), cz = Math.floor(z / CHUNK);
@@ -398,8 +412,14 @@ function buildChunk(cx: number, cz: number, lod = 1): Chunk {
   const onWay = (x: number, z: number, m: number) => f.ways.some((w) => nearestOnRoad(w, x, z)[0] < w.half + m); // (0.280) the players' tracks are cleared
   const cleared = (x: number, z: number) => inMonument(x, z) || !!T.claimAt(x, z, 1) || onWay(x, z, 3) || inGateClearing(T.world, x, z, 2) || giants.some((g) => Math.hypot(x - g.x, z - g.z) < g.r + 7);
   const looks = new Map<Tree, { b: BiomeHere; look: TreeLook; size: number }>();
+  const thorns: Thorn[] = []; // filled once the felled giants are known (a liana falls with its tree)
   const spikes: number[][] = [], spikeList: Spike[] = polar ? [] : chunkSpikes(T.world, cx, cz).filter((k) => !cleared(k.x, k.z) && !holes.some((h) => inRect(h, k.x, k.z)) && !f.roads.some((rd) => nearestOnRoad(rd, k.x, k.z)[0] < rd.half + 1.5 + k.r) && !(T.water(k.x, k.z)?.depth));
-  chunkTrees(T, cx, cz).forEach((t, i) => {
+  // (0.287) the jungle's giants take the place of their own generated tree (its key stays), the small ones round them give way
+  const jg = polar ? null : jungleChunk(T, cx, cz), jungleBig = new Map<Tree, JungleGiant>();
+  chunkTrees(T, cx, cz).forEach((t0, i) => {
+    if (jg?.skip.has(i)) return;
+    const gi = jg?.giants.get(i), t: Tree = gi ? { ...t0, h: gi.h, r: gi.h * 0.24, cols: [[t0.x, t0.z, gi.r * 0.95]] } : t0;
+    if (gi) jungleBig.set(t, gi);
     if (t.cols.some(([x, z]) => cleared(x, z))) return;
     const b = polar ? 'ice' : biomeOfCell(T.world, t.x, t.z), as = treeIn(b, hash(t.seed, 0xb10e), TREE_SPAN[t.kind] > 0);
     if (!as) return; // (0.232) the biome does not grow it (the list keeps its index, so the saved keys hold)
@@ -407,6 +427,14 @@ function buildChunk(cx: number, cz: number, lod = 1): Chunk {
     if (as.look === 'shard') spikes.push([t.x, t.y, t.z, Math.max(0.5, t.cols[0]?.[2] ?? 0.5) + 0.25, 1.4 + t.h * 0.35]); // (0.277) a shard cluster cuts too
     const k = `tree:${wrapC(cx)}:${cz}:${i}`; gatherKey.set(t, k); (ripe(k) ? trees : stumps).push(t);
   });
+  if (jg) { // a liana hangs only from a giant still standing, clear of cleared ground, roads and holes
+    const up = new Set<number>();
+    for (const [t, g] of jungleBig) if (trees.includes(t)) up.add(g.i);
+    for (const { i, p } of jg.thorns) {
+      if (!up.has(i) || p.some(([x, , z]) => cleared(x, z) || holes.some((h) => inRect(h, x, z)) || f.roads.some((rd) => nearestOnRoad(rd, x, z)[0] < rd.half + 1))) continue;
+      thorns.push(p);
+    }
+  }
   chunkRocks(T, cx, cz).forEach((r, i) => { if (cleared(r.x, r.z)) return; const k = `rock:${wrapC(cx)}:${cz}:${i}`; gatherKey.set(r, k); if (ripe(k)) rocks.push(r); });
   let nodes: PlantNode[] = [];
   const marks = trailMarks(trails, x0, z0);
@@ -417,7 +445,15 @@ function buildChunk(cx: number, cz: number, lod = 1): Chunk {
     for (const w of wells) drawWell(pb, w, T.heightAt(w.x, w.z));
     for (const cv of caves) drawCave(pb, cv, T);
     for (const m of marks) drawTrailMark(pb, m, T);
-    for (const t of trees) { const lk = looks.get(t)!; pb.remap = tintOf(lk.b); drawTreeLook(pb, t, lod, lk.look, lk.size); }
+    for (const t of trees) {
+      const lk = looks.get(t)!, gi = jungleBig.get(t);
+      pb.remap = tintOf(lk.b);
+      if (!gi) drawTreeLook(pb, t, lod, lk.look, lk.size);
+      else if (lod === 1) drawGiant(pb, t.x, t.y, t.z, gi.r, gi.h, gi.seed);
+      else drawTreeLook(pb, { ...t, h: gi.h * 0.8, r: gi.h * 0.22 }, lod, 'lush');
+    }
+    pb.remap = null;
+    for (const p of thorns) drawLiana(pb, p, lod, Math.round(p[0][0] * 31 + p[0][2] * 17));
     for (const k of spikeList) { // (0.277) the wastes' spikes: 1–4 pointed columns from one foot
       const y = T.heightAt(k.x, k.z), R = rng(k.seed), n = 1 + Math.floor(R() * 4);
       pb.remap = tintOf('crystal');
@@ -431,7 +467,7 @@ function buildChunk(cx: number, cz: number, lod = 1): Chunk {
   }
   localize(group, x0, z0);
   scene.add(group);
-  return { cx, cz, group, lat, trees, rocks, wells, plants, nodes, caves, lod, spikes };
+  return { cx, cz, group, lat, trees, rocks, wells, plants, nodes, caves, lod, spikes, thorns };
 }
 /** (0.232) A biome's colours for trees and rocks drawn through a PropBatch (bark and stone, leaves, vines). */
 const tints = new Map<BiomeHere, Map<number, number>>();

@@ -270,3 +270,32 @@ export function drawTreeLook(pb: PropBatch, t: Tree, lod: number, look: TreeLook
     default: drawTree(pb, s, lod);
   }
 }
+/** (0.287) Thorn colour of the jungle's lianas (a hazard: they cut). */
+export const THORN_C = 0xc8743a;
+/**
+ * (0.287) A thorny liana along its points: two strands twisted round the line and short thorns sticking out every
+ * half metre (near chunks); far off a single strand.
+ */
+export function drawLiana(pb: PropBatch, pts: P[], lod: number, seed: number) {
+  const R = rng(seed);
+  if (lod > 1) { for (let k = 1; k < pts.length; k++) pb.line(VINE, pts[k - 1], pts[k]); return; }
+  tube(pb, pts, pts.map((_, k) => 0.09 - 0.03 * k / (pts.length - 1)), 4, VINE, R() * 3);
+  const ph = R() * 6.283, tw = 0.16;
+  let prev: P | null = null;
+  for (let k = 0; k < pts.length - 1; k++) {
+    const a = pts[k], b = pts[k + 1], d = sub(b, a), L = Math.hypot(d[0], d[1], d[2]) || 1, u = norm(d);
+    const side = norm([-u[2], 0, u[0]]), up: P = [u[1] * side[2] - u[2] * side[1], u[2] * side[0] - u[0] * side[2], u[0] * side[1] - u[1] * side[0]];
+    const n = Math.max(1, Math.round(L / 0.4));
+    for (let s = 0; s < n; s++) {
+      const f = s / n, p = add(a, d, f), ang = ph + (k + f) * 2.6;
+      const q: P = add(add(p, side, Math.cos(ang) * tw), up, Math.sin(ang) * tw);
+      if (prev) pb.line(VINE, prev, q); // a second strand winding round it
+      prev = q;
+      for (let m = 0; m < 2; m++) { // the thorns, pointing every way
+        const ta = R() * 6.283, out = norm(add(add(add([0, 0, 0], side, Math.cos(ta)), up, Math.sin(ta)), u, (R() - 0.5) * 0.6));
+        const root = add(p, out, 0.08);
+        pb.line(THORN_C, root, add(root, out, 0.22 + R() * 0.18));
+      }
+    }
+  }
+}
