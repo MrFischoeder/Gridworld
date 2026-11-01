@@ -15,7 +15,7 @@ export const REGION = 256, CHUNK = 32;
 
 // ---------- the planet ----------
 // The world wraps round east-west: 470 regions (~120 km) and you are back where you started. North and south it
-// ends at the poles: ice caps, then an impassable ice wall. Generators work in canonical coordinates (regions
+// ends at the poles: ice caps, then an impassable mountain range. Generators work in canonical coordinates (regions
 // R0..R0+NR-1) and shift what they return to the copy of the world the caller asked about, so a place just across
 // the seam has the same id (and save keys) as its canonical self.
 export const NR = 470, WORLD_W = NR * REGION;
@@ -36,7 +36,7 @@ export const nearX = (x: number, ref: number) => ref + wrapDx(x - ref);
 /** Distance on the planet's surface (east-west wraps). */
 export const worldDist = (ax: number, az: number, bx: number, bz: number) => Math.hypot(wrapDx(bx - ax), bz - az);
 
-/** Poles: ice from POLAR_Z (no places, no forests), the ice wall at POLE_Z. */
+/** Poles: ice from POLAR_Z (no places, no forests), the polar mountains end the world at POLE_Z. */
 export const POLE_Z = 117 * REGION + REGION / 2, POLAR_Z = 25000;
 /** Latitude in radians (0 at Gridholm's equator, ±PI/2 at the poles). */
 export const latitude = (z: number) => Math.max(-1, Math.min(1, -z / POLE_Z)) * Math.PI / 2;

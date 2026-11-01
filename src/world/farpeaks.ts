@@ -7,8 +7,9 @@ import { scene, lineMat, fillMat } from './render';
 import { G } from '../game';
 import { OW } from './overworld';
 import { mountainMask } from '../gen/mountains';
+import { nearPolarRange } from '../gen/heights';
 
-const N = 144, NEAR = 150, FAR = 3200, RING = 145;
+const N = 216, NEAR = 150, FAR = 3200, RING = 145;
 export const farPeaks = new THREE.Group();
 farPeaks.visible = false; scene.add(farPeaks);
 let at = { x: NaN, y: NaN, z: NaN, world: -1, wet: false };
@@ -22,37 +23,66 @@ export function hazeFarPeaks(fog: THREE.Color) { fill.color.copy(fog).multiplySc
 
 function rebuild(x: number, y: number, z: number) {
   const T = OW.terrain!, w = T.world, eye = y + 1.6;
-  // on the water (a boat, swimming) the silhouettes stand on the sea's horizon, not 30 m below it
-  const B = T.water(x, z) ? -1.2 : -30;
+  // on the water (a boat, swimming) the silhouettes stand on the sea's horizon, not 30 m below it; high up (flying, a
+  // summit) their foot goes down with the land so they never hang as a curtain in the air
+  const wet = !!T.water(x, z);
   farPeaks.traverse((o) => (o as THREE.Mesh).geometry?.dispose()); farPeaks.clear();
   // the steepest slope of mountain above the eye in every direction (null: no mountain that way)
-  const top: (number | null)[] = [], snow: boolean[] = [];
+  const top: (number | null)[] = [], snow: boolean[] = [], foot: number[] = [];
   for (let i = 0; i < N; i++) {
     const a = i / N * Math.PI * 2, dx = Math.cos(a), dz = Math.sin(a);
-    let best: number | null = null, hi = 0;
+    let best: number | null = null, hi = 0, low = NaN, hmin = Infinity;
     for (let d = NEAR; d <= FAR; d += 200) {
-      if (mountainMask(w, x + dx * d, z + dz * d) <= 0.02 && mountainMask(w, x + dx * (d + 100), z + dz * (d + 100)) <= 0.02) continue;
+      if (!nearPolarRange(z + dz * d) && !nearPolarRange(z + dz * (d + 200)) && mountainMask(w, x + dx * d, z + dz * d) <= 0.02 && mountainMask(w, x + dx * (d + 100), z + dz * (d + 100)) <= 0.02) continue; // (0.288) the polar range too
       for (let e = d; e < d + 200; e += 25) {
         const h = T.base(x + dx * e, z + dz * e), s = (h - eye) / e;
-        if (best === null || s > best) { best = s; hi = h; }
+        hmin = Math.min(hmin, h);
+        // (0.288) the foot: the lowest land before the summit, seen at the summit's distance, so the silhouette's
+        // base sits on the land there and never hangs down as a curtain when you look from high up
+        if (best === null || s > best) { best = s; hi = h; low = (hmin - 4 - eye) / e; }
       }
     }
     top.push(best !== null && best > 0.01 ? best : null); snow.push(hi > 115); // only what rises above the horizon
+    foot.push(wet ? -1.2 / RING : Math.min(-0.012, Number.isNaN(low) ? -0.012 : low));
   }
-  // (0.277) where the mountains end the ridge slopes down to the horizon (no sheer walls), and it is smoothed a little
-  const at0 = top.slice(), FLOOR = -0.004;
-  for (let i = 0; i < N; i++) if (at0[i] === null && (at0[(i + N - 1) % N] !== null || at0[(i + 1) % N] !== null)) top[i] = FLOOR;
-  const sm = top.map((v, i) => { if (v === null) return null; const a = top[(i + N - 1) % N] ?? FLOOR, b = top[(i + 1) % N] ?? FLOOR; return 0.25 * a + 0.5 * v + 0.25 * b; });
-  for (let i = 0; i < N; i++) top[i] = sm[i];
+  // the foot between neighbours for the foothills added below
+  for (let i = 0; i < N; i++) if (top[i] === null) foot[i] = Math.max(foot[(i + N - 1) % N], foot[(i + 1) % N], -0.05);
+  // (0.288, the owner's report: the far ranges looked like walls) where the mountains end the ridge runs down to the
+  // horizon over a few steps (a foothill, not a sheer end), and nothing is smoothed away: the peaks stay peaks
+  const FLOOR = -0.004, SLOPE = 4;
+  for (let pass = 0; pass < SLOPE; pass++) {
+    const was = top.slice();
+    for (let i = 0; i < N; i++) {
+      if (was[i] !== null) continue;
+      const nb = Math.max(was[(i + N - 1) % N] ?? -Infinity, was[(i + 1) % N] ?? -Infinity);
+      if (nb > -Infinity) top[i] = FLOOR + (nb - FLOOR) * 0.45;
+    }
+  }
   const tri: number[] = [], green: number[] = [], white: number[] = [];
   const pt = (i: number) => { const a = i / N * Math.PI * 2; return [Math.cos(a) * RING, top[i]! * RING, Math.sin(a) * RING]; };
+  const base = (i: number) => { const a = i / N * Math.PI * 2; return [Math.cos(a) * RING, foot[i] * RING, Math.sin(a) * RING]; };
+  const v = (i: number) => top[(i + N) % N];
   for (let i = 0; i < N; i++) {
     const j = (i + 1) % N;
     if (top[i] === null || top[j] === null) continue;
-    const p = pt(i), q = pt(j), pb = [p[0], B, p[2]], qb = [q[0], B, q[2]];
+    const p = pt(i), q = pt(j), pb = base(i), qb = base(j);
     tri.push(...pb, ...qb, ...q, ...pb, ...q, ...p);
     (snow[i] && snow[j] ? white : green).push(...p, ...q);
-    if (i % 3 === 0) green.push(...p, p[0], p[1] - Math.max(1.5, (p[1] - B) * 0.12), p[2]); // a few facets down the slope
+  }
+  // facets: from every summit (a local high of the ridge) a spur runs down each side to the next saddle's foot
+  for (let i = 0; i < N; i++) {
+    const h = v(i);
+    if (h === null || h <= FLOOR || (v(i - 1) ?? -1) > h || (v(i + 1) ?? -1) >= h) continue;
+    const p = pt(i);
+    for (const dir of [-1, 1]) {
+      let k = i;
+      while (Math.abs(k - i) < 12 && (v(k + dir) ?? -Infinity) < (v(k) ?? -Infinity) && v(k + dir) !== null) k += dir;
+      if (k === i) continue;
+      const q = pt((k + N) % N), drop = (p[1] - q[1]) * 0.6;
+      const m = [(p[0] + q[0]) / 2, q[1] - drop * 0.4, (p[2] + q[2]) / 2];
+      green.push(...p, ...m);
+    }
+    if (h > 0.03) green.push(...p, p[0], p[1] - (p[1] - foot[i] * RING) * 0.25, p[2]); // a gully down a high face
   }
   if (!tri.length) return;
   const geo = (a: number[]) => { const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(a, 3)); return g; };

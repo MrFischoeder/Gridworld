@@ -276,7 +276,7 @@ cv.addEventListener('pointerup', (e) => {
   if (!d || d.moved) return;
   const [x, z] = toWorld(e.offsetX, e.offsetY);
   if (overviewActive && Math.abs(x - view.x) > WORLD_W / 2) return;
-  if (!hover && Math.abs(z) > POLE_Z - 300) { info.textContent = tl('That is beyond the ice wall.'); return; }
+  if (!hover && Math.abs(z) > POLE_Z - 300) { info.textContent = tl('That is beyond the polar mountains.'); return; }
   if (hoverGate) { const g = hoverGate, [gx, gz] = gatePoint(g, 0, 7); const msg = teleportTo(gx, gz); closeDevMap(); logLine(msg + TL` Beside ${gateName(g)}.`); return; }
   if (hoverMegalith) { const m = hoverMegalith, [mx, mz] = megalithPoint(m, 0, m.radius + 10); const msg = teleportTo(mx, mz); closeDevMap(); logLine(msg + TL` At ${m.name}.`); return; }
   if (hoverVault) { const e = hoverVault, msg = teleportTo(e.x,e.z); closeDevMap(); logLine(msg + TL` At ${e.name}. Press E to enter.`); return; }

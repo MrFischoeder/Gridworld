@@ -51,15 +51,15 @@ describe('the planet wraps east-west', () => {
 });
 
 describe('the poles', () => {
-  it('are ice: no places, no forest, and a wall at the end', () => {
+  it('are ice: no places, no forest, and mountains at the end (0.288)', () => {
     for (const w of WORLDS) {
       const t = new Terrain(w);
       for (let rx = -5; rx <= 5; rx++) for (const rz of [100, 110, 117, -100, -117]) expect(regionInfo(w, rx, rz).pois).toEqual([]);
       for (const x of [0, 777, -3000]) {
         expect(t.forest(x, POLAR_Z + 100)).toBe(0);
         expect(t.forest(x, -POLAR_Z - 100)).toBe(0);
-        expect(t.heightAt(x, POLE_Z - 10)).toBeGreaterThan(t.heightAt(x, POLE_Z - 300) + 40);
-        expect(t.heightAt(x, -POLE_Z + 10)).toBeGreaterThan(t.heightAt(x, -POLE_Z + 300) + 40);
+        expect(t.heightAt(x, POLE_Z - 10)).toBeGreaterThan(t.heightAt(x, POLE_Z - 6000) + 60);
+        expect(t.heightAt(x, -POLE_Z + 10)).toBeGreaterThan(t.heightAt(x, -POLE_Z + 6000) + 60);
       }
     }
   });

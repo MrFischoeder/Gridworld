@@ -41,3 +41,16 @@ describe('biome looks (0.232)', () => {
     expect(Object.keys(BIOME_LOOK).length).toBe(13);
   });
 });
+
+import { naturalHeight as polarHeight } from '../src/gen/heights';
+import { POLE_Z as POLE } from '../src/gen/regions';
+describe('the polar mountains (0.288)', () => {
+  it('rise into peaks and saddles towards the edge, not a level wall', () => {
+    const along: number[] = [];
+    for (let x = 0; x < 6000; x += 150) along.push(polarHeight(-123456789, x, POLE - 250));
+    const lo = Math.min(...along), hi = Math.max(...along);
+    expect(lo).toBeGreaterThan(70); // no way through
+    expect(hi - lo).toBeGreaterThan(60); // massifs and saddles along the range
+    expect(polarHeight(-123456789, 2000, POLE - 6000)).toBeLessThan(60); // the ice sheet before it
+  });
+});

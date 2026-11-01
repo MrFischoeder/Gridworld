@@ -1,6 +1,6 @@
 # GridWorld: opis gry, cel, plan i historia zmian
 
-Stan na wersję **0.287.0**. Ten dokument opisuje, czym jest GridWorld, jaki jest cel gry, co już w niej jest, czego jeszcze nie ma, dokąd zmierza i jak powstawała, wersja po wersji. Nazwy z gry (przedmioty, miejsca, postacie) są podane po angielsku; od 0.190 gra ma też wersję polską (wybór języka w menu głównym).
+Stan na wersję **0.288.0**. Ten dokument opisuje, czym jest GridWorld, jaki jest cel gry, co już w niej jest, czego jeszcze nie ma, dokąd zmierza i jak powstawała, wersja po wersji. Nazwy z gry (przedmioty, miejsca, postacie) są podane po angielsku; od 0.190 gra ma też wersję polską (wybór języka w menu głównym).
 
 ---
 
@@ -130,7 +130,7 @@ Gra jest pomyślana jako **kooperacja do 8 graczy** na autorytatywnym serwerze (
 
 ### Planeta
 - Świat zawija się ze wschodu na zachód po ok. **120 km** (470 regionów po 256 m).
-- Na północy i południu kończy się czapami lodowymi (od 25 km) i ścianą lodu (ok. 30 km), której nie da się przejść.
+- Na północy i południu kończy się czapami lodowymi (od 25 km) i pasmem Gór Polarnych (ok. 30 km), których nie da się przejść (do 0.287 była tu lodowa ściana).
 - Słońce stoi wysoko nad równikiem. Przy biegunach trwa wieczny zmierzch.
 - Około **100 wiosek** na świat (80–120; część terenu zajmują martwe miasta). Gęsto przy Gridholm (co ok. 1,4 km), rzadko daleko (co ok. 5 km).
 - **Pierścienie niebezpieczeństwa** wokół Gridholm:
@@ -883,6 +883,7 @@ Pełne notatki (po angielsku) są w grze pod przyciskiem **Changelog** w menu g�
 - **0.285.1 Kontener na zboczu i bandyci, którzy zostają.** Kontener spadły z orbity leży wzdłuż zbocza, a blachy i wał ziemi wokół niego leżą na ziemi, nie wiszą w powietrzu. Bandyci pilnujący wraku nie znikają na dobre po śmierci postaci, wczytaniu gry czy odejściu: odpadają tylko naprawdę pokonani (zabici, przegnani, poddani), a reszta wraca, gdy znów podejdziesz.
 - **0.286.0 Kompas w HUD i mapa przebytej drogi.** Pasek kompasu jest częścią HUD-u skafandra: zawsze widoczny, nie trzeba go nosić, kupować ani robić. Bez łącza satelitarnego mapa na rękawicy pokazuje i zapamiętuje tylko teren, przez który przeszedłeś (z ostrzeżeniem BRAK ŁĄCZA SATELITARNEGO); to, co zbudowała załoga, widać tylko tam, gdzie byłeś. Nowa postać zaczyna z pustą mapą i bez zadań, a zadania poległego wracają na tablice, od początku.
 - **0.287.0 Dżungla.** Dżungla wyróżnia się: co kilkanaście metrów stoją olbrzymie drzewa (24–34 m, jak w wielkich zagajnikach wiosek), mniejsze rosną wyżej i ustępują im miejsca; między olbrzymami i z ich konarów zwisają kolczaste liany, nisko nad ziemią. Wbiegnięcie w lianę rani (im szybciej, tym mocniej) i odrzuca; przeciskanie się powoli tylko drapie. Olbrzyma można ściąć siekierą jak wielkie drzewo. Wszystko z ziarna świata, każda gra rani tylko swojego gracza.
+- **0.288.0 Góry na krańcach świata.** Lodowa ściana na biegunach zniknęła: na jej miejscu wznoszą się Północne i Południowe Góry Polarne, pasmo poszarpanych grani, szczytów i przełęczy do ok. 280 m, nadal nie do przejścia. Dalekie góry na horyzoncie nie wyglądają już jak mury: szczyty zachowują ostrza, mają żebra i żleby, pasma opadają pogórzem, a sylwetka stoi na ziemi, nie wisi jak kurtyna.
 - **0.265.1 Większa stacja.** Stacja orbitalna jest ok. 2,5 raza większa i jaśniejsza, wyraźnie widoczna na tle nieba.
 - **0.265.0 Stacja orbitalna.** Po niebie przelatuje stacja z dwóch kół na wspólnej osi (jak w filmowych stacjach kołowych): okrąża planetę co ok. 4 minuty, przecina niebo w ok. 2 minuty, znacznie szybciej niż Słońce i Księżyc, w przeciwnym kierunku. Na razie sama dekoracja; posłuży w dalszym etapie gry.
 - **0.264.1 Dym za budynkami.** Dym z rozbitego statku (i z ognisk bandytów) nie prześwituje już przez domy, mury, ruiny i inne budowle: daleka kolumna dymu jest ukryta, gdy coś litego stoi między okiem a nią.

@@ -1010,7 +1010,7 @@ export function keepOnPlanet(dt: number) {
   if (Math.abs(G.pos.z) > lim) {
     G.pos.z = Math.sign(G.pos.z) * lim; G.vel.z = 0;
     if (driving.v) { driving.v.st.z = G.pos.z; driving.v.speed = 0; }
-    if (wallWarnT <= 0) { wallWarnT = 5; logLine(tl('The ice wall of the pole rises sheer before you. There is no way on.')); }
+    if (wallWarnT <= 0) { wallWarnT = 5; logLine(tl('The polar mountains tower over you, ice and rock with no pass through them. There is no way on.')); }
   }
   const x = G.pos.x;
   if (x >= X_MIN && x < X_MIN + WORLD_W) return;
@@ -1057,7 +1057,7 @@ export function removeDrone(t: Drone) { scene.remove(t.g); const i = W.drones.in
 export function placeName(x: number, z: number): string {
   const v = villageHere(x, z);
   if (v) return v.name + ' (village)';
-  if (Math.abs(z) > POLE_Z - 400) return z < 0 ? tl('North Pole ice wall') : tl('South Pole ice wall');
+  if (Math.abs(z) > POLE_Z - 2200) return z < 0 ? tl('North Polar Mountains') : tl('South Polar Mountains');
   if (Math.abs(z) > POLAR_Z) return z < 0 ? tl('Northern ice cap') : tl('Southern ice cap');
   const lv = Math.round(danger(x, z)), tag = !G.god ? '' : lv ? TL` · danger ${lv}` : tl(' · calm'); // (0.246) the danger shows only in god mode
   if (G.char.claims.some((c) => claimDist(c, x, z) < CLAIM.r)) return tl('Your claim') + tag;
