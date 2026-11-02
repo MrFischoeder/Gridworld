@@ -32,7 +32,7 @@ import { closeDialog } from './dialog';
 import { interact, lockKey } from '../world/interact';
 import { useItem } from '../world/loot';
 import { quickSlot, swapWeapon, holster, armed, reload } from '../world/weapons';
-import { toggleMap, zoomMap, orbitalScan, toggleRoute, planTrack, dropPlan, toggleFertility, toggleBiomes } from './worldmap';
+import { toggleMap, zoomMap, orbitalScan, toggleRoute, planTrack, dropPlan, toggleFertility, toggleBiomes, placeMark } from './worldmap';
 import { askDodge } from '../world/player';
 let lastTap: [string, number] = ['', 0];
 import { townsWorld } from '../gen/worldrules';
@@ -50,6 +50,7 @@ export function initInput(onPause: () => void) {
     if (gateTravelPending()) { e.preventDefault(); return; }
     if (e.code === 'Backquote') { e.preventDefault(); toggleConsole(); return; }
     if (G.consoleOpen || gateTravelPending()) return;
+    if (G.dlgOpen && e.target instanceof HTMLInputElement && e.code !== 'Escape' && e.code !== 'Tab') return; // (0.289) typing a name in a window (a marker, a warehouse): the letters are not game keys
     if (e.code === 'KeyI' || e.code === 'Tab') { e.preventDefault(); if (!G.dlgOpen && !G.xferOpen) togglePack(); return; }
     if (G.packOpen) { if (e.code === 'Escape' || e.code === 'KeyE' && !e.repeat && packSide()?.prefix === 'b') closePack(); return; }
     if (G.dlgOpen) { if (e.code === 'Escape' || e.code === 'KeyJ' && journalOpen()) closeDialog(); return; }
@@ -57,7 +58,7 @@ export function initInput(onPause: () => void) {
     if (e.code === 'KeyM' && G.playing) { toggleMap(); return; }
     if (e.code === 'KeyJ' && G.playing && !G.mapOpen && !e.repeat) { toggleJournal(); return; } // (0.230) the journal
     if (e.code === 'KeyT' && G.playing && online()) { e.preventDefault(); openChat(); return; }
-    if (G.mapOpen) { if (e.code === 'KeyO') { orbitalScan(); return; } if (e.code === 'KeyR') { toggleRoute(); return; } if (e.code === 'KeyT') { planTrack(); return; } if (e.code === 'Backspace') { dropPlan(); return; } if (e.code === 'KeyF' && townsWorld(G.char.world)) { toggleFertility(); return; } if (e.code === 'KeyB') { toggleBiomes(); return; } if (e.code === 'Escape') toggleMap(false); if (e.code === 'Equal' || e.code === 'NumpadAdd') zoomMap(1.25); if (e.code === 'Minus' || e.code === 'NumpadSubtract') zoomMap(0.8); }
+    if (G.mapOpen) { if (e.code === 'KeyO') { orbitalScan(); return; } if (e.code === 'KeyR') { toggleRoute(); return; } if (e.code === 'KeyT') { planTrack(); return; } if (e.code === 'Backspace') { dropPlan(); return; } if (e.code === 'KeyF' && townsWorld(G.char.world)) { toggleFertility(); return; } if (e.code === 'KeyB') { toggleBiomes(); return; } if (e.code === 'KeyN') { if (!e.repeat) placeMark(); return; } if (e.code === 'Escape') toggleMap(false); if (e.code === 'Equal' || e.code === 'NumpadAdd') zoomMap(1.25); if (e.code === 'Minus' || e.code === 'NumpadSubtract') zoomMap(0.8); }
     if (extraKeys.some((f) => f(e))) return;
     if (e.code === 'Escape' && isPlacing()) cancelPlacing();
     if (e.code === 'Escape' && isBridgePlacing()) cancelBridgePlacing();
@@ -115,7 +116,7 @@ export function initInput(onPause: () => void) {
   addEventListener('wheel', () => { if (G.playing && !uiOpen() && armed()) swapWeapon(); }, { passive: true });
   renderer.domElement.addEventListener('click', () => { if (G.playing && !uiOpen() && !G.isTouch && !document.pointerLockElement) lockPointer(); });
   document.addEventListener('pointerlockchange', () => {
-    if (document.pointerLockElement !== renderer.domElement && !G.isTouch && !uiOpen()) onPause();
+    if (document.pointerLockElement !== renderer.domElement && !G.isTouch && !uiOpen() && !G.mapOpen) onPause();
   });
   addEventListener('mousemove', (e) => {
     if (gateTravelPending() || document.pointerLockElement !== renderer.domElement) return;

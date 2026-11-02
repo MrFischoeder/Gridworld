@@ -13,6 +13,7 @@ import { OW } from '../world/overworld';
 import { installSitesReady, installDone } from '../gen/installs';
 import { WAYPOINT_C, gpsOn, routeAhead } from './worldmap';
 import { tl, TL } from '../i18n';
+import { shownMarks, MARKS, MARK_COLORS } from '../gen/mapmarks';
 
 const gps = $('gps');
 
@@ -89,5 +90,6 @@ export function updateCompass(dt: number) {
   if (f) mark(f.x, f.z, '#d8ff6a', `${f.name} ${fmtDist(Math.hypot(wrapDx(f.x - G.pos.x), f.z - G.pos.z))}`);
   { const ra = tab ? routeAhead() : null; if (ra) mark(ra[0], ra[1], WAYPOINT_C, tl('Route')); }
   if (wp && tab) mark(wp[0], wp[1], WAYPOINT_C, TL`Waypoint ${fmtDist(Math.hypot(wrapDx(wp[0] - G.pos.x), wp[1] - G.pos.z))}`);
+  for (const { m, d } of shownMarks(G.char.marks ?? [], G.pos.x, G.pos.z, wrapDx).filter((k) => k.d > MARKS.near).slice(0, MARKS.compass)) mark(m.x, m.z, MARK_COLORS[m.c % MARK_COLORS.length], `${m.name} ${fmtDist(d)}`); // (0.289) your own markers, the nearest few
   if (near) mark(near.x, near.z, '#9dffe0', `${near.name} ${fmtDist(Math.hypot(wrapDx(near.x - G.pos.x), near.z - G.pos.z))}`);
 }

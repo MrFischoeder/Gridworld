@@ -13,12 +13,13 @@ import { tutorialStep, sideStep } from '../gen/settlement';
 import { myHomeId } from '../world/rivals';
 import { guideLine } from '../world/guide';
 import { markId, pruneMarks } from '../gen/journal';
-import { wrapDx } from '../gen/regions';
+import { wrapDx, wrapX } from '../gen/regions';
 import { km, compass } from '../gen/quests';
 import { tl, TL } from '../i18n';
+import { MARKS, MARK_COLORS, addMark, removeMark, renameMark } from '../gen/mapmarks';
 
 const dlgEl = $('dlg'), panel = () => dlgEl.querySelector('.panel') as HTMLElement;
-let open = false, dropArm = '';
+let open = false, dropArm = '', markArm = '';
 
 /** The switch of a marker: on, off, or nothing when the entry has no place to mark right now. */
 function sw(id: string, marked: Set<string>): string {
@@ -53,15 +54,37 @@ function render() {
     if (esc) h += row(strip(esc), `<span class="jtext">${tl('the wagons are on the map')}</span>`);
   }
   if (lm.length) h += `<div class="jsec">${tl('Leads')}</div>` + lm.map((m) => row(`<span style="color:${m.c}">${m.short === m.label ? m.label : `${m.short} · ${m.label}`}</span>${where(m.x, m.z)}`, sw(m.id, marked))).join('');
+  h += marksHTML();
   h += `<div style="display:flex;gap:8px;margin-top:12px"><button class="opt" data-jall="1">${tl('Mark everything')}</button><button class="opt" data-jall="0">${tl('Hide every marker')}</button></div>`;
   h += `<button class="opt" data-jclose="1">${tl('Close (J or Esc)')}</button>`;
   panel().classList.add('wide'); panel().innerHTML = h;
 }
+/** (0.289) Your own map markers: the name (typed in place), where it is, shown or hidden, take it away. */
+function marksHTML(): string {
+  const list = G.char.marks ?? [];
+  let h = `<div class="jsec">${TL`Your markers (${list.length}/${MARKS.max})`}</div>`;
+  if (!list.length) return h + `<div class="jtext">${tl('None yet. Open the map (M) and press N where you want one.')}</div>`;
+  const near = [...list].sort((a, b) => Math.hypot(wrapDx(a.x - G.pos.x), a.z - G.pos.z) - Math.hypot(wrapDx(b.x - G.pos.x), b.z - G.pos.z));
+  h += near.map((m) => {
+    const v = m.name.replace(/&/g, '&amp;').replace(/"/g, '&quot;');
+    const name = `<span style="color:${MARK_COLORS[m.c % MARK_COLORS.length]}">⚑</span> <input data-jname="${m.id}" maxlength="${MARKS.name}" value="${v}" style="width:12em;background:#020e05;color:#9dffb4;border:1px solid #2fe060;font:inherit;padding:1px 4px">`;
+    const btns = `<button class="buy${m.on ? '' : ' off'}" data-jmk="${m.id}">${m.on ? tl('Shown') : tl('Hidden')}</button><button class="buy off" data-jmdel="${m.id}">${markArm === m.id ? tl('Sure?') : tl('Take away')}</button>`;
+    return row(name + `<span class="jtext">${where(m.x, m.z)}</span>`, btns);
+  }).join('');
+  const here = G.char.loc === 'overworld' ? `<button class="opt" data-jmall="here">${tl('Mark where I stand')}</button>` : '';
+  return h + `<div style="display:flex;gap:8px;margin-top:8px">${here}<button class="opt" data-jmall="1">${tl('Show all markers')}</button><button class="opt" data-jmall="0">${tl('Hide all markers')}</button></div>`;
+}
+dlgEl.addEventListener('change', (e) => { // a marker's name typed in place: kept on Enter or leaving the field
+  const t = e.target as HTMLElement;
+  if (!(t instanceof HTMLInputElement) || !t.dataset.jname || !journalOpen()) return;
+  if (renameMark(G.char.marks ?? [], t.dataset.jname, t.value)) saveChar();
+  render();
+});
 /** J: open or close the journal. */
 export function toggleJournal() {
   if (journalOpen()) { closeJournal(); return; }
   if (!G.playing || G.dlgOpen || G.packOpen || G.xferOpen || G.mapOpen) return;
-  open = true; dropArm = ''; G.dlgOpen = true; W.talkNpc = null; G.firing = false; for (const k in G.keys) G.keys[k] = false;
+  open = true; dropArm = ''; markArm = ''; G.dlgOpen = true; W.talkNpc = null; G.firing = false; for (const k in G.keys) G.keys[k] = false;
   render();
   dlgEl.style.display = 'flex'; if (document.pointerLockElement) document.exitPointerLock();
 }
@@ -74,6 +97,15 @@ export function journalClick(t: HTMLElement): boolean {
   if (t.closest('[data-jclose]')) { closeJournal(); return true; }
   if (m) { toggleMark(m.dataset.jm!); render(); return true; }
   if (d) { const id = d.dataset.jdrop!; if (dropArm === id) { abandon(id); dropArm = ''; } else dropArm = id; render(); return true; }
+  const mk = t.closest('[data-jmk]') as HTMLElement | null, md = t.closest('[data-jmdel]') as HTMLElement | null, ma = t.closest('[data-jmall]') as HTMLElement | null;
+  if (mk) { const m = G.char.marks?.find((k) => k.id === mk.dataset.jmk); if (m) { m.on = !m.on; saveChar(); } render(); return true; }
+  if (md) { const id = md.dataset.jmdel!; if (markArm === id) { removeMark(G.char.marks ?? [], id); markArm = ''; saveChar(); } else markArm = id; render(); return true; }
+  if (ma) {
+    const list = (G.char.marks ??= []);
+    if (ma.dataset.jmall === 'here') addMark(list, wrapX(G.pos.x), G.pos.z, (n) => TL`Marker ${n}`);
+    else for (const m of list) m.on = ma.dataset.jmall === '1';
+    saveChar(); render(); return true;
+  }
   if (a) {
     const ids = [...allQuestMarkers().map((x) => x.id), ...allLeadMarkers().map((x) => x.id)];
     G.char.hideMarks = a.dataset.jall === '1' ? [] : ids; saveChar(); render(); return true;

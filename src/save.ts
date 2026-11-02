@@ -1,5 +1,6 @@
 // Character persistence. Only player-made changes are stored, never generated geometry.
 // Versions: v1 (relic counts) -> v2 (backpack, per-dungeon progress) -> v3 (open world).
+import type { MapMark } from './gen/mapmarks';
 import { newWorldSeed } from './gen/worldrules';
 import type { OutpostState } from './gen/outposts';
 import type { RivalSeat } from './gen/rivals';
@@ -122,6 +123,8 @@ export interface Char {
   questsDone?: number;
   /** (0.230) Markers switched off in the journal (J): 'q:<quest id>', 'c:<contract id>', 'l:<lead id>', 'elder', 'side', 'guide'. Personal. */
   hideMarks?: string[];
+  /** (0.289) The player's own map markers (gen/mapmarks.ts): N on the big map, named and switched in the journal. Personal. */
+  marks?: MapMark[];
   /** (0.284) When this browser last saved the character (ms): online, the newer of this and the server's copy wins. */
   savedAt?: number;
   /** (0.285) Extensions built onto the exoskeleton frame (gen/exoframe.ts); personal. */

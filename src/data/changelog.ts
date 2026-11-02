@@ -3,6 +3,13 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.289.0', date: '2026-11-02', title: 'Your own markers on the map', notes: [
+    'Open the map (M) and press N: a coloured flag goes where the cursor points, so you can find your way back to a spot later. N on a flag takes it away. You can keep up to 40.',
+    'The map now frees the mouse cursor while it is open, so markers and the GPS waypoint land where you point. Closing the map catches the mouse again.',
+    'The journal (J) lists your markers with the distance and direction to each. You can rename one by typing in its name field, show or hide it, take it away, mark the spot where you stand, and show or hide them all at once.',
+    'Shown markers appear on the map and the minimap. The nearest four also appear on the compass.',
+    'Multiplayer: markers are your own and are saved with your character. Nothing is sent, so the others do not see them. The protocol and the server are unchanged.',
+  ] },
   { v: '0.288.0', date: '2026-11-01', title: 'Mountains at the ends of the world', notes: [
     'The ice wall at both poles is gone. In its place the North and South Polar Mountains rise from a ragged front some 2–3 km before the end of the world: ridged peaks and saddles up to about 280 m, high massifs and lower stretches along the range, still with no way through.',
     'The far mountains on the horizon no longer look like walls. Every summit keeps its point (nothing is smoothed away), spurs and gullies run down its faces, a range runs down to the horizon in foothills instead of ending sheer, and the silhouette stands on the land where the mountains begin, so from high up it no longer hangs down like a curtain.',
