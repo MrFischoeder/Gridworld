@@ -1,6 +1,6 @@
 // Character persistence. Only player-made changes are stored, never generated geometry.
 // Versions: v1 (relic counts) -> v2 (backpack, per-dungeon progress) -> v3 (open world).
-import type { MapMark } from './gen/mapmarks';
+import type { MapMark, PubMark } from './gen/mapmarks';
 import { newWorldSeed } from './gen/worldrules';
 import type { OutpostState } from './gen/outposts';
 import type { RivalSeat } from './gen/rivals';
@@ -84,6 +84,8 @@ export interface Char {
   fallen: Record<string, Fallen>;
   /** (0.245) The bodies of the fallen, lying a game day where they died with their kit (gen/bodies.ts); shared. */
   bodies: Record<string, Body>;
+  /** (0.290) Map markers shared with everyone (gen/mapmarks.ts), by id; shared. */
+  pmarks?: Record<string, PubMark>;
   /** The cryo-pod this character woke from (world/crashpod.ts); unset = by their place on the server. */
   pod?: number;
   /** Online: what a dead character of this same player left behind (ui/rebirth.ts): their houses and what was in them,
@@ -220,7 +222,7 @@ export const SAVE_KEY = 'gridWorld.character.v3';
 export const ARENA_V3_KEY = 'gridArena.character.v3', V2_KEY = 'gridArena.character.v2', OLD_KEY = 'gridArena.character.v1';
 
 export const newChar = (): Char => ({
-  v: 3, settlementRules: 1, name: '', intro: false, tech: {}, leads: [], installs: {}, bridges: {}, bridgeSites: [], cityGarrisons: {}, fallen: {}, bodies: {}, bags: {}, skyfalls: {}, workclaims: {}, salvage: {}, piers: [], lighthouses: [], proads: {}, boats: [], airships: [], copters: [], filter: 0, fogs: {}, lodes: {}, outposts: {}, rivals: {}, guide: 0, houses: [], shuttle: { given: {}, v: 2 }, level: 1, xp: 0, gold: 0, world: newWorldSeed(),
+  v: 3, settlementRules: 1, name: '', intro: false, tech: {}, leads: [], installs: {}, bridges: {}, bridgeSites: [], cityGarrisons: {}, fallen: {}, bodies: {}, bags: {}, pmarks: {}, skyfalls: {}, workclaims: {}, salvage: {}, piers: [], lighthouses: [], proads: {}, boats: [], airships: [], copters: [], filter: 0, fogs: {}, lodes: {}, outposts: {}, rivals: {}, guide: 0, houses: [], shuttle: { given: {}, v: 2 }, level: 1, xp: 0, gold: 0, world: newWorldSeed(),
   inv: [{ k: 'blade', n: 1 }, ...Array(INV_SIZE - 1).fill(null)], mods: Array(MOD_SIZE).fill(null), opened: {}, unlocked: {}, killed: {},
   loc: 'overworld', ow: null, dungeon: null, discovered: {}, containers: {}, vehicles: [], board: { seq: 0, offers: [], stamp: boardPeriod(START_TIME) }, boards: {}, quests: [], camps: {}, time: START_TIME, gunMods: [null, null, null], loaded: { blaster: 20 }, waypoint: null, kcal: KCAL.start, stomach: 0, water: 100, harvest: {}, benches: [], claims: [],
   hands: [{ k: 'blaster', n: 1 }], back: [], off: [null], wear: {}, pid: Math.random().toString(36).slice(2, 10), towns: {}, market: {}, ledger: {}, caravans: {}, escort: null, contracts: [], taken: [],

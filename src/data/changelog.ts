@@ -3,6 +3,13 @@
 export interface Change { v: string; date: string; title: string; notes: string[] }
 
 export const CHANGELOG: Change[] = [
+  { v: '0.290.0', date: '2026-11-02', title: 'Markers for everyone', notes: [
+    'A map marker can now be for you alone or for every player in the world. Shift+N on the map places a marker for everyone; N still places one only you see.',
+    'In the journal (J), Share makes one of your markers visible to everyone, and Only me takes it back. Shared markers have a ring at the foot of the flag and show who placed them.',
+    'Each player shows or hides a shared marker just for themselves. Only the player who placed it can rename it, take it back or take it away. If that player\'s character has died, anyone can.',
+    'New markers get a name that is not already in use.',
+    'Multiplayer: shared markers are part of the world and saved by the server. Your own markers and which markers you hide stay with your character. The protocol is unchanged, but the server must be updated to keep shared markers. On an older server they stay yours alone.',
+  ] },
   { v: '0.289.0', date: '2026-11-02', title: 'Your own markers on the map', notes: [
     'Open the map (M) and press N: a coloured flag goes where the cursor points, so you can find your way back to a spot later. N on a flag takes it away. You can keep up to 40.',
     'The map now frees the mouse cursor while it is open, so markers and the GPS waypoint land where you point. Closing the map catches the mouse again.',

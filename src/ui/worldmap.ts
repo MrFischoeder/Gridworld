@@ -59,7 +59,8 @@ import { $ } from './hud';
 import { myOwner, ownerName } from '../world/rivals';
 import { mayUse } from '../gen/outposts';
 import { tl, TL } from '../i18n';
-import { MARKS, MARK_COLORS, addMark, markNear, removeMark } from '../gen/mapmarks';
+import { MARKS, MARK_COLORS, addMark, markNear, removeMark, shareMark } from '../gen/mapmarks';
+import { seenMarks, canSharePub, mayEdit } from '../world/mapmarks';
 
 const tiles = new Map<string, HTMLCanvasElement>();
 let tileWorld = -1;
@@ -450,8 +451,7 @@ function drawArea(ctx: CanvasRenderingContext2D, w: number, h: number, ppm: numb
       if (labels) ctx.fillText(TL`Waypoint ${(Math.hypot(wrapDx(wp[0] - px), wp[1] - pz) / 1000).toFixed(1)} km`, x, y - r - 8);
     }
   }
-  for (const m of G.char.marks ?? []) { // (0.289) your own markers: a flag on a pole in its colour, held at the edge of the big map
-    if (!m.on) continue;
+  for (const { m, pub } of seenMarks()) { // (0.289) markers: a flag on a pole in its colour, held at the edge of the big map; (0.290) shared ones with a ring at the foot and the author's name
     let x = X(nearX(m.x, px)), y = Z(m.z); const out = x < 24 || y < 40 || x > w - 24 || y > h - 40, s = labels ? 1 : 0.6;
     if (out && !labels) continue;
     if (out) { x = Math.max(24, Math.min(w - 24, x)); y = Math.max(40, Math.min(h - 40, y)); }
@@ -459,7 +459,8 @@ function drawArea(ctx: CanvasRenderingContext2D, w: number, h: number, ppm: numb
     ctx.strokeStyle = ctx.fillStyle = col; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x, y - 16 * s); ctx.stroke(); ctx.lineWidth = 1;
     ctx.beginPath(); ctx.moveTo(x, y - 16 * s); ctx.lineTo(x + 10 * s, y - 12.5 * s); ctx.lineTo(x, y - 9 * s); ctx.closePath(); ctx.fill();
     ctx.beginPath(); ctx.arc(x, y, 2 * s, 0, 6.283); ctx.fill();
-    if (labels) { const t = m.name + (out ? ` ${(Math.hypot(wrapDx(m.x - px), m.z - pz) / 1000).toFixed(1)} km` : ''), hw2 = ctx.measureText(t).width / 2 + 6; ctx.fillText(t, Math.max(hw2, Math.min(w - hw2, x + 4)), y - 22); }
+    if (pub) { ctx.beginPath(); ctx.arc(x, y, 5 * s, 0, 6.283); ctx.stroke(); }
+    if (labels) { const t = m.name + (pub ? ` (${pub.by})` : '') + (out ? ` ${(Math.hypot(wrapDx(m.x - px), m.z - pz) / 1000).toFixed(1)} km` : ''), hw2 = ctx.measureText(t).width / 2 + 6; ctx.fillText(t, Math.max(hw2, Math.min(w - hw2, x + 4)), y - 22); }
   }
   // on the big map: every caravan on the roads between villages you know (from the timetables), as an arrow
   if (labels && vehiclesOpen(G.char)) { // (0.202) no convoys before the mechanic comes
@@ -632,7 +633,7 @@ function drawFullMap() {
   drawPlan(w, h);
   bctx.fillStyle = '#3dff6e'; bctx.font = '22px VT323, monospace'; bctx.textAlign = 'left';
   const sat = satelliteUp(G.char.towns[GRIDHOLM_ID]);
-  bctx.textAlign = 'right'; bctx.fillText(tl('N: put a marker under the cursor (on one: take it away) · J: name them, show or hide them'), w - 16, mapLocked() ? 112 : 56); bctx.textAlign = 'left';
+  bctx.textAlign = 'right'; bctx.fillText(tl('N: a marker for you, Shift+N: for everyone (on one: take it away) · J: name, share, show or hide them'), w - 16, mapLocked() ? 112 : 56); bctx.textAlign = 'left';
   bctx.fillText((sat ? tl('SATELLITE MAP') : tl('WORLD MAP')) + tl(' — M or Esc to close · wheel / + - to zoom') + (gpsOn() ? tl(' · right click: set / clear the GPS waypoint') : ''), 16, h - 16);
   if (sat) { // the satellites: orbital scans and the weather they see
     const sp = scanPlan(), wait = sp.wait, now = weatherAt(G.char.world, G.pos.x, G.pos.z, G.char.time), later = weatherAt(G.char.world, G.pos.x, G.pos.z, G.char.time + 240);
@@ -670,14 +671,27 @@ big.addEventListener('click', () => toggleMap(false));
 let mouse: [number, number] | null = null; // the cursor on the big map (client px), for N
 addEventListener('mousemove', (e) => { mouse = G.mapOpen ? [e.clientX, e.clientY] : null; });
 /** (0.289) N on the big map: a marker under the cursor (or in the middle, with no cursor on the map); on one: take it away. */
-export function placeMark() {
+export function placeMark(everyone = false) {
   if (!G.mapOpen || G.char.loc !== 'overworld') return;
   const [cx, cy] = mouse ?? [innerWidth / 2, innerHeight / 2];
   const x = wrapX(G.pos.x + (cx - innerWidth / 2) / zoom), z = G.pos.z + (cy - innerHeight / 2) / zoom;
-  const list = (G.char.marks ??= []), hit = markNear(list.filter((m) => m.on), x, z, MARKS.pick / zoom, wrapDx);
-  if (hit) { removeMark(list, hit.id); showToast(TL`Marker "${hit.name}" taken away.`); saveChar(); return; }
-  const m = addMark(list, x, z, (n) => TL`Marker ${n}`);
+  const list = (G.char.marks ??= []), pmarks = (G.char.pmarks ??= {}), seen = seenMarks().map((k) => k.m), hit = markNear(seen, x, z, MARKS.pick / zoom, wrapDx);
+  if (hit) {
+    const p = pmarks[hit.id];
+    if (p && p === hit) { // (0.290) a shared marker: only its author (or anyone, once the author has fallen) takes it away
+      if (!mayEdit(p)) { showToast(TL`"${p.name}" is ${p.by}'s marker: hide it for yourself in the journal (J).`); return; }
+      delete pmarks[p.id];
+    } else removeMark(list, hit.id);
+    showToast(TL`Marker "${hit.name}" taken away.`); saveChar(); return;
+  }
+  if (everyone && !canSharePub()) { showToast(tl('This server does not keep shared markers yet: placed for you alone.')); everyone = false; }
+  const m = addMark(list, x, z, (n) => TL`Marker ${n}`, Object.values(pmarks).map((p) => p.name));
   if (!m) { showToast(TL`You keep ${MARKS.max} markers at most: take one away first (N on it, or the journal).`); return; }
+  if (everyone) {
+    const p = shareMark(list, pmarks, m.id, G.char.name || tl('someone'), G.char.pid, G.char.time);
+    if (p) { showToast(TL`"${p.name}" marked for everyone. Name it in the journal (J).`); saveChar(); return; }
+    showToast(tl('The world keeps no more shared markers: placed for you alone.'));
+  }
   showToast(TL`"${m.name}" marked. Name it in the journal (J).`); saveChar();
 }
 /** The GPS Tablet: a right click on the big map sets a waypoint there (on the old one: clears it). */

@@ -2,7 +2,7 @@
 // the delivery contracts, the escort and the leads), each with a switch for its marker on the map and the compass.
 // The switches are personal (Char.hideMarks), so online each player marks only what they want; nothing is sent.
 import { G, W } from '../game';
-import { $ } from './hud';
+import { $, showToast } from './hud';
 import { lockPointer } from './input';
 import { markShown, toggleMark, saveChar } from '../character';
 import { questStatus, allQuestMarkers, abandon, giverOf, boardName, MAX_ACTIVE } from '../world/quests';
@@ -16,7 +16,8 @@ import { markId, pruneMarks } from '../gen/journal';
 import { wrapDx, wrapX } from '../gen/regions';
 import { km, compass } from '../gen/quests';
 import { tl, TL } from '../i18n';
-import { MARKS, MARK_COLORS, addMark, removeMark, renameMark } from '../gen/mapmarks';
+import { MARKS, MARK_COLORS, addMark, removeMark, renameMark, shareMark, unshareMark, pubKey, type MapMark, type PubMark } from '../gen/mapmarks';
+import { canSharePub, mayEdit } from '../world/mapmarks';
 
 const dlgEl = $('dlg'), panel = () => dlgEl.querySelector('.panel') as HTMLElement;
 let open = false, dropArm = '', markArm = '';
@@ -34,7 +35,7 @@ const strip = (s: string) => s.replace(/^▸\s*/, '');
 function render() {
   const c = G.char, qm = allQuestMarkers(), lm = allLeadMarkers();
   const marked = new Set([...qm.map((m) => m.id), ...lm.map((m) => m.id)]);
-  c.hideMarks = pruneMarks(c.hideMarks ?? [], [...marked, ...c.quests.map((q) => markId('q', q.id)), ...c.contracts.map((k) => markId('c', k.id)), ...c.leads.map((l) => markId('l', l)), 'elder', 'side', 'guide']);
+  c.hideMarks = pruneMarks(c.hideMarks ?? [], [...marked, ...c.quests.map((q) => markId('q', q.id)), ...c.contracts.map((k) => markId('c', k.id)), ...c.leads.map((l) => markId('l', l)), ...Object.keys(c.pmarks ?? {}).map(pubKey), 'elder', 'side', 'guide']);
   let h = TL`<h2>Journal</h2><div class="role">What you have taken on · switch a marker off and it leaves your map and compass</div>`;
   const home = c.towns[myHomeId()], step = c.guide === 2 ? tutorialStep(home) : null, side = c.guide === 2 ? sideStep(home) : null, gl = guideLine();
   const own: string[] = [];
@@ -59,25 +60,38 @@ function render() {
   h += `<button class="opt" data-jclose="1">${tl('Close (J or Esc)')}</button>`;
   panel().classList.add('wide'); panel().innerHTML = h;
 }
-/** (0.289) Your own map markers: the name (typed in place), where it is, shown or hidden, take it away. */
+/** (0.289) Map markers: the name (typed in place), where it is, shown or hidden, take it away; (0.290) for you alone or for everyone. */
+const INPUT = 'width:12em;background:#020e05;color:#9dffb4;border:1px solid #2fe060;font:inherit;padding:1px 4px';
+const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
 function marksHTML(): string {
-  const list = G.char.marks ?? [];
-  let h = `<div class="jsec">${TL`Your markers (${list.length}/${MARKS.max})`}</div>`;
-  if (!list.length) return h + `<div class="jtext">${tl('None yet. Open the map (M) and press N where you want one.')}</div>`;
-  const near = [...list].sort((a, b) => Math.hypot(wrapDx(a.x - G.pos.x), a.z - G.pos.z) - Math.hypot(wrapDx(b.x - G.pos.x), b.z - G.pos.z));
-  h += near.map((m) => {
-    const v = m.name.replace(/&/g, '&amp;').replace(/"/g, '&quot;');
-    const name = `<span style="color:${MARK_COLORS[m.c % MARK_COLORS.length]}">⚑</span> <input data-jname="${m.id}" maxlength="${MARKS.name}" value="${v}" style="width:12em;background:#020e05;color:#9dffb4;border:1px solid #2fe060;font:inherit;padding:1px 4px">`;
-    const btns = `<button class="buy${m.on ? '' : ' off'}" data-jmk="${m.id}">${m.on ? tl('Shown') : tl('Hidden')}</button><button class="buy off" data-jmdel="${m.id}">${markArm === m.id ? tl('Sure?') : tl('Take away')}</button>`;
-    return row(name + `<span class="jtext">${where(m.x, m.z)}</span>`, btns);
+  const own = G.char.marks ?? [], pub = Object.values(G.char.pmarks ?? {}).filter(Boolean), hidden = G.char.hideMarks ?? [];
+  let h = `<div class="jsec">${TL`Map markers (yours ${own.length}/${MARKS.max}, shared ${pub.length})`}</div>`;
+  if (!own.length && !pub.length) return h + `<div class="jtext">${tl('None yet. Open the map (M) and press N where you want one (Shift+N: for everyone).')}</div>` + marksButtons();
+  const dist = (m: MapMark) => Math.hypot(wrapDx(m.x - G.pos.x), m.z - G.pos.z);
+  const all: { m: MapMark; p: PubMark | null }[] = [...own.map((m) => ({ m, p: null })), ...pub.map((p) => ({ m: p as MapMark, p }))].sort((a, b) => dist(a.m) - dist(b.m));
+  const share = canSharePub();
+  h += all.map(({ m, p }) => {
+    const edit = !p || mayEdit(p), flag = `<span style="color:${MARK_COLORS[m.c % MARK_COLORS.length]}">${p ? '◉⚑' : '⚑'}</span> `;
+    const name = flag + (edit ? `<input data-jname="${esc(m.id)}" maxlength="${MARKS.name}" value="${esc(m.name)}" style="${INPUT}">` : `<b>${esc(m.name)}</b>`);
+    const on = p ? !hidden.includes(pubKey(p.id)) : m.on;
+    const who = p ? (p.pid === G.char.pid ? TL`for everyone, yours` : TL`for everyone, from ${esc(p.by)}`) : tl('for you alone');
+    let btns = `<button class="buy${on ? '' : ' off'}" data-jmk="${esc(m.id)}">${on ? tl('Shown') : tl('Hidden')}</button>`;
+    if (!p && share) btns += `<button class="buy off" data-jmsh="${esc(m.id)}">${tl('Share')}</button>`;
+    if (p && edit) btns += `<button class="buy off" data-jmun="${esc(m.id)}">${tl('Only me')}</button>`;
+    if (edit) btns += `<button class="buy off" data-jmdel="${esc(m.id)}">${markArm === m.id ? tl('Sure?') : tl('Take away')}</button>`;
+    return row(name + `<span class="jtext">${where(m.x, m.z)}</span>`, btns, who);
   }).join('');
+  return h + marksButtons();
+}
+function marksButtons(): string {
   const here = G.char.loc === 'overworld' ? `<button class="opt" data-jmall="here">${tl('Mark where I stand')}</button>` : '';
-  return h + `<div style="display:flex;gap:8px;margin-top:8px">${here}<button class="opt" data-jmall="1">${tl('Show all markers')}</button><button class="opt" data-jmall="0">${tl('Hide all markers')}</button></div>`;
+  return `<div style="display:flex;gap:8px;margin-top:8px">${here}<button class="opt" data-jmall="1">${tl('Show all markers')}</button><button class="opt" data-jmall="0">${tl('Hide all markers')}</button></div>`;
 }
 dlgEl.addEventListener('change', (e) => { // a marker's name typed in place: kept on Enter or leaving the field
   const t = e.target as HTMLElement;
   if (!(t instanceof HTMLInputElement) || !t.dataset.jname || !journalOpen()) return;
-  if (renameMark(G.char.marks ?? [], t.dataset.jname, t.value)) saveChar();
+  const id = t.dataset.jname, p = G.char.pmarks?.[id];
+  if (p ? mayEdit(p) && renameMark([p], id, t.value) : renameMark(G.char.marks ?? [], id, t.value)) saveChar();
   render();
 });
 /** J: open or close the journal. */
@@ -98,17 +112,36 @@ export function journalClick(t: HTMLElement): boolean {
   if (m) { toggleMark(m.dataset.jm!); render(); return true; }
   if (d) { const id = d.dataset.jdrop!; if (dropArm === id) { abandon(id); dropArm = ''; } else dropArm = id; render(); return true; }
   const mk = t.closest('[data-jmk]') as HTMLElement | null, md = t.closest('[data-jmdel]') as HTMLElement | null, ma = t.closest('[data-jmall]') as HTMLElement | null;
-  if (mk) { const m = G.char.marks?.find((k) => k.id === mk.dataset.jmk); if (m) { m.on = !m.on; saveChar(); } render(); return true; }
-  if (md) { const id = md.dataset.jmdel!; if (markArm === id) { removeMark(G.char.marks ?? [], id); markArm = ''; saveChar(); } else markArm = id; render(); return true; }
+  const sh = t.closest('[data-jmsh]') as HTMLElement | null, un = t.closest('[data-jmun]') as HTMLElement | null, pm = (G.char.pmarks ??= {});
+  if (mk) {
+    const id = mk.dataset.jmk!, m = G.char.marks?.find((k) => k.id === id);
+    if (pm[id]) toggleMark(pubKey(id)); else if (m) { m.on = !m.on; saveChar(); }
+    render(); return true;
+  }
+  if (md) {
+    const id = md.dataset.jmdel!;
+    if (markArm !== id) markArm = id;
+    else { markArm = ''; if (pm[id]) { if (mayEdit(pm[id])) delete pm[id]; } else removeMark(G.char.marks ?? [], id); saveChar(); }
+    render(); return true;
+  }
+  if (sh) { // (0.290) yours to everyone
+    if (canSharePub() && !shareMark(G.char.marks ??= [], pm, sh.dataset.jmsh!, G.char.name || tl('someone'), G.char.pid, G.char.time)) showToast(tl('The world keeps no more shared markers.'));
+    saveChar(); render(); return true;
+  }
+  if (un) { // (0.290) back to you alone: the others no longer see it
+    const p = pm[un.dataset.jmun!];
+    if (p && mayEdit(p) && !unshareMark(G.char.marks ??= [], pm, p.id)) showToast(TL`You keep ${MARKS.max} markers at most: take one away first (N on it, or the journal).`);
+    saveChar(); render(); return true;
+  }
   if (ma) {
-    const list = (G.char.marks ??= []);
-    if (ma.dataset.jmall === 'here') addMark(list, wrapX(G.pos.x), G.pos.z, (n) => TL`Marker ${n}`);
-    else for (const m of list) m.on = ma.dataset.jmall === '1';
+    const list = (G.char.marks ??= []), keys = Object.keys(pm).map(pubKey), rest = (G.char.hideMarks ?? []).filter((k) => !keys.includes(k));
+    if (ma.dataset.jmall === 'here') addMark(list, wrapX(G.pos.x), G.pos.z, (n) => TL`Marker ${n}`, Object.values(pm).map((p) => p.name));
+    else { const on = ma.dataset.jmall === '1'; for (const m of list) m.on = on; G.char.hideMarks = on ? rest : [...rest, ...keys]; }
     saveChar(); render(); return true;
   }
   if (a) {
-    const ids = [...allQuestMarkers().map((x) => x.id), ...allLeadMarkers().map((x) => x.id)];
-    G.char.hideMarks = a.dataset.jall === '1' ? [] : ids; saveChar(); render(); return true;
+    const ids = [...allQuestMarkers().map((x) => x.id), ...allLeadMarkers().map((x) => x.id)], pmk = (G.char.hideMarks ?? []).filter((k) => k.startsWith('pm:'));
+    G.char.hideMarks = a.dataset.jall === '1' ? pmk : [...pmk, ...ids]; saveChar(); render(); return true;
   }
   return false;
 }
